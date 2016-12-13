@@ -56,6 +56,17 @@ boot_test_util_byte_at(int img_msb, uint32_t image_offset)
     return u8p[image_offset % 4];
 }
 
+uint8_t
+boot_test_util_flash_align(void)
+{
+    const struct flash_area *fap;
+    int rc;
+
+    rc = flash_area_open(FLASH_AREA_IMAGE_0, &fap);
+    TEST_ASSERT_FATAL(rc == 0);
+
+    return flash_area_align(fap);
+}
 
 void
 boot_test_util_init_flash(void)
@@ -113,6 +124,7 @@ boot_test_util_area_write_size(int dst_idx, uint32_t off, uint32_t size)
     const struct flash_area *desc;
     int64_t diff;
     uint32_t trailer_start;
+    uint8_t elem_sz;
 
     if (dst_idx != BOOT_TEST_AREA_IDX_SCRATCH - 1) {
         return size;
@@ -120,7 +132,8 @@ boot_test_util_area_write_size(int dst_idx, uint32_t off, uint32_t size)
 
     /* Don't include trailer in copy to second slot. */
     desc = boot_test_area_descs + dst_idx;
-    trailer_start = desc->fa_size - boot_trailer_sz(1);
+    elem_sz = boot_test_util_flash_align();
+    trailer_start = desc->fa_size - boot_trailer_sz(elem_sz);
     diff = off + size - trailer_start;
     if (diff > 0) {
         if (diff > size) {
@@ -255,10 +268,10 @@ boot_test_util_write_hash(const struct image_header *hdr, int slot)
     tlv._pad = 0;
     tlv.it_len = sizeof(hash);
 
-    rc = hal_flash_write(flash_id, addr + off, &tlv, sizeof(tlv));
-    TEST_ASSERT(rc == 0);
-    off += sizeof(tlv);
-    rc = hal_flash_write(flash_id, addr + off, hash, sizeof(hash));
+    memcpy(tmpdata, &tlv, sizeof tlv);
+    memcpy(tmpdata + sizeof tlv, hash, sizeof hash);
+    rc = hal_flash_write(flash_id, addr + off, tmpdata,
+                         sizeof tlv + sizeof hash);
     TEST_ASSERT(rc == 0);
 }
 
