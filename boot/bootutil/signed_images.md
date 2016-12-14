@@ -65,7 +65,7 @@ This gets bootutil to turn on image signature validation.
 
     pkg.name: libs/mykeys
     pkg.deps:
-        - libs/bootutil
+        - "@apache-mynewt-core/boot/bootutil"
 
 ## Sample source file
 This exports the keys.
