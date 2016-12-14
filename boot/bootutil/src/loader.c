@@ -545,13 +545,13 @@ split_image_check(struct image_header *app_hdr,
 }
 
 static int
-boot_validate_slot1(void)
+boot_validate_slot(int slot)
 {
     const struct flash_area *fap;
     int rc;
     
-    if (boot_data.imgs[1].hdr.ih_magic == 0xffffffff ||
-        boot_data.imgs[1].hdr.ih_flags & IMAGE_F_NON_BOOTABLE) {
+    if (boot_data.imgs[slot].hdr.ih_magic == 0xffffffff ||
+        boot_data.imgs[slot].hdr.ih_flags & IMAGE_F_NON_BOOTABLE) {
 
         /* No bootable image in slot 1; continue booting from slot 0. */
         return -1;
@@ -560,13 +560,14 @@ boot_validate_slot1(void)
     /* Image in slot 1 is invalid.  Erase the image and continue booting
      * from slot 0.
      */
-    rc = flash_area_open(FLASH_AREA_IMAGE_1, &fap);
+    rc = flash_area_open(flash_area_id_from_image_slot(slot), &fap);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
 
-    if (boot_data.imgs[1].hdr.ih_magic != IMAGE_MAGIC ||
-        boot_image_check(&boot_data.imgs[1].hdr, fap) != 0) {
+    if ((boot_data.imgs[slot].hdr.ih_magic != IMAGE_MAGIC ||
+	 boot_image_check(&boot_data.imgs[slot].hdr, fap) != 0) &&
+	slot == 1) {
 
         /* Image in slot 1 is invalid.  Erase the image and continue booting
          * from slot 0.
@@ -602,7 +603,7 @@ boot_validated_swap_type(void)
     }
 
     /* Boot loader wants to switch to slot 1.  Ensure image is valid. */
-    rc = boot_validate_slot1();
+    rc = boot_validate_slot(1);
     if (rc != 0) {
         return BOOT_SWAP_TYPE_FAIL;
     }
@@ -1039,6 +1040,12 @@ boot_go(struct boot_rsp *rsp)
 
     switch (swap_type) {
     case BOOT_SWAP_TYPE_NONE:
+#ifdef BOOTUTIL_VALIDATE_SLOT0
+        rc = boot_validate_slot(0);
+        if (rc != 0) {
+            return BOOT_EBADIMAGE;
+        }
+#endif
         slot = 0;
         break;
 
