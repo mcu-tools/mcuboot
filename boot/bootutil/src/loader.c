@@ -44,9 +44,9 @@ static struct {
     struct {
         struct image_header hdr;
         struct flash_area *sectors;
+        int num_sectors;
     } imgs[BOOT_NUM_SLOTS];
 
-    int num_img_sectors;
     struct flash_area scratch_sector;
 
     uint8_t write_sz;
@@ -251,7 +251,15 @@ boot_read_image_headers(void)
     for (i = 0; i < BOOT_NUM_SLOTS; i++) {
         rc = boot_read_image_header(i, &boot_data.imgs[i].hdr);
         if (rc != 0) {
-            return rc;
+            /* If at least one header was read successfully, then the boot
+             * loader can attempt a boot.  Failure to read any headers is a
+             * fatal error.
+             */
+            if (i > 0) {
+                return 0;
+            } else {
+                return rc;
+            }
         }
     }
 
@@ -277,6 +285,28 @@ boot_write_sz(void)
     return elem_sz;
 }
 
+static int
+boot_slots_compatible(void)
+{
+    const struct flash_area *sector0;
+    const struct flash_area *sector1;
+    int i;
+
+    /* Ensure both image slots have identical sector layouts. */
+    if (boot_data.imgs[0].num_sectors != boot_data.imgs[1].num_sectors) {
+        return 0;
+    }
+    for (i = 0; i < boot_data.imgs[0].num_sectors; i++) {
+        sector0 = boot_data.imgs[0].sectors + i;
+        sector1 = boot_data.imgs[1].sectors + i;
+        if (sector0->fa_size != sector1->fa_size) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 /**
  * Determines the sector layout of both image slots and the scratch area.
  * This information is necessary for calculating the number of bytes to erase
@@ -286,13 +316,10 @@ boot_write_sz(void)
 static int
 boot_read_sectors(void)
 {
-    const struct flash_area *sector0;
-    const struct flash_area *sector1;
     const struct flash_area *scratch;
     int num_sectors_slot0;
     int num_sectors_slot1;
     int rc;
-    int i;
 
     num_sectors_slot0 = BOOT_MAX_IMG_SECTORS;
     rc = flash_area_to_sectors(FLASH_AREA_IMAGE_0, &num_sectors_slot0,
@@ -300,6 +327,7 @@ boot_read_sectors(void)
     if (rc != 0) {
         return BOOT_EFLASH;
     }
+    boot_data.imgs[0].num_sectors = num_sectors_slot0;
 
     num_sectors_slot1 = BOOT_MAX_IMG_SECTORS;
     rc = flash_area_to_sectors(FLASH_AREA_IMAGE_1, &num_sectors_slot1,
@@ -307,27 +335,13 @@ boot_read_sectors(void)
     if (rc != 0) {
         return BOOT_EFLASH;
     }
+    boot_data.imgs[1].num_sectors = num_sectors_slot1;
 
     rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &scratch);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
     boot_data.scratch_sector = *scratch;
-    boot_data.write_sz = hal_flash_align(scratch->fa_device_id);
-
-    /* Ensure both image slots have identical sector layouts. */
-    if (num_sectors_slot0 != num_sectors_slot1) {
-        return BOOT_EFLASH;
-    }
-    for (i = 0; i < num_sectors_slot0; i++) {
-        sector0 = boot_data.imgs[0].sectors + i;
-        sector1 = boot_data.imgs[1].sectors + i;
-        if (sector0->fa_size != sector1->fa_size) {
-            return BOOT_EFLASH;
-        }
-    }
-
-    boot_data.num_img_sectors = num_sectors_slot0;
 
     boot_data.write_sz = boot_write_sz();
 
@@ -842,7 +856,7 @@ boot_copy_image(struct boot_status *bs)
     int swap_idx;
 
     swap_idx = 0;
-    last_sector_idx = boot_data.num_img_sectors - 1;
+    last_sector_idx = boot_data.imgs[0].num_sectors - 1;
     while (last_sector_idx >= 0) {
         sz = boot_copy_sz(last_sector_idx, &first_sector_idx);
         if (swap_idx >= bs->idx) {
@@ -925,6 +939,53 @@ boot_finalize_revert_swap(void)
 }
 
 /**
+ * Performs an image swap if one is required.
+ *
+ * @param out_swap_type         On success, the type of swap performed gets
+ *                                  written here.
+ *
+ * @return                      0 on success; nonzero on failure.
+ */
+static int
+boot_swap_if_needed(int *out_swap_type)
+{
+    struct boot_status bs;
+    int swap_type;
+    int rc;
+
+    /* Determine if we rebooted in the middle of an image swap
+     * operation.
+     */
+    rc = boot_read_status(&bs);
+    if (rc != 0) {
+        return rc;
+    }
+
+    /* If a partial swap was detected, complete it. */
+    if (bs.idx != 0 || bs.state != 0) {
+        rc = boot_copy_image(&bs);
+        assert(rc == 0);
+
+        /* Extrapolate the type of the partial swap.  We need this
+         * information to know how to mark the swap complete in flash.
+         */
+        swap_type = boot_previous_swap_type();
+    } else {
+        swap_type = boot_validated_swap_type();
+        switch (swap_type) {
+        case BOOT_SWAP_TYPE_TEST:
+        case BOOT_SWAP_TYPE_REVERT:
+            rc = boot_copy_image(&bs);
+            assert(rc == 0);
+            break;
+        }
+    }
+
+    *out_swap_type = swap_type;
+    return 0;
+}
+
+/**
  * Prepares the booting process.  This function moves images around in flash as
  * appropriate, and tells you what address to boot from.
  *
@@ -935,7 +996,6 @@ boot_finalize_revert_swap(void)
 int
 boot_go(struct boot_rsp *rsp)
 {
-    struct boot_status bs;
     int swap_type;
     int slot;
     int rc;
@@ -943,7 +1003,7 @@ boot_go(struct boot_rsp *rsp)
     /* The array of slot sectors are defined here (as opposed to file scope) so
      * that they don't get allocated for non-boot-loader apps.  This is
      * necessary because the gcc option "-fdata-sections" doesn't seem to have
-     * any effect for some reason.
+     * any effect in older gcc versions (e.g., 4.8.4).
      */
     static struct flash_area slot0_sectors[BOOT_MAX_IMG_SECTORS];
     static struct flash_area slot1_sectors[BOOT_MAX_IMG_SECTORS];
@@ -962,30 +1022,16 @@ boot_go(struct boot_rsp *rsp)
         return rc;
     }
 
-    /* Determine if we rebooted in the middle of an image swap operation. */
-    rc = boot_read_status(&bs);
-    if (rc != 0) {
-        return rc;
-    }
-
-    /* If a partial swap was detected, complete it. */
-    if (bs.idx != 0 || bs.state != 0) {
-        rc = boot_copy_image(&bs);
-        assert(rc == 0);
-
-        /* Extrapolate the type of the partial swap.  We need this information
-         * to know how to mark the swap complete in flash.
-         */
-        swap_type = boot_previous_swap_type();
-    } else {
-        swap_type = boot_validated_swap_type();
-        switch (swap_type) {
-        case BOOT_SWAP_TYPE_TEST:
-        case BOOT_SWAP_TYPE_REVERT:
-            rc = boot_copy_image(&bs);
-            assert(rc == 0);
-            break;
+    /* If the image slots aren't compatible, no swap is possible.  Just boot
+     * into slot 0.
+     */
+    if (boot_slots_compatible()) {
+        rc = boot_swap_if_needed(&swap_type);
+        if (rc != 0) {
+            return rc;
         }
+    } else {
+        swap_type = BOOT_SWAP_TYPE_NONE;
     }
 
     switch (swap_type) {
