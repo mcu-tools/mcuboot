@@ -74,9 +74,11 @@ static const struct boot_swap_table boot_swap_tables[] = {
          *----------+------------+------------|
          *    magic | Any        | Good       |
          * image-ok | Any        | N/A        |
-         * ---------+------------+------------'
-         * swap: test                         |
-         * -----------------------------------'
+         * ---------+------------+------------+---------------------------'
+         * swap: test                                                     |
+         * note: slot-1 image-ok val indicates whether swap is permanent; |
+         *       (0xff=temporary; 0x01=permanent)                         |
+         * ---------------------------------------------------------------'
          */
         .bsw_magic_slot0 =      0,
         .bsw_magic_slot1 =      BOOT_MAGIC_GOOD,
@@ -357,10 +359,15 @@ boot_swap_type(void)
  * Marks the image in slot 1 as pending.  On the next reboot, the system will
  * perform a one-time boot of the slot 1 image.
  *
+ * @param permanent         Whether the image should be used permanently or
+ *                              only tested once:
+ *                                  0=run image once, then confirm or revert.
+ *                                  1=run image forever.
+ *
  * @return                  0 on success; nonzero on failure.
  */
 int
-boot_set_pending(void)
+boot_set_pending(int permanent)
 {
     const struct flash_area *fap;
     struct boot_swap_state state_slot1;
@@ -384,6 +391,10 @@ boot_set_pending(void)
             rc = BOOT_EFLASH;
         } else {
             rc = boot_write_magic(fap);
+        }
+
+        if (rc == 0 && permanent) {
+            rc = boot_write_image_ok(fap);
         }
 
         flash_area_close(fap);

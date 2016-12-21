@@ -18,7 +18,7 @@
  */
 #include "boot_test.h"
 
-TEST_CASE(boot_test_no_hash)
+TEST_CASE(boot_test_permanent)
 {
     int rc;
 
@@ -26,16 +26,17 @@ TEST_CASE(boot_test_no_hash)
         .ih_magic = IMAGE_MAGIC,
         .ih_tlv_size = 4 + 32,
         .ih_hdr_size = BOOT_TEST_HEADER_SIZE,
-        .ih_img_size = 12 * 1024,
+        .ih_img_size = 5 * 1024,
         .ih_flags = IMAGE_F_SHA256,
-        .ih_ver = { 0, 2, 3, 4 },
+        .ih_ver = { 0, 5, 21, 432 },
     };
+
     struct image_header hdr1 = {
         .ih_magic = IMAGE_MAGIC,
-        .ih_tlv_size = 0,
+        .ih_tlv_size = 4 + 32,
         .ih_hdr_size = BOOT_TEST_HEADER_SIZE,
         .ih_img_size = 32 * 1024,
-        .ih_flags = 0,
+        .ih_flags = IMAGE_F_SHA256,
         .ih_ver = { 1, 2, 3, 432 },
     };
 
@@ -43,9 +44,11 @@ TEST_CASE(boot_test_no_hash)
     boot_test_util_write_image(&hdr0, 0);
     boot_test_util_write_hash(&hdr0, 0);
     boot_test_util_write_image(&hdr1, 1);
+    boot_test_util_write_hash(&hdr1, 1);
 
-    rc = boot_set_pending(0);
-    TEST_ASSERT(rc == 0);
+    rc = boot_set_pending(1);
+    TEST_ASSERT_FATAL(rc == 0);
 
-    boot_test_util_verify_all(BOOT_SWAP_TYPE_NONE, &hdr0, NULL);
+    /* A permanent swap exhibits the same behavior as a revert. */
+    boot_test_util_verify_all(BOOT_SWAP_TYPE_REVERT, &hdr0, &hdr1);
 }

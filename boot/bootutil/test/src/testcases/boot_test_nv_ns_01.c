@@ -33,7 +33,7 @@ TEST_CASE(boot_test_nv_ns_01)
     boot_test_util_write_image(&hdr, 1);
     boot_test_util_write_hash(&hdr, 1);
 
-    boot_set_pending();
+    boot_set_pending(0);
 
     boot_test_util_verify_all(BOOT_SWAP_TYPE_REVERT, NULL, &hdr);
 }

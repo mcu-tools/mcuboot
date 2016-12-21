@@ -35,7 +35,7 @@ TEST_CASE(boot_test_vm_ns_01)
     boot_test_util_write_image(&hdr, 1);
     boot_test_util_write_hash(&hdr, 1);
 
-    rc = boot_set_pending();
+    rc = boot_set_pending(0);
     TEST_ASSERT(rc == 0);
 
     boot_test_util_verify_all(BOOT_SWAP_TYPE_REVERT, NULL, &hdr);

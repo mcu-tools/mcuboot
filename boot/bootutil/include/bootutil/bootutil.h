@@ -53,7 +53,7 @@ int boot_go(struct boot_rsp *rsp);
 
 int boot_swap_type(void);
 
-int boot_set_pending(void);
+int boot_set_pending(int permanent);
 int boot_set_confirmed(void);
 
 #define SPLIT_GO_OK                 (0)

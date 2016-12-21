@@ -51,6 +51,8 @@ TEST_CASE_DECL(boot_test_no_flag_has_hash)
 TEST_CASE_DECL(boot_test_invalid_hash)
 TEST_CASE_DECL(boot_test_revert)
 TEST_CASE_DECL(boot_test_revert_continue)
+TEST_CASE_DECL(boot_test_permanent)
+TEST_CASE_DECL(boot_test_permanent_continue)
 
 TEST_SUITE(boot_test_main)
 {
@@ -71,6 +73,8 @@ TEST_SUITE(boot_test_main)
     boot_test_invalid_hash();
     boot_test_revert();
     boot_test_revert_continue();
+    boot_test_permanent();
+    boot_test_permanent_continue();
 }
 
 int

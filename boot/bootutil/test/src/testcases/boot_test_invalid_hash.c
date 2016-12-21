@@ -52,7 +52,7 @@ TEST_CASE(boot_test_invalid_hash)
       &tlv, sizeof(tlv));
     TEST_ASSERT(rc == 0);
 
-    rc = boot_set_pending();
+    rc = boot_set_pending(0);
     TEST_ASSERT(rc == 0);
 
     boot_test_util_verify_all(BOOT_SWAP_TYPE_NONE, &hdr0, NULL);

@@ -67,6 +67,7 @@ void boot_test_util_write_image(const struct image_header *hdr,
                                        int slot);
 void boot_test_util_write_hash(const struct image_header *hdr, int slot);
 void boot_test_util_mark_revert(void);
+void boot_test_util_mark_swap_perm(void);
 void boot_test_util_verify_area(const struct flash_area *area_desc,
                                        const struct image_header *hdr,
                                        uint32_t image_addr, int img_msb);

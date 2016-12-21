@@ -46,7 +46,7 @@ TEST_CASE(boot_test_vm_ns_11_b)
     boot_test_util_write_image(&hdr1, 1);
     boot_test_util_write_hash(&hdr1, 1);
 
-    rc = boot_set_pending();
+    rc = boot_set_pending(0);
     TEST_ASSERT(rc == 0);
 
     boot_test_util_verify_all(BOOT_SWAP_TYPE_TEST, &hdr0, &hdr1);
