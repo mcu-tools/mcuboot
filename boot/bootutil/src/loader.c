@@ -143,6 +143,7 @@ static const struct boot_status_table boot_status_tables[] = {
 static const uint8_t boot_swap_trans_table[][2] = {
     /*     From                     To             */
     { BOOT_SWAP_TYPE_REVERT,    BOOT_SWAP_TYPE_NONE },
+    { BOOT_SWAP_TYPE_PERM,      BOOT_SWAP_TYPE_NONE },
     { BOOT_SWAP_TYPE_TEST,      BOOT_SWAP_TYPE_REVERT },
 };
 
@@ -974,6 +975,7 @@ boot_swap_if_needed(int *out_swap_type)
         swap_type = boot_validated_swap_type();
         switch (swap_type) {
         case BOOT_SWAP_TYPE_TEST:
+        case BOOT_SWAP_TYPE_PERM:
         case BOOT_SWAP_TYPE_REVERT:
             rc = boot_copy_image(&bs);
             assert(rc == 0);
@@ -1040,6 +1042,7 @@ boot_go(struct boot_rsp *rsp)
         break;
 
     case BOOT_SWAP_TYPE_TEST:
+    case BOOT_SWAP_TYPE_PERM:
         slot = 1;
         boot_finalize_test_swap();
         break;

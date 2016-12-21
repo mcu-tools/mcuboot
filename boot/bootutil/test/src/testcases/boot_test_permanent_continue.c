@@ -58,6 +58,5 @@ TEST_CASE(boot_test_permanent_continue)
     rc = boot_write_status(&status);
     TEST_ASSERT_FATAL(rc == 0);
 
-    /* A permanent swap exhibits the same behavior as a revert. */
-    boot_test_util_verify_all(BOOT_SWAP_TYPE_REVERT, &hdr0, &hdr1);
+    boot_test_util_verify_all(BOOT_SWAP_TYPE_PERM, &hdr0, &hdr1);
 }

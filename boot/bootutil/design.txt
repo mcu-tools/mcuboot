@@ -125,6 +125,79 @@ the secondary slot, it must swap the two images in flash prior to booting.
 In addition to the two image slots, the boot loader requires a scratch area to
 allow for reliable image swapping.
 
+*** BOOT STATES
+
+Logically, you can think of a pair of values associated with each image slot:
+pending and confirmed.  On startup, the boot loader determines the state of the
+device by inspecting each pair of values.  These values have the following
+meanings:
+
+* pending: Indicates whether the image should be used on the next reboot; can
+  hold one of three values:
+    " " (unset):     Don't use image on next boot
+    "T" (temporary): Use image on next boot; absent subsequent confirm command,
+                     revert to original image on second reboot.
+    "P" (permanent): Use image on next boot and all subsequent boots
+
+* confirmed: always use image unless excluded by a test image.
+
+In English, when the user wants to run the secondary image, they set the
+pending flag for the second slot and reboot the device.  On startup, the boot
+loader will swap the two images in flash, clear the secondary slot's pending
+flag, and run the newly-copied image in slot 0.  If the user set the pending
+flag to "temporary," then this is only a temporary state; if the device reboots
+again, the boot loader swaps the images back to their original slots and boots
+into the original image.  If the user doesn't want to revert to the original
+state, they can make the current state permanent by setting the confirmed flag
+in slot 0.
+
+Switching to an alternate image is a two-step process (set + confirm) to
+prevent a device from becoming "bricked" by bad firmware.  If the device
+crashes immediately upon booting the second image, the boot loader reverts to
+the working image, rather than repeatedly rebooting into the bad image.
+
+Alternatively, if the user is confident that the second image is good, they can
+set and confirm in a single action by setting the pending flag to "permanent."
+
+The following set of tables illustrate the four possible states that the device
+can be in:
+
+                   | slot-0 | slot-1 |
+    ---------------+--------+--------|
+           pending |        |        |
+         confirmed |   X    |        |
+    ---------------+--------+--------'
+    Image 0 confirmed;               |
+    No change on reboot              |
+    ---------------------------------'
+
+                   | slot-0 | slot-1 |
+    ---------------+--------+--------|
+           pending |        |   T    |
+         confirmed |   X    |        |
+    ---------------+--------+--------'
+    Image 0 confirmed;               |
+    Test image 1 on next reboot      |
+    ---------------------------------'
+
+                   | slot-0 | slot-1 |
+    ---------------+--------+--------|
+           pending |        |   P    |
+         confirmed |   X    |        |
+    ---------------+--------+--------'
+    Image 0 confirmed;               |
+    Use image 1 permanently on boot  |
+    ---------------------------------'
+
+                   | slot-0 | slot-1 |
+    ---------------+--------+--------|
+           pending |        |        |
+         confirmed |        |   X    |
+    ---------------+--------+--------'
+    Testing image 0;                 |
+    Revert to image 1 on next reboot |
+    ---------------------------------'
+
 *** BOOT VECTOR
 
 At startup, the boot loader determines which of the above three states the
@@ -190,7 +263,7 @@ purposes; they are not actually present in the boot vector.
                      | slot-0 | slot-1 |
     -----------------+--------+--------|
                magic | Unset  | Unset  |
-            image-ok | Any    | N/A    |
+            image-ok | Any    | Any    |
     -----------------+--------+--------'
              pending |        |        |
           confirmed  |   X    |        |
@@ -203,22 +276,33 @@ purposes; they are not actually present in the boot vector.
                      | slot-0 | slot-1 |
     -----------------+--------+--------|
                magic | Any    | Good   |
-            image-ok | Any    | [*]    |
+            image-ok | Any    | Unset  |
     -----------------+--------+--------'
-             pending |        |   X    |
+             pending |        |   T    |
           confirmed  |   X    |        |
-    -----------------+--------+--------+----------------------------'
-     swap: test                                                     |
-     note: slot-1 image-ok val indicates whether swap is permanent; |
-           (0xff=temporary; 0x01=permanent)                         |
-    ----------------------------------------------------------------'
-
+    -----------------+--------+--------'
+     swap: test                        |
+    -----------------------------------'
+    
 
     State III
                      | slot-0 | slot-1 |
     -----------------+--------+--------|
+               magic | Any    | Good   |
+            image-ok | Any    | 0x01   |
+    -----------------+--------+--------'
+             pending |        |   P    |
+          confirmed  |   X    |        |
+    -----------------+--------+--------'
+     swap: permanent                   |
+    -----------------------------------'
+    
+
+    State IV
+                     | slot-0 | slot-1 |
+    -----------------+--------+--------|
                magic | Good   | Unset  |
-            image-ok | 0xff   | N/A    |
+            image-ok | 0xff   | Any    |
     -----------------+--------+--------'
              pending |        |        |
           confirmed  |        |   X    |
@@ -227,11 +311,11 @@ purposes; they are not actually present in the boot vector.
     -----------------------------------'
 
 
-    State IV
+    State V
                      | slot-0 | slot-1 |
     -----------------+--------+--------|
                magic | Good   | Unset  |
-            image-ok | 0x01   | N/A    |
+            image-ok | 0x01   | Any    |
     -----------------+--------+--------'
              pending |        |        |
           confirmed  |   X    |        |
@@ -266,73 +350,16 @@ B. Insect boot vector; is a swap requested?
 
 C. Boot into image in slot 0.
 
-*** BOOT STATES
-
-Logically, you can think of a pair of flags associated with each image slot:
-pending and confirmed.  On startup, the boot loader determines the state of the
-device by inspecting each pair of flags.  These flags have the following
-meanings:
-
-* pending: image gets tested on next reboot; absent subsequent confirm command,
-           revert to original image on second reboot.
-* confirmed: always use image unless excluded by a test image.
-
-In English, when the user wants to run the secondary image, they set the
-pending flag for the second slot and reboot the device.  On startup, the boot
-loader will swap the two images in flash, clear the secondary slot's pending
-flag, and run the newly-copied image in slot 0.  This is a temporary state; if
-the device reboots again, the boot loader swaps the images back to their
-original slots and boots into the original image.  If the user doesn't want to
-revert to the original state, they can make the current state permanent by
-setting the confirmed flag in slot 0.
-
-Switching to an alternate image is a two-step process (set + confirm) to
-prevent a device from becoming "bricked" by bad firmware.  If the device
-crashes immediately upon booting the second image, the boot loader reverts to
-the working image, rather than repeatedly rebooting into the bad image.
-
-Alternatively, if the user is confident that the alternate image is good, they
-can set and confirm in a single action.
-
-The following set of tables illustrate the three possible states that the
-device can be in:
-
-                   | slot-0 | slot-1 |
-    ---------------+--------+--------|
-           pending |        |        |
-         confirmed |   X    |        |
-    ---------------+--------+--------'
-    Image 0 confirmed;               |
-    No change on reboot              |
-    ---------------------------------'
-
-                   | slot-0 | slot-1 |
-    ---------------+--------+--------|
-           pending |        |   X    |
-         confirmed |   X    |        |
-    ---------------+--------+--------'
-    Image 0 confirmed;               |
-    Test image 1 on next reboot      |
-    ---------------------------------'
-
-                   | slot-0 | slot-1 |
-    ---------------+--------+--------|
-           pending |        |        |
-         confirmed |        |   X    |
-    ---------------+--------+--------'
-    Testing image 0;                 |
-    Revert to image 1 on next reboot |
-    ---------------------------------'
-
 
 
 *** IMAGE SWAPPING
 
 The boot loader swaps the contents of the two image slots for two reasons:
-    * User has issued an "image test" operation; the image in slot-1 should be
-      run once (state II).
+    * User has issued a "set pending" operation; the image in slot-1 should be
+      run once (state II) or repeatedly (state III), depending on whether a
+      permanent swap was specified.
     * Test image rebooted without being confirmed; the boot loader should
-      revert to the original image currently in slot-1 (state III).
+      revert to the original image currently in slot-1 (state IV).
 
 If the boot vector indicates that the image in the secondary slot should be
 run, the boot loader needs to copy it to the primary slot.  The image currently
@@ -362,21 +389,32 @@ according to the following procedure:
 
     3. Persist completion of swap procedure to slot 0 image trailer.
 
-The additional caveats in step 2f are necessary so that the slot 1 image trailer
-can be written by the user at a later time.  With the image trailer unwritten,
-the user can test the image in slot 1 (i.e., transition to state II).
+The additional caveats in step 2f are necessary so that the slot 1 image
+trailer can be written by the user at a later time.  With the image trailer
+unwritten, the user can test the image in slot 1 (i.e., transition to state
+II).
 
-The particulars of step 3 vary depending on whether an image is being tested or
-reverted:
+The particulars of step 3 vary depending on whether an image is being tested,
+permanently used, or reverted:
     * test:
         o Write slot0.copy_done = 1
-        (should now be in state III)
+        (swap caused the following values to be written:
+            slot0.magic = BOOT_MAGIC
+            slot0.image_ok = Unset)
+        (should now be in state IV)
+
+    * permanent:
+        o Write slot0.copy_done = 1
+        (swap caused the following values to be written:
+            slot0.magic = BOOT_MAGIC
+            slot0.image_ok = 0x01)
+        (should now be in state V)
 
     * revert:
         o Write slot0.magic = BOOT_MAGIC
         o Write slot0.copy_done = 1
         o Write slot0.image_ok = 1
-        (should now be in state IV)
+        (should now be in state V)
 
 *** SWAP STATUS
 

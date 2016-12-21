@@ -517,6 +517,10 @@ boot_test_util_verify_all(int expected_swap_type,
                 expected_swap_type = BOOT_SWAP_TYPE_REVERT;
                 break;
 
+            case BOOT_SWAP_TYPE_PERM:
+                expected_swap_type = BOOT_SWAP_TYPE_NONE;
+                break;
+
             case BOOT_SWAP_TYPE_REVERT:
                 expected_swap_type = BOOT_SWAP_TYPE_NONE;
                 break;
