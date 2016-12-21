@@ -60,12 +60,36 @@ uint8_t
 boot_test_util_flash_align(void)
 {
     const struct flash_area *fap;
+    uint8_t align;
     int rc;
 
     rc = flash_area_open(FLASH_AREA_IMAGE_0, &fap);
     TEST_ASSERT_FATAL(rc == 0);
 
-    return flash_area_align(fap);
+    align = flash_area_align(fap);
+
+    flash_area_close(fap);
+
+    return align;
+}
+
+uint32_t
+boot_test_util_slot_size(int slot)
+{
+    const struct flash_area *fap;
+    uint32_t size;
+    int area_id;
+    int rc;
+
+    area_id = flash_area_id_from_image_slot(slot);
+    rc = flash_area_open(area_id, &fap);
+    TEST_ASSERT_FATAL(rc == 0);
+
+    size = fap->fa_size;
+
+    flash_area_close(fap);
+
+    return size;
 }
 
 void
