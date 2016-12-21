@@ -73,7 +73,7 @@ static const struct boot_swap_table boot_swap_tables[] = {
         /*          | slot-0     | slot-1     |
          *----------+------------+------------|
          *    magic | Any        | Good       |
-         * image-ok | Any        | N/A        |
+         * image-ok | Any        | [*]        |
          * ---------+------------+------------+---------------------------'
          * swap: test                                                     |
          * note: slot-1 image-ok val indicates whether swap is permanent; |

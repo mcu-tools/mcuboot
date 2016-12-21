@@ -203,13 +203,15 @@ purposes; they are not actually present in the boot vector.
                      | slot-0 | slot-1 |
     -----------------+--------+--------|
                magic | Any    | Good   |
-            image-ok | Any    | N/A    |
+            image-ok | Any    | [*]    |
     -----------------+--------+--------'
              pending |        |   X    |
           confirmed  |   X    |        |
-    -----------------+--------+--------'
-     swap: test                        |
-    -----------------------------------'
+    -----------------+--------+--------+----------------------------'
+     swap: test                                                     |
+     note: slot-1 image-ok val indicates whether swap is permanent; |
+           (0xff=temporary; 0x01=permanent)                         |
+    ----------------------------------------------------------------'
 
 
     State III
@@ -288,6 +290,9 @@ Switching to an alternate image is a two-step process (set + confirm) to
 prevent a device from becoming "bricked" by bad firmware.  If the device
 crashes immediately upon booting the second image, the boot loader reverts to
 the working image, rather than repeatedly rebooting into the bad image.
+
+Alternatively, if the user is confident that the alternate image is good, they
+can set and confirm in a single action.
 
 The following set of tables illustrate the three possible states that the
 device can be in:
