@@ -50,15 +50,16 @@ openssl rsa -in image_sign.pem -pubout -out image_sign_pub.der -outform DER -RSA
 
 Now the public key is in file called image_sign_pub.der.
 
+For ECC these commands are similar.
+
+openssl ecparam -name secp224r1 -genkey -noout -out image_sign.pem
+openssl ec -in image_sign.pem -pubout -outform DER -out image_sign_pub.der
+
 ## Creating a key package
 
 xxd -i image_sign_pub.der image_sign_pub.c.import
 
 Then you need to create a package containing this key, or keys.
-In the pkg.yml for this package, you advertise feature IMAGE_KEYS_RSA or
-IMAGE_KEYS_EC.
-Once this is done, bootloader will expect keys to be filled in
-'bootutil_keys', and the number of keys to be in 'bootutil_key_cnt'.
 
 ## Sample pkg.yml
 This gets bootutil to turn on image signature validation.
@@ -93,3 +94,4 @@ file
 
 After you've created the key package, you must include it in the build
 for bootloader. So modify the pkg.yml for apps/boot to include it.
+
