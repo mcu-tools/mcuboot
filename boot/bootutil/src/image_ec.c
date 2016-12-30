@@ -22,7 +22,6 @@
 #if MYNEWT_VAL(BOOTUTIL_SIGN_EC)
 #include "bootutil/sign_key.h"
 
-#include "mbedtls/sha256.h"
 #include "mbedtls/ecdsa.h"
 #include "mbedtls/oid.h"
 #include "mbedtls/asn1.h"
@@ -36,7 +35,7 @@ static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_EC_ALG_UNRESTRICTED;
 static const uint8_t ec_secp224r1_oid[] = MBEDTLS_OID_EC_GRP_SECP224R1;
 
 /*
- * Parse the public key used for signing. Simple RSA format.
+ * Parse the public key used for signing.
  */
 static int
 bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
