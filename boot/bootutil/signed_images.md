@@ -50,9 +50,13 @@ openssl rsa -in image_sign.pem -pubout -out image_sign_pub.der -outform DER -RSA
 
 Now the public key is in file called image_sign_pub.der.
 
-For ECC these commands are similar.
+For ECDSA224 these commands are similar.
 
 openssl ecparam -name secp224r1 -genkey -noout -out image_sign.pem
+openssl ec -in image_sign.pem -pubout -outform DER -out image_sign_pub.der
+
+And then the ECDSA256.
+openssl ecparam -name prime256v1 -genkey -noout -out image_sign.pem
 openssl ec -in image_sign.pem -pubout -outform DER -out image_sign_pub.der
 
 ## Creating a key package
@@ -95,3 +99,5 @@ file
 After you've created the key package, you must include it in the build
 for bootloader. So modify the pkg.yml for apps/boot to include it.
 
+The syscfg variable to enable ECDSA224 is BOOTUTIL_SIGN_EC, and
+BOOTUTIL_SIGN_EC256 for ECDS256.
