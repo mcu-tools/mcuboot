@@ -93,7 +93,8 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
     uint32_t off;
     uint32_t size;
     uint32_t sha_off = 0;
-#if MYNEWT_VAL(BOOTUTIL_SIGN_RSA) || MYNEWT_VAL(BOOTUTIL_SIGN_EC)
+#if MYNEWT_VAL(BOOTUTIL_SIGN_RSA) || MYNEWT_VAL(BOOTUTIL_SIGN_EC) || \
+    MYNEWT_VAL(BOOTUTIL_SIGN_EC256)
     uint32_t sig_off = 0;
     uint32_t sig_len = 0;
 #endif
@@ -109,6 +110,11 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
 #endif
 #if MYNEWT_VAL(BOOTUTIL_SIGN_EC)
     if ((hdr->ih_flags & IMAGE_F_ECDSA224_SHA256) == 0) {
+        return -1;
+    }
+#endif
+#if MYNEWT_VAL(BOOTUTIL_SIGN_EC256)
+    if ((hdr->ih_flags & IMAGE_F_ECDSA256_SHA256) == 0) {
         return -1;
     }
 #endif
@@ -159,6 +165,15 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
             sig_len = tlv.it_len;
         }
 #endif
+#if MYNEWT_VAL(BOOTUTIL_SIGN_EC256)
+        if (tlv.it_type == IMAGE_TLV_ECDSA256) {
+            if (tlv.it_len < 72) { /* oids + 2 * 32 bytes */
+                return -1;
+            }
+            sig_off = off + sizeof(tlv);
+            sig_len = tlv.it_len;
+        }
+#endif
     }
     if (hdr->ih_flags & IMAGE_F_SHA256) {
         if (!sha_off) {
@@ -175,7 +190,8 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
             return -1;
         }
     }
-#if MYNEWT_VAL(BOOTUTIL_SIGN_RSA) || MYNEWT_VAL(BOOTUTIL_SIGN_EC)
+#if MYNEWT_VAL(BOOTUTIL_SIGN_RSA) || MYNEWT_VAL(BOOTUTIL_SIGN_EC) || \
+    MYNEWT_VAL(BOOTUTIL_SIGN_EC256)
     if (!sig_off) {
         /*
          * Header said there should be PKCS1.v5 signature, no TLV

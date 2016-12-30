@@ -31,3 +31,6 @@ pkg.deps:
     - "@apache-mynewt-core/kernel/os"
     - "@apache-mynewt-core/sys/defs"
     - "@apache-mynewt-core/sys/flash_map"
+
+pkg.deps.BOOTUTIL_SIGN_EC256:
+    - crypto/tinycrypt
