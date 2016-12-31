@@ -17,6 +17,8 @@
  * under the License.
  */
 
+#include <string.h>
+
 #include "syscfg/syscfg.h"
 
 #if MYNEWT_VAL(BOOTUTIL_SIGN_EC)
