@@ -17,6 +17,8 @@
  * under the License.
  */
 
+#include <string.h>
+
 #include "syscfg/syscfg.h"
 
 #if MYNEWT_VAL(BOOTUTIL_SIGN_EC256)
@@ -89,21 +91,19 @@ static int
 tinycrypt_read_bigint(uint32_t i[NUM_ECC_DIGITS], uint8_t **cp, uint8_t *end)
 {
     size_t len;
+    uint8_t bigint[NUM_ECC_BYTES];
 
     if (mbedtls_asn1_get_tag(cp, end, &len, MBEDTLS_ASN1_INTEGER)) {
         return -3;
     }
-
-    for (; *cp < end; *cp = *cp + 1, len--) {
-        if (**cp != 0) {
-            break;
-        }
+    if (len > NUM_ECC_BYTES) {
+        memcpy(bigint, *cp + len - NUM_ECC_BYTES, NUM_ECC_BYTES);
+    } else {
+        memset(bigint, 0, NUM_ECC_BYTES - len);
+        memcpy(bigint + NUM_ECC_BYTES - len, *cp, len);
     }
-    if (len != NUM_ECC_BYTES) {
-        return -1;
-    }
-    ecc_bytes2native(i, *cp);
     *cp += len;
+    ecc_bytes2native(i, bigint);
     return 0;
 }
 
@@ -154,10 +154,6 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
     rc = tinycrypt_import_key(&ctx, cp, end);
     if (rc) {
         return -1;
-    }
-
-    while (sig[slen - 1] == '\0') {
-        slen--;
     }
 
     rc = tinycrypt_decode_sig(r, s, sig, sig + slen);
