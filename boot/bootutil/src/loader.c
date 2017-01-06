@@ -527,14 +527,8 @@ done:
 static int
 boot_image_check(struct image_header *hdr, const struct flash_area *fap)
 {
-    static void *tmpbuf;
+    static uint8_t tmpbuf[BOOT_TMPBUF_SZ];
 
-    if (!tmpbuf) {
-        tmpbuf = malloc(BOOT_TMPBUF_SZ);
-        if (!tmpbuf) {
-            return BOOT_ENOMEM;
-        }
-    }
     if (bootutil_img_validate(hdr, fap, tmpbuf, BOOT_TMPBUF_SZ,
                               NULL, 0, NULL)) {
         return BOOT_EBADIMAGE;
