@@ -1,3 +1,5 @@
+#[macro_use] extern crate log;
+extern crate env_logger;
 extern crate docopt;
 extern crate libc;
 extern crate rand;
@@ -65,6 +67,8 @@ impl Decodable for AlignArg {
 }
 
 fn main() {
+    env_logger::init().unwrap();
+
     let args: Args = Docopt::new(USAGE)
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());
@@ -117,33 +121,33 @@ fn main() {
     mark_upgrade(&mut flash, 0x060000 - trailer_size as usize);
 
     let (fl2, total_count) = try_upgrade(&flash, &areadesc, None);
-    println!("First boot, count={}", total_count);
+    info!("First boot, count={}", total_count);
     assert!(verify_image(&fl2, 0x020000, &upgrade));
 
     let mut bad = 0;
     // Let's try an image halfway through.
     for i in 1 .. total_count {
-        println!("Try interruption at {}", i);
+        info!("Try interruption at {}", i);
         let (fl3, total_count) = try_upgrade(&flash, &areadesc, Some(i));
-        println!("Second boot, count={}", total_count);
+        info!("Second boot, count={}", total_count);
         if !verify_image(&fl3, 0x020000, &upgrade) {
-            println!("FAIL");
+            warn!("FAIL at step {} of {}", i, total_count);
             bad += 1;
         }
         if !verify_image(&fl3, 0x040000, &primary) {
-            println!("Slot 1 FAIL");
+            warn!("Slot 1 FAIL at step {} of {}", i, total_count);
             bad += 1;
         }
     }
-    println!("{} out of {} failed {:.2}%",
-             bad, total_count,
-             bad as f32 * 100.0 / total_count as f32);
+    error!("{} out of {} failed {:.2}%",
+           bad, total_count,
+           bad as f32 * 100.0 / total_count as f32);
 
-    println!("Try revert");
+    info!("Try revert");
     let fl2 = try_revert(&flash, &areadesc);
     assert!(verify_image(&fl2, 0x020000, &primary));
 
-    println!("Try norevert");
+    info!("Try norevert");
     let fl2 = try_norevert(&flash, &areadesc);
     assert!(verify_image(&fl2, 0x020000, &upgrade));
 
@@ -276,7 +280,7 @@ fn verify_image(flash: &Flash, offset: usize, buf: &[u8]) -> bool {
     if buf != &copy[..] {
         for i in 0 .. buf.len() {
             if buf[i] != copy[i] {
-                println!("First failure at {:#x}", offset + i);
+                info!("First failure at {:#x}", offset + i);
                 break;
             }
         }

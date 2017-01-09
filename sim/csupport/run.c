@@ -43,7 +43,7 @@ int invoke_boot_go(void *flash, struct area_desc *adesc)
 	flash_areas = adesc;
 	if (setjmp(boot_jmpbuf) == 0) {
 		res = boot_go(&rsp);
-		printf("boot_go result: %d (0x%08x)\n", res, rsp.br_image_addr);
+		/* printf("boot_go result: %d (0x%08x)\n", res, rsp.br_image_addr); */
 		return res;
 	} else {
 		return -0x13579;
