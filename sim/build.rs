@@ -2,6 +2,10 @@
 
 extern crate gcc;
 
+use std::fs;
+use std::io;
+use std::path::Path;
+
 fn main() {
     let mut conf = gcc::Config::new();
 
@@ -12,4 +16,26 @@ fn main() {
     conf.include("../zephyr/include");
     conf.debug(true);
     conf.compile("libbootutil.a");
+    walk_dir("../boot").unwrap();
+    walk_dir("csupport").unwrap();
+    walk_dir("../zephyr").unwrap();
+}
+
+// Output the names of all files within a directory so that Cargo knows when to rebuild.
+fn walk_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
+    for ent in fs::read_dir(path.as_ref())? {
+        let ent = ent?;
+        let p = ent.path();
+        if p.is_dir() {
+            walk_dir(p)?;
+        } else {
+            // Note that non-utf8 names will fail.
+            let name = p.to_str().unwrap();
+            if name.ends_with(".c") || name.ends_with(".h") {
+                println!("cargo:rerun-if-changed={}", name);
+            }
+        }
+    }
+
+    Ok(())
 }
