@@ -13,12 +13,11 @@ fn main() {
     conf.file("../boot/bootutil/src/bootutil_misc.c");
     conf.file("csupport/run.c");
     conf.include("../boot/bootutil/include");
-    conf.include("../zephyr/include");
+    conf.include("../boot/zephyr/include");
     conf.debug(true);
     conf.compile("libbootutil.a");
     walk_dir("../boot").unwrap();
     walk_dir("csupport").unwrap();
-    walk_dir("../zephyr").unwrap();
 }
 
 // Output the names of all files within a directory so that Cargo knows when to rebuild.
