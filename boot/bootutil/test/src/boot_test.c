@@ -53,7 +53,6 @@ TEST_CASE_DECL(boot_test_revert)
 TEST_CASE_DECL(boot_test_revert_continue)
 TEST_CASE_DECL(boot_test_permanent)
 TEST_CASE_DECL(boot_test_permanent_continue)
-TEST_CASE_DECL(boot_test_img_too_big);
 
 TEST_SUITE(boot_test_main)
 {
@@ -76,7 +75,6 @@ TEST_SUITE(boot_test_main)
     boot_test_revert_continue();
     boot_test_permanent();
     boot_test_permanent_continue();
-    boot_test_img_too_big();
 }
 
 int

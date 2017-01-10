@@ -286,51 +286,23 @@ boot_write_sz(void)
     return elem_sz;
 }
 
-static uint32_t
-boot_total_img_size(int slot)
-{
-    const struct image_header *hdr;
-
-    hdr = &boot_data.imgs[slot].hdr;
-    return hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_tlv_size;
-}
-
 static int
 boot_slots_compatible(void)
 {
     const struct flash_area *sector0;
     const struct flash_area *sector1;
-    uint32_t slot_size;
     int i;
 
     /* Ensure both image slots have identical sector layouts. */
     if (boot_data.imgs[0].num_sectors != boot_data.imgs[1].num_sectors) {
         return 0;
     }
-
-    slot_size = 0;
     for (i = 0; i < boot_data.imgs[0].num_sectors; i++) {
         sector0 = boot_data.imgs[0].sectors + i;
         sector1 = boot_data.imgs[1].sectors + i;
         if (sector0->fa_size != sector1->fa_size) {
             return 0;
         }
-
-        slot_size += sector0->fa_size;
-    }
-
-    /* Ensure images are small enough that they leave room for the image
-     * trailers.
-     */
-    if (slot_size <
-        boot_total_img_size(0) + boot_trailer_sz(boot_data.write_sz)) {
-
-        return 0;
-    }
-    if (slot_size <
-        boot_total_img_size(1) + boot_trailer_sz(boot_data.write_sz)) {
-
-        return 0;
     }
 
     return 1;
