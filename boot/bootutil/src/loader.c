@@ -1075,7 +1075,7 @@ split_go(int loader_slot, int split_slot, void **entry)
     const struct flash_area *loader_fap;
     const struct flash_area *app_fap;
     struct flash_area *sectors;
-    uint32_t entry_val;
+    uintptr_t entry_val;
     int loader_flash_id;
     int app_flash_id;
     int rc;
@@ -1132,7 +1132,7 @@ split_go(int loader_slot, int split_slot, void **entry)
 
     entry_val = boot_data.imgs[split_slot].sectors[0].fa_off +
                 boot_data.imgs[split_slot].hdr.ih_hdr_size;
-    *entry = (void*) entry_val;
+    *entry = (void *) entry_val;
     rc = SPLIT_GO_OK;
 
 done:
