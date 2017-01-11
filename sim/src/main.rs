@@ -143,9 +143,11 @@ fn main() {
            bad, total_count,
            bad as f32 * 100.0 / total_count as f32);
 
-    info!("Try revert");
-    let fl2 = try_revert(&flash, &areadesc);
-    assert!(verify_image(&fl2, 0x020000, &primary));
+    for count in 2 .. 5 {
+        info!("Try revert: {}", count);
+        let fl2 = try_revert(&flash, &areadesc, count);
+        assert!(verify_image(&fl2, 0x020000, &primary));
+    }
 
     info!("Try norevert");
     let fl2 = try_norevert(&flash, &areadesc);
@@ -194,12 +196,13 @@ fn try_upgrade(flash: &Flash, areadesc: &AreaDesc, stop: Option<i32>) -> (Flash,
     (fl, cnt2)
 }
 
-fn try_revert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
+fn try_revert(flash: &Flash, areadesc: &AreaDesc, count: usize) -> Flash {
     let mut fl = flash.clone();
     c::set_flash_counter(0);
 
-    assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
-    assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
+    for _ in 0 .. count {
+        assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
+    }
     fl
 }
 
