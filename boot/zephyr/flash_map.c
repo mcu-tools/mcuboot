@@ -18,7 +18,6 @@
  */
 
 #include <zephyr.h>
-#include <misc/printk.h>
 #include <flash.h>
 
 #include MCUBOOT_TARGET_CONFIG
@@ -26,6 +25,10 @@
 #include <flash_map/flash_map.h>
 #include <hal/hal_flash.h>
 #include <sysflash/sysflash.h>
+
+#define SYS_LOG_DOMAIN "BOOTLOADER"
+#define SYS_LOG_LEVEL SYS_LOG_LEVEL_INFO
+#include <logging/sys_log.h>
 
 extern struct device *boot_flash_device;
 
@@ -58,7 +61,8 @@ static const struct flash_area part_map[] = {
 int flash_area_open(uint8_t id, const struct flash_area **area)
 {
 	int i;
-	printk("%s: area %d\n", __func__, id);
+
+	SYS_LOG_DBG("%s: area %d", __func__, id);
 
 	for (i = 0; i < ARRAY_SIZE(part_map); i++) {
 		if (id == part_map[i].fa_id)
@@ -81,20 +85,23 @@ void flash_area_close(const struct flash_area *area)
 int flash_area_read(const struct flash_area *area, uint32_t off, void *dst,
 		    uint32_t len)
 {
-	// printk("%s: area=%d, off=%x, len=%x\n", __func__, area->fa_id, off, len);
+	SYS_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
+			area->fa_id, off, len);
 	return flash_read(boot_flash_device, area->fa_off + off, dst, len);
 }
 
 int flash_area_write(const struct flash_area *area, uint32_t off, const void *src,
 		     uint32_t len)
 {
-	printk("%s: area=%d, off=%x, len=%x\n", __func__, area->fa_id, off, len);
+	SYS_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
+			area->fa_id, off, len);
 	return flash_write(boot_flash_device, area->fa_off + off, src, len);
 }
 
 int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
 {
-	printk("%s: area=%d, off=%x, len=%x\n", __func__, area->fa_id, off, len);
+	SYS_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
+			area->fa_id, off, len);
 	return flash_erase(boot_flash_device, area->fa_off + off, len);
 }
 
@@ -122,7 +129,7 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 {
 	uint32_t off;
 
-	printk("%s: lookup area %d\n", __func__, idx);
+	SYS_LOG_DBG("%s: lookup area %d", __func__, idx);
 	/*
 	 * This simple layout has uniform slots, so just fill in the
 	 * right one.

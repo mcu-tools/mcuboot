@@ -18,7 +18,6 @@
  */
 
 #include <zephyr.h>
-#include <misc/printk.h>
 
 #include MCUBOOT_TARGET_CONFIG
 

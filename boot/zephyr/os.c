@@ -18,7 +18,6 @@
  */
 
 #include <zephyr.h>
-#include <misc/printk.h>
 #include <string.h>
 
 #include "os/os_heap.h"
