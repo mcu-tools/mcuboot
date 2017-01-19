@@ -19,16 +19,14 @@
 #include <flash.h>
 #include <asm_inline.h>
 
-#include "bootutil/image.h"
-#include "bootutil/bootutil.h"
-
-#if defined(CONFIG_BOARD_FRDM_K64F)
-#define BOOT_FLASH "KSDK_FLASH"
-#elif defined(CONFIG_BOARD_96B_CARBON)
-#define BOOT_FLASH "STM32F4_FLASH"
+#if defined(MCUBOOT_TARGET_CONFIG)
+#include MCUBOOT_TARGET_CONFIG
 #else
 #error "Board is currently not supported by bootloader"
 #endif
+
+#include "bootutil/image.h"
+#include "bootutil/bootutil.h"
 
 struct device *boot_flash_device;
 
@@ -47,7 +45,7 @@ void main(void)
 
 	os_heap_init();
 
-	boot_flash_device = device_get_binding(BOOT_FLASH);
+	boot_flash_device = device_get_binding(FLASH_DRIVER_NAME);
 	if (!boot_flash_device) {
 		printk("Flash device not found\n");
 		while (1)
