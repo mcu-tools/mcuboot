@@ -15,20 +15,21 @@
  */
 
 #include <zephyr.h>
-#include <misc/printk.h>
 #include <flash.h>
 #include <asm_inline.h>
 
-#include "bootutil/image.h"
-#include "bootutil/bootutil.h"
+#define SYS_LOG_DOMAIN "BOOTLOADER"
+#define SYS_LOG_LEVEL SYS_LOG_LEVEL_INFO
+#include <logging/sys_log.h>
 
-#if defined(CONFIG_BOARD_FRDM_K64F)
-#define BOOT_FLASH "KSDK_FLASH"
-#elif defined(CONFIG_BOARD_96B_CARBON)
-#define BOOT_FLASH "STM32F4_FLASH"
+#if defined(MCUBOOT_TARGET_CONFIG)
+#include MCUBOOT_TARGET_CONFIG
 #else
 #error "Board is currently not supported by bootloader"
 #endif
+
+#include "bootutil/image.h"
+#include "bootutil/bootutil.h"
 
 struct device *boot_flash_device;
 
@@ -45,34 +46,39 @@ void main(void)
 	struct vector_table *vt;
 	int rc;
 
+	SYS_LOG_INF("Starting bootloader");
+
 	os_heap_init();
 
-	boot_flash_device = device_get_binding(BOOT_FLASH);
+	boot_flash_device = device_get_binding(FLASH_DRIVER_NAME);
 	if (!boot_flash_device) {
-		printk("Flash device not found\n");
+		SYS_LOG_ERR("Flash device not found");
 		while (1)
 			;
 	}
 
 	rc = boot_go(&rsp);
 	if (rc != 0) {
-		printk("Unable to find bootable image\n");
+		SYS_LOG_ERR("Unable to find bootable image");
 		while (1)
 			;
 	}
 
-	printk("Bootloader chain: 0x%x\n", rsp.br_image_addr);
+	SYS_LOG_INF("Bootloader chainload address: 0x%x", rsp.br_image_addr);
 	vt = (struct vector_table *)(rsp.br_image_addr +
 				     rsp.br_hdr->ih_hdr_size);
 	irq_lock();
 	_MspSet(vt->msp);
 
+	SYS_LOG_INF("Setting vector table to %p", vt);
+
 	/* Not all targets set the VTOR, so just set it. */
 	_scs_relocate_vector_table((void *) vt);
 
+	SYS_LOG_INF("Jumping to the first image slot");
 	((void (*)(void))vt->reset)();
 
-	printk("Never should get here\n");
+	SYS_LOG_ERR("Never should get here");
 	while (1)
 		;
 }

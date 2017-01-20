@@ -18,17 +18,10 @@
  */
 
 #include <zephyr.h>
-#include <misc/printk.h>
+
+#include MCUBOOT_TARGET_CONFIG
 
 #include "hal/hal_flash.h"
-
-#if defined(CONFIG_BOARD_FRDM_K64F)
-#define FLASH_ALIGN 8
-#elif defined(CONFIG_BOARD_96B_CARBON)
-#define FLASH_ALIGN 1
-#else
-#error "Board is currently not supported by bootloader"
-#endif
 
 /* All of the currently supported devices allow single byte writes. */
 uint8_t hal_flash_align(uint8_t flash_id)
