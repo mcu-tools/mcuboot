@@ -264,10 +264,10 @@ fn install_image(flash: &mut Flash, offset: usize, len: usize) -> Vec<u8> {
         img_size: len as u32,
         flags: 0,
         ver: ImageVersion {
-            major: 1,
+            major: (offset / (128 * 1024)) as u8,
             minor: 0,
             revision: 1,
-            build_num: 1,
+            build_num: offset as u32,
         },
         _pad3: 0,
     };
