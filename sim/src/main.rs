@@ -229,7 +229,8 @@ fn try_norevert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
 
     assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     // Write boot_ok
-    fl.write(0x040000 - align, &[1]).unwrap();
+    let ok = [1u8, 0, 0, 0, 0, 0, 0, 0];
+    fl.write(0x040000 - align, &ok[..align]).unwrap();
     assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     fl
 }
