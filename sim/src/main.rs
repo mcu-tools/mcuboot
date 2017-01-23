@@ -216,7 +216,9 @@ fn try_revert(flash: &Flash, areadesc: &AreaDesc, count: usize) -> Flash {
     let mut fl = flash.clone();
     c::set_flash_counter(0);
 
-    for _ in 0 .. count {
+    // fl.write_file("image0.bin").unwrap();
+    for i in 0 .. count {
+        info!("Running boot pass {}", i + 1);
         assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     }
     fl

@@ -3,7 +3,10 @@
 //! This module is capable of simulating the type of NOR flash commonly used in microcontrollers.
 //! These generally can be written as individual bytes, but must be erased in larger units.
 
+use std::fs::File;
+use std::io::Write;
 use std::iter::Enumerate;
+use std::path::Path;
 use std::slice;
 use pdump::HexDump;
 
@@ -137,6 +140,13 @@ impl Flash {
 
     pub fn dump(&self) {
         self.data.dump();
+    }
+
+    /// Dump this image to the given file.
+    pub fn write_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let mut fd = File::create(path).chain_err(|| "Unable to write image file")?;
+        fd.write_all(&self.data).chain_err(|| "Unable to write to image file")?;
+        Ok(())
     }
 }
 
