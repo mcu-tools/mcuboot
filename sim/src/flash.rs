@@ -34,15 +34,22 @@ fn ewrite<T: AsRef<str>>(message: T) -> ErrorKind {
 pub struct Flash {
     data: Vec<u8>,
     sectors: Vec<usize>,
+    // Alignment required for writes.
+    align: usize,
 }
 
 impl Flash {
     /// Given a sector size map, construct a flash device for that.
-    pub fn new(sectors: Vec<usize>) -> Flash {
+    pub fn new(sectors: Vec<usize>, align: usize) -> Flash {
+        // Verify that the alignment is a positive power of two.
+        assert!(align > 0);
+        assert!(align & (align - 1) == 0);
+
         let total = sectors.iter().sum();
         Flash {
             data: vec![0xffu8; total],
             sectors: sectors,
+            align: align,
         }
     }
 
@@ -72,6 +79,15 @@ impl Flash {
     pub fn write(&mut self, offset: usize, payload: &[u8]) -> Result<()> {
         if offset + payload.len() > self.data.len() {
             bail!(ebounds("Write outside of device"));
+        }
+
+        // Verify the alignment (which must be a power of two).
+        if offset & (self.align - 1) != 0 {
+            bail!(ewrite("Misaligned write address"));
+        }
+
+        if payload.len() & (self.align - 1) != 0 {
+            bail!(ewrite("Write length not multiple of alignment"));
         }
 
         let mut sub = &mut self.data[offset .. offset + payload.len()];

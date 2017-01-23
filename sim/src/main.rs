@@ -79,13 +79,16 @@ fn main() {
         return;
     }
 
+    let align = args.flag_align.map(|x| x.0).unwrap_or(1);
+
     let (mut flash, areadesc) = match args.flag_device {
         None => panic!("Missing mandatory argument"),
         Some(DeviceName::Stm32f4) => {
             // STM style flash.  Large sectors, with a large scratch area.
             let flash = Flash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
                                    64 * 1024,
-                                   128 * 1024, 128 * 1024, 128 * 1024]);
+                                   128 * 1024, 128 * 1024, 128 * 1024],
+                                   align as usize);
             let mut areadesc = AreaDesc::new(&flash);
             areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
             areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
@@ -94,7 +97,7 @@ fn main() {
         }
         Some(DeviceName::K64f) => {
             // NXP style flash.  Small sectors, one small sector for scratch.
-            let flash = Flash::new(vec![4096; 128]);
+            let flash = Flash::new(vec![4096; 128], align as usize);
 
             let mut areadesc = AreaDesc::new(&flash);
             areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
@@ -105,7 +108,7 @@ fn main() {
         Some(DeviceName::K64fBig) => {
             // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
             // uses small sectors, but we tell the bootloader they are large.
-            let flash = Flash::new(vec![4096; 128]);
+            let flash = Flash::new(vec![4096; 128], align as usize);
 
             let mut areadesc = AreaDesc::new(&flash);
             areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0);
@@ -124,7 +127,7 @@ fn main() {
     let upgrade = install_image(&mut flash, 0x040000, 41922);
 
     // Set an alignment, and position the magic value.
-    c::set_sim_flash_align(args.flag_align.map(|x| x.0).unwrap_or(1));
+    c::set_sim_flash_align(align);
     let trailer_size = c::boot_trailer_sz();
 
     // Mark the upgrade as ready to install.  (This looks like it might be a bug in the code,
