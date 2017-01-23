@@ -309,13 +309,17 @@ int
 boot_write_copy_done(const struct flash_area *fap)
 {
     uint32_t off;
-    uint8_t val;
     int rc;
+    uint8_t buf[8];
+    uint8_t align;
 
     off = boot_copy_done_off(fap);
 
-    val = 1;
-    rc = flash_area_write(fap, off, &val, 1);
+    align = hal_flash_align(fap->fa_device_id);
+    memset(buf, 0xFF, 8);
+    buf[0] = 1;
+
+    rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -327,13 +331,16 @@ int
 boot_write_image_ok(const struct flash_area *fap)
 {
     uint32_t off;
-    uint8_t val;
     int rc;
+    uint8_t buf[8];
+    uint8_t align;
 
     off = boot_image_ok_off(fap);
 
-    val = 1;
-    rc = flash_area_write(fap, off, &val, 1);
+    align = hal_flash_align(fap->fa_device_id);
+    memset(buf, 0xFF, 8);
+    buf[0] = 1;
+    rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
