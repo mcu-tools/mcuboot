@@ -50,7 +50,7 @@ struct Args {
 }
 
 #[derive(Debug, RustcDecodable)]
-enum DeviceName { Stm32f4, K64f }
+enum DeviceName { Stm32f4, K64f, K64fBig }
 
 #[derive(Debug)]
 struct AlignArg(u8);
@@ -100,6 +100,17 @@ fn main() {
             areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
             areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
             areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch);
+            (flash, areadesc)
+        }
+        Some(DeviceName::K64fBig) => {
+            // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
+            // uses small sectors, but we tell the bootloader they are large.
+            let flash = Flash::new(vec![4096; 128]);
+
+            let mut areadesc = AreaDesc::new(&flash);
+            areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0);
+            areadesc.add_simple_image(0x040000, 0x020000, FlashId::Image1);
+            areadesc.add_simple_image(0x060000, 0x020000, FlashId::ImageScratch);
             (flash, areadesc)
         }
     };
