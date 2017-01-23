@@ -121,10 +121,12 @@ fn main() {
     // println!("Areas: {:#?}", areadesc.get_c());
 
     // Install the boot trailer signature, so that the code will start an upgrade.
-    let primary = install_image(&mut flash, 0x020000, 32779);
+    // TODO: This must be a multiple of flash alignment, add support for an image that is smaller,
+    // and just gets padded.
+    let primary = install_image(&mut flash, 0x020000, 32784);
 
     // Install an upgrade image.
-    let upgrade = install_image(&mut flash, 0x040000, 41922);
+    let upgrade = install_image(&mut flash, 0x040000, 41928);
 
     // Set an alignment, and position the magic value.
     c::set_sim_flash_align(align);
