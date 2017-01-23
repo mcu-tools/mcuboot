@@ -63,6 +63,9 @@ def get_args():
     parser.add_argument('-f', required=False, action="store_true", \
                         default=False, \
                         help='Flash using JLinkExe')
+    parser.add_argument('--image-version', dest='image_version',
+            default=1,
+            help='Major part of version number')
 
     return parser.parse_args()
 
@@ -189,7 +192,7 @@ class Convert():
                 self.vtable_offs,
                 image_size,
                 sig.get_flags(),
-                1, 0, 0, 0)
+                int(self.args.image_version), 0, 0, 0)
         return hd
 
     def add_trailer(self, pad):

@@ -9,6 +9,7 @@ source $(dirname $0)/target.sh
     --out shell.signed.bin \
     --vtoff 0x200 \
     --word-size 8 \
+    --image-version 3 \
     --bit --pad 0x20000
 
 ./scripts/zep2newt.py \
@@ -17,4 +18,5 @@ source $(dirname $0)/target.sh
     --sig RSA \
     --vtoff 0x200 \
     --word-size 8 \
+    --image-version 2 \
     --out hello.signed.bin
