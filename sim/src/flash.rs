@@ -78,16 +78,16 @@ impl Flash {
     /// are entirely written as 0xFF.
     pub fn write(&mut self, offset: usize, payload: &[u8]) -> Result<()> {
         if offset + payload.len() > self.data.len() {
-            bail!(ebounds("Write outside of device"));
+            panic!("Write outside of device");
         }
 
         // Verify the alignment (which must be a power of two).
         if offset & (self.align - 1) != 0 {
-            bail!(ewrite("Misaligned write address"));
+            panic!("Misaligned write address");
         }
 
         if payload.len() & (self.align - 1) != 0 {
-            bail!(ewrite("Write length not multiple of alignment"));
+            panic!("Write length not multiple of alignment");
         }
 
         let mut sub = &mut self.data[offset .. offset + payload.len()];
