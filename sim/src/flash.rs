@@ -3,7 +3,10 @@
 //! This module is capable of simulating the type of NOR flash commonly used in microcontrollers.
 //! These generally can be written as individual bytes, but must be erased in larger units.
 
+use std::fs::File;
+use std::io::Write;
 use std::iter::Enumerate;
+use std::path::Path;
 use std::slice;
 use pdump::HexDump;
 
@@ -34,15 +37,22 @@ fn ewrite<T: AsRef<str>>(message: T) -> ErrorKind {
 pub struct Flash {
     data: Vec<u8>,
     sectors: Vec<usize>,
+    // Alignment required for writes.
+    align: usize,
 }
 
 impl Flash {
     /// Given a sector size map, construct a flash device for that.
-    pub fn new(sectors: Vec<usize>) -> Flash {
+    pub fn new(sectors: Vec<usize>, align: usize) -> Flash {
+        // Verify that the alignment is a positive power of two.
+        assert!(align > 0);
+        assert!(align & (align - 1) == 0);
+
         let total = sectors.iter().sum();
         Flash {
             data: vec![0xffu8; total],
             sectors: sectors,
+            align: align,
         }
     }
 
@@ -71,7 +81,16 @@ impl Flash {
     /// are entirely written as 0xFF.
     pub fn write(&mut self, offset: usize, payload: &[u8]) -> Result<()> {
         if offset + payload.len() > self.data.len() {
-            bail!(ebounds("Write outside of device"));
+            panic!("Write outside of device");
+        }
+
+        // Verify the alignment (which must be a power of two).
+        if offset & (self.align - 1) != 0 {
+            panic!("Misaligned write address");
+        }
+
+        if payload.len() & (self.align - 1) != 0 {
+            panic!("Write length not multiple of alignment");
         }
 
         let mut sub = &mut self.data[offset .. offset + payload.len()];
@@ -121,6 +140,13 @@ impl Flash {
 
     pub fn dump(&self) {
         self.data.dump();
+    }
+
+    /// Dump this image to the given file.
+    pub fn write_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let mut fd = File::create(path).chain_err(|| "Unable to write image file")?;
+        fd.write_all(&self.data).chain_err(|| "Unable to write to image file")?;
+        Ok(())
     }
 }
 

@@ -79,6 +79,29 @@ impl AreaDesc {
         });
     }
 
+    // Add a simple slot to the image.  This ignores the device layout, and just adds the area as a
+    // single unit.  It assumes that the image lines up with image boundaries.  This tests
+    // configurations where the partition table uses larger sectors than the underlying flash
+    // device.
+    pub fn add_simple_image(&mut self, base: usize, len: usize, id: FlashId) {
+        let area = vec![FlashArea {
+            flash_id: id,
+            device_id: 42,
+            pad16: 0,
+            off: base as u32,
+            size: len as u32,
+        }];
+
+        self.areas.push(area);
+        self.whole.push(FlashArea {
+            flash_id: id,
+            device_id: 42,
+            pad16: 0,
+            off: base as u32,
+            size: len as u32,
+        });
+    }
+
     pub fn get_c(&self) -> CAreaDesc {
         let mut areas: CAreaDesc = Default::default();
 

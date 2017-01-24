@@ -462,6 +462,8 @@ boot_write_status(struct boot_status *bs)
     uint32_t off;
     int area_id;
     int rc;
+    uint8_t buf[8];
+    uint8_t align;
 
     if (bs->idx == 0) {
         /* Write to scratch. */
@@ -480,7 +482,12 @@ boot_write_status(struct boot_status *bs)
     off = boot_status_off(fap) +
           boot_status_internal_off(bs->idx, bs->state, boot_data.write_sz);
 
-    rc = flash_area_write(fap, off, &bs->state, 1);
+    align = hal_flash_align(fap->fa_device_id);
+    // ASSERT(align <= 8);
+    memset(buf, 0xFF, 8);
+    buf[0] = bs->state;
+
+    rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
         rc = BOOT_EFLASH;
         goto done;

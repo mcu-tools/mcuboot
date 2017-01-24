@@ -50,7 +50,7 @@ struct Args {
 }
 
 #[derive(Debug, RustcDecodable)]
-enum DeviceName { Stm32f4, K64f }
+enum DeviceName { Stm32f4, K64f, K64fBig }
 
 #[derive(Debug)]
 struct AlignArg(u8);
@@ -79,13 +79,16 @@ fn main() {
         return;
     }
 
+    let align = args.flag_align.map(|x| x.0).unwrap_or(1);
+
     let (mut flash, areadesc) = match args.flag_device {
         None => panic!("Missing mandatory argument"),
         Some(DeviceName::Stm32f4) => {
             // STM style flash.  Large sectors, with a large scratch area.
             let flash = Flash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
                                    64 * 1024,
-                                   128 * 1024, 128 * 1024, 128 * 1024]);
+                                   128 * 1024, 128 * 1024, 128 * 1024],
+                                   align as usize);
             let mut areadesc = AreaDesc::new(&flash);
             areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
             areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
@@ -94,7 +97,7 @@ fn main() {
         }
         Some(DeviceName::K64f) => {
             // NXP style flash.  Small sectors, one small sector for scratch.
-            let flash = Flash::new(vec![4096; 128]);
+            let flash = Flash::new(vec![4096; 128], align as usize);
 
             let mut areadesc = AreaDesc::new(&flash);
             areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
@@ -102,18 +105,31 @@ fn main() {
             areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch);
             (flash, areadesc)
         }
+        Some(DeviceName::K64fBig) => {
+            // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
+            // uses small sectors, but we tell the bootloader they are large.
+            let flash = Flash::new(vec![4096; 128], align as usize);
+
+            let mut areadesc = AreaDesc::new(&flash);
+            areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0);
+            areadesc.add_simple_image(0x040000, 0x020000, FlashId::Image1);
+            areadesc.add_simple_image(0x060000, 0x020000, FlashId::ImageScratch);
+            (flash, areadesc)
+        }
     };
 
     // println!("Areas: {:#?}", areadesc.get_c());
 
     // Install the boot trailer signature, so that the code will start an upgrade.
-    let primary = install_image(&mut flash, 0x020000, 32779);
+    // TODO: This must be a multiple of flash alignment, add support for an image that is smaller,
+    // and just gets padded.
+    let primary = install_image(&mut flash, 0x020000, 32784);
 
     // Install an upgrade image.
-    let upgrade = install_image(&mut flash, 0x040000, 41922);
+    let upgrade = install_image(&mut flash, 0x040000, 41928);
 
     // Set an alignment, and position the magic value.
-    c::set_sim_flash_align(args.flag_align.map(|x| x.0).unwrap_or(1));
+    c::set_sim_flash_align(align);
     let trailer_size = c::boot_trailer_sz();
 
     // Mark the upgrade as ready to install.  (This looks like it might be a bug in the code,
@@ -200,7 +216,9 @@ fn try_revert(flash: &Flash, areadesc: &AreaDesc, count: usize) -> Flash {
     let mut fl = flash.clone();
     c::set_flash_counter(0);
 
-    for _ in 0 .. count {
+    // fl.write_file("image0.bin").unwrap();
+    for i in 0 .. count {
+        info!("Running boot pass {}", i + 1);
         assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     }
     fl
@@ -213,7 +231,8 @@ fn try_norevert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
 
     assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     // Write boot_ok
-    fl.write(0x040000 - align, &[1]).unwrap();
+    let ok = [1u8, 0, 0, 0, 0, 0, 0, 0];
+    fl.write(0x040000 - align, &ok[..align]).unwrap();
     assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     fl
 }
@@ -245,10 +264,10 @@ fn install_image(flash: &mut Flash, offset: usize, len: usize) -> Vec<u8> {
         img_size: len as u32,
         flags: 0,
         ver: ImageVersion {
-            major: 1,
+            major: (offset / (128 * 1024)) as u8,
             minor: 0,
             revision: 1,
-            build_num: 1,
+            build_num: offset as u32,
         },
         _pad3: 0,
     };

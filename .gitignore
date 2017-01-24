@@ -1,3 +1,4 @@
 outdir/
 .*.swp
 target.sh
+*.pyc

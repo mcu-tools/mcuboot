@@ -19,7 +19,7 @@
  * @brief Bootloader device specific configuration.
  */
 
-#define FLASH_DRIVER_NAME		"KSDK_FLASH"
+#define FLASH_DRIVER_NAME		"MCUX_FLASH"
 #define FLASH_ALIGN			8
 #define FLASH_AREA_IMAGE_0_OFFSET	0x20000
 #define FLASH_AREA_IMAGE_0_SIZE		0x20000

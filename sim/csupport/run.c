@@ -20,6 +20,12 @@ int flash_counter;
 
 int jumped = 0;
 
+uint8_t sim_flash_align = 1;
+uint8_t flash_area_align(const struct flash_area *area)
+{
+	return sim_flash_align;
+}
+
 struct area {
 	struct flash_area whole;
 	struct flash_area *areas;
@@ -84,7 +90,7 @@ int hal_flash_erase(uint8_t flash_id, uint32_t address,
 
 uint8_t hal_flash_align(uint8_t flash_id)
 {
-	return 1;
+	return sim_flash_align;
 }
 
 void *os_malloc(size_t size)
@@ -172,12 +178,6 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 	memcpy(ret, slot->areas, slot->num_areas * sizeof(struct flash_area));
 
 	return 0;
-}
-
-uint8_t sim_flash_align = 1;
-uint8_t flash_area_align(const struct flash_area *area)
-{
-	return sim_flash_align;
 }
 
 
