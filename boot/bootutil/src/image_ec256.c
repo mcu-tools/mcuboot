@@ -122,7 +122,7 @@ tinycrypt_decode_sig(uint32_t r[NUM_ECC_DIGITS], uint32_t s[NUM_ECC_DIGITS],
     if (rc) {
         return -1;
     }
-    if (cp + len != end) {
+    if (cp + len > end) {
         return -2;
     }
     rc = tinycrypt_read_bigint(r, &cp, end);
