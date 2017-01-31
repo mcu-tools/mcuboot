@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -22,6 +23,7 @@ import (
 )
 
 var keyFile string
+var keyType KeyGenerator
 
 func main() {
 	root := &cobra.Command{
@@ -42,6 +44,9 @@ func main() {
 		Run:   doKeyGen,
 	}
 
+	fl = keygen.Flags()
+	fl.VarP(&keyType, "key-type", "t", "Type of key to generate")
+
 	root.AddCommand(keygen)
 
 	getpub := &cobra.Command{
@@ -60,19 +65,17 @@ func main() {
 }
 
 func doKeyGen(cmd *cobra.Command, args []string) {
+	if keyType.generate == nil {
+		cmd.Usage()
+		log.Fatal("Must specify key type with --key-type")
+	}
+
 	if len(args) != 0 {
 		cmd.Usage()
 		log.Fatal("Expecting no arguments to keygen")
 	}
 
-	// For now, there are no parameters, we just generate a
-	// PEM-encoded ECDSA P-256 key.
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	priv509, err := x509.MarshalECPrivateKey(priv)
+	priv509, err := keyType.generate()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,13 +87,78 @@ func doKeyGen(cmd *cobra.Command, args []string) {
 	defer fd.Close()
 
 	block := pem.Block{
-		Type:  "EC PRIVATE KEY",
+		Type:  keyType.pemType,
 		Bytes: priv509,
 	}
 	err = pem.Encode(fd, &block)
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+var keyGens map[string]*KeyGenerator
+
+type KeyGenerator struct {
+	name        string
+	description string
+	pemType     string
+	generate    func() ([]byte, error)
+}
+
+func (g *KeyGenerator) Set(text string) error {
+	kg, ok := keyGens[text]
+	if !ok {
+		return errors.New("Unsupported key type")
+	}
+
+	*g = *kg
+	return nil
+}
+
+func (g *KeyGenerator) String() string {
+	return g.name
+}
+
+func (g *KeyGenerator) Type() string {
+	return "keytype"
+}
+
+func init() {
+	keyGens = make(map[string]*KeyGenerator)
+
+	kg := &KeyGenerator{
+		name:        "ecdsa-p256",
+		description: "ECDSA with SHA256 and the NIST P-256 curve",
+		pemType:     "EC PRIVATE KEY",
+		generate:    genEcdsaP256,
+	}
+	keyGens[kg.name] = kg
+
+	kg = &KeyGenerator{
+		name:        "ecdsa-p224",
+		description: "ECDSA with SHA256 and the NIST P-224 curve",
+		pemType:     "EC PRIVATE KEY",
+		generate:    genEcdsaP224,
+	}
+	keyGens[kg.name] = kg
+}
+
+func genEcdsaP224() ([]byte, error) {
+	priv, err := ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	return x509.MarshalECPrivateKey(priv)
+}
+
+func genEcdsaP256() ([]byte, error) {
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	return x509.MarshalECPrivateKey(priv)
 }
 
 func doGetPub(cmd *cobra.Command, args []string) {
@@ -131,6 +199,17 @@ func doGetPub(cmd *cobra.Command, args []string) {
 	// 	log.Fatal(err)
 	// }
 
+	// The public key needs the algorithm and curve parameters.
+	var curve []int
+	switch privateKey.Params().Name {
+	case "P-224":
+		curve = []int{1, 3, 132, 0, 33}
+	case "P-256":
+		curve = []int{1, 2, 840, 10045, 3, 1, 7}
+	default:
+		log.Fatal("Key uses unsupported curve: %q", privateKey.Params().Name)
+	}
+
 	// The public key is encoded uncompressed, as a concatenation
 	// of the bytes.
 	var bbuf bytes.Buffer
@@ -142,7 +221,7 @@ func doGetPub(cmd *cobra.Command, args []string) {
 	pkey := EcPublicKey{
 		Algorithm: AlgorithmId{
 			Algorithm: []int{1, 2, 840, 10045, 2, 1},
-			Curve:     []int{1, 2, 840, 10045, 3, 1, 7},
+			Curve:     curve,
 		},
 		PubKey: asn1.BitString{
 			Bytes:     pkeyBytes,

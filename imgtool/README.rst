@@ -63,6 +63,19 @@ Keys are generated with the ``keygen`` subcommand.  The ``-k`` option
 allows you to specify a different file for the resulting key.  The key
 is stored in *PEM* format.
 
+You must specify a ``--key-type`` parameter.  Current valid entries
+are:
+
+.. list-table:: Key types
+   :header-rows: 1
+
+   * - Parameter
+     - Description
+   * - ecdsa-p224
+     - ECDSA with SHA256 and NIST P-224 (secp224r1)
+   * - ecdsa-p256
+     - ECDSA with SHA256 and NIST P-256 (secp256r1)
+
 Extracting the public key
 -------------------------
 
