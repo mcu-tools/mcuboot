@@ -215,7 +215,6 @@ class Convert():
 
 def main(argv):
     args = get_args()
-    erase = False
 
     conv = Convert(args)
 
