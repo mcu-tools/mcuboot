@@ -133,6 +133,8 @@ int flash_area_id_from_image_slot(int slot)
 int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 {
 	uint32_t off;
+	uint32_t len;
+	uint32_t max_cnt = *cnt;
 
 	SYS_LOG_DBG("%s: lookup area %d", __func__, idx);
 	/*
@@ -145,13 +147,34 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 	if (*cnt < 1)
 		return -1;
 
-	off = (idx - FLASH_AREA_IMAGE_0 + 1) * FLASH_AREA_IMAGE_0_OFFSET;
+	switch (idx) {
+	case FLASH_AREA_IMAGE_0:
+		off = FLASH_AREA_IMAGE_0_OFFSET;
+		len = FLASH_AREA_IMAGE_0_SIZE;
+		break;
+	case FLASH_AREA_IMAGE_1:
+		off = FLASH_AREA_IMAGE_1_OFFSET;
+		len = FLASH_AREA_IMAGE_1_SIZE;
+		break;
+	case FLASH_AREA_IMAGE_SCRATCH:
+		off = FLASH_AREA_IMAGE_SCRATCH_OFFSET;
+		len = FLASH_AREA_IMAGE_SCRATCH_SIZE;
+		break;
+	default:
+		SYS_LOG_ERR("%s: unknown flash area %d", __func__, idx);
+		return -1;
+	}
 
-	ret->fa_id = idx;
-	ret->fa_device_id = 0;
-	ret->pad16 = 0;
-	ret->fa_off = off;
-	ret->fa_size = FLASH_AREA_IMAGE_0_SIZE;
+	*cnt = 0;
+	while (len > 0 && *cnt < max_cnt) {
+		ret[*cnt].fa_id = idx;
+		ret[*cnt].fa_device_id = 0;
+		ret[*cnt].pad16 = 0;
+		ret[*cnt].fa_off = off + (FLASH_AREA_IMAGE_SCRATCH_SIZE * (*cnt));
+		ret[*cnt].fa_size = FLASH_AREA_IMAGE_SCRATCH_SIZE;
+		*cnt = *cnt + 1;
+		len -= FLASH_AREA_IMAGE_SCRATCH_SIZE;
+	}
 
 	return 0;
 }
