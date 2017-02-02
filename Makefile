@@ -1,20 +1,25 @@
 # Makefile for building mcuboot as a Zephyr project.
 
-# These are the main configuration choices, mainly having to do with
-# what signature algorithm is desired.  Choose one of the blocks
-# below, and uncomment the settings after it.
+# Configuration choices.
 
-#####
+#####################
+# Signature algorithm
+#####################
+# Choose one of RSA or ECDSA P-256 blocks, and uncomment the config
+# lines there, and comment out any other blocks.
+
 # RSA
-#####
 CONF_FILE = boot/zephyr/prj.conf
 CFLAGS += -DBOOTUTIL_SIGN_RSA
 
-#############
 # ECDSA P-256
-#############
 #CONF_FILE = boot/zephyr/prj-p256.conf
 #CFLAGS += -DBOOTUTIL_SIGN_EC256
+
+# Enable this option to have the bootloader verify the signature of
+# the primary image upon every boot.  Without it, signature
+# verification only happens on upgrade.
+CFLAGS += -DBOOTUTIL_VALIDATE_SLOT0
 
 ##############################
 # End of configuration blocks.
