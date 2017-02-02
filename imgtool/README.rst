@@ -1,6 +1,30 @@
 Image Manipulation Tool
 #######################
 
+.. note:: Special installation instructions:
+   Due to some configuration issues with servers, it may not be
+   possible to build imgtool with a simple ``go get`` command.  It is
+   possible to build the tool with the following steps::
+
+       # Set GOPATH to a work dir
+       $ mkdir -p $GOPATH/src/mynewt.apache.org
+       $ mkdir -p $GOPATH/src/github.com
+       $ cd $GOPATH/src/mynewt.apache.org
+       $ git clone -b develop https://github.com/apache/incubator-mynewt-newt newt
+       $ cd $GOPATH/src/github.com
+       $ git clone https://github.com/runtimeco/mcuboot
+       $ go get github.com/runtimeco/mcuboot/imgtool
+
+   At this point, there should be an ``imgtool`` binary in $GOPATH/bin
+
+.. note:: Go version:
+   Although many distributions include the Go tools, these are usually
+   fairly out of date.  This code has been developed and tested with
+   Go version 1.7.x.  For best results, follow the `download
+   instructions`_ to install a recent version.
+
+.. _download instructions: https://golang.org/dl/
+
 Introduction
 ============
 
