@@ -70,11 +70,6 @@ void main(void)
 	irq_lock();
 	_MspSet(vt->msp);
 
-	SYS_LOG_INF("Setting vector table to %p", vt);
-
-	/* Not all targets set the VTOR, so just set it. */
-	_scs_relocate_vector_table((void *) vt);
-
 	SYS_LOG_INF("Jumping to the first image slot");
 	((void (*)(void))vt->reset)();
 
