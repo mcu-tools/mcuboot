@@ -51,15 +51,6 @@ struct flash_area {
     uint32_t fa_size;
 };
 
-extern const struct flash_area *flash_map;
-extern int flash_map_entries;
-
-/*
- * Initializes flash map. Memory will be referenced by flash_map code
- * from this on.
- */
-void flash_map_init(void);
-
 /*
  * Start using flash area.
  */
