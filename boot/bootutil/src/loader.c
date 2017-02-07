@@ -35,6 +35,9 @@
 #include "bootutil/image.h"
 #include "bootutil_priv.h"
 
+#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
+#include "bootutil/bootutil_log.h"
+
 #define BOOT_MAX_IMG_SECTORS        120
 
 /** Number of image slots in flash; currently limited to two. */
@@ -150,6 +153,15 @@ static const uint8_t boot_swap_trans_table[][2] = {
 #define BOOT_SWAP_TRANS_TABLE_SIZE   \
     (sizeof boot_swap_trans_table / sizeof boot_swap_trans_table[0])
 
+#define BOOT_LOG_SWAP_STATE(area, state)                            \
+    BOOT_LOG_INF("%s: magic=%s, copy_done=0x%x, image_ok=0x%x",     \
+                 (area),                                            \
+                 ((state)->magic == BOOT_MAGIC_GOOD ? "good" :      \
+                  (state)->magic == BOOT_MAGIC_UNSET ? "unset" :    \
+                  "bad"),                                           \
+                 (state)->copy_done,                                \
+                 (state)->image_ok)
+
 /**
  * Determines where in flash the most recent boot status is stored.  The boot
  * status is necessary for completing a swap that was interrupted by a boot
@@ -166,6 +178,7 @@ boot_status_source(void)
     struct boot_swap_state state_slot1;
     int rc;
     int i;
+    uint8_t source;
 
     rc = boot_read_swap_state_img(0, &state_slot0);
     assert(rc == 0);
@@ -176,6 +189,10 @@ boot_status_source(void)
     rc = boot_read_swap_state_scratch(&state_scratch);
     assert(rc == 0);
 
+    BOOT_LOG_SWAP_STATE("Image 0", &state_slot0);
+    BOOT_LOG_SWAP_STATE("Image 1", &state_slot1);
+    BOOT_LOG_SWAP_STATE("Scratch", &state_scratch);
+
     for (i = 0; i < BOOT_STATUS_TABLES_COUNT; i++) {
         table = boot_status_tables + i;
 
@@ -185,11 +202,17 @@ boot_status_source(void)
              table->bst_magic_scratch   == state_scratch.magic) &&
             (table->bst_copy_done_slot0 == 0    ||
              table->bst_copy_done_slot0 == state_slot0.copy_done)) {
-
-            return table->bst_status_source;
+            source = table->bst_status_source;
+            BOOT_LOG_INF("Boot source: %s",
+                         source == BOOT_STATUS_SOURCE_NONE ? "none" :
+                         source == BOOT_STATUS_SOURCE_SCRATCH ? "scratch" :
+                         source == BOOT_STATUS_SOURCE_SLOT0 ? "slot 0" :
+                         "BUG; can't happen");
+            return source;
         }
     }
 
+    BOOT_LOG_INF("Boot source: none");
     return BOOT_STATUS_SOURCE_NONE;
 }
 
