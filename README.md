@@ -31,11 +31,11 @@ https://runtimeco.atlassian.net/wiki/discover/all-updates
 
 For more information in the source, here are some pointers: 
 
-- [boot/bootutil][https://github.com/runtimeco/mcuboot/tree/master/boot/bootutil]: The core of the bootloader itself.
-- [boot/boot\_serial][https://github.com/runtimeco/mcuboot/tree/master/boot/boot_serial]: Support for serial upgrade within the bootloader itself.
-- [boot/zephyr][https://github.com/runtimeco/mcuboot/tree/master/boot/zephyr]: Port of the bootloader to Zephyr
-- [imgtool][https://github.com/runtimeco/mcuboot/tree/master/imgtool]: A tool to securely sign firmware images for booting by mcuboot.
-- [sim][https://github.com/runtimeco/mcuboot/tree/master/sim]: A bootloader simulator for testing and regression
+- [boot/bootutil](https://github.com/runtimeco/mcuboot/tree/master/boot/bootutil): The core of the bootloader itself.
+- [boot/boot\_serial](https://github.com/runtimeco/mcuboot/tree/master/boot/boot_serial): Support for serial upgrade within the bootloader itself.
+- [boot/zephyr](https://github.com/runtimeco/mcuboot/tree/master/boot/zephyr): Port of the bootloader to Zephyr
+- [imgtool](https://github.com/runtimeco/mcuboot/tree/master/imgtool): A tool to securely sign firmware images for booting by mcuboot.
+- [sim](https://github.com/runtimeco/mcuboot/tree/master/sim): A bootloader simulator for testing and regression
 
 ## Joining 
 
