@@ -18,9 +18,8 @@
 #include <flash.h>
 #include <asm_inline.h>
 
-#define SYS_LOG_DOMAIN "BOOTLOADER"
-#define SYS_LOG_LEVEL SYS_LOG_LEVEL_INFO
-#include <logging/sys_log.h>
+#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
+#include "bootutil/bootutil_log.h"
 
 #if defined(MCUBOOT_TARGET_CONFIG)
 #include MCUBOOT_TARGET_CONFIG
@@ -46,34 +45,34 @@ void main(void)
 	struct vector_table *vt;
 	int rc;
 
-	SYS_LOG_INF("Starting bootloader");
+	BOOT_LOG_INF("Starting bootloader");
 
 	os_heap_init();
 
 	boot_flash_device = device_get_binding(FLASH_DRIVER_NAME);
 	if (!boot_flash_device) {
-		SYS_LOG_ERR("Flash device not found");
+		BOOT_LOG_ERR("Flash device not found");
 		while (1)
 			;
 	}
 
 	rc = boot_go(&rsp);
 	if (rc != 0) {
-		SYS_LOG_ERR("Unable to find bootable image");
+		BOOT_LOG_ERR("Unable to find bootable image");
 		while (1)
 			;
 	}
 
-	SYS_LOG_INF("Bootloader chainload address: 0x%x", rsp.br_image_addr);
+	BOOT_LOG_INF("Bootloader chainload address: 0x%x", rsp.br_image_addr);
 	vt = (struct vector_table *)(rsp.br_image_addr +
 				     rsp.br_hdr->ih_hdr_size);
 	irq_lock();
 	_MspSet(vt->msp);
 
-	SYS_LOG_INF("Jumping to the first image slot");
+	BOOT_LOG_INF("Jumping to the first image slot");
 	((void (*)(void))vt->reset)();
 
-	SYS_LOG_ERR("Never should get here");
+	BOOT_LOG_ERR("Never should get here");
 	while (1)
 		;
 }

@@ -26,9 +26,8 @@
 #include <hal/hal_flash.h>
 #include <sysflash/sysflash.h>
 
-#define SYS_LOG_DOMAIN "BOOTLOADER"
-#define SYS_LOG_LEVEL SYS_LOG_LEVEL_INFO
-#include <logging/sys_log.h>
+#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
+#include "bootutil/bootutil_log.h"
 
 extern struct device *boot_flash_device;
 
@@ -62,7 +61,7 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
 {
 	int i;
 
-	SYS_LOG_DBG("%s: area %d", __func__, id);
+	BOOT_LOG_DBG("%s: area %d", __func__, id);
 
 	for (i = 0; i < ARRAY_SIZE(part_map); i++) {
 		if (id == part_map[i].fa_id)
@@ -85,8 +84,8 @@ void flash_area_close(const struct flash_area *area)
 int flash_area_read(const struct flash_area *area, uint32_t off, void *dst,
 		    uint32_t len)
 {
-	SYS_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
-			area->fa_id, off, len);
+	BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
+		     area->fa_id, off, len);
 	return flash_read(boot_flash_device, area->fa_off + off, dst, len);
 }
 
@@ -95,8 +94,8 @@ int flash_area_write(const struct flash_area *area, uint32_t off, const void *sr
 {
 	int rc = 0;
 
-	SYS_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
-			area->fa_id, off, len);
+	BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
+		     area->fa_id, off, len);
 	flash_write_protection_set(boot_flash_device, false);
 	rc = flash_write(boot_flash_device, area->fa_off + off, src, len);
 	flash_write_protection_set(boot_flash_device, true);
@@ -105,8 +104,8 @@ int flash_area_write(const struct flash_area *area, uint32_t off, const void *sr
 
 int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
 {
-	SYS_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
-			area->fa_id, off, len);
+	BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
+		     area->fa_id, off, len);
 	return flash_erase(boot_flash_device, area->fa_off + off, len);
 }
 
@@ -136,7 +135,7 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 	uint32_t len;
 	uint32_t max_cnt = *cnt;
 
-	SYS_LOG_DBG("%s: lookup area %d", __func__, idx);
+	BOOT_LOG_DBG("%s: lookup area %d", __func__, idx);
 	/*
 	 * This simple layout has uniform slots, so just fill in the
 	 * right one.
