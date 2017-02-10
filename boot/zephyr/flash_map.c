@@ -104,9 +104,14 @@ int flash_area_write(const struct flash_area *area, uint32_t off, const void *sr
 
 int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
 {
+	int rc;
+
 	BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
-		     area->fa_id, off, len);
-	return flash_erase(boot_flash_device, area->fa_off + off, len);
+			area->fa_id, off, len);
+	flash_write_protection_set(boot_flash_device, false);
+	rc = flash_erase(boot_flash_device, area->fa_off + off, len);
+	flash_write_protection_set(boot_flash_device, true);
+	return rc;
 }
 
 uint8_t flash_area_align(const struct flash_area *area)
