@@ -19,7 +19,7 @@
  * @brief Bootloader device specific configuration.
  */
 
-#define FLASH_DRIVER_NAME		"NRF5_FLASH"
+#define FLASH_DRIVER_NAME		CONFIG_SOC_FLASH_NRF5_DEV_NAME
 #define FLASH_ALIGN			4
 #define FLASH_AREA_IMAGE_0_OFFSET	0x08000
 #define FLASH_AREA_IMAGE_0_SIZE		0x3A000

@@ -19,7 +19,12 @@
  * @brief Bootloader device specific configuration.
  */
 
+/* TEMP: maintain compatibility with old STM flash driver */
+#ifndef CONFIG_SOC_FLASH_STM32_DEV_NAME
 #define FLASH_DRIVER_NAME		"STM32F4_FLASH"
+#else
+#define FLASH_DRIVER_NAME		CONFIG_SOC_FLASH_STM32_DEV_NAME
+#endif
 #define FLASH_ALIGN			1
 #define FLASH_AREA_IMAGE_0_OFFSET	0x20000
 #define FLASH_AREA_IMAGE_0_SIZE		0x20000
