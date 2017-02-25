@@ -16,8 +16,7 @@ from Crypto.PublicKey import RSA
 DEBUG = False
 
 def get_args():
-    parser = ArgumentParser(description='Script to create images on a format \
-                            that Mynewts bootloader expects')
+    parser = ArgumentParser(description='Convert Zephyr binaries to mcuboot format')
 
     parser.add_argument('--bin', required=True, dest='binary_file', \
                         help='Name of *.bin file (input)')
@@ -32,11 +31,6 @@ def get_args():
     parser.add_argument('--sig', required=False, dest='sig_type', \
                         default='SHA256', \
                         help='Type of signature <SHA256|RSA|EC>')
-
-    parser.add_argument('--off', required=False, dest='flash_offs_addr', \
-                        default='0x08020000', \
-                        help='Offset for the binary in flash (at what address \
-                        should it be flashed?)')
 
     parser.add_argument('--word-size', required=False, dest='word_size',
             default=1,
@@ -215,7 +209,6 @@ class Convert():
 
 def main(argv):
     args = get_args()
-    erase = False
 
     conv = Convert(args)
 

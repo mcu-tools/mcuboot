@@ -23,7 +23,6 @@
 
 #include "hal/hal_flash.h"
 
-/* All of the currently supported devices allow single byte writes. */
 uint8_t hal_flash_align(uint8_t flash_id)
 {
 	return FLASH_ALIGN;
