@@ -17,6 +17,7 @@
 #include <zephyr.h>
 #include <flash.h>
 #include <asm_inline.h>
+#include <drivers/system_timer.h>
 
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
@@ -69,7 +70,8 @@ void main(void)
 	irq_lock();
 	_MspSet(vt->msp);
 
-	BOOT_LOG_INF("Jumping to the first image slot");
+	BOOT_LOG_INF("Disabling clock and jumping to the first image slot");
+	sys_clock_disable();
 	((void (*)(void))vt->reset)();
 
 	BOOT_LOG_ERR("Never should get here");
