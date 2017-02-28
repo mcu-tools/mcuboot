@@ -506,7 +506,6 @@ boot_write_status(struct boot_status *bs)
           boot_status_internal_off(bs->idx, bs->state, boot_data.write_sz);
 
     align = hal_flash_align(fap->fa_device_id);
-    // ASSERT(align <= 8);
     memset(buf, 0xFF, 8);
     buf[0] = bs->state;
 
