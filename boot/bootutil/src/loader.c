@@ -580,22 +580,20 @@ boot_validate_slot(int slot)
         return -1;
     }
 
-    /* Image in slot 1 is invalid.  Erase the image and continue booting
-     * from slot 0.
-     */
     rc = flash_area_open(flash_area_id_from_image_slot(slot), &fap);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
 
     if ((boot_data.imgs[slot].hdr.ih_magic != IMAGE_MAGIC ||
-	 boot_image_check(&boot_data.imgs[slot].hdr, fap) != 0) &&
-	slot == 1) {
+         boot_image_check(&boot_data.imgs[slot].hdr, fap) != 0)) {
 
-        /* Image in slot 1 is invalid.  Erase the image and continue booting
-         * from slot 0.
-         */
-        flash_area_erase(fap, 0, fap->fa_size);
+        if (slot != 0) {
+            flash_area_erase(fap, 0, fap->fa_size);
+            /* Image in slot 1 is invalid. Erase the image and
+             * continue booting from slot 0.
+             */
+        }
         return -1;
     }
 
