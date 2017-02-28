@@ -17,6 +17,7 @@
 #include <zephyr.h>
 #include <flash.h>
 #include <asm_inline.h>
+#include <drivers/system_timer.h>
 
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
@@ -52,6 +53,7 @@ static void do_boot(struct boot_rsp *rsp)
 	vt = (struct arm_vector_table *)(rsp->br_image_addr +
 					 rsp->br_hdr->ih_hdr_size);
 	irq_lock();
+	sys_clock_disable();
 	_MspSet(vt->msp);
 	((void (*)(void))vt->reset)();
 }
