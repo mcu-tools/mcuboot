@@ -32,17 +32,49 @@
 
 struct device *boot_flash_device;
 
-struct vector_table {
+void os_heap_init(void);
+
+#if defined(CONFIG_ARM)
+struct arm_vector_table {
 	uint32_t msp;
 	uint32_t reset;
 };
 
-void os_heap_init(void);
+static void do_boot(struct boot_rsp *rsp)
+{
+	struct arm_vector_table *vt;
+
+	/* The beginning of the image is the ARM vector table, containing
+	 * the initial stack pointer address and the reset vector
+	 * consecutively. Manually set the stack pointer and jump into the
+	 * reset vector
+	 */
+	vt = (struct vector_table *)(rsp->br_image_addr +
+				     rsp->br_hdr->ih_hdr_size);
+	irq_lock();
+	_MspSet(vt->msp);
+	((void (*)(void))vt->reset)();
+}
+#else
+/* Default: Assume entry point is at the very beginning of the image. Simply
+ * lock interrupts and jump there. This is the right thing to do for X86 and
+ * possibly other platforms.
+ */
+static void do_boot(struct boot_rsp *rsp)
+{
+	void *start;
+
+	start = (void *)(rsp->br_image_addr + rsp->br_hdr->ih_hdr_size);
+
+	/* Lock interrupts and dive into the entry point */
+	irq_lock();
+	((void (*)(void))start)();
+}
+#endif
 
 void main(void)
 {
 	struct boot_rsp rsp;
-	struct vector_table *vt;
 	int rc;
 
 	BOOT_LOG_INF("Starting bootloader");
@@ -64,13 +96,8 @@ void main(void)
 	}
 
 	BOOT_LOG_INF("Bootloader chainload address: 0x%x", rsp.br_image_addr);
-	vt = (struct vector_table *)(rsp.br_image_addr +
-				     rsp.br_hdr->ih_hdr_size);
-	irq_lock();
-	_MspSet(vt->msp);
-
 	BOOT_LOG_INF("Jumping to the first image slot");
-	((void (*)(void))vt->reset)();
+	do_boot(&rsp);
 
 	BOOT_LOG_ERR("Never should get here");
 	while (1)
