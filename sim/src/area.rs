@@ -1,7 +1,6 @@
 //! Describe flash areas.
 
 use flash::{Flash, Sector};
-use std::marker::PhantomData;
 use std::ptr;
 
 /// Structure to build up the boot area table.
@@ -125,29 +124,27 @@ impl AreaDesc {
 /// The area descriptor, C format.
 #[repr(C)]
 #[derive(Debug, Default)]
-pub struct CAreaDesc<'a> {
-    slots: [CArea<'a>; 16],
+pub struct CAreaDesc {
+    slots: [CArea; 16],
     num_slots: u32,
 }
 
 #[repr(C)]
 #[derive(Debug)]
-pub struct CArea<'a> {
+pub struct CArea {
     whole: FlashArea,
     areas: *const FlashArea,
     num_areas: u32,
     id: FlashId,
-    phantom: PhantomData<&'a AreaDesc>,
 }
 
-impl<'a> Default for CArea<'a> {
-    fn default() -> CArea<'a> {
+impl Default for CArea {
+    fn default() -> CArea {
         CArea {
             areas: ptr::null(),
             whole: Default::default(),
             id: FlashId::BootLoader,
             num_areas: 0,
-            phantom: PhantomData,
         }
     }
 }
