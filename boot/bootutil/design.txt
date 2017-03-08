@@ -84,13 +84,15 @@ struct image_tlv {
 #define IMAGE_F_PKCS15_RSA2048_SHA256 0x00000004 /* PKCS15 w/RSA and SHA */
 #define IMAGE_F_ECDSA224_SHA256       0x00000008 /* ECDSA256 over SHA256 */
 #define IMAGE_F_NON_BOOTABLE          0x00000010 /* Split image app. */
+#define IMAGE_F_ECDSA256_SHA256       0x00000020 /* ECDSA256 over SHA256 */
 
 /*
  * Image trailer TLV types.
  */
-#define IMAGE_TLV_SHA256            1	/* SHA256 of image hdr and body */
-#define IMAGE_TLV_RSA2048           2	/* RSA2048 of hash output */
+#define IMAGE_TLV_SHA256            1   /* SHA256 of image hdr and body */
+#define IMAGE_TLV_RSA2048           2   /* RSA2048 of hash output */
 #define IMAGE_TLV_ECDSA224          3   /* ECDSA of hash output */
+#define IMAGE_TLV_ECDSA256          4   /* ECDSA of hash output */
 
 Optional type-length-value records (TLVs) containing image metadata are placed
 after the end of the image.
