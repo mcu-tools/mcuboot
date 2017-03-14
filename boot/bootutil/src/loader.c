@@ -506,7 +506,6 @@ boot_write_status(struct boot_status *bs)
           boot_status_internal_off(bs->idx, bs->state, boot_data.write_sz);
 
     align = hal_flash_align(fap->fa_device_id);
-    // ASSERT(align <= 8);
     memset(buf, 0xFF, 8);
     buf[0] = bs->state;
 
@@ -788,7 +787,7 @@ done:
  *
  * @return                      0 on success; nonzero on failure.
  */
-static int
+static void
 boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 {
     uint32_t copy_sz;
@@ -801,24 +800,19 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 
     if (bs->state == 0) {
         rc = boot_erase_sector(FLASH_AREA_IMAGE_SCRATCH, 0, sz);
-        if (rc != 0) {
-            return rc;
-        }
+        assert(rc == 0);
 
         rc = boot_copy_sector(FLASH_AREA_IMAGE_1, FLASH_AREA_IMAGE_SCRATCH,
                               img_off, 0, sz);
-        if (rc != 0) {
-            return rc;
-        }
+        assert(rc == 0);
 
         bs->state = 1;
-        (void)boot_write_status(bs);
+        rc = boot_write_status(bs);
+        assert(rc == 0);
     }
     if (bs->state == 1) {
         rc = boot_erase_sector(FLASH_AREA_IMAGE_1, img_off, sz);
-        if (rc != 0) {
-            return rc;
-        }
+        assert(rc == 0);
 
         copy_sz = sz;
         if (boot_data.imgs[0].sectors[idx].fa_off + sz >=
@@ -832,31 +826,25 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 
         rc = boot_copy_sector(FLASH_AREA_IMAGE_0, FLASH_AREA_IMAGE_1,
                               img_off, img_off, copy_sz);
-        if (rc != 0) {
-            return rc;
-        }
+        assert(rc == 0);
 
         bs->state = 2;
-        (void)boot_write_status(bs);
+        rc = boot_write_status(bs);
+        assert(rc == 0);
     }
     if (bs->state == 2) {
         rc = boot_erase_sector(FLASH_AREA_IMAGE_0, img_off, sz);
-        if (rc != 0) {
-            return rc;
-        }
+        assert(rc == 0);
 
         rc = boot_copy_sector(FLASH_AREA_IMAGE_SCRATCH, FLASH_AREA_IMAGE_0,
                               0, img_off, sz);
-        if (rc != 0) {
-            return rc;
-        }
+        assert(rc == 0);
 
         bs->idx++;
         bs->state = 0;
-        (void)boot_write_status(bs);
+        rc = boot_write_status(bs);
+        assert(rc == 0);
     }
-
-    return 0;
 }
 
 /**
