@@ -172,8 +172,23 @@ class Convert():
         table will be at the beginning, rather than the zero padding.
         Verify that the padding is present.
         """
-        if self.image[:self.vtable_offs] != bytearray(self.vtable_offs):
-            raise Exception("Image does not have space for header")
+
+        size = self.vtable_offs
+
+        # First test: check if padded with all zeroes (ARM)
+        expected = bytearray(size)
+        if self.image[:size] == expected:
+            return
+
+        # x86 has a repeating pattern of 0x66 0x90
+        for i in range(0, size, 2):
+            expected[i] = 0x66
+            expected[i + 1] = 0x90
+
+        if self.image[:size] == expected:
+            return
+
+        raise Exception("Image does not have space for header")
 
     def make_header(self, sig):
         image_size = len(self.image) - self.vtable_offs
