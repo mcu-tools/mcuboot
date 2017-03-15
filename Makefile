@@ -29,6 +29,9 @@ CFLAGS += -DBOOTUTIL_VALIDATE_SLOT0
 # mcuboot/Zephyr.  These can be found in ``boot/zephyr/targets``
 BOARD ?= qemu_x86
 
+# Additional board-specific Zephyr configuration
+CONF_FILE += $(wildcard boot/zephyr/targets/$(BOARD).conf)
+
 # The source to the Zephyr-specific code lives here.
 SOURCE_DIR = boot/zephyr
 
