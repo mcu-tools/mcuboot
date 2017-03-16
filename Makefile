@@ -30,7 +30,7 @@ CFLAGS += -DBOOTUTIL_VALIDATE_SLOT0
 BOARD ?= qemu_x86
 
 # Additional board-specific Zephyr configuration
-CONF_FILE += $(wildcard boot/zephyr/targets/$(BOARD).conf)
+CONF_FILE += $(wildcard boot/zephyr/$(BOARD).conf)
 
 # The source to the Zephyr-specific code lives here.
 SOURCE_DIR = boot/zephyr
