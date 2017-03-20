@@ -27,3 +27,4 @@
 #define FLASH_AREA_IMAGE_1_SIZE		0x34000
 #define FLASH_AREA_IMAGE_SCRATCH_OFFSET	0x70000
 #define FLASH_AREA_IMAGE_SCRATCH_SIZE	0x0D000
+/* Flash sector size is provided by SoC family include */
