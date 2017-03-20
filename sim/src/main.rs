@@ -50,7 +50,7 @@ struct Args {
 }
 
 #[derive(Debug, RustcDecodable)]
-enum DeviceName { Stm32f4, K64f, K64fBig }
+enum DeviceName { Stm32f4, K64f, K64fBig, Nrf52840 }
 
 #[derive(Debug)]
 struct AlignArg(u8);
@@ -114,6 +114,17 @@ fn main() {
             areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0);
             areadesc.add_simple_image(0x040000, 0x020000, FlashId::Image1);
             areadesc.add_simple_image(0x060000, 0x020000, FlashId::ImageScratch);
+            (flash, areadesc)
+        }
+        Some(DeviceName::Nrf52840) => {
+            // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
+            // does not divide into the image size.
+            let flash = Flash::new(vec![4096; 128], align as usize);
+
+            let mut areadesc = AreaDesc::new(&flash);
+            areadesc.add_image(0x008000, 0x034000, FlashId::Image0);
+            areadesc.add_image(0x03c000, 0x034000, FlashId::Image1);
+            areadesc.add_image(0x070000, 0x00d000, FlashId::ImageScratch);
             (flash, areadesc)
         }
     };
