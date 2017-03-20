@@ -101,6 +101,17 @@ impl AreaDesc {
         });
     }
 
+    // Look for the image with the given ID, and return its base and size.  Panics if the area is
+    // not present.
+    pub fn find(&self, id: FlashId) -> (usize, usize) {
+        for area in &self.whole {
+            if area.flash_id == id {
+                return (area.off as usize, area.size as usize);
+            }
+        }
+        panic!("Requesting area that is not present in flash");
+    }
+
     pub fn get_c(&self) -> CAreaDesc {
         let mut areas: CAreaDesc = Default::default();
 

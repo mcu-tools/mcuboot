@@ -118,15 +118,23 @@ fn main() {
         }
     };
 
+    let (slot0_base, slot0_len) = areadesc.find(FlashId::Image0);
+    let (slot1_base, slot1_len) = areadesc.find(FlashId::Image1);
+    let (scratch_base, _) = areadesc.find(FlashId::ImageScratch);
+
+    // Code below assumes that the slots are consecutive.
+    assert_eq!(slot1_base, slot0_base + slot0_len);
+    assert_eq!(scratch_base, slot1_base + slot1_len);
+
     // println!("Areas: {:#?}", areadesc.get_c());
 
     // Install the boot trailer signature, so that the code will start an upgrade.
     // TODO: This must be a multiple of flash alignment, add support for an image that is smaller,
     // and just gets padded.
-    let primary = install_image(&mut flash, 0x020000, 32784);
+    let primary = install_image(&mut flash, slot0_base, 32784);
 
     // Install an upgrade image.
-    let upgrade = install_image(&mut flash, 0x040000, 41928);
+    let upgrade = install_image(&mut flash, slot1_base, 41928);
 
     // Set an alignment, and position the magic value.
     c::set_sim_flash_align(align);
@@ -134,11 +142,11 @@ fn main() {
 
     // Mark the upgrade as ready to install.  (This looks like it might be a bug in the code,
     // however.)
-    mark_upgrade(&mut flash, 0x060000 - trailer_size as usize);
+    mark_upgrade(&mut flash, scratch_base - trailer_size as usize);
 
     let (fl2, total_count) = try_upgrade(&flash, &areadesc, None);
     info!("First boot, count={}", total_count);
-    assert!(verify_image(&fl2, 0x020000, &upgrade));
+    assert!(verify_image(&fl2, slot0_base, &upgrade));
 
     let mut bad = 0;
     // Let's try an image halfway through.
@@ -146,11 +154,11 @@ fn main() {
         info!("Try interruption at {}", i);
         let (fl3, total_count) = try_upgrade(&flash, &areadesc, Some(i));
         info!("Second boot, count={}", total_count);
-        if !verify_image(&fl3, 0x020000, &upgrade) {
+        if !verify_image(&fl3, slot0_base, &upgrade) {
             warn!("FAIL at step {} of {}", i, total_count);
             bad += 1;
         }
-        if !verify_image(&fl3, 0x040000, &primary) {
+        if !verify_image(&fl3, slot1_base, &primary) {
             warn!("Slot 1 FAIL at step {} of {}", i, total_count);
             bad += 1;
         }
@@ -162,12 +170,12 @@ fn main() {
     for count in 2 .. 5 {
         info!("Try revert: {}", count);
         let fl2 = try_revert(&flash, &areadesc, count);
-        assert!(verify_image(&fl2, 0x020000, &primary));
+        assert!(verify_image(&fl2, slot0_base, &primary));
     }
 
     info!("Try norevert");
     let fl2 = try_norevert(&flash, &areadesc);
-    assert!(verify_image(&fl2, 0x020000, &upgrade));
+    assert!(verify_image(&fl2, slot0_base, &upgrade));
 
     /*
     // show_flash(&flash);
@@ -177,7 +185,7 @@ fn main() {
     c::boot_go(&mut flash, &areadesc);
     // println!("{} flash ops", c::get_flash_counter());
 
-    verify_image(&flash, 0x020000, &upgrade);
+    verify_image(&flash, slot0_base, &upgrade);
 
     println!("\n------------------\nSecond boot");
     c::boot_go(&mut flash, &areadesc);
@@ -232,7 +240,8 @@ fn try_norevert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
     assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     // Write boot_ok
     let ok = [1u8, 0, 0, 0, 0, 0, 0, 0];
-    fl.write(0x040000 - align, &ok[..align]).unwrap();
+    let (slot0_base, slot0_len) = areadesc.find(FlashId::Image0);
+    fl.write(slot0_base + slot0_len - align, &ok[..align]).unwrap();
     assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     fl
 }
