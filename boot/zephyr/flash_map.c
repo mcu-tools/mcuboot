@@ -20,7 +20,7 @@
 #include <zephyr.h>
 #include <flash.h>
 
-#include MCUBOOT_TARGET_CONFIG
+#include "target.h"
 
 #include <flash_map/flash_map.h>
 #include <hal/hal_flash.h>

@@ -19,15 +19,10 @@
 #include <asm_inline.h>
 #include <drivers/system_timer.h>
 
+#include "target.h"
+
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
-
-#if defined(MCUBOOT_TARGET_CONFIG)
-#include MCUBOOT_TARGET_CONFIG
-#else
-#error "Board is currently not supported by bootloader"
-#endif
-
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 

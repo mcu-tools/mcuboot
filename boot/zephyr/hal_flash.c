@@ -19,7 +19,7 @@
 
 #include <zephyr.h>
 
-#include MCUBOOT_TARGET_CONFIG
+#include "target.h"
 
 #include "hal/hal_flash.h"
 
