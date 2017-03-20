@@ -41,4 +41,4 @@ For more information in the source, here are some pointers:
 
 Developers welcome!  To join in the discussion, please join the developer mailing list: 
 
-https://runtimeco.mobilize.io/registrations/groups/9881
+http://lists.runtime.co/mailman/listinfo/dev-mcuboot_lists.runtime.co
