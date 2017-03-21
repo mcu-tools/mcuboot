@@ -20,7 +20,7 @@
 #include <zephyr.h>
 #include <flash.h>
 
-#include MCUBOOT_TARGET_CONFIG
+#include "target.h"
 
 #include <flash_map/flash_map.h>
 #include <hal/hal_flash.h>
@@ -61,7 +61,7 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
 {
 	int i;
 
-	BOOT_LOG_DBG("%s: area %d", __func__, id);
+	BOOT_LOG_DBG("area %d", id);
 
 	for (i = 0; i < ARRAY_SIZE(part_map); i++) {
 		if (id == part_map[i].fa_id)
@@ -84,8 +84,7 @@ void flash_area_close(const struct flash_area *area)
 int flash_area_read(const struct flash_area *area, uint32_t off, void *dst,
 		    uint32_t len)
 {
-	BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
-		     area->fa_id, off, len);
+	BOOT_LOG_DBG("area=%d, off=%x, len=%x", area->fa_id, off, len);
 	return flash_read(boot_flash_device, area->fa_off + off, dst, len);
 }
 
@@ -94,8 +93,7 @@ int flash_area_write(const struct flash_area *area, uint32_t off, const void *sr
 {
 	int rc = 0;
 
-	BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
-		     area->fa_id, off, len);
+	BOOT_LOG_DBG("area=%d, off=%x, len=%x", area->fa_id, off, len);
 	flash_write_protection_set(boot_flash_device, false);
 	rc = flash_write(boot_flash_device, area->fa_off + off, src, len);
 	flash_write_protection_set(boot_flash_device, true);
@@ -106,8 +104,7 @@ int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
 {
 	int rc;
 
-	BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
-			area->fa_id, off, len);
+	BOOT_LOG_DBG("area=%d, off=%x, len=%x", area->fa_id, off, len);
 	flash_write_protection_set(boot_flash_device, false);
 	rc = flash_erase(boot_flash_device, area->fa_off + off, len);
 	flash_write_protection_set(boot_flash_device, true);
@@ -128,6 +125,11 @@ int flash_area_id_from_image_slot(int slot)
 	return slot + FLASH_AREA_IMAGE_0;
 }
 
+#ifndef FLASH_AREA_IMAGE_SECTOR_SIZE
+#warning "Missing FLASH_AREA_IMAGE_SECTOR_SIZE; assuming scratch size instead"
+#define FLASH_AREA_IMAGE_SECTOR_SIZE FLASH_AREA_IMAGE_SCRATCH_SIZE
+#endif
+
 /*
  * Lookup the sector map for a given flash area.  This should fill in
  * `ret` with all of the sectors in the area.  `*cnt` will be set to
@@ -139,8 +141,8 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 	uint32_t off;
 	uint32_t len;
 	uint32_t max_cnt = *cnt;
+	uint32_t rem_len;
 
-	BOOT_LOG_DBG("%s: lookup area %d", __func__, idx);
 	/*
 	 * This simple layout has uniform slots, so just fill in the
 	 * right one.
@@ -165,19 +167,34 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 		len = FLASH_AREA_IMAGE_SCRATCH_SIZE;
 		break;
 	default:
-		SYS_LOG_ERR("%s: unknown flash area %d", __func__, idx);
+		BOOT_LOG_ERR("unknown flash area %d", idx);
 		return -1;
 	}
 
+	BOOT_LOG_DBG("area %d: offset=0x%x, length=0x%x, sector size=0x%x",
+		     idx, off, len, FLASH_AREA_IMAGE_SECTOR_SIZE);
+
+	rem_len = len;
 	*cnt = 0;
-	while (len > 0 && *cnt < max_cnt) {
+	while (rem_len > 0 && *cnt < max_cnt) {
+		if (rem_len < FLASH_AREA_IMAGE_SECTOR_SIZE) {
+			BOOT_LOG_ERR("area %d size 0x%x not divisible by sector size 0x%x",
+				     idx, len, FLASH_AREA_IMAGE_SECTOR_SIZE);
+			return -1;
+		}
+
 		ret[*cnt].fa_id = idx;
 		ret[*cnt].fa_device_id = 0;
 		ret[*cnt].pad16 = 0;
-		ret[*cnt].fa_off = off + (FLASH_AREA_IMAGE_SCRATCH_SIZE * (*cnt));
-		ret[*cnt].fa_size = FLASH_AREA_IMAGE_SCRATCH_SIZE;
+		ret[*cnt].fa_off = off + (FLASH_AREA_IMAGE_SECTOR_SIZE * (*cnt));
+		ret[*cnt].fa_size = FLASH_AREA_IMAGE_SECTOR_SIZE;
 		*cnt = *cnt + 1;
-		len -= FLASH_AREA_IMAGE_SCRATCH_SIZE;
+		rem_len -= FLASH_AREA_IMAGE_SECTOR_SIZE;
+	}
+
+	if (*cnt >= max_cnt) {
+		BOOT_LOG_ERR("flash area %d sector count overflow", idx);
+		return -1;
 	}
 
 	return 0;

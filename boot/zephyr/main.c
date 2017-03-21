@@ -17,16 +17,12 @@
 #include <zephyr.h>
 #include <flash.h>
 #include <asm_inline.h>
+#include <drivers/system_timer.h>
+
+#include "target.h"
 
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
-
-#if defined(MCUBOOT_TARGET_CONFIG)
-#include MCUBOOT_TARGET_CONFIG
-#else
-#error "Board is currently not supported by bootloader"
-#endif
-
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 
@@ -52,6 +48,7 @@ static void do_boot(struct boot_rsp *rsp)
 	vt = (struct arm_vector_table *)(rsp->br_image_addr +
 					 rsp->br_hdr->ih_hdr_size);
 	irq_lock();
+	sys_clock_disable();
 	_MspSet(vt->msp);
 	((void (*)(void))vt->reset)();
 }

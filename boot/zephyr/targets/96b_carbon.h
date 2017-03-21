@@ -32,3 +32,7 @@
 #define FLASH_AREA_IMAGE_1_SIZE		0x20000
 #define FLASH_AREA_IMAGE_SCRATCH_OFFSET	0x60000
 #define FLASH_AREA_IMAGE_SCRATCH_SIZE	0x20000
+
+/* Though sectors have variable size on this part, we've chosen
+ * three sectors with uniform size here. */
+#define FLASH_AREA_IMAGE_SECTOR_SIZE	0x20000
