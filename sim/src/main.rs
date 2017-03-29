@@ -11,6 +11,7 @@ extern crate error_chain;
 use docopt::Docopt;
 use rand::{Rng, SeedableRng, XorShiftRng};
 use rustc_serialize::{Decodable, Decoder};
+use std::fmt;
 use std::mem;
 use std::process;
 use std::slice;
@@ -30,6 +31,7 @@ Mcuboot simulator
 Usage:
   bootsim sizes
   bootsim run --device TYPE [--align SIZE]
+  bootsim runall
   bootsim (--help | --version)
 
 Options:
@@ -48,10 +50,30 @@ struct Args {
     flag_align: Option<AlignArg>,
     cmd_sizes: bool,
     cmd_run: bool,
+    cmd_runall: bool,
 }
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Copy, Clone, Debug, RustcDecodable)]
 enum DeviceName { Stm32f4, K64f, K64fBig, Nrf52840 }
+
+static ALL_DEVICES: &'static [DeviceName] = &[
+    DeviceName::Stm32f4,
+    DeviceName::K64f,
+    DeviceName::K64fBig,
+    DeviceName::Nrf52840,
+];
+
+impl fmt::Display for DeviceName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let name = match *self {
+            DeviceName::Stm32f4 => "stm32f4",
+            DeviceName::K64f => "k64f",
+            DeviceName::K64fBig => "k64fbig",
+            DeviceName::Nrf52840 => "nrf52840",
+        };
+        f.write_str(name)
+    }
+}
 
 #[derive(Debug)]
 struct AlignArg(u8);
@@ -81,15 +103,25 @@ fn main() {
     }
 
     let mut status = RunStatus::new();
+    if args.cmd_run {
 
-    let align = args.flag_align.map(|x| x.0).unwrap_or(1);
+        let align = args.flag_align.map(|x| x.0).unwrap_or(1);
 
-    let device = match args.flag_device {
-        None => panic!("Missing mandatory device argument"),
-        Some(dev) => dev,
-    };
+        let device = match args.flag_device {
+            None => panic!("Missing mandatory device argument"),
+            Some(dev) => dev,
+        };
 
-    status.run_single(device, align);
+        status.run_single(device, align);
+    }
+
+    if args.cmd_runall {
+        for &dev in ALL_DEVICES {
+            for &align in &[1, 2, 4, 8] {
+                status.run_single(dev, align);
+            }
+        }
+    }
 
     if status.failures > 0 {
         warn!("{} Tests ran with {} failures", status.failures + status.passes, status.failures);
@@ -115,6 +147,8 @@ impl RunStatus {
 
     fn run_single(&mut self, device: DeviceName, align: u8) {
         let mut failed = false;
+
+        warn!("Running on device {} with alignment {}", device, align);
 
         let (mut flash, areadesc) = match device {
             DeviceName::Stm32f4 => {
