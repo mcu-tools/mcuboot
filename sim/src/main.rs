@@ -11,7 +11,9 @@ extern crate error_chain;
 use docopt::Docopt;
 use rand::{Rng, SeedableRng, XorShiftRng};
 use rustc_serialize::{Decodable, Decoder};
+use std::fmt;
 use std::mem;
+use std::process;
 use std::slice;
 
 mod area;
@@ -29,6 +31,7 @@ Mcuboot simulator
 Usage:
   bootsim sizes
   bootsim run --device TYPE [--align SIZE]
+  bootsim runall
   bootsim (--help | --version)
 
 Options:
@@ -47,10 +50,30 @@ struct Args {
     flag_align: Option<AlignArg>,
     cmd_sizes: bool,
     cmd_run: bool,
+    cmd_runall: bool,
 }
 
-#[derive(Debug, RustcDecodable)]
-enum DeviceName { Stm32f4, K64f, K64fBig }
+#[derive(Copy, Clone, Debug, RustcDecodable)]
+enum DeviceName { Stm32f4, K64f, K64fBig, Nrf52840 }
+
+static ALL_DEVICES: &'static [DeviceName] = &[
+    DeviceName::Stm32f4,
+    DeviceName::K64f,
+    DeviceName::K64fBig,
+    DeviceName::Nrf52840,
+];
+
+impl fmt::Display for DeviceName {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let name = match *self {
+            DeviceName::Stm32f4 => "stm32f4",
+            DeviceName::K64f => "k64f",
+            DeviceName::K64fBig => "k64fbig",
+            DeviceName::Nrf52840 => "nrf52840",
+        };
+        f.write_str(name)
+    }
+}
 
 #[derive(Debug)]
 struct AlignArg(u8);
@@ -79,109 +102,193 @@ fn main() {
         return;
     }
 
-    let align = args.flag_align.map(|x| x.0).unwrap_or(1);
+    let mut status = RunStatus::new();
+    if args.cmd_run {
 
-    let (mut flash, areadesc) = match args.flag_device {
-        None => panic!("Missing mandatory argument"),
-        Some(DeviceName::Stm32f4) => {
-            // STM style flash.  Large sectors, with a large scratch area.
-            let flash = Flash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
-                                   64 * 1024,
-                                   128 * 1024, 128 * 1024, 128 * 1024],
-                                   align as usize);
-            let mut areadesc = AreaDesc::new(&flash);
-            areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
-            areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
-            areadesc.add_image(0x060000, 0x020000, FlashId::ImageScratch);
-            (flash, areadesc)
-        }
-        Some(DeviceName::K64f) => {
-            // NXP style flash.  Small sectors, one small sector for scratch.
-            let flash = Flash::new(vec![4096; 128], align as usize);
+        let align = args.flag_align.map(|x| x.0).unwrap_or(1);
 
-            let mut areadesc = AreaDesc::new(&flash);
-            areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
-            areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
-            areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch);
-            (flash, areadesc)
-        }
-        Some(DeviceName::K64fBig) => {
-            // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
-            // uses small sectors, but we tell the bootloader they are large.
-            let flash = Flash::new(vec![4096; 128], align as usize);
+        let device = match args.flag_device {
+            None => panic!("Missing mandatory device argument"),
+            Some(dev) => dev,
+        };
 
-            let mut areadesc = AreaDesc::new(&flash);
-            areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0);
-            areadesc.add_simple_image(0x040000, 0x020000, FlashId::Image1);
-            areadesc.add_simple_image(0x060000, 0x020000, FlashId::ImageScratch);
-            (flash, areadesc)
-        }
-    };
-
-    // println!("Areas: {:#?}", areadesc.get_c());
-
-    // Install the boot trailer signature, so that the code will start an upgrade.
-    // TODO: This must be a multiple of flash alignment, add support for an image that is smaller,
-    // and just gets padded.
-    let primary = install_image(&mut flash, 0x020000, 32784);
-
-    // Install an upgrade image.
-    let upgrade = install_image(&mut flash, 0x040000, 41928);
-
-    // Set an alignment, and position the magic value.
-    c::set_sim_flash_align(align);
-    let trailer_size = c::boot_trailer_sz();
-
-    // Mark the upgrade as ready to install.  (This looks like it might be a bug in the code,
-    // however.)
-    mark_upgrade(&mut flash, 0x060000 - trailer_size as usize);
-
-    let (fl2, total_count) = try_upgrade(&flash, &areadesc, None);
-    info!("First boot, count={}", total_count);
-    assert!(verify_image(&fl2, 0x020000, &upgrade));
-
-    let mut bad = 0;
-    // Let's try an image halfway through.
-    for i in 1 .. total_count {
-        info!("Try interruption at {}", i);
-        let (fl3, total_count) = try_upgrade(&flash, &areadesc, Some(i));
-        info!("Second boot, count={}", total_count);
-        if !verify_image(&fl3, 0x020000, &upgrade) {
-            warn!("FAIL at step {} of {}", i, total_count);
-            bad += 1;
-        }
-        if !verify_image(&fl3, 0x040000, &primary) {
-            warn!("Slot 1 FAIL at step {} of {}", i, total_count);
-            bad += 1;
-        }
-    }
-    error!("{} out of {} failed {:.2}%",
-           bad, total_count,
-           bad as f32 * 100.0 / total_count as f32);
-
-    for count in 2 .. 5 {
-        info!("Try revert: {}", count);
-        let fl2 = try_revert(&flash, &areadesc, count);
-        assert!(verify_image(&fl2, 0x020000, &primary));
+        status.run_single(device, align);
     }
 
-    info!("Try norevert");
-    let fl2 = try_norevert(&flash, &areadesc);
-    assert!(verify_image(&fl2, 0x020000, &upgrade));
+    if args.cmd_runall {
+        for &dev in ALL_DEVICES {
+            for &align in &[1, 2, 4, 8] {
+                status.run_single(dev, align);
+            }
+        }
+    }
 
-    /*
-    // show_flash(&flash);
+    if status.failures > 0 {
+        warn!("{} Tests ran with {} failures", status.failures + status.passes, status.failures);
+        process::exit(1);
+    } else {
+        warn!("{} Tests ran successfully", status.passes);
+        process::exit(0);
+    }
+}
 
-    println!("First boot for upgrade");
-    // c::set_flash_counter(570);
-    c::boot_go(&mut flash, &areadesc);
-    // println!("{} flash ops", c::get_flash_counter());
+struct RunStatus {
+    failures: usize,
+    passes: usize,
+}
 
-    verify_image(&flash, 0x020000, &upgrade);
+impl RunStatus {
+    fn new() -> RunStatus {
+        RunStatus {
+            failures: 0,
+            passes: 0,
+        }
+    }
 
-    println!("\n------------------\nSecond boot");
-    c::boot_go(&mut flash, &areadesc);
-    */
+    fn run_single(&mut self, device: DeviceName, align: u8) {
+        let mut failed = false;
+
+        warn!("Running on device {} with alignment {}", device, align);
+
+        let (mut flash, areadesc) = match device {
+            DeviceName::Stm32f4 => {
+                // STM style flash.  Large sectors, with a large scratch area.
+                let flash = Flash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
+                                       64 * 1024,
+                                       128 * 1024, 128 * 1024, 128 * 1024],
+                                       align as usize);
+                let mut areadesc = AreaDesc::new(&flash);
+                areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
+                areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
+                areadesc.add_image(0x060000, 0x020000, FlashId::ImageScratch);
+                (flash, areadesc)
+            }
+            DeviceName::K64f => {
+                // NXP style flash.  Small sectors, one small sector for scratch.
+                let flash = Flash::new(vec![4096; 128], align as usize);
+
+                let mut areadesc = AreaDesc::new(&flash);
+                areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
+                areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
+                areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch);
+                (flash, areadesc)
+            }
+            DeviceName::K64fBig => {
+                // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
+                // uses small sectors, but we tell the bootloader they are large.
+                let flash = Flash::new(vec![4096; 128], align as usize);
+
+                let mut areadesc = AreaDesc::new(&flash);
+                areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0);
+                areadesc.add_simple_image(0x040000, 0x020000, FlashId::Image1);
+                areadesc.add_simple_image(0x060000, 0x020000, FlashId::ImageScratch);
+                (flash, areadesc)
+            }
+            DeviceName::Nrf52840 => {
+                // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
+                // does not divide into the image size.
+                let flash = Flash::new(vec![4096; 128], align as usize);
+
+                let mut areadesc = AreaDesc::new(&flash);
+                areadesc.add_image(0x008000, 0x034000, FlashId::Image0);
+                areadesc.add_image(0x03c000, 0x034000, FlashId::Image1);
+                areadesc.add_image(0x070000, 0x00d000, FlashId::ImageScratch);
+                (flash, areadesc)
+            }
+        };
+
+        let (slot0_base, slot0_len) = areadesc.find(FlashId::Image0);
+        let (slot1_base, slot1_len) = areadesc.find(FlashId::Image1);
+        let (scratch_base, _) = areadesc.find(FlashId::ImageScratch);
+
+        // Code below assumes that the slots are consecutive.
+        assert_eq!(slot1_base, slot0_base + slot0_len);
+        assert_eq!(scratch_base, slot1_base + slot1_len);
+
+        // println!("Areas: {:#?}", areadesc.get_c());
+
+        // Install the boot trailer signature, so that the code will start an upgrade.
+        // TODO: This must be a multiple of flash alignment, add support for an image that is smaller,
+        // and just gets padded.
+        let primary = install_image(&mut flash, slot0_base, 32784);
+
+        // Install an upgrade image.
+        let upgrade = install_image(&mut flash, slot1_base, 41928);
+
+        // Set an alignment, and position the magic value.
+        c::set_sim_flash_align(align);
+        let trailer_size = c::boot_trailer_sz();
+
+        // Mark the upgrade as ready to install.  (This looks like it might be a bug in the code,
+        // however.)
+        mark_upgrade(&mut flash, scratch_base - trailer_size as usize);
+
+        let (fl2, total_count) = try_upgrade(&flash, &areadesc, None);
+        info!("First boot, count={}", total_count);
+        if !verify_image(&fl2, slot0_base, &upgrade) {
+            error!("Image mismatch after first boot");
+            // This isn't really recoverable, and more tests aren't likely to reveal much.
+            self.failures += 1;
+            return;
+        }
+
+        let mut bad = 0;
+        // Let's try an image halfway through.
+        for i in 1 .. total_count {
+            info!("Try interruption at {}", i);
+            let (fl3, total_count) = try_upgrade(&flash, &areadesc, Some(i));
+            info!("Second boot, count={}", total_count);
+            if !verify_image(&fl3, slot0_base, &upgrade) {
+                warn!("FAIL at step {} of {}", i, total_count);
+                bad += 1;
+            }
+            if !verify_image(&fl3, slot1_base, &primary) {
+                warn!("Slot 1 FAIL at step {} of {}", i, total_count);
+                bad += 1;
+            }
+        }
+        error!("{} out of {} failed {:.2}%",
+               bad, total_count,
+               bad as f32 * 100.0 / total_count as f32);
+        if bad > 0 {
+            failed = true;
+        }
+
+        for count in 2 .. 5 {
+            info!("Try revert: {}", count);
+            let fl2 = try_revert(&flash, &areadesc, count);
+            if !verify_image(&fl2, slot0_base, &primary) {
+                warn!("Revert failure on count {}", count);
+                failed = true;
+            }
+        }
+
+        info!("Try norevert");
+        let fl2 = try_norevert(&flash, &areadesc);
+        if !verify_image(&fl2, slot0_base, &upgrade) {
+            warn!("No revert failed");
+            failed = true;
+        }
+
+        /*
+        // show_flash(&flash);
+
+        println!("First boot for upgrade");
+        // c::set_flash_counter(570);
+        c::boot_go(&mut flash, &areadesc);
+        // println!("{} flash ops", c::get_flash_counter());
+
+        verify_image(&flash, slot0_base, &upgrade);
+
+        println!("\n------------------\nSecond boot");
+        c::boot_go(&mut flash, &areadesc);
+        */
+        if failed {
+            self.failures += 1;
+        } else {
+            self.passes += 1;
+        }
+    }
 }
 
 /// Test a boot, optionally stopping after 'n' flash options.  Returns a count of the number of
@@ -232,7 +339,8 @@ fn try_norevert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
     assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     // Write boot_ok
     let ok = [1u8, 0, 0, 0, 0, 0, 0, 0];
-    fl.write(0x040000 - align, &ok[..align]).unwrap();
+    let (slot0_base, slot0_len) = areadesc.find(FlashId::Image0);
+    fl.write(slot0_base + slot0_len - align, &ok[..align]).unwrap();
     assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     fl
 }
