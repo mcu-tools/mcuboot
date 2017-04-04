@@ -337,7 +337,7 @@ A. Inspect swap status region; is an interrupted swap is being resumed?
     Yes: Complete the partial swap operation; skip to step C.
     No: Proceed to step B.
 
-B. Insect boot vector; is a swap requested?
+B. Inspect boot vector; is a swap requested?
     Yes.
         1. Is the requested image valid (integrity and security check)?
             Yes.

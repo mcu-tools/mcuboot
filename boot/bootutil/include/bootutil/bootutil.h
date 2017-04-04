@@ -40,6 +40,8 @@ extern "C" {
 
 #define BOOT_SWAP_TYPE_FAIL     0xff
 
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+
 struct image_header;
 /**
  * A response object provided by the boot loader code; indicates where to jump

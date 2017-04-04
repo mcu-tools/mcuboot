@@ -38,7 +38,7 @@ Options:
   -h, --help         Show this message
   --version          Version
   --device TYPE      MCU to simulate
-                     Valid values: stm32f4, k64f
+                     Valid values: stm32f4, k64f, k64fbig, nrf52840
   --align SIZE       Flash write alignment
 ";
 

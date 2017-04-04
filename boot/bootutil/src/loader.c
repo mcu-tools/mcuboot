@@ -232,7 +232,7 @@ boot_previous_swap_type(void)
             return boot_swap_trans_table[i][0];
         }
     }
-    
+
     /* XXX: Temporary assert. */
     assert(0);
 
@@ -393,31 +393,37 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
     uint32_t off;
     uint8_t status;
     int found;
+    int end_index;
+    int assert_ff;
     int rc;
     int i;
 
     off = boot_status_off(fap);
-
     found = 0;
+    end_index = BOOT_STATUS_MAX_ENTRIES;
+    assert_ff = 0;
+
     for (i = 0; i < BOOT_STATUS_MAX_ENTRIES; i++) {
         rc = flash_area_read(fap, off + i * boot_data.write_sz, &status, 1);
+        assert(rc == 0);
         if (rc != 0) {
             return BOOT_EFLASH;
         }
 
-        if (status == 0xff) {
-            if (found) {
-                break;
-            }
-        } else if (!found) {
+        if (!found && status != 0xff) {
             found = 1;
+        } else if (found && !assert_ff && status == 0xff) {
+            end_index = i;
+            assert_ff = 1;
+        } else if (assert_ff) {
+            assert(status == 0xff);
         }
     }
 
     if (found) {
-        i--;
-        bs->idx = i / BOOT_STATUS_STATE_COUNT;
-        bs->state = i % BOOT_STATUS_STATE_COUNT;
+        end_index--;
+        bs->idx = end_index / BOOT_STATUS_STATE_COUNT;
+        bs->state = end_index % BOOT_STATUS_STATE_COUNT;
     }
 
     return 0;
@@ -463,10 +469,15 @@ boot_read_status(struct boot_status *bs)
     }
 
     rc = boot_read_status_bytes(fap, bs);
+    assert(rc == 0);
     if (rc != 0) {
-        return rc;
+        goto done;
     }
 
+    rc = 0;
+
+done:
+    flash_area_close(fap);
     return 0;
 }
 
@@ -510,6 +521,7 @@ boot_write_status(struct boot_status *bs)
     buf[0] = bs->state;
 
     rc = flash_area_write(fap, off, buf, align);
+    assert(rc == 0);
     if (rc != 0) {
         rc = BOOT_EFLASH;
         goto done;
@@ -571,7 +583,7 @@ boot_validate_slot(int slot)
 {
     const struct flash_area *fap;
     int rc;
-    
+
     if (boot_data.imgs[slot].hdr.ih_magic == 0xffffffff ||
         boot_data.imgs[slot].hdr.ih_flags & IMAGE_F_NON_BOOTABLE) {
 
@@ -588,7 +600,7 @@ boot_validate_slot(int slot)
          boot_image_check(&boot_data.imgs[slot].hdr, fap) != 0)) {
 
         if (slot != 0) {
-            flash_area_erase(fap, 0, fap->fa_size);
+            assert(flash_area_erase(fap, 0, fap->fa_size) == 0);
             /* Image in slot 1 is invalid. Erase the image and
              * continue booting from slot 0.
              */
@@ -692,6 +704,7 @@ boot_erase_sector(int flash_area_id, uint32_t off, uint32_t sz)
     }
 
     rc = flash_area_erase(fap, off, sz);
+    assert(rc == 0);
     if (rc != 0) {
         rc = BOOT_EFLASH;
         goto done;
@@ -724,8 +737,11 @@ boot_copy_sector(int flash_area_id_src, int flash_area_id_dst,
 {
     const struct flash_area *fap_src;
     const struct flash_area *fap_dst;
-    uint32_t bytes_copied;
+    uint32_t magic_off;
+    uint32_t seek_off;
     int chunk_sz;
+    int trailer_sz;
+    int has_trailer;
     int rc;
 
     static uint8_t buf[1024];
@@ -745,27 +761,76 @@ boot_copy_sector(int flash_area_id_src, int flash_area_id_dst,
         goto done;
     }
 
-    bytes_copied = 0;
-    while (bytes_copied < sz) {
-        if (sz - bytes_copied > sizeof buf) {
-            chunk_sz = sizeof buf;
-        } else {
-            chunk_sz = sz - bytes_copied;
-        }
+    /* To avoid inconsistent state if there's reset while in the
+     * copy loop, it is done in 3 steps:
+     *
+     * 1) First copy data without trailer (boot status + magic).
+     * 2) Next copy the trailer.
+     * 3) Finally copy the boot magic.
+     */
 
-        rc = flash_area_read(fap_src, off_src + bytes_copied, buf, chunk_sz);
+    trailer_sz = boot_trailer_sz(boot_data.write_sz);
+    seek_off = 0;
+    has_trailer = 0;
+
+    if (trailer_sz < sz) {
+        sz -= trailer_sz;
+        has_trailer = 1;
+    }
+
+    while (seek_off < sz) {
+        chunk_sz = MIN(sz - seek_off, sizeof buf);
+
+        rc = flash_area_read(fap_src, off_src + seek_off, buf, chunk_sz);
         if (rc != 0) {
             rc = BOOT_EFLASH;
             goto done;
         }
 
-        rc = flash_area_write(fap_dst, off_dst + bytes_copied, buf, chunk_sz);
+        rc = flash_area_write(fap_dst, off_dst + seek_off, buf, chunk_sz);
         if (rc != 0) {
             rc = BOOT_EFLASH;
             goto done;
         }
 
-        bytes_copied += chunk_sz;
+        seek_off += chunk_sz;
+    }
+
+    if (has_trailer) {
+        sz += trailer_sz;
+        magic_off = seek_off;
+        seek_off += sizeof boot_img_magic;
+
+        while (seek_off < sz) {
+            chunk_sz = MIN(sz - seek_off, sizeof buf);
+
+            rc = flash_area_read(fap_src, off_src + seek_off, buf, chunk_sz);
+            if (rc != 0) {
+                rc = BOOT_EFLASH;
+                goto done;
+            }
+
+            rc = flash_area_write(fap_dst, off_dst + seek_off, buf, chunk_sz);
+            if (rc != 0) {
+                rc = BOOT_EFLASH;
+                goto done;
+            }
+
+            seek_off += chunk_sz;
+        }
+
+        chunk_sz = sizeof boot_img_magic;
+        rc = flash_area_read(fap_src, off_src + magic_off, buf, chunk_sz);
+        if (rc != 0) {
+            rc = BOOT_EFLASH;
+            goto done;
+        }
+
+        rc = flash_area_write(fap_dst, off_dst + magic_off, buf, chunk_sz);
+        if (rc != 0) {
+            rc = BOOT_EFLASH;
+            goto done;
+        }
     }
 
     rc = 0;
