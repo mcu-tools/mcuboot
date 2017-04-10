@@ -9,7 +9,8 @@ extern crate rustc_serialize;
 extern crate error_chain;
 
 use docopt::Docopt;
-use rand::{Rng, SeedableRng, XorShiftRng};
+use rand::{Rng, SeedableRng, XorShiftRng, thread_rng};
+use rand::distributions::{IndependentSample, Range};
 use rustc_serialize::{Decodable, Decoder};
 use std::fmt;
 use std::mem;
@@ -233,8 +234,9 @@ impl RunStatus {
         }
 
         let mut bad = 0;
-        // Let's try an image halfway through.
-        for i in 1 .. total_count {
+        let mut stops: Vec<i32> = (1..total_count).collect();
+        thread_rng().shuffle(stops.as_mut_slice());
+        for i in stops {
             info!("Try interruption at {}", i);
             let (fl3, total_count) = try_upgrade(&flash, &areadesc, Some(i));
             info!("Second boot, count={}", total_count);
@@ -252,6 +254,14 @@ impl RunStatus {
                bad as f32 * 100.0 / total_count as f32);
         if bad > 0 {
             failed = true;
+        }
+
+        let (fl4, total_counts) = try_random_fails(&flash, &areadesc, 5);
+        info!("Random fails at counts={:?}", total_counts);
+        if !verify_image(&fl4, slot0_base, &upgrade) {
+            error!("Image mismatch after random fails");
+            self.failures += 1;
+            return;
         }
 
         for count in 2 .. 5 {
@@ -343,6 +353,40 @@ fn try_norevert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
     fl.write(slot0_base + slot0_len - align, &ok[..align]).unwrap();
     assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     fl
+}
+
+fn try_random_fails(flash: &Flash, areadesc: &AreaDesc, count: usize) -> (Flash, Vec<i32>) {
+    // Clone the flash to have a new copy.
+    let mut fl = flash.clone();
+
+    c::set_flash_counter(0);
+    let (_, total_ops) = match c::boot_go(&mut fl, &areadesc) {
+        -0x13579 => panic!("Should not be have been interrupted!"),
+        0 => (false, -c::get_flash_counter()),
+        x => panic!("Unknown return: {}", x),
+    };
+
+    let mut rng = rand::thread_rng();
+    let ops = Range::new(1, total_ops);
+    let mut stops = vec![0i32; count];
+    for i in 0 .. count {
+        let reset_counter = ops.ind_sample(&mut rng);
+        c::set_flash_counter(reset_counter);
+        match c::boot_go(&mut fl, &areadesc) {
+            0 | -0x13579 => (),
+            x => panic!("Unknown return: {}", x),
+        }
+        stops[i] = reset_counter;
+    }
+
+    c::set_flash_counter(0);
+    match c::boot_go(&mut fl, &areadesc) {
+        -0x13579 => panic!("Should not be have been interrupted!"),
+        0 => (),
+        x => panic!("Unknown return: {}", x),
+    }
+
+    (fl, stops)
 }
 
 /// Show the flash layout.
