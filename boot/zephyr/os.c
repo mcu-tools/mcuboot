@@ -28,18 +28,18 @@
 /* D(void *os_malloc(size_t size)) */
 void *os_calloc(size_t nelem, size_t size)
 {
-	/* Note that this doesn't check for overflow.  Assume the
-	 * calls only come from within the app. */
-	size_t total = nelem * size;
-	void *buf = k_malloc(total);
-	if (buf)
-		memset(buf, 0, total);
-	return buf;
+    /* Note that this doesn't check for overflow.  Assume the
+     * calls only come from within the app. */
+    size_t total = nelem * size;
+    void *buf = k_malloc(total);
+    if (buf)
+        memset(buf, 0, total);
+    return buf;
 }
 
 void os_free(void *ptr)
 {
-	k_free(ptr);
+    k_free(ptr);
 }
 
 /*
@@ -47,5 +47,5 @@ void os_free(void *ptr)
  */
 void os_heap_init(void)
 {
-	mbedtls_platform_set_calloc_free(os_calloc, os_free);
+    mbedtls_platform_set_calloc_free(os_calloc, os_free);
 }
