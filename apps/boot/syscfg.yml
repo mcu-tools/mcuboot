@@ -20,10 +20,10 @@
 
 syscfg.defs:
     BOOT_LOADER:
-        description: 'TBD'
+        description: 'Set to indicate that this app is a bootloader.'
         value: 1
     BOOT_SERIAL:
-        description: 'TBD'
+        description: 'Support image upgrade over serial within bootloader'
         value: 0
 
 syscfg.vals:
