@@ -64,11 +64,13 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
     BOOT_LOG_DBG("area %d", id);
 
     for (i = 0; i < ARRAY_SIZE(part_map); i++) {
-        if (id == part_map[i].fa_id)
+        if (id == part_map[i].fa_id) {
             break;
+        }
     }
-    if (i == ARRAY_SIZE(part_map))
+    if (i == ARRAY_SIZE(part_map)) {
         return -1;
+    }
 
     *area = &part_map[i];
     return 0;
@@ -147,11 +149,13 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
      * This simple layout has uniform slots, so just fill in the
      * right one.
      */
-    if (idx < FLASH_AREA_IMAGE_0 || idx > FLASH_AREA_IMAGE_SCRATCH)
+    if (idx < FLASH_AREA_IMAGE_0 || idx > FLASH_AREA_IMAGE_SCRATCH) {
         return -1;
+    }
 
-    if (*cnt < 1)
+    if (*cnt < 1) {
         return -1;
+    }
 
     switch (idx) {
     case FLASH_AREA_IMAGE_0:

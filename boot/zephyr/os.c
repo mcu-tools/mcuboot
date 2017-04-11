@@ -32,8 +32,9 @@ void *os_calloc(size_t nelem, size_t size)
      * calls only come from within the app. */
     size_t total = nelem * size;
     void *buf = k_malloc(total);
-    if (buf)
+    if (buf) {
         memset(buf, 0, total);
+    }
     return buf;
 }
 
