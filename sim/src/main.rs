@@ -9,7 +9,7 @@ extern crate rustc_serialize;
 extern crate error_chain;
 
 use docopt::Docopt;
-use rand::{Rng, SeedableRng, XorShiftRng, thread_rng};
+use rand::{Rng, SeedableRng, XorShiftRng};
 use rand::distributions::{IndependentSample, Range};
 use rustc_serialize::{Decodable, Decoder};
 use std::fmt;
@@ -234,9 +234,8 @@ impl RunStatus {
         }
 
         let mut bad = 0;
-        let mut stops: Vec<i32> = (1..total_count).collect();
-        thread_rng().shuffle(stops.as_mut_slice());
-        for i in stops {
+        // Let's try an image halfway through.
+        for i in 1 .. total_count {
             info!("Try interruption at {}", i);
             let (fl3, total_count) = try_upgrade(&flash, &areadesc, Some(i));
             info!("Second boot, count={}", total_count);
