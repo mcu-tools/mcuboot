@@ -25,5 +25,5 @@
 
 uint8_t hal_flash_align(uint8_t flash_id)
 {
-	return FLASH_ALIGN;
+    return FLASH_ALIGN;
 }
