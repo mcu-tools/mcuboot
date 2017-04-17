@@ -33,6 +33,10 @@ pub fn set_sim_flash_align(align: u8) {
     unsafe { raw::sim_flash_align = align };
 }
 
+pub fn boot_magic_sz() -> u32 {
+    unsafe { raw::BOOT_MAGIC_SZ }
+}
+
 mod raw {
     use area::CAreaDesc;
     use libc;
@@ -46,5 +50,7 @@ mod raw {
 
         pub static mut sim_flash_align: u8;
         pub fn boot_trailer_sz(min_write_sz: u8) -> u32;
+
+        pub static mut BOOT_MAGIC_SZ: u32;
     }
 }

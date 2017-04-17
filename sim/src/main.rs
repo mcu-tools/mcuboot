@@ -218,11 +218,10 @@ impl RunStatus {
 
         // Set an alignment, and position the magic value.
         c::set_sim_flash_align(align);
-        let trailer_size = c::boot_trailer_sz();
 
         // Mark the upgrade as ready to install.  (This looks like it might be a bug in the code,
         // however.)
-        mark_upgrade(&mut flash, scratch_base - trailer_size as usize);
+        mark_upgrade(&mut flash, scratch_base - c::boot_magic_sz() as usize);
 
         let (fl2, total_count) = try_upgrade(&flash, &areadesc, None);
         info!("First boot, count={}", total_count);
@@ -349,7 +348,8 @@ fn try_norevert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
     // Write boot_ok
     let ok = [1u8, 0, 0, 0, 0, 0, 0, 0];
     let (slot0_base, slot0_len) = areadesc.find(FlashId::Image0);
-    fl.write(slot0_base + slot0_len - align, &ok[..align]).unwrap();
+    fl.write(slot0_base + slot0_len - align - c::boot_magic_sz() as usize,
+             &ok[..align]).unwrap();
     assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     fl
 }
