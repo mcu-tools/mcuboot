@@ -94,8 +94,10 @@ impl Flash {
         }
 
         let mut sub = &mut self.data[offset .. offset + payload.len()];
-        if sub.iter().any(|x| *x != 0xFF) {
-            bail!(ewrite(format!("Write to non-FF location: offset: {:x}", offset)));
+        for (i, x) in sub.iter().enumerate() {
+            if *x != 0xFF {
+                bail!(ewrite(format!("Write to non-FF location at 0x{:x}", offset + i)));
+            }
         }
 
         sub.copy_from_slice(payload);
