@@ -2,3 +2,11 @@ outdir/
 .*.swp
 target.sh
 *.pyc
+tags
+rusty-tags.*
+
+# mynewt
+repos/
+project.state
+bin/
+targets/
