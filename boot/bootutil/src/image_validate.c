@@ -26,9 +26,9 @@
 #include "hal/hal_flash.h"
 #include "flash_map/flash_map.h"
 #include "bootutil/image.h"
+#include "bootutil/sha256.h"
 #include "bootutil/sign_key.h"
 
-#include "mbedtls/sha256.h"
 #if MYNEWT_VAL(BOOTUTIL_SIGN_RSA)
 #include "mbedtls/rsa.h"
 #endif
@@ -47,19 +47,18 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
                   uint8_t *tmp_buf, uint32_t tmp_buf_sz,
                   uint8_t *hash_result, uint8_t *seed, int seed_len)
 {
-    mbedtls_sha256_context sha256_ctx;
+    bootutil_sha256_context sha256_ctx;
     uint32_t blk_sz;
     uint32_t size;
     uint32_t off;
     int rc;
 
-    mbedtls_sha256_init(&sha256_ctx);
-    mbedtls_sha256_starts(&sha256_ctx, 0);
+    bootutil_sha256_init(&sha256_ctx);
 
     /* in some cases (split image) the hash is seeded with data from
      * the loader image */
     if(seed && (seed_len > 0)) {
-        mbedtls_sha256_update(&sha256_ctx, seed, seed_len);
+        bootutil_sha256_update(&sha256_ctx, seed, seed_len);
     }
 
     size = hdr->ih_img_size + hdr->ih_hdr_size;
@@ -78,9 +77,9 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
         if (rc) {
             return rc;
         }
-        mbedtls_sha256_update(&sha256_ctx, tmp_buf, blk_sz);
+        bootutil_sha256_update(&sha256_ctx, tmp_buf, blk_sz);
     }
-    mbedtls_sha256_finish(&sha256_ctx, hash_result);
+    bootutil_sha256_finish(&sha256_ctx, hash_result);
 
     return 0;
 }

@@ -10,11 +10,11 @@
 
 # RSA
 CONF_FILE = boot/zephyr/prj.conf
-CFLAGS += -DBOOTUTIL_SIGN_RSA
+CFLAGS += -DBOOTUTIL_SIGN_RSA -DBOOTUTIL_USE_MBED_TLS
 
 # ECDSA P-256
 #CONF_FILE = boot/zephyr/prj-p256.conf
-#CFLAGS += -DBOOTUTIL_SIGN_EC256
+#CFLAGS += -DBOOTUTIL_SIGN_EC256 -DBOOTUTIL_USE_TINYCRYPT
 
 # Enable this option to have the bootloader verify the signature of
 # the primary image upon every boot.  Without it, signature
