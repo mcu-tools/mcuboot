@@ -29,8 +29,12 @@
 #include "bootutil/sign_key.h"
 
 #include "mbedtls/sha256.h"
+#if MYNEWT_VAL(BOOTUTIL_SIGN_RSA)
 #include "mbedtls/rsa.h"
+#endif
+#if MYNEWT_VAL(BOOTUTIL_SIGN_EC) || MYNEWT_VAL(BOOTUTIL_SIGN_EC256)
 #include "mbedtls/ecdsa.h"
+#endif
 #include "mbedtls/asn1.h"
 
 #include "bootutil_priv.h"
