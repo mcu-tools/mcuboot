@@ -29,6 +29,9 @@ pub extern fn sim_flash_write(dev: *mut Flash, offset: u32, src: *const u8, size
 fn map_err(err: Result<()>) -> libc::c_int {
     match err {
         Ok(()) => 0,
-        Err(_) => -1,
+        Err(e) => {
+            warn!("{}", e);
+            -1
+        },
     }
 }
