@@ -33,12 +33,14 @@
 
 int boot_current_slot;
 
-const uint32_t boot_img_magic[4] = {
+const uint32_t boot_img_magic[] = {
     0xf395c277,
     0x7fefd260,
     0x0f505235,
     0x8079b62c,
 };
+
+const uint32_t BOOT_MAGIC_SZ = sizeof boot_img_magic;
 
 struct boot_swap_table {
     /** * For each field, a value of 0 means "any". */
@@ -144,17 +146,17 @@ boot_magic_code(const uint32_t *magic)
 {
     int i;
 
-    if (memcmp(magic, boot_img_magic, sizeof boot_img_magic) == 0) {
+    if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0) {
         return BOOT_MAGIC_GOOD;
     }
 
-    for (i = 0; i < 4; i++) {
-        if (magic[i] == 0xffffffff) {
-            return BOOT_MAGIC_UNSET;
+    for (i = 0; i < BOOT_MAGIC_SZ / sizeof *magic; i++) {
+        if (magic[i] != 0xffffffff) {
+            return BOOT_MAGIC_BAD;
         }
     }
 
-    return BOOT_MAGIC_BAD;
+    return BOOT_MAGIC_UNSET;
 }
 
 uint32_t
@@ -166,7 +168,7 @@ boot_status_sz(uint8_t min_write_sz)
 uint32_t
 boot_trailer_sz(uint8_t min_write_sz)
 {
-    return sizeof boot_img_magic            +
+    return BOOT_MAGIC_SZ                    +
            boot_status_sz(min_write_sz)     +
            min_write_sz * 2;
 }
@@ -188,7 +190,7 @@ boot_magic_off(const struct flash_area *fap)
 uint32_t
 boot_status_off(const struct flash_area *fap)
 {
-    return boot_magic_off(fap) + sizeof boot_img_magic;
+    return boot_magic_off(fap) + BOOT_MAGIC_SZ;
 }
 
 static uint32_t
@@ -207,12 +209,12 @@ int
 boot_read_swap_state(const struct flash_area *fap,
                      struct boot_swap_state *state)
 {
-    uint32_t magic[4];
+    uint32_t magic[BOOT_MAGIC_SZ];
     uint32_t off;
     int rc;
 
     off = boot_magic_off(fap);
-    rc = flash_area_read(fap, off, magic, sizeof magic);
+    rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -297,7 +299,7 @@ boot_write_magic(const struct flash_area *fap)
 
     off = boot_magic_off(fap);
 
-    rc = flash_area_write(fap, off, boot_img_magic, sizeof boot_img_magic);
+    rc = flash_area_write(fap, off, boot_img_magic, BOOT_MAGIC_SZ);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
