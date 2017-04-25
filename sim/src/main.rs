@@ -255,10 +255,14 @@ impl RunStatus {
             failed = true;
         }
 
-        let (fl4, total_counts) = try_random_fails(&flash, &areadesc, 5);
-        info!("Random fails at counts={:?}", total_counts);
-        if !verify_image(&fl4, slot0_base, &upgrade) {
-            error!("Image mismatch after random fails");
+        let (fl4, total_counts) = try_random_fails(&flash, &areadesc, total_count, 5);
+        info!("Random fails at reset points={:?}", total_counts);
+        let slot0_ok = verify_image(&fl4, slot0_base, &upgrade);
+        let slot1_ok = verify_image(&fl4, slot1_base, &primary);
+        if !slot0_ok || !slot1_ok {
+            error!("Image mismatch after random fails: slot0={} slot1={}",
+                   if slot0_ok { "ok" } else { "fail" },
+                   if slot1_ok { "ok" } else { "fail" });
             self.failures += 1;
             return;
         }
@@ -305,6 +309,12 @@ impl RunStatus {
 fn try_upgrade(flash: &Flash, areadesc: &AreaDesc, stop: Option<i32>) -> (Flash, i32) {
     // Clone the flash to have a new copy.
     let mut fl = flash.clone();
+
+    // mark permanent upgrade
+    let ok = [1u8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
+    let (base, _) = areadesc.find(FlashId::ImageScratch);
+    let align = c::get_sim_flash_align() as usize;
+    fl.write(base - align, &ok[..align]).unwrap();
 
     c::set_flash_counter(stop.unwrap_or(0));
     let (first_interrupted, cnt1) = match c::boot_go(&mut fl, &areadesc) {
@@ -354,28 +364,29 @@ fn try_norevert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
     fl
 }
 
-fn try_random_fails(flash: &Flash, areadesc: &AreaDesc, count: usize) -> (Flash, Vec<i32>) {
-    // Clone the flash to have a new copy.
+fn try_random_fails(flash: &Flash, areadesc: &AreaDesc, total_ops: i32, 
+                    count: usize) -> (Flash, Vec<i32>) {
     let mut fl = flash.clone();
 
-    c::set_flash_counter(0);
-    let (_, total_ops) = match c::boot_go(&mut fl, &areadesc) {
-        -0x13579 => panic!("Should not be have been interrupted!"),
-        0 => (false, -c::get_flash_counter()),
-        x => panic!("Unknown return: {}", x),
-    };
+    // mark permanent upgrade
+    let ok = [1u8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
+    let (base, _) = areadesc.find(FlashId::ImageScratch);
+    let align = c::get_sim_flash_align() as usize;
+    fl.write(base - align, &ok[..align]).unwrap();
 
     let mut rng = rand::thread_rng();
-    let ops = Range::new(1, total_ops);
-    let mut stops = vec![0i32; count];
+    let mut resets = vec![0i32; count];
+    let mut remaining_ops = total_ops;
     for i in 0 .. count {
+        let ops = Range::new(1, remaining_ops / 2);
         let reset_counter = ops.ind_sample(&mut rng);
         c::set_flash_counter(reset_counter);
         match c::boot_go(&mut fl, &areadesc) {
             0 | -0x13579 => (),
             x => panic!("Unknown return: {}", x),
         }
-        stops[i] = reset_counter;
+        remaining_ops -= reset_counter;
+        resets[i] = reset_counter;
     }
 
     c::set_flash_counter(0);
@@ -385,7 +396,7 @@ fn try_random_fails(flash: &Flash, areadesc: &AreaDesc, count: usize) -> (Flash,
         x => panic!("Unknown return: {}", x),
     }
 
-    (fl, stops)
+    (fl, resets)
 }
 
 /// Show the flash layout.
