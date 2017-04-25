@@ -39,6 +39,8 @@ struct flash_area;
 
 #define BOOT_TMPBUF_SZ  256
 
+#define BOOT_MAX_ALIGN  8
+
 /*
  * Maintain state of copy progress.
  */
