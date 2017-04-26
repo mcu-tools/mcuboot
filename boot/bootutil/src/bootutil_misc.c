@@ -31,6 +31,9 @@
 #include "bootutil/bootutil.h"
 #include "bootutil_priv.h"
 
+#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
+#include "bootutil/bootutil_log.h"
+
 int boot_current_slot;
 
 const uint32_t boot_img_magic[] = {
@@ -160,16 +163,18 @@ boot_magic_code(const uint32_t *magic)
 }
 
 uint32_t
-boot_status_sz(uint8_t min_write_sz)
+boot_slots_trailer_sz(uint8_t min_write_sz)
 {
-    return BOOT_STATUS_MAX_ENTRIES * BOOT_STATUS_STATE_COUNT * min_write_sz;
+    return BOOT_MAGIC_SZ                                                    +
+           BOOT_STATUS_MAX_ENTRIES * BOOT_STATUS_STATE_COUNT * min_write_sz +
+           min_write_sz * 2;
 }
 
-uint32_t
-boot_trailer_sz(uint8_t min_write_sz)
+static uint32_t
+boot_scratch_trailer_sz(uint8_t min_write_sz)
 {
-    return BOOT_MAGIC_SZ                    +
-           boot_status_sz(min_write_sz)     +
+    return BOOT_MAGIC_SZ                           +
+           BOOT_STATUS_STATE_COUNT * min_write_sz  +
            min_write_sz * 2;
 }
 
@@ -181,7 +186,11 @@ boot_magic_off(const struct flash_area *fap)
 
     elem_sz = flash_area_align(fap);
 
-    off_from_end = boot_trailer_sz(elem_sz);
+    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
+        off_from_end = boot_scratch_trailer_sz(elem_sz);
+    } else {
+        off_from_end = boot_slots_trailer_sz(elem_sz);
+    }
 
     assert(off_from_end <= fap->fa_size);
     return fap->fa_size - off_from_end;
@@ -379,7 +388,13 @@ boot_swap_type(void)
              table->bsw_image_ok_slot0  == state_slot0.image_ok)        &&
             (table->bsw_image_ok_slot1  == 0    ||
              table->bsw_image_ok_slot1  == state_slot1.image_ok)) {
-
+            BOOT_LOG_INF("Swap type: %s\n",
+                   table->bsw_swap_type == BOOT_SWAP_TYPE_NONE   ? "none"   :
+                   table->bsw_swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
+                   table->bsw_swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
+                   table->bsw_swap_type == BOOT_SWAP_TYPE_REVERT ? "revert" :
+                   table->bsw_swap_type == BOOT_SWAP_TYPE_FAIL   ? "fail"   :
+                   "BUG; can't happen");
             return table->bsw_swap_type;
         }
     }

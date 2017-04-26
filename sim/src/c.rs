@@ -22,7 +22,7 @@ pub fn set_flash_counter(counter: i32) {
 }
 
 pub fn boot_trailer_sz() -> u32 {
-    unsafe { raw::boot_trailer_sz(raw::sim_flash_align) }
+    unsafe { raw::boot_slots_trailer_sz(raw::sim_flash_align) }
 }
 
 pub fn get_sim_flash_align() -> u8 {
@@ -45,6 +45,6 @@ mod raw {
         pub static mut flash_counter: libc::c_int;
 
         pub static mut sim_flash_align: u8;
-        pub fn boot_trailer_sz(min_write_sz: u8) -> u32;
+        pub fn boot_slots_trailer_sz(min_write_sz: u8) -> u32;
     }
 }

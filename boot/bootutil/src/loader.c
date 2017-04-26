@@ -175,7 +175,6 @@ boot_status_source(void)
     const struct boot_status_table *table;
     struct boot_swap_state state_scratch;
     struct boot_swap_state state_slot0;
-    struct boot_swap_state state_slot1;
     int rc;
     int i;
     uint8_t source;
@@ -183,18 +182,14 @@ boot_status_source(void)
     rc = boot_read_swap_state_img(0, &state_slot0);
     assert(rc == 0);
 
-    rc = boot_read_swap_state_img(1, &state_slot1);
-    assert(rc == 0);
-
     rc = boot_read_swap_state_scratch(&state_scratch);
     assert(rc == 0);
 
     BOOT_LOG_SWAP_STATE("Image 0", &state_slot0);
-    BOOT_LOG_SWAP_STATE("Image 1", &state_slot1);
     BOOT_LOG_SWAP_STATE("Scratch", &state_scratch);
 
     for (i = 0; i < BOOT_STATUS_TABLES_COUNT; i++) {
-        table = boot_status_tables + i;
+        table = &boot_status_tables[i];
 
         if ((table->bst_magic_slot0     == 0    ||
              table->bst_magic_slot0     == state_slot0.magic)   &&
@@ -232,7 +227,7 @@ boot_previous_swap_type(void)
             return boot_swap_trans_table[i][0];
         }
     }
-    
+
     /* XXX: Temporary assert. */
     assert(0);
 
@@ -275,9 +270,9 @@ boot_read_image_headers(void)
     for (i = 0; i < BOOT_NUM_SLOTS; i++) {
         rc = boot_read_image_header(i, &boot_data.imgs[i].hdr);
         if (rc != 0) {
-            /* If at least one header was read successfully, then the boot
-             * loader can attempt a boot.  Failure to read any headers is a
-             * fatal error.
+            /* If at least the first slot's header was read successfully, then
+             * the boot loader can attempt a boot.  Failure to read any headers
+             * is a fatal error.
              */
             if (i > 0) {
                 return 0;
@@ -376,6 +371,7 @@ static uint32_t
 boot_status_internal_off(int idx, int state, int elem_sz)
 {
     int idx_sz;
+    uint32_t status_off;
 
     idx_sz = elem_sz * BOOT_STATUS_STATE_COUNT;
 
@@ -392,14 +388,20 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
 {
     uint32_t off;
     uint8_t status;
+    int max_entries;
     int found;
     int rc;
     int i;
 
     off = boot_status_off(fap);
 
+    max_entries = BOOT_STATUS_STATE_COUNT;
+    if (fap->fa_id != FLASH_AREA_IMAGE_SCRATCH) {
+        max_entries *= BOOT_STATUS_MAX_ENTRIES;
+    }
+
     found = 0;
-    for (i = 0; i < BOOT_STATUS_MAX_ENTRIES; i++) {
+    for (i = 0; i < max_entries; i++) {
         rc = flash_area_read(fap, off + i * boot_data.write_sz, &status, 1);
         if (rc != 0) {
             return BOOT_EFLASH;
@@ -416,8 +418,13 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
 
     if (found) {
         i--;
-        bs->idx = i / BOOT_STATUS_STATE_COUNT;
-        bs->state = i % BOOT_STATUS_STATE_COUNT;
+        if (fap->fa_id != FLASH_AREA_IMAGE_SCRATCH) {
+            bs->idx = i / BOOT_STATUS_STATE_COUNT;
+            bs->state = i % BOOT_STATUS_STATE_COUNT;
+        } else {
+            bs->idx = 0;
+            bs->state = i;
+        }
     }
 
     return 0;
@@ -462,12 +469,7 @@ boot_read_status(struct boot_status *bs)
         return BOOT_EFLASH;
     }
 
-    rc = boot_read_status_bytes(fap, bs);
-    if (rc != 0) {
-        return rc;
-    }
-
-    return 0;
+    return boot_read_status_bytes(fap, bs);
 }
 
 /**
@@ -487,6 +489,11 @@ boot_write_status(struct boot_status *bs)
     int rc;
     uint8_t buf[8];
     uint8_t align;
+
+    /* NOTE: The first sector copied (that is the last sector on slot) contains
+     *       the trailer. Since in the last step SLOT 0 is erased, the first
+     *       two status writes go to the scratch which will be copied to SLOT 0!
+     */
 
     if (bs->idx == 0) {
         /* Write to scratch. */
@@ -571,11 +578,11 @@ boot_validate_slot(int slot)
 {
     const struct flash_area *fap;
     int rc;
-    
+
     if (boot_data.imgs[slot].hdr.ih_magic == 0xffffffff ||
         boot_data.imgs[slot].hdr.ih_flags & IMAGE_F_NON_BOOTABLE) {
 
-        /* No bootable image in slot 1; continue booting from slot 0. */
+        /* No bootable image in slot; continue booting from slot 0. */
         return -1;
     }
 
@@ -793,39 +800,60 @@ done:
 static void
 boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 {
+    const struct flash_area *fap;
     uint32_t copy_sz;
+    uint32_t trailer_sz;
     uint32_t img_off;
+    uint32_t scratch_trailer_off;
+    struct boot_swap_state swap_state;
     int rc;
 
     /* Calculate offset from start of image area. */
     img_off = boot_data.imgs[0].sectors[idx].fa_off -
               boot_data.imgs[0].sectors[0].fa_off;
 
+    copy_sz = sz;
+
+    trailer_sz = boot_slots_trailer_sz(boot_data.write_sz);
+    if (boot_data.imgs[0].sectors[idx].fa_off + sz >
+        boot_data.imgs[0].sectors[boot_data.imgs[0].num_sectors - 1].fa_off) {
+        copy_sz -= trailer_sz;
+    }
+
     if (bs->state == 0) {
         rc = boot_erase_sector(FLASH_AREA_IMAGE_SCRATCH, 0, sz);
         assert(rc == 0);
 
         rc = boot_copy_sector(FLASH_AREA_IMAGE_1, FLASH_AREA_IMAGE_SCRATCH,
-                              img_off, 0, sz);
+                              img_off, 0, copy_sz);
         assert(rc == 0);
+
+        if (copy_sz != sz) {
+            rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap);
+            assert(rc == 0);
+
+            rc = boot_read_swap_state_img(1, &swap_state);
+            assert(rc == 0);
+
+            if (swap_state.image_ok == 0x01) {
+                rc = boot_write_image_ok(fap);
+                assert(rc == 0);
+            }
+
+            rc = boot_write_magic(fap);
+            assert(rc == 0);
+
+            flash_area_close(fap);
+        }
 
         bs->state = 1;
         rc = boot_write_status(bs);
         assert(rc == 0);
     }
+
     if (bs->state == 1) {
         rc = boot_erase_sector(FLASH_AREA_IMAGE_1, img_off, sz);
         assert(rc == 0);
-
-        copy_sz = sz;
-        if (boot_data.imgs[0].sectors[idx].fa_off + sz >=
-            boot_data.imgs[1].sectors[0].fa_off) {
-
-            /* This is the end of the area.  Don't copy the image state into
-             * slot 1.
-             */
-            copy_sz -= boot_trailer_sz(boot_data.write_sz);
-        }
 
         rc = boot_copy_sector(FLASH_AREA_IMAGE_0, FLASH_AREA_IMAGE_1,
                               img_off, img_off, copy_sz);
@@ -835,13 +863,47 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
         rc = boot_write_status(bs);
         assert(rc == 0);
     }
+
     if (bs->state == 2) {
         rc = boot_erase_sector(FLASH_AREA_IMAGE_0, img_off, sz);
         assert(rc == 0);
 
+        /* NOTE: also copy trailer from scratch (has status info) */
         rc = boot_copy_sector(FLASH_AREA_IMAGE_SCRATCH, FLASH_AREA_IMAGE_0,
-                              0, img_off, sz);
+                              0, img_off, copy_sz);
         assert(rc == 0);
+
+        if (copy_sz != sz) {
+            rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap);
+            assert(rc == 0);
+
+            scratch_trailer_off = boot_status_off(fap);
+
+            flash_area_close(fap);
+
+            rc = flash_area_open(FLASH_AREA_IMAGE_0, &fap);
+            assert(rc == 0);
+
+            /* copy current status that is being maintained in scratch */
+            rc = boot_copy_sector(FLASH_AREA_IMAGE_SCRATCH, FLASH_AREA_IMAGE_0,
+                            scratch_trailer_off,
+                            img_off + copy_sz + BOOT_MAGIC_SZ,
+                            BOOT_STATUS_STATE_COUNT * boot_data.write_sz);
+            assert(rc == 0);
+
+            rc = boot_read_swap_state_scratch(&swap_state);
+            assert(rc == 0);
+
+            if (swap_state.image_ok == 0x01) {
+                rc = boot_write_image_ok(fap);
+                assert(rc == 0);
+            }
+
+            rc = boot_write_magic(fap);
+            assert(rc == 0);
+
+            flash_area_close(fap);
+        }
 
         bs->idx++;
         bs->state = 0;
@@ -1012,6 +1074,7 @@ boot_swap_if_needed(int *out_swap_type)
      * operation.
      */
     rc = boot_read_status(&bs);
+    assert(rc == 0);
     if (rc != 0) {
         return rc;
     }
@@ -1083,6 +1146,7 @@ boot_go(struct boot_rsp *rsp)
      */
     if (boot_slots_compatible()) {
         rc = boot_swap_if_needed(&swap_type);
+        assert(rc == 0);
         if (rc != 0) {
             return rc;
         }
@@ -1094,6 +1158,7 @@ boot_go(struct boot_rsp *rsp)
     case BOOT_SWAP_TYPE_NONE:
 #ifdef BOOTUTIL_VALIDATE_SLOT0
         rc = boot_validate_slot(0);
+        assert(rc == 0);
         if (rc != 0) {
             return BOOT_EBADIMAGE;
         }

@@ -86,10 +86,12 @@ struct boot_swap_state {
 #define BOOT_STATUS_SOURCE_SCRATCH 1
 #define BOOT_STATUS_SOURCE_SLOT0   2
 
+extern const uint32_t BOOT_MAGIC_SZ;
+
 int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
     uint8_t key_id);
 
-uint32_t boot_trailer_sz(uint8_t min_write_sz);
+uint32_t boot_slots_trailer_sz(uint8_t min_write_sz);
 uint32_t boot_status_off(const struct flash_area *fap);
 int boot_read_swap_state(const struct flash_area *fap,
                          struct boot_swap_state *state);
@@ -100,8 +102,6 @@ int boot_write_status(struct boot_status *bs);
 int boot_schedule_test_swap(void);
 int boot_write_copy_done(const struct flash_area *fap);
 int boot_write_image_ok(const struct flash_area *fap);
-
-uint32_t boot_status_sz(uint8_t min_write_sz);
 
 #ifdef __cplusplus
 }
