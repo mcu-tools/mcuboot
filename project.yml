@@ -26,6 +26,6 @@ project.repositories:
 # This provides mirroring automatically for us.
 repository.apache-mynewt-core:
     type: github
-    vers: 0-latest
+    vers: 0-dev
     user: apache
     repo: incubator-mynewt-core
