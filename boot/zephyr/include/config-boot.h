@@ -26,8 +26,8 @@
  * - RSA or ECDSA signature verification
  */
 
-#ifndef MBEDTLS_CONFIG_H
-#define MBEDTLS_CONFIG_H
+#ifndef MBEDTLS_CONFIG_BOOT_H
+#define MBEDTLS_CONFIG_BOOT_H
 
 /* TODO: Configure this between app and target.  Really, we want the
  * config to come from the app. */
@@ -94,4 +94,4 @@
 
 #include "mbedtls/check_config.h"
 
-#endif /* MBEDTLS_CONFIG_H */
+#endif /* MBEDTLS_CONFIG_BOOT_H */
