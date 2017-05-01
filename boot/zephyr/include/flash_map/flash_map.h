@@ -76,6 +76,13 @@ struct flash_area {
 };
 
 /*
+ * Retrieve a memory-mapped flash device's base address.
+ *
+ * Returns 0 on success, or an error code on failure.
+ */
+int flash_device_base(uint8_t fd_id, uint32_t *ret);
+
+/*
  * Start using flash area.
  */
 int flash_area_open(uint8_t id, const struct flash_area **);

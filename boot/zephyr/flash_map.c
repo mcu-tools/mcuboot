@@ -32,26 +32,49 @@
 extern struct device *boot_flash_device;
 
 /*
+ * For now, we only support one flash device.
+ *
+ * Pick a random device ID for it that's unlikely to collide with
+ * anything "real".
+ */
+#define FLASH_DEVICE_ID 100
+#define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
+
+/*
  * The flash area describes essentially the partition table of the
  * flash.  In this case, it starts with FLASH_AREA_IMAGE_0.
  */
 static const struct flash_area part_map[] = {
     {
         .fa_id = FLASH_AREA_IMAGE_0,
+        .fa_device_id = FLASH_DEVICE_ID,
         .fa_off = FLASH_AREA_IMAGE_0_OFFSET,
         .fa_size = FLASH_AREA_IMAGE_0_SIZE,
     },
     {
         .fa_id = FLASH_AREA_IMAGE_1,
+        .fa_device_id = FLASH_DEVICE_ID,
         .fa_off = FLASH_AREA_IMAGE_1_OFFSET,
         .fa_size = FLASH_AREA_IMAGE_1_SIZE,
     },
     {
         .fa_id = FLASH_AREA_IMAGE_SCRATCH,
+        .fa_device_id = FLASH_DEVICE_ID,
         .fa_off = FLASH_AREA_IMAGE_SCRATCH_OFFSET,
         .fa_size = FLASH_AREA_IMAGE_SCRATCH_SIZE,
     },
 };
+
+int flash_device_base(uint8_t fd_id, uint32_t *ret)
+{
+    if (fd_id != FLASH_DEVICE_ID) {
+        BOOT_LOG_ERR("invalid flash ID %d; expected %d",
+                     fd_id, FLASH_DEVICE_ID);
+        return -EINVAL;
+    }
+    *ret = FLASH_DEVICE_BASE;
+    return 0;
+}
 
 /*
  * `open` a flash area.  The `area` in this case is not the individual
