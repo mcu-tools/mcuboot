@@ -43,11 +43,35 @@ extern "C" {
  */
 #include <inttypes.h>
 
+/**
+ * @brief Structure describing an area on a flash device.
+ *
+ * Multiple flash devices may be available in the system, each of
+ * which may have its own areas. For this reason, flash areas track
+ * which flash device they are part of.
+ */
 struct flash_area {
+    /**
+     * This flash area's ID; unique in the system.
+     */
     uint8_t fa_id;
+
+    /**
+     * ID of the flash device this area is a part of.
+     */
     uint8_t fa_device_id;
+
     uint16_t pad16;
+
+    /**
+     * This area's offset, relative to the beginning of its flash
+     * device's storage.
+     */
     uint32_t fa_off;
+
+    /**
+     * This area's size, in bytes.
+     */
     uint32_t fa_size;
 };
 
