@@ -45,7 +45,7 @@ static void do_boot(struct boot_rsp *rsp)
      * consecutively. Manually set the stack pointer and jump into the
      * reset vector
      */
-    vt = (struct arm_vector_table *)(rsp->br_image_addr +
+    vt = (struct arm_vector_table *)(rsp->br_image_off +
                                      rsp->br_hdr->ih_hdr_size);
     irq_lock();
     sys_clock_disable();
@@ -61,7 +61,7 @@ static void do_boot(struct boot_rsp *rsp)
 {
     void *start;
 
-    start = (void *)(rsp->br_image_addr + rsp->br_hdr->ih_hdr_size);
+    start = (void *)(rsp->br_image_off + rsp->br_hdr->ih_hdr_size);
 
     /* Lock interrupts and dive into the entry point */
     irq_lock();
@@ -92,7 +92,7 @@ void main(void)
             ;
     }
 
-    BOOT_LOG_INF("Bootloader chainload address: 0x%x", rsp.br_image_addr);
+    BOOT_LOG_INF("Bootloader chainload address offset: 0x%x", rsp.br_image_off);
     BOOT_LOG_INF("Jumping to the first image slot");
     do_boot(&rsp);
 
