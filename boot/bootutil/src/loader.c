@@ -1288,7 +1288,7 @@ boot_go(struct boot_rsp *rsp)
 
     /* Always boot from the primary slot. */
     rsp->br_flash_id = boot_img_fa_device_id(&boot_data, 0);
-    rsp->br_image_addr = boot_img_slot_off(&boot_data, 0);
+    rsp->br_image_off = boot_img_slot_off(&boot_data, 0);
     rsp->br_hdr = boot_img_hdr(&boot_data, slot);
 
  out:

@@ -70,7 +70,7 @@ main(void)
     rc = boot_go(&rsp);
     assert(rc == 0);
 
-    hal_system_start((void *)(rsp.br_image_addr + rsp.br_hdr->ih_hdr_size));
+    hal_system_start((void *)(rsp.br_image_off + rsp.br_hdr->ih_hdr_size));
 
     return 0;
 }
