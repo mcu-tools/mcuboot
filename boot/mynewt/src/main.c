@@ -43,10 +43,23 @@
 #define BOOT_SER_CONS_INPUT         128
 #endif
 
+/*
+ * Temporary flash_device_base() implementation.
+ *
+ * TODO: remove this when mynewt needs to support flash_device_base()
+ * for devices with nonzero base addresses.
+ */
+int flash_device_base(uint8_t fd_id, uintptr_t *ret)
+{
+    *ret = 0;
+    return 0;
+}
+
 int
 main(void)
 {
     struct boot_rsp rsp;
+    uintptr_t flash_base;
     int rc;
 
 #ifdef MCUBOOT_SERIAL
@@ -70,7 +83,11 @@ main(void)
     rc = boot_go(&rsp);
     assert(rc == 0);
 
-    hal_system_start((void *)(rsp.br_image_off + rsp.br_hdr->ih_hdr_size));
+    rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
+    assert(rc == 0);
+
+    hal_system_start((void *)(flash_base + rsp.br_image_off +
+                              rsp.br_hdr->ih_hdr_size));
 
     return 0;
 }
