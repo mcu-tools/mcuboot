@@ -75,6 +75,25 @@ struct flash_area {
     uint32_t fa_size;
 };
 
+/**
+ * @brief Structure describing a sector within a flash area.
+ *
+ * Each sector has an offset relative to the start of its flash area
+ * (NOT relative to the start of its flash device), and a size. A
+ * flash area may contain sectors with different sizes.
+ */
+struct flash_sector {
+    /**
+     * Offset of this sector, from the start of its flash area (not device).
+     */
+    uint32_t fs_off;
+
+    /**
+     * Size of this sector, in bytes.
+     */
+    uint32_t fs_size;
+};
+
 /*
  * Retrieve a memory-mapped flash device's base address.
  *
@@ -104,8 +123,16 @@ int flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
 uint8_t flash_area_align(const struct flash_area *);
 
 /*
- * Given flash map index, return info about sectors within the area.
+ * Given flash area ID, return info about sectors within the area.
  */
+int flash_area_get_sectors(int fa_id, uint32_t *count,
+  struct flash_sector *sectors);
+
+/*
+ * Similar to flash_area_get_sectors(), but return the values in an
+ * array of struct flash_area instead.
+ */
+__attribute__((deprecated))
 int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret);
 
 int flash_area_id_from_image_slot(int slot);
