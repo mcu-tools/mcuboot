@@ -10,6 +10,9 @@
 
 #include "../../boot/bootutil/src/bootutil_priv.h"
 
+#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_DEBUG
+#include <bootutil/bootutil_log.h>
+
 extern int sim_flash_erase(void *flash, uint32_t offset, uint32_t size);
 extern int sim_flash_read(void *flash, uint32_t offset, uint8_t *dest, uint32_t size);
 extern int sim_flash_write(void *flash, uint32_t offset, const uint8_t *src, uint32_t size);
@@ -133,6 +136,8 @@ void flash_area_close(const struct flash_area *area)
 int flash_area_read(const struct flash_area *area, uint32_t off, void *dst,
 		    uint32_t len)
 {
+	BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x",
+		     __func__, area->fa_id, off, len);
 	return hal_flash_read(area->fa_id,
 			      area->fa_off + off,
 			      dst, len);
@@ -141,6 +146,7 @@ int flash_area_read(const struct flash_area *area, uint32_t off, void *dst,
 int flash_area_write(const struct flash_area *area, uint32_t off, const void *src,
 		     uint32_t len)
 {
+	BOOT_LOG_DBG("area=%d, off=%x, len=%x", area->fa_id, off, len);
 	return hal_flash_write(area->fa_id,
 			       area->fa_off + off,
 			       src, len);
@@ -148,6 +154,7 @@ int flash_area_write(const struct flash_area *area, uint32_t off, const void *sr
 
 int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
 {
+	BOOT_LOG_DBG("area=%d, off=%x, len=%x", area->fa_id, off, len);
 	return hal_flash_erase(area->fa_id,
 			       area->fa_off + off,
 			       len);
