@@ -40,29 +40,46 @@ extern struct device *boot_flash_device;
 #define FLASH_DEVICE_ID 100
 #define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
 
+#define FLASH_MAP_ENTRY_MAGIC 0xd00dbeef
+
+struct flash_map_entry {
+    const uint32_t magic;
+    const struct flash_area area;
+    unsigned int ref_count;
+};
+
 /*
  * The flash area describes essentially the partition table of the
  * flash.  In this case, it starts with FLASH_AREA_IMAGE_0.
  */
-static const struct flash_area part_map[] = {
+static struct flash_map_entry part_map[] = {
     {
-        .fa_id = FLASH_AREA_IMAGE_0,
-        .fa_device_id = FLASH_DEVICE_ID,
-        .fa_off = FLASH_AREA_IMAGE_0_OFFSET,
-        .fa_size = FLASH_AREA_IMAGE_0_SIZE,
+        .magic = FLASH_MAP_ENTRY_MAGIC,
+        .area = {
+            .fa_id = FLASH_AREA_IMAGE_0,
+            .fa_device_id = FLASH_DEVICE_ID,
+            .fa_off = FLASH_AREA_IMAGE_0_OFFSET,
+            .fa_size = FLASH_AREA_IMAGE_0_SIZE,
+        },
     },
     {
-        .fa_id = FLASH_AREA_IMAGE_1,
-        .fa_device_id = FLASH_DEVICE_ID,
-        .fa_off = FLASH_AREA_IMAGE_1_OFFSET,
-        .fa_size = FLASH_AREA_IMAGE_1_SIZE,
+        .magic = FLASH_MAP_ENTRY_MAGIC,
+        .area = {
+            .fa_id = FLASH_AREA_IMAGE_1,
+            .fa_device_id = FLASH_DEVICE_ID,
+            .fa_off = FLASH_AREA_IMAGE_1_OFFSET,
+            .fa_size = FLASH_AREA_IMAGE_1_SIZE,
+        },
     },
     {
-        .fa_id = FLASH_AREA_IMAGE_SCRATCH,
-        .fa_device_id = FLASH_DEVICE_ID,
-        .fa_off = FLASH_AREA_IMAGE_SCRATCH_OFFSET,
-        .fa_size = FLASH_AREA_IMAGE_SCRATCH_SIZE,
-    },
+        .magic = FLASH_MAP_ENTRY_MAGIC,
+        .area = {
+            .fa_id = FLASH_AREA_IMAGE_SCRATCH,
+            .fa_device_id = FLASH_DEVICE_ID,
+            .fa_off = FLASH_AREA_IMAGE_SCRATCH_OFFSET,
+            .fa_size = FLASH_AREA_IMAGE_SCRATCH_SIZE,
+        },
+    }
 };
 
 int flash_device_base(uint8_t fd_id, uintptr_t *ret)
@@ -87,7 +104,7 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
     BOOT_LOG_DBG("area %d", id);
 
     for (i = 0; i < ARRAY_SIZE(part_map); i++) {
-        if (id == part_map[i].fa_id) {
+        if (id == part_map[i].area.fa_id) {
             break;
         }
     }
@@ -95,7 +112,8 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
         return -1;
     }
 
-    *area = &part_map[i];
+    *area = &part_map[i].area;
+    part_map[i].ref_count++;
     return 0;
 }
 
@@ -104,6 +122,30 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
  */
 void flash_area_close(const struct flash_area *area)
 {
+    struct flash_map_entry *entry = CONTAINER_OF(area, struct flash_map_entry,
+                                                 area);
+    if (entry->magic != FLASH_MAP_ENTRY_MAGIC) {
+        BOOT_LOG_ERR("invalid area %p (id %u)", area, area->fa_id);
+        return;
+    }
+    if (entry->ref_count == 0) {
+        BOOT_LOG_ERR("area %u use count underflow", area->fa_id);
+        return;
+    }
+    entry->ref_count--;
+}
+
+void zephyr_flash_area_warn_on_open(void)
+{
+    int i;
+
+    for (i = 0; i < ARRAY_SIZE(part_map); i++) {
+        struct flash_map_entry *entry = &part_map[i];
+        if (entry->ref_count) {
+            BOOT_LOG_WRN("area %u has %u users",
+                         entry->area.fa_id, entry->ref_count);
+        }
+    }
 }
 
 int flash_area_read(const struct flash_area *area, uint32_t off, void *dst,
