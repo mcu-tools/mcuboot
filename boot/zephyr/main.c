@@ -38,6 +38,8 @@ struct arm_vector_table {
     uint32_t reset;
 };
 
+extern void zephyr_flash_area_warn_on_open(void);
+
 static void do_boot(struct boot_rsp *rsp)
 {
     struct arm_vector_table *vt;
@@ -108,6 +110,7 @@ void main(void)
 
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
                  rsp.br_image_off);
+    zephyr_flash_area_warn_on_open();
     BOOT_LOG_INF("Jumping to the first image slot");
     do_boot(&rsp);
 
