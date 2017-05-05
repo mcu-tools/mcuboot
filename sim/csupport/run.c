@@ -110,7 +110,6 @@ int flash_area_id_from_image_slot(int slot)
 int flash_area_open(uint8_t id, const struct flash_area **area)
 {
 	int i;
-	struct area *slot;
 
 	for (i = 0; i < flash_areas->num_slots; i++) {
 		if (flash_areas->slots[i].id == id)
