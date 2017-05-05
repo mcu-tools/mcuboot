@@ -644,6 +644,7 @@ boot_validated_swap_type(void)
  * @return                      The number of bytes comprised by the
  *                                  [first-sector, last-sector] range.
  */
+#ifndef BOOTUTIL_OVERWRITE_ONLY
 static uint32_t
 boot_copy_sz(int last_sector_idx, int *out_first_sector_idx)
 {
@@ -667,6 +668,7 @@ boot_copy_sz(int last_sector_idx, int *out_first_sector_idx)
     *out_first_sector_idx = i + 1;
     return sz;
 }
+#endif /* not BOOTUTIL_OVERWRITE_ONLY */
 
 /**
  * Erases a region of flash.
@@ -787,6 +789,7 @@ done:
  *
  * @return                      0 on success; nonzero on failure.
  */
+#ifndef BOOTUTIL_OVERWRITE_ONLY
 static void
 boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 {
@@ -846,6 +849,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
         assert(rc == 0);
     }
 }
+#endif /* not BOOTUTIL_OVERWRITE_ONLY */
 
 /**
  * Swaps the two images in flash.  If a prior copy operation was interrupted
@@ -859,6 +863,44 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
  *
  * @return                      0 on success; nonzero on failure.
  */
+#ifdef BOOTUTIL_OVERWRITE_ONLY
+static int
+boot_copy_image(struct boot_status *bs)
+{
+    int sect_count;
+    int sect;
+    int rc;
+    uint32_t size = 0;
+    uint32_t this_size;
+
+    BOOT_LOG_INF("Image upgrade slot1 -> slot0");
+    BOOT_LOG_INF("Erasing slot0");
+
+    sect_count = boot_data.imgs[0].num_sectors;
+    for (sect = 0; sect < sect_count; sect++) {
+        this_size = boot_data.imgs[0].sectors[sect].fa_size;
+        rc = boot_erase_sector(FLASH_AREA_IMAGE_0,
+                               size,
+                               this_size);
+        assert(rc == 0);
+
+        size += this_size;
+    }
+
+    BOOT_LOG_INF("Copying slot 1 to slot 0: 0x%x bytes",
+                 size);
+    rc = boot_copy_sector(FLASH_AREA_IMAGE_1, FLASH_AREA_IMAGE_0,
+                          0, 0, size);
+
+    /* Erase slot 1 so that we don't do the upgrade on every boot.
+     * TODO: Perhaps verify slot 0's signature again? */
+    rc = boot_erase_sector(FLASH_AREA_IMAGE_1,
+                           0, boot_data.imgs[1].sectors[0].fa_size);
+    assert(rc == 0);
+
+    return 0;
+}
+#else
 static int
 boot_copy_image(struct boot_status *bs)
 {
@@ -881,6 +923,7 @@ boot_copy_image(struct boot_status *bs)
 
     return 0;
 }
+#endif
 
 /**
  * Marks a test image in slot 0 as fully copied.

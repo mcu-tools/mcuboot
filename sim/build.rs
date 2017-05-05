@@ -18,6 +18,7 @@ fn main() {
     conf.debug(true);
     conf.flag("-Wall");
     conf.define("__BOOTSIM__", None);
+    // conf.define("BOOTUTIL_OVERWRITE_ONLY", None);
     conf.compile("libbootutil.a");
     walk_dir("../boot").unwrap();
     walk_dir("csupport").unwrap();
