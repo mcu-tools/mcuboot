@@ -79,29 +79,29 @@ extern "C" {
 #endif
 
 #if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_ERROR
-#define BOOT_LOG_ERR(...)						\
-    do { printf("[ERR] " __VA_ARGS__); printf("\n"); } while (0)
+#define BOOT_LOG_ERR(_fmt, ...)						\
+    do { printf("[ERR] " _fmt "\n", ##__VA_ARGS__); } while (0)
 #else
 #define BOOT_LOG_ERR(...) IGNORE(__VA_ARGS__)
 #endif
 
 #if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_WARNING
-#define BOOT_LOG_WRN(...)                                               \
-    do { printf("[WRN] " __VA_ARGS__); printf("\n"); } while (0)
+#define BOOT_LOG_WRN(_fmt, ...)                                               \
+    do { printf("[WRN] " _fmt "\n", ##__VA_ARGS__); } while (0)
 #else
 #define BOOT_LOG_WRN(...) IGNORE(__VA_ARGS__)
 #endif
 
 #if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_INFO
-#define BOOT_LOG_INF(...)                                               \
-    do { printf("[INF] " __VA_ARGS__); printf("\n"); } while (0)
+#define BOOT_LOG_INF(_fmt, ...)                                               \
+    do { printf("[INF] " _fmt "\n", ##__VA_ARGS__); } while (0)
 #else
 #define BOOT_LOG_INF(...) IGNORE(__VA_ARGS__)
 #endif
 
 #if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_DEBUG
-#define BOOT_LOG_DBG(...)                                               \
-    do { printf("[DBG] " __VA_ARGS__); printf("\n"); } while (0)
+#define BOOT_LOG_DBG(_fmt, ...)                                               \
+    do { printf("[DBG] " _fmt "\n", ##__VA_ARGS__); } while (0)
 #else
 #define BOOT_LOG_DBG(...) IGNORE(__VA_ARGS__)
 #endif
