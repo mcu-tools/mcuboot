@@ -232,7 +232,7 @@ boot_previous_swap_type(void)
             return boot_swap_trans_table[i][0];
         }
     }
-    
+
     /* XXX: Temporary assert. */
     assert(0);
 
@@ -571,7 +571,7 @@ boot_validate_slot(int slot)
 {
     const struct flash_area *fap;
     int rc;
-    
+
     if (boot_data.imgs[slot].hdr.ih_magic == 0xffffffff ||
         boot_data.imgs[slot].hdr.ih_flags & IMAGE_F_NON_BOOTABLE) {
 
