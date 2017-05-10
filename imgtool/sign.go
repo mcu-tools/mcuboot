@@ -126,14 +126,50 @@ func padImage(name string) error {
 		return errors.New("Image is too large for specified padding")
 	}
 
-	_, err = f.WriteAt(bootMagic, padTo-trailerSize)
+	// Unwritten data in files is written as zero, but we need it
+	// to be unwritten in flash, so write as all FFs.
+	err = ffPadFile(f, padTo-trailerSize)
 	if err != nil {
 		return err
 	}
 
-	err = f.Truncate(padTo)
+	_, err = f.Write(bootMagic)
 	if err != nil {
 		return err
+	}
+
+	err = ffPadFile(f, padTo)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Pad the file to the given size, writing all 0xFF to the file.
+func ffPadFile(f *os.File, pos int64) error {
+	buf := make([]byte, 4096)
+	for i := range buf {
+		buf[i] = 0xff
+	}
+
+	base, err := f.Seek(0, 2)
+	if err != nil {
+		return err
+	}
+
+	for base < pos {
+		count := len(buf)
+		if int64(count) > pos-base {
+			count = int(pos - base)
+		}
+
+		_, err = f.Write(buf[:count])
+		if err != nil {
+			return err
+		}
+
+		base += int64(count)
 	}
 
 	return nil
