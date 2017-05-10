@@ -15,6 +15,8 @@ fn main() {
     conf.include("../boot/bootutil/include");
     conf.include("../boot/zephyr/include");
     conf.debug(true);
+    conf.flag("-Wall");
+    conf.define("__BOOTSIM__", None);
     conf.compile("libbootutil.a");
     walk_dir("../boot").unwrap();
     walk_dir("csupport").unwrap();

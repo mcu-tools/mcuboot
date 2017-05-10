@@ -62,9 +62,54 @@ extern "C" {
 #include <logging/sys_log.h>
 
 /*
+ * When built on the simulator, just use printf().
+ */
+#elif defined(__BOOTSIM__)	/* !defined(__ZEPHYR__) */
+
+#include <stdio.h>
+
+#define BOOT_LOG_LEVEL_OFF	0
+#define BOOT_LOG_LEVEL_ERROR	1
+#define BOOT_LOG_LEVEL_WARNING	2
+#define BOOT_LOG_LEVEL_INFO	3
+#define BOOT_LOG_LEVEL_DEBUG	4
+
+#ifndef BOOT_LOG_LEVEL
+#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
+#endif
+
+#if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_ERROR
+#define BOOT_LOG_ERR(_fmt, ...)						\
+    do { printf("[ERR] " _fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+#define BOOT_LOG_ERR(...) IGNORE(__VA_ARGS__)
+#endif
+
+#if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_WARNING
+#define BOOT_LOG_WRN(_fmt, ...)                                               \
+    do { printf("[WRN] " _fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+#define BOOT_LOG_WRN(...) IGNORE(__VA_ARGS__)
+#endif
+
+#if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_INFO
+#define BOOT_LOG_INF(_fmt, ...)                                               \
+    do { printf("[INF] " _fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+#define BOOT_LOG_INF(...) IGNORE(__VA_ARGS__)
+#endif
+
+#if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_DEBUG
+#define BOOT_LOG_DBG(_fmt, ...)                                               \
+    do { printf("[DBG] " _fmt "\n", ##__VA_ARGS__); } while (0)
+#else
+#define BOOT_LOG_DBG(...) IGNORE(__VA_ARGS__)
+#endif
+
+/*
  * In other environments, logging calls are no-ops.
  */
-#else  /* !defined(__ZEPHYR__) */
+#else  /* !defined(__BOOTSIM__) */
 
 #define BOOT_LOG_LEVEL_OFF	0
 #define BOOT_LOG_LEVEL_ERROR	1
