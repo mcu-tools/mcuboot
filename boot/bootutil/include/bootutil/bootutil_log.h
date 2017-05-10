@@ -78,30 +78,48 @@ extern "C" {
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
 #endif
 
+int sim_log_enabled(int level);
+
 #if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_ERROR
-#define BOOT_LOG_ERR(_fmt, ...)						\
-    do { printf("[ERR] " _fmt "\n", ##__VA_ARGS__); } while (0)
+#define BOOT_LOG_ERR(_fmt, ...)                                         \
+    do {                                                                \
+        if (sim_log_enabled(BOOT_LOG_LEVEL_ERROR)) {                    \
+            printf("[ERR] " _fmt "\n", ##__VA_ARGS__);                  \
+        }                                                               \
+    } while (0)
 #else
 #define BOOT_LOG_ERR(...) IGNORE(__VA_ARGS__)
 #endif
 
 #if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_WARNING
-#define BOOT_LOG_WRN(_fmt, ...)                                               \
-    do { printf("[WRN] " _fmt "\n", ##__VA_ARGS__); } while (0)
+#define BOOT_LOG_WRN(_fmt, ...)                                         \
+    do {                                                                \
+        if (sim_log_enabled(BOOT_LOG_LEVEL_WARNING)) {                  \
+            printf("[WRN] " _fmt "\n", ##__VA_ARGS__);                  \
+        }                                                               \
+    } while (0)
 #else
 #define BOOT_LOG_WRN(...) IGNORE(__VA_ARGS__)
 #endif
 
 #if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_INFO
-#define BOOT_LOG_INF(_fmt, ...)                                               \
-    do { printf("[INF] " _fmt "\n", ##__VA_ARGS__); } while (0)
+#define BOOT_LOG_INF(_fmt, ...)                                         \
+    do {                                                                \
+        if (sim_log_enabled(BOOT_LOG_LEVEL_INFO)) {                     \
+            printf("[WRN] " _fmt "\n", ##__VA_ARGS__);                  \
+        }                                                               \
+    } while (0)
 #else
 #define BOOT_LOG_INF(...) IGNORE(__VA_ARGS__)
 #endif
 
 #if BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_DEBUG
-#define BOOT_LOG_DBG(_fmt, ...)                                               \
-    do { printf("[DBG] " _fmt "\n", ##__VA_ARGS__); } while (0)
+#define BOOT_LOG_DBG(_fmt, ...)                                         \
+    do {                                                                \
+        if (sim_log_enabled(BOOT_LOG_LEVEL_DEBUG)) {                    \
+            printf("[DBG] " _fmt "\n", ##__VA_ARGS__);                  \
+        }                                                               \
+    } while (0)
 #else
 #define BOOT_LOG_DBG(...) IGNORE(__VA_ARGS__)
 #endif
