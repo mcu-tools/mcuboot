@@ -237,8 +237,8 @@ impl RunStatus {
         // Let's try an image halfway through.
         for i in 1 .. total_count {
             info!("Try interruption at {}", i);
-            let (fl3, total_count) = try_upgrade(&flash, &areadesc, Some(i));
-            info!("Second boot, count={}", total_count);
+            let (fl3, count) = try_upgrade(&flash, &areadesc, Some(i));
+            info!("Second boot, count={}", count);
             if !verify_image(&fl3, slot0_base, &upgrade) {
                 warn!("FAIL at step {} of {}", i, total_count);
                 bad += 1;
