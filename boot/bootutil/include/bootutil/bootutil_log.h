@@ -74,8 +74,14 @@ extern "C" {
 #define BOOT_LOG_LEVEL_INFO	3
 #define BOOT_LOG_LEVEL_DEBUG	4
 
+/*
+ * The compiled log level determines the maximum level that can be
+ * printed.  Messages at or below this level can be printed, provided
+ * they are also enabled through the Rust logging system, such as by
+ * setting RUST_LOG to bootsim::api=info.
+ */
 #ifndef BOOT_LOG_LEVEL
-#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
+#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #endif
 
 int sim_log_enabled(int level);
