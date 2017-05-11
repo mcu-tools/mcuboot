@@ -21,6 +21,10 @@ CFLAGS += -DBOOTUTIL_SIGN_RSA -DBOOTUTIL_USE_MBED_TLS
 # verification only happens on upgrade.
 CFLAGS += -DBOOTUTIL_VALIDATE_SLOT0
 
+# Enable this option to not use the swapping code and just overwrite
+# the image on upgrade.
+#CFLAGS += -DBOOTUTIL_OVERWRITE_ONLY
+
 ##############################
 # End of configuration blocks.
 ##############################

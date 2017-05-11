@@ -22,9 +22,11 @@ mod c;
 mod flash;
 pub mod api;
 mod pdump;
+mod caps;
 
 use flash::Flash;
 use area::{AreaDesc, FlashId};
+use caps::Caps;
 
 const USAGE: &'static str = "
 Mcuboot simulator
@@ -243,9 +245,11 @@ impl RunStatus {
                 warn!("FAIL at step {} of {}", i, total_count);
                 bad += 1;
             }
-            if !verify_image(&fl3, slot1_base, &primary) {
-                warn!("Slot 1 FAIL at step {} of {}", i, total_count);
-                bad += 1;
+            if Caps::SwapUpgrade.present() {
+                if !verify_image(&fl3, slot1_base, &primary) {
+                    warn!("Slot 1 FAIL at step {} of {}", i, total_count);
+                    bad += 1;
+                }
             }
         }
         error!("{} out of {} failed {:.2}%",
@@ -256,23 +260,29 @@ impl RunStatus {
         }
 
         let (fl4, total_counts) = try_random_fails(&flash, &areadesc, total_count, 5);
-        info!("Random fails at reset points={:?}", total_counts);
+        info!("Random interruptions at reset points={:?}", total_counts);
         let slot0_ok = verify_image(&fl4, slot0_base, &upgrade);
-        let slot1_ok = verify_image(&fl4, slot1_base, &primary);
-        if !slot0_ok || !slot1_ok {
-            error!("Image mismatch after random fails: slot0={} slot1={}",
+        let slot1_ok = if Caps::SwapUpgrade.present() {
+            verify_image(&fl4, slot1_base, &primary)
+        } else {
+            true
+        };
+        if !slot0_ok /* || !slot1_ok */ {
+            error!("Image mismatch after random interrupts: slot0={} slot1={}",
                    if slot0_ok { "ok" } else { "fail" },
                    if slot1_ok { "ok" } else { "fail" });
             self.failures += 1;
             return;
         }
 
-        for count in 2 .. 5 {
-            info!("Try revert: {}", count);
-            let fl2 = try_revert(&flash, &areadesc, count);
-            if !verify_image(&fl2, slot0_base, &primary) {
-                warn!("Revert failure on count {}", count);
-                failed = true;
+        if Caps::SwapUpgrade.present() {
+            for count in 2 .. 5 {
+                info!("Try revert: {}", count);
+                let fl2 = try_revert(&flash, &areadesc, count);
+                if !verify_image(&fl2, slot0_base, &primary) {
+                    warn!("Revert failure on count {}", count);
+                    failed = true;
+                }
             }
         }
 
