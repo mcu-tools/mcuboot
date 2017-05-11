@@ -112,7 +112,7 @@ int sim_log_enabled(int level);
 #define BOOT_LOG_INF(_fmt, ...)                                         \
     do {                                                                \
         if (sim_log_enabled(BOOT_LOG_LEVEL_INFO)) {                     \
-            printf("[WRN] " _fmt "\n", ##__VA_ARGS__);                  \
+            printf("[INF] " _fmt "\n", ##__VA_ARGS__);                  \
         }                                                               \
     } while (0)
 #else
