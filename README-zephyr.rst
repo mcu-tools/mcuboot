@@ -58,7 +58,7 @@ Signing the application
 -----------------------
 
 In order to upgrade to an image (or even boot it, if
-``BOOTUTIL_VALIDATE_SLOT0`` is enabled), the images must be signed.
+``MCUBOOT_VALIDATE_SLOT0`` is enabled), the images must be signed.
 To make development easier, mcuboot is distributed with some example
 keys.  It is important to stress that these should never be used for
 production, since the private key is publically available in this

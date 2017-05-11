@@ -19,7 +19,7 @@
 
 #include <bootutil/sign_key.h>
 
-#if defined(BOOTUTIL_SIGN_RSA)
+#if defined(MCUBOOT_SIGN_RSA)
 const unsigned char root_pub_der[] = {
     0x30, 0x82, 0x01, 0x0a, 0x02, 0x82, 0x01, 0x01, 0x00, 0xd1, 0x06, 0x08,
     0x1a, 0x18, 0x44, 0x2c, 0x18, 0xe8, 0xfb, 0xfd, 0xf7, 0x0d, 0xa3, 0x4f,
@@ -46,7 +46,7 @@ const unsigned char root_pub_der[] = {
     0xc9, 0x02, 0x03, 0x01, 0x00, 0x01
 };
 const unsigned int root_pub_der_len = 270;
-#elif defined(BOOTUTIL_SIGN_EC256)
+#elif defined(MCUBOOT_SIGN_EC256)
 const unsigned char root_pub_der[] = {
     0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86,
     0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a,
@@ -65,6 +65,7 @@ const unsigned int root_pub_der_len = 91;
 #error "No public key available for given signing algorithm."
 #endif
 
+#if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC256)
 const struct bootutil_key bootutil_keys[] = {
     {
         .key = root_pub_der,
@@ -72,3 +73,4 @@ const struct bootutil_key bootutil_keys[] = {
     },
 };
 const int bootutil_key_cnt = 1;
+#endif

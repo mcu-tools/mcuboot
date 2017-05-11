@@ -10,16 +10,16 @@
 
 # RSA
 CONF_FILE = boot/zephyr/prj.conf
-CFLAGS += -DBOOTUTIL_SIGN_RSA -DBOOTUTIL_USE_MBED_TLS
+CFLAGS += -DMCUBOOT_SIGN_RSA -DMCUBOOT_USE_MBED_TLS
 
 # ECDSA P-256
 #CONF_FILE = boot/zephyr/prj-p256.conf
-#CFLAGS += -DBOOTUTIL_SIGN_EC256 -DBOOTUTIL_USE_TINYCRYPT
+#CFLAGS += -DMCUBOOT_SIGN_EC256 -DMCUBOOT_USE_TINYCRYPT
 
 # Enable this option to have the bootloader verify the signature of
 # the primary image upon every boot.  Without it, signature
 # verification only happens on upgrade.
-CFLAGS += -DBOOTUTIL_VALIDATE_SLOT0
+CFLAGS += -DMCUBOOT_VALIDATE_SLOT0
 
 # Enable this option to not use the swapping code and just overwrite
 # the image on upgrade.

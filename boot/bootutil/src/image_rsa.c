@@ -19,9 +19,7 @@
 
 #include <string.h>
 
-#include "syscfg/syscfg.h"
-
-#if MYNEWT_VAL(BOOTUTIL_SIGN_RSA)
+#ifdef MCUBOOT_SIGN_RSA
 #include "bootutil/sign_key.h"
 
 #include "mbedtls/rsa.h"
@@ -143,4 +141,4 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
 
     return rc;
 }
-#endif /* MYNEWT_VAL(BOOTUTIL_SIGN_RSA) */
+#endif /* MCUBOOT_SIGN_RSA */
