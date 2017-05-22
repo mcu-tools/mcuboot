@@ -413,14 +413,8 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
 
     if (found) {
         i--;
-        /* FIXME: is this test required? */
-        if (fap->fa_id != FLASH_AREA_IMAGE_SCRATCH) {
-            bs->idx = i / BOOT_STATUS_STATE_COUNT;
-            bs->state = i % BOOT_STATUS_STATE_COUNT;
-        } else {
-            bs->idx = 0;
-            bs->state = i;
-        }
+        bs->idx = i / BOOT_STATUS_STATE_COUNT;
+        bs->state = i % BOOT_STATUS_STATE_COUNT;
     }
 
     return 0;
@@ -931,7 +925,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
                               0, img_off, copy_sz);
         assert(rc == 0);
 
-        if (bs->idx == 0 && bs->use_scratch) {
+        if (bs->use_scratch) {
             rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap);
             assert(rc == 0);
 
