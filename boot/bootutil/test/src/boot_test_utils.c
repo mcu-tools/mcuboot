@@ -464,6 +464,7 @@ boot_test_util_verify_all(int expected_swap_type,
     const struct image_header *slot0hdr;
     const struct image_header *slot1hdr;
     struct boot_rsp rsp;
+    uint32_t flash_base;
     int orig_slot_0;
     int orig_slot_1;
     int num_swaps;
@@ -503,9 +504,13 @@ boot_test_util_verify_all(int expected_swap_type,
             orig_slot_1 = 0;
         }
 
+        rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
+        TEST_ASSERT_FATAL(rc == 0);
+
         TEST_ASSERT(memcmp(rsp.br_hdr, slot0hdr, sizeof *slot0hdr) == 0);
-        TEST_ASSERT(rsp.br_flash_id == boot_test_img_addrs[0].flash_id);
-        TEST_ASSERT(rsp.br_image_addr == boot_test_img_addrs[0].address);
+        TEST_ASSERT(rsp.br_flash_dev_id == boot_test_img_addrs[0].flash_id);
+        TEST_ASSERT(flash_base + rsp.br_image_off ==
+                    boot_test_img_addrs[0].address);
 
         boot_test_util_verify_flash(slot0hdr, orig_slot_0,
                                     slot1hdr, orig_slot_1);
