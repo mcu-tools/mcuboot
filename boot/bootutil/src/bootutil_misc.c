@@ -198,6 +198,20 @@ boot_magic_off(const struct flash_area *fap)
     return fap->fa_size - off_from_end;
 }
 
+int
+boot_status_entries(const struct flash_area *fap)
+{
+    switch (fap->fa_id) {
+    case FLASH_AREA_IMAGE_0:
+    case FLASH_AREA_IMAGE_1:
+        return BOOT_STATUS_STATE_COUNT * BOOT_STATUS_MAX_ENTRIES;
+    case FLASH_AREA_IMAGE_SCRATCH:
+        return BOOT_STATUS_STATE_COUNT;
+    default:
+        return BOOT_EBADARGS;
+    }
+}
+
 uint32_t
 boot_status_off(const struct flash_area *fap)
 {

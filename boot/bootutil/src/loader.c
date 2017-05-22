@@ -393,11 +393,7 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
     int i;
 
     off = boot_status_off(fap);
-
-    max_entries = BOOT_STATUS_STATE_COUNT;
-    if (fap->fa_id != FLASH_AREA_IMAGE_SCRATCH) {
-        max_entries *= BOOT_STATUS_MAX_ENTRIES;
-    }
+    max_entries = boot_status_entries(fap);
 
     found = 0;
     for (i = 0; i < max_entries; i++) {
