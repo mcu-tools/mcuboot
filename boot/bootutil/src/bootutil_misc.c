@@ -376,7 +376,7 @@ boot_swap_type(void)
              table->bsw_image_ok_slot0  == state_slot0.image_ok)        &&
             (table->bsw_image_ok_slot1  == 0    ||
              table->bsw_image_ok_slot1  == state_slot1.image_ok)) {
-            BOOT_LOG_INF("Swap type: %s\n",
+            BOOT_LOG_INF("Swap type: %s",
                    table->bsw_swap_type == BOOT_SWAP_TYPE_NONE   ? "none"   :
                    table->bsw_swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
                    table->bsw_swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
