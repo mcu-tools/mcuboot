@@ -286,12 +286,8 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
     }
 
     rc = boot_read_swap_state(fap, state);
-    if (rc) {
-        flash_area_close(fap);
-        return rc;
-    }
-
-    return 0;
+    flash_area_close(fap);
+    return rc;
 }
 
 int
