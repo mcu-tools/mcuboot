@@ -90,6 +90,9 @@ struct boot_swap_state {
 #define BOOT_FLAG_IMAGE_OK         0
 #define BOOT_FLAG_COPY_DONE        1
 
+#define BOOT_IMAGE_OK              0x01
+#define BOOT_IMAGE_UNSET           0xff
+
 extern const uint32_t BOOT_MAGIC_SZ;
 
 int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,

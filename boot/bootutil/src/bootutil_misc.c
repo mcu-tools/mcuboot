@@ -467,7 +467,7 @@ boot_set_confirmed(void)
         return BOOT_EBADVECT;
     }
 
-    if (state_slot0.image_ok != 0xff) {
+    if (state_slot0.image_ok != BOOT_IMAGE_UNSET) {
         /* Already confirmed. */
         return 0;
     }

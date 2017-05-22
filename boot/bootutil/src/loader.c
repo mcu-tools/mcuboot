@@ -798,7 +798,7 @@ boot_status_init_by_id(int flash_area_id)
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_1, &swap_state);
     assert(rc == 0);
 
-    if (swap_state.image_ok == 0x01) {
+    if (swap_state.image_ok == BOOT_IMAGE_OK) {
         rc = boot_write_image_ok(fap);
         assert(rc == 0);
     }
@@ -957,7 +957,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
                                             &swap_state);
             assert(rc == 0);
 
-            if (swap_state.image_ok == 0x01) {
+            if (swap_state.image_ok == BOOT_IMAGE_OK) {
                 rc = boot_write_image_ok(fap);
                 assert(rc == 0);
             }
@@ -1155,7 +1155,7 @@ boot_finalize_revert_swap(void)
         }
     }
 
-    if (state_slot0.image_ok == 0xff) {
+    if (state_slot0.image_ok == BOOT_IMAGE_UNSET) {
         rc = boot_write_image_ok(fap);
         if (rc != 0) {
             return rc;
