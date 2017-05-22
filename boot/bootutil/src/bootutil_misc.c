@@ -282,7 +282,7 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
         }
         break;
     default:
-        return BOOT_EFLASH;
+        return BOOT_EBADARGS;
     }
 
     rc = boot_read_swap_state(fap, state);
@@ -326,7 +326,7 @@ boot_write_flag(int flag, const struct flash_area *fap)
         off = boot_image_ok_off(fap);
         break;
     default:
-        return BOOT_EFLASH;
+        return BOOT_EBADARGS;
     }
 
     align = hal_flash_align(fap->fa_device_id);
