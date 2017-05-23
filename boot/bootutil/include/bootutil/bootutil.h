@@ -51,10 +51,10 @@ struct boot_rsp {
 
     /**
      * The flash offset of the image to execute.  Indicates the position of
-     * the image header within its flash device.
+     * the image header.
      */
-    uint8_t br_flash_dev_id;
-    uint32_t br_image_off;
+    uint8_t br_flash_id;
+    uint32_t br_image_addr;
 };
 
 /* you must have pre-allocated all the entries within this structure */

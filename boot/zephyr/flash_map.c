@@ -32,66 +32,26 @@
 extern struct device *boot_flash_device;
 
 /*
- * For now, we only support one flash device.
- *
- * Pick a random device ID for it that's unlikely to collide with
- * anything "real".
- */
-#define FLASH_DEVICE_ID 100
-#define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
-
-#define FLASH_MAP_ENTRY_MAGIC 0xd00dbeef
-
-struct flash_map_entry {
-    const uint32_t magic;
-    const struct flash_area area;
-    unsigned int ref_count;
-};
-
-/*
  * The flash area describes essentially the partition table of the
  * flash.  In this case, it starts with FLASH_AREA_IMAGE_0.
  */
-static struct flash_map_entry part_map[] = {
+static const struct flash_area part_map[] = {
     {
-        .magic = FLASH_MAP_ENTRY_MAGIC,
-        .area = {
-            .fa_id = FLASH_AREA_IMAGE_0,
-            .fa_device_id = FLASH_DEVICE_ID,
-            .fa_off = FLASH_AREA_IMAGE_0_OFFSET,
-            .fa_size = FLASH_AREA_IMAGE_0_SIZE,
-        },
+        .fa_id = FLASH_AREA_IMAGE_0,
+        .fa_off = FLASH_AREA_IMAGE_0_OFFSET,
+        .fa_size = FLASH_AREA_IMAGE_0_SIZE,
     },
     {
-        .magic = FLASH_MAP_ENTRY_MAGIC,
-        .area = {
-            .fa_id = FLASH_AREA_IMAGE_1,
-            .fa_device_id = FLASH_DEVICE_ID,
-            .fa_off = FLASH_AREA_IMAGE_1_OFFSET,
-            .fa_size = FLASH_AREA_IMAGE_1_SIZE,
-        },
+        .fa_id = FLASH_AREA_IMAGE_1,
+        .fa_off = FLASH_AREA_IMAGE_1_OFFSET,
+        .fa_size = FLASH_AREA_IMAGE_1_SIZE,
     },
     {
-        .magic = FLASH_MAP_ENTRY_MAGIC,
-        .area = {
-            .fa_id = FLASH_AREA_IMAGE_SCRATCH,
-            .fa_device_id = FLASH_DEVICE_ID,
-            .fa_off = FLASH_AREA_IMAGE_SCRATCH_OFFSET,
-            .fa_size = FLASH_AREA_IMAGE_SCRATCH_SIZE,
-        },
-    }
+        .fa_id = FLASH_AREA_IMAGE_SCRATCH,
+        .fa_off = FLASH_AREA_IMAGE_SCRATCH_OFFSET,
+        .fa_size = FLASH_AREA_IMAGE_SCRATCH_SIZE,
+    },
 };
-
-int flash_device_base(uint8_t fd_id, uintptr_t *ret)
-{
-    if (fd_id != FLASH_DEVICE_ID) {
-        BOOT_LOG_ERR("invalid flash ID %d; expected %d",
-                     fd_id, FLASH_DEVICE_ID);
-        return -EINVAL;
-    }
-    *ret = FLASH_DEVICE_BASE;
-    return 0;
-}
 
 /*
  * `open` a flash area.  The `area` in this case is not the individual
@@ -104,7 +64,7 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
     BOOT_LOG_DBG("area %d", id);
 
     for (i = 0; i < ARRAY_SIZE(part_map); i++) {
-        if (id == part_map[i].area.fa_id) {
+        if (id == part_map[i].fa_id) {
             break;
         }
     }
@@ -112,8 +72,7 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
         return -1;
     }
 
-    *area = &part_map[i].area;
-    part_map[i].ref_count++;
+    *area = &part_map[i];
     return 0;
 }
 
@@ -122,30 +81,6 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
  */
 void flash_area_close(const struct flash_area *area)
 {
-    struct flash_map_entry *entry = CONTAINER_OF(area, struct flash_map_entry,
-                                                 area);
-    if (entry->magic != FLASH_MAP_ENTRY_MAGIC) {
-        BOOT_LOG_ERR("invalid area %p (id %u)", area, area->fa_id);
-        return;
-    }
-    if (entry->ref_count == 0) {
-        BOOT_LOG_ERR("area %u use count underflow", area->fa_id);
-        return;
-    }
-    entry->ref_count--;
-}
-
-void zephyr_flash_area_warn_on_open(void)
-{
-    int i;
-
-    for (i = 0; i < ARRAY_SIZE(part_map); i++) {
-        struct flash_map_entry *entry = &part_map[i];
-        if (entry->ref_count) {
-            BOOT_LOG_WRN("area %u has %u users",
-                         entry->area.fa_id, entry->ref_count);
-        }
-    }
 }
 
 int flash_area_read(const struct flash_area *area, uint32_t off, void *dst,
@@ -197,8 +132,19 @@ int flash_area_id_from_image_slot(int slot)
 #define FLASH_AREA_IMAGE_SECTOR_SIZE FLASH_AREA_IMAGE_SCRATCH_SIZE
 #endif
 
-static int validate_idx(int idx, uint32_t *off, uint32_t *len)
+/*
+ * Lookup the sector map for a given flash area.  This should fill in
+ * `ret` with all of the sectors in the area.  `*cnt` will be set to
+ * the storage at `ret` and should be set to the final number of
+ * sectors in this area.
+ */
+int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 {
+    uint32_t off;
+    uint32_t len;
+    uint32_t max_cnt = *cnt;
+    uint32_t rem_len;
+
     /*
      * This simple layout has uniform slots, so just fill in the
      * right one.
@@ -207,44 +153,30 @@ static int validate_idx(int idx, uint32_t *off, uint32_t *len)
         return -1;
     }
 
+    if (*cnt < 1) {
+        return -1;
+    }
+
     switch (idx) {
     case FLASH_AREA_IMAGE_0:
-        *off = FLASH_AREA_IMAGE_0_OFFSET;
-        *len = FLASH_AREA_IMAGE_0_SIZE;
-        goto done;
+        off = FLASH_AREA_IMAGE_0_OFFSET;
+        len = FLASH_AREA_IMAGE_0_SIZE;
+        break;
     case FLASH_AREA_IMAGE_1:
-        *off = FLASH_AREA_IMAGE_1_OFFSET;
-        *len = FLASH_AREA_IMAGE_1_SIZE;
-        goto done;
+        off = FLASH_AREA_IMAGE_1_OFFSET;
+        len = FLASH_AREA_IMAGE_1_SIZE;
+        break;
     case FLASH_AREA_IMAGE_SCRATCH:
-        *off = FLASH_AREA_IMAGE_SCRATCH_OFFSET;
-        *len = FLASH_AREA_IMAGE_SCRATCH_SIZE;
-        goto done;
+        off = FLASH_AREA_IMAGE_SCRATCH_OFFSET;
+        len = FLASH_AREA_IMAGE_SCRATCH_SIZE;
+        break;
     default:
         BOOT_LOG_ERR("unknown flash area %d", idx);
         return -1;
     }
 
- done:
     BOOT_LOG_DBG("area %d: offset=0x%x, length=0x%x, sector size=0x%x",
-                 idx, *off, *len, FLASH_AREA_IMAGE_SECTOR_SIZE);
-    return 0;
-}
-
-int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
-{
-    uint32_t off;
-    uint32_t len;
-    uint32_t max_cnt = *cnt;
-    uint32_t rem_len;
-
-    if (validate_idx(idx, &off, &len)) {
-        return -1;
-    }
-
-    if (*cnt < 1) {
-        return -1;
-    }
+             idx, off, len, FLASH_AREA_IMAGE_SECTOR_SIZE);
 
     rem_len = len;
     *cnt = 0;
@@ -260,50 +192,6 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
         ret[*cnt].pad16 = 0;
         ret[*cnt].fa_off = off + (FLASH_AREA_IMAGE_SECTOR_SIZE * (*cnt));
         ret[*cnt].fa_size = FLASH_AREA_IMAGE_SECTOR_SIZE;
-        *cnt = *cnt + 1;
-        rem_len -= FLASH_AREA_IMAGE_SECTOR_SIZE;
-    }
-
-    if (*cnt >= max_cnt) {
-        BOOT_LOG_ERR("flash area %d sector count overflow", idx);
-        return -1;
-    }
-
-    return 0;
-}
-
-/*
- * Lookup the sector map for a given flash area.  This should fill in
- * `ret` with all of the sectors in the area.  `*cnt` will be set to
- * the storage at `ret` and should be set to the final number of
- * sectors in this area.
- */
-int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
-{
-    uint32_t off;
-    uint32_t len;
-    uint32_t max_cnt = *cnt;
-    uint32_t rem_len;
-
-    if (validate_idx(idx, &off, &len)) {
-        return -1;
-    }
-
-    if (*cnt < 1) {
-        return -1;
-    }
-
-    rem_len = len;
-    *cnt = 0;
-    while (rem_len > 0 && *cnt < max_cnt) {
-        if (rem_len < FLASH_AREA_IMAGE_SECTOR_SIZE) {
-            BOOT_LOG_ERR("area %d size 0x%x not divisible by sector size 0x%x",
-                         idx, len, FLASH_AREA_IMAGE_SECTOR_SIZE);
-            return -1;
-        }
-
-        ret[*cnt].fs_off = FLASH_AREA_IMAGE_SECTOR_SIZE * (*cnt);
-        ret[*cnt].fs_size = FLASH_AREA_IMAGE_SECTOR_SIZE;
         *cnt = *cnt + 1;
         rem_len -= FLASH_AREA_IMAGE_SECTOR_SIZE;
     }
