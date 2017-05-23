@@ -47,6 +47,7 @@ int
 main(void)
 {
     struct boot_rsp rsp;
+    uintptr_t flash_base;
     int rc;
 
 #if MYNEWT_VAL(BOOT_SERIAL)
@@ -70,7 +71,11 @@ main(void)
     rc = boot_go(&rsp);
     assert(rc == 0);
 
-    hal_system_start((void *)(rsp.br_image_addr + rsp.br_hdr->ih_hdr_size));
+    rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
+    assert(rc == 0);
+
+    hal_system_start((void *)(flash_base + rsp.br_image_off +
+                              rsp.br_hdr->ih_hdr_size));
 
     return 0;
 }
