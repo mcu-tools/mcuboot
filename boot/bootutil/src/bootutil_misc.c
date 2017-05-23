@@ -328,7 +328,7 @@ boot_write_flag(int flag, const struct flash_area *fap)
     align = hal_flash_align(fap->fa_device_id);
     assert(align <= BOOT_MAX_ALIGN);
     memset(buf, 0xFF, BOOT_MAX_ALIGN);
-    buf[0] = 1;
+    buf[0] = BOOT_FLAG_SET;
 
     rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
@@ -472,12 +472,12 @@ boot_set_confirmed(void)
         return BOOT_EBADVECT;
     }
 
-    if (state_slot0.copy_done == 0xff) {
+    if (state_slot0.copy_done == BOOT_FLAG_UNSET) {
         /* Swap never completed.  This is unexpected. */
         return BOOT_EBADVECT;
     }
 
-    if (state_slot0.image_ok != BOOT_IMAGE_UNSET) {
+    if (state_slot0.image_ok != BOOT_FLAG_UNSET) {
         /* Already confirmed. */
         return 0;
     }
