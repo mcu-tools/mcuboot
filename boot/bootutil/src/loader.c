@@ -858,8 +858,17 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
               boot_data.imgs[0].sectors[0].fa_off;
 
     copy_sz = sz;
-
     trailer_sz = boot_slots_trailer_sz(boot_data.write_sz);
+
+    /* sz in this function is always is always sized on a multiple of the
+     * sector size. The check against the first address of the last sector
+     * is to determine if we're swapping the last sector. The last sector
+     * needs special handling because it's where the trailer lives. If we're
+     * copying it, we need to use scratch to write the trailer temporarily.
+     *
+     * NOTE: `use_scratch` is a temporary flag (never written to flash) which
+     * controls if special handling is needed (swapping last sector).
+     */
     if (boot_data.imgs[0].sectors[idx].fa_off + sz >
         boot_data.imgs[0].sectors[boot_data.imgs[0].num_sectors - 1].fa_off) {
         copy_sz -= trailer_sz;
