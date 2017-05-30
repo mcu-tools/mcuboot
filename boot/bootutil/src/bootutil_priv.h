@@ -45,8 +45,9 @@ struct flash_area;
  * Maintain state of copy progress.
  */
 struct boot_status {
-    uint32_t idx;       /* Which area we're operating on */
-    uint8_t state;      /* Which part of the swapping process are we at */
+    uint32_t idx;         /* Which area we're operating on */
+    uint8_t state;        /* Which part of the swapping process are we at */
+    uint8_t use_scratch;  /* Are status bytes ever written to scratch? */
 };
 
 #define BOOT_MAGIC_GOOD  1
@@ -86,22 +87,29 @@ struct boot_swap_state {
 #define BOOT_STATUS_SOURCE_SCRATCH 1
 #define BOOT_STATUS_SOURCE_SLOT0   2
 
+#define BOOT_FLAG_IMAGE_OK         0
+#define BOOT_FLAG_COPY_DONE        1
+
+#define BOOT_FLAG_SET              0x01
+#define BOOT_FLAG_UNSET            0xff
+
+extern const uint32_t BOOT_MAGIC_SZ;
+
 int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
     uint8_t key_id);
 
-uint32_t boot_trailer_sz(uint8_t min_write_sz);
+uint32_t boot_slots_trailer_sz(uint8_t min_write_sz);
+int boot_status_entries(const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
 int boot_read_swap_state(const struct flash_area *fap,
                          struct boot_swap_state *state);
-int boot_read_swap_state_img(int slot, struct boot_swap_state *state);
-int boot_read_swap_state_scratch(struct boot_swap_state *state);
+int boot_read_swap_state_by_id(int flash_area_id,
+                               struct boot_swap_state *state);
 int boot_write_magic(const struct flash_area *fap);
 int boot_write_status(struct boot_status *bs);
 int boot_schedule_test_swap(void);
 int boot_write_copy_done(const struct flash_area *fap);
 int boot_write_image_ok(const struct flash_area *fap);
-
-uint32_t boot_status_sz(uint8_t min_write_sz);
 
 #ifdef __cplusplus
 }
