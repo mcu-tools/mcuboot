@@ -16,7 +16,8 @@ IMAGE_F = {
         'PKCS15_RSA2048_SHA256': 0x0000004,
         'ECDSA224_SHA256':       0x0000008,
         'NON_BOOTABLE':          0x0000010,
-        'ECDSA256_SHA256':       0x0000020, }
+        'ECDSA256_SHA256':       0x0000020,
+        'PKCS1_PSS_RSA2048_SHA256': 0x0000040, }
 
 TLV_VALUES = {
         'SHA256': 1,
