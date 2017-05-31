@@ -110,9 +110,15 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
     int rc;
 
 #ifdef MCUBOOT_SIGN_RSA
+#ifdef MCUBOOT_RSA_PKCS1_15
     if ((hdr->ih_flags & IMAGE_F_PKCS15_RSA2048_SHA256) == 0) {
         return -1;
     }
+#else
+    if ((hdr->ih_flags & IMAGE_F_PKCS1_PSS_RSA2048_SHA256) == 0) {
+        return -1;
+    }
+#endif
 #endif
 #ifdef MCUBOOT_SIGN_EC
     if ((hdr->ih_flags & IMAGE_F_ECDSA224_SHA256) == 0) {
