@@ -159,7 +159,7 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
     uint8_t h2[PSS_HLEN];
     int i;
 
-    if (ctx->len != PSS_EMLEN || PSS_EMLEN != MBEDTLS_MPI_MAX_SIZE) {
+    if (ctx->len != PSS_EMLEN || PSS_EMLEN > MBEDTLS_MPI_MAX_SIZE) {
         return -1;
     }
 
