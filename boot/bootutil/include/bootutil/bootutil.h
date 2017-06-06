@@ -83,6 +83,33 @@ int boot_swap_type(void);
 int boot_set_pending(int permanent);
 int boot_set_confirmed(void);
 
+#define MCUBOOT_REQ_FLASH_MAP_SIZE          0
+#define MCUBOOT_REQ_FLASH_MAP_INFO          1
+
+struct mcuboot_api_itf {
+    uint32_t mcuboot_api_magic;
+    uint32_t mcuboot_version;
+    int (*mcuboot_ioctl)(int req, void *arg);
+};
+
+extern const struct mcuboot_api_itf mcuboot_api_vt;
+extern struct mcuboot_api_itf *p_mcuboot_api_vt;
+
+#define MCUBOOT_API_MAGIC                   0xdeadbeef
+
+#if defined(__arm__)
+    #define MCUBOOT_API_INIT                                            \
+        extern const struct mcuboot_api_itf mcuboot_api_vt;             \
+        asm("ldr r4, =0xdeadbeef\n\t"                                   \
+            "mov r5, %0" : : "r" (&mcuboot_api_vt) : "r4", "r5");
+#elif defined(__mips__)
+    /* TODO */
+    #define MCUBOOT_API_INIT
+#elif defined(__i386__)
+    /* TODO */
+    #define MCUBOOT_API_INIT
+#endif
+
 #define SPLIT_GO_OK                 (0)
 #define SPLIT_GO_NON_MATCHING       (-1)
 #define SPLIT_GO_ERR                (-2)
