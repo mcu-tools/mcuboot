@@ -21,7 +21,6 @@
 #include <string.h>
 #include <inttypes.h>
 
-#include "syscfg/syscfg.h"
 #include "sysflash/sysflash.h"
 #include "hal/hal_bsp.h"
 #include "hal/hal_flash.h"

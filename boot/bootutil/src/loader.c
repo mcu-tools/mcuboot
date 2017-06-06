@@ -1265,7 +1265,7 @@ boot_go(struct boot_rsp *rsp)
 
     switch (swap_type) {
     case BOOT_SWAP_TYPE_NONE:
-#ifdef BOOTUTIL_VALIDATE_SLOT0
+#ifdef MCUBOOT_VALIDATE_SLOT0
         rc = boot_validate_slot(0);
         assert(rc == 0);
         if (rc != 0) {

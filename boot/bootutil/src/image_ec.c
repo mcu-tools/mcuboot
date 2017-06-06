@@ -19,9 +19,7 @@
 
 #include <string.h>
 
-#include "syscfg/syscfg.h"
-
-#if MYNEWT_VAL(BOOTUTIL_SIGN_EC)
+#ifdef MCUBOOT_SIGN_EC
 #include "bootutil/sign_key.h"
 
 #include "mbedtls/ecdsa.h"
@@ -119,4 +117,4 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
 
     return rc;
 }
-#endif /* MYNEWT_VAL(BOOTUTIL_SIGN_EC) */
+#endif /* MCUBOOT_SIGN_EC */

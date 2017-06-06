@@ -20,7 +20,6 @@
 #ifndef H_BOOTUTIL_PRIV_
 #define H_BOOTUTIL_PRIV_
 
-#include "syscfg/syscfg.h"
 #include "bootutil/image.h"
 
 #ifdef __cplusplus

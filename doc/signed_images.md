@@ -90,14 +90,14 @@ This exports the keys.
 
 ## Building bootloader
 
-Enable the BOOTUTIL_SIGN_RSA syscfg setting in your app or target syscfg.yml
+Enable the MCUBOOT_SIGN_RSA syscfg setting in your app or target syscfg.yml
 file
 
     syscfg.vals:
-        BOOTUTIL_SIGN_RSA: 1
+        MCUBOOT_SIGN_RSA: 1
 
 After you've created the key package, you must include it in the build
 for bootloader. So modify the pkg.yml for apps/boot to include it.
 
-The syscfg variable to enable ECDSA224 is BOOTUTIL_SIGN_EC, and
-BOOTUTIL_SIGN_EC256 for ECDS256.
+The syscfg variable to enable ECDSA224 is MCUBOOT_SIGN_EC, and
+MCUBOOT_SIGN_EC256 for ECDS256.

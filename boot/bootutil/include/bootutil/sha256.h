@@ -21,29 +21,37 @@
  * This module provides a thin abstraction over some of the crypto
  * primitives to make it easier to swap out the used crypto library.
  *
- * At this point, there are two choices: BOOTUTIL_USE_MBED_TLS, or
- * BOOTUTIL_USE_TINYCRYPT.  It is a compile error there is not exactly
+ * At this point, there are two choices: MCUBOOT_USE_MBED_TLS, or
+ * MCUBOOT_USE_TINYCRYPT.  It is a compile error there is not exactly
  * one of these defined.
  */
 
 #ifndef __BOOTUTIL_CRYPTO_H_
 #define __BOOTUTIL_CRYPTO_H_
 
-#if defined(BOOTUTIL_USE_MBED_TLS) && defined(BOOTUTIL_USE_TINYCRYPT)
+/* FIXME: The test below will only work as long as the app name is
+ * "mynewt", building for mynewt could export some __linux__, __APPLE__
+ * style macro!
+ */
+#ifdef APP_mynewt
+#include "mynewt/config.h"
+#endif
+
+#if defined(MCUBOOT_USE_MBED_TLS) && defined(MCUBOOT_USE_TINYCRYPT)
     #error "Cannot define both MBED_TLS and TINYCRYPT"
 #endif
 
-#if !defined(BOOTUTIL_USE_MBED_TLS) && !defined(BOOTUTIL_USE_TINYCRYPT)
+#if !defined(MCUBOOT_USE_MBED_TLS) && !defined(MCUBOOT_USE_TINYCRYPT)
     #error "One of MBED_TLS or TINYCRYPT must be defined"
 #endif
 
-#ifdef BOOTUTIL_USE_MBED_TLS
+#ifdef MCUBOOT_USE_MBED_TLS
     #include <mbedtls/sha256.h>
-#endif /* BOOTUTIL_USE_MBED_TLS */
+#endif /* MCUBOOT_USE_MBED_TLS */
 
-#ifdef BOOTUTIL_USE_TINYCRYPT
+#ifdef MCUBOOT_USE_TINYCRYPT
     #include <tinycrypt/sha256.h>
-#endif /* BOOTUTIL_USE_TINYCRYPT */
+#endif /* MCUBOOT_USE_TINYCRYPT */
 
 #include <stdint.h>
 
@@ -51,7 +59,7 @@
 extern "C" {
 #endif
 
-#ifdef BOOTUTIL_USE_MBED_TLS
+#ifdef MCUBOOT_USE_MBED_TLS
 typedef mbedtls_sha256_context bootutil_sha256_context;
 
 static inline void bootutil_sha256_init(bootutil_sha256_context *ctx)
@@ -72,9 +80,9 @@ static inline void bootutil_sha256_finish(bootutil_sha256_context *ctx,
 {
     mbedtls_sha256_finish(ctx, output);
 }
-#endif /* BOOTUTIL_USE_MBED_TLS */
+#endif /* MCUBOOT_USE_MBED_TLS */
 
-#ifdef BOOTUTIL_USE_TINYCRYPT
+#ifdef MCUBOOT_USE_TINYCRYPT
 typedef struct tc_sha256_state_struct bootutil_sha256_context;
 static inline void bootutil_sha256_init(bootutil_sha256_context *ctx)
 {
@@ -93,7 +101,7 @@ static inline void bootutil_sha256_finish(bootutil_sha256_context *ctx,
 {
     tc_sha256_final(output, ctx);
 }
-#endif /* BOOTUTIL_USE_TINYCRYPT */
+#endif /* MCUBOOT_USE_TINYCRYPT */
 
 #ifdef __cplusplus
 }

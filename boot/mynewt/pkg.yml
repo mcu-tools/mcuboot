@@ -1,3 +1,4 @@
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,15 +17,19 @@
 # under the License.
 #
 
-# Package: boot/bootutil
+pkg.name: boot/mynewt
+pkg.type: app
+pkg.description: "Mynewt port of mcuboot"
+pkg.author: "Fabio Utzig <utzig@apache.org>"
+pkg.homepage: "http://mynewt.apache.org/"
+pkg.keywords:
+    - loader
 
-syscfg.defs:
-    BOOTUTIL_SIGN_RSA:
-        description: 'Images are signed using RSA2048.'
-        value: '0'
-    BOOTUTIL_SIGN_EC:
-        description: 'Images are signed using ECDSA NIST P-224.'
-        value: '0'
-    BOOTUTIL_SIGN_EC256:
-        description: 'Images are signed using ECDSA NIST P-256.'
-        value: '0'
+pkg.deps:
+    - "@mcuboot/boot/bootutil"
+    - "@apache-mynewt-core/kernel/os"
+    - "@apache-mynewt-core/sys/console/stub"
+
+pkg.deps.BOOT_SERIAL.OVERWRITE:
+    - "@apache-mynewt-core/sys/console/full"
+    - "@mcuboot/boot/boot_serial"

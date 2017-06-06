@@ -16,7 +16,7 @@
 # under the License.
 #
 
-# Package: apps/boot
+# Package: boot/mynewt
 
 syscfg.defs:
     BOOT_LOADER:
@@ -24,6 +24,24 @@ syscfg.defs:
         value: 1
     BOOT_SERIAL:
         description: 'Support image upgrade over serial within bootloader'
+        value: 0
+    BOOTUTIL_VALIDATE_SLOT0:
+        description: 'Validate image at slot 0 on each boot.'
+        value: 0
+    BOOTUTIL_SIGN_RSA:
+        description: 'Images are signed using RSA2048.'
+        value: 0
+    BOOTUTIL_SIGN_EC:
+        description: 'Images are signed using ECDSA NIST P-224.'
+        value: 0
+    BOOTUTIL_SIGN_EC256:
+        description: 'Images are signed using ECDSA NIST P-256.'
+        value: 0
+    BOOTUTIL_USE_MBED_TLS:
+        description: 'Use mbed TLS for crypto operations.'
+        value: 0
+    BOOTUTIL_USE_TINYCRYPT:
+        description: 'Use tinycrypt for crypto operations.'
         value: 0
 
 syscfg.vals:
