@@ -55,12 +55,17 @@ class TLV():
 
 class Image():
     @classmethod
-    def load(cls, path, **kwargs):
+    def load(cls, path, included_header=False, **kwargs):
         """Load an image from a given file"""
         with open(path, 'rb') as f:
             payload = f.read()
         obj = cls(**kwargs)
         obj.payload = payload
+
+        # Add the image header if needed.
+        if not included_header and obj.header_size > 0:
+            obj.payload = (b'\000' * obj.header_size) + obj.payload
+
         obj.check()
         return obj
 

@@ -66,6 +66,7 @@ header and trailer that the bootloader is expecting:
       --align ALIGN
       -v VERSION, --version VERSION
       -H HEADER_SIZE, --header-size HEADER_SIZE
+      --included-header     Image has gap for header
       --pad PAD             Pad image to this many bytes, adding trailer magic
       --rsa-pkcs1-15        Use old PKCS#1 v1.5 signature algorithm
 
@@ -75,8 +76,10 @@ flash device in question, and the header size.
 
 The header size depends on the operating system and the particular
 flash device.  For Zephyr, it will be configured as part of the build,
-and will be a small power of two.  The generated image should start
-with zero bytes of this length (and the script will check this).
+and will be a small power of two.  By default, the header will be
+prepended to the image.  If `--included-header` is given, the image
+must start with header-size bytes of zeros, and the header will be
+overwritten over these bytes.
 
 The optional --pad argument will place a trailer on the image that
 indicates that the image should be considered an upgrade.  Writing

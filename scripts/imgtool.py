@@ -34,6 +34,7 @@ def do_sign(args):
         keys.sign_rsa_pss = False
     img = image.Image.load(args.infile, version=args.version,
             header_size=args.header_size,
+            included_header=args.included_header,
             pad=args.pad)
     key = keys.load(args.key)
     img.sign(key)
@@ -79,6 +80,8 @@ def args():
     sign.add_argument("--align", type=alignment_value, required=True)
     sign.add_argument("-v", "--version", type=version.decode_version, required=True)
     sign.add_argument("-H", "--header-size", type=intparse, required=True)
+    sign.add_argument("--included-header", default=False, action='store_true',
+            help='Image has gap for header')
     sign.add_argument("--pad", type=intparse,
             help='Pad image to this many bytes, adding trailer magic')
     sign.add_argument("--rsa-pkcs1-15", help='Use old PKCS#1 v1.5 signature algorithm',
