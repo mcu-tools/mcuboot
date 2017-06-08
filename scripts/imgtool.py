@@ -35,7 +35,7 @@ def do_sign(args):
     img = image.Image.load(args.infile, version=args.version,
             header_size=args.header_size,
             pad=args.pad)
-    key = keys.load(args.key)
+    key = keys.load(args.key) if args.key else None
     img.sign(key)
 
     if args.pad:
@@ -75,7 +75,7 @@ def args():
     getpub.add_argument('-k', '--key', metavar='filename', required=True)
 
     sign = subs.add_parser('sign', help='Sign an image with a private key')
-    sign.add_argument('-k', '--key', metavar='filename', required=True)
+    sign.add_argument('-k', '--key', metavar='filename')
     sign.add_argument("--align", type=alignment_value, required=True)
     sign.add_argument("-v", "--version", type=version.decode_version, required=True)
     sign.add_argument("-H", "--header-size", type=intparse, required=True)
