@@ -38,6 +38,10 @@
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
 
+#ifdef APP_mynewt
+#include "mynewt/config.h"
+#endif
+
 #define BOOT_MAX_IMG_SECTORS        120
 
 /** Number of image slots in flash; currently limited to two. */
