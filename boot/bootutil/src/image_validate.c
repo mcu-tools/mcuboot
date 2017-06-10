@@ -28,6 +28,10 @@
 #include "bootutil/sha256.h"
 #include "bootutil/sign_key.h"
 
+#ifdef APP_mynewt
+#include "mynewt/config.h"
+#endif
+
 #ifdef MCUBOOT_SIGN_RSA
 #include "mbedtls/rsa.h"
 #endif

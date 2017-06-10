@@ -19,6 +19,10 @@
 
 #include <string.h>
 
+#ifdef APP_mynewt
+#include "mynewt/config.h"
+#endif
+
 #ifdef MCUBOOT_SIGN_EC
 #include "bootutil/sign_key.h"
 
