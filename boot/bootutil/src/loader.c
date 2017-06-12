@@ -258,7 +258,7 @@ boot_read_image_headers(void)
     int i;
 
     for (i = 0; i < BOOT_NUM_SLOTS; i++) {
-        rc = boot_read_image_header(i, &boot_data.imgs[i].hdr);
+        rc = boot_read_image_header(i, boot_img_hdr(&boot_data, i));
         if (rc != 0) {
             /* If at least the first slot's header was read successfully, then
              * the boot loader can attempt a boot.  Failure to read any headers
@@ -557,11 +557,11 @@ static int
 boot_validate_slot(int slot)
 {
     const struct flash_area *fap;
+    struct image_header *hdr;
     int rc;
 
-    if (boot_data.imgs[slot].hdr.ih_magic == 0xffffffff ||
-        boot_data.imgs[slot].hdr.ih_flags & IMAGE_F_NON_BOOTABLE) {
-
+    hdr = boot_img_hdr(&boot_data, slot);
+    if (hdr->ih_magic == 0xffffffff || hdr->ih_flags & IMAGE_F_NON_BOOTABLE) {
         /* No bootable image in slot; continue booting from slot 0. */
         return -1;
     }
@@ -571,9 +571,7 @@ boot_validate_slot(int slot)
         return BOOT_EFLASH;
     }
 
-    if ((boot_data.imgs[slot].hdr.ih_magic != IMAGE_MAGIC ||
-         boot_image_check(&boot_data.imgs[slot].hdr, fap) != 0)) {
-
+    if ((hdr->ih_magic != IMAGE_MAGIC || boot_image_check(hdr, fap) != 0)) {
         if (slot != 0) {
             flash_area_erase(fap, 0, fap->fa_size);
             /* Image in slot 1 is invalid. Erase the image and
@@ -1033,12 +1031,12 @@ boot_copy_image(struct boot_status *bs)
 
     size = copy_size = 0;
 
-    hdr = &boot_data.imgs[0].hdr;
+    hdr = boot_img_hdr(&boot_data, 0);
     if (hdr->ih_magic == IMAGE_MAGIC) {
         copy_size = hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_tlv_size;
     }
 
-    hdr = &boot_data.imgs[1].hdr;
+    hdr = boot_img_hdr(&boot_data, 1);
     if (hdr->ih_magic == IMAGE_MAGIC) {
         size = hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_tlv_size;
     }
@@ -1294,7 +1292,7 @@ boot_go(struct boot_rsp *rsp)
     /* Always boot from the primary slot. */
     rsp->br_flash_id = boot_data.imgs[0].sectors[0].fa_device_id;
     rsp->br_image_addr = boot_data.imgs[0].sectors[0].fa_off;
-    rsp->br_hdr = &boot_data.imgs[slot].hdr;
+    rsp->br_hdr = boot_img_hdr(&boot_data, slot);
 
     return 0;
 }
@@ -1351,9 +1349,9 @@ split_go(int loader_slot, int split_slot, void **entry)
      * bootable or non-bootable image.  Just validate that the image check
      * passes which is distinct from the normal check.
      */
-    rc = split_image_check(&boot_data.imgs[split_slot].hdr,
+    rc = split_image_check(boot_img_hdr(&boot_data, split_slot),
                            app_fap,
-                           &boot_data.imgs[loader_slot].hdr,
+                           boot_img_hdr(&boot_data, loader_slot),
                            loader_fap);
     if (rc != 0) {
         rc = SPLIT_GO_NON_MATCHING;
@@ -1361,7 +1359,7 @@ split_go(int loader_slot, int split_slot, void **entry)
     }
 
     entry_val = boot_data.imgs[split_slot].sectors[0].fa_off +
-                boot_data.imgs[split_slot].hdr.ih_hdr_size;
+                boot_img_hdr(&boot_data, split_slot)->ih_hdr_size;
     *entry = (void *) entry_val;
     rc = SPLIT_GO_OK;
 

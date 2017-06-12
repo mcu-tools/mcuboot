@@ -127,9 +127,18 @@ int boot_schedule_test_swap(void);
 int boot_write_copy_done(const struct flash_area *fap);
 int boot_write_image_ok(const struct flash_area *fap);
 
+/*
+ * Accessors for the contents of struct boot_loader_state.
+ */
+
+static inline struct image_header*
+boot_img_hdr(struct boot_loader_state *state, size_t slot)
+{
+    return &state->imgs[slot].hdr;
+}
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
