@@ -20,6 +20,7 @@
 #ifndef H_BOOTUTIL_PRIV_
 #define H_BOOTUTIL_PRIV_
 
+#include "flash_map/flash_map.h"
 #include "bootutil/image.h"
 
 #ifdef __cplusplus
@@ -93,6 +94,22 @@ struct boot_swap_state {
 #define BOOT_FLAG_UNSET            0xff
 
 extern const uint32_t BOOT_MAGIC_SZ;
+
+/** Number of image slots in flash; currently limited to two. */
+#define BOOT_NUM_SLOTS              2
+
+/** Private state maintained during boot. */
+struct boot_loader_state {
+    struct {
+        struct image_header hdr;
+        struct flash_area *sectors;
+        int num_sectors;
+    } imgs[BOOT_NUM_SLOTS];
+
+    struct flash_area scratch_sector;
+
+    uint8_t write_sz;
+};
 
 int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
     uint8_t key_id);

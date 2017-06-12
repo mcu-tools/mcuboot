@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "sysflash/sysflash.h"
-#include "flash_map/flash_map.h"
 #include <hal/hal_flash.h>
 #include <os/os_malloc.h>
 #include "bootutil/bootutil.h"
@@ -44,20 +43,7 @@
 
 #define BOOT_MAX_IMG_SECTORS        120
 
-/** Number of image slots in flash; currently limited to two. */
-#define BOOT_NUM_SLOTS              2
-
-static struct {
-    struct {
-        struct image_header hdr;
-        struct flash_area *sectors;
-        int num_sectors;
-    } imgs[BOOT_NUM_SLOTS];
-
-    struct flash_area scratch_sector;
-
-    uint8_t write_sz;
-} boot_data;
+static struct boot_loader_state boot_data;
 
 struct boot_status_table {
     /**
