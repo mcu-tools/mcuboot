@@ -20,16 +20,16 @@ uint32_t bootutil_get_caps(void)
 {
         uint32_t res = 0;
 
-#ifdef BOOTUTIL_SIGN_RSA
+#if defined(MCUBOOT_SIGN_RSA)
         res |= BOOTUTIL_CAP_RSA2048;
 #endif
-#ifdef BOOTUTIL_SIGN_EC
+#if defined(MCUBOOT_SIGN_EC)
         res |= BOOTUTIL_CAP_ECDSA_P224;
 #endif
-#ifdef BOOTUTIL_SIGN_EC256
+#if defined(MCUBOOT_SIGN_EC256)
         res |= BOOTUTIL_CAP_ECDSA_P256;
 #endif
-#ifdef BOOTUTIL_OVERWRITE_ONLY
+#if defined(MCUBOOT_OVERWRITE_ONLY)
         res |= BOOTUTIL_CAP_OVERWRITE_UPGRADE;
 #else
         res |= BOOTUTIL_CAP_SWAP_UPGRADE;
