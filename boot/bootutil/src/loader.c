@@ -297,18 +297,19 @@ boot_write_sz(void)
 static int
 boot_slots_compatible(void)
 {
-    const struct flash_area *sector0;
-    const struct flash_area *sector1;
-    int i;
+    size_t num_sectors_0 = boot_img_num_sectors(&boot_data, 0);
+    size_t num_sectors_1 = boot_img_num_sectors(&boot_data, 1);
+    size_t size_0, size_1;
+    size_t i;
 
     /* Ensure both image slots have identical sector layouts. */
-    if (boot_data.imgs[0].num_sectors != boot_data.imgs[1].num_sectors) {
+    if (num_sectors_0 != num_sectors_1) {
         return 0;
     }
-    for (i = 0; i < boot_data.imgs[0].num_sectors; i++) {
-        sector0 = boot_data.imgs[0].sectors + i;
-        sector1 = boot_data.imgs[1].sectors + i;
-        if (sector0->fa_size != sector1->fa_size) {
+    for (i = 0; i < num_sectors_0; i++) {
+        size_0 = boot_img_sector_size(&boot_data, 0, i);
+        size_1 = boot_img_sector_size(&boot_data, 1, i);
+        if (size_0 != size_1) {
             return 0;
         }
     }
@@ -336,7 +337,7 @@ boot_read_sectors(void)
     if (rc != 0) {
         return BOOT_EFLASH;
     }
-    boot_data.imgs[0].num_sectors = num_sectors_slot0;
+    boot_img_set_num_sectors(&boot_data, 0, num_sectors_slot0);
 
     num_sectors_slot1 = BOOT_MAX_IMG_SECTORS;
     rc = flash_area_to_sectors(FLASH_AREA_IMAGE_1, &num_sectors_slot1,
@@ -344,7 +345,7 @@ boot_read_sectors(void)
     if (rc != 0) {
         return BOOT_EFLASH;
     }
-    boot_data.imgs[1].num_sectors = num_sectors_slot1;
+    boot_img_set_num_sectors(&boot_data, 1, num_sectors_slot1);
 
     rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &scratch);
     if (rc != 0) {
@@ -633,15 +634,17 @@ boot_validated_swap_type(void)
 static uint32_t
 boot_copy_sz(int last_sector_idx, int *out_first_sector_idx)
 {
+    size_t scratch_sz;
     uint32_t new_sz;
     uint32_t sz;
     int i;
 
     sz = 0;
 
+    scratch_sz = boot_scratch_area_size(&boot_data);
     for (i = last_sector_idx; i >= 0; i--) {
-        new_sz = sz + boot_data.imgs[0].sectors[i].fa_size;
-        if (new_sz > boot_data.scratch_sector.fa_size) {
+        new_sz = sz + boot_img_sector_size(&boot_data, 0, i);
+        if (new_sz > scratch_sz) {
             break;
         }
         sz = new_sz;
@@ -808,11 +811,11 @@ boot_erase_last_sector_by_id(int flash_area_id)
         return BOOT_EFLASH;
     }
 
-    last_sector = boot_data.imgs[slot].num_sectors - 1;
+    last_sector = boot_img_num_sectors(&boot_data, slot) - 1;
     sectors = boot_data.imgs[slot].sectors;
     rc = boot_erase_sector(flash_area_id,
             sectors[last_sector].fa_off - sectors[0].fa_off,
-            sectors[last_sector].fa_size);
+            boot_img_sector_size(&boot_data, slot, last_sector));
     assert(rc == 0);
 
     return rc;
@@ -839,6 +842,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
     uint32_t img_off;
     uint32_t scratch_trailer_off;
     struct boot_swap_state swap_state;
+    size_t last_sector;
     int rc;
 
     /* Calculate offset from start of image area. */
@@ -857,8 +861,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
      * NOTE: `use_scratch` is a temporary flag (never written to flash) which
      * controls if special handling is needed (swapping last sector).
      */
+    last_sector = boot_img_num_sectors(&boot_data, 0) - 1;
     if (boot_data.imgs[0].sectors[idx].fa_off + sz >
-        boot_data.imgs[0].sectors[boot_data.imgs[0].num_sectors - 1].fa_off) {
+        boot_data.imgs[0].sectors[last_sector].fa_off) {
         copy_sz -= trailer_sz;
     }
 
@@ -980,18 +985,18 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 static int
 boot_copy_image(struct boot_status *bs)
 {
-    int sect_count;
-    int sect;
+    size_t sect_count;
+    size_t sect;
     int rc;
-    uint32_t size = 0;
-    uint32_t this_size;
+    size_t size = 0;
+    size_t this_size;
 
     BOOT_LOG_INF("Image upgrade slot1 -> slot0");
     BOOT_LOG_INF("Erasing slot0");
 
-    sect_count = boot_data.imgs[0].num_sectors;
+    sect_count = boot_img_num_sectors(&boot_data, 0);
     for (sect = 0; sect < sect_count; sect++) {
-        this_size = boot_data.imgs[0].sectors[sect].fa_size;
+        this_size = boot_img_sector_size(&boot_data, 0, sect);
         rc = boot_erase_sector(FLASH_AREA_IMAGE_0,
                                size,
                                this_size);
@@ -1008,7 +1013,7 @@ boot_copy_image(struct boot_status *bs)
     /* Erase slot 1 so that we don't do the upgrade on every boot.
      * TODO: Perhaps verify slot 0's signature again? */
     rc = boot_erase_sector(FLASH_AREA_IMAGE_1,
-                           0, boot_data.imgs[1].sectors[0].fa_size);
+                           0, boot_img_sector_size(&boot_data, 1, 0));
     assert(rc == 0);
 
     return 0;
@@ -1062,7 +1067,7 @@ boot_copy_image(struct boot_status *bs)
     size = 0;
     last_sector_idx = 0;
     while (1) {
-        size += boot_data.imgs[0].sectors[last_sector_idx].fa_size;
+        size += boot_img_sector_size(&boot_data, 0, last_sector_idx);
         if (size >= copy_size) {
             break;
         }

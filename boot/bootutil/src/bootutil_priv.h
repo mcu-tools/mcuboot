@@ -149,6 +149,31 @@ boot_scratch_fa_device_id(struct boot_loader_state *state)
     return state->scratch_sector.fa_device_id;
 }
 
+static inline size_t
+boot_img_num_sectors(struct boot_loader_state *state, size_t slot)
+{
+    return state->imgs[slot].num_sectors;
+}
+
+static inline void
+boot_img_set_num_sectors(struct boot_loader_state *state, size_t slot,
+                         size_t num_sectors)
+{
+    state->imgs[slot].num_sectors = num_sectors;
+}
+
+static inline size_t
+boot_img_sector_size(struct boot_loader_state *state,
+                     size_t slot, size_t sector)
+{
+    return state->imgs[slot].sectors[sector].fa_size;
+}
+
+static inline size_t boot_scratch_area_size(struct boot_loader_state *state)
+{
+    return state->scratch_sector.fa_size;
+}
+
 #ifdef __cplusplus
 }
 #endif
