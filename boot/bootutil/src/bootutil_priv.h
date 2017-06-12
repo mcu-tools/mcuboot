@@ -137,6 +137,18 @@ boot_img_hdr(struct boot_loader_state *state, size_t slot)
     return &state->imgs[slot].hdr;
 }
 
+static inline uint8_t
+boot_img_fa_device_id(struct boot_loader_state *state, size_t slot)
+{
+    return state->imgs[slot].sectors[0].fa_device_id;
+}
+
+static inline uint8_t
+boot_scratch_fa_device_id(struct boot_loader_state *state)
+{
+    return state->scratch_sector.fa_device_id;
+}
+
 #ifdef __cplusplus
 }
 #endif
