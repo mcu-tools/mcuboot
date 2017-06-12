@@ -27,7 +27,6 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
-#include "sysflash/sysflash.h"
 #include <hal/hal_flash.h>
 #include <os/os_malloc.h>
 #include "bootutil/bootutil.h"
@@ -40,8 +39,6 @@
 #ifdef APP_mynewt
 #include "mynewt/config.h"
 #endif
-
-#define BOOT_MAX_IMG_SECTORS        120
 
 static struct boot_loader_state boot_data;
 
@@ -326,32 +323,22 @@ boot_slots_compatible(void)
 static int
 boot_read_sectors(void)
 {
-    const struct flash_area *scratch;
-    int num_sectors_slot0;
-    int num_sectors_slot1;
     int rc;
 
-    num_sectors_slot0 = BOOT_MAX_IMG_SECTORS;
-    rc = flash_area_to_sectors(FLASH_AREA_IMAGE_0, &num_sectors_slot0,
-                               boot_data.imgs[0].sectors);
+    rc = boot_initialize_area(&boot_data, FLASH_AREA_IMAGE_0);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
-    boot_img_set_num_sectors(&boot_data, 0, num_sectors_slot0);
 
-    num_sectors_slot1 = BOOT_MAX_IMG_SECTORS;
-    rc = flash_area_to_sectors(FLASH_AREA_IMAGE_1, &num_sectors_slot1,
-                               boot_data.imgs[1].sectors);
+    rc = boot_initialize_area(&boot_data, FLASH_AREA_IMAGE_1);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
-    boot_img_set_num_sectors(&boot_data, 1, num_sectors_slot1);
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &scratch);
+    rc = boot_initialize_area(&boot_data, FLASH_AREA_IMAGE_SCRATCH);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
-    boot_data.scratch_sector = *scratch;
 
     boot_data.write_sz = boot_write_sz();
 

@@ -20,6 +20,7 @@
 #ifndef H_BOOTUTIL_PRIV_
 #define H_BOOTUTIL_PRIV_
 
+#include "sysflash/sysflash.h"
 #include "flash_map/flash_map.h"
 #include "bootutil/image.h"
 
@@ -98,6 +99,9 @@ extern const uint32_t BOOT_MAGIC_SZ;
 /** Number of image slots in flash; currently limited to two. */
 #define BOOT_NUM_SLOTS              2
 
+/** Maximum number of image sectors supported by the bootloader. */
+#define BOOT_MAX_IMG_SECTORS        120
+
 /** Private state maintained during boot. */
 struct boot_loader_state {
     struct {
@@ -155,13 +159,6 @@ boot_img_num_sectors(struct boot_loader_state *state, size_t slot)
     return state->imgs[slot].num_sectors;
 }
 
-static inline void
-boot_img_set_num_sectors(struct boot_loader_state *state, size_t slot,
-                         size_t num_sectors)
-{
-    state->imgs[slot].num_sectors = num_sectors;
-}
-
 static inline size_t
 boot_img_sector_size(struct boot_loader_state *state,
                      size_t slot, size_t sector)
@@ -172,6 +169,45 @@ boot_img_sector_size(struct boot_loader_state *state,
 static inline size_t boot_scratch_area_size(struct boot_loader_state *state)
 {
     return state->scratch_sector.fa_size;
+}
+
+static inline int
+boot_initialize_area(struct boot_loader_state *state, int flash_area)
+{
+    const struct flash_area *scratch;
+    int num_sectors = BOOT_MAX_IMG_SECTORS;
+    size_t slot;
+    int rc;
+
+    switch (flash_area) {
+    case FLASH_AREA_IMAGE_0:
+        slot = 0;
+        break;
+    case FLASH_AREA_IMAGE_1:
+        slot = 1;
+        break;
+    case FLASH_AREA_IMAGE_SCRATCH:
+        /*
+         * Special case, handle hackishly by getting area pointer and
+         * leaving the area open.
+         */
+        rc = flash_area_open(flash_area, &scratch);
+        if (rc != 0) {
+            return rc;
+        }
+        state->scratch_sector = *scratch;
+        return 0;
+    default:
+        return BOOT_EFLASH;
+    }
+
+    rc = flash_area_to_sectors(flash_area, &num_sectors,
+                               state->imgs[slot].sectors);
+    if (rc != 0) {
+        return rc;
+    }
+    state->imgs[slot].num_sectors = num_sectors;
+    return 0;
 }
 
 #ifdef __cplusplus
