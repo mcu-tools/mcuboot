@@ -166,6 +166,32 @@ boot_img_sector_size(struct boot_loader_state *state,
     return state->imgs[slot].sectors[sector].fa_size;
 }
 
+/*
+ * Offset of the sector from the beginning of the image, NOT the flash
+ * device.
+ */
+static inline uint32_t
+boot_img_sector_off(struct boot_loader_state *state, size_t slot,
+                    size_t sector)
+{
+    return state->imgs[slot].sectors[sector].fa_off -
+           state->imgs[slot].sectors[0].fa_off;
+}
+
+/*
+ * Offset of the slot from the beginning of the flash device.
+ */
+static inline uint32_t
+boot_img_slot_off(struct boot_loader_state *state, size_t slot)
+{
+    /*
+     * When using flash_area_to_sectors(), "sectors" are actually
+     * flash areas. Flash areas have offsets relative to the beginning
+     * of their flash device.
+     */
+    return state->imgs[slot].sectors[0].fa_off;
+}
+
 static inline size_t boot_scratch_area_size(struct boot_loader_state *state)
 {
     return state->scratch_sector.fa_size;

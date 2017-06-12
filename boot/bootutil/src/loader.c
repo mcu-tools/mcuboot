@@ -784,7 +784,6 @@ boot_erase_last_sector_by_id(int flash_area_id)
 {
     uint8_t slot;
     uint32_t last_sector;
-    struct flash_area *sectors;
     int rc;
 
     switch (flash_area_id) {
@@ -799,9 +798,8 @@ boot_erase_last_sector_by_id(int flash_area_id)
     }
 
     last_sector = boot_img_num_sectors(&boot_data, slot) - 1;
-    sectors = boot_data.imgs[slot].sectors;
     rc = boot_erase_sector(flash_area_id,
-            sectors[last_sector].fa_off - sectors[0].fa_off,
+            boot_img_sector_off(&boot_data, slot, last_sector),
             boot_img_sector_size(&boot_data, slot, last_sector));
     assert(rc == 0);
 
@@ -833,14 +831,13 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
     int rc;
 
     /* Calculate offset from start of image area. */
-    img_off = boot_data.imgs[0].sectors[idx].fa_off -
-              boot_data.imgs[0].sectors[0].fa_off;
+    img_off = boot_img_sector_off(&boot_data, 0, idx);
 
     copy_sz = sz;
     trailer_sz = boot_slots_trailer_sz(boot_data.write_sz);
 
     /* sz in this function is always is always sized on a multiple of the
-     * sector size. The check against the first address of the last sector
+     * sector size. The check against the start offset of the last sector
      * is to determine if we're swapping the last sector. The last sector
      * needs special handling because it's where the trailer lives. If we're
      * copying it, we need to use scratch to write the trailer temporarily.
@@ -849,8 +846,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
      * controls if special handling is needed (swapping last sector).
      */
     last_sector = boot_img_num_sectors(&boot_data, 0) - 1;
-    if (boot_data.imgs[0].sectors[idx].fa_off + sz >
-        boot_data.imgs[0].sectors[last_sector].fa_off) {
+    if (img_off + sz > boot_img_sector_off(&boot_data, 0, last_sector)) {
         copy_sz -= trailer_sz;
     }
 
@@ -1283,7 +1279,7 @@ boot_go(struct boot_rsp *rsp)
 
     /* Always boot from the primary slot. */
     rsp->br_flash_id = boot_img_fa_device_id(&boot_data, 0);
-    rsp->br_image_addr = boot_data.imgs[0].sectors[0].fa_off;
+    rsp->br_image_addr = boot_img_slot_off(&boot_data, 0);
     rsp->br_hdr = boot_img_hdr(&boot_data, slot);
 
     return 0;
@@ -1350,7 +1346,7 @@ split_go(int loader_slot, int split_slot, void **entry)
         goto done;
     }
 
-    entry_val = boot_data.imgs[split_slot].sectors[0].fa_off +
+    entry_val = boot_img_slot_off(&boot_data, split_slot) +
                 boot_img_hdr(&boot_data, split_slot)->ih_hdr_size;
     *entry = (void *) entry_val;
     rc = SPLIT_GO_OK;
