@@ -101,8 +101,9 @@ class Image():
 
         tlv.add('SHA256', digest)
 
-        sig = key.sign(self.payload)
-        tlv.add(key.sig_tlv(), sig)
+        if key is not None:
+            sig = key.sign(self.payload)
+            tlv.add(key.sig_tlv(), sig)
 
         self.payload += tlv.get()
 
@@ -112,9 +113,11 @@ class Image():
         The key is needed to know the type of signature, and
         approximate the size of the signature."""
 
-        flags = IMAGE_F[key.sig_type()]
+        flags = 0
         tlvsz = 0
-        tlvsz += TLV_HEADER_SIZE + key.sig_len()
+        if key is not None:
+            flags |= IMAGE_F[key.sig_type()]
+            tlvsz += TLV_HEADER_SIZE + key.sig_len()
 
         flags |= IMAGE_F['SHA256']
         tlvsz += 4 + hashlib.sha256().digest_size
