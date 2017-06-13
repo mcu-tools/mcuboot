@@ -43,6 +43,9 @@ syscfg.defs:
     BOOTUTIL_USE_TINYCRYPT:
         description: 'Use tinycrypt for crypto operations.'
         value: 0
+    BOOTUTIL_OVERWRITE_ONLY:
+        description: 'Non-swapping upgrades, copy from slot 1 to slot 0 only.'
+        value: 0
 
 syscfg.vals:
     SYSINIT_CONSTRAIN_INIT: 0

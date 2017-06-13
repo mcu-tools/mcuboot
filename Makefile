@@ -23,7 +23,7 @@ CFLAGS += -DMCUBOOT_VALIDATE_SLOT0
 
 # Enable this option to not use the swapping code and just overwrite
 # the image on upgrade.
-#CFLAGS += -DBOOTUTIL_OVERWRITE_ONLY
+#CFLAGS += -DMCUBOOT_OVERWRITE_ONLY
 
 ##############################
 # End of configuration blocks.

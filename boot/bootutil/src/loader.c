@@ -645,7 +645,7 @@ boot_validated_swap_type(void)
  * @return                      The number of bytes comprised by the
  *                                  [first-sector, last-sector] range.
  */
-#ifndef BOOTUTIL_OVERWRITE_ONLY
+#ifndef MCUBOOT_OVERWRITE_ONLY
 static uint32_t
 boot_copy_sz(int last_sector_idx, int *out_first_sector_idx)
 {
@@ -669,7 +669,7 @@ boot_copy_sz(int last_sector_idx, int *out_first_sector_idx)
     *out_first_sector_idx = i + 1;
     return sz;
 }
-#endif /* not BOOTUTIL_OVERWRITE_ONLY */
+#endif /* !MCUBOOT_OVERWRITE_ONLY */
 
 /**
  * Erases a region of flash.
@@ -845,7 +845,7 @@ boot_erase_last_sector_by_id(int flash_area_id)
  *
  * @return                      0 on success; nonzero on failure.
  */
-#ifndef BOOTUTIL_OVERWRITE_ONLY
+#ifndef MCUBOOT_OVERWRITE_ONLY
 static void
 boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 {
@@ -978,7 +978,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
         assert(rc == 0);
     }
 }
-#endif /* not BOOTUTIL_OVERWRITE_ONLY */
+#endif /* !MCUBOOT_OVERWRITE_ONLY */
 
 /**
  * Swaps the two images in flash.  If a prior copy operation was interrupted
@@ -992,7 +992,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
  *
  * @return                      0 on success; nonzero on failure.
  */
-#ifdef BOOTUTIL_OVERWRITE_ONLY
+#ifdef MCUBOOT_OVERWRITE_ONLY
 static int
 boot_copy_image(struct boot_status *bs)
 {
