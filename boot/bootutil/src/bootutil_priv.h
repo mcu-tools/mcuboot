@@ -106,11 +106,12 @@ extern const uint32_t BOOT_MAGIC_SZ;
 struct boot_loader_state {
     struct {
         struct image_header hdr;
+        const struct flash_area *area;
         struct flash_area *sectors;
         int num_sectors;
     } imgs[BOOT_NUM_SLOTS];
 
-    struct flash_area scratch_sector;
+    const struct flash_area *scratch_area;
 
     uint8_t write_sz;
 };
@@ -135,6 +136,10 @@ int boot_write_image_ok(const struct flash_area *fap);
  * Accessors for the contents of struct boot_loader_state.
  */
 
+/* These are macros so they can be used as lvalues. */
+#define BOOT_IMG_AREA(state, slot) ((state)->imgs[(slot)].area)
+#define BOOT_SCRATCH_AREA(state) ((state)->scratch_area)
+
 static inline struct image_header*
 boot_img_hdr(struct boot_loader_state *state, size_t slot)
 {
@@ -144,13 +149,13 @@ boot_img_hdr(struct boot_loader_state *state, size_t slot)
 static inline uint8_t
 boot_img_fa_device_id(struct boot_loader_state *state, size_t slot)
 {
-    return state->imgs[slot].sectors[0].fa_device_id;
+    return state->imgs[slot].area->fa_device_id;
 }
 
 static inline uint8_t
 boot_scratch_fa_device_id(struct boot_loader_state *state)
 {
-    return state->scratch_sector.fa_device_id;
+    return state->scratch_area->fa_device_id;
 }
 
 static inline size_t
@@ -184,23 +189,17 @@ boot_img_sector_off(struct boot_loader_state *state, size_t slot,
 static inline uint32_t
 boot_img_slot_off(struct boot_loader_state *state, size_t slot)
 {
-    /*
-     * When using flash_area_to_sectors(), "sectors" are actually
-     * flash areas. Flash areas have offsets relative to the beginning
-     * of their flash device.
-     */
-    return state->imgs[slot].sectors[0].fa_off;
+    return state->imgs[slot].area->fa_off;
 }
 
 static inline size_t boot_scratch_area_size(struct boot_loader_state *state)
 {
-    return state->scratch_sector.fa_size;
+    return state->scratch_area->fa_size;
 }
 
 static inline int
 boot_initialize_area(struct boot_loader_state *state, int flash_area)
 {
-    const struct flash_area *scratch;
     int num_sectors = BOOT_MAX_IMG_SECTORS;
     size_t slot;
     int rc;
@@ -212,17 +211,6 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     case FLASH_AREA_IMAGE_1:
         slot = 1;
         break;
-    case FLASH_AREA_IMAGE_SCRATCH:
-        /*
-         * Special case, handle hackishly by getting area pointer and
-         * leaving the area open.
-         */
-        rc = flash_area_open(flash_area, &scratch);
-        if (rc != 0) {
-            return rc;
-        }
-        state->scratch_sector = *scratch;
-        return 0;
     default:
         return BOOT_EFLASH;
     }

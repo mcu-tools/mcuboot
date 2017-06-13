@@ -335,11 +335,6 @@ boot_read_sectors(void)
         return BOOT_EFLASH;
     }
 
-    rc = boot_initialize_area(&boot_data, FLASH_AREA_IMAGE_SCRATCH);
-    if (rc != 0) {
-        return BOOT_EFLASH;
-    }
-
     boot_data.write_sz = boot_write_sz();
 
     return 0;
@@ -1203,6 +1198,7 @@ boot_go(struct boot_rsp *rsp)
     int swap_type;
     int slot;
     int rc;
+    int fa_id;
 
     /* The array of slot sectors are defined here (as opposed to file scope) so
      * that they don't get allocated for non-boot-loader apps.  This is
@@ -1214,16 +1210,26 @@ boot_go(struct boot_rsp *rsp)
     boot_data.imgs[0].sectors = slot0_sectors;
     boot_data.imgs[1].sectors = slot1_sectors;
 
+    /* Open boot_data image areas for the duration of this call. */
+    for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+        fa_id = flash_area_id_from_image_slot(slot);
+        rc = flash_area_open(fa_id, &BOOT_IMG_AREA(&boot_data, slot));
+        assert(rc == 0);
+    }
+    rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH,
+                         &BOOT_SCRATCH_AREA(&boot_data));
+    assert(rc == 0);
+
     /* Determine the sector layout of the image slots and scratch area. */
     rc = boot_read_sectors();
     if (rc != 0) {
-        return rc;
+        goto out;
     }
 
     /* Attempt to read an image header from each slot. */
     rc = boot_read_image_headers();
     if (rc != 0) {
-        return rc;
+        goto out;
     }
 
     /* If the image slots aren't compatible, no swap is possible.  Just boot
@@ -1233,7 +1239,7 @@ boot_go(struct boot_rsp *rsp)
         rc = boot_swap_if_needed(&swap_type);
         assert(rc == 0);
         if (rc != 0) {
-            return rc;
+            goto out;
         }
     } else {
         swap_type = BOOT_SWAP_TYPE_NONE;
@@ -1245,7 +1251,8 @@ boot_go(struct boot_rsp *rsp)
         rc = boot_validate_slot(0);
         assert(rc == 0);
         if (rc != 0) {
-            return BOOT_EBADIMAGE;
+            rc = BOOT_EBADIMAGE;
+            goto out;
         }
 #endif
         slot = 0;
@@ -1282,30 +1289,38 @@ boot_go(struct boot_rsp *rsp)
     rsp->br_image_addr = boot_img_slot_off(&boot_data, 0);
     rsp->br_hdr = boot_img_hdr(&boot_data, slot);
 
-    return 0;
+ out:
+    flash_area_close(BOOT_SCRATCH_AREA(&boot_data));
+    for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+        flash_area_close(BOOT_IMG_AREA(&boot_data, BOOT_NUM_SLOTS - 1 - slot));
+    }
+    return rc;
 }
 
 int
 split_go(int loader_slot, int split_slot, void **entry)
 {
-    const struct flash_area *loader_fap;
-    const struct flash_area *app_fap;
     struct flash_area *sectors;
     uintptr_t entry_val;
     int loader_flash_id;
-    int app_flash_id;
+    int split_flash_id;
     int rc;
-
-    app_fap = NULL;
-    loader_fap = NULL;
 
     sectors = malloc(BOOT_MAX_IMG_SECTORS * 2 * sizeof *sectors);
     if (sectors == NULL) {
-        rc = SPLIT_GO_ERR;
-        goto done;
+        return SPLIT_GO_ERR;
     }
-    boot_data.imgs[0].sectors = sectors + 0;
-    boot_data.imgs[1].sectors = sectors + BOOT_MAX_IMG_SECTORS;
+    boot_data.imgs[loader_slot].sectors = sectors + 0;
+    boot_data.imgs[split_slot].sectors = sectors + BOOT_MAX_IMG_SECTORS;
+
+    loader_flash_id = flash_area_id_from_image_slot(loader_slot);
+    rc = flash_area_open(loader_flash_id,
+                         &BOOT_IMG_AREA(&boot_data, split_slot));
+    assert(rc == 0);
+    split_flash_id = flash_area_id_from_image_slot(split_slot);
+    rc = flash_area_open(split_flash_id,
+                         &BOOT_IMG_AREA(&boot_data, split_slot));
+    assert(rc == 0);
 
     /* Determine the sector layout of the image slots and scratch area. */
     rc = boot_read_sectors();
@@ -1319,28 +1334,14 @@ split_go(int loader_slot, int split_slot, void **entry)
         goto done;
     }
 
-    app_flash_id = flash_area_id_from_image_slot(split_slot);
-    rc = flash_area_open(app_flash_id, &app_fap);
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-        goto done;
-    }
-
-    loader_flash_id = flash_area_id_from_image_slot(loader_slot);
-    rc = flash_area_open(loader_flash_id, &loader_fap);
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-        goto done;
-    }
-
     /* Don't check the bootable image flag because we could really call a
      * bootable or non-bootable image.  Just validate that the image check
      * passes which is distinct from the normal check.
      */
     rc = split_image_check(boot_img_hdr(&boot_data, split_slot),
-                           app_fap,
+                           BOOT_IMG_AREA(&boot_data, split_slot),
                            boot_img_hdr(&boot_data, loader_slot),
-                           loader_fap);
+                           BOOT_IMG_AREA(&boot_data, loader_slot));
     if (rc != 0) {
         rc = SPLIT_GO_NON_MATCHING;
         goto done;
@@ -1352,8 +1353,8 @@ split_go(int loader_slot, int split_slot, void **entry)
     rc = SPLIT_GO_OK;
 
 done:
+    flash_area_close(BOOT_IMG_AREA(&boot_data, split_slot));
+    flash_area_close(BOOT_IMG_AREA(&boot_data, loader_slot));
     free(sectors);
-    flash_area_close(app_fap);
-    flash_area_close(loader_fap);
     return rc;
 }
