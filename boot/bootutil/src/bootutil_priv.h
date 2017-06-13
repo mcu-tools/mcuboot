@@ -108,7 +108,7 @@ struct boot_loader_state {
         struct image_header hdr;
         const struct flash_area *area;
         struct flash_area *sectors;
-        int num_sectors;
+        size_t num_sectors;
     } imgs[BOOT_NUM_SLOTS];
 
     const struct flash_area *scratch_area;
@@ -220,7 +220,7 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     if (rc != 0) {
         return rc;
     }
-    state->imgs[slot].num_sectors = num_sectors;
+    state->imgs[slot].num_sectors = (size_t)num_sectors;
     return 0;
 }
 

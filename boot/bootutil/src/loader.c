@@ -1196,7 +1196,7 @@ int
 boot_go(struct boot_rsp *rsp)
 {
     int swap_type;
-    int slot;
+    size_t slot;
     int rc;
     int fa_id;
 
