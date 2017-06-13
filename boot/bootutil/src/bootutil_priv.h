@@ -164,6 +164,20 @@ boot_img_num_sectors(struct boot_loader_state *state, size_t slot)
     return state->imgs[slot].num_sectors;
 }
 
+/*
+ * Offset of the slot from the beginning of the flash device.
+ */
+static inline uint32_t
+boot_img_slot_off(struct boot_loader_state *state, size_t slot)
+{
+    return state->imgs[slot].area->fa_off;
+}
+
+static inline size_t boot_scratch_area_size(struct boot_loader_state *state)
+{
+    return state->scratch_area->fa_size;
+}
+
 static inline size_t
 boot_img_sector_size(struct boot_loader_state *state,
                      size_t slot, size_t sector)
@@ -181,20 +195,6 @@ boot_img_sector_off(struct boot_loader_state *state, size_t slot,
 {
     return state->imgs[slot].sectors[sector].fa_off -
            state->imgs[slot].sectors[0].fa_off;
-}
-
-/*
- * Offset of the slot from the beginning of the flash device.
- */
-static inline uint32_t
-boot_img_slot_off(struct boot_loader_state *state, size_t slot)
-{
-    return state->imgs[slot].area->fa_off;
-}
-
-static inline size_t boot_scratch_area_size(struct boot_loader_state *state)
-{
-    return state->scratch_area->fa_size;
 }
 
 static inline int
