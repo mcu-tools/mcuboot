@@ -139,6 +139,7 @@ int boot_write_image_ok(const struct flash_area *fap);
 /* These are macros so they can be used as lvalues. */
 #define BOOT_IMG_AREA(state, slot) ((state)->imgs[(slot)].area)
 #define BOOT_SCRATCH_AREA(state) ((state)->scratch_area)
+#define BOOT_WRITE_SZ(state) ((state)->write_sz)
 
 static inline struct image_header*
 boot_img_hdr(struct boot_loader_state *state, size_t slot)

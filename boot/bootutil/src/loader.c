@@ -335,7 +335,7 @@ boot_read_sectors(void)
         return BOOT_EFLASH;
     }
 
-    boot_data.write_sz = boot_write_sz();
+    BOOT_WRITE_SZ(&boot_data) = boot_write_sz();
 
     return 0;
 }
@@ -370,7 +370,8 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
 
     found = 0;
     for (i = 0; i < max_entries; i++) {
-        rc = flash_area_read(fap, off + i * boot_data.write_sz, &status, 1);
+        rc = flash_area_read(fap, off + i * BOOT_WRITE_SZ(&boot_data),
+                             &status, 1);
         if (rc != 0) {
             return BOOT_EFLASH;
         }
@@ -473,7 +474,8 @@ boot_write_status(struct boot_status *bs)
     }
 
     off = boot_status_off(fap) +
-          boot_status_internal_off(bs->idx, bs->state, boot_data.write_sz);
+          boot_status_internal_off(bs->idx, bs->state,
+                                   BOOT_WRITE_SZ(&boot_data));
 
     align = hal_flash_align(fap->fa_device_id);
     memset(buf, 0xFF, 8);
@@ -829,7 +831,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
     img_off = boot_img_sector_off(&boot_data, 0, idx);
 
     copy_sz = sz;
-    trailer_sz = boot_slots_trailer_sz(boot_data.write_sz);
+    trailer_sz = boot_slots_trailer_sz(BOOT_WRITE_SZ(&boot_data));
 
     /* sz in this function is always is always sized on a multiple of the
      * sector size. The check against the start offset of the last sector
@@ -918,9 +920,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 
             /* copy current status that is being maintained in scratch */
             rc = boot_copy_sector(FLASH_AREA_IMAGE_SCRATCH, FLASH_AREA_IMAGE_0,
-                            scratch_trailer_off,
-                            img_off + copy_sz + BOOT_MAGIC_SZ,
-                            BOOT_STATUS_STATE_COUNT * boot_data.write_sz);
+                        scratch_trailer_off,
+                        img_off + copy_sz + BOOT_MAGIC_SZ,
+                        BOOT_STATUS_STATE_COUNT * BOOT_WRITE_SZ(&boot_data));
             assert(rc == 0);
 
             rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SCRATCH,
