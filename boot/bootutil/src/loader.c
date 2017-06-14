@@ -1207,8 +1207,8 @@ boot_go(struct boot_rsp *rsp)
      * necessary because the gcc option "-fdata-sections" doesn't seem to have
      * any effect in older gcc versions (e.g., 4.8.4).
      */
-    static struct flash_area slot0_sectors[BOOT_MAX_IMG_SECTORS];
-    static struct flash_area slot1_sectors[BOOT_MAX_IMG_SECTORS];
+    static boot_sector_t slot0_sectors[BOOT_MAX_IMG_SECTORS];
+    static boot_sector_t slot1_sectors[BOOT_MAX_IMG_SECTORS];
     boot_data.imgs[0].sectors = slot0_sectors;
     boot_data.imgs[1].sectors = slot1_sectors;
 
@@ -1302,7 +1302,7 @@ boot_go(struct boot_rsp *rsp)
 int
 split_go(int loader_slot, int split_slot, void **entry)
 {
-    struct flash_area *sectors;
+    boot_sector_t *sectors;
     uintptr_t entry_val;
     int loader_flash_id;
     int split_flash_id;
