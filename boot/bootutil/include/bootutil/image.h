@@ -42,6 +42,7 @@ struct flash_area;
 #define IMAGE_F_ECDSA224_SHA256       0x00000008 /* ECDSA224 over SHA256 */
 #define IMAGE_F_NON_BOOTABLE          0x00000010 /* Split image app. */
 #define IMAGE_F_ECDSA256_SHA256       0x00000020 /* ECDSA256 over SHA256 */
+#define IMAGE_F_PKCS1_PSS_RSA2048_SHA256 0x0000040 /* PKCS1 PSS */
 
 /*
  * ECSDA224 is with NIST P-224
