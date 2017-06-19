@@ -8,9 +8,9 @@ this script should be preferred to the manual steps described in
 This program is written for Python3, and has several dependencies on
 Python libraries.  These can be installed using 'pip3' manually:
 
-    pip install --user pycrypto
-    pip install --user pyasn1
-    pip install --user ecdsa
+    pip3 install --user pycrypto
+    pip3 install --user pyasn1
+    pip3 install --user ecdsa
 
 or, on Ubuntu, using the package manager:
 
