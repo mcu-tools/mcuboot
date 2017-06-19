@@ -25,6 +25,13 @@ CFLAGS += -DMCUBOOT_SIGN_RSA -DMCUBOOT_USE_MBED_TLS
 # verification only happens on upgrade.
 CFLAGS += -DMCUBOOT_VALIDATE_SLOT0
 
+# Enabling this option uses newer flash map APIs. This saves RAM and
+# avoids deprecated API usage.
+#
+# (This can be deleted when flash_area_to_sectors() is removed instead
+# of simply deprecated.)
+CFLAGS += -DMCUBOOT_USE_FLASH_AREA_GET_SECTORS
+
 # Enable this option to not use the swapping code and just overwrite
 # the image on upgrade.
 #CFLAGS += -DMCUBOOT_OVERWRITE_ONLY

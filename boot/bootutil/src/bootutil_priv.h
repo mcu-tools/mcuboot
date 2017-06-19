@@ -20,6 +20,8 @@
 #ifndef H_BOOTUTIL_PRIV_
 #define H_BOOTUTIL_PRIV_
 
+#include "sysflash/sysflash.h"
+#include "flash_map/flash_map.h"
 #include "bootutil/image.h"
 
 #ifdef __cplusplus
@@ -94,6 +96,37 @@ struct boot_swap_state {
 
 extern const uint32_t BOOT_MAGIC_SZ;
 
+/** Number of image slots in flash; currently limited to two. */
+#define BOOT_NUM_SLOTS              2
+
+/** Maximum number of image sectors supported by the bootloader. */
+#define BOOT_MAX_IMG_SECTORS        120
+
+/**
+ * Compatibility shim for flash sector type.
+ *
+ * This can be deleted when flash_area_to_sectors() is removed.
+ */
+#ifdef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
+typedef struct flash_sector boot_sector_t;
+#else
+typedef struct flash_area boot_sector_t;
+#endif
+
+/** Private state maintained during boot. */
+struct boot_loader_state {
+    struct {
+        struct image_header hdr;
+        const struct flash_area *area;
+        boot_sector_t *sectors;
+        size_t num_sectors;
+    } imgs[BOOT_NUM_SLOTS];
+
+    const struct flash_area *scratch_area;
+
+    uint8_t write_sz;
+};
+
 int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
     uint8_t key_id);
 
@@ -110,9 +143,153 @@ int boot_schedule_test_swap(void);
 int boot_write_copy_done(const struct flash_area *fap);
 int boot_write_image_ok(const struct flash_area *fap);
 
+/*
+ * Accessors for the contents of struct boot_loader_state.
+ */
+
+/* These are macros so they can be used as lvalues. */
+#define BOOT_IMG_AREA(state, slot) ((state)->imgs[(slot)].area)
+#define BOOT_SCRATCH_AREA(state) ((state)->scratch_area)
+#define BOOT_WRITE_SZ(state) ((state)->write_sz)
+
+static inline struct image_header*
+boot_img_hdr(struct boot_loader_state *state, size_t slot)
+{
+    return &state->imgs[slot].hdr;
+}
+
+static inline uint8_t
+boot_img_fa_device_id(struct boot_loader_state *state, size_t slot)
+{
+    return state->imgs[slot].area->fa_device_id;
+}
+
+static inline uint8_t
+boot_scratch_fa_device_id(struct boot_loader_state *state)
+{
+    return state->scratch_area->fa_device_id;
+}
+
+static inline size_t
+boot_img_num_sectors(struct boot_loader_state *state, size_t slot)
+{
+    return state->imgs[slot].num_sectors;
+}
+
+/*
+ * Offset of the slot from the beginning of the flash device.
+ */
+static inline uint32_t
+boot_img_slot_off(struct boot_loader_state *state, size_t slot)
+{
+    return state->imgs[slot].area->fa_off;
+}
+
+static inline size_t boot_scratch_area_size(struct boot_loader_state *state)
+{
+    return state->scratch_area->fa_size;
+}
+
+#ifndef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
+
+static inline size_t
+boot_img_sector_size(struct boot_loader_state *state,
+                     size_t slot, size_t sector)
+{
+    return state->imgs[slot].sectors[sector].fa_size;
+}
+
+/*
+ * Offset of the sector from the beginning of the image, NOT the flash
+ * device.
+ */
+static inline uint32_t
+boot_img_sector_off(struct boot_loader_state *state, size_t slot,
+                    size_t sector)
+{
+    return state->imgs[slot].sectors[sector].fa_off -
+           state->imgs[slot].sectors[0].fa_off;
+}
+
+static inline int
+boot_initialize_area(struct boot_loader_state *state, int flash_area)
+{
+    int num_sectors = BOOT_MAX_IMG_SECTORS;
+    size_t slot;
+    int rc;
+
+    switch (flash_area) {
+    case FLASH_AREA_IMAGE_0:
+        slot = 0;
+        break;
+    case FLASH_AREA_IMAGE_1:
+        slot = 1;
+        break;
+    default:
+        return BOOT_EFLASH;
+    }
+
+    rc = flash_area_to_sectors(flash_area, &num_sectors,
+                               state->imgs[slot].sectors);
+    if (rc != 0) {
+        return rc;
+    }
+    state->imgs[slot].num_sectors = (size_t)num_sectors;
+    return 0;
+}
+
+#else  /* defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
+
+static inline size_t
+boot_img_sector_size(struct boot_loader_state *state,
+                     size_t slot, size_t sector)
+{
+    return state->imgs[slot].sectors[sector].fs_size;
+}
+
+static inline uint32_t
+boot_img_sector_off(struct boot_loader_state *state, size_t slot,
+                    size_t sector)
+{
+    return state->imgs[slot].sectors[sector].fs_off -
+           state->imgs[slot].sectors[0].fs_off;
+}
+
+static inline int
+boot_initialize_area(struct boot_loader_state *state, int flash_area)
+{
+    uint32_t num_sectors;
+    struct flash_sector *out_sectors;
+    size_t *out_num_sectors;
+    int rc;
+
+    switch (flash_area) {
+    case FLASH_AREA_IMAGE_0:
+        num_sectors = BOOT_MAX_IMG_SECTORS;
+        out_sectors = state->imgs[0].sectors;
+        out_num_sectors = &state->imgs[0].num_sectors;
+        break;
+    case FLASH_AREA_IMAGE_1:
+        num_sectors = BOOT_MAX_IMG_SECTORS;
+        out_sectors = state->imgs[1].sectors;
+        out_num_sectors = &state->imgs[1].num_sectors;
+        break;
+    default:
+        return -1;
+    }
+
+    rc = flash_area_get_sectors(flash_area, &num_sectors, out_sectors);
+    if (rc != 0) {
+        return rc;
+    }
+    *out_num_sectors = num_sectors;
+    return 0;
+}
+
+#endif  /* !defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif
-
