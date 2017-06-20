@@ -83,7 +83,7 @@ main(void)
     rc = boot_go(&rsp);
     assert(rc == 0);
 
-    rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
+    rc = flash_device_base(rsp.br_flash_dev_id, &flash_base);
     assert(rc == 0);
 
     hal_system_start((void *)(flash_base + rsp.br_image_off +
