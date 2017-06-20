@@ -90,7 +90,7 @@ int sim_log_enabled(int level);
 #define BOOT_LOG_ERR(_fmt, ...)                                         \
     do {                                                                \
         if (sim_log_enabled(BOOT_LOG_LEVEL_ERROR)) {                    \
-            printf("[ERR] " _fmt "\n", ##__VA_ARGS__);                  \
+            fprintf(stderr, "[ERR] " _fmt "\n", ##__VA_ARGS__);         \
         }                                                               \
     } while (0)
 #else
@@ -101,7 +101,7 @@ int sim_log_enabled(int level);
 #define BOOT_LOG_WRN(_fmt, ...)                                         \
     do {                                                                \
         if (sim_log_enabled(BOOT_LOG_LEVEL_WARNING)) {                  \
-            printf("[WRN] " _fmt "\n", ##__VA_ARGS__);                  \
+            fprintf(stderr, "[WRN] " _fmt "\n", ##__VA_ARGS__);         \
         }                                                               \
     } while (0)
 #else
@@ -112,7 +112,7 @@ int sim_log_enabled(int level);
 #define BOOT_LOG_INF(_fmt, ...)                                         \
     do {                                                                \
         if (sim_log_enabled(BOOT_LOG_LEVEL_INFO)) {                     \
-            printf("[INF] " _fmt "\n", ##__VA_ARGS__);                  \
+            fprintf(stderr, "[INF] " _fmt "\n", ##__VA_ARGS__);         \
         }                                                               \
     } while (0)
 #else
@@ -123,7 +123,7 @@ int sim_log_enabled(int level);
 #define BOOT_LOG_DBG(_fmt, ...)                                         \
     do {                                                                \
         if (sim_log_enabled(BOOT_LOG_LEVEL_DEBUG)) {                    \
-            printf("[DBG] " _fmt "\n", ##__VA_ARGS__);                  \
+            fprintf(stderr, "[DBG] " _fmt "\n", ##__VA_ARGS__);         \
         }                                                               \
     } while (0)
 #else

@@ -36,6 +36,7 @@ fn ewrite<T: AsRef<str>>(message: T) -> ErrorKind {
 #[derive(Clone)]
 pub struct Flash {
     data: Vec<u8>,
+    write_safe: Vec<bool>,
     sectors: Vec<usize>,
     // Alignment required for writes.
     align: usize,
@@ -51,6 +52,7 @@ impl Flash {
         let total = sectors.iter().sum();
         Flash {
             data: vec![0xffu8; total],
+            write_safe: vec![true; total],
             sectors: sectors,
             align: align,
         }
@@ -74,11 +76,21 @@ impl Flash {
             *x = 0xff;
         }
 
+        for x in &mut self.write_safe[offset .. offset + len] {
+            *x = true;
+        }
+
         Ok(())
     }
 
-    /// Writes are fairly unconstrained, but we restrict to only allowing writes of values that
-    /// are entirely written as 0xFF.
+    /// We restrict to only allowing writes of values that are:
+    ///
+    /// 1. being written to for the first time
+    /// 2. being written to after being erased
+    ///
+    /// This emulates a flash device which starts out erased, with the
+    /// added restriction that repeated writes to the same location
+    /// are disallowed, even if they would be safe to do.
     pub fn write(&mut self, offset: usize, payload: &[u8]) -> Result<()> {
         if offset + payload.len() > self.data.len() {
             panic!("Write outside of device");
@@ -93,13 +105,14 @@ impl Flash {
             panic!("Write length not multiple of alignment");
         }
 
-        let mut sub = &mut self.data[offset .. offset + payload.len()];
-        for (i, x) in sub.iter().enumerate() {
-            if *x != 0xFF {
-                bail!(ewrite(format!("Write to non-FF location at 0x{:x}", offset + i)));
+        for (i, x) in &mut self.write_safe[offset .. offset + payload.len()].iter_mut().enumerate() {
+            if !(*x) {
+                bail!(ewrite(format!("Write to unerased location at 0x{:x}", i)));
             }
+            *x = false;
         }
 
+        let mut sub = &mut self.data[offset .. offset + payload.len()];
         sub.copy_from_slice(payload);
         Ok(())
     }
