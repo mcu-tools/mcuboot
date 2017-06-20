@@ -31,6 +31,9 @@ syscfg.defs:
     BOOTUTIL_SIGN_RSA:
         description: 'Images are signed using RSA2048.'
         value: 0
+    BOOTUTIL_RSA_PKCS1_15:
+        description: 'Sign using old PKCS#1 1.5 (otherwise uses PSS)'
+        value: 0
     BOOTUTIL_SIGN_EC:
         description: 'Images are signed using ECDSA NIST P-224.'
         value: 0
