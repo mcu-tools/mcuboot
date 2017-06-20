@@ -222,6 +222,26 @@ boot_previous_swap_type(void)
 }
 
 static int
+boot_read_header_from_scratch(struct image_header *out_hdr)
+{
+    const struct flash_area *fap;
+    int rc;
+
+    rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    rc = flash_area_read(fap, 0, out_hdr, sizeof *out_hdr);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+    }
+
+    flash_area_close(fap);
+    return rc;
+}
+
+static int
 boot_read_image_header(int slot, struct image_header *out_hdr)
 {
     const struct flash_area *fap;
@@ -1027,7 +1047,7 @@ boot_copy_image(struct boot_status *bs)
     }
 
     if (!size || !copy_size || size == copy_size) {
-        rc = boot_read_image_header(2, &tmp_hdr);
+        rc = boot_read_header_from_scratch(&tmp_hdr);
         assert(rc == 0);
 
         hdr = &tmp_hdr;
