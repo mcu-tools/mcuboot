@@ -95,20 +95,25 @@ struct mcuboot_api_itf {
 extern const struct mcuboot_api_itf mcuboot_api_vt;
 extern struct mcuboot_api_itf *p_mcuboot_api_vt;
 
-#define MCUBOOT_API_MAGIC                   0xdeadbeef
-
 #if defined(__arm__)
-    #define MCUBOOT_API_INIT                                            \
-        extern const struct mcuboot_api_itf mcuboot_api_vt;             \
-        asm("ldr r4, =0xdeadbeef\n\t"                                   \
-            "mov r5, %0" : : "r" (&mcuboot_api_vt) : "r4", "r5");
+    #define MCUBOOT_API_INIT_(m)                                            \
+        extern const struct mcuboot_api_itf mcuboot_api_vt;                 \
+        asm("mov r4, %0\n\t"                                                \
+            "mov r5, %1"  :: "I" (m), "r" (&mcuboot_api_vt) : "r4", "r5");
 #elif defined(__mips__)
     /* TODO */
-    #define MCUBOOT_API_INIT
+    #define MCUBOOT_API_INIT_(m)
 #elif defined(__i386__)
     /* TODO */
-    #define MCUBOOT_API_INIT
+    #define MCUBOOT_API_INIT_(m)
 #endif
+
+/* api virtual function call table magic marker */
+#define MCUBOOT_API_MAGIC             0x8b2d7757
+
+/* magic added to a register to mark bootloader api is valid */
+#define MCUBOOT_BOOT_MAGIC            0xb00710ad
+#define MCUBOOT_API_INIT(x)           MCUBOOT_API_INIT_(MCUBOOT_BOOT_MAGIC)
 
 #define SPLIT_GO_OK                 (0)
 #define SPLIT_GO_NON_MATCHING       (-1)
