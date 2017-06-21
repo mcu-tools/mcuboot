@@ -43,18 +43,24 @@ struct mcuboot_api_flash_info {
 };
 
 static int
-_flash_map_size(void *arg)
+_flash_map_size(void *data, size_t len)
 {
-    uint32_t *amount = (uint32_t *) arg;
+    uint32_t *amount = (uint32_t *) data;
+    if (len != sizeof(uint32_t)) {
+        return -1;
+    }
     *amount = sizeof sysflash_map_dflt / sizeof sysflash_map_dflt[0];
     return 0;
 }
 
 static int
-_flash_map_info(void *arg)
+_flash_map_info(void *data, size_t len)
 {
-    struct mcuboot_api_flash_info *info = (struct mcuboot_api_flash_info *) arg;
+    struct mcuboot_api_flash_info *info = (struct mcuboot_api_flash_info *) data;
 
+    if (len != sizeof(sysflash_map_dflt[0])) {
+        return -1;
+    }
     if (info->index >= sizeof sysflash_map_dflt / sizeof sysflash_map_dflt[0]) {
         return -1;
     }
@@ -66,13 +72,13 @@ _flash_map_info(void *arg)
 }
 
 static int
-_mcuboot_ioctl(int req, void *arg)
+_mcuboot_ioctl(int req, void *data, size_t len)
 {
     switch (req) {
     case MCUBOOT_REQ_FLASH_MAP_SIZE:
-        return _flash_map_size(arg);
+        return _flash_map_size(data, len);
     case MCUBOOT_REQ_FLASH_MAP_INFO:
-        return _flash_map_info(arg);
+        return _flash_map_info(data, len);
     /* just for health checking... */
     case 0x1234:
         return 0x5678;

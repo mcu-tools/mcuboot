@@ -89,7 +89,7 @@ int boot_set_confirmed(void);
 struct mcuboot_api_itf {
     uint32_t mcuboot_api_magic;
     uint32_t mcuboot_version;
-    int (*mcuboot_ioctl)(int req, void *arg);
+    int (*mcuboot_ioctl)(int req, void *data, size_t len);
 };
 
 extern const struct mcuboot_api_itf mcuboot_api_vt;
