@@ -220,11 +220,10 @@ impl RunStatus {
 
         // Set an alignment, and position the magic value.
         c::set_sim_flash_align(align);
-        let trailer_size = c::boot_trailer_sz();
 
         // Mark the upgrade as ready to install.  (This looks like it might be a bug in the code,
         // however.)
-        mark_upgrade(&mut flash, scratch_base - trailer_size as usize);
+        mark_upgrade(&mut flash, scratch_base - c::boot_magic_sz() as usize);
 
         let (fl2, total_count) = try_upgrade(&flash, &areadesc, None);
         info!("First boot, count={}", total_count);
@@ -324,7 +323,7 @@ fn try_upgrade(flash: &Flash, areadesc: &AreaDesc, stop: Option<i32>) -> (Flash,
     let ok = [1u8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
     let (base, _) = areadesc.find(FlashId::ImageScratch);
     let align = c::get_sim_flash_align() as usize;
-    fl.write(base - align, &ok[..align]).unwrap();
+    fl.write(base - c::boot_magic_sz() - c::boot_max_align(), &ok[..align]).unwrap();
 
     c::set_flash_counter(stop.unwrap_or(0));
     let (first_interrupted, cnt1) = match c::boot_go(&mut fl, &areadesc) {
@@ -369,7 +368,8 @@ fn try_norevert(flash: &Flash, areadesc: &AreaDesc) -> Flash {
     // Write boot_ok
     let ok = [1u8, 0, 0, 0, 0, 0, 0, 0];
     let (slot0_base, slot0_len) = areadesc.find(FlashId::Image0);
-    fl.write(slot0_base + slot0_len - align, &ok[..align]).unwrap();
+    fl.write(slot0_base + slot0_len - c::boot_magic_sz() - c::boot_max_align(),
+             &ok[..align]).unwrap();
     assert_eq!(c::boot_go(&mut fl, &areadesc), 0);
     fl
 }
@@ -382,7 +382,7 @@ fn try_random_fails(flash: &Flash, areadesc: &AreaDesc, total_ops: i32,
     let ok = [1u8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
     let (base, _) = areadesc.find(FlashId::ImageScratch);
     let align = c::get_sim_flash_align() as usize;
-    fl.write(base - align, &ok[..align]).unwrap();
+    fl.write(base - c::boot_magic_sz() - c::boot_max_align(), &ok[..align]).unwrap();
 
     let mut rng = rand::thread_rng();
     let mut resets = vec![0i32; count];

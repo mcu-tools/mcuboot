@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>
+#include <stddef.h>
 
 #include "sysflash/sysflash.h"
 #include "hal/hal_bsp.h"
@@ -43,6 +44,7 @@ const uint32_t boot_img_magic[] = {
 };
 
 const uint32_t BOOT_MAGIC_SZ = sizeof boot_img_magic;
+const uint32_t BOOT_MAX_ALIGN = MAX_FLASH_ALIGN;
 
 struct boot_swap_table {
     /** * For each field, a value of 0 means "any". */
@@ -164,37 +166,25 @@ boot_magic_code(const uint32_t *magic)
 uint32_t
 boot_slots_trailer_sz(uint8_t min_write_sz)
 {
-    return BOOT_MAGIC_SZ                                                    +
-           /* state for all sectors */
+    return /* state for all sectors */
            BOOT_STATUS_MAX_ENTRIES * BOOT_STATUS_STATE_COUNT * min_write_sz +
-           /* copy_done + image_ok */
-           min_write_sz * 2;
+           BOOT_MAX_ALIGN * 2 /* copy_done + image_ok */                    +
+           BOOT_MAGIC_SZ;
 }
 
 static uint32_t
 boot_scratch_trailer_sz(uint8_t min_write_sz)
 {
-    return BOOT_MAGIC_SZ                          +  /* magic */
-           BOOT_STATUS_STATE_COUNT * min_write_sz +  /* state for one sector */
-           min_write_sz;                             /* image_ok */
+    return BOOT_STATUS_STATE_COUNT * min_write_sz +  /* state for one sector */
+           BOOT_MAX_ALIGN                         +  /* image_ok */
+           BOOT_MAGIC_SZ;
 }
 
 static uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
-    uint32_t off_from_end;
-    uint8_t elem_sz;
-
-    elem_sz = flash_area_align(fap);
-
-    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
-        off_from_end = boot_scratch_trailer_sz(elem_sz);
-    } else {
-        off_from_end = boot_slots_trailer_sz(elem_sz);
-    }
-
-    assert(off_from_end <= fap->fa_size);
-    return fap->fa_size - off_from_end;
+    assert(offsetof(struct image_trailer, magic) == 16);
+    return fap->fa_size - BOOT_MAGIC_SZ;
 }
 
 int
@@ -214,20 +204,34 @@ boot_status_entries(const struct flash_area *fap)
 uint32_t
 boot_status_off(const struct flash_area *fap)
 {
-    return boot_magic_off(fap) + BOOT_MAGIC_SZ;
+    uint32_t off_from_end;
+    uint8_t elem_sz;
+
+    elem_sz = flash_area_align(fap);
+
+    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
+        off_from_end = boot_scratch_trailer_sz(elem_sz);
+    } else {
+        off_from_end = boot_slots_trailer_sz(elem_sz);
+    }
+
+    assert(off_from_end <= fap->fa_size);
+    return fap->fa_size - off_from_end;
 }
 
 static uint32_t
 boot_copy_done_off(const struct flash_area *fap)
 {
     assert(fap->fa_id != FLASH_AREA_IMAGE_SCRATCH);
-    return fap->fa_size - flash_area_align(fap) * 2;
+    assert(offsetof(struct image_trailer, copy_done) == 0);
+    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 2;
 }
 
 static uint32_t
 boot_image_ok_off(const struct flash_area *fap)
 {
-    return fap->fa_size - flash_area_align(fap);
+    assert(offsetof(struct image_trailer, image_ok) == 8);
+    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN;
 }
 
 int

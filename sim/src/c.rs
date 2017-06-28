@@ -33,6 +33,14 @@ pub fn set_sim_flash_align(align: u8) {
     unsafe { raw::sim_flash_align = align };
 }
 
+pub fn boot_magic_sz() -> usize {
+    unsafe { raw::BOOT_MAGIC_SZ as usize }
+}
+
+pub fn boot_max_align() -> usize {
+    unsafe { raw::BOOT_MAX_ALIGN as usize }
+}
+
 mod raw {
     use area::CAreaDesc;
     use libc;
@@ -46,5 +54,8 @@ mod raw {
 
         pub static mut sim_flash_align: u8;
         pub fn boot_slots_trailer_sz(min_write_sz: u8) -> u32;
+
+        pub static BOOT_MAGIC_SZ: u32;
+        pub static BOOT_MAX_ALIGN: u32;
     }
 }
