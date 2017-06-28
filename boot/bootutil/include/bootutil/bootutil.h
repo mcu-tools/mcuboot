@@ -40,6 +40,9 @@ extern "C" {
 
 #define BOOT_SWAP_TYPE_FAIL     0xff
 
+#define MAX_FLASH_ALIGN         8
+extern const uint32_t BOOT_MAX_ALIGN;
+
 struct image_header;
 /**
  * A response object provided by the boot loader code; indicates where to jump
@@ -55,6 +58,17 @@ struct boot_rsp {
      */
     uint8_t br_flash_dev_id;
     uint32_t br_image_off;
+};
+
+/* This is not actually used by mcuboot's code but can be used by apps
+ * when attempting to read/write a trailer.
+ */
+struct image_trailer {
+    uint8_t copy_done;
+    uint8_t pad1[MAX_FLASH_ALIGN - 1];
+    uint8_t image_ok;
+    uint8_t pad2[MAX_FLASH_ALIGN - 1];
+    uint8_t magic[16];
 };
 
 /* you must have pre-allocated all the entries within this structure */

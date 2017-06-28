@@ -471,7 +471,7 @@ boot_write_status(struct boot_status *bs)
     uint32_t off;
     int area_id;
     int rc;
-    uint8_t buf[8];
+    uint8_t buf[BOOT_MAX_ALIGN];
     uint8_t align;
 
     /* NOTE: The first sector copied (that is the last sector on slot) contains
@@ -498,7 +498,7 @@ boot_write_status(struct boot_status *bs)
                                    BOOT_WRITE_SZ(&boot_data));
 
     align = hal_flash_align(fap->fa_device_id);
-    memset(buf, 0xFF, 8);
+    memset(buf, 0xFF, BOOT_MAX_ALIGN);
     buf[0] = bs->state;
 
     rc = flash_area_write(fap, off, buf, align);
@@ -945,7 +945,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
             /* copy current status that is being maintained in scratch */
             rc = boot_copy_sector(FLASH_AREA_IMAGE_SCRATCH, FLASH_AREA_IMAGE_0,
                         scratch_trailer_off,
-                        img_off + copy_sz + BOOT_MAGIC_SZ,
+                        img_off + copy_sz,
                         BOOT_STATUS_STATE_COUNT * BOOT_WRITE_SZ(&boot_data));
             assert(rc == 0);
 
