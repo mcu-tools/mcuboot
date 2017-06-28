@@ -29,7 +29,6 @@ def do_getpub(args):
     key.emit_c()
 
 def do_sign(args):
-    align = args.align
     if args.rsa_pkcs1_15:
         keys.sign_rsa_pss = False
     img = image.Image.load(args.infile, version=args.version,

@@ -27,12 +27,11 @@ TLV_VALUES = {
 
 TLV_HEADER_SIZE = 4
 
-# Sizes of the image trailer, depending on image alignment.
+# Sizes of the image trailer, depending on flash write size.
 trailer_sizes = {
-        1: 402,
-        2: 788,
-        4: 1560,
-        8: 3104, }
+    write_size: 128 * 3 * write_size + 8 * 2 + 16
+    for write_size in [1, 2, 4, 8]
+}
 
 boot_magic = bytes([
     0x77, 0xc2, 0x95, 0xf3,
@@ -166,7 +165,7 @@ class Image():
             msg = "Image size (0x{:x}) + trailer (0x{:x}) exceeds requested size 0x{:x}".format(
                     len(self.payload), tsize, size)
             raise Exception(msg)
-        pbytes = b'\xff' * padding
-        pbytes += boot_magic
+        pbytes  = b'\xff' * padding
         pbytes += b'\xff' * (tsize - len(boot_magic))
+        pbytes += boot_magic
         self.payload += pbytes
