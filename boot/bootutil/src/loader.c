@@ -745,8 +745,12 @@ boot_copy_sector(int flash_area_id_src, int flash_area_id_dst,
     rc = 0;
 
 done:
-    flash_area_close(fap_src);
-    flash_area_close(fap_dst);
+    if (fap_src) {
+        flash_area_close(fap_src);
+    }
+    if (fap_dst) {
+        flash_area_close(fap_dst);
+    }
     return rc;
 }
 
