@@ -6,29 +6,16 @@ This document describes the requirements and necessary steps required to port
 # Requirements
 
 * `mcuboot` requires that the target provides a `flash` API with ability to
-  get flash alignment and read/write/erase individual sectors.
+  get the flash's minimum write size, and read/write/erase individual sectors.
 
 * `mcuboot` doesn't bundle a cryptographic library, which means the target
   OS must already have it bundled. The supported libraries at the moment are
-  `tinycrypt` and `mbed TLS`.
+  either `mbed TLS` or the set `tinycrypt` + `mbed TLS` (where `mbed TLS` is
+  used to provide functionality not existing in `tinycrypt`).
 
 * TODO: what more?
 
 # Steps to port
-
-## Configuration options macro
-
-Configuration options are checked with the macro `MYNEWT_VAL(x)` where `x`
-is the configuration to get the value for. This enables support for OSes with
-configuration systems that don't take the `#define ...` format. If the target
-OS uses `#define ...` one can simply use the following definition:
-
-```c
-#define MYNEWT_VAL(x) (x)
-```
-
-If your system uses another method, like build config files, a proper façade
-must be defined.
 
 ## Main app and calling the bootloader
 
@@ -67,16 +54,16 @@ where the target firmware is located which can be used to jump to.
 
 ### hal_flash_align
 
-`mcuboot` needs to know the alignment of the flash. To get this information it
-calls `hal_flash_align`.
+`mcuboot` needs to know the write size (and alignment) of the flash. To get
+this information it calls `hal_flash_align`.
 
 TODO: this needs to die and move to flash_map...
 
 ### flash_map
 
 The bootloader requires a `flash_map` to be able to know how the flash is
-"partitioned". A `flash_map` consists of `struct flash_area` entries
-specifying the "partitions", where a `flash_area` defined as follows:
+partitioned. A `flash_map` consists of `struct flash_area` entries
+specifying the partitions, where a `flash_area` defined as follows:
 
 ```c
 struct flash_area {
