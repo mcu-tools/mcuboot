@@ -126,21 +126,6 @@ static const struct boot_status_table boot_status_tables[] = {
 #define BOOT_STATUS_TABLES_COUNT \
     (sizeof boot_status_tables / sizeof boot_status_tables[0])
 
-/**
- * This table indicates the next swap type that should be performed.  The first
- * column contains the current swap type.  The second column contains the swap
- * type that should be effected after the first completes.
- */
-static const uint8_t boot_swap_trans_table[][2] = {
-    /*     From                     To             */
-    { BOOT_SWAP_TYPE_REVERT,    BOOT_SWAP_TYPE_NONE },
-    { BOOT_SWAP_TYPE_PERM,      BOOT_SWAP_TYPE_NONE },
-    { BOOT_SWAP_TYPE_TEST,      BOOT_SWAP_TYPE_REVERT },
-};
-
-#define BOOT_SWAP_TRANS_TABLE_SIZE   \
-    (sizeof boot_swap_trans_table / sizeof boot_swap_trans_table[0])
-
 #define BOOT_LOG_SWAP_STATE(area, state)                            \
     BOOT_LOG_INF("%s: magic=%s, copy_done=0x%x, image_ok=0x%x",     \
                  (area),                                            \
@@ -201,25 +186,24 @@ boot_status_source(void)
 
 /**
  * Calculates the type of swap that just completed.
+ *
+ * This is used when a swap is interrupted by an external event. After
+ * finishing the swap operation determines what the initial request was.
  */
 static int
 boot_previous_swap_type(void)
 {
     int post_swap_type;
-    int i;
 
     post_swap_type = boot_swap_type();
 
-    for (i = 0; i < BOOT_SWAP_TRANS_TABLE_SIZE; i++){
-        if (boot_swap_trans_table[i][1] == post_swap_type) {
-            return boot_swap_trans_table[i][0];
-        }
+    switch (post_swap_type) {
+    case BOOT_SWAP_TYPE_NONE   : return BOOT_SWAP_TYPE_PERM;
+    case BOOT_SWAP_TYPE_REVERT : return BOOT_SWAP_TYPE_TEST;
+    case BOOT_SWAP_TYPE_PANIC  : return BOOT_SWAP_TYPE_PANIC;
     }
 
-    /* XXX: Temporary assert. */
-    assert(0);
-
-    return BOOT_SWAP_TYPE_REVERT;
+    return BOOT_SWAP_TYPE_FAIL;
 }
 
 static int
@@ -605,18 +589,16 @@ static int
 boot_validated_swap_type(void)
 {
     int swap_type;
-    int rc;
 
     swap_type = boot_swap_type();
-    if (swap_type == BOOT_SWAP_TYPE_NONE) {
-        /* Continue using slot 0. */
-        return BOOT_SWAP_TYPE_NONE;
-    }
-
-    /* Boot loader wants to switch to slot 1.  Ensure image is valid. */
-    rc = boot_validate_slot(1);
-    if (rc != 0) {
-        return BOOT_SWAP_TYPE_FAIL;
+    switch (swap_type) {
+    case BOOT_SWAP_TYPE_TEST:
+    case BOOT_SWAP_TYPE_PERM:
+    case BOOT_SWAP_TYPE_REVERT:
+        /* Boot loader wants to switch to slot 1. Ensure image is valid. */
+        if (boot_validate_slot(1) != 0) {
+            swap_type = BOOT_SWAP_TYPE_FAIL;
+        }
     }
 
     return swap_type;
@@ -1191,6 +1173,12 @@ boot_swap_if_needed(int *out_swap_type)
         rc = boot_copy_image(&bs);
         assert(rc == 0);
 
+        /* NOTE: here we have finished a swap resume. The initial request
+         * was either a TEST or PERM swap, which now after the completed
+         * swap will be determined to be respectively REVERT (was TEST)
+         * or NONE (was PERM).
+         */
+
         /* Extrapolate the type of the partial swap.  We need this
          * information to know how to mark the swap complete in flash.
          */
@@ -1299,6 +1287,13 @@ boot_go(struct boot_rsp *rsp)
         slot = 0;
         boot_finalize_revert_swap();
         reload_headers = true;
+        break;
+
+    case BOOT_SWAP_TYPE_PANIC:
+        /* TODO: what to do it a fatal error like flash read/write error
+         *       happened?
+         */
+        assert(0);
         break;
 
     default:

@@ -48,97 +48,45 @@ const uint32_t BOOT_MAX_ALIGN = MAX_FLASH_ALIGN;
 
 struct boot_swap_table {
     /** * For each field, a value of 0 means "any". */
-    uint8_t bsw_magic_slot0;
-    uint8_t bsw_magic_slot1;
-    uint8_t bsw_image_ok_slot0;
-    uint8_t bsw_image_ok_slot1;
+    uint8_t magic_slot0;
+    uint8_t magic_slot1;
+    uint8_t image_ok_slot0;
+    uint8_t image_ok_slot1;
 
-    uint8_t bsw_swap_type;
+    uint8_t swap_type;
 };
 
 /**
  * This set of tables maps image trailer contents to swap operation type.
  * When searching for a match, these tables must be iterated sequentially.
+ *
+ * NOTE: the table order is very important. The settings in Slot 1 always
+ * are priority to Slot 0 and should be located earlier in the table.
+ *
+ * The table lists only states where there is action needs to be taken by
+ * the bootloader, as in starting/finishing a swap operation.
  */
 static const struct boot_swap_table boot_swap_tables[] = {
     {
-        /*          | slot-0     | slot-1     |
-         *----------+------------+------------|
-         *    magic | Unset      | Unset      |
-         * image-ok | Any        | Any        |
-         * ---------+------------+------------'
-         * swap: none                         |
-         * -----------------------------------'
-         */
-        .bsw_magic_slot0 =      BOOT_MAGIC_UNSET,
-        .bsw_magic_slot1 =      BOOT_MAGIC_UNSET,
-        .bsw_image_ok_slot0 =   0,
-        .bsw_image_ok_slot1 =   0,
-        .bsw_swap_type =        BOOT_SWAP_TYPE_NONE,
+        .magic_slot0 =      0,
+        .magic_slot1 =      BOOT_MAGIC_GOOD,
+        .image_ok_slot0 =   0,
+        .image_ok_slot1 =   0xff,
+        .swap_type =        BOOT_SWAP_TYPE_TEST,
     },
-
     {
-        /*          | slot-0     | slot-1     |
-         *----------+------------+------------|
-         *    magic | Any        | Good       |
-         * image-ok | Any        | Unset      |
-         * ---------+------------+------------`
-         * swap: test                         |
-         * -----------------------------------'
-         */
-        .bsw_magic_slot0 =      0,
-        .bsw_magic_slot1 =      BOOT_MAGIC_GOOD,
-        .bsw_image_ok_slot0 =   0,
-        .bsw_image_ok_slot1 =   0xff,
-        .bsw_swap_type =        BOOT_SWAP_TYPE_TEST,
+        .magic_slot0 =      0,
+        .magic_slot1 =      BOOT_MAGIC_GOOD,
+        .image_ok_slot0 =   0,
+        .image_ok_slot1 =   0x01,
+        .swap_type =        BOOT_SWAP_TYPE_PERM,
     },
-
     {
-        /*          | slot-0     | slot-1     |
-         *----------+------------+------------|
-         *    magic | Any        | Good       |
-         * image-ok | Any        | 0x01       |
-         * ---------+------------+------------`
-         * swap: permanent                    |
-         * -----------------------------------'
-         */
-        .bsw_magic_slot0 =      0,
-        .bsw_magic_slot1 =      BOOT_MAGIC_GOOD,
-        .bsw_image_ok_slot0 =   0,
-        .bsw_image_ok_slot1 =   0x01,
-        .bsw_swap_type =        BOOT_SWAP_TYPE_PERM,
-    },
-
-    {
-        /*          | slot-0     | slot-1     |
-         *----------+------------+------------|
-         *    magic | Good       | Unset      |
-         * image-ok | 0xff       | Any        |
-         * ---------+------------+------------'
-         * swap: revert (test image running)  |
-         * -----------------------------------'
-         */
-        .bsw_magic_slot0 =      BOOT_MAGIC_GOOD,
-        .bsw_magic_slot1 =      BOOT_MAGIC_UNSET,
-        .bsw_image_ok_slot0 =   0xff,
-        .bsw_image_ok_slot1 =   0,
-        .bsw_swap_type =        BOOT_SWAP_TYPE_REVERT,
-    },
-
-    {
-        /*          | slot-0     | slot-1     |
-         *----------+------------+------------|
-         *    magic | Good       | Unset      |
-         * image-ok | 0x01       | Any        |
-         * ---------+------------+------------'
-         * swap: none (confirmed test image)  |
-         * -----------------------------------'
-         */
-        .bsw_magic_slot0 =      BOOT_MAGIC_GOOD,
-        .bsw_magic_slot1 =      BOOT_MAGIC_UNSET,
-        .bsw_image_ok_slot0 =   0x01,
-        .bsw_image_ok_slot1 =   0,
-        .bsw_swap_type =        BOOT_SWAP_TYPE_NONE,
+        .magic_slot0 =      BOOT_MAGIC_GOOD,
+        .magic_slot1 =      BOOT_MAGIC_UNSET,
+        .image_ok_slot0 =   0xff,
+        .image_ok_slot1 =   0,
+        .swap_type =        BOOT_SWAP_TYPE_REVERT,
     },
 };
 
@@ -357,40 +305,41 @@ int
 boot_swap_type(void)
 {
     const struct boot_swap_table *table;
-    struct boot_swap_state state_slot0;
-    struct boot_swap_state state_slot1;
+    struct boot_swap_state slot0;
+    struct boot_swap_state slot1;
     int rc;
     int i;
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_0, &state_slot0);
-    assert(rc == 0);
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_0, &slot0);
+    if (rc) {
+        return BOOT_SWAP_TYPE_PANIC;
+    }
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_1, &state_slot1);
-    assert(rc == 0);
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_1, &slot1);
+    if (rc) {
+        return BOOT_SWAP_TYPE_PANIC;
+    }
 
     for (i = 0; i < BOOT_SWAP_TABLES_COUNT; i++) {
         table = boot_swap_tables + i;
 
-        if ((table->bsw_magic_slot0     == 0    ||
-             table->bsw_magic_slot0     == state_slot0.magic)           &&
-            (table->bsw_magic_slot1     == 0    ||
-             table->bsw_magic_slot1     == state_slot1.magic)           &&
-            (table->bsw_image_ok_slot0  == 0    ||
-             table->bsw_image_ok_slot0  == state_slot0.image_ok)        &&
-            (table->bsw_image_ok_slot1  == 0    ||
-             table->bsw_image_ok_slot1  == state_slot1.image_ok)) {
+        if ((!table->magic_slot0    || table->magic_slot0     == slot0.magic)     &&
+            (!table->magic_slot1    || table->magic_slot1     == slot1.magic)     &&
+            (!table->image_ok_slot0 || table->image_ok_slot0  == slot0.image_ok)  &&
+            (!table->image_ok_slot1 || table->image_ok_slot1  == slot1.image_ok)) {
             BOOT_LOG_INF("Swap type: %s",
-                   table->bsw_swap_type == BOOT_SWAP_TYPE_NONE   ? "none"   :
-                   table->bsw_swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
-                   table->bsw_swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
-                   table->bsw_swap_type == BOOT_SWAP_TYPE_REVERT ? "revert" :
-                   table->bsw_swap_type == BOOT_SWAP_TYPE_FAIL   ? "fail"   :
-                   "BUG; can't happen");
-            return table->bsw_swap_type;
+                         table->swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
+                         table->swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
+                         table->swap_type == BOOT_SWAP_TYPE_REVERT ? "revert" :
+                         "BUG; can't happen");
+            assert(table->swap_type == BOOT_SWAP_TYPE_TEST ||
+                   table->swap_type == BOOT_SWAP_TYPE_PERM ||
+                   table->swap_type == BOOT_SWAP_TYPE_REVERT);
+            return table->swap_type;
         }
     }
 
-    assert(0);
+    BOOT_LOG_INF("Swap type: none");
     return BOOT_SWAP_TYPE_NONE;
 }
 
