@@ -122,8 +122,13 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
  */
 void flash_area_close(const struct flash_area *area)
 {
-    struct flash_map_entry *entry = CONTAINER_OF(area, struct flash_map_entry,
-                                                 area);
+    struct flash_map_entry *entry;
+
+    if (!area) {
+        return;
+    }
+
+    entry = CONTAINER_OF(area, struct flash_map_entry, area);
     if (entry->magic != FLASH_MAP_ENTRY_MAGIC) {
         BOOT_LOG_ERR("invalid area %p (id %u)", area, area->fa_id);
         return;
