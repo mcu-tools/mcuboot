@@ -1249,14 +1249,6 @@ boot_go(struct boot_rsp *rsp)
 
     switch (swap_type) {
     case BOOT_SWAP_TYPE_NONE:
-#ifdef MCUBOOT_VALIDATE_SLOT0
-        rc = boot_validate_slot(0);
-        assert(rc == 0);
-        if (rc != 0) {
-            rc = BOOT_EBADIMAGE;
-            goto out;
-        }
-#endif
         slot = 0;
         break;
 
@@ -1285,6 +1277,15 @@ boot_go(struct boot_rsp *rsp)
         slot = 0;
         break;
     }
+
+#ifdef MCUBOOT_VALIDATE_SLOT0
+    rc = boot_validate_slot(0);
+    assert(rc == 0);
+    if (rc != 0) {
+        rc = BOOT_EBADIMAGE;
+        goto out;
+    }
+#endif
 
     /* Always boot from the primary slot. */
     rsp->br_flash_dev_id = boot_img_fa_device_id(&boot_data, 0);
