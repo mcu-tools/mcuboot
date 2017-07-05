@@ -24,6 +24,7 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <stdbool.h>
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1225,6 +1226,7 @@ boot_go(struct boot_rsp *rsp)
     size_t slot;
     int rc;
     int fa_id;
+    bool reload_headers = false;
 
     /* The array of slot sectors are defined here (as opposed to file scope) so
      * that they don't get allocated for non-boot-loader apps.  This is
@@ -1280,11 +1282,13 @@ boot_go(struct boot_rsp *rsp)
     case BOOT_SWAP_TYPE_PERM:
         slot = 1;
         boot_finalize_test_swap();
+        reload_headers = true;
         break;
 
     case BOOT_SWAP_TYPE_REVERT:
         slot = 1;
         boot_finalize_revert_swap();
+        reload_headers = true;
         break;
 
     case BOOT_SWAP_TYPE_FAIL:
@@ -1294,6 +1298,7 @@ boot_go(struct boot_rsp *rsp)
          */
         slot = 0;
         boot_finalize_revert_swap();
+        reload_headers = true;
         break;
 
     default:
@@ -1303,6 +1308,13 @@ boot_go(struct boot_rsp *rsp)
     }
 
 #ifdef MCUBOOT_VALIDATE_SLOT0
+    if (reload_headers) {
+            rc = boot_read_image_headers();
+            if (rc != 0) {
+                    goto out;
+            }
+    }
+
     rc = boot_validate_slot(0);
     assert(rc == 0);
     if (rc != 0) {
