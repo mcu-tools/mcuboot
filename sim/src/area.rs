@@ -1,6 +1,6 @@
 //! Describe flash areas.
 
-use flash::{Flash, SimFlash, Sector};
+use simflash::{Flash, SimFlash, Sector};
 use std::ptr;
 
 /// Structure to build up the boot area table.

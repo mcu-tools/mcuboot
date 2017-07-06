@@ -3,6 +3,9 @@
 //! This module is capable of simulating the type of NOR flash commonly used in microcontrollers.
 //! These generally can be written as individual bytes, but must be erased in larger units.
 
+#[macro_use] extern crate error_chain;
+mod pdump;
+
 use std::fs::File;
 use std::io::Write;
 use std::iter::Enumerate;

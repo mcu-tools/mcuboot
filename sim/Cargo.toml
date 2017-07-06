@@ -10,11 +10,11 @@ gcc = "0.3.38"
 [dependencies]
 libc = "0.2.0"
 rand = "0.3.0"
-error-chain = "0.7.1"
 docopt = "0.6"
 rustc-serialize = "0.3"
 log = "0.3"
 env_logger = "0.3"
+simflash = { path = "simflash" }
 
 [profile.test]
 opt-level = 1
