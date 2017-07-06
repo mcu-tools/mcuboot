@@ -3,6 +3,7 @@
 use flash::{Result, Flash};
 use libc;
 use log::LogLevel;
+use mem;
 use std::slice;
 
 // The current active flash device.  The 'static is a lie, and we manage the lifetime ourselves.
@@ -10,7 +11,8 @@ static mut FLASH: Option<*mut Flash> = None;
 
 // Set the flash device to be used by the simulation.  The pointer is unsafely stashed away.
 pub unsafe fn set_flash(dev: &mut Flash) {
-    FLASH = Some(dev);
+    let dev: &'static mut Flash = mem::transmute(dev);
+    FLASH = Some(dev as *mut Flash);
 }
 
 pub unsafe fn clear_flash() {

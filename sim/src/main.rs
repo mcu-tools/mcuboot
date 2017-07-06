@@ -24,7 +24,7 @@ pub mod api;
 mod pdump;
 mod caps;
 
-use flash::Flash;
+use flash::{Flash, SimFlash};
 use area::{AreaDesc, FlashId};
 use caps::Caps;
 
@@ -155,10 +155,10 @@ impl RunStatus {
         let (mut flash, areadesc) = match device {
             DeviceName::Stm32f4 => {
                 // STM style flash.  Large sectors, with a large scratch area.
-                let flash = Flash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
-                                       64 * 1024,
-                                       128 * 1024, 128 * 1024, 128 * 1024],
-                                       align as usize);
+                let flash = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
+                                          64 * 1024,
+                                          128 * 1024, 128 * 1024, 128 * 1024],
+                                          align as usize);
                 let mut areadesc = AreaDesc::new(&flash);
                 areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
                 areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
@@ -167,7 +167,7 @@ impl RunStatus {
             }
             DeviceName::K64f => {
                 // NXP style flash.  Small sectors, one small sector for scratch.
-                let flash = Flash::new(vec![4096; 128], align as usize);
+                let flash = SimFlash::new(vec![4096; 128], align as usize);
 
                 let mut areadesc = AreaDesc::new(&flash);
                 areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
@@ -178,7 +178,7 @@ impl RunStatus {
             DeviceName::K64fBig => {
                 // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
                 // uses small sectors, but we tell the bootloader they are large.
-                let flash = Flash::new(vec![4096; 128], align as usize);
+                let flash = SimFlash::new(vec![4096; 128], align as usize);
 
                 let mut areadesc = AreaDesc::new(&flash);
                 areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0);
@@ -189,7 +189,7 @@ impl RunStatus {
             DeviceName::Nrf52840 => {
                 // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
                 // does not divide into the image size.
-                let flash = Flash::new(vec![4096; 128], align as usize);
+                let flash = SimFlash::new(vec![4096; 128], align as usize);
 
                 let mut areadesc = AreaDesc::new(&flash);
                 areadesc.add_image(0x008000, 0x034000, FlashId::Image0);
@@ -270,7 +270,7 @@ impl RunStatus {
 ///
 /// Returns the number of flash operations which can later be used to
 /// inject failures at chosen steps.
-fn run_basic_upgrade(flash: &Flash, areadesc: &AreaDesc, images: &Images)
+fn run_basic_upgrade(flash: &SimFlash, areadesc: &AreaDesc, images: &Images)
                      -> Result<i32, ()> {
     let (fl, total_count) = try_upgrade(&flash, &areadesc, &images, None);
     info!("Total flash operation count={}", total_count);
@@ -283,7 +283,7 @@ fn run_basic_upgrade(flash: &Flash, areadesc: &AreaDesc, images: &Images)
     }
 }
 
-fn run_basic_revert(flash: &Flash, areadesc: &AreaDesc, images: &Images) -> bool {
+fn run_basic_revert(flash: &SimFlash, areadesc: &AreaDesc, images: &Images) -> bool {
     let mut fails = 0;
 
     if Caps::SwapUpgrade.present() {
@@ -300,7 +300,7 @@ fn run_basic_revert(flash: &Flash, areadesc: &AreaDesc, images: &Images) -> bool
     fails > 0
 }
 
-fn run_perm_with_fails(flash: &Flash, areadesc: &AreaDesc, images: &Images,
+fn run_perm_with_fails(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
                        total_flash_ops: i32) -> bool {
     let mut fails = 0;
 
@@ -340,7 +340,7 @@ fn run_perm_with_fails(flash: &Flash, areadesc: &AreaDesc, images: &Images,
     fails > 0
 }
 
-fn run_perm_with_random_fails(flash: &Flash, areadesc: &AreaDesc,
+fn run_perm_with_random_fails(flash: &SimFlash, areadesc: &AreaDesc,
                               images: &Images, total_flash_ops: i32,
                               total_fails: usize) -> bool {
     let mut fails = 0;
@@ -374,7 +374,7 @@ fn run_perm_with_random_fails(flash: &Flash, areadesc: &AreaDesc,
     fails > 0
 }
 
-fn run_revert_with_fails(flash: &Flash, areadesc: &AreaDesc, images: &Images,
+fn run_revert_with_fails(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
                          total_count: i32) -> bool {
     let mut fails = 0;
 
@@ -390,7 +390,7 @@ fn run_revert_with_fails(flash: &Flash, areadesc: &AreaDesc, images: &Images,
     fails > 0
 }
 
-fn run_norevert(flash: &Flash, areadesc: &AreaDesc, images: &Images) -> bool {
+fn run_norevert(flash: &SimFlash, areadesc: &AreaDesc, images: &Images) -> bool {
     let mut fl = flash.clone();
     let mut fails = 0;
 
@@ -441,8 +441,8 @@ fn run_norevert(flash: &Flash, areadesc: &AreaDesc, images: &Images) -> bool {
 
 /// Test a boot, optionally stopping after 'n' flash options.  Returns a count
 /// of the number of flash operations done total.
-fn try_upgrade(flash: &Flash, areadesc: &AreaDesc, images: &Images,
-               stop: Option<i32>) -> (Flash, i32) {
+fn try_upgrade(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
+               stop: Option<i32>) -> (SimFlash, i32) {
     // Clone the flash to have a new copy.
     let mut fl = flash.clone();
 
@@ -468,7 +468,7 @@ fn try_upgrade(flash: &Flash, areadesc: &AreaDesc, images: &Images,
     (fl, count - c::get_flash_counter())
 }
 
-fn try_revert(flash: &Flash, areadesc: &AreaDesc, count: usize) -> Flash {
+fn try_revert(flash: &SimFlash, areadesc: &AreaDesc, count: usize) -> SimFlash {
     let mut fl = flash.clone();
     c::set_flash_counter(0);
 
@@ -480,7 +480,7 @@ fn try_revert(flash: &Flash, areadesc: &AreaDesc, count: usize) -> Flash {
     fl
 }
 
-fn try_revert_with_fail_at(flash: &Flash, areadesc: &AreaDesc, images: &Images,
+fn try_revert_with_fail_at(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
                            stop: i32) -> bool {
     let mut fl = flash.clone();
     let mut x: i32;
@@ -554,8 +554,8 @@ fn try_revert_with_fail_at(flash: &Flash, areadesc: &AreaDesc, images: &Images,
     fails > 0
 }
 
-fn try_random_fails(flash: &Flash, areadesc: &AreaDesc, images: &Images,
-                    total_ops: i32,  count: usize) -> (Flash, Vec<i32>) {
+fn try_random_fails(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
+                    total_ops: i32,  count: usize) -> (SimFlash, Vec<i32>) {
     let mut fl = flash.clone();
 
     mark_permanent_upgrade(&mut fl, &images.slot1);
