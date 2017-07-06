@@ -5,24 +5,47 @@ use libc;
 use log::LogLevel;
 use std::slice;
 
+// The current active flash device.  The 'static is a lie, and we manage the lifetime ourselves.
+static mut FLASH: Option<*mut Flash> = None;
+
+// Set the flash device to be used by the simulation.  The pointer is unsafely stashed away.
+pub unsafe fn set_flash(dev: &mut Flash) {
+    FLASH = Some(dev);
+}
+
+pub unsafe fn clear_flash() {
+    FLASH = None;
+}
+
+// Retrieve the flash, returning an error from the enclosing function.  We can't panic here because
+// we've called through C and unwinding is prohibited (it seems to just exit the program).
+macro_rules! get_flash {
+    () => {
+        match FLASH {
+            Some(x) => &mut *x,
+            None => return -19,
+        }
+    }
+}
+
 // This isn't meant to call directly, but by a wrapper.
 
 #[no_mangle]
-pub extern fn sim_flash_erase(dev: *mut Flash, offset: u32, size: u32) -> libc::c_int {
-    let mut dev: &mut Flash = unsafe { &mut *dev };
+pub extern fn sim_flash_erase(offset: u32, size: u32) -> libc::c_int {
+    let dev = unsafe { get_flash!() };
     map_err(dev.erase(offset as usize, size as usize))
 }
 
 #[no_mangle]
-pub extern fn sim_flash_read(dev: *const Flash, offset: u32, dest: *mut u8, size: u32) -> libc::c_int {
-    let dev: &Flash = unsafe { &*dev };
+pub extern fn sim_flash_read(offset: u32, dest: *mut u8, size: u32) -> libc::c_int {
+    let dev = unsafe { get_flash!() };
     let mut buf: &mut[u8] = unsafe { slice::from_raw_parts_mut(dest, size as usize) };
     map_err(dev.read(offset as usize, &mut buf))
 }
 
 #[no_mangle]
-pub extern fn sim_flash_write(dev: *mut Flash, offset: u32, src: *const u8, size: u32) -> libc::c_int {
-    let mut dev: &mut Flash = unsafe { &mut *dev };
+pub extern fn sim_flash_write(offset: u32, src: *const u8, size: u32) -> libc::c_int {
+    let dev = unsafe { get_flash!() };
     let buf: &[u8] = unsafe { slice::from_raw_parts(src, size as usize) };
     map_err(dev.write(offset as usize, &buf))
 }

@@ -13,11 +13,10 @@
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
 #include <bootutil/bootutil_log.h>
 
-extern int sim_flash_erase(void *flash, uint32_t offset, uint32_t size);
-extern int sim_flash_read(void *flash, uint32_t offset, uint8_t *dest, uint32_t size);
-extern int sim_flash_write(void *flash, uint32_t offset, const uint8_t *src, uint32_t size);
+extern int sim_flash_erase(uint32_t offset, uint32_t size);
+extern int sim_flash_read(uint32_t offset, uint8_t *dest, uint32_t size);
+extern int sim_flash_write(uint32_t offset, const uint8_t *src, uint32_t size);
 
-static void *flash_device;
 static jmp_buf boot_jmpbuf;
 int flash_counter;
 
@@ -43,18 +42,19 @@ struct area_desc {
 
 static struct area_desc *flash_areas;
 
-int invoke_boot_go(void *flash, struct area_desc *adesc)
+int invoke_boot_go(struct area_desc *adesc)
 {
     int res;
     struct boot_rsp rsp;
 
-    flash_device = flash;
     flash_areas = adesc;
     if (setjmp(boot_jmpbuf) == 0) {
         res = boot_go(&rsp);
+        flash_areas = NULL;
         /* printf("boot_go off: %d (0x%08x)\n", res, rsp.br_image_off); */
         return res;
     } else {
+        flash_areas = NULL;
         return -0x13579;
     }
 }
@@ -64,7 +64,7 @@ int hal_flash_read(uint8_t flash_id, uint32_t address, void *dst,
 {
     // printf("hal_flash_read: %d, 0x%08x (0x%x)\n",
     //        flash_id, address, num_bytes);
-    return sim_flash_read(flash_device, address, dst, num_bytes);
+    return sim_flash_read(address, dst, num_bytes);
 }
 
 int hal_flash_write(uint8_t flash_id, uint32_t address,
@@ -76,7 +76,7 @@ int hal_flash_write(uint8_t flash_id, uint32_t address,
         jumped++;
         longjmp(boot_jmpbuf, 1);
     }
-    return sim_flash_write(flash_device, address, src, num_bytes);
+    return sim_flash_write(address, src, num_bytes);
 }
 
 int hal_flash_erase(uint8_t flash_id, uint32_t address,
@@ -88,7 +88,7 @@ int hal_flash_erase(uint8_t flash_id, uint32_t address,
         jumped++;
         longjmp(boot_jmpbuf, 1);
     }
-    return sim_flash_erase(flash_device, address, num_bytes);
+    return sim_flash_erase(address, num_bytes);
 }
 
 uint8_t hal_flash_align(uint8_t flash_id)
