@@ -23,6 +23,15 @@ error_chain! {
     }
 }
 
+pub trait Flash {
+    fn erase(&mut self, offset: usize, len: usize) -> Result<()>;
+    fn write(&mut self, offset: usize, payload: &[u8]) -> Result<()>;
+    fn read(&self, offset: usize, data: &mut [u8]) -> Result<()>;
+
+    fn sector_iter(&self) -> SectorIter;
+    fn device_size(&self) -> usize;
+}
+
 fn ebounds<T: AsRef<str>>(message: T) -> ErrorKind {
     ErrorKind::OutOfBounds(message.as_ref().to_owned())
 }
@@ -34,7 +43,7 @@ fn ewrite<T: AsRef<str>>(message: T) -> ErrorKind {
 /// An emulated flash device.  It is represented as a block of bytes, and a list of the sector
 /// mapings.
 #[derive(Clone)]
-pub struct Flash {
+pub struct SimFlash {
     data: Vec<u8>,
     write_safe: Vec<bool>,
     sectors: Vec<usize>,
@@ -42,15 +51,15 @@ pub struct Flash {
     align: usize,
 }
 
-impl Flash {
+impl SimFlash {
     /// Given a sector size map, construct a flash device for that.
-    pub fn new(sectors: Vec<usize>, align: usize) -> Flash {
+    pub fn new(sectors: Vec<usize>, align: usize) -> SimFlash {
         // Verify that the alignment is a positive power of two.
         assert!(align > 0);
         assert!(align & (align - 1) == 0);
 
         let total = sectors.iter().sum();
-        Flash {
+        SimFlash {
             data: vec![0xffu8; total],
             write_safe: vec![true; total],
             sectors: sectors,
@@ -58,10 +67,39 @@ impl Flash {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn dump(&self) {
+        self.data.dump();
+    }
+
+    /// Dump this image to the given file.
+    #[allow(dead_code)]
+    pub fn write_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let mut fd = File::create(path).chain_err(|| "Unable to write image file")?;
+        fd.write_all(&self.data).chain_err(|| "Unable to write to image file")?;
+        Ok(())
+    }
+
+    // Scan the sector map, and return the base and offset within a sector for this given byte.
+    // Returns None if the value is outside of the device.
+    fn get_sector(&self, offset: usize) -> Option<(usize, usize)> {
+        let mut offset = offset;
+        for (sector, &size) in self.sectors.iter().enumerate() {
+            if offset < size {
+                return Some((sector, offset));
+            }
+            offset -= size;
+        }
+        return None;
+    }
+
+}
+
+impl Flash for SimFlash {
     /// The flash drivers tend to erase beyond the bounds of the given range.  Instead, we'll be
     /// strict, and make sure that the passed arguments are exactly at a sector boundary, otherwise
     /// return an error.
-    pub fn erase(&mut self, offset: usize, len: usize) -> Result<()> {
+    fn erase(&mut self, offset: usize, len: usize) -> Result<()> {
         let (_start, slen) = self.get_sector(offset).ok_or_else(|| ebounds("start"))?;
         let (end, elen) = self.get_sector(offset + len - 1).ok_or_else(|| ebounds("end"))?;
 
@@ -91,7 +129,7 @@ impl Flash {
     /// This emulates a flash device which starts out erased, with the
     /// added restriction that repeated writes to the same location
     /// are disallowed, even if they would be safe to do.
-    pub fn write(&mut self, offset: usize, payload: &[u8]) -> Result<()> {
+    fn write(&mut self, offset: usize, payload: &[u8]) -> Result<()> {
         if offset + payload.len() > self.data.len() {
             panic!("Write outside of device");
         }
@@ -119,7 +157,7 @@ impl Flash {
     }
 
     /// Read is simple.
-    pub fn read(&self, offset: usize, data: &mut [u8]) -> Result<()> {
+    fn read(&self, offset: usize, data: &mut [u8]) -> Result<()> {
         if offset + data.len() > self.data.len() {
             bail!(ebounds("Read outside of device"));
         }
@@ -129,40 +167,16 @@ impl Flash {
         Ok(())
     }
 
-    // Scan the sector map, and return the base and offset within a sector for this given byte.
-    // Returns None if the value is outside of the device.
-    fn get_sector(&self, offset: usize) -> Option<(usize, usize)> {
-        let mut offset = offset;
-        for (sector, &size) in self.sectors.iter().enumerate() {
-            if offset < size {
-                return Some((sector, offset));
-            }
-            offset -= size;
-        }
-        return None;
-    }
-
     /// An iterator over each sector in the device.
-    pub fn sector_iter(&self) -> SectorIter {
+    fn sector_iter(&self) -> SectorIter {
         SectorIter {
             iter: self.sectors.iter().enumerate(),
             base: 0,
         }
     }
 
-    pub fn device_size(&self) -> usize {
+    fn device_size(&self) -> usize {
         self.data.len()
-    }
-
-    pub fn dump(&self) {
-        self.data.dump();
-    }
-
-    /// Dump this image to the given file.
-    pub fn write_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let mut fd = File::create(path).chain_err(|| "Unable to write image file")?;
-        fd.write_all(&self.data).chain_err(|| "Unable to write to image file")?;
-        Ok(())
     }
 }
 
@@ -203,17 +217,17 @@ impl<'a> Iterator for SectorIter<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::{Flash, Error, ErrorKind, Result, Sector};
+    use super::{Flash, SimFlash, Error, ErrorKind, Result, Sector};
 
     #[test]
     fn test_flash() {
         // NXP-style, uniform sectors.
-        let mut f1 = Flash::new(vec![4096usize; 256]);
+        let mut f1 = SimFlash::new(vec![4096usize; 256], 1);
         test_device(&mut f1);
 
         // STM style, non-uniform sectors
-        let mut f2 = Flash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 64 * 1024,
-                                128 * 1024, 128 * 1024, 128 * 1024]);
+        let mut f2 = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 64 * 1024,
+                                128 * 1024, 128 * 1024, 128 * 1024], 1);
         test_device(&mut f2);
     }
 

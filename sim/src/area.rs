@@ -1,6 +1,6 @@
 //! Describe flash areas.
 
-use flash::{Flash, Sector};
+use flash::{Flash, SimFlash, Sector};
 use std::ptr;
 
 /// Structure to build up the boot area table.
@@ -12,7 +12,7 @@ pub struct AreaDesc {
 }
 
 impl AreaDesc {
-    pub fn new(flash: &Flash) -> AreaDesc {
+    pub fn new(flash: &SimFlash) -> AreaDesc {
         AreaDesc {
             areas: vec![],
             whole: vec![],
