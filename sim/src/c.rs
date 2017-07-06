@@ -1,7 +1,7 @@
 /// Interface wrappers to C API entering to the bootloader
 
 use area::AreaDesc;
-use flash::Flash;
+use simflash::Flash;
 use libc;
 use api;
 

@@ -1,6 +1,6 @@
 //! HAL api for MyNewt applications
 
-use flash::{Result, Flash};
+use simflash::{Result, Flash};
 use libc;
 use log::LogLevel;
 use mem;

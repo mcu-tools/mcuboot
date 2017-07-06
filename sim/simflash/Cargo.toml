@@ -1,0 +1,7 @@
+[package]
+name = "simflash"
+version = "0.1.0"
+authors = ["David Brown <david.brown@linaro.org>"]
+
+[dependencies]
+error-chain = "0.7.1"

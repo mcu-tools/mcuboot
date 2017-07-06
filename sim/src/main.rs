@@ -4,9 +4,7 @@ extern crate docopt;
 extern crate libc;
 extern crate rand;
 extern crate rustc_serialize;
-
-#[macro_use]
-extern crate error_chain;
+extern crate simflash;
 
 use docopt::Docopt;
 use rand::{Rng, SeedableRng, XorShiftRng};
@@ -19,12 +17,10 @@ use std::slice;
 
 mod area;
 mod c;
-mod flash;
 pub mod api;
-mod pdump;
 mod caps;
 
-use flash::{Flash, SimFlash};
+use simflash::{Flash, SimFlash};
 use area::{AreaDesc, FlashId};
 use caps::Caps;
 
