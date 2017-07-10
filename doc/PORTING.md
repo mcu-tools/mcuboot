@@ -13,8 +13,6 @@ This document describes the requirements and necessary steps required to port
   either `mbed TLS` or the set `tinycrypt` + `mbed TLS` (where `mbed TLS` is
   used to provide functionality not existing in `tinycrypt`).
 
-* TODO: what more?
-
 # Steps to port
 
 ## Main app and calling the bootloader
@@ -57,7 +55,7 @@ where the target firmware is located which can be used to jump to.
 `mcuboot` needs to know the write size (and alignment) of the flash. To get
 this information it calls `hal_flash_align`.
 
-TODO: this needs to die and move to flash_map...
+`uint8_t hal_flash_align(uint8_t flash_id);`
 
 ### flash_map
 
@@ -99,7 +97,7 @@ int     flash_area_write(const struct flash_area *, uint32_t off,
 int     flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
 /*< Returns this `flash_area`s alignment */
 uint8_t flash_area_align(const struct flash_area *);
-/*< TODO */
+/*< Initializes an array of flash_area elements for the slot's sectors */
 int     flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret);
 /*< Returns the `fa_id` for slot, where slot is 0 or 1 */
 int     flash_area_id_from_image_slot(int slot);
