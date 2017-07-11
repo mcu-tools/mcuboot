@@ -15,6 +15,9 @@ rustc-serialize = "0.3"
 log = "0.3"
 env_logger = "0.3"
 simflash = { path = "simflash" }
+enumflags = "0.1"
+enumflags_derive = "0.2"
+rust-crypto = "0.2"
 
 [profile.test]
 opt-level = 1

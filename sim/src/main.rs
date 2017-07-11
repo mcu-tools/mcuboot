@@ -1,5 +1,8 @@
 #[macro_use] extern crate log;
+extern crate crypto;
 extern crate env_logger;
+extern crate enumflags;
+#[macro_use] extern crate enumflags_derive;
 extern crate docopt;
 extern crate libc;
 extern crate rand;
@@ -19,10 +22,12 @@ mod area;
 mod c;
 pub mod api;
 mod caps;
+mod tlv;
 
 use simflash::{Flash, SimFlash};
 use area::{AreaDesc, FlashId};
 use caps::Caps;
+use tlv::TlvGen;
 
 const USAGE: &'static str = "
 Mcuboot simulator
@@ -124,7 +129,7 @@ fn main() {
     }
 
     if status.failures > 0 {
-        warn!("{} Tests ran with {} failures", status.failures + status.passes, status.failures);
+        error!("{} Tests ran with {} failures", status.failures + status.passes, status.failures);
         process::exit(1);
     } else {
         warn!("{} Tests ran successfully", status.passes);
@@ -597,16 +602,18 @@ fn show_flash(flash: &Flash) {
 fn install_image(flash: &mut Flash, offset: usize, len: usize) -> Vec<u8> {
     let offset0 = offset;
 
+    let mut tlv = TlvGen::new_hash_only();
+
     // Generate a boot header.  Note that the size doesn't include the header.
     let header = ImageHeader {
         magic: 0x96f3b83c,
-        tlv_size: 0,
+        tlv_size: tlv.get_size(),
         _pad1: 0,
         hdr_size: 32,
         key_id: 0,
         _pad2: 0,
         img_size: len as u32,
-        flags: 0,
+        flags: tlv.get_flags(),
         ver: ImageVersion {
             major: (offset / (128 * 1024)) as u8,
             minor: 0,
@@ -617,6 +624,7 @@ fn install_image(flash: &mut Flash, offset: usize, len: usize) -> Vec<u8> {
     };
 
     let b_header = header.as_raw();
+    tlv.add_bytes(&b_header);
     /*
     let b_header = unsafe { slice::from_raw_parts(&header as *const _ as *const u8,
                                                   mem::size_of::<ImageHeader>()) };
@@ -628,6 +636,16 @@ fn install_image(flash: &mut Flash, offset: usize, len: usize) -> Vec<u8> {
     // The core of the image itself is just pseudorandom data.
     let mut buf = vec![0; len];
     splat(&mut buf, offset);
+    tlv.add_bytes(&buf);
+
+    // Get and append the TLV itself.
+    buf.append(&mut tlv.make_tlv());
+
+    // Pad the block to a flash alignment (8 bytes).
+    while buf.len() % 8 != 0 {
+        buf.push(0xFF);
+    }
+
     flash.write(offset, &buf).unwrap();
     let offset = offset + buf.len();
 
