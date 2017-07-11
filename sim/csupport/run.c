@@ -42,10 +42,16 @@ struct area_desc {
 
 static struct area_desc *flash_areas;
 
+void *(*mbedtls_calloc)(size_t n, size_t size);
+void (*mbedtls_free)(void *ptr);
+
 int invoke_boot_go(struct area_desc *adesc)
 {
     int res;
     struct boot_rsp rsp;
+
+    mbedtls_calloc = calloc;
+    mbedtls_free = free;
 
     flash_areas = adesc;
     if (setjmp(boot_jmpbuf) == 0) {

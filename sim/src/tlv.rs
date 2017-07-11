@@ -8,7 +8,10 @@
 //! Because of this header, we have to make two passes.  The first pass will compute the size of
 //! the TLV, and the second pass will build the data for the TLV.
 
-use ring::digest;
+use std::sync::Arc;
+use pem;
+use ring::{digest, rand, signature};
+use untrusted;
 
 bitflags! {
     struct Flags: u32 {
@@ -41,11 +44,22 @@ pub struct TlvGen {
 
 impl TlvGen {
     /// Construct a new tlv generator that will only contain a hash of the data.
+    #[allow(dead_code)]
     pub fn new_hash_only() -> TlvGen {
         TlvGen {
             flags: FLAG_SHA256,
             kinds: vec![TlvKinds::SHA256],
             size: 4 + 32,
+            payload: vec![],
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn new_rsa_pss() -> TlvGen {
+        TlvGen {
+            flags: FLAG_SHA256 | FLAG_PKCS1_PSS_RSA2048_SHA256,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::RSA2048],
+            size: 4 + 32 + 4 + 256,
             payload: vec![],
         }
     }
@@ -79,6 +93,25 @@ impl TlvGen {
             result.push(32);
             result.push(0);
             result.extend_from_slice(hash);
+        }
+
+        if self.kinds.contains(&TlvKinds::RSA2048) {
+            // For now assume PSS.
+            let key_bytes = pem::parse(include_bytes!("../../root-rsa-2048.pem").as_ref()).unwrap();
+            assert_eq!(key_bytes.tag, "RSA PRIVATE KEY");
+            let key_bytes = untrusted::Input::from(&key_bytes.contents);
+            let key = signature::RSAKeyPair::from_der(key_bytes).unwrap();
+            let mut signer = signature::RSASigningState::new(Arc::new(key)).unwrap();
+            let rng = rand::SystemRandom::new();
+            let mut signature = vec![0; signer.key_pair().public_modulus_len()];
+            assert_eq!(signature.len(), 256);
+            signer.sign(&signature::RSA_PSS_SHA256, &rng, &self.payload, &mut signature).unwrap();
+
+            result.push(TlvKinds::RSA2048 as u8);
+            result.push(0);
+            result.push((signature.len() & 0xFF) as u8);
+            result.push(((signature.len() >> 8) & 0xFF) as u8);
+            result.extend_from_slice(&signature);
         }
 
         result

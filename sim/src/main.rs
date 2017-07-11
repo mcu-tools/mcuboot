@@ -4,9 +4,11 @@ extern crate env_logger;
 #[macro_use] extern crate bitflags;
 extern crate docopt;
 extern crate libc;
+extern crate pem;
 extern crate rand;
 extern crate rustc_serialize;
 extern crate simflash;
+extern crate untrusted;
 
 use docopt::Docopt;
 use rand::{Rng, SeedableRng, XorShiftRng};
@@ -601,7 +603,7 @@ fn show_flash(flash: &Flash) {
 fn install_image(flash: &mut Flash, offset: usize, len: usize) -> Vec<u8> {
     let offset0 = offset;
 
-    let mut tlv = TlvGen::new_hash_only();
+    let mut tlv = TlvGen::new_rsa_pss();
 
     // Generate a boot header.  Note that the size doesn't include the header.
     let header = ImageHeader {
