@@ -17,7 +17,7 @@ env_logger = "0.3"
 simflash = { path = "simflash" }
 enumflags = "0.1"
 enumflags_derive = "0.2"
-rust-crypto = "0.2"
+ring = "0.11"
 
 [profile.test]
 opt-level = 1
