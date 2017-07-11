@@ -1,5 +1,5 @@
 #[macro_use] extern crate log;
-extern crate crypto;
+extern crate ring;
 extern crate env_logger;
 extern crate enumflags;
 #[macro_use] extern crate enumflags_derive;

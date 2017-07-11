@@ -8,8 +8,7 @@
 //! Because of this header, we have to make two passes.  The first pass will compute the size of
 //! the TLV, and the second pass will build the data for the TLV.
 
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
+use ring::digest;
 
 #[derive(EnumFlags, Copy, Clone, Debug)]
 #[repr(u32)]
@@ -38,7 +37,7 @@ pub struct TlvGen {
     flags: Flags,
     kinds: Vec<TlvKinds>,
     size: u16,
-    hasher: Sha256,
+    hasher: digest::Context,
 }
 
 impl TlvGen {
@@ -48,7 +47,7 @@ impl TlvGen {
             flags: Flags::SHA256,
             kinds: vec![TlvKinds::SHA256],
             size: 4 + 32,
-            hasher: Sha256::new(),
+            hasher: digest::Context::new(&digest::SHA256),
         }
     }
 
@@ -64,26 +63,23 @@ impl TlvGen {
 
     /// Add bytes to the covered hash.
     pub fn add_bytes(&mut self, bytes: &[u8]) {
-        self.hasher.input(bytes);
+        self.hasher.update(bytes);
     }
 
     /// Compute the TLV given the specified block of data.
-    pub fn make_tlv(mut self) -> Vec<u8> {
+    pub fn make_tlv(self) -> Vec<u8> {
         let mut result: Vec<u8> = vec![];
 
         if self.kinds.contains(&TlvKinds::SHA256) {
-            let hash_size = self.hasher.output_bytes();
-            assert!(hash_size == 32); // Assumption made.
+            let hash = self.hasher.finish();
+            let hash = hash.as_ref();
 
-            let mut hash = vec![0; hash_size];
-
-            self.hasher.result(&mut hash);
-
+            assert!(hash.len() == 32);
             result.push(TlvKinds::SHA256 as u8);
             result.push(0);
             result.push(32);
             result.push(0);
-            result.append(&mut hash);
+            result.extend_from_slice(hash);
         }
 
         result
