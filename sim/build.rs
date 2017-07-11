@@ -13,6 +13,8 @@ fn main() {
     conf.file("../boot/bootutil/src/caps.c");
     conf.file("../boot/bootutil/src/bootutil_misc.c");
     conf.file("../boot/bootutil/src/image_validate.c");
+    conf.file("../boot/bootutil/src/image_rsa.c");
+    conf.file("../boot/zephyr/keys.c");
     conf.file("csupport/run.c");
     conf.include("../boot/bootutil/include");
     conf.include("../boot/zephyr/include");
@@ -28,8 +30,14 @@ fn main() {
     conf.include("mbedtls/include");
     conf.file("mbedtls/library/sha256.c");
 
+    // Code for RSA.
+    conf.file("mbedtls/library/rsa.c");
+    conf.file("mbedtls/library/bignum.c");
+    conf.file("mbedtls/library/asn1parse.c");
+
     // Test that signature/hashes are present.
     conf.define("MCUBOOT_VALIDATE_SLOT0", None);
+    conf.define("MCUBOOT_SIGN_RSA", None);
 
     conf.compile("libbootutil.a");
     walk_dir("../boot").unwrap();

@@ -16,7 +16,9 @@ log = "0.3"
 env_logger = "0.3"
 simflash = { path = "simflash" }
 bitflags = "0.9"
-ring = "0.11"
+ring = { version = "0.11", features = ["rsa_signing"] }
+untrusted = "0.5"
+pem = "0.4"
 
 [profile.test]
 opt-level = 1
