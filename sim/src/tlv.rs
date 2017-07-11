@@ -37,7 +37,7 @@ pub struct TlvGen {
     flags: Flags,
     kinds: Vec<TlvKinds>,
     size: u16,
-    hasher: digest::Context,
+    payload: Vec<u8>,
 }
 
 impl TlvGen {
@@ -47,7 +47,7 @@ impl TlvGen {
             flags: Flags::SHA256,
             kinds: vec![TlvKinds::SHA256],
             size: 4 + 32,
-            hasher: digest::Context::new(&digest::SHA256),
+            payload: vec![],
         }
     }
 
@@ -63,7 +63,7 @@ impl TlvGen {
 
     /// Add bytes to the covered hash.
     pub fn add_bytes(&mut self, bytes: &[u8]) {
-        self.hasher.update(bytes);
+        self.payload.extend_from_slice(bytes);
     }
 
     /// Compute the TLV given the specified block of data.
@@ -71,7 +71,7 @@ impl TlvGen {
         let mut result: Vec<u8> = vec![];
 
         if self.kinds.contains(&TlvKinds::SHA256) {
-            let hash = self.hasher.finish();
+            let hash = digest::digest(&digest::SHA256, &self.payload);
             let hash = hash.as_ref();
 
             assert!(hash.len() == 32);
