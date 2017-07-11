@@ -219,16 +219,3 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
 
     return 0;
 }
-
-int bootutil_img_validate(struct image_header *hdr,
-                          const struct flash_area *fap,
-                          uint8_t *tmp_buf, uint32_t tmp_buf_sz,
-                          uint8_t *seed, int seed_len, uint8_t *out_hash)
-{
-    if (hal_flash_read(fap->fa_id, fap->fa_off, tmp_buf, 4)) {
-        printf("Flash read error\n");
-        abort();
-    }
-
-    return (*((uint32_t *) tmp_buf) != 0x96f3b83c);
-}
