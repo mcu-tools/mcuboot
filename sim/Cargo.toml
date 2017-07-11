@@ -15,8 +15,7 @@ rustc-serialize = "0.3"
 log = "0.3"
 env_logger = "0.3"
 simflash = { path = "simflash" }
-enumflags = "0.1"
-enumflags_derive = "0.2"
+bitflags = "0.9"
 ring = "0.11"
 
 [profile.test]
