@@ -10,17 +10,16 @@
 
 use ring::digest;
 
-#[derive(EnumFlags, Copy, Clone, Debug)]
-#[repr(u32)]
-#[allow(non_camel_case_types)]
-pub enum Flags {
-    PIC = 0x000001,
-    SHA256 = 0x000002,
-    PKCS15_RSA2048_SHA256 = 0x000004,
-    ECDSA224_SHA256 = 0x000008,
-    NON_BOOTABLE = 0x000010,
-    ECDSA256_SHA256 = 0x000020,
-    PKCS1_PSS_RSA2048_SHA256 = 0x000040,
+bitflags! {
+    struct Flags: u32 {
+        const FLAG_PIC = 0x000001;
+        const FLAG_SHA256 = 0x000002;
+        const FLAG_PKCS15_RSA2048_SHA256 = 0x000004;
+        const FLAG_ECDSA224_SHA256 = 0x000008;
+        const FLAG_NON_BOOTABLE = 0x000010;
+        const FLAG_ECDSA256_SHA256 = 0x000020;
+        const FLAG_PKCS1_PSS_RSA2048_SHA256 = 0x000040;
+    }
 }
 
 #[repr(u8)]
@@ -44,7 +43,7 @@ impl TlvGen {
     /// Construct a new tlv generator that will only contain a hash of the data.
     pub fn new_hash_only() -> TlvGen {
         TlvGen {
-            flags: Flags::SHA256,
+            flags: FLAG_SHA256,
             kinds: vec![TlvKinds::SHA256],
             size: 4 + 32,
             payload: vec![],
@@ -53,7 +52,7 @@ impl TlvGen {
 
     /// Retrieve the header flags for this configuration.  This can be called at any time.
     pub fn get_flags(&self) -> u32 {
-        self.flags as u32
+        self.flags.bits()
     }
 
     /// Retrieve the size that the TLV will occupy.  This can be called at any time.
