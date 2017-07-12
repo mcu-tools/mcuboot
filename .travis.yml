@@ -4,3 +4,4 @@ language: rust
 script:
     - cd sim; cargo build --release
     - cd sim; cargo run --release -- runall
+    - cd sim; cargo run --release --features sig-rsa -- runall
