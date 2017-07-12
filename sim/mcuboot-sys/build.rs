@@ -55,7 +55,7 @@ fn main() {
     conf.file("../../boot/bootutil/src/loader.c");
     conf.file("../../boot/bootutil/src/caps.c");
     conf.file("../../boot/bootutil/src/bootutil_misc.c");
-    conf.file("../csupport/run.c");
+    conf.file("csupport/run.c");
     conf.include("../../boot/bootutil/include");
     conf.include("../../boot/zephyr/include");
     conf.debug(true);
@@ -64,7 +64,7 @@ fn main() {
     conf.compile("libbootutil.a");
 
     walk_dir("../../boot").unwrap();
-    walk_dir("../csupport").unwrap();
+    walk_dir("csupport").unwrap();
     walk_dir("mbedtls/include").unwrap();
     walk_dir("mbedtls/library").unwrap();
 }
