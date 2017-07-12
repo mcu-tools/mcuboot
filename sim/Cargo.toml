@@ -17,7 +17,7 @@ rand = "0.3.0"
 docopt = "0.6"
 rustc-serialize = "0.3"
 log = "0.3"
-env_logger = "0.3"
+env_logger = "0.4"
 simflash = { path = "simflash" }
 mcuboot-sys = { path = "mcuboot-sys" }
 bitflags = "0.9"
