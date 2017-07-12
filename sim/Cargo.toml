@@ -2,7 +2,6 @@
 name = "bootsim"
 version = "0.1.0"
 authors = ["David Brown <davidb@davidb.org>"]
-build = "build.rs"
 
 [build-dependencies]
 gcc = "0.3.38"
@@ -15,6 +14,7 @@ rustc-serialize = "0.3"
 log = "0.3"
 env_logger = "0.3"
 simflash = { path = "simflash" }
+mcuboot-sys = { path = "mcuboot-sys", features = ["sig-rsa"] }
 bitflags = "0.9"
 ring = { version = "0.11", features = ["rsa_signing"] }
 untrusted = "0.5"
