@@ -13,8 +13,6 @@ fn main() {
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
 
-    // TODO: Force clang if we are requestion fuzzing.
-
     let mut conf = gcc::Config::new();
     conf.define("__BOOTSIM__", None);
     conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
@@ -65,6 +63,7 @@ fn main() {
     conf.include("../../boot/zephyr/include");
     conf.debug(true);
     conf.flag("-Wall");
+    conf.flag("-Werror");
 
     conf.compile("libbootutil.a");
 
