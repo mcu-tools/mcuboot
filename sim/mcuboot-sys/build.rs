@@ -34,12 +34,12 @@ fn main() {
 
         conf.define("MCUBOOT_USE_MBED_TLS", None);
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-boot.h>"));
-        conf.include("../mbedtls/include");
-        conf.file("../mbedtls/library/sha256.c");
+        conf.include("mbedtls/include");
+        conf.file("mbedtls/library/sha256.c");
 
-        conf.file("../mbedtls/library/rsa.c");
-        conf.file("../mbedtls/library/bignum.c");
-        conf.file("../mbedtls/library/asn1parse.c");
+        conf.file("mbedtls/library/rsa.c");
+        conf.file("mbedtls/library/bignum.c");
+        conf.file("mbedtls/library/asn1parse.c");
     }
     if sig_ecdsa {
         conf.define("MCUBOOT_SIGN_ECDSA", None);
@@ -65,8 +65,8 @@ fn main() {
 
     walk_dir("../../boot").unwrap();
     walk_dir("../csupport").unwrap();
-    walk_dir("../mbedtls/include").unwrap();
-    walk_dir("../mbedtls/library").unwrap();
+    walk_dir("mbedtls/include").unwrap();
+    walk_dir("mbedtls/library").unwrap();
 }
 
 // Output the names of all files within a directory so that Cargo knows when to rebuild.
