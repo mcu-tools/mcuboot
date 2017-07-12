@@ -9,6 +9,7 @@ extern crate rand;
 extern crate rustc_serialize;
 extern crate simflash;
 extern crate untrusted;
+extern crate mcuboot_sys;
 
 use docopt::Docopt;
 use rand::{Rng, SeedableRng, XorShiftRng};
@@ -19,14 +20,12 @@ use std::mem;
 use std::process;
 use std::slice;
 
-mod area;
-mod c;
-pub mod api;
 mod caps;
 mod tlv;
 
 use simflash::{Flash, SimFlash};
-use area::{AreaDesc, FlashId};
+use mcuboot_sys::area::{AreaDesc, FlashId};
+use mcuboot_sys::c;
 use caps::Caps;
 use tlv::TlvGen;
 

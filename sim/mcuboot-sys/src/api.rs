@@ -3,7 +3,7 @@
 use simflash::{Result, Flash};
 use libc;
 use log::LogLevel;
-use mem;
+use std::mem;
 use std::slice;
 
 // The current active flash device.  The 'static is a lie, and we manage the lifetime ourselves.
