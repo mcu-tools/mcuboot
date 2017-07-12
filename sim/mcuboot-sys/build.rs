@@ -20,38 +20,43 @@ fn main() {
     conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
     conf.define("MCUBOOT_VALIDATE_SLOT0", None);
 
-    if sig_rsa {
-        if sig_ecdsa {
-            panic!("mcuboot does not support RSA and ECDSA at the same time");
-        }
+    // Currently, mbed TLS cannot build with both RSA and ECDSA.
+    if sig_rsa && sig_ecdsa {
+        panic!("mcuboot does not support RSA and ECDSA at the same time");
+    }
 
+    if sig_rsa {
         conf.define("MCUBOOT_SIGN_RSA", None);
         conf.define("MCUBOOT_USE_MBED_TLS", None);
-
-        conf.file("../../boot/bootutil/src/image_validate.c");
-        conf.file("../../boot/bootutil/src/image_rsa.c");
-        conf.file("../../boot/zephyr/keys.c");
 
         conf.define("MCUBOOT_USE_MBED_TLS", None);
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-boot.h>"));
         conf.include("mbedtls/include");
         conf.file("mbedtls/library/sha256.c");
+        conf.file("../../boot/zephyr/keys.c");
 
         conf.file("mbedtls/library/rsa.c");
         conf.file("mbedtls/library/bignum.c");
         conf.file("mbedtls/library/asn1parse.c");
-    }
-    if sig_ecdsa {
+    } else if sig_ecdsa {
         conf.define("MCUBOOT_SIGN_ECDSA", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
         // TODO: Compile files + tinycrypt.
         panic!("ECDSA not yet implemented in sim");
+    } else {
+        // Neither signature type, only verify sha256.
+        conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-boot.h>"));
+        conf.include("mbedtls/include");
+        conf.file("mbedtls/library/sha256.c");
     }
 
     if overwrite_only {
         conf.define("MCUBOOT_OVERWRITE_ONLY", None);
     }
 
+    conf.file("../../boot/bootutil/src/image_validate.c");
+    conf.file("../../boot/bootutil/src/image_rsa.c");
     conf.file("../../boot/bootutil/src/loader.c");
     conf.file("../../boot/bootutil/src/caps.c");
     conf.file("../../boot/bootutil/src/bootutil_misc.c");

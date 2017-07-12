@@ -601,7 +601,7 @@ fn show_flash(flash: &Flash) {
 fn install_image(flash: &mut Flash, offset: usize, len: usize) -> Vec<u8> {
     let offset0 = offset;
 
-    let mut tlv = TlvGen::new_rsa_pss();
+    let mut tlv = make_tlv();
 
     // Generate a boot header.  Note that the size doesn't include the header.
     let header = ImageHeader {
@@ -653,6 +653,17 @@ fn install_image(flash: &mut Flash, offset: usize, len: usize) -> Vec<u8> {
     flash.read(offset0, &mut copy).unwrap();
 
     copy
+}
+
+// The TLV in use depends on what kind of signature we are verifying.
+#[cfg(feature = "sig-rsa")]
+fn make_tlv() -> TlvGen {
+    TlvGen::new_rsa_pss()
+}
+
+#[cfg(not(feature = "sig-rsa"))]
+fn make_tlv() -> TlvGen {
+    TlvGen::new_hash_only()
 }
 
 /// Verify that given image is present in the flash at the given offset.
