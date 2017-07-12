@@ -14,8 +14,9 @@ gcc = "0.3.38"
 [dependencies]
 libc = "0.2.0"
 rand = "0.3.0"
-docopt = "0.6"
-rustc-serialize = "0.3"
+docopt = "0.8"
+serde = "1.0"
+serde_derive = "1.0"
 log = "0.3"
 env_logger = "0.4"
 simflash = { path = "simflash" }
