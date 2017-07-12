@@ -24,8 +24,7 @@ mod caps;
 mod tlv;
 
 use simflash::{Flash, SimFlash};
-use mcuboot_sys::area::{AreaDesc, FlashId};
-use mcuboot_sys::c;
+use mcuboot_sys::{c, AreaDesc, FlashId};
 use caps::Caps;
 use tlv::TlvGen;
 
