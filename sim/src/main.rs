@@ -6,7 +6,8 @@ extern crate docopt;
 extern crate libc;
 extern crate pem;
 extern crate rand;
-extern crate rustc_serialize;
+#[macro_use] extern crate serde_derive;
+extern crate serde;
 extern crate simflash;
 extern crate untrusted;
 extern crate mcuboot_sys;
@@ -14,7 +15,6 @@ extern crate mcuboot_sys;
 use docopt::Docopt;
 use rand::{Rng, SeedableRng, XorShiftRng};
 use rand::distributions::{IndependentSample, Range};
-use rustc_serialize::{Decodable, Decoder};
 use std::fmt;
 use std::mem;
 use std::process;
@@ -45,7 +45,7 @@ Options:
   --align SIZE       Flash write alignment
 ";
 
-#[derive(Debug, RustcDecodable)]
+#[derive(Debug, Deserialize)]
 struct Args {
     flag_help: bool,
     flag_version: bool,
@@ -56,7 +56,7 @@ struct Args {
     cmd_runall: bool,
 }
 
-#[derive(Copy, Clone, Debug, RustcDecodable)]
+#[derive(Copy, Clone, Debug, Deserialize)]
 enum DeviceName { Stm32f4, K64f, K64fBig, Nrf52840 }
 
 static ALL_DEVICES: &'static [DeviceName] = &[
@@ -81,14 +81,33 @@ impl fmt::Display for DeviceName {
 #[derive(Debug)]
 struct AlignArg(u8);
 
-impl Decodable for AlignArg {
-    // Decode the alignment ourselves, to restrict it to the valid possible alignments.
-    fn decode<D: Decoder>(d: &mut D) -> Result<AlignArg, D::Error> {
-        let m = d.read_u8()?;
-        match m {
-            1 | 2 | 4 | 8 => Ok(AlignArg(m)),
-            _ => Err(d.error("Invalid alignment")),
-        }
+struct AlignArgVisitor;
+
+impl<'de> serde::de::Visitor<'de> for AlignArgVisitor {
+    type Value = AlignArg;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("1, 2, 4 or 8")
+    }
+
+    fn visit_u8<E>(self, n: u8) -> Result<Self::Value, E>
+        where E: serde::de::Error
+    {
+        Ok(match n {
+            1 | 2 | 4 | 8 => AlignArg(n),
+            n => {
+                let err = format!("Could not deserialize '{}' as alignment", n);
+                return Err(E::custom(err));
+            }
+        })
+    }
+}
+
+impl<'de> serde::de::Deserialize<'de> for AlignArg {
+    fn deserialize<D>(d: D) -> Result<AlignArg, D::Error>
+        where D: serde::de::Deserializer<'de>
+    {
+        d.deserialize_u8(AlignArgVisitor)
     }
 }
 
@@ -96,7 +115,7 @@ fn main() {
     env_logger::init().unwrap();
 
     let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.decode())
+        .and_then(|d| d.deserialize())
         .unwrap_or_else(|e| e.exit());
     // println!("args: {:#?}", args);
 
