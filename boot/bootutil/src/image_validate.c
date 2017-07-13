@@ -108,6 +108,9 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
     uint8_t buf[256];
     uint8_t hash[32];
     int rc;
+#ifdef APP_mynewt
+    int i;
+#endif
 
 #ifdef MCUBOOT_SIGN_RSA
 #ifdef MCUBOOT_RSA_PKCS1_15
@@ -216,10 +219,19 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
         return -1;
     }
 
+#ifndef APP_mynewt
     if (hdr->ih_key_id >= bootutil_key_cnt) {
         return -1;
     }
     rc = bootutil_verify_sig(hash, sizeof(hash), buf, sig_len, hdr->ih_key_id);
+#else
+    for (i = 0; i < bootutil_key_cnt; i++) {
+        rc = bootutil_verify_sig(hash, sizeof(hash), buf, sig_len, i);
+        if (!rc) {
+            break;
+        }
+    }
+#endif
     if (rc) {
         return -1;
     }
