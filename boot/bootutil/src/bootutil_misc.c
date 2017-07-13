@@ -52,6 +52,7 @@ struct boot_swap_table {
     uint8_t magic_slot1;
     uint8_t image_ok_slot0;
     uint8_t image_ok_slot1;
+    uint8_t copy_done_slot0;
 
     uint8_t swap_type;
 };
@@ -72,6 +73,7 @@ static const struct boot_swap_table boot_swap_tables[] = {
         .magic_slot1 =      BOOT_MAGIC_GOOD,
         .image_ok_slot0 =   0,
         .image_ok_slot1 =   0xff,
+        .copy_done_slot0 =  0,
         .swap_type =        BOOT_SWAP_TYPE_TEST,
     },
     {
@@ -79,6 +81,7 @@ static const struct boot_swap_table boot_swap_tables[] = {
         .magic_slot1 =      BOOT_MAGIC_GOOD,
         .image_ok_slot0 =   0,
         .image_ok_slot1 =   0x01,
+        .copy_done_slot0 =  0,
         .swap_type =        BOOT_SWAP_TYPE_PERM,
     },
     {
@@ -86,6 +89,7 @@ static const struct boot_swap_table boot_swap_tables[] = {
         .magic_slot1 =      BOOT_MAGIC_UNSET,
         .image_ok_slot0 =   0xff,
         .image_ok_slot1 =   0,
+        .copy_done_slot0 =  0x01,
         .swap_type =        BOOT_SWAP_TYPE_REVERT,
     },
 };
@@ -323,10 +327,11 @@ boot_swap_type(void)
     for (i = 0; i < BOOT_SWAP_TABLES_COUNT; i++) {
         table = boot_swap_tables + i;
 
-        if ((!table->magic_slot0    || table->magic_slot0     == slot0.magic)     &&
-            (!table->magic_slot1    || table->magic_slot1     == slot1.magic)     &&
-            (!table->image_ok_slot0 || table->image_ok_slot0  == slot0.image_ok)  &&
-            (!table->image_ok_slot1 || table->image_ok_slot1  == slot1.image_ok)) {
+        if ((!table->magic_slot0     || table->magic_slot0     == slot0.magic    ) &&
+            (!table->magic_slot1     || table->magic_slot1     == slot1.magic    ) &&
+            (!table->image_ok_slot0  || table->image_ok_slot0  == slot0.image_ok ) &&
+            (!table->image_ok_slot1  || table->image_ok_slot1  == slot1.image_ok ) &&
+            (!table->copy_done_slot0 || table->copy_done_slot0 == slot0.copy_done)) {
             BOOT_LOG_INF("Swap type: %s",
                          table->swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
                          table->swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
