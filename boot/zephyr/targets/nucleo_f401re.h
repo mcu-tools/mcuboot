@@ -21,12 +21,6 @@
 
 #define FLASH_DRIVER_NAME		CONFIG_SOC_FLASH_STM32_DEV_NAME
 #define FLASH_ALIGN			1
-#define FLASH_AREA_IMAGE_0_OFFSET	0x20000
-#define FLASH_AREA_IMAGE_0_SIZE		0x20000
-#define FLASH_AREA_IMAGE_1_OFFSET	0x40000
-#define FLASH_AREA_IMAGE_1_SIZE		0x20000
-#define FLASH_AREA_IMAGE_SCRATCH_OFFSET	0x60000
-#define FLASH_AREA_IMAGE_SCRATCH_SIZE	0x20000
 
 /* Though sectors have variable size on this part, we've chosen
  * three sectors with uniform size here. */
