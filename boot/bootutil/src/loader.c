@@ -1077,10 +1077,10 @@ boot_copy_image(struct boot_status *bs)
 #endif
 
 /**
- * Marks a test image in slot 0 as fully copied.
+ * Marks the image in slot 0 as fully copied.
  */
 static int
-boot_finalize_test_swap(void)
+boot_set_copy_done(void)
 {
     const struct flash_area *fap;
     int rc;
@@ -1091,11 +1091,8 @@ boot_finalize_test_swap(void)
     }
 
     rc = boot_write_copy_done(fap);
-    if (rc != 0) {
-        return rc;
-    }
-
-    return 0;
+    flash_area_close(fap);
+    return rc;
 }
 
 /**
@@ -1104,10 +1101,9 @@ boot_finalize_test_swap(void)
  * subsequent boot.
  */
 static int
-boot_finalize_revert_swap(void)
+boot_set_image_ok(void)
 {
     const struct flash_area *fap;
-    struct boot_swap_state state_slot0;
     int rc;
 
     rc = flash_area_open(FLASH_AREA_IMAGE_0, &fap);
@@ -1115,33 +1111,9 @@ boot_finalize_revert_swap(void)
         return BOOT_EFLASH;
     }
 
-    rc = boot_read_swap_state(fap, &state_slot0);
-    if (rc != 0) {
-        return BOOT_EFLASH;
-    }
-
-    if (state_slot0.magic == BOOT_MAGIC_UNSET) {
-        rc = boot_write_magic(fap);
-        if (rc != 0) {
-            return rc;
-        }
-    }
-
-    if (state_slot0.copy_done == BOOT_FLAG_UNSET) {
-        rc = boot_write_copy_done(fap);
-        if (rc != 0) {
-            return rc;
-        }
-    }
-
-    if (state_slot0.image_ok == BOOT_FLAG_UNSET) {
-        rc = boot_write_image_ok(fap);
-        if (rc != 0) {
-            return rc;
-        }
-    }
-
-    return 0;
+    rc = boot_write_image_ok(fap);
+    flash_area_close(fap);
+    return rc;
 }
 
 /**
@@ -1257,6 +1229,14 @@ boot_go(struct boot_rsp *rsp)
         if (rc != 0) {
             goto out;
         }
+
+        /*
+         * The following states need image_ok be explicitly set after the
+         * swap was finished to avoid a new revert.
+         */
+        if (swap_type == BOOT_SWAP_TYPE_REVERT || swap_type == BOOT_SWAP_TYPE_FAIL) {
+            boot_set_image_ok();
+        }
     } else {
         swap_type = BOOT_SWAP_TYPE_NONE;
     }
@@ -1268,14 +1248,9 @@ boot_go(struct boot_rsp *rsp)
 
     case BOOT_SWAP_TYPE_TEST:
     case BOOT_SWAP_TYPE_PERM:
-        slot = 1;
-        boot_finalize_test_swap();
-        reload_headers = true;
-        break;
-
     case BOOT_SWAP_TYPE_REVERT:
         slot = 1;
-        boot_finalize_revert_swap();
+        boot_set_copy_done();
         reload_headers = true;
         break;
 
@@ -1285,20 +1260,15 @@ boot_go(struct boot_rsp *rsp)
          * we just reverted back to slot 0.
          */
         slot = 0;
-        boot_finalize_revert_swap();
         reload_headers = true;
         break;
 
     case BOOT_SWAP_TYPE_PANIC:
+    default:
         /* TODO: what to do it a fatal error like flash read/write error
          *       happened?
          */
         assert(0);
-        break;
-
-    default:
-        assert(0);
-        slot = 0;
         break;
     }
 
