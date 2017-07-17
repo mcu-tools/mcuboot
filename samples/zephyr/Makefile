@@ -69,14 +69,21 @@ BOOT_HEADER_LEN = 0x200
 FLASH_ALIGNMENT = 8
 
 IMGTOOL = ../../scripts/imgtool.py
+ASSEMBLE = ../../scripts/assemble.py
 PYOCD_FLASHTOOL = pyocd-flashtool
 
 help:
 	@echo "make <target> BOARD=<board>"
-	@echo "<target>: all, boot, hello1"
+	@echo "<target>: all, boot, hello1, full.bin"
 	@echo "<board>: frdm_k64f, 96b_carbon, etc."
 
 all: boot hello1 hello2
+
+full.bin: boot hello1 hello2
+	$(ASSEMBLE) -b ../../outdir/$(BOARD) \
+	    -p signed-hello1.bin \
+	    -s signed-hello2.bin \
+	    -o full.bin
 
 clean: clean_boot clean_hello1 clean_hello2
 	@rm -f signed-hello1.bin
