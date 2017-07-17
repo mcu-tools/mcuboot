@@ -245,17 +245,29 @@ impl RunStatus {
             trailer_off: scratch_base - offset_from_end,
         };
 
-        let images = Images {
-            slot0: slot0,
-            slot1: slot1,
-            primary: install_image(&mut flash, slot0_base, 32784),
-            upgrade: install_image(&mut flash, slot1_base, 41928),
-        };
+        // Set an alignment, and position the magic value.
+        c::set_sim_flash_align(align);
 
         let mut failed = false;
 
-        // Set an alignment, and position the magic value.
-        c::set_sim_flash_align(align);
+        // Creates a badly signed image in slot1 to check that it is not
+        // upgraded to
+        let mut bad_flash = flash.clone();
+        let bad_slot1_image = Images {
+            slot0: &slot0,
+            slot1: &slot1,
+            primary: install_image(&mut bad_flash, slot0_base, 32784, false),
+            upgrade: install_image(&mut bad_flash, slot1_base, 41928, true),
+        };
+
+        failed |= run_signfail_upgrade(&bad_flash, &areadesc, &bad_slot1_image);
+
+        let images = Images {
+            slot0: &slot0,
+            slot1: &slot1,
+            primary: install_image(&mut flash, slot0_base, 32784, false),
+            upgrade: install_image(&mut flash, slot1_base, 41928, false),
+        };
 
         failed |= run_norevert_newimage(&flash, &areadesc, &images);
 
@@ -528,6 +540,50 @@ fn run_norevert_newimage(flash: &SimFlash, areadesc: &AreaDesc,
     fails > 0
 }
 
+// Tests a new image written to slot0 that already has magic and image_ok set
+// while there is no image on slot1, so no revert should ever happen...
+fn run_signfail_upgrade(flash: &SimFlash, areadesc: &AreaDesc,
+                        images: &Images) -> bool {
+    let mut fl = flash.clone();
+    let mut fails = 0;
+
+    info!("Try upgrade image with bad signature");
+    c::set_flash_counter(0);
+
+    mark_upgrade(&mut fl, &images.slot0);
+    mark_permanent_upgrade(&mut fl, &images.slot0);
+    mark_upgrade(&mut fl, &images.slot1);
+
+    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
+                       UNSET) {
+        warn!("Mismatched trailer for Slot 0");
+        fails += 1;
+    }
+
+    // Run the bootloader...
+    if c::boot_go(&mut fl, &areadesc) != 0 {
+        warn!("Failed first boot");
+        fails += 1;
+    }
+
+    // State should not have changed
+    if !verify_image(&fl, images.slot0.base_off, &images.primary) {
+        warn!("Failed image verification");
+        fails += 1;
+    }
+    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
+                       UNSET) {
+        warn!("Mismatched trailer for Slot 0");
+        fails += 1;
+    }
+
+    if fails > 0 {
+        error!("Expected an upgrade failure when image has bad signature");
+    }
+
+    fails > 0
+}
+
 /// Test a boot, optionally stopping after 'n' flash options.  Returns a count
 /// of the number of flash operations done total.
 fn try_upgrade(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
@@ -687,7 +743,8 @@ fn show_flash(flash: &Flash) {
 
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
 /// fields used by the given code.  Returns a copy of the image that was written.
-fn install_image(flash: &mut Flash, offset: usize, len: usize) -> Vec<u8> {
+fn install_image(flash: &mut Flash, offset: usize, len: usize,
+                 bad_sig: bool) -> Vec<u8> {
     let offset0 = offset;
 
     let mut tlv = make_tlv();
@@ -727,7 +784,12 @@ fn install_image(flash: &mut Flash, offset: usize, len: usize) -> Vec<u8> {
     tlv.add_bytes(&buf);
 
     // Get and append the TLV itself.
-    buf.append(&mut tlv.make_tlv());
+    if bad_sig {
+        let good_sig = &mut tlv.make_tlv();
+        buf.append(&mut vec![0; good_sig.len()]);
+    } else {
+        buf.append(&mut tlv.make_tlv());
+    }
 
     // Pad the block to a flash alignment (8 bytes).
     while buf.len() % 8 != 0 {
@@ -850,9 +912,9 @@ struct SlotInfo {
     trailer_off: usize,
 }
 
-struct Images {
-    slot0: SlotInfo,
-    slot1: SlotInfo,
+struct Images<'a> {
+    slot0: &'a SlotInfo,
+    slot1: &'a SlotInfo,
     primary: Vec<u8>,
     upgrade: Vec<u8>,
 }
