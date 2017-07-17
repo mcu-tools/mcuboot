@@ -39,6 +39,7 @@ fn ebounds<T: AsRef<str>>(message: T) -> ErrorKind {
     ErrorKind::OutOfBounds(message.as_ref().to_owned())
 }
 
+#[allow(dead_code)]
 fn ewrite<T: AsRef<str>>(message: T) -> ErrorKind {
     ErrorKind::Write(message.as_ref().to_owned())
 }
@@ -148,8 +149,7 @@ impl Flash for SimFlash {
 
         for (i, x) in &mut self.write_safe[offset .. offset + payload.len()].iter_mut().enumerate() {
             if !(*x) {
-                bail!(ewrite(format!("Write to unerased location at 0x{:x}",
-                                     offset + i)));
+                panic!("Write to unerased location at 0x{:x}", offset + i);
             }
             *x = false;
         }
