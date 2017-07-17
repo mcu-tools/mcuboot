@@ -1099,11 +1099,16 @@ boot_set_copy_done(void)
  * Marks a reverted image in slot 0 as confirmed.  This is necessary to ensure
  * the status bytes from the image revert operation don't get processed on a
  * subsequent boot.
+ *
+ * NOTE: image_ok is tested before writing because if there's a valid permanent
+ * image installed on slot0 and the new image to be upgrade to has a bad sig,
+ * image_ok would be overwritten.
  */
 static int
 boot_set_image_ok(void)
 {
     const struct flash_area *fap;
+    struct boot_swap_state state;
     int rc;
 
     rc = flash_area_open(FLASH_AREA_IMAGE_0, &fap);
@@ -1111,7 +1116,17 @@ boot_set_image_ok(void)
         return BOOT_EFLASH;
     }
 
-    rc = boot_write_image_ok(fap);
+    rc = boot_read_swap_state(fap, &state);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto out;
+    }
+
+    if (state.image_ok == BOOT_FLAG_UNSET) {
+        rc = boot_write_image_ok(fap);
+    }
+
+out:
     flash_area_close(fap);
     return rc;
 }
@@ -1286,6 +1301,8 @@ boot_go(struct boot_rsp *rsp)
         rc = BOOT_EBADIMAGE;
         goto out;
     }
+#else
+    (void)reload_headers;
 #endif
 
     /* Always boot from the primary slot. */
