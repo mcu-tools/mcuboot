@@ -5,6 +5,7 @@ Assemble multiple images into a single image that can be flashed on the device.
 """
 
 import argparse
+import errno
 import io
 import re
 import os.path
@@ -25,7 +26,11 @@ size_re   = re.compile(r"^#define FLASH_AREA_([0-9A-Z_]+)_SIZE_0\s+((0x)?[0-9a-f
 class Assembly():
     def __init__(self, output, bootdir):
         self.find_slots(bootdir)
-        os.unlink(output)
+        try:
+            os.unlink(output)
+        except OSError as e:
+            if e.errno != errno.ENOENT:
+                raise
         self.output = output
 
     def find_slots(self, bootdir):
