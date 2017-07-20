@@ -35,8 +35,10 @@ For more information in the source, here are some pointers:
 - [imgtool](https://github.com/runtimeco/mcuboot/tree/master/imgtool): A tool to securely sign firmware images for booting by mcuboot.
 - [sim](https://github.com/runtimeco/mcuboot/tree/master/sim): A bootloader simulator for testing and regression
 
-## Joining 
+## Joining
 
-Developers welcome!  To join in the discussion, please join the developer mailing list: 
+Developers welcome!
 
-http://lists.runtime.co/mailman/listinfo/dev-mcuboot_lists.runtime.co
+* Our developer mailing list:
+  http://lists.runtime.co/mailman/listinfo/dev-mcuboot_lists.runtime.co
+* Our IRC channel: http://irc.freenode.net, #mcuboot
