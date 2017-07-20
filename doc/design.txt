@@ -21,7 +21,7 @@
 
 *** SUMMARY
 
-The Mynewt bootloader comprises two packages:
+mcuboot comprises two packages:
 
     * The bootutil library (boot/bootutil)
     * The boot application (each port has its own at boot/<port>)
@@ -103,7 +103,7 @@ case of changes to the format of the image header.
 
 *** FLASH MAP
 
-A Mynewt device's flash is partitioned according to its _flash map_.  At a high
+A device's flash is partitioned according to its _flash map_.  At a high
 level, the flash map maps numeric IDs to _flash areas_.  A flash area is a
 region of disk with the following properties:
     (1) An area can be fully erased without affecting any other areas.
