@@ -214,9 +214,9 @@ An image trailer has the following structure:
     ~             Swap status (128 * min-write-size * 3)            ~
     ~                                                               ~
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |           0xff padding (7 octets)             |   Copy done   |
+    |   Copy done   |           0xff padding (7 octets)             |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |           0xff padding (7 octets)             |   Image OK    |
+    |   Image OK    |           0xff padding (7 octets)             |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |                       MAGIC (16 octets)                       |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
