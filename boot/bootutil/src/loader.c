@@ -1250,7 +1250,10 @@ boot_go(struct boot_rsp *rsp)
          * swap was finished to avoid a new revert.
          */
         if (swap_type == BOOT_SWAP_TYPE_REVERT || swap_type == BOOT_SWAP_TYPE_FAIL) {
-            boot_set_image_ok();
+            rc = boot_set_image_ok();
+            if (rc != 0) {
+                swap_type = BOOT_SWAP_TYPE_PANIC;
+            }
         }
     } else {
         swap_type = BOOT_SWAP_TYPE_NONE;
@@ -1261,12 +1264,15 @@ boot_go(struct boot_rsp *rsp)
         slot = 0;
         break;
 
-    case BOOT_SWAP_TYPE_TEST:
-    case BOOT_SWAP_TYPE_PERM:
+    case BOOT_SWAP_TYPE_TEST:          /* fallthrough */
+    case BOOT_SWAP_TYPE_PERM:          /* fallthrough */
     case BOOT_SWAP_TYPE_REVERT:
         slot = 1;
-        boot_set_copy_done();
         reload_headers = true;
+        rc = boot_set_copy_done();
+        if (rc != 0) {
+            swap_type = BOOT_SWAP_TYPE_PANIC;
+        }
         break;
 
     case BOOT_SWAP_TYPE_FAIL:
@@ -1278,13 +1284,16 @@ boot_go(struct boot_rsp *rsp)
         reload_headers = true;
         break;
 
-    case BOOT_SWAP_TYPE_PANIC:
     default:
-        /* TODO: what to do it a fatal error like flash read/write error
-         *       happened?
-         */
+        swap_type = BOOT_SWAP_TYPE_PANIC;
+    }
+
+    if (swap_type == BOOT_SWAP_TYPE_PANIC) {
+        BOOT_LOG_ERR("panic!");
         assert(0);
-        break;
+
+        /* Loop forever... */
+        while (1) {}
     }
 
 #ifdef MCUBOOT_VALIDATE_SLOT0
