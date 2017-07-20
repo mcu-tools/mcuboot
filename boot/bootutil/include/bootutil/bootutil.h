@@ -38,7 +38,11 @@ extern "C" {
 /** Swap back to alternate slot.  A confirm changes this state to NONE. */
 #define BOOT_SWAP_TYPE_REVERT   4
 
-#define BOOT_SWAP_TYPE_FAIL     0xff
+/** Swap failed because image to be run is not valid */
+#define BOOT_SWAP_TYPE_FAIL     5
+
+/** Swapping encountered an unrecoverable error */
+#define BOOT_SWAP_TYPE_PANIC    0xff
 
 #define MAX_FLASH_ALIGN         8
 extern const uint32_t BOOT_MAX_ALIGN;
