@@ -41,4 +41,5 @@ Developers welcome!
 
 * Our developer mailing list:
   http://lists.runtime.co/mailman/listinfo/dev-mcuboot_lists.runtime.co
+* Our Slack channel: https://runtimeco.slack.com/
 * Our IRC channel: http://irc.freenode.net, #mcuboot
