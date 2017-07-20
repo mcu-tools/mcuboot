@@ -266,6 +266,7 @@ purposes; they are not actually present in the boot vector.
     -----------------+--------+--------|
                magic | Unset  | Unset  |
             image-ok | Any    | Any    |
+           copy-done | Any    | Any    |
     -----------------+--------+--------'
              pending |        |        |
           confirmed  |   X    |        |
@@ -279,6 +280,7 @@ purposes; they are not actually present in the boot vector.
     -----------------+--------+--------|
                magic | Any    | Good   |
             image-ok | Any    | Unset  |
+           copy-done | Any    | Any    |
     -----------------+--------+--------'
              pending |        |   T    |
           confirmed  |   X    |        |
@@ -292,6 +294,7 @@ purposes; they are not actually present in the boot vector.
     -----------------+--------+--------|
                magic | Any    | Good   |
             image-ok | Any    | 0x01   |
+           copy-done | Any    | Any    |
     -----------------+--------+--------'
              pending |        |   P    |
           confirmed  |   X    |        |
@@ -322,6 +325,7 @@ no revert is performed. All other states don't need it.
     -----------------+--------+--------|
                magic | Good   | Unset  |
             image-ok | 0x01   | Any    |
+           copy-done | Any    | Any    |
     -----------------+--------+--------'
              pending |        |        |
           confirmed  |   X    |        |
