@@ -11,7 +11,7 @@ MCUboot is operating system and hardware independent, and relies on
 hardware porting layers from the operating system it works with.  Currently
 mcuboot works with both the Apache Mynewt, and Zephyr operating systems, but
 more ports are planned in the future. RIOT is currently supported as a boot
-target with complete port arriving in the near future.
+target with a complete port planned.
 
 ## Roadmap
 
