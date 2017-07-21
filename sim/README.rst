@@ -16,6 +16,16 @@ simulator can be built with the stable release of Rust.
 
 .. _installation: https://www.rust-lang.org/en-US/install.html
 
+Dependent code
+--------------
+
+The simulator depends on some external modules.  These are stored as
+submodules within git.  To fetch these dependencies the first time::
+
+  $ git submodule update --init
+
+will clone and check out these trees in the appropriate place.
+
 Building
 ========
 
