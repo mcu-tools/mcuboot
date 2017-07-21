@@ -28,7 +28,7 @@ About this release:
 
   - An overwrite only which upgrades slot 0 with the image in slot 1.
   - A swapping upgrade which enables image test, allowing for rollback to a
-  previous known good image.
+    previous known good image.
 
 * Supports both mbed-TLS and tinycrypt as backend crypto libraries. One of them
   must be defined and the chosen signing algorithm will require a particular
@@ -37,7 +37,7 @@ About this release:
   - RSA 2048 needs mbed TLS
   - ECDSA secp224r1 needs mbed TLS
   - ECDSA secp256r1 needs tinycrypt as well as the ASN.1 code from mbed TLS
-  (so still needs that present).
+    (so still needs that present).
 
 Known issues:
 =============
