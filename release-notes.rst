@@ -13,19 +13,27 @@ About this release:
 
 * This release supports building with and running Apache Mynewt and Zephyr
   targets.
+
 * RIOT is supported as a running target.
+
 * Image integrity is provided with SHA256.
+
 * Image originator authenticity is provided supporting the following
   signature algorithms:
+
   - RSA 2048 and RSA PKCS#1 v1.5 or v2.1
   - Elliptic curve DSA with secp224r1 and secp256r1
+
 * Two firmware upgrade algorithms are provided:
+
   - An overwrite only which upgrades slot 0 with the image in slot 1.
   - A swapping upgrade which enables image test, allowing for rollback to a
   previous known good image.
+
 * Supports both mbed-TLS and tinycrypt as backend crypto libraries. One of them
   must be defined and the chosen signing algorithm will require a particular
   library according to this list:
+
   - RSA 2048 needs mbed TLS
   - ECDSA secp224r1 needs mbed TLS
   - ECDSA secp256r1 needs tinycrypt as well as the ASN.1 code from mbed TLS
