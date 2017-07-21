@@ -26,6 +26,7 @@ pkg.keywords:
     - loader
 
 pkg.deps:
+    - "@mcuboot/boot/mynewt/mcuboot_config"
     - "@mcuboot/boot/bootutil"
     - "@apache-mynewt-core/kernel/os"
     - "@apache-mynewt-core/sys/console/stub"

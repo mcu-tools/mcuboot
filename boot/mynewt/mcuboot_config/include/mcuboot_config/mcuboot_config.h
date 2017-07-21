@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#ifndef __BOOT_CONFIG_H__
-#define __BOOT_CONFIG_H__
+#ifndef __MCUBOOT_CONFIG_H__
+#define __MCUBOOT_CONFIG_H__
 
-#include "syscfg/syscfg.h"
+#include <syscfg/syscfg.h>
 
 #if MYNEWT_VAL(BOOT_SERIAL)
 #define MCUBOOT_SERIAL 1
@@ -49,4 +49,4 @@
 #define MCUBOOT_OVERWRITE_ONLY 1
 #endif
 
-#endif /* __BOOT_CONFIG_H__ */
+#endif /* __MCUBOOT_CONFIG_H__ */
