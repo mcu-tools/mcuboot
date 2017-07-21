@@ -29,12 +29,8 @@
 #ifndef __BOOTUTIL_CRYPTO_H_
 #define __BOOTUTIL_CRYPTO_H_
 
-/* FIXME: The test below will only work as long as the app name is
- * "mynewt", building for mynewt could export some __linux__, __APPLE__
- * style macro!
- */
-#ifdef APP_mynewt
-#include "mynewt/config.h"
+#ifdef MCUBOOT_MYNEWT
+#include "mcuboot_config/mcuboot_config.h"
 #endif
 
 #if defined(MCUBOOT_USE_MBED_TLS) && defined(MCUBOOT_USE_TINYCRYPT)

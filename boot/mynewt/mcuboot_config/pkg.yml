@@ -1,3 +1,4 @@
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,17 +17,7 @@
 # under the License.
 #
 
-# Package: boot/mynewt
-
-syscfg.defs:
-    BOOT_LOADER:
-        description: 'Set to indicate that this app is a bootloader.'
-        value: 1
-    BOOT_SERIAL:
-        description: 'Support image upgrade over serial within bootloader'
-        value: 0
-
-syscfg.vals:
-    SYSINIT_CONSTRAIN_INIT: 0
-    OS_SCHEDULING: 0
-    OS_CPUTIME_TIMER_NUM: -1
+pkg.name: boot/mynewt/mcuboot_config
+pkg.description: "Mynewt's mcuboot configuration"
+pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
+pkg.homepage: "http://mynewt.apache.org/"

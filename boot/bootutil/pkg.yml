@@ -25,7 +25,14 @@ pkg.keywords:
     - boot
     - bootloader
 
+pkg.apis:
+    - bootloader
+
+pkg.cflags:
+    - "-DMCUBOOT_MYNEWT"
+
 pkg.deps:
+    - "@mcuboot/boot/mynewt/mcuboot_config"
     - "@apache-mynewt-core/hw/hal"
     - "@apache-mynewt-core/crypto/mbedtls"
     - "@apache-mynewt-core/kernel/os"

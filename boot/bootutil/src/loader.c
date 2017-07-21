@@ -37,8 +37,8 @@
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
 
-#ifdef APP_mynewt
-#include "mynewt/config.h"
+#ifdef MCUBOOT_MYNEWT
+#include "mcuboot_config/mcuboot_config.h"
 #endif
 
 static struct boot_loader_state boot_data;
