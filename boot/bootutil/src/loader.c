@@ -206,6 +206,7 @@ boot_previous_swap_type(void)
     return BOOT_SWAP_TYPE_FAIL;
 }
 
+#ifndef MCUBOOT_OVERWRITE_ONLY
 static int
 boot_read_header_from_scratch(struct image_header *out_hdr)
 {
@@ -225,6 +226,7 @@ boot_read_header_from_scratch(struct image_header *out_hdr)
     flash_area_close(fap);
     return rc;
 }
+#endif /* !MCUBOOT_OVERWRITE_ONLY */
 
 static int
 boot_read_image_header(int slot, struct image_header *out_hdr)
@@ -783,6 +785,7 @@ boot_status_init_by_id(int flash_area_id)
     return 0;
 }
 
+#ifndef MCUBOOT_OVERWRITE_ONLY
 static int
 boot_erase_last_sector_by_id(int flash_area_id)
 {
@@ -809,6 +812,7 @@ boot_erase_last_sector_by_id(int flash_area_id)
 
     return rc;
 }
+#endif /* !MCUBOOT_OVERWRITE_ONLY */
 
 /**
  * Swaps the contents of two flash regions within the two image slots.
