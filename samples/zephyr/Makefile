@@ -142,6 +142,9 @@ flash_hello1:
 flash_hello2:
 	$(PYOCD_FLASHTOOL) -a 0x80000 signed-hello2.bin
 
+flash_full:
+	$(PYOCD_FLASHTOOL) -ce -a 0 full.bin
+
 check:
 	@if [ -z "$$ZEPHYR_BASE" ]; then echo "Zephyr environment not set up"; false; fi
 	@if [ -z "$(BOARD)" ]; then echo "You must specity BOARD=<board>"; false; fi
