@@ -1,5 +1,7 @@
 # mcuboot
 
+This is mcuboot, version 0.9.0-rc2
+
 ## Overview
 
 MCUBoot is a secure bootloader for 32-bit MCUs.   The goal of MCUBoot is to 
