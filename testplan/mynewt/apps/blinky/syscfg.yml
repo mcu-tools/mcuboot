@@ -1,0 +1,8 @@
+syscfg.defs:
+    BLINKY_TICKS_PER_SEC:
+        value: 1
+
+syscfg.vals:
+    REBOOT_LOG_ENTRY_COUNT: 0
+    REBOOT_LOG_CONSOLE: 0
+    SHELL_TASK: 1

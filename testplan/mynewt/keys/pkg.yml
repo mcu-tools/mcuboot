@@ -1,0 +1,12 @@
+pkg.name: keys
+pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
+pkg.homepage: "http://mynewt.apache.org/"
+
+pkg.deps.BOOTUTIL_SIGN_RSA:
+    - keys/rsa
+
+pkg.deps.BOOTUTIL_SIGN_EC:
+    - keys/ec
+
+pkg.deps.BOOTUTIL_SIGN_EC256:
+    - keys/ec256
