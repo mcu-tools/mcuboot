@@ -1,0 +1,37 @@
+From a170ab0b596e480445a9b9e2fca6ca937034192c Mon Sep 17 00:00:00 2001
+From: David Brown <david.brown@linaro.org>
+Date: Thu, 27 Jul 2017 09:56:30 -0600
+Subject: [PATCH] bad: old RSA no slot0 check
+
+This builds the bootloader with the old RSA signature type, but not the
+images.  It also disables verification of slot 0, so the image in slot 0
+should boot, but it should not perform an upgrade.
+---
+ Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 1e9ec42..d6e5876 100644
+--- a/Makefile
++++ b/Makefile
+@@ -14,7 +14,7 @@ CFLAGS += -DMCUBOOT_SIGN_RSA -DMCUBOOT_USE_MBED_TLS
+ 
+ # Newer uses should use the RSA-PSS signature algorithm.  This define
+ # enables (and requires) this type of signature.
+-#CFLAGS += -DMCUBOOT_RSA_PKCS1_15
++CFLAGS += -DMCUBOOT_RSA_PKCS1_15
+ 
+ # ECDSA P-256
+ #CONF_FILE = boot/zephyr/prj-p256.conf
+@@ -23,7 +23,7 @@ CFLAGS += -DMCUBOOT_SIGN_RSA -DMCUBOOT_USE_MBED_TLS
+ # Enable this option to have the bootloader verify the signature of
+ # the primary image upon every boot.  Without it, signature
+ # verification only happens on upgrade.
+-CFLAGS += -DMCUBOOT_VALIDATE_SLOT0
++# CFLAGS += -DMCUBOOT_VALIDATE_SLOT0
+ 
+ # Enabling this option uses newer flash map APIs. This saves RAM and
+ # avoids deprecated API usage.
+-- 
+2.11.0
+
