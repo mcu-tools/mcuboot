@@ -1,6 +1,6 @@
 # mcuboot
 
-This is mcuboot, version 0.9.0-rc2
+This is mcuboot, version 0.9.0
 
 ## Overview
 
