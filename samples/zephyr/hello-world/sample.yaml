@@ -1,0 +1,9 @@
+sample:
+  name: Application Skeleton
+  description: Basic "hello world" application, but loadable by mcuboot
+  platforms: all
+tests:
+    - test:
+        build_only: true
+        tags: samples tests
+        min_ram: 16

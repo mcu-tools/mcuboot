@@ -1,0 +1,10 @@
+/*
+ * Basic Device Tree overlay file for chain-loading by mcuboot.
+ * See the Makefile for more information.
+ */
+
+/ {
+	chosen {
+		zephyr,code-partition = &slot0_partition;
+	};
+};
