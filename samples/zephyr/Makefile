@@ -23,7 +23,7 @@
 # in question.
 #
 # running
-# 
+#
 #     make BOARD=frdm_k64f all
 #
 # should generate three "*.bin" files in this directory:
@@ -147,4 +147,4 @@ flash_full:
 
 check:
 	@if [ -z "$$ZEPHYR_BASE" ]; then echo "Zephyr environment not set up"; false; fi
-	@if [ -z "$(BOARD)" ]; then echo "You must specity BOARD=<board>"; false; fi
+	@if [ -z "$(BOARD)" ]; then echo "You must specify BOARD=<board>"; false; fi
