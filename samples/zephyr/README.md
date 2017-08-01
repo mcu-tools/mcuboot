@@ -8,6 +8,3 @@ useful.
 
 Please see the comments in the Makefile in this directory for more
 details on how to build and test this application.
-
-The hello applications were taken directly from the Zephyr source
-tree.

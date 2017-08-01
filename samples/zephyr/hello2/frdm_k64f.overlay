@@ -1,9 +1,0 @@
-/* DTS overlay file.
- * vim: ft=dts
- */
-
-/ {
-	chosen {
-		zephyr,code-partition = &slot0_partition;
-	};
-};
