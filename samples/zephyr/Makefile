@@ -100,18 +100,18 @@ clean_boot: check
 
 # Build and sign "hello1".
 hello1: check
-	$(MAKE) -C hello1 BOARD=$(BOARD) -j$(nproc)
+	$(MAKE) -C hello-world FROM_WHO="hello1" O=outdir/hello1/$(BOARD) BOARD=$(BOARD) -j$(nproc)
 	$(IMGTOOL) sign \
 		--key $(SIGNING_KEY) \
 		--header-size $(BOOT_HEADER_LEN) \
 		--align $(FLASH_ALIGNMENT) \
 		--version 1.2 \
 		--included-header \
-		hello1/outdir/$(BOARD)/zephyr.bin \
+		hello-world/outdir/hello1/$(BOARD)/zephyr.bin \
 		signed-hello1.bin
 
 clean_hello1: check
-	rm -rf hello1/outdir/$(BOARD)
+	rm -rf hello-world/outdir/hello1/$(BOARD)
 
 # Build and sign "hello2".
 # This is the same signing command as above, except that it adds the
@@ -119,7 +119,7 @@ clean_hello1: check
 # this image is intended to be an upgrade.  It should be flashed into
 # slot1 instead of slot0.
 hello2: check
-	$(MAKE) -C hello2 BOARD=$(BOARD) -j$(nproc)
+	$(MAKE) -C hello-world FROM_WHO="hello2" O=outdir/hello2/$(BOARD) BOARD=$(BOARD) -j$(nproc)
 	$(IMGTOOL) sign \
 		--key $(SIGNING_KEY) \
 		--header-size $(BOOT_HEADER_LEN) \
@@ -127,11 +127,11 @@ hello2: check
 		--version 1.2 \
 		--included-header \
 		--pad 0x60000 \
-		hello2/outdir/$(BOARD)/zephyr.bin \
+		hello-world/outdir/hello2/$(BOARD)/zephyr.bin \
 		signed-hello2.bin
 
 clean_hello2: check
-	rm -rf hello2/outdir/$(BOARD)
+	rm -rf hello-world/outdir/hello2/$(BOARD)
 
 flash_boot:
 	$(PYOCD_FLASHTOOL) -ce -a 0 mcuboot.bin
