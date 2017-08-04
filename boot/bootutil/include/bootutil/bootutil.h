@@ -6,7 +6,7 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
@@ -32,7 +32,7 @@ extern "C" {
 /** Swap to slot 1.  Absent a confirm command, revert back on next boot. */
 #define BOOT_SWAP_TYPE_TEST     2
 
-/** Swap to slot 1 permanently. */
+/** Swap to slot 1, and permanently switch to booting its contents. */
 #define BOOT_SWAP_TYPE_PERM     3
 
 /** Swap back to alternate slot.  A confirm changes this state to NONE. */
