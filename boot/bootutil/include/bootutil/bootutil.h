@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-/** Just boot whatever is in slot 0. */
+/** Attempt to boot the contents of slot 0. */
 #define BOOT_SWAP_TYPE_NONE     1
 
 /** Swap to slot 1.  Absent a confirm command, revert back on next boot. */
