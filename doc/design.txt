@@ -217,10 +217,12 @@ can be in:
 *** IMAGE TRAILER
 
 For the bootloader to be able to determine the current state and what actions
-should be taken during the current boot operation, it uses metadata existing
-on both slots, and while doing a swap operation it can be located in scratch.
-This metadata is located at the end of the slot and is called image trailer.
-An image trailer has the following structure:
+should be taken during the current boot operation, it uses metadata stored in
+the image flash areas. While swapping, some of this metadata is temporarily
+copied into and out of the scratch area.
+
+This metadata is located at the end of the image flash areas, and is called an
+image trailer. An image trailer has the following structure:
 
      0                   1                   2                   3
      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -236,8 +238,8 @@ An image trailer has the following structure:
     |                       MAGIC (16 octets)                       |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-These records are at the end of each image slot.  The offset immediately
-following such a record represents the start of the next flash area.
+The offset immediately following such a record represents the start of the next
+flash area.
 
 Note: "min-write-size" is a property of the flash hardware.  If the hardware
 allows individual bytes to be written at arbitrary addresses, then
