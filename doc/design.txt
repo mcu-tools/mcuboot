@@ -110,12 +110,15 @@ region of disk with the following properties:
     (1) An area can be fully erased without affecting any other areas.
     (2) A write to one area does not restrict writes to other areas.
 
-The boot loader uses the following flash areas:
+The boot loader uses the following flash area IDs:
 
 #define FLASH_AREA_BOOTLOADER                    0
 #define FLASH_AREA_IMAGE_0                       1
 #define FLASH_AREA_IMAGE_1                       2
 #define FLASH_AREA_IMAGE_SCRATCH                 3
+
+The bootloader area contains the bootloader image itself. The other areas are
+described in subsequent sections.
 
 *** IMAGE SLOTS
 
