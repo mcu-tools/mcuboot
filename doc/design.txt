@@ -6,7 +6,7 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #  http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
@@ -38,7 +38,7 @@ Therefore, functionality is delegated to the bootutil library when possible.
 The boot loader currently only supports images with the following
 characteristics:
     * Built to run from flash.
-    * Build to run from a fixed location (i.e., not position-independent).
+    * Built to run from a fixed location (i.e., not position-independent).
 
 *** IMAGE FORMAT
 
@@ -73,7 +73,7 @@ struct image_header {
 struct image_tlv {
     uint8_t  it_type;   /* IMAGE_TLV_[...]. */
     uint8_t  _pad;
-    uint16_t it_len     /* Data length (not including TLV header). */
+    uint16_t it_len;    /* Data length (not including TLV header). */
 };
 
 /*
@@ -553,7 +553,7 @@ indicates where the swap status region is located.
     ----------+------------+------------'
     source: none                        |
     ------------------------------------'
-    
+
               | slot-0     | scratch    |
     ----------+------------+------------|
         magic | Good       | Any        |
@@ -561,7 +561,7 @@ indicates where the swap status region is located.
     ----------+------------+------------'
     source: slot 0                      |
     ------------------------------------'
-    
+
               | slot-0     | scratch    |
     ----------+------------+------------|
         magic | Any        | Good       |
@@ -569,7 +569,7 @@ indicates where the swap status region is located.
     ----------+------------+------------'
     source: scratch                     |
     ------------------------------------'
-    
+
               | slot-0     | scratch    |
     ----------+------------+------------|
         magic | Unset      | Any        |
