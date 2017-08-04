@@ -246,13 +246,23 @@ allows individual bytes to be written at arbitrary addresses, then
 min-write-size is 1.  If the hardware only allows writes at even addresses,
 then min-write-size is 2, and so on.
 
-The fields are defined as follows:
+An image trailer contains the following fields:
 
-1. Swap status: A series of single-byte records.  Each record corresponds to a
-flash sector in an image slot.  A swap status byte indicate the location of
-the corresponding sector data.  During an image swap, image data is moved one
-sector at a time.  The swap status is necessary for resuming a swap operation
-if the device rebooted before a swap operation completed.
+1. Swap status: A series of records which records the progress of an image
+swap.  To swap entire images, data are swapped between the two image areas one
+or more sectors at a time, like this:
+
+    - sector data in slot 0 is copied into scratch, then erased
+    - sector data in slot 1 is copied into slot 0, then erased
+    - sector data in scratch is copied into slot 1
+
+As it swaps images, the bootloader updates the swap status field in a way that
+allows it to compute how far this swap operation has progressed for each
+sector.  The swap status field can thus used to resume a swap operation if the
+bootloader is halted while a swap operation is ongoing and later reset. The
+factor of 128 is the maximum number of sectors mcuboot supports for each image;
+its value is a bootloader design decision. The factor of min-write-sz is due to
+the behavior of flash hardware. The factor of 3 is explained below.
 
 2. Copy done: A single byte indicating whether the image in this slot is
 complete (0x01=done; 0xff=not done).
