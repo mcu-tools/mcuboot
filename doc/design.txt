@@ -126,10 +126,20 @@ A portion of the flash memory is partitioned into two image slots: a primary
 slot (0) and a secondary slot (1).  The boot loader will only run an image from
 the primary slot, so images must be built such that they can run from that
 fixed location in flash.  If the boot loader needs to run the image resident in
-the secondary slot, it must swap the two images in flash prior to booting.
+the secondary slot, it must copy its contents into the primary slot before doing
+so, either by swapping the two images or by overwriting the contents of the
+primary slot. The bootloader supports either swap- or overwrite-based image
+upgrades, but must be configured at build time to choose one of these two
+strategies.
 
 In addition to the two image slots, the boot loader requires a scratch area to
 allow for reliable image swapping.
+
+The overwrite upgrade strategy is substantially simpler to implement than the
+image swapping strategy, especially since the bootloader must work properly
+even when it is reset during the middle of an image swap. For this reason, the
+rest of the document describes its behavior when configured to swap images
+during an upgrade.
 
 *** BOOT STATES
 
