@@ -6,7 +6,7 @@ tags
 rusty-tags.*
 
 # mynewt
-repos/
-project.state
-bin/
-targets/
+/repos/
+/project.state
+/bin/
+/targets/
