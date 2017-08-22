@@ -10,3 +10,6 @@ repos/
 project.state
 bin/
 targets/
+*.o
+boot/coverity/coverity
+cov-int/
