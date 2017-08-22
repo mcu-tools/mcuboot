@@ -11,3 +11,12 @@ notifications:
     rooms:
       - secure: gtGPw+ujyUejh/hIlMZFB1oPQtC5OT/ymZM56GiU/lXiQwcQketQTcB3PNQvTnwk5vXXYeeX5/SpV1VhuwWlvTf3jBp9JBanTcXKg02s+e5myUNC91QMEMiBAQjZng8i4K6sOeYqy4d1mzAHH0BwS1akOsJ/F0jPhNsRF2ksch9x1a8bQwL5GkxO3UrxAe4IB0ulKg67DaFiDPl/WYLR/ZiN+fyNMv+HxJ73J/imnLIONVreAURgdHak4lMB1PVvNdPvsx5t71TtPS801VhniiLUb2pxK19eC3/SU7APYXRWejXcjr/aEoVFWKehXtKAVsEIN4zut8YwewpghTPHbi7uYirla+Ejq501GO7Ux/Y7IYZdqsHV4m8YAEWTHCSUklp2oXnEgyjqoNAu2FhF3PpuD5+EJbOsbG5XdNgKEiFLGA5AWweeoTkt2kjv11vSZDDBRX8PHlRflERIFQHZbhFuAHD+krXEgM3yXs/eV69T2eV58nz07dub+OltbNBauoQcQ2VoRE7+qvDSWAMSYYHJgU+pKcgaf17DG8nUkRGhMODwAq1wevzyU5HLLYAXyVaiho8q+UNRiWdUKJOlYD+I8mwGzdiTrjRlEx/jimECnSxVBNHbc3zkbcLYuuGKwhSrSXPNy6IjRPjJpX78xpIvQIwX+rmq3iR1j8H3Sj0=
     on_success: always
+
+  coverity_scan:
+    project:
+      name: runtimeco/mcuboot
+      version: 0.9
+      description: Secure boot for 32-bit Microcontrollers!
+    notification_email: utzig@apache.org
+    build_command: make -f Makefile.coverity
+    branch_pattern: coverity_scan
