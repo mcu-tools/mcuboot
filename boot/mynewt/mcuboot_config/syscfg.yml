@@ -43,3 +43,6 @@ syscfg.defs:
     BOOTUTIL_OVERWRITE_ONLY:
         description: 'Non-swapping upgrades, copy from slot 1 to slot 0 only.'
         value: 0
+    BOOTUTIL_IMAGE_FORMAT_V2:
+        description: 'Indicates that system is using v2 of image format'
+        value: 1
