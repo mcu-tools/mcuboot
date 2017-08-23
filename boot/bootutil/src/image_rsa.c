@@ -32,15 +32,6 @@
 
 #include "bootutil_priv.h"
 
-#ifdef  MCUBOOT_RSA_PKCS1_15
-static const uint8_t sha256_oid[] = {
-    0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86,
-    0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05,
-    0x00, 0x04, 0x20
-};
-#endif
-
-#ifndef MCUBOOT_RSA_PKCS1_15
 /*
  * Constants for this particular constrained implementation of
  * RSA-PSS.  In particular, we support RSA 2048, with a SHA256 hash,
@@ -70,7 +61,6 @@ static const uint8_t sha256_oid[] = {
 #define PSS_MASK_SALT_POS   (PSS_MASK_ONE_POS + 1)
 
 static const uint8_t pss_zeros[8] = {0};
-#endif
 
 /*
  * Parse the public key used for signing. Simple RSA format.
@@ -108,7 +98,6 @@ bootutil_parse_rsakey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
     return 0;
 }
 
-#ifndef MCUBOOT_RSA_PKCS1_15
 /*
  * Compute the RSA-PSS mask-generation function, MGF1.  Assumptions
  * are that the mask length will be less than 256 * PSS_HLEN, and
@@ -263,55 +252,6 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
 
     return 0;
 }
-#else /* MCUBOOT_RSA_PKCS1_15 */
-/*
- * PKCS1.5 using RSA2048 computed over SHA256.
- */
-static int
-bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
-  uint8_t *sig)
-{
-    uint8_t buf[MBEDTLS_MPI_MAX_SIZE];
-    uint8_t *p;
-
-    if (ctx->len != 256) {
-        return -1;
-    }
-
-    if (mbedtls_rsa_public(ctx, sig, buf)) {
-        return -1;
-    }
-
-    p = buf;
-
-    if (*p++ != 0 || *p++ != MBEDTLS_RSA_SIGN) {
-        return -1;
-    }
-
-    while (*p != 0) {
-        if (p >= buf + ctx->len - 1 || *p != 0xFF) {
-            return -1;
-        }
-        p++;
-    }
-    p++;
-
-    if ((p - buf) + sizeof(sha256_oid) + hlen != ctx->len) {
-        return -1;
-    }
-
-    if (memcmp(p, sha256_oid, sizeof(sha256_oid))) {
-        return -1;
-    }
-    p += sizeof(sha256_oid);
-
-    if (memcmp(p, hash, hlen)) {
-        return -1;
-    }
-
-    return 0;
-}
-#endif
 
 int
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
