@@ -94,7 +94,7 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
  * configured for any signature, don't define this macro.
  */
 #if defined(MCUBOOT_SIGN_RSA)
-#    define EXPECTED_SIG_TLV IMAGE_TLV_RSA2048
+#    define EXPECTED_SIG_TLV IMAGE_TLV_RSA2048_PSS
 #    define EXPECTED_SIG_LEN(x) ((x) == 256) /* 2048 bits */
 #    if defined(MCUBOOT_SIGN_EC) || defined(MCUBOOT_SIGN_EC256)
 #        error "Multiple signature types not yet supported"
