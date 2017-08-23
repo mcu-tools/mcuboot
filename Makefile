@@ -12,10 +12,6 @@
 CONF_FILE = boot/zephyr/prj.conf
 CFLAGS += -DMCUBOOT_SIGN_RSA -DMCUBOOT_USE_MBED_TLS
 
-# Newer uses should use the RSA-PSS signature algorithm.  This define
-# enables (and requires) this type of signature.
-#CFLAGS += -DMCUBOOT_RSA_PKCS1_15
-
 # ECDSA P-256
 #CONF_FILE = boot/zephyr/prj-p256.conf
 #CFLAGS += -DMCUBOOT_SIGN_EC256 -DMCUBOOT_USE_TINYCRYPT
