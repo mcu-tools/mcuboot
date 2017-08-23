@@ -205,7 +205,7 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
             }
         }
 #ifdef MCUBOOT_SIGN_RSA
-        if (tlv.it_type == IMAGE_TLV_RSA2048) {
+        if (tlv.it_type == IMAGE_TLV_RSA2048_PSS) {
             if (tlv.it_len != 256) { /* 2048 bits */
                 return -1;
             }
