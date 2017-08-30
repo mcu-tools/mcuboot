@@ -53,4 +53,7 @@ SOURCE_DIR = boot/zephyr
 # Needed for mbedtls config-boot.h file.
 CFLAGS += -I$(CURDIR)/boot/zephyr/include
 
+DTC_OVERLAY_FILE := $(CURDIR)/boot/zephyr/dts.overlay
+export DTC_OVERLAY_FILE
+
 include ${ZEPHYR_BASE}/Makefile.inc
