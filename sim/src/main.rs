@@ -59,6 +59,8 @@ struct Args {
 #[derive(Copy, Clone, Debug, Deserialize)]
 enum DeviceName { Stm32f4, K64f, K64fBig, Nrf52840, MPS2an505 }
 
+enum HeaderType { Small, Large }
+
 static ALL_DEVICES: &'static [DeviceName] = &[
     DeviceName::Stm32f4,
     DeviceName::K64f,
@@ -272,12 +274,28 @@ impl RunStatus {
         bad_slot1_image.image_pairs.push(ImagePairSlotInfo{
             slot0: &slot0,
             slot1: &slot1,
-            primary: install_image(&mut bad_flash, slot0_base, 32784, false),
-            upgrade: install_image(&mut bad_flash, slot1_base, 41928, true),
+            primary: install_image(&mut bad_flash, slot0_base, 32784, false, HeaderType::Small),
+            upgrade: install_image(&mut bad_flash, slot1_base, 41928, true, HeaderType::Small),
         });
 
 
         failed |= run_signfail_upgrade(&bad_flash, &areadesc, &bad_slot1_image);
+
+        // create images with mismatched header sizes:
+        let mut mismatched_header_flash = flash.clone();
+        let mut mismatched_header_images = Images {
+            image_pairs: vec![],
+        };
+        mismatched_header_images.image_pairs.push(ImagePairSlotInfo{
+            slot0: &slot0,
+            slot1: &slot1,
+            primary: install_image(&mut mismatched_header_flash, slot0_base, 32784, false, HeaderType::Small),
+            upgrade: install_image(&mut mismatched_header_flash, slot1_base, 41928, false, HeaderType::Large),
+        });
+
+        mark_upgrade(&mut mismatched_header_flash, &mismatched_header_images.image_pairs[0].slot1);
+
+        failed |= run_upgrade_with_mixed_header_size (&mismatched_header_flash, &areadesc, &mismatched_header_images, 64);
 
         let mut images = Images {
             image_pairs: vec![],
@@ -285,8 +303,8 @@ impl RunStatus {
         images.image_pairs.push(ImagePairSlotInfo{
             slot0: &slot0,
             slot1: &slot1,
-            primary: install_image(&mut flash, slot0_base, 32784, false),
-            upgrade: install_image(&mut flash, slot1_base, 41928, false),
+            primary: install_image(&mut flash, slot0_base, 32784, false, HeaderType::Small),
+            upgrade: install_image(&mut flash, slot1_base, 41928, false, HeaderType::Small),
         });
 
         failed |= run_norevert_newimage(&flash, &areadesc, &images);
@@ -399,17 +417,41 @@ impl RunStatus {
         bad_slotx_1_image.image_pairs.push(ImagePairSlotInfo{
             slot0: &slot0_0,
             slot1: &slot0_1,
-            primary: install_image(&mut bad_flash, slot0_0_base, 32784, false),
-            upgrade: install_image(&mut bad_flash, slot0_1_base, 41928, true),
+            primary: install_image(&mut bad_flash, slot0_0_base, 32784, false, HeaderType::Small),
+            upgrade: install_image(&mut bad_flash, slot0_1_base, 41928, true, HeaderType::Small),
         });
         bad_slotx_1_image.image_pairs.push(ImagePairSlotInfo{
             slot0: &slot1_0,
             slot1: &slot1_1,
-            primary: install_image(&mut bad_flash, slot1_0_base, 34816, false),
-            upgrade: install_image(&mut bad_flash, slot1_1_base, 43008, true),
+            primary: install_image(&mut bad_flash, slot1_0_base, 34816, false, HeaderType::Small),
+            upgrade: install_image(&mut bad_flash, slot1_1_base, 43008, true, HeaderType::Small),
         });
 
         failed |= run_signfail_upgrade(&bad_flash, &areadesc, &bad_slotx_1_image);
+
+        // create images with mismatched header sizes:
+        let mut mismatched_header_flash = flash.clone();
+        let mut mismatched_header_images = Images {
+            image_pairs: vec![],
+        };
+        mismatched_header_images.image_pairs.push(ImagePairSlotInfo{
+            slot0: &slot0_0,
+            slot1: &slot0_1,
+            primary: install_image(&mut mismatched_header_flash, slot0_0_base, 32784, false, HeaderType::Small),
+            upgrade: install_image(&mut mismatched_header_flash, slot0_1_base, 41928, false, HeaderType::Large),
+        });
+        mismatched_header_images.image_pairs.push(ImagePairSlotInfo{
+            slot0: &slot1_0,
+            slot1: &slot1_1,
+            primary: install_image(&mut mismatched_header_flash, slot1_0_base, 34816, false, HeaderType::Small),
+            upgrade: install_image(&mut mismatched_header_flash, slot1_1_base, 43008, false, HeaderType::Small),
+        });
+
+        mark_upgrade(&mut mismatched_header_flash, &mismatched_header_images.image_pairs[0].slot1);
+        mark_upgrade(&mut mismatched_header_flash, &mismatched_header_images.image_pairs[1].slot1);
+
+        failed |= run_upgrade_with_mixed_header_size (&mismatched_header_flash, &areadesc, &mismatched_header_images, 64);
+
 
         // Now go with properly signed images:
         let mut images = Images {
@@ -418,14 +460,14 @@ impl RunStatus {
         images.image_pairs.push(ImagePairSlotInfo{
             slot0: &slot0_0,
             slot1: &slot0_1,
-            primary: install_image(&mut flash, slot0_0_base, 32784, false),
-            upgrade: install_image(&mut flash, slot0_1_base, 41928, false),
+            primary: install_image(&mut flash, slot0_0_base, 32784, false, HeaderType::Small),
+            upgrade: install_image(&mut flash, slot0_1_base, 41928, false, HeaderType::Small),
         });
         images.image_pairs.push(ImagePairSlotInfo{
             slot0: &slot1_0,
             slot1: &slot1_1,
-            primary: install_image(&mut flash, slot1_0_base, 34816, false),
-            upgrade: install_image(&mut flash, slot1_1_base, 43008, false),
+            primary: install_image(&mut flash, slot1_0_base, 34816, false, HeaderType::Small),
+            upgrade: install_image(&mut flash, slot1_1_base, 43008, false, HeaderType::Small),
         });
 
         failed |= run_norevert_newimage(&flash, &areadesc, &images);
@@ -457,6 +499,29 @@ impl RunStatus {
             self.passes += 1;
         }
     }
+}
+
+fn run_upgrade_with_mixed_header_size (flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
+                     expected_header_size: u16) -> bool {
+
+    let (fl, _) = try_upgrade(&flash, &areadesc, &images, None);
+    let mut fails = 0;
+
+    for (idx, image_pair) in images.image_pairs.iter().enumerate() {
+        if !verify_image(&fl, image_pair.slot0.base_off, &image_pair.upgrade) {
+            warn!("Image mismatch after first boot at imagepair {}", idx);
+            fails += 1;
+        }
+    }
+
+    // check for the header size
+    let header_size = c::get_ih_hdr_size();
+    if expected_header_size != header_size {
+        warn!("Header size mismatch: {} instead of {}", header_size, expected_header_size);
+        fails += 1;
+    }
+
+    fails > 0
 }
 
 /// A simple upgrade without forced failures.
@@ -950,17 +1015,22 @@ fn show_flash(flash: &Flash) {
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
 /// fields used by the given code.  Returns a copy of the image that was written.
 fn install_image(flash: &mut Flash, offset: usize, len: usize,
-                 bad_sig: bool) -> Vec<u8> {
+                 bad_sig: bool, header_type: HeaderType) -> Vec<u8> {
     let offset0 = offset;
 
     let mut tlv = make_tlv();
 
+    let header_size = match header_type {
+        HeaderType::Small => {32}
+        HeaderType::Large => {64}
+    };
+
     // Generate a boot header.  Note that the size doesn't include the header.
-    let header = ImageHeader {
+    let small_header = SmallImageHeader {
         magic: 0x96f3b83c,
         tlv_size: tlv.get_size(),
         _pad1: 0,
-        hdr_size: 32,
+        hdr_size: header_size,
         key_id: 0,
         _pad2: 0,
         img_size: len as u32,
@@ -974,13 +1044,29 @@ fn install_image(flash: &mut Flash, offset: usize, len: usize,
         _pad3: 0,
     };
 
-    let b_header = header.as_raw();
+    let large_header = LargeImageHeader {
+        small_header: small_header.clone(),
+        _pad0: 0,
+        _pad1: 0,
+        _pad2: 0,
+        _pad3: 0,
+        _pad4: 0,
+        _pad5: 0,
+        _pad6: 0,
+        _pad7: 0,
+    };
+
+    let b_header = match header_type {
+        HeaderType::Small => {small_header.as_raw()}
+        HeaderType::Large => {large_header.as_raw()}
+    };
+
     tlv.add_bytes(&b_header);
-    /*
-    let b_header = unsafe { slice::from_raw_parts(&header as *const _ as *const u8,
-                                                  mem::size_of::<ImageHeader>()) };
-                                                  */
-    assert_eq!(b_header.len(), 32);
+    match header_type {
+        HeaderType::Small => {assert_eq!(b_header.len(), 32)}
+        HeaderType::Large => {assert_eq!(b_header.len(), 64)}
+    };
+
     flash.write(offset, &b_header).unwrap();
     let offset = offset + b_header.len();
 
@@ -1090,7 +1176,8 @@ fn verify_trailer(flash: &Flash, offset: usize,
 
 /// The image header
 #[repr(C)]
-pub struct ImageHeader {
+#[derive(Clone)]
+pub struct SmallImageHeader {
     magic: u32,
     tlv_size: u16,
     key_id: u8,
@@ -1103,9 +1190,25 @@ pub struct ImageHeader {
     _pad3: u32,
 }
 
-impl AsRaw for ImageHeader {}
+impl AsRaw for SmallImageHeader {}
 
 #[repr(C)]
+pub struct LargeImageHeader {
+    small_header: SmallImageHeader,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+    _pad3: u32,
+    _pad4: u32,
+    _pad5: u32,
+    _pad6: u32,
+    _pad7: u32,
+}
+
+impl AsRaw for LargeImageHeader {}
+
+#[repr(C)]
+#[derive(Clone)]
 pub struct ImageVersion {
     major: u8,
     minor: u8,

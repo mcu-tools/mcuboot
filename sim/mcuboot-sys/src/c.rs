@@ -24,6 +24,18 @@ pub fn set_flash_counter(counter: i32) {
     unsafe { raw::flash_counter = counter as libc::c_int };
 }
 
+pub fn get_br_flash_dev_id() -> u8 {
+    unsafe { raw::br_flash_dev_id as u8 }
+}
+
+pub fn get_br_image_off() -> u32 {
+    unsafe { raw::br_image_off as u32 }
+}
+
+pub fn get_ih_hdr_size() -> u16 {
+    unsafe { raw::ih_hdr_size as u16 }
+}
+
 pub fn boot_trailer_sz() -> u32 {
     unsafe { raw::boot_slots_trailer_sz(raw::sim_flash_align) }
 }
@@ -54,6 +66,10 @@ mod raw {
         // for information and tracking.
         pub fn invoke_boot_go(boot_image_count: libc::c_int, areadesc: *const CAreaDesc) -> libc::c_int;
         pub static mut flash_counter: libc::c_int;
+
+        pub static mut br_flash_dev_id: libc::uint8_t;
+        pub static mut br_image_off: libc::uint32_t;
+        pub static mut ih_hdr_size: libc::uint16_t;
 
         pub static mut sim_flash_align: u8;
         pub fn boot_slots_trailer_sz(min_write_sz: u8) -> u32;

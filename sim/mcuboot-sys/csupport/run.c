@@ -20,6 +20,9 @@ extern int sim_flash_write(uint32_t offset, const uint8_t *src, uint32_t size);
 static jmp_buf boot_jmpbuf;
 static int current_img_idx = 0;
 int flash_counter;
+uint8_t br_flash_dev_id = 0;
+uint32_t br_image_off = 0;
+uint16_t ih_hdr_size = 0;
 
 int jumped = 0;
 
@@ -58,10 +61,20 @@ static struct area_pointer_desc current_flash_areas = {0};
 void *(*mbedtls_calloc)(size_t n, size_t size);
 void (*mbedtls_free)(void *ptr);
 
+void save_rsp_fields(struct boot_rsp* rsp)
+{
+    br_flash_dev_id = rsp->br_flash_dev_id;
+    br_image_off = rsp->br_image_off;
+    ih_hdr_size = rsp->br_hdr.ih_hdr_size;
+}
+
 int invoke_boot_go(int boot_image_count, struct area_desc *adesc)
 {
     int res;
     struct boot_rsp rsp;
+
+    memset(&rsp, 0, sizeof(rsp));
+    save_rsp_fields(&rsp);
 
     mbedtls_calloc = calloc;
     mbedtls_free = free;
@@ -71,6 +84,7 @@ int invoke_boot_go(int boot_image_count, struct area_desc *adesc)
         res = boot_go(boot_image_count, &rsp);
         flash_areas = NULL;
         /* printf("boot_go off: %d (0x%08x)\n", res, rsp.br_image_off); */
+        save_rsp_fields(&rsp);
         return res;
     } else {
         flash_areas = NULL;
