@@ -20,10 +20,10 @@ IMAGE_F = {
         'PKCS1_PSS_RSA2048_SHA256': 0x0000040, }
 
 TLV_VALUES = {
-        'SHA256': 1,
-        'RSA2048': 2,
-        'ECDSA224': 3,
-        'ECDSA256': 4, }
+        'SHA256': 0x10,
+        'RSA2048': 0x20,
+        'ECDSA224': 0x21,
+        'ECDSA256': 0x22, }
 
 TLV_HEADER_SIZE = 4
 
