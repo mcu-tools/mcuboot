@@ -29,10 +29,10 @@ bitflags! {
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[allow(dead_code)] // TODO: For now
 pub enum TlvKinds {
-    SHA256 = 1,
-    RSA2048 = 2,
-    ECDSA224 = 3,
-    ECDSA256 = 4,
+    SHA256 = 0x10,
+    RSA2048 = 0x20,
+    ECDSA224 = 0x21,
+    ECDSA256 = 0x22,
 }
 
 pub struct TlvGen {
