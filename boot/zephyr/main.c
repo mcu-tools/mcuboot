@@ -56,7 +56,7 @@ static void do_boot(struct boot_rsp *rsp)
 
     vt = (struct arm_vector_table *)(flash_base +
                                      rsp->br_image_off +
-                                     rsp->br_hdr->ih_hdr_size);
+                                     rsp->br_hdr.ih_hdr_size);
     irq_lock();
     sys_clock_disable();
     _MspSet(vt->msp);
@@ -77,7 +77,7 @@ static void do_boot(struct boot_rsp *rsp)
     assert(rc == 0);
 
     start = (void *)(flash_base + rsp->br_image_off +
-                     rsp->br_hdr->ih_hdr_size);
+                     rsp->br_hdr.ih_hdr_size);
 
     /* Lock interrupts and dive into the entry point */
     irq_lock();
@@ -101,7 +101,7 @@ void main(void)
             ;
     }
 
-    rc = boot_go(&rsp);
+    rc = boot_go(BOOT_IMAGE_COUNT, &rsp);
     if (rc != 0) {
         BOOT_LOG_ERR("Unable to find bootable image");
         while (1)

@@ -35,3 +35,6 @@
 #define FLASH_AREA_IMAGE_1_SIZE		0x10000
 #define FLASH_AREA_IMAGE_SCRATCH_OFFSET	0x40040000
 #define FLASH_AREA_IMAGE_SCRATCH_SIZE	0x10000
+
+/* The number of bootable images by MCUBoot */
+#define BOOT_IMAGE_COUNT	1

@@ -33,3 +33,6 @@
  * sector in size.
  */
 #define FLASH_AREA_IMAGE_SECTOR_SIZE	0x20000
+
+/* The number of bootable images by MCUBoot */
+#define BOOT_IMAGE_COUNT	1

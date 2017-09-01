@@ -25,3 +25,6 @@
 /* Though sectors have variable size on this part, we've chosen
  * three sectors with uniform size here. */
 #define FLASH_AREA_IMAGE_SECTOR_SIZE	0x20000
+
+/* The number of bootable images by MCUBoot */
+#define BOOT_IMAGE_COUNT	1

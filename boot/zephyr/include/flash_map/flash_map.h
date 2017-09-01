@@ -95,6 +95,14 @@ struct flash_sector {
 };
 
 /*
+ * Initialize the flash partition map description array according to
+ * the image index. Three memory partition belongs to each bootable
+ * image: sw_slot_0(primary slot); sw_slot_1(secondary_slot);
+ * scratch_area.
+ */
+void flash_partition_map_init(uint8_t img_idx);
+
+/*
  * Retrieve a memory-mapped flash device's base address.
  *
  * On success, the address will be stored in the value pointed to by

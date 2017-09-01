@@ -39,6 +39,9 @@
 #define BOOT_AREA_DESC_MAX  (256)
 #define AREA_DESC_MAX       (BOOT_AREA_DESC_MAX)
 
+/* The number of bootable images by MCUBoot */
+#define BOOT_IMAGE_COUNT  (1)
+
 #ifdef MCUBOOT_SERIAL
 #define BOOT_SER_CONS_INPUT         128
 #endif
@@ -80,14 +83,14 @@ main(void)
         assert(0);
     }
 #endif
-    rc = boot_go(&rsp);
+    rc = boot_go(BOOT_IMAGE_COUNT, &rsp);
     assert(rc == 0);
 
     rc = flash_device_base(rsp.br_flash_dev_id, &flash_base);
     assert(rc == 0);
 
     hal_system_start((void *)(flash_base + rsp.br_image_off +
-                              rsp.br_hdr->ih_hdr_size));
+                              rsp.br_hdr.ih_hdr_size));
 
     return 0;
 }

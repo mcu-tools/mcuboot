@@ -43,8 +43,8 @@ extern struct device *boot_flash_device;
 #define FLASH_MAP_ENTRY_MAGIC 0xd00dbeef
 
 struct flash_map_entry {
-    const uint32_t magic;
-    const struct flash_area area;
+    uint32_t magic;
+    struct flash_area area;
     unsigned int ref_count;
 };
 
@@ -52,35 +52,50 @@ struct flash_map_entry {
  * The flash area describes essentially the partition table of the
  * flash.  In this case, it starts with FLASH_AREA_IMAGE_0.
  */
-static struct flash_map_entry part_map[] = {
-    {
-        .magic = FLASH_MAP_ENTRY_MAGIC,
-        .area = {
-            .fa_id = FLASH_AREA_IMAGE_0,
-            .fa_device_id = FLASH_DEVICE_ID,
-            .fa_off = FLASH_AREA_IMAGE_0_OFFSET,
-            .fa_size = FLASH_AREA_IMAGE_0_SIZE,
-        },
-    },
-    {
-        .magic = FLASH_MAP_ENTRY_MAGIC,
-        .area = {
-            .fa_id = FLASH_AREA_IMAGE_1,
-            .fa_device_id = FLASH_DEVICE_ID,
-            .fa_off = FLASH_AREA_IMAGE_1_OFFSET,
-            .fa_size = FLASH_AREA_IMAGE_1_SIZE,
-        },
-    },
-    {
-        .magic = FLASH_MAP_ENTRY_MAGIC,
-        .area = {
-            .fa_id = FLASH_AREA_IMAGE_SCRATCH,
-            .fa_device_id = FLASH_DEVICE_ID,
-            .fa_off = FLASH_AREA_IMAGE_SCRATCH_OFFSET,
-            .fa_size = FLASH_AREA_IMAGE_SCRATCH_SIZE,
-        },
+static struct flash_map_entry part_map[3] = {0};
+
+void flash_partition_map_init(uint8_t img_idx) {
+    if (img_idx == 0) {
+        part_map[0].magic = FLASH_MAP_ENTRY_MAGIC;
+        part_map[0].area.fa_id = FLASH_AREA_IMAGE_0;
+        part_map[0].area.fa_device_id = FLASH_DEVICE_ID;
+        part_map[0].area.fa_off = FLASH_AREA_IMAGE_0_OFFSET;
+        part_map[0].area.fa_size = FLASH_AREA_IMAGE_0_SIZE;
+
+        part_map[1].magic = FLASH_MAP_ENTRY_MAGIC;
+        part_map[1].area.fa_id = FLASH_AREA_IMAGE_1;
+        part_map[1].area.fa_device_id = FLASH_DEVICE_ID;
+        part_map[1].area.fa_off = FLASH_AREA_IMAGE_1_OFFSET;
+        part_map[1].area.fa_size = FLASH_AREA_IMAGE_1_SIZE;
+
+        part_map[2].magic = FLASH_MAP_ENTRY_MAGIC;
+        part_map[2].area.fa_id = FLASH_AREA_IMAGE_SCRATCH;
+        part_map[2].area.fa_device_id = FLASH_DEVICE_ID;
+        part_map[2].area.fa_off = FLASH_AREA_IMAGE_SCRATCH_OFFSET;
+        part_map[2].area.fa_size = FLASH_AREA_IMAGE_SCRATCH_SIZE;
     }
-};
+#if BOOT_IMAGE_COUNT > 1
+    if (img_idx == 1) {
+        part_map[0].magic = FLASH_MAP_ENTRY_MAGIC;
+        part_map[0].area.fa_id = FLASH_AREA_IMAGE_2;
+        part_map[0].area.fa_device_id = FLASH_DEVICE_ID;
+        part_map[0].area.fa_off = FLASH_AREA_IMAGE_2_OFFSET;
+        part_map[0].area.fa_size = FLASH_AREA_IMAGE_2_SIZE;
+
+        part_map[1].magic = FLASH_MAP_ENTRY_MAGIC;
+        part_map[1].area.fa_id = FLASH_AREA_IMAGE_3;
+        part_map[1].area.fa_device_id = FLASH_DEVICE_ID;
+        part_map[1].area.fa_off = FLASH_AREA_IMAGE_3_OFFSET;
+        part_map[1].area.fa_size = FLASH_AREA_IMAGE_3_SIZE;
+
+        part_map[2].magic = FLASH_MAP_ENTRY_MAGIC;
+        part_map[2].area.fa_id = FLASH_AREA_IMAGE_SCRATCH_1;
+        part_map[2].area.fa_device_id = FLASH_DEVICE_ID;
+        part_map[2].area.fa_off = FLASH_AREA_IMAGE_SCRATCH_1_OFFSET;
+        part_map[2].area.fa_size = FLASH_AREA_IMAGE_SCRATCH_1_SIZE;
+    }
+#endif
+}
 
 int flash_device_base(uint8_t fd_id, uintptr_t *ret)
 {
