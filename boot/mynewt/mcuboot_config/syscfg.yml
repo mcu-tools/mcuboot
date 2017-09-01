@@ -25,9 +25,6 @@ syscfg.defs:
     BOOTUTIL_SIGN_RSA:
         description: 'Images are signed using RSA2048.'
         value: 0
-    BOOTUTIL_RSA_PKCS1_15:
-        description: 'Sign using old PKCS#1 1.5 (otherwise uses PSS)'
-        value: 0
     BOOTUTIL_SIGN_EC:
         description: 'Images are signed using ECDSA NIST P-224.'
         value: 0
@@ -43,3 +40,6 @@ syscfg.defs:
     BOOTUTIL_OVERWRITE_ONLY:
         description: 'Non-swapping upgrades, copy from slot 1 to slot 0 only.'
         value: 0
+    BOOTUTIL_IMAGE_FORMAT_V2:
+        description: 'Indicates that system is using v2 of image format'
+        value: 1

@@ -87,6 +87,29 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
     return 0;
 }
 
+#if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC) || \
+    defined(MCUBOOT_SIGN_EC256)
+static int
+bootutil_find_key(uint8_t *keyhash, int8_t keyhash_len)
+{
+    bootutil_sha256_context sha256_ctx;
+    int i;
+    const struct bootutil_key *key;
+    uint8_t hash[32];
+
+    for (i = 0; i < bootutil_key_cnt; i++) {
+        key = &bootutil_keys[i];
+        bootutil_sha256_init(&sha256_ctx);
+        bootutil_sha256_update(&sha256_ctx, key->key, *key->len);
+        bootutil_sha256_finish(&sha256_ctx, hash);
+        if (!memcmp(hash, keyhash, keyhash_len)) {
+            return i;
+        }
+    }
+    return -1;
+}
+#endif
+
 /*
  * Verify the integrity of the image.
  * Return non-zero if image could not be validated/does not validate.
@@ -99,40 +122,17 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
     uint32_t off;
     uint32_t size;
     uint32_t sha_off = 0;
+    struct image_tlv_info trailer;
 #if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC) || \
     defined(MCUBOOT_SIGN_EC256)
     uint32_t sig_off = 0;
     uint32_t sig_len = 0;
+    int key_id = -1;
 #endif
     struct image_tlv tlv;
     uint8_t buf[256];
     uint8_t hash[32];
     int rc;
-
-#ifdef MCUBOOT_SIGN_RSA
-#ifdef MCUBOOT_RSA_PKCS1_15
-    if ((hdr->ih_flags & IMAGE_F_PKCS15_RSA2048_SHA256) == 0) {
-        return -1;
-    }
-#else
-    if ((hdr->ih_flags & IMAGE_F_PKCS1_PSS_RSA2048_SHA256) == 0) {
-        return -1;
-    }
-#endif
-#endif
-#ifdef MCUBOOT_SIGN_EC
-    if ((hdr->ih_flags & IMAGE_F_ECDSA224_SHA256) == 0) {
-        return -1;
-    }
-#endif
-#ifdef MCUBOOT_SIGN_EC256
-    if ((hdr->ih_flags & IMAGE_F_ECDSA256_SHA256) == 0) {
-        return -1;
-    }
-#endif
-    if ((hdr->ih_flags & IMAGE_F_SHA256) == 0) {
-        return -1;
-    }
 
     rc = bootutil_img_hash(hdr, fap, tmp_buf, tmp_buf_sz, hash,
                            seed, seed_len);
@@ -144,9 +144,18 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
         memcpy(out_hash, hash, 32);
     }
 
-    /* After image there are TLVs. */
+    /* After image there is a trailer, followed by TLVs. */
     off = hdr->ih_img_size + hdr->ih_hdr_size;
-    size = off + hdr->ih_tlv_size;
+
+    rc = flash_area_read(fap, off, &trailer, sizeof trailer);
+    if (rc) {
+        return rc;
+    }
+    if (trailer.it_magic != IMAGE_TRAILER_MAGIC) {
+        return -1;
+    }
+    off += sizeof trailer;
+    size = off + trailer.it_tlv_tot;
 
     for (; off < size; off += sizeof(tlv) + tlv.it_len) {
         rc = flash_area_read(fap, off, &tlv, sizeof tlv);
@@ -158,9 +167,45 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
                 return -1;
             }
             sha_off = off + sizeof(tlv);
+            break;
+        }
+    }
+
+    if (!sha_off) {
+        /*
+         * Must always have hash for integrity check.
+         */
+        return -1;
+    }
+    rc = flash_area_read(fap, off + sizeof(tlv), buf, sizeof hash);
+    if (rc) {
+        return rc;
+    }
+    if (memcmp(hash, buf, sizeof(hash))) {
+        return -1;
+    }
+
+#if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC) || \
+    defined(MCUBOOT_SIGN_EC256)
+    off = hdr->ih_img_size + hdr->ih_hdr_size + sizeof trailer;
+    for (; off < size; off += sizeof(tlv) + tlv.it_len) {
+        rc = flash_area_read(fap, off, &tlv, sizeof tlv);
+        if (rc) {
+            return rc;
+        }
+        if (tlv.it_type == IMAGE_TLV_KEYHASH && tlv.it_len >= 4 &&
+            tlv.it_len <= 32) {
+            rc = flash_area_read(fap, off + sizeof tlv, buf, tlv.it_len);
+            if (rc) {
+                return rc;
+            }
+            key_id = bootutil_find_key(buf, tlv.it_len);
+            if (key_id < 0) {
+                continue;
+            }
         }
 #ifdef MCUBOOT_SIGN_RSA
-        if (tlv.it_type == IMAGE_TLV_RSA2048) {
+        if (tlv.it_type == IMAGE_TLV_RSA2048_PSS) {
             if (tlv.it_len != 256) { /* 2048 bits */
                 return -1;
             }
@@ -186,43 +231,30 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
             sig_len = tlv.it_len;
         }
 #endif
-    }
-    if (hdr->ih_flags & IMAGE_F_SHA256) {
-        if (!sha_off) {
-            /*
-             * Header said there should be hash TLV, no TLV found.
-             */
-            return -1;
-        }
-        rc = flash_area_read(fap, sha_off, buf, sizeof hash);
-        if (rc) {
-            return rc;
-        }
-        if (memcmp(hash, buf, sizeof(hash))) {
-            return -1;
-        }
-    }
-#if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC) || \
-    defined(MCUBOOT_SIGN_EC256)
-    if (!sig_off) {
         /*
-         * Header said there should be PKCS1.v5 signature, no TLV
-         * found.
+         * Boot only images which have been signed using one of the keys
+         * compiled into the image.
          */
-        return -1;
+        if (key_id >= 0 && sig_off) {
+            rc = flash_area_read(fap, sig_off, buf, sig_len);
+            if (rc) {
+                return -1;
+            }
+            rc = bootutil_verify_sig(hash, sizeof(hash), buf, sig_len, key_id);
+            if (rc == 0) {
+                return 0;
+            } else {
+                sig_off = 0;
+                sig_len = 0;
+                key_id = -1;
+            }
+        }
     }
-    rc = flash_area_read(fap, sig_off, buf, sig_len);
-    if (rc) {
-        return -1;
-    }
-
-    if (hdr->ih_key_id >= bootutil_key_cnt) {
-        return -1;
-    }
-    rc = bootutil_verify_sig(hash, sizeof(hash), buf, sig_len, hdr->ih_key_id);
-    if (rc) {
-        return -1;
-    }
-#endif
+    return -1;
+#else
+    /*
+     * If no signature checking turned on, matching hash is ok.
+     */
     return 0;
+#endif
 }

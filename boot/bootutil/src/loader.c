@@ -256,23 +256,62 @@ done:
 }
 
 static int
+boot_read_image_size(int slot, const struct image_header *hdr, size_t *size)
+{
+    const struct flash_area *fap;
+    struct image_tlv_info info;
+    int area_id;
+    int rc;
+
+    area_id = flash_area_id_from_image_slot(slot);
+    rc = flash_area_open(area_id, &fap);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto done;
+    }
+
+    rc = flash_area_read(fap, hdr->ih_hdr_size + hdr->ih_img_size,
+                         &info, sizeof info);
+    if (rc != 0) {
+        rc = BOOT_EFLASH; /* could also be invalid image */
+        goto done;
+    }
+    if (info.it_magic != IMAGE_TRAILER_MAGIC) {
+        rc = BOOT_EBADIMAGE;
+        goto done;
+    }
+    *size = hdr->ih_hdr_size + hdr->ih_img_size + info.it_tlv_tot;
+    rc = 0;
+
+done:
+    flash_area_close(fap);
+    return 0;
+}
+
+static int
 boot_read_image_headers(void)
 {
     int rc;
     int i;
+    size_t sz = 0;
 
     for (i = 0; i < BOOT_NUM_SLOTS; i++) {
         rc = boot_read_image_header(i, boot_img_hdr(&boot_data, i));
-        if (rc != 0) {
-            /* If at least the first slot's header was read successfully, then
-             * the boot loader can attempt a boot.  Failure to read any headers
-             * is a fatal error.
-             */
-            if (i > 0) {
-                return 0;
-            } else {
-                return rc;
+        if (rc == 0 && boot_img_hdr(&boot_data, i)->ih_magic == IMAGE_MAGIC) {
+            rc = boot_read_image_size(i, boot_img_hdr(&boot_data, i), &sz);
+            if (rc == 0) {
+                BOOT_IMG_SIZE(&boot_data, i) = sz;
+                continue;
             }
+        }
+        /* If at least the first slot's header was read successfully, then
+         * the boot loader can attempt a boot.  Failure to read any headers
+         * is a fatal error.
+         */
+        if (i > 0) {
+            return 0;
+        } else {
+            return rc;
         }
     }
 
@@ -1013,13 +1052,13 @@ boot_copy_image(struct boot_status *bs)
 static int
 boot_copy_image(struct boot_status *bs)
 {
-    uint32_t sz;
+    size_t sz;
     int first_sector_idx;
     int last_sector_idx;
     int swap_idx;
     struct image_header *hdr;
-    uint32_t size;
-    uint32_t copy_size;
+    size_t size;
+    size_t copy_size;
     struct image_header tmp_hdr;
     int rc;
 
@@ -1029,12 +1068,12 @@ boot_copy_image(struct boot_status *bs)
 
     hdr = boot_img_hdr(&boot_data, 0);
     if (hdr->ih_magic == IMAGE_MAGIC) {
-        copy_size = hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_tlv_size;
+        copy_size = BOOT_IMG_SIZE(&boot_data, 0);
     }
 
     hdr = boot_img_hdr(&boot_data, 1);
     if (hdr->ih_magic == IMAGE_MAGIC) {
-        size = hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_tlv_size;
+        size = BOOT_IMG_SIZE(&boot_data, 1);
     }
 
     if (!size || !copy_size || size == copy_size) {
@@ -1044,9 +1083,10 @@ boot_copy_image(struct boot_status *bs)
         hdr = &tmp_hdr;
         if (hdr->ih_magic == IMAGE_MAGIC) {
             if (!size) {
-                size = hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_tlv_size;
+                boot_read_image_size(1, boot_img_hdr(&boot_data, 1), &size);
             } else {
-                copy_size = hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_tlv_size;
+                boot_read_image_size(0, boot_img_hdr(&boot_data, 0),
+                                     &copy_size);
             }
         }
     }
@@ -1253,7 +1293,8 @@ boot_go(struct boot_rsp *rsp)
          * The following states need image_ok be explicitly set after the
          * swap was finished to avoid a new revert.
          */
-        if (swap_type == BOOT_SWAP_TYPE_REVERT || swap_type == BOOT_SWAP_TYPE_FAIL) {
+        if (swap_type == BOOT_SWAP_TYPE_REVERT ||
+            swap_type == BOOT_SWAP_TYPE_FAIL) {
             rc = boot_set_image_ok();
             if (rc != 0) {
                 swap_type = BOOT_SWAP_TYPE_PANIC;
