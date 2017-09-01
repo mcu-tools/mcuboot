@@ -12,14 +12,10 @@ IMAGE_HEADER_SIZE = 32
 # Image header flags.
 IMAGE_F = {
         'PIC':                   0x0000001,
-        'SHA256':                0x0000002,
-        'PKCS15_RSA2048_SHA256': 0x0000004,
-        'ECDSA224_SHA256':       0x0000008,
-        'NON_BOOTABLE':          0x0000010,
-        'ECDSA256_SHA256':       0x0000020,
-        'PKCS1_PSS_RSA2048_SHA256': 0x0000040, }
+        'NON_BOOTABLE':          0x0000010, }
 
 TLV_VALUES = {
+        'KEYHASH': 0x01,
         'SHA256': 0x10,
         'RSA2048': 0x20,
         'ECDSA224': 0x21,
@@ -106,6 +102,12 @@ class Image():
         tlv.add('SHA256', digest)
 
         if key is not None:
+            pub = key.get_public_bytes()
+            sha = hashlib.sha256()
+            sha.update(pub)
+            pubbytes = sha.digest()
+            tlv.add('KEYHASH', pubbytes)
+
             sig = key.sign(self.payload)
             tlv.add(key.sig_tlv(), sig)
 
@@ -120,10 +122,9 @@ class Image():
         flags = 0
         tlvsz = 0
         if key is not None:
-            flags |= IMAGE_F[key.sig_type()]
             tlvsz += TLV_HEADER_SIZE + key.sig_len()
 
-        flags |= IMAGE_F['SHA256']
+        tlvsz += 4 + hashlib.sha256().digest_size
         tlvsz += 4 + hashlib.sha256().digest_size
 
         fmt = ('<' +

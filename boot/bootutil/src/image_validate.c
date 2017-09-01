@@ -88,6 +88,53 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
 }
 
 /*
+ * Currently, we only support being able to verify one type of
+ * signature, because there is a single verification function that we
+ * call.  List the type of TLV we are expecting.  If we aren't
+ * configured for any signature, don't define this macro.
+ */
+#if defined(MCUBOOT_SIGN_RSA)
+#    define EXPECTED_SIG_TLV IMAGE_TLV_RSA2048
+#    define EXPECTED_SIG_LEN(x) ((x) == 256) /* 2048 bits */
+#    if defined(MCUBOOT_SIGN_EC) || defined(MCUBOOT_SIGN_EC256)
+#        error "Multiple signature types not yet supported"
+#    endif
+#elif defined(MCUBOOT_SIGN_EC)
+#    define EXPECTED_SIG_TLV IMAGE_TLV_ECDSA224
+#    define EXPECTED_SIG_LEN(x) ((x) >= 64) /* oids + 2 * 28 bytes */
+#    if defined(MCUBOOT_SIGN_EC256)
+#        error "Multiple signature types not yet supported"
+#    endif
+#elif defined(MCUBOOT_SIGN_EC256)
+#    define EXPECTED_SIG_TLV IMAGE_TLV_ECDSA256
+#    define EXPECTED_SIG_LEN(x) ((x) >= 72) /* oids + 2 * 32 bytes */
+#endif
+
+#ifdef EXPECTED_SIG_TLV
+static int
+bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
+{
+    bootutil_sha256_context sha256_ctx;
+    int i;
+    const struct bootutil_key *key;
+    uint8_t hash[32];
+
+    assert(keyhash_len == 32);
+
+    for (i = 0; i < bootutil_key_cnt; i++) {
+        key = &bootutil_keys[i];
+        bootutil_sha256_init(&sha256_ctx);
+        bootutil_sha256_update(&sha256_ctx, key->key, *key->len);
+        bootutil_sha256_finish(&sha256_ctx, hash);
+        if (!memcmp(hash, keyhash, keyhash_len)) {
+            return i;
+        }
+    }
+    return -1;
+}
+#endif
+
+/*
  * Verify the integrity of the image.
  * Return non-zero if image could not be validated/does not validate.
  */
@@ -98,41 +145,15 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
 {
     uint32_t off;
     uint32_t size;
-    uint32_t sha_off = 0;
-#if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC) || \
-    defined(MCUBOOT_SIGN_EC256)
-    uint32_t sig_off = 0;
-    uint32_t sig_len = 0;
+    int sha256_valid = 0;
+#ifdef EXPECTED_SIG_TLV
+    int valid_signature = 0;
+    int key_id = -1;
 #endif
     struct image_tlv tlv;
     uint8_t buf[256];
     uint8_t hash[32];
     int rc;
-
-#ifdef MCUBOOT_SIGN_RSA
-#ifdef MCUBOOT_RSA_PKCS1_15
-    if ((hdr->ih_flags & IMAGE_F_PKCS15_RSA2048_SHA256) == 0) {
-        return -1;
-    }
-#else
-    if ((hdr->ih_flags & IMAGE_F_PKCS1_PSS_RSA2048_SHA256) == 0) {
-        return -1;
-    }
-#endif
-#endif
-#ifdef MCUBOOT_SIGN_EC
-    if ((hdr->ih_flags & IMAGE_F_ECDSA224_SHA256) == 0) {
-        return -1;
-    }
-#endif
-#ifdef MCUBOOT_SIGN_EC256
-    if ((hdr->ih_flags & IMAGE_F_ECDSA256_SHA256) == 0) {
-        return -1;
-    }
-#endif
-    if ((hdr->ih_flags & IMAGE_F_SHA256) == 0) {
-        return -1;
-    }
 
     rc = bootutil_img_hash(hdr, fap, tmp_buf, tmp_buf_sz, hash,
                            seed, seed_len);
@@ -148,81 +169,81 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
     off = hdr->ih_img_size + hdr->ih_hdr_size;
     size = off + hdr->ih_tlv_size;
 
+    /*
+     * Traverse through all of the TLVs, performing any checks we know
+     * and are able to do.
+     */
     for (; off < size; off += sizeof(tlv) + tlv.it_len) {
         rc = flash_area_read(fap, off, &tlv, sizeof tlv);
         if (rc) {
             return rc;
         }
+
         if (tlv.it_type == IMAGE_TLV_SHA256) {
+            /*
+             * Verify the SHA256 image hash.  This must always be
+             * present.
+             */
             if (tlv.it_len != sizeof(hash)) {
                 return -1;
             }
-            sha_off = off + sizeof(tlv);
-        }
-#ifdef MCUBOOT_SIGN_RSA
-        if (tlv.it_type == IMAGE_TLV_RSA2048) {
-            if (tlv.it_len != 256) { /* 2048 bits */
-                return -1;
+            rc = flash_area_read(fap, off + sizeof(tlv), buf, sizeof hash);
+            if (rc) {
+                    return rc;
             }
-            sig_off = off + sizeof(tlv);
-            sig_len = tlv.it_len;
-        }
-#endif
-#ifdef MCUBOOT_SIGN_EC
-        if (tlv.it_type == IMAGE_TLV_ECDSA224) {
-            if (tlv.it_len < 64) { /* oids + 2 * 28 bytes */
-                return -1;
+            if (memcmp(hash, buf, sizeof(hash))) {
+                    return -1;
             }
-            sig_off = off + sizeof(tlv);
-            sig_len = tlv.it_len;
-        }
-#endif
-#ifdef MCUBOOT_SIGN_EC256
-        if (tlv.it_type == IMAGE_TLV_ECDSA256) {
-            if (tlv.it_len < 72) { /* oids + 2 * 32 bytes */
-                return -1;
-            }
-            sig_off = off + sizeof(tlv);
-            sig_len = tlv.it_len;
-        }
-#endif
-    }
-    if (hdr->ih_flags & IMAGE_F_SHA256) {
-        if (!sha_off) {
+
+            sha256_valid = 1;
+#ifdef EXPECTED_SIG_TLV
+        } else if (tlv.it_type == IMAGE_TLV_KEYHASH) {
             /*
-             * Header said there should be hash TLV, no TLV found.
+             * Determine which key we should be checking.
              */
-            return -1;
-        }
-        rc = flash_area_read(fap, sha_off, buf, sizeof hash);
-        if (rc) {
-            return rc;
-        }
-        if (memcmp(hash, buf, sizeof(hash))) {
-            return -1;
+            if (tlv.it_len > 32) {
+                return -1;
+            }
+            rc = flash_area_read(fap, off + sizeof tlv, buf, tlv.it_len);
+            if (rc) {
+                return rc;
+            }
+            key_id = bootutil_find_key(buf, tlv.it_len);
+            /*
+             * The key may not be found, which is acceptable.  There
+             * can be multiple signatures, each preceded by a key.
+             */
+        } else if (tlv.it_type == EXPECTED_SIG_TLV) {
+            /* Ignore this signature if it is out of bounds. */
+            if (key_id < 0 || key_id >= bootutil_key_cnt) {
+                key_id = -1;
+                continue;
+            }
+            if (!EXPECTED_SIG_LEN(tlv.it_len) || tlv.it_len > sizeof(buf)) {
+                return -1;
+            }
+            rc = flash_area_read(fap, off + sizeof(tlv), buf, tlv.it_len);
+            if (rc) {
+                return -1;
+            }
+            rc = bootutil_verify_sig(hash, sizeof(hash), buf, tlv.it_len, key_id);
+            if (rc == 0) {
+                valid_signature = 1;
+            }
+            key_id = -1;
+#endif
         }
     }
-#if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC) || \
-    defined(MCUBOOT_SIGN_EC256)
-    if (!sig_off) {
-        /*
-         * Header said there should be PKCS1.v5 signature, no TLV
-         * found.
-         */
-        return -1;
-    }
-    rc = flash_area_read(fap, sig_off, buf, sig_len);
-    if (rc) {
+
+    if (!sha256_valid) {
         return -1;
     }
 
-    if (hdr->ih_key_id >= bootutil_key_cnt) {
-        return -1;
-    }
-    rc = bootutil_verify_sig(hash, sizeof(hash), buf, sig_len, hdr->ih_key_id);
-    if (rc) {
+#ifdef EXPECTED_SIG_TLV
+    if (!valid_signature) {
         return -1;
     }
 #endif
+
     return 0;
 }

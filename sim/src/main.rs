@@ -1,7 +1,6 @@
 #[macro_use] extern crate log;
 extern crate ring;
 extern crate env_logger;
-#[macro_use] extern crate bitflags;
 extern crate docopt;
 extern crate libc;
 extern crate pem;

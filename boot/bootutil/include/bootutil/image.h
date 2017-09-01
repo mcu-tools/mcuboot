@@ -37,12 +37,7 @@ struct flash_area;
  * Image header flags.
  */
 #define IMAGE_F_PIC                      0x00000001 /* Not supported. */
-#define IMAGE_F_SHA256                   0x00000002 /* Hash TLV is present */
-#define IMAGE_F_PKCS15_RSA2048_SHA256    0x00000004 /* PKCS15 w/RSA and SHA */
-#define IMAGE_F_ECDSA224_SHA256          0x00000008 /* ECDSA224 over SHA256 */
 #define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
-#define IMAGE_F_ECDSA256_SHA256          0x00000020 /* ECDSA256 over SHA256 */
-#define IMAGE_F_PKCS1_PSS_RSA2048_SHA256 0x00000040 /* PKCS1 PSS */
 
 /*
  * ECSDA224 is with NIST P-224
@@ -52,6 +47,7 @@ struct flash_area;
 /*
  * Image trailer TLV types.
  */
+#define IMAGE_TLV_KEYHASH           0x01   /* hash of the public key */
 #define IMAGE_TLV_SHA256            0x10   /* SHA256 of image hdr and body */
 #define IMAGE_TLV_RSA2048           0x20   /* RSA2048 of hash output */
 #define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output */
@@ -71,7 +67,7 @@ struct image_version {
 struct image_header {
     uint32_t ih_magic;
     uint16_t ih_tlv_size; /* Combined size of trailing TLVs (bytes). */
-    uint8_t  ih_key_id;   /* Which key image is signed with (0xff=unsigned). */
+    uint8_t  _pad0;
     uint8_t  _pad1;
     uint16_t ih_hdr_size; /* Size of image header (bytes). */
     uint16_t _pad2;

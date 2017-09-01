@@ -21,7 +21,6 @@ log = "0.3"
 env_logger = "0.4"
 simflash = { path = "simflash" }
 mcuboot-sys = { path = "mcuboot-sys" }
-bitflags = "0.9"
 ring = { version = "0.11", features = ["rsa_signing"] }
 untrusted = "0.5"
 pem = "0.4"
