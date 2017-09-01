@@ -10,6 +10,9 @@
 
 #include "../../../boot/bootutil/src/bootutil_priv.h"
 
+/* The number of bootable images by MCUBoot */
+#define BOOT_IMAGE_COUNTER  (1)
+
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
 #include <bootutil/bootutil_log.h>
 
@@ -55,7 +58,7 @@ int invoke_boot_go(struct area_desc *adesc)
 
     flash_areas = adesc;
     if (setjmp(boot_jmpbuf) == 0) {
-        res = boot_go(&rsp);
+        res = boot_go(BOOT_IMAGE_COUNTER, &rsp);
         flash_areas = NULL;
         /* printf("boot_go off: %d (0x%08x)\n", res, rsp.br_image_off); */
         return res;
@@ -225,3 +228,5 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
 
     return 0;
 }
+
+void flash_partition_map_init(uint8_t img_idx) {}

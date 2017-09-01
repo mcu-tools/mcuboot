@@ -21,4 +21,7 @@
 
 #define FLASH_DRIVER_NAME		CONFIG_SOC_FLASH_MPS2_DEV_NAME
 #define FLASH_ALIGN			1
-#define FLASH_AREA_IMAGE_SECTOR_SIZE	0x80000
+#define FLASH_AREA_IMAGE_SECTOR_SIZE	0x2000
+
+/* The number of bootable images by MCUBoot */
+#define BOOT_IMAGE_COUNT	2
