@@ -6,7 +6,7 @@ from . import version as versmod
 import hashlib
 import struct
 
-IMAGE_MAGIC = 0x96f3b83c
+IMAGE_MAGIC = 0x96f3b83d
 IMAGE_HEADER_SIZE = 32
 
 # Image header flags.

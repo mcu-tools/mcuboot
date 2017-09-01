@@ -750,7 +750,7 @@ fn install_image(flash: &mut Flash, offset: usize, len: usize,
 
     // Generate a boot header.  Note that the size doesn't include the header.
     let header = ImageHeader {
-        magic: 0x96f3b83c,
+        magic: 0x96f3b83d,
         tlv_size: tlv.get_size(),
         _pad1: 0,
         hdr_size: 32,

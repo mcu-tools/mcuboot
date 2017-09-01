@@ -28,7 +28,8 @@ extern "C" {
 
 struct flash_area;
 
-#define IMAGE_MAGIC                 0x96f3b83c
+#define IMAGE_MAGIC                 0x96f3b83d
+#define IMAGE_MAGIC_V1              0x96f3b83c
 #define IMAGE_MAGIC_NONE            0xffffffff
 #define IMAGE_TLV_INFO_MAGIC        0x6907
 
@@ -71,9 +72,7 @@ struct image_version {
 /** Image header.  All fields are in little endian byte order. */
 struct image_header {
     uint32_t ih_magic;
-    uint16_t _pad00;
-    uint8_t  _pad0;
-    uint8_t  _pad1;
+    uint32_t _pad1;
     uint16_t ih_hdr_size; /* Size of image header (bytes). */
     uint16_t _pad2;
     uint32_t ih_img_size; /* Does not include header. */
