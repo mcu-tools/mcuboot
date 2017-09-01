@@ -228,6 +228,43 @@ boot_read_header_from_scratch(struct image_header *out_hdr)
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
 
+/*
+ * Compute the total size of the given image.  Includes the size of
+ * the TLVs.
+ */
+static int
+boot_read_image_size(int slot, struct image_header *hdr, uint32_t *size)
+{
+    const struct flash_area *fap;
+    struct image_tlv_info info;
+    int area_id;
+    int rc;
+
+    area_id = flash_area_id_from_image_slot(slot);
+    rc = flash_area_open(area_id, &fap);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto done;
+    }
+
+    rc = flash_area_read(fap, hdr->ih_hdr_size + hdr->ih_img_size,
+                         &info, sizeof(info));
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto done;
+    }
+    if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
+        rc = BOOT_EBADIMAGE;
+        goto done;
+    }
+    *size = hdr->ih_hdr_size + hdr->ih_img_size + info.it_tlv_tot;
+    rc = 0;
+
+done:
+    flash_area_close(fap);
+    return 0;
+}
+
 static int
 boot_read_image_header(int slot, struct image_header *out_hdr)
 {
@@ -1029,12 +1066,14 @@ boot_copy_image(struct boot_status *bs)
 
     hdr = boot_img_hdr(&boot_data, 0);
     if (hdr->ih_magic == IMAGE_MAGIC) {
-        copy_size = hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_tlv_size;
+        rc = boot_read_image_size(0, hdr, &copy_size);
+        assert(rc == 0);
     }
 
     hdr = boot_img_hdr(&boot_data, 1);
     if (hdr->ih_magic == IMAGE_MAGIC) {
-        size = hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_tlv_size;
+        rc = boot_read_image_size(1, hdr, &size);
+        assert(rc == 0);
     }
 
     if (!size || !copy_size || size == copy_size) {
@@ -1044,10 +1083,11 @@ boot_copy_image(struct boot_status *bs)
         hdr = &tmp_hdr;
         if (hdr->ih_magic == IMAGE_MAGIC) {
             if (!size) {
-                size = hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_tlv_size;
+                rc = boot_read_image_size(2, hdr, &size);
             } else {
-                copy_size = hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_tlv_size;
+                rc = boot_read_image_size(2, hdr, &size);
             }
+            assert(rc == 0);
         }
     }
 
