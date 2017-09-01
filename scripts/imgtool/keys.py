@@ -34,13 +34,16 @@ class RSA2048():
         with open(path, 'wb') as f:
             f.write(self.key.exportKey('PEM'))
 
-    def emit_c(self):
+    def get_public_bytes(self):
         node = RSAPublicKey()
         node['modulus'] = self.key.n
         node['publicExponent'] = self.key.e
+        return bytearray(encode(node))
+
+    def emit_c(self):
         print(AUTOGEN_MESSAGE)
         print("const unsigned char rsa_pub_key[] = {", end='')
-        encoded = bytearray(encode(node))
+        encoded = self.get_public_bytes()
         for count, b in enumerate(encoded):
             if count % 8 == 0:
                 print("\n\t", end='')
@@ -49,6 +52,18 @@ class RSA2048():
             print("0x{:02x},".format(b), end='')
         print("\n};")
         print("const unsigned int rsa_pub_key_len = {};".format(len(encoded)))
+
+    def emit_rust(self):
+        print(AUTOGEN_MESSAGE)
+        print("static RSA_PUB_KEY: &'static [u8] = &[", end='')
+        encoded = self.get_public_bytes()
+        for count, b in enumerate(encoded):
+            if count % 8 == 0:
+                print("\n    ", end='')
+            else:
+                print(" ", end='')
+            print("0x{:02x},".format(b), end='')
+        print("\n];")
 
     def sig_type(self):
         """Return the type of this signature (as a string)"""
