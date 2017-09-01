@@ -23,10 +23,14 @@ if slot0 should be validated on every boot.
 There is a ``build_boot.sh`` script at the top level that can make
 building a bit easier.  It assumes that the mcuboot tree is next to,
 at the same level, as the zephyr source tree.  It takes a single
-argument, which is the target to build.  This must match one of the
-targets in ``boot/zephyr/targets`` to be a supported board. Additionally,
-the Zephyr Device Tree board definition in ``dts/<arch>/<board>.dts``  must
-contain the flash partitions description.
+argument, which is the target to build. This must be a Zephyr board
+which supports mcuboot.
+
+To support mcuboot, a Zephyr board needs to provide data about the
+flash driver and image layout. This is centralized in
+boot/zephyr/include/target.h. Depending on the board, this information
+may come from board-specfic headers, Device Tree, or be configured by
+mcuboot on a per-SoC family basis.
 
 Once this is finished building, the bootloader should reside in
 ``outdir/targname/zephyr.[bin|hex]``.  Use the flashing tools you have to
