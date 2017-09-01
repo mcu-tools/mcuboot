@@ -16,6 +16,8 @@
 #include "soc_family_nrf5.h"
 #elif defined(CONFIG_SOC_FAMILY_STM32)
 #include "soc_family_stm32.h"
+#elif defined(CONFIG_SOC_FAMILY_KINETIS)
+#include "soc_family_kinetis.h"
 #endif
 
 /*
