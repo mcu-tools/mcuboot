@@ -144,7 +144,7 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
                       uint8_t *seed, int seed_len, uint8_t *out_hash)
 {
     uint32_t off;
-    uint32_t size;
+    uint32_t end;
     int sha256_valid = 0;
     struct image_tlv_info info;
 #ifdef EXPECTED_SIG_TLV
@@ -177,14 +177,14 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
     if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
             return -1;
     }
-    size = off + info.it_tlv_tot;
+    end = off + info.it_tlv_tot;
     off += sizeof(info);
 
     /*
      * Traverse through all of the TLVs, performing any checks we know
      * and are able to do.
      */
-    for (; off < size; off += sizeof(tlv) + tlv.it_len) {
+    for (; off < end; off += sizeof(tlv) + tlv.it_len) {
         rc = flash_area_read(fap, off, &tlv, sizeof tlv);
         if (rc) {
             return rc;
