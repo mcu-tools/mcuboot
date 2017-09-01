@@ -60,7 +60,7 @@ impl TlvGen {
 
     /// Retrieve the size that the TLV will occupy.  This can be called at any time.
     pub fn get_size(&self) -> u16 {
-        self.size
+        4 + self.size
     }
 
     /// Add bytes to the covered hash.
@@ -71,6 +71,12 @@ impl TlvGen {
     /// Compute the TLV given the specified block of data.
     pub fn make_tlv(self) -> Vec<u8> {
         let mut result: Vec<u8> = vec![];
+
+        let size = self.get_size();
+        result.push(0x07);
+        result.push(0x69);
+        result.push((size & 0xFF) as u8);
+        result.push(((size >> 8) & 0xFF) as u8);
 
         if self.kinds.contains(&TlvKinds::SHA256) {
             let hash = digest::digest(&digest::SHA256, &self.payload);

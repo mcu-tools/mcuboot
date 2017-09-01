@@ -21,6 +21,8 @@ TLV_VALUES = {
         'ECDSA224': 0x21,
         'ECDSA256': 0x22, }
 
+TLV_INFO_SIZE = 4
+TLV_INFO_MAGIC = 0x6907
 TLV_HEADER_SIZE = 4
 
 # Sizes of the image trailer, depending on flash write size.
@@ -46,7 +48,8 @@ class TLV():
         self.buf += payload
 
     def get(self):
-        return bytes(self.buf)
+        header = struct.pack('<HH', TLV_INFO_MAGIC, TLV_INFO_SIZE + len(self.buf))
+        return header + bytes(self.buf)
 
 class Image():
     @classmethod
