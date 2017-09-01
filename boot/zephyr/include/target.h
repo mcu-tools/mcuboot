@@ -14,6 +14,8 @@
 /* SoC family configuration. */
 #if defined(CONFIG_SOC_FAMILY_NRF5)
 #include "soc_family_nrf5.h"
+#elif defined(CONFIG_SOC_FAMILY_STM32)
+#include "soc_family_stm32.h"
 #endif
 
 /*
