@@ -1,4 +1,6 @@
+ifneq ($(wildcard $(PROJECT)/boot/zephyr/targets/$(BOARD).h),)
 subdir-ccflags-y += -DMCUBOOT_TARGET_CONFIG='"$(BOARD).h"'
+endif
 subdir-ccflags-y += -I$(PROJECT)/boot/bootutil/include
 subdir-ccflags-y += -I$(PROJECT)/boot/zephyr/include
 subdir-ccflags-y += -I$(PROJECT)/boot/zephyr/targets

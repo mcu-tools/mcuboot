@@ -5,8 +5,6 @@
 
 #include <soc.h>
 
-/*
- * Rather than hard-coding the flash size for each SoC, pull it out of
- * the factory information configuration registers.
- */
 #define FLASH_AREA_IMAGE_SECTOR_SIZE (NRF_FICR->CODEPAGESIZE)
+#define FLASH_DRIVER_NAME CONFIG_SOC_FLASH_NRF5_DEV_NAME
+#define FLASH_ALIGN 4
