@@ -26,7 +26,13 @@ def do_keygen(args):
 
 def do_getpub(args):
     key = keys.load(args.key)
-    key.emit_c()
+    if args.lang == 'c':
+        key.emit_c()
+    elif args.lang == 'rust':
+        key.emit_rust()
+    else:
+        msg = "Unsupported language, valid are: c, or rust"
+        raise argparse.ArgumentTypeError(msg)
 
 def do_sign(args):
     if args.rsa_pkcs1_15:
@@ -73,6 +79,7 @@ def args():
 
     getpub = subs.add_parser('getpub', help='Get public key from keypair')
     getpub.add_argument('-k', '--key', metavar='filename', required=True)
+    getpub.add_argument('-l', '--lang', metavar='lang', default='c')
 
     sign = subs.add_parser('sign', help='Sign an image with a private key')
     sign.add_argument('-k', '--key', metavar='filename')
