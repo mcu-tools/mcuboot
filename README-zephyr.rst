@@ -2,13 +2,29 @@ Building and using mcuboot with Zephyr
 ######################################
 
 *mcuboot* began its life as the bootloader for Mynewt.  It has since
-aquired the ability to be used as a bootloader for Zephyr as well.
+acquired the ability to be used as a bootloader for Zephyr as well.
 There are some pretty significant differences in how apps are built
 for Zephyr, and these are documented here.
 
 Please see ``boot/bootutil/design.txt`` for documentation on the
 design and operation of the bootloader itself.  This functionality
-should be the same between Mynewt and Zephyr
+should be the same between Mynewt and Zephyr.
+
+The first step required for Zephyr is making sure your board has flash
+partitions defined in its device tree. These partitions are:
+
+- boot_partition: for mcuboot itself
+- slot0_partition: the primary image slot
+- slot1_partition: the secondary image slot
+- scratch_partition: the scratch slot
+
+Currently, the two image slots must be contiguous. If you are running
+mcuboot as your stage 1 bootloader, boot_partition must be configured
+so your SoC runs it out of reset.
+
+An example DTS file with flash partitions defined is in the Zephyr
+file dts/arm/frdm_k64f.dts. Make sure the labels in your board's DTS
+match the ones used there.
 
 Building the bootloader itself
 ==============================
@@ -26,37 +42,37 @@ at the same level, as the zephyr source tree.  It takes a single
 argument, which is the target to build. This must be a Zephyr board
 which supports mcuboot.
 
-To support mcuboot, a Zephyr board needs to provide data about the
-flash driver and image layout. This is centralized in
+In addition to the partitions defined in DTS, some additional
+information about the flash layout is currently required to build
+mcuboot itself. All the needed configuration is collected in
 boot/zephyr/include/target.h. Depending on the board, this information
-may come from board-specfic headers, Device Tree, or be configured by
+may come from board-specific headers, Device Tree, or be configured by
 mcuboot on a per-SoC family basis.
 
-Once this is finished building, the bootloader should reside in
+After building the bootloader, the binaries should reside in
 ``outdir/targname/zephyr.[bin|hex]``.  Use the flashing tools you have to
-install this image at the beginning of the flash.
+install this image, usually at the beginning of the flash.
 
 Building Applications for the bootloader
 ========================================
 
-In order build an application to be used within the bootloader, there
-are a few configuration changes that need to be made to it (typically
-in the app's prj.conf).
+In addition to flash partitions in DTS, some additional configuration
+is required to build applications for mcuboot.
+
+The directory samples/zephyr/hello-world in the mcuboot tree contains
+a simple application with everything you need. You can try it on your
+board and then just make a copy of it to get started on your own
+application; see samples/zephyr/README.md for a tutorial.
+
+More details:
 
 - ``CONFIG_TEXT_SECTION_OFFSET`` must be set to allow room for the
-  boot image header.  It must also be aligned to a boundary that the
-  particular MCU requires the vector table to be aligned on.  This is
-  dependent upon the particular board you have chosen.  Starting with
-  0x200 is a good way to start, since all of the boards will work with
-  this alignment.
+  boot image header. Typically this is set in the app's prj.conf.  It
+  must also be aligned to a boundary that the particular MCU requires
+  the vector table to be aligned on.
 
-- ``CONFIG_FLASH_BASE_ADDRESS`` must be set to the base address in
-  flash where the SLOT0 lives.  This should match the value found in
-  ``boot/zephyr/target/*.h`` for your target, for
-  ``FLASH_AREA_IMAGE_0_OFFSET``.  Note that some targets build for a
-  higher-than-zero flash address, and this should be compensated for
-  when setting this value.  It should generally be set to a small
-  amount larger than its initial value.
+- Your board must provide a DTS zephyr,code-partition chosen node
+  which ensures it is built and linked into the DTS slot0_partition.
 
 With this, build the application as your normally would.
 
@@ -67,7 +83,7 @@ In order to upgrade to an image (or even boot it, if
 ``MCUBOOT_VALIDATE_SLOT0`` is enabled), the images must be signed.
 To make development easier, mcuboot is distributed with some example
 keys.  It is important to stress that these should never be used for
-production, since the private key is publically available in this
+production, since the private key is publicly available in this
 repository.  See below on how to make your own signatures.
 
 There is a ``sign.sh`` script that gives some examples of how to make
@@ -103,7 +119,7 @@ subcommand::
     $ imgtool keygen -k mykey.pem -t rsa-2048
 
 The argument to ``-t`` should be the desired key type.  See the
-imgtool README.rst for more details on the possible keytypes.
+imgtool README.rst for more details on the possible key types.
 
 Extracting the public key
 -------------------------
