@@ -24,10 +24,12 @@ There is a ``build_boot.sh`` script at the top level that can make
 building a bit easier.  It assumes that the mcuboot tree is next to,
 at the same level, as the zephyr source tree.  It takes a single
 argument, which is the target to build.  This must match one of the
-targets in ``boot/zephyr/targets`` to be a supported board.
+targets in ``boot/zephyr/targets`` to be a supported board. Additionally,
+the Zephyr Device Tree board definition in ``dts/<arch>/<board>.dts``  must
+contain the flash partitions description.
 
 Once this is finished building, the bootloader should reside in
-``outdir/targname/zephyr.bin``.  Use the flashing tools you have to
+``outdir/targname/zephyr.[bin|hex]``.  Use the flashing tools you have to
 install this image at the beginning of the flash.
 
 Building Applications for the bootloader
