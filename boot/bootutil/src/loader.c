@@ -262,7 +262,7 @@ boot_read_image_size(int slot, struct image_header *hdr, uint32_t *size)
 
 done:
     flash_area_close(fap);
-    return 0;
+    return rc;
 }
 
 static int
