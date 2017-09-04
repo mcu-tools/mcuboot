@@ -47,6 +47,7 @@ struct boot_status {
     uint32_t idx;         /* Which area we're operating on */
     uint8_t state;        /* Which part of the swapping process are we at */
     uint8_t use_scratch;  /* Are status bytes ever written to scratch? */
+    uint32_t swap_size;   /* Total size of swapped image */
 };
 
 #define BOOT_MAGIC_GOOD  1
@@ -59,15 +60,19 @@ struct boot_status {
  *  0                   1                   2                   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * ~                        MAGIC (16 octets)                      ~
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * ~                                                               ~
  * ~                Swap status (variable, aligned)                ~
  * ~                                                               ~
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |   Copy done   |     0xff padding (up to min-write-sz - 1)     ~
+ * |                          Swap size                            |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |   Image OK    |     0xff padding (up to min-write-sz - 1)     ~
+ * ~                  0xff padding (MAX ALIGN - 4)                 ~
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |   Copy done   |          0xff padding (MAX ALIGN - 1)         ~
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |   Image OK    |          0xff padding (MAX ALIGN - 1)         ~
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * ~                        MAGIC (16 octets)                      ~
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
@@ -140,6 +145,8 @@ int boot_write_status(struct boot_status *bs);
 int boot_schedule_test_swap(void);
 int boot_write_copy_done(const struct flash_area *fap);
 int boot_write_image_ok(const struct flash_area *fap);
+int boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size);
+int boot_read_swap_size(uint32_t *swap_size);
 
 /*
  * Accessors for the contents of struct boot_loader_state.
