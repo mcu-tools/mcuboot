@@ -1,8 +1,10 @@
 # Travis configuration.  Build the simulator and run its tests.
 
 language: rust
+
 script:
   - set -e
+  - ./scripts/check-signed-off-by.sh
   - cd sim
   - cargo test
   - cargo test --features sig-rsa
