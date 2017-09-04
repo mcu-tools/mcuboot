@@ -120,7 +120,7 @@ boot_slots_trailer_sz(uint8_t min_write_sz)
 {
     return /* state for all sectors */
            BOOT_STATUS_MAX_ENTRIES * BOOT_STATUS_STATE_COUNT * min_write_sz +
-           BOOT_MAX_ALIGN * 2 /* copy_done + image_ok */                    +
+           BOOT_MAX_ALIGN * 3 /* copy_done + image_ok + swap_size */        +
            BOOT_MAGIC_SZ;
 }
 
@@ -128,7 +128,7 @@ static uint32_t
 boot_scratch_trailer_sz(uint8_t min_write_sz)
 {
     return BOOT_STATUS_STATE_COUNT * min_write_sz +  /* state for one sector */
-           BOOT_MAX_ALIGN                         +  /* image_ok */
+           BOOT_MAX_ALIGN * 2                     +  /* image_ok + swap_size */
            BOOT_MAGIC_SZ;
 }
 
@@ -186,6 +186,20 @@ boot_image_ok_off(const struct flash_area *fap)
     return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN;
 }
 
+static uint32_t
+boot_swap_size_off(const struct flash_area *fap)
+{
+    /*
+     * The "swap_size" field if located just before the trailer.
+     * The scratch slot doesn't store "copy_done"...
+     */
+    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
+        return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 2;
+    }
+
+    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 3;
+}
+
 int
 boot_read_swap_state(const struct flash_area *fap,
                      struct boot_swap_state *state)
@@ -203,14 +217,14 @@ boot_read_swap_state(const struct flash_area *fap,
 
     if (fap->fa_id != FLASH_AREA_IMAGE_SCRATCH) {
         off = boot_copy_done_off(fap);
-        rc = flash_area_read(fap, off, &state->copy_done, 1);
+        rc = flash_area_read(fap, off, &state->copy_done, sizeof state->copy_done);
         if (rc != 0) {
             return BOOT_EFLASH;
         }
     }
 
     off = boot_image_ok_off(fap);
-    rc = flash_area_read(fap, off, &state->image_ok, 1);
+    rc = flash_area_read(fap, off, &state->image_ok, sizeof state->image_ok);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -244,6 +258,68 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
     flash_area_close(fap);
     return rc;
 }
+
+int
+boot_read_swap_size(uint32_t *swap_size)
+{
+    uint32_t magic[BOOT_MAGIC_SZ];
+    uint32_t off;
+    const struct flash_area *fap;
+    int rc;
+
+    /*
+     * In the middle a swap, tries to locate the saved swap size. Looks
+     * for a valid magic, first on Slot 0, then on scratch. Both "slots"
+     * can end up being temporary storage for a swap and it is assumed
+     * that if magic is valid then swap size is too, because magic is
+     * always written in the last step.
+     */
+
+    rc = flash_area_open(FLASH_AREA_IMAGE_0, &fap);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    off = boot_magic_off(fap);
+    rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto out;
+    }
+
+    if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) != 0) {
+        /*
+         * If Slot 0 's magic is not valid, try scratch...
+         */
+
+        flash_area_close(fap);
+
+        rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap);
+        if (rc != 0) {
+            return BOOT_EFLASH;
+        }
+
+        off = boot_magic_off(fap);
+        rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
+        if (rc != 0) {
+            rc = BOOT_EFLASH;
+            goto out;
+        }
+
+        assert(memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0);
+    }
+
+    off = boot_swap_size_off(fap);
+    rc = flash_area_read(fap, off, swap_size, sizeof *swap_size);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+    }
+
+out:
+    flash_area_close(fap);
+    return rc;
+}
+
 
 int
 boot_write_magic(const struct flash_area *fap)
@@ -303,6 +379,31 @@ int
 boot_write_image_ok(const struct flash_area *fap)
 {
     return boot_write_flag(BOOT_FLAG_IMAGE_OK, fap);
+}
+
+int
+boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
+{
+    uint32_t off;
+    int rc;
+    uint8_t buf[BOOT_MAX_ALIGN];
+    uint8_t align;
+
+    off = boot_swap_size_off(fap);
+    align = hal_flash_align(fap->fa_device_id);
+    assert(align <= BOOT_MAX_ALIGN);
+    if (align < sizeof swap_size) {
+        align = sizeof swap_size;
+    }
+    memset(buf, 0xFF, BOOT_MAX_ALIGN);
+    memcpy(buf, (uint8_t *)&swap_size, sizeof swap_size);
+
+    rc = flash_area_write(fap, off, buf, align);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    return 0;
 }
 
 int

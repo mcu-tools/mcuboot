@@ -206,28 +206,6 @@ boot_previous_swap_type(void)
     return BOOT_SWAP_TYPE_FAIL;
 }
 
-#ifndef MCUBOOT_OVERWRITE_ONLY
-static int
-boot_read_header_from_scratch(struct image_header *out_hdr)
-{
-    const struct flash_area *fap;
-    int rc;
-
-    rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap);
-    if (rc != 0) {
-        return BOOT_EFLASH;
-    }
-
-    rc = flash_area_read(fap, 0, out_hdr, sizeof *out_hdr);
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-    }
-
-    flash_area_close(fap);
-    return rc;
-}
-#endif /* !MCUBOOT_OVERWRITE_ONLY */
-
 /*
  * Compute the total size of the given image.  Includes the size of
  * the TLVs.
@@ -477,7 +455,10 @@ boot_read_status(struct boot_status *bs)
         return BOOT_EFLASH;
     }
 
-    return boot_read_status_bytes(fap, bs);
+    rc = boot_read_status_bytes(fap, bs);
+
+    flash_area_close(fap);
+    return rc;
 }
 
 /**
@@ -797,7 +778,7 @@ done:
 }
 
 static inline int
-boot_status_init_by_id(int flash_area_id)
+boot_status_init_by_id(int flash_area_id, const struct boot_status *bs)
 {
     const struct flash_area *fap;
     struct boot_swap_state swap_state;
@@ -813,6 +794,9 @@ boot_status_init_by_id(int flash_area_id)
         rc = boot_write_image_ok(fap);
         assert(rc == 0);
     }
+
+    rc = boot_write_swap_size(fap, bs->swap_size);
+    assert(rc == 0);
 
     rc = boot_write_magic(fap);
     assert(rc == 0);
@@ -907,7 +891,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 
         if (bs->idx == 0) {
             if (bs->use_scratch) {
-                boot_status_init_by_id(FLASH_AREA_IMAGE_SCRATCH);
+                boot_status_init_by_id(FLASH_AREA_IMAGE_SCRATCH, bs);
             } else {
                 /* Prepare the status area... here it is known that the
                  * last sector is not being used by the image data so it's
@@ -916,7 +900,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
                 rc = boot_erase_last_sector_by_id(FLASH_AREA_IMAGE_0);
                 assert(rc == 0);
 
-                boot_status_init_by_id(FLASH_AREA_IMAGE_0);
+                boot_status_init_by_id(FLASH_AREA_IMAGE_0, bs);
             }
         }
 
@@ -981,6 +965,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
                 rc = boot_write_image_ok(fap);
                 assert(rc == 0);
             }
+
+            rc = boot_write_swap_size(fap, bs->swap_size);
+            assert(rc == 0);
 
             rc = boot_write_magic(fap);
             assert(rc == 0);
@@ -1057,42 +1044,43 @@ boot_copy_image(struct boot_status *bs)
     struct image_header *hdr;
     uint32_t size;
     uint32_t copy_size;
-    struct image_header tmp_hdr;
     int rc;
 
     /* FIXME: just do this if asked by user? */
 
     size = copy_size = 0;
 
-    hdr = boot_img_hdr(&boot_data, 0);
-    if (hdr->ih_magic == IMAGE_MAGIC) {
-        rc = boot_read_image_size(0, hdr, &copy_size);
-        assert(rc == 0);
-    }
-
-    hdr = boot_img_hdr(&boot_data, 1);
-    if (hdr->ih_magic == IMAGE_MAGIC) {
-        rc = boot_read_image_size(1, hdr, &size);
-        assert(rc == 0);
-    }
-
-    if (!size || !copy_size || size == copy_size) {
-        rc = boot_read_header_from_scratch(&tmp_hdr);
-        assert(rc == 0);
-
-        hdr = &tmp_hdr;
+    if (bs->idx == 0 && bs->state == 0) {
+        /*
+         * No swap ever happened, so need to find the largest image which
+         * will be used to determine the amount of sectors to swap.
+         */
+        hdr = boot_img_hdr(&boot_data, 0);
         if (hdr->ih_magic == IMAGE_MAGIC) {
-            if (!size) {
-                rc = boot_read_image_size(2, hdr, &size);
-            } else {
-                rc = boot_read_image_size(2, hdr, &size);
-            }
+            rc = boot_read_image_size(0, hdr, &copy_size);
             assert(rc == 0);
         }
-    }
 
-    if (size > copy_size) {
-        copy_size = size;
+        hdr = boot_img_hdr(&boot_data, 1);
+        if (hdr->ih_magic == IMAGE_MAGIC) {
+            rc = boot_read_image_size(1, hdr, &size);
+            assert(rc == 0);
+        }
+
+        if (size > copy_size) {
+            copy_size = size;
+        }
+
+        bs->swap_size = copy_size;
+    } else {
+        /*
+         * If a swap was under way, the swap_size should already be present
+         * in the trailer...
+         */
+        rc = boot_read_swap_size(&bs->swap_size);
+        assert(rc == 0);
+
+        copy_size = bs->swap_size;
     }
 
     size = 0;
