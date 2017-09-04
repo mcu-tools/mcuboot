@@ -172,10 +172,10 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
 
     rc = flash_area_read(fap, off, &info, sizeof(info));
     if (rc) {
-            return rc;
+        return rc;
     }
     if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
-            return -1;
+        return -1;
     }
     end = off + info.it_tlv_tot;
     off += sizeof(info);
@@ -200,10 +200,10 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
             }
             rc = flash_area_read(fap, off + sizeof(tlv), buf, sizeof hash);
             if (rc) {
-                    return rc;
+                return rc;
             }
             if (memcmp(hash, buf, sizeof(hash))) {
-                    return -1;
+                return -1;
             }
 
             sha256_valid = 1;
