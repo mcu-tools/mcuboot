@@ -119,7 +119,7 @@ bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
     const struct bootutil_key *key;
     uint8_t hash[32];
 
-    assert(keyhash_len == 32);
+    assert(keyhash_len <= 32);
 
     for (i = 0; i < bootutil_key_cnt; i++) {
         key = &bootutil_keys[i];
