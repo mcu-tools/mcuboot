@@ -210,6 +210,7 @@ boot_previous_swap_type(void)
  * Compute the total size of the given image.  Includes the size of
  * the TLVs.
  */
+#ifndef MCUBOOT_OVERWRITE_ONLY
 static int
 boot_read_image_size(int slot, struct image_header *hdr, uint32_t *size)
 {
@@ -242,6 +243,7 @@ done:
     flash_area_close(fap);
     return rc;
 }
+#endif /* !MCUBOOT_OVERWRITE_ONLY */
 
 static int
 boot_read_image_header(int slot, struct image_header *out_hdr)
