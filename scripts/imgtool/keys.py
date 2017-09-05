@@ -115,6 +115,19 @@ class ECDSA256P1():
         print("\n};")
         print("const unsigned int ecdsa_pub_key_len = {};".format(len(encoded)))
 
+    def emit_rust(self):
+        vk = self.key.get_verifying_key()
+        print(AUTOGEN_MESSAGE)
+        print("static ECDSA_PUB_KEY: &'static [u8] = &[", end='')
+        encoded = bytes(vk.to_der())
+        for count, b in enumerate(encoded):
+            if count % 8 == 0:
+                print("\n    ", end='')
+            else:
+                print(" ", end='')
+            print("0x{:02x},".format(b), end='')
+        print("\n];")
+
     def sign(self, payload):
         # To make this fixed length, possibly pad with zeros.
         sig = self.key.sign(payload, hashfunc=hashlib.sha256, sigencode=util.sigencode_der)
