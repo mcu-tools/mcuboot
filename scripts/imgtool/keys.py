@@ -101,6 +101,10 @@ class ECDSA256P1():
         with open(path, 'wb') as f:
             f.write(self.key.to_pem())
 
+    def get_public_bytes(self):
+        vk = self.key.get_verifying_key()
+        return bytes(vk.to_der())
+
     def emit_c(self):
         vk = self.key.get_verifying_key()
         print(AUTOGEN_MESSAGE)
