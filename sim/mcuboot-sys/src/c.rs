@@ -6,9 +6,9 @@ use libc;
 use api;
 
 /// Invoke the bootloader on this flash device.
-pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc) -> i32 {
+pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, boot_image_count: usize) -> i32 {
     unsafe { api::set_flash(flash) };
-    let result = unsafe { raw::invoke_boot_go(&areadesc.get_c() as *const _) as i32 };
+    let result = unsafe { raw::invoke_boot_go(boot_image_count as libc::c_int, &areadesc.get_c() as *const _) as i32 };
     unsafe { api::clear_flash(); };
     result
 }
@@ -22,6 +22,18 @@ pub fn get_flash_counter() -> i32 {
 /// then go negative for each flash operation.
 pub fn set_flash_counter(counter: i32) {
     unsafe { raw::flash_counter = counter as libc::c_int };
+}
+
+pub fn get_br_flash_dev_id() -> u8 {
+    unsafe { raw::br_flash_dev_id as u8 }
+}
+
+pub fn get_br_image_off() -> u32 {
+    unsafe { raw::br_image_off as u32 }
+}
+
+pub fn get_ih_hdr_size() -> u16 {
+    unsafe { raw::ih_hdr_size as u16 }
 }
 
 pub fn boot_trailer_sz() -> u32 {
@@ -52,8 +64,12 @@ mod raw {
         // This generates a warning about `CAreaDesc` not being foreign safe.  There doesn't appear to
         // be any way to get rid of this warning.  See https://github.com/rust-lang/rust/issues/34798
         // for information and tracking.
-        pub fn invoke_boot_go(areadesc: *const CAreaDesc) -> libc::c_int;
+        pub fn invoke_boot_go(boot_image_count: libc::c_int, areadesc: *const CAreaDesc) -> libc::c_int;
         pub static mut flash_counter: libc::c_int;
+
+        pub static mut br_flash_dev_id: libc::uint8_t;
+        pub static mut br_image_off: libc::uint32_t;
+        pub static mut ih_hdr_size: libc::uint16_t;
 
         pub static mut sim_flash_align: u8;
         pub fn boot_slots_trailer_sz(min_write_sz: u8) -> u32;

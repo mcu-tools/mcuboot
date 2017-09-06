@@ -21,6 +21,7 @@
 #define H_BOOTUTIL_
 
 #include <inttypes.h>
+#include "image.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,8 +54,8 @@ struct image_header;
  * to execute the main image.
  */
 struct boot_rsp {
-    /** A pointer to the header of the image to be executed. */
-    const struct image_header *br_hdr;
+    /** A copy of the image's header which is going to be executed. */
+    struct image_header br_hdr;
 
     /**
      * The flash offset of the image to execute.  Indicates the position of
@@ -76,7 +77,7 @@ struct image_trailer {
 };
 
 /* you must have pre-allocated all the entries within this structure */
-int boot_go(struct boot_rsp *rsp);
+int boot_go(int img_cnt, struct boot_rsp *rsp);
 
 int boot_swap_type(void);
 
