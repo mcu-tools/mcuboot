@@ -8,3 +8,6 @@ obj-y += flash_map.o hal_flash.o os.o
 obj-y += keys.o
 
 obj-y += ../bootutil/src/
+
+obj-$(NEED_TINYCRYPT) += ../../ext/tinycrypt/lib/source/
+include $(PROJECT)/ext/tinycrypt/lib/source/Makefile.inc
