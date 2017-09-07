@@ -19,20 +19,28 @@ commits=$(git log --format=%h ${MAIN_BRANCH}..HEAD | tail -n +2)
 
 has_commits=false
 for sha in $commits; do
-  expected="Signed-off-by: $(git show -s --format="%an <%ae>" ${sha})"
+  author="Signed-off-by: $(git show -s --format="%an <%ae>" ${sha})"
+  committer="Signed-off-by: $(git show -s --format="%cn <%ce>" ${sha})"
+
   lines="$(git show -s --format=%B ${sha})"
-  found_sob=false
+
+  found_author=false
+  found_committer=false
   IFS=$'\n'
   for line in ${lines}; do
     stripped=$(echo $line | sed -e 's/^\s*//' | sed -e 's/\s*$//')
-    if [[ $stripped == ${expected} ]]; then
-      found_sob=true
-      break
+    if [[ ${stripped} == ${author} ]]; then
+      found_author=true
     fi
+    if [[ ${stripped} == ${committer} ]]; then
+      found_committer=true
+    fi
+
+    [[ ${found_author} == true && ${found_committer} == true ]] && break
   done
 
-  if [[ ${found_sob} = false ]]; then
-    echo -e "No \"${expected}\" found in commit ${sha}"
+  if [[ ${found_author} == false || ${found_committer} == false ]]; then
+    echo -e "One or more \"Signed-off-by\" lines missing in commit ${sha}"
     exit 1
   fi
 
