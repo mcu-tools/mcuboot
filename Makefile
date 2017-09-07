@@ -15,6 +15,8 @@ CFLAGS += -DMCUBOOT_SIGN_RSA -DMCUBOOT_USE_MBED_TLS
 # ECDSA P-256
 #CONF_FILE = boot/zephyr/prj-p256.conf
 #CFLAGS += -DMCUBOOT_SIGN_EC256 -DMCUBOOT_USE_TINYCRYPT
+#NEED_TINYCRYPT = y
+#export NEED_TINYCRYPT
 
 # Enable this option to have the bootloader verify the signature of
 # the primary image upon every boot.  Without it, signature
