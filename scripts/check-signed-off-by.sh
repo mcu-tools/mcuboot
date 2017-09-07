@@ -15,7 +15,7 @@
 MAIN_BRANCH=master
 
 # ignores last commit because travis/gh creates a merge commit
-commits=$(git log --format=%h ${MAIN_BRANCH}..HEAD~1)
+commits=$(git log --format=%h ${MAIN_BRANCH}..HEAD | tail -n +2)
 
 has_commits=false
 for sha in $commits; do
