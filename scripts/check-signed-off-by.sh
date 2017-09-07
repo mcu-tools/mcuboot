@@ -15,14 +15,31 @@
 MAIN_BRANCH=master
 
 # ignores last commit because travis/gh creates a merge commit
-commits=$(git log --format=%h ${MAIN_BRANCH}..HEAD | tail -n +2)
+commits=$(git log --format=%h ${MAIN_BRANCH}..HEAD~1)
 
+has_commits=false
 for sha in $commits; do
-  actual=$(git show -s --format=%B ${sha} | sed '/^$/d' | tail -n 1)
   expected="Signed-off-by: $(git show -s --format="%an <%ae>" ${sha})"
+  lines="$(git show -s --format=%B ${sha})"
+  found_sob=false
+  IFS=$'\n'
+  for line in ${lines}; do
+    stripped=$(echo $line | sed -e 's/^\s*//' | sed -e 's/\s*$//')
+    if [[ $stripped == ${expected} ]]; then
+      found_sob=true
+      break
+    fi
+  done
 
-  if [ "${actual}" != "${expected}" ]; then
-    echo -e "${sha} is missing or using an invalid \"Signed-off-by:\" line"
+  if [[ ${found_sob} = false ]]; then
+    echo -e "No \"${expected}\" found in commit ${sha}"
     exit 1
   fi
+
+  has_commits=true
 done
+
+if [[ ${has_commits} = false ]]; then
+  echo "No commits found in this PR!"
+  exit 1
+fi
