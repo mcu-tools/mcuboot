@@ -18,13 +18,13 @@ target with a complete port planned.
 The issues being planned and worked on are tracked on Jira. To participate
 please visit: 
 
-https://runtimeco.atlassian.net/projects/MCUB/summary
+[MCUboot JIRA](https://runtimeco.atlassian.net/projects/MCUB/summary)
 
 ## Browsing 
 
 Information and documentation on the bootloader is stored within the source, and on confluence:
 
-https://runtimeco.atlassian.net/wiki/discover/all-updates
+[Confluence page](https://runtimeco.atlassian.net/wiki/discover/all-updates)
 
 For more information in the source, here are some pointers: 
 
@@ -39,8 +39,8 @@ For more information in the source, here are some pointers:
 
 Developers welcome!
 
-* Our developer mailing list:
-  http://lists.runtime.co/mailman/listinfo/dev-mcuboot_lists.runtime.co
-* Our Slack channel: https://mcuboot.slack.com/ <br />
+* [Our developer mailing list](http://lists.runtime.co/mailman/listinfo/dev-mcuboot_lists.runtime.co)
+* [Our Slack channel](https://mcuboot.slack.com/)<br />
   Get your invite [here!](https://join.slack.com/t/mcuboot/shared_invite/MjE2NDcwMTQ2MTYyLTE1MDA4MTIzNTAtYzgyZTU0NjFkMg)
-* Our IRC channel: http://irc.freenode.net, #mcuboot
+* [Our IRC channel](http://irc.freenode.net), channel #mcuboot ([IRC
+  link](irc://chat.freenode.net/#mcuboot)
