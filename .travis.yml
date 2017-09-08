@@ -1,17 +1,15 @@
 # Travis configuration.  Build the simulator and run its tests.
 
-language: rust
+env:
+  global:
+    - secure: "XbmV86GSZzwP7MhgcJolpVisvGnB3Rc6iffd0rhTu7ZXDc/ntmXDIvuO1ZYISGkKlQtQ5CQA2wMwMfO1rOggIy30bI3GnDh75E8n55nkrmVtDIRYnP6ABxTMGuPljU8gafcE1VKY331ey1+BGD/4879OBDI8kGXrcCjse6NwjdJELmFZAqcTlXA0wkzUlLRVeELiJizRybd30kmmhVmuDszpQ5TDwcxHJu7TsHQjVJBdpfoP/SIxAPdZBDQ42sRbYiBlE9SDmkVdBPxYvlyQG8aRv7YzP1JzWtlWg+o6CB611tO9OgIpoAOAgq82lWaA0XX/P4KRGgC8CIS4JwQc8SuA1HxLY/nQSl1vhMjQhlBpShTllFBNaaDA6227y9D+gfb27lbmMb/FZ0elTo2ltyeoYLoR7/odauFtOIO3SaxpnEnGdDBmh+KiLazzWEvix5IO5O7dYDyGuQFag0/kfHflBeLSVAPXDBfw/sGJATQERH+D3Ab4GVot/+BFvAeCUakM7GS3KjzQdA/U5+4G2aDLmDWNGo6ZjTGrWiMtAJVRx++RKmLh67s/W4rOlma+XZmFiLOgmov2RuGAuPNrPiBfuNaoGFynjwGPZeBwxlu2AWzIgFCAHelJD5Xf5nyClTPPyDSJj3doHSJBJAJpg0xnU66aADlmS5Doka3u5Gg="
 
-script:
-  - set -e
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then ./scripts/check-signed-off-by.sh; fi
-  - cd sim
-  - cargo test
-  - cargo test --features sig-rsa
-  - cargo test --features overwrite-only
-
-notifications:
-  slack:
-    rooms:
-      - secure: "Tg9ZvJfb6e4QSEsxUvwW2MIqbuNRxD4nAOkgs8eopj/fRtqN6Zk06NVSeMmYcZunDFJXUSzYANBsF98OtaaUlm4WVt2T0ZFBJZrOYfIv18/zXCjYa04sDxur57F1ZYTYKyRpdUkfzPd/rGE4jKLQNcia+r/BTQbJkcZbXeg5/6cUeMP1so8/o0oMhSQP+GH0fLbyLzx3VPE8zu6+j2fCFC7R3idxtfO9VtsKlubfi3HgPgXTs+DEAAA8aoOku2esjFSFXTtdUFGz90YzyShZvtMcRg3Grp9+PZAsJwWk4eKSonKCO0DScfPUlMZbJcV7VsmyTxYKLLsGRZae6ZBH+XLfx5XeqgtgCor3FYx2dUXYfV9y8VvERDdossB0gZ/V2OUGePctDefiORytV6dMa7X3AfSdosgs/tjG4kbf+PMaVULzwF6dd3CdsxdClSl68UQPWA6wC2TEyo1EQea8jgZU6heLustZaQZhBkFkr/6j75XeGBjPw2fgVRkgg/OnTOYmo7N8181wOU+xORIEO1BtYmgRpc0cgpm4H9457diSHG1D2SoNy4tiQPCW2enN00QNGK5pZSL/FGA/ReUcALgAW0QcOljjU2bUSGPxo/VAi5ZyljWgVAGQ5qHJ4jgdfPf7VJUzCVH64G1S5+0gZPpO6vvvPdZtqeXrfBZMOBw="
-    on_success: always
+addons:
+  coverity_scan:
+    project:
+      name: runtimeco/mcuboot
+      version: 1.0
+      description: Secure boot for 32-bit Microcontrollers!
+    notification_email: utzig@apache.org
+    build_command: make -f Makefile.coverity
+    branch_pattern: coverity_scan
