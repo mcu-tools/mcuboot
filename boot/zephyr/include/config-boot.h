@@ -29,6 +29,11 @@
 #ifndef MBEDTLS_CONFIG_BOOT_H
 #define MBEDTLS_CONFIG_BOOT_H
 
+#ifdef CONFIG_MCUBOOT_SERIAL
+/* Mcuboot uses mbedts-base64 for serial protocol encoding. */
+#define MBEDTLS_BASE64_C
+#endif
+
 /* TODO: Configure this between app and target.  Really, we want the
  * config to come from the app. */
 #define CONFIG_BOOT_VERIFY_RSA_SIGNATURE

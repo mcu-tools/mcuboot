@@ -16,6 +16,8 @@
 
 #include <assert.h>
 #include <zephyr.h>
+#include <gpio.h>
+#include <misc/__assert.h>
 #include <flash.h>
 #include <asm_inline.h>
 #include <drivers/system_timer.h>
@@ -27,6 +29,10 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 #include "flash_map/flash_map.h"
+
+#ifdef CONFIG_MCUBOOT_SERIAL
+#include <boot_serial/boot_serial.h>
+#endif
 
 struct device *boot_flash_device;
 
@@ -100,6 +106,29 @@ void main(void)
         while (1)
             ;
     }
+
+#ifdef CONFIG_MCUBOOT_SERIAL
+
+    struct device *detect_port;
+    u32_t detect_value;
+
+    detect_port = device_get_binding(CONFIG_BOOT_SERIAL_DETECT_PORT);
+    __ASSERT(detect_port, "Error: Bad port for boot serial detection.\n");
+
+    rc = gpio_pin_configure(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
+                            GPIO_DIR_IN | GPIO_PUD_PULL_UP);
+    __ASSERT(rc, "Error of boot detect pin initialization.\n");
+
+    rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN, 
+                       &detect_value);
+    __ASSERT(rc, "Error of the reading the detect pin.\n");
+
+    if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) {
+        BOOT_LOG_INF("Enter the serial recovery mode");
+        boot_serial_start(CONFIG_BOOT_MAX_LINE_INPUT_LEN + 1);
+        __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
+    }
+#endif
 
     rc = boot_go(&rsp);
     if (rc != 0) {
