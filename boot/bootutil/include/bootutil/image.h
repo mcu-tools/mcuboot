@@ -40,6 +40,12 @@ struct flash_area;
  */
 #define IMAGE_F_PIC                      0x00000001 /* Not supported. */
 #define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
+/*
+ * Indicates that this image should be loaded into RAM instead of run
+ * directly from flash.  The address to load should be in the
+ * ih_load_addr field of the header.
+ */
+#define IMAGE_F_RAM_LOAD                 0x00000020
 
 /*
  * ECSDA224 is with NIST P-224
@@ -72,7 +78,7 @@ struct image_version {
 /** Image header.  All fields are in little endian byte order. */
 struct image_header {
     uint32_t ih_magic;
-    uint32_t _pad1;
+    uint32_t ih_load_addr;
     uint16_t ih_hdr_size; /* Size of image header (bytes). */
     uint16_t _pad2;
     uint32_t ih_img_size; /* Does not include header. */
