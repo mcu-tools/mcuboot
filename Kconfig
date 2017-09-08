@@ -18,6 +18,7 @@ menuconfig MCUBOOT_SERIAL
 	select REBOOT
 	select UART_INTERRUPT_DRIVEN
 	select SERIAL
+	select NEWLIB_LIBC
 	help
 	  Enable serial recovery feature in mcuboot.
 
@@ -31,7 +32,7 @@ config BOOT_MAX_LINE_INPUT_LEN
 config BOOT_SERIAL_DETECT_PORT
 	string
 	prompt "GPIO Port to trigger serial recovery mode"
-	default CONFIG_GPIO_NRF5_P0_DEV_NAME
+	default GPIO_0 if SOC_FAMILY_NRF5
 	depends on MCUBOOT_SERIAL
 	help
 	  Serial recovery detect port
@@ -39,7 +40,8 @@ config BOOT_SERIAL_DETECT_PORT
 config BOOT_SERIAL_DETECT_PIN
 	int
 	prompt "Pin to trigger serial recovery mode"
-	default 0
+	default 11 if BOARD_NRF52840_PCA10056
+	default 13 if BOARD_NRF52_PCA10040
 	depends on MCUBOOT_SERIAL
 	help
 	  Serial recovery detect pin

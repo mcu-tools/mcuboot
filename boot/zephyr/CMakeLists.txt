@@ -6,6 +6,9 @@
 
 cmake_minimum_required(VERSION 3.8.2)
 
+
+set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../Kconfig)
+
 ########################
 # Configuration choices.
 ########################
@@ -167,4 +170,13 @@ if (NEED_TINYCRYPT)
   target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/ecc_dsa.c")
   target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/sha256.c")
   target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/utils.c")
+endif()
+
+if (CONFIG_MCUBOOT_SERIAL)
+zephyr_sources(${BOOT_DIR}/zephyr/serial_adapter.c)
+
+add_subdirectory(${BOOT_DIR}/boot_serial ./boot/boot_serial)
+add_subdirectory(${BOOT_DIR}/zephyr/tinycbor)
+add_subdirectory(${BOOT_DIR}/zephyr/cborattr)
+
 endif()
