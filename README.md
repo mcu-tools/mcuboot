@@ -1,4 +1,4 @@
-# mcuboot
+# MCUboot
 
 ## Overview
 
@@ -9,7 +9,7 @@ easy software upgrade.
 
 MCUboot is operating system and hardware independent, and relies on 
 hardware porting layers from the operating system it works with.  Currently
-mcuboot works with both the Apache Mynewt, and Zephyr operating systems, but
+MCUboot works with both the Apache Mynewt, and Zephyr operating systems, but
 more ports are planned in the future. RIOT is currently supported as a boot
 target with a complete port planned.
 
@@ -32,7 +32,7 @@ For more information in the source, here are some pointers:
 - [boot/boot\_serial](https://github.com/runtimeco/mcuboot/tree/master/boot/boot_serial): Support for serial upgrade within the bootloader itself.
 - [boot/zephyr](https://github.com/runtimeco/mcuboot/tree/master/boot/zephyr): Port of the bootloader to Zephyr
 - [boot/mynewt](https://github.com/runtimeco/mcuboot/tree/master/boot/mynewt): Mynewt bootloader app
-- [imgtool](https://github.com/runtimeco/mcuboot/tree/master/imgtool): A tool to securely sign firmware images for booting by mcuboot.
+- [imgtool](https://github.com/runtimeco/mcuboot/tree/master/imgtool): A tool to securely sign firmware images for booting by MCUboot.
 - [sim](https://github.com/runtimeco/mcuboot/tree/master/sim): A bootloader simulator for testing and regression
 
 ## Joining
