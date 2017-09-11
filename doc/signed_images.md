@@ -90,12 +90,11 @@ This exports the keys.
 
 ## Building bootloader
 
-Enable the BOOTUTIL_SIGN_RSA and BOOTUTIL_RSA_PKCS1_15 syscfg settings in your
-app or target syscfg.yml file
+Enable the BOOTUTIL_SIGN_RSA syscfg setting in your app or target syscfg.yml
+file
 
     syscfg.vals:
         BOOTUTIL_SIGN_RSA: 1
-        BOOTUTIL_RSA_PKCS1_15: 1
 
 After you've created the key package, you must include it in the build
 for bootloader. So modify the pkg.yml for apps/boot to include it.

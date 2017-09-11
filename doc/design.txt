@@ -44,7 +44,7 @@ characteristics:
 
 The following definitions describe the image format.
 
-#define IMAGE_MAGIC                 0x96f3b83c
+#define IMAGE_MAGIC                 0x96f3b83d
 
 #define IMAGE_HEADER_SIZE           32
 
@@ -58,15 +58,19 @@ struct image_version {
 /** Image header.  All fields are in little endian byte order. */
 struct image_header {
     uint32_t ih_magic;
-    uint16_t ih_tlv_size; /* Combined size of trailing TLVs (bytes). */
-    uint8_t  ih_key_id;   /* Which key image is signed with (0xff=unsigned). */
-    uint8_t  _pad1;
+    uint32_t ih_load_addr;
     uint16_t ih_hdr_size; /* Size of image header (bytes). */
     uint16_t _pad2;
     uint32_t ih_img_size; /* Does not include header. */
-    uint32_t ih_flags;    /* IMAGE_F_[...] */
+    uint32_t ih_flags;    /* IMAGE_F_[...]. */
     struct image_version ih_ver;
     uint32_t _pad3;
+};
+
+/** Image TLV header.  All fields in little endian. */
+struct image_tlv_info {
+    uint16_t it_magic;
+    uint16_t it_tlv_tot;  /* size of TLV area (including tlv_info header) */
 };
 
 /** Image trailer TLV format. All fields in little endian. */
@@ -80,16 +84,13 @@ struct image_tlv {
  * Image header flags.
  */
 #define IMAGE_F_PIC                      0x00000001 /* Not supported. */
-#define IMAGE_F_SHA256                   0x00000002 /* Hash TLV is present */
-#define IMAGE_F_PKCS15_RSA2048_SHA256    0x00000004 /* PKCS15 w/RSA and SHA */
-#define IMAGE_F_ECDSA224_SHA256          0x00000008 /* ECDSA224 over SHA256 */
 #define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
-#define IMAGE_F_ECDSA256_SHA256          0x00000020 /* ECDSA256 over SHA256 */
-#define IMAGE_F_PKCS1_PSS_RSA2048_SHA256 0x00000040 /* PKCS1 PSS */
+#define IMAGE_F_RAM_LOAD                 0x00000020
 
 /*
  * Image trailer TLV types.
  */
+#define IMAGE_TLV_KEYHASH           0x01   /* hash of the public key */
 #define IMAGE_TLV_SHA256            0x10   /* SHA256 of image hdr and body */
 #define IMAGE_TLV_RSA2048_PSS       0x20   /* RSA2048 of hash output */
 #define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output */
@@ -211,11 +212,15 @@ image trailer. An image trailer has the following structure:
     ~             Swap status (128 * min-write-size * 3)            ~
     ~                                                               ~
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |   Copy done   |           0xff padding (7 octets)             |
+    |                           Swap size                           |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |   Image OK    |           0xff padding (7 octets)             |
+    |                   0xff padding (4 octets)                     |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                       MAGIC (16 octets)                       |
+    |   Copy done   |           0xff padding (7 octets)             ~
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |   Image OK    |           0xff padding (7 octets)             ~
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    ~                       MAGIC (16 octets)                       ~
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 The offset immediately following such a record represents the start of the next
@@ -244,13 +249,17 @@ factor of 128 is the maximum number of sectors mcuboot supports for each image;
 its value is a bootloader design decision. The factor of min-write-sz is due to
 the behavior of flash hardware. The factor of 3 is explained below.
 
-2. Copy done: A single byte indicating whether the image in this slot is
+2. Swap size: When beginning a new swap operation, the total size that needs
+to be swapped (based on the slot with largest image + tlvs) is written to this
+location for easier recovery in case of a reset while performing the swap.
+
+3. Copy done: A single byte indicating whether the image in this slot is
 complete (0x01=done; 0xff=not done).
 
-3. Image OK: A single byte indicating whether the image in this slot has been
+4. Image OK: A single byte indicating whether the image in this slot has been
 confirmed as good by the user (0x01=confirmed; 0xff=not confirmed).
 
-4. MAGIC: The following 16 bytes, written in host-byte-order:
+5. MAGIC: The following 16 bytes, written in host-byte-order:
 
     const uint32_t boot_img_magic[4] = {
         0xf395c277,
@@ -597,21 +606,23 @@ MCUBOOT_VALIDATE_SLOT0 is set, otherwise it doesn't perform an integrity check.
 
 During the integrity check, the boot loader verifies the following aspects of
 an image:
-    * 32-bit magic number must be correct (0x96f3b83c).
+    * 32-bit magic number must be correct (0x96f3b83d).
+    * Image must contain an image_tlv_info struct, identified by its magic
+      (0x6907) exactly following the firmware (hdr_size + img_size).
     * Image must contain a SHA256 TLV.
     * Calculated SHA256 must match SHA256 TLV contents.
-    * Image *may* contain a signature TLV.  If it does, its contents must be
-      verifiable using a key embedded in the boot loader.
+    * Image *may* contain a signature TLV.  If it does, it must also have a
+      KEYHASH TLV with the hash of the key that was used to sign. The list of
+      keys will then be iterated over looking for the matching key, which then
+      will then be used to verify the image contents.
 
 *** SECURITY
 
 As indicated above, the final step of the integrity check is signature
 verification.  The boot loader can have one or more public keys embedded in it
 at build time.  During signature verification, the boot loader verifies that an
-image was signed with a private key that corresponds to one of its public keys.
-The image signature TLV indicates the index of the key that is has been signed
-with.  The boot loader uses this index to identify the corresponding public
-key.
+image was signed with a private key that corresponds to the embedded keyhash
+TLV.
 
 For information on embedding public keys in the boot loader, as well as
 producing signed images, see: doc/signed_images.md
