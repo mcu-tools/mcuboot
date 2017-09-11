@@ -1,4 +1,4 @@
-## Image tool
+# Image tool
 
 The Python program `scripts/imgtool.py` can be used to perform the
 operations that are necessary to manage keys and sign images.  Using
