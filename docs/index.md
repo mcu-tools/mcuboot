@@ -13,6 +13,23 @@ MCUboot works with both the Apache Mynewt, and Zephyr operating systems, but
 more ports are planned in the future. RIOT is currently supported as a boot
 target with a complete port planned.
 
+## Contents
+
+- General: this document
+- [design]({% link design.txt %}): for the design
+- [imgtool]({% link imgtool.md %}): The image signing and key management
+  tool.
+- [Patch submission]({% link SubmittingPatches.md %}) for information
+  on how to contribute to mcuboot.
+- The [internal design]({% link design.txt %}) documentation.
+- Testing
+  - The [Zephyr]({% link testplan-zephyr.md %}) test plan.
+  - The [mynewt]({% link testplan-mynewt.md %}) test plan.
+
+There is also a document about [signed images]({% link
+signed_images.md %}) that is out of date.  You should use `imgtool.py`
+instead of these documents.
+
 ## Roadmap
 
 The issues being planned and worked on are tracked on Jira. To participate
