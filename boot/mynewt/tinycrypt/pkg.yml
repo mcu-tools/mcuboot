@@ -17,27 +17,11 @@
 # under the License.
 #
 
-pkg.name: boot/bootutil
-pkg.description: The bootutil library performs most of the functions of a boot loader.
+pkg.name: boot/mynewt/tinycrypt
+pkg.description: "MCUboot's bundled tinycrypt"
 pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
 pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:
-    - boot
-    - bootloader
-
-pkg.apis:
-    - bootloader
 
 pkg.cflags:
-    - "-DMCUBOOT_MYNEWT"
-
-pkg.deps:
-    - "@mcuboot/boot/mynewt/mcuboot_config"
-    - "@apache-mynewt-core/hw/hal"
-    - "@apache-mynewt-core/crypto/mbedtls"
-    - "@apache-mynewt-core/kernel/os"
-    - "@apache-mynewt-core/sys/defs"
-    - "@apache-mynewt-core/sys/flash_map"
-
-pkg.deps.BOOTUTIL_USE_TINYCRYPT:
-    - "@mcuboot/boot/mynewt/tinycrypt"
+    - "-std=c99"
