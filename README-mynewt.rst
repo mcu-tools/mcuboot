@@ -31,3 +31,9 @@ which might exist.
 
 To configure **mcuboot** check all the options available in
 ``boot/mynewt/mcuboot_config/syscfg.yml``.
+
+Also, **mcuboot** uses a different image header struct as well as slightly
+different TLV structure, so images created by **newt** have to be generated
+in this new format. That is done by passing the extra parameter **-2** as in:
+
+``newt create-image <target> <version> <pubkey> -2``
