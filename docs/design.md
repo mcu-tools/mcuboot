@@ -1,30 +1,30 @@
-#
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-#
+<!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
 
-****** BOOT LOADER
+   http://www.apache.org/licenses/LICENSE-2.0
 
-*** SUMMARY
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+
+# Boot Loader
+
+## Summary
 
 mcuboot comprises two packages:
 
-    * The bootutil library (boot/bootutil)
-    * The boot application (each port has its own at boot/<port>)
+* The bootutil library (boot/bootutil)
+* The boot application (each port has its own at boot/<port>)
 
 The bootutil library performs most of the functions of a boot loader.  In
 particular, the piece that is missing is the final step of actually jumping to
@@ -33,17 +33,18 @@ Boot loader functionality is separated in this manner to enable unit testing of
 the boot loader.  A library can be unit tested, but an application can't.
 Therefore, functionality is delegated to the bootutil library when possible.
 
-*** LIMITATIONS
+## Limitations
 
 The boot loader currently only supports images with the following
 characteristics:
-    * Built to run from flash.
-    * Built to run from a fixed location (i.e., not position-independent).
+* Built to run from flash.
+* Built to run from a fixed location (i.e., not position-independent).
 
-*** IMAGE FORMAT
+## Image Format
 
 The following definitions describe the image format.
 
+``` c
 #define IMAGE_MAGIC                 0x96f3b83d
 
 #define IMAGE_HEADER_SIZE           32
@@ -95,33 +96,36 @@ struct image_tlv {
 #define IMAGE_TLV_RSA2048_PSS       0x20   /* RSA2048 of hash output */
 #define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output */
 #define IMAGE_TLV_ECDSA256          0x22   /* ECDSA of hash output */
+```
 
 Optional type-length-value records (TLVs) containing image metadata are placed
 after the end of the image.
 
-The ih_hdr_size field indicates the length of the header, and therefore the
+The `ih_hdr_size` field indicates the length of the header, and therefore the
 offset of the image itself.  This field provides for backwards compatibility in
 case of changes to the format of the image header.
 
-*** FLASH MAP
+## Flash Map
 
 A device's flash is partitioned according to its _flash map_.  At a high
 level, the flash map maps numeric IDs to _flash areas_.  A flash area is a
 region of disk with the following properties:
-    (1) An area can be fully erased without affecting any other areas.
-    (2) A write to one area does not restrict writes to other areas.
+1. An area can be fully erased without affecting any other areas.
+2. A write to one area does not restrict writes to other areas.
 
 The boot loader uses the following flash area IDs:
 
+``` c
 #define FLASH_AREA_BOOTLOADER                    0
 #define FLASH_AREA_IMAGE_0                       1
 #define FLASH_AREA_IMAGE_1                       2
 #define FLASH_AREA_IMAGE_SCRATCH                 3
+```
 
 The bootloader area contains the bootloader image itself. The other areas are
 described in subsequent sections.
 
-*** IMAGE SLOTS
+## Image Slots
 
 A portion of the flash memory is partitioned into two image slots: a primary
 slot (0) and a secondary slot (1).  The boot loader will only run an image from
@@ -142,7 +146,7 @@ even when it is reset during the middle of an image swap. For this reason, the
 rest of the document describes its behavior when configured to swap images
 during an upgrade.
 
-*** BOOT SWAP TYPES
+## Boot Swap Types
 
 When the device first boots under normal circumstances, there is an up-to-date
 firmware image in slot 0, which mcuboot can validate and then chain-load. In
@@ -174,28 +178,28 @@ On startup, mcuboot inspects the contents of flash to decide which of these
 
 The possible swap types, and their meanings, are:
 
-- BOOT_SWAP_TYPE_NONE: The "usual" or "no upgrade" case; attempt to boot the
+- `BOOT_SWAP_TYPE_NONE`: The "usual" or "no upgrade" case; attempt to boot the
   contents of slot 0.
 
-- BOOT_SWAP_TYPE_TEST: Boot the contents of slot 1 by swapping images. Unless
+- `BOOT_SWAP_TYPE_TEST`: Boot the contents of slot 1 by swapping images. Unless
   the swap is made permanent, revert back on the next boot.
 
-- BOOT_SWAP_TYPE_PERM: Permanently swap images, and boot the upgraded image
+- `BOOT_SWAP_TYPE_PERM`: Permanently swap images, and boot the upgraded image
   firmware.
 
-- BOOT_SWAP_TYPE_REVERT: A previous test swap was not made permanent; swap back
+- `BOOT_SWAP_TYPE_REVERT`: A previous test swap was not made permanent; swap back
   to the old image whose data are now in slot 1.  If the old image marks itself
-  "OK" when it boots, the next boot will have swap type BOOT_SWAP_TYPE_NONE.
+  "OK" when it boots, the next boot will have swap type `BOOT_SWAP_TYPE_NONE`.
 
-- BOOT_SWAP_TYPE_FAIL: Swap failed because image to be run is not valid.
+- `BOOT_SWAP_TYPE_FAIL`: Swap failed because image to be run is not valid.
 
-- BOOT_SWAP_TYPE_PANIC: Swapping encountered an unrecoverable error.
+- `BOOT_SWAP_TYPE_PANIC`: Swapping encountered an unrecoverable error.
 
 The "swap type" is a high-level representation of the outcome of the
 boot. Subsequent sections describe how mcuboot determines the swap type from
 the bit-level contents of flash.
 
-*** IMAGE TRAILER
+## Image Trailer
 
 For the bootloader to be able to determine the current state and what actions
 should be taken during the current boot operation, it uses metadata stored in
@@ -205,6 +209,7 @@ copied into and out of the scratch area.
 This metadata is located at the end of the image flash areas, and is called an
 image trailer. An image trailer has the following structure:
 
+```
      0                   1                   2                   3
      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -222,6 +227,7 @@ image trailer. An image trailer has the following structure:
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     ~                       MAGIC (16 octets)                       ~
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
 The offset immediately following such a record represents the start of the next
 flash area.
@@ -234,12 +240,12 @@ then min-write-size is 2, and so on.
 An image trailer contains the following fields:
 
 1. Swap status: A series of records which records the progress of an image
-swap.  To swap entire images, data are swapped between the two image areas one
-or more sectors at a time, like this:
+   swap.  To swap entire images, data are swapped between the two image areas one
+   or more sectors at a time, like this:
 
-    - sector data in slot 0 is copied into scratch, then erased
-    - sector data in slot 1 is copied into slot 0, then erased
-    - sector data in scratch is copied into slot 1
+   - sector data in slot 0 is copied into scratch, then erased
+   - sector data in slot 1 is copied into slot 0, then erased
+   - sector data in scratch is copied into slot 1
 
 As it swaps images, the bootloader updates the swap status field in a way that
 allows it to compute how far this swap operation has progressed for each
@@ -250,25 +256,27 @@ its value is a bootloader design decision. The factor of min-write-sz is due to
 the behavior of flash hardware. The factor of 3 is explained below.
 
 2. Swap size: When beginning a new swap operation, the total size that needs
-to be swapped (based on the slot with largest image + tlvs) is written to this
-location for easier recovery in case of a reset while performing the swap.
+   to be swapped (based on the slot with largest image + tlvs) is written to this
+   location for easier recovery in case of a reset while performing the swap.
 
 3. Copy done: A single byte indicating whether the image in this slot is
-complete (0x01=done; 0xff=not done).
+   complete (0x01=done; 0xff=not done).
 
 4. Image OK: A single byte indicating whether the image in this slot has been
-confirmed as good by the user (0x01=confirmed; 0xff=not confirmed).
+   confirmed as good by the user (0x01=confirmed; 0xff=not confirmed).
 
 5. MAGIC: The following 16 bytes, written in host-byte-order:
 
+``` c
     const uint32_t boot_img_magic[4] = {
         0xf395c277,
         0x7fefd260,
         0x0f505235,
         0x8079b62c,
     };
+```
 
-*** IMAGE TRAILERS
+## IMAGE TRAILERS
 
 At startup, the boot loader determines the boot swap type by inspecting the
 image trailers.  When using the term "image trailers" what is meant is the
@@ -284,7 +292,7 @@ Note: An important caveat about the tables described below is that they must
 be evaluated in the order presented here. Lower state numbers must have a
 higher priority when testing the image trailers.
 
-
+```
     State I
                      | slot-0 | slot-1 |
     -----------------+--------+--------|
@@ -316,13 +324,14 @@ higher priority when testing the image trailers.
     -----------------+--------+--------'
      result: BOOT_SWAP_TYPE_REVERT     |
     -----------------------------------'
+```
 
 Any of the above three states results in mcuboot attempting to swap images.
 
 Otherwise, mcuboot does not attempt to swap images, resulting in one of the
 other three swap types, as illustrated by State IV.
 
-
+```
     State IV
                      | slot-0 | slot-1 |
     -----------------+--------+--------|
@@ -334,12 +343,13 @@ other three swap types, as illustrated by State IV.
              BOOT_SWAP_TYPE_FAIL, or   |
              BOOT_SWAP_TYPE_PANIC      |
     -----------------------------------'
+```
 
 In State IV, when no errors occur, mcuboot will attempt to boot the contents of
-slot 0 directly, and the result is BOOT_SWAP_TYPE_NONE. If the image in slot 0
-is not valid, the result is BOOT_SWAP_TYPE_FAIL. If a fatal error occurs during
-boot, the result is BOOT_SWAP_TYPE_PANIC. If the result is either
-BOOT_SWAP_TYPE_FAIL or BOOT_SWAP_TYPE_PANIC, mcuboot hangs rather than booting
+slot 0 directly, and the result is `BOOT_SWAP_TYPE_NONE`. If the image in slot 0
+is not valid, the result is `BOOT_SWAP_TYPE_FAIL`. If a fatal error occurs during
+boot, the result is `BOOT_SWAP_TYPE_PANIC`. If the result is either
+`BOOT_SWAP_TYPE_FAIL` or `BOOT_SWAP_TYPE_PANIC`, mcuboot hangs rather than booting
 an invalid or compromised image.
 
 Note: An important caveat to the above is the result when a swap is requested
@@ -348,7 +358,7 @@ Note: An important caveat to the above is the result when a swap is requested
       the image in slot 0 as "OK", to prevent further attempts to swap.
 
 
-*** HIGH-LEVEL OPERATION
+## High-Level Operation
 
 With the terms defined, we can now explore the boot loader's operation.  First,
 a high-level overview of the boot process is presented.  Then, the following
@@ -356,26 +366,26 @@ sections describe each step of the process in more detail.
 
 Procedure:
 
-A. Inspect swap status region; is an interrupted swap being resumed?
-    Yes: Complete the partial swap operation; skip to step C.
-    No: Proceed to step B.
+1. Inspect swap status region; is an interrupted swap being resumed?
+    Yes: Complete the partial swap operation; skip to step 3.
+    No: Proceed to step 2.
 
-B. Inspect image trailers; is a swap requested?
+2. Inspect image trailers; is a swap requested?
     Yes.
         1. Is the requested image valid (integrity and security check)?
             Yes.
                 a. Perform swap operation.
                 b. Persist completion of swap procedure to image trailers.
-                c. Proceed to step C.
+                c. Proceed to step 3.
             No.
                 a. Erase invalid image.
                 b. Persist failure of swap procedure to image trailers.
-                c. Proceed to step C.
-    No: Proceed to step C.
+                c. Proceed to step 3.
+    No: Proceed to step 3.
 
-C. Boot into image in slot 0.
+3. Boot into image in slot 0.
 
-*** IMAGE SWAPPING
+## Image Swapping
 
 The boot loader swaps the contents of the two image slots for two reasons:
     * User has issued a "set pending" operation; the image in slot-1 should be
@@ -391,6 +401,8 @@ later.  Furthermore, both images need to be recoverable if the boot loader
 resets in the middle of the swap operation.  The two images are swapped
 according to the following procedure:
 
+<!-- Markdown doesn't do nested numbered lists.  It will do nested
+bulletted lists, so maybe that is better. -->
     1. Determine how many flash sectors each image slot consists of.  This
        number must be the same for both slots.
     2. Iterate the list of sector indices in descending order (i.e., starting
@@ -459,7 +471,7 @@ swap was requested:
 After completing the operations as described above the image in slot 0 should
 be booted.
 
-*** SWAP STATUS
+## Swap Status
 
 The swap status region allows the boot loader to recover in case it restarts in
 the middle of an image swap operation.  The swap status region consists of a
@@ -469,6 +481,7 @@ flash hardware.  In the below figure, a min-write-size of 1 is assumed for
 simplicity.  The structure of the swap status region is illustrated below.  In
 this figure, a min-write-size of 1 is assumed for simplicity.
 
+```
      0                   1                   2                   3
      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -484,6 +497,7 @@ this figure, a min-write-size of 1 is assumed for simplicity.
     ~               +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     ~               |sec000,state 0 |sec000,state 1 |sec000,state 2 |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
 
 The above is probably not helpful at all; here is a description in English.
 
@@ -499,10 +513,12 @@ with 0.  The swap status region is a representation of this reversed list.
 
 During a swap operation, each sector index transitions through four separate
 states:
+```
     0. slot 0: image 0,   slot 1: image 1,   scratch: N/A
     1. slot 0: image 0,   slot 1: N/A,       scratch: image 1 (1->s, erase 1)
     2. slot 0: N/A,       slot 1: image 0,   scratch: image 1 (0->1, erase 0)
     3. slot 0: image 1,   slot 1: image 0,   scratch: N/A     (s->0)
+```
 
 Each time a sector index transitions to a new state, the boot loader writes a
 record to the swap status region.  Logically, the boot loader only needs one
@@ -514,15 +530,17 @@ records per sector index rather than just one.
 Each sector-state pair is represented as a set of three records.  The record
 values map to the above four states as follows
 
+```
             | rec0 | rec1 | rec2
     --------+------+------+------
     state 0 | 0xff | 0xff | 0xff
     state 1 | 0x01 | 0xff | 0xff
     state 2 | 0x01 | 0x02 | 0xff
     state 3 | 0x01 | 0x02 | 0x03
+```
 
 The swap status region can accommodate 128 sector indices.  Hence, the size of
-the region, in bytes, is 128 * min-write-size * 3.  The number 128 is chosen
+the region, in bytes, is `128 * min-write-size * 3`.  The number 128 is chosen
 somewhat arbitrarily and will likely be made configurable.  The only
 requirement for the index count is that is is great enough to account for a
 maximum-sized image (i.e., at least as great as the total sector count in an
@@ -534,7 +552,7 @@ example, if a slot uses 64 sectors, the first sector index that gets swapped is
 Note: since the scratch area only ever needs to record swapping of the last
 sector, it uses at most min-write-size * 3 bytes for its own status area.
 
-*** RESET RECOVERY
+## Reset Recovery
 
 If the boot loader resets in the middle of a swap operation, the two images may
 be discontiguous in flash.  Bootutil recovers from this condition by using the
@@ -546,6 +564,7 @@ changes during a swap operation.  The below set of tables map image trailers
 contents to swap status location.  In these tables, the "source" field
 indicates where the swap status region is located.
 
+```
               | slot-0     | scratch    |
     ----------+------------+------------|
         magic | Good       | Any        |
@@ -583,7 +602,7 @@ indicates where the swap status region is located.
     For this reason we assume slot 0 as source, to trigger a check     |
     of the status area and find out if there was swapping under way.   |
     -------------------------------------------------------------------'
-
+```
 
 If the swap status region indicates that the images are not contiguous,
 bootutil completes the swap operation that was in progress when the system was
@@ -597,17 +616,17 @@ area-swap procedure, depending on whether the part belongs to image 0 or image
 After the swap operation has been completed, the boot loader proceeds as though
 it had just been started.
 
-*** INTEGRITY CHECK
+## Integrity Check
 
 An image is checked for integrity immediately before it gets copied into the
 primary slot.  If the boot loader doesn't perform an image swap, then it can
 perform an optional integrity check of the image in slot0 if
-MCUBOOT_VALIDATE_SLOT0 is set, otherwise it doesn't perform an integrity check.
+`MCUBOOT_VALIDATE_SLOT0` is set, otherwise it doesn't perform an integrity check.
 
 During the integrity check, the boot loader verifies the following aspects of
 an image:
     * 32-bit magic number must be correct (0x96f3b83d).
-    * Image must contain an image_tlv_info struct, identified by its magic
+    * Image must contain an `image_tlv_info` struct, identified by its magic
       (0x6907) exactly following the firmware (hdr_size + img_size).
     * Image must contain a SHA256 TLV.
     * Calculated SHA256 must match SHA256 TLV contents.
@@ -616,7 +635,7 @@ an image:
       keys will then be iterated over looking for the matching key, which then
       will then be used to verify the image contents.
 
-*** SECURITY
+## Security
 
 As indicated above, the final step of the integrity check is signature
 verification.  The boot loader can have one or more public keys embedded in it
@@ -625,4 +644,5 @@ image was signed with a private key that corresponds to the embedded keyhash
 TLV.
 
 For information on embedding public keys in the boot loader, as well as
-producing signed images, see: doc/signed_images.md
+producing signed images, see: [signed_images]({% link signed_images.md
+%}).
