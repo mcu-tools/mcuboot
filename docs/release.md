@@ -15,6 +15,12 @@ incremeting the numbers:
 
 We add pre-release tags of the format MAJOR.MINOR.PATCH-rc1.
 
+## Release Notes
+
+Before making a release, be sure to update the `docs/release-notes.md`
+to describe the release.  This should be a high-level description of
+the changes, not a list of the git commits.
+
 ## Release Candidates
 
 Prior to each release, tags are made (see below) for at least one
@@ -50,6 +56,7 @@ public key is signed by enough parties to be trusted.
 At this point, the tag can be pushed to github to make the actual
 release happen:
 ``` bash
+git push origin HEAD:refs/heads/master
 git push origin va.b.c-rcn
 ```
 
