@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,10 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-MAIN_BRANCH=master
+# this retrieves the merge commit created by GH
+parents=(`git log -n 1 --format=%p HEAD`)
 
-# ignores last commit because travis/gh creates a merge commit
-commits=$(git log --format=%h ${MAIN_BRANCH}..HEAD | tail -n +2)
+if [[ "${#parents[@]}" -ne 2 ]]; then
+  echo "This PR's merge commit is missing a parent!"
+  exit 1
+fi
+
+from="${parents[0]}"
+into="${parents[1]}"
+commits=$(git show -s --format=%h ${from}..${into})
 
 has_commits=false
 for sha in $commits; do
