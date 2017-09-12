@@ -17,7 +17,7 @@ target with a complete port planned.
 
 - General: this document
 - [Release notes]({% link release-notes.md %})
-- [design]({% link design.txt %}): for the design
+- [design]({% link design.md %}): for the design
 - [imgtool]({% link imgtool.md %}): The image signing and key management
   tool.
 - [Patch submission]({% link SubmittingPatches.md %}) for information
