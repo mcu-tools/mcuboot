@@ -6,7 +6,7 @@
 [coverity]: https://scan.coverity.com/projects/mcuboot
 [travis]: https://travis-ci.org/runtimeco/mcuboot
 
-This is mcuboot, version 1.0.0-rc1
+This is mcuboot, version 1.0.0-rc2
 
 MCUBoot is a secure bootloader for 32-bit MCUs.   The goal of MCUBoot is to
 define a common infrastructure for the bootloader, system flash layout on
