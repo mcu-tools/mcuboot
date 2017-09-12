@@ -2,7 +2,7 @@
 
 ## Overview
 
-MCUBoot is a secure bootloader for 32-bit MCUs.   The goal of MCUBoot is to
+MCUboot is a secure bootloader for 32-bit MCUs.   The goal of MCUboot is to
 define a common infrastructure for the bootloader, system flash layout on
 microcontroller systems, and to provide a secure bootloader that enables
 easy software upgrade.
@@ -22,7 +22,6 @@ target with a complete port planned.
   tool.
 - [Patch submission]({% link SubmittingPatches.md %}) for information
   on how to contribute to mcuboot.
-- The [internal design]({% link design.txt %}) documentation.
 - Testing
   - The [Zephyr]({% link testplan-zephyr.md %}) test plan.
   - The [mynewt]({% link testplan-mynewt.md %}) test plan.
