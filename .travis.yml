@@ -18,3 +18,6 @@ addons:
     notification_email: utzig@apache.org
     build_command: "make -f Makefile.coverity"
     branch_pattern: "coverity_scan"
+
+# do nothing here because coverity already runs the "build_command" above
+script: ""
