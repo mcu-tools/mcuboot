@@ -2,9 +2,12 @@
 
 language: rust
 script:
-  - cd sim; cargo build --release
-  - cd sim; cargo run --release -- runall
-  - cd sim; cargo run --release --features sig-rsa -- runall
+  - set -e
+  - cd sim
+  - cargo build --release
+  - cargo run --release -- runall
+  - cargo run --release --features sig-rsa -- runall
+  - cargo run --release --features overwrite-only -- runall
 
 notifications:
   slack:
