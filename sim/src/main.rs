@@ -315,6 +315,13 @@ fn run_basic_upgrade(flash: &SimFlash, areadesc: &AreaDesc, images: &Images)
     }
 }
 
+#[cfg(feature = "overwrite-only")]
+#[allow(unused_variables)]
+fn run_basic_revert(flash: &SimFlash, areadesc: &AreaDesc, images: &Images) -> bool {
+    false
+}
+
+#[cfg(not(feature = "overwrite-only"))]
 fn run_basic_revert(flash: &SimFlash, areadesc: &AreaDesc, images: &Images) -> bool {
     let mut fails = 0;
 
@@ -413,6 +420,14 @@ fn run_perm_with_random_fails(flash: &SimFlash, areadesc: &AreaDesc,
     fails > 0
 }
 
+#[cfg(feature = "overwrite-only")]
+#[allow(unused_variables)]
+fn run_revert_with_fails(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
+                         total_count: i32) -> bool {
+    false
+}
+
+#[cfg(not(feature = "overwrite-only"))]
 fn run_revert_with_fails(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
                          total_count: i32) -> bool {
     let mut fails = 0;
@@ -430,6 +445,13 @@ fn run_revert_with_fails(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
     fails > 0
 }
 
+#[cfg(feature = "overwrite-only")]
+#[allow(unused_variables)]
+fn run_norevert(flash: &SimFlash, areadesc: &AreaDesc, images: &Images) -> bool {
+    false
+}
+
+#[cfg(not(feature = "overwrite-only"))]
 fn run_norevert(flash: &SimFlash, areadesc: &AreaDesc, images: &Images) -> bool {
     let mut fl = flash.clone();
     let mut fails = 0;
@@ -612,6 +634,7 @@ fn try_upgrade(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
     (fl, count - c::get_flash_counter())
 }
 
+#[cfg(not(feature = "overwrite-only"))]
 fn try_revert(flash: &SimFlash, areadesc: &AreaDesc, count: usize) -> SimFlash {
     let mut fl = flash.clone();
     c::set_flash_counter(0);
@@ -624,6 +647,7 @@ fn try_revert(flash: &SimFlash, areadesc: &AreaDesc, count: usize) -> SimFlash {
     fl
 }
 
+#[cfg(not(feature = "overwrite-only"))]
 fn try_revert_with_fail_at(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
                            stop: i32) -> bool {
     let mut fl = flash.clone();
@@ -834,6 +858,16 @@ fn verify_image(flash: &Flash, offset: usize, buf: &[u8]) -> bool {
     }
 }
 
+#[cfg(feature = "overwrite-only")]
+#[allow(unused_variables)]
+// overwrite-only doesn't employ trailer management
+fn verify_trailer(flash: &Flash, offset: usize,
+                  magic: Option<&[u8]>, image_ok: Option<u8>,
+                  copy_done: Option<u8>) -> bool {
+    true
+}
+
+#[cfg(not(feature = "overwrite-only"))]
 fn verify_trailer(flash: &Flash, offset: usize,
                   magic: Option<&[u8]>, image_ok: Option<u8>,
                   copy_done: Option<u8>) -> bool {
