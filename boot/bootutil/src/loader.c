@@ -1339,10 +1339,16 @@ boot_go(struct boot_rsp *rsp)
 
 #ifdef MCUBOOT_VALIDATE_SLOT0
     if (reload_headers) {
-            rc = boot_read_image_headers();
-            if (rc != 0) {
-                    goto out;
-            }
+        rc = boot_read_image_headers();
+        if (rc != 0) {
+            goto out;
+        }
+        /* Since headers were reloaded, it can be assumed we just performed a
+         * swap or overwrite. Now the header info that should be used to
+         * provide the data for the bootstrap, which previously was at Slot 1,
+         * was updated to Slot 0.
+         */
+        slot = 0;
     }
 
     rc = boot_validate_slot(0);
