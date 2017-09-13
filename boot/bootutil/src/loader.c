@@ -1022,8 +1022,7 @@ boot_copy_image(struct boot_status *bs)
         size += this_size;
     }
 
-    BOOT_LOG_INF("Copying slot 1 to slot 0: 0x%x bytes",
-                 size);
+    BOOT_LOG_INF("Copying slot 1 to slot 0: 0x%lx bytes", size);
     rc = boot_copy_sector(FLASH_AREA_IMAGE_1, FLASH_AREA_IMAGE_0,
                           0, 0, size);
 
