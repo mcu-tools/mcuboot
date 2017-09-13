@@ -1112,6 +1112,7 @@ boot_copy_image(struct boot_status *bs)
 /**
  * Marks the image in slot 0 as fully copied.
  */
+#ifndef MCUBOOT_OVERWRITE_ONLY
 static int
 boot_set_copy_done(void)
 {
@@ -1127,6 +1128,7 @@ boot_set_copy_done(void)
     flash_area_close(fap);
     return rc;
 }
+#endif /* !MCUBOOT_OVERWRITE_ONLY */
 
 /**
  * Marks a reverted image in slot 0 as confirmed.  This is necessary to ensure
@@ -1137,6 +1139,7 @@ boot_set_copy_done(void)
  * image installed on slot0 and the new image to be upgrade to has a bad sig,
  * image_ok would be overwritten.
  */
+#ifndef MCUBOOT_OVERWRITE_ONLY
 static int
 boot_set_image_ok(void)
 {
@@ -1163,6 +1166,7 @@ out:
     flash_area_close(fap);
     return rc;
 }
+#endif /* !MCUBOOT_OVERWRITE_ONLY */
 
 /**
  * Performs an image swap if one is required.
@@ -1283,10 +1287,12 @@ boot_go(struct boot_rsp *rsp)
          * swap was finished to avoid a new revert.
          */
         if (swap_type == BOOT_SWAP_TYPE_REVERT || swap_type == BOOT_SWAP_TYPE_FAIL) {
+#ifndef MCUBOOT_OVERWRITE_ONLY
             rc = boot_set_image_ok();
             if (rc != 0) {
                 swap_type = BOOT_SWAP_TYPE_PANIC;
             }
+#endif /* !MCUBOOT_OVERWRITE_ONLY */
         }
     } else {
         swap_type = BOOT_SWAP_TYPE_NONE;
@@ -1302,10 +1308,12 @@ boot_go(struct boot_rsp *rsp)
     case BOOT_SWAP_TYPE_REVERT:
         slot = 1;
         reload_headers = true;
+#ifndef MCUBOOT_OVERWRITE_ONLY
         rc = boot_set_copy_done();
         if (rc != 0) {
             swap_type = BOOT_SWAP_TYPE_PANIC;
         }
+#endif /* !MCUBOOT_OVERWRITE_ONLY */
         break;
 
     case BOOT_SWAP_TYPE_FAIL:
