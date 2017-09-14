@@ -32,13 +32,13 @@ struct device *boot_flash_device;
 
 void os_heap_init(void);
 
+extern void zephyr_flash_area_warn_on_open(void);
+
 #if defined(CONFIG_ARM)
 struct arm_vector_table {
     uint32_t msp;
     uint32_t reset;
 };
-
-extern void zephyr_flash_area_warn_on_open(void);
 
 static void do_boot(struct boot_rsp *rsp)
 {
