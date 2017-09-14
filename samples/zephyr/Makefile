@@ -49,12 +49,16 @@
 
 BOARD ?=
 
+# We can override the Zephyr configuration for the bootloader by
+# setting this.
+BOOTLOADER_CONFIG ?=
+
 .PHONY: check boot hello1 clean_boot clean_hello1 \
 	hello2 clean_hello2 flash_boot flash_hello1 flash_hello2
 
 # For signing, use the default RSA demo key, to match the default in
 # the mcuboot Makefile.
-SIGNING_KEY = ../../root-rsa-2048.pem
+SIGNING_KEY ?= ../../root-rsa-2048.pem
 
 # The header size should match that in hello1/prj.conf
 # CONFIG_TEXT_SECTION_OFFSET.  This value needs to be a power of two
@@ -92,7 +96,7 @@ clean: clean_boot clean_hello1 clean_hello2
 
 boot: check
 	@rm -f mcuboot.bin
-	$(MAKE) -C ../.. BOARD=$(BOARD) -j$(nproc)
+	$(MAKE) -C ../.. BOARD=$(BOARD) -j$(nproc) $(BOOTLOADER_CONFIG)
 	cp ../../outdir/$(BOARD)/zephyr.bin mcuboot.bin
 
 clean_boot: check
@@ -133,6 +137,9 @@ hello2: check
 clean_hello2: check
 	rm -rf hello-world/outdir/hello2/$(BOARD)
 
+# These flash_* targets use pyocd to flash the images.  The addresses
+# are hardcoded at this time.
+
 flash_boot:
 	$(PYOCD_FLASHTOOL) -ce -a 0 mcuboot.bin
 
@@ -144,6 +151,139 @@ flash_hello2:
 
 flash_full:
 	$(PYOCD_FLASHTOOL) -ce -a 0 full.bin
+
+# These test- targets reinvoke make with the configuration set to test
+# various configurations.  This will generally be followed by using
+# the above flash targets.
+
+# Test a good image, with a good upgrade, using RSA signatures.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2: hello2 runs
+# reset: hello1 runs
+test-good-rsa:
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=RSA" \
+	    clean
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=RSA" \
+	    all
+
+# Test a good image, with a good upgrade, using ECDSA signatures.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2: hello2 runs
+# reset: hello1 runs
+test-good-ecdsa:
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=ECDSA_P256" \
+	    SIGNING_KEY=../../root-ec-p256.pem \
+	    clean
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=ECDSA_P256" \
+	    SIGNING_KEY=../../root-ec-p256.pem \
+	    all
+
+# Test (with RSA) that overwrite-only works.  This should boot,
+# upgrade correctly, but not revert once the upgrade has been done.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2: hello2 runs
+# reset: hello2 runs
+test-overwrite:
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_UPGRADE_ONLY=YES" \
+	    clean
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_UPGRADE_ONLY=YES" \
+	    all
+
+# Test that when configured for RSA, a wrong signature in the upgrade
+# image will fail to upgrade.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2: hello1 runs
+# reset: hello1 runs
+test-bad-rsa-upgrade:
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=RSA" \
+	    clean
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=RSA" \
+	    boot hello1
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=RSA" \
+	    SIGNING_KEY=../../root-ec-p256.pem \
+	    hello2
+
+# Test that when configured for ECDSA, a wrong signature in the upgrade
+# image will fail to upgrade.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2: hello1 runs
+# reset: hello1 runs
+test-bad-ecdsa-upgrade:
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=ECDSA_P256" \
+	    clean
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=ECDSA_P256" \
+	    SIGNING_KEY=../../root-ec-p256.pem \
+	    boot hello1
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=ECDSA_P256" \
+	    SIGNING_KEY=../../root-rsa-2048.pem \
+	    hello2
+
+# Test that when configured to not validate slot0, we still boot, but
+# don't upgrade.
+# flash_boot: tries to boot and resets
+# flash_hello1: hello1 runs
+# flash_hello2: hello1 runs
+# reset: hello1 runs
+test-no-bootcheck:
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_VALIDATE_SLOT0=NO" \
+	    clean
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_VALIDATE_SLOT0=NO" \
+	    SIGNING_KEY=../../root-ec-p256.pem \
+	    all
+
+# Test a good image, with a wrong-signature upgrade, using RSA signatures.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2: hello1 runs
+# reset: hello1 runs
+test-wrong-rsa:
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=RSA" \
+	    clean
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=RSA" \
+	    boot hello1
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=RSA" \
+	    SIGNING_KEY=bad-keys/bad-rsa-2048.pem \
+	    hello2
+
+# Test a good image, with a wrong-signature upgrade, using ECDSA signatures.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2: hello1 runs
+# reset: hello1 runs
+test-wrong-ecdsa:
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=ECDSA_P256" \
+	    clean
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=ECDSA_P256" \
+	    SIGNING_KEY=../../root-ec-p256.pem \
+	    boot hello1
+	$(MAKE) \
+	    BOOTLOADER_CONFIG="CONF_SIGNATURE_TYPE=ECDSA_P256" \
+	    SIGNING_KEY=bad-keys/bad-ec-p256.pem \
+	    hello2
 
 check:
 	@if [ -z "$$ZEPHYR_BASE" ]; then echo "Zephyr environment not set up"; false; fi
