@@ -8,11 +8,6 @@ if [ -z "$BOARD" ]; then
 	exit 1;
 fi
 
-if [ ! -f "$(dirname $0)/boot/zephyr/targets/${BOARD}.h" ]; then
-	echo "Board $BOARD not yet supported, please use a supported target."
-	exit 1;
-fi
-
 # Check if there is a valid Zephyr environment available
 if [ -z "$ZEPHYR_BASE" ]; then
 	echo "ZEPHYR_BASE not provided by the environment."
