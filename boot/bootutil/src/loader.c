@@ -779,6 +779,7 @@ done:
     return rc;
 }
 
+#ifndef MCUBOOT_OVERWRITE_ONLY
 static inline int
 boot_status_init_by_id(int flash_area_id, const struct boot_status *bs)
 {
@@ -807,6 +808,7 @@ boot_status_init_by_id(int flash_area_id, const struct boot_status *bs)
 
     return 0;
 }
+#endif
 
 #ifndef MCUBOOT_OVERWRITE_ONLY
 static int
