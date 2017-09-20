@@ -6,12 +6,24 @@
 #ifndef H_TARGETS_TARGET_
 #define H_TARGETS_TARGET_
 
-/* Board-specific definitions go first, to allow maximum override. */
 #if defined(MCUBOOT_TARGET_CONFIG)
+/*
+ * Target-specific definitions are permitted in legacy cases that
+ * don't provide the information via DTS, etc.
+ */
 #include MCUBOOT_TARGET_CONFIG
-#endif
+#else
+/*
+ * Otherwise, the Zephyr SoC header and the DTS provide most
+ * everything we need.
+ *
+ * TODO: remove soc_family_foo.h once image sector sizes come from the
+ * flash driver.
+ */
+#include <soc.h>
 
-/* SoC family configuration. */
+#define FLASH_ALIGN FLASH_WRITE_BLOCK_SIZE
+
 #if defined(CONFIG_SOC_FAMILY_NRF5)
 #include "soc_family_nrf5.h"
 #elif defined(CONFIG_SOC_FAMILY_STM32)
@@ -19,11 +31,10 @@
 #elif defined(CONFIG_SOC_FAMILY_KINETIS)
 #include "soc_family_kinetis.h"
 #endif
+#endif /* !defined(MCUBOOT_TARGET_CONFIG) */
 
 /*
- * This information can come from DTS, a target-specific header file,
- * or an SoC-specific header file. If any of it is missing, target
- * support is incomplete.
+ * Sanity check the target support.
  */
 #if !defined(FLASH_DRIVER_NAME) || \
     !defined(FLASH_ALIGN) ||                  \
