@@ -16,19 +16,16 @@
 /*
  * Otherwise, the Zephyr SoC header and the DTS provide most
  * everything we need.
- *
- * TODO: remove soc_family_foo.h once image sector sizes come from the
- * flash driver.
  */
 #include <soc.h>
 
 #define FLASH_ALIGN FLASH_WRITE_BLOCK_SIZE
 
-#if defined(CONFIG_SOC_FAMILY_NRF5)
-#include "soc_family_nrf5.h"
-#elif defined(CONFIG_SOC_FAMILY_STM32)
-#include "soc_family_stm32.h"
-#elif defined(CONFIG_SOC_FAMILY_KINETIS)
+/*
+ * TODO: remove soc_family_kinetis.h once its flash driver supports
+ * FLASH_PAGE_LAYOUT.
+ */
+#if defined(CONFIG_SOC_FAMILY_KINETIS)
 #include "soc_family_kinetis.h"
 #endif
 #endif /* !defined(MCUBOOT_TARGET_CONFIG) */

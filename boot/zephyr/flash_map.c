@@ -197,12 +197,11 @@ int flash_area_id_from_image_slot(int slot)
     return slot + FLASH_AREA_IMAGE_0;
 }
 
-#ifndef FLASH_AREA_IMAGE_SECTOR_SIZE
-#warning "Missing FLASH_AREA_IMAGE_SECTOR_SIZE; assuming scratch size instead"
-#define FLASH_AREA_IMAGE_SECTOR_SIZE FLASH_AREA_IMAGE_SCRATCH_SIZE
-#endif
-
-static int validate_idx(int idx, uint32_t *off, uint32_t *len)
+/*
+ * This is used by the legacy file as well; don't mark it static until
+ * that file is removed.
+ */
+int flash_area_get_bounds(int idx, uint32_t *off, uint32_t *len)
 {
     /*
      * This simple layout has uniform slots, so just fill in the
@@ -230,92 +229,132 @@ static int validate_idx(int idx, uint32_t *off, uint32_t *len)
         return -1;
     }
 
-    BOOT_LOG_DBG("area %d: offset=0x%x, length=0x%x, sector size=0x%x",
-                 idx, *off, *len, FLASH_AREA_IMAGE_SECTOR_SIZE);
-    return 0;
-}
-
-int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
-{
-    uint32_t off;
-    uint32_t len;
-    uint32_t max_cnt = *cnt;
-    uint32_t rem_len;
-
-    if (validate_idx(idx, &off, &len)) {
-        return -1;
-    }
-
-    if (*cnt < 1) {
-        return -1;
-    }
-
-    rem_len = len;
-    *cnt = 0;
-    while (rem_len > 0 && *cnt < max_cnt) {
-        if (rem_len < FLASH_AREA_IMAGE_SECTOR_SIZE) {
-            BOOT_LOG_ERR("area %d size 0x%x not divisible by sector size 0x%x",
-                     idx, len, FLASH_AREA_IMAGE_SECTOR_SIZE);
-            return -1;
-        }
-
-        ret[*cnt].fa_id = idx;
-        ret[*cnt].fa_device_id = 0;
-        ret[*cnt].pad16 = 0;
-        ret[*cnt].fa_off = off + (FLASH_AREA_IMAGE_SECTOR_SIZE * (*cnt));
-        ret[*cnt].fa_size = FLASH_AREA_IMAGE_SECTOR_SIZE;
-        *cnt = *cnt + 1;
-        rem_len -= FLASH_AREA_IMAGE_SECTOR_SIZE;
-    }
-
-    if (*cnt >= max_cnt) {
-        BOOT_LOG_ERR("flash area %d sector count overflow", idx);
-        return -1;
-    }
-
+    BOOT_LOG_DBG("area %d: offset=0x%x, length=0x%x", idx, *off, *len);
     return 0;
 }
 
 /*
- * Lookup the sector map for a given flash area.  This should fill in
- * `ret` with all of the sectors in the area.  `*cnt` will be set to
- * the storage at `ret` and should be set to the final number of
- * sectors in this area.
+ * The legacy fallbacks are used instead if the flash driver doesn't
+ * provide page layout support.
  */
+#if defined(CONFIG_FLASH_PAGE_LAYOUT)
+struct layout_data {
+    uint32_t area_idx;
+    uint32_t area_off;
+    uint32_t area_len;
+    void *ret;        /* struct flash_area* or struct flash_sector* */
+    uint32_t ret_idx;
+    uint32_t ret_len;
+    int status;
+};
+
+/*
+ * Generic page layout discovery routine. This is kept separate to
+ * support both the deprecated flash_area_to_sectors() and the current
+ * flash_area_get_sectors(). A lot of this can be inlined once
+ * flash_area_to_sectors() is removed.
+ */
+static int flash_area_layout(int idx, int *cnt, void *ret,
+                             flash_page_cb cb, struct layout_data *cb_data)
+{
+    cb_data->area_idx = idx;
+    if (flash_area_get_bounds(idx, &cb_data->area_off, &cb_data->area_len)) {
+        return -1;
+    }
+    cb_data->ret = ret;
+    cb_data->ret_idx = 0;
+    cb_data->ret_len = *cnt;
+    cb_data->status = 0;
+
+    flash_page_foreach(boot_flash_device, cb, cb_data);
+
+    if (cb_data->status == 0) {
+        *cnt = cb_data->ret_idx;
+    }
+
+    return cb_data->status;
+}
+
+/*
+ * Check if a flash_page_foreach() callback should exit early, due to
+ * one of the following conditions:
+ *
+ * - The flash page described by "info" is before the area of interest
+ *   described in "data"
+ * - The flash page is after the end of the area
+ * - There are too many flash pages on the device to fit in the array
+ *   held in data->ret. In this case, data->status is set to -ENOMEM.
+ *
+ * The value to return to flash_page_foreach() is stored in
+ * "bail_value" if the callback should exit early.
+ */
+static bool should_bail(const struct flash_pages_info *info,
+                        struct layout_data *data,
+                        bool *bail_value)
+{
+    if (info->start_offset < data->area_off) {
+        *bail_value = true;
+        return true;
+    } else if (info->start_offset >= data->area_off + data->area_len) {
+        *bail_value = false;
+        return true;
+    } else if (data->ret_idx >= data->ret_len) {
+        data->status = -ENOMEM;
+        *bail_value = false;
+        return true;
+    }
+
+    return false;
+}
+
+static bool to_sectors_cb(const struct flash_pages_info *info, void *datav)
+{
+    struct layout_data *data = datav;
+    struct flash_area *ret = data->ret;
+    bool bail;
+
+    if (should_bail(info, data, &bail)) {
+        return bail;
+    }
+
+    ret[data->ret_idx].fa_id = data->area_idx;
+    ret[data->ret_idx].fa_device_id = 0;
+    ret[data->ret_idx].pad16 = 0;
+    ret[data->ret_idx].fa_off = info->start_offset;
+    ret[data->ret_idx].fa_size = info->size;
+    data->ret_idx++;
+
+    return true;
+}
+
+int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
+{
+    struct layout_data data;
+
+    return flash_area_layout(idx, cnt, ret, to_sectors_cb, &data);
+}
+
+static bool get_sectors_cb(const struct flash_pages_info *info, void *datav)
+{
+    struct layout_data *data = datav;
+    struct flash_sector *ret = data->ret;
+    bool bail;
+
+    if (should_bail(info, data, &bail)) {
+        return bail;
+    }
+
+    ret[data->ret_idx].fs_off = info->start_offset - data->area_off;
+    ret[data->ret_idx].fs_size = info->size;
+    data->ret_idx++;
+
+    return true;
+}
+
 int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
 {
-    uint32_t off;
-    uint32_t len;
-    uint32_t max_cnt = *cnt;
-    uint32_t rem_len;
+    struct layout_data data;
 
-    if (validate_idx(idx, &off, &len)) {
-        return -1;
-    }
-
-    if (*cnt < 1) {
-        return -1;
-    }
-
-    rem_len = len;
-    *cnt = 0;
-    while (rem_len > 0 && *cnt < max_cnt) {
-        if (rem_len < FLASH_AREA_IMAGE_SECTOR_SIZE) {
-            BOOT_LOG_ERR("area %d size 0x%x not divisible by sector size 0x%x",
-                         idx, len, FLASH_AREA_IMAGE_SECTOR_SIZE);
-            return -1;
-        }
-
-        ret[*cnt].fs_off = FLASH_AREA_IMAGE_SECTOR_SIZE * (*cnt);
-        ret[*cnt].fs_size = FLASH_AREA_IMAGE_SECTOR_SIZE;
-        *cnt = *cnt + 1;
-        rem_len -= FLASH_AREA_IMAGE_SECTOR_SIZE;
-    }
-
-    if (*cnt >= max_cnt) {
-        BOOT_LOG_ERR("flash area %d sector count overflow", idx);
-        return -1;
-    }
-
-    return 0;
+    return flash_area_layout(idx, cnt, ret, get_sectors_cb, &data);
 }
+#endif /* defined(CONFIG_FLASH_PAGE_LAYOUT) */
