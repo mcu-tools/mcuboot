@@ -1,0 +1,44 @@
+# Copyright (c) 2017 Linaro Limited
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+mainmenu "MCUBOOT configuration"
+
+config ZEPHYR_BASE
+	string
+	option env="ZEPHYR_BASE"
+
+source "$ZEPHYR_BASE/Kconfig.zephyr"
+
+menuconfig MCUBOOT_SERIAL
+	bool
+	prompt "MCUBOOT serial recovery"
+	default n
+	select REBOOT
+	help
+	  Enable serial recovery feature in mcuboot.
+
+config BOOT_SERIAL_DETECT_PORT
+	string
+	prompt "GPIO Port to trigger serial recovery mode"
+	default CONFIG_GPIO_NRF5_P0_DEV_NAME
+	depends on MCUBOOT_SERIAL
+	help
+	  Serial recovery detect port
+
+config BOOT_SERIAL_DETECT_PIN
+	int
+	prompt "Pin to trigger serial recovery mode"
+	default 0
+	depends on MCUBOOT_SERIAL
+	help
+	  Serial recovery detect pin
+
+config BOOT_SERIAL_DETECT_PIN_VAL
+	int "Boot Pin trigger value"
+	default 0
+	range 0 1
+	depends on MCUBOOT_SERIAL
+	help
+	  The input pin logic value which triggers the boot serial recovery mode.
