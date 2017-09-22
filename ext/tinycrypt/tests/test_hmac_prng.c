@@ -1,7 +1,7 @@
 /*  test_hmac_prng.c - TinyCrypt implementation of some HMAC-PRNG tests */
 
 /*
- *  Copyright (C) 2015 by Intel Corporation, All Rights Reserved.
+ *  Copyright (C) 2017 by Intel Corporation, All Rights Reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -48,24 +48,44 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define TC_DEBUG_MODE 0
+
+#ifdef TC_DEBUG_MODE
+void show(const char *label, const uint8_t *s, size_t len)
+{
+	unsigned int i;
+	printf ("%s = ", label);
+	for (i = 0; i < (unsigned int) len; ++i) {
+		printf ("%02x", s[i]);
+	}
+	printf ("\n");
+}
+
+void printBinaryFile(const uint8_t *s, unsigned int slen)
+{
+	FILE *write_ptr;
+	write_ptr = fopen("pseudo-random-data.bin","wb");
+	fwrite(s, slen, 1, write_ptr);
+}
+#endif
+
 /*
  * Main task to test AES
  */
-
 int main(void)
 {
         uint8_t seed[128];
         struct tc_hmac_prng_struct h;
-        uint32_t size = (1 << 15);
+        unsigned int size = (1 << 19);
         uint8_t random[size];
-        uint32_t i;
-        uint32_t result = TC_PASS;
+        unsigned int i;
+        unsigned int result = TC_PASS;
 
         TC_START("Performing HMAC-PRNG tests:");
         TC_PRINT("HMAC-PRNG test#1 (init, reseed, generate):\n");
 
         /* Fake seed (replace by a a truly random seed): */
-        for (i = 0; i < (uint32_t) sizeof(seed); ++i) {
+        for (i = 0; i < (unsigned int) sizeof(seed); ++i) {
                 seed[i] = i;
         }
 
@@ -101,6 +121,11 @@ int main(void)
                 goto exitTest;
         }
         TC_END_RESULT(result);
+
+#ifdef TC_DEBUG_MODE
+	printBinaryFile(random, size);
+	show ("Pseudo-random data", random, size);
+#endif
 
         TC_PRINT("All HMAC tests succeeded!\n");
 

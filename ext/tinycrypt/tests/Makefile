@@ -1,6 +1,6 @@
 ################################################################################
 #
-#      Copyright (C) 2015 by Intel Corporation, All Rights Reserved.
+#      Copyright (C) 2017 by Intel Corporation, All Rights Reserved.
 #
 # 								           Tests Makefile.
 #
@@ -56,11 +56,11 @@ test_hmac_prng$(DOTEXE): test_hmac_prng.o hmac_prng.o hmac.o \
 test_sha256$(DOTEXE): test_sha256.o sha256.o utils.o
 	$(LINK.o) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
-test_ecc_dh$(DOTEXE): test_ecc_dh.o ecc.o ecc_dh.o test_ecc_utils.o
+test_ecc_dh$(DOTEXE): test_ecc_dh.o ecc.o ecc_dh.o test_ecc_utils.o ecc_platform_specific.o
 	$(LINK.o) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
 test_ecc_dsa$(DOTEXE): test_ecc_dsa.o ecc.o utils.o ecc_dh.o \
-		ecc_dsa.o sha256.o test_ecc_utils.o
+		ecc_dsa.o sha256.o test_ecc_utils.o ecc_platform_specific.o
 	$(LINK.o) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
 

@@ -1,7 +1,7 @@
 
 TinyCrypt Cryptographic Library
 ###############################
-Copyright (C) 2015 by Intel Corporation, All Rights Reserved.
+Copyright (C) 2017 by Intel Corporation, All Rights Reserved.
 
 Overview
 ********
@@ -72,13 +72,13 @@ corresponding header file.
   
 * ECC-DH:
 
-  * Type of primitive: Key exchange.
+  * Type of primitive: Key exchange based on curve NIST p-256.
   * Standard Specification: RFC 6090.
   * Requires: ECC auxiliary functions (ecc.h/c).
 
 * ECC-DSA:
 
-  * Type of primitive: Digital signature.
+  * Type of primitive: Digital signature based on curve NIST p-256.
   * Standard Specification: RFC 6090.
   * Requires: ECC auxiliary functions (ecc.h/c).
 
@@ -102,15 +102,17 @@ Important Remarks
 
 The cryptographic implementations in TinyCrypt library have some limitations.
 Some of these limitations are inherent to the cryptographic primitives
-themselves, while others are specific to TinyCrypt. Some of these limitations
-are discussed in-depth below.
+themselves, while others are specific to TinyCrypt. These limitations were accepted
+in order to meet its design goals (in special, minimal code size) and to better 
+serve applications targeting constrained devices in general. Some of these 
+limitations are discussed in-depth below.
 
 General Remarks
 ***************
 
 * TinyCrypt does **not** intend to be fully side-channel resistant. Due to the
-  variety of side-channel attacks, many of them making certain platforms
-  vulnerable. In this sense, instead of penalizing all library users with
+  variety of side-channel attacks, many of them only relevant to certain 
+  platforms. In this sense, instead of penalizing all library users with
   side-channel countermeasures such as increasing the overall code size,
   TinyCrypt only implements certain generic timing-attack countermeasures.
 
@@ -134,7 +136,9 @@ Specific Remarks
 
   * The tc_hmac_final function, responsible for computing the message tag,
     cleans the state context before exiting. Thus, applications do not need to
-    clean the TCHmacState_t ctx after calling tc_hmac_final.
+    clean the TCHmacState_t ctx after calling tc_hmac_final. This should not
+    be changed in future versions of the library as there are applications
+    currently relying on this good-practice/feature of TinyCrypt.
 
 * HMAC-PRNG:
 
@@ -160,7 +164,7 @@ Specific Remarks
   * The AES-CTR mode limits the size of a data message they encrypt to 2^32
     blocks. If you need to encrypt larger data sets, your application would
     need to replace the key after 2^32 block encryptions.
-    
+
 * CTR-PRNG:
 
   * Before using CTR-PRNG, you *must* find an entropy source to produce a seed.
@@ -231,17 +235,23 @@ Specific Remarks
 
 * ECC-DH and ECC-DSA:
 
-  * TinyCrypt ECC implementation is based on nano-ecc (see
-    https://github.com/iSECPartners/nano-ecc) which in turn is based on
-    mciro-ecc (see https://github.com/kmackay/micro-ecc). In the original
-    nano and micro-ecc documentation, there is an important remark about the
-    way integers are represented:
+  * TinyCrypt ECC implementation is based on micro-ecc (see
+    https://github.com/kmackay/micro-ecc). In the original micro-ecc 
+    documentation, there is an important remark about the way integers are
+    represented:
 
     "Integer representation: To reduce code size, all large integers are
     represented using little-endian words - so the least significant word is
     first. You can use the 'ecc_bytes2native()' and 'ecc_native2bytes()'
     functions to convert between the native integer representation and the
     standardized octet representation."
+
+    Note that the assumed bit layout is: {31, 30, ..., 0}, {63, 62, ..., 32},
+    {95, 94, ..., 64}, {127, 126, ..., 96} for a very-long-integer (vli)
+    consisting of 4 unsigned integers (as an example).
+
+  * A cryptographically-secure PRNG function must be set (using uECC_set_rng())
+    before calling uECC_make_key() or uECC_sign().
 
 Examples of Applications
 ************************
@@ -321,9 +331,9 @@ References
 .. _NIST SP 800-38C (AES-CCM):
     http://csrc.nist.gov/publications/nistpubs/800-38C/SP800-38C_updated-July20_2007.pdf
 
-* `NIST Statistical Test Suite`_
+* `NIST Statistical Test Suite (useful for testing HMAC-PRNG)`_
 
-.. _NIST Statistical Test Suite:
+.. _NIST Statistical Test Suite (useful for testing HMAC-PRNG):
    http://csrc.nist.gov/groups/ST/toolkit/rng/documentation_software.html
 
 * `NIST Cryptographic Algorithm Validation Program (CAVP) site`_

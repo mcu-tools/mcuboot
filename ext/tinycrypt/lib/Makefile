@@ -1,8 +1,8 @@
 ################################################################################
 #
-#      Copyright (C) 2015 by Intel Corporation, All Rights Reserved.
+#      Copyright (C) 2017 by Intel Corporation, All Rights Reserved.
 #
-# 								   Cryptographic Primitives Makefile.
+# 			Cryptographic Primitives Makefile.
 #
 ################################################################################
 

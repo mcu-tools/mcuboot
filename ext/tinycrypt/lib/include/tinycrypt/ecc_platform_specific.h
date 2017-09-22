@@ -1,4 +1,4 @@
-/*  test_ecc_utils.h - TinyCrypt interface to common functions for ECC tests */
+/*  uECC_platform_specific.h - Interface to platform specific functions*/
 
 /* Copyright (c) 2014, Kenneth MacKay
  * All rights reserved.
@@ -52,49 +52,30 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  *
- *  test_ecc_utils.h -- Interface to common functions for ECC tests.
+ *  uECC_platform_specific.h -- Interface to platform specific functions
  */
 
-#ifndef __TEST_ECC_UTILS_H__
-#define __TEST_ECC_UTILS_H__
-
-#include <tinycrypt/ecc_dh.h>
-#include <tinycrypt/ecc.h>
-#include <test_utils.h>
-
-int hex2int (char hex);
-
+#ifndef __UECC_PLATFORM_SPECIFIC_H_
+#define __UECC_PLATFORM_SPECIFIC_H_
 
 /*
- * Convert hex string to byte string
- * Return number of bytes written to buf, or 0 on error
- */
-int hex2bin(uint8_t *buf, const size_t buflen, const char *hex,
-	    const size_t hexlen);
+ * The RNG function should fill 'size' random bytes into 'dest'. It should
+ * return 1 if 'dest' was filled with random data, or 0 if the random data could
+ * not be generated. The filled-in values should be either truly random, or from
+ * a cryptographically-secure PRNG.
+ *
+ * A cryptographically-secure PRNG function must be set (using uECC_set_rng())
+ * before calling uECC_make_key() or uECC_sign().
+ *
+ * Setting a cryptographically-secure PRNG function improves the resistance to
+ * side-channel attacks for uECC_shared_secret().
+ *
+ * A correct PRNG function is set by default (default_RNG_defined = 1) and works
+ * for some platforms, such as Unix and Linux. For other platforms, you may need
+ * to provide another PRNG function.
+*/
+#define default_RNG_defined 1
 
-/*
- * Convert hex string to zero-padded nanoECC scalar
- */
-void string2scalar(unsigned int * scalar, unsigned int num_word32, char *str);
+int default_CSPRNG(uint8_t *dest, unsigned int size);
 
-
-void print_ecc_scalar(const char *label, const unsigned int * p_vli,
-		      unsigned int num_word32);
-
-int check_ecc_result(const int num, const char *name,
-		      const unsigned int *expected, 
-		      const unsigned int *computed,
-		      const unsigned int num_word32, const bool verbose);
-
-/* Test ecc_make_keys, and also as keygen part of other tests */
-int keygen_vectors(char **d_vec, char **qx_vec, char **qy_vec, int tests, bool verbose);
-
-void vli_print_bytes(uint8_t *vli, unsigned int size);
-
-
-int check_code(const int num, const char *name, const int expected,
-		const int computed, const int verbose);
-
-
-#endif /* __TEST_ECC_UTILS_H__ */
-
+#endif /* __UECC_PLATFORM_SPECIFIC_H_ */

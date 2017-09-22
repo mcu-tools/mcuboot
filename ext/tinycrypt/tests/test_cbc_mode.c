@@ -1,7 +1,7 @@
 /* test_cbc_mode.c - TinyCrypt implementation of some AES-CBC tests */
 
 /*
- *  Copyright (C) 2015 by Intel Corporation, All Rights Reserved.
+ *  Copyright (C) 2017 by Intel Corporation, All Rights Reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -108,7 +108,7 @@ int test_1_and_2(void)
 	uint8_t encrypted[80];
 	uint8_t decrypted[64];
 	uint8_t *p;
-	uint32_t length;
+	unsigned int length;
 	int result = TC_PASS;
 
 	(void)tc_aes128_set_encrypt_key(&a, key);
@@ -116,36 +116,34 @@ int test_1_and_2(void)
 	(void)memcpy(iv_buffer, iv, TC_AES_BLOCK_SIZE);
 
 	TC_PRINT("CBC test #1 (encryption SP 800-38a tests):\n");
-	if (tc_cbc_mode_encrypt(encrypted,
-				sizeof(plaintext) + TC_AES_BLOCK_SIZE,
-				plaintext, sizeof(plaintext),
-				iv_buffer, &a) == 0) {
+	if (tc_cbc_mode_encrypt(encrypted, sizeof(plaintext) + TC_AES_BLOCK_SIZE,
+				plaintext, sizeof(plaintext), iv_buffer, &a) == 0) {
 		TC_ERROR("CBC test #1 (encryption SP 800-38a tests) failed in "
 			 "%s.\n", __func__);
 		result = TC_FAIL;
 		goto exitTest1;
 	}
 
-	result = check_result(1, ciphertext, sizeof(encrypted),
-			      encrypted, sizeof(encrypted));
+	result = check_result(1, ciphertext, sizeof(encrypted), encrypted,
+			      sizeof(encrypted));
 	TC_END_RESULT(result);
 
 	TC_PRINT("CBC test #2 (decryption SP 800-38a tests):\n");
 	(void)tc_aes128_set_decrypt_key(&a, key);
 
 	p = &encrypted[TC_AES_BLOCK_SIZE];
-	length = ((uint32_t) sizeof(encrypted)) - TC_AES_BLOCK_SIZE;
+	length = ((unsigned int) sizeof(encrypted)) - TC_AES_BLOCK_SIZE;
 
-	if (tc_cbc_mode_decrypt(decrypted, length - TC_AES_BLOCK_SIZE, p,
-				length, encrypted, &a) == 0) {
+	if (tc_cbc_mode_decrypt(decrypted, length - TC_AES_BLOCK_SIZE, p, length,
+				encrypted, &a) == 0) {
 		TC_ERROR("CBC test #2 (decryption SP 800-38a tests) failed in. "
 			 "%s\n", __func__);
 		result = TC_FAIL;
 		goto exitTest1;
 	}
 
-	result = check_result(2, plaintext, sizeof(decrypted),
-			      decrypted, sizeof(decrypted));
+	result = check_result(2, plaintext, sizeof(decrypted), decrypted,
+			      sizeof(decrypted));
 
 exitTest1:
 	TC_END_RESULT(result);
@@ -163,7 +161,8 @@ int main(void)
 
 	TC_PRINT("Performing CBC tests:\n");
 	result = test_1_and_2();
-	if (result == TC_FAIL) {	/* terminate test */
+	if (result == TC_FAIL) {	
+		/* terminate test */
 		TC_ERROR("CBC test #1 failed.\n");
 		goto exitTest;
 	}

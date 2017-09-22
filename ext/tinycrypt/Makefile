@@ -1,6 +1,6 @@
 ################################################################################
 #
-#      Copyright (C) 2015 by Intel Corporation, All Rights Reserved.
+#      Copyright (C) 2017 by Intel Corporation, All Rights Reserved.
 #
 # 								           Global Makefile. 
 #	  		See lib/Makefile and tests/Makefile for further configuration.
