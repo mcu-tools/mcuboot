@@ -1,9 +1,7 @@
-/* test_aes.c - TinyCrypt
- * Implementation of some AES-128 tests (including NIST tests)
- */
+/* test_aes.c - TinyCrypt AES-128 tests (including NIST tests) */
 
 /*
- *  Copyright (C) 2015 by Intel Corporation, All Rights Reserved.
+ *  Copyright (C) 2017 by Intel Corporation, All Rights Reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -73,7 +71,8 @@ int test_1(void)
 		0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
 		0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
 	};
-	const struct tc_aes_key_sched_struct expected = {{
+	const struct tc_aes_key_sched_struct expected = {
+		{
 			0x2b7e1516, 0x28aed2a6, 0xabf71588, 0x09cf4f3c,
 			0xa0fafe17, 0x88542cb1, 0x23a33939, 0x2a6c7605,
 			0xf2c295f2, 0x7a96b943, 0x5935807a, 0x7359f67f,
@@ -85,7 +84,8 @@ int test_1(void)
 			0xead27321, 0xb58dbad2, 0x312bf560, 0x7f8d292f,
 			0xac7766f3, 0x19fadc21, 0x28d12941, 0x575c006e,
 			0xd014f9a8, 0xc9ee2589, 0xe13f0cc8, 0xb6630ca6
-		} };
+		}
+	};
 	struct tc_aes_key_sched_struct s;
 
 	TC_PRINT("AES128 %s (NIST key schedule test):\n", __func__);
@@ -97,11 +97,10 @@ int test_1(void)
 		goto exitTest1;
 	}
 
-	result = check_result(1, expected.words,
-		     sizeof(expected.words),
-		     s.words, sizeof(s.words));
+	result = check_result(1, expected.words, sizeof(expected.words), s.words,
+			      sizeof(s.words));
 
- exitTest1:
+exitTest1:
 	TC_END_RESULT(result);
 	return result;
 }
@@ -137,16 +136,16 @@ int test_2(void)
 		goto exitTest2;
 	}
 
-	result = check_result(2, expected, sizeof(expected),
-			      ciphertext, sizeof(ciphertext));
+	result = check_result(2, expected, sizeof(expected), ciphertext,
+			      sizeof(ciphertext));
 
- exitTest2:
+exitTest2:
 	TC_END_RESULT(result);
 
 	return result;
 }
 
-int var_text_test(uint32_t r, const uint8_t *in, const uint8_t *out,
+int var_text_test(unsigned int r, const uint8_t *in, const uint8_t *out,
 		  TCAesKeySched_t s)
 {
 	uint8_t ciphertext[NUM_OF_NIST_KEYS];
@@ -154,8 +153,8 @@ int var_text_test(uint32_t r, const uint8_t *in, const uint8_t *out,
 	int result = TC_PASS;
 
 	(void)tc_aes_encrypt(ciphertext, in, s);
-	result = check_result(r, out, NUM_OF_NIST_KEYS,
-			      ciphertext, sizeof(ciphertext));
+	result = check_result(r, out, NUM_OF_NIST_KEYS, ciphertext,
+			      sizeof(ciphertext));
 	if (result != TC_FAIL) {
 		if (tc_aes_decrypt(decrypted, ciphertext, s) == 0) {
 			TC_ERROR("aes_decrypt failed\n");
@@ -1078,7 +1077,7 @@ int test_3(void)
 			} }
 	};
 	struct tc_aes_key_sched_struct s;
-	uint32_t i;
+	unsigned int i;
 
 	TC_PRINT("AES128 %s (NIST fixed-key and variable-text):\n", __func__);
 
@@ -1096,7 +1095,7 @@ int test_3(void)
 	return result;
 }
 
-int var_key_test(uint32_t r, const uint8_t *in, const uint8_t *out)
+int var_key_test(unsigned int r, const uint8_t *in, const uint8_t *out)
 {
 	int result = TC_PASS;
 
@@ -1110,8 +1109,8 @@ int var_key_test(uint32_t r, const uint8_t *in, const uint8_t *out)
 	(void)tc_aes128_set_encrypt_key(&s, in);
 
 	(void)tc_aes_encrypt(ciphertext, plaintext, &s);
-	result = check_result(r, out, NUM_OF_NIST_KEYS,
-			      ciphertext, sizeof(ciphertext));
+	result = check_result(r, out, NUM_OF_NIST_KEYS, ciphertext,
+			      sizeof(ciphertext));
 
 	return result;
 }
@@ -2020,7 +2019,7 @@ int test_4(void)
 				0x89, 0x64, 0x48, 0x45, 0x38, 0xbf, 0xc9, 0x2c
 			} }
 	};
-	uint32_t i;
+	unsigned int i;
 
 	TC_PRINT("AES128 test #4 (NIST variable-key and fixed-text):\n");
 

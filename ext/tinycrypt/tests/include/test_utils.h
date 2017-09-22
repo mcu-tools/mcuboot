@@ -1,7 +1,7 @@
 /*  test_utils.h - TinyCrypt interface to common functions for tests */
 
 /*
- *  Copyright (C) 2015 by Intel Corporation, All Rights Reserved.
+ *  Copyright (C) 2017 by Intel Corporation, All Rights Reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -83,18 +83,19 @@
 			"PROJECT EXECUTION %s\n",               \
 			result == TC_PASS ? "SUCCESSFUL" : "FAILED");   \
 	} while (0)
+
 static inline void show_str(const char *label, const uint8_t *s, size_t len)
 {
-        uint32_t i;
+        unsigned int i;
 
         TC_PRINT("%s = ", label);
-        for (i = 0; i < (uint32_t) len; ++i) {
+        for (i = 0; i < (unsigned int) len; ++i) {
                 TC_PRINT("%02x", s[i]);
         }
         TC_PRINT("\n");
 }
 
-static inline void fatal(uint32_t testnum, const void *expected, size_t expectedlen,
+static inline void fatal(unsigned int testnum, const void *expected, size_t expectedlen,
            const void *computed, size_t computedlen)
 {
 
@@ -104,10 +105,10 @@ static inline void fatal(uint32_t testnum, const void *expected, size_t expected
         TC_PRINT("\n");
 }
 
-static inline uint32_t check_result(uint32_t testnum, const void *expected, size_t expectedlen,
+static inline unsigned int check_result(unsigned int testnum, const void *expected, size_t expectedlen,
                    const void *computed, size_t computedlen)
 {
-	uint32_t result = TC_PASS;
+	unsigned int result = TC_PASS;
 
         if (expectedlen != computedlen) {
                 TC_ERROR("The length of the computed buffer (%zu)", computedlen);
@@ -121,4 +122,4 @@ static inline uint32_t check_result(uint32_t testnum, const void *expected, size
         return result;
 }
 
-#endif
+#endif /* __TEST_UTILS_H__ */

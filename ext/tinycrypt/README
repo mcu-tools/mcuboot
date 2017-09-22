@@ -5,7 +5,7 @@
 
 ================================================================================
 
-          Copyright (c) 2015, Intel Corporation. All rights reserved.         
+          Copyright (c) 2017, Intel Corporation. All rights reserved.         
 
 Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
@@ -50,6 +50,7 @@ cryptographic primitive.
 Organization:
 
 /lib: C source code of the cryptographic primitives.
+/lib/include/tinycrypt: C header files of the cryptographic primitives.
 /tests: Test vectors of the cryptographic primitives.
 /doc: Documentation of TinyCrypt. 
 
@@ -60,6 +61,7 @@ Building:
 1) In Makefile.conf set: 
     - CFLAGS for compiler flags.
     - CC for compiler.
+    - ENABLE_TESTS for enabling (true) or disabling (false) tests compilation.
 2) In lib/Makefile select the primitives required by your project.
 3) In tests/Makefile select the corresponding tests of the selected primitives.
 4) make 

@@ -1,7 +1,7 @@
 /* test_ccm_mode.c - TinyCrypt AES-CCM tests (RFC 3610 tests) */
 
 /*
- *  Copyright (C) 2015 by Intel Corporation, All Rights Reserved.
+ *  Copyright (C) 2017 by Intel Corporation, All Rights Reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -51,8 +51,8 @@
 
 #include <string.h>
 
-#define CIPHERTEXT_LEN 50
-#define DECRYPTED_LEN 25
+#define TC_CCM_MAX_CT_SIZE 50
+#define TC_CCM_MAX_PT_SIZE 25
 #define NUM_NIST_KEYS 16
 #define NONCE_LEN 13
 #define HEADER_LEN 8
@@ -67,16 +67,17 @@
 #define EXPECTED_BUF_LEN34 34
 #define EXPECTED_BUF_LEN35 35
 
-int do_test(const uint8_t *key,
-	    uint8_t *nonce, size_t nlen,
-	    const uint8_t *hdr, size_t hlen,
-	    const uint8_t *data, size_t dlen,
-	    const uint8_t *expected, size_t elen,
-	    const int mlen)
+int do_test(const uint8_t *key, uint8_t *nonce, 
+	    size_t nlen, const uint8_t *hdr,
+	    size_t hlen, const uint8_t *data,
+	    size_t dlen, const uint8_t *expected,
+	    size_t elen, const int mlen)
 {
+
 	int result = TC_PASS;
-	uint8_t ciphertext[CIPHERTEXT_LEN];
-	uint8_t decrypted[DECRYPTED_LEN];
+
+	uint8_t ciphertext[TC_CCM_MAX_CT_SIZE];
+	uint8_t decrypted[TC_CCM_MAX_PT_SIZE];
 	struct tc_ccm_mode_struct c;
 	struct tc_aes_key_sched_struct sched;
 
@@ -90,8 +91,8 @@ int do_test(const uint8_t *key,
 		goto exitTest1;
 	}
 
-	result = tc_ccm_generation_encryption(ciphertext, hdr, hlen,
-					      data, dlen, &c);
+	result = tc_ccm_generation_encryption(ciphertext, TC_CCM_MAX_CT_SIZE, hdr,
+					      hlen, data, dlen, &c);
 	if (result == 0) {
 		TC_ERROR("ccm_encrypt failed in %s.\n", __func__);
 
@@ -110,8 +111,8 @@ int do_test(const uint8_t *key,
 		goto exitTest1;
 	}
 
-	result = tc_ccm_decryption_verification(decrypted, hdr, hlen,
-						ciphertext, dlen + mlen, &c);
+	result = tc_ccm_decryption_verification(decrypted, TC_CCM_MAX_PT_SIZE, hdr,
+						hlen, ciphertext, dlen+mlen, &c);
 	if (result == 0) {
 		TC_ERROR("ccm_decrypt failed in %s.\n", __func__);
 		show_str("\t\tExpected", data, dlen);
@@ -378,8 +379,8 @@ int test_vector_7(void)
 	};
 	struct tc_ccm_mode_struct c;
 	struct tc_aes_key_sched_struct sched;
-	uint8_t decrypted[DECRYPTED_LEN];
-	uint8_t ciphertext[CIPHERTEXT_LEN];
+	uint8_t decrypted[TC_CCM_MAX_PT_SIZE];
+	uint8_t ciphertext[TC_CCM_MAX_CT_SIZE];
 	uint16_t mlen = M_LEN10;
 
 	TC_PRINT("%s: Performing CCM test #7 (no associated data):\n",
@@ -393,8 +394,8 @@ int test_vector_7(void)
 		goto exitTest1;
 	}
 
-	result = tc_ccm_generation_encryption(ciphertext, hdr, 0,
-					      data, sizeof(data), &c);
+	result = tc_ccm_generation_encryption(ciphertext, TC_CCM_MAX_CT_SIZE, hdr,
+					      0, data, sizeof(data), &c);
 	if (result == 0) {
 		TC_ERROR("ccm_encryption failed in %s.\n", __func__);
 
@@ -402,8 +403,8 @@ int test_vector_7(void)
 		goto exitTest1;
 	}
 
-	result = tc_ccm_decryption_verification(decrypted, hdr, 0, ciphertext,
-						sizeof(data) + mlen, &c);
+	result = tc_ccm_decryption_verification (decrypted, TC_CCM_MAX_PT_SIZE, hdr,
+						0, ciphertext, sizeof(data)+mlen, &c);
 	if (result == 0) {
 		TC_ERROR("ccm_decrypt failed in %s.\n", __func__);
 		show_str("\t\tExpected", data, sizeof(data));
@@ -436,11 +437,15 @@ int test_vector_8(void)
 	const uint8_t hdr[8] = {
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07
 	};
-	uint8_t data[] = {};
+
+	uint8_t *data = NULL;
+
 	struct tc_ccm_mode_struct c;
 	struct tc_aes_key_sched_struct sched;
-	uint8_t decrypted[DECRYPTED_LEN];
-	uint8_t ciphertext[CIPHERTEXT_LEN];
+
+	uint8_t decrypted[TC_CCM_MAX_PT_SIZE];
+	uint8_t ciphertext[TC_CCM_MAX_CT_SIZE];
+
 	uint16_t mlen = M_LEN10;
 
 	TC_PRINT("%s: Performing CCM test #8 (no payload data):\n", __func__);
@@ -453,8 +458,8 @@ int test_vector_8(void)
 		goto exitTest1;
 	}
 
-	result = tc_ccm_generation_encryption(ciphertext, hdr, sizeof(hdr),
-					      data, sizeof(data), &c);
+	result = tc_ccm_generation_encryption(ciphertext, TC_CCM_MAX_CT_SIZE, hdr,
+					      sizeof(hdr), data, 0, &c);
 	if (result == 0) {
 		TC_ERROR("ccm_encrypt failed in %s.\n", __func__);
 
@@ -462,8 +467,8 @@ int test_vector_8(void)
 		goto exitTest1;
 	}
 
-	result = tc_ccm_decryption_verification(decrypted, hdr, sizeof(hdr),
-						ciphertext, mlen, &c);
+	result = tc_ccm_decryption_verification(decrypted, TC_CCM_MAX_PT_SIZE, hdr,
+						sizeof(hdr), ciphertext, mlen, &c);
 	if (result == 0) {
 		TC_ERROR("ccm_decrypt failed in %s.\n", __func__);
 		show_str("\t\tExpected", data, sizeof(data));

@@ -1,7 +1,7 @@
 /* test_cmac_mode.c - TinyCrypt AES-CMAC tests (including SP 800-38B tests) */
 
 /*
- *  Copyright (C) 2015 by Intel Corporation, All Rights Reserved.
+ *  Copyright (C) 2017 by Intel Corporation, All Rights Reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions are met:
@@ -38,7 +38,7 @@
  *  - CMAC test #2 null msg (SP 800-38B test vector #1)
  *  - CMAC test #3 1 block msg (SP 800-38B test vector #2)
  *  - CMAC test #4 320 bit msg (SP 800-38B test vector #3)
- *  - CMAC test #5 512 bit msg(SP 800-38B test vector #4)
+ *  - CMAC test #5 512 bit msg (SP 800-38B test vector #4)
  */
 
 #include <tinycrypt/cmac_mode.h>
@@ -53,7 +53,7 @@
 
 static void show(const char *label, const uint8_t *s, size_t slen)
 {
-	uint32_t i;
+	unsigned int i;
 
 	TC_PRINT("%s\t", label);
 	for (i = 0; i < slen; ++i) {
@@ -65,7 +65,7 @@ static void show(const char *label, const uint8_t *s, size_t slen)
 extern void gf_double(uint8_t *out, uint8_t *in);
 
 static int verify_gf_2_128_double(uint8_t *K1, uint8_t *K2,
-				       struct tc_cmac_struct s)
+				  struct tc_cmac_struct s)
 {
 	int result = TC_PASS;
 
@@ -249,6 +249,8 @@ static int verify_cmac_512_bit_msg(TCCmacState_t s)
 
 /*
  * Main task to test CMAC
+ * effects:    returns 1 if all tests pass
+ * exceptions: returns a negative value if some test fails
  */
 int main(void)
 {
@@ -268,31 +270,36 @@ int main(void)
 
 	(void) tc_cmac_setup(&state, key, &sched);
 	result = verify_gf_2_128_double(K1, K2, state);
-	if (result == TC_FAIL) { /* terminate test */
+	if (result == TC_FAIL) {
+		/* terminate test */
 		TC_ERROR("CMAC test #1 (128 double) failed.\n");
 		goto exitTest;
 	}
 	(void) tc_cmac_setup(&state, key, &sched);
 	result = verify_cmac_null_msg(&state);
-	if (result == TC_FAIL) { /* terminate test */
+	if (result == TC_FAIL) {
+		/* terminate test */
 		TC_ERROR("CMAC test #2 (null msg) failed.\n");
 		goto exitTest;
 	}
 	(void) tc_cmac_setup(&state, key, &sched);
 	result = verify_cmac_1_block_msg(&state);
-	if (result == TC_FAIL) { /* terminate test */
+	if (result == TC_FAIL) {
+		/* terminate test */
 		TC_ERROR("CMAC test #3 (1 block msg)failed.\n");
 		goto exitTest;
 	}
 	(void) tc_cmac_setup(&state, key, &sched);
 	result = verify_cmac_320_bit_msg(&state);
-	if (result == TC_FAIL) { /* terminate test */
+	if (result == TC_FAIL) { 
+		/* terminate test */
 		TC_ERROR("CMAC test #4 (320 bit msg) failed.\n");
 		goto exitTest;
 	}
 	(void) tc_cmac_setup(&state, key, &sched);
 	result = verify_cmac_512_bit_msg(&state);
-	if (result == TC_FAIL) { /* terminate test */
+	if (result == TC_FAIL) {
+		/* terminate test */
 		TC_ERROR("CMAC test #5  (512 bit msg)failed.\n");
 		goto exitTest;
 	}

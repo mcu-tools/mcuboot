@@ -1,4 +1,4 @@
-/*  test_ecc_utils.h - TinyCrypt interface to common functions for ECC tests */
+/*  uECC_platform_specific.c - Implementation of platform specific functions*/
 
 /* Copyright (c) 2014, Kenneth MacKay
  * All rights reserved.
@@ -52,49 +52,54 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  *
- *  test_ecc_utils.h -- Interface to common functions for ECC tests.
+ *  uECC_platform_specific.c -- Implementation of platform specific functions
  */
 
-#ifndef __TEST_ECC_UTILS_H__
-#define __TEST_ECC_UTILS_H__
 
-#include <tinycrypt/ecc_dh.h>
-#include <tinycrypt/ecc.h>
-#include <test_utils.h>
+#if defined(unix) || defined(__linux__) || defined(__unix__) || \
+    defined(__unix) |  (defined(__APPLE__) && defined(__MACH__)) || \
+    defined(uECC_POSIX)
 
-int hex2int (char hex);
+/* Some POSIX-like system with /dev/urandom or /dev/random. */
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
 
+#include <stdint.h>
 
-/*
- * Convert hex string to byte string
- * Return number of bytes written to buf, or 0 on error
- */
-int hex2bin(uint8_t *buf, const size_t buflen, const char *hex,
-	    const size_t hexlen);
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
 
-/*
- * Convert hex string to zero-padded nanoECC scalar
- */
-void string2scalar(unsigned int * scalar, unsigned int num_word32, char *str);
+int default_CSPRNG(uint8_t *dest, unsigned int size) {
 
+  /* input sanity check: */
+  if (dest == (uint8_t *) 0 || (size <= 0))
+    return 0;
 
-void print_ecc_scalar(const char *label, const unsigned int * p_vli,
-		      unsigned int num_word32);
+  int fd = open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+  if (fd == -1) {
+    fd = open("/dev/random", O_RDONLY | O_CLOEXEC);
+    if (fd == -1) {
+      return 0;
+    }
+  }
 
-int check_ecc_result(const int num, const char *name,
-		      const unsigned int *expected, 
-		      const unsigned int *computed,
-		      const unsigned int num_word32, const bool verbose);
+  char *ptr = (char *)dest;
+  size_t left = (size_t) size;
+  while (left > 0) {
+    ssize_t bytes_read = read(fd, ptr, left);
+    if (bytes_read <= 0) { // read failed
+      close(fd);
+      return 0;
+    }
+    left -= bytes_read;
+    ptr += bytes_read;
+  }
 
-/* Test ecc_make_keys, and also as keygen part of other tests */
-int keygen_vectors(char **d_vec, char **qx_vec, char **qy_vec, int tests, bool verbose);
+  close(fd);
+  return 1;
+}
 
-void vli_print_bytes(uint8_t *vli, unsigned int size);
-
-
-int check_code(const int num, const char *name, const int expected,
-		const int computed, const int verbose);
-
-
-#endif /* __TEST_ECC_UTILS_H__ */
+#endif /* platform */
 
