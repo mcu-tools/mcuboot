@@ -50,7 +50,7 @@ For more information in the source, here are some pointers:
 - [boot/boot\_serial](https://github.com/runtimeco/mcuboot/tree/master/boot/boot_serial): Support for serial upgrade within the bootloader itself.
 - [boot/zephyr](https://github.com/runtimeco/mcuboot/tree/master/boot/zephyr): Port of the bootloader to Zephyr
 - [boot/mynewt](https://github.com/runtimeco/mcuboot/tree/master/boot/mynewt): Mynewt bootloader app
-- [imgtool](https://github.com/runtimeco/mcuboot/tree/master/imgtool): A tool to securely sign firmware images for booting by MCUboot.
+- [imgtool](https://github.com/runtimeco/mcuboot/tree/master/scripts/imgtool.py): A tool to securely sign firmware images for booting by MCUboot.
 - [sim](https://github.com/runtimeco/mcuboot/tree/master/sim): A bootloader simulator for testing and regression
 
 ## Joining
