@@ -1226,21 +1226,74 @@ boot_swap_if_needed(int *out_swap_type)
 }
 
 /**
+ * Finalize some administration work, after swapping was done:
+ *  - set copy done flag on demand
+ *  - decide wether image headers must be reloaded or not
+ *
+ * @param swap_type         The type of the previously done swapping operation
+ * @param reload_headers    Flag to indicates do we need to reload the image's
+ *                          headers
+ */
+static void
+boot_finalize_swap(int swap_type, bool *reload_headers)
+{
+    switch (swap_type) {
+        case BOOT_SWAP_TYPE_NONE:
+            *reload_headers = false;
+            break;
+
+        case BOOT_SWAP_TYPE_TEST:          /* fallthrough */
+        case BOOT_SWAP_TYPE_PERM:          /* fallthrough */
+        case BOOT_SWAP_TYPE_REVERT:
+            *reload_headers = true;
+#ifndef MCUBOOT_OVERWRITE_ONLY
+            {
+                int rc;
+                rc = boot_set_copy_done();
+                if (rc != 0) {
+                    swap_type = BOOT_SWAP_TYPE_PANIC;
+                }
+            }
+#endif /* !MCUBOOT_OVERWRITE_ONLY */
+            break;
+
+        case BOOT_SWAP_TYPE_FAIL:
+            *reload_headers = true;
+            break;
+
+        default:
+            swap_type = BOOT_SWAP_TYPE_PANIC;
+    }
+
+    if (swap_type == BOOT_SWAP_TYPE_PANIC) {
+        BOOT_LOG_ERR("panic!");
+        assert(0);
+
+        /* Loop forever... */
+        while (1) {}
+    }
+}
+
+/**
  * Prepares the booting process.  This function moves images around in flash as
  * appropriate, and tells you what address to boot from.
  *
+ * @param img_cnt               The number of bootable images.
  * @param rsp                   On success, indicates how booting should occur.
  *
  * @return                      0 on success; nonzero on failure.
  */
 int
-boot_go(struct boot_rsp *rsp)
+boot_go(int img_cnt, struct boot_rsp *rsp)
 {
     int swap_type;
     size_t slot;
-    int rc;
+    int rc = -1;
+    int i;
     int fa_id;
-    bool reload_headers = false;
+    int img_idx;
+    bool reload_headers = true;
+    struct image_header* src_img_hdr;
 
     /* The array of slot sectors are defined here (as opposed to file scope) so
      * that they don't get allocated for non-boot-loader apps.  This is
@@ -1252,126 +1305,109 @@ boot_go(struct boot_rsp *rsp)
     boot_data.imgs[0].sectors = slot0_sectors;
     boot_data.imgs[1].sectors = slot1_sectors;
 
-    /* Open boot_data image areas for the duration of this call. */
-    for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
-        fa_id = flash_area_id_from_image_slot(slot);
-        rc = flash_area_open(fa_id, &BOOT_IMG_AREA(&boot_data, slot));
-        assert(rc == 0);
-    }
-    rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH,
-                         &BOOT_SCRATCH_AREA(&boot_data));
-    assert(rc == 0);
-
-    /* Determine the sector layout of the image slots and scratch area. */
-    rc = boot_read_sectors();
-    if (rc != 0) {
-        goto out;
-    }
-
-    /* Attempt to read an image header from each slot. */
-    rc = boot_read_image_headers();
-    if (rc != 0) {
-        goto out;
-    }
-
-    /* If the image slots aren't compatible, no swap is possible.  Just boot
-     * into slot 0.
+    /* The ARMv8-M architecture can contain more than one bootable
+     * image(secure and non-secure). The img_cnt paramter indicates how many
+     * image must be authenticated. Three flash partitions belongs to one
+     * bootable image:
+     *          - primary slot(image always executes from here)
+     *          - secondary slot(partitons for new image during sw upgrade)
+     *          - scratch area(used during image swapping)
+     * The flash_map_entry structure is initilized at the beginning of the
+     * loop to contain the addreses of the corresponding flash partitions,
+     * which belongs the current image.
      */
-    if (boot_slots_compatible()) {
-        rc = boot_swap_if_needed(&swap_type);
+    for (img_idx = 0 ; img_idx < img_cnt; img_idx++) {
+        /* Initialize flash partitoin map */
+        flash_partition_map_init(img_idx);
+
+        /* Open boot_data image areas for the duration of this call. */
+        for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+            fa_id = flash_area_id_from_image_slot(slot);
+            rc = flash_area_open(fa_id, &BOOT_IMG_AREA(&boot_data, slot));
+            assert(rc == 0);
+        }
+        rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH,
+                             &BOOT_SCRATCH_AREA(&boot_data));
         assert(rc == 0);
+
+        /* Determine the sector layout of the image slots and scratch area. */
+        rc = boot_read_sectors();
         if (rc != 0) {
             goto out;
         }
 
-        /*
-         * The following states need image_ok be explicitly set after the
-         * swap was finished to avoid a new revert.
-         */
-        if (swap_type == BOOT_SWAP_TYPE_REVERT || swap_type == BOOT_SWAP_TYPE_FAIL) {
-#ifndef MCUBOOT_OVERWRITE_ONLY
-            rc = boot_set_image_ok();
-            if (rc != 0) {
-                swap_type = BOOT_SWAP_TYPE_PANIC;
-            }
-#endif /* !MCUBOOT_OVERWRITE_ONLY */
-        }
-    } else {
-        swap_type = BOOT_SWAP_TYPE_NONE;
-    }
-
-    switch (swap_type) {
-    case BOOT_SWAP_TYPE_NONE:
-        slot = 0;
-        break;
-
-    case BOOT_SWAP_TYPE_TEST:          /* fallthrough */
-    case BOOT_SWAP_TYPE_PERM:          /* fallthrough */
-    case BOOT_SWAP_TYPE_REVERT:
-        slot = 1;
-        reload_headers = true;
-#ifndef MCUBOOT_OVERWRITE_ONLY
-        rc = boot_set_copy_done();
-        if (rc != 0) {
-            swap_type = BOOT_SWAP_TYPE_PANIC;
-        }
-#endif /* !MCUBOOT_OVERWRITE_ONLY */
-        break;
-
-    case BOOT_SWAP_TYPE_FAIL:
-        /* The image in slot 1 was invalid and is now erased.  Ensure we don't
-         * try to boot into it again on the next reboot.  Do this by pretending
-         * we just reverted back to slot 0.
-         */
-        slot = 0;
-        reload_headers = true;
-        break;
-
-    default:
-        swap_type = BOOT_SWAP_TYPE_PANIC;
-    }
-
-    if (swap_type == BOOT_SWAP_TYPE_PANIC) {
-        BOOT_LOG_ERR("panic!");
-        assert(0);
-
-        /* Loop forever... */
-        while (1) {}
-    }
-
-#ifdef MCUBOOT_VALIDATE_SLOT0
-    if (reload_headers) {
+        /* Attempt to read an image header from each slot. */
         rc = boot_read_image_headers();
         if (rc != 0) {
             goto out;
         }
-        /* Since headers were reloaded, it can be assumed we just performed a
-         * swap or overwrite. Now the header info that should be used to
-         * provide the data for the bootstrap, which previously was at Slot 1,
-         * was updated to Slot 0.
-         */
-        slot = 0;
-    }
 
-    rc = boot_validate_slot(0);
-    assert(rc == 0);
-    if (rc != 0) {
-        rc = BOOT_EBADIMAGE;
-        goto out;
-    }
+        /* If the image slots aren't compatible, no swap is possible.  Just boot
+         * into slot 0.
+         */
+        if (boot_slots_compatible()) {
+            rc = boot_swap_if_needed(&swap_type);
+            assert(rc == 0);
+            if (rc != 0) {
+                goto out;
+            }
+
+            /*
+             * The following states need image_ok be explicitly set after the
+             * swap was finished to avoid a new revert.
+             */
+            if (swap_type == BOOT_SWAP_TYPE_REVERT || swap_type == BOOT_SWAP_TYPE_FAIL) {
+#ifndef MCUBOOT_OVERWRITE_ONLY
+                rc = boot_set_image_ok();
+                if (rc != 0) {
+                    swap_type = BOOT_SWAP_TYPE_PANIC;
+                }
+#endif /* !MCUBOOT_OVERWRITE_ONLY */
+            }
+        } else {
+            swap_type = BOOT_SWAP_TYPE_NONE;
+        }
+
+        boot_finalize_swap(swap_type, &reload_headers);
+
+#ifdef MCUBOOT_VALIDATE_SLOT0
+        if (reload_headers) {
+            rc = boot_read_image_headers();
+            if (rc != 0) {
+                goto out;
+            }
+        }
+
+        rc = boot_validate_slot(0);
+        assert(rc == 0);
+        if (rc != 0) {
+            rc = BOOT_EBADIMAGE;
+            goto out;
+        }
 #else
-    (void)reload_headers;
+        (void)reload_headers;
 #endif
 
-    /* Always boot from the primary slot. */
-    rsp->br_flash_dev_id = boot_img_fa_device_id(&boot_data, 0);
-    rsp->br_image_off = boot_img_slot_off(&boot_data, 0);
-    rsp->br_hdr = boot_img_hdr(&boot_data, slot);
+        /* If there is more then one image to authenticate and boot
+         * there must be one dedicated image which gets the execution
+         * right after MCUBoot done its task. Its entry point must be
+         * selected here. Always boot from the primary slot of the selected
+         * image.
+         */
+        if (img_idx == 0) {
+            rsp->br_flash_dev_id = boot_img_fa_device_id(&boot_data, 0);
+            rsp->br_image_off = boot_img_slot_off(&boot_data, 0);
+            src_img_hdr = boot_img_hdr(&boot_data, 0);
+            memcpy(&rsp->br_hdr, src_img_hdr, sizeof(struct image_header));
+        }
+    }
 
- out:
-    flash_area_close(BOOT_SCRATCH_AREA(&boot_data));
-    for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
-        flash_area_close(BOOT_IMG_AREA(&boot_data, BOOT_NUM_SLOTS - 1 - slot));
+    out:
+    for (i = 0 ; i < img_idx; i++) {
+        flash_area_close(BOOT_SCRATCH_AREA(&boot_data));
+        for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+            flash_area_close(BOOT_IMG_AREA(&boot_data, BOOT_NUM_SLOTS - 1 - slot));
+        }
     }
     return rc;
 }

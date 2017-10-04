@@ -19,12 +19,9 @@
  * @brief Bootloader device specific configuration.
  */
 
-#define FLASH_DRIVER_NAME		CONFIG_SOC_FLASH_STM32_DEV_NAME
+#define FLASH_DRIVER_NAME		CONFIG_SOC_FLASH_MPS2_DEV_NAME
 #define FLASH_ALIGN			1
-
-/* Though sectors have variable size on this part, we've chosen
- * three sectors with uniform size here. */
-#define FLASH_AREA_IMAGE_SECTOR_SIZE	0x20000
+#define FLASH_AREA_IMAGE_SECTOR_SIZE	0x2000
 
 /* The number of bootable images by MCUBoot */
-#define BOOT_IMAGE_COUNT	1
+#define BOOT_IMAGE_COUNT	2
