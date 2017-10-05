@@ -51,6 +51,7 @@ fn main() {
 
     if overwrite_only {
         conf.define("MCUBOOT_OVERWRITE_ONLY", None);
+        conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
     }
 
     conf.file("../../boot/bootutil/src/image_validate.c");
