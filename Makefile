@@ -8,7 +8,7 @@
 # it should be set to either RSA, or ECDSA_P256.  This value can be
 # overridden by the make invocation, e.g.:
 #
-#     make SIGNATURE_TYPE=ECDSA_P256
+#     make CONF_SIGNATURE_TYPE=ECDSA_P256
 #
 CONF_SIGNATURE_TYPE ?= RSA
 
