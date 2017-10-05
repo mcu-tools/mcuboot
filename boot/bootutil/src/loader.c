@@ -590,6 +590,7 @@ boot_validate_slot(int slot)
              * continue booting from slot 0.
              */
         }
+        BOOT_LOG_ERR("Image in slot %d is not valid!", slot);
         return -1;
     }
 
