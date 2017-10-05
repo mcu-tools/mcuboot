@@ -42,46 +42,49 @@ static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
  * Parse the public key used for signing.
  */
 static int
-tinycrypt_import_key(uint8_t *pubkey, uint8_t *cp, uint8_t *end)
+tinycrypt_import_key(uint8_t **cp, uint8_t *end)
 {
     size_t len;
     mbedtls_asn1_buf alg;
     mbedtls_asn1_buf param;
 
-    if (mbedtls_asn1_get_tag(&cp, end, &len,
+    if (mbedtls_asn1_get_tag(cp, end, &len,
         MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) {
         return -1;
     }
-    end = cp + len;
+    end = *cp + len;
 
-    if (mbedtls_asn1_get_alg(&cp, end, &alg, &param)) {
+    /* ECParameters (RFC5480) */
+    if (mbedtls_asn1_get_alg(cp, end, &alg, &param)) {
         return -2;
     }
+    /* id-ecPublicKey (RFC5480) */
     if (alg.len != sizeof(ec_pubkey_oid) - 1 ||
         memcmp(alg.p, ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -3;
     }
+    /* namedCurve (RFC5480) */
     if (param.len != sizeof(ec_secp256r1_oid) - 1 ||
         memcmp(param.p, ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
         return -4;
     }
-    if (mbedtls_asn1_get_bitstring_null(&cp, end, &len)) {
+    /* ECPoint (RFC5480) */
+    if (mbedtls_asn1_get_bitstring_null(cp, end, &len)) {
         return -6;
     }
-    if (cp + len != end) {
+    if (*cp + len != end) {
         return -7;
     }
 
     if (len != 2 * NUM_ECC_BYTES + 1) {
         return -8;
     }
-    if (cp[0] != 0x04) {
+    /* Is uncompressed? */
+    if (*cp[0] != 0x04) {
         return -9;
     }
 
-    /* TODO avoid this copy? */
-    memcpy(pubkey, cp + 1, 2 * NUM_ECC_BYTES);
-
+    (*cp)++;
     return 0;
 }
 
@@ -142,16 +145,15 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
   uint8_t key_id)
 {
     int rc;
-    uint8_t *cp;
+    uint8_t *pubkey;
     uint8_t *end;
 
-    uint8_t public_key[2 * NUM_ECC_BYTES];
     uint8_t signature[2 * NUM_ECC_BYTES];
 
-    cp = (uint8_t *)bootutil_keys[key_id].key;
-    end = cp + *bootutil_keys[key_id].len;
+    pubkey = (uint8_t *)bootutil_keys[key_id].key;
+    end = pubkey + *bootutil_keys[key_id].len;
 
-    rc = tinycrypt_import_key(public_key, cp, end);
+    rc = tinycrypt_import_key(&pubkey, end);
     if (rc) {
         return -1;
     }
@@ -168,7 +170,7 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
         return -1;
     }
 
-    rc = uECC_verify(public_key, hash, NUM_ECC_BYTES, signature, uECC_secp256r1());
+    rc = uECC_verify(pubkey, hash, NUM_ECC_BYTES, signature, uECC_secp256r1());
     if (rc == 1) {
         return 0;
     } else {
