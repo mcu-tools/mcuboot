@@ -63,7 +63,7 @@ CFLAGS += -DMCUBOOT_USE_FLASH_AREA_GET_SECTORS
 # Enable this option to not use the swapping code and just overwrite
 # the image on upgrade.
 ifeq ($(CONF_UPGRADE_ONLY),YES)
-CFLAGS += -DMCUBOOT_OVERWRITE_ONLY
+CFLAGS += -DMCUBOOT_OVERWRITE_ONLY -DMCUBOOT_OVERWRITE_ONLY_FAST
 endif
 
 # The board should be set to one of the targets supported by

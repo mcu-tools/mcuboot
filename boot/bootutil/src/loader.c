@@ -210,7 +210,7 @@ boot_previous_swap_type(void)
  * Compute the total size of the given image.  Includes the size of
  * the TLVs.
  */
-#ifndef MCUBOOT_OVERWRITE_ONLY
+#if !defined(MCUBOOT_OVERWRITE_ONLY) || defined(MCUBOOT_OVERWRITE_ONLY_FAST)
 static int
 boot_read_image_size(int slot, struct image_header *hdr, uint32_t *size)
 {
@@ -1008,14 +1008,21 @@ boot_copy_image(struct boot_status *bs)
     size_t sect_count;
     size_t sect;
     int rc;
-    size_t size = 0;
+    size_t size;
     size_t this_size;
+    size_t last_sector;
+
+#if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+    uint32_t src_size = 0;
+    rc = boot_read_image_size(1, boot_img_hdr(&boot_data, 1), &src_size);
+    assert(rc == 0);
+#endif
 
     BOOT_LOG_INF("Image upgrade slot1 -> slot0");
     BOOT_LOG_INF("Erasing slot0");
 
     sect_count = boot_img_num_sectors(&boot_data, 0);
-    for (sect = 0; sect < sect_count; sect++) {
+    for (sect = 0, size = 0; sect < sect_count; sect++) {
         this_size = boot_img_sector_size(&boot_data, 0, sect);
         rc = boot_erase_sector(FLASH_AREA_IMAGE_0,
                                size,
@@ -1023,17 +1030,34 @@ boot_copy_image(struct boot_status *bs)
         assert(rc == 0);
 
         size += this_size;
+
+#if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+        if (size >= src_size) {
+            break;
+        }
+#endif
     }
 
     BOOT_LOG_INF("Copying slot 1 to slot 0: 0x%lx bytes", size);
     rc = boot_copy_sector(FLASH_AREA_IMAGE_1, FLASH_AREA_IMAGE_0,
                           0, 0, size);
 
-    /* Erase slot 1 so that we don't do the upgrade on every boot.
-     * TODO: Perhaps verify slot 0's signature again? */
+    /*
+     * Erases header and trailer. The trailer is erased because when a new
+     * image is written without a trailer as is the case when using newt, the
+     * trailer that was left might trigger a new upgrade.
+     */
     rc = boot_erase_sector(FLASH_AREA_IMAGE_1,
-                           0, boot_img_sector_size(&boot_data, 1, 0));
+                           boot_img_sector_off(&boot_data, 1, 0),
+                           boot_img_sector_size(&boot_data, 1, 0));
     assert(rc == 0);
+    last_sector = boot_img_num_sectors(&boot_data, 1) - 1;
+    rc = boot_erase_sector(FLASH_AREA_IMAGE_1,
+                           boot_img_sector_off(&boot_data, 1, last_sector),
+                           boot_img_sector_size(&boot_data, 1, last_sector));
+    assert(rc == 0);
+
+    /* TODO: Perhaps verify slot 0's signature again? */
 
     return 0;
 }
