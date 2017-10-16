@@ -74,8 +74,7 @@ def args():
     keygenp = subs.add_parser('keygen', help='Generate pub/private keypair')
     keygenp.add_argument('-k', '--key', metavar='filename', required=True)
     keygenp.add_argument('-t', '--type', metavar='type',
-            choices=['rsa-2048', 'ecdsa-p224', 'ecdsa-p256'],
-            required=True)
+            choices=keygens.keys(), required=True)
 
     getpub = subs.add_parser('getpub', help='Get public key from keypair')
     getpub.add_argument('-k', '--key', metavar='filename', required=True)
