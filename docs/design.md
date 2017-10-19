@@ -408,7 +408,7 @@ bulletted lists, so maybe that is better. -->
     2. Iterate the list of sector indices in descending order (i.e., starting
        with the greatest index); current element = "index".
         b. Erase scratch area.
-        c. Copy slot0[index] to scratch area.
+        c. Copy slot1[index] to scratch area.
             - If these are the last sectors (i.e., first swap being perfomed),
               copy the full sector *except* the image trailer.
             - Else, copy entire sector contents.
@@ -422,7 +422,7 @@ bulletted lists, so maybe that is better. -->
         g. Write updated swap status (ii).
 
         h. Erase slot0[index].
-        i. Copy scratch area slot0[index].
+        i. Copy scratch area to slot0[index].
             - If these are the last sectors (i.e., first swap being perfomed),
               copy the full sector *except* the image trailer.
             - Else, copy entire sector contents.
