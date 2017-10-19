@@ -16,8 +16,17 @@ menuconfig MCUBOOT_SERIAL
 	prompt "MCUBOOT serial recovery"
 	default n
 	select REBOOT
+	select UART_INTERRUPT_DRIVEN
+	select SERIAL
 	help
 	  Enable serial recovery feature in mcuboot.
+
+config BOOT_MAX_LINE_INPUT_LEN
+	int "cmd line max length" 
+	default 512
+	depends on MCUBOOT_SERIAL
+	help
+	  Maximum length of commands transported over the serial protocol
 
 config BOOT_SERIAL_DETECT_PORT
 	string
