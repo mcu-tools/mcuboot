@@ -206,8 +206,8 @@ impl RunStatus {
         // upgraded to
         let mut bad_flash = flash.clone();
         let bad_slot1_image = Images {
-            slot0: &slot0,
-            slot1: &slot1,
+            slot0: slot0.clone(),
+            slot1: slot1.clone(),
             primary: install_image(&mut bad_flash, slot0_base, 32784, false),
             upgrade: install_image(&mut bad_flash, slot1_base, 41928, true),
         };
@@ -215,8 +215,8 @@ impl RunStatus {
         failed |= run_signfail_upgrade(&bad_flash, &areadesc, &bad_slot1_image);
 
         let images = Images {
-            slot0: &slot0,
-            slot1: &slot1,
+            slot0: slot0.clone(),
+            slot1: slot1.clone(),
             primary: install_image(&mut flash, slot0_base, 32784, false),
             upgrade: install_image(&mut flash, slot1_base, 41928, false),
         };
@@ -943,14 +943,15 @@ pub struct ImageVersion {
     build_num: u32,
 }
 
+#[derive(Clone)]
 struct SlotInfo {
     base_off: usize,
     trailer_off: usize,
 }
 
-struct Images<'a> {
-    slot0: &'a SlotInfo,
-    slot1: &'a SlotInfo,
+struct Images {
+    slot0: SlotInfo,
+    slot1: SlotInfo,
     primary: Vec<u8>,
     upgrade: Vec<u8>,
 }
