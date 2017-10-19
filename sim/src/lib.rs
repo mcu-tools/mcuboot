@@ -56,7 +56,7 @@ struct Args {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
-enum DeviceName { Stm32f4, K64f, K64fBig, Nrf52840 }
+pub enum DeviceName { Stm32f4, K64f, K64fBig, Nrf52840 }
 
 static ALL_DEVICES: &'static [DeviceName] = &[
     DeviceName::Stm32f4,
@@ -168,52 +168,7 @@ impl RunStatus {
     fn run_single(&mut self, device: DeviceName, align: u8) {
         warn!("Running on device {} with alignment {}", device, align);
 
-        let (mut flash, areadesc) = match device {
-            DeviceName::Stm32f4 => {
-                // STM style flash.  Large sectors, with a large scratch area.
-                let flash = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
-                                          64 * 1024,
-                                          128 * 1024, 128 * 1024, 128 * 1024],
-                                          align as usize);
-                let mut areadesc = AreaDesc::new(&flash);
-                areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
-                areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
-                areadesc.add_image(0x060000, 0x020000, FlashId::ImageScratch);
-                (flash, areadesc)
-            }
-            DeviceName::K64f => {
-                // NXP style flash.  Small sectors, one small sector for scratch.
-                let flash = SimFlash::new(vec![4096; 128], align as usize);
-
-                let mut areadesc = AreaDesc::new(&flash);
-                areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
-                areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
-                areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch);
-                (flash, areadesc)
-            }
-            DeviceName::K64fBig => {
-                // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
-                // uses small sectors, but we tell the bootloader they are large.
-                let flash = SimFlash::new(vec![4096; 128], align as usize);
-
-                let mut areadesc = AreaDesc::new(&flash);
-                areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0);
-                areadesc.add_simple_image(0x040000, 0x020000, FlashId::Image1);
-                areadesc.add_simple_image(0x060000, 0x020000, FlashId::ImageScratch);
-                (flash, areadesc)
-            }
-            DeviceName::Nrf52840 => {
-                // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
-                // does not divide into the image size.
-                let flash = SimFlash::new(vec![4096; 128], align as usize);
-
-                let mut areadesc = AreaDesc::new(&flash);
-                areadesc.add_image(0x008000, 0x034000, FlashId::Image0);
-                areadesc.add_image(0x03c000, 0x034000, FlashId::Image1);
-                areadesc.add_image(0x070000, 0x00d000, FlashId::ImageScratch);
-                (flash, areadesc)
-            }
-        };
+        let (mut flash, areadesc) = make_device(device, align);
 
         let (slot0_base, slot0_len) = areadesc.find(FlashId::Image0);
         let (slot1_base, slot1_len) = areadesc.find(FlashId::Image1);
@@ -292,6 +247,56 @@ impl RunStatus {
             self.failures += 1;
         } else {
             self.passes += 1;
+        }
+    }
+}
+
+/// Build the Flash and area descriptor for a given device.
+pub fn make_device(device: DeviceName, align: u8) -> (SimFlash, AreaDesc) {
+    match device {
+        DeviceName::Stm32f4 => {
+            // STM style flash.  Large sectors, with a large scratch area.
+            let flash = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
+                                      64 * 1024,
+                                      128 * 1024, 128 * 1024, 128 * 1024],
+                                      align as usize);
+            let mut areadesc = AreaDesc::new(&flash);
+            areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
+            areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
+            areadesc.add_image(0x060000, 0x020000, FlashId::ImageScratch);
+            (flash, areadesc)
+        }
+        DeviceName::K64f => {
+            // NXP style flash.  Small sectors, one small sector for scratch.
+            let flash = SimFlash::new(vec![4096; 128], align as usize);
+
+            let mut areadesc = AreaDesc::new(&flash);
+            areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
+            areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
+            areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch);
+            (flash, areadesc)
+        }
+        DeviceName::K64fBig => {
+            // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
+            // uses small sectors, but we tell the bootloader they are large.
+            let flash = SimFlash::new(vec![4096; 128], align as usize);
+
+            let mut areadesc = AreaDesc::new(&flash);
+            areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0);
+            areadesc.add_simple_image(0x040000, 0x020000, FlashId::Image1);
+            areadesc.add_simple_image(0x060000, 0x020000, FlashId::ImageScratch);
+            (flash, areadesc)
+        }
+        DeviceName::Nrf52840 => {
+            // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
+            // does not divide into the image size.
+            let flash = SimFlash::new(vec![4096; 128], align as usize);
+
+            let mut areadesc = AreaDesc::new(&flash);
+            areadesc.add_image(0x008000, 0x034000, FlashId::Image0);
+            areadesc.add_image(0x03c000, 0x034000, FlashId::Image1);
+            areadesc.add_image(0x070000, 0x00d000, FlashId::ImageScratch);
+            (flash, areadesc)
         }
     }
 }
