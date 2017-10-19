@@ -24,29 +24,21 @@
 
 #define MBEDTLS_CONFIG_FILE CONFIG_MBEDTLS_CFG_FILE
 #include <mbedtls/platform.h>
+#include <mbedtls/memory_buffer_alloc.h>
 
-/* D(void *os_malloc(size_t size)) */
-void *os_calloc(size_t nelem, size_t size)
-{
-    /* Note that this doesn't check for overflow.  Assume the
-     * calls only come from within the app. */
-    size_t total = nelem * size;
-    void *buf = k_malloc(total);
-    if (buf) {
-        memset(buf, 0, total);
-    }
-    return buf;
-}
+/*
+ * This is the heap for mbed TLS.  The value needed depends on the key
+ * size and algorithm used.  For RSA-2048, 6144 bytes seems to be
+ * enough.
+ */
+#define CRYPTO_HEAP_SIZE 6144
 
-void os_free(void *ptr)
-{
-    k_free(ptr);
-}
+static unsigned char mempool[CRYPTO_HEAP_SIZE];
 
 /*
  * Initialize mbedtls to be able to use the local heap.
  */
 void os_heap_init(void)
 {
-    mbedtls_platform_set_calloc_free(os_calloc, os_free);
+    mbedtls_memory_buffer_alloc_init(mempool, sizeof(mempool));
 }
