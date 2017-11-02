@@ -58,7 +58,7 @@ struct Args {
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum DeviceName { Stm32f4, K64f, K64fBig, Nrf52840 }
 
-static ALL_DEVICES: &'static [DeviceName] = &[
+pub static ALL_DEVICES: &'static [DeviceName] = &[
     DeviceName::Stm32f4,
     DeviceName::K64f,
     DeviceName::K64fBig,
@@ -152,20 +152,20 @@ pub fn main() {
     }
 }
 
-struct RunStatus {
+pub struct RunStatus {
     failures: usize,
     passes: usize,
 }
 
 impl RunStatus {
-    fn new() -> RunStatus {
+    pub fn new() -> RunStatus {
         RunStatus {
             failures: 0,
             passes: 0,
         }
     }
 
-    fn run_single(&mut self, device: DeviceName, align: u8) {
+    pub fn run_single(&mut self, device: DeviceName, align: u8) {
         warn!("Running on device {} with alignment {}", device, align);
 
         let (mut flash, areadesc) = make_device(device, align);
@@ -248,6 +248,10 @@ impl RunStatus {
         } else {
             self.passes += 1;
         }
+    }
+
+    pub fn failures(&self) -> usize {
+        self.failures
     }
 }
 
