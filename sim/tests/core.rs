@@ -5,9 +5,12 @@
 extern crate bootsim;
 
 use bootsim::{ALL_DEVICES, RunStatus};
+use bootsim::testlog;
 
 #[test]
 fn core_tests() {
+    testlog::setup();
+
     let mut status = RunStatus::new();
 
     for &dev in ALL_DEVICES {
