@@ -21,6 +21,7 @@ use std::slice;
 
 mod caps;
 mod tlv;
+pub mod testlog;
 
 use simflash::{Flash, SimFlash};
 use mcuboot_sys::{c, AreaDesc, FlashId};
