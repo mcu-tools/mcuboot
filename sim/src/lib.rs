@@ -153,6 +153,60 @@ pub fn main() {
     }
 }
 
+/// A test run, intended to be run from "cargo test", so panics on failure.
+pub struct Run {
+    flash: SimFlash,
+    areadesc: AreaDesc,
+    slots: [SlotInfo; 2],
+    align: u8,
+}
+
+impl Run {
+    pub fn new(device: DeviceName, align: u8) -> Run {
+        let (flash, areadesc) = make_device(device, align);
+
+        let (slot0_base, slot0_len) = areadesc.find(FlashId::Image0);
+        let (slot1_base, slot1_len) = areadesc.find(FlashId::Image1);
+        let (scratch_base, _) = areadesc.find(FlashId::ImageScratch);
+
+        // The code assumes that the slots are consecutive.
+        assert_eq!(slot1_base, slot0_base + slot0_len);
+        assert_eq!(scratch_base, slot1_base + slot1_len);
+
+        let offset_from_end = c::boot_magic_sz() + c::boot_max_align() * 2;
+
+        // Construct a primary image.
+        let slot0 = SlotInfo {
+            base_off: slot0_base as usize,
+            trailer_off: slot1_base - offset_from_end,
+        };
+
+        // And an upgrade image.
+        let slot1 = SlotInfo {
+            base_off: slot1_base as usize,
+            trailer_off: scratch_base - offset_from_end,
+        };
+
+        Run {
+            flash: flash,
+            areadesc: areadesc,
+            slots: [slot0, slot1],
+            align: align,
+        }
+    }
+
+    pub fn each_device<F>(f: F)
+        where F: Fn(&mut Run)
+    {
+        for &dev in ALL_DEVICES {
+            for &align in &[1, 2, 4, 8] {
+                let mut run = Run::new(dev, align);
+                f(&mut run);
+            }
+        }
+    }
+}
+
 pub struct RunStatus {
     failures: usize,
     passes: usize,
@@ -169,64 +223,37 @@ impl RunStatus {
     pub fn run_single(&mut self, device: DeviceName, align: u8) {
         warn!("Running on device {} with alignment {}", device, align);
 
-        let (mut flash, areadesc) = make_device(device, align);
-
-        let (slot0_base, slot0_len) = areadesc.find(FlashId::Image0);
-        let (slot1_base, slot1_len) = areadesc.find(FlashId::Image1);
-        let (scratch_base, _) = areadesc.find(FlashId::ImageScratch);
-
-        // Code below assumes that the slots are consecutive.
-        assert_eq!(slot1_base, slot0_base + slot0_len);
-        assert_eq!(scratch_base, slot1_base + slot1_len);
-
-        let offset_from_end = c::boot_magic_sz() + c::boot_max_align() * 2;
-
-        // println!("Areas: {:#?}", areadesc.get_c());
-
-        // Install the boot trailer signature, so that the code will start an upgrade.
-        // TODO: This must be a multiple of flash alignment, add support for an image that is smaller,
-        // and just gets padded.
-
-        // Create original and upgrade images
-        let slot0 = SlotInfo {
-            base_off: slot0_base as usize,
-            trailer_off: slot1_base - offset_from_end,
-        };
-
-        let slot1 = SlotInfo {
-            base_off: slot1_base as usize,
-            trailer_off: scratch_base - offset_from_end,
-        };
+        let mut run = Run::new(device, align);
 
         let mut failed = false;
 
         // Creates a badly signed image in slot1 to check that it is not
         // upgraded to
-        let mut bad_flash = flash.clone();
+        let mut bad_flash = run.flash.clone();
         let bad_slot1_image = Images {
-            slot0: slot0.clone(),
-            slot1: slot1.clone(),
-            primary: install_image(&mut bad_flash, slot0_base, 32784, false),
-            upgrade: install_image(&mut bad_flash, slot1_base, 41928, true),
+            slot0: run.slots[0].clone(),
+            slot1: run.slots[1].clone(),
+            primary: install_image(&mut bad_flash, run.slots[0].base_off, 32784, false),
+            upgrade: install_image(&mut bad_flash, run.slots[1].base_off, 41928, true),
             align: align,
         };
 
-        failed |= run_signfail_upgrade(&bad_flash, &areadesc, &bad_slot1_image);
+        failed |= run_signfail_upgrade(&bad_flash, &run.areadesc, &bad_slot1_image);
 
         let images = Images {
-            slot0: slot0.clone(),
-            slot1: slot1.clone(),
-            primary: install_image(&mut flash, slot0_base, 32784, false),
-            upgrade: install_image(&mut flash, slot1_base, 41928, false),
+            slot0: run.slots[0].clone(),
+            slot1: run.slots[1].clone(),
+            primary: install_image(&mut run.flash, run.slots[0].base_off, 32784, false),
+            upgrade: install_image(&mut run.flash, run.slots[1].base_off, 41928, false),
             align: align,
         };
 
-        failed |= run_norevert_newimage(&flash, &areadesc, &images);
+        failed |= run_norevert_newimage(&run.flash, &run.areadesc, &images);
 
-        mark_upgrade(&mut flash, &images.slot1);
+        mark_upgrade(&mut run.flash, &images.slot1);
 
         // upgrades without fails, counts number of flash operations
-        let total_count = match run_basic_upgrade(&flash, &areadesc, &images) {
+        let total_count = match run_basic_upgrade(&run.flash, &run.areadesc, &images) {
             Ok(v)  => v,
             Err(_) => {
                 self.failures += 1;
@@ -234,12 +261,12 @@ impl RunStatus {
             },
         };
 
-        failed |= run_basic_revert(&flash, &areadesc, &images);
-        failed |= run_revert_with_fails(&flash, &areadesc, &images, total_count);
-        failed |= run_perm_with_fails(&flash, &areadesc, &images, total_count);
-        failed |= run_perm_with_random_fails(&flash, &areadesc, &images,
+        failed |= run_basic_revert(&run.flash, &run.areadesc, &images);
+        failed |= run_revert_with_fails(&run.flash, &run.areadesc, &images, total_count);
+        failed |= run_perm_with_fails(&run.flash, &run.areadesc, &images, total_count);
+        failed |= run_perm_with_random_fails(&run.flash, &run.areadesc, &images,
                                              total_count, 5);
-        failed |= run_norevert(&flash, &areadesc, &images);
+        failed |= run_norevert(&run.flash, &run.areadesc, &images);
 
         //show_flash(&flash);
 
