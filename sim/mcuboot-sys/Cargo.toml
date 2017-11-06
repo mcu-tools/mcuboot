@@ -24,6 +24,7 @@ overwrite-only = []
 gcc = "0.3.51"
 
 [dependencies]
+lazy_static = "0.2"
 libc = "0.2.0"
 log = "0.3"
 simflash = { path = "../simflash" }
