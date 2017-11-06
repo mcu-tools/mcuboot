@@ -4,10 +4,9 @@ language: rust
 script:
   - set -e
   - cd sim
-  - cargo build --release
-  - cargo run --release -- runall
-  - cargo run --release --features sig-rsa -- runall
-  - cargo run --release --features overwrite-only -- runall
+  - cargo test
+  - cargo test --features sig-rsa
+  - cargo test --features overwrite-only
 
 notifications:
   slack:
