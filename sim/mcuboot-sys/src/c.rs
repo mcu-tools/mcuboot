@@ -6,9 +6,10 @@ use libc;
 use api;
 
 /// Invoke the bootloader on this flash device.
-pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, counter: Option<&mut i32>) -> i32 {
+pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, counter: Option<&mut i32>, align: u8) -> i32 {
     unsafe {
         api::set_flash(flash);
+        raw::sim_flash_align = align;
         raw::flash_counter = match counter {
             None => 0,
             Some(ref c) => **c as libc::c_int
@@ -22,16 +23,8 @@ pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, counter: Option<&mut i32>
     result
 }
 
-pub fn boot_trailer_sz() -> u32 {
-    unsafe { raw::boot_slots_trailer_sz(raw::sim_flash_align) }
-}
-
-pub fn get_sim_flash_align() -> u8 {
-    unsafe { raw::sim_flash_align }
-}
-
-pub fn set_sim_flash_align(align: u8) {
-    unsafe { raw::sim_flash_align = align };
+pub fn boot_trailer_sz(align: u8) -> u32 {
+    unsafe { raw::boot_slots_trailer_sz(align) }
 }
 
 pub fn boot_magic_sz() -> usize {
