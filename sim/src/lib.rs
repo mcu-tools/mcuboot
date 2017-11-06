@@ -377,12 +377,12 @@ impl Images {
     }
 
     #[cfg(feature = "overwrite-only")]
-    fn run_basic_revert(&self) -> bool {
+    pub fn run_basic_revert(&self) -> bool {
         false
     }
 
     #[cfg(not(feature = "overwrite-only"))]
-    fn run_basic_revert(&self) -> bool {
+    pub fn run_basic_revert(&self) -> bool {
         let mut fails = 0;
 
         // FIXME: this test would also pass if no swap is ever performed???
@@ -400,7 +400,7 @@ impl Images {
         fails > 0
     }
 
-    fn run_perm_with_fails(&self) -> bool {
+    pub fn run_perm_with_fails(&self) -> bool {
         let mut fails = 0;
         let total_flash_ops = self.total_count.unwrap();
 
@@ -442,6 +442,10 @@ impl Images {
         fails > 0
     }
 
+    pub fn run_perm_with_random_fails_5(&self) -> bool {
+        self.run_perm_with_random_fails(5)
+    }
+
     fn run_perm_with_random_fails(&self, total_fails: usize) -> bool {
         let mut fails = 0;
         let total_flash_ops = self.total_count.unwrap();
@@ -480,13 +484,12 @@ impl Images {
     }
 
     #[cfg(feature = "overwrite-only")]
-    #[allow(unused_variables)]
-    fn run_revert_with_fails(&self) -> bool {
+    pub fn run_revert_with_fails(&self) -> bool {
         false
     }
 
     #[cfg(not(feature = "overwrite-only"))]
-    fn run_revert_with_fails(&self) -> bool {
+    pub fn run_revert_with_fails(&self) -> bool {
         let mut fails = 0;
 
         if Caps::SwapUpgrade.present() {
@@ -503,12 +506,12 @@ impl Images {
     }
 
     #[cfg(feature = "overwrite-only")]
-    fn run_norevert(&self) -> bool {
+    pub fn run_norevert(&self) -> bool {
         false
     }
 
     #[cfg(not(feature = "overwrite-only"))]
-    fn run_norevert(&self) -> bool {
+    pub fn run_norevert(&self) -> bool {
         let mut fl = self.flash.clone();
         let mut fails = 0;
 
