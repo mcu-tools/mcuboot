@@ -218,6 +218,7 @@ impl Run {
             slot1: self.slots[1].clone(),
             primary: primary,
             upgrade: upgrade,
+            total_count: None,
             align: self.align,
         }
     }
@@ -226,6 +227,16 @@ impl Run {
     pub fn make_image(&self) -> Images {
         let mut images = self.make_no_upgrade_image();
         mark_upgrade(&mut images.flash, &images.slot1);
+
+        // upgrades without fails, counts number of flash operations
+        let total_count = match images.run_basic_upgrade() {
+            Ok(v)  => v,
+            Err(_) => {
+                panic!("Unable to perform basic upgrade");
+            },
+        };
+
+        images.total_count = Some(total_count);
         images
     }
 
@@ -240,9 +251,11 @@ impl Run {
             slot1: self.slots[1].clone(),
             primary: primary,
             upgrade: upgrade,
+            total_count: None,
             align: self.align,
         }
     }
+
 }
 
 pub struct RunStatus {
@@ -276,19 +289,10 @@ impl RunStatus {
 
         let images = run.make_image();
 
-        // upgrades without fails, counts number of flash operations
-        let total_count = match images.run_basic_upgrade() {
-            Ok(v)  => v,
-            Err(_) => {
-                self.failures += 1;
-                return;
-            },
-        };
-
         failed |= images.run_basic_revert();
-        failed |= images.run_revert_with_fails(total_count);
-        failed |= images.run_perm_with_fails(total_count);
-        failed |= images.run_perm_with_random_fails(total_count, 5);
+        failed |= images.run_revert_with_fails();
+        failed |= images.run_perm_with_fails();
+        failed |= images.run_perm_with_random_fails(5);
         failed |= images.run_norevert();
 
         //show_flash(&flash);
@@ -360,7 +364,7 @@ impl Images {
     ///
     /// Returns the number of flash operations which can later be used to
     /// inject failures at chosen steps.
-    fn run_basic_upgrade(&self) -> Result<i32, ()> {
+    pub fn run_basic_upgrade(&self) -> Result<i32, ()> {
         let (fl, total_count) = try_upgrade(&self.flash, &self, None);
         info!("Total flash operation count={}", total_count);
 
@@ -396,8 +400,9 @@ impl Images {
         fails > 0
     }
 
-    fn run_perm_with_fails(&self, total_flash_ops: i32) -> bool {
+    fn run_perm_with_fails(&self) -> bool {
         let mut fails = 0;
+        let total_flash_ops = self.total_count.unwrap();
 
         // Let's try an image halfway through.
         for i in 1 .. total_flash_ops {
@@ -437,9 +442,9 @@ impl Images {
         fails > 0
     }
 
-    fn run_perm_with_random_fails(&self, total_flash_ops: i32,
-                                  total_fails: usize) -> bool {
+    fn run_perm_with_random_fails(&self, total_fails: usize) -> bool {
         let mut fails = 0;
+        let total_flash_ops = self.total_count.unwrap();
         let (fl, total_counts) = try_random_fails(&self.flash, &self,
                                                   total_flash_ops, total_fails);
         info!("Random interruptions at reset points={:?}", total_counts);
@@ -476,16 +481,16 @@ impl Images {
 
     #[cfg(feature = "overwrite-only")]
     #[allow(unused_variables)]
-    fn run_revert_with_fails(&self, total_count: i32) -> bool {
+    fn run_revert_with_fails(&self) -> bool {
         false
     }
 
     #[cfg(not(feature = "overwrite-only"))]
-    fn run_revert_with_fails(&self, total_count: i32) -> bool {
+    fn run_revert_with_fails(&self) -> bool {
         let mut fails = 0;
 
         if Caps::SwapUpgrade.present() {
-            for i in 1 .. (total_count - 1) {
+            for i in 1 .. (self.total_count.unwrap() - 1) {
                 info!("Try interruption at {}", i);
                 if try_revert_with_fail_at(&self.flash, &self, i) {
                     error!("Revert failed at interruption {}", i);
@@ -566,7 +571,7 @@ impl Images {
 
     // Tests a new image written to slot0 that already has magic and image_ok set
     // while there is no image on slot1, so no revert should ever happen...
-    fn run_norevert_newimage(&self) -> bool {
+    pub fn run_norevert_newimage(&self) -> bool {
         let mut fl = self.flash.clone();
         let mut fails = 0;
 
@@ -611,7 +616,7 @@ impl Images {
 
     // Tests a new image written to slot0 that already has magic and image_ok set
     // while there is no image on slot1, so no revert should ever happen...
-    fn run_signfail_upgrade(&self) -> bool {
+    pub fn run_signfail_upgrade(&self) -> bool {
         let mut fl = self.flash.clone();
         let mut fails = 0;
 
@@ -997,6 +1002,7 @@ pub struct Images {
     slot1: SlotInfo,
     primary: Vec<u8>,
     upgrade: Vec<u8>,
+    total_count: Option<i32>,
     align: u8,
 }
 
