@@ -6,22 +6,20 @@ use libc;
 use api;
 
 /// Invoke the bootloader on this flash device.
-pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc) -> i32 {
-    unsafe { api::set_flash(flash) };
+pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, counter: Option<&mut i32>) -> i32 {
+    unsafe {
+        api::set_flash(flash);
+        raw::flash_counter = match counter {
+            None => 0,
+            Some(ref c) => **c as libc::c_int
+        };
+    }
     let result = unsafe { raw::invoke_boot_go(&areadesc.get_c() as *const _) as i32 };
-    unsafe { api::clear_flash(); };
+    unsafe {
+        counter.map(|c| *c = raw::flash_counter as i32);
+        api::clear_flash();
+    };
     result
-}
-
-/// Setter/getter for the flash counter.  This isn't thread safe.
-pub fn get_flash_counter() -> i32 {
-    unsafe { raw::flash_counter as i32 }
-}
-
-/// Set the flash counter.  Zero indicates the flash should not be interrupted.  The counter will
-/// then go negative for each flash operation.
-pub fn set_flash_counter(counter: i32) {
-    unsafe { raw::flash_counter = counter as libc::c_int };
 }
 
 pub fn boot_trailer_sz() -> u32 {
