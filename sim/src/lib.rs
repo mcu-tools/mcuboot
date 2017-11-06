@@ -205,6 +205,44 @@ impl Run {
             }
         }
     }
+
+    /// Construct an `Images` that doesn't expect an upgrade to happen.
+    pub fn make_no_upgrade_image(&self) -> Images {
+        let mut flash = self.flash.clone();
+        let primary = install_image(&mut flash, self.slots[0].base_off, 32784, false);
+        let upgrade = install_image(&mut flash, self.slots[1].base_off, 41928, false);
+        Images {
+            flash: flash,
+            areadesc: self.areadesc.clone(),
+            slot0: self.slots[0].clone(),
+            slot1: self.slots[1].clone(),
+            primary: primary,
+            upgrade: upgrade,
+            align: self.align,
+        }
+    }
+
+    /// Construct an `Images` for normal testing.
+    pub fn make_image(&self) -> Images {
+        let mut images = self.make_no_upgrade_image();
+        mark_upgrade(&mut images.flash, &images.slot1);
+        images
+    }
+
+    pub fn make_bad_slot1_image(&self) -> Images {
+        let mut bad_flash = self.flash.clone();
+        let primary = install_image(&mut bad_flash, self.slots[0].base_off, 32784, false);
+        let upgrade = install_image(&mut bad_flash, self.slots[1].base_off, 41928, true);
+        Images {
+            flash: bad_flash,
+            areadesc: self.areadesc.clone(),
+            slot0: self.slots[0].clone(),
+            slot1: self.slots[1].clone(),
+            primary: primary,
+            upgrade: upgrade,
+            align: self.align,
+        }
+    }
 }
 
 pub struct RunStatus {
@@ -229,37 +267,14 @@ impl RunStatus {
 
         // Creates a badly signed image in slot1 to check that it is not
         // upgraded to
-        let mut bad_flash = run.flash.clone();
-        let primary = install_image(&mut bad_flash, run.slots[0].base_off, 32784, false);
-        let upgrade = install_image(&mut bad_flash, run.slots[1].base_off, 41928, true);
-        let bad_slot1_image = Images {
-            flash: bad_flash,
-            areadesc: run.areadesc.clone(),
-            slot0: run.slots[0].clone(),
-            slot1: run.slots[1].clone(),
-            primary: primary,
-            upgrade: upgrade,
-            align: align,
-        };
+        let bad_slot1_image = run.make_bad_slot1_image();
 
         failed |= bad_slot1_image.run_signfail_upgrade();
 
-        let mut flash = run.flash.clone();
-        let primary = install_image(&mut flash, run.slots[0].base_off, 32784, false);
-        let upgrade = install_image(&mut flash, run.slots[1].base_off, 41928, false);
-        let mut images = Images {
-            flash: flash,
-            areadesc: run.areadesc.clone(),
-            slot0: run.slots[0].clone(),
-            slot1: run.slots[1].clone(),
-            primary: primary,
-            upgrade: upgrade,
-            align: align,
-        };
-
+        let images = run.make_no_upgrade_image();
         failed |= images.run_norevert_newimage();
 
-        mark_upgrade(&mut images.flash, &images.slot1);
+        let images = run.make_image();
 
         // upgrades without fails, counts number of flash operations
         let total_count = match images.run_basic_upgrade() {
@@ -975,7 +990,7 @@ struct SlotInfo {
     trailer_off: usize,
 }
 
-struct Images {
+pub struct Images {
     flash: SimFlash,
     areadesc: AreaDesc,
     slot0: SlotInfo,
