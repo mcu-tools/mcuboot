@@ -4,9 +4,18 @@ use area::AreaDesc;
 use simflash::Flash;
 use libc;
 use api;
+use std::sync::Mutex;
+
+lazy_static! {
+    /// Mutex to lock the simulation.  The C code for the bootloader uses
+    /// global variables, and is therefore non-reentrant.
+    static ref BOOT_LOCK: Mutex<()> = Mutex::new(());
+}
 
 /// Invoke the bootloader on this flash device.
 pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, counter: Option<&mut i32>, align: u8) -> i32 {
+    let _lock = BOOT_LOCK.lock().unwrap();
+
     unsafe {
         api::set_flash(flash);
         raw::sim_flash_align = align;
