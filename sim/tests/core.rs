@@ -4,20 +4,26 @@
 
 extern crate bootsim;
 
-use bootsim::{ALL_DEVICES, RunStatus};
-use bootsim::testlog;
+use bootsim::{Run, testlog};
 
-#[test]
-fn core_tests() {
-    testlog::setup();
+macro_rules! sim_test {
+    ($name:ident, $maker:ident, $test:ident) => {
+        #[test]
+        fn $name() {
+            testlog::setup();
 
-    let mut status = RunStatus::new();
-
-    for &dev in ALL_DEVICES {
-        for &align in &[1, 2, 4, 8] {
-            status.run_single(dev, align);
+            Run::each_device(|r| {
+                let image = r.$maker();
+                assert!(!image.$test());
+            });
         }
-    }
-
-    assert!(status.failures() == 0);
+    };
 }
+
+sim_test!(bad_slot1, make_bad_slot1_image, run_signfail_upgrade);
+sim_test!(norevert_newimage, make_no_upgrade_image, run_norevert_newimage);
+sim_test!(basic_revert, make_image, run_basic_revert);
+sim_test!(revert_with_fails, make_image, run_revert_with_fails);
+sim_test!(perm_with_fails, make_image, run_perm_with_fails);
+sim_test!(perm_with_random_fails, make_image, run_perm_with_random_fails_5);
+sim_test!(norevert, make_image, run_norevert);
