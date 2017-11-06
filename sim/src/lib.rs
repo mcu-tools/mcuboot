@@ -242,7 +242,7 @@ impl RunStatus {
             align: align,
         };
 
-        failed |= run_signfail_upgrade(&bad_slot1_image);
+        failed |= bad_slot1_image.run_signfail_upgrade();
 
         let mut flash = run.flash.clone();
         let primary = install_image(&mut flash, run.slots[0].base_off, 32784, false);
@@ -257,12 +257,12 @@ impl RunStatus {
             align: align,
         };
 
-        failed |= run_norevert_newimage(&images);
+        failed |= images.run_norevert_newimage();
 
         mark_upgrade(&mut images.flash, &images.slot1);
 
         // upgrades without fails, counts number of flash operations
-        let total_count = match run_basic_upgrade(&images) {
+        let total_count = match images.run_basic_upgrade() {
             Ok(v)  => v,
             Err(_) => {
                 self.failures += 1;
@@ -270,11 +270,11 @@ impl RunStatus {
             },
         };
 
-        failed |= run_basic_revert(&images);
-        failed |= run_revert_with_fails(&images, total_count);
-        failed |= run_perm_with_fails(&images, total_count);
-        failed |= run_perm_with_random_fails(&images, total_count, 5);
-        failed |= run_norevert(&images);
+        failed |= images.run_basic_revert();
+        failed |= images.run_revert_with_fails(total_count);
+        failed |= images.run_perm_with_fails(total_count);
+        failed |= images.run_perm_with_random_fails(total_count, 5);
+        failed |= images.run_norevert();
 
         //show_flash(&flash);
 
@@ -340,302 +340,301 @@ pub fn make_device(device: DeviceName, align: u8) -> (SimFlash, AreaDesc) {
     }
 }
 
-/// A simple upgrade without forced failures.
-///
-/// Returns the number of flash operations which can later be used to
-/// inject failures at chosen steps.
-fn run_basic_upgrade(images: &Images) -> Result<i32, ()> {
-    let (fl, total_count) = try_upgrade(&images.flash, &images, None);
-    info!("Total flash operation count={}", total_count);
+impl Images {
+    /// A simple upgrade without forced failures.
+    ///
+    /// Returns the number of flash operations which can later be used to
+    /// inject failures at chosen steps.
+    fn run_basic_upgrade(&self) -> Result<i32, ()> {
+        let (fl, total_count) = try_upgrade(&self.flash, &self, None);
+        info!("Total flash operation count={}", total_count);
 
-    if !verify_image(&fl, images.slot0.base_off, &images.upgrade) {
-        warn!("Image mismatch after first boot");
-        Err(())
-    } else {
-        Ok(total_count)
-    }
-}
-
-#[cfg(feature = "overwrite-only")]
-#[allow(unused_variables)]
-fn run_basic_revert(images: &Images) -> bool {
-    false
-}
-
-#[cfg(not(feature = "overwrite-only"))]
-fn run_basic_revert(images: &Images) -> bool {
-    let mut fails = 0;
-
-    // FIXME: this test would also pass if no swap is ever performed???
-    if Caps::SwapUpgrade.present() {
-        for count in 2 .. 5 {
-            info!("Try revert: {}", count);
-            let fl = try_revert(&images.flash, &images.areadesc, count, images.align);
-            if !verify_image(&fl, images.slot0.base_off, &images.primary) {
-                error!("Revert failure on count {}", count);
-                fails += 1;
-            }
+        if !verify_image(&fl, self.slot0.base_off, &self.upgrade) {
+            warn!("Image mismatch after first boot");
+            Err(())
+        } else {
+            Ok(total_count)
         }
     }
 
-    fails > 0
-}
+    #[cfg(feature = "overwrite-only")]
+    fn run_basic_revert(&self) -> bool {
+        false
+    }
 
-fn run_perm_with_fails(images: &Images, total_flash_ops: i32) -> bool {
-    let mut fails = 0;
+    #[cfg(not(feature = "overwrite-only"))]
+    fn run_basic_revert(&self) -> bool {
+        let mut fails = 0;
 
-    // Let's try an image halfway through.
-    for i in 1 .. total_flash_ops {
-        info!("Try interruption at {}", i);
-        let (fl, count) = try_upgrade(&images.flash, &images, Some(i));
-        info!("Second boot, count={}", count);
-        if !verify_image(&fl, images.slot0.base_off, &images.upgrade) {
-            warn!("FAIL at step {} of {}", i, total_flash_ops);
+        // FIXME: this test would also pass if no swap is ever performed???
+        if Caps::SwapUpgrade.present() {
+            for count in 2 .. 5 {
+                info!("Try revert: {}", count);
+                let fl = try_revert(&self.flash, &self.areadesc, count, self.align);
+                if !verify_image(&fl, self.slot0.base_off, &self.primary) {
+                    error!("Revert failure on count {}", count);
+                    fails += 1;
+                }
+            }
+        }
+
+        fails > 0
+    }
+
+    fn run_perm_with_fails(&self, total_flash_ops: i32) -> bool {
+        let mut fails = 0;
+
+        // Let's try an image halfway through.
+        for i in 1 .. total_flash_ops {
+            info!("Try interruption at {}", i);
+            let (fl, count) = try_upgrade(&self.flash, &self, Some(i));
+            info!("Second boot, count={}", count);
+            if !verify_image(&fl, self.slot0.base_off, &self.upgrade) {
+                warn!("FAIL at step {} of {}", i, total_flash_ops);
+                fails += 1;
+            }
+
+            if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
+                               COPY_DONE) {
+                warn!("Mismatched trailer for Slot 0");
+                fails += 1;
+            }
+
+            if !verify_trailer(&fl, self.slot1.trailer_off, MAGIC_UNSET, UNSET,
+                               UNSET) {
+                warn!("Mismatched trailer for Slot 1");
+                fails += 1;
+            }
+
+            if Caps::SwapUpgrade.present() {
+                if !verify_image(&fl, self.slot1.base_off, &self.primary) {
+                    warn!("Slot 1 FAIL at step {} of {}", i, total_flash_ops);
+                    fails += 1;
+                }
+            }
+        }
+
+        if fails > 0 {
+            error!("{} out of {} failed {:.2}%", fails, total_flash_ops,
+                   fails as f32 * 100.0 / total_flash_ops as f32);
+        }
+
+        fails > 0
+    }
+
+    fn run_perm_with_random_fails(&self, total_flash_ops: i32,
+                                  total_fails: usize) -> bool {
+        let mut fails = 0;
+        let (fl, total_counts) = try_random_fails(&self.flash, &self,
+                                                  total_flash_ops, total_fails);
+        info!("Random interruptions at reset points={:?}", total_counts);
+
+        let slot0_ok = verify_image(&fl, self.slot0.base_off, &self.upgrade);
+        let slot1_ok = if Caps::SwapUpgrade.present() {
+            verify_image(&fl, self.slot1.base_off, &self.primary)
+        } else {
+            true
+        };
+        if !slot0_ok || !slot1_ok {
+            error!("Image mismatch after random interrupts: slot0={} slot1={}",
+                   if slot0_ok { "ok" } else { "fail" },
+                   if slot1_ok { "ok" } else { "fail" });
+            fails += 1;
+        }
+        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
+                           COPY_DONE) {
+            error!("Mismatched trailer for Slot 0");
+            fails += 1;
+        }
+        if !verify_trailer(&fl, self.slot1.trailer_off, MAGIC_UNSET, UNSET,
+                           UNSET) {
+            error!("Mismatched trailer for Slot 1");
             fails += 1;
         }
 
-        if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
+        if fails > 0 {
+            error!("Error testing perm upgrade with {} fails", total_fails);
+        }
+
+        fails > 0
+    }
+
+    #[cfg(feature = "overwrite-only")]
+    #[allow(unused_variables)]
+    fn run_revert_with_fails(&self, total_count: i32) -> bool {
+        false
+    }
+
+    #[cfg(not(feature = "overwrite-only"))]
+    fn run_revert_with_fails(&self, total_count: i32) -> bool {
+        let mut fails = 0;
+
+        if Caps::SwapUpgrade.present() {
+            for i in 1 .. (total_count - 1) {
+                info!("Try interruption at {}", i);
+                if try_revert_with_fail_at(&self.flash, &self, i) {
+                    error!("Revert failed at interruption {}", i);
+                    fails += 1;
+                }
+            }
+        }
+
+        fails > 0
+    }
+
+    #[cfg(feature = "overwrite-only")]
+    fn run_norevert(&self) -> bool {
+        false
+    }
+
+    #[cfg(not(feature = "overwrite-only"))]
+    fn run_norevert(&self) -> bool {
+        let mut fl = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try norevert");
+
+        // First do a normal upgrade...
+        if c::boot_go(&mut fl, &self.areadesc, None, self.align) != 0 {
+            warn!("Failed first boot");
+            fails += 1;
+        }
+
+        //FIXME: copy_done is written by boot_go, is it ok if no copy
+        //       was ever done?
+
+        if !verify_image(&fl, self.slot0.base_off, &self.upgrade) {
+            warn!("Slot 0 image verification FAIL");
+            fails += 1;
+        }
+        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, UNSET,
                            COPY_DONE) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
-
-        if !verify_trailer(&fl, images.slot1.trailer_off, MAGIC_UNSET, UNSET,
+        if !verify_trailer(&fl, self.slot1.trailer_off, MAGIC_UNSET, UNSET,
                            UNSET) {
             warn!("Mismatched trailer for Slot 1");
             fails += 1;
         }
 
-        if Caps::SwapUpgrade.present() {
-            if !verify_image(&fl, images.slot1.base_off, &images.primary) {
-                warn!("Slot 1 FAIL at step {} of {}", i, total_flash_ops);
-                fails += 1;
-            }
+        // Marks image in slot0 as permanent, no revert should happen...
+        mark_permanent_upgrade(&mut fl, &self.slot0, self.align);
+
+        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
+                           COPY_DONE) {
+            warn!("Mismatched trailer for Slot 0");
+            fails += 1;
         }
-    }
 
-    if fails > 0 {
-        error!("{} out of {} failed {:.2}%", fails, total_flash_ops,
-               fails as f32 * 100.0 / total_flash_ops as f32);
-    }
-
-    fails > 0
-}
-
-fn run_perm_with_random_fails(images: &Images, total_flash_ops: i32,
-                              total_fails: usize) -> bool {
-    let mut fails = 0;
-    let (fl, total_counts) = try_random_fails(&images.flash, &images,
-                                              total_flash_ops, total_fails);
-    info!("Random interruptions at reset points={:?}", total_counts);
-
-    let slot0_ok = verify_image(&fl, images.slot0.base_off, &images.upgrade);
-    let slot1_ok = if Caps::SwapUpgrade.present() {
-        verify_image(&fl, images.slot1.base_off, &images.primary)
-    } else {
-        true
-    };
-    if !slot0_ok || !slot1_ok {
-        error!("Image mismatch after random interrupts: slot0={} slot1={}",
-               if slot0_ok { "ok" } else { "fail" },
-               if slot1_ok { "ok" } else { "fail" });
-        fails += 1;
-    }
-    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                       COPY_DONE) {
-        error!("Mismatched trailer for Slot 0");
-        fails += 1;
-    }
-    if !verify_trailer(&fl, images.slot1.trailer_off, MAGIC_UNSET, UNSET,
-                       UNSET) {
-        error!("Mismatched trailer for Slot 1");
-        fails += 1;
-    }
-
-    if fails > 0 {
-        error!("Error testing perm upgrade with {} fails", total_fails);
-    }
-
-    fails > 0
-}
-
-#[cfg(feature = "overwrite-only")]
-#[allow(unused_variables)]
-fn run_revert_with_fails(areadesc: &AreaDesc, images: &Images,
-                         total_count: i32) -> bool {
-    false
-}
-
-#[cfg(not(feature = "overwrite-only"))]
-fn run_revert_with_fails(images: &Images, total_count: i32) -> bool {
-    let mut fails = 0;
-
-    if Caps::SwapUpgrade.present() {
-        for i in 1 .. (total_count - 1) {
-            info!("Try interruption at {}", i);
-            if try_revert_with_fail_at(&images.flash, &images, i) {
-                error!("Revert failed at interruption {}", i);
-                fails += 1;
-            }
+        if c::boot_go(&mut fl, &self.areadesc, None, self.align) != 0 {
+            warn!("Failed second boot");
+            fails += 1;
         }
+
+        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
+                           COPY_DONE) {
+            warn!("Mismatched trailer for Slot 0");
+            fails += 1;
+        }
+        if !verify_image(&fl, self.slot0.base_off, &self.upgrade) {
+            warn!("Failed image verification");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Error running upgrade without revert");
+        }
+
+        fails > 0
     }
 
-    fails > 0
-}
+    // Tests a new image written to slot0 that already has magic and image_ok set
+    // while there is no image on slot1, so no revert should ever happen...
+    fn run_norevert_newimage(&self) -> bool {
+        let mut fl = self.flash.clone();
+        let mut fails = 0;
 
-#[cfg(feature = "overwrite-only")]
-#[allow(unused_variables)]
-fn run_norevert(images: &Images) -> bool {
-    false
-}
+        info!("Try non-revert on imgtool generated image");
 
-#[cfg(not(feature = "overwrite-only"))]
-fn run_norevert(images: &Images) -> bool {
-    let mut fl = images.flash.clone();
-    let mut fails = 0;
+        mark_upgrade(&mut fl, &self.slot0);
 
-    info!("Try norevert");
+        // This simulates writing an image created by imgtool to Slot 0
+        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, UNSET, UNSET) {
+            warn!("Mismatched trailer for Slot 0");
+            fails += 1;
+        }
 
-    // First do a normal upgrade...
-    if c::boot_go(&mut fl, &images.areadesc, None, images.align) != 0 {
-        warn!("Failed first boot");
-        fails += 1;
+        // Run the bootloader...
+        if c::boot_go(&mut fl, &self.areadesc, None, self.align) != 0 {
+            warn!("Failed first boot");
+            fails += 1;
+        }
+
+        // State should not have changed
+        if !verify_image(&fl, self.slot0.base_off, &self.primary) {
+            warn!("Failed image verification");
+            fails += 1;
+        }
+        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, UNSET,
+                           UNSET) {
+            warn!("Mismatched trailer for Slot 0");
+            fails += 1;
+        }
+        if !verify_trailer(&fl, self.slot1.trailer_off, MAGIC_UNSET, UNSET,
+                           UNSET) {
+            warn!("Mismatched trailer for Slot 1");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected a non revert with new image");
+        }
+
+        fails > 0
     }
 
-    //FIXME: copy_done is written by boot_go, is it ok if no copy
-    //       was ever done?
+    // Tests a new image written to slot0 that already has magic and image_ok set
+    // while there is no image on slot1, so no revert should ever happen...
+    fn run_signfail_upgrade(&self) -> bool {
+        let mut fl = self.flash.clone();
+        let mut fails = 0;
 
-    if !verify_image(&fl, images.slot0.base_off, &images.upgrade) {
-        warn!("Slot 0 image verification FAIL");
-        fails += 1;
+        info!("Try upgrade image with bad signature");
+
+        mark_upgrade(&mut fl, &self.slot0);
+        mark_permanent_upgrade(&mut fl, &self.slot0, self.align);
+        mark_upgrade(&mut fl, &self.slot1);
+
+        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
+                           UNSET) {
+            warn!("Mismatched trailer for Slot 0");
+            fails += 1;
+        }
+
+        // Run the bootloader...
+        if c::boot_go(&mut fl, &self.areadesc, None, self.align) != 0 {
+            warn!("Failed first boot");
+            fails += 1;
+        }
+
+        // State should not have changed
+        if !verify_image(&fl, self.slot0.base_off, &self.primary) {
+            warn!("Failed image verification");
+            fails += 1;
+        }
+        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
+                           UNSET) {
+            warn!("Mismatched trailer for Slot 0");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected an upgrade failure when image has bad signature");
+        }
+
+        fails > 0
     }
-    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, UNSET,
-                       COPY_DONE) {
-        warn!("Mismatched trailer for Slot 0");
-        fails += 1;
-    }
-    if !verify_trailer(&fl, images.slot1.trailer_off, MAGIC_UNSET, UNSET,
-                       UNSET) {
-        warn!("Mismatched trailer for Slot 1");
-        fails += 1;
-    }
-
-    // Marks image in slot0 as permanent, no revert should happen...
-    mark_permanent_upgrade(&mut fl, &images.slot0, images.align);
-
-    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                       COPY_DONE) {
-        warn!("Mismatched trailer for Slot 0");
-        fails += 1;
-    }
-
-    if c::boot_go(&mut fl, &images.areadesc, None, images.align) != 0 {
-        warn!("Failed second boot");
-        fails += 1;
-    }
-
-    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                       COPY_DONE) {
-        warn!("Mismatched trailer for Slot 0");
-        fails += 1;
-    }
-    if !verify_image(&fl, images.slot0.base_off, &images.upgrade) {
-        warn!("Failed image verification");
-        fails += 1;
-    }
-
-    if fails > 0 {
-        error!("Error running upgrade without revert");
-    }
-
-    fails > 0
-}
-
-// Tests a new image written to slot0 that already has magic and image_ok set
-// while there is no image on slot1, so no revert should ever happen...
-fn run_norevert_newimage(images: &Images) -> bool {
-    let mut fl = images.flash.clone();
-    let mut fails = 0;
-
-    info!("Try non-revert on imgtool generated image");
-
-    mark_upgrade(&mut fl, &images.slot0);
-
-    // This simulates writing an image created by imgtool to Slot 0
-    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, UNSET, UNSET) {
-        warn!("Mismatched trailer for Slot 0");
-        fails += 1;
-    }
-
-    // Run the bootloader...
-    if c::boot_go(&mut fl, &images.areadesc, None, images.align) != 0 {
-        warn!("Failed first boot");
-        fails += 1;
-    }
-
-    // State should not have changed
-    if !verify_image(&fl, images.slot0.base_off, &images.primary) {
-        warn!("Failed image verification");
-        fails += 1;
-    }
-    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, UNSET,
-                       UNSET) {
-        warn!("Mismatched trailer for Slot 0");
-        fails += 1;
-    }
-    if !verify_trailer(&fl, images.slot1.trailer_off, MAGIC_UNSET, UNSET,
-                       UNSET) {
-        warn!("Mismatched trailer for Slot 1");
-        fails += 1;
-    }
-
-    if fails > 0 {
-        error!("Expected a non revert with new image");
-    }
-
-    fails > 0
-}
-
-// Tests a new image written to slot0 that already has magic and image_ok set
-// while there is no image on slot1, so no revert should ever happen...
-fn run_signfail_upgrade(images: &Images) -> bool {
-    let mut fl = images.flash.clone();
-    let mut fails = 0;
-
-    info!("Try upgrade image with bad signature");
-
-    mark_upgrade(&mut fl, &images.slot0);
-    mark_permanent_upgrade(&mut fl, &images.slot0, images.align);
-    mark_upgrade(&mut fl, &images.slot1);
-
-    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                       UNSET) {
-        warn!("Mismatched trailer for Slot 0");
-        fails += 1;
-    }
-
-    // Run the bootloader...
-    if c::boot_go(&mut fl, &images.areadesc, None, images.align) != 0 {
-        warn!("Failed first boot");
-        fails += 1;
-    }
-
-    // State should not have changed
-    if !verify_image(&fl, images.slot0.base_off, &images.primary) {
-        warn!("Failed image verification");
-        fails += 1;
-    }
-    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                       UNSET) {
-        warn!("Mismatched trailer for Slot 0");
-        fails += 1;
-    }
-
-    if fails > 0 {
-        error!("Expected an upgrade failure when image has bad signature");
-    }
-
-    fails > 0
 }
 
 /// Test a boot, optionally stopping after 'n' flash options.  Returns a count
