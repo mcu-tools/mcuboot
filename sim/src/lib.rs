@@ -234,6 +234,7 @@ impl RunStatus {
         let upgrade = install_image(&mut bad_flash, run.slots[1].base_off, 41928, true);
         let bad_slot1_image = Images {
             flash: bad_flash,
+            areadesc: run.areadesc.clone(),
             slot0: run.slots[0].clone(),
             slot1: run.slots[1].clone(),
             primary: primary,
@@ -241,13 +242,14 @@ impl RunStatus {
             align: align,
         };
 
-        failed |= run_signfail_upgrade(&run.areadesc, &bad_slot1_image);
+        failed |= run_signfail_upgrade(&bad_slot1_image);
 
         let mut flash = run.flash.clone();
         let primary = install_image(&mut flash, run.slots[0].base_off, 32784, false);
         let upgrade = install_image(&mut flash, run.slots[1].base_off, 41928, false);
         let mut images = Images {
             flash: flash,
+            areadesc: run.areadesc.clone(),
             slot0: run.slots[0].clone(),
             slot1: run.slots[1].clone(),
             primary: primary,
@@ -255,12 +257,12 @@ impl RunStatus {
             align: align,
         };
 
-        failed |= run_norevert_newimage(&run.areadesc, &images);
+        failed |= run_norevert_newimage(&images);
 
         mark_upgrade(&mut images.flash, &images.slot1);
 
         // upgrades without fails, counts number of flash operations
-        let total_count = match run_basic_upgrade(&run.areadesc, &images) {
+        let total_count = match run_basic_upgrade(&images) {
             Ok(v)  => v,
             Err(_) => {
                 self.failures += 1;
@@ -268,11 +270,11 @@ impl RunStatus {
             },
         };
 
-        failed |= run_basic_revert(&run.areadesc, &images);
-        failed |= run_revert_with_fails(&run.areadesc, &images, total_count);
-        failed |= run_perm_with_fails(&run.areadesc, &images, total_count);
-        failed |= run_perm_with_random_fails(&run.areadesc, &images, total_count, 5);
-        failed |= run_norevert(&run.areadesc, &images);
+        failed |= run_basic_revert(&images);
+        failed |= run_revert_with_fails(&images, total_count);
+        failed |= run_perm_with_fails(&images, total_count);
+        failed |= run_perm_with_random_fails(&images, total_count, 5);
+        failed |= run_norevert(&images);
 
         //show_flash(&flash);
 
@@ -342,8 +344,8 @@ pub fn make_device(device: DeviceName, align: u8) -> (SimFlash, AreaDesc) {
 ///
 /// Returns the number of flash operations which can later be used to
 /// inject failures at chosen steps.
-fn run_basic_upgrade(areadesc: &AreaDesc, images: &Images) -> Result<i32, ()> {
-    let (fl, total_count) = try_upgrade(&images.flash, &areadesc, &images, None);
+fn run_basic_upgrade(images: &Images) -> Result<i32, ()> {
+    let (fl, total_count) = try_upgrade(&images.flash, &images, None);
     info!("Total flash operation count={}", total_count);
 
     if !verify_image(&fl, images.slot0.base_off, &images.upgrade) {
@@ -356,19 +358,19 @@ fn run_basic_upgrade(areadesc: &AreaDesc, images: &Images) -> Result<i32, ()> {
 
 #[cfg(feature = "overwrite-only")]
 #[allow(unused_variables)]
-fn run_basic_revert(areadesc: &AreaDesc, images: &Images) -> bool {
+fn run_basic_revert(images: &Images) -> bool {
     false
 }
 
 #[cfg(not(feature = "overwrite-only"))]
-fn run_basic_revert(areadesc: &AreaDesc, images: &Images) -> bool {
+fn run_basic_revert(images: &Images) -> bool {
     let mut fails = 0;
 
     // FIXME: this test would also pass if no swap is ever performed???
     if Caps::SwapUpgrade.present() {
         for count in 2 .. 5 {
             info!("Try revert: {}", count);
-            let fl = try_revert(&images.flash, &areadesc, count, images.align);
+            let fl = try_revert(&images.flash, &images.areadesc, count, images.align);
             if !verify_image(&fl, images.slot0.base_off, &images.primary) {
                 error!("Revert failure on count {}", count);
                 fails += 1;
@@ -379,13 +381,13 @@ fn run_basic_revert(areadesc: &AreaDesc, images: &Images) -> bool {
     fails > 0
 }
 
-fn run_perm_with_fails(areadesc: &AreaDesc, images: &Images, total_flash_ops: i32) -> bool {
+fn run_perm_with_fails(images: &Images, total_flash_ops: i32) -> bool {
     let mut fails = 0;
 
     // Let's try an image halfway through.
     for i in 1 .. total_flash_ops {
         info!("Try interruption at {}", i);
-        let (fl, count) = try_upgrade(&images.flash, &areadesc, &images, Some(i));
+        let (fl, count) = try_upgrade(&images.flash, &images, Some(i));
         info!("Second boot, count={}", count);
         if !verify_image(&fl, images.slot0.base_off, &images.upgrade) {
             warn!("FAIL at step {} of {}", i, total_flash_ops);
@@ -420,11 +422,10 @@ fn run_perm_with_fails(areadesc: &AreaDesc, images: &Images, total_flash_ops: i3
     fails > 0
 }
 
-fn run_perm_with_random_fails(areadesc: &AreaDesc,
-                              images: &Images, total_flash_ops: i32,
+fn run_perm_with_random_fails(images: &Images, total_flash_ops: i32,
                               total_fails: usize) -> bool {
     let mut fails = 0;
-    let (fl, total_counts) = try_random_fails(&images.flash, &areadesc, &images,
+    let (fl, total_counts) = try_random_fails(&images.flash, &images,
                                               total_flash_ops, total_fails);
     info!("Random interruptions at reset points={:?}", total_counts);
 
@@ -466,13 +467,13 @@ fn run_revert_with_fails(areadesc: &AreaDesc, images: &Images,
 }
 
 #[cfg(not(feature = "overwrite-only"))]
-fn run_revert_with_fails(areadesc: &AreaDesc, images: &Images, total_count: i32) -> bool {
+fn run_revert_with_fails(images: &Images, total_count: i32) -> bool {
     let mut fails = 0;
 
     if Caps::SwapUpgrade.present() {
         for i in 1 .. (total_count - 1) {
             info!("Try interruption at {}", i);
-            if try_revert_with_fail_at(&images.flash, &areadesc, &images, i) {
+            if try_revert_with_fail_at(&images.flash, &images, i) {
                 error!("Revert failed at interruption {}", i);
                 fails += 1;
             }
@@ -484,19 +485,19 @@ fn run_revert_with_fails(areadesc: &AreaDesc, images: &Images, total_count: i32)
 
 #[cfg(feature = "overwrite-only")]
 #[allow(unused_variables)]
-fn run_norevert(areadesc: &AreaDesc, images: &Images) -> bool {
+fn run_norevert(images: &Images) -> bool {
     false
 }
 
 #[cfg(not(feature = "overwrite-only"))]
-fn run_norevert(areadesc: &AreaDesc, images: &Images) -> bool {
+fn run_norevert(images: &Images) -> bool {
     let mut fl = images.flash.clone();
     let mut fails = 0;
 
     info!("Try norevert");
 
     // First do a normal upgrade...
-    if c::boot_go(&mut fl, &areadesc, None, images.align) != 0 {
+    if c::boot_go(&mut fl, &images.areadesc, None, images.align) != 0 {
         warn!("Failed first boot");
         fails += 1;
     }
@@ -528,7 +529,7 @@ fn run_norevert(areadesc: &AreaDesc, images: &Images) -> bool {
         fails += 1;
     }
 
-    if c::boot_go(&mut fl, &areadesc, None, images.align) != 0 {
+    if c::boot_go(&mut fl, &images.areadesc, None, images.align) != 0 {
         warn!("Failed second boot");
         fails += 1;
     }
@@ -552,7 +553,7 @@ fn run_norevert(areadesc: &AreaDesc, images: &Images) -> bool {
 
 // Tests a new image written to slot0 that already has magic and image_ok set
 // while there is no image on slot1, so no revert should ever happen...
-fn run_norevert_newimage(areadesc: &AreaDesc, images: &Images) -> bool {
+fn run_norevert_newimage(images: &Images) -> bool {
     let mut fl = images.flash.clone();
     let mut fails = 0;
 
@@ -567,7 +568,7 @@ fn run_norevert_newimage(areadesc: &AreaDesc, images: &Images) -> bool {
     }
 
     // Run the bootloader...
-    if c::boot_go(&mut fl, &areadesc, None, images.align) != 0 {
+    if c::boot_go(&mut fl, &images.areadesc, None, images.align) != 0 {
         warn!("Failed first boot");
         fails += 1;
     }
@@ -597,7 +598,7 @@ fn run_norevert_newimage(areadesc: &AreaDesc, images: &Images) -> bool {
 
 // Tests a new image written to slot0 that already has magic and image_ok set
 // while there is no image on slot1, so no revert should ever happen...
-fn run_signfail_upgrade(areadesc: &AreaDesc, images: &Images) -> bool {
+fn run_signfail_upgrade(images: &Images) -> bool {
     let mut fl = images.flash.clone();
     let mut fails = 0;
 
@@ -614,7 +615,7 @@ fn run_signfail_upgrade(areadesc: &AreaDesc, images: &Images) -> bool {
     }
 
     // Run the bootloader...
-    if c::boot_go(&mut fl, &areadesc, None, images.align) != 0 {
+    if c::boot_go(&mut fl, &images.areadesc, None, images.align) != 0 {
         warn!("Failed first boot");
         fails += 1;
     }
@@ -639,7 +640,7 @@ fn run_signfail_upgrade(areadesc: &AreaDesc, images: &Images) -> bool {
 
 /// Test a boot, optionally stopping after 'n' flash options.  Returns a count
 /// of the number of flash operations done total.
-fn try_upgrade(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
+fn try_upgrade(flash: &SimFlash, images: &Images,
                stop: Option<i32>) -> (SimFlash, i32) {
     // Clone the flash to have a new copy.
     let mut fl = flash.clone();
@@ -648,7 +649,7 @@ fn try_upgrade(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
 
     let mut counter = stop.unwrap_or(0);
 
-    let (first_interrupted, count) = match c::boot_go(&mut fl, &areadesc, Some(&mut counter), images.align) {
+    let (first_interrupted, count) = match c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align) {
         -0x13579 => (true, stop.unwrap()),
         0 => (false, -counter),
         x => panic!("Unknown return: {}", x),
@@ -657,7 +658,7 @@ fn try_upgrade(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
     counter = 0;
     if first_interrupted {
         // fl.dump();
-        match c::boot_go(&mut fl, &areadesc, Some(&mut counter), images.align) {
+        match c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align) {
             -0x13579 => panic!("Shouldn't stop again"),
             0 => (),
             x => panic!("Unknown return: {}", x),
@@ -680,14 +681,14 @@ fn try_revert(flash: &SimFlash, areadesc: &AreaDesc, count: usize, align: u8) ->
 }
 
 #[cfg(not(feature = "overwrite-only"))]
-fn try_revert_with_fail_at(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
+fn try_revert_with_fail_at(flash: &SimFlash, images: &Images,
                            stop: i32) -> bool {
     let mut fl = flash.clone();
     let mut x: i32;
     let mut fails = 0;
 
     let mut counter = stop;
-    x = c::boot_go(&mut fl, &areadesc, Some(&mut counter), images.align);
+    x = c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align);
     if x != -0x13579 {
         warn!("Should have stopped at interruption point");
         fails += 1;
@@ -698,7 +699,7 @@ fn try_revert_with_fail_at(flash: &SimFlash, areadesc: &AreaDesc, images: &Image
         fails += 1;
     }
 
-    x = c::boot_go(&mut fl, &areadesc, None, images.align);
+    x = c::boot_go(&mut fl, &images.areadesc, None, images.align);
     if x != 0 {
         warn!("Should have finished upgrade");
         fails += 1;
@@ -724,7 +725,7 @@ fn try_revert_with_fail_at(flash: &SimFlash, areadesc: &AreaDesc, images: &Image
     }
 
     // Do Revert
-    x = c::boot_go(&mut fl, &areadesc, None, images.align);
+    x = c::boot_go(&mut fl, &images.areadesc, None, images.align);
     if x != 0 {
         warn!("Should have finished a revert");
         fails += 1;
@@ -752,7 +753,7 @@ fn try_revert_with_fail_at(flash: &SimFlash, areadesc: &AreaDesc, images: &Image
     fails > 0
 }
 
-fn try_random_fails(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
+fn try_random_fails(flash: &SimFlash, images: &Images,
                     total_ops: i32,  count: usize) -> (SimFlash, Vec<i32>) {
     let mut fl = flash.clone();
 
@@ -765,7 +766,7 @@ fn try_random_fails(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
         let ops = Range::new(1, remaining_ops / 2);
         let reset_counter = ops.ind_sample(&mut rng);
         let mut counter = reset_counter;
-        match c::boot_go(&mut fl, &areadesc, Some(&mut counter), images.align) {
+        match c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align) {
             0 | -0x13579 => (),
             x => panic!("Unknown return: {}", x),
         }
@@ -773,7 +774,7 @@ fn try_random_fails(flash: &SimFlash, areadesc: &AreaDesc, images: &Images,
         resets[i] = reset_counter;
     }
 
-    match c::boot_go(&mut fl, &areadesc, None, images.align) {
+    match c::boot_go(&mut fl, &images.areadesc, None, images.align) {
         -0x13579 => panic!("Should not be have been interrupted!"),
         0 => (),
         x => panic!("Unknown return: {}", x),
@@ -977,6 +978,7 @@ struct SlotInfo {
 
 struct Images {
     flash: SimFlash,
+    areadesc: AreaDesc,
     slot0: SlotInfo,
     slot1: SlotInfo,
     primary: Vec<u8>,
