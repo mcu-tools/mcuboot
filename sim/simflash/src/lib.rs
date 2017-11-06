@@ -184,7 +184,7 @@ impl Flash for SimFlash {
 }
 
 /// It is possible to iterate over the sectors in the device, each element returning this.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Sector {
     /// Which sector is this, starting from 0.
     pub num: usize,

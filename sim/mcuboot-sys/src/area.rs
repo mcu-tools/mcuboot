@@ -4,7 +4,7 @@ use simflash::{Flash, SimFlash, Sector};
 use std::ptr;
 
 /// Structure to build up the boot area table.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AreaDesc {
     areas: Vec<Vec<FlashArea>>,
     whole: Vec<FlashArea>,
