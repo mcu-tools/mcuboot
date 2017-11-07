@@ -26,21 +26,17 @@ submodules within git.  To fetch these dependencies the first time::
 
 will clone and check out these trees in the appropriate place.
 
-Building
-========
+Testing
+=======
 
-Once Rust is installed, build cargo by::
+The tests are written as unit tests in Rust, and can be built and run
+automatically::
 
-  $ cargo build --release
+  $ cargo test
 
 this should download and compile the necessary dependencies, compile
-the relevant modules from mcuboot, and build the simulator.  The
-resulting executable will be placed in ``./target/release/bootsim``
-and can be run directly::
-
-  $ ./target/release/bootsim run --device k64f
-
-Calling with ``--help`` will give a more thorough usage.
+the relevant modules from mcuboot, build the simulator, and run the
+tests.
 
 Debugging
 =========
@@ -50,3 +46,9 @@ logging by setting ``RUST_LOG=warn`` or ``RUST_LOG=error`` in the
 environment::
 
   $ RUST_LOG=warn ./target/release/bootsim run ...
+
+It is also possible to run specific tests, for example::
+
+  $ cargo test -- basic_revert
+
+which will run only the `basic_revert` test.
