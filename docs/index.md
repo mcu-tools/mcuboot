@@ -27,10 +27,6 @@ target with a complete port planned.
   - The [mynewt]({% link testplan-mynewt.md %}) test plan.
 - Our [release process]({% link release.md %}).
 
-There is also a document about [signed images]({% link
-signed_images.md %}) that is out of date.  You should use `imgtool.py`
-instead of these documents.
-
 ## Roadmap
 
 The issues being planned and worked on are tracked on Jira. To participate
