@@ -26,6 +26,7 @@
 #include <mbedtls/platform.h>
 #include <mbedtls/memory_buffer_alloc.h>
 
+#ifdef MCUBOOT_USE_MBED_TLS
 /*
  * This is the heap for mbed TLS.  The value needed depends on the key
  * size and algorithm used.  For RSA-2048, 6144 bytes seems to be
@@ -42,3 +43,8 @@ void os_heap_init(void)
 {
     mbedtls_memory_buffer_alloc_init(mempool, sizeof(mempool));
 }
+#else
+void os_heap_init(void)
+{
+}
+#endif
