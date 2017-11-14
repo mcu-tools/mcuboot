@@ -19,4 +19,4 @@ if [ -z "$BOARD" ]; then
     die "Please set BOARD to a valid board before running this script."
 fi
 
-make -C hello1 BOARD=${BOARD} -j$(nproc) || die "Build hello1"
+make BOARD=${BOARD} -j$(nproc) hello1 || die "Build hello1"

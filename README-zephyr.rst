@@ -6,7 +6,7 @@ acquired the ability to be used as a bootloader for Zephyr as well.
 There are some pretty significant differences in how apps are built
 for Zephyr, and these are documented here.
 
-Please see ``boot/bootutil/design.txt`` for documentation on the
+Please see ``docs/design.md`` for documentation on the
 design and operation of the bootloader itself.  This functionality
 should be the same between Mynewt and Zephyr.
 
@@ -31,16 +31,18 @@ Building the bootloader itself
 
 The bootloader is an ordinary Zephyr application, at least from
 Zephyr's point of view.  There is a bit of configuration that needs to
-be made before building it.  Most of this is done in the top-level
-``Makefile`` in the source tree.  There are comments there for
+be made before building it.  Most of this can be done as documented in
+the ``CMakeLists.txt`` file in boot/zephyr.  There are comments there for
 guidance.  It is important to select a signature algorithm, and decide
 if slot0 should be validated on every boot.
 
-There is a ``build_boot.sh`` script at the top level that can make
-building a bit easier.  It assumes that the mcuboot tree is next to,
-at the same level, as the zephyr source tree.  It takes a single
-argument, which is the target to build. This must be a Zephyr board
-which supports mcuboot.
+To build mcuboot, create a build directory in boot/zephyr, and build
+it as usual:
+
+$ cd boot/zephyr
+$ mkdir build && cd build
+$ cmake -DBOARD=<board> ..
+$ make
 
 In addition to the partitions defined in DTS, some additional
 information about the flash layout is currently required to build
@@ -50,8 +52,10 @@ may come from board-specific headers, Device Tree, or be configured by
 mcuboot on a per-SoC family basis.
 
 After building the bootloader, the binaries should reside in
-``outdir/targname/zephyr.[bin|hex]``.  Use the flashing tools you have to
-install this image, usually at the beginning of the flash.
+``build/zephyr/zephyr.{bin,hex,elf}``, where ``build`` is the build
+directory you chose when running ``cmake``. Use the Zephyr build
+system ``flash`` target to flash these binaries, usually by running
+``make flash`` (or ``ninja flash``, etc.) from the build directory.
 
 Building Applications for the bootloader
 ========================================
