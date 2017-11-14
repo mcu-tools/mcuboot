@@ -19,4 +19,4 @@ if [ -z "$BOARD" ]; then
     die "Please set BOARD to a valid board before running this script."
 fi
 
-make -C ../.. BOARD=${BOARD} -j$(nproc) || die "Build mcuboot"
+make BOARD=${BOARD} -j$(nproc) boot || die "Build mcuboot"
