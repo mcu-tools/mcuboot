@@ -6,6 +6,10 @@ were written using the FRDM-K64F, but other boards should be similar.
 At this time, however, the partitions are hardcoded in the Makefile
 targets to flash.
 
+Note that the script "run-tests.sh" in that directory is helpful for
+automating the process, and provides simple "y or n" prompts for each
+test case and expected result.
+
 ## Building and running.
 
 The tests are build using the various `test-*` targets in
