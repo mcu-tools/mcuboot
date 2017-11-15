@@ -1364,7 +1364,6 @@ boot_go(struct boot_rsp *rsp)
         while (1) {}
     }
 
-#ifdef MCUBOOT_VALIDATE_SLOT0
     if (reload_headers) {
         rc = boot_read_image_headers();
         if (rc != 0) {
@@ -1378,6 +1377,7 @@ boot_go(struct boot_rsp *rsp)
         slot = 0;
     }
 
+#ifdef MCUBOOT_VALIDATE_SLOT0
     rc = boot_validate_slot(0);
     assert(rc == 0);
     if (rc != 0) {
@@ -1385,7 +1385,15 @@ boot_go(struct boot_rsp *rsp)
         goto out;
     }
 #else
-    (void)reload_headers;
+    /* Even if we're not re-validating slot 0, we could be booting
+     * onto an empty flash chip. At least do a basic sanity check that
+     * the magic number on the image is OK.
+     */
+    if (boot_data.imgs[0].hdr.ih_magic != IMAGE_MAGIC) {
+        BOOT_LOG_ERR("bad image magic 0x%x", boot_data.imgs[0].hdr.ih_magic);
+        rc = BOOT_EBADIMAGE;
+        goto out;
+    }
 #endif
 
     /* Always boot from the primary slot. */
