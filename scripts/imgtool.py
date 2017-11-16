@@ -15,13 +15,28 @@
 # limitations under the License.
 
 import argparse
+import getpass
 from imgtool import keys
 from imgtool import image
 from imgtool import version
 import sys
 
 def gen_rsa2048(args):
-    keys.RSA2048.generate().export_private(args.key)
+    if args.password:
+        while True:
+            passwd = getpass.getpass("Enter key passphrase: ")
+            passwd2 = getpass.getpass("Reenter passphrase: ")
+            if passwd == passwd2:
+                break
+            print("Passwords do not match, try again")
+
+        # Password must be bytes, always use UTF-8 for consistent
+        # encoding.
+        return passwd.encode('utf-8')
+    else:
+        passwd = None
+    keys.RSA2048.generate().export_private(path=args.key, passwd=passwd)
+
 def gen_ecdsa_p256(args):
     keys.ECDSA256P1.generate().export_private(args.key)
 def gen_ecdsa_p224(args):
@@ -38,8 +53,16 @@ def do_keygen(args):
         raise argparse.ArgumentTypeError(msg)
     keygens[args.type](args)
 
-def do_getpub(args):
+def load_key(args):
     key = keys.load(args.key)
+    if key is not None:
+        return key
+    passwd = getpass.getpass("Enter key passphrase: ")
+    passwd = passwd.encode('utf-8')
+    return keys.load(args.key, passwd)
+
+def do_getpub(args):
+    key = load_key(args)
     if args.lang == 'c':
         key.emit_c()
     elif args.lang == 'rust':
@@ -53,7 +76,7 @@ def do_sign(args):
             header_size=args.header_size,
             included_header=args.included_header,
             pad=args.pad)
-    key = keys.load(args.key) if args.key else None
+    key = load_key(args) if args.key else None
     img.sign(key)
 
     if args.pad:
@@ -87,6 +110,8 @@ def args():
     keygenp.add_argument('-k', '--key', metavar='filename', required=True)
     keygenp.add_argument('-t', '--type', metavar='type',
             choices=keygens.keys(), required=True)
+    keygenp.add_argument('-p', '--password', default=False, action='store_true',
+            help='Prompt for password to protect key')
 
     getpub = subs.add_parser('getpub', help='Get public key from keypair')
     getpub.add_argument('-k', '--key', metavar='filename', required=True)

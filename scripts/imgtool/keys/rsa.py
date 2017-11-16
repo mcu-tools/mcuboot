@@ -50,6 +50,9 @@ class RSA2048Public(KeyClass):
     def sig_tlv(self):
         return "RSA2048"
 
+    def sig_len(self):
+        return 256
+
 class RSA2048(RSA2048Public):
     """
     Wrapper around an 2048-bit RSA key, with imgtool support.

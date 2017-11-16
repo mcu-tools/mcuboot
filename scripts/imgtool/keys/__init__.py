@@ -102,10 +102,13 @@ def load(path, passwd=None):
                 raw_pem,
                 password=passwd,
                 backend=default_backend())
-    # This is a bit nonsensical of an exception, but it is what
-    # cryptography seems to currently raise if the password is needed.
-    except TypeError:
-        return None
+    # Unfortunately, the crypto library raises unhelpful exceptions,
+    # so we have to look at the text.
+    except TypeError as e:
+        msg = str(e)
+        if "private key is encrypted" in msg:
+            return None
+        raise e
     except ValueError:
         # This seems to happen if the key is a public key, let's try
         # loading it as a public key.
