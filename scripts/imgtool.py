@@ -49,8 +49,6 @@ def do_getpub(args):
         raise argparse.ArgumentTypeError(msg)
 
 def do_sign(args):
-    if args.rsa_pkcs1_15:
-        keys.sign_rsa_pss = False
     img = image.Image.load(args.infile, version=args.version,
             header_size=args.header_size,
             included_header=args.included_header,
@@ -103,8 +101,6 @@ def args():
             help='Image has gap for header')
     sign.add_argument("--pad", type=intparse,
             help='Pad image to this many bytes, adding trailer magic')
-    sign.add_argument("--rsa-pkcs1-15", help='Use old PKCS#1 v1.5 signature algorithm',
-            default=False, action='store_true')
     sign.add_argument("infile")
     sign.add_argument("outfile")
 
