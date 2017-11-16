@@ -125,7 +125,7 @@ class Image():
             pubbytes = sha.digest()
             tlv.add('KEYHASH', pubbytes)
 
-            sig = key.sign(self.payload)
+            sig = key.sign(bytes(self.payload))
             tlv.add(key.sig_tlv(), sig)
 
         self.payload += tlv.get()
