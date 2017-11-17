@@ -26,14 +26,14 @@ pkg.keywords:
     - bootloader
 
 pkg.deps:
-    - hw/hal
-    - kernel/os
-    - boot/bootutil
-    - encoding/tinycbor
-    - encoding/cborattr
-    - encoding/base64
-    - sys/flash_map
-    - util/crc
+    - "@apache-mynewt-core/hw/hal"
+    - "@apache-mynewt-core/kernel/os"
+    - "@apache-mynewt-core/encoding/tinycbor"
+    - "@apache-mynewt-core/encoding/cborattr"
+    - "@apache-mynewt-core/encoding/base64"
+    - "@apache-mynewt-core/sys/flash_map"
+    - "@apache-mynewt-core/util/crc"
 
 pkg.req_apis:
     - console
+    - bootloader
