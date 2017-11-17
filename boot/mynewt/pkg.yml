@@ -25,12 +25,14 @@ pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:
     - loader
 
+pkg.cflags:
+    - "-DMCUBOOT_MYNEWT"
+
 pkg.deps:
     - "@mcuboot/boot/mynewt/mcuboot_config"
     - "@mcuboot/boot/bootutil"
     - "@apache-mynewt-core/kernel/os"
-    - "@apache-mynewt-core/sys/console/stub"
+    - "@apache-mynewt-core/sys/console/minimal"
 
 pkg.deps.BOOT_SERIAL.OVERWRITE:
-    - "@apache-mynewt-core/sys/console/full"
     - "@mcuboot/boot/boot_serial"
