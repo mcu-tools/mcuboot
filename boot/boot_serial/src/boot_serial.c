@@ -24,6 +24,9 @@
 
 #include "sysflash/sysflash.h"
 
+#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
+#include "bootutil/bootutil_log.h"
+
 #ifdef __ZEPHYR__
 #include <misc/reboot.h>
 #include <misc/byteorder.h>
@@ -31,9 +34,6 @@
 #include <flash.h>
 #include <crc16.h>
 #include <serial_adapter/serial_adapter.h>
-
-#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
-#include "bootutil/bootutil_log.h"
 #include "mbedtls/base64.h"
 #else
 #include <bsp/bsp.h>

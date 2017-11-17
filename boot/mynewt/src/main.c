@@ -17,6 +17,10 @@
  * under the License.
  */
 
+#ifdef MCUBOOT_MYNEWT
+#include "mcuboot_config/mcuboot_config.h"
+#endif
+
 #include <assert.h>
 #include <stddef.h>
 #include <inttypes.h>
@@ -74,8 +78,15 @@ main(void)
      * Configure a GPIO as input, and compare it against expected value.
      * If it matches, await for download commands from serial.
      */
+#ifdef MCUBOOT_MYNEWT
+    hal_gpio_init_in(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN),
+                     MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_CFG));
+    if (hal_gpio_read(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN)) ==
+                      MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_VAL)) {
+#else
     hal_gpio_init_in(BOOT_SERIAL_DETECT_PIN, BOOT_SERIAL_DETECT_PIN_CFG);
     if (hal_gpio_read(BOOT_SERIAL_DETECT_PIN) == BOOT_SERIAL_DETECT_PIN_VAL) {
+#endif
         boot_serial_start(BOOT_SER_CONS_INPUT);
         assert(0);
     }
