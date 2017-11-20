@@ -21,6 +21,7 @@ repo.name: mcuboot
 repo.versions:
     "0.0.0": "master"
     "0.9.0": "v0.9.0"
+    "1.0.0": "v1.0.0"
 
     "0-dev": "0.0.0"        # master
-    "0-latest": "0.9.0"
+    "0-latest": "1.0.0"     # latest stable release
