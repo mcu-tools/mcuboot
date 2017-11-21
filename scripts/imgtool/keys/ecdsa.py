@@ -89,7 +89,14 @@ class ECDSA256P1(ECDSA256P1Public):
         with open(path, 'wb') as f:
             f.write(pem)
 
-    def sign(self, payload):
+    def raw_sign(self, payload):
+        """Return the actual signature"""
         return self.key.sign(
                 data=payload,
                 signature_algorithm=ec.ECDSA(SHA256()))
+
+    def sign(self, payload):
+        # To make fixed length, pad with one or two zeros.
+        sig = self.raw_sign(payload)
+        sig += b'\000' * (self.sig_len() - len(sig))
+        return sig
