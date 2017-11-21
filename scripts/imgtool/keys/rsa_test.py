@@ -87,7 +87,7 @@ class KeyGeneration(unittest.TestCase):
         k.key.public_key().verify(
                 signature=sig,
                 data=buf,
-                padding=PSS(mgf=MGF1(SHA256()), salt_length=PSS.MAX_LENGTH),
+                padding=PSS(mgf=MGF1(SHA256()), salt_length=32),
                 algorithm=SHA256())
 
         # Modify the message to make sure the signature fails.
@@ -95,7 +95,7 @@ class KeyGeneration(unittest.TestCase):
                 k.key.public_key().verify,
                 signature=sig,
                 data=b'This is thE message',
-                padding=PSS(mgf=MGF1(SHA256()), salt_length=PSS.MAX_LENGTH),
+                padding=PSS(mgf=MGF1(SHA256()), salt_length=32),
                 algorithm=SHA256())
 
 if __name__ == '__main__':
