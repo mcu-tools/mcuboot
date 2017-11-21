@@ -19,74 +19,10 @@ Cryptographic key management for imgtool.
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
 
 from .rsa import RSA2048, RSA2048Public, RSAUsageError
-
-class ECDSA256P1():
-    def __init__(self, key):
-        """Construct an ECDSA P-256 private key"""
-        self.key = key
-
-    @staticmethod
-    def generate():
-        return ECDSA256P1(SigningKey.generate(curve=NIST256p))
-
-    def export_private(self, path):
-        with open(path, 'wb') as f:
-            f.write(self.key.to_pem())
-
-    def get_public_bytes(self):
-        vk = self.key.get_verifying_key()
-        return bytes(vk.to_der())
-
-    def emit_c(self):
-        vk = self.key.get_verifying_key()
-        print(AUTOGEN_MESSAGE)
-        print("const unsigned char ecdsa_pub_key[] = {", end='')
-        encoded = bytes(vk.to_der())
-        for count, b in enumerate(encoded):
-            if count % 8 == 0:
-                print("\n\t", end='')
-            else:
-                print(" ", end='')
-            print("0x{:02x},".format(b), end='')
-        print("\n};")
-        print("const unsigned int ecdsa_pub_key_len = {};".format(len(encoded)))
-
-    def emit_rust(self):
-        vk = self.key.get_verifying_key()
-        print(AUTOGEN_MESSAGE)
-        print("static ECDSA_PUB_KEY: &'static [u8] = &[", end='')
-        encoded = bytes(vk.to_der())
-        for count, b in enumerate(encoded):
-            if count % 8 == 0:
-                print("\n    ", end='')
-            else:
-                print(" ", end='')
-            print("0x{:02x},".format(b), end='')
-        print("\n];")
-
-    def sign(self, payload):
-        # To make this fixed length, possibly pad with zeros.
-        sig = self.key.sign(payload, hashfunc=hashlib.sha256, sigencode=util.sigencode_der)
-        sig += b'\000' * (self.sig_len() - len(sig))
-        return sig
-
-    def sig_len(self):
-        # The DER encoding depends on the high bit, and can be
-        # anywhere from 70 to 72 bytes.  Because we have to fill in
-        # the length field before computing the signature, however,
-        # we'll give the largest, and the sig checking code will allow
-        # for it to be up to two bytes larger than the actual
-        # signature.
-        return 72
-
-    def sig_type(self):
-        """Return the type of this signature (as a string)"""
-        return "ECDSA256_SHA256"
-
-    def sig_tlv(self):
-        return "ECDSA256"
+from .ecdsa import ECDSA256P1, ECDSA256P1Public, ECDSAUsageError
 
 class PasswordRequired(Exception):
     """Raised to indicate that the key is password protected, but a
@@ -124,5 +60,17 @@ def load(path, passwd=None):
         if pk.key_size != 2048:
             raise Exception("Unsupported RSA key size: " + pk.key_size)
         return RSA2048Public(pk)
+    elif isinstance(pk, EllipticCurvePrivateKey):
+        if pk.curve.name != 'secp256r1':
+            raise Exception("Unsupported EC curve: " + pk.curve.name)
+        if pk.key_size != 256:
+            raise Exception("Unsupported EC size: " + pk.key_size)
+        return ECDSA256P1(pk)
+    elif isinstance(pk, EllipticCurvePublicKey):
+        if pk.curve.name != 'secp256r1':
+            raise Exception("Unsupported EC curve: " + pk.curve.name)
+        if pk.key_size != 256:
+            raise Exception("Unsupported EC size: " + pk.key_size)
+        return ECDSA256P1Public(pk)
     else:
         raise Exception("Unknown key type: " + str(type(pk)))
