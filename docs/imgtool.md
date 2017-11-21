@@ -8,13 +8,11 @@ this script should be preferred to the manual steps described in
 This program is written for Python3, and has several dependencies on
 Python libraries.  These can be installed using 'pip3' manually:
 
-    pip3 install --user pycrypto
-    pip3 install --user pyasn1
-    pip3 install --user ecdsa
+    pip3 install --user cryptography
 
 or, on Ubuntu, using the package manager:
 
-    sudo apt-get install python3-crypto python3-pyasn1 python3-ecdsa
+    sudo apt-get install python3-cryptography
 
 ## Managing keys
 
@@ -28,6 +26,10 @@ mcuboot is configured to verify.
 
 This key file is what is used to sign images, this file should be
 protected, and not widely distributed.
+
+You can add the `-p` argument to `keygen`, which will cause it to
+prompt for a password.  You will need to enter this password in every
+time you use the private key.
 
 ## Incorporating the public key into the code
 
