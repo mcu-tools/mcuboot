@@ -79,7 +79,7 @@ class EcKeyGeneration(unittest.TestCase):
     def test_sig(self):
         k = ECDSA256P1.generate()
         buf = b'This is the message'
-        sig = k.sign(buf)
+        sig = k.raw_sign(buf)
 
         # The code doesn't have any verification, so verify this
         # manually.
