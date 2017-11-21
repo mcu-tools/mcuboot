@@ -87,7 +87,9 @@ class RSA2048(RSA2048Public):
             f.write(pem)
 
     def sign(self, payload):
+        # The verification code only allows the salt length to be the
+        # same as the hash length, 32.
         return self.key.sign(
                 data=payload,
-                padding=PSS(mgf=MGF1(SHA256()), salt_length=PSS.MAX_LENGTH),
+                padding=PSS(mgf=MGF1(SHA256()), salt_length=32),
                 algorithm=SHA256())
