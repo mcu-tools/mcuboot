@@ -33,7 +33,7 @@ endmacro()
 # this with a device tree overlay file.
 #
 # See the Zephyr documentation for more information on DT:
-# https://www.zephyrproject.org/doc/dts/device_tree.html
+# http://docs.zephyrproject.org/devices/dts/device_tree.html
 set(DTC_OVERLAY_FILE "${CMAKE_CURRENT_SOURCE_DIR}/dts.overlay")
 
 # Standard Zephyr application boilerplate.
