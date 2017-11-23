@@ -5,3 +5,5 @@ authors = ["David Brown <david.brown@linaro.org>"]
 
 [dependencies]
 error-chain = "0.10.0"
+rand = "0.3.0"
+log = "0.3"
