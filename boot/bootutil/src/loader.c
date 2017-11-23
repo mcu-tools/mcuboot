@@ -49,6 +49,18 @@ void sim_assert(int, const char *test, const char *, unsigned int, const char *)
 
 static struct boot_loader_state boot_data;
 
+#ifdef MCUBOOT_VALIDATE_SLOT0
+static int boot_status_fails = 0;
+#define BOOT_STATUS_ASSERT(x)                \
+    do {                                     \
+        if (x) {                             \
+            boot_status_fails++;             \
+        }                                    \
+    } while (0)
+#else
+#define BOOT_STATUS_ASSERT(x) assert(x)
+#endif
+
 struct boot_status_table {
     /**
      * For each field, a value of 0 means "any".
@@ -392,6 +404,8 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
     uint8_t status;
     int max_entries;
     int found;
+    int found_idx;
+    int invalid;
     int rc;
     int i;
 
@@ -399,6 +413,8 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
     max_entries = boot_status_entries(fap);
 
     found = 0;
+    found_idx = 0;
+    invalid = 0;
     for (i = 0; i < max_entries; i++) {
         rc = flash_area_read(fap, off + i * BOOT_WRITE_SZ(&boot_data),
                              &status, 1);
@@ -407,18 +423,38 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
         }
 
         if (status == 0xff) {
-            if (found) {
-                break;
+            if (found && !found_idx) {
+                found_idx = i;
             }
         } else if (!found) {
             found = 1;
+        } else if (found_idx) {
+            invalid = 1;
+            break;
         }
     }
 
+    if (invalid) {
+        /* This means there was an error writing status on the last
+         * swap. Tell user and move on to validation!
+         */
+        BOOT_LOG_ERR("Detected inconsistent status!");
+
+#if !defined(MCUBOOT_VALIDATE_SLOT0)
+        /* With validation of slot0 disabled, there is no way to be sure the
+         * swapped slot0 is OK, so abort!
+         */
+        assert(0);
+#endif
+    }
+
     if (found) {
-        i--;
-        bs->idx = i / BOOT_STATUS_STATE_COUNT;
-        bs->state = i % BOOT_STATUS_STATE_COUNT;
+        if (!found_idx) {
+            found_idx = i;
+        }
+        found_idx--;
+        bs->idx = found_idx / BOOT_STATUS_STATE_COUNT;
+        bs->state = found_idx % BOOT_STATUS_STATE_COUNT;
     }
 
     return 0;
@@ -917,7 +953,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 
         bs->state = 1;
         rc = boot_write_status(bs);
-        assert(rc == 0);
+        BOOT_STATUS_ASSERT(rc == 0);
     }
 
     if (bs->state == 1) {
@@ -938,7 +974,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 
         bs->state = 2;
         rc = boot_write_status(bs);
-        assert(rc == 0);
+        BOOT_STATUS_ASSERT(rc == 0);
     }
 
     if (bs->state == 2) {
@@ -966,7 +1002,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
                         scratch_trailer_off,
                         img_off + copy_sz,
                         BOOT_STATUS_STATE_COUNT * BOOT_WRITE_SZ(&boot_data));
-            assert(rc == 0);
+            BOOT_STATUS_ASSERT(rc == 0);
 
             rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SCRATCH,
                                             &swap_state);
@@ -990,7 +1026,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
         bs->state = 0;
         bs->use_scratch = 0;
         rc = boot_write_status(bs);
-        assert(rc == 0);
+        BOOT_STATUS_ASSERT(rc == 0);
     }
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
@@ -1139,6 +1175,12 @@ boot_copy_image(struct boot_status *bs)
         last_sector_idx = first_sector_idx - 1;
         swap_idx++;
     }
+
+#ifdef MCUBOOT_VALIDATE_SLOT0
+    if (boot_status_fails > 0) {
+        BOOT_LOG_WRN("%d status write fails performing the swap", boot_status_fails);
+    }
+#endif
 
     return 0;
 }
