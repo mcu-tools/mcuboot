@@ -41,6 +41,8 @@ pub trait Flash {
     fn add_bad_region(&mut self, offset: usize, len: usize, rate: f32) -> Result<()>;
     fn reset_bad_regions(&mut self);
 
+    fn set_verify_writes(&mut self, enable: bool);
+
     fn sector_iter(&self) -> SectorIter;
     fn device_size(&self) -> usize;
 }
@@ -69,6 +71,7 @@ pub struct SimFlash {
     bad_region: Vec<(usize, usize, f32)>,
     // Alignment required for writes.
     align: usize,
+    verify_writes: bool,
 }
 
 impl SimFlash {
@@ -85,6 +88,7 @@ impl SimFlash {
             sectors: sectors,
             bad_region: Vec::new(),
             align: align,
+            verify_writes: true,
         }
     }
 
@@ -176,7 +180,7 @@ impl Flash for SimFlash {
         }
 
         for (i, x) in &mut self.write_safe[offset .. offset + payload.len()].iter_mut().enumerate() {
-            if !(*x) {
+            if self.verify_writes && !(*x) {
                 panic!("Write to unerased location at 0x{:x}", offset + i);
             }
             *x = false;
@@ -213,6 +217,10 @@ impl Flash for SimFlash {
 
     fn reset_bad_regions(&mut self) {
         self.bad_region.clear();
+    }
+
+    fn set_verify_writes(&mut self, enable: bool) {
+        self.verify_writes = enable;
     }
 
     /// An iterator over each sector in the device.
