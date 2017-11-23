@@ -3,9 +3,12 @@
 //! This module is capable of simulating the type of NOR flash commonly used in microcontrollers.
 //! These generally can be written as individual bytes, but must be erased in larger units.
 
+#[macro_use] extern crate log;
 #[macro_use] extern crate error_chain;
+extern crate rand;
 mod pdump;
 
+use rand::distributions::{IndependentSample, Range};
 use std::fs::File;
 use std::io::Write;
 use std::iter::Enumerate;
@@ -23,6 +26,10 @@ error_chain! {
             description("Invalid write")
             display("Invalid write: {}", t)
         }
+        SimulatedFail(t: String) {
+            description("Write failed by chance")
+            display("Failed write: {}", t)
+        }
     }
 }
 
@@ -30,6 +37,9 @@ pub trait Flash {
     fn erase(&mut self, offset: usize, len: usize) -> Result<()>;
     fn write(&mut self, offset: usize, payload: &[u8]) -> Result<()>;
     fn read(&self, offset: usize, data: &mut [u8]) -> Result<()>;
+
+    fn add_bad_region(&mut self, offset: usize, len: usize, rate: f32) -> Result<()>;
+    fn reset_bad_regions(&mut self);
 
     fn sector_iter(&self) -> SectorIter;
     fn device_size(&self) -> usize;
@@ -44,6 +54,11 @@ fn ewrite<T: AsRef<str>>(message: T) -> ErrorKind {
     ErrorKind::Write(message.as_ref().to_owned())
 }
 
+#[allow(dead_code)]
+fn esimulatedwrite<T: AsRef<str>>(message: T) -> ErrorKind {
+    ErrorKind::SimulatedFail(message.as_ref().to_owned())
+}
+
 /// An emulated flash device.  It is represented as a block of bytes, and a list of the sector
 /// mapings.
 #[derive(Clone)]
@@ -51,6 +66,7 @@ pub struct SimFlash {
     data: Vec<u8>,
     write_safe: Vec<bool>,
     sectors: Vec<usize>,
+    bad_region: Vec<(usize, usize, f32)>,
     // Alignment required for writes.
     align: usize,
 }
@@ -67,6 +83,7 @@ impl SimFlash {
             data: vec![0xffu8; total],
             write_safe: vec![true; total],
             sectors: sectors,
+            bad_region: Vec::new(),
             align: align,
         }
     }
@@ -134,6 +151,17 @@ impl Flash for SimFlash {
     /// added restriction that repeated writes to the same location
     /// are disallowed, even if they would be safe to do.
     fn write(&mut self, offset: usize, payload: &[u8]) -> Result<()> {
+        for &(off, len, rate) in &self.bad_region {
+            if offset >= off && (offset + payload.len()) <= (off + len) {
+                let mut rng = rand::thread_rng();
+                let between = Range::new(0., 1.);
+                if between.ind_sample(&mut rng) < rate {
+                    bail!(esimulatedwrite(
+                        format!("Ignoring write to {:#x}-{:#x}", off, off + len)));
+                }
+            }
+        }
+
         if offset + payload.len() > self.data.len() {
             panic!("Write outside of device");
         }
@@ -168,6 +196,23 @@ impl Flash for SimFlash {
         let sub = &self.data[offset .. offset + data.len()];
         data.copy_from_slice(sub);
         Ok(())
+    }
+
+    /// Adds a new flash bad region. Writes to this area fail with a chance
+    /// given by `rate`.
+    fn add_bad_region(&mut self, offset: usize, len: usize, rate: f32) -> Result<()> {
+        if rate < 0.0 || rate > 1.0 {
+            bail!(ebounds("Invalid rate"));
+        }
+
+        info!("Adding new bad region {:#x}-{:#x}", offset, offset + len);
+        self.bad_region.push((offset, len, rate));
+
+        Ok(())
+    }
+
+    fn reset_bad_regions(&mut self) {
+        self.bad_region.clear();
     }
 
     /// An iterator over each sector in the device.
