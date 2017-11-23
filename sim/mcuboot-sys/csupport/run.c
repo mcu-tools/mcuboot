@@ -1,5 +1,6 @@
 /* Run the boot image. */
 
+#include <assert.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +26,8 @@ static jmp_buf boot_jmpbuf;
 int flash_counter;
 
 int jumped = 0;
+uint8_t c_asserts = 0;
+uint8_t c_catch_asserts = 0;
 
 int ecdsa256_sign_(const uint8_t *privkey, const uint8_t *hash,
                    unsigned hash_len, uint8_t *signature)
@@ -248,4 +251,20 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
     *count = slot->num_areas;
 
     return 0;
+}
+
+void sim_assert(int x, const char *assertion, const char *file, unsigned int line, const char *function)
+{
+    if (!(x)) {
+        if (c_catch_asserts) {
+            c_asserts++;
+        } else {
+            BOOT_LOG_ERR("%s:%d: %s: Assertion `%s' failed.", file, line, function, assertion);
+
+            /* NOTE: if the assert below is triggered, the place where it was originally
+             * asserted is printed by the message above...
+             */
+            assert(x);
+        }
+    }
 }
