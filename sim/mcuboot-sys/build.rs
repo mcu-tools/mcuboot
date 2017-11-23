@@ -12,11 +12,15 @@ fn main() {
     let sig_rsa = env::var("CARGO_FEATURE_SIG_RSA").is_ok();
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
+    let validate_slot0 = env::var("CARGO_FEATURE_VALIDATE_SLOT0").is_ok();
 
     let mut conf = gcc::Build::new();
     conf.define("__BOOTSIM__", None);
     conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
-    conf.define("MCUBOOT_VALIDATE_SLOT0", None);
+
+    if validate_slot0 {
+        conf.define("MCUBOOT_VALIDATE_SLOT0", None);
+    }
 
     // Currently, mbed TLS cannot build with both RSA and ECDSA.
     if sig_rsa && sig_ecdsa {
