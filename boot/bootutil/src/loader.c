@@ -41,6 +41,12 @@
 #include "mcuboot_config/mcuboot_config.h"
 #endif
 
+#ifdef __BOOTSIM__
+#undef assert
+void sim_assert(int, const char *test, const char *, unsigned int, const char *);
+#define assert(x) sim_assert((x), #x, __FILE__, __LINE__, __func__)
+#endif
+
 static struct boot_loader_state boot_data;
 
 struct boot_status_table {

@@ -34,6 +34,12 @@
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
 
+#ifdef __BOOTSIM__
+#undef assert
+void sim_assert(int, const char *test, const char *, unsigned int, const char *);
+#define assert(x) sim_assert((x), #x, __FILE__, __LINE__, __func__)
+#endif
+
 int boot_current_slot;
 
 const uint32_t boot_img_magic[] = {
