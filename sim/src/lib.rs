@@ -173,6 +173,7 @@ impl Run {
         assert_eq!(slot1_base, slot0_base + slot0_len);
         assert_eq!(scratch_base, slot1_base + slot1_len);
 
+        // NOTE: not accounting "swap_size" because it is not used by sim...
         let offset_from_end = c::boot_magic_sz() + c::boot_max_align() * 2;
 
         // Construct a primary image.
@@ -294,6 +295,8 @@ impl RunStatus {
         failed |= images.run_perm_with_fails();
         failed |= images.run_perm_with_random_fails(5);
         failed |= images.run_norevert();
+
+        failed |= images.run_with_status_fails_complete();
 
         //show_flash(&flash);
 
