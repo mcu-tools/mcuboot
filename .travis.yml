@@ -10,6 +10,7 @@ script:
   - cargo test --features sig-rsa
   - cargo test --features sig-ecdsa
   - cargo test --features overwrite-only
+  - cargo test --features validate-slot0
 
 notifications:
   slack:
