@@ -297,6 +297,7 @@ impl RunStatus {
         failed |= images.run_norevert();
 
         failed |= images.run_with_status_fails_complete();
+        failed |= images.run_with_status_fails_with_reset();
 
         //show_flash(&flash);
 
