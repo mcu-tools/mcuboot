@@ -27,3 +27,4 @@ sim_test!(revert_with_fails, make_image, run_revert_with_fails);
 sim_test!(perm_with_fails, make_image, run_perm_with_fails);
 sim_test!(perm_with_random_fails, make_image, run_perm_with_random_fails_5);
 sim_test!(norevert, make_image, run_norevert);
+sim_test!(status_write_fails_complete, make_image, run_with_status_fails_complete);
