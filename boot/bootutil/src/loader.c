@@ -149,7 +149,7 @@ boot_status_source(void)
     struct boot_swap_state state_scratch;
     struct boot_swap_state state_slot0;
     int rc;
-    int i;
+    size_t i;
     uint8_t source;
 
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_0, &state_slot0);
@@ -1068,7 +1068,7 @@ boot_copy_image(struct boot_status *bs)
     uint32_t sz;
     int first_sector_idx;
     int last_sector_idx;
-    int swap_idx;
+    uint32_t swap_idx;
     struct image_header *hdr;
     uint32_t size;
     uint32_t copy_size;

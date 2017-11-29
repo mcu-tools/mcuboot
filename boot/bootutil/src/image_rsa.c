@@ -268,7 +268,7 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
     end = cp + *bootutil_keys[key_id].len;
 
     rc = bootutil_parse_rsakey(&ctx, &cp, end);
-    if (rc || slen != ctx.len) {
+    if (rc || (size_t)slen != ctx.len) {
         mbedtls_rsa_free(&ctx);
         return rc;
     }
