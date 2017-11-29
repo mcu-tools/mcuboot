@@ -100,7 +100,7 @@ static const struct boot_swap_table boot_swap_tables[] = {
 int
 boot_magic_code(const uint32_t *magic)
 {
-    int i;
+    size_t i;
 
     if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0) {
         return BOOT_MAGIC_GOOD;
@@ -413,7 +413,7 @@ boot_swap_type(void)
     struct boot_swap_state slot0;
     struct boot_swap_state slot1;
     int rc;
-    int i;
+    size_t i;
 
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_0, &slot0);
     if (rc) {

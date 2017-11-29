@@ -25,6 +25,7 @@ int jumped = 0;
 uint8_t sim_flash_align = 1;
 uint8_t flash_area_align(const struct flash_area *area)
 {
+    (void)area;
     return sim_flash_align;
 }
 
@@ -68,6 +69,7 @@ int invoke_boot_go(struct area_desc *adesc)
 int hal_flash_read(uint8_t flash_id, uint32_t address, void *dst,
                    uint32_t num_bytes)
 {
+    (void)flash_id;
     // printf("hal_flash_read: %d, 0x%08x (0x%x)\n",
     //        flash_id, address, num_bytes);
     return sim_flash_read(address, dst, num_bytes);
@@ -76,6 +78,7 @@ int hal_flash_read(uint8_t flash_id, uint32_t address, void *dst,
 int hal_flash_write(uint8_t flash_id, uint32_t address,
                     const void *src, int32_t num_bytes)
 {
+    (void)flash_id;
     // printf("hal_flash_write: 0x%08x (0x%x)\n", address, num_bytes);
     // fflush(stdout);
     if (--flash_counter == 0) {
@@ -88,6 +91,7 @@ int hal_flash_write(uint8_t flash_id, uint32_t address,
 int hal_flash_erase(uint8_t flash_id, uint32_t address,
                     uint32_t num_bytes)
 {
+    (void)flash_id;
     // printf("hal_flash_erase: 0x%08x, (0x%x)\n", address, num_bytes);
     // fflush(stdout);
     if (--flash_counter == 0) {
@@ -99,6 +103,7 @@ int hal_flash_erase(uint8_t flash_id, uint32_t address,
 
 uint8_t hal_flash_align(uint8_t flash_id)
 {
+    (void)flash_id;
     return sim_flash_align;
 }
 
@@ -115,7 +120,7 @@ int flash_area_id_from_image_slot(int slot)
 
 int flash_area_open(uint8_t id, const struct flash_area **area)
 {
-    int i;
+    uint32_t i;
 
     for (i = 0; i < flash_areas->num_slots; i++) {
         if (flash_areas->slots[i].id == id)
@@ -133,6 +138,7 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
 
 void flash_area_close(const struct flash_area *area)
 {
+    (void)area;
 }
 
 /*
@@ -169,7 +175,7 @@ int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
 
 int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 {
-    int i;
+    uint32_t i;
     struct area *slot;
 
     for (i = 0; i < flash_areas->num_slots; i++) {
@@ -183,7 +189,7 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 
     slot = &flash_areas->slots[i];
 
-    if (slot->num_areas > *cnt) {
+    if (slot->num_areas > (uint32_t)*cnt) {
         printf("Too many areas in slot\n");
         abort();
     }
@@ -197,7 +203,7 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 int flash_area_get_sectors(int fa_id, uint32_t *count,
                            struct flash_sector *sectors)
 {
-    int i;
+    uint32_t i;
     struct area *slot;
 
     for (i = 0; i < flash_areas->num_slots; i++) {
