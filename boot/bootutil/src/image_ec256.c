@@ -141,7 +141,7 @@ tinycrypt_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp, uint8_t 
 }
 
 int
-bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
+bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
 {
     int rc;
