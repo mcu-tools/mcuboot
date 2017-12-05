@@ -10,6 +10,10 @@
 
 #include "../../../boot/bootutil/src/bootutil_priv.h"
 
+#ifdef MCUBOOT_SIGN_EC256
+#include "../../../ext/tinycrypt/lib/include/tinycrypt/ecc_dsa.h"
+#endif
+
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
 #include <bootutil/bootutil_log.h>
 
@@ -21,6 +25,20 @@ static jmp_buf boot_jmpbuf;
 int flash_counter;
 
 int jumped = 0;
+
+int ecdsa256_sign_(const uint8_t *privkey, const uint8_t *hash,
+                   unsigned hash_len, uint8_t *signature)
+{
+#ifdef MCUBOOT_SIGN_EC256
+    return uECC_sign(privkey, hash, hash_len, signature, uECC_secp256r1());
+#else
+    (void)privkey;
+    (void)hash;
+    (void)hash_len;
+    (void)signature;
+    return 0;
+#endif
+}
 
 uint8_t sim_flash_align = 1;
 uint8_t flash_area_align(const struct flash_area *area)
