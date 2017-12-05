@@ -30,8 +30,9 @@
 #define MBEDTLS_CONFIG_BOOT_H
 
 /* TODO: Configure this between app and target.  Really, we want the
- * config to come from the app. */
+ * config to come from the app.
 #define CONFIG_BOOT_VERIFY_RSA_SIGNATURE
+ */
 
 /* System support */
 #define MBEDTLS_PLATFORM_C
