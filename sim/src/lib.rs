@@ -887,7 +887,13 @@ fn make_tlv() -> TlvGen {
     TlvGen::new_rsa_pss()
 }
 
+#[cfg(feature = "sig-ecdsa")]
+fn make_tlv() -> TlvGen {
+    TlvGen::new_ecdsa()
+}
+
 #[cfg(not(feature = "sig-rsa"))]
+#[cfg(not(feature = "sig-ecdsa"))]
 fn make_tlv() -> TlvGen {
     TlvGen::new_hash_only()
 }
