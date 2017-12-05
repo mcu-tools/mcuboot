@@ -41,7 +41,7 @@ fn main() {
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
 
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-boot.h>"));
-        conf.include("mbedtls/include");
+        conf.include("../../ext/mbedtls/include");
         conf.include("../../ext/tinycrypt/lib/include");
 
         conf.file("../../boot/zephyr/keys.c");
@@ -52,8 +52,7 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/ecc_dsa.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_platform_specific.c");
 
-        conf.file("mbedtls/library/bignum.c");
-        conf.file("mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls/src/asn1parse.c");
     } else {
         // Neither signature type, only verify sha256.
         conf.define("MCUBOOT_USE_MBED_TLS", None);
@@ -92,6 +91,7 @@ fn main() {
 
     walk_dir("../../boot").unwrap();
     walk_dir("../../ext/tinycrypt/lib/source").unwrap();
+    walk_dir("../../ext/mbedtls/src").unwrap();
     walk_dir("csupport").unwrap();
     walk_dir("mbedtls/include").unwrap();
     walk_dir("mbedtls/library").unwrap();
