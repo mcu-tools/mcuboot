@@ -83,6 +83,7 @@ fn main() {
     conf.debug(true);
     conf.flag("-Wall");
     conf.flag("-Werror");
+    conf.flag("-std=c99");
 
     conf.compile("libbootutil.a");
 
