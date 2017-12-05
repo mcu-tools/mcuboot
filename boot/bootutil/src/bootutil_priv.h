@@ -130,8 +130,8 @@ struct boot_loader_state {
     uint8_t write_sz;
 };
 
-int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
-    uint8_t key_id);
+int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
+                        size_t slen, uint8_t key_id);
 
 uint32_t boot_slots_trailer_sz(uint8_t min_write_sz);
 int boot_status_entries(const struct flash_area *fap);
