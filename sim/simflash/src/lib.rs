@@ -154,7 +154,7 @@ impl Flash for SimFlash {
             *x = false;
         }
 
-        let mut sub = &mut self.data[offset .. offset + payload.len()];
+        let sub = &mut self.data[offset .. offset + payload.len()];
         sub.copy_from_slice(payload);
         Ok(())
     }
