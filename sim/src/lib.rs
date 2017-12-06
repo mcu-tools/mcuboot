@@ -667,11 +667,13 @@ impl Images {
         fails > 0
     }
 
+    #[cfg(not(feature = "overwrite-only"))]
     fn trailer_sz(&self) -> usize {
         c::boot_trailer_sz(self.align) as usize
     }
 
     // FIXME: could get status sz from bootloader
+    #[cfg(not(feature = "overwrite-only"))]
     fn status_sz(&self) -> usize {
         self.trailer_sz() - (16 + 24)
     }
