@@ -21,7 +21,7 @@ from imgtool import image
 from imgtool import version
 import sys
 
-def gen_rsa2048(args):
+def get_password(args):
     if args.password:
         while True:
             passwd = getpass.getpass("Enter key passphrase: ")
@@ -34,11 +34,16 @@ def gen_rsa2048(args):
         # encoding.
         return passwd.encode('utf-8')
     else:
-        passwd = None
+        return None
+
+def gen_rsa2048(args):
+    passwd = get_password(args)
     keys.RSA2048.generate().export_private(path=args.key, passwd=passwd)
 
 def gen_ecdsa_p256(args):
-    keys.ECDSA256P1.generate().export_private(args.key)
+    passwd = get_password(args)
+    keys.ECDSA256P1.generate().export_private(args.key, passwd=passwd)
+
 def gen_ecdsa_p224(args):
     print("TODO: p-224 not yet implemented")
 
