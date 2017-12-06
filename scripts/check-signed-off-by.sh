@@ -14,10 +14,6 @@
 
 # this retrieves the merge commit created by GH
 parents=(`git log -n 1 --format=%p HEAD`)
-branch=(`git rev-parse --abbrev-ref HEAD`)
-
-# Should only run in PR branches
-[[ ${branch} == "master" ]] && exit 0
 
 if [[ "${#parents[@]}" -ne 2 ]]; then
   echo "This PR's merge commit is missing a parent!"
