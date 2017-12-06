@@ -1012,6 +1012,8 @@ boot_copy_image(struct boot_status *bs)
     size_t this_size;
     size_t last_sector;
 
+    (void)bs;
+
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
     uint32_t src_size = 0;
     rc = boot_read_image_size(1, boot_img_hdr(&boot_data, 1), &src_size);

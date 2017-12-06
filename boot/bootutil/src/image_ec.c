@@ -89,13 +89,13 @@ bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
 
 static int
 bootutil_cmp_sig(mbedtls_ecdsa_context *ctx, uint8_t *hash, uint32_t hlen,
-  uint8_t *sig, int slen)
+  uint8_t *sig, size_t slen)
 {
     return mbedtls_ecdsa_read_signature(ctx, hash, hlen, sig, slen);
 }
 
 int
-bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
+bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
 {
     int rc;

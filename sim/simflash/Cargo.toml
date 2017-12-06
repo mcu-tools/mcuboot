@@ -4,4 +4,4 @@ version = "0.1.0"
 authors = ["David Brown <david.brown@linaro.org>"]
 
 [dependencies]
-error-chain = "0.10.0"
+error-chain = "0.11.0"

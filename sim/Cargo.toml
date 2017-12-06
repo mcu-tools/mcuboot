@@ -7,10 +7,11 @@ authors = ["David Brown <davidb@davidb.org>"]
 default = []
 
 sig-rsa = ["mcuboot-sys/sig-rsa"]
+sig-ecdsa = ["mcuboot-sys/sig-ecdsa"]
 overwrite-only = ["mcuboot-sys/overwrite-only"]
 
 [build-dependencies]
-gcc = "0.3.38"
+gcc = "0.3.54"
 
 [dependencies]
 libc = "0.2.0"
@@ -22,7 +23,7 @@ log = "0.3"
 env_logger = "0.4"
 simflash = { path = "simflash" }
 mcuboot-sys = { path = "mcuboot-sys" }
-ring = { version = "0.11", features = ["rsa_signing"] }
+ring = { version = "0.12.1", features = ["rsa_signing"] }
 untrusted = "0.5"
 pem = "0.4"
 
