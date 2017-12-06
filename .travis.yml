@@ -4,7 +4,7 @@ language: rust
 
 script:
   - set -e
-  - ./scripts/check-signed-off-by.sh
+  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then ./scripts/check-signed-off-by.sh; fi
   - cd sim
   - cargo test
   - cargo test --features sig-rsa
