@@ -83,6 +83,11 @@ fn main() {
     conf.flag("-Wall");
     conf.flag("-Werror");
 
+    // FIXME: travis-ci still uses gcc 4.8.4 which defaults to std=gnu90.
+    // It has incomplete std=c11 and std=c99 support but std=c99 was checked
+    // to build correctly so leaving it here to updated in the future...
+    conf.flag("-std=c99");
+
     conf.compile("libbootutil.a");
 
     walk_dir("../../boot").unwrap();
