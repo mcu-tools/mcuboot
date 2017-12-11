@@ -1,1 +1,0 @@
-../../../../ext/tinycrypt/lib/source/utils.c

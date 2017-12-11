@@ -1,1 +1,0 @@
-../../../../../ext/tinycrypt/lib/include/tinycrypt/ecc_platform_specific.h
