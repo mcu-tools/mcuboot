@@ -1,1 +1,0 @@
-../../../../ext/tinycrypt/lib/source/ecc_dsa.c

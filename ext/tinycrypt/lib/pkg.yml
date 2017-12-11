@@ -17,11 +17,14 @@
 # under the License.
 #
 
-pkg.name: boot/mynewt/tinycrypt
+pkg.name: ext/tinycrypt/lib
 pkg.description: "MCUboot's bundled tinycrypt"
 pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
 pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:
+
+pkg.src_dirs:
+  - "source"
 
 pkg.cflags:
     - "-std=c99"
