@@ -27,7 +27,6 @@ fn main() {
         conf.define("MCUBOOT_SIGN_RSA", None);
         conf.define("MCUBOOT_USE_MBED_TLS", None);
 
-        conf.define("MCUBOOT_USE_MBED_TLS", None);
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-boot.h>"));
         conf.include("mbedtls/include");
         conf.file("mbedtls/library/sha256.c");
