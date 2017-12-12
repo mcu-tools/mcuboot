@@ -10,6 +10,7 @@
 #include "flash_map/flash_map.h"
 
 #include "../../../boot/bootutil/src/bootutil_priv.h"
+#include "bootsim.h"
 
 #ifdef MCUBOOT_SIGN_EC256
 #include "../../../ext/tinycrypt/lib/include/tinycrypt/ecc_dsa.h"
