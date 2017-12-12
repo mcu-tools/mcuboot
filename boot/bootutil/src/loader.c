@@ -285,7 +285,7 @@ done:
 }
 
 static int
-boot_read_image_headers(void)
+boot_read_image_headers(bool require_all)
 {
     int rc;
     int i;
@@ -293,11 +293,13 @@ boot_read_image_headers(void)
     for (i = 0; i < BOOT_NUM_SLOTS; i++) {
         rc = boot_read_image_header(i, boot_img_hdr(&boot_data, i));
         if (rc != 0) {
-            /* If at least the first slot's header was read successfully, then
-             * the boot loader can attempt a boot.  Failure to read any headers
-             * is a fatal error.
+            /* If `require_all` is set, fail on any single fail, otherwise
+             * if at least the first slot's header was read successfully,
+             * then the boot loader can attempt a boot.
+             *
+             * Failure to read any headers is a fatal error.
              */
-            if (i > 0) {
+            if (i > 0 && !require_all) {
                 return 0;
             } else {
                 return rc;
@@ -1338,7 +1340,7 @@ boot_go(struct boot_rsp *rsp)
     }
 
     /* Attempt to read an image header from each slot. */
-    rc = boot_read_image_headers();
+    rc = boot_read_image_headers(false);
     if (rc != 0) {
         goto out;
     }
@@ -1409,7 +1411,7 @@ boot_go(struct boot_rsp *rsp)
     }
 
     if (reload_headers) {
-        rc = boot_read_image_headers();
+        rc = boot_read_image_headers(false);
         if (rc != 0) {
             goto out;
         }
@@ -1485,7 +1487,7 @@ split_go(int loader_slot, int split_slot, void **entry)
         goto done;
     }
 
-    rc = boot_read_image_headers();
+    rc = boot_read_image_headers(true);
     if (rc != 0) {
         goto done;
     }
