@@ -131,12 +131,18 @@ get_filename_component(BOOT_DIR ${APPLICATION_SOURCE_DIR} DIRECTORY)
 get_filename_component(MCUBOOT_DIR ${BOOT_DIR} DIRECTORY)
 # Path to tinycrypt library source subdirectory of MCUBOOT_DIR.
 set(TINYCRYPT_DIR "${MCUBOOT_DIR}/ext/tinycrypt/lib")
-
-# Zephyr's mbedTLS needs this.
-zephyr_include_directories(include)
+# Path to mbed-tls' asn1 parser library.
+set(MBEDTLS_ASN1_DIR "${MCUBOOT_DIR}/ext/mbedtls")
 
 # Zephyr application include directories.
-target_include_directories(app PRIVATE $ENV{ZEPHYR_BASE}/ext/lib/crypto/mbedtls/include)
+if (NOT NEED_TINYCRYPT)
+  # Zephyr's mbedTLS needs this.
+  zephyr_include_directories(include)
+
+  # Use full mbedtls provided by OS for RSA
+  target_include_directories(app PRIVATE $ENV{ZEPHYR_BASE}/ext/lib/crypto/mbedtls/include)
+endif()
+
 target_include_directories(app PRIVATE include)
 target_include_directories(app PRIVATE targets)
 if(EXISTS "${APPLICATION_SOURCE_DIR}/targets/${BOARD}.h")
@@ -164,12 +170,16 @@ target_sources(app PRIVATE "${BOOT_DIR}/bootutil/src/caps.c")
 
 # Tinycrypt sources and includes, if needed.
 if (NEED_TINYCRYPT)
+  target_include_directories(app PRIVATE "${BOOT_DIR}/zephyr/include")
   target_include_directories(app PRIVATE "${TINYCRYPT_DIR}/include")
+  target_include_directories(app PRIVATE "${MBEDTLS_ASN1_DIR}/include")
 
   target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/ecc.c")
   target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/ecc_dsa.c")
   target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/sha256.c")
   target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/utils.c")
+
+  target_sources(app PRIVATE "${MBEDTLS_ASN1_DIR}/src/asn1parse.c")
 endif()
 
 if (CONFIG_MCUBOOT_SERIAL)
