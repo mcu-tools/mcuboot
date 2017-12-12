@@ -28,6 +28,12 @@
 extern "C" {
 #endif
 
+#ifdef __BOOTSIM__
+#include "bootsim.h"
+#else
+#define ASSERT assert
+#endif
+
 struct flash_area;
 
 #define BOOT_EFLASH     1
