@@ -60,11 +60,9 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
 
     /* in some cases (split image) the hash is seeded with data from
      * the loader image */
-    if(seed && (seed_len > 0)) {
+    if (seed && (seed_len > 0)) {
         bootutil_sha256_update(&sha256_ctx, seed, seed_len);
     }
-
-    size = hdr->ih_img_size + hdr->ih_hdr_size;
 
     /*
      * Hash is computed over image header and image itself. No TLV is
