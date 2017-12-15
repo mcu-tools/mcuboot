@@ -57,6 +57,24 @@ if (NOT DEFINED CONF_UPGRADE_ONLY)
   set(CONF_UPGRADE_ONLY NO)
 endif()
 
+# If CONF_ZEPHYR_TRY_MASS_ERASE is set (it is set by default), the
+# Zephyr build system configuration attempts to force a mass erase
+# before flashing. This ensures the scratch and other partitions are
+# in a consistent state.
+#
+# This is not available for all boards.
+#
+# To enable the mass erase attempt (this is the default):
+#
+#     cmake -DCONF_ZEPHYR_TRY_MASS_ERASE=YES [...]
+#
+# To disable the mass erase attempt:
+#
+#     cmake -DCONF_ZEPHYR_TRY_MASS_ERASE=NO [...]
+if (NOT DEFINED CONF_ZEPHYR_TRY_MASS_ERASE)
+  set(CONF_ZEPHYR_TRY_MASS_ERASE YES)
+endif()
+
 ##############################
 # End of configuration blocks.
 ##############################
@@ -118,6 +136,25 @@ endif()
 # This is necessary to ensure mcuboot is linked into, and fits inside,
 # the boot partition.
 set(DTC_OVERLAY_FILE ${CMAKE_CURRENT_LIST_DIR}/dts.overlay)
+
+# Enable Zephyr runner options which request mass erase if so
+# configured.
+#
+# Note that this also disables the default "leave" option when
+# targeting STM32 DfuSe devices with dfu-util, making the chip stay in
+# the bootloader after flashing.
+#
+# That's the right thing, because mcuboot has nothing to do since the
+# chip was just erased. The next thing the user is going to want to do
+# is flash the application. (Developers can reset DfuSE devices
+# manually to test mcuboot behavior on an otherwise erased flash
+# device.)
+macro(app_set_runner_args)
+  if(CONF_ZEPHYR_TRY_MASS_ERASE)
+    board_runner_args(dfu-util "--dfuse-modifiers=force:mass-erase")
+    board_runner_args(pyocd "--flashtool-opt=-ce")
+  endif()
+endmacro()
 
 # Standard Zephyr application boilerplate:
 # http://docs.zephyrproject.org/application/application.html
