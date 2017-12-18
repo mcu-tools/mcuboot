@@ -90,7 +90,7 @@ fn main() {
 
     walk_dir("../../boot").unwrap();
     walk_dir("../../ext/tinycrypt/lib/source").unwrap();
-    walk_dir("../../ext/mbedtls/src").unwrap();
+    walk_dir("../../ext/mbedtls").unwrap();
     walk_dir("csupport").unwrap();
     walk_dir("mbedtls/include").unwrap();
     walk_dir("mbedtls/library").unwrap();
