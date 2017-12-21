@@ -27,7 +27,7 @@ validate-slot0 = []
 gcc = "0.3.54"
 
 [dependencies]
-lazy_static = "0.2"
+lazy_static = "1.0"
 libc = "0.2.0"
 log = "0.3"
 simflash = { path = "../simflash" }
