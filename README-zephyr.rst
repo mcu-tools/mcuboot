@@ -23,8 +23,8 @@ mcuboot as your stage 1 bootloader, boot_partition must be configured
 so your SoC runs it out of reset.
 
 An example DTS file with flash partitions defined is in the Zephyr
-file dts/arm/frdm_k64f.dts. Make sure the labels in your board's DTS
-match the ones used there.
+file boards/arm/frdm_k64f/frdm_k64f.dts. Make sure the labels in your
+board's DTS match the ones used there.
 
 Building the bootloader itself
 ==============================
