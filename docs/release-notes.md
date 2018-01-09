@@ -3,6 +3,33 @@
 - Table of Contents
 {:toc}
 
+## Version 1.1.0
+
+The 1.1.0 release of MCUBoot brings a lot of fixes/updates to its
+inner workings, specially to its testing infrastructure which now
+enables a more thorough quality assurance of many of the available
+options. As expected of the 1.x.x release cycle, no breaking changes
+were made. From the tooling perpective the main addition is
+newt/imgtool support for password protected keys.
+
+### About this release
+
+- serial recovery functionality support under Zephyr
+- simulator: lots of refactors were applied, which result in the
+  simulator now leveraging the Rust testing infrastructure; testing
+  of ecdsa (secp256r1) was added
+- imgtool: removed PKCS1.5 support, added support for password
+  protected keys
+- tinycrypt 0.2.8 and the mbed-tls ASN1 parser are now bundled with
+  mcuboot (eg secp256r1 is now free of external dependencies!)
+- Overwrite-only mode was updated to erase/copy only sectors that
+  actually store firmware
+- A lot of small code and documentation fixes and updates.
+
+### Known issues
+
+None
+
 ## Version 1.0.0
 
 The 1.0.0 release of MCUBoot introduces a format change.  It is
