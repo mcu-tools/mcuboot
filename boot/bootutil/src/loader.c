@@ -43,7 +43,7 @@
 
 static struct boot_loader_state boot_data;
 
-#ifdef MCUBOOT_VALIDATE_SLOT0
+#if defined(MCUBOOT_VALIDATE_SLOT0) && !defined(MCUBOOT_OVERWRITE_ONLY)
 static int boot_status_fails = 0;
 #define BOOT_STATUS_ASSERT(x)                \
     do {                                     \
