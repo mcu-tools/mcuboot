@@ -66,7 +66,7 @@ bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
         return -4;
     }
 
-    if (mbedtls_ecp_group_load_secp224r1(&ctx->grp)) {
+    if (mbedtls_ecp_group_load(&ctx->grp, MBEDTLS_ECP_DP_SECP224R1)) {
         return -5;
     }
 
