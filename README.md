@@ -19,6 +19,13 @@ mcuboot works with both the Apache Mynewt, and Zephyr operating systems, but
 more ports are planned in the future. RIOT is currently supported as a boot
 target with a complete port planned.
 
+## Using MCUboot
+
+Instructions for different operating systems can be found here:
+- [Zephyr](docs/readme-zephyr.md)
+- [Mynewt](docs/readme-mynewt.md)
+- [RIOT](docs/readme-riot.md)
+
 ## Roadmap
 
 The issues being planned and worked on are tracked on Jira. To participate
