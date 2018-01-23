@@ -19,7 +19,10 @@ target with a complete port planned.
 - [Release notes]({% link release-notes.md %})
 - [design]({% link design.md %}): for the design
 - [imgtool]({% link imgtool.md %}): The image signing and key management
-  tool.
+- Usage instructions:
+  - [Zephyr]({% link readme-zephyr.md %})
+  - [Mynewt]({% link readme-mynewt.md %})
+  - [RIOT]({% link readme-riot.md %})
 - [Patch submission]({% link SubmittingPatches.md %}) for information
   on how to contribute to mcuboot.
 - Testing
