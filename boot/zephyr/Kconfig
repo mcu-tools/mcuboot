@@ -9,6 +9,14 @@ config ZEPHYR_BASE
 	string
 	option env="ZEPHYR_BASE"
 
+config MCUBOOT
+	bool
+	# Hidden option, must always be "y"
+	default y
+	# Select the required Zephyr Kconfig options
+	select IS_BOOTLOADER
+	select IS_MCUBOOT
+
 source "$ZEPHYR_BASE/Kconfig.zephyr"
 
 menuconfig MCUBOOT_SERIAL

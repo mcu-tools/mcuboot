@@ -7,7 +7,7 @@
 cmake_minimum_required(VERSION 3.8.2)
 
 
-set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../Kconfig)
+set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
 
 ########################
 # Configuration choices.
