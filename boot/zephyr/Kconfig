@@ -26,6 +26,16 @@ config MCUBOOT_DEVICE_CPU_CORTEX_M0
 	default n
 	select SW_VECTOR_RELAY if !CPU_CORTEX_M0_HAS_VECTOR_TABLE_REMAP
 
+config MCUBOOT_VALIDATE_SLOT0
+	bool
+	prompt "Validate slot 0"
+	default y
+	help
+	  If VALIDATE_SLOT0 is set, the bootloader attempts to validate
+	  the signature of slot0 every boot.  This adds the signature
+	  check time to every boot, but can mitigate against some changes
+	  that are able to modify the flash image itself.
+
 menuconfig MCUBOOT_SERIAL
 	bool
 	prompt "MCUBOOT serial recovery"
