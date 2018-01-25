@@ -146,7 +146,7 @@ endif()
 target_include_directories(app PRIVATE include)
 target_include_directories(app PRIVATE targets)
 if(EXISTS "${APPLICATION_SOURCE_DIR}/targets/${BOARD}.h")
-  target_compile_definitions(app PRIVATE "-DMCUBOOT_TARGET_CONFIG='\"${BOARD}.h\"'")
+  target_compile_definitions(app PRIVATE "-DMCUBOOT_TARGET_CONFIG=\"${BOARD}.h\"")
 endif()
 
 # Zephyr port-specific sources.
