@@ -8,12 +8,6 @@
 # mcuboot, which is easy to customize on a per-board basis. It can be
 # used as a starting point for new applications.
 
-# The board should be set to a supported target. The default is
-# frdm_k64f.
-if (NOT DEFINED BOARD)
-  set(BOARD frdm_k64f)
-endif()
-
 # The default top-level application configuration is prj.conf.
 # You can place additional board-specific files in boards/${BOARD}.conf,
 # and they will be merged into the configuration along with prj.conf.
