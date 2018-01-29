@@ -5,7 +5,7 @@
 
 ## Version 1.1.0
 
-The 1.1.0 release of MCUBoot brings a lot of fixes/updates to its
+The 1.1.0 release of MCUboot brings a lot of fixes/updates to its
 inner workings, specially to its testing infrastructure which now
 enables a more thorough quality assurance of many of the available
 options. As expected of the 1.x.x release cycle, no breaking changes
@@ -32,7 +32,7 @@ None
 
 ## Version 1.0.0
 
-The 1.0.0 release of MCUBoot introduces a format change.  It is
+The 1.0.0 release of MCUboot introduces a format change.  It is
 important to either use the `imgtool.py` also from this release, or
 pass the `-2` to recent versions of the `newt` tool in order to
 generate image headers with the new format.  There should be no
@@ -76,7 +76,7 @@ None
 
 ## Version 0.9.0
 
-This is the first release of MCUBoot, a secure bootloader for 32-bit MCUs.
+This is the first release of MCUboot, a secure bootloader for 32-bit MCUs.
 It is designed to be operating system-agnostic and works over any transport -
 wired or wireless. It is also hardware independent, and relies  on hardware
 porting layers from the operating system it works with. For the first release,
