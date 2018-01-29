@@ -118,7 +118,7 @@ endif()
 
 # This is necessary to ensure mcuboot is linked into, and fits inside,
 # the boot partition.
-set(DTC_OVERLAY_FILE dts.overlay)
+set(DTC_OVERLAY_FILE ${CMAKE_CURRENT_LIST_DIR}/dts.overlay)
 
 # Standard Zephyr application boilerplate:
 # http://docs.zephyrproject.org/application/application.html
