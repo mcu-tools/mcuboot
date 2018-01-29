@@ -17,6 +17,8 @@ config MCUBOOT_DEVICE_SETTINGS
 	default y
         # CPU options
 	select MCUBOOT_DEVICE_CPU_CORTEX_M0 if CPU_CORTEX_M0
+        # Enable flash page layout if available
+	select FLASH_PAGE_LAYOUT if FLASH_HAS_PAGE_LAYOUT
 
 config MCUBOOT_DEVICE_CPU_CORTEX_M0
 	# Hidden selector for Cortex-M0 settings
