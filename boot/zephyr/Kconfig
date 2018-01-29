@@ -11,6 +11,19 @@ config ZEPHYR_BASE
 
 source "$ZEPHYR_BASE/Kconfig.zephyr"
 
+config MCUBOOT_DEVICE_SETTINGS
+	# Hidden selector for device-specific settings
+	bool
+	default y
+        # CPU options
+	select MCUBOOT_DEVICE_CPU_CORTEX_M0 if CPU_CORTEX_M0
+
+config MCUBOOT_DEVICE_CPU_CORTEX_M0
+	# Hidden selector for Cortex-M0 settings
+	bool
+	default n
+	select SW_VECTOR_RELAY if !CPU_CORTEX_M0_HAS_VECTOR_TABLE_REMAP
+
 menuconfig MCUBOOT_SERIAL
 	bool
 	prompt "MCUBOOT serial recovery"
