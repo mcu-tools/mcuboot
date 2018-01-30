@@ -6,13 +6,9 @@ this script should be preferred to the manual steps described in
 `doc/signed_images.md`.
 
 This program is written for Python3, and has several dependencies on
-Python libraries.  These can be installed using 'pip3' manually:
+Python libraries.  These can be installed using 'pip3':
 
-    pip3 install --user cryptography
-
-or, on Ubuntu, using the package manager:
-
-    sudo apt-get install python3-cryptography
+    pip3 install --user -r scripts/requirements.txt
 
 ## Managing keys
 
