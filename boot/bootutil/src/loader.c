@@ -37,7 +37,15 @@
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
 
-#ifdef MCUBOOT_MYNEWT
+#if defined(USE_MCUBOOT_CONFIG)
+#include <mcuboot_config.h>
+#endif
+
+// For legacy-reasons MYNEWT uses the define 'MCUBOOT_MYNEWT' and the
+// header 'mcuboot_config/mcuboot_config.h' to specify it's
+// mcuboot_config.h file. Eventually it will use the OS-agnostic
+// 'USE_MCUBOOT_CONFIG' define and 'mcuboot_config.h' header.
+#if defined(MCUBOOT_MYNEWT)
 #include "mcuboot_config/mcuboot_config.h"
 #endif
 
