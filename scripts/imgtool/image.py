@@ -1,3 +1,4 @@
+# Copyright 2018 Nordic Semiconductor ASA
 # Copyright 2017 Linaro Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +18,15 @@ Image signing and management.
 """
 
 from . import version as versmod
+from intelhex import IntelHex
 import hashlib
 import struct
+import os.path
 
 IMAGE_MAGIC = 0x96f3b83d
 IMAGE_HEADER_SIZE = 32
+BIN_EXT = "bin"
+INTEL_HEX_EXT = "hex"
 
 # Image header flags.
 IMAGE_F = {
@@ -69,10 +74,14 @@ class Image():
     @classmethod
     def load(cls, path, included_header=False, **kwargs):
         """Load an image from a given file"""
-        with open(path, 'rb') as f:
-            payload = f.read()
+        ext = os.path.splitext(path)[1][1:].lower()
+        if ext == INTEL_HEX_EXT:
+            cls = HexImage
+        else:
+            cls = BinImage
+
         obj = cls(**kwargs)
-        obj.payload = payload
+        obj.payload, obj.base_addr = obj.load(path)
 
         # Add the image header if needed.
         if not included_header and obj.header_size > 0:
@@ -87,15 +96,14 @@ class Image():
         self.pad = pad
 
     def __repr__(self):
-        return "<Image version={}, header_size={}, pad={}, payloadlen=0x{:x}>".format(
+        return "<Image version={}, header_size={}, base_addr={}, pad={}, \
+                format={}, payloadlen=0x{:x}>".format(
                 self.version,
                 self.header_size,
+                self.base_addr if self.base_addr is not None else "N/A",
                 self.pad,
+                self.__class__.__name__,
                 len(self.payload))
-
-    def save(self, path):
-        with open(path, 'wb') as f:
-            f.write(self.payload)
 
     def check(self):
         """Perform some sanity checking of the image."""
@@ -187,3 +195,24 @@ class Image():
         pbytes += b'\xff' * (tsize - len(boot_magic))
         pbytes += boot_magic
         self.payload += pbytes
+
+class HexImage(Image):
+
+    def load(self, path):
+        ih = IntelHex(path)
+        return ih.tobinarray(), ih.minaddr()
+
+    def save(self, path):
+        h = IntelHex()
+        h.frombytes(bytes = self.payload, offset = self.base_addr)
+        h.tofile(path, 'hex')
+
+class BinImage(Image):
+
+    def load(self, path):
+        with open(path, 'rb') as f:
+            return f.read(), None
+
+    def save(self, path):
+        with open(path, 'wb') as f:
+            f.write(self.payload)
