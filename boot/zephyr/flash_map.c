@@ -254,7 +254,7 @@ struct layout_data {
  * flash_area_get_sectors(). A lot of this can be inlined once
  * flash_area_to_sectors() is removed.
  */
-static int flash_area_layout(int idx, int *cnt, void *ret,
+static int flash_area_layout(int idx, uint32_t *cnt, void *ret,
                              flash_page_cb cb, struct layout_data *cb_data)
 {
     cb_data->area_idx = idx;
@@ -327,7 +327,7 @@ static bool to_sectors_cb(const struct flash_pages_info *info, void *datav)
     return true;
 }
 
-int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
+int flash_area_to_sectors(int idx, uint32_t *cnt, struct flash_area *ret)
 {
     struct layout_data data;
 

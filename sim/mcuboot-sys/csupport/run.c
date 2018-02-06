@@ -195,7 +195,7 @@ int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
                            len);
 }
 
-int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
+int flash_area_to_sectors(int idx, uint32_t *cnt, struct flash_area *ret)
 {
     uint32_t i;
     struct area *slot;
