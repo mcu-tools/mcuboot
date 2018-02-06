@@ -22,9 +22,9 @@
 
 #include "os/os_heap.h"
 
-#ifdef MCUBOOT_USE_MBED_TLS
+#if !defined(CONFIG_MBEDTLS) && defined(MCUBOOT_USE_MBED_TLS)
 
-#define MBEDTLS_CONFIG_FILE CONFIG_MBEDTLS_CFG_FILE
+#define MBEDTLS_CONFIG_FILE MCUBOOT_MBEDTLS_CFG_FILE
 #include <mbedtls/platform.h>
 #include <mbedtls/memory_buffer_alloc.h>
 
