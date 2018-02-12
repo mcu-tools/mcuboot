@@ -63,8 +63,8 @@ incompatible format changes throughout the 1.x.y release series.
   - Nordic nRF51 and nRF52832 dev kits
   - Hexiwear K64
 - Clearer sample applications have been added under `samples`.
-- Test plans for [zephyr](%{ link testplan-zephyr.md %}), and
-  [mynewt]({% link testplan-mynewt.md %}).
+- Test plans for [zephyr](testplan-zephyr.md), and
+  [mynewt](testplan-mynewt.md).
 - The simulator is now able to test RSA signatures.
 - There is an unimplemented `load_addr` header for future support for
   RAM loading in the bootloader.
