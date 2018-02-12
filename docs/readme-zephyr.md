@@ -5,9 +5,9 @@ acquired the ability to be used as a bootloader for Zephyr as well.
 There are some pretty significant differences in how apps are built
 for Zephyr, and these are documented here.
 
-Please see the [design document]({% link design.md %}) for documentation on the
-design and operation of the bootloader itself.  This functionality
-should be the same on all supported RTOSs.
+Please see the [design document](design.md) for documentation on the design
+and operation of the bootloader itself. This functionality should be the same
+on all supported RTOSs.
 
 The first step required for Zephyr is making sure your board has flash
 partitions defined in its device tree. These partitions are:

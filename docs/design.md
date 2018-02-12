@@ -682,5 +682,4 @@ image was signed with a private key that corresponds to the embedded keyhash
 TLV.
 
 For information on embedding public keys in the boot loader, as well as
-producing signed images, see: [signed_images]({% link signed_images.md
-%}).
+producing signed images, see: [signed_images](signed_images.md).

@@ -16,23 +16,22 @@ target with a complete port planned.
 ## Contents
 
 - General: this document
-- [Release notes]({% link release-notes.md %})
-- [design]({% link design.md %}): for the design
-- [imgtool]({% link imgtool.md %}): The image signing and key management
+- [Release notes](release-notes.md)
+- [design](design.md): for the design
+- [imgtool](imgtool.md): The image signing and key management
 - Usage instructions:
-  - [Zephyr]({% link readme-zephyr.md %})
-  - [Mynewt]({% link readme-mynewt.md %})
-  - [RIOT]({% link readme-riot.md %})
-- [Patch submission]({% link SubmittingPatches.md %}) for information
+  - [Zephyr](readme-zephyr.md)
+  - [Mynewt](readme-mynewt.md)
+  - [RIOT](readme-riot.md)
+- [Patch submission](SubmittingPatches.md) for information
   on how to contribute to mcuboot.
 - Testing
-  - The [Zephyr]({% link testplan-zephyr.md %}) test plan.
-  - The [mynewt]({% link testplan-mynewt.md %}) test plan.
-- Our [release process]({% link release.md %}).
+  - The [Zephyr](testplan-zephyr.md) test plan.
+  - The [mynewt](testplan-mynewt.md) test plan.
+- Our [release process](release.md).
 
-There is also a document about [signed images]({% link
-signed_images.md %}) that is out of date.  You should use `imgtool.py`
-instead of these documents.
+There is also a document about [signed images](signed_images.md) that is out
+of date.  You should use `imgtool.py` instead of these documents.
 
 ## Roadmap
 
