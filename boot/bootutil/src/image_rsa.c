@@ -85,6 +85,8 @@ bootutil_parse_rsakey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
         return -3;
     }
 
+    ctx->len = mbedtls_mpi_size(&ctx->N);
+
     if (*p != end) {
         return -4;
     }
