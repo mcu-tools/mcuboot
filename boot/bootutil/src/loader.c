@@ -47,7 +47,7 @@ static struct boot_loader_state boot_data;
 static int boot_status_fails = 0;
 #define BOOT_STATUS_ASSERT(x)                \
     do {                                     \
-        if (x) {                             \
+        if (!(x)) {                          \
             boot_status_fails++;             \
         }                                    \
     } while (0)
