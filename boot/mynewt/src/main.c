@@ -67,9 +67,9 @@ main(void)
     int rc;
 
     hal_bsp_init();
-    os_dev_initialize_all(OS_DEV_INIT_PRIMARY);
-    os_dev_initialize_all(OS_DEV_INIT_SECONDARY);
 #ifdef MCUBOOT_SERIAL
+    /* initialize uart without os */
+    os_dev_initialize_all(OS_DEV_INIT_PRIMARY);
     sysinit();
 #else
     flash_map_init();
