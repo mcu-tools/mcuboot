@@ -66,11 +66,13 @@ main(void)
     uintptr_t flash_base;
     int rc;
 
+    hal_bsp_init();
+    os_dev_initialize_all(OS_DEV_INIT_PRIMARY);
+    os_dev_initialize_all(OS_DEV_INIT_SECONDARY);
 #ifdef MCUBOOT_SERIAL
     sysinit();
 #else
     flash_map_init();
-    hal_bsp_init();
 #endif
 
 #ifdef MCUBOOT_SERIAL
@@ -78,15 +80,10 @@ main(void)
      * Configure a GPIO as input, and compare it against expected value.
      * If it matches, await for download commands from serial.
      */
-#ifdef MCUBOOT_MYNEWT
     hal_gpio_init_in(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN),
                      MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_CFG));
     if (hal_gpio_read(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN)) ==
                       MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_VAL)) {
-#else
-    hal_gpio_init_in(BOOT_SERIAL_DETECT_PIN, BOOT_SERIAL_DETECT_PIN_CFG);
-    if (hal_gpio_read(BOOT_SERIAL_DETECT_PIN) == BOOT_SERIAL_DETECT_PIN_VAL) {
-#endif
         boot_serial_start(BOOT_SER_CONS_INPUT);
         assert(0);
     }
