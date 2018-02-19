@@ -17,6 +17,10 @@
  * under the License.
  */
 
+#ifdef MCUBOOT_MYNEWT
+#include "mcuboot_config/mcuboot_config.h"
+#endif
+
 #include <assert.h>
 #include <stddef.h>
 #include <inttypes.h>
@@ -62,11 +66,13 @@ main(void)
     uintptr_t flash_base;
     int rc;
 
+    hal_bsp_init();
 #ifdef MCUBOOT_SERIAL
+    /* initialize uart without os */
+    os_dev_initialize_all(OS_DEV_INIT_PRIMARY);
     sysinit();
 #else
     flash_map_init();
-    hal_bsp_init();
 #endif
 
 #ifdef MCUBOOT_SERIAL
@@ -74,8 +80,10 @@ main(void)
      * Configure a GPIO as input, and compare it against expected value.
      * If it matches, await for download commands from serial.
      */
-    hal_gpio_init_in(BOOT_SERIAL_DETECT_PIN, BOOT_SERIAL_DETECT_PIN_CFG);
-    if (hal_gpio_read(BOOT_SERIAL_DETECT_PIN) == BOOT_SERIAL_DETECT_PIN_VAL) {
+    hal_gpio_init_in(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN),
+                     MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_CFG));
+    if (hal_gpio_read(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN)) ==
+                      MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_VAL)) {
         boot_serial_start(BOOT_SER_CONS_INPUT);
         assert(0);
     }
