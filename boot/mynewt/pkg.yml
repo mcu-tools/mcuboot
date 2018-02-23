@@ -34,5 +34,5 @@ pkg.deps:
     - "@apache-mynewt-core/kernel/os"
     - "@apache-mynewt-core/sys/console/minimal"
 
-pkg.deps.BOOT_SERIAL.OVERWRITE:
+pkg.deps.BOOT_SERIAL:
     - "@mcuboot/boot/boot_serial"
