@@ -68,7 +68,7 @@
 
 #ifdef MCUBOOT_SIGN_RSA
 #define MBEDTLS_RSA_C
-#define MBEDTLS_PKCS1_V15
+#define MBEDTLS_PKCS1_V21
 #endif
 
 /* mbed TLS modules */
