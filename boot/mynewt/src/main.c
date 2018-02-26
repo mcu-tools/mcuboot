@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <inttypes.h>
+#include <stdio.h>
 #include "syscfg/syscfg.h"
 #include <flash_map/flash_map.h>
 #include <os/os.h>
@@ -31,10 +32,10 @@
 #include <hal/hal_bsp.h>
 #include <hal/hal_system.h>
 #include <hal/hal_flash.h>
+#include <sysinit/sysinit.h>
 #ifdef MCUBOOT_SERIAL
 #include <hal/hal_gpio.h>
 #include <boot_serial/boot_serial.h>
-#include <sysinit/sysinit.h>
 #endif
 #include <console/console.h>
 #include "bootutil/image.h"
@@ -67,13 +68,11 @@ main(void)
     int rc;
 
     hal_bsp_init();
-#ifdef MCUBOOT_SERIAL
+
     /* initialize uart without os */
     os_dev_initialize_all(OS_DEV_INIT_PRIMARY);
     sysinit();
-#else
-    flash_map_init();
-#endif
+    console_blocking_mode();
 
 #ifdef MCUBOOT_SERIAL
     /*
@@ -88,6 +87,7 @@ main(void)
         assert(0);
     }
 #endif
+
     rc = boot_go(&rsp);
     assert(rc == 0);
 
