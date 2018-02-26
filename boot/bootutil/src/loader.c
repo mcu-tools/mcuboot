@@ -1436,7 +1436,7 @@ boot_go(struct boot_rsp *rsp)
      * the magic number on the image is OK.
      */
     if (boot_data.imgs[0].hdr.ih_magic != IMAGE_MAGIC) {
-        BOOT_LOG_ERR("bad image magic 0x%x", boot_data.imgs[0].hdr.ih_magic);
+        BOOT_LOG_ERR("bad image magic 0x%lx", (unsigned long)boot_data.imgs[0].hdr.ih_magic);
         rc = BOOT_EBADIMAGE;
         goto out;
     }
