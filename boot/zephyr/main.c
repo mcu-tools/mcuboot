@@ -19,7 +19,6 @@
 #include <gpio.h>
 #include <misc/__assert.h>
 #include <flash.h>
-#include <asm_inline.h>
 #include <drivers/system_timer.h>
 
 #include "target.h"
@@ -65,7 +64,7 @@ static void do_boot(struct boot_rsp *rsp)
                                      rsp->br_hdr->ih_hdr_size);
     irq_lock();
     sys_clock_disable();
-    _MspSet(vt->msp);
+    __set_MSP(vt->msp);
     ((void (*)(void))vt->reset)();
 }
 #else
