@@ -63,6 +63,7 @@ struct nmgr_hdr {
  */
 #define IMGMGR_NMGR_OP_STATE            0
 #define IMGMGR_NMGR_OP_UPLOAD           1
+#define IMGMGR_NMGR_ID_ERASE            5
 
 
 void boot_serial_input(char *buf, int len);

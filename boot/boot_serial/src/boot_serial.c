@@ -269,11 +269,16 @@ out:
 }
 
 /*
- * Console echo control. Send empty response, don't do anything.
+ * Console echo control/image erase. Send empty response, don't do anything.
  */
 static void
-bs_echo_ctl(char *buf, int len)
+bs_empty_rsp(char *buf, int len)
 {
+    cbor_encoder_create_map(&bs_root, &bs_rsp, CborIndefiniteLength);
+    cbor_encode_text_stringz(&bs_rsp, "rc");
+    cbor_encode_int(&bs_rsp, 0);
+    cbor_encoder_close_container(&bs_root, &bs_rsp);
+
     boot_serial_output();
 }
 
@@ -284,12 +289,7 @@ bs_echo_ctl(char *buf, int len)
 static int
 bs_reset(char *buf, int len)
 {
-    cbor_encoder_create_map(&bs_root, &bs_rsp, CborIndefiniteLength);
-    cbor_encode_text_stringz(&bs_rsp, "rc");
-    cbor_encode_int(&bs_rsp, 0);
-    cbor_encoder_close_container(&bs_root, &bs_rsp);
-
-    boot_serial_output();
+    bs_empty_rsp(buf, len);
 #ifdef __ZEPHYR__
     k_sleep(250);
     sys_reboot(SYS_REBOOT_COLD);
@@ -334,13 +334,16 @@ boot_serial_input(char *buf, int len)
         case IMGMGR_NMGR_OP_UPLOAD:
             bs_upload(buf, len);
             break;
+        case IMGMGR_NMGR_ID_ERASE:
+            bs_empty_rsp(buf, len);
+            break;
         default:
             break;
         }
     } else if (hdr->nh_group == MGMT_GROUP_ID_DEFAULT) {
         switch (hdr->nh_id) {
         case NMGR_ID_CONS_ECHO_CTRL:
-            bs_echo_ctl(buf, len);
+            bs_empty_rsp(buf, len);
             break;
         case NMGR_ID_RESET:
             bs_reset(buf, len);
