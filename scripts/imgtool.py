@@ -122,8 +122,11 @@ def args():
     getpub.add_argument('-k', '--key', metavar='filename', required=True)
     getpub.add_argument('-l', '--lang', metavar='lang', default='c')
 
-    sign = subs.add_parser('sign', help='Sign an image with a private key')
-    sign.add_argument('-k', '--key', metavar='filename')
+    sign = subs.add_parser('sign',
+            help='Sign an image with a private key (or create an unsigned image)',
+            aliases=['create'])
+    sign.add_argument('-k', '--key', metavar='filename',
+            help='private key to sign, or no key for an unsigned image')
     sign.add_argument("--align", type=alignment_value, required=True)
     sign.add_argument("-v", "--version", type=version.decode_version, required=True)
     sign.add_argument("-H", "--header-size", type=intparse, required=True)
