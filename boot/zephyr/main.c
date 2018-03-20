@@ -118,7 +118,7 @@ void main(void)
                             GPIO_DIR_IN | GPIO_PUD_PULL_UP);
     __ASSERT(rc, "Error of boot detect pin initialization.\n");
 
-    rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN, 
+    rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
                        &detect_value);
     __ASSERT(rc, "Error of the reading the detect pin.\n");
 
