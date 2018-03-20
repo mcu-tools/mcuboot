@@ -17,6 +17,7 @@ config MCUBOOT_DEVICE_SETTINGS
 	default y
         # CPU options
 	select MCUBOOT_DEVICE_CPU_CORTEX_M0 if CPU_CORTEX_M0
+	select MCUBOOT_DEVICE_NRF if SOC_FAMILY_NRF
         # Enable flash page layout if available
 	select FLASH_PAGE_LAYOUT if FLASH_HAS_PAGE_LAYOUT
 
@@ -25,6 +26,12 @@ config MCUBOOT_DEVICE_CPU_CORTEX_M0
 	bool
 	default n
 	select SW_VECTOR_RELAY if !CPU_CORTEX_M0_HAS_VECTOR_TABLE_REMAP
+
+config MCUBOOT_DEVICE_NRF
+	# Hidden selector for Nordic nRF settings
+	bool
+	default n
+	select SOC_FLASH_NRF5
 
 menuconfig MCUBOOT_SERIAL
 	bool
