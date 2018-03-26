@@ -53,6 +53,7 @@ macro(app_set_runner_args)
   if(CONFIG_ZEPHYR_TRY_MASS_ERASE)
     board_runner_args(dfu-util "--dfuse-modifiers=force:mass-erase")
     board_runner_args(pyocd "--flashtool-opt=-ce")
+    board_runner_args(nrfjprog "--erase")
   endif()
 endmacro()
 
