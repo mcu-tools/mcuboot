@@ -34,7 +34,7 @@
 #include <flash.h>
 #include <crc16.h>
 #include <serial_adapter/serial_adapter.h>
-#include "mbedtls/base64.h"
+#include <base64.h>
 #else
 #include <bsp/bsp.h>
 #include <hal/hal_system.h>
@@ -62,7 +62,7 @@
 #define BOOT_SERIAL_OUT_MAX	48
 
 #ifdef __ZEPHYR__
-/* mbedtls-base64 lib encodes data to null-terminated string */
+/* base64 lib encodes data to null-terminated string */
 #define BASE64_ENCODE_SIZE(in_size) ((((((in_size) - 1) / 3) * 4) + 4) + 1)
 
 #define CRC16_INITIAL_CRC       0       /* what to seed crc16 with */
@@ -395,8 +395,7 @@ boot_serial_output(void)
     totlen += sizeof(crc);
 #ifdef __ZEPHYR__
     size_t enc_len;
-    mbedtls_base64_encode(encoded_buf, sizeof(encoded_buf), &enc_len, buf,
-                          totlen);
+    base64_encode(encoded_buf, sizeof(encoded_buf), &enc_len, buf, totlen);
     totlen = enc_len;
 #else
     totlen = base64_encode(buf, totlen, encoded_buf, 1);
@@ -417,7 +416,7 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
     uint16_t len;
 #ifdef __ZEPHYR__
     int err;
-    err = mbedtls_base64_decode( &out[*out_off], maxout, &rc, in, inlen - 2);
+    err = base64_decode( &out[*out_off], maxout, &rc, in, inlen - 2);
     if (err) {
         return -1;
     }
