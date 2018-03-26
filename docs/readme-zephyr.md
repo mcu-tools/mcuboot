@@ -64,29 +64,20 @@ system `flash` target to flash these binaries, usually by running
 In addition to flash partitions in DTS, some additional configuration
 is required to build applications for MCUboot.
 
+This is handled internally by the Zephyr configuration system and is wrapped
+in the `CONFIG_BOOTLOADER_MCUBOOT` Kconfig variable, which must be enabled in
+the application's `prj.conf` file.
+
 The directory `samples/zephyr/hello-world` in the MCUboot tree contains
 a simple application with everything you need. You can try it on your
 board and then just make a copy of it to get started on your own
 application; see samples/zephyr/README.md for a tutorial.
 
-More details:
-
-- `CONFIG_TEXT_SECTION_OFFSET` must be set to allow room for the
-  boot image header. Typically this is set in the app's prj.conf.  It
-  must also be aligned to a boundary that the particular MCU requires
-  the vector table to be aligned on.
-
-- Your board must provide a DTS `zephyr,code-partition` chosen node
-  which ensures it is built and linked into the DTS `slot0_partition`. This
-  is typically achieved by creating a
-  [dts.overlay](https://github.com/runtimeco/mcuboot/blob/master/samples/zephyr/hello-world/dts.overlay)
-  file that contains the chose node description:
-
-```
-         chosen {
-                zephyr,code-partition = &slot0_partition;
-         };
-```
+The Zephyr `CONFIG_BOOTLOADER_MCUBOOT` configuration option
+[documentation](http://docs.zephyrproject.org/reference/kconfig/CONFIG_BOOTLOADER_MCUBOOT.html)
+provides additional details regarding the changes it makes to the image
+placement and generation in order for an application to be bootable by
+MCUboot.
 
 With this, build the application as your normally would.
 
