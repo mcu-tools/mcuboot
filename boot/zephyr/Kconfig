@@ -33,6 +33,7 @@ menuconfig MCUBOOT_SERIAL
 	select REBOOT
 	select UART_INTERRUPT_DRIVEN
 	select SERIAL
+	select BASE64
 	select NEWLIB_LIBC
 	help
 	  Enable serial recovery feature in mcuboot.
