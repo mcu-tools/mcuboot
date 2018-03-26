@@ -47,8 +47,8 @@ into the key file.
 
 ## Signing images
 
-Image signing takes a binary image intended for Slot 0 and adds a
-header and trailer that the bootloader is expecting:
+Image signing takes an image in binary or Intel Hex format intended for Slot 0
+and adds a header and trailer that the bootloader is expecting:
 
     usage: imgtool.py sign [-h] -k filename --align ALIGN -v VERSION -H
                            HEADER_SIZE [--pad PAD] [--rsa-pkcs1-15]
