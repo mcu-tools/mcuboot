@@ -14,137 +14,160 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import argparse
+import click
 import getpass
 from imgtool import keys
 from imgtool import image
-from imgtool import version
-import sys
+from imgtool.version import decode_version
 
-def get_password(args):
-    if args.password:
-        while True:
-            passwd = getpass.getpass("Enter key passphrase: ")
-            passwd2 = getpass.getpass("Reenter passphrase: ")
-            if passwd == passwd2:
-                break
-            print("Passwords do not match, try again")
 
-        # Password must be bytes, always use UTF-8 for consistent
-        # encoding.
-        return passwd.encode('utf-8')
-    else:
-        return None
+def gen_rsa2048(keyfile, passwd):
+    keys.RSA2048.generate().export_private(path=keyfile, passwd=passwd)
 
-def gen_rsa2048(args):
-    passwd = get_password(args)
-    keys.RSA2048.generate().export_private(path=args.key, passwd=passwd)
 
-def gen_ecdsa_p256(args):
-    passwd = get_password(args)
-    keys.ECDSA256P1.generate().export_private(args.key, passwd=passwd)
+def gen_ecdsa_p256(keyfile, passwd):
+    keys.ECDSA256P1.generate().export_private(keyfile, passwd=passwd)
 
-def gen_ecdsa_p224(args):
+
+def gen_ecdsa_p224(keyfile, passwd):
     print("TODO: p-224 not yet implemented")
 
+
+valid_langs = ['c', 'rust']
 keygens = {
-        'rsa-2048': gen_rsa2048,
-        'ecdsa-p256': gen_ecdsa_p256,
-        'ecdsa-p224': gen_ecdsa_p224, }
-
-def do_keygen(args):
-    if args.type not in keygens:
-        msg = "Unexpected key type: {}".format(args.type)
-        raise argparse.ArgumentTypeError(msg)
-    keygens[args.type](args)
-
-def load_key(args):
-    key = keys.load(args.key)
-    if key is not None:
-        return key
-    passwd = getpass.getpass("Enter key passphrase: ")
-    passwd = passwd.encode('utf-8')
-    return keys.load(args.key, passwd)
-
-def do_getpub(args):
-    key = load_key(args)
-    if args.lang == 'c':
-        key.emit_c()
-    elif args.lang == 'rust':
-        key.emit_rust()
-    else:
-        msg = "Unsupported language, valid are: c, or rust"
-        raise argparse.ArgumentTypeError(msg)
-
-def do_sign(args):
-    img = image.Image.load(args.infile, version=args.version,
-            header_size=args.header_size,
-            included_header=args.included_header,
-            pad=args.pad)
-    key = load_key(args) if args.key else None
-    img.sign(key)
-
-    if args.pad:
-        img.pad_to(args.pad, args.align)
-
-    img.save(args.outfile)
-
-subcmds = {
-    'keygen': do_keygen,
-    'getpub': do_getpub,
-    'sign': do_sign,
-    'create': do_sign,
+    'rsa-2048':   gen_rsa2048,
+    'ecdsa-p256': gen_ecdsa_p256,
+    'ecdsa-p224': gen_ecdsa_p224,
 }
 
-def alignment_value(text):
-    value = int(text)
-    if value not in [1, 2, 4, 8]:
-        msg = "{} must be one of 1, 2, 4 or 8".format(value)
-        raise argparse.ArgumentTypeError(msg)
-    return value
 
-def intparse(text):
-    """Parse a command line argument as an integer.
+def load_key(keyfile):
+    # TODO: better handling of invalid pass-phrase
+    key = keys.load(keyfile)
+    if key is not None:
+        return key
+    passwd = getpass.getpass("Enter key passphrase: ").encode('utf-8')
+    return keys.load(keyfile, passwd)
 
-    Accepts 0x and other prefixes to allow other bases to be used."""
-    return int(text, 0)
 
-def args():
-    parser = argparse.ArgumentParser()
-    subs = parser.add_subparsers(help='subcommand help', dest='subcmd')
+def get_password():
+    while True:
+        passwd = getpass.getpass("Enter key passphrase: ")
+        passwd2 = getpass.getpass("Reenter passphrase: ")
+        if passwd == passwd2:
+            break
+        print("Passwords do not match, try again")
 
-    keygenp = subs.add_parser('keygen', help='Generate pub/private keypair')
-    keygenp.add_argument('-k', '--key', metavar='filename', required=True)
-    keygenp.add_argument('-t', '--type', metavar='type',
-            choices=keygens.keys(), required=True)
-    keygenp.add_argument('-p', '--password', default=False, action='store_true',
-            help='Prompt for password to protect key')
+    # Password must be bytes, always use UTF-8 for consistent
+    # encoding.
+    return passwd.encode('utf-8')
 
-    getpub = subs.add_parser('getpub', help='Get public key from keypair')
-    getpub.add_argument('-k', '--key', metavar='filename', required=True)
-    getpub.add_argument('-l', '--lang', metavar='lang', default='c')
 
-    sign = subs.add_parser('sign',
-            help='Sign an image with a private key (or create an unsigned image)',
-            aliases=['create'])
-    sign.add_argument('-k', '--key', metavar='filename',
-            help='private key to sign, or no key for an unsigned image')
-    sign.add_argument("--align", type=alignment_value, required=True)
-    sign.add_argument("-v", "--version", type=version.decode_version, required=True)
-    sign.add_argument("-H", "--header-size", type=intparse, required=True)
-    sign.add_argument("--included-header", default=False, action='store_true',
-            help='Image has gap for header')
-    sign.add_argument("--pad", type=intparse,
-            help='Pad image to this many bytes, adding trailer magic')
-    sign.add_argument("infile")
-    sign.add_argument("outfile")
+@click.option('-p', '--password', is_flag=True,
+              help='Prompt for password to protect key')
+@click.option('-t', '--type', metavar='type', required=True,
+              type=click.Choice(keygens.keys()))
+@click.option('-k', '--key', metavar='filename', required=True)
+@click.command(help='Generate pub/private keypair')
+def keygen(type, key, password):
+    password = get_password() if password else None
+    keygens[type](key, password)
 
-    args = parser.parse_args()
-    if args.subcmd is None:
-        print('Must specify a subcommand', file=sys.stderr)
-        sys.exit(1)
 
-    subcmds[args.subcmd](args)
+@click.option('-l', '--lang', metavar='lang', default=valid_langs[0],
+              type=click.Choice(valid_langs))
+@click.option('-k', '--key', metavar='filename', required=True)
+@click.command(help='Get public key from keypair')
+def getpub(key, lang):
+    key = load_key(key)
+    if key is None:
+        print("Invalid passphrase")
+    elif lang == 'c':
+        key.emit_c()
+    elif lang == 'rust':
+        key.emit_rust()
+    else:
+        raise ValueError("BUG: should never get here!")
+
+
+def validate_version(ctx, param, value):
+    try:
+        decode_version(value)
+        return value
+    except ValueError as e:
+        raise click.BadParameter("{}".format(e))
+
+
+class BasedIntParamType(click.ParamType):
+    name = 'integer'
+
+    def convert(self, value, param, ctx):
+        try:
+            if value[:2].lower() == '0x':
+                return int(value[2:], 16)
+            elif value[:1] == '0':
+                return int(value, 8)
+            return int(value, 10)
+        except ValueError:
+            self.fail('%s is not a valid integer' % value, param, ctx)
+
+
+@click.argument('outfile')
+@click.argument('infile')
+@click.option('--pad', type=int,
+              help='Pad image to this many bytes, adding trailer magic')
+@click.option('--included-header', default=False, is_flag=True,
+              help='Image has gap for header')
+@click.option('-H', '--header-size', type=BasedIntParamType(), required=True)
+@click.option('-v', '--version', callback=validate_version,  required=True)
+@click.option('--align', type=click.Choice(['1', '2', '4', '8']),
+              required=True)
+@click.option('-k', '--key', metavar='filename')
+@click.command(help='Create a signed or unsigned image')
+def sign(key, align, version, header_size, included_header, pad, infile,
+         outfile):
+    img = image.Image.load(infile, version=decode_version(version),
+                           header_size=header_size,
+                           included_header=included_header, pad=pad)
+    key = load_key(key) if key else None
+    img.sign(key)
+
+    if pad is not None:
+        img.pad_to(pad, align)
+
+    img.save(outfile)
+
+
+class AliasesGroup(click.Group):
+
+    _aliases = {
+        "create": "sign",
+    }
+
+    def list_commands(self, ctx):
+        cmds = [k for k in self.commands]
+        aliases = [k for k in self._aliases]
+        return sorted(cmds + aliases)
+
+    def get_command(self, ctx, cmd_name):
+        rv = click.Group.get_command(self, ctx, cmd_name)
+        if rv is not None:
+            return rv
+        if cmd_name in self._aliases:
+            return click.Group.get_command(self, ctx, self._aliases[cmd_name])
+        return None
+
+
+@click.command(cls=AliasesGroup,
+               context_settings=dict(help_option_names=['-h', '--help']))
+def imgtool():
+    pass
+
+
+imgtool.add_command(keygen)
+imgtool.add_command(getpub)
+imgtool.add_command(sign)
+
 
 if __name__ == '__main__':
-    args()
+    imgtool()
