@@ -41,11 +41,11 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 
-#define BOOT_AREA_DESC_MAX  (256)
-#define AREA_DESC_MAX       (BOOT_AREA_DESC_MAX)
+#define BOOT_AREA_DESC_MAX    (256)
+#define AREA_DESC_MAX         (BOOT_AREA_DESC_MAX)
 
 #ifdef MCUBOOT_SERIAL
-#define BOOT_SER_CONS_INPUT         128
+#define BOOT_SER_CONS_INPUT   256
 #endif
 
 /*
