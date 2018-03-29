@@ -188,6 +188,7 @@ bs_upload(char *buf, int len)
     uint8_t img_data[400];
     long long unsigned int off = UINT_MAX;
     size_t img_blen = 0;
+    uint8_t rem_bytes;
     long long unsigned int data_len = UINT_MAX;
     const struct cbor_attr_t attr[4] = {
         [0] = {
@@ -222,7 +223,6 @@ bs_upload(char *buf, int len)
         goto out;
     }
 
-
     rc = flash_area_open(flash_area_id_from_image_slot(0), &fap);
     if (rc) {
         rc = MGMT_ERR_EINVAL;
@@ -245,6 +245,12 @@ bs_upload(char *buf, int len)
     if (off != curr_off) {
         rc = 0;
         goto out;
+    }
+    if (curr_off + img_blen < img_size) {
+        rem_bytes = img_blen % flash_area_align(fap);
+        if (rem_bytes) {
+            img_blen -= rem_bytes;
+        }
     }
     rc = flash_area_write(fap, curr_off, img_data, img_blen);
     if (rc) {
@@ -321,7 +327,6 @@ boot_serial_input(char *buf, int len)
     len -= sizeof(*hdr);
     bs_writer.bytes_written = 0;
     cbor_encoder_init(&bs_root, &bs_writer, 0);
-
 
     /*
      * Limited support for commands.
