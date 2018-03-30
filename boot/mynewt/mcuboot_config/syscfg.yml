@@ -44,5 +44,8 @@ syscfg.defs:
         description: 'Use faster copy only upgrade.'
         value: 1
     BOOTUTIL_IMAGE_FORMAT_V2:
-        description: 'Indicates that system is using v2 of image format'
+        description: 'Indicates that system is using v2 of image format.'
         value: 1
+    BOOTUTIL_MAX_IMG_SECTORS:
+        description: 'Maximum number of sectors that are swapped.'
+        value: 128

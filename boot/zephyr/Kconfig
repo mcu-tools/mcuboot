@@ -38,8 +38,14 @@ menuconfig MCUBOOT_SERIAL
 	help
 	  Enable serial recovery feature in mcuboot.
 
+config BOOT_MAX_IMG_SECTORS
+	int "max number of sectors per image slot"
+	default 128
+	help
+	  Maximum number of sectors that a swap upgrade can handle
+
 config BOOT_MAX_LINE_INPUT_LEN
-	int "cmd line max length" 
+	int "cmd line max length"
 	default 512
 	depends on MCUBOOT_SERIAL
 	help

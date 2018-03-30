@@ -337,14 +337,22 @@ boot_slots_compatible(void)
     size_t size_0, size_1;
     size_t i;
 
-    /* Ensure both image slots have identical sector layouts. */
-    if (num_sectors_0 != num_sectors_1) {
+    if (num_sectors_0 > BOOT_MAX_IMG_SECTORS || num_sectors_1 > BOOT_MAX_IMG_SECTORS) {
+        BOOT_LOG_WRN("Cannot upgrade: more sectors than allowed");
         return 0;
     }
+
+    /* Ensure both image slots have identical sector layouts. */
+    if (num_sectors_0 != num_sectors_1) {
+        BOOT_LOG_WRN("Cannot upgrade: number of sectors differ between slots");
+        return 0;
+    }
+
     for (i = 0; i < num_sectors_0; i++) {
         size_0 = boot_img_sector_size(&boot_data, 0, i);
         size_1 = boot_img_sector_size(&boot_data, 1, i);
         if (size_0 != size_1) {
+            BOOT_LOG_WRN("Cannot upgrade: an incompatible sector was found");
             return 0;
         }
     }
@@ -1336,6 +1344,8 @@ boot_go(struct boot_rsp *rsp)
     /* Determine the sector layout of the image slots and scratch area. */
     rc = boot_read_sectors();
     if (rc != 0) {
+        BOOT_LOG_WRN("Failed reading sectors; BOOT_MAX_IMG_SECTORS=%d - too small?",
+                BOOT_MAX_IMG_SECTORS);
         goto out;
     }
 

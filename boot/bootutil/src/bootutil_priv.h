@@ -90,8 +90,33 @@ struct boot_swap_state {
     uint8_t image_ok;
 };
 
-#define BOOT_STATUS_STATE_COUNT 3
-#define BOOT_STATUS_MAX_ENTRIES 128
+#if defined(__BOOTSIM__)
+#define BOOT_MAX_IMG_SECTORS       128
+#elif defined(__ZEPHYR__)
+#define BOOT_MAX_IMG_SECTORS       CONFIG_BOOT_MAX_IMG_SECTORS
+#elif defined(MCUBOOT_MYNEWT)
+#define BOOT_MAX_IMG_SECTORS       MYNEWT_VAL(BOOTUTIL_MAX_IMG_SECTORS)
+#else
+#error "Invalid target OS"
+#endif
+
+/*
+ * The current flashmap API does not check the amount of space allocated when
+ * loading sector data from the flash device, allowing for smaller counts here
+ * would most surely incur in overruns.
+ *
+ * TODO: make flashmap API receive the current sector array size.
+ */
+#if BOOT_MAX_IMG_SECTORS < 32
+#error "Too few sectors, please increase BOOT_MAX_IMG_SECTORS to at least 32"
+#endif
+
+/** Number of image slots in flash; currently limited to two. */
+#define BOOT_NUM_SLOTS             2
+
+/** Maximum number of image sectors supported by the bootloader. */
+#define BOOT_STATUS_STATE_COUNT    3
+#define BOOT_STATUS_MAX_ENTRIES    BOOT_MAX_IMG_SECTORS
 
 #define BOOT_STATUS_SOURCE_NONE    0
 #define BOOT_STATUS_SOURCE_SCRATCH 1
@@ -104,12 +129,6 @@ struct boot_swap_state {
 #define BOOT_FLAG_UNSET            0xff
 
 extern const uint32_t BOOT_MAGIC_SZ;
-
-/** Number of image slots in flash; currently limited to two. */
-#define BOOT_NUM_SLOTS              2
-
-/** Maximum number of image sectors supported by the bootloader. */
-#define BOOT_MAX_IMG_SECTORS        120
 
 /**
  * Compatibility shim for flash sector type.
