@@ -57,7 +57,10 @@ After building the bootloader, the binaries should reside in
 `build/zephyr/zephyr.{bin,hex,elf}`, where `build` is the build
 directory you chose when running `cmake`. Use the Zephyr build
 system `flash` target to flash these binaries, usually by running
-`make flash` (or `ninja flash`, etc.) from the build directory.
+`make flash` (or `ninja flash`, etc.) from the build directory. Depending
+on the target and flash tool used, this might erase the whole of the flash
+memory (mass erase) or only the sectors where the boot loader resides prior to
+programming the bootloader image itself.
 
 ## Building Applications for the bootloader
 
@@ -96,8 +99,15 @@ these signatures.
 ### Flashing the application
 
 The application itself can flashed with regular flash tools, but will
-need to be loaded at the offset of SLOT-0 for this particular target.
-These images can also be marked for upgrade, and loaded into SLOT-1,
+need to be programmed at the offset of slot-0 for this particular target.
+Depending on the platform and flash tool you might need to manually specify a
+flash offset corresponding to the slot-0 starting address. This is usually
+not relevant for flash tools that use Intel Hex images (.hex) instead of raw
+binary images (.bin) since the former include destination address information.
+Additionally you will need to make sure that the flash tool does not perform
+a mass erase (erasing the whole of the flash) or else you would be deleting
+MCUboot.
+These images can also be marked for upgrade, and loaded into slot-1,
 at which point the bootloader should perform an upgrade.  It is up to
 the image to mark slot-0 as "image ok" before the next reboot,
 otherwise the bootloader will revert the application.
