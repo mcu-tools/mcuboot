@@ -35,11 +35,11 @@ extern "C" {
  */
 #ifdef __ZEPHYR__
 
-#define BOOT_LOG_LEVEL_OFF	SYS_LOG_LEVEL_OFF
-#define BOOT_LOG_LEVEL_ERROR	SYS_LOG_LEVEL_ERROR
-#define BOOT_LOG_LEVEL_WARNING	SYS_LOG_LEVEL_WARNING
-#define BOOT_LOG_LEVEL_INFO	SYS_LOG_LEVEL_INFO
-#define BOOT_LOG_LEVEL_DEBUG	SYS_LOG_LEVEL_DEBUG
+#define BOOT_LOG_LEVEL_OFF      SYS_LOG_LEVEL_OFF
+#define BOOT_LOG_LEVEL_ERROR    SYS_LOG_LEVEL_ERROR
+#define BOOT_LOG_LEVEL_WARNING  SYS_LOG_LEVEL_WARNING
+#define BOOT_LOG_LEVEL_INFO     SYS_LOG_LEVEL_INFO
+#define BOOT_LOG_LEVEL_DEBUG    SYS_LOG_LEVEL_DEBUG
 
 /* Treat BOOT_LOG_LEVEL equivalently to SYS_LOG_LEVEL. */
 #ifndef BOOT_LOG_LEVEL
@@ -64,15 +64,15 @@ extern "C" {
 /*
  * When built on the simulator, just use printf().
  */
-#elif defined(__BOOTSIM__)	/* !defined(__ZEPHYR__) */
+#elif defined(__BOOTSIM__)      /* !defined(__ZEPHYR__) */
 
 #include <stdio.h>
 
-#define BOOT_LOG_LEVEL_OFF	0
-#define BOOT_LOG_LEVEL_ERROR	1
-#define BOOT_LOG_LEVEL_WARNING	2
-#define BOOT_LOG_LEVEL_INFO	3
-#define BOOT_LOG_LEVEL_DEBUG	4
+#define BOOT_LOG_LEVEL_OFF      0
+#define BOOT_LOG_LEVEL_ERROR    1
+#define BOOT_LOG_LEVEL_WARNING  2
+#define BOOT_LOG_LEVEL_INFO     3
+#define BOOT_LOG_LEVEL_DEBUG    4
 
 /*
  * The compiled log level determines the maximum level that can be
@@ -188,11 +188,11 @@ int sim_log_enabled(int level);
  */
 #else  /* !defined(__BOOTSIM__) */
 
-#define BOOT_LOG_LEVEL_OFF	0
-#define BOOT_LOG_LEVEL_ERROR	1
-#define BOOT_LOG_LEVEL_WARNING	2
-#define BOOT_LOG_LEVEL_INFO	3
-#define BOOT_LOG_LEVEL_DEBUG	4
+#define BOOT_LOG_LEVEL_OFF      0
+#define BOOT_LOG_LEVEL_ERROR    1
+#define BOOT_LOG_LEVEL_WARNING  2
+#define BOOT_LOG_LEVEL_INFO     3
+#define BOOT_LOG_LEVEL_DEBUG    4
 
 #define BOOT_LOG_ERR(...) IGNORE(__VA_ARGS__)
 #define BOOT_LOG_WRN(...) IGNORE(__VA_ARGS__)
