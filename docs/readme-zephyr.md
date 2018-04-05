@@ -93,8 +93,8 @@ keys.  It is important to stress that these should never be used for
 production, since the private key is publicly available in this
 repository.  See below on how to make your own signatures.
 
-There is a `sign.sh` script that gives some examples of how to make
-these signatures.
+Images can be signed with the `scripts/imgtool.py` script.  It is best
+to look at `samples/zephyr/Makefile` for examples on how to use this.
 
 ### Flashing the application
 
@@ -116,11 +116,9 @@ otherwise the bootloader will revert the application.
 
 The signing keys used by MCUboot are represented in standard formats,
 and can be generated and processed using conventional tools.  However,
-the Mynewt project has developed some tools to make this easier, and
-the `imgtool` directory contains a small program to use these tools,
-as well as some additional tools for generating and extracting public
-keys.  If you will be using your own keys, it is recommended to build
-this tool following the directions within the directory.
+`scripts/imgtool.py` is able to generate key pairs in all of the
+supported formats.  See [the docs](imgtool.md) for more details on
+this tool.
 
 ### Generating a new keypair
 
@@ -128,11 +126,11 @@ Generating a keypair with imgtool is a matter of running the keygen
 subcommand:
 
 ```
-    $ imgtool keygen -k mykey.pem -t rsa-2048
+    $ ./scripts/imgtool.py keygen -k mykey.pem -t rsa-2048
 ```
 
 The argument to `-t` should be the desired key type.  See the
-imgtool README.rst for more details on the possible key types.
+[the docs](imgtool.md) for more details on the possible key types.
 
 ### Extracting the public key
 
@@ -142,7 +140,7 @@ bootloader.  The keys live in `boot/zephyr/keys.c`, and can be
 extracted using imgtool:
 
 ```
-    $ imgtool getpub -k mykey.pem
+    $ ./scripts/imgtool.py getpub -k mykey.pem
 ```
 
 This will output the public key as a C array that can be dropped
