@@ -34,7 +34,7 @@ menuconfig MCUBOOT_SERIAL
 	select UART_INTERRUPT_DRIVEN
 	select SERIAL
 	select BASE64
-	select NEWLIB_LIBC
+	select TINYCBOR
 	help
 	  Enable serial recovery feature in mcuboot.
 

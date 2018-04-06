@@ -229,7 +229,4 @@ if (CONFIG_MCUBOOT_SERIAL)
 zephyr_sources(${BOOT_DIR}/zephyr/serial_adapter.c)
 
 add_subdirectory(${BOOT_DIR}/boot_serial ./boot/boot_serial)
-add_subdirectory(${BOOT_DIR}/zephyr/tinycbor)
-add_subdirectory(${BOOT_DIR}/zephyr/cborattr)
-
 endif()
