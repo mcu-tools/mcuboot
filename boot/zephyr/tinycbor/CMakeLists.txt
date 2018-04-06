@@ -1,3 +1,0 @@
-add_subdirectory(src)
-zephyr_compile_definitions(-DWITHOUT_OPEN_MEMSTREAM)
-zephyr_include_directories(include)

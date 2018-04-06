@@ -10,3 +10,4 @@ rusty-tags.*
 /project.state
 /bin/
 /targets/
+**/build/**/*
