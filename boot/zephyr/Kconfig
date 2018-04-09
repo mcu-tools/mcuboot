@@ -48,7 +48,7 @@ config BOOT_MAX_LINE_INPUT_LEN
 config BOOT_SERIAL_DETECT_PORT
 	string
 	prompt "GPIO Port to trigger serial recovery mode"
-	default GPIO_0 if SOC_FAMILY_NRF5
+	default GPIO_0 if SOC_FAMILY_NRF
 	depends on MCUBOOT_SERIAL
 	help
 	  Serial recovery detect port
