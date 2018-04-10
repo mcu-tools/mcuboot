@@ -118,7 +118,7 @@ bs_find_val(char *buf, char *name)
     ptr += strlen(name);
 
     while (*ptr != '\0') {
-        if (*ptr != ':' && !isspace(*ptr)) {
+        if (*ptr != ':' && !isspace((int)*ptr)) {
             break;
         }
         ++ptr;
@@ -292,7 +292,7 @@ bs_echo_ctl(char *buf, int len)
  * Reset, and (presumably) boot to newly uploaded image. Flush console
  * before restarting.
  */
-static int
+static void
 bs_reset(char *buf, int len)
 {
     cbor_encoder_create_map(&bs_root, &bs_rsp, CborIndefiniteLength);
