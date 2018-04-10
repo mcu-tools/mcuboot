@@ -99,9 +99,9 @@ void main(void)
 
     os_heap_init();
 
-    boot_flash_device = device_get_binding(FLASH_DRIVER_NAME);
+    boot_flash_device = device_get_binding(FLASH_DEV_NAME);
     if (!boot_flash_device) {
-        BOOT_LOG_ERR("Flash device not found");
+        BOOT_LOG_ERR("Flash device %s not found", FLASH_DEV_NAME);
         while (1)
             ;
     }
