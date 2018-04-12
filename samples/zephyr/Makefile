@@ -257,7 +257,7 @@ test-bad-ecdsa-upgrade: clean
 # reset: hello1 runs
 test-no-bootcheck: clean
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_VALIDATE_SLOT0=NO" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-skip-slot0-validate.conf \
 		SIGNING_KEY=../../root-ec-p256.pem \
 		all
 

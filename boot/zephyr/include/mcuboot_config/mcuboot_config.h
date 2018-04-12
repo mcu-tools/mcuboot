@@ -30,6 +30,10 @@
 #define MCUBOOT_USE_TINYCRYPT
 #endif
 
+#ifdef CONFIG_BOOT_VALIDATE_SLOT0
+#define MCUBOOT_VALIDATE_SLOT0
+#endif
+
 #endif /* !__BOOTSIM__ */
 
 #endif /* __MCUBOOT_CONFIG_H__ */
