@@ -31,7 +31,7 @@ pkg.deps:
     - "@apache-mynewt-core/encoding/tinycbor"
     - "@apache-mynewt-core/encoding/cborattr"
     - "@apache-mynewt-core/encoding/base64"
-    - "@apache-mynewt-core/sys/flash_map"
+    - "@mcuboot/boot/mynewt/flash_map_backend"
     - "@apache-mynewt-core/util/crc"
 
 pkg.req_apis:

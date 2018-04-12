@@ -27,7 +27,7 @@
 #include "bootutil/bootutil_log.h"
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
-#include "flash_map/flash_map.h"
+#include "flash_map_backend/flash_map_backend.h"
 
 #ifdef CONFIG_MCUBOOT_SERIAL
 #include <boot_serial/boot_serial.h>
@@ -36,8 +36,6 @@
 struct device *boot_flash_device;
 
 void os_heap_init(void);
-
-extern void zephyr_flash_area_warn_on_open(void);
 
 #if defined(CONFIG_ARM)
 struct arm_vector_table {
@@ -138,7 +136,7 @@ void main(void)
 
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
                  rsp.br_image_off);
-    zephyr_flash_area_warn_on_open();
+
     BOOT_LOG_INF("Jumping to the first image slot");
     do_boot(&rsp);
 
