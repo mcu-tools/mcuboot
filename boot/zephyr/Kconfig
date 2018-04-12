@@ -7,6 +7,51 @@ mainmenu "MCUboot configuration"
 
 comment "MCUboot-specific configuration options"
 
+config BOOT_USE_MBEDTLS
+	bool
+	# Hidden option
+	default n
+	help
+	  Use mbedTLS for crypto primitives.
+
+config BOOT_USE_TINYCRYPT
+	bool
+	# Hidden option
+	default n
+	help
+	  Use TinyCrypt for crypto primitives.
+
+choice
+	prompt "Signature type"
+	default BOOT_SIGNATURE_TYPE_RSA
+
+config BOOT_SIGNATURE_TYPE_RSA
+	bool "RSA signatures"
+	select BOOT_USE_MBEDTLS
+
+config BOOT_SIGNATURE_TYPE_ECDSA_P256
+	bool "Elliptic curve digital signatures with curve P-256"
+	select BOOT_USE_TINYCRYPT
+
+endchoice
+
+config BOOT_VALIDATE_SLOT0
+	bool "Validate image slot 0 on every boot"
+	default y
+	help
+	  If y, the bootloader attempts to validate the signature of
+	  slot0 every boot.  This adds the signature check time to
+	  every boot, but can mitigate against some changes that are
+	  able to modify the flash image itself.
+
+config BOOT_UPGRADE_ONLY
+	bool "Overwrite image updates instead of swapping"
+	default n
+	help
+	  If y, overwrite slot0 with the upgrade image instead of
+	  swapping them.  This prevents the fallback recovery, but
+	  uses a much simpler code path.
+
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
 	default 128
@@ -15,6 +60,17 @@ config BOOT_MAX_IMG_SECTORS
 	  the two image areas can contain. Smaller values reduce MCUboot's
 	  memory usage; larger values allow it to support larger images.
 	  If unsure, leave at the default value.
+
+config ZEPHYR_TRY_MASS_ERASE
+	bool "Try to mass erase flash when flashing MCUboot image"
+	default y
+	help
+	  If y, attempt to configure the Zephyr build system's "flash"
+	  target to mass-erase the flash device before flashing the
+	  MCUboot image. This ensures the scratch and other partitions
+	  are in a consistent state.
+
+	  This is not available for all targets.
 
 menuconfig MCUBOOT_SERIAL
 	bool "MCUboot serial recovery"
