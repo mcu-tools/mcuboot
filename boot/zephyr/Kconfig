@@ -3,13 +3,63 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-mainmenu "MCUBOOT configuration"
+mainmenu "MCUboot configuration"
 
-config ZEPHYR_BASE
-	string
-	option env="ZEPHYR_BASE"
+comment "MCUboot-specific configuration options"
 
-source "$ZEPHYR_BASE/Kconfig.zephyr"
+config BOOT_MAX_IMG_SECTORS
+	int "Maximum number of sectors per image slot"
+	default 128
+	help
+	  This option controls the maximum number of sectors that each of
+	  the two image areas can contain. Smaller values reduce MCUboot's
+	  memory usage; larger values allow it to support larger images.
+	  If unsure, leave at the default value.
+
+menuconfig MCUBOOT_SERIAL
+	bool "MCUboot serial recovery"
+	default n
+	select REBOOT
+	select UART_INTERRUPT_DRIVEN
+	select SERIAL
+	select BASE64
+	select TINYCBOR
+	help
+	  If y, enables a serial-port based update mode. This allows
+	  MCUboot itself to load update images into flash over a UART.
+	  If unsure, leave at the default value.
+
+if MCUBOOT_SERIAL
+
+config BOOT_MAX_LINE_INPUT_LEN
+	int "Maximum command line length"
+	default 512
+	help
+	  Maximum length of commands transported over the serial port.
+
+config BOOT_SERIAL_DETECT_PORT
+	string "GPIO device to trigger serial recovery mode"
+	default GPIO_0 if SOC_FAMILY_NRF
+	help
+	  Zephyr GPIO device which contains the pin used to trigger
+	  serial recovery mode.
+
+config BOOT_SERIAL_DETECT_PIN
+	int "Pin to trigger serial recovery mode"
+	default 11 if BOARD_NRF52840_PCA10056
+	default 13 if BOARD_NRF52_PCA10040
+	help
+	  Pin on the serial detect port which triggers serial recovery mode.
+
+config BOOT_SERIAL_DETECT_PIN_VAL
+	int "Serial detect pin trigger value"
+	default 0
+	range 0 1
+	help
+	  Logic value of the detect pin which triggers serial recovery
+	  mode.
+
+endif # MCUBOOT_SERIAL
 
 config MCUBOOT_DEVICE_SETTINGS
 	# Hidden selector for device-specific settings
@@ -26,52 +76,10 @@ config MCUBOOT_DEVICE_CPU_CORTEX_M0
 	default n
 	select SW_VECTOR_RELAY if !CPU_CORTEX_M0_HAS_VECTOR_TABLE_REMAP
 
-menuconfig MCUBOOT_SERIAL
-	bool
-	prompt "MCUBOOT serial recovery"
-	default n
-	select REBOOT
-	select UART_INTERRUPT_DRIVEN
-	select SERIAL
-	select BASE64
-	select TINYCBOR
-	help
-	  Enable serial recovery feature in mcuboot.
+comment "Zephyr configuration options"
 
-config BOOT_MAX_IMG_SECTORS
-	int "max number of sectors per image slot"
-	default 128
-	help
-	  Maximum number of sectors that a swap upgrade can handle
-
-config BOOT_MAX_LINE_INPUT_LEN
-	int "cmd line max length"
-	default 512
-	depends on MCUBOOT_SERIAL
-	help
-	  Maximum length of commands transported over the serial protocol
-
-config BOOT_SERIAL_DETECT_PORT
+config ZEPHYR_BASE
 	string
-	prompt "GPIO Port to trigger serial recovery mode"
-	default GPIO_0 if SOC_FAMILY_NRF
-	depends on MCUBOOT_SERIAL
-	help
-	  Serial recovery detect port
+	option env="ZEPHYR_BASE"
 
-config BOOT_SERIAL_DETECT_PIN
-	int
-	prompt "Pin to trigger serial recovery mode"
-	default 11 if BOARD_NRF52840_PCA10056
-	default 13 if BOARD_NRF52_PCA10040
-	depends on MCUBOOT_SERIAL
-	help
-	  Serial recovery detect pin
-
-config BOOT_SERIAL_DETECT_PIN_VAL
-	int "Boot Pin trigger value"
-	default 0
-	range 0 1
-	depends on MCUBOOT_SERIAL
-	help
-	  The input pin logic value which triggers the boot serial recovery mode.
+source "$ZEPHYR_BASE/Kconfig.zephyr"
