@@ -34,6 +34,11 @@
 #define MCUBOOT_VALIDATE_SLOT0
 #endif
 
+#ifdef CONFIG_BOOT_UPGRADE_ONLY
+#define MCUBOOT_OVERWRITE_ONLY
+#define MCUBOOT_OVERWRITE_ONLY_FAST
+#endif
+
 #endif /* !__BOOTSIM__ */
 
 #endif /* __MCUBOOT_CONFIG_H__ */

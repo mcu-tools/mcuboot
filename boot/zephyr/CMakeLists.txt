@@ -12,21 +12,6 @@ set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
 # Configuration choices.
 ########################
 
-# If CONF_UPGRADE_ONLY is set, overwrite slot0 with the upgrade image
-# instead of swapping them.  This prevents the fallback recovery, but
-# uses a much simpler code path.
-#
-# To enable "upgrade only" mode:
-#
-#     cmake -DCONF_UPGRADE_ONLY=YES [...]
-#
-# To disable "upgrade only" mode (this is the default):
-#
-#     cmake -DCONF_UPGRADE_ONLY=NO [...]
-if (NOT DEFINED CONF_UPGRADE_ONLY)
-  set(CONF_UPGRADE_ONLY NO)
-endif()
-
 # If CONF_ZEPHYR_TRY_MASS_ERASE is set (it is set by default), the
 # Zephyr build system configuration attempts to force a mass erase
 # before flashing. This ensures the scratch and other partitions are
@@ -69,11 +54,6 @@ endmacro()
 # (This can be deleted when flash_area_to_sectors() is removed instead
 # of simply deprecated.)
 list(APPEND MCUBOOT_EXTRA_CFLAGS "-DMCUBOOT_USE_FLASH_AREA_GET_SECTORS")
-
-# Check if we're operating in overwrite-only mode.
-if(CONF_UPGRADE_ONLY STREQUAL YES)
-  list (APPEND MCUBOOT_EXTRA_CFLAGS "-DMCUBOOT_OVERWRITE_ONLY" "-DMCUBOOT_OVERWRITE_ONLY_FAST")
-endif()
 
 # Add values in MCUBOOT_EXTRA_CFLAGS_STR to the Zephyr build's
 # EXTRA_CFLAGS variable.
