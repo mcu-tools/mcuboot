@@ -52,6 +52,10 @@
 # setting this.
 BOOTLOADER_CONFIG ?=
 
+# Extra .conf fragments to merge into the MCUboot .config, as a
+# semicolon-separated list (i.e., a CMake list).
+BOOTLOADER_OVERLAY_CONFIG ?=
+
 BOARD ?= frdm_k64f
 
 .PHONY: check boot hello1 clean_boot clean_hello1 \
@@ -106,6 +110,7 @@ boot: check
 	(mkdir -p $(BUILD_DIR_BOOT) && \
 		cd $(BUILD_DIR_BOOT) && \
 		cmake $(BOOTLOADER_CONFIG) \
+			-DOVERLAY_CONFIG=$(BOOTLOADER_OVERLAY_CONFIG) \
 			-G"Unix Makefiles" \
 			-DBOARD=$(BOARD) \
 			$(SOURCE_DIRECTORY)/../../boot/zephyr && \
@@ -188,7 +193,7 @@ flash_full:
 # reset: hello1 runs
 test-good-rsa: clean
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_SIGNATURE_TYPE=RSA" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-rsa.conf \
 		all
 
 # Test a good image, with a good upgrade, using ECDSA signatures.
@@ -198,7 +203,7 @@ test-good-rsa: clean
 # reset: hello1 runs
 test-good-ecdsa: clean
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_SIGNATURE_TYPE=ECDSA_P256" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-ecdsa-p256.conf \
 		SIGNING_KEY=../../root-ec-p256.pem \
 		all
 
@@ -221,10 +226,10 @@ test-overwrite: clean
 # reset: hello1 runs
 test-bad-rsa-upgrade: clean
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_SIGNATURE_TYPE=RSA" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-rsa.conf \
 		boot hello1
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_SIGNATURE_TYPE=RSA" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-rsa.conf \
 		SIGNING_KEY=../../root-ec-p256.pem \
 		hello2
 
@@ -236,11 +241,11 @@ test-bad-rsa-upgrade: clean
 # reset: hello1 runs
 test-bad-ecdsa-upgrade: clean
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_SIGNATURE_TYPE=ECDSA_P256" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-ecdsa-p256.conf \
 		SIGNING_KEY=../../root-ec-p256.pem \
 		boot hello1
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_SIGNATURE_TYPE=ECDSA_P256" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-ecdsa-p256.conf \
 		SIGNING_KEY=../../root-rsa-2048.pem \
 		hello2
 
@@ -263,10 +268,10 @@ test-no-bootcheck: clean
 # reset: hello1 runs
 test-wrong-rsa: clean
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_SIGNATURE_TYPE=RSA" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-rsa.conf \
 		boot hello1
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_SIGNATURE_TYPE=RSA" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-rsa.conf \
 		SIGNING_KEY=bad-keys/bad-rsa-2048.pem \
 		hello2
 
@@ -277,11 +282,11 @@ test-wrong-rsa: clean
 # reset: hello1 runs
 test-wrong-ecdsa: clean
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_SIGNATURE_TYPE=ECDSA_P256" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-ecdsa-p256.conf \
 		SIGNING_KEY=../../root-ec-p256.pem \
 		boot hello1
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_SIGNATURE_TYPE=ECDSA_P256" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-ecdsa-p256.conf \
 		SIGNING_KEY=bad-keys/bad-ec-p256.pem \
 		hello2
 

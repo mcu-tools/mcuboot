@@ -28,12 +28,16 @@ choice
 config BOOT_SIGNATURE_TYPE_RSA
 	bool "RSA signatures"
 	select BOOT_USE_MBEDTLS
+	select MBEDTLS
 
 config BOOT_SIGNATURE_TYPE_ECDSA_P256
 	bool "Elliptic curve digital signatures with curve P-256"
 	select BOOT_USE_TINYCRYPT
 
 endchoice
+
+config MBEDTLS_CFG_FILE
+	default "mcuboot-mbedtls-cfg.h"
 
 config BOOT_VALIDATE_SLOT0
 	bool "Validate image slot 0 on every boot"

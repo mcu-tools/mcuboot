@@ -22,7 +22,7 @@
 
 #include "os/os_heap.h"
 
-#ifdef MCUBOOT_USE_MBED_TLS
+#ifdef CONFIG_BOOT_USE_MBEDTLS
 
 #include <mbedtls/platform.h>
 #include <mbedtls/memory_buffer_alloc.h>
