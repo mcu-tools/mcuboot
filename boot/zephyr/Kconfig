@@ -21,6 +21,8 @@ config BOOT_USE_TINYCRYPT
 	help
 	  Use TinyCrypt for crypto primitives.
 
+menu "MCUBoot settings"
+
 choice
 	prompt "Signature type"
 	default BOOT_SIGNATURE_TYPE_RSA
@@ -120,6 +122,8 @@ config BOOT_SERIAL_DETECT_PIN_VAL
 	  mode.
 
 endif # MCUBOOT_SERIAL
+
+endmenu
 
 config MCUBOOT_DEVICE_SETTINGS
 	# Hidden selector for device-specific settings
