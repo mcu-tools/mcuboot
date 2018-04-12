@@ -28,9 +28,7 @@
 #include "bootutil/sha256.h"
 #include "bootutil/sign_key.h"
 
-#ifdef MCUBOOT_MYNEWT
 #include "mcuboot_config/mcuboot_config.h"
-#endif
 
 #ifdef MCUBOOT_SIGN_RSA
 #include "mbedtls/rsa.h"
