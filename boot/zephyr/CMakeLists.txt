@@ -12,22 +12,6 @@ set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
 # Configuration choices.
 ########################
 
-# If CONF_VALIDATE_SLOT0 is set, the bootloader attempts to validate
-# the signature of slot0 every boot.  This adds the signature check
-# time to every boot, but can mitigate against some changes that are
-# able to modify the flash image itself.
-#
-# To enable validation (this is the default):
-#
-#     cmake -DCONF_VALIDATE_SLOT0=YES [...]
-#
-# To disable validation:
-#
-#     cmake -DCONF_VALIDATE_SLOT0=NO [...]
-if (NOT DEFINED CONF_VALIDATE_SLOT0)
-  set(CONF_VALIDATE_SLOT0 YES)
-endif()
-
 # If CONF_UPGRADE_ONLY is set, overwrite slot0 with the upgrade image
 # instead of swapping them.  This prevents the fallback recovery, but
 # uses a much simpler code path.
@@ -78,11 +62,6 @@ macro(set_conf_file)
     set(CONF_FILE prj.conf)
   endif()
 endmacro()
-
-# Check if we need to validate slot 0.
-if(CONF_VALIDATE_SLOT0 STREQUAL YES)
-  list(APPEND MCUBOOT_EXTRA_CFLAGS "-DMCUBOOT_VALIDATE_SLOT0")
-endif()
 
 # Enabling this option uses newer flash map APIs. This saves RAM and
 # avoids deprecated API usage.
