@@ -7,7 +7,8 @@
 #include <string.h>
 #include <bootutil/bootutil.h>
 #include <bootutil/image.h>
-#include "flash_map/flash_map.h"
+
+#include <flash_map_backend/flash_map_backend.h>
 
 #include "../../../boot/bootutil/src/bootutil_priv.h"
 #include "bootsim.h"

@@ -318,8 +318,8 @@ boot_write_sz(void)
      * on what the minimum write size is for scratch area, active image slot.
      * We need to use the bigger of those 2 values.
      */
-    elem_sz = hal_flash_align(boot_img_fa_device_id(&boot_data, 0));
-    align = hal_flash_align(boot_scratch_fa_device_id(&boot_data));
+    elem_sz = flash_area_align(boot_data.imgs[0].area);
+    align = flash_area_align(boot_data.scratch_area);
     if (align > elem_sz) {
         elem_sz = align;
     }
@@ -547,8 +547,7 @@ boot_write_status(struct boot_status *bs)
     off = boot_status_off(fap) +
           boot_status_internal_off(bs->idx, bs->state,
                                    BOOT_WRITE_SZ(&boot_data));
-
-    align = hal_flash_align(fap->fa_device_id);
+    align = flash_area_align(fap);
     memset(buf, 0xFF, BOOT_MAX_ALIGN);
     buf[0] = bs->state;
 
@@ -1451,7 +1450,7 @@ boot_go(struct boot_rsp *rsp)
 #endif
 
     /* Always boot from the primary slot. */
-    rsp->br_flash_dev_id = boot_img_fa_device_id(&boot_data, 0);
+    rsp->br_flash_dev_id = boot_data.imgs[0].area->fa_device_id;
     rsp->br_image_off = boot_img_slot_off(&boot_data, 0);
     rsp->br_hdr = boot_img_hdr(&boot_data, slot);
 

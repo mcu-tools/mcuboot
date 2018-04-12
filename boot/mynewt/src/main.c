@@ -24,7 +24,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include "syscfg/syscfg.h"
-#include <flash_map/flash_map.h>
+#include <flash_map_backend/flash_map_backend.h>
 #include <os/os.h>
 #include <bsp/bsp.h>
 #include <hal/hal_bsp.h>

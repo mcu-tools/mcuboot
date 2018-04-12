@@ -29,7 +29,7 @@
 #include <log/log.h>
 #include <stats/stats.h>
 #include <config/config.h>
-#include "flash_map/flash_map.h"
+#include "flash_map_backend/flash_map_backend.h"
 #include <hal/hal_system.h>
 #if MYNEWT_VAL(SPLIT_LOADER)
 #include "split/split.h"

@@ -77,8 +77,7 @@ endif()
 
 # Zephyr port-specific sources.
 target_sources(app PRIVATE main.c)
-target_sources(app PRIVATE flash_map.c)
-target_sources(app PRIVATE hal_flash.c)
+target_sources(app PRIVATE flash_map_extended.c)
 target_sources(app PRIVATE os.c)
 target_sources(app PRIVATE keys.c)
 if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)

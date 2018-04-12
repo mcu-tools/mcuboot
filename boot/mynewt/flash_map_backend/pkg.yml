@@ -1,0 +1,13 @@
+#
+# Copyright (c) 2018 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+pkg.name: boot/mynewt/flash_map_backend
+pkg.description: Flash_map API helper reference.
+pkg.author: "Nordic Semiconductor ASA"
+pkg.homepage: "http://mcuboot.com"
+
+pkg.deps:
+    - "@apache-mynewt-core/sys/flash_map"

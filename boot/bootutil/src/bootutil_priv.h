@@ -21,7 +21,9 @@
 #define H_BOOTUTIL_PRIV_
 
 #include "sysflash/sysflash.h"
-#include "flash_map/flash_map.h"
+
+#include <flash_map_backend/flash_map_backend.h>
+
 #include "bootutil/image.h"
 #include "mcuboot_config/mcuboot_config.h"
 
@@ -179,18 +181,6 @@ static inline struct image_header*
 boot_img_hdr(struct boot_loader_state *state, size_t slot)
 {
     return &state->imgs[slot].hdr;
-}
-
-static inline uint8_t
-boot_img_fa_device_id(struct boot_loader_state *state, size_t slot)
-{
-    return state->imgs[slot].area->fa_device_id;
-}
-
-static inline uint8_t
-boot_scratch_fa_device_id(struct boot_loader_state *state)
-{
-    return state->scratch_area->fa_device_id;
 }
 
 static inline size_t

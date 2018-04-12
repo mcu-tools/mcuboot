@@ -29,7 +29,7 @@
 #include "crc/crc16.h"
 #include "testutil/testutil.h"
 #include "hal/hal_flash.h"
-#include "flash_map/flash_map.h"
+#include "flash_map_backend/flash_map_backend.h"
 
 #include "boot_serial_priv.h"
 

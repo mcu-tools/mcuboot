@@ -49,8 +49,7 @@
 #endif /* __ZEPHYR__ */
 
 #include <cborattr/cborattr.h>
-
-#include <flash_map/flash_map.h>
+#include <flash_map_backend/flash_map_backend.h>
 #include <hal/hal_flash.h>
 #include <os/os.h>
 #include <os/os_malloc.h>
