@@ -25,7 +25,9 @@
 #include "sysflash/sysflash.h"
 #include "hal/hal_bsp.h"
 #include "hal/hal_flash.h"
-#include "flash_map/flash_map.h"
+
+#include "flash_map_backend/flash_map_backend.h"
+
 #include "os/os.h"
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
@@ -356,7 +358,7 @@ boot_write_flag(int flag, const struct flash_area *fap)
         return BOOT_EBADARGS;
     }
 
-    align = hal_flash_align(fap->fa_device_id);
+    align = flash_area_align(fap);
     assert(align <= BOOT_MAX_ALIGN);
     memset(buf, 0xFF, BOOT_MAX_ALIGN);
     buf[0] = BOOT_FLAG_SET;
@@ -390,7 +392,7 @@ boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
     uint8_t align;
 
     off = boot_swap_size_off(fap);
-    align = hal_flash_align(fap->fa_device_id);
+    align = flash_area_align(fap);
     assert(align <= BOOT_MAX_ALIGN);
     if (align < sizeof swap_size) {
         align = sizeof swap_size;

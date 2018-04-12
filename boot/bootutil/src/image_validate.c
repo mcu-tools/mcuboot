@@ -23,7 +23,9 @@
 #include <string.h>
 
 #include "hal/hal_flash.h"
-#include "flash_map/flash_map.h"
+
+#include <flash_map_backend/flash_map_backend.h>
+
 #include "bootutil/image.h"
 #include "bootutil/sha256.h"
 #include "bootutil/sign_key.h"

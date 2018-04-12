@@ -27,7 +27,8 @@
 #include "sysflash/sysflash.h"
 #include "testutil/testutil.h"
 #include "hal/hal_flash.h"
-#include "flash_map/flash_map.h"
+#include <flash_map_backend/flash_map_backend.h>
+
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 #include "bootutil_priv.h"
