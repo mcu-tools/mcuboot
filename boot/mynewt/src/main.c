@@ -17,9 +17,7 @@
  * under the License.
  */
 
-#ifdef MCUBOOT_MYNEWT
 #include "mcuboot_config/mcuboot_config.h"
-#endif
 
 #include <assert.h>
 #include <stddef.h>

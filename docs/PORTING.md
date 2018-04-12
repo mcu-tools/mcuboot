@@ -5,6 +5,10 @@ This document describes the requirements and necessary steps required to port
 
 # Requirements
 
+* `mcuboot` requires a configuration file, which can be included as
+   mcuboot_config/mcuboot_config.h, which configures various options
+   (that begin with MCUBOOT_).
+
 * `mcuboot` requires that the target provides a `flash` API with ability to
   get the flash's minimum write size, and read/write/erase individual sectors.
 
@@ -45,6 +49,23 @@ struct boot_rsp {
 After running the management functions of the bootloader, `boot_go` returns
 an initialized `boot_rsp` which has pointers to the location of the image
 where the target firmware is located which can be used to jump to.
+
+## Configuration file
+
+You must provide a file, mcuboot_config/mcuboot_config.h. This is
+included by several files in the "library" portion of MCUboot; it
+provides preprocessor definitions that configure the library's
+build.
+
+See the file samples/mcuboot_config/mcuboot_config.template.h for a
+starting point and more information. This is a good place to convert
+settings in your environment's configuration system to those required
+by MCUboot. For example, Mynewt uses MYNEWT_VAL() and Zephyr uses
+Kconfig; these configuration systems are converted to MCUBOOT_ options
+in the following files:
+
+- boot/zephyr/include/mcuboot_config/mcuboot_config.h
+- boot/mynewt/mcuboot_config/include/mcuboot_config/mcuboot_config.h
 
 ## Flash access and flash Map
 

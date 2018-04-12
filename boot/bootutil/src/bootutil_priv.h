@@ -23,6 +23,7 @@
 #include "sysflash/sysflash.h"
 #include "flash_map/flash_map.h"
 #include "bootutil/image.h"
+#include "mcuboot_config/mcuboot_config.h"
 
 #ifdef __cplusplus
 extern "C" {
