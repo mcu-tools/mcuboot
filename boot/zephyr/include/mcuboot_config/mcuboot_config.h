@@ -39,6 +39,15 @@
 #define MCUBOOT_OVERWRITE_ONLY_FAST
 #endif
 
+/*
+ * Enabling this option uses newer flash map APIs. This saves RAM and
+ * avoids deprecated API usage.
+ *
+ * (This can be deleted when flash_area_to_sectors() is removed instead
+ * of simply deprecated.)
+ */
+#define MCUBOOT_USE_FLASH_AREA_GET_SECTORS
+
 #endif /* !__BOOTSIM__ */
 
 #endif /* __MCUBOOT_CONFIG_H__ */
