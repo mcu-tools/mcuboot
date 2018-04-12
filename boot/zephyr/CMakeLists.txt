@@ -8,32 +8,6 @@ cmake_minimum_required(VERSION 3.8.2)
 
 set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
 
-########################
-# Configuration choices.
-########################
-
-# If CONF_ZEPHYR_TRY_MASS_ERASE is set (it is set by default), the
-# Zephyr build system configuration attempts to force a mass erase
-# before flashing. This ensures the scratch and other partitions are
-# in a consistent state.
-#
-# This is not available for all boards.
-#
-# To enable the mass erase attempt (this is the default):
-#
-#     cmake -DCONF_ZEPHYR_TRY_MASS_ERASE=YES [...]
-#
-# To disable the mass erase attempt:
-#
-#     cmake -DCONF_ZEPHYR_TRY_MASS_ERASE=NO [...]
-if (NOT DEFINED CONF_ZEPHYR_TRY_MASS_ERASE)
-  set(CONF_ZEPHYR_TRY_MASS_ERASE YES)
-endif()
-
-##############################
-# End of configuration blocks.
-##############################
-
 set(MCUBOOT_EXTRA_CFLAGS)
 
 # Board-specific CONF_FILES should get merged into the build as well.
@@ -89,7 +63,7 @@ endif()
 # manually to test mcuboot behavior on an otherwise erased flash
 # device.)
 macro(app_set_runner_args)
-  if(CONF_ZEPHYR_TRY_MASS_ERASE)
+  if(CONFIG_ZEPHYR_TRY_MASS_ERASE)
     board_runner_args(dfu-util "--dfuse-modifiers=force:mass-erase")
     board_runner_args(pyocd "--flashtool-opt=-ce")
   endif()
