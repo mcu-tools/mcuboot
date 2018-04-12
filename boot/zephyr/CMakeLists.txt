@@ -8,8 +8,6 @@ cmake_minimum_required(VERSION 3.8.2)
 
 set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
 
-set(MCUBOOT_EXTRA_CFLAGS)
-
 # Board-specific CONF_FILES should get merged into the build as well.
 #
 # Do this by defining the set_conf_file macro:
@@ -21,18 +19,6 @@ macro(set_conf_file)
     set(CONF_FILE prj.conf)
   endif()
 endmacro()
-
-# Enabling this option uses newer flash map APIs. This saves RAM and
-# avoids deprecated API usage.
-#
-# (This can be deleted when flash_area_to_sectors() is removed instead
-# of simply deprecated.)
-list(APPEND MCUBOOT_EXTRA_CFLAGS "-DMCUBOOT_USE_FLASH_AREA_GET_SECTORS")
-
-# Add values in MCUBOOT_EXTRA_CFLAGS_STR to the Zephyr build's
-# EXTRA_CFLAGS variable.
-string(REPLACE ";" " " MCUBOOT_EXTRA_CFLAGS_STR "${MCUBOOT_EXTRA_CFLAGS}")
-set(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${MCUBOOT_EXTRA_CFLAGS_STR}")
 
 # The board should be set to a supported target.
 if (NOT DEFINED BOARD)
