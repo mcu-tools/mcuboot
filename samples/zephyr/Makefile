@@ -48,10 +48,6 @@
 # then revert back to the first app, since we did not mark this image
 # as good.
 
-# We can add on to the CMake configuration for the bootloader by
-# setting this.
-BOOTLOADER_CONFIG ?=
-
 # Extra .conf fragments to merge into the MCUboot .config, as a
 # semicolon-separated list (i.e., a CMake list).
 BOOTLOADER_OVERLAY_CONFIG ?=
@@ -109,8 +105,7 @@ boot: check
 	@rm -f mcuboot.bin
 	(mkdir -p $(BUILD_DIR_BOOT) && \
 		cd $(BUILD_DIR_BOOT) && \
-		cmake $(BOOTLOADER_CONFIG) \
-			-DOVERLAY_CONFIG=$(BOOTLOADER_OVERLAY_CONFIG) \
+		cmake -DOVERLAY_CONFIG=$(BOOTLOADER_OVERLAY_CONFIG) \
 			-G"Unix Makefiles" \
 			-DBOARD=$(BOARD) \
 			$(SOURCE_DIRECTORY)/../../boot/zephyr && \
@@ -215,7 +210,7 @@ test-good-ecdsa: clean
 # reset: hello2 runs
 test-overwrite: clean
 	$(MAKE) \
-		BOOTLOADER_CONFIG="-DCONF_UPGRADE_ONLY=YES" \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-upgrade-only.conf \
 		all
 
 # Test that when configured for RSA, a wrong signature in the upgrade
