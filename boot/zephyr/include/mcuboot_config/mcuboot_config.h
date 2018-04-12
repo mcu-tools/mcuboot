@@ -18,9 +18,17 @@
  */
 #ifndef __BOOTSIM__
 
-/*
- * Initially blank.
- */
+#ifdef CONFIG_BOOT_SIGNATURE_TYPE_RSA
+#define MCUBOOT_SIGN_RSA
+#elif defined(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
+#define MCUBOOT_SIGN_EC256
+#endif
+
+#ifdef CONFIG_BOOT_USE_MBEDTLS
+#define MCUBOOT_USE_MBED_TLS
+#elif defined(CONFIG_BOOT_USE_TINYCRYPT)
+#define MCUBOOT_USE_TINYCRYPT
+#endif
 
 #endif /* !__BOOTSIM__ */
 

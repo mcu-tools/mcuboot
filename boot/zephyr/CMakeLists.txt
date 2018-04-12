@@ -12,20 +12,6 @@ set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
 # Configuration choices.
 ########################
 
-# Set CONF_SIGNATURE_TYPE to determine the signature type used.
-# Currently, it should be set to either RSA or ECDSA_P256.
-#
-# To choose RSA (this is the default):
-#
-#     cmake -DCONF_SIGNATURE_TYPE=RSA [...]
-#
-# To use ECDSA_P256:
-#
-#     cmake -DCONF_SIGNATURE_TYPE=ECDSA_P256 [...]
-if (NOT DEFINED CONF_SIGNATURE_TYPE)
-  set(CONF_SIGNATURE_TYPE RSA)
-endif()
-
 # If CONF_VALIDATE_SLOT0 is set, the bootloader attempts to validate
 # the signature of slot0 every boot.  This adds the signature check
 # time to every boot, but can mitigate against some changes that are
@@ -81,28 +67,15 @@ endif()
 
 set(MCUBOOT_EXTRA_CFLAGS)
 
-# Determine CFLAGS / MCUBOOT_CONF_FILE / NEED_TINYCRYPT from the signature type.
-if(CONF_SIGNATURE_TYPE STREQUAL RSA)
-  set(MCUBOOT_CONF_FILE prj.conf) # RSA
-  list(APPEND MCUBOOT_EXTRA_CFLAGS "-DMCUBOOT_SIGN_RSA" "-DMCUBOOT_USE_MBED_TLS")
-  set(NEED_TINYCRYPT NO)
-elseif(CONF_SIGNATURE_TYPE STREQUAL ECDSA_P256)
-  set(MCUBOOT_CONF_FILE prj-p256.conf) # ECDSA P-256
-  list(APPEND MCUBOOT_EXTRA_CFLAGS "-DMCUBOOT_SIGN_EC256" "-DMCUBOOT_USE_TINYCRYPT")
-  set(NEED_TINYCRYPT YES)
-else()
-  message(FATAL_ERROR "Invalid CONF_SIGNATURE_TYPE specified: '${CONF_SIGNATURE_TYPE}'")
-endif()
-
 # Board-specific CONF_FILES should get merged into the build as well.
 #
 # Do this by defining the set_conf_file macro:
 # http://docs.zephyrproject.org/application/application.html#application-configuration
 macro(set_conf_file)
   if (EXISTS ${APPLICATION_SOURCE_DIR}/boards/${BOARD}.conf)
-    set(CONF_FILE "${MCUBOOT_CONF_FILE} ${APPLICATION_SOURCE_DIR}/boards/${BOARD}.conf")
+    set(CONF_FILE "prj.conf ${APPLICATION_SOURCE_DIR}/boards/${BOARD}.conf")
   else()
-    set(CONF_FILE "${MCUBOOT_CONF_FILE}")
+    set(CONF_FILE prj.conf)
   endif()
 endmacro()
 
@@ -177,15 +150,6 @@ set(TINYCRYPT_DIR "${MCUBOOT_DIR}/ext/tinycrypt/lib")
 # Path to mbed-tls' asn1 parser library.
 set(MBEDTLS_ASN1_DIR "${MCUBOOT_DIR}/ext/mbedtls")
 
-# Zephyr application include directories.
-if (NOT NEED_TINYCRYPT)
-  # Zephyr's mbedTLS needs this.
-  zephyr_include_directories(include)
-
-  # Use full mbedtls provided by OS for RSA
-  target_include_directories(app PRIVATE $ENV{ZEPHYR_BASE}/ext/lib/crypto/mbedtls/include)
-endif()
-
 target_include_directories(app PRIVATE include)
 target_include_directories(app PRIVATE targets)
 if(EXISTS "${APPLICATION_SOURCE_DIR}/targets/${BOARD}.h")
@@ -211,8 +175,8 @@ target_sources(app PRIVATE "${BOOT_DIR}/bootutil/src/image_rsa.c")
 target_sources(app PRIVATE "${BOOT_DIR}/bootutil/src/image_ec256.c")
 target_sources(app PRIVATE "${BOOT_DIR}/bootutil/src/caps.c")
 
-# Tinycrypt sources and includes, if needed.
-if (NEED_TINYCRYPT)
+if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
+  # When using ECDSA signatures, pull in our copy of the tinycrypt library.
   target_include_directories(app PRIVATE "${BOOT_DIR}/zephyr/include")
   target_include_directories(app PRIVATE "${TINYCRYPT_DIR}/include")
   target_include_directories(app PRIVATE "${MBEDTLS_ASN1_DIR}/include")
@@ -222,7 +186,14 @@ if (NEED_TINYCRYPT)
   target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/sha256.c")
   target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/utils.c")
 
+  # Additionally pull in just the ASN.1 parser from mbedTLS.
+  target_compile_definitions(app PRIVATE MBEDTLS_CFG_FILE=config-asn1.h)
   target_sources(app PRIVATE "${MBEDTLS_ASN1_DIR}/src/asn1parse.c")
+elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
+  # Use mbedTLS provided by Zephyr for RSA signatures. (Its config file
+  # is set using Kconfig.)
+  zephyr_include_directories(include)
+  target_include_directories(app PRIVATE $ENV{ZEPHYR_BASE}/ext/lib/crypto/mbedtls/include)
 endif()
 
 if (CONFIG_MCUBOOT_SERIAL)

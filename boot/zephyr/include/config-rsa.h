@@ -26,8 +26,8 @@
  * - RSA or ECDSA signature verification
  */
 
-#ifndef MBEDTLS_CONFIG_BOOT_H
-#define MBEDTLS_CONFIG_BOOT_H
+#ifndef MCUBOOT_MBEDTLS_CONFIG_RSA
+#define MCUBOOT_MBEDTLS_CONFIG_RSA
 
 #ifdef CONFIG_MCUBOOT_SERIAL
 /* Mcuboot uses mbedts-base64 for serial protocol encoding. */
@@ -56,20 +56,8 @@
 #define MBEDTLS_TEST_NULL_ENTROPY
 #endif
 
-/* mbed TLS feature support */
-#ifdef MCUBOOT_SIGN_EC
-#define MBEDTLS_ECP_DP_SECP256R1_ENABLED
-#define MBEDTLS_ECP_DP_SECP224R1_ENABLED
-#define MBEDTLS_ECP_NIST_OPTIM
-#define MBEDTLS_ECDSA_C
-#define MBEDTLS_ECDH_C
-#define MBEDTLS_ECP_C
-#endif
-
-#ifdef MCUBOOT_SIGN_RSA
 #define MBEDTLS_RSA_C
 #define MBEDTLS_PKCS1_V21
-#endif
 
 /* mbed TLS modules */
 #define MBEDTLS_ASN1_PARSE_C
@@ -80,13 +68,8 @@
 #define MBEDTLS_SHA256_C
 
 /* Save RAM by adjusting to our exact needs */
-#ifdef MCUBOOT_SIGN_RSA
 #define MBEDTLS_ECP_MAX_BITS             2048
 #define MBEDTLS_MPI_MAX_SIZE              256
-#else
-#define MBEDTLS_ECP_MAX_BITS             256
-#define MBEDTLS_MPI_MAX_SIZE              32 // 256 bits is 32 bytes
-#endif
 
 #define MBEDTLS_SSL_MAX_CONTENT_LEN 1024
 
@@ -95,4 +78,4 @@
 
 #include "mbedtls/check_config.h"
 
-#endif /* MBEDTLS_CONFIG_BOOT_H */
+#endif /* MCUBOOT_MBEDTLS_CONFIG_RSA */
