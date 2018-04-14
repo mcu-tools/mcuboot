@@ -31,6 +31,7 @@ pkg.cflags:
 pkg.deps:
     - "@mcuboot/boot/mynewt/mcuboot_config"
     - "@mcuboot/boot/bootutil"
+    - "@mcuboot/boot/mynewt/flash_map_backend"
     - "@apache-mynewt-core/kernel/os"
     - "@apache-mynewt-core/sys/console/minimal"
 

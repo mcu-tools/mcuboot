@@ -36,7 +36,7 @@ pkg.deps:
     - "@apache-mynewt-core/hw/hal"
     - "@apache-mynewt-core/kernel/os"
     - "@apache-mynewt-core/sys/defs"
-    - "@apache-mynewt-core/sys/flash_map"
+    - "@mcuboot/boot/mynewt/flash_map_backend"
 
 pkg.deps.BOOTUTIL_USE_MBED_TLS:
     - "@apache-mynewt-core/crypto/mbedtls"

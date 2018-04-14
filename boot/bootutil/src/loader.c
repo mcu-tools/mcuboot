@@ -320,8 +320,13 @@ boot_write_sz(void)
      * on what the minimum write size is for scratch area, active image slot.
      * We need to use the bigger of those 2 values.
      */
+#ifdef __ZEPHYR__
+    elem_sz = flash_area_align(boot_data.imgs[0].area);
+    align = flash_area_align(boot_data.scratch_area);
+#else
     elem_sz = hal_flash_align(boot_img_fa_device_id(&boot_data, 0));
     align = hal_flash_align(boot_scratch_fa_device_id(&boot_data));
+#endif
     if (align > elem_sz) {
         elem_sz = align;
     }
@@ -549,8 +554,11 @@ boot_write_status(struct boot_status *bs)
     off = boot_status_off(fap) +
           boot_status_internal_off(bs->idx, bs->state,
                                    BOOT_WRITE_SZ(&boot_data));
-
+#ifdef __ZEPHYR__
+    align = flash_area_align(fap);
+#else
     align = hal_flash_align(fap->fa_device_id);
+#endif
     memset(buf, 0xFF, BOOT_MAX_ALIGN);
     buf[0] = bs->state;
 

@@ -40,7 +40,7 @@
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
 
-#include <flash_map/flash_map.h>
+#include <flash_map_backend/flash_map_backend.h>
 #include <inttypes.h>
 #include <target.h>
 
@@ -50,49 +50,6 @@
 #define FLASH_AREA_IMAGE_SECTOR_SIZE FLASH_AREA_IMAGE_SCRATCH_SIZE
 #endif
 
-extern int flash_area_get_bounds(int idx, uint32_t *off, uint32_t *len);
-
-int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
-{
-    uint32_t off;
-    uint32_t len;
-    uint32_t max_cnt = *cnt;
-    uint32_t rem_len;
-
-    if (flash_area_get_bounds(idx, &off, &len)) {
-        return -1;
-    }
-
-    if (*cnt < 1) {
-        return -1;
-    }
-
-    rem_len = len;
-    *cnt = 0;
-    while (rem_len > 0 && *cnt < max_cnt) {
-        if (rem_len < FLASH_AREA_IMAGE_SECTOR_SIZE) {
-            BOOT_LOG_ERR("area %d size 0x%x not divisible by sector size 0x%x",
-                     idx, len, FLASH_AREA_IMAGE_SECTOR_SIZE);
-            return -1;
-        }
-
-        ret[*cnt].fa_id = idx;
-        ret[*cnt].fa_device_id = 0;
-        ret[*cnt].pad16 = 0;
-        ret[*cnt].fa_off = off + (FLASH_AREA_IMAGE_SECTOR_SIZE * (*cnt));
-        ret[*cnt].fa_size = FLASH_AREA_IMAGE_SECTOR_SIZE;
-        *cnt = *cnt + 1;
-        rem_len -= FLASH_AREA_IMAGE_SECTOR_SIZE;
-    }
-
-    if (*cnt >= max_cnt) {
-        BOOT_LOG_ERR("flash area %d sector count overflow", idx);
-        return -1;
-    }
-
-    return 0;
-}
-
 /*
  * Lookup the sector map for a given flash area.  This should fill in
  * `ret` with all of the sectors in the area.  `*cnt` will be set to
@@ -101,25 +58,27 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
  */
 int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
 {
-    uint32_t off;
-    uint32_t len;
+    const struct flash_area *fa;
     uint32_t max_cnt = *cnt;
     uint32_t rem_len;
 
-    if (flash_area_get_bounds(idx, &off, &len)) {
+    if (flash_area_open(idx, &fa))  {
         return -1;
     }
+
+    BOOT_LOG_DBG("area %d: offset=0x%x, length=0x%x", idx, fa->fa_off,
+                 fa->fa_size);
 
     if (*cnt < 1) {
         return -1;
     }
 
-    rem_len = len;
+    rem_len = fa->fa_size;
     *cnt = 0;
     while (rem_len > 0 && *cnt < max_cnt) {
         if (rem_len < FLASH_AREA_IMAGE_SECTOR_SIZE) {
             BOOT_LOG_ERR("area %d size 0x%x not divisible by sector size 0x%x",
-                         idx, len, FLASH_AREA_IMAGE_SECTOR_SIZE);
+                         idx, fa->fa_size, FLASH_AREA_IMAGE_SECTOR_SIZE);
             return -1;
         }
 

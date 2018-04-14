@@ -19,12 +19,22 @@ config MCUBOOT_DEVICE_SETTINGS
 	select MCUBOOT_DEVICE_CPU_CORTEX_M0 if CPU_CORTEX_M0
         # Enable flash page layout if available
 	select FLASH_PAGE_LAYOUT if FLASH_HAS_PAGE_LAYOUT
+	# Enable flash_map module as flash I/O back-end
+	select FLASH_MAP
 
 config MCUBOOT_DEVICE_CPU_CORTEX_M0
 	# Hidden selector for Cortex-M0 settings
 	bool
 	default n
 	select SW_VECTOR_RELAY if !CPU_CORTEX_M0_HAS_VECTOR_TABLE_REMAP
+
+menu "MCUBoot settings"
+
+config BOOT_MAX_IMG_SECTORS
+	int "max number of sectors per image slot"
+	default 128
+	help
+	  Maximum number of sectors that a swap upgrade can handle
 
 menuconfig MCUBOOT_SERIAL
 	bool
@@ -37,12 +47,6 @@ menuconfig MCUBOOT_SERIAL
 	select TINYCBOR
 	help
 	  Enable serial recovery feature in mcuboot.
-
-config BOOT_MAX_IMG_SECTORS
-	int "max number of sectors per image slot"
-	default 128
-	help
-	  Maximum number of sectors that a swap upgrade can handle
 
 config BOOT_MAX_LINE_INPUT_LEN
 	int "cmd line max length"
@@ -75,3 +79,4 @@ config BOOT_SERIAL_DETECT_PIN_VAL
 	depends on MCUBOOT_SERIAL
 	help
 	  The input pin logic value which triggers the boot serial recovery mode.
+endmenu
