@@ -137,7 +137,7 @@ void main(void)
     }
 
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
-                 rsp.br_image_off);
+                 (u32_t)rsp.br_image_off);
     zephyr_flash_area_warn_on_open();
     BOOT_LOG_INF("Jumping to the first image slot");
     do_boot(&rsp);
