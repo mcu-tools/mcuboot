@@ -17,6 +17,7 @@ fn main() {
     let mut conf = gcc::Build::new();
     conf.define("__BOOTSIM__", None);
     conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
+    conf.define("MCUBOOT_HAVE_ASSERT_H", None);
     conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
 
     if validate_slot0 {
