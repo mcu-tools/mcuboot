@@ -91,15 +91,7 @@ struct boot_swap_state {
     uint8_t image_ok;
 };
 
-#if defined(__BOOTSIM__)
-#define BOOT_MAX_IMG_SECTORS       128
-#elif defined(__ZEPHYR__)
-#define BOOT_MAX_IMG_SECTORS       CONFIG_BOOT_MAX_IMG_SECTORS
-#elif defined(MCUBOOT_MYNEWT)
-#define BOOT_MAX_IMG_SECTORS       MYNEWT_VAL(BOOTUTIL_MAX_IMG_SECTORS)
-#else
-#error "Invalid target OS"
-#endif
+#define BOOT_MAX_IMG_SECTORS       MCUBOOT_MAX_IMG_SECTORS
 
 /*
  * The current flashmap API does not check the amount of space allocated when

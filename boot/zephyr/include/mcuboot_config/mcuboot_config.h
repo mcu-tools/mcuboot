@@ -48,6 +48,8 @@
  */
 #define MCUBOOT_USE_FLASH_AREA_GET_SECTORS
 
+#define MCUBOOT_MAX_IMG_SECTORS       CONFIG_BOOT_MAX_IMG_SECTORS
+
 #endif /* !__BOOTSIM__ */
 
 #endif /* __MCUBOOT_CONFIG_H__ */
