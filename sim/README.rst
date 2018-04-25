@@ -38,6 +38,13 @@ this should download and compile the necessary dependencies, compile
 the relevant modules from mcuboot, build the simulator, and run the
 tests.
 
+There are several different features you can test. For example,
+testing RSA signatures can be done with::
+
+  $ cargo test --features sig-rsa
+
+For a complete list of features, see Cargo.toml.
+
 Debugging
 =========
 
