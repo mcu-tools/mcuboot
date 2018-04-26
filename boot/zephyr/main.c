@@ -23,7 +23,6 @@
 
 #include "target.h"
 
-#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"

@@ -24,7 +24,6 @@
 
 #include "sysflash/sysflash.h"
 
-#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
 
 #ifdef __ZEPHYR__

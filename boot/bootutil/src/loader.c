@@ -33,8 +33,6 @@
 #include "bootutil/bootutil.h"
 #include "bootutil/image.h"
 #include "bootutil_priv.h"
-
-#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
 
 #include "mcuboot_config/mcuboot_config.h"
