@@ -131,3 +131,24 @@ zephyr_sources(${BOOT_DIR}/zephyr/serial_adapter.c)
 
 add_subdirectory(${BOOT_DIR}/boot_serial ./boot/boot_serial)
 endif()
+
+if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
+  if(IS_ABSOLUTE ${CONFIG_BOOT_SIGNATURE_KEY_FILE})
+    set(KEY_FILE ${CONFIG_BOOT_SIGNATURE_KEY_FILE})
+  else()
+    set(KEY_FILE ${MCUBOOT_DIR}/${CONFIG_BOOT_SIGNATURE_KEY_FILE})
+  endif()
+  set(GENERATED_PUBKEY ${ZEPHYR_BINARY_DIR}/autogen-pubkey.c)
+  add_custom_command(
+    OUTPUT ${GENERATED_PUBKEY}
+    COMMAND
+    ${PYTHON_EXECUTABLE}
+    ${MCUBOOT_DIR}/scripts/imgtool.py
+    getpub
+    -k
+    ${KEY_FILE}
+    > ${GENERATED_PUBKEY}
+    DEPENDS ${KEY_FILE}
+    )
+  target_sources(app PRIVATE "${GENERATED_PUBKEY}")
+endif()
