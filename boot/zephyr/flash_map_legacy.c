@@ -37,7 +37,6 @@
  *   FLASH_AREA_IMAGE_SECTOR_SIZE.
  */
 
-#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
 
 #include <flash_map_backend/flash_map_backend.h>
