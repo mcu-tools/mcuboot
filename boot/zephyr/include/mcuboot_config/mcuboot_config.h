@@ -39,6 +39,10 @@
 #define MCUBOOT_OVERWRITE_ONLY_FAST
 #endif
 
+#ifdef CONFIG_BOOT_HAVE_LOGGING
+#define MCUBOOT_HAVE_LOGGING 1
+#endif
+
 /*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.
