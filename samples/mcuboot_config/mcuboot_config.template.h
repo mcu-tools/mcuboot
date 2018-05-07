@@ -83,6 +83,45 @@
 #define MCUBOOT_MAX_IMG_SECTORS 128
 
 /*
+ * Logging
+ */
+
+/*
+ * If logging is enabled the following functions must be defined by the
+ * platform:
+ *
+ *    MCUBOOT_LOG_ERR(...)
+ *    MCUBOOT_LOG_WRN(...)
+ *    MCUBOOT_LOG_INF(...)
+ *    MCUBOOT_LOG_DBG(...)
+ *
+ * The following global logging level configuration macros must also be
+ * defined, each with a unique value. Those will be used to define a global
+ * configuration and will allow any source files to override the global
+ * configuration:
+ *
+ *    MCUBOOT_LOG_LEVEL_OFF
+ *    MCUBOOT_LOG_LEVEL_ERROR
+ *    MCUBOOT_LOG_LEVEL_WARNING
+ *    MCUBOOT_LOG_LEVEL_INFO
+ *    MCUBOOT_LOG_LEVEL_DEBUG
+ *
+ * The global logging level must be defined, with one of the previously defined
+ * logging levels:
+ *
+ *    #define MCUBOOT_LOG_LEVEL MCUBOOT_LOG_LEVEL_(OFF|ERROR|WARNING|INFO|DEBUG)
+ *
+ * MCUBOOT_LOG_LEVEL sets the minimum level that will be logged. The function
+ * priority is:
+ *
+ *    MCUBOOT_LOG_ERR > MCUBOOT_LOG_WRN > MCUBOOT_LOG_INF > MCUBOOT_LOG_DBG
+ *
+ * NOTE: Each source file is still able to request its own logging level by
+ * defining BOOT_LOG_LEVEL before #including `bootutil_log.h`
+ */
+#define MCUBOOT_HAVE_LOGGING 1
+
+/*
  * Assertions
  */
 
