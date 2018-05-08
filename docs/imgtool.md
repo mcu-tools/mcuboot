@@ -6,15 +6,9 @@ this script should be preferred to the manual steps described in
 `doc/signed_images.md`.
 
 This program is written for Python3, and has several dependencies on
-Python libraries.  These can be installed using 'pip3' manually:
+Python libraries.  These can be installed using 'pip3':
 
-    pip3 install --user pycrypto
-    pip3 install --user pyasn1
-    pip3 install --user ecdsa
-
-or, on Ubuntu, using the package manager:
-
-    sudo apt-get install python3-crypto python3-pyasn1 python3-ecdsa
+    pip3 install --user -r scripts/requirements.txt
 
 ## Managing keys
 
@@ -28,6 +22,10 @@ mcuboot is configured to verify.
 
 This key file is what is used to sign images, this file should be
 protected, and not widely distributed.
+
+You can add the `-p` argument to `keygen`, which will cause it to
+prompt for a password.  You will need to enter this password in every
+time you use the private key.
 
 ## Incorporating the public key into the code
 
@@ -49,8 +47,8 @@ into the key file.
 
 ## Signing images
 
-Image signing takes a binary image intended for Slot 0 and adds a
-header and trailer that the bootloader is expecting:
+Image signing takes an image in binary or Intel Hex format intended for Slot 0
+and adds a header and trailer that the bootloader is expecting:
 
     usage: imgtool.py sign [-h] -k filename --align ALIGN -v VERSION -H
                            HEADER_SIZE [--pad PAD] [--rsa-pkcs1-15]

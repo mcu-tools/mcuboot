@@ -34,10 +34,13 @@ pkg.cflags:
 pkg.deps:
     - "@mcuboot/boot/mynewt/mcuboot_config"
     - "@apache-mynewt-core/hw/hal"
-    - "@apache-mynewt-core/crypto/mbedtls"
     - "@apache-mynewt-core/kernel/os"
     - "@apache-mynewt-core/sys/defs"
     - "@apache-mynewt-core/sys/flash_map"
 
+pkg.deps.BOOTUTIL_USE_MBED_TLS:
+    - "@apache-mynewt-core/crypto/mbedtls"
+
 pkg.deps.BOOTUTIL_USE_TINYCRYPT:
-    - "@mcuboot/boot/mynewt/tinycrypt"
+    - "@mcuboot/ext/tinycrypt/lib"
+    - "@mcuboot/ext/mbedtls"

@@ -3,9 +3,36 @@
 - Table of Contents
 {:toc}
 
+## Version 1.1.0
+
+The 1.1.0 release of MCUboot brings a lot of fixes/updates to its
+inner workings, specially to its testing infrastructure which now
+enables a more thorough quality assurance of many of the available
+options. As expected of the 1.x.x release cycle, no breaking changes
+were made. From the tooling perpective the main addition is
+newt/imgtool support for password protected keys.
+
+### About this release
+
+- serial recovery functionality support under Zephyr
+- simulator: lots of refactors were applied, which result in the
+  simulator now leveraging the Rust testing infrastructure; testing
+  of ecdsa (secp256r1) was added
+- imgtool: removed PKCS1.5 support, added support for password
+  protected keys
+- tinycrypt 0.2.8 and the mbed-tls ASN1 parser are now bundled with
+  mcuboot (eg secp256r1 is now free of external dependencies!)
+- Overwrite-only mode was updated to erase/copy only sectors that
+  actually store firmware
+- A lot of small code and documentation fixes and updates.
+
+### Known issues
+
+None
+
 ## Version 1.0.0
 
-The 1.0.0 release of MCUBoot introduces a format change.  It is
+The 1.0.0 release of MCUboot introduces a format change.  It is
 important to either use the `imgtool.py` also from this release, or
 pass the `-2` to recent versions of the `newt` tool in order to
 generate image headers with the new format.  There should be no
@@ -36,8 +63,8 @@ incompatible format changes throughout the 1.x.y release series.
   - Nordic nRF51 and nRF52832 dev kits
   - Hexiwear K64
 - Clearer sample applications have been added under `samples`.
-- Test plans for [zephyr](%{ link testplan-zephyr.md %}), and
-  [mynewt]({% link testplan-mynewt.md %}).
+- Test plans for [zephyr](testplan-zephyr.md), and
+  [mynewt](testplan-mynewt.md).
 - The simulator is now able to test RSA signatures.
 - There is an unimplemented `load_addr` header for future support for
   RAM loading in the bootloader.
@@ -49,7 +76,7 @@ None
 
 ## Version 0.9.0
 
-This is the first release of MCUBoot, a secure bootloader for 32-bit MCUs.
+This is the first release of MCUboot, a secure bootloader for 32-bit MCUs.
 It is designed to be operating system-agnostic and works over any transport -
 wired or wireless. It is also hardware independent, and relies  on hardware
 porting layers from the operating system it works with. For the first release,

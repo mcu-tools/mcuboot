@@ -1,0 +1,145 @@
+# Copyright (c) 2017 Linaro Limited
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+mainmenu "MCUboot configuration"
+
+comment "MCUboot-specific configuration options"
+
+config BOOT_USE_MBEDTLS
+	bool
+	# Hidden option
+	default n
+	help
+	  Use mbedTLS for crypto primitives.
+
+config BOOT_USE_TINYCRYPT
+	bool
+	# Hidden option
+	default n
+	help
+	  Use TinyCrypt for crypto primitives.
+
+choice
+	prompt "Signature type"
+	default BOOT_SIGNATURE_TYPE_RSA
+
+config BOOT_SIGNATURE_TYPE_RSA
+	bool "RSA signatures"
+	select BOOT_USE_MBEDTLS
+	select MBEDTLS
+
+config BOOT_SIGNATURE_TYPE_ECDSA_P256
+	bool "Elliptic curve digital signatures with curve P-256"
+	select BOOT_USE_TINYCRYPT
+
+endchoice
+
+config MBEDTLS_CFG_FILE
+	default "mcuboot-mbedtls-cfg.h"
+
+config BOOT_VALIDATE_SLOT0
+	bool "Validate image slot 0 on every boot"
+	default y
+	help
+	  If y, the bootloader attempts to validate the signature of
+	  slot0 every boot.  This adds the signature check time to
+	  every boot, but can mitigate against some changes that are
+	  able to modify the flash image itself.
+
+config BOOT_UPGRADE_ONLY
+	bool "Overwrite image updates instead of swapping"
+	default n
+	help
+	  If y, overwrite slot0 with the upgrade image instead of
+	  swapping them.  This prevents the fallback recovery, but
+	  uses a much simpler code path.
+
+config BOOT_MAX_IMG_SECTORS
+	int "Maximum number of sectors per image slot"
+	default 128
+	help
+	  This option controls the maximum number of sectors that each of
+	  the two image areas can contain. Smaller values reduce MCUboot's
+	  memory usage; larger values allow it to support larger images.
+	  If unsure, leave at the default value.
+
+config ZEPHYR_TRY_MASS_ERASE
+	bool "Try to mass erase flash when flashing MCUboot image"
+	default y
+	help
+	  If y, attempt to configure the Zephyr build system's "flash"
+	  target to mass-erase the flash device before flashing the
+	  MCUboot image. This ensures the scratch and other partitions
+	  are in a consistent state.
+
+	  This is not available for all targets.
+
+menuconfig MCUBOOT_SERIAL
+	bool "MCUboot serial recovery"
+	default n
+	select REBOOT
+	select UART_INTERRUPT_DRIVEN
+	select SERIAL
+	select BASE64
+	select TINYCBOR
+	help
+	  If y, enables a serial-port based update mode. This allows
+	  MCUboot itself to load update images into flash over a UART.
+	  If unsure, leave at the default value.
+
+if MCUBOOT_SERIAL
+
+config BOOT_MAX_LINE_INPUT_LEN
+	int "Maximum command line length"
+	default 512
+	help
+	  Maximum length of commands transported over the serial port.
+
+config BOOT_SERIAL_DETECT_PORT
+	string "GPIO device to trigger serial recovery mode"
+	default GPIO_0 if SOC_FAMILY_NRF
+	help
+	  Zephyr GPIO device which contains the pin used to trigger
+	  serial recovery mode.
+
+config BOOT_SERIAL_DETECT_PIN
+	int "Pin to trigger serial recovery mode"
+	default 11 if BOARD_NRF52840_PCA10056
+	default 13 if BOARD_NRF52_PCA10040
+	help
+	  Pin on the serial detect port which triggers serial recovery mode.
+
+config BOOT_SERIAL_DETECT_PIN_VAL
+	int "Serial detect pin trigger value"
+	default 0
+	range 0 1
+	help
+	  Logic value of the detect pin which triggers serial recovery
+	  mode.
+
+endif # MCUBOOT_SERIAL
+
+config MCUBOOT_DEVICE_SETTINGS
+	# Hidden selector for device-specific settings
+	bool
+	default y
+        # CPU options
+	select MCUBOOT_DEVICE_CPU_CORTEX_M0 if CPU_CORTEX_M0
+        # Enable flash page layout if available
+	select FLASH_PAGE_LAYOUT if FLASH_HAS_PAGE_LAYOUT
+
+config MCUBOOT_DEVICE_CPU_CORTEX_M0
+	# Hidden selector for Cortex-M0 settings
+	bool
+	default n
+	select SW_VECTOR_RELAY if !CPU_CORTEX_M0_HAS_VECTOR_TABLE_REMAP
+
+comment "Zephyr configuration options"
+
+config ZEPHYR_BASE
+	string
+	option env="ZEPHYR_BASE"
+
+source "$ZEPHYR_BASE/Kconfig.zephyr"

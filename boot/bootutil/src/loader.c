@@ -37,11 +37,21 @@
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
 #include "bootutil/bootutil_log.h"
 
-#ifdef MCUBOOT_MYNEWT
 #include "mcuboot_config/mcuboot_config.h"
-#endif
 
 static struct boot_loader_state boot_data;
+
+#if defined(MCUBOOT_VALIDATE_SLOT0) && !defined(MCUBOOT_OVERWRITE_ONLY)
+static int boot_status_fails = 0;
+#define BOOT_STATUS_ASSERT(x)                \
+    do {                                     \
+        if (!(x)) {                          \
+            boot_status_fails++;             \
+        }                                    \
+    } while (0)
+#else
+#define BOOT_STATUS_ASSERT(x) ASSERT(x)
+#endif
 
 struct boot_status_table {
     /**
@@ -273,7 +283,7 @@ done:
 }
 
 static int
-boot_read_image_headers(void)
+boot_read_image_headers(bool require_all)
 {
     int rc;
     int i;
@@ -281,11 +291,13 @@ boot_read_image_headers(void)
     for (i = 0; i < BOOT_NUM_SLOTS; i++) {
         rc = boot_read_image_header(i, boot_img_hdr(&boot_data, i));
         if (rc != 0) {
-            /* If at least the first slot's header was read successfully, then
-             * the boot loader can attempt a boot.  Failure to read any headers
-             * is a fatal error.
+            /* If `require_all` is set, fail on any single fail, otherwise
+             * if at least the first slot's header was read successfully,
+             * then the boot loader can attempt a boot.
+             *
+             * Failure to read any headers is a fatal error.
              */
-            if (i > 0) {
+            if (i > 0 && !require_all) {
                 return 0;
             } else {
                 return rc;
@@ -323,14 +335,22 @@ boot_slots_compatible(void)
     size_t size_0, size_1;
     size_t i;
 
-    /* Ensure both image slots have identical sector layouts. */
-    if (num_sectors_0 != num_sectors_1) {
+    if (num_sectors_0 > BOOT_MAX_IMG_SECTORS || num_sectors_1 > BOOT_MAX_IMG_SECTORS) {
+        BOOT_LOG_WRN("Cannot upgrade: more sectors than allowed");
         return 0;
     }
+
+    /* Ensure both image slots have identical sector layouts. */
+    if (num_sectors_0 != num_sectors_1) {
+        BOOT_LOG_WRN("Cannot upgrade: number of sectors differ between slots");
+        return 0;
+    }
+
     for (i = 0; i < num_sectors_0; i++) {
         size_0 = boot_img_sector_size(&boot_data, 0, i);
         size_1 = boot_img_sector_size(&boot_data, 1, i);
         if (size_0 != size_1) {
+            BOOT_LOG_WRN("Cannot upgrade: an incompatible sector was found");
             return 0;
         }
     }
@@ -386,6 +406,8 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
     uint8_t status;
     int max_entries;
     int found;
+    int found_idx;
+    int invalid;
     int rc;
     int i;
 
@@ -393,6 +415,8 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
     max_entries = boot_status_entries(fap);
 
     found = 0;
+    found_idx = 0;
+    invalid = 0;
     for (i = 0; i < max_entries; i++) {
         rc = flash_area_read(fap, off + i * BOOT_WRITE_SZ(&boot_data),
                              &status, 1);
@@ -401,18 +425,38 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
         }
 
         if (status == 0xff) {
-            if (found) {
-                break;
+            if (found && !found_idx) {
+                found_idx = i;
             }
         } else if (!found) {
             found = 1;
+        } else if (found_idx) {
+            invalid = 1;
+            break;
         }
     }
 
+    if (invalid) {
+        /* This means there was an error writing status on the last
+         * swap. Tell user and move on to validation!
+         */
+        BOOT_LOG_ERR("Detected inconsistent status!");
+
+#if !defined(MCUBOOT_VALIDATE_SLOT0)
+        /* With validation of slot0 disabled, there is no way to be sure the
+         * swapped slot0 is OK, so abort!
+         */
+        assert(0);
+#endif
+    }
+
     if (found) {
-        i--;
-        bs->idx = i / BOOT_STATUS_STATE_COUNT;
-        bs->state = i % BOOT_STATUS_STATE_COUNT;
+        if (!found_idx) {
+            found_idx = i;
+        }
+        found_idx--;
+        bs->idx = found_idx / BOOT_STATUS_STATE_COUNT;
+        bs->state = found_idx % BOOT_STATUS_STATE_COUNT;
     }
 
     return 0;
@@ -911,7 +955,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 
         bs->state = 1;
         rc = boot_write_status(bs);
-        assert(rc == 0);
+        BOOT_STATUS_ASSERT(rc == 0);
     }
 
     if (bs->state == 1) {
@@ -932,7 +976,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 
         bs->state = 2;
         rc = boot_write_status(bs);
-        assert(rc == 0);
+        BOOT_STATUS_ASSERT(rc == 0);
     }
 
     if (bs->state == 2) {
@@ -960,7 +1004,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
                         scratch_trailer_off,
                         img_off + copy_sz,
                         BOOT_STATUS_STATE_COUNT * BOOT_WRITE_SZ(&boot_data));
-            assert(rc == 0);
+            BOOT_STATUS_ASSERT(rc == 0);
 
             rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SCRATCH,
                                             &swap_state);
@@ -984,7 +1028,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
         bs->state = 0;
         bs->use_scratch = 0;
         rc = boot_write_status(bs);
-        assert(rc == 0);
+        BOOT_STATUS_ASSERT(rc == 0);
     }
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
@@ -1011,6 +1055,8 @@ boot_copy_image(struct boot_status *bs)
     size_t size;
     size_t this_size;
     size_t last_sector;
+
+    (void)bs;
 
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
     uint32_t src_size = 0;
@@ -1131,6 +1177,12 @@ boot_copy_image(struct boot_status *bs)
         last_sector_idx = first_sector_idx - 1;
         swap_idx++;
     }
+
+#ifdef MCUBOOT_VALIDATE_SLOT0
+    if (boot_status_fails > 0) {
+        BOOT_LOG_WRN("%d status write fails performing the swap", boot_status_fails);
+    }
+#endif
 
     return 0;
 }
@@ -1290,11 +1342,13 @@ boot_go(struct boot_rsp *rsp)
     /* Determine the sector layout of the image slots and scratch area. */
     rc = boot_read_sectors();
     if (rc != 0) {
+        BOOT_LOG_WRN("Failed reading sectors; BOOT_MAX_IMG_SECTORS=%d - too small?",
+                BOOT_MAX_IMG_SECTORS);
         goto out;
     }
 
     /* Attempt to read an image header from each slot. */
-    rc = boot_read_image_headers();
+    rc = boot_read_image_headers(false);
     if (rc != 0) {
         goto out;
     }
@@ -1365,7 +1419,7 @@ boot_go(struct boot_rsp *rsp)
     }
 
     if (reload_headers) {
-        rc = boot_read_image_headers();
+        rc = boot_read_image_headers(false);
         if (rc != 0) {
             goto out;
         }
@@ -1379,7 +1433,7 @@ boot_go(struct boot_rsp *rsp)
 
 #ifdef MCUBOOT_VALIDATE_SLOT0
     rc = boot_validate_slot(0);
-    assert(rc == 0);
+    ASSERT(rc == 0);
     if (rc != 0) {
         rc = BOOT_EBADIMAGE;
         goto out;
@@ -1390,7 +1444,7 @@ boot_go(struct boot_rsp *rsp)
      * the magic number on the image is OK.
      */
     if (boot_data.imgs[0].hdr.ih_magic != IMAGE_MAGIC) {
-        BOOT_LOG_ERR("bad image magic 0x%x", boot_data.imgs[0].hdr.ih_magic);
+        BOOT_LOG_ERR("bad image magic 0x%lx", (unsigned long)boot_data.imgs[0].hdr.ih_magic);
         rc = BOOT_EBADIMAGE;
         goto out;
     }
@@ -1441,7 +1495,7 @@ split_go(int loader_slot, int split_slot, void **entry)
         goto done;
     }
 
-    rc = boot_read_image_headers();
+    rc = boot_read_image_headers(true);
     if (rc != 0) {
         goto done;
     }

@@ -1,5 +1,6 @@
 /* Run the boot image. */
 
+#include <assert.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +10,11 @@
 #include "flash_map/flash_map.h"
 
 #include "../../../boot/bootutil/src/bootutil_priv.h"
+#include "bootsim.h"
+
+#ifdef MCUBOOT_SIGN_EC256
+#include "../../../ext/tinycrypt/lib/include/tinycrypt/ecc_dsa.h"
+#endif
 
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
 #include <bootutil/bootutil_log.h>
@@ -21,6 +27,22 @@ static jmp_buf boot_jmpbuf;
 int flash_counter;
 
 int jumped = 0;
+uint8_t c_asserts = 0;
+uint8_t c_catch_asserts = 0;
+
+int ecdsa256_sign_(const uint8_t *privkey, const uint8_t *hash,
+                   unsigned hash_len, uint8_t *signature)
+{
+#ifdef MCUBOOT_SIGN_EC256
+    return uECC_sign(privkey, hash, hash_len, signature, uECC_secp256r1());
+#else
+    (void)privkey;
+    (void)hash;
+    (void)hash_len;
+    (void)signature;
+    return 0;
+#endif
+}
 
 uint8_t sim_flash_align = 1;
 uint8_t flash_area_align(const struct flash_area *area)
@@ -230,4 +252,20 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
     *count = slot->num_areas;
 
     return 0;
+}
+
+void sim_assert(int x, const char *assertion, const char *file, unsigned int line, const char *function)
+{
+    if (!(x)) {
+        if (c_catch_asserts) {
+            c_asserts++;
+        } else {
+            BOOT_LOG_ERR("%s:%d: %s: Assertion `%s' failed.", file, line, function, assertion);
+
+            /* NOTE: if the assert below is triggered, the place where it was originally
+             * asserted is printed by the message above...
+             */
+            assert(x);
+        }
+    }
 }

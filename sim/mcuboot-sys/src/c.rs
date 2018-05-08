@@ -13,11 +13,14 @@ lazy_static! {
 }
 
 /// Invoke the bootloader on this flash device.
-pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, counter: Option<&mut i32>, align: u8) -> i32 {
+pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, counter: Option<&mut i32>,
+               align: u8, catch_asserts: bool) -> (i32, u8) {
     let _lock = BOOT_LOCK.lock().unwrap();
 
     unsafe {
         api::set_flash(flash);
+        raw::c_catch_asserts = if catch_asserts { 1 } else { 0 };
+        raw::c_asserts = 0u8;
         raw::sim_flash_align = align;
         raw::flash_counter = match counter {
             None => 0,
@@ -25,11 +28,12 @@ pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, counter: Option<&mut i32>
         };
     }
     let result = unsafe { raw::invoke_boot_go(&areadesc.get_c() as *const _) as i32 };
+    let asserts = unsafe { raw::c_asserts };
     unsafe {
         counter.map(|c| *c = raw::flash_counter as i32);
         api::clear_flash();
     };
-    result
+    (result, asserts)
 }
 
 pub fn boot_trailer_sz(align: u8) -> u32 {
@@ -44,6 +48,17 @@ pub fn boot_max_align() -> usize {
     unsafe { raw::BOOT_MAX_ALIGN as usize }
 }
 
+pub fn ecdsa256_sign(privkey: &[u8], hash: &[u8]) -> Result<[u8; 64], &'static str> {
+    unsafe {
+        let mut signature: [u8; 64] = [0; 64];
+        if raw::ecdsa256_sign_(privkey.as_ptr(), hash.as_ptr(),
+                               hash.len() as u32, signature.as_mut_ptr()) == 1 {
+            return Ok(signature);
+        }
+        return Err("Failed signature generation");
+    }
+}
+
 mod raw {
     use area::CAreaDesc;
     use libc;
@@ -54,11 +69,17 @@ mod raw {
         // for information and tracking.
         pub fn invoke_boot_go(areadesc: *const CAreaDesc) -> libc::c_int;
         pub static mut flash_counter: libc::c_int;
+        pub static mut c_asserts: u8;
+        pub static mut c_catch_asserts: u8;
 
         pub static mut sim_flash_align: u8;
         pub fn boot_slots_trailer_sz(min_write_sz: u8) -> u32;
 
         pub static BOOT_MAGIC_SZ: u32;
         pub static BOOT_MAX_ALIGN: u32;
+
+        pub fn ecdsa256_sign_(privkey: *const u8, hash: *const u8,
+                              hash_len: libc::c_uint,
+                              signature: *mut u8) -> libc::c_int;
     }
 }

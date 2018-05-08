@@ -23,8 +23,8 @@ pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:
 
 pkg.deps:
-    - boot/boot_serial
-    - test/testutil
+    - "@mcuboot/boot/boot_serial"
+    - "@apache-mynewt-core/test/testutil"
 
 pkg.deps.SELFTEST:
-    - sys/console/stub
+    - "@apache-mynewt-core/sys/console/stub"

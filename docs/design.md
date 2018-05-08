@@ -138,7 +138,45 @@ upgrades, but must be configured at build time to choose one of these two
 strategies.
 
 In addition to the two image slots, the boot loader requires a scratch area to
-allow for reliable image swapping.
+allow for reliable image swapping. The scratch area must have a size that is
+enough to store at least the largest sector that is going to be swapped. Many
+devices have small equally sized flash sectors, eg 4K, while others have variable
+sized sectors where the largest sectors might be 128K or 256K, so the scratch
+must be big enough to store that. The scratch is only ever used when swapping
+firmware, which means only when doing an upgrade. Given that, the main reason
+for using a larger size for the scratch is that flash wear will be more evenly
+distributed, because a single sector would be written twice the number of times
+than using two sectors, for example. To evaluate the ideal size of the scratch
+for your use case the following parameters are relevant:
+
+* the ratio of image size / scratch size
+* the number of erase cycles supported by the flash hardware
+
+The image size is used (instead of slot size) because only the slot's sectors
+that are actually used for storing the image are copied. The image/scratch ratio
+is the number of times the scratch will be erased on every upgrade. The number
+of erase cycles divided by the image/scratch ratio will give you the number of
+times an upgrade can be performed before the device goes out of spec.
+
+```
+num_upgrades = number_of_erase_cycles / (image_size / scratch_size)
+```
+
+Let's assume, for example, a device with 10000 erase cycles, an image size of
+150K and a scratch of 4K (usual minimum size of 4K sector devices). This would
+result in a total of:
+
+`10000 / (150 / 4) ~ 267`
+
+Increasing the scratch to 16K would give us:
+
+`10000 / (150 / 16) ~ 1067`
+
+There is no *best* ratio, as the right size is use-case dependent. Factors to
+consider include the number of times a device will be upgraded both in the field
+and during development, as well as any desired safety margin on the manufacturer's
+specified number of erase cycles. In general, using a ratio that allows hundreds
+to thousands of field upgrades in production is recommended.
 
 The overwrite upgrade strategy is substantially simpler to implement than the
 image swapping strategy, especially since the bootloader must work properly
@@ -214,7 +252,7 @@ image trailer. An image trailer has the following structure:
      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     ~                                                               ~
-    ~             Swap status (128 * min-write-size * 3)            ~
+    ~    Swap status (BOOT_MAX_IMG_SECTORS * min-write-size * 3)    ~
     ~                                                               ~
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |                           Swap size                           |
@@ -251,9 +289,13 @@ As it swaps images, the bootloader updates the swap status field in a way that
 allows it to compute how far this swap operation has progressed for each
 sector.  The swap status field can thus used to resume a swap operation if the
 bootloader is halted while a swap operation is ongoing and later reset. The
-factor of 128 is the maximum number of sectors mcuboot supports for each image;
-its value is a bootloader design decision. The factor of min-write-sz is due to
-the behavior of flash hardware. The factor of 3 is explained below.
+`BOOT_MAX_IMG_SECTORS` value is the configurable maximum number of sectors mcuboot
+supports for each image; its value defaults to 128, but allows for either
+decreasing this size, to limit RAM usage, or to increase it in devices that have
+massive amounts of Flash or very small sized sectors and thus require a bigger
+configuration to allow for the handling of all slot's sectors. The factor of
+min-write-sz is due to the behavior of flash hardware. The factor of 3 is
+explained below.
 
 2. Swap size: When beginning a new swap operation, the total size that needs
    to be swapped (based on the slot with largest image + tlvs) is written to this
@@ -505,11 +547,9 @@ Each image slot is partitioned into a sequence of flash sectors.  If we were to
 enumerate the sectors in a single slot, starting at 0, we would have a list of
 sector indices.  Since there are two image slots, each sector index would
 correspond to a pair of sectors.  For example, sector index 0 corresponds to
-the first sector in slot 0 and the first sector in slot 1.  Furthermore, we
-impose a limit of 128 indices.  If an image slot consists of more than 128
-sectors, the flash layout is not compatible with this boot loader.  Finally,
-reverse the list of indices such that the list starts with index 127 and ends
-with 0.  The swap status region is a representation of this reversed list.
+the first sector in slot 0 and the first sector in slot 1.  Finally, reverse
+the list of indices such that the list starts with index `BOOT_MAX_IMG_SECTORS - 1`
+and ends with 0.  The swap status region is a representation of this reversed list.
 
 During a swap operation, each sector index transitions through four separate
 states:
@@ -539,12 +579,12 @@ values map to the above four states as follows
     state 3 | 0x01 | 0x02 | 0x03
 ```
 
-The swap status region can accommodate 128 sector indices.  Hence, the size of
-the region, in bytes, is `128 * min-write-size * 3`.  The number 128 is chosen
-somewhat arbitrarily and will likely be made configurable.  The only
-requirement for the index count is that is is great enough to account for a
+The swap status region can accommodate `BOOT_MAX_IMG_SECTORS` sector indices.
+Hence, the size of the region, in bytes, is `BOOT_MAX_IMG_SECTORS * min-write-size * 3`.
+The only requirement for the index count is that it is great enough to account for a
 maximum-sized image (i.e., at least as great as the total sector count in an
-image slot).  If a device's image slots use less than 128 sectors, the first
+image slot).  If a device's image slots have been configured with
+`BOOT_MAX_IMG_SECTORS: 128` and use less than 128 sectors, the first
 record that gets written will be somewhere in the middle of the region.  For
 example, if a slot uses 64 sectors, the first sector index that gets swapped is
 63, which corresponds to the exact halfway point within the region.
@@ -644,5 +684,4 @@ image was signed with a private key that corresponds to the embedded keyhash
 TLV.
 
 For information on embedding public keys in the boot loader, as well as
-producing signed images, see: [signed_images]({% link signed_images.md
-%}).
+producing signed images, see: [signed_images](signed_images.md).

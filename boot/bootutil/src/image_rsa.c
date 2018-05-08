@@ -19,9 +19,7 @@
 
 #include <string.h>
 
-#ifdef MCUBOOT_MYNEWT
 #include "mcuboot_config/mcuboot_config.h"
-#endif
 
 #ifdef MCUBOOT_SIGN_RSA
 #include "bootutil/sign_key.h"
@@ -84,6 +82,8 @@ bootutil_parse_rsakey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
       (rc = mbedtls_asn1_get_mpi(p, end, &ctx->E)) != 0) {
         return -3;
     }
+
+    ctx->len = mbedtls_mpi_size(&ctx->N);
 
     if (*p != end) {
         return -4;
@@ -254,7 +254,7 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
 }
 
 int
-bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
+bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
 {
     mbedtls_rsa_context ctx;
@@ -268,7 +268,7 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
     end = cp + *bootutil_keys[key_id].len;
 
     rc = bootutil_parse_rsakey(&ctx, &cp, end);
-    if (rc || (size_t)slen != ctx.len) {
+    if (rc || slen != ctx.len) {
         mbedtls_rsa_free(&ctx);
         return rc;
     }

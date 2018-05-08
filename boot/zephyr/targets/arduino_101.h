@@ -21,13 +21,13 @@
 
 /*
  * NOTE: This flash layout is a simple one for demonstration purposes.
- * It assumes we are building MCUBoot as a 3rd-stage loader, leaving the
+ * It assumes we are building MCUboot as a 3rd-stage loader, leaving the
  * stock bootloaders on the Arduino 101 untouched.
  *
- * In this configuration MCUBoot will live at 0x40010000
+ * In this configuration MCUboot will live at 0x40010000
  */
 
-#define FLASH_DRIVER_NAME		CONFIG_SOC_FLASH_QMSI_DEV_NAME
+#define FLASH_DEV_NAME			CONFIG_SOC_FLASH_QMSI_DEV_NAME
 #define FLASH_ALIGN			4
 #define FLASH_AREA_IMAGE_0_OFFSET	0x40020000
 #define FLASH_AREA_IMAGE_0_SIZE		0x10000

@@ -23,9 +23,16 @@
 #include "sysflash/sysflash.h"
 #include "flash_map/flash_map.h"
 #include "bootutil/image.h"
+#include "mcuboot_config/mcuboot_config.h"
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef MCUBOOT_HAVE_ASSERT_H
+#include "mcuboot_config/mcuboot_assert.h"
+#else
+#define ASSERT assert
 #endif
 
 struct flash_area;
@@ -84,8 +91,25 @@ struct boot_swap_state {
     uint8_t image_ok;
 };
 
-#define BOOT_STATUS_STATE_COUNT 3
-#define BOOT_STATUS_MAX_ENTRIES 128
+#define BOOT_MAX_IMG_SECTORS       MCUBOOT_MAX_IMG_SECTORS
+
+/*
+ * The current flashmap API does not check the amount of space allocated when
+ * loading sector data from the flash device, allowing for smaller counts here
+ * would most surely incur in overruns.
+ *
+ * TODO: make flashmap API receive the current sector array size.
+ */
+#if BOOT_MAX_IMG_SECTORS < 32
+#error "Too few sectors, please increase BOOT_MAX_IMG_SECTORS to at least 32"
+#endif
+
+/** Number of image slots in flash; currently limited to two. */
+#define BOOT_NUM_SLOTS             2
+
+/** Maximum number of image sectors supported by the bootloader. */
+#define BOOT_STATUS_STATE_COUNT    3
+#define BOOT_STATUS_MAX_ENTRIES    BOOT_MAX_IMG_SECTORS
 
 #define BOOT_STATUS_SOURCE_NONE    0
 #define BOOT_STATUS_SOURCE_SCRATCH 1
@@ -98,12 +122,6 @@ struct boot_swap_state {
 #define BOOT_FLAG_UNSET            0xff
 
 extern const uint32_t BOOT_MAGIC_SZ;
-
-/** Number of image slots in flash; currently limited to two. */
-#define BOOT_NUM_SLOTS              2
-
-/** Maximum number of image sectors supported by the bootloader. */
-#define BOOT_MAX_IMG_SECTORS        120
 
 /**
  * Compatibility shim for flash sector type.
@@ -130,8 +148,8 @@ struct boot_loader_state {
     uint8_t write_sz;
 };
 
-int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
-    uint8_t key_id);
+int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
+                        size_t slen, uint8_t key_id);
 
 uint32_t boot_slots_trailer_sz(uint8_t min_write_sz);
 int boot_status_entries(const struct flash_area *fap);

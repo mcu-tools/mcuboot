@@ -24,6 +24,9 @@
 
 #include "sysflash/sysflash.h"
 
+#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
+#include "bootutil/bootutil_log.h"
+
 #ifdef __ZEPHYR__
 #include <misc/reboot.h>
 #include <misc/byteorder.h>
@@ -31,10 +34,8 @@
 #include <flash.h>
 #include <crc16.h>
 #include <serial_adapter/serial_adapter.h>
-
-#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_INFO
-#include "bootutil/bootutil_log.h"
-#include "mbedtls/base64.h"
+#include <base64.h>
+#include <cbor.h>
 #else
 #include <bsp/bsp.h>
 #include <hal/hal_system.h>
@@ -43,10 +44,10 @@
 #include <console/console.h>
 #include <crc/crc16.h>
 #include <base64/base64.h>
-#endif /* __ZEPHYR__ */
-
 #include <tinycbor/cbor.h>
 #include <tinycbor/cbor_buf_reader.h>
+#endif /* __ZEPHYR__ */
+
 #include <cborattr/cborattr.h>
 
 #include <flash_map/flash_map.h>
@@ -62,7 +63,7 @@
 #define BOOT_SERIAL_OUT_MAX	48
 
 #ifdef __ZEPHYR__
-/* mbedtls-base64 lib encodes data to null-terminated string */
+/* base64 lib encodes data to null-terminated string */
 #define BASE64_ENCODE_SIZE(in_size) ((((((in_size) - 1) / 3) * 4) + 4) + 1)
 
 #define CRC16_INITIAL_CRC       0       /* what to seed crc16 with */
@@ -117,7 +118,7 @@ bs_find_val(char *buf, char *name)
     ptr += strlen(name);
 
     while (*ptr != '\0') {
-        if (*ptr != ':' && !isspace(*ptr)) {
+        if (*ptr != ':' && !isspace((int)*ptr)) {
             break;
         }
         ++ptr;
@@ -188,6 +189,7 @@ bs_upload(char *buf, int len)
     uint8_t img_data[400];
     long long unsigned int off = UINT_MAX;
     size_t img_blen = 0;
+    uint8_t rem_bytes;
     long long unsigned int data_len = UINT_MAX;
     const struct cbor_attr_t attr[4] = {
         [0] = {
@@ -215,13 +217,16 @@ bs_upload(char *buf, int len)
 
     memset(img_data, 0, sizeof(img_data));
     cbor_buf_reader_init(&reader, (uint8_t *)buf, len);
+#ifdef __ZEPHYR__
+    cbor_parser_cust_reader_init(&reader.r, 0, &parser, &value);
+#else
     cbor_parser_init(&reader.r, 0, &parser, &value);
+#endif
     rc = cbor_read_object(&value, attr);
     if (rc || off == UINT_MAX) {
         rc = MGMT_ERR_EINVAL;
         goto out;
     }
-
 
     rc = flash_area_open(flash_area_id_from_image_slot(0), &fap);
     if (rc) {
@@ -245,6 +250,12 @@ bs_upload(char *buf, int len)
     if (off != curr_off) {
         rc = 0;
         goto out;
+    }
+    if (curr_off + img_blen < img_size) {
+        rem_bytes = img_blen % flash_area_align(fap);
+        if (rem_bytes) {
+            img_blen -= rem_bytes;
+        }
     }
     rc = flash_area_write(fap, curr_off, img_data, img_blen);
     if (rc) {
@@ -281,7 +292,7 @@ bs_echo_ctl(char *buf, int len)
  * Reset, and (presumably) boot to newly uploaded image. Flush console
  * before restarting.
  */
-static int
+static void
 bs_reset(char *buf, int len)
 {
     cbor_encoder_create_map(&bs_root, &bs_rsp, CborIndefiniteLength);
@@ -320,8 +331,11 @@ boot_serial_input(char *buf, int len)
     buf += sizeof(*hdr);
     len -= sizeof(*hdr);
     bs_writer.bytes_written = 0;
+#ifdef __ZEPHYR__
+    cbor_encoder_cust_writer_init(&bs_root, &bs_writer, 0);
+#else
     cbor_encoder_init(&bs_root, &bs_writer, 0);
-
+#endif
 
     /*
      * Limited support for commands.
@@ -395,8 +409,7 @@ boot_serial_output(void)
     totlen += sizeof(crc);
 #ifdef __ZEPHYR__
     size_t enc_len;
-    mbedtls_base64_encode(encoded_buf, sizeof(encoded_buf), &enc_len, buf,
-                          totlen);
+    base64_encode(encoded_buf, sizeof(encoded_buf), &enc_len, buf, totlen);
     totlen = enc_len;
 #else
     totlen = base64_encode(buf, totlen, encoded_buf, 1);
@@ -417,7 +430,7 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
     uint16_t len;
 #ifdef __ZEPHYR__
     int err;
-    err = mbedtls_base64_decode( &out[*out_off], maxout, &rc, in, inlen - 2);
+    err = base64_decode( &out[*out_off], maxout, &rc, in, inlen - 2);
     if (err) {
         return -1;
     }

@@ -173,6 +173,7 @@ impl Run {
         assert_eq!(slot1_base, slot0_base + slot0_len);
         assert_eq!(scratch_base, slot1_base + slot1_len);
 
+        // NOTE: not accounting "swap_size" because it is not used by sim...
         let offset_from_end = c::boot_magic_sz() + c::boot_max_align() * 2;
 
         // Construct a primary image.
@@ -294,6 +295,9 @@ impl RunStatus {
         failed |= images.run_perm_with_fails();
         failed |= images.run_perm_with_random_fails(5);
         failed |= images.run_norevert();
+
+        failed |= images.run_with_status_fails_complete();
+        failed |= images.run_with_status_fails_with_reset();
 
         //show_flash(&flash);
 
@@ -518,7 +522,8 @@ impl Images {
         info!("Try norevert");
 
         // First do a normal upgrade...
-        if c::boot_go(&mut fl, &self.areadesc, None, self.align) != 0 {
+        let (result, _) = c::boot_go(&mut fl, &self.areadesc, None, self.align, false);
+        if result != 0 {
             warn!("Failed first boot");
             fails += 1;
         }
@@ -550,7 +555,8 @@ impl Images {
             fails += 1;
         }
 
-        if c::boot_go(&mut fl, &self.areadesc, None, self.align) != 0 {
+        let (result, _) = c::boot_go(&mut fl, &self.areadesc, None, self.align, false);
+        if result != 0 {
             warn!("Failed second boot");
             fails += 1;
         }
@@ -589,7 +595,8 @@ impl Images {
         }
 
         // Run the bootloader...
-        if c::boot_go(&mut fl, &self.areadesc, None, self.align) != 0 {
+        let (result, _) = c::boot_go(&mut fl, &self.areadesc, None, self.align, false);
+        if result != 0 {
             warn!("Failed first boot");
             fails += 1;
         }
@@ -636,7 +643,8 @@ impl Images {
         }
 
         // Run the bootloader...
-        if c::boot_go(&mut fl, &self.areadesc, None, self.align) != 0 {
+        let (result, _) = c::boot_go(&mut fl, &self.areadesc, None, self.align, false);
+        if result != 0 {
             warn!("Failed first boot");
             fails += 1;
         }
@@ -658,6 +666,157 @@ impl Images {
 
         fails > 0
     }
+
+    #[cfg(not(feature = "overwrite-only"))]
+    fn trailer_sz(&self) -> usize {
+        c::boot_trailer_sz(self.align) as usize
+    }
+
+    // FIXME: could get status sz from bootloader
+    #[cfg(not(feature = "overwrite-only"))]
+    fn status_sz(&self) -> usize {
+        self.trailer_sz() - (16 + 24)
+    }
+
+    /// This test runs a simple upgrade with no fails in the images, but
+    /// allowing for fails in the status area. This should run to the end
+    /// and warn that write fails were detected...
+    #[cfg(not(feature = "validate-slot0"))]
+    pub fn run_with_status_fails_complete(&self) -> bool { false }
+
+    #[cfg(feature = "validate-slot0")]
+    pub fn run_with_status_fails_complete(&self) -> bool {
+        let mut fl = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try swap with status fails");
+
+        mark_permanent_upgrade(&mut fl, &self.slot1, self.align);
+
+        let status_off = self.slot1.base_off - self.trailer_sz();
+
+        // Always fail writes to status area...
+        let _ = fl.add_bad_region(status_off, self.status_sz(), 1.0);
+
+        let (result, asserts) = c::boot_go(&mut fl, &self.areadesc, None, self.align, true);
+        if result != 0 {
+            warn!("Failed!");
+            fails += 1;
+        }
+
+        // Failed writes to the marked "bad" region don't assert anymore.
+        // Any detected assert() is happening in another part of the code.
+        if asserts != 0 {
+            warn!("At least one assert() was called");
+            fails += 1;
+        }
+
+        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
+                           COPY_DONE) {
+            warn!("Mismatched trailer for Slot 0");
+            fails += 1;
+        }
+
+        if !verify_image(&fl, self.slot0.base_off, &self.upgrade) {
+            warn!("Failed image verification");
+            fails += 1;
+        }
+
+        info!("validate slot0 enabled; re-run of boot_go should just work");
+        let (result, _) = c::boot_go(&mut fl, &self.areadesc, None, self.align, false);
+        if result != 0 {
+            warn!("Failed!");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Error running upgrade with status write fails");
+        }
+
+        fails > 0
+    }
+
+    /// This test runs a simple upgrade with no fails in the images, but
+    /// allowing for fails in the status area. This should run to the end
+    /// and warn that write fails were detected...
+    #[cfg(feature = "validate-slot0")]
+    pub fn run_with_status_fails_with_reset(&self) -> bool {
+        let mut fl = self.flash.clone();
+        let mut fails = 0;
+        let mut count = self.total_count.unwrap() / 2;
+
+        //info!("count={}\n", count);
+
+        info!("Try interrupted swap with status fails");
+
+        mark_permanent_upgrade(&mut fl, &self.slot1, self.align);
+
+        let status_off = self.slot1.base_off - self.trailer_sz();
+
+        // Mark the status area as a bad area
+        let _ = fl.add_bad_region(status_off, self.status_sz(), 0.5);
+
+        // Should not fail, writing to bad regions does not assert
+        let (_, asserts) = c::boot_go(&mut fl, &self.areadesc, Some(&mut count), self.align, true);
+        if asserts != 0 {
+            warn!("At least one assert() was called");
+            fails += 1;
+        }
+
+        fl.reset_bad_regions();
+
+        // Disabling write verification the only assert triggered by
+        // boot_go should be checking for integrity of status bytes.
+        fl.set_verify_writes(false);
+
+        info!("Resuming an interrupted swap operation");
+        let (_, asserts) = c::boot_go(&mut fl, &self.areadesc, None, self.align, true);
+
+        // This might throw no asserts, for large sector devices, where
+        // a single failure writing is indistinguishable from no failure,
+        // or throw a single assert for small sector devices that fail
+        // multiple times...
+        if asserts > 1 {
+            warn!("Expected single assert validating slot0, more detected {}", asserts);
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Error running upgrade with status write fails");
+        }
+
+        fails > 0
+    }
+
+    #[cfg(not(feature = "validate-slot0"))]
+    #[cfg(not(feature = "overwrite-only"))]
+    pub fn run_with_status_fails_with_reset(&self) -> bool {
+        let mut fl = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try interrupted swap with status fails");
+
+        mark_permanent_upgrade(&mut fl, &self.slot1, self.align);
+
+        let status_off = self.slot1.base_off - self.trailer_sz();
+
+        // Mark the status area as a bad area
+        let _ = fl.add_bad_region(status_off, self.status_sz(), 1.0);
+
+        // This is expected to fail while writing to bad regions...
+        let (_, asserts) = c::boot_go(&mut fl, &self.areadesc, None, self.align, true);
+        if asserts == 0 {
+            warn!("No assert() detected");
+            fails += 1;
+        }
+
+        fails > 0
+    }
+
+    #[cfg(feature = "overwrite-only")]
+    pub fn run_with_status_fails_with_reset(&self) -> bool {
+        false
+    }
 }
 
 /// Test a boot, optionally stopping after 'n' flash options.  Returns a count
@@ -671,19 +830,19 @@ fn try_upgrade(flash: &SimFlash, images: &Images,
 
     let mut counter = stop.unwrap_or(0);
 
-    let (first_interrupted, count) = match c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align) {
-        -0x13579 => (true, stop.unwrap()),
-        0 => (false, -counter),
-        x => panic!("Unknown return: {}", x),
+    let (first_interrupted, count) = match c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align, false) {
+        (-0x13579, _) => (true, stop.unwrap()),
+        (0, _) => (false, -counter),
+        (x, _) => panic!("Unknown return: {}", x),
     };
 
     counter = 0;
     if first_interrupted {
         // fl.dump();
-        match c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align) {
-            -0x13579 => panic!("Shouldn't stop again"),
-            0 => (),
-            x => panic!("Unknown return: {}", x),
+        match c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align, false) {
+            (-0x13579, _) => panic!("Shouldn't stop again"),
+            (0, _) => (),
+            (x, _) => panic!("Unknown return: {}", x),
         }
     }
 
@@ -697,7 +856,7 @@ fn try_revert(flash: &SimFlash, areadesc: &AreaDesc, count: usize, align: u8) ->
     // fl.write_file("image0.bin").unwrap();
     for i in 0 .. count {
         info!("Running boot pass {}", i + 1);
-        assert_eq!(c::boot_go(&mut fl, &areadesc, None, align), 0);
+        assert_eq!(c::boot_go(&mut fl, &areadesc, None, align, false), (0, 0));
     }
     fl
 }
@@ -706,11 +865,10 @@ fn try_revert(flash: &SimFlash, areadesc: &AreaDesc, count: usize, align: u8) ->
 fn try_revert_with_fail_at(flash: &SimFlash, images: &Images,
                            stop: i32) -> bool {
     let mut fl = flash.clone();
-    let mut x: i32;
     let mut fails = 0;
 
     let mut counter = stop;
-    x = c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align);
+    let (x, _) = c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align, false);
     if x != -0x13579 {
         warn!("Should have stopped at interruption point");
         fails += 1;
@@ -721,7 +879,7 @@ fn try_revert_with_fail_at(flash: &SimFlash, images: &Images,
         fails += 1;
     }
 
-    x = c::boot_go(&mut fl, &images.areadesc, None, images.align);
+    let (x, _) = c::boot_go(&mut fl, &images.areadesc, None, images.align, false);
     if x != 0 {
         warn!("Should have finished upgrade");
         fails += 1;
@@ -747,7 +905,7 @@ fn try_revert_with_fail_at(flash: &SimFlash, images: &Images,
     }
 
     // Do Revert
-    x = c::boot_go(&mut fl, &images.areadesc, None, images.align);
+    let (x, _) = c::boot_go(&mut fl, &images.areadesc, None, images.align, false);
     if x != 0 {
         warn!("Should have finished a revert");
         fails += 1;
@@ -788,18 +946,18 @@ fn try_random_fails(flash: &SimFlash, images: &Images,
         let ops = Range::new(1, remaining_ops / 2);
         let reset_counter = ops.ind_sample(&mut rng);
         let mut counter = reset_counter;
-        match c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align) {
-            0 | -0x13579 => (),
-            x => panic!("Unknown return: {}", x),
+        match c::boot_go(&mut fl, &images.areadesc, Some(&mut counter), images.align, false) {
+            (0, _) | (-0x13579, _) => (),
+            (x, _) => panic!("Unknown return: {}", x),
         }
         remaining_ops -= reset_counter;
         resets[i] = reset_counter;
     }
 
-    match c::boot_go(&mut fl, &images.areadesc, None, images.align) {
-        -0x13579 => panic!("Should not be have been interrupted!"),
-        0 => (),
-        x => panic!("Unknown return: {}", x),
+    match c::boot_go(&mut fl, &images.areadesc, None, images.align, false) {
+        (-0x13579, _) => panic!("Should not be have been interrupted!"),
+        (0, _) => (),
+        (x, _) => panic!("Unknown return: {}", x),
     }
 
     (fl, resets)
@@ -887,7 +1045,13 @@ fn make_tlv() -> TlvGen {
     TlvGen::new_rsa_pss()
 }
 
+#[cfg(feature = "sig-ecdsa")]
+fn make_tlv() -> TlvGen {
+    TlvGen::new_ecdsa()
+}
+
 #[cfg(not(feature = "sig-rsa"))]
+#[cfg(not(feature = "sig-ecdsa"))]
 fn make_tlv() -> TlvGen {
     TlvGen::new_hash_only()
 }

@@ -17,9 +17,12 @@
  * under the License.
  */
 
+#include "mcuboot_config/mcuboot_config.h"
+
 #include <assert.h>
 #include <stddef.h>
 #include <inttypes.h>
+#include <stdio.h>
 #include "syscfg/syscfg.h"
 #include <flash_map/flash_map.h>
 #include <os/os.h>
@@ -27,20 +30,20 @@
 #include <hal/hal_bsp.h>
 #include <hal/hal_system.h>
 #include <hal/hal_flash.h>
+#include <sysinit/sysinit.h>
 #ifdef MCUBOOT_SERIAL
 #include <hal/hal_gpio.h>
 #include <boot_serial/boot_serial.h>
-#include <sysinit/sysinit.h>
 #endif
 #include <console/console.h>
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 
-#define BOOT_AREA_DESC_MAX  (256)
-#define AREA_DESC_MAX       (BOOT_AREA_DESC_MAX)
+#define BOOT_AREA_DESC_MAX    (256)
+#define AREA_DESC_MAX         (BOOT_AREA_DESC_MAX)
 
 #ifdef MCUBOOT_SERIAL
-#define BOOT_SER_CONS_INPUT         128
+#define BOOT_SER_CONS_INPUT   256
 #endif
 
 /*
@@ -62,24 +65,27 @@ main(void)
     uintptr_t flash_base;
     int rc;
 
-#ifdef MCUBOOT_SERIAL
-    sysinit();
-#else
-    flash_map_init();
     hal_bsp_init();
-#endif
+
+    /* initialize uart without os */
+    os_dev_initialize_all(OS_DEV_INIT_PRIMARY);
+    sysinit();
+    console_blocking_mode();
 
 #ifdef MCUBOOT_SERIAL
     /*
      * Configure a GPIO as input, and compare it against expected value.
      * If it matches, await for download commands from serial.
      */
-    hal_gpio_init_in(BOOT_SERIAL_DETECT_PIN, BOOT_SERIAL_DETECT_PIN_CFG);
-    if (hal_gpio_read(BOOT_SERIAL_DETECT_PIN) == BOOT_SERIAL_DETECT_PIN_VAL) {
+    hal_gpio_init_in(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN),
+                     MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_CFG));
+    if (hal_gpio_read(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN)) ==
+                      MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_VAL)) {
         boot_serial_start(BOOT_SER_CONS_INPUT);
         assert(0);
     }
 #endif
+
     rc = boot_go(&rsp);
     assert(rc == 0);
 

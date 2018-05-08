@@ -19,9 +19,7 @@
 
 #include <string.h>
 
-#ifdef MCUBOOT_MYNEWT
 #include "mcuboot_config/mcuboot_config.h"
-#endif
 
 #ifdef MCUBOOT_SIGN_EC256
 #include "bootutil/sign_key.h"
@@ -141,7 +139,7 @@ tinycrypt_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp, uint8_t 
 }
 
 int
-bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, int slen,
+bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
 {
     int rc;

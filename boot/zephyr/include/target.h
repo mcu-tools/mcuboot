@@ -33,7 +33,7 @@
 /*
  * Sanity check the target support.
  */
-#if !defined(FLASH_DRIVER_NAME) || \
+#if !defined(FLASH_DEV_NAME) || \
     !defined(FLASH_ALIGN) ||                  \
     !defined(FLASH_AREA_IMAGE_0_OFFSET) || \
     !defined(FLASH_AREA_IMAGE_0_SIZE) || \

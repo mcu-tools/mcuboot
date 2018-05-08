@@ -1,0 +1,24 @@
+#ifndef MCUBOOT_CONFIG_H
+#define MCUBOOT_CONFIG_H
+
+/* #define MCUBOOT_SIGN_RSA */
+
+/* #define MCUBOOT_SIGN_EC256 */
+
+/* #define MCUBOOT_OVERWRITE_ONLY */
+
+/* #define MCUBOOT_OVERWRITE_ONLY_FAST */
+
+/* #define MCUBOOT_USE_MBED_TLS */
+
+/* #define MCUBOOT_USE_TINYCRYPT */
+
+/* #define MCUBOOT_VALIDATE_SLOT0 */
+
+/* #define MCUBOOT_USE_FLASH_AREA_GET_SECTORS */
+
+#define MCUBOOT_MAX_IMG_SECTORS 128
+
+/* #define MCUBOOT_HAVE_ASSERT_H */
+
+#endif /* MCUBOOT_CONFIG_H */

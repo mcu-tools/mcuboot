@@ -10,6 +10,7 @@ rusty-tags.*
 /project.state
 /bin/
 /targets/
+**/build/**/*
 *.o
 boot/coverity/coverity
 cov-int/
