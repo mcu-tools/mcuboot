@@ -90,9 +90,11 @@ def do_sign(args):
     img.save(args.outfile)
 
 subcmds = {
-        'keygen': do_keygen,
-        'getpub': do_getpub,
-        'sign': do_sign, }
+    'keygen': do_keygen,
+    'getpub': do_getpub,
+    'sign': do_sign,
+    'create': do_sign,
+}
 
 def alignment_value(text):
     value = int(text)
