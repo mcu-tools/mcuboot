@@ -80,11 +80,11 @@ struct image_header {
     uint32_t ih_magic;
     uint32_t ih_load_addr;
     uint16_t ih_hdr_size; /* Size of image header (bytes). */
-    uint16_t _pad2;
+    uint16_t _pad1;
     uint32_t ih_img_size; /* Does not include header. */
     uint32_t ih_flags;    /* IMAGE_F_[...]. */
     struct image_version ih_ver;
-    uint32_t _pad3;
+    uint32_t _pad2;
 };
 
 /** Image TLV header.  All fields in little endian. */

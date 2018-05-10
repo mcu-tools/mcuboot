@@ -42,7 +42,6 @@ TLV_VALUES = {
 
 TLV_INFO_SIZE = 4
 TLV_INFO_MAGIC = 0x6907
-TLV_HEADER_SIZE = 4
 
 # Sizes of the image trailer, depending on flash write size.
 trailer_sizes = {
@@ -145,41 +144,31 @@ class Image():
         approximate the size of the signature."""
 
         flags = 0
-        tlvsz = 0
-        if key is not None:
-            tlvsz += TLV_HEADER_SIZE + key.sig_len()
-
-        tlvsz += 4 + hashlib.sha256().digest_size
-        tlvsz += 4 + hashlib.sha256().digest_size
 
         fmt = ('<' +
             # type ImageHdr struct {
             'I' +   # Magic uint32
-            'H' +   # TlvSz uint16
-            'B' +   # KeyId uint8
-            'B' +   # Pad1  uint8
+            'I' +   # LoadAddr uint32
             'H' +   # HdrSz uint16
-            'H' +   # Pad2  uint16
+            'H' +   # Pad1  uint16
             'I' +   # ImgSz uint32
             'I' +   # Flags uint32
             'BBHI' + # Vers  ImageVersion
-            'I'     # Pad3  uint32
+            'I'     # Pad2  uint32
             ) # }
         assert struct.calcsize(fmt) == IMAGE_HEADER_SIZE
         header = struct.pack(fmt,
                 IMAGE_MAGIC,
-                tlvsz, # TlvSz
-                0, # KeyId (TODO: allow other ids)
-                0,  # Pad1
+                0, # LoadAddr
                 self.header_size,
-                0, # Pad2
+                0, # Pad1
                 len(self.payload) - self.header_size, # ImageSz
                 flags, # Flags
                 self.version.major,
                 self.version.minor or 0,
                 self.version.revision or 0,
                 self.version.build or 0,
-                0) # Pad3
+                0) # Pad2
         self.payload = bytearray(self.payload)
         self.payload[:len(header)] = header
 
