@@ -34,8 +34,8 @@ def same_keys(a, b):
             return False
     return True
 
-offset_re = re.compile(r"^#define FLASH_AREA_([0-9A-Z_]+)_OFFSET_0\s+((0x)?[0-9a-fA-F]+)")
-size_re   = re.compile(r"^#define FLASH_AREA_([0-9A-Z_]+)_SIZE_0\s+((0x)?[0-9a-fA-F]+)")
+offset_re = re.compile(r"^#define FLASH_AREA_([0-9A-Z_]+)_OFFSET(_0)?\s+((0x)?[0-9a-fA-F]+)")
+size_re   = re.compile(r"^#define FLASH_AREA_([0-9A-Z_]+)_SIZE(_0)?\s+((0x)?[0-9a-fA-F]+)")
 
 class Assembly():
     def __init__(self, output, bootdir):
@@ -54,10 +54,10 @@ class Assembly():
             for line in fd:
                 m = offset_re.match(line)
                 if m is not None:
-                    offsets[m.group(1)] = int(m.group(2), 0)
+                    offsets[m.group(1)] = int(m.group(3), 0)
                 m = size_re.match(line)
                 if m is not None:
-                    sizes[m.group(1)] = int(m.group(2), 0)
+                    sizes[m.group(1)] = int(m.group(3), 0)
 
         if not same_keys(offsets, sizes):
             raise Exception("Inconsistent data in generated_dts_board.h")
