@@ -114,7 +114,9 @@ class BasedIntParamType(click.ParamType):
 
 @click.argument('outfile')
 @click.argument('infile')
-@click.option('--pad', type=int,
+@click.option('-M', '--max-sectors', type=int,
+              help='When padding allow for this amount of sectors (defaults to 128)')
+@click.option('--pad', type=BasedIntParamType(),
               help='Pad image to this many bytes, adding trailer magic')
 @click.option('--included-header', default=False, is_flag=True,
               help='Image has gap for header')
@@ -124,8 +126,8 @@ class BasedIntParamType(click.ParamType):
               required=True)
 @click.option('-k', '--key', metavar='filename')
 @click.command(help='Create a signed or unsigned image')
-def sign(key, align, version, header_size, included_header, pad, infile,
-         outfile):
+def sign(key, align, version, header_size, included_header, pad, max_sectors,
+         infile, outfile):
     img = image.Image.load(infile, version=decode_version(version),
                            header_size=header_size,
                            included_header=included_header, pad=pad)
@@ -133,7 +135,7 @@ def sign(key, align, version, header_size, included_header, pad, infile,
     img.sign(key)
 
     if pad is not None:
-        img.pad_to(pad, align)
+        img.pad_to(pad, int(align), max_sectors)
 
     img.save(outfile)
 

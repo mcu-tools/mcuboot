@@ -27,6 +27,7 @@ IMAGE_MAGIC = 0x96f3b83d
 IMAGE_HEADER_SIZE = 32
 BIN_EXT = "bin"
 INTEL_HEX_EXT = "hex"
+DEFAULT_MAX_SECTORS = 128
 
 # Image header flags.
 IMAGE_F = {
@@ -42,12 +43,6 @@ TLV_VALUES = {
 
 TLV_INFO_SIZE = 4
 TLV_INFO_MAGIC = 0x6907
-
-# Sizes of the image trailer, depending on flash write size.
-trailer_sizes = {
-    write_size: 128 * 3 * write_size + 8 * 2 + 16
-    for write_size in [1, 2, 4, 8]
-}
 
 boot_magic = bytes([
     0x77, 0xc2, 0x95, 0xf3,
@@ -172,9 +167,16 @@ class Image():
         self.payload = bytearray(self.payload)
         self.payload[:len(header)] = header
 
-    def pad_to(self, size, align):
+    def _trailer_size(self, write_size, max_sectors):
+        # NOTE: should already be checked by the argument parser
+        if write_size not in set([1, 2, 4, 8]):
+            raise Exception("Invalid alignment: {}".format(write_size))
+        m = DEFAULT_MAX_SECTORS if max_sectors is None else max_sectors
+        return m * 3 * write_size + 8 * 2 + 16
+
+    def pad_to(self, size, align, max_sectors):
         """Pad the image to the given size, with the given flash alignment."""
-        tsize = trailer_sizes[align]
+        tsize = self._trailer_size(align, max_sectors)
         padding = size - (len(self.payload) + tsize)
         if padding < 0:
             msg = "Image size (0x{:x}) + trailer (0x{:x}) exceeds requested size 0x{:x}".format(
