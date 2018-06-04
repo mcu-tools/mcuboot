@@ -54,6 +54,14 @@
  */
 #define MBEDTLS_PLATFORM_C
 
+/* XXX: The following lines stop free/calloc warnings while building the
+ * bootloader on Zephyr with ECDSA-P256 enabled. Those functions are never
+ * linked in because we don't call their users in the parser code.
+ */
+#include <stddef.h>
+void free(void *ptr);
+void *calloc(size_t nmemb, size_t size);
+
 /**
  * \def MBEDTLS_TIMING_C
  *
