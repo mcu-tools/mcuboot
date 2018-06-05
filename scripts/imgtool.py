@@ -116,8 +116,10 @@ class BasedIntParamType(click.ParamType):
 @click.argument('infile')
 @click.option('-M', '--max-sectors', type=int,
               help='When padding allow for this amount of sectors (defaults to 128)')
-@click.option('--pad', type=BasedIntParamType(),
-              help='Pad image to this many bytes, adding trailer magic')
+@click.option('--pad', default=False, is_flag=True,
+              help='Pad image to --slot-size bytes, adding trailer magic')
+@click.option('-S', '--slot-size', type=BasedIntParamType(), required=True,
+              help='Size of the slot where the image will be written')
 @click.option('--included-header', default=False, is_flag=True,
               help='Image has gap for header')
 @click.option('-H', '--header-size', type=BasedIntParamType(), required=True)
@@ -126,16 +128,18 @@ class BasedIntParamType(click.ParamType):
               required=True)
 @click.option('-k', '--key', metavar='filename')
 @click.command(help='Create a signed or unsigned image')
-def sign(key, align, version, header_size, included_header, pad, max_sectors,
-         infile, outfile):
+def sign(key, align, version, header_size, included_header, slot_size, pad,
+         max_sectors, infile, outfile):
     img = image.Image.load(infile, version=decode_version(version),
                            header_size=header_size,
-                           included_header=included_header, pad=pad)
+                           included_header=included_header, pad=pad,
+                           align=int(align), slot_size=slot_size,
+                           max_sectors=max_sectors)
     key = load_key(key) if key else None
     img.sign(key)
 
-    if pad is not None:
-        img.pad_to(pad, int(align), max_sectors)
+    if pad:
+        img.pad_to(slot_size)
 
     img.save(outfile)
 

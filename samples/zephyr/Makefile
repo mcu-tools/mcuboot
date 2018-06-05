@@ -130,6 +130,7 @@ hello1: check
 		--align $(FLASH_ALIGNMENT) \
 		--version 1.2 \
 		--included-header \
+		--slot-size 0x60000
 		$(BUILD_DIR_HELLO1)/zephyr/zephyr.bin \
 		signed-hello1.bin
 
@@ -155,7 +156,8 @@ hello2: check
 		--align $(FLASH_ALIGNMENT) \
 		--version 1.2 \
 		--included-header \
-		--pad 0x60000 \
+		--slot-size 0x60000 \
+		--pad \
 		$(BUILD_DIR_HELLO2)/zephyr/zephyr.bin \
 		signed-hello2.bin
 

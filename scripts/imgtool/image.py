@@ -84,20 +84,27 @@ class Image():
         obj.check()
         return obj
 
-    def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE, pad=0):
+    def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE, pad=0,
+                 align=1, slot_size=0, max_sectors=DEFAULT_MAX_SECTORS):
         self.version = version or versmod.decode_version("0")
         self.header_size = header_size or IMAGE_HEADER_SIZE
         self.pad = pad
+        self.align = align
+        self.slot_size = slot_size
+        self.max_sectors = max_sectors
 
     def __repr__(self):
-        return "<Image version={}, header_size={}, base_addr={}, pad={}, \
-                format={}, payloadlen=0x{:x}>".format(
-                self.version,
-                self.header_size,
-                self.base_addr if self.base_addr is not None else "N/A",
-                self.pad,
-                self.__class__.__name__,
-                len(self.payload))
+        return "<Image version={}, header_size={}, base_addr={}, \
+                align={}, slot_size={}, max_sectors={}, format={}, \
+                payloadlen=0x{:x}>".format(
+                    self.version,
+                    self.header_size,
+                    self.base_addr if self.base_addr is not None else "N/A",
+                    self.align,
+                    self.slot_size,
+                    self.max_sectors,
+                    self.__class__.__name__,
+                    len(self.payload))
 
     def check(self):
         """Perform some sanity checking of the image."""
@@ -106,6 +113,13 @@ class Image():
         if self.header_size > 0:
             if any(v != 0 for v in self.payload[0:self.header_size]):
                 raise Exception("Padding requested, but image does not start with zeros")
+        if self.slot_size > 0:
+            tsize = self._trailer_size(self.align, self.max_sectors)
+            padding = self.slot_size - (len(self.payload) + tsize)
+            if padding < 0:
+                msg = "Image size (0x{:x}) + trailer (0x{:x}) exceeds requested size 0x{:x}".format(
+                        len(self.payload), tsize, self.slot_size)
+                raise Exception(msg)
 
     def sign(self, key):
         self.add_header(key)
@@ -174,18 +188,15 @@ class Image():
         m = DEFAULT_MAX_SECTORS if max_sectors is None else max_sectors
         return m * 3 * write_size + 8 * 2 + 16
 
-    def pad_to(self, size, align, max_sectors):
+    def pad_to(self, size):
         """Pad the image to the given size, with the given flash alignment."""
-        tsize = self._trailer_size(align, max_sectors)
+        tsize = self._trailer_size(self.align, self.max_sectors)
         padding = size - (len(self.payload) + tsize)
-        if padding < 0:
-            msg = "Image size (0x{:x}) + trailer (0x{:x}) exceeds requested size 0x{:x}".format(
-                    len(self.payload), tsize, size)
-            raise Exception(msg)
         pbytes  = b'\xff' * padding
         pbytes += b'\xff' * (tsize - len(boot_magic))
         pbytes += boot_magic
         self.payload += pbytes
+
 
 class HexImage(Image):
 
