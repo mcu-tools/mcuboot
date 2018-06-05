@@ -55,6 +55,49 @@
 #define MBEDTLS_PLATFORM_C
 
 /**
+ * \def MBEDTLS_PLATFORM_MEMORY
+ *
+ * Enable the memory allocation layer.
+ *
+ * By default mbed TLS uses the system-provided calloc() and free().
+ * This allows different allocators (self-implemented or provided) to be
+ * provided to the platform abstraction layer.
+ *
+ * Enabling MBEDTLS_PLATFORM_MEMORY without the
+ * MBEDTLS_PLATFORM_{FREE,CALLOC}_MACROs will provide
+ * "mbedtls_platform_set_calloc_free()" allowing you to set an alternative calloc() and
+ * free() function pointer at runtime.
+ *
+ * Enabling MBEDTLS_PLATFORM_MEMORY and specifying
+ * MBEDTLS_PLATFORM_{CALLOC,FREE}_MACROs will allow you to specify the
+ * alternate function at compile time.
+ *
+ * Requires: MBEDTLS_PLATFORM_C
+ *
+ * Enable this layer to allow use of alternative memory allocators.
+ */
+#define MBEDTLS_PLATFORM_MEMORY
+
+/**
+ * \def MBEDTLS_PLATFORM_NO_STD_FUNCTIONS
+ *
+ * Do not assign standard functions in the platform layer (e.g. calloc() to
+ * MBEDTLS_PLATFORM_STD_CALLOC and printf() to MBEDTLS_PLATFORM_STD_PRINTF)
+ *
+ * This makes sure there are no linking errors on platforms that do not support
+ * these functions. You will HAVE to provide alternatives, either at runtime
+ * via the platform_set_xxx() functions or at compile time by setting
+ * the MBEDTLS_PLATFORM_STD_XXX defines, or enabling a
+ * MBEDTLS_PLATFORM_XXX_MACRO.
+ *
+ * Requires: MBEDTLS_PLATFORM_C
+ *
+ * Uncomment to prevent default assignment of standard functions in the
+ * platform layer.
+ */
+#define MBEDTLS_PLATFORM_NO_STD_FUNCTIONS
+
+/**
  * \def MBEDTLS_TIMING_C
  *
  * Enable the semi-portable timing interface.
