@@ -33,6 +33,7 @@
 #include <sysinit/sysinit.h>
 #ifdef MCUBOOT_SERIAL
 #include <hal/hal_gpio.h>
+#include <hal/hal_nvreg.h>
 #include <boot_serial/boot_serial.h>
 #endif
 #include <console/console.h>
@@ -44,7 +45,7 @@
 #define AREA_DESC_MAX         (BOOT_AREA_DESC_MAX)
 
 #ifdef MCUBOOT_SERIAL
-#define BOOT_SER_CONS_INPUT   256
+#define BOOT_SERIAL_INPUT_MAX (512)
 #endif
 
 /*
@@ -59,6 +60,53 @@ int flash_device_base(uint8_t fd_id, uintptr_t *ret)
     return 0;
 }
 
+#ifdef MCUBOOT_SERIAL
+static void
+serial_boot_detect(void)
+{
+    /*
+     * Read retained register and compare with expected magic value.
+     * If it matches, await for download commands from serial.
+     */
+#if MYNEWT_VAL(BOOT_SERIAL_NVREG_INDEX) != -1
+    if (hal_nvreg_read(MYNEWT_VAL(BOOT_SERIAL_NVREG_INDEX)) ==
+        MYNEWT_VAL(BOOT_SERIAL_NVREG_MAGIC)) {
+
+        hal_nvreg_write(MYNEWT_VAL(BOOT_SERIAL_NVREG_INDEX), 0);
+
+        boot_serial_start(BOOT_SERIAL_INPUT_MAX);
+        assert(0);
+    }
+
+#endif
+
+    /*
+     * Configure a GPIO as input, and compare it against expected value.
+     * If it matches, await for download commands from serial.
+     */
+#if MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN) != -1
+    hal_gpio_init_in(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN),
+                     MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_CFG));
+    if (hal_gpio_read(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN)) ==
+                      MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_VAL)) {
+        boot_serial_start(BOOT_SERIAL_INPUT_MAX);
+        assert(0);
+    }
+#endif
+
+    /*
+     * Listen for management pattern in UART input.  If detected, await for
+     * download commands from serial.
+     */
+#if MYNEWT_VAL(BOOT_SERIAL_DETECT_TIMEOUT) != 0
+    if (boot_serial_detect_uart_string()) {
+        boot_serial_start(BOOT_SERIAL_INPUT_MAX);
+        assert(0);
+    }
+#endif
+}
+#endif
+
 int
 main(void)
 {
@@ -71,24 +119,14 @@ main(void)
 #if defined(MCUBOOT_SERIAL) || defined(MCUBOOT_HAVE_LOGGING)
     /* initialize uart without os */
     os_dev_initialize_all(OS_DEV_INIT_PRIMARY);
+    os_dev_initialize_all(OS_DEV_INIT_SECONDARY);
     sysinit();
     console_blocking_mode();
+#if defined(MCUBOOT_SERIAL)
+    serial_boot_detect();
+#endif
 #else
     flash_map_init();
-#endif
-
-#ifdef MCUBOOT_SERIAL
-    /*
-     * Configure a GPIO as input, and compare it against expected value.
-     * If it matches, await for download commands from serial.
-     */
-    hal_gpio_init_in(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN),
-                     MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_CFG));
-    if (hal_gpio_read(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN)) ==
-                      MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_VAL)) {
-        boot_serial_start(BOOT_SER_CONS_INPUT);
-        assert(0);
-    }
 #endif
 
     rc = boot_go(&rsp);
