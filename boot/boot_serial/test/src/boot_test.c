@@ -65,8 +65,7 @@ boot_serial_test(void)
 int
 main(void)
 {
-    ts_config.ts_print_results = 1;
-    tu_init();
+    sysinit();
 
     boot_serial_test();
 
