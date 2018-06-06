@@ -17,29 +17,16 @@
 # under the License.
 #
 
-pkg.name: boot/mynewt
-pkg.type: app
-pkg.description: "Mynewt port of mcuboot"
+pkg.name: boot/mynewt/boot_uart
+pkg.description: "For interfacing with uart from boot_serial"
 pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
 pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:
     - loader
-
-pkg.cflags:
-    - "-DMCUBOOT_MYNEWT"
+    - boot
+    - bootloader
 
 pkg.deps:
-    - "@mcuboot/boot/mynewt/mcuboot_config"
-    - "@mcuboot/boot/bootutil"
-    - "@mcuboot/boot/mynewt/flash_map_backend"
-    - "@apache-mynewt-core/kernel/os"
+    - "@apache-mynewt-core/hw/hal"
 
-pkg.deps.BOOTUTIL_NO_LOGGING:
-    - "@apache-mynewt-core/sys/console/stub"
 
-pkg.deps.BOOTUTIL_HAVE_LOGGING:
-    - "@apache-mynewt-core/sys/console/minimal"
-
-pkg.deps.BOOT_SERIAL:
-    - "@mcuboot/boot/boot_serial"
-    - "@mcuboot/boot/mynewt/boot_uart"

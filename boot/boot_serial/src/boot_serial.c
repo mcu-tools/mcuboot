@@ -40,11 +40,15 @@
 #include <hal/hal_system.h>
 #include <os/endian.h>
 #include <os/os_cputime.h>
-#include <console/console.h>
+#include <boot_uart/boot_uart.h>
 #include <crc/crc16.h>
 #include <base64/base64.h>
 #include <tinycbor/cbor.h>
 #include <tinycbor/cbor_buf_reader.h>
+
+#define console_write boot_uart_write
+#define console_read  boot_uart_read
+
 #endif /* __ZEPHYR__ */
 
 #include <cborattr/cborattr.h>
@@ -58,7 +62,7 @@
 #include "boot_serial/boot_serial.h"
 #include "boot_serial_priv.h"
 
-#define BOOT_SERIAL_OUT_MAX	48
+#define BOOT_SERIAL_OUT_MAX	80
 
 #ifdef __ZEPHYR__
 /* base64 lib encodes data to null-terminated string */
@@ -93,6 +97,10 @@ static CborEncoder bs_rsp;
 int
 bs_cbor_writer(struct cbor_encoder_writer *cew, const char *data, int len)
 {
+    if (cew->bytes_written + len > sizeof(bs_obuf)) {
+        return CborErrorOutOfMemory;
+    }
+
     memcpy(&bs_obuf[cew->bytes_written], data, len);
     cew->bytes_written += len;
 
@@ -100,31 +108,49 @@ bs_cbor_writer(struct cbor_encoder_writer *cew, const char *data, int len)
 }
 
 /*
- * Looks for 'name' from NULL-terminated json data in buf.
- * Returns pointer to first character of value for that name.
- * Returns NULL if 'name' is not found.
+ * Convert version into string without use of snprintf().
  */
-char *
-bs_find_val(char *buf, char *name)
+static int
+u32toa(char *tgt, uint32_t val)
 {
-    char *ptr;
+    char *dst;
+    uint32_t d = 1;
+    uint32_t dgt;
+    int n = 0;
 
-    ptr = strstr(buf, name);
-    if (!ptr) {
-        return NULL;
+    dst = tgt;
+    while (val / d >= 10) {
+        d *= 10;
     }
-    ptr += strlen(name);
-
-    while (*ptr != '\0') {
-        if (*ptr != ':' && !isspace((int)*ptr)) {
-            break;
+    while (d) {
+        dgt = val / d;
+        val %= d;
+        d /= 10;
+        if (n || dgt > 0 || d == 0) {
+            *dst++ = dgt + '0';
+            ++n;
         }
-        ++ptr;
     }
-    if (*ptr == '\0') {
-        ptr = NULL;
-    }
-    return ptr;
+    *dst = '\0';
+
+    return dst - tgt;
+}
+
+/*
+ * dst has to be able to fit "255.255.65535.4294967295" (25 characters).
+ */
+static void
+bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
+{
+    int off;
+
+    off = u32toa(dst, ver->iv_major);
+    dst[off++] = '.';
+    off += u32toa(dst + off, ver->iv_minor);
+    dst[off++] = '.';
+    off += u32toa(dst + off, ver->iv_revision);
+    dst[off++] = '.';
+    off += u32toa(dst + off, ver->iv_build_num);
 }
 
 /*
@@ -164,9 +190,7 @@ bs_list(char *buf, int len)
         cbor_encode_int(&image, i);
         cbor_encode_text_stringz(&image, "version");
 
-        len = snprintf((char *)tmpbuf, sizeof(tmpbuf),
-          "%u.%u.%u.%u", hdr.ih_ver.iv_major, hdr.ih_ver.iv_minor,
-          hdr.ih_ver.iv_revision, (unsigned int)hdr.ih_ver.iv_build_num);
+        bs_list_img_ver((char *)tmpbuf, sizeof(tmpbuf), &hdr.ih_ver);
         cbor_encode_text_stringz(&image, (char *)tmpbuf);
         cbor_encoder_close_container(&images, &image);
     }
@@ -183,47 +207,115 @@ bs_upload(char *buf, int len)
 {
     CborParser parser;
     struct cbor_buf_reader reader;
+    struct CborValue root_value;
     struct CborValue value;
-    uint8_t img_data[400];
-    long long unsigned int off = UINT_MAX;
+    uint8_t img_data[512];
+    long long int off = UINT_MAX;
     size_t img_blen = 0;
     uint8_t rem_bytes;
-    long long unsigned int data_len = UINT_MAX;
-    const struct cbor_attr_t attr[4] = {
-        [0] = {
-            .attribute = "data",
-            .type = CborAttrByteStringType,
-            .addr.bytestring.data = img_data,
-            .addr.bytestring.len = &img_blen,
-            .len = sizeof(img_data)
-        },
-        [1] = {
-            .attribute = "off",
-            .type = CborAttrUnsignedIntegerType,
-            .addr.uinteger = &off,
-            .nodefault = true
-        },
-        [2] = {
-            .attribute = "len",
-            .type = CborAttrUnsignedIntegerType,
-            .addr.uinteger = &data_len,
-            .nodefault = true
-        }
-    };
+    long long int data_len = UINT_MAX;
+    size_t slen;
+    char name_str[8];
     const struct flash_area *fap = NULL;
     int rc;
 
     memset(img_data, 0, sizeof(img_data));
+
+    /*
+     * Expected data format.
+     * {
+     *   "data":<img_data>
+     *   "len":<image len>
+     *   "off":<current offset of image data>
+     * }
+     */
+
+    /*
+     * Object comes within { ... }
+     */
     cbor_buf_reader_init(&reader, (uint8_t *)buf, len);
 #ifdef __ZEPHYR__
-    cbor_parser_cust_reader_init(&reader.r, 0, &parser, &value);
+    cbor_parser_cust_reader_init(&reader.r, 0, &parser, &root_value);
 #else
-    cbor_parser_init(&reader.r, 0, &parser, &value);
+    cbor_parser_init(&reader.r, 0, &parser, &root_value);
 #endif
-    rc = cbor_read_object(&value, attr);
-    if (rc || off == UINT_MAX) {
-        rc = MGMT_ERR_EINVAL;
-        goto out;
+    if (!cbor_value_is_container(&root_value)) {
+        goto out_invalid_data;
+    }
+    if (cbor_value_enter_container(&root_value, &value)) {
+        goto out_invalid_data;
+    }
+    while (cbor_value_is_valid(&value)) {
+        /*
+         * Decode key.
+         */
+        if (cbor_value_calculate_string_length(&value, &slen)) {
+            goto out_invalid_data;
+        }
+        if (!cbor_value_is_text_string(&value) ||
+            slen >= sizeof(name_str) - 1) {
+            goto out_invalid_data;
+        }
+        if (cbor_value_copy_text_string(&value, name_str, &slen, &value)) {
+            goto out_invalid_data;
+        }
+        name_str[slen] = '\0';
+        if (!strcmp(name_str, "data")) {
+            /*
+             * Image data
+             */
+            if (value.type != CborByteStringType) {
+                goto out_invalid_data;
+            }
+            if (cbor_value_calculate_string_length(&value, &slen) ||
+                slen >= sizeof(img_data)) {
+                goto out_invalid_data;
+            }
+            if (cbor_value_copy_byte_string(&value, img_data, &slen, &value)) {
+                goto out_invalid_data;
+            }
+            img_blen = slen;
+        } else if (!strcmp(name_str, "off")) {
+            /*
+             * Offset of the data.
+             */
+            if (value.type != CborIntegerType) {
+                goto out_invalid_data;
+            }
+            if (cbor_value_get_int64(&value, &off)) {
+                goto out_invalid_data;
+            }
+            if (cbor_value_advance(&value)) {
+                goto out_invalid_data;
+            }
+        } else if (!strcmp(name_str, "len")) {
+            /*
+             * Length of the image. This should only be present in the first
+             * block of data; when offset is 0.
+             */
+            if (value.type != CborIntegerType) {
+                goto out_invalid_data;
+            }
+            if (cbor_value_get_int64(&value, &data_len)) {
+                goto out_invalid_data;
+            }
+            if (cbor_value_advance(&value)) {
+                goto out_invalid_data;
+            }
+        } else {
+            /*
+             * Unknown keys.
+             */
+            if (cbor_value_advance(&value)) {
+                goto out_invalid_data;
+            }
+        }
+    }
+    if (off == UINT_MAX) {
+        /*
+         * Offset must be set in every block.
+         */
+        goto out_invalid_data;
     }
 
     rc = flash_area_open(flash_area_id_from_image_slot(0), &fap);
@@ -235,13 +327,11 @@ bs_upload(char *buf, int len)
     if (off == 0) {
         curr_off = 0;
         if (data_len > fap->fa_size) {
-            rc = MGMT_ERR_EINVAL;
-            goto out;
+            goto out_invalid_data;
         }
         rc = flash_area_erase(fap, 0, fap->fa_size);
         if (rc) {
-            rc = MGMT_ERR_EINVAL;
-            goto out;
+            goto out_invalid_data;
         }
         img_size = data_len;
     }
@@ -256,12 +346,12 @@ bs_upload(char *buf, int len)
         }
     }
     rc = flash_area_write(fap, curr_off, img_data, img_blen);
-    if (rc) {
+    if (rc == 0) {
+        curr_off += img_blen;
+    } else {
+    out_invalid_data:
         rc = MGMT_ERR_EINVAL;
-        goto out;
     }
-    curr_off += img_blen;
-
 out:
     BOOT_LOG_INF("RX: 0x%x", rc);
     cbor_encoder_create_map(&bs_root, &bs_rsp, CborIndefiniteLength);
@@ -278,11 +368,15 @@ out:
 }
 
 /*
- * Console echo control. Send empty response, don't do anything.
+ * Console echo control/image erase. Send empty response, don't do anything.
  */
 static void
-bs_echo_ctl(char *buf, int len)
+bs_empty_rsp(char *buf, int len)
 {
+    cbor_encoder_create_map(&bs_root, &bs_rsp, CborIndefiniteLength);
+    cbor_encode_text_stringz(&bs_rsp, "rc");
+    cbor_encode_int(&bs_rsp, 0);
+    cbor_encoder_close_container(&bs_root, &bs_rsp);
     boot_serial_output();
 }
 
@@ -293,12 +387,8 @@ bs_echo_ctl(char *buf, int len)
 static void
 bs_reset(char *buf, int len)
 {
-    cbor_encoder_create_map(&bs_root, &bs_rsp, CborIndefiniteLength);
-    cbor_encode_text_stringz(&bs_rsp, "rc");
-    cbor_encode_int(&bs_rsp, 0);
-    cbor_encoder_close_container(&bs_root, &bs_rsp);
+    bs_empty_rsp(buf, len);
 
-    boot_serial_output();
 #ifdef __ZEPHYR__
     k_sleep(250);
     sys_reboot(SYS_REBOOT_COLD);
@@ -328,6 +418,7 @@ boot_serial_input(char *buf, int len)
 
     buf += sizeof(*hdr);
     len -= sizeof(*hdr);
+
     bs_writer.bytes_written = 0;
 #ifdef __ZEPHYR__
     cbor_encoder_cust_writer_init(&bs_root, &bs_writer, 0);
@@ -340,19 +431,20 @@ boot_serial_input(char *buf, int len)
      */
     if (hdr->nh_group == MGMT_GROUP_ID_IMAGE) {
         switch (hdr->nh_id) {
-        case IMGMGR_NMGR_OP_STATE:
+        case IMGMGR_NMGR_ID_STATE:
             bs_list(buf, len);
             break;
-        case IMGMGR_NMGR_OP_UPLOAD:
+        case IMGMGR_NMGR_ID_UPLOAD:
             bs_upload(buf, len);
             break;
         default:
+            bs_empty_rsp(buf, len);
             break;
         }
     } else if (hdr->nh_group == MGMT_GROUP_ID_DEFAULT) {
         switch (hdr->nh_id) {
         case NMGR_ID_CONS_ECHO_CTRL:
-            bs_echo_ctl(buf, len);
+            bs_empty_rsp(buf, len);
             break;
         case NMGR_ID_RESET:
             bs_reset(buf, len);
@@ -378,13 +470,13 @@ boot_serial_output(void)
     len = bs_writer.bytes_written;
 
     bs_hdr->nh_op++;
-    bs_hdr->nh_flags = NMGR_F_CBOR_RSP_COMPLETE;
+    bs_hdr->nh_flags = 0;
     bs_hdr->nh_len = htons(len);
     bs_hdr->nh_group = htons(bs_hdr->nh_group);
 
 #ifdef __ZEPHYR__
-    crc =  crc16((u8_t *)bs_hdr, sizeof(*bs_hdr), CRC_CITT_POLYMINAL, CRC16_INITIAL_CRC,
-                 false);
+    crc =  crc16((u8_t *)bs_hdr, sizeof(*bs_hdr), CRC_CITT_POLYMINAL,
+                 CRC16_INITIAL_CRC, false);
     crc =  crc16(data, len, CRC_CITT_POLYMINAL, crc, true);
 #else
     crc = crc16_ccitt(CRC16_INITIAL_CRC, bs_hdr, sizeof(*bs_hdr));
@@ -413,7 +505,7 @@ boot_serial_output(void)
     totlen = base64_encode(buf, totlen, encoded_buf, 1);
 #endif
     console_write(encoded_buf, totlen);
-    console_write("\n", 1);
+    console_write("\n\r", 2);
     BOOT_LOG_INF("TX");
 }
 
@@ -484,13 +576,13 @@ boot_serial_start(int max_input)
     dec = dec_buf;
     assert(max_input <= sizeof(in_buf) && max_input <= sizeof(dec_buf));
 #else
-    rc = console_init(NULL);
+    rc = boot_uart_open();
     assert(rc == 0);
-    console_echo(0);
+
     buf = os_malloc(max_input);
     dec = os_malloc(max_input);
-#endif
     assert(buf && dec);
+#endif
 
     off = 0;
     while (1) {
@@ -500,6 +592,12 @@ boot_serial_start(int max_input)
         }
         off += rc;
         if (!full_line) {
+            if (off == max_input) {
+                /*
+                 * Full line, no newline yet. Reset the input buffer.
+                 */
+                off = 0;
+            }
             continue;
         }
         if (buf[0] == SHELL_NLIP_PKT_START1 &&

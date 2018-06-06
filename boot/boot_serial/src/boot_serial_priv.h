@@ -41,8 +41,6 @@ extern "C" {
 #define NMGR_OP_READ            0
 #define NMGR_OP_WRITE           2
 
-#define NMGR_F_CBOR_RSP_COMPLETE 0x01
-
 #define MGMT_GROUP_ID_DEFAULT   0
 #define MGMT_GROUP_ID_IMAGE     1
 
@@ -61,9 +59,8 @@ struct nmgr_hdr {
 /*
  * From imgmgr.h
  */
-#define IMGMGR_NMGR_OP_STATE            0
-#define IMGMGR_NMGR_OP_UPLOAD           1
-
+#define IMGMGR_NMGR_ID_STATE            0
+#define IMGMGR_NMGR_ID_UPLOAD           1
 
 void boot_serial_input(char *buf, int len);
 
