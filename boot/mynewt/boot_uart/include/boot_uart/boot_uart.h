@@ -23,6 +23,6 @@
 int boot_uart_open(void);
 void boot_uart_close(void);
 int boot_uart_read(char *str, int cnt, int *newline);
-void boot_uart_write(char *ptr, int cnt);
+void boot_uart_write(const char *ptr, int cnt);
 
 #endif /* _BOOT_UART_H_ */

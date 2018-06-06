@@ -29,7 +29,13 @@
 #include "flash_map_backend/flash_map_backend.h"
 
 #ifdef CONFIG_MCUBOOT_SERIAL
-#include <boot_serial/boot_serial.h>
+#include "boot_serial/boot_serial.h"
+#include "serial_adapter/serial_adapter.h"
+
+const struct boot_uart_funcs boot_funcs = {
+    .read = console_read,
+    .write = console_write
+};
 #endif
 
 struct device *boot_flash_device;
@@ -121,7 +127,9 @@ void main(void)
 
     if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) {
         BOOT_LOG_INF("Enter the serial recovery mode");
-        boot_serial_start(CONFIG_BOOT_MAX_LINE_INPUT_LEN + 1);
+        rc = boot_console_init();
+        __ASSERT(rc, "Error initializing boot console.\n");
+        boot_serial_start(&boot_funcs);
         __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
     }
 #endif

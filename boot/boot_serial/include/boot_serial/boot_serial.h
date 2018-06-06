@@ -24,12 +24,24 @@
 extern "C" {
 #endif
 
-/*
- * Start processing newtmgr commands for uploading image0 over serial.
- *
- * Open console serial port and wait for download command.
+/**
+ * Function pointers to read/write data from uart.
+ * read returns the number of bytes read, str points to buffer to fill,
+ *  cnt is the number of bytes to fill within buffer, *newline will be
+ *  set if newline is the last character.
+ * write takes as it's arguments pointer to data to write, and the count
+ *  of bytes.
  */
-void boot_serial_start(int max_input);
+struct boot_uart_funcs {
+    int (*read)(char *str, int cnt, int *newline);
+    void (*write)(const char *ptr, int cnt);
+};
+
+/**
+ * Start processing newtmgr commands for uploading image0 over serial.
+ * Assumes serial port is open and waits for download command.
+ */
+void boot_serial_start(const struct boot_uart_funcs *f);
 
 #ifdef __cplusplus
 }
