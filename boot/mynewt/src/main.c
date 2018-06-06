@@ -31,13 +31,14 @@
 #include <hal/hal_bsp.h>
 #include <hal/hal_system.h>
 #include <hal/hal_flash.h>
+#include <hal/hal_watchdog.h>
 #include <sysinit/sysinit.h>
 #ifdef MCUBOOT_SERIAL
 #include <hal/hal_gpio.h>
 #include <hal/hal_nvreg.h>
 #include <boot_serial/boot_serial.h>
 #endif
-#if defined(MCUBOOT_SERIAL) && MYNEWT_VAL(BOOT_SERIAL_DETECT_TIMEOUT) != 0
+#if defined(MCUBOOT_SERIAL)
 #include <boot_uart/boot_uart.h>
 #endif
 #include <console/console.h>
@@ -45,26 +46,42 @@
 #include "bootutil/bootutil.h"
 #include "bootutil/bootutil_log.h"
 
-#define BOOT_AREA_DESC_MAX    (256)
-#define AREA_DESC_MAX         (BOOT_AREA_DESC_MAX)
-
-#ifdef MCUBOOT_SERIAL
+#if defined(MCUBOOT_SERIAL)
+#define BOOT_SERIAL_REPORT_DUR  \
+    (MYNEWT_VAL(OS_CPUTIME_FREQ) / MYNEWT_VAL(BOOT_SERIAL_REPORT_FREQ))
 #define BOOT_SERIAL_INPUT_MAX (512)
-#endif
 
-/*
- * Temporary flash_device_base() implementation.
- *
- * TODO: remove this when mynewt needs to support flash_device_base()
- * for devices with nonzero base addresses.
- */
-int flash_device_base(uint8_t fd_id, uintptr_t *ret)
+static int boot_read(char *str, int cnt, int *newline);
+static const struct boot_uart_funcs boot_uart_funcs = {
+    .read = boot_read,
+    .write = boot_uart_write
+};
+
+static int
+boot_read(char *str, int cnt, int *newline)
 {
-    *ret = 0;
-    return 0;
+#if MYNEWT_VAL(BOOT_SERIAL_REPORT_PIN) != -1
+    static uint32_t tick = 0;
+
+    if (tick == 0) {
+        /*
+         * Configure GPIO line as output. This is a pin we toggle at the
+         * given frequency.
+         */
+        hal_gpio_init_out(MYNEWT_VAL(BOOT_SERIAL_REPORT_PIN), 0);
+        tick = os_cputime_get32();
+    } else {
+        if (os_cputime_get32() - tick > BOOT_SERIAL_REPORT_DUR) {
+            hal_gpio_toggle(MYNEWT_VAL(BOOT_SERIAL_REPORT_PIN));
+            tick = os_cputime_get32();
+        }
+    }
+#endif
+    hal_watchdog_tickle();
+
+    return boot_uart_read(str, cnt, newline);
 }
 
-#ifdef MCUBOOT_SERIAL
 #if MYNEWT_VAL(BOOT_SERIAL_DETECT_TIMEOUT) != 0
 
 /** Don't include null-terminator in comparison. */
@@ -93,14 +110,14 @@ serial_detect_uart_string(void)
         MYNEWT_VAL(BOOT_SERIAL_DETECT_TIMEOUT) /
         (1000.0 / MYNEWT_VAL(OS_CPUTIME_FREQ));
 
-    rc = boot_serial_uart_open();
+    rc = boot_uart_open();
     assert(rc == 0);
 
     start_tick = os_cputime_get32();
 
     while (1) {
         /* Read a single character from the UART. */
-        rc = boot_serial_uart_read(&ch, 1, &newline);
+        rc = boot_uart_read(&ch, 1, &newline);
         if (rc > 0) {
             /* Eliminate the oldest character in the buffer to make room for
              * the new one.
@@ -115,14 +132,14 @@ serial_detect_uart_string(void)
                         MYNEWT_VAL(BOOT_SERIAL_DETECT_STRING),
                         BOOT_SERIAL_DETECT_STRING_LEN);
             if (rc == 0) {
-                boot_serial_uart_close();
+                boot_uart_close();
                 return true;
             }
         }
 
         /* Abort the listen on timeout. */
         if (os_cputime_get32() >= start_tick + timeout_dur) {
-            boot_serial_uart_close();
+            boot_uart_close();
             return false;
         }
     }
@@ -141,11 +158,8 @@ serial_boot_detect(void)
         MYNEWT_VAL(BOOT_SERIAL_NVREG_MAGIC)) {
 
         hal_nvreg_write(MYNEWT_VAL(BOOT_SERIAL_NVREG_INDEX), 0);
-
-        boot_serial_start(BOOT_SERIAL_INPUT_MAX);
-        assert(0);
+        goto serial_boot;
     }
-
 #endif
 
     /*
@@ -157,8 +171,7 @@ serial_boot_detect(void)
                      MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_CFG));
     if (hal_gpio_read(MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN)) ==
                       MYNEWT_VAL(BOOT_SERIAL_DETECT_PIN_VAL)) {
-        boot_serial_start(BOOT_SERIAL_INPUT_MAX);
-        assert(0);
+        goto serial_boot;
     }
 #endif
 
@@ -168,12 +181,28 @@ serial_boot_detect(void)
      */
 #if MYNEWT_VAL(BOOT_SERIAL_DETECT_TIMEOUT) != 0
     if (serial_detect_uart_string()) {
-        boot_serial_start(BOOT_SERIAL_INPUT_MAX);
-        assert(0);
+        goto serial_boot;
     }
 #endif
+    return;
+serial_boot:
+    boot_uart_open();
+    boot_serial_start(&boot_uart_funcs);
+    assert(0);
 }
 #endif
+
+/*
+ * Temporary flash_device_base() implementation.
+ *
+ * TODO: remove this when mynewt needs to support flash_device_base()
+ * for devices with nonzero base addresses.
+ */
+int flash_device_base(uint8_t fd_id, uintptr_t *ret)
+{
+    *ret = 0;
+    return 0;
+}
 
 int
 main(void)

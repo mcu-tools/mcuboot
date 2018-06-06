@@ -150,14 +150,14 @@ bs_tx_char(void *arg)
  * sends, so we can drop the outgoing data here.
  */
 void
-boot_uart_write(char *ptr, int cnt)
+boot_uart_write(const char *ptr, int cnt)
 {
 }
 
 #else
 
 void
-boot_uart_write(char *ptr, int cnt)
+boot_uart_write(const char *ptr, int cnt)
 {
     int sr;
 

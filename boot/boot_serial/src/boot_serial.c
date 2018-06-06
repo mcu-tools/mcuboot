@@ -32,7 +32,6 @@
 #include <misc/__assert.h>
 #include <flash.h>
 #include <crc16.h>
-#include <serial_adapter/serial_adapter.h>
 #include <base64.h>
 #include <cbor.h>
 #else
@@ -40,18 +39,12 @@
 #include <hal/hal_system.h>
 #include <os/endian.h>
 #include <os/os_cputime.h>
-#include <boot_uart/boot_uart.h>
 #include <crc/crc16.h>
 #include <base64/base64.h>
 #include <tinycbor/cbor.h>
 #include <tinycbor/cbor_buf_reader.h>
-
-#define console_write boot_uart_write
-#define console_read  boot_uart_read
-
 #endif /* __ZEPHYR__ */
 
-#include <cborattr/cborattr.h>
 #include <flash_map_backend/flash_map_backend.h>
 #include <hal/hal_flash.h>
 #include <os/os.h>
@@ -62,6 +55,7 @@
 #include "boot_serial/boot_serial.h"
 #include "boot_serial_priv.h"
 
+#define BOOT_SERIAL_INPUT_MAX   512
 #define BOOT_SERIAL_OUT_MAX	80
 
 #ifdef __ZEPHYR__
@@ -74,10 +68,10 @@
 #define ntohs(x) sys_be16_to_cpu(x)
 #define htons(x) sys_cpu_to_be16(x)
 
-static char in_buf[CONFIG_BOOT_MAX_LINE_INPUT_LEN + 1];
-static char dec_buf[CONFIG_BOOT_MAX_LINE_INPUT_LEN + 1];
 #endif
-
+static char in_buf[BOOT_SERIAL_INPUT_MAX + 1];
+static char dec_buf[BOOT_SERIAL_INPUT_MAX + 1];
+static const struct boot_uart_funcs *boot_uf;
 static uint32_t curr_off;
 static uint32_t img_size;
 static struct nmgr_hdr *bs_hdr;
@@ -484,7 +478,7 @@ boot_serial_output(void)
 #endif
     crc = htons(crc);
 
-    console_write(pkt_start, sizeof(pkt_start));
+    boot_uf->write(pkt_start, sizeof(pkt_start));
 
     totlen = len + sizeof(*bs_hdr) + sizeof(crc);
     totlen = htons(totlen);
@@ -504,8 +498,8 @@ boot_serial_output(void)
 #else
     totlen = base64_encode(buf, totlen, encoded_buf, 1);
 #endif
-    console_write(encoded_buf, totlen);
-    console_write("\n\r", 2);
+    boot_uf->write(encoded_buf, totlen);
+    boot_uf->write("\n\r", 2);
     BOOT_LOG_INF("TX");
 }
 
@@ -561,7 +555,7 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
  * serial port.
  */
 void
-boot_serial_start(int max_input)
+boot_serial_start(const struct boot_uart_funcs *f)
 {
     int rc;
     int off;
@@ -569,24 +563,16 @@ boot_serial_start(int max_input)
     char *dec;
     int dec_off;
     int full_line;
+    int max_input;
 
-#ifdef __ZEPHYR__
-    rc = boot_console_init();
+    boot_uf = f;
     buf = in_buf;
     dec = dec_buf;
-    assert(max_input <= sizeof(in_buf) && max_input <= sizeof(dec_buf));
-#else
-    rc = boot_uart_open();
-    assert(rc == 0);
-
-    buf = os_malloc(max_input);
-    dec = os_malloc(max_input);
-    assert(buf && dec);
-#endif
+    max_input = sizeof(in_buf);
 
     off = 0;
     while (1) {
-        rc = console_read(buf + off, max_input - off, &full_line);
+        rc = f->read(buf + off, sizeof(in_buf) - off, &full_line);
         if (rc <= 0 && !full_line) {
             continue;
         }
