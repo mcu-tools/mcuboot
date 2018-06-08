@@ -53,9 +53,6 @@ static int boot_uart_fifo_init(void);
 int
 console_out(int c)
 {
-    if ('\n' == c) {
-        uart_poll_out(uart_dev, '\r');
-    }
     uart_poll_out(uart_dev, c);
 
     return c;
