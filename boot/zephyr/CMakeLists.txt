@@ -113,7 +113,7 @@ CONFIG_MBEDTLS should not be enabled. \
 Try adding CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y to your prj.conf, \
 delete the build folder and build from scratch.")
   endif()
-  # Since here we are not using Zephyr's mbedTLS bur rather our own, we need
+  # Since here we are not using Zephyr's mbedTLS but rather our own, we need
   # to set MBEDTLS_CONFIG_FILE ourselves. When using Zephyr's copy, this
   # variable is set by its Kconfig in the Zephyr codebase.
   target_compile_definitions(app PRIVATE MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h")
