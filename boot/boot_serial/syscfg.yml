@@ -24,7 +24,7 @@ syscfg.defs:
         restrictions:
             - '(BOOT_SERIAL_DETECT_PIN != -1) ||
                (BOOT_SERIAL_DETECT_TIMEOUT != 0) ||
-	       (BOOT_SERIAL_NVREG_INDEX != -1)'
+               (BOOT_SERIAL_NVREG_INDEX != -1)'
 
     BOOT_SERIAL_DETECT_PIN_CFG:
         description: >
@@ -50,7 +50,7 @@ syscfg.defs:
         restrictions:
             - '(BOOT_SERIAL_DETECT_PIN != -1) ||
                (BOOT_SERIAL_DETECT_TIMEOUT != 0) ||
-	       (BOOT_SERIAL_NVREG_INDEX != -1)'
+               (BOOT_SERIAL_NVREG_INDEX != -1)'
 
     BOOT_SERIAL_DETECT_STRING:
         description: >
@@ -89,4 +89,4 @@ syscfg.defs:
         restrictions:
             - '(BOOT_SERIAL_DETECT_PIN != -1) ||
                (BOOT_SERIAL_DETECT_TIMEOUT != 0) ||
-	       (BOOT_SERIAL_NVREG_INDEX != -1)'
+               (BOOT_SERIAL_NVREG_INDEX != -1)'
