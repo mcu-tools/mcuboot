@@ -476,6 +476,11 @@ boot_read_status(struct boot_status *bs)
 
     memset(bs, 0, sizeof *bs);
 
+#ifdef MCUBOOT_OVERWRITE_ONLY
+    /* Overwrite-only doesn't make use of the swap status area. */
+    return 0;
+#endif
+
     status_loc = boot_status_source();
     switch (status_loc) {
     case BOOT_STATUS_SOURCE_NONE:
@@ -502,6 +507,7 @@ boot_read_status(struct boot_status *bs)
     rc = boot_read_status_bytes(fap, bs);
 
     flash_area_close(fap);
+
     return rc;
 }
 
