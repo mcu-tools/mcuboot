@@ -85,24 +85,27 @@ class Image():
         return obj
 
     def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE, pad=0,
-                 align=1, slot_size=0, max_sectors=DEFAULT_MAX_SECTORS):
+                 align=1, slot_size=0, max_sectors=DEFAULT_MAX_SECTORS,
+                 overwrite_only=False):
         self.version = version or versmod.decode_version("0")
         self.header_size = header_size or IMAGE_HEADER_SIZE
         self.pad = pad
         self.align = align
         self.slot_size = slot_size
         self.max_sectors = max_sectors
+        self.overwrite_only = overwrite_only
 
     def __repr__(self):
         return "<Image version={}, header_size={}, base_addr={}, \
-                align={}, slot_size={}, max_sectors={}, format={}, \
-                payloadlen=0x{:x}>".format(
+                align={}, slot_size={}, max_sectors={}, overwrite_only={}, \
+                format={}, payloadlen=0x{:x}>".format(
                     self.version,
                     self.header_size,
                     self.base_addr if self.base_addr is not None else "N/A",
                     self.align,
                     self.slot_size,
                     self.max_sectors,
+                    self.overwrite_only,
                     self.__class__.__name__,
                     len(self.payload))
 
@@ -114,7 +117,8 @@ class Image():
             if any(v != 0 for v in self.payload[0:self.header_size]):
                 raise Exception("Padding requested, but image does not start with zeros")
         if self.slot_size > 0:
-            tsize = self._trailer_size(self.align, self.max_sectors)
+            tsize = self._trailer_size(self.align, self.max_sectors,
+                                       self.overwrite_only)
             padding = self.slot_size - (len(self.payload) + tsize)
             if padding < 0:
                 msg = "Image size (0x{:x}) + trailer (0x{:x}) exceeds requested size 0x{:x}".format(
@@ -181,16 +185,20 @@ class Image():
         self.payload = bytearray(self.payload)
         self.payload[:len(header)] = header
 
-    def _trailer_size(self, write_size, max_sectors):
+    def _trailer_size(self, write_size, max_sectors, overwrite_only):
         # NOTE: should already be checked by the argument parser
-        if write_size not in set([1, 2, 4, 8]):
-            raise Exception("Invalid alignment: {}".format(write_size))
-        m = DEFAULT_MAX_SECTORS if max_sectors is None else max_sectors
-        return m * 3 * write_size + 8 * 2 + 16
+        if overwrite_only:
+            return 8 * 2 + 16
+        else:
+            if write_size not in set([1, 2, 4, 8]):
+                raise Exception("Invalid alignment: {}".format(write_size))
+            m = DEFAULT_MAX_SECTORS if max_sectors is None else max_sectors
+            return m * 3 * write_size + 8 * 2 + 16
 
     def pad_to(self, size):
         """Pad the image to the given size, with the given flash alignment."""
-        tsize = self._trailer_size(self.align, self.max_sectors)
+        tsize = self._trailer_size(self.align, self.max_sectors,
+                                   self.overwrite_only)
         padding = size - (len(self.payload) + tsize)
         pbytes  = b'\xff' * padding
         pbytes += b'\xff' * (tsize - len(boot_magic))
