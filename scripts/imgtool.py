@@ -114,6 +114,8 @@ class BasedIntParamType(click.ParamType):
 
 @click.argument('outfile')
 @click.argument('infile')
+@click.option('--overwrite-only', default=False, is_flag=True,
+              help='Use overwrite-only instead of swap upgrades')
 @click.option('-M', '--max-sectors', type=int,
               help='When padding allow for this amount of sectors (defaults to 128)')
 @click.option('--pad', default=False, is_flag=True,
@@ -129,12 +131,13 @@ class BasedIntParamType(click.ParamType):
 @click.option('-k', '--key', metavar='filename')
 @click.command(help='Create a signed or unsigned image')
 def sign(key, align, version, header_size, included_header, slot_size, pad,
-         max_sectors, infile, outfile):
+         max_sectors, overwrite_only, infile, outfile):
     img = image.Image.load(infile, version=decode_version(version),
                            header_size=header_size,
                            included_header=included_header, pad=pad,
                            align=int(align), slot_size=slot_size,
-                           max_sectors=max_sectors)
+                           max_sectors=max_sectors,
+                           overwrite_only=overwrite_only)
     key = load_key(key) if key else None
     img.sign(key)
 
