@@ -66,7 +66,7 @@ class TLV():
 
 class Image():
     @classmethod
-    def load(cls, path, included_header=False, **kwargs):
+    def load(cls, path, pad_header=False, **kwargs):
         """Load an image from a given file"""
         ext = os.path.splitext(path)[1][1:].lower()
         if ext == INTEL_HEX_EXT:
@@ -78,7 +78,7 @@ class Image():
         obj.payload, obj.base_addr = obj.load(path)
 
         # Add the image header if needed.
-        if not included_header and obj.header_size > 0:
+        if pad_header and obj.header_size > 0:
             obj.payload = (b'\000' * obj.header_size) + obj.payload
 
         obj.check()

@@ -129,7 +129,6 @@ hello1: check
 		--header-size $(BOOT_HEADER_LEN) \
 		--align $(FLASH_ALIGNMENT) \
 		--version 1.2 \
-		--included-header \
 		--slot-size 0x60000
 		$(BUILD_DIR_HELLO1)/zephyr/zephyr.bin \
 		signed-hello1.bin
@@ -155,7 +154,6 @@ hello2: check
 		--header-size $(BOOT_HEADER_LEN) \
 		--align $(FLASH_ALIGNMENT) \
 		--version 1.2 \
-		--included-header \
 		--slot-size 0x60000 \
 		--pad \
 		$(BUILD_DIR_HELLO2)/zephyr/zephyr.bin \
