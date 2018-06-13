@@ -113,11 +113,11 @@ void main(void)
 
     rc = gpio_pin_configure(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
                             GPIO_DIR_IN | GPIO_PUD_PULL_UP);
-    __ASSERT(rc, "Error of boot detect pin initialization.\n");
+    __ASSERT(rc == 0, "Error of boot detect pin initialization.\n");
 
     rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN, 
                        &detect_value);
-    __ASSERT(rc, "Error of the reading the detect pin.\n");
+    __ASSERT(rc == 0, "Error of the reading the detect pin.\n");
 
     if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) {
         BOOT_LOG_INF("Enter the serial recovery mode");
