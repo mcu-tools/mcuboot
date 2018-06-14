@@ -71,7 +71,7 @@
 #endif
 static char in_buf[BOOT_SERIAL_INPUT_MAX + 1];
 static char dec_buf[BOOT_SERIAL_INPUT_MAX + 1];
-static const struct boot_uart_funcs *boot_uf;
+const struct boot_uart_funcs *boot_uf;
 static uint32_t curr_off;
 static uint32_t img_size;
 static struct nmgr_hdr *bs_hdr;
