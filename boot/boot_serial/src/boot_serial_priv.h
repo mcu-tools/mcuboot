@@ -63,6 +63,7 @@ struct nmgr_hdr {
 #define IMGMGR_NMGR_ID_UPLOAD           1
 
 void boot_serial_input(char *buf, int len);
+extern const struct boot_uart_funcs *boot_uf;
 
 #ifdef __cplusplus
 }

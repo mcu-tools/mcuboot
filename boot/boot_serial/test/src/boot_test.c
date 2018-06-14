@@ -31,6 +31,7 @@
 #include "hal/hal_flash.h"
 #include "flash_map_backend/flash_map_backend.h"
 
+#include "boot_serial/boot_serial.h"
 #include "boot_serial_priv.h"
 
 TEST_CASE_DECL(boot_serial_setup)
@@ -38,6 +39,15 @@ TEST_CASE_DECL(boot_serial_empty_msg)
 TEST_CASE_DECL(boot_serial_empty_img_msg)
 TEST_CASE_DECL(boot_serial_img_msg)
 TEST_CASE_DECL(boot_serial_upload_bigger_image)
+
+static void
+test_uart_write(const char *str, int len)
+{
+}
+
+static const struct boot_uart_funcs test_uart = {
+    .write = test_uart_write
+};
 
 void
 tx_msg(void *src, int len)
@@ -57,6 +67,7 @@ TEST_SUITE(boot_serial_suite)
 int
 boot_serial_test(void)
 {
+    boot_uf = &test_uart;
     boot_serial_suite();
     return tu_any_failed;
 }

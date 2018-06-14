@@ -23,8 +23,6 @@ TEST_CASE(boot_serial_empty_msg)
     char buf[4];
     struct nmgr_hdr hdr;
 
-    boot_serial_input(buf, 0);
-
     tx_msg(buf, 0);
 
     strcpy(buf, "--");
