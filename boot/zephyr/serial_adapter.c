@@ -29,22 +29,22 @@
  * This struct is used to represent an input line from a serial interface.
  */
 struct line_input {
-    /** FIFO uses first 4 bytes itself, reserve space */
-    int _unused;
+	/** Required to use sys_slist */
+	sys_snode_t node;
 
-    int len;
-    /** Buffer where the input line is recorded */
-    char line[CONFIG_BOOT_MAX_LINE_INPUT_LEN];
+	int len;
+	/** Buffer where the input line is recorded */
+	char line[CONFIG_BOOT_MAX_LINE_INPUT_LEN];
 };
 
 static struct device *uart_dev;
 static struct line_input line_bufs[2];
 
-static K_FIFO_DEFINE(free_queue);
-static K_FIFO_DEFINE(used_queue);
+static sys_slist_t free_queue;
+static sys_slist_t used_queue;
 
-static struct k_fifo *avail_queue;
-static struct k_fifo *lines_queue;
+static sys_slist_t *avail_queue;
+static sys_slist_t *lines_queue;
 static u16_t cur;
 
 static int boot_uart_fifo_getline(char **line);
@@ -53,138 +53,149 @@ static int boot_uart_fifo_init(void);
 int
 console_out(int c)
 {
-    uart_poll_out(uart_dev, c);
+	uart_poll_out(uart_dev, c);
 
-    return c;
+	return c;
 }
 
 void
 console_write(const char *str, int cnt)
 {
-    int i;
+	int i;
 
-    for (i = 0; i < cnt; i++) {
-        if (console_out((int)str[i]) == EOF) {
-            break;
-        }
-    }
+	for (i = 0; i < cnt; i++) {
+		if (console_out((int)str[i]) == EOF) {
+			break;
+		}
+	}
 }
 
 int
 console_read(char *str, int str_size, int *newline)
 {
-    char * line;
-    int len;
+	char *line;
+	int len;
 
-    len = boot_uart_fifo_getline(&line);
+	len = boot_uart_fifo_getline(&line);
 
-    if (line == NULL) {
-        *newline = 0;
-        return 0;
-    }
+	if (line == NULL) {
+		*newline = 0;
+		return 0;
+	}
 
-    if (len > str_size - 1) {
-        len = str_size - 1;
-    }
+	if (len > str_size - 1) {
+		len = str_size - 1;
+	}
 
-    memcpy(str, line, len);
-    str[len] = '\0';
-    *newline = 1;
-    return len + 1;
+	memcpy(str, line, len);
+	str[len] = '\0';
+	*newline = 1;
+	return len + 1;
 }
 
 int
 boot_console_init(void)
 {
-    int i;
+	int i;
 
-    for (i = 0; i < ARRAY_SIZE(line_bufs); i++) {
-        k_fifo_put(&free_queue, &line_bufs[i]);
-    }
+	sys_slist_init(&free_queue);
+	sys_slist_init(&used_queue);
 
-    /* Zephyr UART handler takes an empty buffer from free_queue,
-     * stores UART input in it until EOL, and then puts it into
-     * used_queue.
-     */
-    avail_queue = &free_queue;
-    lines_queue = &used_queue;
+	for (i = 0; i < ARRAY_SIZE(line_bufs); i++) {
+		sys_slist_append(&free_queue, &line_bufs[i].node);
+	}
 
-    return boot_uart_fifo_init();
+	/* Zephyr UART handler takes an empty buffer from free_queue,
+	 * stores UART input in it until EOL, and then puts it into
+	 * used_queue.
+	 */
+	avail_queue = &free_queue;
+	lines_queue = &used_queue;
+
+	return boot_uart_fifo_init();
 }
 
 static void
 boot_uart_fifo_callback(struct device *dev)
 {
-    static struct line_input *cmd;
-    u8_t byte;
-    int rx;
+	static struct line_input *cmd;
+	u8_t byte;
+	int rx;
 
-    while (uart_irq_update(uart_dev) &&
-           uart_irq_rx_ready(uart_dev)) {
+	while (uart_irq_update(uart_dev) &&
+	       uart_irq_rx_ready(uart_dev)) {
 
-        rx = uart_fifo_read(uart_dev, &byte, 1);
+		rx = uart_fifo_read(uart_dev, &byte, 1);
+		if (rx != 1) {
+			continue;
+		}
 
-        if (!cmd) {
-            cmd = k_fifo_get(avail_queue, K_NO_WAIT);
-            if (!cmd) {
-                return;
-            }
-        }
+		if (!cmd) {
+			sys_snode_t *node;
 
-        if (cur < CONFIG_BOOT_MAX_LINE_INPUT_LEN) {
-            cmd->line[cur++] = byte;
-        }
+			node = sys_slist_get(avail_queue);
+			if (!node) {
+				return;
+			}
+			cmd = CONTAINER_OF(node, struct line_input, node);
+		}
 
-        if (byte ==  '\n') {
-            cmd->len = cur;
-            k_fifo_put(lines_queue, cmd);
-            cur = 0;
-        }
+		if (cur < CONFIG_BOOT_MAX_LINE_INPUT_LEN) {
+			cmd->line[cur++] = byte;
+		}
 
-    }
+		if (byte ==  '\n') {
+			cmd->len = cur;
+			sys_slist_append(lines_queue, &cmd->node);
+			cur = 0;
+		}
+	}
 }
 
 static int
 boot_uart_fifo_getline(char **line)
 {
-    static struct line_input *cmd;
+	static struct line_input *cmd;
+	sys_snode_t *node;
 
-    /* Recycle cmd buffer returned previous time */
-    if (cmd != NULL) {
-        k_fifo_put(&free_queue, cmd);
-    }
+	/* Recycle cmd buffer returned previous time */
+	if (cmd != NULL) {
+		sys_slist_append(&free_queue, &cmd->node);
+	}
 
-    cmd = k_fifo_get(&used_queue, K_NO_WAIT);
+	node = sys_slist_get(&used_queue);
 
-    if (cmd == NULL) {
-        *line = NULL;
-        return 0;
-    }
+	if (node == NULL) {
+		cmd = NULL;
+		*line = NULL;
+		return 0;
+	}
 
-    *line = cmd->line;
-    return cmd->len;
+	cmd = CONTAINER_OF(node, struct line_input, node);
+	*line = cmd->line;
+	return cmd->len;
 }
 
 static int
 boot_uart_fifo_init(void)
 {
-    uart_dev = device_get_binding(CONFIG_UART_CONSOLE_ON_DEV_NAME);
-    u8_t c;
+	uart_dev = device_get_binding(CONFIG_UART_CONSOLE_ON_DEV_NAME);
+	u8_t c;
 
-    if (!uart_dev) {
-        return (-1);
-    }
+	if (!uart_dev) {
+		return (-1);
+	}
 
-    uart_irq_callback_set(uart_dev, boot_uart_fifo_callback);
+	uart_irq_callback_set(uart_dev, boot_uart_fifo_callback);
 
-    /* Drain the fifo */
-    while (uart_irq_rx_ready(uart_dev)) {
-        uart_fifo_read(uart_dev, &c, 1);
-    }
+	/* Drain the fifo */
+	while (uart_irq_rx_ready(uart_dev)) {
+		uart_fifo_read(uart_dev, &c, 1);
+	}
 
-    cur = 0;
+	cur = 0;
 
-    uart_irq_rx_enable(uart_dev);
+	uart_irq_rx_enable(uart_dev);
 
-    return 0;
+	return 0;
 }
