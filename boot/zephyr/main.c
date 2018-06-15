@@ -128,7 +128,7 @@ void main(void)
     if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) {
         BOOT_LOG_INF("Enter the serial recovery mode");
         rc = boot_console_init();
-        __ASSERT(rc, "Error initializing boot console.\n");
+        __ASSERT(rc == 0, "Error initializing boot console.\n");
         boot_serial_start(&boot_funcs);
         __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
     }
