@@ -514,7 +514,7 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
     uint16_t len;
 #ifdef __ZEPHYR__
     int err;
-    err = base64_decode( &out[*out_off], maxout, &rc, in, inlen - 2);
+    err = base64_decode( &out[*out_off], maxout - *out_off, &rc, in, inlen - 2);
     if (err) {
         return -1;
     }
@@ -559,20 +559,16 @@ boot_serial_start(const struct boot_uart_funcs *f)
 {
     int rc;
     int off;
-    char *buf;
-    char *dec;
     int dec_off;
     int full_line;
     int max_input;
 
     boot_uf = f;
-    buf = in_buf;
-    dec = dec_buf;
     max_input = sizeof(in_buf);
 
     off = 0;
     while (1) {
-        rc = f->read(buf + off, sizeof(in_buf) - off, &full_line);
+        rc = f->read(in_buf + off, sizeof(in_buf) - off, &full_line);
         if (rc <= 0 && !full_line) {
             continue;
         }
@@ -586,16 +582,18 @@ boot_serial_start(const struct boot_uart_funcs *f)
             }
             continue;
         }
-        if (buf[0] == SHELL_NLIP_PKT_START1 &&
-          buf[1] == SHELL_NLIP_PKT_START2) {
+        if (in_buf[0] == SHELL_NLIP_PKT_START1 &&
+          in_buf[1] == SHELL_NLIP_PKT_START2) {
             dec_off = 0;
-            rc = boot_serial_in_dec(&buf[2], off - 2, dec, &dec_off, max_input);
-        } else if (buf[0] == SHELL_NLIP_DATA_START1 &&
-          buf[1] == SHELL_NLIP_DATA_START2) {
-            rc = boot_serial_in_dec(&buf[2], off - 2, dec, &dec_off, max_input);
+            rc = boot_serial_in_dec(&in_buf[2], off - 2, dec_buf, &dec_off, max_input);
+        } else if (in_buf[0] == SHELL_NLIP_DATA_START1 &&
+          in_buf[1] == SHELL_NLIP_DATA_START2) {
+            rc = boot_serial_in_dec(&in_buf[2], off - 2, dec_buf, &dec_off, max_input);
         }
+
+        /* serve errors: out of decode memory, or bad encoding */
         if (rc == 1) {
-            boot_serial_input(&dec[2], dec_off - 2);
+            boot_serial_input(&dec_buf[2], dec_off - 2);
         }
         off = 0;
     }
