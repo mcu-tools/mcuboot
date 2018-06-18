@@ -157,17 +157,23 @@ boot_uart_fifo_getline(char **line)
 {
 	static struct line_input *cmd;
 	sys_snode_t *node;
+	int key;
 
+	key = irq_lock();
 	/* Recycle cmd buffer returned previous time */
 	if (cmd != NULL) {
-		sys_slist_append(&free_queue, &cmd->node);
+		if (sys_slist_peek_tail(&free_queue) != &cmd->node) {
+			sys_slist_append(&free_queue, &cmd->node);
+		}
 	}
 
 	node = sys_slist_get(&used_queue);
+	irq_unlock(key);
 
 	if (node == NULL) {
 		cmd = NULL;
 		*line = NULL;
+
 		return 0;
 	}
 
