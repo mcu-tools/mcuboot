@@ -3,6 +3,38 @@
 - Table of Contents
 {:toc}
 
+## Version 1.2.0
+
+The 1.2.0 release of MCUboot brings a lot of fixes/updates, where much of the
+changes were on the boot serial functionality and imgtool utility. There are
+no breaking changes in MCUBoot functionality, but some of the CLI parameters
+in imgtool were changed (either removed or added or updated).
+
+### About this release
+
+- imgtool accepts .hex formatted input
+- Logging system is now configurable
+- Most Zephyr configuration has been switched to Kconfig
+- Build system accepts .pem files in build system to autogenerate required
+  key arrays used internally
+- Zephyr build switched to using built-in flash_map and TinyCBOR modules
+- Serial boot has substantially decreased in space usage after refactorings
+- Serial boot build doesn't require newlib-c anymore on Zephyr
+- imgtool updates:
+  + "create" subcommand can be used as an alias for "sign"
+  + To allow imgtool to always perform the check that firmware does not
+    overflow the status area, `--slot-size` was added and `--pad` was updated
+    to act as a flag parameter.
+  + `--overwrite-only` can be passed if not using swap upgrades
+  + `--max-sectors` can be used to adjust the maximum amount of sectors that
+    a swap can handle; this value must also be configured for the bootloader
+  + `--pad-header` substitutes `--included-header` with reverted semantics,
+    so it's not required for firmware built by Zephyr build system
+
+### Known issues
+
+None
+
 ## Version 1.1.0
 
 The 1.1.0 release of MCUboot brings a lot of fixes/updates to its
