@@ -221,6 +221,7 @@ main(void)
     console_blocking_mode();
 #if defined(MCUBOOT_SERIAL)
     serial_boot_detect();
+    hal_timer_deinit(MYNEWT_VAL(OS_CPUTIME_TIMER_NUM));
 #endif
 #else
     flash_map_init();
