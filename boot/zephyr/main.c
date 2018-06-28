@@ -20,6 +20,7 @@
 #include <misc/__assert.h>
 #include <flash.h>
 #include <drivers/system_timer.h>
+#include <soc.h>
 
 #include "target.h"
 
