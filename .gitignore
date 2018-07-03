@@ -11,3 +11,7 @@ rusty-tags.*
 /bin/
 /targets/
 **/build/**/*
+
+#Eclipse project files
+.cproject
+.project
