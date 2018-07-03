@@ -128,8 +128,12 @@ endif()
 
 if (CONFIG_MCUBOOT_SERIAL)
 zephyr_sources(${BOOT_DIR}/zephyr/serial_adapter.c)
+zephyr_sources(${BOOT_DIR}/boot_serial/src/boot_serial.c)
 
-add_subdirectory(${BOOT_DIR}/boot_serial ./boot/boot_serial)
+zephyr_include_directories(${BOOT_DIR}/bootutil/include)
+zephyr_include_directories(${BOOT_DIR}/boot_serial/include)
+zephyr_include_directories(include)
+zephyr_link_libraries_ifdef(CONFIG_TINYCBOR TINYCBOR)
 endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
