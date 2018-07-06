@@ -34,8 +34,8 @@ def same_keys(a, b):
             return False
     return True
 
-offset_re = re.compile(r"^#define FLASH_AREA_([0-9A-Z_]+)_OFFSET(_0)?\s+((0x)?[0-9a-fA-F]+)")
-size_re   = re.compile(r"^#define FLASH_AREA_([0-9A-Z_]+)_SIZE(_0)?\s+((0x)?[0-9a-fA-F]+)")
+offset_re = re.compile(r"^#define FLASH_AREA_([0-9A-Z_]+)_OFFSET(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
+size_re   = re.compile(r"^#define FLASH_AREA_([0-9A-Z_]+)_SIZE(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
 
 class Assembly():
     def __init__(self, output, bootdir):
