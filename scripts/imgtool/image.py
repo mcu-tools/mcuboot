@@ -79,6 +79,9 @@ class Image():
 
         # Add the image header if needed.
         if pad_header and obj.header_size > 0:
+            if obj.base_addr:
+                # Adjust base_addr for new header
+                obj.base_addr -= obj.header_size
             obj.payload = (b'\000' * obj.header_size) + obj.payload
 
         obj.check()
