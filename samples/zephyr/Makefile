@@ -129,7 +129,7 @@ hello1: check
 		--header-size $(BOOT_HEADER_LEN) \
 		--align $(FLASH_ALIGNMENT) \
 		--version 1.2 \
-		--slot-size 0x60000
+		--slot-size 0x60000 \
 		$(BUILD_DIR_HELLO1)/zephyr/zephyr.bin \
 		signed-hello1.bin
 
