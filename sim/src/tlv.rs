@@ -8,10 +8,15 @@
 //! Because of this header, we have to make two passes.  The first pass will compute the size of
 //! the TLV, and the second pass will build the data for the TLV.
 
-use std::sync::Arc;
 use pem;
 use base64;
-use ring::{digest, rand, signature};
+use ring::{digest, rand};
+use ring::signature::{
+    RsaKeyPair,
+    RSA_PSS_SHA256,
+    EcdsaKeyPair,
+    ECDSA_P256_SHA256_ASN1_SIGNING,
+};
 use untrusted;
 use mcuboot_sys::c;
 
@@ -142,37 +147,6 @@ impl TlvGen {
         self.payload.extend_from_slice(bytes);
     }
 
-    /// Create a DER representation of one ec curve point
-    fn _make_der_int(&self, x: &[u8]) -> Vec<u8> {
-        assert!(x.len() == 32);
-
-        let mut i: Vec<u8> = vec![0x02];
-        if x[0] >= 0x7f {
-            i.push(33);
-            i.push(0);
-        } else {
-            i.push(32);
-        }
-        i.extend(x);
-        i
-    }
-
-    /// Create an ecdsa256 TLV
-    fn _make_der_sequence(&self, r: Vec<u8>, s: Vec<u8>) -> Vec<u8> {
-        let mut der: Vec<u8> = vec![0x30];
-        der.push(r.len() as u8 + s.len() as u8);
-        der.extend(r);
-        der.extend(s);
-        let mut size = der.len();
-        // must pad up to 72 bytes...
-        while size <= 72 {
-            der.push(0);
-            der[1] += 1;
-            size += 1;
-        }
-        der
-    }
-
     /// Compute the TLV given the specified block of data.
     pub fn make_tlv(self) -> Vec<u8> {
         let mut result: Vec<u8> = vec![];
@@ -211,12 +185,11 @@ impl TlvGen {
             let key_bytes = pem::parse(include_bytes!("../../root-rsa-2048.pem").as_ref()).unwrap();
             assert_eq!(key_bytes.tag, "RSA PRIVATE KEY");
             let key_bytes = untrusted::Input::from(&key_bytes.contents);
-            let key = signature::RSAKeyPair::from_der(key_bytes).unwrap();
-            let mut signer = signature::RSASigningState::new(Arc::new(key)).unwrap();
+            let key_pair = RsaKeyPair::from_der(key_bytes).unwrap();
             let rng = rand::SystemRandom::new();
-            let mut signature = vec![0; signer.key_pair().public_modulus_len()];
+            let mut signature = vec![0; key_pair.public_modulus_len()];
             assert_eq!(signature.len(), 256);
-            signer.sign(&signature::RSA_PSS_SHA256, &rng, &self.payload, &mut signature).unwrap();
+            key_pair.sign(&RSA_PSS_SHA256, &rng, &self.payload, &mut signature).unwrap();
 
             result.push(TlvKinds::RSA2048 as u8);
             result.push(0);
@@ -236,43 +209,29 @@ impl TlvGen {
             result.push(0);
             result.extend_from_slice(keyhash);
 
-            let key_bytes = pem::parse(include_bytes!("../../root-ec-p256.pem").as_ref()).unwrap();
-            assert_eq!(key_bytes.tag, "EC PRIVATE KEY");
+            let key_bytes = pem::parse(include_bytes!("../../root-ec-p256-pkcs8.pem").as_ref()).unwrap();
+            assert_eq!(key_bytes.tag, "PRIVATE KEY");
 
-            let hash = digest::digest(&digest::SHA256, &self.payload);
-            let hash = hash.as_ref();
-            assert!(hash.len() == 32);
-
-            /* FIXME
-             *
-             * Although `ring` has an ASN1 parser, it hides access
-             * to its low-level data, which was designed to be used
-             * by its internal signing/verifying functions. Since it does
-             * not yet support ecdsa signing, for the time being I am
-             * manually loading the key from its index in the PEM and
-             * building the TLV DER manually.
-             *
-             * Once ring gets ecdsa signing (hopefully soon!) this code
-             * should be updated to leverage its functionality...
-             */
-
-            /* Load key directly from PEM */
-            let key = &key_bytes.contents[7..39];
-
-            let signature = match c::ecdsa256_sign(&key, &hash) {
-                Ok(sign) => sign,
-                Err(_) => panic!("Failed signature generation"),
-            };
-
-            let r = self._make_der_int(&signature.to_vec()[..32]);
-            let s = self._make_der_int(&signature.to_vec()[32..64]);
-            let der = self._make_der_sequence(r, s);
+            let key_bytes = untrusted::Input::from(&key_bytes.contents);
+            let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING,
+                                                    key_bytes).unwrap();
+            let rng = rand::SystemRandom::new();
+            let payload = untrusted::Input::from(&self.payload);
+            let signature = key_pair.sign(&rng, payload).unwrap();
 
             result.push(TlvKinds::ECDSA256 as u8);
             result.push(0);
-            result.push(der.len() as u8);
-            result.push(0);
-            result.extend(der);
+
+            // signature must be padded...
+            let mut signature = signature.as_ref().to_vec();
+            while signature.len() < 72 {
+                signature.push(0);
+                signature[1] += 1;
+            }
+
+            result.push((signature.len() & 0xFF) as u8);
+            result.push(((signature.len() >> 8) & 0xFF) as u8);
+            result.extend_from_slice(signature.as_ref());
         }
 
         if self.kinds.contains(&TlvKinds::ENCRSA2048) {

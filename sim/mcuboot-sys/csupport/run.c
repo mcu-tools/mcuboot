@@ -13,10 +13,6 @@
 #include "../../../boot/bootutil/src/bootutil_priv.h"
 #include "bootsim.h"
 
-#ifdef MCUBOOT_SIGN_EC256
-#include "../../../ext/tinycrypt/lib/include/tinycrypt/ecc_dsa.h"
-#endif
-
 #ifdef MCUBOOT_ENCRYPT_RSA
 #include "mbedtls/rsa.h"
 #include "mbedtls/asn1.h"
@@ -43,20 +39,6 @@ int flash_counter;
 int jumped = 0;
 uint8_t c_asserts = 0;
 uint8_t c_catch_asserts = 0;
-
-int ecdsa256_sign_(const uint8_t *privkey, const uint8_t *hash,
-                   unsigned hash_len, uint8_t *signature)
-{
-#ifdef MCUBOOT_SIGN_EC256
-    return uECC_sign(privkey, hash, hash_len, signature, uECC_secp256r1());
-#else
-    (void)privkey;
-    (void)hash;
-    (void)hash_len;
-    (void)signature;
-    return 0;
-#endif
-}
 
 #ifdef MCUBOOT_ENCRYPT_RSA
 static int
