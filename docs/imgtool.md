@@ -79,7 +79,11 @@ flash device.  For Zephyr, it will be configured as part of the build,
 and will be a small power of two.  By default, the Zephyr build system will
 already prepended a zeroed header to the image.  If another build system is
 in use that does not automatically add this zeroed header, `--pad-header` can
-be passed and the `--header-size` will be added by imgtool.
+be passed and the `--header-size` will be added by imgtool. If `--pad-header`
+is used with an Intel Hex file, `--header-size` bytes will be subtracted from
+the load address (in Intel Hex terms, the Extended Linear Address record) to
+adjust for the new bytes prepended to the file. The load address of all data
+existing in the file should not change.
 
 The `--slot-size` argument is required and used to check that the firmware
 does not overflow into the swap status area (metadata). If swap upgrades are
