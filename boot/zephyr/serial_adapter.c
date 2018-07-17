@@ -148,6 +148,7 @@ boot_uart_fifo_callback(struct device *dev)
 			cmd->len = cur;
 			sys_slist_append(lines_queue, &cmd->node);
 			cur = 0;
+			cmd = NULL;
 		}
 	}
 }
