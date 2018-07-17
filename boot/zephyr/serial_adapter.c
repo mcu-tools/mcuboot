@@ -40,11 +40,9 @@ struct line_input {
 static struct device *uart_dev;
 static struct line_input line_bufs[2];
 
-static sys_slist_t free_queue;
-static sys_slist_t used_queue;
+static sys_slist_t avail_queue;
+static sys_slist_t lines_queue;
 
-static sys_slist_t *avail_queue;
-static sys_slist_t *lines_queue;
 static u16_t cur;
 
 static int boot_uart_fifo_getline(char **line);
@@ -98,19 +96,16 @@ boot_console_init(void)
 {
 	int i;
 
-	sys_slist_init(&free_queue);
-	sys_slist_init(&used_queue);
+	/* Zephyr UART handler takes an empty buffer from avail_queue,
+	 * stores UART input in it until EOL, and then puts it into
+	 * lines_queue.
+	 */
+	sys_slist_init(&avail_queue);
+	sys_slist_init(&lines_queue);
 
 	for (i = 0; i < ARRAY_SIZE(line_bufs); i++) {
-		sys_slist_append(&free_queue, &line_bufs[i].node);
+		sys_slist_append(&avail_queue, &line_bufs[i].node);
 	}
-
-	/* Zephyr UART handler takes an empty buffer from free_queue,
-	 * stores UART input in it until EOL, and then puts it into
-	 * used_queue.
-	 */
-	avail_queue = &free_queue;
-	lines_queue = &used_queue;
 
 	return boot_uart_fifo_init();
 }
@@ -133,7 +128,7 @@ boot_uart_fifo_callback(struct device *dev)
 		if (!cmd) {
 			sys_snode_t *node;
 
-			node = sys_slist_get(avail_queue);
+			node = sys_slist_get(&avail_queue);
 			if (!node) {
 				return;
 			}
@@ -146,7 +141,7 @@ boot_uart_fifo_callback(struct device *dev)
 
 		if (byte ==  '\n') {
 			cmd->len = cur;
-			sys_slist_append(lines_queue, &cmd->node);
+			sys_slist_append(&lines_queue, &cmd->node);
 			cur = 0;
 			cmd = NULL;
 		}
@@ -163,12 +158,12 @@ boot_uart_fifo_getline(char **line)
 	key = irq_lock();
 	/* Recycle cmd buffer returned previous time */
 	if (cmd != NULL) {
-		if (sys_slist_peek_tail(&free_queue) != &cmd->node) {
-			sys_slist_append(&free_queue, &cmd->node);
+		if (sys_slist_peek_tail(&avail_queue) != &cmd->node) {
+			sys_slist_append(&avail_queue, &cmd->node);
 		}
 	}
 
-	node = sys_slist_get(&used_queue);
+	node = sys_slist_get(&lines_queue);
 	irq_unlock(key);
 
 	if (node == NULL) {
