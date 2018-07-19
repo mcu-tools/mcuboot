@@ -67,18 +67,7 @@ in the following files:
 - boot/zephyr/include/mcuboot_config/mcuboot_config.h
 - boot/mynewt/mcuboot_config/include/mcuboot_config/mcuboot_config.h
 
-## Flash access and flash Map
-
-* Regarding flash access the bootloader has two requirements:
-
-### hal_flash_align
-
-`mcuboot` needs to know the write size (and alignment) of the flash. To get
-this information it calls `hal_flash_align`.
-
-`uint8_t hal_flash_align(uint8_t flash_id);`
-
-### flash_map
+## Flash Map
 
 The bootloader requires a `flash_map` to be able to know how the flash is
 partitioned. A `flash_map` consists of `struct flash_area` entries
