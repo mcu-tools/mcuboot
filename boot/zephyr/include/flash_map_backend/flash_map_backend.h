@@ -8,7 +8,7 @@
 #ifndef __FLASH_MAP_BACKEND_H__
 #define __FLASH_MAP_BACKEND_H__
 
-#include <flash_map.h> // the zephyr falsh_map
+#include <flash_map.h> // the zephyr flash_map
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,7 +32,13 @@ extern "C" {
  * and match the target offset specified in download script.
  */
 #include <inttypes.h>
+#include <sys/types.h>
 
+/* Retrieve the flash device with the given name.
+ *
+ * Returns the flash device on success, or NULL on failure.
+ */
+struct device *flash_device_get_binding(char *dev_name);
 
 /*
  * Retrieve a memory-mapped flash device's base address.
@@ -45,6 +51,12 @@ extern "C" {
 int flash_device_base(uint8_t fd_id, uintptr_t *ret);
 
 int flash_area_id_from_image_slot(int slot);
+
+/* Retrieve the flash sector a given offset belongs to.
+ *
+ * Returns 0 on success, or an error code on failure.
+ */
+int flash_area_sector_from_off(off_t off, struct flash_sector *sector);
 
 #ifdef __cplusplus
 }

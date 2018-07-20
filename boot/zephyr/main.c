@@ -39,8 +39,6 @@ const struct boot_uart_funcs boot_funcs = {
 };
 #endif
 
-struct device *boot_flash_device;
-
 void os_heap_init(void);
 
 #if defined(CONFIG_ARM)
@@ -103,8 +101,7 @@ void main(void)
 
     os_heap_init();
 
-    boot_flash_device = device_get_binding(FLASH_DEV_NAME);
-    if (!boot_flash_device) {
+    if (!flash_device_get_binding(FLASH_DEV_NAME)) {
         BOOT_LOG_ERR("Flash device %s not found", FLASH_DEV_NAME);
         while (1)
             ;
