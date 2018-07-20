@@ -19,6 +19,7 @@
 #include <assert.h>
 #include <string.h>
 #include <zephyr.h>
+#include "bootutil/bootutil_log.h"
 
 #ifdef CONFIG_UART_CONSOLE
 #error Zephyr UART console must been disabled if serial_adapter module is used.
@@ -117,12 +118,16 @@ boot_uart_fifo_callback(struct device *dev)
 	u8_t byte;
 	int rx;
 
-	while (uart_irq_update(uart_dev) &&
-	       uart_irq_rx_ready(uart_dev)) {
+	uart_irq_update(uart_dev);
 
+	if (!uart_irq_rx_ready(uart_dev)) {
+		return;
+	}
+
+	while (true) {
 		rx = uart_fifo_read(uart_dev, &byte, 1);
 		if (rx != 1) {
-			continue;
+			break;
 		}
 
 		if (!cmd) {
@@ -130,6 +135,8 @@ boot_uart_fifo_callback(struct device *dev)
 
 			node = sys_slist_get(&avail_queue);
 			if (!node) {
+				BOOT_LOG_ERR("Not enough memory to store"
+					     " incoming data!");
 				return;
 			}
 			cmd = CONTAINER_OF(node, struct line_input, node);
@@ -191,8 +198,10 @@ boot_uart_fifo_init(void)
 	uart_irq_callback_set(uart_dev, boot_uart_fifo_callback);
 
 	/* Drain the fifo */
-	while (uart_irq_rx_ready(uart_dev)) {
-		uart_fifo_read(uart_dev, &c, 1);
+	if (uart_irq_rx_ready(uart_dev)) {
+		while (uart_fifo_read(uart_dev, &c, 1)) {
+			;
+		}
 	}
 
 	cur = 0;
@@ -201,7 +210,8 @@ boot_uart_fifo_init(void)
 
 	/* Enable all interrupts unconditionally. Note that this is due
 	 * to Zephyr issue #8393. This should be removed once the
-	 * issue is fixed in upstream Zephyr. */
+	 * issue is fixed in upstream Zephyr.
+	 */
 	irq_unlock(0);
 
 	return 0;
