@@ -1,0 +1,191 @@
+@startuml
+skinparam ParticipantPadding 60
+skinparam backgroundColor #FFFFF
+
+participant Main
+participant "Util/Misc"
+participant Loader
+participant Flash
+participant Verifier
+
+== Low level startup ==
+
+== Main ==
+
+note over Main: Device init:\n\
+				- UART\n\
+				- Flash\n\
+				mbedTLS memory init
+
+Main   -> Loader: boot_go( )
+
+loop from 0 to IMAGE_CNT
+	Loader -> Flash : boot_read_sectors( )
+		note over Flash: Determine flash\n\
+						 sector layout\n\
+						 Init **boot_data** struct
+
+	Loader -> Flash: boot_read_image_headers( )
+		note over Flash: Copy image headers\n\
+						 from flash to **boot_data**
+	alt Slots are compatiable
+		Loader -> "Util/Misc": boot_slots_compatible( )
+			note over "Util/Misc": In order to swap\n\
+								   primaray and secondary\n\
+								   slot, their flash sector\n\
+								   layout must be identical.
+
+		Loader -> Flash: boot_read_status( )
+			note over Flash: Determine the location of the swap\n\
+							 status records. It can be in the\n\
+							 primary slot or in the common scratch area.\n\
+							 If found in the scratch area then determine\n\
+							 whether it belongs to current image or not.\n\
+							 Init **boot_status** struct
+		alt Aborted swap
+			group boot_copy_image( )
+				note over Loader: Determine **swap_size**\n\
+								  and which sectors to\n\
+								  swap in one round;\n\
+								  Swap only the remaining\n\
+								  part of the image
+
+				group boot_swap_sectors( )
+					note over Loader: Finish image swapping
+				end
+			end
+
+			Loader -> Flash   : boot_read_image_headers( )
+				note over Flash: Ensure that image\n\
+								 headers in **boot_data**\n\
+								 are aligned with headers in slots.\n\
+								 Because headers was swapped as well,\n\
+								 compared to the beginning of update\n\
+								 process when headers was read from\n\
+								 flash.
+
+			loop from 0 to curr_image
+				Loader -> "Util/Misc": boot_previous_swap_type( )
+				note over Loader: All previous image swap_type\n\
+								  must be reevaulted.\n\
+								  If abort happens when the\n\
+								  **copy_done** flag has already set\n\
+								  in case of some images,\n\
+								  but there are still unfinished swaps,\n\
+								  then must call **boot_previous_swap_type**\n\
+								  to set **boot_data.swap_type**
+			end
+		else No aborted swap
+			Loader -> "Util/Misc": boot_swap_type( )
+				note over "Util/Misc": Read trailer from\n\
+									   primary and secondary slot\n\
+									   decide required action\n\
+									   based on **boot_swap_tables**\n\
+									   Set  **boot_data.swap_type**
+			alt Swap needed(test, perm, revert)
+				Loader -> Verifier: boot_validate_slot(Secondary slot)
+					note over Verifier: Authenticate image:\n\
+										-check header\n\
+										-check hash\n\
+										-check signature
+				alt Authentication failed
+					Loader -> Flash: boot_earse_slot(Secondary slot)
+						note over Flash : Delete faulty image
+						note over Loader: Update **boot_data.swap_type**\n\
+										  to NONE
+				else Authentication successful
+					note over Loader: No operation is necessary
+				end
+			else Swap not needed
+				note over Loader: No operation is necessary\n\
+								  There is no valid image in\n\
+								  secondary slot
+			end
+		end
+	else Slots are not compatible
+		note over "Util/Misc": If slots are not aligned\n\
+							   in terms of size or layout\n\
+							   Set image related\n\
+							   **boot_data.swap_type**\n\
+							   to NONE
+	end
+end
+
+== At this point it is known which swap operation would be done with each \
+   image independently and aborted swap has finished ==
+
+loop from 0 to IMAGE_CNT
+	Loader -> "Util/Misc": get_image_dependency( )
+		note over "Util/Misc": Retrieve from image trailer
+	Loader -> "Util/Misc": verify_image_dependency( )
+	alt Dependency satisfied
+		note over "Util/Misc": No operation is necessary
+	else Dependency not satisfied
+		note over "Util/Misc": Update image related\n\
+							   **boot_data.swap_type**\n\
+							   If dependent image version won't\n\
+							   be in primary slot after its prescribed\n\
+							   swap operation will have finished\n\
+							   then adjust **swap_type** according\n\
+							   to pseudo code in:\n\
+							   multiple_image_support_design_proposal.md
+	end
+end
+
+== At this point it is known which swap operations can proceed according to \
+   dependency entries ==
+
+loop from 0 to IMAGE_CNT
+	group boot_swap_if_needed( )
+		note over Loader: Check image **swap_type**
+		alt Swap needed
+			note over Loader: if **swap_type** is\n\
+							  <REVERT | TEST | PERM>
+			group boot_copy_image( )
+				note over Loader: Swap the whole image
+			end
+		else Swap not needed
+			note over Loader: if **swap_type** is\n\
+							  <NONE>
+			note over Loader: No operation is necessary
+		end
+	end
+end
+
+== At this point all required swap operation has finished ==
+
+loop from 0 to IMAGE_CNT
+		Loader -> Flash   : boot_set_copy_done( )
+end
+
+loop from 0 to IMAGE_CNT
+	Loader -> Flash   : boot_read_image_headers( )
+	Loader -> Verifier: boot_validate_slot(Primary slot)
+	alt Authentication failed
+		Loader -> Flash: boot_earse_slot(Primary slot)
+			note over Flash: Delete faulty image
+
+	else Authentication successful
+		note over Loader: Init **rsp** struct\n\
+						  with primary slot\n\
+						  attributes in case of\n\
+						  image 0
+	end
+end
+
+Loader -> Main: boot_go( ) returns
+alt boot_go OK
+	group do_boot
+		note over Main: Passing execution to next image:\n\
+					    -Disable IRQ\n\
+					    -Set MSP\n\
+					    -Call reset vector of next image
+		note over Main: Execution never\n\
+						returns here
+end
+else boot_go NOK
+	note over Main: Reports error
+	note over Main: Execute infinite loop
+end
+== Application started ==
+@enduml

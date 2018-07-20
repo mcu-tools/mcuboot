@@ -1,0 +1,124 @@
+@startuml
+skinparam ParticipantPadding 60
+skinparam backgroundColor #FFFFF
+
+participant Main
+participant "Util/Misc"
+participant Loader
+participant Flash
+participant Verifier
+
+== Low level startup ==
+
+== Main ==
+
+note over Main: Device init:\n\
+				- UART\n\
+				- Flash\n\
+				mbedTLS memory init
+
+Main   -> Loader: boot_go( )
+
+Loader -> Flash : boot_read_sectors( )
+	note over Flash: Determine flash\n\
+					 sector layout\n\
+					 Init **boot_data** struct
+
+Loader -> Flash: boot_read_image_headers( )
+	note over Flash: Copy image headers\n\
+					 from flash to **boot_data**
+
+alt Slots are compatible
+	Loader -> "Util/Misc": boot_slots_compatible( )
+		note over "Util/Misc": In order to swap\n\
+							   slot_0 and slot_1,\n\
+							   their flash sector layout\n\
+							   must be identical
+	
+	group boot_swap_if_needed( )
+		Loader -> Flash: boot_read_status( )
+			note over Flash: Determine the location of the swap\n\
+							 status records. It can be in the\n\
+							 slot_0 or in the scratch area.\n\
+							 Init **boot_status** struct
+
+		alt Aborted swap
+			group boot_copy_image( )
+				note over Loader: Determine **swap_size**\n\
+								  and which sectors to\n\
+								  swap in one round;\n\
+								  Swap only the remaining\n\
+								  part of the image
+				group boot_swap_sectors( )
+					note over Loader: Finish image swapping
+				end
+			end
+		else No aborted swap
+			Loader -> "Util/Misc": boot_swap_type( )
+				note over "Util/Misc": Read trailer from\n\
+									   slot_0 and slot_1.\n\
+									   Decide required action\n\
+									   based on **boot_swap_tables** 
+			alt Swap needed(test, perm, revert)
+				Loader -> Verifier: boot_validate_slot(Slot_1)
+					note over Verifier: Authenticate image:\n\
+										-check header\n\
+										-check hash\n\
+										-check signature
+				alt Authentication failed
+					Loader -> Flash: boot_earse_slot(Slot_1)
+						note over Flash: Delete faulty image
+				
+				else Authentication successful
+					group boot_copy_image( )
+						note over Loader: Swap the whole image
+					end
+				end
+			else Swap not needed
+				note over Loader: No operation is necessary\n\
+								  There is no valid image in\n\
+								  slot_1
+			end
+		end
+	end
+else Slots are not compatible
+	note over Loader: If slots are not aligned\n\
+					  in terms of size or layout\n\
+					  then just boot slot_0\n
+end
+note over Loader: Returns with **swap_type**\n
+
+alt Swap was done
+	Loader -> Flash   : boot_set_copy_done( )
+else No swap was done
+	note over Loader: No operation is necessary
+end
+
+Loader -> Flash   : boot_read_image_headers( )
+Loader -> Verifier: boot_validate_slot(Slot_0)
+alt Authentication failed
+	Loader -> Flash: boot_earse_slot(Slot_0)
+		note over Flash: Delete faulty image
+
+else Authentication successful
+	note over Loader: Init **rsp** struct\n\
+					  with slot_0 attributes
+end
+
+Loader -> Main: boot_go( ) returns
+alt boot_go OK
+	group do_boot
+		note over Main: Passing execution to next image:\n\
+					    -Disable IRQ\n\
+					    -Set MSP\n\
+					    -Call reset vector of next image
+		note over Main: Execution never\n\
+						returns here
+end
+else boot_go NOK
+	note over Main: Reports error
+	note over Main: Execute infinite loop
+end
+
+== Application started == 
+@enduml
