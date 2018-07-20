@@ -55,6 +55,10 @@
 #include "boot_serial/boot_serial.h"
 #include "boot_serial_priv.h"
 
+#ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
+#include "bootutil_priv.h"
+#endif
+
 #define BOOT_SERIAL_INPUT_MAX   512
 #define BOOT_SERIAL_OUT_MAX	80
 
@@ -354,7 +358,7 @@ bs_upload(char *buf, int len)
     }
     if (off_last != sector.fs_off) {
         off_last = sector.fs_off;
-        BOOT_LOG_INF("Moving to sector 0x%x", sector.fs_off);
+        BOOT_LOG_INF("Erasing sector at offset 0x%x", sector.fs_off);
         rc = flash_area_erase(fap, sector.fs_off, sector.fs_size);
         if (rc) {
             BOOT_LOG_ERR("Error %d while erasing sector", rc);
@@ -367,6 +371,27 @@ bs_upload(char *buf, int len)
     rc = flash_area_write(fap, curr_off, img_data, img_blen);
     if (rc == 0) {
         curr_off += img_blen;
+#ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
+        if (curr_off == img_size) {
+            /* get the last sector offset */
+            rc = flash_area_sector_from_off(boot_status_off(fap), &sector);
+            if (rc) {
+                BOOT_LOG_ERR("Unable to determine flash sector of"
+                             "the image trailer");
+                goto out;
+            }
+            /* Assure that sector for image trailer was erased. */
+            /* Check whether it was erased during previous upload. */
+            if (off_last < sector.fs_off) {
+                BOOT_LOG_INF("Erasing sector at offset 0x%x", sector.fs_off);
+                rc = flash_area_erase(fap, sector.fs_off, sector.fs_size);
+                if (rc) {
+                    BOOT_LOG_ERR("Error %d while erasing sector", rc);
+                    goto out;
+                }
+            }
+        }
+#endif
     } else {
     out_invalid_data:
         rc = MGMT_ERR_EINVAL;
