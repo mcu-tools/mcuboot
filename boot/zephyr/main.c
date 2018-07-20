@@ -20,6 +20,7 @@
 #include <misc/__assert.h>
 #include <flash.h>
 #include <drivers/system_timer.h>
+#include <usb/usb_device.h>
 #include <soc.h>
 
 #include "target.h"
@@ -66,6 +67,10 @@ static void do_boot(struct boot_rsp *rsp)
                                      rsp->br_hdr->ih_hdr_size);
     irq_lock();
     sys_clock_disable();
+#ifdef CONFIG_BOOT_SERIAL_CDC_ACM
+    /* Disable the USB to prevent it from firing interrupts */
+    usb_disable();
+#endif
     __set_MSP(vt->msp);
     ((void (*)(void))vt->reset)();
 }

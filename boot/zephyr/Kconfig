@@ -127,6 +127,23 @@ menuconfig MCUBOOT_SERIAL
 
 if MCUBOOT_SERIAL
 
+choice
+	prompt "Serial device"
+	default BOOT_SERIAL_UART if !BOARD_NRF52840_PCA10059
+	default BOOT_SERIAL_CDC_ACM if BOARD_NRF52840_PCA10059
+
+config BOOT_SERIAL_UART
+	bool "UART"
+	# SERIAL and UART_INTERRUPT_DRIVEN already selected
+
+config BOOT_SERIAL_CDC_ACM
+	bool "CDC ACM"
+	select USB
+	select USB_DEVICE_STACK
+	select USB_CDC_ACM
+
+endchoice
+
 config BOOT_MAX_LINE_INPUT_LEN
 	int "Maximum command line length"
 	default 512
