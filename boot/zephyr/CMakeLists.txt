@@ -127,13 +127,17 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
 endif()
 
 if (CONFIG_MCUBOOT_SERIAL)
-zephyr_sources(${BOOT_DIR}/zephyr/serial_adapter.c)
-zephyr_sources(${BOOT_DIR}/boot_serial/src/boot_serial.c)
+  zephyr_sources(${BOOT_DIR}/zephyr/serial_adapter.c)
+  zephyr_sources(${BOOT_DIR}/boot_serial/src/boot_serial.c)
 
-zephyr_include_directories(${BOOT_DIR}/bootutil/include)
-zephyr_include_directories(${BOOT_DIR}/boot_serial/include)
-zephyr_include_directories(include)
-zephyr_link_libraries_ifdef(CONFIG_TINYCBOR TINYCBOR)
+  zephyr_include_directories(${BOOT_DIR}/bootutil/include)
+  zephyr_include_directories(${BOOT_DIR}/boot_serial/include)
+  zephyr_include_directories(include)
+  zephyr_link_libraries_ifdef(CONFIG_TINYCBOR TINYCBOR)
+
+  if (CONFIG_BOOT_ERASE_PROGRESSIVELY)
+    zephyr_include_directories(${BOOT_DIR}/bootutil/src)
+  endif()
 endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
