@@ -213,6 +213,11 @@ main(void)
 
     hal_bsp_init();
 
+#if !MYNEWT_VAL(OS_SCHEDULING) && MYNEWT_VAL(WATCHDOG_INTERVAL)
+    rc = hal_watchdog_init(MYNEWT_VAL(WATCHDOG_INTERVAL));
+    assert(rc == 0);
+#endif
+
 #if defined(MCUBOOT_SERIAL) || defined(MCUBOOT_HAVE_LOGGING)
     /* initialize uart without os */
     os_dev_initialize_all(OS_DEV_INIT_PRIMARY);
