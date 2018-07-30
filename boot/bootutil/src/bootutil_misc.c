@@ -47,7 +47,6 @@ const uint32_t BOOT_MAGIC_SZ = sizeof boot_img_magic;
 const uint32_t BOOT_MAX_ALIGN = MAX_FLASH_ALIGN;
 
 struct boot_swap_table {
-    /** * For each field, a value of 0 means "any". */
     uint8_t magic_slot0;
     uint8_t magic_slot1;
     uint8_t image_ok_slot0;
@@ -69,27 +68,27 @@ struct boot_swap_table {
  */
 static const struct boot_swap_table boot_swap_tables[] = {
     {
-        .magic_slot0 =      0,
+        .magic_slot0 =      BOOT_MAGIC_ANY,
         .magic_slot1 =      BOOT_MAGIC_GOOD,
-        .image_ok_slot0 =   0,
-        .image_ok_slot1 =   0xff,
-        .copy_done_slot0 =  0,
+        .image_ok_slot0 =   BOOT_FLAG_ANY,
+        .image_ok_slot1 =   BOOT_FLAG_UNSET,
+        .copy_done_slot0 =  BOOT_FLAG_ANY,
         .swap_type =        BOOT_SWAP_TYPE_TEST,
     },
     {
-        .magic_slot0 =      0,
+        .magic_slot0 =      BOOT_MAGIC_ANY,
         .magic_slot1 =      BOOT_MAGIC_GOOD,
-        .image_ok_slot0 =   0,
-        .image_ok_slot1 =   0x01,
-        .copy_done_slot0 =  0,
+        .image_ok_slot0 =   BOOT_FLAG_ANY,
+        .image_ok_slot1 =   BOOT_FLAG_SET,
+        .copy_done_slot0 =  BOOT_FLAG_ANY,
         .swap_type =        BOOT_SWAP_TYPE_PERM,
     },
     {
         .magic_slot0 =      BOOT_MAGIC_GOOD,
         .magic_slot1 =      BOOT_MAGIC_UNSET,
-        .image_ok_slot0 =   0xff,
-        .image_ok_slot1 =   0,
-        .copy_done_slot0 =  0x01,
+        .image_ok_slot0 =   BOOT_FLAG_UNSET,
+        .image_ok_slot1 =   BOOT_FLAG_ANY,
+        .copy_done_slot0 =  BOOT_FLAG_SET,
         .swap_type =        BOOT_SWAP_TYPE_REVERT,
     },
 };
@@ -97,22 +96,39 @@ static const struct boot_swap_table boot_swap_tables[] = {
 #define BOOT_SWAP_TABLES_COUNT \
     (sizeof boot_swap_tables / sizeof boot_swap_tables[0])
 
-int
-boot_magic_code(const uint32_t *magic)
+static int
+boot_magic_decode(const struct flash_area *fap, const uint32_t *magic)
 {
     size_t i;
+    uint8_t erased_val;
 
     if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0) {
         return BOOT_MAGIC_GOOD;
     }
 
-    for (i = 0; i < BOOT_MAGIC_SZ / sizeof *magic; i++) {
-        if (magic[i] != 0xffffffff) {
+    erased_val = flash_area_erased_val(fap);
+    for (i = 0; i < BOOT_MAGIC_SZ; i++) {
+        if (((uint8_t *)magic)[i] != erased_val) {
             return BOOT_MAGIC_BAD;
         }
     }
 
     return BOOT_MAGIC_UNSET;
+}
+
+static int
+boot_flag_decode(const struct flash_area *fap, uint8_t flag)
+{
+    uint8_t erased_val;
+
+    erased_val = flash_area_erased_val(fap);
+    if (flag == erased_val) {
+        return BOOT_FLAG_UNSET;
+    }
+    if (flag != BOOT_FLAG_SET) {
+        return BOOT_FLAG_BAD;
+    }
+    return BOOT_FLAG_SET;
 }
 
 uint32_t
@@ -213,7 +229,7 @@ boot_read_swap_state(const struct flash_area *fap,
     if (rc != 0) {
         return BOOT_EFLASH;
     }
-    state->magic = boot_magic_code(magic);
+    state->magic = boot_magic_decode(fap, magic);
 
     if (fap->fa_id != FLASH_AREA_IMAGE_SCRATCH) {
         off = boot_copy_done_off(fap);
@@ -221,6 +237,7 @@ boot_read_swap_state(const struct flash_area *fap,
         if (rc != 0) {
             return BOOT_EFLASH;
         }
+        state->copy_done = boot_flag_decode(fap, state->copy_done);
     }
 
     off = boot_image_ok_off(fap);
@@ -228,6 +245,7 @@ boot_read_swap_state(const struct flash_area *fap,
     if (rc != 0) {
         return BOOT_EFLASH;
     }
+    state->image_ok = boot_flag_decode(fap, state->image_ok);
 
     return 0;
 }
@@ -344,6 +362,7 @@ boot_write_flag(int flag, const struct flash_area *fap)
     int rc;
     uint8_t buf[BOOT_MAX_ALIGN];
     uint8_t align;
+    uint8_t erased_val;
 
     switch (flag) {
     case BOOT_FLAG_COPY_DONE:
@@ -358,7 +377,8 @@ boot_write_flag(int flag, const struct flash_area *fap)
 
     align = flash_area_align(fap);
     assert(align <= BOOT_MAX_ALIGN);
-    memset(buf, 0xFF, BOOT_MAX_ALIGN);
+    erased_val = flash_area_erased_val(fap);
+    memset(buf, erased_val, BOOT_MAX_ALIGN);
     buf[0] = BOOT_FLAG_SET;
 
     rc = flash_area_write(fap, off, buf, align);
@@ -388,6 +408,7 @@ boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
     int rc;
     uint8_t buf[BOOT_MAX_ALIGN];
     uint8_t align;
+    uint8_t erased_val;
 
     off = boot_swap_size_off(fap);
     align = flash_area_align(fap);
@@ -395,7 +416,8 @@ boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
     if (align < sizeof swap_size) {
         align = sizeof swap_size;
     }
-    memset(buf, 0xFF, BOOT_MAX_ALIGN);
+    erased_val = flash_area_erased_val(fap);
+    memset(buf, erased_val, BOOT_MAX_ALIGN);
     memcpy(buf, (uint8_t *)&swap_size, sizeof swap_size);
 
     rc = flash_area_write(fap, off, buf, align);
@@ -428,11 +450,16 @@ boot_swap_type(void)
     for (i = 0; i < BOOT_SWAP_TABLES_COUNT; i++) {
         table = boot_swap_tables + i;
 
-        if ((!table->magic_slot0     || table->magic_slot0     == slot0.magic    ) &&
-            (!table->magic_slot1     || table->magic_slot1     == slot1.magic    ) &&
-            (!table->image_ok_slot0  || table->image_ok_slot0  == slot0.image_ok ) &&
-            (!table->image_ok_slot1  || table->image_ok_slot1  == slot1.image_ok ) &&
-            (!table->copy_done_slot0 || table->copy_done_slot0 == slot0.copy_done)) {
+        if ((table->magic_slot0 == BOOT_MAGIC_ANY ||
+                    table->magic_slot0 == slot0.magic) &&
+            (table->magic_slot1 == BOOT_MAGIC_ANY ||
+                    table->magic_slot1 == slot1.magic) &&
+            (table->image_ok_slot0 == BOOT_FLAG_ANY ||
+                    table->image_ok_slot0 == slot0.image_ok) &&
+            (table->image_ok_slot1 == BOOT_FLAG_ANY ||
+                    table->image_ok_slot1 == slot1.image_ok) &&
+            (table->copy_done_slot0 == BOOT_FLAG_ANY ||
+                    table->copy_done_slot0 == slot0.copy_done)) {
             BOOT_LOG_INF("Swap type: %s",
                          table->swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
                          table->swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
@@ -509,6 +536,7 @@ boot_set_confirmed(void)
 {
     const struct flash_area *fap;
     struct boot_swap_state state_slot0;
+    uint8_t erased_val;
     int rc;
 
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_0, &state_slot0);
@@ -530,28 +558,25 @@ boot_set_confirmed(void)
         return BOOT_EBADVECT;
     }
 
-    if (state_slot0.copy_done == BOOT_FLAG_UNSET) {
-        /* Swap never completed.  This is unexpected. */
-        return BOOT_EBADVECT;
-    }
-
-    if (state_slot0.image_ok != BOOT_FLAG_UNSET) {
-        /* Already confirmed. */
-        return 0;
-    }
-
     rc = flash_area_open(FLASH_AREA_IMAGE_0, &fap);
     if (rc) {
         rc = BOOT_EFLASH;
         goto done;
     }
 
-    rc = boot_write_image_ok(fap);
-    if (rc != 0) {
+    erased_val = flash_area_erased_val(fap);
+    if (state_slot0.copy_done == erased_val) {
+        /* Swap never completed.  This is unexpected. */
+        rc = BOOT_EBADVECT;
         goto done;
     }
 
-    rc = 0;
+    if (state_slot0.image_ok != erased_val) {
+        /* Already confirmed. */
+        goto done;
+    }
+
+    rc = boot_write_image_ok(fap);
 
 done:
     flash_area_close(fap);

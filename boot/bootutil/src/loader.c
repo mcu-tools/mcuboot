@@ -28,7 +28,6 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
-#include <hal/hal_flash.h>
 #include <os/os_malloc.h>
 #include "bootutil/bootutil.h"
 #include "bootutil/image.h"
@@ -52,9 +51,6 @@ static int boot_status_fails = 0;
 #endif
 
 struct boot_status_table {
-    /**
-     * For each field, a value of 0 means "any".
-     */
     uint8_t bst_magic_slot0;
     uint8_t bst_magic_scratch;
     uint8_t bst_copy_done_slot0;
@@ -70,14 +66,14 @@ static const struct boot_status_table boot_status_tables[] = {
         /*           | slot-0     | scratch    |
          * ----------+------------+------------|
          *     magic | Good       | Any        |
-         * copy-done | 0x01       | N/A        |
+         * copy-done | Set        | N/A        |
          * ----------+------------+------------'
          * source: none                        |
          * ------------------------------------'
          */
         .bst_magic_slot0 =      BOOT_MAGIC_GOOD,
-        .bst_magic_scratch =    0,
-        .bst_copy_done_slot0 =  0x01,
+        .bst_magic_scratch =    BOOT_MAGIC_ANY,
+        .bst_copy_done_slot0 =  BOOT_FLAG_SET,
         .bst_status_source =    BOOT_STATUS_SOURCE_NONE,
     },
 
@@ -85,14 +81,14 @@ static const struct boot_status_table boot_status_tables[] = {
         /*           | slot-0     | scratch    |
          * ----------+------------+------------|
          *     magic | Good       | Any        |
-         * copy-done | 0xff       | N/A        |
+         * copy-done | Unset      | N/A        |
          * ----------+------------+------------'
          * source: slot 0                      |
          * ------------------------------------'
          */
         .bst_magic_slot0 =      BOOT_MAGIC_GOOD,
-        .bst_magic_scratch =    0,
-        .bst_copy_done_slot0 =  0xff,
+        .bst_magic_scratch =    BOOT_MAGIC_ANY,
+        .bst_copy_done_slot0 =  BOOT_FLAG_UNSET,
         .bst_status_source =    BOOT_STATUS_SOURCE_SLOT0,
     },
 
@@ -105,17 +101,16 @@ static const struct boot_status_table boot_status_tables[] = {
          * source: scratch                     |
          * ------------------------------------'
          */
-        .bst_magic_slot0 =      0,
+        .bst_magic_slot0 =      BOOT_MAGIC_ANY,
         .bst_magic_scratch =    BOOT_MAGIC_GOOD,
-        .bst_copy_done_slot0 =  0,
+        .bst_copy_done_slot0 =  BOOT_FLAG_ANY,
         .bst_status_source =    BOOT_STATUS_SOURCE_SCRATCH,
     },
-
     {
         /*           | slot-0     | scratch    |
          * ----------+------------+------------|
          *     magic | Unset      | Any        |
-         * copy-done | 0xff       | N/A        |
+         * copy-done | Unset      | N/A        |
          * ----------+------------+------------|
          * source: varies                      |
          * ------------------------------------+------------------------------+
@@ -125,8 +120,8 @@ static const struct boot_status_table boot_status_tables[] = {
          * -------------------------------------------------------------------'
          */
         .bst_magic_slot0 =      BOOT_MAGIC_UNSET,
-        .bst_magic_scratch =    0,
-        .bst_copy_done_slot0 =  0xff,
+        .bst_magic_scratch =    BOOT_MAGIC_ANY,
+        .bst_copy_done_slot0 =  BOOT_FLAG_UNSET,
         .bst_status_source =    BOOT_STATUS_SOURCE_SLOT0,
     },
 };
@@ -172,11 +167,11 @@ boot_status_source(void)
     for (i = 0; i < BOOT_STATUS_TABLES_COUNT; i++) {
         table = &boot_status_tables[i];
 
-        if ((table->bst_magic_slot0     == 0    ||
+        if ((table->bst_magic_slot0     == BOOT_MAGIC_ANY    ||
              table->bst_magic_slot0     == state_slot0.magic)   &&
-            (table->bst_magic_scratch   == 0    ||
+            (table->bst_magic_scratch   == BOOT_MAGIC_ANY    ||
              table->bst_magic_scratch   == state_scratch.magic) &&
-            (table->bst_copy_done_slot0 == 0    ||
+            (table->bst_copy_done_slot0 == BOOT_FLAG_ANY     ||
              table->bst_copy_done_slot0 == state_slot0.copy_done)) {
             source = table->bst_status_source;
             BOOT_LOG_INF("Boot source: %s",
@@ -389,7 +384,8 @@ boot_status_internal_off(int idx, int state, int elem_sz)
 
     idx_sz = elem_sz * BOOT_STATUS_STATE_COUNT;
 
-    return idx * idx_sz + state * elem_sz;
+    return (idx - BOOT_STATUS_IDX_0) * idx_sz +
+           (state - BOOT_STATUS_STATE_0) * elem_sz;
 }
 
 /**
@@ -408,9 +404,11 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
     int invalid;
     int rc;
     int i;
+    uint8_t erased_val;
 
     off = boot_status_off(fap);
     max_entries = boot_status_entries(fap);
+    erased_val = flash_area_erased_val(fap);
 
     found = 0;
     found_idx = 0;
@@ -422,7 +420,7 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
             return BOOT_EFLASH;
         }
 
-        if (status == 0xff) {
+        if (status == erased_val) {
             if (found && !found_idx) {
                 found_idx = i;
             }
@@ -453,8 +451,8 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
             found_idx = i;
         }
         found_idx--;
-        bs->idx = found_idx / BOOT_STATUS_STATE_COUNT;
-        bs->state = found_idx % BOOT_STATUS_STATE_COUNT;
+        bs->idx = (found_idx / BOOT_STATUS_STATE_COUNT) + 1;
+        bs->state = (found_idx % BOOT_STATUS_STATE_COUNT) + 1;
     }
 
     return 0;
@@ -475,6 +473,8 @@ boot_read_status(struct boot_status *bs)
     int rc;
 
     memset(bs, 0, sizeof *bs);
+    bs->idx = BOOT_STATUS_IDX_0;
+    bs->state = BOOT_STATUS_STATE_0;
 
 #ifdef MCUBOOT_OVERWRITE_ONLY
     /* Overwrite-only doesn't make use of the swap status area. */
@@ -528,6 +528,7 @@ boot_write_status(struct boot_status *bs)
     int rc;
     uint8_t buf[BOOT_MAX_ALIGN];
     uint8_t align;
+    uint8_t erased_val;
 
     /* NOTE: The first sector copied (that is the last sector on slot) contains
      *       the trailer. Since in the last step SLOT 0 is erased, the first
@@ -552,7 +553,8 @@ boot_write_status(struct boot_status *bs)
           boot_status_internal_off(bs->idx, bs->state,
                                    BOOT_WRITE_SZ(&boot_data));
     align = flash_area_align(fap);
-    memset(buf, 0xFF, BOOT_MAX_ALIGN);
+    erased_val = flash_area_erased_val(fap);
+    memset(buf, erased_val, BOOT_MAX_ALIGN);
     buf[0] = bs->state;
 
     rc = flash_area_write(fap, off, buf, align);
@@ -612,6 +614,18 @@ split_image_check(struct image_header *app_hdr,
     return 0;
 }
 
+static inline int
+boot_magic_is_erased(uint8_t erased_val, uint32_t magic)
+{
+    uint8_t i;
+    for (i = 0; i < sizeof(magic); i++) {
+        if (erased_val != *(((uint8_t *)&magic) + i)) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 static int
 boot_validate_slot(int slot)
 {
@@ -619,15 +633,16 @@ boot_validate_slot(int slot)
     struct image_header *hdr;
     int rc;
 
-    hdr = boot_img_hdr(&boot_data, slot);
-    if (hdr->ih_magic == 0xffffffff || hdr->ih_flags & IMAGE_F_NON_BOOTABLE) {
-        /* No bootable image in slot; continue booting from slot 0. */
-        return -1;
-    }
-
     rc = flash_area_open(flash_area_id_from_image_slot(slot), &fap);
     if (rc != 0) {
         return BOOT_EFLASH;
+    }
+
+    hdr = boot_img_hdr(&boot_data, slot);
+    if (boot_magic_is_erased(flash_area_erased_val(fap), hdr->ih_magic) ||
+            hdr->ih_flags & IMAGE_F_NON_BOOTABLE) {
+        /* No bootable image in slot; continue booting from slot 0. */
+        return -1;
     }
 
     if ((hdr->ih_magic != IMAGE_MAGIC || boot_image_check(hdr, fap) != 0)) {
@@ -931,9 +946,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
         copy_sz -= trailer_sz;
     }
 
-    bs->use_scratch = (bs->idx == 0 && copy_sz != sz);
+    bs->use_scratch = (bs->idx == BOOT_STATUS_IDX_0 && copy_sz != sz);
 
-    if (bs->state == 0) {
+    if (bs->state == BOOT_STATUS_STATE_0) {
         rc = boot_erase_sector(FLASH_AREA_IMAGE_SCRATCH, 0, sz);
         assert(rc == 0);
 
@@ -941,7 +956,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
                               img_off, 0, copy_sz);
         assert(rc == 0);
 
-        if (bs->idx == 0) {
+        if (bs->idx == BOOT_STATUS_IDX_0) {
             if (bs->use_scratch) {
                 boot_status_init_by_id(FLASH_AREA_IMAGE_SCRATCH, bs);
             } else {
@@ -956,12 +971,12 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
             }
         }
 
-        bs->state = 1;
+        bs->state = BOOT_STATUS_STATE_1;
         rc = boot_write_status(bs);
         BOOT_STATUS_ASSERT(rc == 0);
     }
 
-    if (bs->state == 1) {
+    if (bs->state == BOOT_STATUS_STATE_1) {
         rc = boot_erase_sector(FLASH_AREA_IMAGE_1, img_off, sz);
         assert(rc == 0);
 
@@ -969,7 +984,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
                               img_off, img_off, copy_sz);
         assert(rc == 0);
 
-        if (bs->idx == 0 && !bs->use_scratch) {
+        if (bs->idx == BOOT_STATUS_IDX_0 && !bs->use_scratch) {
             /* If not all sectors of the slot are being swapped,
              * guarantee here that only slot0 will have the state.
              */
@@ -977,12 +992,12 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
             assert(rc == 0);
         }
 
-        bs->state = 2;
+        bs->state = BOOT_STATUS_STATE_2;
         rc = boot_write_status(bs);
         BOOT_STATUS_ASSERT(rc == 0);
     }
 
-    if (bs->state == 2) {
+    if (bs->state == BOOT_STATUS_STATE_2) {
         rc = boot_erase_sector(FLASH_AREA_IMAGE_0, img_off, sz);
         assert(rc == 0);
 
@@ -1028,7 +1043,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
         }
 
         bs->idx++;
-        bs->state = 0;
+        bs->state = BOOT_STATUS_STATE_0;
         bs->use_scratch = 0;
         rc = boot_write_status(bs);
         BOOT_STATUS_ASSERT(rc == 0);
@@ -1127,7 +1142,7 @@ boot_copy_image(struct boot_status *bs)
 
     size = copy_size = 0;
 
-    if (bs->idx == 0 && bs->state == 0) {
+    if (bs->idx == BOOT_STATUS_IDX_0 && bs->state == BOOT_STATUS_STATE_0) {
         /*
          * No swap ever happened, so need to find the largest image which
          * will be used to determine the amount of sectors to swap.
@@ -1173,7 +1188,7 @@ boot_copy_image(struct boot_status *bs)
     swap_idx = 0;
     while (last_sector_idx >= 0) {
         sz = boot_copy_sz(last_sector_idx, &first_sector_idx);
-        if (swap_idx >= bs->idx) {
+        if (swap_idx >= (bs->idx - BOOT_STATUS_IDX_0)) {
             boot_swap_sectors(first_sector_idx, sz, bs);
         }
 
@@ -1275,7 +1290,7 @@ boot_swap_if_needed(int *out_swap_type)
     }
 
     /* If a partial swap was detected, complete it. */
-    if (bs.idx != 0 || bs.state != 0) {
+    if (bs.idx != BOOT_STATUS_IDX_0 || bs.state != BOOT_STATUS_STATE_0) {
         rc = boot_copy_image(&bs);
         assert(rc == 0);
 
