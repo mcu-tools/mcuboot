@@ -27,6 +27,15 @@ flash partitions defined is the frdm_k64f's in
 `boards/arm/frdm_k64f/frdm_k64f.dts`. Make sure the labels in your board's
 `.dts` file match the ones used there.
 
+## Installing Requirements and Dependencies
+
+Install additional packages required for development with mcuboot:
+
+```
+  cd ~/mcuboot  # or to your directory where mcuboot is cloned
+  pip3 install --user -r scripts/requirements.txt
+```
+
 ## Building the bootloader itself
 
 The bootloader is an ordinary Zephyr application, at least from
