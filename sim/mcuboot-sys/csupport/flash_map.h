@@ -126,6 +126,11 @@ int flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
 uint8_t flash_area_align(const struct flash_area *);
 
 /*
+ * What is value is read from erased flash bytes.
+ */
+uint8_t flash_area_erased_val(const struct flash_area *);
+
+/*
  * Given flash area ID, return info about sectors within the area.
  */
 int flash_area_get_sectors(int fa_id, uint32_t *count,

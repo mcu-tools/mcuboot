@@ -52,6 +52,13 @@ uint8_t flash_area_align(const struct flash_area *area)
     return sim_flash_align;
 }
 
+uint8_t sim_flash_erased_val = 0xff;
+uint8_t flash_area_erased_val(const struct flash_area *area)
+{
+    (void)area;
+    return sim_flash_erased_val;
+}
+
 struct area {
     struct flash_area whole;
     struct flash_area *areas;

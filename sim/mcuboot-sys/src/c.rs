@@ -22,6 +22,7 @@ pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, counter: Option<&mut i32>
         raw::c_catch_asserts = if catch_asserts { 1 } else { 0 };
         raw::c_asserts = 0u8;
         raw::sim_flash_align = align;
+        raw::sim_flash_erased_val = flash.erased_val();
         raw::flash_counter = match counter {
             None => 0,
             Some(ref c) => **c as libc::c_int
@@ -73,6 +74,7 @@ mod raw {
         pub static mut c_catch_asserts: u8;
 
         pub static mut sim_flash_align: u8;
+        pub static mut sim_flash_erased_val: u8;
         pub fn boot_slots_trailer_sz(min_write_sz: u8) -> u32;
 
         pub static BOOT_MAGIC_SZ: u32;
