@@ -45,6 +45,8 @@ pub trait Flash {
 
     fn sector_iter(&self) -> SectorIter;
     fn device_size(&self) -> usize;
+
+    fn erased_val(&self) -> u8;
 }
 
 fn ebounds<T: AsRef<str>>(message: T) -> ErrorKind {
@@ -72,23 +74,25 @@ pub struct SimFlash {
     // Alignment required for writes.
     align: usize,
     verify_writes: bool,
+    erased_val: u8,
 }
 
 impl SimFlash {
     /// Given a sector size map, construct a flash device for that.
-    pub fn new(sectors: Vec<usize>, align: usize) -> SimFlash {
+    pub fn new(sectors: Vec<usize>, align: usize, erased_val: u8) -> SimFlash {
         // Verify that the alignment is a positive power of two.
         assert!(align > 0);
         assert!(align & (align - 1) == 0);
 
         let total = sectors.iter().sum();
         SimFlash {
-            data: vec![0xffu8; total],
+            data: vec![erased_val; total],
             write_safe: vec![true; total],
             sectors: sectors,
             bad_region: Vec::new(),
             align: align,
             verify_writes: true,
+            erased_val: erased_val,
         }
     }
 
@@ -136,7 +140,7 @@ impl Flash for SimFlash {
         }
 
         for x in &mut self.data[offset .. offset + len] {
-            *x = 0xff;
+            *x = self.erased_val;
         }
 
         for x in &mut self.write_safe[offset .. offset + len] {
@@ -234,6 +238,10 @@ impl Flash for SimFlash {
     fn device_size(&self) -> usize {
         self.data.len()
     }
+
+    fn erased_val(&self) -> u8 {
+        self.erased_val
+    }
 }
 
 /// It is possible to iterate over the sectors in the device, each element returning this.
@@ -277,17 +285,19 @@ mod test {
 
     #[test]
     fn test_flash() {
-        // NXP-style, uniform sectors.
-        let mut f1 = SimFlash::new(vec![4096usize; 256], 1);
-        test_device(&mut f1);
+        for &erased_val in &[0, 0xff] {
+            // NXP-style, uniform sectors.
+            let mut f1 = SimFlash::new(vec![4096usize; 256], 1, erased_val);
+            test_device(&mut f1, erased_val);
 
-        // STM style, non-uniform sectors
-        let mut f2 = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 64 * 1024,
-                                128 * 1024, 128 * 1024, 128 * 1024], 1);
-        test_device(&mut f2);
+            // STM style, non-uniform sectors.
+            let mut f2 = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 64 * 1024,
+                                    128 * 1024, 128 * 1024, 128 * 1024], 1, erased_val);
+            test_device(&mut f2, erased_val);
+        }
     }
 
-    fn test_device(flash: &mut Flash) {
+    fn test_device(flash: &mut Flash, erased_val: u8) {
         let sectors: Vec<Sector> = flash.sector_iter().collect();
 
         flash.erase(0, sectors[0].size).unwrap();
@@ -296,14 +306,14 @@ mod test {
         assert!(flash.erase(0, sectors[0].size - 1).is_bounds());
 
         // Verify that write and erase do something.
-        flash.write(0, &[0]).unwrap();
-        let mut buf = [0; 4];
+        flash.write(0, &[0x55]).unwrap();
+        let mut buf = [0xAA; 4];
         flash.read(0, &mut buf).unwrap();
-        assert_eq!(buf, [0, 0xff, 0xff, 0xff]);
+        assert_eq!(buf, [0x55, erased_val, erased_val, erased_val]);
 
         flash.erase(0, sectors[0].size).unwrap();
         flash.read(0, &mut buf).unwrap();
-        assert_eq!(buf, [0xff; 4]);
+        assert_eq!(buf, [erased_val; 4]);
 
         // Program the first and last byte of each sector, verify that has been done, and then
         // erase to verify the erase boundaries.
@@ -321,7 +331,7 @@ mod test {
             flash.read(sector.base, &mut buf).unwrap();
             assert_eq!(buf.first(), Some(&byte));
             assert_eq!(buf.last(), Some(&byte));
-            assert!(buf[1..buf.len()-1].iter().all(|&x| x == 0xff));
+            assert!(buf[1..buf.len()-1].iter().all(|&x| x == erased_val));
         }
     }
 
