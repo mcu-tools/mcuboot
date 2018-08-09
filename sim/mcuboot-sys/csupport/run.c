@@ -127,12 +127,6 @@ int hal_flash_erase(uint8_t flash_id, uint32_t address,
     return sim_flash_erase(address, num_bytes);
 }
 
-uint8_t hal_flash_align(uint8_t flash_id)
-{
-    (void)flash_id;
-    return sim_flash_align;
-}
-
 void *os_malloc(size_t size)
 {
     // printf("os_malloc 0x%x bytes\n", size);
