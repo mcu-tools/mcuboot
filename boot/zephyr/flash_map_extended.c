@@ -68,3 +68,9 @@ int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
 
     return rc;
 }
+
+uint8_t flash_area_erased_val(const struct flash_area *fap)
+{
+    (void)fap;
+    return 0xff;
+}
