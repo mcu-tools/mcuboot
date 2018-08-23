@@ -22,6 +22,10 @@ from intelhex import IntelHex
 import hashlib
 import struct
 import os.path
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
 
 IMAGE_MAGIC = 0x96f3b83d
 IMAGE_HEADER_SIZE = 32
@@ -32,14 +36,19 @@ DEFAULT_MAX_SECTORS = 128
 # Image header flags.
 IMAGE_F = {
         'PIC':                   0x0000001,
-        'NON_BOOTABLE':          0x0000010, }
+        'NON_BOOTABLE':          0x0000010,
+        'ENCRYPTED':             0x0000004,
+}
 
 TLV_VALUES = {
         'KEYHASH': 0x01,
         'SHA256': 0x10,
         'RSA2048': 0x20,
         'ECDSA224': 0x21,
-        'ECDSA256': 0x22, }
+        'ECDSA256': 0x22,
+        'ENCRSA2048': 0x30,
+        'ENCKW128': 0x31,
+}
 
 TLV_INFO_SIZE = 4
 TLV_INFO_MAGIC = 0x6907
@@ -138,8 +147,8 @@ class Image():
                         len(self.payload), tsize, self.slot_size)
                 raise Exception(msg)
 
-    def sign(self, key):
-        self.add_header(key)
+    def create(self, key, enckey):
+        self.add_header(key, enckey)
 
         tlv = TLV(self.endian)
 
@@ -161,15 +170,34 @@ class Image():
             sig = key.sign(bytes(self.payload))
             tlv.add(key.sig_tlv(), sig)
 
+        if enckey is not None:
+            plainkey = os.urandom(16)
+            cipherkey = enckey._get_public().encrypt(
+                plainkey, padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None))
+            tlv.add('ENCRSA2048', cipherkey)
+
+            nonce = bytes([0] * 16)
+            cipher = Cipher(algorithms.AES(plainkey), modes.CTR(nonce),
+                            backend=default_backend())
+            encryptor = cipher.encryptor()
+            img = bytes(self.payload[self.header_size:])
+            self.payload[self.header_size:] = encryptor.update(img) + \
+                                              encryptor.finalize()
+
         self.payload += tlv.get()
 
-    def add_header(self, key):
+    def add_header(self, key, enckey):
         """Install the image header.
 
         The key is needed to know the type of signature, and
         approximate the size of the signature."""
 
         flags = 0
+        if enckey is not None:
+            flags |= IMAGE_F['ENCRYPTED']
 
         e = STRUCT_ENDIAN_DICT[self.endian]
         fmt = (e +
