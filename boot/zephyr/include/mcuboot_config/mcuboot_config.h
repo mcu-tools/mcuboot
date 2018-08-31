@@ -43,6 +43,11 @@
 #define MCUBOOT_HAVE_LOGGING 1
 #endif
 
+#ifdef CONFIG_BOOT_ENCRYPT_RSA
+#define MCUBOOT_ENC_IMAGES
+#define MCUBOOT_ENCRYPT_RSA
+#endif
+
 /*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.
