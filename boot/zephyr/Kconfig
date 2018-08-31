@@ -66,6 +66,14 @@ config BOOT_UPGRADE_ONLY
 	  swapping them.  This prevents the fallback recovery, but
 	  uses a much simpler code path.
 
+config BOOT_ENCRYPT_RSA
+	bool "Support for encrypted upgrade images"
+	default n
+	help
+	  If y, images in slot 1 can be encrypted and are decrypted
+	  on the fly when upgrading to slot 0, as well as encrypted
+	  back when swapping from slot 0 to slot 1.
+
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
 	default 128
