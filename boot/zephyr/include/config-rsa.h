@@ -48,14 +48,6 @@
 #define MBEDTLS_HAVE_ASM
 #endif
 
-#if defined(CONFIG_MBEDTLS_TEST)
-#define MBEDTLS_SELF_TEST
-#define MBEDTLS_DEBUG_C
-#else
-#define MBEDTLS_ENTROPY_C
-#define MBEDTLS_TEST_NULL_ENTROPY
-#endif
-
 #define MBEDTLS_RSA_C
 #define MBEDTLS_PKCS1_V21
 
