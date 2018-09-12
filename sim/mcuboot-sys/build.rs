@@ -40,6 +40,8 @@ fn main() {
 
         conf.file("mbedtls/library/rsa.c");
         conf.file("mbedtls/library/bignum.c");
+        conf.file("mbedtls/library/platform.c");
+        conf.file("mbedtls/library/platform_util.c");
         conf.file("mbedtls/library/asn1parse.c");
     } else if sig_ecdsa {
         conf.define("MCUBOOT_SIGN_EC256", None);

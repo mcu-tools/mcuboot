@@ -66,16 +66,19 @@ struct area_desc {
 
 static struct area_desc *flash_areas;
 
-void *(*mbedtls_calloc)(size_t n, size_t size);
-void (*mbedtls_free)(void *ptr);
+#ifdef MCUBOOT_SIGN_RSA
+int mbedtls_platform_set_calloc_free(void * (*calloc_func)(size_t, size_t),
+                                     void (*free_func)(void *));
+#endif
 
 int invoke_boot_go(struct area_desc *adesc)
 {
     int res;
     struct boot_rsp rsp;
 
-    mbedtls_calloc = calloc;
-    mbedtls_free = free;
+#ifdef MCUBOOT_SIGN_RSA
+    mbedtls_platform_set_calloc_free(calloc, free);
+#endif
 
     flash_areas = adesc;
     if (setjmp(boot_jmpbuf) == 0) {
