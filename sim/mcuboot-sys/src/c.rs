@@ -60,6 +60,28 @@ pub fn ecdsa256_sign(privkey: &[u8], hash: &[u8]) -> Result<[u8; 64], &'static s
     }
 }
 
+pub fn rsa_oaep_encrypt(pubkey: &[u8], seckey: &[u8]) -> Result<[u8; 256], &'static str> {
+    unsafe {
+        let mut encbuf: [u8; 256] = [0; 256];
+        if raw::rsa_oaep_encrypt_(pubkey.as_ptr(), pubkey.len() as u32,
+                                  seckey.as_ptr(), seckey.len() as u32,
+                                  encbuf.as_mut_ptr()) == 0 {
+            return Ok(encbuf);
+        }
+        return Err("Failed to encrypt buffer");
+    }
+}
+
+pub fn kw_encrypt(kek: &[u8], seckey: &[u8]) -> Result<[u8; 24], &'static str> {
+    unsafe {
+        let mut encbuf = [0u8; 24];
+        if raw::kw_encrypt_(kek.as_ptr(), seckey.as_ptr(), encbuf.as_mut_ptr()) == 0 {
+            return Ok(encbuf);
+        }
+        return Err("Failed to encrypt buffer");
+    }
+}
+
 mod raw {
     use area::CAreaDesc;
     use libc;
@@ -83,5 +105,12 @@ mod raw {
         pub fn ecdsa256_sign_(privkey: *const u8, hash: *const u8,
                               hash_len: libc::c_uint,
                               signature: *mut u8) -> libc::c_int;
+
+        pub fn rsa_oaep_encrypt_(pubkey: *const u8, pubkey_len: libc::c_uint,
+                                 seckey: *const u8, seckey_len: libc::c_uint,
+                                 encbuf: *mut u8) -> libc::c_int;
+
+        pub fn kw_encrypt_(kek: *const u8, seckey: *const u8,
+                           encbuf: *mut u8) -> libc::c_int;
     }
 }

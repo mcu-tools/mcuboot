@@ -10,6 +10,8 @@ sig-rsa = ["mcuboot-sys/sig-rsa"]
 sig-ecdsa = ["mcuboot-sys/sig-ecdsa"]
 overwrite-only = ["mcuboot-sys/overwrite-only"]
 validate-slot0 = ["mcuboot-sys/validate-slot0"]
+enc-rsa = ["mcuboot-sys/enc-rsa"]
+enc-kw = ["mcuboot-sys/enc-kw"]
 
 [build-dependencies]
 gcc = "0.3.54"
@@ -27,6 +29,8 @@ mcuboot-sys = { path = "mcuboot-sys" }
 ring = { version = "0.12.1", features = ["rsa_signing"] }
 untrusted = "0.5"
 pem = "0.5"
+aes-ctr = "0.1.0"
+base64 = "0.9.2"
 
 # The simulator runs very slowly without optimization.  A value of 1
 # compiles in about half the time, but runs about 5-6 times slower.  2

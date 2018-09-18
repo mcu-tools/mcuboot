@@ -13,6 +13,8 @@ fn main() {
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
     let validate_slot0 = env::var("CARGO_FEATURE_VALIDATE_SLOT0").is_ok();
+    let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
+    let enc_kw = env::var("CARGO_FEATURE_ENC_KW").is_ok();
 
     let mut conf = gcc::Build::new();
     conf.define("__BOOTSIM__", None);
@@ -71,6 +73,49 @@ fn main() {
     if overwrite_only {
         conf.define("MCUBOOT_OVERWRITE_ONLY", None);
         conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
+    }
+
+    if enc_rsa {
+        conf.define("MCUBOOT_ENCRYPT_RSA", None);
+        conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
+
+        conf.file("../../boot/bootutil/src/encrypted.c");
+        conf.file("csupport/keys.c");
+
+        conf.include("mbedtls/include");
+        conf.file("mbedtls/library/sha256.c");
+
+        conf.file("mbedtls/library/platform.c");
+        conf.file("mbedtls/library/platform_util.c");
+        conf.file("mbedtls/library/rsa.c");
+        conf.file("mbedtls/library/rsa_internal.c");
+        conf.file("mbedtls/library/md.c");
+        conf.file("mbedtls/library/md_wrap.c");
+        conf.file("mbedtls/library/aes.c");
+        conf.file("mbedtls/library/bignum.c");
+        conf.file("mbedtls/library/asn1parse.c");
+    }
+
+    if enc_kw {
+        conf.define("MCUBOOT_ENCRYPT_KW", None);
+        conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-kw.h>"));
+
+        conf.file("../../boot/bootutil/src/encrypted.c");
+        conf.file("csupport/keys.c");
+
+        conf.include("mbedtls/include");
+        conf.file("mbedtls/library/sha256.c");
+
+        conf.file("mbedtls/library/platform.c");
+        conf.file("mbedtls/library/platform_util.c");
+        conf.file("mbedtls/library/nist_kw.c");
+        conf.file("mbedtls/library/cipher.c");
+        conf.file("mbedtls/library/cipher_wrap.c");
+        conf.file("mbedtls/library/aes.c");
     }
 
     conf.file("../../boot/bootutil/src/image_validate.c");
