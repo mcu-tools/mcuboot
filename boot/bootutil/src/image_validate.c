@@ -32,7 +32,10 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-#ifdef MCUBOOT_SIGN_RSA
+#ifdef MCUBOOT_ENC_IMAGES
+#include "bootutil/enc_key.h"
+#endif
+#if defined(MCUBOOT_SIGN_RSA)
 #include "mbedtls/rsa.h"
 #endif
 #if defined(MCUBOOT_SIGN_EC) || defined(MCUBOOT_SIGN_EC256)
@@ -55,6 +58,10 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
     uint32_t size;
     uint32_t off;
     int rc;
+#ifdef MCUBOOT_ENC_IMAGES
+    uint32_t blk_off;
+    uint8_t idx;
+#endif
 
     bootutil_sha256_init(&sha256_ctx);
 
@@ -64,11 +71,21 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
         bootutil_sha256_update(&sha256_ctx, seed, seed_len);
     }
 
+#ifdef MCUBOOT_ENC_IMAGES
+    /* Encrypted images only exist in slot1 */
+    if (fap->fa_id == FLASH_AREA_IMAGE_1 &&
+            (hdr->ih_flags & IMAGE_F_ENCRYPTED) &&
+            !boot_enc_valid(fap)) {
+        return -1;
+    }
+#endif
+
     /*
      * Hash is computed over image header and image itself. No TLV is
      * included ATM.
      */
     size = hdr->ih_img_size + hdr->ih_hdr_size;
+    assert(tmp_buf_sz > hdr->ih_hdr_size);
     for (off = 0; off < size; off += blk_sz) {
         blk_sz = size - off;
         if (blk_sz > tmp_buf_sz) {
@@ -78,6 +95,20 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
         if (rc) {
             return rc;
         }
+#ifdef MCUBOOT_ENC_IMAGES
+        if (fap->fa_id == FLASH_AREA_IMAGE_1 && hdr->ih_flags & IMAGE_F_ENCRYPTED) {
+            /* FIXME: fails if header size is larger than blk_sz */
+            if (off < hdr->ih_hdr_size) {
+                idx = hdr->ih_hdr_size;
+                blk_off = 0;
+            } else {
+                idx = 0;
+                blk_off = (off - hdr->ih_hdr_size) & 0xf;
+            }
+            boot_encrypt(fap, (off + idx) - hdr->ih_hdr_size, blk_sz - idx,
+                    blk_off, &tmp_buf[idx]);
+        }
+#endif
         bootutil_sha256_update(&sha256_ctx, tmp_buf, blk_sz);
     }
     bootutil_sha256_finish(&sha256_ctx, hash_result);
@@ -154,8 +185,7 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
     uint8_t hash[32];
     int rc;
 
-    rc = bootutil_img_hash(hdr, fap, tmp_buf, tmp_buf_sz, hash,
-                           seed, seed_len);
+    rc = bootutil_img_hash(hdr, fap, tmp_buf, tmp_buf_sz, hash, seed, seed_len);
     if (rc) {
         return rc;
     }

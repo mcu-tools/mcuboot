@@ -27,6 +27,10 @@
 #include "bootutil/image.h"
 #include "mcuboot_config/mcuboot_config.h"
 
+#ifdef MCUBOOT_ENC_IMAGES
+#include "bootutil/enc_key.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -57,6 +61,9 @@ struct boot_status {
     uint8_t state;        /* Which part of the swapping process are we at */
     uint8_t use_scratch;  /* Are status bytes ever written to scratch? */
     uint32_t swap_size;   /* Total size of swapped image */
+#ifdef MCUBOOT_ENC_IMAGES
+    uint8_t enckey[2][BOOT_ENC_KEY_SIZE];
+#endif
 };
 
 #define BOOT_MAGIC_GOOD     1
@@ -179,6 +186,11 @@ int boot_write_copy_done(const struct flash_area *fap);
 int boot_write_image_ok(const struct flash_area *fap);
 int boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size);
 int boot_read_swap_size(uint32_t *swap_size);
+#ifdef MCUBOOT_ENC_IMAGES
+int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
+                       const uint8_t *enckey);
+int boot_read_enc_key(uint8_t slot, uint8_t *enckey);
+#endif
 
 /*
  * Accessors for the contents of struct boot_loader_state.
