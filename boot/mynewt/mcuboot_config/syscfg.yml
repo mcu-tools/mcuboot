@@ -31,6 +31,12 @@ syscfg.defs:
     BOOTUTIL_SIGN_EC256:
         description: 'Images are signed using ECDSA NIST P-256.'
         value: 0
+    BOOTUTIL_ENCRYPT_RSA:
+        description: 'Support for encrypted images using RSA-2048-OAEP.'
+        value: 0
+    BOOTUTIL_ENCRYPT_KW:
+        description: 'Support for encrypted images using AES-128-Keywrap.'
+        value: 0
     BOOTUTIL_USE_MBED_TLS:
         description: 'Use mbed TLS for crypto operations.'
         value: 1
