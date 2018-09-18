@@ -33,6 +33,9 @@
 #include "bootutil/bootutil.h"
 #include "bootutil_priv.h"
 #include "bootutil/bootutil_log.h"
+#ifdef MCUBOOT_ENC_IMAGES
+#include "bootutil/enc_key.h"
+#endif
 
 int boot_current_slot;
 
@@ -122,15 +125,26 @@ boot_slots_trailer_sz(uint8_t min_write_sz)
 {
     return /* state for all sectors */
            BOOT_STATUS_MAX_ENTRIES * BOOT_STATUS_STATE_COUNT * min_write_sz +
-           BOOT_MAX_ALIGN * 3 /* copy_done + image_ok + swap_size */        +
+#ifdef MCUBOOT_ENC_IMAGES
+           /* encryption keys */
+           BOOT_ENC_KEY_SIZE * 2                  +
+#endif
+           /* copy_done + image_ok + swap_size */
+           BOOT_MAX_ALIGN * 3                     +
            BOOT_MAGIC_SZ;
 }
 
 static uint32_t
 boot_scratch_trailer_sz(uint8_t min_write_sz)
 {
-    return BOOT_STATUS_STATE_COUNT * min_write_sz +  /* state for one sector */
-           BOOT_MAX_ALIGN * 2                     +  /* image_ok + swap_size */
+           /* state for one sector */
+    return BOOT_STATUS_STATE_COUNT * min_write_sz +
+#ifdef MCUBOOT_ENC_IMAGES
+           /* encryption keys */
+           BOOT_ENC_KEY_SIZE * 2                  +
+#endif
+           /* image_ok + swap_size */
+           BOOT_MAX_ALIGN * 2                     +
            BOOT_MAGIC_SZ;
 }
 
@@ -201,6 +215,20 @@ boot_swap_size_off(const struct flash_area *fap)
 
     return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 3;
 }
+
+#ifdef MCUBOOT_ENC_IMAGES
+static uint32_t
+boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
+{
+    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
+        return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 2 -
+                              ((slot + 1) * BOOT_ENC_KEY_SIZE);
+    }
+
+    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 3 -
+                          ((slot + 1) * BOOT_ENC_KEY_SIZE);
+}
+#endif
 
 int
 boot_read_swap_state(const struct flash_area *fap,
@@ -337,6 +365,60 @@ out:
     return rc;
 }
 
+#ifdef MCUBOOT_ENC_IMAGES
+int
+boot_read_enc_key(uint8_t slot, uint8_t *enckey)
+{
+    uint32_t magic[BOOT_MAGIC_SZ];
+    uint32_t off;
+    const struct flash_area *fap;
+    int rc;
+
+    rc = flash_area_open(FLASH_AREA_IMAGE_0, &fap);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    off = boot_magic_off(fap);
+    rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto out;
+    }
+
+    if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) != 0) {
+        /*
+         * If Slot 0 's magic is not valid, try scratch...
+         */
+
+        flash_area_close(fap);
+
+        rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap);
+        if (rc != 0) {
+            return BOOT_EFLASH;
+        }
+
+        off = boot_magic_off(fap);
+        rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
+        if (rc != 0) {
+            rc = BOOT_EFLASH;
+            goto out;
+        }
+
+        assert(memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0);
+    }
+
+    off = boot_enc_key_off(fap, slot);
+    rc = flash_area_read(fap, off, enckey, BOOT_ENC_KEY_SIZE);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+    }
+
+out:
+    flash_area_close(fap);
+    return rc;
+}
+#endif
 
 int
 boot_write_magic(const struct flash_area *fap)
@@ -426,6 +508,23 @@ boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
 
     return 0;
 }
+
+#ifdef MCUBOOT_ENC_IMAGES
+int
+boot_write_enc_key(const struct flash_area *fap, uint8_t slot, const uint8_t *enckey)
+{
+    uint32_t off;
+    int rc;
+
+    off = boot_enc_key_off(fap, slot);
+    rc = flash_area_write(fap, off, enckey, BOOT_ENC_KEY_SIZE);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    return 0;
+}
+#endif
 
 int
 boot_swap_type(void)
