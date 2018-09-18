@@ -17,6 +17,15 @@
 #include "../../../ext/tinycrypt/lib/include/tinycrypt/ecc_dsa.h"
 #endif
 
+#ifdef MCUBOOT_ENCRYPT_RSA
+#include "mbedtls/rsa.h"
+#include "mbedtls/asn1.h"
+#endif
+
+#ifdef MCUBOOT_ENCRYPT_KW
+#include "mbedtls/nist_kw.h"
+#endif
+
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
 #include <bootutil/bootutil_log.h>
 
@@ -41,6 +50,155 @@ int ecdsa256_sign_(const uint8_t *privkey, const uint8_t *hash,
     (void)hash;
     (void)hash_len;
     (void)signature;
+    return 0;
+#endif
+}
+
+#ifdef MCUBOOT_ENCRYPT_RSA
+static int
+parse_pubkey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
+{
+    int rc;
+    size_t len;
+
+    if ((rc = mbedtls_asn1_get_tag(p, end, &len,
+                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+        return -1;
+    }
+
+    if (*p + len != end) {
+        return -2;
+    }
+
+    if ((rc = mbedtls_asn1_get_tag(p, end, &len,
+                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+        return -3;
+    }
+
+    *p += len;
+
+    if ((rc = mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_BIT_STRING)) != 0) {
+        return -4;
+    }
+
+    if (**p != MBEDTLS_ASN1_PRIMITIVE) {
+        return -5;
+    }
+
+    *p += 1;
+
+    if ((rc = mbedtls_asn1_get_tag(p, end, &len,
+                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+        return -6;
+    }
+
+    if (mbedtls_asn1_get_mpi(p, end, &ctx->N) != 0) {
+        return -7;
+    }
+
+    if (mbedtls_asn1_get_mpi(p, end, &ctx->E) != 0) {
+        return -8;
+    }
+
+    ctx->len = mbedtls_mpi_size(&ctx->N);
+
+    if (*p != end) {
+        return -9;
+    }
+
+    if (mbedtls_rsa_check_pubkey(ctx) != 0) {
+        return -10;
+    }
+
+    return 0;
+}
+
+static int
+fake_rng(void *p_rng, unsigned char *output, size_t len)
+{
+    size_t i;
+
+    (void)p_rng;
+    for (i = 0; i < len; i++) {
+        output[i] = (char)i;
+    }
+
+    return 0;
+}
+#endif
+
+int mbedtls_platform_set_calloc_free(void * (*calloc_func)(size_t, size_t),
+                                     void (*free_func)(void *));
+
+int rsa_oaep_encrypt_(const uint8_t *pubkey, unsigned pubkey_len,
+                      const uint8_t *seckey, unsigned seckey_len,
+                      uint8_t *encbuf)
+{
+#ifdef MCUBOOT_ENCRYPT_RSA
+    mbedtls_rsa_context ctx;
+    uint8_t *cp;
+    uint8_t *cpend;
+    int rc;
+
+    mbedtls_platform_set_calloc_free(calloc, free);
+
+    mbedtls_rsa_init(&ctx, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
+
+    cp = (uint8_t *)pubkey;
+    cpend = cp + pubkey_len;
+
+    rc = parse_pubkey(&ctx, &cp, cpend);
+    if (rc) {
+        goto done;
+    }
+
+    rc = mbedtls_rsa_rsaes_oaep_encrypt(&ctx, fake_rng, NULL, MBEDTLS_RSA_PUBLIC,
+            NULL, 0, seckey_len, seckey, encbuf);
+    if (rc) {
+        goto done;
+    }
+
+done:
+    mbedtls_rsa_free(&ctx);
+    return rc;
+
+#else
+    (void)pubkey;
+    (void)pubkey_len;
+    (void)seckey;
+    (void)seckey_len;
+    (void)encbuf;
+    return 0;
+#endif
+}
+
+int kw_encrypt_(const uint8_t *kek, const uint8_t *seckey, uint8_t *encbuf)
+{
+#ifdef MCUBOOT_ENCRYPT_KW
+    mbedtls_nist_kw_context kw;
+    size_t olen;
+    int rc;
+
+    mbedtls_platform_set_calloc_free(calloc, free);
+
+    mbedtls_nist_kw_init(&kw);
+
+    rc = mbedtls_nist_kw_setkey(&kw, MBEDTLS_CIPHER_ID_AES, kek, 128, 1);
+    if (rc) {
+        goto done;
+    }
+
+    rc = mbedtls_nist_kw_wrap(&kw, MBEDTLS_KW_MODE_KW, seckey, 16, encbuf,
+            &olen, 24);
+
+done:
+    mbedtls_nist_kw_free(&kw);
+    return rc;
+
+#else
+    (void)kek;
+    (void)seckey;
+    (void)encbuf;
     return 0;
 #endif
 }
@@ -73,17 +231,12 @@ struct area_desc {
 
 static struct area_desc *flash_areas;
 
-#ifdef MCUBOOT_SIGN_RSA
-int mbedtls_platform_set_calloc_free(void * (*calloc_func)(size_t, size_t),
-                                     void (*free_func)(void *));
-#endif
-
 int invoke_boot_go(struct area_desc *adesc)
 {
     int res;
     struct boot_rsp rsp;
 
-#ifdef MCUBOOT_SIGN_RSA
+#if defined(MCUBOOT_SIGN_RSA)
     mbedtls_platform_set_calloc_free(calloc, free);
 #endif
 
