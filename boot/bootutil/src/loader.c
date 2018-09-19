@@ -404,23 +404,21 @@ boot_read_status_bytes(const struct flash_area *fap, struct boot_status *bs)
     int invalid;
     int rc;
     int i;
-    uint8_t erased_val;
 
     off = boot_status_off(fap);
     max_entries = boot_status_entries(fap);
-    erased_val = flash_area_erased_val(fap);
 
     found = 0;
     found_idx = 0;
     invalid = 0;
     for (i = 0; i < max_entries; i++) {
-        rc = flash_area_read(fap, off + i * BOOT_WRITE_SZ(&boot_data),
-                             &status, 1);
-        if (rc != 0) {
+        rc = flash_area_read_is_empty(fap, off + i * BOOT_WRITE_SZ(&boot_data),
+                &status, 1);
+        if (rc < 0) {
             return BOOT_EFLASH;
         }
 
-        if (status == erased_val) {
+        if (rc == 1) {
             if (found && !found_idx) {
                 found_idx = i;
             }
