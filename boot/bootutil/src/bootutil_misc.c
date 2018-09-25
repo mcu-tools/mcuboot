@@ -43,6 +43,9 @@ const uint32_t boot_img_magic[] = {
     0x8079b62c,
 };
 
+#define BOOT_MAGIC_ARR_SZ \
+    (sizeof boot_img_magic / sizeof boot_img_magic[0])
+
 const uint32_t BOOT_MAGIC_SZ = sizeof boot_img_magic;
 const uint32_t BOOT_MAX_ALIGN = MAX_FLASH_ALIGN;
 
@@ -220,7 +223,7 @@ int
 boot_read_swap_state(const struct flash_area *fap,
                      struct boot_swap_state *state)
 {
-    uint32_t magic[BOOT_MAGIC_SZ];
+    uint32_t magic[BOOT_MAGIC_ARR_SZ];
     uint32_t off;
     int rc;
 
@@ -280,7 +283,7 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
 int
 boot_read_swap_size(uint32_t *swap_size)
 {
-    uint32_t magic[BOOT_MAGIC_SZ];
+    uint32_t magic[BOOT_MAGIC_ARR_SZ];
     uint32_t off;
     const struct flash_area *fap;
     int rc;
