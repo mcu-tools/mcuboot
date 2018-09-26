@@ -539,7 +539,6 @@ boot_set_confirmed(void)
 {
     const struct flash_area *fap;
     struct boot_swap_state state_slot0;
-    uint8_t erased_val;
     int rc;
 
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_0, &state_slot0);
@@ -567,8 +566,7 @@ boot_set_confirmed(void)
         goto done;
     }
 
-    erased_val = flash_area_erased_val(fap);
-    if (state_slot0.copy_done == erased_val) {
+    if (state_slot0.copy_done == BOOT_FLAG_UNSET) {
         /* Swap never completed.  This is unexpected. */
         rc = BOOT_EBADVECT;
         goto done;
