@@ -571,7 +571,7 @@ boot_set_confirmed(void)
         goto done;
     }
 
-    if (state_slot0.image_ok != erased_val) {
+    if (state_slot0.image_ok != BOOT_FLAG_UNSET) {
         /* Already confirmed. */
         goto done;
     }
