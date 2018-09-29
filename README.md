@@ -13,8 +13,8 @@ define a common infrastructure for the bootloader, system flash layout on
 microcontroller systems, and to provide a secure bootloader that enables
 easy software upgrade.
 
-MCUboot is operating system and hardware independent, and relies on
-hardware porting layers from the operating system it works with.  Currently
+MCUboot is operating system and hardware independent and relies on
+hardware porting layers from the operating system it works with.  Currently, 
 mcuboot works with both the Apache Mynewt, and Zephyr operating systems, but
 more ports are planned in the future. RIOT is currently supported as a boot
 target with a complete port planned.
@@ -28,16 +28,21 @@ Instructions for different operating systems can be found here:
 
 ## Roadmap
 
-The issues being planned and worked on are tracked on Jira. To participate
-please visit:
+The issues being planned and worked on are tracked using GitHub issues. To
+participate please visit:
 
-https://runtimeco.atlassian.net/projects/MCUB/summary
+[MCUBoot GitHub Issues](https://github.com/runtimeco/mcuboot/issues)
+
+~~Issues were previously tracked on [MCUboot JIRA](https://runtimeco.atlassian.net/projects/MCUB/summary)
+, but it is now deprecated.~~
 
 ## Browsing
 
-Information and documentation on the bootloader is stored within the source, and on confluence:
+Information and documentation on the bootloader are stored within the source.
 
-https://runtimeco.atlassian.net/wiki/discover/all-updates
+~~It was previously also documented on confluence:
+[MCUBoot Confluence](https://runtimeco.atlassian.net/wiki/discover/all-updates)
+however, it is now deprecated and not currently maintained~~
 
 For more information in the source, here are some pointers:
 
