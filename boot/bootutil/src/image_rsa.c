@@ -27,6 +27,7 @@
 
 #include "mbedtls/rsa.h"
 #include "mbedtls/asn1.h"
+#include "mbedtls/version.h"
 
 #include "bootutil_priv.h"
 
@@ -89,8 +90,17 @@ bootutil_parse_rsakey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
         return -4;
     }
 
-    if ((rc = mbedtls_rsa_check_pubkey(ctx)) != 0) {
+    /* The mbedtls version is more than 2.6.1 */
+#if MBEDTLS_VERSION_NUMBER > 0x02060100
+    rc = mbedtls_rsa_import(ctx, &ctx->N, NULL, NULL, NULL, &ctx->E);
+    if (rc != 0) {
         return -5;
+    }
+#endif
+
+    rc = mbedtls_rsa_check_pubkey(ctx);
+    if (rc != 0) {
+        return -6;
     }
 
     ctx->len = mbedtls_mpi_size(&ctx->N);
