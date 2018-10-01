@@ -59,7 +59,7 @@ and adds a header and trailer that the bootloader is expecting:
       --align [1|2|4|8]          [required]
       -v, --version TEXT         [required]
       -H, --header-size INTEGER  [required]
-      --pad-header               Add `--header-size` zeroed bytes at the beginning
+      --pad-header               Add --header-size zeroed bytes at the beginning
                                  of the image
       -S, --slot-size INTEGER    Size of the slot where the image will be written
                                  [required]
@@ -68,6 +68,8 @@ and adds a header and trailer that the bootloader is expecting:
       -M, --max-sectors INTEGER  When padding allow for this amount of sectors
                                  (defaults to 128)
       --overwrite-only           Use overwrite-only instead of swap upgrades
+      -e, --endian [little|big]  Select little or big endian
+      -E, --encrypt filename     Encrypt image using the provided public key
       -h, --help                 Show this message and exit.
 
 The main arguments given are the key file generated above, a version
@@ -90,6 +92,6 @@ does not overflow into the swap status area (metadata). If swap upgrades are
 not being used, `--overwrite-only` can be passed to avoid adding the swap
 status area size when calculating overflow.
 
-The optional --pad argument will place a trailer on the image that
+The optional `--pad` argument will place a trailer on the image that
 indicates that the image should be considered an upgrade.  Writing
 this image in slot 1 will then cause the bootloader to upgrade to it.

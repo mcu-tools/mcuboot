@@ -685,3 +685,6 @@ TLV.
 
 For information on embedding public keys in the boot loader, as well as
 producing signed images, see: [signed_images](signed_images.md).
+
+If you want to enable and use encrypted images, see:
+[encrypted_images](encrypted_images.md).
