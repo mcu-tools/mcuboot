@@ -83,7 +83,7 @@ int flash_area_read_is_empty(const struct flash_area *fa, uint32_t off,
     uint8_t *u8dst;
     int rc;
 
-    rc = hal_flash_read(fa->fa_device_id, fa->fa_off + off, dst, len);
+    rc = flash_area_read(fa, off, dst, len);
     if (rc) {
         return -1;
     }
