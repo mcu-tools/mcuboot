@@ -47,10 +47,10 @@ for sha in $commits; do
   done
 
   if [[ ${found_author} == false ]]; then
-    echo -e "Missing \"Signed-off-by\" for \"${author}\" in commit ${sha}"
+    echo -e "Missing \"${author}\" in commit ${sha}"
   fi
   if [[ ${found_committer} == false ]]; then
-    echo -e "Missing \"Signed-off-by\" for \"${commiter}\" in commit ${sha}"
+    echo -e "Missing \"${commiter}\" in commit ${sha}"
   fi
   if [[ ${found_author} == false || ${found_committer} == false ]]; then
     exit 1
