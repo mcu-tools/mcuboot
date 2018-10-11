@@ -46,8 +46,13 @@ for sha in $commits; do
     [[ ${found_author} == true && ${found_committer} == true ]] && break
   done
 
+  if [[ ${found_author} == false ]]; then
+    echo -e "Missing \"Signed-off-by\" for \"${author}\" in commit ${sha}"
+  fi
+  if [[ ${found_committer} == false ]]; then
+    echo -e "Missing \"Signed-off-by\" for \"${commiter}\" in commit ${sha}"
+  fi
   if [[ ${found_author} == false || ${found_committer} == false ]]; then
-    echo -e "One or more \"Signed-off-by\" lines missing in commit ${sha}"
     exit 1
   fi
 
