@@ -2,17 +2,48 @@
 
 language: rust
 
+cache: cargo
+
+matrix:
+  include:
+    # Runs each value defined in $SINGLE_FEATURES by itself in the order
+    # the were defined.
+    - os: linux
+      env: SINGLE_FEATURES="sig-ecdsa enc-kw"
+    - os: linux
+      env: SINGLE_FEATURES="none sig-rsa overwrite-only validate-slot0"
+    - os: linux
+      env: SINGLE_FEATURES="enc-rsa"
+
+    # Values defined in $MULTI_FEATURES consist of any number of features
+    # to be enabled at the same time. The list of multi-values should be
+    # separated by ',' and each list of values is run sequentially in the
+    # defined order.
+    - os: linux
+      env: MULTI_FEATURES="sig-rsa overwrite-only,sig-ecdsa overwrite-only"
+    - os: linux
+      env: MULTI_FEATURES="sig-rsa validate-slot0,sig-ecdsa validate-slot0"
+
+    # FIXME: this test actually fails and must be fixed
+    #- os: linux
+    #  env: MULTI_FEATURES="sig-rsa validate-slot0 overwrite-only"
+
+before_install:
+  - |
+    if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
+      ./scripts/check-signed-off-by.sh
+      if [ $? -ne 0 ]; then
+        exit 1
+      fi
+    fi
+
+install:
+  - pushd sim
+  - cargo fetch
+  - popd
+
 script:
-  - set -e
-  - if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then ./scripts/check-signed-off-by.sh; fi
-  - cd sim
-  - cargo test
-  - cargo test --features sig-rsa
-  - cargo test --features sig-ecdsa
-  - cargo test --features overwrite-only
-  - cargo test --features validate-slot0
-  - cargo test --features enc-rsa
-  - cargo test --features enc-kw
+  - ./scripts/run_tests.sh
 
 notifications:
   slack:
