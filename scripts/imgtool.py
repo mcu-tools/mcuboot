@@ -141,8 +141,7 @@ def sign(key, align, version, header_size, pad_header, slot_size, pad,
                            pad=pad, align=int(align), slot_size=slot_size,
                            max_sectors=max_sectors,
                            overwrite_only=overwrite_only,
-                           endian=endian,
-                           encrypt=encrypt)
+                           endian=endian)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
     if enckey:
