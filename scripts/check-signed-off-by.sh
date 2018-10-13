@@ -50,7 +50,7 @@ for sha in $commits; do
     echo -e "Missing \"${author}\" in commit ${sha}"
   fi
   if [[ ${found_committer} == false ]]; then
-    echo -e "Missing \"${commiter}\" in commit ${sha}"
+    echo -e "Missing \"${committer}\" in commit ${sha}"
   fi
   if [[ ${found_author} == false || ${found_committer} == false ]]; then
     exit 1
