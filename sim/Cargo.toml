@@ -13,9 +13,6 @@ validate-slot0 = ["mcuboot-sys/validate-slot0"]
 enc-rsa = ["mcuboot-sys/enc-rsa"]
 enc-kw = ["mcuboot-sys/enc-kw"]
 
-[build-dependencies]
-gcc = "0.3.54"
-
 [dependencies]
 libc = "0.2.0"
 rand = "0.3.0"

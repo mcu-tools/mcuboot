@@ -1,6 +1,6 @@
 // Build mcuboot as a library, based on the requested features.
 
-extern crate gcc;
+extern crate cc;
 
 use std::env;
 use std::fs;
@@ -16,7 +16,7 @@ fn main() {
     let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
     let enc_kw = env::var("CARGO_FEATURE_ENC_KW").is_ok();
 
-    let mut conf = gcc::Build::new();
+    let mut conf = cc::Build::new();
     conf.define("__BOOTSIM__", None);
     conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
     conf.define("MCUBOOT_HAVE_ASSERT_H", None);
