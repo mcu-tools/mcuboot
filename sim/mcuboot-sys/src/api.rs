@@ -33,20 +33,20 @@ macro_rules! get_flash {
 // This isn't meant to call directly, but by a wrapper.
 
 #[no_mangle]
-pub extern fn sim_flash_erase(offset: u32, size: u32) -> libc::c_int {
+pub extern fn sim_flash_erase(_id: u8, offset: u32, size: u32) -> libc::c_int {
     let dev = unsafe { get_flash!() };
     map_err(dev.erase(offset as usize, size as usize))
 }
 
 #[no_mangle]
-pub extern fn sim_flash_read(offset: u32, dest: *mut u8, size: u32) -> libc::c_int {
+pub extern fn sim_flash_read(_id: u8, offset: u32, dest: *mut u8, size: u32) -> libc::c_int {
     let dev = unsafe { get_flash!() };
     let mut buf: &mut[u8] = unsafe { slice::from_raw_parts_mut(dest, size as usize) };
     map_err(dev.read(offset as usize, &mut buf))
 }
 
 #[no_mangle]
-pub extern fn sim_flash_write(offset: u32, src: *const u8, size: u32) -> libc::c_int {
+pub extern fn sim_flash_write(_id: u8, offset: u32, src: *const u8, size: u32) -> libc::c_int {
     let dev = unsafe { get_flash!() };
     let buf: &[u8] = unsafe { slice::from_raw_parts(src, size as usize) };
     map_err(dev.write(offset as usize, &buf))
