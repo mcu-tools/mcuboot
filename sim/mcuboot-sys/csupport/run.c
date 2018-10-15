@@ -29,9 +29,11 @@
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
 #include <bootutil/bootutil_log.h>
 
-extern int sim_flash_erase(uint32_t offset, uint32_t size);
-extern int sim_flash_read(uint32_t offset, uint8_t *dest, uint32_t size);
-extern int sim_flash_write(uint32_t offset, const uint8_t *src, uint32_t size);
+extern int sim_flash_erase(uint8_t flash_id, uint32_t offset, uint32_t size);
+extern int sim_flash_read(uint8_t flash_id, uint32_t offset, uint8_t *dest,
+        uint32_t size);
+extern int sim_flash_write(uint8_t flash_id, uint32_t offset, const uint8_t *src,
+        uint32_t size);
 
 static jmp_buf boot_jmpbuf;
 int flash_counter;
@@ -252,41 +254,6 @@ int invoke_boot_go(struct area_desc *adesc)
     }
 }
 
-int hal_flash_read(uint8_t flash_id, uint32_t address, void *dst,
-                   uint32_t num_bytes)
-{
-    (void)flash_id;
-    // printf("hal_flash_read: %d, 0x%08x (0x%x)\n",
-    //        flash_id, address, num_bytes);
-    return sim_flash_read(address, dst, num_bytes);
-}
-
-int hal_flash_write(uint8_t flash_id, uint32_t address,
-                    const void *src, int32_t num_bytes)
-{
-    (void)flash_id;
-    // printf("hal_flash_write: 0x%08x (0x%x)\n", address, num_bytes);
-    // fflush(stdout);
-    if (--flash_counter == 0) {
-        jumped++;
-        longjmp(boot_jmpbuf, 1);
-    }
-    return sim_flash_write(address, src, num_bytes);
-}
-
-int hal_flash_erase(uint8_t flash_id, uint32_t address,
-                    uint32_t num_bytes)
-{
-    (void)flash_id;
-    // printf("hal_flash_erase: 0x%08x, (0x%x)\n", address, num_bytes);
-    // fflush(stdout);
-    if (--flash_counter == 0) {
-        jumped++;
-        longjmp(boot_jmpbuf, 1);
-    }
-    return sim_flash_erase(address, num_bytes);
-}
-
 void *os_malloc(size_t size)
 {
     // printf("os_malloc 0x%x bytes\n", size);
@@ -329,9 +296,7 @@ int flash_area_read(const struct flash_area *area, uint32_t off, void *dst,
 {
     BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x",
                  __func__, area->fa_id, off, len);
-    return hal_flash_read(area->fa_id,
-                          area->fa_off + off,
-                          dst, len);
+    return sim_flash_read(area->fa_device_id, area->fa_off + off, dst, len);
 }
 
 int flash_area_write(const struct flash_area *area, uint32_t off, const void *src,
@@ -339,18 +304,22 @@ int flash_area_write(const struct flash_area *area, uint32_t off, const void *sr
 {
     BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
                  area->fa_id, off, len);
-    return hal_flash_write(area->fa_id,
-                           area->fa_off + off,
-                           src, len);
+    if (--flash_counter == 0) {
+        jumped++;
+        longjmp(boot_jmpbuf, 1);
+    }
+    return sim_flash_write(area->fa_device_id, area->fa_off + off, src, len);
 }
 
 int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
 {
     BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
                  area->fa_id, off, len);
-    return hal_flash_erase(area->fa_id,
-                           area->fa_off + off,
-                           len);
+    if (--flash_counter == 0) {
+        jumped++;
+        longjmp(boot_jmpbuf, 1);
+    }
+    return sim_flash_erase(area->fa_device_id, area->fa_off + off, len);
 }
 
 int flash_area_read_is_empty(const struct flash_area *area, uint32_t off,
@@ -362,7 +331,7 @@ int flash_area_read_is_empty(const struct flash_area *area, uint32_t off,
 
     BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__, area->fa_id, off, len);
 
-    rc = hal_flash_read(area->fa_device_id, area->fa_off + off, dst, len);
+    rc = sim_flash_read(area->fa_device_id, area->fa_off + off, dst, len);
     if (rc) {
         return -1;
     }
