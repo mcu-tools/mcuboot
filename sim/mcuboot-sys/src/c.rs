@@ -14,14 +14,14 @@ lazy_static! {
 
 /// Invoke the bootloader on this flash device.
 pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, counter: Option<&mut i32>,
-               align: u8, catch_asserts: bool) -> (i32, u8) {
+               catch_asserts: bool) -> (i32, u8) {
     let _lock = BOOT_LOCK.lock().unwrap();
 
     unsafe {
         api::set_flash(flash);
         raw::c_catch_asserts = if catch_asserts { 1 } else { 0 };
         raw::c_asserts = 0u8;
-        raw::sim_flash_align = align;
+        raw::sim_flash_align = flash.align() as u8;
         raw::sim_flash_erased_val = flash.erased_val();
         raw::flash_counter = match counter {
             None => 0,

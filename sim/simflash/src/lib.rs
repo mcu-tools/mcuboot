@@ -46,6 +46,7 @@ pub trait Flash {
     fn sector_iter(&self) -> SectorIter;
     fn device_size(&self) -> usize;
 
+    fn align(&self) -> usize;
     fn erased_val(&self) -> u8;
 }
 
@@ -237,6 +238,10 @@ impl Flash for SimFlash {
 
     fn device_size(&self) -> usize {
         self.data.len()
+    }
+
+    fn align(&self) -> usize {
+        self.align
     }
 
     fn erased_val(&self) -> u8 {
