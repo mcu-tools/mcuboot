@@ -5,12 +5,31 @@ use libc;
 use log::LogLevel;
 use std::mem;
 use std::slice;
+use std::collections::HashMap;
+use std::sync::Mutex;
 
 // The current active flash device.  The 'static is a lie, and we manage the lifetime ourselves.
 static mut FLASH: Option<*mut Flash> = None;
 
+struct FlashParams {
+    align: u8,
+    erased_val: u8,
+}
+
+lazy_static! {
+    static ref FLASH_PARAMS: Mutex<HashMap<u8, FlashParams>> = {
+        Mutex::new(HashMap::new())
+    };
+}
+
 // Set the flash device to be used by the simulation.  The pointer is unsafely stashed away.
-pub unsafe fn set_flash(dev: &mut Flash) {
+pub unsafe fn set_flash(dev_id: u8, dev: &mut Flash) {
+    let mut flash_params = FLASH_PARAMS.lock().unwrap();
+    flash_params.insert(dev_id, FlashParams {
+        align: dev.align() as u8,
+        erased_val: dev.erased_val(),
+    });
+
     let dev: &'static mut Flash = mem::transmute(dev);
     FLASH = Some(dev as *mut Flash);
 }
@@ -50,6 +69,20 @@ pub extern fn sim_flash_write(_id: u8, offset: u32, src: *const u8, size: u32) -
     let dev = unsafe { get_flash!() };
     let buf: &[u8] = unsafe { slice::from_raw_parts(src, size as usize) };
     map_err(dev.write(offset as usize, &buf))
+}
+
+#[no_mangle]
+pub extern fn sim_flash_align(id: u8) -> u8 {
+    let flash_params = FLASH_PARAMS.lock().unwrap();
+    let params = flash_params.get(&id).unwrap();
+    params.align
+}
+
+#[no_mangle]
+pub extern fn sim_flash_erased_val(id: u8) -> u8 {
+    let flash_params = FLASH_PARAMS.lock().unwrap();
+    let params = flash_params.get(&id).unwrap();
+    params.erased_val
 }
 
 fn map_err(err: Result<()>) -> libc::c_int {

@@ -34,6 +34,8 @@ extern int sim_flash_read(uint8_t flash_id, uint32_t offset, uint8_t *dest,
         uint32_t size);
 extern int sim_flash_write(uint8_t flash_id, uint32_t offset, const uint8_t *src,
         uint32_t size);
+extern uint8_t sim_flash_align(uint8_t flash_id);
+extern uint8_t sim_flash_erased_val(uint8_t flash_id);
 
 static jmp_buf boot_jmpbuf;
 int flash_counter;
@@ -205,18 +207,14 @@ done:
 #endif
 }
 
-uint8_t sim_flash_align = 1;
 uint8_t flash_area_align(const struct flash_area *area)
 {
-    (void)area;
-    return sim_flash_align;
+    return sim_flash_align(area->fa_device_id);
 }
 
-uint8_t sim_flash_erased_val = 0xff;
 uint8_t flash_area_erased_val(const struct flash_area *area)
 {
-    (void)area;
-    return sim_flash_erased_val;
+    return sim_flash_erased_val(area->fa_device_id);
 }
 
 struct area {
@@ -337,7 +335,7 @@ int flash_area_read_is_empty(const struct flash_area *area, uint32_t off,
     }
 
     for (i = 0, u8dst = (uint8_t *)dst; i < len; i++) {
-        if (u8dst[i] != sim_flash_erased_val) {
+        if (u8dst[i] != sim_flash_erased_val(area->fa_device_id)) {
             return 0;
         }
     }

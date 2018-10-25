@@ -54,7 +54,7 @@ impl AreaDesc {
 
             area.push(FlashArea {
                 flash_id: id,
-                device_id: 42,
+                device_id: 0,
                 pad16: 0,
                 off: sector.base as u32,
                 size: sector.size as u32,
@@ -71,7 +71,7 @@ impl AreaDesc {
         self.areas.push(area);
         self.whole.push(FlashArea {
             flash_id: id,
-            device_id: 42,
+            device_id: 0,
             pad16: 0,
             off: orig_base as u32,
             size: orig_len as u32,
@@ -85,7 +85,7 @@ impl AreaDesc {
     pub fn add_simple_image(&mut self, base: usize, len: usize, id: FlashId) {
         let area = vec![FlashArea {
             flash_id: id,
-            device_id: 42,
+            device_id: 0,
             pad16: 0,
             off: base as u32,
             size: len as u32,
@@ -94,7 +94,7 @@ impl AreaDesc {
         self.areas.push(area);
         self.whole.push(FlashArea {
             flash_id: id,
-            device_id: 42,
+            device_id: 0,
             pad16: 0,
             off: base as u32,
             size: len as u32,
