@@ -2,28 +2,33 @@
 
 use simflash::{Flash, SimFlash, Sector};
 use std::ptr;
+use std::collections::HashMap;
 
 /// Structure to build up the boot area table.
 #[derive(Debug, Clone)]
 pub struct AreaDesc {
     areas: Vec<Vec<FlashArea>>,
     whole: Vec<FlashArea>,
-    sectors: Vec<Sector>,
+    sectors: HashMap<u8, Vec<Sector>>,
 }
 
 impl AreaDesc {
-    pub fn new(flash: &SimFlash) -> AreaDesc {
+    pub fn new() -> AreaDesc {
         AreaDesc {
             areas: vec![],
             whole: vec![],
-            sectors: flash.sector_iter().collect(),
+            sectors: HashMap::new(),
         }
+    }
+
+    pub fn add_flash_sectors(&mut self, id: u8, flash: &SimFlash) {
+        self.sectors.insert(id, flash.sector_iter().collect());
     }
 
     /// Add a slot to the image.  The slot must align with erasable units in the flash device.
     /// Panics if the description is not valid.  There are also bootloader assumptions that the
     /// slots are SLOT0, SLOT1, and SCRATCH in that order.
-    pub fn add_image(&mut self, base: usize, len: usize, id: FlashId) {
+    pub fn add_image(&mut self, base: usize, len: usize, id: FlashId, dev_id: u8) {
         let nid = id as usize;
         let orig_base = base;
         let orig_len = len;
@@ -41,7 +46,7 @@ impl AreaDesc {
 
         let mut area = vec![];
 
-        for sector in &self.sectors {
+        for sector in &self.sectors[&dev_id] {
             if len == 0 {
                 break;
             };
@@ -54,7 +59,7 @@ impl AreaDesc {
 
             area.push(FlashArea {
                 flash_id: id,
-                device_id: 0,
+                device_id: dev_id,
                 pad16: 0,
                 off: sector.base as u32,
                 size: sector.size as u32,
@@ -71,7 +76,7 @@ impl AreaDesc {
         self.areas.push(area);
         self.whole.push(FlashArea {
             flash_id: id,
-            device_id: 0,
+            device_id: dev_id,
             pad16: 0,
             off: orig_base as u32,
             size: orig_len as u32,
@@ -82,10 +87,10 @@ impl AreaDesc {
     // single unit.  It assumes that the image lines up with image boundaries.  This tests
     // configurations where the partition table uses larger sectors than the underlying flash
     // device.
-    pub fn add_simple_image(&mut self, base: usize, len: usize, id: FlashId) {
+    pub fn add_simple_image(&mut self, base: usize, len: usize, id: FlashId, dev_id: u8) {
         let area = vec![FlashArea {
             flash_id: id,
-            device_id: 0,
+            device_id: dev_id,
             pad16: 0,
             off: base as u32,
             size: len as u32,
@@ -94,7 +99,7 @@ impl AreaDesc {
         self.areas.push(area);
         self.whole.push(FlashArea {
             flash_id: id,
-            device_id: 0,
+            device_id: dev_id,
             pad16: 0,
             off: base as u32,
             size: len as u32,
@@ -105,6 +110,7 @@ impl AreaDesc {
     // not present.
     pub fn find(&self, id: FlashId) -> (usize, usize) {
         for area in &self.whole {
+            // FIXME: should we ensure id is not duplicated over multiple devices?
             if area.flash_id == id {
                 return (area.off as usize, area.size as usize);
             }
@@ -146,6 +152,7 @@ pub struct CArea {
     whole: FlashArea,
     areas: *const FlashArea,
     num_areas: u32,
+    // FIXME: is this not already available on whole/areas?
     id: FlashId,
 }
 

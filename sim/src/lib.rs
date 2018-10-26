@@ -327,20 +327,24 @@ pub fn make_device(device: DeviceName, align: u8, erased_val: u8) -> (SimFlash, 
                                       64 * 1024,
                                       128 * 1024, 128 * 1024, 128 * 1024],
                                       align as usize, erased_val);
-            let mut areadesc = AreaDesc::new(&flash);
-            areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
-            areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
-            areadesc.add_image(0x060000, 0x020000, FlashId::ImageScratch);
+            let flash_id = 0;
+            let mut areadesc = AreaDesc::new();
+            areadesc.add_flash_sectors(flash_id, &flash);
+            areadesc.add_image(0x020000, 0x020000, FlashId::Image0, flash_id);
+            areadesc.add_image(0x040000, 0x020000, FlashId::Image1, flash_id);
+            areadesc.add_image(0x060000, 0x020000, FlashId::ImageScratch, flash_id);
             (flash, areadesc)
         }
         DeviceName::K64f => {
             // NXP style flash.  Small sectors, one small sector for scratch.
             let flash = SimFlash::new(vec![4096; 128], align as usize, erased_val);
 
-            let mut areadesc = AreaDesc::new(&flash);
-            areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
-            areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
-            areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch);
+            let flash_id = 0;
+            let mut areadesc = AreaDesc::new();
+            areadesc.add_flash_sectors(flash_id, &flash);
+            areadesc.add_image(0x020000, 0x020000, FlashId::Image0, flash_id);
+            areadesc.add_image(0x040000, 0x020000, FlashId::Image1, flash_id);
+            areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch, flash_id);
             (flash, areadesc)
         }
         DeviceName::K64fBig => {
@@ -348,10 +352,12 @@ pub fn make_device(device: DeviceName, align: u8, erased_val: u8) -> (SimFlash, 
             // uses small sectors, but we tell the bootloader they are large.
             let flash = SimFlash::new(vec![4096; 128], align as usize, erased_val);
 
-            let mut areadesc = AreaDesc::new(&flash);
-            areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0);
-            areadesc.add_simple_image(0x040000, 0x020000, FlashId::Image1);
-            areadesc.add_simple_image(0x060000, 0x020000, FlashId::ImageScratch);
+            let dev_id = 0;
+            let mut areadesc = AreaDesc::new();
+            areadesc.add_flash_sectors(dev_id, &flash);
+            areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0, dev_id);
+            areadesc.add_simple_image(0x040000, 0x020000, FlashId::Image1, dev_id);
+            areadesc.add_simple_image(0x060000, 0x020000, FlashId::ImageScratch, dev_id);
             (flash, areadesc)
         }
         DeviceName::Nrf52840 => {
@@ -359,10 +365,12 @@ pub fn make_device(device: DeviceName, align: u8, erased_val: u8) -> (SimFlash, 
             // does not divide into the image size.
             let flash = SimFlash::new(vec![4096; 128], align as usize, erased_val);
 
-            let mut areadesc = AreaDesc::new(&flash);
-            areadesc.add_image(0x008000, 0x034000, FlashId::Image0);
-            areadesc.add_image(0x03c000, 0x034000, FlashId::Image1);
-            areadesc.add_image(0x070000, 0x00d000, FlashId::ImageScratch);
+            let dev_id = 0;
+            let mut areadesc = AreaDesc::new();
+            areadesc.add_flash_sectors(dev_id, &flash);
+            areadesc.add_image(0x008000, 0x034000, FlashId::Image0, dev_id);
+            areadesc.add_image(0x03c000, 0x034000, FlashId::Image1, dev_id);
+            areadesc.add_image(0x070000, 0x00d000, FlashId::ImageScratch, dev_id);
             (flash, areadesc)
         }
     }
