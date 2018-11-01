@@ -48,6 +48,8 @@ struct arm_vector_table {
     uint32_t reset;
 };
 
+extern void sys_clock_disable(void);
+
 static void do_boot(struct boot_rsp *rsp)
 {
     struct arm_vector_table *vt;
@@ -124,7 +126,7 @@ void main(void)
                             GPIO_DIR_IN | GPIO_PUD_PULL_UP);
     __ASSERT(rc == 0, "Error of boot detect pin initialization.\n");
 
-    rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN, 
+    rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
                        &detect_value);
     __ASSERT(rc == 0, "Error of the reading the detect pin.\n");
 
