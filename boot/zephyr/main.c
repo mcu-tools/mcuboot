@@ -40,7 +40,8 @@ const struct boot_uart_funcs boot_funcs = {
 };
 #endif
 
-void os_heap_init(void);
+extern void sys_clock_disable(void);
+extern void os_heap_init(void);
 
 #if defined(CONFIG_ARM)
 struct arm_vector_table {
