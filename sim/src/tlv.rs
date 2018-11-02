@@ -10,6 +10,7 @@
 
 use std::sync::Arc;
 use pem;
+use base64;
 use ring::{digest, rand, signature};
 use untrusted;
 use mcuboot_sys::c;
@@ -23,6 +24,16 @@ pub enum TlvKinds {
     RSA2048 = 0x20,
     ECDSA224 = 0x21,
     ECDSA256 = 0x22,
+    ENCRSA2048 = 0x30,
+    ENCKW128 = 0x31,
+}
+
+#[allow(dead_code, non_camel_case_types)]
+pub enum TlvFlags {
+    PIC = 0x01,
+    NON_BOOTABLE = 0x02,
+    ENCRYPTED = 0x04,
+    RAM_LOAD = 0x20,
 }
 
 pub struct TlvGen {
@@ -31,6 +42,8 @@ pub struct TlvGen {
     size: u16,
     payload: Vec<u8>,
 }
+
+pub const AES_SEC_KEY: &[u8; 16] = b"0123456789ABCDEF";
 
 impl TlvGen {
     /// Construct a new tlv generator that will only contain a hash of the data.
@@ -60,6 +73,26 @@ impl TlvGen {
             flags: 0,
             kinds: vec![TlvKinds::SHA256, TlvKinds::KEYHASH, TlvKinds::ECDSA256],
             size: 4 + 32 + 4 + 72,
+            payload: vec![],
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn new_enc_rsa() -> TlvGen {
+        TlvGen {
+            flags: TlvFlags::ENCRYPTED as u32,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ENCRSA2048],
+            size: 4 + 32 + 4 + 256,
+            payload: vec![],
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn new_enc_kw() -> TlvGen {
+        TlvGen {
+            flags: TlvFlags::ENCRYPTED as u32,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ENCKW128],
+            size: 4 + 32 + 4 + 24,
             payload: vec![],
         }
     }
@@ -210,6 +243,41 @@ impl TlvGen {
             result.push(der.len() as u8);
             result.push(0);
             result.extend(der);
+        }
+
+        if self.kinds.contains(&TlvKinds::ENCRSA2048) {
+            let key_bytes = pem::parse(include_bytes!("../../enc-rsa2048-pub.pem")
+                                       .as_ref()).unwrap();
+            assert_eq!(key_bytes.tag, "PUBLIC KEY");
+
+            let encbuf = match c::rsa_oaep_encrypt(&key_bytes.contents, AES_SEC_KEY) {
+                Ok(v) => v,
+                Err(_) => panic!("Failed to encrypt secret key"),
+            };
+
+            assert!(encbuf.len() == 256);
+            result.push(TlvKinds::ENCRSA2048 as u8);
+            result.push(0);
+            result.push(0);
+            result.push(1);
+            result.extend_from_slice(&encbuf);
+        }
+
+        if self.kinds.contains(&TlvKinds::ENCKW128) {
+            let key_bytes = base64::decode(
+                include_str!("../../enc-aes128kw.b64").trim()).unwrap();
+
+            let encbuf = match c::kw_encrypt(&key_bytes, AES_SEC_KEY) {
+                Ok(v) => v,
+                Err(_) => panic!("Failed to encrypt secret key"),
+            };
+
+            assert!(encbuf.len() == 24);
+            result.push(TlvKinds::ENCKW128 as u8);
+            result.push(0);
+            result.push(24);
+            result.push(0);
+            result.extend_from_slice(&encbuf);
         }
 
         result

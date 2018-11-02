@@ -27,6 +27,15 @@ flash partitions defined is the frdm_k64f's in
 `boards/arm/frdm_k64f/frdm_k64f.dts`. Make sure the labels in your board's
 `.dts` file match the ones used there.
 
+## Installing Requirements and Dependencies
+
+Install additional packages required for development with mcuboot:
+
+```
+  cd ~/mcuboot  # or to your directory where mcuboot is cloned
+  pip3 install --user -r scripts/requirements.txt
+```
+
 ## Building the bootloader itself
 
 The bootloader is an ordinary Zephyr application, at least from
@@ -57,36 +66,30 @@ After building the bootloader, the binaries should reside in
 `build/zephyr/zephyr.{bin,hex,elf}`, where `build` is the build
 directory you chose when running `cmake`. Use the Zephyr build
 system `flash` target to flash these binaries, usually by running
-`make flash` (or `ninja flash`, etc.) from the build directory.
+`make flash` (or `ninja flash`, etc.) from the build directory. Depending
+on the target and flash tool used, this might erase the whole of the flash
+memory (mass erase) or only the sectors where the boot loader resides prior to
+programming the bootloader image itself.
 
 ## Building Applications for the bootloader
 
 In addition to flash partitions in DTS, some additional configuration
 is required to build applications for MCUboot.
 
+This is handled internally by the Zephyr configuration system and is wrapped
+in the `CONFIG_BOOTLOADER_MCUBOOT` Kconfig variable, which must be enabled in
+the application's `prj.conf` file.
+
 The directory `samples/zephyr/hello-world` in the MCUboot tree contains
 a simple application with everything you need. You can try it on your
 board and then just make a copy of it to get started on your own
 application; see samples/zephyr/README.md for a tutorial.
 
-More details:
-
-- `CONFIG_TEXT_SECTION_OFFSET` must be set to allow room for the
-  boot image header. Typically this is set in the app's prj.conf.  It
-  must also be aligned to a boundary that the particular MCU requires
-  the vector table to be aligned on.
-
-- Your board must provide a DTS `zephyr,code-partition` chosen node
-  which ensures it is built and linked into the DTS `slot0_partition`. This
-  is typically achieved by creating a
-  [dts.overlay](https://github.com/runtimeco/mcuboot/blob/master/samples/zephyr/hello-world/dts.overlay)
-  file that contains the chose node description:
-
-```
-         chosen {
-                zephyr,code-partition = &slot0_partition;
-         };
-```
+The Zephyr `CONFIG_BOOTLOADER_MCUBOOT` configuration option
+[documentation](http://docs.zephyrproject.org/reference/kconfig/CONFIG_BOOTLOADER_MCUBOOT.html)
+provides additional details regarding the changes it makes to the image
+placement and generation in order for an application to be bootable by
+MCUboot.
 
 With this, build the application as your normally would.
 
@@ -99,14 +102,21 @@ keys.  It is important to stress that these should never be used for
 production, since the private key is publicly available in this
 repository.  See below on how to make your own signatures.
 
-There is a `sign.sh` script that gives some examples of how to make
-these signatures.
+Images can be signed with the `scripts/imgtool.py` script.  It is best
+to look at `samples/zephyr/Makefile` for examples on how to use this.
 
 ### Flashing the application
 
 The application itself can flashed with regular flash tools, but will
-need to be loaded at the offset of SLOT-0 for this particular target.
-These images can also be marked for upgrade, and loaded into SLOT-1,
+need to be programmed at the offset of slot-0 for this particular target.
+Depending on the platform and flash tool you might need to manually specify a
+flash offset corresponding to the slot-0 starting address. This is usually
+not relevant for flash tools that use Intel Hex images (.hex) instead of raw
+binary images (.bin) since the former include destination address information.
+Additionally you will need to make sure that the flash tool does not perform
+a mass erase (erasing the whole of the flash) or else you would be deleting
+MCUboot.
+These images can also be marked for upgrade, and loaded into slot-1,
 at which point the bootloader should perform an upgrade.  It is up to
 the image to mark slot-0 as "image ok" before the next reboot,
 otherwise the bootloader will revert the application.
@@ -115,11 +125,9 @@ otherwise the bootloader will revert the application.
 
 The signing keys used by MCUboot are represented in standard formats,
 and can be generated and processed using conventional tools.  However,
-the Mynewt project has developed some tools to make this easier, and
-the `imgtool` directory contains a small program to use these tools,
-as well as some additional tools for generating and extracting public
-keys.  If you will be using your own keys, it is recommended to build
-this tool following the directions within the directory.
+`scripts/imgtool.py` is able to generate key pairs in all of the
+supported formats.  See [the docs](imgtool.md) for more details on
+this tool.
 
 ### Generating a new keypair
 
@@ -127,11 +135,11 @@ Generating a keypair with imgtool is a matter of running the keygen
 subcommand:
 
 ```
-    $ imgtool keygen -k mykey.pem -t rsa-2048
+    $ ./scripts/imgtool.py keygen -k mykey.pem -t rsa-2048
 ```
 
 The argument to `-t` should be the desired key type.  See the
-imgtool README.rst for more details on the possible key types.
+[the docs](imgtool.md) for more details on the possible key types.
 
 ### Extracting the public key
 
@@ -141,7 +149,7 @@ bootloader.  The keys live in `boot/zephyr/keys.c`, and can be
 extracted using imgtool:
 
 ```
-    $ imgtool getpub -k mykey.pem
+    $ ./scripts/imgtool.py getpub -k mykey.pem
 ```
 
 This will output the public key as a C array that can be dropped

@@ -1,0 +1,281 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+#include "mcuboot_config/mcuboot_config.h"
+
+#if defined(MCUBOOT_ENC_IMAGES)
+#include <assert.h>
+#include <stddef.h>
+#include <inttypes.h>
+#include <string.h>
+
+#include "hal/hal_flash.h"
+
+#if defined(MCUBOOT_ENCRYPT_RSA)
+#include "mbedtls/rsa.h"
+#include "mbedtls/asn1.h"
+#endif
+
+#if defined(MCUBOOT_ENCRYPT_KW)
+#include "mbedtls/nist_kw.h"
+#endif
+
+#include "mbedtls/aes.h"
+
+#include "bootutil/image.h"
+#include "bootutil/enc_key.h"
+#include "bootutil/sign_key.h"
+
+#include "bootutil_priv.h"
+
+static struct enc_key_data enc_state[BOOT_NUM_SLOTS];
+
+#define TLV_ENC_RSA_SZ  256
+#define TLV_ENC_KW_SZ   24
+
+#if defined(MCUBOOT_ENCRYPT_RSA)
+static int
+parse_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
+{
+    int rc;
+    size_t len;
+
+    if ((rc = mbedtls_asn1_get_tag(p, end, &len,
+                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+        return -1;
+    }
+
+    if (*p + len != end) {
+        return -2;
+    }
+
+    if ( /* version */
+        mbedtls_asn1_get_int(p, end, &ctx->ver) != 0 ||
+         /* public modulus */
+        mbedtls_asn1_get_mpi(p, end, &ctx->N) != 0 ||
+         /* public exponent */
+        mbedtls_asn1_get_mpi(p, end, &ctx->E) != 0 ||
+         /* private exponent */
+        mbedtls_asn1_get_mpi(p, end, &ctx->D) != 0 ||
+         /* primes */
+        mbedtls_asn1_get_mpi(p, end, &ctx->P) != 0 ||
+        mbedtls_asn1_get_mpi(p, end, &ctx->Q) != 0 ||
+         /* d mod (p-1) and d mod (q-1) */
+        mbedtls_asn1_get_mpi(p, end, &ctx->DP) != 0 ||
+        mbedtls_asn1_get_mpi(p, end, &ctx->DQ) != 0 ||
+         /* q ^ (-1) mod p */
+        mbedtls_asn1_get_mpi(p, end, &ctx->QP) != 0) {
+        return -3;
+    }
+
+    ctx->len = mbedtls_mpi_size(&ctx->N);
+
+    if (*p != end) {
+        return -4;
+    }
+
+    if (mbedtls_rsa_check_pubkey(ctx) != 0 ||
+        mbedtls_rsa_check_privkey(ctx) != 0) {
+        return -5;
+    }
+
+    return 0;
+}
+#endif
+
+int
+boot_enc_set_key(uint8_t slot, uint8_t *enckey)
+{
+    int rc;
+
+    mbedtls_aes_init(&enc_state[slot].aes);
+    rc = mbedtls_aes_setkey_enc(&enc_state[slot].aes, enckey, BOOT_ENC_KEY_SIZE_BITS);
+    if (rc) {
+        mbedtls_aes_free(&enc_state[slot].aes);
+        return -1;
+    }
+
+    enc_state[slot].valid = 1;
+
+    return 0;
+}
+
+#if defined(MCUBOOT_ENCRYPT_RSA)
+#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_RSA2048
+#    define EXPECTED_ENC_LEN    TLV_ENC_RSA_SZ
+#elif defined(MCUBOOT_ENCRYPT_KW)
+#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_KW128
+#    define EXPECTED_ENC_LEN    TLV_ENC_KW_SZ
+#endif
+
+/*
+ * Load encryption key.
+ */
+int
+boot_enc_load(const struct image_header *hdr, const struct flash_area *fap,
+              uint8_t *enckey)
+{
+#if defined(MCUBOOT_ENCRYPT_RSA)
+    mbedtls_rsa_context rsa;
+    uint8_t *cp;
+    uint8_t *cpend;
+#endif
+#if defined(MCUBOOT_ENCRYPT_KW)
+    mbedtls_nist_kw_context kw;
+#endif
+    size_t olen;
+    uint32_t off;
+    uint32_t end;
+    struct image_tlv_info info;
+    struct image_tlv tlv;
+    uint8_t buf[TLV_ENC_RSA_SZ];
+    uint8_t slot;
+    uint8_t enckey_type;
+    int rc;
+
+    slot = fap->fa_id - FLASH_AREA_IMAGE_0;
+
+    /* Already loaded... */
+    if (enc_state[slot].valid) {
+        return 1;
+    }
+
+    off = hdr->ih_img_size + hdr->ih_hdr_size;
+
+    rc = flash_area_read(fap, off, &info, sizeof(info));
+    if (rc) {
+        return rc;
+    }
+    if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
+        return -1;
+    }
+    end = off + info.it_tlv_tot;
+    off += sizeof(info);
+
+    enckey_type = 0;
+    for (; off < end; off += sizeof(tlv) + tlv.it_len) {
+        rc = flash_area_read(fap, off, &tlv, sizeof tlv);
+        if (rc) {
+            return rc;
+        }
+
+        if (tlv.it_type == EXPECTED_ENC_TLV) {
+            if (tlv.it_len != EXPECTED_ENC_LEN) {
+                return -1;
+            }
+            rc = flash_area_read(fap, off + sizeof(tlv), buf, EXPECTED_ENC_LEN);
+            if (rc) {
+                return rc;
+            }
+            enckey_type = EXPECTED_ENC_TLV;
+            break;
+        }
+    }
+
+    if (enckey_type == 0) {
+        return -1;
+    }
+
+    if (enckey_type == EXPECTED_ENC_TLV) {
+#if defined(MCUBOOT_ENCRYPT_RSA)
+        mbedtls_rsa_init(&rsa, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
+
+        cp = (uint8_t *)bootutil_enc_key.key;
+        cpend = cp + *bootutil_enc_key.len;
+
+        rc = parse_enckey(&rsa, &cp, cpend);
+        if (rc) {
+            mbedtls_rsa_free(&rsa);
+            goto done;
+        }
+
+        rc = mbedtls_rsa_rsaes_oaep_decrypt(&rsa, NULL, NULL, MBEDTLS_RSA_PRIVATE,
+                NULL, 0, &olen, buf, enckey, BOOT_ENC_KEY_SIZE);
+        mbedtls_rsa_free(&rsa);
+
+#elif defined(MCUBOOT_ENCRYPT_KW)
+        mbedtls_nist_kw_init(&kw);
+
+        assert(*bootutil_enc_key.len == 16);
+        rc = mbedtls_nist_kw_setkey(&kw, MBEDTLS_CIPHER_ID_AES,
+                bootutil_enc_key.key, *bootutil_enc_key.len * 8, 0);
+        if (rc) {
+            mbedtls_nist_kw_free(&kw);
+            goto done;
+        }
+
+        rc = mbedtls_nist_kw_unwrap(&kw, MBEDTLS_KW_MODE_KW, buf, TLV_ENC_KW_SZ,
+                enckey, &olen, BOOT_ENC_KEY_SIZE);
+
+        mbedtls_nist_kw_free(&kw);
+#endif
+    }
+
+done:
+    return rc;
+}
+
+int
+boot_enc_valid(const struct flash_area *fap)
+{
+    return enc_state[fap->fa_id - FLASH_AREA_IMAGE_0].valid;
+}
+
+void
+boot_encrypt(const struct flash_area *fap, uint32_t off, uint32_t sz,
+        uint32_t blk_off, uint8_t *buf)
+{
+    struct enc_key_data *enc;
+    uint32_t i, j;
+    uint8_t u8;
+    uint8_t nonce[16];
+    uint8_t blk[16];
+
+    memset(nonce, 0, 12);
+    off >>= 4;
+    nonce[12] = (uint8_t)(off >> 24);
+    nonce[13] = (uint8_t)(off >> 16);
+    nonce[14] = (uint8_t)(off >> 8);
+    nonce[15] = (uint8_t)off;
+
+    enc = &enc_state[fap->fa_id - FLASH_AREA_IMAGE_0];
+    assert(enc->valid == 1);
+    for (i = 0; i < sz; i++) {
+        if (i == 0 || blk_off == 0) {
+            mbedtls_aes_crypt_ecb(&enc->aes, MBEDTLS_AES_ENCRYPT, nonce, blk);
+
+            for (j = 16; j > 0; --j) {
+                if (++nonce[j - 1] != 0) {
+                    break;
+                }
+            }
+        }
+
+        u8 = *buf;
+        *buf++ = u8 ^ blk[blk_off];
+        blk_off = (blk_off + 1) & 0x0f;
+    }
+}
+
+void boot_enc_zeroize(void)
+{
+    memset(&enc_state, 0, sizeof(enc_state));
+}
+
+#endif /* MCUBOOT_ENC_IMAGES */

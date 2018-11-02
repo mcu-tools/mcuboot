@@ -31,19 +31,9 @@
 #endif /* !defined(MCUBOOT_TARGET_CONFIG) */
 
 /*
- * Upstream Zephyr changed the name from FLASH_DRIVER_NAME to
- * FLASH_DEV_NAME.  For now, let's just convert the Zephyr name to the
- * one expected by MCUboot. This can be cleaned up after the upstream
- * Zephyr tree has been released and settled down.
- */
-#if !defined(FLASH_DRIVER_NAME) && defined(FLASH_DEV_NAME)
-#define FLASH_DRIVER_NAME FLASH_DEV_NAME
-#endif
-
-/*
  * Sanity check the target support.
  */
-#if !defined(FLASH_DRIVER_NAME) || \
+#if !defined(FLASH_DEV_NAME) || \
     !defined(FLASH_ALIGN) ||                  \
     !defined(FLASH_AREA_IMAGE_0_OFFSET) || \
     !defined(FLASH_AREA_IMAGE_0_SIZE) || \

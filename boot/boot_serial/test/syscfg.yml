@@ -19,3 +19,5 @@
 # Package: boot/boot_serial/test
 
 syscfg.vals:
+    # This is here to work around the $notnull syscfg restriction.
+    BOOT_SERIAL_DETECT_PIN: 0

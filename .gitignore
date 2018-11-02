@@ -10,3 +10,8 @@ rusty-tags.*
 /project.state
 /bin/
 /targets/
+**/build/**/*
+
+#Eclipse project files
+.cproject
+.project

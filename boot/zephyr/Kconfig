@@ -3,13 +3,178 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-mainmenu "MCUBOOT configuration"
+mainmenu "MCUboot configuration"
 
-config ZEPHYR_BASE
-	string
-	option env="ZEPHYR_BASE"
+comment "MCUboot-specific configuration options"
 
-source "$ZEPHYR_BASE/Kconfig.zephyr"
+config BOOT_USE_MBEDTLS
+	bool
+	# Hidden option
+	default n
+	help
+	  Use mbedTLS for crypto primitives.
+
+config BOOT_USE_TINYCRYPT
+	bool
+	# Hidden option
+	default n
+	help
+	  Use TinyCrypt for crypto primitives.
+
+menu "MCUBoot settings"
+
+choice
+	prompt "Signature type"
+	default BOOT_SIGNATURE_TYPE_RSA
+
+config BOOT_SIGNATURE_TYPE_RSA
+	bool "RSA signatures"
+	select BOOT_USE_MBEDTLS
+	select MBEDTLS
+
+config BOOT_SIGNATURE_TYPE_ECDSA_P256
+	bool "Elliptic curve digital signatures with curve P-256"
+	select BOOT_USE_TINYCRYPT
+
+endchoice
+
+config BOOT_SIGNATURE_KEY_FILE
+	string "PEM key file"
+	default ""
+	help
+	  The key file will be parsed by imgtool's getpub command and a .c source
+	  with the public key information will be written in a format expected by
+	  MCUboot.
+
+config MBEDTLS_CFG_FILE
+	default "mcuboot-mbedtls-cfg.h"
+
+config BOOT_VALIDATE_SLOT0
+	bool "Validate image slot 0 on every boot"
+	default y
+	help
+	  If y, the bootloader attempts to validate the signature of
+	  slot0 every boot.  This adds the signature check time to
+	  every boot, but can mitigate against some changes that are
+	  able to modify the flash image itself.
+
+config BOOT_UPGRADE_ONLY
+	bool "Overwrite image updates instead of swapping"
+	default n
+	help
+	  If y, overwrite slot0 with the upgrade image instead of
+	  swapping them.  This prevents the fallback recovery, but
+	  uses a much simpler code path.
+
+config BOOT_ENCRYPT_RSA
+	bool "Support for encrypted upgrade images"
+	default n
+	help
+	  If y, images in slot 1 can be encrypted and are decrypted
+	  on the fly when upgrading to slot 0, as well as encrypted
+	  back when swapping from slot 0 to slot 1.
+
+config BOOT_MAX_IMG_SECTORS
+	int "Maximum number of sectors per image slot"
+	default 128
+	help
+	  This option controls the maximum number of sectors that each of
+	  the two image areas can contain. Smaller values reduce MCUboot's
+	  memory usage; larger values allow it to support larger images.
+	  If unsure, leave at the default value.
+
+config BOOT_ERASE_PROGRESSIVELY
+	bool "Erase flash progressively when receiving new firmware"
+	default y if SOC_NRF52840
+	help
+	 If enabled, flash is erased as necessary when receiving new firmware,
+	 instead of erasing the whole image slot at once. This is necessary
+	 on some hardware that has long erase times, to prevent long wait
+	 times at the beginning of the DFU process.
+
+config ZEPHYR_TRY_MASS_ERASE
+	bool "Try to mass erase flash when flashing MCUboot image"
+	default y
+	help
+	  If y, attempt to configure the Zephyr build system's "flash"
+	  target to mass-erase the flash device before flashing the
+	  MCUboot image. This ensures the scratch and other partitions
+	  are in a consistent state.
+
+	  This is not available for all targets.
+
+config BOOT_HAVE_LOGGING
+	bool "MCUboot have logging enabled"
+	default y
+	select SYS_LOG
+	help
+	  If y, enables logging on the serial port. The log level can
+	  be defined by setting `SYS_LOG_DEFAULT_LEVEL`.
+	  If unsure, leave at the default value.
+
+menuconfig MCUBOOT_SERIAL
+	bool "MCUboot serial recovery"
+	default n
+	select REBOOT
+	select UART_INTERRUPT_DRIVEN
+	select SERIAL
+	select BASE64
+	select TINYCBOR
+	help
+	  If y, enables a serial-port based update mode. This allows
+	  MCUboot itself to load update images into flash over a UART.
+	  If unsure, leave at the default value.
+
+if MCUBOOT_SERIAL
+
+choice
+	prompt "Serial device"
+	default BOOT_SERIAL_UART if !BOARD_NRF52840_PCA10059
+	default BOOT_SERIAL_CDC_ACM if BOARD_NRF52840_PCA10059
+
+config BOOT_SERIAL_UART
+	bool "UART"
+	# SERIAL and UART_INTERRUPT_DRIVEN already selected
+
+config BOOT_SERIAL_CDC_ACM
+	bool "CDC ACM"
+	select USB
+	select USB_DEVICE_STACK
+	select USB_CDC_ACM
+
+endchoice
+
+config BOOT_MAX_LINE_INPUT_LEN
+	int "Maximum command line length"
+	default 512
+	help
+	  Maximum length of commands transported over the serial port.
+
+config BOOT_SERIAL_DETECT_PORT
+	string "GPIO device to trigger serial recovery mode"
+	default GPIO_0 if SOC_FAMILY_NRF
+	help
+	  Zephyr GPIO device which contains the pin used to trigger
+	  serial recovery mode.
+
+config BOOT_SERIAL_DETECT_PIN
+	int "Pin to trigger serial recovery mode"
+	default 11 if BOARD_NRF52840_PCA10056
+	default 13 if BOARD_NRF52_PCA10040
+	help
+	  Pin on the serial detect port which triggers serial recovery mode.
+
+config BOOT_SERIAL_DETECT_PIN_VAL
+	int "Serial detect pin trigger value"
+	default 0
+	range 0 1
+	help
+	  Logic value of the detect pin which triggers serial recovery
+	  mode.
+
+endif # MCUBOOT_SERIAL
+
+endmenu
 
 config MCUBOOT_DEVICE_SETTINGS
 	# Hidden selector for device-specific settings
@@ -19,6 +184,8 @@ config MCUBOOT_DEVICE_SETTINGS
 	select MCUBOOT_DEVICE_CPU_CORTEX_M0 if CPU_CORTEX_M0
         # Enable flash page layout if available
 	select FLASH_PAGE_LAYOUT if FLASH_HAS_PAGE_LAYOUT
+	# Enable flash_map module as flash I/O back-end
+	select FLASH_MAP
 
 config MCUBOOT_DEVICE_CPU_CORTEX_M0
 	# Hidden selector for Cortex-M0 settings
@@ -26,45 +193,10 @@ config MCUBOOT_DEVICE_CPU_CORTEX_M0
 	default n
 	select SW_VECTOR_RELAY if !CPU_CORTEX_M0_HAS_VECTOR_TABLE_REMAP
 
-menuconfig MCUBOOT_SERIAL
-	bool
-	prompt "MCUBOOT serial recovery"
-	default n
-	select REBOOT
-	select UART_INTERRUPT_DRIVEN
-	select SERIAL
-	select NEWLIB_LIBC
-	help
-	  Enable serial recovery feature in mcuboot.
+comment "Zephyr configuration options"
 
-config BOOT_MAX_LINE_INPUT_LEN
-	int "cmd line max length" 
-	default 512
-	depends on MCUBOOT_SERIAL
-	help
-	  Maximum length of commands transported over the serial protocol
-
-config BOOT_SERIAL_DETECT_PORT
+config ZEPHYR_BASE
 	string
-	prompt "GPIO Port to trigger serial recovery mode"
-	default GPIO_0 if SOC_FAMILY_NRF5
-	depends on MCUBOOT_SERIAL
-	help
-	  Serial recovery detect port
+	option env="ZEPHYR_BASE"
 
-config BOOT_SERIAL_DETECT_PIN
-	int
-	prompt "Pin to trigger serial recovery mode"
-	default 11 if BOARD_NRF52840_PCA10056
-	default 13 if BOARD_NRF52_PCA10040
-	depends on MCUBOOT_SERIAL
-	help
-	  Serial recovery detect pin
-
-config BOOT_SERIAL_DETECT_PIN_VAL
-	int "Boot Pin trigger value"
-	default 0
-	range 0 1
-	depends on MCUBOOT_SERIAL
-	help
-	  The input pin logic value which triggers the boot serial recovery mode.
+source "$ZEPHYR_BASE/Kconfig.zephyr"

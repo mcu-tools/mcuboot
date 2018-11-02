@@ -1,5 +1,7 @@
 #[macro_use] extern crate log;
 extern crate ring;
+extern crate aes_ctr;
+extern crate base64;
 extern crate env_logger;
 extern crate docopt;
 extern crate libc;
@@ -18,6 +20,9 @@ use std::fmt;
 use std::mem;
 use std::process;
 use std::slice;
+use aes_ctr::Aes128Ctr;
+use aes_ctr::stream_cipher::generic_array::GenericArray;
+use aes_ctr::stream_cipher::{NewFixStreamCipher, StreamCipherCore};
 
 mod caps;
 mod tlv;
@@ -26,7 +31,7 @@ pub mod testlog;
 use simflash::{Flash, SimFlash};
 use mcuboot_sys::{c, AreaDesc, FlashId};
 use caps::Caps;
-use tlv::TlvGen;
+use tlv::{TlvGen, TlvFlags, AES_SEC_KEY};
 
 const USAGE: &'static str = "
 Mcuboot simulator
@@ -133,13 +138,15 @@ pub fn main() {
             Some(dev) => dev,
         };
 
-        status.run_single(device, align);
+        status.run_single(device, align, 0xff);
     }
 
     if args.cmd_runall {
         for &dev in ALL_DEVICES {
             for &align in &[1, 2, 4, 8] {
-                status.run_single(dev, align);
+                for &erased_val in &[0, 0xff] {
+                    status.run_single(dev, align, erased_val);
+                }
             }
         }
     }
@@ -159,11 +166,12 @@ pub struct Run {
     areadesc: AreaDesc,
     slots: [SlotInfo; 2],
     align: u8,
+    erased_val: u8,
 }
 
 impl Run {
-    pub fn new(device: DeviceName, align: u8) -> Run {
-        let (flash, areadesc) = make_device(device, align);
+    pub fn new(device: DeviceName, align: u8, erased_val: u8) -> Run {
+        let (flash, areadesc) = make_device(device, align, erased_val);
 
         let (slot0_base, slot0_len) = areadesc.find(FlashId::Image0);
         let (slot1_base, slot1_len) = areadesc.find(FlashId::Image1);
@@ -180,12 +188,14 @@ impl Run {
         let slot0 = SlotInfo {
             base_off: slot0_base as usize,
             trailer_off: slot1_base - offset_from_end,
+            len: slot0_len as usize,
         };
 
         // And an upgrade image.
         let slot1 = SlotInfo {
             base_off: slot1_base as usize,
             trailer_off: scratch_base - offset_from_end,
+            len: slot1_len as usize,
         };
 
         Run {
@@ -193,6 +203,7 @@ impl Run {
             areadesc: areadesc,
             slots: [slot0, slot1],
             align: align,
+            erased_val: erased_val,
         }
     }
 
@@ -201,8 +212,10 @@ impl Run {
     {
         for &dev in ALL_DEVICES {
             for &align in &[1, 2, 4, 8] {
-                let mut run = Run::new(dev, align);
-                f(&mut run);
+                for &erased_val in &[0, 0xff] {
+                    let mut run = Run::new(dev, align, erased_val);
+                    f(&mut run);
+                }
             }
         }
     }
@@ -210,24 +223,24 @@ impl Run {
     /// Construct an `Images` that doesn't expect an upgrade to happen.
     pub fn make_no_upgrade_image(&self) -> Images {
         let mut flash = self.flash.clone();
-        let primary = install_image(&mut flash, self.slots[0].base_off, 32784, false);
-        let upgrade = install_image(&mut flash, self.slots[1].base_off, 41928, false);
+        let primaries = install_image(&mut flash, &self.slots, 0, 32784, false);
+        let upgrades = install_image(&mut flash, &self.slots, 1, 41928, false);
         Images {
             flash: flash,
             areadesc: self.areadesc.clone(),
-            slot0: self.slots[0].clone(),
-            slot1: self.slots[1].clone(),
-            primary: primary,
-            upgrade: upgrade,
+            slots: [self.slots[0].clone(), self.slots[1].clone()],
+            primaries: primaries,
+            upgrades: upgrades,
             total_count: None,
             align: self.align,
+            erased_val: self.erased_val,
         }
     }
 
     /// Construct an `Images` for normal testing.
     pub fn make_image(&self) -> Images {
         let mut images = self.make_no_upgrade_image();
-        mark_upgrade(&mut images.flash, &images.slot1);
+        mark_upgrade(&mut images.flash, &images.slots[1]);
 
         // upgrades without fails, counts number of flash operations
         let total_count = match images.run_basic_upgrade() {
@@ -243,17 +256,17 @@ impl Run {
 
     pub fn make_bad_slot1_image(&self) -> Images {
         let mut bad_flash = self.flash.clone();
-        let primary = install_image(&mut bad_flash, self.slots[0].base_off, 32784, false);
-        let upgrade = install_image(&mut bad_flash, self.slots[1].base_off, 41928, true);
+        let primaries = install_image(&mut bad_flash, &self.slots, 0, 32784, false);
+        let upgrades = install_image(&mut bad_flash, &self.slots, 1, 41928, true);
         Images {
             flash: bad_flash,
             areadesc: self.areadesc.clone(),
-            slot0: self.slots[0].clone(),
-            slot1: self.slots[1].clone(),
-            primary: primary,
-            upgrade: upgrade,
+            slots: [self.slots[0].clone(), self.slots[1].clone()],
+            primaries: primaries,
+            upgrades: upgrades,
             total_count: None,
             align: self.align,
+            erased_val: self.erased_val,
         }
     }
 
@@ -272,10 +285,10 @@ impl RunStatus {
         }
     }
 
-    pub fn run_single(&mut self, device: DeviceName, align: u8) {
+    pub fn run_single(&mut self, device: DeviceName, align: u8, erased_val: u8) {
         warn!("Running on device {} with alignment {}", device, align);
 
-        let run = Run::new(device, align);
+        let run = Run::new(device, align, erased_val);
 
         let mut failed = false;
 
@@ -314,14 +327,14 @@ impl RunStatus {
 }
 
 /// Build the Flash and area descriptor for a given device.
-pub fn make_device(device: DeviceName, align: u8) -> (SimFlash, AreaDesc) {
+pub fn make_device(device: DeviceName, align: u8, erased_val: u8) -> (SimFlash, AreaDesc) {
     match device {
         DeviceName::Stm32f4 => {
             // STM style flash.  Large sectors, with a large scratch area.
             let flash = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
                                       64 * 1024,
                                       128 * 1024, 128 * 1024, 128 * 1024],
-                                      align as usize);
+                                      align as usize, erased_val);
             let mut areadesc = AreaDesc::new(&flash);
             areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
             areadesc.add_image(0x040000, 0x020000, FlashId::Image1);
@@ -330,7 +343,7 @@ pub fn make_device(device: DeviceName, align: u8) -> (SimFlash, AreaDesc) {
         }
         DeviceName::K64f => {
             // NXP style flash.  Small sectors, one small sector for scratch.
-            let flash = SimFlash::new(vec![4096; 128], align as usize);
+            let flash = SimFlash::new(vec![4096; 128], align as usize, erased_val);
 
             let mut areadesc = AreaDesc::new(&flash);
             areadesc.add_image(0x020000, 0x020000, FlashId::Image0);
@@ -341,7 +354,7 @@ pub fn make_device(device: DeviceName, align: u8) -> (SimFlash, AreaDesc) {
         DeviceName::K64fBig => {
             // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
             // uses small sectors, but we tell the bootloader they are large.
-            let flash = SimFlash::new(vec![4096; 128], align as usize);
+            let flash = SimFlash::new(vec![4096; 128], align as usize, erased_val);
 
             let mut areadesc = AreaDesc::new(&flash);
             areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0);
@@ -352,7 +365,7 @@ pub fn make_device(device: DeviceName, align: u8) -> (SimFlash, AreaDesc) {
         DeviceName::Nrf52840 => {
             // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
             // does not divide into the image size.
-            let flash = SimFlash::new(vec![4096; 128], align as usize);
+            let flash = SimFlash::new(vec![4096; 128], align as usize, erased_val);
 
             let mut areadesc = AreaDesc::new(&flash);
             areadesc.add_image(0x008000, 0x034000, FlashId::Image0);
@@ -372,7 +385,7 @@ impl Images {
         let (fl, total_count) = try_upgrade(&self.flash, &self, None);
         info!("Total flash operation count={}", total_count);
 
-        if !verify_image(&fl, self.slot0.base_off, &self.upgrade) {
+        if !verify_image(&fl, &self.slots, 0, &self.upgrades) {
             warn!("Image mismatch after first boot");
             Err(())
         } else {
@@ -394,7 +407,7 @@ impl Images {
             for count in 2 .. 5 {
                 info!("Try revert: {}", count);
                 let fl = try_revert(&self.flash, &self.areadesc, count, self.align);
-                if !verify_image(&fl, self.slot0.base_off, &self.primary) {
+                if !verify_image(&fl, &self.slots, 0, &self.primaries) {
                     error!("Revert failure on count {}", count);
                     fails += 1;
                 }
@@ -413,25 +426,25 @@ impl Images {
             info!("Try interruption at {}", i);
             let (fl, count) = try_upgrade(&self.flash, &self, Some(i));
             info!("Second boot, count={}", count);
-            if !verify_image(&fl, self.slot0.base_off, &self.upgrade) {
+            if !verify_image(&fl, &self.slots, 0, &self.upgrades) {
                 warn!("FAIL at step {} of {}", i, total_flash_ops);
                 fails += 1;
             }
 
-            if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                               COPY_DONE) {
+            if !verify_trailer(&fl, self.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                               BOOT_FLAG_SET, BOOT_FLAG_SET) {
                 warn!("Mismatched trailer for Slot 0");
                 fails += 1;
             }
 
-            if !verify_trailer(&fl, self.slot1.trailer_off, MAGIC_UNSET, UNSET,
-                               UNSET) {
+            if !verify_trailer(&fl, self.slots[1].trailer_off, BOOT_MAGIC_UNSET,
+                               BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
                 warn!("Mismatched trailer for Slot 1");
                 fails += 1;
             }
 
             if Caps::SwapUpgrade.present() {
-                if !verify_image(&fl, self.slot1.base_off, &self.primary) {
+                if !verify_image(&fl, &self.slots, 1, &self.primaries) {
                     warn!("Slot 1 FAIL at step {} of {}", i, total_flash_ops);
                     fails += 1;
                 }
@@ -457,9 +470,9 @@ impl Images {
                                                   total_flash_ops, total_fails);
         info!("Random interruptions at reset points={:?}", total_counts);
 
-        let slot0_ok = verify_image(&fl, self.slot0.base_off, &self.upgrade);
+        let slot0_ok = verify_image(&fl, &self.slots, 0, &self.upgrades);
         let slot1_ok = if Caps::SwapUpgrade.present() {
-            verify_image(&fl, self.slot1.base_off, &self.primary)
+            verify_image(&fl, &self.slots, 1, &self.primaries)
         } else {
             true
         };
@@ -469,13 +482,13 @@ impl Images {
                    if slot1_ok { "ok" } else { "fail" });
             fails += 1;
         }
-        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                           COPY_DONE) {
+        if !verify_trailer(&fl, self.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                           BOOT_FLAG_SET, BOOT_FLAG_SET) {
             error!("Mismatched trailer for Slot 0");
             fails += 1;
         }
-        if !verify_trailer(&fl, self.slot1.trailer_off, MAGIC_UNSET, UNSET,
-                           UNSET) {
+        if !verify_trailer(&fl, self.slots[1].trailer_off, BOOT_MAGIC_UNSET,
+                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             error!("Mismatched trailer for Slot 1");
             fails += 1;
         }
@@ -531,26 +544,26 @@ impl Images {
         //FIXME: copy_done is written by boot_go, is it ok if no copy
         //       was ever done?
 
-        if !verify_image(&fl, self.slot0.base_off, &self.upgrade) {
+        if !verify_image(&fl, &self.slots, 0, &self.upgrades) {
             warn!("Slot 0 image verification FAIL");
             fails += 1;
         }
-        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, UNSET,
-                           COPY_DONE) {
+        if !verify_trailer(&fl, self.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                           BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
-        if !verify_trailer(&fl, self.slot1.trailer_off, MAGIC_UNSET, UNSET,
-                           UNSET) {
+        if !verify_trailer(&fl, self.slots[1].trailer_off, BOOT_MAGIC_UNSET,
+                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 1");
             fails += 1;
         }
 
         // Marks image in slot0 as permanent, no revert should happen...
-        mark_permanent_upgrade(&mut fl, &self.slot0, self.align);
+        mark_permanent_upgrade(&mut fl, &self.slots[0], self.align, self.erased_val);
 
-        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                           COPY_DONE) {
+        if !verify_trailer(&fl, self.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                           BOOT_FLAG_SET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
@@ -561,12 +574,12 @@ impl Images {
             fails += 1;
         }
 
-        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                           COPY_DONE) {
+        if !verify_trailer(&fl, self.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                           BOOT_FLAG_SET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
-        if !verify_image(&fl, self.slot0.base_off, &self.upgrade) {
+        if !verify_image(&fl, &self.slots, 0, &self.upgrades) {
             warn!("Failed image verification");
             fails += 1;
         }
@@ -586,10 +599,11 @@ impl Images {
 
         info!("Try non-revert on imgtool generated image");
 
-        mark_upgrade(&mut fl, &self.slot0);
+        mark_upgrade(&mut fl, &self.slots[0]);
 
         // This simulates writing an image created by imgtool to Slot 0
-        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, UNSET, UNSET) {
+        if !verify_trailer(&fl, self.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
@@ -602,17 +616,17 @@ impl Images {
         }
 
         // State should not have changed
-        if !verify_image(&fl, self.slot0.base_off, &self.primary) {
+        if !verify_image(&fl, &self.slots, 0, &self.primaries) {
             warn!("Failed image verification");
             fails += 1;
         }
-        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, UNSET,
-                           UNSET) {
+        if !verify_trailer(&fl, self.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
-        if !verify_trailer(&fl, self.slot1.trailer_off, MAGIC_UNSET, UNSET,
-                           UNSET) {
+        if !verify_trailer(&fl, self.slots[1].trailer_off, BOOT_MAGIC_UNSET,
+                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 1");
             fails += 1;
         }
@@ -632,12 +646,12 @@ impl Images {
 
         info!("Try upgrade image with bad signature");
 
-        mark_upgrade(&mut fl, &self.slot0);
-        mark_permanent_upgrade(&mut fl, &self.slot0, self.align);
-        mark_upgrade(&mut fl, &self.slot1);
+        mark_upgrade(&mut fl, &self.slots[0]);
+        mark_permanent_upgrade(&mut fl, &self.slots[0], self.align, self.erased_val);
+        mark_upgrade(&mut fl, &self.slots[1]);
 
-        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                           UNSET) {
+        if !verify_trailer(&fl, self.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                           BOOT_FLAG_SET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
@@ -650,12 +664,12 @@ impl Images {
         }
 
         // State should not have changed
-        if !verify_image(&fl, self.slot0.base_off, &self.primary) {
+        if !verify_image(&fl, &self.slots, 0, &self.primaries) {
             warn!("Failed image verification");
             fails += 1;
         }
-        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                           UNSET) {
+        if !verify_trailer(&fl, self.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                           BOOT_FLAG_SET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
@@ -674,8 +688,20 @@ impl Images {
 
     // FIXME: could get status sz from bootloader
     #[cfg(not(feature = "overwrite-only"))]
+    #[cfg(not(feature = "enc-rsa"))]
+    #[cfg(not(feature = "enc-kw"))]
     fn status_sz(&self) -> usize {
         self.trailer_sz() - (16 + 24)
+    }
+
+    #[cfg(feature = "enc-rsa")]
+    fn status_sz(&self) -> usize {
+        self.trailer_sz() - (16 + 24 + 32)
+    }
+
+    #[cfg(feature = "enc-kw")]
+    fn status_sz(&self) -> usize {
+        self.trailer_sz() - (16 + 24 + 32)
     }
 
     /// This test runs a simple upgrade with no fails in the images, but
@@ -691,9 +717,9 @@ impl Images {
 
         info!("Try swap with status fails");
 
-        mark_permanent_upgrade(&mut fl, &self.slot1, self.align);
+        mark_permanent_upgrade(&mut fl, &self.slots[1], self.align, self.erased_val);
 
-        let status_off = self.slot1.base_off - self.trailer_sz();
+        let status_off = self.slots[1].base_off - self.trailer_sz();
 
         // Always fail writes to status area...
         let _ = fl.add_bad_region(status_off, self.status_sz(), 1.0);
@@ -711,13 +737,13 @@ impl Images {
             fails += 1;
         }
 
-        if !verify_trailer(&fl, self.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                           COPY_DONE) {
+        if !verify_trailer(&fl, self.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                           BOOT_FLAG_SET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
 
-        if !verify_image(&fl, self.slot0.base_off, &self.upgrade) {
+        if !verify_image(&fl, &self.slots, 0, &self.upgrades) {
             warn!("Failed image verification");
             fails += 1;
         }
@@ -749,9 +775,9 @@ impl Images {
 
         info!("Try interrupted swap with status fails");
 
-        mark_permanent_upgrade(&mut fl, &self.slot1, self.align);
+        mark_permanent_upgrade(&mut fl, &self.slots[1], self.align, self.erased_val);
 
-        let status_off = self.slot1.base_off - self.trailer_sz();
+        let status_off = self.slots[1].base_off - self.trailer_sz();
 
         // Mark the status area as a bad area
         let _ = fl.add_bad_region(status_off, self.status_sz(), 0.5);
@@ -796,9 +822,9 @@ impl Images {
 
         info!("Try interrupted swap with status fails");
 
-        mark_permanent_upgrade(&mut fl, &self.slot1, self.align);
+        mark_permanent_upgrade(&mut fl, &self.slots[1], self.align, self.erased_val);
 
-        let status_off = self.slot1.base_off - self.trailer_sz();
+        let status_off = self.slots[1].base_off - self.trailer_sz();
 
         // Mark the status area as a bad area
         let _ = fl.add_bad_region(status_off, self.status_sz(), 1.0);
@@ -826,7 +852,7 @@ fn try_upgrade(flash: &SimFlash, images: &Images,
     // Clone the flash to have a new copy.
     let mut fl = flash.clone();
 
-    mark_permanent_upgrade(&mut fl, &images.slot1, images.align);
+    mark_permanent_upgrade(&mut fl, &images.slots[1], images.align, images.erased_val);
 
     let mut counter = stop.unwrap_or(0);
 
@@ -874,7 +900,7 @@ fn try_revert_with_fail_at(flash: &SimFlash, images: &Images,
         fails += 1;
     }
 
-    if !verify_trailer(&fl, images.slot0.trailer_off, None, None, UNSET) {
+    if !verify_trailer(&fl, images.slots[0].trailer_off, None, None, BOOT_FLAG_UNSET) {
         warn!("copy_done should be unset");
         fails += 1;
     }
@@ -885,21 +911,21 @@ fn try_revert_with_fail_at(flash: &SimFlash, images: &Images,
         fails += 1;
     }
 
-    if !verify_image(&fl, images.slot0.base_off, &images.upgrade) {
+    if !verify_image(&fl, &images.slots, 0, &images.upgrades) {
         warn!("Image in slot 0 before revert is invalid at stop={}", stop);
         fails += 1;
     }
-    if !verify_image(&fl, images.slot1.base_off, &images.primary) {
+    if !verify_image(&fl, &images.slots, 1, &images.primaries) {
         warn!("Image in slot 1 before revert is invalid at stop={}", stop);
         fails += 1;
     }
-    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, UNSET,
-                       COPY_DONE) {
+    if !verify_trailer(&fl, images.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                       BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
         warn!("Mismatched trailer for Slot 0 before revert");
         fails += 1;
     }
-    if !verify_trailer(&fl, images.slot1.trailer_off, MAGIC_UNSET, UNSET,
-                       UNSET) {
+    if !verify_trailer(&fl, images.slots[1].trailer_off, BOOT_MAGIC_UNSET,
+                       BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
         warn!("Mismatched trailer for Slot 1 before revert");
         fails += 1;
     }
@@ -911,21 +937,21 @@ fn try_revert_with_fail_at(flash: &SimFlash, images: &Images,
         fails += 1;
     }
 
-    if !verify_image(&fl, images.slot0.base_off, &images.primary) {
+    if !verify_image(&fl, &images.slots, 0, &images.primaries) {
         warn!("Image in slot 0 after revert is invalid at stop={}", stop);
         fails += 1;
     }
-    if !verify_image(&fl, images.slot1.base_off, &images.upgrade) {
+    if !verify_image(&fl, &images.slots, 1, &images.upgrades) {
         warn!("Image in slot 1 after revert is invalid at stop={}", stop);
         fails += 1;
     }
-    if !verify_trailer(&fl, images.slot0.trailer_off, MAGIC_VALID, IMAGE_OK,
-                       COPY_DONE) {
+    if !verify_trailer(&fl, images.slots[0].trailer_off, BOOT_MAGIC_GOOD,
+                       BOOT_FLAG_SET, BOOT_FLAG_SET) {
         warn!("Mismatched trailer for Slot 1 after revert");
         fails += 1;
     }
-    if !verify_trailer(&fl, images.slot1.trailer_off, MAGIC_UNSET, UNSET,
-                       UNSET) {
+    if !verify_trailer(&fl, images.slots[1].trailer_off, BOOT_MAGIC_UNSET,
+                       BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
         warn!("Mismatched trailer for Slot 1 after revert");
         fails += 1;
     }
@@ -937,7 +963,7 @@ fn try_random_fails(flash: &SimFlash, images: &Images,
                     total_ops: i32,  count: usize) -> (SimFlash, Vec<i32>) {
     let mut fl = flash.clone();
 
-    mark_permanent_upgrade(&mut fl, &images.slot1, images.align);
+    mark_permanent_upgrade(&mut fl, &images.slots[1], images.align, images.erased_val);
 
     let mut rng = rand::thread_rng();
     let mut resets = vec![0i32; count];
@@ -976,20 +1002,19 @@ fn show_flash(flash: &Flash) {
 
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
 /// fields used by the given code.  Returns a copy of the image that was written.
-fn install_image(flash: &mut Flash, offset: usize, len: usize,
-                 bad_sig: bool) -> Vec<u8> {
-    let offset0 = offset;
+fn install_image(flash: &mut Flash, slots: &[SlotInfo], slot: usize, len: usize,
+                 bad_sig: bool) -> [Option<Vec<u8>>; 2] {
+    let offset = slots[slot].base_off;
+    let slot_len = slots[slot].len;
 
     let mut tlv = make_tlv();
 
     // Generate a boot header.  Note that the size doesn't include the header.
     let header = ImageHeader {
         magic: 0x96f3b83d,
-        tlv_size: tlv.get_size(),
-        _pad1: 0,
+        load_addr: 0,
         hdr_size: 32,
-        key_id: 0,
-        _pad2: 0,
+        _pad1: 0,
         img_size: len as u32,
         flags: tlv.get_flags(),
         ver: ImageVersion {
@@ -998,7 +1023,7 @@ fn install_image(flash: &mut Flash, offset: usize, len: usize,
             revision: 1,
             build_num: offset as u32,
         },
-        _pad3: 0,
+        _pad2: 0,
     };
 
     let b_header = header.as_raw();
@@ -1008,35 +1033,106 @@ fn install_image(flash: &mut Flash, offset: usize, len: usize,
                                                   mem::size_of::<ImageHeader>()) };
                                                   */
     assert_eq!(b_header.len(), 32);
-    flash.write(offset, &b_header).unwrap();
-    let offset = offset + b_header.len();
 
     // The core of the image itself is just pseudorandom data.
-    let mut buf = vec![0; len];
-    splat(&mut buf, offset);
-    tlv.add_bytes(&buf);
+    let mut b_img = vec![0; len];
+    splat(&mut b_img, offset);
 
-    // Get and append the TLV itself.
-    if bad_sig {
-        let good_sig = &mut tlv.make_tlv();
-        buf.append(&mut vec![0; good_sig.len()]);
-    } else {
-        buf.append(&mut tlv.make_tlv());
+    // TLV signatures work over plain image
+    tlv.add_bytes(&b_img);
+
+    // Generate encrypted images
+    let flag = TlvFlags::ENCRYPTED as u32;
+    let is_encrypted = (tlv.get_flags() & flag) == flag;
+    let mut b_encimg = vec![];
+    if is_encrypted {
+        let key = GenericArray::from_slice(AES_SEC_KEY);
+        let nonce = GenericArray::from_slice(&[0; 16]);
+        let mut cipher = Aes128Ctr::new(&key, &nonce);
+        b_encimg = b_img.clone();
+        cipher.apply_keystream(&mut b_encimg);
     }
+
+    // Build the TLV itself.
+    let mut b_tlv = if bad_sig {
+        let good_sig = &mut tlv.make_tlv();
+        vec![0; good_sig.len()]
+    } else {
+        tlv.make_tlv()
+    };
 
     // Pad the block to a flash alignment (8 bytes).
-    while buf.len() % 8 != 0 {
-        buf.push(0xFF);
+    while b_tlv.len() % 8 != 0 {
+        //FIXME: should be erase_val?
+        b_tlv.push(0xFF);
     }
 
-    flash.write(offset, &buf).unwrap();
-    let offset = offset + buf.len();
+    let mut buf = vec![];
+    buf.append(&mut b_header.to_vec());
+    buf.append(&mut b_img);
+    buf.append(&mut b_tlv.clone());
 
-    // Copy out the image so that we can verify that the image was installed correctly later.
-    let mut copy = vec![0u8; offset - offset0];
-    flash.read(offset0, &mut copy).unwrap();
+    let mut encbuf = vec![];
+    if is_encrypted {
+        encbuf.append(&mut b_header.to_vec());
+        encbuf.append(&mut b_encimg);
+        encbuf.append(&mut b_tlv);
+    }
 
-    copy
+    let result: [Option<Vec<u8>>; 2];
+
+    // Since images are always non-encrypted in slot0, we first write an
+    // encrypted image, re-read to use for verification, erase + flash
+    // un-encrypted. In slot1 the image is written un-encrypted, and if
+    // encryption is requested, it follows an erase + flash encrypted.
+
+    if slot == 0 {
+        let enc_copy: Option<Vec<u8>>;
+
+        if is_encrypted {
+            flash.write(offset, &encbuf).unwrap();
+
+            let mut enc = vec![0u8; encbuf.len()];
+            flash.read(offset, &mut enc).unwrap();
+
+            enc_copy = Some(enc);
+
+            flash.erase(offset, slot_len).unwrap();
+        } else {
+            enc_copy = None;
+        }
+
+        flash.write(offset, &buf).unwrap();
+
+        let mut copy = vec![0u8; buf.len()];
+        flash.read(offset, &mut copy).unwrap();
+
+        result = [Some(copy), enc_copy];
+    } else {
+        flash.write(offset, &buf).unwrap();
+
+        let mut copy = vec![0u8; buf.len()];
+        flash.read(offset, &mut copy).unwrap();
+
+        let enc_copy: Option<Vec<u8>>;
+
+        if is_encrypted {
+            flash.erase(offset, slot_len).unwrap();
+
+            flash.write(offset, &encbuf).unwrap();
+
+            let mut enc = vec![0u8; encbuf.len()];
+            flash.read(offset, &mut enc).unwrap();
+
+            enc_copy = Some(enc);
+        } else {
+            enc_copy = None;
+        }
+
+        result = [Some(copy), enc_copy];
+    }
+
+    result
 }
 
 // The TLV in use depends on what kind of signature we are verifying.
@@ -1050,21 +1146,64 @@ fn make_tlv() -> TlvGen {
     TlvGen::new_ecdsa()
 }
 
+#[cfg(feature = "enc-rsa")]
+fn make_tlv() -> TlvGen {
+    TlvGen::new_enc_rsa()
+}
+
+#[cfg(feature = "enc-kw")]
+fn make_tlv() -> TlvGen {
+    TlvGen::new_enc_kw()
+}
+
 #[cfg(not(feature = "sig-rsa"))]
 #[cfg(not(feature = "sig-ecdsa"))]
+#[cfg(not(feature = "enc-rsa"))]
+#[cfg(not(feature = "enc-kw"))]
 fn make_tlv() -> TlvGen {
     TlvGen::new_hash_only()
 }
 
+#[cfg(feature = "enc-rsa")]
+fn find_image(images: &[Option<Vec<u8>>; 2], slot: usize) -> &Vec<u8> {
+    match &images[slot] {
+        Some(image) => return image,
+        None => panic!("Invalid image"),
+    }
+}
+
+#[cfg(feature = "enc-kw")]
+fn find_image(images: &[Option<Vec<u8>>; 2], slot: usize) -> &Vec<u8> {
+    match &images[slot] {
+        Some(image) => return image,
+        None => panic!("Invalid image"),
+    }
+}
+
+#[cfg(not(feature = "enc-rsa"))]
+#[cfg(not(feature = "enc-kw"))]
+fn find_image(images: &[Option<Vec<u8>>; 2], _slot: usize) -> &Vec<u8> {
+    match &images[0] {
+        Some(image) => return image,
+        None => panic!("Invalid image"),
+    }
+}
+
 /// Verify that given image is present in the flash at the given offset.
-fn verify_image(flash: &Flash, offset: usize, buf: &[u8]) -> bool {
+fn verify_image(flash: &Flash, slots: &[SlotInfo], slot: usize,
+                images: &[Option<Vec<u8>>; 2]) -> bool {
+    let image = find_image(images, slot);
+    let buf = image.as_slice();
+
     let mut copy = vec![0u8; buf.len()];
+    let offset = slots[slot].base_off;
     flash.read(offset, &mut copy).unwrap();
 
     if buf != &copy[..] {
         for i in 0 .. buf.len() {
             if buf[i] != copy[i] {
-                info!("First failure at {:#x}", offset + i);
+                info!("First failure for slot{} at {:#x} {:#x}!={:#x}",
+                      slot, offset + i, buf[i], copy[i]);
                 break;
             }
         }
@@ -1078,25 +1217,34 @@ fn verify_image(flash: &Flash, offset: usize, buf: &[u8]) -> bool {
 #[allow(unused_variables)]
 // overwrite-only doesn't employ trailer management
 fn verify_trailer(flash: &Flash, offset: usize,
-                  magic: Option<&[u8]>, image_ok: Option<u8>,
+                  magic: Option<u8>, image_ok: Option<u8>,
                   copy_done: Option<u8>) -> bool {
     true
 }
 
 #[cfg(not(feature = "overwrite-only"))]
 fn verify_trailer(flash: &Flash, offset: usize,
-                  magic: Option<&[u8]>, image_ok: Option<u8>,
+                  magic: Option<u8>, image_ok: Option<u8>,
                   copy_done: Option<u8>) -> bool {
     let mut copy = vec![0u8; c::boot_magic_sz() + c::boot_max_align() * 2];
     let mut failed = false;
+    let erased_val = flash.erased_val();
 
     flash.read(offset, &mut copy).unwrap();
 
     failed |= match magic {
         Some(v) => {
-            if &copy[16..] != v  {
+            if v == 1 && &copy[16..] != MAGIC.unwrap() {
                 warn!("\"magic\" mismatch at {:#x}", offset);
                 true
+            } else if v == 3 {
+                let expected = [erased_val; 16];
+                if &copy[16..] != expected {
+                    warn!("\"magic\" mismatch at {:#x}", offset);
+                    true
+                } else {
+                    false
+                }
             } else {
                 false
             }
@@ -1106,8 +1254,8 @@ fn verify_trailer(flash: &Flash, offset: usize,
 
     failed |= match image_ok {
         Some(v) => {
-            if copy[8] != v {
-                warn!("\"image_ok\" mismatch at {:#x}", offset);
+            if (v == 1 && copy[8] != v) || (v == 3 && copy[8] != erased_val) {
+                warn!("\"image_ok\" mismatch at {:#x} v={} val={:#x}", offset, v, copy[8]);
                 true
             } else {
                 false
@@ -1118,8 +1266,8 @@ fn verify_trailer(flash: &Flash, offset: usize,
 
     failed |= match copy_done {
         Some(v) => {
-            if copy[0] != v {
-                warn!("\"copy_done\" mismatch at {:#x}", offset);
+            if (v == 1 && copy[0] != v) || (v == 3 && copy[0] != erased_val) {
+                warn!("\"copy_done\" mismatch at {:#x} v={} val={:#x}", offset, v, copy[0]);
                 true
             } else {
                 false
@@ -1135,15 +1283,13 @@ fn verify_trailer(flash: &Flash, offset: usize,
 #[repr(C)]
 pub struct ImageHeader {
     magic: u32,
-    tlv_size: u16,
-    key_id: u8,
-    _pad1: u8,
+    load_addr: u32,
     hdr_size: u16,
-    _pad2: u16,
+    _pad1: u16,
     img_size: u32,
     flags: u32,
     ver: ImageVersion,
-    _pad3: u32,
+    _pad2: u32,
 }
 
 impl AsRaw for ImageHeader {}
@@ -1160,39 +1306,43 @@ pub struct ImageVersion {
 struct SlotInfo {
     base_off: usize,
     trailer_off: usize,
+    len: usize,
 }
 
 pub struct Images {
     flash: SimFlash,
     areadesc: AreaDesc,
-    slot0: SlotInfo,
-    slot1: SlotInfo,
-    primary: Vec<u8>,
-    upgrade: Vec<u8>,
+    slots: [SlotInfo; 2],
+    primaries: [Option<Vec<u8>>; 2],
+    upgrades: [Option<Vec<u8>>; 2],
     total_count: Option<i32>,
     align: u8,
+    erased_val: u8,
 }
 
-const MAGIC_VALID: Option<&[u8]> = Some(&[0x77, 0xc2, 0x95, 0xf3,
-                                          0x60, 0xd2, 0xef, 0x7f,
-                                          0x35, 0x52, 0x50, 0x0f,
-                                          0x2c, 0xb6, 0x79, 0x80]);
-const MAGIC_UNSET: Option<&[u8]> = Some(&[0xff; 16]);
+const MAGIC: Option<&[u8]> = Some(&[0x77, 0xc2, 0x95, 0xf3,
+                                    0x60, 0xd2, 0xef, 0x7f,
+                                    0x35, 0x52, 0x50, 0x0f,
+                                    0x2c, 0xb6, 0x79, 0x80]);
 
-const COPY_DONE: Option<u8> = Some(1);
-const IMAGE_OK: Option<u8> = Some(1);
-const UNSET: Option<u8> = Some(0xff);
+// Replicates defines found in bootutil.h
+const BOOT_MAGIC_GOOD: Option<u8> = Some(1);
+const BOOT_MAGIC_UNSET: Option<u8> = Some(3);
+
+const BOOT_FLAG_SET: Option<u8> = Some(1);
+const BOOT_FLAG_UNSET: Option<u8> = Some(3);
 
 /// Write out the magic so that the loader tries doing an upgrade.
 fn mark_upgrade(flash: &mut Flash, slot: &SlotInfo) {
     let offset = slot.trailer_off + c::boot_max_align() * 2;
-    flash.write(offset, MAGIC_VALID.unwrap()).unwrap();
+    flash.write(offset, MAGIC.unwrap()).unwrap();
 }
 
 /// Writes the image_ok flag which, guess what, tells the bootloader
 /// the this image is ok (not a test, and no revert is to be performed).
-fn mark_permanent_upgrade(flash: &mut Flash, slot: &SlotInfo, align: u8) {
-    let ok = [1u8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
+fn mark_permanent_upgrade(flash: &mut Flash, slot: &SlotInfo, align: u8, erased_val: u8) {
+    let mut ok = [erased_val; 8];
+    ok[0] = 1u8;
     let off = slot.trailer_off + c::boot_max_align();
     flash.write(off, &ok[..align as usize]).unwrap();
 }

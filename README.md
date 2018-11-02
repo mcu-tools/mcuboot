@@ -6,15 +6,15 @@
 [coverity]: https://scan.coverity.com/projects/mcuboot
 [travis]: https://travis-ci.org/runtimeco/mcuboot
 
-This is mcuboot, version 1.1.0
+This is mcuboot, version 1.2.0
 
 MCUboot is a secure bootloader for 32-bit MCUs.   The goal of MCUboot is to
 define a common infrastructure for the bootloader, system flash layout on
 microcontroller systems, and to provide a secure bootloader that enables
 easy software upgrade.
 
-MCUboot is operating system and hardware independent, and relies on
-hardware porting layers from the operating system it works with.  Currently
+MCUboot is operating system and hardware independent and relies on
+hardware porting layers from the operating system it works with.  Currently, 
 mcuboot works with both the Apache Mynewt, and Zephyr operating systems, but
 more ports are planned in the future. RIOT is currently supported as a boot
 target with a complete port planned.
@@ -28,25 +28,30 @@ Instructions for different operating systems can be found here:
 
 ## Roadmap
 
-The issues being planned and worked on are tracked on Jira. To participate
-please visit:
+The issues being planned and worked on are tracked using GitHub issues. To
+participate please visit:
 
-https://runtimeco.atlassian.net/projects/MCUB/summary
+[MCUBoot GitHub Issues](https://github.com/runtimeco/mcuboot/issues)
+
+~~Issues were previously tracked on [MCUboot JIRA](https://runtimeco.atlassian.net/projects/MCUB/summary)
+, but it is now deprecated.~~
 
 ## Browsing
 
-Information and documentation on the bootloader is stored within the source, and on confluence:
+Information and documentation on the bootloader are stored within the source.
 
-https://runtimeco.atlassian.net/wiki/discover/all-updates
+~~It was previously also documented on confluence:
+[MCUBoot Confluence](https://runtimeco.atlassian.net/wiki/discover/all-updates)
+however, it is now deprecated and not currently maintained~~
 
 For more information in the source, here are some pointers:
 
-- [boot/bootutil](https://github.com/runtimeco/mcuboot/tree/master/boot/bootutil): The core of the bootloader itself.
-- [boot/boot\_serial](https://github.com/runtimeco/mcuboot/tree/master/boot/boot_serial): Support for serial upgrade within the bootloader itself.
-- [boot/zephyr](https://github.com/runtimeco/mcuboot/tree/master/boot/zephyr): Port of the bootloader to Zephyr
-- [boot/mynewt](https://github.com/runtimeco/mcuboot/tree/master/boot/mynewt): Mynewt bootloader app
-- [imgtool](https://github.com/runtimeco/mcuboot/tree/master/imgtool): A tool to securely sign firmware images for booting by mcuboot.
-- [sim](https://github.com/runtimeco/mcuboot/tree/master/sim): A bootloader simulator for testing and regression
+- [boot/bootutil](boot/bootutil): The core of the bootloader itself.
+- [boot/boot\_serial](boot/boot_serial): Support for serial upgrade within the bootloader itself.
+- [boot/zephyr](boot/zephyr): Port of the bootloader to Zephyr
+- [boot/mynewt](boot/mynewt): Mynewt bootloader app
+- [imgtool](scripts/imgtool.py): A tool to securely sign firmware images for booting by mcuboot.
+- [sim](sim): A bootloader simulator for testing and regression
 
 ## Joining
 

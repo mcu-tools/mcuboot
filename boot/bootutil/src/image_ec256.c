@@ -19,9 +19,7 @@
 
 #include <string.h>
 
-#ifdef MCUBOOT_MYNEWT
 #include "mcuboot_config/mcuboot_config.h"
-#endif
 
 #ifdef MCUBOOT_SIGN_EC256
 #include "bootutil/sign_key.h"

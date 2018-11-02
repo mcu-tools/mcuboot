@@ -40,6 +40,7 @@ struct flash_area;
  */
 #define IMAGE_F_PIC                      0x00000001 /* Not supported. */
 #define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
+#define IMAGE_F_ENCRYPTED                0x00000004 /* Encrypted. */
 /*
  * Indicates that this image should be loaded into RAM instead of run
  * directly from flash.  The address to load should be in the
@@ -67,6 +68,8 @@ struct flash_area;
 #define IMAGE_TLV_RSA2048_PSS       0x20   /* RSA2048 of hash output */
 #define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output */
 #define IMAGE_TLV_ECDSA256          0x22   /* ECDSA of hash output */
+#define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
+#define IMAGE_TLV_ENC_KW128         0x31   /* Key encrypted with AES-KW-128 */
 
 struct image_version {
     uint8_t iv_major;
@@ -80,11 +83,11 @@ struct image_header {
     uint32_t ih_magic;
     uint32_t ih_load_addr;
     uint16_t ih_hdr_size; /* Size of image header (bytes). */
-    uint16_t _pad2;
+    uint16_t _pad1;
     uint32_t ih_img_size; /* Does not include header. */
     uint32_t ih_flags;    /* IMAGE_F_[...]. */
     struct image_version ih_ver;
-    uint32_t _pad3;
+    uint32_t _pad2;
 };
 
 /** Image TLV header.  All fields in little endian. */

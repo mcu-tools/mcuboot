@@ -83,7 +83,7 @@ TEST_CASE(boot_serial_upload_bigger_image)
         memset(hdr, 0, sizeof(*hdr));
         hdr->nh_op = NMGR_OP_WRITE;
         hdr->nh_group = htons(MGMT_GROUP_ID_IMAGE);
-        hdr->nh_id = IMGMGR_NMGR_OP_UPLOAD;
+        hdr->nh_id = IMGMGR_NMGR_ID_UPLOAD;
 
         if (off) {
             memcpy(buf + payload_off, payload_next, sizeof payload_next);

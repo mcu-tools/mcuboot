@@ -13,10 +13,14 @@ fn main() {
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
     let validate_slot0 = env::var("CARGO_FEATURE_VALIDATE_SLOT0").is_ok();
+    let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
+    let enc_kw = env::var("CARGO_FEATURE_ENC_KW").is_ok();
 
     let mut conf = gcc::Build::new();
     conf.define("__BOOTSIM__", None);
     conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
+    conf.define("MCUBOOT_HAVE_ASSERT_H", None);
+    conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
 
     if validate_slot0 {
         conf.define("MCUBOOT_VALIDATE_SLOT0", None);
@@ -31,23 +35,25 @@ fn main() {
         conf.define("MCUBOOT_SIGN_RSA", None);
         conf.define("MCUBOOT_USE_MBED_TLS", None);
 
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-boot.h>"));
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
         conf.include("mbedtls/include");
         conf.file("mbedtls/library/sha256.c");
-        conf.file("../../boot/zephyr/keys.c");
+        conf.file("csupport/keys.c");
 
         conf.file("mbedtls/library/rsa.c");
         conf.file("mbedtls/library/bignum.c");
+        conf.file("mbedtls/library/platform.c");
+        conf.file("mbedtls/library/platform_util.c");
         conf.file("mbedtls/library/asn1parse.c");
     } else if sig_ecdsa {
         conf.define("MCUBOOT_SIGN_EC256", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
 
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-boot.h>"));
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
         conf.include("../../ext/mbedtls/include");
         conf.include("../../ext/tinycrypt/lib/include");
 
-        conf.file("../../boot/zephyr/keys.c");
+        conf.file("csupport/keys.c");
 
         conf.file("../../ext/tinycrypt/lib/source/utils.c");
         conf.file("../../ext/tinycrypt/lib/source/sha256.c");
@@ -57,9 +63,9 @@ fn main() {
 
         conf.file("../../ext/mbedtls/src/asn1parse.c");
     } else {
-        // Neither signature type, only verify sha256.
+        // Neither signature type, only verify sha256. The default
+        // configuration file bundled with mbedTLS is sufficient.
         conf.define("MCUBOOT_USE_MBED_TLS", None);
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-boot.h>"));
         conf.include("mbedtls/include");
         conf.file("mbedtls/library/sha256.c");
     }
@@ -67,6 +73,49 @@ fn main() {
     if overwrite_only {
         conf.define("MCUBOOT_OVERWRITE_ONLY", None);
         conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
+    }
+
+    if enc_rsa {
+        conf.define("MCUBOOT_ENCRYPT_RSA", None);
+        conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
+
+        conf.file("../../boot/bootutil/src/encrypted.c");
+        conf.file("csupport/keys.c");
+
+        conf.include("mbedtls/include");
+        conf.file("mbedtls/library/sha256.c");
+
+        conf.file("mbedtls/library/platform.c");
+        conf.file("mbedtls/library/platform_util.c");
+        conf.file("mbedtls/library/rsa.c");
+        conf.file("mbedtls/library/rsa_internal.c");
+        conf.file("mbedtls/library/md.c");
+        conf.file("mbedtls/library/md_wrap.c");
+        conf.file("mbedtls/library/aes.c");
+        conf.file("mbedtls/library/bignum.c");
+        conf.file("mbedtls/library/asn1parse.c");
+    }
+
+    if enc_kw {
+        conf.define("MCUBOOT_ENCRYPT_KW", None);
+        conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-kw.h>"));
+
+        conf.file("../../boot/bootutil/src/encrypted.c");
+        conf.file("csupport/keys.c");
+
+        conf.include("mbedtls/include");
+        conf.file("mbedtls/library/sha256.c");
+
+        conf.file("mbedtls/library/platform.c");
+        conf.file("mbedtls/library/platform_util.c");
+        conf.file("mbedtls/library/nist_kw.c");
+        conf.file("mbedtls/library/cipher.c");
+        conf.file("mbedtls/library/cipher_wrap.c");
+        conf.file("mbedtls/library/aes.c");
     }
 
     conf.file("../../boot/bootutil/src/image_validate.c");
@@ -80,8 +129,8 @@ fn main() {
     conf.file("../../boot/bootutil/src/bootutil_misc.c");
     conf.file("csupport/run.c");
     conf.include("../../boot/bootutil/include");
-    conf.include("../../boot/zephyr/include");
     conf.include("csupport");
+    conf.include("../../boot/zephyr/include");
     conf.debug(true);
     conf.flag("-Wall");
     conf.flag("-Werror");

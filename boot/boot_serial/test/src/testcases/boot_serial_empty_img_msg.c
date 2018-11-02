@@ -27,7 +27,7 @@ TEST_CASE(boot_serial_empty_img_msg)
     memset(hdr, 0, sizeof(*hdr));
     hdr->nh_op = NMGR_OP_WRITE;
     hdr->nh_group = htons(MGMT_GROUP_ID_IMAGE);
-    hdr->nh_id = IMGMGR_NMGR_OP_UPLOAD;
+    hdr->nh_id = IMGMGR_NMGR_ID_UPLOAD;
     hdr->nh_len = htons(2);
     strcpy((char *)(hdr + 1), "{}");
 

@@ -47,26 +47,30 @@ into the key file.
 
 ## Signing images
 
-Image signing takes a binary image intended for Slot 0 and adds a
-header and trailer that the bootloader is expecting:
+Image signing takes an image in binary or Intel Hex format intended for Slot 0
+and adds a header and trailer that the bootloader is expecting:
 
-    usage: imgtool.py sign [-h] -k filename --align ALIGN -v VERSION -H
-                           HEADER_SIZE [--pad PAD] [--rsa-pkcs1-15]
-                           infile outfile
-    
-    positional arguments:
-      infile
-      outfile
-    
-    optional arguments:
-      -h, --help            show this help message and exit
-      -k filename, --key filename
-      --align ALIGN
-      -v VERSION, --version VERSION
-      -H HEADER_SIZE, --header-size HEADER_SIZE
-      --included-header     Image has gap for header
-      --pad PAD             Pad image to this many bytes, adding trailer magic
-      --rsa-pkcs1-15        Use old PKCS#1 v1.5 signature algorithm
+    Usage: imgtool.py sign [OPTIONS] INFILE OUTFILE
+
+      Create a signed or unsigned image
+
+    Options:
+      -k, --key filename
+      --align [1|2|4|8]          [required]
+      -v, --version TEXT         [required]
+      -H, --header-size INTEGER  [required]
+      --pad-header               Add --header-size zeroed bytes at the beginning
+                                 of the image
+      -S, --slot-size INTEGER    Size of the slot where the image will be written
+                                 [required]
+      --pad                      Pad image to --slot-size bytes, adding trailer
+                                 magic
+      -M, --max-sectors INTEGER  When padding allow for this amount of sectors
+                                 (defaults to 128)
+      --overwrite-only           Use overwrite-only instead of swap upgrades
+      -e, --endian [little|big]  Select little or big endian
+      -E, --encrypt filename     Encrypt image using the provided public key
+      -h, --help                 Show this message and exit.
 
 The main arguments given are the key file generated above, a version
 field to place in the header (1.2.3 for example), the alignment of the
@@ -74,16 +78,20 @@ flash device in question, and the header size.
 
 The header size depends on the operating system and the particular
 flash device.  For Zephyr, it will be configured as part of the build,
-and will be a small power of two.  By default, the header will be
-prepended to the image.  If `--included-header` is given, the image
-must start with header-size bytes of zeros, and the header will be
-overwritten over these bytes.
+and will be a small power of two.  By default, the Zephyr build system will
+already prepended a zeroed header to the image.  If another build system is
+in use that does not automatically add this zeroed header, `--pad-header` can
+be passed and the `--header-size` will be added by imgtool. If `--pad-header`
+is used with an Intel Hex file, `--header-size` bytes will be subtracted from
+the load address (in Intel Hex terms, the Extended Linear Address record) to
+adjust for the new bytes prepended to the file. The load address of all data
+existing in the file should not change.
 
-The optional --pad argument will place a trailer on the image that
+The `--slot-size` argument is required and used to check that the firmware
+does not overflow into the swap status area (metadata). If swap upgrades are
+not being used, `--overwrite-only` can be passed to avoid adding the swap
+status area size when calculating overflow.
+
+The optional `--pad` argument will place a trailer on the image that
 indicates that the image should be considered an upgrade.  Writing
 this image in slot 1 will then cause the bootloader to upgrade to it.
-
-Lastly, the --rsa-pkcs1-15 will cause the tool to use the older,
-deprecated pkcs#1 v1.5 signing algorithm when using RSA.  This can be
-enabled in the bootloader as wel, and may be needed if you are using
-an older version of the bootloader.

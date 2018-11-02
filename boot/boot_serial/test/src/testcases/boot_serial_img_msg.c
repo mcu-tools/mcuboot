@@ -50,7 +50,7 @@ TEST_CASE(boot_serial_img_msg)
     memset(hdr, 0, sizeof(*hdr));
     hdr->nh_op = NMGR_OP_WRITE;
     hdr->nh_group = htons(MGMT_GROUP_ID_IMAGE);
-    hdr->nh_id = IMGMGR_NMGR_OP_UPLOAD;
+    hdr->nh_id = IMGMGR_NMGR_ID_UPLOAD;
 
     memcpy(hdr + 1, payload, sizeof payload);
     hdr->nh_len = htons(sizeof payload);

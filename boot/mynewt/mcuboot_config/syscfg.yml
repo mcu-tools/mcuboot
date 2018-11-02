@@ -31,6 +31,12 @@ syscfg.defs:
     BOOTUTIL_SIGN_EC256:
         description: 'Images are signed using ECDSA NIST P-256.'
         value: 0
+    BOOTUTIL_ENCRYPT_RSA:
+        description: 'Support for encrypted images using RSA-2048-OAEP.'
+        value: 0
+    BOOTUTIL_ENCRYPT_KW:
+        description: 'Support for encrypted images using AES-128-Keywrap.'
+        value: 0
     BOOTUTIL_USE_MBED_TLS:
         description: 'Use mbed TLS for crypto operations.'
         value: 1
@@ -44,5 +50,27 @@ syscfg.defs:
         description: 'Use faster copy only upgrade.'
         value: 1
     BOOTUTIL_IMAGE_FORMAT_V2:
-        description: 'Indicates that system is using v2 of image format'
+        description: 'Indicates that system is using v2 of image format.'
         value: 1
+    BOOTUTIL_MAX_IMG_SECTORS:
+        description: 'Maximum number of sectors that are swapped.'
+        value: 128
+    BOOTUTIL_HAVE_LOGGING:
+        description: 'Enable serial logging'
+        value: 0
+        restrictions:
+            - "!BOOTUTIL_NO_LOGGING"
+    BOOTUTIL_NO_LOGGING:
+        description: 'No serial logging'
+        value: 1
+        restrictions:
+            - "!BOOTUTIL_HAVE_LOGGING"
+    BOOTUTIL_LOG_LEVEL:
+        description: >
+            Default console log level. Valid values are:
+                BOOTUTIL_LOG_LEVEL_OFF
+                BOOTUTIL_LOG_LEVEL_ERROR
+                BOOTUTIL_LOG_LEVEL_WARNING
+                BOOTUTIL_LOG_LEVEL_INFO
+                BOOTUTIL_LOG_LEVEL_DEBUG
+        value: 'BOOTUTIL_LOG_LEVEL_INFO'

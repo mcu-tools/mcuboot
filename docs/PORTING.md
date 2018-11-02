@@ -5,6 +5,10 @@ This document describes the requirements and necessary steps required to port
 
 # Requirements
 
+* `mcuboot` requires a configuration file, which can be included as
+   mcuboot_config/mcuboot_config.h, which configures various options
+   (that begin with MCUBOOT_).
+
 * `mcuboot` requires that the target provides a `flash` API with ability to
   get the flash's minimum write size, and read/write/erase individual sectors.
 
@@ -46,18 +50,24 @@ After running the management functions of the bootloader, `boot_go` returns
 an initialized `boot_rsp` which has pointers to the location of the image
 where the target firmware is located which can be used to jump to.
 
-## Flash access and flash Map
+## Configuration file
 
-* Regarding flash access the bootloader has two requirements:
+You must provide a file, mcuboot_config/mcuboot_config.h. This is
+included by several files in the "library" portion of MCUboot; it
+provides preprocessor definitions that configure the library's
+build.
 
-### hal_flash_align
+See the file samples/mcuboot_config/mcuboot_config.template.h for a
+starting point and more information. This is a good place to convert
+settings in your environment's configuration system to those required
+by MCUboot. For example, Mynewt uses MYNEWT_VAL() and Zephyr uses
+Kconfig; these configuration systems are converted to MCUBOOT_ options
+in the following files:
 
-`mcuboot` needs to know the write size (and alignment) of the flash. To get
-this information it calls `hal_flash_align`.
+- boot/zephyr/include/mcuboot_config/mcuboot_config.h
+- boot/mynewt/mcuboot_config/include/mcuboot_config/mcuboot_config.h
 
-`uint8_t hal_flash_align(uint8_t flash_id);`
-
-### flash_map
+## Flash Map
 
 The bootloader requires a `flash_map` to be able to know how the flash is
 partitioned. A `flash_map` consists of `struct flash_area` entries

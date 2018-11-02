@@ -15,6 +15,7 @@
  */
 
 #include <bootutil/caps.h>
+#include "mcuboot_config/mcuboot_config.h"
 
 uint32_t bootutil_get_caps(void)
 {

@@ -29,5 +29,5 @@ syscfg.defs:
 syscfg.vals:
     SYSINIT_CONSTRAIN_INIT: 0
     OS_SCHEDULING: 0
-    OS_CPUTIME_TIMER_NUM: -1
+    MSYS_1_BLOCK_COUNT: 0
     CONSOLE_COMPAT: 1
