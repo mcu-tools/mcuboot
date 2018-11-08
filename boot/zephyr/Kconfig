@@ -7,6 +7,11 @@ mainmenu "MCUboot configuration"
 
 comment "MCUboot-specific configuration options"
 
+# Hidden option to mark a project as MCUboot
+config MCUBOOT
+	default y
+	bool
+
 config BOOT_USE_MBEDTLS
 	bool
 	# Hidden option
