@@ -108,8 +108,8 @@ void main(void)
 
     os_heap_init();
 
-    if (!flash_device_get_binding(FLASH_DEV_NAME)) {
-        BOOT_LOG_ERR("Flash device %s not found", FLASH_DEV_NAME);
+    if (!flash_device_get_binding(DT_FLASH_DEV_NAME)) {
+        BOOT_LOG_ERR("Flash device %s not found", DT_FLASH_DEV_NAME);
         while (1)
             ;
     }
