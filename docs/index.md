@@ -38,7 +38,7 @@ of date.  You should use `imgtool.py` instead of these documents.
 The issues being planned and worked on are tracked using GitHub issues. To participate
 please visit:
 
-[MCUboot Issues](https://github.com/runtimeco/mcuboot/issues)
+[MCUboot Issues](https://github.com/JuulLabs-OSS/mcuboot/issues)
 
 ~~Issues were previously tracked on [MCUboot JIRA](https://runtimeco.atlassian.net/projects/MCUB/summary)
 , but it is now deprecated.~~
@@ -52,12 +52,12 @@ Information and documentation on the bootloader is stored within the source.
 
 For more information in the source, here are some pointers:
 
-- [boot/bootutil](https://github.com/runtimeco/mcuboot/tree/master/boot/bootutil): The core of the bootloader itself.
-- [boot/boot\_serial](https://github.com/runtimeco/mcuboot/tree/master/boot/boot_serial): Support for serial upgrade within the bootloader itself.
-- [boot/zephyr](https://github.com/runtimeco/mcuboot/tree/master/boot/zephyr): Port of the bootloader to Zephyr
-- [boot/mynewt](https://github.com/runtimeco/mcuboot/tree/master/boot/mynewt): Mynewt bootloader app
-- [imgtool](https://github.com/runtimeco/mcuboot/tree/master/scripts/imgtool.py): A tool to securely sign firmware images for booting by MCUboot.
-- [sim](https://github.com/runtimeco/mcuboot/tree/master/sim): A bootloader simulator for testing and regression
+- [boot/bootutil](https://github.com/JuulLabs-OSS/mcuboot/tree/master/boot/bootutil): The core of the bootloader itself.
+- [boot/boot\_serial](https://github.com/JuulLabs-OSS/mcuboot/tree/master/boot/boot_serial): Support for serial upgrade within the bootloader itself.
+- [boot/zephyr](https://github.com/JuulLabs-OSS/mcuboot/tree/master/boot/zephyr): Port of the bootloader to Zephyr
+- [boot/mynewt](https://github.com/JuulLabs-OSS/mcuboot/tree/master/boot/mynewt): Mynewt bootloader app
+- [imgtool](https://github.com/JuulLabs-OSS/mcuboot/tree/master/scripts/imgtool.py): A tool to securely sign firmware images for booting by MCUboot.
+- [sim](https://github.com/JuulLabs-OSS/mcuboot/tree/master/sim): A bootloader simulator for testing and regression
 
 ## Joining
 
