@@ -33,6 +33,11 @@ error_chain! {
     }
 }
 
+pub struct FlashPtr {
+   pub ptr: *mut Flash,
+}
+unsafe impl Send for FlashPtr {}
+
 pub trait Flash {
     fn erase(&mut self, offset: usize, len: usize) -> Result<()>;
     fn write(&mut self, offset: usize, payload: &[u8]) -> Result<()>;

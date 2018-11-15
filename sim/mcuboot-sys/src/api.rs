@@ -1,15 +1,22 @@
 //! HAL api for MyNewt applications
 
-use simflash::{Result, Flash};
+use simflash::{Result, Flash, FlashPtr};
 use libc;
 use log::LogLevel;
 use std::mem;
 use std::slice;
 use std::collections::HashMap;
 use std::sync::Mutex;
+use std::ops::Deref;
 
-// The current active flash device.  The 'static is a lie, and we manage the lifetime ourselves.
-static mut FLASH: Option<*mut Flash> = None;
+/// A FlashMap maintain a table of [device_id -> Flash trait]
+type FlashMap = HashMap<u8, FlashPtr>;
+
+lazy_static! {
+    static ref FLASH: Mutex<FlashMap> = {
+        Mutex::new(HashMap::new())
+    };
+}
 
 struct FlashParams {
     align: u8,
@@ -31,44 +38,50 @@ pub unsafe fn set_flash(dev_id: u8, dev: &mut Flash) {
     });
 
     let dev: &'static mut Flash = mem::transmute(dev);
-    FLASH = Some(dev as *mut Flash);
+    let mut flash = FLASH.lock().unwrap();
+    flash.insert(dev_id, FlashPtr{ptr: dev as *mut Flash});
 }
 
-pub unsafe fn clear_flash() {
-    FLASH = None;
-}
-
-// Retrieve the flash, returning an error from the enclosing function.  We can't panic here because
-// we've called through C and unwinding is prohibited (it seems to just exit the program).
-macro_rules! get_flash {
-    () => {
-        match FLASH {
-            Some(x) => &mut *x,
-            None => return -19,
-        }
-    }
+pub unsafe fn clear_flash(dev_id: u8) {
+    let mut flash = FLASH.lock().unwrap();
+    flash.remove(&dev_id);
 }
 
 // This isn't meant to call directly, but by a wrapper.
 
 #[no_mangle]
-pub extern fn sim_flash_erase(_id: u8, offset: u32, size: u32) -> libc::c_int {
-    let dev = unsafe { get_flash!() };
-    map_err(dev.erase(offset as usize, size as usize))
+pub extern fn sim_flash_erase(dev_id: u8, offset: u32, size: u32) -> libc::c_int {
+    if let Ok(guard) = FLASH.lock() {
+        if let Some(flash) = guard.deref().get(&dev_id) {
+            let dev = unsafe { &mut *(flash.ptr) };
+            return map_err(dev.erase(offset as usize, size as usize));
+        }
+    }
+    -19
 }
 
 #[no_mangle]
-pub extern fn sim_flash_read(_id: u8, offset: u32, dest: *mut u8, size: u32) -> libc::c_int {
-    let dev = unsafe { get_flash!() };
-    let mut buf: &mut[u8] = unsafe { slice::from_raw_parts_mut(dest, size as usize) };
-    map_err(dev.read(offset as usize, &mut buf))
+pub extern fn sim_flash_read(dev_id: u8, offset: u32, dest: *mut u8, size: u32) -> libc::c_int {
+    if let Ok(guard) = FLASH.lock() {
+        if let Some(flash) = guard.deref().get(&dev_id) {
+            let mut buf: &mut[u8] = unsafe { slice::from_raw_parts_mut(dest, size as usize) };
+            let dev = unsafe { &mut *(flash.ptr) };
+            return map_err(dev.read(offset as usize, &mut buf));
+        }
+    }
+    -19
 }
 
 #[no_mangle]
-pub extern fn sim_flash_write(_id: u8, offset: u32, src: *const u8, size: u32) -> libc::c_int {
-    let dev = unsafe { get_flash!() };
-    let buf: &[u8] = unsafe { slice::from_raw_parts(src, size as usize) };
-    map_err(dev.write(offset as usize, &buf))
+pub extern fn sim_flash_write(dev_id: u8, offset: u32, src: *const u8, size: u32) -> libc::c_int {
+    if let Ok(guard) = FLASH.lock() {
+        if let Some(flash) = guard.deref().get(&dev_id) {
+            let buf: &[u8] = unsafe { slice::from_raw_parts(src, size as usize) };
+            let dev = unsafe { &mut *(flash.ptr) };
+            return map_err(dev.write(offset as usize, &buf));
+        }
+    }
+    -19
 }
 
 #[no_mangle]
