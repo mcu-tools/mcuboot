@@ -30,7 +30,7 @@ pub fn boot_go(flash: &mut Flash, areadesc: &AreaDesc, counter: Option<&mut i32>
     let asserts = unsafe { raw::c_asserts };
     unsafe {
         counter.map(|c| *c = raw::flash_counter as i32);
-        api::clear_flash();
+        api::clear_flash(0);
     };
     (result, asserts)
 }
