@@ -14,6 +14,7 @@ use std::io::Write;
 use std::iter::Enumerate;
 use std::path::Path;
 use std::slice;
+use std::collections::HashMap;
 use pdump::HexDump;
 
 error_chain! {
@@ -129,6 +130,8 @@ impl SimFlash {
     }
 
 }
+
+pub type SimFlashMap = HashMap<u8, SimFlash>;
 
 impl Flash for SimFlash {
     /// The flash drivers tend to erase beyond the bounds of the given range.  Instead, we'll be

@@ -10,7 +10,7 @@ use std::sync::Mutex;
 use std::ops::Deref;
 
 /// A FlashMap maintain a table of [device_id -> Flash trait]
-type FlashMap = HashMap<u8, FlashPtr>;
+pub type FlashMap = HashMap<u8, FlashPtr>;
 
 lazy_static! {
     static ref FLASH: Mutex<FlashMap> = {
