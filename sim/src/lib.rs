@@ -388,7 +388,7 @@ pub fn make_device(device: DeviceName, align: u8, erased_val: u8) -> (SimFlashMa
             // Simulate nrf52840 with external SPI flash. The external SPI flash
             // has a larger sector size so for now store scratch on that flash.
             let flash0 = SimFlash::new(vec![4096; 128], align as usize, erased_val);
-            let flash1 = SimFlash::new(vec![4096; 128], align as usize, erased_val);
+            let flash1 = SimFlash::new(vec![8192; 64], align as usize, erased_val);
 
             let mut areadesc = AreaDesc::new();
             areadesc.add_flash_sectors(0, &flash0);
