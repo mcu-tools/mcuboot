@@ -38,6 +38,9 @@
 #define MCUBOOT_LOG_LEVEL MCUBOOT_LOG_LEVEL_INFO
 #endif
 
+#define MCUBOOT_LOG_MODULE_DECLARE(domain)	/* ignore */
+#define MCUBOOT_LOG_MODULE_REGISTER(domain)	/* ignore */
+
 int sim_log_enabled(int level);
 
 #if MCUBOOT_LOG_LEVEL >= MCUBOOT_LOG_LEVEL_ERROR

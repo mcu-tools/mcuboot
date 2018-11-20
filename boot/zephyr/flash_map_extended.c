@@ -15,6 +15,8 @@
 
 #include "bootutil/bootutil_log.h"
 
+MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+
 #if (!defined(CONFIG_XTENSA) && defined(DT_FLASH_DEV_NAME))
 #define FLASH_DEVICE_ID SOC_FLASH_0_ID
 #elif (defined(CONFIG_XTENSA) && defined(DT_SPI_NOR_DRV_NAME))

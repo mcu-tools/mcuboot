@@ -40,6 +40,8 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
+MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+
 static struct boot_loader_state boot_data;
 
 #if defined(MCUBOOT_VALIDATE_SLOT0) && !defined(MCUBOOT_OVERWRITE_ONLY)

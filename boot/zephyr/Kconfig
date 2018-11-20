@@ -132,10 +132,11 @@ config ZEPHYR_TRY_MASS_ERASE
 config BOOT_HAVE_LOGGING
 	bool "MCUboot have logging enabled"
 	default y
-	select SYS_LOG
+	select LOG
+	select LOG_INPLACE_PROCESS
 	help
 	  If y, enables logging on the serial port. The log level can
-	  be defined by setting `SYS_LOG_DEFAULT_LEVEL`.
+	  be defined by setting `LOG_DEFAULT_LEVEL`.
 	  If unsure, leave at the default value.
 
 menuconfig MCUBOOT_SERIAL
