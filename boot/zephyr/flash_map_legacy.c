@@ -49,6 +49,8 @@
 #define FLASH_AREA_IMAGE_SECTOR_SIZE FLASH_AREA_IMAGE_SCRATCH_SIZE
 #endif
 
+MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+
 /*
  * Lookup the sector map for a given flash area.  This should fill in
  * `ret` with all of the sectors in the area.  `*cnt` will be set to

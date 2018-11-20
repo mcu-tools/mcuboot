@@ -38,6 +38,9 @@
 #define MCUBOOT_LOG_LEVEL MYNEWT_VAL(BOOTUTIL_LOG_LEVEL)
 #endif
 
+#define MCUBOOT_LOG_MODULE_DECLARE(domain)	/* ignore */
+#define MCUBOOT_LOG_MODULE_REGISTER(domain)	/* ignore */
+
 #if !((MCUBOOT_LOG_LEVEL >= MCUBOOT_LOG_LEVEL_OFF) && \
       (MCUBOOT_LOG_LEVEL <= MCUBOOT_LOG_LEVEL_DEBUG))
 #error "Invalid MCUBOOT_LOG_LEVEL config."

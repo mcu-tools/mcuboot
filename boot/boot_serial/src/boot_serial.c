@@ -59,6 +59,8 @@
 #include "bootutil_priv.h"
 #endif
 
+MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+
 #define BOOT_SERIAL_INPUT_MAX   512
 #define BOOT_SERIAL_OUT_MAX	80
 
@@ -71,8 +73,8 @@
 
 #define ntohs(x) sys_be16_to_cpu(x)
 #define htons(x) sys_cpu_to_be16(x)
-
 #endif
+
 static char in_buf[BOOT_SERIAL_INPUT_MAX + 1];
 static char dec_buf[BOOT_SERIAL_INPUT_MAX + 1];
 const struct boot_uart_funcs *boot_uf;
