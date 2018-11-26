@@ -164,7 +164,11 @@ struct boot_loader_state {
         size_t num_sectors;
     } imgs[BOOT_NUM_SLOTS];
 
-    const struct flash_area *scratch_area;
+    struct {
+        const struct flash_area *area;
+        boot_sector_t *sectors;
+        size_t num_sectors;
+    } scratch;
 
     uint8_t write_sz;
 };
@@ -198,7 +202,7 @@ int boot_read_enc_key(uint8_t slot, uint8_t *enckey);
 
 /* These are macros so they can be used as lvalues. */
 #define BOOT_IMG_AREA(state, slot) ((state)->imgs[(slot)].area)
-#define BOOT_SCRATCH_AREA(state) ((state)->scratch_area)
+#define BOOT_SCRATCH_AREA(state) ((state)->scratch.area)
 #define BOOT_WRITE_SZ(state) ((state)->write_sz)
 
 static inline struct image_header*
@@ -213,6 +217,12 @@ boot_img_num_sectors(struct boot_loader_state *state, size_t slot)
     return state->imgs[slot].num_sectors;
 }
 
+static inline size_t
+boot_scratch_num_sectors(struct boot_loader_state *state)
+{
+    return state->scratch.num_sectors;
+}
+
 /*
  * Offset of the slot from the beginning of the flash device.
  */
@@ -224,7 +234,7 @@ boot_img_slot_off(struct boot_loader_state *state, size_t slot)
 
 static inline size_t boot_scratch_area_size(struct boot_loader_state *state)
 {
-    return state->scratch_area->fa_size;
+    return BOOT_SCRATCH_AREA(state)->fa_size;
 }
 
 #ifndef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
@@ -252,27 +262,26 @@ static inline int
 boot_initialize_area(struct boot_loader_state *state, int flash_area)
 {
     int num_sectors = BOOT_MAX_IMG_SECTORS;
-    size_t slot;
     int rc;
 
     switch (flash_area) {
     case FLASH_AREA_IMAGE_0:
-        slot = 0;
+        rc = flash_area_to_sectors(flash_area, &num_sectors, state->imgs[0].sectors);
+        state->imgs[0].num_sectors = (size_t)num_sectors;
         break;
     case FLASH_AREA_IMAGE_1:
-        slot = 1;
+        rc = flash_area_to_sectors(flash_area, &num_sectors, state->imgs[1].sectors);
+        state->imgs[1].num_sectors = (size_t)num_sectors;
+        break;
+    case FLASH_AREA_IMAGE_SCRATCH:
+        rc = flash_area_to_sectors(flash_area, &num_sectors, state->scratch.sectors);
+        state->scratch.num_sectors = (size_t)num_sectors;
         break;
     default:
         return BOOT_EFLASH;
     }
 
-    rc = flash_area_to_sectors(flash_area, &num_sectors,
-                               state->imgs[slot].sectors);
-    if (rc != 0) {
-        return rc;
-    }
-    state->imgs[slot].num_sectors = (size_t)num_sectors;
-    return 0;
+    return rc;
 }
 
 #else  /* defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
@@ -310,6 +319,11 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
         num_sectors = BOOT_MAX_IMG_SECTORS;
         out_sectors = state->imgs[1].sectors;
         out_num_sectors = &state->imgs[1].num_sectors;
+        break;
+    case FLASH_AREA_IMAGE_SCRATCH:
+        num_sectors = BOOT_MAX_IMG_SECTORS;
+        out_sectors = state->scratch.sectors;
+        out_num_sectors = &state->scratch.num_sectors;
         break;
     default:
         return -1;
