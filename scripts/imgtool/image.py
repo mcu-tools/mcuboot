@@ -148,7 +148,7 @@ class Image():
                 raise Exception(msg)
 
     def create(self, key, enckey):
-        self.add_header(key, enckey)
+        self.add_header(enckey)
 
         tlv = TLV(self.endian)
 
@@ -189,11 +189,8 @@ class Image():
 
         self.payload += tlv.get()
 
-    def add_header(self, key, enckey):
-        """Install the image header.
-
-        The key is needed to know the type of signature, and
-        approximate the size of the signature."""
+    def add_header(self, enckey):
+        """Install the image header."""
 
         flags = 0
         if enckey is not None:
