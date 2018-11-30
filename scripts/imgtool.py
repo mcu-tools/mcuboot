@@ -98,6 +98,14 @@ def validate_version(ctx, param, value):
         raise click.BadParameter("{}".format(e))
 
 
+def validate_header_size(ctx, param, value):
+    min_hdr_size = image.IMAGE_HEADER_SIZE
+    if value < min_hdr_size:
+        raise click.BadParameter(
+            "Minimum value for -H/--header-size is {}".format(min_hdr_size))
+    return value
+
+
 class BasedIntParamType(click.ParamType):
     name = 'integer'
 
@@ -128,7 +136,8 @@ class BasedIntParamType(click.ParamType):
               help='Size of the slot where the image will be written')
 @click.option('--pad-header', default=False, is_flag=True,
               help='Add --header-size zeroed bytes at the beginning of the image')
-@click.option('-H', '--header-size', type=BasedIntParamType(), required=True)
+@click.option('-H', '--header-size', callback=validate_header_size,
+              type=BasedIntParamType(), required=True)
 @click.option('-v', '--version', callback=validate_version,  required=True)
 @click.option('--align', type=click.Choice(['1', '2', '4', '8']),
               required=True)
