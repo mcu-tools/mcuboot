@@ -149,8 +149,7 @@ def sign(key, align, version, header_size, pad_header, slot_size, pad,
             raise Exception("Encryption only available with RSA")
         if key and not isinstance(key, (keys.RSA2048, keys.RSA2048Public)):
             raise Exception("Encryption with sign only available with RSA")
-    if key or enckey:
-        img.create(key, enckey)
+    img.create(key, enckey)
 
     if pad:
         img.pad_to(slot_size)
