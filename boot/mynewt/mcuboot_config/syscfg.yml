@@ -74,3 +74,6 @@ syscfg.defs:
                 BOOTUTIL_LOG_LEVEL_INFO
                 BOOTUTIL_LOG_LEVEL_DEBUG
         value: 'BOOTUTIL_LOG_LEVEL_INFO'
+    BOOTUTIL_BOOTSTRAP:
+        description: 'Support bootstrapping slot0 from slot1, if slot0 is empty'
+        value: 0
