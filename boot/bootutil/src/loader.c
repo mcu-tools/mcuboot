@@ -1202,7 +1202,6 @@ boot_copy_image(struct boot_status *bs)
     const struct flash_area *fap;
     uint8_t slot;
     uint8_t i;
-    uint8_t enckey[BOOT_ENC_KEY_SIZE];
 #endif
     uint32_t size;
     uint32_t copy_size;
@@ -1286,7 +1285,7 @@ boot_copy_image(struct boot_status *bs)
             assert(rc == 0);
 
             for (i = 0; i < BOOT_ENC_KEY_SIZE; i++) {
-                if (enckey[i] != 0xff) {
+                if (bs->enckey[slot][i] != 0xff) {
                     break;
                 }
             }
