@@ -1102,9 +1102,6 @@ boot_copy_image(struct boot_status *bs)
     size_t last_sector;
     const struct flash_area *fap_slot0;
     const struct flash_area *fap_slot1;
-#ifdef MCUBOOT_ENC_IMAGES
-    uint8_t enckey[BOOT_ENC_KEY_SIZE];
-#endif
 
     (void)bs;
 
@@ -1140,11 +1137,11 @@ boot_copy_image(struct boot_status *bs)
 
 #ifdef MCUBOOT_ENC_IMAGES
     if (boot_img_hdr(&boot_data, 1)->ih_flags & IMAGE_F_ENCRYPTED) {
-        rc = boot_enc_load(boot_img_hdr(&boot_data, 1), fap_slot1, enckey);
+        rc = boot_enc_load(boot_img_hdr(&boot_data, 1), fap_slot1, bs->enckey[1]);
         if (rc < 0) {
             return BOOT_EBADIMAGE;
         }
-        if (rc == 0 && boot_enc_set_key(1, enckey)) {
+        if (rc == 0 && boot_enc_set_key(1, bs->enckey[1])) {
             return BOOT_EBADIMAGE;
         }
     }
