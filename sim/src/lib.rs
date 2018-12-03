@@ -695,11 +695,13 @@ impl Images {
     }
 
     #[cfg(feature = "enc-rsa")]
+    #[cfg(not(feature = "overwrite-only"))]
     fn status_sz(&self) -> usize {
         self.trailer_sz() - (16 + 24 + 32)
     }
 
     #[cfg(feature = "enc-kw")]
+    #[cfg(not(feature = "overwrite-only"))]
     fn status_sz(&self) -> usize {
         self.trailer_sz() - (16 + 24 + 32)
     }
