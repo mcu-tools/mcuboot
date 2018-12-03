@@ -690,16 +690,44 @@ split_image_check(struct image_header *app_hdr,
     return 0;
 }
 
-static inline int
-boot_magic_is_erased(uint8_t erased_val, uint32_t magic)
+/*
+ * Check that a memory area consists of a given value.
+ */
+static inline bool
+boot_data_is_set_to(uint8_t val, void *data, size_t len)
 {
     uint8_t i;
-    for (i = 0; i < sizeof(magic); i++) {
-        if (erased_val != *(((uint8_t *)&magic) + i)) {
-            return 0;
+    uint8_t *p = (uint8_t *)data;
+    for (i = 0; i < len; i++) {
+        if (val != p[i]) {
+            return false;
         }
     }
-    return 1;
+    return true;
+}
+
+static int
+boot_check_header_erased(int slot)
+{
+    const struct flash_area *fap;
+    struct image_header *hdr;
+    uint8_t erased_val;
+    int rc;
+
+    rc = flash_area_open(flash_area_id_from_image_slot(slot), &fap);
+    if (rc != 0) {
+        return -1;
+    }
+
+    erased_val = flash_area_erased_val(fap);
+    flash_area_close(fap);
+
+    hdr = boot_img_hdr(&boot_data, slot);
+    if (!boot_data_is_set_to(erased_val, &hdr->ih_magic, sizeof(hdr->ih_magic))) {
+        return -1;
+    }
+
+    return 0;
 }
 
 static int
@@ -715,10 +743,10 @@ boot_validate_slot(int slot, struct boot_status *bs)
     }
 
     hdr = boot_img_hdr(&boot_data, slot);
-    if (boot_magic_is_erased(flash_area_erased_val(fap), hdr->ih_magic) ||
-            hdr->ih_flags & IMAGE_F_NON_BOOTABLE) {
+    if (boot_check_header_erased(slot) == 0 || (hdr->ih_flags & IMAGE_F_NON_BOOTABLE)) {
         /* No bootable image in slot; continue booting from slot 0. */
-        return -1;
+        rc = -1;
+        goto out;
     }
 
     if ((hdr->ih_magic != IMAGE_MAGIC || boot_image_check(hdr, fap, bs) != 0)) {
@@ -729,13 +757,16 @@ boot_validate_slot(int slot, struct boot_status *bs)
              */
         }
         BOOT_LOG_ERR("Image in slot %d is not valid!", slot);
-        return -1;
+        rc = -1;
+        goto out;
     }
 
-    flash_area_close(fap);
-
     /* Image in slot 1 is valid. */
-    return 0;
+    rc = 0;
+
+out:
+    flash_area_close(fap);
+    return rc;
 }
 
 /**
@@ -1152,7 +1183,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
  *
  * @return                      0 on success; nonzero on failure.
  */
-#ifdef MCUBOOT_OVERWRITE_ONLY
+#if defined(MCUBOOT_OVERWRITE_ONLY) || defined(MCUBOOT_BOOTSTRAP)
 static int
 boot_copy_image(struct boot_status *bs)
 {
@@ -1209,7 +1240,7 @@ boot_copy_image(struct boot_status *bs)
     }
 #endif
 
-    BOOT_LOG_INF("Copying slot 1 to slot 0: 0x%lx bytes", size);
+    BOOT_LOG_INF("Copying slot 1 to slot 0: 0x%zx bytes", size);
     rc = boot_copy_sector(fap_slot1, fap_slot0, 0, 0, size);
 
     /*
@@ -1234,8 +1265,7 @@ boot_copy_image(struct boot_status *bs)
 
     return 0;
 }
-
-#else
+#endif
 
 /**
  * Swaps the two images in flash.  If a prior copy operation was interrupted
@@ -1249,8 +1279,9 @@ boot_copy_image(struct boot_status *bs)
  *
  * @return                      0 on success; nonzero on failure.
  */
+#if !defined(MCUBOOT_OVERWRITE_ONLY)
 static int
-boot_copy_image(struct boot_status *bs)
+boot_swap_image(struct boot_status *bs)
 {
     uint32_t sz;
     int first_sector_idx;
@@ -1492,7 +1523,12 @@ boot_swap_if_needed(int *out_swap_type)
 
     /* If a partial swap was detected, complete it. */
     if (bs.idx != BOOT_STATUS_IDX_0 || bs.state != BOOT_STATUS_STATE_0) {
-        rc = boot_copy_image(&bs);
+#if MCUBOOT_OVERWRITE_ONLY
+        /* Should never arrive here, overwrite-only mode has no swap state. */
+        assert(0);
+#else
+        rc = boot_swap_image(&bs);
+#endif
         assert(rc == 0);
 
         /* NOTE: here we have finished a swap resume. The initial request
@@ -1511,9 +1547,34 @@ boot_swap_if_needed(int *out_swap_type)
         case BOOT_SWAP_TYPE_TEST:
         case BOOT_SWAP_TYPE_PERM:
         case BOOT_SWAP_TYPE_REVERT:
+#if MCUBOOT_OVERWRITE_ONLY
             rc = boot_copy_image(&bs);
+#else
+            rc = boot_swap_image(&bs);
+#endif
             assert(rc == 0);
             break;
+#ifdef MCUBOOT_BOOTSTRAP
+        case BOOT_SWAP_TYPE_NONE:
+            /*
+             * Header checks are done first because they are inexpensive.
+             * Since overwrite-only copies starting from offset 0, if
+             * interrupted, it might leave a valid header magic, so also
+             * run validation on slot0 to be sure it's not OK.
+             */
+            if (boot_check_header_erased(0) == 0 ||
+                    boot_validate_slot(0, &bs) != 0) {
+                if (boot_img_hdr(&boot_data, 1)->ih_magic == IMAGE_MAGIC &&
+                        boot_validate_slot(1, &bs) == 0) {
+                    rc = boot_copy_image(&bs);
+                    assert(rc == 0);
+
+                    /* Returns fail here to trigger a re-read of the headers. */
+                    swap_type = BOOT_SWAP_TYPE_FAIL;
+                }
+            }
+            break;
+#endif
         }
     }
 
