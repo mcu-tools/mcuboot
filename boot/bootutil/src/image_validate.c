@@ -22,8 +22,6 @@
 #include <inttypes.h>
 #include <string.h>
 
-#include "hal/hal_flash.h"
-
 #include <flash_map_backend/flash_map_backend.h>
 
 #include "bootutil/image.h"
