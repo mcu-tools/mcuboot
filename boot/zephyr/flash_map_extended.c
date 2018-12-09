@@ -15,14 +15,15 @@
 
 #include "bootutil/bootutil_log.h"
 
-/*
- * For now, we only support one flash device.
- *
- * Pick the SoC Flash driver ID.
- */
+#if (!defined(CONFIG_XTENSA) && defined(DT_FLASH_DEV_NAME))
 #define FLASH_DEVICE_ID SOC_FLASH_0_ID
-#define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
+#elif (defined(CONFIG_XTENSA) && defined(DT_SPI_NOR_DRV_NAME))
+#define FLASH_DEVICE_ID SPI_FLASH_0_ID
+#else
+#error "FLASH_DEVICE_ID could not be determined"
+#endif
 
+#define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
 static struct device *flash_dev;
 
 struct device *flash_device_get_binding(char *dev_name)
