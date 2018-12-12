@@ -1,0 +1,46 @@
+if BOOTLOADER_MCUBOOT
+
+config MCUBOOT_CMAKELISTS_DIR
+	string "Path to the directory of the MCUBoot CMakeLists.txt file"
+	default "$MCUBOOT_BASE/boot/zephyr/"
+
+
+choice
+	prompt "MCUBoot build strategy"
+	default MCUBOOT_BUILD_STRATEGY_FROM_SOURCE
+
+config MCUBOOT_BUILD_STRATEGY_USE_HEX_FILE
+	# Mandatory option when being built through 'zephyr_add_executable'
+	bool "Use hex file instead of building MCUBoot"
+
+if MCUBOOT_BUILD_STRATEGY_USE_HEX_FILE
+
+config MCUBOOT_HEX_FILE
+	# Mandatory option when being built through 'zephyr_add_executable'
+	string "MCUBoot hex file"
+
+endif # MCUBOOT_USE_HEX_FILE
+
+config MCUBOOT_BUILD_STRATEGY_SKIP_BUILD
+	# Mandatory option when being built through 'zephyr_add_executable'
+	bool "Skip building MCUBoot"
+
+config MCUBOOT_BUILD_STRATEGY_FROM_SOURCE
+	# Mandatory option when being built through 'zephyr_add_executable'
+	bool "Build from source"
+
+endchoice
+
+endif # BOOTLOADER_MCUBOOT
+
+if MCUBOOT || BOOTLOADER_MCUBOOT
+# TODO: Support sharing Kconfig configuration between images
+config BOOT_SIGNATURE_KEY_FILE
+	string "PEM key file"
+	default "root-rsa-2048.pem"
+	help
+	  The key file will be parsed by imgtool's getpub command and a .c source
+	  with the public key information will be written in a format expected by
+	  MCUboot.
+
+endif # MCUBOOT || BOOTLOADER_MCUBOOT

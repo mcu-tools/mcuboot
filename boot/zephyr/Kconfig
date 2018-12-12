@@ -60,14 +60,6 @@ config BOOT_SIGNATURE_TYPE_ECDSA_P256
 
 endchoice
 
-config BOOT_SIGNATURE_KEY_FILE
-	string "PEM key file"
-	default ""
-	help
-	  The key file will be parsed by imgtool's getpub command and a .c source
-	  with the public key information will be written in a format expected by
-	  MCUboot.
-
 config MBEDTLS_CFG_FILE
 	default "mcuboot-mbedtls-cfg.h"
 
