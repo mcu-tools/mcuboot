@@ -1,0 +1,39 @@
+menu "MCUboot"
+
+if BOOTLOADER_MCUBOOT
+
+config MCUBOOT_CMAKELISTS_DIR
+	string "Path to the directory of the MCUBoot CMakeLists.txt file"
+	default "$MCUBOOT_BASE/boot/zephyr/"
+
+
+# The name of this configuration needs to match the requirements set by the
+# script `partition_manager.py`. See `pm.yml` in the application directory
+# of MCUBoot.
+module=MCUBOOT
+source "${ZEPHYR_BASE}/../nrf/subsys/partition_manager/Kconfig.template.build_strategy"
+
+config MCUBOOT_IMAGE_VERSION
+        string "Image version"
+        default "0.0.0+0"
+	help
+	  Value to be passed as 'version' argument to 'imgtool.py' when
+	  creating signed image. Note that no semantics are connected to
+	  this variable. It does not provide downgrade prevention, and is only
+	  valuable for debugging purposes. Format: maj.min.rev+build with
+	  latter parts optional.
+
+endif # BOOTLOADER_MCUBOOT
+
+config BOOT_SIGNATURE_KEY_FILE
+	string "PEM key file"
+	default "root-rsa-2048.pem"
+	help
+	  The key file will be parsed by imgtool's getpub command and a .c source
+	  with the public key information will be written in a format expected by
+	  MCUboot.
+
+config DT_FLASH_WRITE_BLOCK_SIZE
+	int
+	default $(dt_node_int_prop_int,$(DT_CHOSEN_ZEPHYR_FLASH),write-block-size)
+endmenu

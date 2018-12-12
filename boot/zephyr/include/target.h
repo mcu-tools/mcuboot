@@ -8,6 +8,8 @@
 #ifndef H_TARGETS_TARGET_
 #define H_TARGETS_TARGET_
 
+#ifndef USE_PARTITION_MANAGER
+
 #if defined(MCUBOOT_TARGET_CONFIG)
 /*
  * Target-specific definitions are permitted in legacy cases that
@@ -46,5 +48,7 @@
                                      !(FLASH_AREA_LABEL_EXISTS(image_3)))
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
+
+#endif /* ifndef USE_PARTITION_MANAGER */
 
 #endif /* H_TARGETS_TARGET_ */
