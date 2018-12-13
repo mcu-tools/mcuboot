@@ -114,33 +114,44 @@ region of disk with the following properties:
 2. A write to one area does not restrict writes to other areas.
 
 The boot loader uses the following flash area IDs:
-
-``` c
+```c
+/* Independent from multiple image boot */
 #define FLASH_AREA_BOOTLOADER         0
+#define FLASH_AREA_IMAGE_SCRATCH      3
+```
+```c
+/* If the boot loader is working with the first image */
 #define FLASH_AREA_IMAGE_PRIMARY      1
 #define FLASH_AREA_IMAGE_SECONDARY    2
-#define FLASH_AREA_IMAGE_SCRATCH      3
+```
+```c
+/* If the boot loader is working with the second image */
+#define FLASH_AREA_IMAGE_PRIMARY      5
+#define FLASH_AREA_IMAGE_SECONDARY    6
 ```
 
 The bootloader area contains the bootloader image itself. The other areas are
-described in subsequent sections.
+described in subsequent sections. The flash could contain multiple executable
+images therefore the flash area IDs of primary and secondary areas are mapped
+based on the number of the active image (on which the bootloader is currently
+working).
 
 ## Image Slots
 
-A portion of the flash memory is partitioned into two image slots: a primary
-slot (0) and a secondary slot (1).  The boot loader will only run an image from
-the primary slot, so images must be built such that they can run from that
-fixed location in flash.  If the boot loader needs to run the image resident in
-the secondary slot, it must copy its contents into the primary slot before doing
-so, either by swapping the two images or by overwriting the contents of the
-primary slot. The bootloader supports either swap- or overwrite-based image
-upgrades, but must be configured at build time to choose one of these two
-strategies.
+A portion of the flash memory can be partitioned into multiple image areas, each
+contains two image slots: a primary slot and a secondary slot.
+The boot loader will only run an image from the primary slot, so images must be
+built such that they can run from that fixed location in flash.  If the boot
+loader needs to run the image resident in the secondary slot, it must copy its
+contents into the primary slot before doing so, either by swapping the two
+images or by overwriting the contents of the primary slot. The bootloader
+supports either swap- or overwrite-based image upgrades, but must be configured
+at build time to choose one of these two strategies.
 
-In addition to the two image slots, the boot loader requires a scratch area to
-allow for reliable image swapping. The scratch area must have a size that is
-enough to store at least the largest sector that is going to be swapped. Many
-devices have small equally sized flash sectors, eg 4K, while others have
+In addition to the slots of image areas, the boot loader requires a scratch
+area to allow for reliable image swapping. The scratch area must have a size
+that is enough to store at least the largest sector that is going to be swapped.
+Many devices have small equally sized flash sectors, eg 4K, while others have
 variable sized sectors where the largest sectors might be 128K or 256K, so the
 scratch must be big enough to store that. The scratch is only ever used when
 swapping firmware, which means only when doing an upgrade. Given that, the main

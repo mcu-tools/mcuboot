@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 Open Source Foundries Limited
+ * Copyright (c) 2019 Arm Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -81,6 +82,10 @@
 /* Default maximum number of flash sectors per image slot; change
  * as desirable. */
 #define MCUBOOT_MAX_IMG_SECTORS 128
+
+/* Default number of separately updateable images; change in case of
+ * multiple images. */
+#define MCUBOOT_IMAGE_NUMBER 1
 
 /*
  * Logging

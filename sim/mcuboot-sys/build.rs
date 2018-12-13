@@ -24,6 +24,7 @@ fn main() {
     conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
     conf.define("MCUBOOT_HAVE_ASSERT_H", None);
     conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
+    conf.define("MCUBOOT_IMAGE_NUMBER", Some("1"));
 
     if bootstrap {
         conf.define("MCUBOOT_BOOTSTRAP", None);

@@ -43,6 +43,7 @@
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 static struct boot_loader_state boot_data;
+uint32_t current_image = 0;
 
 #if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT) && !defined(MCUBOOT_OVERWRITE_ONLY)
 static int boot_status_fails = 0;
@@ -1011,16 +1012,18 @@ boot_erase_trailer_sectors(const struct flash_area *fap)
     uint32_t total_sz;
     uint32_t off;
     uint32_t sz;
+    int fa_id_primary;
+    int fa_id_secondary;
     int rc;
 
-    switch (fap->fa_id) {
-    case FLASH_AREA_IMAGE_PRIMARY:
+    fa_id_primary   = flash_area_id_from_image_slot(BOOT_PRIMARY_SLOT);
+    fa_id_secondary = flash_area_id_from_image_slot(BOOT_SECONDARY_SLOT);
+
+    if (fap->fa_id == fa_id_primary) {
         slot = BOOT_PRIMARY_SLOT;
-        break;
-    case FLASH_AREA_IMAGE_SECONDARY:
+    } else if (fap->fa_id == fa_id_secondary) {
         slot = BOOT_SECONDARY_SLOT;
-        break;
-    default:
+    } else {
         return BOOT_EFLASH;
     }
 

@@ -1,5 +1,7 @@
 /*
  *  Copyright (C) 2017, Linaro Ltd
+ *  Copyright (c) 2019, Arm Limited
+ *
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -33,16 +35,20 @@
 /*
  * Sanity check the target support.
  */
-#if (!defined(CONFIG_XTENSA) && !defined(DT_FLASH_DEV_NAME)) || \
+#if (!defined(CONFIG_XTENSA) && !defined(DT_FLASH_DEV_NAME)) ||             \
     (defined(CONFIG_XTENSA) && !defined(DT_JEDEC_SPI_NOR_0_LABEL)) || \
-    !defined(FLASH_ALIGN) ||                  \
-    !defined(FLASH_AREA_IMAGE_0_OFFSET) || \
-    !defined(FLASH_AREA_IMAGE_0_SIZE) || \
-    !defined(FLASH_AREA_IMAGE_1_OFFSET) || \
-    !defined(FLASH_AREA_IMAGE_1_SIZE) || \
-    !defined(FLASH_AREA_IMAGE_SCRATCH_OFFSET) || \
-    !defined(FLASH_AREA_IMAGE_SCRATCH_SIZE)
+    !defined(FLASH_ALIGN) ||                                                \
+    !defined(FLASH_AREA_IMAGE_0_OFFSET) ||                                  \
+    !defined(FLASH_AREA_IMAGE_0_SIZE) ||                                    \
+    !defined(FLASH_AREA_IMAGE_1_OFFSET) ||                                  \
+    !defined(FLASH_AREA_IMAGE_1_SIZE) ||                                    \
+    !defined(FLASH_AREA_IMAGE_SCRATCH_OFFSET) ||                            \
+    !defined(FLASH_AREA_IMAGE_SCRATCH_SIZE) ||                              \
+    ((MCUBOOT_IMAGE_NUMBER == 2) && !defined(FLASH_AREA_IMAGE_2_OFFSET)) || \
+    ((MCUBOOT_IMAGE_NUMBER == 2) && !defined(FLASH_AREA_IMAGE_2_SIZE)) ||   \
+    ((MCUBOOT_IMAGE_NUMBER == 2) && !defined(FLASH_AREA_IMAGE_3_OFFSET)) || \
+    ((MCUBOOT_IMAGE_NUMBER == 2) && !defined(FLASH_AREA_IMAGE_3_SIZE))
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
 
-#endif
+#endif /* H_TARGETS_TARGET_ */

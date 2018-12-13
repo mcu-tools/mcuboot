@@ -17,6 +17,10 @@
  * under the License.
  */
 
+/*
+ * Modifications are Copyright  © 2019 Arm Limited.
+ */
+
 #ifndef H_BOOTUTIL_PRIV_
 #define H_BOOTUTIL_PRIV_
 
@@ -115,7 +119,13 @@ struct boot_swap_state {
     uint8_t image_ok;
 };
 
-#define BOOT_MAX_IMG_SECTORS       MCUBOOT_MAX_IMG_SECTORS
+#ifdef MCUBOOT_IMAGE_NUMBER
+#define BOOT_IMAGE_NUMBER           MCUBOOT_IMAGE_NUMBER
+#else
+#define BOOT_IMAGE_NUMBER           1
+#endif
+
+#define BOOT_MAX_IMG_SECTORS        MCUBOOT_MAX_IMG_SECTORS
 
 /*
  * The current flashmap API does not check the amount of space allocated when
@@ -267,23 +277,21 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     int num_sectors = BOOT_MAX_IMG_SECTORS;
     int rc;
 
-    switch (flash_area) {
-    case FLASH_AREA_IMAGE_PRIMARY:
+    if (flash_area == FLASH_AREA_IMAGE_PRIMARY) {
         rc = flash_area_to_sectors(flash_area, &num_sectors,
                                    state->imgs[BOOT_PRIMARY_SLOT].sectors);
         state->imgs[BOOT_PRIMARY_SLOT].num_sectors = (size_t)num_sectors;
-        break;
-    case FLASH_AREA_IMAGE_SECONDARY:
+
+    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY) {
         rc = flash_area_to_sectors(flash_area, &num_sectors,
                                    state->imgs[BOOT_SECONDARY_SLOT].sectors);
         state->imgs[BOOT_SECONDARY_SLOT].num_sectors = (size_t)num_sectors;
-        break;
-    case FLASH_AREA_IMAGE_SCRATCH:
+
+    } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
         rc = flash_area_to_sectors(flash_area, &num_sectors,
                                    state->scratch.sectors);
         state->scratch.num_sectors = (size_t)num_sectors;
-        break;
-    default:
+    } else {
         return BOOT_EFLASH;
     }
 
@@ -315,24 +323,19 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     size_t *out_num_sectors;
     int rc;
 
-    switch (flash_area) {
-    case FLASH_AREA_IMAGE_PRIMARY:
-        num_sectors = BOOT_MAX_IMG_SECTORS;
+    num_sectors = BOOT_MAX_IMG_SECTORS;
+
+    if (flash_area == FLASH_AREA_IMAGE_PRIMARY) {
         out_sectors = state->imgs[BOOT_PRIMARY_SLOT].sectors;
         out_num_sectors = &state->imgs[BOOT_PRIMARY_SLOT].num_sectors;
-        break;
-    case FLASH_AREA_IMAGE_SECONDARY:
-        num_sectors = BOOT_MAX_IMG_SECTORS;
+    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY) {
         out_sectors = state->imgs[BOOT_SECONDARY_SLOT].sectors;
         out_num_sectors = &state->imgs[BOOT_SECONDARY_SLOT].num_sectors;
-        break;
-    case FLASH_AREA_IMAGE_SCRATCH:
-        num_sectors = BOOT_MAX_IMG_SECTORS;
+    } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
         out_sectors = state->scratch.sectors;
         out_num_sectors = &state->scratch.num_sectors;
-        break;
-    default:
-        return -1;
+    } else {
+        return BOOT_EFLASH;
     }
 
     rc = flash_area_get_sectors(flash_area, &num_sectors, out_sectors);
