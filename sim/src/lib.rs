@@ -1011,11 +1011,13 @@ fn install_image(flash: &mut Flash, slots: &[SlotInfo], slot: usize, len: usize,
 
     let mut tlv = make_tlv();
 
+    const HDR_SIZE: usize = 32;
+
     // Generate a boot header.  Note that the size doesn't include the header.
     let header = ImageHeader {
         magic: 0x96f3b83d,
         load_addr: 0,
-        hdr_size: 32,
+        hdr_size: HDR_SIZE as u16,
         _pad1: 0,
         img_size: len as u32,
         flags: tlv.get_flags(),
@@ -1028,13 +1030,11 @@ fn install_image(flash: &mut Flash, slots: &[SlotInfo], slot: usize, len: usize,
         _pad2: 0,
     };
 
-    let b_header = header.as_raw();
+    let mut b_header = [0; HDR_SIZE];
+    b_header[..32].clone_from_slice(header.as_raw());
+    assert_eq!(b_header.len(), HDR_SIZE);
+
     tlv.add_bytes(&b_header);
-    /*
-    let b_header = unsafe { slice::from_raw_parts(&header as *const _ as *const u8,
-                                                  mem::size_of::<ImageHeader>()) };
-                                                  */
-    assert_eq!(b_header.len(), 32);
 
     // The core of the image itself is just pseudorandom data.
     let mut b_img = vec![0; len];
