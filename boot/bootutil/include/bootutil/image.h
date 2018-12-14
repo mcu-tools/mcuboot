@@ -103,6 +103,8 @@ struct image_tlv {
     uint16_t it_len;    /* Data length (not including TLV header). */
 };
 
+#define IS_ENCRYPTED(hdr) ((hdr)->ih_flags & IMAGE_F_ENCRYPTED)
+
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 

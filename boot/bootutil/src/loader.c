@@ -586,7 +586,7 @@ boot_image_check(struct image_header *hdr, const struct flash_area *fap,
     (void)bs;
     (void)rc;
 #else
-    if (fap->fa_id == FLASH_AREA_IMAGE_1 && hdr->ih_flags & IMAGE_F_ENCRYPTED) {
+    if (fap->fa_id == FLASH_AREA_IMAGE_1 && IS_ENCRYPTED(hdr)) {
         rc = boot_enc_load(hdr, fap, bs->enckey[1]);
         if (rc < 0) {
             return BOOT_EBADIMAGE;
@@ -821,7 +821,7 @@ boot_copy_sector(const struct flash_area *fap_src,
                 hdr = boot_img_hdr(&boot_data, 0);
                 off = off_dst;
             }
-            if (hdr->ih_flags & IMAGE_F_ENCRYPTED) {
+            if (IS_ENCRYPTED(hdr)) {
                 blk_sz = chunk_sz;
                 idx = 0;
                 if (off + bytes_copied < hdr->ih_hdr_size) {
@@ -1136,7 +1136,7 @@ boot_copy_image(struct boot_status *bs)
     }
 
 #ifdef MCUBOOT_ENC_IMAGES
-    if (boot_img_hdr(&boot_data, 1)->ih_flags & IMAGE_F_ENCRYPTED) {
+    if (IS_ENCRYPTED(boot_img_hdr(&boot_data, 1))) {
         rc = boot_enc_load(boot_img_hdr(&boot_data, 1), fap_slot1, bs->enckey[1]);
         if (rc < 0) {
             return BOOT_EBADIMAGE;
@@ -1220,7 +1220,7 @@ boot_copy_image(struct boot_status *bs)
         }
 
 #ifdef MCUBOOT_ENC_IMAGES
-        if (hdr->ih_flags & IMAGE_F_ENCRYPTED) {
+        if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(&boot_data, 0);
             rc = boot_enc_load(hdr, fap, bs->enckey[0]);
             assert(rc >= 0);
@@ -1244,7 +1244,7 @@ boot_copy_image(struct boot_status *bs)
 
 #ifdef MCUBOOT_ENC_IMAGES
         hdr = boot_img_hdr(&boot_data, 1);
-        if (hdr->ih_flags & IMAGE_F_ENCRYPTED) {
+        if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(&boot_data, 1);
             rc = boot_enc_load(hdr, fap, bs->enckey[1]);
             assert(rc >= 0);
