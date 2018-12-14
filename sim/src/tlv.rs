@@ -61,8 +61,8 @@ impl TlvGen {
     pub fn new_rsa_pss() -> TlvGen {
         TlvGen {
             flags: 0,
-            kinds: vec![TlvKinds::SHA256, TlvKinds::KEYHASH, TlvKinds::RSA2048],
-            size: 4 + 32 + 4 + 256,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::RSA2048],
+            size: 4 + 32 + 4 + 32 + 4 + 256,
             payload: vec![],
         }
     }
@@ -71,8 +71,8 @@ impl TlvGen {
     pub fn new_ecdsa() -> TlvGen {
         TlvGen {
             flags: 0,
-            kinds: vec![TlvKinds::SHA256, TlvKinds::KEYHASH, TlvKinds::ECDSA256],
-            size: 4 + 32 + 4 + 72,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256],
+            size: 4 + 32 + 4 + 32 + 4 + 72,
             payload: vec![],
         }
     }
@@ -83,6 +83,16 @@ impl TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,
             kinds: vec![TlvKinds::SHA256, TlvKinds::ENCRSA2048],
             size: 4 + 32 + 4 + 256,
+            payload: vec![],
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn new_sig_enc_rsa() -> TlvGen {
+        TlvGen {
+            flags: TlvFlags::ENCRYPTED as u32,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::RSA2048, TlvKinds::ENCRSA2048],
+            size: 4 + 32 + 4 + 32 + 4 + 256 + 4 + 256,
             payload: vec![],
         }
     }
