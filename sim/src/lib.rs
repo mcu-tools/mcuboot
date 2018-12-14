@@ -1139,6 +1139,7 @@ fn install_image(flash: &mut Flash, slots: &[SlotInfo], slot: usize, len: usize,
 
 // The TLV in use depends on what kind of signature we are verifying.
 #[cfg(feature = "sig-rsa")]
+#[cfg(not(feature = "enc-rsa"))]
 fn make_tlv() -> TlvGen {
     TlvGen::new_rsa_pss()
 }
@@ -1148,9 +1149,16 @@ fn make_tlv() -> TlvGen {
     TlvGen::new_ecdsa()
 }
 
+#[cfg(not(feature = "sig-rsa"))]
 #[cfg(feature = "enc-rsa")]
 fn make_tlv() -> TlvGen {
     TlvGen::new_enc_rsa()
+}
+
+#[cfg(feature = "sig-rsa")]
+#[cfg(feature = "enc-rsa")]
+fn make_tlv() -> TlvGen {
+    TlvGen::new_sig_enc_rsa()
 }
 
 #[cfg(feature = "enc-kw")]
