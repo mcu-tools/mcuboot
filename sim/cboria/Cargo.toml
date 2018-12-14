@@ -1,0 +1,22 @@
+[package]
+name = "cboria"
+version = "0.1.0"
+authors = ["David Brown <david.brown@linaro.org>"]
+edition = "2018"
+
+[dependencies]
+byteorder = "1.2"
+failure = "0.1"
+
+# TODO: This isn't a requirement of the library, just the example
+# binary.  Fix this by moving the binary into its own crate, and
+# possibly using a workspace to connect them together.
+hex = "0.3"
+ring = "0.14"
+
+[lib]
+name = "cboria"
+
+[[bin]]
+name = "cbor-dump"
+path = "src/bin/cbor-dump.rs"

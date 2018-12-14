@@ -1,0 +1,18 @@
+[package]
+name = "suit"
+version = "0.1.0"
+authors = ["David Brown <david.brown@linaro.org>"]
+edition = "2018"
+
+[dependencies]
+cboria = { path = "../cboria" }
+failure = "0.1"
+
+hex = "0.3"
+ring = "0.14"
+untrusted = "0.6"
+pem = "0.5"
+
+[[bin]]
+name = "gen"
+path = "src/bin/gen.rs"
