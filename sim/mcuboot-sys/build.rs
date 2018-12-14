@@ -35,7 +35,6 @@ fn main() {
         conf.define("MCUBOOT_SIGN_RSA", None);
         conf.define("MCUBOOT_USE_MBED_TLS", None);
 
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
         conf.include("mbedtls/include");
         conf.file("mbedtls/library/sha256.c");
         conf.file("csupport/keys.c");
@@ -49,7 +48,6 @@ fn main() {
         conf.define("MCUBOOT_SIGN_EC256", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
 
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
         conf.include("../../ext/mbedtls/include");
         conf.include("../../ext/tinycrypt/lib/include");
 
@@ -79,7 +77,6 @@ fn main() {
         conf.define("MCUBOOT_ENCRYPT_RSA", None);
         conf.define("MCUBOOT_ENC_IMAGES", None);
         conf.define("MCUBOOT_USE_MBED_TLS", None);
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
@@ -102,7 +99,6 @@ fn main() {
         conf.define("MCUBOOT_ENCRYPT_KW", None);
         conf.define("MCUBOOT_ENC_IMAGES", None);
         conf.define("MCUBOOT_USE_MBED_TLS", None);
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-kw.h>"));
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
@@ -116,6 +112,14 @@ fn main() {
         conf.file("mbedtls/library/cipher.c");
         conf.file("mbedtls/library/cipher_wrap.c");
         conf.file("mbedtls/library/aes.c");
+    }
+
+    if sig_rsa || enc_rsa {
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
+    } else if sig_ecdsa {
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
+    } else if enc_kw {
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-kw.h>"));
     }
 
     conf.file("../../boot/bootutil/src/image_validate.c");
