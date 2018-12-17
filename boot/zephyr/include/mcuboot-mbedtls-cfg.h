@@ -21,7 +21,7 @@
  * the simulator build.rs accordingly.
  */
 
-#ifdef CONFIG_BOOT_SIGNATURE_TYPE_RSA
+#if defined(CONFIG_BOOT_SIGNATURE_TYPE_RSA) || defined(CONFIG_BOOT_ENCRYPT_RSA)
 #include "config-rsa.h"
 #elif defined(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
 #include "config-asn1.h"
