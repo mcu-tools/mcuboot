@@ -9,7 +9,7 @@ matrix:
     # Runs each value defined in $SINGLE_FEATURES by itself in the order
     # the were defined.
     - os: linux
-      env: SINGLE_FEATURES="sig-ecdsa enc-kw"
+      env: SINGLE_FEATURES="sig-ecdsa enc-kw bootstrap"
     - os: linux
       env: SINGLE_FEATURES="none sig-rsa overwrite-only validate-slot0"
     - os: linux
@@ -27,6 +27,8 @@ matrix:
       env: MULTI_FEATURES="enc-kw overwrite-only,enc-rsa overwrite-only"
     - os: linux
       env: MULTI_FEATURES="sig-rsa enc-rsa validate-slot0"
+    - os: linux
+      env: MULTI_FEATURES="sig-rsa enc-kw validate-slot0 bootstrap"
 
     # FIXME: this test actually fails and must be fixed
     #- os: linux

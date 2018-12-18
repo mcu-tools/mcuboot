@@ -29,6 +29,9 @@ enc-rsa = []
 # Encrypt image in slot1 using AES-KW-128
 enc-kw = []
 
+# Allow bootstrapping an empty/invalid slot0 from a valid slot1
+bootstrap = []
+
 [build-dependencies]
 cc = "1.0.25"
 

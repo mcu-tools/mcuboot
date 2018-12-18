@@ -15,6 +15,7 @@ fn main() {
     let validate_slot0 = env::var("CARGO_FEATURE_VALIDATE_SLOT0").is_ok();
     let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
     let enc_kw = env::var("CARGO_FEATURE_ENC_KW").is_ok();
+    let bootstrap = env::var("CARGO_FEATURE_BOOTSTRAP").is_ok();
 
     let mut conf = cc::Build::new();
     conf.define("__BOOTSIM__", None);
@@ -22,6 +23,10 @@ fn main() {
     conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
     conf.define("MCUBOOT_HAVE_ASSERT_H", None);
     conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
+
+    if bootstrap {
+        conf.define("MCUBOOT_BOOTSTRAP", None);
+    }
 
     if validate_slot0 {
         conf.define("MCUBOOT_VALIDATE_SLOT0", None);

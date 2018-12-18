@@ -12,6 +12,7 @@ overwrite-only = ["mcuboot-sys/overwrite-only"]
 validate-slot0 = ["mcuboot-sys/validate-slot0"]
 enc-rsa = ["mcuboot-sys/enc-rsa"]
 enc-kw = ["mcuboot-sys/enc-kw"]
+bootstrap = ["mcuboot-sys/bootstrap"]
 
 [dependencies]
 libc = "0.2.0"
