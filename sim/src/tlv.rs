@@ -107,6 +107,16 @@ impl TlvGen {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn new_rsa_kw() -> TlvGen {
+        TlvGen {
+            flags: TlvFlags::ENCRYPTED as u32,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::RSA2048, TlvKinds::ENCKW128],
+            size: 4 + 32 + 4 + 32 + 4 + 256 + 4 + 24,
+            payload: vec![],
+        }
+    }
+
     /// Retrieve the header flags for this configuration.  This can be called at any time.
     pub fn get_flags(&self) -> u32 {
         self.flags
