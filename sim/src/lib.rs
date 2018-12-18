@@ -1183,7 +1183,14 @@ fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize, le
 
 // The TLV in use depends on what kind of signature we are verifying.
 #[cfg(feature = "sig-rsa")]
+#[cfg(feature = "enc-kw")]
+fn make_tlv() -> TlvGen {
+    TlvGen::new_rsa_kw()
+}
+
+#[cfg(feature = "sig-rsa")]
 #[cfg(not(feature = "enc-rsa"))]
+#[cfg(not(feature = "enc-kw"))]
 fn make_tlv() -> TlvGen {
     TlvGen::new_rsa_pss()
 }
@@ -1205,6 +1212,7 @@ fn make_tlv() -> TlvGen {
     TlvGen::new_sig_enc_rsa()
 }
 
+#[cfg(not(feature = "sig-rsa"))]
 #[cfg(feature = "enc-kw")]
 fn make_tlv() -> TlvGen {
     TlvGen::new_enc_kw()

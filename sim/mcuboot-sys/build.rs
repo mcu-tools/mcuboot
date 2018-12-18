@@ -115,7 +115,9 @@ fn main() {
         conf.file("mbedtls/library/aes.c");
     }
 
-    if sig_rsa || enc_rsa {
+    if sig_rsa && enc_kw {
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
+    } else if sig_rsa || enc_rsa {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
     } else if sig_ecdsa {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
