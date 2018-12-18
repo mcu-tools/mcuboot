@@ -19,6 +19,7 @@ target with a complete port planned.
 - [Release notes](release-notes.md)
 - [design](design.md): for the design
 - [imgtool](imgtool.md): The image signing and key management
+- [suit](suit.md): Support for IETF SUIT
 - Usage instructions:
   - [Zephyr](readme-zephyr.md)
   - [Mynewt](readme-mynewt.md)
