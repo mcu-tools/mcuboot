@@ -48,6 +48,10 @@
 #define MCUBOOT_ENCRYPT_RSA
 #endif
 
+#ifdef CONFIG_BOOT_BOOTSTRAP
+#define MCUBOOT_BOOTSTRAP 1
+#endif
+
 /*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.

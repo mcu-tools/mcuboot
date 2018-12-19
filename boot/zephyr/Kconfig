@@ -71,6 +71,14 @@ config BOOT_UPGRADE_ONLY
 	  swapping them.  This prevents the fallback recovery, but
 	  uses a much simpler code path.
 
+config BOOT_BOOTSTRAP
+	bool "Boostrap erased slot0 from slot1"
+	default n
+	help
+	  If y, enables bootstraping support. Bootstrapping allows an erased
+	  slot0 to be initialized from a valid image in slot1.
+	  If unsure, leave at the default value.
+
 config BOOT_ENCRYPT_RSA
 	bool "Support for encrypted upgrade images"
 	default n
