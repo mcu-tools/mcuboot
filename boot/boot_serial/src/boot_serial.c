@@ -563,6 +563,7 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
     int rc;
     uint16_t crc;
     uint16_t len;
+
 #ifdef __ZEPHYR__
     int err;
     err = base64_decode( &out[*out_off], maxout - *out_off, &rc, in, inlen - 2);
@@ -582,7 +583,9 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
 
     if (*out_off > sizeof(uint16_t)) {
         len = ntohs(*(uint16_t *)out);
-
+        if (len != *out_off - sizeof(uint16_t)) {
+            return 0;
+        }
         len = min(len, *out_off - sizeof(uint16_t));
         out += sizeof(uint16_t);
 #ifdef __ZEPHYR__
