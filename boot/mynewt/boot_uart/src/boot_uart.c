@@ -30,9 +30,9 @@
 #define CONSOLE_TAIL_INC(cr) (((cr)->tail + 1) & (sizeof((cr)->buf) - 1))
 
 struct {
-    uint8_t head;
-    uint8_t tail;
-    uint8_t buf[16];
+    uint16_t head;
+    uint16_t tail;
+    uint8_t buf[MYNEWT_VAL(CONSOLE_UART_RX_BUF_SIZE)];
 } bs_uart_rx;
 
 struct {
@@ -119,6 +119,11 @@ boot_uart_read(char *str, int cnt, int *newline)
             *newline = 1;
             break;
         }
+        /*
+         * Unblock interrupts allowing more incoming data.
+         */
+        OS_EXIT_CRITICAL(sr);
+        OS_ENTER_CRITICAL(sr);
         *str++ = ch;
     }
     OS_EXIT_CRITICAL(sr);
