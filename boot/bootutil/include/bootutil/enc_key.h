@@ -22,7 +22,12 @@
 
 #include <flash_map_backend/flash_map_backend.h>
 #include "bootutil/image.h"
+
+#if defined(MCUBOOT_USE_MBED_TLS)
 #include "mbedtls/aes.h"
+#else
+#include "tinycrypt/aes.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +38,11 @@ extern "C" {
 
 struct enc_key_data {
     uint8_t valid;
+#if defined(MCUBOOT_USE_MBED_TLS)
     mbedtls_aes_context aes;
+#else
+    struct tc_aes_key_sched_struct aes;
+#endif
 };
 
 extern const struct bootutil_key bootutil_enc_key;
