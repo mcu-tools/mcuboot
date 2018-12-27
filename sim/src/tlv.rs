@@ -117,6 +117,16 @@ impl TlvGen {
         }
     }
 
+    #[allow(dead_code)]
+    pub fn new_ecdsa_kw() -> TlvGen {
+        TlvGen {
+            flags: TlvFlags::ENCRYPTED as u32,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256, TlvKinds::ENCKW128],
+            size: 4 + 32 + 4 + 32 + 4 + 72 + 4 + 24,
+            payload: vec![],
+        }
+    }
+
     /// Retrieve the header flags for this configuration.  This can be called at any time.
     pub fn get_flags(&self) -> u32 {
         self.flags

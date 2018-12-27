@@ -54,7 +54,9 @@ fn main() {
         conf.define("MCUBOOT_SIGN_EC256", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
 
-        conf.include("../../ext/mbedtls/include");
+        if !enc_kw {
+            conf.include("../../ext/mbedtls/include");
+        }
         conf.include("../../ext/tinycrypt/lib/include");
 
         conf.file("csupport/keys.c");
@@ -65,6 +67,7 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/ecc_dsa.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_platform_specific.c");
 
+        conf.file("../../ext/mbedtls/src/platform_util.c");
         conf.file("../../ext/mbedtls/src/asn1parse.c");
     } else {
         // Neither signature type, only verify sha256. The default
@@ -104,27 +107,40 @@ fn main() {
     if enc_kw {
         conf.define("MCUBOOT_ENCRYPT_KW", None);
         conf.define("MCUBOOT_ENC_IMAGES", None);
-        conf.define("MCUBOOT_USE_MBED_TLS", None);
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
-        conf.include("mbedtls/include");
-        conf.file("mbedtls/library/sha256.c");
+        if sig_rsa {
+            conf.file("mbedtls/library/sha256.c");
+        }
 
+        /* Simulator uses Mbed-TLS to wrap keys */
+        conf.include("mbedtls/include");
         conf.file("mbedtls/library/platform.c");
         conf.file("mbedtls/library/platform_util.c");
         conf.file("mbedtls/library/nist_kw.c");
         conf.file("mbedtls/library/cipher.c");
         conf.file("mbedtls/library/cipher_wrap.c");
         conf.file("mbedtls/library/aes.c");
+
+        if sig_ecdsa {
+            conf.define("MCUBOOT_USE_TINYCRYPT", None);
+
+            conf.include("../../ext/tinycrypt/lib/include");
+
+            conf.file("../../ext/tinycrypt/lib/source/utils.c");
+            conf.file("../../ext/tinycrypt/lib/source/sha256.c");
+            conf.file("../../ext/tinycrypt/lib/source/aes_encrypt.c");
+            conf.file("../../ext/tinycrypt/lib/source/aes_decrypt.c");
+        }
     }
 
     if sig_rsa && enc_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
     } else if sig_rsa || enc_rsa {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
-    } else if sig_ecdsa {
+    } else if sig_ecdsa && !enc_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
     } else if enc_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-kw.h>"));
