@@ -33,8 +33,7 @@
 /*
  * Sanity check the target support.
  */
-#if (!defined(CONFIG_XTENSA) && !defined(DT_FLASH_DEV_NAME)) || \
-    (defined(CONFIG_XTENSA) && !defined(DT_SPI_NOR_DRV_NAME)) || \
+#if !defined(DT_FLASH_DEV_NAME) || \
     !defined(FLASH_ALIGN) ||                  \
     !defined(FLASH_AREA_IMAGE_0_OFFSET) || \
     !defined(FLASH_AREA_IMAGE_0_SIZE) || \
