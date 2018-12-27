@@ -1196,6 +1196,13 @@ fn make_tlv() -> TlvGen {
 }
 
 #[cfg(feature = "sig-ecdsa")]
+#[cfg(feature = "enc-kw")]
+fn make_tlv() -> TlvGen {
+    TlvGen::new_ecdsa_kw()
+}
+
+#[cfg(feature = "sig-ecdsa")]
+#[cfg(not(feature = "enc-kw"))]
 fn make_tlv() -> TlvGen {
     TlvGen::new_ecdsa()
 }
@@ -1213,6 +1220,7 @@ fn make_tlv() -> TlvGen {
 }
 
 #[cfg(not(feature = "sig-rsa"))]
+#[cfg(not(feature = "sig-ecdsa"))]
 #[cfg(feature = "enc-kw")]
 fn make_tlv() -> TlvGen {
     TlvGen::new_enc_kw()
