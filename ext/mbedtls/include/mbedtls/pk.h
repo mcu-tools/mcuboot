@@ -2,7 +2,8 @@
  * \file pk.h
  *
  * \brief Public Key abstraction layer
- *
+ */
+/*
  *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
  *  SPDX-License-Identifier: Apache-2.0
  *
@@ -62,7 +63,10 @@
 #define MBEDTLS_ERR_PK_INVALID_ALG         -0x3A80  /**< The algorithm tag or value is invalid. */
 #define MBEDTLS_ERR_PK_UNKNOWN_NAMED_CURVE -0x3A00  /**< Elliptic curve is unsupported (only NIST curves are supported). */
 #define MBEDTLS_ERR_PK_FEATURE_UNAVAILABLE -0x3980  /**< Unavailable feature, e.g. RSA disabled for RSA key. */
-#define MBEDTLS_ERR_PK_SIG_LEN_MISMATCH    -0x3900  /**< The signature is valid but its length is less than expected. */
+#define MBEDTLS_ERR_PK_SIG_LEN_MISMATCH    -0x3900  /**< The buffer contains a valid signature followed by more data. */
+
+/* MBEDTLS_ERR_PK_HW_ACCEL_FAILED is deprecated and should not be used. */
+#define MBEDTLS_ERR_PK_HW_ACCEL_FAILED     -0x3880  /**< PK hardware accelerator failed. */
 
 #ifdef __cplusplus
 extern "C" {
@@ -85,7 +89,7 @@ typedef enum {
  * \brief           Options for RSASSA-PSS signature verification.
  *                  See \c mbedtls_rsa_rsassa_pss_verify_ext()
  */
-typedef struct
+typedef struct mbedtls_pk_rsassa_pss_options
 {
     mbedtls_md_type_t mgf1_hash_id;
     int expected_salt_len;
@@ -105,7 +109,7 @@ typedef enum
 /**
  * \brief           Item to send to the debug module
  */
-typedef struct
+typedef struct mbedtls_pk_debug_item
 {
     mbedtls_pk_debug_type type;
     const char *name;
@@ -123,11 +127,25 @@ typedef struct mbedtls_pk_info_t mbedtls_pk_info_t;
 /**
  * \brief           Public key container
  */
-typedef struct
+typedef struct mbedtls_pk_context
 {
-    const mbedtls_pk_info_t *   pk_info; /**< Public key informations        */
+    const mbedtls_pk_info_t *   pk_info; /**< Public key information         */
     void *                      pk_ctx;  /**< Underlying public key context  */
 } mbedtls_pk_context;
+
+#if defined(MBEDTLS_ECDSA_C) && defined(MBEDTLS_ECP_RESTARTABLE)
+/**
+ * \brief           Context for resuming operations
+ */
+typedef struct
+{
+    const mbedtls_pk_info_t *   pk_info; /**< Public key information         */
+    void *                      rs_ctx;  /**< Underlying restart context     */
+} mbedtls_pk_restart_ctx;
+#else /* MBEDTLS_ECDSA_C && MBEDTLS_ECP_RESTARTABLE */
+/* Now we can declare functions that take a pointer to that */
+typedef void mbedtls_pk_restart_ctx;
+#endif /* MBEDTLS_ECDSA_C && MBEDTLS_ECP_RESTARTABLE */
 
 #if defined(MBEDTLS_RSA_C)
 /**
@@ -187,6 +205,18 @@ void mbedtls_pk_init( mbedtls_pk_context *ctx );
  * \brief           Free a mbedtls_pk_context
  */
 void mbedtls_pk_free( mbedtls_pk_context *ctx );
+
+#if defined(MBEDTLS_ECDSA_C) && defined(MBEDTLS_ECP_RESTARTABLE)
+/**
+ * \brief           Initialize a restart context
+ */
+void mbedtls_pk_restart_init( mbedtls_pk_restart_ctx *ctx );
+
+/**
+ * \brief           Free the components of a restart context
+ */
+void mbedtls_pk_restart_free( mbedtls_pk_restart_ctx *ctx );
+#endif /* MBEDTLS_ECDSA_C && MBEDTLS_ECP_RESTARTABLE */
 
 /**
  * \brief           Initialize a PK context with the information given
@@ -267,8 +297,8 @@ int mbedtls_pk_can_do( const mbedtls_pk_context *ctx, mbedtls_pk_type_t type );
  * \param sig_len   Signature length
  *
  * \return          0 on success (signature is valid),
- *                  MBEDTLS_ERR_PK_SIG_LEN_MISMATCH if the signature is
- *                  valid but its actual length is less than sig_len,
+ *                  #MBEDTLS_ERR_PK_SIG_LEN_MISMATCH if there is a valid
+ *                  signature in sig but its length is less than \p siglen,
  *                  or a specific error code.
  *
  * \note            For RSA keys, the default padding type is PKCS#1 v1.5.
@@ -285,6 +315,32 @@ int mbedtls_pk_verify( mbedtls_pk_context *ctx, mbedtls_md_type_t md_alg,
                const unsigned char *sig, size_t sig_len );
 
 /**
+ * \brief           Restartable version of \c mbedtls_pk_verify()
+ *
+ * \note            Performs the same job as \c mbedtls_pk_verify(), but can
+ *                  return early and restart according to the limit set with
+ *                  \c mbedtls_ecp_set_max_ops() to reduce blocking for ECC
+ *                  operations. For RSA, same as \c mbedtls_pk_verify().
+ *
+ * \param ctx       PK context to use
+ * \param md_alg    Hash algorithm used (see notes)
+ * \param hash      Hash of the message to sign
+ * \param hash_len  Hash length or 0 (see notes)
+ * \param sig       Signature to verify
+ * \param sig_len   Signature length
+ * \param rs_ctx    Restart context (NULL to disable restart)
+ *
+ * \return          See \c mbedtls_pk_verify(), or
+ * \return          #MBEDTLS_ERR_ECP_IN_PROGRESS if maximum number of
+ *                  operations was reached: see \c mbedtls_ecp_set_max_ops().
+ */
+int mbedtls_pk_verify_restartable( mbedtls_pk_context *ctx,
+               mbedtls_md_type_t md_alg,
+               const unsigned char *hash, size_t hash_len,
+               const unsigned char *sig, size_t sig_len,
+               mbedtls_pk_restart_ctx *rs_ctx );
+
+/**
  * \brief           Verify signature, with options.
  *                  (Includes verification of the padding depending on type.)
  *
@@ -298,10 +354,10 @@ int mbedtls_pk_verify( mbedtls_pk_context *ctx, mbedtls_md_type_t md_alg,
  * \param sig_len   Signature length
  *
  * \return          0 on success (signature is valid),
- *                  MBEDTLS_ERR_PK_TYPE_MISMATCH if the PK context can't be
+ *                  #MBEDTLS_ERR_PK_TYPE_MISMATCH if the PK context can't be
  *                  used for this type of signatures,
- *                  MBEDTLS_ERR_PK_SIG_LEN_MISMATCH if the signature is
- *                  valid but its actual length is less than sig_len,
+ *                  #MBEDTLS_ERR_PK_SIG_LEN_MISMATCH if there is a valid
+ *                  signature in sig but its length is less than \p siglen,
  *                  or a specific error code.
  *
  * \note            If hash_len is 0, then the length associated with md_alg
@@ -346,6 +402,35 @@ int mbedtls_pk_sign( mbedtls_pk_context *ctx, mbedtls_md_type_t md_alg,
              const unsigned char *hash, size_t hash_len,
              unsigned char *sig, size_t *sig_len,
              int (*f_rng)(void *, unsigned char *, size_t), void *p_rng );
+
+/**
+ * \brief           Restartable version of \c mbedtls_pk_sign()
+ *
+ * \note            Performs the same job as \c mbedtls_pk_sign(), but can
+ *                  return early and restart according to the limit set with
+ *                  \c mbedtls_ecp_set_max_ops() to reduce blocking for ECC
+ *                  operations. For RSA, same as \c mbedtls_pk_sign().
+ *
+ * \param ctx       PK context to use - must hold a private key
+ * \param md_alg    Hash algorithm used (see notes)
+ * \param hash      Hash of the message to sign
+ * \param hash_len  Hash length or 0 (see notes)
+ * \param sig       Place to write the signature
+ * \param sig_len   Number of bytes written
+ * \param f_rng     RNG function
+ * \param p_rng     RNG parameter
+ * \param rs_ctx    Restart context (NULL to disable restart)
+ *
+ * \return          See \c mbedtls_pk_sign(), or
+ * \return          #MBEDTLS_ERR_ECP_IN_PROGRESS if maximum number of
+ *                  operations was reached: see \c mbedtls_ecp_set_max_ops().
+ */
+int mbedtls_pk_sign_restartable( mbedtls_pk_context *ctx,
+             mbedtls_md_type_t md_alg,
+             const unsigned char *hash, size_t hash_len,
+             unsigned char *sig, size_t *sig_len,
+             int (*f_rng)(void *, unsigned char *, size_t), void *p_rng,
+             mbedtls_pk_restart_ctx *rs_ctx );
 
 /**
  * \brief           Decrypt message (including padding if relevant).
