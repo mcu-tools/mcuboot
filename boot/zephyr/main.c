@@ -76,54 +76,6 @@ static void do_boot(struct boot_rsp *rsp)
     __set_MSP(vt->msp);
     ((void (*)(void))vt->reset)();
 }
-
-#elif defined(CONFIG_XTENSA)
-#define SRAM_BASE_ADDRESS	0xBE030000
-
-static void copy_img_to_SRAM(int slot, unsigned int hdr_offset)
-{
-    const struct flash_area *fap;
-    int area_id;
-    int rc;
-    unsigned char *dst = (unsigned char *)(SRAM_BASE_ADDRESS + hdr_offset);
-
-    BOOT_LOG_INF("Copying image to SRAM");
-
-    area_id = flash_area_id_from_image_slot(slot);
-    rc = flash_area_open(area_id, &fap);
-    if (rc != 0) {
-	BOOT_LOG_ERR("flash_area_open failed with %d\n", rc);
-        goto done;
-    }
-
-    rc = flash_area_read(fap, hdr_offset, dst, fap->fa_size - hdr_offset);
-    if (rc != 0) {
-	BOOT_LOG_ERR("flash_area_read failed with %d\n", rc);
-        goto done;
-    }
-
-done:
-    flash_area_close(fap);
-}
-
-/* Entry point (.ResetVector) is at the very beginning of the image.
- * Simply copy the image to a suitable location and jump there.
- */
-static void do_boot(struct boot_rsp *rsp)
-{
-    void *start;
-
-    BOOT_LOG_INF("br_image_off = 0x%x\n", rsp->br_image_off);
-    BOOT_LOG_INF("ih_hdr_size = 0x%x\n", rsp->br_hdr->ih_hdr_size);
-
-    /* Copy from the flash to HP SRAM */
-    copy_img_to_SRAM(0, rsp->br_hdr->ih_hdr_size);
-
-    /* Jump to entry point */
-    start = (void *)(SRAM_BASE_ADDRESS + rsp->br_hdr->ih_hdr_size);
-    ((void (*)(void))start)();
-}
-
 #else
 /* Default: Assume entry point is at the very beginning of the image. Simply
  * lock interrupts and jump there. This is the right thing to do for X86 and
@@ -156,15 +108,9 @@ void main(void)
 
     os_heap_init();
 
-#if (!defined(CONFIG_XTENSA) && defined(DT_FLASH_DEV_NAME))
+#ifdef DT_FLASH_DEV_NAME
     if (!flash_device_get_binding(DT_FLASH_DEV_NAME)) {
         BOOT_LOG_ERR("Flash device %s not found", DT_FLASH_DEV_NAME);
-        while (1)
-            ;
-    }
-#elif (defined(CONFIG_XTENSA) && defined(DT_SPI_NOR_DRV_NAME))
-    if (!flash_device_get_binding(DT_SPI_NOR_DRV_NAME)) {
-        BOOT_LOG_ERR("Flash device %s not found", DT_SPI_NOR_DRV_NAME);
         while (1)
             ;
     }

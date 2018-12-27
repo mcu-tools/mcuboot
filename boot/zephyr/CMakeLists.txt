@@ -36,11 +36,6 @@ else()
   set(DTC_OVERLAY_FILE ${CMAKE_CURRENT_LIST_DIR}/dts.overlay)
 endif()
 
-if (EXISTS ${CMAKE_CURRENT_LIST_DIR}/boards/${BOARD}.overlay)
-  set(DTC_OVERLAY_FILE
-      "${DTC_OVERLAY_FILE} ${CMAKE_CURRENT_LIST_DIR}/boards/${BOARD}.overlay")
-endif()
-
 # Enable Zephyr runner options which request mass erase if so
 # configured.
 #
