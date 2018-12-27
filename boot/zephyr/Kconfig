@@ -11,7 +11,6 @@ comment "MCUboot-specific configuration options"
 config MCUBOOT
 	default y
 	bool
-	select MPU_ALLOW_FLASH_WRITE if ARM_MPU
 
 config BOOT_USE_MBEDTLS
 	bool
