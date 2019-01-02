@@ -30,8 +30,8 @@ pub mod testlog;
 
 use simflash::{Flash, SimFlash, SimFlashMap};
 use mcuboot_sys::{c, AreaDesc, FlashId};
-use caps::Caps;
-use tlv::{TlvGen, TlvFlags, AES_SEC_KEY};
+use crate::caps::Caps;
+use crate::tlv::{TlvGen, TlvFlags, AES_SEC_KEY};
 
 const USAGE: &'static str = "
 Mcuboot simulator
