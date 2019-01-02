@@ -2,6 +2,7 @@
 
 use crate::area::AreaDesc;
 use simflash::SimFlashMap;
+use lazy_static::lazy_static;
 use libc;
 use crate::api;
 use std::sync::Mutex;

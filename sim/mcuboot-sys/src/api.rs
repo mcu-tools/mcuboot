@@ -1,13 +1,16 @@
 //! HAL api for MyNewt applications
 
 use simflash::{Result, Flash, FlashPtr};
+use lazy_static::lazy_static;
 use libc;
-use log::LogLevel;
-use std::mem;
-use std::slice;
-use std::collections::HashMap;
-use std::sync::Mutex;
-use std::ops::Deref;
+use log::{Level, log_enabled, warn};
+use std::{
+    collections::HashMap,
+    mem,
+    ops::Deref,
+    slice,
+    sync::Mutex,
+};
 
 /// A FlashMap maintain a table of [device_id -> Flash trait]
 pub type FlashMap = HashMap<u8, FlashPtr>;
@@ -30,16 +33,16 @@ lazy_static! {
 }
 
 // Set the flash device to be used by the simulation.  The pointer is unsafely stashed away.
-pub unsafe fn set_flash(dev_id: u8, dev: &mut Flash) {
+pub unsafe fn set_flash(dev_id: u8, dev: &mut dyn Flash) {
     let mut flash_params = FLASH_PARAMS.lock().unwrap();
     flash_params.insert(dev_id, FlashParams {
         align: dev.align() as u8,
         erased_val: dev.erased_val(),
     });
 
-    let dev: &'static mut Flash = mem::transmute(dev);
+    let dev: &'static mut dyn Flash = mem::transmute(dev);
     let mut flash = FLASH.lock().unwrap();
-    flash.insert(dev_id, FlashPtr{ptr: dev as *mut Flash});
+    flash.insert(dev_id, FlashPtr{ptr: dev as *mut dyn Flash});
 }
 
 pub unsafe fn clear_flash(dev_id: u8) {
@@ -117,10 +120,10 @@ fn map_err(err: Result<()>) -> libc::c_int {
 #[no_mangle]
 pub extern fn sim_log_enabled(level: libc::c_int) -> libc::c_int {
     let res = match level {
-        1 => log_enabled!(LogLevel::Error),
-        2 => log_enabled!(LogLevel::Warn),
-        3 => log_enabled!(LogLevel::Info),
-        4 => log_enabled!(LogLevel::Trace),
+        1 => log_enabled!(Level::Error),
+        2 => log_enabled!(Level::Warn),
+        3 => log_enabled!(Level::Info),
+        4 => log_enabled!(Level::Trace),
         _ => false,
     };
     if res {
