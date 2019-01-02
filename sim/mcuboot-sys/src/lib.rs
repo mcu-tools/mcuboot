@@ -10,4 +10,4 @@ pub mod c;
 // functions are exported to C code.
 pub mod api;
 
-pub use area::{AreaDesc, FlashId};
+pub use crate::area::{AreaDesc, FlashId};

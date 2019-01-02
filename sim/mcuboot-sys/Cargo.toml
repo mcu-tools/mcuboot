@@ -5,6 +5,7 @@ authors = ["David Brown <david.brown@linaro.org>"]
 description = "A simple wrapper around the mcuboot code."
 build = "build.rs"
 publish = false
+edition = "2018"
 
 [features]
 # By default, build with simplistic signature verification.
