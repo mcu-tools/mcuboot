@@ -15,7 +15,7 @@ use std::iter::Enumerate;
 use std::path::Path;
 use std::slice;
 use std::collections::HashMap;
-use pdump::HexDump;
+use crate::pdump::HexDump;
 
 error_chain! {
     errors {

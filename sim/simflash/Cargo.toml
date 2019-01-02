@@ -2,6 +2,7 @@
 name = "simflash"
 version = "0.1.0"
 authors = ["David Brown <david.brown@linaro.org>"]
+edition = "2018"
 
 [dependencies]
 error-chain = "0.12.0"
