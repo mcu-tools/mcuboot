@@ -2,6 +2,7 @@
 name = "bootsim"
 version = "0.1.0"
 authors = ["David Brown <davidb@davidb.org>"]
+edition = "2018"
 
 [features]
 default = []
