@@ -2,8 +2,6 @@
 //!
 //! Run the existing testsuite as a Rust unit test.
 
-extern crate bootsim;
-
 use bootsim::{Run, testlog};
 
 macro_rules! sim_test {
