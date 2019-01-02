@@ -1,9 +1,9 @@
 /// Interface wrappers to C API entering to the bootloader
 
-use area::AreaDesc;
+use crate::area::AreaDesc;
 use simflash::SimFlashMap;
 use libc;
-use api;
+use crate::api;
 use std::sync::Mutex;
 
 lazy_static! {
@@ -85,7 +85,7 @@ pub fn kw_encrypt(kek: &[u8], seckey: &[u8]) -> Result<[u8; 24], &'static str> {
 }
 
 mod raw {
-    use area::CAreaDesc;
+    use crate::area::CAreaDesc;
     use libc;
 
     extern "C" {
