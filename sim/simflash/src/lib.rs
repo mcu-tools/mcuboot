@@ -3,19 +3,23 @@
 //! This module is capable of simulating the type of NOR flash commonly used in microcontrollers.
 //! These generally can be written as individual bytes, but must be erased in larger units.
 
-#[macro_use] extern crate log;
 #[macro_use] extern crate error_chain;
-extern crate rand;
 mod pdump;
 
-use rand::distributions::{IndependentSample, Range};
-use std::fs::File;
-use std::io::Write;
-use std::iter::Enumerate;
-use std::path::Path;
-use std::slice;
-use std::collections::HashMap;
 use crate::pdump::HexDump;
+use log::info;
+use rand::{
+    self,
+    distributions::{IndependentSample, Range},
+};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::Write,
+    iter::Enumerate,
+    path::Path,
+    slice,
+};
 
 error_chain! {
     errors {
@@ -35,7 +39,7 @@ error_chain! {
 }
 
 pub struct FlashPtr {
-   pub ptr: *mut Flash,
+   pub ptr: *mut dyn Flash,
 }
 unsafe impl Send for FlashPtr {}
 
@@ -49,7 +53,7 @@ pub trait Flash {
 
     fn set_verify_writes(&mut self, enable: bool);
 
-    fn sector_iter(&self) -> SectorIter;
+    fn sector_iter(&self) -> SectorIter<'_>;
     fn device_size(&self) -> usize;
 
     fn align(&self) -> usize;
@@ -237,7 +241,7 @@ impl Flash for SimFlash {
     }
 
     /// An iterator over each sector in the device.
-    fn sector_iter(&self) -> SectorIter {
+    fn sector_iter(&self) -> SectorIter<'_> {
         SectorIter {
             iter: self.sectors.iter().enumerate(),
             base: 0,
@@ -310,7 +314,7 @@ mod test {
         }
     }
 
-    fn test_device(flash: &mut Flash, erased_val: u8) {
+    fn test_device(flash: &mut dyn Flash, erased_val: u8) {
         let sectors: Vec<Sector> = flash.sector_iter().collect();
 
         flash.erase(0, sectors[0].size).unwrap();
