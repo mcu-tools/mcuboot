@@ -1,6 +1,6 @@
-extern crate env_logger;
+use env_logger;
 
-extern crate bootsim;
+use bootsim;
 
 fn main() {
     env_logger::init().unwrap();

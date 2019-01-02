@@ -1,28 +1,24 @@
-#[macro_use] extern crate log;
-extern crate ring;
-extern crate aes_ctr;
-extern crate base64;
-extern crate env_logger;
-extern crate docopt;
-extern crate libc;
-extern crate pem;
-extern crate rand;
-#[macro_use] extern crate serde_derive;
-extern crate serde;
-extern crate simflash;
-extern crate untrusted;
-extern crate mcuboot_sys;
-
 use docopt::Docopt;
-use rand::{Rng, SeedableRng, XorShiftRng};
-use rand::distributions::{IndependentSample, Range};
-use std::fmt;
-use std::mem;
-use std::process;
-use std::slice;
-use aes_ctr::Aes128Ctr;
-use aes_ctr::stream_cipher::generic_array::GenericArray;
-use aes_ctr::stream_cipher::{NewFixStreamCipher, StreamCipherCore};
+use log::{info, warn, error};
+use rand::{
+    distributions::{IndependentSample, Range},
+    Rng, SeedableRng, XorShiftRng,
+};
+use std::{
+    fmt,
+    mem,
+    process,
+    slice,
+};
+use aes_ctr::{
+    Aes128Ctr,
+    stream_cipher::{
+        generic_array::GenericArray,
+        NewFixStreamCipher,
+        StreamCipherCore,
+    },
+};
+use serde_derive::Deserialize;
 
 mod caps;
 mod tlv;
@@ -73,7 +69,7 @@ pub static ALL_DEVICES: &'static [DeviceName] = &[
 ];
 
 impl fmt::Display for DeviceName {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = match *self {
             DeviceName::Stm32f4 => "stm32f4",
             DeviceName::K64f => "k64f",
@@ -93,7 +89,7 @@ struct AlignArgVisitor;
 impl<'de> serde::de::Visitor<'de> for AlignArgVisitor {
     type Value = AlignArg;
 
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("1, 2, 4 or 8")
     }
 
@@ -1033,7 +1029,7 @@ fn try_random_fails(flashmap: &SimFlashMap, images: &Images,
 
 /// Show the flash layout.
 #[allow(dead_code)]
-fn show_flash(flash: &Flash) {
+fn show_flash(flash: &dyn Flash) {
     println!("---- Flash configuration ----");
     for sector in flash.sector_iter() {
         println!("    {:3}: 0x{:08x}, 0x{:08x}",
