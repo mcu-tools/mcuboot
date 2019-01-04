@@ -21,6 +21,7 @@
 #define BOOTUTIL_ENC_KEY_H
 
 #include <flash_map_backend/flash_map_backend.h>
+#include "mcuboot_config/mcuboot_config.h"
 #include "bootutil/image.h"
 
 #if defined(MCUBOOT_USE_MBED_TLS)
