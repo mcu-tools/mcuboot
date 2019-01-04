@@ -183,6 +183,7 @@ struct boot_loader_state {
         size_t num_sectors;
     } scratch;
 
+    uint8_t swap_type;
     uint8_t write_sz;
 };
 

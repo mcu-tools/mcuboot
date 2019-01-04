@@ -13,13 +13,16 @@ The first step required for Zephyr is making sure your board has flash
 partitions defined in its device tree. These partitions are:
 
 - `boot_partition`: for MCUboot itself
-- `primary_slot_partition`: the primary image slot
-- `secondary_slot_partition`: the secondary image slot
+- `image_0_primary_partition`: the primary slot of Image 0
+- `image_0_secondary_partition`: the secondary slot of Image 0
 - `scratch_partition`: the scratch slot
 
 Currently, the two image slots must be contiguous. If you are running
 MCUboot as your stage 1 bootloader, `boot_partition` must be configured
-so your SoC runs it out of reset.
+so your SoC runs it out of reset. If there are multiple updateable images
+then the corresponding primary and secondary partitions must be defined for
+the rest of the images too (e.g. `image_1_primary_partition` and
+`image_1_secondary_partition` for Image 1).
 
 The flash partitions are typically defined in the Zephyr boards folder, in a
 file named `boards/<arch>/<board>/<board>.dts`. An example `.dts` file with
