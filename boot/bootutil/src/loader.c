@@ -1523,7 +1523,7 @@ boot_swap_if_needed(int *out_swap_type)
 
     /* If a partial swap was detected, complete it. */
     if (bs.idx != BOOT_STATUS_IDX_0 || bs.state != BOOT_STATUS_STATE_0) {
-#if MCUBOOT_OVERWRITE_ONLY
+#ifdef MCUBOOT_OVERWRITE_ONLY
         /* Should never arrive here, overwrite-only mode has no swap state. */
         assert(0);
 #else
@@ -1547,7 +1547,7 @@ boot_swap_if_needed(int *out_swap_type)
         case BOOT_SWAP_TYPE_TEST:
         case BOOT_SWAP_TYPE_PERM:
         case BOOT_SWAP_TYPE_REVERT:
-#if MCUBOOT_OVERWRITE_ONLY
+#ifdef MCUBOOT_OVERWRITE_ONLY
             rc = boot_copy_image(&bs);
 #else
             rc = boot_swap_image(&bs);
