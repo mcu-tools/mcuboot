@@ -81,40 +81,24 @@ class TLV():
         header = struct.pack(e + 'HH', TLV_INFO_MAGIC, TLV_INFO_SIZE + len(self.buf))
         return header + bytes(self.buf)
 
+
 class Image():
-    @classmethod
-    def load(cls, path, pad_header=False, **kwargs):
-        """Load an image from a given file"""
-        ext = os.path.splitext(path)[1][1:].lower()
-        if ext == INTEL_HEX_EXT:
-            cls = HexImage
-        else:
-            cls = BinImage
 
-        obj = cls(**kwargs)
-        obj.payload, obj.base_addr = obj.load(path)
-
-        # Add the image header if needed.
-        if pad_header and obj.header_size > 0:
-            if obj.base_addr:
-                # Adjust base_addr for new header
-                obj.base_addr -= obj.header_size
-            obj.payload = (b'\000' * obj.header_size) + obj.payload
-
-        obj.check()
-        return obj
-
-    def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE, pad=0,
-                 align=1, slot_size=0, max_sectors=DEFAULT_MAX_SECTORS,
-                 overwrite_only=False, endian="little"):
+    def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE,
+                 pad_header=False, pad=False, align=1, slot_size=0,
+                 max_sectors=DEFAULT_MAX_SECTORS, overwrite_only=False,
+                 endian="little"):
         self.version = version or versmod.decode_version("0")
-        self.header_size = header_size or IMAGE_HEADER_SIZE
+        self.header_size = header_size
+        self.pad_header = pad_header
         self.pad = pad
         self.align = align
         self.slot_size = slot_size
         self.max_sectors = max_sectors
         self.overwrite_only = overwrite_only
         self.endian = endian
+        self.base_addr = None
+        self.payload = []
 
     def __repr__(self):
         return "<Image version={}, header_size={}, base_addr={}, \
@@ -130,6 +114,43 @@ class Image():
                     self.endian,
                     self.__class__.__name__,
                     len(self.payload))
+
+    def load(self, path):
+        """Load an image from a given file"""
+        ext = os.path.splitext(path)[1][1:].lower()
+        if ext == INTEL_HEX_EXT:
+            ih = IntelHex(path)
+            self.payload = ih.tobinarray()
+            self.base_addr = ih.minaddr()
+        else:
+            with open(path, 'rb') as f:
+                self.payload = f.read()
+
+        # Add the image header if needed.
+        if self.pad_header and self.header_size > 0:
+            if self.base_addr:
+                # Adjust base_addr for new header
+                self.base_addr -= self.header_size
+            self.payload = (b'\000' * self.header_size) + self.payload
+
+        self.check()
+
+    def save(self, path):
+        """Save an image from a given file"""
+        if self.pad:
+            self.pad_to(self.slot_size)
+
+        ext = os.path.splitext(path)[1][1:].lower()
+        if ext == INTEL_HEX_EXT:
+            # input was in binary format, but HEX needs to know the base addr
+            if self.base_addr is None:
+                raise Exception("Input file does not provide a base address")
+            h = IntelHex()
+            h.frombytes(bytes=self.payload, offset=self.base_addr)
+            h.tofile(path, 'hex')
+        else:
+            with open(path, 'wb') as f:
+                f.write(self.payload)
 
     def check(self):
         """Perform some sanity checking of the image."""
@@ -243,25 +264,3 @@ class Image():
         pbytes += b'\xff' * (tsize - len(boot_magic))
         pbytes += boot_magic
         self.payload += pbytes
-
-
-class HexImage(Image):
-
-    def load(self, path):
-        ih = IntelHex(path)
-        return ih.tobinarray(), ih.minaddr()
-
-    def save(self, path):
-        h = IntelHex()
-        h.frombytes(bytes = self.payload, offset = self.base_addr)
-        h.tofile(path, 'hex')
-
-class BinImage(Image):
-
-    def load(self, path):
-        with open(path, 'rb') as f:
-            return f.read(), None
-
-    def save(self, path):
-        with open(path, 'wb') as f:
-            f.write(self.payload)
