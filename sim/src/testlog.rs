@@ -14,6 +14,6 @@ static INIT: Once = ONCE_INIT;
 /// Setup the logging system.  Intended to be called at the beginning of each test.
 pub fn setup() {
     INIT.call_once(|| {
-        env_logger::init().unwrap();
+        env_logger::init();
     });
 }
