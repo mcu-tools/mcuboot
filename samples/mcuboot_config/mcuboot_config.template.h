@@ -90,6 +90,12 @@
  * If logging is enabled the following functions must be defined by the
  * platform:
  *
+ *    MCUBOOT_LOG_MODULE_REGISTER(domain)
+ *      Register a new log module and add the current C file to it.
+ *
+ *    MCUBOOT_LOG_MODULE_DECLARE(domain)
+ *      Add the current C file to an existing log module.
+ *
  *    MCUBOOT_LOG_ERR(...)
  *    MCUBOOT_LOG_WRN(...)
  *    MCUBOOT_LOG_INF(...)
