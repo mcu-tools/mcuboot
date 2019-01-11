@@ -8,6 +8,7 @@ use serde_derive::Deserialize;
 
 mod caps;
 mod image;
+mod suit;
 mod tlv;
 pub mod testlog;
 

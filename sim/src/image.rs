@@ -19,6 +19,7 @@ use aes_ctr::{
 use simflash::{Flash, SimFlashMap};
 use mcuboot_sys::{c, AreaDesc};
 use crate::caps::Caps;
+use crate::suit::SuitManifestGenerator;
 use crate::tlv::{ManifestGen, TlvGen, TlvFlags, AES_SEC_KEY};
 
 impl Images {
@@ -662,7 +663,13 @@ pub fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize
     let slot_len = slots[slot].len;
     let dev_id = slots[slot].dev_id;
 
-    let mut tlv: Box<dyn ManifestGen> = Box::new(make_tlv());
+    let mut tlv: Box<dyn ManifestGen> = if Caps::Suit.present() {
+        let mut gen = SuitManifestGenerator::new();
+        gen.set_sequence(offset as u32);
+        Box::new(gen)
+    } else {
+        Box::new(make_tlv())
+    };
 
     const HDR_SIZE: usize = 32;
 
