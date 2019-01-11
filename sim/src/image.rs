@@ -780,56 +780,35 @@ pub fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize
     result
 }
 
-#[cfg(feature = "sig-rsa")]
-#[cfg(feature = "enc-kw")]
 fn make_tlv() -> TlvGen {
-    TlvGen::new_rsa_kw()
-}
+    if Caps::EcdsaP224.present() {
+        panic!("Ecdsa P224 not supported in Simulator");
+    }
 
-#[cfg(feature = "sig-rsa")]
-#[cfg(not(feature = "enc-rsa"))]
-#[cfg(not(feature = "enc-kw"))]
-fn make_tlv() -> TlvGen {
-    TlvGen::new_rsa_pss()
-}
-
-#[cfg(feature = "sig-ecdsa")]
-#[cfg(feature = "enc-kw")]
-fn make_tlv() -> TlvGen {
-    TlvGen::new_ecdsa_kw()
-}
-
-#[cfg(feature = "sig-ecdsa")]
-#[cfg(not(feature = "enc-kw"))]
-fn make_tlv() -> TlvGen {
-    TlvGen::new_ecdsa()
-}
-
-#[cfg(not(feature = "sig-rsa"))]
-#[cfg(feature = "enc-rsa")]
-fn make_tlv() -> TlvGen {
-    TlvGen::new_enc_rsa()
-}
-
-#[cfg(feature = "sig-rsa")]
-#[cfg(feature = "enc-rsa")]
-fn make_tlv() -> TlvGen {
-    TlvGen::new_sig_enc_rsa()
-}
-
-#[cfg(not(feature = "sig-rsa"))]
-#[cfg(not(feature = "sig-ecdsa"))]
-#[cfg(feature = "enc-kw")]
-fn make_tlv() -> TlvGen {
-    TlvGen::new_enc_kw()
-}
-
-#[cfg(not(feature = "sig-rsa"))]
-#[cfg(not(feature = "sig-ecdsa"))]
-#[cfg(not(feature = "enc-rsa"))]
-#[cfg(not(feature = "enc-kw"))]
-fn make_tlv() -> TlvGen {
-    TlvGen::new_hash_only()
+    if Caps::EncKw.present() {
+        if Caps::RSA2048.present() {
+            TlvGen::new_rsa_kw()
+        } else if Caps::EcdsaP256.present() {
+            TlvGen::new_ecdsa_kw()
+        } else {
+            TlvGen::new_enc_kw()
+        }
+    } else if Caps::EncRsa.present() {
+        if Caps::RSA2048.present() {
+            TlvGen::new_sig_enc_rsa()
+        } else {
+            TlvGen::new_enc_rsa()
+        }
+    } else {
+        // The non-encrypted configuration.
+        if Caps::RSA2048.present() {
+            TlvGen::new_rsa_pss()
+        } else if Caps::EcdsaP256.present() {
+            TlvGen::new_ecdsa()
+        } else {
+            TlvGen::new_hash_only()
+        }
+    }
 }
 
 #[cfg(feature = "enc-rsa")]
