@@ -655,7 +655,7 @@ pub fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize
 
     // Generate a boot header.  Note that the size doesn't include the header.
     let header = ImageHeader {
-        magic: 0x96f3b83d,
+        magic: tlv.get_magic(),
         load_addr: 0,
         hdr_size: HDR_SIZE as u16,
         _pad1: 0,
