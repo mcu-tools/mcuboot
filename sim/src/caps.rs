@@ -9,6 +9,8 @@ pub enum Caps {
     EcdsaP256        = (1 << 2),
     SwapUpgrade      = (1 << 3),
     OverwriteUpgrade = (1 << 4),
+    EncRsa           = (1 << 5),
+    EncKw            = (1 << 6),
 }
 
 impl Caps {
