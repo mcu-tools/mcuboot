@@ -33,6 +33,9 @@ enc-kw = []
 # Allow bootstrapping an empty/invalid slot0 from a valid slot1
 bootstrap = []
 
+# Enable SUIT support
+suit-manifest = []
+
 [build-dependencies]
 cc = "1.0.25"
 

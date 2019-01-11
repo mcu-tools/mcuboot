@@ -14,6 +14,7 @@ validate-slot0 = ["mcuboot-sys/validate-slot0"]
 enc-rsa = ["mcuboot-sys/enc-rsa"]
 enc-kw = ["mcuboot-sys/enc-kw"]
 bootstrap = ["mcuboot-sys/bootstrap"]
+suit-manifest = ["mcuboot-sys/suit-manifest"]
 
 [dependencies]
 libc = "0.2.0"
@@ -30,6 +31,7 @@ untrusted = "0.6.2"
 pem = "0.5"
 aes-ctr = "0.2.0"
 base64 = "0.9.3"
+suit = { path = "suit" }
 
 # The simulator runs very slowly without optimization.  A value of 1
 # compiles in about half the time, but runs about 5-6 times slower.  2

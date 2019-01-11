@@ -15,6 +15,7 @@ fn main() {
     let validate_slot0 = env::var("CARGO_FEATURE_VALIDATE_SLOT0").is_ok();
     let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
     let enc_kw = env::var("CARGO_FEATURE_ENC_KW").is_ok();
+    let suit = env::var("CARGO_FEATURE_SUIT_MANIFEST").is_ok();
     let bootstrap = env::var("CARGO_FEATURE_BOOTSTRAP").is_ok();
 
     let mut conf = cc::Build::new();
@@ -40,6 +41,9 @@ fn main() {
     if sig_rsa {
         conf.define("MCUBOOT_SIGN_RSA", None);
         conf.define("MCUBOOT_USE_MBED_TLS", None);
+        if suit {
+            conf.define("MCUBOOT_SUIT", None);
+        }
 
         conf.include("mbedtls/include");
         conf.file("mbedtls/library/sha256.c");
@@ -53,6 +57,10 @@ fn main() {
     } else if sig_ecdsa {
         conf.define("MCUBOOT_SIGN_EC256", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
+
+        if suit {
+            panic!("Suit is not yet supported with ecdsa");
+        }
 
         if !enc_kw {
             conf.include("../../ext/mbedtls/include");
@@ -75,6 +83,10 @@ fn main() {
         conf.define("MCUBOOT_USE_MBED_TLS", None);
         conf.include("mbedtls/include");
         conf.file("mbedtls/library/sha256.c");
+
+        if suit {
+            panic!("SUIT support requires a signature mode");
+        }
     }
 
     if overwrite_only {
