@@ -44,6 +44,9 @@ uint32_t bootutil_get_caps(void)
 #if defined(MCUBOOT_VALIDATE_SLOT0)
 	res |= BOOTUTIL_CAP_VALIDATE_SLOT0;
 #endif
+#if defined(MCUBOOT_SUIT)
+	res |= BOOTUTIL_CAP_SUIT;
+#endif
 
         return res;
 }

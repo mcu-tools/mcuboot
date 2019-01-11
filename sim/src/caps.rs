@@ -12,6 +12,7 @@ pub enum Caps {
     EncRsa           = (1 << 5),
     EncKw            = (1 << 6),
     ValidateSlot0    = (1 << 7),
+    Suit             = (1 << 8),
 }
 
 impl Caps {
