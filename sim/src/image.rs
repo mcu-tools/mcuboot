@@ -811,26 +811,14 @@ fn make_tlv() -> TlvGen {
     }
 }
 
-#[cfg(feature = "enc-rsa")]
 fn find_image(images: &[Option<Vec<u8>>; 2], slot: usize) -> &Vec<u8> {
-    match &images[slot] {
-        Some(image) => return image,
-        None => panic!("Invalid image"),
-    }
-}
+    let slot = if Caps::EncRsa.present() || Caps::EncKw.present() {
+        slot
+    } else {
+        0
+    };
 
-#[cfg(feature = "enc-kw")]
-fn find_image(images: &[Option<Vec<u8>>; 2], slot: usize) -> &Vec<u8> {
     match &images[slot] {
-        Some(image) => return image,
-        None => panic!("Invalid image"),
-    }
-}
-
-#[cfg(not(feature = "enc-rsa"))]
-#[cfg(not(feature = "enc-kw"))]
-fn find_image(images: &[Option<Vec<u8>>; 2], _slot: usize) -> &Vec<u8> {
-    match &images[0] {
         Some(image) => return image,
         None => panic!("Invalid image"),
     }
