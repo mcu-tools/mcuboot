@@ -40,6 +40,7 @@ uint32_t bootutil_get_caps(void);
 #define BOOTUTIL_CAP_ENC_RSA            (1<<5)
 #define BOOTUTIL_CAP_ENC_KW             (1<<6)
 #define BOOTUTIL_CAP_VALIDATE_SLOT0     (1<<7)
+#define BOOTUTIL_CAP_SUIT               (1<<8)
 
 #ifdef __cplusplus
 }
