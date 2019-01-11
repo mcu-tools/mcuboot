@@ -33,6 +33,7 @@ pkg.deps:
     - "@mcuboot/boot/bootutil"
     - "@mcuboot/boot/mynewt/flash_map_backend"
     - "@apache-mynewt-core/kernel/os"
+    - "@apache-mynewt-core/sys/log/stub"
 
 pkg.deps.BOOTUTIL_NO_LOGGING:
     - "@apache-mynewt-core/sys/console/stub"
