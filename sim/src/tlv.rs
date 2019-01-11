@@ -44,6 +44,9 @@ pub enum TlvFlags {
 /// A generator for manifests.  The format of the manifest can be either a
 /// traditional "TLV" or a SUIT-style manifest.
 pub trait ManifestGen {
+    /// Retrieve the header magic value for this manifest type.
+    fn get_magic(&self) -> u32;
+
     /// Retrieve the flags value for this particular manifest type.
     fn get_flags(&self) -> u32;
 
@@ -153,6 +156,10 @@ impl TlvGen {
 }
 
 impl ManifestGen for TlvGen {
+    fn get_magic(&self) -> u32 {
+        0x96f3b83d
+    }
+
     /// Retrieve the header flags for this configuration.  This can be called at any time.
     fn get_flags(&self) -> u32 {
         self.flags
