@@ -31,7 +31,7 @@
 #include <misc/byteorder.h>
 #include <misc/__assert.h>
 #include <flash.h>
-#include <crc16.h>
+#include <crc.h>
 #include <base64.h>
 #include <cbor.h>
 #else
