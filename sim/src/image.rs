@@ -850,19 +850,13 @@ fn verify_image(flashmap: &SimFlashMap, slots: &[SlotInfo], slot: usize,
     }
 }
 
-#[cfg(feature = "overwrite-only")]
-#[allow(unused_variables)]
-// overwrite-only doesn't employ trailer management
 fn verify_trailer(flashmap: &SimFlashMap, slots: &[SlotInfo], slot: usize,
                   magic: Option<u8>, image_ok: Option<u8>,
                   copy_done: Option<u8>) -> bool {
-    true
-}
+    if Caps::OverwriteUpgrade.present() {
+        return true;
+    }
 
-#[cfg(not(feature = "overwrite-only"))]
-fn verify_trailer(flashmap: &SimFlashMap, slots: &[SlotInfo], slot: usize,
-                  magic: Option<u8>, image_ok: Option<u8>,
-                  copy_done: Option<u8>) -> bool {
     let offset = slots[slot].trailer_off;
     let dev_id = slots[slot].dev_id;
     let mut copy = vec![0u8; c::boot_magic_sz() + c::boot_max_align() * 2];
