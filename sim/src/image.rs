@@ -320,29 +320,19 @@ impl Images {
         fails > 0
     }
 
-    #[cfg(not(feature = "overwrite-only"))]
     fn trailer_sz(&self, align: usize) -> usize {
         c::boot_trailer_sz(align as u8) as usize
     }
 
     // FIXME: could get status sz from bootloader
-    #[cfg(not(feature = "overwrite-only"))]
-    #[cfg(not(feature = "enc-rsa"))]
-    #[cfg(not(feature = "enc-kw"))]
     fn status_sz(&self, align: usize) -> usize {
-        self.trailer_sz(align) - (16 + 24)
-    }
+        let bias = if Caps::EncRsa.present() || Caps::EncKw.present() {
+            32
+        } else {
+            0
+        };
 
-    #[cfg(feature = "enc-rsa")]
-    #[cfg(not(feature = "overwrite-only"))]
-    fn status_sz(&self, align: usize) -> usize {
-        self.trailer_sz(align) - (16 + 24 + 32)
-    }
-
-    #[cfg(feature = "enc-kw")]
-    #[cfg(not(feature = "overwrite-only"))]
-    fn status_sz(&self, align: usize) -> usize {
-        self.trailer_sz(align) - (16 + 24 + 32)
+        self.trailer_sz(align) - (16 + 24 + bias)
     }
 
     /// This test runs a simple upgrade with no fails in the images, but
