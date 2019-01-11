@@ -11,6 +11,7 @@ pub enum Caps {
     OverwriteUpgrade = (1 << 4),
     EncRsa           = (1 << 5),
     EncKw            = (1 << 6),
+    ValidateSlot0    = (1 << 7),
 }
 
 impl Caps {
