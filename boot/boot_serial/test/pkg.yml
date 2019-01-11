@@ -25,6 +25,7 @@ pkg.keywords:
 pkg.deps:
     - "@mcuboot/boot/boot_serial"
     - "@mcuboot/boot/bootutil"
+    - "@apache-mynewt-core/sys/log/stub"
     - "@apache-mynewt-core/test/testutil"
 
 pkg.deps.SELFTEST:
