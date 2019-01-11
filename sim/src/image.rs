@@ -38,13 +38,11 @@ impl Images {
         }
     }
 
-    #[cfg(feature = "overwrite-only")]
     pub fn run_basic_revert(&self) -> bool {
-        false
-    }
+        if Caps::OverwriteUpgrade.present() {
+            return false;
+        }
 
-    #[cfg(not(feature = "overwrite-only"))]
-    pub fn run_basic_revert(&self) -> bool {
         let mut fails = 0;
 
         // FIXME: this test would also pass if no swap is ever performed???
@@ -145,13 +143,11 @@ impl Images {
         fails > 0
     }
 
-    #[cfg(feature = "overwrite-only")]
     pub fn run_revert_with_fails(&self) -> bool {
-        false
-    }
+        if Caps::OverwriteUpgrade.present() {
+            return false;
+        }
 
-    #[cfg(not(feature = "overwrite-only"))]
-    pub fn run_revert_with_fails(&self) -> bool {
         let mut fails = 0;
 
         if Caps::SwapUpgrade.present() {
@@ -167,13 +163,11 @@ impl Images {
         fails > 0
     }
 
-    #[cfg(feature = "overwrite-only")]
     pub fn run_norevert(&self) -> bool {
-        false
-    }
+        if Caps::OverwriteUpgrade.present() {
+            return false;
+        }
 
-    #[cfg(not(feature = "overwrite-only"))]
-    pub fn run_norevert(&self) -> bool {
         let mut flashmap = self.flashmap.clone();
         let mut fails = 0;
 
@@ -532,7 +526,6 @@ fn try_upgrade(flashmap: &SimFlashMap, images: &Images,
     (flashmap, count - counter)
 }
 
-#[cfg(not(feature = "overwrite-only"))]
 fn try_revert(flashmap: &SimFlashMap, areadesc: &AreaDesc, count: usize) -> SimFlashMap {
     let mut flashmap = flashmap.clone();
 
@@ -544,7 +537,6 @@ fn try_revert(flashmap: &SimFlashMap, areadesc: &AreaDesc, count: usize) -> SimF
     flashmap
 }
 
-#[cfg(not(feature = "overwrite-only"))]
 fn try_revert_with_fail_at(flashmap: &SimFlashMap, images: &Images,
                            stop: i32) -> bool {
     let mut flashmap = flashmap.clone();
