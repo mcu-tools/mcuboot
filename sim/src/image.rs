@@ -338,11 +338,11 @@ impl Images {
     /// This test runs a simple upgrade with no fails in the images, but
     /// allowing for fails in the status area. This should run to the end
     /// and warn that write fails were detected...
-    #[cfg(not(feature = "validate-slot0"))]
-    pub fn run_with_status_fails_complete(&self) -> bool { false }
-
-    #[cfg(feature = "validate-slot0")]
     pub fn run_with_status_fails_complete(&self) -> bool {
+        if !Caps::ValidateSlot0.present() {
+            return false;
+        }
+
         let mut flashmap = self.flashmap.clone();
         let mut fails = 0;
 
@@ -392,51 +392,75 @@ impl Images {
     /// This test runs a simple upgrade with no fails in the images, but
     /// allowing for fails in the status area. This should run to the end
     /// and warn that write fails were detected...
-    #[cfg(feature = "validate-slot0")]
     pub fn run_with_status_fails_with_reset(&self) -> bool {
-        let mut flashmap = self.flashmap.clone();
-        let mut fails = 0;
-        let mut count = self.total_count.unwrap() / 2;
+        if Caps::OverwriteUpgrade.present() {
+            false
+        } else if Caps::ValidateSlot0.present() {
 
-        //info!("count={}\n", count);
+            let mut flashmap = self.flashmap.clone();
+            let mut fails = 0;
+            let mut count = self.total_count.unwrap() / 2;
 
-        info!("Try interrupted swap with status fails");
+            //info!("count={}\n", count);
 
-        mark_permanent_upgrade(&mut flashmap, &self.slots[1]);
-        self.mark_bad_status_with_rate(&mut flashmap, 0, 0.5);
+            info!("Try interrupted swap with status fails");
 
-        // Should not fail, writing to bad regions does not assert
-        let (_, asserts) = c::boot_go(&mut flashmap, &self.areadesc, Some(&mut count), true);
-        if asserts != 0 {
-            warn!("At least one assert() was called");
-            fails += 1;
+            mark_permanent_upgrade(&mut flashmap, &self.slots[1]);
+            self.mark_bad_status_with_rate(&mut flashmap, 0, 0.5);
+
+            // Should not fail, writing to bad regions does not assert
+            let (_, asserts) = c::boot_go(&mut flashmap, &self.areadesc, Some(&mut count), true);
+            if asserts != 0 {
+                warn!("At least one assert() was called");
+                fails += 1;
+            }
+
+            self.reset_bad_status(&mut flashmap, 0);
+
+            info!("Resuming an interrupted swap operation");
+            let (_, asserts) = c::boot_go(&mut flashmap, &self.areadesc, None, true);
+
+            // This might throw no asserts, for large sector devices, where
+            // a single failure writing is indistinguishable from no failure,
+            // or throw a single assert for small sector devices that fail
+            // multiple times...
+            if asserts > 1 {
+                warn!("Expected single assert validating slot0, more detected {}", asserts);
+                fails += 1;
+            }
+
+            if fails > 0 {
+                error!("Error running upgrade with status write fails");
+            }
+
+            fails > 0
+        } else {
+            let mut flashmap = self.flashmap.clone();
+            let mut fails = 0;
+
+            info!("Try interrupted swap with status fails");
+
+            mark_permanent_upgrade(&mut flashmap, &self.slots[1]);
+            self.mark_bad_status_with_rate(&mut flashmap, 0, 1.0);
+
+            // This is expected to fail while writing to bad regions...
+            let (_, asserts) = c::boot_go(&mut flashmap, &self.areadesc, None, true);
+            if asserts == 0 {
+                warn!("No assert() detected");
+                fails += 1;
+            }
+
+            fails > 0
         }
-
-        self.reset_bad_status(&mut flashmap, 0);
-
-        info!("Resuming an interrupted swap operation");
-        let (_, asserts) = c::boot_go(&mut flashmap, &self.areadesc, None, true);
-
-        // This might throw no asserts, for large sector devices, where
-        // a single failure writing is indistinguishable from no failure,
-        // or throw a single assert for small sector devices that fail
-        // multiple times...
-        if asserts > 1 {
-            warn!("Expected single assert validating slot0, more detected {}", asserts);
-            fails += 1;
-        }
-
-        if fails > 0 {
-            error!("Error running upgrade with status write fails");
-        }
-
-        fails > 0
     }
 
     /// Adds a new flash area that fails statistically
-    #[cfg(not(feature = "overwrite-only"))]
     fn mark_bad_status_with_rate(&self, flashmap: &mut SimFlashMap, slot: usize,
                                  rate: f32) {
+        if Caps::OverwriteUpgrade.present() {
+            return;
+        }
+
         let dev_id = &self.slots[slot].dev_id;
         let flash = flashmap.get_mut(&dev_id).unwrap();
         let align = flash.align();
@@ -448,8 +472,11 @@ impl Images {
         let _ = flash.add_bad_region(status_off, self.status_sz(align), rate);
     }
 
-    #[cfg(feature = "validate-slot0")]
     fn reset_bad_status(&self, flashmap: &mut SimFlashMap, slot: usize) {
+        if !Caps::ValidateSlot0.present() {
+            return;
+        }
+
         let dev_id = &self.slots[slot].dev_id;
         let flash = flashmap.get_mut(&dev_id).unwrap();
         flash.reset_bad_regions();
@@ -459,31 +486,6 @@ impl Images {
         flash.set_verify_writes(false);
     }
 
-    #[cfg(not(feature = "validate-slot0"))]
-    #[cfg(not(feature = "overwrite-only"))]
-    pub fn run_with_status_fails_with_reset(&self) -> bool {
-        let mut flashmap = self.flashmap.clone();
-        let mut fails = 0;
-
-        info!("Try interrupted swap with status fails");
-
-        mark_permanent_upgrade(&mut flashmap, &self.slots[1]);
-        self.mark_bad_status_with_rate(&mut flashmap, 0, 1.0);
-
-        // This is expected to fail while writing to bad regions...
-        let (_, asserts) = c::boot_go(&mut flashmap, &self.areadesc, None, true);
-        if asserts == 0 {
-            warn!("No assert() detected");
-            fails += 1;
-        }
-
-        fails > 0
-    }
-
-    #[cfg(feature = "overwrite-only")]
-    pub fn run_with_status_fails_with_reset(&self) -> bool {
-        false
-    }
 }
 
 /// Test a boot, optionally stopping after 'n' flash options.  Returns a count
