@@ -41,6 +41,20 @@ pub enum TlvFlags {
     RAM_LOAD = 0x20,
 }
 
+/// A generator for manifests.  The format of the manifest can be either a
+/// traditional "TLV" or a SUIT-style manifest.
+pub trait ManifestGen {
+    /// Retrieve the flags value for this particular manifest type.
+    fn get_flags(&self) -> u32;
+
+    /// Add a sequence of bytes to the payload that the manifest is
+    /// protecting.
+    fn add_bytes(&mut self, bytes: &[u8]);
+
+    /// Construct the manifest for this payload.
+    fn make_tlv(self: Box<Self>) -> Vec<u8>;
+}
+
 pub struct TlvGen {
     flags: u32,
     kinds: Vec<TlvKinds>,
@@ -132,23 +146,25 @@ impl TlvGen {
         }
     }
 
-    /// Retrieve the header flags for this configuration.  This can be called at any time.
-    pub fn get_flags(&self) -> u32 {
-        self.flags
-    }
-
     /// Retrieve the size that the TLV will occupy.  This can be called at any time.
     pub fn get_size(&self) -> u16 {
         4 + self.size
     }
+}
+
+impl ManifestGen for TlvGen {
+    /// Retrieve the header flags for this configuration.  This can be called at any time.
+    fn get_flags(&self) -> u32 {
+        self.flags
+    }
 
     /// Add bytes to the covered hash.
-    pub fn add_bytes(&mut self, bytes: &[u8]) {
+    fn add_bytes(&mut self, bytes: &[u8]) {
         self.payload.extend_from_slice(bytes);
     }
 
     /// Compute the TLV given the specified block of data.
-    pub fn make_tlv(self) -> Vec<u8> {
+    fn make_tlv(self: Box<Self>) -> Vec<u8> {
         let mut result: Vec<u8> = vec![];
 
         let size = self.get_size();
