@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 #
 # Copyright 2017 Linaro Limited
+# Copyright 2019 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 import click
 import getpass
 import imgtool.keys as keys
@@ -32,9 +34,9 @@ def gen_ecdsa_p256(keyfile, passwd):
 def gen_ecdsa_p224(keyfile, passwd):
     print("TODO: p-224 not yet implemented")
 
-
-valid_langs = ['c', 'rust']
-keygens = {
+dependencies = {}
+valid_langs  = ['c', 'rust']
+keygens      = {
     'rsa-2048':   gen_rsa2048,
     'ecdsa-p256': gen_ecdsa_p256,
     'ecdsa-p224': gen_ecdsa_p224,
@@ -105,6 +107,25 @@ def validate_header_size(ctx, param, value):
             "Minimum value for -H/--header-size is {}".format(min_hdr_size))
     return value
 
+def get_dependencies(ctx, param, value):
+    if value is None:
+        return {}
+    else:
+        versions = []
+        images = re.findall("\((\d+)", value)
+        raw_versions = re.findall(",\s*([0-9.+]+)\)", value)
+        if len(images) != len(raw_versions):
+            raise click.BadParameter(
+                "There's a mismatch between the number of \
+                dependency images and versions in: {}".format(value))
+        for raw_version in raw_versions:
+            try:
+                versions.append(decode_version(raw_version))
+            except ValueError as e:
+                raise click.BadParameter("{}".format(e))
+        dependencies["images"] = images
+        dependencies["versions"] = versions
+        return dependencies
 
 class BasedIntParamType(click.ParamType):
     name = 'integer'
@@ -142,15 +163,19 @@ class BasedIntParamType(click.ParamType):
 @click.option('--align', type=click.Choice(['1', '2', '4', '8']),
               required=True)
 @click.option('-k', '--key', metavar='filename')
+@click.option('-d', '--dependencies', callback=get_dependencies,
+              required=False)
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, othewise binary format is used''')
 def sign(key, align, version, header_size, pad_header, slot_size, pad,
-         max_sectors, overwrite_only, endian, encrypt, infile, outfile):
+         max_sectors, overwrite_only, endian, encrypt, infile, outfile,
+         dependencies):
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, align=int(align),
                       slot_size=slot_size, max_sectors=max_sectors,
-                      overwrite_only=overwrite_only, endian=endian)
+                      overwrite_only=overwrite_only, endian=endian,
+                      dependencies=dependencies)
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
@@ -159,7 +184,7 @@ def sign(key, align, version, header_size, pad_header, slot_size, pad,
             raise Exception("Encryption only available with RSA")
         if key and not isinstance(key, (keys.RSA2048, keys.RSA2048Public)):
             raise Exception("Encryption with sign only available with RSA")
-    img.create(key, enckey)
+    img.create(key, enckey, dependencies)
     img.save(outfile)
 
 

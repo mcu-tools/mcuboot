@@ -1,5 +1,6 @@
 # Copyright 2018 Nordic Semiconductor ASA
 # Copyright 2017 Linaro Limited
+# Copyright 2019 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,10 +28,10 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 
-IMAGE_MAGIC = 0x96f3b83d
-IMAGE_HEADER_SIZE = 32
-BIN_EXT = "bin"
-INTEL_HEX_EXT = "hex"
+IMAGE_MAGIC =         0x96f3b83d
+IMAGE_HEADER_SIZE =   32
+BIN_EXT =             "bin"
+INTEL_HEX_EXT =       "hex"
 DEFAULT_MAX_SECTORS = 128
 
 # Image header flags.
@@ -41,16 +42,17 @@ IMAGE_F = {
 }
 
 TLV_VALUES = {
-        'KEYHASH': 0x01,
-        'SHA256': 0x10,
-        'RSA2048': 0x20,
-        'ECDSA224': 0x21,
-        'ECDSA256': 0x22,
-        'ENCRSA2048': 0x30,
-        'ENCKW128': 0x31,
+        'KEYHASH':      0x01,
+        'SHA256':       0x10,
+        'RSA2048':      0x20,
+        'ECDSA224':     0x21,
+        'ECDSA256':     0x22,
+        'ENCRSA2048':   0x30,
+        'ENCKW128':     0x31,
+        'DEPENDENCY':   0x40
 }
 
-TLV_INFO_SIZE = 4
+TLV_INFO_SIZE =  4
 TLV_INFO_MAGIC = 0x6907
 
 boot_magic = bytes([
@@ -85,11 +87,12 @@ class TLV():
 class Image():
 
     def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE,
-                 pad_header=False, pad=False, align=1, slot_size=0,
-                 max_sectors=DEFAULT_MAX_SECTORS, overwrite_only=False,
-                 endian="little"):
+                 dependencies={}, pad_header=False, pad=False, align=1,
+                 slot_size=0, max_sectors=DEFAULT_MAX_SECTORS,
+                 overwrite_only=False, endian="little"):
         self.version = version or versmod.decode_version("0")
         self.header_size = header_size
+        self.dependencies = dependencies
         self.pad_header = pad_header
         self.pad = pad
         self.align = align
@@ -101,11 +104,13 @@ class Image():
         self.payload = []
 
     def __repr__(self):
-        return "<Image version={}, header_size={}, base_addr={}, \
-                align={}, slot_size={}, max_sectors={}, overwrite_only={}, \
-                endian={} format={}, payloadlen=0x{:x}>".format(
+        return "<Image version={}, header_size={}, dependencies={}, \
+                base_addr={}, align={}, slot_size={}, max_sectors={}, \
+                overwrite_only={}, endian={} format={}, \
+                payloadlen=0x{:x}>".format(
                     self.version,
                     self.header_size,
+                    self.dependencies,
                     self.base_addr if self.base_addr is not None else "N/A",
                     self.align,
                     self.slot_size,
@@ -168,10 +173,47 @@ class Image():
                         len(self.payload), tsize, self.slot_size)
                 raise Exception(msg)
 
-    def create(self, key, enckey):
-        self.add_header(enckey)
+    def create(self, key, enckey, dependencies={}):
+        if dependencies == {}:
+            dependencies_num = 0
+            protected_tlv_size = 0
+        else:
+            # Size of a Dependency TLV = Header ('BBH') + Payload('IBBHI')
+            # = 16 Bytes
+            dependencies_num = len(dependencies["images"])
+            protected_tlv_size = (dependencies_num * 16) + TLV_INFO_SIZE
+
+        self.add_header(enckey, protected_tlv_size)
 
         tlv = TLV(self.endian)
+
+        if protected_tlv_size != 0:
+            for i in range(0, dependencies_num):
+                e = STRUCT_ENDIAN_DICT[self.endian]
+                payload = struct.pack(e + 'I'+'BBHI',
+                    int(dependencies["images"][i]),
+                    dependencies["versions"][i].major,
+                    dependencies["versions"][i].minor,
+                    dependencies["versions"][i].revision,
+                    dependencies["versions"][i].build
+                    )
+                tlv.add('DEPENDENCY', payload)
+            # Full TLV size needs to be calculated in advance, because the
+            # header will be protected as well
+            tlv_header_size     = 4
+            payload_digest_size = 32
+            keyhash_size        = 32
+            cipherkey_size      = 32
+
+            full_size = TLV_INFO_SIZE + len(tlv.buf) + tlv_header_size + \
+                        payload_digest_size
+            if key is not None:
+                full_size += tlv_header_size + keyhash_size + \
+                             tlv_header_size + key.sig_len()
+            if enckey is not None:
+                full_size += tlv_header_size + cipherkey_size
+            tlv_header = struct.pack(e + 'HH', TLV_INFO_MAGIC, full_size)
+            self.payload += tlv_header + bytes(tlv.buf)
 
         # Note that ecdsa wants to do the hashing itself, which means
         # we get to hash it twice.
@@ -207,12 +249,13 @@ class Image():
             img = bytes(self.payload[self.header_size:])
             self.payload[self.header_size:] = encryptor.update(img) + \
                                               encryptor.finalize()
+        if protected_tlv_size != 0:
+            self.payload += tlv.get()[protected_tlv_size:]
+        else:
+            self.payload += tlv.get()
 
-        self.payload += tlv.get()
-
-    def add_header(self, enckey):
+    def add_header(self, enckey, protected_tlv_size):
         """Install the image header."""
-
         flags = 0
         if enckey is not None:
             flags |= IMAGE_F['ENCRYPTED']
@@ -220,21 +263,21 @@ class Image():
         e = STRUCT_ENDIAN_DICT[self.endian]
         fmt = (e +
             # type ImageHdr struct {
-            'I' +   # Magic uint32
-            'I' +   # LoadAddr uint32
-            'H' +   # HdrSz uint16
-            'H' +   # Pad1  uint16
-            'I' +   # ImgSz uint32
-            'I' +   # Flags uint32
-            'BBHI' + # Vers  ImageVersion
-            'I'     # Pad2  uint32
+            'I' +    # Magic    uint32
+            'I' +    # LoadAddr uint32
+            'H' +    # HdrSz    uint16
+            'H' +    # PTLVSz   uint16
+            'I' +    # ImgSz    uint32
+            'I' +    # Flags    uint32
+            'BBHI' + # Vers     ImageVersion
+            'I'      # Pad2     uint32
             ) # }
         assert struct.calcsize(fmt) == IMAGE_HEADER_SIZE
         header = struct.pack(fmt,
                 IMAGE_MAGIC,
                 0, # LoadAddr
                 self.header_size,
-                0, # Pad1
+                protected_tlv_size, # TLV Info header + Dependency TLVs
                 len(self.payload) - self.header_size, # ImageSz
                 flags, # Flags
                 self.version.major,
