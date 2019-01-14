@@ -1,0 +1,15 @@
+[package]
+name = "ptest"
+version = "0.1.0"
+authors = ["david.brown"]
+edition = "2018"
+
+[dependencies]
+chrono = "0.4"
+env_logger = "0.6.0"
+failure = "0.1.5"
+log = "0.4.6"
+num_cpus = "1.9"
+regex = "1.1"
+std-semaphore = "0.1"
+yaml-rust = "0.4"
