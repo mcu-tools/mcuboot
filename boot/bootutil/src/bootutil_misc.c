@@ -17,6 +17,10 @@
  * under the License.
  */
 
+/*
+ * Modifications are Copyright  © 2019 Arm Limited.
+ */
+
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>
@@ -691,4 +695,29 @@ boot_set_confirmed(void)
 done:
     flash_area_close(fap);
     return rc;
+}
+
+/**
+ * Check if the version of the image is not older than required.
+ *
+ * @param req         Required minimal image version.
+ * @param ver         Version of the image to be checked.
+ *
+ * @return            0 if the version is sufficient, nonzero otherwise.
+ */
+int
+boot_is_version_sufficient(struct image_version *req,
+                           struct image_version *ver)
+{
+    if (ver->iv_major < req->iv_major) {
+        return -1;
+    } else if (ver->iv_minor < req->iv_minor) {
+        return -1;
+    } else if (ver->iv_revision < req->iv_revision) {
+        return -1;
+    } else if (ver->iv_build_num < req->iv_build_num) {
+        return -1;
+    } else {
+        return 0;
+    }
 }

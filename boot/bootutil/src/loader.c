@@ -1579,6 +1579,201 @@ boot_set_active_image(size_t image_id)
 }
 
 /**
+ * Check the image dependency whether it is satisfied and modify
+ * the swap type if necessary.
+ *
+ * @param dep               Image dependency which has to be verified.
+ *
+ * @return                  0 on success; nonzero on failure.
+ */
+#ifdef MCUBOOT_OVERWRITE_ONLY
+static int
+boot_verify_single_dependency(struct image_dependency *dep)
+{
+    struct image_version *dep_version;
+    size_t dep_slot;
+    int rc;
+
+    /* Determine the source of the image which is the subject of
+     * the dependency and get it's version. */
+    dep_slot = (boot_data_array[dep->image_id].swap_type !=
+                BOOT_SWAP_TYPE_NONE) ?
+                BOOT_SECONDARY_SLOT : BOOT_PRIMARY_SLOT;
+    dep_version = boot_img_version(&boot_data_array[dep->image_id],
+                                   dep_slot);
+
+    rc = boot_is_version_sufficient(&dep->image_min_version, dep_version);
+    if (rc != 0) {
+        /* Dependency not satisfied.
+         * Modify the swap type to decrease the version number of the image
+         * (which will be located in the primary slot after the boot process),
+         * consequently the number of unsatisfied dependencies will be
+         * decreased or remain the same.
+         */
+        switch (boot_data->swap_type) {
+        case BOOT_SWAP_TYPE_TEST:
+        case BOOT_SWAP_TYPE_PERM:
+            boot_data->swap_type = BOOT_SWAP_TYPE_NONE;
+            break;
+        case BOOT_SWAP_TYPE_NONE:
+            boot_data->swap_type = BOOT_SWAP_TYPE_REVERT;
+            break;
+        default:
+            break;
+        }
+    }
+
+    return rc;
+}
+
+/**
+ * Read all dependency TLVs of an image from the flash and verify
+ * one after another to see if they are all satisfied.
+ *
+ * @param slot              Image slot number.
+ *
+ * @return                  0 on success; nonzero on failure.
+ */
+static int
+boot_verify_all_dependency(uint32_t slot)
+{
+    const struct flash_area *fap;
+    struct image_header *hdr;
+    struct image_tlv_info info;
+    struct image_tlv tlv;
+    struct image_dependency dep;
+    uint32_t off;
+    uint32_t end;
+    bool dep_tlvs_found = false;
+    int rc;
+
+    rc = flash_area_open(flash_area_id_from_image_slot(slot), &fap);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto done;
+    }
+
+    hdr = boot_img_hdr(boot_data, slot);
+    /* The TLVs come after the image. */
+    off = hdr->ih_hdr_size + hdr->ih_img_size;
+
+    /* The TLV area always starts with an image_tlv_info structure. */
+    rc = flash_area_read(fap, off, &info, sizeof(info));
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto done;
+    }
+
+    if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
+        rc = -1;
+        goto done;
+    }
+    end = off + info.it_tlv_tot;
+    off += sizeof(info);
+
+    /* Traverse through all of the TLVs to find the dependency TLVs. */
+    for (; off < end; off += sizeof(tlv) + tlv.it_len) {
+        rc = flash_area_read(fap, off, &tlv, sizeof(tlv));
+        if (rc != 0) {
+             rc = BOOT_EFLASH;
+             goto done;
+         }
+
+        if (tlv.it_type == IMAGE_TLV_DEPENDENCY) {
+            if (!dep_tlvs_found) {
+                dep_tlvs_found = true;
+            }
+
+            if (tlv.it_len != sizeof(dep)) {
+                rc = -1;
+                goto done;
+            }
+
+            rc = flash_area_read(fap, off + sizeof(tlv), &dep, tlv.it_len);
+            if (rc != 0) {
+                rc = BOOT_EFLASH;
+                goto done;
+            }
+
+            /* Verify dependency and modify the swap type if not satisfied. */
+            rc = boot_verify_single_dependency(&dep);
+            if (rc != 0) {
+                /* Dependency not satisfied. */
+                rc = -1;
+                goto done;
+            }
+
+            /* Dependency satisfied, no action needed.
+             * Continue with the next TLV entry.
+             */
+        } else if (dep_tlvs_found) {
+            /* The dependency TLVs are contiguous in the TLV area. If a
+             * dependency had already been found and the last read TLV
+             * has a different type then there are no more dependency TLVs.
+             * The search can be finished.
+             */
+            break;
+        }
+    }
+
+done:
+    flash_area_close(fap);
+    return rc;
+}
+
+/**
+ * Verify whether the image dependencies in the TLV area are
+ * all satisfied and modify the swap type if necessary.
+ *
+ * @return                  0 if all dependencies are satisfied,
+ *                          nonzero otherwise.
+ */
+static int
+boot_verify_single_image_dependency(void)
+{
+    size_t slot;
+    int32_t rc;
+
+    /* Determine the source of the dependency TLVs. Those dependencies have to
+     * be checked which belong to the image that will be located in the primary
+     * slot after the firmware update process.
+     */
+    if (boot_data->swap_type != BOOT_SWAP_TYPE_NONE &&
+        boot_data->swap_type != BOOT_SWAP_TYPE_FAIL) {
+        slot = BOOT_SECONDARY_SLOT;
+    } else {
+        slot = BOOT_PRIMARY_SLOT;
+    }
+
+    rc = boot_verify_all_dependency(slot);
+
+    return rc;
+}
+
+/**
+ * Iterate over all the images and verify whether the image dependencies in the
+ * TLV area are all satisfied and update the related swap type if necessary.
+ */
+static void
+boot_verify_all_image_dependency(void)
+{
+    size_t img_cnt = 0;
+
+    while(img_cnt < BOOT_IMAGE_NUMBER) {
+        boot_set_active_image(img_cnt);
+
+        if (boot_verify_single_image_dependency() == 0) {
+            /* All dependencies've been satisfied, continue with next image. */
+            img_cnt++;
+        } else {
+            /* Dependency check needs to be restarted. */
+            img_cnt = 0;
+        }
+    }
+}
+#endif /* MCUBOOT_OVERWRITE_ONLY */
+
+/**
  * Performs a clean (not aborted) image update.
  *
  * @param bs                    The current boot status.
@@ -1855,6 +2050,13 @@ boot_go(struct boot_rsp *rsp)
         /* Determine swap type and complete swap if it has been aborted. */
         boot_prepare_image_for_update(&bs);
     }
+
+#ifdef MCUBOOT_OVERWRITE_ONLY
+    /* Iterate over all the images and verify whether the image dependencies
+     * are all satisfied and update swap type if necessary.
+     */
+    boot_verify_all_image_dependency();
+#endif
 
     /* Iterate over all the images. At this point there are no aborted swaps
      * and the swap types are determined for each image. By the end of the loop

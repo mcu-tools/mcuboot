@@ -209,6 +209,8 @@ int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
                        const uint8_t *enckey);
 int boot_read_enc_key(uint8_t slot, uint8_t *enckey);
 #endif
+int boot_is_version_sufficient(struct image_version *req,
+                               struct image_version *ver);
 
 /*
  * Accessors for the contents of struct boot_loader_state.
@@ -223,6 +225,12 @@ static inline struct image_header*
 boot_img_hdr(struct boot_loader_state *state, size_t slot)
 {
     return &state->imgs[slot].hdr;
+}
+
+static inline struct image_version*
+boot_img_version(struct boot_loader_state *state, size_t slot)
+{
+    return &state->imgs[slot].hdr.ih_ver;
 }
 
 static inline size_t

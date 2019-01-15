@@ -58,6 +58,7 @@ slot and adds a header and trailer that the bootloader is expecting:
       -k, --key filename
       --align [1|2|4|8]          [required]
       -v, --version TEXT         [required]
+      -d, --dependencies TEXT
       -H, --header-size INTEGER  [required]
       --pad-header               Add --header-size zeroed bytes at the beginning
                                  of the image
@@ -95,3 +96,9 @@ status area size when calculating overflow.
 The optional `--pad` argument will place a trailer on the image that
 indicates that the image should be considered an upgrade.  Writing
 this image in secondary slot will then cause the bootloader to upgrade to it.
+
+A dependency can be specified in the following way:
+`-d "(image_id, image_version)"`. The `image_id` is the number of the image
+which the current image depends on. The `image_version` is the minimum version
+of that image to satisfy compliance. For example `-d "(1, 1.2.3+0)"` means this
+image depends on Image 1 which version has to be at least 1.2.3+0.

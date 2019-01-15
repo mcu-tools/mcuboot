@@ -17,6 +17,10 @@
  * under the License.
  */
 
+/*
+ * Modifications are Copyright  © 2019 Arm Limited.
+ */
+
 #ifndef H_IMAGE_
 #define H_IMAGE_
 
@@ -67,13 +71,14 @@ struct flash_area;
  *   1st on identifies the public key which should be used to verify it.
  *   2nd one is the actual signature.
  */
-#define IMAGE_TLV_KEYHASH           0x01   /* hash of the public key */
-#define IMAGE_TLV_SHA256            0x10   /* SHA256 of image hdr and body */
-#define IMAGE_TLV_RSA2048_PSS       0x20   /* RSA2048 of hash output */
-#define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output */
-#define IMAGE_TLV_ECDSA256          0x22   /* ECDSA of hash output */
-#define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
-#define IMAGE_TLV_ENC_KW128         0x31   /* Key encrypted with AES-KW-128 */
+#define IMAGE_TLV_KEYHASH           0x01  /* hash of the public key */
+#define IMAGE_TLV_SHA256            0x10  /* SHA256 of image hdr and body */
+#define IMAGE_TLV_RSA2048_PSS       0x20  /* RSA2048 of hash output */
+#define IMAGE_TLV_ECDSA224          0x21  /* ECDSA of hash output */
+#define IMAGE_TLV_ECDSA256          0x22  /* ECDSA of hash output */
+#define IMAGE_TLV_ENC_RSA2048       0x30  /* Key encrypted with RSA-OAEP-2048 */
+#define IMAGE_TLV_ENC_KW128         0x31  /* Key encrypted with AES-KW-128 */
+#define IMAGE_TLV_DEPENDENCY        0x40  /* Image depends on other image */
 
 struct image_version {
     uint8_t iv_major;
@@ -82,16 +87,24 @@ struct image_version {
     uint32_t iv_build_num;
 };
 
+struct image_dependency {
+    uint32_t image_id;                      /* Image index (from 0) */
+    struct image_version image_min_version; /* Indicates at minimum which
+                                             * version of firmware must be
+                                             * available to satisfy compliance
+                                             */
+};
+
 /** Image header.  All fields are in little endian byte order. */
 struct image_header {
     uint32_t ih_magic;
     uint32_t ih_load_addr;
-    uint16_t ih_hdr_size; /* Size of image header (bytes). */
-    uint16_t _pad1;
-    uint32_t ih_img_size; /* Does not include header. */
-    uint32_t ih_flags;    /* IMAGE_F_[...]. */
+    uint16_t ih_hdr_size;           /* Size of image header (bytes). */
+    uint16_t ih_protect_tlv_size;   /* Size of protected TLV area (bytes). */
+    uint32_t ih_img_size;           /* Does not include header. */
+    uint32_t ih_flags;              /* IMAGE_F_[...]. */
     struct image_version ih_ver;
-    uint32_t _pad2;
+    uint32_t _pad1;
 };
 
 /** Image TLV header.  All fields in little endian. */

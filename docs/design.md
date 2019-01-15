@@ -44,8 +44,8 @@ characteristics:
 * Built to run from flash.
 * Built to run from a fixed location (i.e., not position-independent).
 
-Multiple image boot is currently supported with the overwrite upgrade strategy
-only (i.e. when `MCUBOOT_OVERWRITE_ONLY` is set).
+Multiple image boot and dependency check is currently supported with the
+overwrite upgrade strategy only (i.e. when `MCUBOOT_OVERWRITE_ONLY` is set).
 
 ## Image Format
 
@@ -67,12 +67,12 @@ struct image_version {
 struct image_header {
     uint32_t ih_magic;
     uint32_t ih_load_addr;
-    uint16_t ih_hdr_size; /* Size of image header (bytes). */
-    uint16_t _pad2;
-    uint32_t ih_img_size; /* Does not include header. */
-    uint32_t ih_flags;    /* IMAGE_F_[...]. */
+    uint16_t ih_hdr_size;           /* Size of image header (bytes). */
+    uint16_t ih_protect_tlv_size;   /* Size of protected TLV area (bytes). */
+    uint32_t ih_img_size;           /* Does not include header. */
+    uint32_t ih_flags;              /* IMAGE_F_[...]. */
     struct image_version ih_ver;
-    uint32_t _pad3;
+    uint32_t _pad1;
 };
 
 /** Image TLV header.  All fields in little endian. */
@@ -98,15 +98,24 @@ struct image_tlv {
 /*
  * Image trailer TLV types.
  */
-#define IMAGE_TLV_KEYHASH           0x01   /* hash of the public key */
-#define IMAGE_TLV_SHA256            0x10   /* SHA256 of image hdr and body */
-#define IMAGE_TLV_RSA2048_PSS       0x20   /* RSA2048 of hash output */
-#define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output */
-#define IMAGE_TLV_ECDSA256          0x22   /* ECDSA of hash output */
+#define IMAGE_TLV_KEYHASH          0x01   /* hash of the public key */
+#define IMAGE_TLV_SHA256           0x10   /* SHA256 of image hdr and body */
+#define IMAGE_TLV_RSA2048_PSS      0x20   /* RSA2048 of hash output */
+#define IMAGE_TLV_ECDSA224         0x21   /* ECDSA of hash output */
+#define IMAGE_TLV_ECDSA256         0x22   /* ECDSA of hash output */
+#define IMAGE_TLV_ENC_RSA2048      0x30   /* Key encrypted with RSA-OAEP-2048 */
+#define IMAGE_TLV_ENC_KW128        0x31   /* Key encrypted with AES-KW-128 */
+#define IMAGE_TLV_DEPENDENCY       0x40   /* Image depends on other image */
 ```
 
 Optional type-length-value records (TLVs) containing image metadata are placed
 after the end of the image.
+
+The `ih_protect_tlv_size` field indicates the length of the protected TLV area.
+If dependency TLVs are present than the TLV info header and the dependency TLVs
+are also protected and have to be included in the hash calculation. Otherwise
+the hash is only calculated over the image header and the image itself. In this
+case the value of the `ih_protect_tlv_size` field is 0.
 
 The `ih_hdr_size` field indicates the length of the header, and therefore the
 offset of the image itself.  This field provides for backwards compatibility in
@@ -477,11 +486,15 @@ partitioned further to arrange two slots for each image.
 | Scratch            |
 +--------------------+
 ```
-The multiple image boot procedure is organized in loops which iterate over all
-the firmware images. The high-level overview of the boot process is presented
-below.
-
-Procedure:
+MCUBoot is also capable of handling dependencies between images. For example
+if an image needs to be reverted it might be necessary to revert another one too
+(e.g. due to API incompatibilities) or simply to prevent from being updated
+because of an unsatisfied dependency. Therefore all aborted swaps have to be
+completed and all the swap types have to be determined for each image before
+the dependency checks. Dependency handling is described in more detail in a
+following section. The multiple image boot procedure is organized in loops which
+iterate over all the firmware images. The high-level overview of the boot
+process is presented below.
 
 + ###### Loop 1. Iterate over all images
     1. Inspect swap status region of current image; is an interrupted swap being
@@ -508,9 +521,15 @@ Procedure:
             + Skip to next image.
 
 + ###### Loop 2. Iterate over all images
-    At this point there are no aborted swaps and the swap types are determined
-    for each image.
+    1. Does the current image depend on other image(s)?
+        + Yes: Are all the image dependencies satisfied?
+            + Yes: Skip to next image.
+            + No:
+                + Modify swap type depending on what the previous type was.
+                + Restart dependency check from the first image.
+        + No: Skip to next image.
 
++ ###### Loop 3. Iterate over all images
     1. Is an image swap requested?
         + Yes:
             + Perform image update operation.
@@ -518,8 +537,7 @@ Procedure:
             + Skip to next image.
         + No: Skip to next image.
 
-+ ###### Loop 3. Iterate over all images
-
++ ###### Loop 4. Iterate over all images
     1. Validate image in the primary slot (integrity and security check) or
        at least do a basic sanity check to avoid booting into an empty flash
        area.
@@ -788,3 +806,52 @@ producing signed images, see: [signed_images](signed_images.md).
 
 If you want to enable and use encrypted images, see:
 [encrypted_images](encrypted_images.md).
+
+## Dependency Check
+
+MCUBoot can handle multiple firmware images. It is possible to update them
+independently but in many cases it can be desired to be able to describe
+dependencies between the images (e.g. to ensure API compliance and avoid
+interoperability issues).
+
+The dependencies between images can be described with additional TLV entries in
+the TLV area after the end of an image. There can be more than one dependency
+entry, but in practice if the platform only supports two individual images then
+there can be maximum one entry which reflects to the other image.
+
+If the TLV area contains dependency TLV entries, then these are required to be
+integrity and authenticity protected. In this case the SHA256 has to be
+calculated over not just the image header and the image but also the TLV info
+header and the dependency TLVs.
+```
+A +---------------------+
+  | Header              | <- struct image_header
+  +---------------------+
+  | Payload             |
+  +---------------------+
+  | TLV area            |
+  | +-----------------+ |
+  | | TLV area header | | <- struct image_tlv_info
+  | +-----------------+ |
+  | | Dependency      | | <- Dependency entry (struct image_tlv)
+B | +-----------------+ |
+  | | SHA256 hash     | | <- hash from A - B (struct image_tlv)
+C | +-----------------+ |
+  | | Keyhash         | | <- indicates which pub. key for sig (struct image_tlv)
+  | +-----------------+ |
+  | | Signature       | | <- signature from B - C (struct image_tlv), only hash
+  | +-----------------+ |
+  +---------------------+
+```
+At the phase of dependency check all aborted swaps are finalized if there were
+any (currently dependency check is supported with the overwrite upgrade strategy
+only). During the dependency check the boot loader verifies whether the image
+dependencies are all satisfied. If at least one of the dependencies of an image
+is not fulfilled then the swap type of that image has to be modified
+accordingly and the dependency check needs to be restarted. This way the number
+of unsatisfied dependencies will decrease or remain the same. There is always at
+least 1 valid configuration. In worst case, the system returns to the initial
+state after dependency check.
+
+For more information on adding dependency entries to an image,
+see: [imgtool](imgtool.md).
