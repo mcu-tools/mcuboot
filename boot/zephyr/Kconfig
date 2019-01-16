@@ -143,8 +143,9 @@ menuconfig MCUBOOT_SERIAL
 	bool "MCUboot serial recovery"
 	default n
 	select REBOOT
-	select UART_INTERRUPT_DRIVEN
+	select GPIO
 	select SERIAL
+	select UART_INTERRUPT_DRIVEN
 	select BASE64
 	select TINYCBOR
 	help
