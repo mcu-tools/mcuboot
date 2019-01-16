@@ -73,11 +73,9 @@ impl SuitGenerator {
         let mut encoder = Encoder::new(&mut buf);
         let manifest = self.gen_manifest()?;
 
-        let sig = self.sign_manifest(&manifest)?;
-
         encoder.add_map(2)?;
         encoder.add_unsigned(1)?;
-        encoder.add_bytestring(&sig)?;
+        self.sign_manifest(&manifest, &mut encoder)?;
         encoder.add_unsigned(2)?;
         encoder.add_bytestring(&manifest)?;
         encoder.assert_complete();
@@ -122,7 +120,7 @@ impl SuitGenerator {
         Ok(buf)
     }
 
-    fn sign_manifest(&mut self, manifest: &[u8]) -> Result<Vec<u8>> {
+    fn sign_manifest<W: Write>(&mut self, manifest: &[u8], encoder: &mut Encoder<W>) -> Result<()> {
         let body_prot = {
             let mut buf: Vec<u8> = Vec::new();
             let mut encoder = Encoder::new(&mut buf);
@@ -161,9 +159,7 @@ impl SuitGenerator {
             buf
         };
 
-        let mut buf: Vec<u8> = Vec::new();
-        let mut encoder = Encoder::new(&mut buf);
-
+        encoder.add_tag(98)?;
         encoder.add_array(4)?;
         encoder.add_bytestring(&body_prot)?;
         encoder.add_map(0)?;
@@ -181,9 +177,8 @@ impl SuitGenerator {
                 encoder.add_bytestring(&sig)?;
             }
         }
-        encoder.assert_complete();
 
-        Ok(buf)
+        Ok(())
     }
 }
 

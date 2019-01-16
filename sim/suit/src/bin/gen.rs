@@ -34,6 +34,10 @@ impl SubDecode for Deep {
     fn should_decode(&self, _data: &[u8], context: &Context) -> bool {
         let textual = context.to_text();
         // println!("Context: {:?}", textual);
-        textual == "m1" || textual == "m3" || textual == "m3nm5a0m5a0"
+        textual == "m1a0" ||
+            textual == "m1a3a0a0" ||
+            textual == "m4" ||
+            textual == "m4nm5a0m5a0" ||
+            false
     }
 }
