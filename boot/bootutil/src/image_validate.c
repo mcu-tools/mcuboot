@@ -17,6 +17,10 @@
  * under the License.
  */
 
+#include "mcuboot_config/mcuboot_config.h"
+
+#ifndef MCUBOOT_SUIT
+
 #include <assert.h>
 #include <stddef.h>
 #include <inttypes.h>
@@ -27,8 +31,6 @@
 #include "bootutil/image.h"
 #include "bootutil/sha256.h"
 #include "bootutil/sign_key.h"
-
-#include "mcuboot_config/mcuboot_config.h"
 
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
@@ -283,3 +285,5 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
 
     return 0;
 }
+
+#endif
