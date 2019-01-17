@@ -99,10 +99,10 @@ tinycrypt_read_bigint(uint8_t i[NUM_ECC_BYTES], uint8_t **cp, uint8_t *end)
         return -3;
     }
 
-    if (len > NUM_ECC_BYTES) {
+    if (len >= NUM_ECC_BYTES) {
         memcpy(i, *cp + len - NUM_ECC_BYTES, NUM_ECC_BYTES);
     } else {
-        memset(i + NUM_ECC_BYTES, 0, NUM_ECC_BYTES - len);
+        memset(i, 0, NUM_ECC_BYTES - len);
         memcpy(i + NUM_ECC_BYTES - len, *cp, len);
     }
     *cp += len;
