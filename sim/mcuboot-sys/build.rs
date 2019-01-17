@@ -164,6 +164,10 @@ fn main() {
     } else if sig_ecdsa {
         conf.file("../../boot/bootutil/src/image_ec256.c");
     }
+    if suit {
+        conf.file("../../boot/bootutil/src/suit_validate.c");
+        conf.file("../../boot/bootutil/src/cbor.c");
+    }
     conf.file("../../boot/bootutil/src/loader.c");
     conf.file("../../boot/bootutil/src/caps.c");
     conf.file("../../boot/bootutil/src/bootutil_misc.c");
