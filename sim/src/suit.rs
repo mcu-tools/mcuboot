@@ -41,6 +41,7 @@ impl ManifestGen for SuitManifestGenerator {
         let signer = RSA2048Signer::from_bytes(include_bytes!("../../root-rsa-2048.pem").as_ref())
             .unwrap();
         self.gen.set_signer(Box::new(signer)).unwrap();
+        self.gen.set_key_id(b"root-rsa-2048.pem".to_owned().to_vec()).unwrap();
         self.gen.add_payload(&self.payload).unwrap();
         self.gen.generate().unwrap()
     }

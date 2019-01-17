@@ -20,6 +20,9 @@ pub struct SuitGenerator {
     // The algorithm used to sign the payload.
     signer: Option<Box<dyn Signer>>,
 
+    // The key ID used.
+    key_id: Option<Vec<u8>>,
+
     // The sequence number.
     seq: u32,
 }
@@ -30,6 +33,7 @@ impl SuitGenerator {
         SuitGenerator {
             payload: None,
             signer: None,
+            key_id: None,
             seq: 0,
         }
     }
@@ -54,6 +58,12 @@ impl SuitGenerator {
     /// Set the sequence number for this manifest.
     pub fn set_sequence(&mut self, seq: u32) -> Result<()> {
         self.seq = seq;
+        Ok(())
+    }
+
+    /// Set the key ID for this key.
+    pub fn set_key_id(&mut self, key_id: Vec<u8>) -> Result<()> {
+        self.key_id = Some(key_id);
         Ok(())
     }
 
@@ -159,6 +169,8 @@ impl SuitGenerator {
             buf
         };
 
+        let key_id = self.key_id.as_ref().ok_or_else(|| format_err!("Did not set key id"))?;
+
         encoder.add_tag(98)?;
         encoder.add_array(4)?;
         encoder.add_bytestring(&body_prot)?;
@@ -169,7 +181,7 @@ impl SuitGenerator {
         encoder.add_bytestring(&sig_prot)?;
         encoder.add_map(1)?;
         encoder.add_unsigned(4)?;
-        encoder.add_bytestring(b"<keyid@example.com>")?;
+        encoder.add_bytestring(key_id)?;
         match self.signer.as_mut() {
             None => encoder.add_null()?,
             Some(signer) => {
