@@ -241,10 +241,17 @@ boot_read_image_size(int slot, struct image_header *hdr, uint32_t *size)
         rc = BOOT_EFLASH;
         goto done;
     }
+#ifdef MCUBOOT_SUIT
+    if (info.it_magic != IMAGE_SUIT_INFO_MAGIC) {
+        rc = BOOT_EBADIMAGE;
+        goto done;
+    }
+#else
     if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
         rc = BOOT_EBADIMAGE;
         goto done;
     }
+#endif
     *size = hdr->ih_hdr_size + hdr->ih_img_size + info.it_tlv_tot;
     rc = 0;
 
