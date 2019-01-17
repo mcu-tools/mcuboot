@@ -1,5 +1,6 @@
 //! Manifest generation for the suit manifest format.
 
+use byteorder::{LittleEndian, WriteBytesExt};
 use crate::tlv::ManifestGen;
 use suit::{SuitGenerator, RSA2048Signer};
 
@@ -43,6 +44,14 @@ impl ManifestGen for SuitManifestGenerator {
         self.gen.set_signer(Box::new(signer)).unwrap();
         self.gen.set_key_id(b"root-rsa-2048.pem".to_owned().to_vec()).unwrap();
         self.gen.add_payload(&self.payload).unwrap();
-        self.gen.generate().unwrap()
+        let mut data = self.gen.generate().unwrap();
+
+        // Create the "TLV" header to describe the size.
+        let mut result = Vec::with_capacity(4 + data.len());
+        result.write_u16::<LittleEndian>(0x6917).unwrap();
+        result.write_u16::<LittleEndian>(data.len() as u16 + 4).unwrap();
+        result.append(&mut data);
+
+        result
     }
 }
