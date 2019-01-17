@@ -51,7 +51,17 @@ struct flash_area;
 #define BOOT_ENOMEM     6
 #define BOOT_EBADARGS   7
 
-#define BOOT_TMPBUF_SZ  256
+#ifdef MCUBOOT_SUIT
+  /* The SUIT decoder needs a buffer large enough to hold the entire
+   * manifest. */
+  #ifdef MCUBOOT_SIGN_RSA
+    #define BOOT_TMPBUF_SZ 420
+  #else
+    #error "SUIT only supports RSA"
+  #endif
+#else
+  #define BOOT_TMPBUF_SZ  256
+#endif
 
 /*
  * Maintain state of copy progress.
