@@ -43,14 +43,7 @@ impl SuitGenerator {
             panic!("Attempt to add multiple payloads");
         }
 
-        let mut buf: Vec<u8> = Vec::new();
-        {
-            let mut encoder = Encoder::new(&mut buf);
-            gen_digest(&mut encoder, data)?;
-            encoder.assert_complete();
-        }
-
-        self.payload = Some(buf);
+        self.payload = Some(data.to_owned());
         Ok(())
     }
 
