@@ -6,7 +6,6 @@ use ring::{digest, rand, signature};
 use std::{
     io::Write,
     result,
-    sync::Arc,
 };
 
 type Result<T> = result::Result<T, failure::Error>;
@@ -240,7 +239,7 @@ pub trait Signer {
 }
 
 pub struct RSA2048Signer {
-    signer: signature::RSASigningState,
+    key: signature::RsaKeyPair,
 }
 
 impl RSA2048Signer {
@@ -253,10 +252,9 @@ impl RSA2048Signer {
             return Err(format_err!("pem not of expected RSA PRIVATE KEY ({:?})", key_bytes.tag));
         }
         let key_bytes = untrusted::Input::from(&key_bytes.contents);
-        let key = signature::RSAKeyPair::from_der(key_bytes)?;
-        let signer = signature::RSASigningState::new(Arc::new(key))?;
+        let key = signature::RsaKeyPair::from_der(key_bytes)?;
         Ok(RSA2048Signer {
-            signer: signer,
+            key: key,
         })
     }
 }
@@ -268,10 +266,10 @@ impl Signer for RSA2048Signer {
     }
 
     fn gen_signature(&mut self, data: &[u8]) -> Result<Vec<u8>> {
-        let mut signature = vec![0; self.signer.key_pair().public_modulus_len()];
+        let mut signature = vec![0; self.key.public_modulus_len()];
         assert_eq!(signature.len(), 256);
         let rng = rand::SystemRandom::new();
-        self.signer.sign(&signature::RSA_PSS_SHA256, &rng, &data, &mut signature)?;
+        self.key.sign(&signature::RSA_PSS_SHA256, &rng, &data, &mut signature)?;
         Ok(signature)
     }
 }

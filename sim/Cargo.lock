@@ -130,7 +130,7 @@ dependencies = [
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "ring 0.13.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -459,7 +459,7 @@ dependencies = [
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "pem 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "ring 0.13.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ring 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "untrusted 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

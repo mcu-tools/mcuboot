@@ -9,7 +9,7 @@ cboria = { path = "../cboria" }
 failure = "0.1"
 
 hex = "0.3"
-ring = { version = "0.13", features = ["rsa_signing"] }
+ring = "0.14"
 untrusted = "0.6"
 pem = "0.5"
 

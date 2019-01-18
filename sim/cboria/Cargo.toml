@@ -12,7 +12,7 @@ failure = "0.1"
 # binary.  Fix this by moving the binary into its own crate, and
 # possibly using a workspace to connect them together.
 hex = "0.3"
-ring = "0.13"
+ring = "0.14"
 
 [lib]
 name = "cboria"
