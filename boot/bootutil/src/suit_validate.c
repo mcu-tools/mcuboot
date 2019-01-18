@@ -61,7 +61,7 @@ static const uint8_t wrapper_template[] = {
                 CBOR_ITEM_SIMPLE(CBOR_MAJOR_MAP, 1),
                   CBOR_ITEM_SIMPLE(CBOR_MAJOR_UNSIGNED, 1),
                   CBOR_ITEM_1(CBOR_MAJOR_NEGATIVE, -1 + 37),
-              /* Unprotected header. 
+              /* Unprotected header.
                * { 4: bstr }, gives key id. */
               CBOR_ITEM_SIMPLE(CBOR_MAJOR_MAP, 1),
                 CBOR_ITEM_SIMPLE(CBOR_MAJOR_UNSIGNED, 4),
@@ -107,11 +107,8 @@ static const uint8_t unprot[] = {
 };
 
 static void
-hash_bstr_data(bootutil_sha256_context *ctx,
-               struct slice *data)
+hash_bstr_header(bootutil_sha256_context *ctx, uint32_t len)
 {
-    uint32_t len = data->len;
-
     if (len < 24) {
         uint8_t header[] = { CBOR_ITEM_SIMPLE(CBOR_MAJOR_BSTR, len) };
         bootutil_sha256_update(ctx, header, sizeof(header));
@@ -126,38 +123,42 @@ hash_bstr_data(bootutil_sha256_context *ctx,
         while (1) {
         }
     }
-    bootutil_sha256_update(ctx, data->base, data->len);
 }
 
 static int
-validate_manifest_signature(struct slice manifest)
+validate_manifest_signature(struct slice cose, struct slice *manifest)
 {
     int rc;
     struct cbor_capture captures[3];
     bootutil_sha256_context ctx;
     uint8_t manifest_hash[32];
 
-    rc = cbor_template_decode(wrapper_template_slice, manifest, captures,
+    rc = cbor_template_decode(wrapper_template_slice, cose, captures,
                               sizeof(captures)/sizeof(captures[0]));
     if (rc) {
         return rc;
     }
 
     /* The three captures are: 0 - the key-id, a BSTR, 1 - the
-     * signature, and 2 - the manifest itself. */
+     * signature, and 2 - the manifest itself.  Make sure they are all
+     * bstrs. */
+    if (captures[0].major != CBOR_MAJOR_BSTR ||
+        captures[1].major != CBOR_MAJOR_BSTR ||
+        captures[2].major != CBOR_MAJOR_BSTR)
+    {
+        BOOT_LOG_ERR("keyid, signature or manifest are not of type bstr");
+        return -1;
+    }
+
     bootutil_sha256_init(&ctx);
     bootutil_sha256_update(&ctx, sig_block_head, sizeof(sig_block_head));
     bootutil_sha256_update(&ctx, signature_text, sizeof(signature_text));
     bootutil_sha256_update(&ctx, body_prot, sizeof(body_prot));
     bootutil_sha256_update(&ctx, sig_prot, sizeof(sig_prot));
     bootutil_sha256_update(&ctx, unprot, sizeof(unprot));
-    hash_bstr_data(&ctx, &captures[2].data);
+    hash_bstr_header(&ctx, captures[2].data.len);
+    bootutil_sha256_update(&ctx, captures[2].data.base, captures[2].data.len);
     bootutil_sha256_finish(&ctx, manifest_hash);
-
-    for (int i = i; i < 32; i++) {
-        printf("%02x", manifest_hash[i]);
-    }
-    printf("\n");
 
     /* Verify the signature itself.
      * TODO: Use the key-id to find the proper signature.
@@ -167,6 +168,150 @@ validate_manifest_signature(struct slice manifest)
                              0);
     if (rc != 0) {
         return rc;
+    }
+
+    manifest->base = captures[2].data.base;
+    manifest->len = captures[2].data.len;
+
+    return 0;
+}
+
+/* CBOR template for the manifest itself. */
+static const uint8_t manifest_template[] = {
+    /* Manifest is a map. */
+    CBOR_ITEM_SIMPLE(CBOR_MAJOR_MAP, 3),
+      /* 1: 1, manifest version. */
+      CBOR_ITEM_SIMPLE(CBOR_MAJOR_UNSIGNED, 1),
+      CBOR_ITEM_SIMPLE(CBOR_MAJOR_UNSIGNED, 1),
+      /* 2: n, sequence number. */
+      CBOR_ITEM_SIMPLE(CBOR_MAJOR_UNSIGNED, 2),
+      CBOR_ITEM_1(CBOR_MAJOR_OTHER, CBOR_OTHER_CAPTURE(0)),
+      CBOR_ITEM_SIMPLE(CBOR_MAJOR_UNSIGNED, 3),
+      /* 3: payload */
+      CBOR_ITEM_SIMPLE(CBOR_MAJOR_ARRAY, 1),
+        CBOR_ITEM_SIMPLE(CBOR_MAJOR_MAP, 3),
+          /* 1: [ bstr ], component designator. */
+          CBOR_ITEM_SIMPLE(CBOR_MAJOR_UNSIGNED, 1),
+          CBOR_ITEM_SIMPLE(CBOR_MAJOR_ARRAY, 1),
+            CBOR_ITEM_1(CBOR_MAJOR_OTHER, CBOR_OTHER_CAPTURE(1)),
+          /* 2: uint, payload length */
+          CBOR_ITEM_SIMPLE(CBOR_MAJOR_UNSIGNED, 2),
+          CBOR_ITEM_1(CBOR_MAJOR_OTHER, CBOR_OTHER_CAPTURE(2)),
+          CBOR_ITEM_SIMPLE(CBOR_MAJOR_UNSIGNED, 3),
+          CBOR_ITEM_SIMPLE(CBOR_MAJOR_ARRAY, 4),
+            /* bstr: protected header. */
+            CBOR_ITEM_SIMPLE(CBOR_MAJOR_BSTR, 4),
+              CBOR_ITEM_SIMPLE(CBOR_MAJOR_MAP, 1),
+              CBOR_ITEM_SIMPLE(CBOR_MAJOR_UNSIGNED, 1),
+              CBOR_ITEM_1(CBOR_MAJOR_UNSIGNED, 41),
+            /* {}: unprotected header. */
+            CBOR_ITEM_SIMPLE(CBOR_MAJOR_MAP, 0),
+            /* null: payload */
+            CBOR_ITEM_SIMPLE(CBOR_MAJOR_OTHER, CBOR_OTHER_NULL),
+            /* bstr: The hash itself. */
+            CBOR_ITEM_1(CBOR_MAJOR_OTHER, CBOR_OTHER_CAPTURE(3)),
+};
+static const struct slice manifest_template_slice = {
+    .base = manifest_template,
+    .len = sizeof(manifest_template),
+};
+
+static const uint8_t digest_header[] = {
+    CBOR_ITEM_SIMPLE(CBOR_MAJOR_ARRAY, 3),
+      CBOR_ITEM_SIMPLE(CBOR_MAJOR_TEXT, 6),
+      'D', 'i', 'g', 'e', 's', 't',
+      CBOR_ITEM_SIMPLE(CBOR_MAJOR_BSTR, 4),
+        /* {1: 41}, SHA256 digest. */
+        CBOR_ITEM_SIMPLE(CBOR_MAJOR_MAP, 1),
+        CBOR_ITEM_SIMPLE(CBOR_MAJOR_UNSIGNED, 1),
+        CBOR_ITEM_1(CBOR_MAJOR_UNSIGNED, 41),
+      /* The payload goes here. */
+};
+
+/*
+ * Verify the manifest itself.  Make sure it is well formed, and then
+ * ensure that the COSE hash it describes matches the image itself.
+ */
+int
+verify_manifest(struct image_header *hdr, const struct flash_area *fap,
+                struct slice manifest, uint8_t *out_hash)
+{
+    int rc;
+    struct cbor_capture captures[4];
+    bootutil_sha256_context ctx;
+    uint8_t image_hash[32];
+    static uint8_t hash_buf[256];
+    unsigned this_size;
+
+    /* Captures:
+     * 0: uint: sequence number,
+     * 1: bstr: component designator,
+     * 2: uint: payload length,
+     * 3: bstr: payload hash,
+     */
+
+    const uint32_t payload_len = hdr->ih_hdr_size + hdr->ih_img_size;
+
+    rc = cbor_template_decode(manifest_template_slice, manifest, captures,
+                              sizeof(captures)/sizeof(captures[0]));
+    if (rc) {
+        return rc;
+    }
+
+    /* Ensure the image header sequence number matches the manifest. */
+    if (captures[0].major != CBOR_MAJOR_UNSIGNED ||
+        hdr->ih_ver.iv_build_num != captures[0].minor)
+    {
+        BOOT_LOG_ERR("Invalid sequence number/iv_build_num against header");
+        return -1;
+    }
+
+    /* TODO: We don't know what to do with the component designator.
+     * For now, it just needs to be a bstr. */
+    if (captures[1].major != CBOR_MAJOR_BSTR) {
+        BOOT_LOG_ERR("Invalid component designator");
+        return -1;
+    }
+
+    /* Ensure that the payload length matches what is in the header.
+     * TODO: Ensure that overflow is not an issue here. */
+    if (captures[2].major != CBOR_MAJOR_UNSIGNED ||
+        captures[2].minor != payload_len)
+    {
+        BOOT_LOG_ERR("Invalid payload size in manifest");
+        return -1;
+    }
+
+    /* Compute the digest of the image to compare. */
+    bootutil_sha256_init(&ctx);
+    bootutil_sha256_update(&ctx, digest_header, sizeof(digest_header));
+    hash_bstr_header(&ctx, payload_len);
+
+    /* Add in the hash through the image. */
+    for (unsigned off = 0; off < payload_len; off += sizeof(hash_buf)) {
+        this_size = payload_len - off;
+        if (this_size > sizeof(hash_buf)) {
+            this_size = sizeof(hash_buf);
+        }
+        rc = flash_area_read(fap, off, hash_buf, this_size);
+        if (rc) {
+            return rc;
+        }
+        bootutil_sha256_update(&ctx, hash_buf, this_size);
+    }
+    bootutil_sha256_finish(&ctx, image_hash);
+
+    /* Make sure the hash matches. */
+    if (captures[3].major != CBOR_MAJOR_BSTR ||
+        captures[3].minor != 32 ||
+        memcmp(captures[3].data.base, image_hash, 32) != 0)
+    {
+        BOOT_LOG_ERR("Image hash mismatch");
+        return -1;
+    }
+
+    if (out_hash) {
+        memcpy(out_hash, image_hash, 32);
     }
 
     return 0;
@@ -190,6 +335,7 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
 
     int rc;
     uint32_t len;
+    struct slice cose;
     struct slice manifest;
 
     /* The SUIT image uses the same header as the TLVs, but with a
@@ -222,10 +368,15 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
         return rc;
     }
 
-    manifest.base = tmp_buf;
-    manifest.len = len;
+    cose.base = tmp_buf;
+    cose.len = len;
 
-    rc = validate_manifest_signature(manifest);
+    rc = validate_manifest_signature(cose, &manifest);
+    if (rc) {
+        return rc;
+    }
+
+    rc = verify_manifest(hdr, fap, manifest, out_hash);
     if (rc) {
         return rc;
     }
