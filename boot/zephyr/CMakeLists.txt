@@ -125,6 +125,7 @@ delete the build folder and build from scratch.")
   target_compile_definitions(app PRIVATE MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h")
   # Additionally pull in just the ASN.1 parser from mbedTLS.
   target_sources(app PRIVATE "${MBEDTLS_ASN1_DIR}/src/asn1parse.c")
+  target_sources(app PRIVATE "${MBEDTLS_ASN1_DIR}/src/platform_util.c")
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   # Use mbedTLS provided by Zephyr for RSA signatures. (Its config file
   # is set using Kconfig.)
