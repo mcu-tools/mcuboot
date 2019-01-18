@@ -111,9 +111,11 @@ cbor_template_decode(struct slice template,
             return rc;
         }
 
+#if 0
         BOOT_LOG_ERR("Template: %d,%d; data: %d,%d",
                      tmajor, tminor,
                      dmajor, dminor);
+#endif
 
         todo--;
 
