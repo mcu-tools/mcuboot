@@ -6,8 +6,6 @@
 
 cmake_minimum_required(VERSION 3.8.2)
 
-set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
-
 # Board-specific CONF_FILES should get merged into the build as well.
 #
 # Do this by defining the set_conf_file macro:
