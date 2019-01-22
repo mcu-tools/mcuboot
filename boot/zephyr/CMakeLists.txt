@@ -70,68 +70,88 @@ set(TINYCRYPT_DIR "${MCUBOOT_DIR}/ext/tinycrypt/lib")
 # Path to mbed-tls' asn1 parser library.
 set(MBEDTLS_ASN1_DIR "${MCUBOOT_DIR}/ext/mbedtls")
 
-target_include_directories(app PRIVATE include)
-target_include_directories(app PRIVATE targets)
-if(EXISTS "${APPLICATION_SOURCE_DIR}/targets/${BOARD}.h")
-  target_compile_definitions(app PRIVATE "-DMCUBOOT_TARGET_CONFIG=\"${BOARD}.h\"")
+zephyr_library_include_directories(
+  include
+  targets
+  )
+if(EXISTS targets/${BOARD}.h)
+  zephyr_library_compile_definitions(MCUBOOT_TARGET_CONFIG="${BOARD}.h")
 endif()
 
 # Zephyr port-specific sources.
-target_sources(app PRIVATE main.c)
-target_sources(app PRIVATE flash_map_extended.c)
-target_sources(app PRIVATE os.c)
-target_sources(app PRIVATE keys.c)
+zephyr_library_sources(
+  main.c
+  flash_map_extended.c
+  os.c
+  keys.c
+  )
+
 if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)
-  target_sources(app PRIVATE flash_map_legacy.c)
+  zephyr_library_sources(
+	flash_map_legacy.c
+	)
 endif()
 
 # Generic bootutil sources and includes.
-target_include_directories(app PRIVATE "${BOOT_DIR}/bootutil/include")
-target_sources(app PRIVATE "${BOOT_DIR}/bootutil/src/loader.c")
-target_sources(app PRIVATE "${BOOT_DIR}/bootutil/src/bootutil_misc.c")
-target_sources(app PRIVATE "${BOOT_DIR}/bootutil/src/image_validate.c")
-target_sources(app PRIVATE "${BOOT_DIR}/bootutil/src/encrypted.c")
-target_sources(app PRIVATE "${BOOT_DIR}/bootutil/src/image_rsa.c")
-target_sources(app PRIVATE "${BOOT_DIR}/bootutil/src/image_ec256.c")
-target_sources(app PRIVATE "${BOOT_DIR}/bootutil/src/caps.c")
+zephyr_library_include_directories(${BOOT_DIR}/bootutil/include)
+zephyr_library_sources(
+  ${BOOT_DIR}/bootutil/src/loader.c
+  ${BOOT_DIR}/bootutil/src/bootutil_misc.c
+  ${BOOT_DIR}/bootutil/src/image_validate.c
+  ${BOOT_DIR}/bootutil/src/encrypted.c
+  ${BOOT_DIR}/bootutil/src/image_rsa.c
+  ${BOOT_DIR}/bootutil/src/image_ec256.c
+  ${BOOT_DIR}/bootutil/src/caps.c
+  )
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
   # When using ECDSA signatures, pull in our copy of the tinycrypt library.
-  target_include_directories(app PRIVATE "${BOOT_DIR}/zephyr/include")
-  target_include_directories(app PRIVATE "${TINYCRYPT_DIR}/include")
-  target_include_directories(app PRIVATE "${MBEDTLS_ASN1_DIR}/include")
+  zephyr_library_include_directories(
+	 ${BOOT_DIR}/zephyr/include
+	   ${TINYCRYPT_DIR}/include
+	${MBEDTLS_ASN1_DIR}/include
+	)
 
-  target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/ecc.c")
-  target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/ecc_dsa.c")
-  target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/sha256.c")
-  target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/utils.c")
+  zephyr_library_sources(
+	${TINYCRYPT_DIR}/source/ecc.c
+	${TINYCRYPT_DIR}/source/ecc_dsa.c
+	${TINYCRYPT_DIR}/source/sha256.c
+	${TINYCRYPT_DIR}/source/utils.c
+
+	# Additionally pull in just the ASN.1 parser from mbedTLS.
+	${MBEDTLS_ASN1_DIR}/src/asn1parse.c
+	${MBEDTLS_ASN1_DIR}/src/platform_util.c
+	)
 
   # Since here we are not using Zephyr's mbedTLS but rather our own, we need
   # to set MBEDTLS_CONFIG_FILE ourselves. When using Zephyr's copy, this
   # variable is set by its Kconfig in the Zephyr codebase.
-  target_compile_definitions(app PRIVATE MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h")
-  # Additionally pull in just the ASN.1 parser from mbedTLS.
-  target_sources(app PRIVATE "${MBEDTLS_ASN1_DIR}/src/asn1parse.c")
-  target_sources(app PRIVATE "${MBEDTLS_ASN1_DIR}/src/platform_util.c")
+  zephyr_library_compile_definitions(
+	MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h"
+	)
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   # Use mbedTLS provided by Zephyr for RSA signatures. (Its config file
   # is set using Kconfig.)
   zephyr_include_directories(include)
-  target_include_directories(app PRIVATE $ENV{ZEPHYR_BASE}/ext/lib/crypto/mbedtls/include)
 endif()
 
-if (CONFIG_MCUBOOT_SERIAL)
+if(CONFIG_MCUBOOT_SERIAL)
   zephyr_sources(${BOOT_DIR}/zephyr/serial_adapter.c)
   zephyr_sources(${BOOT_DIR}/boot_serial/src/boot_serial.c)
 
   zephyr_include_directories(${BOOT_DIR}/bootutil/include)
   zephyr_include_directories(${BOOT_DIR}/boot_serial/include)
   zephyr_include_directories(include)
-  zephyr_link_libraries_ifdef(CONFIG_TINYCBOR TINYCBOR)
 
-  if (CONFIG_BOOT_ERASE_PROGRESSIVELY)
-    zephyr_include_directories(${BOOT_DIR}/bootutil/src)
-  endif()
+  zephyr_link_libraries_ifdef(
+	CONFIG_TINYCBOR
+	TINYCBOR
+	)
+
+  zephyr_include_directories_ifdef(
+	CONFIG_BOOT_ERASE_PROGRESSIVELY
+	${BOOT_DIR}/bootutil/src
+	)
 endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
@@ -152,5 +172,5 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
     > ${GENERATED_PUBKEY}
     DEPENDS ${KEY_FILE}
     )
-  target_sources(app PRIVATE "${GENERATED_PUBKEY}")
+  zephyr_library_sources(${GENERATED_PUBKEY})
 endif()
