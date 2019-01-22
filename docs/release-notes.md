@@ -3,6 +3,40 @@
 - Table of Contents
 {:toc}
 
+## Version 1.3.0
+
+The 1.3.0 release of MCUboot brings in many fixes and updates.  There
+are no breaking changes in functionality.  Many of the changes are
+refactorings that will make the code easier to maintain going forward.
+In addition, support has been added for encrypted images.  See [the
+docs](encrypted_images.md) for more information.
+
+### About this release
+
+- Modernize the Zephyr build scripts.
+- Add a `ptest` utility to help run the simulator in different
+  configurations.
+- Migrate the simulator to Rust 2018 edition.  The sim now requires at
+  least Rust 1.32 to build.
+- Simulator cleanups.  The simulator code is now built the same way
+  for every configuration, and queries the MCUboot code for how it was
+  compiled.
+- Abstract logging in MCUboot.  This was needed to support the new
+  logging system used in Zephyr.
+- Add multiple flash support.  Allows slot1/scratch to be stored in an
+  external flash device.
+- Add support for [encrypted images](encrypted_images.md).
+- Add support for flash devices that read as '0' when erased.
+- Add support to Zephyr for the `nrf52840_pca10059`.  This board
+  supports serial recovery over USB with CDC ACM.
+- imgtool is now also available as a python package on pypi.org.
+- Add an option to erase flash pages progressively during recovery to
+  avoid possible timeouts (required especially by serial recovery
+  using USB with CDC ACM).
+- imgtool: big-endian support
+- imgtool: saves in intel-hex format when output filename has `.hex`
+  extension; otherwise saves in binary format.
+
 ## Version 1.2.0
 
 The 1.2.0 release of MCUboot brings a lot of fixes/updates, where much of the
