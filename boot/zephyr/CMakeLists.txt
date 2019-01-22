@@ -18,10 +18,8 @@ macro(set_conf_file)
   endif()
 endmacro()
 
-# The board should be set to a supported target.
-if (NOT DEFINED BOARD)
-  set(BOARD qemu_x86)
-endif()
+# Default to qemu_x86 if no board has been specified.
+set(BOARD qemu_x86)
 
 # Add a common dts overlay necessary to ensure mcuboot is linked into,
 # and fits inside, the boot partition. (If the user specified a
