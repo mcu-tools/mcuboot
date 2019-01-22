@@ -106,15 +106,6 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
   target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/sha256.c")
   target_sources(app PRIVATE "${TINYCRYPT_DIR}/source/utils.c")
 
-  # When building for ECDSA, we use our own copy of mbedTLS, so the Zephyr
-  # one must not be enabled or the MBEDTLS_CONFIG_FILE macros will collide.
-  if(DEFINED CONFIG_MBEDTLS)
-	  message(FATAL_ERROR "\
-
-CONFIG_MBEDTLS should not be enabled. \
-Try adding CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256=y to your prj.conf, \
-delete the build folder and build from scratch.")
-  endif()
   # Since here we are not using Zephyr's mbedTLS but rather our own, we need
   # to set MBEDTLS_CONFIG_FILE ourselves. When using Zephyr's copy, this
   # variable is set by its Kconfig in the Zephyr codebase.
