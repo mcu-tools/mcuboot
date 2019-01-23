@@ -987,10 +987,14 @@ boot_status_init(const struct flash_area *fap, const struct boot_status *bs)
 
 #ifndef MCUBOOT_OVERWRITE_ONLY
 static int
-boot_erase_last_sector(const struct flash_area *fap)
+boot_erase_trailer_sectors(const struct flash_area *fap)
 {
     uint8_t slot;
-    uint32_t last_sector;
+    uint32_t sector;
+    uint32_t trailer_sz;
+    uint32_t total_sz;
+    uint32_t off;
+    uint32_t sz;
     int rc;
 
     switch (fap->fa_id) {
@@ -1004,11 +1008,19 @@ boot_erase_last_sector(const struct flash_area *fap)
         return BOOT_EFLASH;
     }
 
-    last_sector = boot_img_num_sectors(&boot_data, slot) - 1;
-    rc = boot_erase_sector(fap,
-            boot_img_sector_off(&boot_data, slot, last_sector),
-            boot_img_sector_size(&boot_data, slot, last_sector));
-    assert(rc == 0);
+    /* delete starting from last sector and moving to beginning */
+    sector = boot_img_num_sectors(&boot_data, slot) - 1;
+    trailer_sz = boot_slots_trailer_sz(BOOT_WRITE_SZ(&boot_data));
+    total_sz = 0;
+    do {
+        sz = boot_img_sector_size(&boot_data, slot, sector);
+        off = boot_img_sector_off(&boot_data, slot, sector);
+        rc = boot_erase_sector(fap, off, sz);
+        assert(rc == 0);
+
+        sector--;
+        total_sz += sz;
+    } while (total_sz < trailer_sz);
 
     return rc;
 }
@@ -1086,7 +1098,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
                  * last sector is not being used by the image data so it's
                  * safe to erase.
                  */
-                rc = boot_erase_last_sector(fap_slot0);
+                rc = boot_erase_trailer_sectors(fap_slot0);
                 assert(rc == 0);
 
                 boot_status_init(fap_slot0, bs);
@@ -1109,7 +1121,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
             /* If not all sectors of the slot are being swapped,
              * guarantee here that only slot0 will have the state.
              */
-            rc = boot_erase_last_sector(fap_slot1);
+            rc = boot_erase_trailer_sectors(fap_slot1);
             assert(rc == 0);
         }
 
