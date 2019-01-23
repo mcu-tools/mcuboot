@@ -49,12 +49,20 @@ int flash_device_base(uint8_t fd_id, uintptr_t *ret)
 }
 
 /*
- * This depends on the mappings defined in sysflash.h, and assumes
- * that slot 0, slot 1, and the scratch areas are contiguous.
+ * This depends on the mappings defined in sysflash.h.
+ * MCUBoot uses continuous numbering for slot 0, slot 1, and the scratch
+ * while zephyr might number it differently.
  */
 int flash_area_id_from_image_slot(int slot)
 {
-    return slot + FLASH_AREA_IMAGE_0;
+    static const int area_id_tab[] = {FLASH_AREA_IMAGE_0, FLASH_AREA_IMAGE_1,
+                                      FLASH_AREA_IMAGE_SCRATCH};
+
+    if (slot >= 0 && slot < ARRAY_SIZE(area_id_tab)) {
+        return area_id_tab[slot];
+    }
+
+    return -EINVAL; /* flash_area_open will fail on that */
 }
 
 int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
