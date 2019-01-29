@@ -1734,7 +1734,6 @@ boot_go(struct boot_rsp *rsp)
 
 #ifdef MCUBOOT_VALIDATE_SLOT0
     rc = boot_validate_slot(0, NULL);
-    ASSERT(rc == 0);
     if (rc != 0) {
         rc = BOOT_EBADIMAGE;
         goto out;
