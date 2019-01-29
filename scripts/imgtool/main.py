@@ -18,6 +18,7 @@ import click
 import getpass
 import imgtool.keys as keys
 from imgtool import image
+from imgtool import suit as suitpkg
 from imgtool.version import decode_version
 
 
@@ -122,6 +123,8 @@ class BasedIntParamType(click.ParamType):
 
 @click.argument('outfile')
 @click.argument('infile')
+@click.option('--suit', default=False, is_flag=True,
+              help="Use a SUIT signature instead of TLV")
 @click.option('-E', '--encrypt', metavar='filename',
               help='Encrypt image using the provided public key')
 @click.option('-e', '--endian', type=click.Choice(['little', 'big']),
@@ -146,11 +149,15 @@ class BasedIntParamType(click.ParamType):
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, othewise binary format is used''')
 def sign(key, align, version, header_size, pad_header, slot_size, pad,
-         max_sectors, overwrite_only, endian, encrypt, infile, outfile):
-    img = image.Image(version=decode_version(version), header_size=header_size,
-                      pad_header=pad_header, pad=pad, align=int(align),
-                      slot_size=slot_size, max_sectors=max_sectors,
-                      overwrite_only=overwrite_only, endian=endian)
+         max_sectors, overwrite_only, endian, encrypt, suit, infile, outfile):
+    if suit:
+        gen = suitpkg.Image
+    else:
+        gen = image.Image
+    img = gen(version=decode_version(version), header_size=header_size,
+              pad_header=pad_header, pad=pad, align=int(align),
+              slot_size=slot_size, max_sectors=max_sectors,
+              overwrite_only=overwrite_only, endian=endian)
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
