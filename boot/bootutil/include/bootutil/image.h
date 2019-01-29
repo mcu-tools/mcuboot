@@ -26,6 +26,8 @@
 #include <toolchain/gcc.h>
 #endif
 
+#include "mcuboot_config/mcuboot_config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
