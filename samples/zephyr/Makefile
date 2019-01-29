@@ -125,6 +125,7 @@ hello1: check
 			$(SOURCE_DIRECTORY)/hello-world && \
 		make -j$(nproc))
 	$(IMGTOOL) sign \
+		$(SUIT_FLAG) \
 		--key $(SIGNING_KEY) \
 		--header-size $(BOOT_HEADER_LEN) \
 		--align $(FLASH_ALIGNMENT) \
@@ -150,6 +151,7 @@ hello2: check
 			$(SOURCE_DIRECTORY)/hello-world && \
 		make -j$(nproc))
 	$(IMGTOOL) sign \
+		$(SUIT_FLAG) \
 		--key $(SIGNING_KEY) \
 		--header-size $(BOOT_HEADER_LEN) \
 		--align $(FLASH_ALIGNMENT) \
@@ -283,6 +285,35 @@ test-wrong-ecdsa: clean
 	$(MAKE) \
 		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-ecdsa-p256.conf \
 		SIGNING_KEY=bad-keys/bad-ec-p256.pem \
+		hello2
+
+# Test a good image with RSA signatures and a SUIT manifest
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2: hello2 runs
+# reset: hello1 runs
+test-good-suit-rsa: clean
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-suit.conf \
+		SIGNING_KEY=../../root-rsa-2048.pem \
+		SUIT_FLAG=--suit \
+		all
+
+# Test a good image with RSA signatures and a SUIT manifest
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2: hello1 runs
+# reset: hello1 runs
+test-wrong-suit-rsa: clean
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-suit.conf \
+		SIGNING_KEY=../../root-rsa-2048.pem \
+		SUIT_FLAG=--suit \
+		boot hello1
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-suit.conf \
+		SIGNING_KEY=bad-keys/bad-rsa-2048.pem \
+		SUIT_FLAG=--suit \
 		hello2
 
 check:

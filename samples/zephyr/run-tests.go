@@ -293,6 +293,68 @@ var tests = []struct {
 			},
 		},
 	},
+	{
+		name: "Good SUIT RSA",
+		tests: []oneTest{
+			{
+				commands: [][]string{
+					{"make", "test-good-suit-rsa"},
+					{"pyocd-flashtool", "-ce"},
+					{"make", "flash_boot"},
+				},
+				expect: "Unable to find bootable image",
+			},
+			{
+				commands: [][]string{
+					{"make", "flash_hello1"},
+				},
+				expect: "Hello World from hello1",
+			},
+			{
+				commands: [][]string{
+					{"make", "flash_hello2"},
+				},
+				expect: "Hello World from hello2",
+			},
+			{
+				commands: [][]string{
+					{"pyocd-tool", "reset"},
+				},
+				expect: "Hello World from hello1",
+			},
+		},
+	},
+	{
+		name: "Wrong SUIT RSA",
+		tests: []oneTest{
+			{
+				commands: [][]string{
+					{"make", "test-wrong-suit-rsa"},
+					{"pyocd-flashtool", "-ce"},
+					{"make", "flash_boot"},
+				},
+				expect: "Unable to find bootable image",
+			},
+			{
+				commands: [][]string{
+					{"make", "flash_hello1"},
+				},
+				expect: "Hello World from hello1",
+			},
+			{
+				commands: [][]string{
+					{"make", "flash_hello2"},
+				},
+				expect: "Hello World from hello1",
+			},
+			{
+				commands: [][]string{
+					{"pyocd-tool", "reset"},
+				},
+				expect: "Hello World from hello1",
+			},
+		},
+	},
 }
 
 type oneTest struct {
