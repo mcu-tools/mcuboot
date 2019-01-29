@@ -19,6 +19,7 @@ fn main() -> Result<()> {
     gen.set_sequence(0x1234)?;
     let signer = RSA2048Signer::from_bytes(include_bytes!("../../../../root-rsa-2048.pem").as_ref())?;
     gen.set_signer(Box::new(signer))?;
+    gen.set_key_id(b"root-rsa-2048.pem".to_owned().to_vec())?;
     let buf = gen.generate()?;
     buf.dump();
     println!("\nDump of generated CBOR:");
