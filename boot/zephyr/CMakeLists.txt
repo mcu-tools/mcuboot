@@ -102,6 +102,8 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/encrypted.c
   ${BOOT_DIR}/bootutil/src/image_rsa.c
   ${BOOT_DIR}/bootutil/src/image_ec256.c
+  ${BOOT_DIR}/bootutil/src/suit_validate.c
+  ${BOOT_DIR}/bootutil/src/cbor.c
   ${BOOT_DIR}/bootutil/src/caps.c
   )
 

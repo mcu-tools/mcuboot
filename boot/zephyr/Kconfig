@@ -150,6 +150,14 @@ module-str = Log level for MCUBOOT application
 source "subsys/logging/Kconfig.template.log_config"
 endif
 
+config BOOT_USE_SUIT
+	bool "Use a SUIT manifest"
+	default n
+	depends on BOOT_SIGNATURE_TYPE_RSA
+	help
+	  If y, writes the manifest in SUIT format, instead of the
+	  MCUboot built-in manifest type.
+
 menuconfig MCUBOOT_SERIAL
 	bool "MCUboot serial recovery"
 	default n

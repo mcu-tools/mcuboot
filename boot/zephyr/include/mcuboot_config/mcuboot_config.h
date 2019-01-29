@@ -52,6 +52,10 @@
 #define MCUBOOT_BOOTSTRAP 1
 #endif
 
+#ifdef CONFIG_BOOT_USE_SUIT
+#define MCUBOOT_SUIT 1
+#endif
+
 /*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.
