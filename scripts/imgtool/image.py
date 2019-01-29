@@ -231,7 +231,7 @@ class Image():
             ) # }
         assert struct.calcsize(fmt) == IMAGE_HEADER_SIZE
         header = struct.pack(fmt,
-                IMAGE_MAGIC,
+                self._image_magic(),
                 0, # LoadAddr
                 self.header_size,
                 0, # Pad1
@@ -244,6 +244,9 @@ class Image():
                 0) # Pad2
         self.payload = bytearray(self.payload)
         self.payload[:len(header)] = header
+
+    def _image_magic(self):
+        return IMAGE_MAGIC
 
     def _trailer_size(self, write_size, max_sectors, overwrite_only):
         # NOTE: should already be checked by the argument parser
