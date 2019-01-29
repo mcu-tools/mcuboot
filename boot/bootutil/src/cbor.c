@@ -26,7 +26,7 @@
 
 #include <bootutil/bootutil_log.h>
 
-MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
+MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #include "cbor.h"
 

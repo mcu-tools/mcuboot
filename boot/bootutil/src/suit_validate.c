@@ -30,7 +30,7 @@
 #include "bootutil_priv.h"
 #include "cbor.h"
 
-MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
+MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #define COSE_Signed_Tagged 98
 
