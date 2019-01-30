@@ -615,10 +615,22 @@ boot_set_pending(int permanent)
         flash_area_close(fap);
         return rc;
 
+    case BOOT_MAGIC_BAD:
+        /* The image slot is corrupt.  There is no way to recover, so erase the
+         * slot to allow future upgrades.
+         */
+        rc = flash_area_open(FLASH_AREA_IMAGE_1, &fap);
+        if (rc != 0) {
+            return BOOT_EFLASH;
+        }
+
+        flash_area_erase(fap, 0, fap->fa_size);
+        flash_area_close(fap);
+        return BOOT_EBADIMAGE;
+
     default:
-        /* XXX: Temporary assert. */
         assert(0);
-        return -1;
+        return BOOT_EBADIMAGE;
     }
 }
 
