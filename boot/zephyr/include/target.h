@@ -34,7 +34,7 @@
  * Sanity check the target support.
  */
 #if (!defined(CONFIG_XTENSA) && !defined(DT_FLASH_DEV_NAME)) || \
-    (defined(CONFIG_XTENSA) && !defined(DT_SPI_NOR_DRV_NAME)) || \
+    (defined(CONFIG_XTENSA) && !defined(DT_JEDEC_SPI_NOR_0_LABEL)) || \
     !defined(FLASH_ALIGN) ||                  \
     !defined(FLASH_AREA_IMAGE_0_OFFSET) || \
     !defined(FLASH_AREA_IMAGE_0_SIZE) || \
