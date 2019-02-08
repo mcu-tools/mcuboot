@@ -164,9 +164,9 @@ void main(void)
         while (1)
             ;
     }
-#elif (defined(CONFIG_XTENSA) && defined(DT_SPI_NOR_DRV_NAME))
-    if (!flash_device_get_binding(DT_SPI_NOR_DRV_NAME)) {
-        BOOT_LOG_ERR("Flash device %s not found", DT_SPI_NOR_DRV_NAME);
+#elif (defined(CONFIG_XTENSA) && defined(DT_JEDEC_SPI_NOR_0_LABEL))
+    if (!flash_device_get_binding(DT_JEDEC_SPI_NOR_0_LABEL)) {
+        BOOT_LOG_ERR("Flash device %s not found", DT_JEDEC_SPI_NOR_0_LABEL);
         while (1)
             ;
     }
