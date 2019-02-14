@@ -131,6 +131,8 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
     zephyr_library_sources(${NRF_DIR}/cc310_glue.c)
     zephyr_library_include_directories(${NRF_DIR})
     zephyr_link_libraries(nrfxlib_crypto)
+  elseif(CONFIG_BOOT_USE_NRF_EXTERNAL_CRYPTO)
+    zephyr_include_directories(${BL_CRYPTO_DIR}/../include)
   endif()
 
   # Since here we are not using Zephyr's mbedTLS but rather our own, we need

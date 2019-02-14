@@ -41,6 +41,11 @@
 #include "cc310_glue.h"
 #define NUM_ECC_BYTES (4*8)
 #endif
+#ifdef MCUBOOT_USE_NRF_EXTERNAL_CRYPTO
+#include "bl_crypto.h"
+#define NUM_ECC_BYTES (4*8)
+#endif
+
 #include "bootutil_priv.h"
 
 /*
@@ -190,6 +195,7 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     }
 }
 #endif /* MCUBOOT_USE_TINYCRYPT */
+
 #ifdef MCUBOOT_USE_CC310
 int
 bootutil_verify_sig(uint8_t *hash,
@@ -234,4 +240,50 @@ bootutil_verify_sig(uint8_t *hash,
     return rc;
 }
 #endif /* MCUBOOT_USE_CC310 */
+
+#ifdef MCUBOOT_USE_NRF_EXTERNAL_CRYPTO
+int
+bootutil_verify_sig(uint8_t *hash,
+                    uint32_t hlen,
+                    uint8_t *sig,
+                    size_t slen,
+                    uint8_t key_id)
+{
+    int rc;
+    uint8_t *pubkey;
+    uint8_t *end;
+    uint8_t signature[2 * NUM_ECC_BYTES];
+
+    pubkey = (uint8_t *)bootutil_keys[key_id].key;
+    end = pubkey + *bootutil_keys[key_id].len;
+
+    rc = bootutil_import_key(&pubkey, end);
+    if (rc) {
+        return -1;
+    }
+
+    /* Decode signature */
+    rc = bootutil_decode_sig(signature, sig, sig + slen);
+    if (rc) {
+        return -1;
+    }
+
+    /*
+     * This is simplified, as the hash length is also 32 bytes.
+     */
+    if (hlen != NUM_ECC_BYTES) {
+        return -1;
+    }
+
+    /* Initialize and verify in one go */
+    rc = bl_secp256r1_validate(hash, hlen, pubkey, signature);
+
+    if(rc != 0 /*CRYS_OK*/){
+        return -2;
+    }
+
+    return rc;
+}
+#endif /* MCUBOOT_USE_NRF_EXTERNAL_CRYPTO */
+
 #endif /* MCUBOOT_SIGN_EC256 */
