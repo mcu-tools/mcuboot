@@ -31,6 +31,9 @@ pkg.apis:
 pkg.cflags:
     - "-DMCUBOOT_MYNEWT"
 
+pkg.cflags.BOOTUTIL_USE_MBED_TLS:
+    - '-DMBEDTLS_USER_CONFIG_FILE="mbedtls/config_mynewt.h"'
+
 pkg.deps:
     - "@mcuboot/boot/mynewt/mcuboot_config"
     - "@apache-mynewt-core/hw/hal"
