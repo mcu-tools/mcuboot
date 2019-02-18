@@ -19,8 +19,8 @@
 # Package: boot/mynewt/mcuboot_config
 
 syscfg.defs:
-    BOOTUTIL_VALIDATE_SLOT0:
-        description: 'Validate image at slot 0 on each boot.'
+    BOOTUTIL_VALIDATE_PRIMARY_SLOT:
+        description: 'Validate image at primary slot on each boot.'
         value: 0
     BOOTUTIL_SIGN_RSA:
         description: 'Images are signed using RSA2048.'
@@ -44,7 +44,8 @@ syscfg.defs:
         description: 'Use tinycrypt for crypto operations.'
         value: 0
     BOOTUTIL_OVERWRITE_ONLY:
-        description: 'Non-swapping upgrades, copy from slot 1 to slot 0 only.'
+        description: 'Non-swapping upgrades, copy from secondary slot
+                      to primary slot only.'
         value: 0
     BOOTUTIL_OVERWRITE_ONLY_FAST:
         description: 'Use faster copy only upgrade.'
@@ -75,5 +76,7 @@ syscfg.defs:
                 BOOTUTIL_LOG_LEVEL_DEBUG
         value: 'BOOTUTIL_LOG_LEVEL_INFO'
     BOOTUTIL_BOOTSTRAP:
-        description: 'Support bootstrapping slot0 from slot1, if slot0 is empty'
+        description: >
+                Support bootstrapping primary slot from secondary slot,
+                if primary slot is empty.
         value: 0

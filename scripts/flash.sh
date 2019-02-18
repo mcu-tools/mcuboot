@@ -8,8 +8,8 @@ cat >$lscript <<EOF
 h
 r
 loadfile outdir/$BOARD/zephyr.bin $BASE_BOOT
-loadfile hello.signed.bin $BASE_SLOT0
-loadfile shell.signed.bin $BASE_SLOT1
+loadfile hello.signed.bin $BASE_PRIMARY_SLOT
+loadfile shell.signed.bin $BASE_SECONDARY_SLOT
 q
 EOF
 

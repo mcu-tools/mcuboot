@@ -71,12 +71,12 @@ config BOOT_SIGNATURE_KEY_FILE
 config MBEDTLS_CFG_FILE
 	default "mcuboot-mbedtls-cfg.h"
 
-config BOOT_VALIDATE_SLOT0
-	bool "Validate image slot 0 on every boot"
+config BOOT_VALIDATE_PRIMARY_SLOT
+	bool "Validate image primary slot on every boot"
 	default y
 	help
 	  If y, the bootloader attempts to validate the signature of
-	  slot0 every boot.  This adds the signature check time to
+	  primary slot every boot. This adds the signature check time to
 	  every boot, but can mitigate against some changes that are
 	  able to modify the flash image itself.
 
@@ -84,25 +84,25 @@ config BOOT_UPGRADE_ONLY
 	bool "Overwrite image updates instead of swapping"
 	default n
 	help
-	  If y, overwrite slot0 with the upgrade image instead of
-	  swapping them.  This prevents the fallback recovery, but
+	  If y, overwrite primary slot with the upgrade image instead
+	  of swapping them. This prevents the fallback recovery, but
 	  uses a much simpler code path.
 
 config BOOT_BOOTSTRAP
-	bool "Boostrap erased slot0 from slot1"
+	bool "Boostrap erased primary slot from secondary slot"
 	default n
 	help
 	  If y, enables bootstraping support. Bootstrapping allows an erased
-	  slot0 to be initialized from a valid image in slot1.
+	  primary slot to be initialized from a valid image in secondary slot.
 	  If unsure, leave at the default value.
 
 config BOOT_ENCRYPT_RSA
 	bool "Support for encrypted upgrade images"
 	default n
 	help
-	  If y, images in slot 1 can be encrypted and are decrypted
-	  on the fly when upgrading to slot 0, as well as encrypted
-	  back when swapping from slot 0 to slot 1.
+	  If y, images in secondary slot can be encrypted and are decrypted
+	  on the fly when upgrading to primary slot, as well as encrypted
+	  back when swapping from primary slot to secondary slot.
 
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"

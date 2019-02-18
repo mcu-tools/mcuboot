@@ -76,19 +76,20 @@ impl Images {
 
             if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
                                BOOT_FLAG_SET, BOOT_FLAG_SET) {
-                warn!("Mismatched trailer for Slot 0");
+                warn!("Mismatched trailer for Primary slot");
                 fails += 1;
             }
 
             if !verify_trailer(&flashmap, &self.slots, 1, BOOT_MAGIC_UNSET,
                                BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
-                warn!("Mismatched trailer for Slot 1");
+                warn!("Mismatched trailer for Secondary slot");
                 fails += 1;
             }
 
             if Caps::SwapUpgrade.present() {
                 if !verify_image(&flashmap, &self.slots, 1, &self.primaries) {
-                    warn!("Slot 1 FAIL at step {} of {}", i, total_flash_ops);
+                    warn!("Secondary slot FAIL at step {} of {}",
+                          i, total_flash_ops);
                     fails += 1;
                 }
             }
@@ -113,26 +114,28 @@ impl Images {
                                                         total_flash_ops, total_fails);
         info!("Random interruptions at reset points={:?}", total_counts);
 
-        let slot0_ok = verify_image(&flashmap, &self.slots, 0, &self.upgrades);
-        let slot1_ok = if Caps::SwapUpgrade.present() {
+        let primary_slot_ok = verify_image(&flashmap, &self.slots,
+                                           0, &self.upgrades);
+        let secondary_slot_ok = if Caps::SwapUpgrade.present() {
             verify_image(&flashmap, &self.slots, 1, &self.primaries)
         } else {
             true
         };
-        if !slot0_ok || !slot1_ok {
-            error!("Image mismatch after random interrupts: slot0={} slot1={}",
-                   if slot0_ok { "ok" } else { "fail" },
-                   if slot1_ok { "ok" } else { "fail" });
+        if !primary_slot_ok || !secondary_slot_ok {
+            error!("Image mismatch after random interrupts: primary slot={} \
+                    secondary slot={}",
+                   if primary_slot_ok { "ok" } else { "fail" },
+                   if secondary_slot_ok { "ok" } else { "fail" });
             fails += 1;
         }
         if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_SET) {
-            error!("Mismatched trailer for Slot 0");
+            error!("Mismatched trailer for Primary slot");
             fails += 1;
         }
         if !verify_trailer(&flashmap, &self.slots, 1, BOOT_MAGIC_UNSET,
                            BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
-            error!("Mismatched trailer for Slot 1");
+            error!("Mismatched trailer for Secondary slot");
             fails += 1;
         }
 
@@ -184,26 +187,26 @@ impl Images {
         //       was ever done?
 
         if !verify_image(&flashmap, &self.slots, 0, &self.upgrades) {
-            warn!("Slot 0 image verification FAIL");
+            warn!("Primary slot image verification FAIL");
             fails += 1;
         }
         if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
-            warn!("Mismatched trailer for Slot 0");
+            warn!("Mismatched trailer for Primary slot");
             fails += 1;
         }
         if !verify_trailer(&flashmap, &self.slots, 1, BOOT_MAGIC_UNSET,
                            BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
-            warn!("Mismatched trailer for Slot 1");
+            warn!("Mismatched trailer for Secondary slot");
             fails += 1;
         }
 
-        // Marks image in slot0 as permanent, no revert should happen...
+        // Marks image in primary slot as permanent, no revert should happen...
         mark_permanent_upgrade(&mut flashmap, &self.slots[0]);
 
         if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_SET) {
-            warn!("Mismatched trailer for Slot 0");
+            warn!("Mismatched trailer for Primary slot");
             fails += 1;
         }
 
@@ -215,7 +218,7 @@ impl Images {
 
         if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_SET) {
-            warn!("Mismatched trailer for Slot 0");
+            warn!("Mismatched trailer for Primary slot");
             fails += 1;
         }
         if !verify_image(&flashmap, &self.slots, 0, &self.upgrades) {
@@ -230,8 +233,9 @@ impl Images {
         fails > 0
     }
 
-    // Tests a new image written to slot0 that already has magic and image_ok set
-    // while there is no image on slot1, so no revert should ever happen...
+    // Tests a new image written to primary slot that already has magic and
+    // image_ok set while there is no image on secondary slot, so no revert
+    // should ever happen...
     pub fn run_norevert_newimage(&self) -> bool {
         let mut flashmap = self.flashmap.clone();
         let mut fails = 0;
@@ -240,10 +244,10 @@ impl Images {
 
         mark_upgrade(&mut flashmap, &self.slots[0]);
 
-        // This simulates writing an image created by imgtool to Slot 0
+        // This simulates writing an image created by imgtool to Primary slot
         if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
-            warn!("Mismatched trailer for Slot 0");
+            warn!("Mismatched trailer for Primary slot");
             fails += 1;
         }
 
@@ -261,12 +265,12 @@ impl Images {
         }
         if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
-            warn!("Mismatched trailer for Slot 0");
+            warn!("Mismatched trailer for Primary slot");
             fails += 1;
         }
         if !verify_trailer(&flashmap, &self.slots, 1, BOOT_MAGIC_UNSET,
                            BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
-            warn!("Mismatched trailer for Slot 1");
+            warn!("Mismatched trailer for Secondary slot");
             fails += 1;
         }
 
@@ -277,8 +281,9 @@ impl Images {
         fails > 0
     }
 
-    // Tests a new image written to slot0 that already has magic and image_ok set
-    // while there is no image on slot1, so no revert should ever happen...
+    // Tests a new image written to primary slot that already has magic and
+    // image_ok set while there is no image on secondary slot, so no revert
+    // should ever happen...
     pub fn run_signfail_upgrade(&self) -> bool {
         let mut flashmap = self.flashmap.clone();
         let mut fails = 0;
@@ -291,7 +296,7 @@ impl Images {
 
         if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_UNSET) {
-            warn!("Mismatched trailer for Slot 0");
+            warn!("Mismatched trailer for Primary slot");
             fails += 1;
         }
 
@@ -309,7 +314,7 @@ impl Images {
         }
         if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_UNSET) {
-            warn!("Mismatched trailer for Slot 0");
+            warn!("Mismatched trailer for Primary slot");
             fails += 1;
         }
 
@@ -339,7 +344,7 @@ impl Images {
     /// allowing for fails in the status area. This should run to the end
     /// and warn that write fails were detected...
     pub fn run_with_status_fails_complete(&self) -> bool {
-        if !Caps::ValidateSlot0.present() {
+        if !Caps::ValidatePrimarySlot.present() {
             return false;
         }
 
@@ -366,7 +371,7 @@ impl Images {
 
         if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_SET) {
-            warn!("Mismatched trailer for Slot 0");
+            warn!("Mismatched trailer for Primary slot");
             fails += 1;
         }
 
@@ -375,7 +380,8 @@ impl Images {
             fails += 1;
         }
 
-        info!("validate slot0 enabled; re-run of boot_go should just work");
+        info!("validate primary slot enabled; \
+               re-run of boot_go should just work");
         let (result, _) = c::boot_go(&mut flashmap, &self.areadesc, None, false);
         if result != 0 {
             warn!("Failed!");
@@ -395,7 +401,7 @@ impl Images {
     pub fn run_with_status_fails_with_reset(&self) -> bool {
         if Caps::OverwriteUpgrade.present() {
             false
-        } else if Caps::ValidateSlot0.present() {
+        } else if Caps::ValidatePrimarySlot.present() {
 
             let mut flashmap = self.flashmap.clone();
             let mut fails = 0;
@@ -425,7 +431,8 @@ impl Images {
             // or throw a single assert for small sector devices that fail
             // multiple times...
             if asserts > 1 {
-                warn!("Expected single assert validating slot0, more detected {}", asserts);
+                warn!("Expected single assert validating primary slot, \
+                       more detected {}", asserts);
                 fails += 1;
             }
 
@@ -473,7 +480,7 @@ impl Images {
     }
 
     fn reset_bad_status(&self, flashmap: &mut SimFlashMap, slot: usize) {
-        if !Caps::ValidateSlot0.present() {
+        if !Caps::ValidatePrimarySlot.present() {
             return;
         }
 
@@ -553,21 +560,23 @@ fn try_revert_with_fail_at(flashmap: &SimFlashMap, images: &Images,
     }
 
     if !verify_image(&flashmap, &images.slots, 0, &images.upgrades) {
-        warn!("Image in slot 0 before revert is invalid at stop={}", stop);
+        warn!("Image in primary slot before revert is invalid at stop={}",
+              stop);
         fails += 1;
     }
     if !verify_image(&flashmap, &images.slots, 1, &images.primaries) {
-        warn!("Image in slot 1 before revert is invalid at stop={}", stop);
+        warn!("Image in secondary slot before revert is invalid at stop={}",
+              stop);
         fails += 1;
     }
     if !verify_trailer(&flashmap, &images.slots, 0, BOOT_MAGIC_GOOD,
                        BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
-        warn!("Mismatched trailer for Slot 0 before revert");
+        warn!("Mismatched trailer for Primary slot before revert");
         fails += 1;
     }
     if !verify_trailer(&flashmap, &images.slots, 1, BOOT_MAGIC_UNSET,
                        BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
-        warn!("Mismatched trailer for Slot 1 before revert");
+        warn!("Mismatched trailer for Secondary slot before revert");
         fails += 1;
     }
 
@@ -579,21 +588,23 @@ fn try_revert_with_fail_at(flashmap: &SimFlashMap, images: &Images,
     }
 
     if !verify_image(&flashmap, &images.slots, 0, &images.primaries) {
-        warn!("Image in slot 0 after revert is invalid at stop={}", stop);
+        warn!("Image in primary slot after revert is invalid at stop={}",
+              stop);
         fails += 1;
     }
     if !verify_image(&flashmap, &images.slots, 1, &images.upgrades) {
-        warn!("Image in slot 1 after revert is invalid at stop={}", stop);
+        warn!("Image in secondary slot after revert is invalid at stop={}",
+              stop);
         fails += 1;
     }
     if !verify_trailer(&flashmap, &images.slots, 0, BOOT_MAGIC_GOOD,
                        BOOT_FLAG_SET, BOOT_FLAG_SET) {
-        warn!("Mismatched trailer for Slot 1 after revert");
+        warn!("Mismatched trailer for Secondary slot after revert");
         fails += 1;
     }
     if !verify_trailer(&flashmap, &images.slots, 1, BOOT_MAGIC_UNSET,
                        BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
-        warn!("Mismatched trailer for Slot 1 after revert");
+        warn!("Mismatched trailer for Secondary slot after revert");
         fails += 1;
     }
 
@@ -723,10 +734,10 @@ pub fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize
 
     let result: [Option<Vec<u8>>; 2];
 
-    // Since images are always non-encrypted in slot0, we first write an
-    // encrypted image, re-read to use for verification, erase + flash
-    // un-encrypted. In slot1 the image is written un-encrypted, and if
-    // encryption is requested, it follows an erase + flash encrypted.
+    // Since images are always non-encrypted in primary slot, we first write
+    // an encrypted image, re-read to use for verification, erase + flash
+    // un-encrypted. In the secondary slot the image is written un-encrypted,
+    // and if encryption is requested, it follows an erase + flash encrypted.
 
     let flash = flashmap.get_mut(&dev_id).unwrap();
 

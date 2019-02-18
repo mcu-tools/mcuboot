@@ -162,32 +162,34 @@ impl Run {
     pub fn new(device: DeviceName, align: u8, erased_val: u8) -> Run {
         let (flashmap, areadesc) = make_device(device, align, erased_val);
 
-        let (slot0_base, slot0_len, slot0_dev_id) = areadesc.find(FlashId::Image0);
-        let (slot1_base, slot1_len, slot1_dev_id) = areadesc.find(FlashId::Image1);
+        let (primary_slot_base, primary_slot_len, primary_slot_dev_id) =
+             areadesc.find(FlashId::Image0);
+        let (secondary_slot_base, secondary_slot_len, secondary_slot_dev_id) =
+             areadesc.find(FlashId::Image1);
 
         // NOTE: not accounting "swap_size" because it is not used by sim...
         let offset_from_end = c::boot_magic_sz() + c::boot_max_align() * 2;
 
         // Construct a primary image.
-        let slot0 = SlotInfo {
-            base_off: slot0_base as usize,
-            trailer_off: slot0_base + slot0_len - offset_from_end,
-            len: slot0_len as usize,
-            dev_id: slot0_dev_id,
+        let primary_slot = SlotInfo {
+            base_off: primary_slot_base as usize,
+            trailer_off: primary_slot_base + primary_slot_len - offset_from_end,
+            len: primary_slot_len as usize,
+            dev_id: primary_slot_dev_id,
         };
 
         // And an upgrade image.
-        let slot1 = SlotInfo {
-            base_off: slot1_base as usize,
-            trailer_off: slot1_base + slot1_len - offset_from_end,
-            len: slot1_len as usize,
-            dev_id: slot1_dev_id,
+        let secondary_slot = SlotInfo {
+            base_off: secondary_slot_base as usize,
+            trailer_off: secondary_slot_base + secondary_slot_len - offset_from_end,
+            len: secondary_slot_len as usize,
+            dev_id: secondary_slot_dev_id,
         };
 
         Run {
             flashmap: flashmap,
             areadesc: areadesc,
-            slots: [slot0, slot1],
+            slots: [primary_slot, secondary_slot],
         }
     }
 
@@ -236,7 +238,7 @@ impl Run {
         images
     }
 
-    pub fn make_bad_slot1_image(&self) -> Images {
+    pub fn make_bad_secondary_slot_image(&self) -> Images {
         let mut bad_flashmap = self.flashmap.clone();
         let primaries = install_image(&mut bad_flashmap, &self.slots, 0, 32784, false);
         let upgrades = install_image(&mut bad_flashmap, &self.slots, 1, 41928, true);
@@ -272,11 +274,11 @@ impl RunStatus {
 
         let mut failed = false;
 
-        // Creates a badly signed image in slot1 to check that it is not
-        // upgraded to
-        let bad_slot1_image = run.make_bad_slot1_image();
+        // Creates a badly signed image in secondary slot to check that
+        // it is not upgraded to
+        let bad_secondary_slot_image = run.make_bad_secondary_slot_image();
 
-        failed |= bad_slot1_image.run_signfail_upgrade();
+        failed |= bad_secondary_slot_image.run_signfail_upgrade();
 
         let images = run.make_no_upgrade_image();
         failed |= images.run_norevert_newimage();

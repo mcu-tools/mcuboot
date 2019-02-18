@@ -21,16 +21,16 @@ sig-ecdsa = []
 # Overwrite only upgrade
 overwrite-only = []
 
-# Disable validation of slot0
-validate-slot0 = []
+# Disable validation of primary slot
+validate-primary-slot = []
 
-# Encrypt image in slot1 using RSA-OAEP-2048
+# Encrypt image in secondary slot using RSA-OAEP-2048
 enc-rsa = []
 
-# Encrypt image in slot1 using AES-KW-128
+# Encrypt image in secondary slot using AES-KW-128
 enc-kw = []
 
-# Allow bootstrapping an empty/invalid slot0 from a valid slot1
+# Allow bootstrapping an empty/invalid primary slot from a valid secondary slot
 bootstrap = []
 
 [build-dependencies]

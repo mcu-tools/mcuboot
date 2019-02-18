@@ -116,10 +116,10 @@ region of disk with the following properties:
 The boot loader uses the following flash area IDs:
 
 ``` c
-#define FLASH_AREA_BOOTLOADER                    0
-#define FLASH_AREA_IMAGE_0                       1
-#define FLASH_AREA_IMAGE_1                       2
-#define FLASH_AREA_IMAGE_SCRATCH                 3
+#define FLASH_AREA_BOOTLOADER         0
+#define FLASH_AREA_IMAGE_PRIMARY      1
+#define FLASH_AREA_IMAGE_SECONDARY    2
+#define FLASH_AREA_IMAGE_SCRATCH      3
 ```
 
 The bootloader area contains the bootloader image itself. The other areas are
@@ -140,14 +140,14 @@ strategies.
 In addition to the two image slots, the boot loader requires a scratch area to
 allow for reliable image swapping. The scratch area must have a size that is
 enough to store at least the largest sector that is going to be swapped. Many
-devices have small equally sized flash sectors, eg 4K, while others have variable
-sized sectors where the largest sectors might be 128K or 256K, so the scratch
-must be big enough to store that. The scratch is only ever used when swapping
-firmware, which means only when doing an upgrade. Given that, the main reason
-for using a larger size for the scratch is that flash wear will be more evenly
-distributed, because a single sector would be written twice the number of times
-than using two sectors, for example. To evaluate the ideal size of the scratch
-for your use case the following parameters are relevant:
+devices have small equally sized flash sectors, eg 4K, while others have
+variable sized sectors where the largest sectors might be 128K or 256K, so the
+scratch must be big enough to store that. The scratch is only ever used when
+swapping firmware, which means only when doing an upgrade. Given that, the main
+reason for using a larger size for the scratch is that flash wear will be more
+evenly distributed, because a single sector would be written twice the number of
+times than using two sectors, for example. To evaluate the ideal size of the
+scratch for your use case the following parameters are relevant:
 
 * the ratio of image size / scratch size
 * the number of erase cycles supported by the flash hardware
@@ -174,9 +174,9 @@ Increasing the scratch to 16K would give us:
 
 There is no *best* ratio, as the right size is use-case dependent. Factors to
 consider include the number of times a device will be upgraded both in the field
-and during development, as well as any desired safety margin on the manufacturer's
-specified number of erase cycles. In general, using a ratio that allows hundreds
-to thousands of field upgrades in production is recommended.
+and during development, as well as any desired safety margin on the
+manufacturer's specified number of erase cycles. In general, using a ratio that
+allows hundreds to thousands of field upgrades in production is recommended.
 
 The overwrite upgrade strategy is substantially simpler to implement than the
 image swapping strategy, especially since the bootloader must work properly
@@ -187,10 +187,10 @@ during an upgrade.
 ## Boot Swap Types
 
 When the device first boots under normal circumstances, there is an up-to-date
-firmware image in slot 0, which mcuboot can validate and then chain-load. In
-this case, no image swaps are necessary. During device upgrades, however, new
-candidate images are present in slot 1, which mcuboot must swap into slot 0
-before booting as discussed above.
+firmware image in primary slot, which mcuboot can validate and then chain-load.
+In this case, no image swaps are necessary. During device upgrades, however, new
+candidate images are present in secondary slot, which mcuboot must swap into
+primary slot before booting as discussed above.
 
 Upgrading an old image with a new one by swapping can be a two-step process. In
 this process, mcuboot performs a "test" swap of image data in flash and boots
@@ -217,17 +217,18 @@ On startup, mcuboot inspects the contents of flash to decide which of these
 The possible swap types, and their meanings, are:
 
 - `BOOT_SWAP_TYPE_NONE`: The "usual" or "no upgrade" case; attempt to boot the
-  contents of slot 0.
+  contents of primary slot.
 
-- `BOOT_SWAP_TYPE_TEST`: Boot the contents of slot 1 by swapping images. Unless
-  the swap is made permanent, revert back on the next boot.
+- `BOOT_SWAP_TYPE_TEST`: Boot the contents of secondary slot by swapping images.
+  Unless the swap is made permanent, revert back on the next boot.
 
 - `BOOT_SWAP_TYPE_PERM`: Permanently swap images, and boot the upgraded image
   firmware.
 
-- `BOOT_SWAP_TYPE_REVERT`: A previous test swap was not made permanent; swap back
-  to the old image whose data are now in slot 1.  If the old image marks itself
-  "OK" when it boots, the next boot will have swap type `BOOT_SWAP_TYPE_NONE`.
+- `BOOT_SWAP_TYPE_REVERT`: A previous test swap was not made permanent;
+  swap back to the old image whose data are now in secondary slot.  If the old
+  image marks itself "OK" when it boots, the next boot will have swap type
+  `BOOT_SWAP_TYPE_NONE`.
 
 - `BOOT_SWAP_TYPE_FAIL`: Swap failed because image to be run is not valid.
 
@@ -278,28 +279,29 @@ then min-write-size is 2, and so on.
 An image trailer contains the following fields:
 
 1. Swap status: A series of records which records the progress of an image
-   swap.  To swap entire images, data are swapped between the two image areas one
-   or more sectors at a time, like this:
+   swap.  To swap entire images, data are swapped between the two image areas
+   one or more sectors at a time, like this:
 
-   - sector data in slot 0 is copied into scratch, then erased
-   - sector data in slot 1 is copied into slot 0, then erased
-   - sector data in scratch is copied into slot 1
+   - sector data in primary slot is copied into scratch, then erased
+   - sector data in secondary slot is copied into primary slot, then erased
+   - sector data in scratch is copied into secondary slot
 
 As it swaps images, the bootloader updates the swap status field in a way that
 allows it to compute how far this swap operation has progressed for each
 sector.  The swap status field can thus used to resume a swap operation if the
 bootloader is halted while a swap operation is ongoing and later reset. The
-`BOOT_MAX_IMG_SECTORS` value is the configurable maximum number of sectors mcuboot
-supports for each image; its value defaults to 128, but allows for either
-decreasing this size, to limit RAM usage, or to increase it in devices that have
-massive amounts of Flash or very small sized sectors and thus require a bigger
-configuration to allow for the handling of all slot's sectors. The factor of
-min-write-sz is due to the behavior of flash hardware. The factor of 3 is
-explained below.
+`BOOT_MAX_IMG_SECTORS` value is the configurable maximum number of sectors
+mcuboot supports for each image; its value defaults to 128, but allows for
+either decreasing this size, to limit RAM usage, or to increase it in devices
+that have massive amounts of Flash or very small sized sectors and thus require
+a bigger configuration to allow for the handling of all slot's sectors.
+The factor of min-write-sz is due to the behavior of flash hardware. The factor
+of 3 is explained below.
 
 2. Swap size: When beginning a new swap operation, the total size that needs
-   to be swapped (based on the slot with largest image + tlvs) is written to this
-   location for easier recovery in case of a reset while performing the swap.
+   to be swapped (based on the slot with largest image + tlvs) is written to
+   this location for easier recovery in case of a reset while performing the
+   swap.
 
 3. Copy done: A single byte indicating whether the image in this slot is
    complete (0x01=done; 0xff=not done).
@@ -324,9 +326,9 @@ At startup, the boot loader determines the boot swap type by inspecting the
 image trailers.  When using the term "image trailers" what is meant is the
 aggregate information provided by both image slot's trailers.
 
-The image trailers records are structured around the limitations imposed by flash
-hardware.  As a consequence, they do not have a very intuitive design, and it
-is difficult to get a sense of the state of the device just by looking at the
+The image trailers records are structured around the limitations imposed by
+flash hardware. As a consequence, they do not have a very intuitive design, and
+it is difficult to get a sense of the state of the device just by looking at the
 image trailers.  It is better to map all the possible trailer states to the swap
 types described above via a set of tables.  These tables are reproduced below.
 
@@ -336,36 +338,36 @@ higher priority when testing the image trailers.
 
 ```
     State I
-                     | slot-0 | slot-1 |
-    -----------------+--------+--------|
-               magic | Any    | Good   |
-            image-ok | Any    | Unset  |
-           copy-done | Any    | Any    |
-    -----------------+--------+--------'
-     result: BOOT_SWAP_TYPE_TEST       |
-    -----------------------------------'
+                     | primary slot | secondary slot |
+    -----------------+--------------+----------------|
+               magic | Any          | Good           |
+            image-ok | Any          | Unset          |
+           copy-done | Any          | Any            |
+    -----------------+--------------+----------------'
+     result: BOOT_SWAP_TYPE_TEST                     |
+    -------------------------------------------------'
 
 
     State II
-                     | slot-0 | slot-1 |
-    -----------------+--------+--------|
-               magic | Any    | Good   |
-            image-ok | Any    | 0x01   |
-           copy-done | Any    | Any    |
-    -----------------+--------+--------'
-     result: BOOT_SWAP_TYPE_PERM       |
-    -----------------------------------'
+                     | primary slot | secondary slot |
+    -----------------+--------------+----------------|
+               magic | Any          | Good           |
+            image-ok | Any          | 0x01           |
+           copy-done | Any          | Any            |
+    -----------------+--------------+----------------'
+     result: BOOT_SWAP_TYPE_PERM                     |
+    -------------------------------------------------'
 
 
     State III
-                     | slot-0 | slot-1 |
-    -----------------+--------+--------|
-               magic | Good   | Unset  |
-            image-ok | 0xff   | Any    |
-           copy-done | 0x01   | Any    |
-    -----------------+--------+--------'
-     result: BOOT_SWAP_TYPE_REVERT     |
-    -----------------------------------'
+                     | primary slot | secondary slot |
+    -----------------+--------------+----------------|
+               magic | Good         | Unset          |
+            image-ok | 0xff         | Any            |
+           copy-done | 0x01         | Any            |
+    -----------------+--------------+----------------'
+     result: BOOT_SWAP_TYPE_REVERT                   |
+    -------------------------------------------------'
 ```
 
 Any of the above three states results in mcuboot attempting to swap images.
@@ -375,30 +377,30 @@ other three swap types, as illustrated by State IV.
 
 ```
     State IV
-                     | slot-0 | slot-1 |
-    -----------------+--------+--------|
-               magic | Any    | Any    |
-            image-ok | Any    | Any    |
-           copy-done | Any    | Any    |
-    -----------------+--------+--------'
-     result: BOOT_SWAP_TYPE_NONE,      |
-             BOOT_SWAP_TYPE_FAIL, or   |
-             BOOT_SWAP_TYPE_PANIC      |
-    -----------------------------------'
+                     | primary slot | secondary slot |
+    -----------------+--------------+----------------|
+               magic | Any          | Any            |
+            image-ok | Any          | Any            |
+           copy-done | Any          | Any            |
+    -----------------+--------------+----------------'
+     result: BOOT_SWAP_TYPE_NONE,                    |
+             BOOT_SWAP_TYPE_FAIL, or                 |
+             BOOT_SWAP_TYPE_PANIC                    |
+    -------------------------------------------------'
 ```
 
 In State IV, when no errors occur, mcuboot will attempt to boot the contents of
-slot 0 directly, and the result is `BOOT_SWAP_TYPE_NONE`. If the image in slot 0
-is not valid, the result is `BOOT_SWAP_TYPE_FAIL`. If a fatal error occurs during
-boot, the result is `BOOT_SWAP_TYPE_PANIC`. If the result is either
-`BOOT_SWAP_TYPE_FAIL` or `BOOT_SWAP_TYPE_PANIC`, mcuboot hangs rather than booting
-an invalid or compromised image.
+primary slot directly, and the result is `BOOT_SWAP_TYPE_NONE`. If the image in
+primary slot is not valid, the result is `BOOT_SWAP_TYPE_FAIL`. If a fatal error
+occurs during boot, the result is `BOOT_SWAP_TYPE_PANIC`. If the result is
+either `BOOT_SWAP_TYPE_FAIL` or `BOOT_SWAP_TYPE_PANIC`, mcuboot hangs rather
+than booting an invalid or compromised image.
 
 Note: An important caveat to the above is the result when a swap is requested
-      and the image in slot 1 fails to validate, due to a hashing or signing
-      error. This state behaves as State IV with the extra action of marking
-      the image in slot 0 as "OK", to prevent further attempts to swap.
-
+​      and the image in secondary slot fails to validate, due to a hashing or
+      signing error. This state behaves as State IV with the extra action of
+      marking the image in primary slot as "OK", to prevent further attempts to
+      swap.
 
 ## High-Level Operation
 
@@ -414,27 +416,27 @@ Procedure:
 
 2. Inspect image trailers; is a swap requested?
     Yes.
-        1. Is the requested image valid (integrity and security check)?
-            Yes.
-                a. Perform swap operation.
-                b. Persist completion of swap procedure to image trailers.
-                c. Proceed to step 3.
-            No.
-                a. Erase invalid image.
-                b. Persist failure of swap procedure to image trailers.
-                c. Proceed to step 3.
+    ​    1. Is the requested image valid (integrity and security check)?
+    ​        Yes.
+    ​            a. Perform swap operation.
+    ​            b. Persist completion of swap procedure to image trailers.
+    ​            c. Proceed to step 3.
+    ​        No.
+    ​            a. Erase invalid image.
+    ​            b. Persist failure of swap procedure to image trailers.
+    ​            c. Proceed to step 3.
     No: Proceed to step 3.
 
-3. Boot into image in slot 0.
+3. Boot into image in primary slot.
 
 ## Image Swapping
 
 The boot loader swaps the contents of the two image slots for two reasons:
-    * User has issued a "set pending" operation; the image in slot-1 should be
-      run once (state II) or repeatedly (state III), depending on whether a
-      permanent swap was specified.
-    * Test image rebooted without being confirmed; the boot loader should
-      revert to the original image currently in slot-1 (state IV).
+​    * User has issued a "set pending" operation; the image in secondary slot
+      should be run once (state II) or repeatedly (state III), depending on
+      whether a permanent swap was specified.
+​          * Test image rebooted without being confirmed; the boot loader should
+​        revert to the original image currently in secondary slot (state IV).
 
 If the image trailers indicates that the image in the secondary slot should be
 run, the boot loader needs to copy it to the primary slot.  The image currently
@@ -445,73 +447,70 @@ according to the following procedure:
 
 <!-- Markdown doesn't do nested numbered lists.  It will do nested
 bulletted lists, so maybe that is better. -->
-    1. Determine how many flash sectors each image slot consists of.  This
-       number must be the same for both slots.
-    2. Iterate the list of sector indices in descending order (i.e., starting
-       with the greatest index); current element = "index".
-        b. Erase scratch area.
-        c. Copy slot1[index] to scratch area.
-            - If these are the last sectors (i.e., first swap being perfomed),
-              copy the full sector *except* the image trailer.
-            - Else, copy entire sector contents.
-        d. Write updated swap status (i).
+​    1. Determine how many flash sectors each image slot consists of.  This
+​       number must be the same for both slots.
+​    2. Iterate the list of sector indices in descending order (i.e., starting
+​       with the greatest index); current element = "index".
+​        b. Erase scratch area.
+​        c. Copy secondary_slot[index] to scratch area.
+​            - If these are the last sectors (i.e., first swap being perfomed),
+​              copy the full sector *except* the image trailer.
+​            - Else, copy entire sector contents.
+​        d. Write updated swap status (i).
+​        e. Erase secondary_slot[index]
+​        f. Copy primary_slot[index] to secondary_slot[index]
+​            - If these are the last sectors (i.e., first swap being perfomed),
+​              copy the full sector *except* the image trailer.
+​            - Else, copy entire sector contents.
+​        g. Write updated swap status (ii).
+​        h. Erase primary_slot[index].
+​        i. Copy scratch area to primary_slot[index].
+​            - If these are the last sectors (i.e., first swap being perfomed),
+​              copy the full sector *except* the image trailer.
+​            - Else, copy entire sector contents.
+​        j. Write updated swap status (iii).
+​    3. Persist completion of swap procedure to primary slot image trailer.
 
-        e. Erase slot1[index]
-        f. Copy slot0[index] to slot1[index]
-            - If these are the last sectors (i.e., first swap being perfomed),
-              copy the full sector *except* the image trailer.
-            - Else, copy entire sector contents.
-        g. Write updated swap status (ii).
-
-        h. Erase slot0[index].
-        i. Copy scratch area to slot0[index].
-            - If these are the last sectors (i.e., first swap being perfomed),
-              copy the full sector *except* the image trailer.
-            - Else, copy entire sector contents.
-        j. Write updated swap status (iii).
-
-    3. Persist completion of swap procedure to slot 0 image trailer.
-
-The additional caveats in step 2f are necessary so that the slot 1 image
+The additional caveats in step 2f are necessary so that the secondary slot image
 trailer can be written by the user at a later time.  With the image trailer
-unwritten, the user can test the image in slot 1 (i.e., transition to state
-II).
+unwritten, the user can test the image in secondary slot
+(i.e., transition to state II).
 
 Note1: If the sector being copied is the last sector, then swap status is
 temporarily maintained on scratch for the duration of this operation, always
-using slot0's area otherwise.
+using primary slot's area otherwise.
 
 Note2: The bootloader tries to copy only used sectors (based on largest image
 installed on any of the slots), minimizing the amount of sectors copied and
 reducing the amount of time required for a swap operation.
 
 The particulars of step 3 vary depending on whether an image is being tested,
-permanently used, reverted or a validation failure of slot 1 happened when a
-swap was requested:
+permanently used, reverted or a validation failure of secondary slot happened
+when a swap was requested:
 
     * test:
-        o Write slot0.copy_done = 1
+        o Write primary_slot.copy_done = 1
         (swap caused the following values to be written:
-            slot0.magic = BOOT_MAGIC
-            slot0.image_ok = Unset)
+            primary_slot.magic = BOOT_MAGIC
+            primary_slot.image_ok = Unset)
 
     * permanent:
-        o Write slot0.copy_done = 1
+        o Write primary_slot.copy_done = 1
         (swap caused the following values to be written:
-            slot0.magic = BOOT_MAGIC
-            slot0.image_ok = 0x01)
+            primary_slot.magic = BOOT_MAGIC
+            primary_slot.image_ok = 0x01)
 
     * revert:
-        o Write slot0.copy_done = 1
-        o Write slot0.image_ok = 1
+        o Write primary_slot.copy_done = 1
+        o Write primary_slot.image_ok = 1
         (swap caused the following values to be written:
-            slot0.magic = BOOT_MAGIC)
+            primary_slot.magic = BOOT_MAGIC)
 
-    * failure to validate slot 1:
-        o Write slot0.image_ok = 1
+    * failure to validate secondary slot:
+        o Write primary_slot.image_ok = 1
 
-After completing the operations as described above the image in slot 0 should
-be booted.
+After completing the operations as described above the image in primary slot
+should be booted.
 
 ## Swap Status
 
@@ -547,17 +546,18 @@ Each image slot is partitioned into a sequence of flash sectors.  If we were to
 enumerate the sectors in a single slot, starting at 0, we would have a list of
 sector indices.  Since there are two image slots, each sector index would
 correspond to a pair of sectors.  For example, sector index 0 corresponds to
-the first sector in slot 0 and the first sector in slot 1.  Finally, reverse
-the list of indices such that the list starts with index `BOOT_MAX_IMG_SECTORS - 1`
-and ends with 0.  The swap status region is a representation of this reversed list.
+the first sector in primary slot and the first sector in secondary slot.
+Finally, reverse the list of indices such that the list starts with index
+`BOOT_MAX_IMG_SECTORS - 1` and ends with 0.  The swap status region is a
+representation of this reversed list.
 
 During a swap operation, each sector index transitions through four separate
 states:
 ```
-    0. slot 0: image 0,   slot 1: image 1,   scratch: N/A
-    1. slot 0: image 0,   slot 1: N/A,       scratch: image 1 (1->s, erase 1)
-    2. slot 0: N/A,       slot 1: image 0,   scratch: image 1 (0->1, erase 0)
-    3. slot 0: image 1,   slot 1: image 0,   scratch: N/A     (s->0)
+0. primary slot: image 0,   secondary slot: image 1,   scratch: N/A
+1. primary slot: image 0,   secondary slot: N/A,       scratch: image 1 (1->s, erase 1)
+2. primary slot: N/A,       secondary slot: image 0,   scratch: image 1 (0->1, erase 0)
+3. primary slot: image 1,   secondary slot: image 0,   scratch: N/A     (s->0)
 ```
 
 Each time a sector index transitions to a new state, the boot loader writes a
@@ -580,14 +580,15 @@ values map to the above four states as follows
 ```
 
 The swap status region can accommodate `BOOT_MAX_IMG_SECTORS` sector indices.
-Hence, the size of the region, in bytes, is `BOOT_MAX_IMG_SECTORS * min-write-size * 3`.
-The only requirement for the index count is that it is great enough to account for a
-maximum-sized image (i.e., at least as great as the total sector count in an
-image slot).  If a device's image slots have been configured with
-`BOOT_MAX_IMG_SECTORS: 128` and use less than 128 sectors, the first
-record that gets written will be somewhere in the middle of the region.  For
-example, if a slot uses 64 sectors, the first sector index that gets swapped is
-63, which corresponds to the exact halfway point within the region.
+Hence, the size of the region, in bytes, is
+`BOOT_MAX_IMG_SECTORS * min-write-size * 3`. The only requirement for the index
+count is that it is great enough to account for a maximum-sized image
+(i.e., at least as great as the total sector count in an image slot).  If a
+device's image slots have been configured with `BOOT_MAX_IMG_SECTORS: 128` and
+use less than 128 sectors, the first record that gets written will be somewhere
+in the middle of the region. For example, if a slot uses 64 sectors, the first
+sector index that gets swapped is 63, which corresponds to the exact halfway
+point within the region.
 
 Note: since the scratch area only ever needs to record swapping of the last
 sector, it uses at most min-write-size * 3 bytes for its own status area.
@@ -605,53 +606,53 @@ contents to swap status location.  In these tables, the "source" field
 indicates where the swap status region is located.
 
 ```
-              | slot-0     | scratch    |
-    ----------+------------+------------|
-        magic | Good       | Any        |
-    copy-done | 0x01       | N/A        |
-    ----------+------------+------------'
-    source: none                        |
-    ------------------------------------'
+              | primary slot | scratch      |
+    ----------+--------------+--------------|
+        magic | Good         | Any          |
+    copy-done | 0x01         | N/A          |
+    ----------+--------------+--------------'
+    source: none                            |
+    ----------------------------------------'
 
-              | slot-0     | scratch    |
-    ----------+------------+------------|
-        magic | Good       | Any        |
-    copy-done | 0xff       | N/A        |
-    ----------+------------+------------'
-    source: slot 0                      |
-    ------------------------------------'
+              | primary slot | scratch      |
+    ----------+--------------+--------------|
+        magic | Good         | Any          |
+    copy-done | 0xff         | N/A          |
+    ----------+--------------+--------------'
+    source: primary slot                    |
+    ----------------------------------------'
 
-              | slot-0     | scratch    |
-    ----------+------------+------------|
-        magic | Any        | Good       |
-    copy-done | Any        | N/A        |
-    ----------+------------+------------'
-    source: scratch                     |
-    ------------------------------------'
+              | primary slot | scratch      |
+    ----------+--------------+--------------|
+        magic | Any          | Good         |
+    copy-done | Any          | N/A          |
+    ----------+--------------+--------------'
+    source: scratch                         |
+    ----------------------------------------'
 
-              | slot-0     | scratch    |
-    ----------+------------+------------|
-        magic | Unset      | Any        |
-    copy-done | 0xff       | N/A        |
-    ----------+------------+------------|
-    source: slot 0                      |
-    ------------------------------------+------------------------------+
-    This represents one of two cases:                                  |
-    o No swaps ever (no status to read, so no harm in checking).       |
-    o Mid-revert; status in slot 0.                                    |
-    For this reason we assume slot 0 as source, to trigger a check     |
-    of the status area and find out if there was swapping under way.   |
-    -------------------------------------------------------------------'
+              | primary slot | scratch      |
+    ----------+--------------+--------------|
+        magic | Unset        | Any          |
+    copy-done | 0xff         | N/A          |
+    ----------+--------------+--------------|
+    source: primary slot                    |
+    ----------------------------------------+------------------------------+
+    This represents one of two cases:                                      |
+    o No swaps ever (no status to read, so no harm in checking).           |
+    o Mid-revert; status in primary slot.                                  |
+    For this reason we assume primary slot as source, to trigger a check   |
+    of the status area and find out if there was swapping under way.       |
+    -----------------------------------------------------------------------'
 ```
 
 If the swap status region indicates that the images are not contiguous,
 bootutil completes the swap operation that was in progress when the system was
 reset.  In other words, it applies the procedure defined in the previous
-section, moving image 1 into slot 0 and image 0 into slot 1.  If the boot
-status file indicates that an image part is present in the scratch area, this
-part is copied into the correct location by starting at step e or step h in the
-area-swap procedure, depending on whether the part belongs to image 0 or image
-1.
+section, moving image 1 into primary slot and image 0 into secondary slot.
+If the boot status file indicates that an image part is present in the scratch
+area, this part is copied into the correct location by starting at step e or
+step h in the area-swap procedure, depending on whether the part belongs to
+image 0 or image 1.
 
 After the swap operation has been completed, the boot loader proceeds as though
 it had just been started.
@@ -660,20 +661,21 @@ it had just been started.
 
 An image is checked for integrity immediately before it gets copied into the
 primary slot.  If the boot loader doesn't perform an image swap, then it can
-perform an optional integrity check of the image in slot0 if
-`MCUBOOT_VALIDATE_SLOT0` is set, otherwise it doesn't perform an integrity check.
+perform an optional integrity check of the image in primary slot if
+`MCUBOOT_VALIDATE_PRIMARY_SLOT` is set, otherwise it doesn't perform an
+integrity check.
 
 During the integrity check, the boot loader verifies the following aspects of
 an image:
-    * 32-bit magic number must be correct (0x96f3b83d).
-    * Image must contain an `image_tlv_info` struct, identified by its magic
-      (0x6907) exactly following the firmware (hdr_size + img_size).
-    * Image must contain a SHA256 TLV.
-    * Calculated SHA256 must match SHA256 TLV contents.
-    * Image *may* contain a signature TLV.  If it does, it must also have a
-      KEYHASH TLV with the hash of the key that was used to sign. The list of
-      keys will then be iterated over looking for the matching key, which then
-      will then be used to verify the image contents.
+​    * 32-bit magic number must be correct (0x96f3b83d).
+​    * Image must contain an `image_tlv_info` struct, identified by its magic
+​      (0x6907) exactly following the firmware (hdr_size + img_size).
+​    * Image must contain a SHA256 TLV.
+​    * Calculated SHA256 must match SHA256 TLV contents.
+​    * Image *may* contain a signature TLV.  If it does, it must also have a
+​      KEYHASH TLV with the hash of the key that was used to sign. The list of
+​      keys will then be iterated over looking for the matching key, which then
+​      will then be used to verify the image contents.
 
 ## Security
 

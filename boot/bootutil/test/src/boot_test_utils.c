@@ -62,7 +62,7 @@ boot_test_util_flash_align(void)
     const struct flash_area *fap;
     int rc;
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_0, &fap);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY, &fap);
     TEST_ASSERT_FATAL(rc == 0);
 
     return flash_area_align(fap);
@@ -130,7 +130,7 @@ boot_test_util_area_write_size(int dst_idx, uint32_t off, uint32_t size)
         return size;
     }
 
-    /* Don't include trailer in copy to second slot. */
+    /* Don't include trailer in copy to secondary slot. */
     desc = boot_test_area_descs + dst_idx;
     elem_sz = boot_test_util_flash_align();
     trailer_start = desc->fa_size - boot_trailer_sz(elem_sz);
@@ -202,7 +202,7 @@ boot_test_util_write_image(const struct image_header *hdr, int slot)
     int rc;
     int i;
 
-    TEST_ASSERT(slot == 0 || slot == 1);
+    TEST_ASSERT(slot == BOOT_PRIMARY_SLOT || slot == BOOT_SECONDARY_SLOT);
 
     flash_id = boot_test_img_addrs[slot].flash_id;
     off = boot_test_img_addrs[slot].address;
@@ -313,25 +313,27 @@ boot_test_util_write_swap_state(int flash_area_id,
 void
 boot_test_util_mark_revert(void)
 {
-    struct boot_swap_state state_slot0 = {
+    struct boot_swap_state state_primary_slot = {
         .magic = BOOT_MAGIC_GOOD,
         .copy_done = 0x01,
         .image_ok = 0xff,
     };
 
-    boot_test_util_write_swap_state(FLASH_AREA_IMAGE_0, &state_slot0);
+    boot_test_util_write_swap_state(FLASH_AREA_IMAGE_PRIMARY,
+                                    &state_primary_slot);
 }
 
 void
 boot_test_util_mark_swap_perm(void)
 {
-    struct boot_swap_state state_slot0 = {
+    struct boot_swap_state state_primary_slot = {
         .magic = BOOT_MAGIC_GOOD,
         .copy_done = 0x01,
         .image_ok = 0x01,
     };
 
-    boot_test_util_write_swap_state(FLASH_AREA_IMAGE_0, &state_slot0);
+    boot_test_util_write_swap_state(FLASH_AREA_IMAGE_PRIMARY,
+                                    &state_primary_slot);
 }
 
 void
@@ -412,20 +414,22 @@ boot_test_util_verify_area(const struct flash_area *area_desc,
 void
 boot_test_util_verify_status_clear(void)
 {
-    struct boot_swap_state state_slot0;
+    struct boot_swap_state state_primary_slot;
     int rc;
 
-    rc = boot_read_swap_state_img(0, &state_slot0);
+    rc = boot_read_swap_state_img(0, &state_primary_slot);
     assert(rc == 0);
 
-    TEST_ASSERT(state_slot0.magic != BOOT_MAGIC_UNSET ||
-                state_slot0.copy_done != 0);
+    TEST_ASSERT(state_primary_slot.magic != BOOT_MAGIC_UNSET ||
+                state_primary_slot.copy_done != 0);
 }
 
 
 void
-boot_test_util_verify_flash(const struct image_header *hdr0, int orig_slot_0,
-                            const struct image_header *hdr1, int orig_slot_1)
+boot_test_util_verify_flash(const struct image_header *hdr0,
+                            int orig_primary_slot,
+                            const struct image_header *hdr1,
+                            int orig_secondary_slot)
 {
     const struct flash_area *area_desc;
     int area_idx;
@@ -440,7 +444,8 @@ boot_test_util_verify_flash(const struct image_header *hdr0, int orig_slot_0,
         }
 
         boot_test_util_verify_area(area_desc, hdr0,
-                                   boot_test_img_addrs[0].address, orig_slot_0);
+                                   boot_test_img_addrs[0].address,
+                                   orig_primary_slot);
         area_idx++;
     }
 
@@ -451,7 +456,8 @@ boot_test_util_verify_flash(const struct image_header *hdr0, int orig_slot_0,
 
         area_desc = boot_test_area_descs + area_idx;
         boot_test_util_verify_area(area_desc, hdr1,
-                                   boot_test_img_addrs[1].address, orig_slot_1);
+                                   boot_test_img_addrs[1].address,
+                                   orig_secondary_slot);
         area_idx++;
     }
 }
@@ -461,12 +467,12 @@ boot_test_util_verify_all(int expected_swap_type,
                           const struct image_header *hdr0,
                           const struct image_header *hdr1)
 {
-    const struct image_header *slot0hdr;
-    const struct image_header *slot1hdr;
+    const struct image_header *primary_slot_hdr;
+    const struct image_header *secondary_slot_hdr;
     struct boot_rsp rsp;
     uintptr_t flash_base;
-    int orig_slot_0;
-    int orig_slot_1;
+    int orig_primary_slot;
+    int orig_secondary_slot;
     int num_swaps;
     int rc;
     int i;
@@ -484,36 +490,37 @@ boot_test_util_verify_all(int expected_swap_type,
 
         if (num_swaps % 2 == 0) {
             if (hdr0 != NULL) {
-                slot0hdr = hdr0;
-                slot1hdr = hdr1;
+                primary_slot_hdr = hdr0;
+                secondary_slot_hdr = hdr1;
             } else {
-                slot0hdr = hdr1;
-                slot1hdr = hdr0;
+                primary_slot_hdr = hdr1;
+                secondary_slot_hdr = hdr0;
             }
-            orig_slot_0 = 0;
-            orig_slot_1 = 1;
+            orig_primary_slot = BOOT_PRIMARY_SLOT;
+            orig_secondary_slot = BOOT_SECONDARY_SLOT;
         } else {
             if (hdr1 != NULL) {
-                slot0hdr = hdr1;
-                slot1hdr = hdr0;
+                primary_slot_hdr = hdr1;
+                secondary_slot_hdr = hdr0;
             } else {
-                slot0hdr = hdr0;
-                slot1hdr = hdr1;
+                primary_slot_hdr = hdr0;
+                secondary_slot_hdr = hdr1;
             }
-            orig_slot_0 = 1;
-            orig_slot_1 = 0;
+            orig_primary_slot = BOOT_SECONDARY_SLOT;
+            orig_secondary_slot = BOOT_PRIMARY_SLOT;
         }
 
         rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
         TEST_ASSERT_FATAL(rc == 0);
 
-        TEST_ASSERT(memcmp(rsp.br_hdr, slot0hdr, sizeof *slot0hdr) == 0);
+        TEST_ASSERT(memcmp(rsp.br_hdr, primary_slot_hdr,
+                           sizeof *primary_slot_hdr) == 0);
         TEST_ASSERT(rsp.br_flash_dev_id == boot_test_img_addrs[0].flash_id);
         TEST_ASSERT(flash_base + rsp.br_image_off ==
                     boot_test_img_addrs[0].address);
 
-        boot_test_util_verify_flash(slot0hdr, orig_slot_0,
-                                    slot1hdr, orig_slot_1);
+        boot_test_util_verify_flash(primary_slot_hdr, orig_primary_slot,
+                                    secondary_slot_hdr, orig_secondary_slot);
         boot_test_util_verify_status_clear();
 
         if (expected_swap_type != BOOT_SWAP_TYPE_NONE) {

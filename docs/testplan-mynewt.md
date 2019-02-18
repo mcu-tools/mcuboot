@@ -17,7 +17,7 @@ Build and load mcuboot:
 * `newt build k64f_boot_<sign-algo>`
 * `newt load k64f_boot_<sign-algo>`
 
-Build and load good image in slot 0:
+Build and load good image in primary slot:
 
 * `newt create-image k64f_blinky 1.0.1 key_<sign-algo>.pem`
 * `newt load k64f_blinky`
@@ -27,7 +27,7 @@ flag `--rsa-pss` eg:
 
 `newt create-image k64f_blinky 1.0.1 key_rsa.pem --rsa-pss`
 
-Build and load image in slot 1 with no signing, signed with
+Build and load image in secondary slot with no signing, signed with
 key_<sign-algo>_2.pem and signed with key_<sign-algo>.pem. Mark each one as
 test image and check that swap only happens for image signed with
 key_<sign-algo>.pem. Both others should be erased.
@@ -35,7 +35,7 @@ key_<sign-algo>.pem. Both others should be erased.
 * `newt create-image k64f_blinky2 1.0.2 <one-of-the-sign-keys-or-none>`
 * `newtmgr image upload k64f_blinky2`
 * `newtmgr image list`
-* `newtmgr image test <hash of slot 1>`
+* `newtmgr image test <hash of secondary slot>`
 
 ### Image signed with more than one key
 
@@ -46,12 +46,12 @@ Build and load mcuboot:
 * `newt build k64f_boot_rsa_ec`
 * `newt load k64f_boot_rsa_ec`
 
-Build and load good image in slot 0:
+Build and load good image in primary slot:
 
 * `newt create-image k64f_blinky 1.0.1 key_rsa.pem`
 * `newt load k64f_blinky`
 
-Build and load image in slot 1 with no signing, signed with
+Build and load image in secondary slot with no signing, signed with
 key_<sign-algo>_2.pem and signed with key_<sign-algo>.pem. Mark each one as
 test image and check that swap only happens for image signed with
 key_<sign-algo>.pem. Both others should be erased.
@@ -64,7 +64,7 @@ And load
 
 * `newtmgr image upload k64f_blinky2`
 * `newtmgr image list`
-* `newtmgr image test <hash of slot 1>`
+* `newtmgr image test <hash of secondary slot>`
 
 ### Overwrite only functionality
 
@@ -73,7 +73,7 @@ Build/load mcuboot:
 * `newt build k64f_boot_rsa_noswap`
 * `newt load k64f_boot_rsa_noswap`
 
-Build/load blinky to slot 0:
+Build/load blinky to primary slot:
 
 * `newt create-image k64f_blinky 1.0.1 key_rsa.pem`
 * `newt load k64f_blinky`
@@ -84,13 +84,13 @@ request:
 * `newt create-image k64f_blinky2 1.0.2 <bad and good rsa keys>.pem`
 * `newtmgr image upload k64f_blinky2`
 * `newtmgr image list`
-* `newtmgr image confirm <hash of slot 1>`
+* `newtmgr image confirm <hash of secondary slot>`
 
-This should not swap and delete the image in slot 1 when signed with the wrong
-key, otherwise the image in slot 1 should be *moved* to slot 0 and slot 1 should
-be empty.
+This should not swap and delete the image in secondary slot when signed with the
+wrong key, otherwise the image in secondary slot should be *moved* to primary
+slot and secondary slot should be empty.
 
-### Validate slot 0 option
+### Validate primary slot option
 
 Build/load mcuboot:
 
@@ -125,26 +125,26 @@ Build/load mcuboot:
 * `newt build k64f_boot_rsa`
 * `newt load k64f_boot_rsa`
 
-Build/load slinky to slot 0:
+Build/load slinky to primary slot:
 
 * `newt create-image k64f_slinky 1.0.1 key_rsa.pem`
 * `newt load k64f_slinky`
 
-Build/load slinky2 to slot 1:
+Build/load slinky2 to secondary slot:
 
 * `newt create-image k64f_slinky2 1.0.2 key_rsa.pem`
 * `newtmgr image upload k64f_slinky2`
 
 Confirm that both images are installed, request a permanent request to the
-image in slot 1 and check that it works.
+image in secondary slot and check that it works.
 
 * `newtmgr image list`
-* `newtmgr image confirm <hash of slot 1>`
+* `newtmgr image confirm <hash of secondary slot>`
 
 If everything works, now proceed with requests for permanent swap to the image
-in slot 1 and do random swaps (as much as you like!). When the swap finishes
-confirm that the swap was finished with the previous slot 1 image now in
-slot 0 and vice-versa.
+in secondary slot and do random swaps (as much as you like!). When the swap
+finishes confirm that the swap was finished with the previous secondary slot
+image now in primary slot and vice-versa.
 
 ### Help
 
@@ -152,6 +152,6 @@ slot 0 and vice-versa.
 
         $ pyocd erase --chip
 
-* Flashing image in slot 1:
+* Flashing image in secondary slot:
 
         $ pyocd flash -e sector -a 0x80000 ${IMG_FILE} bin

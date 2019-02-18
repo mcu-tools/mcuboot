@@ -12,7 +12,8 @@ fn main() {
     let sig_rsa = env::var("CARGO_FEATURE_SIG_RSA").is_ok();
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
-    let validate_slot0 = env::var("CARGO_FEATURE_VALIDATE_SLOT0").is_ok();
+    let validate_primary_slot =
+                  env::var("CARGO_FEATURE_VALIDATE_PRIMARY_SLOT").is_ok();
     let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
     let enc_kw = env::var("CARGO_FEATURE_ENC_KW").is_ok();
     let bootstrap = env::var("CARGO_FEATURE_BOOTSTRAP").is_ok();
@@ -28,8 +29,8 @@ fn main() {
         conf.define("MCUBOOT_BOOTSTRAP", None);
     }
 
-    if validate_slot0 {
-        conf.define("MCUBOOT_VALIDATE_SLOT0", None);
+    if validate_primary_slot {
+        conf.define("MCUBOOT_VALIDATE_PRIMARY_SLOT", None);
     }
 
     // Currently, mbed TLS cannot build with both RSA and ECDSA.

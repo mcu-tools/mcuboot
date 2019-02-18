@@ -40,10 +40,10 @@
 # to find a bootable image.
 #
 # "make flash_hello1" will then flash the first application into
-# "slot0".  This should boot into this app, print a small message, and
+# "primary slot".  This should boot into this app, print a small message, and
 # give the zephyr console.
 #
-# "make flash_hello2" will flash hello2 into the second slot.  The
+# "make flash_hello2" will flash hello2 into the secondary slot.  The
 # reset should upgrade and run the new image.  Resetting again should
 # then revert back to the first app, since we did not mark this image
 # as good.
@@ -140,7 +140,7 @@ clean_hello1: check
 # This is the same signing command as above, except that it adds the
 # "--pad" argument.  This will also add the trailer that indicates
 # this image is intended to be an upgrade.  It should be flashed into
-# slot1 instead of slot0.
+# secondary slot instead of primary slot.
 hello2: check
 	(mkdir -p $(BUILD_DIR_HELLO2) && \
 		cd $(BUILD_DIR_HELLO2) && \
@@ -244,7 +244,7 @@ test-bad-ecdsa-upgrade: clean
 		SIGNING_KEY=../../root-rsa-2048.pem \
 		hello2
 
-# Test that when configured to not validate slot0, we still boot, but
+# Test that when configured to not validate primary slot, we still boot, but
 # don't upgrade.
 # flash_boot: tries to boot and resets
 # flash_hello1: hello1 runs
@@ -252,7 +252,7 @@ test-bad-ecdsa-upgrade: clean
 # reset: hello1 runs
 test-no-bootcheck: clean
 	$(MAKE) \
-		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-skip-slot0-validate.conf \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-skip-primary-slot-validate.conf \
 		SIGNING_KEY=../../root-ec-p256.pem \
 		all
 

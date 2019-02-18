@@ -42,12 +42,12 @@ TEST_CASE(boot_test_revert_continue)
     };
 
     boot_test_util_init_flash();
-    boot_test_util_write_image(&hdr0, 0);
-    boot_test_util_write_hash(&hdr0, 0);
-    boot_test_util_write_image(&hdr1, 1);
-    boot_test_util_write_hash(&hdr1, 1);
+    boot_test_util_write_image(&hdr0, BOOT_PRIMARY_SLOT);
+    boot_test_util_write_hash(&hdr0, BOOT_PRIMARY_SLOT);
+    boot_test_util_write_image(&hdr1, BOOT_SECONDARY_SLOT);
+    boot_test_util_write_hash(&hdr1, BOOT_SECONDARY_SLOT);
 
-    /* Indicate that the image in slot 0 is being tested. */
+    /* Indicate that the image in primary slot is being tested. */
     boot_test_util_mark_revert();
 
     boot_test_util_swap_areas(2, 5);

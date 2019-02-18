@@ -86,9 +86,9 @@ struct flash_area {
 `fa_id` is can be one of the following options:
 
 ```c
-#define FLASH_AREA_IMAGE_0 1
-#define FLASH_AREA_IMAGE_1 2
-#define FLASH_AREA_IMAGE_SCRATCH 3
+#define FLASH_AREA_IMAGE_PRIMARY    1
+#define FLASH_AREA_IMAGE_SECONDARY  2
+#define FLASH_AREA_IMAGE_SCRATCH    3
 ```
 
 The functions that must be defined for working with the `flash_area`s are:
@@ -109,7 +109,7 @@ int     flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
 uint8_t flash_area_align(const struct flash_area *);
 /*< Initializes an array of flash_area elements for the slot's sectors */
 int     flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret);
-/*< Returns the `fa_id` for slot, where slot is 0 or 1 */
+/*< Returns the `fa_id` for slot, where slot is 0 (primary) or 1 (secondary) */
 int     flash_area_id_from_image_slot(int slot);
 /*< Returns the slot, for the `fa_id` supplied */
 int     flash_area_id_to_image_slot(int area_id);

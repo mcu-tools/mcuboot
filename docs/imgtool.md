@@ -47,8 +47,8 @@ into the key file.
 
 ## Signing images
 
-Image signing takes an image in binary or Intel Hex format intended for Slot 0
-and adds a header and trailer that the bootloader is expecting:
+Image signing takes an image in binary or Intel Hex format intended for primary
+slot and adds a header and trailer that the bootloader is expecting:
 
     Usage: imgtool.py sign [OPTIONS] INFILE OUTFILE
 
@@ -61,8 +61,8 @@ and adds a header and trailer that the bootloader is expecting:
       -H, --header-size INTEGER  [required]
       --pad-header               Add --header-size zeroed bytes at the beginning
                                  of the image
-      -S, --slot-size INTEGER    Size of the slot where the image will be written
-                                 [required]
+      -S, --slot-size INTEGER    Size of the slot where the image will be
+                                 written [required]
       --pad                      Pad image to --slot-size bytes, adding trailer
                                  magic
       -M, --max-sectors INTEGER  When padding allow for this amount of sectors
@@ -94,4 +94,4 @@ status area size when calculating overflow.
 
 The optional `--pad` argument will place a trailer on the image that
 indicates that the image should be considered an upgrade.  Writing
-this image in slot 1 will then cause the bootloader to upgrade to it.
+this image in secondary slot will then cause the bootloader to upgrade to it.
