@@ -59,9 +59,9 @@ TEST_CASE(boot_serial_img_msg)
     tx_msg(buf, len);
 
     /*
-     * Validate contents inside image 0 slot
+     * Validate contents inside the primary slot
      */
-    rc = flash_area_open(FLASH_AREA_IMAGE_0, &fap);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY, &fap);
     assert(rc == 0);
 
     rc = flash_area_read(fap, 0, enc_img, sizeof(img));

@@ -14,7 +14,7 @@ matrix:
     - os: linux
       env: SINGLE_FEATURES="sig-ecdsa enc-kw bootstrap" TEST=sim
     - os: linux
-      env: SINGLE_FEATURES="none sig-rsa overwrite-only validate-slot0" TEST=sim
+      env: SINGLE_FEATURES="none sig-rsa overwrite-only validate-primary-slot" TEST=sim
     - os: linux
       env: SINGLE_FEATURES="enc-rsa" TEST=sim
 
@@ -25,19 +25,19 @@ matrix:
     - os: linux
       env: MULTI_FEATURES="sig-rsa overwrite-only,sig-ecdsa overwrite-only" TEST=sim
     - os: linux
-      env: MULTI_FEATURES="sig-rsa validate-slot0,sig-ecdsa validate-slot0" TEST=sim
+      env: MULTI_FEATURES="sig-rsa validate-primary-slot,sig-ecdsa validate-primary-slot" TEST=sim
     - os: linux
       env: MULTI_FEATURES="enc-kw overwrite-only,enc-rsa overwrite-only" TEST=sim
     - os: linux
-      env: MULTI_FEATURES="sig-rsa enc-rsa validate-slot0" TEST=sim
+      env: MULTI_FEATURES="sig-rsa enc-rsa validate-primary-slot" TEST=sim
     - os: linux
-      env: MULTI_FEATURES="sig-rsa enc-kw validate-slot0 bootstrap" TEST=sim
+      env: MULTI_FEATURES="sig-rsa enc-kw validate-primary-slot bootstrap" TEST=sim
     - os: linux
-      env: MULTI_FEATURES="sig-ecdsa enc-kw validate-slot0" TEST=sim
+      env: MULTI_FEATURES="sig-ecdsa enc-kw validate-primary-slot" TEST=sim
 
     # FIXME: this test actually fails and must be fixed
     #- os: linux
-    #  env: MULTI_FEATURES="sig-rsa validate-slot0 overwrite-only"
+    #  env: MULTI_FEATURES="sig-rsa validate-primary-slot overwrite-only"
 
     - os: linux
       language: go

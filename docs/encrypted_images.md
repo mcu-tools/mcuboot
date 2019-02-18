@@ -27,16 +27,16 @@ for encrypting/decrypting images on-the-fly while upgrading.
 
 The image header needs to flag this image as `ENCRYPTED` (0x04) and
 a TLV with the key must be present in the image. When upgrading the
-image from `slot1` to `slot0` it is automatically decrypted (after
-validation). If swap upgrades are enabled, the image located in `slot0`,
-also having the `ENCRYPTED` flag set and the TLV present, is
-re-encrypted while swapping to `slot1`.
+image from the `secondary slot` to the `primary slot` it is automatically
+decrypted (after validation). If swap upgrades are enabled, the image
+located in the `primary slot`, also having the `ENCRYPTED` flag set and the
+TLV present, is re-encrypted while swapping to the `secondary slot`.
 
 ## Threat model
 
 The encrypted image support is supposed to allow for confidentiality
 if the image is not residing on the device or is written to external
-storage, eg a SPI flash being used for slot1.
+storage, eg a SPI flash being used for the secondary slot.
 
 It does not protect against the possibility of attaching a JTAG and
 reading the internal flash memory, or using some attack vector that
@@ -79,24 +79,25 @@ AES-CTR-128 key.
 
 ## Upgrade process
 
-When starting a new upgrade process, `MCUBoot` checks that the image in
-`slot1` has the `ENCRYPTED` flag set and has the required TLV with the
+When starting a new upgrade process, `MCUBoot` checks that the image in the
+`secondary slot` has the `ENCRYPTED` flag set and has the required TLV with the
 encrypted key. It then uses its internal private/secret key to decrypt
 the TLV containing the key. Given that no errors are found, it will then
 start the validation process, decrypting the blocks before check. A good
 image being determined, the upgrade consists in reading the blocks from
-`slot1`, decrypting and writing to `slot0`.
+the `secondary slot`, decrypting and writing to the `primary slot`.
 
 If swap is used for the upgrade process, the encryption happens when
-copying the sectors of `slot1` to the scratch area.
+copying the sectors of the `secondary slot` to the scratch area.
 
 The `scratch` area is not encrypted, so it must reside in the internal
 flash of the MCU to avoid attacks that could interrupt the upgrade and
 dump the data.
 
-Also when swap is used, the image in `slot0` is checked for presence of
-the `ENCRYPTED` flag and the key TLV. If those are present the sectors
-are re-encrypted when copying from `slot0` to `slot1`.
+Also when swap is used, the image in the `primary slot` is checked for
+presence of the `ENCRYPTED` flag and the key TLV. If those are present the
+sectors are re-encrypted when copying from the `primary slot` to
+the `secondary slot`.
 
 PS: Each encrypted image must have its own key TLV that should be unique
 and used only for this particular image.

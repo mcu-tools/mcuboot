@@ -32,8 +32,8 @@ TEST_CASE(boot_test_vm_ns_01)
     };
 
     boot_test_util_init_flash();
-    boot_test_util_write_image(&hdr, 1);
-    boot_test_util_write_hash(&hdr, 1);
+    boot_test_util_write_image(&hdr, BOOT_SECONDARY_SLOT);
+    boot_test_util_write_hash(&hdr, BOOT_SECONDARY_SLOT);
 
     rc = boot_set_pending(0);
     TEST_ASSERT(rc == 0);
