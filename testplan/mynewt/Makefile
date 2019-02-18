@@ -25,22 +25,22 @@ NEWTMGR_IMG := newtmgr $(NEWTMGR_CONN) image
 all: build-apps build-mcuboot
 
 build-blinky:
-	@echo "* Building blinky for slot 0... \c"
+	@echo "* Building blinky for the primary slot... \c"
 	@newt build -q $(BLINKY)
 	@echo "ok"
 
 build-blinky2:
-	@echo "* Building blinky2 for slot 1... \c"
+	@echo "* Building blinky2 for the secondary slot... \c"
 	@newt build -q $(BLINKY2)
 	@echo "ok"
 
 build-slinky:
-	@echo "* Building slinky for slot 0... \c"
+	@echo "* Building slinky for the primary slot... \c"
 	@newt build -q $(SLINKY)
 	@echo "ok"
 
 build-slinky2:
-	@echo "* Building slinky2 for slot 1... \c"
+	@echo "* Building slinky2 for the secondary slot... \c"
 	@newt build -q $(SLINKY2)
 	@echo "ok"
 
@@ -71,7 +71,7 @@ build-boot-rsa-ec:
 	@echo "ok"
 
 build-boot-rsa-validate0:
-	@echo "* Building mcuboot with slot 0 validation... \c"
+	@echo "* Building mcuboot with primary slot validation... \c"
 	@newt build -q $(BOOT_RSA_VALIDATE0)
 	@echo "ok"
 

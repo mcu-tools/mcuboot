@@ -45,7 +45,7 @@
 /* #define MCUBOOT_OVERWRITE_ONLY */
 
 #ifdef MCUBOOT_OVERWRITE_ONLY
-/* Uncomment to only erase and overwrite those slot 0 sectors needed
+/* Uncomment to only erase and overwrite those primary slot sectors needed
  * to install the new image, rather than the entire image slot. */
 /* #define MCUBOOT_OVERWRITE_ONLY_FAST */
 #endif
@@ -64,11 +64,11 @@
 /* #define MCUBOOT_USE_TINYCRYPT */
 
 /*
- * Always check the signature of the image in slot 0 before booting,
+ * Always check the signature of the image in the primary slot before booting,
  * even if no upgrade was performed. This is recommended if the boot
  * time penalty is acceptable.
  */
-#define MCUBOOT_VALIDATE_SLOT0
+#define MCUBOOT_VALIDATE_PRIMARY_SLOT
 
 /*
  * Flash abstraction

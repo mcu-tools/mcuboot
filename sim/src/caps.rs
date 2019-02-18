@@ -4,14 +4,14 @@
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[allow(unused)]
 pub enum Caps {
-    RSA2048          = (1 << 0),
-    EcdsaP224        = (1 << 1),
-    EcdsaP256        = (1 << 2),
-    SwapUpgrade      = (1 << 3),
-    OverwriteUpgrade = (1 << 4),
-    EncRsa           = (1 << 5),
-    EncKw            = (1 << 6),
-    ValidateSlot0    = (1 << 7),
+    RSA2048              = (1 << 0),
+    EcdsaP224            = (1 << 1),
+    EcdsaP256            = (1 << 2),
+    SwapUpgrade          = (1 << 3),
+    OverwriteUpgrade     = (1 << 4),
+    EncRsa               = (1 << 5),
+    EncKw                = (1 << 6),
+    ValidatePrimarySlot  = (1 << 7),
 }
 
 impl Caps {

@@ -42,10 +42,10 @@ TEST_CASE(boot_test_nv_bs_11_2areas)
     };
 
     boot_test_util_init_flash();
-    boot_test_util_write_image(&hdr0, 0);
-    boot_test_util_write_hash(&hdr0, 0);
-    boot_test_util_write_image(&hdr1, 1);
-    boot_test_util_write_hash(&hdr1, 1);
+    boot_test_util_write_image(&hdr0, BOOT_PRIMARY_SLOT);
+    boot_test_util_write_hash(&hdr0, BOOT_PRIMARY_SLOT);
+    boot_test_util_write_image(&hdr1, BOOT_SECONDARY_SLOT);
+    boot_test_util_write_hash(&hdr1, BOOT_SECONDARY_SLOT);
     rc = boot_set_pending(0);
     TEST_ASSERT_FATAL(rc == 0);
 

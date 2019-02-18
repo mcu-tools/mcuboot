@@ -13,8 +13,8 @@ The first step required for Zephyr is making sure your board has flash
 partitions defined in its device tree. These partitions are:
 
 - `boot_partition`: for MCUboot itself
-- `slot0_partition`: the primary image slot
-- `slot1_partition`: the secondary image slot
+- `primary_slot_partition`: the primary image slot
+- `secondary_slot_partition`: the secondary image slot
 - `scratch_partition`: the scratch slot
 
 Currently, the two image slots must be contiguous. If you are running
@@ -43,7 +43,7 @@ Zephyr's point of view.  There is a bit of configuration that needs to
 be made before building it.  Most of this can be done as documented in
 the `CMakeLists.txt` file in boot/zephyr.  There are comments there for
 guidance.  It is important to select a signature algorithm, and decide
-if slot0 should be validated on every boot.
+if the primary slot should be validated on every boot.
 
 To build MCUboot, create a build directory in boot/zephyr, and build
 it as usual:
@@ -96,7 +96,7 @@ With this, build the application as your normally would.
 ### Signing the application
 
 In order to upgrade to an image (or even boot it, if
-`MCUBOOT_VALIDATE_SLOT0` is enabled), the images must be signed.
+`MCUBOOT_VALIDATE_PRIMARY_SLOT` is enabled), the images must be signed.
 To make development easier, MCUboot is distributed with some example
 keys.  It is important to stress that these should never be used for
 production, since the private key is publicly available in this
@@ -108,17 +108,17 @@ to look at `samples/zephyr/Makefile` for examples on how to use this.
 ### Flashing the application
 
 The application itself can flashed with regular flash tools, but will
-need to be programmed at the offset of slot-0 for this particular target.
-Depending on the platform and flash tool you might need to manually specify a
-flash offset corresponding to the slot-0 starting address. This is usually
-not relevant for flash tools that use Intel Hex images (.hex) instead of raw
-binary images (.bin) since the former include destination address information.
-Additionally you will need to make sure that the flash tool does not perform
-a mass erase (erasing the whole of the flash) or else you would be deleting
-MCUboot.
-These images can also be marked for upgrade, and loaded into slot-1,
+need to be programmed at the offset of the primary slot for this particular
+target. Depending on the platform and flash tool you might need to manually
+specify a flash offset corresponding to the primary slot starting address. This
+is usually not relevant for flash tools that use Intel Hex images (.hex) instead
+of raw binary images (.bin) since the former include destination address
+information. Additionally you will need to make sure that the flash tool does
+not perform a mass erase (erasing the whole of the flash) or else you would be
+deleting MCUboot.
+These images can also be marked for upgrade, and loaded into the secondary slot,
 at which point the bootloader should perform an upgrade.  It is up to
-the image to mark slot-0 as "image ok" before the next reboot,
+the image to mark the primary slot as "image ok" before the next reboot,
 otherwise the bootloader will revert the application.
 
 ## Managing signing keys

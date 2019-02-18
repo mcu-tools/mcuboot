@@ -27,7 +27,7 @@ impl AreaDesc {
 
     /// Add a slot to the image.  The slot must align with erasable units in the flash device.
     /// Panics if the description is not valid.  There are also bootloader assumptions that the
-    /// slots are SLOT0, SLOT1, and SCRATCH in that order.
+    /// slots are PRIMARY_SLOT, SECONDARY_SLOT, and SCRATCH in that order.
     pub fn add_image(&mut self, base: usize, len: usize, id: FlashId, dev_id: u8) {
         let nid = id as usize;
         let orig_base = base;
@@ -196,4 +196,3 @@ pub struct FlashArea {
     off: u32,
     size: u32,
 }
-

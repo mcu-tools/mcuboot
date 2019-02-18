@@ -41,8 +41,8 @@ uint32_t bootutil_get_caps(void)
 #if defined(MCUBOOT_ENCRYPT_KW)
 	res |= BOOTUTIL_CAP_ENC_KW;
 #endif
-#if defined(MCUBOOT_VALIDATE_SLOT0)
-	res |= BOOTUTIL_CAP_VALIDATE_SLOT0;
+#if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT)
+	res |= BOOTUTIL_CAP_VALIDATE_PRIMARY_SLOT;
 #endif
 
         return res;

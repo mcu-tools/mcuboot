@@ -73,9 +73,9 @@ void boot_test_util_verify_area(const struct flash_area *area_desc,
                                        uint32_t image_addr, int img_msb);
 void boot_test_util_verify_status_clear(void);
 void boot_test_util_verify_flash(const struct image_header *hdr0,
-                                        int orig_slot_0,
+                                        int orig_primary_slot,
                                         const struct image_header *hdr1,
-                                        int orig_slot_1);
+                                        int orig_secondary_slot);
 void boot_test_util_verify_all(int expected_swap_type,
                                const struct image_header *hdr0,
                                const struct image_header *hdr1);

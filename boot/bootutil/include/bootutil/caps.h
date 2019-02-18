@@ -32,14 +32,14 @@ extern "C" {
  */
 uint32_t bootutil_get_caps(void);
 
-#define BOOTUTIL_CAP_RSA2048            (1<<0)
-#define BOOTUTIL_CAP_ECDSA_P224         (1<<1)
-#define BOOTUTIL_CAP_ECDSA_P256         (1<<2)
-#define BOOTUTIL_CAP_SWAP_UPGRADE       (1<<3)
-#define BOOTUTIL_CAP_OVERWRITE_UPGRADE  (1<<4)
-#define BOOTUTIL_CAP_ENC_RSA            (1<<5)
-#define BOOTUTIL_CAP_ENC_KW             (1<<6)
-#define BOOTUTIL_CAP_VALIDATE_SLOT0     (1<<7)
+#define BOOTUTIL_CAP_RSA2048                (1<<0)
+#define BOOTUTIL_CAP_ECDSA_P224             (1<<1)
+#define BOOTUTIL_CAP_ECDSA_P256             (1<<2)
+#define BOOTUTIL_CAP_SWAP_UPGRADE           (1<<3)
+#define BOOTUTIL_CAP_OVERWRITE_UPGRADE      (1<<4)
+#define BOOTUTIL_CAP_ENC_RSA                (1<<5)
+#define BOOTUTIL_CAP_ENC_KW                 (1<<6)
+#define BOOTUTIL_CAP_VALIDATE_PRIMARY_SLOT  (1<<7)
 
 #ifdef __cplusplus
 }

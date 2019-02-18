@@ -44,9 +44,9 @@ TEST_CASE(boot_test_invalid_hash)
         .it_len = 32
     };
     boot_test_util_init_flash();
-    boot_test_util_write_image(&hdr0, 0);
-    boot_test_util_write_hash(&hdr0, 0);
-    boot_test_util_write_image(&hdr1, 1);
+    boot_test_util_write_image(&hdr0, BOOT_PRIMARY_SLOT);
+    boot_test_util_write_hash(&hdr0, BOOT_PRIMARY_SLOT);
+    boot_test_util_write_image(&hdr1, BOOT_SECONDARY_SLOT);
     rc = hal_flash_write(boot_test_img_addrs[1].flash_id,
       boot_test_img_addrs[1].address + hdr1.ih_hdr_size + hdr1.ih_img_size,
       &tlv, sizeof(tlv));

@@ -70,8 +70,10 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
     }
 
 #ifdef MCUBOOT_ENC_IMAGES
-    /* Encrypted images only exist in slot1 */
-    if (fap->fa_id == FLASH_AREA_IMAGE_1 && IS_ENCRYPTED(hdr) && !boot_enc_valid(fap)) {
+    /* Encrypted images only exist in the secondary slot */
+    if (fap->fa_id == FLASH_AREA_IMAGE_SECONDARY &&
+        IS_ENCRYPTED(hdr) &&
+        !boot_enc_valid(fap)) {
         return -1;
     }
 #endif
@@ -101,7 +103,9 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
             return rc;
         }
 #ifdef MCUBOOT_ENC_IMAGES
-        if (fap->fa_id == FLASH_AREA_IMAGE_1 && IS_ENCRYPTED(hdr) && off >= hdr_size) {
+        if (fap->fa_id == FLASH_AREA_IMAGE_SECONDARY &&
+            IS_ENCRYPTED(hdr) &&
+            off >= hdr_size) {
             blk_off = (off - hdr_size) & 0xf;
             boot_encrypt(fap, off - hdr_size, blk_sz, blk_off, tmp_buf);
         }

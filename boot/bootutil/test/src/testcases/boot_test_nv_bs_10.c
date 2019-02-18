@@ -30,8 +30,8 @@ TEST_CASE(boot_test_nv_bs_10)
     };
 
     boot_test_util_init_flash();
-    boot_test_util_write_image(&hdr, 0);
-    boot_test_util_write_hash(&hdr, 0);
+    boot_test_util_write_image(&hdr, BOOT_PRIMARY_SLOT);
+    boot_test_util_write_hash(&hdr, BOOT_PRIMARY_SLOT);
     boot_test_util_swap_areas(boot_test_slot_areas[1],
                               BOOT_TEST_AREA_IDX_SCRATCH);
 
