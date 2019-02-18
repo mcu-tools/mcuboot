@@ -51,7 +51,7 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-good-rsa"},
-					{"pyocd-flashtool", "-ce"},
+					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -70,7 +70,7 @@ var tests = []struct {
 			},
 			{
 				commands: [][]string{
-					{"pyocd-tool", "reset"},
+					{"pyocd", "commander", "-c", "reset"},
 				},
 				expect: "Hello World from hello1",
 			},
@@ -82,7 +82,7 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-good-ecdsa"},
-					{"pyocd-flashtool", "-ce"},
+					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -101,7 +101,7 @@ var tests = []struct {
 			},
 			{
 				commands: [][]string{
-					{"pyocd-tool", "reset"},
+					{"pyocd", "commander", "-c", "reset"},
 				},
 				expect: "Hello World from hello1",
 			},
@@ -113,7 +113,7 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-overwrite"},
-					{"pyocd-flashtool", "-ce"},
+					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -132,7 +132,7 @@ var tests = []struct {
 			},
 			{
 				commands: [][]string{
-					{"pyocd-tool", "reset"},
+					{"pyocd", "commander", "-c", "reset"},
 				},
 				expect: "Hello World from hello2",
 			},
@@ -144,7 +144,7 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-bad-rsa-upgrade"},
-					{"pyocd-flashtool", "-ce"},
+					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -163,7 +163,7 @@ var tests = []struct {
 			},
 			{
 				commands: [][]string{
-					{"pyocd-tool", "reset"},
+					{"pyocd", "commander", "-c", "reset"},
 				},
 				expect: "Hello World from hello1",
 			},
@@ -175,7 +175,7 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-bad-ecdsa-upgrade"},
-					{"pyocd-flashtool", "-ce"},
+					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -194,7 +194,7 @@ var tests = []struct {
 			},
 			{
 				commands: [][]string{
-					{"pyocd-tool", "reset"},
+					{"pyocd", "commander", "-c", "reset"},
 				},
 				expect: "Hello World from hello1",
 			},
@@ -206,7 +206,7 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-no-bootcheck"},
-					{"pyocd-flashtool", "-ce"},
+					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -225,7 +225,7 @@ var tests = []struct {
 			},
 			{
 				commands: [][]string{
-					{"pyocd-tool", "reset"},
+					{"pyocd", "commander", "-c", "reset"},
 				},
 				expect: "Hello World from hello1",
 			},
@@ -237,7 +237,7 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-wrong-rsa"},
-					{"pyocd-flashtool", "-ce"},
+					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -256,7 +256,7 @@ var tests = []struct {
 			},
 			{
 				commands: [][]string{
-					{"pyocd-tool", "reset"},
+					{"pyocd", "commander", "-c", "reset"},
 				},
 				expect: "Hello World from hello1",
 			},
@@ -268,7 +268,7 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-wrong-ecdsa"},
-					{"pyocd-flashtool", "-ce"},
+					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -287,7 +287,7 @@ var tests = []struct {
 			},
 			{
 				commands: [][]string{
-					{"pyocd-tool", "reset"},
+					{"pyocd", "commander", "-c", "reset"},
 				},
 				expect: "Hello World from hello1",
 			},

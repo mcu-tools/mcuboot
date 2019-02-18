@@ -150,8 +150,8 @@ slot 0 and vice-versa.
 
 * Mass erase MCU
 
-        $ pyocd-flashtool -ce
+        $ pyocd erase --chip
 
 * Flashing image in slot 1:
 
-        $ pyocd-flashtool -se --address 0x80000 ${IMG_FILE} bin
+        $ pyocd flash -e sector -a 0x80000 ${IMG_FILE} bin
