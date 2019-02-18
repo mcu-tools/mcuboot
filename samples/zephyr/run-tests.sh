@@ -33,7 +33,7 @@ set -e
 echo '--------------------------------------------------------'
 echo '------------------------ GOOD RSA ----------------------'
 make test-good-rsa
-pyocd-flashtool -ce
+pyocd erase --chip
 echo "Flashing bootloader"
 make flash_boot
 echo "Expected result: unable to find bootable image"
@@ -47,14 +47,14 @@ make flash_hello2
 echo "Expected result: hello2 runs"
 ok_yn
 echo "Resetting"
-pyocd-tool reset
+pyocd commander -c reset
 echo "Expected result: hello1 runs"
 ok_yn
 
 echo '--------------------------------------------------------'
 echo '------------------------ GOOD ECDSA --------------------'
 make test-good-ecdsa
-pyocd-flashtool -ce
+pyocd erase --chip
 make flash_boot
 echo "Expected result: unable to find bootable image"
 ok_yn
@@ -67,14 +67,14 @@ make flash_hello2
 echo "Expected result: hello2 runs"
 ok_yn
 echo "Resetting"
-pyocd-tool reset
+pyocd commander -c reset
 echo "Expected result: hello1 runs"
 ok_yn
 
 echo '--------------------------------------------------------'
 echo '------------------------ OVERWRITE ---------------------'
 make test-overwrite
-pyocd-flashtool -ce
+pyocd erase --chip
 make flash_boot
 echo "Expected result: unable to find bootable image"
 ok_yn
@@ -87,14 +87,14 @@ make flash_hello2
 echo "Expected result: hello2 runs"
 ok_yn
 echo "Resetting"
-pyocd-tool reset
+pyocd commander -c reset
 echo "Expected result: hello2 runs"
 ok_yn
 
 echo '--------------------------------------------------------'
 echo '------------------------ BAD RSA -----------------------'
 make test-bad-rsa-upgrade
-pyocd-flashtool -ce
+pyocd erase --chip
 make flash_boot
 echo "Expected result: unable to find bootable image"
 ok_yn
@@ -107,14 +107,14 @@ make flash_hello2
 echo "Expected result: hello1 runs"
 ok_yn
 echo "Resetting"
-pyocd-tool reset
+pyocd commander -c reset
 echo "Expected result: hello1 runs"
 ok_yn
 
 echo '--------------------------------------------------------'
 echo '------------------------ BAD ECDSA ---------------------'
 make test-bad-ecdsa-upgrade
-pyocd-flashtool -ce
+pyocd erase --chip
 make flash_boot
 echo "Expected result: unable to find bootable image"
 ok_yn
@@ -127,14 +127,14 @@ make flash_hello2
 echo "Expected result: hello1 runs"
 ok_yn
 echo "Resetting"
-pyocd-tool reset
+pyocd commander -c reset
 echo "Expected result: hello1 runs"
 ok_yn
 
 echo '--------------------------------------------------------'
 echo '------------------------ NO BOOTCHECK ------------------'
 make test-no-bootcheck
-pyocd-flashtool -ce
+pyocd erase --chip
 make flash_boot
 echo "Expected result: unable to find bootable image"
 ok_yn
@@ -147,14 +147,14 @@ make flash_hello2
 echo "Expected result: hello1 runs"
 ok_yn
 echo "Resetting"
-pyocd-tool reset
+pyocd commander -c reset
 echo "Expected result: hello1 runs"
 ok_yn
 
 echo '--------------------------------------------------------'
 echo '------------------------ WRONG RSA ---------------------'
 make test-wrong-rsa
-pyocd-flashtool -ce
+pyocd erase --chip
 make flash_boot
 echo "Expected result: unable to find bootable image"
 ok_yn
@@ -167,14 +167,14 @@ make flash_hello2
 echo "Expected result: hello1 runs"
 ok_yn
 echo "Resetting"
-pyocd-tool reset
+pyocd commander -c reset
 echo "Expected result: hello1 runs"
 ok_yn
 
 echo '--------------------------------------------------------'
 echo '------------------------ WRONG ECDSA -------------------'
 make test-wrong-ecdsa
-pyocd-flashtool -ce
+pyocd erase --chip
 make flash_boot
 echo "Expected result: unable to find bootable image"
 ok_yn
@@ -187,7 +187,7 @@ make flash_hello2
 echo "Expected result: hello1 runs"
 ok_yn
 echo "Resetting"
-pyocd-tool reset
+pyocd commander -c reset
 echo "Expected result: hello1 runs"
 ok_yn
 

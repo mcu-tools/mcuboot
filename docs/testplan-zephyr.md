@@ -20,7 +20,7 @@ target:
 
 Begin by doing a full erase, and programming the bootloader itself:
 
-    $ pyocd-flashtool -ce
+    $ pyocd erase --chip
     $ make flash_boot
 
 After it resets, look for "main: Starting bootloader", a few debug
@@ -44,7 +44,7 @@ you should see "hello2".
 
 Now reset the target::
 
-    $ pyocd-tool reset
+    $ pyocd commander -c reset
 
 And you should see a revert and "hello1" running.
 
@@ -58,8 +58,8 @@ revert doesn't happen:
 
 We should have just booted the hello2.  Mark this as OK:
 
-    $ pyocd-flashtool -a 0x7ffe8 image_ok.bin
-    $ pyocd-tool reset
+    $ pyocd flash -a 0x7ffe8 image_ok.bin
+    $ pyocd commander -c reset
 
 And make sure this stays in the "hello2" image.
 

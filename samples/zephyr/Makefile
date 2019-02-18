@@ -75,7 +75,7 @@ FLASH_ALIGNMENT = 8
 
 IMGTOOL = ../../scripts/imgtool.py
 ASSEMBLE = ../../scripts/assemble.py
-PYOCD_FLASHTOOL = pyocd-flashtool
+PYOCD = pyocd
 
 SOURCE_DIRECTORY := $(CURDIR)
 BUILD_DIRECTORY := $(CURDIR)/build/$(BOARD)
@@ -166,16 +166,16 @@ clean_hello2: check
 # are hardcoded at this time.
 
 flash_boot:
-	$(PYOCD_FLASHTOOL) -ce -a 0 mcuboot.bin
+	$(PYOCD) flash -e chip -a 0 mcuboot.bin
 
 flash_hello1:
-	$(PYOCD_FLASHTOOL) -a 0x20000 signed-hello1.bin
+	$(PYOCD) flash -a 0x20000 signed-hello1.bin
 
 flash_hello2:
-	$(PYOCD_FLASHTOOL) -a 0x80000 signed-hello2.bin
+	$(PYOCD) flash -a 0x80000 signed-hello2.bin
 
 flash_full:
-	$(PYOCD_FLASHTOOL) -ce -a 0 full.bin
+	$(PYOCD) flash -e chip -a 0 full.bin
 
 # These test- targets reinvoke make with the configuration set to test
 # various configurations.  This will generally be followed by using
