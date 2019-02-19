@@ -588,7 +588,11 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
         if (len != *out_off - sizeof(uint16_t)) {
             return 0;
         }
-        len = min(len, *out_off - sizeof(uint16_t));
+
+        if (len > *out_off - sizeof(uint16_t)) {
+            len = *out_off - sizeof(uint16_t);
+        }
+
         out += sizeof(uint16_t);
 #ifdef __ZEPHYR__
         crc = crc16(out, len, CRC_CITT_POLYMINAL, CRC16_INITIAL_CRC, true);
