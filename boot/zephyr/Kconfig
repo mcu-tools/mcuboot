@@ -122,6 +122,17 @@ config BOOT_ERASE_PROGRESSIVELY
 	 on some hardware that has long erase times, to prevent long wait
 	 times at the beginning of the DFU process.
 
+config BOOT_WAIT_FOR_USB_DFU
+	bool "Wait for a prescribed duration to see if USB DFU is invoked"
+	default n
+	select USB
+	select USB_DFU_CLASS
+	select IMG_MANAGER
+	help
+	  If y, MCUboot waits for a prescribed duration of time to allow
+	  for USB DFU to be invoked. Please note DFU always updates the
+	  slot1 image.
+
 config ZEPHYR_TRY_MASS_ERASE
 	bool "Try to mass erase flash when flashing MCUboot image"
 	default y
