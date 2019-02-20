@@ -15,6 +15,7 @@ enc-rsa = ["mcuboot-sys/enc-rsa"]
 enc-kw = ["mcuboot-sys/enc-kw"]
 bootstrap = ["mcuboot-sys/bootstrap"]
 suit-manifest = ["mcuboot-sys/suit-manifest"]
+multiimage = ["mcuboot-sys/multiimage"]
 
 [dependencies]
 byteorder = "1.2"

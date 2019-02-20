@@ -36,6 +36,9 @@ bootstrap = []
 # Enable SUIT support
 suit-manifest = []
 
+# Support multiple images (currently 2 instead of 1).
+multiimage = []
+
 [build-dependencies]
 cc = "1.0.25"
 
