@@ -40,6 +40,10 @@ const struct boot_uart_funcs boot_funcs = {
 };
 #endif
 
+#ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
+#include <usb/class/usb_dfu.h>
+#endif
+
 MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
 
 void os_heap_init(void);
@@ -195,6 +199,12 @@ void main(void)
         boot_serial_start(&boot_funcs);
         __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
     }
+#endif
+
+#ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
+    BOOT_LOG_INF("Waiting for USB DFU");
+    wait_for_usb_dfu();
+    BOOT_LOG_INF("USB DFU wait time elapsed");
 #endif
 
     rc = boot_go(&rsp);
