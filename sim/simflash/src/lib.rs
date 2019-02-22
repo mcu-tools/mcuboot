@@ -3,10 +3,10 @@
 //! This module is capable of simulating the type of NOR flash commonly used in microcontrollers.
 //! These generally can be written as individual bytes, but must be erased in larger units.
 
-#[macro_use] extern crate error_chain;
 mod pdump;
 
 use crate::pdump::HexDump;
+use failure::Fail;
 use log::info;
 use rand::{
     self,
@@ -15,27 +15,35 @@ use rand::{
 use std::{
     collections::HashMap,
     fs::File,
-    io::Write,
+    io::{self, Write},
     iter::Enumerate,
     path::Path,
     slice,
 };
 
-error_chain! {
-    errors {
-        OutOfBounds(t: String) {
-            description("Offset is out of bounds")
-            display("Offset out of bounds: {}", t)
-        }
-        Write(t: String) {
-            description("Invalid write")
-            display("Invalid write: {}", t)
-        }
-        SimulatedFail(t: String) {
-            description("Write failed by chance")
-            display("Failed write: {}", t)
-        }
+pub type Result<T> = std::result::Result<T, FlashError>;
+
+#[derive(Fail, Debug)]
+pub enum FlashError {
+    #[fail(display = "Offset out of bounds: {}", _0)]
+    OutOfBounds(String),
+    #[fail(display = "Invalid write: {}", _0)]
+    Write(String),
+    #[fail(display = "Write failed by chance: {}", _0)]
+    SimulatedFail(String),
+    #[fail(display = "{}", _0)]
+    Io(#[cause] io::Error),
+}
+
+impl From<io::Error> for FlashError {
+    fn from(error: io::Error) -> Self {
+        FlashError::Io(error)
     }
+}
+
+// Transition from error-chain.
+macro_rules! bail {
+    ($item:expr) => (return Err($item.into());)
 }
 
 pub struct FlashPtr {
@@ -60,18 +68,18 @@ pub trait Flash {
     fn erased_val(&self) -> u8;
 }
 
-fn ebounds<T: AsRef<str>>(message: T) -> ErrorKind {
-    ErrorKind::OutOfBounds(message.as_ref().to_owned())
+fn ebounds<T: AsRef<str>>(message: T) -> FlashError {
+    FlashError::OutOfBounds(message.as_ref().to_owned())
 }
 
 #[allow(dead_code)]
-fn ewrite<T: AsRef<str>>(message: T) -> ErrorKind {
-    ErrorKind::Write(message.as_ref().to_owned())
+fn ewrite<T: AsRef<str>>(message: T) -> FlashError {
+    FlashError::Write(message.as_ref().to_owned())
 }
 
 #[allow(dead_code)]
-fn esimulatedwrite<T: AsRef<str>>(message: T) -> ErrorKind {
-    ErrorKind::SimulatedFail(message.as_ref().to_owned())
+fn esimulatedwrite<T: AsRef<str>>(message: T) -> FlashError {
+    FlashError::SimulatedFail(message.as_ref().to_owned())
 }
 
 /// An emulated flash device.  It is represented as a block of bytes, and a list of the sector
@@ -115,8 +123,8 @@ impl SimFlash {
     /// Dump this image to the given file.
     #[allow(dead_code)]
     pub fn write_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let mut fd = File::create(path).chain_err(|| "Unable to write image file")?;
-        fd.write_all(&self.data).chain_err(|| "Unable to write to image file")?;
+        let mut fd = File::create(path)?;
+        fd.write_all(&self.data)?;
         Ok(())
     }
 
@@ -298,7 +306,7 @@ impl<'a> Iterator for SectorIter<'a> {
 
 #[cfg(test)]
 mod test {
-    use super::{Flash, SimFlash, Error, ErrorKind, Result, Sector};
+    use super::{Flash, FlashError, SimFlash, Result, Sector};
 
     #[test]
     fn test_flash() {
@@ -361,7 +369,7 @@ mod test {
 
         fn is_bounds(&self) -> bool {
             match *self {
-                Err(Error(ErrorKind::OutOfBounds(_), _)) => true,
+                Err(FlashError::OutOfBounds(_)) => true,
                 _ => false,
             }
         }
