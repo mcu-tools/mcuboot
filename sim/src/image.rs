@@ -39,12 +39,20 @@ pub struct ImagesBuilder {
 /// The flashmap holds the state of the simulated flash, whereas primaries
 /// and upgrades hold the expected contents of these images.
 pub struct Images {
-    pub flashmap: SimFlashMap,
-    pub areadesc: AreaDesc,
-    pub slots: [SlotInfo; 2],
-    pub primaries: [Option<Vec<u8>>; 2],
-    pub upgrades: [Option<Vec<u8>>; 2],
-    pub total_count: Option<i32>,
+    flashmap: SimFlashMap,
+    areadesc: AreaDesc,
+    slots: [SlotInfo; 2],
+    primaries: ImageData,
+    upgrades: ImageData,
+    total_count: Option<i32>,
+}
+
+/// The Rust-side representation of an image.  For unencrypted images, this
+/// is just the unencrypted payload.  For encrypted images, we store both
+/// the encrypted and the plaintext.
+struct ImageData {
+    plain: Vec<u8>,
+    cipher: Option<Vec<u8>>,
 }
 
 impl ImagesBuilder {
@@ -864,8 +872,8 @@ fn show_flash(flash: &dyn Flash) {
 
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
 /// fields used by the given code.  Returns a copy of the image that was written.
-pub fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize, len: usize,
-                 bad_sig: bool) -> [Option<Vec<u8>>; 2] {
+fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize, len: usize,
+                 bad_sig: bool) -> ImageData {
     let offset = slots[slot].base_off;
     let slot_len = slots[slot].len;
     let dev_id = slots[slot].dev_id;
@@ -942,8 +950,6 @@ pub fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize
         encbuf.append(&mut b_tlv);
     }
 
-    let result: [Option<Vec<u8>>; 2];
-
     // Since images are always non-encrypted in the primary slot, we first write
     // an encrypted image, re-read to use for verification, erase + flash
     // un-encrypted. In the secondary slot the image is written un-encrypted,
@@ -972,7 +978,10 @@ pub fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize
         let mut copy = vec![0u8; buf.len()];
         flash.read(offset, &mut copy).unwrap();
 
-        result = [Some(copy), enc_copy];
+        ImageData {
+            plain: copy,
+            cipher: enc_copy,
+        }
     } else {
 
         flash.write(offset, &buf).unwrap();
@@ -995,10 +1004,11 @@ pub fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize
             enc_copy = None;
         }
 
-        result = [Some(copy), enc_copy];
+        ImageData {
+            plain: copy,
+            cipher: enc_copy,
+        }
     }
-
-    result
 }
 
 fn make_tlv() -> TlvGen {
@@ -1032,23 +1042,24 @@ fn make_tlv() -> TlvGen {
     }
 }
 
-fn find_image(images: &[Option<Vec<u8>>; 2], slot: usize) -> &Vec<u8> {
-    let slot = if Caps::EncRsa.present() || Caps::EncKw.present() {
-        slot
-    } else {
-        0
-    };
-
-    match &images[slot] {
-        Some(image) => return image,
-        None => panic!("Invalid image"),
+impl ImageData {
+    /// Find the image contents for the given slot.  This assumes that slot 0
+    /// is unencrypted, and slot 1 is encrypted.
+    fn find(&self, slot: usize) -> &Vec<u8> {
+        let encrypted = Caps::EncRsa.present() || Caps::EncKw.present();
+        match (encrypted, slot) {
+            (false, _) => &self.plain,
+            (true, 0) => &self.plain,
+            (true, 1) => self.cipher.as_ref().expect("Invalid image"),
+            _ => panic!("Invalid slot requested"),
+        }
     }
 }
 
 /// Verify that given image is present in the flash at the given offset.
 fn verify_image(flashmap: &SimFlashMap, slots: &[SlotInfo], slot: usize,
-                images: &[Option<Vec<u8>>; 2]) -> bool {
-    let image = find_image(images, slot);
+                images: &ImageData) -> bool {
+    let image = images.find(slot);
     let buf = image.as_slice();
     let dev_id = slots[slot].dev_id;
 
