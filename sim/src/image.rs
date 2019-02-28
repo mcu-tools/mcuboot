@@ -16,7 +16,7 @@ use aes_ctr::{
     },
 };
 
-use simflash::{Flash, SimFlash, SimFlashMap};
+use simflash::{Flash, SimFlash, SimMultiFlash};
 use mcuboot_sys::{c, AreaDesc, FlashId};
 use crate::{
     ALL_DEVICES,
@@ -31,16 +31,16 @@ use crate::tlv::{ManifestGen, TlvGen, TlvFlags, AES_SEC_KEY};
 /// the flash simulator(s) and the information about the slots.
 #[derive(Clone)]
 pub struct ImagesBuilder {
-    flashmap: SimFlashMap,
+    multiflash: SimMultiFlash,
     areadesc: AreaDesc,
     slots: [SlotInfo; 2],
 }
 
 /// Images represents the state of a simulation for a given set of images.
-/// The flashmap holds the state of the simulated flash, whereas primaries
+/// The multiflash holds the state of the simulated flash, whereas primaries
 /// and upgrades hold the expected contents of these images.
 pub struct Images {
-    flashmap: SimFlashMap,
+    multiflash: SimMultiFlash,
     areadesc: AreaDesc,
     slots: [SlotInfo; 2],
     primaries: ImageData,
@@ -58,7 +58,7 @@ struct ImageData {
 
 impl ImagesBuilder {
     pub fn new(device: DeviceName, align: u8, erased_val: u8) -> Self {
-        let (flashmap, areadesc) = Self::make_device(device, align, erased_val);
+        let (multiflash, areadesc) = Self::make_device(device, align, erased_val);
 
         let (slot0_base, slot0_len, slot0_dev_id) = areadesc.find(FlashId::Image0);
         let (slot1_base, slot1_len, slot1_dev_id) = areadesc.find(FlashId::Image1);
@@ -83,7 +83,7 @@ impl ImagesBuilder {
         };
 
         ImagesBuilder {
-            flashmap: flashmap,
+            multiflash: multiflash,
             areadesc: areadesc,
             slots: [slot0, slot1],
         }
@@ -104,11 +104,11 @@ impl ImagesBuilder {
 
     /// Construct an `Images` that doesn't expect an upgrade to happen.
     pub fn make_no_upgrade_image(self) -> Images {
-        let mut flashmap = self.flashmap;
-        let primaries = install_image(&mut flashmap, &self.slots, 0, 32784, false);
-        let upgrades = install_image(&mut flashmap, &self.slots, 1, 41928, false);
+        let mut multiflash = self.multiflash;
+        let primaries = install_image(&mut multiflash, &self.slots, 0, 32784, false);
+        let upgrades = install_image(&mut multiflash, &self.slots, 1, 41928, false);
         Images {
-            flashmap: flashmap,
+            multiflash: multiflash,
             areadesc: self.areadesc,
             slots: self.slots,
             primaries: primaries,
@@ -120,7 +120,7 @@ impl ImagesBuilder {
     /// Construct an `Images` for normal testing.
     pub fn make_image(self) -> Images {
         let mut images = self.make_no_upgrade_image();
-        mark_upgrade(&mut images.flashmap, &images.slots[1]);
+        mark_upgrade(&mut images.multiflash, &images.slots[1]);
 
         // upgrades without fails, counts number of flash operations
         let total_count = match images.run_basic_upgrade() {
@@ -135,11 +135,11 @@ impl ImagesBuilder {
     }
 
     pub fn make_bad_slot1_image(self) -> Images {
-        let mut bad_flashmap = self.flashmap;
-        let primaries = install_image(&mut bad_flashmap, &self.slots, 0, 32784, false);
-        let upgrades = install_image(&mut bad_flashmap, &self.slots, 1, 41928, true);
+        let mut bad_multiflash = self.multiflash;
+        let primaries = install_image(&mut bad_multiflash, &self.slots, 0, 32784, false);
+        let upgrades = install_image(&mut bad_multiflash, &self.slots, 1, 41928, true);
         Images {
-            flashmap: bad_flashmap,
+            multiflash: bad_multiflash,
             areadesc: self.areadesc,
             slots: self.slots,
             primaries: primaries,
@@ -149,7 +149,7 @@ impl ImagesBuilder {
     }
 
     /// Build the Flash and area descriptor for a given device.
-    pub fn make_device(device: DeviceName, align: u8, erased_val: u8) -> (SimFlashMap, AreaDesc) {
+    pub fn make_device(device: DeviceName, align: u8, erased_val: u8) -> (SimMultiFlash, AreaDesc) {
         match device {
             DeviceName::Stm32f4 => {
                 // STM style flash.  Large sectors, with a large scratch area.
@@ -164,9 +164,9 @@ impl ImagesBuilder {
                 areadesc.add_image(0x040000, 0x020000, FlashId::Image1, dev_id);
                 areadesc.add_image(0x060000, 0x020000, FlashId::ImageScratch, dev_id);
 
-                let mut flashmap = SimFlashMap::new();
-                flashmap.insert(dev_id, flash);
-                (flashmap, areadesc)
+                let mut multiflash = SimMultiFlash::new();
+                multiflash.insert(dev_id, flash);
+                (multiflash, areadesc)
             }
             DeviceName::K64f => {
                 // NXP style flash.  Small sectors, one small sector for scratch.
@@ -179,9 +179,9 @@ impl ImagesBuilder {
                 areadesc.add_image(0x040000, 0x020000, FlashId::Image1, dev_id);
                 areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch, dev_id);
 
-                let mut flashmap = SimFlashMap::new();
-                flashmap.insert(dev_id, flash);
-                (flashmap, areadesc)
+                let mut multiflash = SimMultiFlash::new();
+                multiflash.insert(dev_id, flash);
+                (multiflash, areadesc)
             }
             DeviceName::K64fBig => {
                 // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
@@ -195,9 +195,9 @@ impl ImagesBuilder {
                 areadesc.add_simple_image(0x040000, 0x020000, FlashId::Image1, dev_id);
                 areadesc.add_simple_image(0x060000, 0x020000, FlashId::ImageScratch, dev_id);
 
-                let mut flashmap = SimFlashMap::new();
-                flashmap.insert(dev_id, flash);
-                (flashmap, areadesc)
+                let mut multiflash = SimMultiFlash::new();
+                multiflash.insert(dev_id, flash);
+                (multiflash, areadesc)
             }
             DeviceName::Nrf52840 => {
                 // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
@@ -211,9 +211,9 @@ impl ImagesBuilder {
                 areadesc.add_image(0x03c000, 0x034000, FlashId::Image1, dev_id);
                 areadesc.add_image(0x070000, 0x00d000, FlashId::ImageScratch, dev_id);
 
-                let mut flashmap = SimFlashMap::new();
-                flashmap.insert(dev_id, flash);
-                (flashmap, areadesc)
+                let mut multiflash = SimMultiFlash::new();
+                multiflash.insert(dev_id, flash);
+                (multiflash, areadesc)
             }
             DeviceName::Nrf52840SpiFlash => {
                 // Simulate nrf52840 with external SPI flash. The external SPI flash
@@ -229,10 +229,10 @@ impl ImagesBuilder {
                 areadesc.add_image(0x000000, 0x068000, FlashId::Image1, 1);
                 areadesc.add_image(0x068000, 0x018000, FlashId::ImageScratch, 1);
 
-                let mut flashmap = SimFlashMap::new();
-                flashmap.insert(0, flash0);
-                flashmap.insert(1, flash1);
-                (flashmap, areadesc)
+                let mut multiflash = SimMultiFlash::new();
+                multiflash.insert(0, flash0);
+                multiflash.insert(1, flash1);
+                (multiflash, areadesc)
             }
         }
     }
@@ -244,10 +244,10 @@ impl Images {
     /// Returns the number of flash operations which can later be used to
     /// inject failures at chosen steps.
     pub fn run_basic_upgrade(&self) -> Result<i32, ()> {
-        let (flashmap, total_count) = try_upgrade(&self.flashmap, &self, None);
+        let (multiflash, total_count) = try_upgrade(&self.multiflash, &self, None);
         info!("Total flash operation count={}", total_count);
 
-        if !verify_image(&flashmap, &self.slots, 0, &self.upgrades) {
+        if !verify_image(&multiflash, &self.slots, 0, &self.upgrades) {
             warn!("Image mismatch after first boot");
             Err(())
         } else {
@@ -266,8 +266,8 @@ impl Images {
         if Caps::SwapUpgrade.present() {
             for count in 2 .. 5 {
                 info!("Try revert: {}", count);
-                let flashmap = try_revert(&self.flashmap, &self.areadesc, count);
-                if !verify_image(&flashmap, &self.slots, 0, &self.primaries) {
+                let multiflash = try_revert(&self.multiflash, &self.areadesc, count);
+                if !verify_image(&multiflash, &self.slots, 0, &self.primaries) {
                     error!("Revert failure on count {}", count);
                     fails += 1;
                 }
@@ -284,27 +284,27 @@ impl Images {
         // Let's try an image halfway through.
         for i in 1 .. total_flash_ops {
             info!("Try interruption at {}", i);
-            let (flashmap, count) = try_upgrade(&self.flashmap, &self, Some(i));
+            let (multiflash, count) = try_upgrade(&self.multiflash, &self, Some(i));
             info!("Second boot, count={}", count);
-            if !verify_image(&flashmap, &self.slots, 0, &self.upgrades) {
+            if !verify_image(&multiflash, &self.slots, 0, &self.upgrades) {
                 warn!("FAIL at step {} of {}", i, total_flash_ops);
                 fails += 1;
             }
 
-            if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
+            if !verify_trailer(&multiflash, &self.slots, 0, BOOT_MAGIC_GOOD,
                                BOOT_FLAG_SET, BOOT_FLAG_SET) {
                 warn!("Mismatched trailer for Slot 0");
                 fails += 1;
             }
 
-            if !verify_trailer(&flashmap, &self.slots, 1, BOOT_MAGIC_UNSET,
+            if !verify_trailer(&multiflash, &self.slots, 1, BOOT_MAGIC_UNSET,
                                BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
                 warn!("Mismatched trailer for Slot 1");
                 fails += 1;
             }
 
             if Caps::SwapUpgrade.present() {
-                if !verify_image(&flashmap, &self.slots, 1, &self.primaries) {
+                if !verify_image(&multiflash, &self.slots, 1, &self.primaries) {
                     warn!("Slot 1 FAIL at step {} of {}", i, total_flash_ops);
                     fails += 1;
                 }
@@ -326,13 +326,13 @@ impl Images {
     pub fn run_perm_with_random_fails(&self, total_fails: usize) -> bool {
         let mut fails = 0;
         let total_flash_ops = self.total_count.unwrap();
-        let (flashmap, total_counts) = try_random_fails(&self.flashmap, &self,
+        let (multiflash, total_counts) = try_random_fails(&self.multiflash, &self,
                                                         total_flash_ops, total_fails);
         info!("Random interruptions at reset points={:?}", total_counts);
 
-        let slot0_ok = verify_image(&flashmap, &self.slots, 0, &self.upgrades);
+        let slot0_ok = verify_image(&multiflash, &self.slots, 0, &self.upgrades);
         let slot1_ok = if Caps::SwapUpgrade.present() {
-            verify_image(&flashmap, &self.slots, 1, &self.primaries)
+            verify_image(&multiflash, &self.slots, 1, &self.primaries)
         } else {
             true
         };
@@ -342,12 +342,12 @@ impl Images {
                    if slot1_ok { "ok" } else { "fail" });
             fails += 1;
         }
-        if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
+        if !verify_trailer(&multiflash, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_SET) {
             error!("Mismatched trailer for Slot 0");
             fails += 1;
         }
-        if !verify_trailer(&flashmap, &self.slots, 1, BOOT_MAGIC_UNSET,
+        if !verify_trailer(&multiflash, &self.slots, 1, BOOT_MAGIC_UNSET,
                            BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             error!("Mismatched trailer for Slot 1");
             fails += 1;
@@ -370,7 +370,7 @@ impl Images {
         if Caps::SwapUpgrade.present() {
             for i in 1 .. (self.total_count.unwrap() - 1) {
                 info!("Try interruption at {}", i);
-                if try_revert_with_fail_at(&self.flashmap, &self, i) {
+                if try_revert_with_fail_at(&self.multiflash, &self, i) {
                     error!("Revert failed at interruption {}", i);
                     fails += 1;
                 }
@@ -385,13 +385,13 @@ impl Images {
             return false;
         }
 
-        let mut flashmap = self.flashmap.clone();
+        let mut multiflash = self.multiflash.clone();
         let mut fails = 0;
 
         info!("Try norevert");
 
         // First do a normal upgrade...
-        let (result, _) = c::boot_go(&mut flashmap, &self.areadesc, None, false);
+        let (result, _) = c::boot_go(&mut multiflash, &self.areadesc, None, false);
         if result != 0 {
             warn!("Failed first boot");
             fails += 1;
@@ -400,42 +400,42 @@ impl Images {
         //FIXME: copy_done is written by boot_go, is it ok if no copy
         //       was ever done?
 
-        if !verify_image(&flashmap, &self.slots, 0, &self.upgrades) {
+        if !verify_image(&multiflash, &self.slots, 0, &self.upgrades) {
             warn!("Slot 0 image verification FAIL");
             fails += 1;
         }
-        if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
+        if !verify_trailer(&multiflash, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
-        if !verify_trailer(&flashmap, &self.slots, 1, BOOT_MAGIC_UNSET,
+        if !verify_trailer(&multiflash, &self.slots, 1, BOOT_MAGIC_UNSET,
                            BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 1");
             fails += 1;
         }
 
         // Marks image in slot0 as permanent, no revert should happen...
-        mark_permanent_upgrade(&mut flashmap, &self.slots[0]);
+        mark_permanent_upgrade(&mut multiflash, &self.slots[0]);
 
-        if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
+        if !verify_trailer(&multiflash, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
 
-        let (result, _) = c::boot_go(&mut flashmap, &self.areadesc, None, false);
+        let (result, _) = c::boot_go(&mut multiflash, &self.areadesc, None, false);
         if result != 0 {
             warn!("Failed second boot");
             fails += 1;
         }
 
-        if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
+        if !verify_trailer(&multiflash, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
-        if !verify_image(&flashmap, &self.slots, 0, &self.upgrades) {
+        if !verify_image(&multiflash, &self.slots, 0, &self.upgrades) {
             warn!("Failed image verification");
             fails += 1;
         }
@@ -450,38 +450,38 @@ impl Images {
     // Tests a new image written to slot0 that already has magic and image_ok set
     // while there is no image on slot1, so no revert should ever happen...
     pub fn run_norevert_newimage(&self) -> bool {
-        let mut flashmap = self.flashmap.clone();
+        let mut multiflash = self.multiflash.clone();
         let mut fails = 0;
 
         info!("Try non-revert on imgtool generated image");
 
-        mark_upgrade(&mut flashmap, &self.slots[0]);
+        mark_upgrade(&mut multiflash, &self.slots[0]);
 
         // This simulates writing an image created by imgtool to Slot 0
-        if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
+        if !verify_trailer(&multiflash, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
 
         // Run the bootloader...
-        let (result, _) = c::boot_go(&mut flashmap, &self.areadesc, None, false);
+        let (result, _) = c::boot_go(&mut multiflash, &self.areadesc, None, false);
         if result != 0 {
             warn!("Failed first boot");
             fails += 1;
         }
 
         // State should not have changed
-        if !verify_image(&flashmap, &self.slots, 0, &self.primaries) {
+        if !verify_image(&multiflash, &self.slots, 0, &self.primaries) {
             warn!("Failed image verification");
             fails += 1;
         }
-        if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
+        if !verify_trailer(&multiflash, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
-        if !verify_trailer(&flashmap, &self.slots, 1, BOOT_MAGIC_UNSET,
+        if !verify_trailer(&multiflash, &self.slots, 1, BOOT_MAGIC_UNSET,
                            BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 1");
             fails += 1;
@@ -497,34 +497,34 @@ impl Images {
     // Tests a new image written to slot0 that already has magic and image_ok set
     // while there is no image on slot1, so no revert should ever happen...
     pub fn run_signfail_upgrade(&self) -> bool {
-        let mut flashmap = self.flashmap.clone();
+        let mut multiflash = self.multiflash.clone();
         let mut fails = 0;
 
         info!("Try upgrade image with bad signature");
 
-        mark_upgrade(&mut flashmap, &self.slots[0]);
-        mark_permanent_upgrade(&mut flashmap, &self.slots[0]);
-        mark_upgrade(&mut flashmap, &self.slots[1]);
+        mark_upgrade(&mut multiflash, &self.slots[0]);
+        mark_permanent_upgrade(&mut multiflash, &self.slots[0]);
+        mark_upgrade(&mut multiflash, &self.slots[1]);
 
-        if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
+        if !verify_trailer(&multiflash, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
 
         // Run the bootloader...
-        let (result, _) = c::boot_go(&mut flashmap, &self.areadesc, None, false);
+        let (result, _) = c::boot_go(&mut multiflash, &self.areadesc, None, false);
         if result != 0 {
             warn!("Failed first boot");
             fails += 1;
         }
 
         // State should not have changed
-        if !verify_image(&flashmap, &self.slots, 0, &self.primaries) {
+        if !verify_image(&multiflash, &self.slots, 0, &self.primaries) {
             warn!("Failed image verification");
             fails += 1;
         }
-        if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
+        if !verify_trailer(&multiflash, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
@@ -560,15 +560,15 @@ impl Images {
             return false;
         }
 
-        let mut flashmap = self.flashmap.clone();
+        let mut multiflash = self.multiflash.clone();
         let mut fails = 0;
 
         info!("Try swap with status fails");
 
-        mark_permanent_upgrade(&mut flashmap, &self.slots[1]);
-        self.mark_bad_status_with_rate(&mut flashmap, 0, 1.0);
+        mark_permanent_upgrade(&mut multiflash, &self.slots[1]);
+        self.mark_bad_status_with_rate(&mut multiflash, 0, 1.0);
 
-        let (result, asserts) = c::boot_go(&mut flashmap, &self.areadesc, None, true);
+        let (result, asserts) = c::boot_go(&mut multiflash, &self.areadesc, None, true);
         if result != 0 {
             warn!("Failed!");
             fails += 1;
@@ -581,19 +581,19 @@ impl Images {
             fails += 1;
         }
 
-        if !verify_trailer(&flashmap, &self.slots, 0, BOOT_MAGIC_GOOD,
+        if !verify_trailer(&multiflash, &self.slots, 0, BOOT_MAGIC_GOOD,
                            BOOT_FLAG_SET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for Slot 0");
             fails += 1;
         }
 
-        if !verify_image(&flashmap, &self.slots, 0, &self.upgrades) {
+        if !verify_image(&multiflash, &self.slots, 0, &self.upgrades) {
             warn!("Failed image verification");
             fails += 1;
         }
 
         info!("validate slot0 enabled; re-run of boot_go should just work");
-        let (result, _) = c::boot_go(&mut flashmap, &self.areadesc, None, false);
+        let (result, _) = c::boot_go(&mut multiflash, &self.areadesc, None, false);
         if result != 0 {
             warn!("Failed!");
             fails += 1;
@@ -614,7 +614,7 @@ impl Images {
             false
         } else if Caps::ValidateSlot0.present() {
 
-            let mut flashmap = self.flashmap.clone();
+            let mut multiflash = self.multiflash.clone();
             let mut fails = 0;
             let mut count = self.total_count.unwrap() / 2;
 
@@ -622,20 +622,20 @@ impl Images {
 
             info!("Try interrupted swap with status fails");
 
-            mark_permanent_upgrade(&mut flashmap, &self.slots[1]);
-            self.mark_bad_status_with_rate(&mut flashmap, 0, 0.5);
+            mark_permanent_upgrade(&mut multiflash, &self.slots[1]);
+            self.mark_bad_status_with_rate(&mut multiflash, 0, 0.5);
 
             // Should not fail, writing to bad regions does not assert
-            let (_, asserts) = c::boot_go(&mut flashmap, &self.areadesc, Some(&mut count), true);
+            let (_, asserts) = c::boot_go(&mut multiflash, &self.areadesc, Some(&mut count), true);
             if asserts != 0 {
                 warn!("At least one assert() was called");
                 fails += 1;
             }
 
-            self.reset_bad_status(&mut flashmap, 0);
+            self.reset_bad_status(&mut multiflash, 0);
 
             info!("Resuming an interrupted swap operation");
-            let (_, asserts) = c::boot_go(&mut flashmap, &self.areadesc, None, true);
+            let (_, asserts) = c::boot_go(&mut multiflash, &self.areadesc, None, true);
 
             // This might throw no asserts, for large sector devices, where
             // a single failure writing is indistinguishable from no failure,
@@ -652,16 +652,16 @@ impl Images {
 
             fails > 0
         } else {
-            let mut flashmap = self.flashmap.clone();
+            let mut multiflash = self.multiflash.clone();
             let mut fails = 0;
 
             info!("Try interrupted swap with status fails");
 
-            mark_permanent_upgrade(&mut flashmap, &self.slots[1]);
-            self.mark_bad_status_with_rate(&mut flashmap, 0, 1.0);
+            mark_permanent_upgrade(&mut multiflash, &self.slots[1]);
+            self.mark_bad_status_with_rate(&mut multiflash, 0, 1.0);
 
             // This is expected to fail while writing to bad regions...
-            let (_, asserts) = c::boot_go(&mut flashmap, &self.areadesc, None, true);
+            let (_, asserts) = c::boot_go(&mut multiflash, &self.areadesc, None, true);
             if asserts == 0 {
                 warn!("No assert() detected");
                 fails += 1;
@@ -672,14 +672,14 @@ impl Images {
     }
 
     /// Adds a new flash area that fails statistically
-    fn mark_bad_status_with_rate(&self, flashmap: &mut SimFlashMap, slot: usize,
+    fn mark_bad_status_with_rate(&self, multiflash: &mut SimMultiFlash, slot: usize,
                                  rate: f32) {
         if Caps::OverwriteUpgrade.present() {
             return;
         }
 
         let dev_id = &self.slots[slot].dev_id;
-        let flash = flashmap.get_mut(&dev_id).unwrap();
+        let flash = multiflash.get_mut(&dev_id).unwrap();
         let align = flash.align();
         let off = &self.slots[0].base_off;
         let len = &self.slots[0].len;
@@ -689,13 +689,13 @@ impl Images {
         let _ = flash.add_bad_region(status_off, self.status_sz(align), rate);
     }
 
-    fn reset_bad_status(&self, flashmap: &mut SimFlashMap, slot: usize) {
+    fn reset_bad_status(&self, multiflash: &mut SimMultiFlash, slot: usize) {
         if !Caps::ValidateSlot0.present() {
             return;
         }
 
         let dev_id = &self.slots[slot].dev_id;
-        let flash = flashmap.get_mut(&dev_id).unwrap();
+        let flash = multiflash.get_mut(&dev_id).unwrap();
         flash.reset_bad_regions();
 
         // Disabling write verification the only assert triggered by
@@ -707,16 +707,16 @@ impl Images {
 
 /// Test a boot, optionally stopping after 'n' flash options.  Returns a count
 /// of the number of flash operations done total.
-fn try_upgrade(flashmap: &SimFlashMap, images: &Images,
-               stop: Option<i32>) -> (SimFlashMap, i32) {
+fn try_upgrade(multiflash: &SimMultiFlash, images: &Images,
+               stop: Option<i32>) -> (SimMultiFlash, i32) {
     // Clone the flash to have a new copy.
-    let mut flashmap = flashmap.clone();
+    let mut multiflash = multiflash.clone();
 
-    mark_permanent_upgrade(&mut flashmap, &images.slots[1]);
+    mark_permanent_upgrade(&mut multiflash, &images.slots[1]);
 
     let mut counter = stop.unwrap_or(0);
 
-    let (first_interrupted, count) = match c::boot_go(&mut flashmap, &images.areadesc, Some(&mut counter), false) {
+    let (first_interrupted, count) = match c::boot_go(&mut multiflash, &images.areadesc, Some(&mut counter), false) {
         (-0x13579, _) => (true, stop.unwrap()),
         (0, _) => (false, -counter),
         (x, _) => panic!("Unknown return: {}", x),
@@ -725,90 +725,90 @@ fn try_upgrade(flashmap: &SimFlashMap, images: &Images,
     counter = 0;
     if first_interrupted {
         // fl.dump();
-        match c::boot_go(&mut flashmap, &images.areadesc, Some(&mut counter), false) {
+        match c::boot_go(&mut multiflash, &images.areadesc, Some(&mut counter), false) {
             (-0x13579, _) => panic!("Shouldn't stop again"),
             (0, _) => (),
             (x, _) => panic!("Unknown return: {}", x),
         }
     }
 
-    (flashmap, count - counter)
+    (multiflash, count - counter)
 }
 
-fn try_revert(flashmap: &SimFlashMap, areadesc: &AreaDesc, count: usize) -> SimFlashMap {
-    let mut flashmap = flashmap.clone();
+fn try_revert(multiflash: &SimMultiFlash, areadesc: &AreaDesc, count: usize) -> SimMultiFlash {
+    let mut multiflash = multiflash.clone();
 
     // fl.write_file("image0.bin").unwrap();
     for i in 0 .. count {
         info!("Running boot pass {}", i + 1);
-        assert_eq!(c::boot_go(&mut flashmap, &areadesc, None, false), (0, 0));
+        assert_eq!(c::boot_go(&mut multiflash, &areadesc, None, false), (0, 0));
     }
-    flashmap
+    multiflash
 }
 
-fn try_revert_with_fail_at(flashmap: &SimFlashMap, images: &Images,
+fn try_revert_with_fail_at(multiflash: &SimMultiFlash, images: &Images,
                            stop: i32) -> bool {
-    let mut flashmap = flashmap.clone();
+    let mut multiflash = multiflash.clone();
     let mut fails = 0;
 
     let mut counter = stop;
-    let (x, _) = c::boot_go(&mut flashmap, &images.areadesc, Some(&mut counter), false);
+    let (x, _) = c::boot_go(&mut multiflash, &images.areadesc, Some(&mut counter), false);
     if x != -0x13579 {
         warn!("Should have stopped at interruption point");
         fails += 1;
     }
 
-    if !verify_trailer(&flashmap, &images.slots, 0, None, None, BOOT_FLAG_UNSET) {
+    if !verify_trailer(&multiflash, &images.slots, 0, None, None, BOOT_FLAG_UNSET) {
         warn!("copy_done should be unset");
         fails += 1;
     }
 
-    let (x, _) = c::boot_go(&mut flashmap, &images.areadesc, None, false);
+    let (x, _) = c::boot_go(&mut multiflash, &images.areadesc, None, false);
     if x != 0 {
         warn!("Should have finished upgrade");
         fails += 1;
     }
 
-    if !verify_image(&flashmap, &images.slots, 0, &images.upgrades) {
+    if !verify_image(&multiflash, &images.slots, 0, &images.upgrades) {
         warn!("Image in slot 0 before revert is invalid at stop={}", stop);
         fails += 1;
     }
-    if !verify_image(&flashmap, &images.slots, 1, &images.primaries) {
+    if !verify_image(&multiflash, &images.slots, 1, &images.primaries) {
         warn!("Image in slot 1 before revert is invalid at stop={}", stop);
         fails += 1;
     }
-    if !verify_trailer(&flashmap, &images.slots, 0, BOOT_MAGIC_GOOD,
+    if !verify_trailer(&multiflash, &images.slots, 0, BOOT_MAGIC_GOOD,
                        BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
         warn!("Mismatched trailer for Slot 0 before revert");
         fails += 1;
     }
-    if !verify_trailer(&flashmap, &images.slots, 1, BOOT_MAGIC_UNSET,
+    if !verify_trailer(&multiflash, &images.slots, 1, BOOT_MAGIC_UNSET,
                        BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
         warn!("Mismatched trailer for Slot 1 before revert");
         fails += 1;
     }
 
     // Do Revert
-    let (x, _) = c::boot_go(&mut flashmap, &images.areadesc, None, false);
+    let (x, _) = c::boot_go(&mut multiflash, &images.areadesc, None, false);
     if x != 0 {
         warn!("Should have finished a revert");
         fails += 1;
     }
 
-    if !verify_image(&flashmap, &images.slots, 0, &images.primaries) {
+    if !verify_image(&multiflash, &images.slots, 0, &images.primaries) {
         warn!("Image in slot 0 after revert is invalid at stop={}", stop);
         fails += 1;
     }
-    if !verify_image(&flashmap, &images.slots, 1, &images.upgrades) {
+    if !verify_image(&multiflash, &images.slots, 1, &images.upgrades) {
         warn!("Image in slot 1 after revert is invalid at stop={}", stop);
         fails += 1;
     }
-    if !verify_trailer(&flashmap, &images.slots, 0, BOOT_MAGIC_GOOD,
+    if !verify_trailer(&multiflash, &images.slots, 0, BOOT_MAGIC_GOOD,
                        BOOT_FLAG_SET, BOOT_FLAG_SET) {
         warn!("Mismatched trailer for Slot 1 after revert");
         fails += 1;
     }
-    if !verify_trailer(&flashmap, &images.slots, 1, BOOT_MAGIC_UNSET,
+    if !verify_trailer(&multiflash, &images.slots, 1, BOOT_MAGIC_UNSET,
                        BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
         warn!("Mismatched trailer for Slot 1 after revert");
         fails += 1;
@@ -817,11 +817,11 @@ fn try_revert_with_fail_at(flashmap: &SimFlashMap, images: &Images,
     fails > 0
 }
 
-fn try_random_fails(flashmap: &SimFlashMap, images: &Images,
-                    total_ops: i32,  count: usize) -> (SimFlashMap, Vec<i32>) {
-    let mut flashmap = flashmap.clone();
+fn try_random_fails(multiflash: &SimMultiFlash, images: &Images,
+                    total_ops: i32,  count: usize) -> (SimMultiFlash, Vec<i32>) {
+    let mut multiflash = multiflash.clone();
 
-    mark_permanent_upgrade(&mut flashmap, &images.slots[1]);
+    mark_permanent_upgrade(&mut multiflash, &images.slots[1]);
 
     let mut rng = rand::thread_rng();
     let mut resets = vec![0i32; count];
@@ -830,7 +830,7 @@ fn try_random_fails(flashmap: &SimFlashMap, images: &Images,
         let ops = Range::new(1, remaining_ops / 2);
         let reset_counter = ops.ind_sample(&mut rng);
         let mut counter = reset_counter;
-        match c::boot_go(&mut flashmap, &images.areadesc, Some(&mut counter), false) {
+        match c::boot_go(&mut multiflash, &images.areadesc, Some(&mut counter), false) {
             (0, _) | (-0x13579, _) => (),
             (x, _) => panic!("Unknown return: {}", x),
         }
@@ -838,13 +838,13 @@ fn try_random_fails(flashmap: &SimFlashMap, images: &Images,
         resets[i] = reset_counter;
     }
 
-    match c::boot_go(&mut flashmap, &images.areadesc, None, false) {
+    match c::boot_go(&mut multiflash, &images.areadesc, None, false) {
         (-0x13579, _) => panic!("Should not be have been interrupted!"),
         (0, _) => (),
         (x, _) => panic!("Unknown return: {}", x),
     }
 
-    (flashmap, resets)
+    (multiflash, resets)
 }
 
 /// Show the flash layout.
@@ -860,7 +860,7 @@ fn show_flash(flash: &dyn Flash) {
 
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
 /// fields used by the given code.  Returns a copy of the image that was written.
-fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize, len: usize,
+fn install_image(multiflash: &mut SimMultiFlash, slots: &[SlotInfo], slot: usize, len: usize,
                  bad_sig: bool) -> ImageData {
     let offset = slots[slot].base_off;
     let slot_len = slots[slot].len;
@@ -949,7 +949,7 @@ fn install_image(flashmap: &mut SimFlashMap, slots: &[SlotInfo], slot: usize, le
     // un-encrypted. In slot1 the image is written un-encrypted, and if
     // encryption is requested, it follows an erase + flash encrypted.
 
-    let flash = flashmap.get_mut(&dev_id).unwrap();
+    let flash = multiflash.get_mut(&dev_id).unwrap();
 
     if slot == 0 {
         let enc_copy: Option<Vec<u8>>;
@@ -1051,7 +1051,7 @@ impl ImageData {
 }
 
 /// Verify that given image is present in the flash at the given offset.
-fn verify_image(flashmap: &SimFlashMap, slots: &[SlotInfo], slot: usize,
+fn verify_image(multiflash: &SimMultiFlash, slots: &[SlotInfo], slot: usize,
                 images: &ImageData) -> bool {
     let image = images.find(slot);
     let buf = image.as_slice();
@@ -1059,7 +1059,7 @@ fn verify_image(flashmap: &SimFlashMap, slots: &[SlotInfo], slot: usize,
 
     let mut copy = vec![0u8; buf.len()];
     let offset = slots[slot].base_off;
-    let flash = flashmap.get(&dev_id).unwrap();
+    let flash = multiflash.get(&dev_id).unwrap();
     flash.read(offset, &mut copy).unwrap();
 
     if buf != &copy[..] {
@@ -1076,7 +1076,7 @@ fn verify_image(flashmap: &SimFlashMap, slots: &[SlotInfo], slot: usize,
     }
 }
 
-fn verify_trailer(flashmap: &SimFlashMap, slots: &[SlotInfo], slot: usize,
+fn verify_trailer(multiflash: &SimMultiFlash, slots: &[SlotInfo], slot: usize,
                   magic: Option<u8>, image_ok: Option<u8>,
                   copy_done: Option<u8>) -> bool {
     if Caps::OverwriteUpgrade.present() {
@@ -1088,7 +1088,7 @@ fn verify_trailer(flashmap: &SimFlashMap, slots: &[SlotInfo], slot: usize,
     let mut copy = vec![0u8; c::boot_magic_sz() + c::boot_max_align() * 2];
     let mut failed = false;
 
-    let flash = flashmap.get(&dev_id).unwrap();
+    let flash = multiflash.get(&dev_id).unwrap();
     let erased_val = flash.erased_val();
     flash.read(offset, &mut copy).unwrap();
 
@@ -1183,16 +1183,16 @@ const BOOT_FLAG_SET: Option<u8> = Some(1);
 const BOOT_FLAG_UNSET: Option<u8> = Some(3);
 
 /// Write out the magic so that the loader tries doing an upgrade.
-pub fn mark_upgrade(flashmap: &mut SimFlashMap, slot: &SlotInfo) {
-    let flash = flashmap.get_mut(&slot.dev_id).unwrap();
+pub fn mark_upgrade(multiflash: &mut SimMultiFlash, slot: &SlotInfo) {
+    let flash = multiflash.get_mut(&slot.dev_id).unwrap();
     let offset = slot.trailer_off + c::boot_max_align() * 2;
     flash.write(offset, MAGIC.unwrap()).unwrap();
 }
 
 /// Writes the image_ok flag which, guess what, tells the bootloader
 /// the this image is ok (not a test, and no revert is to be performed).
-fn mark_permanent_upgrade(flashmap: &mut SimFlashMap, slot: &SlotInfo) {
-    let flash = flashmap.get_mut(&slot.dev_id).unwrap();
+fn mark_permanent_upgrade(multiflash: &mut SimMultiFlash, slot: &SlotInfo) {
+    let flash = multiflash.get_mut(&slot.dev_id).unwrap();
     let mut ok = [flash.erased_val(); 8];
     ok[0] = 1u8;
     let off = slot.trailer_off + c::boot_max_align();
