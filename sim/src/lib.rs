@@ -152,7 +152,11 @@ pub fn main() {
     }
 }
 
-/// A test run, intended to be run from "cargo test", so panics on failure.
+/// A Run describes a single run of the simulator.  It captures the
+/// configuration of a particular device configuration, including the flash
+/// devices and the information about the slots.  This can be thought of as
+/// a builder for `Images`.
+#[derive(Clone)]
 pub struct Run {
     flashmap: SimFlashMap,
     areadesc: AreaDesc,
@@ -193,27 +197,27 @@ impl Run {
     }
 
     pub fn each_device<F>(f: F)
-        where F: Fn(&mut Run)
+        where F: Fn(Run)
     {
         for &dev in ALL_DEVICES {
             for &align in &[1, 2, 4, 8] {
                 for &erased_val in &[0, 0xff] {
-                    let mut run = Run::new(dev, align, erased_val);
-                    f(&mut run);
+                    let run = Run::new(dev, align, erased_val);
+                    f(run);
                 }
             }
         }
     }
 
     /// Construct an `Images` that doesn't expect an upgrade to happen.
-    pub fn make_no_upgrade_image(&self) -> Images {
-        let mut flashmap = self.flashmap.clone();
+    pub fn make_no_upgrade_image(self) -> Images {
+        let mut flashmap = self.flashmap;
         let primaries = install_image(&mut flashmap, &self.slots, 0, 32784, false);
         let upgrades = install_image(&mut flashmap, &self.slots, 1, 41928, false);
         Images {
             flashmap: flashmap,
-            areadesc: self.areadesc.clone(),
-            slots: [self.slots[0].clone(), self.slots[1].clone()],
+            areadesc: self.areadesc,
+            slots: self.slots,
             primaries: primaries,
             upgrades: upgrades,
             total_count: None,
@@ -221,7 +225,7 @@ impl Run {
     }
 
     /// Construct an `Images` for normal testing.
-    pub fn make_image(&self) -> Images {
+    pub fn make_image(self) -> Images {
         let mut images = self.make_no_upgrade_image();
         mark_upgrade(&mut images.flashmap, &images.slots[1]);
 
@@ -237,14 +241,14 @@ impl Run {
         images
     }
 
-    pub fn make_bad_slot1_image(&self) -> Images {
-        let mut bad_flashmap = self.flashmap.clone();
+    pub fn make_bad_slot1_image(self) -> Images {
+        let mut bad_flashmap = self.flashmap;
         let primaries = install_image(&mut bad_flashmap, &self.slots, 0, 32784, false);
         let upgrades = install_image(&mut bad_flashmap, &self.slots, 1, 41928, true);
         Images {
             flashmap: bad_flashmap,
-            areadesc: self.areadesc.clone(),
-            slots: [self.slots[0].clone(), self.slots[1].clone()],
+            areadesc: self.areadesc,
+            slots: self.slots,
             primaries: primaries,
             upgrades: upgrades,
             total_count: None,
@@ -275,11 +279,11 @@ impl RunStatus {
 
         // Creates a badly signed image in slot1 to check that it is not
         // upgraded to
-        let bad_slot1_image = run.make_bad_slot1_image();
+        let bad_slot1_image = run.clone().make_bad_slot1_image();
 
         failed |= bad_slot1_image.run_signfail_upgrade();
 
-        let images = run.make_no_upgrade_image();
+        let images = run.clone().make_no_upgrade_image();
         failed |= images.run_norevert_newimage();
 
         let images = run.make_image();
