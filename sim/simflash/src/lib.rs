@@ -135,7 +135,7 @@ impl SimFlash {
 
 }
 
-pub type SimFlashMap = HashMap<u8, SimFlash>;
+pub type SimMultiFlash = HashMap<u8, SimFlash>;
 
 impl Flash for SimFlash {
     /// The flash drivers tend to erase beyond the bounds of the given range.  Instead, we'll be
