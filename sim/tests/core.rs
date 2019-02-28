@@ -2,7 +2,7 @@
 //!
 //! Run the existing testsuite as a Rust unit test.
 
-use bootsim::{Run, testlog};
+use bootsim::{ImagesBuilder, testlog};
 
 macro_rules! sim_test {
     ($name:ident, $maker:ident, $test:ident) => {
@@ -10,7 +10,7 @@ macro_rules! sim_test {
         fn $name() {
             testlog::setup();
 
-            Run::each_device(|r| {
+            ImagesBuilder::each_device(|r| {
                 let image = r.$maker();
                 assert!(!image.$test());
             });
