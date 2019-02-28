@@ -16,11 +16,25 @@ use aes_ctr::{
     },
 };
 
-use simflash::{Flash, SimFlashMap};
-use mcuboot_sys::{c, AreaDesc};
+use simflash::{Flash, SimFlash, SimFlashMap};
+use mcuboot_sys::{c, AreaDesc, FlashId};
+use crate::{
+    ALL_DEVICES,
+    DeviceName,
+};
 use crate::caps::Caps;
 use crate::suit::SuitManifestGenerator;
 use crate::tlv::{ManifestGen, TlvGen, TlvFlags, AES_SEC_KEY};
+
+/// A builder for Images.  This describes a single run of the simulator,
+/// capturing the configuration of a particular set of devices, including
+/// the flash simulator(s) and the information about the slots.
+#[derive(Clone)]
+pub struct ImagesBuilder {
+    flashmap: SimFlashMap,
+    areadesc: AreaDesc,
+    slots: [SlotInfo; 2],
+}
 
 /// Images represents the state of a simulation for a given set of images.
 /// The flashmap holds the state of the simulated flash, whereas primaries
@@ -32,6 +46,188 @@ pub struct Images {
     pub primaries: [Option<Vec<u8>>; 2],
     pub upgrades: [Option<Vec<u8>>; 2],
     pub total_count: Option<i32>,
+}
+
+impl ImagesBuilder {
+    pub fn new(device: DeviceName, align: u8, erased_val: u8) -> Self {
+        let (flashmap, areadesc) = Self::make_device(device, align, erased_val);
+
+        let (slot0_base, slot0_len, slot0_dev_id) = areadesc.find(FlashId::Image0);
+        let (slot1_base, slot1_len, slot1_dev_id) = areadesc.find(FlashId::Image1);
+
+        // NOTE: not accounting "swap_size" because it is not used by sim...
+        let offset_from_end = c::boot_magic_sz() + c::boot_max_align() * 2;
+
+        // Construct a primary image.
+        let slot0 = SlotInfo {
+            base_off: slot0_base as usize,
+            trailer_off: slot0_base + slot0_len - offset_from_end,
+            len: slot0_len as usize,
+            dev_id: slot0_dev_id,
+        };
+
+        // And an upgrade image.
+        let slot1 = SlotInfo {
+            base_off: slot1_base as usize,
+            trailer_off: slot1_base + slot1_len - offset_from_end,
+            len: slot1_len as usize,
+            dev_id: slot1_dev_id,
+        };
+
+        ImagesBuilder {
+            flashmap: flashmap,
+            areadesc: areadesc,
+            slots: [slot0, slot1],
+        }
+    }
+
+    pub fn each_device<F>(f: F)
+        where F: Fn(Self)
+    {
+        for &dev in ALL_DEVICES {
+            for &align in &[1, 2, 4, 8] {
+                for &erased_val in &[0, 0xff] {
+                    let run = Self::new(dev, align, erased_val);
+                    f(run);
+                }
+            }
+        }
+    }
+
+    /// Construct an `Images` that doesn't expect an upgrade to happen.
+    pub fn make_no_upgrade_image(self) -> Images {
+        let mut flashmap = self.flashmap;
+        let primaries = install_image(&mut flashmap, &self.slots, 0, 32784, false);
+        let upgrades = install_image(&mut flashmap, &self.slots, 1, 41928, false);
+        Images {
+            flashmap: flashmap,
+            areadesc: self.areadesc,
+            slots: self.slots,
+            primaries: primaries,
+            upgrades: upgrades,
+            total_count: None,
+        }
+    }
+
+    /// Construct an `Images` for normal testing.
+    pub fn make_image(self) -> Images {
+        let mut images = self.make_no_upgrade_image();
+        mark_upgrade(&mut images.flashmap, &images.slots[1]);
+
+        // upgrades without fails, counts number of flash operations
+        let total_count = match images.run_basic_upgrade() {
+            Ok(v)  => v,
+            Err(_) => {
+                panic!("Unable to perform basic upgrade");
+            },
+        };
+
+        images.total_count = Some(total_count);
+        images
+    }
+
+    pub fn make_bad_secondary_slot_image(self) -> Images {
+        let mut bad_flashmap = self.flashmap;
+        let primaries = install_image(&mut bad_flashmap, &self.slots, 0, 32784, false);
+        let upgrades = install_image(&mut bad_flashmap, &self.slots, 1, 41928, true);
+        Images {
+            flashmap: bad_flashmap,
+            areadesc: self.areadesc,
+            slots: self.slots,
+            primaries: primaries,
+            upgrades: upgrades,
+            total_count: None,
+        }
+    }
+
+    /// Build the Flash and area descriptor for a given device.
+    pub fn make_device(device: DeviceName, align: u8, erased_val: u8) -> (SimFlashMap, AreaDesc) {
+        match device {
+            DeviceName::Stm32f4 => {
+                // STM style flash.  Large sectors, with a large scratch area.
+                let flash = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
+                                          64 * 1024,
+                                          128 * 1024, 128 * 1024, 128 * 1024],
+                                          align as usize, erased_val);
+                let dev_id = 0;
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(dev_id, &flash);
+                areadesc.add_image(0x020000, 0x020000, FlashId::Image0, dev_id);
+                areadesc.add_image(0x040000, 0x020000, FlashId::Image1, dev_id);
+                areadesc.add_image(0x060000, 0x020000, FlashId::ImageScratch, dev_id);
+
+                let mut flashmap = SimFlashMap::new();
+                flashmap.insert(dev_id, flash);
+                (flashmap, areadesc)
+            }
+            DeviceName::K64f => {
+                // NXP style flash.  Small sectors, one small sector for scratch.
+                let flash = SimFlash::new(vec![4096; 128], align as usize, erased_val);
+
+                let dev_id = 0;
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(dev_id, &flash);
+                areadesc.add_image(0x020000, 0x020000, FlashId::Image0, dev_id);
+                areadesc.add_image(0x040000, 0x020000, FlashId::Image1, dev_id);
+                areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch, dev_id);
+
+                let mut flashmap = SimFlashMap::new();
+                flashmap.insert(dev_id, flash);
+                (flashmap, areadesc)
+            }
+            DeviceName::K64fBig => {
+                // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
+                // uses small sectors, but we tell the bootloader they are large.
+                let flash = SimFlash::new(vec![4096; 128], align as usize, erased_val);
+
+                let dev_id = 0;
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(dev_id, &flash);
+                areadesc.add_simple_image(0x020000, 0x020000, FlashId::Image0, dev_id);
+                areadesc.add_simple_image(0x040000, 0x020000, FlashId::Image1, dev_id);
+                areadesc.add_simple_image(0x060000, 0x020000, FlashId::ImageScratch, dev_id);
+
+                let mut flashmap = SimFlashMap::new();
+                flashmap.insert(dev_id, flash);
+                (flashmap, areadesc)
+            }
+            DeviceName::Nrf52840 => {
+                // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
+                // does not divide into the image size.
+                let flash = SimFlash::new(vec![4096; 128], align as usize, erased_val);
+
+                let dev_id = 0;
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(dev_id, &flash);
+                areadesc.add_image(0x008000, 0x034000, FlashId::Image0, dev_id);
+                areadesc.add_image(0x03c000, 0x034000, FlashId::Image1, dev_id);
+                areadesc.add_image(0x070000, 0x00d000, FlashId::ImageScratch, dev_id);
+
+                let mut flashmap = SimFlashMap::new();
+                flashmap.insert(dev_id, flash);
+                (flashmap, areadesc)
+            }
+            DeviceName::Nrf52840SpiFlash => {
+                // Simulate nrf52840 with external SPI flash. The external SPI flash
+                // has a larger sector size so for now store scratch on that flash.
+                let flash0 = SimFlash::new(vec![4096; 128], align as usize, erased_val);
+                let flash1 = SimFlash::new(vec![8192; 64], align as usize, erased_val);
+
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(0, &flash0);
+                areadesc.add_flash_sectors(1, &flash1);
+
+                areadesc.add_image(0x008000, 0x068000, FlashId::Image0, 0);
+                areadesc.add_image(0x000000, 0x068000, FlashId::Image1, 1);
+                areadesc.add_image(0x068000, 0x018000, FlashId::ImageScratch, 1);
+
+                let mut flashmap = SimFlashMap::new();
+                flashmap.insert(0, flash0);
+                flashmap.insert(1, flash1);
+                (flashmap, areadesc)
+            }
+        }
+    }
 }
 
 impl Images {
