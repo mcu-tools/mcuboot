@@ -1,7 +1,7 @@
 /// Interface wrappers to C API entering to the bootloader
 
 use crate::area::AreaDesc;
-use simflash::SimFlashMap;
+use simflash::SimMultiFlash;
 use lazy_static::lazy_static;
 use libc;
 use crate::api;
@@ -14,12 +14,12 @@ lazy_static! {
 }
 
 /// Invoke the bootloader on this flash device.
-pub fn boot_go(flashmap: &mut SimFlashMap, areadesc: &AreaDesc,
+pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
                counter: Option<&mut i32>, catch_asserts: bool) -> (i32, u8) {
     let _lock = BOOT_LOCK.lock().unwrap();
 
     unsafe {
-        for (&dev_id, flash) in flashmap.iter_mut() {
+        for (&dev_id, flash) in multiflash.iter_mut() {
             api::set_flash(dev_id, flash);
         }
         raw::c_catch_asserts = if catch_asserts { 1 } else { 0 };
@@ -33,7 +33,7 @@ pub fn boot_go(flashmap: &mut SimFlashMap, areadesc: &AreaDesc,
     let asserts = unsafe { raw::c_asserts };
     unsafe {
         counter.map(|c| *c = raw::flash_counter as i32);
-        for (&dev_id, _) in flashmap {
+        for (&dev_id, _) in multiflash {
             api::clear_flash(dev_id);
         }
     };
