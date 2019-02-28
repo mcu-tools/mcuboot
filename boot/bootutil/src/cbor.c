@@ -58,16 +58,11 @@ get_cbor_tag(struct slice *data,
         data->base++;
         data->len--;
         return 0;
-    } else if (ext == 24) {
-        want = 1;
-    } else if (ext == 25) {
-        want = 2;
-    } else if (ext == 26) {
-        want = 4;
-    } else {
-        /* If we want uint64 support, add it above here. */
+    } else if (ext > 26) {
         return -1;
     }
+
+    want = 1 << (ext - 24);
 
     if (data->len + 1 < want) {
         return -1;
