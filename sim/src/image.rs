@@ -22,6 +22,18 @@ use crate::caps::Caps;
 use crate::suit::SuitManifestGenerator;
 use crate::tlv::{ManifestGen, TlvGen, TlvFlags, AES_SEC_KEY};
 
+/// Images represents the state of a simulation for a given set of images.
+/// The flashmap holds the state of the simulated flash, whereas primaries
+/// and upgrades hold the expected contents of these images.
+pub struct Images {
+    pub flashmap: SimFlashMap,
+    pub areadesc: AreaDesc,
+    pub slots: [SlotInfo; 2],
+    pub primaries: [Option<Vec<u8>>; 2],
+    pub upgrades: [Option<Vec<u8>>; 2],
+    pub total_count: Option<i32>,
+}
+
 impl Images {
     /// A simple upgrade without forced failures.
     ///
@@ -962,15 +974,6 @@ pub struct SlotInfo {
     pub trailer_off: usize,
     pub len: usize,
     pub dev_id: u8,
-}
-
-pub struct Images {
-    pub flashmap: SimFlashMap,
-    pub areadesc: AreaDesc,
-    pub slots: [SlotInfo; 2],
-    pub primaries: [Option<Vec<u8>>; 2],
-    pub upgrades: [Option<Vec<u8>>; 2],
-    pub total_count: Option<i32>,
 }
 
 const MAGIC: Option<&[u8]> = Some(&[0x77, 0xc2, 0x95, 0xf3,
