@@ -244,7 +244,7 @@ impl Images {
     /// Returns the number of flash operations which can later be used to
     /// inject failures at chosen steps.
     pub fn run_basic_upgrade(&self) -> Result<i32, ()> {
-        let (flash, total_count) = try_upgrade(&self.flash, &self, None);
+        let (flash, total_count) = self.try_upgrade(None);
         info!("Total flash operation count={}", total_count);
 
         if !verify_image(&flash, &self.slots, 0, &self.upgrades) {
@@ -266,7 +266,7 @@ impl Images {
         if Caps::SwapUpgrade.present() {
             for count in 2 .. 5 {
                 info!("Try revert: {}", count);
-                let flash = try_revert(&self.flash, &self.areadesc, count);
+                let flash = self.try_revert(count);
                 if !verify_image(&flash, &self.slots, 0, &self.primaries) {
                     error!("Revert failure on count {}", count);
                     fails += 1;
@@ -284,7 +284,7 @@ impl Images {
         // Let's try an image halfway through.
         for i in 1 .. total_flash_ops {
             info!("Try interruption at {}", i);
-            let (flash, count) = try_upgrade(&self.flash, &self, Some(i));
+            let (flash, count) = self.try_upgrade(Some(i));
             info!("Second boot, count={}", count);
             if !verify_image(&flash, &self.slots, 0, &self.upgrades) {
                 warn!("FAIL at step {} of {}", i, total_flash_ops);
@@ -327,8 +327,7 @@ impl Images {
     pub fn run_perm_with_random_fails(&self, total_fails: usize) -> bool {
         let mut fails = 0;
         let total_flash_ops = self.total_count.unwrap();
-        let (flash, total_counts) = try_random_fails(&self.flash, &self,
-                                                        total_flash_ops, total_fails);
+        let (flash, total_counts) = self.try_random_fails(total_flash_ops, total_fails);
         info!("Random interruptions at reset points={:?}", total_counts);
 
         let primary_slot_ok = verify_image(&flash, &self.slots,
@@ -373,7 +372,7 @@ impl Images {
         if Caps::SwapUpgrade.present() {
             for i in 1 .. (self.total_count.unwrap() - 1) {
                 info!("Try interruption at {}", i);
-                if try_revert_with_fail_at(&self.flash, &self, i) {
+                if self.try_revert_with_fail_at(i) {
                     error!("Revert failed at interruption {}", i);
                     fails += 1;
                 }
@@ -712,152 +711,148 @@ impl Images {
         dev.set_verify_writes(false);
     }
 
-}
+    /// Test a boot, optionally stopping after 'n' flash options.  Returns a count
+    /// of the number of flash operations done total.
+    fn try_upgrade(&self, stop: Option<i32>) -> (SimMultiFlash, i32) {
+        // Clone the flash to have a new copy.
+        let mut flash = self.flash.clone();
 
-/// Test a boot, optionally stopping after 'n' flash options.  Returns a count
-/// of the number of flash operations done total.
-fn try_upgrade(flash: &SimMultiFlash, images: &Images,
-               stop: Option<i32>) -> (SimMultiFlash, i32) {
-    // Clone the flash to have a new copy.
-    let mut flash = flash.clone();
+        mark_permanent_upgrade(&mut flash, &self.slots[1]);
 
-    mark_permanent_upgrade(&mut flash, &images.slots[1]);
+        let mut counter = stop.unwrap_or(0);
 
-    let mut counter = stop.unwrap_or(0);
+        let (first_interrupted, count) = match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false) {
+            (-0x13579, _) => (true, stop.unwrap()),
+            (0, _) => (false, -counter),
+            (x, _) => panic!("Unknown return: {}", x),
+        };
 
-    let (first_interrupted, count) = match c::boot_go(&mut flash, &images.areadesc, Some(&mut counter), false) {
-        (-0x13579, _) => (true, stop.unwrap()),
-        (0, _) => (false, -counter),
-        (x, _) => panic!("Unknown return: {}", x),
-    };
+        counter = 0;
+        if first_interrupted {
+            // fl.dump();
+            match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false) {
+                (-0x13579, _) => panic!("Shouldn't stop again"),
+                (0, _) => (),
+                (x, _) => panic!("Unknown return: {}", x),
+            }
+        }
 
-    counter = 0;
-    if first_interrupted {
-        // fl.dump();
-        match c::boot_go(&mut flash, &images.areadesc, Some(&mut counter), false) {
-            (-0x13579, _) => panic!("Shouldn't stop again"),
+        (flash, count - counter)
+    }
+
+    fn try_revert(&self, count: usize) -> SimMultiFlash {
+        let mut flash = self.flash.clone();
+
+        // fl.write_file("image0.bin").unwrap();
+        for i in 0 .. count {
+            info!("Running boot pass {}", i + 1);
+            assert_eq!(c::boot_go(&mut flash, &self.areadesc, None, false), (0, 0));
+        }
+        flash
+    }
+
+    fn try_revert_with_fail_at(&self, stop: i32) -> bool {
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        let mut counter = stop;
+        let (x, _) = c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false);
+        if x != -0x13579 {
+            warn!("Should have stopped at interruption point");
+            fails += 1;
+        }
+
+        if !verify_trailer(&flash, &self.slots, 0, None, None, BOOT_FLAG_UNSET) {
+            warn!("copy_done should be unset");
+            fails += 1;
+        }
+
+        let (x, _) = c::boot_go(&mut flash, &self.areadesc, None, false);
+        if x != 0 {
+            warn!("Should have finished upgrade");
+            fails += 1;
+        }
+
+        if !verify_image(&flash, &self.slots, 0, &self.upgrades) {
+            warn!("Image in the primary slot before revert is invalid at stop={}",
+                  stop);
+            fails += 1;
+        }
+        if !verify_image(&flash, &self.slots, 1, &self.primaries) {
+            warn!("Image in the secondary slot before revert is invalid at stop={}",
+                  stop);
+            fails += 1;
+        }
+        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
+                           BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
+            warn!("Mismatched trailer for the primary slot before revert");
+            fails += 1;
+        }
+        if !verify_trailer(&flash, &self.slots, 1, BOOT_MAGIC_UNSET,
+                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+            warn!("Mismatched trailer for the secondary slot before revert");
+            fails += 1;
+        }
+
+        // Do Revert
+        let (x, _) = c::boot_go(&mut flash, &self.areadesc, None, false);
+        if x != 0 {
+            warn!("Should have finished a revert");
+            fails += 1;
+        }
+
+        if !verify_image(&flash, &self.slots, 0, &self.primaries) {
+            warn!("Image in the primary slot after revert is invalid at stop={}",
+                  stop);
+            fails += 1;
+        }
+        if !verify_image(&flash, &self.slots, 1, &self.upgrades) {
+            warn!("Image in the secondary slot after revert is invalid at stop={}",
+                  stop);
+            fails += 1;
+        }
+        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
+                           BOOT_FLAG_SET, BOOT_FLAG_SET) {
+            warn!("Mismatched trailer for the secondary slot after revert");
+            fails += 1;
+        }
+        if !verify_trailer(&flash, &self.slots, 1, BOOT_MAGIC_UNSET,
+                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+            warn!("Mismatched trailer for the secondary slot after revert");
+            fails += 1;
+        }
+
+        fails > 0
+    }
+
+    fn try_random_fails(&self, total_ops: i32, count: usize) -> (SimMultiFlash, Vec<i32>) {
+        let mut flash = self.flash.clone();
+
+        mark_permanent_upgrade(&mut flash, &self.slots[1]);
+
+        let mut rng = rand::thread_rng();
+        let mut resets = vec![0i32; count];
+        let mut remaining_ops = total_ops;
+        for i in 0 .. count {
+            let ops = Range::new(1, remaining_ops / 2);
+            let reset_counter = ops.ind_sample(&mut rng);
+            let mut counter = reset_counter;
+            match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false) {
+                (0, _) | (-0x13579, _) => (),
+                (x, _) => panic!("Unknown return: {}", x),
+            }
+            remaining_ops -= reset_counter;
+            resets[i] = reset_counter;
+        }
+
+        match c::boot_go(&mut flash, &self.areadesc, None, false) {
+            (-0x13579, _) => panic!("Should not be have been interrupted!"),
             (0, _) => (),
             (x, _) => panic!("Unknown return: {}", x),
         }
-    }
 
-    (flash, count - counter)
-}
-
-fn try_revert(flash: &SimMultiFlash, areadesc: &AreaDesc, count: usize) -> SimMultiFlash {
-    let mut flash = flash.clone();
-
-    // fl.write_file("image0.bin").unwrap();
-    for i in 0 .. count {
-        info!("Running boot pass {}", i + 1);
-        assert_eq!(c::boot_go(&mut flash, &areadesc, None, false), (0, 0));
+        (flash, resets)
     }
-    flash
-}
-
-fn try_revert_with_fail_at(flash: &SimMultiFlash, images: &Images,
-                           stop: i32) -> bool {
-    let mut flash = flash.clone();
-    let mut fails = 0;
-
-    let mut counter = stop;
-    let (x, _) = c::boot_go(&mut flash, &images.areadesc, Some(&mut counter), false);
-    if x != -0x13579 {
-        warn!("Should have stopped at interruption point");
-        fails += 1;
-    }
-
-    if !verify_trailer(&flash, &images.slots, 0, None, None, BOOT_FLAG_UNSET) {
-        warn!("copy_done should be unset");
-        fails += 1;
-    }
-
-    let (x, _) = c::boot_go(&mut flash, &images.areadesc, None, false);
-    if x != 0 {
-        warn!("Should have finished upgrade");
-        fails += 1;
-    }
-
-    if !verify_image(&flash, &images.slots, 0, &images.upgrades) {
-        warn!("Image in the primary slot before revert is invalid at stop={}",
-              stop);
-        fails += 1;
-    }
-    if !verify_image(&flash, &images.slots, 1, &images.primaries) {
-        warn!("Image in the secondary slot before revert is invalid at stop={}",
-              stop);
-        fails += 1;
-    }
-    if !verify_trailer(&flash, &images.slots, 0, BOOT_MAGIC_GOOD,
-                       BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
-        warn!("Mismatched trailer for the primary slot before revert");
-        fails += 1;
-    }
-    if !verify_trailer(&flash, &images.slots, 1, BOOT_MAGIC_UNSET,
-                       BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
-        warn!("Mismatched trailer for the secondary slot before revert");
-        fails += 1;
-    }
-
-    // Do Revert
-    let (x, _) = c::boot_go(&mut flash, &images.areadesc, None, false);
-    if x != 0 {
-        warn!("Should have finished a revert");
-        fails += 1;
-    }
-
-    if !verify_image(&flash, &images.slots, 0, &images.primaries) {
-        warn!("Image in the primary slot after revert is invalid at stop={}",
-              stop);
-        fails += 1;
-    }
-    if !verify_image(&flash, &images.slots, 1, &images.upgrades) {
-        warn!("Image in the secondary slot after revert is invalid at stop={}",
-              stop);
-        fails += 1;
-    }
-    if !verify_trailer(&flash, &images.slots, 0, BOOT_MAGIC_GOOD,
-                       BOOT_FLAG_SET, BOOT_FLAG_SET) {
-        warn!("Mismatched trailer for the secondary slot after revert");
-        fails += 1;
-    }
-    if !verify_trailer(&flash, &images.slots, 1, BOOT_MAGIC_UNSET,
-                       BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
-        warn!("Mismatched trailer for the secondary slot after revert");
-        fails += 1;
-    }
-
-    fails > 0
-}
-
-fn try_random_fails(flash: &SimMultiFlash, images: &Images,
-                    total_ops: i32,  count: usize) -> (SimMultiFlash, Vec<i32>) {
-    let mut flash = flash.clone();
-
-    mark_permanent_upgrade(&mut flash, &images.slots[1]);
-
-    let mut rng = rand::thread_rng();
-    let mut resets = vec![0i32; count];
-    let mut remaining_ops = total_ops;
-    for i in 0 .. count {
-        let ops = Range::new(1, remaining_ops / 2);
-        let reset_counter = ops.ind_sample(&mut rng);
-        let mut counter = reset_counter;
-        match c::boot_go(&mut flash, &images.areadesc, Some(&mut counter), false) {
-            (0, _) | (-0x13579, _) => (),
-            (x, _) => panic!("Unknown return: {}", x),
-        }
-        remaining_ops -= reset_counter;
-        resets[i] = reset_counter;
-    }
-
-    match c::boot_go(&mut flash, &images.areadesc, None, false) {
-        (-0x13579, _) => panic!("Should not be have been interrupted!"),
-        (0, _) => (),
-        (x, _) => panic!("Unknown return: {}", x),
-    }
-
-    (flash, resets)
 }
 
 /// Show the flash layout.
