@@ -32,7 +32,7 @@ use crate::tlv::{ManifestGen, TlvGen, TlvFlags, AES_SEC_KEY};
 pub struct ImagesBuilder {
     flash: SimMultiFlash,
     areadesc: AreaDesc,
-    slots: [SlotInfo; 2],
+    slots: Vec<[SlotInfo; 2]>,
 }
 
 /// Images represents the state of a simulation for a given set of images.
@@ -41,10 +41,16 @@ pub struct ImagesBuilder {
 pub struct Images {
     flash: SimMultiFlash,
     areadesc: AreaDesc,
+    images: Vec<OneImage>,
+    total_count: Option<i32>,
+}
+
+/// When doing multi-image, there is an instance of this information for
+/// each of the images.  Single image there will be one of these.
+struct OneImage {
     slots: [SlotInfo; 2],
     primaries: ImageData,
     upgrades: ImageData,
-    total_count: Option<i32>,
 }
 
 /// The Rust-side representation of an image.  For unencrypted images, this
@@ -84,7 +90,7 @@ impl ImagesBuilder {
         ImagesBuilder {
             flash: flash,
             areadesc: areadesc,
-            slots: [slot0, slot1],
+            slots: vec![[slot0, slot1]],
         }
     }
 
@@ -104,14 +110,18 @@ impl ImagesBuilder {
     /// Construct an `Images` that doesn't expect an upgrade to happen.
     pub fn make_no_upgrade_image(self) -> Images {
         let mut flash = self.flash;
-        let primaries = install_image(&mut flash, &self.slots, 0, 32784, false);
-        let upgrades = install_image(&mut flash, &self.slots, 1, 41928, false);
+        let images = self.slots.into_iter().map(|slots| {
+            let primaries = install_image(&mut flash, &slots, 0, 32784, false);
+            let upgrades = install_image(&mut flash, &slots, 1, 41928, false);
+            OneImage {
+                slots: slots,
+                primaries: primaries,
+                upgrades: upgrades,
+            }}).collect();
         Images {
             flash: flash,
             areadesc: self.areadesc,
-            slots: self.slots,
-            primaries: primaries,
-            upgrades: upgrades,
+            images: images,
             total_count: None,
         }
     }
@@ -119,7 +129,9 @@ impl ImagesBuilder {
     /// Construct an `Images` for normal testing.
     pub fn make_image(self) -> Images {
         let mut images = self.make_no_upgrade_image();
-        mark_upgrade(&mut images.flash, &images.slots[1]);
+        for image in &images.images {
+            mark_upgrade(&mut images.flash, &image.slots[1]);
+        }
 
         // upgrades without fails, counts number of flash operations
         let total_count = match images.run_basic_upgrade() {
@@ -135,14 +147,18 @@ impl ImagesBuilder {
 
     pub fn make_bad_secondary_slot_image(self) -> Images {
         let mut bad_flash = self.flash;
-        let primaries = install_image(&mut bad_flash, &self.slots, 0, 32784, false);
-        let upgrades = install_image(&mut bad_flash, &self.slots, 1, 41928, true);
+        let images = self.slots.into_iter().map(|slots| {
+            let primaries = install_image(&mut bad_flash, &slots, 0, 32784, false);
+            let upgrades = install_image(&mut bad_flash, &slots, 1, 41928, true);
+            OneImage {
+                slots: slots,
+                primaries: primaries,
+                upgrades: upgrades,
+            }}).collect();
         Images {
             flash: bad_flash,
             areadesc: self.areadesc,
-            slots: self.slots,
-            primaries: primaries,
-            upgrades: upgrades,
+            images: images,
             total_count: None,
         }
     }
@@ -246,7 +262,7 @@ impl Images {
         let (flash, total_count) = self.try_upgrade(None);
         info!("Total flash operation count={}", total_count);
 
-        if !verify_image(&flash, &self.slots, 0, &self.upgrades) {
+        if !self.verify_images(&flash, 0, 1) {
             warn!("Image mismatch after first boot");
             Err(())
         } else {
@@ -266,7 +282,7 @@ impl Images {
             for count in 2 .. 5 {
                 info!("Try revert: {}", count);
                 let flash = self.try_revert(count);
-                if !verify_image(&flash, &self.slots, 0, &self.primaries) {
+                if !self.verify_images(&flash, 0, 0) {
                     error!("Revert failure on count {}", count);
                     fails += 1;
                 }
@@ -285,25 +301,25 @@ impl Images {
             info!("Try interruption at {}", i);
             let (flash, count) = self.try_upgrade(Some(i));
             info!("Second boot, count={}", count);
-            if !verify_image(&flash, &self.slots, 0, &self.upgrades) {
+            if !self.verify_images(&flash, 0, 1) {
                 warn!("FAIL at step {} of {}", i, total_flash_ops);
                 fails += 1;
             }
 
-            if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                               BOOT_FLAG_SET, BOOT_FLAG_SET) {
+            if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                     BOOT_FLAG_SET, BOOT_FLAG_SET) {
                 warn!("Mismatched trailer for the primary slot");
                 fails += 1;
             }
 
-            if !verify_trailer(&flash, &self.slots, 1, BOOT_MAGIC_UNSET,
-                               BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+            if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
+                                     BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
                 warn!("Mismatched trailer for the secondary slot");
                 fails += 1;
             }
 
             if Caps::SwapUpgrade.present() {
-                if !verify_image(&flash, &self.slots, 1, &self.primaries) {
+                if !self.verify_images(&flash, 1, 0) {
                     warn!("Secondary slot FAIL at step {} of {}",
                           i, total_flash_ops);
                     fails += 1;
@@ -329,10 +345,10 @@ impl Images {
         let (flash, total_counts) = self.try_random_fails(total_flash_ops, total_fails);
         info!("Random interruptions at reset points={:?}", total_counts);
 
-        let primary_slot_ok = verify_image(&flash, &self.slots,
-                                           0, &self.upgrades);
+        let primary_slot_ok = self.verify_images(&flash, 0, 1);
         let secondary_slot_ok = if Caps::SwapUpgrade.present() {
-            verify_image(&flash, &self.slots, 1, &self.primaries)
+            // TODO: This result is ignored.
+            self.verify_images(&flash, 1, 0)
         } else {
             true
         };
@@ -343,13 +359,13 @@ impl Images {
                    if secondary_slot_ok { "ok" } else { "fail" });
             fails += 1;
         }
-        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                           BOOT_FLAG_SET, BOOT_FLAG_SET) {
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_SET, BOOT_FLAG_SET) {
             error!("Mismatched trailer for the primary slot");
             fails += 1;
         }
-        if !verify_trailer(&flash, &self.slots, 1, BOOT_MAGIC_UNSET,
-                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+        if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             error!("Mismatched trailer for the secondary slot");
             fails += 1;
         }
@@ -401,27 +417,27 @@ impl Images {
         //FIXME: copy_done is written by boot_go, is it ok if no copy
         //       was ever done?
 
-        if !verify_image(&flash, &self.slots, 0, &self.upgrades) {
+        if !self.verify_images(&flash, 0, 1) {
             warn!("Primary slot image verification FAIL");
             fails += 1;
         }
-        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                           BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for the primary slot");
             fails += 1;
         }
-        if !verify_trailer(&flash, &self.slots, 1, BOOT_MAGIC_UNSET,
-                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+        if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for the secondary slot");
             fails += 1;
         }
 
         // Marks image in the primary slot as permanent,
         // no revert should happen...
-        mark_permanent_upgrade(&mut flash, &self.slots[0]);
+        self.mark_permanent_upgrades(&mut flash, 0);
 
-        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                           BOOT_FLAG_SET, BOOT_FLAG_SET) {
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_SET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for the primary slot");
             fails += 1;
         }
@@ -432,12 +448,12 @@ impl Images {
             fails += 1;
         }
 
-        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                           BOOT_FLAG_SET, BOOT_FLAG_SET) {
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_SET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for the primary slot");
             fails += 1;
         }
-        if !verify_image(&flash, &self.slots, 0, &self.upgrades) {
+        if !self.verify_images(&flash, 0, 1) {
             warn!("Failed image verification");
             fails += 1;
         }
@@ -458,12 +474,12 @@ impl Images {
 
         info!("Try non-revert on imgtool generated image");
 
-        mark_upgrade(&mut flash, &self.slots[0]);
+        self.mark_upgrades(&mut flash, 0);
 
         // This simulates writing an image created by imgtool to
         // the primary slot
-        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for the primary slot");
             fails += 1;
         }
@@ -476,17 +492,17 @@ impl Images {
         }
 
         // State should not have changed
-        if !verify_image(&flash, &self.slots, 0, &self.primaries) {
+        if !self.verify_images(&flash, 0, 0) {
             warn!("Failed image verification");
             fails += 1;
         }
-        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for the primary slot");
             fails += 1;
         }
-        if !verify_trailer(&flash, &self.slots, 1, BOOT_MAGIC_UNSET,
-                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+        if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for the secondary slot");
             fails += 1;
         }
@@ -507,12 +523,12 @@ impl Images {
 
         info!("Try upgrade image with bad signature");
 
-        mark_upgrade(&mut flash, &self.slots[0]);
-        mark_permanent_upgrade(&mut flash, &self.slots[0]);
-        mark_upgrade(&mut flash, &self.slots[1]);
+        self.mark_upgrades(&mut flash, 0);
+        self.mark_permanent_upgrades(&mut flash, 0);
+        self.mark_upgrades(&mut flash, 1);
 
-        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                           BOOT_FLAG_SET, BOOT_FLAG_UNSET) {
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_SET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for the primary slot");
             fails += 1;
         }
@@ -525,12 +541,12 @@ impl Images {
         }
 
         // State should not have changed
-        if !verify_image(&flash, &self.slots, 0, &self.primaries) {
+        if !self.verify_images(&flash, 0, 0) {
             warn!("Failed image verification");
             fails += 1;
         }
-        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                           BOOT_FLAG_SET, BOOT_FLAG_UNSET) {
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_SET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for the primary slot");
             fails += 1;
         }
@@ -570,7 +586,7 @@ impl Images {
 
         info!("Try swap with status fails");
 
-        mark_permanent_upgrade(&mut flash, &self.slots[1]);
+        self.mark_permanent_upgrades(&mut flash, 1);
         self.mark_bad_status_with_rate(&mut flash, 0, 1.0);
 
         let (result, asserts) = c::boot_go(&mut flash, &self.areadesc, None, true);
@@ -586,13 +602,13 @@ impl Images {
             fails += 1;
         }
 
-        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                           BOOT_FLAG_SET, BOOT_FLAG_SET) {
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_SET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for the primary slot");
             fails += 1;
         }
 
-        if !verify_image(&flash, &self.slots, 0, &self.upgrades) {
+        if !self.verify_images(&flash, 0, 1) {
             warn!("Failed image verification");
             fails += 1;
         }
@@ -628,7 +644,7 @@ impl Images {
 
             info!("Try interrupted swap with status fails");
 
-            mark_permanent_upgrade(&mut flash, &self.slots[1]);
+            self.mark_permanent_upgrades(&mut flash, 1);
             self.mark_bad_status_with_rate(&mut flash, 0, 0.5);
 
             // Should not fail, writing to bad regions does not assert
@@ -664,7 +680,7 @@ impl Images {
 
             info!("Try interrupted swap with status fails");
 
-            mark_permanent_upgrade(&mut flash, &self.slots[1]);
+            self.mark_permanent_upgrades(&mut flash, 1);
             self.mark_bad_status_with_rate(&mut flash, 0, 1.0);
 
             // This is expected to fail while writing to bad regions...
@@ -685,15 +701,18 @@ impl Images {
             return;
         }
 
-        let dev_id = &self.slots[slot].dev_id;
-        let dev = flash.get_mut(&dev_id).unwrap();
-        let align = dev.align();
-        let off = &self.slots[0].base_off;
-        let len = &self.slots[0].len;
-        let status_off = off + len - self.trailer_sz(align);
+        // Set this for each image.
+        for image in &self.images {
+            let dev_id = &image.slots[slot].dev_id;
+            let dev = flash.get_mut(&dev_id).unwrap();
+            let align = dev.align();
+            let off = &image.slots[0].base_off;
+            let len = &image.slots[0].len;
+            let status_off = off + len - self.trailer_sz(align);
 
-        // Mark the status area as a bad area
-        let _ = dev.add_bad_region(status_off, self.status_sz(align), rate);
+            // Mark the status area as a bad area
+            let _ = dev.add_bad_region(status_off, self.status_sz(align), rate);
+        }
     }
 
     fn reset_bad_status(&self, flash: &mut SimMultiFlash, slot: usize) {
@@ -701,13 +720,15 @@ impl Images {
             return;
         }
 
-        let dev_id = &self.slots[slot].dev_id;
-        let dev = flash.get_mut(&dev_id).unwrap();
-        dev.reset_bad_regions();
+        for image in &self.images {
+            let dev_id = &image.slots[slot].dev_id;
+            let dev = flash.get_mut(&dev_id).unwrap();
+            dev.reset_bad_regions();
 
-        // Disabling write verification the only assert triggered by
-        // boot_go should be checking for integrity of status bytes.
-        dev.set_verify_writes(false);
+            // Disabling write verification the only assert triggered by
+            // boot_go should be checking for integrity of status bytes.
+            dev.set_verify_writes(false);
+        }
     }
 
     /// Test a boot, optionally stopping after 'n' flash options.  Returns a count
@@ -716,7 +737,7 @@ impl Images {
         // Clone the flash to have a new copy.
         let mut flash = self.flash.clone();
 
-        mark_permanent_upgrade(&mut flash, &self.slots[1]);
+        self.mark_permanent_upgrades(&mut flash, 1);
 
         let mut counter = stop.unwrap_or(0);
 
@@ -761,7 +782,7 @@ impl Images {
             fails += 1;
         }
 
-        if !verify_trailer(&flash, &self.slots, 0, None, None, BOOT_FLAG_UNSET) {
+        if !self.verify_trailers(&flash, 0, None, None, BOOT_FLAG_UNSET) {
             warn!("copy_done should be unset");
             fails += 1;
         }
@@ -772,23 +793,23 @@ impl Images {
             fails += 1;
         }
 
-        if !verify_image(&flash, &self.slots, 0, &self.upgrades) {
+        if !self.verify_images(&flash, 0, 1) {
             warn!("Image in the primary slot before revert is invalid at stop={}",
                   stop);
             fails += 1;
         }
-        if !verify_image(&flash, &self.slots, 1, &self.primaries) {
+        if !self.verify_images(&flash, 1, 0) {
             warn!("Image in the secondary slot before revert is invalid at stop={}",
                   stop);
             fails += 1;
         }
-        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                           BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for the primary slot before revert");
             fails += 1;
         }
-        if !verify_trailer(&flash, &self.slots, 1, BOOT_MAGIC_UNSET,
-                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+        if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
+                                BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for the secondary slot before revert");
             fails += 1;
         }
@@ -800,23 +821,23 @@ impl Images {
             fails += 1;
         }
 
-        if !verify_image(&flash, &self.slots, 0, &self.primaries) {
+        if !self.verify_images(&flash, 0, 0) {
             warn!("Image in the primary slot after revert is invalid at stop={}",
                   stop);
             fails += 1;
         }
-        if !verify_image(&flash, &self.slots, 1, &self.upgrades) {
+        if !self.verify_images(&flash, 1, 1) {
             warn!("Image in the secondary slot after revert is invalid at stop={}",
                   stop);
             fails += 1;
         }
-        if !verify_trailer(&flash, &self.slots, 0, BOOT_MAGIC_GOOD,
-                           BOOT_FLAG_SET, BOOT_FLAG_SET) {
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_SET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for the secondary slot after revert");
             fails += 1;
         }
-        if !verify_trailer(&flash, &self.slots, 1, BOOT_MAGIC_UNSET,
-                           BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+        if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
             warn!("Mismatched trailer for the secondary slot after revert");
             fails += 1;
         }
@@ -827,7 +848,7 @@ impl Images {
     fn try_random_fails(&self, total_ops: i32, count: usize) -> (SimMultiFlash, Vec<i32>) {
         let mut flash = self.flash.clone();
 
-        mark_permanent_upgrade(&mut flash, &self.slots[1]);
+        self.mark_permanent_upgrades(&mut flash, 1);
 
         let mut rng = rand::thread_rng();
         let mut resets = vec![0i32; count];
@@ -851,6 +872,50 @@ impl Images {
         }
 
         (flash, resets)
+    }
+
+    /// Verify the image in the given flash device, the specified slot
+    /// against the expected image.
+    fn verify_images(&self, flash: &SimMultiFlash, slot: usize, against: usize) -> bool {
+        for image in &self.images {
+            if !verify_image(flash, &image.slots, slot,
+                             match against {
+                                 0 => &image.primaries,
+                                 1 => &image.upgrades,
+                                 _ => panic!("Invalid 'against'"),
+                             }) {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Verify that the trailers of the images have the specified
+    /// values.
+    fn verify_trailers(&self, flash: &SimMultiFlash, slot: usize,
+                       magic: Option<u8>, image_ok: Option<u8>,
+                       copy_done: Option<u8>) -> bool {
+        for image in &self.images {
+            if !verify_trailer(flash, &image.slots, slot,
+                               magic, image_ok, copy_done) {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Mark each of the images for permanent upgrade.
+    fn mark_permanent_upgrades(&self, flash: &mut SimMultiFlash, slot: usize) {
+        for image in &self.images {
+            mark_permanent_upgrade(flash, &image.slots[slot]);
+        }
+    }
+
+    /// Mark each of the images for permanent upgrade.
+    fn mark_upgrades(&self, flash: &mut SimMultiFlash, slot: usize) {
+        for image in &self.images {
+            mark_upgrade(flash, &image.slots[slot]);
+        }
     }
 }
 
