@@ -27,7 +27,9 @@
 #include "mbedtls/oid.h"
 #include "mbedtls/asn1.h"
 
+#ifdef MCUBOOT_USE_TINYCRYPT
 #include "tinycrypt/ecc_dsa.h"
+#endif
 #include "bootutil_priv.h"
 
 /*
@@ -40,7 +42,7 @@ static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
  * Parse the public key used for signing.
  */
 static int
-tinycrypt_import_key(uint8_t **cp, uint8_t *end)
+bootutil_import_key(uint8_t **cp, uint8_t *end)
 {
     size_t len;
     mbedtls_asn1_buf alg;
@@ -91,7 +93,7 @@ tinycrypt_import_key(uint8_t **cp, uint8_t *end)
  * Verify the tag, and that the length is 32 bytes.
  */
 static int
-tinycrypt_read_bigint(uint8_t i[NUM_ECC_BYTES], uint8_t **cp, uint8_t *end)
+bootutil_read_bigint(uint8_t i[NUM_ECC_BYTES], uint8_t **cp, uint8_t *end)
 {
     size_t len;
 
@@ -113,7 +115,7 @@ tinycrypt_read_bigint(uint8_t i[NUM_ECC_BYTES], uint8_t **cp, uint8_t *end)
  * Read in signature. Signature has r and s encoded as integers.
  */
 static int
-tinycrypt_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp, uint8_t *end)
+bootutil_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp, uint8_t *end)
 {
     int rc;
     size_t len;
@@ -127,17 +129,18 @@ tinycrypt_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp, uint8_t 
         return -2;
     }
 
-    rc = tinycrypt_read_bigint(signature, &cp, end);
+    rc = bootutil_read_bigint(signature, &cp, end);
     if (rc) {
         return -3;
     }
-    rc = tinycrypt_read_bigint(signature + NUM_ECC_BYTES, &cp, end);
+    rc = bootutil_read_bigint(signature + NUM_ECC_BYTES, &cp, end);
     if (rc) {
         return -4;
     }
     return 0;
 }
 
+#if defined(MCUBOOT_USE_TINYCRYPT)
 int
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
@@ -151,12 +154,12 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     pubkey = (uint8_t *)bootutil_keys[key_id].key;
     end = pubkey + *bootutil_keys[key_id].len;
 
-    rc = tinycrypt_import_key(&pubkey, end);
+    rc = bootutil_import_key(&pubkey, end);
     if (rc) {
         return -1;
     }
 
-    rc = tinycrypt_decode_sig(signature, sig, sig + slen);
+    rc = bootutil_decode_sig(signature, sig, sig + slen);
     if (rc) {
         return -1;
     }
@@ -175,4 +178,5 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
         return -2;
     }
 }
+#endif /* MCUBOOT_USE_TINYCRYPT */
 #endif /* MCUBOOT_SIGN_EC256 */
