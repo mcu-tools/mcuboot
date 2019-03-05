@@ -63,7 +63,10 @@ struct ImageData {
 }
 
 impl ImagesBuilder {
-    pub fn new(device: DeviceName, align: u8, erased_val: u8) -> Self {
+    /// Construct a new image builder for the given device.  Returns
+    /// Some(builder) if is possible to test this configuration, or None if
+    /// not possible (for example, if there aren't enough image slots).
+    pub fn new(device: DeviceName, align: u8, erased_val: u8) -> Option<Self> {
         let (flash, areadesc) = Self::make_device(device, align, erased_val);
 
         let (slot0_base, slot0_len, slot0_dev_id) = areadesc.find(FlashId::Image0);
@@ -88,11 +91,11 @@ impl ImagesBuilder {
             dev_id: slot1_dev_id,
         };
 
-        ImagesBuilder {
+        Some(ImagesBuilder {
             flash: flash,
             areadesc: areadesc,
             slots: vec![[slot0, slot1]],
-        }
+        })
     }
 
     pub fn each_device<F>(f: F)
@@ -101,8 +104,10 @@ impl ImagesBuilder {
         for &dev in ALL_DEVICES {
             for &align in &[1, 2, 4, 8] {
                 for &erased_val in &[0, 0xff] {
-                    let run = Self::new(dev, align, erased_val);
-                    f(run);
+                    match Self::new(dev, align, erased_val) {
+                        Some(run) => f(run),
+                        None => warn!("Skipping {:?}, insufficient partitions", dev),
+                    }
                 }
             }
         }
