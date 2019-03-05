@@ -19,8 +19,15 @@ impl Caps {
         let caps = unsafe { bootutil_get_caps() };
         (caps as u32) & (self as u32) != 0
     }
+
+    /// Query for the number of images that have been configured into this
+    /// MCUboot build.
+    pub fn get_num_images() -> usize {
+        (unsafe { bootutil_get_num_images() }) as usize
+    }
 }
 
 extern "C" {
     fn bootutil_get_caps() -> Caps;
+    fn bootutil_get_num_images() -> u32;
 }
