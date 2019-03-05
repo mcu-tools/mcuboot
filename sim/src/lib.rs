@@ -45,12 +45,13 @@ struct Args {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
-pub enum DeviceName { Stm32f4, K64f, K64fBig, Nrf52840, Nrf52840SpiFlash, }
+pub enum DeviceName { Stm32f4, K64f, K64fBig, K64fMulti, Nrf52840, Nrf52840SpiFlash, }
 
 pub static ALL_DEVICES: &'static [DeviceName] = &[
     DeviceName::Stm32f4,
     DeviceName::K64f,
     DeviceName::K64fBig,
+    DeviceName::K64fMulti,
     DeviceName::Nrf52840,
     DeviceName::Nrf52840SpiFlash,
 ];
@@ -61,6 +62,7 @@ impl fmt::Display for DeviceName {
             DeviceName::Stm32f4 => "stm32f4",
             DeviceName::K64f => "k64f",
             DeviceName::K64fBig => "k64fbig",
+            DeviceName::K64fMulti => "k64fmulti",
             DeviceName::Nrf52840 => "nrf52840",
             DeviceName::Nrf52840SpiFlash => "Nrf52840SpiFlash",
         };
