@@ -50,3 +50,12 @@ uint32_t bootutil_get_caps(void)
 
         return res;
 }
+
+uint32_t bootutil_get_num_images(void)
+{
+#if defined(MCUBOOT_IMAGE_NUMBER)
+	return MCUBOOT_IMAGE_NUMBER;
+#else
+        return 1;
+#endif
+}
