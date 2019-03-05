@@ -68,32 +68,57 @@ impl ImagesBuilder {
     pub fn new(device: DeviceName, align: u8, erased_val: u8) -> Option<Self> {
         let (flash, areadesc) = Self::make_device(device, align, erased_val);
 
-        let (slot0_base, slot0_len, slot0_dev_id) = areadesc.find(FlashId::Image0);
-        let (slot1_base, slot1_len, slot1_dev_id) = areadesc.find(FlashId::Image1);
+        let num_images = Caps::get_num_images();
 
-        // NOTE: not accounting "swap_size" because it is not used by sim...
-        let offset_from_end = c::boot_magic_sz() + c::boot_max_align() * 2;
+        let mut slots = Vec::with_capacity(num_images);
+        for image in 0..num_images {
+            // This mapping must match that defined in
+            // `boot/zephyr/include/sysflash/sysflash.h`.
+            let id0 = match image {
+                0 => FlashId::Image0,
+                1 => FlashId::Image2,
+                _ => panic!("More than 2 images not supported"),
+            };
+            let (primary_base, primary_len, primary_dev_id) = match areadesc.find(id0) {
+                Some(info) => info,
+                None => return None,
+            };
+            let id1 = match image {
+                0 => FlashId::Image1,
+                1 => FlashId::Image3,
+                _ => panic!("More than 2 images not supported"),
+            };
+            let (secondary_base, secondary_len, secondary_dev_id) = match areadesc.find(id1) {
+                Some(info) => info,
+                None => return None,
+            };
 
-        // Construct a primary image.
-        let slot0 = SlotInfo {
-            base_off: slot0_base as usize,
-            trailer_off: slot0_base + slot0_len - offset_from_end,
-            len: slot0_len as usize,
-            dev_id: slot0_dev_id,
-        };
+            // NOTE: not accounting "swap_size" because it is not used by sim...
+            let offset_from_end = c::boot_magic_sz() + c::boot_max_align() * 2;
 
-        // And an upgrade image.
-        let slot1 = SlotInfo {
-            base_off: slot1_base as usize,
-            trailer_off: slot1_base + slot1_len - offset_from_end,
-            len: slot1_len as usize,
-            dev_id: slot1_dev_id,
-        };
+            // Construct a primary image.
+            let primary = SlotInfo {
+                base_off: primary_base as usize,
+                trailer_off: primary_base + primary_len - offset_from_end,
+                len: primary_len as usize,
+                dev_id: primary_dev_id,
+            };
+
+            // And an upgrade image.
+            let secondary = SlotInfo {
+                base_off: secondary_base as usize,
+                trailer_off: secondary_base + secondary_len - offset_from_end,
+                len: secondary_len as usize,
+                dev_id: secondary_dev_id,
+            };
+
+            slots.push([primary, secondary]);
+        }
 
         Some(ImagesBuilder {
             flash: flash,
             areadesc: areadesc,
-            slots: vec![[slot0, slot1]],
+            slots: slots,
         })
     }
 
