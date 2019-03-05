@@ -279,6 +279,23 @@ impl ImagesBuilder {
                 flash.insert(1, dev1);
                 (flash, areadesc)
             }
+            DeviceName::K64fMulti => {
+                // NXP style flash, but larger, to support multiple images.
+                let dev = SimFlash::new(vec![4096; 256], align as usize, erased_val);
+
+                let dev_id = 0;
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(dev_id, &dev);
+                areadesc.add_image(0x020000, 0x020000, FlashId::Image0, dev_id);
+                areadesc.add_image(0x040000, 0x020000, FlashId::Image1, dev_id);
+                areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch, dev_id);
+                areadesc.add_image(0x080000, 0x020000, FlashId::Image2, dev_id);
+                areadesc.add_image(0x0a0000, 0x020000, FlashId::Image3, dev_id);
+
+                let mut flash = SimMultiFlash::new();
+                flash.insert(dev_id, dev);
+                (flash, areadesc)
+            }
         }
     }
 }
