@@ -161,7 +161,13 @@ impl RunStatus {
     pub fn run_single(&mut self, device: DeviceName, align: u8, erased_val: u8) {
         warn!("Running on device {} with alignment {}", device, align);
 
-        let run = ImagesBuilder::new(device, align, erased_val);
+        let run = match ImagesBuilder::new(device, align, erased_val) {
+            Some(builder) => builder,
+            None => {
+                warn!("Skipping device with insuffienct partitions");
+                return;
+            }
+        };
 
         let mut failed = false;
 
