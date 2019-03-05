@@ -176,11 +176,8 @@ pub enum FlashId {
     Image0 = 1,
     Image1 = 2,
     ImageScratch = 3,
-    Nffs = 4,
-    Core = 5,
-    RebootLog = 6,
-    Image2 = 7,
-    Image3 = 8,
+    Image2 = 4,
+    Image3 = 5,
 }
 
 impl Default for FlashId {
