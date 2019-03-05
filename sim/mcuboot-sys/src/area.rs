@@ -107,15 +107,15 @@ impl AreaDesc {
     }
 
     // Look for the image with the given ID, and return its offset, size and
-    // device id. Panics if the area is not present.
-    pub fn find(&self, id: FlashId) -> (usize, usize, u8) {
+    // device id. Returns None if the area is not present.
+    pub fn find(&self, id: FlashId) -> Option<(usize, usize, u8)> {
         for area in &self.whole {
             // FIXME: should we ensure id is not duplicated over multiple devices?
             if area.flash_id == id {
-                return (area.off as usize, area.size as usize, area.device_id);
+                return Some((area.off as usize, area.size as usize, area.device_id));
             }
         }
-        panic!("Requesting area that is not present in flash");
+        None
     }
 
     pub fn get_c(&self) -> CAreaDesc {
@@ -178,7 +178,9 @@ pub enum FlashId {
     ImageScratch = 3,
     Nffs = 4,
     Core = 5,
-    RebootLog = 6
+    RebootLog = 6,
+    Image2 = 7,
+    Image3 = 8,
 }
 
 impl Default for FlashId {
