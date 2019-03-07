@@ -2,7 +2,10 @@
 
 language: rust
 
-cache: cargo
+cache:
+  directories:
+    - $HOME/TOOLCHAIN
+    - cargo
 
 matrix:
   include:
@@ -35,6 +38,12 @@ matrix:
     # FIXME: this test actually fails and must be fixed
     #- os: linux
     #  env: MULTI_FEATURES="sig-rsa validate-slot0 overwrite-only"
+
+    - os: linux
+      language: go
+      env: TEST=mynewt
+      go:
+        - "1.10"
 
 before_install:
   - |
