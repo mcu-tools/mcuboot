@@ -1,0 +1,45 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+syscfg.vals:
+    BOOT_SERIAL: 0
+    BOOT_SERIAL_DETECT_PIN: 11
+    BOOT_SERIAL_DETECT_PIN_VAL: 0
+    BOOT_SERIAL_REPORT_PIN: 13
+    BOOTUTIL_VALIDATE_SLOT0: 0
+    BOOTUTIL_MAX_IMG_SECTORS: 256
+    BOOTUTIL_SIGN_EC256: 0
+    BOOTUTIL_SIGN_RSA: 0
+    BOOTUTIL_ENCRYPT_RSA: 0
+    BOOTUTIL_ENCRYPT_KW: 0
+    BOOTUTIL_USE_MBED_TLS: 0
+    BOOTUTIL_USE_TINYCRYPT: 1
+    BOOTUTIL_OVERWRITE_ONLY: 0
+    BOOTUTIL_OVERWRITE_ONLY_FAST: 1
+    BOOTUTIL_HAVE_LOGGING: 0
+    BOOTUTIL_NO_LOGGING: 1
+    BOOTUTIL_LOG_LEVEL: 'BOOTUTIL_LOG_LEVEL_INFO'
+    CONSOLE_COMPAT: 1
+    CONSOLE_INPUT: 0
+    CONSOLE_UART: 0
+    CONSOLE_RTT: 0
+    OS_CPUTIME_TIMER_NUM: 0
+    TIMER_0: 1
+    UART_0: 0
+    BOOTUTIL_BOOTSTRAP: 0
+    MBEDTLS_NIST_KW_C: 0
