@@ -30,6 +30,10 @@
 #ifdef MCUBOOT_USE_TINYCRYPT
 #include "tinycrypt/ecc_dsa.h"
 #endif
+#ifdef MCUBOOT_USE_CC310
+#include "cc310_glue.h"
+#define NUM_ECC_BYTES (4*8)
+#endif
 #include "bootutil_priv.h"
 
 /*
@@ -140,7 +144,7 @@ bootutil_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp, uint8_t *
     return 0;
 }
 
-#if defined(MCUBOOT_USE_TINYCRYPT)
+#ifdef MCUBOOT_USE_TINYCRYPT
 int
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
@@ -179,4 +183,48 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     }
 }
 #endif /* MCUBOOT_USE_TINYCRYPT */
+#ifdef MCUBOOT_USE_CC310
+int
+bootutil_verify_sig(uint8_t *hash,
+                    uint32_t hlen,
+                    uint8_t *sig,
+                    size_t slen,
+                    uint8_t key_id)
+{
+    int rc;
+    uint8_t *pubkey;
+    uint8_t *end;
+    uint8_t signature[2 * NUM_ECC_BYTES];
+
+    pubkey = (uint8_t *)bootutil_keys[key_id].key;
+    end = pubkey + *bootutil_keys[key_id].len;
+
+    rc = bootutil_import_key(&pubkey, end);
+    if (rc) {
+        return -1;
+    }
+
+    /* Decode signature */
+    rc = bootutil_decode_sig(signature, sig, sig + slen);
+    if (rc) {
+        return -1;
+    }
+
+    /*
+     * This is simplified, as the hash length is also 32 bytes.
+     */
+    if (hlen != NUM_ECC_BYTES) {
+        return -1;
+    }
+
+    /* Initialize and verify in one go */
+    rc = cc310_ecdsa_verify_secp256r1(hash, pubkey, signature, hlen);
+
+    if (rc != 0) {
+        return -2;
+    }
+
+    return rc;
+}
+#endif /* MCUBOOT_USE_CC310 */
 #endif /* MCUBOOT_SIGN_EC256 */
