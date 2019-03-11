@@ -6,18 +6,6 @@
 
 cmake_minimum_required(VERSION 3.8.2)
 
-# Board-specific CONF_FILES should get merged into the build as well.
-#
-# Do this by defining the set_conf_file macro:
-# http://docs.zephyrproject.org/application/application.html#application-configuration
-macro(set_conf_file)
-  if (EXISTS ${APPLICATION_SOURCE_DIR}/boards/${BOARD}.conf)
-    set(CONF_FILE "prj.conf ${APPLICATION_SOURCE_DIR}/boards/${BOARD}.conf")
-  else()
-    set(CONF_FILE prj.conf)
-  endif()
-endmacro()
-
 # Default to qemu_x86 if no board has been specified.
 set(BOARD qemu_x86)
 
