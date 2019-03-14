@@ -20,10 +20,7 @@
 export PATH=$HOME/bin:$PATH
 pwd
 
-ln -s ci/mynewt_targets targets
-ln -s ci/mynewt_keys keys
-
-for target in $(ls targets); do
+for target in $(ls ci/mynewt_targets); do
     newt build $target
     [[ $? -ne 0 ]] && exit 1
 done
