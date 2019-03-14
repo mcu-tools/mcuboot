@@ -186,7 +186,14 @@ impl Matrix {
                         None => continue,
                     };
 
-                    let fset = FeatureSet::decode(env)?;
+                    // Skip features not targeted to this build.
+                    let fset = match FeatureSet::decode(env) {
+                        Ok(fset) => fset,
+                        Err(err) => {
+                            warn!("Skipping: {:?}", err);
+                            continue;
+                        }
+                    };
                     debug!("fset: {:?}", fset);
 
                     if false {
@@ -220,7 +227,9 @@ impl Matrix {
 
 impl FeatureSet {
     fn decode(text: &str) -> Result<FeatureSet> {
-        let re = Regex::new(r#"^([A-Z_]+)="(.*)"$"#)?;
+        // This is not general environment settings, but specific to the
+        // travis file.
+        let re = Regex::new(r#"^([A-Z_]+)="(.*)" TEST=sim$"#)?;
 
         match re.captures(text) {
             None => Err(format_err!("Invalid line: {:?}", text)),
@@ -246,7 +255,7 @@ impl FeatureSet {
     fn run(&self) -> Result<Option<Output>> {
         for v in &self.values {
             let output = Command::new("bash")
-               .arg("./scripts/run_tests.sh")
+               .arg("./ci/sim_run.sh")
                .current_dir("..")
                .env(&self.env, v)
                .output()?;
