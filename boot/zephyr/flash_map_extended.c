@@ -66,6 +66,19 @@ int flash_area_id_from_image_slot(int slot)
     return -EINVAL; /* flash_area_open will fail on that */
 }
 
+int flash_area_id_to_image_slot(int area_id)
+{
+    switch (area_id) {
+    case FLASH_AREA_IMAGE_PRIMARY:
+        return 0;
+    case FLASH_AREA_IMAGE_SECONDARY:
+        return 1;
+    default:
+        BOOT_LOG_ERR("invalid flash area ID");
+        return -1;
+    }
+}
+
 int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
 {
     int rc;

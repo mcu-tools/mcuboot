@@ -233,7 +233,11 @@ boot_enc_load(const struct image_header *hdr, const struct flash_area *fap,
     uint8_t enckey_type;
     int rc;
 
-    slot = fap->fa_id - FLASH_AREA_IMAGE_PRIMARY;
+    rc = flash_area_id_to_image_slot(fap->fa_id);
+    if (rc < 0) {
+        return rc;
+    }
+    slot = rc;
 
     /* Already loaded... */
     if (enc_state[slot].valid) {
@@ -305,7 +309,16 @@ boot_enc_load(const struct image_header *hdr, const struct flash_area *fap,
 int
 boot_enc_valid(const struct flash_area *fap)
 {
-    return enc_state[fap->fa_id - FLASH_AREA_IMAGE_PRIMARY].valid;
+    int rc;
+
+    rc = flash_area_id_to_image_slot(fap->fa_id);
+    if (rc < 0) {
+        /* can't get proper slot number - skip encryption, */
+        /* postpone the erro for a upper layer */
+        return 0;
+    }
+
+    return enc_state[rc].valid;
 }
 
 void
@@ -317,6 +330,7 @@ boot_encrypt(const struct flash_area *fap, uint32_t off, uint32_t sz,
     uint8_t u8;
     uint8_t nonce[16];
     uint8_t blk[16];
+    int rc;
 
     memset(nonce, 0, 12);
     off >>= 4;
@@ -325,7 +339,13 @@ boot_encrypt(const struct flash_area *fap, uint32_t off, uint32_t sz,
     nonce[14] = (uint8_t)(off >> 8);
     nonce[15] = (uint8_t)off;
 
-    enc = &enc_state[fap->fa_id - FLASH_AREA_IMAGE_PRIMARY];
+    rc = flash_area_id_to_image_slot(fap->fa_id);
+    if (rc < 0) {
+        assert(0);
+        return;
+    }
+
+    enc = &enc_state[rc];
     assert(enc->valid == 1);
     for (i = 0; i < sz; i++) {
         if (i == 0 || blk_off == 0) {
