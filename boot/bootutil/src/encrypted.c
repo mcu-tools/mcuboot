@@ -306,7 +306,7 @@ boot_enc_load(const struct image_header *hdr, const struct flash_area *fap,
     return rc;
 }
 
-int
+bool
 boot_enc_valid(const struct flash_area *fap)
 {
     int rc;
@@ -315,7 +315,7 @@ boot_enc_valid(const struct flash_area *fap)
     if (rc < 0) {
         /* can't get proper slot number - skip encryption, */
         /* postpone the erro for a upper layer */
-        return 0;
+        return false;
     }
 
     return enc_state[rc].valid;

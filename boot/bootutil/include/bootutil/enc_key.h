@@ -20,6 +20,7 @@
 #ifndef BOOTUTIL_ENC_KEY_H
 #define BOOTUTIL_ENC_KEY_H
 
+#include <stdbool.h>
 #include <flash_map_backend/flash_map_backend.h>
 #include "mcuboot_config/mcuboot_config.h"
 #include "bootutil/image.h"
@@ -51,7 +52,7 @@ extern const struct bootutil_key bootutil_enc_key;
 int boot_enc_set_key(uint8_t slot, uint8_t *enckey);
 int boot_enc_load(const struct image_header *hdr, const struct flash_area *fap,
         uint8_t *enckey);
-int boot_enc_valid(const struct flash_area *fap);
+bool boot_enc_valid(const struct flash_area *fap);
 void boot_encrypt(const struct flash_area *fap, uint32_t off, uint32_t sz,
         uint32_t blk_off, uint8_t *buf);
 void boot_enc_zeroize(void);
