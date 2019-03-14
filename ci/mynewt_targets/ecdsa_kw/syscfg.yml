@@ -17,7 +17,7 @@
 #
 
 $import:
-    - 'targets/basic/syscfg.yml'
+    - '@mcuboot/ci/mynewt_targets/basic/syscfg.yml'
 
 syscfg.vals:
     BOOTUTIL_VALIDATE_SLOT0: 1
