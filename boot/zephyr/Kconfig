@@ -13,17 +13,15 @@ config MCUBOOT
 	bool
 	select MPU_ALLOW_FLASH_WRITE if ARM_MPU
 
-if BOARD_HAS_NRF5_BOOTLOADER
+# When compiling MCUBoot, ensure to link in the boot partition.
 
-# When compiling MCUBoot, the image will be linked to the boot partition.
-# Override .text offset to make sure it is set to zero.
-# This is necessary when other bootloaders set a different default for
-# application images which are not bootloaders.
+config FLASH_LOAD_OFFSET
+	default $(dt_hex_val,DT_CODE_PARTITION_OFFSET)
 
-config TEXT_SECTION_OFFSET
-	default 0x00
+# Inform the linker of the size of the partition
 
-endif # BOARD_HAS_NRF5_BOOTLOADER
+config FLASH_LOAD_SIZE
+	default $(dt_hex_val,DT_CODE_PARTITION_SIZE)
 
 config BOOT_USE_MBEDTLS
 	bool
