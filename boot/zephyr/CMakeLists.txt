@@ -67,6 +67,10 @@ if(EXISTS targets/${BOARD}.h)
   zephyr_library_compile_definitions(MCUBOOT_TARGET_CONFIG="${BOARD}.h")
 endif()
 
+if(EXISTS ${BOOT_DIR}/zephyr/targets/${BOARD}.c)
+  zephyr_sources(${BOOT_DIR}/zephyr/targets/${BOARD}.c)
+endif()
+
 # Zephyr port-specific sources.
 zephyr_library_sources(
   main.c

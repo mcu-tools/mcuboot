@@ -42,6 +42,7 @@ const struct boot_uart_funcs boot_funcs = {
 
 #ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
 #include <usb/class/usb_dfu.h>
+#include "usb_dfu/usb_dfu.h"
 #endif
 
 MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
@@ -202,9 +203,11 @@ void main(void)
 #endif
 
 #ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
-    BOOT_LOG_INF("Waiting for USB DFU");
-    wait_for_usb_dfu();
-    BOOT_LOG_INF("USB DFU wait time elapsed");
+    if (is_entering_usb_dfu()) {
+        BOOT_LOG_INF("Waiting for USB DFU");
+        wait_for_usb_dfu();
+        BOOT_LOG_INF("USB DFU wait time elapsed");
+    }
 #endif
 
     rc = boot_go(&rsp);
