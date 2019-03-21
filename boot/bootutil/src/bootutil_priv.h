@@ -24,6 +24,7 @@
 
 #include <flash_map_backend/flash_map_backend.h>
 
+#include "bootutil/bootutil.h"
 #include "bootutil/image.h"
 #include "mcuboot_config/mcuboot_config.h"
 
@@ -144,11 +145,6 @@ struct boot_swap_state {
 
 #define BOOT_FLAG_IMAGE_OK              0
 #define BOOT_FLAG_COPY_DONE             1
-
-#if defined(MCUBOOT_MYNEWT)
-    #define FLASH_AREA_IMAGE_PRIMARY    FLASH_AREA_IMAGE_0
-    #define FLASH_AREA_IMAGE_SECONDARY  FLASH_AREA_IMAGE_1
-#endif
 
 extern const uint32_t BOOT_MAGIC_SZ;
 

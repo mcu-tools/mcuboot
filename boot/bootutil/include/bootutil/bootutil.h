@@ -26,6 +26,11 @@
 extern "C" {
 #endif
 
+#if defined(MCUBOOT_MYNEWT)
+#define FLASH_AREA_IMAGE_PRIMARY    FLASH_AREA_IMAGE_0
+#define FLASH_AREA_IMAGE_SECONDARY  FLASH_AREA_IMAGE_1
+#endif
+
 /** Attempt to boot the contents of the primary slot. */
 #define BOOT_SWAP_TYPE_NONE     1
 
