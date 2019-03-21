@@ -25,6 +25,8 @@
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
 #include <bootutil/bootutil_log.h>
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
 extern int sim_flash_erase(uint8_t flash_id, uint32_t offset, uint32_t size);
 extern int sim_flash_read(uint8_t flash_id, uint32_t offset, uint8_t *dest,
         uint32_t size);
@@ -242,7 +244,16 @@ void *os_malloc(size_t size)
 
 int flash_area_id_from_image_slot(int slot)
 {
-    return slot + 1;
+    const int area_id_tab[] = {FLASH_AREA_IMAGE_PRIMARY,
+                               FLASH_AREA_IMAGE_SECONDARY,
+                               FLASH_AREA_IMAGE_SCRATCH};
+
+    if (slot >= 0 && (unsigned)slot < ARRAY_SIZE(area_id_tab)) {
+            return area_id_tab[slot];
+    }
+
+    printf("Image flash area ID not found\n");
+    return -1; /* flash_area_open will fail on that */
 }
 
 int flash_area_open(uint8_t id, const struct flash_area **area)
