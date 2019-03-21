@@ -30,3 +30,6 @@ pkg.deps:
 
 pkg.deps.SELFTEST:
     - "@apache-mynewt-core/sys/console/stub"
+
+pkg.cflags:
+    - '-DMCUBOOT_MYNEWT'
