@@ -33,11 +33,12 @@
 #include "testutil/testutil.h"
 #include "hal/hal_flash.h"
 #include "flash_map_backend/flash_map_backend.h"
+#include "bootutil/bootutil.h"
 
 #include "boot_serial_priv.h"
 
 #ifdef __cplusplus
-#extern "C" {
+extern "C" {
 #endif
 
 void tx_msg(void *src, int len);
