@@ -6,6 +6,7 @@
 
 cmake_minimum_required(VERSION 3.8.2)
 
+# Board-specific CONF_FILES should get merged into the build as well.
 # Default to qemu_x86 if no board has been specified.
 set(BOARD qemu_x86)
 
@@ -56,8 +57,18 @@ get_filename_component(BOOT_DIR ${APPLICATION_SOURCE_DIR} DIRECTORY)
 get_filename_component(MCUBOOT_DIR ${BOOT_DIR} DIRECTORY)
 # Path to tinycrypt library source subdirectory of MCUBOOT_DIR.
 set(TINYCRYPT_DIR "${MCUBOOT_DIR}/ext/tinycrypt/lib")
+assert_exists(TINYCRYPT_DIR)
 # Path to mbed-tls' asn1 parser library.
 set(MBEDTLS_ASN1_DIR "${MCUBOOT_DIR}/ext/mbedtls")
+assert_exists(MBEDTLS_ASN1_DIR)
+set(NRF_DIR "${MCUBOOT_DIR}/ext/nrf")
+
+if(CONFIG_BOOT_USE_NRF_CC310_BL)
+set(NRFXLIB_DIR ${MCUBOOT_DIR}/../nrfxlib)
+assert_exists(NRFXLIB_DIR)
+# Don't include this if we are using west
+ add_subdirectory(${NRFXLIB_DIR} ${PROJECT_BINARY_DIR}/nrfxlib)
+endif()
 
 zephyr_library_include_directories(
   include
@@ -94,11 +105,19 @@ zephyr_library_sources(
   )
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
+  zephyr_library_include_directories(
+	${MBEDTLS_ASN1_DIR}/include
+  )
+  zephyr_library_sources(
+	# Additionally pull in just the ASN.1 parser from mbedTLS.
+	${MBEDTLS_ASN1_DIR}/src/asn1parse.c
+	${MBEDTLS_ASN1_DIR}/src/platform_util.c
+	)
+  if(CONFIG_BOOT_USE_TINYCRYPT)
   # When using ECDSA signatures, pull in our copy of the tinycrypt library.
   zephyr_library_include_directories(
 	 ${BOOT_DIR}/zephyr/include
 	   ${TINYCRYPT_DIR}/include
-	${MBEDTLS_ASN1_DIR}/include
 	)
 
   zephyr_library_sources(
@@ -106,11 +125,12 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
 	${TINYCRYPT_DIR}/source/ecc_dsa.c
 	${TINYCRYPT_DIR}/source/sha256.c
 	${TINYCRYPT_DIR}/source/utils.c
-
-	# Additionally pull in just the ASN.1 parser from mbedTLS.
-	${MBEDTLS_ASN1_DIR}/src/asn1parse.c
-	${MBEDTLS_ASN1_DIR}/src/platform_util.c
-	)
+  )
+  elseif(CONFIG_BOOT_USE_NRF_CC310_BL)
+    zephyr_library_sources(${NRF_DIR}/cc310_glue.c)
+    zephyr_library_include_directories(${NRF_DIR})
+    zephyr_link_libraries(nrfxlib_crypto)
+  endif()
 
   # Since here we are not using Zephyr's mbedTLS but rather our own, we need
   # to set MBEDTLS_CONFIG_FILE ourselves. When using Zephyr's copy, this
@@ -163,3 +183,4 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
     )
   zephyr_library_sources(${GENERATED_PUBKEY})
 endif()
+
