@@ -44,6 +44,29 @@ config BOOT_USE_TINYCRYPT
 	help
 	  Use TinyCrypt for crypto primitives.
 
+config BOOT_USE_CC310
+	bool
+	# Hidden option
+	default n
+	# When building for ECDSA, we use our own copy of mbedTLS, so the
+	# Zephyr one must not be enabled or the MBEDTLS_CONFIG_FILE macros
+	# will collide.
+	depends on ! MBEDTLS
+	help
+	  Use cc310 for crypto primitives.
+
+config BOOT_USE_NRF_CC310_BL
+	bool
+	default n
+
+config NRFXLIB_CRYPTO
+	bool
+	default n
+
+config NRF_CC310_BL
+	bool
+	default n
+
 menu "MCUBoot settings"
 
 choice
@@ -57,8 +80,22 @@ config BOOT_SIGNATURE_TYPE_RSA
 
 config BOOT_SIGNATURE_TYPE_ECDSA_P256
 	bool "Elliptic curve digital signatures with curve P-256"
-	select BOOT_USE_TINYCRYPT
 
+if BOOT_SIGNATURE_TYPE_ECDSA_P256
+choice
+	prompt "Ecdsa implementation"
+	default BOOT_TINYCRYPT
+config BOOT_TINYCRYPT
+	bool "Use tinycrypt"
+	select BOOT_USE_TINYCRYPT
+config BOOT_CC310
+	bool "Use CC310"
+	select BOOT_USE_NRF_CC310_BL if HAS_HW_NRF_CC310
+	select NRF_CC310_BL if HAS_HW_NRF_CC310
+	select NRFXLIB_CRYPTO if SOC_FAMILY_NRF
+	select BOOT_USE_CC310
+endchoice
+endif
 endchoice
 
 config BOOT_SIGNATURE_KEY_FILE
