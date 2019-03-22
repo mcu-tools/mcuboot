@@ -172,13 +172,12 @@ boot_magic_off(const struct flash_area *fap)
 int
 boot_status_entries(const struct flash_area *fap)
 {
-    switch (fap->fa_id) {
-    case FLASH_AREA_IMAGE_PRIMARY:
-    case FLASH_AREA_IMAGE_SECONDARY:
-        return BOOT_STATUS_STATE_COUNT * BOOT_STATUS_MAX_ENTRIES;
-    case FLASH_AREA_IMAGE_SCRATCH:
+    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
         return BOOT_STATUS_STATE_COUNT;
-    default:
+    } else if ((fap->fa_id == FLASH_AREA_IMAGE_PRIMARY) ||
+               (fap->fa_id == FLASH_AREA_IMAGE_SECONDARY)) {
+        return BOOT_STATUS_STATE_COUNT * BOOT_STATUS_MAX_ENTRIES;
+    } else {
         return BOOT_EBADARGS;
     }
 }
@@ -301,16 +300,14 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
     const struct flash_area *fap;
     int rc;
 
-    switch (flash_area_id) {
-    case FLASH_AREA_IMAGE_SCRATCH:
-    case FLASH_AREA_IMAGE_PRIMARY:
-    case FLASH_AREA_IMAGE_SECONDARY:
+    if (flash_area_id == FLASH_AREA_IMAGE_SCRATCH ||
+        flash_area_id == FLASH_AREA_IMAGE_PRIMARY ||
+        flash_area_id == FLASH_AREA_IMAGE_SECONDARY) {
         rc = flash_area_open(flash_area_id, &fap);
         if (rc != 0) {
             return BOOT_EFLASH;
         }
-        break;
-    default:
+    } else {
         return BOOT_EBADARGS;
     }
 
