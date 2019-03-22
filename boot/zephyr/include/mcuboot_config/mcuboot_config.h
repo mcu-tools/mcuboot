@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018 Open Source Foundries Limited
+ * Copyright (c) 2019 Arm Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -63,6 +64,12 @@
 
 #ifdef CONFIG_BOOT_BOOTSTRAP
 #define MCUBOOT_BOOTSTRAP 1
+#endif
+
+#ifdef CONFIG_UPDATEABLE_IMAGE_NUMBER
+#define MCUBOOT_IMAGE_NUMBER    CONFIG_UPDATEABLE_IMAGE_NUMBER
+#else
+#define MCUBOOT_IMAGE_NUMBER    1
 #endif
 
 /*

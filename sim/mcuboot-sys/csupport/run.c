@@ -397,15 +397,15 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
 
 int flash_area_id_to_image_slot(int area_id)
 {
-    switch (area_id) {
-    case FLASH_AREA_IMAGE_PRIMARY:
+    if (area_id == FLASH_AREA_IMAGE_PRIMARY) {
         return 0;
-    case FLASH_AREA_IMAGE_SECONDARY:
-        return 1;
-    default:
-        printf("Unsupported image area ID\n");
-        abort();
     }
+    if (area_id == FLASH_AREA_IMAGE_SECONDARY) {
+        return 1;
+    }
+
+    printf("Unsupported image area ID\n");
+    abort();
 }
 
 void sim_assert(int x, const char *assertion, const char *file, unsigned int line, const char *function)

@@ -1,5 +1,7 @@
 /*
  *  Copyright (C) 2017, Linaro Ltd
+ *  Copyright (c) 2019, Arm Limited
+ *
  *  SPDX-License-Identifier: Apache-2.0
  */
 
@@ -45,4 +47,11 @@
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
 
+#if ((MCUBOOT_IMAGE_NUMBER == 2) && (!defined(FLASH_AREA_IMAGE_2_OFFSET) || \
+                                     !defined(FLASH_AREA_IMAGE_2_SIZE)   || \
+                                     !defined(FLASH_AREA_IMAGE_3_OFFSET) || \
+                                     !defined(FLASH_AREA_IMAGE_3_SIZE)))
+#error "Target support is incomplete; cannot build mcuboot."
 #endif
+
+#endif /* H_TARGETS_TARGET_ */

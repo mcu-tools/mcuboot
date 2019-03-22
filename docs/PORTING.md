@@ -86,9 +86,19 @@ struct flash_area {
 `fa_id` is can be one of the following options:
 
 ```c
-#define FLASH_AREA_IMAGE_PRIMARY    1
-#define FLASH_AREA_IMAGE_SECONDARY  2
-#define FLASH_AREA_IMAGE_SCRATCH    3
+/* Independent from multiple image boot */
+#define FLASH_AREA_BOOTLOADER         0
+#define FLASH_AREA_IMAGE_SCRATCH      3
+```
+```c
+/* Flash area IDs of the first image in case of multiple images */
+#define FLASH_AREA_IMAGE_PRIMARY      1
+#define FLASH_AREA_IMAGE_SECONDARY    2
+```
+```c
+/* Flash area IDs of the second image in case of multiple images */
+#define FLASH_AREA_IMAGE_PRIMARY      5
+#define FLASH_AREA_IMAGE_SECONDARY    6
 ```
 
 The functions that must be defined for working with the `flash_area`s are:
