@@ -6,16 +6,16 @@
 [coverity]: https://scan.coverity.com/projects/mcuboot
 [travis]: https://travis-ci.org/JuulLabs-OSS/mcuboot
 
-This is mcuboot, version 1.3.0
+This is mcuboot version 1.3.0
 
-MCUboot is a secure bootloader for 32-bit MCUs.   The goal of MCUboot is to
+MCUboot is a secure bootloader for 32-bit MCUs. The goal of MCUboot is to
 define a common infrastructure for the bootloader, system flash layout on
 microcontroller systems, and to provide a secure bootloader that enables
-easy software upgrade.
+simple software upgrades.
 
 MCUboot is operating system and hardware independent and relies on
-hardware porting layers from the operating system it works with.  Currently, 
-mcuboot works with both the Apache Mynewt, and Zephyr operating systems, but
+hardware porting layers from the operating system. Currently
+mcuboot works with both the Apache Mynewt and Zephyr operating systems, but
 more ports are planned in the future. RIOT is currently supported as a boot
 target with a complete port planned.
 
