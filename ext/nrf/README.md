@@ -2,7 +2,20 @@
 
 ## Pre-prerequisites
 
-Clone [nrfxlib](https://github.com/NordicPlayground/nrfxlib) next to the mcuboot root folder. So that it's located `../nrfxlib` from mcuboots root folder.
+Install west from Zephyr's pip package. This requires Python 3 or greater. 
+```
+pip install --user west
+```
+
+Go outside the root folder and clone the [nRF Connect SDK](https://github.com/NordicPlayground/fw-nrfconnect-nrf) next to the mcuboot folder.
+
+```
+git clone https://github.com/NordicPlayground/fw-nrfconnect-nrf nrf
+west init -l nrf 
+west update
+```
+
+The reason this is done this way is to get the `nrfxlib` and having west discover it as a module in Zephyr's build system.
 
 ## Building
 
