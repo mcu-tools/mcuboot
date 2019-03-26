@@ -84,6 +84,7 @@ config BOOT_SIGNATURE_TYPE_ECDSA_P256
 if BOOT_SIGNATURE_TYPE_ECDSA_P256
 choice
 	prompt "Ecdsa implementation"
+	default BOOT_CC310 if HAS_HW_NRF_CC310
 	default BOOT_TINYCRYPT
 config BOOT_TINYCRYPT
 	bool "Use tinycrypt"
