@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 #
 # Copyright 2017 Linaro Limited
+# Copyright 2019 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 import click
 import getpass
 import imgtool.keys as keys
@@ -106,6 +108,29 @@ def validate_header_size(ctx, param, value):
     return value
 
 
+def get_dependencies(ctx, param, value):
+    if value is not None:
+        versions = []
+        images = re.findall(r"\((\d+)", value)
+        if len(images) == 0:
+            raise click.BadParameter(
+                "Image dependency format is invalid: {}".format(value))
+        raw_versions = re.findall(r",\s*([0-9.+]+)\)", value)
+        if len(images) != len(raw_versions):
+            raise click.BadParameter(
+                '''There's a mismatch between the number of dependency images
+                and versions in: {}'''.format(value))
+        for raw_version in raw_versions:
+            try:
+                versions.append(decode_version(raw_version))
+            except ValueError as e:
+                raise click.BadParameter("{}".format(e))
+        dependencies = dict()
+        dependencies[image.DEP_IMAGES_KEY] = images
+        dependencies[image.DEP_VERSIONS_KEY] = versions
+        return dependencies
+
+
 class BasedIntParamType(click.ParamType):
     name = 'integer'
 
@@ -138,6 +163,9 @@ class BasedIntParamType(click.ParamType):
               help='Add --header-size zeroed bytes at the beginning of the image')
 @click.option('-H', '--header-size', callback=validate_header_size,
               type=BasedIntParamType(), required=True)
+@click.option('-d', '--dependencies', callback=get_dependencies,
+              required=False, help='''Add dependence on another image, format:
+              "(<image_ID>,<image_version>), ... "''')
 @click.option('-v', '--version', callback=validate_version,  required=True)
 @click.option('--align', type=click.Choice(['1', '2', '4', '8']),
               required=True)
@@ -146,7 +174,8 @@ class BasedIntParamType(click.ParamType):
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, othewise binary format is used''')
 def sign(key, align, version, header_size, pad_header, slot_size, pad,
-         max_sectors, overwrite_only, endian, encrypt, infile, outfile):
+         max_sectors, overwrite_only, endian, encrypt, infile, outfile,
+         dependencies):
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, align=int(align),
                       slot_size=slot_size, max_sectors=max_sectors,
@@ -159,7 +188,7 @@ def sign(key, align, version, header_size, pad_header, slot_size, pad,
             raise Exception("Encryption only available with RSA key")
         if key and not isinstance(key, keys.RSA2048):
             raise Exception("Signing only available with private RSA key")
-    img.create(key, enckey)
+    img.create(key, enckey, dependencies)
     img.save(outfile)
 
 
