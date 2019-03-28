@@ -33,8 +33,8 @@
 #include <hal/hal_flash.h>
 #include <hal/hal_watchdog.h>
 #include <sysinit/sysinit.h>
-#ifdef MCUBOOT_SERIAL
 #include <hal/hal_gpio.h>
+#ifdef MCUBOOT_SERIAL
 #include <hal/hal_nvreg.h>
 #include <boot_serial/boot_serial.h>
 #endif
@@ -210,6 +210,8 @@ main(void)
     struct boot_rsp rsp;
     uintptr_t flash_base;
     int rc;
+
+    hal_gpio_init_out(MYNEWT_VAL(MOTOR_PWM_PIN),0);
 
     hal_bsp_init();
 
