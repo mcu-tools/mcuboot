@@ -156,9 +156,9 @@ def sign(key, align, version, header_size, pad_header, slot_size, pad,
     enckey = load_key(encrypt) if encrypt else None
     if enckey:
         if not isinstance(enckey, (keys.RSA2048, keys.RSA2048Public)):
-            raise Exception("Encryption only available with RSA")
-        if key and not isinstance(key, (keys.RSA2048, keys.RSA2048Public)):
-            raise Exception("Encryption with sign only available with RSA")
+            raise Exception("Encryption only available with RSA key")
+        if key and not isinstance(key, keys.RSA2048):
+            raise Exception("Signing only available with private RSA key")
     img.create(key, enckey)
     img.save(outfile)
 
