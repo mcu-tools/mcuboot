@@ -180,6 +180,13 @@ void main(void)
     struct boot_rsp rsp;
     int rc;
 
+#ifdef CONFIG_BOOT_SERIAL_UART_DETECT
+    rc = boot_console_init();
+    __ASSERT(rc == 0, "Error initializing boot console.\n");
+
+    BOOT_UART_DETECT_LOG_INF("Starting bootloader\r\n");
+#endif
+
     BOOT_LOG_INF("Starting bootloader");
 
     os_heap_init();
@@ -200,6 +207,7 @@ void main(void)
 
 #ifdef CONFIG_MCUBOOT_SERIAL
 
+#ifdef CONFIG_BOOT_SERIAL_GPIO_DETECT
     struct device *detect_port;
     u32_t detect_value;
 
@@ -221,6 +229,33 @@ void main(void)
         boot_serial_start(&boot_funcs);
         __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
     }
+#elif CONFIG_BOOT_SERIAL_UART_DETECT
+
+    char str[2];
+    int newline = 0;
+    int timeout_step = 10000;
+    int step = 1;
+
+    BOOT_UART_DETECT_LOG_INF("Wait:\r\n");
+    while (1) {
+        console_read(str, 1, &newline);
+        if (newline == 1) {
+            break;
+        }
+
+        timeout_step -= step;
+        if (timeout_step <= step) {
+            BOOT_UART_DETECT_LOG_INF("Booting...\r\n");
+            break;
+        }
+    }
+
+    if (newline == 1) {
+        BOOT_UART_DETECT_LOG_INF("Recovery...\r\n");
+        boot_serial_start(&boot_funcs);
+    }
+
+#endif
 #endif
 
 #ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
@@ -232,6 +267,7 @@ void main(void)
     rc = boot_go(&rsp);
     if (rc != 0) {
         BOOT_LOG_ERR("Unable to find bootable image");
+        BOOT_UART_DETECT_LOG_INF("Unable to find bootable image\r\n");
         while (1)
             ;
     }
@@ -240,6 +276,7 @@ void main(void)
                  rsp.br_image_off);
 
     BOOT_LOG_INF("Jumping to the first image slot");
+    BOOT_UART_DETECT_LOG_INF("Jumping to the first image slot\r\n");
     do_boot(&rsp);
 
     BOOT_LOG_ERR("Never should get here");

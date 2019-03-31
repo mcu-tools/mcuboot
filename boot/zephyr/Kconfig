@@ -236,7 +236,6 @@ menuconfig MCUBOOT_SERIAL
 	bool "MCUboot serial recovery"
 	default n
 	select REBOOT
-	select GPIO
 	select SERIAL
 	select UART_INTERRUPT_DRIVEN
 	select BASE64
@@ -265,12 +264,26 @@ config BOOT_SERIAL_CDC_ACM
 
 endchoice
 
+choice
+	prompt "Detect type"
+	default BOOT_SERIAL_GPIO_DETECT
+
+config BOOT_SERIAL_UART_DETECT
+	bool "UART DETECT"
+	# UART already selected
+
+config BOOT_SERIAL_GPIO_DETECT
+	bool "GPIO DETECT"
+	select GPIO
+endchoice
+
 config BOOT_MAX_LINE_INPUT_LEN
 	int "Maximum command line length"
 	default 512
 	help
 	  Maximum length of commands transported over the serial port.
 
+if BOOT_SERIAL_GPIO_DETECT
 config BOOT_SERIAL_DETECT_PORT
 	string "GPIO device to trigger serial recovery mode"
 	default GPIO_0 if SOC_FAMILY_NRF
@@ -293,6 +306,8 @@ config BOOT_SERIAL_DETECT_PIN_VAL
 	help
 	  Logic value of the detect pin which triggers serial recovery
 	  mode.
+
+endif #BOOT_SERIAL_GPIO_DETECT
 
 # Workaround for not being able to have commas in macro arguments
 DT_CHOSEN_Z_CONSOLE := zephyr,console

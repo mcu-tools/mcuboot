@@ -148,6 +148,12 @@ boot_uart_fifo_callback(struct device *dev)
 			cmd->line[cur++] = byte;
 		}
 
+#ifdef CONFIG_BOOT_SERIAL_UART_DETECT
+		if (byte == '\r') {
+			byte = '\n';
+		}
+#endif
+
 		if (byte ==  '\n') {
 			cmd->len = cur;
 			sys_slist_append(&lines_queue, &cmd->node);

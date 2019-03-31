@@ -26,6 +26,19 @@ extern "C" {
 #include <mcuboot_config/mcuboot_config.h>
 #include <mcuboot_config/mcuboot_logging.h>
 
+#ifdef CONFIG_BOOT_SERIAL_UART_DETECT
+#define BOOT_UART_DETECT_LOG_INF(str)   console_write(str, strlen(str))
+
+#define BOOT_LOG_ERR(...) IGNORE(__VA_ARGS__)
+#define BOOT_LOG_WRN(...) IGNORE(__VA_ARGS__)
+#define BOOT_LOG_INF(...) IGNORE(__VA_ARGS__)
+#define BOOT_LOG_DBG(...) IGNORE(__VA_ARGS__)
+#define BOOT_LOG_SIM(...) IGNORE(__VA_ARGS__)
+
+#else
+
+#define BOOT_UART_DETECT_LOG_INF(str)
+
 #ifdef MCUBOOT_HAVE_LOGGING
 
 #define BOOT_LOG_ERR(...) MCUBOOT_LOG_ERR(__VA_ARGS__)
@@ -43,6 +56,8 @@ extern "C" {
 #define BOOT_LOG_SIM(...) IGNORE(__VA_ARGS__)
 
 #endif /* MCUBOOT_HAVE_LOGGING */
+
+#endif /* CONFIG_BOOT_SERIAL_UART_DETECT */
 
 #ifdef __cplusplus
 }
