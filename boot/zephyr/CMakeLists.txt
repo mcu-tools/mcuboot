@@ -16,14 +16,18 @@ set(BOARD qemu_x86)
 # the list).
 if(DTC_OVERLAY_FILE)
   set(DTC_OVERLAY_FILE
-      "${DTC_OVERLAY_FILE} ${CMAKE_CURRENT_LIST_DIR}/dts.overlay")
+    "${DTC_OVERLAY_FILE} ${CMAKE_CURRENT_LIST_DIR}/dts.overlay"
+    CACHE STRING "" FORCE
+    )
 else()
   set(DTC_OVERLAY_FILE ${CMAKE_CURRENT_LIST_DIR}/dts.overlay)
 endif()
 
 if (EXISTS ${CMAKE_CURRENT_LIST_DIR}/boards/${BOARD}.overlay)
   set(DTC_OVERLAY_FILE
-      "${DTC_OVERLAY_FILE} ${CMAKE_CURRENT_LIST_DIR}/boards/${BOARD}.overlay")
+    "${DTC_OVERLAY_FILE} ${CMAKE_CURRENT_LIST_DIR}/boards/${BOARD}.overlay"
+    CACHE STRING "" FORCE
+    )
 endif()
 
 # Enable Zephyr runner options which request mass erase if so
