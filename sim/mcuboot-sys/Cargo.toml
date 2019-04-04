@@ -33,6 +33,9 @@ enc-kw = []
 # Allow bootstrapping an empty/invalid primary slot from a valid secondary slot
 bootstrap = []
 
+# Support multiple images (currently 2 instead of 1).
+multiimage = []
+
 [build-dependencies]
 cc = "1.0.25"
 

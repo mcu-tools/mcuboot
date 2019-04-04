@@ -17,6 +17,7 @@ fn main() {
     let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
     let enc_kw = env::var("CARGO_FEATURE_ENC_KW").is_ok();
     let bootstrap = env::var("CARGO_FEATURE_BOOTSTRAP").is_ok();
+    let multiimage = env::var("CARGO_FEATURE_MULTIIMAGE").is_ok();
 
     let mut conf = cc::Build::new();
     conf.define("__BOOTSIM__", None);
@@ -24,6 +25,7 @@ fn main() {
     conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
     conf.define("MCUBOOT_HAVE_ASSERT_H", None);
     conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
+    conf.define("MCUBOOT_IMAGE_NUMBER", Some(if multiimage { "2" } else { "1" }));
 
     if bootstrap {
         conf.define("MCUBOOT_BOOTSTRAP", None);
