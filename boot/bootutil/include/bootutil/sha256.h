@@ -31,14 +31,11 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-#if (defined(MCUBOOT_USE_MBED_TLS) && defined(MCUBOOT_USE_TINYCRYPT))\
-    ||(defined MCUBOOT_USE_MBED_TLS) && defined(MCUBOOT_USE_CC310)\
-    ||(defined(MCUBOOT_USE_TINYCRYPT) && defined(MCUBOOT_USE_CC310))
-    #error "Cannot define CC310, MBED_TLS and TINYCRYPT"
-#endif
-
-#if !defined(MCUBOOT_USE_MBED_TLS) && !defined(MCUBOOT_USE_TINYCRYPT) && !defined(MCUBOOT_USE_CC310)
-    #error "One of CC310, MBED_TLS or TINYCRYPT must be defined"
+#define NUM_CRYPTO_BACKENDS (defined(MCUBOOT_USE_MBED_TLS) +\
+			     defined(MCUBOOT_USE_TINYCRYPT) +\
+			     defined(MCUBOOT_USE_CC310))
+#if NUM_CRYPTO_BACKENDS != 1
+    #error "One crypto backend must be defined either CC310, MBED_TLS or TINYCRYPT"
 #endif
 
 #ifdef MCUBOOT_USE_MBED_TLS
