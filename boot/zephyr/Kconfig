@@ -170,22 +170,9 @@ config ZEPHYR_TRY_MASS_ERASE
 
 	  This is not available for all targets.
 
-config BOOT_HAVE_LOGGING
-	bool "MCUboot have logging enabled"
-	default y
-	select LOG
-	select LOG_IMMEDIATE
-	help
-	  If y, enables logging on the serial port. The log level can
-	  be defined by setting `CONFIG_MCUBOOT_LOG_LEVEL_*`.
-	  If unsure, leave at the default value.
-
-if BOOT_HAVE_LOGGING
 module = MCUBOOT
-module-dep = LOG
-module-str = Log level for MCUBOOT application
+module-str = MCUBoot bootloader
 source "subsys/logging/Kconfig.template.log_config"
-endif
 
 menuconfig MCUBOOT_SERIAL
 	bool "MCUboot serial recovery"
