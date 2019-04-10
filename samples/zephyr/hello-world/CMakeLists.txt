@@ -11,17 +11,6 @@
 
 cmake_minimum_required(VERSION 3.8)
 
-# The default top-level application configuration is prj.conf.
-# You can place additional board-specific files in boards/${BOARD}.conf,
-# and they will be merged into the configuration along with prj.conf.
-macro(set_conf_file)
-  if(EXISTS ${APPLICATION_SOURCE_DIR}/boards/${BOARD}.conf)
-    set(CONF_FILE "prj.conf ${APPLICATION_SOURCE_DIR}/boards/${BOARD}.conf")
-  else()
-    set(CONF_FILE "prj.conf")
-  endif()
-endmacro()
-
 # Standard Zephyr application boilerplate.
 include($ENV{ZEPHYR_BASE}/cmake/app/boilerplate.cmake NO_POLICY_SCOPE)
 project(NONE)
