@@ -44,7 +44,7 @@
 #define MCUBOOT_OVERWRITE_ONLY_FAST
 #endif
 
-#ifdef CONFIG_BOOT_HAVE_LOGGING
+#ifdef CONFIG_LOG
 #define MCUBOOT_HAVE_LOGGING 1
 #endif
 
