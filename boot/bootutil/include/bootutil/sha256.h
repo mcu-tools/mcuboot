@@ -31,10 +31,9 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-#define NUM_CRYPTO_BACKENDS (defined(MCUBOOT_USE_MBED_TLS) +\
-			     defined(MCUBOOT_USE_TINYCRYPT) +\
-			     defined(MCUBOOT_USE_CC310))
-#if NUM_CRYPTO_BACKENDS != 1
+#if (defined(MCUBOOT_USE_MBED_TLS) + \
+     defined(MCUBOOT_USE_TINYCRYPT) + \
+     defined(MCUBOOT_USE_CC310)) != 1
     #error "One crypto backend must be defined either CC310, MBED_TLS or TINYCRYPT"
 #endif
 
