@@ -20,4 +20,4 @@
 target.app: "@mcuboot/boot/mynewt"
 target.bsp: "@apache-mynewt-core/hw/bsp/nordic_pca10056"
 target.build_profile: "optimized"
-target.key_file: "root-ec-p256.pem"
+target.key_file: "@mcuboot/root-ec-p256.pem"
