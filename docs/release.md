@@ -30,7 +30,16 @@ time, and allow testing to happen.
 
 During the time between rc1 and the final release, the only changes
 that should be merged into master are those to fix bugs found in the
-rc.
+rc and Mynewt metadata as described in the next section.
+
+## Mynewt release information
+
+On Mynewt, `newt` always fetches a versioned MCUBoot release, so after
+the rc step is finished, the release needs to be exported by modifying
+`repository.yml` in the root directory; it must be updated with the
+new release version, including updates to the pseudo keys
+(`*-(latest|dev)`). Similarly `version.yml` must have its `repo.version`
+key updated with the version number being released.
 
 ## Tagging and Release
 
@@ -59,5 +68,11 @@ release happen:
 git push origin HEAD:refs/heads/master
 git push origin va.b.c-rcn
 ```
+
+## Update Mynewt version.yml
+
+On master `version.yml` must always have its `repo.version`
+key set to "0.0.0" to this must be done now that the release
+is finished.
 
 [semver]: http://semver.org/
