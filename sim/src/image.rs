@@ -943,12 +943,12 @@ impl Images {
                        magic: Option<u8>, image_ok: Option<u8>,
                        copy_done: Option<u8>) -> bool {
         for image in &self.images {
-            if !verify_trailer(flash, &image.slots, slot,
+            if verify_trailer(flash, &image.slots, slot,
                                magic, image_ok, copy_done) {
-                return false;
+                return true;
             }
         }
-        true
+        false
     }
 
     /// Mark each of the images for permanent upgrade.
