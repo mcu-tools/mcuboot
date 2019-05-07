@@ -116,4 +116,17 @@
  * "assert" is used. */
 /* #define MCUBOOT_HAVE_ASSERT_H */
 
+/*
+ * Watchdog feeding
+ */
+
+/* This macro might be implemented if the OS / HW watchdog is enabled while
+ * doing a swap upgrade and the time it takes for a swapping is long enough
+ * to cause an unwanted reset. If implementing this, the OS main.c must also
+ * enable the watchdog (if required)!
+ *
+ * #define MCUBOOT_WATCHDOG_FEED()
+ *    do { do watchdog feeding here! } while (0)
+ */
+
 #endif /* __MCUBOOT_CONFIG_H__ */

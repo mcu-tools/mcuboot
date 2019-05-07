@@ -78,4 +78,9 @@
 
 #endif /* !__BOOTSIM__ */
 
+#define MCUBOOT_WATCHDOG_FEED()         \
+    do {                                \
+        /* TODO: to be implemented */   \
+    } while (0)
+
 #endif /* __MCUBOOT_CONFIG_H__ */
