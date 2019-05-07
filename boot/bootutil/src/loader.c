@@ -954,6 +954,8 @@ boot_copy_sector(const struct flash_area *fap_src,
         }
 
         bytes_copied += chunk_sz;
+
+        MCUBOOT_WATCHDOG_FEED();
     }
 
     return 0;
