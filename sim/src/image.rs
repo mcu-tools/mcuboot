@@ -1141,6 +1141,8 @@ fn make_tlv() -> TlvGen {
         // The non-encrypted configuration.
         if Caps::RSA2048.present() {
             TlvGen::new_rsa_pss()
+        } else if Caps::RSA3072.present() {
+            TlvGen::new_rsa3072_pss()
         } else if Caps::EcdsaP256.present() {
             TlvGen::new_ecdsa()
         } else {

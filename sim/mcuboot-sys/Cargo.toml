@@ -15,6 +15,9 @@ default = []
 # compile with both sig-rsa and sig-ecdsa enabled.
 sig-rsa = []
 
+# Verify RSA-3072 signatures.
+sig-rsa3072 = []
+
 # Verify ECDSA (secp256r1) signatures.
 sig-ecdsa = []
 

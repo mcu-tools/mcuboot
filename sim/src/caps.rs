@@ -12,6 +12,7 @@ pub enum Caps {
     EncRsa               = (1 << 5),
     EncKw                = (1 << 6),
     ValidatePrimarySlot  = (1 << 7),
+    RSA3072              = (1 << 8),
 }
 
 impl Caps {

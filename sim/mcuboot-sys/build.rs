@@ -10,6 +10,7 @@ use std::path::Path;
 fn main() {
     // Feature flags.
     let sig_rsa = env::var("CARGO_FEATURE_SIG_RSA").is_ok();
+    let sig_rsa3072 = env::var("CARGO_FEATURE_SIG_RSA3072").is_ok();
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
     let validate_primary_slot =
@@ -35,13 +36,23 @@ fn main() {
         conf.define("MCUBOOT_VALIDATE_PRIMARY_SLOT", None);
     }
 
-    // Currently, mbed TLS cannot build with both RSA and ECDSA.
-    if sig_rsa && sig_ecdsa {
-        panic!("mcuboot does not support RSA and ECDSA at the same time");
+    // Currently no more than one sig type can be used simultaneously.
+    if vec![sig_rsa, sig_rsa3072, sig_ecdsa].iter()
+        .fold(0, |sum, &v| sum + v as i32) > 1 {
+        panic!("mcuboot does not support more than one sig type at the same time");
     }
 
-    if sig_rsa {
+    if sig_rsa || sig_rsa3072 {
         conf.define("MCUBOOT_SIGN_RSA", None);
+        // The Kconfig style defines must be added here as well because
+        // they are used internally by "config-rsa.h"
+        if sig_rsa {
+            conf.define("MCUBOOT_SIGN_RSA_LEN", "2048");
+            conf.define("CONFIG_BOOT_SIGNATURE_TYPE_RSA_2048", None);
+        } else {
+            conf.define("MCUBOOT_SIGN_RSA_LEN", "3072");
+            conf.define("CONFIG_BOOT_SIGNATURE_TYPE_RSA_3072", None);
+        }
         conf.define("MCUBOOT_USE_MBED_TLS", None);
 
         conf.include("mbedtls/include");
@@ -114,7 +125,7 @@ fn main() {
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
-        if sig_rsa {
+        if sig_rsa || sig_rsa3072 {
             conf.file("mbedtls/library/sha256.c");
         }
 
@@ -141,7 +152,7 @@ fn main() {
 
     if sig_rsa && enc_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
-    } else if sig_rsa || enc_rsa {
+    } else if sig_rsa || sig_rsa3072 || enc_rsa {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
     } else if sig_ecdsa && !enc_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
@@ -150,7 +161,7 @@ fn main() {
     }
 
     conf.file("../../boot/bootutil/src/image_validate.c");
-    if sig_rsa {
+    if sig_rsa || sig_rsa3072 {
         conf.file("../../boot/bootutil/src/image_rsa.c");
     } else if sig_ecdsa {
         conf.file("../../boot/bootutil/src/image_ec256.c");
