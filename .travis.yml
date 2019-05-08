@@ -14,7 +14,7 @@ matrix:
     - os: linux
       env: SINGLE_FEATURES="sig-ecdsa enc-kw bootstrap" TEST=sim
     - os: linux
-      env: SINGLE_FEATURES="none sig-rsa overwrite-only validate-primary-slot" TEST=sim
+      env: SINGLE_FEATURES="none sig-rsa sig-rsa3072 overwrite-only validate-primary-slot" TEST=sim
     - os: linux
       env: SINGLE_FEATURES="enc-rsa" TEST=sim
 
