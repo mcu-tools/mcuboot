@@ -8,6 +8,7 @@ edition = "2018"
 default = []
 
 sig-rsa = ["mcuboot-sys/sig-rsa"]
+sig-rsa3072 = ["mcuboot-sys/sig-rsa3072"]
 sig-ecdsa = ["mcuboot-sys/sig-ecdsa"]
 overwrite-only = ["mcuboot-sys/overwrite-only"]
 validate-primary-slot = ["mcuboot-sys/validate-primary-slot"]

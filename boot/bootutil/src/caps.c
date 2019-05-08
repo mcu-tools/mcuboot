@@ -22,7 +22,12 @@ uint32_t bootutil_get_caps(void)
     uint32_t res = 0;
 
 #if defined(MCUBOOT_SIGN_RSA)
+#if MCUBOOT_SIGN_RSA_LEN == 2048
     res |= BOOTUTIL_CAP_RSA2048;
+#endif
+#if MCUBOOT_SIGN_RSA_LEN == 3072
+    res |= BOOTUTIL_CAP_RSA3072;
+#endif
 #endif
 #if defined(MCUBOOT_SIGN_EC)
     res |= BOOTUTIL_CAP_ECDSA_P224;

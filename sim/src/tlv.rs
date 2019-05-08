@@ -29,6 +29,7 @@ pub enum TlvKinds {
     RSA2048 = 0x20,
     ECDSA224 = 0x21,
     ECDSA256 = 0x22,
+    RSA3072 = 0x23,
     ENCRSA2048 = 0x30,
     ENCKW128 = 0x31,
 }
@@ -85,6 +86,16 @@ impl TlvGen {
             flags: 0,
             kinds: vec![TlvKinds::SHA256, TlvKinds::RSA2048],
             size: 4 + 32 + 4 + 32 + 4 + 256,
+            payload: vec![],
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn new_rsa3072_pss() -> TlvGen {
+        TlvGen {
+            flags: 0,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::RSA3072],
+            size: 4 + 32 + 4 + 32 + 4 + 384,
             payload: vec![],
         }
     }
@@ -192,9 +203,17 @@ impl ManifestGen for TlvGen {
             result.extend_from_slice(hash);
         }
 
-        if self.kinds.contains(&TlvKinds::RSA2048) {
+        if self.kinds.contains(&TlvKinds::RSA2048) ||
+            self.kinds.contains(&TlvKinds::RSA3072) {
+
+            let is_rsa2048 = self.kinds.contains(&TlvKinds::RSA2048);
+
             // Output the hash of the public key.
-            let hash = digest::digest(&digest::SHA256, RSA_PUB_KEY);
+            let hash = if is_rsa2048 {
+                digest::digest(&digest::SHA256, RSA_PUB_KEY)
+            } else {
+                digest::digest(&digest::SHA256, RSA3072_PUB_KEY)
+            };
             let hash = hash.as_ref();
 
             assert!(hash.len() == 32);
@@ -205,16 +224,28 @@ impl ManifestGen for TlvGen {
             result.extend_from_slice(hash);
 
             // For now assume PSS.
-            let key_bytes = pem::parse(include_bytes!("../../root-rsa-2048.pem").as_ref()).unwrap();
+            let key_bytes = if is_rsa2048 {
+                pem::parse(include_bytes!("../../root-rsa-2048.pem").as_ref()).unwrap()
+            } else {
+                pem::parse(include_bytes!("../../root-rsa-3072.pem").as_ref()).unwrap()
+            };
             assert_eq!(key_bytes.tag, "RSA PRIVATE KEY");
             let key_bytes = untrusted::Input::from(&key_bytes.contents);
             let key_pair = RsaKeyPair::from_der(key_bytes).unwrap();
             let rng = rand::SystemRandom::new();
             let mut signature = vec![0; key_pair.public_modulus_len()];
-            assert_eq!(signature.len(), 256);
+            if is_rsa2048 {
+                assert_eq!(signature.len(), 256);
+            } else {
+                assert_eq!(signature.len(), 384);
+            }
             key_pair.sign(&RSA_PSS_SHA256, &rng, &self.payload, &mut signature).unwrap();
 
-            result.push(TlvKinds::RSA2048 as u8);
+            if is_rsa2048 {
+                result.push(TlvKinds::RSA2048 as u8);
+            } else {
+                result.push(TlvKinds::RSA3072 as u8);
+            }
             result.push(0);
             result.push((signature.len() & 0xFF) as u8);
             result.push(((signature.len() >> 8) & 0xFF) as u8);
@@ -297,4 +328,5 @@ impl ManifestGen for TlvGen {
 }
 
 include!("rsa_pub_key-rs.txt");
+include!("rsa3072_pub_key-rs.txt");
 include!("ecdsa_pub_key-rs.txt");
