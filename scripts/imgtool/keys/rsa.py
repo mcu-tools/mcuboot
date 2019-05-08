@@ -10,13 +10,22 @@ from cryptography.hazmat.primitives.hashes import SHA256
 
 from .general import KeyClass
 
+
+# Sizes that bootutil will recognize
+RSA_KEY_SIZES = [2048, 3072]
+
+
 class RSAUsageError(Exception):
     pass
 
-class RSA2048Public(KeyClass):
+
+class RSAPublic(KeyClass):
     """The public key can only do a few operations"""
     def __init__(self, key):
         self.key = key
+
+    def key_size(self):
+        return self.key.key_size
 
     def shortname(self):
         return "rsa"
@@ -45,17 +54,18 @@ class RSA2048Public(KeyClass):
             f.write(pem)
 
     def sig_type(self):
-        return "PKCS1_PSS_RSA2048_SHA256"
+        return "PKCS1_PSS_RSA{}_SHA256".format(self.key_size())
 
     def sig_tlv(self):
-        return "RSA2048"
+        return"RSA{}".format(self.key_size())
 
     def sig_len(self):
-        return 256
+        return self.key_size() / 8
 
-class RSA2048(RSA2048Public):
+
+class RSA(RSAPublic):
     """
-    Wrapper around an 2048-bit RSA key, with imgtool support.
+    Wrapper around an RSA key, with imgtool support.
     """
 
     def __init__(self, key):
@@ -63,18 +73,22 @@ class RSA2048(RSA2048Public):
         self.key = key
 
     @staticmethod
-    def generate():
+    def generate(key_size=2048):
+        if key_size not in RSA_KEY_SIZES:
+            raise RSAUsageError("Key size {} is not supported by MCUboot"
+                                .format(key_size))
         pk = rsa.generate_private_key(
                 public_exponent=65537,
-                key_size=2048,
+                key_size=key_size,
                 backend=default_backend())
-        return RSA2048(pk)
+        return RSA(pk)
 
     def _get_public(self):
         return self.key.public_key()
 
     def export_private(self, path, passwd=None):
-        """Write the private key to the given file, protecting it with the optional password."""
+        """Write the private key to the given file, protecting it with the
+        optional password."""
         if passwd is None:
             enc = serialization.NoEncryption()
         else:

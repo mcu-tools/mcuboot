@@ -12,8 +12,8 @@ Python libraries.  These can be installed using 'pip3':
 
 ## Managing keys
 
-This tool currently supports rsa-2048 and ecdsa-p256 keys.  You can
-generate a keypair for one of these types using the 'keygen' command:
+This tool currently supports rsa-2048, rsa-3072 and ecdsa-p256 keys.  You
+can generate a keypair for one of these types using the 'keygen' command:
 
     ./scripts/imgtool.py keygen -k filename.pem -t rsa-2048
 

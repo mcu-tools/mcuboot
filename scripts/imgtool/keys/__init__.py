@@ -21,7 +21,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
 
-from .rsa import RSA2048, RSA2048Public, RSAUsageError
+from .rsa import RSA, RSAPublic, RSAUsageError, RSA_KEY_SIZES
 from .ecdsa import ECDSA256P1, ECDSA256P1Public, ECDSAUsageError
 
 class PasswordRequired(Exception):
@@ -53,13 +53,13 @@ def load(path, passwd=None):
                 backend=default_backend())
 
     if isinstance(pk, RSAPrivateKey):
-        if pk.key_size != 2048:
+        if pk.key_size not in RSA_KEY_SIZES:
             raise Exception("Unsupported RSA key size: " + pk.key_size)
-        return RSA2048(pk)
+        return RSA(pk)
     elif isinstance(pk, RSAPublicKey):
-        if pk.key_size != 2048:
+        if pk.key_size not in RSA_KEY_SIZES:
             raise Exception("Unsupported RSA key size: " + pk.key_size)
-        return RSA2048Public(pk)
+        return RSAPublic(pk)
     elif isinstance(pk, EllipticCurvePrivateKey):
         if pk.curve.name != 'secp256r1':
             raise Exception("Unsupported EC curve: " + pk.curve.name)
