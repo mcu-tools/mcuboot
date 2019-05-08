@@ -24,7 +24,12 @@ from imgtool.version import decode_version
 
 
 def gen_rsa2048(keyfile, passwd):
-    keys.RSA2048.generate().export_private(path=keyfile, passwd=passwd)
+    keys.RSA.generate().export_private(path=keyfile, passwd=passwd)
+
+
+def gen_rsa3072(keyfile, passwd):
+    keys.RSA.generate(key_size=3072).export_private(path=keyfile,
+                                                    passwd=passwd)
 
 
 def gen_ecdsa_p256(keyfile, passwd):
@@ -38,6 +43,7 @@ def gen_ecdsa_p224(keyfile, passwd):
 valid_langs = ['c', 'rust']
 keygens = {
     'rsa-2048':   gen_rsa2048,
+    'rsa-3072':   gen_rsa3072,
     'ecdsa-p256': gen_ecdsa_p256,
     'ecdsa-p224': gen_ecdsa_p224,
 }
@@ -184,9 +190,9 @@ def sign(key, align, version, header_size, pad_header, slot_size, pad,
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
     if enckey:
-        if not isinstance(enckey, (keys.RSA2048, keys.RSA2048Public)):
+        if not isinstance(enckey, (keys.RSA, keys.RSAPublic)):
             raise Exception("Encryption only available with RSA key")
-        if key and not isinstance(key, keys.RSA2048):
+        if key and not isinstance(key, keys.RSA):
             raise Exception("Signing only available with private RSA key")
     img.create(key, enckey, dependencies)
     img.save(outfile)

@@ -49,6 +49,7 @@ TLV_VALUES = {
         'RSA2048': 0x20,
         'ECDSA224': 0x21,
         'ECDSA256': 0x22,
+        'RSA3072': 0x23,
         'ENCRSA2048': 0x30,
         'ENCKW128': 0x31,
         'DEPENDENCY': 0x40
