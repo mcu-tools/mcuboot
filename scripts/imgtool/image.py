@@ -52,6 +52,7 @@ TLV_VALUES = {
         'ECDSA224': 0x21,
         'ECDSA256': 0x22,
         'RSA3072': 0x23,
+        'ED25519': 0x24,
         'ENCRSA2048': 0x30,
         'ENCKW128': 0x31,
         'DEPENDENCY': 0x40
@@ -241,7 +242,13 @@ class Image():
             pubbytes = sha.digest()
             tlv.add('KEYHASH', pubbytes)
 
-            sig = key.sign(bytes(self.payload))
+            # `sign` expects the full image payload (sha256 done internally),
+            # while `sign_digest` expects only the digest of the payload
+
+            if hasattr(key, 'sign'):
+                sig = key.sign(bytes(self.payload))
+            else:
+                sig = key.sign_digest(digest)
             tlv.add(key.sig_tlv(), sig)
 
         if enckey is not None:
@@ -354,7 +361,10 @@ class Image():
                 tlv_sig = b[off:off+tlv_len]
                 payload = b[:header_size+img_size]
                 try:
-                    key.verify(tlv_sig, payload)
+                    if hasattr(key, 'verify'):
+                        key.verify(tlv_sig, payload)
+                    else:
+                        key.verify_digest(tlv_sig, digest)
                     return VerifyResult.OK
                 except InvalidSignature:
                     # continue to next TLV

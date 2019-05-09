@@ -20,9 +20,11 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
 from .rsa import RSA, RSAPublic, RSAUsageError, RSA_KEY_SIZES
 from .ecdsa import ECDSA256P1, ECDSA256P1Public, ECDSAUsageError
+from .ed25519 import Ed25519, Ed25519Public, Ed25519UsageError
 
 class PasswordRequired(Exception):
     """Raised to indicate that the key is password protected, but a
@@ -72,5 +74,9 @@ def load(path, passwd=None):
         if pk.key_size != 256:
             raise Exception("Unsupported EC size: " + pk.key_size)
         return ECDSA256P1Public(pk)
+    elif isinstance(pk, Ed25519PrivateKey):
+        return Ed25519(pk)
+    elif isinstance(pk, Ed25519PublicKey):
+        return Ed25519Public(pk)
     else:
         raise Exception("Unknown key type: " + str(type(pk)))

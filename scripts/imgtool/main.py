@@ -41,12 +41,17 @@ def gen_ecdsa_p224(keyfile, passwd):
     print("TODO: p-224 not yet implemented")
 
 
+def gen_ed25519(keyfile, passwd):
+    keys.Ed25519.generate().export_private(path=keyfile)
+
+
 valid_langs = ['c', 'rust']
 keygens = {
     'rsa-2048':   gen_rsa2048,
     'rsa-3072':   gen_rsa3072,
     'ecdsa-p256': gen_ecdsa_p256,
     'ecdsa-p224': gen_ecdsa_p224,
+    'ed25519': gen_ed25519,
 }
 
 
