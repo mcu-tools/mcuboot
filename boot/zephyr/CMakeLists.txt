@@ -62,6 +62,9 @@ get_filename_component(MCUBOOT_DIR ${BOOT_DIR} DIRECTORY)
 # Path to tinycrypt library source subdirectory of MCUBOOT_DIR.
 set(TINYCRYPT_DIR "${MCUBOOT_DIR}/ext/tinycrypt/lib")
 assert_exists(TINYCRYPT_DIR)
+# Path to crypto-fiat
+set(FIAT_DIR "${MCUBOOT_DIR}/ext/fiat")
+assert_exists(FIAT_DIR)
 # Path to mbed-tls' asn1 parser library.
 set(MBEDTLS_ASN1_DIR "${MCUBOOT_DIR}/ext/mbedtls")
 assert_exists(MBEDTLS_ASN1_DIR)
@@ -105,6 +108,7 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/encrypted.c
   ${BOOT_DIR}/bootutil/src/image_rsa.c
   ${BOOT_DIR}/bootutil/src/image_ec256.c
+  ${BOOT_DIR}/bootutil/src/image_ed25519.c
   ${BOOT_DIR}/bootutil/src/caps.c
   )
 
@@ -146,6 +150,18 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   # Use mbedTLS provided by Zephyr for RSA signatures. (Its config file
   # is set using Kconfig.)
   zephyr_include_directories(include)
+elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519)
+  # For ed25519, mbedTLS is used for ASN1 parsing and SHA512
+  zephyr_include_directories(include)
+
+  zephyr_library_include_directories(
+    ${BOOT_DIR}/zephyr/include
+    ${FIAT_DIR}/include/
+  )
+
+  zephyr_library_sources(
+    ${FIAT_DIR}/src/curve25519.c
+  )
 endif()
 
 if(CONFIG_MCUBOOT_SERIAL)

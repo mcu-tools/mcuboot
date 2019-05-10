@@ -36,6 +36,10 @@ extern unsigned int rsa_pub_key_len;
 #define HAVE_KEYS
 extern const unsigned char ecdsa_pub_key[];
 extern unsigned int ecdsa_pub_key_len;
+#elif defined(MCUBOOT_SIGN_ED25519)
+#define HAVE_KEYS
+extern const unsigned char ed25519_pub_key[];
+extern unsigned int ed25519_pub_key_len;
 #else
 #error "No public key available for given signing algorithm."
 #endif
@@ -54,6 +58,9 @@ const struct bootutil_key bootutil_keys[] = {
 #elif defined(MCUBOOT_SIGN_EC256)
         .key = ecdsa_pub_key,
         .len = &ecdsa_pub_key_len,
+#elif defined(MCUBOOT_SIGN_ED25519)
+        .key = ed25519_pub_key,
+        .len = &ed25519_pub_key_len,
 #endif
     },
 };

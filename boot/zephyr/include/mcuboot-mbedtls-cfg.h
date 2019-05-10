@@ -25,6 +25,8 @@
 #include "config-rsa.h"
 #elif defined(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
 #include "config-asn1.h"
+#elif defined(CONFIG_BOOT_SIGNATURE_TYPE_ED25519)
+#include "config-ed25519.h"
 #else
 #error "Cannot configure mbedTLS; signature type is unknown."
 #endif
