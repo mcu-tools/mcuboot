@@ -66,6 +66,13 @@ config BOOT_SIGNATURE_TYPE_RSA
 	select BOOT_USE_MBEDTLS
 	select MBEDTLS
 
+if BOOT_SIGNATURE_TYPE_RSA
+config BOOT_SIGNATURE_TYPE_RSA_LEN
+	int "RSA signature length"
+	range 2048 3072
+	default 2048
+endif
+
 config BOOT_SIGNATURE_TYPE_ECDSA_P256
 	bool "Elliptic curve digital signatures with curve P-256"
 
