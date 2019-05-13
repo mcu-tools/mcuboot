@@ -123,21 +123,32 @@ bootutil_img_hash(struct image_header *hdr, const struct flash_area *fap,
  * call.  List the type of TLV we are expecting.  If we aren't
  * configured for any signature, don't define this macro.
  */
+#if (defined(MCUBOOT_SIGN_RSA)   + \
+     defined(MCUBOOT_SIGN_EC)    + \
+     defined(MCUBOOT_SIGN_EC256)) > 1
+#error "Only a single signature type is supported!"
+#endif
+
 #if defined(MCUBOOT_SIGN_RSA)
-#    define EXPECTED_SIG_TLV IMAGE_TLV_RSA2048_PSS
-#    define EXPECTED_SIG_LEN(x) ((x) == 256) /* 2048 bits */
-#    if defined(MCUBOOT_SIGN_EC) || defined(MCUBOOT_SIGN_EC256)
-#        error "Multiple signature types not yet supported"
+#    if MCUBOOT_SIGN_RSA_LEN == 2048
+#        define EXPECTED_SIG_TLV IMAGE_TLV_RSA2048_PSS
+#    elif MCUBOOT_SIGN_RSA_LEN == 3072
+#        define EXPECTED_SIG_TLV IMAGE_TLV_RSA3072_PSS
+#    else
+#        error "Unsupported RSA signature length"
 #    endif
+#    define SIG_BUF_SIZE (MCUBOOT_SIGN_RSA_LEN / 8)
+#    define EXPECTED_SIG_LEN(x) ((x) == SIG_BUF_SIZE) /* 2048 bits */
 #elif defined(MCUBOOT_SIGN_EC)
 #    define EXPECTED_SIG_TLV IMAGE_TLV_ECDSA224
+#    define SIG_BUF_SIZE 128
 #    define EXPECTED_SIG_LEN(x) ((x) >= 64) /* oids + 2 * 28 bytes */
-#    if defined(MCUBOOT_SIGN_EC256)
-#        error "Multiple signature types not yet supported"
-#    endif
 #elif defined(MCUBOOT_SIGN_EC256)
 #    define EXPECTED_SIG_TLV IMAGE_TLV_ECDSA256
+#    define SIG_BUF_SIZE 128
 #    define EXPECTED_SIG_LEN(x) ((x) >= 72) /* oids + 2 * 32 bytes */
+#else
+#    define SIG_BUF_SIZE 32 /* no signing, sha256 digest only */
 #endif
 
 #ifdef EXPECTED_SIG_TLV
@@ -182,7 +193,7 @@ bootutil_img_validate(struct image_header *hdr, const struct flash_area *fap,
     int key_id = -1;
 #endif
     struct image_tlv tlv;
-    uint8_t buf[256];
+    uint8_t buf[SIG_BUF_SIZE];
     uint8_t hash[32];
     int rc;
 
