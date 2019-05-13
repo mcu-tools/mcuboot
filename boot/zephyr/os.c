@@ -29,11 +29,15 @@
 
 /*
  * This is the heap for mbed TLS.  The value needed depends on the key
- * size and algorithm used.  For RSA-2048 signing, 6144 bytes seems to be
- * enough. When using RSA-2048-OAEP encryption + RSA-2048 signing, 10240
- * bytes seem to be enough.
+ * size and algorithm used.
+ *
+ * - RSA-2048 signing without encryption is known to work well with 6144 bytes;
+ * - When using RSA-2048-OAEP encryption + RSA-2048 signing, or RSA-3072
+ *   signing (no encryption) 10240 bytes seems to be enough.
+ *
+ * NOTE: RSA-3072 signing + RSA-2048-OAEP might require growing the size...
  */
-#if !defined(CONFIG_BOOT_ENCRYPT_RSA)
+#if (CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN == 2048) && !defined(CONFIG_BOOT_ENCRYPT_RSA)
 #define CRYPTO_HEAP_SIZE 6144
 #else
 #define CRYPTO_HEAP_SIZE 10240

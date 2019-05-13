@@ -66,7 +66,12 @@
 
 /* Save RAM by adjusting to our exact needs */
 #define MBEDTLS_ECP_MAX_BITS             2048
+
+#if (CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN == 3072)
+#define MBEDTLS_MPI_MAX_SIZE              384
+#else
 #define MBEDTLS_MPI_MAX_SIZE              256
+#endif
 
 #define MBEDTLS_SSL_MAX_CONTENT_LEN 1024
 
