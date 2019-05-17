@@ -141,8 +141,8 @@ impl ImagesBuilder {
     pub fn make_no_upgrade_image(self) -> Images {
         let mut flash = self.flash;
         let images = self.slots.into_iter().map(|slots| {
-            let primaries = install_image(&mut flash, &slots, 0, 32784, false);
-            let upgrades = install_image(&mut flash, &slots, 1, 41928, false);
+            let primaries = install_image(&mut flash, &slots, 0, 42784, false);
+            let upgrades = install_image(&mut flash, &slots, 1, 46928, false);
             OneImage {
                 slots: slots,
                 primaries: primaries,
