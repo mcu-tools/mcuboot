@@ -825,7 +825,7 @@ impl Images {
         let mut counter = stop;
         let (x, _) = c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false);
         if x != -0x13579 {
-            warn!("Should have stopped at interruption point");
+            warn!("Should have stopped test at interruption point");
             fails += 1;
         }
 
@@ -836,7 +836,7 @@ impl Images {
 
         let (x, _) = c::boot_go(&mut flash, &self.areadesc, None, false);
         if x != 0 {
-            warn!("Should have finished upgrade");
+            warn!("Should have finished test upgrade");
             fails += 1;
         }
 
@@ -862,9 +862,16 @@ impl Images {
         }
 
         // Do Revert
+        let mut counter = stop;
+        let (x, _) = c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false);
+        if x != -0x13579 {
+            warn!("Should have stopped revert at interruption point");
+            fails += 1;
+        }
+
         let (x, _) = c::boot_go(&mut flash, &self.areadesc, None, false);
         if x != 0 {
-            warn!("Should have finished a revert");
+            warn!("Should have finished revert upgrade");
             fails += 1;
         }
 
@@ -878,9 +885,10 @@ impl Images {
                   stop);
             fails += 1;
         }
+
         if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
                                  BOOT_FLAG_SET, BOOT_FLAG_SET) {
-            warn!("Mismatched trailer for the secondary slot after revert");
+            warn!("Mismatched trailer for the primary slot after revert");
             fails += 1;
         }
         if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
@@ -889,8 +897,24 @@ impl Images {
             fails += 1;
         }
 
+        let (x, _) = c::boot_go(&mut flash, &self.areadesc, None, false);
+        if x != 0 {
+            warn!("Should have finished 3rd boot");
+            fails += 1;
+        }
+
+        if !self.verify_images(&flash, 0, 0) {
+            warn!("Image in the primary slot is invalid on 1st boot after revert");
+            fails += 1;
+        }
+        if !self.verify_images(&flash, 1, 1) {
+            warn!("Image in the secondary slot is invalid on 1st boot after revert");
+            fails += 1;
+        }
+
         fails > 0
     }
+
 
     fn try_random_fails(&self, total_ops: i32, count: usize) -> (SimMultiFlash, Vec<i32>) {
         let mut flash = self.flash.clone();
