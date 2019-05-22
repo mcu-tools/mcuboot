@@ -43,7 +43,7 @@ matrix:
       language: go
       env: TEST=mynewt
       go:
-        - "1.10"
+        - "1.11"
 
 before_install:
   - |
