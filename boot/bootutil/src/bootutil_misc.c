@@ -394,6 +394,8 @@ boot_write_magic(const struct flash_area *fap)
 
     off = boot_magic_off(fap);
 
+    BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%x (0x%x)",
+                 fap->fa_id, off, fap->fa_off + off);
     rc = flash_area_write(fap, off, boot_img_magic, BOOT_MAGIC_SZ);
     if (rc != 0) {
         return BOOT_EFLASH;
@@ -414,9 +416,13 @@ boot_write_flag(int flag, const struct flash_area *fap)
     switch (flag) {
     case BOOT_FLAG_COPY_DONE:
         off = boot_copy_done_off(fap);
+        BOOT_LOG_DBG("writing copy_done; fa_id=%d off=0x%x (0x%x)",
+                     fap->fa_id, off, fap->fa_off + off);
         break;
     case BOOT_FLAG_IMAGE_OK:
         off = boot_image_ok_off(fap);
+        BOOT_LOG_DBG("writing image_ok; fa_id=%d off=0x%x (0x%x)",
+                     fap->fa_id, off, fap->fa_off + off);
         break;
     default:
         return BOOT_EBADARGS;
@@ -466,6 +472,9 @@ boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
     erased_val = flash_area_erased_val(fap);
     memset(buf, erased_val, BOOT_MAX_ALIGN);
     memcpy(buf, (uint8_t *)&swap_size, sizeof swap_size);
+
+    BOOT_LOG_DBG("writing swap_size; fa_id=%d off=0x%x (0x%x)",
+                 fap->fa_id, off, fap->fa_off + off);
 
     rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
