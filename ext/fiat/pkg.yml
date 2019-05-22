@@ -6,7 +6,7 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #  http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
@@ -17,37 +17,8 @@
 # under the License.
 #
 
-pkg.name: boot/bootutil
-pkg.description: The bootutil library performs most of the functions of a boot loader.
+pkg.name: ext/fiat
+pkg.description: "MCUboot's bundled fiat-crypto"
 pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
 pkg.homepage: "http://mynewt.apache.org/"
 pkg.keywords:
-    - boot
-    - bootloader
-
-pkg.apis:
-    - bootloader
-
-pkg.cflags:
-    - "-DMCUBOOT_MYNEWT"
-
-pkg.cflags.BOOTUTIL_USE_MBED_TLS:
-    - '-DMBEDTLS_USER_CONFIG_FILE="mbedtls/config_mynewt.h"'
-
-pkg.deps:
-    - "@mcuboot/boot/mynewt/mcuboot_config"
-    - "@apache-mynewt-core/hw/hal"
-    - "@apache-mynewt-core/kernel/os"
-    - "@apache-mynewt-core/sys/defs"
-    - "@mcuboot/boot/mynewt/flash_map_backend"
-
-pkg.deps.BOOTUTIL_USE_MBED_TLS:
-    - "@apache-mynewt-core/crypto/mbedtls"
-
-pkg.deps.BOOTUTIL_USE_TINYCRYPT:
-    - "@mcuboot/ext/tinycrypt/lib"
-    - "@mcuboot/ext/mbedtls"
-
-pkg.deps.BOOTUTIL_SIGN_ED25519:
-    - "@apache-mynewt-core/crypto/mbedtls"
-    - "@mcuboot/ext/fiat"
