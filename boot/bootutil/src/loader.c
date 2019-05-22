@@ -975,6 +975,8 @@ boot_status_init(const struct flash_area *fap, const struct boot_status *bs)
     struct boot_swap_state swap_state;
     int rc;
 
+    BOOT_LOG_DBG("initializing status; fa_id=%d", fap->fa_id);
+
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY, &swap_state);
     assert(rc == 0);
 
@@ -1012,6 +1014,8 @@ boot_erase_trailer_sectors(const struct flash_area *fap)
     uint32_t off;
     uint32_t sz;
     int rc;
+
+    BOOT_LOG_DBG("erasing trailer; fa_id=%d", fap->fa_id);
 
     switch (fap->fa_id) {
     case FLASH_AREA_IMAGE_PRIMARY:
@@ -1101,6 +1105,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
     assert (rc == 0);
 
     if (bs->state == BOOT_STATUS_STATE_0) {
+        BOOT_LOG_DBG("erasing scratch area");
         rc = boot_erase_sector(fap_scratch, 0, sz);
         assert(rc == 0);
 
@@ -1289,6 +1294,7 @@ boot_copy_image(struct boot_status *bs)
      * image is written without a trailer as is the case when using newt, the
      * trailer that was left might trigger a new upgrade.
      */
+    BOOT_LOG_DBG("erasing secondary header");
     rc = boot_erase_sector(fap_secondary_slot,
                            boot_img_sector_off(&boot_data,
                                    BOOT_SECONDARY_SLOT, 0),
@@ -1296,6 +1302,7 @@ boot_copy_image(struct boot_status *bs)
                                    BOOT_SECONDARY_SLOT, 0));
     assert(rc == 0);
     last_sector = boot_img_num_sectors(&boot_data, BOOT_SECONDARY_SLOT) - 1;
+    BOOT_LOG_DBG("erasing secondary trailer");
     rc = boot_erase_sector(fap_secondary_slot,
                            boot_img_sector_off(&boot_data,
                                    BOOT_SECONDARY_SLOT, last_sector),
@@ -1481,7 +1488,8 @@ boot_swap_image(struct boot_status *bs)
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
     if (boot_status_fails > 0) {
-        BOOT_LOG_WRN("%d status write fails performing the swap", boot_status_fails);
+        BOOT_LOG_WRN("%d status write fails performing the swap",
+                     boot_status_fails);
     }
 #endif
 
