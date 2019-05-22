@@ -180,7 +180,7 @@ struct boot_loader_state {
 int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
                         size_t slen, uint8_t key_id);
 
-uint32_t boot_slots_trailer_sz(uint8_t min_write_sz);
+uint32_t boot_trailer_sz(uint8_t min_write_sz);
 int boot_status_entries(const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
 int boot_read_swap_state(const struct flash_area *fap,
