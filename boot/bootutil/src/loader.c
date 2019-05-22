@@ -1026,7 +1026,7 @@ boot_erase_trailer_sectors(const struct flash_area *fap)
 
     /* delete starting from last sector and moving to beginning */
     sector = boot_img_num_sectors(&boot_data, slot) - 1;
-    trailer_sz = boot_slots_trailer_sz(BOOT_WRITE_SZ(&boot_data));
+    trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(&boot_data));
     total_sz = 0;
     do {
         sz = boot_img_sector_size(&boot_data, slot, sector);
@@ -1072,7 +1072,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
     img_off = boot_img_sector_off(&boot_data, BOOT_PRIMARY_SLOT, idx);
 
     copy_sz = sz;
-    trailer_sz = boot_slots_trailer_sz(BOOT_WRITE_SZ(&boot_data));
+    trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(&boot_data));
 
     /* sz in this function is always sized on a multiple of the sector size.
      * The check against the start offset of the last sector

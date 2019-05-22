@@ -41,7 +41,7 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
 }
 
 pub fn boot_trailer_sz(align: u8) -> u32 {
-    unsafe { raw::boot_slots_trailer_sz(align) }
+    unsafe { raw::boot_trailer_sz(align) }
 }
 
 pub fn boot_magic_sz() -> usize {
@@ -87,7 +87,7 @@ mod raw {
         pub static mut c_asserts: u8;
         pub static mut c_catch_asserts: u8;
 
-        pub fn boot_slots_trailer_sz(min_write_sz: u8) -> u32;
+        pub fn boot_trailer_sz(min_write_sz: u8) -> u32;
 
         pub static BOOT_MAGIC_SZ: u32;
         pub static BOOT_MAX_ALIGN: u32;

@@ -120,7 +120,7 @@ boot_flag_decode(uint8_t flag)
 }
 
 uint32_t
-boot_slots_trailer_sz(uint8_t min_write_sz)
+boot_trailer_sz(uint8_t min_write_sz)
 {
     return /* state for all sectors */
            BOOT_STATUS_MAX_ENTRIES * BOOT_STATUS_STATE_COUNT * min_write_sz +
@@ -128,22 +128,8 @@ boot_slots_trailer_sz(uint8_t min_write_sz)
            /* encryption keys */
            BOOT_ENC_KEY_SIZE * 2                  +
 #endif
-           /* copy_done + image_ok + swap_size */
-           BOOT_MAX_ALIGN * 3                     +
-           BOOT_MAGIC_SZ;
-}
-
-static uint32_t
-boot_scratch_trailer_sz(uint8_t min_write_sz)
-{
-           /* state for one sector */
-    return BOOT_STATUS_STATE_COUNT * min_write_sz +
-#ifdef MCUBOOT_ENC_IMAGES
-           /* encryption keys */
-           BOOT_ENC_KEY_SIZE * 2                  +
-#endif
-           /* image_ok + swap_size */
-           BOOT_MAX_ALIGN * 2                     +
+           /* swap_type + copy_done + image_ok + swap_size */
+           BOOT_MAX_ALIGN * 4                     +
            BOOT_MAGIC_SZ;
 }
 
@@ -176,11 +162,7 @@ boot_status_off(const struct flash_area *fap)
 
     elem_sz = flash_area_align(fap);
 
-    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
-        off_from_end = boot_scratch_trailer_sz(elem_sz);
-    } else {
-        off_from_end = boot_slots_trailer_sz(elem_sz);
-    }
+    off_from_end = boot_trailer_sz(elem_sz);
 
     assert(off_from_end <= fap->fa_size);
     return fap->fa_size - off_from_end;
@@ -189,7 +171,6 @@ boot_status_off(const struct flash_area *fap)
 static uint32_t
 boot_copy_done_off(const struct flash_area *fap)
 {
-    assert(fap->fa_id != FLASH_AREA_IMAGE_SCRATCH);
     assert(offsetof(struct image_trailer, copy_done) == 0);
     return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 2;
 }
@@ -204,27 +185,14 @@ boot_image_ok_off(const struct flash_area *fap)
 static uint32_t
 boot_swap_size_off(const struct flash_area *fap)
 {
-    /*
-     * The "swap_size" field if located just before the trailer.
-     * The scratch slot doesn't store "copy_done"...
-     */
-    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
-        return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 2;
-    }
-
-    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 3;
+    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 4;
 }
 
 #ifdef MCUBOOT_ENC_IMAGES
 static uint32_t
 boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 {
-    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
-        return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 2 -
-                              ((slot + 1) * BOOT_ENC_KEY_SIZE);
-    }
-
-    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 3 -
+    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 4 -
                           ((slot + 1) * BOOT_ENC_KEY_SIZE);
 }
 #endif
@@ -248,18 +216,16 @@ boot_read_swap_state(const struct flash_area *fap,
         state->magic = boot_magic_decode(magic);
     }
 
-    if (fap->fa_id != FLASH_AREA_IMAGE_SCRATCH) {
-        off = boot_copy_done_off(fap);
-        rc = flash_area_read_is_empty(fap, off, &state->copy_done,
-                sizeof state->copy_done);
-        if (rc < 0) {
-            return BOOT_EFLASH;
-        }
-        if (rc == 1) {
-            state->copy_done = BOOT_FLAG_UNSET;
-        } else {
-            state->copy_done = boot_flag_decode(state->copy_done);
-        }
+    off = boot_copy_done_off(fap);
+    rc = flash_area_read_is_empty(fap, off, &state->copy_done,
+            sizeof state->copy_done);
+    if (rc < 0) {
+        return BOOT_EFLASH;
+    }
+    if (rc == 1) {
+        state->copy_done = BOOT_FLAG_UNSET;
+    } else {
+        state->copy_done = boot_flag_decode(state->copy_done);
     }
 
     off = boot_image_ok_off(fap);
