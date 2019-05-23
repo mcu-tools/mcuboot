@@ -79,10 +79,12 @@ struct boot_rsp {
  * when attempting to read/write a trailer.
  */
 struct image_trailer {
-    uint8_t copy_done;
+    uint8_t swap_type;
     uint8_t pad1[MAX_FLASH_ALIGN - 1];
-    uint8_t image_ok;
+    uint8_t copy_done;
     uint8_t pad2[MAX_FLASH_ALIGN - 1];
+    uint8_t image_ok;
+    uint8_t pad3[MAX_FLASH_ALIGN - 1];
     uint8_t magic[16];
 };
 

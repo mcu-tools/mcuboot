@@ -93,8 +93,7 @@ impl ImagesBuilder {
                 None => return None,
             };
 
-            // NOTE: not accounting "swap_size" because it is not used by sim...
-            let offset_from_end = c::boot_magic_sz() + c::boot_max_align() * 2;
+            let offset_from_end = c::boot_magic_sz() + c::boot_max_align() * 4;
 
             // Construct a primary image.
             let primary = SlotInfo {
@@ -617,7 +616,7 @@ impl Images {
             0
         };
 
-        self.trailer_sz(align) - (16 + 24 + bias)
+        self.trailer_sz(align) - (16 + 32 + bias)
     }
 
     /// This test runs a simple upgrade with no fails in the images, but
@@ -753,8 +752,8 @@ impl Images {
             let dev_id = &image.slots[slot].dev_id;
             let dev = flash.get_mut(&dev_id).unwrap();
             let align = dev.align();
-            let off = &image.slots[0].base_off;
-            let len = &image.slots[0].len;
+            let off = &image.slots[slot].base_off;
+            let len = &image.slots[slot].len;
             let status_off = off + len - self.trailer_sz(align);
 
             // Mark the status area as a bad area
@@ -1198,9 +1197,9 @@ fn verify_trailer(flash: &SimMultiFlash, slots: &[SlotInfo], slot: usize,
         return true;
     }
 
-    let offset = slots[slot].trailer_off;
+    let offset = slots[slot].trailer_off + c::boot_max_align();
     let dev_id = slots[slot].dev_id;
-    let mut copy = vec![0u8; c::boot_magic_sz() + c::boot_max_align() * 2];
+    let mut copy = vec![0u8; c::boot_magic_sz() + c::boot_max_align() * 3];
     let mut failed = false;
 
     let dev = flash.get(&dev_id).unwrap();
@@ -1209,12 +1208,12 @@ fn verify_trailer(flash: &SimMultiFlash, slots: &[SlotInfo], slot: usize,
 
     failed |= match magic {
         Some(v) => {
-            if v == 1 && &copy[16..] != MAGIC.unwrap() {
+            if v == 1 && &copy[24..] != MAGIC.unwrap() {
                 warn!("\"magic\" mismatch at {:#x}", offset);
                 true
             } else if v == 3 {
                 let expected = [erased_val; 16];
-                if &copy[16..] != expected {
+                if &copy[24..] != expected {
                     warn!("\"magic\" mismatch at {:#x}", offset);
                     true
                 } else {
@@ -1229,7 +1228,7 @@ fn verify_trailer(flash: &SimMultiFlash, slots: &[SlotInfo], slot: usize,
 
     failed |= match image_ok {
         Some(v) => {
-            if (v == 1 && copy[8] != v) || (v == 3 && copy[8] != erased_val) {
+            if (v == 1 && copy[16] != v) || (v == 3 && copy[16] != erased_val) {
                 warn!("\"image_ok\" mismatch at {:#x} v={} val={:#x}", offset, v, copy[8]);
                 true
             } else {
@@ -1241,7 +1240,7 @@ fn verify_trailer(flash: &SimMultiFlash, slots: &[SlotInfo], slot: usize,
 
     failed |= match copy_done {
         Some(v) => {
-            if (v == 1 && copy[0] != v) || (v == 3 && copy[0] != erased_val) {
+            if (v == 1 && copy[8] != v) || (v == 3 && copy[8] != erased_val) {
                 warn!("\"copy_done\" mismatch at {:#x} v={} val={:#x}", offset, v, copy[0]);
                 true
             } else {
@@ -1300,7 +1299,7 @@ const BOOT_FLAG_UNSET: Option<u8> = Some(3);
 /// Write out the magic so that the loader tries doing an upgrade.
 pub fn mark_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
     let dev = flash.get_mut(&slot.dev_id).unwrap();
-    let offset = slot.trailer_off + c::boot_max_align() * 2;
+    let offset = slot.trailer_off + c::boot_max_align() * 4;
     dev.write(offset, MAGIC.unwrap()).unwrap();
 }
 
@@ -1310,7 +1309,7 @@ fn mark_permanent_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
     let dev = flash.get_mut(&slot.dev_id).unwrap();
     let mut ok = [dev.erased_val(); 8];
     ok[0] = 1u8;
-    let off = slot.trailer_off + c::boot_max_align();
+    let off = slot.trailer_off + c::boot_max_align() * 3;
     let align = dev.align();
     dev.write(off, &ok[..align]).unwrap();
 }
