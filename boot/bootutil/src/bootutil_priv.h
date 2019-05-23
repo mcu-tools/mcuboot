@@ -61,6 +61,7 @@ struct boot_status {
     uint32_t idx;         /* Which area we're operating on */
     uint8_t state;        /* Which part of the swapping process are we at */
     uint8_t use_scratch;  /* Are status bytes ever written to scratch? */
+    uint8_t swap_type;    /* The type of swap in effect */
     uint32_t swap_size;   /* Total size of swapped image */
 #ifdef MCUBOOT_ENC_IMAGES
     uint8_t enckey[2][BOOT_ENC_KEY_SIZE];
@@ -71,6 +72,7 @@ struct boot_status {
 #define BOOT_MAGIC_BAD      2
 #define BOOT_MAGIC_UNSET    3
 #define BOOT_MAGIC_ANY      4  /* NOTE: control only, not dependent on sector */
+#define BOOT_MAGIC_NOTGOOD  5  /* NOTE: control only, not dependent on sector */
 
 /*
  * NOTE: leave BOOT_FLAG_SET equal to one, this is written to flash!
@@ -89,31 +91,42 @@ struct boot_status {
 /**
  * End-of-image slot structure.
  *
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * ~                                                               ~
- * ~                Swap status (variable, aligned)                ~
- * ~                                                               ~
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                          Swap size                            |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * ~             padding with erased val (MAX ALIGN - 4)           ~
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |   Copy done   |   padding with erased val (MAX ALIGN - 1)     ~
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |   Image OK    |   padding with erased val (MAX ALIGN - 1)     ~
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * ~                        MAGIC (16 octets)                      ~
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *   0                   1                   2                   3
+ *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  ~                                                               ~
+ *  ~    Swap status (BOOT_MAX_IMG_SECTORS * min-write-size * 3)    ~
+ *  ~                                                               ~
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |                 Encryption key 0 (16 octets) [*]              |
+ *  |                                                               |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |                 Encryption key 1 (16 octets) [*]              |
+ *  |                                                               |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |                      Swap size (4 octets)                     |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |   Swap type   |           0xff padding (7 octets)             |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |   Copy done   |           0xff padding (7 octets)             |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |   Image OK    |           0xff padding (7 octets)             |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |                       MAGIC (16 octets)                       |
+ *  |                                                               |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ * [*]: Only present if the encryption option is enabled
+ *      (`MCUBOOT_ENC_IMAGES`).
  */
 
 extern const uint32_t boot_img_magic[4];
 
 struct boot_swap_state {
-    uint8_t magic;  /* One of the BOOT_MAGIC_[...] values. */
-    uint8_t copy_done;
-    uint8_t image_ok;
+    uint8_t magic;      /* One of the BOOT_MAGIC_[...] values. */
+    uint8_t swap_type;  /* One of the BOOT_SWAP_TYPE_[...] values. */
+    uint8_t copy_done;  /* One of the BOOT_FLAG_[...] values. */
+    uint8_t image_ok;   /* One of the BOOT_FLAG_[...] values. */
 };
 
 #define BOOT_MAX_IMG_SECTORS       MCUBOOT_MAX_IMG_SECTORS
@@ -142,9 +155,6 @@ struct boot_swap_state {
 #define BOOT_STATUS_SOURCE_NONE         0
 #define BOOT_STATUS_SOURCE_SCRATCH      1
 #define BOOT_STATUS_SOURCE_PRIMARY_SLOT 2
-
-#define BOOT_FLAG_IMAGE_OK              0
-#define BOOT_FLAG_COPY_DONE             1
 
 extern const uint32_t BOOT_MAGIC_SZ;
 
@@ -180,9 +190,11 @@ struct boot_loader_state {
 int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
                         size_t slen, uint8_t key_id);
 
+int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_trailer_sz(uint8_t min_write_sz);
 int boot_status_entries(const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
+uint32_t boot_swap_type_off(const struct flash_area *fap);
 int boot_read_swap_state(const struct flash_area *fap,
                          struct boot_swap_state *state);
 int boot_read_swap_state_by_id(int flash_area_id,
@@ -192,6 +204,7 @@ int boot_write_status(struct boot_status *bs);
 int boot_schedule_test_swap(void);
 int boot_write_copy_done(const struct flash_area *fap);
 int boot_write_image_ok(const struct flash_area *fap);
+int boot_write_swap_type(const struct flash_area *fap, uint8_t swap_type);
 int boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size);
 int boot_read_swap_size(uint32_t *swap_size);
 #ifdef MCUBOOT_ENC_IMAGES

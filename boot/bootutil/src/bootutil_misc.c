@@ -119,6 +119,32 @@ boot_flag_decode(uint8_t flag)
     return BOOT_FLAG_SET;
 }
 
+/**
+ * Determines if a status source table is satisfied by the specified magic
+ * code.
+ *
+ * @param tbl_val               A magic field from a status source table.
+ * @param val                   The magic value in a trailer, encoded as a
+ *                                  BOOT_MAGIC_[...].
+ *
+ * @return                      1 if the two values are compatible;
+ *                              0 otherwise.
+ */
+int
+boot_magic_compatible_check(uint8_t tbl_val, uint8_t val)
+{
+    switch (tbl_val) {
+    case BOOT_MAGIC_ANY:
+        return 1;
+
+    case BOOT_MAGIC_NOTGOOD:
+        return val != BOOT_MAGIC_GOOD;
+
+    default:
+        return tbl_val == val;
+    }
+}
+
 uint32_t
 boot_trailer_sz(uint8_t min_write_sz)
 {
@@ -136,7 +162,6 @@ boot_trailer_sz(uint8_t min_write_sz)
 static uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
-    assert(offsetof(struct image_trailer, magic) == 16);
     return fap->fa_size - BOOT_MAGIC_SZ;
 }
 
@@ -168,17 +193,21 @@ boot_status_off(const struct flash_area *fap)
     return fap->fa_size - off_from_end;
 }
 
+uint32_t
+boot_swap_type_off(const struct flash_area *fap)
+{
+    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 3;
+}
+
 static uint32_t
 boot_copy_done_off(const struct flash_area *fap)
 {
-    assert(offsetof(struct image_trailer, copy_done) == 0);
     return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 2;
 }
 
 static uint32_t
 boot_image_ok_off(const struct flash_area *fap)
 {
-    assert(offsetof(struct image_trailer, image_ok) == 8);
     return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN;
 }
 
@@ -214,6 +243,16 @@ boot_read_swap_state(const struct flash_area *fap,
         state->magic = BOOT_MAGIC_UNSET;
     } else {
         state->magic = boot_magic_decode(magic);
+    }
+
+    off = boot_swap_type_off(fap);
+    rc = flash_area_read_is_empty(fap, off, &state->swap_type,
+            sizeof state->swap_type);
+    if (rc < 0) {
+        return BOOT_EFLASH;
+    }
+    if (rc == 1 || state->swap_type > BOOT_SWAP_TYPE_REVERT) {
+        state->swap_type = BOOT_SWAP_TYPE_NONE;
     }
 
     off = boot_copy_done_off(fap);
@@ -405,34 +444,19 @@ boot_write_magic(const struct flash_area *fap)
 }
 
 static int
-boot_write_flag(int flag, const struct flash_area *fap)
+boot_write_trailer_byte(const struct flash_area *fap, uint32_t off,
+                        uint8_t val)
 {
-    uint32_t off;
-    int rc;
     uint8_t buf[BOOT_MAX_ALIGN];
     uint8_t align;
     uint8_t erased_val;
-
-    switch (flag) {
-    case BOOT_FLAG_COPY_DONE:
-        off = boot_copy_done_off(fap);
-        BOOT_LOG_DBG("writing copy_done; fa_id=%d off=0x%x (0x%x)",
-                     fap->fa_id, off, fap->fa_off + off);
-        break;
-    case BOOT_FLAG_IMAGE_OK:
-        off = boot_image_ok_off(fap);
-        BOOT_LOG_DBG("writing image_ok; fa_id=%d off=0x%x (0x%x)",
-                     fap->fa_id, off, fap->fa_off + off);
-        break;
-    default:
-        return BOOT_EBADARGS;
-    }
+    int rc;
 
     align = flash_area_align(fap);
     assert(align <= BOOT_MAX_ALIGN);
     erased_val = flash_area_erased_val(fap);
     memset(buf, erased_val, BOOT_MAX_ALIGN);
-    buf[0] = BOOT_FLAG_SET;
+    buf[0] = val;
 
     rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
@@ -445,13 +469,39 @@ boot_write_flag(int flag, const struct flash_area *fap)
 int
 boot_write_copy_done(const struct flash_area *fap)
 {
-    return boot_write_flag(BOOT_FLAG_COPY_DONE, fap);
+    uint32_t off;
+
+    off = boot_copy_done_off(fap);
+    BOOT_LOG_DBG("writing copy_done; fa_id=%d off=0x%x (0x%x)",
+                 fap->fa_id, off, fap->fa_off + off);
+    return boot_write_trailer_byte(fap, off, BOOT_FLAG_SET);
 }
 
 int
 boot_write_image_ok(const struct flash_area *fap)
 {
-    return boot_write_flag(BOOT_FLAG_IMAGE_OK, fap);
+    uint32_t off;
+
+    off = boot_image_ok_off(fap);
+    BOOT_LOG_DBG("writing image_ok; fa_id=%d off=0x%x (0x%x)",
+                 fap->fa_id, off, fap->fa_off + off);
+    return boot_write_trailer_byte(fap, off, BOOT_FLAG_SET);
+}
+
+/**
+ * Writes the specified value to the `swap-type` field of an image trailer.
+ * This value is persisted so that the boot loader knows what swap operation to
+ * resume in case of an unexpected reset.
+ */
+int
+boot_write_swap_type(const struct flash_area *fap, uint8_t swap_type)
+{
+    uint32_t off;
+
+    off = boot_swap_type_off(fap);
+    BOOT_LOG_DBG("writing swap_type; fa_id=%d off=0x%x (0x%x), swap_type=0x%x",
+                 fap->fa_id, off, fap->fa_off + off, swap_type);
+    return boot_write_trailer_byte(fap, off, swap_type);
 }
 
 int
@@ -524,10 +574,10 @@ boot_swap_type(void)
     for (i = 0; i < BOOT_SWAP_TABLES_COUNT; i++) {
         table = boot_swap_tables + i;
 
-        if ((table->magic_primary_slot == BOOT_MAGIC_ANY     ||
-                table->magic_primary_slot == primary_slot.magic) &&
-            (table->magic_secondary_slot == BOOT_MAGIC_ANY   ||
-                table->magic_secondary_slot == secondary_slot.magic) &&
+        if (boot_magic_compatible_check(table->magic_primary_slot,
+                                        primary_slot.magic) &&
+            boot_magic_compatible_check(table->magic_secondary_slot,
+                                        secondary_slot.magic) &&
             (table->image_ok_primary_slot == BOOT_FLAG_ANY   ||
                 table->image_ok_primary_slot == primary_slot.image_ok) &&
             (table->image_ok_secondary_slot == BOOT_FLAG_ANY ||
@@ -566,6 +616,7 @@ boot_set_pending(int permanent)
 {
     const struct flash_area *fap;
     struct boot_swap_state state_secondary_slot;
+    uint8_t swap_type;
     int rc;
 
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY,
@@ -589,6 +640,15 @@ boot_set_pending(int permanent)
 
         if (rc == 0 && permanent) {
             rc = boot_write_image_ok(fap);
+        }
+
+        if (rc == 0) {
+            if (permanent) {
+                swap_type = BOOT_SWAP_TYPE_PERM;
+            } else {
+                swap_type = BOOT_SWAP_TYPE_TEST;
+            }
+            rc = boot_write_swap_type(fap, swap_type);
         }
 
         flash_area_close(fap);

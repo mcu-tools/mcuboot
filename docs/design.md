@@ -257,17 +257,26 @@ image trailer. An image trailer has the following structure:
     ~    Swap status (BOOT_MAX_IMG_SECTORS * min-write-size * 3)    ~
     ~                                                               ~
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                           Swap size                           |
+    |                 Encryption key 0 (16 octets) [*]              |
+    |                                                               |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                   0xff padding (4 octets)                     |
+    |                 Encryption key 1 (16 octets) [*]              |
+    |                                                               |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |   Copy done   |           0xff padding (7 octets)             ~
+    |                      Swap size (4 octets)                     |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |   Image OK    |           0xff padding (7 octets)             ~
+    |   Swap type   |           0xff padding (7 octets)             |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    ~                       MAGIC (16 octets)                       ~
+    |   Copy done   |           0xff padding (7 octets)             |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |   Image OK    |           0xff padding (7 octets)             |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                       MAGIC (16 octets)                       |
+    |                                                               |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
+
+[*]: Only present if the encryption option is enabled (`MCUBOOT_ENC_IMAGES`).
 
 The offset immediately following such a record represents the start of the next
 flash area.
@@ -300,18 +309,34 @@ a bigger configuration to allow for the handling of all slot's sectors.
 The factor of min-write-sz is due to the behavior of flash hardware. The factor
 of 3 is explained below.
 
-2. Swap size: When beginning a new swap operation, the total size that needs
+2. Encryption keys: key-encrypting keys (KEKs).  These keys are needed for
+   image encryption and decryption.  See the
+   [encrypted images](encrypted_images.md) document for more information.
+
+3. Swap size: When beginning a new swap operation, the total size that needs
    to be swapped (based on the slot with largest image + tlvs) is written to
    this location for easier recovery in case of a reset while performing the
    swap.
 
-3. Copy done: A single byte indicating whether the image in this slot is
+4. Swap type: A single byte indicating the type of swap operation in progress.
+   When mcuboot resumes an interrupted swap, it uses this field to determine
+   the type of operation to perform.  This field contains one of the following
+   values:
+
+| Name                      | Value |
+| ------------------------- | ----- |
+| `BOOT_SWAP_TYPE_TEST`     | 2     |
+| `BOOT_SWAP_TYPE_PERM`     | 3     |
+| `BOOT_SWAP_TYPE_REVERT`   | 4     |
+
+
+5. Copy done: A single byte indicating whether the image in this slot is
    complete (0x01=done; 0xff=not done).
 
-4. Image OK: A single byte indicating whether the image in this slot has been
+6. Image OK: A single byte indicating whether the image in this slot has been
    confirmed as good by the user (0x01=confirmed; 0xff=not confirmed).
 
-5. MAGIC: The following 16 bytes, written in host-byte-order:
+7. MAGIC: The following 16 bytes, written in host-byte-order:
 
 ``` c
     const uint32_t boot_img_magic[4] = {
@@ -327,6 +352,11 @@ of 3 is explained below.
 At startup, the boot loader determines the boot swap type by inspecting the
 image trailers.  When using the term "image trailers" what is meant is the
 aggregate information provided by both image slot's trailers.
+
+### New swaps (non-resumes)
+
+For new swaps, mcuboot must inspect a collection of fields to determine which
+swap operation to perform.
 
 The image trailers records are structured around the limitations imposed by
 flash hardware. As a consequence, they do not have a very intuitive design, and
@@ -403,6 +433,13 @@ Note: An important caveat to the above is the result when a swap is requested
       signing error. This state behaves as State IV with the extra action of
       marking the image in the primary slot as "OK", to prevent further attempts
       to swap.
+
+### Resumed swaps
+
+If mcuboot determines that it is resuming an interrupted swap (i.e., a reset
+occurred mid-swap), it fully determines the operation to resume by reading the
+`swap type` field from the active trailer.  The set of tables in the previous
+section are not necessary in the resume case.
 
 ## High-Level Operation
 
@@ -647,14 +684,15 @@ indicates where the swap status region is located.
     -----------------------------------------------------------------------'
 ```
 
-If the swap status region indicates that the images are not contiguous,
-bootutil completes the swap operation that was in progress when the system was
-reset.  In other words, it applies the procedure defined in the previous
-section, moving image 1 into the primary slot and image 0 into the secondary
-slot. If the boot status file indicates that an image part is present in the
-scratch area, this part is copied into the correct location by starting at step
-e or step h in the area-swap procedure, depending on whether the part belongs to
-image 0 or image 1.
+If the swap status region indicates that the images are not contiguous, mcuboot
+determines the type of swap operation that was interrupted by reading the `swap
+type` field in the active image trailer, and then resumes the operation.  In
+other words, it applies the procedure defined in the previous section, moving
+image 1 into the primary slot and image 0 into the secondary slot. If the boot
+status indicates that an image part is present in the scratch area, this part
+is copied into the correct location by starting at step e or step h in the
+area-swap procedure, depending on whether the part belongs to image 0 or image
+1.
 
 After the swap operation has been completed, the boot loader proceeds as though
 it had just been started.

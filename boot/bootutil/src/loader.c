@@ -78,7 +78,7 @@ static const struct boot_status_table boot_status_tables[] = {
          * ----------------------------------------'
          */
         .bst_magic_primary_slot =     BOOT_MAGIC_GOOD,
-        .bst_magic_scratch =          BOOT_MAGIC_ANY,
+        .bst_magic_scratch =          BOOT_MAGIC_NOTGOOD,
         .bst_copy_done_primary_slot = BOOT_FLAG_SET,
         .bst_status_source =          BOOT_STATUS_SOURCE_NONE,
     },
@@ -93,7 +93,7 @@ static const struct boot_status_table boot_status_tables[] = {
          * ----------------------------------------'
          */
         .bst_magic_primary_slot =     BOOT_MAGIC_GOOD,
-        .bst_magic_scratch =          BOOT_MAGIC_ANY,
+        .bst_magic_scratch =          BOOT_MAGIC_NOTGOOD,
         .bst_copy_done_primary_slot = BOOT_FLAG_UNSET,
         .bst_status_source =          BOOT_STATUS_SOURCE_PRIMARY_SLOT,
     },
@@ -136,11 +136,13 @@ static const struct boot_status_table boot_status_tables[] = {
     (sizeof boot_status_tables / sizeof boot_status_tables[0])
 
 #define BOOT_LOG_SWAP_STATE(area, state)                            \
-    BOOT_LOG_INF("%s: magic=%s, copy_done=0x%x, image_ok=0x%x",     \
+    BOOT_LOG_INF("%s: magic=%s, swap_type=0x%x, copy_done=0x%x, "   \
+                 "image_ok=0x%x",                                   \
                  (area),                                            \
                  ((state)->magic == BOOT_MAGIC_GOOD ? "good" :      \
                   (state)->magic == BOOT_MAGIC_UNSET ? "unset" :    \
                   "bad"),                                           \
+                 (state)->swap_type,                                \
                  (state)->copy_done,                                \
                  (state)->image_ok)
 
@@ -175,10 +177,10 @@ boot_status_source(void)
     for (i = 0; i < BOOT_STATUS_TABLES_COUNT; i++) {
         table = &boot_status_tables[i];
 
-        if ((table->bst_magic_primary_slot == BOOT_MAGIC_ANY    ||
-             table->bst_magic_primary_slot == state_primary_slot.magic) &&
-            (table->bst_magic_scratch == BOOT_MAGIC_ANY         ||
-             table->bst_magic_scratch == state_scratch.magic)           &&
+        if (boot_magic_compatible_check(table->bst_magic_primary_slot,
+                          state_primary_slot.magic) &&
+            boot_magic_compatible_check(table->bst_magic_scratch,
+                          state_scratch.magic) &&
             (table->bst_copy_done_primary_slot == BOOT_FLAG_ANY ||
              table->bst_copy_done_primary_slot == state_primary_slot.copy_done))
         {
@@ -194,28 +196,6 @@ boot_status_source(void)
 
     BOOT_LOG_INF("Boot source: none");
     return BOOT_STATUS_SOURCE_NONE;
-}
-
-/**
- * Calculates the type of swap that just completed.
- *
- * This is used when a swap is interrupted by an external event. After
- * finishing the swap operation determines what the initial request was.
- */
-static int
-boot_previous_swap_type(void)
-{
-    int post_swap_type;
-
-    post_swap_type = boot_swap_type();
-
-    switch (post_swap_type) {
-    case BOOT_SWAP_TYPE_NONE   : return BOOT_SWAP_TYPE_PERM;
-    case BOOT_SWAP_TYPE_REVERT : return BOOT_SWAP_TYPE_TEST;
-    case BOOT_SWAP_TYPE_PANIC  : return BOOT_SWAP_TYPE_PANIC;
-    }
-
-    return BOOT_SWAP_TYPE_FAIL;
 }
 
 /*
@@ -541,6 +521,7 @@ static int
 boot_read_status(struct boot_status *bs)
 {
     const struct flash_area *fap;
+    uint32_t off;
     int status_loc;
     int area_id;
     int rc;
@@ -548,6 +529,7 @@ boot_read_status(struct boot_status *bs)
     memset(bs, 0, sizeof *bs);
     bs->idx = BOOT_STATUS_IDX_0;
     bs->state = BOOT_STATUS_STATE_0;
+    bs->swap_type = BOOT_SWAP_TYPE_NONE;
 
 #ifdef MCUBOOT_OVERWRITE_ONLY
     /* Overwrite-only doesn't make use of the swap status area. */
@@ -578,6 +560,15 @@ boot_read_status(struct boot_status *bs)
     }
 
     rc = boot_read_status_bytes(fap, bs);
+    if (rc == 0) {
+        off = boot_swap_type_off(fap);
+        rc = flash_area_read_is_empty(fap, off, &bs->swap_type,
+                                      sizeof bs->swap_type);
+        if (rc == 1) {
+            bs->swap_type = BOOT_SWAP_TYPE_NONE;
+            rc = 0;
+        }
+    }
 
     flash_area_close(fap);
 
@@ -980,6 +971,11 @@ boot_status_init(const struct flash_area *fap, const struct boot_status *bs)
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY, &swap_state);
     assert(rc == 0);
 
+    if (bs->swap_type != BOOT_SWAP_TYPE_NONE) {
+        rc = boot_write_swap_type(fap, bs->swap_type);
+        assert(rc == 0);
+    }
+
     if (swap_state.image_ok == BOOT_FLAG_SET) {
         rc = boot_write_image_ok(fap);
         assert(rc == 0);
@@ -1001,6 +997,7 @@ boot_status_init(const struct flash_area *fap, const struct boot_status *bs)
 
     return 0;
 }
+
 #endif
 
 #ifndef MCUBOOT_OVERWRITE_ONLY
@@ -1070,6 +1067,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
     uint32_t scratch_trailer_off;
     struct boot_swap_state swap_state;
     size_t last_sector;
+    bool erase_scratch;
     int rc;
 
     /* Calculate offset from start of image area. */
@@ -1106,27 +1104,37 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         BOOT_LOG_DBG("erasing scratch area");
-        rc = boot_erase_sector(fap_scratch, 0, sz);
-        assert(rc == 0);
-
-        rc = boot_copy_sector(fap_secondary_slot, fap_scratch,
-                              img_off, 0, copy_sz);
+        rc = boot_erase_sector(fap_scratch, 0, fap_scratch->fa_size);
         assert(rc == 0);
 
         if (bs->idx == BOOT_STATUS_IDX_0) {
-            if (bs->use_scratch) {
-                boot_status_init(fap_scratch, bs);
-            } else {
-                /* Prepare the status area... here it is known that the
-                 * last sector is not being used by the image data so it's
-                 * safe to erase.
+            /* Write a trailer to the scratch area, even if we don't need the
+             * scratch area for status.  We need a temporary place to store the
+             * `swap-type` while we erase the primary trailer.
+             */ 
+            rc = boot_status_init(fap_scratch, bs);
+            assert(rc == 0);
+
+            if (!bs->use_scratch) {
+                /* Prepare the primary status area... here it is known that the
+                 * last sector is not being used by the image data so it's safe
+                 * to erase.
                  */
                 rc = boot_erase_trailer_sectors(fap_primary_slot);
                 assert(rc == 0);
 
-                boot_status_init(fap_primary_slot, bs);
+                rc = boot_status_init(fap_primary_slot, bs);
+                assert(rc == 0);
+
+                /* Erase the temporary trailer from the scratch area. */
+                rc = boot_erase_sector(fap_scratch, 0, fap_scratch->fa_size);
+                assert(rc == 0);
             }
         }
+
+        rc = boot_copy_sector(fap_secondary_slot, fap_scratch,
+                              img_off, 0, copy_sz);
+        assert(rc == 0);
 
         bs->state = BOOT_STATUS_STATE_1;
         rc = boot_write_status(bs);
@@ -1158,7 +1166,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
         rc = boot_erase_sector(fap_primary_slot, img_off, sz);
         assert(rc == 0);
 
-        /* NOTE: also copy trailer from scratch (has status info) */
+        /* NOTE: If this is the final sector, we exclude the image trailer from
+         * this copy (copy_sz was truncated earlier).
+         */
         rc = boot_copy_sector(fap_scratch, fap_primary_slot,
                               0, img_off, copy_sz);
         assert(rc == 0);
@@ -1181,6 +1191,12 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
                 assert(rc == 0);
             }
 
+            if (swap_state.swap_type != BOOT_SWAP_TYPE_NONE) {
+                rc = boot_write_swap_type(fap_primary_slot,
+                                          swap_state.swap_type);
+                assert(rc == 0);
+            }
+
             rc = boot_write_swap_size(fap_primary_slot, bs->swap_size);
             assert(rc == 0);
 
@@ -1191,16 +1207,27 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
             rc = boot_write_enc_key(fap_primary_slot, 1, bs->enckey[1]);
             assert(rc == 0);
 #endif
-
             rc = boot_write_magic(fap_primary_slot);
             assert(rc == 0);
         }
 
+        /* If we wrote a trailer to the scratch area, erase it after we persist
+         * a trailer to the primary slot.  We do this to prevent mcuboot from
+         * reading a stale status from the scratch area in case of immediate
+         * reset.
+         */
+        erase_scratch = bs->use_scratch;
+        bs->use_scratch = 0;
+
         bs->idx++;
         bs->state = BOOT_STATUS_STATE_0;
-        bs->use_scratch = 0;
         rc = boot_write_status(bs);
         BOOT_STATUS_ASSERT(rc == 0);
+
+        if (erase_scratch) {
+            rc = boot_erase_sector(fap_scratch, 0, sz);
+            assert(rc == 0);
+        }
     }
 
     flash_area_close(fap_primary_slot);
@@ -1234,7 +1261,6 @@ boot_copy_image(struct boot_status *bs)
     size_t last_sector;
     const struct flash_area *fap_primary_slot;
     const struct flash_area *fap_secondary_slot;
-
 
     (void)bs;
 
@@ -1319,6 +1345,7 @@ boot_copy_image(struct boot_status *bs)
 }
 #endif
 
+#if !defined(MCUBOOT_OVERWRITE_ONLY)
 /**
  * Swaps the two images in flash.  If a prior copy operation was interrupted
  * by a system reset, this function completes that operation.
@@ -1331,7 +1358,6 @@ boot_copy_image(struct boot_status *bs)
  *
  * @return                      0 on success; nonzero on failure.
  */
-#if !defined(MCUBOOT_OVERWRITE_ONLY)
 static int
 boot_swap_image(struct boot_status *bs)
 {
@@ -1413,7 +1439,6 @@ boot_swap_image(struct boot_status *bs)
         }
 
         bs->swap_size = copy_size;
-
     } else {
         /*
          * If a swap was under way, the swap_size should already be present
@@ -1568,12 +1593,9 @@ static int
 boot_swap_if_needed(int *out_swap_type)
 {
     struct boot_status bs;
-    int swap_type;
     int rc;
 
-    /* Determine if we rebooted in the middle of an image swap
-     * operation.
-     */
+    /* Determine if we rebooted in the middle of an image swap operation. */
     rc = boot_read_status(&bs);
     assert(rc == 0);
     if (rc != 0) {
@@ -1586,23 +1608,20 @@ boot_swap_if_needed(int *out_swap_type)
         /* Should never arrive here, overwrite-only mode has no swap state. */
         assert(0);
 #else
+        /* Determine the type of swap operation being resumed from the
+         * `swap-type` trailer field.
+         */
         rc = boot_swap_image(&bs);
-#endif
         assert(rc == 0);
+#endif
 
-        /* NOTE: here we have finished a swap resume. The initial request
-         * was either a TEST or PERM swap, which now after the completed
-         * swap will be determined to be respectively REVERT (was TEST)
-         * or NONE (was PERM).
-         */
-
-        /* Extrapolate the type of the partial swap.  We need this
-         * information to know how to mark the swap complete in flash.
-         */
-        swap_type = boot_previous_swap_type();
     } else {
-        swap_type = boot_validated_swap_type(&bs);
-        switch (swap_type) {
+        if (bs.swap_type == BOOT_SWAP_TYPE_NONE) {
+            bs.swap_type = boot_validated_swap_type(&bs);
+        } else if (boot_validate_slot(BOOT_SECONDARY_SLOT, &bs) != 0) {
+            bs.swap_type = BOOT_SWAP_TYPE_FAIL;
+        }
+        switch (bs.swap_type) {
         case BOOT_SWAP_TYPE_TEST:
         case BOOT_SWAP_TYPE_PERM:
         case BOOT_SWAP_TYPE_REVERT:
@@ -1630,7 +1649,7 @@ boot_swap_if_needed(int *out_swap_type)
                     assert(rc == 0);
 
                     /* Returns fail here to trigger a re-read of the headers. */
-                    swap_type = BOOT_SWAP_TYPE_FAIL;
+                    bs.swap_type = BOOT_SWAP_TYPE_FAIL;
                 }
             }
             break;
@@ -1638,7 +1657,7 @@ boot_swap_if_needed(int *out_swap_type)
         }
     }
 
-    *out_swap_type = swap_type;
+    *out_swap_type = bs.swap_type;
     return 0;
 }
 
@@ -1715,7 +1734,8 @@ boot_go(struct boot_rsp *rsp)
          * swap was finished to avoid a new revert.
          */
         if (swap_type == BOOT_SWAP_TYPE_REVERT ||
-            swap_type == BOOT_SWAP_TYPE_FAIL) {
+            swap_type == BOOT_SWAP_TYPE_FAIL ||
+            swap_type == BOOT_SWAP_TYPE_PERM) {
 #ifndef MCUBOOT_OVERWRITE_ONLY
             rc = boot_set_image_ok();
             if (rc != 0) {
