@@ -12,7 +12,7 @@ matrix:
     # Runs each value defined in $SINGLE_FEATURES by itself in the order
     # the were defined.
     - os: linux
-      env: SINGLE_FEATURES="sig-ecdsa enc-kw bootstrap" TEST=sim
+      env: SINGLE_FEATURES="sig-ecdsa sig-ed25519 enc-kw bootstrap" TEST=sim
     - os: linux
       env: SINGLE_FEATURES="none sig-rsa sig-rsa3072 overwrite-only validate-primary-slot" TEST=sim
     - os: linux
