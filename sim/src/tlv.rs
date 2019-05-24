@@ -16,6 +16,7 @@ use ring::signature::{
     RSA_PSS_SHA256,
     EcdsaKeyPair,
     ECDSA_P256_SHA256_ASN1_SIGNING,
+    Ed25519KeyPair,
 };
 use untrusted;
 use mcuboot_sys::c;
@@ -30,6 +31,7 @@ pub enum TlvKinds {
     ECDSA224 = 0x21,
     ECDSA256 = 0x22,
     RSA3072 = 0x23,
+    ED25519 = 0x24,
     ENCRSA2048 = 0x30,
     ENCKW128 = 0x31,
 }
@@ -106,6 +108,16 @@ impl TlvGen {
             flags: 0,
             kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256],
             size: 4 + 32 + 4 + 32 + 4 + 72,
+            payload: vec![],
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn new_ed25519() -> TlvGen {
+        TlvGen {
+            flags: 0,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ED25519],
+            size: 4 + 32 + 4 + 32 + 4 + 64,
             payload: vec![],
         }
     }
@@ -288,6 +300,38 @@ impl ManifestGen for TlvGen {
             result.extend_from_slice(signature.as_ref());
         }
 
+        if self.kinds.contains(&TlvKinds::ED25519) {
+            let keyhash = digest::digest(&digest::SHA256, ED25519_PUB_KEY);
+            let keyhash = keyhash.as_ref();
+
+            assert!(keyhash.len() == 32);
+            result.push(TlvKinds::KEYHASH as u8);
+            result.push(0);
+            result.push(32);
+            result.push(0);
+            result.extend_from_slice(keyhash);
+
+            let hash = digest::digest(&digest::SHA256, &self.payload);
+            let hash = hash.as_ref();
+            assert!(hash.len() == 32);
+
+            let key_bytes = pem::parse(include_bytes!("../../root-ed25519.pem").as_ref()).unwrap();
+            assert_eq!(key_bytes.tag, "PRIVATE KEY");
+
+            let seed = untrusted::Input::from(&key_bytes.contents[16..48]);
+            let public = untrusted::Input::from(&ED25519_PUB_KEY[12..44]);
+            let key_pair = Ed25519KeyPair::from_seed_and_public_key(seed, public).unwrap();
+            let signature = key_pair.sign(&hash);
+
+            result.push(TlvKinds::ED25519 as u8);
+            result.push(0);
+
+            let signature = signature.as_ref().to_vec();
+            result.push((signature.len() & 0xFF) as u8);
+            result.push(((signature.len() >> 8) & 0xFF) as u8);
+            result.extend_from_slice(signature.as_ref());
+        }
+
         if self.kinds.contains(&TlvKinds::ENCRSA2048) {
             let key_bytes = pem::parse(include_bytes!("../../enc-rsa2048-pub.pem")
                                        .as_ref()).unwrap();
@@ -330,3 +374,4 @@ impl ManifestGen for TlvGen {
 include!("rsa_pub_key-rs.txt");
 include!("rsa3072_pub_key-rs.txt");
 include!("ecdsa_pub_key-rs.txt");
+include!("ed25519_pub_key-rs.txt");
