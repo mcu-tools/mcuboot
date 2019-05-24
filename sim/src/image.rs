@@ -1168,6 +1168,8 @@ fn make_tlv() -> TlvGen {
             TlvGen::new_rsa3072_pss()
         } else if Caps::EcdsaP256.present() {
             TlvGen::new_ecdsa()
+        } else if Caps::Ed25519.present() {
+            TlvGen::new_ed25519()
         } else {
             TlvGen::new_hash_only()
         }

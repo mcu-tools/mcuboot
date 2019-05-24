@@ -35,6 +35,9 @@ uint32_t bootutil_get_caps(void)
 #if defined(MCUBOOT_SIGN_EC256)
     res |= BOOTUTIL_CAP_ECDSA_P256;
 #endif
+#if defined(MCUBOOT_SIGN_ED25519)
+    res |= BOOTUTIL_CAP_ED25519;
+#endif
 #if defined(MCUBOOT_OVERWRITE_ONLY)
     res |= BOOTUTIL_CAP_OVERWRITE_UPGRADE;
 #else

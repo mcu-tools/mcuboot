@@ -41,6 +41,7 @@ uint32_t bootutil_get_caps(void);
 #define BOOTUTIL_CAP_ENC_KW                 (1<<6)
 #define BOOTUTIL_CAP_VALIDATE_PRIMARY_SLOT  (1<<7)
 #define BOOTUTIL_CAP_RSA3072                (1<<8)
+#define BOOTUTIL_CAP_ED25519                (1<<9)
 
 /*
  * Query the number of images this bootloader is configured for.  This
