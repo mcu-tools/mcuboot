@@ -62,6 +62,14 @@ class RSAPublic(KeyClass):
     def sig_len(self):
         return self.key_size() / 8
 
+    def verify(self, signature, payload):
+        k = self.key
+        if isinstance(self.key, rsa.RSAPrivateKey):
+            k = self.key.public_key()
+        return k.verify(signature=signature, data=payload,
+                        padding=PSS(mgf=MGF1(SHA256()), salt_length=32),
+                        algorithm=SHA256())
+
 
 class RSA(RSAPublic):
     """

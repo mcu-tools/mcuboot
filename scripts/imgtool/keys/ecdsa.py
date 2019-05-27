@@ -57,6 +57,14 @@ class ECDSA256P1Public(KeyClass):
         # signature.
         return 72
 
+    def verify(self, signature, payload):
+        k = self.key
+        if isinstance(self.key, ec.EllipticCurvePrivateKey):
+            k = self.key.public_key()
+        return k.verify(signature=signature, data=payload,
+                        signature_algorithm=ec.ECDSA(SHA256()))
+
+
 class ECDSA256P1(ECDSA256P1Public):
     """
     Wrapper around an ECDSA private key.

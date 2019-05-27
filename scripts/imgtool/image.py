@@ -19,6 +19,7 @@ Image signing and management.
 """
 
 from . import version as versmod
+from enum import Enum
 from intelhex import IntelHex
 import hashlib
 import struct
@@ -27,6 +28,7 @@ from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import InvalidSignature
 
 IMAGE_MAGIC = 0x96f3b83d
 IMAGE_HEADER_SIZE = 32
@@ -55,6 +57,7 @@ TLV_VALUES = {
         'DEPENDENCY': 0x40
 }
 
+TLV_SIZE = 4
 TLV_INFO_SIZE = 4
 TLV_INFO_MAGIC = 0x6907
 
@@ -68,6 +71,13 @@ STRUCT_ENDIAN_DICT = {
         'little': '<',
         'big':    '>'
 }
+
+VerifyResult = Enum('VerifyResult',
+                    """
+                    OK INVALID_MAGIC INVALID_TLV_INFO_MAGIC INVALID_HASH
+                    INVALID_SIGNATURE
+                    """)
+
 
 class TLV():
     def __init__(self, endian):
@@ -307,3 +317,47 @@ class Image():
         pbytes += b'\xff' * (tsize - len(boot_magic))
         pbytes += boot_magic
         self.payload += pbytes
+
+    @staticmethod
+    def verify(imgfile, key):
+        with open(imgfile, "rb") as f:
+            b = f.read()
+
+        magic, _, header_size, _, img_size = struct.unpack('IIHHI', b[:16])
+        if magic != IMAGE_MAGIC:
+            return VerifyResult.INVALID_MAGIC
+
+        tlv_info = b[header_size+img_size:header_size+img_size+TLV_INFO_SIZE]
+        magic, tlv_tot = struct.unpack('HH', tlv_info)
+        if magic != TLV_INFO_MAGIC:
+            return VerifyResult.INVALID_TLV_INFO_MAGIC
+
+        sha = hashlib.sha256()
+        sha.update(b[:header_size+img_size])
+        digest = sha.digest()
+
+        tlv_off = header_size + img_size
+        tlv_end = tlv_off + tlv_tot
+        tlv_off += TLV_INFO_SIZE  # skip tlv info
+        while tlv_off < tlv_end:
+            tlv = b[tlv_off:tlv_off+TLV_SIZE]
+            tlv_type, _, tlv_len = struct.unpack('BBH', tlv)
+            if tlv_type == TLV_VALUES["SHA256"]:
+                off = tlv_off + TLV_SIZE
+                if digest == b[off:off+tlv_len]:
+                    if key is None:
+                        return VerifyResult.OK
+                else:
+                    return VerifyResult.INVALID_HASH
+            elif key is not None and tlv_type == TLV_VALUES[key.sig_tlv()]:
+                off = tlv_off + TLV_SIZE
+                tlv_sig = b[off:off+tlv_len]
+                payload = b[:header_size+img_size]
+                try:
+                    key.verify(tlv_sig, payload)
+                    return VerifyResult.OK
+                except InvalidSignature:
+                    # continue to next TLV
+                    pass
+            tlv_off += TLV_SIZE + tlv_len
+        return VerifyResult.INVALID_SIGNATURE
