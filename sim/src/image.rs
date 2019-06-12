@@ -828,11 +828,6 @@ impl Images {
             fails += 1;
         }
 
-        if !self.verify_trailers(&flash, 0, None, None, BOOT_FLAG_UNSET) {
-            warn!("copy_done should be unset");
-            fails += 1;
-        }
-
         let (x, _) = c::boot_go(&mut flash, &self.areadesc, None, false);
         if x != 0 {
             warn!("Should have finished test upgrade");
