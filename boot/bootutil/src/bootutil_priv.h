@@ -48,13 +48,14 @@ extern "C" {
 
 struct flash_area;
 
-#define BOOT_EFLASH     1
-#define BOOT_EFILE      2
-#define BOOT_EBADIMAGE  3
-#define BOOT_EBADVECT   4
-#define BOOT_EBADSTATUS 5
-#define BOOT_ENOMEM     6
-#define BOOT_EBADARGS   7
+#define BOOT_EFLASH      1
+#define BOOT_EFILE       2
+#define BOOT_EBADIMAGE   3
+#define BOOT_EBADVECT    4
+#define BOOT_EBADSTATUS  5
+#define BOOT_ENOMEM      6
+#define BOOT_EBADARGS    7
+#define BOOT_EBADVERSION 8
 
 #define BOOT_TMPBUF_SZ  256
 
@@ -240,6 +241,10 @@ int boot_read_swap_size(uint32_t *swap_size);
 int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
                        const uint8_t *enckey);
 int boot_read_enc_key(uint8_t slot, uint8_t *enckey);
+#endif
+#if (BOOT_IMAGE_NUMBER > 1)
+int boot_is_version_sufficient(struct image_version *req,
+                               struct image_version *ver);
 #endif
 
 /*
