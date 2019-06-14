@@ -218,7 +218,8 @@ main(void)
     assert(rc == 0);
 #endif
 
-#if defined(MCUBOOT_SERIAL) || defined(MCUBOOT_HAVE_LOGGING) || MYNEWT_VAL(CRYPTO)
+#if defined(MCUBOOT_SERIAL) || defined(MCUBOOT_HAVE_LOGGING) || \
+        MYNEWT_VAL(CRYPTO) || MYNEWT_VAL(HASH)
     /* initialize uart/crypto without os */
     os_dev_initialize_all(OS_DEV_INIT_PRIMARY);
     os_dev_initialize_all(OS_DEV_INIT_SECONDARY);
