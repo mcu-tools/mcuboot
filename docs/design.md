@@ -17,6 +17,10 @@
   under the License.
 -->
 
+<!--
+  Modifications are Copyright (c) 2019 Arm Limited.
+-->
+
 # Boot Loader
 
 ## Summary
@@ -200,19 +204,19 @@ during an upgrade.
 ## Boot Swap Types
 
 When the device first boots under normal circumstances, there is an up-to-date
-firmware image in the primary slot, which mcuboot can validate and then
+firmware image in each primary slot, which mcuboot can validate and then
 chain-load. In this case, no image swaps are necessary. During device upgrades,
-however, new candidate images are present in the secondary slot, which mcuboot
-must swap into the primary slot before booting as discussed above.
+however, new candidate image(s) is present in the secondary slot(s), which
+mcuboot must swap into the primary slot(s) before booting as discussed above.
 
 Upgrading an old image with a new one by swapping can be a two-step process. In
 this process, mcuboot performs a "test" swap of image data in flash and boots
-the new image. The new image can then update the contents of flash at runtime
-to mark itself "OK", and mcuboot will then still choose to run it during the
-next boot. When this happens, the swap is made "permanent". If this doesn't
-happen, mcuboot will perform a "revert" swap during the next boot by swapping
-the images back into their original locations, and attempting to boot the old
-image.
+the new image or it will be executed during operation. The new image can then
+update the contents of flash at runtime to mark itself "OK", and mcuboot will
+then still choose to run it during the next boot. When this happens, the swap is
+made "permanent". If this doesn't happen, mcuboot will perform a "revert" swap
+during the next boot by swapping the image(s) back into its original location(s)
+, and attempting to boot the old image(s).
 
 Depending on the use case, the first swap can also be made permanent directly.
 In this case, mcuboot will never attempt to revert the images on the next reset.
@@ -224,8 +228,9 @@ at the next device reset, rather than booting the bad image again. This allows
 device firmware to make test swaps permanent only after performing a self-test
 routine.
 
-On startup, mcuboot inspects the contents of flash to decide which of these
-"swap types" to perform; this decision determines how it proceeds.
+On startup, mcuboot inspects the contents of flash to decide for each images
+which of these "swap types" to perform; this decision determines how it
+proceeds.
 
 The possible swap types, and their meanings, are:
 
@@ -488,6 +493,89 @@ Procedure:
 
 3. Boot into image in primary slot.
 
+### Multiple Image Boot
+
+When the flash contains multiple executable images the boot loader's operation
+is a bit more complex but similar to the previously described procedure with
+one image. Every image can be updated independently therefore the flash is
+partitioned further to arrange two slots for each image.
+```
++--------------------+
+| MCUBoot            |
++--------------------+
+        ~~~~~            <- memory might be not contiguous
++--------------------+
+| Image 0            |
+| primary   slot     |
++--------------------+
+| Image 0            |
+| secondary slot     |
++--------------------+
+        ~~~~~            <- memory might be not contiguous
++--------------------+
+| Image N            |
+| primary   slot     |
++--------------------+
+| Image N            |
+| secondary slot     |
++--------------------+
+| Scratch            |
++--------------------+
+```
+The multiple image boot procedure is organized in loops which iterate over all
+the firmware images. The high-level overview of the boot process is presented
+below.
+
+Procedure:
+
++ ###### Loop 1. Iterate over all images
+    1. Inspect swap status region of current image; is an interrupted swap being
+       resumed?
+        + Yes:
+            + Review the validity of previously determined swap types
+              of other images.
+            + Complete the partial swap operation.
+            + Mark the swap type as `None`.
+            + Skip to next image.
+        + No: Proceed to step 2.
+
+    2. Inspect image trailers in the primary and secondary slot; is an image
+       swap requested?
+        + Yes: Review the validity of previously determined swap types of other
+               images. Is the requested image valid (integrity and security
+               check)?
+            + Yes:
+                + Set the previously determined swap type for the current image.
+                + Skip to next image.
+            + No:
+                + Erase invalid image.
+                + Persist failure of swap procedure to image trailers.
+                + Mark the swap type as `Fail`.
+                + Skip to next image.
+        + No:
+            + Mark the swap type as `None`.
+            + Skip to next image.
+
++ ###### Loop 2. Iterate over all images
+    At this point there are no aborted swaps and the swap types are determined
+    for each image.
+
+    1. Is an image swap requested?
+        + Yes:
+            + Perform image update operation.
+            + Persist completion of swap procedure to image trailers.
+            + Skip to next image.
+        + No: Skip to next image.
+
++ ###### Loop 3. Iterate over all images
+
+    1. Validate image in the primary slot (integrity and security check) or
+       at least do a basic sanity check to avoid booting into an empty flash
+       area.
+
++ Boot into image in the primary slot of the 0th image position\
+  (other image in the boot chain is started by another image).
+
 ## Image Swapping
 
 The boot loader swaps the contents of the two image slots for two reasons:
@@ -662,7 +750,11 @@ The first step is determine where the relevant swap status region is located.
 Because this region is embedded within the image slots, its location in flash
 changes during a swap operation.  The below set of tables map image trailers
 contents to swap status location.  In these tables, the "source" field
-indicates where the swap status region is located.
+indicates where the swap status region is located. In case of multi image boot
+the images primary area and the single scratch area is always examined in pairs.
+If swap status found on scratch area then it might not belong to the current
+image. The swap_info field of swap status stores the corresponding image number.
+If it does not match then "source: none" is returned.
 
 ```
               | primary slot | scratch      |
