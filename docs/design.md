@@ -266,7 +266,7 @@ image trailer. An image trailer has the following structure:
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |                      Swap size (4 octets)                     |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |   Swap type   |           0xff padding (7 octets)             |
+    |   Swap info   |           0xff padding (7 octets)             |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |   Copy done   |           0xff padding (7 octets)             |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -319,10 +319,17 @@ of 3 is explained below.
    this location for easier recovery in case of a reset while performing the
    swap.
 
-4. Swap type: A single byte indicating the type of swap operation in progress.
-   When mcuboot resumes an interrupted swap, it uses this field to determine
-   the type of operation to perform.  This field contains one of the following
-   values:
+4. Swap info: A single byte which encodes the following informations:
+    - Swap type: Stored in bits 0-3. Indicating the type of swap operation in
+    progress. When mcuboot resumes an interrupted swap, it uses this field to
+    determine the type of operation to perform. This field contains one of the
+    following values in the table below.
+    - Image number: Stored in bits 4-7. It has always 0 value at single image
+    boot. In case of multi image boot it indicates, which image was swapped when
+    interrupt happened. The same scratch area is used during in case of all
+    image swap operation. Therefore this field is used to determine which image
+    the trailer belongs to if boot status is found on scratch area when the swap
+    operation is resumed.
 
 | Name                      | Value |
 | ------------------------- | ----- |
@@ -439,8 +446,9 @@ Note: An important caveat to the above is the result when a swap is requested
 
 If mcuboot determines that it is resuming an interrupted swap (i.e., a reset
 occurred mid-swap), it fully determines the operation to resume by reading the
-`swap type` field from the active trailer.  The set of tables in the previous
-section are not necessary in the resume case.
+`swap info` field from the active trailer and extracting the swap type from bits
+0-3. The set of tables in the previous section are not necessary in the resume
+case.
 
 ## High-Level Operation
 
@@ -687,13 +695,13 @@ indicates where the swap status region is located.
 
 If the swap status region indicates that the images are not contiguous, mcuboot
 determines the type of swap operation that was interrupted by reading the `swap
-type` field in the active image trailer, and then resumes the operation.  In
-other words, it applies the procedure defined in the previous section, moving
-image 1 into the primary slot and image 0 into the secondary slot. If the boot
-status indicates that an image part is present in the scratch area, this part
-is copied into the correct location by starting at step e or step h in the
-area-swap procedure, depending on whether the part belongs to image 0 or image
-1.
+info` field in the active image trailer and extarcting the swap type from bits
+0-3 then resumes the operation. In other words, it applies the procedure defined
+in the previous section, moving image 1 into the primary slot and image 0 into
+the secondary slot. If the boot status indicates that an image part is present
+in the scratch area, this part is copied into the correct location by starting
+at step e or step h in the area-swap procedure, depending on whether the part
+belongs to image 0 or image 1.
 
 After the swap operation has been completed, the boot loader proceeds as though
 it had just been started.

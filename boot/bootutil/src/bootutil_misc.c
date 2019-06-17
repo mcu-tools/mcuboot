@@ -17,6 +17,10 @@
  * under the License.
  */
 
+/*
+ * Modifications are Copyright (c) 2019 Arm Limited.
+ */
+
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>
@@ -194,7 +198,7 @@ boot_status_off(const struct flash_area *fap)
 }
 
 uint32_t
-boot_swap_type_off(const struct flash_area *fap)
+boot_swap_info_off(const struct flash_area *fap)
 {
     return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 3;
 }
@@ -232,6 +236,7 @@ boot_read_swap_state(const struct flash_area *fap,
 {
     uint32_t magic[BOOT_MAGIC_ARR_SZ];
     uint32_t off;
+    uint8_t swap_info;
     int rc;
 
     off = boot_magic_off(fap);
@@ -245,14 +250,19 @@ boot_read_swap_state(const struct flash_area *fap,
         state->magic = boot_magic_decode(magic);
     }
 
-    off = boot_swap_type_off(fap);
-    rc = flash_area_read_is_empty(fap, off, &state->swap_type,
-            sizeof state->swap_type);
+    off = boot_swap_info_off(fap);
+    rc = flash_area_read_is_empty(fap, off, &swap_info, sizeof swap_info);
     if (rc < 0) {
         return BOOT_EFLASH;
     }
+
+    /* Extract the swap type and image number */
+    state->swap_type = BOOT_GET_SWAP_TYPE(swap_info);
+    state->image_num = BOOT_GET_IMAGE_NUM(swap_info);
+
     if (rc == 1 || state->swap_type > BOOT_SWAP_TYPE_REVERT) {
         state->swap_type = BOOT_SWAP_TYPE_NONE;
+        state->image_num = 0;
     }
 
     off = boot_copy_done_off(fap);
@@ -494,14 +504,18 @@ boot_write_image_ok(const struct flash_area *fap)
  * resume in case of an unexpected reset.
  */
 int
-boot_write_swap_type(const struct flash_area *fap, uint8_t swap_type)
+boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
+                     uint8_t image_num)
 {
     uint32_t off;
+    uint8_t swap_info;
 
-    off = boot_swap_type_off(fap);
-    BOOT_LOG_DBG("writing swap_type; fa_id=%d off=0x%x (0x%x), swap_type=0x%x",
-                 fap->fa_id, off, fap->fa_off + off, swap_type);
-    return boot_write_trailer_byte(fap, off, swap_type);
+    BOOT_SET_SWAP_INFO(swap_info, image_num, swap_type);
+    off = boot_swap_info_off(fap);
+    BOOT_LOG_DBG("writing swap_info; fa_id=%d off=0x%x (0x%x), swap_type=0x%x"
+                 " image_num=0x%x",
+                 fap->fa_id, off, fap->fa_off + off, swap_type, image_num);
+    return boot_write_trailer_byte(fap, off, swap_info);
 }
 
 int
@@ -648,7 +662,7 @@ boot_set_pending(int permanent)
             } else {
                 swap_type = BOOT_SWAP_TYPE_TEST;
             }
-            rc = boot_write_swap_type(fap, swap_type);
+            rc = boot_write_swap_info(fap, swap_type, 0);
         }
 
         flash_area_close(fap);

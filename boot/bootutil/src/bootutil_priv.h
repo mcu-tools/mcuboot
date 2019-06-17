@@ -17,6 +17,10 @@
  * under the License.
  */
 
+/*
+ * Modifications are Copyright (c) 2019 Arm Limited.
+ */
+
 #ifndef H_BOOTUTIL_PRIV_
 #define H_BOOTUTIL_PRIV_
 
@@ -106,7 +110,7 @@ struct boot_status {
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *  |                      Swap size (4 octets)                     |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *  |   Swap type   |           0xff padding (7 octets)             |
+ *  |   Swap info   |           0xff padding (7 octets)             |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *  |   Copy done   |           0xff padding (7 octets)             |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -127,9 +131,25 @@ struct boot_swap_state {
     uint8_t swap_type;  /* One of the BOOT_SWAP_TYPE_[...] values. */
     uint8_t copy_done;  /* One of the BOOT_FLAG_[...] values. */
     uint8_t image_ok;   /* One of the BOOT_FLAG_[...] values. */
+    uint8_t image_num;  /* Boot status belongs to this image */
 };
 
 #define BOOT_MAX_IMG_SECTORS       MCUBOOT_MAX_IMG_SECTORS
+
+/*
+ * Extract the swap type and image number from image trailers's swap_info
+ * filed.
+ */
+#define BOOT_GET_SWAP_TYPE(swap_info)    ((swap_info) & 0x0F)
+#define BOOT_GET_IMAGE_NUM(swap_info)    ((swap_info) >> 4)
+
+/* Construct the swap_info field from swap type and image number */
+#define BOOT_SET_SWAP_INFO(swap_info, image, type)  {                          \
+                                                    assert((image) < 0xF);     \
+                                                    assert((type)  < 0xF);     \
+                                                    (swap_info) = (image) << 4 \
+                                                                | (type);      \
+                                                    }
 
 /*
  * The current flashmap API does not check the amount of space allocated when
@@ -194,7 +214,7 @@ int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_trailer_sz(uint8_t min_write_sz);
 int boot_status_entries(const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
-uint32_t boot_swap_type_off(const struct flash_area *fap);
+uint32_t boot_swap_info_off(const struct flash_area *fap);
 int boot_read_swap_state(const struct flash_area *fap,
                          struct boot_swap_state *state);
 int boot_read_swap_state_by_id(int flash_area_id,
@@ -204,7 +224,8 @@ int boot_write_status(struct boot_status *bs);
 int boot_schedule_test_swap(void);
 int boot_write_copy_done(const struct flash_area *fap);
 int boot_write_image_ok(const struct flash_area *fap);
-int boot_write_swap_type(const struct flash_area *fap, uint8_t swap_type);
+int boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
+                         uint8_t image_num);
 int boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size);
 int boot_read_swap_size(uint32_t *swap_size);
 #ifdef MCUBOOT_ENC_IMAGES
