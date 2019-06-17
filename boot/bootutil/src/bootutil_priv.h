@@ -124,6 +124,7 @@ struct boot_status {
  *      (`MCUBOOT_ENC_IMAGES`).
  */
 
+extern uint8_t current_image;
 extern const uint32_t boot_img_magic[4];
 
 struct boot_swap_state {
@@ -202,7 +203,7 @@ struct boot_loader_state {
         const struct flash_area *area;
         boot_sector_t *sectors;
         size_t num_sectors;
-    } imgs[BOOT_NUM_SLOTS];
+    } imgs[BOOT_IMAGE_NUMBER][BOOT_NUM_SLOTS];
 
     struct {
         const struct flash_area *area;
@@ -210,6 +211,7 @@ struct boot_loader_state {
         size_t num_sectors;
     } scratch;
 
+    uint8_t swap_type[BOOT_IMAGE_NUMBER];
     uint8_t write_sz;
 };
 
@@ -245,20 +247,22 @@ int boot_read_enc_key(uint8_t slot, uint8_t *enckey);
  */
 
 /* These are macros so they can be used as lvalues. */
-#define BOOT_IMG_AREA(state, slot) ((state)->imgs[(slot)].area)
+#define BOOT_IMG(state, slot) ((state)->imgs[current_image][(slot)])
+#define BOOT_IMG_AREA(state, slot) (BOOT_IMG(state, slot).area)
 #define BOOT_SCRATCH_AREA(state) ((state)->scratch.area)
 #define BOOT_WRITE_SZ(state) ((state)->write_sz)
+#define BOOT_SWAP_TYPE(state) ((state)->swap_type[current_image])
 
 static inline struct image_header*
 boot_img_hdr(struct boot_loader_state *state, size_t slot)
 {
-    return &state->imgs[slot].hdr;
+    return &BOOT_IMG(state, slot).hdr;
 }
 
 static inline size_t
 boot_img_num_sectors(struct boot_loader_state *state, size_t slot)
 {
-    return state->imgs[slot].num_sectors;
+    return BOOT_IMG(state, slot).num_sectors;
 }
 
 static inline size_t
@@ -273,7 +277,7 @@ boot_scratch_num_sectors(struct boot_loader_state *state)
 static inline uint32_t
 boot_img_slot_off(struct boot_loader_state *state, size_t slot)
 {
-    return state->imgs[slot].area->fa_off;
+    return BOOT_IMG(state, slot).area->fa_off;
 }
 
 static inline size_t boot_scratch_area_size(struct boot_loader_state *state)
@@ -287,7 +291,7 @@ static inline size_t
 boot_img_sector_size(struct boot_loader_state *state,
                      size_t slot, size_t sector)
 {
-    return state->imgs[slot].sectors[sector].fa_size;
+    return BOOT_IMG(state, slot).sectors[sector].fa_size;
 }
 
 /*
@@ -298,8 +302,8 @@ static inline uint32_t
 boot_img_sector_off(struct boot_loader_state *state, size_t slot,
                     size_t sector)
 {
-    return state->imgs[slot].sectors[sector].fa_off -
-           state->imgs[slot].sectors[0].fa_off;
+    return BOOT_IMG(state, slot).sectors[sector].fa_off -
+           BOOT_IMG(state, slot).sectors[0].fa_off;
 }
 
 static inline int
@@ -310,13 +314,13 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
 
     if (flash_area == FLASH_AREA_IMAGE_PRIMARY) {
         rc = flash_area_to_sectors(flash_area, &num_sectors,
-                                   state->imgs[BOOT_PRIMARY_SLOT].sectors);
-        state->imgs[BOOT_PRIMARY_SLOT].num_sectors = (size_t)num_sectors;
+                                   BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors);
+        BOOT_IMG(state, BOOT_PRIMARY_SLOT).num_sectors = (size_t)num_sectors;
 
     } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY) {
         rc = flash_area_to_sectors(flash_area, &num_sectors,
-                                   state->imgs[BOOT_SECONDARY_SLOT].sectors);
-        state->imgs[BOOT_SECONDARY_SLOT].num_sectors = (size_t)num_sectors;
+                                 BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors);
+        BOOT_IMG(state, BOOT_SECONDARY_SLOT).num_sectors = (size_t)num_sectors;
 
     } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
         rc = flash_area_to_sectors(flash_area, &num_sectors,
@@ -335,15 +339,15 @@ static inline size_t
 boot_img_sector_size(struct boot_loader_state *state,
                      size_t slot, size_t sector)
 {
-    return state->imgs[slot].sectors[sector].fs_size;
+    return BOOT_IMG(state, slot).sectors[sector].fs_size;
 }
 
 static inline uint32_t
 boot_img_sector_off(struct boot_loader_state *state, size_t slot,
                     size_t sector)
 {
-    return state->imgs[slot].sectors[sector].fs_off -
-           state->imgs[slot].sectors[0].fs_off;
+    return BOOT_IMG(state, slot).sectors[sector].fs_off -
+           BOOT_IMG(state, slot).sectors[0].fs_off;
 }
 
 static inline int
@@ -357,11 +361,11 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     num_sectors = BOOT_MAX_IMG_SECTORS;
 
     if (flash_area == FLASH_AREA_IMAGE_PRIMARY) {
-        out_sectors = state->imgs[BOOT_PRIMARY_SLOT].sectors;
-        out_num_sectors = &state->imgs[BOOT_PRIMARY_SLOT].num_sectors;
+        out_sectors = BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors;
+        out_num_sectors = &BOOT_IMG(state, BOOT_PRIMARY_SLOT).num_sectors;
     } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY) {
-        out_sectors = state->imgs[BOOT_SECONDARY_SLOT].sectors;
-        out_num_sectors = &state->imgs[BOOT_SECONDARY_SLOT].num_sectors;
+        out_sectors = BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors;
+        out_num_sectors = &BOOT_IMG(state, BOOT_SECONDARY_SLOT).num_sectors;
     } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
         out_sectors = state->scratch.sectors;
         out_num_sectors = &state->scratch.num_sectors;

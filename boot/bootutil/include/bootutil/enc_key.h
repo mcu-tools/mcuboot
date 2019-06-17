@@ -53,6 +53,7 @@ int boot_enc_set_key(uint8_t slot, uint8_t *enckey);
 int boot_enc_load(const struct image_header *hdr, const struct flash_area *fap,
         uint8_t *enckey);
 bool boot_enc_valid(const struct flash_area *fap);
+void boot_enc_mark_keys_invalid(void);
 void boot_encrypt(const struct flash_area *fap, uint32_t off, uint32_t sz,
         uint32_t blk_off, uint8_t *buf);
 void boot_enc_zeroize(void);

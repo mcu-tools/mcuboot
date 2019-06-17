@@ -322,6 +322,16 @@ boot_enc_valid(const struct flash_area *fap)
 }
 
 void
+boot_enc_mark_keys_invalid(void)
+{
+    size_t slot;
+
+    for(slot = 0; slot < BOOT_NUM_SLOTS; ++slot) {
+        enc_state[slot].valid = 0;
+    }
+}
+
+void
 boot_encrypt(const struct flash_area *fap, uint32_t off, uint32_t sz,
         uint32_t blk_off, uint8_t *buf)
 {
