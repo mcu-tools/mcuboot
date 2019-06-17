@@ -17,6 +17,10 @@
  * under the License.
  */
 
+/*
+ * Modifications are Copyright (c) 2019 Arm Limited.
+ */
+
 /**
  * This file provides an interface to the boot loader.  Functions defined in
  * this file should only be called while the boot loader is running.
@@ -522,6 +526,7 @@ boot_read_status(struct boot_status *bs)
 {
     const struct flash_area *fap;
     uint32_t off;
+    uint8_t swap_info;
     int status_loc;
     int area_id;
     int rc;
@@ -561,13 +566,15 @@ boot_read_status(struct boot_status *bs)
 
     rc = boot_read_status_bytes(fap, bs);
     if (rc == 0) {
-        off = boot_swap_type_off(fap);
-        rc = flash_area_read_is_empty(fap, off, &bs->swap_type,
-                                      sizeof bs->swap_type);
+        off = boot_swap_info_off(fap);
+        rc = flash_area_read_is_empty(fap, off, &swap_info, sizeof swap_info);
         if (rc == 1) {
-            bs->swap_type = BOOT_SWAP_TYPE_NONE;
+            BOOT_SET_SWAP_INFO(swap_info, 0, BOOT_SWAP_TYPE_NONE);
             rc = 0;
         }
+
+        /* Extract the swap type info */
+        bs->swap_type = BOOT_GET_SWAP_TYPE(swap_info);
     }
 
     flash_area_close(fap);
@@ -974,7 +981,9 @@ boot_status_init(const struct flash_area *fap, const struct boot_status *bs)
     assert(rc == 0);
 
     if (bs->swap_type != BOOT_SWAP_TYPE_NONE) {
-        rc = boot_write_swap_type(fap, bs->swap_type);
+        rc = boot_write_swap_info(fap,
+                                  bs->swap_type,
+                                  0);
         assert(rc == 0);
     }
 
@@ -1194,8 +1203,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_status *bs)
             }
 
             if (swap_state.swap_type != BOOT_SWAP_TYPE_NONE) {
-                rc = boot_write_swap_type(fap_primary_slot,
-                                          swap_state.swap_type);
+                rc = boot_write_swap_info(fap_primary_slot,
+                                          swap_state.swap_type,
+                                          0);
                 assert(rc == 0);
             }
 
