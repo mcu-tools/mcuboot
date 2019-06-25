@@ -106,10 +106,10 @@ boot: check
 	(mkdir -p $(BUILD_DIR_BOOT) && \
 		cd $(BUILD_DIR_BOOT) && \
 		cmake -DOVERLAY_CONFIG=$(BOOTLOADER_OVERLAY_CONFIG) \
-			-G"Unix Makefiles" \
+			-G"Ninja" \
 			-DBOARD=$(BOARD) \
 			$(SOURCE_DIRECTORY)/../../boot/zephyr && \
-		make -j$(nproc))
+		ninja)
 	cp $(BUILD_DIR_BOOT)/zephyr/zephyr.bin mcuboot.bin
 
 clean_boot: check
@@ -120,10 +120,10 @@ hello1: check
 	(mkdir -p $(BUILD_DIR_HELLO1) && \
 		cd $(BUILD_DIR_HELLO1) && \
 		cmake -DFROM_WHO=hello1 \
-			-G"Unix Makefiles" \
+			-G"Ninja" \
 			-DBOARD=$(BOARD) \
 			$(SOURCE_DIRECTORY)/hello-world && \
-		make -j$(nproc))
+		ninja)
 	$(IMGTOOL) sign \
 		--key $(SIGNING_KEY) \
 		--header-size $(BOOT_HEADER_LEN) \
@@ -145,10 +145,10 @@ hello2: check
 	(mkdir -p $(BUILD_DIR_HELLO2) && \
 		cd $(BUILD_DIR_HELLO2) && \
 		cmake -DFROM_WHO=hello2 \
-			-G"Unix Makefiles" \
+			-G"Ninja" \
 			-DBOARD=$(BOARD) \
 			$(SOURCE_DIRECTORY)/hello-world && \
-		make -j$(nproc))
+		ninja)
 	$(IMGTOOL) sign \
 		--key $(SIGNING_KEY) \
 		--header-size $(BOOT_HEADER_LEN) \

@@ -8,3 +8,17 @@ useful.
 
 Please see the comments in the Makefile in this directory for more
 details on how to build and test this application.
+
+Note that this sample uses the "ninja" build tool, which can be
+installed on most systems using the system package manager, e.g., for
+a Debian-based distro:
+
+```
+$ sudo apt-get install ninja
+```
+
+or in Fedora:
+
+```
+$ sudo dnf install ninja
+```
