@@ -42,7 +42,7 @@ def gen_ecdsa_p224(keyfile, passwd):
 
 
 def gen_ed25519(keyfile, passwd):
-    keys.Ed25519.generate().export_private(path=keyfile)
+    keys.Ed25519.generate().export_private(path=keyfile, passwd=passwd)
 
 
 valid_langs = ['c', 'rust']
