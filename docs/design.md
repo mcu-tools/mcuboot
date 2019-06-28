@@ -97,6 +97,7 @@ struct image_tlv {
 #define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output */
 #define IMAGE_TLV_ECDSA256          0x22   /* ECDSA of hash output */
 #define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
+#define IMAGE_TLV_ED25519           0x24   /* ED25519 of hash output */
 ```
 
 Optional type-length-value records (TLVs) containing image metadata are placed
