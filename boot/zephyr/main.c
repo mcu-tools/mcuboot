@@ -19,7 +19,7 @@
 #include <gpio.h>
 #include <misc/__assert.h>
 #include <flash.h>
-#include <drivers/system_timer.h>
+#include <drivers/timer/system_timer.h>
 #include <usb/usb_device.h>
 #include <soc.h>
 
