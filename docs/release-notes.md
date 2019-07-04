@@ -3,6 +3,25 @@
 - Table of Contents
 {:toc}
 
+## Version 1.3.1
+
+The 1.3.1 release of MCUboot consists mostly of small bug fixes and updates.
+There are no breaking changes in functionality. This release should work with
+Mynewt 1.6.0 and up, and any Zephyr `master` after sha
+f51e3c296040f73bca0e8fe1051d5ee63ce18e0d.
+
+### About this release
+
+- Fixed a revert interruption bug
+- Added ed25519 signing support
+- Added RSA-3072 signing support
+- Allow ec256 to run on CC310 interface
+- Some preparation work was done to allow for multi image support, which
+  should land in 1.4.0. This includes a simulator update for testing
+  multi-images, and a new name for slot0/slot1 which are now called
+  "primary slot" and "secondary slot".
+- Other minor bugfixes and improvements
+
 ## Version 1.3.0
 
 The 1.3.0 release of MCUboot brings in many fixes and updates.  There
