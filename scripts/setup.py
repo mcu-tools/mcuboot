@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="imgtool",
-    version="1.3.0",
+    version="1.3.1",
     author="The MCUboot commiters",
     description=("MCUboot's image signing and key management"),
     license="Apache Software License",
