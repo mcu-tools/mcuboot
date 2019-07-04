@@ -1849,7 +1849,7 @@ split_go(int loader_slot, int split_slot, void **entry)
 
     loader_flash_id = flash_area_id_from_image_slot(loader_slot);
     rc = flash_area_open(loader_flash_id,
-                         &BOOT_IMG_AREA(&boot_data, split_slot));
+                         &BOOT_IMG_AREA(&boot_data, loader_slot));
     assert(rc == 0);
     split_flash_id = flash_area_id_from_image_slot(split_slot);
     rc = flash_area_open(split_flash_id,
