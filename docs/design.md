@@ -340,11 +340,11 @@ of 3 is explained below.
    [encrypted images](encrypted_images.md) document for more information.
 
 3. Swap size: When beginning a new swap operation, the total size that needs
-   to be swapped (based on the slot with largest image + tlvs) is written to
+   to be swapped (based on the slot with largest image + TLVs) is written to
    this location for easier recovery in case of a reset while performing the
    swap.
 
-4. Swap info: A single byte which encodes the following informations:
+4. Swap info: A single byte which encodes the following information:
     - Swap type: Stored in bits 0-3. Indicating the type of swap operation in
     progress. When mcuboot resumes an interrupted swap, it uses this field to
     determine the type of operation to perform. This field contains one of the
@@ -618,13 +618,13 @@ bulletted lists, so maybe that is better. -->
 ​       with the greatest index); current element = "index".
 ​        b. Erase scratch area.
 ​        c. Copy secondary_slot[index] to scratch area.
-​            - If these are the last sectors (i.e., first swap being perfomed),
+​            - If these are the last sectors (i.e., first swap being performed),
 ​              copy the full sector *except* the image trailer.
 ​            - Else, copy entire sector contents.
 ​        d. Write updated swap status (i).
 ​        e. Erase secondary_slot[index]
 ​        f. Copy primary_slot[index] to secondary_slot[index]
-​            - If these are the last sectors (i.e., first swap being perfomed),
+​            - If these are the last sectors (i.e., first swap being performed),
 ​              copy the full sector *except* the image trailer.
 ​            - Else, copy entire sector contents.
 ​        g. Write updated swap status (ii).
@@ -816,7 +816,7 @@ If it does not match then "source: none" is returned.
 
 If the swap status region indicates that the images are not contiguous, mcuboot
 determines the type of swap operation that was interrupted by reading the `swap
-info` field in the active image trailer and extarcting the swap type from bits
+info` field in the active image trailer and extracting the swap type from bits
 0-3 then resumes the operation. In other words, it applies the procedure defined
 in the previous section, moving image 1 into the primary slot and image 0 into
 the secondary slot. If the boot status indicates that an image part is present
@@ -852,7 +852,7 @@ an image:
 As indicated above, the final step of the integrity check is signature
 verification.  The boot loader can have one or more public keys embedded in it
 at build time.  During signature verification, the boot loader verifies that an
-image was signed with a private key that corresponds to the embedded keyhash
+image was signed with a private key that corresponds to the embedded KEYHASH
 TLV.
 
 For information on embedding public keys in the boot loader, as well as
