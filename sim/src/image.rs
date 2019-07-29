@@ -1032,7 +1032,7 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
         magic: tlv.get_magic(),
         load_addr: 0,
         hdr_size: HDR_SIZE as u16,
-        _pad1: 0,
+        protect_tlv_size: tlv.protect_size(),
         img_size: len as u32,
         flags: tlv.get_flags(),
         ver: ImageVersion {
@@ -1299,7 +1299,7 @@ pub struct ImageHeader {
     magic: u32,
     load_addr: u32,
     hdr_size: u16,
-    _pad1: u16,
+    protect_tlv_size: u16,
     img_size: u32,
     flags: u32,
     ver: ImageVersion,
@@ -1309,11 +1309,12 @@ pub struct ImageHeader {
 impl AsRaw for ImageHeader {}
 
 #[repr(C)]
+#[derive(Clone)]
 pub struct ImageVersion {
-    major: u8,
-    minor: u8,
-    revision: u16,
-    build_num: u32,
+    pub major: u8,
+    pub minor: u8,
+    pub revision: u16,
+    pub build_num: u32,
 }
 
 #[derive(Clone)]
