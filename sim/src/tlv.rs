@@ -8,6 +8,9 @@
 //! Because of this header, we have to make two passes.  The first pass will compute the size of
 //! the TLV, and the second pass will build the data for the TLV.
 
+use byteorder::{
+    LittleEndian, WriteBytesExt,
+};
 use pem;
 use base64;
 use ring::{digest, rand};
@@ -200,8 +203,7 @@ impl ManifestGen for TlvGen {
         let size = self.get_size();
         result.push(0x07);
         result.push(0x69);
-        result.push((size & 0xFF) as u8);
-        result.push(((size >> 8) & 0xFF) as u8);
+        result.write_u16::<LittleEndian>(size).unwrap();
 
         if self.kinds.contains(&TlvKinds::SHA256) {
             let hash = digest::digest(&digest::SHA256, &self.payload);
@@ -259,8 +261,7 @@ impl ManifestGen for TlvGen {
                 result.push(TlvKinds::RSA3072 as u8);
             }
             result.push(0);
-            result.push((signature.len() & 0xFF) as u8);
-            result.push(((signature.len() >> 8) & 0xFF) as u8);
+            result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
             result.extend_from_slice(&signature);
         }
 
@@ -295,8 +296,7 @@ impl ManifestGen for TlvGen {
                 signature[1] += 1;
             }
 
-            result.push((signature.len() & 0xFF) as u8);
-            result.push(((signature.len() >> 8) & 0xFF) as u8);
+            result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
             result.extend_from_slice(signature.as_ref());
         }
 
@@ -327,8 +327,7 @@ impl ManifestGen for TlvGen {
             result.push(0);
 
             let signature = signature.as_ref().to_vec();
-            result.push((signature.len() & 0xFF) as u8);
-            result.push(((signature.len() >> 8) & 0xFF) as u8);
+            result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
             result.extend_from_slice(signature.as_ref());
         }
 
