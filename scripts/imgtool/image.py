@@ -202,7 +202,7 @@ class Image():
             for i in range(dependencies_num):
                 e = STRUCT_ENDIAN_DICT[self.endian]
                 payload = struct.pack(
-                                e + 'I'+'BBHI',
+                                e + 'B3x'+'BBHI',
                                 int(dependencies[DEP_IMAGES_KEY][i]),
                                 dependencies[DEP_VERSIONS_KEY][i].major,
                                 dependencies[DEP_VERSIONS_KEY][i].minor,
