@@ -91,6 +91,8 @@ struct image_version {
 
 struct image_dependency {
     uint8_t image_id;                       /* Image index (from 0) */
+    uint8_t _pad1;
+    uint16_t _pad2;
     struct image_version image_min_version; /* Indicates at minimum which
                                              * version of firmware must be
                                              * available to satisfy compliance
