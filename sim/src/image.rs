@@ -828,6 +828,13 @@ impl Images {
             fails += 1;
         }
 
+        // In a multi-image setup, copy done might be set if any number of
+        // images was already successfully swapped.
+        if !self.verify_trailers_loose(&flash, 0, None, None, BOOT_FLAG_UNSET) {
+            warn!("copy_done should be unset");
+            fails += 1;
+        }
+
         let (x, _) = c::boot_go(&mut flash, &self.areadesc, None, false);
         if x != 0 {
             warn!("Should have finished test upgrade");
@@ -953,6 +960,20 @@ impl Images {
             }
         }
         true
+    }
+
+    /// Verify that at least one of the trailers of the images have the
+    /// specified values.
+    fn verify_trailers_loose(&self, flash: &SimMultiFlash, slot: usize,
+                             magic: Option<u8>, image_ok: Option<u8>,
+                             copy_done: Option<u8>) -> bool {
+        for image in &self.images {
+            if verify_trailer(flash, &image.slots, slot,
+                              magic, image_ok, copy_done) {
+                return true;
+            }
+        }
+        false
     }
 
     /// Verify that the trailers of the images have the specified
