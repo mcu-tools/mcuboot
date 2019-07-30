@@ -101,6 +101,7 @@ impl ImagesBuilder {
                 trailer_off: primary_base + primary_len - offset_from_end,
                 len: primary_len as usize,
                 dev_id: primary_dev_id,
+                index: 0,
             };
 
             // And an upgrade image.
@@ -109,6 +110,7 @@ impl ImagesBuilder {
                 trailer_off: secondary_base + secondary_len - offset_from_end,
                 len: secondary_len as usize,
                 dev_id: secondary_dev_id,
+                index: 1,
             };
 
             slots.push([primary, secondary]);
@@ -140,8 +142,8 @@ impl ImagesBuilder {
     pub fn make_no_upgrade_image(self) -> Images {
         let mut flash = self.flash;
         let images = self.slots.into_iter().map(|slots| {
-            let primaries = install_image(&mut flash, &slots, 0, 42784, false);
-            let upgrades = install_image(&mut flash, &slots, 1, 46928, false);
+            let primaries = install_image(&mut flash, &slots[0], 42784, false);
+            let upgrades = install_image(&mut flash, &slots[1], 46928, false);
             OneImage {
                 slots: slots,
                 primaries: primaries,
@@ -176,8 +178,8 @@ impl ImagesBuilder {
     pub fn make_bad_secondary_slot_image(self) -> Images {
         let mut bad_flash = self.flash;
         let images = self.slots.into_iter().map(|slots| {
-            let primaries = install_image(&mut bad_flash, &slots, 0, 32784, false);
-            let upgrades = install_image(&mut bad_flash, &slots, 1, 41928, true);
+            let primaries = install_image(&mut bad_flash, &slots[0], 32784, false);
+            let upgrades = install_image(&mut bad_flash, &slots[1], 41928, true);
             OneImage {
                 slots: slots,
                 primaries: primaries,
@@ -947,7 +949,7 @@ impl Images {
     /// against the expected image.
     fn verify_images(&self, flash: &SimMultiFlash, slot: usize, against: usize) -> bool {
         for image in &self.images {
-            if !verify_image(flash, &image.slots, slot,
+            if !verify_image(flash, &image.slots[slot],
                              match against {
                                  0 => &image.primaries,
                                  1 => &image.upgrades,
@@ -965,7 +967,7 @@ impl Images {
                              magic: Option<u8>, image_ok: Option<u8>,
                              copy_done: Option<u8>) -> bool {
         for image in &self.images {
-            if verify_trailer(flash, &image.slots, slot,
+            if verify_trailer(flash, &image.slots[slot],
                               magic, image_ok, copy_done) {
                 return true;
             }
@@ -979,7 +981,7 @@ impl Images {
                        magic: Option<u8>, image_ok: Option<u8>,
                        copy_done: Option<u8>) -> bool {
         for image in &self.images {
-            if !verify_trailer(flash, &image.slots, slot,
+            if !verify_trailer(flash, &image.slots[slot],
                                magic, image_ok, copy_done) {
                 return false;
             }
@@ -1015,11 +1017,11 @@ fn show_flash(flash: &dyn Flash) {
 
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
 /// fields used by the given code.  Returns a copy of the image that was written.
-fn install_image(flash: &mut SimMultiFlash, slots: &[SlotInfo], slot: usize, len: usize,
+fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
                  bad_sig: bool) -> ImageData {
-    let offset = slots[slot].base_off;
-    let slot_len = slots[slot].len;
-    let dev_id = slots[slot].dev_id;
+    let offset = slot.base_off;
+    let slot_len = slot.len;
+    let dev_id = slot.dev_id;
 
     let mut tlv: Box<dyn ManifestGen> = Box::new(make_tlv());
 
@@ -1100,7 +1102,7 @@ fn install_image(flash: &mut SimMultiFlash, slots: &[SlotInfo], slot: usize, len
 
     let dev = flash.get_mut(&dev_id).unwrap();
 
-    if slot == 0 {
+    if slot.index == 0 {
         let enc_copy: Option<Vec<u8>>;
 
         if is_encrypted {
@@ -1204,14 +1206,13 @@ impl ImageData {
 }
 
 /// Verify that given image is present in the flash at the given offset.
-fn verify_image(flash: &SimMultiFlash, slots: &[SlotInfo], slot: usize,
-                images: &ImageData) -> bool {
-    let image = images.find(slot);
+fn verify_image(flash: &SimMultiFlash, slot: &SlotInfo, images: &ImageData) -> bool {
+    let image = images.find(slot.index);
     let buf = image.as_slice();
-    let dev_id = slots[slot].dev_id;
+    let dev_id = slot.dev_id;
 
     let mut copy = vec![0u8; buf.len()];
-    let offset = slots[slot].base_off;
+    let offset = slot.base_off;
     let dev = flash.get(&dev_id).unwrap();
     dev.read(offset, &mut copy).unwrap();
 
@@ -1219,7 +1220,7 @@ fn verify_image(flash: &SimMultiFlash, slots: &[SlotInfo], slot: usize,
         for i in 0 .. buf.len() {
             if buf[i] != copy[i] {
                 info!("First failure for slot{} at {:#x} {:#x}!={:#x}",
-                      slot, offset + i, buf[i], copy[i]);
+                      slot.index, offset + i, buf[i], copy[i]);
                 break;
             }
         }
@@ -1229,15 +1230,15 @@ fn verify_image(flash: &SimMultiFlash, slots: &[SlotInfo], slot: usize,
     }
 }
 
-fn verify_trailer(flash: &SimMultiFlash, slots: &[SlotInfo], slot: usize,
+fn verify_trailer(flash: &SimMultiFlash, slot: &SlotInfo,
                   magic: Option<u8>, image_ok: Option<u8>,
                   copy_done: Option<u8>) -> bool {
     if Caps::OverwriteUpgrade.present() {
         return true;
     }
 
-    let offset = slots[slot].trailer_off + c::boot_max_align();
-    let dev_id = slots[slot].dev_id;
+    let offset = slot.trailer_off + c::boot_max_align();
+    let dev_id = slot.dev_id;
     let mut copy = vec![0u8; c::boot_magic_sz() + c::boot_max_align() * 3];
     let mut failed = false;
 
@@ -1320,6 +1321,8 @@ pub struct SlotInfo {
     pub base_off: usize,
     pub trailer_off: usize,
     pub len: usize,
+    // Which slot within this device.
+    pub index: usize,
     pub dev_id: u8,
 }
 
