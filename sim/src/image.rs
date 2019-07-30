@@ -155,7 +155,7 @@ impl ImagesBuilder {
         }
     }
 
-    fn make_image_with_permanent(self, permanent: bool) -> Images {
+    pub fn make_image(self, permanent: bool) -> Images {
         let mut images = self.make_no_upgrade_image();
         for image in &images.images {
             mark_upgrade(&mut images.flash, &image.slots[1]);
@@ -171,16 +171,6 @@ impl ImagesBuilder {
 
         images.total_count = Some(total_count);
         images
-    }
-
-    /// Construct an `Images` for normal testing with perm upgrade.
-    pub fn make_image(self) -> Images {
-        self.make_image_with_permanent(true)
-    }
-
-    /// Construct an `Images` for normal testing with test upgrade.
-    pub fn make_non_permanent_image(self) -> Images {
-        self.make_image_with_permanent(false)
     }
 
     pub fn make_bad_secondary_slot_image(self) -> Images {
@@ -388,10 +378,6 @@ impl Images {
         }
 
         fails > 0
-    }
-
-    pub fn run_perm_with_random_fails_5(&self) -> bool {
-        self.run_perm_with_random_fails(5)
     }
 
     pub fn run_perm_with_random_fails(&self, total_fails: usize) -> bool {
