@@ -155,15 +155,14 @@ impl ImagesBuilder {
         }
     }
 
-    /// Construct an `Images` for normal testing.
-    pub fn make_image(self) -> Images {
+    fn make_image_with_permanent(self, permanent: bool) -> Images {
         let mut images = self.make_no_upgrade_image();
         for image in &images.images {
             mark_upgrade(&mut images.flash, &image.slots[1]);
         }
 
         // upgrades without fails, counts number of flash operations
-        let total_count = match images.run_basic_upgrade() {
+        let total_count = match images.run_basic_upgrade(permanent) {
             Ok(v)  => v,
             Err(_) => {
                 panic!("Unable to perform basic upgrade");
@@ -172,6 +171,16 @@ impl ImagesBuilder {
 
         images.total_count = Some(total_count);
         images
+    }
+
+    /// Construct an `Images` for normal testing with perm upgrade.
+    pub fn make_image(self) -> Images {
+        self.make_image_with_permanent(true)
+    }
+
+    /// Construct an `Images` for normal testing with test upgrade.
+    pub fn make_non_permanent_image(self) -> Images {
+        self.make_image_with_permanent(false)
     }
 
     pub fn make_bad_secondary_slot_image(self) -> Images {
@@ -304,8 +313,8 @@ impl Images {
     ///
     /// Returns the number of flash operations which can later be used to
     /// inject failures at chosen steps.
-    pub fn run_basic_upgrade(&self) -> Result<i32, ()> {
-        let (flash, total_count) = self.try_upgrade(None);
+    pub fn run_basic_upgrade(&self, permanent: bool) -> Result<i32, ()> {
+        let (flash, total_count) = self.try_upgrade(None, permanent);
         info!("Total flash operation count={}", total_count);
 
         if !self.verify_images(&flash, 0, 1) {
@@ -345,7 +354,7 @@ impl Images {
         // Let's try an image halfway through.
         for i in 1 .. total_flash_ops {
             info!("Try interruption at {}", i);
-            let (flash, count) = self.try_upgrade(Some(i));
+            let (flash, count) = self.try_upgrade(Some(i), true);
             info!("Second boot, count={}", count);
             if !self.verify_images(&flash, 0, 1) {
                 warn!("FAIL at step {} of {}", i, total_flash_ops);
@@ -431,7 +440,7 @@ impl Images {
         let mut fails = 0;
 
         if Caps::SwapUpgrade.present() {
-            for i in 1 .. (self.total_count.unwrap() - 1) {
+            for i in 1 .. self.total_count.unwrap() {
                 info!("Try interruption at {}", i);
                 if self.try_revert_with_fail_at(i) {
                     error!("Revert failed at interruption {}", i);
@@ -779,11 +788,13 @@ impl Images {
 
     /// Test a boot, optionally stopping after 'n' flash options.  Returns a count
     /// of the number of flash operations done total.
-    fn try_upgrade(&self, stop: Option<i32>) -> (SimMultiFlash, i32) {
+    fn try_upgrade(&self, stop: Option<i32>, permanent: bool) -> (SimMultiFlash, i32) {
         // Clone the flash to have a new copy.
         let mut flash = self.flash.clone();
 
-        self.mark_permanent_upgrades(&mut flash, 1);
+        if permanent {
+            self.mark_permanent_upgrades(&mut flash, 1);
+        }
 
         let mut counter = stop.unwrap_or(0);
 
