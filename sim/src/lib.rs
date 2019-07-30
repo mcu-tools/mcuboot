@@ -182,7 +182,7 @@ impl RunStatus {
         let images = run.clone().make_no_upgrade_image();
         failed |= images.run_norevert_newimage();
 
-        let images = run.make_image();
+        let images = run.make_image(true);
 
         failed |= images.run_basic_revert();
         failed |= images.run_revert_with_fails();
