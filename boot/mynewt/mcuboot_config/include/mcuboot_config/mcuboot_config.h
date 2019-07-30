@@ -73,7 +73,7 @@
 
 #define MCUBOOT_MAX_IMG_SECTORS       MYNEWT_VAL(BOOTUTIL_MAX_IMG_SECTORS)
 
-#if MYNEWT_VAL(WATCHDOG_INTERVAL)
+#if MYNEWT_VAL(BOOTUTIL_FEED_WATCHDOG) && MYNEWT_VAL(WATCHDOG_INTERVAL)
 #include <hal/hal_watchdog.h>
 #define MCUBOOT_WATCHDOG_FEED()    \
     do {                           \

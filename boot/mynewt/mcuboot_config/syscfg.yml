@@ -83,3 +83,6 @@ syscfg.defs:
     BOOTUTIL_BOOTSTRAP:
         description: 'Support bootstrapping slot0 from slot1, if slot0 is empty'
         value: 0
+    BOOTUTIL_FEED_WATCHDOG:
+        description: 'Enable watchdog feeding while performing a swap upgrade'
+        value: 0
