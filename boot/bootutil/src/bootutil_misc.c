@@ -170,14 +170,16 @@ boot_magic_off(const struct flash_area *fap)
 }
 
 int
-boot_status_entries(const struct flash_area *fap)
+boot_status_entries(int image_index, const struct flash_area *fap)
 {
     if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
         return BOOT_STATUS_STATE_COUNT;
-    } else if ((fap->fa_id == FLASH_AREA_IMAGE_PRIMARY) ||
-               (fap->fa_id == FLASH_AREA_IMAGE_SECONDARY)) {
+    } else if (fap->fa_id == FLASH_AREA_IMAGE_PRIMARY(image_index) ||
+               fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
         return BOOT_STATUS_STATE_COUNT * BOOT_STATUS_MAX_ENTRIES;
     } else {
+        /* FIXME: make error values negative and check on caller */
+        assert(0);
         return BOOT_EBADARGS;
     }
 }
@@ -300,15 +302,9 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
     const struct flash_area *fap;
     int rc;
 
-    if (flash_area_id == FLASH_AREA_IMAGE_SCRATCH ||
-        flash_area_id == FLASH_AREA_IMAGE_PRIMARY ||
-        flash_area_id == FLASH_AREA_IMAGE_SECONDARY) {
-        rc = flash_area_open(flash_area_id, &fap);
-        if (rc != 0) {
-            return BOOT_EFLASH;
-        }
-    } else {
-        return BOOT_EBADARGS;
+    rc = flash_area_open(flash_area_id, &fap);
+    if (rc != 0) {
+        return BOOT_EFLASH;
     }
 
     rc = boot_read_swap_state(fap, state);
@@ -317,7 +313,7 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
 }
 
 int
-boot_read_swap_size(uint32_t *swap_size)
+boot_read_swap_size(int image_index, uint32_t *swap_size)
 {
     uint32_t magic[BOOT_MAGIC_ARR_SZ];
     uint32_t off;
@@ -332,7 +328,7 @@ boot_read_swap_size(uint32_t *swap_size)
      * magic is always written in the last step.
      */
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY, &fap);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -379,14 +375,14 @@ out:
 
 #ifdef MCUBOOT_ENC_IMAGES
 int
-boot_read_enc_key(uint8_t slot, uint8_t *enckey)
+boot_read_enc_key(int image_index, uint8_t slot, uint8_t *enckey)
 {
     uint32_t magic[BOOT_MAGIC_SZ];
     uint32_t off;
     const struct flash_area *fap;
     int rc;
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY, &fap);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -563,7 +559,7 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot, const uint8_t *en
 #endif
 
 int
-boot_swap_type(void)
+boot_swap_type_multi(int image_index)
 {
     const struct boot_swap_table *table;
     struct boot_swap_state primary_slot;
@@ -571,12 +567,13 @@ boot_swap_type(void)
     int rc;
     size_t i;
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY, &primary_slot);
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
+                                    &primary_slot);
     if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
     }
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY,
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
                                     &secondary_slot);
     if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
@@ -611,6 +608,13 @@ boot_swap_type(void)
     return BOOT_SWAP_TYPE_NONE;
 }
 
+int
+boot_swap_type(void)
+{
+    return boot_swap_type_multi(0);
+}
+
+
 /**
  * Marks the image in the secondary slot as pending.  On the next reboot,
  * the system will perform a one-time boot of the the secondary slot image.
@@ -630,7 +634,7 @@ boot_set_pending(int permanent)
     uint8_t swap_type;
     int rc;
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY,
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(0),
                                     &state_secondary_slot);
     if (rc != 0) {
         return rc;
@@ -642,7 +646,7 @@ boot_set_pending(int permanent)
         return 0;
 
     case BOOT_MAGIC_UNSET:
-        rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY, &fap);
+        rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(0), &fap);
         if (rc != 0) {
             rc = BOOT_EFLASH;
         } else {
@@ -669,7 +673,7 @@ boot_set_pending(int permanent)
         /* The image slot is corrupt.  There is no way to recover, so erase the
          * slot to allow future upgrades.
          */
-        rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY, &fap);
+        rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(0), &fap);
         if (rc != 0) {
             return BOOT_EFLASH;
         }
@@ -698,7 +702,7 @@ boot_set_confirmed(void)
     struct boot_swap_state state_primary_slot;
     int rc;
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY,
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(0),
                                     &state_primary_slot);
     if (rc != 0) {
         return rc;
@@ -718,7 +722,7 @@ boot_set_confirmed(void)
         return BOOT_EBADVECT;
     }
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY, &fap);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &fap);
     if (rc) {
         rc = BOOT_EFLASH;
         goto done;

@@ -125,7 +125,6 @@ struct boot_status {
  *      (`MCUBOOT_ENC_IMAGES`).
  */
 
-extern uint8_t current_image;
 extern const uint32_t boot_img_magic[4];
 
 struct boot_swap_state {
@@ -216,6 +215,9 @@ struct boot_loader_state {
 
     uint8_t swap_type[BOOT_IMAGE_NUMBER];
     uint8_t write_sz;
+#if (BOOT_IMAGE_NUMBER > 1)
+    uint8_t curr_img_idx;
+#endif
 };
 
 int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
@@ -223,7 +225,7 @@ int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
 
 int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_trailer_sz(uint8_t min_write_sz);
-int boot_status_entries(const struct flash_area *fap);
+int boot_status_entries(int image_index, const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
 uint32_t boot_swap_info_off(const struct flash_area *fap);
 int boot_read_swap_state(const struct flash_area *fap,
@@ -238,11 +240,11 @@ int boot_write_image_ok(const struct flash_area *fap);
 int boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
                          uint8_t image_num);
 int boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size);
-int boot_read_swap_size(uint32_t *swap_size);
+int boot_read_swap_size(int image_index, uint32_t *swap_size);
 #ifdef MCUBOOT_ENC_IMAGES
 int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
                        const uint8_t *enckey);
-int boot_read_enc_key(uint8_t slot, uint8_t *enckey);
+int boot_read_enc_key(int image_index, uint8_t slot, uint8_t *enckey);
 #endif
 #if (BOOT_IMAGE_NUMBER > 1)
 int boot_is_version_sufficient(struct image_version *req,
@@ -254,11 +256,16 @@ int boot_is_version_sufficient(struct image_version *req,
  */
 
 /* These are macros so they can be used as lvalues. */
-#define BOOT_IMG(state, slot) ((state)->imgs[current_image][(slot)])
+#if (BOOT_IMAGE_NUMBER > 1)
+#define BOOT_CURR_IMG(state) ((state)->curr_img_idx)
+#else
+#define BOOT_CURR_IMG(state) 0
+#endif
+#define BOOT_IMG(state, slot) ((state)->imgs[BOOT_CURR_IMG(state)][(slot)])
 #define BOOT_IMG_AREA(state, slot) (BOOT_IMG(state, slot).area)
 #define BOOT_SCRATCH_AREA(state) ((state)->scratch.area)
 #define BOOT_WRITE_SZ(state) ((state)->write_sz)
-#define BOOT_SWAP_TYPE(state) ((state)->swap_type[current_image])
+#define BOOT_SWAP_TYPE(state) ((state)->swap_type[BOOT_CURR_IMG(state)])
 
 static inline struct image_header*
 boot_img_hdr(struct boot_loader_state *state, size_t slot)
@@ -319,12 +326,12 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     int num_sectors = BOOT_MAX_IMG_SECTORS;
     int rc;
 
-    if (flash_area == FLASH_AREA_IMAGE_PRIMARY) {
+    if (flash_area == FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state))) {
         rc = flash_area_to_sectors(flash_area, &num_sectors,
                                    BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors);
         BOOT_IMG(state, BOOT_PRIMARY_SLOT).num_sectors = (size_t)num_sectors;
 
-    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY) {
+    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
         rc = flash_area_to_sectors(flash_area, &num_sectors,
                                  BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors);
         BOOT_IMG(state, BOOT_SECONDARY_SLOT).num_sectors = (size_t)num_sectors;
@@ -367,10 +374,10 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
 
     num_sectors = BOOT_MAX_IMG_SECTORS;
 
-    if (flash_area == FLASH_AREA_IMAGE_PRIMARY) {
+    if (flash_area == FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state))) {
         out_sectors = BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors;
         out_num_sectors = &BOOT_IMG(state, BOOT_PRIMARY_SLOT).num_sectors;
-    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY) {
+    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
         out_sectors = BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors;
         out_num_sectors = &BOOT_IMG(state, BOOT_SECONDARY_SLOT).num_sectors;
     } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
