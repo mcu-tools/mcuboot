@@ -53,33 +53,38 @@ int flash_device_base(uint8_t fd_id, uintptr_t *ret)
  * MCUBoot uses continuous numbering for the primary slot, the secondary slot,
  * and the scratch while zephyr might number it differently.
  */
-int flash_area_id_from_image_slot(int slot)
+int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
-#if (MCUBOOT_IMAGE_NUMBER == 1)
-    static
-#endif
-    const int area_id_tab[] = {FLASH_AREA_IMAGE_PRIMARY,
-                               FLASH_AREA_IMAGE_SECONDARY,
-                               FLASH_AREA_IMAGE_SCRATCH};
-
-    if (slot >= 0 && slot < ARRAY_SIZE(area_id_tab)) {
-        return area_id_tab[slot];
+    switch (slot) {
+    case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
+    case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
+    case 2: return FLASH_AREA_IMAGE_SCRATCH;
     }
 
     return -EINVAL; /* flash_area_open will fail on that */
 }
 
-int flash_area_id_to_image_slot(int area_id)
+int flash_area_id_from_image_slot(int slot)
 {
-    if (area_id == FLASH_AREA_IMAGE_PRIMARY) {
+    return flash_area_id_from_multi_image_slot(0, slot);
+}
+
+int flash_area_id_to_multi_image_slot(int image_index, int area_id)
+{
+    if (area_id == FLASH_AREA_IMAGE_PRIMARY(image_index)) {
         return 0;
     }
-    if (area_id == FLASH_AREA_IMAGE_SECONDARY) {
+    if (area_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
         return 1;
     }
 
     BOOT_LOG_ERR("invalid flash area ID");
     return -1;
+}
+
+int flash_area_id_to_image_slot(int area_id)
+{
+    return flash_area_id_to_multi_image_slot(0, area_id);
 }
 
 int flash_area_sector_from_off(off_t off, struct flash_sector *sector)

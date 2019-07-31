@@ -51,6 +51,7 @@ struct device *flash_device_get_binding(char *dev_name);
 int flash_device_base(uint8_t fd_id, uintptr_t *ret);
 
 int flash_area_id_from_image_slot(int slot);
+int flash_area_id_from_multi_image_slot(int image_index, int slot);
 
 /**
  * Converts the specified flash area ID to an image slot index.
@@ -59,6 +60,15 @@ int flash_area_id_from_image_slot(int slot);
  * slot.
  */
 int flash_area_id_to_image_slot(int area_id);
+
+/**
+ * Converts the specified flash area ID and image index (in multi-image setup)
+ * to an image slot index.
+ *
+ * Returns image slot index (0 or 1), or -1 if ID doesn't correspond to an image
+ * slot.
+ */
+int flash_area_id_to_multi_image_slot(int image_index, int area_id);
 
 /* Retrieve the flash sector a given offset belongs to.
  *

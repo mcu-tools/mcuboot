@@ -134,7 +134,7 @@ _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 #endif
 
-int bootutil_img_validate(struct image_header *hdr,
+int bootutil_img_validate(int image_index, struct image_header *hdr,
                           const struct flash_area *fap,
                           uint8_t *tmp_buf, uint32_t tmp_buf_sz,
                           uint8_t *seed, int seed_len, uint8_t *out_hash);

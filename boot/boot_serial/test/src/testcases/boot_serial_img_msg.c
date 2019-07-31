@@ -61,7 +61,7 @@ TEST_CASE(boot_serial_img_msg)
     /*
      * Validate contents inside the primary slot
      */
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY, &fap);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &fap);
     assert(rc == 0);
 
     rc = flash_area_read(fap, 0, enc_img, sizeof(img));

@@ -242,14 +242,12 @@ void *os_malloc(size_t size)
     return malloc(size);
 }
 
-int flash_area_id_from_image_slot(int slot)
+int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
-    const int area_id_tab[] = {FLASH_AREA_IMAGE_PRIMARY,
-                               FLASH_AREA_IMAGE_SECONDARY,
-                               FLASH_AREA_IMAGE_SCRATCH};
-
-    if (slot >= 0 && (unsigned)slot < ARRAY_SIZE(area_id_tab)) {
-            return area_id_tab[slot];
+    switch (slot) {
+    case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
+    case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
+    case 2: return FLASH_AREA_IMAGE_SCRATCH;
     }
 
     printf("Image flash area ID not found\n");
@@ -395,12 +393,12 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
     return 0;
 }
 
-int flash_area_id_to_image_slot(int area_id)
+int flash_area_id_to_multi_image_slot(int image_index, int area_id)
 {
-    if (area_id == FLASH_AREA_IMAGE_PRIMARY) {
+    if (area_id == FLASH_AREA_IMAGE_PRIMARY(image_index)) {
         return 0;
     }
-    if (area_id == FLASH_AREA_IMAGE_SECONDARY) {
+    if (area_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
         return 1;
     }
 
