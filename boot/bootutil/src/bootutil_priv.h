@@ -142,6 +142,8 @@ struct boot_swap_state {
 #define BOOT_IMAGE_NUMBER          1
 #endif
 
+_Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
+
 #define BOOT_MAX_IMG_SECTORS       MCUBOOT_MAX_IMG_SECTORS
 
 /*

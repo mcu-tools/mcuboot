@@ -49,6 +49,12 @@ MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 static struct boot_loader_state boot_data;
 uint8_t current_image = 0;
 
+#if (BOOT_IMAGE_NUMBER > 1)
+#define IMAGES_ITER(x) for ((x) = 0; (x) < BOOT_IMAGE_NUMBER; ++(x))
+#else
+#define IMAGES_ITER(x)
+#endif
+
 #if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT) && !defined(MCUBOOT_OVERWRITE_ONLY)
 static int boot_status_fails = 0;
 #define BOOT_STATUS_ASSERT(x)                \
@@ -1786,7 +1792,7 @@ boot_verify_all_image_dependency(void)
 
     while (current_image < BOOT_IMAGE_NUMBER) {
         rc = boot_verify_single_image_dependency();
-        if ( rc == 0) {
+        if (rc == 0) {
             /* All dependencies've been satisfied, continue with next image. */
             current_image++;
         } else if (rc == BOOT_EBADVERSION) {
@@ -2125,8 +2131,7 @@ boot_go(struct boot_rsp *rsp)
      * to be determined for each image and all aborted swaps have to be
      * completed.
      */
-    for (current_image = 0; current_image < BOOT_IMAGE_NUMBER; ++current_image)
-    {
+    IMAGES_ITER(current_image) {
 
 #if defined(MCUBOOT_ENC_IMAGES) && (BOOT_IMAGE_NUMBER > 1)
         /* The keys used for encryption may no longer be valid (could belong to
@@ -2169,8 +2174,7 @@ boot_go(struct boot_rsp *rsp)
      * and the swap types are determined for each image. By the end of the loop
      * all required update operations will have been finished.
      */
-    for (current_image = 0; current_image < BOOT_IMAGE_NUMBER; ++current_image)
-    {
+    IMAGES_ITER(current_image) {
 
 #if (BOOT_IMAGE_NUMBER > 1)
 #ifdef MCUBOOT_ENC_IMAGES
@@ -2232,8 +2236,7 @@ boot_go(struct boot_rsp *rsp)
      * have finished. By the end of the loop each image in the primary slot will
      * have been re-validated.
      */
-    for (current_image = 0; current_image < BOOT_IMAGE_NUMBER; ++current_image)
-    {
+    IMAGES_ITER(current_image) {
         if (BOOT_SWAP_TYPE(&boot_data) != BOOT_SWAP_TYPE_NONE) {
             /* Attempt to read an image header from each slot. Ensure that image
              * headers in slots are aligned with headers in boot_data.
@@ -2281,8 +2284,7 @@ boot_go(struct boot_rsp *rsp)
             boot_img_hdr(&boot_data, BOOT_PRIMARY_SLOT);
 
  out:
-    for (current_image = 0; current_image < BOOT_IMAGE_NUMBER; ++current_image)
-    {
+    IMAGES_ITER(current_image) {
         flash_area_close(BOOT_SCRATCH_AREA(&boot_data));
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             flash_area_close(BOOT_IMG_AREA(&boot_data,
