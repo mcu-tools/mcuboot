@@ -51,10 +51,10 @@
  * Compute SHA256 over the image.
  */
 static int
-bootutil_img_hash(int image_index, struct image_header *hdr,
-                  const struct flash_area *fap, uint8_t *tmp_buf,
-                  uint32_t tmp_buf_sz, uint8_t *hash_result, uint8_t *seed,
-                  int seed_len)
+bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
+                  struct image_header *hdr, const struct flash_area *fap,
+                  uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *hash_result,
+                  uint8_t *seed, int seed_len)
 {
     bootutil_sha256_context sha256_ctx;
     uint32_t blk_sz;
@@ -67,6 +67,7 @@ bootutil_img_hash(int image_index, struct image_header *hdr,
 #endif
 
 #if (BOOT_IMAGE_NUMBER == 1) || !defined(MCUBOOT_ENC_IMAGES)
+    (void)enc_state;
     (void)image_index;
 #endif
 
@@ -81,7 +82,7 @@ bootutil_img_hash(int image_index, struct image_header *hdr,
 #ifdef MCUBOOT_ENC_IMAGES
     /* Encrypted images only exist in the secondary slot */
     if (fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index) &&
-            IS_ENCRYPTED(hdr) && !boot_enc_valid(image_index, fap)) {
+            IS_ENCRYPTED(hdr) && !boot_enc_valid(enc_state, image_index, fap)) {
         return -1;
     }
 #endif
@@ -122,8 +123,8 @@ bootutil_img_hash(int image_index, struct image_header *hdr,
         if (fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index) &&
                 IS_ENCRYPTED(hdr) && off >= hdr_size) {
             blk_off = (off - hdr_size) & 0xf;
-            boot_encrypt(image_index, fap, off - hdr_size, blk_sz, blk_off,
-                    tmp_buf);
+            boot_encrypt(enc_state, image_index, fap, off - hdr_size, blk_sz,
+                    blk_off, tmp_buf);
         }
 #endif
         bootutil_sha256_update(&sha256_ctx, tmp_buf, blk_sz);
@@ -201,10 +202,10 @@ bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
  * Return non-zero if image could not be validated/does not validate.
  */
 int
-bootutil_img_validate(int image_index, struct image_header *hdr,
-                      const struct flash_area *fap, uint8_t *tmp_buf,
-                      uint32_t tmp_buf_sz, uint8_t *seed, int seed_len,
-                      uint8_t *out_hash)
+bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
+                      struct image_header *hdr, const struct flash_area *fap,
+                      uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *seed,
+                      int seed_len, uint8_t *out_hash)
 {
     uint32_t off;
     uint32_t end;
@@ -219,8 +220,8 @@ bootutil_img_validate(int image_index, struct image_header *hdr,
     uint8_t hash[32];
     int rc;
 
-    rc = bootutil_img_hash(image_index, hdr, fap, tmp_buf, tmp_buf_sz, hash,
-            seed, seed_len);
+    rc = bootutil_img_hash(enc_state, image_index, hdr, fap, tmp_buf,
+            tmp_buf_sz, hash, seed, seed_len);
     if (rc) {
         return rc;
     }

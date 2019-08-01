@@ -178,7 +178,7 @@ bs_list(char *buf, int len)
         flash_area_read(fap, 0, &hdr, sizeof(hdr));
 
         if (hdr.ih_magic != IMAGE_MAGIC ||
-          bootutil_img_validate(0, &hdr, fap, tmpbuf, sizeof(tmpbuf),
+          bootutil_img_validate(NULL, 0, &hdr, fap, tmpbuf, sizeof(tmpbuf),
                                 NULL, 0, NULL)) {
             flash_area_close(fap);
             continue;

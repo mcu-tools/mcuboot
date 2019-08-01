@@ -39,6 +39,7 @@
 
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
+/* Currently only used by imgmgr */
 int boot_current_slot;
 
 const uint32_t boot_img_magic[] = {
