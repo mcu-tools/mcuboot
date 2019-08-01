@@ -215,6 +215,15 @@ struct boot_loader_state {
 
     uint8_t swap_type[BOOT_IMAGE_NUMBER];
     uint8_t write_sz;
+
+#if defined(MCUBOOT_ENC_IMAGES)
+    /*
+     * TODO: This could later be expanded to use a different set of keys
+     * per image.
+     */
+    struct enc_key_data enc[BOOT_NUM_SLOTS];
+#endif
+
 #if (BOOT_IMAGE_NUMBER > 1)
     uint8_t curr_img_idx;
 #endif
@@ -233,7 +242,7 @@ int boot_read_swap_state(const struct flash_area *fap,
 int boot_read_swap_state_by_id(int flash_area_id,
                                struct boot_swap_state *state);
 int boot_write_magic(const struct flash_area *fap);
-int boot_write_status(struct boot_status *bs);
+int boot_write_status(struct boot_loader_state *state, struct boot_status *bs);
 int boot_schedule_test_swap(void);
 int boot_write_copy_done(const struct flash_area *fap);
 int boot_write_image_ok(const struct flash_area *fap);
@@ -274,7 +283,7 @@ boot_img_hdr(struct boot_loader_state *state, size_t slot)
 }
 
 static inline size_t
-boot_img_num_sectors(struct boot_loader_state *state, size_t slot)
+boot_img_num_sectors(const struct boot_loader_state *state, size_t slot)
 {
     return BOOT_IMG(state, slot).num_sectors;
 }
@@ -302,7 +311,7 @@ static inline size_t boot_scratch_area_size(struct boot_loader_state *state)
 #ifndef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
 
 static inline size_t
-boot_img_sector_size(struct boot_loader_state *state,
+boot_img_sector_size(const struct boot_loader_state *state,
                      size_t slot, size_t sector)
 {
     return BOOT_IMG(state, slot).sectors[sector].fa_size;
@@ -313,86 +322,28 @@ boot_img_sector_size(struct boot_loader_state *state,
  * device.
  */
 static inline uint32_t
-boot_img_sector_off(struct boot_loader_state *state, size_t slot,
+boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
                     size_t sector)
 {
     return BOOT_IMG(state, slot).sectors[sector].fa_off -
            BOOT_IMG(state, slot).sectors[0].fa_off;
 }
 
-static inline int
-boot_initialize_area(struct boot_loader_state *state, int flash_area)
-{
-    int num_sectors = BOOT_MAX_IMG_SECTORS;
-    int rc;
-
-    if (flash_area == FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state))) {
-        rc = flash_area_to_sectors(flash_area, &num_sectors,
-                                   BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors);
-        BOOT_IMG(state, BOOT_PRIMARY_SLOT).num_sectors = (size_t)num_sectors;
-
-    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
-        rc = flash_area_to_sectors(flash_area, &num_sectors,
-                                 BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors);
-        BOOT_IMG(state, BOOT_SECONDARY_SLOT).num_sectors = (size_t)num_sectors;
-
-    } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
-        rc = flash_area_to_sectors(flash_area, &num_sectors,
-                                   state->scratch.sectors);
-        state->scratch.num_sectors = (size_t)num_sectors;
-    } else {
-        return BOOT_EFLASH;
-    }
-
-    return rc;
-}
-
 #else  /* defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
 
 static inline size_t
-boot_img_sector_size(struct boot_loader_state *state,
+boot_img_sector_size(const struct boot_loader_state *state,
                      size_t slot, size_t sector)
 {
     return BOOT_IMG(state, slot).sectors[sector].fs_size;
 }
 
 static inline uint32_t
-boot_img_sector_off(struct boot_loader_state *state, size_t slot,
+boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
                     size_t sector)
 {
     return BOOT_IMG(state, slot).sectors[sector].fs_off -
            BOOT_IMG(state, slot).sectors[0].fs_off;
-}
-
-static inline int
-boot_initialize_area(struct boot_loader_state *state, int flash_area)
-{
-    uint32_t num_sectors;
-    struct flash_sector *out_sectors;
-    size_t *out_num_sectors;
-    int rc;
-
-    num_sectors = BOOT_MAX_IMG_SECTORS;
-
-    if (flash_area == FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state))) {
-        out_sectors = BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors;
-        out_num_sectors = &BOOT_IMG(state, BOOT_PRIMARY_SLOT).num_sectors;
-    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
-        out_sectors = BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors;
-        out_num_sectors = &BOOT_IMG(state, BOOT_SECONDARY_SLOT).num_sectors;
-    } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
-        out_sectors = state->scratch.sectors;
-        out_num_sectors = &state->scratch.num_sectors;
-    } else {
-        return BOOT_EFLASH;
-    }
-
-    rc = flash_area_get_sectors(flash_area, &num_sectors, out_sectors);
-    if (rc != 0) {
-        return rc;
-    }
-    *out_num_sectors = num_sectors;
-    return 0;
 }
 
 #endif  /* !defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */

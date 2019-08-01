@@ -42,14 +42,11 @@
 #  endif
 #endif
 
-
 #include "bootutil/image.h"
 #include "bootutil/enc_key.h"
 #include "bootutil/sign_key.h"
 
 #include "bootutil_priv.h"
-
-static struct enc_key_data enc_state[BOOT_NUM_SLOTS];
 
 #define TLV_ENC_RSA_SZ  256
 #define TLV_ENC_KW_SZ   24
@@ -180,7 +177,7 @@ parse_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
 #endif
 
 int
-boot_enc_set_key(uint8_t slot, uint8_t *enckey)
+boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot, uint8_t *enckey)
 {
     int rc;
 
@@ -215,8 +212,9 @@ boot_enc_set_key(uint8_t slot, uint8_t *enckey)
  * Load encryption key.
  */
 int
-boot_enc_load(int image_index, const struct image_header *hdr,
-        const struct flash_area *fap, uint8_t *enckey)
+boot_enc_load(struct enc_key_data *enc_state, int image_index,
+        const struct image_header *hdr, const struct flash_area *fap,
+        uint8_t *enckey)
 {
 #if defined(MCUBOOT_ENCRYPT_RSA)
     mbedtls_rsa_context rsa;
@@ -307,7 +305,8 @@ boot_enc_load(int image_index, const struct image_header *hdr,
 }
 
 bool
-boot_enc_valid(int image_index, const struct flash_area *fap)
+boot_enc_valid(struct enc_key_data *enc_state, int image_index,
+        const struct flash_area *fap)
 {
     int rc;
 
@@ -322,7 +321,7 @@ boot_enc_valid(int image_index, const struct flash_area *fap)
 }
 
 void
-boot_enc_mark_keys_invalid(void)
+boot_enc_mark_keys_invalid(struct enc_key_data *enc_state)
 {
     size_t slot;
 
@@ -332,8 +331,9 @@ boot_enc_mark_keys_invalid(void)
 }
 
 void
-boot_encrypt(int image_index, const struct flash_area *fap, uint32_t off,
-        uint32_t sz, uint32_t blk_off, uint8_t *buf)
+boot_encrypt(struct enc_key_data *enc_state, int image_index,
+        const struct flash_area *fap, uint32_t off, uint32_t sz,
+        uint32_t blk_off, uint8_t *buf)
 {
     struct enc_key_data *enc;
     uint32_t i, j;
@@ -378,9 +378,12 @@ boot_encrypt(int image_index, const struct flash_area *fap, uint32_t off,
     }
 }
 
-void boot_enc_zeroize(void)
+/**
+ * Clears encrypted state after use.
+ */
+void boot_enc_zeroize(struct enc_key_data *enc_state)
 {
-    memset(&enc_state, 0, sizeof(enc_state));
+    memset(enc_state, 0, sizeof(struct enc_key_data) * BOOT_NUM_SLOTS);
 }
 
 #endif /* MCUBOOT_ENC_IMAGES */
