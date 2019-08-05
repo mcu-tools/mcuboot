@@ -4,6 +4,7 @@ use rand::{
     Rng, SeedableRng, XorShiftRng,
 };
 use std::{
+    io::{Cursor, Write},
     mem,
     slice,
 };
@@ -1096,6 +1097,15 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
     // The core of the image itself is just pseudorandom data.
     let mut b_img = vec![0; len];
     splat(&mut b_img, offset);
+
+    // Add some information at the start of the payload to make it easier
+    // to see what it is.  This will fail if the image itself is too small.
+    {
+        let mut wr = Cursor::new(&mut b_img);
+        writeln!(&mut wr, "offset: {:#x}, dev_id: {:#x}, slot_info: {:?}",
+                 offset, dev_id, slot).unwrap();
+        writeln!(&mut wr, "version: {:?}", deps.my_version(offset, slot.index)).unwrap();
+    }
 
     // TLV signatures work over plain image
     tlv.add_bytes(&b_img);
