@@ -26,7 +26,7 @@ use untrusted;
 use mcuboot_sys::c;
 
 #[repr(u8)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[allow(dead_code)] // TODO: For now
 pub enum TlvKinds {
     KEYHASH = 0x01,
@@ -74,6 +74,7 @@ pub trait ManifestGen {
     fn make_tlv(self: Box<Self>) -> Vec<u8>;
 }
 
+#[derive(Debug)]
 pub struct TlvGen {
     flags: u32,
     kinds: Vec<TlvKinds>,
@@ -85,6 +86,7 @@ pub struct TlvGen {
     dependencies: Vec<Dependency>,
 }
 
+#[derive(Debug)]
 struct Dependency {
     id: u8,
     version: ImageVersion,

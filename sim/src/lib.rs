@@ -7,13 +7,21 @@ use std::{
 use serde_derive::Deserialize;
 
 mod caps;
+mod depends;
 mod image;
 mod tlv;
 pub mod testlog;
 
-pub use crate::image::{
-    ImagesBuilder,
-    show_sizes,
+pub use crate::{
+    depends::{
+        DepTest,
+        DepType,
+        UpgradeInfo,
+        NO_DEPS,},
+    image::{
+        ImagesBuilder,
+        show_sizes,
+    },
 };
 
 const USAGE: &'static str = "
@@ -179,10 +187,10 @@ impl RunStatus {
 
         failed |= bad_secondary_slot_image.run_signfail_upgrade();
 
-        let images = run.clone().make_no_upgrade_image();
+        let images = run.clone().make_no_upgrade_image(&NO_DEPS);
         failed |= images.run_norevert_newimage();
 
-        let images = run.make_image(true);
+        let images = run.make_image(&NO_DEPS, true);
 
         failed |= images.run_basic_revert();
         failed |= images.run_revert_with_fails();
