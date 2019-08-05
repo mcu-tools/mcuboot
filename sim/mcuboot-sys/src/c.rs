@@ -2,37 +2,33 @@
 
 use crate::area::AreaDesc;
 use simflash::SimMultiFlash;
-use lazy_static::lazy_static;
 use libc;
 use crate::api;
-use std::sync::Mutex;
-
-lazy_static! {
-    /// Mutex to lock the simulation.  The C code for the bootloader uses
-    /// global variables, and is therefore non-reentrant.
-    static ref BOOT_LOCK: Mutex<()> = Mutex::new(());
-}
 
 /// Invoke the bootloader on this flash device.
 pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
                counter: Option<&mut i32>, catch_asserts: bool) -> (i32, u8) {
-    let _lock = BOOT_LOCK.lock().unwrap();
-
     unsafe {
         for (&dev_id, flash) in multiflash.iter_mut() {
             api::set_flash(dev_id, flash);
         }
-        raw::c_catch_asserts = if catch_asserts { 1 } else { 0 };
-        raw::c_asserts = 0u8;
-        raw::flash_counter = match counter {
+    }
+    let mut sim_ctx = api::CSimContext {
+        flash_counter: match counter {
             None => 0,
             Some(ref c) => **c as libc::c_int
-        };
-    }
-    let result = unsafe { raw::invoke_boot_go(&areadesc.get_c() as *const _) as i32 };
-    let asserts = unsafe { raw::c_asserts };
+        },
+        jumped: 0,
+        c_asserts: 0,
+        c_catch_asserts: if catch_asserts { 1 } else { 0 },
+        boot_jmpbuf: [0; 16],
+    };
+    let result = unsafe {
+        raw::invoke_boot_go(&mut sim_ctx as *mut _, &areadesc.get_c() as *const _) as i32
+    };
+    let asserts = sim_ctx.c_asserts;
+    counter.map(|c| *c = sim_ctx.flash_counter);
     unsafe {
-        counter.map(|c| *c = raw::flash_counter as i32);
         for (&dev_id, _) in multiflash {
             api::clear_flash(dev_id);
         }
@@ -76,16 +72,14 @@ pub fn kw_encrypt(kek: &[u8], seckey: &[u8]) -> Result<[u8; 24], &'static str> {
 
 mod raw {
     use crate::area::CAreaDesc;
+    use crate::api::CSimContext;
     use libc;
 
     extern "C" {
         // This generates a warning about `CAreaDesc` not being foreign safe.  There doesn't appear to
         // be any way to get rid of this warning.  See https://github.com/rust-lang/rust/issues/34798
         // for information and tracking.
-        pub fn invoke_boot_go(areadesc: *const CAreaDesc) -> libc::c_int;
-        pub static mut flash_counter: libc::c_int;
-        pub static mut c_asserts: u8;
-        pub static mut c_catch_asserts: u8;
+        pub fn invoke_boot_go(sim_ctx: *mut CSimContext, areadesc: *const CAreaDesc) -> libc::c_int;
 
         pub fn boot_trailer_sz(min_write_sz: u8) -> u32;
 
