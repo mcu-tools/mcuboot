@@ -27,6 +27,16 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+struct area_desc;
+extern struct area_desc *sim_get_flash_areas(void);
+extern void sim_set_flash_areas(struct area_desc *areas);
+extern void sim_reset_flash_areas(void);
+
+struct sim_context;
+extern struct sim_context *sim_get_context(void);
+extern void sim_set_context(struct sim_context *ctx);
+extern void sim_reset_context(void);
+
 extern int sim_flash_erase(uint8_t flash_id, uint32_t offset, uint32_t size);
 extern int sim_flash_read(uint8_t flash_id, uint32_t offset, uint8_t *dest,
         uint32_t size);
@@ -35,12 +45,13 @@ extern int sim_flash_write(uint8_t flash_id, uint32_t offset, const uint8_t *src
 extern uint8_t sim_flash_align(uint8_t flash_id);
 extern uint8_t sim_flash_erased_val(uint8_t flash_id);
 
-static jmp_buf boot_jmpbuf;
-int flash_counter;
-
-int jumped = 0;
-uint8_t c_asserts = 0;
-uint8_t c_catch_asserts = 0;
+struct sim_context {
+    int flash_counter;
+    int jumped;
+    uint8_t c_asserts;
+    uint8_t c_catch_asserts;
+    jmp_buf boot_jmpbuf;
+};
 
 #ifdef MCUBOOT_ENCRYPT_RSA
 static int
@@ -213,25 +224,33 @@ struct area_desc {
     uint32_t num_slots;
 };
 
-static struct area_desc *flash_areas;
-
-int invoke_boot_go(struct area_desc *adesc)
+int invoke_boot_go(struct sim_context *ctx, struct area_desc *adesc)
 {
     int res;
     struct boot_rsp rsp;
+    struct boot_loader_state *state;
 
 #if defined(MCUBOOT_SIGN_RSA)
     mbedtls_platform_set_calloc_free(calloc, free);
 #endif
 
-    flash_areas = adesc;
-    if (setjmp(boot_jmpbuf) == 0) {
-        res = boot_go(&rsp);
-        flash_areas = NULL;
+    // NOTE: cleared internally by context_boot_go
+    state = malloc(sizeof(struct boot_loader_state));
+
+    sim_set_flash_areas(adesc);
+    sim_set_context(ctx);
+
+    if (setjmp(ctx->boot_jmpbuf) == 0) {
+        res = context_boot_go(state, &rsp);
+        sim_reset_flash_areas();
+        sim_reset_context();
+        free(state);
         /* printf("boot_go off: %d (0x%08x)\n", res, rsp.br_image_off); */
         return res;
     } else {
-        flash_areas = NULL;
+        sim_reset_flash_areas();
+        sim_reset_context();
+        free(state);
         return -0x13579;
     }
 }
@@ -257,7 +276,9 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot)
 int flash_area_open(uint8_t id, const struct flash_area **area)
 {
     uint32_t i;
+    struct area_desc *flash_areas;
 
+    flash_areas = sim_get_flash_areas();
     for (i = 0; i < flash_areas->num_slots; i++) {
         if (flash_areas->slots[i].id == id)
             break;
@@ -293,9 +314,10 @@ int flash_area_write(const struct flash_area *area, uint32_t off, const void *sr
 {
     BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
                  area->fa_id, off, len);
-    if (--flash_counter == 0) {
-        jumped++;
-        longjmp(boot_jmpbuf, 1);
+    struct sim_context *ctx = sim_get_context();
+    if (--(ctx->flash_counter) == 0) {
+        ctx->jumped++;
+        longjmp(ctx->boot_jmpbuf, 1);
     }
     return sim_flash_write(area->fa_device_id, area->fa_off + off, src, len);
 }
@@ -304,9 +326,10 @@ int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
 {
     BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
                  area->fa_id, off, len);
-    if (--flash_counter == 0) {
-        jumped++;
-        longjmp(boot_jmpbuf, 1);
+    struct sim_context *ctx = sim_get_context();
+    if (--(ctx->flash_counter) == 0) {
+        ctx->jumped++;
+        longjmp(ctx->boot_jmpbuf, 1);
     }
     return sim_flash_erase(area->fa_device_id, area->fa_off + off, len);
 }
@@ -338,7 +361,9 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 {
     uint32_t i;
     struct area *slot;
+    struct area_desc *flash_areas;
 
+    flash_areas = sim_get_flash_areas();
     for (i = 0; i < flash_areas->num_slots; i++) {
         if (flash_areas->slots[i].id == idx)
             break;
@@ -366,7 +391,9 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
 {
     uint32_t i;
     struct area *slot;
+    struct area_desc *flash_areas;
 
+    flash_areas = sim_get_flash_areas();
     for (i = 0; i < flash_areas->num_slots; i++) {
         if (flash_areas->slots[i].id == fa_id)
             break;
@@ -409,8 +436,9 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
 void sim_assert(int x, const char *assertion, const char *file, unsigned int line, const char *function)
 {
     if (!(x)) {
-        if (c_catch_asserts) {
-            c_asserts++;
+        struct sim_context *ctx = sim_get_context();
+        if (ctx->c_catch_asserts) {
+            ctx->c_asserts++;
         } else {
             BOOT_LOG_ERR("%s:%d: %s: Assertion `%s' failed.", file, line, function, assertion);
 
