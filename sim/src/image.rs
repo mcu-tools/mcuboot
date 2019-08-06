@@ -975,17 +975,14 @@ impl Images {
     /// Verify the image in the given flash device, the specified slot
     /// against the expected image.
     fn verify_images(&self, flash: &SimMultiFlash, slot: usize, against: usize) -> bool {
-        for image in &self.images {
-            if !verify_image(flash, &image.slots[slot],
-                             match against {
-                                 0 => &image.primaries,
-                                 1 => &image.upgrades,
-                                 _ => panic!("Invalid 'against'"),
-                             }) {
-                return false;
-            }
-        }
-        true
+        self.images.iter().all(|image| {
+            verify_image(flash, &image.slots[slot],
+                         match against {
+                             0 => &image.primaries,
+                             1 => &image.upgrades,
+                             _ => panic!("Invalid 'against'")
+                             })
+        })
     }
 
     /// Verify the images, according to the dependency test.
@@ -1010,13 +1007,10 @@ impl Images {
     fn verify_trailers_loose(&self, flash: &SimMultiFlash, slot: usize,
                              magic: Option<u8>, image_ok: Option<u8>,
                              copy_done: Option<u8>) -> bool {
-        for image in &self.images {
-            if verify_trailer(flash, &image.slots[slot],
-                              magic, image_ok, copy_done) {
-                return true;
-            }
-        }
-        false
+        self.images.iter().any(|image| {
+            verify_trailer(flash, &image.slots[slot],
+                           magic, image_ok, copy_done)
+        })
     }
 
     /// Verify that the trailers of the images have the specified
@@ -1024,13 +1018,10 @@ impl Images {
     fn verify_trailers(&self, flash: &SimMultiFlash, slot: usize,
                        magic: Option<u8>, image_ok: Option<u8>,
                        copy_done: Option<u8>) -> bool {
-        for image in &self.images {
-            if !verify_trailer(flash, &image.slots[slot],
-                               magic, image_ok, copy_done) {
-                return false;
-            }
-        }
-        true
+        self.images.iter().all(|image| {
+            verify_trailer(flash, &image.slots[slot],
+                           magic, image_ok, copy_done)
+        })
     }
 
     /// Mark each of the images for permanent upgrade.
