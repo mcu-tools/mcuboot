@@ -47,6 +47,12 @@ matrix:
 
 before_install:
   - |
+    # Get some information about the host
+    lscpu
+    free
+    df
+    # And then just fail so we don't waste time
+    exit 1
     if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
       ./ci/check-signed-off-by.sh
       if [ $? -ne 0 ]; then
