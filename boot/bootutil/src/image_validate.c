@@ -69,6 +69,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 #if (BOOT_IMAGE_NUMBER == 1) || !defined(MCUBOOT_ENC_IMAGES)
     (void)enc_state;
     (void)image_index;
+    (void)hdr_size;
 #endif
 
     bootutil_sha256_init(&sha256_ctx);
@@ -89,7 +90,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 
     /* Hash is computed over image header and image itself. */
     hdr_size = hdr->ih_hdr_size;
-    size = hdr->ih_img_size + hdr_size;
+    size = BOOT_TLV_OFF(hdr);
 
 #if (MCUBOOT_IMAGE_NUMBER > 1)
     /* If dependency TLVs are present then the TLV info header and the
@@ -231,7 +232,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
     }
 
     /* The TLVs come after the image. */
-    off = hdr->ih_img_size + hdr->ih_hdr_size;
+    off = BOOT_TLV_OFF(hdr);
 
     rc = flash_area_read(fap, off, &info, sizeof(info));
     if (rc) {
