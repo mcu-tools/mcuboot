@@ -242,7 +242,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
         return 1;
     }
 
-    off = hdr->ih_img_size + hdr->ih_hdr_size;
+    off = BOOT_TLV_OFF(hdr);
 
     rc = flash_area_read(fap, off, &info, sizeof(info));
     if (rc) {

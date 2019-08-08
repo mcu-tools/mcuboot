@@ -267,8 +267,7 @@ boot_read_image_size(struct boot_loader_state *state, int slot,
         goto done;
     }
 
-    rc = flash_area_read(fap, hdr->ih_hdr_size + hdr->ih_img_size,
-                         &info, sizeof(info));
+    rc = flash_area_read(fap, BOOT_TLV_OFF(hdr), &info, sizeof(info));
     if (rc != 0) {
         rc = BOOT_EFLASH;
         goto done;
@@ -277,7 +276,7 @@ boot_read_image_size(struct boot_loader_state *state, int slot,
         rc = BOOT_EBADIMAGE;
         goto done;
     }
-    *size = hdr->ih_hdr_size + hdr->ih_img_size + info.it_tlv_tot;
+    *size = BOOT_TLV_OFF(hdr) + info.it_tlv_tot;
     rc = 0;
 
 done:
@@ -1084,12 +1083,12 @@ boot_copy_sector(struct boot_loader_state *state,
                 } else {
                     blk_off = ((off + bytes_copied) - hdr->ih_hdr_size) & 0xf;
                 }
-                if (off + bytes_copied + chunk_sz > hdr->ih_hdr_size + hdr->ih_img_size) {
+                if (off + bytes_copied + chunk_sz > BOOT_TLV_OFF(hdr)) {
                     /* do not decrypt TLVs */
-                    if (off + bytes_copied >= hdr->ih_hdr_size + hdr->ih_img_size) {
+                    if (off + bytes_copied >= BOOT_TLV_OFF(hdr)) {
                         blk_sz = 0;
                     } else {
-                        blk_sz = (hdr->ih_hdr_size + hdr->ih_img_size) - (off + bytes_copied);
+                        blk_sz = BOOT_TLV_OFF(hdr) - (off + bytes_copied);
                     }
                 }
                 boot_encrypt(state->enc, image_index, fap_src,
@@ -1841,8 +1840,7 @@ boot_verify_all_dependency(struct boot_loader_state *state, uint32_t slot)
     }
 
     hdr = boot_img_hdr(state, slot);
-    /* The TLVs come after the image. */
-    off = hdr->ih_hdr_size + hdr->ih_img_size;
+    off = BOOT_TLV_OFF(hdr);
 
     /* The TLV area always starts with an image_tlv_info structure. */
     rc = flash_area_read(fap, off, &info, sizeof(info));
