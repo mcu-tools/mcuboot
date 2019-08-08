@@ -331,13 +331,15 @@ class Image():
             b = f.read()
 
         magic, _, header_size, _, img_size = struct.unpack('IIHHI', b[:16])
+        version = struct.unpack('BBHI', b[20:28])
+
         if magic != IMAGE_MAGIC:
-            return VerifyResult.INVALID_MAGIC
+            return VerifyResult.INVALID_MAGIC, None
 
         tlv_info = b[header_size+img_size:header_size+img_size+TLV_INFO_SIZE]
         magic, tlv_tot = struct.unpack('HH', tlv_info)
         if magic != TLV_INFO_MAGIC:
-            return VerifyResult.INVALID_TLV_INFO_MAGIC
+            return VerifyResult.INVALID_TLV_INFO_MAGIC, None
 
         sha = hashlib.sha256()
         sha.update(b[:header_size+img_size])
@@ -353,9 +355,9 @@ class Image():
                 off = tlv_off + TLV_SIZE
                 if digest == b[off:off+tlv_len]:
                     if key is None:
-                        return VerifyResult.OK
+                        return VerifyResult.OK, version
                 else:
-                    return VerifyResult.INVALID_HASH
+                    return VerifyResult.INVALID_HASH, None
             elif key is not None and tlv_type == TLV_VALUES[key.sig_tlv()]:
                 off = tlv_off + TLV_SIZE
                 tlv_sig = b[off:off+tlv_len]
@@ -365,9 +367,9 @@ class Image():
                         key.verify(tlv_sig, payload)
                     else:
                         key.verify_digest(tlv_sig, digest)
-                    return VerifyResult.OK
+                    return VerifyResult.OK, version
                 except InvalidSignature:
                     # continue to next TLV
                     pass
             tlv_off += TLV_SIZE + tlv_len
-        return VerifyResult.INVALID_SIGNATURE
+        return VerifyResult.INVALID_SIGNATURE, None
