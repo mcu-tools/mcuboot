@@ -553,7 +553,7 @@ following section. The multiple image boot procedure is organized in loops which
 iterate over all the firmware images. The high-level overview of the boot
 process is presented below.
 
-+ ###### Loop 1. Iterate over all images
++  Loop 1. Iterate over all images
     1. Inspect swap status region of current image; is an interrupted swap being
        resumed?
         + Yes:
@@ -581,7 +581,7 @@ process is presented below.
             + Mark the swap type as `None`.
             + Skip to next image.
 
-+ ###### Loop 2. Iterate over all images
++  Loop 2. Iterate over all images
     1. Does the current image depend on other image(s)?
         + Yes: Are all the image dependencies satisfied?
             + Yes: Skip to next image.
@@ -590,7 +590,7 @@ process is presented below.
                 + Restart dependency check from the first image.
         + No: Skip to next image.
 
-+ ###### Loop 3. Iterate over all images
++  Loop 3. Iterate over all images
     1. Is an image swap requested?
         + Yes:
             + Perform image update operation.
@@ -598,7 +598,7 @@ process is presented below.
             + Skip to next image.
         + No: Skip to next image.
 
-+ ###### Loop 4. Iterate over all images
++  Loop 4. Iterate over all images
     1. Validate image in the primary slot (integrity and security check) or
        at least do a basic sanity check to avoid booting into an empty flash
        area.
