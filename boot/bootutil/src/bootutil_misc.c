@@ -567,9 +567,11 @@ boot_swap_type_multi(int image_index)
                          table->swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
                          table->swap_type == BOOT_SWAP_TYPE_REVERT ? "revert" :
                          "BUG; can't happen");
-            assert(table->swap_type == BOOT_SWAP_TYPE_TEST ||
-                   table->swap_type == BOOT_SWAP_TYPE_PERM ||
-                   table->swap_type == BOOT_SWAP_TYPE_REVERT);
+            if (table->swap_type != BOOT_SWAP_TYPE_TEST &&
+                    table->swap_type != BOOT_SWAP_TYPE_PERM &&
+                    table->swap_type != BOOT_SWAP_TYPE_REVERT) {
+                return BOOT_SWAP_TYPE_PANIC;
+            }
             return table->swap_type;
         }
     }
