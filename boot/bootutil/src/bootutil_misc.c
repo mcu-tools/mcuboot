@@ -164,12 +164,6 @@ boot_trailer_sz(uint8_t min_write_sz)
            BOOT_MAGIC_SZ;
 }
 
-static uint32_t
-boot_magic_off(const struct flash_area *fap)
-{
-    return fap->fa_size - BOOT_MAGIC_SZ;
-}
-
 int
 boot_status_entries(int image_index, const struct flash_area *fap)
 {
@@ -196,36 +190,41 @@ boot_status_off(const struct flash_area *fap)
     return fap->fa_size - off_from_end;
 }
 
+static inline uint32_t
+boot_magic_off(const struct flash_area *fap)
+{
+    return fap->fa_size - BOOT_MAGIC_SZ;
+}
+
+static inline uint32_t
+boot_image_ok_off(const struct flash_area *fap)
+{
+    return boot_magic_off(fap) - BOOT_MAX_ALIGN;
+}
+
+static inline uint32_t
+boot_copy_done_off(const struct flash_area *fap)
+{
+    return boot_image_ok_off(fap) - BOOT_MAX_ALIGN;
+}
+
 uint32_t
 boot_swap_info_off(const struct flash_area *fap)
 {
-    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 3;
+    return boot_copy_done_off(fap) - BOOT_MAX_ALIGN;
 }
 
-static uint32_t
-boot_copy_done_off(const struct flash_area *fap)
-{
-    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 2;
-}
-
-static uint32_t
-boot_image_ok_off(const struct flash_area *fap)
-{
-    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN;
-}
-
-static uint32_t
+static inline uint32_t
 boot_swap_size_off(const struct flash_area *fap)
 {
-    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 4;
+    return boot_swap_info_off(fap) - BOOT_MAX_ALIGN;
 }
 
 #ifdef MCUBOOT_ENC_IMAGES
-static uint32_t
+static inline uint32_t
 boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 {
-    return fap->fa_size - BOOT_MAGIC_SZ - BOOT_MAX_ALIGN * 4 -
-                          ((slot + 1) * BOOT_ENC_KEY_SIZE);
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_SIZE);
 }
 #endif
 
