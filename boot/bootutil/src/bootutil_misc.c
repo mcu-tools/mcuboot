@@ -310,118 +310,92 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
     return rc;
 }
 
+/**
+ * This functions tries to locate the status area after an aborted swap,
+ * by looking for the magic in the possible locations.
+ *
+ * If the magic is sucessfully found, a flash_area * is returned and it
+ * is the responsibility of the called to close it.
+ *
+ * @returns 0 on success, -1 on errors
+ */
+static int
+boot_find_status(int image_index, const struct flash_area **fap)
+{
+    uint32_t magic[BOOT_MAGIC_ARR_SZ];
+    uint32_t off;
+    uint8_t areas[2] = {
+        FLASH_AREA_IMAGE_PRIMARY(image_index),
+        FLASH_AREA_IMAGE_SCRATCH,
+    };
+    unsigned int i;
+    int rc;
+
+    /*
+     * In the middle a swap, tries to locate the area that is currently
+     * storing a valid magic, first on the primary slot, then on scratch.
+     * Both "slots" can end up being temporary storage for a swap and it
+     * is assumed that if magic is valid then other metadata is too,
+     * because magic is always written in the last step.
+     */
+
+    for (i = 0; i < sizeof(areas) / sizeof(areas[0]); i++) {
+        rc = flash_area_open(areas[i], fap);
+        if (rc != 0) {
+            return rc;
+        }
+
+        off = boot_magic_off(*fap);
+        rc = flash_area_read(*fap, off, magic, BOOT_MAGIC_SZ);
+        if (rc != 0) {
+            flash_area_close(*fap);
+            return rc;
+        }
+
+        if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0) {
+            return 0;
+        }
+
+        flash_area_close(*fap);
+    }
+
+    /* If we got here, no magic was found */
+    return -1;
+}
+
 int
 boot_read_swap_size(int image_index, uint32_t *swap_size)
 {
-    uint32_t magic[BOOT_MAGIC_ARR_SZ];
     uint32_t off;
     const struct flash_area *fap;
     int rc;
 
-    /*
-     * In the middle a swap, tries to locate the saved swap size. Looks
-     * for a valid magic, first on the primary slot, then on scratch.
-     * Both "slots" can end up being temporary storage for a swap and it
-     * is assumed that if magic is valid then swap size is too, because
-     * magic is always written in the last step.
-     */
-
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
-    if (rc != 0) {
-        return BOOT_EFLASH;
-    }
-
-    off = boot_magic_off(fap);
-    rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-        goto out;
-    }
-
-    if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) != 0) {
-        /*
-         * If the primary slot's magic is not valid, try scratch...
-         */
-
+    rc = boot_find_status(image_index, &fap);
+    if (rc == 0) {
+        off = boot_swap_size_off(fap);
+        rc = flash_area_read(fap, off, swap_size, sizeof *swap_size);
         flash_area_close(fap);
-
-        rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap);
-        if (rc != 0) {
-            return BOOT_EFLASH;
-        }
-
-        off = boot_magic_off(fap);
-        rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
-        if (rc != 0) {
-            rc = BOOT_EFLASH;
-            goto out;
-        }
-
-        assert(memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0);
     }
 
-    off = boot_swap_size_off(fap);
-    rc = flash_area_read(fap, off, swap_size, sizeof *swap_size);
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-    }
-
-out:
-    flash_area_close(fap);
     return rc;
 }
+
 
 #ifdef MCUBOOT_ENC_IMAGES
 int
 boot_read_enc_key(int image_index, uint8_t slot, uint8_t *enckey)
 {
-    uint32_t magic[BOOT_MAGIC_SZ];
     uint32_t off;
     const struct flash_area *fap;
     int rc;
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
-    if (rc != 0) {
-        return BOOT_EFLASH;
-    }
-
-    off = boot_magic_off(fap);
-    rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-        goto out;
-    }
-
-    if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) != 0) {
-        /*
-         * If the primary slot's magic is not valid, try scratch...
-         */
-
+    rc = boot_find_status(image_index, &fap);
+    if (rc == 0) {
+        off = boot_enc_key_off(fap, slot);
+        rc = flash_area_read(fap, off, enckey, BOOT_ENC_KEY_SIZE);
         flash_area_close(fap);
-
-        rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap);
-        if (rc != 0) {
-            return BOOT_EFLASH;
-        }
-
-        off = boot_magic_off(fap);
-        rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
-        if (rc != 0) {
-            rc = BOOT_EFLASH;
-            goto out;
-        }
-
-        assert(memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0);
     }
 
-    off = boot_enc_key_off(fap, slot);
-    rc = flash_area_read(fap, off, enckey, BOOT_ENC_KEY_SIZE);
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-    }
-
-out:
-    flash_area_close(fap);
     return rc;
 }
 #endif
