@@ -21,7 +21,6 @@
  * Modifications are Copyright (c) 2019 Arm Limited.
  */
 
-#include <assert.h>
 #include <stddef.h>
 #include <inttypes.h>
 #include <string.h>
@@ -183,7 +182,9 @@ bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
     const struct bootutil_key *key;
     uint8_t hash[32];
 
-    assert(keyhash_len <= 32);
+    if (keyhash_len > 32) {
+        return -1;
+    }
 
     for (i = 0; i < bootutil_key_cnt; i++) {
         key = &bootutil_keys[i];
