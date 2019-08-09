@@ -248,11 +248,11 @@ boot_status_source(struct boot_loader_state *state)
  */
 #if !defined(MCUBOOT_OVERWRITE_ONLY) || defined(MCUBOOT_OVERWRITE_ONLY_FAST)
 static int
-boot_read_image_size(struct boot_loader_state *state, int slot,
-                     struct image_header *hdr, uint32_t *size)
+boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
 {
     const struct flash_area *fap;
     struct image_tlv_info info;
+    uint32_t tlv_off;
     int area_id;
     int rc;
 
@@ -267,7 +267,8 @@ boot_read_image_size(struct boot_loader_state *state, int slot,
         goto done;
     }
 
-    rc = flash_area_read(fap, BOOT_TLV_OFF(hdr), &info, sizeof(info));
+    tlv_off = BOOT_TLV_OFF(boot_img_hdr(state, slot));
+    rc = flash_area_read(fap, tlv_off, &info, sizeof(info));
     if (rc != 0) {
         rc = BOOT_EFLASH;
         goto done;
@@ -276,7 +277,7 @@ boot_read_image_size(struct boot_loader_state *state, int slot,
         rc = BOOT_EBADIMAGE;
         goto done;
     }
-    *size = BOOT_TLV_OFF(hdr) + info.it_tlv_tot;
+    *size = tlv_off + info.it_tlv_tot;
     rc = 0;
 
 done:
@@ -736,8 +737,7 @@ boot_write_status(struct boot_loader_state *state, struct boot_status *bs)
     }
 
     off = boot_status_off(fap) +
-          boot_status_internal_off(bs->idx, bs->state,
-                                   BOOT_WRITE_SZ(state));
+          boot_status_internal_off(bs->idx, bs->state, BOOT_WRITE_SZ(state));
     align = flash_area_align(fap);
     erased_val = flash_area_erased_val(fap);
     memset(buf, erased_val, BOOT_MAX_ALIGN);
@@ -1445,9 +1445,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
     uint32_t src_size = 0;
-    rc = boot_read_image_size(state, BOOT_SECONDARY_SLOT,
-                              boot_img_hdr(state, BOOT_SECONDARY_SLOT),
-                              &src_size);
+    rc = boot_read_image_size(state, BOOT_SECONDARY_SLOT, &src_size);
     assert(rc == 0);
 #endif
 
@@ -1572,7 +1570,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
          */
         hdr = boot_img_hdr(state, BOOT_PRIMARY_SLOT);
         if (hdr->ih_magic == IMAGE_MAGIC) {
-            rc = boot_read_image_size(state, BOOT_PRIMARY_SLOT, hdr, &copy_size);
+            rc = boot_read_image_size(state, BOOT_PRIMARY_SLOT, &copy_size);
             assert(rc == 0);
         }
 
@@ -1595,7 +1593,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 
         hdr = boot_img_hdr(state, BOOT_SECONDARY_SLOT);
         if (hdr->ih_magic == IMAGE_MAGIC) {
-            rc = boot_read_image_size(state, BOOT_SECONDARY_SLOT, hdr, &size);
+            rc = boot_read_image_size(state, BOOT_SECONDARY_SLOT, &size);
             assert(rc == 0);
         }
 
@@ -1825,7 +1823,6 @@ static int
 boot_verify_all_dependency(struct boot_loader_state *state, uint32_t slot)
 {
     const struct flash_area *fap;
-    struct image_header *hdr;
     struct image_tlv_info info;
     struct image_tlv tlv;
     struct image_dependency dep;
@@ -1842,8 +1839,7 @@ boot_verify_all_dependency(struct boot_loader_state *state, uint32_t slot)
         goto done;
     }
 
-    hdr = boot_img_hdr(state, slot);
-    off = BOOT_TLV_OFF(hdr);
+    off = BOOT_TLV_OFF(boot_img_hdr(state, slot));
 
     /* The TLV area always starts with an image_tlv_info structure. */
     rc = flash_area_read(fap, off, &info, sizeof(info));
