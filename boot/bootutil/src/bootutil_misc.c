@@ -178,11 +178,8 @@ boot_status_entries(int image_index, const struct flash_area *fap)
     } else if (fap->fa_id == FLASH_AREA_IMAGE_PRIMARY(image_index) ||
                fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
         return BOOT_STATUS_STATE_COUNT * BOOT_STATUS_MAX_ENTRIES;
-    } else {
-        /* FIXME: make error values negative and check on caller */
-        assert(0);
-        return BOOT_EBADARGS;
     }
+    return -1;
 }
 
 uint32_t

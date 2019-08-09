@@ -577,6 +577,9 @@ boot_read_status_bytes(const struct flash_area *fap,
 
     off = boot_status_off(fap);
     max_entries = boot_status_entries(BOOT_CURR_IMG(state), fap);
+    if (max_entries < 0) {
+        return BOOT_EBADARGS;
+    }
 
     found = 0;
     found_idx = 0;
