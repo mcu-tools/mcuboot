@@ -417,9 +417,14 @@ boot_write_magic(const struct flash_area *fap)
     return 0;
 }
 
+/**
+ * Write trailer data; status bytes, swap_size, etc
+ *
+ * @returns 0 on success, != 0 on error.
+ */
 static int
-boot_write_trailer_byte(const struct flash_area *fap, uint32_t off,
-                        uint8_t val)
+boot_write_trailer(const struct flash_area *fap, uint32_t off,
+        const uint8_t *inbuf, uint8_t inlen)
 {
     uint8_t buf[BOOT_MAX_ALIGN];
     uint8_t align;
@@ -427,10 +432,15 @@ boot_write_trailer_byte(const struct flash_area *fap, uint32_t off,
     int rc;
 
     align = flash_area_align(fap);
-    assert(align <= BOOT_MAX_ALIGN);
+    if (inlen > BOOT_MAX_ALIGN || align > BOOT_MAX_ALIGN) {
+        return -1;
+    }
     erased_val = flash_area_erased_val(fap);
-    memset(buf, erased_val, BOOT_MAX_ALIGN);
-    buf[0] = val;
+    if (align < inlen) {
+        align = inlen;
+    }
+    memcpy(buf, inbuf, inlen);
+    memset(&buf[inlen], erased_val, align - inlen);
 
     rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
@@ -438,6 +448,14 @@ boot_write_trailer_byte(const struct flash_area *fap, uint32_t off,
     }
 
     return 0;
+}
+
+static int
+boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
+        uint8_t flag_val)
+{
+    const uint8_t buf[1] = { flag_val };
+    return boot_write_trailer(fap, off, buf, 1);
 }
 
 int
@@ -448,7 +466,7 @@ boot_write_copy_done(const struct flash_area *fap)
     off = boot_copy_done_off(fap);
     BOOT_LOG_DBG("writing copy_done; fa_id=%d off=0x%x (0x%x)",
                  fap->fa_id, off, fap->fa_off + off);
-    return boot_write_trailer_byte(fap, off, BOOT_FLAG_SET);
+    return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
 }
 
 int
@@ -459,7 +477,7 @@ boot_write_image_ok(const struct flash_area *fap)
     off = boot_image_ok_off(fap);
     BOOT_LOG_DBG("writing image_ok; fa_id=%d off=0x%x (0x%x)",
                  fap->fa_id, off, fap->fa_off + off);
-    return boot_write_trailer_byte(fap, off, BOOT_FLAG_SET);
+    return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
 }
 
 /**
@@ -479,37 +497,18 @@ boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
     BOOT_LOG_DBG("writing swap_info; fa_id=%d off=0x%x (0x%x), swap_type=0x%x"
                  " image_num=0x%x",
                  fap->fa_id, off, fap->fa_off + off, swap_type, image_num);
-    return boot_write_trailer_byte(fap, off, swap_info);
+    return boot_write_trailer(fap, off, (const uint8_t *) &swap_info, 1);
 }
 
 int
 boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
 {
     uint32_t off;
-    int rc;
-    uint8_t buf[BOOT_MAX_ALIGN];
-    uint8_t align;
-    uint8_t erased_val;
 
     off = boot_swap_size_off(fap);
-    align = flash_area_align(fap);
-    assert(align <= BOOT_MAX_ALIGN);
-    if (align < sizeof swap_size) {
-        align = sizeof swap_size;
-    }
-    erased_val = flash_area_erased_val(fap);
-    memset(buf, erased_val, BOOT_MAX_ALIGN);
-    memcpy(buf, (uint8_t *)&swap_size, sizeof swap_size);
-
     BOOT_LOG_DBG("writing swap_size; fa_id=%d off=0x%x (0x%x)",
                  fap->fa_id, off, fap->fa_off + off);
-
-    rc = flash_area_write(fap, off, buf, align);
-    if (rc != 0) {
-        return BOOT_EFLASH;
-    }
-
-    return 0;
+    return boot_write_trailer(fap, off, (const uint8_t *) &swap_size, 4);
 }
 
 #ifdef MCUBOOT_ENC_IMAGES
