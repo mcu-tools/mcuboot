@@ -59,10 +59,151 @@ static const uint8_t inv_sbox[256] = {
 	0x55, 0x21, 0x0c, 0x7d
 };
 
+#ifdef TC_USE_AES_TTABLES
+
+static const uint32_t rt0[256] = {
+	0x50a7f451, 0x5365417e, 0xc3a4171a, 0x965e273a, 0xcb6bab3b, 0xf1459d1f,
+	0xab58faac, 0x9303e34b, 0x55fa3020, 0xf66d76ad, 0x9176cc88, 0x254c02f5,
+	0xfcd7e54f, 0xd7cb2ac5, 0x80443526, 0x8fa362b5, 0x495ab1de, 0x671bba25,
+	0x980eea45, 0xe1c0fe5d, 0x02752fc3, 0x12f04c81, 0xa397468d, 0xc6f9d36b,
+	0xe75f8f03, 0x959c9215, 0xeb7a6dbf, 0xda595295, 0x2d83bed4, 0xd3217458,
+	0x2969e049, 0x44c8c98e, 0x6a89c275, 0x78798ef4, 0x6b3e5899, 0xdd71b927,
+	0xb64fe1be, 0x17ad88f0, 0x66ac20c9, 0xb43ace7d, 0x184adf63, 0x82311ae5,
+	0x60335197, 0x457f5362, 0xe07764b1, 0x84ae6bbb, 0x1ca081fe, 0x942b08f9,
+	0x58684870, 0x19fd458f, 0x876cde94, 0xb7f87b52, 0x23d373ab, 0xe2024b72,
+	0x578f1fe3, 0x2aab5566, 0x0728ebb2, 0x03c2b52f, 0x9a7bc586, 0xa50837d3,
+	0xf2872830, 0xb2a5bf23, 0xba6a0302, 0x5c8216ed, 0x2b1ccf8a, 0x92b479a7,
+	0xf0f207f3, 0xa1e2694e, 0xcdf4da65, 0xd5be0506, 0x1f6234d1, 0x8afea6c4,
+	0x9d532e34, 0xa055f3a2, 0x32e18a05, 0x75ebf6a4, 0x39ec830b, 0xaaef6040,
+	0x069f715e, 0x51106ebd, 0xf98a213e, 0x3d06dd96, 0xae053edd, 0x46bde64d,
+	0xb58d5491, 0x055dc471, 0x6fd40604, 0xff155060, 0x24fb9819, 0x97e9bdd6,
+	0xcc434089, 0x779ed967, 0xbd42e8b0, 0x888b8907, 0x385b19e7, 0xdbeec879,
+	0x470a7ca1, 0xe90f427c, 0xc91e84f8, 0x00000000, 0x83868009, 0x48ed2b32,
+	0xac70111e, 0x4e725a6c, 0xfbff0efd, 0x5638850f, 0x1ed5ae3d, 0x27392d36,
+	0x64d90f0a, 0x21a65c68, 0xd1545b9b, 0x3a2e3624, 0xb1670a0c, 0x0fe75793,
+	0xd296eeb4, 0x9e919b1b, 0x4fc5c080, 0xa220dc61, 0x694b775a, 0x161a121c,
+	0x0aba93e2, 0xe52aa0c0, 0x43e0223c, 0x1d171b12, 0x0b0d090e, 0xadc78bf2,
+	0xb9a8b62d, 0xc8a91e14, 0x8519f157, 0x4c0775af, 0xbbdd99ee, 0xfd607fa3,
+	0x9f2601f7, 0xbcf5725c, 0xc53b6644, 0x347efb5b, 0x7629438b, 0xdcc623cb,
+	0x68fcedb6, 0x63f1e4b8, 0xcadc31d7, 0x10856342, 0x40229713, 0x2011c684,
+	0x7d244a85, 0xf83dbbd2, 0x1132f9ae, 0x6da129c7, 0x4b2f9e1d, 0xf330b2dc,
+	0xec52860d, 0xd0e3c177, 0x6c16b32b, 0x99b970a9, 0xfa489411, 0x2264e947,
+	0xc48cfca8, 0x1a3ff0a0, 0xd82c7d56, 0xef903322, 0xc74e4987, 0xc1d138d9,
+	0xfea2ca8c, 0x360bd498, 0xcf81f5a6, 0x28de7aa5, 0x268eb7da, 0xa4bfad3f,
+	0xe49d3a2c, 0x0d927850, 0x9bcc5f6a, 0x62467e54, 0xc2138df6, 0xe8b8d890,
+	0x5ef7392e, 0xf5afc382, 0xbe805d9f, 0x7c93d069, 0xa92dd56f, 0xb31225cf,
+	0x3b99acc8, 0xa77d1810, 0x6e639ce8, 0x7bbb3bdb, 0x097826cd, 0xf418596e,
+	0x01b79aec, 0xa89a4f83, 0x656e95e6, 0x7ee6ffaa, 0x08cfbc21, 0xe6e815ef,
+	0xd99be7ba, 0xce366f4a, 0xd4099fea, 0xd67cb029, 0xafb2a431, 0x31233f2a,
+	0x3094a5c6, 0xc066a235, 0x37bc4e74, 0xa6ca82fc, 0xb0d090e0, 0x15d8a733,
+	0x4a9804f1, 0xf7daec41, 0x0e50cd7f, 0x2ff69117, 0x8dd64d76, 0x4db0ef43,
+	0x544daacc, 0xdf0496e4, 0xe3b5d19e, 0x1b886a4c, 0xb81f2cc1, 0x7f516546,
+	0x04ea5e9d, 0x5d358c01, 0x737487fa, 0x2e410bfb, 0x5a1d67b3, 0x52d2db92,
+	0x335610e9, 0x1347d66d, 0x8c61d79a, 0x7a0ca137, 0x8e14f859, 0x893c13eb,
+	0xee27a9ce, 0x35c961b7, 0xede51ce1, 0x3cb1477a, 0x59dfd29c, 0x3f73f255,
+	0x79ce1418, 0xbf37c773, 0xeacdf753, 0x5baafd5f, 0x146f3ddf, 0x86db4478,
+	0x81f3afca, 0x3ec468b9, 0x2c342438, 0x5f40a3c2, 0x72c31d16, 0x0c25e2bc,
+	0x8b493c28, 0x41950dff, 0x7101a839, 0xdeb30c08, 0x9ce4b4d8, 0x90c15664,
+	0x6184cb7b, 0x70b632d5, 0x745c6c48, 0x4257b8d0,
+};
+
+#define GET_UINT32_LE(n,b,i)                               \
+{                                                          \
+    (n) = ((uint32_t) (b)[(i)    ]      )                  \
+        | ((uint32_t) (b)[(i) + 1] <<  8)                  \
+        | ((uint32_t) (b)[(i) + 2] << 16)                  \
+        | ((uint32_t) (b)[(i) + 3] << 24);                 \
+}
+
+#define PUT_UINT32_LE(n,b,i)                               \
+{                                                          \
+    (b)[(i)    ] = (unsigned char) (((n)      ) & 0xff);   \
+    (b)[(i) + 1] = (unsigned char) (((n) >>  8) & 0xff);   \
+    (b)[(i) + 2] = (unsigned char) (((n) >> 16) & 0xff);   \
+    (b)[(i) + 3] = (unsigned char) (((n) >> 24) & 0xff);   \
+}
+
+#define ROTL8(x)  ((uint32_t)((x) <<  8) + (uint32_t)((x) >> 24))
+#define ROTL16(x) ((uint32_t)((x) << 16) + (uint32_t)((x) >> 16))
+#define ROTL24(x) ((uint32_t)((x) << 24) + (uint32_t)((x) >>  8))
+
+#define AES_RT0(idx) rt0[idx]
+#define AES_RT1(idx) ROTL8(rt0[idx])
+#define AES_RT2(idx) ROTL16(rt0[idx])
+#define AES_RT3(idx) ROTL24(rt0[idx])
+
+#define AES_RROUND(X0,X1,X2,X3,Y0,Y1,Y2,Y3)                 \
+    do                                                      \
+    {                                                       \
+        (X0) = *RK++ ^ AES_RT0(((Y0)      ) & 0xFF) ^       \
+                       AES_RT1(((Y3) >>  8) & 0xFF) ^       \
+                       AES_RT2(((Y2) >> 16) & 0xFF) ^       \
+                       AES_RT3(((Y1) >> 24) & 0xFF);        \
+                                                            \
+        (X1) = *RK++ ^ AES_RT0(((Y1)      ) & 0xFF) ^       \
+                       AES_RT1(((Y0) >>  8) & 0xFF) ^       \
+                       AES_RT2(((Y3) >> 16) & 0xFF) ^       \
+                       AES_RT3(((Y2) >> 24) & 0xFF);        \
+                                                            \
+        (X2) = *RK++ ^ AES_RT0(((Y2)      ) & 0xFF) ^       \
+                       AES_RT1(((Y1) >>  8) & 0xFF) ^       \
+                       AES_RT2(((Y0) >> 16) & 0xFF) ^       \
+                       AES_RT3(((Y3) >> 24) & 0xFF);        \
+                                                            \
+        (X3) = *RK++ ^ AES_RT0(((Y3)      ) & 0xFF) ^       \
+                       AES_RT1(((Y2) >>  8) & 0xFF) ^       \
+                       AES_RT2(((Y1) >> 16) & 0xFF) ^       \
+                       AES_RT3(((Y0) >> 24) & 0xFF);        \
+    } while( 0 )
+
+#endif /* TC_USE_AES_TTABLES */
+
+extern const uint8_t sbox[256];
+
 int tc_aes128_set_decrypt_key(TCAesKeySched_t s, const uint8_t *k)
 {
+#ifndef TC_USE_AES_TTABLES
+
 	return tc_aes128_set_encrypt_key(s, k);
+
+#else
+
+	int i, j;
+	uint32_t buf[Nb * (Nr + 1)];
+	uint32_t *RK = (uint32_t *)s->words;
+
+	tc_aes128_set_encrypt_key(s, k);
+
+	(void)_copy((uint8_t *)buf, sizeof(buf),
+                (uint8_t *)s->words, sizeof(s->words));
+	uint32_t *SK = &buf[Nr * 4];
+	RK = (uint32_t *)s->words;
+
+	*RK++ = *SK++;
+	*RK++ = *SK++;
+	*RK++ = *SK++;
+	*RK++ = *SK++;
+
+	for (i = Nr - 1, SK -= 8; i > 0; i--, SK -= 8) {
+		for (j = 0; j < 4; j++, SK++) {
+			*RK++ = AES_RT0(sbox[(*SK      ) & 0xFF]) ^
+			        AES_RT1(sbox[(*SK >>  8) & 0xFF]) ^
+			        AES_RT2(sbox[(*SK >> 16) & 0xFF]) ^
+			        AES_RT3(sbox[(*SK >> 24) & 0xFF]);
+		}
+	}
+
+	*RK++ = *SK++;
+	*RK++ = *SK++;
+	*RK++ = *SK++;
+	*RK++ = *SK++;
+
+#endif
+
+	return TC_CRYPTO_SUCCESS;
 }
+
+#ifndef TC_USE_AES_TTABLES
 
 #define mult8(a)(_double_byte(_double_byte(_double_byte(a))))
 #define mult9(a)(mult8(a)^(a))
@@ -126,6 +267,8 @@ static inline void inv_shift_rows(uint8_t *s)
 	(void)_copy(s, sizeof(t), t, sizeof(t));
 }
 
+#endif
+
 int tc_aes_decrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s)
 {
 	uint8_t state[Nk*Nb];
@@ -141,6 +284,8 @@ int tc_aes_decrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s)
 
 	(void)_copy(state, sizeof(state), in, sizeof(state));
 
+#ifndef TC_USE_AES_TTABLES
+
 	add_round_key(state, s->words + Nb*Nr);
 
 	for (i = Nr - 1; i > 0; --i) {
@@ -153,6 +298,42 @@ int tc_aes_decrypt(uint8_t *out, const uint8_t *in, const TCAesKeySched_t s)
 	inv_shift_rows(state);
 	inv_sub_bytes(state);
 	add_round_key(state, s->words);
+
+#else
+
+	#define N_WORDS 4
+	const unsigned int U32_SZ = 4;
+	unsigned int j;
+	uint32_t x[N_WORDS], y[N_WORDS];
+	uint32_t *RK = (uint32_t *)s->words;
+
+	for (i = 0; i < N_WORDS; i++) {
+		GET_UINT32_LE(x[i], state, i * U32_SZ);
+		x[i] ^= *RK++;
+	}
+
+	for(i = (Nr >> 1) - 1; i > 0; i--) {
+		AES_RROUND(y[0], y[1], y[2], y[3], x[0], x[1], x[2], x[3]);
+		AES_RROUND(x[0], x[1], x[2], x[3], y[0], y[1], y[2], y[3]);
+	}
+
+	AES_RROUND(y[0], y[1], y[2], y[3], x[0], x[1], x[2], x[3]);
+
+#define DEC(x) ((x) = (x) > 0 ? (x) - 1 : 3)
+
+	for (i = 0, j = 0; i < N_WORDS; i++) {
+		x[i]  = *RK++;
+		x[i] ^= (uint32_t)inv_sbox[ y[j]        & 0xff];       DEC(j);
+		x[i] ^= (uint32_t)inv_sbox[(y[j] >>  8) & 0xff] <<  8; DEC(j);
+		x[i] ^= (uint32_t)inv_sbox[(y[j] >> 16) & 0xff] << 16; DEC(j);
+		x[i] ^= (uint32_t)inv_sbox[(y[j] >> 24) & 0xff] << 24; /* no roll */
+	}
+
+	for (i = 0; i < N_WORDS; i++) {
+		PUT_UINT32_LE(x[i], state, i * U32_SZ);
+	}
+
+#endif
 
 	(void)_copy(out, sizeof(state), state, sizeof(state));
 
