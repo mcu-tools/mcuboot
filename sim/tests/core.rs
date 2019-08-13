@@ -5,10 +5,14 @@
 use bootsim::{
     DepTest, DepType, UpgradeInfo,
     ImagesBuilder,
+    Images,
     NO_DEPS,
     testlog,
 };
-use std::env;
+use std::{
+    env,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 /// A single test, after setting up logging and such.  Within the $body,
 /// $arg will be bound to each device.
@@ -30,6 +34,7 @@ macro_rules! sim_test {
     ($name:ident, $maker:ident($($margs:expr),*), $test:ident($($targs:expr),*)) => {
         test_shell!($name, r, {
             let image = r.$maker($($margs),*);
+            dump_image(&image, stringify!($name));
             assert!(!image.$test($($targs),*));
         });
     };
@@ -52,13 +57,9 @@ test_shell!(dependency_combos, r, {
         return;
     }
 
-    for (index, dep) in TEST_DEPS.iter().enumerate() {
+    for dep in TEST_DEPS {
         let image = r.clone().make_image(&dep, true);
-
-        if env::var_os("MCUBOOT_DEBUG_DUMP").is_some() {
-            let name = format!("dep-test-{:0>}", index);
-            image.debug_dump(&name);
-        }
+        dump_image(&image, "dependency_combos");
         assert!(!image.run_check_deps(&dep));
     }
 });
@@ -80,3 +81,24 @@ pub static TEST_DEPS: &[DepTest] = &[
     },
     */
 ];
+
+/// Counter for the image number.
+static IMAGE_NUMBER: AtomicUsize = AtomicUsize::new(0);
+
+/// Dump an image if that makes sense.  The name is the name of the test
+/// being run.  If the MCUBOT_DEBUG_DUMP environment variable contains, in
+/// one of its comma separate strings a substring of this name, then this
+/// image will be dumped.  As a special case, we will dump everything if
+/// this environment variable is set to all.
+fn dump_image(image: &Images, name: &str) {
+    if let Ok(request) = env::var("MCUBOOT_DEBUG_DUMP") {
+        if request.split(',').any(|req| {
+            req == "all" || name.contains(req)
+        }) {
+            let count = IMAGE_NUMBER.fetch_add(1, Ordering::SeqCst);
+            let full_name = format!("{}-{:04}", name, count);
+            log::info!("Dump {:?}", full_name);
+            image.debug_dump(&full_name);
+        }
+    }
+}
