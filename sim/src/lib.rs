@@ -20,6 +20,7 @@ pub use crate::{
         NO_DEPS,},
     image::{
         ImagesBuilder,
+        Images,
         show_sizes,
     },
 };
