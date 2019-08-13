@@ -1,9 +1,19 @@
-use log::{info, warn, error};
+use byteorder::{
+    LittleEndian, WriteBytesExt,
+};
+use log::{
+    Level::Info,
+    error,
+    info,
+    log_enabled,
+    warn,
+};
 use rand::{
     distributions::{IndependentSample, Range},
     Rng, SeedableRng, XorShiftRng,
 };
 use std::{
+    collections::HashSet,
     io::{Cursor, Write},
     mem,
     slice,
@@ -163,6 +173,7 @@ impl ImagesBuilder {
                 primaries: primaries,
                 upgrades: upgrades,
             }}).collect();
+        install_ptable(&mut flash, &self.areadesc);
         Images {
             flash: flash,
             areadesc: self.areadesc,
@@ -1037,6 +1048,20 @@ impl Images {
             mark_upgrade(flash, &image.slots[slot]);
         }
     }
+
+    /// Dump out the flash image(s) to one or more files for debugging
+    /// purposes.  The names will be written as either "{prefix}.mcubin" or
+    /// "{prefix}-001.mcubin" depending on how many images there are.
+    pub fn debug_dump(&self, prefix: &str) {
+        for (id, fdev) in &self.flash {
+            let name = if self.flash.len() == 1 {
+                format!("{}.mcubin", prefix)
+            } else {
+                format!("{}-{:>0}.mcubin", prefix, id)
+            };
+            fdev.write_file(&name).unwrap();
+        }
+    }
 }
 
 /// Show the flash layout.
@@ -1335,6 +1360,57 @@ fn verify_trailer(flash: &SimMultiFlash, slot: &SlotInfo,
     };
 
     !failed
+}
+
+/// Install a partition table.  This is a simplified partition table that
+/// we write at the beginning of flash so make it easier for external tools
+/// to analyze these images.
+fn install_ptable(flash: &mut SimMultiFlash, areadesc: &AreaDesc) {
+    let ids: HashSet<u8> = areadesc.iter_areas().map(|area| area.device_id).collect();
+    for &id in &ids {
+        // If there are any partitions in this device that start at 0, and
+        // aren't marked as the BootLoader partition, avoid adding the
+        // partition table.  This makes it harder to view the image, but
+        // avoids messing up images already written.
+        if areadesc.iter_areas().any(|area| {
+            area.device_id == id &&
+                area.off == 0 &&
+                area.flash_id != FlashId::BootLoader
+        }) {
+            if log_enabled!(Info) {
+                let special: Vec<FlashId> = areadesc.iter_areas()
+                    .filter(|area| area.device_id == id && area.off == 0)
+                    .map(|area| area.flash_id)
+                    .collect();
+                info!("Skipping partition table: {:?}", special);
+            }
+            break;
+        }
+
+        let mut buf: Vec<u8> = vec![];
+        write!(&mut buf, "mcuboot\0").unwrap();
+
+        // Iterate through all of the partitions in that device, and encode
+        // into the table.
+        let count = areadesc.iter_areas().filter(|area| area.device_id == id).count();
+        buf.write_u32::<LittleEndian>(count as u32).unwrap();
+
+        for area in areadesc.iter_areas().filter(|area| area.device_id == id) {
+            buf.write_u32::<LittleEndian>(area.flash_id as u32).unwrap();
+            buf.write_u32::<LittleEndian>(area.off).unwrap();
+            buf.write_u32::<LittleEndian>(area.size).unwrap();
+            buf.write_u32::<LittleEndian>(0).unwrap();
+        }
+
+        let dev = flash.get_mut(&id).unwrap();
+
+        // Pad to alignment.
+        while buf.len() % dev.align() != 0 {
+            buf.push(0);
+        }
+
+        dev.write(0, &buf).unwrap();
+    }
 }
 
 /// The image header
