@@ -153,6 +153,7 @@ fn main() {
 
         if sig_ecdsa {
             conf.define("MCUBOOT_USE_TINYCRYPT", None);
+            conf.define("TC_USE_AES_TTABLES", None);
 
             conf.include("../../ext/tinycrypt/lib/include");
 
