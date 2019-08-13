@@ -136,6 +136,11 @@ impl AreaDesc {
 
         areas
     }
+
+    /// Return an iterator over all `FlashArea`s present.
+    pub fn iter_areas(&self) -> impl Iterator<Item = &FlashArea> {
+        self.whole.iter()
+    }
 }
 
 /// The area descriptor, C format.
@@ -189,9 +194,9 @@ impl Default for FlashId {
 #[repr(C)]
 #[derive(Debug, Clone, Default)]
 pub struct FlashArea {
-    flash_id: FlashId,
-    device_id: u8,
+    pub flash_id: FlashId,
+    pub device_id: u8,
     pad16: u16,
-    off: u32,
-    size: u32,
+    pub off: u32,
+    pub size: u32,
 }

@@ -8,6 +8,7 @@ use bootsim::{
     NO_DEPS,
     testlog,
 };
+use std::env;
 
 /// A single test, after setting up logging and such.  Within the $body,
 /// $arg will be bound to each device.
@@ -51,8 +52,13 @@ test_shell!(dependency_combos, r, {
         return;
     }
 
-    for dep in TEST_DEPS {
+    for (index, dep) in TEST_DEPS.iter().enumerate() {
         let image = r.clone().make_image(&dep, true);
+
+        if env::var_os("MCUBOOT_DEBUG_DUMP").is_some() {
+            let name = format!("dep-test-{:0>}", index);
+            image.debug_dump(&name);
+        }
         assert!(!image.run_check_deps(&dep));
     }
 });
