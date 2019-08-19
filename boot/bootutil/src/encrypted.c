@@ -321,17 +321,6 @@ boot_enc_valid(struct enc_key_data *enc_state, int image_index,
 }
 
 void
-boot_enc_mark_keys_invalid(struct enc_key_data *enc_state)
-{
-    size_t slot;
-
-    for (slot = 0; slot < BOOT_NUM_SLOTS; ++slot) {
-        memset(&enc_state[slot].aes, 0, sizeof(enc_state[slot].aes));
-        enc_state[slot].valid = 0;
-    }
-}
-
-void
 boot_encrypt(struct enc_key_data *enc_state, int image_index,
         const struct flash_area *fap, uint32_t off, uint32_t sz,
         uint32_t blk_off, uint8_t *buf)
@@ -382,7 +371,8 @@ boot_encrypt(struct enc_key_data *enc_state, int image_index,
 /**
  * Clears encrypted state after use.
  */
-void boot_enc_zeroize(struct enc_key_data *enc_state)
+void
+boot_enc_zeroize(struct enc_key_data *enc_state)
 {
     memset(enc_state, 0, sizeof(struct enc_key_data) * BOOT_NUM_SLOTS);
 }
