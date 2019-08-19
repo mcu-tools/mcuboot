@@ -34,10 +34,8 @@ matrix:
       env: MULTI_FEATURES="sig-rsa enc-kw validate-primary-slot bootstrap" TEST=sim
     - os: linux
       env: MULTI_FEATURES="sig-ecdsa enc-kw validate-primary-slot" TEST=sim
-
-    # FIXME: this test actually fails and must be fixed
-    #- os: linux
-    #  env: MULTI_FEATURES="sig-rsa validate-primary-slot overwrite-only"
+    - os: linux
+      env: MULTI_FEATURES="sig-rsa validate-primary-slot overwrite-only" TEST=sim
 
     - os: linux
       language: go
