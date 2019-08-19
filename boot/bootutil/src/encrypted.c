@@ -53,7 +53,7 @@
 
 #if defined(MCUBOOT_ENCRYPT_KW)
 #if defined(MCUBOOT_USE_MBED_TLS)
-int
+static int
 key_unwrap(uint8_t *wrapped, uint8_t *enckey)
 {
     mbedtls_nist_kw_context kw;
@@ -80,7 +80,7 @@ done:
  * Implements AES key unwrapping following RFC-3394 section 2.2.2, using
  * tinycrypt for AES-128 decryption.
  */
-int
+static int
 key_unwrap(uint8_t *wrapped, uint8_t *enckey)
 {
     struct tc_aes_key_sched_struct aes;
