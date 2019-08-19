@@ -2330,7 +2330,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
          * another images). Therefore, mark them as invalid to force their reload
          * by boot_enc_load().
          */
-        boot_enc_mark_keys_invalid();
+        boot_enc_mark_keys_invalid(state->enc);
 #endif /* MCUBOOT_ENC_IMAGES */
 
         /* Indicate that swap is not aborted */
