@@ -325,7 +325,8 @@ boot_enc_mark_keys_invalid(struct enc_key_data *enc_state)
 {
     size_t slot;
 
-    for(slot = 0; slot < BOOT_NUM_SLOTS; ++slot) {
+    for (slot = 0; slot < BOOT_NUM_SLOTS; ++slot) {
+        memset(&enc_state[slot].aes, 0, sizeof(enc_state[slot].aes));
         enc_state[slot].valid = 0;
     }
 }
