@@ -271,8 +271,4 @@ config MCUBOOT_DEVICE_CPU_CORTEX_M0
 
 comment "Zephyr configuration options"
 
-config ZEPHYR_BASE
-	string
-	option env="ZEPHYR_BASE"
-
 source "$ZEPHYR_BASE/Kconfig.zephyr"
