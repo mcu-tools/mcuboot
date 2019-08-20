@@ -271,4 +271,15 @@ config MCUBOOT_DEVICE_CPU_CORTEX_M0
 
 comment "Zephyr configuration options"
 
+# Disabling MULTITHREADING provides a code size advantage, but
+# it requires peripheral drivers (particularly a flash driver)
+# that works properly with the option enabled.
+#
+# If you know for sure that your hardware will work, you can default
+# it to n here. Otherwise, having it on by default makes the most
+# hardware work.
+config MULTITHREADING
+	default n if SOC_FAMILY_NRF
+	default y
+
 source "$ZEPHYR_BASE/Kconfig.zephyr"
