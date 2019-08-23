@@ -22,12 +22,21 @@
 
 int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
-    (void)image_index;
-    return flash_area_id_from_image_slot(slot);
+    switch (slot) {
+    case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
+    case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
+    case 2: return FLASH_AREA_IMAGE_SCRATCH;
+    }
+    return 255;
 }
 
 int flash_area_id_to_multi_image_slot(int image_index, int area_id)
 {
-    (void)image_index;
-    return flash_area_id_to_image_slot(area_id);
+    if (area_id == FLASH_AREA_IMAGE_PRIMARY(image_index)) {
+        return 0;
+    }
+    if (area_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
+        return 1;
+    }
+    return 255;
 }
