@@ -783,15 +783,15 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
 #else
     if ((fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index))
             && IS_ENCRYPTED(hdr)) {
-        rc = boot_enc_load(state->enc, image_index, hdr, fap, bs->enckey[1]);
+        rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs->enckey[1]);
         if (rc < 0) {
             return BOOT_EBADIMAGE;
         }
-        if (rc == 0 && boot_enc_set_key(state->enc, 1, bs->enckey[1])) {
+        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs->enckey[1])) {
             return BOOT_EBADIMAGE;
         }
     }
-    if (bootutil_img_validate(state->enc, image_index, hdr, fap, tmpbuf,
+    if (bootutil_img_validate(BOOT_CURR_ENC(state), image_index, hdr, fap, tmpbuf,
                               BOOT_TMPBUF_SZ, NULL, 0, NULL)) {
         return BOOT_EBADIMAGE;
     }
@@ -1094,7 +1094,7 @@ boot_copy_sector(struct boot_loader_state *state,
                         blk_sz = BOOT_TLV_OFF(hdr) - (off + bytes_copied);
                     }
                 }
-                boot_encrypt(state->enc, image_index, fap_src,
+                boot_encrypt(BOOT_CURR_ENC(state), image_index, fap_src,
                         (off + bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
                         blk_off, &buf[idx]);
             }
@@ -1479,14 +1479,14 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 
 #ifdef MCUBOOT_ENC_IMAGES
     if (IS_ENCRYPTED(boot_img_hdr(state, BOOT_SECONDARY_SLOT))) {
-        rc = boot_enc_load(state->enc, image_index,
+        rc = boot_enc_load(BOOT_CURR_ENC(state), image_index,
                 boot_img_hdr(state, BOOT_SECONDARY_SLOT),
                 fap_secondary_slot, bs->enckey[1]);
 
         if (rc < 0) {
             return BOOT_EBADIMAGE;
         }
-        if (rc == 0 && boot_enc_set_key(state->enc, 1, bs->enckey[1])) {
+        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs->enckey[1])) {
             return BOOT_EBADIMAGE;
         }
     }
@@ -1577,11 +1577,11 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 #ifdef MCUBOOT_ENC_IMAGES
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
-            rc = boot_enc_load(state->enc, image_index, hdr, fap, bs->enckey[0]);
+            rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs->enckey[0]);
             assert(rc >= 0);
 
             if (rc == 0) {
-                rc = boot_enc_set_key(state->enc, 0, bs->enckey[0]);
+                rc = boot_enc_set_key(BOOT_CURR_ENC(state), 0, bs->enckey[0]);
                 assert(rc == 0);
             } else {
                 rc = 0;
@@ -1601,11 +1601,11 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         hdr = boot_img_hdr(state, BOOT_SECONDARY_SLOT);
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT);
-            rc = boot_enc_load(state->enc, image_index, hdr, fap, bs->enckey[1]);
+            rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs->enckey[1]);
             assert(rc >= 0);
 
             if (rc == 0) {
-                rc = boot_enc_set_key(state->enc, 1, bs->enckey[1]);
+                rc = boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs->enckey[1]);
                 assert(rc == 0);
             } else {
                 rc = 0;
@@ -1642,7 +1642,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             }
 
             if (i != BOOT_ENC_KEY_SIZE) {
-                boot_enc_set_key(state->enc, slot, bs->enckey[slot]);
+                boot_enc_set_key(BOOT_CURR_ENC(state), slot, bs->enckey[slot]);
             }
         }
 #endif
@@ -2284,7 +2284,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
          * another images). Therefore, mark them as invalid to force their reload
          * by boot_enc_load().
          */
-        boot_enc_zeroize(state->enc);
+        boot_enc_zeroize(BOOT_CURR_ENC(state));
 #endif
 
         image_index = BOOT_CURR_IMG(state);
@@ -2330,7 +2330,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
          * another images). Therefore, mark them as invalid to force their reload
          * by boot_enc_load().
          */
-        boot_enc_zeroize(state->enc);
+        boot_enc_zeroize(BOOT_CURR_ENC(state));
 #endif /* MCUBOOT_ENC_IMAGES */
 
         /* Indicate that swap is not aborted */

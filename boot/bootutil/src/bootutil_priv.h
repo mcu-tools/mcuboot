@@ -59,6 +59,9 @@ struct flash_area;
 
 #define BOOT_TMPBUF_SZ  256
 
+/** Number of image slots in flash; currently limited to two. */
+#define BOOT_NUM_SLOTS                  2
+
 /*
  * Maintain state of copy progress.
  */
@@ -69,7 +72,7 @@ struct boot_status {
     uint8_t swap_type;    /* The type of swap in effect */
     uint32_t swap_size;   /* Total size of swapped image */
 #ifdef MCUBOOT_ENC_IMAGES
-    uint8_t enckey[2][BOOT_ENC_KEY_SIZE];
+    uint8_t enckey[BOOT_NUM_SLOTS][BOOT_ENC_KEY_SIZE];
 #endif
 };
 
@@ -171,9 +174,6 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #error "Too few sectors, please increase BOOT_MAX_IMG_SECTORS to at least 32"
 #endif
 
-/** Number of image slots in flash; currently limited to two. */
-#define BOOT_NUM_SLOTS                  2
-
 /** Maximum number of image sectors supported by the bootloader. */
 #define BOOT_STATUS_STATE_COUNT         3
 #define BOOT_STATUS_MAX_ENTRIES         BOOT_MAX_IMG_SECTORS
@@ -217,11 +217,7 @@ struct boot_loader_state {
     uint8_t write_sz;
 
 #if defined(MCUBOOT_ENC_IMAGES)
-    /*
-     * TODO: This could later be expanded to use a different set of keys
-     * per image.
-     */
-    struct enc_key_data enc[BOOT_NUM_SLOTS];
+    struct enc_key_data enc[BOOT_IMAGE_NUMBER][BOOT_NUM_SLOTS];
 #endif
 
 #if (BOOT_IMAGE_NUMBER > 1)
@@ -267,8 +263,10 @@ int boot_is_version_sufficient(struct image_version *req,
 /* These are macros so they can be used as lvalues. */
 #if (BOOT_IMAGE_NUMBER > 1)
 #define BOOT_CURR_IMG(state) ((state)->curr_img_idx)
+#define BOOT_CURR_ENC(state) ((state)->enc[BOOT_CURR_IMG(state)])
 #else
 #define BOOT_CURR_IMG(state) 0
+#define BOOT_CURR_ENC(state) ((state)->enc[0])
 #endif
 #define BOOT_IMG(state, slot) ((state)->imgs[BOOT_CURR_IMG(state)][(slot)])
 #define BOOT_IMG_AREA(state, slot) (BOOT_IMG(state, slot).area)
