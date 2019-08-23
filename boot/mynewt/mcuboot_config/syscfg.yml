@@ -19,6 +19,9 @@
 # Package: boot/mynewt/mcuboot_config
 
 syscfg.defs:
+    BOOTUTIL_IMAGE_NUMBER:
+        description: 'Number of images for multi-image (0 and 1 mean single image).'
+        value: 0
     BOOTUTIL_VALIDATE_SLOT0:
         description: 'Validate image at slot 0 on each boot.'
         value: 0
