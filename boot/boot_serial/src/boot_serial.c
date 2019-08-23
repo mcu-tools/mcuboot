@@ -62,7 +62,7 @@
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #define BOOT_SERIAL_INPUT_MAX   512
-#define BOOT_SERIAL_OUT_MAX	80
+#define BOOT_SERIAL_OUT_MAX     128
 
 #ifdef __ZEPHYR__
 /* base64 lib encodes data to null-terminated string */
@@ -73,6 +73,16 @@ MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #define ntohs(x) sys_be16_to_cpu(x)
 #define htons(x) sys_cpu_to_be16(x)
+#endif
+
+#ifndef BOOT_IMAGE_NUMBER
+#define BOOT_IMAGE_NUMBER MCUBOOT_IMAGE_NUMBER
+#endif
+
+#if (BOOT_IMAGE_NUMBER > 1)
+#define IMAGES_ITER(x) for ((x) = 0; (x) < BOOT_IMAGE_NUMBER; ++(x))
+#else
+#define IMAGES_ITER(x)
 #endif
 
 static char in_buf[BOOT_SERIAL_INPUT_MAX + 1];
@@ -163,36 +173,46 @@ bs_list(char *buf, int len)
     CborEncoder image;
     struct image_header hdr;
     uint8_t tmpbuf[64];
-    int i, area_id;
+    int slot, area_id;
     const struct flash_area *fap;
+    uint8_t image_index;
 
     cbor_encoder_create_map(&bs_root, &bs_rsp, CborIndefiniteLength);
     cbor_encode_text_stringz(&bs_rsp, "images");
     cbor_encoder_create_array(&bs_rsp, &images, CborIndefiniteLength);
-    for (i = 0; i < 2; i++) {
-        area_id = flash_area_id_from_image_slot(i);
-        if (flash_area_open(area_id, &fap)) {
-            continue;
-        }
+    image_index = 0;
+    IMAGES_ITER(image_index) {
+        for (slot = 0; slot < 2; slot++) {
+            area_id = flash_area_id_from_multi_image_slot(image_index, slot);
+            if (flash_area_open(area_id, &fap)) {
+                continue;
+            }
 
-        flash_area_read(fap, 0, &hdr, sizeof(hdr));
+            flash_area_read(fap, 0, &hdr, sizeof(hdr));
 
-        if (hdr.ih_magic != IMAGE_MAGIC ||
-          bootutil_img_validate(NULL, 0, &hdr, fap, tmpbuf, sizeof(tmpbuf),
-                                NULL, 0, NULL)) {
+            if (hdr.ih_magic != IMAGE_MAGIC ||
+              bootutil_img_validate(NULL, 0, &hdr, fap, tmpbuf, sizeof(tmpbuf),
+                                    NULL, 0, NULL)) {
+                flash_area_close(fap);
+                continue;
+            }
             flash_area_close(fap);
-            continue;
+
+            cbor_encoder_create_map(&images, &image, CborIndefiniteLength);
+
+#if (BOOT_IMAGE_NUMBER > 1)
+            cbor_encode_text_stringz(&image, "image");
+            cbor_encode_int(&image, image_index);
+#endif
+
+            cbor_encode_text_stringz(&image, "slot");
+            cbor_encode_int(&image, slot);
+            cbor_encode_text_stringz(&image, "version");
+
+            bs_list_img_ver((char *)tmpbuf, sizeof(tmpbuf), &hdr.ih_ver);
+            cbor_encode_text_stringz(&image, (char *)tmpbuf);
+            cbor_encoder_close_container(&images, &image);
         }
-        flash_area_close(fap);
-
-        cbor_encoder_create_map(&images, &image, CborIndefiniteLength);
-        cbor_encode_text_stringz(&image, "slot");
-        cbor_encode_int(&image, i);
-        cbor_encode_text_stringz(&image, "version");
-
-        bs_list_img_ver((char *)tmpbuf, sizeof(tmpbuf), &hdr.ih_ver);
-        cbor_encode_text_stringz(&image, (char *)tmpbuf);
-        cbor_encoder_close_container(&images, &image);
     }
     cbor_encoder_close_container(&bs_rsp, &images);
     cbor_encoder_close_container(&bs_root, &bs_rsp);
@@ -214,6 +234,7 @@ bs_upload(char *buf, int len)
     size_t img_blen = 0;
     uint8_t rem_bytes;
     long long int data_len = UINT_MAX;
+    int img_num;
     size_t slen;
     char name_str[8];
     const struct flash_area *fap = NULL;
@@ -224,11 +245,13 @@ bs_upload(char *buf, int len)
 #endif
 
     memset(img_data, 0, sizeof(img_data));
+    img_num = 0;
 
     /*
      * Expected data format.
      * {
-     *   "data":<img_data>
+     *   "image":<image number in a multi-image set (OPTIONAL)>
+     *   "data":<image data>
      *   "len":<image len>
      *   "off":<current offset of image data>
      * }
@@ -306,6 +329,20 @@ bs_upload(char *buf, int len)
             if (cbor_value_advance(&value)) {
                 goto out_invalid_data;
             }
+        } else if (!strcmp(name_str, "image")) {
+            /*
+             * In a multi-image system, image number to upload to, if not
+             * present will upload to slot 0 of image set 0.
+             */
+            if (value.type != CborIntegerType) {
+                goto out_invalid_data;
+            }
+            if (cbor_value_get_int(&value, &img_num)) {
+                goto out_invalid_data;
+            }
+            if (cbor_value_advance(&value)) {
+                goto out_invalid_data;
+            }
         } else {
             /*
              * Unknown keys.
@@ -322,7 +359,7 @@ bs_upload(char *buf, int len)
         goto out_invalid_data;
     }
 
-    rc = flash_area_open(flash_area_id_from_image_slot(0), &fap);
+    rc = flash_area_open(flash_area_id_from_multi_image_slot(img_num, 0), &fap);
     if (rc) {
         rc = MGMT_ERR_EINVAL;
         goto out;
@@ -581,33 +618,34 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
         return -1;
     }
 #endif
+
     *out_off += rc;
-
-    if (*out_off > sizeof(uint16_t)) {
-        len = ntohs(*(uint16_t *)out);
-        if (len != *out_off - sizeof(uint16_t)) {
-            return 0;
-        }
-
-        if (len > *out_off - sizeof(uint16_t)) {
-            len = *out_off - sizeof(uint16_t);
-        }
-
-        out += sizeof(uint16_t);
-#ifdef __ZEPHYR__
-        crc = crc16(out, len, CRC_CITT_POLYMINAL, CRC16_INITIAL_CRC, true);
-#else
-        crc = crc16_ccitt(CRC16_INITIAL_CRC, out, len);
-#endif
-        if (crc || len <= sizeof(crc)) {
-            return 0;
-        }
-        *out_off -= sizeof(crc);
-        out[*out_off] = '\0';
-
-        return 1;
+    if (*out_off <= sizeof(uint16_t)) {
+        return 0;
     }
-    return 0;
+
+    len = ntohs(*(uint16_t *)out);
+    if (len != *out_off - sizeof(uint16_t)) {
+        return 0;
+    }
+
+    if (len > *out_off - sizeof(uint16_t)) {
+        len = *out_off - sizeof(uint16_t);
+    }
+
+    out += sizeof(uint16_t);
+#ifdef __ZEPHYR__
+    crc = crc16(out, len, CRC_CITT_POLYMINAL, CRC16_INITIAL_CRC, true);
+#else
+    crc = crc16_ccitt(CRC16_INITIAL_CRC, out, len);
+#endif
+    if (crc || len <= sizeof(crc)) {
+        return 0;
+    }
+    *out_off -= sizeof(crc);
+    out[*out_off] = '\0';
+
+    return 1;
 }
 
 /*
