@@ -103,7 +103,7 @@ class Image():
     def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE,
                  pad_header=False, pad=False, align=1, slot_size=0,
                  max_sectors=DEFAULT_MAX_SECTORS, overwrite_only=False,
-                 endian="little"):
+                 endian="little", load_addr=0):
         self.version = version or versmod.decode_version("0")
         self.header_size = header_size
         self.pad_header = pad_header
@@ -114,15 +114,17 @@ class Image():
         self.overwrite_only = overwrite_only
         self.endian = endian
         self.base_addr = None
+        self.load_addr = 0 if load_addr is None else load_addr
         self.payload = []
 
     def __repr__(self):
-        return "<Image version={}, header_size={}, base_addr={}, \
+        return "<Image version={}, header_size={}, base_addr={}, load_addr={}, \
                 align={}, slot_size={}, max_sectors={}, overwrite_only={}, \
                 endian={} format={}, payloadlen=0x{:x}>".format(
                     self.version,
                     self.header_size,
                     self.base_addr if self.base_addr is not None else "N/A",
+                    self.load_addr,
                     self.align,
                     self.slot_size,
                     self.max_sectors,
@@ -292,7 +294,7 @@ class Image():
         assert struct.calcsize(fmt) == IMAGE_HEADER_SIZE
         header = struct.pack(fmt,
                 IMAGE_MAGIC,
-                0, # LoadAddr
+                self.load_addr,
                 self.header_size,
                 protected_tlv_size,  # TLV Info header + Dependency TLVs
                 len(self.payload) - self.header_size, # ImageSz
