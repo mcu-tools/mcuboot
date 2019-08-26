@@ -243,6 +243,36 @@ boot_status_source(struct boot_loader_state *state)
 }
 
 /*
+ * Locate the TLVs in an image.
+ *
+ * @param off Address of the first TLV (after TLV info)
+ * @param end Address where TLV area ends
+ *
+ * Returns 0 on success.
+ */
+int
+boot_find_tlv_offs(const struct image_header *hdr, const struct flash_area *fap,
+        uint32_t *off, uint32_t *end)
+{
+    struct image_tlv_info info;
+    uint32_t off_;
+
+    off_ = BOOT_TLV_OFF(hdr);
+
+    if (flash_area_read(fap, off_, &info, sizeof(info))) {
+        return BOOT_EFLASH;
+    }
+
+    if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
+        return BOOT_EBADIMAGE;
+    }
+
+    *end = off_ + info.it_tlv_tot;
+    *off = off_ + sizeof(info);
+    return 0;
+}
+
+/*
  * Compute the total size of the given image.  Includes the size of
  * the TLVs.
  */
@@ -251,8 +281,7 @@ static int
 boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
 {
     const struct flash_area *fap;
-    struct image_tlv_info info;
-    uint32_t tlv_off;
+    uint32_t off;
     int area_id;
     int rc;
 
@@ -267,17 +296,10 @@ boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
         goto done;
     }
 
-    tlv_off = BOOT_TLV_OFF(boot_img_hdr(state, slot));
-    rc = flash_area_read(fap, tlv_off, &info, sizeof(info));
+    rc = boot_find_tlv_offs(boot_img_hdr(state, slot), fap, &off, size);
     if (rc != 0) {
-        rc = BOOT_EFLASH;
         goto done;
     }
-    if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
-        rc = BOOT_EBADIMAGE;
-        goto done;
-    }
-    *size = tlv_off + info.it_tlv_tot;
     rc = 0;
 
 done:
@@ -1821,7 +1843,6 @@ static int
 boot_verify_all_dependency(struct boot_loader_state *state, uint32_t slot)
 {
     const struct flash_area *fap;
-    struct image_tlv_info info;
     struct image_tlv tlv;
     struct image_dependency dep;
     uint32_t off;
@@ -1837,21 +1858,10 @@ boot_verify_all_dependency(struct boot_loader_state *state, uint32_t slot)
         goto done;
     }
 
-    off = BOOT_TLV_OFF(boot_img_hdr(state, slot));
-
-    /* The TLV area always starts with an image_tlv_info structure. */
-    rc = flash_area_read(fap, off, &info, sizeof(info));
+    rc = boot_find_tlv_offs(boot_img_hdr(state, slot), fap, &off, &end);
     if (rc != 0) {
-        rc = BOOT_EFLASH;
         goto done;
     }
-
-    if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
-        rc = BOOT_EBADIMAGE;
-        goto done;
-    }
-    end = off + info.it_tlv_tot;
-    off += sizeof(info);
 
     /* Traverse through all of the TLVs to find the dependency TLVs. */
     for (; off < end; off += sizeof(tlv) + tlv.it_len) {
