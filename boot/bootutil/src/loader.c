@@ -1033,6 +1033,7 @@ boot_copy_sector(struct boot_loader_state *state,
     int rc;
 #ifdef MCUBOOT_ENC_IMAGES
     uint32_t off;
+    uint32_t tlv_off;
     size_t blk_off;
     struct image_header *hdr;
     uint16_t idx;
@@ -1082,12 +1083,13 @@ boot_copy_sector(struct boot_loader_state *state,
                 } else {
                     blk_off = ((off + bytes_copied) - hdr->ih_hdr_size) & 0xf;
                 }
-                if (off + bytes_copied + chunk_sz > BOOT_TLV_OFF(hdr)) {
+                tlv_off = BOOT_TLV_OFF(hdr);
+                if (off + bytes_copied + chunk_sz > tlv_off) {
                     /* do not decrypt TLVs */
-                    if (off + bytes_copied >= BOOT_TLV_OFF(hdr)) {
+                    if (off + bytes_copied >= tlv_off) {
                         blk_sz = 0;
                     } else {
-                        blk_sz = BOOT_TLV_OFF(hdr) - (off + bytes_copied);
+                        blk_sz = tlv_off - (off + bytes_copied);
                     }
                 }
                 boot_encrypt(BOOT_CURR_ENC(state), image_index, fap_src,
