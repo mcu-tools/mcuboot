@@ -263,10 +263,13 @@ int boot_is_version_sufficient(struct image_version *req,
 /* These are macros so they can be used as lvalues. */
 #if (BOOT_IMAGE_NUMBER > 1)
 #define BOOT_CURR_IMG(state) ((state)->curr_img_idx)
-#define BOOT_CURR_ENC(state) ((state)->enc[BOOT_CURR_IMG(state)])
 #else
 #define BOOT_CURR_IMG(state) 0
-#define BOOT_CURR_ENC(state) ((state)->enc[0])
+#endif
+#ifdef MCUBOOT_ENC_IMAGES
+#define BOOT_CURR_ENC(state) ((state)->enc[BOOT_CURR_IMG(state)])
+#else
+#define BOOT_CURR_ENC(state) NULL
 #endif
 #define BOOT_IMG(state, slot) ((state)->imgs[BOOT_CURR_IMG(state)][(slot)])
 #define BOOT_IMG_AREA(state, slot) (BOOT_IMG(state, slot).area)

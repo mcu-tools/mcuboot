@@ -71,6 +71,14 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     (void)hdr_size;
 #endif
 
+#ifdef MCUBOOT_ENC_IMAGES
+    /* Encrypted images only exist in the secondary slot */
+    if (MUST_DECRYPT(fap, image_index, hdr) &&
+            !boot_enc_valid(enc_state, image_index, fap)) {
+        return -1;
+    }
+#endif
+
     bootutil_sha256_init(&sha256_ctx);
 
     /* in some cases (split image) the hash is seeded with data from
@@ -78,14 +86,6 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     if (seed && (seed_len > 0)) {
         bootutil_sha256_update(&sha256_ctx, seed, seed_len);
     }
-
-#ifdef MCUBOOT_ENC_IMAGES
-    /* Encrypted images only exist in the secondary slot */
-    if (fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index) &&
-            IS_ENCRYPTED(hdr) && !boot_enc_valid(enc_state, image_index, fap)) {
-        return -1;
-    }
-#endif
 
     /* Hash is computed over image header and image itself. */
     hdr_size = hdr->ih_hdr_size;
@@ -120,8 +120,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
             return rc;
         }
 #ifdef MCUBOOT_ENC_IMAGES
-        if (fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index) &&
-                IS_ENCRYPTED(hdr) && off >= hdr_size) {
+        if (MUST_DECRYPT(fap, image_index, hdr) && off >= hdr_size) {
             blk_off = (off - hdr_size) & 0xf;
             boot_encrypt(enc_state, image_index, fap, off - hdr_size, blk_sz,
                     blk_off, tmp_buf);
