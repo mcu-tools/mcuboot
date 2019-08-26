@@ -126,6 +126,8 @@ struct image_tlv {
 };
 
 #define IS_ENCRYPTED(hdr) ((hdr)->ih_flags & IMAGE_F_ENCRYPTED)
+#define MUST_DECRYPT(fap, idx, hdr) \
+    ((fap)->fa_id == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
 
 #ifdef __ZEPHYR__
 BUILD_ASSERT_MSG(sizeof(struct image_header) == IMAGE_HEADER_SIZE,

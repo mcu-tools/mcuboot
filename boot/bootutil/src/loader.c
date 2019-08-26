@@ -771,18 +771,13 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
     (void)state;
 #endif
 
-    image_index = BOOT_CURR_IMG(state);
-
-#ifndef MCUBOOT_ENC_IMAGES
     (void)bs;
     (void)rc;
-    if (bootutil_img_validate(NULL, image_index, hdr, fap, tmpbuf,
-                              BOOT_TMPBUF_SZ, NULL, 0, NULL)) {
-        return BOOT_EBADIMAGE;
-    }
-#else
-    if ((fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index))
-            && IS_ENCRYPTED(hdr)) {
+
+    image_index = BOOT_CURR_IMG(state);
+
+#ifdef MCUBOOT_ENC_IMAGES
+    if (MUST_DECRYPT(fap, image_index, hdr)) {
         rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs->enckey[1]);
         if (rc < 0) {
             return BOOT_EBADIMAGE;
@@ -791,11 +786,12 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
             return BOOT_EBADIMAGE;
         }
     }
+#endif
+
     if (bootutil_img_validate(BOOT_CURR_ENC(state), image_index, hdr, fap, tmpbuf,
                               BOOT_TMPBUF_SZ, NULL, 0, NULL)) {
         return BOOT_EBADIMAGE;
     }
-#endif
 
     return 0;
 }
