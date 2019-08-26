@@ -211,7 +211,6 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
     uint32_t off;
     uint32_t end;
     int sha256_valid = 0;
-    struct image_tlv_info info;
 #ifdef EXPECTED_SIG_TLV
     int valid_signature = 0;
     int key_id = -1;
@@ -231,18 +230,10 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
         memcpy(out_hash, hash, 32);
     }
 
-    /* The TLVs come after the image. */
-    off = BOOT_TLV_OFF(hdr);
-
-    rc = flash_area_read(fap, off, &info, sizeof(info));
+    rc = boot_find_tlv_offs(hdr, fap, &off, &end);
     if (rc) {
         return rc;
     }
-    if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
-        return -1;
-    }
-    end = off + info.it_tlv_tot;
-    off += sizeof(info);
 
     /*
      * Traverse through all of the TLVs, performing any checks we know
