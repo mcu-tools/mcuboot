@@ -947,11 +947,7 @@ boot_validated_swap_type(struct boot_loader_state *state,
 {
     int swap_type;
 
-#if (BOOT_IMAGE_NUMBER == 1)
-    swap_type = boot_swap_type();
-#else
     swap_type = boot_swap_type_multi(BOOT_CURR_IMG(state));
-#endif
     switch (swap_type) {
     case BOOT_SWAP_TYPE_TEST:
     case BOOT_SWAP_TYPE_PERM:

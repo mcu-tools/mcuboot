@@ -580,13 +580,6 @@ boot_swap_type_multi(int image_index)
     return BOOT_SWAP_TYPE_NONE;
 }
 
-int
-boot_swap_type(void)
-{
-    return boot_swap_type_multi(0);
-}
-
-
 /**
  * Marks the image in the secondary slot as pending.  On the next reboot,
  * the system will perform a one-time boot of the the secondary slot image.
