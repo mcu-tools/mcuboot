@@ -251,10 +251,6 @@ int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
                        const uint8_t *enckey);
 int boot_read_enc_key(int image_index, uint8_t slot, uint8_t *enckey);
 #endif
-#if (BOOT_IMAGE_NUMBER > 1)
-int boot_is_version_sufficient(struct image_version *req,
-                               struct image_version *ver);
-#endif
 int boot_find_tlv_offs(const struct image_header *hdr,
                        const struct flash_area *fap,
                        uint32_t *off, uint32_t *end);
