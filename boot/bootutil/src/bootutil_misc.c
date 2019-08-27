@@ -580,12 +580,15 @@ boot_swap_type_multi(int image_index)
     return BOOT_SWAP_TYPE_NONE;
 }
 
+/*
+ * This function is not used by the bootloader itself, but its required API
+ * by external tooling like mcumgr.
+ */
 int
 boot_swap_type(void)
 {
     return boot_swap_type_multi(0);
 }
-
 
 /**
  * Marks the image in the secondary slot as pending.  On the next reboot,
