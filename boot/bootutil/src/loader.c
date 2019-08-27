@@ -1784,6 +1784,39 @@ out:
 
 #if (BOOT_IMAGE_NUMBER > 1)
 /**
+ * Check if the version of the image is not older than required.
+ *
+ * @param req         Required minimal image version.
+ * @param ver         Version of the image to be checked.
+ *
+ * @return            0 if the version is sufficient, nonzero otherwise.
+ */
+static int
+boot_is_version_sufficient(struct image_version *req,
+                           struct image_version *ver)
+{
+    if (ver->iv_major > req->iv_major) {
+        return 0;
+    }
+    if (ver->iv_major < req->iv_major) {
+        return BOOT_EBADVERSION;
+    }
+    /* The major version numbers are equal. */
+    if (ver->iv_minor > req->iv_minor) {
+        return 0;
+    }
+    if (ver->iv_minor < req->iv_minor) {
+        return BOOT_EBADVERSION;
+    }
+    /* The minor version numbers are equal. */
+    if (ver->iv_revision < req->iv_revision) {
+        return BOOT_EBADVERSION;
+    }
+
+    return 0;
+}
+
+/**
  * Check the image dependency whether it is satisfied and modify
  * the swap type if necessary.
  *
