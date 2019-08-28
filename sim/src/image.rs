@@ -191,9 +191,11 @@ impl ImagesBuilder {
         // upgrades without fails, counts number of flash operations
         let total_count = match images.run_basic_upgrade(permanent) {
             Ok(v)  => v,
-            Err(_) => {
-                panic!("Unable to perform basic upgrade");
-            },
+            Err(_) =>
+                match deps.upgrades[0] {
+                    UpgradeInfo::Held => 0,
+                    UpgradeInfo::Upgraded => panic!("Unable to perform basic upgrade"),
+                },
         };
 
         images.total_count = Some(total_count);
