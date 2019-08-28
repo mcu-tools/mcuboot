@@ -1823,8 +1823,8 @@ boot_is_version_sufficient(struct image_version *req,
  * @return                  0 on success; nonzero on failure.
  */
 static int
-boot_verify_single_dependency(struct boot_loader_state *state,
-                              struct image_dependency *dep)
+boot_verify_slot_dependency(struct boot_loader_state *state,
+                            struct image_dependency *dep)
 {
     struct image_version *dep_version;
     size_t dep_slot;
@@ -1869,7 +1869,7 @@ boot_verify_single_dependency(struct boot_loader_state *state,
  * @return                  0 on success; nonzero on failure.
  */
 static int
-boot_verify_all_dependency(struct boot_loader_state *state, uint32_t slot)
+boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
 {
     const struct flash_area *fap;
     struct image_tlv tlv;
@@ -1901,9 +1901,7 @@ boot_verify_all_dependency(struct boot_loader_state *state, uint32_t slot)
          }
 
         if (tlv.it_type == IMAGE_TLV_DEPENDENCY) {
-            if (!dep_tlvs_found) {
-                dep_tlvs_found = true;
-            }
+            dep_tlvs_found = true;
 
             if (tlv.it_len != sizeof(dep)) {
                 rc = BOOT_EBADIMAGE;
@@ -1916,8 +1914,13 @@ boot_verify_all_dependency(struct boot_loader_state *state, uint32_t slot)
                 goto done;
             }
 
+            if (dep.image_id >= BOOT_IMAGE_NUMBER) {
+                rc = BOOT_EBADARGS;
+                goto done;
+            }
+
             /* Verify dependency and modify the swap type if not satisfied. */
-            rc = boot_verify_single_dependency(state, &dep);
+            rc = boot_verify_slot_dependency(state, &dep);
             if (rc != 0) {
                 /* Dependency not satisfied. */
                 goto done;
@@ -1942,54 +1945,43 @@ done:
 }
 
 /**
- * Verify whether the image dependencies in the TLV area are
- * all satisfied and modify the swap type if necessary.
- *
- * @return                  0 if all dependencies are satisfied,
- *                          nonzero otherwise.
- */
-static int
-boot_verify_single_image_dependency(struct boot_loader_state *state)
-{
-    size_t slot;
-
-    /* Determine the source of the dependency TLVs. Those dependencies have to
-     * be checked which belong to the image that will be located in the primary
-     * slot after the firmware update process.
-     */
-    if (BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_NONE &&
-        BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_FAIL) {
-        slot = BOOT_SECONDARY_SLOT;
-    } else {
-        slot = BOOT_PRIMARY_SLOT;
-    }
-
-    return boot_verify_all_dependency(state, slot);
-}
-
-/**
  * Iterate over all the images and verify whether the image dependencies in the
  * TLV area are all satisfied and update the related swap type if necessary.
  */
-static void
-boot_verify_all_image_dependency(struct boot_loader_state *state)
+static int
+boot_verify_dependencies(struct boot_loader_state *state)
 {
     int rc;
+    uint8_t slot;
 
     BOOT_CURR_IMG(state) = 0;
     while (BOOT_CURR_IMG(state) < BOOT_IMAGE_NUMBER) {
-        rc = boot_verify_single_image_dependency(state);
+        if (BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_NONE &&
+            BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_FAIL) {
+            slot = BOOT_SECONDARY_SLOT;
+        } else {
+            slot = BOOT_PRIMARY_SLOT;
+        }
+
+        rc = boot_verify_slot_dependencies(state, slot);
         if (rc == 0) {
             /* All dependencies've been satisfied, continue with next image. */
             BOOT_CURR_IMG(state)++;
         } else if (rc == BOOT_EBADVERSION) {
-            /* Dependency check needs to be restarted. */
-            BOOT_CURR_IMG(state) = 0;
+            /* Cannot upgrade due to non-met dependencies, so disable all
+             * image upgrades.
+             */
+            for (int idx = 0; idx < BOOT_IMAGE_NUMBER; idx++) {
+                BOOT_CURR_IMG(state) = idx;
+                BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
+            }
+            break;
         } else {
             /* Other error happened, images are inconsistent */
-            return;
+            return rc;
         }
     }
+    return rc;
 }
 #endif /* (BOOT_IMAGE_NUMBER > 1) */
 
@@ -2298,6 +2290,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     int rc;
     int fa_id;
     int image_index;
+    bool has_upgrade;
 
     /* The array of slot sectors are defined here (as opposed to file scope) so
      * that they don't get allocated for non-boot-loader apps.  This is
@@ -2309,6 +2302,11 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     TARGET_STATIC boot_sector_t scratch_sectors[BOOT_MAX_IMG_SECTORS];
 
     memset(state, 0, sizeof(struct boot_loader_state));
+    has_upgrade = false;
+
+#if (BOOT_IMAGE_NUMBER == 1)
+    (void)has_upgrade;
+#endif
 
     /* Iterate over all the images. By the end of the loop the swap type has
      * to be determined for each image and all aborted swaps have to be
@@ -2346,13 +2344,28 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 
         /* Determine swap type and complete swap if it has been aborted. */
         boot_prepare_image_for_update(state, &bs);
+
+        if (BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_NONE) {
+            has_upgrade = true;
+        }
     }
 
 #if (BOOT_IMAGE_NUMBER > 1)
-    /* Iterate over all the images and verify whether the image dependencies
-     * are all satisfied and update swap type if necessary.
-     */
-    boot_verify_all_image_dependency(state);
+    if (has_upgrade) {
+        /* Iterate over all the images and verify whether the image dependencies
+         * are all satisfied and update swap type if necessary.
+         */
+        rc = boot_verify_dependencies(state);
+        if (rc == BOOT_EBADVERSION) {
+            /*
+             * It was impossible to upgrade because the expected dependency version
+             * was not available. Here we already changed the swap_type so that
+             * instead of asserting the bootloader, we continue and no upgrade is
+             * performed.
+             */
+            rc = 0;
+        }
+    }
 #endif
 
     /* Iterate over all the images. At this point there are no aborted swaps
@@ -2462,11 +2475,12 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     /* Always boot from the primary slot of Image 0. */
     BOOT_CURR_IMG(state) = 0;
 #endif
+
     rsp->br_flash_dev_id = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT)->fa_device_id;
     rsp->br_image_off = boot_img_slot_off(state, BOOT_PRIMARY_SLOT);
     rsp->br_hdr = boot_img_hdr(state, BOOT_PRIMARY_SLOT);
 
- out:
+out:
     IMAGES_ITER(BOOT_CURR_IMG(state)) {
         flash_area_close(BOOT_SCRATCH_AREA(state));
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
