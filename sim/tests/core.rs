@@ -72,14 +72,15 @@ pub static TEST_DEPS: &[DepTest] = &[
         upgrades: [UpgradeInfo::Upgraded, UpgradeInfo::Upgraded],
     },
 
-    // If all of the dependencies are unmet, there should be no upgrades.
-    // TODO: Disabled because it fails.
-    /*
+    DepTest {
+        depends: [DepType::Correct, DepType::Correct],
+        upgrades: [UpgradeInfo::Upgraded, UpgradeInfo::Upgraded],
+    },
+
     DepTest {
         depends: [DepType::Newer, DepType::Newer],
         upgrades: [UpgradeInfo::Held, UpgradeInfo::Held],
     },
-    */
 ];
 
 /// Counter for the image number.
