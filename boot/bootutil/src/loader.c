@@ -1829,11 +1829,13 @@ boot_verify_slot_dependency(struct boot_loader_state *state,
     struct image_version *dep_version;
     size_t dep_slot;
     int rc;
+    uint8_t swap_type;
 
     /* Determine the source of the image which is the subject of
      * the dependency and get it's version. */
-    dep_slot = (state->swap_type[dep->image_id] != BOOT_SWAP_TYPE_NONE) ?
-                BOOT_SECONDARY_SLOT : BOOT_PRIMARY_SLOT;
+    swap_type = state->swap_type[dep->image_id];
+    dep_slot = (swap_type == BOOT_SWAP_TYPE_NONE || swap_type == BOOT_SWAP_TYPE_FAIL) ?
+               BOOT_PRIMARY_SLOT : BOOT_SECONDARY_SLOT;
     dep_version = &state->imgs[dep->image_id][dep_slot].hdr.ih_ver;
 
     rc = boot_is_version_sufficient(&dep->image_min_version, dep_version);
