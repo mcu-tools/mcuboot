@@ -38,6 +38,7 @@ use crate::depends::{
     BoringDep,
     Depender,
     DepTest,
+    DepType,
     PairDep,
     UpgradeInfo,
 };
@@ -167,7 +168,10 @@ impl ImagesBuilder {
                 Box::new(BoringDep(image_num))
             };
             let primaries = install_image(&mut flash, &slots[0], 42784, &*dep, false);
-            let upgrades = install_image(&mut flash, &slots[1], 46928, &*dep, false);
+            let upgrades = match deps.depends[image_num] {
+                DepType::NoUpgrade => install_no_image(),
+                _ => install_image(&mut flash, &slots[1], 46928, &*dep, false)
+            };
             OneImage {
                 slots: slots,
                 primaries: primaries,
@@ -1225,6 +1229,14 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
             plain: copy,
             cipher: enc_copy,
         }
+    }
+}
+
+/// Install no image.  This is used when no upgrade happens.
+fn install_no_image() -> ImageData {
+    ImageData {
+        plain: vec![],
+        cipher: None,
     }
 }
 

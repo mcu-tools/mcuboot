@@ -54,9 +54,14 @@ pub enum DepType {
     Nothing,
     /// Provide dependency information that matches the other image.
     Correct,
+    /// Provide a dependency that matches the old version of the other
+    /// image.
+    OldCorrect,
     /// Provide dependency information describing something newer than the
     /// other image.
     Newer,
+    /// Don't provide an upgrade image at all for this image
+    NoUpgrade,
 }
 
 /// Describes what our expectation is for an upgrade.
@@ -101,14 +106,24 @@ impl Depender for PairDep {
     }
 
     fn my_deps(&self, _offset: usize, slot: usize) -> Vec<ImageVersion> {
-        match self.test.depends[self.number] {
-            DepType::Nothing => vec![],
-            DepType::Correct => vec![
-                ImageVersion::new_synthetic(self.other_id(), slot as u8, 0)
-            ],
-            DepType::Newer => vec![
-                ImageVersion::new_synthetic(self.other_id(), slot as u8, 1)
-            ],
+        // For now, don't put any dependencies in slot zero.  They could be
+        // added here if we someday implement checking these.
+        if slot == 0 {
+            vec![]
+        } else {
+            match self.test.depends[self.number] {
+                DepType::Nothing => vec![],
+                DepType::NoUpgrade => panic!("Shouldn't get to this point"),
+                DepType::Correct => vec![
+                    ImageVersion::new_synthetic(self.other_id(), slot as u8, 0)
+                ],
+                DepType::OldCorrect => vec![
+                    ImageVersion::new_synthetic(self.other_id(), 0, 0)
+                ],
+                DepType::Newer => vec![
+                    ImageVersion::new_synthetic(self.other_id(), slot as u8, 1)
+                ],
+            }
         }
     }
 
