@@ -72,15 +72,32 @@ pub static TEST_DEPS: &[DepTest] = &[
         upgrades: [UpgradeInfo::Upgraded, UpgradeInfo::Upgraded],
     },
 
+    // If all of the dependencies are met, we should also upgrade.
     DepTest {
         depends: [DepType::Correct, DepType::Correct],
         upgrades: [UpgradeInfo::Upgraded, UpgradeInfo::Upgraded],
     },
 
+    // If none of the dependencies are met, the images should be held.
     DepTest {
         depends: [DepType::Newer, DepType::Newer],
         upgrades: [UpgradeInfo::Held, UpgradeInfo::Held],
     },
+
+    // If the first image is not met, we should hold back on the
+    // dependencies (it is not well defined what the correct behavior is
+    // here, it could also be correct to upgrade only the second image).
+    DepTest {
+        depends: [DepType::Newer, DepType::Correct],
+        upgrades: [UpgradeInfo::Held, UpgradeInfo::Held],
+    },
+
+    // Test the variant in the other direction.
+    DepTest {
+        depends: [DepType::Correct, DepType::Newer],
+        upgrades: [UpgradeInfo::Held, UpgradeInfo::Held],
+    },
+
 ];
 
 /// Counter for the image number.
