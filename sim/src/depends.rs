@@ -101,7 +101,7 @@ impl Depender for PairDep {
     }
 
     fn my_deps(&self, _offset: usize, slot: usize) -> Vec<ImageVersion> {
-        match self.test.depends[slot] {
+        match self.test.depends[self.number] {
             DepType::Nothing => vec![],
             DepType::Correct => vec![
                 ImageVersion::new_synthetic(self.other_id(), slot as u8, 0)
