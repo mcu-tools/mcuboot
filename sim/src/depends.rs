@@ -60,7 +60,7 @@ pub enum DepType {
 }
 
 /// Describes what our expectation is for an upgrade.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum UpgradeInfo {
     /// The current version should be held.
     Held,
