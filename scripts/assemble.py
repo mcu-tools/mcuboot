@@ -34,8 +34,8 @@ def same_keys(a, b):
             return False
     return True
 
-offset_re = re.compile(r"^#define FLASH_AREA_([0-9A-Z_]+)_OFFSET(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
-size_re   = re.compile(r"^#define FLASH_AREA_([0-9A-Z_]+)_SIZE(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
+offset_re = re.compile(r"^#define DT_FLASH_AREA_([0-9A-Z_]+)_OFFSET(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
+size_re   = re.compile(r"^#define DT_FLASH_AREA_([0-9A-Z_]+)_SIZE(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
 
 class Assembly():
     def __init__(self, output, bootdir):
@@ -50,7 +50,7 @@ class Assembly():
     def find_slots(self, bootdir):
         offsets = {}
         sizes = {}
-        with open(os.path.join(bootdir, 'include', 'generated', 'generated_dts_board.h'), 'r') as fd:
+        with open(os.path.join(bootdir, 'zephyr', 'include', 'generated', 'generated_dts_board_unfixed.h'), 'r') as fd:
             for line in fd:
                 m = offset_re.match(line)
                 if m is not None:
@@ -105,7 +105,7 @@ def main():
     args = parser.parse_args()
     output = Assembly(args.output, args.bootdir)
 
-    output.add_image(os.path.join(args.bootdir, "zephyr.bin"), 'MCUBOOT')
+    output.add_image(os.path.join(args.bootdir, 'zephyr', 'zephyr.bin'), 'MCUBOOT')
     output.add_image(args.primary, "IMAGE_0")
     if args.secondary is not None:
         output.add_image(args.secondary, "IMAGE_1")
