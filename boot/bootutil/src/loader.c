@@ -646,7 +646,6 @@ boot_read_status_bytes(const struct flash_area *fap,
         if (!found_idx) {
             found_idx = i;
         }
-        found_idx--;
         bs->idx = (found_idx / BOOT_STATUS_STATE_COUNT) + 1;
         bs->state = (found_idx % BOOT_STATUS_STATE_COUNT) + 1;
     }
@@ -1332,8 +1331,8 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                               img_off, 0, copy_sz);
         assert(rc == 0);
 
-        bs->state = BOOT_STATUS_STATE_1;
         rc = boot_write_status(state, bs);
+        bs->state = BOOT_STATUS_STATE_1;
         BOOT_STATUS_ASSERT(rc == 0);
     }
 
@@ -1353,8 +1352,8 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
             assert(rc == 0);
         }
 
-        bs->state = BOOT_STATUS_STATE_2;
         rc = boot_write_status(state, bs);
+        bs->state = BOOT_STATUS_STATE_2;
         BOOT_STATUS_ASSERT(rc == 0);
     }
 
@@ -1375,7 +1374,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
             /* copy current status that is being maintained in scratch */
             rc = boot_copy_sector(state, fap_scratch, fap_primary_slot,
                         scratch_trailer_off, img_off + copy_sz,
-                        BOOT_STATUS_STATE_COUNT * BOOT_WRITE_SZ(state));
+                        (BOOT_STATUS_STATE_COUNT - 1) * BOOT_WRITE_SZ(state));
             BOOT_STATUS_ASSERT(rc == 0);
 
             rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SCRATCH,
@@ -1415,9 +1414,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
         erase_scratch = bs->use_scratch;
         bs->use_scratch = 0;
 
+        rc = boot_write_status(state, bs);
         bs->idx++;
         bs->state = BOOT_STATUS_STATE_0;
-        rc = boot_write_status(state, bs);
         BOOT_STATUS_ASSERT(rc == 0);
 
         if (erase_scratch) {
