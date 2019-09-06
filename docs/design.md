@@ -610,31 +610,38 @@ later.  Furthermore, both images need to be recoverable if the boot loader
 resets in the middle of the swap operation.  The two images are swapped
 according to the following procedure:
 
-<!-- Markdown doesn't do nested numbered lists.  It will do nested
-bulletted lists, so maybe that is better. -->
-​    1. Determine how many flash sectors each image slot consists of.  This
-​       number must be the same for both slots.
-​    2. Iterate the list of sector indices in descending order (i.e., starting
-​       with the greatest index); current element = "index".
-​        b. Erase scratch area.
-​        c. Copy secondary_slot[index] to scratch area.
-​            - If these are the last sectors (i.e., first swap being performed),
-​              copy the full sector *except* the image trailer.
-​            - Else, copy entire sector contents.
-​        d. Write updated swap status (i).
-​        e. Erase secondary_slot[index]
-​        f. Copy primary_slot[index] to secondary_slot[index]
-​            - If these are the last sectors (i.e., first swap being performed),
-​              copy the full sector *except* the image trailer.
-​            - Else, copy entire sector contents.
-​        g. Write updated swap status (ii).
-​        h. Erase primary_slot[index].
-​        i. Copy scratch area to primary_slot[index].
-​            - If these are the last sectors (i.e., first swap being perfomed),
-​              copy the full sector *except* the image trailer.
-​            - Else, copy entire sector contents.
-​        j. Write updated swap status (iii).
-​    3. Persist completion of swap procedure to the primary slot image trailer.
+1. Determine if both slots are compatible enough to have their images swapped.
+   To be compatible, both have to have only sectors that can fit into the
+   scratch area and if one of them has larger sectors than the other, it must
+   be able to entirely fit some rounded number of sectors from the other slot.
+2. Iterate the list of sector indices in descending order (i.e., starting
+   with the greatest index); only sectors that are predetermined to be part of
+   the image are copied; current element = "index".
+    + a. Erase scratch area.
+    + b. Copy secondary_slot[index] to scratch area.
+        - If this is the last sector in the slot, scratch area has a temporary
+          status area initialized to store the initial state, because the
+          primary slot's last sector will have to be erased. In this case,
+          only the data that was calculated to amount to the image is copied.
+        - Else if this is the first swapped sector but not the last sector in
+          the slot, initialize the status area in primary slot and copy the
+          full sector contents.
+        - Else, copy entire sector contents.
+    + c. Write updated swap status (i).
+    + d. Erase secondary_slot[index]
+    + e. Copy primary_slot[index] to secondary_slot[index] according to amount
+         previosly copied at step b.
+        - If this is not the last sector in the slot, erase the trailer in the
+          secondary slot, to always use the one in the primary slot.
+    + f. Write updated swap status (ii).
+    + g. Erase primary_slot[index].
+    + h. Copy scratch area to primary_slot[index] according to amount
+         previously copied at step b.
+        - If this is the last sector in the slot, the status is read from
+          scratch (where it was stored temporarily) and written anew in the
+          primary slot.
+    + i. Write updated swap status (iii).
+3. Persist completion of swap procedure to the primary slot image trailer.
 
 The additional caveats in step 2f are necessary so that the secondary slot image
 trailer can be written by the user at a later time.  With the image trailer
