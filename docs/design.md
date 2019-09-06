@@ -484,21 +484,22 @@ sections describe each step of the process in more detail.
 Procedure:
 
 1. Inspect swap status region; is an interrupted swap being resumed?
-    Yes: Complete the partial swap operation; skip to step 3.
-    No: Proceed to step 2.
+    + Yes: Complete the partial swap operation; skip to step 3.
+    + No: Proceed to step 2.
 
 2. Inspect image trailers; is a swap requested?
-    Yes.
-    ​    1. Is the requested image valid (integrity and security check)?
-    ​        Yes.
-    ​            a. Perform swap operation.
-    ​            b. Persist completion of swap procedure to image trailers.
-    ​            c. Proceed to step 3.
-    ​        No.
-    ​            a. Erase invalid image.
-    ​            b. Persist failure of swap procedure to image trailers.
-    ​            c. Proceed to step 3.
-    No: Proceed to step 3.
+    + Yes:
+        1. Is the requested image valid (integrity and security check)?
+            + Yes.
+                a. Perform swap operation.
+                b. Persist completion of swap procedure to image trailers.
+                c. Proceed to step 3.
+            + No.
+                a. Erase invalid image.
+                b. Persist failure of swap procedure to image trailers.
+                c. Proceed to step 3.
+
+    + No: Proceed to step 3.
 
 3. Boot into image in primary slot.
 
@@ -597,11 +598,12 @@ process is presented below.
 ## Image Swapping
 
 The boot loader swaps the contents of the two image slots for two reasons:
-    * User has issued a "set pending" operation; the image in the secondary slot
-      should be run once (state II) or repeatedly (state III), depending on
-      whether a permanent swap was specified.
-​          * Test image rebooted without being confirmed; the boot loader should
-        revert to the original image currently in the secondary slot (state IV).
+
+  * User has issued a "set pending" operation; the image in the secondary slot
+    should be run once (state II) or repeatedly (state III), depending on
+    whether a permanent swap was specified.
+  * Test image rebooted without being confirmed; the boot loader should
+    revert to the original image currently in the secondary slot (state IV).
 
 If the image trailers indicates that the image in the secondary slot should be
 run, the boot loader needs to copy it to the primary slot.  The image currently
@@ -844,15 +846,16 @@ integrity check.
 
 During the integrity check, the boot loader verifies the following aspects of
 an image:
-​    * 32-bit magic number must be correct (0x96f3b83d).
-​    * Image must contain an `image_tlv_info` struct, identified by its magic
-​      (0x6907) exactly following the firmware (hdr_size + img_size).
-​    * Image must contain a SHA256 TLV.
-​    * Calculated SHA256 must match SHA256 TLV contents.
-​    * Image *may* contain a signature TLV.  If it does, it must also have a
-​      KEYHASH TLV with the hash of the key that was used to sign. The list of
-​      keys will then be iterated over looking for the matching key, which then
-​      will then be used to verify the image contents.
+
+  * 32-bit magic number must be correct (0x96f3b83d).
+  * Image must contain an `image_tlv_info` struct, identified by its magic
+    (0x6907) exactly following the firmware (hdr_size + img_size).
+  * Image must contain a SHA256 TLV.
+  * Calculated SHA256 must match SHA256 TLV contents.
+  * Image *may* contain a signature TLV.  If it does, it must also have a
+    KEYHASH TLV with the hash of the key that was used to sign. The list of
+    keys will then be iterated over looking for the matching key, which then
+    will then be used to verify the image contents.
 
 ## Security
 
