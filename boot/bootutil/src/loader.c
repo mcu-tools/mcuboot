@@ -1022,7 +1022,7 @@ boot_copy_sz(struct boot_loader_state *state, int last_sector_idx,
  * @return                      0 on success; nonzero on failure.
  */
 static inline int
-boot_erase_sector(const struct flash_area *fap, uint32_t off, uint32_t sz)
+boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz)
 {
     return flash_area_erase(fap, off, sz);
 }
@@ -1042,7 +1042,7 @@ boot_erase_sector(const struct flash_area *fap, uint32_t off, uint32_t sz)
  * @return                      0 on success; nonzero on failure.
  */
 static int
-boot_copy_sector(struct boot_loader_state *state,
+boot_copy_region(struct boot_loader_state *state,
                  const struct flash_area *fap_src,
                  const struct flash_area *fap_dst,
                  uint32_t off_src, uint32_t off_dst, uint32_t sz)
@@ -1221,7 +1221,7 @@ boot_erase_trailer_sectors(const struct boot_loader_state *state,
     do {
         sz = boot_img_sector_size(state, slot, sector);
         off = boot_img_sector_off(state, slot, sector);
-        rc = boot_erase_sector(fap, off, sz);
+        rc = boot_erase_region(fap, off, sz);
         assert(rc == 0);
 
         sector--;
@@ -1299,7 +1299,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         BOOT_LOG_DBG("erasing scratch area");
-        rc = boot_erase_sector(fap_scratch, 0, fap_scratch->fa_size);
+        rc = boot_erase_region(fap_scratch, 0, fap_scratch->fa_size);
         assert(rc == 0);
 
         if (bs->idx == BOOT_STATUS_IDX_0) {
@@ -1322,12 +1322,12 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                 assert(rc == 0);
 
                 /* Erase the temporary trailer from the scratch area. */
-                rc = boot_erase_sector(fap_scratch, 0, fap_scratch->fa_size);
+                rc = boot_erase_region(fap_scratch, 0, fap_scratch->fa_size);
                 assert(rc == 0);
             }
         }
 
-        rc = boot_copy_sector(state, fap_secondary_slot, fap_scratch,
+        rc = boot_copy_region(state, fap_secondary_slot, fap_scratch,
                               img_off, 0, copy_sz);
         assert(rc == 0);
 
@@ -1337,10 +1337,10 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     }
 
     if (bs->state == BOOT_STATUS_STATE_1) {
-        rc = boot_erase_sector(fap_secondary_slot, img_off, sz);
+        rc = boot_erase_region(fap_secondary_slot, img_off, sz);
         assert(rc == 0);
 
-        rc = boot_copy_sector(state, fap_primary_slot, fap_secondary_slot,
+        rc = boot_copy_region(state, fap_primary_slot, fap_secondary_slot,
                               img_off, img_off, copy_sz);
         assert(rc == 0);
 
@@ -1358,13 +1358,13 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     }
 
     if (bs->state == BOOT_STATUS_STATE_2) {
-        rc = boot_erase_sector(fap_primary_slot, img_off, sz);
+        rc = boot_erase_region(fap_primary_slot, img_off, sz);
         assert(rc == 0);
 
         /* NOTE: If this is the final sector, we exclude the image trailer from
          * this copy (copy_sz was truncated earlier).
          */
-        rc = boot_copy_sector(state, fap_scratch, fap_primary_slot,
+        rc = boot_copy_region(state, fap_scratch, fap_primary_slot,
                               0, img_off, copy_sz);
         assert(rc == 0);
 
@@ -1372,7 +1372,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
             scratch_trailer_off = boot_status_off(fap_scratch);
 
             /* copy current status that is being maintained in scratch */
-            rc = boot_copy_sector(state, fap_scratch, fap_primary_slot,
+            rc = boot_copy_region(state, fap_scratch, fap_primary_slot,
                         scratch_trailer_off, img_off + copy_sz,
                         (BOOT_STATUS_STATE_COUNT - 1) * BOOT_WRITE_SZ(state));
             BOOT_STATUS_ASSERT(rc == 0);
@@ -1420,7 +1420,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
         BOOT_STATUS_ASSERT(rc == 0);
 
         if (erase_scratch) {
-            rc = boot_erase_sector(fap_scratch, 0, sz);
+            rc = boot_erase_region(fap_scratch, 0, sz);
             assert(rc == 0);
         }
     }
@@ -1482,7 +1482,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     sect_count = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
     for (sect = 0, size = 0; sect < sect_count; sect++) {
         this_size = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, sect);
-        rc = boot_erase_sector(fap_primary_slot, size, this_size);
+        rc = boot_erase_region(fap_primary_slot, size, this_size);
         assert(rc == 0);
 
         size += this_size;
@@ -1511,7 +1511,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 
     BOOT_LOG_INF("Copying the secondary slot to the primary slot: 0x%zx bytes",
                  size);
-    rc = boot_copy_sector(state, fap_secondary_slot, fap_primary_slot, 0, 0, size);
+    rc = boot_copy_region(state, fap_secondary_slot, fap_primary_slot, 0, 0, size);
 
     /*
      * Erases header and trailer. The trailer is erased because when a new
@@ -1519,13 +1519,13 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
      * trailer that was left might trigger a new upgrade.
      */
     BOOT_LOG_DBG("erasing secondary header");
-    rc = boot_erase_sector(fap_secondary_slot,
+    rc = boot_erase_region(fap_secondary_slot,
                            boot_img_sector_off(state, BOOT_SECONDARY_SLOT, 0),
                            boot_img_sector_size(state, BOOT_SECONDARY_SLOT, 0));
     assert(rc == 0);
     last_sector = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT) - 1;
     BOOT_LOG_DBG("erasing secondary trailer");
-    rc = boot_erase_sector(fap_secondary_slot,
+    rc = boot_erase_region(fap_secondary_slot,
                            boot_img_sector_off(state, BOOT_SECONDARY_SLOT,
                                last_sector),
                            boot_img_sector_size(state, BOOT_SECONDARY_SLOT,
