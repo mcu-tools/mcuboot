@@ -62,6 +62,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     uint32_t off;
     int rc;
 #ifdef MCUBOOT_ENC_IMAGES
+    uint32_t protected_off;
     uint32_t blk_off;
 #endif
 
@@ -91,6 +92,10 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     hdr_size = hdr->ih_hdr_size;
     size = BOOT_TLV_OFF(hdr);
 
+#ifdef MCUBOOT_ENC_IMAGES
+    protected_off = size;
+#endif
+
 #if (MCUBOOT_IMAGE_NUMBER > 1)
     /* If dependency TLVs are present then the TLV info header and the
      * dependency TLVs are also protected and have to be included in the hash
@@ -103,27 +108,35 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 
     for (off = 0; off < size; off += blk_sz) {
         blk_sz = size - off;
+#ifdef MCUBOOT_ENC_IMAGES
+        /* The only data that is encrypted in an image is the payload;
+         * both header and TLVs (when protected) are not.
+         */
+        if ((off < hdr_size) && ((off + blk_sz) > hdr_size)) {
+            /* read only the header */
+            blk_sz = hdr_size - off;
+        } else if (off >= protected_off) {
+            /* read protected TLVs */
+            blk_sz = size - off;
+        } else if ((off + blk_sz) > protected_off) {
+            /* do not copy beyond image payload */
+            blk_sz = protected_off - off;
+        }
+#endif
         if (blk_sz > tmp_buf_sz) {
             blk_sz = tmp_buf_sz;
         }
-#ifdef MCUBOOT_ENC_IMAGES
-        /* Avoid reading header data together with other image data
-         * because the header is not encrypted, so maintain correct
-         * bounds when sending encrypted data to decrypt routine.
-         */
-        if ((off < hdr_size) && ((off + blk_sz) > hdr_size)) {
-            blk_sz = hdr_size - off;
-        }
-#endif
         rc = flash_area_read(fap, off, tmp_buf, blk_sz);
         if (rc) {
             return rc;
         }
 #ifdef MCUBOOT_ENC_IMAGES
-        if (MUST_DECRYPT(fap, image_index, hdr) && off >= hdr_size) {
-            blk_off = (off - hdr_size) & 0xf;
-            boot_encrypt(enc_state, image_index, fap, off - hdr_size, blk_sz,
-                    blk_off, tmp_buf);
+        if (MUST_DECRYPT(fap, image_index, hdr)) {
+            if (off >= hdr_size && off < protected_off) {
+                blk_off = (off - hdr_size) & 0xf;
+                boot_encrypt(enc_state, image_index, fap, off - hdr_size,
+                        blk_sz, blk_off, tmp_buf);
+            }
         }
 #endif
         bootutil_sha256_update(&sha256_ctx, tmp_buf, blk_sz);
