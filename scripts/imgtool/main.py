@@ -216,7 +216,8 @@ def sign(key, align, version, header_size, pad_header, slot_size, pad,
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, align=int(align),
                       slot_size=slot_size, max_sectors=max_sectors,
-                      overwrite_only=overwrite_only, endian=endian, load_addr=load_addr)
+                      overwrite_only=overwrite_only, endian=endian,
+                      load_addr=load_addr)
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
