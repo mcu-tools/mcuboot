@@ -20,7 +20,7 @@ import click
 import getpass
 import imgtool.keys as keys
 import sys
-from imgtool import image
+from imgtool import image, imgtool_version
 from imgtool.version import decode_version
 
 
@@ -249,6 +249,11 @@ class AliasesGroup(click.Group):
         return None
 
 
+@click.command(help='Print imgtool version information')
+def version():
+    print(imgtool_version)
+
+
 @click.command(cls=AliasesGroup,
                context_settings=dict(help_option_names=['-h', '--help']))
 def imgtool():
@@ -259,6 +264,7 @@ imgtool.add_command(keygen)
 imgtool.add_command(getpub)
 imgtool.add_command(verify)
 imgtool.add_command(sign)
+imgtool.add_command(version)
 
 
 if __name__ == '__main__':
