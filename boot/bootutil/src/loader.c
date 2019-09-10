@@ -2262,18 +2262,17 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
                  * magic, so also run validation on the primary slot to be
                  * sure it's not OK.
                  */
-                 if (boot_check_header_erased(state, BOOT_PRIMARY_SLOT) == 0 ||
-                     boot_validate_slot(state, BOOT_PRIMARY_SLOT, bs) != 0) {
-                     if (boot_img_hdr(state,
-                          BOOT_SECONDARY_SLOT)->ih_magic == IMAGE_MAGIC &&
-                         boot_validate_slot(state, BOOT_SECONDARY_SLOT, bs) == 0)
-                     {
+                if (boot_check_header_erased(state, BOOT_PRIMARY_SLOT) == 0 ||
+                        boot_validate_slot(state, BOOT_PRIMARY_SLOT, bs) != 0) {
+                    if (boot_img_hdr(state,
+                            BOOT_SECONDARY_SLOT)->ih_magic == IMAGE_MAGIC &&
+                            boot_validate_slot(state, BOOT_SECONDARY_SLOT, bs) == 0) {
                         /* Set swap type to REVERT to overwrite the primary
                          * slot with the image contained in secondary slot
                          * and to trigger the explicit setting of the
                          * image_ok flag.
                          */
-                         BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_REVERT;
+                        BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_REVERT;
                     }
                 }
             }
