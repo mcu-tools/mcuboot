@@ -1153,10 +1153,11 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
         tlv.make_tlv()
     };
 
+    let dev = flash.get_mut(&dev_id).unwrap();
+
     // Pad the block to a flash alignment (8 bytes).
     while b_tlv.len() % 8 != 0 {
-        //FIXME: should be erase_val?
-        b_tlv.push(0xFF);
+        b_tlv.push(dev.erased_val());
     }
 
     let mut buf = vec![];
@@ -1175,8 +1176,6 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
     // an encrypted image, re-read to use for verification, erase + flash
     // un-encrypted. In the secondary slot the image is written un-encrypted,
     // and if encryption is requested, it follows an erase + flash encrypted.
-
-    let dev = flash.get_mut(&dev_id).unwrap();
 
     if slot.index == 0 {
         let enc_copy: Option<Vec<u8>>;
