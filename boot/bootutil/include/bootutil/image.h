@@ -41,6 +41,7 @@ struct flash_area;
 #define IMAGE_MAGIC_V1              0x96f3b83c
 #define IMAGE_MAGIC_NONE            0xffffffff
 #define IMAGE_TLV_INFO_MAGIC        0x6907
+#define IMAGE_TLV_PROT_INFO_MAGIC   0x6908
 
 #define IMAGE_HEADER_SIZE           32
 
@@ -150,7 +151,7 @@ struct image_tlv_iter {
     const struct flash_area *fap;
     uint8_t type;
     bool prot;
-    uint16_t prot_len;
+    uint16_t prot_end;
     uint32_t tlv_off;
     uint32_t tlv_end;
 };
