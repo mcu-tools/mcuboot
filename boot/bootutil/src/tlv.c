@@ -48,6 +48,18 @@ bootutil_tlv_iter_begin(struct image_tlv_iter *it, const struct image_header *hd
         return -1;
     }
 
+    if (info.it_magic == IMAGE_TLV_PROT_INFO_MAGIC) {
+        if (hdr->ih_protect_tlv_size != info.it_tlv_tot) {
+            return -1;
+        }
+
+        if (flash_area_read(fap, off_ + info.it_tlv_tot, &info, sizeof(info))) {
+            return -1;
+        }
+    } else if (hdr->ih_protect_tlv_size != 0) {
+        return -1;
+    }
+
     if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
         return -1;
     }
@@ -56,10 +68,10 @@ bootutil_tlv_iter_begin(struct image_tlv_iter *it, const struct image_header *hd
     it->fap = fap;
     it->type = type;
     it->prot = prot;
-    off_ += sizeof(info);
-    it->tlv_off = off_;
-    it->prot_len = off_ + it->hdr->ih_protect_tlv_size;
-    it->tlv_end = off_ + info.it_tlv_tot;
+    it->prot_end = off_ + it->hdr->ih_protect_tlv_size;
+    it->tlv_end = off_ + it->hdr->ih_protect_tlv_size + info.it_tlv_tot;
+    // position on first TLV
+    it->tlv_off = off_ + sizeof(info);
     return 0;
 }
 
@@ -87,13 +99,17 @@ bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off, uint16_t *len,
     }
 
     while (it->tlv_off < it->tlv_end) {
+        if (it->hdr->ih_protect_tlv_size > 0 && it->tlv_off == it->prot_end) {
+            it->tlv_off += sizeof(struct image_tlv_info);
+        }
+
         rc = flash_area_read(it->fap, it->tlv_off, &tlv, sizeof tlv);
         if (rc) {
             return -1;
         }
 
         /* No more TLVs in the protected area */
-        if (it->prot && it->tlv_off >= it->prot_len) {
+        if (it->prot && it->tlv_off >= it->prot_end) {
             return 1;
         }
 

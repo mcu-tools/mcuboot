@@ -253,6 +253,7 @@ boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
     const struct flash_area *fap;
     struct image_tlv_info info;
     uint32_t off;
+    uint32_t protect_tlv_size;
     int area_id;
     int rc;
 
@@ -274,12 +275,28 @@ boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
         goto done;
     }
 
+    protect_tlv_size = boot_img_hdr(state, slot)->ih_protect_tlv_size;
+    if (info.it_magic == IMAGE_TLV_PROT_INFO_MAGIC) {
+        if (protect_tlv_size != info.it_tlv_tot) {
+            rc = BOOT_EBADIMAGE;
+            goto done;
+        }
+
+        if (flash_area_read(fap, off + info.it_tlv_tot, &info, sizeof(info))) {
+            rc = BOOT_EFLASH;
+            goto done;
+        }
+    } else if (protect_tlv_size != 0) {
+        rc = BOOT_EBADIMAGE;
+        goto done;
+    }
+
     if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
         rc = BOOT_EBADIMAGE;
         goto done;
     }
 
-    *size = off + info.it_tlv_tot;
+    *size = off + protect_tlv_size + info.it_tlv_tot;
     rc = 0;
 
 done:
