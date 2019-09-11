@@ -890,6 +890,14 @@ boot_check_header_erased(struct boot_loader_state *state, int slot)
     return 0;
 }
 
+/*
+ * Check that there is a valid image in a slot
+ *
+ * @returns
+ *         0 if image was succesfully validated
+ *         1 if no bootloable image was found
+ *         -1 on any errors
+ */
 static int
 boot_validate_slot(struct boot_loader_state *state, int slot,
                    struct boot_status *bs)
@@ -902,14 +910,14 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
     area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
     rc = flash_area_open(area_id, &fap);
     if (rc != 0) {
-        return BOOT_EFLASH;
+        return -1;
     }
 
     hdr = boot_img_hdr(state, slot);
     if (boot_check_header_erased(state, slot) == 0 ||
         (hdr->ih_flags & IMAGE_F_NON_BOOTABLE)) {
         /* No bootable image in slot; continue booting from the primary slot. */
-        rc = -1;
+        rc = 1;
         goto out;
     }
 
@@ -947,6 +955,7 @@ boot_validated_swap_type(struct boot_loader_state *state,
                          struct boot_status *bs)
 {
     int swap_type;
+    int rc;
 
     swap_type = boot_swap_type_multi(BOOT_CURR_IMG(state));
     switch (swap_type) {
@@ -956,7 +965,10 @@ boot_validated_swap_type(struct boot_loader_state *state,
         /* Boot loader wants to switch to the secondary slot.
          * Ensure image is valid.
          */
-        if (boot_validate_slot(state, BOOT_SECONDARY_SLOT, bs) != 0) {
+        rc = boot_validate_slot(state, BOOT_SECONDARY_SLOT, bs);
+        if (rc == 1) {
+            swap_type = BOOT_SWAP_TYPE_NONE;
+        } else if (rc != 0) {
             swap_type = BOOT_SWAP_TYPE_FAIL;
         }
     }
@@ -1835,7 +1847,7 @@ boot_verify_slot_dependency(struct boot_loader_state *state,
     /* Determine the source of the image which is the subject of
      * the dependency and get it's version. */
     swap_type = state->swap_type[dep->image_id];
-    dep_slot = (swap_type != BOOT_SWAP_TYPE_NONE && swap_type != BOOT_SWAP_TYPE_FAIL) ?
+    dep_slot = (swap_type != BOOT_SWAP_TYPE_NONE) ?
                 BOOT_SECONDARY_SLOT : BOOT_PRIMARY_SLOT;
     dep_version = &state->imgs[dep->image_id][dep_slot].hdr.ih_ver;
 
