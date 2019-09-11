@@ -958,10 +958,7 @@ boot_validated_swap_type(struct boot_loader_state *state,
     int rc;
 
     swap_type = boot_swap_type_multi(BOOT_CURR_IMG(state));
-    switch (swap_type) {
-    case BOOT_SWAP_TYPE_TEST:
-    case BOOT_SWAP_TYPE_PERM:
-    case BOOT_SWAP_TYPE_REVERT:
+    if (BOOT_IS_UPGRADE(swap_type)) {
         /* Boot loader wants to switch to the secondary slot.
          * Ensure image is valid.
          */
@@ -2047,9 +2044,7 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
         }
     }
 
-    if (swap_type == BOOT_SWAP_TYPE_TEST ||
-            swap_type == BOOT_SWAP_TYPE_PERM ||
-            swap_type == BOOT_SWAP_TYPE_REVERT) {
+    if (BOOT_IS_UPGRADE(swap_type)) {
         rc = boot_set_copy_done(BOOT_CURR_IMG(state));
         if (rc != 0) {
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_PANIC;
@@ -2093,9 +2088,7 @@ boot_complete_partial_swap(struct boot_loader_state *state,
         }
     }
 
-    if (bs->swap_type == BOOT_SWAP_TYPE_TEST ||
-        bs->swap_type == BOOT_SWAP_TYPE_PERM ||
-        bs->swap_type == BOOT_SWAP_TYPE_REVERT) {
+    if (BOOT_IS_UPGRADE(bs->swap_type)) {
         rc = boot_set_copy_done(BOOT_CURR_IMG(state));
         if (rc != 0) {
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_PANIC;
@@ -2359,7 +2352,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         /* Determine swap type and complete swap if it has been aborted. */
         boot_prepare_image_for_update(state, &bs);
 
-        if (BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_NONE) {
+        if (BOOT_IS_UPGRADE(BOOT_SWAP_TYPE(state))) {
             has_upgrade = true;
         }
     }
