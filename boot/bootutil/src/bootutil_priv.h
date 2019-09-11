@@ -277,6 +277,11 @@ int boot_find_tlv_offs(const struct image_header *hdr,
 #define BOOT_SWAP_TYPE(state) ((state)->swap_type[BOOT_CURR_IMG(state)])
 #define BOOT_TLV_OFF(hdr) ((hdr)->ih_hdr_size + (hdr)->ih_img_size)
 
+#define BOOT_IS_UPGRADE(swap_type)             \
+    (((swap_type) == BOOT_SWAP_TYPE_TEST) ||   \
+     ((swap_type) == BOOT_SWAP_TYPE_REVERT) || \
+     ((swap_type) == BOOT_SWAP_TYPE_PERM))
+
 static inline struct image_header*
 boot_img_hdr(struct boot_loader_state *state, size_t slot)
 {
