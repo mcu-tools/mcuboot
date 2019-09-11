@@ -258,28 +258,28 @@ impl ManifestGen for TlvGen {
 
     /// Compute the TLV given the specified block of data.
     fn make_tlv(self: Box<Self>) -> Vec<u8> {
-        let mut result: Vec<u8> = vec![];
+        let mut protected_tlv: Vec<u8> = vec![];
 
-        let size = self.get_size();
-        result.push(0x07);
-        result.push(0x69);
-        result.write_u16::<LittleEndian>(size).unwrap();
+        if self.protect_size > 0 {
+            protected_tlv.push(0x08);
+            protected_tlv.push(0x69);
+            protected_tlv.write_u16::<LittleEndian>(self.protect_size()).unwrap();
+            for dep in &self.dependencies {
+                protected_tlv.push(TlvKinds::DEPENDENCY as u8);
+                protected_tlv.push(0);
+                protected_tlv.push(12);
+                protected_tlv.push(0);
 
-        for dep in &self.dependencies {
-            result.push(TlvKinds::DEPENDENCY as u8);
-            result.push(0);
-            result.push(12);
-            result.push(0);
-
-            // The dependency.
-            result.push(dep.id);
-            for _ in 0 .. 3 {
-                result.push(0);
+                // The dependency.
+                protected_tlv.push(dep.id);
+                for _ in 0 .. 3 {
+                    protected_tlv.push(0);
+                }
+                protected_tlv.push(dep.version.major);
+                protected_tlv.push(dep.version.minor);
+                protected_tlv.write_u16::<LittleEndian>(dep.version.revision).unwrap();
+                protected_tlv.write_u32::<LittleEndian>(dep.version.build_num).unwrap();
             }
-            result.push(dep.version.major);
-            result.push(dep.version.minor);
-            result.write_u16::<LittleEndian>(dep.version.revision).unwrap();
-            result.write_u32::<LittleEndian>(dep.version.build_num).unwrap();
         }
 
         // Ring does the signature itself, which means that it must be
@@ -290,11 +290,17 @@ impl ManifestGen for TlvGen {
         // payload, and then removed after the signature is done.  For now,
         // just make a signed payload.
         let mut sig_payload = self.payload.clone();
-        if self.protect_size > 0 {
-            assert_eq!(self.protect_size as usize + 4, result.len());
-            sig_payload.extend_from_slice(&result);
-        }
-        let sig_payload = sig_payload;
+        sig_payload.extend_from_slice(&protected_tlv);
+
+        let mut result: Vec<u8> = vec![];
+
+        // add back signed payload
+        result.extend_from_slice(&protected_tlv);
+
+        // add non-protected payload
+        result.push(0x07);
+        result.push(0x69);
+        result.write_u16::<LittleEndian>(self.get_size()).unwrap();
 
         if self.kinds.contains(&TlvKinds::SHA256) {
             let hash = digest::digest(&digest::SHA256, &sig_payload);
