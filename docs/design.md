@@ -72,6 +72,9 @@ struct image_header {
     uint32_t _pad1;
 };
 
+#define IMAGE_TLV_INFO_MAGIC        0x6907
+#define IMAGE_TLV_PROT_INFO_MAGIC   0x6908
+
 /** Image TLV header.  All fields in little endian. */
 struct image_tlv_info {
     uint16_t it_magic;
@@ -111,9 +114,10 @@ Optional type-length-value records (TLVs) containing image metadata are placed
 after the end of the image.
 
 The `ih_protect_tlv_size` field indicates the length of the protected TLV area.
-If dependency TLVs are present then the TLV info header and the dependency TLVs
-are also protected and have to be included in the hash calculation. Otherwise
-the hash is only calculated over the image header and the image itself. In this
+If protected TLVs are present then a TLV info header with magic equal to
+`IMAGE_TLV_PROT_INFO_MAGIC` must be present and the protected TLVs (plus the
+info header itself) have to be included in the hash calculation. Otherwise the
+hash is only calculated over the image header and the image itself. In this
 case the value of the `ih_protect_tlv_size` field is 0.
 
 The `ih_hdr_size` field indicates the length of the header, and therefore the
@@ -850,9 +854,12 @@ integrity check.
 During the integrity check, the boot loader verifies the following aspects of
 an image:
 
-  * 32-bit magic number must be correct (0x96f3b83d).
+  * 32-bit magic number must be correct (`IMAGE_MAGIC`).
   * Image must contain an `image_tlv_info` struct, identified by its magic
-    (0x6907) exactly following the firmware (hdr_size + img_size).
+    (`IMAGE_TLV_PROT_INFO_MAGIC` or `IMAGE_TLV_INFO_MAGIC`) exactly following
+    the firmware (`hdr_size` + `img_size`). If `IMAGE_TLV_PROT_INFO_MAGIC` is
+    found then after `ih_protect_tlv_size` bytes, another `image_tlv_info`
+    with magic equal to `IMAGE_TLV_INFO_MAGIC` must be present.
   * Image must contain a SHA256 TLV.
   * Calculated SHA256 must match SHA256 TLV contents.
   * Image *may* contain a signature TLV.  If it does, it must also have a
@@ -874,6 +881,43 @@ producing signed images, see: [signed_images](signed_images.md).
 If you want to enable and use encrypted images, see:
 [encrypted_images](encrypted_images.md).
 
+## Protected TLVs
+
+If the TLV area contains protected TLV entries, by beginning with a `struct
+image_tlv_info` with a magic value of `IMAGE_TLV_PROT_INFO_MAGIC` then the
+data of those TLVs must also be integrity and authenticity protected. Beyond
+the full size of the protected TLVs being stored in the `image_tlv_info`,
+the size of the protected TLVs together with the size of the `image_tlv_info`
+struct itself are also saved in the `ih_protected_size` field inside the
+header.
+
+Whenever an image has protected TLVs the SHA256 has to be calculated over
+not just the image header and the image but also the TLV info header and the
+protected TLVs.
+
+```
+A +---------------------+
+  | Header              | <- struct image_header
+  +---------------------+
+  | Payload             |
+  +---------------------+
+  | TLV area            |
+  | +-----------------+ |    struct image_tlv_info with
+  | | TLV area header | | <- IMAGE_TLV_PROT_INFO_MAGIC (optional)
+  | +-----------------+ |
+  | | Protected TLVs  | | <- Protected TLVs (struct image_tlv)
+B | +-----------------+ |
+  | | TLV area header | | <- struct image_tlv_info with IMAGE_TLV_INFO_MAGIC
+C | +-----------------+ |
+  | | SHA256 hash     | | <- hash from A - B (struct image_tlv)
+D | +-----------------+ |
+  | | Keyhash         | | <- indicates which pub. key for sig (struct image_tlv)
+  | +-----------------+ |
+  | | Signature       | | <- signature from C - D (struct image_tlv), only hash
+  | +-----------------+ |
+  +---------------------+
+```
+
 ## Dependency Check
 
 MCUBoot can handle multiple firmware images. It is possible to update them
@@ -882,34 +926,10 @@ dependencies between the images (e.g. to ensure API compliance and avoid
 interoperability issues).
 
 The dependencies between images can be described with additional TLV entries in
-the TLV area after the end of an image. There can be more than one dependency
-entry, but in practice if the platform only supports two individual images then
-there can be maximum one entry which reflects to the other image.
+the protected TLV area after the end of an image. There can be more than one
+dependency entry, but in practice if the platform only supports two individual
+images then there can be maximum one entry which reflects to the other image.
 
-If the TLV area contains dependency TLV entries, then these are required to be
-integrity and authenticity protected. In this case the SHA256 has to be
-calculated over not just the image header and the image but also the TLV info
-header and the dependency TLVs.
-```
-A +---------------------+
-  | Header              | <- struct image_header
-  +---------------------+
-  | Payload             |
-  +---------------------+
-  | TLV area            |
-  | +-----------------+ |
-  | | TLV area header | | <- struct image_tlv_info
-  | +-----------------+ |
-  | | Dependency      | | <- Dependency entry (struct image_tlv)
-B | +-----------------+ |
-  | | SHA256 hash     | | <- hash from A - B (struct image_tlv)
-C | +-----------------+ |
-  | | Keyhash         | | <- indicates which pub. key for sig (struct image_tlv)
-  | +-----------------+ |
-  | | Signature       | | <- signature from B - C (struct image_tlv), only hash
-  | +-----------------+ |
-  +---------------------+
-```
 At the phase of dependency check all aborted swaps are finalized if there were
 any. During the dependency check the boot loader verifies whether the image
 dependencies are all satisfied. If at least one of the dependencies of an image
