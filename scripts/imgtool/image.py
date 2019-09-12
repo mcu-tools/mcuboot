@@ -35,6 +35,7 @@ IMAGE_HEADER_SIZE = 32
 BIN_EXT = "bin"
 INTEL_HEX_EXT = "hex"
 DEFAULT_MAX_SECTORS = 128
+MAX_ALIGN = 8
 DEP_IMAGES_KEY = "images"
 DEP_VERSIONS_KEY = "versions"
 
@@ -116,6 +117,7 @@ class Image():
         self.base_addr = None
         self.load_addr = 0 if load_addr is None else load_addr
         self.payload = []
+        self.enckey = None
 
     def __repr__(self):
         return "<Image version={}, header_size={}, base_addr={}, load_addr={}, \
@@ -179,7 +181,7 @@ class Image():
                 raise Exception("Padding requested, but image does not start with zeros")
         if self.slot_size > 0:
             tsize = self._trailer_size(self.align, self.max_sectors,
-                                       self.overwrite_only)
+                                       self.overwrite_only, self.enckey)
             padding = self.slot_size - (len(self.payload) + tsize)
             if padding < 0:
                 msg = "Image size (0x{:x}) + trailer (0x{:x}) exceeds requested size 0x{:x}".format(
@@ -187,6 +189,8 @@ class Image():
                 raise Exception(msg)
 
     def create(self, key, enckey, dependencies=None):
+        self.enckey = enckey
+
         if dependencies is None:
             dependencies_num = 0
             protected_tlv_size = 0
@@ -307,20 +311,26 @@ class Image():
         self.payload = bytearray(self.payload)
         self.payload[:len(header)] = header
 
-    def _trailer_size(self, write_size, max_sectors, overwrite_only):
+    def _trailer_size(self, write_size, max_sectors, overwrite_only, enckey):
         # NOTE: should already be checked by the argument parser
+        magic_size = 16
         if overwrite_only:
-            return 8 * 2 + 16
+            return MAX_ALIGN * 2 + magic_size
         else:
             if write_size not in set([1, 2, 4, 8]):
                 raise Exception("Invalid alignment: {}".format(write_size))
             m = DEFAULT_MAX_SECTORS if max_sectors is None else max_sectors
-            return m * 3 * write_size + 8 * 2 + 16
+            trailer = m * 3 * write_size  # status area
+            if enckey is not None:
+                trailer += 16 * 2  # encryption keys
+            trailer += MAX_ALIGN * 4  # magic_ok/copy_done/swap_info/swap_size
+            trailer += magic_size
+            return trailer
 
     def pad_to(self, size):
         """Pad the image to the given size, with the given flash alignment."""
         tsize = self._trailer_size(self.align, self.max_sectors,
-                                   self.overwrite_only)
+                                   self.overwrite_only, self.enckey)
         padding = size - (len(self.payload) + tsize)
         pbytes  = b'\xff' * padding
         pbytes += b'\xff' * (tsize - len(boot_magic))
