@@ -190,6 +190,7 @@ fn main() {
     conf.file("../../boot/bootutil/src/loader.c");
     conf.file("../../boot/bootutil/src/caps.c");
     conf.file("../../boot/bootutil/src/bootutil_misc.c");
+    conf.file("../../boot/bootutil/src/tlv.c");
     conf.file("csupport/run.c");
     conf.include("../../boot/bootutil/include");
     conf.include("csupport");

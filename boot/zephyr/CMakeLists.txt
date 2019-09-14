@@ -110,6 +110,7 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/image_ec256.c
   ${BOOT_DIR}/bootutil/src/image_ed25519.c
   ${BOOT_DIR}/bootutil/src/caps.c
+  ${BOOT_DIR}/bootutil/src/tlv.c
   )
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)

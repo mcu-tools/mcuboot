@@ -223,11 +223,10 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
     size_t olen;
 #endif
     uint32_t off;
-    uint32_t end;
-    struct image_tlv tlv;
+    uint16_t len;
+    struct image_tlv_iter it;
     uint8_t buf[TLV_ENC_RSA_SZ];
     uint8_t slot;
-    uint8_t enckey_type;
     int rc;
 
     rc = flash_area_id_to_multi_image_slot(image_index, fap->fa_id);
@@ -241,34 +240,23 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
         return 1;
     }
 
-    rc = boot_find_tlv_offs(hdr, fap, &off, &end);
+    rc = bootutil_tlv_iter_begin(&it, hdr, fap, EXPECTED_ENC_TLV, false);
     if (rc) {
         return -1;
     }
 
-    for (enckey_type = 0; off < end; off += sizeof(tlv) + tlv.it_len) {
-        rc = flash_area_read(fap, off, &tlv, sizeof tlv);
-        if (rc) {
-            return rc;
-        }
-
-        if (tlv.it_type == EXPECTED_ENC_TLV) {
-            if (tlv.it_len != EXPECTED_ENC_LEN) {
-                return -1;
-            }
-            rc = flash_area_read(fap, off + sizeof(tlv), buf, EXPECTED_ENC_LEN);
-            if (rc) {
-                return -1;
-            }
-            enckey_type = EXPECTED_ENC_TLV;
-            break;
-        }
+    rc = bootutil_tlv_iter_next(&it, &off, &len, NULL);
+    if (rc != 0) {
+        return rc;
     }
 
-    if (enckey_type == 0) {
+    if (len != EXPECTED_ENC_LEN) {
         return -1;
-    } else if (enckey_type != EXPECTED_ENC_TLV) {
-        return 0;
+    }
+
+    rc = flash_area_read(fap, off, buf, EXPECTED_ENC_LEN);
+    if (rc) {
+        return -1;
     }
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
