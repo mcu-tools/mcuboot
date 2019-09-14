@@ -243,38 +243,6 @@ boot_status_source(struct boot_loader_state *state)
 }
 
 /*
- * Locate the TLVs in an image.
- *
- * @param hdr The image_header struct of the image being checked
- * @param fap flash_area struct of the slot storing the image being checked
- * @param off Address of the first TLV (after TLV info)
- * @param end Address where TLV area ends
- *
- * Returns 0 on success.
- */
-int
-boot_find_tlv_offs(const struct image_header *hdr, const struct flash_area *fap,
-        uint32_t *off, uint32_t *end)
-{
-    struct image_tlv_info info;
-    uint32_t off_;
-
-    off_ = BOOT_TLV_OFF(hdr);
-
-    if (flash_area_read(fap, off_, &info, sizeof(info))) {
-        return BOOT_EFLASH;
-    }
-
-    if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
-        return BOOT_EBADIMAGE;
-    }
-
-    *end = off_ + info.it_tlv_tot;
-    *off = off_ + sizeof(info);
-    return 0;
-}
-
-/*
  * Compute the total size of the given image.  Includes the size of
  * the TLVs.
  */
@@ -283,6 +251,7 @@ static int
 boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
 {
     const struct flash_area *fap;
+    struct image_tlv_info info;
     uint32_t off;
     int area_id;
     int rc;
@@ -298,10 +267,19 @@ boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
         goto done;
     }
 
-    rc = boot_find_tlv_offs(boot_img_hdr(state, slot), fap, &off, size);
-    if (rc != 0) {
+    off = BOOT_TLV_OFF(boot_img_hdr(state, slot));
+
+    if (flash_area_read(fap, off, &info, sizeof(info))) {
+        rc = BOOT_EFLASH;
         goto done;
     }
+
+    if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
+        rc = BOOT_EBADIMAGE;
+        goto done;
+    }
+
+    *size = off + info.it_tlv_tot;
     rc = 0;
 
 done:
@@ -1884,11 +1862,10 @@ static int
 boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
 {
     const struct flash_area *fap;
-    struct image_tlv tlv;
+    struct image_tlv_iter it;
     struct image_dependency dep;
     uint32_t off;
-    uint32_t end;
-    bool dep_tlvs_found = false;
+    uint16_t len;
     int area_id;
     int rc;
 
@@ -1899,55 +1876,42 @@ boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
         goto done;
     }
 
-    rc = boot_find_tlv_offs(boot_img_hdr(state, slot), fap, &off, &end);
+    rc = bootutil_tlv_iter_begin(&it, boot_img_hdr(state, slot), fap,
+            IMAGE_TLV_DEPENDENCY, true);
     if (rc != 0) {
         goto done;
     }
 
-    /* Traverse through all of the TLVs to find the dependency TLVs. */
-    for (; off < end; off += sizeof(tlv) + tlv.it_len) {
-        rc = flash_area_read(fap, off, &tlv, sizeof(tlv));
-        if (rc != 0) {
-             rc = BOOT_EFLASH;
-             goto done;
-         }
-
-        if (tlv.it_type == IMAGE_TLV_DEPENDENCY) {
-            dep_tlvs_found = true;
-
-            if (tlv.it_len != sizeof(dep)) {
-                rc = BOOT_EBADIMAGE;
-                goto done;
-            }
-
-            rc = flash_area_read(fap, off + sizeof(tlv), &dep, tlv.it_len);
-            if (rc != 0) {
-                rc = BOOT_EFLASH;
-                goto done;
-            }
-
-            if (dep.image_id >= BOOT_IMAGE_NUMBER) {
-                rc = BOOT_EBADARGS;
-                goto done;
-            }
-
-            /* Verify dependency and modify the swap type if not satisfied. */
-            rc = boot_verify_slot_dependency(state, &dep);
-            if (rc != 0) {
-                /* Dependency not satisfied. */
-                goto done;
-            }
-
-            /* Dependency satisfied, no action needed.
-             * Continue with the next TLV entry.
-             */
-        } else if (dep_tlvs_found) {
-            /* The dependency TLVs are contiguous in the TLV area. If a
-             * dependency had already been found and the last read TLV
-             * has a different type then there are no more dependency TLVs.
-             * The search can be finished.
-             */
+    while (true) {
+        rc = bootutil_tlv_iter_next(&it, &off, &len, NULL);
+        if (rc < 0) {
+            return -1;
+        } else if (rc > 0) {
+            rc = 0;
             break;
+        }
+
+        if (len != sizeof(dep)) {
+            rc = BOOT_EBADIMAGE;
+            goto done;
+        }
+
+        rc = flash_area_read(fap, off, &dep, len);
+        if (rc != 0) {
+            rc = BOOT_EFLASH;
+            goto done;
+        }
+
+        if (dep.image_id >= BOOT_IMAGE_NUMBER) {
+            rc = BOOT_EBADARGS;
+            goto done;
+        }
+
+        /* Verify dependency and modify the swap type if not satisfied. */
+        rc = boot_verify_slot_dependency(state, &dep);
+        if (rc != 0) {
+            /* Dependency not satisfied. */
+            goto done;
         }
     }
 

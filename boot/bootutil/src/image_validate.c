@@ -222,13 +222,14 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
                       int seed_len, uint8_t *out_hash)
 {
     uint32_t off;
-    uint32_t end;
+    uint16_t len;
+    uint8_t type;
     int sha256_valid = 0;
 #ifdef EXPECTED_SIG_TLV
     int valid_signature = 0;
     int key_id = -1;
 #endif
-    struct image_tlv tlv;
+    struct image_tlv_iter it;
     uint8_t buf[SIG_BUF_SIZE];
     uint8_t hash[32];
     int rc;
@@ -243,7 +244,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
         memcpy(out_hash, hash, 32);
     }
 
-    rc = boot_find_tlv_offs(hdr, fap, &off, &end);
+    rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_ANY, false);
     if (rc) {
         return rc;
     }
@@ -252,21 +253,23 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
      * Traverse through all of the TLVs, performing any checks we know
      * and are able to do.
      */
-    for (; off < end; off += sizeof(tlv) + tlv.it_len) {
-        rc = flash_area_read(fap, off, &tlv, sizeof tlv);
-        if (rc) {
-            return rc;
+    while (true) {
+        rc = bootutil_tlv_iter_next(&it, &off, &len, &type);
+        if (rc < 0) {
+            return -1;
+        } else if (rc > 0) {
+            break;
         }
 
-        if (tlv.it_type == IMAGE_TLV_SHA256) {
+        if (type == IMAGE_TLV_SHA256) {
             /*
              * Verify the SHA256 image hash.  This must always be
              * present.
              */
-            if (tlv.it_len != sizeof(hash)) {
+            if (len != sizeof(hash)) {
                 return -1;
             }
-            rc = flash_area_read(fap, off + sizeof(tlv), buf, sizeof hash);
+            rc = flash_area_read(fap, off, buf, sizeof hash);
             if (rc) {
                 return rc;
             }
@@ -276,36 +279,36 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 
             sha256_valid = 1;
 #ifdef EXPECTED_SIG_TLV
-        } else if (tlv.it_type == IMAGE_TLV_KEYHASH) {
+        } else if (type == IMAGE_TLV_KEYHASH) {
             /*
              * Determine which key we should be checking.
              */
-            if (tlv.it_len > 32) {
+            if (len > 32) {
                 return -1;
             }
-            rc = flash_area_read(fap, off + sizeof tlv, buf, tlv.it_len);
+            rc = flash_area_read(fap, off, buf, len);
             if (rc) {
                 return rc;
             }
-            key_id = bootutil_find_key(buf, tlv.it_len);
+            key_id = bootutil_find_key(buf, len);
             /*
              * The key may not be found, which is acceptable.  There
              * can be multiple signatures, each preceded by a key.
              */
-        } else if (tlv.it_type == EXPECTED_SIG_TLV) {
+        } else if (type == EXPECTED_SIG_TLV) {
             /* Ignore this signature if it is out of bounds. */
             if (key_id < 0 || key_id >= bootutil_key_cnt) {
                 key_id = -1;
                 continue;
             }
-            if (!EXPECTED_SIG_LEN(tlv.it_len) || tlv.it_len > sizeof(buf)) {
+            if (!EXPECTED_SIG_LEN(len) || len > sizeof(buf)) {
                 return -1;
             }
-            rc = flash_area_read(fap, off + sizeof(tlv), buf, tlv.it_len);
+            rc = flash_area_read(fap, off, buf, len);
             if (rc) {
                 return -1;
             }
-            rc = bootutil_verify_sig(hash, sizeof(hash), buf, tlv.it_len, key_id);
+            rc = bootutil_verify_sig(hash, sizeof(hash), buf, len, key_id);
             if (rc == 0) {
                 valid_signature = 1;
             }
