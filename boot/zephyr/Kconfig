@@ -229,7 +229,7 @@ config BOOT_MAX_IMG_SECTORS
 
 config BOOT_ERASE_PROGRESSIVELY
 	bool "Erase flash progressively when receiving new firmware"
-	default y if SOC_NRF52840
+	default y if SOC_NRF52840 || SOC_NRF9160
 	help
 	 If enabled, flash is erased as necessary when receiving new firmware,
 	 instead of erasing the whole image slot at once. This is necessary
