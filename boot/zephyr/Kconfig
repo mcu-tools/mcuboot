@@ -282,4 +282,10 @@ config MULTITHREADING
 	default n if SOC_FAMILY_NRF
 	default y
 
+config UPDATEABLE_IMAGE_NUMBER
+	int "Number of updateable images"
+	default 1
+	help
+	  Enables support of multi image update.
+
 source "$ZEPHYR_BASE/Kconfig.zephyr"
