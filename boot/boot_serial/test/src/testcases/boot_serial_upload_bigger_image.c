@@ -17,6 +17,7 @@
  * under the License.
  */
 
+#include <flash_map_backend/flash_map_backend.h>
 #include <tinycbor/cborconstants_p.h>
 
 #include "boot_test.h"
@@ -105,7 +106,7 @@ TEST_CASE(boot_serial_upload_bigger_image)
     /*
      * Validate contents inside the primary slot
      */
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY, &fap);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &fap);
     assert(rc == 0);
 
     for (off = 0; off < sizeof(img); off += sizeof(enc_img)) {

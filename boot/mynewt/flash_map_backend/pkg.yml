@@ -11,3 +11,4 @@ pkg.homepage: "http://mcuboot.com"
 
 pkg.deps:
     - "@apache-mynewt-core/sys/flash_map"
+    - "@mcuboot/boot/mynewt/mcuboot_config"
