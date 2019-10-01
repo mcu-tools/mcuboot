@@ -53,7 +53,6 @@ const uint32_t boot_img_magic[] = {
     (sizeof boot_img_magic / sizeof boot_img_magic[0])
 
 const uint32_t BOOT_MAGIC_SZ = sizeof boot_img_magic;
-const uint32_t BOOT_MAX_ALIGN = MAX_FLASH_ALIGN;
 
 struct boot_swap_table {
     uint8_t magic_primary_slot;

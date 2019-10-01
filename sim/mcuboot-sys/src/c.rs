@@ -45,7 +45,7 @@ pub fn boot_magic_sz() -> usize {
 }
 
 pub fn boot_max_align() -> usize {
-    unsafe { raw::BOOT_MAX_ALIGN as usize }
+    unsafe { raw::boot_max_align() as usize }
 }
 
 pub fn rsa_oaep_encrypt(pubkey: &[u8], seckey: &[u8]) -> Result<[u8; 256], &'static str> {
@@ -84,7 +84,7 @@ mod raw {
         pub fn boot_trailer_sz(min_write_sz: u8) -> u32;
 
         pub static BOOT_MAGIC_SZ: u32;
-        pub static BOOT_MAX_ALIGN: u32;
+        pub fn boot_max_align() -> u32;
 
         pub fn rsa_oaep_encrypt_(pubkey: *const u8, pubkey_len: libc::c_uint,
                                  seckey: *const u8, seckey_len: libc::c_uint,

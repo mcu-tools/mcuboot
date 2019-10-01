@@ -50,8 +50,7 @@ extern "C" {
 /** Swapping encountered an unrecoverable error */
 #define BOOT_SWAP_TYPE_PANIC    0xff
 
-#define MAX_FLASH_ALIGN         8
-extern const uint32_t BOOT_MAX_ALIGN;
+#define BOOT_MAX_ALIGN          8
 
 struct image_header;
 /**
@@ -75,11 +74,11 @@ struct boot_rsp {
  */
 struct image_trailer {
     uint8_t swap_type;
-    uint8_t pad1[MAX_FLASH_ALIGN - 1];
+    uint8_t pad1[BOOT_MAX_ALIGN - 1];
     uint8_t copy_done;
-    uint8_t pad2[MAX_FLASH_ALIGN - 1];
+    uint8_t pad2[BOOT_MAX_ALIGN - 1];
     uint8_t image_ok;
-    uint8_t pad3[MAX_FLASH_ALIGN - 1];
+    uint8_t pad3[BOOT_MAX_ALIGN - 1];
     uint8_t magic[16];
 };
 
