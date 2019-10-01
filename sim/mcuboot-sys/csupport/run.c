@@ -449,3 +449,8 @@ void sim_assert(int x, const char *assertion, const char *file, unsigned int lin
         }
     }
 }
+
+uint32_t boot_max_align(void)
+{
+    return BOOT_MAX_ALIGN;
+}
