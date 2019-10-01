@@ -29,6 +29,6 @@ syscfg.vals:
     STATS_CLI: 1
     LOG_CLI: 1
     CONFIG_CLI: 1
-    STATS_NEWTMGR: 1
-    LOG_NEWTMGR: 1
-    CONFIG_NEWTMGR: 1
+    STATS_MGMT: 1
+    LOG_MGMT: 1
+    CONFIG_MGMT: 1
