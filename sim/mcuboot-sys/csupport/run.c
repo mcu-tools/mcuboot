@@ -454,3 +454,8 @@ uint32_t boot_max_align(void)
 {
     return BOOT_MAX_ALIGN;
 }
+
+uint32_t boot_magic_sz(void)
+{
+    return BOOT_MAGIC_SZ;
+}

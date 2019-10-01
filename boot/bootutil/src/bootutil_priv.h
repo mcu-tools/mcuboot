@@ -185,7 +185,7 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #define BOOT_STATUS_SOURCE_SCRATCH      1
 #define BOOT_STATUS_SOURCE_PRIMARY_SLOT 2
 
-extern const uint32_t BOOT_MAGIC_SZ;
+#define BOOT_MAGIC_SZ (sizeof boot_img_magic)
 
 /**
  * Compatibility shim for flash sector type.

@@ -52,8 +52,6 @@ const uint32_t boot_img_magic[] = {
 #define BOOT_MAGIC_ARR_SZ \
     (sizeof boot_img_magic / sizeof boot_img_magic[0])
 
-const uint32_t BOOT_MAGIC_SZ = sizeof boot_img_magic;
-
 struct boot_swap_table {
     uint8_t magic_primary_slot;
     uint8_t magic_secondary_slot;
