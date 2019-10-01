@@ -191,7 +191,7 @@ static int
 boot_uart_fifo_init(void)
 {
 #ifdef CONFIG_BOOT_SERIAL_UART
-	uart_dev = device_get_binding(DT_UART_CONSOLE_ON_DEV_NAME);
+	uart_dev = device_get_binding(CONFIG_RECOVERY_UART_DEV_NAME);
 #elif CONFIG_BOOT_SERIAL_CDC_ACM
 	uart_dev = device_get_binding(CONFIG_USB_CDC_ACM_DEVICE_NAME "_0");
 #endif
