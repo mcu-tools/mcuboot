@@ -11,6 +11,8 @@ project:
 - David Brown: davidb@davidb.org or david.brown@linaro.org
 - Fabio Utzig: utzig@apache.org
 
+If you wish to send encrypted email, you may use these PGP keys:
+
     pub   rsa4096 2011-10-14 [SC]
           DAFD760825AE2636AEA9CB19E6BA9F5C5E54DF82
     uid           [ultimate] David Brown <davidb@davidb.org>
