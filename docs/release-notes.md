@@ -3,6 +3,26 @@
 - Table of Contents
 {:toc}
 
+## Version 1.4.0
+
+The 1.4.0 release of MCUboot primarily adds support for multi-image
+booting.  With this release, MCUboot can manage two images that can be
+updated independently.  With this, it also supports additions to the
+TLV that allow these dependencies to be specified.
+
+Multi-image support adds backward-incompatible changes to the format
+of the images: specifically adding support for protected TLV entries.
+If multiple images and dependencies are not used, the images will be
+compatible with previous releases of MCUboot.
+
+### About this release
+
+- Fixed CVE-2019-5477.  This fixes an issue with a dependency used in
+  the generation of the documentation on github.
+- Numerous code cleanups and refactorings
+- Documentation updates for multi-image features
+- Update imgtool.py to support the new features
+
 ## Version 1.3.1
 
 The 1.3.1 release of MCUboot consists mostly of small bug fixes and updates.
