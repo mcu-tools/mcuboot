@@ -722,4 +722,3 @@ done:
     flash_area_close(fap);
     return rc;
 }
-
