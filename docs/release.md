@@ -32,6 +32,19 @@ During the time between rc1 and the final release, the only changes
 that should be merged into master are those to fix bugs found in the
 rc and Mynewt metadata as described in the next section.
 
+## imgtool release
+
+imgtool is released through pypi.org (The Python package index) and
+requires that its version to be updated by editing
+`scripts/imgtool/__init__.py` and modifying the exported version:
+
+`imgtool_version = "X.Y.ZrcN"`
+
+where `rcX`, `aX` and `bX` are accepted pre-release versions (just
+numbers for final releases). For more info see:
+
+https://www.python.org/dev/peps/pep-0440/#pre-releases
+
 ## Mynewt release information
 
 On Mynewt, `newt` always fetches a versioned MCUBoot release, so after
