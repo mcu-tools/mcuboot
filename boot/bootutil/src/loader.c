@@ -844,6 +844,32 @@ split_image_check(struct image_header *app_hdr,
 }
 
 /*
+ * Check that this is a valid header.  Valid means that the magic is
+ * correct, and that the sizes/offsets are "sane".  Sane means that
+ * there is no overflow on the arithmetic, and that the result fits
+ * within the flash area we are in.
+ */
+static bool
+boot_is_header_valid(const struct image_header *hdr, const struct flash_area *fap)
+{
+    uint32_t size;
+
+    if (hdr->ih_magic != IMAGE_MAGIC) {
+        return false;
+    }
+
+    if (!boot_u32_safe_add(&size, hdr->ih_img_size, hdr->ih_hdr_size)) {
+        return false;
+    }
+
+    if (size >= fap->fa_size) {
+        return false;
+    }
+
+    return true;
+}
+
+/*
  * Check that a memory area consists of a given value.
  */
 static inline bool
@@ -916,7 +942,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         goto out;
     }
 
-    if (hdr->ih_magic != IMAGE_MAGIC || boot_image_check(state, hdr, fap, bs)) {
+    if (!boot_is_header_valid(hdr, fap) || boot_image_check(state, hdr, fap, bs)) {
         if (slot != BOOT_PRIMARY_SLOT) {
             flash_area_erase(fap, 0, fap->fa_size);
             /* Image in the secondary slot is invalid. Erase the image and
