@@ -252,6 +252,41 @@ int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
 int boot_read_enc_key(int image_index, uint8_t slot, uint8_t *enckey);
 #endif
 
+/**
+ * Safe (non-overflowing) uint32_t addition.  Returns true, and stores
+ * the result in *dest if it can be done without overflow.  Otherwise,
+ * returns false.
+ */
+static inline bool boot_u32_safe_add(uint32_t *dest, uint32_t a, uint32_t b)
+{
+    /*
+     * "a + b <= UINT32_MAX", subtract 'b' from both sides to avoid
+     * the overflow.
+     */
+    if (a > UINT32_MAX - b) {
+        return false;
+    } else {
+        *dest = a + b;
+        return true;
+    }
+}
+
+/**
+ * Safe (non-overflowing) uint16_t addition.  Returns true, and stores
+ * the result in *dest if it can be done without overflow.  Otherwise,
+ * returns false.
+ */
+static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
+{
+    uint32_t tmp = a + b;
+    if (tmp > UINT16_MAX) {
+        return false;
+    } else {
+        *dest = tmp;
+        return true;
+    }
+}
+
 /*
  * Accessors for the contents of struct boot_loader_state.
  */
