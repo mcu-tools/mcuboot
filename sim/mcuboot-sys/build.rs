@@ -70,7 +70,7 @@ fn main() {
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
 
         if !enc_kw {
-            conf.include("../../ext/mbedtls/include");
+            conf.include("../../ext/mbedtls-asn1/include");
         }
         conf.include("../../ext/tinycrypt/lib/include");
 
@@ -82,8 +82,8 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/ecc_dsa.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_platform_specific.c");
 
-        conf.file("../../ext/mbedtls/src/platform_util.c");
-        conf.file("../../ext/mbedtls/src/asn1parse.c");
+        conf.file("../../ext/mbedtls-asn1/src/platform_util.c");
+        conf.file("../../ext/mbedtls-asn1/src/asn1parse.c");
     } else if sig_ed25519 {
         conf.define("MCUBOOT_SIGN_ED25519", None);
         conf.define("MCUBOOT_USE_MBED_TLS", None);
@@ -208,7 +208,7 @@ fn main() {
 
     walk_dir("../../boot").unwrap();
     walk_dir("../../ext/tinycrypt/lib/source").unwrap();
-    walk_dir("../../ext/mbedtls").unwrap();
+    walk_dir("../../ext/mbedtls-asn1").unwrap();
     walk_dir("csupport").unwrap();
     walk_dir("mbedtls/include").unwrap();
     walk_dir("mbedtls/library").unwrap();
