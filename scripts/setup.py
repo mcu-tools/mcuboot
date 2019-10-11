@@ -5,7 +5,7 @@ setuptools.setup(
     name="imgtool",
     version=imgtool_version,
     author="The MCUboot commiters",
-    author_email="None",
+    author_email="dev-mcuboot@lists.runtime.co",
     description=("MCUboot's image signing and key management"),
     license="Apache Software License",
     url="http://github.com/JuulLabs-OSS/mcuboot",
