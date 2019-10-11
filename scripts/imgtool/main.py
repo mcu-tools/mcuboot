@@ -182,6 +182,8 @@ class BasedIntParamType(click.ParamType):
 
 @click.argument('outfile')
 @click.argument('infile')
+@click.option('-x', '--hex-addr', type=BasedIntParamType(), required=False,
+              help='Adjust address in hex output file.')
 @click.option('-L', '--load-addr', type=BasedIntParamType(), required=False,
               help='Load address for image when it is in its primary slot.')
 @click.option('-E', '--encrypt', metavar='filename',
@@ -212,7 +214,7 @@ class BasedIntParamType(click.ParamType):
                .hex extension, otherwise binary format is used''')
 def sign(key, align, version, header_size, pad_header, slot_size, pad,
          max_sectors, overwrite_only, endian, encrypt, infile, outfile,
-         dependencies, load_addr):
+         dependencies, load_addr, hex_addr):
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, align=int(align),
                       slot_size=slot_size, max_sectors=max_sectors,
@@ -227,7 +229,7 @@ def sign(key, align, version, header_size, pad_header, slot_size, pad,
         if key and not isinstance(key, keys.RSA):
             raise Exception("Signing only available with private RSA key")
     img.create(key, enckey, dependencies)
-    img.save(outfile)
+    img.save(outfile, hex_addr)
 
 
 class AliasesGroup(click.Group):
