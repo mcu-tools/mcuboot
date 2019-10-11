@@ -1,3 +1,3 @@
 [submodule "sim/mbedtls"]
-	path = sim/mcuboot-sys/mbedtls
+	path = ext/mbedtls
 	url = https://github.com/ARMmbed/mbedtls
