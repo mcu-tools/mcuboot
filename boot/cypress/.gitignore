@@ -1,0 +1,39 @@
+outdir/
+.*.swp
+target.sh
+*.pyc
+tags
+rusty-tags.*
+
+# mynewt
+/repos/
+/project.state
+/bin/
+/targets/
+**/build/**/*
+
+#Eclipse project files
+.cproject
+.project
+
+# Compiled python modules.
+*.pyc
+
+# Setuptools distribution folder.
+/scripts/dist/
+
+# Python egg metadata, regenerated from source files by setuptools.
+/scripts/*.egg-info
+/scripts/*.egg
+
+# Build dirs
+*out/*/*
+*out/obj/*
+
+# Build files
+*.o
+*.d
+*.map
+*.elf
+*.bin
+*.hex

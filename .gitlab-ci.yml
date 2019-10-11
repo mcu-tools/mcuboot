@@ -1,0 +1,64 @@
+stages:
+  - build
+  - deploy
+
+
+# Builds on linux, Mac OS and Windows
+lin_build:
+  stage: build
+  tags:
+    - FW_SECURITY_TEST_UBUNTU1804
+  script:
+    - export https_proxy=http://proxy.ua.cypress.com:8080
+    - pwd
+    - git submodule update --init
+    - cd boot/cypress
+    - make app APP_NAME=MCUBootApp TARGET=CY8CPROTO-062-4343W-M0 BUILDCFG=Debug TOOLCHAIN=/home/fw-security/ModusToolbox/tools_2.0/gcc-7.2.1
+
+
+mac_build:
+  stage: build
+  tags:
+    - MBED_TEST_MAC1014
+  script:
+    - export https_proxy=http://proxy.ua.cypress.com:8080
+    - pwd
+    - git submodule update --init
+    - cd boot/cypress
+    - make app APP_NAME=MCUBootApp TARGET=CY8CPROTO-062-4343W-M0 BUILDCFG=Debug TOOLCHAIN=/Applications/ModusToolbox/tools_2.0/gcc-7.2.1
+    
+
+win_build:
+  stage: build
+  tags:
+    - MBED_TEST
+  script:
+    - cd
+    - git submodule update --init
+    - cd boot/cypress
+    - C:/msys64/usr/bin/make.exe app APP_NAME=MCUBootApp TARGET=CY8CPROTO-062-4343W-M0 BUILDCFG=Debug TOOLCHAIN=C:/Users/cydesigner/ModusToolbox/tools_2.0/gcc-7.2.1
+
+# Preparing build artifacts for a deployment job
+    - cd ../..
+    - mkdir deploy
+    - Copy-Item -Path ./boot/cypress/MCUBootApp/out/CY8CPROTO-062-4343W-M0/ -Destination ./deploy/CY8CPROTO-062-4343W-M0/ -Recurse
+  artifacts:
+    expire_in: 1 weeks
+    paths:
+      - deploy
+      - develop
+
+    
+    
+# Upload build artifacts to http://iot-webserver.aus.cypress.com/projects/iot_release/ASSETS/repo/mcuboot/develop/
+deploy_asset:
+  stage: deploy
+  tags:
+    - devops-assets
+  dependencies:
+    - win_build
+  only:
+    - develop
+  script:
+    - git clone git@git-ore.aus.cypress.com:devops/devops_scripts.git
+    - bash devops_scripts/job_deploy_to_assets.sh

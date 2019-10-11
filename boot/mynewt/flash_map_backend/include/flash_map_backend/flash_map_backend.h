@@ -33,7 +33,7 @@
                                          255)
 
 #else
-#error "Image slot and flash area mapping is not defined"
+#error "Image slot and flash area mapping are not defined"
 #endif
 
 int flash_area_id_from_multi_image_slot(int image_index, int slot);
