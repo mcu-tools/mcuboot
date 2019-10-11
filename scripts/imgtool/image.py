@@ -164,20 +164,26 @@ class Image():
 
         self.check()
 
-    def save(self, path):
+    def save(self, path, hex_addr=None):
         """Save an image from a given file"""
-        if self.pad:
-            self.pad_to(self.slot_size)
-
         ext = os.path.splitext(path)[1][1:].lower()
         if ext == INTEL_HEX_EXT:
             # input was in binary format, but HEX needs to know the base addr
-            if self.base_addr is None:
-                raise Exception("Input file does not provide a base address")
+            if self.base_addr is None and hex_addr is None:
+                raise Exception("No address exists in input file neither was "
+                                "it provided by user")
             h = IntelHex()
+            if hex_addr is not None:
+                self.base_addr = hex_addr
             h.frombytes(bytes=self.payload, offset=self.base_addr)
+            if self.pad:
+                magic_addr = (self.base_addr + self.slot_size) - \
+                    len(boot_magic)
+                h.puts(magic_addr, boot_magic)
             h.tofile(path, 'hex')
         else:
+            if self.pad:
+                self.pad_to(self.slot_size)
             with open(path, 'wb') as f:
                 f.write(self.payload)
 
@@ -341,7 +347,7 @@ class Image():
         tsize = self._trailer_size(self.align, self.max_sectors,
                                    self.overwrite_only, self.enckey)
         padding = size - (len(self.payload) + tsize)
-        pbytes  = b'\xff' * padding
+        pbytes = b'\xff' * padding
         pbytes += b'\xff' * (tsize - len(boot_magic))
         pbytes += boot_magic
         self.payload += pbytes
