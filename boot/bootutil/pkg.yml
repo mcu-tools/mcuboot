@@ -46,7 +46,7 @@ pkg.deps.BOOTUTIL_USE_MBED_TLS:
 
 pkg.deps.BOOTUTIL_USE_TINYCRYPT:
     - "@mcuboot/ext/tinycrypt/lib"
-    - "@mcuboot/ext/mbedtls"
+    - "@mcuboot/ext/mbedtls-asn1"
 
 pkg.deps.BOOTUTIL_SIGN_ED25519:
     - "@apache-mynewt-core/crypto/mbedtls"
