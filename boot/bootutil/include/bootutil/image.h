@@ -151,7 +151,7 @@ struct image_tlv_iter {
     const struct flash_area *fap;
     uint8_t type;
     bool prot;
-    uint16_t prot_end;
+    uint32_t prot_end;
     uint32_t tlv_off;
     uint32_t tlv_end;
 };
