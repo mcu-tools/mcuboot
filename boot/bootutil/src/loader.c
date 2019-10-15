@@ -262,7 +262,7 @@ boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
 #endif
 
     area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
-    rc = flash_area_open(area_id, &fap);
+    rc = flash_area_open((uint8_t)area_id, &fap);
     if (rc != 0) {
         rc = BOOT_EFLASH;
         goto done;
@@ -318,7 +318,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
 #endif
 
     area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
-    rc = flash_area_open(area_id, &fap);
+    rc = flash_area_open((uint8_t)area_id, &fap);
     if (rc != 0) {
         rc = BOOT_EFLASH;
         goto done;
@@ -458,7 +458,8 @@ boot_slots_compatible(struct boot_loader_state *state)
                 BOOT_LOG_WRN("Cannot upgrade: not all sectors fit inside scratch");
                 return 0;
             }
-            smaller = sz0 = sz1 = 0;
+            smaller = 0;
+            sz0 = sz1 = 0;
         }
     }
 
@@ -642,7 +643,7 @@ boot_read_status_bytes(const struct flash_area *fap,
             found_idx = i;
         }
         bs->idx = (found_idx / BOOT_STATUS_STATE_COUNT) + 1;
-        bs->state = (found_idx % BOOT_STATUS_STATE_COUNT) + 1;
+        bs->state = (uint8_t)((found_idx % BOOT_STATUS_STATE_COUNT) + 1);
     }
 
     return 0;
@@ -692,7 +693,7 @@ boot_read_status(struct boot_loader_state *state, struct boot_status *bs)
         return BOOT_EBADARGS;
     }
 
-    rc = flash_area_open(area_id, &fap);
+    rc = flash_area_open((uint8_t)area_id, &fap);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -748,7 +749,7 @@ boot_write_status(struct boot_loader_state *state, struct boot_status *bs)
         area_id = FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state));
     }
 
-    rc = flash_area_open(area_id, &fap);
+    rc = flash_area_open((uint8_t)area_id, &fap);
     if (rc != 0) {
         rc = BOOT_EFLASH;
         goto done;
@@ -895,7 +896,7 @@ boot_check_header_erased(struct boot_loader_state *state, int slot)
     int rc;
 
     area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
-    rc = flash_area_open(area_id, &fap);
+    rc = flash_area_open((uint8_t)area_id, &fap);
     if (rc != 0) {
         return -1;
     }
@@ -929,7 +930,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
     int rc;
 
     area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
-    rc = flash_area_open(area_id, &fap);
+    rc = flash_area_open((uint8_t)area_id, &fap);
     if (rc != 0) {
         return -1;
     }
@@ -1013,8 +1014,8 @@ boot_copy_sz(struct boot_loader_state *state, int last_sector_idx,
              int *out_first_sector_idx)
 {
     size_t scratch_sz;
-    uint32_t new_sz;
-    uint32_t sz;
+    size_t new_sz;
+    size_t sz;
     int i;
 
     sz = 0;
@@ -1037,7 +1038,7 @@ boot_copy_sz(struct boot_loader_state *state, int last_sector_idx,
      * sectors have been processed.  In both cases, exclude sector i.
      */
     *out_first_sector_idx = i + 1;
-    return sz;
+    return (uint32_t)sz;
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
 
@@ -1143,7 +1144,7 @@ boot_copy_region(struct boot_loader_state *state,
                 }
                 boot_encrypt(BOOT_CURR_ENC(state), image_index, fap_src,
                         (off + bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
-                        blk_off, &buf[idx]);
+                        (uint32_t)blk_off, &buf[idx]);
             }
         }
 #endif
@@ -1245,11 +1246,11 @@ boot_erase_trailer_sectors(const struct boot_loader_state *state,
     }
 
     /* delete starting from last sector and moving to beginning */
-    sector = boot_img_num_sectors(state, slot) - 1;
+    sector = (uint32_t)boot_img_num_sectors(state, slot) - 1;
     trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
     total_sz = 0;
     do {
-        sz = boot_img_sector_size(state, slot, sector);
+        sz = (uint32_t)boot_img_sector_size(state, slot, sector);
         off = boot_img_sector_off(state, slot, sector);
         rc = boot_erase_region(fap, off, sz);
         assert(rc == 0);
@@ -1512,7 +1513,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     sect_count = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
     for (sect = 0, size = 0; sect < sect_count; sect++) {
         this_size = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, sect);
-        rc = boot_erase_region(fap_primary_slot, size, this_size);
+        rc = boot_erase_region(fap_primary_slot, (uint32_t)size, (uint32_t)this_size);
         assert(rc == 0);
 
         size += this_size;
@@ -1541,7 +1542,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 
     BOOT_LOG_INF("Copying the secondary slot to the primary slot: 0x%zx bytes",
                  size);
-    rc = boot_copy_region(state, fap_secondary_slot, fap_primary_slot, 0, 0, size);
+    rc = boot_copy_region(state, fap_secondary_slot, fap_primary_slot, 0, 0, (uint32_t)size);
 
     /*
      * Erases header and trailer. The trailer is erased because when a new
@@ -1551,14 +1552,14 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     BOOT_LOG_DBG("erasing secondary header");
     rc = boot_erase_region(fap_secondary_slot,
                            boot_img_sector_off(state, BOOT_SECONDARY_SLOT, 0),
-                           boot_img_sector_size(state, BOOT_SECONDARY_SLOT, 0));
+                           (uint32_t)boot_img_sector_size(state, BOOT_SECONDARY_SLOT, 0));
     assert(rc == 0);
     last_sector = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT) - 1;
     BOOT_LOG_DBG("erasing secondary trailer");
     rc = boot_erase_region(fap_secondary_slot,
                            boot_img_sector_off(state, BOOT_SECONDARY_SLOT,
                                last_sector),
-                           boot_img_sector_size(state, BOOT_SECONDARY_SLOT,
+                           (uint32_t)boot_img_sector_size(state, BOOT_SECONDARY_SLOT,
                                last_sector));
     assert(rc == 0);
 
@@ -1709,13 +1710,13 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
     while (1) {
         if ((primary_slot_size < copy_size) ||
             (primary_slot_size < secondary_slot_size)) {
-           primary_slot_size += boot_img_sector_size(state,
+           primary_slot_size += (uint32_t)boot_img_sector_size(state,
                                                      BOOT_PRIMARY_SLOT,
                                                      last_sector_idx);
         }
         if ((secondary_slot_size < copy_size) ||
             (secondary_slot_size < primary_slot_size)) {
-           secondary_slot_size += boot_img_sector_size(state,
+           secondary_slot_size += (uint32_t)boot_img_sector_size(state,
                                                        BOOT_SECONDARY_SLOT,
                                                        last_idx_secondary_slot);
         }
@@ -1913,7 +1914,7 @@ boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
     int rc;
 
     area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
-    rc = flash_area_open(area_id, &fap);
+    rc = flash_area_open((uint8_t)area_id, &fap);
     if (rc != 0) {
         rc = BOOT_EFLASH;
         goto done;
@@ -1991,7 +1992,7 @@ boot_verify_dependencies(struct boot_loader_state *state)
              * image upgrades.
              */
             for (int idx = 0; idx < BOOT_IMAGE_NUMBER; idx++) {
-                BOOT_CURR_IMG(state) = idx;
+                BOOT_CURR_IMG(state) = (uint8_t)idx;
                 BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
             }
             break;
@@ -2255,7 +2256,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
         } else {
             /* There was no partial swap, determine swap type. */
             if (bs->swap_type == BOOT_SWAP_TYPE_NONE) {
-                BOOT_SWAP_TYPE(state) = boot_validated_swap_type(state, bs);
+                BOOT_SWAP_TYPE(state) = (uint8_t)boot_validated_swap_type(state, bs);
             } else if (boot_validate_slot(state, BOOT_SECONDARY_SLOT, bs) != 0) {
                 BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_FAIL;
             } else {
@@ -2299,7 +2300,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
 int
 context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
-    size_t slot;
+    int slot;
     struct boot_status bs;
     int rc;
     int fa_id;
@@ -2349,7 +2350,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
          */
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             fa_id = flash_area_id_from_multi_image_slot(image_index, slot);
-            rc = flash_area_open(fa_id, &BOOT_IMG_AREA(state, slot));
+            rc = flash_area_open((uint8_t)fa_id, &BOOT_IMG_AREA(state, slot));
             assert(rc == 0);
         }
         rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH,
@@ -2535,11 +2536,11 @@ split_go(int loader_slot, int split_slot, void **entry)
     BOOT_IMG(&boot_data, split_slot).sectors = sectors + BOOT_MAX_IMG_SECTORS;
 
     loader_flash_id = flash_area_id_from_image_slot(loader_slot);
-    rc = flash_area_open(loader_flash_id,
+    rc = flash_area_open((uint8_t)loader_flash_id,
                          &BOOT_IMG_AREA(&boot_data, loader_slot));
     assert(rc == 0);
     split_flash_id = flash_area_id_from_image_slot(split_slot);
-    rc = flash_area_open(split_flash_id,
+    rc = flash_area_open((uint8_t)split_flash_id,
                          &BOOT_IMG_AREA(&boot_data, split_slot));
     assert(rc == 0);
 

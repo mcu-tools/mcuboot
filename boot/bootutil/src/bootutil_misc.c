@@ -158,7 +158,7 @@ boot_trailer_sz(uint8_t min_write_sz)
 #endif
            /* swap_type + copy_done + image_ok + swap_size */
            BOOT_MAX_ALIGN * 4                     +
-           BOOT_MAGIC_SZ;
+           (uint32_t)BOOT_MAGIC_SZ;
 }
 
 int
@@ -190,7 +190,7 @@ boot_status_off(const struct flash_area *fap)
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
-    return fap->fa_size - BOOT_MAGIC_SZ;
+    return fap->fa_size - (uint32_t)BOOT_MAGIC_SZ;
 }
 
 static inline uint32_t
@@ -242,7 +242,7 @@ boot_read_swap_state(const struct flash_area *fap,
     if (rc == 1) {
         state->magic = BOOT_MAGIC_UNSET;
     } else {
-        state->magic = boot_magic_decode(magic);
+        state->magic = (uint8_t)boot_magic_decode(magic);
     }
 
     off = boot_swap_info_off(fap);
@@ -269,7 +269,7 @@ boot_read_swap_state(const struct flash_area *fap,
     if (rc == 1) {
         state->copy_done = BOOT_FLAG_UNSET;
     } else {
-        state->copy_done = boot_flag_decode(state->copy_done);
+        state->copy_done = (uint8_t)boot_flag_decode(state->copy_done);
     }
 
     off = boot_image_ok_off(fap);
@@ -281,7 +281,7 @@ boot_read_swap_state(const struct flash_area *fap,
     if (rc == 1) {
         state->image_ok = BOOT_FLAG_UNSET;
     } else {
-        state->image_ok = boot_flag_decode(state->image_ok);
+        state->image_ok = (uint8_t)boot_flag_decode(state->image_ok);
     }
 
     return 0;
@@ -296,7 +296,7 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
     const struct flash_area *fap;
     int rc;
 
-    rc = flash_area_open(flash_area_id, &fap);
+    rc = flash_area_open((uint8_t)flash_area_id, &fap);
     if (rc != 0) {
         return BOOT_EFLASH;
     }

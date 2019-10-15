@@ -208,6 +208,8 @@ fn main() {
     conf.debug(true);
     cryptconf.debug(true);
     conf.flag("-Wall");
+    conf.flag("-Wconversion");
+    conf.flag("-Wno-sign-conversion");
     conf.flag("-Werror");
 
     // FIXME: travis-ci still uses gcc 4.8.4 which defaults to std=gnu90.

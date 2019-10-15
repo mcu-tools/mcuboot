@@ -159,7 +159,7 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #define BOOT_SET_SWAP_INFO(swap_info, image, type)  {                          \
                                                     assert((image) < 0xF);     \
                                                     assert((type)  < 0xF);     \
-                                                    (swap_info) = (image) << 4 \
+                                                    (swap_info) = (uint8_t)((image) << 4) \
                                                                 | (type);      \
                                                     }
 
@@ -282,7 +282,7 @@ static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
     if (tmp > UINT16_MAX) {
         return false;
     } else {
-        *dest = tmp;
+        *dest = (uint16_t)tmp;
         return true;
     }
 }

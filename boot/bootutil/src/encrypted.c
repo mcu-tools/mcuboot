@@ -104,7 +104,7 @@ key_unwrap(uint8_t *wrapped, uint8_t *enckey)
                 B[k] = A[k];
                 B[8 + k] = enckey[((i-1) * 8) + k];
             }
-            B[7] ^= 2 * j + i;
+            B[7] ^= (uint8_t)(2 * j + i);
             if (tc_aes_decrypt((uint8_t *)&B, (uint8_t *)&B, &aes) == 0) {
                 return -1;
             }
@@ -116,7 +116,7 @@ key_unwrap(uint8_t *wrapped, uint8_t *enckey)
     }
 
     for (i = 0, k = 0; i < 8; i++) {
-        k |= A[i] ^ 0xa6;
+        k |= (int8_t)(A[i] ^ 0xa6);
     }
     if (k) {
         return -1;
@@ -233,7 +233,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
     if (rc < 0) {
         return rc;
     }
-    slot = rc;
+    slot = (uint8_t)rc;
 
     /* Already loaded... */
     if (enc_state[slot].valid) {

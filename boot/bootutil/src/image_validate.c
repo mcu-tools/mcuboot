@@ -279,7 +279,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             if (rc) {
                 return rc;
             }
-            key_id = bootutil_find_key(buf, len);
+            key_id = bootutil_find_key(buf, (uint8_t)len);
             /*
              * The key may not be found, which is acceptable.  There
              * can be multiple signatures, each preceded by a key.
@@ -297,7 +297,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             if (rc) {
                 return -1;
             }
-            rc = bootutil_verify_sig(hash, sizeof(hash), buf, len, key_id);
+            rc = bootutil_verify_sig(hash, sizeof(hash), buf, len, (uint8_t)key_id);
             if (rc == 0) {
                 valid_signature = 1;
             }
