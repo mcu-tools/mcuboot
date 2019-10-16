@@ -208,26 +208,40 @@ struct flash_map_entry {
 int flash_device_base(uint8_t fd_id, uintptr_t *ret);
 
 /*< Opens the area for use. id is one of the `fa_id`s */
-int     flash_area_open(uint8_t id, const struct flash_area **);
-void    flash_area_close(const struct flash_area *);
+int flash_area_open(uint8_t id, const struct flash_area **);
+void flash_area_close(const struct flash_area *);
 /*< Reads `len` bytes of flash memory at `off` to the buffer at `dst` */
-int     flash_area_read(const struct flash_area *, uint32_t off, void *dst,
+int flash_area_read(const struct flash_area *, uint32_t off, void *dst,
                      uint32_t len);
 /*< Writes `len` bytes of flash memory at `off` from the buffer at `src` */
-int     flash_area_write(const struct flash_area *, uint32_t off,
+int flash_area_write(const struct flash_area *, uint32_t off,
                      const void *src, uint32_t len);
 /*< Erases `len` bytes of flash memory at `off` */
-int     flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
+int flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
 /*< Returns this `flash_area`s alignment */
 size_t flash_area_align(const struct flash_area *);
 /*< Initializes an array of flash_area elements for the slot's sectors */
-int     flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret);
+int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret);
 /*< Returns the `fa_id` for slot, where slot is 0 (primary) or 1 (secondary) */
-int     flash_area_id_from_image_slot(int slot);
+int flash_area_id_from_image_slot(int slot);
 /*< Returns the slot, for the `fa_id` supplied */
-int     flash_area_id_to_image_slot(int area_id);
+int flash_area_id_to_image_slot(int area_id);
 
 int flash_area_id_from_multi_image_slot(int image_index, int slot);
 int flash_area_id_to_multi_image_slot(int image_index, int area_id);
+
+/*
+ * Returns the value expected to be read when accesing any erased
+ * flash byte.
+ */
+uint8_t flash_area_erased_val(const struct flash_area *fap);
+
+/*
+ * Reads len bytes from off, and checks if the read data is erased.
+ *
+ * Returns 1 if erased, 0 if non-erased, and -1 on failure.
+ */
+int flash_area_read_is_empty(const struct flash_area *fa, uint32_t off,
+        void *dst, uint32_t len);
 
 #endif /* __FLASH_MAP_BACKEND_H__ */

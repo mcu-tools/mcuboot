@@ -50,35 +50,61 @@
 * limitations under the License.
 *******************************************************************************/
 
+/* Cypress pdl/bsp headers */
 #include "cy_pdl.h"
 #include "cyhal.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
 
+#include "sysflash/sysflash.h"
 #include "flash_map_backend/flash_map_backend.h"
 
-#define BLINKY_PERIOD_OK    (1000u)
-#define BLINKY_PERIOD_ERROR (100u)
+#include "bootutil/image.h"
+#include "bootutil/bootutil.h"
+#include "bootutil/sign_key.h"
 
-#define BUFF_SIZE           (128u)
+unsigned char ecdsa_pub_key[] = {
+  0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
+  0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03,
+  0x42, 0x00, 0x04, 0x15, 0x96, 0xcf, 0x02, 0xec, 0x76, 0xb5, 0x27, 0x35,
+  0xb8, 0x7e, 0x96, 0xee, 0x67, 0xf2, 0x63, 0x2b, 0x38, 0x00, 0xb8, 0x34,
+  0x4e, 0x2e, 0x06, 0xb5, 0x75, 0x8e, 0xc2, 0xc9, 0xfa, 0x31, 0x81, 0x87,
+  0x06, 0x39, 0x7a, 0xc4, 0x21, 0x95, 0xe4, 0x77, 0xb9, 0xf2, 0xa1, 0x41,
+  0x63, 0x40, 0x05, 0x55, 0xdc, 0x37, 0x67, 0xe0, 0x5e, 0xef, 0xfa, 0xfe,
+  0xa2, 0x64, 0xc2, 0x09, 0x49, 0x34, 0x87
+};
 
-uint32_t read_buff[BUFF_SIZE];
+unsigned int ecdsa_pub_key_len = 91;
 
-void print_mem(uint32_t *addr, uint32_t len)
-{
-    while(len-- > 0)
+const struct bootutil_key bootutil_keys[] = {
     {
-        printf("0x%08lX ", *addr++);
-        if(len % 8 == 0)
-        {
-            printf("\n\r");
-        }
+#if defined(MCUBOOT_SIGN_RSA)
+        .key = rsa_pub_key,
+        .len = &rsa_pub_key_len,
+#elif defined(MCUBOOT_SIGN_EC256)
+        .key = ecdsa_pub_key,
+        .len = &ecdsa_pub_key_len,
+#elif defined(MCUBOOT_SIGN_ED25519)
+        .key = ed25519_pub_key,
+        .len = &ed25519_pub_key_len,
+#endif
+    },
+};
+const int bootutil_key_cnt = 1;
+
+static void do_boot(struct boot_rsp *rsp)
+{
+    printf("Starting Application (wait) ...\r\n") ;
+    Cy_SysEnableCM4(rsp->br_hdr->ih_load_addr) ;
+    while (1)
+    {
+        __WFI() ;
     }
 }
 
 int main(void)
 {
-    uint32_t blinky_period = BLINKY_PERIOD_OK;
+    struct boot_rsp rsp ;
 
     /* Initialize the device and board peripherals */
     int result = cybsp_init();
@@ -88,43 +114,18 @@ int main(void)
         CY_ASSERT(0);
     }
 
-    /* Initialize the User LED */
-    cyhal_gpio_init((cyhal_gpio_t) CYBSP_USER_LED1, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, CYBSP_LED_STATE_OFF);
-
     /* Initialize retarget-io to use the debug UART port */
     cy_retarget_io_init(CYBSP_DEBUG_UART_TX, CYBSP_DEBUG_UART_RX, CY_RETARGET_IO_BAUDRATE);
 
     /* enable interrupts */
     __enable_irq();
 
-    printf("\n\r\n\rMCUBoot Application\n\r\n\r");
+    printf("MCUBoot Application Started\n\r");
 
-    struct flash_area *fa;
-    result = flash_area_open(0, (const struct flash_area **)&fa);
+    if (boot_go(&rsp) == 0)
+        do_boot(&rsp) ;
+    else
+        printf("MCUBoot no bootable image\n") ;
 
-    if(result == CY_RSLT_SUCCESS)
-    {
-        result = flash_area_read(fa, 0x100000, read_buff, BUFF_SIZE);
-        printf("Reading memory:\n\r");
-        print_mem(read_buff, BUFF_SIZE/4);
-    }
-
-    if(result == CY_RSLT_SUCCESS)
-    {
-        flash_area_close((const struct flash_area *)fa);
-    }
-
-    if(result != CY_RSLT_SUCCESS)
-    {
-        blinky_period = BLINKY_PERIOD_ERROR;
-    }
-
-    for (;;)
-    {
-		/* Toggle the user LED periodically */
-        Cy_SysLib_Delay(blinky_period) ;
-
-        /* Invert the USER LED state */
-        cyhal_gpio_toggle((cyhal_gpio_t) CYBSP_USER_LED1);
-    }
+    return 0;
 }

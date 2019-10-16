@@ -68,8 +68,7 @@ else ifeq ($(HOST_OS), osx)
 	LD := $(CC)
 
 else ifeq ($(HOST_OS), linux)
-	TOOLCHAIN ?= /usr/bin/gcc-arm-none-eabi/bin/arm-none-eabi-gcc
-	GCC_PATH := $(TOOLCHAIN)
+#	GCC_PATH := /usr/bin/gcc-arm-none-eabi/bin/arm-none-eabi-gcc
 	# executables
 	CC := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
 	LD := $(CC) 
@@ -93,7 +92,7 @@ OBJCOPY  := "$(GCC_PATH)/bin/arm-none-eabi-objcopy"
 # Set flags for toolchain executables
 ifeq ($(COMPILER), GCC_ARM)
 	# set build-in compiler flags
-	CFLAGS_COMMON := -mcpu=cortex-m0plus -mthumb -mfloat-abi=soft -fno-stack-protector -ffunction-sections -fdata-sections -ffat-lto-objects -fstrict-aliasing -g -Wall -Wextra
+	CFLAGS_COMMON := -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -fno-stack-protector -ffunction-sections -fdata-sections -ffat-lto-objects -fstrict-aliasing -g -Wall -Wextra
 	ifeq ($(BUILDCFG), Debug)
 		CFLAGS_COMMON += -Og
 	else ifeq ($(BUILDCFG), Release)
@@ -107,7 +106,7 @@ ifeq ($(COMPILER), GCC_ARM)
 
 # TODO: create Application-Specific Linker
 
-	LDFLAGS_COMMON := -mcpu=cortex-m0plus -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -L "$(GCC_PATH)/lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m" -ffat-lto-objects -g --enable-objc-gc
+	LDFLAGS_COMMON := -mcpu=cortex-m4 -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -L "$(GCC_PATH)/lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m" -ffat-lto-objects -g --enable-objc-gc
 	ifeq ($(BUILDCFG), Debug)
 		LDFLAGS_COMMON += -Og
 	else ifeq ($(BUILDCFG), Release)
@@ -121,13 +120,13 @@ ifeq ($(COMPILER), GCC_ARM)
 
 else ifeq ($(COMPILER), IAR)
 
-	CFLAGS := --debug --endian=little --cpu=Cortex-M0+ -e --fpu=None --dlib_config "$(IAR_PATH)\INC\c\DLib_Config_Normal.h"
+	CFLAGS := --debug --endian=little --cpu=Cortex-M4 -e --fpu=None --dlib_config "$(IAR_PATH)\INC\c\DLib_Config_Normal.h"
 	CFLAGS += -Ohz --silent
 #	CFLAGS += $(DEFINES) $(INCLUDES)
 	CFLAGS += $(INCLUDES)
 	CC_DEPEND = --dependencies
 
-	AS_FLAGS := -s+ "-M<>" -w+ -r --cpu Cortex-M0+ --fpu None -S
+	AS_FLAGS := -s+ "-M<>" -w+ -r --cpu Cortex-M4 --fpu None -S
 
 	LINKER_SCRIPT := $(CHIP_SERIES).icf
 	

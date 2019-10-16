@@ -6,9 +6,6 @@
  */
 #ifndef MCUBOOT_CONFIG_H
 #define MCUBOOT_CONFIG_H
-
-#include "cy_flash.h"
-#include "flash_map/flash_map.h"
 /*
  * Template configuration file for MCUboot.
  *
@@ -35,8 +32,8 @@
 //#define MCUBOOT_SIGN_RSA
 
 /* Uncomment for ECDSA signatures using curve P-256. */
-#define MCUBOOT_SIGN_EC256
-
+#define MCUBOOT_SIGN_EC256 1
+#define NUM_ECC_BYTES (4*8) // rnok: to make compilable
 
 /*
  * Upgrade mode
@@ -63,7 +60,7 @@
  * available.
  */
 
-/* Uncomment to use ARM's mbedCrypto cryptographic primitives */
+/* Uncomment to use ARM's mbedTLS cryptographic primitives */
 #define MCUBOOT_USE_MBED_TLS
 /* Uncomment to use Tinycrypt's. */
 /* #define MCUBOOT_USE_TINYCRYPT */
@@ -86,10 +83,11 @@
 
 /* Default maximum number of flash sectors per image slot; change
  * as desirable. */
-extern struct flash_map_entry part_map[];
+#define MCUBOOT_MAX_IMG_SECTORS 128
 
-/* Image Size / 512b sector WR/RD by PSoC6 FlashDriver */
-inline size_t Cy_BootMaxImgSectors(void) {return ((part_map[0].area.fa_size)/CY_FLASH_SIZEOF_ROW);}
+/* Default number of separately updateable images; change in case of
+ * multiple images. */
+#define MCUBOOT_IMAGE_NUMBER 1
 
 /*
  * Logging
@@ -128,7 +126,7 @@ inline size_t Cy_BootMaxImgSectors(void) {return ((part_map[0].area.fa_size)/CY_
  * NOTE: Each source file is still able to request its own logging level by
  * defining BOOT_LOG_LEVEL before #including `bootutil_log.h`
  */
-#define MCUBOOT_HAVE_LOGGING 1
+#define MCUBOOT_HAVE_LOGGING 0
 
 #define MCUBOOT_ROLLBACK_PROTECTION
 
@@ -139,7 +137,7 @@ inline size_t Cy_BootMaxImgSectors(void) {return ((part_map[0].area.fa_size)/CY_
 /* Uncomment if your platform has its own mcuboot_config/mcuboot_assert.h.
  * If so, it must provide an ASSERT macro for use by bootutil. Otherwise,
  * "assert" is used. */
-#define MCUBOOT_HAVE_ASSERT_H
+//#define MCUBOOT_HAVE_ASSERT_H
 
 //#ifdef MCUBOOT_SIGN_RSA
 //#error "RSA is not supported in this release."
@@ -148,5 +146,10 @@ inline size_t Cy_BootMaxImgSectors(void) {return ((part_map[0].area.fa_size)/CY_
 #ifdef MCUBOOT_SIGN_EC
 #error "EC256 supported only."
 #endif
+
+#define MCUBOOT_WATCHDOG_FEED()         \
+    do {                                \
+        /* TODO: to be implemented */   \
+    } while (0)
 
 #endif /* MCUBOOT_CONFIG_H */

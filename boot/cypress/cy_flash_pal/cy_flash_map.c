@@ -77,6 +77,8 @@
 
 #define NELEMS(x)  (sizeof(x) / sizeof((x)[0]))
 
+#define FLASH_AREA_IMAGE_SECTOR_SIZE FLASH_AREA_IMAGE_SCRATCH_SIZE
+
 #ifdef CY_FLASH_MAP_EXT_DESC
 /* Nothing to be there when external FlashMap Descriptors are used */
 #else
@@ -224,7 +226,7 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
 }
 
 /*< Writes `len` bytes of flash memory at `off` from the buffer at `src` */
-int     flash_area_write(const struct flash_area *fa, uint32_t off,
+int flash_area_write(const struct flash_area *fa, uint32_t off,
                      const void *src, uint32_t len)
 {
     int rc = 0;
@@ -254,7 +256,7 @@ int     flash_area_write(const struct flash_area *fa, uint32_t off,
 }
 
 /*< Erases `len` bytes of flash memory at `off` */
-int     flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
+int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
 {
     int rc = 0;
     size_t addr;
@@ -369,4 +371,39 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
 int flash_area_id_to_image_slot(int area_id)
 {
     return flash_area_id_to_multi_image_slot(0, area_id);
+}
+
+#define ERASED_MEM_VAL 0x00
+uint8_t flash_area_erased_val(const struct flash_area *fap)
+{
+    (void)fap;
+    return ERASED_MEM_VAL;
+}
+
+int flash_area_read_is_empty(const struct flash_area *fa, uint32_t off,
+        void *dst, uint32_t len)
+{
+    uint8_t i = 0;
+    uint8_t *mem_dest;
+    int rc;
+
+    mem_dest = (uint8_t *)dst;
+    rc = flash_area_read(fa, off, dst, len);
+    if (rc) {
+        return -1;
+    }
+
+    for (i = 0; i < len; i++) {
+        if (mem_dest[i] != ERASED_MEM_VAL) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
+{
+    //TODO: implement
+    return 2;
 }

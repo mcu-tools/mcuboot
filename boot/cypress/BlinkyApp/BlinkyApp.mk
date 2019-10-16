@@ -24,9 +24,16 @@
 ################################################################################
 
 # Cypress' MCUBoot Application supports GCC ARM only at this moment 
-# Set default compiler to GCC if not specified from command line
+# Set defaults to:
+# 	- compiler GCC
+#   - build configuration to Debug
+#   - image type to BOOT
 COMPILER ?= GCC_ARM
 BUILDCFG ?= Debug
+IMG_TYPE ?= BOOT_IMG
+
+# image type can be BOOT or UPGRADE
+IMG_TYPES = BOOT_IMG UPGRADE_IMG
 
 ifneq ($(COMPILER), GCC_ARM)
 $(error Only GCC ARM is supported at this moment)
@@ -39,30 +46,20 @@ include $(CUR_APP_PATH)/libs.mk
 include $(CUR_APP_PATH)/toolchains.mk
 
 # Application-specific DEFINES
-# DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"crypto_config_sw.h\""
-DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
-#DEFINES_APP += -DMCUBOOT_APP_DEF
+ifeq ($(IMG_TYPE), BOOT_IMG)
+	DEFINES_APP := -DBOOT_IMG
+else
+	DEFINES_APP := -DUPGRADE_IMG
+	OUT_FILE_NAME := $(OUT_TARGET)/$(APP_NAME)_upgrade
+endif
 
-# TODO: MCUBoot library
-# Collect MCUBoot sourses
-SOURCES_MCUBOOT := $(wildcard $(CURDIR)/../bootutil/src/*.c)
-# Collect MCUBoot Application sources
+# Collect Test Application sources
 SOURCES_APP_SRC := $(wildcard $(CUR_APP_PATH)/*.c)
-# Collect Flash Layer port sources
-SOURCES_FLASH_PORT := $(wildcard $(CURDIR)/cy_flash_pal/*.c)
 # Collect all the sources
-SOURCES_APP := $(SOURCES_MCUBOOT)
 SOURCES_APP += $(SOURCES_APP_SRC)
-SOURCES_APP += $(SOURCES_FLASH_PORT)
 
-INCLUDES_DIRS_MCUBOOT := $(addprefix -I, $(CURDIR)/../bootutil/include)
-INCLUDES_DIRS_MCUBOOT += $(addprefix -I, $(CURDIR)/../bootutil/src)
-
+# Collect includes for BlinkyApp
 INCLUDE_DIRS_APP := $(addprefix -I, $(CURDIR))
-INCLUDE_DIRS_APP += $(addprefix -I, $(CURDIR)/cy_flash_pal/include)
-INCLUDE_DIRS_APP += $(addprefix -I, $(CURDIR)/cy_flash_pal/include/flash_map_backend)
 INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))
-INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/config)
-INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/os)
 
 ASM_FILES_APP :=
