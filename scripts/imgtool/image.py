@@ -179,9 +179,13 @@ class Image():
                 self.base_addr = hex_addr
             h.frombytes(bytes=self.payload, offset=self.base_addr)
             if self.pad:
-                magic_addr = (self.base_addr + self.slot_size) - \
-                    len(boot_magic)
-                h.puts(magic_addr, boot_magic)
+                trailer_size = self._trailer_size(self.align, self.max_sectors,
+                                                  self.overwrite_only,
+                                                  self.enckey)
+                trailer_addr = (self.base_addr + self.slot_size) - trailer_size
+                padding = bytes([self.erased_val] *
+                                (trailer_size - len(boot_magic))) + boot_magic
+                h.puts(trailer_addr, padding)
             h.tofile(path, 'hex')
         else:
             if self.pad:
