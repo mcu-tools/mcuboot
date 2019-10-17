@@ -182,6 +182,9 @@ class BasedIntParamType(click.ParamType):
 
 @click.argument('outfile')
 @click.argument('infile')
+@click.option('-R', '--erased-val', type=click.Choice(['0', '0xff']),
+              required=False,
+              help='The value that is read back from erased flash.')
 @click.option('-x', '--hex-addr', type=BasedIntParamType(), required=False,
               help='Adjust address in hex output file.')
 @click.option('-L', '--load-addr', type=BasedIntParamType(), required=False,
@@ -214,12 +217,12 @@ class BasedIntParamType(click.ParamType):
                .hex extension, otherwise binary format is used''')
 def sign(key, align, version, header_size, pad_header, slot_size, pad,
          max_sectors, overwrite_only, endian, encrypt, infile, outfile,
-         dependencies, load_addr, hex_addr):
+         dependencies, load_addr, hex_addr, erased_val):
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, align=int(align),
                       slot_size=slot_size, max_sectors=max_sectors,
                       overwrite_only=overwrite_only, endian=endian,
-                      load_addr=load_addr)
+                      load_addr=load_addr, erased_val=erased_val)
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
