@@ -344,7 +344,7 @@ class Image():
             trailer = m * 3 * write_size  # status area
             if enckey is not None:
                 trailer += 16 * 2  # encryption keys
-            trailer += MAX_ALIGN * 4  # magic_ok/copy_done/swap_info/swap_size
+            trailer += MAX_ALIGN * 4  # image_ok/copy_done/swap_info/swap_size
             trailer += magic_size
             return trailer
 
