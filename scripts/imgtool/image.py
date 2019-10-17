@@ -113,7 +113,7 @@ class Image():
     def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE,
                  pad_header=False, pad=False, align=1, slot_size=0,
                  max_sectors=DEFAULT_MAX_SECTORS, overwrite_only=False,
-                 endian="little", load_addr=0):
+                 endian="little", load_addr=0, erased_val=0xff):
         self.version = version or versmod.decode_version("0")
         self.header_size = header_size
         self.pad_header = pad_header
@@ -125,6 +125,7 @@ class Image():
         self.endian = endian
         self.base_addr = None
         self.load_addr = 0 if load_addr is None else load_addr
+        self.erased_val = 0xff if erased_val is None else int(erased_val)
         self.payload = []
         self.enckey = None
 
@@ -160,7 +161,8 @@ class Image():
             if self.base_addr:
                 # Adjust base_addr for new header
                 self.base_addr -= self.header_size
-            self.payload = (b'\000' * self.header_size) + self.payload
+            self.payload = bytes([self.erased_val] * self.header_size) + \
+                self.payload
 
         self.check()
 
@@ -347,8 +349,8 @@ class Image():
         tsize = self._trailer_size(self.align, self.max_sectors,
                                    self.overwrite_only, self.enckey)
         padding = size - (len(self.payload) + tsize)
-        pbytes = b'\xff' * padding
-        pbytes += b'\xff' * (tsize - len(boot_magic))
+        pbytes = bytes([self.erased_val] * padding)
+        pbytes += bytes([self.erased_val] * (tsize - len(boot_magic)))
         pbytes += boot_magic
         self.payload += pbytes
 
