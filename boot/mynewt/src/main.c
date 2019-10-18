@@ -46,6 +46,10 @@
 #include "bootutil/bootutil.h"
 #include "bootutil/bootutil_log.h"
 
+#if MYNEWT_VAL(BOOT_CUSTOM_START)
+void boot_custom_start(uintptr_t flash_base, struct boot_rsp *rsp);
+#endif
+
 #if defined(MCUBOOT_SERIAL)
 #define BOOT_SERIAL_REPORT_DUR  \
     (MYNEWT_VAL(OS_CPUTIME_FREQ) / MYNEWT_VAL(BOOT_SERIAL_REPORT_FREQ))
@@ -239,8 +243,12 @@ main(void)
     rc = flash_device_base(rsp.br_flash_dev_id, &flash_base);
     assert(rc == 0);
 
+#if MYNEWT_VAL(BOOT_CUSTOM_START)
+    boot_custom_start(flash_base, &rsp);
+#else
     hal_system_start((void *)(flash_base + rsp.br_image_off +
                               rsp.br_hdr->ih_hdr_size));
+#endif
 
     return 0;
 }
