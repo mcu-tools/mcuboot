@@ -25,6 +25,9 @@ syscfg.defs:
     BOOT_SERIAL:
         description: 'Support image upgrade over serial within bootloader'
         value: 0
+    BOOT_CUSTOM_START:
+        description: 'Override hal_system_start with a custom start routine'
+        value: 0
 
 syscfg.vals:
     SYSINIT_CONSTRAIN_INIT: 0
