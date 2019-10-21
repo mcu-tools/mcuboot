@@ -29,7 +29,7 @@ pkg.apis:
     - bootloader
 
 pkg.cflags:
-    - "-DMCUBOOT_MYNEWT"
+    - "-DMCUBOOT_MYNEWT=1"
 
 pkg.cflags.BOOTUTIL_USE_MBED_TLS:
     - '-DMBEDTLS_USER_CONFIG_FILE="mbedtls/config_mynewt.h"'
