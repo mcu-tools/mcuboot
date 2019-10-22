@@ -24,10 +24,13 @@ from intelhex import IntelHex
 import hashlib
 import struct
 import os.path
-from cryptography.hazmat.primitives.asymmetric import padding
+from .keys import rsa, ecdsa
+from cryptography.hazmat.primitives.asymmetric import ec, padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.exceptions import InvalidSignature
 
 IMAGE_MAGIC = 0x96f3b83d
@@ -56,6 +59,7 @@ TLV_VALUES = {
         'ED25519': 0x24,
         'ENCRSA2048': 0x30,
         'ENCKW128': 0x31,
+        'ENCEC256': 0x32,
         'DEPENDENCY': 0x40
 }
 
@@ -209,6 +213,25 @@ class Image():
                         len(self.payload), tsize, self.slot_size)
                 raise Exception(msg)
 
+    def ecies_p256_hkdf(self, enckey, plainkey):
+        newpk = ec.generate_private_key(ec.SECP256R1(), default_backend())
+        shared = newpk.exchange(ec.ECDH(), enckey._get_public())
+        derived_key = HKDF(
+            algorithm=hashes.SHA256(), length=48, salt=None,
+            info=b'MCUBoot_ECIES_v1', backend=default_backend()).derive(shared)
+        encryptor = Cipher(algorithms.AES(derived_key[:16]),
+                           modes.CTR(bytes([0] * 16)),
+                           backend=default_backend()).encryptor()
+        cipherkey = encryptor.update(plainkey) + encryptor.finalize()
+        mac = hmac.HMAC(derived_key[16:], hashes.SHA256(),
+                        backend=default_backend())
+        mac.update(cipherkey)
+        ciphermac = mac.finalize()
+        pubk = newpk.public_key().public_bytes(
+            encoding=Encoding.X962,
+            format=PublicFormat.UncompressedPoint)
+        return cipherkey, ciphermac, pubk
+
     def create(self, key, enckey, dependencies=None):
         self.enckey = enckey
 
@@ -279,12 +302,17 @@ class Image():
 
         if enckey is not None:
             plainkey = os.urandom(16)
-            cipherkey = enckey._get_public().encrypt(
-                plainkey, padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None))
-            tlv.add('ENCRSA2048', cipherkey)
+
+            if isinstance(enckey, rsa.RSAPublic):
+                cipherkey = enckey._get_public().encrypt(
+                    plainkey, padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None))
+                tlv.add('ENCRSA2048', cipherkey)
+            elif isinstance(enckey, ecdsa.ECDSA256P1Public):
+                cipherkey, mac, pubk = self.ecies_p256_hkdf(enckey, plainkey)
+                tlv.add('ENCEC256', pubk + mac + cipherkey)
 
             nonce = bytes([0] * 16)
             cipher = Cipher(algorithms.AES(plainkey), modes.CTR(nonce),
