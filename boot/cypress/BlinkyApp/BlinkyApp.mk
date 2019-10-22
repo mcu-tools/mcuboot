@@ -62,4 +62,11 @@ SOURCES_APP += $(SOURCES_APP_SRC)
 INCLUDE_DIRS_APP := $(addprefix -I, $(CURDIR))
 INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))
 
+# Specify linker script to use
+ifeq ($(APP_LD), )
+LDFLAGS += -T $(BSP_PATH)/linker/TOOLCHAIN_GCC_ARM/*_cm4_dual.ld
+else
+LDFLAGS += -T $(APP_LD)
+endif
+
 ASM_FILES_APP :=

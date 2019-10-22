@@ -48,13 +48,14 @@ endif
 # NOTE: Absolute pathes for now for the sake of development
 ifeq ($(HOST_OS), win)
 	ifeq ($(COMPILER), GCC_ARM)
-		GCC_PATH ?= c:\Users\$(USERNAME)\ModusToolbox_1.0\tools\gcc-7.2.1-1.0
+		TOOLCHAIN_PATH ?= c:\Users\$(USERNAME)\ModusToolbox_1.0\tools\gcc-7.2.1-1.0
+		GCC_PATH := $(TOOLCHAIN_PATH)
 		# executables
 		CC       := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
-		LD       :=  $(CC)
+		LD       := $(CC)
 
 	else ifeq ($(COMPILER), IAR)
-		IAR_PATH ?= C:\Program Files (x86)\IAR Systems\Embedded Workbench 8.0\arm
+		IAR_PATH := C:\Program Files (x86)\IAR Systems\Embedded Workbench 8.0\arm
 		# executables
 		CC       := "$(IAR_PATH)/bin/iccarm.exe"
 		AS       := "$(IAR_PATH)/bin/iasmarm.exe"
@@ -62,14 +63,15 @@ ifeq ($(HOST_OS), win)
 	endif
 
 else ifeq ($(HOST_OS), osx)
-	GCC_PATH ?= /opt/gcc-arm-none-eabi
+	TOOLCHAIN_PATH ?= /Users/$(USER)/toolchains/gcc-arm-none-eabi-6
+	GCC_PATH := $(TOOLCHAIN_PATH)
 
 	CC := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
 	LD := $(CC)
 
 else ifeq ($(HOST_OS), linux)
-	TOOLCHAIN ?= /usr/bin/gcc-arm-none-eabi/bin/arm-none-eabi-gcc
-	GCC_PATH := $(TOOLCHAIN)
+	TOOLCHAIN_PATH ?= /usr/bin/gcc-arm-none-eabi/bin/arm-none-eabi-gcc
+	GCC_PATH := $(TOOLCHAIN_PATH)
 	# executables
 	CC := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
 	LD := $(CC) 
@@ -80,7 +82,7 @@ PDL_ELFTOOL := "hal/tools/$(HOST_OS)/elf/cymcuelftool"
 # Set executable names for compilers
 ifeq ($(COMPILER), GCC_ARM)
 	CC       := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
-	LD       :=  $(CC)
+	LD       := $(CC)
 else
 	CC       := "$(IAR_PATH)/bin/iccarm.exe"
 	AS       := "$(IAR_PATH)/bin/iasmarm.exe"
@@ -91,6 +93,7 @@ OBJDUMP  := "$(GCC_PATH)/bin/arm-none-eabi-objdump"
 OBJCOPY  := "$(GCC_PATH)/bin/arm-none-eabi-objcopy"
 
 # Set flags for toolchain executables
+
 ifeq ($(COMPILER), GCC_ARM)
 	# set build-in compiler flags
 	CFLAGS_COMMON := -mcpu=cortex-m0plus -mthumb -mfloat-abi=soft -fno-stack-protector -ffunction-sections -fdata-sections -ffat-lto-objects -fstrict-aliasing -g -Wall -Wextra
@@ -99,7 +102,7 @@ ifeq ($(COMPILER), GCC_ARM)
 	else ifeq ($(BUILDCFG), Release)
 		CFLAGS_COMMON += -Os
 	else
-		$(error BUILDCFG : '$(BUILDCFG)' is not supported)
+$(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif
 	# add defines and includes
 	CFLAGS := $(CFLAGS_COMMON) $(INCLUDES)
@@ -113,11 +116,11 @@ ifeq ($(COMPILER), GCC_ARM)
 	else ifeq ($(BUILDCFG), Release)
 		LDFLAGS_COMMON += -Os
 	else
-		$(error BUILDCFG : '$(BUILDCFG)' is not supported)
+$(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif
 	LDFLAGS_NANO := -L "$(GCC_PATH)/arm-none-eabi/lib/thumb/v6-m"
 	# TODO: check .map name
-	LDFLAGS := $(LDFLAGS_COMMON) $(LDFLAGS_NANO) -T $(LINKER_SCRIPT) -Wl,-Map,$(OUT_TARGET)/$(APP_NAME).map
+	LDFLAGS := $(LDFLAGS_COMMON) $(LDFLAGS_NANO) -T $(LINKER_SCRIPT)
 
 else ifeq ($(COMPILER), IAR)
 

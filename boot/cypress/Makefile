@@ -32,7 +32,7 @@ MAKEINFO ?= 1
 # Application name by default
 APP_NAME ?= MCUBootApp
 # Set of supported applications
-APPS := MCUBootApp TestApp
+APPS := MCUBootApp BlinkyApp
 # Output folder
 OUT := $(APP_NAME)/out
 # Output folder to contain build artifacts
@@ -160,6 +160,10 @@ VPATH = $(dir $(C_FILES) $(ASM_FILES))
 #
 #
 
+# Default name pattern for output files
+# may be modified in %Application%.mk file
+OUT_FILE_NAME ?= $(OUT_TARGET)/$(APP_NAME)
+
 .PHONY: all app build clean
 
 all: clean app
@@ -170,23 +174,23 @@ app:
 	@`mkdir -p ./$(OUT_TARGET)`
 	$(MAKE) build -j8
 
-build: $(OUT_TARGET)/$(APP_NAME).hex
-	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_TARGET)/$(APP_NAME).hex -s > $(OUT_TARGET)/$(APP_NAME).lst
-	$(GCC_PATH)/bin/arm-none-eabi-size --format=berkeley $(OUT_TARGET)/$(APP_NAME).elf
+build: $(OUT_FILE_NAME).hex
+	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_FILE_NAME).hex -s > $(OUT_FILE_NAME).lst
+	$(GCC_PATH)/bin/arm-none-eabi-size --format=berkeley $(OUT_FILE_NAME).elf
 
-$(OUT_TARGET)/$(APP_NAME).hex: $(OUT_TARGET)/$(APP_NAME).elf
-	$(GCC_PATH)/bin/arm-none-eabi-objcopy --change-addresses=$(HEADER_OFFSET) -O ihex $(OUT_TARGET)/$(APP_NAME).elf $(OUT_TARGET)/$(APP_NAME).hex
+$(OUT_FILE_NAME).hex: $(OUT_FILE_NAME).elf
+	$(GCC_PATH)/bin/arm-none-eabi-objcopy --change-addresses=$(HEADER_OFFSET) -O ihex $(OUT_FILE_NAME).elf $(OUT_FILE_NAME).hex
 ifeq ($(SIGN), 1)
-	python3 ../../scripts/imgtool.py sign -k $(APP_NAME)/keys/cypress-test-ec-p256.pem -v "1.0" --align 8 -H 1024 -S 65536 --pad-header --overwrite-only $(OUT_TARGET)/$(APP_NAME).hex $(OUT_TARGET)/$(APP_NAME)_signed.hex
-	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_TARGET)/$(APP_NAME)_signed.hex -s > $(OUT_TARGET)/$(APP_NAME)_signed.lst
+	python3 ../../scripts/imgtool.py sign -k $(APP_NAME)/keys/cypress-test-ec-p256.pem -v "1.0" --align 8 -H 1024 -S 65536 --pad-header --overwrite-only $(OUT_FILE_NAME).hex $(OUT_FILE_NAME)_signed.hex
+	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_FILE_NAME)_signed.hex -s > $(OUT_FILE_NAME)_signed.lst
 endif
 
-$(OUT_TARGET)/$(APP_NAME).elf: $(addprefix $(OUT)/obj/, $(O_FILES))
+$(OUT_FILE_NAME).elf: $(addprefix $(OUT)/obj/, $(O_FILES))
 	@echo "LD $@"
 ifeq ($(MAKEINFO), 1)
-	@echo $(LD) $(O_FILES) $(CC_DEPEND) $(@:.o=.d) -o $@ $(LDFLAGS)
+	@echo $(LD) $(O_FILES) $(CC_DEPEND) $(@:.o=.d) -o $@ $(LDFLAGS) -Wl,-Map,$(OUT_FILE_NAME).map
 endif
-	@$(LD) $(addprefix $(OUT)/obj/, $(O_FILES)) $(CC_DEPEND) $(@:.o=.d) -o $@ $(LDFLAGS)
+	@$(LD) $(addprefix $(OUT)/obj/, $(O_FILES)) $(CC_DEPEND) $(@:.o=.d) -o $@ $(LDFLAGS) -Wl,-Map,$(OUT_FILE_NAME).map
 
 
 $(OUT)/obj/%.o: %.c
@@ -221,9 +225,9 @@ clean:
 # TODO: update with generic solution
 upload:
 ifeq ($(HOST_OS), win)
-	cp $(OUT_TARGET)/$(APP_NAME).hex /d/
+	cp $(OUT_FILE_NAME).hex /d/
 else
-	cp $(OUT_TARGET)/$(APP_NAME).hex /Volumes/DAPLINK 
+	cp $(OUT_FILE_NAME).hex /Volumes/DAPLINK 
 endif
 
 ifeq ($(MAKEINFO) , 1)

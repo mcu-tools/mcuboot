@@ -80,12 +80,6 @@ ifneq ($(DEFINES),)
 	DEFINES_BSP :=$(addprefix -D, $(subst -,_,$(DEFINES)))
 endif
 
-ifeq ($(COMPILER), GCC_ARM)
-LINKER_SCRIPT := $(BSP_PATH)/linker/TOOLCHAIN_GCC_ARM/*_cm4_dual.ld
-else
-$(error Only GCC ARM is supported at this moment)
-endif
-
 ifeq ($(MAKEINFO) , 1)
 $(info ==============================================================================)
 $(info = BSP files =)
