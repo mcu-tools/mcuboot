@@ -24,15 +24,6 @@
 #define FLASH_ALIGN FLASH_WRITE_BLOCK_SIZE
 
 /*
- * TODO: remove soc_family_kinetis.h once its flash driver supports
- * FLASH_PAGE_LAYOUT.
- */
-#if defined(CONFIG_SOC_FAMILY_KINETIS)
-#include "soc_family_kinetis.h"
-#endif
-#endif /* !defined(MCUBOOT_TARGET_CONFIG) */
-
-/*
  * Sanity check the target support.
  */
 #if (!defined(CONFIG_XTENSA) && !defined(DT_FLASH_DEV_NAME)) || \
