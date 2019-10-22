@@ -14,6 +14,7 @@ pub enum Caps {
     ValidatePrimarySlot  = (1 << 7),
     RSA3072              = (1 << 8),
     Ed25519              = (1 << 9),
+    EncEc256             = (1 << 10),
 }
 
 impl Caps {
