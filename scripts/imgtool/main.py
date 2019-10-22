@@ -226,11 +226,13 @@ def sign(key, align, version, header_size, pad_header, slot_size, pad,
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
-    if enckey:
-        if not isinstance(enckey, (keys.RSA, keys.RSAPublic)):
-            raise Exception("Encryption only available with RSA key")
-        if key and not isinstance(key, keys.RSA):
-            raise Exception("Signing only available with private RSA key")
+    if enckey and key:
+        if ((isinstance(key, keys.ECDSA256P1) and
+             not isinstance(enckey, keys.ECDSA256P1Public))
+                or (isinstance(key, keys.RSA) and
+                    not isinstance(enckey, keys.RSAPublic))):
+            # FIXME
+            raise Exception("Signing and encryption must use the same type of key")
     img.create(key, enckey, dependencies)
     img.save(outfile, hex_addr)
 
