@@ -76,7 +76,7 @@ STATS_SECT_END
 
 static STATS_SECT_DECL(gpio_stats) g_stats_gpio_toggle;
 
-static STATS_NAME_START(gpio_stats)
+STATS_NAME_START(gpio_stats)
 STATS_NAME(gpio_stats, toggles)
 STATS_NAME_END(gpio_stats)
 
