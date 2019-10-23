@@ -197,7 +197,7 @@ class Image():
         """Perform some sanity checking of the image."""
         # If there is a header requested, make sure that the image
         # starts with all zeros.
-        if self.header_size > 0:
+        if self.header_size > 0 and not self.pad_header:
             if any(v != 0 for v in self.payload[0:self.header_size]):
                 raise Exception("Padding requested, but image does not start with zeros")
         if self.slot_size > 0:
