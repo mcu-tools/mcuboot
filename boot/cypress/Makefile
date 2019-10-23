@@ -164,6 +164,14 @@ VPATH = $(dir $(C_FILES) $(ASM_FILES))
 # may be modified in %Application%.mk file
 OUT_FILE_NAME ?= $(OUT_TARGET)/$(APP_NAME)
 
+PYTHON_PATH ?= python3 
+IMGTOOL_PATH ?=	../../scripts/imgtool.py
+SIGN_ARGS := sign -H 1024 --pad-header --align 8 -v "2.0" -S 65536 -M 512 --overwrite-only -R 0
+
+ifeq ($(UPGRADE_IMG), 1)
+	SIGN_ARGS += --pad
+endif
+
 .PHONY: all app build clean
 
 all: clean app
@@ -181,7 +189,7 @@ build: $(OUT_FILE_NAME).hex
 $(OUT_FILE_NAME).hex: $(OUT_FILE_NAME).elf
 	$(GCC_PATH)/bin/arm-none-eabi-objcopy --change-addresses=$(HEADER_OFFSET) -O ihex $(OUT_FILE_NAME).elf $(OUT_FILE_NAME).hex
 ifeq ($(SIGN), 1)
-	python3 ../../scripts/imgtool.py sign -k $(APP_NAME)/keys/cypress-test-ec-p256.pem -v "1.0" --align 8 -H 1024 -S 65536 --pad-header --overwrite-only $(OUT_FILE_NAME).hex $(OUT_FILE_NAME)_signed.hex
+	$(PYTHON_PATH) $(IMGTOOL_PATH) $(SIGN_ARGS) $(OUT_FILE_NAME).hex $(OUT_FILE_NAME)_signed.hex
 	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_FILE_NAME)_signed.hex -s > $(OUT_FILE_NAME)_signed.lst
 endif
 

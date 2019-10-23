@@ -98,9 +98,9 @@ ifeq ($(COMPILER), GCC_ARM)
 	# set build-in compiler flags
 	CFLAGS_COMMON := -mcpu=cortex-m0plus -mthumb -mfloat-abi=soft -fno-stack-protector -ffunction-sections -fdata-sections -ffat-lto-objects -fstrict-aliasing -g -Wall -Wextra
 	ifeq ($(BUILDCFG), Debug)
-		CFLAGS_COMMON += -Og
+		CFLAGS_COMMON += -Og -g3
 	else ifeq ($(BUILDCFG), Release)
-		CFLAGS_COMMON += -Os
+		CFLAGS_COMMON += -Os -g
 	else
 $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif

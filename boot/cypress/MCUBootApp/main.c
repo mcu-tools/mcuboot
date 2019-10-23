@@ -55,6 +55,7 @@
 #include "cyhal.h"
 #include "cybsp.h"
 #include "cy_retarget_io.h"
+#include "cy_result.h"
 
 #include "sysflash/sysflash.h"
 #include "flash_map_backend/flash_map_backend.h"
@@ -63,39 +64,21 @@
 #include "bootutil/bootutil.h"
 #include "bootutil/sign_key.h"
 
-unsigned char ecdsa_pub_key[] = {
-  0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02,
-  0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x03,
-  0x42, 0x00, 0x04, 0x15, 0x96, 0xcf, 0x02, 0xec, 0x76, 0xb5, 0x27, 0x35,
-  0xb8, 0x7e, 0x96, 0xee, 0x67, 0xf2, 0x63, 0x2b, 0x38, 0x00, 0xb8, 0x34,
-  0x4e, 0x2e, 0x06, 0xb5, 0x75, 0x8e, 0xc2, 0xc9, 0xfa, 0x31, 0x81, 0x87,
-  0x06, 0x39, 0x7a, 0xc4, 0x21, 0x95, 0xe4, 0x77, 0xb9, 0xf2, 0xa1, 0x41,
-  0x63, 0x40, 0x05, 0x55, 0xdc, 0x37, 0x67, 0xe0, 0x5e, 0xef, 0xfa, 0xfe,
-  0xa2, 0x64, 0xc2, 0x09, 0x49, 0x34, 0x87
-};
-
-unsigned int ecdsa_pub_key_len = 91;
-
-const struct bootutil_key bootutil_keys[] = {
-    {
-#if defined(MCUBOOT_SIGN_RSA)
-        .key = rsa_pub_key,
-        .len = &rsa_pub_key_len,
-#elif defined(MCUBOOT_SIGN_EC256)
-        .key = ecdsa_pub_key,
-        .len = &ecdsa_pub_key_len,
-#elif defined(MCUBOOT_SIGN_ED25519)
-        .key = ed25519_pub_key,
-        .len = &ed25519_pub_key_len,
-#endif
-    },
-};
-const int bootutil_key_cnt = 1;
+#include "bootutil/bootutil_log.h"
 
 static void do_boot(struct boot_rsp *rsp)
 {
-    printf("Starting Application (wait) ...\r\n") ;
-    Cy_SysEnableCM4(rsp->br_hdr->ih_load_addr) ;
+    uint32_t app_addr = 0;
+
+    app_addr = (rsp->br_image_off + rsp->br_hdr->ih_hdr_size);
+
+    BOOT_LOG_INF("Starting User Application on CM4 (wait)...");
+    Cy_SysLib_Delay(100);
+
+    cy_retarget_io_deinit();
+
+    Cy_SysEnableCM4(app_addr);
+
     while (1)
     {
         __WFI() ;
@@ -104,12 +87,13 @@ static void do_boot(struct boot_rsp *rsp)
 
 int main(void)
 {
+    cy_rslt_t rc = !CY_RSLT_SUCCESS;
     struct boot_rsp rsp ;
 
     /* Initialize the device and board peripherals */
-    int result = cybsp_init();
+    rc = cybsp_init();
 
-    if (result != CY_RSLT_SUCCESS)
+    if (rc != CY_RSLT_SUCCESS)
     {
         CY_ASSERT(0);
     }
@@ -118,14 +102,23 @@ int main(void)
     cy_retarget_io_init(CYBSP_DEBUG_UART_TX, CYBSP_DEBUG_UART_RX, CY_RETARGET_IO_BAUDRATE);
 
     /* enable interrupts */
+    if (rc != CY_RSLT_SUCCESS)
+    {
+        CY_ASSERT(0);
+    }
+    else
+    {
+        BOOT_LOG_INF("MCUBoot Bootloader Started");
+    }
     __enable_irq();
 
-    printf("MCUBoot Application Started\n\r");
-
     if (boot_go(&rsp) == 0)
-        do_boot(&rsp) ;
+    {
+        BOOT_LOG_INF("User Application validated successfully");
+        do_boot(&rsp);
+    }
     else
-        printf("MCUBoot no bootable image\n") ;
+        BOOT_LOG_INF("MCUBoot Bootloader found none of bootable images") ;
 
     return 0;
 }

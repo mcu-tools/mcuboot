@@ -32,8 +32,8 @@
 //#define MCUBOOT_SIGN_RSA
 
 /* Uncomment for ECDSA signatures using curve P-256. */
-#define MCUBOOT_SIGN_EC256 1
-#define NUM_ECC_BYTES (4*8) // rnok: to make compilable
+//#define MCUBOOT_SIGN_EC256 1
+//#define NUM_ECC_BYTES (4*8) // rnok: to make compilable
 
 /*
  * Upgrade mode
@@ -70,7 +70,7 @@
  * even if no upgrade was performed. This is recommended if the boot
  * time penalty is acceptable.
  */
-#define MCUBOOT_VALIDATE_SLOT0
+#define MCUBOOT_VALIDATE_PRIMARY_SLOT
 
 /*
  * Flash abstraction
@@ -80,10 +80,6 @@
  * See the flash APIs for more details. */
 // TODO: FWSECURITY-755
 #define MCUBOOT_USE_FLASH_AREA_GET_SECTORS
-
-/* Default maximum number of flash sectors per image slot; change
- * as desirable. */
-#define MCUBOOT_MAX_IMG_SECTORS 128
 
 /* Default number of separately updateable images; change in case of
  * multiple images. */
@@ -126,9 +122,7 @@
  * NOTE: Each source file is still able to request its own logging level by
  * defining BOOT_LOG_LEVEL before #including `bootutil_log.h`
  */
-#define MCUBOOT_HAVE_LOGGING 0
-
-#define MCUBOOT_ROLLBACK_PROTECTION
+#define MCUBOOT_HAVE_LOGGING 1
 
 /*
  * Assertions
@@ -138,14 +132,6 @@
  * If so, it must provide an ASSERT macro for use by bootutil. Otherwise,
  * "assert" is used. */
 //#define MCUBOOT_HAVE_ASSERT_H
-
-//#ifdef MCUBOOT_SIGN_RSA
-//#error "RSA is not supported in this release."
-//#endif
-
-#ifdef MCUBOOT_SIGN_EC
-#error "EC256 supported only."
-#endif
 
 #define MCUBOOT_WATCHDOG_FEED()         \
     do {                                \
