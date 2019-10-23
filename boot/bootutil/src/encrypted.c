@@ -42,6 +42,17 @@
 #  endif
 #endif
 
+#if defined(MCUBOOT_ENCRYPT_EC256)
+#include "tinycrypt/utils.h"
+#include "tinycrypt/constants.h"
+#include "tinycrypt/ecc.h"
+#include "tinycrypt/ecc_dh.h"
+#include "tinycrypt/ctr_mode.h"
+#include "tinycrypt/hmac.h"
+#include "mbedtls/oid.h"
+#include "mbedtls/asn1.h"
+#endif
+
 #include "bootutil/image.h"
 #include "bootutil/enc_key.h"
 #include "bootutil/sign_key.h"
@@ -128,7 +139,7 @@ key_unwrap(uint8_t *wrapped, uint8_t *enckey)
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
 static int
-parse_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
+parse_rsa_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
 {
     int rc;
     size_t len;
@@ -176,6 +187,191 @@ parse_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
 }
 #endif
 
+#if defined(MCUBOOT_ENCRYPT_EC256)
+static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_EC_ALG_UNRESTRICTED;
+static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
+
+/*
+ * Parses the output of `imgtool keygen`, which produces a PKCS#8 elliptic
+ * curve keypair. See RFC5208 and RFC5915.
+ */
+static int
+parse_ec256_enckey(uint8_t **p, uint8_t *end, uint8_t *pk)
+{
+    int rc;
+    size_t len;
+    int version;
+    mbedtls_asn1_buf alg;
+    mbedtls_asn1_buf param;
+
+    if ((rc = mbedtls_asn1_get_tag(p, end, &len,
+                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+        return -1;
+    }
+
+    if (*p + len != end) {
+        return -2;
+    }
+
+    version = 0;
+    if (mbedtls_asn1_get_int(p, end, &version) || version != 0) {
+        return -3;
+    }
+
+    if ((rc = mbedtls_asn1_get_alg(p, end, &alg, &param)) != 0) {
+        return -5;
+    }
+
+    if (alg.len != sizeof(ec_pubkey_oid) - 1 ||
+        memcmp(alg.p, ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
+        return -6;
+    }
+    if (param.len != sizeof(ec_secp256r1_oid) - 1 ||
+        memcmp(param.p, ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
+        return -7;
+    }
+
+    if ((rc = mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING)) != 0) {
+        return -8;
+    }
+
+    /* RFC5915 - ECPrivateKey */
+
+    if ((rc = mbedtls_asn1_get_tag(p, end, &len,
+                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+        return -9;
+    }
+
+    version = 0;
+    if (mbedtls_asn1_get_int(p, end, &version) || version != 1) {
+        return -10;
+    }
+
+    /* privateKey */
+
+    if ((rc = mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING)) != 0) {
+        return -11;
+    }
+
+    if (len != NUM_ECC_BYTES) {
+        return -12;
+    }
+
+    memcpy(pk, *p, len);
+
+    /* publicKey usually follows but is not parsed here */
+
+    return 0;
+}
+
+/*
+ * HKDF as described by RFC5869.
+ *
+ * @param ikm       The input data to be derived.
+ * @param ikm_len   Length of the input data.
+ * @param info      An information tag.
+ * @param info_len  Length of the information tag.
+ * @param okm       Output of the KDF computation.
+ * @param okm_len   On input the requested length; on output the generated length
+ */
+static int
+hkdf(uint8_t *ikm, uint16_t ikm_len, uint8_t *info, uint16_t info_len,
+        uint8_t *okm, uint16_t *okm_len)
+{
+    struct tc_hmac_state_struct hmac;
+    uint8_t salt[TC_SHA256_DIGEST_SIZE];
+    uint8_t prk[TC_SHA256_DIGEST_SIZE];
+    uint8_t T[TC_SHA256_DIGEST_SIZE];
+    uint16_t off;
+    uint16_t len;
+    uint8_t counter;
+    bool first;
+    int rc;
+
+    /*
+     * Extract
+     */
+
+    if (ikm == NULL || okm == NULL || ikm_len == 0) {
+        return -1;
+    }
+
+    memset(salt, 0, TC_SHA256_DIGEST_SIZE);
+    rc = tc_hmac_set_key(&hmac, salt, TC_SHA256_DIGEST_SIZE);
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    rc = tc_hmac_init(&hmac);
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    rc = tc_hmac_update(&hmac, ikm, ikm_len);
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    rc = tc_hmac_final(prk, TC_SHA256_DIGEST_SIZE, &hmac);
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    /*
+     * Expand
+     */
+
+    len = *okm_len;
+    counter = 1;
+    first = true;
+    for (off = 0; len > 0; off += TC_SHA256_DIGEST_SIZE, ++counter) {
+        rc = tc_hmac_set_key(&hmac, prk, TC_SHA256_DIGEST_SIZE);
+        if (rc != TC_CRYPTO_SUCCESS) {
+            return -1;
+        }
+
+        rc = tc_hmac_init(&hmac);
+        if (rc != TC_CRYPTO_SUCCESS) {
+            return -1;
+        }
+
+        if (first) {
+            first = false;
+        } else {
+            rc = tc_hmac_update(&hmac, T, TC_SHA256_DIGEST_SIZE);
+            if (rc != TC_CRYPTO_SUCCESS) {
+                return -1;
+            }
+        }
+
+        rc = tc_hmac_update(&hmac, info, info_len);
+        if (rc != TC_CRYPTO_SUCCESS) {
+            return -1;
+        }
+
+        rc = tc_hmac_update(&hmac, &counter, 1);
+        if (rc != TC_CRYPTO_SUCCESS) {
+            return -1;
+        }
+
+        rc = tc_hmac_final(T, TC_SHA256_DIGEST_SIZE, &hmac);
+        if (rc != TC_CRYPTO_SUCCESS) {
+            return -1;
+        }
+
+        if (len > TC_SHA256_DIGEST_SIZE) {
+            memcpy(&okm[off], T, TC_SHA256_DIGEST_SIZE);
+            len -= TC_SHA256_DIGEST_SIZE;
+        } else {
+            memcpy(&okm[off], T, len);
+            len = 0;
+        }
+    }
+
+    return 0;
+}
+#endif
+
 int
 boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot, uint8_t *enckey)
 {
@@ -206,6 +402,12 @@ boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot, uint8_t *enckey)
 #elif defined(MCUBOOT_ENCRYPT_KW)
 #    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_KW128
 #    define EXPECTED_ENC_LEN    TLV_ENC_KW_SZ
+#elif defined(MCUBOOT_ENCRYPT_EC256)
+#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_EC256
+#    define EXPECTED_ENC_LEN    (65 + 32 + 16)
+#    define EC_PUBK_INDEX       (1)
+#    define EC_TAG_INDEX        (65)
+#    define EC_CIPHERKEY_INDEX  (65 + 32)
 #endif
 
 /*
@@ -222,10 +424,21 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
     uint8_t *cpend;
     size_t olen;
 #endif
+#if defined(MCUBOOT_ENCRYPT_EC256)
+    struct tc_hmac_state_struct hmac;
+    struct tc_aes_key_sched_struct aes;
+    uint8_t tag[TC_SHA256_DIGEST_SIZE];
+    uint8_t shared[NUM_ECC_BYTES];
+    uint8_t derived_key[TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE];
+    uint8_t *cp;
+    uint8_t *cpend;
+    uint8_t pk[NUM_ECC_BYTES];
+    uint8_t counter[TC_AES_BLOCK_SIZE];
+#endif
     uint32_t off;
     uint16_t len;
     struct image_tlv_iter it;
-    uint8_t buf[TLV_ENC_RSA_SZ];
+    uint8_t buf[EXPECTED_ENC_LEN];
     uint8_t slot;
     int rc;
 
@@ -260,12 +473,13 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
     }
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
+
     mbedtls_rsa_init(&rsa, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
 
     cp = (uint8_t *)bootutil_enc_key.key;
     cpend = cp + *bootutil_enc_key.len;
 
-    rc = parse_enckey(&rsa, &cp, cpend);
+    rc = parse_rsa_enckey(&rsa, &cp, cpend);
     if (rc) {
         mbedtls_rsa_free(&rsa);
         return rc;
@@ -276,8 +490,100 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
     mbedtls_rsa_free(&rsa);
 
 #elif defined(MCUBOOT_ENCRYPT_KW)
+
     assert(*bootutil_enc_key.len == 16);
     rc = key_unwrap(buf, enckey);
+
+#elif defined(MCUBOOT_ENCRYPT_EC256)
+
+    cp = (uint8_t *)bootutil_enc_key.key;
+    cpend = cp + *bootutil_enc_key.len;
+
+    /*
+     * Load the stored EC256 decryption private key
+     */
+
+    rc = parse_ec256_enckey(&cp, cpend, pk);
+    if (rc) {
+        return rc;
+    }
+
+    /* is EC point uncompressed? */
+    if (buf[0] != 0x04) {
+        return -1;
+    }
+
+    /*
+     * First "element" in the TLV is the curve point (public key)
+     */
+    rc = uECC_valid_public_key(&buf[EC_PUBK_INDEX], uECC_secp256r1());
+    if (rc != 0) {
+        return -1;
+    }
+
+    rc = uECC_shared_secret(&buf[EC_PUBK_INDEX], pk, shared, uECC_secp256r1());
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    /*
+     * Expand shared secret to create keys for AES-128-CTR + HMAC-SHA256
+     */
+
+    len = TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE;
+    rc = hkdf(shared, TC_SHA256_DIGEST_SIZE, (uint8_t *)"MCUBoot_ECIES_v1", 16,
+            derived_key, &len);
+    if (rc != 0 || len != (TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE)) {
+        return -1;
+    }
+
+    /*
+     * HMAC the key and check that our received MAC matches the generated tag
+     */
+
+    rc = tc_hmac_set_key(&hmac, &derived_key[16], 32);
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    rc = tc_hmac_init(&hmac);
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    rc = tc_hmac_update(&hmac, &buf[EC_CIPHERKEY_INDEX], 16);
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    /* Assumes the tag bufer is at least sizeof(hmac_tag_size(state)) bytes */
+    rc = tc_hmac_final(tag, TC_SHA256_DIGEST_SIZE, &hmac);
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    if (_compare(tag, &buf[EC_TAG_INDEX], 32) != 0) {
+        return -1;
+    }
+
+    /*
+     * Finally decrypt the received ciphered key
+     */
+
+    rc = tc_aes128_set_decrypt_key(&aes, derived_key);
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    memset(counter, 0, TC_AES_BLOCK_SIZE);
+    rc = tc_ctr_mode(enckey, TC_AES_KEY_SIZE, &buf[EC_CIPHERKEY_INDEX],
+            TC_AES_KEY_SIZE, counter, &aes);
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    rc = 0;
+
 #endif
 
     return rc;

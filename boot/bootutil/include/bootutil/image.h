@@ -82,6 +82,7 @@ struct flash_area;
 #define IMAGE_TLV_ED25519           0x24   /* ed25519 of hash output */
 #define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
 #define IMAGE_TLV_ENC_KW128         0x31   /* Key encrypted with AES-KW-128 */
+#define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-EC256 */
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
 #define IMAGE_TLV_ANY               0xff   /* Used to iterate over all TLV */
 
