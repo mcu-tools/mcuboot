@@ -231,9 +231,9 @@ clean:
 # TODO: update with generic solution
 load:
 ifeq ($(HOST_OS), win)
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /d/
+	cp $(OUT_FILE_NAME).hex /d/
 else
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /Volumes/DAPLINK
+	cp $(OUT_FILE_NAME).hex /Volumes/DAPLINK 
 endif
 
 load_boot: sign
