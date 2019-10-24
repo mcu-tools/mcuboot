@@ -48,13 +48,14 @@ endif
 # NOTE: Absolute pathes for now for the sake of development
 ifeq ($(HOST_OS), win)
 	ifeq ($(COMPILER), GCC_ARM)
-		GCC_PATH ?= c:\Users\$(USERNAME)\ModusToolbox_1.0\tools\gcc-7.2.1-1.0
+		TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/ModusToolbox_1.0/tools/gcc-7.2.1-1.0
+		GCC_PATH := $(TOOLCHAIN_PATH)
 		# executables
 		CC       := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
-		LD       :=  $(CC)
+		LD       := $(CC)
 
 	else ifeq ($(COMPILER), IAR)
-		IAR_PATH ?= C:\Program Files (x86)\IAR Systems\Embedded Workbench 8.0\arm
+		IAR_PATH := C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.0/arm
 		# executables
 		CC       := "$(IAR_PATH)/bin/iccarm.exe"
 		AS       := "$(IAR_PATH)/bin/iasmarm.exe"
@@ -62,13 +63,15 @@ ifeq ($(HOST_OS), win)
 	endif
 
 else ifeq ($(HOST_OS), osx)
-	GCC_PATH ?= /opt/gcc-arm-none-eabi
+	TOOLCHAIN_PATH ?= /opt/gcc-arm-none-eabi
+	GCC_PATH := $(TOOLCHAIN_PATH)
 
 	CC := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
 	LD := $(CC)
 
 else ifeq ($(HOST_OS), linux)
-#	GCC_PATH := /usr/bin/gcc-arm-none-eabi/bin/arm-none-eabi-gcc
+	TOOLCHAIN_PATH ?= /usr/bin/gcc-arm-none-eabi/bin/arm-none-eabi-gcc
+	GCC_PATH := $(TOOLCHAIN_PATH)
 	# executables
 	CC := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
 	LD := $(CC) 
@@ -79,7 +82,7 @@ PDL_ELFTOOL := "hal/tools/$(HOST_OS)/elf/cymcuelftool"
 # Set executable names for compilers
 ifeq ($(COMPILER), GCC_ARM)
 	CC       := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
-	LD       :=  $(CC)
+	LD       := $(CC)
 else
 	CC       := "$(IAR_PATH)/bin/iccarm.exe"
 	AS       := "$(IAR_PATH)/bin/iasmarm.exe"

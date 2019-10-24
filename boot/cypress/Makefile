@@ -31,14 +31,19 @@
 MAKEINFO ?= 1
 # Application name by default
 APP_NAME ?= MCUBootApp
+
+BUILDCFG ?= Debug
+
 # Set of supported applications
 APPS := MCUBootApp BlinkyApp
 # Output folder
 OUT := $(APP_NAME)/out
 # Output folder to contain build artifacts
 OUT_TARGET := $(OUT)/$(TARGET)
-# Defines whether or not image should be signed
-SIGN ?= 0
+
+OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
+OUT_OBJ := $(OUT_CFG)/obj
+OUT_APP := $(OUT_CFG)
 
 HEADER_OFFSET ?= 0
 
@@ -79,47 +84,6 @@ DEFINES +=
 # updating CFLAGS at this point as DEFINES are completed
 CFLAGS += $(DEFINES)
 
-#DEFINES := -D$(CHIP_ID) -DCY_FB_OPT_$(SI_REVISION) -DNDEBUG -DCY_CORE_ID=0 $(DEFINES_CRYPTO) $(DEFINES_PDL) $(DEFINES_OTHER) -DCY_FB_BUILD_NUMBER=$(CY_BUILD_NUMBER)UL $(PSVP_DEFINES) $(DEFINES_JWT)
-
-## helper suffix for versioning support
-#SUFFIX := $(SUFFIX_FAMILY)_$(SUFFIX_VERSION)
-#
-#ifeq ($(CY_BUILD_NUMBER), )
-#	# may be useful when building from a command line on a local machine
-#	CY_BUILD_NUMBER := 10
-#endif
-#
-#################################################################################
-## Application sources
-#################################################################################
-#SOURCES_APPLICATION =
-#
-#################################################################################
-## Common section
-#################################################################################
-#
-## Project includes path define
-#INCLUDES := $(INCLUDES_JWT) $(INCLUDES_CRYPTOLIB) $(INCLUDES_PDL) $(INCLUDES_MBED_CRYPTO) -I"./hal"  -I"./crypto" -I.
-#
-## Other defines
-#DEFINES_OTHER := -DFB_SECURE_ENABLED -DCY_FLASH_RWW_DRV_SUPPORT_DISABLED
-#ifneq ($(FAMILY), $(FAMILY_PSOC6A_512K))
-#	DEFINES_OTHER := $(DEFINES_OTHER) -DCY_FB_ATTESTATON_ENABLE
-#endif
-#
-#ifneq (, $(findstring _psvp_, $(SUFFIX)))
-#	PSVP_DEFINES := -DCY_FB_OPT_PSVP
-#endif
-#
-#DEFINES := -D$(CHIP_ID) -DCY_FB_OPT_$(SI_REVISION) -DNDEBUG -DCY_CORE_ID=0 $(DEFINES_CRYPTO) $(DEFINES_PDL) $(DEFINES_OTHER) -DCY_FB_BUILD_NUMBER=$(CY_BUILD_NUMBER)UL $(PSVP_DEFINES) $(DEFINES_JWT)
-#
-#DEFINES += -DCY_FB_FAMILY=$(FAMILY) -DCY_FB_SI_REV=$(SI_REV)
-#
-#
-#ASM_FILES += $(ASM_FILES_PDL)
-#C_FILES := $(SOURCES_CRYPTOLIB) $(SOURCES_MBED_CRYPTO) $(SOURCES_JWT) $(SOURCES_BSP) $(SOURCES_PDL) $(SOURCES_FB)
-#C_FILES += $(wildcard hal/*.c)
-
 VPATH = $(dir $(C_FILES) $(ASM_FILES))
 
 ## Set colors for unix compatible terminals, otherwise comment this code
@@ -158,50 +122,62 @@ VPATH = $(dir $(C_FILES) $(ASM_FILES))
 #	COLOR_OUTPUT =
 #endif
 #
-#
 
 # Default name pattern for output files
 # may be modified in %Application%.mk file
-OUT_FILE_NAME ?= $(OUT_TARGET)/$(APP_NAME)
+OUT_FILE_NAME ?= $(OUT_APP)/$(APP_NAME)
 
-PYTHON_PATH ?= python3 
+# minimum Python 3.7 is required
+# Python path definition
+ifeq ($(OS),Windows_NT)
+PYTHON_PATH?=python
+else
+PYTHON_PATH?=python3
+endif
+
 IMGTOOL_PATH ?=	../../scripts/imgtool.py
 SIGN_ARGS := sign -H 1024 --pad-header --align 8 -v "2.0" -S 65536 -M 512 --overwrite-only -R 0
 
-ifeq ($(UPGRADE_IMG), 1)
+ifeq ($(IMG_TYPE), UPGRADE)
 	SIGN_ARGS += --pad
+	UPGRADE :=_upgrade
 endif
 
-.PHONY: all app build clean
+.PHONY: all app build clean sign load load_boot load_upgrade 
 
 all: clean app
 
 app:
 	@`mkdir -p ./$(OUT)`
-	@`mkdir -p ./$(OUT)/obj`
 	@`mkdir -p ./$(OUT_TARGET)`
+	@`mkdir -p ./$(OUT_CFG)`
+	@`mkdir -p ./$(OUT_OBJ)`
 	$(MAKE) build -j8
 
-build: $(OUT_FILE_NAME).hex
-	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_FILE_NAME).hex -s > $(OUT_FILE_NAME).lst
-	$(GCC_PATH)/bin/arm-none-eabi-size --format=berkeley $(OUT_FILE_NAME).elf
+sign: $(OUT_APP)/$(APP_NAME).hex
+	$(PYTHON_PATH) $(IMGTOOL_PATH) $(SIGN_ARGS) $(OUT_APP)/$(APP_NAME).hex $(OUT_APP)/$(APP_NAME)_signed$(UPGRADE).hex
 
-$(OUT_FILE_NAME).hex: $(OUT_FILE_NAME).elf
-	$(GCC_PATH)/bin/arm-none-eabi-objcopy --change-addresses=$(HEADER_OFFSET) -O ihex $(OUT_FILE_NAME).elf $(OUT_FILE_NAME).hex
-ifeq ($(SIGN), 1)
-	$(PYTHON_PATH) $(IMGTOOL_PATH) $(SIGN_ARGS) $(OUT_FILE_NAME).hex $(OUT_FILE_NAME)_signed.hex
-	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_FILE_NAME)_signed.hex -s > $(OUT_FILE_NAME)_signed.lst
-endif
+build: $(OUT_APP)/$(APP_NAME).hex
+	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_APP)/$(APP_NAME).hex -s > $(OUT_APP)/$(APP_NAME).lst
+	$(GCC_PATH)/bin/arm-none-eabi-size --format=berkeley $(OUT_APP)/$(APP_NAME).elf
 
-$(OUT_FILE_NAME).elf: $(addprefix $(OUT)/obj/, $(O_FILES))
+$(OUT_APP)/$(APP_NAME).hex: $(OUT_APP)/$(APP_NAME).elf
+	$(GCC_PATH)/bin/arm-none-eabi-objcopy --change-addresses=$(HEADER_OFFSET) -O ihex $(OUT_APP)/$(APP_NAME).elf $(OUT_APP)/$(APP_NAME).hex
+
+#ifeq ($(SIGN), 1)
+#	$(PYTHON_PATH) $(IMGTOOL_PATH) $(SIGN_ARGS) $(OUT_APP)/$(APP_NAME).hex $(OUT_APP)/$(APP_NAME)_signed.hex
+#	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_APP)/$(APP_NAME)_signed.hex -s > $(OUT_APP)/$(APP_NAME)_signed.lst
+#endif
+
+$(OUT_APP)/$(APP_NAME).elf: $(addprefix $(OUT_OBJ)/, $(O_FILES))
 	@echo "LD $@"
 ifeq ($(MAKEINFO), 1)
 	@echo $(LD) $(O_FILES) $(CC_DEPEND) $(@:.o=.d) -o $@ $(LDFLAGS) -Wl,-Map,$(OUT_FILE_NAME).map
 endif
-	@$(LD) $(addprefix $(OUT)/obj/, $(O_FILES)) $(CC_DEPEND) $(@:.o=.d) -o $@ $(LDFLAGS) -Wl,-Map,$(OUT_FILE_NAME).map
+	@$(LD) $(addprefix $(OUT_OBJ)/, $(O_FILES)) $(CC_DEPEND) $(@:.o=.d) -o $@ $(LDFLAGS) -Wl,-Map,$(OUT_FILE_NAME).map
 
 
-$(OUT)/obj/%.o: %.c
+$(OUT_OBJ)/%.o: %.c
 	@echo "CC $<"
 ifeq ($(MAKEINFO), 1)
 	@echo $(CC) $(CFLAGS) $(INCLUDE_DIRS) $(CC_DEPEND) $(@:.o=.d) -c $< -o $@
@@ -211,7 +187,7 @@ ifeq ($(MAKEINFO), 1)
 	@echo
 endif
 
-$(OUT)/obj/%.o: %.S
+$(OUT_OBJ)/%.o: %.S
 	@echo "AS $<"
 ifeq ($(COMPILER), GCC_ARM)
 ifeq ($(MAKEINFO), 1)
@@ -231,12 +207,27 @@ clean:
 	rm -rf ./$(APP_NAME)/out
 
 # TODO: update with generic solution
-upload:
+load:
 ifeq ($(HOST_OS), win)
-	cp $(OUT_FILE_NAME).hex /d/
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /d/
 else
-	cp $(OUT_FILE_NAME).hex /Volumes/DAPLINK 
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /Volumes/DAPLINK 
 endif
+
+load_boot:
+ifeq ($(HOST_OS), win)
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed.hex /d/
+else
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed.hex /Volumes/DAPLINK 
+endif
+
+load_upgrade:
+ifeq ($(HOST_OS), win)
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed_upgrade.hex /d/
+else
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed_upgrade.hex /Volumes/DAPLINK 
+endif
+
 
 ifeq ($(MAKEINFO) , 1)
 $(info ASM_FILES: $(ASM_FILES))

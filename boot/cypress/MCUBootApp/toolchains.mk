@@ -48,14 +48,14 @@ endif
 # NOTE: Absolute pathes for now for the sake of development
 ifeq ($(HOST_OS), win)
 	ifeq ($(COMPILER), GCC_ARM)
-		TOOLCHAIN_PATH ?= c:\Users\$(USERNAME)\ModusToolbox_1.0\tools\gcc-7.2.1-1.0
+		TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/ModusToolbox_1.0/tools/gcc-7.2.1-1.0
 		GCC_PATH := $(TOOLCHAIN_PATH)
 		# executables
 		CC       := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
 		LD       := $(CC)
 
 	else ifeq ($(COMPILER), IAR)
-		IAR_PATH := C:\Program Files (x86)\IAR Systems\Embedded Workbench 8.0\arm
+		IAR_PATH := C:/Program Files (x86)/IAR Systems/Embedded Workbench 8.0/arm
 		# executables
 		CC       := "$(IAR_PATH)/bin/iccarm.exe"
 		AS       := "$(IAR_PATH)/bin/iasmarm.exe"
@@ -63,7 +63,7 @@ ifeq ($(HOST_OS), win)
 	endif
 
 else ifeq ($(HOST_OS), osx)
-	TOOLCHAIN_PATH ?= /Users/$(USER)/toolchains/gcc-arm-none-eabi-6
+	TOOLCHAIN_PATH ?= /opt/gcc-arm-none-eabi
 	GCC_PATH := $(TOOLCHAIN_PATH)
 
 	CC := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
@@ -137,5 +137,5 @@ else ifeq ($(COMPILER), IAR)
 	#options to extend stack analize: --log call_graph --log_file $(OUT)/stack_usage_$(SUFFIX).txt
 	LDFLAGS_STACK_USAGE := --stack_usage_control $(STACK_CONTROL_FILE) --diag_suppress=Ls015 --diag_suppress=Ls016
 	LDFLAGS_COMMON := --vfe --text_out locale --silent --inline --merge_duplicate_sections
-	LDFLAGS := $(LDFLAGS_COMMON) $(LDFLAGS_STACK_USAGE) --config $(LINKER_SCRIPT) --map $(OUT_TARGET)/$(APP_NAME).map --entry Cy_FB_ResetHandler --no_exceptions
+	LDFLAGS := $(LDFLAGS_COMMON) $(LDFLAGS_STACK_USAGE) --config $(LINKER_SCRIPT) --map $(OUT_APP)/$(APP_NAME).map --entry Cy_FB_ResetHandler --no_exceptions
 endif

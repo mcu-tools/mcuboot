@@ -1,27 +1,58 @@
-### Test application for MCUBoot based Bootloader smoke test.
+### Blinking LED test application for MCUBoot Bootloader.
 
-**Properties:**
+**Description:**
 
-1. Built for CM4 core.
-2. Starts by MCUBoot Application which is running on CM0p.
-3. Prints debug info about itself to terminal at 115200.
-4. Blinks RED led with 2 frequencies, depending on type of image - BOOT or UPGRADE. Also prints version of image to terminal.
-5. Can be built for BOOT slot or UPGRADE slot of MCUBoot Bootloader.
+Implements simple Blinky LED CM4 application to demonstrate MCUBoot Application operation in terms of BOOT and UPGRADE process.
 
-**How build:**
+It is started by MCUBoot Application which is running on CM0p.
 
-BOOT:
+* Blinks RED led with 2 different rates, depending on type of image - BOOT or UPGRADE.
+* Prints debug info and version of itself to terminal at 115200 baud.
+* Can be built for BOOT slot or UPGRADE slot of MCUBoot Bootloader.
 
-```make app APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W BUILDCFG=Debug MAKEINFO=1 SIGN=1 IMG_TYPE=BOOT_IMG APP_LD=BlinkyApp/Application.ld```
+**How to build an application:**
 
-UPGRADE:
+The following command will build regular HEX file of a Blinky Application, BOOT slot:
 
-```make app APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W BUILDCFG=Debug MAKEINFO=1 SIGN=1 HEADER_OFFSET=0x20000 IMG_TYPE=UPGRADE_IMG APP_LD=BlinkyApp/Application.ld```
+`make app APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W IMG_TYPE=BOOT`
+
+This have following defaults suggested:
+
+`BUILDCFG=Debug`
+`IMG_TYPE=BOOT`
+
+To build UPGRADE image use following command:
+
+`make app APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W IMG_TYPE=UPGRADE`
+
+**How to sign an image:**
+
+To sign obtained image use following command:
+
+`make sign APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W`
+
+Flags defaults:
+
+`BUILDCFG=Debug`
+`IMG_TYPE=BOOT`
+
+**How to program an application:**
+
+To program BOOT image:
+
+`make boot APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W`
+
+To program UPGRADE image:
+
+`make upgrade APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W`
+
+Flags defaults:
+
+`BUILDCFG=Debug`
 
 **Flags:**
-- **MAKEINFO** - 0 (default) - silent build, 1 - verbose output of complilation, .
-- **SIGN** - 0 (default) - do not add signature, 1 - add signature to output file (needed for User Application).
-- **HEADER_OFFSET** - 0 (default) - no offset of output hex file, 0x%VALUE% - offset for output hex file. Value 0x10000 is slot size of MCUBoot Bootloader is this example
-- **APP_LD** - Path to custom linker. By default linker script from BSP is used.
-- **IMG_TYPE** - BOOT_IMG(default) - build image for BOOT slot of MCUBoot Bootloader, UPGRADE_IMG - build image for UPGRADE slot of MCUBoot Bootloader.
-  **NOTE**: In case of UPGRADE image HEADER_OFFSET should be set to MCUBoot Bootloader slot size
+- `MAKEINFO` - 0 (default) - silent build, 1 - verbose output of complilation, .
+- `HEADER_OFFSET` - 0 (default) - no offset of output hex file, 0x%VALUE% - offset for output hex file. Value 0x10000 is slot size of MCUBoot Bootloader is this example
+- `IMG_TYPE` - `BOOT` (default) - build image for BOOT slot of MCUBoot Bootloader, `UPGRADE` - build image for `UPGRADE` slot of MCUBoot Bootloader.
+
+**NOTE**: In case of `UPGRADE` image `HEADER_OFFSET` should be set to MCUBoot Bootloader slot size

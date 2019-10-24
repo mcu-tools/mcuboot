@@ -26,7 +26,6 @@
 # Cypress' MCUBoot Application supports GCC ARM only at this moment 
 # Set default compiler to GCC if not specified from command line
 COMPILER ?= GCC_ARM
-BUILDCFG ?= Debug
 
 ifneq ($(COMPILER), GCC_ARM)
 $(error Only GCC ARM is supported at this moment)
@@ -39,7 +38,6 @@ include $(CUR_APP_PATH)/libs.mk
 include $(CUR_APP_PATH)/toolchains.mk
 
 # Application-specific DEFINES
-# DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"crypto_config_sw.h\""
 DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
 #DEFINES_APP += -DMCUBOOT_APP_DEF
 

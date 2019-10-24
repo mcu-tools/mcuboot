@@ -60,9 +60,9 @@
     #define GREETING_MESSAGE_VER  "[BlinkyApp] BlinkyApp v1.0\n"
     #define GREETING_MESSAGE_INFO "[BlinkyApp] Red led blinks with 1 sec period\n"
 #elif UPGRADE_IMG
-    #define BLINK_PERIOD          (100u)
+    #define BLINK_PERIOD          (250u)
     #define GREETING_MESSAGE_VER  "[BlinkyApp] BlinkyApp v2.0 [+]\n"
-    #define GREETING_MESSAGE_INFO "[BlinkyApp] Red led blinks with 0.5 sec period\n"
+    #define GREETING_MESSAGE_INFO "[BlinkyApp] Red led blinks with 0.25 sec period\n"
 #else
     #error "[BlinkyApp] Please specify type of image: -DBOOT_IMG or -DUPGRADE_IMG\n\r"
 #endif
@@ -88,17 +88,17 @@ void test_app_init_hardware(void)
     check_result(cy_retarget_io_init(CYBSP_DEBUG_UART_TX, CYBSP_DEBUG_UART_RX,
                                      CY_RETARGET_IO_BAUDRATE));
     
-    printf("===========================\n");
+    printf("===========================");
     printf(GREETING_MESSAGE_VER);
-    printf("===========================\n");
+    printf("===========================\r\n");
 
     /* Initialize the User LED */
     check_result(cyhal_gpio_init((cyhal_gpio_t) CYBSP_USER_LED1, CYHAL_GPIO_DIR_OUTPUT,
                                  CYHAL_GPIO_DRIVE_STRONG, CYBSP_LED_STATE_OFF));
 
-    printf("\r[BlinkyApp] GPIO initialized \n");
-    printf("[BlinkyApp] UART initialized \n");
-    printf("[BlinkyApp] Retarget I/O set to 115200 baudrate \n");
+    printf("\r[BlinkyApp] GPIO initialized \r\n");
+    printf("[BlinkyApp] UART initialized \r\n");
+    printf("[BlinkyApp] Retarget I/O set to 115200 baudrate \r\n");
     
 }
 
@@ -113,7 +113,7 @@ int main(void)
     for (;;)
     {
 		/* Toggle the user LED periodically */
-        Cy_SysLib_Delay(blinky_period);
+        Cy_SysLib_Delay(blinky_period/2);
 
         /* Invert the USER LED state */
         cyhal_gpio_toggle((cyhal_gpio_t) CYBSP_USER_LED1);
