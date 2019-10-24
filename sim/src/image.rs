@@ -42,7 +42,7 @@ use crate::depends::{
     PairDep,
     UpgradeInfo,
 };
-use crate::tlv::{ManifestGen, TlvGen, TlvFlags, AES_SEC_KEY};
+use crate::tlv::{ManifestGen, TlvGen, TlvFlags};
 
 /// A builder for Images.  This describes a single run of the simulator,
 /// capturing the configuration of a particular set of devices, including
@@ -652,7 +652,8 @@ impl Images {
 
     // FIXME: could get status sz from bootloader
     fn status_sz(&self, align: usize) -> usize {
-        let bias = if Caps::EncRsa.present() || Caps::EncKw.present() {
+        let bias = if Caps::EncRsa.present() || Caps::EncKw.present() ||
+                Caps::EncEc256.present() {
             32
         } else {
             0
@@ -1138,7 +1139,9 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
     let is_encrypted = (tlv.get_flags() & flag) == flag;
     let mut b_encimg = vec![];
     if is_encrypted {
-        let key = GenericArray::from_slice(AES_SEC_KEY);
+        tlv.generate_enc_key();
+        let enc_key = tlv.get_enc_key();
+        let key = GenericArray::from_slice(enc_key.as_slice());
         let nonce = GenericArray::from_slice(&[0; 16]);
         let mut cipher = Aes128Ctr::new(&key, &nonce);
         b_encimg = b_img.clone();
@@ -1258,6 +1261,9 @@ fn make_tlv() -> TlvGen {
         } else {
             TlvGen::new_enc_rsa()
         }
+    } else if Caps::EncEc256.present() {
+        //FIXME: should fail with RSA signature?
+        TlvGen::new_ecdsa_ecies_p256()
     } else {
         // The non-encrypted configuration.
         if Caps::RSA2048.present() {
@@ -1278,7 +1284,8 @@ impl ImageData {
     /// Find the image contents for the given slot.  This assumes that slot 0
     /// is unencrypted, and slot 1 is encrypted.
     fn find(&self, slot: usize) -> &Vec<u8> {
-        let encrypted = Caps::EncRsa.present() || Caps::EncKw.present();
+        let encrypted = Caps::EncRsa.present() || Caps::EncKw.present() ||
+            Caps::EncEc256.present();
         match (encrypted, slot) {
             (false, _) => &self.plain,
             (true, 0) => &self.plain,
