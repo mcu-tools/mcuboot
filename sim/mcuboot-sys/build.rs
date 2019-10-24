@@ -18,6 +18,7 @@ fn main() {
                   env::var("CARGO_FEATURE_VALIDATE_PRIMARY_SLOT").is_ok();
     let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
     let enc_kw = env::var("CARGO_FEATURE_ENC_KW").is_ok();
+    let enc_ec256 = env::var("CARGO_FEATURE_ENC_EC256").is_ok();
     let bootstrap = env::var("CARGO_FEATURE_BOOTSTRAP").is_ok();
     let multiimage = env::var("CARGO_FEATURE_MULTIIMAGE").is_ok();
 
@@ -96,9 +97,10 @@ fn main() {
         conf.file("../../ext/mbedtls/library/platform.c");
         conf.file("../../ext/mbedtls/library/platform_util.c");
         conf.file("../../ext/mbedtls/library/asn1parse.c");
-    } else {
-        // Neither signature type, only verify sha256. The default
+    } else if !enc_ec256 {
+        // No signature type, only sha256 validation. The default
         // configuration file bundled with mbedTLS is sufficient.
+        // When using ECIES-P256 rely on Tinycrypt.
         conf.define("MCUBOOT_USE_MBED_TLS", None);
         conf.include("../../ext/mbedtls/include");
         conf.file("../../ext/mbedtls/library/sha256.c");
@@ -167,11 +169,41 @@ fn main() {
         }
     }
 
+    if enc_ec256 {
+        conf.define("MCUBOOT_ENCRYPT_EC256", None);
+        conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.define("MCUBOOT_USE_TINYCRYPT", None);
+
+        conf.file("../../boot/bootutil/src/encrypted.c");
+        conf.file("csupport/keys.c");
+
+        conf.include("../../ext/mbedtls-asn1/include");
+        conf.include("../../ext/tinycrypt/lib/include");
+
+        /* FIXME: fail with other signature schemes ? */
+
+        conf.file("../../ext/tinycrypt/lib/source/utils.c");
+        conf.file("../../ext/tinycrypt/lib/source/sha256.c");
+        conf.file("../../ext/tinycrypt/lib/source/ecc.c");
+        conf.file("../../ext/tinycrypt/lib/source/ecc_dsa.c");
+        conf.file("../../ext/tinycrypt/lib/source/ecc_platform_specific.c");
+
+        conf.file("../../ext/mbedtls-asn1/src/platform_util.c");
+        conf.file("../../ext/mbedtls-asn1/src/asn1parse.c");
+
+        conf.file("../../ext/tinycrypt/lib/source/aes_encrypt.c");
+        conf.file("../../ext/tinycrypt/lib/source/aes_decrypt.c");
+        conf.file("../../ext/tinycrypt/lib/source/ctr_mode.c");
+        conf.file("../../ext/tinycrypt/lib/source/hmac.c");
+        conf.file("../../ext/tinycrypt/lib/source/ecc_dh.c");
+    }
+
+
     if sig_rsa && enc_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
     } else if sig_rsa || sig_rsa3072 || enc_rsa {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
-    } else if sig_ecdsa && !enc_kw {
+    } else if (sig_ecdsa || enc_ec256) && !enc_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
     } else if sig_ed25519 {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ed25519.h>"));

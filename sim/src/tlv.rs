@@ -14,7 +14,7 @@ use byteorder::{
 use crate::image::ImageVersion;
 use pem;
 use base64;
-use ring::{digest, rand};
+use ring::{digest, rand, agreement, hkdf, hmac};
 use ring::signature::{
     RsaKeyPair,
     RSA_PSS_SHA256,
@@ -22,7 +22,14 @@ use ring::signature::{
     ECDSA_P256_SHA256_ASN1_SIGNING,
     Ed25519KeyPair,
 };
-use untrusted;
+use aes_ctr::{
+    Aes128Ctr,
+    stream_cipher::{
+        generic_array::GenericArray,
+        NewFixStreamCipher,
+        StreamCipherCore,
+    },
+};
 use mcuboot_sys::c;
 
 #[repr(u8)]
@@ -38,6 +45,7 @@ pub enum TlvKinds {
     ED25519 = 0x24,
     ENCRSA2048 = 0x30,
     ENCKW128 = 0x31,
+    ENCEC256 = 0x32,
     DEPENDENCY = 0x40,
 }
 
@@ -72,6 +80,12 @@ pub trait ManifestGen {
 
     /// Construct the manifest for this payload.
     fn make_tlv(self: Box<Self>) -> Vec<u8>;
+
+    /// TODO: Generate a new encryption random key
+    fn generate_enc_key(&mut self) -> bool;
+
+    /// Return the current encryption key
+    fn get_enc_key(&self) -> Vec<u8>;
 }
 
 #[derive(Debug)]
@@ -84,6 +98,7 @@ pub struct TlvGen {
     protect_size: u16,
     payload: Vec<u8>,
     dependencies: Vec<Dependency>,
+    enc_key: Vec<u8>,
 }
 
 #[derive(Debug)]
@@ -105,6 +120,7 @@ impl TlvGen {
             protect_size: 0,
             payload: vec![],
             dependencies: vec![],
+            enc_key: vec![],
         }
     }
 
@@ -117,6 +133,7 @@ impl TlvGen {
             protect_size: 0,
             payload: vec![],
             dependencies: vec![],
+            enc_key: vec![],
         }
     }
 
@@ -129,6 +146,7 @@ impl TlvGen {
             protect_size: 0,
             payload: vec![],
             dependencies: vec![],
+            enc_key: vec![],
         }
     }
 
@@ -141,6 +159,7 @@ impl TlvGen {
             protect_size: 0,
             payload: vec![],
             dependencies: vec![],
+            enc_key: vec![],
         }
     }
 
@@ -153,6 +172,7 @@ impl TlvGen {
             protect_size: 0,
             payload: vec![],
             dependencies: vec![],
+            enc_key: vec![],
         }
     }
 
@@ -165,6 +185,7 @@ impl TlvGen {
             protect_size: 0,
             payload: vec![],
             dependencies: vec![],
+            enc_key: vec![],
         }
     }
 
@@ -177,6 +198,7 @@ impl TlvGen {
             protect_size: 0,
             payload: vec![],
             dependencies: vec![],
+            enc_key: vec![],
         }
     }
 
@@ -189,6 +211,7 @@ impl TlvGen {
             protect_size: 0,
             payload: vec![],
             dependencies: vec![],
+            enc_key: vec![],
         }
     }
 
@@ -201,6 +224,7 @@ impl TlvGen {
             protect_size: 0,
             payload: vec![],
             dependencies: vec![],
+            enc_key: vec![],
         }
     }
 
@@ -213,6 +237,20 @@ impl TlvGen {
             protect_size: 0,
             payload: vec![],
             dependencies: vec![],
+            enc_key: vec![],
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn new_ecdsa_ecies_p256() -> TlvGen {
+        TlvGen {
+            flags: TlvFlags::ENCRYPTED as u32,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256, TlvKinds::ENCEC256],
+            size: 4 + 32 + 4 + 32 + 4 + 72 + 4 + 113,
+            protect_size: 0,
+            payload: vec![],
+            dependencies: vec![],
+            enc_key: vec![],
         }
     }
 
@@ -341,8 +379,7 @@ impl ManifestGen for TlvGen {
                 pem::parse(include_bytes!("../../root-rsa-3072.pem").as_ref()).unwrap()
             };
             assert_eq!(key_bytes.tag, "RSA PRIVATE KEY");
-            let key_bytes = untrusted::Input::from(&key_bytes.contents);
-            let key_pair = RsaKeyPair::from_der(key_bytes).unwrap();
+            let key_pair = RsaKeyPair::from_der(&key_bytes.contents).unwrap();
             let rng = rand::SystemRandom::new();
             let mut signature = vec![0; key_pair.public_modulus_len()];
             if is_rsa2048 {
@@ -376,12 +413,10 @@ impl ManifestGen for TlvGen {
             let key_bytes = pem::parse(include_bytes!("../../root-ec-p256-pkcs8.pem").as_ref()).unwrap();
             assert_eq!(key_bytes.tag, "PRIVATE KEY");
 
-            let key_bytes = untrusted::Input::from(&key_bytes.contents);
             let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING,
-                                                    key_bytes).unwrap();
+                                                    &key_bytes.contents).unwrap();
             let rng = rand::SystemRandom::new();
-            let payload = untrusted::Input::from(&sig_payload);
-            let signature = key_pair.sign(&rng, payload).unwrap();
+            let signature = key_pair.sign(&rng, &sig_payload).unwrap();
 
             result.push(TlvKinds::ECDSA256 as u8);
             result.push(0);
@@ -415,9 +450,8 @@ impl ManifestGen for TlvGen {
             let key_bytes = pem::parse(include_bytes!("../../root-ed25519.pem").as_ref()).unwrap();
             assert_eq!(key_bytes.tag, "PRIVATE KEY");
 
-            let seed = untrusted::Input::from(&key_bytes.contents[16..48]);
-            let public = untrusted::Input::from(&ED25519_PUB_KEY[12..44]);
-            let key_pair = Ed25519KeyPair::from_seed_and_public_key(seed, public).unwrap();
+            let key_pair = Ed25519KeyPair::from_seed_and_public_key(
+                &key_bytes.contents[16..48], &ED25519_PUB_KEY[12..44]).unwrap();
             let signature = key_pair.sign(&hash);
 
             result.push(TlvKinds::ED25519 as u8);
@@ -463,7 +497,83 @@ impl ManifestGen for TlvGen {
             result.extend_from_slice(&encbuf);
         }
 
+        if self.kinds.contains(&TlvKinds::ENCEC256) {
+            let key_bytes = pem::parse(include_bytes!("../../enc-ec256-pub.pem").as_ref()).unwrap();
+            assert_eq!(key_bytes.tag, "PUBLIC KEY");
+
+            let rng = rand::SystemRandom::new();
+            let pk = match agreement::EphemeralPrivateKey::generate(&agreement::ECDH_P256, &rng) {
+                Ok(v) => v,
+                Err(_) => panic!("Failed to generate ephemeral keypair"),
+            };
+
+            let pubk = match pk.compute_public_key() {
+                Ok(pubk) => pubk,
+                Err(_) => panic!("Failed computing ephemeral public key"),
+            };
+
+            let peer_pubk = agreement::UnparsedPublicKey::new(&agreement::ECDH_P256, &key_bytes.contents[26..]);
+
+            #[derive(Debug, PartialEq)]
+            struct OkmLen<T: core::fmt::Debug + PartialEq>(T);
+
+            impl hkdf::KeyType for OkmLen<usize> {
+                fn len(&self) -> usize {
+                    self.0
+                }
+            }
+
+            let derived_key = match agreement::agree_ephemeral(
+                pk, &peer_pubk, ring::error::Unspecified, |shared| {
+                    let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, &[]);
+                    let prk = salt.extract(&shared);
+                    let okm = match prk.expand(&[b"MCUBoot_ECIES_v1"], OkmLen(48)) {
+                        Ok(okm) => okm,
+                        Err(_) => panic!("Failed building HKDF OKM"),
+                    };
+                    let mut buf = [0u8; 48];
+                    match okm.fill(&mut buf) {
+                        Ok(_) => Ok(buf),
+                        Err(_) => panic!("Failed generating HKDF output"),
+                    }
+                },
+            ) {
+                Ok(v) => v,
+                Err(_) => panic!("Failed building HKDF"),
+            };
+
+            let key = GenericArray::from_slice(&derived_key[..16]);
+            let nonce = GenericArray::from_slice(&[0; 16]);
+            let mut cipher = Aes128Ctr::new(&key, &nonce);
+            let mut cipherkey = self.get_enc_key();
+            cipher.apply_keystream(&mut cipherkey);
+
+            let key = hmac::Key::new(hmac::HMAC_SHA256, &derived_key[16..]);
+            let tag = hmac::sign(&key, &cipherkey);
+
+            let mut buf = vec![];
+            buf.append(&mut pubk.as_ref().to_vec());
+            buf.append(&mut tag.as_ref().to_vec());
+            buf.append(&mut cipherkey);
+
+            assert!(buf.len() == 113);
+            result.push(TlvKinds::ENCEC256 as u8);
+            result.push(0);
+            result.push(113);
+            result.push(0);
+            result.extend_from_slice(&buf);
+        }
+
         result
+    }
+
+    fn generate_enc_key(&mut self) -> bool {
+        self.enc_key = AES_SEC_KEY.to_vec();
+        true
+    }
+
+    fn get_enc_key(&self) -> Vec<u8> {
+        return self.enc_key.clone();
     }
 }
 
