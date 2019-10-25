@@ -12,6 +12,8 @@ It is started by MCUBoot Application which is running on CM0p.
 
 **How to build an application:**
 
+Root directory for build is **boot/cypress.**
+
 The following command will build regular HEX file of a Blinky Application, BOOT slot:
 
 `make app APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W IMG_TYPE=BOOT`
@@ -38,6 +40,10 @@ Flags defaults:
 
 **How to program an application:**
 
+Use any preffered tool for programming hex files.
+
+Currently implemented makefile jobs use DAPLINK interface for programming.
+
 To program BOOT image:
 
 `make load_boot APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W`
@@ -57,3 +63,27 @@ Flags defaults:
 - `IMG_TYPE` - `BOOT` (default) - build image for BOOT slot of MCUBoot Bootloader, `UPGRADE` - build image for `UPGRADE` slot of MCUBoot Bootloader.
 
 **NOTE**: In case of `UPGRADE` image `HEADER_OFFSET` should be set to MCUBoot Bootloader slot size
+
+**Example terminal output:**
+
+When user application programmed in BOOT slot:
+
+`===========================`
+`[BlinkyApp] BlinkyApp v1.0`
+`===========================`
+
+`[BlinkyApp] GPIO initialized`
+`[BlinkyApp] UART initialized`
+`[BlinkyApp] Retarget I/O set to 115200 baudrate`
+`[BlinkyApp] Red led blinks with 1 sec period`
+
+When user application programmed in UPRADE slot and upgrade procedure was successful:
+
+`===========================`
+`[BlinkyApp] BlinkyApp v2.0`
+`===========================`
+
+`[BlinkyApp] GPIO initialized`
+`[BlinkyApp] UART initialized`
+`[BlinkyApp] Retarget I/O set to 115200 baudrate`
+`[BlinkyApp] Red led blinks with 0.25 sec period`

@@ -88,7 +88,7 @@ void test_app_init_hardware(void)
     check_result(cy_retarget_io_init(CYBSP_DEBUG_UART_TX, CYBSP_DEBUG_UART_RX,
                                      CY_RETARGET_IO_BAUDRATE));
     
-    printf("===========================");
+    printf("===========================\r\n");
     printf(GREETING_MESSAGE_VER);
     printf("===========================\r\n");
 
