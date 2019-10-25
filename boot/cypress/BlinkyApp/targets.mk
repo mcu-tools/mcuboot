@@ -26,13 +26,12 @@
 # Target board MCUBoot is built for. CY8CPROTO-062-4343W is set as default
 # Supported:
 #   - CY8CPROTO-062-4343W
-#	- CY8CKIT_062_WIFI_BT
 #	- more to come
 
 # default TARGET
 TARGET ?= CY8CPROTO-062-4343W
 #
-TARGETS := CY8CPROTO-062-4343W CY8CKIT-062-WIFI-BT
+TARGETS := CY8CPROTO-062-4343W
 
 CUR_LIBS_PATH := $(CURDIR)/libs
 BSP_PATH  := $(CUR_LIBS_PATH)/bsp/TARGET_$(TARGET)
@@ -78,6 +77,9 @@ ifneq ($(DEFINES),)
 	DEFINES_BSP :=$(addprefix -D, $(subst -,_,$(DEFINES)))
 endif
 
+ifneq ($(COMPILER), GCC_ARM)
+$(error Only GCC ARM is supported at this moment)
+endif
 ifeq ($(MAKEINFO) , 1)
 $(info ==============================================================================)
 $(info = BSP files =)

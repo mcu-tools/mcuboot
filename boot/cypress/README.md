@@ -33,17 +33,17 @@ Those are represented as submodules.
 
 To retrieve source code with subsequent submodules pull:
 
-`git clone --recursive http://git-ore.aus.cypress.com/repo/cy_mcuboot_project/cy_mcuboot.git`
+    git clone --recursive http://git-ore.aus.cypress.com/repo/cy_mcuboot_project/cy_mcuboot.git
 
 Submodules can also be updated and initialized separately:
 
-`cd cy_mcuboot`
-`git submodule update --init`
+    cd cy_mcuboot
+    git submodule update --init
 
 MbedTLS library also relies on submodule crypto:
 
-`cd boot/cypress/libs/mbedtls/crypto`
-`git submodule update`
+    cd boot/cypress/libs/mbedtls/crypto
+    git submodule update
 
 
 **Building Solution**

@@ -81,16 +81,6 @@ endif
 
 PDL_ELFTOOL := "hal/tools/$(HOST_OS)/elf/cymcuelftool"
 
-# Set executable names for compilers
-ifeq ($(COMPILER), GCC_ARM)
-	CC       := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
-	LD       := $(CC)
-else
-	CC       := "$(IAR_PATH)/bin/iccarm.exe"
-	AS       := "$(IAR_PATH)/bin/iasmarm.exe"
-	LD       := "$(IAR_PATH)/bin/ilinkarm.exe"
-endif
-
 OBJDUMP  := "$(GCC_PATH)/bin/arm-none-eabi-objdump"
 OBJCOPY  := "$(GCC_PATH)/bin/arm-none-eabi-objcopy"
 

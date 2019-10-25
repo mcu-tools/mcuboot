@@ -1,5 +1,5 @@
 /***************************************************************************//**
-* \file cy8c6xxa_cm4_dual.ld
+* \file cy8c6xxa_cm0plus.ld
 * \version 2.60
 *
 * Linker file for the GNU C compiler.
@@ -40,7 +40,7 @@ SEARCH_DIR(.)
 GROUP(-lgcc -lc -lnosys)
 ENTRY(Reset_Handler)
 
-/* Size of the stack section at the end of CM4 SRAM */
+/* Size of the stack section at the end of CM0+ SRAM */
 STACK_SIZE = 0x1000;
 
 /* Force symbol to be entered in the output file as an undefined symbol. Doing
@@ -56,15 +56,15 @@ EXTERN(Reset_Handler)
 */
 MEMORY
 {
-    /* The ram and flash regions control RAM and flash memory allocation for the CM4 core.
+    /* The ram and flash regions control RAM and flash memory allocation for the CM0+ core.
      * You can change the memory allocation by editing the 'ram' and 'flash' regions.
      * Note that 2 KB of RAM (at the end of the SRAM) are reserved for system use.
      * Using this memory region for other purposes will lead to unexpected behavior.
-     * Your changes must be aligned with the corresponding memory regions for CM0+ core in 'xx_cm0plus.ld',
-     * where 'xx' is the device group; for example, 'cy8c6xx7_cm0plus.ld'.
+     * Your changes must be aligned with the corresponding memory regions for the CM4 core in 'xx_cm4_dual.ld',
+     * where 'xx' is the device group; for example, 'cy8c6xx7_cm4_dual.ld'.
      */
-    ram               (rwx)   : ORIGIN = 0x08000000, LENGTH = 0x4000
-    flash             (rx)    : ORIGIN = 0x10020400, LENGTH = 0x6000
+    ram               (rwx)   : ORIGIN = 0x08000000, LENGTH = 0x20000
+    flash             (rx)    : ORIGIN = 0x10000000, LENGTH = 0x12000
 
     /* This is a 32K flash region used for EEPROM emulation. This region can also be used as the general purpose flash.
      * You can assign sections to this memory region for only one of the cores.
@@ -122,8 +122,13 @@ GROUP(libgcc.a libc.a libm.a libnosys.a)
 
 SECTIONS
 {
-    /* Cortex-M4 application flash area */
-    .text ORIGIN(flash):
+    .cy_app_header :
+    {
+        KEEP(*(.cy_app_header))
+    } > flash
+
+    /* Cortex-M0+ application flash area */
+    .text :
     {
         . = ALIGN(4);
         __Vectors = . ;
@@ -176,7 +181,7 @@ SECTIONS
 
     /* To copy multiple ROM to RAM sections,
      * uncomment .copy.table section and,
-     * define __STARTUP_COPY_MULTIPLE in startup_psoc6_02_cm4.S */
+     * define __STARTUP_COPY_MULTIPLE in startup_psoc6_02_cm0plus.S */
     .copy.table :
     {
         . = ALIGN(4);
@@ -198,7 +203,7 @@ SECTIONS
 
     /* To clear multiple BSS sections,
      * uncomment .zero.table section and,
-     * define __STARTUP_CLEAR_BSS_MULTIPLE in startup_psoc6_02_cm4.S */
+     * define __STARTUP_CLEAR_BSS_MULTIPLE in startup_psoc6_02_cm0plus.S */
     .zero.table :
     {
         . = ALIGN(4);
@@ -210,6 +215,16 @@ SECTIONS
 
     __etext =  . ;
 
+    /* Set stack top to end of RAM, and stack limit move down by
+     * size of stack_dummy section */
+    __StackTop = ORIGIN(ram) + LENGTH(ram);
+    __StackLimit = __StackTop - STACK_SIZE ;
+    PROVIDE(__stack = __StackTop);
+
+    .stackSpace (NOLOAD) : ALIGN(8)
+    {
+        . = . + STACK_SIZE ;
+    } > ram
 
     .ramVectors (NOLOAD) : ALIGN(8)
     {
@@ -287,44 +302,16 @@ SECTIONS
         . = ALIGN(4);
         __bss_end__ = .;
     } > ram
-
-
+    
     .heap (NOLOAD):
     {
         __HeapBase = .;
         __end__ = .;
         end = __end__;
         KEEP(*(.heap*))
-        . = ORIGIN(ram) + LENGTH(ram) - STACK_SIZE;
+        . = ORIGIN(ram) + LENGTH(ram);
         __HeapLimit = .;
     } > ram
-
-
-    /* .stack_dummy section doesn't contains any symbols. It is only
-     * used for linker to calculate size of stack sections, and assign
-     * values to stack symbols later */
-    .stack_dummy (NOLOAD):
-    {
-        KEEP(*(.stack*))
-    } > ram
-
-
-    /* Set stack top to end of RAM, and stack limit move down by
-     * size of stack_dummy section */
-    __StackTop = ORIGIN(ram) + LENGTH(ram);
-    __StackLimit = __StackTop - SIZEOF(.stack_dummy);
-    PROVIDE(__stack = __StackTop);
-
-    /* Check if data + heap + stack exceeds RAM limit */
-    ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed with stack")
-
-
-    /* Used for the digital signature of the secure application and the Bootloader SDK application.
-    * The size of the section depends on the required data size. */
-    .cy_app_signature ORIGIN(flash) + LENGTH(flash) - 256 :
-    {
-        KEEP(*(.cy_app_signature))
-    } > flash
 
 
     /* Emulated EEPROM Flash area */
