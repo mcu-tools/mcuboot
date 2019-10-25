@@ -1,34 +1,36 @@
-# Downloading Solution's Assets
+### Port of MCUBoot library to be used with Cypress targets
 
-There are four assets required:
+**Downloading Solution's Assets**
+
+There is a set assets required:
 
 * MCUBooot Library (root repository)
 * PSoC6 BSP Library
 * PSoC6 Peripheral Drivers Library (PDL)
 * mbedTLS Cryptographic Library
 
-Those are present as submodules.
+Those are represented as submodules.
 
-To retrieve working environment, root repo has to be cloned recursively:
+To retrieve source code with subsequent submodules pull:
 
-__git clone --recursive https://github.com/JuulLabs-OSS/mcuboot.git__
+`git clone --recursive http://git-ore.aus.cypress.com/repo/cy_mcuboot_project/cy_mcuboot.git`
 
 As next step submodules have to be updated:
 
-__git submodule update --init__
+`git submodule update --init`
+
+MbedTLS library also relies on submodule crypto:
+
+`cd /boot/cypress/libs/mbedtls/crypto`
+`git submodule update`
 
 
-# Building Solution
+**Building Solutions**
 
-Appplication name "MCUBootApp"
+This folder contains make files infrastructure for building both MCUBoot Bootloader and sample BlinkyLed application used to with Bootloader.
 
-Board/device target "CY8CPROTO-062-4343W-M0" (CM0p core)
+Instructions on how to build and upload Bootloader and sample image are located is Readme.md files in corresponding folders.
 
-Build config - optimized for "Debug"
+**Currently supportred targets:**
+* CY8CPROTO_062_434W
 
-__make app APP_NAME=MCUBootApp TARGET=CY8CPROTO-062-4343W-M0 BUILDCFG=Debug__
-
-Defaults are following:
-APP_NAME=MCUBootApp
-TARGET=CY8CPROTO-062-4343W-M0
-BUILDCFG=Debug

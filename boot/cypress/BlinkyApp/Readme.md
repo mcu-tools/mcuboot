@@ -23,7 +23,7 @@ This have following defaults suggested:
 
 To build UPGRADE image use following command:
 
-`make app APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W IMG_TYPE=UPGRADE`
+`make app APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W IMG_TYPE=UPGRADE HEADER_OFFSET=0x10000`
 
 **How to sign an image:**
 
@@ -40,19 +40,20 @@ Flags defaults:
 
 To program BOOT image:
 
-`make boot APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W`
+`make load_boot APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W`
 
 To program UPGRADE image:
 
-`make upgrade APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W`
+`make load_upgrade APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W`
 
 Flags defaults:
 
 `BUILDCFG=Debug`
 
 **Flags:**
-- `MAKEINFO` - 0 (default) - silent build, 1 - verbose output of complilation, .
-- `HEADER_OFFSET` - 0 (default) - no offset of output hex file, 0x%VALUE% - offset for output hex file. Value 0x10000 is slot size of MCUBoot Bootloader is this example
+- `BUILDCFG` - configation **Release** of **Debug**
+- `MAKEINFO` - 0 (default) - less build info, 1 - verbose output of complilation.
+- `HEADER_OFFSET` - 0 (default) - no offset of output hex file, 0x%VALUE% - offset for output hex file. Value 0x10000 is slot size MCUBoot Bootloader in this example
 - `IMG_TYPE` - `BOOT` (default) - build image for BOOT slot of MCUBoot Bootloader, `UPGRADE` - build image for `UPGRADE` slot of MCUBoot Bootloader.
 
 **NOTE**: In case of `UPGRADE` image `HEADER_OFFSET` should be set to MCUBoot Bootloader slot size
