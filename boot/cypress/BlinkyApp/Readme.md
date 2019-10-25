@@ -31,12 +31,16 @@ To build UPGRADE image use following command:
 
 To sign obtained image use following command:
 
-`make sign APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W`
+`make sign APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W IMG_TYPE=BOOT`
+
+`make sign APP_NAME=BlinkyApp TARGET=CY8CPROTO-062-4343W IMG_TYPE=UPGRADE`
 
 Flags defaults:
 
 `BUILDCFG=Debug`
 `IMG_TYPE=BOOT`
+
+*Note:* before signing UPGRADE image it should be rebuilt with IMG_TYPE=UPGRADE parameter (clean \out before it).
 
 **How to program an application:**
 
