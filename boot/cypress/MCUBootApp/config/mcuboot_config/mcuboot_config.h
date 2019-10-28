@@ -34,6 +34,7 @@
 /* Uncomment for ECDSA signatures using curve P-256. */
 //#define MCUBOOT_SIGN_EC256 1
 //#define NUM_ECC_BYTES (4*8) // rnok: to make compilable
+#define MCUBOOT_SIGN_EC
 
 /*
  * Upgrade mode
