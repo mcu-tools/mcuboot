@@ -39,6 +39,7 @@ include $(CUR_APP_PATH)/toolchains.mk
 
 # Application-specific DEFINES
 DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
+DEFINES_APP += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
 #DEFINES_APP += -DMCUBOOT_APP_DEF
 
 # TODO: MCUBoot library

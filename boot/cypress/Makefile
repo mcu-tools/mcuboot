@@ -32,6 +32,8 @@ MAKEINFO ?= 1
 # Application name by default
 APP_NAME ?= MCUBootApp
 
+SIGN_KEY_FILE ?= cypress-test-ec-p256
+
 BUILDCFG ?= Debug
 
 # Set of supported applications
@@ -136,14 +138,15 @@ PYTHON_PATH?=python3
 endif
 
 IMGTOOL_PATH ?=	../../scripts/imgtool.py
-SIGN_ARGS := sign -H 1024 --pad-header --align 8 -v "2.0" -S 65536 -M 512 --overwrite-only -R 0
+
+SIGN_ARGS := sign -H 1024 --pad-header --align 8 -v "2.0" -S 65536 -M 512 --overwrite-only -R 0 -k keys/$(SIGN_KEY_FILE).pem
 
 ifeq ($(IMG_TYPE), UPGRADE)
 	SIGN_ARGS += --pad
 	UPGRADE :=_upgrade
 endif
 
-.PHONY: all app build clean sign load load_boot load_upgrade 
+.PHONY: all app build clean sign load load_boot load_upgrade
 
 all: clean app
 
@@ -211,23 +214,27 @@ load:
 ifeq ($(HOST_OS), win)
 	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /d/
 else
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /Volumes/DAPLINK 
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /Volumes/DAPLINK
 endif
 
-load_boot:
+load_boot: sign
 ifeq ($(HOST_OS), win)
 	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed.hex /d/
 else
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed.hex /Volumes/DAPLINK 
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed.hex /Volumes/DAPLINK
 endif
 
-load_upgrade:
+load_upgrade: sign
 ifeq ($(HOST_OS), win)
 	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed_upgrade.hex /d/
 else
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed_upgrade.hex /Volumes/DAPLINK 
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed_upgrade.hex /Volumes/DAPLINK
 endif
 
+gen_key_ecc256:
+	@echo Generate ECC256 keys: $(SIGN_KEY_FILE).pem and $(SIGN_KEY_FILE).pub
+	../../scripts/imgtool.py keygen -k keys/$(SIGN_KEY_FILE).pem -t ecdsa-p256
+	../../scripts/imgtool.py getpub -k keys/$(SIGN_KEY_FILE).pem > keys/$(SIGN_KEY_FILE).pub
 
 ifeq ($(MAKEINFO) , 1)
 $(info ASM_FILES: $(ASM_FILES))
