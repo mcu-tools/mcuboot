@@ -667,7 +667,7 @@ boot_read_status(struct boot_loader_state *state, struct boot_status *bs)
     memset(bs, 0, sizeof *bs);
     bs->idx = BOOT_STATUS_IDX_0;
     bs->state = BOOT_STATUS_STATE_0;
-    bs->swap_type = BOOT_SWAP_TYPE_TEST; //BOOT_SWAP_TYPE_NONE;
+    bs->swap_type = BOOT_SWAP_TYPE_NONE;
 
 #ifdef MCUBOOT_OVERWRITE_ONLY
     /* Overwrite-only doesn't make use of the swap status area. */

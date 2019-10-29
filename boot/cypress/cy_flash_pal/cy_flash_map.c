@@ -71,13 +71,22 @@
 #include "flash_map_backend/flash_map_backend.h"
 #include <sysflash/sysflash.h>
 #include "cy_flash_psoc6.h"
-#include "bootutil/bootutil_log.h"
 
 #include "cy_pdl.h"
 
 #define NELEMS(x)  (sizeof(x) / sizeof((x)[0]))
 
 #define FLASH_AREA_IMAGE_SECTOR_SIZE FLASH_AREA_IMAGE_SCRATCH_SIZE
+
+#ifndef CY_BOOT_INTERNAL_FLASH_ERASE_VALUE
+/* This is the value of internal flash bytes after an erase */
+#define CY_BOOT_INTERNAL_FLASH_ERASE_VALUE      (0x00)
+#endif
+
+#ifndef CY_BOOT_EXTERNAL_FLASH_ERASE_VALUE
+/* This is the value of external flash bytes after an erase */
+#define CY_BOOT_EXTERNAL_FLASH_ERASE_VALUE      (0xff)
+#endif
 
 #ifdef CY_FLASH_MAP_EXT_DESC
 /* Nothing to be there when external FlashMap Descriptors are used */
@@ -364,7 +373,6 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
         return 1;
     }
 
-    BOOT_LOG_ERR("invalid flash area ID");
     return -1;
 }
 
@@ -373,11 +381,26 @@ int flash_area_id_to_image_slot(int area_id)
     return flash_area_id_to_multi_image_slot(0, area_id);
 }
 
-#define ERASED_MEM_VAL 0x00
 uint8_t flash_area_erased_val(const struct flash_area *fap)
 {
-    (void)fap;
-    return ERASED_MEM_VAL;
+    int ret ;
+
+    if (fap->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
+    {
+        ret = CY_BOOT_INTERNAL_FLASH_ERASE_VALUE ;
+    }
+#ifdef CY_USE_EXTERNAL_FLASH
+    else if ((fap->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
+    {
+        ret = CY_BOOT_EXTERNAL_FLASH_ERASE_VALUE ;
+    }
+#endif
+    else
+    {
+        assert(false) ;
+    }
+
+    return ret ;
 }
 
 int flash_area_read_is_empty(const struct flash_area *fa, uint32_t off,
@@ -394,11 +417,10 @@ int flash_area_read_is_empty(const struct flash_area *fa, uint32_t off,
     }
 
     for (i = 0; i < len; i++) {
-        if (mem_dest[i] != ERASED_MEM_VAL) {
+        if (mem_dest[i] != flash_area_erased_val(fa)) {
             return 0;
         }
     }
-
     return 1;
 }
 
