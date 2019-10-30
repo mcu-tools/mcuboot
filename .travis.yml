@@ -35,7 +35,7 @@ matrix:
     - os: linux
       env: MULTI_FEATURES="sig-ecdsa enc-kw validate-primary-slot" TEST=sim
     - os: linux
-      env: MULTI_FEATURES="sig-rsa validate-primary-slot overwrite-only" TEST=sim
+      env: MULTI_FEATURES="sig-rsa validate-primary-slot overwrite-only,sig-ecdsa enc-ec256 validate-primary-slot" TEST=sim
 
     - os: linux
       language: go
