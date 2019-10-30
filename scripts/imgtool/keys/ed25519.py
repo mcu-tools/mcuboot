@@ -32,6 +32,11 @@ class Ed25519Public(KeyClass):
                 encoding=serialization.Encoding.DER,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo)
 
+    def get_public_raw_bytes(self):
+        return self._get_public().public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw)
+
     def export_private(self, path, passwd=None):
         self._unsupported('export_private')
 
