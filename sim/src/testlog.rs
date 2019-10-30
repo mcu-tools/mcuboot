@@ -7,9 +7,9 @@
 //! the tests.
 
 use env_logger;
-use std::sync::{Once, ONCE_INIT};
+use std::sync::Once;
 
-static INIT: Once = ONCE_INIT;
+static INIT: Once = Once::new();
 
 /// Setup the logging system.  Intended to be called at the beginning of each test.
 pub fn setup() {
