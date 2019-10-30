@@ -191,7 +191,7 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
      * The salt length is not known at this point.
      */
 
-    /* Step 4.  If the rightmost octect of EM does have the value
+    /* Step 4.  If the rightmost octet of EM does have the value
      * 0xbc, output inconsistent and stop.
      */
     if (em[PSS_EMLEN - 1] != 0xbc) {

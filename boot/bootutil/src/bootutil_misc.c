@@ -310,7 +310,7 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
  * This functions tries to locate the status area after an aborted swap,
  * by looking for the magic in the possible locations.
  *
- * If the magic is sucessfully found, a flash_area * is returned and it
+ * If the magic is successfully found, a flash_area * is returned and it
  * is the responsibility of the called to close it.
  *
  * @returns 0 on success, -1 on errors

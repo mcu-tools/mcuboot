@@ -127,7 +127,7 @@ config BOOT_UPGRADE_ONLY
 	  uses a much simpler code path.
 
 config BOOT_BOOTSTRAP
-	bool "Boostrap erased the primary slot from the secondary slot"
+	bool "Bootstrap erased the primary slot from the secondary slot"
 	default n
 	help
 	  If y, enables bootstraping support. Bootstrapping allows an erased
