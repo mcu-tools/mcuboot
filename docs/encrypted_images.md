@@ -71,13 +71,40 @@ but randomizing a 16-byte block with a TRNG should make it highly
 improbable that duplicates ever happen.
 
 To distribute this AES-CTR-128 key, new TLVs were defined. The key can be
-encrypted using either RSA-OAEP or AES-KW-128. Also in the future support
-for EICES (using EC) can be added.
+encrypted using either RSA-OAEP, AES-KW-128 or ECIES-P256.
 
 For RSA-OAEP a new TLV with value `0x30` is added to the image, for
-AES-KW-128 a new TLV with value `0x31` is added to the image. The contents
-of both TLVs are the results of applying the given operations over the
-AES-CTR-128 key.
+AES-KW-128 a new TLV with value `0x31` is added to the image, and for
+ECIES-P256 a new TLV with value `0x32` is added. The contents of those TLVs
+are the results of applying the given operations over the AES-CTR-128 key.
+
+## ECIES-P256 encryption
+
+ECIES follows a well defined protocol to generate an encryption key. There are
+multiple standards which differ only on which building blocks are used; for
+MCUBoot we settled on some primitives that are easily found on our crypto
+libraries. The whole key encryption can be summarized as:
+
+* Generate a new secp256r1 private key and derive the public key; this will be
+  our ephemeral key.
+* Generate a new secret (DH) using the ephemeral private key and the public key
+  that corresponds to the private key embedded in the HW.
+* Derive the new keys from the secret using HKDF (built on HMAC-SHA256). We
+  are not using a `salt` and using an `info` of `MCUBoot_ECIES_v1`, generating
+  48 bytes of key material.
+* A new random encryption key of 16 bytes is generated (for AES-128). This is
+  the AES key used to encrypt the images.
+* The key is encrypted with AES-128-CTR and a `nonce` of 0 using the first
+  16 bytes of key material generated previously by the HKDF.
+* The encrypted key now goes through a HMAC-SHA256 using the remaining 32
+  bytes of key material from the HKDF.
+
+The final TLV is built from the 65 bytes of the ephemeral public key, followed
+by the 32 bytes of MAC tag and the 16 bytes of the encrypted key, resulting in
+a TLV of 113 bytes.
+
+Since other EC primitives could be used, we name this particular implementation
+ECIES-P256 or ENC_EC256 in the source code and artifacts.
 
 ## Upgrade process
 
@@ -109,15 +136,24 @@ the status area just before starting the upgrade process, because it
 would be very hard to determine this information when an interruption
 occurs and the information is spread across multiple areas.
 
-## Creating your keys
+## Creating your keys with imgtool
 
-<!--
-TODO: expand this section or add specific docs to imgtool, newt...
+`imgtool` can generate keys by using `imgtool genkey -k <output.pem> -t <type>`,
+ where type can be one of `rsa-2048`, `rsa-3072`, `ecdsa-p256`, `ecdsa-p224`
+or `ed25519`. This will generate a keypair or private key.
 
-XXX: add current key access method (reverse direction from sign)
--->
+To extract the public key in source file form, use
+`imgtool getpub -k <input.pem> -l <lang>`, where lang can be one of `c` or
+`rust` (defaults to `c`).
 
-* If using RSA-OAEP, generating a keypair follows steps similar to those
-  described in [signed_images](signed_images.md)
+If using AES-KW-128, follow the steps in the next section to generate the
+required keys.
+
+## Creating your keys with Unix tooling
+
+* If using RSA-OAEP, generate a keypair following steps similar to those
+  described in [signed_images](signed_images.md) to create RSA keys.
+* If using ECIES-P256, generate a keypair following steps similar to those
+  described in [signed_images](signed_images.md) to create ECDSA256 keys.
 * If using AES-KW-128 (`newt` only), the `kek` can be generated with a
   command like `dd if=/dev/urandom bs=1 count=16 | base64 > my_kek.b64`
