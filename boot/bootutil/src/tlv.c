@@ -29,7 +29,7 @@
  * @param type Type of TLV to look for
  * @param prot true if TLV has to be stored in the protected area, false otherwise
  *
- * @returns 0 if the TLV iterator was succesfully started
+ * @returns 0 if the TLV iterator was successfully started
  *          -1 on errors
  */
 int

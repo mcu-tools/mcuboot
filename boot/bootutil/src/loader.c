@@ -383,7 +383,7 @@ boot_write_sz(struct boot_loader_state *state)
 }
 
 /*
- * Slots are compatible when all sectors that store upto to size of the image
+ * Slots are compatible when all sectors that store up to to size of the image
  * round up to sector size, in both slot's are able to fit in the scratch
  * area, and have sizes that are a multiple of each other (powers of two
  * presumably!).
@@ -915,7 +915,7 @@ boot_check_header_erased(struct boot_loader_state *state, int slot)
  * Check that there is a valid image in a slot
  *
  * @returns
- *         0 if image was succesfully validated
+ *         0 if image was successfully validated
  *         1 if no bootloable image was found
  *         -1 on any errors
  */

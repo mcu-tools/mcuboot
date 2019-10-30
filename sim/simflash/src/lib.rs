@@ -83,7 +83,7 @@ fn esimulatedwrite<T: AsRef<str>>(message: T) -> FlashError {
 }
 
 /// An emulated flash device.  It is represented as a block of bytes, and a list of the sector
-/// mapings.
+/// mappings.
 #[derive(Clone)]
 pub struct SimFlash {
     data: Vec<u8>,

@@ -42,7 +42,7 @@ It does not protect against the possibility of attaching a JTAG and
 reading the internal flash memory, or using some attack vector that
 enables dumping the internal flash in any way.
 
-Since decrypting requires a private key (or secret if using symetric
+Since decrypting requires a private key (or secret if using symmetric
 crypto) to reside inside the device, it is the responsibility of the
 device manufacturer to guarantee that this key is already in the device
 and not possible to extract.
