@@ -15,20 +15,21 @@ target with a complete port planned.
 
 ## Contents
 
-- General: this document
+- General - this document
 - [Release notes](release-notes.md)
-- [design](design.md): for the design
-- [imgtool](imgtool.md): The image signing and key management
+- [Bootloader design](design.md)
+- [Encrypted images](encrypted_images.md)
+- [imgtool](imgtool.md) - image signing and key management
 - Usage instructions:
   - [Zephyr](readme-zephyr.md)
   - [Mynewt](readme-mynewt.md)
   - [RIOT](readme-riot.md)
-- [Patch submission](SubmittingPatches.md) for information
-  on how to contribute to mcuboot.
+- [Patch submission](SubmittingPatches.md) - information
+  on how to contribute to mcuboot
 - Testing
-  - The [Zephyr](testplan-zephyr.md) test plan.
-  - The [mynewt](testplan-mynewt.md) test plan.
-- Our [release process](release.md).
+  - [Zephyr](testplan-zephyr.md) test plan
+  - [mynewt](testplan-mynewt.md) test plan
+- [Release process](release.md)
 
 There is also a document about [signed images](signed_images.md) that is out
 of date.  You should use `imgtool.py` instead of these documents.
