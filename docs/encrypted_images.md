@@ -19,6 +19,8 @@
 #
 -->
 
+# Encrypted images
+
 ## Rationale
 
 To provide confidentiality of image data while in transport to the
