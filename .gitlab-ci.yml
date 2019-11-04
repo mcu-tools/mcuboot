@@ -1,5 +1,6 @@
 stages:
   - build
+  - sim
   - deploy
 
 
@@ -78,6 +79,19 @@ win_build:
       - deploy
       - develop
 
+
+MCUboot_simulator:
+  stage: sim
+  tags:
+    - FW_SECURITY_TEST_UBUNTU1804
+  script:
+    - export https_proxy=http://proxy.ua.cypress.com:8080
+    - python3 --version
+    - pwd
+    - git submodule deinit --all -f
+    - git submodule update --init
+    - cd sim
+    - cargo test --verbose
     
     
 # Upload build artifacts to http://iot-webserver.aus.cypress.com/projects/iot_release/ASSETS/repo/mcuboot/develop/
