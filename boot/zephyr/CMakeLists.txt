@@ -113,7 +113,7 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/tlv.c
   )
 
-if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
+if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   zephyr_library_include_directories(
 	${MBEDTLS_ASN1_DIR}/include
   )
@@ -163,6 +163,16 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519)
   zephyr_library_sources(
     ${FIAT_DIR}/src/curve25519.c
   )
+endif()
+
+if(CONFIG_BOOT_ENCRYPT_EC256)
+  zephyr_library_sources(
+    ${TINYCRYPT_DIR}/source/aes_encrypt.c
+    ${TINYCRYPT_DIR}/source/aes_decrypt.c
+    ${TINYCRYPT_DIR}/source/ctr_mode.c
+    ${TINYCRYPT_DIR}/source/hmac.c
+    ${TINYCRYPT_DIR}/source/ecc_dh.c
+    )
 endif()
 
 if(CONFIG_MCUBOOT_SERIAL)
