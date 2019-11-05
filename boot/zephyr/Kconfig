@@ -135,12 +135,23 @@ config BOOT_BOOTSTRAP
 	  If unsure, leave at the default value.
 
 config BOOT_ENCRYPT_RSA
-	bool "Support for encrypted upgrade images"
+	bool "Support for encrypted upgrade images using RSA"
 	default n
 	help
 	  If y, images in the secondary slot can be encrypted and are decrypted
 	  on the fly when upgrading to the primary slot, as well as encrypted
-	  back when swapping from the primary slot to the secondary slot.
+	  back when swapping from the primary slot to the secondary slot. The
+	  encryption mechanism used in this case is RSA-OAEP (2048 bits).
+
+config BOOT_ENCRYPT_EC256
+	bool "Support for encrypted upgrade images using ECIES-P256"
+	default n
+	help
+	  If y, images in the secondary slot can be encrypted and are decrypted
+	  on the fly when upgrading to the primary slot, as well as encrypted
+	  back when swapping from the primary slot to the secondary slot. The
+	  encryption mechanism used in this case is ECIES using primitives
+	  described under "ECIES-P256 encryption" in docs/encrypted_images.md.
 
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
