@@ -95,8 +95,8 @@ zephyr_library_sources(
 
 if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)
   zephyr_library_sources(
-	flash_map_legacy.c
-	)
+    flash_map_legacy.c
+    )
 endif()
 
 # Generic bootutil sources and includes.
@@ -115,26 +115,26 @@ zephyr_library_sources(
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   zephyr_library_include_directories(
-	${MBEDTLS_ASN1_DIR}/include
-  )
+    ${MBEDTLS_ASN1_DIR}/include
+    )
   zephyr_library_sources(
-	# Additionally pull in just the ASN.1 parser from mbedTLS.
-	${MBEDTLS_ASN1_DIR}/src/asn1parse.c
-	${MBEDTLS_ASN1_DIR}/src/platform_util.c
-	)
+    # Additionally pull in just the ASN.1 parser from mbedTLS.
+    ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
+    ${MBEDTLS_ASN1_DIR}/src/platform_util.c
+    )
   if(CONFIG_BOOT_USE_TINYCRYPT)
   # When using ECDSA signatures, pull in our copy of the tinycrypt library.
   zephyr_library_include_directories(
-	 ${BOOT_DIR}/zephyr/include
-	   ${TINYCRYPT_DIR}/include
-	)
+    ${BOOT_DIR}/zephyr/include
+    ${TINYCRYPT_DIR}/include
+    )
 
   zephyr_library_sources(
-	${TINYCRYPT_DIR}/source/ecc.c
-	${TINYCRYPT_DIR}/source/ecc_dsa.c
-	${TINYCRYPT_DIR}/source/sha256.c
-	${TINYCRYPT_DIR}/source/utils.c
-  )
+    ${TINYCRYPT_DIR}/source/ecc.c
+    ${TINYCRYPT_DIR}/source/ecc_dsa.c
+    ${TINYCRYPT_DIR}/source/sha256.c
+    ${TINYCRYPT_DIR}/source/utils.c
+    )
   elseif(CONFIG_BOOT_USE_NRF_CC310_BL)
     zephyr_library_sources(${NRF_DIR}/cc310_glue.c)
     zephyr_library_include_directories(${NRF_DIR})
@@ -145,8 +145,8 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   # to set MBEDTLS_CONFIG_FILE ourselves. When using Zephyr's copy, this
   # variable is set by its Kconfig in the Zephyr codebase.
   zephyr_library_compile_definitions(
-	MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h"
-	)
+    MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h"
+    )
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   # Use mbedTLS provided by Zephyr for RSA signatures. (Its config file
   # is set using Kconfig.)
@@ -184,14 +184,14 @@ if(CONFIG_MCUBOOT_SERIAL)
   zephyr_include_directories(include)
 
   zephyr_link_libraries_ifdef(
-	CONFIG_TINYCBOR
-	TINYCBOR
-	)
+    CONFIG_TINYCBOR
+    TINYCBOR
+    )
 
   zephyr_include_directories_ifdef(
-	CONFIG_BOOT_ERASE_PROGRESSIVELY
-	${BOOT_DIR}/bootutil/src
-	)
+    CONFIG_BOOT_ERASE_PROGRESSIVELY
+    ${BOOT_DIR}/bootutil/src
+    )
 endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
