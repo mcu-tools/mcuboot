@@ -17,4 +17,9 @@
 
 #define CY_IMG_HDR_SIZE 0x400
 
+#ifndef CY_FLASH_MAP_EXT_DESC
+/* Uncomment in case you want to use separately defined table of flash area descriptors */
+/* #define CY_FLASH_MAP_EXT_DESC */
+#endif
+
 #endif /* __SYSFLASH_H__ */

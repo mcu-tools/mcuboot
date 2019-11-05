@@ -20,7 +20,9 @@
  */
 /* Default maximum number of flash sectors per image slot; change
  * as desirable. */
-#define MCUBOOT_MAX_IMG_SECTORS 512
+#ifndef MCUBOOT_MAX_IMG_SECTORS
+#define MCUBOOT_MAX_IMG_SECTORS 512 /* the sector is temporary 128 bytes now */
+#endif
 
 /*
  * Signature types

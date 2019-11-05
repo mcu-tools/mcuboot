@@ -141,7 +141,7 @@ const unsigned char ecdsa_pub_key[] = {
 const unsigned int ecdsa_pub_key_len = 91;
 #endif
 #else
-#error "No public key available for given signing algorithm."
+#warning "No public key available for given signing algorithm."
 #endif
 
 #if defined(MCUBOOT_SIGN_RSA) || \

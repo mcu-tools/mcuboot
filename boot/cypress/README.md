@@ -58,3 +58,21 @@ Root directory for build is **boot/cypress.**
 
 `* CY8CPROTO-062-4343W`
 
+**Build environment troubleshooting:**
+
+Following CLI / IDE can be used for project build:
+
+* Cygwin
+* Powerhell
+* Msys2
+* Git bash
+* Eclipse / ModusToolbox ("makefile project from existing source")
+
+*Make* - make sure it is added to system's `PATH` variable and correct path is first in the list;
+
+*Python/Python3* - make sure you have correct path referenced in `PATH`;
+
+*Msys2* - to use systems PATH navigate to msys2 folder, open `msys2_shell.cmd`, uncomment set `MSYS2_PATH_TYPE=inherit`, restart MSYS2 shell.
+
+This will iherit system's PATH so should find `python3.7` installed in regular way as well as imgtool and its dependencies.
+
