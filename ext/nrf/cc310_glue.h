@@ -36,7 +36,7 @@ static inline void nrf_cc310_enable(void)
 
 static inline void nrf_cc310_disable(void)
 {
-    NRF_CRYPTOCELL->ENABLE=1;
+    NRF_CRYPTOCELL->ENABLE=0;
 }
 
 /* Enable and disable cc310 to reduce power consumption */
