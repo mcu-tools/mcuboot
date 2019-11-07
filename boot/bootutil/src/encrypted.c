@@ -531,7 +531,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
      */
 
     len = TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE;
-    rc = hkdf(shared, TC_SHA256_DIGEST_SIZE, (uint8_t *)"MCUBoot_ECIES_v1", 16,
+    rc = hkdf(shared, NUM_ECC_BYTES, (uint8_t *)"MCUBoot_ECIES_v1", 16,
             derived_key, &len);
     if (rc != 0 || len != (TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE)) {
         return -1;
