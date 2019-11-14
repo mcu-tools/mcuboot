@@ -60,10 +60,12 @@ SOURCES_APP += $(SOURCES_APP_SRC)
 INCLUDE_DIRS_APP := $(addprefix -I, $(CURDIR))
 INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))
 
-# Specify linker script to use
-APP_LD ?= $(CUR_APP_PATH)/Application.ld
-
-LDFLAGS += -T $(APP_LD)
+# Overwite path to linker script if custom is required, otherwise default from BSP is used
+ifeq ($(COMPILER), GCC_ARM)
+LINKER_SCRIPT := $(CUR_APP_PATH)/BlinkyApp.ld
+else
+$(error Only GCC ARM is supported at this moment)
+endif
 
 ASM_FILES_APP :=
 

@@ -140,9 +140,9 @@ $(OUT_APP)/$(APP_NAME).hex: $(OUT_APP)/$(APP_NAME).elf
 $(OUT_APP)/$(APP_NAME).elf: $(addprefix $(OUT_OBJ)/, $(O_FILES))
 	@echo "LD $@"
 ifeq ($(MAKEINFO), 1)
-	@echo $(LD) $(O_FILES) $(CC_DEPEND) $(@:.o=.d) -o $@ $(LDFLAGS) -Wl,-Map,$(OUT_FILE_NAME).map
+	@echo $(LD) $(O_FILES) $(CC_DEPEND) $(@:.o=.d) -o $@ $(LDFLAGS) -T $(LINKER_SCRIPT) -Wl,-Map,$(OUT_FILE_NAME).map
 endif
-	@$(LD) $(addprefix $(OUT_OBJ)/, $(O_FILES)) $(CC_DEPEND) $(@:.o=.d) -o $@ $(LDFLAGS) -Wl,-Map,$(OUT_FILE_NAME).map
+	@$(LD) $(addprefix $(OUT_OBJ)/, $(O_FILES)) $(CC_DEPEND) $(@:.o=.d) -o $@ $(LDFLAGS) -T $(LINKER_SCRIPT) -Wl,-Map,$(OUT_FILE_NAME).map
 
 
 $(OUT_OBJ)/%.o: %.c

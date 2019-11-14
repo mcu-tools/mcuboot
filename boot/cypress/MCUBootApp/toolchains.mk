@@ -110,8 +110,6 @@ $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	CFLAGS := $(CFLAGS_COMMON) $(INCLUDES)
 	CC_DEPEND = -MD -MP -MF
 
-# TODO: create Application-Specific Linker
-
 	LDFLAGS_COMMON := -mcpu=cortex-m0plus -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -L "$(GCC_PATH)/lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m" -ffat-lto-objects -g --enable-objc-gc
 	ifeq ($(BUILDCFG), Debug)
 		LDFLAGS_COMMON += -Og
@@ -122,7 +120,7 @@ $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif
 	LDFLAGS_NANO := -L "$(GCC_PATH)/arm-none-eabi/lib/thumb/v6-m"
 	# TODO: check .map name
-	LDFLAGS := $(LDFLAGS_COMMON) $(LDFLAGS_NANO) -T $(LINKER_SCRIPT)
+	LDFLAGS := $(LDFLAGS_COMMON) $(LDFLAGS_NANO)
 
 else ifeq ($(COMPILER), IAR)
 

@@ -40,7 +40,9 @@ include $(CUR_APP_PATH)/toolchains.mk
 # Application-specific DEFINES
 DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
 DEFINES_APP += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
-#DEFINES_APP += -DMCUBOOT_APP_DEF
+DEFINES_APP += -DCORE=$(CORE)
+# BSP does not define this macro for CM0p so define it here
+DEFINES_APP += -DCY_USING_HAL
 
 # TODO: MCUBoot library
 # Collect MCUBoot sourses
@@ -65,3 +67,10 @@ INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/config)
 INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/os)
 
 ASM_FILES_APP :=
+
+# Overwite path to linker script if custom is required, otherwise default from BSP is used
+ifeq ($(COMPILER), GCC_ARM)
+LINKER_SCRIPT := $(CUR_APP_PATH)/MCUBootApp.ld
+else
+$(error Only GCC ARM is supported at this moment)
+endif

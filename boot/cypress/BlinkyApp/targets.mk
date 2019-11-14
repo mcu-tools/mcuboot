@@ -33,6 +33,9 @@ TARGET ?= CY8CPROTO-062-4343W
 #
 TARGETS := CY8CPROTO-062-4343W
 
+# For which core this application is built
+CORE := CM4
+
 CUR_LIBS_PATH := $(CURDIR)/libs
 BSP_PATH  := $(CUR_LIBS_PATH)/bsp/TARGET_$(TARGET)
 
@@ -44,10 +47,10 @@ endif
 
 # Collect C source files for TARGET BSP
 SOURCES_BSP := $(wildcard $(BSP_PATH)/COMPONENT_BSP_DESIGN_MODUS/GeneratedSource/*.c)
+SOURCES_BSP += $(wildcard $(BSP_PATH)/COMPONENT_$(CORE)/*.c)
 # exclude CapSense for now
 SOURCES_BSP := $(filter-out $(BSP_PATH)/COMPONENT_BSP_DESIGN_MODUS/GeneratedSource/cycfg_capsense.c, \
 				 $(SOURCES_BSP))
-SOURCES_BSP += $(BSP_PATH)/startup/system_psoc6_cm4.c
 SOURCES_BSP += $(BSP_PATH)/cybsp.c
 SOURCES_BSP += $(wildcard $(CUR_LIBS_PATH)/bsp/psoc6hal/src/*.c)
 SOURCES_BSP += $(wildcard $(CUR_LIBS_PATH)/bsp/psoc6hal/src/pin_packages/*.c)
@@ -61,7 +64,7 @@ INCLUDE_DIRS_BSP += $(CUR_LIBS_PATH)/bsp/psoc6hal/include
 
 # Collect Assembler files for TARGET BSP
 # TODO: need to include _01_, _02_ or _03_ depending on device family.
-STARTUP_FILE := $(BSP_PATH)/startup/TOOLCHAIN_$(COMPILER)/startup_psoc6_02_cm4
+STARTUP_FILE := $(BSP_PATH)/COMPONENT_$(CORE)/TOOLCHAIN_$(COMPILER)/startup_psoc6_02_cm4
 
 ifeq ($(COMPILER), GCC_ARM)
 	ASM_FILES_BSP := $(STARTUP_FILE).S
