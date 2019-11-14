@@ -1,25 +1,21 @@
 [submodule "sim/mbedtls"]
 	path = ext/mbedtls
 	url = https://github.com/ARMmbed/mbedtls
-[submodule "boot/cypress/libs/pdl/psoc6pdl"]
-	path = boot/cypress/libs/pdl/psoc6pdl
-	url = http://git-ore.aus.cypress.com/repo-staging/psoc6pdl
 [submodule "boot/cypress/libs/mbedtls"]
 	path = boot/cypress/libs/mbedtls
 	url = https://github.com/ARMmbed/mbedtls.git
-[submodule "boot/cypress/libs/bsp/TARGET_CY8CPROTO-062-4343W-M0"]
-	path = boot/cypress/libs/bsp/TARGET_CY8CPROTO-062-4343W-M0
-	url = http://git-ore.aus.cypress.com/repo/cy_mcuboot_project/TARGET_CY8CPROTO-062-4343W-M0
-	branch = rnok/m0-port
-[submodule "boot/cypress/libs/bsp/core-lib"]
-	path = boot/cypress/libs/bsp/core-lib
-	url = http://git-ore.aus.cypress.com/repo-staging/core-lib.git
-[submodule "boot/cypress/libs/bsp/psoc6hal"]
-	path = boot/cypress/libs/bsp/psoc6hal
-	url = http://git-ore.aus.cypress.com/repo-staging/psoc6hal
 [submodule "boot/cypress/libs/bsp/TARGET_CY8CPROTO-062-4343W"]
 	path = boot/cypress/libs/bsp/TARGET_CY8CPROTO-062-4343W
 	url = http://git-ore.aus.cypress.com/repo-staging/TARGET_CY8CPROTO-062-4343W.git
 [submodule "boot/cypress/libs/retarget-io"]
 	path = boot/cypress/libs/retarget-io
-	url = http://git-ore.aus.cypress.com/repo-staging/retarget-io.git
+	url = https://github.com/cypresssemiconductorco/retarget-io.git
+[submodule "boot/cypress/libs/bsp/core-lib"]
+	path = boot/cypress/libs/bsp/core-lib
+	url = https://github.com/cypresssemiconductorco/core-lib.git
+[submodule "boot/cypress/libs/bsp/psoc6hal"]
+	path = boot/cypress/libs/bsp/psoc6hal
+	url = https://github.com/cypresssemiconductorco/psoc6hal.git
+[submodule "boot/cypress/libs/pdl/psoc6pdl"]
+	path = boot/cypress/libs/pdl/psoc6pdl
+	url = https://github.com/cypresssemiconductorco/psoc6pdl.git
