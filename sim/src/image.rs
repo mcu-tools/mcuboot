@@ -84,7 +84,7 @@ impl ImagesBuilder {
     /// Construct a new image builder for the given device.  Returns
     /// Some(builder) if is possible to test this configuration, or None if
     /// not possible (for example, if there aren't enough image slots).
-    pub fn new(device: DeviceName, align: u8, erased_val: u8) -> Option<Self> {
+    pub fn new(device: DeviceName, align: usize, erased_val: u8) -> Option<Self> {
         let (flash, areadesc) = Self::make_device(device, align, erased_val);
 
         let num_images = Caps::get_num_images();
@@ -227,7 +227,7 @@ impl ImagesBuilder {
     }
 
     /// Build the Flash and area descriptor for a given device.
-    pub fn make_device(device: DeviceName, align: u8, erased_val: u8) -> (SimMultiFlash, AreaDesc) {
+    pub fn make_device(device: DeviceName, align: usize, erased_val: u8) -> (SimMultiFlash, AreaDesc) {
         match device {
             DeviceName::Stm32f4 => {
                 // STM style flash.  Large sectors, with a large scratch area.
