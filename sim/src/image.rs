@@ -1338,7 +1338,7 @@ fn verify_trailer(flash: &SimMultiFlash, slot: &SlotInfo,
 
     failed |= match magic {
         Some(v) => {
-            if v == 1 && &copy[24..] != MAGIC.unwrap() {
+            if v == 1 && &copy[24..] != MAGIC {
                 warn!("\"magic\" mismatch at {:#x}", offset);
                 true
             } else if v == 3 {
@@ -1468,10 +1468,10 @@ pub struct SlotInfo {
     pub dev_id: u8,
 }
 
-const MAGIC: Option<&[u8]> = Some(&[0x77, 0xc2, 0x95, 0xf3,
-                                    0x60, 0xd2, 0xef, 0x7f,
-                                    0x35, 0x52, 0x50, 0x0f,
-                                    0x2c, 0xb6, 0x79, 0x80]);
+const MAGIC: &[u8] = &[0x77, 0xc2, 0x95, 0xf3,
+                       0x60, 0xd2, 0xef, 0x7f,
+                       0x35, 0x52, 0x50, 0x0f,
+                       0x2c, 0xb6, 0x79, 0x80];
 
 // Replicates defines found in bootutil.h
 const BOOT_MAGIC_GOOD: Option<u8> = Some(1);
@@ -1484,7 +1484,7 @@ const BOOT_FLAG_UNSET: Option<u8> = Some(3);
 pub fn mark_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
     let dev = flash.get_mut(&slot.dev_id).unwrap();
     let offset = slot.trailer_off + c::boot_max_align() * 4;
-    dev.write(offset, MAGIC.unwrap()).unwrap();
+    dev.write(offset, MAGIC).unwrap();
 }
 
 /// Writes the image_ok flag which, guess what, tells the bootloader
