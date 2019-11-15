@@ -1490,6 +1490,13 @@ pub fn mark_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
 /// Writes the image_ok flag which, guess what, tells the bootloader
 /// the this image is ok (not a test, and no revert is to be performed).
 fn mark_permanent_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
+    // Overwrite mode always is permanent, and only the magic is used in
+    // the trailer.  To avoid problems with large write sizes, don't try to
+    // set anything in this case.
+    if Caps::OverwriteUpgrade.present() {
+        return;
+    }
+
     let dev = flash.get_mut(&slot.dev_id).unwrap();
     let mut ok = [dev.erased_val(); 8];
     ok[0] = 1u8;
