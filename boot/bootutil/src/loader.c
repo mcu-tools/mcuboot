@@ -363,11 +363,11 @@ boot_read_image_headers(struct boot_loader_state *state, bool require_all)
     return 0;
 }
 
-static uint8_t
+static uint32_t
 boot_write_sz(struct boot_loader_state *state)
 {
-    uint8_t elem_sz;
-    uint8_t align;
+    uint32_t elem_sz;
+    uint32_t align;
 
     /* Figure out what size to write update status update as.  The size depends
      * on what the minimum write size is for scratch area, active image slot.
