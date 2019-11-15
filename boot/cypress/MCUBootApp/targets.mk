@@ -79,7 +79,7 @@ ifneq ($(DEFINES),)
 endif
 
 ifeq ($(COMPILER), GCC_ARM)
-LINKER_SCRIPT := $(BSP_PATH)/COMPONENT_$(CORE)/TOOLCHAIN_GCC_ARM/*_cm0plus.ld
+LINKER_SCRIPT ?= $(BSP_PATH)/COMPONENT_$(CORE)/TOOLCHAIN_GCC_ARM/*_cm0plus.ld
 else
 $(error Only GCC ARM is supported at this moment)
 endif
