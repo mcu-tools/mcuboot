@@ -23,11 +23,11 @@ matrix:
     # separated by ',' and each list of values is run sequentially in the
     # defined order.
     - os: linux
-      env: MULTI_FEATURES="sig-rsa overwrite-only,sig-ecdsa overwrite-only,multiimage overwrite-only" TEST=sim
+      env: MULTI_FEATURES="sig-rsa overwrite-only large-write,sig-ecdsa overwrite-only large-write,multiimage overwrite-only large-write" TEST=sim
     - os: linux
       env: MULTI_FEATURES="sig-rsa validate-primary-slot,sig-ecdsa validate-primary-slot,sig-rsa multiimage validate-primary-slot" TEST=sim
     - os: linux
-      env: MULTI_FEATURES="enc-kw overwrite-only,enc-rsa overwrite-only" TEST=sim
+      env: MULTI_FEATURES="enc-kw overwrite-only large-write,enc-rsa overwrite-only large-write" TEST=sim
     - os: linux
       env: MULTI_FEATURES="sig-rsa enc-rsa validate-primary-slot" TEST=sim
     - os: linux
@@ -35,7 +35,7 @@ matrix:
     - os: linux
       env: MULTI_FEATURES="sig-ecdsa enc-kw validate-primary-slot" TEST=sim
     - os: linux
-      env: MULTI_FEATURES="sig-rsa validate-primary-slot overwrite-only,sig-ecdsa enc-ec256 validate-primary-slot" TEST=sim
+      env: MULTI_FEATURES="sig-rsa validate-primary-slot overwrite-only large-write,sig-ecdsa enc-ec256 validate-primary-slot" TEST=sim
 
     - os: linux
       language: go
