@@ -146,7 +146,7 @@ impl ImagesBuilder {
         where F: Fn(Self)
     {
         for &dev in ALL_DEVICES {
-            for &align in &[1, 2, 4, 8] {
+            for &align in test_alignments() {
                 for &erased_val in &[0, 0xff] {
                     match Self::new(dev, align, erased_val) {
                         Some(run) => f(run),
@@ -1158,21 +1158,26 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
 
     let dev = flash.get_mut(&dev_id).unwrap();
 
-    // Pad the block to a flash alignment (8 bytes).
-    while b_tlv.len() % 8 != 0 {
-        b_tlv.push(dev.erased_val());
-    }
-
     let mut buf = vec![];
     buf.append(&mut b_header.to_vec());
     buf.append(&mut b_img);
     buf.append(&mut b_tlv.clone());
+
+    // Pad the buffer to a multiple of the flash alignment.
+    let align = dev.align();
+    while buf.len() % align != 0 {
+        buf.push(dev.erased_val());
+    }
 
     let mut encbuf = vec![];
     if is_encrypted {
         encbuf.append(&mut b_header.to_vec());
         encbuf.append(&mut b_encimg);
         encbuf.append(&mut b_tlv);
+
+        while encbuf.len() % align != 0 {
+            encbuf.push(dev.erased_val());
+        }
     }
 
     // Since images are always non-encrypted in the primary slot, we first write
@@ -1483,8 +1488,18 @@ const BOOT_FLAG_UNSET: Option<u8> = Some(3);
 /// Write out the magic so that the loader tries doing an upgrade.
 pub fn mark_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
     let dev = flash.get_mut(&slot.dev_id).unwrap();
+    let align = dev.align();
     let offset = slot.trailer_off + c::boot_max_align() * 4;
-    dev.write(offset, MAGIC).unwrap();
+    if offset % align != 0 || MAGIC.len() % align != 0 {
+        // The write size is larger than the magic value.  Fill a buffer
+        // with the erased value, put the MAGIC in it, and write it in its
+        // entirety.
+        let mut buf = vec![dev.erased_val(); align];
+        buf[(offset % align)..].copy_from_slice(MAGIC);
+        dev.write(offset - (offset % align), &buf).unwrap();
+    } else {
+        dev.write(offset, MAGIC).unwrap();
+    }
 }
 
 /// Writes the image_ok flag which, guess what, tells the bootloader
@@ -1526,4 +1541,16 @@ pub fn show_sizes() {
         let msize = c::boot_trailer_sz(*min);
         println!("{:2}: {} (0x{:x})", min, msize, msize);
     }
+}
+
+#[cfg(not(feature = "large-write"))]
+fn test_alignments() -> &'static [usize] {
+    println!("Not large write");
+    &[1, 2, 4, 8]
+}
+
+#[cfg(feature = "large-write")]
+fn test_alignments() -> &'static [usize] {
+    println!("Large write test: {:?}", cfg!(feature = "large-write"));
+    &[1, 2, 4, 8, 128, 512]
 }

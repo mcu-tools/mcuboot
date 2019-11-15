@@ -18,6 +18,7 @@ enc-kw = ["mcuboot-sys/enc-kw"]
 enc-ec256 = ["mcuboot-sys/enc-ec256"]
 bootstrap = ["mcuboot-sys/bootstrap"]
 multiimage = ["mcuboot-sys/multiimage"]
+large-write = []
 
 [dependencies]
 byteorder = "1.3"
