@@ -80,7 +80,7 @@ impl fmt::Display for DeviceName {
 }
 
 #[derive(Debug)]
-struct AlignArg(u8);
+struct AlignArg(usize);
 
 struct AlignArgVisitor;
 
@@ -91,11 +91,11 @@ impl<'de> serde::de::Visitor<'de> for AlignArgVisitor {
         formatter.write_str("1, 2, 4 or 8")
     }
 
-    fn visit_u8<E>(self, n: u8) -> Result<Self::Value, E>
+    fn visit_u32<E>(self, n: u32) -> Result<Self::Value, E>
         where E: serde::de::Error
     {
         Ok(match n {
-            1 | 2 | 4 | 8 => AlignArg(n),
+            1 | 2 | 4 | 8 => AlignArg(n as usize),
             n => {
                 let err = format!("Could not deserialize '{}' as alignment", n);
                 return Err(E::custom(err));
@@ -169,7 +169,7 @@ impl RunStatus {
         }
     }
 
-    pub fn run_single(&mut self, device: DeviceName, align: u8, erased_val: u8) {
+    pub fn run_single(&mut self, device: DeviceName, align: usize, erased_val: u8) {
         warn!("Running on device {} with alignment {}", device, align);
 
         let run = match ImagesBuilder::new(device, align, erased_val) {
