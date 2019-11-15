@@ -148,7 +148,7 @@ boot_magic_compatible_check(uint8_t tbl_val, uint8_t val)
 }
 
 uint32_t
-boot_trailer_sz(uint8_t min_write_sz)
+boot_trailer_sz(uint32_t min_write_sz)
 {
     return /* state for all sectors */
            BOOT_STATUS_MAX_ENTRIES * BOOT_STATUS_STATE_COUNT * min_write_sz +
