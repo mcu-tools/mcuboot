@@ -9,8 +9,8 @@
 #define FLASH_AREA_IMAGE_0 1
 #define FLASH_AREA_IMAGE_1 2
 #define FLASH_AREA_IMAGE_SCRATCH 3
-#define FLASH_AREA_IMAGE_2 4
-#define FLASH_AREA_IMAGE_3 5
+#define FLASH_AREA_IMAGE_2 5
+#define FLASH_AREA_IMAGE_3 6
 
 #define CY_FLASH_ALIGN                      (128) // TODO: will fix it to CY_FLASH_SIZEOF_ROW (512) in PSoC6
 #define CY_FLASH_DEVICE_BASE                (CY_FLASH_BASE)
