@@ -207,19 +207,12 @@ int psoc6_flash_write_hal(uint8_t data[],
     eeOffset = (uint32_t)address;
     writeBufferPointer = (uint8_t*)writeBuffer;
 
-    bool cond1, cond2, cond3;
+    bool cond1;
 
     /* Make sure, that varFlash[] points to Flash */
     cond1 = ((eeOffset >= CY_FLASH_BASE) &&
     		((eeOffset + len) <= (CY_FLASH_BASE + CY_FLASH_SIZE)));
 
-//    cond2 = ((eeOffset >= CY_EM_EEPROM_BASE) &&
-//    		((eeOffset + len) <= (CY_EM_EEPROM_BASE + CY_EM_EEPROM_SIZE)));
-//
-//	cond3 = ((eeOffset >= (uint32_t)SFLASH->BLE_DEVICE_ADDRESS) &&
-//			((eeOffset + len) <= ((uint32_t)SFLASH->BLE_DEVICE_ADDRESS + CY_FLASH_SIZEOF_ROW)));
-
-//    if(cond1 || cond2 || cond3)
     if(cond1)
     {
         eeOffset -= CY_FLASH_BASE;
