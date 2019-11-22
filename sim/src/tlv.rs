@@ -14,7 +14,9 @@ use byteorder::{
 use crate::image::ImageVersion;
 use pem;
 use base64;
+use log::info;
 use ring::{digest, rand, agreement, hkdf, hmac};
+use ring::rand::SecureRandom;
 use ring::signature::{
     RsaKeyPair,
     RSA_PSS_SHA256,
@@ -81,8 +83,8 @@ pub trait ManifestGen {
     /// Construct the manifest for this payload.
     fn make_tlv(self: Box<Self>) -> Vec<u8>;
 
-    /// TODO: Generate a new encryption random key
-    fn generate_enc_key(&mut self) -> bool;
+    /// Generate a new encryption random key
+    fn generate_enc_key(&mut self);
 
     /// Return the current encryption key
     fn get_enc_key(&self) -> Vec<u8>;
@@ -107,7 +109,7 @@ struct Dependency {
     version: ImageVersion,
 }
 
-pub const AES_SEC_KEY: &[u8; 16] = b"0123456789ABCDEF";
+const AES_KEY_LEN: usize = 16;
 
 impl TlvGen {
     /// Construct a new tlv generator that will only contain a hash of the data.
@@ -429,7 +431,9 @@ impl ManifestGen for TlvGen {
                                        .as_ref()).unwrap();
             assert_eq!(key_bytes.tag, "PUBLIC KEY");
 
-            let encbuf = match c::rsa_oaep_encrypt(&key_bytes.contents, AES_SEC_KEY) {
+            let cipherkey = self.get_enc_key();
+            let cipherkey = cipherkey.as_slice();
+            let encbuf = match c::rsa_oaep_encrypt(&key_bytes.contents, cipherkey) {
                 Ok(v) => v,
                 Err(_) => panic!("Failed to encrypt secret key"),
             };
@@ -446,7 +450,9 @@ impl ManifestGen for TlvGen {
             let key_bytes = base64::decode(
                 include_str!("../../enc-aes128kw.b64").trim()).unwrap();
 
-            let encbuf = match c::kw_encrypt(&key_bytes, AES_SEC_KEY) {
+            let cipherkey = self.get_enc_key();
+            let cipherkey = cipherkey.as_slice();
+            let encbuf = match c::kw_encrypt(&key_bytes, cipherkey) {
                 Ok(v) => v,
                 Err(_) => panic!("Failed to encrypt secret key"),
             };
@@ -529,13 +535,22 @@ impl ManifestGen for TlvGen {
         result
     }
 
-    fn generate_enc_key(&mut self) -> bool {
-        self.enc_key = AES_SEC_KEY.to_vec();
-        true
+    fn generate_enc_key(&mut self) {
+        let rng = rand::SystemRandom::new();
+        let mut buf = vec![0u8; AES_KEY_LEN];
+        match rng.fill(&mut buf) {
+            Err(_) => panic!("Error generating encrypted key"),
+            Ok(_) => (),
+        }
+        info!("New encryption key: {:02x?}", buf);
+        self.enc_key = buf;
     }
 
     fn get_enc_key(&self) -> Vec<u8> {
-        return self.enc_key.clone();
+        if self.enc_key.len() != AES_KEY_LEN {
+            panic!("No random key was generated");
+        }
+        self.enc_key.clone()
     }
 }
 
