@@ -88,7 +88,7 @@ pub trait ManifestGen {
     fn get_enc_key(&self) -> Vec<u8>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TlvGen {
     flags: u32,
     kinds: Vec<TlvKinds>,
@@ -114,65 +114,45 @@ impl TlvGen {
     #[allow(dead_code)]
     pub fn new_hash_only() -> TlvGen {
         TlvGen {
-            flags: 0,
             kinds: vec![TlvKinds::SHA256],
             size: 4 + 32,
-            protect_size: 0,
-            payload: vec![],
-            dependencies: vec![],
-            enc_key: vec![],
+            ..Default::default()
         }
     }
 
     #[allow(dead_code)]
     pub fn new_rsa_pss() -> TlvGen {
         TlvGen {
-            flags: 0,
             kinds: vec![TlvKinds::SHA256, TlvKinds::RSA2048],
             size: 4 + 32 + 4 + 32 + 4 + 256,
-            protect_size: 0,
-            payload: vec![],
-            dependencies: vec![],
-            enc_key: vec![],
+            ..Default::default()
         }
     }
 
     #[allow(dead_code)]
     pub fn new_rsa3072_pss() -> TlvGen {
         TlvGen {
-            flags: 0,
             kinds: vec![TlvKinds::SHA256, TlvKinds::RSA3072],
             size: 4 + 32 + 4 + 32 + 4 + 384,
-            protect_size: 0,
-            payload: vec![],
-            dependencies: vec![],
-            enc_key: vec![],
+            ..Default::default()
         }
     }
 
     #[allow(dead_code)]
     pub fn new_ecdsa() -> TlvGen {
         TlvGen {
-            flags: 0,
             kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256],
             size: 4 + 32 + 4 + 32 + 4 + 72,
-            protect_size: 0,
-            payload: vec![],
-            dependencies: vec![],
-            enc_key: vec![],
+            ..Default::default()
         }
     }
 
     #[allow(dead_code)]
     pub fn new_ed25519() -> TlvGen {
         TlvGen {
-            flags: 0,
             kinds: vec![TlvKinds::SHA256, TlvKinds::ED25519],
             size: 4 + 32 + 4 + 32 + 4 + 64,
-            protect_size: 0,
-            payload: vec![],
-            dependencies: vec![],
-            enc_key: vec![],
+            ..Default::default()
         }
     }
 
@@ -182,10 +162,7 @@ impl TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,
             kinds: vec![TlvKinds::SHA256, TlvKinds::ENCRSA2048],
             size: 4 + 32 + 4 + 256,
-            protect_size: 0,
-            payload: vec![],
-            dependencies: vec![],
-            enc_key: vec![],
+            ..Default::default()
         }
     }
 
@@ -195,10 +172,7 @@ impl TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,
             kinds: vec![TlvKinds::SHA256, TlvKinds::RSA2048, TlvKinds::ENCRSA2048],
             size: 4 + 32 + 4 + 32 + 4 + 256 + 4 + 256,
-            protect_size: 0,
-            payload: vec![],
-            dependencies: vec![],
-            enc_key: vec![],
+            ..Default::default()
         }
     }
 
@@ -208,10 +182,7 @@ impl TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,
             kinds: vec![TlvKinds::SHA256, TlvKinds::ENCKW128],
             size: 4 + 32 + 4 + 24,
-            protect_size: 0,
-            payload: vec![],
-            dependencies: vec![],
-            enc_key: vec![],
+            ..Default::default()
         }
     }
 
@@ -221,10 +192,7 @@ impl TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,
             kinds: vec![TlvKinds::SHA256, TlvKinds::RSA2048, TlvKinds::ENCKW128],
             size: 4 + 32 + 4 + 32 + 4 + 256 + 4 + 24,
-            protect_size: 0,
-            payload: vec![],
-            dependencies: vec![],
-            enc_key: vec![],
+            ..Default::default()
         }
     }
 
@@ -234,10 +202,7 @@ impl TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,
             kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256, TlvKinds::ENCKW128],
             size: 4 + 32 + 4 + 32 + 4 + 72 + 4 + 24,
-            protect_size: 0,
-            payload: vec![],
-            dependencies: vec![],
-            enc_key: vec![],
+            ..Default::default()
         }
     }
 
@@ -247,10 +212,7 @@ impl TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,
             kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256, TlvKinds::ENCEC256],
             size: 4 + 32 + 4 + 32 + 4 + 72 + 4 + 113,
-            protect_size: 0,
-            payload: vec![],
-            dependencies: vec![],
-            enc_key: vec![],
+            ..Default::default()
         }
     }
 
