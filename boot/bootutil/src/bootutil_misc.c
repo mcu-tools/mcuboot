@@ -321,8 +321,8 @@ boot_find_status(int image_index, const struct flash_area **fap)
     uint32_t magic[BOOT_MAGIC_ARR_SZ];
     uint32_t off;
     uint8_t areas[2] = {
-        FLASH_AREA_IMAGE_PRIMARY(image_index),
         FLASH_AREA_IMAGE_SCRATCH,
+        FLASH_AREA_IMAGE_PRIMARY(image_index),
     };
     unsigned int i;
     int rc;
