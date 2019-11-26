@@ -21,7 +21,7 @@
 
 # Encrypted images
 
-## Rationale
+## [Rationale](#rationale)
 
 To provide confidentiality of image data while in transport to the
 device or while residing on an external flash, `MCUBoot` has support
@@ -34,7 +34,7 @@ decrypted (after validation). If swap upgrades are enabled, the image
 located in the `primary slot`, also having the `ENCRYPTED` flag set and the
 TLV present, is re-encrypted while swapping to the `secondary slot`.
 
-## Threat model
+## [Threat model](#threat-model)
 
 The encrypted image support is supposed to allow for confidentiality
 if the image is not residing on the device or is written to external
@@ -49,7 +49,7 @@ crypto) to reside inside the device, it is the responsibility of the
 device manufacturer to guarantee that this key is already in the device
 and not possible to extract.
 
-## Design
+## [Design](#design)
 
 When encrypting an image, only the payload (FW) is encrypted. The header,
 TLVs are still sent as plain data.
@@ -78,7 +78,7 @@ AES-KW-128 a new TLV with value `0x31` is added to the image, and for
 ECIES-P256 a new TLV with value `0x32` is added. The contents of those TLVs
 are the results of applying the given operations over the AES-CTR-128 key.
 
-## ECIES-P256 encryption
+## [ECIES-P256 encryption](#ecies-p256-encryption)
 
 ECIES follows a well defined protocol to generate an encryption key. There are
 multiple standards which differ only on which building blocks are used; for
@@ -106,7 +106,7 @@ a TLV of 113 bytes.
 Since other EC primitives could be used, we name this particular implementation
 ECIES-P256 or ENC_EC256 in the source code and artifacts.
 
-## Upgrade process
+## [Upgrade process](#upgrade-process)
 
 When starting a new upgrade process, `MCUBoot` checks that the image in the
 `secondary slot` has the `ENCRYPTED` flag set and has the required TLV with the
@@ -136,7 +136,7 @@ the status area just before starting the upgrade process, because it
 would be very hard to determine this information when an interruption
 occurs and the information is spread across multiple areas.
 
-## Creating your keys with imgtool
+## [Creating your keys with imgtool](#creating-your-keys-with-imgtool)
 
 `imgtool` can generate keys by using `imgtool genkey -k <output.pem> -t <type>`,
  where type can be one of `rsa-2048`, `rsa-3072`, `ecdsa-p256`, `ecdsa-p224`
@@ -149,7 +149,7 @@ To extract the public key in source file form, use
 If using AES-KW-128, follow the steps in the next section to generate the
 required keys.
 
-## Creating your keys with Unix tooling
+## [Creating your keys with Unix tooling](#creating-your-keys-with-unix-tooling)
 
 * If using RSA-OAEP, generate a keypair following steps similar to those
   described in [signed_images](signed_images.md) to create RSA keys.
