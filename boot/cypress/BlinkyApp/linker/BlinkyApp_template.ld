@@ -34,6 +34,7 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 *******************************************************************************/
+#include <main.h>
 
 OUTPUT_FORMAT ("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
 SEARCH_DIR(.)
@@ -42,6 +43,9 @@ ENTRY(Reset_Handler)
 
 /* Size of the stack section at the end of CM4 SRAM */
 STACK_SIZE = 0x1000;
+
+/* The size of the MCU boot header area at the start of FLASH */
+BOOT_HEADER_SIZE = 0x400;
 
 /* Force symbol to be entered in the output file as an undefined symbol. Doing
 * this may, for example, trigger linking of additional modules from standard
@@ -63,8 +67,8 @@ MEMORY
      * Your changes must be aligned with the corresponding memory regions for CM0+ core in 'xx_cm0plus.ld',
      * where 'xx' is the device group; for example, 'cy8c6xx7_cm0plus.ld'.
      */
-    ram               (rwx)   : ORIGIN = 0x08000000, LENGTH = 0x4000
-    flash             (rx)    : ORIGIN = 0x10020400, LENGTH = 0x6000
+    ram               (rwx)   : ORIGIN = 0x08000000, LENGTH = 0x3000
+    flash             (rx)    : ORIGIN = USER_APP_START, LENGTH = USER_APP_SIZE
 
     /* This is a 32K flash region used for EEPROM emulation. This region can also be used as the general purpose flash.
      * You can assign sections to this memory region for only one of the cores.
@@ -123,7 +127,7 @@ GROUP(libgcc.a libc.a libm.a libnosys.a)
 SECTIONS
 {
     /* Cortex-M4 application flash area */
-    .text ORIGIN(flash):
+    .text ORIGIN(flash) + BOOT_HEADER_SIZE :
     {
         . = ALIGN(4);
         __Vectors = . ;

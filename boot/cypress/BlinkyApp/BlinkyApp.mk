@@ -51,6 +51,12 @@ else
 	DEFINES_APP := -DUPGRADE_IMG
 endif
 
+# Define start of application as it can be build for Secure Boot target
+ifeq ($(TARGET), CY8CKIT-064S2-4343W)
+DEFINES_APP += -DUSER_APP_START=0x10000000
+else
+DEFINES_APP += -DUSER_APP_START=0x10010000
+endif
 # Collect Test Application sources
 SOURCES_APP_SRC := $(wildcard $(CUR_APP_PATH)/*.c)
 # Collect all the sources
@@ -62,7 +68,7 @@ INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))
 
 # Overwite path to linker script if custom is required, otherwise default from BSP is used
 ifeq ($(COMPILER), GCC_ARM)
-LINKER_SCRIPT := $(CUR_APP_PATH)/$(APP_NAME).ld
+LINKER_SCRIPT := $(CUR_APP_PATH)/linker/$(APP_NAME).ld
 else
 $(error Only GCC ARM is supported at this moment)
 endif
@@ -78,7 +84,11 @@ ifeq ($(IMG_TYPE), UPGRADE)
 	UPGRADE :=_upgrade
 endif
 
+pre_build:
+	$(info [PRE_BUILD] - Generating linker script for application $(CUR_APP_PATH)/linker/$(APP_NAME).ld)
+	@$(CC) -E -x c $(CFLAGS) $(INCLUDE_DIRS) $(CUR_APP_PATH)/linker/$(APP_NAME)_template.ld | grep -v '^#' >$(CUR_APP_PATH)/linker/$(APP_NAME).ld
+
 # Post build action to execute after main build job
 post_build: $(OUT_APP)/$(APP_NAME).hex
-	@echo [POST_BUILD] - Executing post build script for $(APP_NAME)
+	$(info [POST_BUILD] - Executing post build script for $(APP_NAME))
 	$(PYTHON_PATH) $(IMGTOOL_PATH) $(SIGN_ARGS) $(OUT_APP)/$(APP_NAME).hex $(OUT_APP)/$(APP_NAME)_signed$(UPGRADE).hex

@@ -70,7 +70,7 @@ ASM_FILES_APP :=
 
 # Overwite path to linker script if custom is required, otherwise default from BSP is used
 ifeq ($(COMPILER), GCC_ARM)
-LINKER_SCRIPT := $(CUR_APP_PATH)/$(APP_NAME).ld
+LINKER_SCRIPT := $(subst /cygdrive/c,c:,$(CUR_APP_PATH)/$(APP_NAME).ld)
 else
 $(error Only GCC ARM is supported at this moment)
 endif

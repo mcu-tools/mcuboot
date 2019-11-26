@@ -32,6 +32,8 @@ MAKEINFO ?= 1
 # Application name by default
 APP_NAME ?= MCUBootApp
 
+SIGN_KEY_FILE ?= cypress-test-ec-p256
+
 BUILDCFG ?= Debug
 
 # Set of supported applications
@@ -106,6 +108,25 @@ MY_LDFLAGS := $(subst /cygdrive/c,c:,$(LDFLAGS))
 #$(info MY_LDFLAGS $(MY_LDFLAGS))
 LDFLAGS=$(MY_LDFLAGS)
 
+#
+# STDE: For cygwin, adjust paths for compiler
+#
+MY_FILES := $(subst /cygdrive/c,c:,$(C_FILES))
+#$(info MY_FILES $(MY_FILES))
+C_FILES=$(MY_FILES)
+
+MY_DIRS := $(subst /cygdrive/c,c:,$(INCLUDE_DIRS))
+#$(info MY_DIRS $(MY_DIRS))
+INCLUDE_DIRS=$(MY_DIRS)
+
+MY_ASM_FILES := $(subst /cygdrive/c,c:,$(ASM_FILES))
+#$(info MY_ASM_FILES $(MY_ASM_FILES))
+ASM_FILES=$(MY_ASM_FILES)
+
+MY_LDFLAGS := $(subst /cygdrive/c,c:,$(LDFLAGS))
+#$(info MY_LDFLAGS $(MY_LDFLAGS))
+LDFLAGS=$(MY_LDFLAGS)
+
 # Default name pattern for output files
 # may be modified in %Application%.mk file
 OUT_FILE_NAME ?= $(OUT_APP)/$(APP_NAME)
@@ -118,7 +139,7 @@ else
 PYTHON_PATH?=python3
 endif
 
-.PHONY: all app build clean post_build load load_boot load_upgrade
+.PHONY: all app build clean pre_build post_build load load_boot load_upgrade
 
 all: clean app
 
@@ -127,6 +148,7 @@ app:
 	@`mkdir -p ./$(OUT_TARGET)`
 	@`mkdir -p ./$(OUT_CFG)`
 	@`mkdir -p ./$(OUT_OBJ)`
+	$(MAKE) pre_build
 	$(MAKE) build -j8
 	$(MAKE) post_build
 
@@ -179,23 +201,27 @@ load:
 ifeq ($(HOST_OS), win)
 	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /d/
 else
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /Volumes/DAPLINK 
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /Volumes/DAPLINK
 endif
 
 load_boot:
 ifeq ($(HOST_OS), win)
 	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed.hex /d/
 else
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed.hex /Volumes/DAPLINK 
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed.hex /Volumes/DAPLINK
 endif
 
 load_upgrade:
 ifeq ($(HOST_OS), win)
 	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed_upgrade.hex /d/
 else
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed_upgrade.hex /Volumes/DAPLINK 
+	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed_upgrade.hex /Volumes/DAPLINK
 endif
 
+gen_key_ecc256:
+	@echo Generate ECC256 keys: $(SIGN_KEY_FILE).pem and $(SIGN_KEY_FILE).pub
+	../../scripts/imgtool.py keygen -k keys/$(SIGN_KEY_FILE).pem -t ecdsa-p256
+	../../scripts/imgtool.py getpub -k keys/$(SIGN_KEY_FILE).pem > keys/$(SIGN_KEY_FILE).pub
 
 ifeq ($(MAKEINFO) , 1)
 $(info ASM_FILES: $(ASM_FILES))

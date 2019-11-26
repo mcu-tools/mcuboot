@@ -100,7 +100,7 @@ Root directory for build is **boot/cypress**.
 
 The following command will build MCUBoot Bootloader HEX file:
 
-    make app APP_NAME=MCUBootApp TARGET=CY8CPROTO-062-4343W-M0
+    make app APP_NAME=MCUBootApp TARGET=CY8CPROTO-062-4343W
 
 Flags by defalt:
 
@@ -115,7 +115,7 @@ Currently implemented makefile jobs use DAPLINK interface for programming.
 
 To program Bootloader image use following command:
 
-    make load APP_NAME=MCUBootApp TARGET=CY8CPROTO-062-4343W-M0
+    make load APP_NAME=MCUBootApp TARGET=CY8CPROTO-062-4343W
 
 **Example terminal output:**
 

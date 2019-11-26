@@ -76,7 +76,7 @@ else ifeq ($(HOST_OS), linux)
 	GCC_PATH := $(TOOLCHAIN_PATH)
 	# executables
 	CC := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
-	LD := $(CC) 
+	LD := $(CC)
 endif
 
 PDL_ELFTOOL := "hal/tools/$(HOST_OS)/elf/cymcuelftool"

@@ -76,6 +76,10 @@
 
 #define FLASH_AREA_IMAGE_SECTOR_SIZE FLASH_AREA_IMAGE_SCRATCH_SIZE
 
+#ifndef CY_BOOTLOADER_START_ADDRESS
+#define CY_BOOTLOADER_START_ADDRESS        (0x10000000)
+#endif
+
 #ifndef CY_BOOT_INTERNAL_FLASH_ERASE_VALUE
 /* This is the value of internal flash bytes after an erase */
 #define CY_BOOT_INTERNAL_FLASH_ERASE_VALUE      (0x00)
@@ -93,7 +97,7 @@ static struct flash_area bootloader =
 {
     .fa_id = FLASH_AREA_BOOTLOADER,
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
-    .fa_off = CY_FLASH_BASE,
+    .fa_off = CY_BOOTLOADER_START_ADDRESS,
     .fa_size = CY_BOOT_BOOTLOADER_SIZE
 };
 
