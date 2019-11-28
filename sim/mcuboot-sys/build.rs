@@ -14,6 +14,7 @@ fn main() {
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
     let sig_ed25519 = env::var("CARGO_FEATURE_SIG_ED25519").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
+    let swap_move = env::var("CARGO_FEATURE_SWAP_MOVE").is_ok();
     let validate_primary_slot =
                   env::var("CARGO_FEATURE_VALIDATE_PRIMARY_SLOT").is_ok();
     let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
@@ -109,6 +110,10 @@ fn main() {
     if overwrite_only {
         conf.define("MCUBOOT_OVERWRITE_ONLY", None);
         conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
+    }
+
+    if swap_move {
+        conf.define("MCUBOOT_SWAP_USING_MOVE", None);
     }
 
     if enc_rsa {
@@ -220,6 +225,9 @@ fn main() {
         conf.file("../../boot/bootutil/src/image_ed25519.c");
     }
     conf.file("../../boot/bootutil/src/loader.c");
+    conf.file("../../boot/bootutil/src/swap_misc.c");
+    conf.file("../../boot/bootutil/src/swap_scratch.c");
+    conf.file("../../boot/bootutil/src/swap_move.c");
     conf.file("../../boot/bootutil/src/caps.c");
     conf.file("../../boot/bootutil/src/bootutil_misc.c");
     conf.file("../../boot/bootutil/src/tlv.c");
