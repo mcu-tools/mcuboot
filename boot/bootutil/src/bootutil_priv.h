@@ -62,9 +62,16 @@ struct flash_area;
 /** Number of image slots in flash; currently limited to two. */
 #define BOOT_NUM_SLOTS                  2
 
-#if !defined(MCUBOOT_OVERWRITE_ONLY)
+#if defined(MCUBOOT_OVERWRITE_ONLY) && defined(MCUBOOT_SWAP_USING_MOVE)
+#error "Please enable only one of MCUBOOT_OVERWRITE_ONLY or MCUBOOT_SWAP_USING_MOVE"
+#endif
+
+#if !defined(MCUBOOT_OVERWRITE_ONLY) && !defined(MCUBOOT_SWAP_USING_MOVE)
 #define MCUBOOT_SWAP_USING_SCRATCH 1
 #endif
+
+#define BOOT_STATUS_OP_MOVE     1
+#define BOOT_STATUS_OP_SWAP     2
 
 /*
  * Maintain state of copy progress.
@@ -72,6 +79,7 @@ struct flash_area;
 struct boot_status {
     uint32_t idx;         /* Which area we're operating on */
     uint8_t state;        /* Which part of the swapping process are we at */
+    uint8_t op;           /* What operation are we performing? */
     uint8_t use_scratch;  /* Are status bytes ever written to scratch? */
     uint8_t swap_type;    /* The type of swap in effect */
     uint32_t swap_size;   /* Total size of swapped image */
@@ -178,8 +186,15 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #error "Too few sectors, please increase BOOT_MAX_IMG_SECTORS to at least 32"
 #endif
 
-/** Maximum number of image sectors supported by the bootloader. */
+#if MCUBOOT_SWAP_USING_MOVE
+#define BOOT_STATUS_MOVE_STATE_COUNT    1
+#define BOOT_STATUS_SWAP_STATE_COUNT    2
+#define BOOT_STATUS_STATE_COUNT         (BOOT_STATUS_MOVE_STATE_COUNT + BOOT_STATUS_SWAP_STATE_COUNT)
+#else
 #define BOOT_STATUS_STATE_COUNT         3
+#endif
+
+/** Maximum number of image sectors supported by the bootloader. */
 #define BOOT_STATUS_MAX_ENTRIES         BOOT_MAX_IMG_SECTORS
 
 #define BOOT_PRIMARY_SLOT               0

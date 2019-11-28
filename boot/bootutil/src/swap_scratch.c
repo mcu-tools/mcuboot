@@ -29,7 +29,7 @@
 
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#if !defined(MCUBOOT_SWAP_USING_MOVE)
 
 #if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT)
 /*
@@ -175,7 +175,9 @@ boot_slots_compatible(struct boot_loader_state *state)
     size_t num_sectors_secondary;
     size_t sz0, sz1;
     size_t primary_slot_sz, secondary_slot_sz;
+#ifndef MCUBOOT_OVERWRITE_ONLY
     size_t scratch_sz;
+#endif
     size_t i, j;
     int8_t smaller;
 
@@ -187,7 +189,9 @@ boot_slots_compatible(struct boot_loader_state *state)
         return 0;
     }
 
+#ifndef MCUBOOT_OVERWRITE_ONLY
     scratch_sz = boot_scratch_area_size(state);
+#endif
 
     /*
      * The following loop scans all sectors in a linear fashion, assuring that
@@ -228,6 +232,7 @@ boot_slots_compatible(struct boot_loader_state *state)
             smaller = 2;
             j++;
         }
+#ifndef MCUBOOT_OVERWRITE_ONLY
         if (sz0 == sz1) {
             primary_slot_sz += sz0;
             secondary_slot_sz += sz1;
@@ -240,6 +245,7 @@ boot_slots_compatible(struct boot_loader_state *state)
             }
             smaller = sz0 = sz1 = 0;
         }
+#endif
     }
 
     if ((i != num_sectors_primary) ||
@@ -412,6 +418,7 @@ swap_status_source(struct boot_loader_state *state)
     return BOOT_STATUS_SOURCE_NONE;
 }
 
+#ifndef MCUBOOT_OVERWRITE_ONLY
 /**
  * Calculates the number of sectors the scratch area can contain.  A "last"
  * source sector is specified because images are copied backwards in flash
@@ -710,5 +717,6 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     }
 
 }
+#endif
 
 #endif
