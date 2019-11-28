@@ -173,9 +173,9 @@ impl RunStatus {
         warn!("Running on device {} with alignment {}", device, align);
 
         let run = match ImagesBuilder::new(device, align, erased_val) {
-            Some(builder) => builder,
-            None => {
-                warn!("Skipping device with insuffienct partitions");
+            Ok(builder) => builder,
+            Err(msg) => {
+                warn!("Skipping {}: {}", device, msg);
                 return;
             }
         };

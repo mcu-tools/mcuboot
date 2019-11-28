@@ -84,8 +84,14 @@ impl ImagesBuilder {
     /// Construct a new image builder for the given device.  Returns
     /// Some(builder) if is possible to test this configuration, or None if
     /// not possible (for example, if there aren't enough image slots).
-    pub fn new(device: DeviceName, align: usize, erased_val: u8) -> Option<Self> {
-        let (flash, areadesc) = Self::make_device(device, align, erased_val);
+    pub fn new(device: DeviceName, align: usize, erased_val: u8) -> Result<Self, String> {
+        let (flash, areadesc, unsupported_caps) = Self::make_device(device, align, erased_val);
+
+        for cap in unsupported_caps {
+            if cap.present() {
+                return Err(format!("unsupported {:?}", cap));
+            }
+        }
 
         let num_images = Caps::get_num_images();
 
@@ -100,7 +106,7 @@ impl ImagesBuilder {
             };
             let (primary_base, primary_len, primary_dev_id) = match areadesc.find(id0) {
                 Some(info) => info,
-                None => return None,
+                None => return Err("insufficient partitions".to_string()),
             };
             let id1 = match image {
                 0 => FlashId::Image1,
@@ -109,7 +115,7 @@ impl ImagesBuilder {
             };
             let (secondary_base, secondary_len, secondary_dev_id) = match areadesc.find(id1) {
                 Some(info) => info,
-                None => return None,
+                None => return Err("insufficient partitions".to_string()),
             };
 
             let offset_from_end = c::boot_magic_sz() + c::boot_max_align() * 4;
@@ -135,7 +141,7 @@ impl ImagesBuilder {
             slots.push([primary, secondary]);
         }
 
-        Some(ImagesBuilder {
+        Ok(ImagesBuilder {
             flash: flash,
             areadesc: areadesc,
             slots: slots,
@@ -149,8 +155,8 @@ impl ImagesBuilder {
             for &align in test_alignments() {
                 for &erased_val in &[0, 0xff] {
                     match Self::new(dev, align, erased_val) {
-                        Some(run) => f(run),
-                        None => warn!("Skipping {:?}, insufficient partitions", dev),
+                        Ok(run) => f(run),
+                        Err(msg) => warn!("Skipping {}: {}", dev, msg),
                     }
                 }
             }
@@ -227,7 +233,7 @@ impl ImagesBuilder {
     }
 
     /// Build the Flash and area descriptor for a given device.
-    pub fn make_device(device: DeviceName, align: usize, erased_val: u8) -> (SimMultiFlash, AreaDesc) {
+    pub fn make_device(device: DeviceName, align: usize, erased_val: u8) -> (SimMultiFlash, AreaDesc, &'static [Caps]) {
         match device {
             DeviceName::Stm32f4 => {
                 // STM style flash.  Large sectors, with a large scratch area.
@@ -244,7 +250,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc)
+                (flash, areadesc, &[Caps::SwapUsingMove])
             }
             DeviceName::K64f => {
                 // NXP style flash.  Small sectors, one small sector for scratch.
@@ -259,7 +265,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc)
+                (flash, areadesc, &[])
             }
             DeviceName::K64fBig => {
                 // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
@@ -275,7 +281,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc)
+                (flash, areadesc, &[Caps::SwapUsingMove])
             }
             DeviceName::Nrf52840 => {
                 // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
@@ -291,7 +297,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc)
+                (flash, areadesc, &[])
             }
             DeviceName::Nrf52840SpiFlash => {
                 // Simulate nrf52840 with external SPI flash. The external SPI flash
@@ -310,7 +316,7 @@ impl ImagesBuilder {
                 let mut flash = SimMultiFlash::new();
                 flash.insert(0, dev0);
                 flash.insert(1, dev1);
-                (flash, areadesc)
+                (flash, areadesc, &[Caps::SwapUsingMove])
             }
             DeviceName::K64fMulti => {
                 // NXP style flash, but larger, to support multiple images.
@@ -327,7 +333,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc)
+                (flash, areadesc, &[])
             }
         }
     }
