@@ -362,6 +362,10 @@ impl Images {
         self.verify_dep_images(&flash, deps)
     }
 
+    fn is_swap_upgrade(&self) -> bool {
+        Caps::SwapUsingScratch.present() || Caps::SwapUsingMove.present()
+    }
+
     pub fn run_basic_revert(&self) -> bool {
         if Caps::OverwriteUpgrade.present() {
             return false;
@@ -370,7 +374,7 @@ impl Images {
         let mut fails = 0;
 
         // FIXME: this test would also pass if no swap is ever performed???
-        if Caps::SwapUpgrade.present() {
+        if self.is_swap_upgrade() {
             for count in 2 .. 5 {
                 info!("Try revert: {}", count);
                 let flash = self.try_revert(count);
@@ -410,7 +414,7 @@ impl Images {
                 fails += 1;
             }
 
-            if Caps::SwapUpgrade.present() {
+            if self.is_swap_upgrade() {
                 if !self.verify_images(&flash, 1, 0) {
                     warn!("Secondary slot FAIL at step {} of {}",
                           i, total_flash_ops);
@@ -434,7 +438,7 @@ impl Images {
         info!("Random interruptions at reset points={:?}", total_counts);
 
         let primary_slot_ok = self.verify_images(&flash, 0, 1);
-        let secondary_slot_ok = if Caps::SwapUpgrade.present() {
+        let secondary_slot_ok = if self.is_swap_upgrade() {
             // TODO: This result is ignored.
             self.verify_images(&flash, 1, 0)
         } else {
@@ -472,7 +476,7 @@ impl Images {
 
         let mut fails = 0;
 
-        if Caps::SwapUpgrade.present() {
+        if self.is_swap_upgrade() {
             for i in 1 .. self.total_count.unwrap() {
                 info!("Try interruption at {}", i);
                 if self.try_revert_with_fail_at(i) {

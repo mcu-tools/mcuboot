@@ -1,13 +1,13 @@
 // Query the bootloader's capabilities.
 
 #[repr(u32)]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[allow(unused)]
 pub enum Caps {
     RSA2048              = (1 << 0),
     EcdsaP224            = (1 << 1),
     EcdsaP256            = (1 << 2),
-    SwapUpgrade          = (1 << 3),
+    SwapUsingScratch     = (1 << 3),
     OverwriteUpgrade     = (1 << 4),
     EncRsa               = (1 << 5),
     EncKw                = (1 << 6),
@@ -15,6 +15,7 @@ pub enum Caps {
     RSA3072              = (1 << 8),
     Ed25519              = (1 << 9),
     EncEc256             = (1 << 10),
+    SwapUsingMove        = (1 << 11),
 }
 
 impl Caps {
