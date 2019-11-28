@@ -35,7 +35,7 @@ uint32_t bootutil_get_caps(void);
 #define BOOTUTIL_CAP_RSA2048                (1<<0)
 #define BOOTUTIL_CAP_ECDSA_P224             (1<<1)
 #define BOOTUTIL_CAP_ECDSA_P256             (1<<2)
-#define BOOTUTIL_CAP_SWAP_UPGRADE           (1<<3)
+#define BOOTUTIL_CAP_SWAP_USING_SCRATCH     (1<<3)
 #define BOOTUTIL_CAP_OVERWRITE_UPGRADE      (1<<4)
 #define BOOTUTIL_CAP_ENC_RSA                (1<<5)
 #define BOOTUTIL_CAP_ENC_KW                 (1<<6)
@@ -43,6 +43,7 @@ uint32_t bootutil_get_caps(void);
 #define BOOTUTIL_CAP_RSA3072                (1<<8)
 #define BOOTUTIL_CAP_ED25519                (1<<9)
 #define BOOTUTIL_CAP_ENC_EC256              (1<<10)
+#define BOOTUTIL_CAP_SWAP_USING_MOVE        (1<<11)
 
 /*
  * Query the number of images this bootloader is configured for.  This
