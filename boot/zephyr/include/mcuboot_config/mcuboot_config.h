@@ -53,6 +53,10 @@
 #define MCUBOOT_OVERWRITE_ONLY_FAST
 #endif
 
+#ifdef CONFIG_BOOT_SWAP_USING_MOVE
+#define MCUBOOT_SWAP_USING_MOVE 1
+#endif
+
 #ifdef CONFIG_LOG
 #define MCUBOOT_HAVE_LOGGING 1
 #endif
