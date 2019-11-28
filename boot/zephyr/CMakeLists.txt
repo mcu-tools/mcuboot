@@ -213,5 +213,19 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
     DEPENDS ${KEY_FILE}
     )
   zephyr_library_sources(${GENERATED_PUBKEY})
+
+  set(GENERATED_PRIVKEY ${ZEPHYR_BINARY_DIR}/autogen-privkey.c)
+  add_custom_command(
+      OUTPUT ${GENERATED_PRIVKEY}
+    COMMAND
+    ${PYTHON_EXECUTABLE}
+    ${MCUBOOT_DIR}/scripts/imgtool.py
+    getpriv
+    -k
+    ${KEY_FILE}
+    > ${GENERATED_PRIVKEY}
+    DEPENDS ${KEY_FILE}
+    )
+  zephyr_library_sources(${GENERATED_PRIVKEY})
 endif()
 
