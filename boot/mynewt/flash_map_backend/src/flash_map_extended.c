@@ -25,7 +25,9 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot)
     switch (slot) {
     case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
     case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
+#if MCUBOOT_SWAP_USING_SCRATCH
     case 2: return FLASH_AREA_IMAGE_SCRATCH;
+#endif
     }
     return 255;
 }
