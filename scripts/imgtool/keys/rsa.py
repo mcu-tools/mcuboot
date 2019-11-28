@@ -42,6 +42,9 @@ class RSAPublic(KeyClass):
                 encoding=serialization.Encoding.DER,
                 format=serialization.PublicFormat.PKCS1)
 
+    def get_private_bytes(self, minimal):
+        self._unsupported('get_private_bytes')
+
     def export_private(self, path, passwd=None):
         self._unsupported('export_private')
 
@@ -93,6 +96,49 @@ class RSA(RSAPublic):
 
     def _get_public(self):
         return self.key.public_key()
+
+    def _build_minimal_rsa_privkey(self, der):
+        '''
+        Builds a new DER that only includes N/E/D/P/Q RSA parameters;
+        standard DER private bytes provided by OpenSSL also includes
+        CRT params (DP/DQ/QP) which can be removed.
+        '''
+        OFFSET_N = 7  # N is always located at this offset
+        b = bytearray(der)
+        off = OFFSET_N
+        if b[off + 1] != 0x82:
+            raise RSAUsageError("Error parsing N while minimizing")
+        len_N = (b[off + 2] << 8) + b[off + 3] + 4
+        off += len_N
+        if b[off + 1] != 0x03:
+            raise RSAUsageError("Error parsing E while minimizing")
+        len_E = b[off + 2] + 4
+        off += len_E
+        if b[off + 1] != 0x82:
+            raise RSAUsageError("Error parsing D while minimizing")
+        len_D = (b[off + 2] << 8) + b[off + 3] + 4
+        off += len_D
+        if b[off + 1] != 0x81:
+            raise RSAUsageError("Error parsing P while minimizing")
+        len_P = b[off + 2] + 3
+        off += len_P
+        if b[off + 1] != 0x81:
+            raise RSAUsageError("Error parsing Q while minimizing")
+        len_Q = b[off + 2] + 3
+        off += len_Q
+        # adjust DER size for removed elements
+        b[2] = (off - 4) >> 8
+        b[3] = (off - 4) & 0xff
+        return b[:off]
+
+    def get_private_bytes(self, minimal):
+        priv = self.key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption())
+        if minimal:
+            priv = self._build_minimal_rsa_privkey(priv)
+        return priv
 
     def export_private(self, path, passwd=None):
         """Write the private key to the given file, protecting it with the

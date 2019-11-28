@@ -32,6 +32,9 @@ class Ed25519Public(KeyClass):
                 encoding=serialization.Encoding.DER,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo)
 
+    def get_private_bytes(self, minimal):
+        self._unsupported('get_private_bytes')
+
     def export_private(self, path, passwd=None):
         self._unsupported('export_private')
 
@@ -69,6 +72,10 @@ class Ed25519(Ed25519Public):
 
     def _get_public(self):
         return self.key.public_key()
+
+    def get_private_bytes(self, minimal):
+        raise Ed25519UsageError("Operation not supported with {} keys".format(
+            self.shortname()))
 
     def export_private(self, path, passwd=None):
         """
