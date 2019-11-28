@@ -35,8 +35,8 @@
     !defined(FLASH_AREA_IMAGE_0_SIZE) || \
     !defined(FLASH_AREA_IMAGE_1_OFFSET) || \
     !defined(FLASH_AREA_IMAGE_1_SIZE) || \
-    !defined(FLASH_AREA_IMAGE_SCRATCH_OFFSET) || \
-    !defined(FLASH_AREA_IMAGE_SCRATCH_SIZE)
+    (!defined(CONFIG_BOOT_SWAP_USING_MOVE) && !defined(FLASH_AREA_IMAGE_SCRATCH_OFFSET)) || \
+    (!defined(CONFIG_BOOT_SWAP_USING_MOVE) && !defined(FLASH_AREA_IMAGE_SCRATCH_SIZE))
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
 

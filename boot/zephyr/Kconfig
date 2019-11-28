@@ -126,6 +126,19 @@ config BOOT_UPGRADE_ONLY
 	  of swapping them. This prevents the fallback recovery, but
 	  uses a much simpler code path.
 
+config BOOT_SWAP_USING_MOVE
+	bool "Swap mode that can run without a scratch partition [EXPERIMENTAL]"
+	default n
+	help
+	  If y, the swap upgrade is done in two steps, where first every
+	  sector of the primary slot is moved up one sector, then for
+	  each sector X in the secondary slot, it is moved to index X in
+	  the primary slot, then the sector at X+1 in the primary is
+	  moved to index X in the secondary.
+	  This allows a swap upgrade without using a scratch partition,
+	  but is currently limited to all sectors in both slots being of
+	  the same size.
+
 config BOOT_BOOTSTRAP
 	bool "Bootstrap erased the primary slot from the secondary slot"
 	default n
