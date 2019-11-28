@@ -164,9 +164,12 @@ boot_trailer_sz(uint32_t min_write_sz)
 int
 boot_status_entries(int image_index, const struct flash_area *fap)
 {
+#if MCUBOOT_SWAP_USING_SCRATCH
     if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
         return BOOT_STATUS_STATE_COUNT;
-    } else if (fap->fa_id == FLASH_AREA_IMAGE_PRIMARY(image_index) ||
+    } else
+#endif
+    if (fap->fa_id == FLASH_AREA_IMAGE_PRIMARY(image_index) ||
                fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
         return BOOT_STATUS_STATE_COUNT * BOOT_STATUS_MAX_ENTRIES;
     }
@@ -321,7 +324,9 @@ boot_find_status(int image_index, const struct flash_area **fap)
     uint32_t magic[BOOT_MAGIC_ARR_SZ];
     uint32_t off;
     uint8_t areas[2] = {
+#if MCUBOOT_SWAP_USING_SCRATCH
         FLASH_AREA_IMAGE_SCRATCH,
+#endif
         FLASH_AREA_IMAGE_PRIMARY(image_index),
     };
     unsigned int i;
@@ -375,7 +380,6 @@ boot_read_swap_size(int image_index, uint32_t *swap_size)
 
     return rc;
 }
-
 
 #ifdef MCUBOOT_ENC_IMAGES
 int

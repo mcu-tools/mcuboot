@@ -62,6 +62,10 @@ struct flash_area;
 /** Number of image slots in flash; currently limited to two. */
 #define BOOT_NUM_SLOTS                  2
 
+#if !defined(MCUBOOT_OVERWRITE_ONLY)
+#define MCUBOOT_SWAP_USING_SCRATCH 1
+#endif
+
 /*
  * Maintain state of copy progress.
  */
@@ -207,11 +211,13 @@ struct boot_loader_state {
         size_t num_sectors;
     } imgs[BOOT_IMAGE_NUMBER][BOOT_NUM_SLOTS];
 
+#if MCUBOOT_SWAP_USING_SCRATCH
     struct {
         const struct flash_area *area;
         boot_sector_t *sectors;
         size_t num_sectors;
     } scratch;
+#endif
 
     uint8_t swap_type[BOOT_IMAGE_NUMBER];
     uint32_t write_sz;
@@ -238,13 +244,23 @@ int boot_read_swap_state(const struct flash_area *fap,
 int boot_read_swap_state_by_id(int flash_area_id,
                                struct boot_swap_state *state);
 int boot_write_magic(const struct flash_area *fap);
-int boot_write_status(struct boot_loader_state *state, struct boot_status *bs);
+int boot_write_status(const struct boot_loader_state *state, struct boot_status *bs);
 int boot_write_copy_done(const struct flash_area *fap);
 int boot_write_image_ok(const struct flash_area *fap);
 int boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
                          uint8_t image_num);
 int boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size);
 int boot_read_swap_size(int image_index, uint32_t *swap_size);
+int boot_slots_compatible(struct boot_loader_state *state);
+uint32_t boot_status_internal_off(const struct boot_status *bs, int elem_sz);
+int boot_read_image_header(struct boot_loader_state *state, int slot,
+                           struct image_header *out_hdr, struct boot_status *bs);
+int boot_copy_region(struct boot_loader_state *state,
+                     const struct flash_area *fap_src,
+                     const struct flash_area *fap_dst,
+                     uint32_t off_src, uint32_t off_dst, uint32_t sz);
+int boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz);
+
 #ifdef MCUBOOT_ENC_IMAGES
 int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
                        const uint8_t *enckey);
@@ -303,7 +319,6 @@ static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
 #endif
 #define BOOT_IMG(state, slot) ((state)->imgs[BOOT_CURR_IMG(state)][(slot)])
 #define BOOT_IMG_AREA(state, slot) (BOOT_IMG(state, slot).area)
-#define BOOT_SCRATCH_AREA(state) ((state)->scratch.area)
 #define BOOT_WRITE_SZ(state) ((state)->write_sz)
 #define BOOT_SWAP_TYPE(state) ((state)->swap_type[BOOT_CURR_IMG(state)])
 #define BOOT_TLV_OFF(hdr) ((hdr)->ih_hdr_size + (hdr)->ih_img_size)
@@ -325,12 +340,6 @@ boot_img_num_sectors(const struct boot_loader_state *state, size_t slot)
     return BOOT_IMG(state, slot).num_sectors;
 }
 
-static inline size_t
-boot_scratch_num_sectors(struct boot_loader_state *state)
-{
-    return state->scratch.num_sectors;
-}
-
 /*
  * Offset of the slot from the beginning of the flash device.
  */
@@ -338,11 +347,6 @@ static inline uint32_t
 boot_img_slot_off(struct boot_loader_state *state, size_t slot)
 {
     return BOOT_IMG(state, slot).area->fa_off;
-}
-
-static inline size_t boot_scratch_area_size(struct boot_loader_state *state)
-{
-    return BOOT_SCRATCH_AREA(state)->fa_size;
 }
 
 #ifndef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
