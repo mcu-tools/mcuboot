@@ -92,17 +92,31 @@ def keygen(type, key, password):
 @click.option('-l', '--lang', metavar='lang', default=valid_langs[0],
               type=click.Choice(valid_langs))
 @click.option('-k', '--key', metavar='filename', required=True)
-@click.command(help='Get public key from keypair')
+@click.command(help='Dump public key from keypair')
 def getpub(key, lang):
     key = load_key(key)
     if key is None:
         print("Invalid passphrase")
     elif lang == 'c':
-        key.emit_c()
+        key.emit_c_public()
     elif lang == 'rust':
-        key.emit_rust()
+        key.emit_rust_public()
     else:
         raise ValueError("BUG: should never get here!")
+
+
+@click.option('--minimal', default=False, is_flag=True,
+              help='Reduce the size of the dumped private key to include only '
+                   'the minimum amount of data required to decrypt. This '
+                   'might require changes to the build config. Check the docs!'
+              )
+@click.option('-k', '--key', metavar='filename', required=True)
+@click.command(help='Dump private key from keypair')
+def getpriv(key, minimal):
+    key = load_key(key)
+    if key is None:
+        print("Invalid passphrase")
+    key.emit_private(minimal)
 
 
 @click.argument('imgfile')
@@ -271,6 +285,7 @@ def imgtool():
 
 imgtool.add_command(keygen)
 imgtool.add_command(getpub)
+imgtool.add_command(getpriv)
 imgtool.add_command(verify)
 imgtool.add_command(sign)
 imgtool.add_command(version)

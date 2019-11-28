@@ -31,6 +31,9 @@ class ECDSA256P1Public(KeyClass):
                 encoding=serialization.Encoding.DER,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo)
 
+    def get_private_bytes(self, minimal):
+        self._unsupported('get_private_bytes')
+
     def export_private(self, path, passwd=None):
         self._unsupported('export_private')
 
@@ -83,6 +86,39 @@ class ECDSA256P1(ECDSA256P1Public):
 
     def _get_public(self):
         return self.key.public_key()
+
+    def _build_minimal_ecdsa_privkey(self, der):
+        '''
+        Builds a new DER that only includes the EC private key, removing the
+        public key that is added as an "optional" BITSTRING.
+        '''
+        offset_PUB = 68
+        EXCEPTION_TEXT = "Error parsing ecdsa key. Please submit an issue!"
+        if der[offset_PUB] != 0xa1:
+            raise ECDSAUsageError(EXCEPTION_TEXT)
+        len_PUB = der[offset_PUB + 1]
+        b = bytearray(der[:-offset_PUB])
+        offset_SEQ = 29
+        if b[offset_SEQ] != 0x30:
+            raise ECDSAUsageError(EXCEPTION_TEXT)
+        b[offset_SEQ + 1] -= len_PUB
+        offset_OCT_STR = 27
+        if b[offset_OCT_STR] != 0x04:
+            raise ECDSAUsageError(EXCEPTION_TEXT)
+        b[offset_OCT_STR + 1] -= len_PUB
+        if b[0] != 0x30 or b[1] != 0x81:
+            raise ECDSAUsageError(EXCEPTION_TEXT)
+        b[2] -= len_PUB
+        return b
+
+    def get_private_bytes(self, minimal):
+        priv = self.key.private_bytes(
+                encoding=serialization.Encoding.DER,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption())
+        if minimal:
+            priv = self._build_minimal_ecdsa_privkey(priv)
+        return priv
 
     def export_private(self, path, passwd=None):
         """Write the private key to the given file, protecting it with the optional password."""
