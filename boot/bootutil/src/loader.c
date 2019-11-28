@@ -286,6 +286,7 @@ void
 boot_status_reset(struct boot_status *bs)
 {
     memset(bs, 0, sizeof *bs);
+    bs->op = BOOT_STATUS_OP_MOVE;
     bs->idx = BOOT_STATUS_IDX_0;
     bs->state = BOOT_STATUS_STATE_0;
     bs->swap_type = BOOT_SWAP_TYPE_NONE;
@@ -294,7 +295,9 @@ boot_status_reset(struct boot_status *bs)
 bool
 boot_status_is_reset(const struct boot_status *bs)
 {
-    return (bs->idx == BOOT_STATUS_IDX_0 && bs->state == BOOT_STATUS_STATE_0);
+    return (bs->op == BOOT_STATUS_OP_MOVE &&
+            bs->idx == BOOT_STATUS_IDX_0 &&
+            bs->state == BOOT_STATUS_STATE_0);
 }
 
 /**
@@ -650,16 +653,25 @@ boot_copy_region(struct boot_loader_state *state,
 
 #ifdef MCUBOOT_ENC_IMAGES
         image_index = BOOT_CURR_IMG(state);
-        if (fap_src->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index) ||
-            fap_dst->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
+        if ((fap_src->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index) ||
+            fap_dst->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) &&
+            !(fap_src->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index) &&
+              fap_dst->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index))) {
             /* assume the secondary slot as src, needs decryption */
             hdr = boot_img_hdr(state, BOOT_SECONDARY_SLOT);
+#if !defined(MCUBOOT_SWAP_USING_MOVE)
             off = off_src;
             if (fap_dst->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
                 /* might need encryption (metadata from the primary slot) */
                 hdr = boot_img_hdr(state, BOOT_PRIMARY_SLOT);
                 off = off_dst;
             }
+#else
+            off = off_dst;
+            if (fap_dst->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
+                hdr = boot_img_hdr(state, BOOT_PRIMARY_SLOT);
+            }
+#endif
             if (IS_ENCRYPTED(hdr)) {
                 blk_sz = chunk_sz;
                 idx = 0;
@@ -1352,6 +1364,21 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
             BOOT_LOG_WRN("Failed reading boot status; Image=%u",
                     BOOT_CURR_IMG(state));
             /* Continue with next image if there is one. */
+            BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
+            return;
+        }
+#endif
+
+#ifdef MCUBOOT_SWAP_USING_MOVE
+        /*
+         * Must re-read image headers because the boot status might
+         * have been updated in the previous function call.
+         */
+        rc = boot_read_image_headers(state, !boot_status_is_reset(bs), bs);
+        if (rc != 0) {
+            /* Continue with next image if there is one. */
+            BOOT_LOG_WRN("Failed reading image headers; Image=%u",
+                    BOOT_CURR_IMG(state));
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
             return;
         }
