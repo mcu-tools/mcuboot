@@ -55,6 +55,9 @@ syscfg.defs:
     BOOTUTIL_USE_TINYCRYPT:
         description: 'Use tinycrypt for crypto operations.'
         value: 0
+    BOOTUTIL_SWAP_USING_MOVE:
+        description: 'Perform swap without requiring scratch.'
+        value: 0
     BOOTUTIL_OVERWRITE_ONLY:
         description: 'Non-swapping upgrades, copy from slot 1 to slot 0 only.'
         value: 0
