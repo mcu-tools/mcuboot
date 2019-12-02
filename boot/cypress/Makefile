@@ -196,28 +196,6 @@ clean:
 	@echo "Cleanup out directory..."
 	rm -rf ./$(APP_NAME)/out
 
-# TODO: update with generic solution
-load:
-ifeq ($(HOST_OS), win)
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /d/
-else
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME).hex /Volumes/DAPLINK
-endif
-
-load_boot:
-ifeq ($(HOST_OS), win)
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed.hex /d/
-else
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed.hex /Volumes/DAPLINK
-endif
-
-load_upgrade:
-ifeq ($(HOST_OS), win)
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed_upgrade.hex /d/
-else
-	cp $(OUT)/$(TARGET)/$(BUILDCFG)/$(APP_NAME)_signed_upgrade.hex /Volumes/DAPLINK
-endif
-
 gen_key_ecc256:
 	@echo Generate ECC256 keys: $(SIGN_KEY_FILE).pem and $(SIGN_KEY_FILE).pub
 	../../scripts/imgtool.py keygen -k keys/$(SIGN_KEY_FILE).pem -t ecdsa-p256
