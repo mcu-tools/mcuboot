@@ -23,6 +23,8 @@
 
 #define FLASH_ALIGN FLASH_WRITE_BLOCK_SIZE
 
+#endif /* !defined(MCUBOOT_TARGET_CONFIG) */
+
 /*
  * Sanity check the target support.
  */
