@@ -10,7 +10,7 @@ Python libraries.  These can be installed using 'pip3':
 
     pip3 install --user -r scripts/requirements.txt
 
-## Managing keys
+## [Managing keys](#managing-keys)
 
 This tool currently supports rsa-2048, rsa-3072, ecdsa-p256 and ed25519 keys.
 You can generate a keypair for one of these types using the 'keygen' command:
@@ -27,7 +27,7 @@ You can add the `-p` argument to `keygen`, which will cause it to
 prompt for a password.  You will need to enter this password in every
 time you use the private key.
 
-## Incorporating the public key into the code
+## [Incorporating the public key into the code](#incorporating-the-public-key-into-the-code)
 
 There is a development key distributed with mcuboot that can be used
 for testing.  Since this private key is widely distributed, it should
@@ -45,7 +45,7 @@ will extract the public key from the given private key file, and
 output it as a C data structure.  You can replace or insert this code
 into the key file.
 
-## Signing images
+## [Signing images](#signing-images)
 
 Image signing takes an image in binary or Intel Hex format intended for the
 primary slot and adds a header and trailer that the bootloader is expecting:

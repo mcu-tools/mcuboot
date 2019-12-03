@@ -23,7 +23,7 @@
 
 # Boot Loader
 
-## Summary
+## [Summary](#summary)
 
 mcuboot comprises two packages:
 
@@ -37,14 +37,14 @@ Boot loader functionality is separated in this manner to enable unit testing of
 the boot loader.  A library can be unit tested, but an application can't.
 Therefore, functionality is delegated to the bootutil library when possible.
 
-## Limitations
+## [Limitations](#limitations)
 
 The boot loader currently only supports images with the following
 characteristics:
 * Built to run from flash.
 * Built to run from a fixed location (i.e., not position-independent).
 
-## Image Format
+## [Image Format](#image-format)
 
 The following definitions describe the image format.
 
@@ -125,7 +125,7 @@ The `ih_hdr_size` field indicates the length of the header, and therefore the
 offset of the image itself.  This field provides for backwards compatibility in
 case of changes to the format of the image header.
 
-## Flash Map
+## [Flash Map](#flash-map)
 
 A device's flash is partitioned according to its _flash map_.  At a high
 level, the flash map maps numeric IDs to _flash areas_.  A flash area is a
@@ -156,7 +156,7 @@ images therefore the flash area IDs of primary and secondary areas are mapped
 based on the number of the active image (on which the bootloader is currently
 working).
 
-## Image Slots
+## [Image Slots](#image-slots)
 
 A portion of the flash memory can be partitioned into multiple image areas, each
 contains two image slots: a primary slot and a secondary slot.
@@ -215,7 +215,7 @@ even when it is reset during the middle of an image swap. For this reason, the
 rest of the document describes its behavior when configured to swap images
 during an upgrade.
 
-## Boot Swap Types
+## [Boot Swap Types](#boot-swap-types)
 
 When the device first boots under normal circumstances, there is an up-to-date
 firmware image in each primary slot, which mcuboot can validate and then
@@ -270,7 +270,7 @@ The "swap type" is a high-level representation of the outcome of the
 boot. Subsequent sections describe how mcuboot determines the swap type from
 the bit-level contents of flash.
 
-## Image Trailer
+## [Image Trailer](#image-trailer)
 
 For the bootloader to be able to determine the current state and what actions
 should be taken during the current boot operation, it uses metadata stored in
@@ -385,13 +385,13 @@ of 3 is explained below.
     };
 ```
 
-## IMAGE TRAILERS
+## [IMAGE TRAILERS](#image-trailers)
 
 At startup, the boot loader determines the boot swap type by inspecting the
 image trailers.  When using the term "image trailers" what is meant is the
 aggregate information provided by both image slot's trailers.
 
-### New swaps (non-resumes)
+### [New swaps (non-resumes)](#new-swaps-non-resumes)
 
 For new swaps, mcuboot must inspect a collection of fields to determine which
 swap operation to perform.
@@ -472,7 +472,7 @@ Note: An important caveat to the above is the result when a swap is requested
       marking the image in the primary slot as "OK", to prevent further attempts
       to swap.
 
-### Resumed swaps
+### [Resumed swaps](#resumed-swaps)
 
 If mcuboot determines that it is resuming an interrupted swap (i.e., a reset
 occurred mid-swap), it fully determines the operation to resume by reading the
@@ -480,7 +480,7 @@ occurred mid-swap), it fully determines the operation to resume by reading the
 0-3. The set of tables in the previous section are not necessary in the resume
 case.
 
-## High-Level Operation
+## [High-Level Operation](#high-level-operation)
 
 With the terms defined, we can now explore the boot loader's operation.  First,
 a high-level overview of the boot process is presented.  Then, the following
@@ -508,7 +508,7 @@ Procedure:
 
 3. Boot into image in primary slot.
 
-### Multiple Image Boot
+### [Multiple Image Boot](#multiple-image-boot)
 
 When the flash contains multiple executable images the boot loader's operation
 is a bit more complex but similar to the previously described procedure with
@@ -600,7 +600,7 @@ process is presented below.
 + Boot into image in the primary slot of the 0th image position\
   (other image in the boot chain is started by another image).
 
-## Image Swapping
+## [Image Swapping](#image-swapping)
 
 The boot loader swaps the contents of the two image slots for two reasons:
 
@@ -694,7 +694,7 @@ happened when a swap was requested:
 After completing the operations as described above the image in the primary slot
 should be booted.
 
-## Swap Status
+## [Swap Status](#swap-status)
 
 The swap status region allows the boot loader to recover in case it restarts in
 the middle of an image swap operation.  The swap status region consists of a
@@ -775,7 +775,7 @@ point within the region.
 Note: since the scratch area only ever needs to record swapping of the last
 sector, it uses at most min-write-size * 3 bytes for its own status area.
 
-## Reset Recovery
+## [Reset Recovery](#reset-recovery)
 
 If the boot loader resets in the middle of a swap operation, the two images may
 be discontiguous in flash.  Bootutil recovers from this condition by using the
@@ -844,7 +844,7 @@ belongs to image 0 or image 1.
 After the swap operation has been completed, the boot loader proceeds as though
 it had just been started.
 
-## Integrity Check
+## [Integrity Check](#integrity-check)
 
 An image is checked for integrity immediately before it gets copied into the
 primary slot.  If the boot loader doesn't perform an image swap, then it can
@@ -868,7 +868,7 @@ an image:
     keys will then be iterated over looking for the matching key, which then
     will then be used to verify the image contents.
 
-## Security
+## [Security](#security)
 
 As indicated above, the final step of the integrity check is signature
 verification.  The boot loader can have one or more public keys embedded in it
@@ -882,7 +882,7 @@ producing signed images, see: [signed_images](signed_images.md).
 If you want to enable and use encrypted images, see:
 [encrypted_images](encrypted_images.md).
 
-## Protected TLVs
+## [Protected TLVs](#protected-tlvs)
 
 If the TLV area contains protected TLV entries, by beginning with a `struct
 image_tlv_info` with a magic value of `IMAGE_TLV_PROT_INFO_MAGIC` then the
@@ -919,7 +919,7 @@ D | +-----------------+ |
   +---------------------+
 ```
 
-## Dependency Check
+## [Dependency Check](#dependency-check)
 
 MCUBoot can handle multiple firmware images. It is possible to update them
 independently but in many cases it can be desired to be able to describe
