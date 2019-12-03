@@ -1545,12 +1545,10 @@ pub fn show_sizes() {
 
 #[cfg(not(feature = "large-write"))]
 fn test_alignments() -> &'static [usize] {
-    println!("Not large write");
     &[1, 2, 4, 8]
 }
 
 #[cfg(feature = "large-write")]
 fn test_alignments() -> &'static [usize] {
-    println!("Large write test: {:?}", cfg!(feature = "large-write"));
     &[1, 2, 4, 8, 128, 512]
 }
