@@ -1,0 +1,8 @@
+/*
+ * MCUboot should always be built in the boot partition.
+ */
+/ {
+	chosen {
+		zephyr,code-partition = &boot_partition;
+	};
+};
