@@ -34,7 +34,7 @@ use aes_ctr::{
 };
 use mcuboot_sys::c;
 
-#[repr(u8)]
+#[repr(u16)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[allow(dead_code)] // TODO: For now
 pub enum TlvKinds {
@@ -267,8 +267,7 @@ impl ManifestGen for TlvGen {
             protected_tlv.push(0x69);
             protected_tlv.write_u16::<LittleEndian>(self.protect_size()).unwrap();
             for dep in &self.dependencies {
-                protected_tlv.push(TlvKinds::DEPENDENCY as u8);
-                protected_tlv.push(0);
+                protected_tlv.write_u16::<LittleEndian>(TlvKinds::DEPENDENCY as u16).unwrap();
                 protected_tlv.push(12);
                 protected_tlv.push(0);
 
@@ -309,8 +308,7 @@ impl ManifestGen for TlvGen {
             let hash = hash.as_ref();
 
             assert!(hash.len() == 32);
-            result.push(TlvKinds::SHA256 as u8);
-            result.push(0);
+            result.write_u16::<LittleEndian>(TlvKinds::SHA256 as u16).unwrap();
             result.push(32);
             result.push(0);
             result.extend_from_slice(hash);
@@ -330,8 +328,7 @@ impl ManifestGen for TlvGen {
             let hash = hash.as_ref();
 
             assert!(hash.len() == 32);
-            result.push(TlvKinds::KEYHASH as u8);
-            result.push(0);
+            result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
             result.push(32);
             result.push(0);
             result.extend_from_slice(hash);
@@ -354,11 +351,10 @@ impl ManifestGen for TlvGen {
             key_pair.sign(&RSA_PSS_SHA256, &rng, &sig_payload, &mut signature).unwrap();
 
             if is_rsa2048 {
-                result.push(TlvKinds::RSA2048 as u8);
+                result.write_u16::<LittleEndian>(TlvKinds::RSA2048 as u16).unwrap();
             } else {
-                result.push(TlvKinds::RSA3072 as u8);
+                result.write_u16::<LittleEndian>(TlvKinds::RSA3072 as u16).unwrap();
             }
-            result.push(0);
             result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
             result.extend_from_slice(&signature);
         }
@@ -368,8 +364,7 @@ impl ManifestGen for TlvGen {
             let keyhash = keyhash.as_ref();
 
             assert!(keyhash.len() == 32);
-            result.push(TlvKinds::KEYHASH as u8);
-            result.push(0);
+            result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
             result.push(32);
             result.push(0);
             result.extend_from_slice(keyhash);
@@ -382,8 +377,7 @@ impl ManifestGen for TlvGen {
             let rng = rand::SystemRandom::new();
             let signature = key_pair.sign(&rng, &sig_payload).unwrap();
 
-            result.push(TlvKinds::ECDSA256 as u8);
-            result.push(0);
+            result.write_u16::<LittleEndian>(TlvKinds::ECDSA256 as u16).unwrap();
 
             // signature must be padded...
             let mut signature = signature.as_ref().to_vec();
@@ -401,8 +395,7 @@ impl ManifestGen for TlvGen {
             let keyhash = keyhash.as_ref();
 
             assert!(keyhash.len() == 32);
-            result.push(TlvKinds::KEYHASH as u8);
-            result.push(0);
+            result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
             result.push(32);
             result.push(0);
             result.extend_from_slice(keyhash);
@@ -418,8 +411,7 @@ impl ManifestGen for TlvGen {
                 &key_bytes.contents[16..48], &ED25519_PUB_KEY[12..44]).unwrap();
             let signature = key_pair.sign(&hash);
 
-            result.push(TlvKinds::ED25519 as u8);
-            result.push(0);
+            result.write_u16::<LittleEndian>(TlvKinds::ED25519 as u16).unwrap();
 
             let signature = signature.as_ref().to_vec();
             result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
@@ -439,8 +431,7 @@ impl ManifestGen for TlvGen {
             };
 
             assert!(encbuf.len() == 256);
-            result.push(TlvKinds::ENCRSA2048 as u8);
-            result.push(0);
+            result.write_u16::<LittleEndian>(TlvKinds::ENCRSA2048 as u16).unwrap();
             result.push(0);
             result.push(1);
             result.extend_from_slice(&encbuf);
@@ -458,8 +449,7 @@ impl ManifestGen for TlvGen {
             };
 
             assert!(encbuf.len() == 24);
-            result.push(TlvKinds::ENCKW128 as u8);
-            result.push(0);
+            result.write_u16::<LittleEndian>(TlvKinds::ENCKW128 as u16).unwrap();
             result.push(24);
             result.push(0);
             result.extend_from_slice(&encbuf);
@@ -525,8 +515,7 @@ impl ManifestGen for TlvGen {
             buf.append(&mut cipherkey);
 
             assert!(buf.len() == 113);
-            result.push(TlvKinds::ENCEC256 as u8);
-            result.push(0);
+            result.write_u16::<LittleEndian>(TlvKinds::ENCEC256 as u16).unwrap();
             result.push(113);
             result.push(0);
             result.extend_from_slice(&buf);
