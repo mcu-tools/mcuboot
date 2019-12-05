@@ -268,8 +268,7 @@ impl ManifestGen for TlvGen {
             protected_tlv.write_u16::<LittleEndian>(self.protect_size()).unwrap();
             for dep in &self.dependencies {
                 protected_tlv.write_u16::<LittleEndian>(TlvKinds::DEPENDENCY as u16).unwrap();
-                protected_tlv.push(12);
-                protected_tlv.push(0);
+                protected_tlv.write_u16::<LittleEndian>(12).unwrap();
 
                 // The dependency.
                 protected_tlv.push(dep.id);
@@ -309,8 +308,7 @@ impl ManifestGen for TlvGen {
 
             assert!(hash.len() == 32);
             result.write_u16::<LittleEndian>(TlvKinds::SHA256 as u16).unwrap();
-            result.push(32);
-            result.push(0);
+            result.write_u16::<LittleEndian>(32).unwrap();
             result.extend_from_slice(hash);
         }
 
@@ -329,8 +327,7 @@ impl ManifestGen for TlvGen {
 
             assert!(hash.len() == 32);
             result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
-            result.push(32);
-            result.push(0);
+            result.write_u16::<LittleEndian>(32).unwrap();
             result.extend_from_slice(hash);
 
             // For now assume PSS.
@@ -365,8 +362,7 @@ impl ManifestGen for TlvGen {
 
             assert!(keyhash.len() == 32);
             result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
-            result.push(32);
-            result.push(0);
+            result.write_u16::<LittleEndian>(32).unwrap();
             result.extend_from_slice(keyhash);
 
             let key_bytes = pem::parse(include_bytes!("../../root-ec-p256-pkcs8.pem").as_ref()).unwrap();
@@ -396,8 +392,7 @@ impl ManifestGen for TlvGen {
 
             assert!(keyhash.len() == 32);
             result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
-            result.push(32);
-            result.push(0);
+            result.write_u16::<LittleEndian>(32).unwrap();
             result.extend_from_slice(keyhash);
 
             let hash = digest::digest(&digest::SHA256, &sig_payload);
@@ -432,8 +427,7 @@ impl ManifestGen for TlvGen {
 
             assert!(encbuf.len() == 256);
             result.write_u16::<LittleEndian>(TlvKinds::ENCRSA2048 as u16).unwrap();
-            result.push(0);
-            result.push(1);
+            result.write_u16::<LittleEndian>(256).unwrap();
             result.extend_from_slice(&encbuf);
         }
 
@@ -450,8 +444,7 @@ impl ManifestGen for TlvGen {
 
             assert!(encbuf.len() == 24);
             result.write_u16::<LittleEndian>(TlvKinds::ENCKW128 as u16).unwrap();
-            result.push(24);
-            result.push(0);
+            result.write_u16::<LittleEndian>(24).unwrap();
             result.extend_from_slice(&encbuf);
         }
 
@@ -516,8 +509,7 @@ impl ManifestGen for TlvGen {
 
             assert!(buf.len() == 113);
             result.write_u16::<LittleEndian>(TlvKinds::ENCEC256 as u16).unwrap();
-            result.push(113);
-            result.push(0);
+            result.write_u16::<LittleEndian>(113).unwrap();
             result.extend_from_slice(&buf);
         }
 
