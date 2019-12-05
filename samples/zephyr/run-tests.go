@@ -51,7 +51,6 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-good-rsa"},
-					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -82,7 +81,6 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-good-ecdsa"},
-					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -113,7 +111,6 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-overwrite"},
-					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -144,7 +141,6 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-bad-rsa-upgrade"},
-					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -175,7 +171,6 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-bad-ecdsa-upgrade"},
-					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -206,7 +201,6 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-no-bootcheck"},
-					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -237,7 +231,6 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-wrong-rsa"},
-					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
@@ -268,7 +261,6 @@ var tests = []struct {
 			{
 				commands: [][]string{
 					{"make", "test-wrong-ecdsa"},
-					{"pyocd", "erase", "--chip"},
 					{"make", "flash_boot"},
 				},
 				expect: "Unable to find bootable image",
