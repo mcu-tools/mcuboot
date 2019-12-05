@@ -34,7 +34,7 @@
  */
 int
 bootutil_tlv_iter_begin(struct image_tlv_iter *it, const struct image_header *hdr,
-                        const struct flash_area *fap, uint8_t type, bool prot)
+                        const struct flash_area *fap, uint16_t type, bool prot)
 {
     uint32_t off_;
     struct image_tlv_info info;
@@ -89,7 +89,7 @@ bootutil_tlv_iter_begin(struct image_tlv_iter *it, const struct image_header *hd
  */
 int
 bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off, uint16_t *len,
-                       uint8_t *type)
+                       uint16_t *type)
 {
     struct image_tlv tlv;
     int rc;
