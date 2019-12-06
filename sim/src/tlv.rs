@@ -80,6 +80,10 @@ pub trait ManifestGen {
     /// protecting.
     fn add_bytes(&mut self, bytes: &[u8]);
 
+    /// Set an internal flag indicating that the next `make_tlv` should
+    /// corrupt the signature.
+    fn corrupt_sig(&mut self);
+
     /// Construct the manifest for this payload.
     fn make_tlv(self: Box<Self>) -> Vec<u8>;
 
@@ -101,6 +105,8 @@ pub struct TlvGen {
     payload: Vec<u8>,
     dependencies: Vec<Dependency>,
     enc_key: Vec<u8>,
+    /// Should this signature be corrupted.
+    gen_corrupted: bool,
 }
 
 #[derive(Debug)]
@@ -258,6 +264,10 @@ impl ManifestGen for TlvGen {
         });
     }
 
+    fn corrupt_sig(&mut self) {
+        self.gen_corrupted = true;
+    }
+
     /// Compute the TLV given the specified block of data.
     fn make_tlv(self: Box<Self>) -> Vec<u8> {
         let mut protected_tlv: Vec<u8> = vec![];
@@ -305,6 +315,25 @@ impl ManifestGen for TlvGen {
         result.write_u16::<LittleEndian>(self.get_size()).unwrap();
 
         if self.kinds.contains(&TlvKinds::SHA256) {
+            // If a signature is not requested, corrupt the hash we are
+            // generating.  But, if there is a signature, output the
+            // correct hash.  We want the hash test to pass so that the
+            // signature verification can be validated.
+            let mut corrupt_hash = self.gen_corrupted;
+            for k in &[TlvKinds::RSA2048, TlvKinds::RSA3072,
+                TlvKinds::ECDSA224, TlvKinds::ECDSA256,
+                TlvKinds::ED25519]
+            {
+                if self.kinds.contains(k) {
+                    corrupt_hash = false;
+                    break;
+                }
+            }
+
+            if corrupt_hash {
+                sig_payload[0] ^= 1;
+            }
+
             let hash = digest::digest(&digest::SHA256, &sig_payload);
             let hash = hash.as_ref();
 
@@ -314,6 +343,18 @@ impl ManifestGen for TlvGen {
             result.push(32);
             result.push(0);
             result.extend_from_slice(hash);
+
+            // Undo the corruption.
+            if corrupt_hash {
+                sig_payload[0] ^= 1;
+            }
+
+        }
+
+        if self.gen_corrupted {
+            // Corrupt what is signed by modifying the input to the
+            // signature code.
+            sig_payload[0] ^= 1;
         }
 
         if self.kinds.contains(&TlvKinds::RSA2048) ||
@@ -384,6 +425,7 @@ impl ManifestGen for TlvGen {
 
             result.push(TlvKinds::ECDSA256 as u8);
             result.push(0);
+
 
             // signature must be padded...
             let mut signature = signature.as_ref().to_vec();

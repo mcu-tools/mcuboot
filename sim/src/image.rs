@@ -1149,12 +1149,10 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
     }
 
     // Build the TLV itself.
-    let mut b_tlv = if bad_sig {
-        let good_sig = &mut tlv.make_tlv();
-        vec![0; good_sig.len()]
-    } else {
-        tlv.make_tlv()
-    };
+    if bad_sig {
+        tlv.corrupt_sig();
+    }
+    let mut b_tlv = tlv.make_tlv();
 
     let dev = flash.get_mut(&dev_id).unwrap();
 
