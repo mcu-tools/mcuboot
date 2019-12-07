@@ -33,6 +33,7 @@
 #define MBEDTLS_MD_C
 #define MBEDTLS_OID_C
 #define MBEDTLS_PEM_PARSE_C
+#define MBEDTLS_SHA512_C
 
 /**
  * \def MBEDTLS_PLATFORM_C

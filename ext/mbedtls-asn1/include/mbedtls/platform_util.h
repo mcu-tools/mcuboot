@@ -37,6 +37,16 @@
 #include <time.h>
 #endif /* MBEDTLS_HAVE_TIME_DATE */
 
+/*
+ * mcuboot change
+ * --------------
+ *
+ * Required by `sha512.c`
+ */
+/* Internal macros meant to be called only from within the library. */
+#define MBEDTLS_INTERNAL_VALIDATE_RET( cond, ret )  do { } while( 0 )
+#define MBEDTLS_INTERNAL_VALIDATE( cond )           do { } while( 0 )
+
 #ifdef __cplusplus
 extern "C" {
 #endif
