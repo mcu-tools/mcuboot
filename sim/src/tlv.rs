@@ -421,7 +421,6 @@ impl ManifestGen for TlvGen {
             let mut signature = signature.as_ref().to_vec();
             while signature.len() < 72 {
                 signature.push(0);
-                signature[1] += 1;
             }
 
             result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
