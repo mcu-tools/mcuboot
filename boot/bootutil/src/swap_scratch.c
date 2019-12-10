@@ -130,7 +130,9 @@ swap_read_status_bytes(const struct flash_area *fap,
         /* This means there was an error writing status on the last
          * swap. Tell user and move on to validation!
          */
+#if !defined(__BOOTSIM__)
         BOOT_LOG_ERR("Detected inconsistent status!");
+#endif
 
 #if !defined(MCUBOOT_VALIDATE_PRIMARY_SLOT)
         /* With validation of the primary slot disabled, there is no way
