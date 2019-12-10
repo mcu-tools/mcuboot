@@ -304,7 +304,7 @@ void flash_area_close(const struct flash_area *area)
 int flash_area_read(const struct flash_area *area, uint32_t off, void *dst,
                     uint32_t len)
 {
-    BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x",
+    BOOT_LOG_SIM("%s: area=%d, off=%x, len=%x",
                  __func__, area->fa_id, off, len);
     return sim_flash_read(area->fa_device_id, area->fa_off + off, dst, len);
 }
@@ -312,7 +312,7 @@ int flash_area_read(const struct flash_area *area, uint32_t off, void *dst,
 int flash_area_write(const struct flash_area *area, uint32_t off, const void *src,
                      uint32_t len)
 {
-    BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
+    BOOT_LOG_SIM("%s: area=%d, off=%x, len=%x", __func__,
                  area->fa_id, off, len);
     struct sim_context *ctx = sim_get_context();
     if (--(ctx->flash_counter) == 0) {
@@ -324,7 +324,7 @@ int flash_area_write(const struct flash_area *area, uint32_t off, const void *sr
 
 int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
 {
-    BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__,
+    BOOT_LOG_SIM("%s: area=%d, off=%x, len=%x", __func__,
                  area->fa_id, off, len);
     struct sim_context *ctx = sim_get_context();
     if (--(ctx->flash_counter) == 0) {
@@ -341,7 +341,7 @@ int flash_area_read_is_empty(const struct flash_area *area, uint32_t off,
     uint8_t *u8dst;
     int rc;
 
-    BOOT_LOG_DBG("%s: area=%d, off=%x, len=%x", __func__, area->fa_id, off, len);
+    BOOT_LOG_SIM("%s: area=%d, off=%x, len=%x", __func__, area->fa_id, off, len);
 
     rc = sim_flash_read(area->fa_device_id, area->fa_off + off, dst, len);
     if (rc) {
