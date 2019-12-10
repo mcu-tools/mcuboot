@@ -82,4 +82,6 @@
 #define MCUBOOT_LOG_DBG(...) IGNORE(__VA_ARGS__)
 #endif
 
+#define MCUBOOT_LOG_SIM(...) IGNORE(__VA_ARGS__)
+
 #endif
