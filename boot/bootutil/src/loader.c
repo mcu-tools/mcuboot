@@ -538,8 +538,10 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
              * continue booting from the primary slot.
              */
         }
+#if !defined(__BOOTSIM__)
         BOOT_LOG_ERR("Image in the %s slot is not valid!",
                      (slot == BOOT_PRIMARY_SLOT) ? "primary" : "secondary");
+#endif
         rc = -1;
         goto out;
     }
