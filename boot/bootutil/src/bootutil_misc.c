@@ -525,6 +525,9 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot, const uint8_t *en
     int rc;
 
     off = boot_enc_key_off(fap, slot);
+    BOOT_LOG_DBG("writing enc_key; fa_id=%d off=0x%lx (0x%lx)",
+                 fap->fa_id, (unsigned long)off,
+                 (unsigned long)fap->fa_off + off);
     rc = flash_area_write(fap, off, enckey, BOOT_ENC_KEY_SIZE);
     if (rc != 0) {
         return BOOT_EFLASH;
