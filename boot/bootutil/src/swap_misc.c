@@ -133,12 +133,11 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
     const struct flash_area *fap;
     uint32_t off;
     uint8_t swap_info;
-    int status_loc;
     int area_id;
     int rc;
 
-    status_loc = swap_status_source(state);
-    switch (status_loc) {
+    bs->source = swap_status_source(state);
+    switch (bs->source) {
     case BOOT_STATUS_SOURCE_NONE:
         return 0;
 
