@@ -86,6 +86,7 @@ struct boot_status {
 #ifdef MCUBOOT_ENC_IMAGES
     uint8_t enckey[BOOT_NUM_SLOTS][BOOT_ENC_KEY_SIZE];
 #endif
+    int source;           /* Which slot contains swap status metadata */
 };
 
 #define BOOT_MAGIC_GOOD     1
