@@ -21,6 +21,7 @@
 #define MCUBOOT_LOG_WRN(...) LOG_WRN(__VA_ARGS__)
 #define MCUBOOT_LOG_INF(...) LOG_INF(__VA_ARGS__)
 #define MCUBOOT_LOG_DBG(...) LOG_DBG(__VA_ARGS__)
+#define MCUBOOT_LOG_SIM(...) IGNORE(__VA_ARGS__)
 
 #include <logging/log.h>
 

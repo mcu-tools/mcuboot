@@ -27,6 +27,7 @@
 #define MCUBOOT_LOG_LEVEL_WARNING  2
 #define MCUBOOT_LOG_LEVEL_INFO     3
 #define MCUBOOT_LOG_LEVEL_DEBUG    4
+#define MCUBOOT_LOG_LEVEL_SIM      5  /* RUST_LOG=trace */
 
 /*
  * The compiled log level determines the maximum level that can be
@@ -35,7 +36,7 @@
  * setting RUST_LOG to bootsim::api=info.
  */
 #ifndef MCUBOOT_LOG_LEVEL
-#define MCUBOOT_LOG_LEVEL MCUBOOT_LOG_LEVEL_INFO
+#define MCUBOOT_LOG_LEVEL MCUBOOT_LOG_LEVEL_DEBUG
 #endif
 
 #define MCUBOOT_LOG_MODULE_DECLARE(domain)	/* ignore */
@@ -48,6 +49,7 @@ int sim_log_enabled(int level);
     do {                                                                \
         if (sim_log_enabled(MCUBOOT_LOG_LEVEL_ERROR)) {                 \
             fprintf(stderr, "[ERR] " _fmt "\n", ##__VA_ARGS__);         \
+            fflush(stderr);                                             \
         }                                                               \
     } while (0)
 #else
@@ -59,6 +61,7 @@ int sim_log_enabled(int level);
     do {                                                                \
         if (sim_log_enabled(MCUBOOT_LOG_LEVEL_WARNING)) {               \
             fprintf(stderr, "[WRN] " _fmt "\n", ##__VA_ARGS__);         \
+            fflush(stderr);                                             \
         }                                                               \
     } while (0)
 #else
@@ -70,6 +73,7 @@ int sim_log_enabled(int level);
     do {                                                                \
         if (sim_log_enabled(MCUBOOT_LOG_LEVEL_INFO)) {                  \
             fprintf(stderr, "[INF] " _fmt "\n", ##__VA_ARGS__);         \
+            fflush(stderr);                                             \
         }                                                               \
     } while (0)
 #else
@@ -81,10 +85,23 @@ int sim_log_enabled(int level);
     do {                                                                \
         if (sim_log_enabled(MCUBOOT_LOG_LEVEL_DEBUG)) {                 \
             fprintf(stderr, "[DBG] " _fmt "\n", ##__VA_ARGS__);         \
+            fflush(stderr);                                             \
         }                                                               \
     } while (0)
 #else
 #define MCUBOOT_LOG_DBG(...) IGNORE(__VA_ARGS__)
+#endif
+
+#if MCUBOOT_LOG_LEVEL >= MCUBOOT_LOG_LEVEL_SIM
+#define MCUBOOT_LOG_SIM(_fmt, ...)                                      \
+    do {                                                                \
+        if (sim_log_enabled(MCUBOOT_LOG_LEVEL_SIM)) {                   \
+            fprintf(stderr, "[SIM] " _fmt "\n", ##__VA_ARGS__);         \
+            fflush(stderr);                                             \
+        }                                                               \
+    } while (0)
+#else
+#define MCUBOOT_LOG_SIM(...) IGNORE(__VA_ARGS__)
 #endif
 
 #endif /* __MCUBOOT_LOGGING_H__ */

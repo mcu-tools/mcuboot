@@ -209,7 +209,8 @@ pub extern fn sim_log_enabled(level: libc::c_int) -> libc::c_int {
         1 => log_enabled!(Level::Error),
         2 => log_enabled!(Level::Warn),
         3 => log_enabled!(Level::Info),
-        4 => log_enabled!(Level::Trace),
+        4 => log_enabled!(Level::Debug),
+        5 => log_enabled!(Level::Trace), // log level == SIM
         _ => false,
     };
     if res {
