@@ -1,0 +1,15 @@
+sample:
+  description: mcuboot test build sample
+  name: mcuboot
+
+tests:
+  sample.bootloader.mcuboot:
+    tags: bootloader_mcuboot
+    platform_whitelist: nrf52840_pca10056 frdm_k64f
+  sample.bootloader.mcuboot.serial_recovery:
+    extra_args: OVERLAY_CONFIG=serial_recovery.conf
+    platform_whitelist:  nrf52840_pca10056
+    tags: bootloader_mcuboot
+  sample.bootloader.mcuboot.usb_cdc_acm_recovery:
+    tags: bootloader_mcuboot
+    platform_whitelist:  nrf52840_pca10059
