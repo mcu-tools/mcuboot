@@ -30,6 +30,7 @@
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
 #include "mbedtls/rsa.h"
+#include "mbedtls/rsa_internal.h"
 #include "mbedtls/asn1.h"
 #endif
 
@@ -141,11 +142,10 @@ key_unwrap(uint8_t *wrapped, uint8_t *enckey)
 static int
 parse_rsa_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
 {
-    int rc;
     size_t len;
 
-    if ((rc = mbedtls_asn1_get_tag(p, end, &len,
-                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+    if (mbedtls_asn1_get_tag(p, end, &len,
+                MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE) != 0) {
         return -1;
     }
 
@@ -153,6 +153,7 @@ parse_rsa_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
         return -2;
     }
 
+    /* Non-optional fields. */
     if ( /* version */
         mbedtls_asn1_get_int(p, end, &ctx->ver) != 0 ||
          /* public modulus */
@@ -163,24 +164,38 @@ parse_rsa_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
         mbedtls_asn1_get_mpi(p, end, &ctx->D) != 0 ||
          /* primes */
         mbedtls_asn1_get_mpi(p, end, &ctx->P) != 0 ||
-        mbedtls_asn1_get_mpi(p, end, &ctx->Q) != 0 ||
-         /* d mod (p-1) and d mod (q-1) */
-        mbedtls_asn1_get_mpi(p, end, &ctx->DP) != 0 ||
-        mbedtls_asn1_get_mpi(p, end, &ctx->DQ) != 0 ||
-         /* q ^ (-1) mod p */
-        mbedtls_asn1_get_mpi(p, end, &ctx->QP) != 0) {
+        mbedtls_asn1_get_mpi(p, end, &ctx->Q) != 0) {
+
         return -3;
     }
 
+#if !defined(MBEDTLS_RSA_NO_CRT)
+    /*
+     * DP/DQ/QP are only used inside mbedTLS if it was built with the
+     * Chinese Remainder Theorem enabled (default). In case it is disabled
+     * we parse, or if not available, we calculate those values.
+     */
+    if (*p < end) {
+        if ( /* d mod (p-1) and d mod (q-1) */
+            mbedtls_asn1_get_mpi(p, end, &ctx->DP) != 0 ||
+            mbedtls_asn1_get_mpi(p, end, &ctx->DQ) != 0 ||
+             /* q ^ (-1) mod p */
+            mbedtls_asn1_get_mpi(p, end, &ctx->QP) != 0) {
+
+            return -4;
+        }
+    } else {
+        if (mbedtls_rsa_deduce_crt(&ctx->P, &ctx->Q, &ctx->D,
+                    &ctx->DP, &ctx->DQ, &ctx->QP) != 0) {
+            return -5;
+        }
+    }
+#endif
+
     ctx->len = mbedtls_mpi_size(&ctx->N);
 
-    if (*p != end) {
-        return -4;
-    }
-
-    if (mbedtls_rsa_check_pubkey(ctx) != 0 ||
-        mbedtls_rsa_check_privkey(ctx) != 0) {
-        return -5;
+    if (mbedtls_rsa_check_privkey(ctx) != 0) {
+        return -6;
     }
 
     return 0;
