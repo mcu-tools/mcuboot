@@ -20,6 +20,7 @@ target with a complete port planned.
 - [Bootloader design](design.md)
 - [Encrypted images](encrypted_images.md)
 - [imgtool](imgtool.md) - image signing and key management
+- [ecdsa](ecdsa.md) - Information about ECDSA signature formats
 - Usage instructions:
   - [Zephyr](readme-zephyr.md)
   - [Mynewt](readme-mynewt.md)
