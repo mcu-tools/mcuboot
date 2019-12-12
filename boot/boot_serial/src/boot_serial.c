@@ -27,12 +27,12 @@
 #include "bootutil/bootutil_log.h"
 
 #ifdef __ZEPHYR__
-#include <misc/reboot.h>
-#include <misc/byteorder.h>
-#include <misc/__assert.h>
+#include <power/reboot.h>
+#include <sys/byteorder.h>
+#include <sys/__assert.h>
 #include <flash.h>
-#include <crc.h>
-#include <base64.h>
+#include <sys/crc.h>
+#include <sys/base64.h>
 #include <cbor.h>
 #else
 #include <bsp/bsp.h>
