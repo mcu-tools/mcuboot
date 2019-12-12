@@ -40,7 +40,11 @@
 #if (CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN == 2048) && !defined(CONFIG_BOOT_ENCRYPT_RSA)
 #define CRYPTO_HEAP_SIZE 6144
 #else
-#define CRYPTO_HEAP_SIZE 10240
+#  if !defined(MBEDTLS_RSA_NO_CRT)
+#  define CRYPTO_HEAP_SIZE 10240
+#  else
+#  define CRYPTO_HEAP_SIZE 16384
+#  endif
 #endif
 
 static unsigned char mempool[CRYPTO_HEAP_SIZE];
