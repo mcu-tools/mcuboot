@@ -16,3 +16,6 @@
 [submodule "boot/cypress/libs/cy-mbedtls-acceleration"]
 	path = boot/cypress/libs/cy-mbedtls-acceleration
 	url = https://github.com/cypresssemiconductorco/cy-mbedtls-acceleration.git
+[submodule "boot/boot_serial/src/cddl_gen"]
+	path = ext/cddl_gen
+	url = https://github.com/oyvindronningstad/cddl_gen.git

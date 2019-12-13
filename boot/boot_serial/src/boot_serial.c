@@ -43,7 +43,6 @@
 #include <crc/crc16.h>
 #include <base64/base64.h>
 #include <tinycbor/cbor.h>
-#include <tinycbor/cbor_buf_reader.h>
 #endif /* __ZEPHYR__ */
 
 #include <flash_map_backend/flash_map_backend.h>
@@ -59,6 +58,8 @@
 #ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
 #include "bootutil_priv.h"
 #endif
+
+#include "serial_recovery_cbor.h"
 
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
@@ -226,18 +227,13 @@ bs_list(char *buf, int len)
 static void
 bs_upload(char *buf, int len)
 {
-    CborParser parser;
-    struct cbor_buf_reader reader;
-    struct CborValue root_value;
-    struct CborValue value;
-    uint8_t img_data[512];
+    const uint8_t *img_data = NULL;
     long long int off = UINT_MAX;
     size_t img_blen = 0;
     uint8_t rem_bytes;
     long long int data_len = UINT_MAX;
     int img_num;
     size_t slen;
-    char name_str[8];
     const struct flash_area *fap = NULL;
     int rc;
 #ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
@@ -245,7 +241,6 @@ bs_upload(char *buf, int len)
     struct flash_sector sector;
 #endif
 
-    memset(img_data, 0, sizeof(img_data));
     img_num = 0;
 
     /*
@@ -258,99 +253,36 @@ bs_upload(char *buf, int len)
      * }
      */
 
-    /*
-     * Object comes within { ... }
-     */
-    cbor_buf_reader_init(&reader, (uint8_t *)buf, len);
-    cbor_parser_init(&reader.r, 0, &parser, &root_value);
+    Upload_t upload;
+    if (!cbor_decode_Upload((const uint8_t *)buf, len, &upload)) {
+        goto out_invalid_data;
+    }
 
-    if (!cbor_value_is_container(&root_value)) {
-        goto out_invalid_data;
-    }
-    if (cbor_value_enter_container(&root_value, &value)) {
-        goto out_invalid_data;
-    }
-    while (cbor_value_is_valid(&value)) {
-        /*
-         * Decode key.
-         */
-        if (cbor_value_calculate_string_length(&value, &slen)) {
-            goto out_invalid_data;
-        }
-        if (!cbor_value_is_text_string(&value) ||
-            slen >= sizeof(name_str) - 1) {
-            goto out_invalid_data;
-        }
-        if (cbor_value_copy_text_string(&value, name_str, &slen, &value)) {
-            goto out_invalid_data;
-        }
-        name_str[slen] = '\0';
-        if (!strcmp(name_str, "data")) {
-            /*
-             * Image data
-             */
-            if (value.type != CborByteStringType) {
-                goto out_invalid_data;
-            }
-            if (cbor_value_calculate_string_length(&value, &slen) ||
-                slen >= sizeof(img_data)) {
-                goto out_invalid_data;
-            }
-            if (cbor_value_copy_byte_string(&value, img_data, &slen, &value)) {
-                goto out_invalid_data;
-            }
-            img_blen = slen;
-        } else if (!strcmp(name_str, "off")) {
-            /*
-             * Offset of the data.
-             */
-            if (value.type != CborIntegerType) {
-                goto out_invalid_data;
-            }
-            if (cbor_value_get_int64(&value, &off)) {
-                goto out_invalid_data;
-            }
-            if (cbor_value_advance(&value)) {
-                goto out_invalid_data;
-            }
-        } else if (!strcmp(name_str, "len")) {
-            /*
-             * Length of the image. This should only be present in the first
-             * block of data; when offset is 0.
-             */
-            if (value.type != CborIntegerType) {
-                goto out_invalid_data;
-            }
-            if (cbor_value_get_int64(&value, &data_len)) {
-                goto out_invalid_data;
-            }
-            if (cbor_value_advance(&value)) {
-                goto out_invalid_data;
-            }
-        } else if (!strcmp(name_str, "image")) {
-            /*
-             * In a multi-image system, image number to upload to, if not
-             * present will upload to slot 0 of image set 0.
-             */
-            if (value.type != CborIntegerType) {
-                goto out_invalid_data;
-            }
-            if (cbor_value_get_int(&value, &img_num)) {
-                goto out_invalid_data;
-            }
-            if (cbor_value_advance(&value)) {
-                goto out_invalid_data;
-            }
-        } else {
-            /*
-             * Unknown keys.
-             */
-            if (cbor_value_advance(&value)) {
-                goto out_invalid_data;
-            }
+    for (int i = 0; i < upload._Upload_members_count; i++) {
+        _Member_t *member = &upload._Upload_members[i];
+        switch(member->_Member_choice) {
+            case _Member_image:
+                img_num = member->_Member_image;
+                break;
+            case _Member_data:
+                img_data = member->_Member_data.value;
+                slen = member->_Member_data.len;
+                img_blen = slen;
+                break;
+            case _Member_len:
+                data_len = member->_Member_len;
+                break;
+            case _Member_off:
+                off = member->_Member_off;
+                break;
+            case _Member_sha:
+            default:
+                /* Nothing to do. */
+                break;
         }
     }
-    if (off == UINT_MAX) {
+
+    if (off == UINT_MAX || img_data == NULL) {
         /*
          * Offset must be set in every block.
          */
