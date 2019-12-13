@@ -80,7 +80,8 @@ def get_password():
 @click.option('-p', '--password', is_flag=True,
               help='Prompt for password to protect key')
 @click.option('-t', '--type', metavar='type', required=True,
-              type=click.Choice(keygens.keys()))
+              type=click.Choice(keygens.keys()), prompt=True,
+              help='{}'.format('One of: {}'.format(', '.join(keygens.keys()))))
 @click.option('-k', '--key', metavar='filename', required=True)
 @click.command(help='Generate pub/private keypair')
 def keygen(type, key, password):
