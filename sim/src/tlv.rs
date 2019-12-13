@@ -412,12 +412,7 @@ impl ManifestGen for TlvGen {
 
             result.write_u16::<LittleEndian>(TlvKinds::ECDSA256 as u16).unwrap();
 
-
-            // signature must be padded...
-            let mut signature = signature.as_ref().to_vec();
-            while signature.len() < 72 {
-                signature.push(0);
-            }
+            let signature = signature.as_ref().to_vec();
 
             result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
             result.extend_from_slice(signature.as_ref());
