@@ -191,6 +191,8 @@ endif()
 if(CONFIG_MCUBOOT_SERIAL)
   zephyr_sources(${BOOT_DIR}/zephyr/serial_adapter.c)
   zephyr_sources(${BOOT_DIR}/boot_serial/src/boot_serial.c)
+  zephyr_sources(${BOOT_DIR}/boot_serial/src/serial_recovery_cbor.c)
+  zephyr_sources(${BOOT_DIR}/boot_serial/src/cbor_decode.c)
 
   zephyr_include_directories(${BOOT_DIR}/bootutil/include)
   zephyr_include_directories(${BOOT_DIR}/boot_serial/include)

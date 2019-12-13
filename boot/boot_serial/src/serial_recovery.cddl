@@ -1,0 +1,15 @@
+;
+; Copyright (c) 2020 Nordic Semiconductor ASA
+;
+; SPDX-License-Identifier: Apache-2.0
+;
+
+Member = ("image" => int) /
+	("data" => bstr) /
+	("len" => int) /
+	("off" => int) /
+	("sha" => bstr)
+
+Upload = {
+	3**5members: Member
+}
