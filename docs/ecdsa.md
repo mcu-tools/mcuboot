@@ -25,8 +25,8 @@ There are a couple of ways to fix this:
       generated.  These tools are all written in higher-level
       languages and this change should not be difficult.
 
-      However, this will also break compatibility with older version,
-      significantly in that images generated with newer tools will not
+      However, this will also break compatibility with older versions,
+      specifically in that images generated with newer tools will not
       work with older versions of MCUboot.
 
 This document proposes a multi-stage approach, to give a transition
@@ -40,7 +40,7 @@ period.
   - MCUboot will be modified to allow unpadded signatures right away.
     The existing EC256 implementations will still work (with or
     without padding), and the existing EC implementation will begin
-    accepting all signatures.
+    accepting padded and unpadded signatures.
 
   - An mbed TLS implementation of EC256 can be added, but will require
     the `--valid-ecdsa` signature to be able to boot all generated
@@ -48,7 +48,7 @@ period.
     padding, and be considered invalid).
 
 After one or more MCUboot release cycles, and announcements over
-relevant channels, the arguments to mcuboot will change:
+relevant channels, the arguments to `imgtool.py` will change:
 
   - `--valid-ecdsa` will still be accepted, but have no effect.
 
@@ -76,11 +76,11 @@ where both `r` and `s` are 256-bit numbers.  Because these are
 unsigned numbers that are being encoded in ASN.1 as signed values, if
 the high bit of the number is set, the DER encoded representation will
 require 33 bytes instead of 32.  This means that the length of the
-signature will vary by a couple of bytes, depending on whether on of
+signature will vary by a couple of bytes, depending on whether one of
 both of these numbers has the high bit set.
 
 Originally, MCUboot added padding to the entire signature, and just
-removed 0 bytes from the data block.  This would be fine 255/256
+removed any trailing 0 bytes from the data block.  This would be fine 255/256
 times, when the last byte of the signature was non-zero, but if the
 signature ended in a zero, it would remove too many bytes, and the
 signature would be considered invalid.
