@@ -32,10 +32,11 @@ There are a couple of ways to fix this:
 This document proposes a multi-stage approach, to give a transition
 period.
 
-  - First, add a `--valid-ecdsa` argument to the sign command in
+  - First, add a `--no-pad-sig` argument to the sign command in
     `imgtool.py`.  Without this, the images will be padded with the
     existing scheme, and with the argument, the ecdsa will be encoded
-    without any padding.
+    without any padding.  The `--pad-sig` argument will also be
+    accepted, but this will initially be the default.
 
   - MCUboot will be modified to allow unpadded signatures right away.
     The existing EC256 implementations will still work (with or
@@ -43,19 +44,19 @@ period.
     accepting padded and unpadded signatures.
 
   - An mbed TLS implementation of EC256 can be added, but will require
-    the `--valid-ecdsa` signature to be able to boot all generated
+    the `--no-pad-sig` signature to be able to boot all generated
     images (without the argument 3 of out 4 images generated will have
     padding, and be considered invalid).
 
 After one or more MCUboot release cycles, and announcements over
 relevant channels, the arguments to `imgtool.py` will change:
 
-  - `--valid-ecdsa` will still be accepted, but have no effect.
+  - `--no-pad-sig` will still be accepted, but have no effect.
 
-  - `--invalid-ecdsa` will now bring back the old padding behavior.
+  - `--pad-sig` will now bring back the old padding behavior.
 
-This will require a change to any scripts that are relying on this
-behavior, but not specifying a specific version of imgtool.
+This will require a change to any scripts that are relying on a
+default, but not specifying a specific version of imgtool.
 
 The signature generation in the simulator can be changed at the same
 time the boot code begins to accept unpadded signatures.  The sim is
