@@ -49,7 +49,7 @@ const struct boot_uart_funcs boot_funcs = {
 
 static inline bool boot_skip_serial_recovery()
 {
-#if NRF_POWER_HAS_RESETREAS	
+#if NRF_POWER_HAS_RESETREAS
     u32_t rr = nrf_power_resetreas_get(NRF_POWER);
 
     return !(rr == 0 || (rr & NRF_POWER_RESETREAS_RESETPIN_MASK));
