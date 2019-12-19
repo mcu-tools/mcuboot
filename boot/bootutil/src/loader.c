@@ -1657,6 +1657,13 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     BOOT_CURR_IMG(state) = 0;
 #endif
 
+    /*
+     * Since the boot_status struct stores plaintext encryption keys, reset
+     * them here to avoid the possibility of jumping into an image that could
+     * easily recover them.
+     */
+    memset(&bs, 0, sizeof(struct boot_status));
+
     rsp->br_flash_dev_id = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT)->fa_device_id;
     rsp->br_image_off = boot_img_slot_off(state, BOOT_PRIMARY_SLOT);
     rsp->br_hdr = boot_img_hdr(state, BOOT_PRIMARY_SLOT);
