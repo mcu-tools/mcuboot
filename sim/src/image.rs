@@ -657,19 +657,11 @@ impl Images {
     }
 
     fn trailer_sz(&self, align: usize) -> usize {
-        c::boot_trailer_sz(align as u8) as usize
+        c::boot_trailer_sz(align as u32) as usize
     }
 
-    // FIXME: could get status sz from bootloader
     fn status_sz(&self, align: usize) -> usize {
-        let bias = if Caps::EncRsa.present() || Caps::EncKw.present() ||
-                Caps::EncEc256.present() {
-            32
-        } else {
-            0
-        };
-
-        self.trailer_sz(align) - (16 + 32 + bias)
+        c::boot_status_sz(align as u32) as usize
     }
 
     /// This test runs a simple upgrade with no fails in the images, but

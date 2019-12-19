@@ -251,6 +251,7 @@ int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
                         size_t slen, uint8_t key_id);
 
 int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
+uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
 int boot_status_entries(int image_index, const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);

@@ -148,10 +148,17 @@ boot_magic_compatible_check(uint8_t tbl_val, uint8_t val)
 }
 
 uint32_t
+boot_status_sz(uint32_t min_write_sz)
+{
+    return /* state for all sectors */
+           BOOT_STATUS_MAX_ENTRIES * BOOT_STATUS_STATE_COUNT * min_write_sz;
+}
+
+uint32_t
 boot_trailer_sz(uint32_t min_write_sz)
 {
     return /* state for all sectors */
-           BOOT_STATUS_MAX_ENTRIES * BOOT_STATUS_STATE_COUNT * min_write_sz +
+           boot_status_sz(min_write_sz)           +
 #ifdef MCUBOOT_ENC_IMAGES
            /* encryption keys */
            BOOT_ENC_KEY_SIZE * 2                  +
