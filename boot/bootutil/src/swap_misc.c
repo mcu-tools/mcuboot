@@ -114,10 +114,10 @@ swap_status_init(const struct boot_loader_state *state,
     assert(rc == 0);
 
 #ifdef MCUBOOT_ENC_IMAGES
-    rc = boot_write_enc_key(fap, 0, bs->enckey[0]);
+    rc = boot_write_enc_key(fap, 0, bs);
     assert(rc == 0);
 
-    rc = boot_write_enc_key(fap, 1, bs->enckey[1]);
+    rc = boot_write_enc_key(fap, 1, bs);
     assert(rc == 0);
 #endif
 

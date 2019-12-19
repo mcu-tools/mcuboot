@@ -21,6 +21,7 @@
 #define BOOTUTIL_ENC_KEY_H
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <flash_map_backend/flash_map_backend.h>
 #include "mcuboot_config/mcuboot_config.h"
 #include "bootutil/image.h"
@@ -38,6 +39,21 @@ extern "C" {
 #define BOOT_ENC_KEY_SIZE       16
 #define BOOT_ENC_KEY_SIZE_BITS  (BOOT_ENC_KEY_SIZE * 8)
 
+#define TLV_ENC_RSA_SZ    256
+#define TLV_ENC_KW_SZ     24
+#define TLV_ENC_EC256_SZ  (65 + 32 + 16)
+
+#if defined(MCUBOOT_ENCRYPT_RSA)
+#define BOOT_ENC_TLV_SIZE TLV_ENC_RSA_SZ
+#elif defined(MCUBOOT_ENCRYPT_EC256)
+#define BOOT_ENC_TLV_SIZE TLV_ENC_EC256_SZ
+#else
+#define BOOT_ENC_TLV_SIZE TLV_ENC_KW_SZ
+#endif
+
+#define BOOT_ENC_TLV_ALIGN_SIZE \
+    ((((BOOT_ENC_TLV_SIZE - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN)
+
 struct enc_key_data {
     uint8_t valid;
 #if defined(MCUBOOT_USE_MBED_TLS)
@@ -48,12 +64,14 @@ struct enc_key_data {
 };
 
 extern const struct bootutil_key bootutil_enc_key;
+struct boot_status;
 
 int boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
-        uint8_t *enckey);
+        const struct boot_status *bs);
 int boot_enc_load(struct enc_key_data *enc_state, int image_index,
         const struct image_header *hdr, const struct flash_area *fap,
-        uint8_t *enckey);
+        struct boot_status *bs);
+int boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey);
 bool boot_enc_valid(struct enc_key_data *enc_state, int image_index,
         const struct flash_area *fap);
 void boot_encrypt(struct enc_key_data *enc_state, int image_index,
