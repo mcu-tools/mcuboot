@@ -408,14 +408,6 @@ fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
         rc = boot_write_swap_size(fap_sec, bs->swap_size);
         assert(rc == 0);
 
-#ifdef MCUBOOT_ENC_IMAGES
-        rc = boot_write_enc_key(fap_sec, 0, bs->enckey[0]);
-        assert(rc == 0);
-
-        rc = boot_write_enc_key(fap_sec, 1, bs->enckey[1]);
-        assert(rc == 0);
-#endif
-
         rc = boot_write_magic(fap_sec);
         assert(rc == 0);
     }
