@@ -36,8 +36,12 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
     (result, asserts)
 }
 
-pub fn boot_trailer_sz(align: u8) -> u32 {
+pub fn boot_trailer_sz(align: u32) -> u32 {
     unsafe { raw::boot_trailer_sz(align) }
+}
+
+pub fn boot_status_sz(align: u32) -> u32 {
+    unsafe { raw::boot_status_sz(align) }
 }
 
 pub fn boot_magic_sz() -> usize {
@@ -81,7 +85,8 @@ mod raw {
         // for information and tracking.
         pub fn invoke_boot_go(sim_ctx: *mut CSimContext, areadesc: *const CAreaDesc) -> libc::c_int;
 
-        pub fn boot_trailer_sz(min_write_sz: u8) -> u32;
+        pub fn boot_trailer_sz(min_write_sz: u32) -> u32;
+        pub fn boot_status_sz(min_write_sz: u32) -> u32;
 
         pub fn boot_magic_sz() -> u32;
         pub fn boot_max_align() -> u32;
