@@ -285,7 +285,17 @@ boot_read_sectors(struct boot_loader_state *state)
 void
 boot_status_reset(struct boot_status *bs)
 {
-    memset(bs, 0, sizeof *bs);
+#ifdef MCUBOOT_ENC_IMAGES
+    memset(&bs->enckey, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_KEY_SIZE);
+#if MCUBOOT_SWAP_SAVE_ENCTLV
+    memset(&bs->enctlv, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_TLV_ALIGN_SIZE);
+#endif
+#endif /* MCUBOOT_ENC_IMAGES */
+
+    bs->use_scratch = 0;
+    bs->swap_size = 0;
+    bs->source = 0;
+
     bs->op = BOOT_STATUS_OP_MOVE;
     bs->idx = BOOT_STATUS_IDX_0;
     bs->state = BOOT_STATUS_STATE_0;
@@ -385,11 +395,11 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
 
 #ifdef MCUBOOT_ENC_IMAGES
     if (MUST_DECRYPT(fap, image_index, hdr)) {
-        rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs->enckey[1]);
+        rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs);
         if (rc < 0) {
             return BOOT_EBADIMAGE;
         }
-        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs->enckey[1])) {
+        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs)) {
             return BOOT_EBADIMAGE;
         }
     }
@@ -781,12 +791,12 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     if (IS_ENCRYPTED(boot_img_hdr(state, BOOT_SECONDARY_SLOT))) {
         rc = boot_enc_load(BOOT_CURR_ENC(state), image_index,
                 boot_img_hdr(state, BOOT_SECONDARY_SLOT),
-                fap_secondary_slot, bs->enckey[1]);
+                fap_secondary_slot, bs);
 
         if (rc < 0) {
             return BOOT_EBADIMAGE;
         }
-        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs->enckey[1])) {
+        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs)) {
             return BOOT_EBADIMAGE;
         }
     }
@@ -870,11 +880,11 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 #ifdef MCUBOOT_ENC_IMAGES
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
-            rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs->enckey[0]);
+            rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs);
             assert(rc >= 0);
 
             if (rc == 0) {
-                rc = boot_enc_set_key(BOOT_CURR_ENC(state), 0, bs->enckey[0]);
+                rc = boot_enc_set_key(BOOT_CURR_ENC(state), 0, bs);
                 assert(rc == 0);
             } else {
                 rc = 0;
@@ -894,11 +904,11 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         hdr = boot_img_hdr(state, BOOT_SECONDARY_SLOT);
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT);
-            rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs->enckey[1]);
+            rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs);
             assert(rc >= 0);
 
             if (rc == 0) {
-                rc = boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs->enckey[1]);
+                rc = boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs);
                 assert(rc == 0);
             } else {
                 rc = 0;
@@ -924,8 +934,8 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         copy_size = bs->swap_size;
 
 #ifdef MCUBOOT_ENC_IMAGES
-        for (slot = 0; slot <= 1; slot++) {
-            rc = boot_read_enc_key(image_index, slot, bs->enckey[slot]);
+        for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+            rc = boot_read_enc_key(image_index, slot, bs);
             assert(rc == 0);
 
             for (i = 0; i < BOOT_ENC_KEY_SIZE; i++) {
@@ -935,7 +945,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             }
 
             if (i != BOOT_ENC_KEY_SIZE) {
-                boot_enc_set_key(BOOT_CURR_ENC(state), slot, bs->enckey[slot]);
+                boot_enc_set_key(BOOT_CURR_ENC(state), slot, bs);
             }
         }
 #endif
