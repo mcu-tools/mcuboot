@@ -147,6 +147,19 @@ config BOOT_BOOTSTRAP
 	  primary slot to be initialized from a valid image in the secondary slot.
 	  If unsure, leave at the default value.
 
+config BOOT_SWAP_SAVE_ENCTLV
+	bool "Save encrypted key TLVs instead of plaintext keys in swap metadata"
+	default n
+	help
+	  If y, instead of saving the encrypted image keys in plaintext in the
+	  swap resume metadata, save the encrypted image TLVs. This should be used
+	  when there is no security mechanism protecting the data in the primary
+	  slot from being dumped. If n is selected (default), the keys are written
+	  after being decrypted from the image TLVs and could be read by an
+	  attacker who has access to the flash contents of the primary slot (eg
+	  JTAG/SWD or primary slot in external flash).
+	  If unsure, leave at the default value.
+
 config BOOT_ENCRYPT_RSA
 	bool "Support for encrypted upgrade images using RSA"
 	default n
