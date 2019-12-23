@@ -23,7 +23,7 @@
 # limitations under the License.
 ################################################################################
 
-# Cypress' MCUBoot Application supports GCC ARM only at this moment 
+# Cypress' MCUBoot Application supports GCC ARM only at this moment
 # Set defaults to:
 # 	- compiler GCC
 #   - build configuration to Debug

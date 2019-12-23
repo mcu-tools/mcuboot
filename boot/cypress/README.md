@@ -15,7 +15,6 @@ The default flash map implemented is next:
 * [0x10000000, 0x10020000] - MCUBootApp (bootloader) area;
 * [0x10020000, 0x10030000] - primary slot for BlinkyApp;
 * [0x10030000, 0x10040000] - secondary slot for BlinkyApp;
-* [0x10030000, 0x10040000] - secondary slot for BlinkyApp;
 * [0x10040000, 0x10041000] - scratch area;
 
 MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on mbedTLS Library.
@@ -38,13 +37,7 @@ To retrieve source code with subsequent submodules pull:
 Submodules can also be updated and initialized separately:
 
     cd cy_mcuboot
-    git submodule update --init
-
-MbedTLS library also relies on submodule crypto:
-
-    cd boot/cypress/libs/mbedtls/crypto
-    git submodule update
-
+    git submodule update --init --recursive
 
 **Building Solution**
 

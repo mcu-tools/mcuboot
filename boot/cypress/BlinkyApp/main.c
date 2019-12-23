@@ -14,21 +14,21 @@
 *   2. Open design.modus file and replicate P0[3] configuration on P13[7]. Give
 *      this pin the alias "LED_RED". Disable P0[3].
 *   3. Build and Program
-* 
+*
 * Migration to CY8CPROTO-062-4343W kit (command line make):
-*   1. Launch the Device Configurator tool from 
+*   1. Launch the Device Configurator tool from
 *      ModusToolbox_1.0\tools\device-configurator-1.0\
-*   2. In Device Configurator, open design.modus file  
-*      (ModusToolbox_1.0\libraries\psoc6sw-1.0\examples\BlinkyLED\design.modus) 
-*      and replicate P0[3] configuration on P13[7]. 
+*   2. In Device Configurator, open design.modus file
+*      (ModusToolbox_1.0\libraries\psoc6sw-1.0\examples\BlinkyLED\design.modus)
+*      and replicate P0[3] configuration on P13[7].
 *      Give this pin the alias "LED_RED". Disable P0[3].
 *   3. Perform "make clean"
 *   4. Build and Program the device with "make DEVICE=CY8C624ABZI-D44 program"
-*      Note that depending on the method used to program the device, you may 
+*      Note that depending on the method used to program the device, you may
 *      need to manually reset it by pressing the SW1 RESET button on the kit.
 *   4. Observe the red blinking LED.
-*   5. To switch back to CY8CKIT-062-BLE or CY8CKIT-062-WIFI-BT, 
-*      perform steps 1 through 3 to reconfigure the "LED_RED" to P0[3]. 
+*   5. To switch back to CY8CKIT-062-BLE or CY8CKIT-062-WIFI-BT,
+*      perform steps 1 through 3 to reconfigure the "LED_RED" to P0[3].
 *      Then use "make program".
 *
 ********************************************************************************
@@ -86,7 +86,7 @@ void test_app_init_hardware(void)
     /* Initialize retarget-io to use the debug UART port */
     check_result(cy_retarget_io_init(CYBSP_DEBUG_UART_TX, CYBSP_DEBUG_UART_RX,
                                      CY_RETARGET_IO_BAUDRATE));
-    
+
     printf("===========================\r\n");
     printf(GREETING_MESSAGE_VER);
     printf("===========================\r\n");
@@ -98,7 +98,7 @@ void test_app_init_hardware(void)
     printf("\r[BlinkyApp] GPIO initialized \r\n");
     printf("[BlinkyApp] UART initialized \r\n");
     printf("[BlinkyApp] Retarget I/O set to 115200 baudrate \r\n");
-    
+
 }
 
 int main(void)

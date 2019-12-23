@@ -12,7 +12,7 @@
 #define FLASH_AREA_IMAGE_2 5
 #define FLASH_AREA_IMAGE_3 6
 
-#define CY_FLASH_ALIGN                      (128) // TODO: will fix it to CY_FLASH_SIZEOF_ROW (512) in PSoC6
+#define CY_FLASH_ALIGN                      (512) // TODO: will fix it to CY_FLASH_SIZEOF_ROW (512) in PSoC6
 #define CY_FLASH_DEVICE_BASE                (CY_FLASH_BASE)
 
 #define CY_IMG_HDR_SIZE 0x400
