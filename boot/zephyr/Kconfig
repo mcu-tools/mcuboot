@@ -297,6 +297,7 @@ config BOOT_SERIAL_DETECT_PIN
 	default 6 if BOARD_NRF9160_PCA10090
 	default 11 if BOARD_NRF52840_PCA10056
 	default 13 if BOARD_NRF52_PCA10040
+	default 23 if BOARD_NRF5340_DK_NRF5340_CPUAPP || BOARD_NRF5340_DK_NRF5340_CPUAPPNS
 	help
 	  Pin on the serial detect port which triggers serial recovery mode.
 
