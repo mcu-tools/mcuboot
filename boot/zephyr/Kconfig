@@ -346,4 +346,14 @@ config UPDATEABLE_IMAGE_NUMBER
 	help
 	  Enables support of multi image update.
 
+config MCUBOOT_DOWNGRADE_PREVENTION
+	bool "Downgrade prevention"
+	depends on BOOT_UPGRADE_ONLY
+	help
+	  Prevent downgrades by enforcing incrementing version numbers.
+	  When this option is set, any upgrade must have greater major version
+	  or greater minor version with equal major version. This mechanism
+	  only protects against some attacks against version downgrades (for
+	  example, a JTAG could be used to write an older version).
+
 source "$ZEPHYR_BASE/Kconfig.zephyr"
