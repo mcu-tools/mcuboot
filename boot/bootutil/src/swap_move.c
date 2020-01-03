@@ -418,24 +418,48 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
          uint32_t copy_size)
 {
     uint32_t sz;
+    uint32_t sector_sz;
     uint32_t idx;
-    uint32_t slot_size;
+    uint32_t trailer_sz;
+    uint32_t first_trailer_idx;
     uint8_t image_index;
     const struct flash_area *fap_pri;
     const struct flash_area *fap_sec;
     int rc;
 
-    slot_size = 0;
+    sz = 0;
     g_last_idx = 0;
 
-    //FIXME: assume all sectors of same size and just do math here...
-    sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
     while (1) {
-        slot_size += sz;
+        sz += sector_sz;
         /* Skip to next sector because all sectors will be moved up. */
         g_last_idx++;
-        if (slot_size >= copy_size) {
+        if (sz >= copy_size) {
             break;
+        }
+    }
+
+    /*
+     * When starting a new swap upgrade, check that there is enough space.
+     */
+    if (boot_status_is_reset(bs)) {
+        sz = 0;
+        trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
+        first_trailer_idx = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 1;
+
+        while (1) {
+            sz += sector_sz;
+            if  (sz >= trailer_sz) {
+                break;
+            }
+            first_trailer_idx--;
+        }
+
+        if (g_last_idx >= first_trailer_idx) {
+            BOOT_LOG_WRN("Not enough free space to run swap upgrade");
+            bs->swap_type = BOOT_SWAP_TYPE_NONE;
+            return;
         }
     }
 
@@ -449,13 +473,11 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
     fixup_revert(state, bs, fap_sec, FLASH_AREA_IMAGE_SECONDARY(image_index));
 
-    /* FIXME: assure last sector does not overrun trailer */
-
     if (bs->op == BOOT_STATUS_OP_MOVE) {
         idx = g_last_idx;
         while (idx > 0) {
             if (idx <= (g_last_idx - bs->idx + 1)) {
-                boot_move_sector_up(idx, sz, state, bs, fap_pri, fap_sec);
+                boot_move_sector_up(idx, sector_sz, state, bs, fap_pri, fap_sec);
             }
             idx--;
         }
@@ -467,7 +489,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     idx = 1;
     while (idx <= g_last_idx) {
         if (idx >= bs->idx) {
-            boot_swap_sectors(idx, sz, state, bs, fap_pri, fap_sec);
+            boot_swap_sectors(idx, sector_sz, state, bs, fap_pri, fap_sec);
         }
         idx++;
     }
