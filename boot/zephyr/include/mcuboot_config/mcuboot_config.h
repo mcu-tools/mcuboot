@@ -89,6 +89,10 @@
 #define MCUBOOT_IMAGE_NUMBER    1
 #endif
 
+#ifdef CONFIG_MCUBOOT_DOWNGRADE_PREVENTION
+#define MCUBOOT_DOWNGRADE_PREVENTION 1
+#endif
+
 /*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.
