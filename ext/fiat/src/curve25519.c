@@ -31,8 +31,16 @@
 #include <string.h>
 #include <stdint.h>
 
+#include <mcuboot_config/mcuboot_config.h>
+
+#if defined(MCUBOOT_USE_MBED_TLS)
 #include <mbedtls/platform_util.h>
 #include <mbedtls/sha512.h>
+#else
+#include <tinycrypt/constants.h>
+#include <tinycrypt/utils.h>
+#include <tinycrypt/sha512.h>
+#endif
 
 #include "curve25519.h"
 // Various pre-computed constants.
@@ -126,12 +134,20 @@ static void fe_tobytes(uint8_t s[32], const fe *f) {
 
 // h = 0
 static void fe_0(fe *h) {
+#if defined(MCUBOOT_USE_MBED_TLS)
   mbedtls_platform_zeroize(h, sizeof(fe));
+#else
+  _set(h, 0, sizeof(fe));
+#endif
 }
 
 // h = 1
 static void fe_1(fe *h) {
+#if defined(MCUBOOT_USE_MBED_TLS)
   mbedtls_platform_zeroize(h, sizeof(fe));
+#else
+  _set(h, 0, sizeof(fe));
+#endif
   h->v[0] = 1;
 }
 
@@ -1074,9 +1090,13 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
     }
   }
 
+#if defined(MCUBOOT_USE_MBED_TLS)
+
   mbedtls_sha512_context ctx;
-  mbedtls_sha512_init(&ctx);
   int ret;
+
+  mbedtls_sha512_init(&ctx);
+
   ret = mbedtls_sha512_starts_ret(&ctx, 0);
   assert(ret == 0);
 
@@ -1091,6 +1111,27 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   ret = mbedtls_sha512_finish_ret(&ctx, h);
   assert(ret == 0);
   mbedtls_sha512_free(&ctx);
+
+#else
+
+  struct tc_sha512_state_struct s;
+  int rc;
+
+  rc = tc_sha512_init(&s);
+  assert(rc == TC_CRYPTO_SUCCESS);
+
+  rc = tc_sha512_update(&s, signature, 32);
+  assert(rc == TC_CRYPTO_SUCCESS);
+  rc = tc_sha512_update(&s, public_key, 32);
+  assert(rc == TC_CRYPTO_SUCCESS);
+  rc = tc_sha512_update(&s, message, message_len);
+  assert(rc == TC_CRYPTO_SUCCESS);
+
+  uint8_t h[TC_SHA512_DIGEST_SIZE];
+  rc = tc_sha512_final(h, &s);
+  assert(rc == TC_CRYPTO_SUCCESS);
+
+#endif
 
   x25519_sc_reduce(h);
 
