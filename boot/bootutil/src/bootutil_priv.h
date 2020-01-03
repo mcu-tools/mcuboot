@@ -280,6 +280,7 @@ int boot_copy_region(struct boot_loader_state *state,
                      const struct flash_area *fap_dst,
                      uint32_t off_src, uint32_t off_dst, uint32_t sz);
 int boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz);
+bool boot_status_is_reset(const struct boot_status *bs);
 
 #ifdef MCUBOOT_ENC_IMAGES
 int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
