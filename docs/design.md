@@ -942,3 +942,11 @@ state after dependency check.
 
 For more information on adding dependency entries to an image,
 see: [imgtool](imgtool.md).
+
+## [Downgrade Prevention](#downgrade-prevention)
+
+Downgrade prevention is a feature which enforces that the new image must have a
+higher version number than the image it is replacing. This feature is enabled
+with the `MCUBOOT_DOWNGRADE_PREVENTION` option. Downgrade prevention is only
+available when the overwrite-based image update strategy is used
+(i.e. `MCUBOOT_OVERWRITE_ONLY` is set).

@@ -510,6 +510,42 @@ boot_check_header_erased(struct boot_loader_state *state, int slot)
     return 0;
 }
 
+#if (BOOT_IMAGE_NUMBER > 1) || \
+    (defined(MCUBOOT_OVERWRITE_ONLY) && defined(MCUBOOT_DOWNGRADE_PREVENTION))
+/**
+ * Check if the version of the image is not older than required.
+ *
+ * @param req         Required minimal image version.
+ * @param ver         Version of the image to be checked.
+ *
+ * @return            0 if the version is sufficient, nonzero otherwise.
+ */
+static int
+boot_is_version_sufficient(struct image_version *req,
+                           struct image_version *ver)
+{
+    if (ver->iv_major > req->iv_major) {
+        return 0;
+    }
+    if (ver->iv_major < req->iv_major) {
+        return BOOT_EBADVERSION;
+    }
+    /* The major version numbers are equal. */
+    if (ver->iv_minor > req->iv_minor) {
+        return 0;
+    }
+    if (ver->iv_minor < req->iv_minor) {
+        return BOOT_EBADVERSION;
+    }
+    /* The minor version numbers are equal. */
+    if (ver->iv_revision < req->iv_revision) {
+        return BOOT_EBADVERSION;
+    }
+
+    return 0;
+}
+#endif
+
 /*
  * Check that there is a valid image in a slot
  *
@@ -541,6 +577,24 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         goto out;
     }
 
+#if defined(MCUBOOT_OVERWRITE_ONLY) && defined(MCUBOOT_DOWNGRADE_PREVENTION)
+    if (slot != BOOT_PRIMARY_SLOT) {
+        /* Check if version of secondary slot is sufficient */
+        rc = boot_is_version_sufficient(
+                &boot_img_hdr(state, BOOT_PRIMARY_SLOT)->ih_ver,
+                &boot_img_hdr(state, BOOT_SECONDARY_SLOT)->ih_ver);
+        if (rc != 0) {
+            BOOT_LOG_ERR("insufficient version in secondary slot");
+            flash_area_erase(fap, 0, fap->fa_size);
+            /* Image in the secondary slot does not satisfy version requirement.
+             * Erase the image and continue booting from the primary slot.
+             */
+            rc = 1;
+            goto out;
+        }
+    }
+#endif
+
     if (!boot_is_header_valid(hdr, fap) || boot_image_check(state, hdr, fap, bs)) {
         if (slot != BOOT_PRIMARY_SLOT) {
             flash_area_erase(fap, 0, fap->fa_size);
@@ -552,7 +606,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         BOOT_LOG_ERR("Image in the %s slot is not valid!",
                      (slot == BOOT_PRIMARY_SLOT) ? "primary" : "secondary");
 #endif
-        rc = -1;
+        rc = 1;
         goto out;
     }
 
@@ -966,39 +1020,6 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 #endif
 
 #if (BOOT_IMAGE_NUMBER > 1)
-/**
- * Check if the version of the image is not older than required.
- *
- * @param req         Required minimal image version.
- * @param ver         Version of the image to be checked.
- *
- * @return            0 if the version is sufficient, nonzero otherwise.
- */
-static int
-boot_is_version_sufficient(struct image_version *req,
-                           struct image_version *ver)
-{
-    if (ver->iv_major > req->iv_major) {
-        return 0;
-    }
-    if (ver->iv_major < req->iv_major) {
-        return BOOT_EBADVERSION;
-    }
-    /* The major version numbers are equal. */
-    if (ver->iv_minor > req->iv_minor) {
-        return 0;
-    }
-    if (ver->iv_minor < req->iv_minor) {
-        return BOOT_EBADVERSION;
-    }
-    /* The minor version numbers are equal. */
-    if (ver->iv_revision < req->iv_revision) {
-        return BOOT_EBADVERSION;
-    }
-
-    return 0;
-}
-
 /**
  * Check the image dependency whether it is satisfied and modify
  * the swap type if necessary.
