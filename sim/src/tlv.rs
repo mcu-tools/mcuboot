@@ -215,6 +215,16 @@ impl TlvGen {
     }
 
     #[allow(dead_code)]
+    pub fn new_ecies_p256() -> TlvGen {
+        TlvGen {
+            flags: TlvFlags::ENCRYPTED as u32,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ENCEC256],
+            size: 4 + 32 + 4 + 32 + 4 + 113,
+            ..Default::default()
+        }
+    }
+
+    #[allow(dead_code)]
     pub fn new_ecdsa_ecies_p256() -> TlvGen {
         TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,

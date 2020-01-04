@@ -1267,8 +1267,11 @@ fn make_tlv() -> TlvGen {
             TlvGen::new_enc_rsa()
         }
     } else if Caps::EncEc256.present() {
-        //FIXME: should fail with RSA signature?
-        TlvGen::new_ecdsa_ecies_p256()
+        if Caps::EcdsaP256.present() {
+            TlvGen::new_ecdsa_ecies_p256()
+        } else {
+            TlvGen::new_ecies_p256()
+        }
     } else {
         // The non-encrypted configuration.
         if Caps::RSA2048.present() {
