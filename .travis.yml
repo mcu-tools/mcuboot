@@ -1,5 +1,10 @@
 # Travis configuration.  Build the simulator and run its tests.
 
+addons:
+  apt:
+    packages:
+      - "python3-pip"
+
 language: rust
 
 cache:
