@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+pip3 install --user -r ci/requirements.txt
+
 pushd sim && cargo fetch
 [[ $? -ne 0 ]] && exit 1
 popd

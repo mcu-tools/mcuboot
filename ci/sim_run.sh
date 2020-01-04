@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+GET_FEATURES="$(pwd)/ci/get_features.py"
+CARGO_TOML="$(pwd)/sim/Cargo.toml"
+
 pushd sim
+
+all_features="$(${GET_FEATURES} ${CARGO_TOML})"
+[ $? -ne 0 ] && exit 1
 
 EXIT_CODE=0
 
 if [[ ! -z $SINGLE_FEATURES ]]; then
-  all_features="sig-rsa sig-ecdsa overwrite-only validate-primary-slot enc-rsa enc-kw bootstrap"
-
   if [[ $SINGLE_FEATURES =~ "none" ]]; then
     echo "Running cargo with no features"
     cargo test
