@@ -51,10 +51,10 @@ fn main() {
         // they are used internally by "config-rsa.h"
         if sig_rsa {
             conf.define("MCUBOOT_SIGN_RSA_LEN", "2048");
-            conf.define("CONFIG_BOOT_SIGNATURE_TYPE_RSA_2048", None);
+            conf.define("CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN", "2048");
         } else {
             conf.define("MCUBOOT_SIGN_RSA_LEN", "3072");
-            conf.define("CONFIG_BOOT_SIGNATURE_TYPE_RSA_3072", None);
+            conf.define("CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN", "3072");
         }
         conf.define("MCUBOOT_USE_MBED_TLS", None);
 
