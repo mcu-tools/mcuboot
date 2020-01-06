@@ -127,7 +127,7 @@ config BOOT_UPGRADE_ONLY
 	  uses a much simpler code path.
 
 config BOOT_SWAP_USING_MOVE
-	bool "Swap mode that can run without a scratch partition [EXPERIMENTAL]"
+	bool "Swap mode that can run without a scratch partition"
 	default n
 	help
 	  If y, the swap upgrade is done in two steps, where first every
