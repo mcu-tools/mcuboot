@@ -73,6 +73,11 @@ K_SEM_DEFINE(boot_log_sem, 1, 1);
 #define ZEPHYR_BOOT_LOG_STOP() do { } while (false)
 #endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) */
 
+#if USE_PARTITION_MANAGER && CONFIG_FPROTECT
+#include <fprotect.h>
+#include <pm_config.h>
+
+#endif
 #ifdef CONFIG_SOC_FAMILY_NRF
 #include <hal/nrf_power.h>
 
@@ -370,7 +375,30 @@ void main(void)
                  rsp.br_image_off);
 
     BOOT_LOG_INF("Jumping to the first image slot");
+
+#if USE_PARTITION_MANAGER && CONFIG_FPROTECT
+
+#ifdef PM_S1_ADDRESS
+/* MCUBoot is stored in either S0 or S1, protect both */
+#define PROTECT_SIZE (PM_MCUBOOT_PRIMARY_ADDRESS - PM_S0_ADDRESS)
+#define PROTECT_ADDR PM_S0_ADDRESS
+#else
+/* There is only one instance of MCUBoot */
+#define PROTECT_SIZE (PM_MCUBOOT_PRIMARY_ADDRESS - PM_MCUBOOT_ADDRESS)
+#define PROTECT_ADDR PM_MCUBOOT_ADDRESS
+#endif
+
+    rc = fprotect_area(PROTECT_ADDR, PROTECT_SIZE);
+
+    if (rc != 0) {
+        BOOT_LOG_ERR("Protect mcuboot flash failed, cancel startup.");
+        while (1)
+            ;
+    }
+#endif /* USE_PARTITION_MANAGER && CONFIG_FPROTECT */
+
     ZEPHYR_BOOT_LOG_STOP();
+
     do_boot(&rsp);
 
     BOOT_LOG_ERR("Never should get here");
