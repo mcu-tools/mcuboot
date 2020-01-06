@@ -178,6 +178,7 @@ fn main() {
         conf.define("MCUBOOT_ENCRYPT_EC256", None);
         conf.define("MCUBOOT_ENC_IMAGES", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
+        conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
