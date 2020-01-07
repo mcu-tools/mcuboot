@@ -21,7 +21,7 @@ matrix:
     - os: linux
       env: SINGLE_FEATURES="none sig-rsa sig-rsa3072 overwrite-only validate-primary-slot swap-move" TEST=sim
     - os: linux
-      env: SINGLE_FEATURES="enc-rsa" TEST=sim
+      env: SINGLE_FEATURES="enc-rsa enc-ec256" TEST=sim
 
     # Values defined in $MULTI_FEATURES consist of any number of features
     # to be enabled at the same time. The list of multi-values should be
