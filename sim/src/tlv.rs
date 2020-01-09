@@ -100,8 +100,6 @@ pub struct TlvGen {
     kinds: Vec<TlvKinds>,
     /// The total size of the payload.
     size: u16,
-    /// Extra bytes of the TLV that are protected.
-    protect_size: u16,
     payload: Vec<u8>,
     dependencies: Vec<Dependency>,
     enc_key: Vec<u8>,
@@ -256,17 +254,16 @@ impl ManifestGen for TlvGen {
     }
 
     fn protect_size(&self) -> u16 {
-        if self.protect_size == 0 {
+        if self.dependencies.is_empty() {
             0
         } else {
-            // Include the protected size, as well as the TLV header.
-            4 + self.protect_size
+            // Include the header and space for each dependency.
+            4 + (self.dependencies.len() as u16) * (4 + 4 + 8)
         }
     }
 
     fn add_dependency(&mut self, id: u8, version: &ImageVersion) {
         let my_size = 4 + 4 + 8;
-        self.protect_size += my_size;
         self.size += my_size;
         self.dependencies.push(Dependency {
             id: id,
@@ -282,10 +279,11 @@ impl ManifestGen for TlvGen {
     fn make_tlv(self: Box<Self>) -> Vec<u8> {
         let mut protected_tlv: Vec<u8> = vec![];
 
-        if self.protect_size > 0 {
+        if self.protect_size() > 0 {
             protected_tlv.push(0x08);
             protected_tlv.push(0x69);
-            protected_tlv.write_u16::<LittleEndian>(self.protect_size()).unwrap();
+            let size = self.protect_size();
+            protected_tlv.write_u16::<LittleEndian>(size).unwrap();
             for dep in &self.dependencies {
                 protected_tlv.write_u16::<LittleEndian>(TlvKinds::DEPENDENCY as u16).unwrap();
                 protected_tlv.write_u16::<LittleEndian>(12).unwrap();
@@ -300,6 +298,8 @@ impl ManifestGen for TlvGen {
                 protected_tlv.write_u16::<LittleEndian>(dep.version.revision).unwrap();
                 protected_tlv.write_u32::<LittleEndian>(dep.version.build_num).unwrap();
             }
+
+            assert_eq!(size, protected_tlv.len() as u16, "protected TLV length incorrect");
         }
 
         // Ring does the signature itself, which means that it must be
