@@ -57,6 +57,9 @@ uint32_t bootutil_get_caps(void)
 #if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT)
     res |= BOOTUTIL_CAP_VALIDATE_PRIMARY_SLOT;
 #endif
+#if defined(MCUBOOT_DOWNGRADE_PREVENTION)
+    res |= BOOTUTIL_CAP_DOWNGRADE_PREVENTION;
+#endif
 
     return res;
 }
