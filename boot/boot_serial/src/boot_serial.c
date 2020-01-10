@@ -33,7 +33,8 @@
 #include <drivers/flash.h>
 #include <sys/crc.h>
 #include <sys/base64.h>
-#include <cbor.h>
+#include <tinycbor/cbor.h>
+#include <tinycbor/cbor_buf_reader.h>
 #else
 #include <bsp/bsp.h>
 #include <hal/hal_system.h>
@@ -261,11 +262,8 @@ bs_upload(char *buf, int len)
      * Object comes within { ... }
      */
     cbor_buf_reader_init(&reader, (uint8_t *)buf, len);
-#ifdef __ZEPHYR__
-    cbor_parser_cust_reader_init(&reader.r, 0, &parser, &root_value);
-#else
     cbor_parser_init(&reader.r, 0, &parser, &root_value);
-#endif
+
     if (!cbor_value_is_container(&root_value)) {
         goto out_invalid_data;
     }
@@ -504,11 +502,7 @@ boot_serial_input(char *buf, int len)
     len -= sizeof(*hdr);
 
     bs_writer.bytes_written = 0;
-#ifdef __ZEPHYR__
-    cbor_encoder_cust_writer_init(&bs_root, &bs_writer, 0);
-#else
     cbor_encoder_init(&bs_root, &bs_writer, 0);
-#endif
 
     /*
      * Limited support for commands.
