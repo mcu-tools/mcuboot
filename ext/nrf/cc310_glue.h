@@ -10,7 +10,7 @@
 #include <nrf_cc310_bl_init.h>
 #include <nrf_cc310_bl_hash_sha256.h>
 #include <nrf_cc310_bl_ecdsa_verify_secp256r1.h>
-#include <generated_dts_board.h>
+#include <devicetree.h>
 #include <string.h>
 
 typedef nrf_cc310_bl_hash_context_sha256_t bootutil_sha256_context;
