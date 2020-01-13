@@ -7,6 +7,7 @@ use bootsim::{
     ImagesBuilder,
     Images,
     NO_DEPS,
+    REV_DEPS,
     testlog,
 };
 use std::{
@@ -49,6 +50,7 @@ sim_test!(perm_with_random_fails, make_image(&NO_DEPS, true), run_perm_with_rand
 sim_test!(norevert, make_image(&NO_DEPS, true), run_norevert());
 sim_test!(status_write_fails_complete, make_image(&NO_DEPS, true), run_with_status_fails_complete());
 sim_test!(status_write_fails_with_reset, make_image(&NO_DEPS, true), run_with_status_fails_with_reset());
+sim_test!(downgrade_prevention, make_image(&REV_DEPS, true), run_nodowngrade());
 
 // Test various combinations of incorrect dependencies.
 test_shell!(dependency_combos, r, {
@@ -70,18 +72,21 @@ pub static TEST_DEPS: &[DepTest] = &[
     DepTest {
         depends: [DepType::Nothing, DepType::Nothing],
         upgrades: [UpgradeInfo::Upgraded, UpgradeInfo::Upgraded],
+        downgrade: false,
     },
 
     // If all of the dependencies are met, we should also upgrade.
     DepTest {
         depends: [DepType::Correct, DepType::Correct],
         upgrades: [UpgradeInfo::Upgraded, UpgradeInfo::Upgraded],
+        downgrade: false,
     },
 
     // If none of the dependencies are met, the images should be held.
     DepTest {
         depends: [DepType::Newer, DepType::Newer],
         upgrades: [UpgradeInfo::Held, UpgradeInfo::Held],
+        downgrade: false,
     },
 
     // If the first image is not met, we should hold back on the
@@ -90,12 +95,14 @@ pub static TEST_DEPS: &[DepTest] = &[
     DepTest {
         depends: [DepType::Newer, DepType::Correct],
         upgrades: [UpgradeInfo::Held, UpgradeInfo::Held],
+        downgrade: false,
     },
 
     // Test the variant in the other direction.
     DepTest {
         depends: [DepType::Correct, DepType::Newer],
         upgrades: [UpgradeInfo::Held, UpgradeInfo::Held],
+        downgrade: false,
     },
 
     // Test where only the first image is upgraded, and there are no
@@ -103,18 +110,21 @@ pub static TEST_DEPS: &[DepTest] = &[
     DepTest {
         depends: [DepType::Nothing, DepType::NoUpgrade],
         upgrades: [UpgradeInfo::Upgraded, UpgradeInfo::Held],
+        downgrade: false,
     },
 
     // Test one image with a valid dependency on the first image.
     DepTest {
         depends: [DepType::OldCorrect, DepType::NoUpgrade],
         upgrades: [UpgradeInfo::Upgraded, UpgradeInfo::Held],
+        downgrade: false,
     },
 
     // Test one image with an invalid dependency on the first image.
     DepTest {
         depends: [DepType::Newer, DepType::NoUpgrade],
         upgrades: [UpgradeInfo::Held, UpgradeInfo::Held],
+        downgrade: false,
     },
 
     // Test where only the second image is upgraded, and there are no
@@ -122,18 +132,21 @@ pub static TEST_DEPS: &[DepTest] = &[
     DepTest {
         depends: [DepType::NoUpgrade, DepType::Nothing],
         upgrades: [UpgradeInfo::Held, UpgradeInfo::Upgraded],
+        downgrade: false,
     },
 
     // Test one image with a valid dependency on the second image.
     DepTest {
         depends: [DepType::NoUpgrade, DepType::OldCorrect],
         upgrades: [UpgradeInfo::Held, UpgradeInfo::Upgraded],
+        downgrade: false,
     },
 
     // Test one image with an invalid dependency on the second image.
     DepTest {
         depends: [DepType::NoUpgrade, DepType::Newer],
         upgrades: [UpgradeInfo::Held, UpgradeInfo::Held],
+        downgrade: false,
     },
 ];
 

@@ -18,11 +18,28 @@ pub trait Depender {
 /// A boring image is used when we aren't testing dependencies.  There will
 /// be meaningful version numbers.  The size field is the image number we
 /// are.
-pub struct BoringDep(pub usize);
+pub struct BoringDep {
+    number: usize,
+    test: DepTest,
+}
+
+impl BoringDep {
+    pub fn new(number: usize, test: &DepTest) -> BoringDep {
+        BoringDep {
+            number: number,
+            test: test.clone(),
+        }
+    }
+}
 
 impl Depender for BoringDep {
     fn my_version(&self, _offset: usize, slot: usize) -> ImageVersion {
-        ImageVersion::new_synthetic(self.0 as u8, slot as u8, 0)
+        let slot = if self.test.downgrade {
+            1 - slot
+        } else {
+            slot
+        };
+        ImageVersion::new_synthetic(self.number as u8, slot as u8, 0)
     }
 
     fn my_deps(&self, _offset: usize, _slot: usize) -> Vec<ImageVersion> {
@@ -44,6 +61,10 @@ pub struct DepTest {
 
     /// What is the expected outcome of the upgrade.
     pub upgrades: [UpgradeInfo; 2],
+
+    /// Should this be considered a downgrade (cause the version number to
+    /// decrease).
+    pub downgrade: bool,
 }
 
 /// Describes the various types of dependency information that can be
@@ -77,6 +98,15 @@ pub enum UpgradeInfo {
 pub static NO_DEPS: DepTest = DepTest {
     depends: [DepType::Nothing, DepType::Nothing],
     upgrades: [UpgradeInfo::Upgraded, UpgradeInfo::Upgraded],
+    downgrade: false,
+};
+
+/// A "test" with no dependency information, and the images marked as a
+/// downgrade.
+pub static REV_DEPS: DepTest = DepTest {
+    depends: [DepType::Nothing, DepType::Nothing],
+    upgrades: [UpgradeInfo::Held, UpgradeInfo::Held],
+    downgrade: true,
 };
 
 /// A PairDep describes the dependencies between two pairs.
@@ -102,6 +132,11 @@ impl PairDep {
 
 impl Depender for PairDep {
     fn my_version(&self, _offset: usize, slot: usize) -> ImageVersion {
+        let slot = if self.test.downgrade {
+            1 - slot
+        } else {
+            slot
+        };
         ImageVersion::new_synthetic(self.number as u8, slot as u8, 0)
     }
 
