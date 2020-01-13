@@ -3,7 +3,7 @@
 #ifndef __SYSFLASH_H__
 #define __SYSFLASH_H__
 
-#include <generated_dts_board.h>
+#include <devicetree.h>
 #include <mcuboot_config/mcuboot_config.h>
 
 #if (MCUBOOT_IMAGE_NUMBER == 1)
