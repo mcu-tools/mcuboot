@@ -20,6 +20,7 @@ enc-ec256 = ["mcuboot-sys/enc-ec256"]
 bootstrap = ["mcuboot-sys/bootstrap"]
 multiimage = ["mcuboot-sys/multiimage"]
 large-write = []
+downgrade-prevention = ["mcuboot-sys/downgrade-prevention"]
 
 [dependencies]
 byteorder = "1.3"
