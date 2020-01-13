@@ -17,7 +17,9 @@ pub use crate::{
         DepTest,
         DepType,
         UpgradeInfo,
-        NO_DEPS,},
+        NO_DEPS,
+        REV_DEPS,
+    },
     image::{
         ImagesBuilder,
         Images,
