@@ -156,13 +156,16 @@ class Image():
     def load(self, path):
         """Load an image from a given file"""
         ext = os.path.splitext(path)[1][1:].lower()
-        if ext == INTEL_HEX_EXT:
-            ih = IntelHex(path)
-            self.payload = ih.tobinarray()
-            self.base_addr = ih.minaddr()
-        else:
-            with open(path, 'rb') as f:
-                self.payload = f.read()
+        try:
+            if ext == INTEL_HEX_EXT:
+                ih = IntelHex(path)
+                self.payload = ih.tobinarray()
+                self.base_addr = ih.minaddr()
+            else:
+                with open(path, 'rb') as f:
+                    self.payload = f.read()
+        except FileNotFoundError:
+            raise click.UsageError("Input file not found")
 
         # Add the image header if needed.
         if self.pad_header and self.header_size > 0:
@@ -180,8 +183,8 @@ class Image():
         if ext == INTEL_HEX_EXT:
             # input was in binary format, but HEX needs to know the base addr
             if self.base_addr is None and hex_addr is None:
-                raise Exception("No address exists in input file neither was "
-                                "it provided by user")
+                raise click.UsageError("No address exists in input file "
+                                       "neither was it provided by user")
             h = IntelHex()
             if hex_addr is not None:
                 self.base_addr = hex_addr
@@ -378,7 +381,8 @@ class Image():
             return MAX_ALIGN * 2 + magic_size
         else:
             if write_size not in set([1, 2, 4, 8]):
-                raise Exception("Invalid alignment: {}".format(write_size))
+                raise click.BadParameter("Invalid alignment: {}".format(
+                    write_size))
             m = DEFAULT_MAX_SECTORS if max_sectors is None else max_sectors
             trailer = m * 3 * write_size  # status area
             if enckey is not None:
