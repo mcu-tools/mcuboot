@@ -22,6 +22,7 @@ import imgtool.keys as keys
 import sys
 from imgtool import image, imgtool_version
 from imgtool.version import decode_version
+from .keys import RSAUsageError, ECDSAUsageError, Ed25519UsageError
 
 
 def gen_rsa2048(keyfile, passwd):
@@ -116,7 +117,10 @@ def getpriv(key, minimal):
     key = load_key(key)
     if key is None:
         print("Invalid passphrase")
-    key.emit_private(minimal)
+    try:
+        key.emit_private(minimal)
+    except (RSAUsageError, ECDSAUsageError, Ed25519UsageError) as e:
+        raise click.UsageError(e)
 
 
 @click.argument('imgfile')
@@ -254,7 +258,8 @@ def sign(key, align, version, header_size, pad_header, slot_size, pad,
                 or (isinstance(key, keys.RSA) and
                     not isinstance(enckey, keys.RSAPublic))):
             # FIXME
-            raise Exception("Signing and encryption must use the same type of key")
+            raise click.UsageError("Signing and encryption must use the same "
+                                   "type of key")
     img.create(key, enckey, dependencies)
     img.save(outfile, hex_addr)
 
