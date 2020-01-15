@@ -204,6 +204,13 @@ class BasedIntParamType(click.ParamType):
               help='Adjust address in hex output file.')
 @click.option('-L', '--load-addr', type=BasedIntParamType(), required=False,
               help='Load address for image when it is in its primary slot.')
+@click.option('--minimal-enctlv', default=False, is_flag=True,
+              help='This option must be enabled if the bootloader\'s embedded '
+                   'encryption key was generated using "getpriv --minimal".')
+@click.option('--save-enctlv', default=False, is_flag=True,
+              help='When upgrading, save encrypted key TLVs instead of plain '
+                   'keys. Enable when BOOT_SWAP_SAVE_ENCTLV config option '
+                   'was set.')
 @click.option('-E', '--encrypt', metavar='filename',
               help='Encrypt image using the provided public key')
 @click.option('-e', '--endian', type=click.Choice(['little', 'big']),
@@ -211,13 +218,15 @@ class BasedIntParamType(click.ParamType):
 @click.option('--overwrite-only', default=False, is_flag=True,
               help='Use overwrite-only instead of swap upgrades')
 @click.option('-M', '--max-sectors', type=int,
-              help='When padding allow for this amount of sectors (defaults to 128)')
+              help='When padding allow for this amount of sectors (defaults '
+                   'to 128)')
 @click.option('--pad', default=False, is_flag=True,
               help='Pad image to --slot-size bytes, adding trailer magic')
 @click.option('-S', '--slot-size', type=BasedIntParamType(), required=True,
               help='Size of the slot where the image will be written')
 @click.option('--pad-header', default=False, is_flag=True,
-              help='Add --header-size zeroed bytes at the beginning of the image')
+              help='Add --header-size zeroed bytes at the beginning of the '
+                   'image')
 @click.option('-H', '--header-size', callback=validate_header_size,
               type=BasedIntParamType(), required=True)
 @click.option('-d', '--dependencies', callback=get_dependencies,
@@ -232,12 +241,14 @@ class BasedIntParamType(click.ParamType):
                .hex extension, otherwise binary format is used''')
 def sign(key, align, version, header_size, pad_header, slot_size, pad,
          max_sectors, overwrite_only, endian, encrypt, infile, outfile,
-         dependencies, load_addr, hex_addr, erased_val):
+         dependencies, load_addr, hex_addr, erased_val, save_enctlv,
+         minimal_enctlv):
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, align=int(align),
                       slot_size=slot_size, max_sectors=max_sectors,
                       overwrite_only=overwrite_only, endian=endian,
-                      load_addr=load_addr, erased_val=erased_val)
+                      load_addr=load_addr, erased_val=erased_val,
+                      save_enctlv=save_enctlv, minimal_enctlv=minimal_enctlv)
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
