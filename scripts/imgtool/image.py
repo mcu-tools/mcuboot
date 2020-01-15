@@ -19,6 +19,7 @@ Image signing and management.
 """
 
 from . import version as versmod
+import click
 from enum import Enum
 from intelhex import IntelHex
 import hashlib
@@ -117,7 +118,8 @@ class Image():
     def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE,
                  pad_header=False, pad=False, align=1, slot_size=0,
                  max_sectors=DEFAULT_MAX_SECTORS, overwrite_only=False,
-                 endian="little", load_addr=0, erased_val=0xff):
+                 endian="little", load_addr=0, erased_val=0xff,
+                 save_enctlv=False):
         self.version = version or versmod.decode_version("0")
         self.header_size = header_size
         self.pad_header = pad_header
@@ -132,6 +134,8 @@ class Image():
         self.erased_val = 0xff if erased_val is None else int(erased_val)
         self.payload = []
         self.enckey = None
+        self.save_enctlv = save_enctlv
+        self.enctlv_len = 0
 
     def __repr__(self):
         return "<Image version={}, header_size={}, base_addr={}, load_addr={}, \
@@ -168,7 +172,7 @@ class Image():
             self.payload = bytes([self.erased_val] * self.header_size) + \
                 self.payload
 
-        self.check()
+        self.check_header()
 
     def save(self, path, hex_addr=None):
         """Save an image from a given file"""
@@ -185,7 +189,9 @@ class Image():
             if self.pad:
                 trailer_size = self._trailer_size(self.align, self.max_sectors,
                                                   self.overwrite_only,
-                                                  self.enckey)
+                                                  self.enckey,
+                                                  self.save_enctlv,
+                                                  self.enctlv_len)
                 trailer_addr = (self.base_addr + self.slot_size) - trailer_size
                 padding = bytes([self.erased_val] *
                                 (trailer_size - len(boot_magic))) + boot_magic
@@ -197,21 +203,23 @@ class Image():
             with open(path, 'wb') as f:
                 f.write(self.payload)
 
-    def check(self):
-        """Perform some sanity checking of the image."""
-        # If there is a header requested, make sure that the image
-        # starts with all zeros.
+    def check_header(self):
         if self.header_size > 0 and not self.pad_header:
             if any(v != 0 for v in self.payload[0:self.header_size]):
-                raise Exception("Padding requested, but image does not start with zeros")
+                raise click.UsageError("Header padding was not requested and "
+                                       "image does not start with zeros")
+
+    def check_trailer(self):
         if self.slot_size > 0:
             tsize = self._trailer_size(self.align, self.max_sectors,
-                                       self.overwrite_only, self.enckey)
+                                       self.overwrite_only, self.enckey,
+                                       self.save_enctlv, self.enctlv_len)
             padding = self.slot_size - (len(self.payload) + tsize)
             if padding < 0:
-                msg = "Image size (0x{:x}) + trailer (0x{:x}) exceeds requested size 0x{:x}".format(
-                        len(self.payload), tsize, self.slot_size)
-                raise Exception(msg)
+                msg = "Image size (0x{:x}) + trailer (0x{:x}) exceeds " \
+                      "requested size 0x{:x}".format(
+                          len(self.payload), tsize, self.slot_size)
+                raise click.UsageError(msg)
 
     def ecies_p256_hkdf(self, enckey, plainkey):
         newpk = ec.generate_private_key(ec.SECP256R1(), default_backend())
@@ -309,10 +317,13 @@ class Image():
                         mgf=padding.MGF1(algorithm=hashes.SHA256()),
                         algorithm=hashes.SHA256(),
                         label=None))
+                self.enctlv_len = len(cipherkey)
                 tlv.add('ENCRSA2048', cipherkey)
             elif isinstance(enckey, ecdsa.ECDSA256P1Public):
                 cipherkey, mac, pubk = self.ecies_p256_hkdf(enckey, plainkey)
-                tlv.add('ENCEC256', pubk + mac + cipherkey)
+                enctlv = pubk + mac + cipherkey
+                self.enctlv_len = len(enctlv)
+                tlv.add('ENCEC256', enctlv)
 
             nonce = bytes([0] * 16)
             cipher = Cipher(algorithms.AES(plainkey), modes.CTR(nonce),
@@ -324,6 +335,8 @@ class Image():
 
         self.payload += prot_tlv.get()
         self.payload += tlv.get()
+
+        self.check_trailer()
 
     def add_header(self, enckey, protected_tlv_size):
         """Install the image header."""
@@ -360,7 +373,8 @@ class Image():
         self.payload = bytearray(self.payload)
         self.payload[:len(header)] = header
 
-    def _trailer_size(self, write_size, max_sectors, overwrite_only, enckey):
+    def _trailer_size(self, write_size, max_sectors, overwrite_only, enckey,
+                      save_enctlv, enctlv_len):
         # NOTE: should already be checked by the argument parser
         magic_size = 16
         if overwrite_only:
@@ -371,7 +385,12 @@ class Image():
             m = DEFAULT_MAX_SECTORS if max_sectors is None else max_sectors
             trailer = m * 3 * write_size  # status area
             if enckey is not None:
-                trailer += 16 * 2  # encryption keys
+                if save_enctlv:
+                    # TLV saved by the bootloader is aligned
+                    keylen = (int((enctlv_len - 1) / MAX_ALIGN) + 1) * MAX_ALIGN
+                else:
+                    keylen = 16
+                trailer += keylen * 2  # encryption keys
             trailer += MAX_ALIGN * 4  # image_ok/copy_done/swap_info/swap_size
             trailer += magic_size
             return trailer
@@ -379,7 +398,8 @@ class Image():
     def pad_to(self, size):
         """Pad the image to the given size, with the given flash alignment."""
         tsize = self._trailer_size(self.align, self.max_sectors,
-                                   self.overwrite_only, self.enckey)
+                                   self.overwrite_only, self.enckey,
+                                   self.save_enctlv, self.enctlv_len)
         padding = size - (len(self.payload) + tsize)
         pbytes = bytes([self.erased_val] * padding)
         pbytes += bytes([self.erased_val] * (tsize - len(boot_magic)))
