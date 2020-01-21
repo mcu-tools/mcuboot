@@ -1,4 +1,10 @@
-/// Interface wrappers to C API entering to the bootloader
+// Copyright (c) 2017-2019 Linaro LTD
+// Copyright (c) 2017-2019 JUUL Labs
+// Copyright (c) 2019 Arm Limited
+//
+// SPDX-License-Identifier: Apache-2.0
+
+//! Interface wrappers to C API entering to the bootloader
 
 use crate::area::AreaDesc;
 use simflash::SimMultiFlash;

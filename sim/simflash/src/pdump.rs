@@ -1,3 +1,7 @@
+// Copyright (c) 2017 Linaro LTD
+//
+// SPDX-License-Identifier: Apache-2.0
+
 // Printable hexdump.
 
 pub trait HexDump {

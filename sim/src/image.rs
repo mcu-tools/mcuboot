@@ -1,3 +1,9 @@
+// Copyright (c) 2019 Linaro LTD
+// Copyright (c) 2019-2020 JUUL Labs
+// Copyright (c) 2019 Arm Limited
+//
+// SPDX-License-Identifier: Apache-2.0
+
 use byteorder::{
     LittleEndian, WriteBytesExt,
 };

@@ -1,3 +1,8 @@
+// Copyright (c) 2017-2019 Linaro LTD
+// Copyright (c) 2017-2019 JUUL Labs
+//
+// SPDX-License-Identifier: Apache-2.0
+
 //! Core tests
 //!
 //! Run the existing testsuite as a Rust unit test.

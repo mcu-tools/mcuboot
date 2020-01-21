@@ -1,3 +1,8 @@
+// Copyright (c) 2017-2020 Linaro LTD
+// Copyright (c) 2017-2020 JUUL Labs
+//
+// SPDX-License-Identifier: Apache-2.0
+
 //! TLV Support
 //!
 //! mcuboot images are followed immediately by a list of TLV items that contain integrity

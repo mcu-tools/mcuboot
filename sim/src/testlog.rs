@@ -1,3 +1,8 @@
+// Copyright (c) 2017 Linaro LTD
+// Copyright (c) 2019 JUUL Labs
+//
+// SPDX-License-Identifier: Apache-2.0
+
 //! Logging support for the test framework.
 //!
 //! https://stackoverflow.com/questions/30177845/how-to-initialize-the-logger-for-integration-tests

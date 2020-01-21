@@ -1,3 +1,8 @@
+// Copyright (c) 2017-2019 Linaro LTD
+// Copyright (c) 2018-2019 JUUL Labs
+//
+// SPDX-License-Identifier: Apache-2.0
+
 //! HAL api for MyNewt applications
 
 use crate::area::CAreaDesc;
