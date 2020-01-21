@@ -1,3 +1,7 @@
+// Copyright (c) 2017-2019 Linaro LTD
+//
+// SPDX-License-Identifier: Apache-2.0
+
 mod area;
 pub mod c;
 

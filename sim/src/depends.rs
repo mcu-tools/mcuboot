@@ -1,3 +1,7 @@
+// Copyright (c) 2019 Linaro LTD
+//
+// SPDX-License-Identifier: Apache-2.0
+
 //! Support and tests related to the dependency management for multi-image
 //! support.
 

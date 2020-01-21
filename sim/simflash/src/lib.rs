@@ -1,3 +1,8 @@
+// Copyright (c) 2017-2019 Linaro LTD
+// Copyright (c) 2017-2018 JUUL Labs
+//
+// SPDX-License-Identifier: Apache-2.0
+
 //! A flash simulator
 //!
 //! This module is capable of simulating the type of NOR flash commonly used in microcontrollers.
