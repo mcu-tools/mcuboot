@@ -60,7 +60,7 @@ assert_exists(MBEDTLS_ASN1_DIR)
 set(NRF_DIR "${MCUBOOT_DIR}/ext/nrf")
 
 if(CONFIG_BOOT_USE_NRF_CC310_BL)
-set(NRFXLIB_DIR ${MCUBOOT_DIR}/../nrfxlib)
+set(NRFXLIB_DIR $ENV{ZEPHYR_BASE}/../nrfxlib)
 assert_exists(NRFXLIB_DIR)
 # Don't include this if we are using west
  add_subdirectory(${NRFXLIB_DIR} ${PROJECT_BINARY_DIR}/nrfxlib)
