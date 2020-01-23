@@ -198,6 +198,11 @@ void main(void)
     }
 #endif
 
+#ifdef CONFIG_USB
+    rc = usb_enable(NULL);
+    __ASSERT(rc == 0, "Error initializing USB.\n");
+#endif
+
 #ifdef CONFIG_MCUBOOT_SERIAL
 
     struct device *detect_port;
