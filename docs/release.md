@@ -51,8 +51,7 @@ On Mynewt, `newt` always fetches a versioned MCUBoot release, so after
 the rc step is finished, the release needs to be exported by modifying
 `repository.yml` in the root directory; it must be updated with the
 new release version, including updates to the pseudo keys
-(`*-(latest|dev)`). Similarly `version.yml` must have its `repo.version`
-key updated with the version number being released.
+(`*-(latest|dev)`).
 
 ## Tagging and Release
 
@@ -81,11 +80,5 @@ release happen:
 git push origin HEAD:refs/heads/master
 git push origin va.b.c-rcn
 ```
-
-## Update Mynewt version.yml
-
-On master `version.yml` must always have its `repo.version`
-key set to "0.0.0" to this must be done now that the release
-is finished.
 
 [semver]: http://semver.org/
