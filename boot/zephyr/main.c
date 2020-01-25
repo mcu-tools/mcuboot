@@ -16,9 +16,9 @@
 
 #include <assert.h>
 #include <zephyr.h>
-#include <gpio.h>
+#include <drivers/gpio.h>
 #include <sys/__assert.h>
-#include <flash.h>
+#include <drivers/flash.h>
 #include <drivers/timer/system_timer.h>
 #include <usb/usb_device.h>
 #include <soc.h>

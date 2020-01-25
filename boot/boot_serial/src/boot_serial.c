@@ -30,7 +30,7 @@
 #include <power/reboot.h>
 #include <sys/byteorder.h>
 #include <sys/__assert.h>
-#include <flash.h>
+#include <drivers/flash.h>
 #include <sys/crc.h>
 #include <sys/base64.h>
 #include <cbor.h>

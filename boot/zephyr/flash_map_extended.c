@@ -6,7 +6,7 @@
  */
 
 #include <zephyr.h>
-#include <flash.h>
+#include <drivers/flash.h>
 
 #include "target.h"
 

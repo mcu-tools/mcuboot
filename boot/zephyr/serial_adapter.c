@@ -15,7 +15,7 @@
  */
 
 #include <stdio.h>
-#include <uart.h>
+#include <drivers/uart.h>
 #include <assert.h>
 #include <string.h>
 #include <zephyr.h>
