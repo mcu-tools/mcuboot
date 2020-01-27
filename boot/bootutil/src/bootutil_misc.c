@@ -476,7 +476,13 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
         align = inlen;
     }
     memcpy(buf, inbuf, inlen);
-    memset(&buf[inlen], erased_val, align - inlen);
+    /*
+     * Avoid coverity issue with buf being accessed out of bounds (with
+     * inlen == BOOT_MAX_ALIGN); even though no write is done in that case!
+     */
+    if (inlen < BOOT_MAX_ALIGN) {
+        memset(&buf[inlen], erased_val, align - inlen);
+    }
 
     rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
