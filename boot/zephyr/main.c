@@ -201,18 +201,32 @@ void main(void)
 #ifdef CONFIG_MCUBOOT_SERIAL
 
     struct device *detect_port;
-    u32_t detect_value;
+    u32_t detect_value = !CONFIG_BOOT_SERIAL_DETECT_PIN_VAL;
 
     detect_port = device_get_binding(CONFIG_BOOT_SERIAL_DETECT_PORT);
     __ASSERT(detect_port, "Error: Bad port for boot serial detection.\n");
 
+    /* The default presence value is 0 which would normally be
+     * active-low, but historically the raw value was checked so we'll
+     * use the raw interface.
+     */
     rc = gpio_pin_configure(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
-                            GPIO_DIR_IN | GPIO_PUD_PULL_UP);
+#ifdef GPIO_INPUT
+                            GPIO_INPUT | GPIO_PULL_UP
+#else
+                            GPIO_DIR_IN | GPIO_PUD_PULL_UP
+#endif
+	    );
     __ASSERT(rc == 0, "Error of boot detect pin initialization.\n");
 
+#ifdef GPIO_INPUT
+    rc = gpio_pin_get_raw(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN);
+    detect_value = rc;
+#else
     rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
                        &detect_value);
-    __ASSERT(rc == 0, "Error of the reading the detect pin.\n");
+#endif
+    __ASSERT(rc >= 0, "Error of the reading the detect pin.\n");
     if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL &&
         !boot_skip_serial_recovery()) {
         BOOT_LOG_INF("Enter the serial recovery mode");
