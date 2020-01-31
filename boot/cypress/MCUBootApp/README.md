@@ -23,6 +23,14 @@ Size of slots `0x10000` - 64kb
 
 MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on mbedTLS Library.
 
+**Hardware cryptography acceleration:**
+
+Cypress PSOC6 MCU family supports hardware acceleration of cryptography based on mbedTLS Library via shim layer. Implementation of this layer is supplied as separate submodule `cy-mbedtls-acceleration`. HW acceleration of cryptography shortens boot time more then 4 times, comparing to software implementation (observation results).
+
+To enable hardware acceleration in `MCUBootApp` pass flag `USE_CRYPTO_HW=1` to `make` while build.
+
+Hardware acceleration of cryptography is enabled for PSOC6 devices by default.
+
 **How to modify Flash map:**
 
 __Option 1.__
