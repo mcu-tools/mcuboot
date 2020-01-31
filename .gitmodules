@@ -13,3 +13,6 @@
 [submodule "boot/cypress/libs/psoc6hal"]
 	path = boot/cypress/libs/psoc6hal
 	url = https://github.com/cypresssemiconductorco/psoc6hal.git
+[submodule "boot/cypress/libs/cy-mbedtls-acceleration"]
+	path = boot/cypress/libs/cy-mbedtls-acceleration
+	url = https://github.com/cypresssemiconductorco/cy-mbedtls-acceleration.git
