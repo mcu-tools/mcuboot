@@ -357,4 +357,4 @@ config MCUBOOT_DOWNGRADE_PREVENTION
 	  only protects against some attacks against version downgrades (for
 	  example, a JTAG could be used to write an older version).
 
-source "$ZEPHYR_BASE/Kconfig.zephyr"
+source "Kconfig.zephyr"
