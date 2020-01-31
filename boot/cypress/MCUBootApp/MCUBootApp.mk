@@ -27,6 +27,7 @@
 # Set default compiler to GCC if not specified from command line
 COMPILER ?= GCC_ARM
 
+USE_CRYPTO_HW ?= 1
 MCUBOOT_IMAGE_NUMBER ?= 1
 
 ifneq ($(COMPILER), GCC_ARM)
@@ -45,6 +46,10 @@ DEFINES_APP += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
 DEFINES_APP += -DCORE=$(CORE)
 DEFINES_APP += -DMCUBOOT_IMAGE_NUMBER=$(MCUBOOT_IMAGE_NUMBER)
 
+
+ifeq ($(USE_CRYPTO_HW), 1)
+DEFINES_APP += -DMBEDTLS_USER_CONFIG_FILE="\"mcuboot_crypto_acc_config.h\""
+endif
 # Collect MCUBoot sourses
 SOURCES_MCUBOOT := $(wildcard $(CURDIR)/../bootutil/src/*.c)
 # Collect MCUBoot Application sources
