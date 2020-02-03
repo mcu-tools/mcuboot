@@ -51,6 +51,8 @@ get_filename_component(MCUBOOT_DIR ${BOOT_DIR} DIRECTORY)
 # Path to tinycrypt library source subdirectory of MCUBOOT_DIR.
 set(TINYCRYPT_DIR "${MCUBOOT_DIR}/ext/tinycrypt/lib")
 assert_exists(TINYCRYPT_DIR)
+set(TINYCRYPT_SHA512_DIR "${MCUBOOT_DIR}/ext/tinycrypt-sha512/lib")
+assert_exists(TINYCRYPT_SHA512_DIR)
 # Path to crypto-fiat
 set(FIAT_DIR "${MCUBOOT_DIR}/ext/fiat")
 assert_exists(FIAT_DIR)
@@ -144,8 +146,27 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   # is set using Kconfig.)
   zephyr_include_directories(include)
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519)
-  # For ed25519, mbedTLS is used for ASN1 parsing and SHA512
-  zephyr_include_directories(include)
+  if(CONFIG_BOOT_USE_TINYCRYPT)
+    zephyr_library_include_directories(
+      ${MBEDTLS_ASN1_DIR}/include
+      ${BOOT_DIR}/zephyr/include
+      ${TINYCRYPT_DIR}/include
+      ${TINYCRYPT_SHA512_DIR}/include
+      )
+    zephyr_library_sources(
+      ${TINYCRYPT_DIR}/source/sha256.c
+      ${TINYCRYPT_DIR}/source/utils.c
+      ${TINYCRYPT_SHA512_DIR}/source/sha512.c
+      # Additionally pull in just the ASN.1 parser from mbedTLS.
+      ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
+      ${MBEDTLS_ASN1_DIR}/src/platform_util.c
+      )
+    zephyr_library_compile_definitions(
+      MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h"
+      )
+  else()
+    zephyr_include_directories(include)
+  endif()
 
   zephyr_library_include_directories(
     ${BOOT_DIR}/zephyr/include

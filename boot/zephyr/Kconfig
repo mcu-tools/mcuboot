@@ -76,16 +76,11 @@ endif
 config BOOT_SIGNATURE_TYPE_ECDSA_P256
 	bool "Elliptic curve digital signatures with curve P-256"
 
-config BOOT_SIGNATURE_TYPE_ED25519
-	bool "Edwards curve digital signatures using ed25519"
-	select BOOT_USE_MBEDTLS
-	select MBEDTLS
-
 if BOOT_SIGNATURE_TYPE_ECDSA_P256
 choice
 	prompt "Ecdsa implementation"
-	default BOOT_TINYCRYPT
-config BOOT_TINYCRYPT
+	default BOOT_ECDSA_TINYCRYPT
+config BOOT_ECDSA_TINYCRYPT
 	bool "Use tinycrypt"
 	select BOOT_USE_TINYCRYPT
 config BOOT_CC310
@@ -96,6 +91,24 @@ config BOOT_CC310
 	select BOOT_USE_CC310
 endchoice
 endif
+
+config BOOT_SIGNATURE_TYPE_ED25519
+	bool "Edwards curve digital signatures using ed25519"
+
+if BOOT_SIGNATURE_TYPE_ED25519
+choice
+	prompt "Ecdsa implementation"
+	default BOOT_ED25519_TINYCRYPT
+config BOOT_ED25519_TINYCRYPT
+	bool "Use tinycrypt"
+	select BOOT_USE_TINYCRYPT
+config BOOT_ED25519_MBEDTLS
+	bool "Use mbedTLS"
+	select BOOT_USE_MBEDTLS
+	select MBEDTLS
+endchoice
+endif
+
 endchoice
 
 config BOOT_SIGNATURE_KEY_FILE
