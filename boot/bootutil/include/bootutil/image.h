@@ -1,4 +1,12 @@
 /*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Copyright (c) 2016-2019 Linaro LTD
+ * Copyright (c) 2016-2019 JUUL Labs
+ * Copyright (c) 2019-2020 Arm Limited
+ *
+ * Original license:
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -15,10 +23,6 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- */
-
-/*
- * Modifications are Copyright (c) 2019-2020 Arm Limited.
  */
 
 #ifndef H_IMAGE_
