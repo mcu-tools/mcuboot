@@ -31,12 +31,12 @@ void cc310_sha256_update(nrf_cc310_bl_hash_context_sha256_t *ctx,
 
 static inline void nrf_cc310_enable(void)
 {
-    NRF_CRYPTOCELL->ENABLE=1;
+    NRF_CRYPTOCELL_S->ENABLE=1;
 }
 
 static inline void nrf_cc310_disable(void)
 {
-    NRF_CRYPTOCELL->ENABLE=0;
+    NRF_CRYPTOCELL_S->ENABLE=0;
 }
 
 /* Enable and disable cc310 to reduce power consumption */
