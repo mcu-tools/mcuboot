@@ -238,9 +238,14 @@ void main(void)
 #endif
 
 #ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
-    BOOT_LOG_INF("Waiting for USB DFU");
-    wait_for_usb_dfu();
-    BOOT_LOG_INF("USB DFU wait time elapsed");
+    rc = usb_enable(NULL);
+    if (rc) {
+        BOOT_LOG_ERR("Cannot enable USB");
+    } else {
+        BOOT_LOG_INF("Waiting for USB DFU");
+        wait_for_usb_dfu();
+        BOOT_LOG_INF("USB DFU wait time elapsed");
+    }
 #endif
 
     rc = boot_go(&rsp);
