@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-imgtool_version = "1.5.0a2"
+imgtool_version = "1.5.0rc1"

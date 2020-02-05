@@ -3,6 +3,36 @@
 - Table of Contents
 {:toc}
 
+## Version 1.5.0
+
+The 1.5.0 release of MCUboot adds support for encrypted images using
+ECIES with secp256r1 as an Elliptic Curve alternative to RSA-OAEP. A
+new swap method was added which allows for upgrades without using a
+scratch partition. There are also lots of bug fixes, extra simulator
+testing coverage and some imgtool updates.
+
+### About this release
+
+- TLVs were updated to use 16-bit lengths (from previous 8). This
+  should work with no changes for little-endian targets, but will
+  break compatibility with big-endian targets.
+- A benchmark framework was added to Zephyr
+- ed25519 signature validation can now build without using mbedTLS
+  by relying on a bundled tinycrypt based sha-512 implementation.
+- imgtool was updated to correctly detect trailer overruns by image.
+- Encrypted image TLVs can be saved in swap metadata during a swap
+  upgrade instead of the plain AES key.
+- imgtool can dump private keys in C format (getpriv command), which
+  can be added as decryption keys. Optionally can remove superfluous
+  fields from the ASN1 by passing it `--minimal`.
+- Lots of other smaller bugs fixes.
+- Added downgrade prevention feature (available when the overwrite-based
+  image update strategy is used)
+
+### Known issues
+
+- TLV size change breaks compatibility with big-endian targets.
+
 ## Version 1.4.0
 
 The 1.4.0 release of MCUboot primarily adds support for multi-image
