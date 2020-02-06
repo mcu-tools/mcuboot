@@ -67,15 +67,15 @@ fn main() {
         }
         conf.define("MCUBOOT_USE_MBED_TLS", None);
 
-        conf.include("../../ext/mbedtls/include");
-        conf.file("../../ext/mbedtls/library/sha256.c");
+        conf.include("../../ext/mbedtls/crypto/include");
+        conf.file("../../ext/mbedtls/crypto/library/sha256.c");
         conf.file("csupport/keys.c");
 
-        conf.file("../../ext/mbedtls/library/rsa.c");
-        conf.file("../../ext/mbedtls/library/bignum.c");
-        conf.file("../../ext/mbedtls/library/platform.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls/crypto/library/rsa.c");
+        conf.file("../../ext/mbedtls/crypto/library/bignum.c");
+        conf.file("../../ext/mbedtls/crypto/library/platform.c");
+        conf.file("../../ext/mbedtls/crypto/library/platform_util.c");
+        conf.file("../../ext/mbedtls/crypto/library/asn1parse.c");
     } else if sig_ecdsa {
         conf.define("MCUBOOT_SIGN_EC256", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
@@ -114,8 +114,8 @@ fn main() {
         // configuration file bundled with mbedTLS is sufficient.
         // When using ECIES-P256 rely on Tinycrypt.
         conf.define("MCUBOOT_USE_MBED_TLS", None);
-        conf.include("../../ext/mbedtls/include");
-        conf.file("../../ext/mbedtls/library/sha256.c");
+        conf.include("../../ext/mbedtls/crypto/include");
+        conf.file("../../ext/mbedtls/crypto/library/sha256.c");
     }
 
     if overwrite_only {
@@ -135,18 +135,17 @@ fn main() {
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
-        conf.include("../../ext/mbedtls/include");
-        conf.file("../../ext/mbedtls/library/sha256.c");
+        conf.include("../../ext/mbedtls/crypto/include");
+        conf.file("../../ext/mbedtls/crypto/library/sha256.c");
 
-        conf.file("../../ext/mbedtls/library/platform.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/rsa.c");
-        conf.file("../../ext/mbedtls/library/rsa_internal.c");
-        conf.file("../../ext/mbedtls/library/md.c");
-        conf.file("../../ext/mbedtls/library/md_wrap.c");
-        conf.file("../../ext/mbedtls/library/aes.c");
-        conf.file("../../ext/mbedtls/library/bignum.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls/crypto/library/platform.c");
+        conf.file("../../ext/mbedtls/crypto/library/platform_util.c");
+        conf.file("../../ext/mbedtls/crypto/library/rsa.c");
+        conf.file("../../ext/mbedtls/crypto/library/rsa_internal.c");
+        conf.file("../../ext/mbedtls/crypto/library/md.c");
+        conf.file("../../ext/mbedtls/crypto/library/aes.c");
+        conf.file("../../ext/mbedtls/crypto/library/bignum.c");
+        conf.file("../../ext/mbedtls/crypto/library/asn1parse.c");
     }
 
     if enc_kw {
@@ -157,17 +156,17 @@ fn main() {
         conf.file("csupport/keys.c");
 
         if sig_rsa || sig_rsa3072 {
-            conf.file("../../ext/mbedtls/library/sha256.c");
+            conf.file("../../ext/mbedtls/crypto/library/sha256.c");
         }
 
         /* Simulator uses Mbed-TLS to wrap keys */
-        conf.include("../../ext/mbedtls/include");
-        conf.file("../../ext/mbedtls/library/platform.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/nist_kw.c");
-        conf.file("../../ext/mbedtls/library/cipher.c");
-        conf.file("../../ext/mbedtls/library/cipher_wrap.c");
-        conf.file("../../ext/mbedtls/library/aes.c");
+        conf.include("../../ext/mbedtls/crypto/include");
+        conf.file("../../ext/mbedtls/crypto/library/platform.c");
+        conf.file("../../ext/mbedtls/crypto/library/platform_util.c");
+        conf.file("../../ext/mbedtls/crypto/library/nist_kw.c");
+        conf.file("../../ext/mbedtls/crypto/library/cipher.c");
+        conf.file("../../ext/mbedtls/crypto/library/cipher_wrap.c");
+        conf.file("../../ext/mbedtls/crypto/library/aes.c");
 
         if sig_ecdsa {
             conf.define("MCUBOOT_USE_TINYCRYPT", None);
@@ -262,8 +261,8 @@ fn main() {
     walk_dir("../../ext/tinycrypt/lib/source").unwrap();
     walk_dir("../../ext/mbedtls-asn1").unwrap();
     walk_dir("csupport").unwrap();
-    walk_dir("../../ext/mbedtls/include").unwrap();
-    walk_dir("../../ext/mbedtls/library").unwrap();
+    walk_dir("../../ext/mbedtls/crypto/include").unwrap();
+    walk_dir("../../ext/mbedtls/crypto/library").unwrap();
 }
 
 // Output the names of all files within a directory so that Cargo knows when to rebuild.
