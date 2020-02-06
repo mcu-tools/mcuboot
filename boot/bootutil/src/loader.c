@@ -1145,7 +1145,7 @@ done:
 static int
 boot_verify_dependencies(struct boot_loader_state *state)
 {
-    int rc;
+    int rc = -1;
     uint8_t slot;
 
     BOOT_CURR_IMG(state) = 0;
