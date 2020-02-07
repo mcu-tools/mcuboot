@@ -118,7 +118,7 @@ class Image():
     def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE,
                  pad_header=False, pad=False, align=1, slot_size=0,
                  max_sectors=DEFAULT_MAX_SECTORS, overwrite_only=False,
-                 endian="little", load_addr=0, erased_val=0xff,
+                 endian="little", load_addr=0, erased_val=None,
                  save_enctlv=False):
         self.version = version or versmod.decode_version("0")
         self.header_size = header_size
@@ -131,7 +131,7 @@ class Image():
         self.endian = endian
         self.base_addr = None
         self.load_addr = 0 if load_addr is None else load_addr
-        self.erased_val = 0xff if erased_val is None else int(erased_val)
+        self.erased_val = 0xff if erased_val is None else int(erased_val, 0)
         self.payload = []
         self.enckey = None
         self.save_enctlv = save_enctlv
