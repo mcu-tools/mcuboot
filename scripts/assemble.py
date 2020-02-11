@@ -50,7 +50,7 @@ class Assembly():
     def find_slots(self, bootdir):
         offsets = {}
         sizes = {}
-        with open(os.path.join(bootdir, 'zephyr', 'include', 'generated', 'devicetree_unfixed.h'), 'r') as fd:
+        with open(os.path.join(bootdir, 'zephyr', 'include', 'generated', 'generated_dts_board_unfixed.h'), 'r') as fd:
             for line in fd:
                 m = offset_re.match(line)
                 if m is not None:
@@ -60,7 +60,7 @@ class Assembly():
                     sizes[m.group(1)] = int(m.group(3), 0)
 
         if not same_keys(offsets, sizes):
-            raise Exception("Inconsistent data in devicetree.h")
+            raise Exception("Inconsistent data in generated_dts_board.h")
 
         # We care about the MCUBOOT, IMAGE_0, and IMAGE_1 partitions.
         if 'MCUBOOT' not in offsets:
