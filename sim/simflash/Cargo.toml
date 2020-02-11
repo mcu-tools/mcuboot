@@ -5,7 +5,7 @@ authors = ["David Brown <david.brown@linaro.org>"]
 edition = "2018"
 
 [dependencies]
-failure = "0.1.5"
-failure_derive = "0.1.5"
-rand = "0.4.5"
+failure = "0.1.6"
+failure_derive = "0.1.6"
+rand = "0.4"
 log = "0.4"
