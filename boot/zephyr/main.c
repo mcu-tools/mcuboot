@@ -44,6 +44,28 @@ const struct boot_uart_funcs boot_funcs = {
 #include <usb/class/usb_dfu.h>
 #endif
 
+#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE)
+#ifdef CONFIG_LOG_PROCESS_THREAD
+#warning "The log internal thread for log processing can't transfer the log"\
+         "well for MCUBoot."
+#else
+#include <logging/log_ctrl.h>
+
+#define BOOT_LOG_STACK_SIZE 768
+#define BOOT_LOG_PROCESSING_INTERVAL 30 /* [ms] */
+
+/* log are processing in custom routine */
+K_THREAD_STACK_DEFINE(boot_log_stack, BOOT_LOG_STACK_SIZE);
+struct k_thread boot_log_thread;
+
+/* log processing need to be initalized by the application */
+#define ZEPHYR_BOOT_LOG_START() zephyr_boot_log_start()
+#endif /* CONFIG_LOG_PROCESS_THREAD */
+#else
+/* synchronous log mode doesn't need to be initalized by the application */
+#define ZEPHYR_BOOT_LOG_START() do { } while (false)
+#endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) */
+
 #ifdef CONFIG_SOC_FAMILY_NRF
 #include <hal/nrf_power.h>
 
@@ -175,6 +197,45 @@ static void do_boot(struct boot_rsp *rsp)
 }
 #endif
 
+#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) &&\
+    !defined(CONFIG_LOG_PROCESS_THREAD)
+/* The log internal thread for log processing can't transfer log well as has too
+ * low priority.
+ * Dedicated thread for log processing below uses highest application
+ * priority. This allows to transmit all logs without adding k_sleep/k_yield
+ * anywhere else int the code.
+ */
+
+/* most simple log processing theread */
+void boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
+{
+    (void)dummy1;
+    (void)dummy2;
+    (void)dummy3;
+
+     log_init();
+
+     while (1) {
+             if (log_process(false) == false) {
+                    k_sleep(BOOT_LOG_PROCESSING_INTERVAL);
+             }
+     }
+}
+
+void zephyr_boot_log_start(void)
+{
+        /* start logging thread */
+        k_thread_create(&boot_log_thread, boot_log_stack,
+                K_THREAD_STACK_SIZEOF(boot_log_stack),
+                boot_log_thread_func, NULL, NULL, NULL,
+                K_HIGHEST_APPLICATION_THREAD_PRIO, 0,
+                BOOT_LOG_PROCESSING_INTERVAL);
+
+        k_thread_name_set(&boot_log_thread, "logging");
+}
+#endif/* defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) &&\
+        !defined(CONFIG_LOG_PROCESS_THREAD) */
+
 void main(void)
 {
     struct boot_rsp rsp;
@@ -183,6 +244,8 @@ void main(void)
     BOOT_LOG_INF("Starting bootloader");
 
     os_heap_init();
+
+    ZEPHYR_BOOT_LOG_START();
 
 #if (!defined(CONFIG_XTENSA) && defined(DT_FLASH_DEV_NAME))
     if (!flash_device_get_binding(DT_FLASH_DEV_NAME)) {
