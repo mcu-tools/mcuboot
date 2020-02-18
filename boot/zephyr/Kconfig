@@ -1,4 +1,5 @@
 # Copyright (c) 2017 Linaro Limited
+# Copyright (c) 2020 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -361,8 +362,12 @@ config UPDATEABLE_IMAGE_NUMBER
 	help
 	  Enables support of multi image update.
 
+choice
+	prompt "Downgrade prevention"
+	optional
+
 config MCUBOOT_DOWNGRADE_PREVENTION
-	bool "Downgrade prevention"
+	bool "SW based downgrade prevention"
 	depends on BOOT_UPGRADE_ONLY
 	help
 	  Prevent downgrades by enforcing incrementing version numbers.
@@ -370,5 +375,15 @@ config MCUBOOT_DOWNGRADE_PREVENTION
 	  or greater minor version with equal major version. This mechanism
 	  only protects against some attacks against version downgrades (for
 	  example, a JTAG could be used to write an older version).
+
+config MCUBOOT_HW_DOWNGRADE_PREVENTION
+	bool "HW based downgrade prevention"
+	help
+	  Prevent undesirable/malicious software downgrades. When this option is
+	  set, any upgrade must have greater or equal security counter value.
+	  Because of the acceptance of equal values it allows for software
+	  downgrade to some extent.
+
+endchoice
 
 source "Kconfig.zephyr"

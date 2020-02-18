@@ -18,10 +18,11 @@
  */
 
 /*
- * Modifications are Copyright (c) 2019 Arm Limited.
+ * Modifications are Copyright (c) 2019-2020 Arm Limited.
  */
 
 #include <stddef.h>
+#include <stdint.h>
 #include <inttypes.h>
 #include <string.h>
 
@@ -30,6 +31,7 @@
 #include "bootutil/image.h"
 #include "bootutil/sha256.h"
 #include "bootutil/sign_key.h"
+#include "bootutil/security_cnt.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 
@@ -200,6 +202,68 @@ bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
 }
 #endif
 
+#ifdef MCUBOOT_HW_ROLLBACK_PROT
+/**
+ * Reads the value of an image's security counter.
+ *
+ * @param hdr           Pointer to the image header structure.
+ * @param fap           Pointer to a description structure of the image's
+ *                      flash area.
+ * @param security_cnt  Pointer to store the security counter value.
+ *
+ * @return              0 on success; nonzero on failure.
+ */
+int32_t
+bootutil_get_img_security_cnt(struct image_header *hdr,
+                              const struct flash_area *fap,
+                              uint32_t *img_security_cnt)
+{
+    struct image_tlv_iter it;
+    uint32_t off;
+    uint16_t len;
+    int32_t rc;
+
+    if ((hdr == NULL) ||
+        (fap == NULL) ||
+        (img_security_cnt == NULL)) {
+        /* Invalid parameter. */
+        return BOOT_EBADARGS;
+    }
+
+    /* The security counter TLV is in the protected part of the TLV area. */
+    if (hdr->ih_protect_tlv_size == 0) {
+        return BOOT_EBADIMAGE;
+    }
+
+    rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_SEC_CNT, true);
+    if (rc) {
+        return rc;
+    }
+
+    /* Traverse through the protected TLV area to find
+     * the security counter TLV.
+     */
+
+    rc = bootutil_tlv_iter_next(&it, &off, &len, NULL);
+    if (rc != 0) {
+        /* Security counter TLV has not been found. */
+        return -1;
+    }
+
+    if (len != sizeof(*img_security_cnt)) {
+        /* Security counter is not valid. */
+        return BOOT_EBADIMAGE;
+    }
+
+    rc = flash_area_read(fap, off, img_security_cnt, len);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    return 0;
+}
+#endif /* MCUBOOT_HW_ROLLBACK_PROT */
+
 /*
  * Verify the integrity of the image.
  * Return non-zero if image could not be validated/does not validate.
@@ -222,6 +286,11 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
     uint8_t buf[SIG_BUF_SIZE];
     uint8_t hash[32];
     int rc;
+#ifdef MCUBOOT_HW_ROLLBACK_PROT
+    uint32_t security_cnt = UINT32_MAX;
+    uint32_t img_security_cnt = 0;
+    int32_t security_counter_valid = 0;
+#endif
 
     rc = bootutil_img_hash(enc_state, image_index, hdr, fap, tmp_buf,
             tmp_buf_sz, hash, seed, seed_len);
@@ -302,19 +371,53 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
                 valid_signature = 1;
             }
             key_id = -1;
-#endif
+#endif /* EXPECTED_SIG_TLV */
+#ifdef MCUBOOT_HW_ROLLBACK_PROT
+        } else if (type == IMAGE_TLV_SEC_CNT) {
+            /*
+             * Verify the image's security counter.
+             * This must always be present.
+             */
+            if (len != sizeof(img_security_cnt)) {
+                /* Security counter is not valid. */
+                return -1;
+            }
+
+            rc = flash_area_read(fap, off, &img_security_cnt, len);
+            if (rc) {
+                return rc;
+            }
+
+            rc = boot_nv_security_counter_get(image_index, &security_cnt);
+            if (rc) {
+                return rc;
+            }
+
+            /* Compare the new image's security counter value against the
+             * stored security counter value.
+             */
+            if (img_security_cnt < security_cnt) {
+                /* The image's security counter is not accepted. */
+                return -1;
+            }
+
+            /* The image's security counter has been successfully verified. */
+            security_counter_valid = 1;
+#endif /* MCUBOOT_HW_ROLLBACK_PROT */
         }
     }
 
     if (!sha256_valid) {
         return -1;
-    }
-
 #ifdef EXPECTED_SIG_TLV
-    if (!valid_signature) {
+    } else if (!valid_signature) {
         return -1;
-    }
 #endif
+#ifdef MCUBOOT_HW_ROLLBACK_PROT
+    } else if (!security_counter_valid) {
+        return -1;
+#endif
+    }
 
     return 0;
 }
