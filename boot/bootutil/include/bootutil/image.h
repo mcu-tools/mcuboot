@@ -18,7 +18,7 @@
  */
 
 /*
- * Modifications are Copyright (c) 2019 Arm Limited.
+ * Modifications are Copyright (c) 2019-2020 Arm Limited.
  */
 
 #ifndef H_IMAGE_
@@ -84,6 +84,7 @@ struct flash_area;
 #define IMAGE_TLV_ENC_KW128         0x31   /* Key encrypted with AES-KW-128 */
 #define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-EC256 */
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
+#define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
 #define IMAGE_TLV_ANY               0xffff /* Used to iterate over all TLV */
 
 struct image_version {
@@ -162,6 +163,10 @@ int bootutil_tlv_iter_begin(struct image_tlv_iter *it,
                             bool prot);
 int bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off,
                            uint16_t *len, uint16_t *type);
+
+int32_t bootutil_get_img_security_cnt(struct image_header *hdr,
+                                      const struct flash_area *fap,
+                                      uint32_t *security_cnt);
 
 #ifdef __cplusplus
 }
