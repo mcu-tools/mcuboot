@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 #
 # Copyright 2017 Linaro Limited
-# Copyright 2019 Arm Limited
+# Copyright 2019-2020 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -154,6 +154,20 @@ def validate_version(ctx, param, value):
         raise click.BadParameter("{}".format(e))
 
 
+def validate_security_counter(ctx, param, value):
+    if value is not None:
+        if value.lower() == 'auto':
+            return 'auto'
+        else:
+            try:
+                return int(value, 0)
+            except ValueError:
+                raise click.BadParameter(
+                    "{} is not a valid integer. Please use code literals "
+                    "prefixed with 0b/0B, 0o/0O, or 0x/0X as necessary."
+                    .format(value))
+
+
 def validate_header_size(ctx, param, value):
     min_hdr_size = image.IMAGE_HEADER_SIZE
     if value < min_hdr_size:
@@ -190,13 +204,11 @@ class BasedIntParamType(click.ParamType):
 
     def convert(self, value, param, ctx):
         try:
-            if value[:2].lower() == '0x':
-                return int(value[2:], 16)
-            elif value[:1] == '0':
-                return int(value, 8)
-            return int(value, 10)
+            return int(value, 0)
         except ValueError:
-            self.fail('%s is not a valid integer' % value, param, ctx)
+            self.fail('%s is not a valid integer. Please use code literals '
+                      'prefixed with 0b/0B, 0o/0O, or 0x/0X as necessary.'
+                      % value, param, ctx)
 
 
 @click.argument('outfile')
@@ -233,6 +245,9 @@ class BasedIntParamType(click.ParamType):
 @click.option('-d', '--dependencies', callback=get_dependencies,
               required=False, help='''Add dependence on another image, format:
               "(<image_ID>,<image_version>), ... "''')
+@click.option('-s', '--security-counter', callback=validate_security_counter,
+              help='Specify the value of security counter. Use the `auto` '
+              'keyword to automatically generate it from the image version.')
 @click.option('-v', '--version', callback=validate_version,  required=True)
 @click.option('--align', type=click.Choice(['1', '2', '4', '8']),
               required=True)
@@ -242,13 +257,15 @@ class BasedIntParamType(click.ParamType):
                .hex extension, otherwise binary format is used''')
 def sign(key, align, version, header_size, pad_header, slot_size, pad,
          max_sectors, overwrite_only, endian, encrypt, infile, outfile,
-         dependencies, load_addr, hex_addr, erased_val, save_enctlv):
+         dependencies, load_addr, hex_addr, erased_val, save_enctlv,
+         security_counter):
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, align=int(align),
                       slot_size=slot_size, max_sectors=max_sectors,
                       overwrite_only=overwrite_only, endian=endian,
                       load_addr=load_addr, erased_val=erased_val,
-                      save_enctlv=save_enctlv)
+                      save_enctlv=save_enctlv,
+                      security_counter=security_counter)
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
