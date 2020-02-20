@@ -216,7 +216,7 @@ void main(void)
 #else
                             GPIO_DIR_IN | GPIO_PUD_PULL_UP
 #endif
-	    );
+           );
     __ASSERT(rc == 0, "Error of boot detect pin initialization.\n");
 
 #ifdef GPIO_INPUT
