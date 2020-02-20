@@ -351,8 +351,12 @@ comment "Zephyr configuration options"
 # it to n here. Otherwise, having it on by default makes the most
 # hardware work.
 config MULTITHREADING
+	default y if BOOT_SERIAL_CDC_ACM #usb driver requires MULTITHREADING
 	default n if SOC_FAMILY_NRF
 	default y
+
+config LOG_IMMEDIATE
+	default n if MULTITHREADING
 
 config UPDATEABLE_IMAGE_NUMBER
 	int "Number of updateable images"
