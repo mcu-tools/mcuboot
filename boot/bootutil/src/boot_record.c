@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2020 Arm Limited
+ * Copyright (c) 2020 Linaro Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,21 +88,23 @@ boot_add_data_to_shared_area(uint8_t        major_type,
     /* Iterates over the TLV section looks for the same entry if found then
      * returns with error: SHARED_MEMORY_OVERWRITE
      */
-    for (; offset < tlv_end; offset += tlv_entry.tlv_len) {
+    while (offset < tlv_end) {
         /* Create local copy to avoid unaligned access */
         memcpy(&tlv_entry, (const void *)offset, SHARED_DATA_ENTRY_HEADER_SIZE);
         if (GET_MAJOR(tlv_entry.tlv_type) == major_type &&
             GET_MINOR(tlv_entry.tlv_type) == minor_type) {
             return SHARED_MEMORY_OVERWRITE;
         }
+
+        offset += SHARED_DATA_ENTRY_SIZE(tlv_entry.tlv_len);
     }
 
     /* Add TLV entry */
     tlv_entry.tlv_type = SET_TLV_TYPE(major_type, minor_type);
-    tlv_entry.tlv_len  = SHARED_DATA_ENTRY_SIZE(size);
+    tlv_entry.tlv_len  = size;
 
     if (!boot_u16_safe_add(&boot_data_size, boot_data->header.tlv_tot_len,
-                           tlv_entry.tlv_len)) {
+                           SHARED_DATA_ENTRY_SIZE(size))) {
         return SHARED_MEMORY_GEN_ERROR;
     }
 
@@ -116,7 +119,7 @@ boot_add_data_to_shared_area(uint8_t        major_type,
     offset += SHARED_DATA_ENTRY_HEADER_SIZE;
     memcpy((void *)offset, data, size);
 
-    boot_data->header.tlv_tot_len += tlv_entry.tlv_len;
+    boot_data->header.tlv_tot_len += SHARED_DATA_ENTRY_SIZE(size);
 
     return SHARED_MEMORY_OK;
 }
