@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2018-2020 Arm Limited
+ * Copyright (c) 2020 Linaro Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,8 +39,9 @@ extern "C" {
  *    header structure: struct shared_data_tlv_entry and the data. In the entry
  *    header is a type field (tly_type) which identify the consumer of the
  *    entry in the runtime SW and specify the subtype of that data item. There
- *    is a size field (tlv_len) which covers the size of the entry header and
- *    the data. After this structure comes the actual data.
+ *    is a size field (tlv_len) which covers the size of the the data. After
+ *    this structure comes the actual data.
+ *
  *  - Arbitrary number and size of data entry can be in the shared memory area.
  *
  * This table gives of overview about the tlv_type field in the entry header.
@@ -68,9 +70,10 @@ extern "C" {
 #define MINOR_MASK 0xFFF   /* 12 bit */
 
 #define SET_TLV_TYPE(major, minor) \
-        ((((major) & MAJOR_MASK) << MAJOR_POS) | ((minor) & MINOR_MASK))
-#define GET_MAJOR(tlv_type) ((tlv_type) >> MAJOR_POS)
-#define GET_MINOR(tlv_type) ((tlv_type) &  MINOR_MASK)
+        (((uint16_t)((major) & MAJOR_MASK) << MAJOR_POS) \
+        | ((minor) & MINOR_MASK))
+#define GET_MAJOR(tlv_type) ((uint16_t)(tlv_type) >> MAJOR_POS)
+#define GET_MINOR(tlv_type) ((tlv_type) & MINOR_MASK)
 
 /* Magic value which marks the beginning of shared data area in memory */
 #define SHARED_DATA_TLV_INFO_MAGIC    0x2016
@@ -98,9 +101,10 @@ extern "C" {
 #define CLAIM_MASK 0x3F            /* 6 bit */
 #define MEASUREMENT_CLAIM_POS 3    /* 3 bit */
 
-#define GET_IAS_MODULE(tlv_type) (GET_MINOR(tlv_type) >> MODULE_POS)
-#define GET_IAS_CLAIM(tlv_type)  (GET_MINOR(tlv_type)  & CLAIM_MASK)
-#define SET_IAS_MINOR(sw_module, claim) (((sw_module) << 6) | (claim))
+#define GET_IAS_MODULE(tlv_type) ((uint16_t)GET_MINOR(tlv_type) >> MODULE_POS)
+#define GET_IAS_CLAIM(tlv_type)  (GET_MINOR(tlv_type) & CLAIM_MASK)
+#define SET_IAS_MINOR(sw_module, claim) \
+        (((uint16_t)(sw_module) << MODULE_POS) | (claim))
 
 /**
  * Shared data TLV header.  All fields in little endian.
@@ -127,7 +131,7 @@ struct shared_data_tlv_header {
  */
 struct shared_data_tlv_entry {
     uint16_t tlv_type;
-    uint16_t tlv_len; /* size of single TLV entry (including this header). */
+    uint16_t tlv_len; /* TLV data length (not including this header). */
 };
 
 #define SHARED_DATA_ENTRY_HEADER_SIZE sizeof(struct shared_data_tlv_entry)
