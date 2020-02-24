@@ -57,13 +57,17 @@ const struct boot_uart_funcs boot_funcs = {
 /* log are processing in custom routine */
 K_THREAD_STACK_DEFINE(boot_log_stack, BOOT_LOG_STACK_SIZE);
 struct k_thread boot_log_thread;
+volatile bool boot_log_stop = false;
+K_SEM_DEFINE(boot_log_sem, 1, 1);
 
 /* log processing need to be initalized by the application */
 #define ZEPHYR_BOOT_LOG_START() zephyr_boot_log_start()
+#define ZEPHYR_BOOT_LOG_STOP() zephyr_boot_log_stop()
 #endif /* CONFIG_LOG_PROCESS_THREAD */
 #else
 /* synchronous log mode doesn't need to be initalized by the application */
 #define ZEPHYR_BOOT_LOG_START() do { } while (false)
+#define ZEPHYR_BOOT_LOG_STOP() do { } while (false)
 #endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) */
 
 #ifdef CONFIG_SOC_FAMILY_NRF
@@ -217,9 +221,14 @@ void boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
 
      while (1) {
              if (log_process(false) == false) {
+                    if (boot_log_stop) {
+                        break;
+                    }
                     k_sleep(BOOT_LOG_PROCESSING_INTERVAL);
              }
      }
+
+     k_sem_give(&boot_log_sem);
 }
 
 void zephyr_boot_log_start(void)
@@ -232,6 +241,18 @@ void zephyr_boot_log_start(void)
                 BOOT_LOG_PROCESSING_INTERVAL);
 
         k_thread_name_set(&boot_log_thread, "logging");
+}
+
+void zephyr_boot_log_stop(void)
+{
+    boot_log_stop = true;
+
+    /* wait until log procesing thread expired
+     * This can be reworked using a thread_join() API once a such will be
+     * available in zephyr.
+     * see https://github.com/zephyrproject-rtos/zephyr/issues/21500
+     */
+    (void)k_sem_take(&boot_log_sem, K_FOREVER);
 }
 #endif/* defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) &&\
         !defined(CONFIG_LOG_PROCESS_THREAD) */
@@ -322,6 +343,7 @@ void main(void)
                  rsp.br_image_off);
 
     BOOT_LOG_INF("Jumping to the first image slot");
+    ZEPHYR_BOOT_LOG_STOP();
     do_boot(&rsp);
 
     BOOT_LOG_ERR("Never should get here");
