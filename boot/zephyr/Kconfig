@@ -246,6 +246,18 @@ module = MCUBOOT
 module-str = MCUBoot bootloader
 source "subsys/logging/Kconfig.template.log_config"
 
+config MCUBOOT_LOG_THREAD_STACK_SIZE
+	int "Stack size for the MCUBoot log processing thread"
+	depends on LOG && !LOG_IMMEDIATE
+	default 2048 if COVERAGE_GCOV
+	default 1024 if NO_OPTIMIZATIONS
+	default 1024 if XTENSA
+	default 4096 if (X86 && X86_64)
+	default 4096 if ARM64
+	default 768
+	help
+	  Set the internal stack size for MCUBoot log processing thread.
+
 menuconfig MCUBOOT_SERIAL
 	bool "MCUboot serial recovery"
 	default n

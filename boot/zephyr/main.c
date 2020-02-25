@@ -51,11 +51,10 @@ const struct boot_uart_funcs boot_funcs = {
 #else
 #include <logging/log_ctrl.h>
 
-#define BOOT_LOG_STACK_SIZE 768
 #define BOOT_LOG_PROCESSING_INTERVAL 30 /* [ms] */
 
 /* log are processing in custom routine */
-K_THREAD_STACK_DEFINE(boot_log_stack, BOOT_LOG_STACK_SIZE);
+K_THREAD_STACK_DEFINE(boot_log_stack, CONFIG_MCUBOOT_LOG_THREAD_STACK_SIZE);
 struct k_thread boot_log_thread;
 volatile bool boot_log_stop = false;
 K_SEM_DEFINE(boot_log_sem, 1, 1);
