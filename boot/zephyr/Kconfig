@@ -141,6 +141,11 @@ config MCUBOOT_CLEANUP_ARM_CORE
 	depends on CPU_CORTEX_M
 	default y
 
+config MCUBOOT_NRF_CLEANUP_PERIPHERAL
+	bool "Perform peripheral cleanup before chain-load the application"
+	depends on SOC_FAMILY_NRF
+	default y
+
 config MBEDTLS_CFG_FILE
 	default "mcuboot-mbedtls-cfg.h"
 
