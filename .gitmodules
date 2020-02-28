@@ -1,3 +1,15 @@
 [submodule "sim/mbedtls"]
 	path = ext/mbedtls
 	url = https://github.com/ARMmbed/mbedtls
+[submodule "boot/cypress/libs/pdl/psoc6pdl"]
+	path = boot/cypress/libs/pdl/psoc6pdl
+	url = https://github.com/cypresssemiconductorco/psoc6pdl.git
+[submodule "boot/cypress/libs/retarget-io"]
+	path = boot/cypress/libs/retarget-io
+	url = https://github.com/cypresssemiconductorco/retarget-io.git
+[submodule "boot/cypress/libs/core-lib"]
+	path = boot/cypress/libs/core-lib
+	url = https://github.com/cypresssemiconductorco/core-lib.git
+[submodule "boot/cypress/libs/psoc6hal"]
+	path = boot/cypress/libs/psoc6hal
+	url = https://github.com/cypresssemiconductorco/psoc6hal.git
