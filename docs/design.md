@@ -675,12 +675,14 @@ happened when a swap was requested:
         o Write primary_slot.copy_done = 1
         (swap caused the following values to be written:
             primary_slot.magic = BOOT_MAGIC
+            secondary_slot.magic = UNSET
             primary_slot.image_ok = Unset)
 
     * permanent:
         o Write primary_slot.copy_done = 1
         (swap caused the following values to be written:
             primary_slot.magic = BOOT_MAGIC
+            secondary_slot.magic = UNSET
             primary_slot.image_ok = 0x01)
 
     * revert:
