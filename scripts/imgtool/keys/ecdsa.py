@@ -61,6 +61,8 @@ class ECDSA256P1Public(KeyClass):
         return 72
 
     def verify(self, signature, payload):
+        # strip possible paddings added during sign
+        signature = signature[:signature[1] + 2]
         k = self.key
         if isinstance(self.key, ec.EllipticCurvePrivateKey):
             k = self.key.public_key()
