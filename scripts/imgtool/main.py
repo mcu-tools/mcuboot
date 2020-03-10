@@ -244,6 +244,9 @@ class BasedIntParamType(click.ParamType):
                    'image')
 @click.option('-H', '--header-size', callback=validate_header_size,
               type=BasedIntParamType(), required=True)
+@click.option('--pad-sig', default=False, is_flag=True,
+              help='Add 0-2 bytes of padding to ECDSA signature '
+                   '(for mcuboot <1.5)')
 @click.option('-d', '--dependencies', callback=get_dependencies,
               required=False, help='''Add dependence on another image, format:
               "(<image_ID>,<image_version>), ... "''')
@@ -257,7 +260,7 @@ class BasedIntParamType(click.ParamType):
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
-def sign(key, align, version, header_size, pad_header, slot_size, pad, confirm,
+def sign(key, align, version, pad_sig, header_size, pad_header, slot_size, pad, confirm,
          max_sectors, overwrite_only, endian, encrypt, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter):
@@ -279,6 +282,10 @@ def sign(key, align, version, header_size, pad_header, slot_size, pad, confirm,
             # FIXME
             raise click.UsageError("Signing and encryption must use the same "
                                    "type of key")
+
+    if pad_sig and hasattr(key, 'pad_sig'):
+        key.pad_sig = True
+
     img.create(key, enckey, dependencies)
     img.save(outfile, hex_addr)
 
