@@ -109,7 +109,10 @@ class TLV():
         Add a TLV record.  Kind should be a string found in TLV_VALUES above.
         """
         e = STRUCT_ENDIAN_DICT[self.endian]
-        buf = struct.pack(e + 'BBH', TLV_VALUES[kind], 0, len(payload))
+        if isinstance(kind, int):
+            buf = struct.pack(e + 'BBH', kind, 0, len(payload))
+        else:
+            buf = struct.pack(e + 'BBH', TLV_VALUES[kind], 0, len(payload))
         self.buf += buf
         self.buf += payload
 
@@ -273,7 +276,7 @@ class Image():
         return cipherkey, ciphermac, pubk
 
     def create(self, key, public_key_format, enckey, dependencies=None,
-               sw_type=None):
+               sw_type=None, custom_tlvs=None):
         self.enckey = enckey
 
         # Calculate the hash of the public key
@@ -324,12 +327,24 @@ class Image():
             dependencies_num = len(dependencies[DEP_IMAGES_KEY])
             protected_tlv_size += (dependencies_num * 16)
 
+        if custom_tlvs:
+            for value in custom_tlvs.values():
+                protected_tlv_size += TLV_SIZE + len(value)
+
         if protected_tlv_size != 0:
             # Add the size of the TLV info header
             protected_tlv_size += TLV_INFO_SIZE
 
-        # At this point the image is already on the payload, this adds
-        # the header to the payload as well
+        # At this point the image is already on the payload
+        #
+        # This adds the padding if image is not aligned to the 16 Bytes
+        # in encrypted mode
+        if self.enckey is not None:
+            pad_len = len(self.payload) % 16
+            if pad_len > 0:
+                self.payload += bytes(16 - pad_len)
+
+        # This adds the header to the payload as well
         self.add_header(enckey, protected_tlv_size)
 
         prot_tlv = TLV(self.endian, TLV_PROT_INFO_MAGIC)
@@ -359,6 +374,9 @@ class Image():
                                     dependencies[DEP_VERSIONS_KEY][i].build
                                     )
                     prot_tlv.add('DEPENDENCY', payload)
+
+            for tag, value in custom_tlvs.items():
+                prot_tlv.add(tag, value)
 
             protected_tlv_off = len(self.payload)
             self.payload += prot_tlv.get()

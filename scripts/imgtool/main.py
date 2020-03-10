@@ -225,6 +225,12 @@ class BasedIntParamType(click.ParamType):
 
 @click.argument('outfile')
 @click.argument('infile')
+@click.option('--custom-tlv', required=False, nargs=2, default=[],
+              multiple=True, metavar='[tag] [value]',
+              help='Custom TLV that will be placed into protected area. '
+                   'Add "0x" prefix if the value should be interpreted as an '
+                   'integer, otherwise it will be interpreted as a string. '
+                   'Specify the option multiple times to add multiple TLVs.')
 @click.option('-R', '--erased-val', type=click.Choice(['0', '0xff']),
               required=False,
               help='The value that is read back from erased flash.')
@@ -282,7 +288,7 @@ class BasedIntParamType(click.ParamType):
 def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt, infile, outfile, dependencies, load_addr, hex_addr,
-         erased_val, save_enctlv, security_counter, boot_record):
+         erased_val, save_enctlv, security_counter, boot_record, custom_tlv):
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, confirm=confirm,
                       align=int(align), slot_size=slot_size,
@@ -305,7 +311,26 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     if pad_sig and hasattr(key, 'pad_sig'):
         key.pad_sig = True
 
-    img.create(key, public_key_format, enckey, dependencies, boot_record)
+    # Get list of custom protected TLVs from the command-line
+    custom_tlvs = {}
+    for tlv in custom_tlv:
+        tag = int(tlv[0], 0)
+        if tag in custom_tlvs:
+            raise click.UsageError('Custom TLV %s already exists.' % hex(tag))
+        if tag in image.TLV_VALUES.values():
+            raise click.UsageError(
+                'Custom TLV %s conflicts with predefined TLV.' % hex(tag))
+
+        value = tlv[1]
+        if value.startswith('0x'):
+            if len(value[2:]) % 2:
+                raise click.UsageError('Custom TLV length is odd.')
+            custom_tlvs[tag] = bytes.fromhex(value[2:])
+        else:
+            custom_tlvs[tag] = value.encode('utf-8')
+
+    img.create(key, public_key_format, enckey, dependencies, boot_record,
+               custom_tlvs)
     img.save(outfile, hex_addr)
 
 
