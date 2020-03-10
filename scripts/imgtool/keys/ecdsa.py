@@ -52,12 +52,17 @@ class ECDSA256P1Public(KeyClass):
         return "ECDSA256"
 
     def sig_len(self):
-        # The DER encoding depends on the high bit, and can be
-        # anywhere from 70 to 72 bytes.  Because we have to fill in
-        # the length field before computing the signature, however,
-        # we'll give the largest, and the sig checking code will allow
-        # for it to be up to two bytes larger than the actual
-        # signature.
+        # Early versions of MCUboot (< v1.5.0) required ECDSA
+        # signatures to be padded to 72 bytes.  Because the DER
+        # encoding is done with signed integers, the size of the
+        # signature will vary depending on whether the high bit is set
+        # in each value.  This padding was done in a
+        # not-easily-reversible way (by just adding zeros).
+        #
+        # The signing code no longer requires this padding, and newer
+        # versions of MCUboot don't require it.  But, continue to
+        # return the total length so that the padding can be done if
+        # requested.
         return 72
 
     def verify(self, signature, payload):
@@ -78,6 +83,7 @@ class ECDSA256P1(ECDSA256P1Public):
     def __init__(self, key):
         """key should be an instance of EllipticCurvePrivateKey"""
         self.key = key
+        self.pad_sig = False
 
     @staticmethod
     def generate():
@@ -142,7 +148,10 @@ class ECDSA256P1(ECDSA256P1Public):
                 signature_algorithm=ec.ECDSA(SHA256()))
 
     def sign(self, payload):
-        # To make fixed length, pad with one or two zeros.
         sig = self.raw_sign(payload)
-        sig += b'\000' * (self.sig_len() - len(sig))
-        return sig
+        if self.pad_sig:
+            # To make fixed length, pad with one or two zeros.
+            sig += b'\000' * (self.sig_len() - len(sig))
+            return sig
+        else:
+            return sig
