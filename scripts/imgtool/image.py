@@ -117,14 +117,15 @@ class TLV():
 class Image():
 
     def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE,
-                 pad_header=False, pad=False, align=1, slot_size=0,
-                 max_sectors=DEFAULT_MAX_SECTORS, overwrite_only=False,
-                 endian="little", load_addr=0, erased_val=None,
-                 save_enctlv=False, security_counter=None):
+                 pad_header=False, pad=False, confirm=False, align=1,
+                 slot_size=0, max_sectors=DEFAULT_MAX_SECTORS,
+                 overwrite_only=False, endian="little", load_addr=0,
+                 erased_val=None, save_enctlv=False, security_counter=None):
         self.version = version or versmod.decode_version("0")
         self.header_size = header_size
         self.pad_header = pad_header
         self.pad = pad
+        self.confirm = confirm
         self.align = align
         self.slot_size = slot_size
         self.max_sectors = max_sectors
@@ -432,8 +433,10 @@ class Image():
                                    self.overwrite_only, self.enckey,
                                    self.save_enctlv, self.enctlv_len)
         padding = size - (len(self.payload) + tsize)
-        pbytes = bytes([self.erased_val] * padding)
-        pbytes += bytes([self.erased_val] * (tsize - len(boot_magic)))
+        pbytes = bytearray([self.erased_val] * padding)
+        pbytes += bytearray([self.erased_val] * (tsize - len(boot_magic)))
+        if self.confirm and not self.overwrite_only:
+            pbytes[-MAX_ALIGN] = 0x01  # image_ok = 0x01
         pbytes += boot_magic
         self.payload += pbytes
 
