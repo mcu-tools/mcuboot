@@ -233,6 +233,8 @@ class BasedIntParamType(click.ParamType):
 @click.option('-M', '--max-sectors', type=int,
               help='When padding allow for this amount of sectors (defaults '
                    'to 128)')
+@click.option('--confirm', default=False, is_flag=True,
+              help='When padding the image, mark it as confirmed')
 @click.option('--pad', default=False, is_flag=True,
               help='Pad image to --slot-size bytes, adding trailer magic')
 @click.option('-S', '--slot-size', type=BasedIntParamType(), required=True,
@@ -255,15 +257,15 @@ class BasedIntParamType(click.ParamType):
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
-def sign(key, align, version, header_size, pad_header, slot_size, pad,
+def sign(key, align, version, header_size, pad_header, slot_size, pad, confirm,
          max_sectors, overwrite_only, endian, encrypt, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter):
     img = image.Image(version=decode_version(version), header_size=header_size,
-                      pad_header=pad_header, pad=pad, align=int(align),
-                      slot_size=slot_size, max_sectors=max_sectors,
-                      overwrite_only=overwrite_only, endian=endian,
-                      load_addr=load_addr, erased_val=erased_val,
+                      pad_header=pad_header, pad=pad, confirm=confirm,
+                      align=int(align), slot_size=slot_size,
+                      max_sectors=max_sectors, overwrite_only=overwrite_only,
+                      endian=endian, load_addr=load_addr, erased_val=erased_val,
                       save_enctlv=save_enctlv,
                       security_counter=security_counter)
     img.load(infile)
