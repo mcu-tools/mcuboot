@@ -120,6 +120,11 @@ config BOOT_SIGNATURE_KEY_FILE
 	  with the public key information will be written in a format expected by
 	  MCUboot.
 
+config MCUBOOT_CLEANUP_ARM_CORE
+	bool "Perform core cleanup before chain-load the application"
+	depends on CPU_CORTEX_M
+	default y
+
 config MBEDTLS_CFG_FILE
 	default "mcuboot-mbedtls-cfg.h"
 
