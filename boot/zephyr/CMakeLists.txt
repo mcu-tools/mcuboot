@@ -228,3 +228,8 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
   zephyr_library_sources(${GENERATED_PUBKEY})
 endif()
 
+if(CONFIG_MCUBOOT_CLEANUP_ARM_CORE)
+zephyr_library_sources(
+  ${BOOT_DIR}/zephyr/arm_cleanup.c
+)
+endif()

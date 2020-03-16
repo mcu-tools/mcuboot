@@ -44,6 +44,10 @@ const struct boot_uart_funcs boot_funcs = {
 #include <usb/class/usb_dfu.h>
 #endif
 
+#if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
+#include <arm_cleanup.h>
+#endif
+
 #if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE)
 #ifdef CONFIG_LOG_PROCESS_THREAD
 #warning "The log internal thread for log processing can't transfer the log"\
@@ -126,7 +130,13 @@ static void do_boot(struct boot_rsp *rsp)
     /* Disable the USB to prevent it from firing interrupts */
     usb_disable();
 #endif
+#if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
+    cleanup_arm_nvic(); /* cleanup NVIC registers */
+#endif
     __set_MSP(vt->msp);
+#if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
+    __set_CONTROL(0x00); /* application will configures core on its own */
+#endif
     ((void (*)(void))vt->reset)();
 }
 
