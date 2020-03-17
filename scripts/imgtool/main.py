@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 #
-# Copyright 2017 Linaro Limited
+# Copyright 2017-2020 Linaro Limited
 # Copyright 2019-2020 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,11 @@ import sys
 from imgtool import image, imgtool_version
 from imgtool.version import decode_version
 from .keys import RSAUsageError, ECDSAUsageError, Ed25519UsageError
+
+MIN_PYTHON_VERSION = (3, 6)
+if sys.version_info < MIN_PYTHON_VERSION:
+    sys.exit("Python %s.%s or newer is required by imgtool."
+             % MIN_PYTHON_VERSION)
 
 
 def gen_rsa2048(keyfile, passwd):
@@ -230,6 +235,10 @@ class BasedIntParamType(click.ParamType):
               default='little', help="Select little or big endian")
 @click.option('--overwrite-only', default=False, is_flag=True,
               help='Use overwrite-only instead of swap upgrades')
+@click.option('--boot-record', metavar='sw_type', help='Create CBOR encoded '
+              'boot record TLV. The sw_type represents the role of the '
+              'software component (e.g. CoFM for coprocessor firmware). '
+              '[max. 12 characters]')
 @click.option('-M', '--max-sectors', type=int,
               help='When padding allow for this amount of sectors (defaults '
                    'to 128)')
@@ -263,7 +272,7 @@ class BasedIntParamType(click.ParamType):
 def sign(key, align, version, pad_sig, header_size, pad_header, slot_size, pad, confirm,
          max_sectors, overwrite_only, endian, encrypt, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
-         security_counter):
+         security_counter, boot_record):
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, confirm=confirm,
                       align=int(align), slot_size=slot_size,
@@ -286,7 +295,7 @@ def sign(key, align, version, pad_sig, header_size, pad_header, slot_size, pad, 
     if pad_sig and hasattr(key, 'pad_sig'):
         key.pad_sig = True
 
-    img.create(key, enckey, dependencies)
+    img.create(key, enckey, dependencies, boot_record)
     img.save(outfile, hex_addr)
 
 

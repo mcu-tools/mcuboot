@@ -10,10 +10,12 @@ setuptools.setup(
     license="Apache Software License",
     url="http://github.com/JuulLabs-OSS/mcuboot",
     packages=setuptools.find_packages(),
+    python_requires='>=3.6',
     install_requires=[
         'cryptography>=2.4.2',
         'intelhex>=2.2.1',
         'click',
+        'cbor>=1.0.0',
     ],
     entry_points={
         "console_scripts": ["imgtool=imgtool.main:imgtool"]

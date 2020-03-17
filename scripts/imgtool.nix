@@ -19,6 +19,7 @@ let
       python37.pkgs.cryptography
       python37.pkgs.intelhex
       python37.pkgs.setuptools
+      python37.pkgs.cbor
     ]
   );
 in

@@ -19,6 +19,7 @@ Image signing and management.
 """
 
 from . import version as versmod
+from .boot_record import create_sw_component_data
 import click
 from enum import Enum
 from intelhex import IntelHex
@@ -42,6 +43,7 @@ DEFAULT_MAX_SECTORS = 128
 MAX_ALIGN = 8
 DEP_IMAGES_KEY = "images"
 DEP_VERSIONS_KEY = "versions"
+MAX_SW_TYPE_LENGTH = 12  # Bytes
 
 # Image header flags.
 IMAGE_F = {
@@ -63,6 +65,7 @@ TLV_VALUES = {
         'ENCEC256': 0x32,
         'DEPENDENCY': 0x40,
         'SEC_CNT': 0x50,
+        'BOOT_RECORD': 0x60,
 }
 
 TLV_SIZE = 4
@@ -256,8 +259,17 @@ class Image():
             format=PublicFormat.UncompressedPoint)
         return cipherkey, ciphermac, pubk
 
-    def create(self, key, enckey, dependencies=None):
+    def create(self, key, enckey, dependencies=None, sw_type=None):
         self.enckey = enckey
+
+        # Calculate the hash of the public key
+        if key is not None:
+            pub = key.get_public_bytes()
+            sha = hashlib.sha256()
+            sha.update(pub)
+            pubbytes = sha.digest()
+        else:
+            pubbytes = bytes(hashlib.sha256().digest_size)
 
         protected_tlv_size = 0
 
@@ -265,6 +277,32 @@ class Image():
             # Size of the security counter TLV: header ('HH') + payload ('I')
             #                                   = 4 + 4 = 8 Bytes
             protected_tlv_size += TLV_SIZE + 4
+
+        if sw_type is not None:
+            if len(sw_type) > MAX_SW_TYPE_LENGTH:
+                msg = "'{}' is too long ({} characters) for sw_type. Its " \
+                      "maximum allowed length is 12 characters.".format(
+                       sw_type, len(sw_type))
+                raise click.UsageError(msg)
+
+            image_version = (str(self.version.major) + '.'
+                             + str(self.version.minor) + '.'
+                             + str(self.version.revision))
+
+            # The image hash is computed over the image header, the image
+            # itself and the protected TLV area. However, the boot record TLV
+            # (which is part of the protected area) should contain this hash
+            # before it is even calculated. For this reason the script fills
+            # this field with zeros and the bootloader will insert the right
+            # value later.
+            digest = bytes(hashlib.sha256().digest_size)
+
+            # Create CBOR encoded boot record
+            boot_record = create_sw_component_data(sw_type, image_version,
+                                                   "SHA256", digest,
+                                                   pubbytes)
+
+            protected_tlv_size += TLV_SIZE + len(boot_record)
 
         if dependencies is not None:
             # Size of a Dependency TLV = Header ('HH') + Payload('IBBHI')
@@ -293,6 +331,9 @@ class Image():
                 payload = struct.pack(e + 'I', self.security_counter)
                 prot_tlv.add('SEC_CNT', payload)
 
+            if sw_type is not None:
+                prot_tlv.add('BOOT_RECORD', boot_record)
+
             if dependencies is not None:
                 for i in range(dependencies_num):
                     payload = struct.pack(
@@ -319,10 +360,6 @@ class Image():
         tlv.add('SHA256', digest)
 
         if key is not None:
-            pub = key.get_public_bytes()
-            sha = hashlib.sha256()
-            sha.update(pub)
-            pubbytes = sha.digest()
             tlv.add('KEYHASH', pubbytes)
 
             # `sign` expects the full image payload (sha256 done internally),
