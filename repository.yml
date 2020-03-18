@@ -31,7 +31,7 @@ repo.versions:
     "1.5.0": "v1.5.0"
 
     "0-dev": "0.0.0"        # master
-    "0-latest": "1.3.1"     # latest stable release
-    "1-latest": "1.3.1"     # latest stable release
+    "0-latest": "1.5.0"     # latest stable release
+    "1-latest": "1.5.0"     # latest stable release
 
-    "1.0-latest": "1.3.1"
+    "1.0-latest": "1.5.0"
