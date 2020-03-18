@@ -1100,8 +1100,8 @@ boot_verify_slot_dependency(struct boot_loader_state *state,
     /* Determine the source of the image which is the subject of
      * the dependency and get it's version. */
     swap_type = state->swap_type[dep->image_id];
-    dep_slot = (swap_type != BOOT_SWAP_TYPE_NONE) ?
-                BOOT_SECONDARY_SLOT : BOOT_PRIMARY_SLOT;
+    dep_slot = BOOT_IS_UPGRADE(swap_type) ? BOOT_SECONDARY_SLOT
+                                          : BOOT_PRIMARY_SLOT;
     dep_version = &state->imgs[dep->image_id][dep_slot].hdr.ih_ver;
 
     rc = boot_is_version_sufficient(&dep->image_min_version, dep_version);
