@@ -198,11 +198,6 @@ if(CONFIG_MCUBOOT_SERIAL)
   zephyr_include_directories(${BOOT_DIR}/boot_serial/include)
   zephyr_include_directories(include)
 
-  zephyr_link_libraries_ifdef(
-    CONFIG_TINYCBOR
-    TINYCBOR
-    )
-
   zephyr_include_directories_ifdef(
     CONFIG_BOOT_ERASE_PROGRESSIVELY
     ${BOOT_DIR}/bootutil/src
