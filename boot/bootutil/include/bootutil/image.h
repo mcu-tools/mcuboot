@@ -133,8 +133,8 @@ struct image_tlv {
     ((fap)->fa_id == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
 
 #ifdef __ZEPHYR__
-BUILD_ASSERT(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
-	     "struct image_header not required size");
+BUILD_ASSERT_MSG(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
+               "struct image_header not required size");
 #else
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
