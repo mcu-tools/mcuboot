@@ -97,6 +97,14 @@
 #define MCUBOOT_HW_ROLLBACK_PROT
 #endif
 
+#ifdef CONFIG_MEASURED_BOOT
+#define MCUBOOT_MEASURED_BOOT
+#endif
+
+#ifdef CONFIG_BOOT_SHARE_DATA
+#define MCUBOOT_DATA_SHARING
+#endif
+
 /*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.

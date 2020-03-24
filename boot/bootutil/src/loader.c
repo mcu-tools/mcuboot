@@ -39,6 +39,7 @@
 #include "swap_priv.h"
 #include "bootutil/bootutil_log.h"
 #include "bootutil/security_cnt.h"
+#include "bootutil/boot_record.h"
 
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
@@ -1788,6 +1789,24 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
             }
         }
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
+
+#ifdef MCUBOOT_MEASURED_BOOT
+        rc = boot_save_boot_status(BOOT_CURR_IMG(state),
+                                   boot_img_hdr(state, BOOT_PRIMARY_SLOT),
+                                   BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT));
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed to add Image %u data to shared memory area",
+                         BOOT_CURR_IMG(state));
+        }
+#endif /* MCUBOOT_MEASURED_BOOT */
+
+#ifdef MCUBOOT_DATA_SHARING
+        rc = boot_save_shared_data(boot_img_hdr(state, BOOT_PRIMARY_SLOT),
+                                   BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT));
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed to add data to shared memory area.");
+        }
+#endif /* MCUBOOT_DATA_SHARING */
     }
 
 #if (BOOT_IMAGE_NUMBER > 1)
