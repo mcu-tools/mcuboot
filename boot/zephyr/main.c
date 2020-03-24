@@ -55,7 +55,7 @@ const struct boot_uart_funcs boot_funcs = {
 #else
 #include <logging/log_ctrl.h>
 
-#define BOOT_LOG_PROCESSING_INTERVAL 30 /* [ms] */
+#define BOOT_LOG_PROCESSING_INTERVAL K_MSEC(30) /* [ms] */
 
 /* log are processing in custom routine */
 K_THREAD_STACK_DEFINE(boot_log_stack, CONFIG_MCUBOOT_LOG_THREAD_STACK_SIZE);
