@@ -52,7 +52,7 @@ CY_SEC_TOOLS_PATH ?= $(shell $(PYTHON_PATH) $(CURDIR)/scripts/find_cysectools.py
 BUILDCFG ?= Debug
 
 # Set of supported applications
-APPS := MCUBootApp BlinkyApp CypressBootloader SecureBlinkyApp
+APPS := MCUBootApp BlinkyApp
 
 HEADER_OFFSET ?= 0
 

@@ -34,9 +34,6 @@ IMG_TYPE ?= BOOT
 # image type can be BOOT or UPGRADE
 IMG_TYPES = BOOT UPGRADE
 
-# CypressBootloader Image ID to use for signing, defualt is ID for multi image
-CYB_IMG_ID ?= 16
-
 ifneq ($(COMPILER), GCC_ARM)
 $(error Only GCC ARM is supported at this moment)
 endif
