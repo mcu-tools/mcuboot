@@ -217,6 +217,18 @@ config BOOT_ERASE_PROGRESSIVELY
 	 on some hardware that has long erase times, to prevent long wait
 	 times at the beginning of the DFU process.
 
+config MEASURED_BOOT
+	bool "Store the boot state/measurements in shared memory"
+	default n
+	help
+	  If enabled, the bootloader will store certain boot measurements such as
+	  the hash of the firmware image in a shared memory area. This data can
+	  be used later by runtime services (e.g. by a device attestation service).
+
+config BOOT_SHARE_DATA
+	bool "Save application specific data in shared memory area"
+	default n
+
 config BOOT_WAIT_FOR_USB_DFU
 	bool "Wait for a prescribed duration to see if USB DFU is invoked"
 	default n
