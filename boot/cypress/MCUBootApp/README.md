@@ -151,5 +151,9 @@ Also IDE may be used:
 
 *Msys2* - to use systems PATH navigate to msys2 folder, open `msys2_shell.cmd`, uncomment set `MSYS2_PATH_TYPE=inherit`, restart MSYS2 shell.
 
+*Cygwin* - add following to build command `CURDIR=pwd | cygpath --mixed -f -` so that build command looks like that:
+
+        make app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M CURDIR=`pwd | cygpath --mixed -f -`
+
 This will iherit system's PATH so should find `python3.7` installed in regular way as well as imgtool and its dependencies.
 

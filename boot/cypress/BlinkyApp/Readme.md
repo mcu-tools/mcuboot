@@ -2,9 +2,9 @@
 
 **Description:**
 
-Implements simple Blinky LED CM4 application to demonstrate MCUBoot Application and CypressBootloader operation in terms of BOOT and UPGRADE process.
+Implements simple Blinky LED CM4 application to demonstrate MCUBoot Application operation in terms of BOOT and UPGRADE process.
 
-It is started by MCUBoot Application or CypressBootloader which is running on CM0p.
+It is started by MCUBoot Application which is running on CM0p.
 
 Functionality:
 
