@@ -54,6 +54,7 @@ IMAGE_F = {
 
 TLV_VALUES = {
         'KEYHASH': 0x01,
+        'PUBKEY': 0x02,
         'SHA256': 0x10,
         'RSA2048': 0x20,
         'ECDSA224': 0x21,
@@ -259,7 +260,8 @@ class Image():
             format=PublicFormat.UncompressedPoint)
         return cipherkey, ciphermac, pubk
 
-    def create(self, key, enckey, dependencies=None, sw_type=None):
+    def create(self, key, public_key_format, enckey, dependencies=None,
+               sw_type=None):
         self.enckey = enckey
 
         # Calculate the hash of the public key
@@ -360,7 +362,10 @@ class Image():
         tlv.add('SHA256', digest)
 
         if key is not None:
-            tlv.add('KEYHASH', pubbytes)
+            if public_key_format == 'hash':
+                tlv.add('KEYHASH', pubbytes)
+            else:
+                tlv.add('PUBKEY', pub)
 
             # `sign` expects the full image payload (sha256 done internally),
             # while `sign_digest` expects only the digest of the payload
