@@ -265,14 +265,17 @@ class BasedIntParamType(click.ParamType):
 @click.option('-v', '--version', callback=validate_version,  required=True)
 @click.option('--align', type=click.Choice(['1', '2', '4', '8']),
               required=True)
+@click.option('--public-key-format', type=click.Choice(['hash', 'full']),
+              default='hash', help='In what format to add the public key to '
+              'the image manifest: full key or hash of the key.')
 @click.option('-k', '--key', metavar='filename')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
-def sign(key, align, version, pad_sig, header_size, pad_header, slot_size, pad, confirm,
-         max_sectors, overwrite_only, endian, encrypt, infile, outfile,
-         dependencies, load_addr, hex_addr, erased_val, save_enctlv,
-         security_counter, boot_record):
+def sign(key, public_key_format, align, version, pad_sig, header_size,
+         pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
+         endian, encrypt, infile, outfile, dependencies, load_addr, hex_addr,
+         erased_val, save_enctlv, security_counter, boot_record):
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, confirm=confirm,
                       align=int(align), slot_size=slot_size,
@@ -295,7 +298,7 @@ def sign(key, align, version, pad_sig, header_size, pad_header, slot_size, pad, 
     if pad_sig and hasattr(key, 'pad_sig'):
         key.pad_sig = True
 
-    img.create(key, enckey, dependencies, boot_record)
+    img.create(key, public_key_format, enckey, dependencies, boot_record)
     img.save(outfile, hex_addr)
 
 
