@@ -404,7 +404,7 @@ bs_reset(char *buf, int len)
     bs_empty_rsp(buf, len);
 
 #ifdef __ZEPHYR__
-    k_sleep(250);
+    k_sleep(K_MSEC(250));
     sys_reboot(SYS_REBOOT_COLD);
 #else
     os_cputime_delay_usecs(250000);
