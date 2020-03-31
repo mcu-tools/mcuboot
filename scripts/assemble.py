@@ -50,7 +50,7 @@ class Assembly():
     def find_slots(self, bootdir):
         offsets = {}
         sizes = {}
-        with open(os.path.join(bootdir, 'zephyr', 'include', 'generated', 'devicetree_unfixed.h'), 'r') as fd:
+        with open(os.path.join(bootdir, 'zephyr', 'include', 'generated', 'devicetree_legacy_unfixed.h'), 'r') as fd:
             for line in fd:
                 m = offset_re.match(line)
                 if m is not None:
