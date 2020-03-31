@@ -183,6 +183,7 @@ if(CONFIG_BOOT_ENCRYPT_EC256)
     ${TINYCRYPT_DIR}/source/aes_encrypt.c
     ${TINYCRYPT_DIR}/source/aes_decrypt.c
     ${TINYCRYPT_DIR}/source/ctr_mode.c
+    ${TINYCRYPT_DIR}/source/hkdf.c
     ${TINYCRYPT_DIR}/source/hmac.c
     ${TINYCRYPT_DIR}/source/ecc_dh.c
     )

@@ -50,6 +50,7 @@
 #include "tinycrypt/ecc_dh.h"
 #include "tinycrypt/ctr_mode.h"
 #include "tinycrypt/hmac.h"
+#include "tinycrypt/hkdf.h"
 #include "mbedtls/oid.h"
 #include "mbedtls/asn1.h"
 #endif
@@ -275,113 +276,6 @@ parse_ec256_enckey(uint8_t **p, uint8_t *end, uint8_t *pk)
 
     return 0;
 }
-
-/*
- * HKDF as described by RFC5869.
- *
- * @param ikm       The input data to be derived.
- * @param ikm_len   Length of the input data.
- * @param info      An information tag.
- * @param info_len  Length of the information tag.
- * @param okm       Output of the KDF computation.
- * @param okm_len   On input the requested length; on output the generated length
- */
-static int
-hkdf(uint8_t *ikm, uint16_t ikm_len, uint8_t *info, uint16_t info_len,
-        uint8_t *okm, uint16_t *okm_len)
-{
-    struct tc_hmac_state_struct hmac;
-    uint8_t salt[TC_SHA256_DIGEST_SIZE];
-    uint8_t prk[TC_SHA256_DIGEST_SIZE];
-    uint8_t T[TC_SHA256_DIGEST_SIZE];
-    uint16_t off;
-    uint16_t len;
-    uint8_t counter;
-    bool first;
-    int rc;
-
-    /*
-     * Extract
-     */
-
-    if (ikm == NULL || okm == NULL || ikm_len == 0) {
-        return -1;
-    }
-
-    memset(salt, 0, TC_SHA256_DIGEST_SIZE);
-    rc = tc_hmac_set_key(&hmac, salt, TC_SHA256_DIGEST_SIZE);
-    if (rc != TC_CRYPTO_SUCCESS) {
-        return -1;
-    }
-
-    rc = tc_hmac_init(&hmac);
-    if (rc != TC_CRYPTO_SUCCESS) {
-        return -1;
-    }
-
-    rc = tc_hmac_update(&hmac, ikm, ikm_len);
-    if (rc != TC_CRYPTO_SUCCESS) {
-        return -1;
-    }
-
-    rc = tc_hmac_final(prk, TC_SHA256_DIGEST_SIZE, &hmac);
-    if (rc != TC_CRYPTO_SUCCESS) {
-        return -1;
-    }
-
-    /*
-     * Expand
-     */
-
-    len = *okm_len;
-    counter = 1;
-    first = true;
-    for (off = 0; len > 0; off += TC_SHA256_DIGEST_SIZE, ++counter) {
-        rc = tc_hmac_set_key(&hmac, prk, TC_SHA256_DIGEST_SIZE);
-        if (rc != TC_CRYPTO_SUCCESS) {
-            return -1;
-        }
-
-        rc = tc_hmac_init(&hmac);
-        if (rc != TC_CRYPTO_SUCCESS) {
-            return -1;
-        }
-
-        if (first) {
-            first = false;
-        } else {
-            rc = tc_hmac_update(&hmac, T, TC_SHA256_DIGEST_SIZE);
-            if (rc != TC_CRYPTO_SUCCESS) {
-                return -1;
-            }
-        }
-
-        rc = tc_hmac_update(&hmac, info, info_len);
-        if (rc != TC_CRYPTO_SUCCESS) {
-            return -1;
-        }
-
-        rc = tc_hmac_update(&hmac, &counter, 1);
-        if (rc != TC_CRYPTO_SUCCESS) {
-            return -1;
-        }
-
-        rc = tc_hmac_final(T, TC_SHA256_DIGEST_SIZE, &hmac);
-        if (rc != TC_CRYPTO_SUCCESS) {
-            return -1;
-        }
-
-        if (len > TC_SHA256_DIGEST_SIZE) {
-            memcpy(&okm[off], T, TC_SHA256_DIGEST_SIZE);
-            len -= TC_SHA256_DIGEST_SIZE;
-        } else {
-            memcpy(&okm[off], T, len);
-            len = 0;
-        }
-    }
-
-    return 0;
-}
 #endif
 
 int
@@ -445,12 +339,12 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
     struct tc_aes_key_sched_struct aes;
     uint8_t tag[TC_SHA256_DIGEST_SIZE];
     uint8_t shared[NUM_ECC_BYTES];
+    uint8_t prk[TC_SHA256_DIGEST_SIZE];
     uint8_t derived_key[TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE];
     uint8_t *cp;
     uint8_t *cpend;
     uint8_t pk[NUM_ECC_BYTES];
     uint8_t counter[TC_AES_BLOCK_SIZE];
-    uint16_t len;
 #endif
     int rc = -1;
 
@@ -509,13 +403,18 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
     }
 
     /*
-     * Expand shared secret to create keys for AES-128-CTR + HMAC-SHA256
+     * Use HKDF to expand shared secret to create keys for
+     * AES-128-CTR + HMAC-SHA256
      */
 
-    len = TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE;
-    rc = hkdf(shared, NUM_ECC_BYTES, (uint8_t *)"MCUBoot_ECIES_v1", 16,
-            derived_key, &len);
-    if (rc != 0 || len != (TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE)) {
+    rc = tc_hkdf_extract(shared, NUM_ECC_BYTES, NULL, 0, prk);
+    if (rc != TC_CRYPTO_SUCCESS) {
+        return -1;
+    }
+
+    rc = tc_hkdf_expand(prk, (uint8_t *)"MCUBoot_ECIES_v1", 16,
+                        TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE, derived_key);
+    if (rc != TC_CRYPTO_SUCCESS) {
         return -1;
     }
 

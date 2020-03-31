@@ -210,6 +210,7 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/aes_encrypt.c");
         conf.file("../../ext/tinycrypt/lib/source/aes_decrypt.c");
         conf.file("../../ext/tinycrypt/lib/source/ctr_mode.c");
+        conf.file("../../ext/tinycrypt/lib/source/hkdf.c");
         conf.file("../../ext/tinycrypt/lib/source/hmac.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_dh.c");
     }
