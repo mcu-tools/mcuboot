@@ -145,6 +145,20 @@ static void fiat_25519_subborrowx_u25(uint32_t* out1, fiat_25519_uint1* out2, fi
   *out2 = (fiat_25519_uint1)(0x0 - x2);
 }
 
+// value_barrier_u32 returns |a|, but prevents GCC and Clang from reasoning about
+// the returned value. This is used to mitigate compilers undoing constant-time
+// code, until we can express our requirements directly in the language.
+//
+// Note the compiler is aware that |value_barrier_u32| has no side effects and
+// always has the same output for a given input. This allows it to eliminate
+// dead code, move computations across loops, and vectorize.
+static inline uint32_t value_barrier_u32(uint32_t a) {
+#if !defined(OPENSSL_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
+  __asm__("" : "+r"(a) : /* no inputs */);
+#endif
+  return a;
+}
+
 /*
  * Input Bounds:
  *   arg1: [0x0 ~> 0x1]
@@ -156,7 +170,13 @@ static void fiat_25519_subborrowx_u25(uint32_t* out1, fiat_25519_uint1* out2, fi
 static void fiat_25519_cmovznz_u32(uint32_t* out1, fiat_25519_uint1 arg1, uint32_t arg2, uint32_t arg3) {
   fiat_25519_uint1 x1 = (!(!arg1));
   uint32_t x2 = ((fiat_25519_int1)(0x0 - x1) & UINT32_C(0xffffffff));
-  uint32_t x3 = ((x2 & arg3) | ((~x2) & arg2));
+  // Note this line has been patched from the synthesized code to add value
+  // barriers.
+  //
+  // Clang recognizes this pattern as a select. While it usually transforms it
+  // to a cmov, it sometimes further transforms it into a branch, which we do
+  // not want.
+  uint32_t x3 = ((value_barrier_u32(x2) & arg3) | (value_barrier_u32(~x2) & arg2));
   *out1 = x3;
 }
 
