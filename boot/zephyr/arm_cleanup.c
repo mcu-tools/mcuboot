@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr.h>
+#include <arch/arm/aarch32/cortex_m/cmsis.h>
 
 void cleanup_arm_nvic(void) {
 	/* Allow any pending interrupts to be recognized */
