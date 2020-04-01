@@ -57,6 +57,7 @@
 #include <bootutil/sign_key.h>
 #include <mcuboot_config/mcuboot_config.h>
 
+#if !defined(MCUBOOT_HW_KEY)
 #if defined(MCUBOOT_SIGN_RSA)
 const unsigned char rsa_pub_key[] = {
     0x30, 0x82, 0x01, 0x0a, 0x02, 0x82, 0x01, 0x01, 0x00, 0xd1, 0x06, 0x08,
@@ -163,3 +164,13 @@ const struct bootutil_key bootutil_keys[] = {
 };
 const int bootutil_key_cnt = 1;
 #endif
+#else
+unsigned int pub_key_len;
+struct bootutil_key bootutil_keys[1] = {
+    {
+        .key = 0,
+        .len = &pub_key_len,
+    }
+};
+const int bootutil_key_cnt = 1;
+#endif /* !MCUBOOT_HW_KEY */

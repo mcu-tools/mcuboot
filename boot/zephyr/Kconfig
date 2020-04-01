@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Linaro Limited
+# Copyright (c) 2017-2020 Linaro Limited
 # Copyright (c) 2020 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -127,6 +127,15 @@ config MCUBOOT_CLEANUP_ARM_CORE
 
 config MBEDTLS_CFG_FILE
 	default "mcuboot-mbedtls-cfg.h"
+
+config BOOT_HW_KEY
+	bool "Use HW key for image verification"
+	default n
+	help
+	  Use HW key for image verification, otherwise the public key is embedded
+	  in MCUBoot. If enabled the public key is appended to the signed image
+	  and requires the hash of the public key to be provisioned to the device
+	  beforehand.
 
 config BOOT_VALIDATE_SLOT0
 	bool "Validate image in the primary slot on every boot"
