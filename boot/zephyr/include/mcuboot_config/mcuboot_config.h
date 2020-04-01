@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2018 Open Source Foundries Limited
  * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2020 Linaro Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -42,6 +43,10 @@
 #ifdef CONFIG_BOOT_USE_NRF_CC310_BL
 #define MCUBOOT_USE_NRF_CC310_BL
 #endif
+#endif
+
+#ifdef CONFIG_BOOT_HW_KEY
+#define MCUBOOT_HW_KEY
 #endif
 
 #ifdef CONFIG_BOOT_VALIDATE_SLOT0

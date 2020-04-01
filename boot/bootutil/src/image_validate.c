@@ -177,6 +177,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 #endif
 
 #ifdef EXPECTED_SIG_TLV
+#if !defined(MCUBOOT_HW_KEY)
 static int
 bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
 {
@@ -200,6 +201,34 @@ bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
     }
     return -1;
 }
+#else
+extern unsigned int pub_key_len;
+static int
+bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
+{
+    bootutil_sha256_context sha256_ctx;
+    uint8_t hash[32];
+    uint8_t key_hash[32];
+    size_t key_hash_size = sizeof(key_hash);
+    int rc;
+
+    bootutil_sha256_init(&sha256_ctx);
+    bootutil_sha256_update(&sha256_ctx, key, key_len);
+    bootutil_sha256_finish(&sha256_ctx, hash);
+
+    rc = boot_retrieve_public_key_hash(image_index, key_hash, &key_hash_size);
+    if (rc) {
+        return rc;
+    }
+
+    if (!memcmp(hash, key_hash, key_hash_size)) {
+        bootutil_keys[0].key = key;
+        pub_key_len = key_len;
+        return 0;
+    }
+    return -1;
+}
+#endif /* !MCUBOOT_HW_KEY */
 #endif
 
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
@@ -281,7 +310,11 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 #ifdef EXPECTED_SIG_TLV
     int valid_signature = 0;
     int key_id = -1;
+#ifdef MCUBOOT_HW_KEY
+    /* Few extra bytes for encoding and for public exponent. */
+    uint8_t key_buf[SIG_BUF_SIZE + 24];
 #endif
+#endif /* EXPECTED_SIG_TLV */
     struct image_tlv_iter it;
     uint8_t buf[SIG_BUF_SIZE];
     uint8_t hash[32];
@@ -337,6 +370,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 
             sha256_valid = 1;
 #ifdef EXPECTED_SIG_TLV
+#ifndef MCUBOOT_HW_KEY
         } else if (type == IMAGE_TLV_KEYHASH) {
             /*
              * Determine which key we should be checking.
@@ -353,6 +387,24 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
              * The key may not be found, which is acceptable.  There
              * can be multiple signatures, each preceded by a key.
              */
+#else
+        } else if (type == IMAGE_TLV_PUBKEY) {
+            /*
+             * Determine which key we should be checking.
+             */
+            if (len > sizeof(key_buf)) {
+                return -1;
+            }
+            rc = flash_area_read(fap, off, key_buf, len);
+            if (rc) {
+                return rc;
+            }
+            key_id = bootutil_find_key(image_index, key_buf, len);
+            /*
+             * The key may not be found, which is acceptable.  There
+             * can be multiple signatures, each preceded by a key.
+             */
+#endif /* !MCUBOOT_HW_KEY */
         } else if (type == EXPECTED_SIG_TLV) {
             /* Ignore this signature if it is out of bounds. */
             if (key_id < 0 || key_id >= bootutil_key_cnt) {
