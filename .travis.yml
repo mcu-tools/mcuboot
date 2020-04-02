@@ -21,7 +21,7 @@ matrix:
     - os: linux
       env: SINGLE_FEATURES="none sig-rsa sig-rsa3072 overwrite-only validate-primary-slot swap-move" TEST=sim
     - os: linux
-      env: SINGLE_FEATURES="enc-rsa enc-ec256" TEST=sim
+      env: SINGLE_FEATURES="enc-rsa enc-ec256 enc-x25519" TEST=sim
 
     # Values defined in $MULTI_FEATURES consist of any number of features
     # to be enabled at the same time. The list of multi-values should be
@@ -36,7 +36,7 @@ matrix:
     - os: linux
       env: MULTI_FEATURES="sig-rsa enc-rsa validate-primary-slot,swap-move enc-rsa sig-rsa validate-primary-slot" TEST=sim
     - os: linux
-      env: MULTI_FEATURES="sig-rsa enc-kw validate-primary-slot bootstrap" TEST=sim
+      env: MULTI_FEATURES="sig-rsa enc-kw validate-primary-slot bootstrap,sig-ed25519 enc-x25519 validate-primary-slot" TEST=sim
     - os: linux
       env: MULTI_FEATURES="sig-ecdsa enc-kw validate-primary-slot" TEST=sim
     - os: linux
