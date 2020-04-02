@@ -42,11 +42,14 @@ extern "C" {
 #define TLV_ENC_RSA_SZ    256
 #define TLV_ENC_KW_SZ     24
 #define TLV_ENC_EC256_SZ  (65 + 32 + 16)
+#define TLV_ENC_X25519_SZ (32 + 32 + 16)
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
 #define BOOT_ENC_TLV_SIZE TLV_ENC_RSA_SZ
 #elif defined(MCUBOOT_ENCRYPT_EC256)
 #define BOOT_ENC_TLV_SIZE TLV_ENC_EC256_SZ
+#elif defined(MCUBOOT_ENCRYPT_X25519)
+#define BOOT_ENC_TLV_SIZE TLV_ENC_X25519_SZ
 #else
 #define BOOT_ENC_TLV_SIZE TLV_ENC_KW_SZ
 #endif
