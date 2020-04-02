@@ -1,5 +1,5 @@
 """
-ECDSA key management
+ED25519 key management
 """
 
 from cryptography.hazmat.backends import default_backend
@@ -58,7 +58,7 @@ class Ed25519Public(KeyClass):
 
 class Ed25519(Ed25519Public):
     """
-    Wrapper around an ECDSA private key.
+    Wrapper around an ED25519 private key.
     """
 
     def __init__(self, key):
