@@ -41,6 +41,9 @@ enc-kw = []
 # Encrypt image in the secondary slot using ECIES-P256
 enc-ec256 = []
 
+# Encrypt image in the secondary slot using ECIES-X25519
+enc-x25519 = []
+
 # Allow bootstrapping an empty/invalid primary slot from a valid secondary slot
 bootstrap = []
 
