@@ -1143,3 +1143,169 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 
   return CRYPTO_memcmp(rcheck, rcopy, sizeof(rcheck)) == 0;
 }
+
+static void fe_cswap(fe *f, fe *g, fe_limb_t b) {
+  b = 0-b;
+  for (unsigned i = 0; i < FE_NUM_LIMBS; i++) {
+    fe_limb_t x = f->v[i] ^ g->v[i];
+    x &= b;
+    f->v[i] ^= x;
+    g->v[i] ^= x;
+  }
+}
+
+static void fiat_25519_carry_scmul_121666(uint32_t out1[10], const uint32_t arg1[10]) {
+  uint64_t x1 = ((uint64_t)UINT32_C(0x1db42) * (arg1[9]));
+  uint64_t x2 = ((uint64_t)UINT32_C(0x1db42) * (arg1[8]));
+  uint64_t x3 = ((uint64_t)UINT32_C(0x1db42) * (arg1[7]));
+  uint64_t x4 = ((uint64_t)UINT32_C(0x1db42) * (arg1[6]));
+  uint64_t x5 = ((uint64_t)UINT32_C(0x1db42) * (arg1[5]));
+  uint64_t x6 = ((uint64_t)UINT32_C(0x1db42) * (arg1[4]));
+  uint64_t x7 = ((uint64_t)UINT32_C(0x1db42) * (arg1[3]));
+  uint64_t x8 = ((uint64_t)UINT32_C(0x1db42) * (arg1[2]));
+  uint64_t x9 = ((uint64_t)UINT32_C(0x1db42) * (arg1[1]));
+  uint64_t x10 = ((uint64_t)UINT32_C(0x1db42) * (arg1[0]));
+  uint32_t x11 = (uint32_t)(x10 >> 26);
+  uint32_t x12 = (uint32_t)(x10 & UINT32_C(0x3ffffff));
+  uint64_t x13 = (x11 + x9);
+  uint32_t x14 = (uint32_t)(x13 >> 25);
+  uint32_t x15 = (uint32_t)(x13 & UINT32_C(0x1ffffff));
+  uint64_t x16 = (x14 + x8);
+  uint32_t x17 = (uint32_t)(x16 >> 26);
+  uint32_t x18 = (uint32_t)(x16 & UINT32_C(0x3ffffff));
+  uint64_t x19 = (x17 + x7);
+  uint32_t x20 = (uint32_t)(x19 >> 25);
+  uint32_t x21 = (uint32_t)(x19 & UINT32_C(0x1ffffff));
+  uint64_t x22 = (x20 + x6);
+  uint32_t x23 = (uint32_t)(x22 >> 26);
+  uint32_t x24 = (uint32_t)(x22 & UINT32_C(0x3ffffff));
+  uint64_t x25 = (x23 + x5);
+  uint32_t x26 = (uint32_t)(x25 >> 25);
+  uint32_t x27 = (uint32_t)(x25 & UINT32_C(0x1ffffff));
+  uint64_t x28 = (x26 + x4);
+  uint32_t x29 = (uint32_t)(x28 >> 26);
+  uint32_t x30 = (uint32_t)(x28 & UINT32_C(0x3ffffff));
+  uint64_t x31 = (x29 + x3);
+  uint32_t x32 = (uint32_t)(x31 >> 25);
+  uint32_t x33 = (uint32_t)(x31 & UINT32_C(0x1ffffff));
+  uint64_t x34 = (x32 + x2);
+  uint32_t x35 = (uint32_t)(x34 >> 26);
+  uint32_t x36 = (uint32_t)(x34 & UINT32_C(0x3ffffff));
+  uint64_t x37 = (x35 + x1);
+  uint32_t x38 = (uint32_t)(x37 >> 25);
+  uint32_t x39 = (uint32_t)(x37 & UINT32_C(0x1ffffff));
+  uint32_t x40 = (x38 * (uint32_t)UINT8_C(0x13));
+  uint32_t x41 = (x12 + x40);
+  uint32_t x42 = (x41 >> 26);
+  uint32_t x43 = (x41 & UINT32_C(0x3ffffff));
+  uint32_t x44 = (x42 + x15);
+  uint32_t x45 = (x44 >> 25);
+  uint32_t x46 = (x44 & UINT32_C(0x1ffffff));
+  uint32_t x47 = (x45 + x18);
+  out1[0] = x43;
+  out1[1] = x46;
+  out1[2] = x47;
+  out1[3] = x21;
+  out1[4] = x24;
+  out1[5] = x27;
+  out1[6] = x30;
+  out1[7] = x33;
+  out1[8] = x36;
+  out1[9] = x39;
+}
+
+static void fe_mul121666(fe *h, const fe_loose *f) {
+  assert_fe_loose(f->v);
+  fiat_25519_carry_scmul_121666(h->v, f->v);
+  assert_fe(h->v);
+}
+
+static void x25519_scalar_mult_generic(uint8_t out[32],
+                                       const uint8_t scalar[32],
+                                       const uint8_t point[32]) {
+  fe x1, x2, z2, x3, z3, tmp0, tmp1;
+  fe_loose x2l, z2l, x3l, tmp0l, tmp1l;
+
+  uint8_t e[32];
+  memcpy(e, scalar, 32);
+  e[0] &= 248;
+  e[31] &= 127;
+  e[31] |= 64;
+
+  // The following implementation was transcribed to Coq and proven to
+  // correspond to unary scalar multiplication in affine coordinates given that
+  // x1 != 0 is the x coordinate of some point on the curve. It was also checked
+  // in Coq that doing a ladderstep with x1 = x3 = 0 gives z2' = z3' = 0, and z2
+  // = z3 = 0 gives z2' = z3' = 0. The statement was quantified over the
+  // underlying field, so it applies to Curve25519 itself and the quadratic
+  // twist of Curve25519. It was not proven in Coq that prime-field arithmetic
+  // correctly simulates extension-field arithmetic on prime-field values.
+  // The decoding of the byte array representation of e was not considered.
+  // Specification of Montgomery curves in affine coordinates:
+  // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Spec/MontgomeryCurve.v#L27>
+  // Proof that these form a group that is isomorphic to a Weierstrass curve:
+  // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/AffineProofs.v#L35>
+  // Coq transcription and correctness proof of the loop (where scalarbits=255):
+  // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZ.v#L118>
+  // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L278>
+  // preconditions: 0 <= e < 2^255 (not necessarily e < order), fe_invert(0) = 0
+  fe_frombytes(&x1, point);
+  fe_1(&x2);
+  fe_0(&z2);
+  fe_copy(&x3, &x1);
+  fe_1(&z3);
+
+  unsigned swap = 0;
+  int pos;
+  for (pos = 254; pos >= 0; --pos) {
+    // loop invariant as of right before the test, for the case where x1 != 0:
+    //   pos >= -1; if z2 = 0 then x2 is nonzero; if z3 = 0 then x3 is nonzero
+    //   let r := e >> (pos+1) in the following equalities of projective points:
+    //   to_xz (r*P)     === if swap then (x3, z3) else (x2, z2)
+    //   to_xz ((r+1)*P) === if swap then (x2, z2) else (x3, z3)
+    //   x1 is the nonzero x coordinate of the nonzero point (r*P-(r+1)*P)
+    unsigned b = 1 & (e[pos / 8] >> (pos & 7));
+    swap ^= b;
+    fe_cswap(&x2, &x3, swap);
+    fe_cswap(&z2, &z3, swap);
+    swap = b;
+    // Coq transcription of ladderstep formula (called from transcribed loop):
+    // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZ.v#L89>
+    // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L131>
+    // x1 != 0 <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L217>
+    // x1  = 0 <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L147>
+    fe_sub(&tmp0l, &x3, &z3);
+    fe_sub(&tmp1l, &x2, &z2);
+    fe_add(&x2l, &x2, &z2);
+    fe_add(&z2l, &x3, &z3);
+    fe_mul_tll(&z3, &tmp0l, &x2l);
+    fe_mul_tll(&z2, &z2l, &tmp1l);
+    fe_sq_tl(&tmp0, &tmp1l);
+    fe_sq_tl(&tmp1, &x2l);
+    fe_add(&x3l, &z3, &z2);
+    fe_sub(&z2l, &z3, &z2);
+    fe_mul_ttt(&x2, &tmp1, &tmp0);
+    fe_sub(&tmp1l, &tmp1, &tmp0);
+    fe_sq_tl(&z2, &z2l);
+    fe_mul121666(&z3, &tmp1l);
+    fe_sq_tl(&x3, &x3l);
+    fe_add(&tmp0l, &tmp0, &z3);
+    fe_mul_ttt(&z3, &x1, &z2);
+    fe_mul_tll(&z2, &tmp1l, &tmp0l);
+  }
+  // here pos=-1, so r=e, so to_xz (e*P) === if swap then (x3, z3) else (x2, z2)
+  fe_cswap(&x2, &x3, swap);
+  fe_cswap(&z2, &z3, swap);
+
+  fe_invert(&z2, &z2);
+  fe_mul_ttt(&x2, &x2, &z2);
+  fe_tobytes(out, &x2);
+}
+
+int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
+           const uint8_t peer_public_value[32]) {
+  static const uint8_t kZeros[32] = {0};
+  x25519_scalar_mult_generic(out_shared_key, private_key, peer_public_value);
+  // The all-zero output results when the input is a point of small order.
+  return CRYPTO_memcmp(kZeros, out_shared_key, 32) != 0;
+}
