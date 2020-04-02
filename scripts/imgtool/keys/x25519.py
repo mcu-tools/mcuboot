@@ -74,8 +74,10 @@ class X25519(X25519Public):
         return self.key.public_key()
 
     def get_private_bytes(self, minimal):
-        raise X25519UsageError("Operation not supported with {} keys".format(
-            self.shortname()))
+        return self.key.private_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption())
 
     def export_private(self, path, passwd=None):
         """
