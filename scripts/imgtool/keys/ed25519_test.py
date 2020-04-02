@@ -2,6 +2,7 @@
 Tests for ECDSA keys
 """
 
+import hashlib
 import io
 import os.path
 import sys
@@ -51,12 +52,12 @@ class Ed25519KeyGeneration(unittest.TestCase):
         k = Ed25519.generate()
 
         ccode = io.StringIO()
-        k.emit_c(ccode)
+        k.emit_c_public(ccode)
         self.assertIn("ed25519_pub_key", ccode.getvalue())
         self.assertIn("ed25519_pub_key_len", ccode.getvalue())
 
         rustcode = io.StringIO()
-        k.emit_rust(rustcode)
+        k.emit_rust_public(rustcode)
         self.assertIn("ED25519_PUB_KEY", rustcode.getvalue())
 
     def test_emit_pub(self):
@@ -68,28 +69,34 @@ class Ed25519KeyGeneration(unittest.TestCase):
         k2 = load(pubname)
 
         ccode = io.StringIO()
-        k2.emit_c(ccode)
+        k2.emit_c_public(ccode)
         self.assertIn("ed25519_pub_key", ccode.getvalue())
         self.assertIn("ed25519_pub_key_len", ccode.getvalue())
 
         rustcode = io.StringIO()
-        k2.emit_rust(rustcode)
+        k2.emit_rust_public(rustcode)
         self.assertIn("ED25519_PUB_KEY", rustcode.getvalue())
 
     def test_sig(self):
         k = Ed25519.generate()
         buf = b'This is the message'
-        sig = k.raw_sign(buf)
+        sha = hashlib.sha256()
+        sha.update(buf)
+        digest = sha.digest()
+        sig = k.sign_digest(digest)
 
         # The code doesn't have any verification, so verify this
         # manually.
-        k.key.public_key().verify(signature=sig, data=buf)
+        k.key.public_key().verify(signature=sig, data=digest)
 
         # Modify the message to make sure the signature fails.
+        sha = hashlib.sha256()
+        sha.update(b'This is thE message')
+        new_digest = sha.digest()
         self.assertRaises(InvalidSignature,
                           k.key.public_key().verify,
                           signature=sig,
-                          data=b'This is thE message')
+                          data=new_digest)
 
 
 if __name__ == '__main__':

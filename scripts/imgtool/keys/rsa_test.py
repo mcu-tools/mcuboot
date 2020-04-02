@@ -62,12 +62,12 @@ class KeyGeneration(unittest.TestCase):
             k = RSA.generate(key_size=key_size)
 
             ccode = io.StringIO()
-            k.emit_c(ccode)
+            k.emit_c_public(ccode)
             self.assertIn("rsa_pub_key", ccode.getvalue())
             self.assertIn("rsa_pub_key_len", ccode.getvalue())
 
             rustcode = io.StringIO()
-            k.emit_rust(rustcode)
+            k.emit_rust_public(rustcode)
             self.assertIn("RSA_PUB_KEY", rustcode.getvalue())
 
     def test_emit_pub(self):
@@ -80,12 +80,12 @@ class KeyGeneration(unittest.TestCase):
             k2 = load(pubname)
 
             ccode = io.StringIO()
-            k2.emit_c(ccode)
+            k2.emit_c_public(ccode)
             self.assertIn("rsa_pub_key", ccode.getvalue())
             self.assertIn("rsa_pub_key_len", ccode.getvalue())
 
             rustcode = io.StringIO()
-            k2.emit_rust(rustcode)
+            k2.emit_rust_public(rustcode)
             self.assertIn("RSA_PUB_KEY", rustcode.getvalue())
 
     def test_sig(self):
