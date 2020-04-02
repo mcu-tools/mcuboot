@@ -208,6 +208,16 @@ config BOOT_ENCRYPT_EC256
 	  encryption mechanism used in this case is ECIES using primitives
 	  described under "ECIES-P256 encryption" in docs/encrypted_images.md.
 
+config BOOT_ENCRYPT_X25519
+	bool "Support for encrypted upgrade images using ECIES-X25519"
+	default n
+	help
+	  If y, images in the secondary slot can be encrypted and are decrypted
+	  on the fly when upgrading to the primary slot, as well as encrypted
+	  back when swapping from the primary slot to the secondary slot. The
+	  encryption mechanism used in this case is ECIES using primitives
+	  described under "ECIES-X25519 encryption" in docs/encrypted_images.md.
+
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
 	default 128
