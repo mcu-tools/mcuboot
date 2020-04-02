@@ -18,18 +18,26 @@ Cryptographic key management for imgtool.
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
-from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey, EllipticCurvePublicKey
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import (
+    RSAPrivateKey, RSAPublicKey)
+from cryptography.hazmat.primitives.asymmetric.ec import (
+    EllipticCurvePrivateKey, EllipticCurvePublicKey)
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey, Ed25519PublicKey)
+from cryptography.hazmat.primitives.asymmetric.x25519 import (
+    X25519PrivateKey, X25519PublicKey)
 
 from .rsa import RSA, RSAPublic, RSAUsageError, RSA_KEY_SIZES
 from .ecdsa import ECDSA256P1, ECDSA256P1Public, ECDSAUsageError
 from .ed25519 import Ed25519, Ed25519Public, Ed25519UsageError
+from .x25519 import X25519, X25519Public, X25519UsageError
+
 
 class PasswordRequired(Exception):
     """Raised to indicate that the key is password protected, but a
     password was not specified."""
     pass
+
 
 def load(path, passwd=None):
     """Try loading a key from the given path.  Returns None if the password wasn't specified."""
@@ -78,5 +86,9 @@ def load(path, passwd=None):
         return Ed25519(pk)
     elif isinstance(pk, Ed25519PublicKey):
         return Ed25519Public(pk)
+    elif isinstance(pk, X25519PrivateKey):
+        return X25519(pk)
+    elif isinstance(pk, X25519PublicKey):
+        return X25519Public(pk)
     else:
         raise Exception("Unknown key type: " + str(type(pk)))

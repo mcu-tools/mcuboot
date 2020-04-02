@@ -26,8 +26,9 @@ from intelhex import IntelHex
 import hashlib
 import struct
 import os.path
-from .keys import rsa, ecdsa
+from .keys import rsa, ecdsa, x25519
 from cryptography.hazmat.primitives.asymmetric import ec, padding
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -63,6 +64,7 @@ TLV_VALUES = {
         'ENCRSA2048': 0x30,
         'ENCKW128': 0x31,
         'ENCEC256': 0x32,
+        'ENCX25519': 0x33,
         'DEPENDENCY': 0x40,
         'SEC_CNT': 0x50,
         'BOOT_RECORD': 0x60,
@@ -240,9 +242,13 @@ class Image():
                           len(self.payload), tsize, self.slot_size)
                 raise click.UsageError(msg)
 
-    def ecies_p256_hkdf(self, enckey, plainkey):
-        newpk = ec.generate_private_key(ec.SECP256R1(), default_backend())
-        shared = newpk.exchange(ec.ECDH(), enckey._get_public())
+    def ecies_hkdf(self, enckey, plainkey):
+        if isinstance(enckey, ecdsa.ECDSA256P1Public):
+            newpk = ec.generate_private_key(ec.SECP256R1(), default_backend())
+            shared = newpk.exchange(ec.ECDH(), enckey._get_public())
+        else:
+            newpk = X25519PrivateKey.generate()
+            shared = newpk.exchange(enckey._get_public())
         derived_key = HKDF(
             algorithm=hashes.SHA256(), length=48, salt=None,
             info=b'MCUBoot_ECIES_v1', backend=default_backend()).derive(shared)
@@ -254,9 +260,14 @@ class Image():
                         backend=default_backend())
         mac.update(cipherkey)
         ciphermac = mac.finalize()
-        pubk = newpk.public_key().public_bytes(
-            encoding=Encoding.X962,
-            format=PublicFormat.UncompressedPoint)
+        if isinstance(enckey, ecdsa.ECDSA256P1Public):
+            pubk = newpk.public_key().public_bytes(
+                encoding=Encoding.X962,
+                format=PublicFormat.UncompressedPoint)
+        else:
+            pubk = newpk.public_key().public_bytes(
+                encoding=Encoding.Raw,
+                format=PublicFormat.Raw)
         return cipherkey, ciphermac, pubk
 
     def create(self, key, enckey, dependencies=None, sw_type=None):
@@ -387,11 +398,15 @@ class Image():
                         label=None))
                 self.enctlv_len = len(cipherkey)
                 tlv.add('ENCRSA2048', cipherkey)
-            elif isinstance(enckey, ecdsa.ECDSA256P1Public):
-                cipherkey, mac, pubk = self.ecies_p256_hkdf(enckey, plainkey)
+            elif isinstance(enckey, (ecdsa.ECDSA256P1Public,
+                                     x25519.X25519Public)):
+                cipherkey, mac, pubk = self.ecies_hkdf(enckey, plainkey)
                 enctlv = pubk + mac + cipherkey
                 self.enctlv_len = len(enctlv)
-                tlv.add('ENCEC256', enctlv)
+                if isinstance(enckey, ecdsa.ECDSA256P1Public):
+                    tlv.add('ENCEC256', enctlv)
+                else:
+                    tlv.add('ENCX25519', enctlv)
 
             nonce = bytes([0] * 16)
             cipher = Cipher(algorithms.AES(plainkey), modes.CTR(nonce),
