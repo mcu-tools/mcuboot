@@ -53,6 +53,7 @@ pub enum TlvKinds {
     ENCRSA2048 = 0x30,
     ENCKW128 = 0x31,
     ENCEC256 = 0x32,
+    ENCX25519 = 0x33,
     DEPENDENCY = 0x40,
 }
 
@@ -219,6 +220,24 @@ impl TlvGen {
         TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,
             kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256, TlvKinds::ENCEC256],
+            ..Default::default()
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn new_ecies_x25519() -> TlvGen {
+        TlvGen {
+            flags: TlvFlags::ENCRYPTED as u32,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ENCX25519],
+            ..Default::default()
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn new_ed25519_ecies_x25519() -> TlvGen {
+        TlvGen {
+            flags: TlvFlags::ENCRYPTED as u32,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ED25519, TlvKinds::ENCX25519],
             ..Default::default()
         }
     }
@@ -480,12 +499,21 @@ impl ManifestGen for TlvGen {
             result.extend_from_slice(&encbuf);
         }
 
-        if self.kinds.contains(&TlvKinds::ENCEC256) {
-            let key_bytes = pem::parse(include_bytes!("../../enc-ec256-pub.pem").as_ref()).unwrap();
+        if self.kinds.contains(&TlvKinds::ENCEC256) || self.kinds.contains(&TlvKinds::ENCX25519) {
+            let key_bytes = if self.kinds.contains(&TlvKinds::ENCEC256) {
+                pem::parse(include_bytes!("../../enc-ec256-pub.pem").as_ref()).unwrap()
+            } else {
+                pem::parse(include_bytes!("../../enc-x25519-pub.pem").as_ref()).unwrap()
+            };
             assert_eq!(key_bytes.tag, "PUBLIC KEY");
 
             let rng = rand::SystemRandom::new();
-            let pk = match agreement::EphemeralPrivateKey::generate(&agreement::ECDH_P256, &rng) {
+            let alg = if self.kinds.contains(&TlvKinds::ENCEC256) {
+                &agreement::ECDH_P256
+            } else {
+                &agreement::X25519
+            };
+            let pk = match agreement::EphemeralPrivateKey::generate(alg, &rng) {
                 Ok(v) => v,
                 Err(_) => panic!("Failed to generate ephemeral keypair"),
             };
@@ -495,7 +523,11 @@ impl ManifestGen for TlvGen {
                 Err(_) => panic!("Failed computing ephemeral public key"),
             };
 
-            let peer_pubk = agreement::UnparsedPublicKey::new(&agreement::ECDH_P256, &key_bytes.contents[26..]);
+            let peer_pubk = if self.kinds.contains(&TlvKinds::ENCEC256) {
+                agreement::UnparsedPublicKey::new(&agreement::ECDH_P256, &key_bytes.contents[26..])
+            } else {
+                agreement::UnparsedPublicKey::new(&agreement::X25519, &key_bytes.contents[12..])
+            };
 
             #[derive(Debug, PartialEq)]
             struct OkmLen<T: core::fmt::Debug + PartialEq>(T);
@@ -539,9 +571,15 @@ impl ManifestGen for TlvGen {
             buf.append(&mut tag.as_ref().to_vec());
             buf.append(&mut cipherkey);
 
-            assert!(buf.len() == 113);
-            result.write_u16::<LittleEndian>(TlvKinds::ENCEC256 as u16).unwrap();
-            result.write_u16::<LittleEndian>(113).unwrap();
+            if self.kinds.contains(&TlvKinds::ENCEC256) {
+                assert!(buf.len() == 113);
+                result.write_u16::<LittleEndian>(TlvKinds::ENCEC256 as u16).unwrap();
+                result.write_u16::<LittleEndian>(113).unwrap();
+            } else {
+                assert!(buf.len() == 80);
+                result.write_u16::<LittleEndian>(TlvKinds::ENCX25519 as u16).unwrap();
+                result.write_u16::<LittleEndian>(80).unwrap();
+            }
             result.extend_from_slice(&buf);
         }
 

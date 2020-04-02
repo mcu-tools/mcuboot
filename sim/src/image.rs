@@ -1310,6 +1310,12 @@ fn make_tlv() -> TlvGen {
         } else {
             TlvGen::new_ecies_p256()
         }
+    } else if Caps::EncX25519.present() {
+        if Caps::Ed25519.present() {
+            TlvGen::new_ed25519_ecies_x25519()
+        } else {
+            TlvGen::new_ecies_x25519()
+        }
     } else {
         // The non-encrypted configuration.
         if Caps::RSA2048.present() {
@@ -1331,7 +1337,7 @@ impl ImageData {
     /// is unencrypted, and slot 1 is encrypted.
     fn find(&self, slot: usize) -> &Vec<u8> {
         let encrypted = Caps::EncRsa.present() || Caps::EncKw.present() ||
-            Caps::EncEc256.present();
+            Caps::EncEc256.present() || Caps::EncX25519.present();
         match (encrypted, slot) {
             (false, _) => &self.plain,
             (true, 0) => &self.plain,
