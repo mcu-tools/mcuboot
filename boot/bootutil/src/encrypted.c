@@ -44,10 +44,13 @@
 #endif
 
 #if defined(MCUBOOT_ENCRYPT_EC256)
-#include "tinycrypt/utils.h"
-#include "tinycrypt/constants.h"
 #include "tinycrypt/ecc.h"
 #include "tinycrypt/ecc_dh.h"
+#endif
+
+#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
+#include "tinycrypt/utils.h"
+#include "tinycrypt/constants.h"
 #include "tinycrypt/ctr_mode.h"
 #include "tinycrypt/hmac.h"
 #include "mbedtls/oid.h"
@@ -203,6 +206,9 @@ parse_rsa_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_EC_ALG_UNRESTRICTED;
 static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
 
+#define SHARED_KEY_LEN NUM_ECC_BYTES
+#define PRIV_KEY_LEN   NUM_ECC_BYTES
+
 /*
  * Parses the output of `imgtool keygen`, which produces a PKCS#8 elliptic
  * curve keypair. See RFC5208 and RFC5915.
@@ -275,7 +281,68 @@ parse_ec256_enckey(uint8_t **p, uint8_t *end, uint8_t *pk)
 
     return 0;
 }
+#endif /* defined(MCUBOOT_ENCRYPT_EC256) */
 
+#if defined(MCUBOOT_ENCRYPT_X25519)
+#define X25519_OID "\x6e"
+static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
+                                       MBEDTLS_OID_ORG_GOV X25519_OID;
+
+extern int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
+                  const uint8_t peer_public_value[32]);
+
+#define SHARED_KEY_LEN 32
+#define PRIV_KEY_LEN   32
+
+static int
+parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *pk)
+{
+    size_t len;
+    int version;
+    mbedtls_asn1_buf alg;
+    mbedtls_asn1_buf param;
+
+    if (mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_CONSTRUCTED |
+                                           MBEDTLS_ASN1_SEQUENCE) != 0) {
+        return -1;
+    }
+
+    if (*p + len != end) {
+        return -2;
+    }
+
+    version = 0;
+    if (mbedtls_asn1_get_int(p, end, &version) || version != 0) {
+        return -3;
+    }
+
+    if (mbedtls_asn1_get_alg(p, end, &alg, &param) != 0) {
+        return -4;
+    }
+
+    if (alg.len != sizeof(ec_pubkey_oid) - 1 ||
+        memcmp(alg.p, ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
+        return -5;
+    }
+
+    if (mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING) != 0) {
+        return -6;
+    }
+
+    if (mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING) != 0) {
+        return -7;
+    }
+
+    if (len != PRIV_KEY_LEN) {
+        return -8;
+    }
+
+    memcpy(pk, *p, PRIV_KEY_LEN);
+    return 0;
+}
+#endif /* defined(MCUBOOT_ENCRYPT_X25519) */
+
+#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
 /*
  * HKDF as described by RFC5869.
  *
@@ -423,6 +490,13 @@ boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
 #    define EC_CIPHERKEY_INDEX  (65 + 32)
 _Static_assert(EC_CIPHERKEY_INDEX + 16 == EXPECTED_ENC_LEN,
         "Please fix ECIES-P256 component indexes");
+#elif defined(MCUBOOT_ENCRYPT_X25519)
+#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_X25519
+#    define EC_PUBK_INDEX       (0)
+#    define EC_TAG_INDEX        (32)
+#    define EC_CIPHERKEY_INDEX  (32 + 32)
+_Static_assert(EC_CIPHERKEY_INDEX + 16 == EXPECTED_ENC_LEN,
+        "Please fix ECIES-X25519 component indexes");
 #endif
 
 /*
@@ -440,15 +514,15 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
     uint8_t *cpend;
     size_t olen;
 #endif
-#if defined(MCUBOOT_ENCRYPT_EC256)
+#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
     struct tc_hmac_state_struct hmac;
     struct tc_aes_key_sched_struct aes;
     uint8_t tag[TC_SHA256_DIGEST_SIZE];
-    uint8_t shared[NUM_ECC_BYTES];
+    uint8_t shared[SHARED_KEY_LEN];
     uint8_t derived_key[TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE];
     uint8_t *cp;
     uint8_t *cpend;
-    uint8_t pk[NUM_ECC_BYTES];
+    uint8_t pk[PRIV_KEY_LEN];
     uint8_t counter[TC_AES_BLOCK_SIZE];
     uint16_t len;
 #endif
@@ -471,12 +545,16 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
             NULL, 0, &olen, buf, enckey, BOOT_ENC_KEY_SIZE);
     mbedtls_rsa_free(&rsa);
 
-#elif defined(MCUBOOT_ENCRYPT_KW)
+#endif /* defined(MCUBOOT_ENCRYPT_RSA) */
+
+#if defined(MCUBOOT_ENCRYPT_KW)
 
     assert(*bootutil_enc_key.len == 16);
     rc = key_unwrap(buf, enckey);
 
-#elif defined(MCUBOOT_ENCRYPT_EC256)
+#endif /* defined(MCUBOOT_ENCRYPT_KW) */
+
+#if defined(MCUBOOT_ENCRYPT_EC256)
 
     cp = (uint8_t *)bootutil_enc_key.key;
     cpend = cp + *bootutil_enc_key.len;
@@ -508,12 +586,41 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
+#endif /* defined(MCUBOOT_ENCRYPT_EC256) */
+
+#if defined(MCUBOOT_ENCRYPT_X25519)
+
+    cp = (uint8_t *)bootutil_enc_key.key;
+    cpend = cp + *bootutil_enc_key.len;
+
+    /*
+     * Load the stored X25519 decryption private key
+     */
+
+    rc = parse_x25519_enckey(&cp, cpend, pk);
+    if (rc) {
+        return rc;
+    }
+
+    /*
+     * First "element" in the TLV is the curve point (public key)
+     */
+
+    rc = X25519(shared, pk, &buf[EC_PUBK_INDEX]);
+    if (!rc) {
+        return -1;
+    }
+
+#endif /* defined(MCUBOOT_ENCRYPT_X25519) */
+
+#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
+
     /*
      * Expand shared secret to create keys for AES-128-CTR + HMAC-SHA256
      */
 
     len = TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE;
-    rc = hkdf(shared, NUM_ECC_BYTES, (uint8_t *)"MCUBoot_ECIES_v1", 16,
+    rc = hkdf(shared, SHARED_KEY_LEN, (uint8_t *)"MCUBoot_ECIES_v1", 16,
             derived_key, &len);
     if (rc != 0 || len != (TC_AES_KEY_SIZE + TC_SHA256_DIGEST_SIZE)) {
         return -1;
@@ -566,7 +673,7 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
 
     rc = 0;
 
-#endif
+#endif /* defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519) */
 
     return rc;
 }
