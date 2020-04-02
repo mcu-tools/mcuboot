@@ -107,7 +107,8 @@ struct image_tlv {
 #define IMAGE_TLV_ED25519           0x24   /* ED25519 of hash output */
 #define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
 #define IMAGE_TLV_ENC_KW128         0x31   /* Key encrypted with AES-KW-128 */
-#define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES P256 */
+#define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-P256 */
+#define IMAGE_TLV_ENC_X25519        0x33   /* Key encrypted with ECIES-X25519 */
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
 #define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
 ```
