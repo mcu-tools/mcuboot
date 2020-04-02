@@ -22,7 +22,8 @@ import imgtool.keys as keys
 import sys
 from imgtool import image, imgtool_version
 from imgtool.version import decode_version
-from .keys import RSAUsageError, ECDSAUsageError, Ed25519UsageError
+from .keys import (
+    RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError)
 
 MIN_PYTHON_VERSION = (3, 6)
 if sys.version_info < MIN_PYTHON_VERSION:
@@ -51,13 +52,18 @@ def gen_ed25519(keyfile, passwd):
     keys.Ed25519.generate().export_private(path=keyfile, passwd=passwd)
 
 
+def gen_x25519(keyfile, passwd):
+    keys.X25519.generate().export_private(path=keyfile, passwd=passwd)
+
+
 valid_langs = ['c', 'rust']
 keygens = {
     'rsa-2048':   gen_rsa2048,
     'rsa-3072':   gen_rsa3072,
     'ecdsa-p256': gen_ecdsa_p256,
     'ecdsa-p224': gen_ecdsa_p224,
-    'ed25519': gen_ed25519,
+    'ed25519':    gen_ed25519,
+    'x25519':     gen_x25519,
 }
 
 
@@ -124,7 +130,8 @@ def getpriv(key, minimal):
         print("Invalid passphrase")
     try:
         key.emit_private(minimal)
-    except (RSAUsageError, ECDSAUsageError, Ed25519UsageError) as e:
+    except (RSAUsageError, ECDSAUsageError, Ed25519UsageError,
+            X25519UsageError) as e:
         raise click.UsageError(e)
 
 
