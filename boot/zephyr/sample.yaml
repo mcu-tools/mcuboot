@@ -12,7 +12,7 @@ tests:
     tags: bootloader_mcuboot
   sample.bootloader.mcuboot.usb_cdc_acm_recovery:
     tags: bootloader_mcuboot
-    platform_whitelist:  nrf52840_pca10059
+    platform_whitelist:  nrf52840dongle_nrf52840
   sample.bootloader.mcuboot.usb_cdc_acm_recovery_log:
     extra_args: OVERLAY_CONFIG=./usb_cdc_acm_log_recovery.conf
       DTC_OVERLAY=./boards/nrf52840_big.overlay
