@@ -49,6 +49,9 @@ syscfg.defs:
     BOOTUTIL_ENCRYPT_EC256:
         description: 'Support for encrypted images using ECIES-P256.'
         value: 0
+    BOOTUTIL_ENCRYPT_X25519:
+        description: 'Support for encrypted images using ECIES-X25519.'
+        value: 0
     BOOTUTIL_USE_MBED_TLS:
         description: 'Use mbed TLS for crypto operations.'
         value: 1

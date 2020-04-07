@@ -53,3 +53,9 @@ pkg.deps.BOOTUTIL_SIGN_ED25519:
     - "@mcuboot/ext/tinycrypt-sha512/lib"
     - "@mcuboot/ext/mbedtls-asn1"
     - "@mcuboot/ext/fiat"
+
+pkg.deps.BOOTUTIL_ENCRYPT_X25519:
+    - "@mcuboot/ext/tinycrypt/lib"
+    - "@mcuboot/ext/tinycrypt-sha512/lib"
+    - "@mcuboot/ext/mbedtls-asn1"
+    - "@mcuboot/ext/fiat"
