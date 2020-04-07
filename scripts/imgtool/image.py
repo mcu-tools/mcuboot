@@ -49,6 +49,7 @@ MAX_SW_TYPE_LENGTH = 12  # Bytes
 IMAGE_F = {
         'PIC':                   0x0000001,
         'NON_BOOTABLE':          0x0000010,
+        'RAM_LOAD':              0x0000020,
         'ENCRYPTED':             0x0000004,
 }
 
@@ -412,6 +413,10 @@ class Image():
         flags = 0
         if enckey is not None:
             flags |= IMAGE_F['ENCRYPTED']
+        if self.load_addr != 0:
+            # Indicates that this image should be loaded into RAM
+            # instead of run directly from flash.
+            flags |= IMAGE_F['RAM_LOAD']
 
         e = STRUCT_ENDIAN_DICT[self.endian]
         fmt = (e +

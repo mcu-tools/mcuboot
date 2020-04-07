@@ -224,7 +224,7 @@ class BasedIntParamType(click.ParamType):
 @click.option('-x', '--hex-addr', type=BasedIntParamType(), required=False,
               help='Adjust address in hex output file.')
 @click.option('-L', '--load-addr', type=BasedIntParamType(), required=False,
-              help='Load address for image when it is in its primary slot.')
+              help='Load address for image when it should run from RAM.')
 @click.option('--save-enctlv', default=False, is_flag=True,
               help='When upgrading, save encrypted key TLVs instead of plain '
                    'keys. Enable when BOOT_SWAP_SAVE_ENCTLV config option '
