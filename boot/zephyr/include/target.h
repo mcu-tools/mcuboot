@@ -28,7 +28,7 @@
 /*
  * Sanity check the target support.
  */
-#if (!defined(CONFIG_XTENSA) && !defined(DT_FLASH_DEV_NAME)) || \
+#if (!defined(CONFIG_XTENSA) && !defined(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL)) || \
     (defined(CONFIG_XTENSA) && !defined(DT_JEDEC_SPI_NOR_0_LABEL)) || \
     !defined(FLASH_ALIGN) ||                  \
     !defined(DT_FLASH_AREA_IMAGE_0_OFFSET) || \
