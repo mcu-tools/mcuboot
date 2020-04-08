@@ -277,9 +277,10 @@ void main(void)
 
     ZEPHYR_BOOT_LOG_START();
 
-#if (!defined(CONFIG_XTENSA) && defined(DT_FLASH_DEV_NAME))
-    if (!flash_device_get_binding(DT_FLASH_DEV_NAME)) {
-        BOOT_LOG_ERR("Flash device %s not found", DT_FLASH_DEV_NAME);
+#if (!defined(CONFIG_XTENSA) && defined(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL))
+    if (!flash_device_get_binding(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL)) {
+        BOOT_LOG_ERR("Flash device %s not found",
+		     DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL);
         while (1)
             ;
     }
