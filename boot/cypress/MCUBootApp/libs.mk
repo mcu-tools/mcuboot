@@ -27,15 +27,12 @@
 # PDL library
 ################################################################################
 PDL_VERSION = 121
-#
+
 CUR_LIBS_PATH = $(CURDIR)/libs
 MBEDTLS_PATH = $(CURDIR)/../../ext
 
 # Collect source files for PDL
 SOURCES_PDL := $(wildcard $(CUR_LIBS_PATH)/pdl/psoc6pdl/drivers/source/*.c)
-
-# Collect source files for Retarget-io
-SOURCES_RETARGET_IO := $(wildcard $(CUR_LIBS_PATH)/retarget-io/*.c)
 
 # PDL related include directories
 INCLUDE_DIRS_PDL := $(CUR_LIBS_PATH)/pdl/psoc6pdl/drivers/include
@@ -43,22 +40,26 @@ INCLUDE_DIRS_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/devices/include/ip
 INCLUDE_DIRS_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/devices/include
 INCLUDE_DIRS_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/cmsis/include
 
-# Retarget-io related include directories
-INCLUDE_DIRS_RETARGET_IO := $(CUR_LIBS_PATH)/retarget-io
-
 # core-libs related include directories
 INCLUDE_DIRS_CORE_LIB := $(CUR_LIBS_PATH)/core-lib/include
+
+SOURCES_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/cyhal_crypto_common.c
+SOURCES_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/cyhal_hwmgr.c
 
 # Collected source files for libraries
 SOURCES_LIBS := $(SOURCES_PDL)
 SOURCES_LIBS += $(SOURCES_PLATFORM)
-SOURCES_LIBS += $(SOURCES_RETARGET_IO)
 SOURCES_LIBS += $(SOURCES_HAL)
+
+# needed for Crypto HW Acceleration and headers inclusion, do not use for peripherals
+# peripherals should be accessed
+INCLUDE_DIRS_HAL := $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include
+INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/include
+INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/pin_packages
 
 # Collected include directories for libraries
 INCLUDE_DIRS_LIBS := $(addprefix -I,$(INCLUDE_DIRS_PDL))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_PLATFORM))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_RETARGET_IO))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_CORE_LIB))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL))
 

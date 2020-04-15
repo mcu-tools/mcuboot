@@ -129,6 +129,32 @@ This folder contains make files infrastructure for building MCUBoot Bootloader. 
 
 Root directory for build is **boot/cypress.**
 
+**Programming solution**
+
+There are couple ways of programming hex of MCUBootApp and BlinkyApp. Following instructions assume one of Cypress development kits, for example `CY8CPROTO_062_4343W`.
+
+1. Direct usage of OpenOCD.
+OpenOCD package is supplied with ModuToolbox IDE and can be found in installation folder under `./tools_2.1/openocd`.
+Open terminal application -  and execute following command after substitution `PATH_TO_APPLICATION.hex` and `OPENOCD` paths.
+
+Connect a board to your computer. Switch Kitprog3 to DAP-BULK mode by pressing `SW3 MODE` button until `LED2 STATUS` constantly shines.
+
+        export OPENOCD=/Applications/ModusToolbox/tools_2.1/openocd 
+
+        ${OPENOCD}/bin/openocd -s ${OPENOCD}/scripts \
+                            -f ${OPENOCD}/scripts/interface/kitprog3.cfg \
+                            -f ${OPENOCD}/scripts/target/psoc6_2m.cfg \
+                            -c "init; reset init; program PATH_TO_APPLICATION.hex" \
+                            -c "resume; reset; exit" 
+
+2. Using GUI tool `Cypress Programmer` - follow [link](https://www.cypress.com/products/psoc-programming-solutions) to download.
+   Connect board to your computer. Switch Kitprog3 to DAP-BULK mode by pressing `SW3 MODE` button until `LED2 STATUS` constantly shines. Open `Cypress Programmer` and click `Connect`, then choose hex file: `MCUBootApp.hex` or `BlinkyApp.hex` and click `Program`.  Check log to ensure programming success. Reset board.
+
+3. Using `DAPLINK`.
+   Connect board to your computer. Switch embeded  Kitprog3 to `DAPLINK` mode by pressing `SW3 MODE` button until `LED2 STATUS` blinks fast and mass storage device appeared in OS. Drag and drop `hex` files you wish to program to `DAPLINK` drive in your OS.
+
+
+
 **Currently supported platforms:**
 
 * PSOC_062_2M
