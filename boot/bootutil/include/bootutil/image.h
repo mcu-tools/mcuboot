@@ -27,10 +27,6 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
-#ifdef __ZEPHYR__
-#include <toolchain/gcc.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -135,13 +131,8 @@ struct image_tlv {
 #define MUST_DECRYPT(fap, idx, hdr) \
     ((fap)->fa_id == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
 
-#ifdef __ZEPHYR__
-BUILD_ASSERT(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
-	     "struct image_header not required size");
-#else
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
-#endif
 
 struct enc_key_data;
 int bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
