@@ -3,6 +3,35 @@
 - Table of Contents
 {:toc}
 
+## Version 1.6.0
+
+The 1.6.0 release of MCUboot adds support for the PSOC6 platform,
+X25519 encrypted images, rollback protection, hardware keys, and a
+shared boot record to communicate boot attestation information to
+later boot stages.  There are bug fixes, and associated imgtool
+updates as well.
+
+### About this release
+
+- Initial support for the Cypress PSOC6 plaformt.  This platform
+  builds using the Cypress SDK, which has been added as submodules.
+- CBOR decoding in serial recovery replaced by code generated from a
+  CDDL description.
+- Add support for X25519 encrypted images.
+- Add rollback protection.  There is support for a HW rollback counter
+  (which must be provided as part of the platform), as well as a SW
+  solution that protects against some types of rollback.
+- Add an optional boot record in shared memory to communicate boot
+  attributes to later-run code.
+- Add support for hardware keys.
+- Various fixes to work with the latest Zephyr version.
+
+### Security issues addressed
+
+- CVE-2020-7595 "xmlStringLenDecodeEntities in parser.c in libxml2
+  2.9.10 has an infinite loop in a certain end-of-file situation." Fix
+  by updating a dependency in documentation generation.
+
 ## Version 1.5.0
 
 The 1.5.0 release of MCUboot adds support for encrypted images using
