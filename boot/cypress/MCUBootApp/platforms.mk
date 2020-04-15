@@ -23,7 +23,7 @@
 # limitations under the License.
 ################################################################################
 
-# Target platform MCUBootApp is built for. PSOC_064_2M is set by default# Supported:
+# Target platform MCUBootApp is built for. PSOC_062_2M is set by default# Supported:
 #   - PSOC_062_2M
 
 # default PLATFORM
@@ -35,7 +35,6 @@ PLATFORMS := PSOC_062_2M
 CORE := CM0P
 
 # Set paths for related folders
-CUR_LIBS_PATH := $(CURDIR)/libs
 PLATFORM_PATH := $(CURDIR)/platforms
 
 # MCU device selection, based on target device.
@@ -46,25 +45,13 @@ DEVICE ?= CY8C624ABZI-D44
 PLATFORM_SUFFIX := 02
 endif
 
-# Additional components supported by the target
-COMPONENTS+=COMPONENT_BSP_DESIGN_MODUS
-# Use CyHAL
-DEFINES:=CY_USING_HAL
-
-# Collect C source files for PLATFORM BSP
+# Collect C source files for PLATFORM
 SOURCES_PLATFORM += $(wildcard $(PLATFORM_PATH)/*.c)
-SOURCES_PLATFORM += $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/*.c)
-SOURCES_PLATFORM += $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/triggers/*.c)
-SOURCES_PLATFORM += $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/pin_packages/*.c)
-
 SOURCES_PLATFORM := $(filter-out %/system_psoc6_cm4.c, $(SOURCES_PLATFORM))
 
-# Collect dirrectories containing headers for PLATFORM BSP
+# Collect dirrectories containing headers for PLATFORM
 INCLUDE_DIRS_PLATFORM := $(PLATFORM_PATH)
-INCLUDE_DIRS_PLATFORM += $(CUR_LIBS_PATH)/psoc6hal/include
-INCLUDE_DIRS_PLATFORM += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include
-INCLUDE_DIRS_PLATFORM += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/pin_packages
-# Collect Assembler files for PLATFORM BSP
+# Collect Assembler files for PLATFORM
 # Include _01_, _02_ or _03_ PLATFORM_SUFFIX depending on device family.
 STARTUP_FILE := $(PLATFORM_PATH)/$(PLATFORM)/$(CORE)/$(COMPILER)/startup_psoc6_$(PLATFORM_SUFFIX)_cm0plus
 
@@ -74,12 +61,11 @@ else
 $(error Only GCC ARM is supported at this moment)
 endif
 
-# Add device name from BSP makefile to defines
+# Add device name to defines
 DEFINES += $(DEVICE)
-DEFINES += $(COMPONENTS)
 DEFINES += $(PLATFORM)
 
-# Get defines from BSP makefile and convert it to regular -DMY_NAME style
+# Convert defines it to regular -DMY_NAME style
 ifneq ($(DEFINES),)
 	DEFINES_PLATFORM :=$(addprefix -D, $(subst -,_,$(DEFINES)))
 endif
@@ -91,12 +77,6 @@ $(error Only GCC ARM is supported at this moment)
 endif
 
 ifeq ($(MAKEINFO) , 1)
-$(info ==============================================================================)
-$(info = BSP files =)
-$(info ==============================================================================)
 $(info $(SOURCES_PLATFORM))
 $(info $(ASM_FILES_PLATFORM))
 endif
-
-# TODO: include appropriate BSP linker(s)
-# TODO: include appropriate BSP precompiled
