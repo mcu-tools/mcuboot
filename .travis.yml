@@ -50,6 +50,10 @@ matrix:
       go:
         - "1.12"
 
+    - os: linux
+      language: python
+      env: TEST=imgtool
+
 before_install:
   - |
     if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
