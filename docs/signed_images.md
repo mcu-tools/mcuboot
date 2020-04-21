@@ -33,6 +33,9 @@ be useful when you want to prevent production units from booting
 development images, but want development units to be able to boot
 both production images and development images.
 
+For an alternative solution when the public key(s) doesn't need to be
+included in the bootloader, see the [design](design.md) document.
+
 ## Creating signing keys
 First you need a keypair to use for signing. You can create
 one with openssl command line tool.

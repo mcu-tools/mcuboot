@@ -43,7 +43,8 @@ the key file.
 
 will extract the public key from the given private key file, and
 output it as a C data structure.  You can replace or insert this code
-into the key file.
+into the key file. However, when the `MCUBOOT_HW_KEY` config option is
+enabled, this last step is unnecessary and can be skipped.
 
 ## [Signing images](#signing-images)
 
@@ -54,24 +55,46 @@ primary slot and adds a header and trailer that the bootloader is expecting:
 
       Create a signed or unsigned image
 
+      INFILE and OUTFILE are parsed as Intel HEX if the params have .hex
+      extension, otherwise binary format is used
+
     Options:
       -k, --key filename
-      --align [1|2|4|8]          [required]
-      -v, --version TEXT         [required]
+      --public-key-format [hash|full]
+      --align [1|2|4|8]             [required]
+      -v, --version TEXT            [required]
+      -s, --security-counter TEXT   Specify the value of security counter. Use
+                                    the `auto` keyword to automatically generate
+                                    it from the image version.
       -d, --dependencies TEXT
-      -H, --header-size INTEGER  [required]
-      --pad-header               Add --header-size zeroed bytes at the beginning
-                                 of the image
-      -S, --slot-size INTEGER    Size of the slot where the image will be
-                                 written [required]
-      --pad                      Pad image to --slot-size bytes, adding trailer
-                                 magic
-      -M, --max-sectors INTEGER  When padding allow for this amount of sectors
-                                 (defaults to 128)
-      --overwrite-only           Use overwrite-only instead of swap upgrades
-      -e, --endian [little|big]  Select little or big endian
-      -E, --encrypt filename     Encrypt image using the provided public key
-      -h, --help                 Show this message and exit.
+      --pad-sig                     Add 0-2 bytes of padding to ECDSA signature
+                                    (for mcuboot <1.5)
+      -H, --header-size INTEGER     [required]
+      --pad-header                  Add --header-size zeroed bytes at the
+                                    beginning of the image
+      -S, --slot-size INTEGER       Size of the slot where the image will be
+                                    written [required]
+      --pad                         Pad image to --slot-size bytes, adding
+                                    trailer magic
+      --confirm                     When padding the image, mark it as confirmed
+      -M, --max-sectors INTEGER     When padding allow for this amount of
+                                    sectors (defaults to 128)
+      --boot-record sw_type         Create CBOR encoded boot record TLV. The
+                                    sw_type represents the role of the software
+                                    component (e.g. CoFM for coprocessor
+                                    firmware). [max. 12 characters]
+      --overwrite-only              Use overwrite-only instead of swap upgrades
+      -e, --endian [little|big]     Select little or big endian
+      -E, --encrypt filename        Encrypt image using the provided public key
+      --save-enctlv                 When upgrading, save encrypted key TLVs
+                                    instead of plain keys. Enable when
+                                    BOOT_SWAP_SAVE_ENCTLV config option was set.
+      -L, --load-addr INTEGER       Load address for image when it should run
+                                    from RAM.
+      -x, --hex-addr INTEGER        Adjust address in hex output file.
+      -R, --erased-val [0|0xff]     The value that is read back from erased
+                                    flash.
+      -h, --help                    Show this message and exit.
 
 The main arguments given are the key file generated above, a version
 field to place in the header (1.2.3 for example), the alignment of the
@@ -102,3 +125,11 @@ A dependency can be specified in the following way:
 which the current image depends on. The `image_version` is the minimum version
 of that image to satisfy compliance. For example `-d "(1, 1.2.3+0)"` means this
 image depends on Image 1 which version has to be at least 1.2.3+0.
+
+The `--public-key-format` argument can be used to distinguish where the public
+key is stored for image authentication. The `hash` option is used by default, in
+which case only the hash of the public key is added to the TLV area (the full
+public key is incorporated into the bootloader). When the `full` option is used
+instead, the TLV area will contain the whole public key and thus the bootloader
+can be independent from the key(s). For more information on the additional
+requirements of this option, see the [design](design.md) document.
