@@ -17,5 +17,5 @@ if [[ $TRAVIS_PULL_REQUEST != "false" || $TRAVIS_BRANCH != "master" ]]; then
     exit 0
 fi
 
-pip3 install setuptools twine
+pip3 install setuptools twine packaging
 pip3 install --pre imgtool
