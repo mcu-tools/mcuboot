@@ -1,5 +1,7 @@
 # [mcuboot](http://mcuboot.com/)
 
+There are no meaningful changes in this branch, do not merge.
+
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/12307/badge.svg)][coverity]
 [![Build/Test](https://img.shields.io/travis/JuulLabs-OSS/mcuboot/master.svg?label=travis-ci)][travis]
 
