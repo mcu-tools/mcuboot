@@ -11,7 +11,7 @@ Since it defaults to tinycrypt you'll have to go into `menuconfig` and change th
 
 ```
 mkdir build && cd build
-cmake -GNinja -DBOARD=nrf52840dk_nrf52840
+cmake -GNinja -DBOARD=nrf52840_pca10056
 ninja flash
 ```
 
