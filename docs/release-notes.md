@@ -32,6 +32,19 @@ updates as well.
   2.9.10 has an infinite loop in a certain end-of-file situation." Fix
   by updating a dependency in documentation generation.
 
+### Zephyr-RTOS compatibility
+- for compatibility with zephyr 2.2.0 need to revert commits which align MCUBoot
+  to the zephyr master branch at the release time. These commits are reverted on
+  1.6.0-revert-zephyr-2.2.0-compatible branch.
+
+- Zephyr-RTOS references (by git SHA or git tag) a compatible MCUBoot version in
+  its manifest.
+  You might use any of zephyr running-master version which references
+  the release.
+  Any Zephyr master after
+  https://github.com/zephyrproject-rtos/zephyr/commit/7a15afc).
+  should be able to work as well.
+
 ## Version 1.5.0
 
 The 1.5.0 release of MCUboot adds support for encrypted images using
