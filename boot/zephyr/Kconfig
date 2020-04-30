@@ -317,8 +317,8 @@ if MCUBOOT_SERIAL
 
 choice
 	prompt "Serial device"
-	default BOOT_SERIAL_UART if !BOARD_NRF52840DONGLE_NRF52840
-	default BOOT_SERIAL_CDC_ACM if BOARD_NRF52840DONGLE_NRF52840
+	default BOOT_SERIAL_UART if !BOARD_NRF52840_PCA10059
+	default BOOT_SERIAL_CDC_ACM if BOARD_NRF52840_PCA10059
 
 config BOOT_SERIAL_UART
 	bool "UART"
@@ -347,9 +347,9 @@ config BOOT_SERIAL_DETECT_PORT
 
 config BOOT_SERIAL_DETECT_PIN
 	int "Pin to trigger serial recovery mode"
-	default 6 if BOARD_NRF9160DK_NRF9160
+	default 6 if BOARD_NRF9160_PCA10090
 	default 11 if BOARD_NRF52840DK_NRF52840
-	default 13 if BOARD_NRF52DK_NRF52832
+	default 13 if BOARD_NRF52_PCA10040
 	default 23 if BOARD_NRF5340_DK_NRF5340_CPUAPP || BOARD_NRF5340_DK_NRF5340_CPUAPPNS
 	help
 	  Pin on the serial detect port which triggers serial recovery mode.
