@@ -33,8 +33,7 @@
 #include <drivers/flash.h>
 #include <sys/crc.h>
 #include <sys/base64.h>
-#include <tinycbor/cbor.h>
-#include <tinycbor/cbor_buf_reader.h>
+#include <cbor.h>
 #else
 #include <bsp/bsp.h>
 #include <hal/hal_system.h>
@@ -434,7 +433,11 @@ boot_serial_input(char *buf, int len)
     len -= sizeof(*hdr);
 
     bs_writer.bytes_written = 0;
+#ifdef __ZEPHYR__
+    cbor_encoder_cust_writer_init(&bs_root, &bs_writer, 0);
+#else
     cbor_encoder_init(&bs_root, &bs_writer, 0);
+#endif
 
     /*
      * Limited support for commands.
