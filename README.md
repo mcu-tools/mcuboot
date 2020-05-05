@@ -6,7 +6,7 @@
 [coverity]: https://scan.coverity.com/projects/mcuboot
 [travis]: https://travis-ci.org/JuulLabs-OSS/mcuboot
 
-This is mcuboot version 1.6.0-rc1
+This is mcuboot version 1.6.0-rc2
 
 MCUboot is a secure bootloader for 32-bit MCUs. The goal of MCUboot is to
 define a common infrastructure for the bootloader, system flash layout on
