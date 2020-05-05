@@ -41,7 +41,7 @@ extern unsigned int ecdsa_pub_key_len;
 #define HAVE_KEYS
 extern const unsigned char ed25519_pub_key[];
 extern unsigned int ed25519_pub_key_len;
-#else
+#elif !defined(CONFIG_BOOT_SIGNATURE_TYPE_NONE)
 #error "No public key available for given signing algorithm."
 #endif
 
