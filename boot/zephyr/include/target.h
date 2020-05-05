@@ -29,7 +29,7 @@
 /*
  * Sanity check the target support.
  */
-#if (!defined(CONFIG_XTENSA) && !defined(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL)) || \
+#if (!defined(CONFIG_XTENSA) && !defined(DT_FLASH_DEV_NAME)) || \
     (defined(CONFIG_XTENSA) && !defined(DT_JEDEC_SPI_NOR_0_LABEL)) || \
     !defined(FLASH_ALIGN) ||                  \
     !(FLASH_AREA_LABEL_EXISTS(image_0)) || \
