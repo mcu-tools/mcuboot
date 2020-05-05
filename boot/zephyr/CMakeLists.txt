@@ -141,6 +141,16 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   zephyr_library_compile_definitions(
     MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h"
     )
+elseif(CONFIG_BOOT_SIGNATURE_TYPE_NONE)
+  zephyr_library_include_directories(
+    ${BOOT_DIR}/zephyr/include
+    ${TINYCRYPT_DIR}/include
+    )
+
+  zephyr_library_sources(
+    ${TINYCRYPT_DIR}/source/sha256.c
+    ${TINYCRYPT_DIR}/source/utils.c
+    )
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   # Use mbedTLS provided by Zephyr for RSA signatures. (Its config file
   # is set using Kconfig.)

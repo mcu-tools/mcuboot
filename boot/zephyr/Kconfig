@@ -62,6 +62,10 @@ choice
 	prompt "Signature type"
 	default BOOT_SIGNATURE_TYPE_RSA
 
+config BOOT_SIGNATURE_TYPE_NONE
+	bool "No signature; use only hash check"
+	select BOOT_USE_TINYCRYPT
+
 config BOOT_SIGNATURE_TYPE_RSA
 	bool "RSA signatures"
 	select BOOT_USE_MBEDTLS
