@@ -26,15 +26,11 @@
 
 #endif /* !defined(MCUBOOT_TARGET_CONFIG) */
 
-#if DT_NODE_HAS_PROP(DT_INST(0, jedec_spi_nor), label)
-#define JEDEC_SPI_NOR_0_LABEL DT_LABEL(DT_INST(0, jedec_spi_nor))
-#endif
-
 /*
  * Sanity check the target support.
  */
 #if (!defined(CONFIG_XTENSA) && !defined(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL)) || \
-    (defined(CONFIG_XTENSA) && !defined(JEDEC_SPI_NOR_0_LABEL)) || \
+    (defined(CONFIG_XTENSA) && !defined(DT_JEDEC_SPI_NOR_0_LABEL)) || \
     !defined(FLASH_ALIGN) ||                  \
     !(FLASH_AREA_LABEL_EXISTS(image_0)) || \
     !(FLASH_AREA_LABEL_EXISTS(image_1)) || \
