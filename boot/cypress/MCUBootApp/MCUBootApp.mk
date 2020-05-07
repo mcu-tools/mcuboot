@@ -1,9 +1,9 @@
 ################################################################################
-# \file targets.mk
+# \file MCUBootApp.mk
 # \version 1.0
 #
 # \brief
-# Makefile to describe supported boards and platforms for Cypress MCUBoot based applications.
+# Makefile for Cypress MCUBoot-based application.
 #
 ################################################################################
 # \copyright
@@ -46,7 +46,6 @@ DEFINES_APP += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
 DEFINES_APP += -DCORE=$(CORE)
 DEFINES_APP += -DMCUBOOT_IMAGE_NUMBER=$(MCUBOOT_IMAGE_NUMBER)
 
-
 ifeq ($(USE_CRYPTO_HW), 1)
 DEFINES_APP += -DMBEDTLS_USER_CONFIG_FILE="\"mcuboot_crypto_acc_config.h\""
 endif
@@ -61,8 +60,9 @@ SOURCES_APP := $(SOURCES_MCUBOOT)
 SOURCES_APP += $(SOURCES_APP_SRC)
 SOURCES_APP += $(SOURCES_FLASH_PORT)
 
-INCLUDES_DIRS_MCUBOOT := $(addprefix -I, $(CURDIR)/../bootutil/include)
-INCLUDES_DIRS_MCUBOOT += $(addprefix -I, $(CURDIR)/../bootutil/src)
+INCLUDE_DIRS_MCUBOOT := $(addprefix -I, $(CURDIR)/../bootutil/include)
+INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(CURDIR)/../bootutil/src)
+INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(CURDIR)/..)
 
 INCLUDE_DIRS_APP := $(addprefix -I, $(CURDIR))
 INCLUDE_DIRS_APP += $(addprefix -I, $(CURDIR)/cy_flash_pal/include)
@@ -80,7 +80,7 @@ OUT_TARGET := $(OUT)/$(PLATFORM)
 
 OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
 
-# Overwite path to linker script if custom is required, otherwise default from BSP is used
+# Overwite path to linker script if custom is required
 ifeq ($(COMPILER), GCC_ARM)
 LINKER_SCRIPT := $(subst /cygdrive/c,c:,$(CUR_APP_PATH)/$(APP_NAME).ld)
 else

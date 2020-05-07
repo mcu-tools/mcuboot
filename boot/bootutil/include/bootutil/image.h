@@ -1,4 +1,12 @@
 /*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Copyright (c) 2016-2019 Linaro LTD
+ * Copyright (c) 2016-2019 JUUL Labs
+ * Copyright (c) 2019-2020 Arm Limited
+ *
+ * Original license:
+ *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -17,19 +25,11 @@
  * under the License.
  */
 
-/*
- * Modifications are Copyright (c) 2019-2020 Arm Limited.
- */
-
 #ifndef H_IMAGE_
 #define H_IMAGE_
 
 #include <inttypes.h>
 #include <stdbool.h>
-
-#ifdef __ZEPHYR__
-#include <toolchain/gcc.h>
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -135,13 +135,8 @@ struct image_tlv {
 #define MUST_DECRYPT(fap, idx, hdr) \
     ((fap)->fa_id == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
 
-#ifdef __ZEPHYR__
-BUILD_ASSERT(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
-	     "struct image_header not required size");
-#else
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
-#endif
 
 struct enc_key_data;
 int bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
