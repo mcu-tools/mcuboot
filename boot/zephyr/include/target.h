@@ -20,6 +20,7 @@
  * everything we need.
  */
 #include <soc.h>
+#include <storage/flash_map.h>
 
 #define FLASH_ALIGN FLASH_WRITE_BLOCK_SIZE
 
@@ -35,12 +36,9 @@
 #if (!defined(CONFIG_XTENSA) && !defined(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL)) || \
     (defined(CONFIG_XTENSA) && !defined(JEDEC_SPI_NOR_0_LABEL)) || \
     !defined(FLASH_ALIGN) ||                  \
-    !defined(DT_FLASH_AREA_IMAGE_0_OFFSET) || \
-    !defined(DT_FLASH_AREA_IMAGE_0_SIZE) || \
-    !defined(DT_FLASH_AREA_IMAGE_1_OFFSET) || \
-    !defined(DT_FLASH_AREA_IMAGE_1_SIZE) || \
-    (!defined(CONFIG_BOOT_SWAP_USING_MOVE) && !defined(DT_FLASH_AREA_IMAGE_SCRATCH_OFFSET)) || \
-    (!defined(CONFIG_BOOT_SWAP_USING_MOVE) && !defined(DT_FLASH_AREA_IMAGE_SCRATCH_SIZE))
+    !(FLASH_AREA_LABEL_EXISTS(image_0)) || \
+    !(FLASH_AREA_LABEL_EXISTS(image_1)) || \
+    (!defined(CONFIG_BOOT_SWAP_USING_MOVE) && !(FLASH_AREA_LABEL_EXISTS(image_scratch)))
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
 
