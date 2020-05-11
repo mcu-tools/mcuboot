@@ -42,10 +42,8 @@
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
 
-#if ((MCUBOOT_IMAGE_NUMBER == 2) && (!defined(FLASH_AREA_IMAGE_2_OFFSET) || \
-                                     !defined(FLASH_AREA_IMAGE_2_SIZE)   || \
-                                     !defined(FLASH_AREA_IMAGE_3_OFFSET) || \
-                                     !defined(FLASH_AREA_IMAGE_3_SIZE)))
+#if (MCUBOOT_IMAGE_NUMBER == 2) && (!(FLASH_AREA_LABEL_EXISTS(image_2)) || \
+                                     !(FLASH_AREA_LABEL_EXISTS(image_3)))
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
 
