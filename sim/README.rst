@@ -22,7 +22,7 @@ Dependent code
 The simulator depends on some external modules.  These are stored as
 submodules within git.  To fetch these dependencies the first time::
 
-  $ git submodule update --init
+  $ git submodule update --init --recursive
 
 will clone and check out these trees in the appropriate place.
 
