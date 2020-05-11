@@ -25,6 +25,7 @@ Instructions for different operating systems can be found here:
 - [Zephyr](docs/readme-zephyr.md)
 - [Mynewt](docs/readme-mynewt.md)
 - [RIOT](docs/readme-riot.md)
+- [Simulator](sim/README.rst)
 
 ## Roadmap
 
