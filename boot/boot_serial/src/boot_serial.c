@@ -583,7 +583,7 @@ boot_serial_start(const struct boot_uart_funcs *f)
 {
     int rc;
     int off;
-    int dec_off;
+    int dec_off = 0;
     int full_line;
     int max_input;
 
