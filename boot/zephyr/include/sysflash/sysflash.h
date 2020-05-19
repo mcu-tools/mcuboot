@@ -6,6 +6,8 @@
 #include <devicetree.h>
 #include <mcuboot_config/mcuboot_config.h>
 
+#ifndef CONFIG_SINGLE_IMAGE_DFU
+
 #if (MCUBOOT_IMAGE_NUMBER == 1)
 /*
  * NOTE: the definition below returns the same values for true/false on
@@ -40,5 +42,17 @@
 #if !defined(CONFIG_BOOT_SWAP_USING_MOVE)
 #define FLASH_AREA_IMAGE_SCRATCH    FLASH_AREA_ID(image_scratch)
 #endif
+
+#else /* CONFIG_SINGLE_IMAGE_DFU */
+
+#define FLASH_AREA_IMAGE_PRIMARY(x)	FLASH_AREA_ID(image_0)
+#define FLASH_AREA_IMAGE_SECONDARY(x)	FLASH_AREA_ID(image_0)
+/* NOTE: Scratch parition is not used by single image DFU but some of
+ * functions in common files reference it, so the definitions has been
+ * provided to allow compilation of common units.
+ */
+#define FLASH_AREA_IMAGE_SCRATCH	0
+
+#endif /* CONFIG_SINGLE_IMAGE_DFU */
 
 #endif /* __SYSFLASH_H__ */

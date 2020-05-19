@@ -37,8 +37,8 @@
     (defined(CONFIG_XTENSA) && !defined(JEDEC_SPI_NOR_0_LABEL)) || \
     !defined(FLASH_ALIGN) ||                  \
     !(FLASH_AREA_LABEL_EXISTS(image_0)) || \
-    !(FLASH_AREA_LABEL_EXISTS(image_1)) || \
-    (!defined(CONFIG_BOOT_SWAP_USING_MOVE) && !(FLASH_AREA_LABEL_EXISTS(image_scratch)))
+    !(FLASH_AREA_LABEL_EXISTS(image_1) || CONFIG_SINGLE_IMAGE_DFU) || \
+    (!defined(CONFIG_BOOT_SWAP_USING_MOVE) && !FLASH_AREA_LABEL_EXISTS(image_scratch) && !defined(CONFIG_SINGLE_IMAGE_DFU))
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
 
