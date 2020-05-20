@@ -46,4 +46,13 @@ config BOOT_SIGNATURE_KEY_FILE
 config DT_FLASH_WRITE_BLOCK_SIZE
 	int
 	default $(dt_node_int_prop_int,$(DT_CHOSEN_ZEPHYR_FLASH),write-block-size)
+
+config SINGLE_IMAGE_DFU
+	bool "Single image application"
+	default n
+	help
+	  Single slot is used for application which means that uploading
+	  new application overwrites the one that previously occupied
+	  the slot.
+
 endmenu
