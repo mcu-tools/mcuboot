@@ -12,6 +12,12 @@
 #define FLASH_AREA_IMAGE_2 5
 #define FLASH_AREA_IMAGE_3 6
 
+/* Uncomment if external flash is being used */
+/* #define CY_BOOT_USE_EXTERNAL_FLASH */
+
+/* use PDL-defined offset or one from SMFI config */
+#define CY_SMIF_BASE_MEM_OFFSET             (0x18000000)
+
 #define CY_FLASH_ALIGN                      (CY_FLASH_SIZEOF_ROW)
 #define CY_FLASH_DEVICE_BASE                (CY_FLASH_BASE)
 

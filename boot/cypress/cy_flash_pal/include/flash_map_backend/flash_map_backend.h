@@ -30,6 +30,16 @@
 
 #include <mcuboot_config/mcuboot_config.h>
 #include "cy_flash.h"
+#define FLASH_DEVICE_INDEX_MASK                 (0x7F)
+#define FLASH_DEVICE_GET_EXT_INDEX(n)           ((n) & FLASH_DEVICE_INDEX_MASK)
+#define FLASH_DEVICE_EXTERNAL_FLAG              (0x80)
+#define FLASH_DEVICE_INTERNAL_FLASH             (0x7F)
+#define FLASH_DEVICE_EXTERNAL_FLASH(index)      (FLASH_DEVICE_EXTERNAL_FLAG | index)
+
+#ifndef CY_BOOT_EXTERNAL_DEVICE_INDEX
+/* assume first(one) SMIF device is used */
+#define CY_BOOT_EXTERNAL_DEVICE_INDEX            (0)
+#endif
 
 /**
  *
@@ -137,7 +147,9 @@ int flash_area_id_to_image_slot(int area_id);
 
 int flash_area_id_from_multi_image_slot(int image_index, int slot);
 int flash_area_id_to_multi_image_slot(int image_index, int area_id);
-
+#ifdef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
+int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret);
+#endif
 /*
  * Returns the value expected to be read when accesing any erased
  * flash byte.
