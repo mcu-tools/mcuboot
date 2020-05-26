@@ -34,6 +34,10 @@ IMG_TYPE ?= BOOT
 # image type can be BOOT or UPGRADE
 IMG_TYPES = BOOT UPGRADE
 
+# possible values are 0 and 0xff
+# internal Flash by default
+ERASED_VALUE ?= 0
+
 ifneq ($(COMPILER), GCC_ARM)
 $(error Only GCC ARM is supported at this moment)
 endif
@@ -53,8 +57,8 @@ endif
 
 # Define start of application, RAM start and size, slot size
 ifeq ($(PLATFORM), PSOC_062_2M)
-	DEFINES_APP += -DRAM_START=0x08000000
-	DEFINES_APP += -DRAM_SIZE=0x20000
+	DEFINES_APP += -DRAM_START=0x08040000
+	DEFINES_APP += -DRAM_SIZE=0x10000
 	DEFINES_APP += -DUSER_APP_START=0x10018000
 	SLOT_SIZE ?= 0x10000
 endif
@@ -80,7 +84,7 @@ ASM_FILES_APP :=
 # We still need this for MCUBoot apps signing
 IMGTOOL_PATH ?=	../../scripts/imgtool.py
 
-SIGN_ARGS := sign --header-size 1024 --pad-header --align 8 -v "2.0" -S $(SLOT_SIZE) -M 512 --overwrite-only -R 0 -k keys/$(SIGN_KEY_FILE).pem
+SIGN_ARGS := sign --header-size 1024 --pad-header --align 8 -v "2.0" -S $(SLOT_SIZE) -M 512 --overwrite-only -R $(ERASED_VALUE) -k keys/$(SIGN_KEY_FILE).pem
 
 # Output folder
 OUT := $(APP_NAME)/out

@@ -45,6 +45,7 @@ DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
 DEFINES_APP += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
 DEFINES_APP += -DCORE=$(CORE)
 DEFINES_APP += -DMCUBOOT_IMAGE_NUMBER=$(MCUBOOT_IMAGE_NUMBER)
+DEFINES_APP += -DCY_BOOT_USE_EXTERNAL_FLASH
 
 ifeq ($(USE_CRYPTO_HW), 1)
 DEFINES_APP += -DMBEDTLS_USER_CONFIG_FILE="\"mcuboot_crypto_acc_config.h\""
@@ -53,8 +54,10 @@ endif
 SOURCES_MCUBOOT := $(wildcard $(CURDIR)/../bootutil/src/*.c)
 # Collect MCUBoot Application sources
 SOURCES_APP_SRC := $(wildcard $(CUR_APP_PATH)/*.c)
+
 # Collect Flash Layer port sources
 SOURCES_FLASH_PORT := $(wildcard $(CURDIR)/cy_flash_pal/*.c)
+SOURCES_FLASH_PORT += $(wildcard $(CURDIR)/cy_flash_pal/flash_qspi/*.c)
 # Collect all the sources
 SOURCES_APP := $(SOURCES_MCUBOOT)
 SOURCES_APP += $(SOURCES_APP_SRC)
@@ -65,6 +68,7 @@ INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(CURDIR)/../bootutil/src)
 INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(CURDIR)/..)
 
 INCLUDE_DIRS_APP := $(addprefix -I, $(CURDIR))
+INCLUDE_DIRS_APP += $(addprefix -I, $(CURDIR)/cy_flash_pal/flash_qspi)
 INCLUDE_DIRS_APP += $(addprefix -I, $(CURDIR)/cy_flash_pal/include)
 INCLUDE_DIRS_APP += $(addprefix -I, $(CURDIR)/cy_flash_pal/include/flash_map_backend)
 INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))

@@ -22,6 +22,11 @@
 #include "cy_retarget_io_pdl.h"
 #include "cy_result.h"
 
+#include "cycfg_clocks.h"
+#include "cycfg_peripherals.h"
+#include "cycfg_pins.h"
+
+#include "flash_qspi.h"
 #include "sysflash/sysflash.h"
 #include "flash_map_backend/flash_map_backend.h"
 
@@ -56,6 +61,7 @@ static void do_boot(struct boot_rsp *rsp)
 int main(void)
 {
     struct boot_rsp rsp ;
+    cy_rslt_t rc = !CY_RSLT_SUCCESS;
 
     init_cycfg_clocks();
     init_cycfg_peripherals();
@@ -68,11 +74,29 @@ int main(void)
 
     BOOT_LOG_INF("MCUBoot Bootloader Started");
 
-    if (boot_go(&rsp) == 0) {
-        BOOT_LOG_INF("User Application validated successfully");
-        do_boot(&rsp);
-    } else
-        BOOT_LOG_INF("MCUBoot Bootloader found none of bootable images") ;
-
+#ifdef CY_BOOT_USE_EXTERNAL_FLASH
+    int smif_id = 1; /* Assume SlaveSelect_0 is used for External Memory */
+    /* Acceptable values are:
+    * 0 - SMIF disabled (no external memory);
+    * 1, 2, 3 or 4 - slave select line memory module is connected to.
+    */
+    rc = qspi_init_sfdp(smif_id);
+    if(rc == CY_SMIF_SUCCESS)
+    {
+        BOOT_LOG_INF("External Memory initialized w/ SFDP.");
+    }
+    else
+    {
+        BOOT_LOG_ERR("External Memory initialization w/ SFDP FAILED: 0x%02x", (int)rc);
+    }
+    if(0 == rc)
+#endif
+    {
+        if (boot_go(&rsp) == 0) {
+            BOOT_LOG_INF("User Application validated successfully");
+            do_boot(&rsp);
+        } else
+            BOOT_LOG_INF("MCUBoot Bootloader found none of bootable images") ;
+    }
     return 0;
 }
