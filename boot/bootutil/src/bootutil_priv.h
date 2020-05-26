@@ -36,6 +36,7 @@
 
 #include "bootutil/bootutil.h"
 #include "bootutil/image.h"
+#include "bootutil/fault_injection_hardening.h"
 #include "mcuboot_config/mcuboot_config.h"
 
 #ifdef MCUBOOT_ENC_IMAGES
@@ -284,8 +285,10 @@ struct boot_loader_state {
 #endif
 };
 
-int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
-                        size_t slen, uint8_t key_id);
+fih_int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
+                            size_t slen, uint8_t key_id);
+
+fih_int boot_fih_memequal(const void *s1, const void *s2, size_t n);
 
 int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_status_sz(uint32_t min_write_sz);
