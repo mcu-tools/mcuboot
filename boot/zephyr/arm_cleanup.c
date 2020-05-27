@@ -12,11 +12,11 @@ void cleanup_arm_nvic(void) {
 	__disable_irq();
 
 	/* Disable NVIC interrupts */
-	for (u8_t i = 0; i < ARRAY_SIZE(NVIC->ICER); i++) {
+	for (uint8_t i = 0; i < ARRAY_SIZE(NVIC->ICER); i++) {
 		NVIC->ICER[i] = 0xFFFFFFFF;
 	}
 	/* Clear pending NVIC interrupts */
-	for (u8_t i = 0; i < ARRAY_SIZE(NVIC->ICPR); i++) {
+	for (uint8_t i = 0; i < ARRAY_SIZE(NVIC->ICPR); i++) {
 		NVIC->ICPR[i] = 0xFFFFFFFF;
 	}
 }
