@@ -79,7 +79,7 @@ K_SEM_DEFINE(boot_log_sem, 1, 1);
 static inline bool boot_skip_serial_recovery()
 {
 #if NRF_POWER_HAS_RESETREAS
-    u32_t rr = nrf_power_resetreas_get(NRF_POWER);
+    uint32_t rr = nrf_power_resetreas_get(NRF_POWER);
 
     return !(rr == 0 || (rr & NRF_POWER_RESETREAS_RESETPIN_MASK));
 #else
@@ -295,7 +295,7 @@ void main(void)
 #ifdef CONFIG_MCUBOOT_SERIAL
 
     struct device *detect_port;
-    u32_t detect_value = !CONFIG_BOOT_SERIAL_DETECT_PIN_VAL;
+    uint32_t detect_value = !CONFIG_BOOT_SERIAL_DETECT_PIN_VAL;
 
     detect_port = device_get_binding(CONFIG_BOOT_SERIAL_DETECT_PORT);
     __ASSERT(detect_port, "Error: Bad port for boot serial detection.\n");
