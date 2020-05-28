@@ -39,9 +39,9 @@ macro(app_set_runner_args)
   endif()
 endmacro()
 
-# Standard Zephyr application boilerplate:
+# find_package(Zephyr) in order to load application boilerplate:
 # http://docs.zephyrproject.org/application/application.html
-include($ENV{ZEPHYR_BASE}/cmake/app/boilerplate.cmake NO_POLICY_SCOPE)
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(NONE)
 
 # Path to "boot" subdirectory of repository root.
