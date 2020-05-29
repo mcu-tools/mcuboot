@@ -330,6 +330,7 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
             row_addr = erase_start_addr + row_number * (uint32_t) CY_FLASH_SIZEOF_ROW;
             rc = Cy_Flash_EraseRow(row_addr);
         }
+    }
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
     {
