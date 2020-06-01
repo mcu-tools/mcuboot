@@ -14,8 +14,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "hal/hal_flash.h"
-
 #if defined(MCUBOOT_ENCRYPT_RSA)
 #include "mbedtls/rsa.h"
 #include "mbedtls/rsa_internal.h"
