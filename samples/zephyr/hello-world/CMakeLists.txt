@@ -11,8 +11,9 @@
 
 cmake_minimum_required(VERSION 3.8)
 
-# Standard Zephyr application boilerplate.
-include($ENV{ZEPHYR_BASE}/cmake/app/boilerplate.cmake NO_POLICY_SCOPE)
+# find_package(Zephyr) in order to load application boilerplate:
+# http://docs.zephyrproject.org/application/application.html
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(NONE)
 
 # This string ends up getting printed in the device console
