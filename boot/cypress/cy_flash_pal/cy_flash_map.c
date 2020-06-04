@@ -124,12 +124,17 @@ static struct flash_area secondary_2 =
     .fa_id = FLASH_AREA_IMAGE_SECONDARY(1),
     /* TODO: it is for external flash memory
     .fa_device_id = FLASH_DEVICE_EXTERNAL_FLASH(CY_BOOT_EXTERNAL_DEVICE_INDEX), */
+#ifndef CY_BOOT_USE_EXTERNAL_FLASH
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
     .fa_off = CY_FLASH_BASE +\
                 CY_BOOT_BOOTLOADER_SIZE +\
                 CY_BOOT_PRIMARY_1_SIZE +\
                 CY_BOOT_SECONDARY_1_SIZE +\
                 CY_BOOT_PRIMARY_2_SIZE,
+#else
+    .fa_device_id = FLASH_DEVICE_EXTERNAL_FLASH(CY_BOOT_EXTERNAL_DEVICE_INDEX),
+    .fa_off = CY_SMIF_BASE_MEM_OFFSET + 0x40000,
+#endif
     .fa_size = CY_BOOT_SECONDARY_2_SIZE
 };
 #endif

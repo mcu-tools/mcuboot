@@ -69,6 +69,24 @@ To get appropriate artifact for second image PRIMARY slot run this command:
 
 *Note:* only 2 images are supported at the moment.
 
+**How to build upgrade image for external memory:**
+
+For prepare MCUBoot to work with external memory please refer to MCUBoot/ExternalMemory.md
+
+For build BlinkyApp upgarde image for external memory use command:
+
+    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x7FE8000 ERASED_VALUE=0xff
+
+`HEADER_OFFSET` defines the offset from original boot image address. This one in line above suggests secondary slot will start from `0x18000000`.
+
+`ERASED_VALUE` defines the memory cell contents in erased state. It is `0x00` for PSoC6's internal Flash and `0xff` for S25FL512S.
+
+In case of using muti-image configuration, upgrade image for second application can be built using next command:
+
+    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x8028000 ERASED_VALUE=0xff
+
+    Note: for S25FL512S block address shuld be mutiple by 0x40000
+
 **Post-Build:**
 
 Post build action is executed at compile time for `BlinkyApp`. In case of build for `PSOC_062_2M` platform it calls `imgtool` from `MCUBoot` scripts and adds signature to compiled image.
@@ -83,7 +101,7 @@ Hex file names to use for programming:
 
 `BlinkyApp` always produce build artifacts in 2 separate folders - `boot` and `upgrade`.
 
-`BlinkyApp` built to run with `MCUBootApp` produces files with name BlinkyApp.hex in `boot` directory and `BlinkyApp_upgrade.hex` in `upgrade` folder. These files are ready to be flashed to the board. 
+`BlinkyApp` built to run with `MCUBootApp` produces files with name BlinkyApp.hex in `boot` directory and `BlinkyApp_upgrade.hex` in `upgrade` folder. These files are ready to be flashed to the board.
 
 `BlinkyApp_unsigned.hex` hex file is also preserved in both cases for possible troubleshooting.
 
