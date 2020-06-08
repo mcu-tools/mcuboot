@@ -99,6 +99,7 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/image_rsa.c
   ${BOOT_DIR}/bootutil/src/image_ec256.c
   ${BOOT_DIR}/bootutil/src/image_ed25519.c
+  ${BOOT_DIR}/bootutil/src/bootutil_misc.c
   )
 
 if(CONFIG_SINGLE_IMAGE_DFU)
@@ -112,7 +113,6 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/swap_misc.c
   ${BOOT_DIR}/bootutil/src/swap_scratch.c
   ${BOOT_DIR}/bootutil/src/swap_move.c
-  ${BOOT_DIR}/bootutil/src/bootutil_misc.c
   ${BOOT_DIR}/bootutil/src/caps.c
   )
 endif()
