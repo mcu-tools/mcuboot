@@ -58,9 +58,21 @@ config NRF_CC310_BL
 
 menu "MCUBoot settings"
 
+config SINGLE_IMAGE_DFU
+	bool "Single image application"
+	default n
+	help
+	  Single image area is used for application which means that
+	  uploading a new application overwrites the one that previously
+	  occupied the area.
+
 choice
 	prompt "Signature type"
 	default BOOT_SIGNATURE_TYPE_RSA
+
+config BOOT_SIGNATURE_TYPE_NONE
+	bool "No signature; use only hash check"
+	select BOOT_USE_TINYCRYPT
 
 config BOOT_SIGNATURE_TYPE_RSA
 	bool "RSA signatures"
@@ -146,6 +158,7 @@ config BOOT_VALIDATE_SLOT0
 	  every boot, but can mitigate against some changes that are
 	  able to modify the flash image itself.
 
+if !SINGLE_IMAGE_DFU
 config BOOT_UPGRADE_ONLY
 	bool "Overwrite image updates instead of swapping"
 	default n
@@ -167,7 +180,9 @@ config BOOT_SWAP_USING_MOVE
 	  This allows a swap upgrade without using a scratch partition,
 	  but is currently limited to all sectors in both slots being of
 	  the same size.
+endif
 
+if !SINGLE_IMAGE_DFU
 config BOOT_BOOTSTRAP
 	bool "Bootstrap erased the primary slot from the secondary slot"
 	default n
@@ -217,6 +232,7 @@ config BOOT_ENCRYPT_X25519
 	  back when swapping from the primary slot to the secondary slot. The
 	  encryption mechanism used in this case is ECIES using primitives
 	  described under "ECIES-X25519 encryption" in docs/encrypted_images.md.
+endif
 
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
@@ -372,6 +388,37 @@ config RECOVERY_UART_DEV_NAME
 
 endif # MCUBOOT_SERIAL
 
+config UPDATEABLE_IMAGE_NUMBER
+	int "Number of updateable images"
+	default 1
+	range 1 1 if SINGLE_IMAGE_DFU
+	help
+	  Enables support of multi image update.
+
+choice
+	prompt "Downgrade prevention"
+	optional
+
+config MCUBOOT_DOWNGRADE_PREVENTION
+	bool "SW based downgrade prevention"
+	depends on BOOT_UPGRADE_ONLY
+	help
+	  Prevent downgrades by enforcing incrementing version numbers.
+	  When this option is set, any upgrade must have greater major version
+	  or greater minor version with equal major version. This mechanism
+	  only protects against some attacks against version downgrades (for
+	  example, a JTAG could be used to write an older version).
+
+config MCUBOOT_HW_DOWNGRADE_PREVENTION
+	bool "HW based downgrade prevention"
+	help
+	  Prevent undesirable/malicious software downgrades. When this option is
+	  set, any upgrade must have greater or equal security counter value.
+	  Because of the acceptance of equal values it allows for software
+	  downgrade to some extent.
+
+endchoice
+
 endmenu
 
 config MCUBOOT_DEVICE_SETTINGS
@@ -415,35 +462,5 @@ config LOG_PROCESS_THREAD
 # override USB device name
 config USB_DEVICE_PRODUCT
 	default "MCUBOOT"
-
-config UPDATEABLE_IMAGE_NUMBER
-	int "Number of updateable images"
-	default 1
-	help
-	  Enables support of multi image update.
-
-choice
-	prompt "Downgrade prevention"
-	optional
-
-config MCUBOOT_DOWNGRADE_PREVENTION
-	bool "SW based downgrade prevention"
-	depends on BOOT_UPGRADE_ONLY
-	help
-	  Prevent downgrades by enforcing incrementing version numbers.
-	  When this option is set, any upgrade must have greater major version
-	  or greater minor version with equal major version. This mechanism
-	  only protects against some attacks against version downgrades (for
-	  example, a JTAG could be used to write an older version).
-
-config MCUBOOT_HW_DOWNGRADE_PREVENTION
-	bool "HW based downgrade prevention"
-	help
-	  Prevent undesirable/malicious software downgrades. When this option is
-	  set, any upgrade must have greater or equal security counter value.
-	  Because of the acceptance of equal values it allows for software
-	  downgrade to some extent.
-
-endchoice
 
 source "Kconfig.zephyr"
