@@ -8,7 +8,6 @@
 #include "mcuboot_config/mcuboot_config.h"
 
 #if defined(MCUBOOT_ENC_IMAGES)
-#include <assert.h>
 #include <stddef.h>
 #include <inttypes.h>
 #include <string.h>

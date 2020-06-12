@@ -30,7 +30,6 @@
  * this file should only be called while the boot loader is running.
  */
 
-#include <assert.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <inttypes.h>

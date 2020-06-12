@@ -25,7 +25,6 @@
  * under the License.
  */
 
-#include <assert.h>
 #include <string.h>
 #include <inttypes.h>
 #include <stddef.h>

@@ -47,6 +47,7 @@ extern "C" {
 #ifdef MCUBOOT_HAVE_ASSERT_H
 #include "mcuboot_config/mcuboot_assert.h"
 #else
+#include <assert.h>
 #define ASSERT assert
 #endif
 
