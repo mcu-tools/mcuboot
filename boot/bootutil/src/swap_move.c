@@ -16,7 +16,6 @@
  * limitations under the License.
  */
 
-#include <assert.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <inttypes.h>
