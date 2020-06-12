@@ -58,7 +58,9 @@ extern "C" {
 /** Swapping encountered an unrecoverable error */
 #define BOOT_SWAP_TYPE_PANIC    0xff
 
+#ifndef BOOT_MAX_ALIGN
 #define BOOT_MAX_ALIGN          8
+#endif
 
 struct image_header;
 /**

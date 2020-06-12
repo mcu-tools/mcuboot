@@ -195,11 +195,8 @@ uint32_t
 boot_status_off(const struct flash_area *fap)
 {
     uint32_t off_from_end;
-    uint8_t elem_sz;
 
-    elem_sz = flash_area_align(fap);
-
-    off_from_end = boot_trailer_sz(elem_sz);
+    off_from_end = boot_trailer_sz(BOOT_WRITE_SZ(state));
 
     assert(off_from_end <= fap->fa_size);
     return fap->fa_size - off_from_end;
@@ -457,6 +454,28 @@ boot_write_magic(const struct flash_area *fap)
     return 0;
 }
 
+
+/**
+ * Write trailer data; status bytes, swap_size, etc
+ *
+ * @returns 0 on success, != 0 on error.
+ */
+int
+cy_boot_write_trailer(const struct flash_area *fap, uint32_t off,
+        const uint8_t *inbuf, uint8_t inlen)
+{
+    int rc;
+
+    for(uint8_t i=0; i<inlen; i++)
+    {
+        rc = flash_area_write_byte(fap, off+i, inbuf);
+        if (rc != 0) {
+            return BOOT_EFLASH;
+        }
+    }
+    return 0;
+}
+
 /**
  * Write trailer data; status bytes, swap_size, etc
  *
@@ -466,6 +485,7 @@ static int
 boot_write_trailer(const struct flash_area *fap, uint32_t off,
         const uint8_t *inbuf, uint8_t inlen)
 {
+#ifndef CY_BOOT_SWAP
     uint8_t buf[BOOT_MAX_ALIGN];
     uint8_t align;
     uint8_t erased_val;
@@ -488,6 +508,9 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
     }
 
     return 0;
+#else
+    return cy_boot_write_trailer(fap, off, inbuf, inlen);
+#endif
 }
 
 static int

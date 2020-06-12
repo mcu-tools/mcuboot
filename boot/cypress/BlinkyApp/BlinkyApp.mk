@@ -84,7 +84,12 @@ ASM_FILES_APP :=
 # We still need this for MCUBoot apps signing
 IMGTOOL_PATH ?=	../../scripts/imgtool.py
 
-SIGN_ARGS := sign --header-size 1024 --pad-header --align 8 -v "2.0" -S $(SLOT_SIZE) -M 512 --overwrite-only -R $(ERASED_VALUE) -k keys/$(SIGN_KEY_FILE).pem
+SECTOR_SIZE ?= 512
+# default slot size is 0x10000, 512bytes per row/sector, so 128 sectors
+MAX_IMG_SECTORS ?= 128
+
+# set --align to 1 so swap table will be of minimal size
+SIGN_ARGS := sign --header-size 1024 --pad-header --align 1 -v "2.0" -S $(SLOT_SIZE) -M $(MAX_IMG_SECTORS) -R $(ERASED_VALUE) -k keys/$(SIGN_KEY_FILE).pem
 
 # Output folder
 OUT := $(APP_NAME)/out
@@ -93,6 +98,7 @@ OUT_TARGET := $(OUT)/$(PLATFORM)
 
 OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
 
+SIGN_ARGS += --pad
 # Set build directory for BOOT and UPGRADE images
 ifeq ($(IMG_TYPE), UPGRADE)
 	SIGN_ARGS += --pad

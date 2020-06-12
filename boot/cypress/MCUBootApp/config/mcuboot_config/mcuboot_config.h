@@ -49,12 +49,15 @@
  */
 
 /* Uncomment to enable the overwrite-only code path. */
-#define MCUBOOT_OVERWRITE_ONLY
+// #define MCUBOOT_OVERWRITE_ONLY 1
 
 #ifdef MCUBOOT_OVERWRITE_ONLY
 /* Uncomment to only erase and overwrite those slot 0 sectors needed
  * to install the new image, rather than the entire image slot. */
 /* #define MCUBOOT_OVERWRITE_ONLY_FAST */
+#else
+//#define MCUBOOT_SWAP_USING_MOVE 1
+#define MCUBOOT_SWAP_USING_SCRATCH 1
 #endif
 
 /*

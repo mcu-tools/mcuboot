@@ -41,6 +41,9 @@ include $(CUR_APP_PATH)/platforms.mk
 include $(CUR_APP_PATH)/libs.mk
 include $(CUR_APP_PATH)/toolchains.mk
 
+# default slot size is 0x10000, 512bytes per row/sector, so 128 sectors
+MAX_IMG_SECTORS ?= 128
+
 # Application-specific DEFINES
 DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
 DEFINES_APP += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
@@ -49,6 +52,10 @@ DEFINES_APP += -DMCUBOOT_IMAGE_NUMBER=$(MCUBOOT_IMAGE_NUMBER)
 ifeq ($(USE_EXTERNAL_FLASH), 1)
 DEFINES_APP += -DCY_BOOT_USE_EXTERNAL_FLASH
 endif
+DEFINES_APP += -DMCUBOOT_MAX_IMG_SECTORS=$(MAX_IMG_SECTORS)
+# TODO: 1362 : to be removed:
+DEFINES_APP += -DCY_BOOT_SWAP
+DEFINES_APP += -DBOOT_MAX_ALIGN=1
 
 ifeq ($(USE_CRYPTO_HW), 1)
 DEFINES_APP += -DMBEDTLS_USER_CONFIG_FILE="\"mcuboot_crypto_acc_config.h\""

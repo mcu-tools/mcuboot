@@ -71,6 +71,7 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
     do {
         sz = boot_img_sector_size(state, slot, sector);
         off = boot_img_sector_off(state, slot, sector);
+        BOOT_LOG_INF("boot_erase_region(%d, 0x%08x, 0x%08x)", fap->fa_id, off, sz);
         rc = boot_erase_region(fap, off, sz);
         assert(rc == 0);
 

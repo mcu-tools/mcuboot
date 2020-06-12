@@ -69,7 +69,7 @@
 #define PSOC6_WR_ERROR_INVALID_PARAMETER    (1)
 #define PSOC6_WR_ERROR_FLASH_WRITE          (2)
 
-#define PSOC6_FLASH_ERASE_BLOCK_SIZE	CY_FLASH_SIZEOF_ROW /* PSoC6 Flash erases by Row */
+#define PSOC6_FLASH_ERASE_BLOCK_SIZE    CY_FLASH_SIZEOF_ROW /* PSoC6 Flash erases by Row */
 
 int psoc6_smif_read(const struct flash_area *fap,
                                         off_t addr,

@@ -260,6 +260,10 @@ int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
 int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
+
+int cy_boot_write_trailer(const struct flash_area *fap, uint32_t off,
+                            const uint8_t *inbuf, uint8_t inlen);
+
 int boot_status_entries(int image_index, const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
 uint32_t boot_swap_info_off(const struct flash_area *fap);
@@ -344,7 +348,9 @@ static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
 #endif
 #define BOOT_IMG(state, slot) ((state)->imgs[BOOT_CURR_IMG(state)][(slot)])
 #define BOOT_IMG_AREA(state, slot) (BOOT_IMG(state, slot).area)
+#ifndef BOOT_WRITE_SZ
 #define BOOT_WRITE_SZ(state) ((state)->write_sz)
+#endif
 #define BOOT_SWAP_TYPE(state) ((state)->swap_type[BOOT_CURR_IMG(state)])
 #define BOOT_TLV_OFF(hdr) ((hdr)->ih_hdr_size + (hdr)->ih_img_size)
 

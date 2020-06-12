@@ -41,6 +41,9 @@
 #define CY_BOOT_EXTERNAL_DEVICE_INDEX            (0)
 #endif
 
+/* Will be used for SWAP on Cypress' PSoC6 */
+#define BOOT_WRITE_SZ(...) 1
+
 /**
  *
  * Provides abstraction of flash regions for type of use.
@@ -134,6 +137,12 @@ int flash_area_read(const struct flash_area *, uint32_t off, void *dst,
 /*< Writes `len` bytes of flash memory at `off` from the buffer at `src` */
 int flash_area_write(const struct flash_area *, uint32_t off,
                      const void *src, uint32_t len);
+/*
+* Writes 1 byte of flash memory at `off` from the buffer at `src`
+ */
+int flash_area_write_byte(const struct flash_area *fa, uint32_t off,
+                     const void *src);
+
 /*< Erases `len` bytes of flash memory at `off` */
 int flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
 /*< Returns this `flash_area`s alignment */

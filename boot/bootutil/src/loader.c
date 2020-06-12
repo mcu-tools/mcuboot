@@ -283,7 +283,7 @@ boot_read_sectors(struct boot_loader_state *state)
     }
 #endif
 
-    BOOT_WRITE_SZ(state) = boot_write_sz(state);
+    state->write_sz = boot_write_sz(state);
 
     return 0;
 }
@@ -360,8 +360,8 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
     }
 
     off = boot_status_off(fap) +
-          boot_status_internal_off(bs, BOOT_WRITE_SZ(state));
-    align = flash_area_align(fap);
+            boot_status_internal_off(bs, BOOT_WRITE_SZ(state));
+    align = BOOT_WRITE_SZ(state);
     erased_val = flash_area_erased_val(fap);
     memset(buf, erased_val, BOOT_MAX_ALIGN);
     buf[0] = bs->state;
