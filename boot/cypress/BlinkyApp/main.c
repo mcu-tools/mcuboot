@@ -85,7 +85,7 @@ void test_app_init_hardware(void)
     /* enable interrupts */
     __enable_irq();
 
-    /* Disabling watchdog so it will not interrupt normal flow later */
+    /* Initializing LED Pin */
     Cy_GPIO_Pin_Init(LED_PORT, LED_PIN, &LED_config);
     /* Initialize retarget-io to use the debug UART port */
     check_result(cy_retarget_io_init(CY_DEBUG_UART_TX, CY_DEBUG_UART_RX,
@@ -101,6 +101,31 @@ void test_app_init_hardware(void)
 
 }
 
+/*
+* Writes 1 byte from `src` into flash memory at `address`
+* It does a sequence of RD/Modify/WR of data in a Flash Row.
+ */
+int flash_write_byte(uint32_t address, uint8_t src)
+{
+    cy_en_flashdrv_status_t rc = CY_FLASH_DRV_SUCCESS;
+    uint32_t row_addr = 0;
+    uint8_t row_buff[512];
+
+    /* accepting arbitrary address */
+    row_addr = (address/CY_FLASH_SIZEOF_ROW)*CY_FLASH_SIZEOF_ROW;
+
+    /* preserving Row */
+    memcpy((void *)row_buff, (void *)row_addr, sizeof(row_buff));
+
+    /* Modifying the target byte */
+    row_buff[address%CY_FLASH_SIZEOF_ROW] = src;
+
+    /* Programming updated row back, NO Erase */
+    rc = Cy_Flash_ProgramRow(row_addr, (const uint32_t *)row_buff);
+
+    return (int) rc;
+}
+
 int main(void)
 {
     uint32_t blinky_period = BLINK_PERIOD;
@@ -108,7 +133,27 @@ int main(void)
     test_app_init_hardware();
 
     printf(GREETING_MESSAGE_INFO);
-
+#ifdef SWAP_CONFIRM
+    #define USER_SWAP_IMAGE_OK_OFFS (24)
+    #define USER_SWAP_IMAGE_OK      (1)
+    uint32_t img_ok_addr;
+    int rc;
+    /* Write Image OK flag to the slot trailer, so MCUBoot-loader
+     * will not revert new image */
+    img_ok_addr = USER_APP_START+USER_SLOT_SIZE-USER_SWAP_IMAGE_OK_OFFS;
+    if (*((uint8_t *)img_ok_addr) != USER_SWAP_IMAGE_OK)
+    {
+        rc = flash_write_byte(img_ok_addr, USER_SWAP_IMAGE_OK);
+        if (0 == rc)
+        {
+            printf("[BlinkyApp] SWAP Status : Image OK was set at 0x%08lx.\r\n", img_ok_addr);
+        }
+        else
+        {
+            printf("[BlinkyApp] SWAP Status : Failed to set Image OK.\r\n");
+        }
+    }
+#endif
     for (;;)
     {
         /* Toggle the user LED periodically */

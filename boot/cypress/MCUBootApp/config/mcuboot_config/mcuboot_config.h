@@ -49,12 +49,17 @@
  */
 
 /* Uncomment to enable the overwrite-only code path. */
-#define MCUBOOT_OVERWRITE_ONLY
+#define MCUBOOT_OVERWRITE_ONLY 1
 
 #ifdef MCUBOOT_OVERWRITE_ONLY
 /* Uncomment to only erase and overwrite those slot 0 sectors needed
  * to install the new image, rather than the entire image slot. */
 /* #define MCUBOOT_OVERWRITE_ONLY_FAST */
+#else
+/* Using SWAP w Scratch by default.
+ * Comment/Uncomment which is needed. */
+#define MCUBOOT_SWAP_USING_SCRATCH 1
+/* #define MCUBOOT_SWAP_USING_MOVE 1 */
 #endif
 
 /*
@@ -83,7 +88,6 @@
 
 /* Uncomment if your flash map API supports flash_area_get_sectors().
  * See the flash APIs for more details. */
-// TODO: FWSECURITY-755
 #define MCUBOOT_USE_FLASH_AREA_GET_SECTORS
 
 /* Default number of separately updateable images; change in case of

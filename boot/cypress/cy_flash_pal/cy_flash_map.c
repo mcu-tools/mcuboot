@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "mcuboot_config/mcuboot_config.h"
 #include "flash_map_backend/flash_map_backend.h"
 #include <sysflash/sysflash.h>
 
@@ -107,6 +108,7 @@ static struct flash_area secondary_1 =
     .fa_size = CY_BOOT_SECONDARY_1_SIZE
 };
 #endif
+
 #if (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image */
 static struct flash_area primary_2 =
 {
@@ -122,7 +124,7 @@ static struct flash_area primary_2 =
 static struct flash_area secondary_2 =
 {
     .fa_id = FLASH_AREA_IMAGE_SECONDARY(1),
-    /* TODO: it is for external flash memory
+    /* it is for external flash memory
     .fa_device_id = FLASH_DEVICE_EXTERNAL_FLASH(CY_BOOT_EXTERNAL_DEVICE_INDEX), */
 #ifndef CY_BOOT_USE_EXTERNAL_FLASH
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
@@ -138,6 +140,9 @@ static struct flash_area secondary_2 =
     .fa_size = CY_BOOT_SECONDARY_2_SIZE
 };
 #endif
+#endif
+
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
 static struct flash_area scratch =
 {
     .fa_id = FLASH_AREA_IMAGE_SCRATCH,
@@ -172,7 +177,9 @@ struct flash_area *boot_area_descs[] =
     &primary_2,
     &secondary_2,
 #endif
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     &scratch,
+#endif
     NULL
 };
 #endif
@@ -205,8 +212,6 @@ int flash_area_open(uint8_t id, const struct flash_area **fa)
         }
         i++;
     }
-
-
     return ret;
 }
 
@@ -228,7 +233,7 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
     assert(off < fa->fa_off);
     assert(off + len < fa->fa_off);
     /* convert to absolute address inside a device*/
-        addr = fa->fa_off + off;
+    addr = fa->fa_off + off;
 
     if (fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
     {
@@ -238,7 +243,11 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
     {
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
+        #error "SWAP with External Memory is not supported."
+#else
         rc = psoc6_smif_read(fa, addr, dst, len);
+#endif
     }
 #endif
     else
@@ -253,8 +262,89 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
     return rc;
 }
 
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
 /*
-* Writes `len` bytes of flash memory at `off` from the buffer at `src`
+* Writes `len` bytes of flash memory at `off` from the buffer at `src`.
+* Accepts arbitrary length of data array.
+* Row is being overwritten, no Erase performed.
+ */
+int flash_area_write(const struct flash_area *fa, uint32_t off,
+                     const void *src, uint32_t len)
+{
+    cy_en_flashdrv_status_t rc = CY_FLASH_DRV_SUCCESS;
+    size_t write_start_addr;
+
+    assert(off < fa->fa_off);
+    assert(off + len < fa->fa_off);
+
+    /* convert to absolute address inside a device */
+    write_start_addr = fa->fa_off + off;
+
+    if (fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
+    {
+        uint8_t writeBuffer[CY_FLASH_SIZEOF_ROW];
+        uint32_t rowId;
+        uint32_t dstIndex;
+        uint32_t srcIndex = 0u;
+        uint32_t eeOffset;
+        uint32_t byteOffset;
+        uint32_t rowsNotEqual;
+        uint8_t *dataPtr = (uint8_t *)src;
+            /* get an absolute address first */
+        eeOffset = write_start_addr;
+
+        rowId = eeOffset / CY_FLASH_SIZEOF_ROW;
+        byteOffset = CY_FLASH_SIZEOF_ROW * rowId;
+
+        while((srcIndex < len) && (rc == CY_FLASH_DRV_SUCCESS))
+        {
+            rowsNotEqual = 0u;
+            /* Copy data to the write buffer either from the source buffer or from the flash */
+            for(dstIndex = 0u; dstIndex < CY_FLASH_SIZEOF_ROW; dstIndex++)
+            {
+                if((byteOffset >= eeOffset) && (srcIndex < len))
+                {
+                    writeBuffer[dstIndex] = dataPtr[srcIndex];
+                    /* Detect that row programming is required */
+                    if(rowsNotEqual == 0u)
+                    {
+                        rowsNotEqual = 1u;
+                    }
+                    srcIndex++;
+                }
+                else
+                {   /* fill in buffer w erased value, so row contents will not be effected by row Program */
+                    writeBuffer[dstIndex] = CY_BOOT_INTERNAL_FLASH_ERASE_VALUE;
+                }
+                byteOffset++;
+            }
+            if(rowsNotEqual != 0u)
+            {
+                /* Program flash row */
+                rc = Cy_Flash_ProgramRow((rowId * CY_FLASH_SIZEOF_ROW), (const uint32_t *)writeBuffer);
+            }
+            /* Go to the next row */
+            rowId++;
+        }
+    }
+#ifdef CY_BOOT_USE_EXTERNAL_FLASH
+    else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
+    {
+        #error "SWAP with External Memory is not supported."
+    }
+#endif
+    else
+    {
+        /* incorrect/non-existing flash device id */
+        rc = -1;
+    }
+    return (int) rc;
+}
+#else
+/*
+* Writes `len` bytes of flash memory at `off` from the buffer at `src`.
+* Expects length must be of even number of Rows (512bytes for PSoC6)
+* Row is being erased prior.
  */
 int flash_area_write(const struct flash_area *fa, uint32_t off,
                      const void *src, uint32_t len)
@@ -306,6 +396,7 @@ int flash_area_write(const struct flash_area *fa, uint32_t off,
 
     return (int) rc;
 }
+#endif
 
 /*< Erases `len` bytes of flash memory at `off` */
 int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
@@ -339,7 +430,11 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
     {
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
+        #error "SWAP with External Memory is not supported."
+#else
         rc = psoc6_smif_erase(erase_start_addr, len);
+#endif
     }
 #endif
     else
@@ -356,12 +451,22 @@ size_t flash_area_align(const struct flash_area *fa)
     int ret = -1;
     if (fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
     {
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
+        /* Allow single-byte writes for SWAP mode.
+         * This will allow to write  reasonably short SWAP status table. */
+        ret = 1;
+#else
         ret = CY_FLASH_ALIGN;
+#endif
     }
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
     {
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
+        #error "SWAP with External Memory is not supported."
+#else
         return qspi_get_prog_size();
+#endif
     }
 #endif
     else
@@ -371,35 +476,6 @@ size_t flash_area_align(const struct flash_area *fa)
     }
     return ret;
 }
-
-#ifdef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
-/*< Initializes an array of flash_area elements for the slot's sectors */
-int     flash_area_to_sectors(int idx, int *cnt, struct flash_area *fa)
-{
-    int rc = 0;
-
-    if (fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
-    {
-        (void)idx;
-        (void)cnt;
-        rc = 0;
-    }
-#ifdef CY_BOOT_USE_EXTERNAL_FLASH
-    else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
-    {
-        (void)idx;
-        (void)cnt;
-        rc = 0;
-    }
-#endif
-    else
-    {
-        /* incorrect/non-existing flash device id */
-        rc = -1;
-    }
-    return rc;
-}
-#endif
 
 /*
  * This depends on the mappings defined in sysflash.h.
@@ -450,7 +526,11 @@ uint8_t flash_area_erased_val(const struct flash_area *fap)
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     else if ((fap->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
     {
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
+        #error "SWAP with External Memory is not supported."
+#else
         ret = CY_BOOT_EXTERNAL_FLASH_ERASE_VALUE;
+#endif
     }
 #endif
     else
@@ -509,9 +589,13 @@ int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
         else if((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
         {
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
+        #error "SWAP with External Memory is not supported."
+#else
             /* implement for SMIF */
             /* lets assume they are equal */
             sector_size = CY_FLASH_SIZEOF_ROW;
+#endif
         }
 #endif
         else
@@ -543,6 +627,33 @@ int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
         rc = -1;
     }
 
+    return rc;
+}
+#else
+/*< Initializes an array of flash_area elements for the slot's sectors */
+int     flash_area_to_sectors(int idx, int *cnt, struct flash_area *fa)
+{
+    int rc = 0;
+
+    if (fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
+    {
+        (void)idx;
+        (void)cnt;
+        rc = 0;
+    }
+#ifdef CY_BOOT_USE_EXTERNAL_FLASH
+    else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
+    {
+        (void)idx;
+        (void)cnt;
+        rc = 0;
+    }
+#endif
+    else
+    {
+        /* incorrect/non-existing flash device id */
+        rc = -1;
+    }
     return rc;
 }
 #endif

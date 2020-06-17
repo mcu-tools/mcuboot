@@ -30,6 +30,7 @@
 #     - image type to BOOT
 COMPILER ?= GCC_ARM
 IMG_TYPE ?= BOOT
+SWAP ?= 0
 
 # image type can be BOOT or UPGRADE
 IMG_TYPES = BOOT UPGRADE
@@ -61,6 +62,7 @@ ifeq ($(PLATFORM), PSOC_062_2M)
 	DEFINES_APP += -DRAM_SIZE=0x10000
 	DEFINES_APP += -DUSER_APP_START=0x10018000
 	SLOT_SIZE ?= 0x10000
+	DEFINES_APP += -DUSER_SLOT_SIZE=$(SLOT_SIZE)
 endif
 
 # Collect Test Application sources
@@ -71,6 +73,11 @@ SOURCES_APP += $(SOURCES_APP_SRC)
 # Collect includes for BlinkyApp
 INCLUDE_DIRS_APP := $(addprefix -I, $(CURDIR))
 INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))
+
+# if image need to confirm its operation
+ifeq ($(SWAP), 1)
+	DEFINES_APP += -DSWAP_CONFIRM
+endif
 
 # Overwite path to linker script if custom is required, otherwise default from BSP is used
 ifeq ($(COMPILER), GCC_ARM)
@@ -84,7 +91,12 @@ ASM_FILES_APP :=
 # We still need this for MCUBoot apps signing
 IMGTOOL_PATH ?=	../../scripts/imgtool.py
 
-SIGN_ARGS := sign --header-size 1024 --pad-header --align 8 -v "2.0" -S $(SLOT_SIZE) -M 512 --overwrite-only -R $(ERASED_VALUE) -k keys/$(SIGN_KEY_FILE).pem
+SECTOR_SIZE ?= 512
+# default slot size is 0x10000, 512bytes per row/sector, so 128 sectors
+MAX_IMG_SECTORS ?= 128
+
+# set --align to 1 so swap table will be of minimal size
+SIGN_ARGS := sign --header-size 1024 --pad-header --align 1 -v "2.0" -S $(SLOT_SIZE) -M $(MAX_IMG_SECTORS) -R $(ERASED_VALUE) -k keys/$(SIGN_KEY_FILE).pem
 
 # Output folder
 OUT := $(APP_NAME)/out

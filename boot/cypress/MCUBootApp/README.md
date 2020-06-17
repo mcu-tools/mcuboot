@@ -72,7 +72,7 @@ As an example in a makefile it should look like following:
 
 Multi-image operation considers upgrading and verification of more then one image on the device.
 
-To enable multi-image operation define `MCUBOOT_IMAGE_NUMBER` in `MCUBootApp/mcuboot_config.h` file should be set to 2 (only dual-image is supported at the moment). This could also be done on build time by passing `MCUBOOT_IMAGE_NUMBER=2` as parameter to `make`.
+To enable multi-image operation define `MCUBOOT_IMAGE_NUMBER` in `MCUBootApp/config/mcuboot_config.h` file should be set to 2 (only dual-image is supported at the moment). This could also be done on build time by passing `MCUBOOT_IMAGE_NUMBER=2` as parameter to `make`.
 
 Default value of `MCUBOOT_IMAGE_NUMBER` is 1, which corresponds to single image configuratios.
 
@@ -101,6 +101,14 @@ This ensures two dependent applications can be accepted by device only in case b
 `0x10058000 - 0x10058100` - Scratch of Bootloader
 
 Size of slots `0x10000` - 64kb
+
+**SWAP Mode Operation**
+
+To enable SWAP mode navigate to `MCUBootApp/config/mcuboot_config.h` and comment out the `MCUBOOT_OVERWRITE_ONLY` name definition. This will enable SWAP mode in MCUBootApp.
+
+Few lines below there are two #defines to select between different SWAP types - `MCUBOOT_SWAP_USING_SCRATCH` and `MCUBOOT_SWAP_USING_MOVE`.
+
+__Note:__ SWAP mode with External Memory is not supported at this moment.
 
 **Downloading Solution's Assets**
 

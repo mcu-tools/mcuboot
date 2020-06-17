@@ -69,7 +69,7 @@ To get appropriate artifact for second image PRIMARY slot run this command:
 
 *Note:* only 2 images are supported at the moment.
 
-**How to build upgrade image for external memory:**
+**Building an image for upgrade from External Memory:**
 
 For prepare MCUBoot to work with external memory please refer to MCUBoot/ExternalMemory.md
 
@@ -86,6 +86,17 @@ In case of using muti-image configuration, upgrade image for second application 
     make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x8028000 ERASED_VALUE=0xff
 
     Note: for S25FL512S block address shuld be mutiple by 0x40000
+
+**Building for SWAP Mode **
+
+To make `BlinkyApp` compatible with SWAP mode there `SWAP=1` has to be passed during build process:
+
+    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M BUILDCFG=Debug IMG_TYPE=UPGRADE SWAP=1 HEADER_OFFSET=0x10000
+
+Passing `SWAP=1` enables conditionally compiled code inside the `main.c` so the swapped image will mark itself with "Image OK" flag.
+By doing this `MCUBootApp` bootloader will be informed that new image is functional and there is no Revert will be performed at next Reset.
+
+If there is any reason "Image OK" flag was not set, this will be considered as a SWAP failure, so `MCUBootApp` bootloader will roll back BOOT image to previous.
 
 **Post-Build:**
 
