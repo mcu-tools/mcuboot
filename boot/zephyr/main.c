@@ -98,6 +98,18 @@ MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
 void os_heap_init(void);
 
 #if defined(CONFIG_ARM)
+
+#ifdef CONFIG_BOOT_INTR_VEC_RELOC
+
+#ifdef CONFIG_SW_VECTOR_RELAY
+extern void *_vector_table_pointer;
+#define VTOR _vector_table_pointer
+#elif CONFIG_CPU_CORTEX_M_HAS_VTOR
+#define VTOR SCB->VTOR
+#endif
+
+#endif /* CONFIG_BOOT_INTR_VEC_RELOC */
+
 struct arm_vector_table {
     uint32_t msp;
     uint32_t reset;
@@ -133,6 +145,11 @@ static void do_boot(struct boot_rsp *rsp)
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     cleanup_arm_nvic(); /* cleanup NVIC registers */
 #endif
+
+#ifdef CONFIG_BOOT_INTR_VEC_RELOC
+    VTOR = vt;
+#endif
+
     __set_MSP(vt->msp);
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     __set_CONTROL(0x00); /* application will configures core on its own */

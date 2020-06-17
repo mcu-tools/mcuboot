@@ -388,6 +388,15 @@ config RECOVERY_UART_DEV_NAME
 
 endif # MCUBOOT_SERIAL
 
+config BOOT_INTR_VEC_RELOC
+	bool "Relocate the interrupt vector to the application"
+	default n
+	depends on SW_VECTOR_RELAY || CPU_CORTEX_M_HAS_VTOR
+	help
+	  Relocate the interrupt vector to the application before it is started.
+	  Select this option if application requires vector relocation,
+	  but it doesn't relocate vector in its reset handler.
+
 config UPDATEABLE_IMAGE_NUMBER
 	int "Number of updateable images"
 	default 1
