@@ -6,7 +6,15 @@
 [coverity]: https://scan.coverity.com/projects/mcuboot
 [travis]: https://travis-ci.org/JuulLabs-OSS/mcuboot
 
-This is mcuboot version 1.6.0
+~~This is mcuboot version 1.6.0~~  
+This is mcuboot compatible with zephyr 2.2.0 version based on mcuboot 1.6.0
+
+  All patches which makes MCUBoot v1.6.0 incompatible with zephyr 2.2.0 were
+  reverted on this branch.
+
+  Non of mcuboot 1.6.0 feature were lost du the reverts.
+
+  **No guarantee that this version has the same quality as 1.6.0**
 
 MCUboot is a secure bootloader for 32-bit MCUs. The goal of MCUboot is to
 define a common infrastructure for the bootloader, system flash layout on
