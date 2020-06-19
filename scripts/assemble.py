@@ -25,13 +25,6 @@ import re
 import os.path
 import sys
 
-ZEPHYR_BASE = os.getenv("ZEPHYR_BASE")
-if not ZEPHYR_BASE:
-    sys.exit("$ZEPHYR_BASE environment variable undefined")
-
-sys.path.insert(0, os.path.join(ZEPHYR_BASE, "scripts", "dts"))
-import edtlib
-
 def same_keys(a, b):
     """Determine if the dicts a and b have the same keys in them"""
     for ak in a.keys():
@@ -109,15 +102,20 @@ def main():
             help='Signed image file for secondary image')
     parser.add_argument('-o', '--output', required=True,
             help='Filename to write full image to')
+    parser.add_argument('-z', '--zephyr-base', required=True,
+            help='Zephyr base containg the Zephyr repository')
 
     args = parser.parse_args()
+
+    sys.path.insert(0, os.path.join(args.zephyr_base, "scripts", "dts"))
+    import edtlib
 
     # Extract board name from path
     board = os.path.split(os.path.split(args.bootdir)[0])[1]
 
     dts_path = os.path.join(args.bootdir, "zephyr", board + ".dts.pre.tmp")
 
-    edt = edtlib.EDT(dts_path, [os.path.join(ZEPHYR_BASE, "dts", "bindings")],
+    edt = edtlib.EDT(dts_path, [os.path.join(args.zephyr_base, "dts", "bindings")],
             warn_reg_unit_address_mismatch=False)
 
     output = Assembly(args.output, args.bootdir, edt)
