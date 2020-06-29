@@ -164,9 +164,19 @@ config BOOT_VALIDATE_SLOT0
 	  able to modify the flash image itself.
 
 if !SINGLE_IMAGE_DFU
+choice
+	prompt "Image upgrade modes"
+	default BOOT_SWAP_USING_MOVE if SOC_FAMILY_NRF
+	default BOOT_SWAP_USING_SCRATCH
+
+config BOOT_SWAP_USING_SCRATCH
+	bool "Swap mode that run with the scratch partition"
+	help
+	  This is the most conservative swap mode but it can work even on
+	  devices with heterogeneous flash page layout.
+
 config BOOT_UPGRADE_ONLY
 	bool "Overwrite image updates instead of swapping"
-	default n
 	help
 	  If y, overwrite the primary slot with the upgrade image instead
 	  of swapping them. This prevents the fallback recovery, but
@@ -174,8 +184,6 @@ config BOOT_UPGRADE_ONLY
 
 config BOOT_SWAP_USING_MOVE
 	bool "Swap mode that can run without a scratch partition"
-	default y if SOC_FAMILY_NRF
-	default n
 	help
 	  If y, the swap upgrade is done in two steps, where first every
 	  sector of the primary slot is moved up one sector, then for
@@ -185,6 +193,17 @@ config BOOT_SWAP_USING_MOVE
 	  This allows a swap upgrade without using a scratch partition,
 	  but is currently limited to all sectors in both slots being of
 	  the same size.
+
+config BOOT_DIRECT_XIP
+	bool "Run the latest image directly from its slot"
+	help
+	  If y, mcuboot selects the newest valid image based on the image version
+	  numbers, thereafter the selected image can run directly from its slot
+	  without having to move/copy it into the primary slot. For this reason the
+	  images must be linked to be executed from the given image slot. Using this
+	  mode results in a simpler code path and smaller code size.
+
+endchoice
 endif
 
 if !SINGLE_IMAGE_DFU
