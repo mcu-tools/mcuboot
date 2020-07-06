@@ -141,7 +141,7 @@ occurs and the information is spread across multiple areas.
 
 ## [Creating your keys with imgtool](#creating-your-keys-with-imgtool)
 
-`imgtool` can generate keys by using `imgtool genkey -k <output.pem> -t <type>`,
+`imgtool` can generate keys by using `imgtool keygen -k <output.pem> -t <type>`,
  where type can be one of `rsa-2048`, `rsa-3072`, `ecdsa-p256`, `ecdsa-p224`
 or `ed25519`. This will generate a keypair or private key.
 
