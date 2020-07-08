@@ -91,6 +91,15 @@ class Assembly():
                     raise Exception("Image {} is too large for partition".format(source))
             ofd.write(ibuf)
 
+def find_board_name(bootdir):
+    suffix = ".dts.pre.tmp"
+
+    for _, _, files in os.walk(os.path.join(bootdir, "zephyr")):
+        for filename in files:
+            if filename.endswith(suffix):
+                return filename[:-len(suffix)]
+
+
 def main():
     parser = argparse.ArgumentParser()
 
@@ -110,8 +119,7 @@ def main():
     sys.path.insert(0, os.path.join(args.zephyr_base, "scripts", "dts"))
     import edtlib
 
-    # Extract board name from path
-    board = os.path.split(os.path.split(args.bootdir)[0])[1]
+    board = find_board_name(args.bootdir)
 
     dts_path = os.path.join(args.bootdir, "zephyr", board + ".dts.pre.tmp")
 
