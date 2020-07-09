@@ -37,7 +37,7 @@ mcuboot-sys = { path = "mcuboot-sys" }
 ring = "0.16.11"
 untrusted = "0.7"
 pem = "0.8"
-aes-ctr = "0.2.0"
+aes-ctr = "0.4.0"
 base64 = "0.12.0"
 
 # The simulator runs very slowly without optimization.  A value of 1

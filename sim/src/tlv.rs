@@ -33,8 +33,8 @@ use aes_ctr::{
     Aes128Ctr,
     stream_cipher::{
         generic_array::GenericArray,
-        NewFixStreamCipher,
-        StreamCipherCore,
+        NewStreamCipher,
+        SyncStreamCipher,
     },
 };
 use mcuboot_sys::c;
