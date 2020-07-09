@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "mcuboot_config/mcuboot_config.h"
 #include "flash_map_backend/flash_map_backend.h"
 #include <sysflash/sysflash.h>
 
@@ -122,7 +123,7 @@ static struct flash_area primary_2 =
 static struct flash_area secondary_2 =
 {
     .fa_id = FLASH_AREA_IMAGE_SECONDARY(1),
-    /* TODO: it is for external flash memory
+    /* it is for external flash memory
     .fa_device_id = FLASH_DEVICE_EXTERNAL_FLASH(CY_BOOT_EXTERNAL_DEVICE_INDEX), */
 #ifndef CY_BOOT_USE_EXTERNAL_FLASH
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
@@ -138,6 +139,9 @@ static struct flash_area secondary_2 =
     .fa_size = CY_BOOT_SECONDARY_2_SIZE
 };
 #endif
+#endif
+
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
 static struct flash_area scratch =
 {
     .fa_id = FLASH_AREA_IMAGE_SCRATCH,
@@ -172,7 +176,9 @@ struct flash_area *boot_area_descs[] =
     &primary_2,
     &secondary_2,
 #endif
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     &scratch,
+#endif
     NULL
 };
 #endif
@@ -205,8 +211,6 @@ int flash_area_open(uint8_t id, const struct flash_area **fa)
         }
         i++;
     }
-
-
     return ret;
 }
 
@@ -277,18 +281,18 @@ int flash_area_write(const struct flash_area *fa, uint32_t off,
         uint32_t row_addr = 0;
 
         assert(!(len % CY_FLASH_SIZEOF_ROW));
+        assert(!(write_start_addr % CY_FLASH_SIZEOF_ROW));
 
         row_number = (write_end_addr - write_start_addr) / CY_FLASH_SIZEOF_ROW;
         row_addr = write_start_addr;
 
         row_ptr = (uint32_t *) src;
 
-        for (uint32_t i = 1; i <= row_number + 1; i++){
-
+        for (uint32_t i = 0; i < row_number; i++)
+        {
             rc = Cy_Flash_WriteRow(row_addr, row_ptr);
-            row_addr = write_start_addr + i * (uint32_t) CY_FLASH_SIZEOF_ROW;
 
-            row_number--;
+            row_addr += (uint32_t) CY_FLASH_SIZEOF_ROW;
             row_ptr = row_ptr + CY_FLASH_SIZEOF_ROW / 4;
         }
     }

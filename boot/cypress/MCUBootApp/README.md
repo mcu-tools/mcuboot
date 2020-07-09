@@ -9,19 +9,26 @@ There are two applications implemented:
 * BlinkyApp - simple PSoC6 blinking LED application which is a target of BOOT/UPGRADE;
 
 The demonstration device is CY8CPROTO-062-4343W board which is PSoC6 device with 2M of Flash available.
-
 The default flash map implemented is the following:
 
-* [0x10000000, 0x10018000] - MCUBootApp (bootloader) area;
-* [0x10018000, 0x10028000] - primary slot for BlinkyApp;
-* [0x10028000, 0x10038000] - secondary slot for BlinkyApp;
-* [0x10038000, 0x10039000] - scratch area;
+Single-image mode.
+
+`[0x10000000, 0x10018000]` - MCUBootApp (bootloader) area;
+
+`[0x10018000, 0x10028000]` - primary slot for BlinkyApp;
+
+`[0x10028000, 0x10038000]` - secondary slot for BlinkyApp;
+
+`[0x10038000, 0x10039000]` - scratch area (not used);
 
 Size of slots `0x10000` - 64kb
 
+MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on mbedTLS Library.
+
 **Important**: make sure primary, secondary slot and bootloader app sizes are appropriate and correspond to flash area size defined in Applications' linker files.
 
-MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on mbedTLS Library.
+**Important**: make sure RAM areas of CM0p-based MCUBootApp bootloader and CM4-based BlinkyApp do not overlap.
+Memory (stack) corruption of CM0p application can cause failure if SystemCall-served operations invoked from CM4.
 
 **Hardware cryptography acceleration:**
 
@@ -72,7 +79,7 @@ As an example in a makefile it should look like following:
 
 Multi-image operation considers upgrading and verification of more then one image on the device.
 
-To enable multi-image operation define `MCUBOOT_IMAGE_NUMBER` in `MCUBootApp/mcuboot_config.h` file should be set to 2 (only dual-image is supported at the moment). This could also be done on build time by passing `MCUBOOT_IMAGE_NUMBER=2` as parameter to `make`.
+To enable multi-image operation define `MCUBOOT_IMAGE_NUMBER` in `MCUBootApp/config/mcuboot_config.h` file should be set to 2 (only dual-image is supported at the moment). This could also be done on build time by passing `MCUBOOT_IMAGE_NUMBER=2` as parameter to `make`.
 
 Default value of `MCUBOOT_IMAGE_NUMBER` is 1, which corresponds to single image configuratios.
 
@@ -98,9 +105,12 @@ This ensures two dependent applications can be accepted by device only in case b
 
 `0x10048000 - 0x10058000` - Secondary_2 (UPGRADE) slot of Bootloader
 
-`0x10058000 - 0x10058100` - Scratch of Bootloader
+`0x10058000 - 0x10059000` - Scratch of Bootloader
 
 Size of slots `0x10000` - 64kb
+
+__Note:__ It is also possible to place secondary (upgrade) slots in external memory module so resulting image size can be doubled.
+For more details about External Memory usage, please refer to separate guiding document `ExternalMemory.md`.
 
 **Downloading Solution's Assets**
 

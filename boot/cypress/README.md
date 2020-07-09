@@ -17,6 +17,9 @@ The default flash map for MCUBootApp implemented is next:
 
 The flash map is defined through sysflash.h and cy_flash_map.c.
 
+It is also possible to place secondary (upgrade) slots in external memory module so resulting image size can be doubled.
+For more details about External Memory usage, please refer to separate guiding document `MCUBootApp/ExternalMemory.md`.
+
 MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on mbedTLS Library.
 
 **Downloading Solution's Assets**
