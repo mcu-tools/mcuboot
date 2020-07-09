@@ -23,10 +23,30 @@ This corresponds to PSoC6's SMIF (Serial Memory InterFace) IP block mapping.
 This requirement is accepted for code simplicity.
 
 The default flash map implemented is the following:
-* [0x10000000, 0x10018000] - MCUBootApp (bootloader) area;
-* [0x10018000, 0x10028000] - primary slot for BlinkyApp;
-* [0x18000000, 0x18010000] - secondary slot for BlinkyApp;
-* [0x10038000, 0x10039000] - scratch area (not used);
+
+Single-image mode.
+
+`[0x10000000, 0x10018000]` - MCUBootApp (bootloader) area;
+
+`[0x10018000, 0x10028000]` - primary slot for BlinkyApp;
+
+`[0x18000000, 0x18010000]` - secondary slot for BlinkyApp;
+
+`[0x10038000, 0x10039000]` - scratch area (not used);
+
+Multi(dual)-image mode.
+
+`[0x10000000, 0x10018000]` - MCUBootApp (bootloader) area;
+
+`[0x10018000, 0x10028000]` - primary1 slot for BlinkyApp;
+
+`[0x18000000, 0x18010000]` - secondary1 slot for BlinkyApp;
+
+`[0x10038000, 0x10048000]` - primary2 slot for user app ;
+
+`[0x18040000, 0x18050000]` - secondary2 slot for user app;
+
+`[0x10058000, 0x10059000]` - scratch area (not used);
 
 Size of slots `0x10000` - 64kB
 
@@ -46,6 +66,8 @@ Once valid upgrade image was accepted the image in external memory will be erase
 2. Navigate to `cy_flash_map.c` and check if secondary slot start address and size meet the application's needs.
 3. Define which slave select is used for external memory on a board by setting `smif_id` value in `main.c`.
 4. Build MCUBootApp as described in `Readme.md`.
+
+**Note 3**: External memory code is developed basing on PDL and can be run on CM0p core only. It may require modifications if used on CM4.
 
 **How to build upgrade image for external memory:**
 
