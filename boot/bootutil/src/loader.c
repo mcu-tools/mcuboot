@@ -578,6 +578,23 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
     hdr = boot_img_hdr(state, slot);
     if (boot_check_header_erased(state, slot) == 0 ||
         (hdr->ih_flags & IMAGE_F_NON_BOOTABLE)) {
+
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
+        /*
+         * This fixes an issue where an image might be erased, but a trailer
+         * be left behind. It can happen if the image is in the secondary slot
+         * and did not pass validation, in which case the whole slot is erased.
+         * If during the erase operation, a reset occurs, parts of the slot
+         * might have been erased while some did not. The concerning part is
+         * the trailer because it might disable a new image from being loaded
+         * through mcumgr; so we just get rid of the trailer here, if the header
+         * is erased.
+         */
+        if (slot != BOOT_PRIMARY_SLOT) {
+            swap_erase_trailer_sectors(state, fap);
+        }
+#endif
+
         /* No bootable image in slot; continue booting from the primary slot. */
         rc = 1;
         goto out;
