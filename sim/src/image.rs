@@ -239,6 +239,25 @@ impl ImagesBuilder {
         }
     }
 
+    pub fn make_erased_secondary_image(self) -> Images {
+        let mut flash = self.flash;
+        let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let primaries = install_image(&mut flash, &slots[0], 32784, &dep, false);
+            let upgrades = install_no_image();
+            OneImage {
+                slots: slots,
+                primaries: primaries,
+                upgrades: upgrades,
+            }}).collect();
+        Images {
+            flash: flash,
+            areadesc: self.areadesc,
+            images: images,
+            total_count: None,
+        }
+    }
+
     /// Build the Flash and area descriptor for a given device.
     pub fn make_device(device: DeviceName, align: usize, erased_val: u8) -> (SimMultiFlash, AreaDesc, &'static [Caps]) {
         match device {
@@ -689,6 +708,43 @@ impl Images {
 
         if fails > 0 {
             error!("Expected an upgrade failure when image has bad signature");
+        }
+
+        fails > 0
+    }
+
+    // Should detect there is a leftover trailer in an otherwise erased
+    // secondary slot and erase its trailer.
+    pub fn run_secondary_leftover_trailer(&self) -> bool {
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try with a leftover trailer in the secondary; must be erased");
+
+        // Add a trailer on the secondary slot
+        self.mark_permanent_upgrades(&mut flash, 1);
+        self.mark_upgrades(&mut flash, 1);
+
+        // Run the bootloader...
+        let (result, _) = c::boot_go(&mut flash, &self.areadesc, None, false);
+        if result != 0 {
+            warn!("Failed first boot");
+            fails += 1;
+        }
+
+        // State should not have changed
+        if !self.verify_images(&flash, 0, 0) {
+            warn!("Failed image verification");
+            fails += 1;
+        }
+        if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+            warn!("Mismatched trailer for the secondary slot");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected trailer on secondary slot to be erased");
         }
 
         fails > 0
