@@ -26,7 +26,7 @@ downgrade-prevention = ["mcuboot-sys/downgrade-prevention"]
 [dependencies]
 byteorder = "1.3"
 libc = "0.2"
-rand = "0.4"
+rand = { version = "0.7", features = ["small_rng"] }
 docopt = "1.1.0"
 serde = "1.0"
 serde_derive = "1.0"

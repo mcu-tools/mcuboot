@@ -15,8 +15,8 @@ use log::{
     warn,
 };
 use rand::{
-    distributions::{IndependentSample, Range},
-    Rng, SeedableRng, XorShiftRng,
+    Rng, RngCore, SeedableRng,
+    rngs::SmallRng,
 };
 use std::{
     collections::HashSet,
@@ -1011,8 +1011,7 @@ impl Images {
         let mut resets = vec![0i32; count];
         let mut remaining_ops = total_ops;
         for i in 0 .. count {
-            let ops = Range::new(1, remaining_ops / 2);
-            let reset_counter = ops.ind_sample(&mut rng);
+            let reset_counter = rng.gen_range(1, remaining_ops / 2);
             let mut counter = reset_counter;
             match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false) {
                 (0, _) | (-0x13579, _) => (),
@@ -1570,8 +1569,13 @@ fn mark_permanent_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
 
 // Drop some pseudo-random gibberish onto the data.
 fn splat(data: &mut [u8], seed: usize) {
-    let seed_block = [0x135782ea, 0x92184728, data.len() as u32, seed as u32];
-    let mut rng: XorShiftRng = SeedableRng::from_seed(seed_block);
+    let mut seed_block = [0u8; 16];
+    let mut buf = Cursor::new(&mut seed_block[..]);
+    buf.write_u32::<LittleEndian>(0x135782ea).unwrap();
+    buf.write_u32::<LittleEndian>(0x92184728).unwrap();
+    buf.write_u32::<LittleEndian>(data.len() as u32).unwrap();
+    buf.write_u32::<LittleEndian>(seed as u32).unwrap();
+    let mut rng: SmallRng = SeedableRng::from_seed(seed_block);
     rng.fill_bytes(data);
 }
 
