@@ -8,6 +8,7 @@
 //! Run the existing testsuite as a Rust unit test.
 
 use bootsim::{
+    Caps,
     DepTest, DepType, UpgradeInfo,
     ImagesBuilder,
     Images,
@@ -169,6 +170,7 @@ static IMAGE_NUMBER: AtomicUsize = AtomicUsize::new(0);
 /// image will be dumped.  As a special case, we will dump everything if
 /// this environment variable is set to all.
 fn dump_image(image: &Images, name: &str) {
+    Caps::show();
     if let Ok(request) = env::var("MCUBOOT_DEBUG_DUMP") {
         if request.split(',').any(|req| {
             req == "all" || name.contains(req)

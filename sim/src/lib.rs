@@ -19,6 +19,7 @@ mod tlv;
 pub mod testlog;
 
 pub use crate::{
+    caps::Caps,
     depends::{
         DepTest,
         DepType,
