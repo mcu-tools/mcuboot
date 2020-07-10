@@ -125,6 +125,22 @@
 #define MCUBOOT_DATA_SHARING
 #endif
 
+#ifdef CONFIG_BOOT_FIH_PROFILE_OFF
+#define MCUBOOT_FIH_PROFILE_OFF
+#endif
+
+#ifdef CONFIG_BOOT_FIH_PROFILE_LOW
+#define MCUBOOT_FIH_PROFILE_LOW
+#endif
+
+#ifdef CONFIG_BOOT_FIH_PROFILE_MEDIUM
+#define MCUBOOT_FIH_PROFILE_MEDIUM
+#endif
+
+#ifdef CONFIG_BOOT_FIH_PROFILE_HIGH
+#define MCUBOOT_FIH_PROFILE_HIGH
+#endif
+
 /*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.
