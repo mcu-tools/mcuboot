@@ -243,7 +243,8 @@ class BasedIntParamType(click.ParamType):
                    'keys. Enable when BOOT_SWAP_SAVE_ENCTLV config option '
                    'was set.')
 @click.option('-E', '--encrypt', metavar='filename',
-              help='Encrypt image using the provided public key')
+              help='Encrypt image using the provided public key. '
+                   '(Not supported in direct-xip mode.)')
 @click.option('-e', '--endian', type=click.Choice(['little', 'big']),
               default='little', help="Select little or big endian")
 @click.option('--overwrite-only', default=False, is_flag=True,

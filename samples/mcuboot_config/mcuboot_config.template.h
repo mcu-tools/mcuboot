@@ -37,9 +37,13 @@
 /*
  * Upgrade mode
  *
- * The default is to support A/B image swapping with rollback.  A
- * simpler code path, which only supports overwriting the
- * existing image with the update image, is also available.
+ * The default is to support A/B image swapping with rollback.  Other modes
+ * with simpler code path, which only supports overwriting the existing image
+ * with the update image or running the newest image directly from its flash
+ * partition, are also available.
+ *
+ * You can enable only one mode at a time from the list below to override
+ * the default upgrade mode.
  */
 
 /* Uncomment to enable the overwrite-only code path. */
@@ -50,6 +54,9 @@
  * to install the new image, rather than the entire image slot. */
 /* #define MCUBOOT_OVERWRITE_ONLY_FAST */
 #endif
+
+/* Uncomment to enable the direct-xip code path. */
+/* #define MCUBOOT_DIRECT_XIP */
 
 /*
  * Cryptographic settings
