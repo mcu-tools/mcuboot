@@ -74,6 +74,34 @@ static struct boot_loader_state boot_data;
 #define TARGET_STATIC
 #endif
 
+static int
+boot_read_image_headers(struct boot_loader_state *state, bool require_all,
+        struct boot_status *bs)
+{
+    int rc;
+    int i;
+
+    for (i = 0; i < BOOT_NUM_SLOTS; i++) {
+        rc = boot_read_image_header(state, i, boot_img_hdr(state, i), bs);
+        if (rc != 0) {
+            /* If `require_all` is set, fail on any single fail, otherwise
+             * if at least the first slot's header was read successfully,
+             * then the boot loader can attempt a boot.
+             *
+             * Failure to read any headers is a fatal error.
+             */
+            if (i > 0 && !require_all) {
+                return 0;
+            } else {
+                return rc;
+            }
+        }
+    }
+
+    return 0;
+}
+
+#ifndef MCUBOOT_DIRECT_XIP
 /*
  * Compute the total size of the given image.  Includes the size of
  * the TLVs.
@@ -136,33 +164,6 @@ done:
     return rc;
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
-
-static int
-boot_read_image_headers(struct boot_loader_state *state, bool require_all,
-        struct boot_status *bs)
-{
-    int rc;
-    int i;
-
-    for (i = 0; i < BOOT_NUM_SLOTS; i++) {
-        rc = boot_read_image_header(state, i, boot_img_hdr(state, i), bs);
-        if (rc != 0) {
-            /* If `require_all` is set, fail on any single fail, otherwise
-             * if at least the first slot's header was read successfully,
-             * then the boot loader can attempt a boot.
-             *
-             * Failure to read any headers is a fatal error.
-             */
-            if (i > 0 && !require_all) {
-                return 0;
-            } else {
-                return rc;
-            }
-        }
-    }
-
-    return 0;
-}
 
 static uint32_t
 boot_write_sz(struct boot_loader_state *state)
@@ -378,6 +379,7 @@ done:
     flash_area_close(fap);
     return rc;
 }
+#endif /* !MCUBOOT_DIRECT_XIP */
 
 /*
  * Validate image hash/signature and optionally the security counter in a slot.
@@ -419,6 +421,7 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
     return 0;
 }
 
+#ifndef MCUBOOT_DIRECT_XIP
 static int
 split_image_check(struct image_header *app_hdr,
                   const struct flash_area *app_fap,
@@ -447,6 +450,7 @@ split_image_check(struct image_header *app_hdr,
 
     return 0;
 }
+#endif /* !MCUBOOT_DIRECT_XIP */
 
 /*
  * Check that this is a valid header.  Valid means that the magic is
@@ -517,6 +521,7 @@ boot_check_header_erased(struct boot_loader_state *state, int slot)
 }
 
 #if (BOOT_IMAGE_NUMBER > 1) || \
+    defined(MCUBOOT_DIRECT_XIP) || \
     (defined(MCUBOOT_OVERWRITE_ONLY) && defined(MCUBOOT_DOWNGRADE_PREVENTION))
 /**
  * Compare image version numbers not including the build number
@@ -625,10 +630,10 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
 #endif
 
     if (!boot_is_header_valid(hdr, fap) || boot_image_check(state, hdr, fap, bs)) {
-        if (slot != BOOT_PRIMARY_SLOT) {
+        if ((slot != BOOT_PRIMARY_SLOT) || IS_IN_XIP_MODE()) {
             flash_area_erase(fap, 0, fap->fa_size);
-            /* Image in the secondary slot is invalid. Erase the image and
-             * continue booting from the primary slot.
+            /* Image is invalid, erase it to prevent further unnecessary
+             * attempts to validate and boot it.
              */
         }
 #if !defined(__BOOTSIM__)
@@ -645,37 +650,6 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
 out:
     flash_area_close(fap);
     return rc;
-}
-
-/**
- * Determines which swap operation to perform, if any.  If it is determined
- * that a swap operation is required, the image in the secondary slot is checked
- * for validity.  If the image in the secondary slot is invalid, it is erased,
- * and a swap type of "none" is indicated.
- *
- * @return                      The type of swap to perform (BOOT_SWAP_TYPE...)
- */
-static int
-boot_validated_swap_type(struct boot_loader_state *state,
-                         struct boot_status *bs)
-{
-    int swap_type;
-    int rc;
-
-    swap_type = boot_swap_type_multi(BOOT_CURR_IMG(state));
-    if (BOOT_IS_UPGRADE(swap_type)) {
-        /* Boot loader wants to switch to the secondary slot.
-         * Ensure image is valid.
-         */
-        rc = boot_validate_slot(state, BOOT_SECONDARY_SLOT, bs);
-        if (rc == 1) {
-            swap_type = BOOT_SWAP_TYPE_NONE;
-        } else if (rc != 0) {
-            swap_type = BOOT_SWAP_TYPE_FAIL;
-        }
-    }
-
-    return swap_type;
 }
 
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
@@ -722,6 +696,38 @@ done:
     return rc;
 }
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
+
+#ifndef MCUBOOT_DIRECT_XIP
+/**
+ * Determines which swap operation to perform, if any.  If it is determined
+ * that a swap operation is required, the image in the secondary slot is checked
+ * for validity.  If the image in the secondary slot is invalid, it is erased,
+ * and a swap type of "none" is indicated.
+ *
+ * @return                      The type of swap to perform (BOOT_SWAP_TYPE...)
+ */
+static int
+boot_validated_swap_type(struct boot_loader_state *state,
+                         struct boot_status *bs)
+{
+    int swap_type;
+    int rc;
+
+    swap_type = boot_swap_type_multi(BOOT_CURR_IMG(state));
+    if (BOOT_IS_UPGRADE(swap_type)) {
+        /* Boot loader wants to switch to the secondary slot.
+         * Ensure image is valid.
+         */
+        rc = boot_validate_slot(state, BOOT_SECONDARY_SLOT, bs);
+        if (rc == 1) {
+            swap_type = BOOT_SWAP_TYPE_NONE;
+        } else if (rc != 0) {
+            swap_type = BOOT_SWAP_TYPE_FAIL;
+        }
+    }
+
+    return swap_type;
+}
 
 /**
  * Erases a region of flash.
@@ -1864,20 +1870,6 @@ out:
     return rc;
 }
 
-/**
- * Prepares the booting process.  This function moves images around in flash as
- * appropriate, and tells you what address to boot from.
- *
- * @param rsp                   On success, indicates how booting should occur.
- *
- * @return                      0 on success; nonzero on failure.
- */
-int
-boot_go(struct boot_rsp *rsp)
-{
-    return context_boot_go(&boot_data, rsp);
-}
-
 int
 split_go(int loader_slot, int split_slot, void **entry)
 {
@@ -1938,4 +1930,194 @@ done:
     flash_area_close(BOOT_IMG_AREA(&boot_data, loader_slot));
     free(sectors);
     return rc;
+}
+
+#else /* MCUBOOT_DIRECT_XIP */
+
+/**
+ * Iterates over all slots and determines which contain a firmware image.
+ *
+ * @param state          Boot loader status information.
+ * @param slot_usage     Pointer to an array, which aim is to carry information
+ *                       about slots that contain an image. After return the
+ *                       corresponding array elements are set to a non-zero
+ *                       value if the given slots are in use (contain a firmware
+ *                       image), otherwise they are set to zero.
+ * @param slot_cnt       The number of slots, which can contain firmware images.
+ *                       (Equal to or smaller than the size of the
+ *                       slot_usage array.)
+ *
+ * @return               The number of found images.
+ */
+static uint32_t
+boot_get_slot_usage(struct boot_loader_state *state, uint8_t slot_usage[],
+                    uint32_t slot_cnt)
+{
+    struct image_header *hdr = NULL;
+    uint32_t image_cnt = 0;
+    uint32_t slot;
+
+    memset(slot_usage, 0, slot_cnt);
+
+    for (slot = 0; slot < slot_cnt; slot++) {
+        hdr = boot_img_hdr(state, slot);
+
+        if (boot_is_header_valid(hdr, BOOT_IMG_AREA(state, slot))) {
+            slot_usage[slot] = 1;
+            image_cnt++;
+            BOOT_LOG_IMAGE_INFO(slot, hdr);
+        } else {
+            BOOT_LOG_INF("%s slot: Image not found", (slot == BOOT_PRIMARY_SLOT)
+                         ? "Primary" : "Secondary");
+        }
+    }
+
+    return image_cnt;
+}
+
+int
+context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
+{
+    struct image_header *hdr = NULL;
+    struct image_header *selected_image_header = NULL;
+    uint8_t slot_usage[BOOT_NUM_SLOTS];
+    uint32_t selected_slot;
+    uint32_t slot;
+    uint32_t img_cnt;
+    uint32_t i;
+    int fa_id;
+    int rc;
+
+    memset(state, 0, sizeof(struct boot_loader_state));
+
+    /* Open primary and secondary image areas for the duration
+     * of this call.
+     */
+    for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+        fa_id = flash_area_id_from_image_slot(slot);
+        rc = flash_area_open(fa_id, &BOOT_IMG_AREA(state, slot));
+        assert(rc == 0);
+    }
+
+    /* Attempt to read an image header from each slot. */
+    rc = boot_read_image_headers(state, false, NULL);
+    if (rc != 0) {
+        BOOT_LOG_WRN("Failed reading image headers.");
+        goto out;
+    }
+
+    img_cnt = boot_get_slot_usage(state, slot_usage,
+                                  sizeof(slot_usage)/sizeof(slot_usage[0]));
+
+    if (img_cnt) {
+        /* Select the newest and valid image. */
+        for (i = 0; i < img_cnt; i++) {
+            selected_slot = 0;
+            selected_image_header = NULL;
+
+            /* Iterate over all the slots that are in use (contain an image)
+             * and select the one that holds the newest image.
+             */
+            for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+                if (slot_usage[slot]) {
+                    hdr = boot_img_hdr(state, slot);
+                    if (selected_image_header != NULL) {
+                        rc = boot_version_cmp(&hdr->ih_ver,
+                                              &selected_image_header->ih_ver);
+                        if (rc < 1) {
+                            /* The version of the image being examined wasn't
+                             * greater than the currently selected image's
+                             * version.
+                             */
+                            continue;
+                        }
+                    }
+                    selected_slot = slot;
+                    selected_image_header = hdr;
+                }
+            }
+
+            rc = boot_validate_slot(state, selected_slot, NULL);
+            if (rc == 0) {
+                /* If a valid image is found then there is no reason to check
+                 * the rest of the images, as each of them has a smaller version
+                 * number.
+                 */
+                break;
+            }
+            /* The selected image is invalid, mark its slot as "unused"
+             * and start over.
+             */
+            slot_usage[selected_slot] = 0;
+        }
+
+        if (rc || (selected_image_header == NULL)) {
+            /* If there was no valid image at all */
+            rc = BOOT_EBADIMAGE;
+            goto out;
+        }
+
+#ifdef MCUBOOT_HW_ROLLBACK_PROT
+        /* Update the stored security counter with the newer (active) image's
+         * security counter value.
+         */
+        rc = boot_update_security_counter(0, selected_slot,
+                                          selected_image_header);
+        if (rc != 0) {
+            BOOT_LOG_ERR("Security counter update failed after image "
+                         "validation.");
+            goto out;
+        }
+#endif /* MCUBOOT_HW_ROLLBACK_PROT */
+
+#ifdef MCUBOOT_MEASURED_BOOT
+        rc = boot_save_boot_status(0, selected_image_header,
+                                   BOOT_IMG_AREA(state, selected_slot));
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed to add image data to shared area");
+        }
+#endif /* MCUBOOT_MEASURED_BOOT */
+
+#ifdef MCUBOOT_DATA_SHARING
+        rc = boot_save_shared_data(selected_image_header,
+                                   BOOT_IMG_AREA(state, selected_slot));
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed to add data to shared memory area.");
+        }
+#endif /* MCUBOOT_DATA_SHARING */
+
+        BOOT_LOG_INF("Booting image from the %s slot",
+                     (selected_slot == BOOT_PRIMARY_SLOT) ?
+                     "primary" : "secondary");
+
+        rsp->br_flash_dev_id =
+            BOOT_IMG_AREA(state, selected_slot)->fa_device_id;
+        rsp->br_image_off = boot_img_slot_off(state, selected_slot);
+        rsp->br_hdr = selected_image_header;
+    } else {
+        /* No candidate image available */
+        rc = BOOT_EBADIMAGE;
+        goto out;
+    }
+
+out:
+   for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+       flash_area_close(BOOT_IMG_AREA(state, BOOT_NUM_SLOTS - 1 - slot));
+   }
+   return rc;
+}
+#endif /* MCUBOOT_DIRECT_XIP */
+
+/**
+ * Prepares the booting process.  This function moves images around in flash as
+ * appropriate, and tells you what address to boot from.
+ *
+ * @param rsp                   On success, indicates how booting should occur.
+ *
+ * @return                      0 on success; nonzero on failure.
+ */
+int
+boot_go(struct boot_rsp *rsp)
+{
+    return context_boot_go(&boot_data, rsp);
 }
