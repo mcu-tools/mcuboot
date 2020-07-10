@@ -100,7 +100,14 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/image_ec256.c
   ${BOOT_DIR}/bootutil/src/image_ed25519.c
   ${BOOT_DIR}/bootutil/src/bootutil_misc.c
+  ${BOOT_DIR}/bootutil/src/fault_injection_hardening.c
   )
+
+if(CONFIG_BOOT_FIH_PROFILE_HIGH)
+zephyr_library_sources(
+  ${BOOT_DIR}/bootutil/src/fault_injection_hardening_delay_rng_mbedtls.c
+  )
+endif()
 
 if(CONFIG_SINGLE_APPLICATION_SLOT)
 zephyr_library_sources(
@@ -116,7 +123,6 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/caps.c
   )
 endif()
-
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   zephyr_library_include_directories(
