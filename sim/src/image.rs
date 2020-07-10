@@ -247,14 +247,18 @@ impl ImagesBuilder {
         }
 
         // upgrades without fails, counts number of flash operations
-        let total_count = match images.run_basic_upgrade(permanent) {
-            Some(v)  => v,
-            None =>
-                if deps.upgrades.iter().any(|u| *u == UpgradeInfo::Held) {
-                    0
-                } else {
-                    panic!("Unable to perform basic upgrade");
-                }
+        let total_count = if Caps::DirectXip.present() {
+            0
+        } else {
+            match images.run_basic_upgrade(permanent) {
+                Some(v)  => v,
+                None =>
+                    if deps.upgrades.iter().any(|u| *u == UpgradeInfo::Held) {
+                        0
+                    } else {
+                        panic!("Unable to perform basic upgrade");
+                    }
+            }
         };
 
         images.total_count = Some(total_count);
@@ -515,7 +519,7 @@ impl Images {
     }
 
     pub fn run_basic_revert(&self) -> bool {
-        if Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
+        if !Caps::has_swap() || !Caps::modifies_flash() {
             return false;
         }
 
@@ -588,6 +592,13 @@ impl Images {
 
         let mut fails = 0;
         let total_flash_ops = self.total_count.unwrap();
+
+        // If the configured upgrade process doesn't perform any flash
+        // operations, there isn't anything to test.
+        if total_flash_ops == 0 {
+            return false;
+        }
+
         let (flash, total_counts) = self.try_random_fails(total_flash_ops, total_fails);
         info!("Random interruptions at reset points={:?}", total_counts);
 
@@ -624,7 +635,7 @@ impl Images {
     }
 
     pub fn run_revert_with_fails(&self) -> bool {
-        if Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
+        if Caps::has_swap() || !Caps::modifies_flash() {
             return false;
         }
 
@@ -644,7 +655,7 @@ impl Images {
     }
 
     pub fn run_norevert(&self) -> bool {
-        if Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
+        if Caps::has_swap() || !Caps::modifies_flash() {
             return false;
         }
 
@@ -947,7 +958,7 @@ impl Images {
     /// allowing for fails in the status area. This should run to the end
     /// and warn that write fails were detected...
     pub fn run_with_status_fails_with_reset(&self) -> bool {
-        if Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
+        if Caps::has_swap() || !Caps::modifies_flash() {
             false
         } else if Caps::ValidatePrimarySlot.present() {
 
@@ -1084,7 +1095,7 @@ impl Images {
     /// Adds a new flash area that fails statistically
     fn mark_bad_status_with_rate(&self, flash: &mut SimMultiFlash, slot: usize,
                                  rate: f32) {
-        if Caps::OverwriteUpgrade.present() {
+        if !Caps::has_swap() {
             return;
         }
 
@@ -1681,7 +1692,7 @@ fn verify_image(flash: &SimMultiFlash, slot: &SlotInfo, images: &ImageData) -> b
 fn verify_trailer(flash: &SimMultiFlash, slot: &SlotInfo,
                   magic: Option<u8>, image_ok: Option<u8>,
                   copy_done: Option<u8>) -> bool {
-    if Caps::OverwriteUpgrade.present() {
+    if !Caps::has_swap() {
         return true;
     }
 

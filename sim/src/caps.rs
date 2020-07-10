@@ -54,6 +54,12 @@ impl Caps {
         !(Self::RamLoad.present() || Self::DirectXip.present())
     }
 
+    /// Return true if this configuration performs an image swap.
+    pub fn has_swap() -> bool {
+        Caps::SwapUsingScratch.present() ||
+            Caps::SwapUsingMove.present()
+    }
+
     /// For debugging, print all of the Caps we are compiled for.
     pub fn show() {
         println!("Capabilities: {}", unsafe { bootutil_get_caps() });
