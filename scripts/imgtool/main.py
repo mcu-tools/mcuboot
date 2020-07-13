@@ -260,7 +260,8 @@ class BasedIntParamType(click.ParamType):
 @click.option('--pad', default=False, is_flag=True,
               help='Pad image to --slot-size bytes, adding trailer magic')
 @click.option('-S', '--slot-size', type=BasedIntParamType(), required=True,
-              help='Size of the slot where the image will be written')
+              help='Size of the slot. If the slots have different sizes, use '
+              'the size of the secondary slot.')
 @click.option('--pad-header', default=False, is_flag=True,
               help='Add --header-size zeroed bytes at the beginning of the '
                    'image')
