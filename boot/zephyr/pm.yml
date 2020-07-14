@@ -35,6 +35,4 @@ mcuboot_pad:
   size: CONFIG_PM_PARTITION_SIZE_MCUBOOT_PAD
   placement:
     before: [mcuboot_primary_app]
-#ifdef CONFIG_FPROTECT
-    align: {start: CONFIG_FPROTECT_BLOCK_SIZE}
-#endif
+    align: {start: DT_FLASH_ERASE_BLOCK_SIZE}
