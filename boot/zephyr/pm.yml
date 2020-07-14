@@ -1,5 +1,5 @@
 #include <autoconf.h>
-#include <devicetree_legacy_unfixed.h>
+#include <devicetree_unfixed.h>
 
 mcuboot:
   size: CONFIG_PM_PARTITION_SIZE_MCUBOOT
