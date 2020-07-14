@@ -325,6 +325,19 @@ impl ImagesBuilder {
                 flash.insert(dev_id, dev);
                 (flash, areadesc, &[])
             }
+            DeviceName::Nrf52840UnequalSlots => {
+                let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
+
+                let dev_id = 0;
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(dev_id, &dev);
+                areadesc.add_image(0x008000, 0x03c000, FlashId::Image0, dev_id);
+                areadesc.add_image(0x044000, 0x03b000, FlashId::Image1, dev_id);
+
+                let mut flash = SimMultiFlash::new();
+                flash.insert(dev_id, dev);
+                (flash, areadesc, &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade])
+            }
             DeviceName::Nrf52840SpiFlash => {
                 // Simulate nrf52840 with external SPI flash. The external SPI flash
                 // has a larger sector size so for now store scratch on that flash.
