@@ -23,16 +23,6 @@ config MCUBOOT_IMAGE_VERSION
 	  valuable for debugging purposes. Format: maj.min.rev+build with
 	  latter parts optional.
 
-# HACK: NCS temphack to keep our imgtool integration working now that
-# there is no CONFIG_DT_* CMake namespace anymore. Use Zephyr
-# kconfigfunctions to thread the flash write block size through
-# Kconfig so it can be accessed from CMake. Needs a better solution.
-DT_ZEPHYR_FLASH := zephyr,flash
-DT_CHOSEN_ZEPHYR_FLASH := $(dt_chosen_path,$(DT_ZEPHYR_FLASH))
-config MCUBOOT_FLASH_WRITE_BLOCK_SIZE
-	int
-	default $(dt_node_int_prop_int,$(DT_CHOSEN_ZEPHYR_FLASH),write-block-size)
-
 endif # BOOTLOADER_MCUBOOT
 
 config BOOT_SIGNATURE_KEY_FILE
