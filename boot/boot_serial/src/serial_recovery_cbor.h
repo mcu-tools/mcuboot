@@ -10,7 +10,7 @@
  */
 
 /* Generated with cddl_gen.py (https://github.com/oyvindronningstad/cddl_gen)
- * at: 2020-05-13 12:19:04
+ * at: 2020-02-26 10:33:34
  */
 
 #ifndef SERIAL_RECOVERY_CBOR_H__

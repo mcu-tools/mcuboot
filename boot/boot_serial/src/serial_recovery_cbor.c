@@ -10,7 +10,7 @@
  */
 
 /* Generated with cddl_gen.py (https://github.com/oyvindronningstad/cddl_gen)
- * at: 2020-05-13 12:19:04
+ * at: 2020-02-26 10:33:34
  */
 
 #include <stdint.h>
@@ -58,8 +58,8 @@ static bool decode_Upload(
 	size_t *p_temp_elem_count = temp_elem_counts;
 	Upload_t* p_type_result = (Upload_t*)p_result;
 
-	bool result = (((list_start_decode(p_state, &(*(p_temp_elem_count++)), 1, 5))
-	&& multi_decode(1, 5, &(*p_type_result)._Upload_members_count, (void*)decode_Member, p_state, &((*p_type_result)._Upload_members), NULL, NULL, sizeof(_Member_t))
+	bool result = (((list_start_decode(p_state, &(*(p_temp_elem_count++)), 3, 5))
+	&& multi_decode(3, 5, &(*p_type_result)._Upload_members_count, (void*)decode_Member, p_state, &((*p_type_result)._Upload_members), NULL, NULL, sizeof(_Member_t))
 	&& ((p_state->elem_count = *(--p_temp_elem_count)) || 1)));
 
 	if (!result)

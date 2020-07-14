@@ -11,5 +11,5 @@ Member = ("image" => int) /
 	("sha" => bstr)
 
 Upload = {
-	1**5members: Member
+	3**5members: Member
 }
