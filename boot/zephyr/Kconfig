@@ -15,18 +15,6 @@ config MCUBOOT
 	select MPU_ALLOW_FLASH_WRITE if ARM_MPU
 	select USE_DT_CODE_PARTITION if HAS_FLASH_LOAD_OFFSET
 
-partition=MCUBOOT
-partition-size=0xc000
-source "${ZEPHYR_BASE}/../nrf/subsys/partition_manager/Kconfig.template.partition_size"
-
-partition=MCUBOOT_SCRATCH
-partition-size=0x1e000
-source "${ZEPHYR_BASE}/../nrf/subsys/partition_manager/Kconfig.template.partition_size"
-
-partition=MCUBOOT_PAD
-partition-size=0x200
-source "${ZEPHYR_BASE}/../nrf/subsys/partition_manager/Kconfig.template.partition_size"
-
 config BOOT_USE_MBEDTLS
 	bool
 	# Hidden option
@@ -135,6 +123,14 @@ endchoice
 endif
 
 endchoice
+
+config BOOT_SIGNATURE_KEY_FILE
+	string "PEM key file"
+	default ""
+	help
+	  The key file will be parsed by imgtool's getpub command and a .c source
+	  with the public key information will be written in a format expected by
+	  MCUboot.
 
 config MCUBOOT_CLEANUP_ARM_CORE
 	bool "Perform core cleanup before chain-load the application"
