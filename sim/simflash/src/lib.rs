@@ -15,7 +15,8 @@ use failure::Fail;
 use log::info;
 use rand::{
     self,
-    distributions::{IndependentSample, Range},
+    distributions::Standard,
+    Rng,
 };
 use std::{
     collections::HashMap,
@@ -188,8 +189,8 @@ impl Flash for SimFlash {
         for &(off, len, rate) in &self.bad_region {
             if offset >= off && (offset + payload.len()) <= (off + len) {
                 let mut rng = rand::thread_rng();
-                let between = Range::new(0., 1.);
-                if between.ind_sample(&mut rng) < rate {
+                let samp: f32 = rng.sample(Standard);
+                if samp < rate {
                     bail!(esimulatedwrite(
                         format!("Ignoring write to {:#x}-{:#x}", off, off + len)));
                 }

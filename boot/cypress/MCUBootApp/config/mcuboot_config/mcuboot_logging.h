@@ -94,4 +94,6 @@ int sim_log_enabled(int level);
 #define MCUBOOT_LOG_DBG(...) IGNORE(__VA_ARGS__)
 #endif
 
+#define MCUBOOT_LOG_MODULE_DECLARE(...)
+
 #endif /* MCUBOOT_LOGGING_H */

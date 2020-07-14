@@ -79,7 +79,7 @@ K_SEM_DEFINE(boot_log_sem, 1, 1);
 static inline bool boot_skip_serial_recovery()
 {
 #if NRF_POWER_HAS_RESETREAS
-    u32_t rr = nrf_power_resetreas_get(NRF_POWER);
+    uint32_t rr = nrf_power_resetreas_get(NRF_POWER);
 
     return !(rr == 0 || (rr & NRF_POWER_RESETREAS_RESETPIN_MASK));
 #else
@@ -98,6 +98,18 @@ MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
 void os_heap_init(void);
 
 #if defined(CONFIG_ARM)
+
+#ifdef CONFIG_BOOT_INTR_VEC_RELOC
+
+#ifdef CONFIG_SW_VECTOR_RELAY
+extern void *_vector_table_pointer;
+#define VTOR _vector_table_pointer
+#elif CONFIG_CPU_CORTEX_M_HAS_VTOR
+#define VTOR SCB->VTOR
+#endif
+
+#endif /* CONFIG_BOOT_INTR_VEC_RELOC */
+
 struct arm_vector_table {
     uint32_t msp;
     uint32_t reset;
@@ -133,6 +145,11 @@ static void do_boot(struct boot_rsp *rsp)
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     cleanup_arm_nvic(); /* cleanup NVIC registers */
 #endif
+
+#ifdef CONFIG_BOOT_INTR_VEC_RELOC
+    VTOR = vt;
+#endif
+
     __set_MSP(vt->msp);
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     __set_CONTROL(0x00); /* application will configures core on its own */
@@ -295,7 +312,7 @@ void main(void)
 #ifdef CONFIG_MCUBOOT_SERIAL
 
     struct device *detect_port;
-    u32_t detect_value = !CONFIG_BOOT_SERIAL_DETECT_PIN_VAL;
+    uint32_t detect_value = !CONFIG_BOOT_SERIAL_DETECT_PIN_VAL;
 
     detect_port = device_get_binding(CONFIG_BOOT_SERIAL_DETECT_PORT);
     __ASSERT(detect_port, "Error: Bad port for boot serial detection.\n");

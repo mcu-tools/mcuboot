@@ -139,7 +139,7 @@ app:
 	$(MAKE) post_build
 
 build: $(OUT_APP)/$(APP_NAME).hex
-	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_APP)/$(APP_NAME).hex -s > $(OUT_APP)/$(APP_NAME).lst
+	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_APP)/$(APP_NAME).elf -S --disassemble > $(OUT_APP)/$(APP_NAME).lst
 	$(GCC_PATH)/bin/arm-none-eabi-objdump -h $(OUT_APP)/$(APP_NAME).elf
 	$(GCC_PATH)/bin/arm-none-eabi-size --format=SysV $(OUT_APP)/$(APP_NAME).elf
 

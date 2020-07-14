@@ -39,9 +39,9 @@ macro(app_set_runner_args)
   endif()
 endmacro()
 
-# Standard Zephyr application boilerplate:
+# find_package(Zephyr) in order to load application boilerplate:
 # http://docs.zephyrproject.org/application/application.html
-include($ENV{ZEPHYR_BASE}/cmake/app/boilerplate.cmake NO_POLICY_SCOPE)
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(NONE)
 
 # Path to "boot" subdirectory of repository root.
@@ -62,7 +62,7 @@ assert_exists(MBEDTLS_ASN1_DIR)
 set(NRF_DIR "${MCUBOOT_DIR}/ext/nrf")
 
 if(CONFIG_BOOT_USE_NRF_CC310_BL)
-set(NRFXLIB_DIR $ENV{ZEPHYR_BASE}/../nrfxlib)
+set(NRFXLIB_DIR ${ZEPHYR_BASE}/../nrfxlib)
 assert_exists(NRFXLIB_DIR)
 endif()
 
@@ -91,19 +91,30 @@ endif()
 # Generic bootutil sources and includes.
 zephyr_library_include_directories(${BOOT_DIR}/bootutil/include)
 zephyr_library_sources(
-  ${BOOT_DIR}/bootutil/src/loader.c
-  ${BOOT_DIR}/bootutil/src/swap_misc.c
-  ${BOOT_DIR}/bootutil/src/swap_scratch.c
-  ${BOOT_DIR}/bootutil/src/swap_move.c
-  ${BOOT_DIR}/bootutil/src/bootutil_misc.c
   ${BOOT_DIR}/bootutil/src/image_validate.c
+  ${BOOT_DIR}/bootutil/src/tlv.c
   ${BOOT_DIR}/bootutil/src/encrypted.c
   ${BOOT_DIR}/bootutil/src/image_rsa.c
   ${BOOT_DIR}/bootutil/src/image_ec256.c
   ${BOOT_DIR}/bootutil/src/image_ed25519.c
-  ${BOOT_DIR}/bootutil/src/caps.c
-  ${BOOT_DIR}/bootutil/src/tlv.c
+  ${BOOT_DIR}/bootutil/src/bootutil_misc.c
   )
+
+if(CONFIG_SINGLE_IMAGE_DFU)
+zephyr_library_sources(
+  ${BOOT_DIR}/zephyr/single_loader.c
+  )
+zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
+else()
+zephyr_library_sources(
+  ${BOOT_DIR}/bootutil/src/loader.c
+  ${BOOT_DIR}/bootutil/src/swap_misc.c
+  ${BOOT_DIR}/bootutil/src/swap_scratch.c
+  ${BOOT_DIR}/bootutil/src/swap_move.c
+  ${BOOT_DIR}/bootutil/src/caps.c
+  )
+endif()
+
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   zephyr_library_include_directories(
@@ -140,6 +151,16 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   # variable is set by its Kconfig in the Zephyr codebase.
   zephyr_library_compile_definitions(
     MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h"
+    )
+elseif(CONFIG_BOOT_SIGNATURE_TYPE_NONE)
+  zephyr_library_include_directories(
+    ${BOOT_DIR}/zephyr/include
+    ${TINYCRYPT_DIR}/include
+    )
+
+  zephyr_library_sources(
+    ${TINYCRYPT_DIR}/source/sha256.c
+    ${TINYCRYPT_DIR}/source/utils.c
     )
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   # Use mbedTLS provided by Zephyr for RSA signatures. (Its config file

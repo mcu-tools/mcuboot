@@ -485,7 +485,7 @@ boot_serial_output(void)
     bs_hdr->nh_group = htons(bs_hdr->nh_group);
 
 #ifdef __ZEPHYR__
-    crc =  crc16((u8_t *)bs_hdr, sizeof(*bs_hdr), CRC_CITT_POLYMINAL,
+    crc =  crc16((uint8_t *)bs_hdr, sizeof(*bs_hdr), CRC_CITT_POLYMINAL,
                  CRC16_INITIAL_CRC, false);
     crc =  crc16(data, len, CRC_CITT_POLYMINAL, crc, true);
 #else
@@ -583,7 +583,7 @@ boot_serial_start(const struct boot_uart_funcs *f)
 {
     int rc;
     int off;
-    int dec_off;
+    int dec_off = 0;
     int full_line;
     int max_input;
 

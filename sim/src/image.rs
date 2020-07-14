@@ -15,8 +15,8 @@ use log::{
     warn,
 };
 use rand::{
-    distributions::{IndependentSample, Range},
-    Rng, SeedableRng, XorShiftRng,
+    Rng, RngCore, SeedableRng,
+    rngs::SmallRng,
 };
 use std::{
     collections::HashSet,
@@ -28,8 +28,8 @@ use aes_ctr::{
     Aes128Ctr,
     stream_cipher::{
         generic_array::GenericArray,
-        NewFixStreamCipher,
-        StreamCipherCore,
+        NewStreamCipher,
+        SyncStreamCipher,
     },
 };
 
@@ -233,6 +233,25 @@ impl ImagesBuilder {
             }}).collect();
         Images {
             flash: bad_flash,
+            areadesc: self.areadesc,
+            images: images,
+            total_count: None,
+        }
+    }
+
+    pub fn make_erased_secondary_image(self) -> Images {
+        let mut flash = self.flash;
+        let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let primaries = install_image(&mut flash, &slots[0], 32784, &dep, false);
+            let upgrades = install_no_image();
+            OneImage {
+                slots: slots,
+                primaries: primaries,
+                upgrades: upgrades,
+            }}).collect();
+        Images {
+            flash: flash,
             areadesc: self.areadesc,
             images: images,
             total_count: None,
@@ -694,6 +713,43 @@ impl Images {
         fails > 0
     }
 
+    // Should detect there is a leftover trailer in an otherwise erased
+    // secondary slot and erase its trailer.
+    pub fn run_secondary_leftover_trailer(&self) -> bool {
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try with a leftover trailer in the secondary; must be erased");
+
+        // Add a trailer on the secondary slot
+        self.mark_permanent_upgrades(&mut flash, 1);
+        self.mark_upgrades(&mut flash, 1);
+
+        // Run the bootloader...
+        let (result, _) = c::boot_go(&mut flash, &self.areadesc, None, false);
+        if result != 0 {
+            warn!("Failed first boot");
+            fails += 1;
+        }
+
+        // State should not have changed
+        if !self.verify_images(&flash, 0, 0) {
+            warn!("Failed image verification");
+            fails += 1;
+        }
+        if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+            warn!("Mismatched trailer for the secondary slot");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected trailer on secondary slot to be erased");
+        }
+
+        fails > 0
+    }
+
     fn trailer_sz(&self, align: usize) -> usize {
         c::boot_trailer_sz(align as u32) as usize
     }
@@ -1011,8 +1067,7 @@ impl Images {
         let mut resets = vec![0i32; count];
         let mut remaining_ops = total_ops;
         for i in 0 .. count {
-            let ops = Range::new(1, remaining_ops / 2);
-            let reset_counter = ops.ind_sample(&mut rng);
+            let reset_counter = rng.gen_range(1, remaining_ops / 2);
             let mut counter = reset_counter;
             match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false) {
                 (0, _) | (-0x13579, _) => (),
@@ -1570,8 +1625,13 @@ fn mark_permanent_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
 
 // Drop some pseudo-random gibberish onto the data.
 fn splat(data: &mut [u8], seed: usize) {
-    let seed_block = [0x135782ea, 0x92184728, data.len() as u32, seed as u32];
-    let mut rng: XorShiftRng = SeedableRng::from_seed(seed_block);
+    let mut seed_block = [0u8; 16];
+    let mut buf = Cursor::new(&mut seed_block[..]);
+    buf.write_u32::<LittleEndian>(0x135782ea).unwrap();
+    buf.write_u32::<LittleEndian>(0x92184728).unwrap();
+    buf.write_u32::<LittleEndian>(data.len() as u32).unwrap();
+    buf.write_u32::<LittleEndian>(seed as u32).unwrap();
+    let mut rng: SmallRng = SeedableRng::from_seed(seed_block);
     rng.fill_bytes(data);
 }
 

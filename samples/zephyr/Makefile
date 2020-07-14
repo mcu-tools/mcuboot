@@ -92,6 +92,7 @@ all: boot hello1 hello2
 
 full.bin: boot hello1 hello2
 	$(ASSEMBLE) -b $(BUILD_DIR_BOOT) \
+	    -z $(ZEPHYR_BASE) \
 	    -p signed-hello1.bin \
 	    -s signed-hello2.bin \
 	    -o full.bin
