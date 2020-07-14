@@ -1583,7 +1583,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
     size_t slot;
     struct boot_status bs;
-    int rc = 0;
+    int rc;
     int fa_id;
     int image_index;
     bool has_upgrade;
