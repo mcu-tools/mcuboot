@@ -1,0 +1,33 @@
+# Travis configuration. Run FI hardening tests.
+
+language: minimal
+
+services:
+  - docker
+
+matrix:
+  include:
+    - os: linux
+      language: minimal
+      env: TEST=fih-tests
+
+before_install:
+  - |
+    if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
+      ./ci/check-signed-off-by.sh
+      if [ $? -ne 0 ]; then
+        exit 1
+      fi
+    fi
+
+install:
+  - ./ci/${TEST}_install.sh
+
+script:
+  - ./ci/${TEST}_run.sh
+
+notifications:
+  slack:
+    rooms:
+      - secure: "Tg9ZvJfb6e4QSEsxUvwW2MIqbuNRxD4nAOkgs8eopj/fRtqN6Zk06NVSeMmYcZunDFJXUSzYANBsF98OtaaUlm4WVt2T0ZFBJZrOYfIv18/zXCjYa04sDxur57F1ZYTYKyRpdUkfzPd/rGE4jKLQNcia+r/BTQbJkcZbXeg5/6cUeMP1so8/o0oMhSQP+GH0fLbyLzx3VPE8zu6+j2fCFC7R3idxtfO9VtsKlubfi3HgPgXTs+DEAAA8aoOku2esjFSFXTtdUFGz90YzyShZvtMcRg3Grp9+PZAsJwWk4eKSonKCO0DScfPUlMZbJcV7VsmyTxYKLLsGRZae6ZBH+XLfx5XeqgtgCor3FYx2dUXYfV9y8VvERDdossB0gZ/V2OUGePctDefiORytV6dMa7X3AfSdosgs/tjG4kbf+PMaVULzwF6dd3CdsxdClSl68UQPWA6wC2TEyo1EQea8jgZU6heLustZaQZhBkFkr/6j75XeGBjPw2fgVRkgg/OnTOYmo7N8181wOU+xORIEO1BtYmgRpc0cgpm4H9457diSHG1D2SoNy4tiQPCW2enN00QNGK5pZSL/FGA/ReUcALgAW0QcOljjU2bUSGPxo/VAi5ZyljWgVAGQ5qHJ4jgdfPf7VJUzCVH64G1S5+0gZPpO6vvvPdZtqeXrfBZMOBw="
+    on_success: always
