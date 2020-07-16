@@ -48,7 +48,7 @@ static void do_boot(struct boot_rsp *rsp)
     app_addr = (rsp->br_image_off + rsp->br_hdr->ih_hdr_size);
 
     BOOT_LOG_INF("Starting User Application on CM4 (wait)...");
-    BOOT_LOG_INF("Start Address: 0x%08x", app_addr);
+    BOOT_LOG_INF("Start Address: 0x%08lx", app_addr);
     Cy_SysLib_Delay(100);
 
     Cy_SysEnableCM4(app_addr);
