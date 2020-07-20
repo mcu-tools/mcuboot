@@ -115,7 +115,7 @@ boot_console_init(void)
 }
 
 static void
-boot_uart_fifo_callback(struct device *dev)
+boot_uart_fifo_callback(struct device *dev, void *user_data)
 {
 	static struct line_input *cmd;
 	uint8_t byte;
