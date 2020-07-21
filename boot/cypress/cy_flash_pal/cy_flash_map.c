@@ -45,6 +45,10 @@
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
 #include "cy_smif_psoc6.h"
 #endif
+
+#ifdef MCUBOOT_SWAP_USING_STATUS
+#include "swap_status.h"
+#endif
 /*
  * For now, we only support one flash device.
  *
@@ -163,6 +167,29 @@ static struct flash_area scratch =
 };
 #endif
 
+#ifdef MCUBOOT_SWAP_USING_STATUS
+static struct flash_area status =
+{
+    .fa_id = FLASH_AREA_IMAGE_SWAP_STATUS,
+#if (MCUBOOT_IMAGE_NUMBER == 1) /* if single-image */
+    .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
+    .fa_off = CY_FLASH_BASE +\
+                CY_BOOT_BOOTLOADER_SIZE +\
+                CY_BOOT_PRIMARY_1_SIZE +\
+                CY_BOOT_SECONDARY_1_SIZE,
+#elif (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image */
+    .fa_off = CY_FLASH_BASE +\
+                CY_BOOT_BOOTLOADER_SIZE +\
+                CY_BOOT_PRIMARY_1_SIZE +\
+                CY_BOOT_SECONDARY_1_SIZE +\
+                CY_BOOT_PRIMARY_2_SIZE +\
+                CY_BOOT_SECONDARY_2_SIZE,
+#endif
+    // TODO: think of multi-image case as well
+    .fa_size = (BOOT_SWAP_STATUS_SZ_PRIM + BOOT_SWAP_STATUS_SZ_SEC)
+};
+#endif
+
 #ifdef CY_FLASH_MAP_EXT_DESC
 /* Use external Flash Map Descriptors */
 extern struct flash_area *boot_area_descs[];
@@ -178,6 +205,9 @@ struct flash_area *boot_area_descs[] =
 #endif
 #ifdef MCUBOOT_SWAP_USING_SCRATCH
     &scratch,
+#endif
+#ifdef MCUBOOT_SWAP_USING_STATUS
+    &status,
 #endif
     NULL
 };
@@ -237,7 +267,7 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
     if (fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
     {
         /* flash read by simple memory copying */
-        memcpy((void *)dst, (const void*)addr, (size_t)len);
+        memcpy(dst, (const void*)addr, (size_t)len);
     }
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
@@ -318,9 +348,9 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
     size_t erase_start_addr;
     size_t erase_end_addr;
 
-    assert(off < fa->fa_off);
-    assert(off + len < fa->fa_off);
-    assert(!(len % CY_FLASH_SIZEOF_ROW));
+    assert(len <= fa->fa_size);
+    assert(off < fa->fa_size);
+    assert(off + len < fa->fa_off + fa->fa_size);
 
     /* convert to absolute address inside a device*/
     erase_start_addr = fa->fa_off + off;
@@ -330,15 +360,22 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
     {
         int row_number = 0;
         uint32_t row_addr = 0;
+        uint32_t row_start_addr = (erase_start_addr / CY_FLASH_SIZEOF_ROW) * CY_FLASH_SIZEOF_ROW;
+        uint32_t row_end_addr = (erase_end_addr / CY_FLASH_SIZEOF_ROW) * CY_FLASH_SIZEOF_ROW;
 
-        row_number = (erase_end_addr - erase_start_addr) / CY_FLASH_SIZEOF_ROW;
+        /* assume single row needs to be erased */
+        if (row_start_addr == row_end_addr) {
+            rc = Cy_Flash_EraseRow(row_start_addr);
+        } else {
+            row_number = (row_end_addr - row_start_addr) / CY_FLASH_SIZEOF_ROW;
 
-        while (row_number != 0)
-        {
-            row_number--;
-            row_addr = erase_start_addr + row_number * (uint32_t) CY_FLASH_SIZEOF_ROW;
-            rc = Cy_Flash_EraseRow(row_addr);
-        }
+            while (row_number != 0)
+            {
+                row_number--;
+                row_addr = row_start_addr + row_number * (uint32_t) CY_FLASH_SIZEOF_ROW;
+                rc = Cy_Flash_EraseRow(row_addr);
+            }
+    }
     }
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
@@ -441,6 +478,23 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
 int flash_area_id_to_image_slot(int area_id)
 {
     return flash_area_id_to_multi_image_slot(0, area_id);
+}
+
+/*
+ * Erases the aligned row of flash that includes the specified address
+ */
+int flash_erase_row(uint32_t address)
+{
+    cy_en_flashdrv_status_t rc = CY_FLASH_DRV_SUCCESS;
+    uint32_t row_addr = 0;
+
+    /* Calculate start of row arbitrary address */
+    row_addr = (address/CY_FLASH_SIZEOF_ROW)*CY_FLASH_SIZEOF_ROW;
+
+    /* Erase whole row of flash */
+    rc = Cy_Flash_EraseRow(row_addr);
+
+    return (int) rc;
 }
 
 uint8_t flash_area_erased_val(const struct flash_area *fap)

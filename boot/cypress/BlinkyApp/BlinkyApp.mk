@@ -39,6 +39,10 @@ CORE ?= CM4
 # image type can be BOOT or UPGRADE
 IMG_TYPES = BOOT UPGRADE
 
+# use SWAP_UPGRADE = 0 for overwrite only mode
+# use SWAP_UPGRADE = 1 for swap upgrade mode
+SWAP_UPGRADE ?= 1
+
 # possible values are 0 and 0xff
 # internal Flash by default
 ERASED_VALUE ?= 0
@@ -58,6 +62,7 @@ ifeq ($(IMG_TYPE), BOOT)
 	DEFINES_APP := -DBOOT_IMG
 else
 	DEFINES_APP := -DUPGRADE_IMG
+	DEFINES_APP += -DSWAP_ENABLED=$(SWAP_UPGRADE)
 endif
 
 # Define start of application, RAM start and size, slot size
@@ -71,6 +76,9 @@ else ifeq ($(PLATFORM), PSOC_062_512K)
 	DEFINES_APP += -DRAM_START=0x08020000
 	DEFINES_APP += -DRAM_SIZE=0x10000
 endif
+endif
+
+DEFINES_APP += -DUSER_APP_SIZE=$(SLOT_SIZE)
 
 
 DEFINES_APP += -DRAM_SIZE=0x10000
@@ -100,7 +108,12 @@ ASM_FILES_APP += $(ASM_FILES_STARTUP)
 # We still need this for MCUBoot apps signing
 IMGTOOL_PATH ?=	../../scripts/imgtool.py
 
-SIGN_ARGS := sign --header-size 1024 --pad-header --align 8 -v "2.0" -S $(SLOT_SIZE) -M 512 --overwrite-only -R $(ERASED_VALUE) -k keys/$(SIGN_KEY_FILE).pem
+# add flag to imgtool if not using swap for upgrade
+ifeq ($(SWAP_UPGRADE), 0)
+UPGRADE_TYPE := --overwrite-only
+endif
+
+SIGN_ARGS := sign --header-size 1024 --pad-header --align 8 -v "2.0" -S $(SLOT_SIZE) -M 512 $(UPGRADE_TYPE) -R $(ERASED_VALUE) -k keys/$(SIGN_KEY_FILE).pem
 
 # Output folder
 OUT := $(APP_NAME)/out

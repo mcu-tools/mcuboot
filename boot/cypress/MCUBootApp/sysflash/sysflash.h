@@ -11,6 +11,7 @@
 #define FLASH_AREA_IMAGE_SCRATCH 3
 #define FLASH_AREA_IMAGE_2 5
 #define FLASH_AREA_IMAGE_3 6
+#define FLASH_AREA_IMAGE_SWAP_STATUS 7
 
 /* Uncomment if external flash is being used */
 /* #define CY_BOOT_USE_EXTERNAL_FLASH */
@@ -23,6 +24,10 @@
 
 #ifndef CY_BOOT_SCRATCH_SIZE
 #define CY_BOOT_SCRATCH_SIZE                (0x1000)
+#endif
+
+#ifndef CY_BOOT_SWAP_STATUS_SIZE
+#define CY_BOOT_SWAP_STATUS_SIZE            BOOT_SWAP_STATUS_SIZE
 #endif
 
 #ifndef CY_BOOT_BOOTLOADER_SIZE

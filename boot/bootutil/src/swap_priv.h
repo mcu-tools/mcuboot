@@ -21,7 +21,8 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || \
+    defined(MCUBOOT_SWAP_USING_STATUS)
 
 /**
  * Calculates the amount of space required to store the trailer, and erases

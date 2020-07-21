@@ -321,6 +321,10 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
         out_sectors = state->scratch.sectors;
         out_num_sectors = &state->scratch.num_sectors;
+#elif MCUBOOT_SWAP_USING_STATUS
+    } else if (flash_area == FLASH_AREA_IMAGE_SWAP_STATUS) {
+        out_sectors = state->status.sectors;
+        out_num_sectors = &state->status.num_sectors;
 #endif
     } else {
         return BOOT_EFLASH;
@@ -364,6 +368,13 @@ boot_read_sectors(struct boot_loader_state *state)
         return BOOT_EFLASH_SEC;
     }
 
+#if MCUBOOT_SWAP_USING_STATUS
+    rc = boot_initialize_area(state, FLASH_AREA_IMAGE_SWAP_STATUS);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+#endif
+
 #if MCUBOOT_SWAP_USING_SCRATCH
     rc = boot_initialize_area(state, FLASH_AREA_IMAGE_SCRATCH);
     if (rc != 0) {
@@ -403,6 +414,8 @@ boot_status_is_reset(const struct boot_status *bs)
             bs->idx == BOOT_STATUS_IDX_0 &&
             bs->state == BOOT_STATUS_STATE_0);
 }
+
+#ifndef MCUBOOT_SWAP_USING_STATUS
 
 /**
  * Writes the supplied boot status to the flash file system.  The boot status
@@ -468,6 +481,8 @@ done:
 }
 #endif /* !MCUBOOT_RAM_LOAD */
 #endif /* !MCUBOOT_DIRECT_XIP */
+
+#endif /* MCUBOOT_SWAP_USING_STATUS */
 
 /*
  * Validate image hash/signature and optionally the security counter in a slot.
@@ -1858,6 +1873,9 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 #if MCUBOOT_SWAP_USING_SCRATCH
     TARGET_STATIC boot_sector_t scratch_sectors[BOOT_MAX_IMG_SECTORS];
 #endif
+#if MCUBOOT_SWAP_USING_STATUS
+    TARGET_STATIC boot_sector_t status_sectors[BOOT_MAX_IMG_SECTORS];
+#endif
 
     memset(state, 0, sizeof(struct boot_loader_state));
     has_upgrade = false;
@@ -1888,6 +1906,9 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
             secondary_slot_sectors[image_index];
 #if MCUBOOT_SWAP_USING_SCRATCH
         state->scratch.sectors = scratch_sectors;
+#endif
+#if MCUBOOT_SWAP_USING_STATUS
+        state->status.sectors = status_sectors;
 #endif
 
         /* Open primary and secondary image areas for the duration
