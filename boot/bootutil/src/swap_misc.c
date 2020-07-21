@@ -182,6 +182,10 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
 
     return rc;
 }
+#endif /* defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) */
+
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || \
+        defined(MCUBOOT_SWAP_USING_STATUS)
 
 int
 swap_set_copy_done(uint8_t image_index)
@@ -229,4 +233,4 @@ out:
 }
 
 
-#endif /* defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) */
+#endif /* defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_STATUS) */

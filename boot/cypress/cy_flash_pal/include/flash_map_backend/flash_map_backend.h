@@ -136,6 +136,8 @@ int flash_area_write(const struct flash_area *, uint32_t off,
                      const void *src, uint32_t len);
 /*< Erases `len` bytes of flash memory at `off` */
 int flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
+/*< Erases the aligned row of flash that includes the specified address */
+int flash_erase_row(uint32_t address);
 /*< Returns this `flash_area`s alignment */
 size_t flash_area_align(const struct flash_area *);
 /*< Initializes an array of flash_area elements for the slot's sectors */

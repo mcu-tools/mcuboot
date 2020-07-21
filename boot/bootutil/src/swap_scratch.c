@@ -30,7 +30,7 @@
 
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
-#if !defined(MCUBOOT_SWAP_USING_MOVE)
+#if (!defined(MCUBOOT_SWAP_USING_MOVE) && !defined(MCUBOOT_SWAP_USING_STATUS))
 
 #if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT)
 /*
@@ -399,7 +399,7 @@ swap_status_source(struct boot_loader_state *state)
             source = table->bst_status_source;
 
 #if (BOOT_IMAGE_NUMBER > 1)
-            /* In case of multi-image boot it can happen that if boot status
+            /* In case of multi image boot it can happen that if boot status
              * info is found on scratch area then it does not belong to the
              * currently examined image.
              */

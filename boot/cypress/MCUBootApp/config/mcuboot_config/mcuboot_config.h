@@ -35,8 +35,8 @@
 //#define MCUBOOT_SIGN_RSA
 
 /* Uncomment for ECDSA signatures using curve P-256. */
-#define MCUBOOT_SIGN_EC256
-#define NUM_ECC_BYTES (256 / 8) 	// P-256 curve size in bytes, rnok: to make compilable
+//#define MCUBOOT_SIGN_EC256
+#define NUM_ECC_BYTES (256 / 8) // P-256 curve size in bytes, rnok: to make compilable
 
 // #define MCUBOOT_SIGN_EC
 
@@ -47,14 +47,16 @@
  * simpler code path, which only supports overwriting the
  * existing image with the update image, is also available.
  */
-
-/* Uncomment to enable the overwrite-only code path. */
-#define MCUBOOT_OVERWRITE_ONLY
-
 #ifdef MCUBOOT_OVERWRITE_ONLY
 /* Uncomment to only erase and overwrite those slot 0 sectors needed
  * to install the new image, rather than the entire image slot. */
 /* #define MCUBOOT_OVERWRITE_ONLY_FAST */
+#else
+/* Using SWAP w Scratch by default.
+ * Comment/Uncomment which is needed. */
+/* #define MCUBOOT_SWAP_USING_SCRATCH 1 */
+/* #define MCUBOOT_SWAP_USING_MOVE 1 */
+#define MCUBOOT_SWAP_USING_STATUS 1
 #endif
 
 /*

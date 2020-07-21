@@ -73,14 +73,16 @@ struct flash_area;
 #if (defined(MCUBOOT_OVERWRITE_ONLY) + \
      defined(MCUBOOT_SWAP_USING_MOVE) + \
      defined(MCUBOOT_DIRECT_XIP) + \
-     defined(MCUBOOT_RAM_LOAD)) > 1
-#error "Please enable only one of MCUBOOT_OVERWRITE_ONLY, MCUBOOT_SWAP_USING_MOVE, MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD"
+     defined(MCUBOOT_RAM_LOAD)) + \
+     defined(MCUBOOT_SWAP_USING_STATUS) > 1
+#error "Please enable only one of MCUBOOT_OVERWRITE_ONLY, MCUBOOT_SWAP_USING_MOVE, MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD or MCUBOOT_SWAP_USING_STATUS"
 #endif
 
 #if !defined(MCUBOOT_OVERWRITE_ONLY) && \
     !defined(MCUBOOT_SWAP_USING_MOVE) && \
     !defined(MCUBOOT_DIRECT_XIP) && \
-    !defined(MCUBOOT_RAM_LOAD)
+    !defined(MCUBOOT_RAM_LOAD) && \
+    !defined(MCUBOOT_SWAP_USING_STATUS)
 #define MCUBOOT_SWAP_USING_SCRATCH 1
 #endif
 
@@ -271,6 +273,12 @@ struct boot_loader_state {
         boot_sector_t *sectors;
         size_t num_sectors;
     } scratch;
+#elif MCUBOOT_SWAP_USING_STATUS
+    struct {
+        const struct flash_area *area;
+        boot_sector_t *sectors;
+        size_t num_sectors;
+    } status;
 #endif
 
     uint8_t swap_type[BOOT_IMAGE_NUMBER];
@@ -318,6 +326,13 @@ int boot_copy_region(struct boot_loader_state *state,
                      uint32_t off_src, uint32_t off_dst, uint32_t sz);
 int boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz);
 bool boot_status_is_reset(const struct boot_status *bs);
+
+#ifdef MCUBOOT_SWAP_USING_STATUS
+uint32_t boot_copy_done_off(const struct flash_area *fap);
+uint32_t boot_image_ok_off(const struct flash_area *fap);
+uint32_t boot_swap_size_off(const struct flash_area *fap);
+#endif
+
 
 #ifdef MCUBOOT_ENC_IMAGES
 int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,

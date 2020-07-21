@@ -80,6 +80,31 @@ void check_result(int res)
     }
 }
 
+/*
+* Writes 1 byte `src` into flash memory at `address`
+* It does a sequence of RD/Modify/WR of data in a Flash Row.
+ */
+int flash_write_byte(uint32_t address, uint8_t src)
+{
+    cy_en_flashdrv_status_t rc = CY_FLASH_DRV_SUCCESS;
+    uint32_t row_addr = 0;
+    uint8_t row_buff[512];
+
+    /* accepting arbitrary address */
+    row_addr = (address/CY_FLASH_SIZEOF_ROW)*CY_FLASH_SIZEOF_ROW;
+
+    /* preserving Row */
+    memcpy(row_buff, (void *)row_addr, sizeof(row_buff));
+
+    /* Modifying the target byte */
+    row_buff[address%CY_FLASH_SIZEOF_ROW] = src;
+
+    /* Programming updated row back */
+    rc = Cy_Flash_WriteRow(row_addr, (const uint32_t *)row_buff);
+
+    return (int) rc;
+}
+
 void test_app_init_hardware(void)
 {
     /* enable interrupts */
@@ -108,6 +133,35 @@ int main(void)
     test_app_init_hardware();
 
     printf(GREETING_MESSAGE_INFO);
+
+#if defined(SWAP_ENABLED) && defined(UPGRADE_IMG)
+
+    #define USER_SWAP_IMAGE_OK_OFFS (24)
+    #define USER_SWAP_IMAGE_OK      (1)
+    uint32_t img_ok_addr;
+    int rc;
+
+    printf("[BlinkyApp] Try to set img_ok to confirm upgrade image\r\n");
+
+    /* Write Image OK flag to the slot trailer, so MCUBoot-loader
+     * will not revert new image */
+    img_ok_addr = USER_APP_START + USER_APP_SIZE - USER_SWAP_IMAGE_OK_OFFS;
+    if (*((uint8_t *)img_ok_addr) != USER_SWAP_IMAGE_OK)
+    {
+        rc = flash_write_byte(img_ok_addr, USER_SWAP_IMAGE_OK);
+        if (0 == rc)
+        {
+            printf("[BlinkyApp] SWAP Status : Image OK was set at 0x%08lx.\r\n", img_ok_addr);
+        }
+        else
+        {
+            printf("[BlinkyApp] SWAP Status : Failed to set Image OK.\r\n");
+        }
+    } else
+    {
+        printf("[BlinkyApp] Img_ok is already set in trailer\r\n");
+    }
+#endif
 
     for (;;)
     {

@@ -41,6 +41,12 @@
 #include "bootutil/enc_key.h"
 #endif
 
+#ifdef MCUBOOT_SWAP_USING_STATUS
+#include "swap_status.h"
+#endif
+
+#include "mcuboot_config/mcuboot_config.h"
+
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /* Currently only used by imgmgr */
@@ -150,6 +156,8 @@ out:
 }
 #endif
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
+
 static int
 boot_magic_decode(const uint32_t *magic)
 {
@@ -167,7 +175,7 @@ boot_flag_decode(uint8_t flag)
     }
     return BOOT_FLAG_SET;
 }
-
+#endif /* not defined MCUBOOT_SWAP_USING_STATUS */
 /**
  * Determines if a status source table is satisfied by the specified magic
  * code.
@@ -234,6 +242,7 @@ boot_status_entries(int image_index, const struct flash_area *fap)
     return -1;
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 uint32_t
 boot_status_off(const struct flash_area *fap)
 {
@@ -247,12 +256,15 @@ boot_status_off(const struct flash_area *fap)
     assert(off_from_end <= fap->fa_size);
     return fap->fa_size - off_from_end;
 }
+#endif
 
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
     return fap->fa_size - BOOT_MAGIC_SZ;
 }
+
+#ifndef MCUBOOT_SWAP_USING_STATUS
 
 static inline uint32_t
 boot_image_ok_off(const struct flash_area *fap)
@@ -277,6 +289,7 @@ boot_swap_size_off(const struct flash_area *fap)
 {
     return boot_swap_info_off(fap) - BOOT_MAX_ALIGN;
 }
+#endif
 
 #ifdef MCUBOOT_ENC_IMAGES
 static inline uint32_t
@@ -312,6 +325,7 @@ bool bootutil_buffer_is_erased(const struct flash_area *area,
     return true;
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 int
 boot_read_swap_state(const struct flash_area *fap,
                      struct boot_swap_state *state)
@@ -374,6 +388,7 @@ boot_read_swap_state(const struct flash_area *fap,
 
     return 0;
 }
+#endif /* not MCUBOOT_SWAP_USING_STATUS */
 
 /**
  * Reads the image trailer from the scratch area.
@@ -393,6 +408,8 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
     flash_area_close(fap);
     return rc;
 }
+
+#ifndef MCUBOOT_SWAP_USING_STATUS
 
 /**
  * This functions tries to locate the status area after an aborted swap,
@@ -466,6 +483,8 @@ boot_read_swap_size(int image_index, uint32_t *swap_size)
     return rc;
 }
 
+#endif /* not MCUBOOT_SWAP_USING_STATUS */
+
 #ifdef MCUBOOT_ENC_IMAGES
 int
 boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
@@ -503,6 +522,7 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
 }
 #endif
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 int
 boot_write_magic(const struct flash_area *fap)
 {
@@ -554,6 +574,8 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
 
     return 0;
 }
+
+#endif /* MCUBOOT_SWAP_USING_STATUS */
 
 static int
 boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
@@ -645,6 +667,17 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
 }
 #endif
 
+#define BOOT_LOG_SWAP_STATE(area, state)                            \
+    BOOT_LOG_INF("%s: magic=%s, swap_type=0x%x, copy_done=0x%x, "   \
+                 "image_ok=0x%x",                                   \
+                 (area),                                            \
+                 ((state)->magic == BOOT_MAGIC_GOOD ? "good" :      \
+                  (state)->magic == BOOT_MAGIC_UNSET ? "unset" :    \
+                  "bad"),                                           \
+                 (state)->swap_type,                                \
+                 (state)->copy_done,                                \
+                 (state)->image_ok)
+
 int
 boot_swap_type_multi(int image_index)
 {
@@ -662,6 +695,9 @@ boot_swap_type_multi(int image_index)
 
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
                                     &secondary_slot);
+
+    BOOT_LOG_SWAP_STATE("boot_swap_type_multi: Primary image", &primary_slot);
+    BOOT_LOG_SWAP_STATE("boot_swap_type_multi: Secondary image", &secondary_slot);
     if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
     }
