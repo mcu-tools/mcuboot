@@ -163,6 +163,17 @@ static struct flash_area scratch =
 };
 #endif
 
+static struct flash_area status =
+{
+    .fa_id = FLASH_AREA_IMAGE_STATUS,
+    .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
+    .fa_off = CY_FLASH_BASE +\
+                CY_BOOT_BOOTLOADER_SIZE +\
+                CY_BOOT_PRIMARY_1_SIZE +\
+                CY_BOOT_SECONDARY_1_SIZE,
+    .fa_size = 0x1000 /* TBD - needs to be calculated */
+};
+
 #ifdef CY_FLASH_MAP_EXT_DESC
 /* Use external Flash Map Descriptors */
 extern struct flash_area *boot_area_descs[];
@@ -179,6 +190,9 @@ struct flash_area *boot_area_descs[] =
 #ifdef MCUBOOT_SWAP_USING_SCRATCH
     &scratch,
 #endif
+#ifdef MCUBOOT_SWAP_USING_STATUS
+    &status,
+#endif,
     NULL
 };
 #endif

@@ -66,11 +66,11 @@ struct flash_area;
 /** Number of image slots in flash; currently limited to two. */
 #define BOOT_NUM_SLOTS                  2
 
-#if defined(MCUBOOT_OVERWRITE_ONLY) && defined(MCUBOOT_SWAP_USING_MOVE)
+#if defined(MCUBOOT_OVERWRITE_ONLY) && defined(MCUBOOT_SWAP_USING_MOVE) && defined(MCUBOOT_SWAP_USING_STATUS)
 #error "Please enable only one of MCUBOOT_OVERWRITE_ONLY or MCUBOOT_SWAP_USING_MOVE"
 #endif
 
-#if !defined(MCUBOOT_OVERWRITE_ONLY) && !defined(MCUBOOT_SWAP_USING_MOVE)
+#if !defined(MCUBOOT_OVERWRITE_ONLY) && !defined(MCUBOOT_SWAP_USING_MOVE) && !defined(MCUBOOT_SWAP_USING_STATUS)
 #define MCUBOOT_SWAP_USING_SCRATCH 1
 #endif
 
@@ -240,6 +240,12 @@ struct boot_loader_state {
         boot_sector_t *sectors;
         size_t num_sectors;
     } scratch;
+#elif MCUBOOT_SWAP_USING_STATUS
+    struct {
+        const struct flash_area *area;
+        boot_sector_t *sectors;
+        size_t num_sectors;
+    } status;
 #endif
 
     uint8_t swap_type[BOOT_IMAGE_NUMBER];

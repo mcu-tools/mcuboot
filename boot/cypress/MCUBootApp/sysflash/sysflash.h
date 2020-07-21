@@ -11,6 +11,7 @@
 #define FLASH_AREA_IMAGE_SCRATCH 3
 #define FLASH_AREA_IMAGE_2 5
 #define FLASH_AREA_IMAGE_3 6
+#define FLASH_AREA_IMAGE_STATUS 7
 
 /* Uncomment if external flash is being used */
 /* #define CY_BOOT_USE_EXTERNAL_FLASH */

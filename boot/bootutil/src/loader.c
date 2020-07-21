@@ -238,6 +238,10 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
         out_sectors = state->scratch.sectors;
         out_num_sectors = &state->scratch.num_sectors;
+#elif MCUBOOT_SWAP_USING_STATUS
+    } else if (flash_area == FLASH_AREA_IMAGE_STATUS) {
+        out_sectors = state->status.sectors;
+        out_num_sectors = &state->status.num_sectors;
 #endif
     } else {
         return BOOT_EFLASH;
