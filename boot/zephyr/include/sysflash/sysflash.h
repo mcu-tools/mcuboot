@@ -13,11 +13,6 @@
 
 #define FLASH_AREA_IMAGE_PRIMARY(x)    PM_MCUBOOT_PRIMARY_ID
 #define FLASH_AREA_IMAGE_SECONDARY(x)  PM_MCUBOOT_SECONDARY_ID
-/* NOTE: Scratch parition is not used by single image DFU but some of
- * functions in common files reference it, so the definitions has been
- * provided to allow compilation of common units.
- */
-#define FLASH_AREA_IMAGE_SCRATCH       0
 
 #elif (MCUBOOT_IMAGE_NUMBER == 2)
 
@@ -43,6 +38,11 @@ extern uint32_t _image_1_primary_slot_id[];
 
 #define FLASH_AREA_IMAGE_PRIMARY(x)	PM_MCUBOOT_PRIMARY_ID
 #define FLASH_AREA_IMAGE_SECONDARY(x)	PM_MCUBOOT_PRIMARY_ID
+/* NOTE: Scratch parition is not used by single image DFU but some of
+ * functions in common files reference it, so the definitions has been
+ * provided to allow compilation of common units.
+ */
+#define FLASH_AREA_IMAGE_SCRATCH       0
 
 #endif /* CONFIG_SINGLE_IMAGE_DFU */
 
