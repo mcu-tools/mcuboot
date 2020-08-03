@@ -72,7 +72,7 @@ int swap_status_read_record(uint32_t rec_offset, uint8_t *data, uint32_t *copy_c
 
     const struct flash_area *fap_stat;
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_STATUS, &fap_stat);
+    rc = flash_area_open(FLASH_AREA_IMAGE_SWAP_STATUS, &fap_stat);
     assert (rc == 0);
 
     /* loop over copies/duplicates */
@@ -128,7 +128,7 @@ int swap_status_write_record(uint32_t rec_offset, uint32_t copy_num, uint32_t co
 
     const struct flash_area *fap_stat;
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_STATUS, &fap_stat);
+    rc = flash_area_open(FLASH_AREA_IMAGE_SWAP_STATUS, &fap_stat);
     assert (rc == 0);
 
     /* copy data into buffer */

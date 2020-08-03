@@ -294,7 +294,7 @@ boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
 //    const struct flash_area *fap_stat;
     int rc;
 
-//    rc = flash_area_open(FLASH_AREA_IMAGE_STATUS, &fap_stat);
+//    rc = flash_area_open(FLASH_AREA_IMAGE_SWAP_STATUS, &fap_stat);
 //    assert (rc == 0);
 
     /* Calculate offset from start of image area. */
@@ -473,7 +473,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap_sec);
     assert (rc == 0);
 
-//    rc = flash_area_open(FLASH_AREA_IMAGE_STATUS, &fap_stat);
+//    rc = flash_area_open(FLASH_AREA_IMAGE_SWAP_STATUS, &fap_stat);
 //    assert (rc == 0);
 
     // TODO: skipping revert in early development
@@ -535,7 +535,7 @@ boot_swap_info_off(const struct flash_area *fap)
 static inline uint32_t
 boot_swap_size_off(const struct flash_area *fap)
 {
-    return boot_swap_info_off(fap) - 1;
+    return boot_swap_info_off(fap) - 4;
 }
 
 uint32_t

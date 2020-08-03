@@ -163,16 +163,27 @@ static struct flash_area scratch =
 };
 #endif
 
+#ifdef MCUBOOT_SWAP_USING_STATUS
 static struct flash_area status =
 {
-    .fa_id = FLASH_AREA_IMAGE_STATUS,
+    .fa_id = FLASH_AREA_IMAGE_SWAP_STATUS,
+#if (MCUBOOT_IMAGE_NUMBER == 1) /* if single-image */
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
     .fa_off = CY_FLASH_BASE +\
                 CY_BOOT_BOOTLOADER_SIZE +\
                 CY_BOOT_PRIMARY_1_SIZE +\
                 CY_BOOT_SECONDARY_1_SIZE,
-    .fa_size = 0x1000 /* TBD - needs to be calculated */
+#elif (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image */
+    .fa_off = CY_FLASH_BASE +\
+                CY_BOOT_BOOTLOADER_SIZE +\
+                CY_BOOT_PRIMARY_1_SIZE +\
+                CY_BOOT_SECONDARY_1_SIZE +\
+                CY_BOOT_PRIMARY_2_SIZE +\
+                CY_BOOT_SECONDARY_2_SIZE,
+#endif
+    .fa_size = CY_BOOT_SWAP_STATUS_SIZE
 };
+#endif
 
 #ifdef CY_FLASH_MAP_EXT_DESC
 /* Use external Flash Map Descriptors */
