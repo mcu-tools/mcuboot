@@ -28,7 +28,7 @@ struct image_status_trailer {
 #define BOOT_SWAP_STATUS_COPY_DONE_SZ   1UL
 #define BOOT_SWAP_STATUS_IMG_OK_SZ      1UL
 
-#define BOOT_SWAP_STATUS_MAGIC_SZ BOOT_MAGIC_SZ
+#define BOOT_SWAP_STATUS_MAGIC_SZ       BOOT_MAGIC_SZ
 
 #define BOOT_SWAP_STATUS_CNT_SZ         4UL
 #define BOOT_SWAP_STATUS_CRC_SZ         4UL
@@ -38,6 +38,11 @@ struct image_status_trailer {
 #define BOOT_SWAP_STATUS_PAYLD_SZ       (BOOT_SWAP_STATUS_ROW_SZ -\
                                             BOOT_SWAP_STATUS_CNT_SZ - \
                                             BOOT_SWAP_STATUS_CRC_SZ)
+#define BOOT_SWAP_STATUS_ROW_SZ_MIN     16UL
+
+#if (BOOT_SWAP_STATUS_ROW_SZ % BOOT_SWAP_STATUS_ROW_SZ_MIN != 0)
+    #error "BOOT_SWAP_STATUS_ROW_SZ size is less then min value of 16 bytes"
+#endif
 
 /* number of rows sector-status area should fit into */
 #if (BOOT_MAX_IMG_SECTORS % \
@@ -49,7 +54,29 @@ struct image_status_trailer {
                                             BOOT_SWAP_STATUS_PAYLD_SZ)
 #endif
 
-#define BOOT_SWAP_STATUS_TRAIL_ROWS_NUM 1UL
+/* 
+    Number of flash rows used to store swap info. It consists
+    of following fields. 16 bytes is a minimum required row size,
+    thus 64 bytes required at minimum size of swap info size.
+
+    16 bytes - uint8_t enc_key1[BOOT_SWAP_STATUS_ENCK1_SZ];
+    16 bytes - uint8_t enc_key2[BOOT_SWAP_STATUS_ENCK2_SZ];
+    4 bytes - uint32_t swap_size;
+    1 byte - uint8_t swap_type;
+    1 byte - uint8_t copy_done;
+    1 byte - uint8_t image_ok;
+    16 bytes -  uint8_t magic[BOOT_MAGIC_SZ];
+    = 55 bytes
+ */
+#if (BOOT_SWAP_STATUS_ROW_SZ >= 64UL)
+    #define BOOT_SWAP_STATUS_TRAIL_ROWS_NUM 1UL
+#else
+    #warning "BOOT_SWAP_STATUS_ROW_SZ is less then 64 bytes. \
+            Value of BOOT_SWAP_STATUS_TRAIL_ROWS_NUM \
+            shold be set to be equal at least 64 bytes. \
+            Substitute 1 to according multiplier to get 64 bytes."
+    #define BOOT_SWAP_STATUS_TRAIL_ROWS_NUM (BOOT_SWAP_STATUS_ROW_SZ * 1)
+#endif
 
 /* the size of one copy of status area */
 #define BOOT_SWAP_STATUS_D_SIZE     BOOT_SWAP_STATUS_ROW_SZ * \
@@ -60,7 +87,7 @@ struct image_status_trailer {
  * 1 is for single write wear, 2 - twice less wear, 3 - three times less wear, etc */
 #define BOOT_SWAP_STATUS_MULT       2
 
-#define BOOT_SWAP_STATUS_SIZE       (BOOT_SWAP_STATUS_MULT*BOOT_SWAP_STATUS_D_SIZE)
+#define BOOT_SWAP_STATUS_SIZE       (BOOT_SWAP_STATUS_MULT * BOOT_SWAP_STATUS_D_SIZE)
 
 #define BOOT_SWAP_STATUS_SZ_PRIM    BOOT_SWAP_STATUS_SIZE
 #define BOOT_SWAP_STATUS_SZ_SEC     BOOT_SWAP_STATUS_SIZE
