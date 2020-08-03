@@ -48,6 +48,7 @@ static void do_boot(struct boot_rsp *rsp)
     app_addr = (rsp->br_image_off + rsp->br_hdr->ih_hdr_size);
 
     BOOT_LOG_INF("Starting User Application on CM4 (wait)...");
+    BOOT_LOG_INF("Start Address: 0x%08lx", app_addr);
     Cy_SysLib_Delay(100);
 
     Cy_SysEnableCM4(app_addr);
@@ -60,8 +61,7 @@ static void do_boot(struct boot_rsp *rsp)
 
 int main(void)
 {
-    struct boot_rsp rsp ;
-    cy_rslt_t rc = !CY_RSLT_SUCCESS;
+    struct boot_rsp rsp;
 
     init_cycfg_clocks();
     init_cycfg_peripherals();
@@ -75,6 +75,13 @@ int main(void)
     BOOT_LOG_INF("MCUBoot Bootloader Started");
 
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
+    cy_rslt_t rc = !CY_RSLT_SUCCESS;
+
+    #undef MCUBOOT_MAX_IMG_SECTORS
+    /* redefine number of sectors as there 2MB will be
+     * available on PSoC062-2M in case of external
+     * memory usage */
+    #define MCUBOOT_MAX_IMG_SECTORS 4096
     int smif_id = 1; /* Assume SlaveSelect_0 is used for External Memory */
     /* Acceptable values are:
     * 0 - SMIF disabled (no external memory);

@@ -48,9 +48,11 @@ endif
 # Collect C source files for PLATFORM
 SOURCES_PLATFORM += $(wildcard $(PLATFORM_PATH)/*.c)
 SOURCES_PLATFORM := $(filter-out %/system_psoc6_cm4.c, $(SOURCES_PLATFORM))
+SOURCES_PLATFORM += $(wildcard $(PLATFORM_PATH)/retarget_io_pdl/*.c)
 
 # Collect dirrectories containing headers for PLATFORM
 INCLUDE_DIRS_PLATFORM := $(PLATFORM_PATH)
+INCLUDE_DIRS_PLATFORM += $(PLATFORM_PATH)/retarget_io_pdl
 # Collect Assembler files for PLATFORM
 # Include _01_, _02_ or _03_ PLATFORM_SUFFIX depending on device family.
 STARTUP_FILE := $(PLATFORM_PATH)/$(PLATFORM)/$(CORE)/$(COMPILER)/startup_psoc6_$(PLATFORM_SUFFIX)_cm0plus

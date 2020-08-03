@@ -26,6 +26,9 @@ Pre-build action calls GCC preprocessor which intantiates defines for particular
 Default values set for currently supported targets:
 * PSOC_062_2M in `BlinkyApp.mk` to `-DUSER_APP_START=0x10018000`
 
+**Important**: make sure RAM areas of CM4-based BlinkyApp and CM0p-based MCUBootApp bootloader do not overlap.
+Memory (stack) corruption of CM0p application can cause failure if SystemCall-served operations invoked from CM4.
+
 **Building an application:**
 
 Root directory for build is **boot/cypress.**
@@ -71,7 +74,7 @@ To get appropriate artifact for second image PRIMARY slot run this command:
 
 **How to build upgrade image for external memory:**
 
-For prepare MCUBoot to work with external memory please refer to MCUBoot/ExternalMemory.md
+To prepare MCUBootApp for work with external memory please refer to `MCUBootApp/ExternalMemory.md`.
 
 For build BlinkyApp upgarde image for external memory use command:
 

@@ -7,5 +7,5 @@ edition = "2018"
 [dependencies]
 failure = "0.1.6"
 failure_derive = "0.1.6"
-rand = "0.4"
+rand = "0.7"
 log = "0.4"

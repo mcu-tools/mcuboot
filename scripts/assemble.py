@@ -22,6 +22,7 @@ import argparse
 import errno
 import io
 import re
+import os
 import os.path
 import sys
 
@@ -91,6 +92,15 @@ class Assembly():
                     raise Exception("Image {} is too large for partition".format(source))
             ofd.write(ibuf)
 
+def find_board_name(bootdir):
+    suffix = ".dts.pre.tmp"
+
+    for _, _, files in os.walk(os.path.join(bootdir, "zephyr")):
+        for filename in files:
+            if filename.endswith(suffix):
+                return filename[:-len(suffix)]
+
+
 def main():
     parser = argparse.ArgumentParser()
 
@@ -102,20 +112,27 @@ def main():
             help='Signed image file for secondary image')
     parser.add_argument('-o', '--output', required=True,
             help='Filename to write full image to')
-    parser.add_argument('-z', '--zephyr-base', required=True,
-            help='Zephyr base containg the Zephyr repository')
+    parser.add_argument('-z', '--zephyr-base',
+            help='Zephyr base containing the Zephyr repository')
 
     args = parser.parse_args()
 
-    sys.path.insert(0, os.path.join(args.zephyr_base, "scripts", "dts"))
+    zephyr_base = args.zephyr_base
+    if zephyr_base is None:
+        try:
+            zephyr_base = os.environ['ZEPHYR_BASE']
+        except KeyError:
+            print('Need to either have ZEPHYR_BASE in environment or pass in -z')
+            sys.exit(1)
+
+    sys.path.insert(0, os.path.join(zephyr_base, "scripts", "dts"))
     import edtlib
 
-    # Extract board name from path
-    board = os.path.split(os.path.split(args.bootdir)[0])[1]
+    board = find_board_name(args.bootdir)
 
     dts_path = os.path.join(args.bootdir, "zephyr", board + ".dts.pre.tmp")
 
-    edt = edtlib.EDT(dts_path, [os.path.join(args.zephyr_base, "dts", "bindings")],
+    edt = edtlib.EDT(dts_path, [os.path.join(zephyr_base, "dts", "bindings")],
             warn_reg_unit_address_mismatch=False)
 
     output = Assembly(args.output, args.bootdir, edt)

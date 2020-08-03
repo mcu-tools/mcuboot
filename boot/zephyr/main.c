@@ -22,6 +22,7 @@
 #include <drivers/timer/system_timer.h>
 #include <usb/usb_device.h>
 #include <soc.h>
+#include <linker/linker-defs.h>
 
 #include "target.h"
 
@@ -98,6 +99,11 @@ MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
 void os_heap_init(void);
 
 #if defined(CONFIG_ARM)
+
+#ifdef CONFIG_SW_VECTOR_RELAY
+extern void *_vector_table_pointer;
+#endif
+
 struct arm_vector_table {
     uint32_t msp;
     uint32_t reset;
@@ -133,6 +139,23 @@ static void do_boot(struct boot_rsp *rsp)
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     cleanup_arm_nvic(); /* cleanup NVIC registers */
 #endif
+
+#ifdef CONFIG_BOOT_INTR_VEC_RELOC
+#if defined(CONFIG_SW_VECTOR_RELAY)
+    _vector_table_pointer = vt;
+#ifdef CONFIG_CPU_CORTEX_M_HAS_VTOR
+    SCB->VTOR = (uint32_t)__vector_relay_table;
+#endif
+#elif defined(CONFIG_CPU_CORTEX_M_HAS_VTOR)
+    SCB->VTOR = (uint32_t)vt;
+#endif /* CONFIG_SW_VECTOR_RELAY */
+#else /* CONFIG_BOOT_INTR_VEC_RELOC */
+#if defined(CONFIG_CPU_CORTEX_M_HAS_VTOR) && defined(CONFIG_SW_VECTOR_RELAY)
+    _vector_table_pointer = _vector_start;
+    SCB->VTOR = (uint32_t)__vector_relay_table;
+#endif
+#endif /* CONFIG_BOOT_INTR_VEC_RELOC */
+
     __set_MSP(vt->msp);
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     __set_CONTROL(0x00); /* application will configures core on its own */
