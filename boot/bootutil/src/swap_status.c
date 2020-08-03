@@ -508,10 +508,13 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
 /* MISC - section, early development */
 /* Offset Section */
+
+/*rnok: this function can be reused from bootutil_misc.c, 
+        if not defined as static there */
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
-    return BOOT_SWAP_STATUS_D_SIZE - BOOT_MAGIC_SZ;
+    return BOOT_SWAP_STATUS_D_SIZE_RAW - BOOT_MAGIC_SZ;
 }
 
 static inline uint32_t
@@ -540,9 +543,10 @@ boot_swap_size_off(const struct flash_area *fap)
 
 uint32_t
 boot_status_off(const struct flash_area *fap)
-{
-    /* this should probably use flash_area_align() value here */
-    return BOOT_SWAP_STATUS_D_SIZE - BOOT_SWAP_STATUS_ROW_SZ;
+{   
+    /* this offset is equal to 0, because swap status fields
+       in this implementation count from the start of partion */
+    return 0;
 }
 
 #ifdef MCUBOOT_ENC_IMAGES
