@@ -45,6 +45,10 @@
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
 #include "cy_smif_psoc6.h"
 #endif
+
+#ifdef MCUBOOT_SWAP_USING_STATUS
+#include "swap_status.h"
+#endif
 /*
  * For now, we only support one flash device.
  *

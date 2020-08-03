@@ -35,6 +35,7 @@ struct image_status_trailer {
 
 #define BOOT_SWAP_STATUS_ROW_SZ         CY_FLASH_ALIGN
 
+/* agreed to name it "a record" */
 #define BOOT_SWAP_STATUS_PAYLD_SZ       (BOOT_SWAP_STATUS_ROW_SZ -\
                                             BOOT_SWAP_STATUS_CNT_SZ - \
                                             BOOT_SWAP_STATUS_CRC_SZ)
@@ -68,14 +69,12 @@ struct image_status_trailer {
     16 bytes -  uint8_t magic[BOOT_MAGIC_SZ];
     = 55 bytes
  */
-#if (BOOT_SWAP_STATUS_ROW_SZ >= 64UL)
-    #define BOOT_SWAP_STATUS_TRAIL_ROWS_NUM 1UL
+#define BOOT_SWAP_STATUS_TRAILER_SIZE 64UL
+
+#if (BOOT_SWAP_STATUS_MIN_TRAILER_SIZE % BOOT_SWAP_STATUS_PAYLD_SZ != 0)
+    #define BOOT_SWAP_STATUS_TRAIL_ROWS_NUM (BOOT_SWAP_STATUS_TRAILER_SIZE / BOOT_SWAP_STATUS_PAYLD_SZ) + 1
 #else
-    #warning "BOOT_SWAP_STATUS_ROW_SZ is less then 64 bytes. \
-            Value of BOOT_SWAP_STATUS_TRAIL_ROWS_NUM \
-            shold be set to be equal at least 64 bytes. \
-            Substitute 1 to according multiplier to get 64 bytes."
-    #define BOOT_SWAP_STATUS_TRAIL_ROWS_NUM (BOOT_SWAP_STATUS_ROW_SZ * 1)
+    #define BOOT_SWAP_STATUS_TRAIL_ROWS_NUM (BOOT_SWAP_STATUS_TRAILER_SIZE / BOOT_SWAP_STATUS_PAYLD_SZ)
 #endif
 
 /* the size of one copy of status area */

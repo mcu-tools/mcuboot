@@ -26,6 +26,10 @@
 #define CY_BOOT_SCRATCH_SIZE                (0x1000)
 #endif
 
+#ifndef CY_BOOT_SWAP_STATUS_SIZE
+#define CY_BOOT_SWAP_STATUS_SIZE            BOOT_SWAP_STATUS_SIZE
+#endif
+
  /* TBD - needs to be calculated 
     Calculation considerations:
 
@@ -59,9 +63,6 @@
     Finally ( (sec_info_block_size (512b) * sec_info_block_num (21) + 
             swap_status_trailer (512b) ) * BOOT_SWAP_STATUS_MULT ) * MCUBOOT_IMAGE_NUMBER = 22528 bytes (0x5800)
  */
-#ifndef CY_BOOT_SWAP_STATUS_SIZE
-#define CY_BOOT_SWAP_STATUS_SIZE            (0x5800)
-#endif
 
 #ifndef CY_BOOT_BOOTLOADER_SIZE
 #define CY_BOOT_BOOTLOADER_SIZE             (0x18000)
