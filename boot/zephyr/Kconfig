@@ -128,6 +128,11 @@ config BOOT_SIGNATURE_KEY_FILE
 	string "PEM key file"
 	default ""
 	help
+	  You can use either absolute or relative path.
+	  In case relative path is used, the build system assumes that it starts
+	  from the directory where the MCUBoot KConfig configuration file is
+	  located. If the key file is not there, the build system uses relative
+	  path that starts from the MCUBoot repository root directory.
 	  The key file will be parsed by imgtool's getpub command and a .c source
 	  with the public key information will be written in a format expected by
 	  MCUboot.
