@@ -287,7 +287,8 @@ swap_status_source(struct boot_loader_state *state)
  */
 static void
 boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
-        struct boot_status *bs, const struct flash_area *fap_pri)
+        struct boot_status *bs, const struct flash_area *fap_pri,
+        const struct flash_area *fap_sec)
 {
     uint32_t new_off;
     uint32_t old_off;

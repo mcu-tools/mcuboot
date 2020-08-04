@@ -5,6 +5,8 @@
  *      Author: bohd
  */
 
+#include "swap_status.h"
+
 uint32_t calc_rec_idx(uint32_t value)
 {
     uint32_t rec_idx;
@@ -139,7 +141,7 @@ int swap_status_write_record(uint32_t rec_offset, uint32_t copy_num, uint32_t co
             BOOT_SWAP_STATUS_CNT_SZ);
 
     /* calculate CRC field*/
-    next_crc = uint32_t calc_record_crc(buff, BOOT_SWAP_STATUS_ROW_SZ-BOOT_SWAP_STATUS_CRC_SZ);
+    next_crc = calc_record_crc(buff, BOOT_SWAP_STATUS_ROW_SZ-BOOT_SWAP_STATUS_CRC_SZ);
 
     /* append new CRC to whole record row */
     memcpy(&buff[BOOT_SWAP_STATUS_ROW_SZ-BOOT_SWAP_STATUS_CRC_SZ], \

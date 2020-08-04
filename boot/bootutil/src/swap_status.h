@@ -8,6 +8,12 @@
 #ifndef BOOT_BOOTUTIL_SRC_SWAP_STATUS_H_
 #define BOOT_BOOTUTIL_SRC_SWAP_STATUS_H_
 
+#include <stdint.h>
+#include <sysflash/sysflash.h>
+#include "bootutil_priv.h"
+
+#include "mcuboot_config/mcuboot_config.h"
+
 #ifdef MCUBOOT_SWAP_USING_STATUS
 
 #define BOOT_SWAP_STATUS_ENCK1_SZ       16UL

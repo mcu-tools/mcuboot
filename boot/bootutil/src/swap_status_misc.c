@@ -27,6 +27,8 @@
 #include "swap_priv.h"
 #include "bootutil/bootutil_log.h"
 
+#include "swap_status.h"
+
 #include "mcuboot_config/mcuboot_config.h"
 
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
