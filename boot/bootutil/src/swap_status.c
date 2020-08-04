@@ -530,7 +530,7 @@ boot_copy_done_off(const struct flash_area *fap)
     return boot_image_ok_off(fap) - 1;
 }
 
-uint32_t
+__attribute__ ((weak)) uint32_t
 boot_swap_info_off(const struct flash_area *fap)
 {
     return boot_copy_done_off(fap) - 1;
@@ -542,7 +542,7 @@ boot_swap_size_off(const struct flash_area *fap)
     return boot_swap_info_off(fap) - 4;
 }
 
-uint32_t
+__attribute__ ((weak)) uint32_t
 boot_status_off(const struct flash_area *fap)
 {   
     /* this offset is equal to 0, because swap status fields
@@ -564,7 +564,7 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 #endif
 
 /* Write Section */
-int
+__attribute__ ((weak)) int
 boot_write_magic(const struct flash_area *fap)
 {
 //    uint32_t off;
@@ -645,25 +645,5 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
     return 0;
 }
 #endif
-
-/* OTHER APIs */
-static inline size_t
-boot_status_sector_size(const struct boot_loader_state *state, size_t sector)
-{
-    return state->status.sectors[sector].fs_size;
-}
-
-int boot_status_num_sectors(const struct boot_loader_state *state)
-{
-    return (int)(BOOT_SWAP_STATUS_SIZE / boot_status_sector_size(state, 0));
-}
-
-static inline uint32_t
-boot_status_sector_off(const struct boot_loader_state *state,
-                    size_t sector)
-{
-    return state->status.sectors[sector].fs_off -
-           state->status.sectors[0].fs_off;
-}
 
 #endif

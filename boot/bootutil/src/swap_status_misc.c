@@ -35,10 +35,23 @@ MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #if defined(MCUBOOT_SWAP_USING_STATUS)
 
+static inline size_t
+boot_status_sector_size(const struct boot_loader_state *state, size_t sector)
+{
+    return state->status.sectors[sector].fs_size;
+}
+
+static inline uint32_t
+boot_status_sector_off(const struct boot_loader_state *state,
+                    size_t sector)
+{
+    return state->status.sectors[sector].fs_off -
+           state->status.sectors[0].fs_off;
+}
+
 int
 swap_erase_trailer_sectors(const struct boot_loader_state *state,
-                           const struct flash_area *fap,
-                           const struct flash_area *fap_stat)
+                           const struct flash_area *fap)
 {
 //    uint8_t slot;
     uint32_t sector;
@@ -52,6 +65,11 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
     int rc;
 
     BOOT_LOG_DBG("Erasing trailer; fa_id=%d", fap->fa_id);
+
+    const struct flash_area *fap_stat;
+
+    rc = flash_area_open(FLASH_AREA_IMAGE_SWAP_STATUS, &fap_stat);
+    assert (rc == 0);
 
     image_index = BOOT_CURR_IMG(state);
     fa_id_primary = flash_area_id_from_multi_image_slot(image_index,
@@ -87,6 +105,8 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
         sector--;
         total_sz += sz;
     } while (total_sz < trailer_sz);
+
+    flash_area_close(fap_stat);
 
     return rc;
 }
@@ -189,6 +209,11 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
 //    flash_area_close(fap);
 //
     return rc;
+}
+
+int boot_status_num_sectors(const struct boot_loader_state *state)
+{
+    return (int)(BOOT_SWAP_STATUS_SIZE / boot_status_sector_size(state, 0));
 }
 
 #endif /* defined(MCUBOOT_SWAP_USING_MOVE) */
