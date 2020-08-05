@@ -515,6 +515,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
+    (void)fap;
     return BOOT_SWAP_STATUS_D_SIZE_RAW - BOOT_MAGIC_SZ;
 }
 
@@ -558,7 +559,7 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 //    return boot_swap_size_off(fap) - ((slot + 1) *
 //            ((((BOOT_ENC_TLV_SIZE - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN));
 //#else
-//    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_SIZE);
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_SIZE);
 //#endif
 }
 #endif
@@ -567,18 +568,26 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 __attribute__ ((weak)) int
 boot_write_magic(const struct flash_area *fap)
 {
-//    uint32_t off;
-//    int rc;
-//
-//    off = boot_magic_off(fap);
-//
-//    BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%lx (0x%lx)",
-//                 fap->fa_id, (unsigned long)off,
-//                 (unsigned long)(fap->fa_off + off));
-//    rc = flash_area_write(fap, off, boot_img_magic, BOOT_MAGIC_SZ);
-//    if (rc != 0) {
-//        return BOOT_EFLASH;
-//    }
+    uint32_t off;
+    int rc;
+    const struct flash_area *fap_status;
+
+    /* function interface suppose flash_area would be of primary/secondary
+        type, but for swap with status partition dedicated area is used*/
+    if(fap->id != FLASH_AREA_IMAGE_SWAP_STATUS) {
+        rc = flash_area_open(FLASH_AREA_IMAGE_SWAP_STATUS, &fap_status);
+        assert (rc == 0);
+    }
+
+    off = boot_magic_off(fap_status);
+
+    BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%lx (0x%lx)",
+                 fap_status->fa_id, (unsigned long)off,
+                 (unsigned long)(fap_status->fa_off + off));
+    rc = flash_area_write(fap_status, off, boot_img_magic, BOOT_MAGIC_SZ);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
 
     return 0;
 }
@@ -626,21 +635,29 @@ int
 boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
         const struct boot_status *bs)
 {
-//    uint32_t off;
-//    int rc;
-//
-//    off = boot_enc_key_off(fap, slot);
-//    BOOT_LOG_DBG("writing enc_key; fa_id=%d off=0x%lx (0x%lx)",
-//                 fap->fa_id, (unsigned long)off,
-//                 (unsigned long)fap->fa_off + off);
+    uint32_t off;
+    int rc;
+    const struct flash_area *fap_status;
+
+    /* function interface suppose flash_area would be of primary/secondary
+        type, but for swap with status partition dedicated area is used*/
+    if(fap->id != FLASH_AREA_IMAGE_SWAP_STATUS) {
+        rc = flash_area_open(FLASH_AREA_IMAGE_SWAP_STATUS, &fap_status);
+        assert (rc == 0);
+    }
+
+    off = boot_enc_key_off(fap_status, slot);
+    BOOT_LOG_DBG("writing enc_key; fa_id=%d off=0x%lx (0x%lx)",
+                 fap_status->fa_id, (unsigned long)off,
+                 (unsigned long)fap_status->fa_off + off);
 //#if MCUBOOT_SWAP_SAVE_ENCTLV
 //    rc = flash_area_write(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
 //#else
-//    rc = flash_area_write(fap, off, bs->enckey[slot], BOOT_ENC_KEY_SIZE);
+    rc = flash_area_write(fap_status, off, bs->enckey[slot], BOOT_ENC_KEY_SIZE);
 //#endif
-//    if (rc != 0) {
-//        return BOOT_EFLASH;
-//    }
+   if (rc != 0) {
+       return BOOT_EFLASH;
+   }
 
     return 0;
 }
