@@ -157,6 +157,8 @@ int swap_status_write_record(uint32_t rec_offset, uint32_t copy_num, uint32_t co
     rc = flash_area_write(fap_stat, fin_offset, buff, sizeof(buff));
     assert (rc == 0);
 
+    flash_area_close(fap_stat);
+
     return rc;
 }
 
