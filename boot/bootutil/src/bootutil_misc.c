@@ -41,6 +41,12 @@
 #include "bootutil/enc_key.h"
 #endif
 
+#ifdef MCUBOOT_SWAP_USING_STATUS
+#include "swap_status.h"
+#endif
+
+#include "mcuboot_config/mcuboot_config.h"
+
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /* Currently only used by imgmgr */
@@ -457,6 +463,7 @@ boot_write_magic(const struct flash_area *fap)
     return 0;
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 /**
  * Write trailer data; status bytes, swap_size, etc
  *
@@ -489,6 +496,7 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
 
     return 0;
 }
+#endif
 
 static int
 boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,

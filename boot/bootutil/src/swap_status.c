@@ -574,7 +574,7 @@ boot_write_magic(const struct flash_area *fap)
 
     /* function interface suppose flash_area would be of primary/secondary
         type, but for swap with status partition dedicated area is used*/
-    if(fap->id != FLASH_AREA_IMAGE_SWAP_STATUS) {
+    if(fap->fa_id != FLASH_AREA_IMAGE_SWAP_STATUS) {
         rc = flash_area_open(FLASH_AREA_IMAGE_SWAP_STATUS, &fap_status);
         assert (rc == 0);
     }
@@ -597,7 +597,8 @@ boot_write_magic(const struct flash_area *fap)
  *
  * @returns 0 on success, != 0 on error.
  */
-static int
+#ifdef MCUBOOT_SWAP_USING_STATUS
+int
 boot_write_trailer(const struct flash_area *fap, uint32_t off,
         const uint8_t *inbuf, uint8_t inlen)
 {
@@ -629,6 +630,7 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
 
     return rc;
 }
+#endif
 
 #ifdef MCUBOOT_ENC_IMAGES
 int

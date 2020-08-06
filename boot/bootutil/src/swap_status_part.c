@@ -4,7 +4,7 @@
  *  Created on: Jul 28, 2020
  *      Author: bohd
  */
-
+#include <assert.h>
 #include "swap_status.h"
 
 uint32_t calc_rec_idx(uint32_t value)
@@ -168,10 +168,10 @@ int swap_status_update(uint32_t area_id, uint32_t offs, uint8_t *data, uint32_t 
 
     int32_t init_offs;
     int32_t length = (int32_t)len;
+    int32_t copy_num;
 
     uint32_t rec_offs;
     uint32_t copy_sz;
-    uint32_t copy_num;
     uint32_t copy_counter;
     uint32_t data_idx = 0;
     uint32_t buff_idx = offs%BOOT_SWAP_STATUS_PAYLD_SZ;
@@ -191,7 +191,11 @@ int swap_status_update(uint32_t area_id, uint32_t offs, uint8_t *data, uint32_t 
     {   /* preserve record */
         copy_num = swap_status_read_record(rec_offs, buff, &copy_counter);
         /* it returns copy number */
-
+        if(copy_num < 0)
+        {   /* something went wrong while read, exit */
+            rc = -1;
+            break;
+        }
         /* update record data */
         if (length > BOOT_SWAP_STATUS_PAYLD_SZ)
         {
@@ -205,8 +209,62 @@ int swap_status_update(uint32_t area_id, uint32_t offs, uint8_t *data, uint32_t 
         buff_idx = 0;
 
         /* write record back */
-        rc = swap_status_write_record(rec_offs, copy_num, copy_counter, buff);
+        rc = swap_status_write_record(rec_offs, (uint32_t)copy_num, copy_counter, buff);
         assert (rc == 0);
+
+        /* proceed to next record */
+        length -= BOOT_SWAP_STATUS_PAYLD_SZ;
+        rec_offs += BOOT_SWAP_STATUS_ROW_SZ;
+        data_idx += BOOT_SWAP_STATUS_PAYLD_SZ;
+    }
+    return rc;
+}
+
+int swap_status_retrieve(uint32_t area_id, uint32_t offs, uint8_t *data, uint32_t len)
+{
+    int rc = 0;
+
+    int32_t init_offs;
+    int32_t length = (int32_t)len;
+    int32_t copy_num;
+
+    uint32_t rec_offs;
+    uint32_t copy_sz;
+    uint32_t copy_counter;
+    uint32_t data_idx = 0;
+    uint32_t buff_idx = offs%BOOT_SWAP_STATUS_PAYLD_SZ;
+
+    uint8_t buff[BOOT_SWAP_STATUS_PAYLD_SZ];
+
+    /* pre-calculate sub-area offset */
+    init_offs = calc_init_offset(area_id);
+    assert (init_offs < 0);
+
+    /* will start from it
+     * this will be write-aligned */
+    rec_offs = init_offs + calc_record_offs(offs);
+
+    /* go over all records to be updated */
+    while (length > 0)
+    {   /* preserve record */
+        copy_num = swap_status_read_record(rec_offs, buff, &copy_counter);
+        /* it returns copy number */
+        if(copy_num < 0)
+        {   /* something went wrong while read, exit */
+            rc = -1;
+            break;
+        }
+        /* update record data */
+        if (length > BOOT_SWAP_STATUS_PAYLD_SZ)
+        {
+            copy_sz = BOOT_SWAP_STATUS_PAYLD_SZ - buff_idx;
+        }
+        else
+        {
+            copy_sz = length;
+        }
+        memcpy(&data[data_idx], &buff[buff_idx], copy_sz);
+        buff_idx = 0;
 
         /* proceed to next record */
         length -= BOOT_SWAP_STATUS_PAYLD_SZ;

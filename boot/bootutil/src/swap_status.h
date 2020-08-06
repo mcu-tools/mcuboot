@@ -105,6 +105,10 @@ struct image_status_trailer {
 #define BOOT_SWAP_STATUS_OFFS_PRIM  0UL
 #define BOOT_SWAP_STATUS_OFFS_SEC   (BOOT_SWAP_STATUS_OFFS_PRIM + \
                                     BOOT_SWAP_STATUS_SZ_PRIM)
+
+int boot_write_trailer(const struct flash_area *fap, uint32_t off,
+                        const uint8_t *inbuf, uint8_t inlen);
+
 #endif /* MCUBOOT_SWAP_USING_STATUS */
 
 #endif /* BOOT_BOOTUTIL_SRC_SWAP_STATUS_H_ */
