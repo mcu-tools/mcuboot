@@ -231,17 +231,30 @@ if(CONFIG_MCUBOOT_SERIAL)
     )
 endif()
 
-# CONF_FILE points to the KConfig configuration file of the bootloader
-get_filename_component(CONF_DIR ${CONF_FILE} DIRECTORY)
+# CONF_FILE points to the KConfig configuration files of the bootloader.
+foreach (filepath ${CONF_FILE})
+  file(READ ${filepath} temp_text)
+  string(FIND "${temp_text}" ${CONFIG_BOOT_SIGNATURE_KEY_FILE} match)
+  if (${match} GREATER_EQUAL 0)
+    if (NOT DEFINED CONF_DIR)
+      get_filename_component(CONF_DIR ${filepath} DIRECTORY)
+    else()
+      message(FATAL_ERROR "Signature key file defined in multiple conf files")
+    endif()
+  endif()
+endforeach()
 
 if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
   if(IS_ABSOLUTE ${CONFIG_BOOT_SIGNATURE_KEY_FILE})
     set(KEY_FILE ${CONFIG_BOOT_SIGNATURE_KEY_FILE})
-  elseif(EXISTS ${CONF_DIR}/${CONFIG_BOOT_SIGNATURE_KEY_FILE})
+  elseif((DEFINED CONF_DIR) AND
+	 (EXISTS ${CONF_DIR}/${CONFIG_BOOT_SIGNATURE_KEY_FILE}))
     set(KEY_FILE ${CONF_DIR}/${CONFIG_BOOT_SIGNATURE_KEY_FILE})
   else()
     set(KEY_FILE ${MCUBOOT_DIR}/${CONFIG_BOOT_SIGNATURE_KEY_FILE})
   endif()
+  message("MCUBoot bootloader key file: ${KEY_FILE}")
+
   set(GENERATED_PUBKEY ${ZEPHYR_BINARY_DIR}/autogen-pubkey.c)
   add_custom_command(
     OUTPUT ${GENERATED_PUBKEY}
