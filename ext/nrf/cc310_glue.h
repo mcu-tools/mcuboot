@@ -13,6 +13,13 @@
 #include <devicetree.h>
 #include <string.h>
 
+/*
+ * Name translation for peripherals with only one type of access available.
+ */
+#if !defined(NRF_TRUSTZONE_NONSECURE) && defined(CONFIG_ARM_TRUSTZONE_M)
+#define NRF_CRYPTOCELL   NRF_CRYPTOCELL_S
+#endif
+
 typedef nrf_cc310_bl_hash_context_sha256_t bootutil_sha256_context;
 
 int cc310_ecdsa_verify_secp256r1(uint8_t *hash,
