@@ -1,6 +1,9 @@
 [submodule "sim/mbedtls"]
 	path = ext/mbedtls
 	url = https://github.com/ARMmbed/mbedtls
+[submodule "sim/tinycrypt"]
+	path = ext/tinycrypt
+	url = https://github.com/intel/tinycrypt
 [submodule "boot/cypress/libs/pdl/psoc6pdl"]
 	path = boot/cypress/libs/pdl/psoc6pdl
 	url = https://github.com/cypresssemiconductorco/psoc6pdl.git
@@ -19,3 +22,6 @@
 [submodule "boot/boot_serial/src/cddl_gen"]
 	path = ext/cddl_gen
 	url = https://github.com/oyvindronningstad/cddl_gen.git
+[submodule "ext/tinycrypt"]
+	path = ext/tinycrypt
+	url = https://github.com/intel/tinycrypt
