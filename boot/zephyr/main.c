@@ -128,6 +128,13 @@ static void do_boot(struct boot_rsp *rsp)
     vt = (struct arm_vector_table *)(flash_base +
                                      rsp->br_image_off +
                                      rsp->br_hdr->ih_hdr_size);
+
+#ifdef CONFIG_CPU_CORTEX_M7
+    /* Disable instruction cache and data cache before chain-load the application */
+    SCB_DisableDCache();
+    SCB_DisableICache();
+#endif
+
     irq_lock();
 #ifdef CONFIG_SYS_CLOCK_EXISTS
     sys_clock_disable();
