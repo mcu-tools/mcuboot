@@ -140,10 +140,11 @@ def getpriv(key, minimal):
 @click.command(help="Check that signed image can be verified by given key")
 def verify(key, imgfile):
     key = load_key(key) if key else None
-    ret, version = image.Image.verify(imgfile, key)
+    ret, version, digest = image.Image.verify(imgfile, key)
     if ret == image.VerifyResult.OK:
         print("Image was correctly validated")
         print("Image version: {}.{}.{}+{}".format(*version))
+        print("Image digest: {}".format(digest.hex()))
         return
     elif ret == image.VerifyResult.INVALID_MAGIC:
         print("Invalid image magic; is this an MCUboot image?")
