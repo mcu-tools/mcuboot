@@ -27,9 +27,9 @@ MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 #error "FLASH_DEVICE_ID could not be determined"
 #endif
 
-static struct device *flash_dev;
+static const struct device *flash_dev;
 
-struct device *flash_device_get_binding(char *dev_name)
+const struct device *flash_device_get_binding(char *dev_name)
 {
     if (!flash_dev) {
         flash_dev = device_get_binding(dev_name);
