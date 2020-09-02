@@ -27,6 +27,7 @@
 #include "cy_pdl.h"
 #include "cyhal.h"
 #include "cy_retarget_io.h"
+#include "watchdog.h"
 
 /* Define pins for UART debug output */
 
@@ -60,11 +61,14 @@ const cy_stc_gpio_pin_config_t LED_config =
     .vohSel = 0UL,
 };
 
+#define WATCHDOG_UPD_MESSAGE  "[BlinkyApp] Update watchdog timer started in MCUBootApp to mark successful start of user app\r\n"
+#define WATCHDOG_FREE_MESSAGE "[BlinkyApp] Turn off watchdog timer\r\n"
+
 #ifdef BOOT_IMG
     #define BLINK_PERIOD          (1000u)
     #define GREETING_MESSAGE_VER  "[BlinkyApp] BlinkyApp v1.0 [CM4]\r\n"
     #define GREETING_MESSAGE_INFO "[BlinkyApp] Red led blinks with 1 sec period\r\n"
-#elif UPGRADE_IMG
+#elif defined UPGRADE_IMG
     #define BLINK_PERIOD          (250u)
     #define GREETING_MESSAGE_VER  "[BlinkyApp] BlinkyApp v2.0 [+]\r\n"
     #define GREETING_MESSAGE_INFO "[BlinkyApp] Red led blinks with 0.25 sec period\r\n"
@@ -74,8 +78,7 @@ const cy_stc_gpio_pin_config_t LED_config =
 
 void check_result(int res)
 {
-    if (res != CY_RSLT_SUCCESS)
-    {
+    if (res != CY_RSLT_SUCCESS) {
         CY_ASSERT(0);
     }
 }
@@ -84,11 +87,11 @@ void check_result(int res)
 * Writes 1 byte `src` into flash memory at `address`
 * It does a sequence of RD/Modify/WR of data in a Flash Row.
  */
-int flash_write_byte(uint32_t address, uint8_t src)
+cy_en_flashdrv_status_t flash_write_byte(uint32_t address, uint8_t src)
 {
-    cy_en_flashdrv_status_t rc = CY_FLASH_DRV_SUCCESS;
+    cy_en_flashdrv_status_t rc = CY_FLASH_DRV_ERR_UNC;
     uint32_t row_addr = 0;
-    uint8_t row_buff[512];
+    uint8_t row_buff[CY_FLASH_SIZEOF_ROW];
 
     /* accepting arbitrary address */
     row_addr = (address/CY_FLASH_SIZEOF_ROW)*CY_FLASH_SIZEOF_ROW;
@@ -102,7 +105,7 @@ int flash_write_byte(uint32_t address, uint8_t src)
     /* Programming updated row back */
     rc = Cy_Flash_WriteRow(row_addr, (const uint32_t *)row_buff);
 
-    return (int) rc;
+    return rc;
 }
 
 void test_app_init_hardware(void)
@@ -134,6 +137,12 @@ int main(void)
 
     printf(GREETING_MESSAGE_INFO);
 
+    /* Update watchdog timer to mark successful start up of application */
+    printf(WATCHDOG_UPD_MESSAGE);
+    cy_wdg_kick();
+    printf(WATCHDOG_FREE_MESSAGE);
+    cy_wdg_free();
+
 #if defined(SWAP_ENABLED) && defined(UPGRADE_IMG)
 
     #define USER_SWAP_IMAGE_OK_OFFS (24)
@@ -149,12 +158,10 @@ int main(void)
     if (*((uint8_t *)img_ok_addr) != USER_SWAP_IMAGE_OK)
     {
         rc = flash_write_byte(img_ok_addr, USER_SWAP_IMAGE_OK);
-        if (0 == rc)
-        {
+        if (CY_FLASH_DRV_SUCCESS == rc) {
             printf("[BlinkyApp] SWAP Status : Image OK was set at 0x%08lx.\r\n", img_ok_addr);
         }
-        else
-        {
+        else {
             printf("[BlinkyApp] SWAP Status : Failed to set Image OK.\r\n");
         }
     } else
@@ -163,8 +170,7 @@ int main(void)
     }
 #endif
 
-    for (;;)
-    {
+    for (;;) {
         /* Toggle the user LED periodically */
         Cy_SysLib_Delay(blinky_period/2);
 

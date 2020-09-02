@@ -33,6 +33,7 @@ MBEDTLS_PATH = $(CURDIR)/../../ext
 
 # Collect source files for PDL
 SOURCES_PDL := $(wildcard $(CUR_LIBS_PATH)/pdl/psoc6pdl/drivers/source/*.c)
+SOURCES_WATCHDOG := $(wildcard $(CUR_LIBS_PATH)/watchdog/*.c)
 
 # PDL related include directories
 INCLUDE_DIRS_PDL := $(CUR_LIBS_PATH)/pdl/psoc6pdl/drivers/include
@@ -42,12 +43,14 @@ INCLUDE_DIRS_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/cmsis/include
 
 # core-libs related include directories
 INCLUDE_DIRS_CORE_LIB := $(CUR_LIBS_PATH)/core-lib/include
+INCLUDE_DIRS_WATCHDOG := $(CUR_LIBS_PATH)/watchdog
 
 SOURCES_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/cyhal_crypto_common.c
 SOURCES_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/cyhal_hwmgr.c
 
 # Collected source files for libraries
 SOURCES_LIBS := $(SOURCES_PDL)
+SOURCES_LIBS += $(SOURCES_WATCHDOG)
 SOURCES_LIBS += $(SOURCES_PLATFORM)
 SOURCES_LIBS += $(SOURCES_HAL)
 
@@ -61,6 +64,7 @@ INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/pin_pac
 INCLUDE_DIRS_LIBS := $(addprefix -I,$(INCLUDE_DIRS_PDL))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_PLATFORM))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_CORE_LIB))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL))
 
 ################################################################################
