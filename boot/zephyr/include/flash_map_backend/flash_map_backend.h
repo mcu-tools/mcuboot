@@ -38,7 +38,7 @@ extern "C" {
  *
  * Returns the flash device on success, or NULL on failure.
  */
-struct device *flash_device_get_binding(char *dev_name);
+const struct device *flash_device_get_binding(char *dev_name);
 
 /*
  * Retrieve a memory-mapped flash device's base address.
