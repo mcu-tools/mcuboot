@@ -257,7 +257,8 @@ class BasedIntParamType(click.ParamType):
               help='When padding allow for this amount of sectors (defaults '
                    'to 128)')
 @click.option('--confirm', default=False, is_flag=True,
-              help='When padding the image, mark it as confirmed')
+              help='When padding the image, mark it as confirmed (implies '
+                   '--pad)')
 @click.option('--pad', default=False, is_flag=True,
               help='Pad image to --slot-size bytes, adding trailer magic')
 @click.option('-S', '--slot-size', type=BasedIntParamType(), required=True,
@@ -291,6 +292,11 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt, infile, outfile, dependencies, load_addr, hex_addr,
          erased_val, save_enctlv, security_counter, boot_record, custom_tlv):
+
+    if confirm:
+        # Confirmed but non-padded images don't make much sense, because
+        # otherwise there's no trailer area for writing the confirmed status.
+        pad = True
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, confirm=confirm,
                       align=int(align), slot_size=slot_size,
