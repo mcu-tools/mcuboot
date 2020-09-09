@@ -168,23 +168,39 @@ static struct flash_area scratch =
 #endif
 
 #ifdef MCUBOOT_SWAP_USING_STATUS
+
+#ifndef CY_BOOT_USE_EXTERNAL_FLASH
+#if (MCUBOOT_IMAGE_NUMBER == 1) /* if single-image, internal flash */
+#define SWAP_STATUS_PARTITION_OFF   (CY_FLASH_BASE + \
+                                     CY_BOOT_BOOTLOADER_SIZE + \
+                                     CY_BOOT_PRIMARY_1_SIZE + \
+                                     CY_BOOT_SECONDARY_1_SIZE)
+#elif (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image, internal flash */
+#define SWAP_STATUS_PARTITION_OFF   (CY_FLASH_BASE + \
+                                     CY_BOOT_BOOTLOADER_SIZE + \
+                                     CY_BOOT_PRIMARY_1_SIZE + \
+                                     CY_BOOT_SECONDARY_1_SIZE + \
+                                     CY_BOOT_PRIMARY_2_SIZE + \
+                                     CY_BOOT_SECONDARY_2_SIZE)
+#endif /* MCUBOOT_IMAGE_NUMBER */
+#else
+#if (MCUBOOT_IMAGE_NUMBER == 1) /* if single-image, external flash */
+#define SWAP_STATUS_PARTITION_OFF   (CY_FLASH_BASE + \
+                                     CY_BOOT_BOOTLOADER_SIZE + \
+                                     CY_BOOT_PRIMARY_1_SIZE)
+#elif (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image, external flash */
+#define SWAP_STATUS_PARTITION_OFF   (CY_FLASH_BASE + \
+                                     CY_BOOT_BOOTLOADER_SIZE + \
+                                     CY_BOOT_PRIMARY_1_SIZE + \
+                                     CY_BOOT_PRIMARY_2_SIZE)
+#endif /* MCUBOOT_IMAGE_NUMBER */
+#endif /* CY_BOOT_USE_EXTERNAL_FLASH */
+
 static struct flash_area status =
 {
     .fa_id = FLASH_AREA_IMAGE_SWAP_STATUS,
-#if (MCUBOOT_IMAGE_NUMBER == 1) /* if single-image */
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
-    .fa_off = CY_FLASH_BASE +\
-                CY_BOOT_BOOTLOADER_SIZE +\
-                CY_BOOT_PRIMARY_1_SIZE +\
-                CY_BOOT_SECONDARY_1_SIZE,
-#elif (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image */
-    .fa_off = CY_FLASH_BASE +\
-                CY_BOOT_BOOTLOADER_SIZE +\
-                CY_BOOT_PRIMARY_1_SIZE +\
-                CY_BOOT_SECONDARY_1_SIZE +\
-                CY_BOOT_PRIMARY_2_SIZE +\
-                CY_BOOT_SECONDARY_2_SIZE,
-#endif
+    .fa_off = SWAP_STATUS_PARTITION_OFF,
     // TODO: think of multi-image case as well
     .fa_size = (BOOT_SWAP_STATUS_SZ_PRIM + BOOT_SWAP_STATUS_SZ_SEC)
 };
@@ -562,16 +578,31 @@ int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
 
         if(fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
         {
+#if defined(MCUBOOT_SWAP_USING_STATUS) && defined(CY_BOOT_USE_EXTERNAL_FLASH)
+            if(idx == FLASH_AREA_IMAGE_SWAP_STATUS)
+            {
+                sector_size = CY_FLASH_SIZEOF_ROW;
+            }
+            else
+            {
+                sector_size = qspi_get_erase_size();
+            }
+#else
             sector_size = CY_FLASH_SIZEOF_ROW;
+#endif /* MCUBOOT_SWAP_USING_STATUS && CY_BOOT_USE_EXTERNAL_FLASH */
         }
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
         else if((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
         {
             /* implement for SMIF */
             /* lets assume they are equal */
+#ifdef MCUBOOT_SWAP_USING_STATUS
+            sector_size = qspi_get_erase_size();
+#else
             sector_size = CY_FLASH_SIZEOF_ROW;
+#endif /* MCUBOOT_SWAP_USING_STATUS */
         }
-#endif
+#endif /* CY_BOOT_USE_EXTERNAL_FLASH */
         else
         {
             rc = -1;
