@@ -4,11 +4,13 @@ package mcutests // github.com/JuulLabs-OSS/mcuboot/samples/zephyr/mcutests
 // The main driver of this consists of a series of tests.  Each test
 // then contains a series of commands and expect results.
 var Tests = []struct {
-	Name  string
-	Tests []OneTest
+	Name      string
+	ShortName string
+	Tests     []OneTest
 }{
 	{
-		Name: "Good RSA",
+		Name:      "Good RSA",
+		ShortName: "good-rsa",
 		Tests: []OneTest{
 			{
 				Commands: [][]string{
@@ -38,7 +40,8 @@ var Tests = []struct {
 		},
 	},
 	{
-		Name: "Good ECDSA",
+		Name:      "Good ECDSA",
+		ShortName: "good-ecdsa",
 		Tests: []OneTest{
 			{
 				Commands: [][]string{
@@ -68,7 +71,8 @@ var Tests = []struct {
 		},
 	},
 	{
-		Name: "Overwrite",
+		Name:      "Overwrite",
+		ShortName: "overwrite",
 		Tests: []OneTest{
 			{
 				Commands: [][]string{
@@ -98,7 +102,8 @@ var Tests = []struct {
 		},
 	},
 	{
-		Name: "Bad RSA",
+		Name:      "Bad RSA",
+		ShortName: "bad-rsa-upgrade",
 		Tests: []OneTest{
 			{
 				Commands: [][]string{
@@ -128,7 +133,8 @@ var Tests = []struct {
 		},
 	},
 	{
-		Name: "Bad RSA",
+		Name:      "Bad RSA",
+		ShortName: "bad-ecdsa-upgrade",
 		Tests: []OneTest{
 			{
 				Commands: [][]string{
@@ -158,7 +164,8 @@ var Tests = []struct {
 		},
 	},
 	{
-		Name: "No bootcheck",
+		Name:      "No bootcheck",
+		ShortName: "no-bootcheck",
 		Tests: []OneTest{
 			{
 				Commands: [][]string{
@@ -188,7 +195,8 @@ var Tests = []struct {
 		},
 	},
 	{
-		Name: "Wrong RSA",
+		Name:      "Wrong RSA",
+		ShortName: "wrong-rsa",
 		Tests: []OneTest{
 			{
 				Commands: [][]string{
@@ -218,7 +226,8 @@ var Tests = []struct {
 		},
 	},
 	{
-		Name: "Wrong ECDSA",
+		Name:      "Wrong ECDSA",
+		ShortName: "wrong-ecdsa",
 		Tests: []OneTest{
 			{
 				Commands: [][]string{
