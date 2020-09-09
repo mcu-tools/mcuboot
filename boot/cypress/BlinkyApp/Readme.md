@@ -79,6 +79,18 @@ To get appropriate artifact for second image PRIMARY slot run this command:
 
 *Note:* only 2 images are supported at the moment.
 
+**How to build upgrade image for SWAP mode:**
+
+`MCUBootApp` can upgrade image either by overwriting an image from a secondary slot to a primary slot or by swapping the two images.
+
+To build `BlinkyApp` for different upgrade mode SWAP_UPGRADE flag is used.
+
+Use SWAP_UPGRADE = 0 for overwrite mode.
+
+Use SWAP_UPGRADE = 1 for swap upgrade mode.
+
+Use SWAP_UPGRADE = 2 for swap upgrade mode, upgrade image is in the external memory.
+
 **How to build upgrade image for external memory:**
 
 To prepare MCUBootApp for work with external memory please refer to `MCUBootApp/ExternalMemory.md`.

@@ -36,6 +36,7 @@ IMG_TYPES = BOOT UPGRADE
 
 # use SWAP_UPGRADE = 0 for overwrite only mode
 # use SWAP_UPGRADE = 1 for swap upgrade mode
+# use SWAP_UPGRADE = 2 for swap upgrade mode, upgrade image is in the external memory
 SWAP_UPGRADE ?= 1
 
 # possible values are 0 and 0xff

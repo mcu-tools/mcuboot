@@ -34,21 +34,33 @@
 #define CY_BOOT_BOOTLOADER_SIZE             (0x18000)
 #endif
 
+#ifndef CY_BOOT_USE_EXTERNAL_FLASH
+#define CY_BOOT_IMAGE_1_SIZE                (0x10000)
+#if (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image */
+#define CY_BOOT_IMAGE_2_SIZE                (0x10000)
+#endif
+#else
+#define CY_BOOT_IMAGE_1_SIZE                (0xC0000)
+#if (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image */
+#define CY_BOOT_IMAGE_2_SIZE                (0xC0000)
+#endif
+#endif /* CY_BOOT_USE_EXTERNAL_FLASH */
+
 #ifndef CY_BOOT_PRIMARY_1_SIZE
-#define CY_BOOT_PRIMARY_1_SIZE              (0x10000)
+#define CY_BOOT_PRIMARY_1_SIZE              CY_BOOT_IMAGE_1_SIZE
 #endif
 
 #ifndef CY_BOOT_SECONDARY_1_SIZE
-#define CY_BOOT_SECONDARY_1_SIZE            (0x10000)
+#define CY_BOOT_SECONDARY_1_SIZE            CY_BOOT_IMAGE_1_SIZE
 #endif
 
 #if (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image */
 #ifndef CY_BOOT_PRIMARY_2_SIZE
-#define CY_BOOT_PRIMARY_2_SIZE              (0x10000)
+#define CY_BOOT_PRIMARY_2_SIZE              CY_BOOT_IMAGE_2_SIZE
 #endif
 
 #ifndef CY_BOOT_SECONDARY_2_SIZE
-#define CY_BOOT_SECONDARY_2_SIZE            (0x10000)
+#define CY_BOOT_SECONDARY_2_SIZE            CY_BOOT_IMAGE_2_SIZE
 #endif
 #endif
 

@@ -93,7 +93,7 @@ int swap_status_read_record(uint32_t rec_offset, uint8_t *data, uint32_t *copy_c
 { /* returns BOOT_SWAP_STATUS_PAYLD_SZ of data */
     int rc = -1;
 
-    uint32_t fin_offset, data_offset;
+    uint32_t fin_offset, data_offset = 0;
     uint32_t counter, crc, magic;
     uint32_t crc_fail = 0;
     uint32_t magic_fail = 0;

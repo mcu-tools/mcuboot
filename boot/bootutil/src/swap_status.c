@@ -130,10 +130,10 @@ swap_read_status_bytes(const struct flash_area *fap,
     uint32_t off;
     uint8_t status;
     uint8_t last_status_move;
-    uint8_t last_status_swap;
+    uint8_t last_status_swap = 0;
     int max_entries;
     int found_idx_move;
-    int found_idx_swap;
+    int found_idx_swap = 0;
     int move_entries;
     int rc;
     int last_rc;
