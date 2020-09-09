@@ -23,6 +23,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/JuulLabs-OSS/mcuboot/samples/zephyr/mcutests"
 )
 
 // logIn gives the pathname of the log output from the Zephyr device.
@@ -38,259 +40,6 @@ var logIn = flag.String("login", "/tmp/zephyr.out", "File name of terminal log f
 
 // Output from this test run is written to the given log file.
 var logOut = flag.String("logout", "tests.log", "Log file to write to")
-
-// The main driver of this consists of a series of tests.  Each test
-// then contains a series of commands and expect results.
-var tests = []struct {
-	name  string
-	tests []oneTest
-}{
-	{
-		name: "Good RSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-good-rsa"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello2",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "Good ECDSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-good-ecdsa"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello2",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "Overwrite",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-overwrite"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello2",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello2",
-			},
-		},
-	},
-	{
-		name: "Bad RSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-bad-rsa-upgrade"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "Bad RSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-bad-ecdsa-upgrade"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "No bootcheck",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-no-bootcheck"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "Wrong RSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-wrong-rsa"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "Wrong ECDSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-wrong-ecdsa"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-}
-
-type oneTest struct {
-	commands [][]string
-	expect   string
-}
 
 func main() {
 	err := run()
@@ -314,13 +63,13 @@ func run() error {
 	lg := bufio.NewWriter(logFile)
 	defer lg.Flush()
 
-	for _, group := range tests {
-		fmt.Printf("Running %q\n", group.name)
+	for _, group := range mcutests.Tests {
+		fmt.Printf("Running %q\n", group.Name)
 		fmt.Fprintf(lg, "-------------------------------------\n")
-		fmt.Fprintf(lg, "---- Running %q\n", group.name)
+		fmt.Fprintf(lg, "---- Running %q\n", group.Name)
 
-		for _, test := range group.tests {
-			for _, cmd := range test.commands {
+		for _, test := range group.Tests {
+			for _, cmd := range test.Commands {
 				fmt.Printf("    %s\n", cmd)
 				fmt.Fprintf(lg, "---- Run: %s\n", cmd)
 				err = runCommand(cmd, lg)
@@ -329,7 +78,7 @@ func run() error {
 				}
 			}
 
-			err = expect(lg, lines, test.expect)
+			err = expect(lg, lines, test.Expect)
 			if err != nil {
 				return err
 			}
