@@ -13,8 +13,10 @@ var Tests = []struct {
 		ShortName: "good-rsa",
 		Tests: []OneTest{
 			{
-				Commands: [][]string{
+				Build: [][]string{
 					{"make", "test-good-rsa"},
+				},
+				Commands: [][]string{
 					{"make", "flash_boot"},
 				},
 				Expect: "Unable to find bootable image",
@@ -44,8 +46,10 @@ var Tests = []struct {
 		ShortName: "good-ecdsa",
 		Tests: []OneTest{
 			{
-				Commands: [][]string{
+				Build: [][]string{
 					{"make", "test-good-ecdsa"},
+				},
+				Commands: [][]string{
 					{"make", "flash_boot"},
 				},
 				Expect: "Unable to find bootable image",
@@ -75,8 +79,10 @@ var Tests = []struct {
 		ShortName: "overwrite",
 		Tests: []OneTest{
 			{
-				Commands: [][]string{
+				Build: [][]string{
 					{"make", "test-overwrite"},
+				},
+				Commands: [][]string{
 					{"make", "flash_boot"},
 				},
 				Expect: "Unable to find bootable image",
@@ -106,8 +112,10 @@ var Tests = []struct {
 		ShortName: "bad-rsa-upgrade",
 		Tests: []OneTest{
 			{
-				Commands: [][]string{
+				Build: [][]string{
 					{"make", "test-bad-rsa-upgrade"},
+				},
+				Commands: [][]string{
 					{"make", "flash_boot"},
 				},
 				Expect: "Unable to find bootable image",
@@ -137,8 +145,10 @@ var Tests = []struct {
 		ShortName: "bad-ecdsa-upgrade",
 		Tests: []OneTest{
 			{
-				Commands: [][]string{
+				Build: [][]string{
 					{"make", "test-bad-ecdsa-upgrade"},
+				},
+				Commands: [][]string{
 					{"make", "flash_boot"},
 				},
 				Expect: "Unable to find bootable image",
@@ -168,8 +178,10 @@ var Tests = []struct {
 		ShortName: "no-bootcheck",
 		Tests: []OneTest{
 			{
-				Commands: [][]string{
+				Build: [][]string{
 					{"make", "test-no-bootcheck"},
+				},
+				Commands: [][]string{
 					{"make", "flash_boot"},
 				},
 				Expect: "Unable to find bootable image",
@@ -199,8 +211,10 @@ var Tests = []struct {
 		ShortName: "wrong-rsa",
 		Tests: []OneTest{
 			{
-				Commands: [][]string{
+				Build: [][]string{
 					{"make", "test-wrong-rsa"},
+				},
+				Commands: [][]string{
 					{"make", "flash_boot"},
 				},
 				Expect: "Unable to find bootable image",
@@ -230,8 +244,10 @@ var Tests = []struct {
 		ShortName: "wrong-ecdsa",
 		Tests: []OneTest{
 			{
-				Commands: [][]string{
+				Build: [][]string{
 					{"make", "test-wrong-ecdsa"},
+				},
+				Commands: [][]string{
 					{"make", "flash_boot"},
 				},
 				Expect: "Unable to find bootable image",
@@ -259,6 +275,7 @@ var Tests = []struct {
 }
 
 type OneTest struct {
+	Build    [][]string
 	Commands [][]string
 	Expect   string
 }

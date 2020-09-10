@@ -41,6 +41,8 @@ var logIn = flag.String("login", "/tmp/zephyr.out", "File name of terminal log f
 // Output from this test run is written to the given log file.
 var logOut = flag.String("logout", "tests.log", "Log file to write to")
 
+var preBuilt = flag.String("prebuilt", "", "Name of file with prebuilt tests")
+
 func main() {
 	err := run()
 	if err != nil {
@@ -69,13 +71,20 @@ func run() error {
 		fmt.Fprintf(lg, "---- Running %q\n", group.Name)
 
 		for _, test := range group.Tests {
-			for _, cmd := range test.Commands {
-				fmt.Printf("    %s\n", cmd)
-				fmt.Fprintf(lg, "---- Run: %s\n", cmd)
-				err = runCommand(cmd, lg)
+			if *preBuilt == "" {
+				// No prebuilt, build the tests
+				// ourselves.
+				err = runCommands(test.Build, lg)
 				if err != nil {
 					return err
 				}
+			} else {
+				panic("TODO")
+			}
+
+			err = runCommands(test.Commands, lg)
+			if err != nil {
+				return err
 			}
 
 			err = expect(lg, lines, test.Expect)
@@ -86,6 +95,20 @@ func run() error {
 			fmt.Fprintf(lg, "---- Passed\n")
 		}
 		fmt.Printf("    Passed!\n")
+	}
+
+	return nil
+}
+
+// Run a set of commands
+func runCommands(cmds [][]string, lg io.Writer) error {
+	for _, cmd := range cmds {
+		fmt.Printf("    %s\n", cmd)
+		fmt.Fprintf(lg, "---- Run: %s\n", cmd)
+		err := runCommand(cmd, lg)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
