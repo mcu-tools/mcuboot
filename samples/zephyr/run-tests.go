@@ -14,6 +14,7 @@
 package main
 
 import (
+	"archive/zip"
 	"bufio"
 	"flag"
 	"fmt"
@@ -65,6 +66,17 @@ func run() error {
 	lg := bufio.NewWriter(logFile)
 	defer lg.Flush()
 
+	var extractor *Extractor
+
+	if *preBuilt != "" {
+		// If there are pre-built images, open them.
+		extractor, err = NewExtractor(*preBuilt)
+		if err != nil {
+			return err
+		}
+		defer extractor.Close()
+	}
+
 	for _, group := range mcutests.Tests {
 		fmt.Printf("Running %q\n", group.Name)
 		fmt.Fprintf(lg, "-------------------------------------\n")
@@ -79,7 +91,12 @@ func run() error {
 					return err
 				}
 			} else {
-				panic("TODO")
+				// Extract the build artifacts from
+				// the zip file.
+				err = extractor.Extract(group.ShortName)
+				if err != nil {
+					return err
+				}
 			}
 
 			err = runCommands(test.Commands, lg)
@@ -188,4 +205,86 @@ func readLog(sink chan<- string) {
 		// Pause a little
 		time.Sleep(250 * time.Millisecond)
 	}
+}
+
+// An Extractor holds an opened Zip file, and is able to extract files
+// based on the directory name.
+type Extractor struct {
+	file *os.File
+	zip  *zip.Reader
+}
+
+// NewExtractor returns an Extractor based on the contents of a zip
+// file.
+func NewExtractor(name string) (*Extractor, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	size, err := f.Seek(0, 2)
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+
+	rd, err := zip.NewReader(f, size)
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+
+	return &Extractor{
+		file: f,
+		zip:  rd,
+	}, nil
+}
+
+func (e *Extractor) Close() error {
+	return e.file.Close()
+}
+
+// Extract extracts the files of the given directory name into the
+// current directory.  These files will overwrite any files of these
+// names that already exist (presumably from previous extractions).
+func (e *Extractor) Extract(dir string) error {
+	prefix := dir + "/"
+
+	count := 0
+	for _, file := range e.zip.File {
+		if len(file.Name) > len(prefix) && strings.HasPrefix(file.Name, prefix) {
+			outName := file.Name[len(prefix):len(file.Name)]
+			fmt.Printf("->%q\n", outName)
+
+			err := e.single(file, outName)
+			if err != nil {
+				return err
+			}
+
+			count += 1
+		}
+	}
+
+	if count == 0 {
+		return fmt.Errorf("File for %s missing from archive", dir)
+	}
+
+	return nil
+}
+
+// single extracts a single file from the zip archive, writing the
+// results to a file 'outName'.
+func (e *Extractor) single(file *zip.File, outName string) error {
+	inf, err := file.Open()
+	if err != nil {
+		return err
+	}
+
+	outf, err := os.Create(outName)
+	if err != nil {
+		return err
+	}
+	defer outf.Close()
+
+	_, err = io.Copy(outf, inf)
+	return err
 }
