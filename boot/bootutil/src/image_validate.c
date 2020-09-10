@@ -73,12 +73,18 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     uint32_t blk_off;
     uint32_t tlv_off;
 
-#if (BOOT_IMAGE_NUMBER == 1) || !defined(MCUBOOT_ENC_IMAGES)
+#if (BOOT_IMAGE_NUMBER == 1) || !defined(MCUBOOT_ENC_IMAGES) || \
+    defined(MCUBOOT_RAM_LOAD)
     (void)enc_state;
     (void)image_index;
     (void)hdr_size;
     (void)blk_off;
     (void)tlv_off;
+#ifdef MCUBOOT_RAM_LOAD
+    (void)blk_sz;
+    (void)off;
+    (void)rc;
+#endif
 #endif
 
 #ifdef MCUBOOT_ENC_IMAGES
@@ -105,6 +111,9 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     /* If protected TLVs are present they are also hashed. */
     size += hdr->ih_protect_tlv_size;
 
+#ifdef MCUBOOT_RAM_LOAD
+    bootutil_sha256_update(&sha256_ctx,(void*)(hdr->ih_load_addr), size);
+#else
     for (off = 0; off < size; off += blk_sz) {
         blk_sz = size - off;
         if (blk_sz > tmp_buf_sz) {
@@ -139,6 +148,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 #endif
         bootutil_sha256_update(&sha256_ctx, tmp_buf, blk_sz);
     }
+#endif /* MCUBOOT_RAM_LOAD */
     bootutil_sha256_finish(&sha256_ctx, hash_result);
 
     return 0;
@@ -291,7 +301,7 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
         return BOOT_EBADIMAGE;
     }
 
-    rc = flash_area_read(fap, off, img_security_cnt, len);
+    rc = LOAD_IMAGE_DATA(hdr, fap, off, img_security_cnt, len);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -367,7 +377,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             if (len != sizeof(hash)) {
                 return -1;
             }
-            rc = flash_area_read(fap, off, buf, sizeof hash);
+            rc = LOAD_IMAGE_DATA(hdr, fap, off, buf, sizeof(hash));
             if (rc) {
                 return rc;
             }
@@ -385,7 +395,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             if (len > 32) {
                 return -1;
             }
-            rc = flash_area_read(fap, off, buf, len);
+            rc = LOAD_IMAGE_DATA(hdr, fap, off, buf, len);
             if (rc) {
                 return rc;
             }
@@ -402,7 +412,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             if (len > sizeof(key_buf)) {
                 return -1;
             }
-            rc = flash_area_read(fap, off, key_buf, len);
+            rc = LOAD_IMAGE_DATA(hdr, fap, off, key_buf, len);
             if (rc) {
                 return rc;
             }
@@ -421,7 +431,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             if (!EXPECTED_SIG_LEN(len) || len > sizeof(buf)) {
                 return -1;
             }
-            rc = flash_area_read(fap, off, buf, len);
+            rc = LOAD_IMAGE_DATA(hdr, fap, off, buf, len);
             if (rc) {
                 return -1;
             }
@@ -442,7 +452,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
                 return -1;
             }
 
-            rc = flash_area_read(fap, off, &img_security_cnt, len);
+            rc = LOAD_IMAGE_DATA(hdr, fap, off, &img_security_cnt, len);
             if (rc) {
                 return rc;
             }
