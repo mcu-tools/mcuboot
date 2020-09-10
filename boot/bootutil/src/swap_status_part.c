@@ -75,13 +75,14 @@ int32_t swap_status_init_offset(uint32_t area_id)
     case FLASH_AREA_IMAGE_1:
         offset = BOOT_SWAP_STATUS_SIZE;
         break;
-// TODO: add multi-image conditional compilation here
+#if (MCUBOOT_IMAGE_NUMBER == 2)
     case FLASH_AREA_IMAGE_2:
         offset = 2*BOOT_SWAP_STATUS_SIZE;
         break;
     case FLASH_AREA_IMAGE_3:
         offset = 3*BOOT_SWAP_STATUS_SIZE;
         break;
+#endif
     default:
         offset = -1;
         break;

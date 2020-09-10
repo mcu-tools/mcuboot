@@ -37,7 +37,7 @@
 #ifndef CY_BOOT_USE_EXTERNAL_FLASH
 #define CY_BOOT_IMAGE_1_SIZE                (0x10000)
 #if (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image */
-#define CY_BOOT_IMAGE_2_SIZE                (0x10000)
+#define CY_BOOT_IMAGE_2_SIZE                (0x20000)
 #endif
 #else
 #define CY_BOOT_IMAGE_1_SIZE                (0xC0000)
