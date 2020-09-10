@@ -101,12 +101,12 @@ boot_read_image_headers(struct boot_loader_state *state, bool require_all,
     return 0;
 }
 
-#ifndef MCUBOOT_DIRECT_XIP
+#if !defined(MCUBOOT_DIRECT_XIP)
 /*
  * Compute the total size of the given image.  Includes the size of
  * the TLVs.
  */
-#if !defined(MCUBOOT_OVERWRITE_ONLY) || defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+#if !defined(MCUBOOT_OVERWRITE_ONLY) ||  defined(MCUBOOT_OVERWRITE_ONLY_FAST)
 static int
 boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
 {
@@ -165,6 +165,7 @@ done:
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
 
+#if !defined(MCUBOOT_RAM_LOAD)
 static uint32_t
 boot_write_sz(struct boot_loader_state *state)
 {
@@ -379,6 +380,7 @@ done:
     flash_area_close(fap);
     return rc;
 }
+#endif /* !MCUBOOT_RAM_LOAD */
 #endif /* !MCUBOOT_DIRECT_XIP */
 
 /*
@@ -421,7 +423,7 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
     return 0;
 }
 
-#ifndef MCUBOOT_DIRECT_XIP
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 static int
 split_image_check(struct image_header *app_hdr,
                   const struct flash_area *app_fap,
@@ -450,7 +452,7 @@ split_image_check(struct image_header *app_hdr,
 
     return 0;
 }
-#endif /* !MCUBOOT_DIRECT_XIP */
+#endif /* !MCUBOOT_DIRECT_XIP && !MCUBOOT_RAM_LOAD */
 
 /*
  * Check that this is a valid header.  Valid means that the magic is
@@ -522,6 +524,7 @@ boot_check_header_erased(struct boot_loader_state *state, int slot)
 
 #if (BOOT_IMAGE_NUMBER > 1) || \
     defined(MCUBOOT_DIRECT_XIP) || \
+    defined(MCUBOOT_RAM_LOAD) || \
     (defined(MCUBOOT_OVERWRITE_ONLY) && defined(MCUBOOT_DOWNGRADE_PREVENTION))
 /**
  * Compare image version numbers not including the build number
@@ -630,7 +633,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
 #endif
 
     if (!boot_is_header_valid(hdr, fap) || boot_image_check(state, hdr, fap, bs)) {
-        if ((slot != BOOT_PRIMARY_SLOT) || IS_IN_XIP_MODE()) {
+        if ((slot != BOOT_PRIMARY_SLOT) || ARE_SLOTS_EQUIVALENT()) {
             flash_area_erase(fap, 0, fap->fa_size);
             /* Image is invalid, erase it to prevent further unnecessary
              * attempts to validate and boot it.
@@ -697,7 +700,7 @@ done:
 }
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
 
-#ifndef MCUBOOT_DIRECT_XIP
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 /**
  * Determines which swap operation to perform, if any.  If it is determined
  * that a swap operation is required, the image in the secondary slot is checked
@@ -1932,7 +1935,7 @@ done:
     return rc;
 }
 
-#else /* MCUBOOT_DIRECT_XIP */
+#else /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 
 /**
  * Iterates over all slots and determines which contain a firmware image.
@@ -1975,6 +1978,149 @@ boot_get_slot_usage(struct boot_loader_state *state, uint8_t slot_usage[],
     return image_cnt;
 }
 
+#ifdef MCUBOOT_RAM_LOAD
+
+#if !defined(IMAGE_EXECUTABLE_RAM_START) || !defined(IMAGE_EXECUTABLE_RAM_SIZE)
+#error "Platform MUST define executable RAM bounds in case of RAM_LOAD"
+#endif
+
+/**
+ * Verifies that the image in a slot will be loaded within the predefined bounds
+ * that are allowed to be used by executable images.
+ *
+ * @param img_dst         The address to which the image is going to be copied.
+ * @param img_sz          The size of the image.
+ *
+ * @return                0 on success; nonzero on failure.
+ */
+static int
+boot_verify_ram_load_address(uint32_t img_dst, uint32_t img_sz)
+{
+    uint32_t img_end_addr;
+
+    if (img_dst < IMAGE_EXECUTABLE_RAM_START) {
+        return BOOT_EBADIMAGE;
+    }
+
+    if (!boot_u32_safe_add(&img_end_addr, img_dst, img_sz)) {
+        return BOOT_EBADIMAGE;
+    }
+
+    if (img_end_addr > (IMAGE_EXECUTABLE_RAM_START +
+                        IMAGE_EXECUTABLE_RAM_SIZE)) {
+        return BOOT_EBADIMAGE;
+    }
+
+    return 0;
+}
+
+/**
+ * Copies an image from a slot in the flash to an SRAM address.
+ *
+ * @param  slot     The flash slot of the image to be copied to SRAM.
+ * @param  img_dst  The address at which the image needs to be copied to
+ *                  SRAM.
+ * @param  img_sz   The size of the image that needs to be copied to SRAM.
+ *
+ * @return          0 on success; nonzero on failure.
+ */
+static int
+boot_copy_image_to_sram(int slot, uint32_t img_dst, uint32_t img_sz)
+{
+    int rc;
+    const struct flash_area *fap_src = NULL;
+
+    rc = flash_area_open(flash_area_id_from_image_slot(slot), &fap_src);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    /* Direct copy from flash to its new location in SRAM. */
+    rc = flash_area_read(fap_src, 0, (void *)img_dst, img_sz);
+    if (rc != 0) {
+        BOOT_LOG_INF("Error whilst copying image from Flash to SRAM: %d", rc);
+    }
+
+    flash_area_close(fap_src);
+
+    return rc;
+}
+
+/**
+ * Copies an image from a slot in the flash to an SRAM address. The load
+ * address and image size is extracted from the image header.
+ *
+ * @param  state    Boot loader status information.
+ * @param  slot     The flash slot of the image to be copied to SRAM.
+ * @param  hdr      Pointer to the image header structure of the image
+ * @param  img_dst  Pointer to the address at which the image needs to be
+ *                  copied to SRAM.
+ * @param  img_sz   Pointer to the size of the image that needs to be
+ *                  copied to SRAM.
+ *
+ * @return          0 on success; nonzero on failure.
+ */
+static int
+boot_load_image_to_sram(struct boot_loader_state *state, uint32_t slot,
+                        struct image_header *hdr, uint32_t *img_dst,
+                        uint32_t *img_sz)
+{
+    int rc;
+
+    if (hdr->ih_flags & IMAGE_F_RAM_LOAD) {
+
+        *img_dst = hdr->ih_load_addr;
+
+        rc = boot_read_image_size(state, slot, img_sz);
+        if (rc != 0) {
+            return rc;
+        }
+
+        rc = boot_verify_ram_load_address(*img_dst, *img_sz);
+        if (rc != 0) {
+            BOOT_LOG_INF("Image RAM load address 0x%x is invalid.", *img_dst);
+            return rc;
+        }
+
+        /* Copy image to the load address from where it currently resides in
+         * flash.
+         */
+        rc = boot_copy_image_to_sram(slot, *img_dst, *img_sz);
+        if (rc != 0) {
+            BOOT_LOG_INF("RAM loading to 0x%x is failed.", *img_dst);
+        } else {
+            BOOT_LOG_INF("RAM loading to 0x%x is succeeded.", *img_dst);
+        }
+    } else {
+        /* Only images that support IMAGE_F_RAM_LOAD are allowed if
+         * MCUBOOT_RAM_LOAD is set.
+         */
+        rc = BOOT_EBADIMAGE;
+    }
+
+    return rc;
+}
+
+/**
+ * Removes an image from SRAM, by overwriting it with zeros.
+ *
+ * @param  img_dst  The address of the image that needs to be removed from
+ *                  SRAM.
+ * @param  img_sz   The size of the image that needs to be removed from
+ *                  SRAM.
+ *
+ * @return          0 on success; nonzero on failure.
+ */
+static inline int
+boot_remove_image_from_sram(uint32_t img_dst, uint32_t img_sz)
+{
+    BOOT_LOG_INF("Removing image from SRAM at address 0x%x", img_dst);
+    memset((void*)img_dst, 0, img_sz);
+
+    return 0;
+}
+#endif /* MCUBOOT_RAM_LOAD */
+
 int
 context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
@@ -1987,6 +2133,11 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     uint32_t i;
     int fa_id;
     int rc;
+#ifdef MCUBOOT_RAM_LOAD
+    uint32_t img_dst;
+    uint32_t img_sz;
+    uint32_t img_loaded = 0;
+#endif /* MCUBOOT_RAM_LOAD */
 
     memset(state, 0, sizeof(struct boot_loader_state));
 
@@ -2036,7 +2187,22 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
                     selected_image_header = hdr;
                 }
             }
-
+#ifdef MCUBOOT_RAM_LOAD
+            /* Image is first loaded to RAM and authenticated there in order to
+             * prevent TOCTOU attack during image copy. This could be applied
+             * when loading images from external (untrusted) flash to internal
+             * (trusted) RAM and image is authenticated before copying.
+             */
+            rc = boot_load_image_to_sram(state, selected_slot,
+                                         selected_image_header, &img_dst,
+                                         &img_sz);
+            if (rc != 0 ) {
+                /* Image loading failed try the next one. */
+                continue;
+            } else {
+                img_loaded = 1;
+            }
+#endif /* MCUBOOT_RAM_LOAD */
             rc = boot_validate_slot(state, selected_slot, NULL);
             if (rc == 0) {
                 /* If a valid image is found then there is no reason to check
@@ -2045,6 +2211,15 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
                  */
                 break;
             }
+#ifdef MCUBOOT_RAM_LOAD
+            else if (img_loaded) {
+                /* If an image is found to be invalid then it is removed from
+                 * RAM to prevent it being a shellcode vector.
+                 */
+                boot_remove_image_from_sram(img_dst, img_sz);
+                img_loaded = 0;
+            }
+#endif /* MCUBOOT_RAM_LOAD */
             /* The selected image is invalid, mark its slot as "unused"
              * and start over.
              */
@@ -2106,7 +2281,7 @@ out:
    }
    return rc;
 }
-#endif /* MCUBOOT_DIRECT_XIP */
+#endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 
 /**
  * Prepares the booting process.  This function moves images around in flash as
