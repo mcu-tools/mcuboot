@@ -29,6 +29,7 @@ COMPILER ?= GCC_ARM
 
 USE_CRYPTO_HW ?= 1
 USE_EXTERNAL_FLASH ?= 0
+USE_OVERWRITE ?= 0
 MCUBOOT_IMAGE_NUMBER ?= 1
 
 ifneq ($(COMPILER), GCC_ARM)
@@ -41,16 +42,30 @@ include $(CUR_APP_PATH)/platforms.mk
 include $(CUR_APP_PATH)/libs.mk
 include $(CUR_APP_PATH)/toolchains.mk
 
-# default slot size is 0x10000, 512bytes per row/sector, so 128 sectors
-MAX_IMG_SECTORS ?= 128
+# default slot size is 0x10000 for single image
+# larger slot size is 0x20000 for multi image, 512bytes per row/sector, so 256 sectors will work for both
+MAX_IMG_SECTORS ?= 256
 
 # Application-specific DEFINES
 DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
 DEFINES_APP += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
 DEFINES_APP += -DCORE=$(CORE)
 DEFINES_APP += -DMCUBOOT_IMAGE_NUMBER=$(MCUBOOT_IMAGE_NUMBER)
+
+ifeq ($(USE_OVERWRITE), 1)
+DEFINES_APP += -DMCUBOOT_OVERWRITE_ONLY
+endif
+
 ifeq ($(USE_EXTERNAL_FLASH), 1)
 DEFINES_APP += -DCY_BOOT_USE_EXTERNAL_FLASH
+ifeq ($(USE_OVERWRITE), 1)
+# slot size w External Memory is 0xC0000, so 1536 sectors
+MAX_IMG_SECTORS = 1536
+else
+# SWAP w external memory will use 0x40000 sector size, so 3 sectors 
+# however, 32 sectors are minimal accepted by MCUBoot library
+MAX_IMG_SECTORS = 32
+endif
 endif
 DEFINES_APP += -DMCUBOOT_MAX_IMG_SECTORS=$(MAX_IMG_SECTORS)
 

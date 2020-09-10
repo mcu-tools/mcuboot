@@ -99,8 +99,7 @@ int main(void)
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     rc = CY_SMIF_CMD_NOT_FOUND;
 
-    #undef MCUBOOT_MAX_IMG_SECTORS
-    /* redefine number of sectors as there 2MB will be
+    /* Redefine number of sectors as there 2MB will be
      * available on PSoC062-2M in case of external
      * memory usage */
     #define MCUBOOT_MAX_IMG_SECTORS 4096

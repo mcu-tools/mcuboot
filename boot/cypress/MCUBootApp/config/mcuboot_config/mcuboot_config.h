@@ -22,7 +22,7 @@
 /* Default maximum number of flash sectors per image slot; change
  * as desirable. */
 #ifndef MCUBOOT_MAX_IMG_SECTORS
-#define MCUBOOT_MAX_IMG_SECTORS 2560
+#define MCUBOOT_MAX_IMG_SECTORS 128
 #endif
 
 /*
@@ -35,7 +35,7 @@
 //#define MCUBOOT_SIGN_RSA
 
 /* Uncomment for ECDSA signatures using curve P-256. */
-//#define MCUBOOT_SIGN_EC256
+#define MCUBOOT_SIGN_EC256
 #define NUM_ECC_BYTES (256 / 8) // P-256 curve size in bytes, rnok: to make compilable
 
 // #define MCUBOOT_SIGN_EC
