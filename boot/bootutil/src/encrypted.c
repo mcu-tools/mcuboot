@@ -12,7 +12,6 @@
 #include <stddef.h>
 #include <inttypes.h>
 #include <string.h>
-#include <stdio.h>
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
 #include "mbedtls/rsa.h"
