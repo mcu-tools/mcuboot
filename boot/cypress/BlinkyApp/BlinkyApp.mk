@@ -68,6 +68,7 @@ ifeq ($(PLATFORM), PSOC_062_2M)
 	DEFINES_APP += -DUSER_APP_START=0x10018000
 	# size of image slot
 ifeq ($(SWAP_UPGRADE), 2)
+$(warning You are trying to build BlinkyApp for MCUBootApp with external memory support. Ensure you build MCUBootApp with USE_EXTERNAL_FLASH=1 flag!)
 	SLOT_SIZE ?= 0xC0000
 else
 	SLOT_SIZE ?= 0x10000
