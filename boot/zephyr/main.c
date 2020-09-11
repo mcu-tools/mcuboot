@@ -324,7 +324,7 @@ void main(void)
 
 #ifdef CONFIG_MCUBOOT_SERIAL
 
-    struct device *detect_port;
+    struct device const *detect_port;
     uint32_t detect_value = !CONFIG_BOOT_SERIAL_DETECT_PIN_VAL;
 
     detect_port = device_get_binding(CONFIG_BOOT_SERIAL_DETECT_PORT);

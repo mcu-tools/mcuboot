@@ -41,7 +41,7 @@ struct line_input {
 	char line[CONFIG_BOOT_MAX_LINE_INPUT_LEN];
 };
 
-static struct device *uart_dev;
+static struct device const *uart_dev;
 static struct line_input line_bufs[2];
 
 static sys_slist_t avail_queue;
@@ -115,7 +115,7 @@ boot_console_init(void)
 }
 
 static void
-boot_uart_fifo_callback(struct device *dev, void *user_data)
+boot_uart_fifo_callback(const struct device *dev, void *user_data)
 {
 	static struct line_input *cmd;
 	uint8_t byte;
