@@ -55,6 +55,8 @@
 #define MBEDTLS_RSA_C
 #define MBEDTLS_PKCS1_V21
 
+#define MBEDTLS_CIPHER_MODE_CTR
+
 /* mbed TLS modules */
 #define MBEDTLS_ASN1_PARSE_C
 #define MBEDTLS_ASN1_WRITE_C
