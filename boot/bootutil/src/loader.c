@@ -49,6 +49,8 @@
 #include "bootutil/enc_key.h"
 #endif
 
+#include <drivers/gpio.h>
+
 #include "mcuboot_config/mcuboot_config.h"
 
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
@@ -2108,6 +2110,47 @@ out:
 }
 #endif /* MCUBOOT_DIRECT_XIP */
 
+static int boot_fallback(struct boot_rsp *rsp)
+{
+    static struct image_header hdr;
+    const struct flash_area *fap;
+    int area_id;
+    int rc;
+
+    /* First, check for direct fallback image */
+    const struct device* devGPIO = device_get_binding(DT_GPIO_LABEL(DT_ALIAS(fallback), gpios));
+    gpio_pin_configure(devGPIO, DT_GPIO_PIN(DT_ALIAS(fallback), gpios), GPIO_INPUT);
+
+    // Check if fallback, otherwise return
+    if(gpio_pin_get(devGPIO, DT_GPIO_PIN(DT_ALIAS(fallback), gpios)))
+        return -1;
+
+    area_id = FLASH_AREA_ID(fallback_0);
+    rc = flash_area_open(area_id, &fap);
+
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto done;
+    }
+
+    rc = flash_area_read(fap, 0, &hdr, sizeof(hdr));
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto done;
+    }
+
+    rc = 0;
+
+    rsp->br_flash_dev_id = fap->fa_device_id;
+    rsp->br_image_off = fap->fa_off;
+    rsp->br_hdr = &hdr;
+
+done:
+    flash_area_close(fap);
+
+    return 0;
+}
+
 /**
  * Prepares the booting process.  This function moves images around in flash as
  * appropriate, and tells you what address to boot from.
@@ -2119,5 +2162,9 @@ out:
 int
 boot_go(struct boot_rsp *rsp)
 {
+    // First, check fallback
+    if(boot_fallback(rsp) == 0)
+        return 0;
+
     return context_boot_go(&boot_data, rsp);
 }
