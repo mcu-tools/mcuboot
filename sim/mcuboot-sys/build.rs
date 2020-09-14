@@ -178,6 +178,7 @@ fn main() {
             conf.file("../../ext/tinycrypt/lib/source/sha256.c");
             conf.file("../../ext/tinycrypt/lib/source/aes_encrypt.c");
             conf.file("../../ext/tinycrypt/lib/source/aes_decrypt.c");
+            conf.file("../../ext/tinycrypt/lib/source/ctr_mode.c");
         }
 
         if sig_ed25519 {
