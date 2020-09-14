@@ -54,6 +54,8 @@
 #define MBEDTLS_HAVE_ASM
 #endif
 
+#define MBEDTLS_CIPHER_MODE_CTR
+
 #define MBEDTLS_SHA256_C
 #define MBEDTLS_AES_C
 #define MBEDTLS_CIPHER_C

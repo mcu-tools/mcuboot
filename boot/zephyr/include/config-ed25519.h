@@ -52,6 +52,8 @@
 #define MBEDTLS_HAVE_ASM
 #endif
 
+#define MBEDTLS_CIPHER_MODE_CTR
+
 /* mbed TLS modules */
 #define MBEDTLS_ASN1_PARSE_C
 #define MBEDTLS_BIGNUM_C
