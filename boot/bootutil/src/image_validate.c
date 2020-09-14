@@ -33,7 +33,7 @@
 #include <flash_map_backend/flash_map_backend.h>
 
 #include "bootutil/image.h"
-#include "bootutil/sha256.h"
+#include "bootutil/crypto/sha256.h"
 #include "bootutil/sign_key.h"
 #include "bootutil/security_cnt.h"
 
@@ -125,6 +125,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 #endif
         rc = flash_area_read(fap, off, tmp_buf, blk_sz);
         if (rc) {
+            bootutil_sha256_drop(&sha256_ctx);
             return rc;
         }
 #ifdef MCUBOOT_ENC_IMAGES
@@ -140,6 +141,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
         bootutil_sha256_update(&sha256_ctx, tmp_buf, blk_sz);
     }
     bootutil_sha256_finish(&sha256_ctx, hash_result);
+    bootutil_sha256_drop(&sha256_ctx);
 
     return 0;
 }
@@ -203,9 +205,11 @@ bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
         bootutil_sha256_update(&sha256_ctx, key->key, *key->len);
         bootutil_sha256_finish(&sha256_ctx, hash);
         if (!memcmp(hash, keyhash, keyhash_len)) {
+            bootutil_sha256_drop(&sha256_ctx);
             return i;
         }
     }
+    bootutil_sha256_drop(&sha256_ctx);
     return -1;
 }
 #else
@@ -222,6 +226,7 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
     bootutil_sha256_init(&sha256_ctx);
     bootutil_sha256_update(&sha256_ctx, key, key_len);
     bootutil_sha256_finish(&sha256_ctx, hash);
+    bootutil_sha256_drop(&sha256_ctx);
 
     rc = boot_retrieve_public_key_hash(image_index, key_hash, &key_hash_size);
     if (rc) {

@@ -30,14 +30,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <flash_map_backend/flash_map_backend.h>
-#include "mcuboot_config/mcuboot_config.h"
+#include "bootutil/crypto/aes_ctr.h"
 #include "bootutil/image.h"
-
-#if defined(MCUBOOT_USE_MBED_TLS)
-#include "mbedtls/aes.h"
-#else
-#include "tinycrypt/aes.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -66,16 +60,14 @@ extern "C" {
 
 struct enc_key_data {
     uint8_t valid;
-#if defined(MCUBOOT_USE_MBED_TLS)
-    mbedtls_aes_context aes;
-#else
-    struct tc_aes_key_sched_struct aes;
-#endif
+    bootutil_aes_ctr_context aes_ctr;
 };
 
 extern const struct bootutil_key bootutil_enc_key;
 struct boot_status;
 
+int boot_enc_init(struct enc_key_data *enc_state, uint8_t slot);
+int boot_enc_drop(struct enc_key_data *enc_state, uint8_t slot);
 int boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
         const struct boot_status *bs);
 int boot_enc_load(struct enc_key_data *enc_state, int image_index,
