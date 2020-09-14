@@ -30,7 +30,7 @@
 
 #ifdef MCUBOOT_SIGN_RSA
 #include "bootutil/sign_key.h"
-#include "bootutil/sha256.h"
+#include "bootutil/crypto/sha256.h"
 
 #include "mbedtls/rsa.h"
 #include "mbedtls/asn1.h"
@@ -148,6 +148,8 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
         mask += bytes;
         count -= bytes;
     }
+
+    bootutil_sha256_drop(&ctx);
 }
 
 /*
@@ -260,6 +262,7 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
     bootutil_sha256_update(&shactx, hash, PSS_HLEN);
     bootutil_sha256_update(&shactx, &db_mask[PSS_MASK_SALT_POS], PSS_SLEN);
     bootutil_sha256_finish(&shactx, h2);
+    bootutil_sha256_drop(&shactx);
 
     /* Step 14.  If H = H', output "consistent".  Otherwise, output
      * "inconsistent". */
