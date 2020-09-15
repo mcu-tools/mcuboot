@@ -58,8 +58,8 @@ config NRF_CC310_BL
 
 menu "MCUBoot settings"
 
-config SINGLE_IMAGE_DFU
-	bool "Single image application"
+config SINGLE_APPLICATION_SLOT
+	bool "Single slot bootloader"
 	default n
 	help
 	  Single image area is used for application which means that
@@ -163,7 +163,7 @@ config BOOT_VALIDATE_SLOT0
 	  every boot, but can mitigate against some changes that are
 	  able to modify the flash image itself.
 
-if !SINGLE_IMAGE_DFU
+if !SINGLE_APPLICATION_SLOT
 choice
 	prompt "Image upgrade modes"
 	default BOOT_SWAP_USING_MOVE if SOC_FAMILY_NRF
@@ -206,7 +206,7 @@ config BOOT_DIRECT_XIP
 endchoice
 endif
 
-if !SINGLE_IMAGE_DFU
+if !SINGLE_APPLICATION_SLOT
 config BOOT_BOOTSTRAP
 	bool "Bootstrap erased the primary slot from the secondary slot"
 	default n
@@ -424,7 +424,7 @@ config BOOT_INTR_VEC_RELOC
 config UPDATEABLE_IMAGE_NUMBER
 	int "Number of updateable images"
 	default 1
-	range 1 1 if SINGLE_IMAGE_DFU
+	range 1 1 if SINGLE_APPLICATION_SLOT
 	help
 	  Enables support of multi image update.
 
