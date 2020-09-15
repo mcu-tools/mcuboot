@@ -18,3 +18,8 @@ tests:
       DTC_OVERLAY_FILE=./boards/nrf52840_big.overlay
     platform_allow:  nrf52840dk_nrf52840
     tags: bootloader_mcuboot
+  sample.bootloader.mcuboot.single_slot:
+    extra_args: OVERLAY_CONFIG=./single_slot.conf
+      DTC_OVERLAY_FILE=./boards/nrf52840_single_slot.overlay
+    platform_allow:  nrf52840dk_nrf52840
+    tags: bootloader_mcuboot
