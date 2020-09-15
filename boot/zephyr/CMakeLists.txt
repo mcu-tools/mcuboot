@@ -102,7 +102,7 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/bootutil_misc.c
   )
 
-if(CONFIG_SINGLE_IMAGE_DFU)
+if(CONFIG_SINGLE_APPLICATION_SLOT)
 zephyr_library_sources(
   ${BOOT_DIR}/zephyr/single_loader.c
   )

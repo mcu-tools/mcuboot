@@ -6,7 +6,7 @@
 #include <devicetree.h>
 #include <mcuboot_config/mcuboot_config.h>
 
-#ifndef CONFIG_SINGLE_IMAGE_DFU
+#ifndef CONFIG_SINGLE_APPLICATION_SLOT
 
 #if (MCUBOOT_IMAGE_NUMBER == 1)
 /*
@@ -43,7 +43,7 @@
 #define FLASH_AREA_IMAGE_SCRATCH    FLASH_AREA_ID(image_scratch)
 #endif
 
-#else /* CONFIG_SINGLE_IMAGE_DFU */
+#else /* CONFIG_SINGLE_APPLICATION_SLOT */
 
 #define FLASH_AREA_IMAGE_PRIMARY(x)	FLASH_AREA_ID(image_0)
 #define FLASH_AREA_IMAGE_SECONDARY(x)	FLASH_AREA_ID(image_0)
@@ -53,6 +53,6 @@
  */
 #define FLASH_AREA_IMAGE_SCRATCH	0
 
-#endif /* CONFIG_SINGLE_IMAGE_DFU */
+#endif /* CONFIG_SINGLE_APPLICATION_SLOT */
 
 #endif /* __SYSFLASH_H__ */

@@ -57,7 +57,7 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
     switch (slot) {
     case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
-#if !defined(CONFIG_SINGLE_IMAGE_DFU)
+#if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
     case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
 #if !defined(CONFIG_BOOT_SWAP_USING_MOVE)
     case 2: return FLASH_AREA_IMAGE_SCRATCH;
@@ -78,7 +78,7 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
     if (area_id == FLASH_AREA_IMAGE_PRIMARY(image_index)) {
         return 0;
     }
-#if !defined(CONFIG_SINGLE_IMAGE_DFU)
+#if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
     if (area_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
         return 1;
     }
