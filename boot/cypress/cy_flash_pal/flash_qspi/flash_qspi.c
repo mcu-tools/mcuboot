@@ -473,3 +473,21 @@ uint32_t qspi_get_mem_size(void)
     return (*memCfg)->deviceCfg->memSize;
 }
 
+void qspi_deinit(uint32_t smif_id)
+{
+    Cy_SMIF_MemDeInit(QSPIPort);
+
+    Cy_SMIF_Disable(QSPIPort);
+
+    Cy_SysClk_ClkHfDisable(CY_SYSCLK_CLKHF_IN_CLKPATH2);
+
+    NVIC_DisableIRQ(smifIntConfig.intrSrc);
+    Cy_SysInt_DisconnectInterruptSource(smifIntConfig.intrSrc, smifIntConfig.cm0pSrc);
+
+    Cy_GPIO_Port_Deinit(qspi_SS_Configuration[smif_id-1].SS_Port);
+    Cy_GPIO_Port_Deinit(SCKPort);
+    Cy_GPIO_Port_Deinit(D0Port);
+    Cy_GPIO_Port_Deinit(D1Port);
+    Cy_GPIO_Port_Deinit(D2Port);
+    Cy_GPIO_Port_Deinit(D3Port);
+}

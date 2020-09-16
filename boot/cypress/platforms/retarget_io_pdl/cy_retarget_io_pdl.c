@@ -197,7 +197,7 @@ static void cy_retarget_io_putchar(char c)
 
 static cy_rslt_t cy_retarget_io_pdl_setbaud(CySCB_Type *base, uint32_t baudrate)
 {
-    cy_rslt_t status;
+    cy_rslt_t result = CY_RSLT_TYPE_ERROR;
 
     uint8_t oversample_value = 8u;
     uint8_t frac_bits = 0u;
@@ -205,31 +205,40 @@ static cy_rslt_t cy_retarget_io_pdl_setbaud(CySCB_Type *base, uint32_t baudrate)
 
     Cy_SCB_UART_Disable(base, NULL);
 
-    Cy_SysClk_PeriphDisableDivider(CY_SYSCLK_DIV_16_BIT, 0);
+    result = (cy_rslt_t) Cy_SysClk_PeriphDisableDivider(CY_SYSCLK_DIV_16_BIT, 0);
 
     divider = ((Cy_SysClk_ClkPeriGetFrequency() * (1 << frac_bits)) + ((baudrate * oversample_value) / 2)) / (baudrate * oversample_value) - 1;
 
-    status = (cy_rslt_t) Cy_SysClk_PeriphSetDivider(CY_SYSCLK_DIV_16_BIT, 0u, divider);
-
-    Cy_SysClk_PeriphEnableDivider(CY_SYSCLK_DIV_16_BIT, 0u);
+    if (result == CY_RSLT_SUCCESS)
+    {
+        result = (cy_rslt_t) Cy_SysClk_PeriphSetDivider(CY_SYSCLK_DIV_16_BIT, 0u, divider);
+    }
+    
+    if (result == CY_RSLT_SUCCESS)
+    {
+        result = Cy_SysClk_PeriphEnableDivider(CY_SYSCLK_DIV_16_BIT, 0u);
+    }
 
     Cy_SCB_UART_Enable(base);
 
-    return status;
+    return result;
 }
 
 cy_rslt_t cy_retarget_io_pdl_init(uint32_t baudrate)
 {
-    cy_rslt_t result;
+    cy_rslt_t result = CY_RSLT_TYPE_ERROR;
 
-    /* Configure and enable UART */
-    (void)Cy_SCB_UART_Init(CYBSP_UART_HW, &CYBSP_UART_config, &CYBSP_UART_context);
+    result = (cy_rslt_t)Cy_SCB_UART_Init(CYBSP_UART_HW, &CYBSP_UART_config, &CYBSP_UART_context);
 
-    cy_retarget_io_pdl_setbaud(CYBSP_UART_HW, baudrate);
+    if (result == CY_RSLT_SUCCESS)
+    {
+        result = cy_retarget_io_pdl_setbaud(CYBSP_UART_HW, baudrate);
+    }
 
-    Cy_SCB_UART_Enable(CYBSP_UART_HW);
-
-    result = CY_RSLT_SUCCESS;
+    if (result == CY_RSLT_SUCCESS)
+    {
+        Cy_SCB_UART_Enable(CYBSP_UART_HW);
+    }
 
     return result;
 }
