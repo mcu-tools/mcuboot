@@ -193,7 +193,7 @@ clean_upgrade:
 
 run_cppcheck:
 	@echo "Performing static code analysis with Cppcheck tool..."
-	../../scripts/cpp_check.sh ../../scripts/cpp_check.dat
+	cppcheck/cppcheck.sh $(APP_NAME) $(PLATFORM) "$(DEFINES)" "$(INCLUDE_DIRS)" "$(C_FILES)" $(CPP_CHECK_SCOPE) $(BUILDCFG)
 
 gen_key_ecc256:
 	@echo Generate ECC256 keys: $(SIGN_KEY_FILE).pem and $(SIGN_KEY_FILE).pub
