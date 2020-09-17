@@ -108,31 +108,3 @@ int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
 
     return rc;
 }
-
-#define ERASED_VAL 0xff
-uint8_t flash_area_erased_val(const struct flash_area *fap)
-{
-    (void)fap;
-    return ERASED_VAL;
-}
-
-int flash_area_read_is_empty(const struct flash_area *fa, uint32_t off,
-        void *dst, uint32_t len)
-{
-    uint8_t i;
-    uint8_t *u8dst;
-    int rc;
-
-    rc = flash_area_read(fa, off, dst, len);
-    if (rc) {
-        return -1;
-    }
-
-    for (i = 0, u8dst = (uint8_t *)dst; i < len; i++) {
-        if (u8dst[i] != ERASED_VAL) {
-            return 0;
-        }
-    }
-
-    return 1;
-}

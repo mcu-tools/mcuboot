@@ -76,20 +76,6 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id);
  */
 int flash_area_sector_from_off(off_t off, struct flash_sector *sector);
 
-/*
- * Returns the value expected to be read when accessing any erased
- * flash byte.
- */
-uint8_t flash_area_erased_val(const struct flash_area *fap);
-
-/*
- * Reads len bytes from off, and checks if the read data is erased.
- *
- * Returns 1 if erased, 0 if non-erased, and -1 on failure.
- */
-int flash_area_read_is_empty(const struct flash_area *fa, uint32_t off,
-        void *dst, uint32_t len);
-
 #ifdef __cplusplus
 }
 #endif
