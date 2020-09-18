@@ -1,5 +1,5 @@
 # Copyright 2018 Nordic Semiconductor ASA
-# Copyright 2017 Linaro Limited
+# Copyright 2017-2020 Linaro Limited
 # Copyright 2019-2020 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -327,7 +327,7 @@ class Image():
             dependencies_num = len(dependencies[DEP_IMAGES_KEY])
             protected_tlv_size += (dependencies_num * 16)
 
-        if custom_tlvs:
+        if custom_tlvs is not None:
             for value in custom_tlvs.values():
                 protected_tlv_size += TLV_SIZE + len(value)
 
@@ -375,8 +375,9 @@ class Image():
                                     )
                     prot_tlv.add('DEPENDENCY', payload)
 
-            for tag, value in custom_tlvs.items():
-                prot_tlv.add(tag, value)
+            if custom_tlvs is not None:
+                for tag, value in custom_tlvs.items():
+                    prot_tlv.add(tag, value)
 
             protected_tlv_off = len(self.payload)
             self.payload += prot_tlv.get()
