@@ -50,43 +50,6 @@
 uint32_t smif_id = 1; /* Assume SlaveSelect_0 is used for External Memory */
 #endif
 
-extern cy_stc_scb_uart_context_t CYBSP_UART_context;
-
-/* Parameter structures for callback function */
-static cy_stc_syspm_callback_params_t deep_sleep_clbk_params = 
-{
-    CYBSP_UART_HW,
-    &CYBSP_UART_context
-};
-
-static cy_stc_syspm_callback_params_t deep_sleep_sysclk_pm_clbk_param =
-{
-    NULL,
-    NULL
-};
-
-/* Callback structure */
-cy_stc_syspm_callback_t uart_deep_sleep = 
-{
-    &Cy_SCB_UART_DeepSleepCallback, 
-    CY_SYSPM_DEEPSLEEP,
-    CY_SYSPM_SKIP_BEFORE_TRANSITION ,
-    &deep_sleep_clbk_params,
-    NULL,
-    NULL,
-    0
-};
-
-cy_stc_syspm_callback_t clk_deep_sleep = 
-{
-    &Cy_SysClk_DeepSleepCallback, 
-    CY_SYSPM_DEEPSLEEP,
-    CY_SYSPM_SKIP_BEFORE_TRANSITION ,
-    &deep_sleep_sysclk_pm_clbk_param,
-    NULL,
-    NULL,
-    0
-};
 
 void hw_deinit(void);
 
@@ -98,7 +61,9 @@ static void do_boot(struct boot_rsp *rsp)
 
     BOOT_LOG_INF("Starting User Application on CM4 (wait)...");
     BOOT_LOG_INF("Start Address: 0x%08lx", app_addr);
-    Cy_SysLib_Delay(100);
+    BOOT_LOG_INF("Deinitializing hardware...");
+
+    cy_retarget_io_wait_tx_complete(CYBSP_UART_HW, 10);
 
     hw_deinit();
 
@@ -108,25 +73,20 @@ static void do_boot(struct boot_rsp *rsp)
 int main(void)
 {
     struct boot_rsp rsp;
-    cy_rslt_t result = CY_RSLT_TYPE_ERROR;
+    cy_rslt_t rc = CY_RSLT_TYPE_ERROR;
+    bool boot_succeeded = false;
 
     init_cycfg_clocks();
     init_cycfg_peripherals();
     init_cycfg_pins();
 
-    /* register callback funtions that manage peripherals before going to deep sleep */
-    if (!Cy_SysPm_RegisterCallback(&uart_deep_sleep) || 
-        !Cy_SysPm_RegisterCallback(&clk_deep_sleep))
-    {
-        CY_ASSERT(0);
-    }
     /* enable interrupts */
     __enable_irq();
 
     /* Initialize retarget-io to use the debug UART port (CYBSP_UART_HW) */
-    result = cy_retarget_io_pdl_init(115200u);
+    rc = cy_retarget_io_pdl_init(115200u);
 
-    if (result != CY_RSLT_SUCCESS)
+    if (rc != CY_RSLT_SUCCESS)
     {
         CY_ASSERT(0);
     }
@@ -134,7 +94,7 @@ int main(void)
     BOOT_LOG_INF("MCUBoot Bootloader Started");
 
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
-    cy_rslt_t rc = !CY_RSLT_SUCCESS;
+    rc = CY_SMIF_CMD_NOT_FOUND;
 
     #undef MCUBOOT_MAX_IMG_SECTORS
     /* redefine number of sectors as there 2MB will be
@@ -150,13 +110,14 @@ int main(void)
     {
         BOOT_LOG_ERR("External Memory initialization w/ SFDP FAILED: 0x%02x", (int)rc);
     }
-    if (0 == rc)
+    if (CY_SMIF_SUCCESS == rc)
 #endif
     {
         if (boot_go(&rsp) == 0)
         {
             BOOT_LOG_INF("User Application validated successfully");
             do_boot(&rsp);
+            boot_succeeded = true;
         }
         else
         {
@@ -166,7 +127,12 @@ int main(void)
 
     while (1)
     {
-        Cy_SysPm_CpuEnterDeepSleep(CY_SYSPM_WAIT_FOR_INTERRUPT);
+        if (boot_succeeded) {
+            Cy_SysPm_CpuEnterDeepSleep(CY_SYSPM_WAIT_FOR_INTERRUPT);
+        }
+        else {
+            __WFI();
+        }
     }
 
     return 0;

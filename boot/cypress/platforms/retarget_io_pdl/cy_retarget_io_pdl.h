@@ -52,6 +52,8 @@ extern "C" {
 
 cy_rslt_t cy_retarget_io_pdl_init(uint32_t baudrate);
 
+void cy_retarget_io_wait_tx_complete(CySCB_Type *base, uint32_t tries_count);
+
 void cy_retarget_io_pdl_deinit(void);
 
 #if defined(__cplusplus)

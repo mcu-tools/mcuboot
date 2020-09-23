@@ -243,6 +243,23 @@ cy_rslt_t cy_retarget_io_pdl_init(uint32_t baudrate)
     return result;
 }
 
+/**
+ * @brief Wait while UART completes transfer. Try for tries_count times -
+ *        once each 10 millisecons.
+ */
+void cy_retarget_io_wait_tx_complete(CySCB_Type *base, uint32_t tries_count)
+{
+    while(tries_count > 0)
+    {
+        if (!Cy_SCB_UART_IsTxComplete(base)) {
+            Cy_SysLib_DelayCycles(10 * cy_delayFreqKhz);
+            tries_count -= 1;
+        } else {
+            return;
+        }
+    }
+}
+
 void cy_retarget_io_pdl_deinit()
 {
     Cy_SCB_UART_DeInit(CYBSP_UART_HW);
