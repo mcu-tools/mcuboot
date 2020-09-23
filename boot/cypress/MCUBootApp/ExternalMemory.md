@@ -1,10 +1,10 @@
-### External Memory support for Secondary Slot
+### External Memory Support For Secondary Slot
 
 **Description**
 
-Given document describes the use of external memory module as a secondary (upgrade) slot with Cypress' PSoC6 devices.
+Given document describes the use of external memory module as a secondary (upgrade) slot with Cypress' PSoC 6 devices.
 
-The demonstration device is CY8CPROTO-062-4343W board which is PSoC6 device with 2M of Flash available.
+The demonstration device is CY8CPROTO-062-4343W board which is PSoC 6 device with 2M of Flash available.
 The memory module present on board is S25FL512SAGMFI010 512-Mbit external Quad SPI NOR Flash.
 
 Using external memory for secondary slot allows to nearly double the size of Boot Image.
@@ -16,15 +16,14 @@ The design is based on using SFDP command's auto-discovery functionality of memo
 It is assumed that user's design meets following:
 * The memory-module used is SFDP-compliant;
 * There only one module is being used for secondary slot;
-* Only "OWERWRITE" bootloading scheme is used;
 * The address for secondary slot should start from 0x18000000.
-This corresponds to PSoC6's SMIF (Serial Memory InterFace) IP block mapping.
+This corresponds to PSoC 6's SMIF (Serial Memory InterFace) IP block mapping.
 * The slot size for upgrade slot is even (or smaller) to erase size (0x40000) of given memory module.
 This requirement is accepted for code simplicity.
 
 The default flash map implemented is the following:
 
-Single-image mode.
+Single image mode.
 
 `[0x10000000, 0x10018000]` - MCUBootApp (bootloader) area;
 
@@ -34,7 +33,7 @@ Single-image mode.
 
 `[0x10038000, 0x10039000]` - scratch area (not used);
 
-Multi(dual)-image mode.
+Multi(dual) image mode.
 
 `[0x10000000, 0x10018000]` - MCUBootApp (bootloader) area;
 
@@ -75,7 +74,7 @@ Once valid upgrade image was accepted the image in external memory will be erase
 
 `HEADER_OFFSET` defines the offset from original boot image address. This one in line above suggests secondary slot will start from `0x18000000`.
 
-`ERASED_VALUE` defines the memory cell contents in erased state. It is `0x00` for PSoC6's internal Flash and `0xff` for S25FL512S.
+`ERASED_VALUE` defines the memory cell contents in erased state. It is `0x00` for PSoC 6's internal Flash and `0xff` for S25FL512S.
 
 **Programming to external memory**
 
