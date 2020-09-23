@@ -1,4 +1,4 @@
-### Port of MCUBoot library for evaluation with Cypress PSoC 6 chips
+### Port Of Mcuboot Library For Evaluation With Cypress PSoC 6 Chips
 
 ### Disclaimer
 
@@ -14,29 +14,42 @@ Refer to **Cypress Semiconductors** [github](https://github.com/cypresssemicondu
 ### Solution Description
 
 There are two applications implemented:
-* MCUBootApp - PSoC6 MCUBoot-based bootloading application;
-* BlinkyApp - simple PSoC6 blinking LED application which is a target of BOOT/UPGRADE;
+* MCUBootApp - PSoC 6 MCUBoot-based bootloading application;
+* BlinkyApp - simple PSoC 6 blinking LED application which is a target of BOOT/UPGRADE;
 
-The default flash map for MCUBootApp implemented is next:
+#### MCUBootApp
 
-* [0x10000000, 0x10018000] - MCUBootApp (bootloader) area;
-* [0x10018000, 0x10028000] - primary slot for BlinkyApp;
-* [0x10028000, 0x10038000] - secondary slot for BlinkyApp;
-* [0x10038000, 0x10039000] - scratch area;
+* There are two types of upgrade operation supported:
+  * **Overwrite only** - secondady image is only copied to primary slot after validation
+  * **Swap** - seconrady and primary slots images are swapped in process of upgrade. Upgrade operation can be reverted in case of bad secondary image. 
 
-The flash map is defined through sysflash.h and cy_flash_map.c.
+* There are two types of operation modes supported:
+  * single image
+  * multi image
 
-It is also possible to place secondary (upgrade) slots in external memory module so resulting image size can be doubled.
-For more details about External Memory usage, please refer to separate guiding document `MCUBootApp/ExternalMemory.md`.
+* Secondary (upgrade) slot(s) can be placed in external memory. For more details about External Memory usage refer to separate guiding document `MCUBootApp/ExternalMemory.md`.
+
+* MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification
+* Cryptographic functions can be based on completely software implementation or be hardware accelerated. mbedTLS library is used in both cases.
+
+Detailed description of **MCUBootApp** is provided in `MCUBootApp/MCUBootApp.md`
 
 MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on mbedTLS Library.
+
+#### BlinkyApp
+* Can be built to use as primary or secondary image for both internal and external flash memory
+* Primary and secondary images differ in text printed to serial terminal and led blinking frequency.
+* Watchdog timer functionality is supported to confirm successful start/upgrade of application
+* User application side of mcuboot swap operation is demonstrated for secondary image build.
+
+Detailed description of **BlinkyApp** is provided in `BlinkyApp/BlinkyApp.md`
 
 ### Downloading Solution's Assets
 
 There is a set assets required:
 
 * MCUBooot Library (root repository)
-* PSoC6 Peripheral Drivers Library (PDL)
+* PSoC 6 Peripheral Drivers Library (PDL)
 * mbedTLS Cryptographic Library
 
 Those are represented as submodules.
@@ -50,21 +63,33 @@ Submodules can also be updated and initialized separately:
     cd mcuboot
     git submodule update --init --recursive
 
-
-
 ### Building Solution
 
-Root directory for build is **boot/cypress.**
+Root directory for build is `boot/cypress`.
 
-This folder contains make files infrastructure for building both MCUBoot Bootloader and sample BlinkyApp application used for Bootloader demo functionality.
+Root folder contains make files infrastructure for building both MCUBootApp bootloading application and BlinkyApp user application.
 
-Instructions on how to build and upload MCUBootApp bootloader application and sample user applocation are located in `Readme.md` files in corresponding folders.
+Instructions on how to build and upload MCUBootApp bootloading application and sample user application are located in `MCUBootApp.md` and `BlinkyApp.md` files in corresponding folders.
+
+**Toolchain**
+
+**GCC_ARM** is the only supported (built and verified on GCC 7.2.1).
+
+It is inluded with [ModusToolbox® Software Environment](https://www.cypress.com/products/modustoolbox-software-environment) and can be found in folder `./ModusToolbox/tools_2.1/gcc-7.2.1`.
+
+Default installation folder is expected by makefile build system.
+
+In case of using another installation folder, version of **ModusToolbox IDE** or another GCC Compiler - path to a toolchain should be specified to a build system using **TOOLCHAIN_PATH** flag.
+
+**Example:**
+
+    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=BOOT TOOLCHAIN_PATH=/home/fw-security/ModusToolbox/tools_2.0/gcc-7.2.1
 
 Currently supported platforms:
 
-* PSOC_062_2M - for MCUBoot, BlinkyApp;
+* PSOC_062_2M - for MCUBootApp, BlinkyApp;
 
-### Build environment troubleshooting
+### Build Environment Troubleshooting
 
 Following CLI / IDE are supported for project build:
 
