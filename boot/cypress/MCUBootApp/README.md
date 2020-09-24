@@ -30,7 +30,7 @@ MCUBootApp checks image integrity with SHA256, image authenticity with EC256 dig
 **Important**: make sure RAM areas of CM0p-based MCUBootApp bootloader and CM4-based BlinkyApp do not overlap.
 Memory (stack) corruption of CM0p application can cause failure if SystemCall-served operations invoked from CM4.
 
-**Hardware cryptography acceleration:**
+### Hardware cryptography acceleration
 
 Cypress PSOC6 MCU family supports hardware acceleration of cryptography based on mbedTLS Library via shim layer. Implementation of this layer is supplied as separate submodule `cy-mbedtls-acceleration`. HW acceleration of cryptography shortens boot time more then 4 times, comparing to software implementation (observation results).
 
@@ -38,7 +38,7 @@ To enable hardware acceleration in `MCUBootApp` pass flag `USE_CRYPTO_HW=1` to `
 
 Hardware acceleration of cryptography is enabled for PSOC6 devices by default.
 
-**How to modify Flash map:**
+### How to modify memory map
 
 __Option 1.__
 
@@ -112,7 +112,16 @@ Size of slots `0x10000` - 64kb
 __Note:__ It is also possible to place secondary (upgrade) slots in external memory module so resulting image size can be doubled.
 For more details about External Memory usage, please refer to separate guiding document `ExternalMemory.md`.
 
-**Downloading Solution's Assets**
+### Hardware limitations
+
+Since this application is created to demonstrate MCUBoot library features and not as reference examples some considerations are taken.
+
+1. `SCB5` used to configure serial port for debug prints. This is the most commonly used Serial Communication Block number among available Cypress PSoC 6 kits. If you try to use custom hardware with this application - change definition of `CYBSP_UART_HW` in `main.c` of MCUBootApp to SCB* that correspond to your design.
+
+2. `CY_SMIF_SLAVE_SELECT_0` is used as definition SMIF driver API. This configuration is used on evaluation kit for this example CY8CPROTO-062-4343W. If you try to use custom hardware with this application - change value of `smif_id` in `main.c` of MCUBootApp to value that corresponds to your design.
+
+
+### Downloading Solution's Assets
 
 There is a set assets required:
 
@@ -125,7 +134,7 @@ To get submodules - run the following command:
 
     git submodule update --init --recursive
 
-**Building Solution**
+### Building Solution
 
 This folder contains make files infrastructure for building MCUBoot Bootloader. Same approach used in sample BlinkyLedApp application. Example command are provided below for couple different build configurations.
 

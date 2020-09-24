@@ -1,6 +1,6 @@
-### Blinking LED test application for MCUBoot Bootloader.
+### Blinking LED test application for MCUBoot Bootloader
 
-**Description:**
+### Description
 
 Implements simple Blinky LED CM4 application to demonstrate MCUBoot Application operation in terms of BOOT and UPGRADE process.
 
@@ -12,11 +12,18 @@ Functionality:
 * Prints debug info and version of itself to terminal at 115200 baud.
 * Can be built for BOOT slot or UPGRADE slot of bootloader.
 
-**Currently supported platforms:**
+Currently supported platforms
 
 * PSOC_062_2M
 
-**Pre-build action:**
+### Hardware limitations
+
+Since this application is created to demonstrate MCUBoot library features and not as reference examples some considerations are taken.
+
+1. Port/pin `P5_0` and `P5_1` used to configure serial port for debug prints. These pins are the most commonly used for serial port connection among available Cypress PSoC 6 kits. If you try to use custom hardware with this application - change definitions of `CY_DEBUG_UART_TX` and `CY_DEBUG_UART_RX` in `main.c` of BlinkyApp to port/pin pairs corresponding to your design.
+2. Port `GPIO_PRT13` pin `7U` used to define user connection LED. This pin is the most commonly used for USER_LED connection among available Cypress PSoC 6 kits. If you try to use custom hardware with this application - change definitions of `LED_PORT` and `LED_PIN` in `main.c` of BlinkyApp to port/pin pairs corresponding to your design.
+
+### Pre-build action
 
 Pre-build action is implemented for defining start address and size of flash, as well as RAM start address and size for BlinkyApp.
 These values are set by specifing following macros: `-DUSER_APP_SIZE`, `-DUSER_APP_START`, `-DRAM_SIZE`, `-DRAM_START` in makefile.
@@ -29,7 +36,7 @@ Default values set for currently supported targets:
 **Important**: make sure RAM areas of CM4-based BlinkyApp and CM0p-based MCUBootApp bootloader do not overlap.
 Memory (stack) corruption of CM0p application can cause failure if SystemCall-served operations invoked from CM4.
 
-**Building an application:**
+### Building an application
 
 Root directory for build is **boot/cypress.**
 
@@ -90,13 +97,13 @@ In case of using muti-image configuration, upgrade image for second application 
 
     Note: for S25FL512S block address shuld be mutiple by 0x40000
 
-**Post-Build:**
+### Post-Build
 
 Post build action is executed at compile time for `BlinkyApp`. In case of build for `PSOC_062_2M` platform it calls `imgtool` from `MCUBoot` scripts and adds signature to compiled image.
 
 Flags passed to `imgtool` for signature are defined in `SIGN_ARGS` variable in BlinkyApp.mk.
 
-**How to program an application:**
+### How to program an application
 
 Use any preferred tool for programming hex files.
 
@@ -121,7 +128,7 @@ Files to use for programming are:
 
 **NOTE**: In case of `UPGRADE` image `HEADER_OFFSET` should be set to MCUBoot Bootloader slot size.
 
-**Example terminal output:**
+### Example terminal output
 
 When user application programmed in BOOT slot:
 
