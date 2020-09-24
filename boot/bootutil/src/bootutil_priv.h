@@ -326,6 +326,16 @@ int boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs);
 #endif
 
 /**
+ * Checks that a buffer is erased according to what the erase value for the
+ * flash device provided in `flash_area` is.
+ *
+ * @returns true if the buffer is erased; false if any of the bytes is not
+ * erased, or when buffer is NULL, or when len == 0.
+ */
+bool bootutil_buffer_is_erased(const struct flash_area *area,
+                               const void *buffer, size_t len);
+
+/**
  * Safe (non-overflowing) uint32_t addition.  Returns true, and stores
  * the result in *dest if it can be done without overflow.  Otherwise,
  * returns false.
