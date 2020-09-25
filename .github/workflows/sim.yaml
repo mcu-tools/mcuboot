@@ -1,8 +1,5 @@
 # For development, trigger this on any push.
-on: [push, pull_request]
-
-# Eventually, we'll want to limit this to pull requests.
-# on: ???
+on: [pull_request]
 
 jobs:
   environment:
