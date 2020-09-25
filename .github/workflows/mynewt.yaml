@@ -5,12 +5,8 @@ jobs:
   environment:
     name: Mynewt build
     runs-on: ubuntu-latest
-    env:
-      MULTI_FEATURES: ${{ matrix.features }}
     steps:
     - uses: actions/checkout@v2
-      with:
-        submodules: recursive
     - name: Print the environment
       run: |
         uname -a
