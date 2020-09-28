@@ -15,7 +15,9 @@
 # this retrieves the merge commit created by GH
 parents=(`git log -n 1 --format=%p HEAD`)
 
+log=$(git log --oneline | head -n10)
 if [[ "${#parents[@]}" -ne 2 ]]; then
+  echo "log: ${log}"
   echo "This PR's merge commit is missing a parent!"
   exit 1
 fi
