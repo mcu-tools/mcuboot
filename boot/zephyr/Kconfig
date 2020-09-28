@@ -126,6 +126,10 @@ endchoice
 
 config BOOT_SIGNATURE_KEY_FILE
 	string "PEM key file"
+	default "root-ec-p256.pem" if BOOT_SIGNATURE_TYPE_ECDSA_P256
+	default "root-ed25519.pem" if BOOT_SIGNATURE_TYPE_ED25519
+	default "root-rsa-3072.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=3072
+	default "root-rsa-2048.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=2048
 	default ""
 	help
 	  You can use either absolute or relative path.
