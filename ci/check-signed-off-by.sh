@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+git log --oneline | head -n10
+
 # this retrieves the merge commit created by GH
 parents=(`git log -n 1 --format=%p HEAD`)
 
