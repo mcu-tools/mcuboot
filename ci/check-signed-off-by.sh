@@ -15,15 +15,29 @@
 # this retrieves the merge commit created by GH
 parents=(`git log -n 1 --format=%p HEAD`)
 
-log=$(git log --oneline | head -n10)
-if [[ "${#parents[@]}" -ne 2 ]]; then
-  echo "log: ${log}"
-  echo "This PR's merge commit is missing a parent!"
+if [[ "${#parents[@]}" -eq 2 ]]; then
+  # running on Travis-CI
+  from="${parents[0]}"
+  into="${parents[1]}"
+else
+  # running on GH workflows
+  head=$(git log -n1 --format=%H)
+  echo "${head}"
+  git show ${head}~
+  git show ${head}~1
+  git show ${head}~2
+  git show ${head}^
+  git show ${head}^1
+  git show ${head}^2
+  from="$(git show -s --format=%h ${head}^1)"
+  into="$(git show -s --format=%h ${head}^2)"
+fi
+
+if [[ -z "${from}" || -z "${into}" ]]; then
+  echo "Could not find this PR's from/into commits!"
   exit 1
 fi
 
-from="${parents[0]}"
-into="${parents[1]}"
 commits=$(git show -s --format=%h ${from}..${into})
 
 has_commits=false
