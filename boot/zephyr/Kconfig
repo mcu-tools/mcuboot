@@ -68,6 +68,7 @@ config SINGLE_APPLICATION_SLOT
 
 choice
 	prompt "Signature type"
+	default BOOT_SIGNATURE_TYPE_ECDSA_P256 if HAS_HW_NRF_CC310
 	default BOOT_SIGNATURE_TYPE_RSA
 
 config BOOT_SIGNATURE_TYPE_NONE
@@ -92,17 +93,21 @@ config BOOT_SIGNATURE_TYPE_ECDSA_P256
 if BOOT_SIGNATURE_TYPE_ECDSA_P256
 choice
 	prompt "Ecdsa implementation"
+	default BOOT_ECDSA_CC310 if HAS_HW_NRF_CC310
 	default BOOT_ECDSA_TINYCRYPT
+
 config BOOT_ECDSA_TINYCRYPT
 	bool "Use tinycrypt"
 	select BOOT_USE_TINYCRYPT
-config BOOT_CC310
+
+config BOOT_ECDSA_CC310
 	bool "Use CC310"
-	select BOOT_USE_NRF_CC310_BL if HAS_HW_NRF_CC310
-	select NRF_CC310_BL if HAS_HW_NRF_CC310
-	select NRFXLIB_CRYPTO if SOC_FAMILY_NRF
+	depends on HAS_HW_NRF_CC310
+	select BOOT_USE_NRF_CC310_BL
+	select NRF_CC310_BL
+	select NRFXLIB_CRYPTO
 	select BOOT_USE_CC310
-endchoice
+endchoice # Ecdsa implementation
 endif
 
 config BOOT_SIGNATURE_TYPE_ED25519
