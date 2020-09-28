@@ -1,5 +1,5 @@
 # For development, trigger this on any push.
-on: [pull_request]
+on: [push]
 
 jobs:
   environment:
