@@ -15,6 +15,9 @@ jobs:
         lscpu
         free
         pwd
+    - name: Signed commit check
+      run: |
+        ./ci/check-signed-off-by.sh
     - name: Mynewt install
       run: |
         ./ci/mynewt_install.sh
