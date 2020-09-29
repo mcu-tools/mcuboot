@@ -27,6 +27,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
+        fetch-depth: 0
         submodules: recursive
     - name: Print the environment
       run: |
@@ -34,6 +35,9 @@ jobs:
         lscpu
         free
         pwd
+    - name: Signed commit check
+      run: |
+        ./ci/check-signed-off-by.sh
     - name: Install stable Rust
       uses: actions-rs/toolchain@v1
       with:

@@ -7,12 +7,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
     - name: Print the environment
       run: |
         uname -a
         lscpu
         free
         pwd
+    - name: Signed commit check
+      run: |
+        ./ci/check-signed-off-by.sh
     - name: Mynewt install
       run: |
         ./ci/mynewt_install.sh
