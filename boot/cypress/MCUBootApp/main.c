@@ -36,6 +36,9 @@
 
 #include "bootutil/bootutil_log.h"
 
+#include "bootutil/fault_injection_hardening.h"
+#include "bootutil/fault_injection_hardening_delay_rng.h"
+
 /* Define pins for UART debug output */
 #define CYBSP_UART_ENABLED 1U
 #define CYBSP_UART_HW SCB5
@@ -75,6 +78,7 @@ int main(void)
     struct boot_rsp rsp;
     cy_rslt_t rc = CY_RSLT_TYPE_ERROR;
     bool boot_succeeded = false;
+    fih_int fih_rc = FIH_FAILURE;
 
     init_cycfg_clocks();
     init_cycfg_peripherals();
@@ -113,7 +117,9 @@ int main(void)
     if (CY_SMIF_SUCCESS == rc)
 #endif
     {
-        if (boot_go(&rsp) == 0)
+
+        FIH_CALL(boot_go, fih_rc, &rsp);
+        if (fih_eq(fih_rc, FIH_SUCCESS))
         {
             BOOT_LOG_INF("User Application validated successfully");
             do_boot(&rsp);
