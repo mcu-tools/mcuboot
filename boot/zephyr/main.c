@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2014 Wind River Systems, Inc.
+ * Copyright (c) 2020 Arm Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +30,8 @@
 #include "bootutil/bootutil_log.h"
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
+#include "bootutil/fault_injection_hardening.h"
+#include "bootutil/fault_injection_hardening_delay_rng.h"
 #include "flash_map_backend/flash_map_backend.h"
 
 #ifdef CONFIG_MCUBOOT_SERIAL
@@ -309,12 +312,15 @@ void main(void)
 {
     struct boot_rsp rsp;
     int rc;
+    fih_int fih_rc = FIH_FAILURE;
 
     BOOT_LOG_INF("Starting bootloader");
 
     os_heap_init();
 
     ZEPHYR_BOOT_LOG_START();
+
+    (void)rc;
 
 #if (!defined(CONFIG_XTENSA) && defined(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL))
     if (!flash_device_get_binding(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL)) {
@@ -381,11 +387,10 @@ void main(void)
     }
 #endif
 
-    rc = boot_go(&rsp);
-    if (rc != 0) {
+    FIH_CALL(boot_go, fih_rc, &rsp);
+    if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
         BOOT_LOG_ERR("Unable to find bootable image");
-        while (1)
-            ;
+        FIH_PANIC;
     }
 
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
