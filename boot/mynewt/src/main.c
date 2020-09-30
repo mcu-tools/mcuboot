@@ -45,6 +45,8 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 #include "bootutil/bootutil_log.h"
+#include "bootutil/fault_injection_hardening.h"
+#include "bootutil/fault_injection_hardening_delay_rng.h"
 
 #if MYNEWT_VAL(BOOT_CUSTOM_START)
 void boot_custom_start(uintptr_t flash_base, struct boot_rsp *rsp);
@@ -214,6 +216,7 @@ main(void)
     struct boot_rsp rsp;
     uintptr_t flash_base;
     int rc;
+    fih_int fih_rc = FIH_FAILURE;
 
     hal_bsp_init();
 
@@ -237,8 +240,11 @@ main(void)
     flash_map_init();
 #endif
 
-    rc = boot_go(&rsp);
-    assert(rc == 0);
+    FIH_CALL(boot_go, fih_rc, &rsp);
+    if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+        assert(fih_int_decode(fih_rc) == FIH_POSITIVE_VALUE);
+        FIH_PANIC;
+    }
 
     rc = flash_device_base(rsp.br_flash_dev_id, &flash_base);
     assert(rc == 0);
