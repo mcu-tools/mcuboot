@@ -29,6 +29,8 @@
 #include "mcuboot_config/mcuboot_config.h"
 
 #ifdef MCUBOOT_SIGN_EC256
+/*TODO: remove this after cypress port mbedtls to abstract crypto api */
+#if defined (MCUBOOT_USE_TINYCRYPT) || defined (MCUBOOT_USE_CC310)
 #include "bootutil/sign_key.h"
 
 #include "mbedtls/oid.h"
@@ -182,4 +184,5 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     return rc;
 }
 
+#endif /* MCUBOOT_USE_TINYCRYPT || defined MCUBOOT_USE_CC310 */
 #endif /* MCUBOOT_SIGN_EC256 */
