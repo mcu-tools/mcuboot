@@ -63,7 +63,17 @@ set(NRF_DIR "${MCUBOOT_DIR}/ext/nrf")
 
 if(CONFIG_BOOT_USE_NRF_CC310_BL)
 set(NRFXLIB_DIR ${ZEPHYR_BASE}/../nrfxlib)
-assert_exists(NRFXLIB_DIR)
+if(NOT EXISTS ${NRFXLIB_DIR})
+  message(FATAL_ERROR "
+    ------------------------------------------------------------------------
+    No such file or directory: ${NRFXLIB_DIR}
+    The current configuration enables nRF CC310 crypto accelerator hardware
+    with the `CONFIG_BOOT_USE_NRF_CC310_BL` option. Please follow
+    `ext/nrf/README.md` guide to fix your setup or use tinycrypt instead of
+    the HW accelerator.
+    To use the tinycrypt set `CONFIG_BOOT_ECDSA_TINYCRYPT` to y.
+    ------------------------------------------------------------------------")
+endif()
 # Don't include this if we are using west
  add_subdirectory(${NRFXLIB_DIR} ${PROJECT_BINARY_DIR}/nrfxlib)
 endif()
