@@ -147,6 +147,15 @@ static void do_boot(struct boot_rsp *rsp)
     cleanup_arm_nvic(); /* cleanup NVIC registers */
 #endif
 
+#if defined(CONFIG_BUILTIN_STACK_GUARD) && \
+    defined(CONFIG_CPU_CORTEX_M_HAS_SPLIM)
+    /* Reset limit registers to avoid inflicting stack overflow on image
+     * being booted.
+     */
+    __set_PSPLIM(0);
+    __set_MSPLIM(0);
+#endif
+
 #ifdef CONFIG_BOOT_INTR_VEC_RELOC
 #if defined(CONFIG_SW_VECTOR_RELAY)
     _vector_table_pointer = vt;
