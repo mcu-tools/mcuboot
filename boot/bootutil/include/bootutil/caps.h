@@ -46,6 +46,7 @@ uint32_t bootutil_get_caps(void);
 #define BOOTUTIL_CAP_SWAP_USING_MOVE        (1<<11)
 #define BOOTUTIL_CAP_DOWNGRADE_PREVENTION   (1<<12)
 #define BOOTUTIL_CAP_ENC_X25519             (1<<13)
+#define BOOTUTIL_CAP_BOOTSTRAP              (1<<14)
 
 /*
  * Query the number of images this bootloader is configured for.  This
