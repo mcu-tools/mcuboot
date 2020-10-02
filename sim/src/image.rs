@@ -258,6 +258,25 @@ impl ImagesBuilder {
         }
     }
 
+    pub fn make_bootstrap_image(self) -> Images {
+        let mut flash = self.flash;
+        let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let primaries = install_no_image();
+            let upgrades = install_image(&mut flash, &slots[1], 32784, &dep, false);
+            OneImage {
+                slots: slots,
+                primaries: primaries,
+                upgrades: upgrades,
+            }}).collect();
+        Images {
+            flash: flash,
+            areadesc: self.areadesc,
+            images: images,
+            total_count: None,
+        }
+    }
+
     /// Build the Flash and area descriptor for a given device.
     pub fn make_device(device: DeviceName, align: usize, erased_val: u8) -> (SimMultiFlash, AreaDesc, &'static [Caps]) {
         match device {
@@ -398,6 +417,39 @@ impl Images {
             Ok(total_count)
         }
     }
+
+    pub fn run_bootstrap(&self) -> bool {
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        if Caps::Bootstrap.present() {
+            info!("Try bootstraping image in the primary");
+
+            let (result, _) = c::boot_go(&mut flash, &self.areadesc, None, false);
+            if result != 0 {
+                warn!("Failed first boot");
+                fails += 1;
+            }
+
+            if !self.verify_images(&flash, 0, 1) {
+                warn!("Image in the first slot was not bootstrapped");
+                fails += 1;
+            }
+
+            if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                     BOOT_FLAG_SET, BOOT_FLAG_SET) {
+                warn!("Mismatched trailer for the primary slot");
+                fails += 1;
+            }
+        }
+
+        if fails > 0 {
+            error!("Expected trailer on secondary slot to be erased");
+        }
+
+        fails > 0
+    }
+
 
     /// Test a simple upgrade, with dependencies given, and verify that the
     /// image does as is described in the test.
