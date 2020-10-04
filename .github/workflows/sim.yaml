@@ -14,7 +14,7 @@ jobs:
         - "sig-rsa overwrite-only large-write,sig-ecdsa overwrite-only large-write,multiimage overwrite-only large-write"
         - "sig-rsa validate-primary-slot,sig-ecdsa validate-primary-slot,sig-rsa multiimage validate-primary-slot"
         - "enc-kw overwrite-only large-write,enc-rsa overwrite-only large-write"
-        - "sig-rsa enc-rsa validate-primary-slot,swap-move enc-rsa sig-rsa validate-primary-slot"
+        - "sig-rsa enc-rsa validate-primary-slot,swap-move enc-rsa sig-rsa validate-primary-slot bootstrap"
         - "sig-rsa enc-kw validate-primary-slot bootstrap,sig-ed25519 enc-x25519 validate-primary-slot"
         - "sig-ecdsa enc-kw validate-primary-slot"
         - "sig-rsa validate-primary-slot overwrite-only large-write"
