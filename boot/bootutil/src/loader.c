@@ -1636,11 +1636,11 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
 
                 if (rc == 0 || fih_not_eq(fih_rc, FIH_SUCCESS)) {
 
-                    rc = boot_img_hdr(state, BOOT_SECONDARY_SLOT)->ih_magic == IMAGE_MAGIC;
+                    rc = (boot_img_hdr(state, BOOT_SECONDARY_SLOT)->ih_magic == IMAGE_MAGIC) ? 1: 0;
                     FIH_CALL(boot_validate_slot, fih_rc,
                              state, BOOT_SECONDARY_SLOT, bs);
 
-                    if (rc == 0 && fih_eq(fih_rc, FIH_SUCCESS)) {
+                    if (rc == 1 && fih_eq(fih_rc, FIH_SUCCESS)) {
                         /* Set swap type to REVERT to overwrite the primary
                          * slot with the image contained in secondary slot
                          * and to trigger the explicit setting of the
