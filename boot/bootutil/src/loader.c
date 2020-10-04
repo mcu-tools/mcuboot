@@ -890,6 +890,13 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     const struct flash_area *fap_secondary_slot;
     uint8_t image_index;
 
+#if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+    uint32_t sector;
+    uint32_t trailer_sz;
+    uint32_t off;
+    uint32_t sz;
+#endif
+
     (void)bs;
 
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
@@ -917,14 +924,30 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
         rc = boot_erase_region(fap_primary_slot, size, this_size);
         assert(rc == 0);
 
-        size += this_size;
-
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
-        if (size >= src_size) {
+        if ((size + this_size) >= src_size) {
+            size += src_size - size;
+            size += BOOT_WRITE_SZ(state) - (size % BOOT_WRITE_SZ(state));
             break;
         }
 #endif
+
+        size += this_size;
     }
+
+#if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+    trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
+    sector = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 1;
+    sz = 0;
+    do {
+        sz += boot_img_sector_size(state, BOOT_PRIMARY_SLOT, sector);
+        off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, sector);
+        sector--;
+    } while (sz < trailer_sz);
+
+    rc = boot_erase_region(fap_primary_slot, off, sz);
+    assert(rc == 0);
+#endif
 
 #ifdef MCUBOOT_ENC_IMAGES
     if (IS_ENCRYPTED(boot_img_hdr(state, BOOT_SECONDARY_SLOT))) {
@@ -944,6 +967,16 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     BOOT_LOG_INF("Copying the secondary slot to the primary slot: 0x%zx bytes",
                  size);
     rc = boot_copy_region(state, fap_secondary_slot, fap_primary_slot, 0, 0, size);
+    if (rc != 0) {
+        return rc;
+    }
+
+#if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+    rc = boot_write_magic(fap_primary_slot);
+    if (rc != 0) {
+        return rc;
+    }
+#endif
 
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     /* Update the stored security counter with the new image's security counter
