@@ -42,7 +42,7 @@ extern int sim_flash_read(uint8_t flash_id, uint32_t offset, uint8_t *dest,
         uint32_t size);
 extern int sim_flash_write(uint8_t flash_id, uint32_t offset, const uint8_t *src,
         uint32_t size);
-extern uint8_t sim_flash_align(uint8_t flash_id);
+extern uint16_t sim_flash_align(uint8_t flash_id);
 extern uint8_t sim_flash_erased_val(uint8_t flash_id);
 
 struct sim_context {
@@ -202,7 +202,7 @@ done:
 #endif
 }
 
-uint8_t flash_area_align(const struct flash_area *area)
+uint16_t flash_area_align(const struct flash_area *area)
 {
     return sim_flash_align(area->fa_device_id);
 }
