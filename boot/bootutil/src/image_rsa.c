@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2017-2018 Linaro LTD
  * Copyright (c) 2017-2019 JUUL Labs
+ * Copyright (c) 2020 Arm Limited
  *
  * Original license:
  *
@@ -30,13 +31,14 @@
 
 #ifdef MCUBOOT_SIGN_RSA
 #include "bootutil/sign_key.h"
-#include "bootutil/sha256.h"
+#include "bootutil/crypto/sha256.h"
 
 #include "mbedtls/rsa.h"
 #include "mbedtls/asn1.h"
 #include "mbedtls/version.h"
 
 #include "bootutil_priv.h"
+#include "bootutil/fault_injection_hardening.h"
 
 /*
  * Constants for this particular constrained implementation of
@@ -148,6 +150,8 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
         mask += bytes;
         count -= bytes;
     }
+
+    bootutil_sha256_drop(&ctx);
 }
 
 /*
@@ -155,7 +159,7 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
  * v2.2, section 9.1.2, with many parameters required to have fixed
  * values.
  */
-static int
+static fih_int
 bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
   uint8_t *sig)
 {
@@ -164,17 +168,22 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
     uint8_t db_mask[PSS_MASK_LEN];
     uint8_t h2[PSS_HLEN];
     int i;
+    int rc = 0;
+    fih_int fih_rc = FIH_FAILURE;
 
     if (ctx->len != PSS_EMLEN || PSS_EMLEN > MBEDTLS_MPI_MAX_SIZE) {
-        return -1;
+        rc = -1;
+        goto out;
     }
 
     if (hlen != PSS_HLEN) {
-        return -1;
+        rc = -1;
+        goto out;
     }
 
     if (mbedtls_rsa_public(ctx, sig, em)) {
-        return -1;
+        rc = -1;
+        goto out;
     }
 
     /*
@@ -202,7 +211,8 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
      * 0xbc, output inconsistent and stop.
      */
     if (em[PSS_EMLEN - 1] != 0xbc) {
-        return -1;
+        rc = -1;
+        goto out;
     }
 
     /* Step 5.  Let maskedDB be the leftmost emLen - hLen - 1 octets
@@ -242,12 +252,14 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
      * hexadecimal value 0x01, output "inconsistent" and stop. */
     for (i = 0; i < PSS_MASK_ZERO_COUNT; i++) {
         if (db_mask[i] != 0) {
-            return -1;
+            rc = -1;
+            goto out;
         }
     }
 
     if (db_mask[PSS_MASK_ONE_POS] != 1) {
-        return -1;
+        rc = -1;
+        goto out;
     }
 
     /* Step 11. Let salt be the last sLen octets of DB */
@@ -260,22 +272,27 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
     bootutil_sha256_update(&shactx, hash, PSS_HLEN);
     bootutil_sha256_update(&shactx, &db_mask[PSS_MASK_SALT_POS], PSS_SLEN);
     bootutil_sha256_finish(&shactx, h2);
+    bootutil_sha256_drop(&shactx);
 
     /* Step 14.  If H = H', output "consistent".  Otherwise, output
      * "inconsistent". */
-    if (memcmp(h2, &em[PSS_HASH_OFFSET], PSS_HLEN) != 0) {
-        return -1;
+    FIH_CALL(boot_fih_memequal, fih_rc, h2, &em[PSS_HASH_OFFSET], PSS_HLEN);
+
+out:
+    if (rc) {
+        fih_rc = fih_int_encode(rc);
     }
 
-    return 0;
+    FIH_RET(fih_rc);
 }
 
-int
+fih_int
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
 {
     mbedtls_rsa_context ctx;
     int rc;
+    fih_int fih_rc = FIH_FAILURE;
     uint8_t *cp;
     uint8_t *end;
 
@@ -287,11 +304,13 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     rc = bootutil_parse_rsakey(&ctx, &cp, end);
     if (rc || slen != ctx.len) {
         mbedtls_rsa_free(&ctx);
-        return rc;
+        goto out;
     }
-    rc = bootutil_cmp_rsasig(&ctx, hash, hlen, sig);
+    FIH_CALL(bootutil_cmp_rsasig, fih_rc, &ctx, hash, hlen, sig);
+
+out:
     mbedtls_rsa_free(&ctx);
 
-    return rc;
+    FIH_RET(fih_rc);
 }
 #endif /* MCUBOOT_SIGN_RSA */

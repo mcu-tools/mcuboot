@@ -123,7 +123,7 @@ int flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
 /*
  * Alignment restriction for flash writes.
  */
-uint8_t flash_area_align(const struct flash_area *);
+uint16_t flash_area_align(const struct flash_area *);
 
 /*
  * What is value is read from erased flash bytes.

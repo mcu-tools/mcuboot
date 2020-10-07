@@ -26,6 +26,7 @@
  */
 
 #include <stdint.h>
+#include "bootutil/fault_injection_hardening.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,9 +35,9 @@ extern "C" {
 /**
  * Initialises the security counters.
  *
- * @return                  0 on success; nonzero on failure.
+ * @return                  FIH_SUCCESS on success
  */
-int32_t boot_nv_security_counter_init(void);
+fih_int boot_nv_security_counter_init(void);
 
 /**
  * Reads the stored value of a given image's security counter.
@@ -44,9 +45,9 @@ int32_t boot_nv_security_counter_init(void);
  * @param image_id          Index of the image (from 0).
  * @param security_cnt      Pointer to store the security counter value.
  *
- * @return                  0 on success; nonzero on failure.
+ * @return                  FIH_SUCCESS on success
  */
-int32_t boot_nv_security_counter_get(uint32_t image_id, uint32_t *security_cnt);
+fih_int boot_nv_security_counter_get(uint32_t image_id, fih_int *security_cnt);
 
 /**
  * Updates the stored value of a given image's security counter with a new

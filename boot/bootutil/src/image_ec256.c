@@ -29,18 +29,13 @@
 #include "mcuboot_config/mcuboot_config.h"
 
 #ifdef MCUBOOT_SIGN_EC256
+/*TODO: remove this after cypress port mbedtls to abstract crypto api */
+#if defined (MCUBOOT_USE_TINYCRYPT) || defined (MCUBOOT_USE_CC310)
 #include "bootutil/sign_key.h"
 
 #include "mbedtls/oid.h"
 #include "mbedtls/asn1.h"
-
-#ifdef MCUBOOT_USE_TINYCRYPT
-#include "tinycrypt/ecc_dsa.h"
-#endif
-#ifdef MCUBOOT_USE_CC310
-#include "cc310_glue.h"
-#define NUM_ECC_BYTES (4*8)
-#endif
+#include "bootutil/crypto/ecdsa_p256.h"
 #include "bootutil_priv.h"
 
 /*
@@ -96,6 +91,7 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
     }
 
     (*cp)++;
+
     return 0;
 }
 
@@ -151,12 +147,12 @@ bootutil_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp, uint8_t *
     return 0;
 }
 
-#ifdef MCUBOOT_USE_TINYCRYPT
 int
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
 {
     int rc;
+    bootutil_ecdsa_p256_context ctx;
     uint8_t *pubkey;
     uint8_t *end;
 
@@ -182,56 +178,11 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
         return -1;
     }
 
-    rc = uECC_verify(pubkey, hash, NUM_ECC_BYTES, signature, uECC_secp256r1());
-    if (rc == 1) {
-        return 0;
-    } else {
-        return -2;
-    }
-}
-#endif /* MCUBOOT_USE_TINYCRYPT */
-#ifdef MCUBOOT_USE_CC310
-int
-bootutil_verify_sig(uint8_t *hash,
-                    uint32_t hlen,
-                    uint8_t *sig,
-                    size_t slen,
-                    uint8_t key_id)
-{
-    int rc;
-    uint8_t *pubkey;
-    uint8_t *end;
-    uint8_t signature[2 * NUM_ECC_BYTES];
-
-    pubkey = (uint8_t *)bootutil_keys[key_id].key;
-    end = pubkey + *bootutil_keys[key_id].len;
-
-    rc = bootutil_import_key(&pubkey, end);
-    if (rc) {
-        return -1;
-    }
-
-    /* Decode signature */
-    rc = bootutil_decode_sig(signature, sig, sig + slen);
-    if (rc) {
-        return -1;
-    }
-
-    /*
-     * This is simplified, as the hash length is also 32 bytes.
-     */
-    if (hlen != NUM_ECC_BYTES) {
-        return -1;
-    }
-
-    /* Initialize and verify in one go */
-    rc = cc310_ecdsa_verify_secp256r1(hash, pubkey, signature, hlen);
-
-    if (rc != 0) {
-        return -2;
-    }
-
+    bootutil_ecdsa_p256_init(&ctx);
+    rc = bootutil_ecdsa_p256_verify(&ctx, pubkey, hash, signature);
+    bootutil_ecdsa_p256_drop(&ctx);
     return rc;
 }
-#endif /* MCUBOOT_USE_CC310 */
+
+#endif /* MCUBOOT_USE_TINYCRYPT || defined MCUBOOT_USE_CC310 */
 #endif /* MCUBOOT_SIGN_EC256 */

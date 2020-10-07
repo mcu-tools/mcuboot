@@ -1,5 +1,5 @@
 # Copyright 2018 Nordic Semiconductor ASA
-# Copyright 2017 Linaro Limited
+# Copyright 2017-2020 Linaro Limited
 # Copyright 2019-2020 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -219,9 +219,12 @@ class Image():
                                                   self.save_enctlv,
                                                   self.enctlv_len)
                 trailer_addr = (self.base_addr + self.slot_size) - trailer_size
-                padding = bytes([self.erased_val] *
-                                (trailer_size - len(boot_magic))) + boot_magic
-                h.puts(trailer_addr, padding)
+                padding = bytearray([self.erased_val] * 
+                                    (trailer_size - len(boot_magic)))
+                if self.confirm and not self.overwrite_only:
+                    padding[-MAX_ALIGN] = 0x01  # image_ok = 0x01
+                padding += boot_magic
+                h.puts(trailer_addr, bytes(padding))
             h.tofile(path, 'hex')
         else:
             if self.pad:
@@ -327,7 +330,7 @@ class Image():
             dependencies_num = len(dependencies[DEP_IMAGES_KEY])
             protected_tlv_size += (dependencies_num * 16)
 
-        if custom_tlvs:
+        if custom_tlvs is not None:
             for value in custom_tlvs.values():
                 protected_tlv_size += TLV_SIZE + len(value)
 
@@ -375,8 +378,9 @@ class Image():
                                     )
                     prot_tlv.add('DEPENDENCY', payload)
 
-            for tag, value in custom_tlvs.items():
-                prot_tlv.add(tag, value)
+            if custom_tlvs is not None:
+                for tag, value in custom_tlvs.items():
+                    prot_tlv.add(tag, value)
 
             protected_tlv_off = len(self.payload)
             self.payload += prot_tlv.get()
@@ -529,12 +533,12 @@ class Image():
         version = struct.unpack('BBHI', b[20:28])
 
         if magic != IMAGE_MAGIC:
-            return VerifyResult.INVALID_MAGIC, None
+            return VerifyResult.INVALID_MAGIC, None, None
 
         tlv_info = b[header_size+img_size:header_size+img_size+TLV_INFO_SIZE]
         magic, tlv_tot = struct.unpack('HH', tlv_info)
         if magic != TLV_INFO_MAGIC:
-            return VerifyResult.INVALID_TLV_INFO_MAGIC, None
+            return VerifyResult.INVALID_TLV_INFO_MAGIC, None, None
 
         sha = hashlib.sha256()
         sha.update(b[:header_size+img_size])
@@ -550,9 +554,9 @@ class Image():
                 off = tlv_off + TLV_SIZE
                 if digest == b[off:off+tlv_len]:
                     if key is None:
-                        return VerifyResult.OK, version
+                        return VerifyResult.OK, version, digest
                 else:
-                    return VerifyResult.INVALID_HASH, None
+                    return VerifyResult.INVALID_HASH, None, None
             elif key is not None and tlv_type == TLV_VALUES[key.sig_tlv()]:
                 off = tlv_off + TLV_SIZE
                 tlv_sig = b[off:off+tlv_len]
@@ -562,9 +566,9 @@ class Image():
                         key.verify(tlv_sig, payload)
                     else:
                         key.verify_digest(tlv_sig, digest)
-                    return VerifyResult.OK, version
+                    return VerifyResult.OK, version, digest
                 except InvalidSignature:
                     # continue to next TLV
                     pass
             tlv_off += TLV_SIZE + tlv_len
-        return VerifyResult.INVALID_SIGNATURE, None
+        return VerifyResult.INVALID_SIGNATURE, None, None

@@ -39,6 +39,7 @@ fn main() {
 
     if bootstrap {
         conf.define("MCUBOOT_BOOTSTRAP", None);
+        conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
     }
 
     if validate_primary_slot {
@@ -121,7 +122,6 @@ fn main() {
 
     if overwrite_only {
         conf.define("MCUBOOT_OVERWRITE_ONLY", None);
-        conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
     }
 
     if swap_move {
@@ -178,6 +178,7 @@ fn main() {
             conf.file("../../ext/tinycrypt/lib/source/sha256.c");
             conf.file("../../ext/tinycrypt/lib/source/aes_encrypt.c");
             conf.file("../../ext/tinycrypt/lib/source/aes_decrypt.c");
+            conf.file("../../ext/tinycrypt/lib/source/ctr_mode.c");
         }
 
         if sig_ed25519 {
@@ -269,6 +270,7 @@ fn main() {
     conf.file("../../boot/bootutil/src/caps.c");
     conf.file("../../boot/bootutil/src/bootutil_misc.c");
     conf.file("../../boot/bootutil/src/tlv.c");
+    conf.file("../../boot/bootutil/src/fault_injection_hardening.c");
     conf.file("csupport/run.c");
     conf.include("../../boot/bootutil/include");
     conf.include("csupport");

@@ -14,6 +14,7 @@
 package main
 
 import (
+	"archive/zip"
 	"bufio"
 	"flag"
 	"fmt"
@@ -23,6 +24,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/JuulLabs-OSS/mcuboot/samples/zephyr/mcutests"
 )
 
 // logIn gives the pathname of the log output from the Zephyr device.
@@ -39,258 +42,7 @@ var logIn = flag.String("login", "/tmp/zephyr.out", "File name of terminal log f
 // Output from this test run is written to the given log file.
 var logOut = flag.String("logout", "tests.log", "Log file to write to")
 
-// The main driver of this consists of a series of tests.  Each test
-// then contains a series of commands and expect results.
-var tests = []struct {
-	name  string
-	tests []oneTest
-}{
-	{
-		name: "Good RSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-good-rsa"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello2",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "Good ECDSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-good-ecdsa"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello2",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "Overwrite",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-overwrite"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello2",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello2",
-			},
-		},
-	},
-	{
-		name: "Bad RSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-bad-rsa-upgrade"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "Bad RSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-bad-ecdsa-upgrade"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "No bootcheck",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-no-bootcheck"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "Wrong RSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-wrong-rsa"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-	{
-		name: "Wrong ECDSA",
-		tests: []oneTest{
-			{
-				commands: [][]string{
-					{"make", "test-wrong-ecdsa"},
-					{"make", "flash_boot"},
-				},
-				expect: "Unable to find bootable image",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello1"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"make", "flash_hello2"},
-				},
-				expect: "Hello World from hello1",
-			},
-			{
-				commands: [][]string{
-					{"pyocd", "commander", "-c", "reset"},
-				},
-				expect: "Hello World from hello1",
-			},
-		},
-	},
-}
-
-type oneTest struct {
-	commands [][]string
-	expect   string
-}
+var preBuilt = flag.String("prebuilt", "", "Name of file with prebuilt tests")
 
 func main() {
 	err := run()
@@ -314,22 +66,45 @@ func run() error {
 	lg := bufio.NewWriter(logFile)
 	defer lg.Flush()
 
-	for _, group := range tests {
-		fmt.Printf("Running %q\n", group.name)
-		fmt.Fprintf(lg, "-------------------------------------\n")
-		fmt.Fprintf(lg, "---- Running %q\n", group.name)
+	var extractor *Extractor
 
-		for _, test := range group.tests {
-			for _, cmd := range test.commands {
-				fmt.Printf("    %s\n", cmd)
-				fmt.Fprintf(lg, "---- Run: %s\n", cmd)
-				err = runCommand(cmd, lg)
+	if *preBuilt != "" {
+		// If there are pre-built images, open them.
+		extractor, err = NewExtractor(*preBuilt)
+		if err != nil {
+			return err
+		}
+		defer extractor.Close()
+	}
+
+	for _, group := range mcutests.Tests {
+		fmt.Printf("Running %q\n", group.Name)
+		fmt.Fprintf(lg, "-------------------------------------\n")
+		fmt.Fprintf(lg, "---- Running %q\n", group.Name)
+
+		for _, test := range group.Tests {
+			if *preBuilt == "" {
+				// No prebuilt, build the tests
+				// ourselves.
+				err = runCommands(test.Build, lg)
+				if err != nil {
+					return err
+				}
+			} else {
+				// Extract the build artifacts from
+				// the zip file.
+				err = extractor.Extract(group.ShortName)
 				if err != nil {
 					return err
 				}
 			}
 
-			err = expect(lg, lines, test.expect)
+			err = runCommands(test.Commands, lg)
+			if err != nil {
+				return err
+			}
+
+			err = expect(lg, lines, test.Expect)
 			if err != nil {
 				return err
 			}
@@ -337,6 +112,20 @@ func run() error {
 			fmt.Fprintf(lg, "---- Passed\n")
 		}
 		fmt.Printf("    Passed!\n")
+	}
+
+	return nil
+}
+
+// Run a set of commands
+func runCommands(cmds [][]string, lg io.Writer) error {
+	for _, cmd := range cmds {
+		fmt.Printf("    %s\n", cmd)
+		fmt.Fprintf(lg, "---- Run: %s\n", cmd)
+		err := runCommand(cmd, lg)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -416,4 +205,86 @@ func readLog(sink chan<- string) {
 		// Pause a little
 		time.Sleep(250 * time.Millisecond)
 	}
+}
+
+// An Extractor holds an opened Zip file, and is able to extract files
+// based on the directory name.
+type Extractor struct {
+	file *os.File
+	zip  *zip.Reader
+}
+
+// NewExtractor returns an Extractor based on the contents of a zip
+// file.
+func NewExtractor(name string) (*Extractor, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	size, err := f.Seek(0, 2)
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+
+	rd, err := zip.NewReader(f, size)
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+
+	return &Extractor{
+		file: f,
+		zip:  rd,
+	}, nil
+}
+
+func (e *Extractor) Close() error {
+	return e.file.Close()
+}
+
+// Extract extracts the files of the given directory name into the
+// current directory.  These files will overwrite any files of these
+// names that already exist (presumably from previous extractions).
+func (e *Extractor) Extract(dir string) error {
+	prefix := dir + "/"
+
+	count := 0
+	for _, file := range e.zip.File {
+		if len(file.Name) > len(prefix) && strings.HasPrefix(file.Name, prefix) {
+			outName := file.Name[len(prefix):len(file.Name)]
+			fmt.Printf("->%q\n", outName)
+
+			err := e.single(file, outName)
+			if err != nil {
+				return err
+			}
+
+			count += 1
+		}
+	}
+
+	if count == 0 {
+		return fmt.Errorf("File for %s missing from archive", dir)
+	}
+
+	return nil
+}
+
+// single extracts a single file from the zip archive, writing the
+// results to a file 'outName'.
+func (e *Extractor) single(file *zip.File, outName string) error {
+	inf, err := file.Open()
+	if err != nil {
+		return err
+	}
+
+	outf, err := os.Create(outName)
+	if err != nil {
+		return err
+	}
+	defer outf.Close()
+
+	_, err = io.Copy(outf, inf)
+	return err
 }

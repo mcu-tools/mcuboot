@@ -65,4 +65,6 @@ cy_stc_smif_context_t *qspi_get_context(void);
 cy_stc_smif_mem_config_t *qspi_get_memory_config(int index);
 void qspi_dump_device(cy_stc_smif_mem_device_cfg_t *dev);
 
+void qspi_deinit(uint32_t smif_id);
+
 #endif /* __FLASH_QSPI_H__ */

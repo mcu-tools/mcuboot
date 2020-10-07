@@ -58,8 +58,8 @@ config NRF_CC310_BL
 
 menu "MCUBoot settings"
 
-config SINGLE_IMAGE_DFU
-	bool "Single image application"
+config SINGLE_APPLICATION_SLOT
+	bool "Single slot bootloader"
 	default n
 	help
 	  Single image area is used for application which means that
@@ -93,16 +93,19 @@ if BOOT_SIGNATURE_TYPE_ECDSA_P256
 choice
 	prompt "Ecdsa implementation"
 	default BOOT_ECDSA_TINYCRYPT
+
 config BOOT_ECDSA_TINYCRYPT
 	bool "Use tinycrypt"
 	select BOOT_USE_TINYCRYPT
-config BOOT_CC310
+
+config BOOT_ECDSA_CC310
 	bool "Use CC310"
-	select BOOT_USE_NRF_CC310_BL if HAS_HW_NRF_CC310
-	select NRF_CC310_BL if HAS_HW_NRF_CC310
-	select NRFXLIB_CRYPTO if SOC_FAMILY_NRF
+	depends on HAS_HW_NRF_CC310
+	select BOOT_USE_NRF_CC310_BL
+	select NRF_CC310_BL
+	select NRFXLIB_CRYPTO
 	select BOOT_USE_CC310
-endchoice
+endchoice # Ecdsa implementation
 endif
 
 config BOOT_SIGNATURE_TYPE_ED25519
@@ -126,6 +129,10 @@ endchoice
 
 config BOOT_SIGNATURE_KEY_FILE
 	string "PEM key file"
+	default "root-ec-p256.pem" if BOOT_SIGNATURE_TYPE_ECDSA_P256
+	default "root-ed25519.pem" if BOOT_SIGNATURE_TYPE_ED25519
+	default "root-rsa-3072.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=3072
+	default "root-rsa-2048.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=2048
 	default ""
 	help
 	  You can use either absolute or relative path.
@@ -163,7 +170,7 @@ config BOOT_VALIDATE_SLOT0
 	  every boot, but can mitigate against some changes that are
 	  able to modify the flash image itself.
 
-if !SINGLE_IMAGE_DFU
+if !SINGLE_APPLICATION_SLOT
 choice
 	prompt "Image upgrade modes"
 	default BOOT_SWAP_USING_MOVE if SOC_FAMILY_NRF
@@ -206,7 +213,7 @@ config BOOT_DIRECT_XIP
 endchoice
 endif
 
-if !SINGLE_IMAGE_DFU
+if !SINGLE_APPLICATION_SLOT
 config BOOT_BOOTSTRAP
 	bool "Bootstrap erased the primary slot from the secondary slot"
 	default n
@@ -287,6 +294,42 @@ config MEASURED_BOOT
 config BOOT_SHARE_DATA
 	bool "Save application specific data in shared memory area"
 	default n
+
+choice
+	prompt "Fault injection hardening profile"
+	default BOOT_FIH_PROFILE_OFF
+
+config BOOT_FIH_PROFILE_OFF
+	bool "No hardening against hardware level fault injection"
+	help
+	  No hardening in SW against hardware level fault injection: power or
+	  clock glitching, etc.
+
+config BOOT_FIH_PROFILE_LOW
+	bool "Moderate level hardening against hardware level fault injection"
+	help
+	  Moderate level hardening: Long global fail loop to avoid break out,
+	  control flow integrity check to discover discrepancy in expected code
+	  flow.
+
+config BOOT_FIH_PROFILE_MEDIUM
+	bool "Medium level hardening against hardware level fault injection"
+	help
+	  Medium level hardening: Long global fail loop to avoid break out,
+	  control flow integrity check to discover discrepancy in expected code
+	  flow, double variables to discover register or memory corruption.
+
+config BOOT_FIH_PROFILE_HIGH
+	bool "Maximum level hardening against hardware level fault injection"
+	select MBEDTLS
+	help
+	  Maximum level hardening: Long global fail loop to avoid break out,
+	  control flow integrity check to discover discrepancy in expected code
+	  flow, double variables to discover register or memory corruption, random
+	  delays to make code execution less predictable. Random delays requires an
+	  entropy source.
+
+endchoice
 
 config BOOT_WAIT_FOR_USB_DFU
 	bool "Wait for a prescribed duration to see if USB DFU is invoked"
@@ -424,7 +467,7 @@ config BOOT_INTR_VEC_RELOC
 config UPDATEABLE_IMAGE_NUMBER
 	int "Number of updateable images"
 	default 1
-	range 1 1 if SINGLE_IMAGE_DFU
+	range 1 1 if SINGLE_APPLICATION_SLOT
 	help
 	  Enables support of multi image update.
 

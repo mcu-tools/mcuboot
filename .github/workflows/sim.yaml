@@ -1,0 +1,50 @@
+# For development, trigger this on any push.
+on: [pull_request]
+
+jobs:
+  environment:
+    strategy:
+      matrix:
+        features:
+        - "sig-ecdsa,sig-ed25519,enc-kw,bootstrap"
+        - "sig-rsa,sig-rsa3072,overwrite-only,validate-primary-slot,swap-move"
+        - "enc-rsa"
+        - "enc-ec256"
+        - "enc-x25519"
+        - "sig-rsa overwrite-only large-write,sig-ecdsa overwrite-only large-write,multiimage overwrite-only large-write"
+        - "sig-rsa validate-primary-slot,sig-ecdsa validate-primary-slot,sig-rsa multiimage validate-primary-slot"
+        - "enc-kw overwrite-only large-write,enc-rsa overwrite-only large-write"
+        - "sig-rsa enc-rsa validate-primary-slot,swap-move enc-rsa sig-rsa validate-primary-slot bootstrap"
+        - "sig-rsa enc-kw validate-primary-slot bootstrap,sig-ed25519 enc-x25519 validate-primary-slot"
+        - "sig-ecdsa enc-kw validate-primary-slot"
+        - "sig-rsa validate-primary-slot overwrite-only large-write"
+        - "sig-ecdsa enc-ec256 validate-primary-slot"
+        - "sig-rsa validate-primary-slot overwrite-only downgrade-prevention"
+    name: Sim
+    runs-on: ubuntu-latest
+    env:
+      MULTI_FEATURES: ${{ matrix.features }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    - name: Print the environment
+      run: |
+        uname -a
+        lscpu
+        free
+        pwd
+    - name: Signed commit check
+      run: |
+        ./ci/check-signed-off-by.sh
+    - name: Install stable Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    - name: Sim install
+      run: |
+        ./ci/sim_install.sh
+    - name: Sim run
+      run: |
+        ./ci/sim_run.sh

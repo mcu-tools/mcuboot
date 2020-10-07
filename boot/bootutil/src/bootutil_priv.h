@@ -28,12 +28,15 @@
 #ifndef H_BOOTUTIL_PRIV_
 #define H_BOOTUTIL_PRIV_
 
+#include <string.h>
+
 #include "sysflash/sysflash.h"
 
 #include <flash_map_backend/flash_map_backend.h>
 
 #include "bootutil/bootutil.h"
 #include "bootutil/image.h"
+#include "bootutil/fault_injection_hardening.h"
 #include "mcuboot_config/mcuboot_config.h"
 
 #ifdef MCUBOOT_ENC_IMAGES
@@ -47,6 +50,7 @@ extern "C" {
 #ifdef MCUBOOT_HAVE_ASSERT_H
 #include "mcuboot_config/mcuboot_assert.h"
 #else
+#include <assert.h>
 #define ASSERT assert
 #endif
 
@@ -68,13 +72,15 @@ struct flash_area;
 
 #if (defined(MCUBOOT_OVERWRITE_ONLY) + \
      defined(MCUBOOT_SWAP_USING_MOVE) + \
-     defined(MCUBOOT_DIRECT_XIP)) > 1
-#error "Please enable only one of MCUBOOT_OVERWRITE_ONLY, MCUBOOT_SWAP_USING_MOVE or MCUBOOT_DIRECT_XIP"
+     defined(MCUBOOT_DIRECT_XIP) + \
+     defined(MCUBOOT_RAM_LOAD)) > 1
+#error "Please enable only one of MCUBOOT_OVERWRITE_ONLY, MCUBOOT_SWAP_USING_MOVE, MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD"
 #endif
 
 #if !defined(MCUBOOT_OVERWRITE_ONLY) && \
     !defined(MCUBOOT_SWAP_USING_MOVE) && \
-    !defined(MCUBOOT_DIRECT_XIP)
+    !defined(MCUBOOT_DIRECT_XIP) && \
+    !defined(MCUBOOT_RAM_LOAD)
 #define MCUBOOT_SWAP_USING_SCRATCH 1
 #endif
 
@@ -170,18 +176,18 @@ struct boot_swap_state {
 
 _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 
-#if !defined(MCUBOOT_DIRECT_XIP)
-#define IS_IN_XIP_MODE()    0
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+#define ARE_SLOTS_EQUIVALENT()    0
 #else
-#define IS_IN_XIP_MODE()    1
+#define ARE_SLOTS_EQUIVALENT()    1
 
 #if (BOOT_IMAGE_NUMBER != 1)
-#error "The MCUBOOT_DIRECT_XIP mode only supports single-image boot (MCUBOOT_IMAGE_NUMBER=1)."
+#error "The MCUBOOT_DIRECT_XIP and MCUBOOT_RAM_LOAD mode only supports single-image boot (MCUBOOT_IMAGE_NUMBER=1)."
 #endif
 #ifdef MCUBOOT_ENC_IMAGES
-#error "Image encryption (MCUBOOT_ENC_IMAGES) is not supported when MCUBOOT_DIRECT_XIP mode is selected."
+#error "Image encryption (MCUBOOT_ENC_IMAGES) is not supported when MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD mode is selected."
 #endif
-#endif /* MCUBOOT_DIRECT_XIP */
+#endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 
 #define BOOT_MAX_IMG_SECTORS       MCUBOOT_MAX_IMG_SECTORS
 
@@ -279,8 +285,10 @@ struct boot_loader_state {
 #endif
 };
 
-int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
-                        size_t slen, uint8_t key_id);
+fih_int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
+                            size_t slen, uint8_t key_id);
+
+fih_int boot_fih_memequal(const void *s1, const void *s2, size_t n);
 
 int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_status_sz(uint32_t min_write_sz);
@@ -438,6 +446,15 @@ boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
 }
 
 #endif  /* !defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
+
+#ifdef MCUBOOT_RAM_LOAD
+#define LOAD_IMAGE_DATA(hdr, fap, start, output, size)       \
+    (memcpy((output),(void*)((hdr)->ih_load_addr + (start)), \
+    (size)) != (output))
+#else
+#define LOAD_IMAGE_DATA(hdr, fap, start, output, size)       \
+    (flash_area_read((fap), (start), (output), (size)))
+#endif /* MCUBOOT_RAM_LOAD */
 
 #ifdef __cplusplus
 }

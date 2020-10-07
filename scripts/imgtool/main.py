@@ -140,10 +140,11 @@ def getpriv(key, minimal):
 @click.command(help="Check that signed image can be verified by given key")
 def verify(key, imgfile):
     key = load_key(key) if key else None
-    ret, version = image.Image.verify(imgfile, key)
+    ret, version, digest = image.Image.verify(imgfile, key)
     if ret == image.VerifyResult.OK:
         print("Image was correctly validated")
         print("Image version: {}.{}.{}+{}".format(*version))
+        print("Image digest: {}".format(digest.hex()))
         return
     elif ret == image.VerifyResult.INVALID_MAGIC:
         print("Invalid image magic; is this an MCUboot image?")
@@ -244,7 +245,7 @@ class BasedIntParamType(click.ParamType):
                    'was set.')
 @click.option('-E', '--encrypt', metavar='filename',
               help='Encrypt image using the provided public key. '
-                   '(Not supported in direct-xip mode.)')
+                   '(Not supported in direct-xip or ram-load mode.)')
 @click.option('-e', '--endian', type=click.Choice(['little', 'big']),
               default='little', help="Select little or big endian")
 @click.option('--overwrite-only', default=False, is_flag=True,
@@ -257,7 +258,8 @@ class BasedIntParamType(click.ParamType):
               help='When padding allow for this amount of sectors (defaults '
                    'to 128)')
 @click.option('--confirm', default=False, is_flag=True,
-              help='When padding the image, mark it as confirmed')
+              help='When padding the image, mark it as confirmed (implies '
+                   '--pad)')
 @click.option('--pad', default=False, is_flag=True,
               help='Pad image to --slot-size bytes, adding trailer magic')
 @click.option('-S', '--slot-size', type=BasedIntParamType(), required=True,
@@ -291,6 +293,11 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt, infile, outfile, dependencies, load_addr, hex_addr,
          erased_val, save_enctlv, security_counter, boot_record, custom_tlv):
+
+    if confirm:
+        # Confirmed but non-padded images don't make much sense, because
+        # otherwise there's no trailer area for writing the confirmed status.
+        pad = True
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, confirm=confirm,
                       align=int(align), slot_size=slot_size,

@@ -2,12 +2,14 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2020 Nordic Semiconductor ASA
+ * Copyright (c) 2020 Arm Limited
  */
 
 #include <assert.h>
 #include "bootutil/image.h"
 #include "bootutil_priv.h"
 #include "bootutil/bootutil_log.h"
+#include "bootutil/fault_injection_hardening.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 
@@ -24,26 +26,25 @@ static struct image_header _hdr = { 0 };
  * @param[in]	fa_p	flash area pointer
  * @param[in]	hdr	boot image header pointer
  *
- * @return		0 on success, error code otherwise
+ * @return		FIH_SUCCESS on success, error code otherwise
  */
-inline static int
+inline static fih_int
 boot_image_validate(const struct flash_area *fa_p,
                     struct image_header *hdr)
 {
     static uint8_t tmpbuf[BOOT_TMPBUF_SZ];
+    fih_int fih_rc = FIH_FAILURE;
 
-    /* NOTE: The enc-state pointer may be NULL only because when there is
-     * only one image (BOOT_IMAGE_NUMBER == 1), the code that uses the
-     * pointer, within bootutil_img_validate and down the call path,
-     * is excluded from compilation.
+    /* NOTE: The first argument to boot_image_validate, for enc_state pointer,
+     * is allowed to be NULL only because the single image loader compiles
+     * with BOOT_IMAGE_NUMBER == 1, which excludes the code that uses
+     * the pointer from compilation.
      */
     /* Validate hash */
-    if (bootutil_img_validate(NULL, 0, hdr, fa_p, tmpbuf,
-                              BOOT_TMPBUF_SZ, NULL, 0, NULL)) {
-        return BOOT_EBADIMAGE;
-    }
+    FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, hdr, fa_p, tmpbuf,
+             BOOT_TMPBUF_SZ, NULL, 0, NULL);
 
-    return 0;
+    FIH_RET(fih_rc);
 }
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT */
 
@@ -95,12 +96,13 @@ boot_image_load_header(const struct flash_area *fa_p,
  *
  * @parami[out]	rsp	Parameters for booting image, on success
  *
- * @return		0 on success, error code otherwise.
+ * @return		FIH_SUCCESS on success; nonzero on failure.
  */
-int
+fih_int
 boot_go(struct boot_rsp *rsp)
 {
     int rc = -1;
+    fih_int fih_rc = FIH_FAILURE;
 
     rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &_fa_p);
     assert(rc == 0);
@@ -110,10 +112,12 @@ boot_go(struct boot_rsp *rsp)
         goto out;
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
-    rc = boot_image_validate(_fa_p, &_hdr);
-    if (rc != 0) {
+    FIH_CALL(boot_image_validate, fih_rc, _fa_p, &_hdr);
+    if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
         goto out;
     }
+#else
+    fih_rc = FIH_SUCCESS;
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT */
 
     rsp->br_flash_dev_id = _fa_p->fa_device_id;
@@ -122,5 +126,6 @@ boot_go(struct boot_rsp *rsp)
 
 out:
     flash_area_close(_fa_p);
-    return rc;
+
+    FIH_RET(fih_rc);
 }

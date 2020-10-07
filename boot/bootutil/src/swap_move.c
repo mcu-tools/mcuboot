@@ -16,7 +16,6 @@
  * limitations under the License.
  */
 
-#include <assert.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <inttypes.h>
@@ -316,13 +315,11 @@ boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
     old_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx - 1);
 
     if (bs->idx == BOOT_STATUS_IDX_0) {
-        if (bs->source != BOOT_STATUS_SOURCE_PRIMARY_SLOT) {
-            rc = swap_erase_trailer_sectors(state, fap_pri);
-            assert(rc == 0);
+        rc = swap_erase_trailer_sectors(state, fap_pri);
+        assert(rc == 0);
 
-            rc = swap_status_init(state, fap_pri, bs);
-            assert(rc == 0);
-        }
+        rc = swap_status_init(state, fap_pri, bs);
+        assert(rc == 0);
 
         rc = swap_erase_trailer_sectors(state, fap_sec);
         assert(rc == 0);

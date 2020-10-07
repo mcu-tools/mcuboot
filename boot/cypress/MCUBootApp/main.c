@@ -36,10 +36,24 @@
 
 #include "bootutil/bootutil_log.h"
 
+#include "bootutil/fault_injection_hardening.h"
+
 /* Define pins for UART debug output */
 #define CYBSP_UART_ENABLED 1U
 #define CYBSP_UART_HW SCB5
 #define CYBSP_UART_IRQ scb_5_interrupt_IRQn
+
+#ifdef CY_BOOT_USE_EXTERNAL_FLASH
+/* Choose SMIF slot number (slave select).
+ * Acceptable values are:
+ * 0 - SMIF disabled (no external memory);
+ * 1, 2, 3 or 4 - slave select line memory module is connected to.
+ */
+uint32_t smif_id = 1; /* Assume SlaveSelect_0 is used for External Memory */
+#endif
+
+
+void hw_deinit(void);
 
 static void do_boot(struct boot_rsp *rsp)
 {
@@ -49,46 +63,49 @@ static void do_boot(struct boot_rsp *rsp)
 
     BOOT_LOG_INF("Starting User Application on CM4 (wait)...");
     BOOT_LOG_INF("Start Address: 0x%08lx", app_addr);
-    Cy_SysLib_Delay(100);
+    BOOT_LOG_INF("Deinitializing hardware...");
+
+    cy_retarget_io_wait_tx_complete(CYBSP_UART_HW, 10);
+
+    hw_deinit();
 
     Cy_SysEnableCM4(app_addr);
-
-    while (1)
-    {
-        __WFI() ;
-    }
 }
 
 int main(void)
 {
     struct boot_rsp rsp;
+    cy_rslt_t rc = CY_RSLT_TYPE_ERROR;
+    bool boot_succeeded = false;
+    fih_int fih_rc = FIH_FAILURE;
 
     init_cycfg_clocks();
     init_cycfg_peripherals();
     init_cycfg_pins();
+
     /* enable interrupts */
     __enable_irq();
 
     /* Initialize retarget-io to use the debug UART port (CYBSP_UART_HW) */
-    cy_retarget_io_pdl_init(115200u);
+    rc = cy_retarget_io_pdl_init(115200u);
+
+    if (rc != CY_RSLT_SUCCESS)
+    {
+        CY_ASSERT(0);
+    }
 
     BOOT_LOG_INF("MCUBoot Bootloader Started");
 
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
-    cy_rslt_t rc = !CY_RSLT_SUCCESS;
+    rc = CY_SMIF_CMD_NOT_FOUND;
 
     #undef MCUBOOT_MAX_IMG_SECTORS
     /* redefine number of sectors as there 2MB will be
      * available on PSoC062-2M in case of external
      * memory usage */
     #define MCUBOOT_MAX_IMG_SECTORS 4096
-    int smif_id = 1; /* Assume SlaveSelect_0 is used for External Memory */
-    /* Acceptable values are:
-    * 0 - SMIF disabled (no external memory);
-    * 1, 2, 3 or 4 - slave select line memory module is connected to.
-    */
     rc = qspi_init_sfdp(smif_id);
-    if(rc == CY_SMIF_SUCCESS)
+    if (rc == CY_SMIF_SUCCESS)
     {
         BOOT_LOG_INF("External Memory initialized w/ SFDP.");
     }
@@ -96,14 +113,43 @@ int main(void)
     {
         BOOT_LOG_ERR("External Memory initialization w/ SFDP FAILED: 0x%02x", (int)rc);
     }
-    if(0 == rc)
+    if (CY_SMIF_SUCCESS == rc)
 #endif
     {
-        if (boot_go(&rsp) == 0) {
+
+        FIH_CALL(boot_go, fih_rc, &rsp);
+        if (fih_eq(fih_rc, FIH_SUCCESS))
+        {
             BOOT_LOG_INF("User Application validated successfully");
             do_boot(&rsp);
-        } else
-            BOOT_LOG_INF("MCUBoot Bootloader found none of bootable images") ;
+            boot_succeeded = true;
+        }
+        else
+        {
+            BOOT_LOG_INF("MCUBoot Bootloader found none of bootable images");
+        }
     }
+
+    while (1)
+    {
+        if (boot_succeeded) {
+            Cy_SysPm_CpuEnterDeepSleep(CY_SYSPM_WAIT_FOR_INTERRUPT);
+        }
+        else {
+            __WFI();
+        }
+    }
+
     return 0;
+}
+
+void hw_deinit(void)
+{
+    cy_retarget_io_pdl_deinit();
+    Cy_GPIO_Port_Deinit(CYBSP_UART_RX_PORT);
+    Cy_GPIO_Port_Deinit(CYBSP_UART_TX_PORT);
+
+#ifdef CY_BOOT_USE_EXTERNAL_FLASH
+    qspi_deinit(smif_id);
+#endif
 }

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2014 Wind River Systems, Inc.
+ * Copyright (c) 2020 Arm Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@
 #include "bootutil/bootutil_log.h"
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
+#include "bootutil/fault_injection_hardening.h"
 #include "flash_map_backend/flash_map_backend.h"
 
 #ifdef CONFIG_MCUBOOT_SERIAL
@@ -128,6 +130,13 @@ static void do_boot(struct boot_rsp *rsp)
     vt = (struct arm_vector_table *)(flash_base +
                                      rsp->br_image_off +
                                      rsp->br_hdr->ih_hdr_size);
+
+#ifdef CONFIG_CPU_CORTEX_M7
+    /* Disable instruction cache and data cache before chain-load the application */
+    SCB_DisableDCache();
+    SCB_DisableICache();
+#endif
+
     irq_lock();
 #ifdef CONFIG_SYS_CLOCK_EXISTS
     sys_clock_disable();
@@ -138,6 +147,15 @@ static void do_boot(struct boot_rsp *rsp)
 #endif
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     cleanup_arm_nvic(); /* cleanup NVIC registers */
+#endif
+
+#if defined(CONFIG_BUILTIN_STACK_GUARD) && \
+    defined(CONFIG_CPU_CORTEX_M_HAS_SPLIM)
+    /* Reset limit registers to avoid inflicting stack overflow on image
+     * being booted.
+     */
+    __set_PSPLIM(0);
+    __set_MSPLIM(0);
 #endif
 
 #ifdef CONFIG_BOOT_INTR_VEC_RELOC
@@ -293,12 +311,15 @@ void main(void)
 {
     struct boot_rsp rsp;
     int rc;
+    fih_int fih_rc = FIH_FAILURE;
 
     BOOT_LOG_INF("Starting bootloader");
 
     os_heap_init();
 
     ZEPHYR_BOOT_LOG_START();
+
+    (void)rc;
 
 #if (!defined(CONFIG_XTENSA) && defined(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL))
     if (!flash_device_get_binding(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL)) {
@@ -365,11 +386,10 @@ void main(void)
     }
 #endif
 
-    rc = boot_go(&rsp);
-    if (rc != 0) {
+    FIH_CALL(boot_go, fih_rc, &rsp);
+    if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
         BOOT_LOG_ERR("Unable to find bootable image");
-        while (1)
-            ;
+        FIH_PANIC;
     }
 
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
