@@ -36,10 +36,10 @@ boot_image_validate(const struct flash_area *fa_p,
     static uint8_t tmpbuf[BOOT_TMPBUF_SZ];
     fih_int fih_rc = FIH_FAILURE;
 
-    /* NOTE: The enc-state pointer may be NULL only because when there is
-     * only one image (BOOT_IMAGE_NUMBER == 1), the code that uses the
-     * pointer, within bootutil_img_validate and down the call path,
-     * is excluded from compilation.
+    /* NOTE: The first argument to boot_image_validate, for enc_state pointer,
+     * is allowed to be NULL only because the single image loader compiles
+     * with BOOT_IMAGE_NUMBER == 1, which excludes the code that uses
+     * the pointer from compilation.
      */
     /* Validate hash */
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, hdr, fa_p, tmpbuf,
