@@ -13,8 +13,6 @@
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
 
-#include "bootutil/bootutil_log.h"
-
 /* Mbedtls implementation of the delay RNG. Can be replaced by any other RNG
  * implementation that is backed by an entropy source by altering these
  * functions. This is not provided as a header API and a C file implementation

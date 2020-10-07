@@ -74,7 +74,7 @@
 #define FIH_ENABLE_GLOBAL_FAIL
 #define FIH_ENABLE_CFI
 
-#else
+#elif !defined(MCUBOOT_FIH_PROFILE_OFF)
 #define MCUBOOT_FIH_PROFILE_OFF
 #endif /* MCUBOOT_FIH_PROFILE */
 
@@ -141,7 +141,6 @@ void fih_panic_loop(void);
  * to skip.
  */
 #ifdef FIH_ENABLE_DELAY
-#include "bootutil/bootutil_log.h"
 
 /* Delaying logic, with randomness from a CSPRNG */
 __attribute__((always_inline)) inline
