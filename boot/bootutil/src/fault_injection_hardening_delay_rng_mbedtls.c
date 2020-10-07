@@ -8,7 +8,6 @@
 
 #ifdef FIH_ENABLE_DELAY
 
-#include "bootutil/fault_injection_hardening_delay_rng.h"
 #include "mcuboot-mbedtls-cfg.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"

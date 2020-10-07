@@ -37,7 +37,6 @@
 #include "bootutil/bootutil_log.h"
 
 #include "bootutil/fault_injection_hardening.h"
-#include "bootutil/fault_injection_hardening_delay_rng.h"
 
 /* Define pins for UART debug output */
 #define CYBSP_UART_ENABLED 1U
