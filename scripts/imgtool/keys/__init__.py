@@ -30,11 +30,17 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 from cryptography.hazmat.primitives.asymmetric.x25519 import (
     X25519PrivateKey, X25519PublicKey)
 
+import pkcs11
+import pkcs11.exceptions
+import sys
+
 from .rsa import RSA, RSAPublic, RSAUsageError, RSA_KEY_SIZES
 from .ecdsa import (ECDSA256P1, ECDSA256P1Public,
                     ECDSA384P1, ECDSA384P1Public, ECDSAUsageError)
 from .ed25519 import Ed25519, Ed25519Public, Ed25519UsageError
 from .x25519 import X25519, X25519Public, X25519UsageError
+
+from .imgtool_keys_pkcs11 import PKCS11
 
 
 class PasswordRequired(Exception):
@@ -44,6 +50,19 @@ class PasswordRequired(Exception):
 
 
 def load(path, passwd=None):
+    if path == "pkcs11":
+        try:
+            return PKCS11()
+        except pkcs11.exceptions.PinIncorrect:
+            print('ERROR: WRONG PIN')
+            sys.exit(1)
+        except pkcs11.exceptions.PinLocked:
+            print('ERROR: WRONG PIN, MAX ATTEMPTS REACHED. CONTACT YOUR SECURITY OFFICER.')
+            sys.exit(1)
+        except pkcs11.exceptions.DataLenRange:
+            print('ERROR: \'DataLenRange\' (maybe the PIN is too short?)')
+            sys.exit(1)
+
     """Try loading a key from the given path.
       Returns None if the password wasn't specified."""
     with open(path, 'rb') as f:
