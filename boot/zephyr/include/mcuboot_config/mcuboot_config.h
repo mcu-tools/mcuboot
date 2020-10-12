@@ -154,6 +154,7 @@
 
 #endif /* !__BOOTSIM__ */
 
+#if CONFIG_BOOT_WATCHDOG_FEED
 #if CONFIG_NRFX_WDT
 #include <nrfx_wdt.h>
 
@@ -180,12 +181,18 @@
 #endif /* defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1) */
 
 #else /* CONFIG_NRFX_WDT */
-
+#warning "MCUBOOT_WATCHDOG_FEED() is no-op"
+/* No vendor implementation, no-op for historical reasons */
 #define MCUBOOT_WATCHDOG_FEED()         \
     do {                                \
-        /* TODO: to be implemented */   \
+    } while (0)
+#endif /* CONFIG_NRFX_WDT */
+#else  /* CONFIG_BOOT_WATCHDOG_FEED */
+/* Not enabled, no feed activity */
+#define MCUBOOT_WATCHDOG_FEED()         \
+    do {                                \
     } while (0)
 
-#endif /* CONFIG_NRFX_WDT */
+#endif /* CONFIG_BOOT_WATCHDOG_FEED */
 
 #endif /* __MCUBOOT_CONFIG_H__ */
