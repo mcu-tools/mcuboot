@@ -51,6 +51,7 @@
 #include <os/os_malloc.h>
 
 #include <bootutil/image.h>
+#include <bootutil/bootutil.h>
 
 #include "boot_serial/boot_serial.h"
 #include "boot_serial_priv.h"
@@ -312,11 +313,17 @@ bs_upload(char *buf, int len)
         rc = 0;
         goto out;
     }
-    if (curr_off + img_blen < img_size) {
-        rem_bytes = img_blen % flash_area_align(fap);
-        if (rem_bytes) {
-            img_blen -= rem_bytes;
-        }
+
+    if (curr_off + img_blen > img_size) {
+        rc = MGMT_ERR_EINVAL;
+        goto out;
+    }
+
+    rem_bytes = img_blen % flash_area_align(fap);
+
+    if ((curr_off + img_blen < img_size) && rem_bytes) {
+        img_blen -= rem_bytes;
+        rem_bytes = 0;
     }
 
 #ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
@@ -337,7 +344,32 @@ bs_upload(char *buf, int len)
 #endif
 
     BOOT_LOG_INF("Writing at 0x%x until 0x%x", curr_off, curr_off + img_blen);
-    rc = flash_area_write(fap, curr_off, img_data, img_blen);
+    if (rem_bytes) {
+        /* the last chunk of the image might be unaligned */
+        uint8_t wbs_aligned[BOOT_MAX_ALIGN];
+        size_t w_size = img_blen - rem_bytes;
+
+        if (w_size) {
+            rc = flash_area_write(fap, curr_off, img_data, w_size);
+            if (rc) {
+                goto out_invalid_data;
+            }
+            curr_off += w_size;
+            img_blen -= w_size;
+            img_data += w_size;
+        }
+
+        if (img_blen) {
+            memcpy(wbs_aligned, img_data, rem_bytes);
+            memset(wbs_aligned + rem_bytes, flash_area_erased_val(fap),
+                   sizeof(wbs_aligned) - rem_bytes);
+            rc = flash_area_write(fap, curr_off, wbs_aligned, flash_area_align(fap));
+        }
+
+    } else {
+        rc = flash_area_write(fap, curr_off, img_data, img_blen);
+    }
+
     if (rc == 0) {
         curr_off += img_blen;
 #ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
