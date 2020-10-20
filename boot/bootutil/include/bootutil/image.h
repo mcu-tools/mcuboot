@@ -89,6 +89,16 @@ struct flash_area;
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
 #define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
 #define IMAGE_TLV_BOOT_RECORD       0x60   /* measured boot record */
+					   /*
+					    * vendor reserved TLVs at xxA0-xxFF,
+					    * where xx denotes the upper byte
+					    * range.  Examples:
+					    * 0x00a0 - 0x00ff
+					    * 0x01a0 - 0x01ff
+					    * 0x02a0 - 0x02ff
+					    * ...
+					    * 0xffa0 - 0xfffe
+					    */
 #define IMAGE_TLV_ANY               0xffff /* Used to iterate over all TLV */
 
 struct image_version {
