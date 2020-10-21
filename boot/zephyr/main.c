@@ -313,6 +313,8 @@ void main(void)
     int rc;
     fih_int fih_rc = FIH_FAILURE;
 
+    MCUBOOT_WATCHDOG_FEED();
+
     BOOT_LOG_INF("Starting bootloader");
 
     os_heap_init();

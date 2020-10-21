@@ -164,8 +164,12 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
     rc = swap_read_status_bytes(fap, state, bs);
     if (rc == 0) {
         off = boot_swap_info_off(fap);
-        rc = flash_area_read_is_empty(fap, off, &swap_info, sizeof swap_info);
-        if (rc == 1) {
+        rc = flash_area_read(fap, off, &swap_info, sizeof swap_info);
+        if (rc != 0) {
+            return BOOT_EFLASH;
+        }
+
+        if (bootutil_buffer_is_erased(fap, &swap_info, sizeof swap_info)) {
             BOOT_SET_SWAP_INFO(swap_info, 0, BOOT_SWAP_TYPE_NONE);
             rc = 0;
         }

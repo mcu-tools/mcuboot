@@ -291,6 +291,27 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 }
 #endif
 
+bool bootutil_buffer_is_erased(const struct flash_area *area,
+                               const void *buffer, size_t len)
+{
+    size_t i;
+    uint8_t *u8b;
+    uint8_t erased_val;
+
+    if (buffer == NULL || len == 0) {
+        return false;
+    }
+
+    erased_val = flash_area_erased_val(area);
+    for (i = 0, u8b = (uint8_t *)buffer; i < len; i++) {
+        if (u8b[i] != erased_val) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 int
 boot_read_swap_state(const struct flash_area *fap,
                      struct boot_swap_state *state)
@@ -301,18 +322,18 @@ boot_read_swap_state(const struct flash_area *fap,
     int rc;
 
     off = boot_magic_off(fap);
-    rc = flash_area_read_is_empty(fap, off, magic, BOOT_MAGIC_SZ);
+    rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
     if (rc < 0) {
         return BOOT_EFLASH;
     }
-    if (rc == 1) {
+    if (bootutil_buffer_is_erased(fap, magic, BOOT_MAGIC_SZ)) {
         state->magic = BOOT_MAGIC_UNSET;
     } else {
         state->magic = boot_magic_decode(magic);
     }
 
     off = boot_swap_info_off(fap);
-    rc = flash_area_read_is_empty(fap, off, &swap_info, sizeof swap_info);
+    rc = flash_area_read(fap, off, &swap_info, sizeof swap_info);
     if (rc < 0) {
         return BOOT_EFLASH;
     }
@@ -321,30 +342,31 @@ boot_read_swap_state(const struct flash_area *fap,
     state->swap_type = BOOT_GET_SWAP_TYPE(swap_info);
     state->image_num = BOOT_GET_IMAGE_NUM(swap_info);
 
-    if (rc == 1 || state->swap_type > BOOT_SWAP_TYPE_REVERT) {
+    if (bootutil_buffer_is_erased(fap, &swap_info, sizeof swap_info) ||
+            state->swap_type > BOOT_SWAP_TYPE_REVERT) {
         state->swap_type = BOOT_SWAP_TYPE_NONE;
         state->image_num = 0;
     }
 
     off = boot_copy_done_off(fap);
-    rc = flash_area_read_is_empty(fap, off, &state->copy_done,
-            sizeof state->copy_done);
+    rc = flash_area_read(fap, off, &state->copy_done, sizeof state->copy_done);
     if (rc < 0) {
         return BOOT_EFLASH;
     }
-    if (rc == 1) {
+    if (bootutil_buffer_is_erased(fap, &state->copy_done,
+                sizeof state->copy_done)) {
         state->copy_done = BOOT_FLAG_UNSET;
     } else {
         state->copy_done = boot_flag_decode(state->copy_done);
     }
 
     off = boot_image_ok_off(fap);
-    rc = flash_area_read_is_empty(fap, off, &state->image_ok,
-                                  sizeof state->image_ok);
+    rc = flash_area_read(fap, off, &state->image_ok, sizeof state->image_ok);
     if (rc < 0) {
         return BOOT_EFLASH;
     }
-    if (rc == 1) {
+    if (bootutil_buffer_is_erased(fap, &state->image_ok,
+                sizeof state->image_ok)) {
         state->image_ok = BOOT_FLAG_UNSET;
     } else {
         state->image_ok = boot_flag_decode(state->image_ok);

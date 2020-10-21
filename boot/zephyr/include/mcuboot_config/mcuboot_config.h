@@ -154,9 +154,45 @@
 
 #endif /* !__BOOTSIM__ */
 
+#if CONFIG_BOOT_WATCHDOG_FEED
+#if CONFIG_NRFX_WDT
+#include <nrfx_wdt.h>
+
+#define FEED_WDT_INST(id)                                    \
+    do {                                                     \
+        nrfx_wdt_t wdt_inst_##id = NRFX_WDT_INSTANCE(id);    \
+        for (uint8_t i = 0; i < NRF_WDT_CHANNEL_NUMBER; i++) \
+        {                                                    \
+            nrf_wdt_reload_request_set(wdt_inst_##id.p_reg,  \
+                (nrf_wdt_rr_register_t)(NRF_WDT_RR0 + i));   \
+        }                                                    \
+    } while (0)
+#if defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1)
+#define MCUBOOT_WATCHDOG_FEED() \
+    do {                        \
+        FEED_WDT_INST(0);       \
+        FEED_WDT_INST(1);       \
+    } while (0)
+#elif defined(CONFIG_NRFX_WDT0)
+#define MCUBOOT_WATCHDOG_FEED() \
+    FEED_WDT_INST(0);
+#else /* defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1) */
+#error "No NRFX WDT instances enabled"
+#endif /* defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1) */
+
+#else /* CONFIG_NRFX_WDT */
+#warning "MCUBOOT_WATCHDOG_FEED() is no-op"
+/* No vendor implementation, no-op for historical reasons */
 #define MCUBOOT_WATCHDOG_FEED()         \
     do {                                \
-        /* TODO: to be implemented */   \
     } while (0)
+#endif /* CONFIG_NRFX_WDT */
+#else  /* CONFIG_BOOT_WATCHDOG_FEED */
+/* Not enabled, no feed activity */
+#define MCUBOOT_WATCHDOG_FEED()         \
+    do {                                \
+    } while (0)
+
+#endif /* CONFIG_BOOT_WATCHDOG_FEED */
 
 #endif /* __MCUBOOT_CONFIG_H__ */
