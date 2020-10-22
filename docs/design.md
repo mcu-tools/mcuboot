@@ -233,6 +233,9 @@ then checks its validity (integrity check, signature verification etc.). If the
 image is invalid MCUboot erases its memory slot and starts to validate the other
 image. After a successful validation of the selected image the bootloader
 chain-loads it.
+
+An additional "revert" mechanism is also supported. For more information, please
+read the [corresponding section](#direct-xip-revert).
 Handling the primary and secondary slots as equals has its drawbacks. Since the
 images are not moved between the slots, the on-the-fly image
 encryption/decryption can't be supported (it only applies to storing the image
@@ -328,6 +331,33 @@ The possible swap types, and their meanings, are:
 The "swap type" is a high-level representation of the outcome of the
 boot. Subsequent sections describe how mcuboot determines the swap type from
 the bit-level contents of flash.
+
+### [Revert mechanism in direct-xip mode](#direct-xip-revert)
+
+The direct-xip mode also supports a "revert" mechanism which is the equivalent
+of the swap mode's "revert" swap. It can be enabled with the
+MCUBOOT_DIRECT_XIP_REVERT config option and an image trailer must also be added
+to the signed images (the "--pad" option of the `imgtool` script must be used).
+For more information on this please read the [Image Trailer](#image-trailer)
+section and the [imgtool](imgtool.md) documentation. Making the images permanent
+(marking them as confirmed in advance) is also supported just like in swap mode.
+The individual steps of the direct-xip mode's "revert" mechanism are the
+following:
+
+1. Select the slot which holds the newest potential image.
+2. Was the image previously selected to run (during a previous boot)?
+    + Yes: Did the image mark itself "OK" (was the self-test successful)?
+        + Yes.
+            - Proceed to step 3.
+        + No.
+            - Erase the image from the slot to prevent it from being selected
+              again during the next boot.
+            - Return to step 1 (the bootloader will attempt to select and
+              possibly boot the previous image if there is one).
+    + No.
+        - Mark the image as "selected" (set the copy_done flag in the trailer).
+        - Proceed to step 3.
+3. Proceed to image validation ...
 
 ## [Image Trailer](#image-trailer)
 

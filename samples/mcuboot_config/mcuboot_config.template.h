@@ -57,6 +57,8 @@
 
 /* Uncomment to enable the direct-xip code path. */
 /* #define MCUBOOT_DIRECT_XIP */
+/* Uncomment to enable the revert mechanism in direct-xip mode. */
+/* #define MCUBOOT_DIRECT_XIP_REVERT */
 
 /* Uncomment to enable the ram-load code path. */
 /* #define MCUBOOT_RAM_LOAD */

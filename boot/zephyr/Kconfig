@@ -224,9 +224,18 @@ config BOOT_DIRECT_XIP
 	  mode results in a simpler code path and smaller code size.
 
 endchoice
-endif
 
-if !SINGLE_APPLICATION_SLOT
+config BOOT_DIRECT_XIP_REVERT
+	bool "Enable the revert mechanism in direct-xip mode"
+	default n
+	help
+	  If y, enables the revert mechanism in direct-xip similar to the one in
+	  swap mode. It requires the trailer magic to be added to the signed image.
+	  When a reboot happens without the image being confirmed at runtime, the
+	  bootloader considers the image faulty and erases it. After this it will
+	  attempt to boot the previous image. The images can also be made permanent
+	  (marked as confirmed in advance) just like in swap mode.
+
 config BOOT_BOOTSTRAP
 	bool "Bootstrap erased the primary slot from the secondary slot"
 	default n
@@ -276,7 +285,7 @@ config BOOT_ENCRYPT_X25519
 	  back when swapping from the primary slot to the secondary slot. The
 	  encryption mechanism used in this case is ECIES using primitives
 	  described under "ECIES-X25519 encryption" in docs/encrypted_images.md.
-endif
+endif # !SINGLE_APPLICATION_SLOT
 
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
