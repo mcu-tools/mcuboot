@@ -12,4 +12,12 @@
  * Cleanup interrupt priority and interupt enable registers.
  */
 void cleanup_arm_nvic(void);
+
+#if defined(CONFIG_CPU_HAS_ARM_MPU)
+/**
+ * Cleanup all ARM MPU region configuration
+ */
+void z_arm_clear_arm_mpu_config(void);
+#endif
+
 #endif
