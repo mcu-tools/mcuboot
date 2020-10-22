@@ -131,12 +131,6 @@ static void do_boot(struct boot_rsp *rsp)
                                      rsp->br_image_off +
                                      rsp->br_hdr->ih_hdr_size);
 
-#ifdef CONFIG_CPU_CORTEX_M7
-    /* Disable instruction cache and data cache before chain-load the application */
-    SCB_DisableDCache();
-    SCB_DisableICache();
-#endif
-
     irq_lock();
 #ifdef CONFIG_SYS_CLOCK_EXISTS
     sys_clock_disable();
@@ -147,6 +141,15 @@ static void do_boot(struct boot_rsp *rsp)
 #endif
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     cleanup_arm_nvic(); /* cleanup NVIC registers */
+
+#ifdef CONFIG_CPU_CORTEX_M7
+    /* Disable instruction cache and data cache before chain-load the application */
+    SCB_DisableDCache();
+    SCB_DisableICache();
+#endif
+
+#if CONFIG_CPU_HAS_ARM_MPU
+    z_arm_clear_arm_mpu_config();
 #endif
 
 #if defined(CONFIG_BUILTIN_STACK_GUARD) && \
@@ -157,6 +160,8 @@ static void do_boot(struct boot_rsp *rsp)
     __set_PSPLIM(0);
     __set_MSPLIM(0);
 #endif
+
+#endif /* CONFIG_MCUBOOT_CLEANUP_ARM_CORE */
 
 #ifdef CONFIG_BOOT_INTR_VEC_RELOC
 #if defined(CONFIG_SW_VECTOR_RELAY)
