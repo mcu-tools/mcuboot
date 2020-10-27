@@ -126,6 +126,14 @@ fn main() {
 
     if swap_move {
         conf.define("MCUBOOT_SWAP_USING_MOVE", None);
+        println!("cargo:rerun-if-env-changed=MCUBOOT_SWAP_MOVE_SIZE");
+        match env::var("MCUBOOT_SWAP_MOVE_SIZE") {
+            Ok(val) => {
+                let c: &str = &val;
+                conf.define("MCUBOOT_SWAP_MOVE_SIZE", Some(c));
+            },
+            _ => (),
+        };
     }
 
     if enc_rsa {
