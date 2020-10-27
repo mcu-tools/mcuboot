@@ -92,13 +92,10 @@ impl ImagesBuilder {
     /// Some(builder) if is possible to test this configuration, or None if
     /// not possible (for example, if there aren't enough image slots).
     pub fn new(device: DeviceName, align: usize, erased_val: u8) -> Result<Self, String> {
-        let (flash, areadesc, unsupported_caps) = Self::make_device(device, align, erased_val);
-
-        for cap in unsupported_caps {
-            if cap.present() {
-                return Err(format!("unsupported {:?}", cap));
-            }
-        }
+        let (flash, areadesc) = match Self::make_device(device, align, erased_val) {
+            Err(e) => return Err(e),
+            Ok((flash, areadesc)) => (flash, areadesc),
+        };
 
         let num_images = Caps::get_num_images();
 
@@ -278,9 +275,12 @@ impl ImagesBuilder {
     }
 
     /// Build the Flash and area descriptor for a given device.
-    pub fn make_device(device: DeviceName, align: usize, erased_val: u8) -> (SimMultiFlash, AreaDesc, &'static [Caps]) {
+    pub fn make_device(device: DeviceName, align: usize, erased_val: u8) -> Result<(SimMultiFlash, AreaDesc), String> {
         match device {
             DeviceName::Stm32f4 => {
+                if Caps::SwapUsingMove.present() {
+                    return Err(format!("unsupported {:?}", Caps::SwapUsingMove));
+                }
                 // STM style flash.  Large sectors, with a large scratch area.
                 let dev = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
                                         64 * 1024,
@@ -295,7 +295,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                Ok((flash, areadesc))
             }
             DeviceName::K64f => {
                 // NXP style flash.  Small sectors, one small sector for scratch.
@@ -310,9 +310,12 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                Ok((flash, areadesc))
             }
             DeviceName::K64fBig => {
+                if Caps::SwapUsingMove.present() {
+                    return Err(format!("unsupported {:?}", Caps::SwapUsingMove));
+                }
                 // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
                 // uses small sectors, but we tell the bootloader they are large.
                 let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
@@ -326,7 +329,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                Ok((flash, areadesc))
             }
             DeviceName::Nrf52840 => {
                 // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
@@ -342,9 +345,15 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                Ok((flash, areadesc))
             }
             DeviceName::Nrf52840UnequalSlots => {
+                for cap in &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade,
+                             Caps::SwapMoveSize] {
+                    if cap.present() {
+                        return Err(format!("unsupported {:?}", cap));
+                    }
+                }
                 let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
 
                 let dev_id = 0;
@@ -355,9 +364,13 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade])
+                Ok((flash, areadesc))
             }
             DeviceName::Nrf52840SpiFlash => {
+                if Caps::SwapUsingMove.present() && !Caps::SwapMoveSize.present() {
+                    return Err(format!("only supported with both {:?} and {:?}",
+                            Caps::SwapUsingMove, Caps::SwapMoveSize));
+                }
                 // Simulate nrf52840 with external SPI flash. The external SPI flash
                 // has a larger sector size so for now store scratch on that flash.
                 let dev0 = SimFlash::new(vec![4096; 128], align as usize, erased_val);
@@ -374,7 +387,7 @@ impl ImagesBuilder {
                 let mut flash = SimMultiFlash::new();
                 flash.insert(0, dev0);
                 flash.insert(1, dev1);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                Ok((flash, areadesc))
             }
             DeviceName::K64fMulti => {
                 // NXP style flash, but larger, to support multiple images.
@@ -391,7 +404,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                Ok((flash, areadesc))
             }
         }
     }
