@@ -110,7 +110,7 @@ int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
 }
 
 #define ERASED_VAL 0xff
-uint8_t flash_area_erased_val(const struct flash_area *fap)
+__weak uint8_t flash_area_erased_val(const struct flash_area *fap)
 {
     (void)fap;
     return ERASED_VAL;
