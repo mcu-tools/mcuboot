@@ -49,6 +49,18 @@ int boot_status_fails = 0;
 
 static uint32_t g_last_idx = UINT32_MAX;
 
+#if (defined(MCUBOOT_SWAP_MOVE_SIZE) && (MCUBOOT_SWAP_MOVE_SIZE > 0))
+#define HAS_MOVE_SIZE 1
+#endif
+
+#if (HAS_MOVE_SIZE && (MCUBOOT_SWAP_MOVE_SIZE < 128))
+#error "Invalid MCUBOOT_SWAP_MOVE_SIZE value, must be larger than 128"
+#endif
+
+#if (HAS_MOVE_SIZE && ((MCUBOOT_SWAP_MOVE_SIZE & (MCUBOOT_SWAP_MOVE_SIZE - 1)) != 0))
+#error "Invalid MCUBOOT_SWAP_MOVE_SIZE value, not a power of 2!"
+#endif
+
 int
 boot_read_image_header(struct boot_loader_state *state, int slot,
                        struct image_header *out_hdr, struct boot_status *bs)
@@ -65,7 +77,11 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
 
     off = 0;
     if (bs) {
+#if HAS_MOVE_SIZE
+        sz = MCUBOOT_SWAP_MOVE_SIZE;
+#else
         sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+#endif
         if (bs->op == BOOT_STATUS_OP_MOVE) {
             if (slot == 0 && bs->idx > g_last_idx) {
                 /* second sector */
@@ -211,11 +227,17 @@ boot_status_internal_off(const struct boot_status *bs, int elem_sz)
 int
 boot_slots_compatible(struct boot_loader_state *state)
 {
+    size_t i;
     size_t num_sectors_pri;
     size_t num_sectors_sec;
+#if !HAS_MOVE_SIZE
     size_t sector_sz_pri = 0;
     size_t sector_sz_sec = 0;
-    size_t i;
+#else
+    size_t total_sz;
+#endif
+
+#if !HAS_MOVE_SIZE
 
     num_sectors_pri = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
     num_sectors_sec = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT);
@@ -245,6 +267,67 @@ boot_slots_compatible(struct boot_loader_state *state)
             return 0;
         }
     }
+
+#else
+
+    num_sectors_pri = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
+    num_sectors_sec = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT);
+
+    if (num_sectors_pri > BOOT_MAX_IMG_SECTORS ||
+        num_sectors_sec > BOOT_MAX_IMG_SECTORS) {
+        BOOT_LOG_WRN("Cannot upgrade: more sectors than allowed");
+        return 0;
+    }
+
+    for (i = 0; i < num_sectors_pri - 1; i++) {
+        if (boot_img_sector_size(state, BOOT_PRIMARY_SLOT, i) !=
+            boot_img_sector_size(state, BOOT_PRIMARY_SLOT, i + 1)) {
+            BOOT_LOG_WRN("Cannot upgrade: primary nas non-linear sectors");
+            return 0;
+        }
+    }
+
+    for (i = 0; i < num_sectors_sec - 1; i++) {
+        if (boot_img_sector_size(state, BOOT_SECONDARY_SLOT, i) !=
+            boot_img_sector_size(state, BOOT_SECONDARY_SLOT, i + 1)) {
+            BOOT_LOG_WRN("Cannot upgrade: secondary nas non-linear sectors");
+            return 0;
+        }
+    }
+
+    for (i = 0, total_sz = 0; i < num_sectors_pri; i++) {
+        total_sz += boot_img_sector_size(state, BOOT_PRIMARY_SLOT, i);
+        if (total_sz == MCUBOOT_SWAP_MOVE_SIZE) {
+            total_sz = 0;
+        } else if (total_sz > MCUBOOT_SWAP_MOVE_SIZE) {
+            BOOT_LOG_WRN("Cannot upgrade: primary not compatible");
+            return 0;
+        }
+    }
+
+    if (total_sz) {
+        BOOT_LOG_WRN("Cannot upgrade: primary's sector amount not compatible");
+        return 0;
+    }
+
+    for (i = 0, total_sz = 0; i < num_sectors_sec; i++) {
+        total_sz += boot_img_sector_size(state, BOOT_SECONDARY_SLOT, i);
+        if (total_sz == MCUBOOT_SWAP_MOVE_SIZE) {
+            total_sz = 0;
+        } else if (total_sz > MCUBOOT_SWAP_MOVE_SIZE) {
+            BOOT_LOG_WRN("Cannot upgrade: secondary not compatible");
+            return 0;
+        }
+    }
+
+    if (total_sz) {
+        BOOT_LOG_WRN("Cannot upgrade: secondary's sector amount not compatible");
+        return 0;
+    }
+
+    /* TODO: allow pri = sec + 1? */
+
+#endif
 
     return 1;
 }
@@ -305,9 +388,9 @@ swap_status_source(struct boot_loader_state *state)
  * "Moves" the sector located at idx - 1 to idx.
  */
 static void
-boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
-        struct boot_status *bs, const struct flash_area *fap_pri,
-        const struct flash_area *fap_sec)
+boot_move_sector_up(int idx, int factor, uint32_t sz,
+        struct boot_loader_state *state, struct boot_status *bs,
+        const struct flash_area *fap_pri, const struct flash_area *fap_sec)
 {
     uint32_t new_off;
     uint32_t old_off;
@@ -318,9 +401,11 @@ boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
      * would be enough
      */
 
+    idx *= factor;
+
     /* Calculate offset from start of image area. */
     new_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx);
-    old_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx - 1);
+    old_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx - factor);
 
     if (bs->idx == BOOT_STATUS_IDX_0) {
         if (bs->source != BOOT_STATUS_SOURCE_PRIMARY_SLOT) {
@@ -348,18 +433,20 @@ boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
 }
 
 static void
-boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
-        struct boot_status *bs, const struct flash_area *fap_pri,
-        const struct flash_area *fap_sec)
+boot_swap_sectors(int idx, int pri_factor, int sec_factor, uint32_t sz,
+        struct boot_loader_state *state, struct boot_status *bs,
+        const struct flash_area *fap_pri, const struct flash_area *fap_sec)
 {
     uint32_t pri_off;
     uint32_t pri_up_off;
     uint32_t sec_off;
     int rc;
 
-    pri_up_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx);
-    pri_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx - 1);
-    sec_off = boot_img_sector_off(state, BOOT_SECONDARY_SLOT, idx - 1);
+    pri_up_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx * pri_factor);
+    pri_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT,
+            (idx * pri_factor) - pri_factor);
+    sec_off = boot_img_sector_off(state, BOOT_SECONDARY_SLOT,
+            (idx * sec_factor) - sec_factor);
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         rc = boot_erase_region(fap_pri, pri_off, sz);
@@ -442,6 +529,8 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     uint32_t sz;
     uint32_t sector_sz;
     uint32_t idx;
+    int pri_factor;
+    int sec_factor;
     uint32_t trailer_sz;
     uint32_t first_trailer_idx;
     uint8_t image_index;
@@ -452,7 +541,15 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     sz = 0;
     g_last_idx = 0;
 
+#if HAS_MOVE_SIZE
+    sector_sz = MCUBOOT_SWAP_MOVE_SIZE;
+    pri_factor = sector_sz / boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    sec_factor = sector_sz / boot_img_sector_size(state, BOOT_SECONDARY_SLOT, 0);
+#else
     sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    pri_factor = sec_factor = 1;
+#endif
+
     while (1) {
         sz += sector_sz;
         /* Skip to next sector because all sectors will be moved up. */
@@ -499,7 +596,8 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
         idx = g_last_idx;
         while (idx > 0) {
             if (idx <= (g_last_idx - bs->idx + 1)) {
-                boot_move_sector_up(idx, sector_sz, state, bs, fap_pri, fap_sec);
+                boot_move_sector_up(idx, pri_factor, sector_sz, state, bs,
+                        fap_pri, fap_sec);
             }
             idx--;
         }
@@ -511,7 +609,8 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     idx = 1;
     while (idx <= g_last_idx) {
         if (idx >= bs->idx) {
-            boot_swap_sectors(idx, sector_sz, state, bs, fap_pri, fap_sec);
+            boot_swap_sectors(idx, pri_factor, sec_factor, sector_sz, state,
+                    bs, fap_pri, fap_sec);
         }
         idx++;
     }
