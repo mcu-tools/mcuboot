@@ -68,6 +68,9 @@ uint32_t bootutil_get_caps(void)
 #if defined(MCUBOOT_BOOTSTRAP)
     res |= BOOTUTIL_CAP_BOOTSTRAP;
 #endif
+#if defined(MCUBOOT_SWAP_MOVE_SIZE)
+    res |= BOOTUTIL_CAP_SWAP_MOVE_SIZE;
+#endif
 
     return res;
 }
