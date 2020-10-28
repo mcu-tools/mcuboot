@@ -284,7 +284,11 @@ void fih_cfi_decrement(void);
 /* Label for interacting with FIH testing tool. Can be parsed from the elf file
  * after compilation. Does not require debug symbols.
  */
+#if defined(__ICCARM__)
+#define FIH_LABEL(str, lin, cnt) __asm volatile ("FIH_LABEL_" str "_" #lin "_" #cnt "::" ::);
+#else
 #define FIH_LABEL(str) __asm volatile ("FIH_LABEL_" str "_%=:" ::);
+#endif
 
 /* Main FIH calling macro. return variable is second argument. Does some setup
  * before and validation afterwards. Inserts labels for use with testing script.
@@ -301,6 +305,23 @@ void fih_cfi_decrement(void);
  * previously saved value. If this is equal then the function call and all child
  * function calls were performed.
  */
+#if defined(__ICCARM__)
+#define FIH_CALL(f, ret, ...) FIH_CALL2(f, ret, __LINE__, __COUNTER__, __VA_ARGS__)
+
+#define FIH_CALL2(f, ret, l, c, ...) \
+    do { \
+        FIH_LABEL("FIH_CALL_START", l, c);        \
+        FIH_CFI_PRECALL_BLOCK; \
+        ret = FIH_FAILURE; \
+        if (fih_delay()) { \
+            ret = f(__VA_ARGS__); \
+        } \
+        FIH_CFI_POSTCALL_BLOCK; \
+        FIH_LABEL("FIH_CALL_END", l, c);          \
+    } while (0)
+
+#else
+
 #define FIH_CALL(f, ret, ...) \
     do { \
         FIH_LABEL("FIH_CALL_START"); \
@@ -312,6 +333,7 @@ void fih_cfi_decrement(void);
         FIH_CFI_POSTCALL_BLOCK; \
         FIH_LABEL("FIH_CALL_END"); \
     } while (0)
+#endif
 
 /* FIH return changes the state of the internal state machine. If you do a
  * FIH_CALL then you need to do a FIH_RET else the state machine will detect
