@@ -214,6 +214,21 @@ config BOOT_SWAP_USING_MOVE
 	  but is currently limited to all sectors in both slots being of
 	  the same size.
 
+if BOOT_SWAP_USING_MOVE
+config BOOT_SWAP_MOVE_SIZE
+	int "Allow using swap move with a specific sector size"
+	default 0
+	depends on BOOT_SWAP_USING_MOVE
+	help
+	  To enable slots that have sectors with different sizes, a value
+	  to be used for each move and swap operation can be given with this
+	  option. It must be larger or equal than the larger sector on any
+	  slot, eg, 8192 could be used when the primary has 4K sectors and
+	  the secondary has 8K sectors. The sectors still have to be linear
+	  to the same size on each slot. When a value of 0 is given, the
+	  first sector in the first slot is used as the size.
+endif
+
 config BOOT_DIRECT_XIP
 	bool "Run the latest image directly from its slot"
 	help
