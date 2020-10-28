@@ -264,6 +264,7 @@ int
 swap_status_source(struct boot_loader_state *state)
 {
     struct boot_swap_state state_primary_slot;
+    struct boot_swap_state state_secondary_slot;
     int rc;
     uint8_t source;
     uint8_t image_index;
@@ -280,8 +281,15 @@ swap_status_source(struct boot_loader_state *state)
 
     BOOT_LOG_SWAP_STATE("Primary image", &state_primary_slot);
 
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
+            &state_secondary_slot);
+    assert(rc == 0);
+
+    BOOT_LOG_SWAP_STATE("Secondary image", &state_secondary_slot);
+
     if (state_primary_slot.magic == BOOT_MAGIC_GOOD &&
-            state_primary_slot.copy_done == BOOT_FLAG_UNSET) {
+            state_primary_slot.copy_done == BOOT_FLAG_UNSET &&
+            state_secondary_slot.magic != BOOT_MAGIC_GOOD) {
 
         source = BOOT_STATUS_SOURCE_PRIMARY_SLOT;
 
