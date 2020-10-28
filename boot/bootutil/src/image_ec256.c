@@ -30,6 +30,9 @@
 
 #ifdef MCUBOOT_SIGN_EC256
 /*TODO: remove this after cypress port mbedtls to abstract crypto api */
+#ifdef MCUBOOT_USE_CC310
+#define NUM_ECC_BYTES (256 / 8)
+#endif
 #if defined (MCUBOOT_USE_TINYCRYPT) || defined (MCUBOOT_USE_CC310)
 #include "bootutil/sign_key.h"
 

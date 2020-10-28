@@ -69,7 +69,7 @@ static inline void bootutil_ecdsa_p256_drop(bootutil_ecdsa_p256_context *ctx)
     (void)ctx;
 }
 
-static inline int bootutil_ecdsa_p256_verify(bootutil_ecdsa_p256_context *ctx, const uint8_t *pk, const uint8_t *hash, const uint8_t *sig)
+static inline int bootutil_ecdsa_p256_verify(bootutil_ecdsa_p256_context *ctx, uint8_t *pk, uint8_t *hash, uint8_t *sig)
 {
     (void)ctx;
     return cc310_ecdsa_verify_secp256r1(hash, pk, sig, BOOTUTIL_CRYPTO_ECDSA_P256_HASH_SIZE);
