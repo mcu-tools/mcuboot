@@ -21,6 +21,7 @@ void cleanup_arm_nvic(void) {
 	}
 }
 
+#if CONFIG_CPU_HAS_ARM_MPU
 __weak void z_arm_clear_arm_mpu_config(void)
 {
 	int i;
@@ -32,3 +33,4 @@ __weak void z_arm_clear_arm_mpu_config(void)
 		ARM_MPU_ClrRegion(i);
 	}
 }
+#endif
