@@ -25,6 +25,7 @@ target with a complete port planned.
   - [Zephyr](readme-zephyr.md)
   - [Mynewt](readme-mynewt.md)
   - [RIOT](readme-riot.md)
+  - [Mbed-OS](readme-mbed.md)
 - [Patch submission](SubmittingPatches.md) - information
   on how to contribute to mcuboot
 - Testing
@@ -58,6 +59,7 @@ For more information in the source, here are some pointers:
 - [boot/boot\_serial](https://github.com/JuulLabs-OSS/mcuboot/tree/master/boot/boot_serial): Support for serial upgrade within the bootloader itself.
 - [boot/zephyr](https://github.com/JuulLabs-OSS/mcuboot/tree/master/boot/zephyr): Port of the bootloader to Zephyr
 - [boot/mynewt](https://github.com/JuulLabs-OSS/mcuboot/tree/master/boot/mynewt): Mynewt bootloader app
+- [boot/mbed](https://github.com/JuulLabs-OSS/mcuboot/tree/master/boot/mbed): Port of the bootloader to Mbed-OS
 - [imgtool](https://github.com/JuulLabs-OSS/mcuboot/tree/master/scripts/imgtool.py): A tool to securely sign firmware images for booting by MCUboot.
 - [sim](https://github.com/JuulLabs-OSS/mcuboot/tree/master/sim): A bootloader simulator for testing and regression
 

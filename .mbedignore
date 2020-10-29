@@ -1,0 +1,17 @@
+boot/boot_serial/*
+boot/mynewt/*
+boot/zephyr/*
+boot/cypress/*
+ci/*
+docs/*
+ptest/*
+samples/*
+scripts/*
+sim/*
+testplan/*
+ext/cddl_gen/*
+ext/fiat/*
+ext/mbedtls/*
+ext/mbedtls-asn1/*
+ext/nrf/*
+ext/tinycrypt/tests/*
