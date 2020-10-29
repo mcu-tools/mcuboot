@@ -2207,7 +2207,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     uint32_t img_sz;
     uint32_t img_loaded = 0;
 #endif /* MCUBOOT_RAM_LOAD */
-    fih_int fih_rc;
+    fih_int fih_rc = FIH_FAILURE;
 
     memset(state, 0, sizeof(struct boot_loader_state));
 

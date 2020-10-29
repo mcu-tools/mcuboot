@@ -20,3 +20,17 @@ void cleanup_arm_nvic(void) {
 		NVIC->ICPR[i] = 0xFFFFFFFF;
 	}
 }
+
+#if CONFIG_CPU_HAS_ARM_MPU
+__weak void z_arm_clear_arm_mpu_config(void)
+{
+	int i;
+
+	int num_regions =
+		((MPU->TYPE & MPU_TYPE_DREGION_Msk) >> MPU_TYPE_DREGION_Pos);
+
+	for (i = 0; i < num_regions; i++) {
+		ARM_MPU_ClrRegion(i);
+	}
+}
+#endif
