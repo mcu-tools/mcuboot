@@ -15,3 +15,5 @@ ext/mbedtls/*
 ext/mbedtls-asn1/*
 ext/nrf/*
 ext/tinycrypt/tests/*
+ext/tinycrypt/*
+ext/tinycrypt-sha512/*

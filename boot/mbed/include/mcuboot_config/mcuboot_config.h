@@ -46,12 +46,10 @@
 #define MCUBOOT_USE_MBED_TLS
 #elif (MCUBOOT_CRYPTO_BACKEND == TINYCRYPT)
 /**
- * XXX TinyCrypt is currently only supported in GCC builds
- * See https://github.com/mcu-tools/mcuboot/pull/791#discussion_r515050672 for more information.
+ * XXX TinyCrypt is currently not supported by Mbed-OS due to build conflicts.
+ * See https://github.com/AGlass0fMilk/mbed-mcuboot-blinky/issues/2
  */
-#if !defined(__GNUC__)
-#error TinyCrypt is currently only supported in GCC builds for Mbed-OS.
-#endif
+#error TinyCrypt is currently not supported by Mbed-OS due to build conflicts.
 #define MCUBOOT_USE_TINYCRYPT
 #endif
 
