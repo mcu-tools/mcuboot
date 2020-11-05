@@ -837,3 +837,30 @@ done:
     flash_area_close(fap);
     return rc;
 }
+
+/**
+ * Populates the version information of the
+ * currently installed primary application
+ *
+ * @param[in] version Destination version structure buffer
+ * @return 0 on success; nonzero on failure.
+ */
+int boot_get_current_version(struct image_version *version)
+{
+    struct boot_loader_state state;
+    struct boot_status status;
+    struct image_header hdr;
+    int rc;
+
+    assert(version != NULL);
+
+    rc = boot_read_image_header(&state, 0, &hdr, &status);
+    if (rc != 0) {
+        return rc;
+    }
+
+    /** Copy the header's version struct over into the caller-supplied buffer */
+    memcpy(version, &hdr.ih_ver, sizeof(struct image_version));
+
+    return 0;
+}

@@ -62,6 +62,8 @@ extern "C" {
 #define BOOT_MAX_ALIGN          8
 
 struct image_header;
+struct image_version;
+
 /**
  * A response object provided by the boot loader code; indicates where to jump
  * to execute the main image.
@@ -102,6 +104,8 @@ int boot_swap_type(void);
 
 int boot_set_pending(int permanent);
 int boot_set_confirmed(void);
+
+int boot_get_current_version(struct image_version *version);
 
 #define SPLIT_GO_OK                 (0)
 #define SPLIT_GO_NON_MATCHING       (-1)
