@@ -96,31 +96,9 @@ static inline int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const 
 
 static int _bootutil_aes_ctr_crypt(bootutil_aes_ctr_context *ctx, uint8_t *counter, const uint8_t *in, uint32_t inlen, uint32_t blk_off, uint8_t *out)
 {
-    uint8_t buf[16];
-    uint32_t buflen;
     int rc;
-    if (blk_off == 0) {
-        rc = tc_ctr_mode(out, inlen, in, inlen, counter, ctx);
-        if (rc != TC_CRYPTO_SUCCESS) {
-            return -1;
-        }
-    } else if (blk_off < 16) {
-        buflen = ((inlen + blk_off <= 16) ? inlen : (16 - blk_off));
-        inlen -= buflen;
-        memcpy(&buf[blk_off], &in[0], buflen);
-        rc = tc_ctr_mode(buf, 16, buf, 16, counter, ctx);
-        if (rc != TC_CRYPTO_SUCCESS) {
-            return -1;
-        }
-        memcpy(&out[0], &buf[blk_off], buflen);
-        memset(&buf[0], 0, 16);
-        if (inlen > 0) {
-            rc = tc_ctr_mode(&out[buflen], inlen, &in[buflen], inlen, counter, ctx);
-        }
-        if (rc != TC_CRYPTO_SUCCESS) {
-            return -1;
-        }
-    } else {
+    rc = tc_ctr_mode(out, inlen, in, inlen, counter, &blk_off, ctx);
+    if (rc != TC_CRYPTO_SUCCESS) {
         return -1;
     }
     return 0;

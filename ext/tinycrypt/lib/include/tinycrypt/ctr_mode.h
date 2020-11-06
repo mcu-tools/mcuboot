@@ -96,10 +96,12 @@ extern "C" {
  * @param in IN -- data to encrypt (or decrypt)
  * @param inlen IN -- length of input data in bytes
  * @param ctr IN/OUT -- the current counter value
+ * @param blk_off IN/OUT -- the offset in the block
  * @param sched IN -- an initialized AES key schedule
  */
 int tc_ctr_mode(uint8_t *out, unsigned int outlen, const uint8_t *in,
-		unsigned int inlen, uint8_t *ctr, const TCAesKeySched_t sched);
+		unsigned int inlen, uint8_t *ctr, uint32_t *blk_off,
+		const TCAesKeySched_t sched);
 
 #ifdef __cplusplus
 }
