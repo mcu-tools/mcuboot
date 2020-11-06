@@ -62,19 +62,13 @@ static inline int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const 
 static inline int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter, const uint8_t *m, uint32_t mlen, size_t blk_off, uint8_t *c)
 {
     uint8_t stream_block[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE];
-    int rc;
-    rc = mbedtls_aes_crypt_ctr(ctx, mlen, &blk_off, counter, stream_block, m, c);
-    memset(stream_block, 0, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
-    return rc;
+    return mbedtls_aes_crypt_ctr(ctx, mlen, &blk_off, counter, stream_block, m, c);
 }
 
 static inline int bootutil_aes_ctr_decrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter, const uint8_t *c, uint32_t clen, size_t blk_off, uint8_t *m)
 {
     uint8_t stream_block[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE];
-    int rc;
-    rc = mbedtls_aes_crypt_ctr(ctx, clen, &blk_off, counter, stream_block, c, m);
-    memset(stream_block, 0, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
-    return rc;
+    return mbedtls_aes_crypt_ctr(ctx, clen, &blk_off, counter, stream_block, c, m);
 }
 #endif /* MCUBOOT_USE_MBED_TLS */
 
