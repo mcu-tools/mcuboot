@@ -63,5 +63,4 @@ echo "    - FIH_LEVEL: $FIH_LEVEL"
 echo "    - SKIP_SIZE: $SKIP_SIZE"
 echo "    - DAMAGE_TYPE: $DAMAGE_TYPE"
 
-# TODO: Create human readable output
-cat fih_test_output.yaml
+python3 $MCUBOOT_PATH/ci/fih_test_docker/generate_test_report.py fih_test_output.yaml
