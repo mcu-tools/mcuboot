@@ -23,3 +23,8 @@ tests:
       DTC_OVERLAY_FILE=./boards/nrf52840_single_slot.overlay
     platform_allow:  nrf52840dk_nrf52840
     tags: bootloader_mcuboot
+  sample.bootloader.mcuboot.qspi_nor_slot:
+    extra_args: DTC_OVERLAY_FILE=./boards/nrf52840dk_qspi_nor_secondary.overlay
+      OVERLAY_CONFIG="./boards/nrf52840dk_qspi_nor.conf;./boards/nrf52840dk_qspi_secondary_boot.conf"
+    platform_allow: nrf52840dk_nrf52840
+    tags: bootloader_mcuboot
