@@ -9,7 +9,51 @@ matrix:
   include:
     - os: linux
       language: minimal
-      env: TEST=fih-tests
+      env: BUILD_TYPE=RELEASE SKIP_SIZE=2,4,6,8,10 TEST=fih-tests DAMAGE_TYPE=SIGNATURE
+
+    - os: linux
+      language: minimal
+      env: BUILD_TYPE=RELEASE SKIP_SIZE=2,4,6,8,10 FIH_LEVEL=LOW TEST=fih-tests DAMAGE_TYPE=SIGNATURE
+
+    - os: linux
+      language: minimal
+      env: BUILD_TYPE=RELEASE SKIP_SIZE=2,4,6,8,10 FIH_LEVEL=MEDIUM TEST=fih-tests DAMAGE_TYPE=SIGNATURE
+
+    - os: linux
+      language: minimal
+      env: BUILD_TYPE=MINSIZEREL SKIP_SIZE=2,4,6 TEST=fih-tests DAMAGE_TYPE=SIGNATURE
+
+    - os: linux
+      language: minimal
+      env: BUILD_TYPE=MINSIZEREL SKIP_SIZE=2,4,6 FIH_LEVEL=LOW TEST=fih-tests DAMAGE_TYPE=SIGNATURE
+
+    - os: linux
+      language: minimal
+      env: BUILD_TYPE=MINSIZEREL SKIP_SIZE=2,4,6 FIH_LEVEL=MEDIUM TEST=fih-tests DAMAGE_TYPE=SIGNATURE
+
+    - os: linux
+      language: minimal
+      env: BUILD_TYPE=MINSIZEREL SKIP_SIZE=8,10 TEST=fih-tests DAMAGE_TYPE=SIGNATURE
+
+    - os: linux
+      language: minimal
+      env: BUILD_TYPE=MINSIZEREL SKIP_SIZE=8,10 FIH_LEVEL=LOW TEST=fih-tests DAMAGE_TYPE=SIGNATURE
+
+    - os: linux
+      language: minimal
+      env: BUILD_TYPE=MINSIZEREL SKIP_SIZE=8,10 FIH_LEVEL=MEDIUM TEST=fih-tests DAMAGE_TYPE=SIGNATURE
+
+    ## Corrupt image hash is not tested as it is in the unprotected TLV section
+    ## and is easy to calculate a valid hash for a changed image
+    #- os: linux
+    #  language: minimal
+    #  env: BUILD_TYPE=MINSIZEREL SKIP_SIZE=2,4,6 TEST=fih-tests DAMAGE_TYPE=IMAGE_HASH
+
+    ## Max profile is not tested as it requires HW entropy source which is not
+    ## present in the QEMU system being used for the tests.
+    #- os: linux
+    #  language: minimal
+    #  env: FIH_LEVEL=MAX TEST=fih-tests
 
 before_install:
   - |

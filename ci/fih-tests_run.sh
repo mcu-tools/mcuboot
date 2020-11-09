@@ -16,4 +16,8 @@
 
 set -e
 
-docker run mcuboot/fih-test /bin/sh -c '/root/execute_test.sh $0 $1 $2' 2,4,6,8,10 RELEASE SIGNATURE
+if test -z "$FIH_LEVEL"; then
+    docker run mcuboot/fih-test /bin/sh -c '/root/execute_test.sh $0 $1 $2' $SKIP_SIZE $BUILD_TYPE $DAMAGE_TYPE
+else
+    docker run mcuboot/fih-test /bin/sh -c '/root/execute_test.sh $0 $1 $2 $3' $SKIP_SIZE $BUILD_TYPE $DAMAGE_TYPE $FIH_LEVEL
+fi
