@@ -48,8 +48,7 @@ function damage_image
         exit -1
     fi
 
-    # TODO: damage image here
-    cp $IMAGEDIR/$BACKUP_IMAGE_NAME $IMAGE
+    python3 $DIR/damage_image.py -i $IMAGEDIR/$BACKUP_IMAGE_NAME -o $IMAGE $DAMAGE_PARAM 1>&2
 }
 
 function run_test
