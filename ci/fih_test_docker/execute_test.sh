@@ -18,21 +18,28 @@ set -e
 
 WORKING_DIRECTORY=/root/work/tfm
 MCUBOOT_PATH=$WORKING_DIRECTORY/mcuboot
-
-TFM_DIR=/root/work/tfm/trusted-firmware-m
+TFM_DIR=$WORKING_DIRECTORY/trusted-firmware-m
 TFM_BUILD_DIR=$TFM_DIR/build
-MCUBOOT_AXF=install/outputs/MPS2/AN521/bl2.axf
-SIGNED_TFM_BIN=install/outputs/MPS2/AN521/tfm_s_ns_signed.bin
-QEMU_LOG_FILE=qemu.log
-QEMU_PID_FILE=qemu_pid.txt
+
+SKIP_SIZE=$1
+BUILD_TYPE=$2
+DAMAGE_TYPE=$3
+FIH_LEVEL=$4
 
 source ~/.bashrc
+
+if test -z "$FIH_LEVEL"; then
+    # Use the default level
+    CMAKE_FIH_LEVEL=""
+else
+    CMAKE_FIH_LEVEL="-DMCUBOOT_FIH_PROFILE=\"$FIH_LEVEL\""
+fi
 
 # build TF-M with MCUBoot
 mkdir -p $TFM_BUILD_DIR
 cd $TFM_DIR
 cmake -B $TFM_BUILD_DIR \
-    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DTFM_TOOLCHAIN_FILE=toolchain_GNUARM.cmake \
     -DTFM_PLATFORM=mps2/an521 \
     -DTEST_NS=ON \
@@ -40,21 +47,21 @@ cmake -B $TFM_BUILD_DIR \
     -DTFM_PSA_API=ON \
     -DMCUBOOT_PATH=$MCUBOOT_PATH \
     -DMCUBOOT_LOG_LEVEL=INFO \
+    $CMAKE_FIH_LEVEL \
     .
 cd $TFM_BUILD_DIR
 make -j install
 
-# Run MCUBoot and TF-M in QEMU
-/usr/bin/qemu-system-arm \
-    -M mps2-an521 \
-    -kernel $MCUBOOT_AXF \
-    -device loader,file=$SIGNED_TFM_BIN,addr=0x10080000 \
-    -chardev file,id=char0,path=$QEMU_LOG_FILE \
-    -serial chardev:char0 \
-    -display none \
-    -pidfile $QEMU_PID_FILE \
-    -daemonize
+BOOTLOADER_AXF='./install/outputs/MPS2/AN521/bl2.axf'
 
-sleep 7
+$MCUBOOT_PATH/ci/fih_test_docker/run_fi_test.sh $BOOTLOADER_AXF $SKIP_SIZE $DAMAGE_TYPE> fih_test_output.yaml
 
-cat $QEMU_LOG_FILE
+echo ""
+echo "test finished with"
+echo "    - BUILD_TYPE: $BUILD_TYPE"
+echo "    - FIH_LEVEL: $FIH_LEVEL"
+echo "    - SKIP_SIZE: $SKIP_SIZE"
+echo "    - DAMAGE_TYPE: $DAMAGE_TYPE"
+
+# TODO: Create human readable output
+cat fih_test_output.yaml

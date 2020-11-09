@@ -16,4 +16,4 @@
 
 set -e
 
-docker run mcuboot/fih-test /bin/sh -c '/root/execute_test.sh'
+docker run mcuboot/fih-test /bin/sh -c '/root/execute_test.sh $0 $1 $2' 2,4,6,8,10 RELEASE SIGNATURE
