@@ -5,51 +5,8 @@ addons:
     packages:
       - "python3-pip"
 
-language: rust
-
-cache:
-  directories:
-    - $HOME/TOOLCHAIN
-    - cargo
-
 matrix:
   include:
-    # Runs each value defined in $SINGLE_FEATURES by itself in the order
-    # the were defined.
-    # - os: linux
-    #   env: SINGLE_FEATURES="sig-ecdsa sig-ed25519 enc-kw bootstrap" TEST=sim
-    # - os: linux
-    #   env: SINGLE_FEATURES="none sig-rsa sig-rsa3072 overwrite-only validate-primary-slot swap-move" TEST=sim
-    # - os: linux
-    #   env: SINGLE_FEATURES="enc-rsa enc-ec256 enc-x25519" TEST=sim
-
-    # Values defined in $MULTI_FEATURES consist of any number of features
-    # to be enabled at the same time. The list of multi-values should be
-    # separated by ',' and each list of values is run sequentially in the
-    # defined order.
-    # - os: linux
-    #   env: MULTI_FEATURES="sig-rsa overwrite-only large-write,sig-ecdsa overwrite-only large-write,multiimage overwrite-only large-write" TEST=sim
-    # - os: linux
-    #   env: MULTI_FEATURES="sig-rsa validate-primary-slot,sig-ecdsa validate-primary-slot,sig-rsa multiimage validate-primary-slot" TEST=sim
-    # - os: linux
-    #   env: MULTI_FEATURES="enc-kw overwrite-only large-write,enc-rsa overwrite-only large-write" TEST=sim
-    # - os: linux
-    #   env: MULTI_FEATURES="sig-rsa enc-rsa validate-primary-slot,swap-move enc-rsa sig-rsa validate-primary-slot" TEST=sim
-    # - os: linux
-    #   env: MULTI_FEATURES="sig-rsa enc-kw validate-primary-slot bootstrap,sig-ed25519 enc-x25519 validate-primary-slot" TEST=sim
-    # - os: linux
-    #   env: MULTI_FEATURES="sig-ecdsa enc-kw validate-primary-slot" TEST=sim
-    # - os: linux
-    #   env: MULTI_FEATURES="sig-rsa validate-primary-slot overwrite-only large-write,sig-ecdsa enc-ec256 validate-primary-slot" TEST=sim
-    # - os: linux
-    #   env: MULTI_FEATURES="sig-rsa validate-primary-slot overwrite-only downgrade-prevention" TEST=sim
-
-    # - os: linux
-    #   language: go
-    #   env: TEST=mynewt
-    #   go:
-    #     - "1.12"
-
     - os: linux
       language: python
       env: TEST=imgtool
