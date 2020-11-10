@@ -18,7 +18,7 @@ import (
 	"os/exec"
 	"path"
 
-	"github.com/JuulLabs-OSS/mcuboot/samples/zephyr/mcutests"
+	"github.com/mcu-tools/mcuboot/samples/zephyr/mcutests"
 )
 
 var outFile = flag.String("out", "test-images.zip", "Name of zip file to put built tests into")
