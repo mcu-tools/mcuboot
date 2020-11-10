@@ -8,7 +8,7 @@ setuptools.setup(
     author_email="mcuboot@groups.io",
     description=("MCUboot's image signing and key management"),
     license="Apache Software License",
-    url="http://github.com/JuulLabs-OSS/mcuboot",
+    url="http://github.com/mcu-tools/mcuboot",
     packages=setuptools.find_packages(),
     python_requires='>=3.6',
     install_requires=[

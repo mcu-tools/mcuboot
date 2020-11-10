@@ -39,7 +39,7 @@ vulnerabilities found within published code will undergo an embargo of
 Vulnerability reports and published fixes will be reported as follows:
 
 - Issues will be entered into Github's [Security Advisory
-  system](https://github.com/JuulLabs-OSS/mcuboot/security/advisories), with
+  system](https://github.com/mcu-tools/mcuboot/security/advisories), with
   the interested parties (including the reporter) added as viewers.
 
 - The release notes will contain a reference to any allocated CVE(s).
