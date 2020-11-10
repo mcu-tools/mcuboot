@@ -44,6 +44,7 @@
 #include "bootutil/security_cnt.h"
 #include "bootutil/boot_record.h"
 #include "bootutil/fault_injection_hardening.h"
+#include "bootutil/bootloader_events.h"
 
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
@@ -1780,6 +1781,14 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         /* Set the previously determined swap type */
         bs.swap_type = BOOT_SWAP_TYPE(state);
 
+        struct bootloader_event_param p = {
+            .swap_op = {
+                .image_index    = BOOT_CURR_IMG(state),
+                .op             = BOOT_SWAP_TYPE(state),
+            }
+        };
+        bootloader_event(EVT_BL_SWAP_OP, &p);
+
         switch (BOOT_SWAP_TYPE(state)) {
         case BOOT_SWAP_TYPE_NONE:
             break;
@@ -1810,6 +1819,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         }
 
         if (BOOT_SWAP_TYPE(state) == BOOT_SWAP_TYPE_PANIC) {
+            bootloader_event(EVT_BL_ERROR_SWAP_PANIC, NULL);
             BOOT_LOG_ERR("panic!");
             assert(0);
 

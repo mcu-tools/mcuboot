@@ -25,6 +25,7 @@
 #include "bootutil_priv.h"
 #include "swap_priv.h"
 #include "bootutil/bootutil_log.h"
+#include "bootutil/bootloader_events.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 
@@ -713,6 +714,14 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     while (last_sector_idx >= 0) {
         sz = boot_copy_sz(state, last_sector_idx, &first_sector_idx);
         if (swap_idx >= (bs->idx - BOOT_STATUS_IDX_0)) {
+            struct bootloader_event_param p = {
+                .sector_op = {
+                    .image_index    = image_index,
+                    .sector         = idx,
+                    .total_sectors  = g_last_idx
+                }
+            };
+            bootloader_event(EVT_BL_SWAP_SECTOR_PROGRESS, &p);
             boot_swap_sectors(first_sector_idx, sz, state, bs);
         }
 

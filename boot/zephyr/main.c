@@ -31,6 +31,7 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 #include "bootutil/fault_injection_hardening.h"
+#include "bootutil/bootloader_events.h"
 #include "flash_map_backend/flash_map_backend.h"
 
 #ifdef CONFIG_MCUBOOT_SERIAL
@@ -321,6 +322,7 @@ void main(void)
 
     MCUBOOT_WATCHDOG_FEED();
 
+    bootloader_event(EVT_BL_START, NULL);
     BOOT_LOG_INF("Starting bootloader");
 
     os_heap_init();
@@ -333,12 +335,24 @@ void main(void)
     if (!flash_device_get_binding(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL)) {
         BOOT_LOG_ERR("Flash device %s not found",
 		     DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL);
+        struct bootloader_event_param p = {
+            .error = {
+                .rc     = 0
+            }
+        };
+        bootloader_event(EVT_BL_ERROR_FLASH_NOT_FOUND, &p);
         while (1)
             ;
     }
 #elif (defined(CONFIG_XTENSA) && defined(JEDEC_SPI_NOR_0_LABEL))
     if (!flash_device_get_binding(JEDEC_SPI_NOR_0_LABEL)) {
         BOOT_LOG_ERR("Flash device %s not found", JEDEC_SPI_NOR_0_LABEL);
+        struct bootloader_event_param p = {
+            .error = {
+                .rc     = 0
+            }
+        };
+        bootloader_event(EVT_BL_ERROR_FLASH_NOT_FOUND, &p);
         while (1)
             ;
     }
@@ -375,6 +389,7 @@ void main(void)
     __ASSERT(rc >= 0, "Error of the reading the detect pin.\n");
     if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL &&
         !boot_skip_serial_recovery()) {
+        bootloader_event(EVT_BL_ENTER_SERIAL_RECOVERY, NULL);
         BOOT_LOG_INF("Enter the serial recovery mode");
         rc = boot_console_init();
         __ASSERT(rc == 0, "Error initializing boot console.\n");
@@ -387,16 +402,30 @@ void main(void)
     rc = usb_enable(NULL);
     if (rc) {
         BOOT_LOG_ERR("Cannot enable USB");
+        struct bootloader_event_param p = {
+            .error = {
+                .rc     = rc
+            }
+        };
+        bootloader_event(EVT_BL_ERROR_USB_ENABLE_FAILED, &p);
     } else {
         BOOT_LOG_INF("Waiting for USB DFU");
+        bootloader_event(EVT_BL_WAIT_FOR_DFU, NULL);
         wait_for_usb_dfu();
         BOOT_LOG_INF("USB DFU wait time elapsed");
+        bootloader_event(EVT_BL_DFU_TIMEOUT, NULL);
     }
 #endif
 
     FIH_CALL(boot_go, fih_rc, &rsp);
     if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
         BOOT_LOG_ERR("Unable to find bootable image");
+        struct bootloader_event_param p = {
+            .error = {
+                .rc     = rc
+            }
+        };
+        bootloader_event(EVT_BL_ERROR_NO_BOOTABLE_IMAGE, &p);
         FIH_PANIC;
     }
 

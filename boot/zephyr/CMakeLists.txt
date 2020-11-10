@@ -86,12 +86,17 @@ if(EXISTS targets/${BOARD}.h)
   zephyr_library_compile_definitions(MCUBOOT_TARGET_CONFIG="${BOARD}.h")
 endif()
 
+if (NOT DEFINED USER_ADDON_FILES)
+  set(USER_ADDON_FILES, "")
+endif()
+
 # Zephyr port-specific sources.
 zephyr_library_sources(
   main.c
   flash_map_extended.c
   os.c
   keys.c
+  ${USER_ADDON_FILES}
   )
 
 if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)
@@ -131,6 +136,7 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/swap_scratch.c
   ${BOOT_DIR}/bootutil/src/swap_move.c
   ${BOOT_DIR}/bootutil/src/caps.c
+  ${BOOT_DIR}/bootutil/src/bootloader_events.c
   )
 endif()
 

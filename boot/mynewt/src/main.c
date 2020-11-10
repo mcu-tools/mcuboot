@@ -46,6 +46,7 @@
 #include "bootutil/bootutil.h"
 #include "bootutil/bootutil_log.h"
 #include "bootutil/fault_injection_hardening.h"
+#include "bootutil/bootloader_events.h"
 
 #if MYNEWT_VAL(BOOT_CUSTOM_START)
 void boot_custom_start(uintptr_t flash_base, struct boot_rsp *rsp);
@@ -191,6 +192,7 @@ serial_boot_detect(void)
 #endif
     return;
 serial_boot:
+    bootloader_event(EVT_BL_ENTER_SERIAL_RECOVERY, NULL);
     boot_uart_open();
     boot_serial_start(&boot_uart_funcs);
     assert(0);
@@ -217,6 +219,7 @@ main(void)
     int rc;
     fih_int fih_rc = FIH_FAILURE;
 
+    bootloader_event(EVT_BL_START, NULL);
     hal_bsp_init();
 
 #if !MYNEWT_VAL(OS_SCHEDULING) && MYNEWT_VAL(WATCHDOG_INTERVAL)
@@ -241,6 +244,12 @@ main(void)
 
     FIH_CALL(boot_go, fih_rc, &rsp);
     if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+        struct bootloader_event_param p = {
+            .error = {
+                .rc     = fih_rc
+            }
+        };
+        bootloader_event(EVT_BL_ERROR_NO_BOOTABLE_IMAGE, &p);
         assert(fih_int_decode(fih_rc) == FIH_POSITIVE_VALUE);
         FIH_PANIC;
     }
@@ -248,6 +257,7 @@ main(void)
     rc = flash_device_base(rsp.br_flash_dev_id, &flash_base);
     assert(rc == 0);
 
+    bootloader_event(EVT_BL_BOOTING_IMAGE, NULL);
 #if MYNEWT_VAL(BOOT_CUSTOM_START)
     boot_custom_start(flash_base, &rsp);
 #else
