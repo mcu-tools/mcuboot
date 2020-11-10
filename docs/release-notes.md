@@ -5,13 +5,15 @@
 
 ## Version 1.7.0
 
-The 1.7.0 release of MCUBoot adds support for Equal slots (direct-xip)
-upgrade mode, RAM loading upgrade mode, hardening against hardware level
-fault injection and timing attacks and single image mode.
+The 1.7.0 release of MCUBoot adds support for the Mbed-OS platform,
+Equal slots (direct-xip) upgrade mode, RAM loading upgrade mode,
+hardening against hardware level fault injection and timing attacks
+and single image mode.
 There are bug fixes, and associated imgtool updates as well.
 
 ### About this release
 
+- Initial support for the Mbed-OS platform.
 - Added possibility to enter deep sleep mode after mcuboot app execution
   for cypress platform.
 - Added hardening against hardware level fault injection and timing attacks.
