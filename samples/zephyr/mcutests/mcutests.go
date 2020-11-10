@@ -1,5 +1,5 @@
 // Package mcutests
-package mcutests // github.com/JuulLabs-OSS/mcuboot/samples/zephyr/mcutests
+package mcutests // github.com/mcu-tools/mcuboot/samples/zephyr/mcutests
 
 // The main driver of this consists of a series of tests.  Each test
 // then contains a series of commands and expect results.

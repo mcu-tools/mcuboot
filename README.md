@@ -1,10 +1,10 @@
 # [mcuboot](http://mcuboot.com/)
 
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/12307/badge.svg)][coverity]
-[![Build/Test](https://img.shields.io/travis/JuulLabs-OSS/mcuboot/master.svg?label=travis-ci)][travis]
+[![Build/Test](https://img.shields.io/travis/mcu-tools/mcuboot/master.svg?label=travis-ci)][travis]
 
 [coverity]: https://scan.coverity.com/projects/mcuboot
-[travis]: https://travis-ci.org/JuulLabs-OSS/mcuboot
+[travis]: https://travis-ci.org/mcu-tools/mcuboot
 
 This is mcuboot version 1.7.0-rc1
 
@@ -33,7 +33,7 @@ Instructions for different operating systems can be found here:
 The issues being planned and worked on are tracked using GitHub issues. To
 participate please visit:
 
-[MCUBoot GitHub Issues](https://github.com/JuulLabs-OSS/mcuboot/issues)
+[MCUBoot GitHub Issues](https://github.com/mcu-tools/mcuboot/issues)
 
 ~~Issues were previously tracked on [MCUboot JIRA](https://runtimeco.atlassian.net/projects/MCUB/summary)
 , but it is now deprecated.~~

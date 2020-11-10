@@ -14,7 +14,7 @@ First you need to add the repo to your `project.yml`:
     repository.mcuboot:
         type: github
         vers: 0-dev
-        user: JuulLabs-OSS
+        user: mcu-tools
         repo: mcuboot
 ```
 

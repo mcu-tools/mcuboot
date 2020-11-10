@@ -1,3 +1,3 @@
-module github.com/JuulLabs-OSS/mcuboot
+module github.com/mcu-tools/mcuboot
 
 go 1.14
