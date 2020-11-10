@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if [[ $TRAVIS_PULL_REQUEST != "false" || $TRAVIS_BRANCH != "master" ]]; then
-    echo "Either a PR or not \"master\" branch, exiting"
-    exit 0
+if [[ $TRAVIS == "true" ]]; then
+    if [[ $TRAVIS_PULL_REQUEST != "false" || $TRAVIS_BRANCH != "master" ]]; then
+        echo "Either a PR or not \"master\" branch, exiting"
+        exit 0
+    fi
 fi
 
 IMGTOOL_VER_PREFIX="\+imgtool_version = "
@@ -22,13 +24,13 @@ IMGTOOL_VER_FILE="imgtool/__init__.py"
 DIST_DIR="dist"
 
 if [[ -z "$TWINE_TOKEN" ]]; then
-    echo "\$TWINE_TOKEN must be set in travis settings"
+    echo "\$TWINE_TOKEN must be set in Travis or GH settings"
     exit 0
 fi
 
 cd scripts/
 
-last_release=$(pip show imgtool | grep "Version: " | cut -d" " -f2)
+last_release=$(pip3 show imgtool | grep "Version: " | cut -d" " -f2)
 repo_version=$(grep "imgtool_version = " imgtool/__init__.py | sed 's/^.* = "\(.*\)"/\1/g')
 
 python3 ../ci/compare_versions.py --old $last_release --new $repo_version
