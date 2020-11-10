@@ -18,6 +18,7 @@ target_sources(bootutil
     PRIVATE
         src/boot_record.c
         src/bootutil_misc.c
+        src/bootutil_public.c
         src/caps.c
         src/encrypted.c
         src/fault_injection_hardening.c

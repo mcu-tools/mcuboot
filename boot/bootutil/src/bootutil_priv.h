@@ -106,20 +106,6 @@ struct boot_status {
     int source;           /* Which slot contains swap status metadata */
 };
 
-#define BOOT_MAGIC_GOOD     1
-#define BOOT_MAGIC_BAD      2
-#define BOOT_MAGIC_UNSET    3
-#define BOOT_MAGIC_ANY      4  /* NOTE: control only, not dependent on sector */
-#define BOOT_MAGIC_NOTGOOD  5  /* NOTE: control only, not dependent on sector */
-
-/*
- * NOTE: leave BOOT_FLAG_SET equal to one, this is written to flash!
- */
-#define BOOT_FLAG_SET       1
-#define BOOT_FLAG_BAD       2
-#define BOOT_FLAG_UNSET     3
-#define BOOT_FLAG_ANY       4  /* NOTE: control only, not dependent on sector */
-
 #define BOOT_STATUS_IDX_0   1
 
 #define BOOT_STATUS_STATE_0 1
@@ -243,8 +229,6 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #define BOOT_STATUS_SOURCE_SCRATCH      1
 #define BOOT_STATUS_SOURCE_PRIMARY_SLOT 2
 
-#define BOOT_MAGIC_SZ (sizeof boot_img_magic)
-
 /**
  * Compatibility shim for flash sector type.
  *
@@ -295,7 +279,6 @@ uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
 int boot_status_entries(int image_index, const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
-uint32_t boot_swap_info_off(const struct flash_area *fap);
 int boot_read_swap_state(const struct flash_area *fap,
                          struct boot_swap_state *state);
 int boot_read_swap_state_by_id(int flash_area_id,
