@@ -1,0 +1,21 @@
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  environment:
+    name: Publish imgtool releases
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Install publishing packages
+      run: |
+        ./ci/imgtool_install.sh
+    - name: Publish imgtool
+      env:
+        TWINE_TOKEN: ${{ secrets.TWINE_TOKEN }}
+      run: |
+        ./ci/imgtool_run.sh

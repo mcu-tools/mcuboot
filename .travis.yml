@@ -6,7 +6,7 @@ addons:
       - "python3-pip"
 
 matrix:
-  include:
+  exclude:
     - os: linux
       language: python
       env: TEST=imgtool

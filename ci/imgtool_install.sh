@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if [[ $TRAVIS_PULL_REQUEST != "false" || $TRAVIS_BRANCH != "master" ]]; then
-    echo "Either a PR or not \"master\" branch, exiting"
-    exit 0
+if [[ $TRAVIS == "true" ]]; then
+    if [[ $TRAVIS_PULL_REQUEST != "false" || $TRAVIS_BRANCH != "master" ]]; then
+        echo "Either a PR or not \"master\" branch, exiting"
+        exit 0
+    fi
+    PIP=pip3
+else
+    PIP=pip
 fi
 
-pip3 install setuptools twine packaging
-pip3 install --pre imgtool
+$PIP install setuptools twine packaging
+$PIP install --pre imgtool
