@@ -48,6 +48,6 @@ elif [[ $rc -eq 3 ]]; then
 fi
 
 rm -rf $DIST_DIR
-python setup.py sdist bdist_wheel
+python3 setup.py sdist bdist_wheel
 
 twine upload --username __token__ --password "${TWINE_TOKEN}" "${DIST_DIR}/*"
