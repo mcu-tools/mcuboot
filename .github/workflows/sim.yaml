@@ -41,6 +41,7 @@ jobs:
         free
         pwd
     - name: Signed commit check
+      if: ${{ github.event_name == 'pull_request' }}
       run: |
         ./ci/check-signed-off-by.sh
     - name: Install stable Rust
