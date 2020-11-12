@@ -10,9 +10,9 @@
 
 [pypi]: https://pypi.org/project/imgtool/
 [coverity]: https://scan.coverity.com/projects/mcuboot
-[sim]: https://github.com/mcu-tools/mcuboot/actions?query=workflow:.github/workflows/sim.yaml
-[mynewt]: https://github.com/mcu-tools/mcuboot/actions?query=workflow:.github/workflows/mynewt.yaml
-[imgtool]: https://github.com/mcu-tools/mcuboot/actions?query=workflow:.github/workflows/imgtool.yaml
+[sim]: https://github.com/mcu-tools/mcuboot/actions?query=workflow:Sim
+[mynewt]: https://github.com/mcu-tools/mcuboot/actions?query=workflow:Mynewt
+[imgtool]: https://github.com/mcu-tools/mcuboot/actions?query=workflow:imgtool
 [travis]: https://travis-ci.org/mcu-tools/mcuboot
 [license]: https://github.com/mcu-tools/mcuboot/blob/master/LICENSE
 
