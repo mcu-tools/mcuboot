@@ -1,6 +1,8 @@
 # For development, trigger this on any push.
 on: [pull_request]
 
+name: Sim
+
 jobs:
   environment:
     strategy:
@@ -20,7 +22,6 @@ jobs:
         - "sig-rsa validate-primary-slot overwrite-only large-write"
         - "sig-ecdsa enc-ec256 validate-primary-slot"
         - "sig-rsa validate-primary-slot overwrite-only downgrade-prevention"
-    name: Sim
     runs-on: ubuntu-latest
     env:
       MULTI_FEATURES: ${{ matrix.features }}
