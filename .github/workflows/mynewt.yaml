@@ -1,9 +1,10 @@
 # For development, trigger this on any push.
 on: [pull_request]
 
+name: Mynewt
+
 jobs:
   environment:
-    name: Mynewt build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
