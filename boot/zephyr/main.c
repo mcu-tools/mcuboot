@@ -44,7 +44,7 @@ const struct boot_uart_funcs boot_funcs = {
 };
 #endif
 
-#ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
+#if defined(CONFIG_BOOT_USB_DFU_WAIT) || defined(CONFIG_BOOT_USB_DFU_GPIO)
 #include <usb/class/usb_dfu.h>
 #endif
 
@@ -128,7 +128,7 @@ MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
 #define LED0_GPIO_LABEL DT_GPIO_LABEL(LED0_NODE, gpios)
 #define LED0_GPIO_PIN DT_GPIO_PIN(LED0_NODE, gpios)
 #define LED0_GPIO_FLAGS (GPIO_OUTPUT | FLAGS_OR_ZERO(LED0_NODE))
-#else 
+#else
 /* A build error here means your board isn't set up to drive an LED. */
 #error "Unsupported board: led0 devicetree alias is not defined"
 #endif
@@ -137,7 +137,7 @@ const static struct device *led;
 
 void led_init(void)
 {
-    
+
   led = device_get_binding(LED0_GPIO_LABEL);
   if (led == NULL) {
     BOOT_LOG_ERR("Didn't find LED device %s\n", LED0_GPIO_LABEL);
@@ -365,6 +365,71 @@ void zephyr_boot_log_stop(void)
 #endif/* defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) &&\
         !defined(CONFIG_LOG_PROCESS_THREAD) */
 
+#if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU_GPIO)
+static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
+{
+    int rc;
+    int detect_value;
+    struct device const *detect_port;
+
+    detect_port = device_get_binding(port);
+    __ASSERT(detect_port, "Error: Bad port for boot detection.\n");
+
+    /* The default presence value is 0 which would normally be
+     * active-low, but historically the raw value was checked so we'll
+     * use the raw interface.
+     */
+    rc = gpio_pin_configure(detect_port, pin,
+#ifdef GPIO_INPUT
+                            GPIO_INPUT | GPIO_PULL_UP
+#else
+                            GPIO_DIR_IN | GPIO_PUD_PULL_UP
+#endif
+           );
+    __ASSERT(rc == 0, "Failed to initialize boot detect pin.\n");
+
+#ifdef GPIO_INPUT
+    rc = gpio_pin_get_raw(detect_port, pin);
+    detect_value = rc;
+#else
+    rc = gpio_pin_read(detect_port, pin, &detect_value);
+#endif
+    __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
+
+    if (detect_value == expected) {
+        if (delay > 0) {
+            k_sleep(K_MSEC(50));
+
+            /* Get the uptime for debounce purposes. */
+            int64_t timestamp = k_uptime_get();
+
+            for(;;) {
+#ifdef GPIO_INPUT
+                rc = gpio_pin_get_raw(detect_port, pin);
+                detect_value = rc;
+#else
+                rc = gpio_pin_read(detect_port, pin, &detect_value);
+#endif
+                __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
+
+                /* Get delta from when this started */
+                uint32_t delta = k_uptime_get() -  timestamp;
+
+                /* If not pressed OR if pressed > debounce period, stop. */
+                if (delta >= delay || detect_value != expected) {
+                    break;
+                }
+
+                /* Delay 1 ms */
+                k_sleep(K_MSEC(1));
+            }
+        }
+    }
+
+    return detect_value == expected;
+}
+#endif
+
 void main(void)
 {
     struct boot_rsp rsp;
@@ -406,91 +471,47 @@ void main(void)
 #endif
 
 #ifdef CONFIG_MCUBOOT_SERIAL
-
-    struct device const *detect_port;
-    uint32_t detect_value = !CONFIG_BOOT_SERIAL_DETECT_PIN_VAL;
-
-    detect_port = device_get_binding(CONFIG_BOOT_SERIAL_DETECT_PORT);
-    __ASSERT(detect_port, "Error: Bad port for boot serial detection.\n");
-
-    /* The default presence value is 0 which would normally be
-     * active-low, but historically the raw value was checked so we'll
-     * use the raw interface.
-     */
-    rc = gpio_pin_configure(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
-#ifdef GPIO_INPUT
-                            GPIO_INPUT | GPIO_PULL_UP
-#else
-                            GPIO_DIR_IN | GPIO_PUD_PULL_UP
-#endif
-           );
-    __ASSERT(rc == 0, "Error of boot detect pin initialization.\n");
-
-#ifdef GPIO_INPUT
-    rc = gpio_pin_get_raw(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN);
-    detect_value = rc;
-#else
-    rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
-                       &detect_value);
-#endif
-    __ASSERT(rc >= 0, "Error of the reading the detect pin.\n");
-    if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL &&
-        !boot_skip_serial_recovery()) {
-            
-#if CONFIG_BOOT_SERIAL_DETECT_DELAY > 0 
-        k_sleep(K_MSEC(50));
-
-        /* Get the uptime for debounce purposes. */
-        int64_t timestamp = k_uptime_get();
-
-        for(;;) {
-            
-#ifdef GPIO_INPUT
-            rc = gpio_pin_get_raw(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN);
-            detect_value = rc;
-#else
-            rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
-                            &detect_value);
-#endif
-            __ASSERT(rc >= 0, "Error of the reading the detect pin.\n");
-
-            /* Get delta from when this started */
-            uint32_t delta = k_uptime_get() -  timestamp;
-
-            /* If not pressed OR if pressed > debounce period stop loop*/
-            if( delta >= CONFIG_BOOT_SERIAL_DETECT_DELAY || 
-                detect_value != CONFIG_BOOT_SERIAL_DETECT_PIN_VAL ) {
-                    break;
-                }
-
-
-            /* Delay 1 ms */
-            k_sleep(K_MSEC(1));
-        }
-#endif 
-
-        /* Then run DFU */
-        if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) {
+    if (detect_pin(CONFIG_BOOT_SERIAL_DETECT_PORT,
+                   CONFIG_BOOT_SERIAL_DETECT_PIN,
+                   CONFIG_BOOT_SERIAL_DETECT_PIN_VAL,
+                   CONFIG_BOOT_SERIAL_DETECT_DELAY) &&
+            !boot_skip_serial_recovery()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-            gpio_pin_set(led, LED0_GPIO_PIN, 1);
-#endif
-            BOOT_LOG_INF("Enter the serial recovery mode");
-            rc = boot_console_init();
-            __ASSERT(rc == 0, "Error initializing boot console.\n");
-            boot_serial_start(&boot_funcs);
-            __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
-        
-        }
-}
+        gpio_pin_set(led, LED0_GPIO_PIN, 1);
 #endif
 
-#ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
+        BOOT_LOG_INF("Enter the serial recovery mode");
+        rc = boot_console_init();
+        __ASSERT(rc == 0, "Error initializing boot console.\n");
+        boot_serial_start(&boot_funcs);
+        __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
+    }
+#endif
+
+#if defined(CONFIG_BOOT_USB_DFU_GPIO)
+    if (detect_pin(CONFIG_BOOT_USB_DFU_DETECT_PORT,
+                   CONFIG_BOOT_USB_DFU_DETECT_PIN,
+                   CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL,
+                   CONFIG_BOOT_USB_DFU_DETECT_DELAY)) {
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+        gpio_pin_set(led, LED0_GPIO_PIN, 1);
+#endif
+        rc = usb_enable(NULL);
+        if (rc) {
+            BOOT_LOG_ERR("Cannot enable USB");
+        } else {
+            BOOT_LOG_INF("Waiting for USB DFU");
+            wait_for_usb_dfu(K_FOREVER);
+            BOOT_LOG_INF("USB DFU wait time elapsed");
+        }
+    }
+#elif defined(CONFIG_BOOT_USB_DFU_WAIT)
     rc = usb_enable(NULL);
     if (rc) {
         BOOT_LOG_ERR("Cannot enable USB");
     } else {
         BOOT_LOG_INF("Waiting for USB DFU");
-        wait_for_usb_dfu();
+        wait_for_usb_dfu(K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS));
         BOOT_LOG_INF("USB DFU wait time elapsed");
     }
 #endif
