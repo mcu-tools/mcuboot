@@ -227,6 +227,7 @@ endchoice
 
 config BOOT_DIRECT_XIP_REVERT
 	bool "Enable the revert mechanism in direct-xip mode"
+	depends on BOOT_DIRECT_XIP
 	default n
 	help
 	  If y, enables the revert mechanism in direct-xip similar to the one in
