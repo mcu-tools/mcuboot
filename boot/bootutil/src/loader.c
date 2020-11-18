@@ -2047,6 +2047,75 @@ boot_get_slot_usage(struct boot_loader_state *state, uint8_t slot_usage[],
     return image_cnt;
 }
 
+#ifdef MCUBOOT_DIRECT_XIP_REVERT
+/**
+ * Checks whether the image in the given slot was previously selected to run.
+ * Erases the image if it was selected but its execution failed, otherwise marks
+ * it as selected if it has not been before.
+ *
+ * @param state     Image metadata from the image trailer. This function fills
+ *                  this struct with the data read from the image trailer.
+ * @param slot      Image slot number.
+ *
+ * @return          0 on success; nonzero on failure.
+ */
+static int
+boot_select_or_erase(struct boot_swap_state *state, uint32_t slot)
+{
+    const struct flash_area *fap;
+    int fa_id;
+    int rc;
+
+    fa_id = flash_area_id_from_image_slot(slot);
+    rc = flash_area_open(fa_id, &fap);
+    assert(rc == 0);
+
+    memset(state, 0, sizeof(struct boot_swap_state));
+    rc = boot_read_swap_state(fap, state);
+    assert(rc == 0);
+
+    if (state->magic != BOOT_MAGIC_GOOD ||
+        (state->copy_done == BOOT_FLAG_SET &&
+         state->image_ok  != BOOT_FLAG_SET)) {
+        /*
+         * A reboot happened without the image being confirmed at
+         * runtime or its trailer is corrupted/invalid. Erase the image
+         * to prevent it from being selected again on the next reboot.
+         */
+        BOOT_LOG_DBG("Erasing faulty image in the %s slot.",
+                     (slot == BOOT_PRIMARY_SLOT) ? "primary" : "secondary");
+        rc = flash_area_erase(fap, 0, fap->fa_size);
+        assert(rc == 0);
+
+        flash_area_close(fap);
+        rc = -1;
+    } else {
+        if (state->copy_done != BOOT_FLAG_SET) {
+            if (state->copy_done == BOOT_FLAG_BAD) {
+                BOOT_LOG_DBG("The copy_done flag had an unexpected value. Its "
+                             "value was neither 'set' nor 'unset', but 'bad'.");
+            }
+            /*
+             * Set the copy_done flag, indicating that the image has been
+             * selected to boot. It can be set in advance, before even
+             * validating the image, because in case the validation fails, the
+             * entire image slot will be erased (including the trailer).
+             */
+            rc = boot_write_copy_done(fap);
+            if (rc != 0) {
+                BOOT_LOG_WRN("Failed to set copy_done flag of the image in "
+                             "the %s slot.", (slot == BOOT_PRIMARY_SLOT) ?
+                             "primary" : "secondary");
+                rc = 0;
+            }
+        }
+        flash_area_close(fap);
+    }
+
+    return rc;
+}
+#endif /* MCUBOOT_DIRECT_XIP_REVERT */
+
 #ifdef MCUBOOT_RAM_LOAD
 
 #if !defined(IMAGE_EXECUTABLE_RAM_START) || !defined(IMAGE_EXECUTABLE_RAM_SIZE)
@@ -2207,6 +2276,9 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     uint32_t img_sz;
     uint32_t img_loaded = 0;
 #endif /* MCUBOOT_RAM_LOAD */
+#ifdef MCUBOOT_DIRECT_XIP_REVERT
+    struct boot_swap_state slot_state;
+#endif /* MCUBOOT_DIRECT_XIP_REVERT */
     fih_int fih_rc = FIH_FAILURE;
 
     memset(state, 0, sizeof(struct boot_loader_state));
@@ -2234,7 +2306,6 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         /* Select the newest and valid image. */
         for (i = 0; i < img_cnt; i++) {
             selected_slot = 0;
-            selected_image_header = NULL;
 
             /* Iterate over all the slots that are in use (contain an image)
              * and select the one that holds the newest image.
@@ -2257,6 +2328,17 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
                     selected_image_header = hdr;
                 }
             }
+
+#ifdef MCUBOOT_DIRECT_XIP_REVERT
+            rc = boot_select_or_erase(&slot_state, selected_slot);
+            if (rc != 0) {
+                /* The selected image slot has been erased. */
+                slot_usage[selected_slot] = 0;
+                selected_image_header = NULL;
+                continue;
+            }
+#endif /* MCUBOOT_DIRECT_XIP_REVERT */
+
 #ifdef MCUBOOT_RAM_LOAD
             /* Image is first loaded to RAM and authenticated there in order to
              * prevent TOCTOU attack during image copy. This could be applied
@@ -2268,6 +2350,8 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
                                          &img_sz);
             if (rc != 0 ) {
                 /* Image loading failed try the next one. */
+                slot_usage[selected_slot] = 0;
+                selected_image_header = NULL;
                 continue;
             } else {
                 img_loaded = 1;
@@ -2294,6 +2378,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
              * and start over.
              */
             slot_usage[selected_slot] = 0;
+            selected_image_header = NULL;
         }
 
         if (fih_not_eq(fih_rc, FIH_SUCCESS) || (selected_image_header == NULL)) {
@@ -2305,13 +2390,24 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         /* Update the stored security counter with the newer (active) image's
          * security counter value.
          */
-        rc = boot_update_security_counter(0, selected_slot,
-                                          selected_image_header);
-        if (rc != 0) {
-            BOOT_LOG_ERR("Security counter update failed after image "
-                         "validation.");
-            goto out;
+#ifdef MCUBOOT_DIRECT_XIP_REVERT
+        /* When the 'revert' mechanism is enabled in direct-xip mode, the
+         * security counter can be increased only after reboot, if the image
+         * has been confirmed at runtime (the image_ok flag has been set).
+         * This way a 'revert' can be performed when it's necessary.
+         */
+        if (slot_state.image_ok == BOOT_FLAG_SET) {
+#endif
+            rc = boot_update_security_counter(0, selected_slot,
+                                              selected_image_header);
+            if (rc != 0) {
+                BOOT_LOG_ERR("Security counter update failed after image "
+                             "validation.");
+                goto out;
+            }
+#ifdef MCUBOOT_DIRECT_XIP_REVERT
         }
+#endif
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
 
 #ifdef MCUBOOT_MEASURED_BOOT

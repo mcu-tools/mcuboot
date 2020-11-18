@@ -1,7 +1,7 @@
 # Submitting Patches
 
 Development on mcuboot primarily takes place in github, at:
-https://github.com/JuulLabs-OSS/mcuboot
+https://github.com/mcu-tools/mcuboot
 
 Changes should be submitted via github pull requests.  Each commit
 should have a Signed-off-by line for the author (and the committer, if

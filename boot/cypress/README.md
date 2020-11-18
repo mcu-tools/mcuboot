@@ -43,7 +43,7 @@ Those are represented as submodules.
 
 To retrieve source code with subsequent submodules pull:
 
-    git clone --recursive https://github.com/JuulLabs-OSS/mcuboot.git
+    git clone --recursive https://github.com/mcu-tools/mcuboot.git
 
 Submodules can also be updated and initialized separately:
 
