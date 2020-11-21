@@ -152,6 +152,8 @@ static void do_boot(struct boot_rsp *rsp)
     z_arm_clear_arm_mpu_config();
 #endif
 
+#endif /* CONFIG_MCUBOOT_CLEANUP_ARM_CORE */
+
 #if defined(CONFIG_BUILTIN_STACK_GUARD) && \
     defined(CONFIG_CPU_CORTEX_M_HAS_SPLIM)
     /* Reset limit registers to avoid inflicting stack overflow on image
@@ -160,8 +162,6 @@ static void do_boot(struct boot_rsp *rsp)
     __set_PSPLIM(0);
     __set_MSPLIM(0);
 #endif
-
-#endif /* CONFIG_MCUBOOT_CLEANUP_ARM_CORE */
 
 #ifdef CONFIG_BOOT_INTR_VEC_RELOC
 #if defined(CONFIG_SW_VECTOR_RELAY)
