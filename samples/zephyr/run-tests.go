@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JuulLabs-OSS/mcuboot/samples/zephyr/mcutests"
+	"github.com/mcu-tools/mcuboot/samples/zephyr/mcutests"
 )
 
 // logIn gives the pathname of the log output from the Zephyr device.
