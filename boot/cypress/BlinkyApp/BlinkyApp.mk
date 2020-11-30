@@ -95,6 +95,9 @@ OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
 
 # Set build directory for BOOT and UPGRADE images
 ifeq ($(IMG_TYPE), UPGRADE)
+	ifeq ($(ENC_IMG), 1)
+		SIGN_ARGS += --encrypt ../../$(ENC_KEY_FILE).pem
+	endif
 	SIGN_ARGS += --pad
 	UPGRADE_SUFFIX :=_upgrade
 	OUT_CFG := $(OUT_CFG)/upgrade
