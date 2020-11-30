@@ -437,7 +437,7 @@ boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
 #    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_KW128
 #elif defined(MCUBOOT_ENCRYPT_EC256)
 #    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_EC256
-#    define EC_PUBK_INDEX       (1)
+#    define EC_PUBK_INDEX       (0)
 #    define EC_TAG_INDEX        (65)
 #    define EC_CIPHERKEY_INDEX  (65 + 32)
 _Static_assert(EC_CIPHERKEY_INDEX + 16 == EXPECTED_ENC_LEN,
@@ -526,11 +526,6 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
         return rc;
     }
 
-    /* is EC point uncompressed? */
-    if (buf[0] != 0x04) {
-        return -1;
-    }
-
     /*
      * First "element" in the TLV is the curve point (public key)
      */
@@ -603,7 +598,7 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    /* Assumes the tag bufer is at least sizeof(hmac_tag_size(state)) bytes */
+    /* Assumes the tag buffer is at least sizeof(hmac_tag_size(state)) bytes */
     rc = bootutil_hmac_sha256_finish(&hmac, tag, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
     if (rc != 0) {
         (void)bootutil_hmac_sha256_drop(&hmac);
