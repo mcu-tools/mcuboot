@@ -148,6 +148,15 @@ This folder contains make files infrastructure for building MCUBoot Bootloader. 
 
 Root directory for build is **boot/cypress.**
 
+**Encrypted Image Support**
+
+To protect user image from unwanted read Upgrade Image Encryption can be applied. The ECDH/HKDF with EC256 scheme is used in a given solution as well as mbedTLS as a crypto provider.
+
+To enable image encryption support `MCUBOOT_ENC_IMAGES` and `MCUBOOT_ENCRYPT_EC256` have to be defined (can be done by uncommenting in `mcuboot_config.h`).
+User is also responsible on providing corresponding binary key data in `enc_priv_key[]` (file `\MCUBootApp\keys.c`). The public part will be used by imgtool when signing and encrypting upgrade image. Signing image with encryption is described in `\BlinkyApp\readme.md`.
+
+After MCUBootApp is built with these settings unencrypted and encrypted images will be accepted in secondary (upgrade) slot.
+
 **Programming solution**
 
 There are couple ways of programming hex of MCUBootApp and BlinkyApp. Following instructions assume one of Cypress development kits, for example `CY8CPROTO_062_4343W`.
