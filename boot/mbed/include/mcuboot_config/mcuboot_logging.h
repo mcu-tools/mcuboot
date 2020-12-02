@@ -55,6 +55,7 @@
 
 #define TRACE_GROUP "MCUb"
 #include "mbed_trace.h"
+#include "bootutil/ignore.h"
 
 #define MCUBOOT_LOG_MODULE_DECLARE(domain)  /* ignore */
 #define MCUBOOT_LOG_MODULE_REGISTER(domain) /* ignore */
