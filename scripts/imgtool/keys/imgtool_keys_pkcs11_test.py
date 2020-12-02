@@ -102,6 +102,21 @@ class EcKeyGeneration(unittest.TestCase):
         self.assertRaises(pkcs11.exceptions.NoSuchKey,
                           k.raw_sign, payload=b'test')
 
+    def test_sig_statistical(self):
+        k = PKCS11()
+        buf = b'This is the message'
+
+        total = 1750
+        for n in range(total):
+            sys.stdout.write(f'\rtest signature {n} / {total} ...')
+            sys.stdout.flush()
+
+            sig = k.raw_sign(buf)
+
+            k.verify(
+                signature=sig,
+                payload=buf)
+
 
 if __name__ == '__main__':
     unittest.main()
