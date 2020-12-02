@@ -53,6 +53,8 @@ static mbed::BlockDevice* flash_map_bd[FLASH_AREAS] = {
 
 static struct flash_area flash_areas[FLASH_AREAS];
 
+static unsigned int open_count[FLASH_AREAS] = {0};
+
 int flash_area_open(uint8_t id, const struct flash_area** fapp) {
 
     *fapp = &flash_areas[id];
@@ -77,17 +79,40 @@ int flash_area_open(uint8_t id, const struct flash_area** fapp) {
             return -1;
     }
 
+    open_count[id]++;
+    MCUBOOT_LOG_DBG("flash area %d open count: %d (+)", id, open_count[id]);
+
     fap->fa_id = id;
     fap->fa_device_id = 0; // not relevant
 
     mbed::BlockDevice* bd = flash_map_bd[id];
     fap->fa_size = (uint32_t) bd->size();
-    return bd->init();
+
+    /* Only initialize if this isn't a nested call to open the flash area */
+    if (open_count[id] == 1) {
+        MCUBOOT_LOG_DBG("initializing flash area %d...", id);
+        return bd->init();
+    } else {
+        return 0;
+    }
 }
 
 void flash_area_close(const struct flash_area* fap) {
-    mbed::BlockDevice* bd = flash_map_bd[fap->fa_id];
-    bd->deinit();
+    uint8_t id = fap->fa_id;
+    /* No need to close an unopened flash area, avoid an overflow of the counter */
+    if (!open_count[id]) {
+        return;
+    }
+
+    open_count[id]--;
+    MCUBOOT_LOG_DBG("flash area %d open count: %d (-)", id, open_count[id]);
+    if (!open_count[id]) {
+        /* mcuboot is not currently consistent in opening/closing flash areas only once at a time
+         * so only deinitialize the BlockDevice if all callers have closed the flash area. */
+        MCUBOOT_LOG_DBG("deinitializing flash area block device %d...", id);
+        mbed::BlockDevice* bd = flash_map_bd[id];
+        bd->deinit();
+    }
 }
 
 /*
@@ -96,8 +121,8 @@ void flash_area_close(const struct flash_area* fap) {
 int flash_area_read(const struct flash_area* fap, uint32_t off, void* dst, uint32_t len) {
     mbed::BlockDevice* bd = flash_map_bd[fap->fa_id];
 
-    // Note: The address must be aligned to bd->get_read_size(). If MCUBOOT_READ_GRANULARITY
-    // is defined, the length does not need to be aligned.
+    /* Note: The address must be aligned to bd->get_read_size(). If MCUBOOT_READ_GRANULARITY
+       is defined, the length does not need to be aligned. */
 #ifdef MCUBOOT_READ_GRANULARITY
     uint32_t read_size = bd->get_read_size();
     if (read_size == 0) {
@@ -121,7 +146,7 @@ int flash_area_read(const struct flash_area* fap, uint32_t off, void* dst, uint3
         else {
             int ret = bd->read(dst, off, len);
             if (ret != 0) {
-                MCUBOOT_LOG_ERR("Read failed: fa_id %d offset 0x%x len 0x%x", fap->fa_id, off, len);
+                MCUBOOT_LOG_ERR("Read failed: fa_id %d offset 0x%x len 0x%x (%d)", fap->fa_id, off, len, ret);
                 return ret;
             }
         }
@@ -171,7 +196,7 @@ uint8_t flash_area_erased_val(const struct flash_area* fap) {
 int flash_area_get_sectors(int fa_id, uint32_t* count, struct flash_sector* sectors) {
     mbed::BlockDevice* bd = flash_map_bd[fa_id];
 
-    // Loop through sectors and collect information on them
+    /* Loop through sectors and collect information on them */
     bd_addr_t offset = 0;
     *count = 0;
     while (*count < MCUBOOT_MAX_IMG_SECTORS && bd->is_valid_read(offset, bd->get_read_size())) {
