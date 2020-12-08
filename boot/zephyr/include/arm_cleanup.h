@@ -13,7 +13,7 @@
  */
 void cleanup_arm_nvic(void);
 
-#if defined(CONFIG_CPU_HAS_ARM_MPU)
+#if defined(CONFIG_CPU_HAS_ARM_MPU) || defined(CONFIG_CPU_HAS_NXP_MPU)
 /**
  * Cleanup all ARM MPU region configuration
  */
