@@ -216,6 +216,31 @@ bool bootutil_buffer_is_erased(const struct flash_area *area,
     return true;
 }
 
+static int
+boot_read_flag(const struct flash_area *fap, uint8_t *flag, uint32_t off)
+{
+    int rc;
+
+    rc = flash_area_read(fap, off, flag, sizeof *flag);
+    if (rc < 0) {
+        return BOOT_EFLASH;
+    }
+    if (bootutil_buffer_is_erased(fap, flag, sizeof *flag)) {
+        *flag = BOOT_FLAG_UNSET;
+    } else {
+        *flag = boot_flag_decode(*flag);
+    }
+
+    return 0;
+}
+
+static inline int
+boot_read_copy_done(const struct flash_area *fap, uint8_t *copy_done)
+{
+    return boot_read_flag(fap, copy_done, boot_copy_done_off(fap));
+}
+
+
 int
 boot_read_swap_state(const struct flash_area *fap,
                      struct boot_swap_state *state)
@@ -252,31 +277,12 @@ boot_read_swap_state(const struct flash_area *fap,
         state->image_num = 0;
     }
 
-    off = boot_copy_done_off(fap);
-    rc = flash_area_read(fap, off, &state->copy_done, sizeof state->copy_done);
-    if (rc < 0) {
+    rc = boot_read_copy_done(fap, &state->copy_done);
+    if (rc) {
         return BOOT_EFLASH;
     }
-    if (bootutil_buffer_is_erased(fap, &state->copy_done,
-                sizeof state->copy_done)) {
-        state->copy_done = BOOT_FLAG_UNSET;
-    } else {
-        state->copy_done = boot_flag_decode(state->copy_done);
-    }
 
-    off = boot_image_ok_off(fap);
-    rc = flash_area_read(fap, off, &state->image_ok, sizeof state->image_ok);
-    if (rc < 0) {
-        return BOOT_EFLASH;
-    }
-    if (bootutil_buffer_is_erased(fap, &state->image_ok,
-                sizeof state->image_ok)) {
-        state->image_ok = BOOT_FLAG_UNSET;
-    } else {
-        state->image_ok = boot_flag_decode(state->image_ok);
-    }
-
-    return 0;
+    return boot_read_image_ok(fap, &state->image_ok);
 }
 
 /**
@@ -368,6 +374,12 @@ boot_write_image_ok(const struct flash_area *fap)
                  fap->fa_id, (unsigned long)off,
                  (unsigned long)(fap->fa_off + off));
     return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
+}
+
+int
+boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok)
+{
+    return boot_read_flag(fap, image_ok, boot_image_ok_off(fap));
 }
 
 /**

@@ -85,6 +85,7 @@ int boot_swap_type(void);
 int boot_set_pending(int permanent);
 int boot_set_confirmed(void);
 uint32_t boot_swap_info_off(const struct flash_area *fap);
+int boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok);
 
 #define BOOT_MAGIC_ARR_SZ \
     (sizeof boot_img_magic / sizeof boot_img_magic[0])
