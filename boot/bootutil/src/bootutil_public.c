@@ -26,6 +26,16 @@
  * under the License.
  */
 
+/**
+ * @file
+ * @brief Public MCUBoot interface API implementation
+ *
+ * This file contains API implementation which can be combined with
+ * the application in order to interact with the MCUBoot bootloader.
+ * This file contains shared code-base betwen MCUBoot and the application
+ * which controls DFU process.
+ */
+
 #include <string.h>
 #include <inttypes.h>
 #include <stddef.h>
