@@ -26,6 +26,15 @@
  * under the License.
  */
 
+/**
+ * @file
+ * @brief Public MCUBoot interface API
+ *
+ * This file contains API which can be combined with the application in order
+ * to interact with the MCUBoot bootloader. This API are shared code-base betwen
+ * MCUBoot and the application which controls DFU process.
+ */
+
 #ifndef H_BOOTUTIL_PUBLIC
 #define H_BOOTUTIL_PUBLIC
 
@@ -79,19 +88,75 @@ extern "C" {
 
 #define BOOT_MAGIC_SZ (sizeof boot_img_magic)
 
+/**
+ * @brief Determines the action, if any, that mcuboot will take on a image pair.
+ *
+ * @param image_index Image pair index.
+ *
+ * @return a BOOT_SWAP_TYPE_[...] constant on success, negative errno code on
+ * fail.
+ */
 int boot_swap_type_multi(int image_index);
+
+/**
+ * @brief Determines the action, if any, that mcuboot will take.
+ *
+ * Works the same as a boot_swap_type_multi(0) call;
+ *
+ * @return a BOOT_SWAP_TYPE_[...] constant on success, negative errno code on
+ * fail.
+ */
 int boot_swap_type(void);
 
+/**
+ * Marks the image in the secondary slot as pending. On the next reboot,
+ * the system will perform a one-time boot of the the secondary slot image.
+ *
+ * @param permanent Whether the image should be used permanently or
+ *                  only tested once:
+ *                    0=run image once, then confirm or revert.
+ *                    1=run image forever.
+ *
+ * @return 0 on success; nonzero on failure.
+ */
 int boot_set_pending(int permanent);
+
+/**
+ * @brief Marks the image in the primary slot as confirmed.
+ *
+ * The system will continue booting into the image in the primary slot until
+ * told to boot from a different slot.
+ *
+ * @return 0 on success; nonzero on failure.
+ */
 int boot_set_confirmed(void);
+
+/**
+ * @brief Get offset of the swap info field in the image trailer.
+ *
+ * @param fap Flash are for which offset is determined.
+ *
+ * @retval offset of the swap info field.
+ */
 uint32_t boot_swap_info_off(const struct flash_area *fap);
+
+/**
+ * @brief Get value of image-ok flag of the image.
+ *
+ * If called from chin-loaded image the image-ok flag value can be used to check
+ * whether application itself is already confirmed.
+ *
+ * @param fap Flash area of the image.
+ * @param image_ok[out] image-ok value.
+ *
+ * @return 0 on success; nonzero on failure.
+ */
 int boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok);
 
 #define BOOT_MAGIC_ARR_SZ \
     (sizeof boot_img_magic / sizeof boot_img_magic[0])
 
 extern const uint32_t boot_img_magic[4];
-
 
 #ifdef __cplusplus
 }
