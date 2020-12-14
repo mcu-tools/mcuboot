@@ -70,6 +70,10 @@ install:
 script:
   - ./ci/${TEST}_run.sh
 
+cache:
+  directories:
+  - docker
+
 notifications:
   slack:
     rooms:
