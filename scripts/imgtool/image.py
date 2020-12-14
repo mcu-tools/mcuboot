@@ -49,9 +49,10 @@ MAX_SW_TYPE_LENGTH = 12  # Bytes
 # Image header flags.
 IMAGE_F = {
         'PIC':                   0x0000001,
+        'ENCRYPTED':             0x0000004,
         'NON_BOOTABLE':          0x0000010,
         'RAM_LOAD':              0x0000020,
-        'ENCRYPTED':             0x0000004,
+        'ROM_FIXED':             0x0000100,
 }
 
 TLV_VALUES = {
@@ -130,7 +131,12 @@ class Image():
                  pad_header=False, pad=False, confirm=False, align=1,
                  slot_size=0, max_sectors=DEFAULT_MAX_SECTORS,
                  overwrite_only=False, endian="little", load_addr=0,
-                 erased_val=None, save_enctlv=False, security_counter=None):
+                 rom_fixed=None, erased_val=None, save_enctlv=False,
+                 security_counter=None):
+
+        if load_addr and rom_fixed:
+            raise click.UsageError("Can not set rom_fixed and load_addr at the same time")
+
         self.version = version or versmod.decode_version("0")
         self.header_size = header_size
         self.pad_header = pad_header
@@ -143,6 +149,7 @@ class Image():
         self.endian = endian
         self.base_addr = None
         self.load_addr = 0 if load_addr is None else load_addr
+        self.rom_fixed = rom_fixed
         self.erased_val = 0xff if erased_val is None else int(erased_val, 0)
         self.payload = []
         self.enckey = None
@@ -459,6 +466,8 @@ class Image():
             # Indicates that this image should be loaded into RAM
             # instead of run directly from flash.
             flags |= IMAGE_F['RAM_LOAD']
+        if self.rom_fixed:
+            flags |= IMAGE_F['ROM_FIXED']
 
         e = STRUCT_ENDIAN_DICT[self.endian]
         fmt = (e +
@@ -475,7 +484,7 @@ class Image():
         assert struct.calcsize(fmt) == IMAGE_HEADER_SIZE
         header = struct.pack(fmt,
                 IMAGE_MAGIC,
-                self.load_addr,
+                self.rom_fixed or self.load_addr,
                 self.header_size,
                 protected_tlv_size,  # TLV Info header + Protected TLVs
                 len(self.payload) - self.header_size,  # ImageSz
