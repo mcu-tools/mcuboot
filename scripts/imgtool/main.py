@@ -239,6 +239,8 @@ class BasedIntParamType(click.ParamType):
               help='Adjust address in hex output file.')
 @click.option('-L', '--load-addr', type=BasedIntParamType(), required=False,
               help='Load address for image when it should run from RAM.')
+@click.option('-F', '--rom-fixed', type=BasedIntParamType(), required=False,
+              help='Set flash address the image is built for.')
 @click.option('--save-enctlv', default=False, is_flag=True,
               help='When upgrading, save encrypted key TLVs instead of plain '
                    'keys. Enable when BOOT_SWAP_SAVE_ENCTLV config option '
@@ -292,7 +294,8 @@ class BasedIntParamType(click.ParamType):
 def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt, infile, outfile, dependencies, load_addr, hex_addr,
-         erased_val, save_enctlv, security_counter, boot_record, custom_tlv):
+         erased_val, save_enctlv, security_counter, boot_record, custom_tlv,
+         rom_fixed):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -302,8 +305,8 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                       pad_header=pad_header, pad=pad, confirm=confirm,
                       align=int(align), slot_size=slot_size,
                       max_sectors=max_sectors, overwrite_only=overwrite_only,
-                      endian=endian, load_addr=load_addr, erased_val=erased_val,
-                      save_enctlv=save_enctlv,
+                      endian=endian, load_addr=load_addr, rom_fixed=rom_fixed,
+                      erased_val=erased_val, save_enctlv=save_enctlv,
                       security_counter=security_counter)
     img.load(infile)
     key = load_key(key) if key else None
