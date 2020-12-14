@@ -31,24 +31,13 @@ RUN apt-get update && \
 RUN \
     # installing python packages
     python3 -m pip install \
-        imgtool==1.6.0 \
+        imgtool==1.7.0 \
         Jinja2==2.10 \
         PyYAML==3.12 \
         pyasn1==0.1.9
 
-# Clone TF-M and dependencies
-RUN mkdir -p /root/work/tfm &&\
-    cd /root/work/tfm  &&\
-    git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git &&\
-    cd trusted-firmware-m &&\
-    git checkout 8501b37db8e038ce39eb7f1039a514edea92c96e &&\
-    cd .. &&\
-    mkdir mcuboot
-
-# Copy the test execution script to the image
-COPY execute_test.sh /root
-# copy the MCUBoot under test to the image
-COPY mcuboot /root/work/tfm/mcuboot
+# Add tfm work directory
+RUN mkdir -p /root/work/tfm
 
 # run the command
 CMD ["bash"]
