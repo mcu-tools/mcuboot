@@ -26,8 +26,6 @@ BUILD_TYPE=$2
 DAMAGE_TYPE=$3
 FIH_LEVEL=$4
 
-source ~/.bashrc
-
 if test -z "$FIH_LEVEL"; then
     # Use the default level
     CMAKE_FIH_LEVEL=""
