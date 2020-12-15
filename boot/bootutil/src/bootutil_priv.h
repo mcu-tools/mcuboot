@@ -146,14 +146,6 @@ struct boot_status {
 
 extern const uint32_t boot_img_magic[4];
 
-struct boot_swap_state {
-    uint8_t magic;      /* One of the BOOT_MAGIC_[...] values. */
-    uint8_t swap_type;  /* One of the BOOT_SWAP_TYPE_[...] values. */
-    uint8_t copy_done;  /* One of the BOOT_FLAG_[...] values. */
-    uint8_t image_ok;   /* One of the BOOT_FLAG_[...] values. */
-    uint8_t image_num;  /* Boot status belongs to this image */
-};
-
 #ifdef MCUBOOT_IMAGE_NUMBER
 #define BOOT_IMAGE_NUMBER          MCUBOOT_IMAGE_NUMBER
 #else

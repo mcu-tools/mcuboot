@@ -88,6 +88,14 @@ extern "C" {
 
 #define BOOT_MAGIC_SZ (sizeof boot_img_magic)
 
+struct boot_swap_state {
+    uint8_t magic;      /* One of the BOOT_MAGIC_[...] values. */
+    uint8_t swap_type;  /* One of the BOOT_SWAP_TYPE_[...] values. */
+    uint8_t copy_done;  /* One of the BOOT_FLAG_[...] values. */
+    uint8_t image_ok;   /* One of the BOOT_FLAG_[...] values. */
+    uint8_t image_num;  /* Boot status belongs to this image */
+};
+
 /**
  * @brief Determines the action, if any, that mcuboot will take on a image pair.
  *
@@ -152,6 +160,17 @@ uint32_t boot_swap_info_off(const struct flash_area *fap);
  * @return 0 on success; nonzero on failure.
  */
 int boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok);
+
+/**
+ * @brief Read the image swap state
+ *
+ * @param flash_area_id Id of flash parttition from which trailer will be read.
+ * @param state Struture for holding swap state.
+ *
+ * @return 0 on success, nonzero errno code on fail.
+ */
+int
+boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state);
 
 #define BOOT_MAGIC_ARR_SZ \
     (sizeof boot_img_magic / sizeof boot_img_magic[0])

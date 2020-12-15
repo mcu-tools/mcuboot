@@ -295,9 +295,6 @@ boot_read_swap_state(const struct flash_area *fap,
     return boot_read_image_ok(fap, &state->image_ok);
 }
 
-/**
- * Reads the image trailer from the scratch area.
- */
 int
 boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
 {
