@@ -27,6 +27,8 @@
 
 #include "mcuboot_config/mcuboot_logging.h"
 
+#include "bootutil_priv.h"
+
 #define FLASH_DEVICE_INTERNAL_FLASH 0
 #define FLASH_AREAS 3
 
@@ -36,7 +38,7 @@ mbed::BlockDevice* mcuboot_secondary_bd = get_secondary_bd();
 /** Internal application block device */
 static FlashIAPBlockDevice mcuboot_primary_bd(MCUBOOT_PRIMARY_SLOT_START_ADDR, MCUBOOT_SLOT_SIZE);
 
-#ifndef MCUBOOT_OVERWRITE_ONLY
+#if MCUBOOT_SWAP_USING_SCRATCH
 /** Scratch space is at the end of internal flash, after the main application */
 static FlashIAPBlockDevice mcuboot_scratch_bd(MCUBOOT_SCRATCH_START_ADDR, MCUBOOT_SCRATCH_SIZE);
 #endif
@@ -44,7 +46,7 @@ static FlashIAPBlockDevice mcuboot_scratch_bd(MCUBOOT_SCRATCH_START_ADDR, MCUBOO
 static mbed::BlockDevice* flash_map_bd[FLASH_AREAS] = {
         (mbed::BlockDevice*) &mcuboot_primary_bd,       /** Primary (loadable) image area */
         mcuboot_secondary_bd,                           /** Secondary (update candidate) image area */
-#ifndef MCUBOOT_OVERWRITE_ONLY
+#if MCUBOOT_SWAP_USING_SCRATCH
         (mbed::BlockDevice*) &mcuboot_scratch_bd        /** Scratch space for swapping images */
 #else
         nullptr
@@ -66,10 +68,13 @@ int flash_area_open(uint8_t id, const struct flash_area** fapp) {
             fap->fa_off = MCUBOOT_PRIMARY_SLOT_START_ADDR;
             break;
         case SECONDARY_ID:
-            // The offset of the secondary slot is not currently used.
+#if MCUBOOT_DIRECT_XIP
+            fap->fa_off = MBED_CONF_MCUBOOT_XIP_SECONDARY_SLOT_ADDRESS;
+#else
             fap->fa_off = 0;
+#endif
             break;
-#ifndef MCUBOOT_OVERWRITE_ONLY
+#if MCUBOOT_SWAP_USING_SCRATCH
         case SCRATCH_ID:
             fap->fa_off = MCUBOOT_SCRATCH_START_ADDR;
             break;
@@ -140,13 +145,15 @@ int flash_area_read(const struct flash_area* fap, uint32_t off, void* dst, uint3
     if (len != 0) {
 #endif
         if (!bd->is_valid_read(off, len)) {
-            MCUBOOT_LOG_ERR("Invalid read: fa_id %d offset 0x%x len 0x%x", fap->fa_id, off, len);
+            MCUBOOT_LOG_ERR("Invalid read: fa_id %d offset 0x%x len 0x%x", fap->fa_id,
+                    (unsigned int) off, (unsigned int) len);
             return -1;
         }
         else {
             int ret = bd->read(dst, off, len);
             if (ret != 0) {
-                MCUBOOT_LOG_ERR("Read failed: fa_id %d offset 0x%x len 0x%x (%d)", fap->fa_id, off, len, ret);
+                MCUBOOT_LOG_ERR("Read failed: fa_id %d offset 0x%x len 0x%x", fap->fa_id,
+                        (unsigned int) off, (unsigned int) len);
                 return ret;
             }
         }
@@ -155,7 +162,8 @@ int flash_area_read(const struct flash_area* fap, uint32_t off, void* dst, uint3
 
     if (remainder) {
         if (!bd->is_valid_read(off + len, read_size)) {
-            MCUBOOT_LOG_ERR("Invalid read: fa_id %d offset 0x%x len 0x%x", fap->fa_id, off + len, read_size);
+            MCUBOOT_LOG_ERR("Invalid read: fa_id %d offset 0x%x len 0x%x", fap->fa_id,
+                    (unsigned int) (off + len), (unsigned int) read_size);
             return -1;
         }
         else {

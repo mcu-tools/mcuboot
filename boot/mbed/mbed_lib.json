@@ -160,6 +160,20 @@
             "help": "Share data (NOT TESTED)",
             "macro_name": "MCUBOOT_DATA_SHARING",
             "value": null
+        },
+        "direct-xip": {
+            "help": "Enable ability to boot update candidates in-place.",
+            "macro_name": "MCUBOOT_DIRECT_XIP",
+            "value": null
+        },
+        "direct-xip-revert": {
+            "help": "Enable XIP revert mechanism. Only valid if direct-xip is also enabled.",
+            "macro_name": "MCUBOOT_DIRECT_XIP_REVERT",
+            "value": null
+        },
+        "xip-secondary-slot-address": {
+            "help": "Specify start address for secondary slot address in XIP-accessible memory. This is required if direct-xip is enabled.",
+            "value": null
         }
     }
 }
