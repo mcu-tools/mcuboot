@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-# Copyright (c) 2020 Arm Limited
+# Copyright (c) 2021 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 pushd .. &&\
    git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git &&\
    pushd trusted-firmware-m &&\
-   git checkout 8501b37db8e038ce39eb7f1039a514edea92c96e &&\
+   git checkout ed3980e7405599b39cbf19aef2d7dbbc8506f28a &&\
    popd
 
 if test -z "$FIH_LEVEL"; then
