@@ -39,7 +39,10 @@ RUN \
 # Clone TF-M and dependencies
 RUN mkdir -p /root/work/tfm &&\
     cd /root/work/tfm  &&\
-    git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git -b TF-Mv1.2-RC1 &&\
+    git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git &&\
+    cd trusted-firmware-m &&\
+    git checkout 7ad5c5f23f4619add4aa6c88f4b25fc6fd84ec6e &&\
+    cd .. &&\
     mkdir mcuboot
 
 # Copy the test execution script to the image
