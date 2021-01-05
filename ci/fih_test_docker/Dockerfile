@@ -41,7 +41,7 @@ RUN mkdir -p /root/work/tfm &&\
     cd /root/work/tfm  &&\
     git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git &&\
     cd trusted-firmware-m &&\
-    git checkout 7ad5c5f23f4619add4aa6c88f4b25fc6fd84ec6e &&\
+    git checkout 8501b37db8e038ce39eb7f1039a514edea92c96e &&\
     cd .. &&\
     mkdir mcuboot
 
