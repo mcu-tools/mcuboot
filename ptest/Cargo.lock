@@ -235,7 +235,6 @@ dependencies = [
  "failure",
  "log",
  "num_cpus",
- "regex",
  "std-semaphore",
  "yaml-rust",
 ]

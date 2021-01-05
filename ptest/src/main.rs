@@ -3,14 +3,15 @@
 //! mcuboot simulator is strictly single threaded, as there is a lock around running the C startup
 //! code, because it contains numerous global variables.
 //!
-//! To help speed up testing, the Travis configuration defines all of the configurations that can
+//! To help speed up testing, the Workflow configuration defines all of the configurations that can
 //! be run in parallel.  Fortunately, cargo works well this way, and these can be run by simply
 //! using subprocess for each particular thread.
+//!
+//! For now, we assume all of the features are listed under
+//! jobs->environment->strategy->matric->features
 
 use chrono::Local;
-use failure::format_err;
 use log::{debug, error, warn};
-use regex::Regex;
 use std::{
     collections::HashSet,
     fs::{self, OpenOptions},
@@ -35,13 +36,13 @@ type Result<T> = result::Result<T, failure::Error>;
 fn main() -> Result<()> {
     env_logger::init();
 
-    let travis_text = fs::read_to_string("../.travis.yml")?;
-    let travis = YamlLoader::load_from_str(&travis_text)?;
+    let workflow_text = fs::read_to_string("../.github/workflows/sim.yaml")?;
+    let workflow = YamlLoader::load_from_str(&workflow_text)?;
 
     let ncpus = num_cpus::get();
     let limiter = Arc::new(Semaphore::new(ncpus as isize));
 
-    let matrix = Matrix::from_yaml(&travis)?;
+    let matrix = Matrix::from_yaml(&workflow)?;
 
     let mut children = vec![];
     let state = State::new(matrix.envs.len());
@@ -153,7 +154,7 @@ impl State {
     }
 }
 
-/// The extracted configurations from the travis config
+/// The extracted configurations from the workflow config
 #[derive(Debug)]
 struct Matrix {
     envs: Vec<FeatureSet>,
@@ -179,40 +180,37 @@ impl Matrix {
                 None => continue,
             };
             for elt in m {
-                if lookup_os(elt) == Some("linux") {
-                    debug!("yaml: {:?}", lookup_env(elt));
-                    let env = match lookup_env(elt) {
-                        Some (env) => env,
-                        None => continue,
-                    };
+                let elt = match elt.as_str() {
+                    None => {
+                        warn!("Unexpected yaml: {:?}", elt);
+                        continue;
+                    }
+                    Some(e) => e,
+                };
+                let fset = match FeatureSet::decode(elt) {
+                    Ok(fset) => fset,
+                    Err(err) => {
+                        warn!("Skipping: {:?}", err);
+                        continue;
+                    }
+                };
 
-                    // Skip features not targeted to this build.
-                    let fset = match FeatureSet::decode(env) {
-                        Ok(fset) => fset,
-                        Err(err) => {
-                            warn!("Skipping: {:?}", err);
-                            continue;
-                        }
-                    };
-                    debug!("fset: {:?}", fset);
-
-                    if false {
-                        // Respect the groupings in the `.travis.yml` file.
-                        envs.push(fset);
-                    } else {
-                        // Break each test up so we can run more in
-                        // parallel.
-                        let env = fset.env.clone();
-                        for val in fset.values {
-                            if !all_tests.contains(&val) {
-                                all_tests.insert(val.clone());
-                                envs.push(FeatureSet {
-                                    env: env.clone(),
-                                    values: vec![val],
-                                });
-                            } else {
-                                warn!("Duplicate: {:?}: {:?}", env, val);
-                            }
+                if false {
+                    // Respect the groupings in the `.workflow.yml` file.
+                    envs.push(fset);
+                } else {
+                    // Break each test up so we can run more in
+                    // parallel.
+                    let env = fset.env.clone();
+                    for val in fset.values {
+                        if !all_tests.contains(&val) {
+                            all_tests.insert(val.clone());
+                            envs.push(FeatureSet {
+                                env: env.clone(),
+                                values: vec![val],
+                            });
+                        } else {
+                            warn!("Duplicate: {:?}: {:?}", env, val);
                         }
                     }
                 }
@@ -227,26 +225,15 @@ impl Matrix {
 
 impl FeatureSet {
     fn decode(text: &str) -> Result<FeatureSet> {
-        // This is not general environment settings, but specific to the
-        // travis file.
-        let re = Regex::new(r#"^([A-Z_]+)="(.*)" TEST=sim$"#)?;
-
-        match re.captures(text) {
-            None => Err(format_err!("Invalid line: {:?}", text)),
-            Some(cap) => {
-                let ename = &cap[1];
-                let sep = if ename == "SINGLE_FEATURES" { ' ' } else { ',' };
-                let values: Vec<_> = cap[2]
-                    .split(sep)
-                    .map(|s| s.to_string())
-                    .collect();
-                debug!("name={:?} values={:?}", ename, values);
-                Ok(FeatureSet {
-                    env: ename.to_string(),
-                    values: values,
-                })
-            }
-        }
+        // The github workflow is just a space separated set of values.
+        let values: Vec<_> = text
+            .split(',')
+            .map(|s| s.to_string())
+            .collect();
+        Ok(FeatureSet {
+            env: "MULTI_FEATURES".to_string(),
+            values: values,
+        })
     }
 
     /// Run a test for this given feature set.  Output is captured and will be returned if there is
@@ -282,19 +269,16 @@ impl FeatureSet {
 }
 
 fn lookup_matrix(y: &Yaml) -> Option<&Vec<Yaml>> {
+    let jobs = Yaml::String("jobs".to_string());
+    let environment = Yaml::String("environment".to_string());
+    let strategy = Yaml::String("strategy".to_string());
     let matrix = Yaml::String("matrix".to_string());
-    let include = Yaml::String("include".to_string());
-    y.as_hash()?.get(&matrix)?.as_hash()?.get(&include)?.as_vec()
-}
-
-fn lookup_os(y: &Yaml) -> Option<&str> {
-    let os = Yaml::String("os".to_string());
-
-    y.as_hash()?.get(&os)?.as_str()
-}
-
-fn lookup_env(y: &Yaml) -> Option<&str> {
-    let env = Yaml::String("env".to_string());
-
-    y.as_hash()?.get(&env)?.as_str()
+    let features = Yaml::String("features".to_string());
+    y
+        .as_hash()?.get(&jobs)?
+        .as_hash()?.get(&environment)?
+        .as_hash()?.get(&strategy)?
+        .as_hash()?.get(&matrix)?
+        .as_hash()?.get(&features)?
+        .as_vec()
 }
