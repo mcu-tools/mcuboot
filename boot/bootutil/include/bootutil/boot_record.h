@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018-2020 Arm Limited
+ * Copyright (c) 2018-2021 Arm Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,22 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @brief Add a data item to the shared data area between bootloader and
+ *        runtime SW
+ *
+ * @param[in] major_type  TLV major type, identify consumer
+ * @param[in] minor_type  TLV minor type, identify TLV type
+ * @param[in] size        length of added data
+ * @param[in] data        pointer to data
+ *
+ * @return                0 on success; nonzero on failure.
+ */
+int boot_add_data_to_shared_area(uint8_t        major_type,
+                                 uint16_t       minor_type,
+                                 size_t         size,
+                                 const uint8_t *data);
 
 /**
  * Add an image's all boot status information to the shared memory area
