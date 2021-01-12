@@ -51,7 +51,8 @@ const struct boot_uart_funcs boot_funcs = {
 #include <arm_cleanup.h>
 #endif
 
-#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE)
+#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) && \
+    !defined(CONFIG_LOG_MINIMAL)
 #ifdef CONFIG_LOG_PROCESS_THREAD
 #warning "The log internal thread for log processing can't transfer the log"\
          "well for MCUBoot."
@@ -258,7 +259,7 @@ static void do_boot(struct boot_rsp *rsp)
 #endif
 
 #if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) &&\
-    !defined(CONFIG_LOG_PROCESS_THREAD)
+    !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(CONFIG_LOG_MINIMAL)
 /* The log internal thread for log processing can't transfer log well as has too
  * low priority.
  * Dedicated thread for log processing below uses highest application
