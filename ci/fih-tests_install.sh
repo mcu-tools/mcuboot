@@ -16,13 +16,15 @@
 
 set -e
 
-# get mcuboot root; assumes running script is stored under REPO_DIR/ci/
-REPO_DIR=$(dirname $(dirname $(realpath $0)))
-pushd $(mktemp -d)
+DOCKER_DIR=docker
 
-# copy mcuboot so that it is part of the docker build context
-cp -r $REPO_DIR .
-cp -r $REPO_DIR/ci/fih_test_docker/execute_test.sh .
-cp -r $REPO_DIR/ci/fih_test_docker/Dockerfile .
-./mcuboot/ci/fih_test_docker/build.sh
-popd
+IMAGE=fih-test:0.0.1
+
+CACHED_IMAGE=$DOCKER_DIR/$IMAGE
+
+[[ -f $CACHED_IMAGE ]] && (gzip -dc $CACHED_IMAGE | docker load)
+
+if [[ $? -ne 0 ]]; then
+  docker pull mcuboot/$IMAGE
+  docker save mcuboot/$IMAGE | gzip > $CACHED_IMAGE
+fi

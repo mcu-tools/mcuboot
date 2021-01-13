@@ -37,6 +37,13 @@ There are bug fixes, and associated imgtool updates as well.
 - imgtool: added possibility to set confirm flag for hex files as well.
 - imgtool: Print image digest during verify.
 
+### Zephyr-RTOS Compatibility
+
+This release of MCUboot works with the Zephyr "master" at the time of the
+release. It was tested as of has 7a3b253ce. This version of MCUboot also
+works with the Zephyr v2.4.0, however it is recommended to enable
+`CONFIG_MCUBOOT_CLEANUP_ARM_CORE` while using that version.
+
 ## Version 1.6.0
 
 The 1.6.0 release of MCUboot adds support for the PSOC6 platform,

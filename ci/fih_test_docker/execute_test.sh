@@ -26,8 +26,6 @@ BUILD_TYPE=$2
 DAMAGE_TYPE=$3
 FIH_LEVEL=$4
 
-source ~/.bashrc
-
 if test -z "$FIH_LEVEL"; then
     # Use the default level
     CMAKE_FIH_LEVEL=""
@@ -47,6 +45,7 @@ cmake -B $TFM_BUILD_DIR \
     -DTFM_PSA_API=ON \
     -DMCUBOOT_PATH=$MCUBOOT_PATH \
     -DMCUBOOT_LOG_LEVEL=INFO \
+    -DTFM_TEST_REPO_VERSION=93ce2f59c0c4a9cba6062834496b5f45deee4010 \
     $CMAKE_FIH_LEVEL \
     .
 cd $TFM_BUILD_DIR

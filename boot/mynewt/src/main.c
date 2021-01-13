@@ -251,6 +251,7 @@ main(void)
 #if MYNEWT_VAL(BOOT_CUSTOM_START)
     boot_custom_start(flash_base, &rsp);
 #else
+    hal_bsp_deinit();
     hal_system_start((void *)(flash_base + rsp.br_image_off +
                               rsp.br_hdr->ih_hdr_size));
 #endif
