@@ -3,6 +3,18 @@
 - Table of Contents
 {:toc}
 
+## Version 1.7.1
+
+The 1.7.1 release of MCUboot is a minor patch release that fixes a
+vulnerability in the documentation generation, and adds an option for
+setting a ROM address in the image header.
+
+- CVE-2020-26247: The vulnerability doesn't appear to affect the usage
+  within MCUboot (to generate documentation.  We have updated all
+  dependencies in the docs/Gemfile.lock.
+- Add an option `--rom-fixed` to imgtool.py to support setting the
+  `ROM_FIXED` field in the image header.
+
 ## Version 1.7.0
 
 The 1.7.0 release of MCUBoot adds support for the Mbed-OS platform,
