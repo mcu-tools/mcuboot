@@ -27,4 +27,3 @@ export LANG=C
 
 image=mcuboot/fih-test
 docker build --pull --tag=$image .
-echo $image > .docker-tag

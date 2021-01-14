@@ -81,30 +81,42 @@ unsigned int test_1_and_2(void)
         uint8_t out[80];
         uint8_t decrypted[64];
         unsigned int result = TC_PASS;
+        uint32_t off = 0;
 
         TC_PRINT("CTR test #1 (encryption SP 800-38a tests):\n");
         (void)tc_aes128_set_encrypt_key(&sched, key);
 
         (void)memcpy(out, ctr, sizeof(ctr));
         if (tc_ctr_mode(&out[TC_AES_BLOCK_SIZE], sizeof(plaintext), plaintext,
-			sizeof(plaintext), ctr, &sched) == 0) {
+			sizeof(plaintext), ctr, &off, &sched) == 0) {
                 TC_ERROR("CTR test #1 (encryption SP 800-38a tests) failed in %s.\n", __func__);
                 result = TC_FAIL;
                 goto exitTest1;
         }
 
+        if (off != 0) {
+            TC_ERROR("CTR test #1 invalid block offset (%u).\n", off);
+            result = TC_FAIL;
+            goto exitTest1;
+        }
         result = check_result(1, ciphertext, sizeof(out), out, sizeof(out));
         TC_END_RESULT(result);
 
         TC_PRINT("CTR test #2 (decryption SP 800-38a tests):\n");
         (void) memcpy(ctr, out, sizeof(ctr));
+        off = 0;
         if (tc_ctr_mode(decrypted, sizeof(decrypted), &out[TC_AES_BLOCK_SIZE],
-                        sizeof(decrypted), ctr, &sched) == 0) {
+                        sizeof(decrypted), ctr, &off, &sched) == 0) {
                 TC_ERROR("CTR test #2 (decryption SP 800-38a tests) failed in %s.\n", __func__);
                 result = TC_FAIL;
                 goto exitTest1;
         }
 
+        if (off != 0) {
+            TC_ERROR("CTR test #2 invalid block offset (%u).\n", off);
+            result = TC_FAIL;
+            goto exitTest1;
+        }
         result = check_result(2, plaintext, sizeof(plaintext),
 			      decrypted, sizeof(plaintext));
 
@@ -126,7 +138,7 @@ int main(void)
         TC_PRINT("Performing CTR tests:\n");
         result = test_1_and_2();
         if (result == TC_FAIL) { /* terminate test */
-                TC_ERROR("CBC test #1 failed.\n");
+                TC_ERROR("CTR test #1 failed.\n");
                 goto exitTest;
         }
 
