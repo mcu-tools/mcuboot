@@ -19,7 +19,7 @@ set -e
 pushd .. &&\
    git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git &&\
    pushd trusted-firmware-m &&\
-   git checkout 8501b37db8e038ce39eb7f1039a514edea92c96e &&\
+   git checkout 7ad5c5f23f4619add4aa6c88f4b25fc6fd84ec6e &&\
    popd
 
 if test -z "$FIH_LEVEL"; then
