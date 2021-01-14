@@ -269,6 +269,7 @@ fn main() {
     conf.file("../../boot/bootutil/src/swap_move.c");
     conf.file("../../boot/bootutil/src/caps.c");
     conf.file("../../boot/bootutil/src/bootutil_misc.c");
+    conf.file("../../boot/bootutil/src/bootutil_public.c");
     conf.file("../../boot/bootutil/src/tlv.c");
     conf.file("../../boot/bootutil/src/fault_injection_hardening.c");
     conf.file("csupport/run.c");

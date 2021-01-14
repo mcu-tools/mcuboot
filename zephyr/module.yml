@@ -1,2 +1,4 @@
 samples:
   - boot/zephyr
+build:
+  cmake: ./boot/bootutil/zephyr
