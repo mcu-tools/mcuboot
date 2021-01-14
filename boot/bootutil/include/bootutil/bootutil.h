@@ -30,36 +30,11 @@
 
 #include <inttypes.h>
 #include "bootutil/fault_injection_hardening.h"
+#include "bootutil/bootutil_public.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/** Attempt to boot the contents of the primary slot. */
-#define BOOT_SWAP_TYPE_NONE     1
-
-/**
- * Swap to the secondary slot.
- * Absent a confirm command, revert back on next boot.
- */
-#define BOOT_SWAP_TYPE_TEST     2
-
-/**
- * Swap to the secondary slot,
- * and permanently switch to booting its contents.
- */
-#define BOOT_SWAP_TYPE_PERM     3
-
-/** Swap back to alternate slot.  A confirm changes this state to NONE. */
-#define BOOT_SWAP_TYPE_REVERT   4
-
-/** Swap failed because image to be run is not valid */
-#define BOOT_SWAP_TYPE_FAIL     5
-
-/** Swapping encountered an unrecoverable error */
-#define BOOT_SWAP_TYPE_PANIC    0xff
-
-#define BOOT_MAX_ALIGN          8
 
 struct image_header;
 /**
@@ -96,12 +71,6 @@ fih_int boot_go(struct boot_rsp *rsp);
 
 struct boot_loader_state;
 fih_int context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp);
-
-int boot_swap_type_multi(int image_index);
-int boot_swap_type(void);
-
-int boot_set_pending(int permanent);
-int boot_set_confirmed(void);
 
 #define SPLIT_GO_OK                 (0)
 #define SPLIT_GO_NON_MATCHING       (-1)

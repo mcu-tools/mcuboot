@@ -14,6 +14,7 @@ config MCUBOOT
 	bool
 	select MPU_ALLOW_FLASH_WRITE if ARM_MPU
 	select USE_DT_CODE_PARTITION if HAS_FLASH_LOAD_OFFSET
+	select MCUBOOT_BOOTUTIL_LIB
 
 config BOOT_USE_MBEDTLS
 	bool
@@ -572,5 +573,10 @@ config LOG_PROCESS_THREAD
 # override USB device name
 config USB_DEVICE_PRODUCT
 	default "MCUBOOT"
+
+# use MCUboot's own log configuration
+config MCUBOOT_BOOTUTIL_LIB_OWN_LOG
+	bool
+	default n
 
 source "Kconfig.zephyr"
