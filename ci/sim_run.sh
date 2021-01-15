@@ -25,14 +25,16 @@ EXIT_CODE=0
 if [[ ! -z $SINGLE_FEATURES ]]; then
   if [[ $SINGLE_FEATURES =~ "none" ]]; then
     echo "Running cargo with no features"
-    cargo test
+    time cargo test --no-run
+    time cargo test
     rc=$? && [ $rc -ne 0 ] && EXIT_CODE=$rc
   fi
 
   for feature in $all_features; do
     if [[ $SINGLE_FEATURES =~ $feature ]]; then
       echo "Running cargo for feature=\"${feature}\""
-      cargo test --features $feature
+      time cargo test --no-run --features $feature
+      time cargo test --features $feature
       rc=$? && [ $rc -ne 0 ] && EXIT_CODE=$rc
     fi
   done
@@ -43,7 +45,8 @@ if [[ ! -z $MULTI_FEATURES ]]; then
   read -ra multi_features <<< "$MULTI_FEATURES"
   for features in "${multi_features[@]}"; do
     echo "Running cargo for features=\"${features}\""
-    cargo test --features "$features"
+    time cargo test --no-run --features "$features"
+    time cargo test --features "$features"
     rc=$? && [ $rc -ne 0 ] && EXIT_CODE=$rc
   done
 fi
