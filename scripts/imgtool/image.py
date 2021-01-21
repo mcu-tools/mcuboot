@@ -544,16 +544,22 @@ class Image():
         if magic != IMAGE_MAGIC:
             return VerifyResult.INVALID_MAGIC, None, None
 
-        tlv_info = b[header_size+img_size:header_size+img_size+TLV_INFO_SIZE]
+        tlv_off = header_size + img_size
+        tlv_info = b[tlv_off:tlv_off+TLV_INFO_SIZE]
         magic, tlv_tot = struct.unpack('HH', tlv_info)
+        if magic == TLV_PROT_INFO_MAGIC:
+            tlv_off += tlv_tot
+            tlv_info = b[tlv_off:tlv_off+TLV_INFO_SIZE]
+            magic, tlv_tot = struct.unpack('HH', tlv_info)
+
         if magic != TLV_INFO_MAGIC:
             return VerifyResult.INVALID_TLV_INFO_MAGIC, None, None
 
         sha = hashlib.sha256()
-        sha.update(b[:header_size+img_size])
+        prot_tlv_size = tlv_off
+        sha.update(b[:prot_tlv_size])
         digest = sha.digest()
 
-        tlv_off = header_size + img_size
         tlv_end = tlv_off + tlv_tot
         tlv_off += TLV_INFO_SIZE  # skip tlv info
         while tlv_off < tlv_end:
@@ -569,7 +575,7 @@ class Image():
             elif key is not None and tlv_type == TLV_VALUES[key.sig_tlv()]:
                 off = tlv_off + TLV_SIZE
                 tlv_sig = b[off:off+tlv_len]
-                payload = b[:header_size+img_size]
+                payload = b[:prot_tlv_size]
                 try:
                     if hasattr(key, 'verify'):
                         key.verify(tlv_sig, payload)
