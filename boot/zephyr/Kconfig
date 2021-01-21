@@ -563,7 +563,7 @@ config MULTITHREADING
 	default n if SOC_FAMILY_NRF
 	default y
 
-config LOG_IMMEDIATE
+config LOG_FORCE_IMMEDIATE
 	default n if MULTITHREADING
 	default y
 
