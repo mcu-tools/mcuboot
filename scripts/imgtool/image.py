@@ -534,11 +534,12 @@ class Image():
         self.payload += pbytes
 
     @staticmethod
-    def verify(imgfile, key):
+    def verify(imgfile, key, endian="little"):
         with open(imgfile, "rb") as f:
             b = f.read()
 
-        magic, _, header_size, _, img_size = struct.unpack('IIHHI', b[:16])
+        e = STRUCT_ENDIAN_DICT[endian]
+        magic, _, header_size, _, img_size = struct.unpack(e + 'IIHHI', b[:16])
         version = struct.unpack('BBHI', b[20:28])
 
         if magic != IMAGE_MAGIC:
@@ -546,11 +547,11 @@ class Image():
 
         tlv_off = header_size + img_size
         tlv_info = b[tlv_off:tlv_off+TLV_INFO_SIZE]
-        magic, tlv_tot = struct.unpack('HH', tlv_info)
+        magic, tlv_tot = struct.unpack(e + 'HH', tlv_info)
         if magic == TLV_PROT_INFO_MAGIC:
             tlv_off += tlv_tot
             tlv_info = b[tlv_off:tlv_off+TLV_INFO_SIZE]
-            magic, tlv_tot = struct.unpack('HH', tlv_info)
+            magic, tlv_tot = struct.unpack(e + 'HH', tlv_info)
 
         if magic != TLV_INFO_MAGIC:
             return VerifyResult.INVALID_TLV_INFO_MAGIC, None, None
@@ -564,7 +565,7 @@ class Image():
         tlv_off += TLV_INFO_SIZE  # skip tlv info
         while tlv_off < tlv_end:
             tlv = b[tlv_off:tlv_off+TLV_SIZE]
-            tlv_type, _, tlv_len = struct.unpack('BBH', tlv)
+            tlv_type, _, tlv_len = struct.unpack(e + 'BBH', tlv)
             if tlv_type == TLV_VALUES["SHA256"]:
                 off = tlv_off + TLV_SIZE
                 if digest == b[off:off+tlv_len]:

@@ -136,11 +136,13 @@ def getpriv(key, minimal):
 
 
 @click.argument('imgfile')
+@click.option('-e', '--endian', type=click.Choice(['little', 'big']),
+              default='little', help="Select little or big endian")
 @click.option('-k', '--key', metavar='filename')
 @click.command(help="Check that signed image can be verified by given key")
-def verify(key, imgfile):
+def verify(key, endian, imgfile):
     key = load_key(key) if key else None
-    ret, version, digest = image.Image.verify(imgfile, key)
+    ret, version, digest = image.Image.verify(imgfile, key, endian)
     if ret == image.VerifyResult.OK:
         print("Image was correctly validated")
         print("Image version: {}.{}.{}+{}".format(*version))
