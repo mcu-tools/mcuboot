@@ -435,6 +435,14 @@ config BOOT_SERIAL_CDC_ACM
 
 endchoice
 
+config MCUBOOT_INDICATION_LED
+	bool "Turns on LED indication when device is in DFU"
+	default n
+	help
+	  Device device activates the LED while in bootloader mode.
+	  bootloader-led0 alias must be set in the device's .dts
+	  definitions for this to work.
+
 config BOOT_MAX_LINE_INPUT_LEN
 	int "Maximum command line length"
 	default 512
@@ -465,6 +473,14 @@ config BOOT_SERIAL_DETECT_PIN_VAL
 	help
 	  Logic value of the detect pin which triggers serial recovery
 	  mode.
+
+config BOOT_SERIAL_DETECT_DELAY
+	int "Prevents immediate boot into MCUBoot firmware."
+	default 0
+	help
+	  Used to prevent the bootloader from loading on button press.
+	  Useful for powering on when using the same button as
+	  the one used to place the device in bootloader mode.
 
 # Workaround for not being able to have commas in macro arguments
 DT_CHOSEN_Z_CONSOLE := zephyr,console
