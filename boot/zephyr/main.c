@@ -105,6 +105,49 @@ static inline bool boot_skip_serial_recovery()
 
 MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
 
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+/*
+ * Devicetree helper macro which gets the 'flags' cell from a 'gpios'
+ * property, or returns 0 if the property has no 'flags' cell.
+ */
+#define FLAGS_OR_ZERO(node)                        \
+  COND_CODE_1(DT_PHA_HAS_CELL(node, gpios, flags), \
+              (DT_GPIO_FLAGS(node, gpios)),        \
+              (0))
+
+/*
+ * The led0 devicetree alias is optional. If present, we'll use it
+ * to turn on the LED whenever the button is pressed.
+ */
+
+#define LED0_NODE DT_ALIAS(bootloader_led0)
+
+#if DT_NODE_HAS_STATUS(LED0_NODE, okay) && DT_NODE_HAS_PROP(LED0_NODE, gpios)
+#define LED0_GPIO_LABEL DT_GPIO_LABEL(LED0_NODE, gpios)
+#define LED0_GPIO_PIN DT_GPIO_PIN(LED0_NODE, gpios)
+#define LED0_GPIO_FLAGS (GPIO_OUTPUT | FLAGS_OR_ZERO(LED0_NODE))
+#else 
+/* A build error here means your board isn't set up to drive an LED. */
+#error "Unsupported board: led0 devicetree alias is not defined"
+#endif
+
+const static struct device *led;
+
+void led_init(void)
+{
+    
+  led = device_get_binding(LED0_GPIO_LABEL);
+  if (led == NULL)
+  {
+    BOOT_LOG_ERR("Didn't find LED device %s\n", LED0_GPIO_LABEL);
+    return;
+  }
+
+  gpio_pin_configure(led, LED0_GPIO_PIN, LED0_GPIO_FLAGS);
+
+}
+#endif
+
 void os_heap_init(void);
 
 #if defined(CONFIG_ARM)
@@ -330,6 +373,11 @@ void main(void)
 
     BOOT_LOG_INF("Starting bootloader");
 
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+    /* LED init */
+    led_init();
+#endif
+
     os_heap_init();
 
     ZEPHYR_BOOT_LOG_START();
@@ -382,12 +430,52 @@ void main(void)
     __ASSERT(rc >= 0, "Error of the reading the detect pin.\n");
     if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL &&
         !boot_skip_serial_recovery()) {
-        BOOT_LOG_INF("Enter the serial recovery mode");
-        rc = boot_console_init();
-        __ASSERT(rc == 0, "Error initializing boot console.\n");
-        boot_serial_start(&boot_funcs);
-        __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
-    }
+            
+#if CONFIG_BOOT_SERIAL_DETECT_DELAY > 0 
+        k_sleep(K_MSEC(50));
+
+        /* Get the uptime for debounce purposes. */
+        int64_t timestamp = k_uptime_get();
+
+        for(;;) {
+            
+#ifdef GPIO_INPUT
+            rc = gpio_pin_get_raw(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN);
+            detect_value = rc;
+#else
+            rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
+                            &detect_value);
+#endif
+            __ASSERT(rc >= 0, "Error of the reading the detect pin.\n");
+
+            /* Get delta from when this started */
+            uint32_t delta = k_uptime_get() -  timestamp;
+
+            /* If not pressed OR if pressed > debounce period stop loop*/
+            if( delta >= CONFIG_BOOT_SERIAL_DETECT_DELAY || 
+                detect_value != CONFIG_BOOT_SERIAL_DETECT_PIN_VAL ) {
+                    break;
+                }
+
+
+            /* Delay 1 ms */
+            k_sleep(K_MSEC(1));
+        }
+#endif 
+
+        /* Then run DFU */
+        if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) {
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+            gpio_pin_set(led, LED0_GPIO_PIN, 1);
+#endif
+            BOOT_LOG_INF("Enter the serial recovery mode");
+            rc = boot_console_init();
+            __ASSERT(rc == 0, "Error initializing boot console.\n");
+            boot_serial_start(&boot_funcs);
+            __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
+        
+        }
+}
 #endif
 
 #ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
