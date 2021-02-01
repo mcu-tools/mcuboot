@@ -7,7 +7,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2019 Cypress Semiconductor Corporation
+# Copyright 2018-2021 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,6 +60,7 @@ HEADER_OFFSET ?= 0
 
 ifneq ($(filter $(APP_NAME), $(APPS)),)
 include ./$(APP_NAME)/$(APP_NAME).mk
+include ./$(APP_NAME)/libs.mk
 else
 $(error Not supported application: '$(APP_NAME)')
 endif

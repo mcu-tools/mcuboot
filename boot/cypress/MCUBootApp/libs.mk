@@ -28,79 +28,69 @@
 ################################################################################
 PDL_VERSION = 121
 
-CUR_LIBS_PATH = $(CURDIR)/libs
-MBEDTLS_PATH = $(CURDIR)/../../ext
+THIS_APP_PATH = $(PRJ_DIR)/libs
+MBEDTLS_PATH = $(PRJ_DIR)/../../ext
 
-# Collect source files for PDL
-SOURCES_PDL := $(wildcard $(CUR_LIBS_PATH)/pdl/psoc6pdl/drivers/source/*.c)
-SOURCES_WATCHDOG := $(wildcard $(CUR_LIBS_PATH)/watchdog/*.c)
+# Add platform folder to build
+SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/*.c)
+SOURCES_WATCHDOG := $(wildcard $(THIS_APP_PATH)/watchdog/*.c)
 
-# PDL related include directories
-INCLUDE_DIRS_PDL := $(CUR_LIBS_PATH)/pdl/psoc6pdl/drivers/include
-INCLUDE_DIRS_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/devices/include/ip
-INCLUDE_DIRS_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/devices/include
-INCLUDE_DIRS_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/cmsis/include
+# Add retartget IO implementation using pdl
+SOURCES_RETARGET_IO_PDL += $(wildcard $(THIS_APP_PATH)/retarget_io_pdl/*.c)
 
-# core-libs related include directories
-INCLUDE_DIRS_CORE_LIB := $(CUR_LIBS_PATH)/core-lib/include
-INCLUDE_DIRS_WATCHDOG := $(CUR_LIBS_PATH)/watchdog
+# Collect dirrectories containing headers for PLATFORM
+INCLUDE_RETARGET_IO_PDL += $(THIS_APP_PATH)/retarget_io_pdl
+
+# PSOC6HAL source files
+SOURCES_HAL += $(THIS_APP_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/cyhal_crypto_common.c
+SOURCES_HAL += $(THIS_APP_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/cyhal_hwmgr.c
+
+# MbedTLS source files
+SOURCES_MBEDTLS := $(wildcard $(MBEDTLS_PATH)/mbedtls/library/*.c)
+SOURCES_MBEDTLS += $(wildcard $(MBEDTLS_PATH)/mbedtls/crypto/library/*.c)
 
 # Collected source files for libraries
-SOURCES_LIBS := $(SOURCES_PDL)
+SOURCES_LIBS += $(SOURCES_HAL)
+SOURCES_LIBS += $(SOURCES_MBEDTLS)
 SOURCES_LIBS += $(SOURCES_WATCHDOG)
 SOURCES_LIBS += $(SOURCES_PLATFORM)
+SOURCES_LIBS += $(SOURCES_RETARGET_IO_PDL)
 
-# Collected include directories for libraries
-INCLUDE_DIRS_LIBS := $(addprefix -I,$(INCLUDE_DIRS_PDL))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_PLATFORM))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_CORE_LIB))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL))
+# Include platforms folder
+INCLUDE_DIRS_PLATFORM := $(PRJ_DIR)/platforms
 
-################################################################################
-# mbedTLS settings
-################################################################################
+# needed for Crypto HW Acceleration and headers inclusion, do not use for peripherals
+# peripherals should be accessed
+INCLUDE_DIRS_HAL := $(THIS_APP_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include
+INCLUDE_DIRS_HAL += $(THIS_APP_PATH)/psoc6hal/include
+INCLUDE_DIRS_HAL += $(THIS_APP_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/pin_packages
+
 # MbedTLS related include directories
 INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/include
 INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/include/mbedtls
 INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/crypto/include
 INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/crypto/include/mbedtls
-#
+
+# Watchdog related includes
+INCLUDE_DIRS_WATCHDOG := $(THIS_APP_PATH)/watchdog
+
+# Collected include directories for libraries
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_MBEDTLS))
-# Collect source files for MbedTLS
-SOURCES_MBEDTLS := $(wildcard $(MBEDTLS_PATH)/mbedtls/library/*.c)
-SOURCES_MBEDTLS += $(wildcard $(MBEDTLS_PATH)/mbedtls/crypto/library/*.c)
-# Collected source files for libraries
-SOURCES_LIBS += $(SOURCES_MBEDTLS)
-## mbedTLS settings
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_RETARGET_IO_PDL))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_PLATFORM))
 
 ################################################################################
-# mbedTLS acceleration settings
+# mbedTLS hardware acceleration settings
 ################################################################################
 ifeq ($(USE_CRYPTO_HW), 1)
 # cy-mbedtls-acceleration related include directories
-INCLUDE_DIRS_MBEDTLS_MXCRYPTO := $(CUR_LIBS_PATH)/cy-mbedtls-acceleration/mbedtls_MXCRYPTO
+INCLUDE_DIRS_MBEDTLS_MXCRYPTO := $(THIS_APP_PATH)/cy-mbedtls-acceleration/mbedtls_MXCRYPTO
 # Collect source files for MbedTLS acceleration
-SOURCES_MBEDTLS_MXCRYPTO := $(wildcard $(CUR_LIBS_PATH)/cy-mbedtls-acceleration/mbedtls_MXCRYPTO/*.c)
+SOURCES_MBEDTLS_MXCRYPTO := $(wildcard $(THIS_APP_PATH)/cy-mbedtls-acceleration/mbedtls_MXCRYPTO/*.c)
 #
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_MBEDTLS_MXCRYPTO))
 # Collected source files for libraries
 SOURCES_LIBS += $(SOURCES_MBEDTLS_MXCRYPTO)
 endif
-## mbedTLS acceleration settings
-
-ASM_FILES_PDL :=
-ifeq ($(COMPILER), GCC_ARM)
-ASM_FILES_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/drivers/source/TOOLCHAIN_GCC_ARM/cy_syslib_gcc.S
-else
-$(error Only GCC ARM is supported at this moment)
-endif
-
-ASM_FILES_LIBS := $(ASM_FILES_PDL)
-ASM_FILES_LIBS += $(ASM_FILES_PLATFORM)
-
-# Add define for PDL version
-DEFINES_PDL += -DPDL_VERSION=$(PDL_VERSION)
-
-DEFINES_LIBS := $(DEFINES_PLATFORM)
-DEFINES_LIBS += $(DEFINES_PDL)

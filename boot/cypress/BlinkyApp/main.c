@@ -38,6 +38,12 @@
 #warning "Check if User LED is correct for your target board."
 #define LED_PORT GPIO_PRT13
 #define LED_PIN 7U
+#elif defined(PSOC_062_1M)
+#define LED_PORT GPIO_PRT13
+#define LED_PIN 7U
+#elif defined(PSOC_062_512K)
+#define LED_PORT GPIO_PRT11
+#define LED_PIN 1U
 #endif
 
 #define LED_NUM 5U
