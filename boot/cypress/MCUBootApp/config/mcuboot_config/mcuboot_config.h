@@ -129,7 +129,8 @@
  * defining BOOT_LOG_LEVEL before #including `bootutil_log.h`
  */
 #define MCUBOOT_HAVE_LOGGING 1
-
+/* Define this to support native mcuboot logging system */
+#define CONFIG_MCUBOOT 1
 /*
  * Assertions
  */

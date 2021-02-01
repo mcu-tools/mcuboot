@@ -84,9 +84,24 @@ int main(void)
     bool boot_succeeded = false;
     fih_int fih_rc = FIH_FAILURE;
 
-    init_cycfg_clocks();
+    SystemInit();
+    //init_cycfg_clocks();
     init_cycfg_peripherals();
     init_cycfg_pins();
+
+    /* Certain PSoC 6 devices enable CM4 by default at startup. It must be 
+     * either disabled or enabled & running a valid application for flash write
+     * to work from CM0+. Since flash write may happen in boot_go() for updating
+     * the image before this bootloader app can enable CM4 in do_boot(), we need
+     * to keep CM4 disabled. Note that debugging of CM4 is not supported when it
+     * is disabled.
+     */
+    #if defined(CY_DEVICE_PSOC6ABLE2)
+    if (CY_SYS_CM4_STATUS_ENABLED == Cy_SysGetCM4Status())
+    {
+        Cy_SysDisableCM4();
+    }
+    #endif /* #if defined(CY_DEVICE_PSOC6ABLE2) */
 
     /* enable interrupts */
     __enable_irq();
