@@ -146,7 +146,7 @@ boot_magic_off(const struct flash_area *fap)
 static inline uint32_t
 boot_image_ok_off(const struct flash_area *fap)
 {
-    return boot_magic_off(fap) - BOOT_MAX_ALIGN;
+    return ALIGN_DOWN(boot_magic_off(fap) - BOOT_MAX_ALIGN, BOOT_MAX_ALIGN);
 }
 
 static inline uint32_t
@@ -198,10 +198,9 @@ static inline uint32_t
 boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 {
 #if MCUBOOT_SWAP_SAVE_ENCTLV
-    return boot_swap_size_off(fap) - ((slot + 1) *
-            ((((BOOT_ENC_TLV_SIZE - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN));
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_TLV_ALIGN_SIZE);
 #else
-    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_SIZE);
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_ALIGN_SIZE);
 #endif
 }
 #endif
@@ -316,14 +315,32 @@ int
 boot_write_magic(const struct flash_area *fap)
 {
     uint32_t off;
+    uint32_t pad_off;
     int rc;
+    uint8_t magic[BOOT_MAGIC_ALIGN_SIZE];
+    uint8_t erased_val;
 
     off = boot_magic_off(fap);
+
+    /* image_trailer structure was modified with additional padding such that
+     * the pad+magic ends up in a flash minimum write region. The address
+     * returned by boot_magic_off() is the start of magic which is not the
+     * start of the flash write boundary and thus writes to the magic will fail.
+     * To account for this change, write to magic is first padded with 0xFF
+     * before writing to the trailer.
+     */
+    pad_off = ALIGN_DOWN(off, BOOT_MAX_ALIGN);
+
+    erased_val = flash_area_erased_val(fap);
+
+    memset(&magic[0], erased_val, sizeof(magic));
+    memcpy(&magic[BOOT_MAGIC_ALIGN_SIZE - BOOT_MAGIC_SZ], boot_img_magic, BOOT_MAGIC_SZ);
 
     BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off));
-    rc = flash_area_write(fap, off, boot_img_magic, BOOT_MAGIC_SZ);
+    rc = flash_area_write(fap, pad_off, &magic[0], BOOT_MAGIC_ALIGN_SIZE);
+
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -346,7 +363,7 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
     int rc;
 
     align = flash_area_align(fap);
-    align = (inlen + align - 1) & ~(align - 1);
+    align = ALIGN_UP(inlen, align);
     if (align > BOOT_MAX_ALIGN) {
         return -1;
     }
