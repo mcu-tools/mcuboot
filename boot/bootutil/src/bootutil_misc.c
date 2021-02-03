@@ -111,12 +111,12 @@ boot_trailer_sz(uint32_t min_write_sz)
 #  if MCUBOOT_SWAP_SAVE_ENCTLV
            BOOT_ENC_TLV_ALIGN_SIZE * 2            +
 #  else
-           BOOT_ENC_KEY_SIZE * 2                  +
+           BOOT_ENC_KEY_ALIGN_SIZE * 2            +
 #  endif
 #endif
            /* swap_type + copy_done + image_ok + swap_size */
            BOOT_MAX_ALIGN * 4                     +
-           BOOT_MAGIC_SZ;
+           BOOT_MAGIC_ALIGN_SIZE;
 }
 
 int
@@ -157,7 +157,7 @@ boot_magic_off(const struct flash_area *fap)
 static inline uint32_t
 boot_image_ok_off(const struct flash_area *fap)
 {
-    return boot_magic_off(fap) - BOOT_MAX_ALIGN;
+    return (boot_magic_off(fap) - BOOT_MAX_ALIGN) & ~(BOOT_MAX_ALIGN - 1);
 }
 
 static inline uint32_t
@@ -177,10 +177,9 @@ static inline uint32_t
 boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 {
 #if MCUBOOT_SWAP_SAVE_ENCTLV
-    return boot_swap_size_off(fap) - ((slot + 1) *
-            ((((BOOT_ENC_TLV_SIZE - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN));
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_TLV_ALIGN_SIZE);
 #else
-    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_SIZE);
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_ALIGN_SIZE);
 #endif
 }
 #endif
@@ -229,7 +228,7 @@ boot_find_status(int image_index, const struct flash_area **fap)
             return rc;
         }
 
-        if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0) {
+        if (BOOT_MAGIC_GOOD == boot_magic_decode(magic)) {
             return 0;
         }
 

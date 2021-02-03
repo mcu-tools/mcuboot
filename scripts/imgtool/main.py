@@ -288,7 +288,8 @@ class BasedIntParamType(click.ParamType):
               help='Specify the value of security counter. Use the `auto` '
               'keyword to automatically generate it from the image version.')
 @click.option('-v', '--version', callback=validate_version,  required=True)
-@click.option('--align', type=click.Choice(['1', '2', '4', '8']),
+@click.option('--align', type=click.Choice(['1', '2', '4', '8', '16', '32',
+              '64', '128', '256', '512', '1024', '2048', '4096']),
               required=True)
 @click.option('--public-key-format', type=click.Choice(['hash', 'full']),
               default='hash', help='In what format to add the public key to '
@@ -297,11 +298,14 @@ class BasedIntParamType(click.ParamType):
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
+@click.option('--max_align', type=click.Choice(['1', '2', '4', '8', '16', '32',
+              '64', '128', '256', '512', '1024', '2048', '4096']),
+              default=8)
 def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt_keylen, encrypt, infile, outfile, dependencies,
          load_addr, hex_addr, erased_val, save_enctlv, security_counter,
-         boot_record, custom_tlv, rom_fixed):
+         boot_record, custom_tlv, rom_fixed, max_align):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -313,7 +317,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                       max_sectors=max_sectors, overwrite_only=overwrite_only,
                       endian=endian, load_addr=load_addr, rom_fixed=rom_fixed,
                       erased_val=erased_val, save_enctlv=save_enctlv,
-                      security_counter=security_counter)
+                      security_counter=security_counter, max_align=max_align)
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None

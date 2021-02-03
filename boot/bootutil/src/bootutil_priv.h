@@ -109,16 +109,24 @@ struct boot_status {
  *  |                 Encryption key 0 (16 octets) [*]              |
  *  |                                                               |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |  0xff padding as needed (BOOT_MAX_ALIGN - 16 EK0 octets) [*]  |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *  |                 Encryption key 1 (16 octets) [*]              |
  *  |                                                               |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |  0xff padding as needed (BOOT_MAX_ALIGN - 16 EK1 octets) [*]  |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *  |                      Swap size (4 octets)                     |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *  |   Swap info   |           0xff padding (7 octets)             |
+ *  | 0xff padding as needed (BOOT_MAX_ALIGN - 4 Swap Size octets)  |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *  |   Copy done   |           0xff padding (7 octets)             |
+ *  |   Swap info   |   0xff padding (BOOT_MAX_ALIGN - 1 octets)    |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *  |   Image OK    |           0xff padding (7 octets)             |
+ *  |   Copy done   |   0xff padding (BOOT_MAX_ALIGN - 1 octets)    |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |   Image OK    |   0xff padding (BOOT_MAX_ALIGN - 1 octets)    |
+ *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  |   0xff padding as needed (BOOT_MAX_ALIGN - 16 MAGIC octets)   |
  *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *  |                       MAGIC (16 octets)                       |
  *  |                                                               |
