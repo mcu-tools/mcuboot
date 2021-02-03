@@ -108,12 +108,12 @@ boot_trailer_info_sz(void)
 #  if MCUBOOT_SWAP_SAVE_ENCTLV
            BOOT_ENC_TLV_ALIGN_SIZE * 2            +
 #  else
-           BOOT_ENC_KEY_SIZE * 2                  +
+           BOOT_ENC_KEY_ALIGN_SIZE * 2            +
 #  endif
 #endif
            /* swap_type + copy_done + image_ok + swap_size */
            BOOT_MAX_ALIGN * 4                     +
-           BOOT_MAGIC_SZ
+           BOOT_MAGIC_ALIGN_SIZE
            );
 }
 
@@ -190,6 +190,15 @@ boot_status_off(const struct flash_area *fap)
     return flash_area_get_size(fap) - off_from_end;
 }
 
+static int
+boot_magic_decode(const uint32_t *magic)
+{
+    if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0) {
+        return BOOT_MAGIC_GOOD;
+    }
+    return BOOT_MAGIC_BAD;
+}
+
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
@@ -199,7 +208,7 @@ boot_magic_off(const struct flash_area *fap)
 static inline uint32_t
 boot_image_ok_off(const struct flash_area *fap)
 {
-    return boot_magic_off(fap) - BOOT_MAX_ALIGN;
+    return ALIGN_DOWN(boot_magic_off(fap) - BOOT_MAX_ALIGN, BOOT_MAX_ALIGN);
 }
 
 static inline uint32_t
@@ -219,10 +228,9 @@ static inline uint32_t
 boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 {
 #if MCUBOOT_SWAP_SAVE_ENCTLV
-    return boot_swap_size_off(fap) - ((slot + 1) *
-            ((((BOOT_ENC_TLV_SIZE - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN));
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_TLV_ALIGN_SIZE);
 #else
-    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_SIZE);
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_ALIGN_SIZE);
 #endif
 }
 #endif
@@ -272,7 +280,7 @@ boot_find_status(int image_index, const struct flash_area **fap)
             return rc;
         }
 
-        if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0) {
+        if (BOOT_MAGIC_GOOD == boot_magic_decode(magic)) {
             return 0;
         }
 
@@ -327,7 +335,7 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
             }
         }
 #else
-        rc = flash_area_read(fap, off, bs->enckey[slot], BOOT_ENC_KEY_SIZE);
+        rc = flash_area_read(fap, off, bs->enckey[slot], BOOT_ENC_KEY_ALIGN_SIZE);
 #endif
         flash_area_close(fap);
     }
@@ -375,7 +383,7 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
 #if MCUBOOT_SWAP_SAVE_ENCTLV
     rc = flash_area_write(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
 #else
-    rc = flash_area_write(fap, off, bs->enckey[slot], BOOT_ENC_KEY_SIZE);
+    rc = flash_area_write(fap, off, bs->enckey[slot], BOOT_ENC_KEY_ALIGN_SIZE);
 #endif
     if (rc != 0) {
         return BOOT_EFLASH;

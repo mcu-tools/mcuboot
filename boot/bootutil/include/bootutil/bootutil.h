@@ -71,7 +71,10 @@ struct image_trailer {
     uint8_t pad2[BOOT_MAX_ALIGN - 1];
     uint8_t image_ok;
     uint8_t pad3[BOOT_MAX_ALIGN - 1];
-    uint8_t magic[16];
+#if BOOT_MAX_ALIGN > BOOT_MAGIC_SZ
+    uint8_t pad4[BOOT_MAGIC_ALIGN_SIZE - BOOT_MAGIC_SZ];
+#endif
+    uint8_t magic[BOOT_MAGIC_SZ];
 };
 
 /* you must have pre-allocated all the entries within this structure */
