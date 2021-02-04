@@ -352,7 +352,11 @@ class Image():
         if self.enckey is not None:
             pad_len = len(self.payload) % 16
             if pad_len > 0:
-                self.payload += bytes(16 - pad_len)
+                pad = bytes(16 - pad_len)
+                if isinstance(self.payload, bytes):
+                    self.payload += pad
+                else:
+                    self.payload.extend(pad)
 
         # This adds the header to the payload as well
         self.add_header(enckey, protected_tlv_size)
