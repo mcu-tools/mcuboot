@@ -45,7 +45,6 @@
 
 #include "bootutil/image.h"
 #include "bootutil/bootutil_public.h"
-#include "bootutil_priv.h"
 #include "bootutil/bootutil_log.h"
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
