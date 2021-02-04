@@ -137,13 +137,13 @@ void led_init(void)
 {
     
   led = device_get_binding(LED0_GPIO_LABEL);
-  if (led == NULL)
-  {
+  if (led == NULL) {
     BOOT_LOG_ERR("Didn't find LED device %s\n", LED0_GPIO_LABEL);
     return;
   }
 
   gpio_pin_configure(led, LED0_GPIO_PIN, LED0_GPIO_FLAGS);
+  gpio_pin_set(led, LED0_GPIO_PIN, 0);
 
 }
 #endif
