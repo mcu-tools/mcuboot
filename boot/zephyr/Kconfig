@@ -475,7 +475,7 @@ config BOOT_SERIAL_DETECT_PIN_VAL
 	  mode.
 
 config BOOT_SERIAL_DETECT_DELAY
-	int "Prevents immediate boot into MCUBoot firmware."
+	int "Serial detect pin detection delay time [ms]"
 	default 0
 	help
 	  Used to prevent the bootloader from loading on button press.
