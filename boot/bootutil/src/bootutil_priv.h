@@ -47,23 +47,7 @@
 extern "C" {
 #endif
 
-#ifdef MCUBOOT_HAVE_ASSERT_H
-#include "mcuboot_config/mcuboot_assert.h"
-#else
-#include <assert.h>
-#define ASSERT assert
-#endif
-
 struct flash_area;
-
-#define BOOT_EFLASH      1
-#define BOOT_EFILE       2
-#define BOOT_EBADIMAGE   3
-#define BOOT_EBADVECT    4
-#define BOOT_EBADSTATUS  5
-#define BOOT_ENOMEM      6
-#define BOOT_EBADARGS    7
-#define BOOT_EBADVERSION 8
 
 #define BOOT_TMPBUF_SZ  256
 
@@ -168,21 +152,6 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 
 #define BOOT_MAX_IMG_SECTORS       MCUBOOT_MAX_IMG_SECTORS
-
-/*
- * Extract the swap type and image number from image trailers's swap_info
- * filed.
- */
-#define BOOT_GET_SWAP_TYPE(swap_info)    ((swap_info) & 0x0F)
-#define BOOT_GET_IMAGE_NUM(swap_info)    ((swap_info) >> 4)
-
-/* Construct the swap_info field from swap type and image number */
-#define BOOT_SET_SWAP_INFO(swap_info, image, type)  {                          \
-                                                    assert((image) < 0xF);     \
-                                                    assert((type)  < 0xF);     \
-                                                    (swap_info) = (image) << 4 \
-                                                                | (type);      \
-                                                    }
 
 #define BOOT_LOG_IMAGE_INFO(slot, hdr)                                    \
     BOOT_LOG_INF("%-9s slot: version=%u.%u.%u+%u",                        \

@@ -32,28 +32,13 @@
 #include <flash_map_backend/flash_map_backend.h>
 #include "bootutil/crypto/aes_ctr.h"
 #include "bootutil/image.h"
+#include "bootutil/enc_key_public.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define BOOT_ENC_KEY_SIZE       16
 #define BOOT_ENC_KEY_SIZE_BITS  (BOOT_ENC_KEY_SIZE * 8)
-
-#define TLV_ENC_RSA_SZ    256
-#define TLV_ENC_KW_SZ     24
-#define TLV_ENC_EC256_SZ  (65 + 32 + 16)
-#define TLV_ENC_X25519_SZ (32 + 32 + 16)
-
-#if defined(MCUBOOT_ENCRYPT_RSA)
-#define BOOT_ENC_TLV_SIZE TLV_ENC_RSA_SZ
-#elif defined(MCUBOOT_ENCRYPT_EC256)
-#define BOOT_ENC_TLV_SIZE TLV_ENC_EC256_SZ
-#elif defined(MCUBOOT_ENCRYPT_X25519)
-#define BOOT_ENC_TLV_SIZE TLV_ENC_X25519_SZ
-#else
-#define BOOT_ENC_TLV_SIZE TLV_ENC_KW_SZ
-#endif
 
 #define BOOT_ENC_TLV_ALIGN_SIZE \
     ((((BOOT_ENC_TLV_SIZE - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN)
