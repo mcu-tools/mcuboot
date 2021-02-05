@@ -38,6 +38,11 @@
 
 #include "bootutil/fault_injection_hardening.h"
 
+#include "watchdog.h"
+
+/* WDT time out for reset mode, in milliseconds. */
+#define WDT_TIME_OUT_MS 4000
+
 /* Define pins for UART debug output */
 #define CYBSP_UART_ENABLED 1U
 #define CYBSP_UART_HW SCB5
@@ -121,6 +126,12 @@ int main(void)
         if (fih_eq(fih_rc, FIH_SUCCESS))
         {
             BOOT_LOG_INF("User Application validated successfully");
+            /* initialize watchdog timer. it should be updated from user app
+            * to mark successful start up of this app. if the watchdog is not updated,
+            * reset will be initiated by watchdog timer and swap revert operation started
+            * to roll back to operable image.
+            */
+            cy_wdg_init(WDT_TIME_OUT_MS);
             do_boot(&rsp);
             boot_succeeded = true;
         }

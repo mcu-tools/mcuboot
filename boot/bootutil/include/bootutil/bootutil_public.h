@@ -88,6 +88,36 @@ extern "C" {
 
 #define BOOT_MAGIC_SZ (sizeof boot_img_magic)
 
+#define BOOT_EFLASH      1
+#define BOOT_EFILE       2
+#define BOOT_EBADIMAGE   3
+#define BOOT_EBADVECT    4
+#define BOOT_EBADSTATUS  5
+#define BOOT_ENOMEM      6
+#define BOOT_EBADARGS    7
+#define BOOT_EBADVERSION 8
+
+/*
+ * Extract the swap type and image number from image trailers's swap_info
+ * filed.
+ */
+#define BOOT_GET_SWAP_TYPE(swap_info)    ((swap_info) & 0x0F)
+#define BOOT_GET_IMAGE_NUM(swap_info)    ((swap_info) >> 4)
+
+/* Construct the swap_info field from swap type and image number */
+#define BOOT_SET_SWAP_INFO(swap_info, image, type)  {                          \
+                                                    assert((image) < 0xF);     \
+                                                    assert((type)  < 0xF);     \
+                                                    (swap_info) = (image) << 4 \
+                                                                | (type);      \
+                                                    }
+#ifdef MCUBOOT_HAVE_ASSERT_H
+#include "mcuboot_config/mcuboot_assert.h"
+#else
+#include <assert.h>
+#define ASSERT assert
+#endif
+
 struct boot_swap_state {
     uint8_t magic;      /* One of the BOOT_MAGIC_[...] values. */
     uint8_t swap_type;  /* One of the BOOT_SWAP_TYPE_[...] values. */
