@@ -23,8 +23,8 @@ define a common infrastructure for the bootloader, system flash layout on
 microcontroller systems, and to provide a secure bootloader that enables
 simple software upgrades.
 
-MCUboot is operating system and hardware independent and relies on
-hardware porting layers from the operating. Currently, mcuboot works
+MCUboot is hardware independent and relies on
+hardware porting layers from the operating system. Currently, MCUboot works
 with both the Apache Mynewt and Zephyr operating systems, but more
 ports are planned in the future. RIOT is currently supported as a boot
 target with a complete port planned.
