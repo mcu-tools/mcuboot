@@ -22,7 +22,7 @@
 /* Default maximum number of flash sectors per image slot; change
  * as desirable. */
 #ifndef MCUBOOT_MAX_IMG_SECTORS
-#define MCUBOOT_MAX_IMG_SECTORS 128
+#define MCUBOOT_MAX_IMG_SECTORS 128u
 #endif
 
 /*
@@ -53,7 +53,7 @@
 #else
 /* Using SWAP w Scratch by default.
  * Comment/Uncomment which is needed. */
-/* #define MCUBOOT_SWAP_USING_SCRATCH 1 */
+#define MCUBOOT_SWAP_USING_SCRATCH 1
 /* #define MCUBOOT_SWAP_USING_MOVE 1 */
 #define MCUBOOT_SWAP_USING_STATUS 1
 #endif

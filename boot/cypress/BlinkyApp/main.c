@@ -143,6 +143,12 @@ int main(void)
 
     printf(GREETING_MESSAGE_INFO);
 
+    /* Update watchdog timer to mark successful start up of application */
+    printf(WATCHDOG_UPD_MESSAGE);
+    cy_wdg_kick();
+    printf(WATCHDOG_FREE_MESSAGE);
+    cy_wdg_free();
+
 #if defined(SWAP_ENABLED) && defined(UPGRADE_IMG)
 
     #define USER_SWAP_IMAGE_OK_OFFS (24)

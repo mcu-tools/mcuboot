@@ -41,7 +41,6 @@ IMG_TYPES = BOOT UPGRADE
 
 # use SWAP_UPGRADE = 0 for overwrite only mode
 # use SWAP_UPGRADE = 1 for swap upgrade mode
-# use SWAP_UPGRADE = 2 for swap upgrade mode, upgrade image is in the external memory
 SWAP_UPGRADE ?= 1
 
 # possible values are 0 and 0xff
@@ -77,12 +76,11 @@ else ifeq ($(PLATFORM), PSOC_062_512K)
 	DEFINES_APP += -DRAM_START=0x08020000
 	DEFINES_APP += -DRAM_SIZE=0x10000
 endif
-ifeq ($(SWAP_UPGRADE), 2)
+ifeq ($(USE_EXTERNAL_FLASH), 1)
 $(warning You are trying to build BlinkyApp for MCUBootApp with external memory support. Ensure you build MCUBootApp with USE_EXTERNAL_FLASH=1 flag!)
-	SLOT_SIZE ?= 0xC0000
+	SLOT_SIZE ?= 0x40200
 else
 	SLOT_SIZE ?= 0x10000
-
 endif
 
 DEFINES_APP += -DUSER_APP_SIZE=$(SLOT_SIZE)
