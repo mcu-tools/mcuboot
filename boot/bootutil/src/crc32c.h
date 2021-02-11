@@ -22,7 +22,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#ifndef H_CRC32C_
+#define H_CRC32C_
 
 #include <stdint.h>
 
 uint32_t crc32c_checksum(const uint8_t *address, uint32_t length);
+
+#endif /* H_CRC32C_ */

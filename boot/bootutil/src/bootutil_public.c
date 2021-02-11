@@ -119,7 +119,6 @@ static const struct boot_swap_table boot_swap_tables[] = {
     (sizeof boot_swap_tables / sizeof boot_swap_tables[0])
 
 #ifndef MCUBOOT_SWAP_USING_STATUS
-
 static int
 boot_magic_decode(const uint32_t *magic)
 {
@@ -128,8 +127,7 @@ boot_magic_decode(const uint32_t *magic)
     }
     return BOOT_MAGIC_BAD;
 }
-
-#endif /* not defined MCUBOOT_SWAP_USING_STATUS */
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
 
 static int
 boot_flag_decode(uint8_t flag)
@@ -140,13 +138,13 @@ boot_flag_decode(uint8_t flag)
     return BOOT_FLAG_SET;
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
     return flash_area_get_size(fap) - BOOT_MAGIC_SZ;
 }
 
-#ifndef MCUBOOT_SWAP_USING_STATUS
 static inline uint32_t
 boot_image_ok_off(const struct flash_area *fap)
 {
@@ -164,7 +162,7 @@ boot_swap_info_off(const struct flash_area *fap)
 {
     return boot_copy_done_off(fap) - BOOT_MAX_ALIGN;
 }
-#endif /* not defined MCUBOOT_SWAP_USING_STATUS */
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
 
 /**
  * Determines if a status source table is satisfied by the specified magic
@@ -283,7 +281,7 @@ boot_read_swap_state(const struct flash_area *fap,
     return boot_read_image_ok(fap, &state->image_ok);
 }
 
-#endif /* not MCUBOOT_SWAP_USING_STATUS */
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
 
 int
 boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
@@ -354,7 +352,7 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
     return 0;
 }
 
-#endif /* MCUBOOT_SWAP_USING_STATUS */
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
 
 int
 boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,

@@ -57,16 +57,14 @@ struct flash_area;
 #if (defined(MCUBOOT_OVERWRITE_ONLY) + \
      defined(MCUBOOT_SWAP_USING_MOVE) + \
      defined(MCUBOOT_DIRECT_XIP) + \
-     defined(MCUBOOT_RAM_LOAD)) + \
-     defined(MCUBOOT_SWAP_USING_STATUS) > 1
-#error "Please enable only one of MCUBOOT_OVERWRITE_ONLY, MCUBOOT_SWAP_USING_MOVE, MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD or MCUBOOT_SWAP_USING_STATUS"
+     defined(MCUBOOT_RAM_LOAD)) > 1
+#error "Please enable only one of MCUBOOT_OVERWRITE_ONLY, MCUBOOT_SWAP_USING_MOVE, MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD"
 #endif
 
 #if !defined(MCUBOOT_OVERWRITE_ONLY) && \
     !defined(MCUBOOT_SWAP_USING_MOVE) && \
     !defined(MCUBOOT_DIRECT_XIP) && \
-    !defined(MCUBOOT_RAM_LOAD) && \
-    !defined(MCUBOOT_SWAP_USING_STATUS)
+    !defined(MCUBOOT_RAM_LOAD)
 #define MCUBOOT_SWAP_USING_SCRATCH 1
 #endif
 
@@ -215,7 +213,8 @@ struct boot_loader_state {
         boot_sector_t *sectors;
         uint32_t num_sectors;
     } scratch;
-#elif MCUBOOT_SWAP_USING_STATUS
+#endif
+#if MCUBOOT_SWAP_USING_STATUS
     struct {
         const struct flash_area *area;
         boot_sector_t *sectors;
@@ -245,6 +244,7 @@ uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
 int boot_status_entries(int image_index, const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
+uint32_t boot_swap_info_off(const struct flash_area *fap);
 int boot_read_swap_state(const struct flash_area *fap,
                          struct boot_swap_state *state);
 int boot_read_swap_state_by_id(int flash_area_id,

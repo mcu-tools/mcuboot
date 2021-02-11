@@ -26,8 +26,8 @@
  * under the License.
  */
 
-#ifndef BOOT_BOOTUTIL_SRC_SWAP_STATUS_H_
-#define BOOT_BOOTUTIL_SRC_SWAP_STATUS_H_
+#ifndef H_SWAP_STATUS_H_
+#define H_SWAP_STATUS_H_
 
 #include <stdint.h>
 #include "sysflash/sysflash.h"
@@ -37,9 +37,30 @@
 
 #ifdef MCUBOOT_SWAP_USING_STATUS
 
+#define BOOT_LOG_SWAP_STATE_M(area, state)                            \
+    BOOT_LOG_DBG("%s: magic=%s, swap_type=0x%x, copy_done=0x%x, "   \
+                 "image_ok=0x%x",                                   \
+                 (area),                                            \
+                 ((state)->magic == (uint8_t)BOOT_MAGIC_GOOD ? "good" :\
+                  (state)->magic == (uint8_t)BOOT_MAGIC_UNSET ? "unset" :\
+                  "bad"),                                           \
+                 (state)->swap_type,                                \
+                 (state)->copy_done,                                \
+                 (state)->image_ok)
+
+#define BOOT_SET_SWAP_INFO_M(swap_info, image, type)  {                          \
+                                                    assert((int)((image) < 0xFu));     \
+                                                    assert((int)((type)  < 0xFu));     \
+                                                    (swap_info) = (image) << 4u \
+                                                                | (type);      \
+                                                    }
+
+#define BOOT_GET_SWAP_TYPE_M(swap_info)    ((swap_info) & 0x0Fu)
+#define BOOT_GET_IMAGE_NUM_M(swap_info)    ((swap_info) >> 4u)
+
 extern const uint32_t stat_part_magic[1];
 
-#define BOOT_SWAP_STATUS_MAGIC       (0xDEADBEAF)
+#define BOOT_SWAP_STATUS_MAGIC       (0xDEADBEAFu)
 
 #define BOOT_SWAP_STATUS_ENCK1_SZ       16UL
 #define BOOT_SWAP_STATUS_ENCK2_SZ       16UL
@@ -87,7 +108,7 @@ struct status_part_record{
 #endif
 
 /* number of rows sector-status area should fit into */
-#define BOOT_SWAP_STATUS_SECT_ROWS_NUM  (((BOOT_MAX_IMG_SECTORS-1)/BOOT_SWAP_STATUS_PAYLD_SZ)+1)
+#define BOOT_SWAP_STATUS_SECT_ROWS_NUM  (((BOOT_MAX_IMG_SECTORS-1u)/BOOT_SWAP_STATUS_PAYLD_SZ) + 1u)
 
 /*
     Number of flash rows used to store swap info. It consists
@@ -108,7 +129,7 @@ struct status_part_record{
 // TODO: small-magic, coutner and crc aren't coutned here
 
 /* number of rows trailer data should fit into */
-#define BOOT_SWAP_STATUS_TRAIL_ROWS_NUM  (((BOOT_SWAP_STATUS_TRAILER_SIZE-1)/BOOT_SWAP_STATUS_PAYLD_SZ)+1)
+#define BOOT_SWAP_STATUS_TRAIL_ROWS_NUM  (((BOOT_SWAP_STATUS_TRAILER_SIZE - 1u)/BOOT_SWAP_STATUS_PAYLD_SZ) + 1u)
 
 /* the size of one copy of status area */
 #define BOOT_SWAP_STATUS_D_SIZE     (BOOT_SWAP_STATUS_ROW_SZ * \
@@ -122,12 +143,13 @@ struct status_part_record{
 
 /* multiplier which defines how many blocks will be used to reduce Flash wear
  * 1 is for single write wear, 2 - twice less wear, 3 - three times less wear, etc */
-#define BOOT_SWAP_STATUS_MULT       2
+#define BOOT_SWAP_STATUS_MULT       2UL
 
 #define BOOT_SWAP_STATUS_SIZE       (BOOT_SWAP_STATUS_MULT * BOOT_SWAP_STATUS_D_SIZE)
 
 #define BOOT_SWAP_STATUS_SZ_PRIM    BOOT_SWAP_STATUS_SIZE
 #define BOOT_SWAP_STATUS_SZ_SEC     BOOT_SWAP_STATUS_SIZE
+#define BOOT_SWAP_STATUS_SZ_SCRATCH BOOT_SWAP_STATUS_SIZE
 
 #define BOOT_SWAP_STATUS_OFFS_PRIM  0UL
 #define BOOT_SWAP_STATUS_OFFS_SEC   (BOOT_SWAP_STATUS_OFFS_PRIM + \
@@ -142,4 +164,4 @@ int boot_write_trailer(const struct flash_area *fap, uint32_t off,
 
 #endif /* MCUBOOT_SWAP_USING_STATUS */
 
-#endif /* BOOT_BOOTUTIL_SRC_SWAP_STATUS_H_ */
+#endif /* H_SWAP_STATUS_H_ */

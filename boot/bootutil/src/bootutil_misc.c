@@ -181,7 +181,7 @@ boot_swap_size_off(const struct flash_area *fap)
 {
     return boot_swap_info_off(fap) - BOOT_MAX_ALIGN;
 }
-#endif
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
 
 #ifdef MCUBOOT_ENC_IMAGES
 static inline uint32_t
@@ -269,7 +269,6 @@ boot_read_swap_size(int image_index, uint32_t *swap_size)
     return rc;
 }
 
-
 #ifdef MCUBOOT_ENC_IMAGES
 int
 boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
@@ -335,6 +334,8 @@ boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
     return boot_write_trailer(fap, off, (const uint8_t *) &swap_size, 4);
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
+
 #ifdef MCUBOOT_ENC_IMAGES
 int
 boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
@@ -359,3 +360,5 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
     return 0;
 }
 #endif
+
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
