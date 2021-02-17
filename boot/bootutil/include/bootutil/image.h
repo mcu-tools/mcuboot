@@ -60,6 +60,12 @@ struct flash_area;
 #define IMAGE_F_RAM_LOAD                 0x00000020
 
 /*
+ * Indicates that ih_load_addr stores information on flash/ROM address the
+ * image has been built for.
+ */
+#define IMAGE_F_ROM_FIXED                0x00000100
+
+/*
  * ECSDA224 is with NIST P-224
  * ECSDA256 is with NIST P-256
  */
