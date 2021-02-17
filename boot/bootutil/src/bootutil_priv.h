@@ -162,17 +162,6 @@ extern const uint32_t boot_img_magic[4];
                  (hdr)->ih_ver.iv_revision,                               \
                  (hdr)->ih_ver.iv_build_num)
 
-/*
- * The current flashmap API does not check the amount of space allocated when
- * loading sector data from the flash device, allowing for smaller counts here
- * would most surely incur in overruns.
- *
- * TODO: make flashmap API receive the current sector array size.
- */
-#if BOOT_MAX_IMG_SECTORS < 32
-#error "Too few sectors, please increase BOOT_MAX_IMG_SECTORS to at least 32"
-#endif
-
 #if MCUBOOT_SWAP_USING_MOVE
 #define BOOT_STATUS_MOVE_STATE_COUNT    1
 #define BOOT_STATUS_SWAP_STATE_COUNT    2
