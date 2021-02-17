@@ -371,7 +371,11 @@ void main(void)
 
     MCUBOOT_WATCHDOG_FEED();
 
+#if !defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Starting bootloader");
+#else
+    BOOT_LOG_INF("Starting Direct-XIP bootloader");
+#endif
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
     /* LED init */
@@ -498,7 +502,11 @@ void main(void)
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
                  rsp.br_image_off);
 
+#if defined(MCUBOOT_DIRECT_XIP)
+    BOOT_LOG_INF("Jumping to the image slot");
+#else
     BOOT_LOG_INF("Jumping to the first image slot");
+#endif
     ZEPHYR_BOOT_LOG_STOP();
     do_boot(&rsp);
 
