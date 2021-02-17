@@ -50,8 +50,8 @@ struct flash_area;
  * Image header flags.
  */
 #define IMAGE_F_PIC                      0x00000001 /* Not supported. */
-#define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
 #define IMAGE_F_ENCRYPTED                0x00000004 /* Encrypted. */
+#define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
 /*
  * Indicates that this image should be loaded into RAM instead of run
  * directly from flash.  The address to load should be in the
