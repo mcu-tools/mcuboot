@@ -566,6 +566,36 @@ boot_version_cmp(const struct image_version *ver1,
 }
 #endif
 
+#if defined(MCUBOOT_DIRECT_XIP)
+/**
+ * Check if image in slot has been set with specific ROM address to run from
+ * and whether the slot starts at that address.
+ *
+ * @returns 0 if IMAGE_F_ROM_FIXED flag is not set;
+ *          0 if IMAGE_F_ROM_FIXED flag is set and ROM address specified in
+ *            header matches the slot address;
+ *          1 if IMF_F_ROM_FIXED flag is set but ROM address specified in header
+ *          does not match the slot address.
+ */
+static bool
+boot_rom_address_check(struct boot_loader_state *state, size_t slot)
+{
+    const struct image_header *hdr = boot_img_hdr(state, slot);
+    uint32_t f_off = boot_img_slot_off(state, slot);
+    if (hdr->ih_flags & IMAGE_F_ROM_FIXED && hdr->ih_load_addr != f_off) {
+        BOOT_LOG_WRN("Image in %s slot at 0x%x has been built for offset 0x%x"\
+                     ", skipping", slot == 0 ? "primary" : "secondary", f_off,
+                     hdr->ih_load_addr);
+
+        /* If there is address mismatch, the image is not bootable from this
+         * slot.
+         */
+        return 1;
+    }
+    return 0;
+}
+#endif
+
 /*
  * Check that there is a valid image in a slot
  *
@@ -2323,6 +2353,12 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
                              */
                             continue;
                         }
+                    }
+                    /* Check if image has IMAGE_F_ROM_FIXED flag set and
+                     * is in proper slot.
+                     */
+                    if (boot_rom_address_check(state, slot) != 0) {
+                        continue;
                     }
                     selected_slot = slot;
                     selected_image_header = hdr;
