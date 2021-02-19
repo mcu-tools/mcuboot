@@ -12,6 +12,7 @@ fn main() {
     let sig_rsa = env::var("CARGO_FEATURE_SIG_RSA").is_ok();
     let sig_rsa3072 = env::var("CARGO_FEATURE_SIG_RSA3072").is_ok();
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
+    let sig_ecdsa_mbedtls = env::var("CARGO_FEATURE_SIG_ECDSA_MBEDTLS").is_ok();
     let sig_ed25519 = env::var("CARGO_FEATURE_SIG_ED25519").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
     let swap_move = env::var("CARGO_FEATURE_SWAP_MOVE").is_ok();
@@ -97,6 +98,21 @@ fn main() {
 
         conf.file("../../ext/mbedtls-asn1/src/platform_util.c");
         conf.file("../../ext/mbedtls-asn1/src/asn1parse.c");
+    } else if sig_ecdsa_mbedtls {
+        conf.define("MCUBOOT_SIGN_EC256", None);
+        conf.define("MCUBOOT_USE_MBED_TLS", None);
+
+        conf.include("../../ext/mbedtls/crypto/include");
+        conf.file("../../ext/mbedtls/crypto/library/sha256.c");
+        conf.file("csupport/keys.c");
+
+        conf.file("../../ext/mbedtls/crypto/library/asn1parse.c");
+        conf.file("../../ext/mbedtls/crypto/library/bignum.c");
+        conf.file("../../ext/mbedtls/crypto/library/ecdsa.c");
+        conf.file("../../ext/mbedtls/crypto/library/ecp.c");
+        conf.file("../../ext/mbedtls/crypto/library/ecp_curves.c");
+        conf.file("../../ext/mbedtls/crypto/library/platform.c");
+        conf.file("../../ext/mbedtls/crypto/library/platform_util.c");
     } else if sig_ed25519 {
         conf.define("MCUBOOT_SIGN_ED25519", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
@@ -247,6 +263,8 @@ fn main() {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
     } else if sig_rsa || sig_rsa3072 || enc_rsa {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
+    } else if sig_ecdsa_mbedtls {
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ecdsa.h>"));
     } else if (sig_ecdsa || enc_ec256) && !enc_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
     } else if sig_ed25519 || enc_x25519 {
@@ -258,7 +276,7 @@ fn main() {
     conf.file("../../boot/bootutil/src/image_validate.c");
     if sig_rsa || sig_rsa3072 {
         conf.file("../../boot/bootutil/src/image_rsa.c");
-    } else if sig_ecdsa {
+    } else if sig_ecdsa || sig_ecdsa_mbedtls {
         conf.file("../../boot/bootutil/src/image_ec256.c");
     } else if sig_ed25519 {
         conf.file("../../boot/bootutil/src/image_ed25519.c");
