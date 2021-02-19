@@ -247,7 +247,7 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 
     rc = boot_retrieve_public_key_hash(image_index, key_hash, &key_hash_size);
     if (rc) {
-        return rc;
+        return -1;
     }
 
     /* Adding hardening to avoid this potential attack:
