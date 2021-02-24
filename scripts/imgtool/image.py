@@ -158,7 +158,7 @@ class Image():
         self.enckey = None
         self.save_enctlv = save_enctlv
         self.enctlv_len = 0
-        self.max_align = int(max_align)
+        self.max_align = DEFAULT_MAX_ALIGN if max_align is None else int(max_align)
 
         if security_counter == 'auto':
             # Security counter has not been explicitly provided,
