@@ -285,6 +285,9 @@ class BasedIntParamType(click.ParamType):
 @click.option('--align', type=click.Choice(['1', '2', '4', '8', '16', '32',
               '64', '128', '256', '512', '1024', '2048', '4096']),
               required=True)
+@click.option('--max-align', type=click.Choice(['1', '2', '4', '8', '16', '32',
+              '64', '128', '256', '512', '1024', '2048', '4096']),
+              required=False)
 @click.option('--public-key-format', type=click.Choice(['hash', 'full']),
               default='hash', help='In what format to add the public key to '
               'the image manifest: full key or hash of the key.')
@@ -292,9 +295,6 @@ class BasedIntParamType(click.ParamType):
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
-@click.option('--max_align', type=click.Choice(['1', '2', '4', '8', '16', '32',
-              '64', '128', '256', '512', '1024', '2048', '4096']),
-              default=8)
 def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt, infile, outfile, dependencies, load_addr, hex_addr,
