@@ -68,6 +68,9 @@ uint32_t bootutil_get_caps(void)
 #if defined(MCUBOOT_BOOTSTRAP)
     res |= BOOTUTIL_CAP_BOOTSTRAP;
 #endif
+#if defined(MCUBOOT_X509)
+    res |= BOOTUTIL_CAP_X509;
+#endif
 
     return res;
 }

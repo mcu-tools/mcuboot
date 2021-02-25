@@ -14,6 +14,7 @@ fn main() {
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
     let sig_ecdsa_mbedtls = env::var("CARGO_FEATURE_SIG_ECDSA_MBEDTLS").is_ok();
     let sig_ed25519 = env::var("CARGO_FEATURE_SIG_ED25519").is_ok();
+    let x509 = env::var("CARGO_FEATURE_X509").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
     let swap_move = env::var("CARGO_FEATURE_SWAP_MOVE").is_ok();
     let validate_primary_slot =
@@ -57,6 +58,12 @@ fn main() {
         panic!("mcuboot does not support more than one sig type at the same time");
     }
 
+    // X509 support only works with builds that are made with mbed TLS as
+    // the crypto library.
+    if x509 && !(sig_rsa || sig_rsa3072 || sig_ecdsa_mbedtls) {
+        panic!("X509 requires a configuration using mbed TLS");
+    }
+
     if sig_rsa || sig_rsa3072 {
         conf.define("MCUBOOT_SIGN_RSA", None);
         // The Kconfig style defines must be added here as well because
@@ -79,6 +86,11 @@ fn main() {
         conf.file("../../ext/mbedtls/crypto/library/platform.c");
         conf.file("../../ext/mbedtls/crypto/library/platform_util.c");
         conf.file("../../ext/mbedtls/crypto/library/asn1parse.c");
+
+        if x509 {
+            conf.define("MCUBOOT_X509", None);
+            panic!("TODO: Support RSA X509");
+        }
     } else if sig_ecdsa {
         conf.define("MCUBOOT_SIGN_EC256", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
@@ -113,6 +125,10 @@ fn main() {
         conf.file("../../ext/mbedtls/crypto/library/ecp_curves.c");
         conf.file("../../ext/mbedtls/crypto/library/platform.c");
         conf.file("../../ext/mbedtls/crypto/library/platform_util.c");
+
+        if x509 {
+            conf.define("MCUBOOT_X509", None);
+        }
     } else if sig_ed25519 {
         conf.define("MCUBOOT_SIGN_ED25519", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);

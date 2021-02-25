@@ -27,6 +27,9 @@ sig-ecdsa-mbedtls = []
 # Verify ED25519 signatures.
 sig-ed25519 = []
 
+# Use X509 certificates to validate signature
+x509 = []
+
 # Overwrite only upgrade
 overwrite-only = []
 

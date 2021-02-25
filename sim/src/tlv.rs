@@ -44,6 +44,7 @@ use mcuboot_sys::c;
 #[allow(dead_code)] // TODO: For now
 pub enum TlvKinds {
     KEYHASH = 0x01,
+    X509 = 0x03,
     SHA256 = 0x10,
     RSA2048 = 0x20,
     ECDSA224 = 0x21,
