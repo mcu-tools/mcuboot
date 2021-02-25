@@ -16,6 +16,7 @@
 use byteorder::{
     LittleEndian, WriteBytesExt,
 };
+use crate::caps::Caps;
 use crate::image::ImageVersion;
 use pem;
 use base64;
@@ -414,13 +415,29 @@ impl ManifestGen for TlvGen {
         }
 
         if self.kinds.contains(&TlvKinds::ECDSA256) {
-            let keyhash = digest::digest(&digest::SHA256, ECDSA256_PUB_KEY);
-            let keyhash = keyhash.as_ref();
+            if Caps::X509.present() {
+                // Include the leaf cert and the intermediate.  The root
+                // cert should be in the device itself.
+                // for bytes in &[include_bytes!("../../cert/C.crt").as_ref(),
+                //               include_bytes!("../../cert/B.crt").as_ref()]
+                for bytes in &[include_bytes!("../../cert/B.crt").as_ref(),
+                              include_bytes!("../../cert/C.crt").as_ref()]
+                {
+                    let inter = pem::parse(bytes).unwrap();
+                    assert_eq!(inter.tag, "CERTIFICATE");
+                    result.write_u16::<LittleEndian>(TlvKinds::X509 as u16).unwrap();
+                    result.write_u16::<LittleEndian>(inter.contents.len() as u16).unwrap();
+                    result.extend_from_slice(&inter.contents);
+                }
+            } else {
+                let keyhash = digest::digest(&digest::SHA256, ECDSA256_PUB_KEY);
+                let keyhash = keyhash.as_ref();
 
-            assert!(keyhash.len() == 32);
-            result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
-            result.write_u16::<LittleEndian>(32).unwrap();
-            result.extend_from_slice(keyhash);
+                assert!(keyhash.len() == 32);
+                result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
+                result.write_u16::<LittleEndian>(32).unwrap();
+                result.extend_from_slice(keyhash);
+            }
 
             let key_bytes = pem::parse(include_bytes!("../../root-ec-p256-pkcs8.pem").as_ref()).unwrap();
             assert_eq!(key_bytes.tag, "PRIVATE KEY");
