@@ -28,7 +28,7 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-#ifdef MCUBOOT_SIGN_EC256
+#if defined(MCUBOOT_SIGN_EC256) && !defined(MCUBOOT_X509)
 /*TODO: remove this after cypress port mbedtls to abstract crypto api */
 #if defined(MCUBOOT_USE_CC310) || defined(MCUBOOT_USE_MBED_TLS)
 #define NUM_ECC_BYTES (256 / 8)

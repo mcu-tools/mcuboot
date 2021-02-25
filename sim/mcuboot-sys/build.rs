@@ -127,7 +127,20 @@ fn main() {
         conf.file("../../ext/mbedtls/crypto/library/platform_util.c");
 
         if x509 {
+            conf.include("../../ext/mbedtls/include");
             conf.define("MCUBOOT_X509", None);
+            // TODO: write shouldn't be needed.
+            conf.file("../../ext/mbedtls/crypto/library/asn1write.c");
+            conf.file("../../ext/mbedtls/crypto/library/md.c");
+            // conf.file("../../ext/mbedtls/crypto/library/md_wrap.c");
+            conf.file("../../ext/mbedtls/crypto/library/oid.c");
+            conf.file("../../ext/mbedtls/crypto/library/pk.c");
+            conf.file("../../ext/mbedtls/crypto/library/pkparse.c");
+            conf.file("../../ext/mbedtls/crypto/library/pk_wrap.c");
+            conf.file("../../ext/mbedtls/library/x509.c");
+            conf.file("../../ext/mbedtls/library/x509_crt.c");
+
+            conf.file("../../boot/zephyr/root_cert.c");
         }
     } else if sig_ed25519 {
         conf.define("MCUBOOT_SIGN_ED25519", None);
@@ -289,13 +302,17 @@ fn main() {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-kw.h>"));
     }
 
-    conf.file("../../boot/bootutil/src/image_validate.c");
-    if sig_rsa || sig_rsa3072 {
-        conf.file("../../boot/bootutil/src/image_rsa.c");
-    } else if sig_ecdsa || sig_ecdsa_mbedtls {
-        conf.file("../../boot/bootutil/src/image_ec256.c");
-    } else if sig_ed25519 {
-        conf.file("../../boot/bootutil/src/image_ed25519.c");
+    if x509 {
+        conf.file("../../boot/bootutil/src/image_x509.c");
+    } else {
+        conf.file("../../boot/bootutil/src/image_validate.c");
+        if sig_rsa || sig_rsa3072 {
+            conf.file("../../boot/bootutil/src/image_rsa.c");
+        } else if sig_ecdsa || sig_ecdsa_mbedtls {
+            conf.file("../../boot/bootutil/src/image_ec256.c");
+        } else if sig_ed25519 {
+            conf.file("../../boot/bootutil/src/image_ed25519.c");
+        }
     }
     conf.file("../../boot/bootutil/src/image_util.c");
     conf.file("../../boot/bootutil/src/loader.c");

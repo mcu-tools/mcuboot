@@ -92,6 +92,7 @@ zephyr_library_sources(
   flash_map_extended.c
   os.c
   keys.c
+  root_cert.c
   )
 
 if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)
@@ -133,6 +134,7 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/swap_misc.c
   ${BOOT_DIR}/bootutil/src/swap_scratch.c
   ${BOOT_DIR}/bootutil/src/swap_move.c
+  ${BOOT_DIR}/bootutil/src/image_x509.c
   ${BOOT_DIR}/bootutil/src/image_util.c
   ${BOOT_DIR}/bootutil/src/caps.c
   )
@@ -147,6 +149,19 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
     ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
     ${MBEDTLS_ASN1_DIR}/src/platform_util.c
     )
+  if(NOT DEFINED CONFIG_BOOT_USE_MBEDTLS)
+    message(FATAL_ERROR "Not using mbedtls")
+    zephyr_library_include_directories(
+      ${MBEDTLS_ASN1_DIR}/include
+      )
+  endif()
+  if(NOT CONFIG_BOOT_USE_MBEDTLS)
+    zephyr_library_sources(
+      # Additionally pull in just the ASN.1 parser from mbedTLS.
+      ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
+      ${MBEDTLS_ASN1_DIR}/src/platform_util.c
+      )
+  endif()
   if(CONFIG_BOOT_USE_TINYCRYPT)
   # When using ECDSA signatures, pull in our copy of the tinycrypt library.
   zephyr_library_include_directories(
