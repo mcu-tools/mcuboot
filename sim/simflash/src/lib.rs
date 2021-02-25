@@ -11,7 +11,6 @@
 mod pdump;
 
 use crate::pdump::HexDump;
-use failure::Fail;
 use log::info;
 use rand::{
     self,
@@ -26,25 +25,20 @@ use std::{
     path::Path,
     slice,
 };
+use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, FlashError>;
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum FlashError {
-    #[fail(display = "Offset out of bounds: {}", _0)]
+    #[error("Offset out of bounds: {0}")]
     OutOfBounds(String),
-    #[fail(display = "Invalid write: {}", _0)]
+    #[error("Invalid write: {0}")]
     Write(String),
-    #[fail(display = "Write failed by chance: {}", _0)]
+    #[error("Write failed by chance: {0}")]
     SimulatedFail(String),
-    #[fail(display = "{}", _0)]
-    Io(#[cause] io::Error),
-}
-
-impl From<io::Error> for FlashError {
-    fn from(error: io::Error) -> Self {
-        FlashError::Io(error)
-    }
+    #[error("{0}")]
+    Io(#[from] io::Error),
 }
 
 // Transition from error-chain.
