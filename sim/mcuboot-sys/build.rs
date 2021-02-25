@@ -297,6 +297,7 @@ fn main() {
     } else if sig_ed25519 {
         conf.file("../../boot/bootutil/src/image_ed25519.c");
     }
+    conf.file("../../boot/bootutil/src/image_util.c");
     conf.file("../../boot/bootutil/src/loader.c");
     conf.file("../../boot/bootutil/src/swap_misc.c");
     conf.file("../../boot/bootutil/src/swap_scratch.c");
