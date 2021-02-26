@@ -483,16 +483,17 @@ config BOOT_SERIAL_DETECT_DELAY
 	  the one used to place the device in bootloader mode.
 
 # Workaround for not being able to have commas in macro arguments
-DT_CHOSEN_Z_CONSOLE := zephyr,console
+DT_CHOSEN_Z_UART_MCUMGR := zephyr,uart-mcumgr
 
 config RECOVERY_UART_DEV_NAME
 	string "UART Device Name for Recovery UART"
-	default "$(dt_chosen_label,$(DT_CHOSEN_Z_CONSOLE))" if HAS_DTS
+	default "$(dt_chosen_label,$(DT_CHOSEN_Z_UART_MCUMGR))" if HAS_DTS
 	default "UART_0"
 	depends on BOOT_SERIAL_UART
 	help
 	  This option specifies the name of UART device to be used for
 	  serial recovery.
+	  By default the chosen zephyr,uart-mcumgr device is used.
 
 endif # MCUBOOT_SERIAL
 
