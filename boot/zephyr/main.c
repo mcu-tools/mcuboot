@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2012-2014 Wind River Systems, Inc.
  * Copyright (c) 2020 Arm Limited
+ * Copyright (c) 2021 Nordic Semiconductor ASA
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,11 +55,12 @@ const struct boot_uart_funcs boot_funcs = {
 /* CONFIG_LOG_MINIMAL is the legacy Kconfig property,
  * replaced by CONFIG_LOG_MODE_MINIMAL.
  */
-#define ZEPHYR_LOG_MODE_MINIMAL (defined(CONFIG_LOG_MODE_MINIMAL) ||\
-                                 defined(CONFIG_LOG_MINIMAL))
+#if (defined(CONFIG_LOG_MODE_MINIMAL) || defined(CONFIG_LOG_MINIMAL))
+#define ZEPHYR_LOG_MODE_MINIMAL 1
+#endif
 
 #if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) && \
-    !ZEPHYR_LOG_MODE_MINIMAL
+    !defined(ZEPHYR_LOG_MODE_MINIMAL)
 #ifdef CONFIG_LOG_PROCESS_THREAD
 #warning "The log internal thread for log processing can't transfer the log"\
          "well for MCUBoot."
@@ -308,7 +310,7 @@ static void do_boot(struct boot_rsp *rsp)
 #endif
 
 #if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) &&\
-    !defined(CONFIG_LOG_PROCESS_THREAD) && !ZEPHYR_LOG_MODE_MINIMAL
+    !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(ZEPHYR_LOG_MODE_MINIMAL)
 /* The log internal thread for log processing can't transfer log well as has too
  * low priority.
  * Dedicated thread for log processing below uses highest application
