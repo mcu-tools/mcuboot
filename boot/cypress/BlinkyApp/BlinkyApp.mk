@@ -113,6 +113,7 @@ OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
 ifeq ($(IMG_TYPE), UPGRADE)
 	ifeq ($(ENC_IMG), 1)
 		SIGN_ARGS += --encrypt ../../$(ENC_KEY_FILE).pem
+		SIGN_ARGS += --use-random-iv
 	endif
 	SIGN_ARGS += --pad
 	UPGRADE_SUFFIX :=_upgrade
