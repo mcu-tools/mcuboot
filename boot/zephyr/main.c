@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2012-2014 Wind River Systems, Inc.
  * Copyright (c) 2020 Arm Limited
+ * Copyright (c) 2021 Nordic Semiconductor ASA
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,11 +55,12 @@ const struct boot_uart_funcs boot_funcs = {
 /* CONFIG_LOG_MINIMAL is the legacy Kconfig property,
  * replaced by CONFIG_LOG_MODE_MINIMAL.
  */
-#define ZEPHYR_LOG_MODE_MINIMAL (defined(CONFIG_LOG_MODE_MINIMAL) ||\
-                                 defined(CONFIG_LOG_MINIMAL))
+#if (defined(CONFIG_LOG_MODE_MINIMAL) || defined(CONFIG_LOG_MINIMAL))
+#define ZEPHYR_LOG_MODE_MINIMAL 1
+#endif
 
 #if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) && \
-    !ZEPHYR_LOG_MODE_MINIMAL
+    !defined(ZEPHYR_LOG_MODE_MINIMAL)
 #ifdef CONFIG_LOG_PROCESS_THREAD
 #warning "The log internal thread for log processing can't transfer the log"\
          "well for MCUBoot."
@@ -104,6 +106,49 @@ static inline bool boot_skip_serial_recovery()
 #endif
 
 MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
+
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+/*
+ * Devicetree helper macro which gets the 'flags' cell from a 'gpios'
+ * property, or returns 0 if the property has no 'flags' cell.
+ */
+#define FLAGS_OR_ZERO(node)                        \
+  COND_CODE_1(DT_PHA_HAS_CELL(node, gpios, flags), \
+              (DT_GPIO_FLAGS(node, gpios)),        \
+              (0))
+
+/*
+ * The led0 devicetree alias is optional. If present, we'll use it
+ * to turn on the LED whenever the button is pressed.
+ */
+
+#define LED0_NODE DT_ALIAS(bootloader_led0)
+
+#if DT_NODE_HAS_STATUS(LED0_NODE, okay) && DT_NODE_HAS_PROP(LED0_NODE, gpios)
+#define LED0_GPIO_LABEL DT_GPIO_LABEL(LED0_NODE, gpios)
+#define LED0_GPIO_PIN DT_GPIO_PIN(LED0_NODE, gpios)
+#define LED0_GPIO_FLAGS (GPIO_OUTPUT | FLAGS_OR_ZERO(LED0_NODE))
+#else 
+/* A build error here means your board isn't set up to drive an LED. */
+#error "Unsupported board: led0 devicetree alias is not defined"
+#endif
+
+const static struct device *led;
+
+void led_init(void)
+{
+    
+  led = device_get_binding(LED0_GPIO_LABEL);
+  if (led == NULL) {
+    BOOT_LOG_ERR("Didn't find LED device %s\n", LED0_GPIO_LABEL);
+    return;
+  }
+
+  gpio_pin_configure(led, LED0_GPIO_PIN, LED0_GPIO_FLAGS);
+  gpio_pin_set(led, LED0_GPIO_PIN, 0);
+
+}
+#endif
 
 void os_heap_init(void);
 
@@ -265,7 +310,7 @@ static void do_boot(struct boot_rsp *rsp)
 #endif
 
 #if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) &&\
-    !defined(CONFIG_LOG_PROCESS_THREAD) && !ZEPHYR_LOG_MODE_MINIMAL
+    !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(ZEPHYR_LOG_MODE_MINIMAL)
 /* The log internal thread for log processing can't transfer log well as has too
  * low priority.
  * Dedicated thread for log processing below uses highest application
@@ -328,7 +373,16 @@ void main(void)
 
     MCUBOOT_WATCHDOG_FEED();
 
+#if !defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Starting bootloader");
+#else
+    BOOT_LOG_INF("Starting Direct-XIP bootloader");
+#endif
+
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+    /* LED init */
+    led_init();
+#endif
 
     os_heap_init();
 
@@ -382,12 +436,52 @@ void main(void)
     __ASSERT(rc >= 0, "Error of the reading the detect pin.\n");
     if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL &&
         !boot_skip_serial_recovery()) {
-        BOOT_LOG_INF("Enter the serial recovery mode");
-        rc = boot_console_init();
-        __ASSERT(rc == 0, "Error initializing boot console.\n");
-        boot_serial_start(&boot_funcs);
-        __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
-    }
+            
+#if CONFIG_BOOT_SERIAL_DETECT_DELAY > 0 
+        k_sleep(K_MSEC(50));
+
+        /* Get the uptime for debounce purposes. */
+        int64_t timestamp = k_uptime_get();
+
+        for(;;) {
+            
+#ifdef GPIO_INPUT
+            rc = gpio_pin_get_raw(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN);
+            detect_value = rc;
+#else
+            rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
+                            &detect_value);
+#endif
+            __ASSERT(rc >= 0, "Error of the reading the detect pin.\n");
+
+            /* Get delta from when this started */
+            uint32_t delta = k_uptime_get() -  timestamp;
+
+            /* If not pressed OR if pressed > debounce period stop loop*/
+            if( delta >= CONFIG_BOOT_SERIAL_DETECT_DELAY || 
+                detect_value != CONFIG_BOOT_SERIAL_DETECT_PIN_VAL ) {
+                    break;
+                }
+
+
+            /* Delay 1 ms */
+            k_sleep(K_MSEC(1));
+        }
+#endif 
+
+        /* Then run DFU */
+        if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) {
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+            gpio_pin_set(led, LED0_GPIO_PIN, 1);
+#endif
+            BOOT_LOG_INF("Enter the serial recovery mode");
+            rc = boot_console_init();
+            __ASSERT(rc == 0, "Error initializing boot console.\n");
+            boot_serial_start(&boot_funcs);
+            __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
+        
+        }
+}
 #endif
 
 #ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
@@ -410,7 +504,11 @@ void main(void)
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
                  rsp.br_image_off);
 
+#if defined(MCUBOOT_DIRECT_XIP)
+    BOOT_LOG_INF("Jumping to the image slot");
+#else
     BOOT_LOG_INF("Jumping to the first image slot");
+#endif
     ZEPHYR_BOOT_LOG_STOP();
     do_boot(&rsp);
 

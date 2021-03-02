@@ -30,10 +30,11 @@
 
 #ifdef MCUBOOT_SIGN_EC256
 /*TODO: remove this after cypress port mbedtls to abstract crypto api */
-#ifdef MCUBOOT_USE_CC310
+#if defined(MCUBOOT_USE_CC310) || defined(MCUBOOT_USE_MBED_TLS)
 #define NUM_ECC_BYTES (256 / 8)
 #endif
-#if defined (MCUBOOT_USE_TINYCRYPT) || defined (MCUBOOT_USE_CC310)
+#if defined(MCUBOOT_USE_TINYCRYPT) || defined(MCUBOOT_USE_CC310) || \
+    defined(MCUBOOT_USE_MBED_TLS)
 #include "bootutil/sign_key.h"
 
 #include "mbedtls/oid.h"
@@ -88,16 +89,11 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
     if (len != 2 * NUM_ECC_BYTES + 1) {
         return -8;
     }
-    /* Is uncompressed? */
-    if (*cp[0] != 0x04) {
-        return -9;
-    }
-
-    (*cp)++;
 
     return 0;
 }
 
+#ifndef MCUBOOT_ECDSA_NEED_ASN1_SIG
 /*
  * cp points to ASN1 string containing an integer.
  * Verify the tag, and that the length is 32 bytes.
@@ -149,6 +145,7 @@ bootutil_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp, uint8_t *
     }
     return 0;
 }
+#endif /* not MCUBOOT_ECDSA_NEED_ASN1_SIG */
 
 int
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
@@ -159,7 +156,9 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     uint8_t *pubkey;
     uint8_t *end;
 
+#ifndef MCUBOOT_ECDSA_NEED_ASN1_SIG
     uint8_t signature[2 * NUM_ECC_BYTES];
+#endif
 
     pubkey = (uint8_t *)bootutil_keys[key_id].key;
     end = pubkey + *bootutil_keys[key_id].len;
@@ -169,10 +168,12 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
         return -1;
     }
 
+#ifndef MCUBOOT_ECDSA_NEED_ASN1_SIG
     rc = bootutil_decode_sig(signature, sig, sig + slen);
     if (rc) {
         return -1;
     }
+#endif
 
     /*
      * This is simplified, as the hash length is also 32 bytes.
@@ -182,7 +183,12 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     }
 
     bootutil_ecdsa_p256_init(&ctx);
-    rc = bootutil_ecdsa_p256_verify(&ctx, pubkey, hash, signature);
+#ifdef MCUBOOT_ECDSA_NEED_ASN1_SIG
+    rc = bootutil_ecdsa_p256_verify(&ctx, pubkey, end - pubkey, hash, sig, slen);
+#else
+    rc = bootutil_ecdsa_p256_verify(&ctx, pubkey, end - pubkey, hash, signature,
+                                    2 * NUM_ECC_BYTES);
+#endif
     bootutil_ecdsa_p256_drop(&ctx);
     return rc;
 }

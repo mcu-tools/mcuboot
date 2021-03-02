@@ -30,10 +30,10 @@ fi
 
 cd scripts/
 
-last_release=$(pip3 show imgtool | grep "Version: " | cut -d" " -f2)
+last_release=$(pip show imgtool | grep "Version: " | cut -d" " -f2)
 repo_version=$(grep "imgtool_version = " imgtool/__init__.py | sed 's/^.* = "\(.*\)"/\1/g')
 
-python3 ../ci/compare_versions.py --old $last_release --new $repo_version
+python ../ci/compare_versions.py --old $last_release --new $repo_version
 rc=$?
 
 if [[ $rc -eq 0 ]]; then
@@ -48,6 +48,6 @@ elif [[ $rc -eq 3 ]]; then
 fi
 
 rm -rf $DIST_DIR
-python3 setup.py sdist bdist_wheel
+python setup.py sdist bdist_wheel
 
 twine upload --username __token__ --password "${TWINE_TOKEN}" "${DIST_DIR}/*"
