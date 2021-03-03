@@ -3,9 +3,9 @@
 - Table of Contents
 {:toc}
 
-## Version 1.7.2
+## Version 1.7.2-rc1
 
-The 1.7.2 release of MCUboot is a minor patch release.  It makes a few
+The 1.7.2-rc1 release of MCUboot is a minor patch release.  It makes a few
 changes to the CI build process, and changes the exporting of the
 function `boot_add_data_to_shared_area` so that it can be used within
 the TF-M-specific bootloader.
