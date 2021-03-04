@@ -24,6 +24,7 @@ import imgtool.keys as keys
 import sys
 from imgtool import image, imgtool_version
 from imgtool.version import decode_version
+import os
 from .keys import (
     RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError)
 
@@ -69,11 +70,14 @@ keygens = {
 }
 
 
-def load_key(keyfile):
+def load_key(keyfile, passphrase):
     # TODO: better handling of invalid pass-phrase
     key = keys.load(keyfile)
     if key is not None:
         return key
+    if passphrase is not None:
+        return keys.load(keyfile, passphrase.encode('utf-8'))
+
     passwd = getpass.getpass("Enter key passphrase: ").encode('utf-8')
     return keys.load(keyfile, passwd)
 
@@ -91,6 +95,25 @@ def get_password():
     return passwd.encode('utf-8')
 
 
+def get_password_option(ctx, param, value):
+    if value is not None:
+        sep = value.find(':')
+        if sep < 2 :
+            raise click.BadParameter("Pass format is invalid")
+
+        if value[0:sep] == 'pass':
+            return value[sep + 1:]
+        if value[0:sep] == 'env':
+            env_var = value[sep + 1:]
+            passwd = os.getenv(env_var)
+            if passwd is None:
+                raise click.BadParameter("Could not found env variable {}".format(env_var))
+            else:
+                return passwd
+        else:
+            raise click.BadParameter("Pass format is invalid")
+
+
 @click.option('-p', '--password', is_flag=True,
               help='Prompt for password to protect key')
 @click.option('-t', '--type', metavar='type', required=True,
@@ -98,7 +121,7 @@ def get_password():
               help='{}'.format('One of: {}'.format(', '.join(keygens.keys()))))
 @click.option('-k', '--key', metavar='filename', required=True)
 @click.command(help='Generate pub/private keypair')
-def keygen(type, key, password):
+def keygen(type, key, password, key_pass):
     password = get_password() if password else None
     keygens[type](key, password)
 
@@ -106,9 +129,13 @@ def keygen(type, key, password):
 @click.option('-l', '--lang', metavar='lang', default=valid_langs[0],
               type=click.Choice(valid_langs))
 @click.option('-k', '--key', metavar='filename', required=True)
+@click.option('--key-pass', required=False,
+              callback=get_password_option,
+              help='Provide passphrase'
+                   'Could be either pass:<plain_text_passphrase> or env:<environment variable>')
 @click.command(help='Dump public key from keypair')
-def getpub(key, lang):
-    key = load_key(key)
+def getpub(key, lang, key_pass):
+    key = load_key(key, key_pass)
     if key is None:
         print("Invalid passphrase")
     elif lang == 'c':
@@ -125,9 +152,13 @@ def getpub(key, lang):
                    'might require changes to the build config. Check the docs!'
               )
 @click.option('-k', '--key', metavar='filename', required=True)
+@click.option('--key-pass', required=False,
+              callback=get_password_option,
+              help='Provide passphrase'
+                   'Could be either pass:<plain_text_passphrase> or env:<environment variable>')
 @click.command(help='Dump private key from keypair')
-def getpriv(key, minimal):
-    key = load_key(key)
+def getpriv(key, minimal, key_pass):
+    key = load_key(key, key_pass)
     if key is None:
         print("Invalid passphrase")
     try:
@@ -139,9 +170,13 @@ def getpriv(key, minimal):
 
 @click.argument('imgfile')
 @click.option('-k', '--key', metavar='filename')
+@click.option('--key-pass', required=False,
+              callback=get_password_option,
+              help='Provide passphrase'
+                   'Could be either pass:<plain_text_passphrase> or env:<environment variable>')
 @click.command(help="Check that signed image can be verified by given key")
-def verify(key, imgfile):
-    key = load_key(key) if key else None
+def verify(key, imgfile, key_pass):
+    key = load_key(key, key_pass) if key else None
     ret, version, digest = image.Image.verify(imgfile, key)
     if ret == image.VerifyResult.OK:
         print("Image was correctly validated")
@@ -290,6 +325,10 @@ class BasedIntParamType(click.ParamType):
               default='hash', help='In what format to add the public key to '
               'the image manifest: full key or hash of the key.')
 @click.option('-k', '--key', metavar='filename')
+@click.option('--key-pass', required=False,
+              callback=get_password_option,
+              help='Provide passphrase'
+              'Could be either pass:<plain_text_passphrase> or env:<environment variable>')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
@@ -297,7 +336,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt, infile, outfile, dependencies, load_addr, hex_addr,
          erased_val, save_enctlv, security_counter, boot_record, custom_tlv,
-         rom_fixed):
+         rom_fixed, key_pass):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -311,7 +350,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                       erased_val=erased_val, save_enctlv=save_enctlv,
                       security_counter=security_counter)
     img.load(infile)
-    key = load_key(key) if key else None
+    key = load_key(key, key_pass) if key else None
     enckey = load_key(encrypt) if encrypt else None
     if enckey and key:
         if ((isinstance(key, keys.ECDSA256P1) and
