@@ -57,6 +57,7 @@ DEFINES_APP += -DMCUBOOT_MAX_IMG_SECTORS=$(MAX_IMG_SECTORS)
 ifeq ($(USE_CRYPTO_HW), 1)
 DEFINES_APP += -DMBEDTLS_USER_CONFIG_FILE="\"mcuboot_crypto_acc_config.h\""
 DEFINES_APP += -DCY_CRYPTO_HAL_DISABLE
+DEFINES_APP += -DCY_MBEDTLS_HW_ACCELERATION
 endif
 # Collect MCUBoot sourses
 SOURCES_MCUBOOT := $(wildcard $(CURDIR)/../bootutil/src/*.c)
