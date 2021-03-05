@@ -36,7 +36,6 @@
 
 /* Uncomment for ECDSA signatures using curve P-256. */
 #define MCUBOOT_SIGN_EC256
-#define NUM_ECC_BYTES (256 / 8) 	// P-256 curve size in bytes, rnok: to make compilable
 
 // #define MCUBOOT_SIGN_EC
 
