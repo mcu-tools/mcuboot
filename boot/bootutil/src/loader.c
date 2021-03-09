@@ -499,7 +499,9 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
 
     image_index = BOOT_CURR_IMG(state);
 
-#ifdef MCUBOOT_ENC_IMAGES
+/* In the case of ram loading the image has already been decrypted as it is
+ * decrypted when copied in ram */
+#if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_RAM_LOAD)
     if (MUST_DECRYPT(fap, image_index, hdr)) {
         rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs);
         if (rc < 0) {
@@ -2415,6 +2417,110 @@ boot_verify_ram_load_address(struct boot_loader_state *state,
     return 0;
 }
 
+#ifdef MCUBOOT_ENC_IMAGES
+
+/**
+ * Copies and decrypts an image from a slot in the flash to an SRAM address.
+ *
+ * @param  state    Boot loader status information.
+ * @param  slot     The flash slot of the image to be copied to SRAM.
+ * @param  hdr      The image header.
+ * @param  src_sz   Size of the image.
+ * @param  img_dst  Pointer to the address at which the image needs to be
+ *                  copied to SRAM.
+ *
+ * @return          0 on success; nonzero on failure.
+ */
+static int
+boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
+                                    uint32_t slot, struct image_header *hdr,
+                                    uint32_t src_sz, uint32_t img_dst)
+{
+    /* The flow for the decryption and copy of the image is as follows :
+     * 1. The whole image is copied to the RAM (header + payload + TLV).
+     * 2. The encryption key is loaded from the TLV in flash.
+     * 3. The image is then decrypted chunk by chunk in RAM (1 chunk
+     * is 1024 bytes). Only the payload section is decrypted.
+     * 4. The image is authenticated in RAM.
+     */
+    const struct flash_area *fap_src = NULL;
+    struct boot_status bs;
+    uint32_t blk_off;
+    uint32_t tlv_off;
+    uint32_t blk_sz;
+    uint32_t bytes_copied = hdr->ih_hdr_size;
+    uint32_t chunk_sz;
+    uint32_t max_sz = 1024;
+    uint16_t idx;
+    uint8_t image_index;
+    uint8_t * cur_dst;
+    int area_id;
+    int rc;
+    uint8_t * ram_dst = (void *)(IMAGE_RAM_BASE + img_dst);
+
+    image_index = BOOT_CURR_IMG(state);
+    area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
+    rc = flash_area_open(area_id, &fap_src);
+    if (rc != 0){
+        return BOOT_EFLASH;
+    }
+
+    tlv_off = BOOT_TLV_OFF(hdr);
+
+    /* Copying the whole image in RAM */
+    rc = flash_area_read(fap_src, 0, ram_dst, src_sz);
+    if (rc != 0) {
+        goto done;
+    }
+
+    rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap_src, &bs);
+    if (rc < 0) {
+        goto done;
+    }
+
+    /* if rc > 0 then the key has already been loaded */
+    if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), slot, &bs)) {
+        goto done;
+    }
+
+    /* Starting at the end of the header as the header section is not encrypted */
+    while (bytes_copied < tlv_off) { /* TLV section copied previously */
+        if (src_sz - bytes_copied > max_sz) {
+            chunk_sz = max_sz;
+        } else {
+            chunk_sz = src_sz - bytes_copied;
+        }
+
+        cur_dst = ram_dst + bytes_copied;
+        blk_sz = chunk_sz;
+        idx = 0;
+        if (bytes_copied + chunk_sz > tlv_off) {
+            /* Going over TLV section
+             * Part of the chunk is encrypted payload */
+            blk_off = ((bytes_copied) - hdr->ih_hdr_size) & 0xf;
+            blk_sz = tlv_off - (bytes_copied);
+            boot_encrypt(BOOT_CURR_ENC(state), image_index, fap_src,
+                (bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
+                blk_off, cur_dst);
+        } else {
+            /* Image encrypted payload section */
+            blk_off = ((bytes_copied) - hdr->ih_hdr_size) & 0xf;
+            boot_encrypt(BOOT_CURR_ENC(state), image_index, fap_src,
+                    (bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
+                    blk_off, cur_dst);
+        }
+
+        bytes_copied += chunk_sz;
+    }
+    rc = 0;
+
+done:
+    flash_area_close(fap_src);
+
+    return rc;
+}
+
+#endif /* MCUBOOT_ENC_IMAGES */
 /**
  * Copies a slot of the current image into SRAM.
  *
@@ -2575,11 +2681,19 @@ boot_load_image_to_sram(struct boot_loader_state *state,
             return rc;
         }
 #endif
-
+#ifdef MCUBOOT_ENC_IMAGES
+        /* decrypt image if encrypted and copy it to RAM */
+        if (IS_ENCRYPTED(hdr)) {
+            rc = boot_decrypt_and_copy_image_to_sram(state, active_slot, hdr, img_sz, img_dst);
+        } else {
+            rc = boot_copy_image_to_sram(state, active_slot, img_dst, img_sz);
+        }
+#else
         /* Copy image to the load address from where it currently resides in
          * flash.
          */
         rc = boot_copy_image_to_sram(state, active_slot, img_dst, img_sz);
+#endif
         if (rc != 0) {
             BOOT_LOG_INF("RAM loading to 0x%x is failed.", img_dst);
         } else {
