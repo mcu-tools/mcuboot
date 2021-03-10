@@ -63,7 +63,7 @@ pub fn rsa_oaep_encrypt(pubkey: &[u8], seckey: &[u8]) -> Result<[u8; 256], &'sta
                                   encbuf.as_mut_ptr()) == 0 {
             return Ok(encbuf);
         }
-        return Err("Failed to encrypt buffer");
+        Err("Failed to encrypt buffer")
     }
 }
 
@@ -73,7 +73,7 @@ pub fn kw_encrypt(kek: &[u8], seckey: &[u8]) -> Result<[u8; 24], &'static str> {
         if raw::kw_encrypt_(kek.as_ptr(), seckey.as_ptr(), encbuf.as_mut_ptr()) == 0 {
             return Ok(encbuf);
         }
-        return Err("Failed to encrypt buffer");
+        Err("Failed to encrypt buffer")
     }
 }
 
