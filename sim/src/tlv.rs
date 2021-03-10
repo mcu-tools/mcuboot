@@ -591,9 +591,8 @@ impl ManifestGen for TlvGen {
     fn generate_enc_key(&mut self) {
         let rng = rand::SystemRandom::new();
         let mut buf = vec![0u8; AES_KEY_LEN];
-        match rng.fill(&mut buf) {
-            Err(_) => panic!("Error generating encrypted key"),
-            Ok(_) => (),
+        if rng.fill(&mut buf).is_err() {
+            panic!("Error generating encrypted key");
         }
         info!("New encryption key: {:02x?}", buf);
         self.enc_key = buf;
