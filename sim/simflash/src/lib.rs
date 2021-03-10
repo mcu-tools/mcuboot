@@ -107,11 +107,11 @@ impl SimFlash {
         SimFlash {
             data: vec![erased_val; total],
             write_safe: vec![true; total],
-            sectors: sectors,
+            sectors,
             bad_region: Vec::new(),
-            align: align,
+            align,
             verify_writes: true,
-            erased_val: erased_val,
+            erased_val,
         }
     }
 
@@ -295,9 +295,9 @@ impl<'a> Iterator for SectorIter<'a> {
                 let base = self.base;
                 self.base += size;
                 Some(Sector {
-                    num: num,
-                    base: base,
-                    size: size,
+                    num,
+                    base,
+                    size,
                 })
             }
         }

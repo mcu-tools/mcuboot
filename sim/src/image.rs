@@ -149,9 +149,9 @@ impl ImagesBuilder {
         }
 
         Ok(ImagesBuilder {
-            flash: flash,
-            areadesc: areadesc,
-            slots: slots,
+            flash,
+            areadesc,
+            slots,
         })
     }
 
@@ -186,15 +186,15 @@ impl ImagesBuilder {
                 _ => install_image(&mut flash, &slots[1], 46928, &*dep, false)
             };
             OneImage {
-                slots: slots,
-                primaries: primaries,
-                upgrades: upgrades,
+                slots,
+                primaries,
+                upgrades,
             }}).collect();
         install_ptable(&mut flash, &self.areadesc);
         Images {
-            flash: flash,
+            flash,
             areadesc: self.areadesc,
-            images: images,
+            images,
             total_count: None,
         }
     }
@@ -227,14 +227,14 @@ impl ImagesBuilder {
             let primaries = install_image(&mut bad_flash, &slots[0], 32784, &dep, false);
             let upgrades = install_image(&mut bad_flash, &slots[1], 41928, &dep, true);
             OneImage {
-                slots: slots,
-                primaries: primaries,
-                upgrades: upgrades,
+                slots,
+                primaries,
+                upgrades,
             }}).collect();
         Images {
             flash: bad_flash,
             areadesc: self.areadesc,
-            images: images,
+            images,
             total_count: None,
         }
     }
@@ -246,14 +246,14 @@ impl ImagesBuilder {
             let primaries = install_image(&mut flash, &slots[0], 32784, &dep, false);
             let upgrades = install_no_image();
             OneImage {
-                slots: slots,
-                primaries: primaries,
-                upgrades: upgrades,
+                slots,
+                primaries,
+                upgrades,
             }}).collect();
         Images {
-            flash: flash,
+            flash,
             areadesc: self.areadesc,
-            images: images,
+            images,
             total_count: None,
         }
     }
@@ -265,14 +265,14 @@ impl ImagesBuilder {
             let primaries = install_no_image();
             let upgrades = install_image(&mut flash, &slots[1], 32784, &dep, false);
             OneImage {
-                slots: slots,
-                primaries: primaries,
-                upgrades: upgrades,
+                slots,
+                primaries,
+                upgrades,
             }}).collect();
         Images {
-            flash: flash,
+            flash,
             areadesc: self.areadesc,
-            images: images,
+            images,
             total_count: None,
         }
     }

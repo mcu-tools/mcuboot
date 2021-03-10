@@ -267,7 +267,7 @@ impl ManifestGen for TlvGen {
 
     fn add_dependency(&mut self, id: u8, version: &ImageVersion) {
         self.dependencies.push(Dependency {
-            id: id,
+            id,
             version: version.clone(),
         });
     }
