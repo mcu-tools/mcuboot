@@ -46,6 +46,16 @@ impl FlashContext {
     }
 }
 
+impl Default for FlashContext {
+    fn default() -> FlashContext {
+        FlashContext {
+            flash_map: HashMap::new(),
+            flash_params: HashMap::new(),
+            flash_areas: CAreaDescPtr{ptr: ptr::null()},
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Default)]
 pub struct CSimContext {
@@ -65,6 +75,14 @@ pub struct CSimContextPtr {
 
 impl CSimContextPtr {
     pub fn new() -> CSimContextPtr {
+        CSimContextPtr {
+            ptr: ptr::null(),
+        }
+    }
+}
+
+impl Default for CSimContextPtr {
+    fn default() -> CSimContextPtr {
         CSimContextPtr {
             ptr: ptr::null(),
         }

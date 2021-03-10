@@ -169,6 +169,7 @@ pub fn main() {
     }
 }
 
+#[derive(Default)]
 pub struct RunStatus {
     failures: usize,
     passes: usize,
