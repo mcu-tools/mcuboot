@@ -33,7 +33,7 @@ pub use crate::{
     },
 };
 
-const USAGE: &'static str = "
+const USAGE: &str = "
 Mcuboot simulator
 
 Usage:
@@ -67,7 +67,7 @@ pub enum DeviceName {
     Nrf52840UnequalSlots,
 }
 
-pub static ALL_DEVICES: &'static [DeviceName] = &[
+pub static ALL_DEVICES: &[DeviceName] = &[
     DeviceName::Stm32f4,
     DeviceName::K64f,
     DeviceName::K64fBig,
