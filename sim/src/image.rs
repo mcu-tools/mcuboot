@@ -1704,7 +1704,7 @@ fn splat(data: &mut [u8], seed: usize) {
 
 /// Return a read-only view into the raw bytes of this object
 trait AsRaw : Sized {
-    fn as_raw<'a>(&'a self) -> &'a [u8] {
+    fn as_raw(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self as *const _ as *const u8,
                                        mem::size_of::<Self>()) }
     }
