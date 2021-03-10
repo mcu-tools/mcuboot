@@ -1564,11 +1564,14 @@ fn install_ptable(flash: &mut SimMultiFlash, areadesc: &AreaDesc) {
         // aren't marked as the BootLoader partition, avoid adding the
         // partition table.  This makes it harder to view the image, but
         // avoids messing up images already written.
-        if areadesc.iter_areas().any(|area| {
-            area.device_id == id &&
-                area.off == 0 &&
-                area.flash_id != FlashId::BootLoader
-        }) {
+        let skip_ptable = areadesc
+            .iter_areas()
+            .any(|area| {
+                area.device_id == id &&
+                    area.off == 0 &&
+                    area.flash_id != FlashId::BootLoader
+            });
+        if skip_ptable {
             if log_enabled!(Info) {
                 let special: Vec<FlashId> = areadesc.iter_areas()
                     .filter(|area| area.device_id == id && area.off == 0)
