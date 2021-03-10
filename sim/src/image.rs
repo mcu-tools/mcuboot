@@ -1130,7 +1130,7 @@ impl Images {
         let mut rng = rand::thread_rng();
         let mut resets = vec![0i32; count];
         let mut remaining_ops = total_ops;
-        for i in 0 .. count {
+        for reset in &mut resets {
             let reset_counter = rng.gen_range(1, remaining_ops / 2);
             let mut counter = reset_counter;
             match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false) {
@@ -1138,7 +1138,7 @@ impl Images {
                 (x, _) => panic!("Unknown return: {}", x),
             }
             remaining_ops -= reset_counter;
-            resets[i] = reset_counter;
+            *reset = reset_counter;
         }
 
         match c::boot_go(&mut flash, &self.areadesc, None, false) {
