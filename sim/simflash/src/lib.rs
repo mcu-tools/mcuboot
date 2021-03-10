@@ -230,7 +230,7 @@ impl Flash for SimFlash {
     /// Adds a new flash bad region. Writes to this area fail with a chance
     /// given by `rate`.
     fn add_bad_region(&mut self, offset: usize, len: usize, rate: f32) -> Result<()> {
-        if rate < 0.0 || rate > 1.0 {
+        if !(0.0..=1.0).contains(&rate) {
             bail!(ebounds("Invalid rate"));
         }
 
