@@ -30,7 +30,9 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
         raw::invoke_boot_go(&mut sim_ctx as *mut _, &areadesc.get_c() as *const _) as i32
     };
     let asserts = sim_ctx.c_asserts;
-    counter.map(|c| *c = sim_ctx.flash_counter);
+    if let Some(c) = counter {
+        *c = sim_ctx.flash_counter;
+    }
     for &dev_id in multiflash.keys() {
         api::clear_flash(dev_id);
     }
