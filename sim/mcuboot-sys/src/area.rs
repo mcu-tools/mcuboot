@@ -11,7 +11,7 @@ use std::ptr;
 use std::collections::HashMap;
 
 /// Structure to build up the boot area table.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AreaDesc {
     areas: Vec<Vec<FlashArea>>,
     whole: Vec<FlashArea>,
