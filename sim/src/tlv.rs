@@ -17,8 +17,6 @@ use byteorder::{
     LittleEndian, WriteBytesExt,
 };
 use crate::image::ImageVersion;
-use pem;
-use base64;
 use log::info;
 use ring::{digest, rand, agreement, hkdf, hmac};
 use ring::rand::SecureRandom;
