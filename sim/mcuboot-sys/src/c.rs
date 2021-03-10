@@ -82,7 +82,6 @@ pub fn kw_encrypt(kek: &[u8], seckey: &[u8]) -> Result<[u8; 24], &'static str> {
 mod raw {
     use crate::area::CAreaDesc;
     use crate::api::CSimContext;
-    use libc;
 
     extern "C" {
         // This generates a warning about `CAreaDesc` not being foreign safe.  There doesn't appear to

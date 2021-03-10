@@ -11,7 +11,6 @@
 //! function, which should be called at the beginning of each test, will setup logging for all of
 //! the tests.
 
-use env_logger;
 use std::sync::Once;
 
 static INIT: Once = Once::new();
