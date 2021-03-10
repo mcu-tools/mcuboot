@@ -1514,7 +1514,7 @@ fn verify_trailer(flash: &SimMultiFlash, slot: &SlotInfo,
                 true
             } else if v == 3 {
                 let expected = [erased_val; 16];
-                if &copy[24..] != expected {
+                if copy[24..] != expected {
                     warn!("\"magic\" mismatch at {:#x}", offset);
                     true
                 } else {
