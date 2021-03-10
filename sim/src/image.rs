@@ -1239,7 +1239,7 @@ fn show_flash(flash: &dyn Flash) {
         println!("    {:3}: 0x{:08x}, 0x{:08x}",
                  sector.num, sector.base, sector.size);
     }
-    println!("");
+    println!();
 }
 
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
