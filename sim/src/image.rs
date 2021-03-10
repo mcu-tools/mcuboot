@@ -207,8 +207,8 @@ impl ImagesBuilder {
 
         // upgrades without fails, counts number of flash operations
         let total_count = match images.run_basic_upgrade(permanent) {
-            Ok(v)  => v,
-            Err(_) =>
+            Some(v)  => v,
+            None =>
                 if deps.upgrades.iter().any(|u| *u == UpgradeInfo::Held) {
                     0
                 } else {
@@ -405,16 +405,17 @@ impl Images {
     /// A simple upgrade without forced failures.
     ///
     /// Returns the number of flash operations which can later be used to
-    /// inject failures at chosen steps.
-    pub fn run_basic_upgrade(&self, permanent: bool) -> Result<i32, ()> {
+    /// inject failures at chosen steps.  Returns None if it was unable to
+    /// count the operations in a basic upgrade.
+    pub fn run_basic_upgrade(&self, permanent: bool) -> Option<i32> {
         let (flash, total_count) = self.try_upgrade(None, permanent);
         info!("Total flash operation count={}", total_count);
 
         if !self.verify_images(&flash, 0, 1) {
             warn!("Image mismatch after first boot");
-            Err(())
+            None
         } else {
-            Ok(total_count)
+            Some(total_count)
         }
     }
 
