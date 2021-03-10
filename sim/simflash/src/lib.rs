@@ -138,7 +138,7 @@ impl SimFlash {
             }
             offset -= size;
         }
-        return None;
+        None
     }
 
 }
