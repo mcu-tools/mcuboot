@@ -13,10 +13,8 @@ use crate::api;
 /// Invoke the bootloader on this flash device.
 pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
                counter: Option<&mut i32>, catch_asserts: bool) -> (i32, u8) {
-    unsafe {
-        for (&dev_id, flash) in multiflash.iter_mut() {
-            api::set_flash(dev_id, flash);
-        }
+    for (&dev_id, flash) in multiflash.iter_mut() {
+        api::set_flash(dev_id, flash);
     }
     let mut sim_ctx = api::CSimContext {
         flash_counter: match counter {
@@ -33,11 +31,9 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
     };
     let asserts = sim_ctx.c_asserts;
     counter.map(|c| *c = sim_ctx.flash_counter);
-    unsafe {
-        for (&dev_id, _) in multiflash {
-            api::clear_flash(dev_id);
-        }
-    };
+    for &dev_id in multiflash.keys() {
+        api::clear_flash(dev_id);
+    }
     (result, asserts)
 }
 
