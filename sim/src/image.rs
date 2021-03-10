@@ -512,12 +512,10 @@ impl Images {
                 fails += 1;
             }
 
-            if self.is_swap_upgrade() {
-                if !self.verify_images(&flash, 1, 0) {
-                    warn!("Secondary slot FAIL at step {} of {}",
-                          i, total_flash_ops);
-                    fails += 1;
-                }
+            if self.is_swap_upgrade() && !self.verify_images(&flash, 1, 0) {
+                warn!("Secondary slot FAIL at step {} of {}",
+                    i, total_flash_ops);
+                fails += 1;
             }
         }
 
