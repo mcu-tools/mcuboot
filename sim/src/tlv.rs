@@ -291,9 +291,8 @@ impl ManifestGen for TlvGen {
 
                 // The dependency.
                 protected_tlv.push(dep.id);
-                for _ in 0 .. 3 {
-                    protected_tlv.push(0);
-                }
+                protected_tlv.push(0);
+                protected_tlv.write_u16::<LittleEndian>(0).unwrap();
                 protected_tlv.push(dep.version.major);
                 protected_tlv.push(dep.version.minor);
                 protected_tlv.write_u16::<LittleEndian>(dep.version.revision).unwrap();
