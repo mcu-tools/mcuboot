@@ -130,7 +130,7 @@ impl AreaDesc {
         assert_eq!(self.areas.len(), self.whole.len());
 
         for (i, area) in self.areas.iter().enumerate() {
-            if area.len() > 0 {
+            if !area.is_empty() {
                 areas.slots[i].areas = &area[0];
                 areas.slots[i].whole = self.whole[i].clone();
                 areas.slots[i].num_areas = area.len() as u32;
