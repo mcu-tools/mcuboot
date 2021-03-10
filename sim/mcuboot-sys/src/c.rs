@@ -8,7 +8,6 @@
 
 use crate::area::AreaDesc;
 use simflash::SimMultiFlash;
-use libc;
 use crate::api;
 
 /// Invoke the bootloader on this flash device.
