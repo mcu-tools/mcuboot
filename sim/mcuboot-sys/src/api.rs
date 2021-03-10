@@ -6,7 +6,6 @@
 //! HAL api for MyNewt applications
 
 use crate::area::CAreaDesc;
-use libc;
 use log::{Level, log_enabled, warn};
 use simflash::{Result, Flash, FlashPtr};
 use std::{
