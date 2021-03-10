@@ -229,4 +229,3 @@ impl RunStatus {
         self.failures
     }
 }
-
