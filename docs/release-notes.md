@@ -3,7 +3,7 @@
 - Table of Contents
 {:toc}
 
-## Version 1.7.2-rc1
+## Version 1.7.2-rc2
 
 The 1.7.2-rc1 release of MCUboot is a minor patch release.  It makes a few
 changes to the CI build process, and changes the exporting of the
