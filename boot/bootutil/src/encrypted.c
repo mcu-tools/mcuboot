@@ -306,15 +306,16 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
  * @param ikm_len   Length of the input data.
  * @param info      An information tag.
  * @param info_len  Length of the information tag.
+ * @param salt      An salt tag.
+ * @param salt_len  Length of the salt tag.
  * @param okm       Output of the KDF computation.
  * @param okm_len   On input the requested length; on output the generated length
  */
 static int
-hkdf(uint8_t *ikm, uint16_t ikm_len, uint8_t *info, uint16_t info_len,
-        uint8_t *okm, uint16_t *okm_len)
+hkdf(const uint8_t *ikm, uint16_t ikm_len, const uint8_t *info, uint16_t info_len,
+        const uint8_t *salt, uint16_t salt_len, uint8_t *okm, uint16_t *okm_len)
 {
     bootutil_hmac_sha256_context hmac;
-    uint8_t salt[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t prk[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t T[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint16_t off;
@@ -333,8 +334,7 @@ hkdf(uint8_t *ikm, uint16_t ikm_len, uint8_t *info, uint16_t info_len,
 
     bootutil_hmac_sha256_init(&hmac);
 
-    memset(salt, 0, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
-    rc = bootutil_hmac_sha256_set_key(&hmac, salt, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
+    rc = bootutil_hmac_sha256_set_key(&hmac, salt, salt_len);
     if (rc != 0) {
         goto error;
     }
@@ -445,7 +445,8 @@ boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
 #elif defined(MCUBOOT_ENCRYPT_KW)
 #    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_KW
 #elif defined(MCUBOOT_ENCRYPT_EC256)
-#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_EC256
+#    define EXPECTED_ENC_TLV     IMAGE_TLV_ENC_EC256
+#    define EXPECTED_ENC_EXT_LEN (EXPECTED_ENC_LEN + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE)
 #    define EC_PUBK_INDEX       (0)
 #    define EC_TAG_INDEX        (65)
 #    define EC_CIPHERKEY_INDEX  (65 + 32)
@@ -458,6 +459,10 @@ _Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
 #    define EC_CIPHERKEY_INDEX  (32 + 32)
 _Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
         "Please fix ECIES-X25519 component indexes");
+#endif
+
+#ifndef EXPECTED_ENC_EXT_LEN
+#define EXPECTED_ENC_EXT_LEN        EXPECTED_ENC_LEN
 #endif
 
 #if defined(MCUBOOT_ENCRYPT_RSA) || \
@@ -485,7 +490,7 @@ static int fake_rng(void *p_rng, unsigned char *output, size_t len)
  * @param enckey An AES-128 or AES-256 key sized buffer to store to plain key.
  */
 int
-boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
+boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey, uint32_t sz, uint8_t *enciv)
 {
 #if defined(MCUBOOT_ENCRYPT_RSA)
     mbedtls_rsa_context rsa;
@@ -502,14 +507,24 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
 #if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
     bootutil_hmac_sha256_context hmac;
     bootutil_aes_ctr_context aes_ctr;
+    uint8_t salt[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t tag[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t shared[SHARED_KEY_LEN];
-    uint8_t derived_key[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+    uint8_t derived_key[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE + 
+                        BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE + 
+                        BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE * 2];
     uint8_t *cp;
     uint8_t *cpend;
     uint8_t private_key[PRIV_KEY_LEN];
     uint8_t counter[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE];
     uint16_t len;
+    uint16_t out_len;
+    const uint8_t *my_salt = salt;
+    uint8_t *my_key_iv = counter;
+    uint8_t *my_counter = counter;
+#else
+    (void)sz;
+    (void)enciv;
 #endif
     int rc = -1;
 
@@ -567,6 +582,7 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
     bootutil_ecdh_p256_init(&ecdh_p256);
 
     rc = bootutil_ecdh_p256_shared_secret(&ecdh_p256, &buf[EC_PUBK_INDEX], private_key, shared);
+
     bootutil_ecdh_p256_drop(&ecdh_p256);
     if (rc != 0) {
         return -1;
@@ -608,10 +624,31 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
      * Expand shared secret to create keys for AES-128-CTR + HMAC-SHA256
      */
 
+    /* Prepare for default encryption scheme with zero salt and AES IVs */
+    memset(counter, 0, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
+    memset(salt, 0, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
+
     len = BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
-    rc = hkdf(shared, SHARED_KEY_LEN, (uint8_t *)"MCUBoot_ECIES_v1", 16,
-            derived_key, &len);
-    if (rc != 0 || len != (BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE)) {
+
+    if (sz > EXPECTED_ENC_LEN) {
+        /* Use new enhanced encryption scheme with randomly generated salt and AES IVs */
+        len += BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE * 2;
+
+        my_salt = &buf[EXPECTED_ENC_LEN];
+
+        my_key_iv = &derived_key[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE +
+                                 BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+
+        my_counter = &derived_key[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE +
+                                  BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE +
+                                  BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE];
+    }
+
+    out_len = len;
+    rc = hkdf(shared, SHARED_KEY_LEN, (uint8_t *)"MCUBoot_ECIES_v1", BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE,
+              my_salt, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE, derived_key, &out_len);
+
+    if (rc != 0 || len != out_len) {
         return -1;
     }
 
@@ -640,22 +677,20 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    if (bootutil_constant_time_compare(tag, &buf[EC_TAG_INDEX], 32) != 0) {
+    if (bootutil_constant_time_compare(tag, &buf[EC_TAG_INDEX], BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE) != 0) {
         (void)bootutil_hmac_sha256_drop(&hmac);
         return -1;
     }
 
     bootutil_hmac_sha256_drop(&hmac);
 
+    (void)memcpy(enciv, my_counter, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
+
     /*
      * Finally decrypt the received ciphered key
      */
 
     bootutil_aes_ctr_init(&aes_ctr);
-    if (rc != 0) {
-        bootutil_aes_ctr_drop(&aes_ctr);
-        return -1;
-    }
 
     rc = bootutil_aes_ctr_set_key(&aes_ctr, derived_key);
     if (rc != 0) {
@@ -663,8 +698,8 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    memset(counter, 0, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
-    rc = bootutil_aes_ctr_decrypt(&aes_ctr, counter, &buf[EC_CIPHERKEY_INDEX], BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE, 0, enckey);
+    rc = bootutil_aes_ctr_decrypt(&aes_ctr, my_key_iv, &buf[EC_CIPHERKEY_INDEX],
+                                  BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE, 0, enckey);
     if (rc != 0) {
         bootutil_aes_ctr_drop(&aes_ctr);
         return -1;
@@ -693,7 +728,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
 #if MCUBOOT_SWAP_SAVE_ENCTLV
     uint8_t *buf;
 #else
-    uint8_t buf[EXPECTED_ENC_LEN];
+    uint8_t buf[EXPECTED_ENC_EXT_LEN];
 #endif
     uint8_t slot;
     int rc;
@@ -722,7 +757,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
         return rc;
     }
 
-    if (len != EXPECTED_ENC_LEN) {
+    if ((len < EXPECTED_ENC_LEN) || (len > EXPECTED_ENC_EXT_LEN)) {
         return -1;
     }
 
@@ -731,12 +766,12 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
     memset(buf, 0xff, BOOT_ENC_TLV_ALIGN_SIZE);
 #endif
 
-    rc = flash_area_read(fap, off, buf, EXPECTED_ENC_LEN);
+    rc = flash_area_read(fap, off, buf, len);
     if (rc) {
         return -1;
     }
 
-    return boot_enc_decrypt(buf, bs->enckey[slot]);
+    return (boot_enc_decrypt(buf, bs->enckey[slot], len, enc_state[slot].aes_iv));
 }
 
 bool
@@ -761,7 +796,7 @@ boot_encrypt(struct enc_key_data *enc_state, int image_index,
         uint32_t blk_off, uint8_t *buf)
 {
     struct enc_key_data *enc;
-    uint8_t nonce[16];
+    uint8_t *nonce;
     int rc;
 
     /* boot_copy_region will call boot_encrypt with sz = 0 when skipping over
@@ -769,13 +804,6 @@ boot_encrypt(struct enc_key_data *enc_state, int image_index,
     if (sz == 0) {
        return;
     }
-
-    memset(nonce, 0, 12);
-    off >>= 4;
-    nonce[12] = (uint8_t)(off >> 24);
-    nonce[13] = (uint8_t)(off >> 16);
-    nonce[14] = (uint8_t)(off >> 8);
-    nonce[15] = (uint8_t)off;
 
     rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
     if (rc < 0) {
@@ -785,6 +813,15 @@ boot_encrypt(struct enc_key_data *enc_state, int image_index,
 
     enc = &enc_state[rc];
     assert(enc->valid == 1);
+
+    nonce = enc->aes_iv;
+
+    off >>= 4;
+    nonce[12] = (uint8_t)(off >> 24);
+    nonce[13] = (uint8_t)(off >> 16);
+    nonce[14] = (uint8_t)(off >> 8);
+    nonce[15] = (uint8_t)off;
+
     bootutil_aes_ctr_encrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf);
 }
 

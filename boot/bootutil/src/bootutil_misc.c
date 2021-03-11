@@ -272,6 +272,8 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
     if (rc == 0) {
         off = boot_enc_key_off(fap, slot);
 #if MCUBOOT_SWAP_SAVE_ENCTLV
+        uint8_t aes_iv[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE];
+
         rc = flash_area_read(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
         if (rc == 0) {
             for (i = 0; i < BOOT_ENC_TLV_ALIGN_SIZE; i++) {
@@ -281,7 +283,7 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
             }
             /* Only try to decrypt non-erased TLV metadata */
             if (i != BOOT_ENC_TLV_ALIGN_SIZE) {
-                rc = boot_enc_decrypt(bs->enctlv[slot], bs->enckey[slot]);
+                rc = boot_enc_decrypt(bs->enctlv[slot], bs->enckey[slot], 0, aes_iv);
             }
         }
 #else
