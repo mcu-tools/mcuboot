@@ -30,6 +30,8 @@ sig-ed25519 = []
 # Overwrite only upgrade
 overwrite-only = []
 
+swap-status = []
+
 swap-move = []
 
 # Disable validation of the primary slot

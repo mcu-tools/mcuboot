@@ -25,15 +25,16 @@
  */
  /*******************************************************************************/
 
-#ifndef __FLASH_MAP_BACKEND_H__
-#define __FLASH_MAP_BACKEND_H__
+#ifndef FLASH_MAP_BACKEND_H
+#define FLASH_MAP_BACKEND_H
 
 #include <mcuboot_config/mcuboot_config.h>
 #include "cy_flash.h"
-#define FLASH_DEVICE_INDEX_MASK                 (0x7F)
+#define FLASH_DEVICE_INDEX_MASK                 (0x7Fu)
 #define FLASH_DEVICE_GET_EXT_INDEX(n)           ((n) & FLASH_DEVICE_INDEX_MASK)
-#define FLASH_DEVICE_EXTERNAL_FLAG              (0x80)
-#define FLASH_DEVICE_INTERNAL_FLASH             (0x7F)
+#define FLASH_DEVICE_UNDEFINED                  (0x00u)
+#define FLASH_DEVICE_EXTERNAL_FLAG              (0x80u)
+#define FLASH_DEVICE_INTERNAL_FLASH             (0x7Fu)
 #define FLASH_DEVICE_EXTERNAL_FLASH(index)      (FLASH_DEVICE_EXTERNAL_FLAG | index)
 
 #ifndef CY_BOOT_EXTERNAL_DEVICE_INDEX
@@ -126,20 +127,22 @@ struct flash_map_entry {
 int flash_device_base(uint8_t fd_id, uintptr_t *ret);
 
 /*< Opens the area for use. id is one of the `fa_id`s */
-int flash_area_open(uint8_t id, const struct flash_area **);
+int flash_area_open(uint8_t id, const struct flash_area **fa);
 void flash_area_close(const struct flash_area *);
 /*< Reads `len` bytes of flash memory at `off` to the buffer at `dst` */
-int flash_area_read(const struct flash_area *, uint32_t off, void *dst,
+int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
                      uint32_t len);
 /*< Writes `len` bytes of flash memory at `off` from the buffer at `src` */
-int flash_area_write(const struct flash_area *, uint32_t off,
+int flash_area_write(const struct flash_area *fa, uint32_t off,
                      const void *src, uint32_t len);
 /*< Erases `len` bytes of flash memory at `off` */
-int flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
+int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len);
+/*< Erases aligned row of flash, where passed address resided */
+int flash_erase_row(uint32_t address);
 /*< Returns this `flash_area`s alignment */
-size_t flash_area_align(const struct flash_area *);
+size_t flash_area_align(const struct flash_area *fa);
 /*< Initializes an array of flash_area elements for the slot's sectors */
-int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret);
+int flash_area_to_sectors(int idx, int *cnt, struct flash_area *fa);
 /*< Returns the `fa_id` for slot, where slot is 0 (primary) or 1 (secondary) */
 int flash_area_id_from_image_slot(int slot);
 /*< Returns the slot, for the `fa_id` supplied */
@@ -154,7 +157,7 @@ int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret);
  * Returns the value expected to be read when accesing any erased
  * flash byte.
  */
-uint8_t flash_area_erased_val(const struct flash_area *fap);
+uint8_t flash_area_erased_val(const struct flash_area *fa);
 
 /*
  * Reads len bytes from off, and checks if the read data is erased.
@@ -164,4 +167,4 @@ uint8_t flash_area_erased_val(const struct flash_area *fap);
 int flash_area_read_is_empty(const struct flash_area *fa, uint32_t off,
         void *dst, uint32_t len);
 
-#endif /* __FLASH_MAP_BACKEND_H__ */
+#endif /* FLASH_MAP_BACKEND_H */

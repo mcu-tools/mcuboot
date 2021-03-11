@@ -279,8 +279,10 @@ impl ImagesBuilder {
 
     /// Build the Flash and area descriptor for a given device.
     pub fn make_device(device: DeviceName, align: usize, erased_val: u8) -> (SimMultiFlash, AreaDesc, &'static [Caps]) {
+        info!(" +++ Make new device...");
         match device {
             DeviceName::Stm32f4 => {
+                info!("DeviceName::Stm32f4");
                 // STM style flash.  Large sectors, with a large scratch area.
                 let dev = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
                                         64 * 1024,
@@ -295,9 +297,10 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                (flash, areadesc, &[Caps::SwapUsingMove, Caps::SwapUsingStatus])
             }
             DeviceName::K64f => {
+                info!("DeviceName::K64f");
                 // NXP style flash.  Small sectors, one small sector for scratch.
                 let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
 
@@ -310,9 +313,10 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                (flash, areadesc, &[Caps::SwapUsingStatus])
             }
             DeviceName::K64fBig => {
+                info!("DeviceName::K64fBig");
                 // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
                 // uses small sectors, but we tell the bootloader they are large.
                 let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
@@ -326,9 +330,10 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                (flash, areadesc, &[Caps::SwapUsingMove, Caps::SwapUsingStatus])
             }
             DeviceName::Nrf52840 => {
+                info!("DeviceName::Nrf52840");
                 // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
                 // does not divide into the image size.
                 let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
@@ -342,9 +347,10 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                (flash, areadesc, &[Caps::SwapUsingStatus])
             }
             DeviceName::Nrf52840UnequalSlots => {
+                info!("DeviceName::Nrf52840UnequalSlots");
                 let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
 
                 let dev_id = 0;
@@ -355,9 +361,10 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade])
+                (flash, areadesc, &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade, Caps::SwapUsingStatus])
             }
             DeviceName::Nrf52840SpiFlash => {
+                info!("DeviceName::Nrf52840SpiFlash");
                 // Simulate nrf52840 with external SPI flash. The external SPI flash
                 // has a larger sector size so for now store scratch on that flash.
                 let dev0 = SimFlash::new(vec![4096; 128], align as usize, erased_val);
@@ -374,9 +381,10 @@ impl ImagesBuilder {
                 let mut flash = SimMultiFlash::new();
                 flash.insert(0, dev0);
                 flash.insert(1, dev1);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                (flash, areadesc, &[Caps::SwapUsingMove, Caps::SwapUsingStatus])
             }
             DeviceName::K64fMulti => {
+                info!("DeviceName::K64fMulti");
                 // NXP style flash, but larger, to support multiple images.
                 let dev = SimFlash::new(vec![4096; 256], align as usize, erased_val);
 
@@ -391,7 +399,34 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                (flash, areadesc, &[Caps::SwapUsingStatus])
+            }
+            DeviceName::PSoC6Multi => {
+                info!("DeviceName::PSoC6Multi");
+                // NXP style flash, but larger, to support multiple images.
+
+                let mut areadesc = AreaDesc::new();
+                let mut flash = SimMultiFlash::new();
+
+                // let dev0 = SimFlash::new(vec![4096; 256], align as usize, 0);
+                let mut dev0 = SimFlash::new(vec![512; 1024], align as usize, 0);
+                dev0.set_verify_writes(false);
+                dev0.set_erase_by_sector(true);
+
+                areadesc.add_flash_sectors(0, &dev0);
+                areadesc.add_image(0x020000, 0x020000, FlashId::Image0, 0);
+                areadesc.add_image(0x040000, 0x020000, FlashId::Image1, 0);
+                areadesc.add_image(0x060000, 0x008000, FlashId::ImageScratch, 0);
+                flash.insert(0, dev0);
+
+                // let dev1 = SimFlash::new(vec![4096; 256], align as usize, erased_val);
+                // areadesc.add_flash_sectors(1, &dev1);
+                // areadesc.add_image(0x080000, 0x020000, FlashId::Image2, 0);
+                // areadesc.add_image(0x0a0000, 0x020000, FlashId::Image3, 1);
+                // flash.insert(1, dev1);
+
+                // (flash, areadesc, &[])
+                (flash, areadesc, &[Caps::SwapUsingScratch, Caps::SwapUsingMove])
             }
         }
     }
@@ -461,7 +496,7 @@ impl Images {
     }
 
     fn is_swap_upgrade(&self) -> bool {
-        Caps::SwapUsingScratch.present() || Caps::SwapUsingMove.present()
+        Caps::SwapUsingScratch.present() || Caps::SwapUsingMove.present() || Caps::SwapUsingStatus.present()
     }
 
     pub fn run_basic_revert(&self) -> bool {

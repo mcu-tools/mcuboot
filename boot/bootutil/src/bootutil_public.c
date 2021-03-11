@@ -46,6 +46,7 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil_public.h"
 #include "bootutil/bootutil_log.h"
+#include "swap_status.h"
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key_public.h"
 #endif
@@ -117,6 +118,7 @@ static const struct boot_swap_table boot_swap_tables[] = {
 #define BOOT_SWAP_TABLES_COUNT \
     (sizeof boot_swap_tables / sizeof boot_swap_tables[0])
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 static int
 boot_magic_decode(const uint32_t *magic)
 {
@@ -125,6 +127,7 @@ boot_magic_decode(const uint32_t *magic)
     }
     return BOOT_MAGIC_BAD;
 }
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
 
 static int
 boot_flag_decode(uint8_t flag)
@@ -135,6 +138,7 @@ boot_flag_decode(uint8_t flag)
     return BOOT_FLAG_SET;
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
@@ -153,17 +157,12 @@ boot_copy_done_off(const struct flash_area *fap)
     return boot_image_ok_off(fap) - BOOT_MAX_ALIGN;
 }
 
-static inline uint32_t
-boot_swap_size_off(const struct flash_area *fap)
-{
-    return boot_swap_info_off(fap) - BOOT_MAX_ALIGN;
-}
-
 uint32_t
 boot_swap_info_off(const struct flash_area *fap)
 {
     return boot_copy_done_off(fap) - BOOT_MAX_ALIGN;
 }
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
 
 /**
  * Determines if a status source table is satisfied by the specified magic
@@ -190,19 +189,6 @@ boot_magic_compatible_check(uint8_t tbl_val, uint8_t val)
         return tbl_val == val;
     }
 }
-
-#ifdef MCUBOOT_ENC_IMAGES
-static inline uint32_t
-boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
-{
-#if MCUBOOT_SWAP_SAVE_ENCTLV
-    return boot_swap_size_off(fap) - ((slot + 1) *
-            ((((BOOT_ENC_TLV_SIZE - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN));
-#else
-    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_SIZE);
-#endif
-}
-#endif
 
 bool bootutil_buffer_is_erased(const struct flash_area *area,
                                const void *buffer, size_t len)
@@ -249,6 +235,7 @@ boot_read_copy_done(const struct flash_area *fap, uint8_t *copy_done)
     return boot_read_flag(fap, copy_done, boot_copy_done_off(fap));
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 
 int
 boot_read_swap_state(const struct flash_area *fap,
@@ -294,6 +281,8 @@ boot_read_swap_state(const struct flash_area *fap,
     return boot_read_image_ok(fap, &state->image_ok);
 }
 
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
+
 int
 boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
 {
@@ -309,6 +298,8 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
     flash_area_close(fap);
     return rc;
 }
+
+#ifndef MCUBOOT_SWAP_USING_STATUS
 
 int
 boot_write_magic(const struct flash_area *fap)
@@ -361,6 +352,8 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
     return 0;
 }
 
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
+
 int
 boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
         uint8_t flag_val)
@@ -408,6 +401,17 @@ boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
     return boot_write_trailer(fap, off, (const uint8_t *) &swap_info, 1);
 }
 
+#define BOOT_LOG_SWAP_STATE(area, state)                            \
+    BOOT_LOG_INF("%s: magic=%s, swap_type=0x%x, copy_done=0x%x, "   \
+                 "image_ok=0x%x",                                   \
+                 (area),                                            \
+                 ((state)->magic == BOOT_MAGIC_GOOD ? "good" :      \
+                  (state)->magic == BOOT_MAGIC_UNSET ? "unset" :    \
+                  "bad"),                                           \
+                 (state)->swap_type,                                \
+                 (state)->copy_done,                                \
+                 (state)->image_ok)
+
 int
 boot_swap_type_multi(int image_index)
 {
@@ -428,6 +432,9 @@ boot_swap_type_multi(int image_index)
     if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
     }
+
+    BOOT_LOG_SWAP_STATE("boot_swap_type_multi: Primary image", &primary_slot);
+    BOOT_LOG_SWAP_STATE("boot_swap_type_multi: Secondary image", &secondary_slot);
 
     for (i = 0; i < BOOT_SWAP_TABLES_COUNT; i++) {
         table = boot_swap_tables + i;

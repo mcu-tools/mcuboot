@@ -41,6 +41,12 @@
 #include "bootutil/enc_key.h"
 #endif
 
+#ifdef MCUBOOT_SWAP_USING_STATUS
+#include "swap_status.h"
+#endif
+
+#include "mcuboot_config/mcuboot_config.h"
+
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /* Currently only used by imgmgr */
@@ -134,6 +140,7 @@ boot_status_entries(int image_index, const struct flash_area *fap)
     return -1;
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 uint32_t
 boot_status_off(const struct flash_area *fap)
 {
@@ -147,12 +154,15 @@ boot_status_off(const struct flash_area *fap)
     assert(off_from_end <= fap->fa_size);
     return fap->fa_size - off_from_end;
 }
+#endif
 
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
     return fap->fa_size - BOOT_MAGIC_SZ;
 }
+
+#ifndef MCUBOOT_SWAP_USING_STATUS
 
 static inline uint32_t
 boot_image_ok_off(const struct flash_area *fap)
@@ -171,6 +181,7 @@ boot_swap_size_off(const struct flash_area *fap)
 {
     return boot_swap_info_off(fap) - BOOT_MAX_ALIGN;
 }
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
 
 #ifdef MCUBOOT_ENC_IMAGES
 static inline uint32_t
@@ -185,6 +196,7 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 }
 #endif
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 /**
  * This functions tries to locate the status area after an aborted swap,
  * by looking for the magic in the possible locations.
@@ -272,6 +284,8 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
     if (rc == 0) {
         off = boot_enc_key_off(fap, slot);
 #if MCUBOOT_SWAP_SAVE_ENCTLV
+        uint8_t aes_iv[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE];
+
         rc = flash_area_read(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
         if (rc == 0) {
             for (i = 0; i < BOOT_ENC_TLV_ALIGN_SIZE; i++) {
@@ -281,7 +295,7 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
             }
             /* Only try to decrypt non-erased TLV metadata */
             if (i != BOOT_ENC_TLV_ALIGN_SIZE) {
-                rc = boot_enc_decrypt(bs->enctlv[slot], bs->enckey[slot]);
+                rc = boot_enc_decrypt(bs->enctlv[slot], bs->enckey[slot], 0, aes_iv);
             }
         }
 #else
@@ -293,6 +307,8 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
     return rc;
 }
 #endif
+
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
 
 int
 boot_write_copy_done(const struct flash_area *fap)
@@ -318,6 +334,8 @@ boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
     return boot_write_trailer(fap, off, (const uint8_t *) &swap_size, 4);
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
+
 #ifdef MCUBOOT_ENC_IMAGES
 int
 boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
@@ -342,3 +360,5 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
     return 0;
 }
 #endif
+
+#endif /* !MCUBOOT_SWAP_USING_STATUS */

@@ -16,6 +16,7 @@ fn main() {
     let sig_ed25519 = env::var("CARGO_FEATURE_SIG_ED25519").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
     let swap_move = env::var("CARGO_FEATURE_SWAP_MOVE").is_ok();
+    let swap_status = env::var("CARGO_FEATURE_SWAP_STATUS").is_ok();
     let validate_primary_slot =
                   env::var("CARGO_FEATURE_VALIDATE_PRIMARY_SLOT").is_ok();
     let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
@@ -31,7 +32,9 @@ fn main() {
     conf.define("MCUBOOT_HAVE_LOGGING", None);
     conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
     conf.define("MCUBOOT_HAVE_ASSERT_H", None);
-    conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
+    if !swap_status {
+        conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
+    }
     conf.define("MCUBOOT_IMAGE_NUMBER", Some(if multiimage { "2" } else { "1" }));
 
     if downgrade_prevention && !overwrite_only {
@@ -40,7 +43,6 @@ fn main() {
 
     if bootstrap {
         conf.define("MCUBOOT_BOOTSTRAP", None);
-        conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
     }
 
     if validate_primary_slot {
@@ -138,10 +140,25 @@ fn main() {
 
     if overwrite_only {
         conf.define("MCUBOOT_OVERWRITE_ONLY", None);
+        conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
     }
 
     if swap_move {
         conf.define("MCUBOOT_SWAP_USING_MOVE", None);
+        conf.file("../../boot/bootutil/src/swap_move.c");
+    }
+
+    if swap_status {
+        conf.define("MCUBOOT_SWAP_USING_STATUS", None);
+        conf.define("MCUBOOT_LOG_LEVEL", "MCUBOOT_LOG_LEVEL_DEBUG");
+        conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("2000"));
+        conf.define("CY_FLASH_ALIGN", "512");
+        conf.file("../../boot/bootutil/src/swap_status.c");
+        conf.file("../../boot/bootutil/src/swap_status_part.c");
+        conf.file("../../boot/bootutil/src/swap_status_misc.c");
+        conf.file("../../boot/bootutil/src/crc32c.c");
+//        conf.file("../../boot/cypress/cy_flash_pal/cy_my_support.c");
+        conf.include("../../boot/cypress/cy_flash_pal");
     }
 
     if enc_rsa {
@@ -284,7 +301,6 @@ fn main() {
     conf.file("../../boot/bootutil/src/loader.c");
     conf.file("../../boot/bootutil/src/swap_misc.c");
     conf.file("../../boot/bootutil/src/swap_scratch.c");
-    conf.file("../../boot/bootutil/src/swap_move.c");
     conf.file("../../boot/bootutil/src/caps.c");
     conf.file("../../boot/bootutil/src/bootutil_misc.c");
     conf.file("../../boot/bootutil/src/bootutil_public.c");

@@ -217,6 +217,13 @@ struct boot_loader_state {
         size_t num_sectors;
     } scratch;
 #endif
+#if MCUBOOT_SWAP_USING_STATUS
+    struct {
+        const struct flash_area *area;
+        boot_sector_t *sectors;
+        size_t num_sectors;
+    } status;
+#endif
 
     uint8_t swap_type[BOOT_IMAGE_NUMBER];
     uint32_t write_sz;
@@ -240,6 +247,7 @@ uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
 int boot_status_entries(int image_index, const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
+uint32_t boot_swap_info_off(const struct flash_area *fap);
 int boot_read_swap_state(const struct flash_area *fap,
                          struct boot_swap_state *state);
 int boot_read_swap_state_by_id(int flash_area_id,
@@ -266,6 +274,13 @@ int boot_copy_region(struct boot_loader_state *state,
                      uint32_t off_src, uint32_t off_dst, uint32_t sz);
 int boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz);
 bool boot_status_is_reset(const struct boot_status *bs);
+
+#ifdef MCUBOOT_SWAP_USING_STATUS
+uint32_t boot_copy_done_off(const struct flash_area *fap);
+uint32_t boot_image_ok_off(const struct flash_area *fap);
+uint32_t boot_swap_size_off(const struct flash_area *fap);
+#endif
+
 
 #ifdef MCUBOOT_ENC_IMAGES
 int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
