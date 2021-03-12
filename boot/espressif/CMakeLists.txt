@@ -6,6 +6,8 @@ endif()
 
 project(mcuboot_${MCUBOOT_TARGET})
 
+add_definitions(-DMCUBOOT_TARGET=${MCUBOOT_TARGET})
+
 if (NOT DEFINED IDF_PATH)
     if (DEFINED ENV{IDF_PATH})
         set(IDF_PATH $ENV{IDF_PATH})
@@ -105,6 +107,7 @@ set(LDFLAGS
     "-lc"
     )
 
+add_subdirectory(hal)
 add_executable(
     ${APP_EXECUTABLE}
     ${CMAKE_CURRENT_LIST_DIR}/main.c
@@ -137,4 +140,10 @@ target_link_libraries(
     PUBLIC
     -T${CMAKE_CURRENT_LIST_DIR}/port/${MCUBOOT_TARGET}/ld/bootloader.ld
     ${LDFLAGS}
+    )
+
+target_link_libraries(
+    ${APP_EXECUTABLE}
+    PUBLIC
+    hal
     )

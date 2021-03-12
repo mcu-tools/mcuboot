@@ -1,0 +1,113 @@
+cmake_minimum_required(VERSION 3.13)
+
+project(hal)
+
+set(esp_idf_dir ${IDF_PATH})
+
+set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(INCLUDE_DIRS
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/include/${MCUBOOT_TARGET})
+
+list(APPEND INCLUDE_DIRS
+    ${esp_idf_dir}/components/esp_common/include
+    ${esp_idf_dir}/components/esp_rom/include
+    ${esp_idf_dir}/components/xtensa/${MCUBOOT_TARGET}/include
+    ${esp_idf_dir}/components/spi_flash/include
+    ${esp_idf_dir}/components/xtensa/include
+    ${esp_idf_dir}/components/soc/soc/${MCUBOOT_TARGET}/include
+    ${esp_idf_dir}/components/${MCUBOOT_TARGET}/include
+    ${esp_idf_dir}/components/soc/soc/include
+    ${esp_idf_dir}/components/soc/include
+    ${esp_idf_dir}/components/soc/src/${MCUBOOT_TARGET}/include
+    ${esp_idf_dir}/components/soc/src/${MCUBOOT_TARGET}
+    ${esp_idf_dir}/components/soc/soc/${MCUBOOT_TARGET}/private_include
+    ${esp_idf_dir}/components/bootloader_support/include
+    ${esp_idf_dir}/components/bootloader_support/include_bootloader
+    )
+set(hal_srcs
+    ${SRC_DIR}/bootloader_flash.c
+    ${SRC_DIR}/bootloader_init.c
+    ${SRC_DIR}/bootloader_flash_config_esp32.c
+    ${SRC_DIR}/${MCUBOOT_TARGET}/rtc_init.c
+    ${SRC_DIR}/${MCUBOOT_TARGET}/rtc_clk.c
+    ${esp_idf_dir}/components/soc/src/hal/mpu_hal.c
+    ${esp_idf_dir}/components/soc/src/${MCUBOOT_TARGET}/rtc_time.c
+    ${esp_idf_dir}/components/bootloader_support/src/bootloader_clock.c
+    ${esp_idf_dir}/components/bootloader_support/src/bootloader_efuse_esp32.c
+    ${esp_idf_dir}/components/bootloader_support/src/bootloader_mem.c
+    ${esp_idf_dir}/components/spi_flash/${MCUBOOT_TARGET}/spi_flash_rom_patch.c
+    ${esp_idf_dir}/components/soc/src/${MCUBOOT_TARGET}/rtc_clk_init.c
+    ${esp_idf_dir}/components/soc/src/hal/wdt_hal_iram.c
+    )
+
+set(CFLAGS
+    "-nostdlib"
+    "-mlongcalls"
+    "-Wno-frame-address"
+    "-Wall"
+    "-Wextra"
+    "-W"
+    "-Wdeclaration-after-statement"
+    "-Wwrite-strings"
+    "-Wlogical-op"
+    "-Wshadow"
+    "-Wmissing-declarations"
+    "-Wmissing-prototypes"
+    "-ffunction-sections"
+    "-fdata-sections"
+    "-fstrict-volatile-bitfields"
+    "-Werror=all"
+    "-Wno-error=unused-function"
+    "-Wno-error=unused-but-set-variable"
+    "-Wno-error=unused-variable"
+    "-Wno-error=deprecated-declarations"
+    "-Wno-unused-parameter"
+    "-Wno-sign-compare"
+    "-ggdb"
+    "-Os"
+    "-D_GNU_SOURCE"
+    "-std=gnu99"
+    "-Wno-old-style-declaration"
+    "-Wno-implicit-int"
+    "-Wno-declaration-after-statement"
+    "-Wno-missing-prototypes"
+    "-Wno-missing-declarations"
+    "-Wno-shadow"
+    )
+
+set(LDFLAGS
+    "-mlongcalls"
+    "-Wno-frame-address"
+    "-Wl,--cref"
+    "-Wl,--Map=mcuboot_esp32.map"
+    "-fno-rtti"
+    "-fno-lto"
+    "-Wl,--gc-sections"
+    "-Wl,--undefined=uxTopUsedPriority"
+    "-lm"
+    "-lgcc"
+    "-lgcov"
+    "-lstdc++"
+    "-lc")
+
+add_library(hal STATIC ${hal_srcs} ${INCLUDE_DIRS})
+target_include_directories(
+    hal
+    PUBLIC
+    ${INCLUDE_DIRS}
+    )
+
+target_compile_options(
+    hal
+    PUBLIC
+    ${CFLAGS}
+    )
+
+target_link_libraries(
+    hal
+    PUBLIC
+    ${LDFLAGS}
+    -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.ld
+    -T${esp_idf_dir}/components/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.peripherals.ld
+    )
