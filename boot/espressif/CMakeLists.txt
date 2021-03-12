@@ -88,6 +88,7 @@ set(CFLAGS
     "-Wno-implicit-int"
     "-Wno-missing-prototypes"
     "-Wno-missing-declarations"
+    "-Wno-declaration-after-statement"
     )
 
 set(LDFLAGS

@@ -12,6 +12,9 @@
 #include "sysflash/sysflash.h"
 #include "bootutil/bootutil.h"
 
+#include "esp_err.h"
+#include "bootloader_flash.h"
+
 #define ARRAY_SIZE(arr) sizeof(arr)/sizeof(arr[0])
 
 #define BOOTLOADER_START_ADDRESS 0x1000
@@ -19,8 +22,6 @@
 #define APPLICATION_PRIMARY_START_ADDRESS (BOOTLOADER_START_ADDRESS + BOOTLOADER_SIZE)
 #define APPLICATION_SECONDARY_START_ADDRESS (APPLICATION_PRIMARY_START_ADDRESS + APPLICATION_SIZE)
 #define APPLICATION_SIZE (1024 * 1024)
-
-#define FLASH_SECTOR_SIZE 4096
 
 extern int ets_printf(const char *fmt, ...);
 
@@ -82,11 +83,15 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
     }
 
     const uint32_t end_offset = off + len;
+
     if (end_offset > fa->fa_size) {
         MCUBOOT_LOG_ERR("%s: Out of Bounds (0x%x vs 0x%x)", __func__, end_offset, fa->fa_size);
         return -1;
     }
-
+    if (bootloader_flash_read(fa->fa_off + off, dst, len, true) != ESP_OK) {
+        MCUBOOT_LOG_ERR("%s: Flash read failed", __func__);
+        return -1;
+    }
     return 0;
 }
 
@@ -98,14 +103,19 @@ int flash_area_write(const struct flash_area *fa, uint32_t off, const void *src,
     }
 
     const uint32_t end_offset = off + len;
+
     if (end_offset > fa->fa_size) {
         MCUBOOT_LOG_ERR("%s: Out of Bounds (0x%x vs 0x%x)", __func__, end_offset, fa->fa_size);
         return -1;
     }
 
-    const uint32_t addr = fa->fa_off + off;
-    MCUBOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)addr, (int)len);
+    const uint32_t start_addr = fa->fa_off + off;
+    MCUBOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
 
+    if (bootloader_flash_write(start_addr, (void *) src, len, true) != ESP_OK) {
+        MCUBOOT_LOG_ERR("%s: Flash write failed", __func__);
+        return -1;
+    }
 #if VALIDATE_PROGRAM_OP
     if (memcmp((void *)addr, src, len) != 0) {
         MCUBOOT_LOG_ERR("%s: Program Failed", __func__);
@@ -131,6 +141,10 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
     const uint32_t start_addr = fa->fa_off + off;
     MCUBOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
 
+    if (bootloader_flash_erase_range(start_addr, len) != ESP_OK) {
+        MCUBOOT_LOG_ERR("%s: Flash erase failed", __func__);
+        return -1;
+    }
 #if VALIDATE_PROGRAM_OP
     for (size_t i = 0; i < len; i++) {
         uint8_t *val = (void *)(start_addr + i);
