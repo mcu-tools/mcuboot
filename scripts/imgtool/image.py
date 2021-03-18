@@ -232,9 +232,12 @@ class Image():
                 trailer_addr = (self.base_addr + self.slot_size) - trailer_size
                 padding = bytearray([self.erased_val] * 
                                     (trailer_size - len(boot_magic)))
-                if self.confirm and not self.overwrite_only:
-                    padding[-self.max_align] = 0x01  # image_ok = 0x01
                 padding += boot_magic
+                if self.confirm and not self.overwrite_only:
+                    magic_size = 16
+                    magic_align_size = (int((magic_size - 1) / self.max_align) + 1) * self.max_align
+                    image_ok_idx = -(magic_align_size + self.max_align)
+                    padding[image_ok_idx] = 0x01  # image_ok = 0x01
                 h.puts(trailer_addr, bytes(padding))
             h.tofile(path, 'hex')
         else:
@@ -546,9 +549,12 @@ class Image():
         padding = size - (len(self.payload) + tsize)
         pbytes = bytearray([self.erased_val] * padding)
         pbytes += bytearray([self.erased_val] * (tsize - len(boot_magic)))
-        if self.confirm and not self.overwrite_only:
-            pbytes[-self.max_align] = 0x01  # image_ok = 0x01
         pbytes += boot_magic
+        if self.confirm and not self.overwrite_only:
+            magic_size = 16
+            magic_align_size = (int((magic_size - 1) / self.max_align) + 1) * self.max_align
+            image_ok_idx = -(magic_align_size + self.max_align)
+            pbytes[image_ok_idx] = 0x01  # image_ok = 0x01
         self.payload += pbytes
 
     @staticmethod
