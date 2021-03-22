@@ -43,6 +43,8 @@ APP_NAME ?= MCUBootApp
 POST_BUILD ?= 1
 
 SIGN_KEY_FILE ?= cypress-test-ec-p256
+ENC_KEY_FILE ?= enc-ec256-pub
+ENC_IMG ?= 0
 
 # set this variable to a path, where cysecuretools python package is installed
 # use command `python -m pip show cysecuretools` to find out this path

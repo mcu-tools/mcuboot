@@ -45,20 +45,10 @@ INCLUDE_DIRS_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/cmsis/include
 INCLUDE_DIRS_CORE_LIB := $(CUR_LIBS_PATH)/core-lib/include
 INCLUDE_DIRS_WATCHDOG := $(CUR_LIBS_PATH)/watchdog
 
-SOURCES_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/cyhal_crypto_common.c
-SOURCES_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/cyhal_hwmgr.c
-
 # Collected source files for libraries
 SOURCES_LIBS := $(SOURCES_PDL)
 SOURCES_LIBS += $(SOURCES_WATCHDOG)
 SOURCES_LIBS += $(SOURCES_PLATFORM)
-SOURCES_LIBS += $(SOURCES_HAL)
-
-# needed for Crypto HW Acceleration and headers inclusion, do not use for peripherals
-# peripherals should be accessed
-INCLUDE_DIRS_HAL := $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include
-INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/include
-INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/pin_packages
 
 # Collected include directories for libraries
 INCLUDE_DIRS_LIBS := $(addprefix -I,$(INCLUDE_DIRS_PDL))

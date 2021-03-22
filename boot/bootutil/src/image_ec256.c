@@ -51,6 +51,53 @@ static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
 /*
  * Parse the public key used for signing.
  */
+#ifdef CY_MBEDTLS_HW_ACCELERATION
+static int
+bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
+{
+    size_t len;
+    mbedtls_asn1_buf alg;
+    mbedtls_asn1_buf param;
+
+    if (mbedtls_asn1_get_tag(p, end, &len,
+        MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) {
+        return -1;
+    }
+    end = *p + len;
+
+    if (mbedtls_asn1_get_alg(p, end, &alg, &param)) {
+        return -2;
+    }
+    if (alg.len != sizeof(ec_pubkey_oid) - 1 ||
+      memcmp(alg.p, ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
+        return -3;
+    }
+    if (param.len != sizeof(ec_secp256r1_oid) - 1||
+      memcmp(param.p, ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
+        return -4;
+    }
+
+    if (mbedtls_ecp_group_load(&ctx->grp, MBEDTLS_ECP_DP_SECP256R1)) {
+        return -5;
+    }
+
+    if (mbedtls_asn1_get_bitstring_null(p, end, &len)) {
+        return -6;
+    }
+    if (*p + len != end) {
+        return -7;
+    }
+
+    if (mbedtls_ecp_point_read_binary(&ctx->grp, &ctx->Q, *p, end - *p)) {
+        return -8;
+    }
+
+    if (mbedtls_ecp_check_pubkey(&ctx->grp, &ctx->Q)) {
+        return -9;
+    }
+    return 0;
+}
+#endif /* CY_MBEDTLS_HW_ACCELERATION */
 static int
 bootutil_import_key(uint8_t **cp, uint8_t *end)
 {
@@ -163,7 +210,12 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     pubkey = (uint8_t *)bootutil_keys[key_id].key;
     end = pubkey + *bootutil_keys[key_id].len;
 
+#ifdef CY_MBEDTLS_HW_ACCELERATION
+    mbedtls_ecdsa_init(&ctx);
+    rc = bootutil_parse_eckey(&ctx, &pubkey, end);
+#else
     rc = bootutil_import_key(&pubkey, end);
+#endif
     if (rc) {
         return -1;
     }
@@ -178,6 +230,13 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     /*
      * This is simplified, as the hash length is also 32 bytes.
      */
+#ifdef CY_MBEDTLS_HW_ACCELERATION
+    while (sig[slen - 1] == '\0') {
+        slen--;
+    }
+    rc = mbedtls_ecdsa_read_signature(&ctx, hash, hlen, sig, slen);
+
+#else /* CY_MBEDTLS_HW_ACCELERATION */
     if (hlen != NUM_ECC_BYTES) {
         return -1;
     }
@@ -189,7 +248,10 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     rc = bootutil_ecdsa_p256_verify(&ctx, pubkey, end - pubkey, hash, signature,
                                     2 * NUM_ECC_BYTES);
 #endif
+#endif /* CY_MBEDTLS_HW_ACCELERATION */
+
     bootutil_ecdsa_p256_drop(&ctx);
+
     return rc;
 }
 

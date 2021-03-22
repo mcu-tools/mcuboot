@@ -30,6 +30,7 @@ COMPILER ?= GCC_ARM
 USE_CRYPTO_HW ?= 1
 USE_EXTERNAL_FLASH ?= 0
 MCUBOOT_IMAGE_NUMBER ?= 1
+ENC_IMG ?= 0
 
 ifneq ($(COMPILER), GCC_ARM)
 $(error Only GCC ARM is supported at this moment)
@@ -53,11 +54,17 @@ ifeq ($(USE_EXTERNAL_FLASH), 1)
 DEFINES_APP += -DCY_BOOT_USE_EXTERNAL_FLASH
 endif
 DEFINES_APP += -DMCUBOOT_MAX_IMG_SECTORS=$(MAX_IMG_SECTORS)
-
+# Hardrware acceleration support
 ifeq ($(USE_CRYPTO_HW), 1)
 DEFINES_APP += -DMBEDTLS_USER_CONFIG_FILE="\"mcuboot_crypto_acc_config.h\""
 DEFINES_APP += -DCY_CRYPTO_HAL_DISABLE
+DEFINES_APP += -DCY_MBEDTLS_HW_ACCELERATION
 endif
+# Encrypted image support
+ifeq ($(ENC_IMG), 1)
+DEFINES_APP += -DENC_IMG=1
+endif
+
 # Collect MCUBoot sourses
 SOURCES_MCUBOOT := $(wildcard $(CURDIR)/../bootutil/src/*.c)
 # Collect MCUBoot Application sources

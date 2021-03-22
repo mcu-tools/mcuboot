@@ -43,7 +43,7 @@ fn main() -> Result<()> {
     let ncpus = num_cpus::get();
     let limiter = Arc::new(Semaphore::new(ncpus as isize));
 
-    let matrix = Matrix::from_yaml(&workflow)?;
+    let matrix = Matrix::from_yaml(&workflow);
 
     let mut children = vec![];
     let state = State::new(matrix.envs.len());
@@ -71,7 +71,7 @@ fn main() -> Result<()> {
         child.join().unwrap();
     }
 
-    println!("");
+    println!();
 
     Ok(())
 }
@@ -97,7 +97,7 @@ impl State {
         Arc::new(Mutex::new(State {
             running: HashSet::new(),
             done: HashSet::new(),
-            total: total,
+            total,
         }))
     }
 
@@ -174,7 +174,7 @@ struct FeatureSet {
 }
 
 impl Matrix {
-    fn from_yaml(yaml: &[Yaml]) -> Result<Matrix> {
+    fn from_yaml(yaml: &[Yaml]) -> Matrix {
         let mut envs = vec![];
 
         let mut all_tests = HashSet::new();
@@ -192,13 +192,7 @@ impl Matrix {
                     }
                     Some(e) => e,
                 };
-                let fset = match FeatureSet::decode(elt) {
-                    Ok(fset) => fset,
-                    Err(err) => {
-                        warn!("Skipping: {:?}", err);
-                        continue;
-                    }
-                };
+                let fset = FeatureSet::decode(elt);
 
                 if false {
                     // Respect the groupings in the `.workflow.yml` file.
@@ -222,23 +216,23 @@ impl Matrix {
             }
         }
 
-        Ok(Matrix {
-            envs: envs,
-        })
+        Matrix {
+            envs,
+        }
     }
 }
 
 impl FeatureSet {
-    fn decode(text: &str) -> Result<FeatureSet> {
+    fn decode(text: &str) -> FeatureSet {
         // The github workflow is just a space separated set of values.
         let values: Vec<_> = text
             .split(',')
             .map(|s| s.to_string())
             .collect();
-        Ok(FeatureSet {
+        FeatureSet {
             env: "MULTI_FEATURES".to_string(),
-            values: values,
-        })
+            values,
+        }
     }
 
     /// Run a test for this given feature set.  Output is captured and will be returned if there is
