@@ -149,9 +149,9 @@ impl ImagesBuilder {
         }
 
         Ok(ImagesBuilder {
-            flash: flash,
-            areadesc: areadesc,
-            slots: slots,
+            flash,
+            areadesc,
+            slots,
         })
     }
 
@@ -186,15 +186,15 @@ impl ImagesBuilder {
                 _ => install_image(&mut flash, &slots[1], 46928, &*dep, false)
             };
             OneImage {
-                slots: slots,
-                primaries: primaries,
-                upgrades: upgrades,
+                slots,
+                primaries,
+                upgrades,
             }}).collect();
         install_ptable(&mut flash, &self.areadesc);
         Images {
-            flash: flash,
+            flash,
             areadesc: self.areadesc,
-            images: images,
+            images,
             total_count: None,
         }
     }
@@ -207,8 +207,8 @@ impl ImagesBuilder {
 
         // upgrades without fails, counts number of flash operations
         let total_count = match images.run_basic_upgrade(permanent) {
-            Ok(v)  => v,
-            Err(_) =>
+            Some(v)  => v,
+            None =>
                 if deps.upgrades.iter().any(|u| *u == UpgradeInfo::Held) {
                     0
                 } else {
@@ -227,14 +227,14 @@ impl ImagesBuilder {
             let primaries = install_image(&mut bad_flash, &slots[0], 32784, &dep, false);
             let upgrades = install_image(&mut bad_flash, &slots[1], 41928, &dep, true);
             OneImage {
-                slots: slots,
-                primaries: primaries,
-                upgrades: upgrades,
+                slots,
+                primaries,
+                upgrades,
             }}).collect();
         Images {
             flash: bad_flash,
             areadesc: self.areadesc,
-            images: images,
+            images,
             total_count: None,
         }
     }
@@ -246,14 +246,14 @@ impl ImagesBuilder {
             let primaries = install_image(&mut flash, &slots[0], 32784, &dep, false);
             let upgrades = install_no_image();
             OneImage {
-                slots: slots,
-                primaries: primaries,
-                upgrades: upgrades,
+                slots,
+                primaries,
+                upgrades,
             }}).collect();
         Images {
-            flash: flash,
+            flash,
             areadesc: self.areadesc,
-            images: images,
+            images,
             total_count: None,
         }
     }
@@ -265,14 +265,14 @@ impl ImagesBuilder {
             let primaries = install_no_image();
             let upgrades = install_image(&mut flash, &slots[1], 32784, &dep, false);
             OneImage {
-                slots: slots,
-                primaries: primaries,
-                upgrades: upgrades,
+                slots,
+                primaries,
+                upgrades,
             }}).collect();
         Images {
-            flash: flash,
+            flash,
             areadesc: self.areadesc,
-            images: images,
+            images,
             total_count: None,
         }
     }
@@ -405,16 +405,17 @@ impl Images {
     /// A simple upgrade without forced failures.
     ///
     /// Returns the number of flash operations which can later be used to
-    /// inject failures at chosen steps.
-    pub fn run_basic_upgrade(&self, permanent: bool) -> Result<i32, ()> {
+    /// inject failures at chosen steps.  Returns None if it was unable to
+    /// count the operations in a basic upgrade.
+    pub fn run_basic_upgrade(&self, permanent: bool) -> Option<i32> {
         let (flash, total_count) = self.try_upgrade(None, permanent);
         info!("Total flash operation count={}", total_count);
 
         if !self.verify_images(&flash, 0, 1) {
             warn!("Image mismatch after first boot");
-            Err(())
+            None
         } else {
-            Ok(total_count)
+            Some(total_count)
         }
     }
 
@@ -511,12 +512,10 @@ impl Images {
                 fails += 1;
             }
 
-            if self.is_swap_upgrade() {
-                if !self.verify_images(&flash, 1, 0) {
-                    warn!("Secondary slot FAIL at step {} of {}",
-                          i, total_flash_ops);
-                    fails += 1;
-                }
+            if self.is_swap_upgrade() && !self.verify_images(&flash, 1, 0) {
+                warn!("Secondary slot FAIL at step {} of {}",
+                    i, total_flash_ops);
+                fails += 1;
             }
         }
 
@@ -1131,7 +1130,7 @@ impl Images {
         let mut rng = rand::thread_rng();
         let mut resets = vec![0i32; count];
         let mut remaining_ops = total_ops;
-        for i in 0 .. count {
+        for reset in &mut resets {
             let reset_counter = rng.gen_range(1, remaining_ops / 2);
             let mut counter = reset_counter;
             match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false) {
@@ -1139,7 +1138,7 @@ impl Images {
                 (x, _) => panic!("Unknown return: {}", x),
             }
             remaining_ops -= reset_counter;
-            resets[i] = reset_counter;
+            *reset = reset_counter;
         }
 
         match c::boot_go(&mut flash, &self.areadesc, None, false) {
@@ -1240,7 +1239,7 @@ fn show_flash(flash: &dyn Flash) {
         println!("    {:3}: 0x{:08x}, 0x{:08x}",
                  sector.num, sector.base, sector.size);
     }
-    println!("");
+    println!();
 }
 
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
@@ -1515,7 +1514,7 @@ fn verify_trailer(flash: &SimMultiFlash, slot: &SlotInfo,
                 true
             } else if v == 3 {
                 let expected = [erased_val; 16];
-                if &copy[24..] != expected {
+                if copy[24..] != expected {
                     warn!("\"magic\" mismatch at {:#x}", offset);
                     true
                 } else {
@@ -1565,11 +1564,14 @@ fn install_ptable(flash: &mut SimMultiFlash, areadesc: &AreaDesc) {
         // aren't marked as the BootLoader partition, avoid adding the
         // partition table.  This makes it harder to view the image, but
         // avoids messing up images already written.
-        if areadesc.iter_areas().any(|area| {
-            area.device_id == id &&
-                area.off == 0 &&
-                area.flash_id != FlashId::BootLoader
-        }) {
+        let skip_ptable = areadesc
+            .iter_areas()
+            .any(|area| {
+                area.device_id == id &&
+                    area.off == 0 &&
+                    area.flash_id != FlashId::BootLoader
+            });
+        if skip_ptable {
             if log_enabled!(Info) {
                 let special: Vec<FlashId> = areadesc.iter_areas()
                     .filter(|area| area.device_id == id && area.off == 0)
@@ -1702,7 +1704,7 @@ fn splat(data: &mut [u8], seed: usize) {
 
 /// Return a read-only view into the raw bytes of this object
 trait AsRaw : Sized {
-    fn as_raw<'a>(&'a self) -> &'a [u8] {
+    fn as_raw(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self as *const _ as *const u8,
                                        mem::size_of::<Self>()) }
     }

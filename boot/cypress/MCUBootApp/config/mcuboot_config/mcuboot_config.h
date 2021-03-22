@@ -36,7 +36,6 @@
 
 /* Uncomment for ECDSA signatures using curve P-256. */
 #define MCUBOOT_SIGN_EC256
-#define NUM_ECC_BYTES (256 / 8) 	// P-256 curve size in bytes, rnok: to make compilable
 
 // #define MCUBOOT_SIGN_EC
 
@@ -144,5 +143,12 @@
     do {                                \
         /* TODO: to be implemented */   \
     } while (0)
+
+/* Uncomment these if support of encrypted upgrade image is needed */
+#ifdef ENC_IMG
+#define MCUBOOT_ENC_IMAGES
+#define MCUBOOT_ENCRYPT_EC256
+#define NUM_ECC_BYTES (256 / 8)
+#endif /* ENC_IMG */
 
 #endif /* MCUBOOT_CONFIG_H */

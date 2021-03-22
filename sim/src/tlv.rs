@@ -17,8 +17,6 @@ use byteorder::{
     LittleEndian, WriteBytesExt,
 };
 use crate::image::ImageVersion;
-use pem;
-use base64;
 use log::info;
 use ring::{digest, rand, agreement, hkdf, hmac};
 use ring::rand::SecureRandom;
@@ -269,7 +267,7 @@ impl ManifestGen for TlvGen {
 
     fn add_dependency(&mut self, id: u8, version: &ImageVersion) {
         self.dependencies.push(Dependency {
-            id: id,
+            id,
             version: version.clone(),
         });
     }
@@ -293,9 +291,8 @@ impl ManifestGen for TlvGen {
 
                 // The dependency.
                 protected_tlv.push(dep.id);
-                for _ in 0 .. 3 {
-                    protected_tlv.push(0);
-                }
+                protected_tlv.push(0);
+                protected_tlv.write_u16::<LittleEndian>(0).unwrap();
                 protected_tlv.push(dep.version.major);
                 protected_tlv.push(dep.version.minor);
                 protected_tlv.write_u16::<LittleEndian>(dep.version.revision).unwrap();
@@ -594,9 +591,8 @@ impl ManifestGen for TlvGen {
     fn generate_enc_key(&mut self) {
         let rng = rand::SystemRandom::new();
         let mut buf = vec![0u8; AES_KEY_LEN];
-        match rng.fill(&mut buf) {
-            Err(_) => panic!("Error generating encrypted key"),
-            Ok(_) => (),
+        if rng.fill(&mut buf).is_err() {
+            panic!("Error generating encrypted key");
         }
         info!("New encryption key: {:02x?}", buf);
         self.enc_key = buf;

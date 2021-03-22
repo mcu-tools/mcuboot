@@ -83,7 +83,7 @@ To get appropriate artifact for second image PRIMARY slot run this command:
 
 To prepare MCUBootApp for work with external memory please refer to `MCUBootApp/ExternalMemory.md`.
 
-For build BlinkyApp upgarde image for external memory use command:
+For build BlinkyApp upgrade image for external memory use command:
 
     make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x7FE8000 ERASED_VALUE=0xff
 
@@ -96,6 +96,16 @@ In case of using muti-image configuration, upgrade image for second application 
     make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x8028000 ERASED_VALUE=0xff
 
     Note: for S25FL512S block address shuld be mutiple by 0x40000
+
+**How to build encrypted upgrade image :**
+
+To prepare MCUBootApp for work with encrypted upgrade image please refer to `MCUBootApp/Readme.md`.
+
+To obtain encrypted upgrade image of BlinkyApp extra flag `ENC_IMG=1` should be passed in command line, for example:
+
+    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x20000 ENC_IMG=1
+
+This also suggests user already placed corresponing `*.pem` key in `\keys` folder. The key variables are defined in root `Makefile` as `SIGN_KEY_FILE` and `ENC_KEY_FILE`
 
 ### Post-Build
 

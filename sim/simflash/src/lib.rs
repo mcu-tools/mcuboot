@@ -107,11 +107,11 @@ impl SimFlash {
         SimFlash {
             data: vec![erased_val; total],
             write_safe: vec![true; total],
-            sectors: sectors,
+            sectors,
             bad_region: Vec::new(),
-            align: align,
+            align,
             verify_writes: true,
-            erased_val: erased_val,
+            erased_val,
         }
     }
 
@@ -138,7 +138,7 @@ impl SimFlash {
             }
             offset -= size;
         }
-        return None;
+        None
     }
 
 }
@@ -230,7 +230,7 @@ impl Flash for SimFlash {
     /// Adds a new flash bad region. Writes to this area fail with a chance
     /// given by `rate`.
     fn add_bad_region(&mut self, offset: usize, len: usize, rate: f32) -> Result<()> {
-        if rate < 0.0 || rate > 1.0 {
+        if !(0.0..=1.0).contains(&rate) {
             bail!(ebounds("Invalid rate"));
         }
 
@@ -295,9 +295,9 @@ impl<'a> Iterator for SectorIter<'a> {
                 let base = self.base;
                 self.base += size;
                 Some(Sector {
-                    num: num,
-                    base: base,
-                    size: size,
+                    num,
+                    base,
+                    size,
                 })
             }
         }

@@ -8,16 +8,13 @@
 
 use crate::area::AreaDesc;
 use simflash::SimMultiFlash;
-use libc;
 use crate::api;
 
 /// Invoke the bootloader on this flash device.
 pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
                counter: Option<&mut i32>, catch_asserts: bool) -> (i32, u8) {
-    unsafe {
-        for (&dev_id, flash) in multiflash.iter_mut() {
-            api::set_flash(dev_id, flash);
-        }
+    for (&dev_id, flash) in multiflash.iter_mut() {
+        api::set_flash(dev_id, flash);
     }
     let mut sim_ctx = api::CSimContext {
         flash_counter: match counter {
@@ -33,12 +30,12 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
         raw::invoke_boot_go(&mut sim_ctx as *mut _, &areadesc.get_c() as *const _) as i32
     };
     let asserts = sim_ctx.c_asserts;
-    counter.map(|c| *c = sim_ctx.flash_counter);
-    unsafe {
-        for (&dev_id, _) in multiflash {
-            api::clear_flash(dev_id);
-        }
-    };
+    if let Some(c) = counter {
+        *c = sim_ctx.flash_counter;
+    }
+    for &dev_id in multiflash.keys() {
+        api::clear_flash(dev_id);
+    }
     (result, asserts)
 }
 
@@ -66,7 +63,7 @@ pub fn rsa_oaep_encrypt(pubkey: &[u8], seckey: &[u8]) -> Result<[u8; 256], &'sta
                                   encbuf.as_mut_ptr()) == 0 {
             return Ok(encbuf);
         }
-        return Err("Failed to encrypt buffer");
+        Err("Failed to encrypt buffer")
     }
 }
 
@@ -76,14 +73,13 @@ pub fn kw_encrypt(kek: &[u8], seckey: &[u8]) -> Result<[u8; 24], &'static str> {
         if raw::kw_encrypt_(kek.as_ptr(), seckey.as_ptr(), encbuf.as_mut_ptr()) == 0 {
             return Ok(encbuf);
         }
-        return Err("Failed to encrypt buffer");
+        Err("Failed to encrypt buffer")
     }
 }
 
 mod raw {
     use crate::area::CAreaDesc;
     use crate::api::CSimContext;
-    use libc;
 
     extern "C" {
         // This generates a warning about `CAreaDesc` not being foreign safe.  There doesn't appear to
