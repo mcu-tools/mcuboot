@@ -344,13 +344,12 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
     int rc;
 
     align = flash_area_align(fap);
-    if (inlen > BOOT_MAX_ALIGN || align > BOOT_MAX_ALIGN) {
+    align = (inlen + align - 1) & ~(align - 1);
+    if (align > BOOT_MAX_ALIGN) {
         return -1;
     }
     erased_val = flash_area_erased_val(fap);
-    if (align < inlen) {
-        align = inlen;
-    }
+
     memcpy(buf, inbuf, inlen);
     memset(&buf[inlen], erased_val, align - inlen);
 
