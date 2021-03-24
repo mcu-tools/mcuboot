@@ -31,9 +31,11 @@ repo.versions:
     "1.5.0": "v1.5.0"
     "1.6.0": "v1.6.0"
     "1.7.0": "v1.7.0"
+    "1.7.1": "v1.7.1"
+    "1.7.2": "v1.7.2"
 
     "0-dev": "0.0.0"        # master
-    "0-latest": "1.7.0"     # latest stable release
-    "1-latest": "1.7.0"     # latest stable release
+    "0-latest": "1.7.2"     # latest stable release
+    "1-latest": "1.7.2"     # latest stable release
 
-    "1.0-latest": "1.7.0"
+    "1.0-latest": "1.7.2"
