@@ -334,7 +334,7 @@ boot_write_magic(const struct flash_area *fap)
  *
  * @returns 0 on success, != 0 on error.
  */
-static int
+int
 boot_write_trailer(const struct flash_area *fap, uint32_t off,
         const uint8_t *inbuf, uint8_t inlen)
 {
@@ -362,7 +362,7 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
     return 0;
 }
 
-static int
+int
 boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
         uint8_t flag_val)
 {
