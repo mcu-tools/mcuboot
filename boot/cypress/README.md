@@ -26,10 +26,10 @@ The default flash map for MCUBootApp implemented is next:
 
 The flash map is defined through sysflash.h and cy_flash_map.c.
 
-It is also possible to place secondary (upgrade) slots in external memory module so resulting image size can be doubled.
+It is also possible to place secondary (upgrade) slots in external memory module. In this case primary slot can be doubled in size.
 For more details about External Memory usage, please refer to separate guiding document `MCUBootApp/ExternalMemory.md`.
 
-MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on mbedTLS Library.
+MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses either completely software implementation of cryptographic functions or accelerated by hardware - both based on mbedTLS Library.
 
 ### Downloading Solution's Assets
 
@@ -60,9 +60,11 @@ This folder contains make files infrastructure for building both MCUBoot Bootloa
 
 Instructions on how to build and upload MCUBootApp bootloader application and sample user applocation are located in `Readme.md` files in corresponding folders.
 
-Currently supported platforms:
+Supported platforms for `MCUBoot`, `BlinkyApp`:
 
-* PSOC_062_2M - for MCUBoot, BlinkyApp;
+* PSOC_062_2M
+* PSOC_062_1M
+* PSOC_062_512K
 
 ### Build environment troubleshooting
 
