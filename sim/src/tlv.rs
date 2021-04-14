@@ -89,13 +89,16 @@ pub trait ManifestGen {
     fn corrupt_sig(&mut self);
 
     /// Construct the manifest for this payload.
-    fn make_tlv(self: Box<Self>) -> Vec<u8>;
+    fn make_tlv(&mut self) -> Vec<u8>;
 
     /// Generate a new encryption random key
     fn generate_enc_key(&mut self);
 
     /// Return the current encryption key
     fn get_enc_key(&self) -> Vec<u8>;
+
+    /// Return the nonce to be used with AES-CTR to encrypt the image
+    fn get_enc_nonce(&self) -> Vec<u8>;
 }
 
 #[derive(Debug, Default)]
@@ -105,6 +108,7 @@ pub struct TlvGen {
     payload: Vec<u8>,
     dependencies: Vec<Dependency>,
     enc_key: Vec<u8>,
+    enc_nonce: Vec<u8>,
     /// Should this signature be corrupted.
     gen_corrupted: bool,
 }
@@ -241,6 +245,16 @@ impl TlvGen {
     }
 }
 
+#[cfg(not(feature = "random-iv"))]
+fn use_random_ivs() -> bool {
+    false
+}
+
+#[cfg(feature = "random-iv")]
+fn use_random_ivs() -> bool {
+    true
+}
+
 impl ManifestGen for TlvGen {
     fn get_magic(&self) -> u32 {
         0x96f3b83d
@@ -277,7 +291,7 @@ impl ManifestGen for TlvGen {
     }
 
     /// Compute the TLV given the specified block of data.
-    fn make_tlv(self: Box<Self>) -> Vec<u8> {
+    fn make_tlv(&mut self) -> Vec<u8> {
         let mut protected_tlv: Vec<u8> = vec![];
 
         if self.protect_size() > 0 {
@@ -473,6 +487,8 @@ impl ManifestGen for TlvGen {
                 Err(_) => panic!("Failed to encrypt secret key"),
             };
 
+            self.enc_nonce = vec![0u8; 16];
+
             assert!(encbuf.len() == 256);
             result.write_u16::<LittleEndian>(TlvKinds::ENCRSA2048 as u16).unwrap();
             result.write_u16::<LittleEndian>(256).unwrap();
@@ -489,6 +505,8 @@ impl ManifestGen for TlvGen {
                 Ok(v) => v,
                 Err(_) => panic!("Failed to encrypt secret key"),
             };
+
+            self.enc_nonce = vec![0u8; 16];
 
             assert!(encbuf.len() == 24);
             result.write_u16::<LittleEndian>(TlvKinds::ENCKW128 as u16).unwrap();
@@ -535,15 +553,24 @@ impl ManifestGen for TlvGen {
                 }
             }
 
+            let mut salt_value = vec![0u8; 32];
+            if use_random_ivs() {
+                let rng = rand::SystemRandom::new();
+                if rng.fill(&mut salt_value).is_err() {
+                    panic!("Error generating salt value");
+                }
+            }
+
             let derived_key = match agreement::agree_ephemeral(
                 pk, &peer_pubk, ring::error::Unspecified, |shared| {
-                    let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, &[]);
+                    let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, salt_value.as_slice());
                     let prk = salt.extract(&shared);
-                    let okm = match prk.expand(&[b"MCUBoot_ECIES_v1"], OkmLen(48)) {
+                    let okm_len = if use_random_ivs() { 48 + 32 } else { 48 };
+                    let okm = match prk.expand(&[b"MCUBoot_ECIES_v1"], OkmLen(okm_len)) {
                         Ok(okm) => okm,
                         Err(_) => panic!("Failed building HKDF OKM"),
                     };
-                    let mut buf = [0u8; 48];
+                    let mut buf = vec![0u8; okm_len];
                     match okm.fill(&mut buf) {
                         Ok(_) => Ok(buf),
                         Err(_) => panic!("Failed generating HKDF output"),
@@ -555,27 +582,41 @@ impl ManifestGen for TlvGen {
             };
 
             let key = GenericArray::from_slice(&derived_key[..16]);
-            let nonce = GenericArray::from_slice(&[0; 16]);
+            let nonce = if use_random_ivs() {
+                GenericArray::from_slice(&derived_key[48..64])
+            } else {
+                GenericArray::from_slice(&[0; 16])
+            };
             let mut cipher = Aes128Ctr::new(&key, &nonce);
             let mut cipherkey = self.get_enc_key();
             cipher.apply_keystream(&mut cipherkey);
 
-            let key = hmac::Key::new(hmac::HMAC_SHA256, &derived_key[16..]);
+            let key = hmac::Key::new(hmac::HMAC_SHA256, &derived_key[16..48]);
             let tag = hmac::sign(&key, &cipherkey);
 
             let mut buf = vec![];
             buf.append(&mut pubk.as_ref().to_vec());
             buf.append(&mut tag.as_ref().to_vec());
             buf.append(&mut cipherkey);
+            if use_random_ivs() {
+                buf.append(&mut salt_value);
+            }
+
+            if use_random_ivs() {
+                let nonce = derived_key[64..80].to_vec();
+                self.enc_nonce = nonce;
+            } else {
+                self.enc_nonce = vec![0u8; 16];
+            }
 
             if self.kinds.contains(&TlvKinds::ENCEC256) {
-                assert!(buf.len() == 113);
+                assert!(buf.len() == 113 || buf.len() == 113 + 32);
                 result.write_u16::<LittleEndian>(TlvKinds::ENCEC256 as u16).unwrap();
-                result.write_u16::<LittleEndian>(113).unwrap();
+                result.write_u16::<LittleEndian>(buf.len() as u16).unwrap();
             } else {
-                assert!(buf.len() == 80);
+                assert!(buf.len() == 80 || buf.len() == 80 + 32);
                 result.write_u16::<LittleEndian>(TlvKinds::ENCX25519 as u16).unwrap();
-                result.write_u16::<LittleEndian>(80).unwrap();
+                result.write_u16::<LittleEndian>(buf.len() as u16).unwrap();
             }
             result.extend_from_slice(&buf);
         }
@@ -592,7 +633,7 @@ impl ManifestGen for TlvGen {
         let rng = rand::SystemRandom::new();
         let mut buf = vec![0u8; AES_KEY_LEN];
         if rng.fill(&mut buf).is_err() {
-            panic!("Error generating encrypted key");
+            panic!("Error generating encryption key");
         }
         info!("New encryption key: {:02x?}", buf);
         self.enc_key = buf;
@@ -603,6 +644,14 @@ impl ManifestGen for TlvGen {
             panic!("No random key was generated");
         }
         self.enc_key.clone()
+    }
+
+    fn get_enc_nonce(&self) -> Vec<u8> {
+        if self.enc_nonce.len() != 16 {
+            panic!("No random nonce was generated");
+        }
+        info!("Encryption nonce: {:02x?}", self.enc_nonce);
+        self.enc_nonce.clone()
     }
 }
 

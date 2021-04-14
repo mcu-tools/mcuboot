@@ -24,6 +24,11 @@ multiimage = ["mcuboot-sys/multiimage"]
 large-write = []
 downgrade-prevention = ["mcuboot-sys/downgrade-prevention"]
 
+# For ECIES based encryption, add a random salt to the HKDF and expand extra
+# key material to be used to encrypt the key and image using random nonces
+# instead of zeros.
+random-iv = []
+
 [dependencies]
 byteorder = "1.3"
 libc = "0.2"
