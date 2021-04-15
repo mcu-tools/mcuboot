@@ -89,6 +89,8 @@ primary slot and adds a header and trailer that the bootloader is expecting:
       --save-enctlv                 When upgrading, save encrypted key TLVs
                                     instead of plain keys. Enable when
                                     BOOT_SWAP_SAVE_ENCTLV config option was set.
+      --use-random-iv               Generate random nonce data for encrypted image,
+                                    0 used by default
       -L, --load-addr INTEGER       Load address for image when it should run
                                     from RAM.
       -x, --hex-addr INTEGER        Adjust address in hex output file.
