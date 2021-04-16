@@ -3,19 +3,21 @@
 //! mcuboot simulator is strictly single threaded, as there is a lock around running the C startup
 //! code, because it contains numerous global variables.
 //!
-//! To help speed up testing, the Travis configuration defines all of the configurations that can
+//! To help speed up testing, the Workflow configuration defines all of the configurations that can
 //! be run in parallel.  Fortunately, cargo works well this way, and these can be run by simply
 //! using subprocess for each particular thread.
+//!
+//! For now, we assume all of the features are listed under
+//! jobs->environment->strategy->matric->features
 
 use chrono::Local;
-use failure::format_err;
 use log::{debug, error, warn};
-use regex::Regex;
 use std::{
     collections::HashSet,
+    env,
     fs::{self, OpenOptions},
     io::{ErrorKind, stdout, Write},
-    process::{Command, Output},
+    process::Command,
     result,
     sync::{
         Arc,
@@ -35,13 +37,13 @@ type Result<T> = result::Result<T, failure::Error>;
 fn main() -> Result<()> {
     env_logger::init();
 
-    let travis_text = fs::read_to_string("../.travis.yml")?;
-    let travis = YamlLoader::load_from_str(&travis_text)?;
+    let workflow_text = fs::read_to_string("../.github/workflows/sim.yaml")?;
+    let workflow = YamlLoader::load_from_str(&workflow_text)?;
 
     let ncpus = num_cpus::get();
     let limiter = Arc::new(Semaphore::new(ncpus as isize));
 
-    let matrix = Matrix::from_yaml(&travis)?;
+    let matrix = Matrix::from_yaml(&workflow);
 
     let mut children = vec![];
     let state = State::new(matrix.envs.len());
@@ -69,7 +71,7 @@ fn main() -> Result<()> {
         child.join().unwrap();
     }
 
-    println!("");
+    println!();
 
     Ok(())
 }
@@ -81,12 +83,21 @@ struct State {
     total: usize,
 }
 
+/// Result of a test run.
+struct TestResult {
+    /// Was this run successful.
+    success: bool,
+
+    /// The captured output.
+    output: Vec<u8>,
+}
+
 impl State {
     fn new(total: usize) -> Arc<Mutex<State>> {
         Arc::new(Mutex::new(State {
             running: HashSet::new(),
             done: HashSet::new(),
-            total: total,
+            total,
         }))
     }
 
@@ -100,46 +111,41 @@ impl State {
         self.status();
     }
 
-    fn done(&mut self, fs: &FeatureSet, output: Result<Option<Output>>) {
+    fn done(&mut self, fs: &FeatureSet, output: Result<TestResult>) {
         let key = fs.textual();
         self.running.remove(&key);
         self.done.insert(key.clone());
         match output {
-            Ok(None) => {
-                // println!("Success {} ({} running)", key, self.running.len());
-            }
-            Ok(Some(output)) => {
-                // Write the output into a file.
-                let mut count = 1;
-                let (mut fd, logname) = loop {
-                    let name = format!("./failure-{:04}.log", count);
-                    count += 1;
-                    match OpenOptions::new()
-                        .create_new(true)
-                        .write(true)
-                        .open(&name)
-                    {
-                        Ok(file) => break (file, name),
-                        Err(ref err) if err.kind() == ErrorKind::AlreadyExists => continue,
-                        Err(err) => {
-                            error!("Unable to write log file to current directory: {:?}", err);
-                            return;
+            Ok(output) => {
+                if !output.success || log_all() {
+                    // Write the output into a file.
+                    let mut count = 1;
+                    let (mut fd, logname) = loop {
+                        let base = if output.success { "success" } else { "failure" };
+                        let name = format!("./{}-{:04}.log", base, count);
+                        count += 1;
+                        match OpenOptions::new()
+                            .create_new(true)
+                            .write(true)
+                            .open(&name)
+                        {
+                            Ok(file) => break (file, name),
+                            Err(ref err) if err.kind() == ErrorKind::AlreadyExists => continue,
+                            Err(err) => {
+                                error!("Unable to write log file to current directory: {:?}", err);
+                                return;
+                            }
                         }
+                    };
+                    fd.write_all(&output.output).unwrap();
+                    if !output.success {
+                        error!("Failure {} log:{:?} ({} running)", key, logname,
+                        self.running.len());
                     }
-                };
-                writeln!(&mut fd, "Test failure {}", key).unwrap();
-                writeln!(&mut fd, "time: {}", Local::now().to_rfc3339()).unwrap();
-                writeln!(&mut fd, "----------------------------------------").unwrap();
-                writeln!(&mut fd, "stdout:").unwrap();
-                fd.write_all(&output.stdout).unwrap();
-                writeln!(&mut fd, "----------------------------------------").unwrap();
-                writeln!(&mut fd, "\nstderr:").unwrap();
-                fd.write_all(&output.stderr).unwrap();
-                error!("Failure {} log:{:?} ({} running)", key, logname,
-                    self.running.len());
+                }
             }
             Err(err) => {
-                error!("Unable to run test {:?} ({:?})", key, err);
+                error!("Unable to run test {:?} ({:?}", key, err);
             }
         }
         self.status();
@@ -153,7 +159,7 @@ impl State {
     }
 }
 
-/// The extracted configurations from the travis config
+/// The extracted configurations from the workflow config
 #[derive(Debug)]
 struct Matrix {
     envs: Vec<FeatureSet>,
@@ -168,7 +174,7 @@ struct FeatureSet {
 }
 
 impl Matrix {
-    fn from_yaml(yaml: &[Yaml]) -> Result<Matrix> {
+    fn from_yaml(yaml: &[Yaml]) -> Matrix {
         let mut envs = vec![];
 
         let mut all_tests = HashSet::new();
@@ -179,91 +185,84 @@ impl Matrix {
                 None => continue,
             };
             for elt in m {
-                if lookup_os(elt) == Some("linux") {
-                    debug!("yaml: {:?}", lookup_env(elt));
-                    let env = match lookup_env(elt) {
-                        Some (env) => env,
-                        None => continue,
-                    };
+                let elt = match elt.as_str() {
+                    None => {
+                        warn!("Unexpected yaml: {:?}", elt);
+                        continue;
+                    }
+                    Some(e) => e,
+                };
+                let fset = FeatureSet::decode(elt);
 
-                    // Skip features not targeted to this build.
-                    let fset = match FeatureSet::decode(env) {
-                        Ok(fset) => fset,
-                        Err(err) => {
-                            warn!("Skipping: {:?}", err);
-                            continue;
-                        }
-                    };
-                    debug!("fset: {:?}", fset);
-
-                    if false {
-                        // Respect the groupings in the `.travis.yml` file.
-                        envs.push(fset);
-                    } else {
-                        // Break each test up so we can run more in
-                        // parallel.
-                        let env = fset.env.clone();
-                        for val in fset.values {
-                            if !all_tests.contains(&val) {
-                                all_tests.insert(val.clone());
-                                envs.push(FeatureSet {
-                                    env: env.clone(),
-                                    values: vec![val],
-                                });
-                            } else {
-                                warn!("Duplicate: {:?}: {:?}", env, val);
-                            }
+                if false {
+                    // Respect the groupings in the `.workflow.yml` file.
+                    envs.push(fset);
+                } else {
+                    // Break each test up so we can run more in
+                    // parallel.
+                    let env = fset.env.clone();
+                    for val in fset.values {
+                        if !all_tests.contains(&val) {
+                            all_tests.insert(val.clone());
+                            envs.push(FeatureSet {
+                                env: env.clone(),
+                                values: vec![val],
+                            });
+                        } else {
+                            warn!("Duplicate: {:?}: {:?}", env, val);
                         }
                     }
                 }
             }
         }
 
-        Ok(Matrix {
-            envs: envs,
-        })
+        Matrix {
+            envs,
+        }
     }
 }
 
 impl FeatureSet {
-    fn decode(text: &str) -> Result<FeatureSet> {
-        // This is not general environment settings, but specific to the
-        // travis file.
-        let re = Regex::new(r#"^([A-Z_]+)="(.*)" TEST=sim$"#)?;
-
-        match re.captures(text) {
-            None => Err(format_err!("Invalid line: {:?}", text)),
-            Some(cap) => {
-                let ename = &cap[1];
-                let sep = if ename == "SINGLE_FEATURES" { ' ' } else { ',' };
-                let values: Vec<_> = cap[2]
-                    .split(sep)
-                    .map(|s| s.to_string())
-                    .collect();
-                debug!("name={:?} values={:?}", ename, values);
-                Ok(FeatureSet {
-                    env: ename.to_string(),
-                    values: values,
-                })
-            }
+    fn decode(text: &str) -> FeatureSet {
+        // The github workflow is just a space separated set of values.
+        let values: Vec<_> = text
+            .split(',')
+            .map(|s| s.to_string())
+            .collect();
+        FeatureSet {
+            env: "MULTI_FEATURES".to_string(),
+            values,
         }
     }
 
     /// Run a test for this given feature set.  Output is captured and will be returned if there is
     /// an error.  Each will be run successively, and the first failure will be returned.
     /// Otherwise, it returns None, which means everything worked.
-    fn run(&self) -> Result<Option<Output>> {
+    fn run(&self) -> Result<TestResult> {
+        let mut output = vec![];
+        let mut success = true;
         for v in &self.values {
-            let output = Command::new("bash")
+            let cmdout = Command::new("bash")
                .arg("./ci/sim_run.sh")
                .current_dir("..")
                .env(&self.env, v)
                .output()?;
-            if !output.status.success() {
-                return Ok(Some(output));
+            // Grab the output for logging, etc.
+            writeln!(&mut output, "Test {} {}",
+                if cmdout.status.success() { "success" } else { "FAILURE" },
+                self.textual())?;
+            writeln!(&mut output, "time: {}", Local::now().to_rfc3339())?;
+            writeln!(&mut output, "----------------------------------------")?;
+            writeln!(&mut output, "stdout:")?;
+            output.extend(&cmdout.stdout);
+            writeln!(&mut output, "----------------------------------------")?;
+            writeln!(&mut output, "stderr:")?;
+            output.extend(&cmdout.stderr);
+            if !cmdout.status.success() {
+                success = false;
             }
         }
-        return Ok(None);
+        Ok(TestResult { success, output })
     }
 
     /// Convert this feature set into a textual representation
@@ -282,19 +281,21 @@ impl FeatureSet {
 }
 
 fn lookup_matrix(y: &Yaml) -> Option<&Vec<Yaml>> {
+    let jobs = Yaml::String("jobs".to_string());
+    let environment = Yaml::String("environment".to_string());
+    let strategy = Yaml::String("strategy".to_string());
     let matrix = Yaml::String("matrix".to_string());
-    let include = Yaml::String("include".to_string());
-    y.as_hash()?.get(&matrix)?.as_hash()?.get(&include)?.as_vec()
+    let features = Yaml::String("features".to_string());
+    y
+        .as_hash()?.get(&jobs)?
+        .as_hash()?.get(&environment)?
+        .as_hash()?.get(&strategy)?
+        .as_hash()?.get(&matrix)?
+        .as_hash()?.get(&features)?
+        .as_vec()
 }
 
-fn lookup_os(y: &Yaml) -> Option<&str> {
-    let os = Yaml::String("os".to_string());
-
-    y.as_hash()?.get(&os)?.as_str()
-}
-
-fn lookup_env(y: &Yaml) -> Option<&str> {
-    let env = Yaml::String("env".to_string());
-
-    y.as_hash()?.get(&env)?.as_str()
+/// Query if we should be logging all tests and not only failures.
+fn log_all() -> bool {
+    env::var("PTEST_LOG_ALL").is_ok()
 }

@@ -21,11 +21,16 @@ sig-rsa3072 = []
 # Verify ECDSA (secp256r1) signatures.
 sig-ecdsa = []
 
+# Verify ECDSA (secp256r1) signatures using mbed TLS
+sig-ecdsa-mbedtls = []
+
 # Verify ED25519 signatures.
 sig-ed25519 = []
 
 # Overwrite only upgrade
 overwrite-only = []
+
+swap-status = []
 
 swap-move = []
 

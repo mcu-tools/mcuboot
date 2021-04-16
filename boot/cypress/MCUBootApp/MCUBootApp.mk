@@ -23,6 +23,8 @@
 # limitations under the License.
 ################################################################################
 
+include host.mk
+
 # Cypress' MCUBoot Application supports GCC ARM only at this moment
 # Set default compiler to GCC if not specified from command line
 COMPILER ?= GCC_ARM
@@ -31,20 +33,34 @@ USE_CRYPTO_HW ?= 1
 USE_EXTERNAL_FLASH ?= 0
 USE_OVERWRITE ?= 0
 MCUBOOT_IMAGE_NUMBER ?= 1
+ENC_IMG ?= 0
+
+# For which core this application is built
+CORE ?= CM0P
 
 ifneq ($(COMPILER), GCC_ARM)
 $(error Only GCC ARM is supported at this moment)
 endif
 
-CUR_APP_PATH = $(CURDIR)/$(APP_NAME)
+CUR_APP_PATH = $(PRJ_DIR)/$(APP_NAME)
 
-include $(CUR_APP_PATH)/platforms.mk
-include $(CUR_APP_PATH)/libs.mk
-include $(CUR_APP_PATH)/toolchains.mk
+include $(PRJ_DIR)/platforms.mk
+include $(PRJ_DIR)/common_libs.mk
+include $(PRJ_DIR)/toolchains.mk
 
 # default slot size is 0x10000 for single image
 # larger slot size is 0x20000 for multi image, 512bytes per row/sector, so 256 sectors will work for both
 MAX_IMG_SECTORS ?= 256
+
+# define slot sizes for IMAGE1 and IMAGE2 in case of usage with
+# external memory upgrade. 0x40000 slot size is acceptable for
+# all platforms in single image case with external upgrade
+ifeq ($(USE_EXTERNAL_FLASH), 1)
+IMAGE_1_SLOT_SIZE ?= 0x40200
+ifeq ($(MCUBOOT_IMAGE_NUMBER), 2)
+IMAGE_2_SLOT_SIZE ?= 0x40200
+endif
+endif
 
 # Application-specific DEFINES
 DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
@@ -58,21 +74,34 @@ endif
 
 ifeq ($(USE_EXTERNAL_FLASH), 1)
 DEFINES_APP += -DCY_BOOT_USE_EXTERNAL_FLASH
-ifeq ($(USE_OVERWRITE), 1)
-# slot size w External Memory is 0xC0000, so 1536 sectors
 MAX_IMG_SECTORS = 1536
-else
-# SWAP w external memory will use 0x40000 sector size, so 3 sectors 
-# however, 32 sectors are minimal accepted by MCUBoot library
-MAX_IMG_SECTORS = 32
+DEFINES_APP += -DCY_BOOT_IMAGE_1_SIZE=$(IMAGE_1_SLOT_SIZE)
+ifeq ($(MCUBOOT_IMAGE_NUMBER), 2)
+DEFINES_APP += -DCY_BOOT_IMAGE_2_SIZE=$(IMAGE_2_SLOT_SIZE)
 endif
 endif
-DEFINES_APP += -DMCUBOOT_MAX_IMG_SECTORS=$(MAX_IMG_SECTORS)
 
+DEFINES_APP += -DMCUBOOT_MAX_IMG_SECTORS=$(MAX_IMG_SECTORS)
+# Hardrware acceleration support
 ifeq ($(USE_CRYPTO_HW), 1)
 DEFINES_APP += -DMBEDTLS_USER_CONFIG_FILE="\"mcuboot_crypto_acc_config.h\""
 DEFINES_APP += -DCY_CRYPTO_HAL_DISABLE
+DEFINES_APP += -DCY_MBEDTLS_HW_ACCELERATION
 endif
+# Encrypted image support
+ifeq ($(ENC_IMG), 1)
+DEFINES_APP += -DENC_IMG=1
+# Use higher optimization level for enc image in multi image mode
+# with external flash so it would fit into 0x18000 size of MCUBootApp
+ifeq ($(BUILDCFG), Debug)
+ifeq ($(MCUBOOT_IMAGE_NUMBER), 2)
+ifeq ($(USE_EXTERNAL_FLASH), 1)
+CFLAGS_OPTIMIZATION := -O2 -g3
+endif
+endif
+endif
+endif
+
 # Collect MCUBoot sourses
 SOURCES_MCUBOOT := $(wildcard $(CURDIR)/../bootutil/src/*.c)
 # Collect MCUBoot Application sources
@@ -99,6 +128,7 @@ INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/config)
 INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/os)
 
 ASM_FILES_APP :=
+ASM_FILES_APP += $(ASM_FILES_STARTUP)
 
 # Output folder
 OUT := $(APP_NAME)/out

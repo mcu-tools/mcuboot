@@ -47,23 +47,7 @@
 extern "C" {
 #endif
 
-#ifdef MCUBOOT_HAVE_ASSERT_H
-#include "mcuboot_config/mcuboot_assert.h"
-#else
-#include <assert.h>
-#define ASSERT assert
-#endif
-
 struct flash_area;
-
-#define BOOT_EFLASH      1
-#define BOOT_EFILE       2
-#define BOOT_EBADIMAGE   3
-#define BOOT_EBADVECT    4
-#define BOOT_EBADSTATUS  5
-#define BOOT_ENOMEM      6
-#define BOOT_EBADARGS    7
-#define BOOT_EBADVERSION 8
 
 #define BOOT_TMPBUF_SZ  256
 
@@ -73,16 +57,14 @@ struct flash_area;
 #if (defined(MCUBOOT_OVERWRITE_ONLY) + \
      defined(MCUBOOT_SWAP_USING_MOVE) + \
      defined(MCUBOOT_DIRECT_XIP) + \
-     defined(MCUBOOT_RAM_LOAD)) + \
-     defined(MCUBOOT_SWAP_USING_STATUS) > 1
-#error "Please enable only one of MCUBOOT_OVERWRITE_ONLY, MCUBOOT_SWAP_USING_MOVE, MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD or MCUBOOT_SWAP_USING_STATUS"
+     defined(MCUBOOT_RAM_LOAD)) > 1
+#error "Please enable only one of MCUBOOT_OVERWRITE_ONLY, MCUBOOT_SWAP_USING_MOVE, MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD"
 #endif
 
 #if !defined(MCUBOOT_OVERWRITE_ONLY) && \
     !defined(MCUBOOT_SWAP_USING_MOVE) && \
     !defined(MCUBOOT_DIRECT_XIP) && \
-    !defined(MCUBOOT_RAM_LOAD) && \
-    !defined(MCUBOOT_SWAP_USING_STATUS)
+    !defined(MCUBOOT_RAM_LOAD)
 #define MCUBOOT_SWAP_USING_SCRATCH 1
 #endif
 
@@ -107,20 +89,6 @@ struct boot_status {
 #endif
     int source;           /* Which slot contains swap status metadata */
 };
-
-#define BOOT_MAGIC_GOOD     1
-#define BOOT_MAGIC_BAD      2
-#define BOOT_MAGIC_UNSET    3
-#define BOOT_MAGIC_ANY      4  /* NOTE: control only, not dependent on sector */
-#define BOOT_MAGIC_NOTGOOD  5  /* NOTE: control only, not dependent on sector */
-
-/*
- * NOTE: leave BOOT_FLAG_SET equal to one, this is written to flash!
- */
-#define BOOT_FLAG_SET       1
-#define BOOT_FLAG_BAD       2
-#define BOOT_FLAG_UNSET     3
-#define BOOT_FLAG_ANY       4  /* NOTE: control only, not dependent on sector */
 
 #define BOOT_STATUS_IDX_0   1
 
@@ -162,14 +130,6 @@ struct boot_status {
 
 extern const uint32_t boot_img_magic[4];
 
-struct boot_swap_state {
-    uint8_t magic;      /* One of the BOOT_MAGIC_[...] values. */
-    uint8_t swap_type;  /* One of the BOOT_SWAP_TYPE_[...] values. */
-    uint8_t copy_done;  /* One of the BOOT_FLAG_[...] values. */
-    uint8_t image_ok;   /* One of the BOOT_FLAG_[...] values. */
-    uint8_t image_num;  /* Boot status belongs to this image */
-};
-
 #ifdef MCUBOOT_IMAGE_NUMBER
 #define BOOT_IMAGE_NUMBER          MCUBOOT_IMAGE_NUMBER
 #else
@@ -192,21 +152,6 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 
 #define BOOT_MAX_IMG_SECTORS       MCUBOOT_MAX_IMG_SECTORS
-
-/*
- * Extract the swap type and image number from image trailers's swap_info
- * filed.
- */
-#define BOOT_GET_SWAP_TYPE(swap_info)    ((swap_info) & 0x0F)
-#define BOOT_GET_IMAGE_NUM(swap_info)    ((swap_info) >> 4)
-
-/* Construct the swap_info field from swap type and image number */
-#define BOOT_SET_SWAP_INFO(swap_info, image, type)  {                          \
-                                                    assert((image) < 0xF);     \
-                                                    assert((type)  < 0xF);     \
-                                                    (swap_info) = (image) << 4 \
-                                                                | (type);      \
-                                                    }
 
 #define BOOT_LOG_IMAGE_INFO(slot, hdr)                                    \
     BOOT_LOG_INF("%-9s slot: version=%u.%u.%u+%u",                        \
@@ -245,8 +190,6 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #define BOOT_STATUS_SOURCE_SCRATCH      1
 #define BOOT_STATUS_SOURCE_PRIMARY_SLOT 2
 
-#define BOOT_MAGIC_SZ (sizeof boot_img_magic)
-
 /**
  * Compatibility shim for flash sector type.
  *
@@ -273,7 +216,8 @@ struct boot_loader_state {
         boot_sector_t *sectors;
         size_t num_sectors;
     } scratch;
-#elif MCUBOOT_SWAP_USING_STATUS
+#endif
+#if MCUBOOT_SWAP_USING_STATUS
     struct {
         const struct flash_area *area;
         boot_sector_t *sectors;
@@ -315,6 +259,10 @@ int boot_write_image_ok(const struct flash_area *fap);
 int boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
                          uint8_t image_num);
 int boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size);
+int boot_write_trailer(const struct flash_area *fap, uint32_t off,
+                       const uint8_t *inbuf, uint8_t inlen);
+int boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
+                            uint8_t flag_val);
 int boot_read_swap_size(int image_index, uint32_t *swap_size);
 int boot_slots_compatible(struct boot_loader_state *state);
 uint32_t boot_status_internal_off(const struct boot_status *bs, int elem_sz);

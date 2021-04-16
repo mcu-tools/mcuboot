@@ -33,7 +33,7 @@ pub use crate::{
     },
 };
 
-const USAGE: &'static str = "
+const USAGE: &str = "
 Mcuboot simulator
 
 Usage:
@@ -64,10 +64,10 @@ struct Args {
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum DeviceName {
     Stm32f4, K64f, K64fBig, K64fMulti, Nrf52840, Nrf52840SpiFlash,
-    Nrf52840UnequalSlots,
+    Nrf52840UnequalSlots, PSoC6Multi,
 }
 
-pub static ALL_DEVICES: &'static [DeviceName] = &[
+pub static ALL_DEVICES: &[DeviceName] = &[
     DeviceName::Stm32f4,
     DeviceName::K64f,
     DeviceName::K64fBig,
@@ -75,6 +75,7 @@ pub static ALL_DEVICES: &'static [DeviceName] = &[
     DeviceName::Nrf52840,
     DeviceName::Nrf52840SpiFlash,
     DeviceName::Nrf52840UnequalSlots,
+    DeviceName::PSoC6Multi,
 ];
 
 impl fmt::Display for DeviceName {
@@ -87,6 +88,7 @@ impl fmt::Display for DeviceName {
             DeviceName::Nrf52840 => "nrf52840",
             DeviceName::Nrf52840SpiFlash => "Nrf52840SpiFlash",
             DeviceName::Nrf52840UnequalSlots => "Nrf52840UnequalSlots",
+            DeviceName::PSoC6Multi => "psoc6multi",
         };
         f.write_str(name)
     }
@@ -169,6 +171,7 @@ pub fn main() {
     }
 }
 
+#[derive(Default)]
 pub struct RunStatus {
     failures: usize,
     passes: usize,
@@ -228,4 +231,3 @@ impl RunStatus {
         self.failures
     }
 }
-

@@ -28,17 +28,22 @@ Pre-build action is implemented to define start address and size of flash, as we
 
 These values are set by specifing following macros (default values shown):
 `SLOT_SIZE ?= 0x10000` - for slot located in internal flash 
-`SLOT_SIZE ?= 0xC0000` - for slot located in external flash 
+`SLOT_SIZE ?= 0x40200` - for slot located in external flash 
 
+For PSoC 6 2M devices:
 `DEFINES_APP += -DRAM_START=0x08040000`
 `DEFINES_APP += -DRAM_SIZE=0x10000`
+
+For PSoC 6 1M and 512K devices:
+`DEFINES_APP += -DRAM_START=0x08020000`
+`DEFINES_APP += -DRAM_SIZE=0x10000`
+
+For all devices:
 `DEFINES_APP += -DUSER_APP_START=0x10018000`
 
 in `boot/cypress/BlinkyApp.mk`.
 
 Pre-build action calls GCC preprocessor which replaces defines to particular values in `BlinkyApp_template.ld`.
-
-
 
 **Important**: make sure RAM areas of CM4-based BlinkyApp and CM0p-based MCUBootApp bootloader do not overlap.
 
@@ -46,9 +51,11 @@ Memory (stack) corruption of CM0p application can cause failure if SystemCall-se
 
 ### Building An Application
 
-Currently supported platforms:
+Supported platforms:
 
 * PSOC_062_2M
+* PSOC_062_1M
+* PSOC_062_512K
 
 Root directory for build is **boot/cypress.**
 
@@ -104,7 +111,6 @@ To build `BlinkyApp` for different upgrade mode `SWAP_UPGRADE` flag is used.
 
 `SWAP_UPGRADE=0` - for overwrite mode.
 `SWAP_UPGRADE=1` - for swap upgrade mode (default).
-`SWAP_UPGRADE=2` - for swap upgrade mode, upgrade image is in the external memory.
 
 **Upgrade image for external memory**
 
@@ -112,7 +118,7 @@ To prepare MCUBootApp for work with external memory refer to `MCUBootApp/Externa
 
 To build `BlinkyApp` upgrade image for external memory use command:
 
-    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x7FE8000 ERASED_VALUE=0xff SWAP_UPGRADE=2
+    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x7FE8000 ERASED_VALUE=0xff USE_EXTERNAL_FLASH=1
 
 `HEADER_OFFSET` defines the offset from original boot image address. This one in line above suggests secondary slot will start from `0x18000000`, which is a start of external memory related addreses on PSoC 6 devices.
 
@@ -120,9 +126,19 @@ To build `BlinkyApp` upgrade image for external memory use command:
 
 In case of using muti-image configuration, upgrade image for second application can be built using next command:
 
-    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x8028000 ERASED_VALUE=0xff
+    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x8228000 ERASED_VALUE=0xff USE_EXTERNAL_FLASH=1
 
-Note: for S25FL512S block address should be mutiple of 0x40000 (swap algorithm limitation).
+Note: for S25FL512S block address should be mutiple of 0x40000.
+
+**Encrypted upgrade image**
+
+To prepare MCUBootApp for work with encrypted upgrade image please refer to `MCUBootApp/Readme.md`.
+
+To obtain encrypted upgrade image of BlinkyApp extra flag ENC_IMG=1 should be passed in command line, for example:
+
+    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x20000 ENC_IMG=1
+
+This also suggests user already placed corresponing *.pem key in \keys folder. The key variables are defined in root Makefile as SIGN_KEY_FILE and ENC_KEY_FILE
 
 ### Complete Build Flags Description
 - `BUILDCFG` - configuration type
@@ -144,7 +160,6 @@ Note: for S25FL512S block address should be mutiple of 0x40000 (swap algorithm l
 - `SWAP_UPGRADE` - define upgrade mode type on `MCUBootApp` this app will be used with
     - `0` - for overwrite mode.
     - `1` - (default) for swap upgrade mode
-    - `2` - for swap upgrade mode, upgrade image is in the external memory
 - `ERASED_VALUE` - define memory cell contents in erased state
     - `0x0` - internal memory
     - `0xff` - external memory
@@ -152,18 +167,15 @@ Note: for S25FL512S block address should be mutiple of 0x40000 (swap algorithm l
     - Example: TOOLCHAIN_PATH=/home/fw-security/ModusToolbox/tools_2.0/gcc-7.2.1
     - Example: TOOLCHAIN_PATH=C:\gcc
 
-
-**NOTE**: In case of `UPGRADE` image `HEADER_OFFSET` should be set to MCUBoot Bootloader slot size.
-
 ### Post-Build
 
-Post build action is executed at compile time for `BlinkyApp`. In case of build for `PSOC_062_2M` platform it calls `imgtool` from `MCUBoot` scripts and adds signature to compiled image.
+Post build action is executed at compile time for `BlinkyApp`. In case of build for `PSOC_062_2M`, `PSOC_062_1M`, `PSOC_062_512K` platforms it calls `imgtool` from `MCUBoot` scripts and adds signature to compiled image.
 
 Flags passed to `imgtool` for signature are defined in `SIGN_ARGS` variable in BlinkyApp.mk.
 
 ### How To Program An Application
 
-There are couple ways of programming BlinkyApp firmware. Following instructions assume usage of one of Cypress development kits `CY8CPROTO_062_4343W`.
+There are couple ways of programming BlinkyApp firmware. Following instructions assume usage of one of Cypress development kits, for example `CY8CPROTO_062_4343W`.
 
 1. Direct usage of OpenOCD.
 

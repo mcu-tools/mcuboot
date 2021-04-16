@@ -1,5 +1,5 @@
 ################################################################################
-# \file targets.mk
+# \file platforms.mk
 # \version 1.0
 #
 # \brief
@@ -23,62 +23,56 @@
 # limitations under the License.
 ################################################################################
 
-# Target platform MCUBootApp is built for. PSOC_062_2M is set by default# Supported:
+include host.mk
+
+# Target platform is built for. PSOC_062_2M is set by default
+# Supported:
 #   - PSOC_062_2M
+#   - PSOC_062_1M
+#   - PSOC_062_512K
 
 # default PLATFORM
 PLATFORM ?= PSOC_062_2M
-#
-PLATFORMS := PSOC_062_2M
+
+# supported platforms
+PLATFORMS := PSOC_062_2M PSOC_062_1M PSOC_062_512K
+
+ifneq ($(filter $(PLATFORM), $(PLATFORMS)),)
+else
+$(error Not supported platform: '$(PLATFORM)')
+endif
 
 # For which core this application is built
-CORE := CM0P
-
-# Set paths for related folders
-PLATFORM_PATH := $(CURDIR)/platforms
+CORE ?= CM0P
 
 # MCU device selection, based on target device.
 # Default chips are used for supported platforms
 # This can be redefined in case of other chip usage
 ifeq ($(PLATFORM), PSOC_062_2M)
+# base kit CY8CPROTO-062-4343W
 DEVICE ?= CY8C624ABZI-D44
 PLATFORM_SUFFIX := 02
-endif
-
-# Collect C source files for PLATFORM
-SOURCES_PLATFORM += $(wildcard $(PLATFORM_PATH)/*.c)
-SOURCES_PLATFORM := $(filter-out %/system_psoc6_cm4.c, $(SOURCES_PLATFORM))
-SOURCES_PLATFORM += $(wildcard $(PLATFORM_PATH)/retarget_io_pdl/*.c)
-
-# Collect dirrectories containing headers for PLATFORM
-INCLUDE_DIRS_PLATFORM := $(PLATFORM_PATH)
-INCLUDE_DIRS_PLATFORM += $(PLATFORM_PATH)/retarget_io_pdl
-# Collect Assembler files for PLATFORM
-# Include _01_, _02_ or _03_ PLATFORM_SUFFIX depending on device family.
-STARTUP_FILE := $(PLATFORM_PATH)/$(PLATFORM)/$(CORE)/$(COMPILER)/startup_psoc6_$(PLATFORM_SUFFIX)_cm0plus
-
-ifeq ($(COMPILER), GCC_ARM)
-	ASM_FILES_PLATFORM := $(STARTUP_FILE).S
-else
-$(error Only GCC ARM is supported at this moment)
+else ifeq ($(PLATFORM), PSOC_062_1M)
+# base kit CY8CKIT-062-WIFI-BT
+DEVICE ?= CY8C6247BZI-D54
+PLATFORM_SUFFIX := 01
+else ifeq ($(PLATFORM), PSOC_062_512K)
+# base kit CY8CPROTO-062S3-4343W
+DEVICE ?= CY8C6245LQI-S3D72
+PLATFORM_SUFFIX := 03
 endif
 
 # Add device name to defines
 DEFINES += $(DEVICE)
 DEFINES += $(PLATFORM)
 
-# Convert defines it to regular -DMY_NAME style
+# Convert defines to regular -DMY_NAME style
 ifneq ($(DEFINES),)
 	DEFINES_PLATFORM :=$(addprefix -D, $(subst -,_,$(DEFINES)))
 endif
 
-ifeq ($(COMPILER), GCC_ARM)
-LINKER_SCRIPT ?= $(PLATFORM_PATH)/$(PLATFORM)/$(CORE)/$(COMPILER)/*_cm0plus.ld
-else
-$(error Only GCC ARM is supported at this moment)
-endif
-
 ifeq ($(MAKEINFO) , 1)
-$(info $(SOURCES_PLATFORM))
-$(info $(ASM_FILES_PLATFORM))
+$(info $(PLATFORM_SUFFIX))
+$(info $(DEVICE))
+$(info $(DEFINES_PLATFORM))
 endif

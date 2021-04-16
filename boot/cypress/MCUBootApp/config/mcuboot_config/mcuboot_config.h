@@ -22,7 +22,7 @@
 /* Default maximum number of flash sectors per image slot; change
  * as desirable. */
 #ifndef MCUBOOT_MAX_IMG_SECTORS
-#define MCUBOOT_MAX_IMG_SECTORS 128
+#define MCUBOOT_MAX_IMG_SECTORS 128u
 #endif
 
 /*
@@ -36,7 +36,6 @@
 
 /* Uncomment for ECDSA signatures using curve P-256. */
 #define MCUBOOT_SIGN_EC256
-#define NUM_ECC_BYTES (256 / 8) // P-256 curve size in bytes, rnok: to make compilable
 
 // #define MCUBOOT_SIGN_EC
 
@@ -54,7 +53,7 @@
 #else
 /* Using SWAP w Scratch by default.
  * Comment/Uncomment which is needed. */
-/* #define MCUBOOT_SWAP_USING_SCRATCH 1 */
+#define MCUBOOT_SWAP_USING_SCRATCH 1
 /* #define MCUBOOT_SWAP_USING_MOVE 1 */
 #define MCUBOOT_SWAP_USING_STATUS 1
 #endif
@@ -132,7 +131,8 @@
  * defining BOOT_LOG_LEVEL before #including `bootutil_log.h`
  */
 #define MCUBOOT_HAVE_LOGGING 1
-
+/* Define this to support native mcuboot logging system */
+#define CONFIG_MCUBOOT 1
 /*
  * Assertions
  */
@@ -146,5 +146,12 @@
     do {                                \
         /* TODO: to be implemented */   \
     } while (0)
+
+/* Uncomment these if support of encrypted upgrade image is needed */
+#ifdef ENC_IMG
+#define MCUBOOT_ENC_IMAGES
+#define MCUBOOT_ENCRYPT_EC256
+#define NUM_ECC_BYTES (256 / 8)
+#endif /* ENC_IMG */
 
 #endif /* MCUBOOT_CONFIG_H */

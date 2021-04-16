@@ -11,7 +11,7 @@ use std::ptr;
 use std::collections::HashMap;
 
 /// Structure to build up the boot area table.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AreaDesc {
     areas: Vec<Vec<FlashArea>>,
     whole: Vec<FlashArea>,
@@ -130,7 +130,7 @@ impl AreaDesc {
         assert_eq!(self.areas.len(), self.whole.len());
 
         for (i, area) in self.areas.iter().enumerate() {
-            if area.len() > 0 {
+            if !area.is_empty() {
                 areas.slots[i].areas = &area[0];
                 areas.slots[i].whole = self.whole[i].clone();
                 areas.slots[i].num_areas = area.len() as u32;
@@ -189,6 +189,8 @@ pub enum FlashId {
     ImageScratch = 3,
     Image2 = 4,
     Image3 = 5,
+    //ImageSwapStatus = 7,
+    //ImageSwapStatus = 3,
 }
 
 impl Default for FlashId {

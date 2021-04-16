@@ -14,6 +14,7 @@ config MCUBOOT
 	bool
 	select MPU_ALLOW_FLASH_WRITE if ARM_MPU
 	select USE_DT_CODE_PARTITION if HAS_FLASH_LOAD_OFFSET
+	select MCUBOOT_BOOTUTIL_LIB
 
 config BOOT_USE_MBEDTLS
 	bool
@@ -354,9 +355,15 @@ config BOOT_FIH_PROFILE_HIGH
 
 endchoice
 
-config BOOT_WAIT_FOR_USB_DFU
+choice BOOT_USB_DFU
+	prompt "USB DFU"
+	default BOOT_USB_DFU_NO
+
+config BOOT_USB_DFU_NO
+	prompt "Disabled"
+
+config BOOT_USB_DFU_WAIT
 	bool "Wait for a prescribed duration to see if USB DFU is invoked"
-	default n
 	select USB
 	select USB_DFU_CLASS
 	select IMG_MANAGER
@@ -364,6 +371,58 @@ config BOOT_WAIT_FOR_USB_DFU
 	  If y, MCUboot waits for a prescribed duration of time to allow
 	  for USB DFU to be invoked. Please note DFU always updates the
 	  slot1 image.
+
+config BOOT_USB_DFU_GPIO
+	bool "Use GPIO to detect whether to trigger DFU mode"
+	select USB
+	select USB_DFU_CLASS
+	select IMG_MANAGER
+	help
+	  If y, MCUboot uses GPIO to detect whether to invoke USB DFU.
+
+endchoice
+
+config BOOT_USB_DFU_WAIT_DELAY_MS
+	int "USB DFU wait duration"
+	depends on BOOT_USB_DFU_WAIT
+	default 12000
+	help
+	  Milliseconds to wait for USB DFU to be invoked.
+
+if BOOT_USB_DFU_GPIO
+
+config BOOT_USB_DFU_DETECT_PORT
+	string "GPIO device to trigger USB DFU mode"
+	default GPIO_0 if SOC_FAMILY_NRF
+	help
+	  Zephyr GPIO device that contains the pin used to trigger
+	  USB DFU.
+
+config BOOT_USB_DFU_DETECT_PIN
+	int "Pin to trigger USB DFU mode"
+	default 6 if BOARD_NRF9160DK_NRF9160
+	default 11 if BOARD_NRF52840DK_NRF52840
+	default 13 if BOARD_NRF52DK_NRF52832
+	default 23 if BOARD_NRF5340_DK_NRF5340_CPUAPP || BOARD_NRF5340_DK_NRF5340_CPUAPPNS
+	help
+	  Pin on the DFU detect port that triggers DFU mode.
+
+config BOOT_USB_DFU_DETECT_PIN_VAL
+	int "USB DFU detect pin trigger value"
+	default 0
+	range 0 1
+	help
+	  Logic value of the detect pin that triggers USB DFU mode.
+
+config BOOT_USB_DFU_DETECT_DELAY
+	int "Serial detect pin detection delay time [ms]"
+	default 0
+	help
+	  Used to prevent the bootloader from loading on button press.
+	  Useful for powering on when using the same button as
+	  the one used to place the device in bootloader mode.
+
+endif # BOOT_USB_DFU_GPIO
 
 config ZEPHYR_TRY_MASS_ERASE
 	bool "Try to mass erase flash when flashing MCUboot image"
@@ -434,6 +493,14 @@ config BOOT_SERIAL_CDC_ACM
 
 endchoice
 
+config MCUBOOT_INDICATION_LED
+	bool "Turns on LED indication when device is in DFU"
+	default n
+	help
+	  Device device activates the LED while in bootloader mode.
+	  bootloader-led0 alias must be set in the device's .dts
+	  definitions for this to work.
+
 config BOOT_MAX_LINE_INPUT_LEN
 	int "Maximum command line length"
 	default 512
@@ -444,7 +511,7 @@ config BOOT_SERIAL_DETECT_PORT
 	string "GPIO device to trigger serial recovery mode"
 	default GPIO_0 if SOC_FAMILY_NRF
 	help
-	  Zephyr GPIO device which contains the pin used to trigger
+	  Zephyr GPIO device that contains the pin used to trigger
 	  serial recovery mode.
 
 config BOOT_SERIAL_DETECT_PIN
@@ -452,17 +519,26 @@ config BOOT_SERIAL_DETECT_PIN
 	default 6 if BOARD_NRF9160DK_NRF9160
 	default 11 if BOARD_NRF52840DK_NRF52840
 	default 13 if BOARD_NRF52DK_NRF52832
-	default 23 if BOARD_NRF5340PDK_NRF5340_CPUAPP || BOARD_NRF5340PDK_NRF5340_CPUAPPNS
+	default 23 if BOARD_NRF5340PDK_NRF5340_CPUAPP || BOARD_NRF5340PDK_NRF5340_CPUAPPNS || \
+		BOARD_NRF5340DK_NRF5340_CPUAPP || BOARD_NRF5340DK_NRF5340_CPUAPPNS
 	help
-	  Pin on the serial detect port which triggers serial recovery mode.
+	  Pin on the serial detect port that triggers serial recovery mode.
 
 config BOOT_SERIAL_DETECT_PIN_VAL
 	int "Serial detect pin trigger value"
 	default 0
 	range 0 1
 	help
-	  Logic value of the detect pin which triggers serial recovery
+	  Logic value of the detect pin that triggers serial recovery
 	  mode.
+
+config BOOT_SERIAL_DETECT_DELAY
+	int "Serial detect pin detection delay time [ms]"
+	default 0
+	help
+	  Used to prevent the bootloader from loading on button press.
+	  Useful for powering on when using the same button as
+	  the one used to place the device in bootloader mode.
 
 # Workaround for not being able to have commas in macro arguments
 DT_CHOSEN_Z_CONSOLE := zephyr,console
@@ -558,6 +634,7 @@ comment "Zephyr configuration options"
 # hardware work.
 config MULTITHREADING
 	default y if BOOT_SERIAL_CDC_ACM #usb driver requires MULTITHREADING
+	default y if BOOT_USB_DFU_GPIO || BOOT_USB_DFU_WAIT
 	default n if SOC_FAMILY_NRF
 	default y
 
@@ -571,5 +648,10 @@ config LOG_PROCESS_THREAD
 # override USB device name
 config USB_DEVICE_PRODUCT
 	default "MCUBOOT"
+
+# use MCUboot's own log configuration
+config MCUBOOT_BOOTUTIL_LIB_OWN_LOG
+	bool
+	default n
 
 source "Kconfig.zephyr"

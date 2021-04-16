@@ -34,7 +34,7 @@ There are two applications implemented:
 
 Detailed description of **MCUBootApp** is provided in `MCUBootApp/MCUBootApp.md`
 
-MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on mbedTLS Library.
+MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses either completely software implementation of cryptographic functions or accelerated by hardware - both based on mbedTLS Library.
 
 #### BlinkyApp
 * Can be built to use as primary or secondary image for both internal and external flash memory
@@ -85,9 +85,11 @@ In case of using another installation folder, version of **ModusToolbox IDE** or
 
     make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=BOOT TOOLCHAIN_PATH=/home/fw-security/ModusToolbox/tools_2.0/gcc-7.2.1
 
-Currently supported platforms:
+Supported platforms for `MCUBoot`, `BlinkyApp`:
 
-* PSOC_062_2M - for MCUBootApp, BlinkyApp;
+* PSOC_062_2M
+* PSOC_062_1M
+* PSOC_062_512K
 
 ### Build Environment Troubleshooting
 

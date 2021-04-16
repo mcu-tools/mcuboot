@@ -2,6 +2,8 @@
 ED25519 key management
 """
 
+# SPDX-License-Identifier: Apache-2.0
+
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519

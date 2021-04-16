@@ -84,9 +84,24 @@ int main(void)
     bool boot_succeeded = false;
     fih_int fih_rc = FIH_FAILURE;
 
-    init_cycfg_clocks();
+    SystemInit();
+    //init_cycfg_clocks();
     init_cycfg_peripherals();
     init_cycfg_pins();
+
+    /* Certain PSoC 6 devices enable CM4 by default at startup. It must be 
+     * either disabled or enabled & running a valid application for flash write
+     * to work from CM0+. Since flash write may happen in boot_go() for updating
+     * the image before this bootloader app can enable CM4 in do_boot(), we need
+     * to keep CM4 disabled. Note that debugging of CM4 is not supported when it
+     * is disabled.
+     */
+    #if defined(CY_DEVICE_PSOC6ABLE2)
+    if (CY_SYS_CM4_STATUS_ENABLED == Cy_SysGetCM4Status())
+    {
+        Cy_SysDisableCM4();
+    }
+    #endif /* #if defined(CY_DEVICE_PSOC6ABLE2) */
 
     /* enable interrupts */
     __enable_irq();
@@ -104,10 +119,6 @@ int main(void)
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     rc = CY_SMIF_CMD_NOT_FOUND;
 
-    /* Redefine number of sectors as there 2MB will be
-     * available on PSoC062-2M in case of external
-     * memory usage */
-    #define MCUBOOT_MAX_IMG_SECTORS 4096
     rc = qspi_init_sfdp(smif_id);
     if (rc == CY_SMIF_SUCCESS)
     {
@@ -125,10 +136,10 @@ int main(void)
         if (fih_eq(fih_rc, FIH_SUCCESS))
         {
             BOOT_LOG_INF("User Application validated successfully");
-            /* intitalize watchdog timer. it should be updated from user app
-            to mark successful start up of this app. if the watchdog is not updated,
-            reset will be initiated by watchdog timer and swap revert operation started
-            to roll back to operable image.
+            /* initialize watchdog timer. it should be updated from user app
+            * to mark successful start up of this app. if the watchdog is not updated,
+            * reset will be initiated by watchdog timer and swap revert operation started
+            * to roll back to operable image.
             */
             cy_wdg_init(WDT_TIME_OUT_MS);
             do_boot(&rsp);

@@ -11,7 +11,6 @@
 mod pdump;
 
 use crate::pdump::HexDump;
-use failure::Fail;
 use log::info;
 use rand::{
     self,
@@ -26,25 +25,20 @@ use std::{
     path::Path,
     slice,
 };
+use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, FlashError>;
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum FlashError {
-    #[fail(display = "Offset out of bounds: {}", _0)]
+    #[error("Offset out of bounds: {0}")]
     OutOfBounds(String),
-    #[fail(display = "Invalid write: {}", _0)]
+    #[error("Invalid write: {0}")]
     Write(String),
-    #[fail(display = "Write failed by chance: {}", _0)]
+    #[error("Write failed by chance: {0}")]
     SimulatedFail(String),
-    #[fail(display = "{}", _0)]
-    Io(#[cause] io::Error),
-}
-
-impl From<io::Error> for FlashError {
-    fn from(error: io::Error) -> Self {
-        FlashError::Io(error)
-    }
+    #[error("{0}")]
+    Io(#[from] io::Error),
 }
 
 // Transition from error-chain.
@@ -72,6 +66,8 @@ pub trait Flash {
 
     fn align(&self) -> usize;
     fn erased_val(&self) -> u8;
+
+    fn set_erase_by_sector(&mut self, enable: bool);
 }
 
 fn ebounds<T: AsRef<str>>(message: T) -> FlashError {
@@ -100,6 +96,7 @@ pub struct SimFlash {
     align: usize,
     verify_writes: bool,
     erased_val: u8,
+    erase_by_sector: bool,
 }
 
 impl SimFlash {
@@ -113,11 +110,11 @@ impl SimFlash {
         SimFlash {
             data: vec![erased_val; total],
             write_safe: vec![true; total],
-            sectors: sectors,
+            sectors,
             bad_region: Vec::new(),
-            align: align,
+            align,
             verify_writes: true,
-            erased_val: erased_val,
+            erased_val,
         }
     }
 
@@ -136,15 +133,15 @@ impl SimFlash {
 
     // Scan the sector map, and return the base and offset within a sector for this given byte.
     // Returns None if the value is outside of the device.
-    fn get_sector(&self, offset: usize) -> Option<(usize, usize)> {
+    fn get_sector(&self, offset: usize) -> Option<(usize, usize, usize)> {
         let mut offset = offset;
         for (sector, &size) in self.sectors.iter().enumerate() {
             if offset < size {
-                return Some((sector, offset));
+                return Some((sector, offset, size));
             }
             offset -= size;
         }
-        return None;
+        None
     }
 
 }
@@ -156,8 +153,21 @@ impl Flash for SimFlash {
     /// strict, and make sure that the passed arguments are exactly at a sector boundary, otherwise
     /// return an error.
     fn erase(&mut self, offset: usize, len: usize) -> Result<()> {
-        let (_start, slen) = self.get_sector(offset).ok_or_else(|| ebounds("start"))?;
-        let (end, elen) = self.get_sector(offset + len - 1).ok_or_else(|| ebounds("end"))?;
+        let (_start, mut slen, ssize) = self.get_sector(offset).ok_or_else(|| ebounds("start"))?;
+        let (end, mut elen, _) = self.get_sector(offset + len - 1).ok_or_else(|| ebounds("end"))?;
+
+        let mut offset = offset;
+        let mut len = len;
+
+        if self.erase_by_sector {
+            // info!("erase_by_sector: {:#X}/{:#X} -> {:#X}/{:#X}", offset, len, offset - slen, ssize);
+
+            offset = offset - slen;
+            len = ssize;
+
+            slen = 0;
+            elen = self.sectors[end] - 1;
+        }
 
         if slen != 0 {
             bail!(ebounds("offset not at start of sector"));
@@ -236,7 +246,7 @@ impl Flash for SimFlash {
     /// Adds a new flash bad region. Writes to this area fail with a chance
     /// given by `rate`.
     fn add_bad_region(&mut self, offset: usize, len: usize, rate: f32) -> Result<()> {
-        if rate < 0.0 || rate > 1.0 {
+        if !(0.0..=1.0).contains(&rate) {
             bail!(ebounds("Invalid rate"));
         }
 
@@ -273,6 +283,10 @@ impl Flash for SimFlash {
     fn erased_val(&self) -> u8 {
         self.erased_val
     }
+
+    fn set_erase_by_sector(&mut self, enable: bool) {
+        self.erase_by_sector = enable;
+    }
 }
 
 /// It is possible to iterate over the sectors in the device, each element returning this.
@@ -301,9 +315,9 @@ impl<'a> Iterator for SectorIter<'a> {
                 let base = self.base;
                 self.base += size;
                 Some(Sector {
-                    num: num,
-                    base: base,
-                    size: size,
+                    num,
+                    base,
+                    size,
                 })
             }
         }

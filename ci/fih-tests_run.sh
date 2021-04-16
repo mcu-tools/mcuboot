@@ -16,8 +16,14 @@
 
 set -e
 
+pushd .. &&\
+   git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git &&\
+   pushd trusted-firmware-m &&\
+   git checkout 7ad5c5f23f4619add4aa6c88f4b25fc6fd84ec6e &&\
+   popd
+
 if test -z "$FIH_LEVEL"; then
-    docker run mcuboot/fih-test /bin/sh -c '/root/execute_test.sh $0 $1 $2' $SKIP_SIZE $BUILD_TYPE $DAMAGE_TYPE
+    docker run --rm -v $(pwd):/root/work/tfm:rw,z mcuboot/fih-test /bin/sh -c '/root/work/tfm/mcuboot/ci/fih_test_docker/execute_test.sh $0 $1 $2' $SKIP_SIZE $BUILD_TYPE $DAMAGE_TYPE
 else
-    docker run mcuboot/fih-test /bin/sh -c '/root/execute_test.sh $0 $1 $2 $3' $SKIP_SIZE $BUILD_TYPE $DAMAGE_TYPE $FIH_LEVEL
+    docker run --rm -v $(pwd):/root/work/tfm:rw,z mcuboot/fih-test /bin/sh -c '/root/work/tfm/mcuboot/ci/fih_test_docker/execute_test.sh $0 $1 $2 $3' $SKIP_SIZE $BUILD_TYPE $DAMAGE_TYPE $FIH_LEVEL
 fi

@@ -38,6 +38,12 @@
 #warning "Check if User LED is correct for your target board."
 #define LED_PORT GPIO_PRT13
 #define LED_PIN 7U
+#elif defined(PSOC_062_1M)
+#define LED_PORT GPIO_PRT13
+#define LED_PIN 7U
+#elif defined(PSOC_062_512K)
+#define LED_PORT GPIO_PRT11
+#define LED_PIN 1U
 #endif
 
 #define LED_NUM 5U
@@ -68,7 +74,7 @@ const cy_stc_gpio_pin_config_t LED_config =
     #define BLINK_PERIOD          (1000u)
     #define GREETING_MESSAGE_VER  "[BlinkyApp] BlinkyApp v1.0 [CM4]\r\n"
     #define GREETING_MESSAGE_INFO "[BlinkyApp] Red led blinks with 1 sec period\r\n"
-#elif defined UPGRADE_IMG
+#elif defined(UPGRADE_IMG)
     #define BLINK_PERIOD          (250u)
     #define GREETING_MESSAGE_VER  "[BlinkyApp] BlinkyApp v2.0 [+]\r\n"
     #define GREETING_MESSAGE_INFO "[BlinkyApp] Red led blinks with 0.25 sec period\r\n"
@@ -87,11 +93,11 @@ void check_result(int res)
 * Writes 1 byte `src` into flash memory at `address`
 * It does a sequence of RD/Modify/WR of data in a Flash Row.
  */
-cy_en_flashdrv_status_t flash_write_byte(uint32_t address, uint8_t src)
+int flash_write_byte(uint32_t address, uint8_t src)
 {
-    cy_en_flashdrv_status_t rc = CY_FLASH_DRV_ERR_UNC;
+    cy_en_flashdrv_status_t rc = CY_FLASH_DRV_SUCCESS;
     uint32_t row_addr = 0;
-    uint8_t row_buff[CY_FLASH_SIZEOF_ROW];
+    uint8_t row_buff[512];
 
     /* accepting arbitrary address */
     row_addr = (address/CY_FLASH_SIZEOF_ROW)*CY_FLASH_SIZEOF_ROW;
@@ -105,7 +111,7 @@ cy_en_flashdrv_status_t flash_write_byte(uint32_t address, uint8_t src)
     /* Programming updated row back */
     rc = Cy_Flash_WriteRow(row_addr, (const uint32_t *)row_buff);
 
-    return rc;
+    return (int) rc;
 }
 
 void test_app_init_hardware(void)
@@ -158,10 +164,12 @@ int main(void)
     if (*((uint8_t *)img_ok_addr) != USER_SWAP_IMAGE_OK)
     {
         rc = flash_write_byte(img_ok_addr, USER_SWAP_IMAGE_OK);
-        if (CY_FLASH_DRV_SUCCESS == rc) {
+        if (0 == rc)
+        {
             printf("[BlinkyApp] SWAP Status : Image OK was set at 0x%08lx.\r\n", img_ok_addr);
         }
-        else {
+        else
+        {
             printf("[BlinkyApp] SWAP Status : Failed to set Image OK.\r\n");
         }
     } else
@@ -170,7 +178,8 @@ int main(void)
     }
 #endif
 
-    for (;;) {
+    for (;;)
+    {
         /* Toggle the user LED periodically */
         Cy_SysLib_Delay(blinky_period/2);
 

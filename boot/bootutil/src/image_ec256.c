@@ -30,10 +30,11 @@
 
 #ifdef MCUBOOT_SIGN_EC256
 /*TODO: remove this after cypress port mbedtls to abstract crypto api */
-#ifdef MCUBOOT_USE_CC310
+#if defined(MCUBOOT_USE_CC310) || defined(MCUBOOT_USE_MBED_TLS)
 #define NUM_ECC_BYTES (256 / 8)
 #endif
-#if defined (MCUBOOT_USE_TINYCRYPT) || defined (MCUBOOT_USE_CC310)
+#if defined(MCUBOOT_USE_TINYCRYPT) || defined(MCUBOOT_USE_CC310) || \
+    defined(MCUBOOT_USE_MBED_TLS)
 #include "bootutil/sign_key.h"
 
 #include "mbedtls/oid.h"
@@ -50,6 +51,53 @@ static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
 /*
  * Parse the public key used for signing.
  */
+#ifdef CY_MBEDTLS_HW_ACCELERATION
+static int
+bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
+{
+    size_t len;
+    mbedtls_asn1_buf alg;
+    mbedtls_asn1_buf param;
+
+    if (mbedtls_asn1_get_tag(p, end, &len,
+        MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) {
+        return -1;
+    }
+    end = *p + len;
+
+    if (mbedtls_asn1_get_alg(p, end, &alg, &param)) {
+        return -2;
+    }
+    if (alg.len != sizeof(ec_pubkey_oid) - 1 ||
+      memcmp(alg.p, ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
+        return -3;
+    }
+    if (param.len != sizeof(ec_secp256r1_oid) - 1||
+      memcmp(param.p, ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
+        return -4;
+    }
+
+    if (mbedtls_ecp_group_load(&ctx->grp, MBEDTLS_ECP_DP_SECP256R1)) {
+        return -5;
+    }
+
+    if (mbedtls_asn1_get_bitstring_null(p, end, &len)) {
+        return -6;
+    }
+    if (*p + len != end) {
+        return -7;
+    }
+
+    if (mbedtls_ecp_point_read_binary(&ctx->grp, &ctx->Q, *p, end - *p)) {
+        return -8;
+    }
+
+    if (mbedtls_ecp_check_pubkey(&ctx->grp, &ctx->Q)) {
+        return -9;
+    }
+    return 0;
+}
+#else /* !CY_MBEDTLS_HW_ACCELERATION */
 static int
 bootutil_import_key(uint8_t **cp, uint8_t *end)
 {
@@ -88,16 +136,12 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
     if (len != 2 * NUM_ECC_BYTES + 1) {
         return -8;
     }
-    /* Is uncompressed? */
-    if (*cp[0] != 0x04) {
-        return -9;
-    }
-
-    (*cp)++;
 
     return 0;
 }
+#endif /* CY_MBEDTLS_HW_ACCELERATION */
 
+#ifndef MCUBOOT_ECDSA_NEED_ASN1_SIG
 /*
  * cp points to ASN1 string containing an integer.
  * Verify the tag, and that the length is 32 bytes.
@@ -149,6 +193,7 @@ bootutil_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp, uint8_t *
     }
     return 0;
 }
+#endif /* not MCUBOOT_ECDSA_NEED_ASN1_SIG */
 
 int
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
@@ -159,31 +204,55 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     uint8_t *pubkey;
     uint8_t *end;
 
+#ifndef MCUBOOT_ECDSA_NEED_ASN1_SIG
     uint8_t signature[2 * NUM_ECC_BYTES];
+#endif
 
     pubkey = (uint8_t *)bootutil_keys[key_id].key;
     end = pubkey + *bootutil_keys[key_id].len;
 
+#ifdef CY_MBEDTLS_HW_ACCELERATION
+    mbedtls_ecdsa_init(&ctx);
+    rc = bootutil_parse_eckey(&ctx, &pubkey, end);
+#else
     rc = bootutil_import_key(&pubkey, end);
+#endif
     if (rc) {
         return -1;
     }
 
+#ifndef MCUBOOT_ECDSA_NEED_ASN1_SIG
     rc = bootutil_decode_sig(signature, sig, sig + slen);
     if (rc) {
         return -1;
     }
+#endif
 
     /*
      * This is simplified, as the hash length is also 32 bytes.
      */
+#ifdef CY_MBEDTLS_HW_ACCELERATION
+    while (sig[slen - 1] == '\0') {
+        slen--;
+    }
+    rc = mbedtls_ecdsa_read_signature(&ctx, hash, hlen, sig, slen);
+
+#else /* CY_MBEDTLS_HW_ACCELERATION */
     if (hlen != NUM_ECC_BYTES) {
         return -1;
     }
 
     bootutil_ecdsa_p256_init(&ctx);
-    rc = bootutil_ecdsa_p256_verify(&ctx, pubkey, hash, signature);
+#ifdef MCUBOOT_ECDSA_NEED_ASN1_SIG
+    rc = bootutil_ecdsa_p256_verify(&ctx, pubkey, end - pubkey, hash, sig, slen);
+#else
+    rc = bootutil_ecdsa_p256_verify(&ctx, pubkey, end - pubkey, hash, signature,
+                                    2 * NUM_ECC_BYTES);
+#endif
+#endif /* CY_MBEDTLS_HW_ACCELERATION */
+
     bootutil_ecdsa_p256_drop(&ctx);
+
     return rc;
 }
 

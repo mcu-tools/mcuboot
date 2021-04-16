@@ -22,7 +22,6 @@
 #include "mbedtls/nist_kw.h"
 #endif
 
-#define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
 #include <bootutil/bootutil_log.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
@@ -230,7 +229,8 @@ int invoke_boot_go(struct sim_context *ctx, struct area_desc *adesc)
     struct boot_rsp rsp;
     struct boot_loader_state *state;
 
-#if defined(MCUBOOT_SIGN_RSA)
+#if defined(MCUBOOT_SIGN_RSA) || \
+    (defined(MCUBOOT_SIGN_EC256) && defined(MCUBOOT_USE_MBED_TLS))
     mbedtls_platform_set_calloc_free(calloc, free);
 #endif
 
@@ -261,16 +261,33 @@ void *os_malloc(size_t size)
     return malloc(size);
 }
 
+void os_free(void *mem)
+{
+    free(mem);
+}
+
+void *os_realloc(void *ptr, size_t size)
+{
+    return realloc(ptr, size);
+}
+
 int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
     switch (slot) {
     case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
     case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
     case 2: return FLASH_AREA_IMAGE_SCRATCH;
+
+    // case 7: return FLASH_AREA_IMAGE_SWAP_STATUS;
     }
 
-    printf("Image flash area ID not found\n");
+    printf("Image flash area ID not found, image=%d, slot=%d\n", image_index, slot);
     return -1; /* flash_area_open will fail on that */
+}
+
+int flash_area_id_from_image_slot(int slot)
+{
+    return flash_area_id_from_multi_image_slot(0, slot);
 }
 
 int flash_area_open(uint8_t id, const struct flash_area **area)
@@ -278,13 +295,19 @@ int flash_area_open(uint8_t id, const struct flash_area **area)
     uint32_t i;
     struct area_desc *flash_areas;
 
+    // BOOT_LOG_SIM("%s: area id=%d, num_slots=%d", __func__, id, sim_get_flash_areas()->num_slots);
+
     flash_areas = sim_get_flash_areas();
     for (i = 0; i < flash_areas->num_slots; i++) {
+        // BOOT_LOG_SIM(" * flash_areas->slots[%d].id=%d", i, flash_areas->slots[i].id);
         if (flash_areas->slots[i].id == id)
+        {
+            // BOOT_LOG_SIM(" * found, i=%d, id=%d", i, id);
             break;
+        }
     }
     if (i == flash_areas->num_slots) {
-        printf("Unsupported area\n");
+        printf("Unsupported area id=%d\n", id);
         abort();
     }
 
@@ -340,20 +363,22 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
     struct area *slot;
     struct area_desc *flash_areas;
 
+    // BOOT_LOG_SIM("%s: idx=%d", __func__, idx);
+
     flash_areas = sim_get_flash_areas();
     for (i = 0; i < flash_areas->num_slots; i++) {
         if (flash_areas->slots[i].id == idx)
             break;
     }
     if (i == flash_areas->num_slots) {
-        printf("Unsupported area\n");
+        printf("flash_area_to_sectors: Unsupported area = %d\n", idx);
         abort();
     }
 
     slot = &flash_areas->slots[i];
 
     if (slot->num_areas > (uint32_t)*cnt) {
-        printf("Too many areas in slot\n");
+        printf("Too many areas in slot: %d > %d\n", slot->num_areas, *cnt);
         abort();
     }
 
@@ -370,20 +395,22 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
     struct area *slot;
     struct area_desc *flash_areas;
 
+    // BOOT_LOG_SIM("%s: area id=%d", __func__, fa_id);
+
     flash_areas = sim_get_flash_areas();
     for (i = 0; i < flash_areas->num_slots; i++) {
         if (flash_areas->slots[i].id == fa_id)
             break;
     }
     if (i == flash_areas->num_slots) {
-        printf("Unsupported area\n");
+        printf("flash_area_get_sectors: Unsupported area = %d\n", fa_id);
         abort();
     }
 
     slot = &flash_areas->slots[i];
 
     if (slot->num_areas > *count) {
-        printf("Too many areas in slot\n");
+        printf("Too many areas in slot: %d > %d\n", slot->num_areas, *count);
         abort();
     }
 
@@ -406,7 +433,7 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
         return 1;
     }
 
-    printf("Unsupported image area ID\n");
+    printf("Unsupported image area ID=%d\n", area_id);
     abort();
 }
 
@@ -435,4 +462,29 @@ uint32_t boot_max_align(void)
 uint32_t boot_magic_sz(void)
 {
     return BOOT_MAGIC_SZ;
+}
+
+void mbedtls_platform_zeroize( void *buf, size_t len )
+{
+    memset( buf, 0, len );
+}
+
+int flash_area_read_is_empty(const struct flash_area *fa, uint32_t off,
+        void *dst, uint32_t len)
+{
+    uint8_t *mem_dest;
+    int rc;
+
+    mem_dest = (uint8_t *)dst;
+    rc = flash_area_read(fa, off, dst, len);
+    if (rc) {
+        return -1;
+    }
+
+    for (uint8_t i = 0; i < len; i++) {
+        if (mem_dest[i] != flash_area_erased_val(fa)) {
+            return 0;
+        }
+    }
+    return 1;
 }

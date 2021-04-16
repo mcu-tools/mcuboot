@@ -7,7 +7,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2019 Cypress Semiconductor Corporation
+# Copyright 2018-2021 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +43,8 @@ APP_NAME ?= MCUBootApp
 POST_BUILD ?= 1
 
 SIGN_KEY_FILE ?= cypress-test-ec-p256
+ENC_KEY_FILE ?= enc-ec256-pub
+ENC_IMG ?= 0
 
 # set this variable to a path, where cysecuretools python package is installed
 # use command `python -m pip show cysecuretools` to find out this path
@@ -58,6 +60,7 @@ HEADER_OFFSET ?= 0
 
 ifneq ($(filter $(APP_NAME), $(APPS)),)
 include ./$(APP_NAME)/$(APP_NAME).mk
+include ./$(APP_NAME)/libs.mk
 else
 $(error Not supported application: '$(APP_NAME)')
 endif
@@ -95,7 +98,7 @@ $(info $(DEFINES))
 endif
 
 # updating CFLAGS at this point as DEFINES are completed
-CFLAGS += $(DEFINES)
+CFLAGS += $(DEFINES) $(CFLAGS_OPTIMIZATION)
 
 VPATH = $(dir $(C_FILES) $(ASM_FILES))
 
@@ -117,6 +120,7 @@ ASM_FILES=$(MY_ASM_FILES)
 MY_LDFLAGS := $(subst /cygdrive/c,c:,$(LDFLAGS))
 #$(info MY_LDFLAGS $(MY_LDFLAGS))
 LDFLAGS=$(MY_LDFLAGS)
+LDFLAGS += $(LDFLAGS_OPTIMIZATION)
 
 # Default name pattern for output files
 # may be modified in %Application%.mk file

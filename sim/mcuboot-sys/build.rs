@@ -12,9 +12,11 @@ fn main() {
     let sig_rsa = env::var("CARGO_FEATURE_SIG_RSA").is_ok();
     let sig_rsa3072 = env::var("CARGO_FEATURE_SIG_RSA3072").is_ok();
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
+    let sig_ecdsa_mbedtls = env::var("CARGO_FEATURE_SIG_ECDSA_MBEDTLS").is_ok();
     let sig_ed25519 = env::var("CARGO_FEATURE_SIG_ED25519").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
     let swap_move = env::var("CARGO_FEATURE_SWAP_MOVE").is_ok();
+    let swap_status = env::var("CARGO_FEATURE_SWAP_STATUS").is_ok();
     let validate_primary_slot =
                   env::var("CARGO_FEATURE_VALIDATE_PRIMARY_SLOT").is_ok();
     let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
@@ -30,7 +32,9 @@ fn main() {
     conf.define("MCUBOOT_HAVE_LOGGING", None);
     conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
     conf.define("MCUBOOT_HAVE_ASSERT_H", None);
-    conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
+    if !swap_status {
+        conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
+    }
     conf.define("MCUBOOT_IMAGE_NUMBER", Some(if multiimage { "2" } else { "1" }));
 
     if downgrade_prevention && !overwrite_only {
@@ -39,7 +43,6 @@ fn main() {
 
     if bootstrap {
         conf.define("MCUBOOT_BOOTSTRAP", None);
-        conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
     }
 
     if validate_primary_slot {
@@ -97,6 +100,21 @@ fn main() {
 
         conf.file("../../ext/mbedtls-asn1/src/platform_util.c");
         conf.file("../../ext/mbedtls-asn1/src/asn1parse.c");
+    } else if sig_ecdsa_mbedtls {
+        conf.define("MCUBOOT_SIGN_EC256", None);
+        conf.define("MCUBOOT_USE_MBED_TLS", None);
+
+        conf.include("../../ext/mbedtls/crypto/include");
+        conf.file("../../ext/mbedtls/crypto/library/sha256.c");
+        conf.file("csupport/keys.c");
+
+        conf.file("../../ext/mbedtls/crypto/library/asn1parse.c");
+        conf.file("../../ext/mbedtls/crypto/library/bignum.c");
+        conf.file("../../ext/mbedtls/crypto/library/ecdsa.c");
+        conf.file("../../ext/mbedtls/crypto/library/ecp.c");
+        conf.file("../../ext/mbedtls/crypto/library/ecp_curves.c");
+        conf.file("../../ext/mbedtls/crypto/library/platform.c");
+        conf.file("../../ext/mbedtls/crypto/library/platform_util.c");
     } else if sig_ed25519 {
         conf.define("MCUBOOT_SIGN_ED25519", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
@@ -122,10 +140,25 @@ fn main() {
 
     if overwrite_only {
         conf.define("MCUBOOT_OVERWRITE_ONLY", None);
+        conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
     }
 
     if swap_move {
         conf.define("MCUBOOT_SWAP_USING_MOVE", None);
+        conf.file("../../boot/bootutil/src/swap_move.c");
+    }
+
+    if swap_status {
+        conf.define("MCUBOOT_SWAP_USING_STATUS", None);
+        conf.define("MCUBOOT_LOG_LEVEL", "MCUBOOT_LOG_LEVEL_DEBUG");
+        conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("2000"));
+        conf.define("CY_FLASH_ALIGN", "512");
+        conf.file("../../boot/bootutil/src/swap_status.c");
+        conf.file("../../boot/bootutil/src/swap_status_part.c");
+        conf.file("../../boot/bootutil/src/swap_status_misc.c");
+        conf.file("../../boot/bootutil/src/crc32c.c");
+//        conf.file("../../boot/cypress/cy_flash_pal/cy_my_support.c");
+        conf.include("../../boot/cypress/cy_flash_pal");
     }
 
     if enc_rsa {
@@ -247,6 +280,8 @@ fn main() {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
     } else if sig_rsa || sig_rsa3072 || enc_rsa {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
+    } else if sig_ecdsa_mbedtls {
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ecdsa.h>"));
     } else if (sig_ecdsa || enc_ec256) && !enc_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
     } else if sig_ed25519 || enc_x25519 {
@@ -258,7 +293,7 @@ fn main() {
     conf.file("../../boot/bootutil/src/image_validate.c");
     if sig_rsa || sig_rsa3072 {
         conf.file("../../boot/bootutil/src/image_rsa.c");
-    } else if sig_ecdsa {
+    } else if sig_ecdsa || sig_ecdsa_mbedtls {
         conf.file("../../boot/bootutil/src/image_ec256.c");
     } else if sig_ed25519 {
         conf.file("../../boot/bootutil/src/image_ed25519.c");
@@ -266,9 +301,9 @@ fn main() {
     conf.file("../../boot/bootutil/src/loader.c");
     conf.file("../../boot/bootutil/src/swap_misc.c");
     conf.file("../../boot/bootutil/src/swap_scratch.c");
-    conf.file("../../boot/bootutil/src/swap_move.c");
     conf.file("../../boot/bootutil/src/caps.c");
     conf.file("../../boot/bootutil/src/bootutil_misc.c");
+    conf.file("../../boot/bootutil/src/bootutil_public.c");
     conf.file("../../boot/bootutil/src/tlv.c");
     conf.file("../../boot/bootutil/src/fault_injection_hardening.c");
     conf.file("csupport/run.c");

@@ -3,6 +3,8 @@
 # Copyright 2017-2020 Linaro Limited
 # Copyright 2019-2020 Arm Limited
 #
+# SPDX-License-Identifier: Apache-2.0
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -239,6 +241,8 @@ class BasedIntParamType(click.ParamType):
               help='Adjust address in hex output file.')
 @click.option('-L', '--load-addr', type=BasedIntParamType(), required=False,
               help='Load address for image when it should run from RAM.')
+@click.option('-F', '--rom-fixed', type=BasedIntParamType(), required=False,
+              help='Set flash address the image is built for.')
 @click.option('--save-enctlv', default=False, is_flag=True,
               help='When upgrading, save encrypted key TLVs instead of plain '
                    'keys. Enable when BOOT_SWAP_SAVE_ENCTLV config option '
@@ -286,13 +290,17 @@ class BasedIntParamType(click.ParamType):
               default='hash', help='In what format to add the public key to '
               'the image manifest: full key or hash of the key.')
 @click.option('-k', '--key', metavar='filename')
+@click.option('--use-random-iv', default=False, is_flag=True,
+              help='Use random Salt and IV (initial vectors) for the image '
+              'encrypting scheme')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
 def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt, infile, outfile, dependencies, load_addr, hex_addr,
-         erased_val, save_enctlv, security_counter, boot_record, custom_tlv):
+         erased_val, save_enctlv, security_counter, boot_record, custom_tlv,
+         rom_fixed, use_random_iv):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -302,8 +310,8 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                       pad_header=pad_header, pad=pad, confirm=confirm,
                       align=int(align), slot_size=slot_size,
                       max_sectors=max_sectors, overwrite_only=overwrite_only,
-                      endian=endian, load_addr=load_addr, erased_val=erased_val,
-                      save_enctlv=save_enctlv,
+                      endian=endian, load_addr=load_addr, rom_fixed=rom_fixed,
+                      erased_val=erased_val, save_enctlv=save_enctlv,
                       security_counter=security_counter)
     img.load(infile)
     key = load_key(key) if key else None
@@ -339,7 +347,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             custom_tlvs[tag] = value.encode('utf-8')
 
     img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs)
+               custom_tlvs, use_random_iv=use_random_iv)
     img.save(outfile, hex_addr)
 
 

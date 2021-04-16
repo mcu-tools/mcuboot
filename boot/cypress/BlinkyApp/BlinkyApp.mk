@@ -23,6 +23,8 @@
 # limitations under the License.
 ################################################################################
 
+include host.mk
+
 # Cypress' MCUBoot Application supports GCC ARM only at this moment
 # Set defaults to:
 #     - compiler GCC
@@ -31,12 +33,14 @@
 COMPILER ?= GCC_ARM
 IMG_TYPE ?= BOOT
 
+# For which core this application is built
+CORE ?= CM4
+
 # image type can be BOOT or UPGRADE
 IMG_TYPES = BOOT UPGRADE
 
 # use SWAP_UPGRADE = 0 for overwrite only mode
 # use SWAP_UPGRADE = 1 for swap upgrade mode
-# use SWAP_UPGRADE = 2 for swap upgrade mode, upgrade image is in the external memory
 SWAP_UPGRADE ?= 1
 
 # possible values are 0 and 0xff
@@ -47,11 +51,11 @@ ifneq ($(COMPILER), GCC_ARM)
 $(error Only GCC ARM is supported at this moment)
 endif
 
-CUR_APP_PATH = $(CURDIR)/$(APP_NAME)
+CUR_APP_PATH = $(PRJ_DIR)/$(APP_NAME)
 
-include $(CUR_APP_PATH)/platforms.mk
-include $(CUR_APP_PATH)/libs.mk
-include $(CUR_APP_PATH)/toolchains.mk
+include $(PRJ_DIR)/platforms.mk
+include $(PRJ_DIR)/common_libs.mk
+include $(PRJ_DIR)/toolchains.mk
 
 # Application-specific DEFINES
 ifeq ($(IMG_TYPE), BOOT)
@@ -63,19 +67,24 @@ endif
 
 # Define start of application, RAM start and size, slot size
 ifeq ($(PLATFORM), PSOC_062_2M)
-	DEFINES_APP += -DRAM_START=0x08020800
-	DEFINES_APP += -DRAM_SIZE=0x20000
-	DEFINES_APP += -DUSER_APP_START=0x10018000
-	# size of image slot
-ifeq ($(SWAP_UPGRADE), 2)
+	DEFINES_APP += -DRAM_START=0x08040000
+	DEFINES_APP += -DRAM_SIZE=0x10000
+else ifeq ($(PLATFORM), PSOC_062_1M)
+	DEFINES_APP += -DRAM_START=0x08020000
+	DEFINES_APP += -DRAM_SIZE=0x10000
+else ifeq ($(PLATFORM), PSOC_062_512K)
+	DEFINES_APP += -DRAM_START=0x08020000
+	DEFINES_APP += -DRAM_SIZE=0x10000
+endif
+ifeq ($(USE_EXTERNAL_FLASH), 1)
 $(warning You are trying to build BlinkyApp for MCUBootApp with external memory support. Ensure you build MCUBootApp with USE_EXTERNAL_FLASH=1 flag!)
-	SLOT_SIZE ?= 0xC0000
+	SLOT_SIZE ?= 0x40200
 else
 	SLOT_SIZE ?= 0x10000
 endif
-endif
 
 DEFINES_APP += -DUSER_APP_SIZE=$(SLOT_SIZE)
+DEFINES_APP += -DUSER_APP_START=0x10018000
 
 # Collect Test Application sources
 SOURCES_APP_SRC := $(wildcard $(CUR_APP_PATH)/*.c)
@@ -94,6 +103,7 @@ $(error Only GCC ARM is supported at this moment)
 endif
 
 ASM_FILES_APP :=
+ASM_FILES_APP += $(ASM_FILES_STARTUP)
 
 # We still need this for MCUBoot apps signing
 IMGTOOL_PATH ?=	../../scripts/imgtool.py
@@ -114,6 +124,10 @@ OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
 
 # Set build directory for BOOT and UPGRADE images
 ifeq ($(IMG_TYPE), UPGRADE)
+	ifeq ($(ENC_IMG), 1)
+		SIGN_ARGS += --encrypt ../../$(ENC_KEY_FILE).pem
+		SIGN_ARGS += --use-random-iv
+	endif
 	SIGN_ARGS += --pad
 	UPGRADE_SUFFIX :=_upgrade
 	OUT_CFG := $(OUT_CFG)/upgrade

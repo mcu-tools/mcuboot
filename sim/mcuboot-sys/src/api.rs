@@ -6,7 +6,6 @@
 //! HAL api for MyNewt applications
 
 use crate::area::CAreaDesc;
-use libc;
 use log::{Level, log_enabled, warn};
 use simflash::{Result, Flash, FlashPtr};
 use std::{
@@ -47,6 +46,16 @@ impl FlashContext {
     }
 }
 
+impl Default for FlashContext {
+    fn default() -> FlashContext {
+        FlashContext {
+            flash_map: HashMap::new(),
+            flash_params: HashMap::new(),
+            flash_areas: CAreaDescPtr{ptr: ptr::null()},
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Default)]
 pub struct CSimContext {
@@ -72,25 +81,40 @@ impl CSimContextPtr {
     }
 }
 
+impl Default for CSimContextPtr {
+    fn default() -> CSimContextPtr {
+        CSimContextPtr {
+            ptr: ptr::null(),
+        }
+    }
+}
+
 thread_local! {
     pub static THREAD_CTX: RefCell<FlashContext> = RefCell::new(FlashContext::new());
     pub static SIM_CTX: RefCell<CSimContextPtr> = RefCell::new(CSimContextPtr::new());
 }
 
-// Set the flash device to be used by the simulation.  The pointer is unsafely stashed away.
-pub unsafe fn set_flash(dev_id: u8, dev: &mut dyn Flash) {
+/// Set the flash device to be used by the simulation.  The pointer is unsafely stashed away.
+///
+/// # Safety
+///
+/// This uses mem::transmute to stash a Rust pointer into a C value to
+/// retrieve later.  It should be safe to use this.
+pub fn set_flash(dev_id: u8, dev: &mut dyn Flash) {
     THREAD_CTX.with(|ctx| {
         ctx.borrow_mut().flash_params.insert(dev_id, FlashParamsStruct {
             align: dev.align() as u16,
             erased_val: dev.erased_val(),
         });
-        let dev: &'static mut dyn Flash = mem::transmute(dev);
-        ctx.borrow_mut().flash_map.insert(
-            dev_id, FlashPtr{ptr: dev as *mut dyn Flash});
+        unsafe {
+            let dev: &'static mut dyn Flash = mem::transmute(dev);
+            ctx.borrow_mut().flash_map.insert(
+                dev_id, FlashPtr{ptr: dev as *mut dyn Flash});
+        }
     });
 }
 
-pub unsafe fn clear_flash(dev_id: u8) {
+pub fn clear_flash(dev_id: u8) {
     THREAD_CTX.with(|ctx| {
         ctx.borrow_mut().flash_map.remove(&dev_id);
     });

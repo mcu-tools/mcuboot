@@ -28,10 +28,7 @@
 ################################################################################
 PDL_VERSION = 121
 #
-CUR_LIBS_PATH = $(CURDIR)/libs
-
-# Collect source files for PDL
-SOURCES_PDL := $(wildcard $(CUR_LIBS_PATH)/pdl/psoc6pdl/drivers/source/*.c)
+CUR_LIBS_PATH = $(PRJ_DIR)/libs
 
 # Collect source files for Retarget-io
 SOURCES_RETARGET_IO := $(wildcard $(CUR_LIBS_PATH)/retarget-io/*.c)
@@ -42,18 +39,9 @@ SOURCES_HAL := $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/*.
 SOURCES_HAL += $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/triggers/*.c)
 SOURCES_HAL += $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/pin_packages/*.c)
 
-# PDL related include directories
-INCLUDE_DIRS_PDL := $(CUR_LIBS_PATH)/pdl/psoc6pdl/drivers/include
-INCLUDE_DIRS_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/devices/include/ip
-INCLUDE_DIRS_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/devices/include
-INCLUDE_DIRS_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/cmsis/include
-
 # Retarget-io related include directories
 INCLUDE_DIRS_RETARGET_IO := $(CUR_LIBS_PATH)/retarget-io
 INCLUDE_DIRS_WATCHDOG := $(CUR_LIBS_PATH)/watchdog
-
-# core-libs related include directories
-INCLUDE_DIRS_CORE_LIB := $(CUR_LIBS_PATH)/core-lib/include
 
 # Collect dirrectories containing headers for PSOC6 HAL
 INCLUDE_DIRS_HAL := $(CUR_LIBS_PATH)/psoc6hal/include
@@ -62,32 +50,12 @@ INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/pin_pac
 INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/triggers
 
 # Collected source files for libraries
-SOURCES_LIBS := $(SOURCES_PDL)
-SOURCES_LIBS += $(SOURCES_PLATFORM)
 SOURCES_LIBS += $(SOURCES_RETARGET_IO)
 SOURCES_LIBS += $(SOURCES_WATCHDOG)
 SOURCES_LIBS += $(SOURCES_HAL)
 
 # Collected include directories for libraries
-INCLUDE_DIRS_LIBS := $(addprefix -I,$(INCLUDE_DIRS_PDL))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_PLATFORM))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_RETARGET_IO))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_CORE_LIB))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL))
-
-ASM_FILES_PDL :=
-ifeq ($(COMPILER), GCC_ARM)
-ASM_FILES_PDL += $(CUR_LIBS_PATH)/pdl/psoc6pdl/drivers/source/TOOLCHAIN_GCC_ARM/cy_syslib_gcc.S
-else
-$(error Only GCC ARM is supported at this moment)
-endif
-
-ASM_FILES_LIBS := $(ASM_FILES_PDL)
-ASM_FILES_LIBS += $(ASM_FILES_PLATFORM)
-
-# Add define for PDL version
-DEFINES_PDL += -DPDL_VERSION=$(PDL_VERSION)
-
-DEFINES_LIBS := $(DEFINES_PLATFORM)
-DEFINES_LIBS += $(DEFINES_PDL)
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))

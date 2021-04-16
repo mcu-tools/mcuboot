@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2012-2014 Wind River Systems, Inc.
  * Copyright (c) 2020 Arm Limited
+ * Copyright (c) 2021 Nordic Semiconductor ASA
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +44,7 @@ const struct boot_uart_funcs boot_funcs = {
 };
 #endif
 
-#ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
+#if defined(CONFIG_BOOT_USB_DFU_WAIT) || defined(CONFIG_BOOT_USB_DFU_GPIO)
 #include <usb/class/usb_dfu.h>
 #endif
 
@@ -51,7 +52,15 @@ const struct boot_uart_funcs boot_funcs = {
 #include <arm_cleanup.h>
 #endif
 
-#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE)
+/* CONFIG_LOG_MINIMAL is the legacy Kconfig property,
+ * replaced by CONFIG_LOG_MODE_MINIMAL.
+ */
+#if (defined(CONFIG_LOG_MODE_MINIMAL) || defined(CONFIG_LOG_MINIMAL))
+#define ZEPHYR_LOG_MODE_MINIMAL 1
+#endif
+
+#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) && \
+    !defined(ZEPHYR_LOG_MODE_MINIMAL)
 #ifdef CONFIG_LOG_PROCESS_THREAD
 #warning "The log internal thread for log processing can't transfer the log"\
          "well for MCUBoot."
@@ -97,6 +106,49 @@ static inline bool boot_skip_serial_recovery()
 #endif
 
 MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
+
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+/*
+ * Devicetree helper macro which gets the 'flags' cell from a 'gpios'
+ * property, or returns 0 if the property has no 'flags' cell.
+ */
+#define FLAGS_OR_ZERO(node)                        \
+  COND_CODE_1(DT_PHA_HAS_CELL(node, gpios, flags), \
+              (DT_GPIO_FLAGS(node, gpios)),        \
+              (0))
+
+/*
+ * The led0 devicetree alias is optional. If present, we'll use it
+ * to turn on the LED whenever the button is pressed.
+ */
+
+#define LED0_NODE DT_ALIAS(bootloader_led0)
+
+#if DT_NODE_HAS_STATUS(LED0_NODE, okay) && DT_NODE_HAS_PROP(LED0_NODE, gpios)
+#define LED0_GPIO_LABEL DT_GPIO_LABEL(LED0_NODE, gpios)
+#define LED0_GPIO_PIN DT_GPIO_PIN(LED0_NODE, gpios)
+#define LED0_GPIO_FLAGS (GPIO_OUTPUT | FLAGS_OR_ZERO(LED0_NODE))
+#else
+/* A build error here means your board isn't set up to drive an LED. */
+#error "Unsupported board: led0 devicetree alias is not defined"
+#endif
+
+const static struct device *led;
+
+void led_init(void)
+{
+
+  led = device_get_binding(LED0_GPIO_LABEL);
+  if (led == NULL) {
+    BOOT_LOG_ERR("Didn't find LED device %s\n", LED0_GPIO_LABEL);
+    return;
+  }
+
+  gpio_pin_configure(led, LED0_GPIO_PIN, LED0_GPIO_FLAGS);
+  gpio_pin_set(led, LED0_GPIO_PIN, 0);
+
+}
+#endif
 
 void os_heap_init(void);
 
@@ -148,7 +200,7 @@ static void do_boot(struct boot_rsp *rsp)
     SCB_DisableICache();
 #endif
 
-#if CONFIG_CPU_HAS_ARM_MPU
+#if CONFIG_CPU_HAS_ARM_MPU || CONFIG_CPU_HAS_NXP_MPU
     z_arm_clear_arm_mpu_config();
 #endif
 
@@ -258,7 +310,7 @@ static void do_boot(struct boot_rsp *rsp)
 #endif
 
 #if defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) &&\
-    !defined(CONFIG_LOG_PROCESS_THREAD)
+    !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(ZEPHYR_LOG_MODE_MINIMAL)
 /* The log internal thread for log processing can't transfer log well as has too
  * low priority.
  * Dedicated thread for log processing below uses highest application
@@ -313,6 +365,59 @@ void zephyr_boot_log_stop(void)
 #endif/* defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) &&\
         !defined(CONFIG_LOG_PROCESS_THREAD) */
 
+#if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU_GPIO)
+static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
+{
+    int rc;
+    int detect_value;
+    struct device const *detect_port;
+
+    detect_port = device_get_binding(port);
+    __ASSERT(detect_port, "Error: Bad port for boot detection.\n");
+
+    /* The default presence value is 0 which would normally be
+     * active-low, but historically the raw value was checked so we'll
+     * use the raw interface.
+     */
+    rc = gpio_pin_configure(detect_port, pin,
+                            GPIO_INPUT | GPIO_PULL_UP);
+    __ASSERT(rc == 0, "Failed to initialize boot detect pin.\n");
+
+    rc = gpio_pin_get_raw(detect_port, pin);
+    detect_value = rc;
+
+    __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
+
+    if (detect_value == expected) {
+        if (delay > 0) {
+            k_sleep(K_MSEC(50));
+
+            /* Get the uptime for debounce purposes. */
+            int64_t timestamp = k_uptime_get();
+
+            for(;;) {
+                rc = gpio_pin_get_raw(detect_port, pin);
+                detect_value = rc;
+                __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
+
+                /* Get delta from when this started */
+                uint32_t delta = k_uptime_get() -  timestamp;
+
+                /* If not pressed OR if pressed > debounce period, stop. */
+                if (delta >= delay || detect_value != expected) {
+                    break;
+                }
+
+                /* Delay 1 ms */
+                k_sleep(K_MSEC(1));
+            }
+        }
+    }
+
+    return detect_value == expected;
+}
+#endif
+
 void main(void)
 {
     struct boot_rsp rsp;
@@ -321,7 +426,16 @@ void main(void)
 
     MCUBOOT_WATCHDOG_FEED();
 
+#if !defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Starting bootloader");
+#else
+    BOOT_LOG_INF("Starting Direct-XIP bootloader");
+#endif
+
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+    /* LED init */
+    led_init();
+#endif
 
     os_heap_init();
 
@@ -345,36 +459,15 @@ void main(void)
 #endif
 
 #ifdef CONFIG_MCUBOOT_SERIAL
-
-    struct device const *detect_port;
-    uint32_t detect_value = !CONFIG_BOOT_SERIAL_DETECT_PIN_VAL;
-
-    detect_port = device_get_binding(CONFIG_BOOT_SERIAL_DETECT_PORT);
-    __ASSERT(detect_port, "Error: Bad port for boot serial detection.\n");
-
-    /* The default presence value is 0 which would normally be
-     * active-low, but historically the raw value was checked so we'll
-     * use the raw interface.
-     */
-    rc = gpio_pin_configure(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
-#ifdef GPIO_INPUT
-                            GPIO_INPUT | GPIO_PULL_UP
-#else
-                            GPIO_DIR_IN | GPIO_PUD_PULL_UP
+    if (detect_pin(CONFIG_BOOT_SERIAL_DETECT_PORT,
+                   CONFIG_BOOT_SERIAL_DETECT_PIN,
+                   CONFIG_BOOT_SERIAL_DETECT_PIN_VAL,
+                   CONFIG_BOOT_SERIAL_DETECT_DELAY) &&
+            !boot_skip_serial_recovery()) {
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+        gpio_pin_set(led, LED0_GPIO_PIN, 1);
 #endif
-           );
-    __ASSERT(rc == 0, "Error of boot detect pin initialization.\n");
 
-#ifdef GPIO_INPUT
-    rc = gpio_pin_get_raw(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN);
-    detect_value = rc;
-#else
-    rc = gpio_pin_read(detect_port, CONFIG_BOOT_SERIAL_DETECT_PIN,
-                       &detect_value);
-#endif
-    __ASSERT(rc >= 0, "Error of the reading the detect pin.\n");
-    if (detect_value == CONFIG_BOOT_SERIAL_DETECT_PIN_VAL &&
-        !boot_skip_serial_recovery()) {
         BOOT_LOG_INF("Enter the serial recovery mode");
         rc = boot_console_init();
         __ASSERT(rc == 0, "Error initializing boot console.\n");
@@ -383,13 +476,30 @@ void main(void)
     }
 #endif
 
-#ifdef CONFIG_BOOT_WAIT_FOR_USB_DFU
+#if defined(CONFIG_BOOT_USB_DFU_GPIO)
+    if (detect_pin(CONFIG_BOOT_USB_DFU_DETECT_PORT,
+                   CONFIG_BOOT_USB_DFU_DETECT_PIN,
+                   CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL,
+                   CONFIG_BOOT_USB_DFU_DETECT_DELAY)) {
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+        gpio_pin_set(led, LED0_GPIO_PIN, 1);
+#endif
+        rc = usb_enable(NULL);
+        if (rc) {
+            BOOT_LOG_ERR("Cannot enable USB");
+        } else {
+            BOOT_LOG_INF("Waiting for USB DFU");
+            wait_for_usb_dfu(K_FOREVER);
+            BOOT_LOG_INF("USB DFU wait time elapsed");
+        }
+    }
+#elif defined(CONFIG_BOOT_USB_DFU_WAIT)
     rc = usb_enable(NULL);
     if (rc) {
         BOOT_LOG_ERR("Cannot enable USB");
     } else {
         BOOT_LOG_INF("Waiting for USB DFU");
-        wait_for_usb_dfu();
+        wait_for_usb_dfu(K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS));
         BOOT_LOG_INF("USB DFU wait time elapsed");
     }
 #endif
@@ -403,7 +513,11 @@ void main(void)
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
                  rsp.br_image_off);
 
+#if defined(MCUBOOT_DIRECT_XIP)
+    BOOT_LOG_INF("Jumping to the image slot");
+#else
     BOOT_LOG_INF("Jumping to the first image slot");
+#endif
     ZEPHYR_BOOT_LOG_STOP();
     do_boot(&rsp);
 

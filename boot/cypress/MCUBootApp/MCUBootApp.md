@@ -2,26 +2,32 @@
 
 ### Solution Description
 
-MCUBootApp is created to demonstrate operation of MCUBoot library on Cypress' PSoC 6 device. It supports various opeartion modes and features of MCUBoot library.
+MCUBootApp is created to demonstrate operation of MCUBoot library on Cypress' PSoC 6 device. It supports various operation modes and features of MCUBoot library.
 
 * single/multi image operation modes
 * overwrite/swap upgrade modes
 * interrupted upgrade recovery for swap upgrades
-* upgrade image operability confirmation
+* upgrade image confirmation
 * reverting of bad upgrade images
 * secondary slots located in external flash
 
-Device used for demonstration is `CY8CPROTO-062-4343W` kit which has PSoC 6 chip with 2M of Flash on board.
+This demo supports PSoC 6 chips with 1M, 2M and 512K Flash on board.
+Evaluation kits are:
+* `CY8CPROTO-062-4343W`
+* `CY8CKIT-062-WIFI-BT`
+* `CY8CPROTO-062S3-4343W`.
 
 ### Memory Maps
 
-MCUBoot terminology assumes slot from which **boot** is happening to be named **primary**, and slot where **upgrade** image is placed - **secondary**.
+MCUBoot terminology assumes a slot from which **boot** is happening to be named **primary**, and a slot where **upgrade** image is placed - **secondary**.
 
 #### Internal Flash
 
-The flash map is defined at compile time and it is configured through `MCUBootApp/sysflash/sysflash.h` and `cypress/cy_flash_pal/cy_flash_map.c`.
+The flash map is defined at compile time. It can be configured through makefiles and `MCUBootApp/sysflash/sysflash.h` and `cypress/cy_flash_pal/cy_flash_map.c`.
 
-The default MCUBootApp flash map is defined for demonstration purpose:
+The default `MCUBootApp` flash map is defined for demonstration purpose. Sizes of slots are adjusted to be compatible with all supported device families: 1M, 2M and 512K.
+
+Actual addresses provided below are calculated by preprocessor in `sysflash.h` and `cy_flash_map.c` per slot sizes set.
 
 ##### Single Image Mode
 
@@ -31,11 +37,12 @@ The default MCUBootApp flash map is defined for demonstration purpose:
 | 0x10018000 | 0x10028000 | 0x10000 | Primary_1 (BOOT) slot for BlinkyApp;      |
 | 0x10028000 | 0x10038000 | 0x10000 | Secondary_1 (UPGRADE) slot for BlinkyApp; |
 
-If upgrade type swap:
+If upgrade type is swap using scratch:
 
 | Start addr | Size      | Description                     |
 |------------|-----------|---------------------------------|
-| 0x10038000 | variable  | Start of swap status partition; |
+| 0x10038000 | 0x1800    | Start of swap status partition; |
+| 0x10039800 | 0x1000    | Start of scratch area partition;|
 
 ##### Multi Image Mode
 
@@ -51,39 +58,48 @@ If upgrade type swap:
 
 | Start addr | Size      | Description                     |
 |------------|-----------|---------------------------------|
-| 0x10078000 | variable  | Start of swap status partition; |
+| 0x10078000 | 0x2800    | Start of swap status partition; |
+| 0x1007a800 | 0x1000    | Start of scratch area partition;|
 
 **SWAP upgrade from external memory**
+
+When MCUBootApp is configured to support upgrade images places in external memory following fixed addresses are predefined:
+
+| SMIF base address | Offset      | Description                     |
+|-------------------|-------------|---------------------------------|
+| 0x18000000        | 0x0         | Start of Secondary_1 (UPGRADE) image;     |
+| 0x18000000        | 0x240000    | Start of Secondary_2 (UPGRADE) image;     |
+| 0x18000000        | 0x440000    | Start of scratch area partition;|
 
 ##### Single Image Mode
 
 | Start addr | End addr   | Size    | Description                               |
 |------------|------------|---------|-------------------------------------------|
 | 0x10000000 | 0x10018000 | 0x18000 | MCUBootApp (bootloader) area;             |
-| 0x10018000 | 0x100D8000 | 0xC0000 | Primary_1 (BOOT) slot for BlinkyApp;      |
-| 0x18000000 | 0x180C0000 | 0xC0000 | Secondary_1 (UPGRADE) slot for BlinkyApp; |
+| 0x10018000 | 0x10058200 | 0x40200 | Primary_1 (BOOT) slot for BlinkyApp;      |
+| 0x18000000 | 0x18040200 | 0x40200 | Secondary_1 (UPGRADE) slot for BlinkyApp; |
 
 If upgrade type swap:
 
 | Start addr | Size      | Description                     |
 |------------|-----------|---------------------------------|
-| 0x100D8000 | variable  | Start of swap status partition; |
+| 0x10058200 | 0x3c00    | Start of swap status partition; |
 
 ##### Multi Image Mode
 
 | Start addr | End addr   | Size    | Description                               |
 |------------|------------|---------|-------------------------------------------|
 | 0x10000000 | 0x10018000 | 0x18000 | MCUBootApp (bootloader) area;             |
-| 0x10018000 | 0x100D8000 | 0xC0000 | Primary_1 (BOOT) slot for BlinkyApp;      |
-| 0x100D8000 | 0x10198000 | 0xC0000 | Secondary_1 (UPGRADE) slot for BlinkyApp; |
-| 0x18000000 | 0x180C0000 | 0xC0000 | Primary_2 (BOOT) slot of Bootloader       |
-| 0x180C0000 | 0x18180000 | 0xC0000 | Secondary_2 (UPGRADE) slot of Bootloader  |
+| 0x10018000 | 0x10058200 | 0x40200 | Primary_1 (BOOT) slot for BlinkyApp;      |
+| 0x10058200 | 0x10098400 | 0x40200 | Primary_2 (BOOT) slot of Bootloader       |
+| 0x18000000 | 0x18040200 | 0x40200 | Secondary_1 (UPGRADE) slot for BlinkyApp; |
+| 0x18240000 | 0x18280200 | 0x40200 | Secondary_2 (UPGRADE) slot of Bootloader; |
 
-If upgrade type swap:
+If upgrade type is swap using scratch:
 
 | Start addr | Size      | Description                     |
 |------------|-----------|---------------------------------|
-| 0x10198000 | variable  | Start of swap status partition; |
+| 0x10098400 | 0x6400    | Start of swap status partition; |
 
 ##### How To Modify Flash Map
 
@@ -99,33 +115,34 @@ Navigate to `sysflash.h` and modify slots sizes directly to meet your needs.
 
 __Option 2.__
 
-Navigate to `sysflash/sysflash.h`, uncomment `CY_FLASH_MAP_EXT_DESC` definition.
-Now define and initialize `struct flash_area *boot_area_descs[]` with flash memory addresses and sizes you need at the beginning of application, so flash APIs from `cy_flash_pal/cy_flash_map.c` will use it.
+Navigate to `sysflash/sysflash.h` and uncomment `CY_FLASH_MAP_EXT_DESC` definition.
+Now define and initialize `struct flash_area *boot_area_descs[]` in a code with flash memory addresses and sizes you need at the beginning of application, so flash APIs from `cy_flash_pal/cy_flash_map.c` will use it.
 
-__Note:__ for both options make sure to use correct `MCUBOOT_MAX_IMG_SECTORS` value. This should correspond to slot size used. This can be passed via CLI in with `MAX_IMG_SECTORS=__number__`. By default it is set to 256 sectors, which corresponds to `0x20000` slot size in multi image use case. Sector size assumed to be 512 bytes, so 128 sectors needed to fill `0x10000`, 256 sectors for `0x20000` and so on.
+__Note:__ for both options make sure to use correct `MCUBOOT_MAX_IMG_SECTORS`. This should correspond to slot size used. Maximum value of sectors can be set by passing a flag `MAX_IMG_SECTORS=__number__` to `make`. By default it is set to 256 sectors, which corresponds to `0x20000` slot size in multi image use case. Sector size assumed to be 512 bytes, so 128 sectors needed to fill `0x10000`, 256 sectors for `0x20000` and so on.
 
 ###### How To Override The Flash Map Values During Build Process
 
-It is possible to override MCUBootApp definitions while build. Navigate to MCUBootApp.mk, find section `DEFINES_APP +=`
+It is possible to override MCUBootApp definitions from build system. Navigate to `MCUBootApp.mk`, find section `DEFINES_APP +=`
 Using this construction macros can be defined and passed to compiler.
 
-The full list of macros used to configure the multi image case is as follows:
+The full list of macros used to configure the custom multi image case with upgrade from external memory:
 
 * MCUBOOT_MAX_IMG_SECTORS
 * CY_FLASH_MAP_EXT_DESC
 * CY_BOOT_SCRATCH_SIZE
 * CY_BOOT_BOOTLOADER_SIZE
-* CY_BOOT_PRIMARY_1_SIZE
-* CY_BOOT_SECONDARY_1_SIZE
-* CY_BOOT_PRIMARY_2_SIZE
-* CY_BOOT_SECONDARY_2_SIZE
+* CY_BOOT_IMAGE_1_SIZE
+* CY_BOOT_IMAGE_2_SIZE
+* CY_BOOT_EXTERNAL_FLASH_SECONDARY_1_OFFSET
+* CY_BOOT_EXTERNAL_FLASH_SECONDARY_2_OFFSET
+* CY_BOOT_EXTERNAL_FLASH_SCRATCH_OFFSET
 
 As an example in a makefile slots sizes redefinition should look like following:
 
-`DEFINES_APP +=-DCY_FLASH_MAP_EXT_DESC`
+`DEFINES_APP +=-DCY_BOOT_EXTERNAL_FLASH_SCRATCH_OFFSET=0x18780000`
 `DEFINES_APP +=-DMCUBOOT_MAX_IMG_SECTORS=168`
-`DEFINES_APP +=-DCY_BOOT_PRIMARY_1_SIZE=0x15000`
-`DEFINES_APP +=-DCY_BOOT_SECONDARY_1_SIZE=0x15000`
+`DEFINES_APP +=-DCY_BOOT_IMAGE_1_SIZE=0x15000`
+`DEFINES_APP +=-DCY_BOOT_IMAGE_2_SIZE=0x15000`
 
 #### External Flash
 
@@ -188,22 +205,23 @@ If upgraded application does not work - there is no way no revert back to previo
 
 #### Swap Mode
 
-There are 3 types of swap modes supported in MCUBoot:
+There are 2 basic types of swap modes supported in MCUBoot:
 * scratch
 * move
-* using status partition
- 
-Only `swap using status partition` can be used with Cypress devices due to flash hardware restrictions placed by PSoC 6. This restriction is a so called large minimum write/erase size. For PSoC 6 this value is 512 bytes. 
 
-Originally MCUBoot library has been designed with a consideration, that minimum write/erase size for flash would always be 8 bytes or less. This value is critical, because swap algorithms use it to align portions of data that contain swap operation status of each flash sector in slot before writing to flash. Data alignment is also performed before writes of special purpose data to image trailer.
+For devices with large minimum erase size like PSoC 6 with 512 bytes and also for configurations which use external flash with even bigger minimum erase size there is an additional option in MCUBoot to use dedicated `status partition` for robust storage of swap related information.
+
+##### Why use swap with status partition
+
+Originally MCUBoot library has been designed with a consideration, that minimum write/erase size of flash would always be 8 bytes or less. This value is critical, because swap algorithms use it to align portions of data that contain swap operation status of each flash sector in slot before writing to flash. Data alignment is also performed before writes of special purpose data to image trailer.
 
 Writing of flash sector status or image trailer data should be `single cycle` operation to ensure power loss and unpredicted resets robustness of bootloading applications. This requirement eliminates usage of `read-modify-write` type of operations with flash.
 
-`Swap using status partition` is implemented specifically to address devices with large write/erase size. It is based on `swap move` algorithm, but does not have restriction of 8 bytes alignment. Instead minimum write/erase size can be specified by user and algorithm will calculate sizes of status partition, considering this value. All write/erase operations are aligned to this minimum write/erase size as well.
+`Swap with status partition` is implemented specifically to address devices with large write/erase size. It is based on existing mcuboot swap algorithms, but does not have restriction of 8 bytes alignment. Instead minimum write/erase size can be specified by user and algorithm will calculate sizes of status partition, considering this value. All write/erase operations are aligned to this minimum write/erase size as well.
 
 ##### Swap Status Partition Description
 
-The main distinction between `swap status partition` and original `swap move` is that separate flash area (partition) is used to store swap status values and image trailer instead of using free flash area at the end of primary/secondary image slot.
+The main distinction of `swap with status partition` is that separate flash area (partition) is used to store swap status values and image trailer instead of using free flash area at the end of primary/secondary image slot.
 
 This partition consists of separate areas:
 * area to store swap status values
@@ -353,9 +371,21 @@ This folder `boot/cypress` contains make files infrastructure for building MCUBo
 
 Root directory for build is `boot/cypress`.
 
-**Currently supported platforms:**
+### Encrypted Image Support
 
-* PSOC_062_2M
+To protect user image from unwanted read - Upgrade Image Encryption can be applied. The ECDH/HKDF with EC256 scheme is used in a given solution as well as mbedTLS as a crypto provider.
+
+To enable image encryption support use `ENC_IMG=1` build flag (BlinkyApp should also be built with this flash set 1).
+
+User is also responsible for providing corresponding binary key data in `enc_priv_key[]` (file `\MCUBootApp\keys.c`). The public part will be used by imgtool when signing and encrypting upgrade image. Signing image with encryption is described in `\BlinkyApp\Readme.md`.
+
+After MCUBootApp is built with these settings unencrypted and encrypted images will be accepted in secondary (upgrade) slot.
+
+Example command:
+
+    make app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug MCUBOOT_IMAGE_NUMBER=1 ENC_IMG=1
+
+__NOTE__: Debug configuration of MCUBootApp with multi image encrypted upgrades in external flash (built with flags `BUILDCFG=Debug` `MCUBOOT_IMG_NUMBER=2 USE_EXTERNAL_FLASH=1 ENC_IMG=1`) is set to use optimization level `-O2 -g3` to fit into `0x18000` allocated for `MCUBootApp`.
 
 ### Programming Solution
 

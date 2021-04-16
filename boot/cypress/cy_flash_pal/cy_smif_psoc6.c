@@ -83,7 +83,7 @@ int psoc6_smif_read(const struct flash_area *fap,
 
     cfg = qspi_get_memory_config(FLASH_DEVICE_GET_EXT_INDEX(fap->fa_device_id));
 
-    address = addr - CY_SMIF_BASE_MEM_OFFSET;
+    address = (uint32_t) addr - CY_SMIF_BASE_MEM_OFFSET;
 
     st = Cy_SMIF_MemRead(qspi_get_device(), cfg, address, data, len, qspi_get_context());
     if (st == CY_SMIF_SUCCESS) {
@@ -104,7 +104,7 @@ int psoc6_smif_write(const struct flash_area *fap,
 
     cfg =  qspi_get_memory_config(FLASH_DEVICE_GET_EXT_INDEX(fap->fa_device_id));
 
-    address = addr - CY_SMIF_BASE_MEM_OFFSET;
+    address = (uint32_t) addr - CY_SMIF_BASE_MEM_OFFSET;
 
     st = Cy_SMIF_MemWrite(qspi_get_device(), cfg, address, data, len, qspi_get_context());
     if (st == CY_SMIF_SUCCESS) {
@@ -116,28 +116,37 @@ int psoc6_smif_write(const struct flash_area *fap,
 int psoc6_smif_erase(off_t addr, size_t size)
 {
     int rc = -1;
-    cy_en_smif_status_t st;
+    cy_en_smif_status_t st = CY_SMIF_SUCCESS;
     uint32_t address;
 
-    /* It is erase sector-only
-     *
-     * There is no power-safe way to erase flash partially
-     * this leads upgrade slots have to be at least
-     * eraseSectorSize far from each other;
-     */
-    cy_stc_smif_mem_config_t *memCfg = qspi_get_memory_config(0);
+    if (size > 0)
+    {
+        /* It is erase sector-only
+         *
+         * There is no power-safe way to erase flash partially
+         * this leads upgrade slots have to be at least
+         * eraseSectorSize far from each other;
+         */
+        cy_stc_smif_mem_config_t *memCfg = qspi_get_memory_config(0);
 
-    address = (addr - CY_SMIF_BASE_MEM_OFFSET ) & ~((uint32_t)(memCfg->deviceCfg->eraseSize - 1u));
+        address = ((uint32_t)addr - CY_SMIF_BASE_MEM_OFFSET ) & ~((uint32_t)(memCfg->deviceCfg->eraseSize - 1u));
 
-    (void)size;
+        while ((size > 0) && (CY_SMIF_SUCCESS == st))
+        {
+            st = Cy_SMIF_MemEraseSector(qspi_get_device(),
+                                            memCfg,
+                                            address,
+                                            memCfg->deviceCfg->eraseSize,
+                                            qspi_get_context());
 
-    st = Cy_SMIF_MemEraseSector(qspi_get_device(),
-                                    memCfg,
-                                    address,
-                                    memCfg->deviceCfg->eraseSize,
-                                    qspi_get_context());
-    if (st == CY_SMIF_SUCCESS) {
-        rc = 0;
+            size -= (size >= memCfg->deviceCfg->eraseSize) ? memCfg->deviceCfg->eraseSize : size;
+            address += memCfg->deviceCfg->eraseSize;
+        }
+
+        if (st == CY_SMIF_SUCCESS) {
+            rc = 0;
+        }
     }
+
     return rc;
 }
