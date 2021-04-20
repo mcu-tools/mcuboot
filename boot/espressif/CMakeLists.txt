@@ -34,7 +34,20 @@ if (NOT "${IDF_VER}" STREQUAL "v4.2")
     message(FATAL_ERROR "Unsupported ESP-IDF version found in IDF_PATH, please checkout to v4.2")
 endif()
 
-set(APP_NAME "mcuboot_${MCUBOOT_TARGET}")
+if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/bootloader.conf")
+    message(FATAL_ERROR "bootloader.conf file does not exist")
+endif()
+
+configure_file(bootloader.conf dummy.conf)
+file(STRINGS bootloader.conf BOOTLOADER_CONF)
+foreach(config ${BOOTLOADER_CONF})
+    string(REGEX REPLACE "^[ ]+" "" config ${config})
+    string(REGEX MATCH "^[^=]+" CONFIG_NAME ${config})
+    string(REPLACE "${CONFIG_NAME}=" "" CONFIG_VALUE ${config})
+    add_definitions(-D${CONFIG_NAME}=${CONFIG_VALUE})
+endforeach()
+
+set(APP_NAME mcuboot_${MCUBOOT_TARGET})
 set(APP_EXECUTABLE ${APP_NAME}.elf)
 
 set(MCUBOOT_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
