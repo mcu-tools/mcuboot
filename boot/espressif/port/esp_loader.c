@@ -9,6 +9,7 @@
 #include <soc/dport_reg.h>
 #include "soc/soc_memory_layout.h"
 #include <bootloader_flash.h>
+#include <bootloader_flash_priv.h>
 
 #include "esp32/rom/cache.h"
 #include "esp32/rom/efuse.h"

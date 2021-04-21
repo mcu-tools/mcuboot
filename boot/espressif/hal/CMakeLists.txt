@@ -14,16 +14,18 @@ list(APPEND INCLUDE_DIRS
     ${esp_idf_dir}/components/esp_rom/include
     ${esp_idf_dir}/components/xtensa/${MCUBOOT_TARGET}/include
     ${esp_idf_dir}/components/spi_flash/include
+    ${esp_idf_dir}/components/spi_flash/private_include
     ${esp_idf_dir}/components/xtensa/include
-    ${esp_idf_dir}/components/soc/soc/${MCUBOOT_TARGET}/include
+    ${esp_idf_dir}/components/soc/${MCUBOOT_TARGET}/include
     ${esp_idf_dir}/components/${MCUBOOT_TARGET}/include
-    ${esp_idf_dir}/components/soc/soc/include
     ${esp_idf_dir}/components/soc/include
-    ${esp_idf_dir}/components/soc/src/${MCUBOOT_TARGET}/include
-    ${esp_idf_dir}/components/soc/src/${MCUBOOT_TARGET}
-    ${esp_idf_dir}/components/soc/soc/${MCUBOOT_TARGET}/private_include
+    ${esp_idf_dir}/components/esp_hw_support/include
+    ${esp_idf_dir}/components/hal/${MCUBOOT_TARGET}/include
+    ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}
+    ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/private_include
     ${esp_idf_dir}/components/bootloader_support/include
     ${esp_idf_dir}/components/bootloader_support/include_bootloader
+    ${esp_idf_dir}/components/hal/include
     )
 set(hal_srcs
     ${SRC_DIR}/bootloader_flash.c
@@ -31,14 +33,16 @@ set(hal_srcs
     ${SRC_DIR}/bootloader_flash_config_esp32.c
     ${SRC_DIR}/${MCUBOOT_TARGET}/rtc_init.c
     ${SRC_DIR}/${MCUBOOT_TARGET}/rtc_clk.c
-    ${esp_idf_dir}/components/soc/src/hal/mpu_hal.c
-    ${esp_idf_dir}/components/soc/src/${MCUBOOT_TARGET}/rtc_time.c
-    ${esp_idf_dir}/components/bootloader_support/src/bootloader_clock.c
+    ${SRC_DIR}/${MCUBOOT_TARGET}/rtc_time.c
+    ${esp_idf_dir}/components/hal/mpu_hal.c
+    ${esp_idf_dir}/components/bootloader_support/src/bootloader_clock_init.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_efuse_esp32.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_mem.c
     ${esp_idf_dir}/components/spi_flash/${MCUBOOT_TARGET}/spi_flash_rom_patch.c
-    ${esp_idf_dir}/components/soc/src/${MCUBOOT_TARGET}/rtc_clk_init.c
-    ${esp_idf_dir}/components/soc/src/hal/wdt_hal_iram.c
+    ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_clk_init.c
+    ${esp_idf_dir}/components/hal/wdt_hal_iram.c
+    ${esp_idf_dir}/components/esp_hw_support/cpu_util.c
+    ${esp_idf_dir}/components/esp_rom/patches/esp_rom_uart.c
     )
 
 set(CFLAGS
@@ -92,6 +96,11 @@ set(LDFLAGS
     "-lc")
 
 add_library(hal STATIC ${hal_srcs} ${INCLUDE_DIRS})
+
+set_source_files_properties(${esp_idf_dir}/components/esp_hw_support/port/esp32/rtc_clk_init.c
+    PROPERTIES COMPILE_FLAGS
+    "-Wno-unused-variable")
+
 target_include_directories(
     hal
     PUBLIC
@@ -109,5 +118,6 @@ target_link_libraries(
     PUBLIC
     ${LDFLAGS}
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.ld
+    -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.api.ld
     -T${esp_idf_dir}/components/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.peripherals.ld
     )

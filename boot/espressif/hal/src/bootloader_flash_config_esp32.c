@@ -15,7 +15,7 @@
 #include "soc/gpio_periph.h"
 #include "soc/efuse_reg.h"
 #include "soc/spi_reg.h"
-#include "soc/spi_caps.h"
+#include "soc/spi_pins.h"
 #include "bootloader_flash_config.h"
 
 void IRAM_ATTR bootloader_flash_cs_timing_config(void)

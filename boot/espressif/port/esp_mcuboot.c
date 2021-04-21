@@ -14,6 +14,7 @@
 
 #include "esp_err.h"
 #include "bootloader_flash.h"
+#include "bootloader_flash_priv.h"
 
 #define ARRAY_SIZE(arr) sizeof(arr)/sizeof(arr[0])
 

@@ -32,8 +32,8 @@ execute_process(
     OUTPUT_VARIABLE IDF_VER
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-if (NOT "${IDF_VER}" STREQUAL "v4.2")
-    message(FATAL_ERROR "Unsupported ESP-IDF version found in IDF_PATH, please checkout to v4.2")
+if (NOT "${IDF_VER}" STREQUAL "v4.3-rc")
+    message(FATAL_ERROR "Unsupported ESP-IDF version found in IDF_PATH, please checkout to v4.3-rc")
 endif()
 
 if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/bootloader.conf")

@@ -15,6 +15,7 @@
 #include "bootloader_clock.h"
 #include "bootloader_flash_config.h"
 #include "bootloader_flash.h"
+#include "bootloader_flash_priv.h"
 
 #include "soc/dport_reg.h"
 #include "soc/efuse_reg.h"

@@ -5,6 +5,7 @@
  */
 
 #include "bootloader_flash.h"
+#include "bootloader_flash_priv.h"
 #include "soc/dport_reg.h"
 #include "esp32/rom/spi_flash.h"
 #include "esp32/rom/cache.h"
