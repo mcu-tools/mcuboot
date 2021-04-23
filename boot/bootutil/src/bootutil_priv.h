@@ -359,7 +359,7 @@ boot_img_num_sectors(const struct boot_loader_state *state, size_t slot)
 static inline uint32_t
 boot_img_slot_off(struct boot_loader_state *state, size_t slot)
 {
-    return BOOT_IMG(state, slot).area->fa_off;
+    return flash_area_get_off(BOOT_IMG(state, slot).area);
 }
 
 #ifndef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
@@ -368,7 +368,7 @@ static inline size_t
 boot_img_sector_size(const struct boot_loader_state *state,
                      size_t slot, size_t sector)
 {
-    return BOOT_IMG(state, slot).sectors[sector].fa_size;
+    return flash_area_get_size(&BOOT_IMG(state, slot).sectors[sector]);
 }
 
 /*
@@ -379,8 +379,8 @@ static inline uint32_t
 boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
                     size_t sector)
 {
-    return BOOT_IMG(state, slot).sectors[sector].fa_off -
-           BOOT_IMG(state, slot).sectors[0].fa_off;
+    return flash_area_get_off(&BOOT_IMG(state, slot).sectors[sector]) -
+           flash_area_get_off(&BOOT_IMG(state, slot).sectors[0]);
 }
 
 #else  /* defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
@@ -389,15 +389,15 @@ static inline size_t
 boot_img_sector_size(const struct boot_loader_state *state,
                      size_t slot, size_t sector)
 {
-    return BOOT_IMG(state, slot).sectors[sector].fs_size;
+    return flash_sector_get_size(&BOOT_IMG(state, slot).sectors[sector]);
 }
 
 static inline uint32_t
 boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
                     size_t sector)
 {
-    return BOOT_IMG(state, slot).sectors[sector].fs_off -
-           BOOT_IMG(state, slot).sectors[0].fs_off;
+    return flash_sector_get_off(&BOOT_IMG(state, slot).sectors[sector]) -
+           flash_sector_get_off(&BOOT_IMG(state, slot).sectors[0]);
 }
 
 #endif  /* !defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
