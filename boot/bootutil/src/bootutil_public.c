@@ -138,7 +138,7 @@ boot_flag_decode(uint8_t flag)
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
-    return fap->fa_size - BOOT_MAGIC_SZ;
+    return flash_area_get_size(fap) - BOOT_MAGIC_SZ;
 }
 
 static inline uint32_t
@@ -319,8 +319,8 @@ boot_write_magic(const struct flash_area *fap)
     off = boot_magic_off(fap);
 
     BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%lx (0x%lx)",
-                 fap->fa_id, (unsigned long)off,
-                 (unsigned long)(fap->fa_off + off));
+                 flash_area_get_id(fap), (unsigned long)off,
+                 (unsigned long)(flash_area_get_off(fap) + off));
     rc = flash_area_write(fap, off, boot_img_magic, BOOT_MAGIC_SZ);
     if (rc != 0) {
         return BOOT_EFLASH;
@@ -376,8 +376,8 @@ boot_write_image_ok(const struct flash_area *fap)
 
     off = boot_image_ok_off(fap);
     BOOT_LOG_DBG("writing image_ok; fa_id=%d off=0x%lx (0x%lx)",
-                 fap->fa_id, (unsigned long)off,
-                 (unsigned long)(fap->fa_off + off));
+                 flash_area_get_id(fap), (unsigned long)off,
+                 (unsigned long)(flash_area_get_off(fap) + off));
     return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
 }
 
@@ -403,8 +403,9 @@ boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
     off = boot_swap_info_off(fap);
     BOOT_LOG_DBG("writing swap_info; fa_id=%d off=0x%lx (0x%lx), swap_type=0x%x"
                  " image_num=0x%x",
-                 fap->fa_id, (unsigned long)off,
-                 (unsigned long)(fap->fa_off + off), swap_type, image_num);
+                 flash_area_get_id(fap), (unsigned long)off,
+                 (unsigned long)(flash_area_get_off(fap) + off),
+                 swap_type, image_num);
     return boot_write_trailer(fap, off, (const uint8_t *) &swap_info, 1);
 }
 
@@ -537,7 +538,7 @@ boot_set_pending_multi(int image_index, int permanent)
         /* The image slot is corrupt.  There is no way to recover, so erase the
          * slot to allow future upgrades.
          */
-        flash_area_erase(fap, 0, fap->fa_size);
+        flash_area_erase(fap, 0, flash_area_get_size(fap));
         rc = BOOT_EBADIMAGE;
         break;
 
