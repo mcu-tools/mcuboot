@@ -1,6 +1,9 @@
 [submodule "sim/mbedtls"]
 	path = ext/mbedtls
 	url = https://github.com/ARMmbed/mbedtls
+[submodule "boot/cypress/libs/mtb-pdl-cat1"]
+	path = boot/cypress/libs/mtb-pdl-cat1
+	url = https://github.com/cypresssemiconductorco/mtb-pdl-cat1.git
 [submodule "boot/cypress/libs/pdl/psoc6pdl"]
 	path = boot/cypress/libs/pdl/psoc6pdl
 	url = https://github.com/cypresssemiconductorco/psoc6pdl.git

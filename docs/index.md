@@ -13,6 +13,12 @@ MCUboot works with both the Apache Mynewt, and Zephyr operating systems, but
 more ports are planned in the future. RIOT is currently supported as a boot
 target with a complete port planned.
 
+MCUboot is an open governance project.  See the [membership
+list](https://github.com/mcu-tools/mcuboot/wiki/Members) for current
+members, and the
+[charter](https://github.com/mcu-tools/mcuboot/wiki/MCUboot-Project-Charter)
+for more details.
+
 ## Contents
 
 - General - this document
@@ -72,3 +78,5 @@ Developers welcome!
   Get your invite [here!](https://join.slack.com/t/mcuboot/shared_invite/MjE2NDcwMTQ2MTYyLTE1MDA4MTIzNTAtYzgyZTU0NjFkMg)
 * [Our IRC channel](http://irc.freenode.net), channel #mcuboot ([IRC
   link](irc://chat.freenode.net/#mcuboot)
+* [Current members](https://github.com/mcu-tools/mcuboot/wiki/Members)
+* [Project charter](https://github.com/mcu-tools/mcuboot/wiki/MCUboot-Project-Charter)

@@ -251,6 +251,10 @@ int boot_write_image_ok(const struct flash_area *fap);
 int boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
                          uint8_t image_num);
 int boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size);
+int boot_write_trailer(const struct flash_area *fap, uint32_t off,
+                       const uint8_t *inbuf, uint8_t inlen);
+int boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
+                            uint8_t flag_val);
 int boot_read_swap_size(int image_index, uint32_t *swap_size);
 int boot_slots_compatible(struct boot_loader_state *state);
 uint32_t boot_status_internal_off(const struct boot_status *bs, int elem_sz);

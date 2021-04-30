@@ -380,20 +380,12 @@ static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
      * use the raw interface.
      */
     rc = gpio_pin_configure(detect_port, pin,
-#ifdef GPIO_INPUT
-                            GPIO_INPUT | GPIO_PULL_UP
-#else
-                            GPIO_DIR_IN | GPIO_PUD_PULL_UP
-#endif
-           );
+                            GPIO_INPUT | GPIO_PULL_UP);
     __ASSERT(rc == 0, "Failed to initialize boot detect pin.\n");
 
-#ifdef GPIO_INPUT
     rc = gpio_pin_get_raw(detect_port, pin);
     detect_value = rc;
-#else
-    rc = gpio_pin_read(detect_port, pin, &detect_value);
-#endif
+
     __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
 
     if (detect_value == expected) {
@@ -404,12 +396,8 @@ static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
             int64_t timestamp = k_uptime_get();
 
             for(;;) {
-#ifdef GPIO_INPUT
                 rc = gpio_pin_get_raw(detect_port, pin);
                 detect_value = rc;
-#else
-                rc = gpio_pin_read(detect_port, pin, &detect_value);
-#endif
                 __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
 
                 /* Get delta from when this started */

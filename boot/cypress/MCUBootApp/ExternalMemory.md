@@ -62,7 +62,7 @@ Once valid upgrade image was accepted the image in external memory will be erase
 
 **How to enable external memory support:**
 
-1. Seek for `CY_BOOT_USE_EXTERNAL_FLASH` in sources and define it in any: MCUBootApp.mk or any suitable header file.
+1. Pass `USE_EXTERNAL_FLASH=1` flag to `make` command when building MCUBootApp.
 2. Navigate to `cy_flash_map.c` and check if secondary slot start address and size meet the application's needs.
 3. Define which slave select is used for external memory on a board by setting `smif_id` value in `main.c`.
 4. Build MCUBootApp as described in `Readme.md`.
