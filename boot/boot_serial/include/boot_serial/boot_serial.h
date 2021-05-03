@@ -43,6 +43,15 @@ struct boot_uart_funcs {
  */
 void boot_serial_start(const struct boot_uart_funcs *f);
 
+/**
+ * Start processing newtmgr commands for uploading image0 over serial.
+ * Assumes serial port is open and waits for download command.
+ * This function will return if there is no echo command received within
+ * the given timeout. If an echo command is received within this timeout, the
+ * function is similar to boot_serial_start
+ */
+void boot_serial_check_start(const struct boot_uart_funcs *f,int32_t timeout_in_ms);
+
 #ifdef __cplusplus
 }
 #endif

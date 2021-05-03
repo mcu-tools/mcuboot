@@ -107,6 +107,7 @@ static struct cbor_encoder_writer bs_writer = {
 };
 static CborEncoder bs_root;
 static CborEncoder bs_rsp;
+static int bs_echoreceived;
 
 int
 bs_cbor_writer(struct cbor_encoder_writer *cew, const char *data, int len)
@@ -446,6 +447,7 @@ bs_echo(char *buf, int len)
     cbor_encode_text_string(&bs_rsp, echo_buf, echo_buflen);
     cbor_encoder_close_container(&bs_root, &bs_rsp);
     boot_serial_output();
+    bs_echoreceived = 1;
 }
 
 
@@ -691,5 +693,59 @@ boot_serial_start(const struct boot_uart_funcs *f)
             boot_serial_input(&dec_buf[2], dec_off - 2);
         }
         off = 0;
+    }
+}
+
+/*
+ * Task which waits reading console for a certain amount of timeout.
+ * If within this timeout no echo command is received, the function is
+ * returning, else the serial boot is never exited
+ */
+void
+boot_serial_check_start(const struct boot_uart_funcs *f,int32_t timeout_in_ms)
+{
+    int rc;
+    int off;
+    int dec_off = 0;
+    int full_line;
+    int max_input;
+
+    boot_uf = f;
+    max_input = sizeof(in_buf);
+    bs_echoreceived = 0;
+    off = 0;
+    while (timeout_in_ms > 0 || bs_echoreceived) {
+        uint32_t start = k_uptime_get_32();
+        rc = f->read(in_buf + off, sizeof(in_buf) - off, &full_line);
+        if (rc <= 0 && !full_line) {
+            goto check_timeout;
+        }
+        off += rc;
+        if (!full_line) {
+            if (off == max_input) {
+                /*
+                 * Full line, no newline yet. Reset the input buffer.
+                 */
+                off = 0;
+            }
+            goto check_timeout;
+        }
+        if (in_buf[0] == SHELL_NLIP_PKT_START1 &&
+          in_buf[1] == SHELL_NLIP_PKT_START2) {
+            dec_off = 0;
+            rc = boot_serial_in_dec(&in_buf[2], off - 2, dec_buf, &dec_off, max_input);
+        } else if (in_buf[0] == SHELL_NLIP_DATA_START1 &&
+          in_buf[1] == SHELL_NLIP_DATA_START2) {
+            rc = boot_serial_in_dec(&in_buf[2], off - 2, dec_buf, &dec_off, max_input);
+        }
+
+        /* serve errors: out of decode memory, or bad encoding */
+        if (rc == 1) {
+            boot_serial_input(&dec_buf[2], dec_off - 2);
+        }
+        off = 0;
+    check_timeout:
+        /* Subtract elapsed time */
+        timeout_in_ms -= (k_uptime_get_32() - start);
     }
 }

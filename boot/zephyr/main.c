@@ -504,7 +504,27 @@ void main(void)
     }
 #endif
 
+#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
+    /* Initialize the boot console, so we can already fill up our buffers while waiting for the
+     * boot image check to finish. This image check, can take long, so it's better to reuse this
+     * time to already receive the initial ping command into our buffers
+     */
+    rc = boot_console_init();
+    int32_t timeout_in_ms = CONFIG_BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT;
+    uint32_t start = k_uptime_get_32();
+#endif
+
     FIH_CALL(boot_go, fih_rc, &rsp);
+
+#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
+    timeout_in_ms -= (k_uptime_get_32() - start);
+    if( timeout_in_ms <= 0 ) {
+        /* at least one check if time was expired */
+        timeout_in_ms = 1;
+    }
+   boot_serial_check_start(&boot_funcs,timeout_in_ms);
+#endif
+
     if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
         BOOT_LOG_ERR("Unable to find bootable image");
         FIH_PANIC;
