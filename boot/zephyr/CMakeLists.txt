@@ -248,6 +248,15 @@ if(CONFIG_MCUBOOT_SERIAL)
     CONFIG_BOOT_ERASE_PROGRESSIVELY
     ${BOOT_DIR}/bootutil/src
     )
+  if(CONFIG_BOOT_SERIAL_ENCRYPT_EC256)
+    zephyr_library_sources(
+      ${TINYCRYPT_DIR}/source/aes_encrypt.c
+      ${TINYCRYPT_DIR}/source/aes_decrypt.c
+      ${TINYCRYPT_DIR}/source/ctr_mode.c
+      ${TINYCRYPT_DIR}/source/hmac.c
+      ${TINYCRYPT_DIR}/source/ecc_dh.c
+      )
+  endif()
 endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
@@ -287,6 +296,47 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
     DEPENDS ${KEY_FILE}
     )
   zephyr_library_sources(${GENERATED_PUBKEY})
+endif()
+
+# CONF_FILE points to the KConfig configuration files of the bootloader.
+unset(CONF_DIR)
+foreach (filepath ${CONF_FILE})
+  file(READ ${filepath} temp_text)
+  string(FIND "${temp_text}" ${CONFIG_BOOT_ENCRYPTION_KEY_FILE} match)
+  if (${match} GREATER_EQUAL 0)
+    if (NOT DEFINED CONF_DIR)
+      get_filename_component(CONF_DIR ${filepath} DIRECTORY)
+    else()
+      message(FATAL_ERROR "Encryption key file defined in multiple conf files")
+    endif()
+  endif()
+endforeach()
+
+
+if(NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQUAL "")
+  if(IS_ABSOLUTE ${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+    set(KEY_FILE ${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+  elseif((DEFINED CONF_DIR) AND
+	 (EXISTS ${CONF_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE}))
+    set(KEY_FILE ${CONF_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+  else()
+    set(KEY_FILE ${MCUBOOT_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+  endif()
+  message("MCUBoot bootloader key file: ${KEY_FILE}")
+
+  set(GENERATED_ENCKEY ${ZEPHYR_BINARY_DIR}/autogen-enckey.c)
+  add_custom_command(
+    OUTPUT ${GENERATED_ENCKEY}
+    COMMAND
+    ${PYTHON_EXECUTABLE}
+    ${MCUBOOT_DIR}/scripts/imgtool.py
+    getpriv
+    -k
+    ${KEY_FILE}
+    > ${GENERATED_ENCKEY}
+    DEPENDS ${KEY_FILE}
+    )
+  zephyr_library_sources(${GENERATED_ENCKEY})
 endif()
 
 if(CONFIG_MCUBOOT_CLEANUP_ARM_CORE)

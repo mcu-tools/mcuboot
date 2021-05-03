@@ -298,6 +298,21 @@ config BOOT_ENCRYPT_X25519
 	  described under "ECIES-X25519 encryption" in docs/encrypted_images.md.
 endif # !SINGLE_APPLICATION_SLOT
 
+config BOOT_ENCRYPTION_KEY_FILE
+	string "encryption key file"
+    depends on BOOT_ENCRYPT_EC256 || BOOT_SERIAL_ENCRYPT_EC256
+	default "enc-ec256-priv.pem" if BOOT_SIGNATURE_TYPE_ECDSA_P256
+	default ""
+	help
+	  You can use either absolute or relative path.
+	  In case relative path is used, the build system assumes that it starts
+	  from the directory where the MCUBoot KConfig configuration file is
+	  located. If the key file is not there, the build system uses relative
+	  path that starts from the MCUBoot repository root directory.
+	  The key file will be parsed by imgtool's getpriv command and a .c source
+	  with the public key information will be written in a format expected by
+	  MCUboot.
+
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
 	default 128
@@ -577,6 +592,15 @@ config BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
 	depends on BOOT_SERIAL_WAIT_FOR_DFU
 	help
 	  timeout in ms for MCUboot to wait to allow for DFU to be invoked.
+
+config BOOT_SERIAL_ENCRYPT_EC256
+	bool "Support for encrypted upgrade images using ECIES-P256 in serial recovery upload"
+	default n
+	help
+	  If y, uploaded images via serial recovery can be decrypted
+	  on the fly when upgrading to the primary slot. The
+	  encryption mechanism used in this case is ECIES using primitives
+	  described under "ECIES-P256 encryption" in docs/encrypted_images.md.
 
 endif # MCUBOOT_SERIAL
 
