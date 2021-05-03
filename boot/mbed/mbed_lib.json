@@ -25,12 +25,6 @@
             "help": "Size of the scratch area, in bytes. If needed, please set on a per-target basis.",
             "macro_name": "MCUBOOT_SCRATCH_SIZE"
         },
-        "header-size": {
-            "help": "Header size, in bytes, prepended to the bootable application image. Should be one or multiple times the sector size.",
-            "macro_name": "MCUBOOT_HEADER_SIZE",
-            "required": true,
-            "value": 4096
-        },
         "validate-primary-slot": {
             "help": "Always check the signature of the image in the primary slot before booting, even if no upgrade was performed. This is recommended if the boot time penalty is acceptable.",
             "macro_name": "MCUBOOT_VALIDATE_PRIMARY_SLOT",
