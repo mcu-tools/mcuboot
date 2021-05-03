@@ -182,6 +182,18 @@ config BOOT_VALIDATE_SLOT0
 	  every boot, but can mitigate against some changes that are
 	  able to modify the flash image itself.
 
+config BOOT_VALIDATE_SLOT0_ONCE
+	bool "Validate image in the primary slot just once after after upgrade"
+	depends on !BOOT_VALIDATE_SLOT0 && SINGLE_APPLICATION_SLOT
+	default n
+	help
+	  If y, the bootloader attempts to validate the signature of the
+	  primary slot only once after an upgrade of the main slot.
+	  It caches the result in the magic area, which makes it an unsecure
+	  method. This option is usefull for lowering the boot up time for
+	  low end devices with as a compromise lowering the security level.
+	  If unsure, leave at the default value.
+
 if !SINGLE_APPLICATION_SLOT
 choice BOOT_IMAGE_UPGRADE_MODE
 	prompt "Image upgrade modes"

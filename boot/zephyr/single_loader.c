@@ -58,6 +58,37 @@ boot_image_validate(const struct flash_area *fa_p,
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT || MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE*/
 
 
+inline static fih_int
+boot_image_validate_once(const struct flash_area *fa_p,
+                    struct image_header *hdr)
+{
+    static struct boot_swap_state state;
+    int rc;
+    fih_int fih_rc = FIH_FAILURE;
+
+    memset(&state, 0, sizeof(struct boot_swap_state));
+    rc = boot_read_swap_state(fa_p, &state);
+    if (rc != 0)
+        FIH_RET(FIH_FAILURE);
+    if (state.magic != BOOT_MAGIC_GOOD
+            || state.image_ok != BOOT_FLAG_SET) {
+        /* At least validate the image once */
+        FIH_CALL(boot_image_validate, fih_rc, fa_p, hdr);
+        if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+            FIH_RET(FIH_FAILURE);
+        }
+        if (state.magic != BOOT_MAGIC_GOOD) {
+            rc = boot_write_magic(fa_p);
+            if (rc != 0)
+                FIH_RET(FIH_FAILURE);
+        }
+        rc = boot_write_image_ok(fa_p);
+        if (rc != 0)
+            FIH_RET(FIH_FAILURE);
+    }
+    FIH_RET(FIH_SUCCESS);
+}
+
 /**
  * Attempts to load image header from flash; verifies flash header fields.
  *
@@ -418,6 +449,11 @@ boot_go(struct boot_rsp *rsp)
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
     FIH_CALL(boot_image_validate, fih_rc, _fa_p, &_hdr);
+    if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+        goto out;
+    }
+#elif defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
+    FIH_CALL(boot_image_validate_once, fih_rc, _fa_p, &_hdr);
     if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
         goto out;
     }

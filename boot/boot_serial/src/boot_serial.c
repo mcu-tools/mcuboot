@@ -333,6 +333,14 @@ bs_upload(char *buf, int len)
         if (data_len > flash_area_get_size(fap)) {
             goto out_invalid_data;
         }
+#if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
+        /* We are using swap state at end of flash area to store validation
+         * result. Make sure the user cannot write it from an image to skip validation.
+         */
+        if (data_len > (flash_area_get_size(fap) - BOOT_MAGIC_SZ)) {
+            goto out_invalid_data;
+        }
+#endif
 #ifndef MCUBOOT_ERASE_PROGRESSIVELY
         rc = flash_area_erase(fap, 0, flash_area_get_size(fap));
         if (rc) {
