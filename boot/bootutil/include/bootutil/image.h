@@ -149,6 +149,7 @@ struct image_tlv {
     uint16_t it_len;    /* Data length (not including TLV header). */
 };
 
+#define ENCRYPTIONFLAGS (IMAGE_F_ENCRYPTED_AES128 | IMAGE_F_ENCRYPTED_AES256)
 #define IS_ENCRYPTED(hdr) (((hdr)->ih_flags & IMAGE_F_ENCRYPTED_AES128) \
                         || ((hdr)->ih_flags & IMAGE_F_ENCRYPTED_AES256))
 #define MUST_DECRYPT(fap, idx, hdr) \

@@ -58,6 +58,10 @@
 #include "bootutil_priv.h"
 #endif
 
+#ifdef MCUBOOT_ENC_IMAGES
+#include "single_loader.h"
+#endif
+
 #include "serial_recovery_cbor.h"
 #include "bootutil/boot_hooks.h"
 
@@ -200,6 +204,17 @@ bs_list(char *buf, int len)
                                    fih_rc, image_index, slot);
                 if (fih_eq(fih_rc, BOOT_HOOK_REGULAR))
                 {
+#ifdef MCUBOOT_ENC_IMAGES
+                    if (slot == 0 && IS_ENCRYPTED(&hdr)) {
+                        /* Clear the encrypted flag we didn't supply a key
+                        * This flag could be set if there was a decryption in place
+                        * performed before. We will try to validate the image without
+                        * decryption by clearing the flag in the heder. If
+                        * still encrypted the validation will fail.
+                        */
+                        hdr.ih_flags &= ~(ENCRYPTIONFLAGS);
+                    }
+#endif
                     FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, &hdr, fap, tmpbuf, sizeof(tmpbuf),
                                     NULL, 0, NULL);
                 }
@@ -437,6 +452,13 @@ out:
 
     boot_serial_output();
     flash_area_close(fap);
+
+#ifdef MCUBOOT_ENC_IMAGES
+    if (curr_off == img_size) {
+        /* Last sector received, now start a decryption on the image if it is encrypted*/
+        rc = boot_handle_enc_fw();
+    }
+#endif //#ifdef MCUBOOT_ENC_IMAGES
 }
 
 /*
