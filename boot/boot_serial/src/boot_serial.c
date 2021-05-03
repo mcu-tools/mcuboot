@@ -470,6 +470,38 @@ out:
 #endif //#ifdef MCUBOOT_ENC_IMAGES
 }
 
+#ifdef MCUBOOT_BOOT_MGMT_ECHO
+static bool
+decode_echo(cbor_state_t *state, cbor_string_type_t *result)
+{
+    size_t bsstrdecoded;
+    int ret;
+
+    if (!map_start_decode(state)) {
+        return false;
+    }
+    ret = multi_decode(2, 2, &bsstrdecoded, (void *)tstrx_decode, state, result, sizeof(cbor_string_type_t));
+    map_end_decode(state);
+    return ret;
+}
+
+
+static void
+bs_echo(char *buf, int len)
+{
+    size_t bsstrdecoded;
+    cbor_string_type_t str[2];
+
+    if (entry_function((const uint8_t *)buf, len, str, &bsstrdecoded, (void *)decode_echo, 1, 2)) {
+        map_start_encode(&cbor_state, 10);
+        tstrx_put(&cbor_state, "r");
+        tstrx_encode(&cbor_state, &str[1]);
+        map_end_encode(&cbor_state, 10);
+        boot_serial_output();
+    }
+}
+#endif
+
 /*
  * Send rc code only.
  */
@@ -547,6 +579,11 @@ boot_serial_input(char *buf, int len)
         }
     } else if (hdr->nh_group == MGMT_GROUP_ID_DEFAULT) {
         switch (hdr->nh_id) {
+        case NMGR_ID_ECHO:
+#ifdef MCUBOOT_BOOT_MGMT_ECHO
+            bs_echo(buf, len);
+#endif
+            break;
         case NMGR_ID_CONS_ECHO_CTRL:
             bs_rc_rsp(0);
             break;
