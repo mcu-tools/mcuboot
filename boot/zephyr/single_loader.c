@@ -41,7 +41,7 @@ boot_image_validate(const struct flash_area *fa_p,
      * the pointer from compilation.
      */
     /* Validate hash */
-    if( hdr->ih_flags & IMAGE_F_ENCRYPTED )
+    if (hdr->ih_flags & IMAGE_F_ENCRYPTED)
     {
         /* Clear the encrypted flag we didn't supply a key
          * This flag could be set if there was a decryption in place
@@ -68,22 +68,22 @@ boot_image_validate_once(const struct flash_area *fa_p,
 
     memset(&state, 0, sizeof(struct boot_swap_state));
     rc = boot_read_swap_state(fa_p, &state);
-    if( rc != 0)
+    if (rc != 0)
         FIH_RET(FIH_FAILURE);
-    if( state.magic != BOOT_MAGIC_GOOD
-            || state.image_ok != BOOT_FLAG_SET ) {
+    if (state.magic != BOOT_MAGIC_GOOD
+            || state.image_ok != BOOT_FLAG_SET) {
         /* At least validate the image once */
         FIH_CALL(boot_image_validate, fih_rc, fa_p, hdr);
         if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
             FIH_RET(FIH_FAILURE);
         }
-        if( state.magic != BOOT_MAGIC_GOOD ) {
+        if (state.magic != BOOT_MAGIC_GOOD) {
             rc = boot_write_magic(fa_p);
-            if( rc != 0 )
+            if (rc != 0)
                 FIH_RET(FIH_FAILURE);
         }
         rc = boot_write_image_ok(fa_p);
-        if( rc != 0 )
+        if (rc != 0)
             FIH_RET(FIH_FAILURE);
     }
     FIH_RET(FIH_SUCCESS);
@@ -269,7 +269,7 @@ decrypt_region_inplace(struct boot_loader_state *state,
             idx = 0;
             if (off + bytes_copied < hdr->ih_hdr_size) {
                 /* do not decrypt header */
-                if( hdr->ih_hdr_size > (off + bytes_copied + chunk_sz) ) {
+                if (hdr->ih_hdr_size > (off + bytes_copied + chunk_sz)) {
                     /* all bytes in header, skip decryption */
                     blk_sz = 0;
                 }
@@ -376,7 +376,7 @@ decrypt_image_inplace(const struct flash_area *fa_p,
 
     uint32_t src_size = 0;
     rc = read_image_size(fa_p,hdr, &src_size);
-    if( rc != 0 ) {
+    if (rc != 0) {
         FIH_RET(fih_rc);
     }
 
@@ -408,7 +408,7 @@ boot_handle_enc_fw()
         goto out;
     }
 
-    if( _hdr.ih_flags & IMAGE_F_ENCRYPTED ) {
+    if (_hdr.ih_flags & IMAGE_F_ENCRYPTED) {
         //encrypted, we need to decrypt in place
         FIH_CALL(decrypt_image_inplace,fih_rc,_fa_p,&_hdr);
         if (fih_not_eq(fih_rc, FIH_SUCCESS)) {

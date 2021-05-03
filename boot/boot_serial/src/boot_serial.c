@@ -294,7 +294,7 @@ bs_upload(char *buf, int len)
          */
         goto out_invalid_data;
     }
-    if(img_blen < sizeof(img_buf)) {
+    if (img_blen < sizeof(img_buf)) {
         /*
          * support unalignment of the image data buffer for cpu's which don't support unaligned data access
          */
@@ -448,8 +448,8 @@ bs_echo(char *buf, int len)
 		.elem_count = 1
 	};
 
-	if( list_start_decode(&state, &elem_count, 1, 1) &&
-		multi_decode(2, 2, &bsstrdecoded, (void*)strx_decode, &state,str, NULL, NULL,sizeof(cbor_string_type_t)) ) {
+	if (list_start_decode(&state, &elem_count, 1, 1) &&
+		multi_decode(2, 2, &bsstrdecoded, (void*)strx_decode, &state,str, NULL, NULL,sizeof(cbor_string_type_t))) {
 		echo_buf = str[1].value;
 		echo_buflen = str[1].len;
 	}
