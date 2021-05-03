@@ -89,7 +89,8 @@ MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 #endif
 
 static char in_buf[BOOT_SERIAL_INPUT_MAX + 1];
-static char dec_buf[BOOT_SERIAL_INPUT_MAX + 1];
+static char dec_buf[BOOT_SERIAL_INPUT_MAX + 1] __attribute__((aligned));
+static char img_buf[BOOT_SERIAL_INPUT_MAX + 1] __attribute__((aligned));
 const struct boot_uart_funcs *boot_uf;
 static uint32_t curr_off;
 static uint32_t img_size;
@@ -288,6 +289,13 @@ bs_upload(char *buf, int len)
          * Offset must be set in every block.
          */
         goto out_invalid_data;
+    }
+    if(img_blen < sizeof(img_buf)) {
+        /*
+         * support unalignment of the image data buffer for cpu's which don't support unaligned data access
+         */
+        memcpy(img_buf, img_data, img_blen);
+        img_data = img_buf;
     }
 
     rc = flash_area_open(flash_area_id_from_multi_image_slot(img_num, 0), &fap);
