@@ -421,6 +421,34 @@ out:
     flash_area_close(fap);
 }
 
+static void
+bs_echo(char *buf, int len)
+{
+    cbor_encoder_create_map(&bs_root, &bs_rsp, CborIndefiniteLength);
+    const char *echo_buf="";
+    size_t echo_buflen = strlen(echo_buf);
+	size_t elem_count = 1;
+	size_t bsstrdecoded;
+
+	cbor_string_type_t str[2];
+	cbor_decode_state_t state = {
+		.p_payload = buf,
+		.p_payload_end = buf + len,
+		.elem_count = 1
+	};
+
+	if( list_start_decode(&state, &elem_count, 1, 1) &&
+		multi_decode(2, 2, &bsstrdecoded, (void*)strx_decode, &state,str, NULL, NULL,sizeof(cbor_string_type_t)) ) {
+		echo_buf = str[1].value;
+		echo_buflen = str[1].len;
+	}
+    cbor_encode_text_stringz(&bs_rsp, "r");
+    cbor_encode_text_string(&bs_rsp, echo_buf, echo_buflen);
+    cbor_encoder_close_container(&bs_root, &bs_rsp);
+    boot_serial_output();
+}
+
+
 /*
  * Console echo control/image erase. Send empty response, don't do anything.
  */
@@ -493,6 +521,9 @@ boot_serial_input(char *buf, int len)
         }
     } else if (hdr->nh_group == MGMT_GROUP_ID_DEFAULT) {
         switch (hdr->nh_id) {
+        case NMGR_ID_ECHO:
+            bs_echo(buf, len);
+            break;
         case NMGR_ID_CONS_ECHO_CTRL:
             bs_empty_rsp(buf, len);
             break;
