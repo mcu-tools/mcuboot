@@ -48,6 +48,7 @@ extern "C" {
 #define MGMT_GROUP_ID_IMAGE     1
 #define MGMT_GROUP_ID_PERUSER  64
 
+#define NMGR_ID_ECHO            0
 #define NMGR_ID_CONS_ECHO_CTRL  1
 #define NMGR_ID_RESET           5
 

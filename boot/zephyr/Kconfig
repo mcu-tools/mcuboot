@@ -556,6 +556,11 @@ config BOOT_ERASE_PROGRESSIVELY
 	 on some hardware that has long erase times, to prevent long wait
 	 times at the beginning of the DFU process.
 
+config BOOT_MGMT_ECHO
+	bool "Enable echo command"
+	help
+	  if enabled, support for the mcumgr echo command is being added.
+
 menuconfig ENABLE_MGMT_PERUSER
 	bool "Enable system specific mcumgr commands"
 	help
