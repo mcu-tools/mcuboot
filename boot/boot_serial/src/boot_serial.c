@@ -94,7 +94,7 @@ MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 static char in_buf[BOOT_SERIAL_INPUT_MAX + 1];
 static char dec_buf[BOOT_SERIAL_INPUT_MAX + 1] __attribute__((aligned));
-static char img_buf[BOOT_SERIAL_INPUT_MAX + 1] __attribute__((aligned));
+static uint8_t img_buf[BOOT_SERIAL_INPUT_MAX + 1] __attribute__((aligned));
 const struct boot_uart_funcs *boot_uf;
 static uint32_t curr_off;
 static uint32_t img_size;
@@ -199,8 +199,23 @@ bs_list(char *buf, int len)
 
             flash_area_read(fap, 0, &hdr, sizeof(hdr));
 
-            if (hdr.ih_magic != IMAGE_MAGIC ||
-                    boot_image_validate(fap,&hdr)) {
+            if (hdr.ih_magic != IMAGE_MAGIC) {
+                flash_area_close(fap);
+                continue;
+            }
+#ifdef MCUBOOT_ENC_IMAGES
+            if (slot == 0 && hdr.ih_flags & IMAGE_F_ENCRYPTED) {
+                /* Clear the encrypted flag we didn't supply a key
+                * This flag could be set if there was a decryption in place
+                * performed before. We will try to validate the image without
+                * decryption by clearing the flag in the heder. If 
+                * still encrypted the validation will fail.
+                */
+                hdr.ih_flags &= ~IMAGE_F_ENCRYPTED;
+            }
+#endif
+            if (bootutil_img_validate(NULL, 0, &hdr, fap, tmpbuf, sizeof(tmpbuf),
+                                    NULL, 0, NULL)) {
                 flash_area_close(fap);
                 continue;
             }
@@ -443,14 +458,14 @@ bs_echo(char *buf, int len)
 
 	cbor_string_type_t str[2];
 	cbor_decode_state_t state = {
-		.p_payload = buf,
-		.p_payload_end = buf + len,
+		.p_payload = (uint8_t*)buf,
+		.p_payload_end = (uint8_t*)buf + len,
 		.elem_count = 1
 	};
 
 	if (list_start_decode(&state, &elem_count, 1, 1) &&
 		multi_decode(2, 2, &bsstrdecoded, (void*)strx_decode, &state,str, NULL, NULL,sizeof(cbor_string_type_t))) {
-		echo_buf = str[1].value;
+		echo_buf = (char*)str[1].value;
 		echo_buflen = str[1].len;
 	}
     cbor_encode_text_stringz(&bs_rsp, "r");
@@ -725,7 +740,11 @@ boot_serial_check_start(const struct boot_uart_funcs *f,int32_t timeout_in_ms)
     bs_echoreceived = 0;
     off = 0;
     while (timeout_in_ms > 0 || bs_echoreceived) {
+#ifdef __ZEPHYR__
         uint32_t start = k_uptime_get_32();
+#else
+        uint32_t start = os_get_uptime_usec()/1000;
+#endif
         rc = f->read(in_buf + off, sizeof(in_buf) - off, &full_line);
         if (rc <= 0 && !full_line) {
             goto check_timeout;
@@ -756,6 +775,10 @@ boot_serial_check_start(const struct boot_uart_funcs *f,int32_t timeout_in_ms)
         off = 0;
     check_timeout:
         /* Subtract elapsed time */
+#ifdef __ZEPHYR__
         timeout_in_ms -= (k_uptime_get_32() - start);
+#else
+        timeout_in_ms -= (os_get_uptime_usec()/1000 - start);
+#endif
     }
 }
