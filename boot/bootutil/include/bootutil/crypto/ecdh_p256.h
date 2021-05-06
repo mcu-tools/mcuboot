@@ -68,6 +68,8 @@ static inline int bootutil_ecdh_p256_shared_secret(bootutil_ecdh_p256_context *c
 #endif /* MCUBOOT_USE_TINYCRYPT */
 
 #if defined(MCUBOOT_USE_MBED_TLS)
+#define NUM_ECC_BYTES 32
+
 typedef struct bootutil_ecdh_p256_context {
     mbedtls_ecp_group grp;
     mbedtls_ecp_point P;
