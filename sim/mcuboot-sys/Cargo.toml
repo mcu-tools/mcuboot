@@ -44,6 +44,9 @@ enc-kw = []
 # Encrypt image in the secondary slot using ECIES-P256
 enc-ec256 = []
 
+# Encrypt image in the secondary slot using ECIES-P256 using Mbed TLS
+enc-ec256-mbedtls = []
+
 # Encrypt image in the secondary slot using ECIES-X25519
 enc-x25519 = []
 
