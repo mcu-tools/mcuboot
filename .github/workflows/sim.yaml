@@ -26,10 +26,7 @@ jobs:
         - "sig-ecdsa-mbedtls enc-kw validate-primary-slot"
         - "sig-rsa validate-primary-slot overwrite-only large-write"
         - "sig-ecdsa enc-ec256 validate-primary-slot"
-        # ecdsa-mbedtls and enc-ec256 are not currently supported
-        # together, as the ec256 code requires only one backend be
-        # active.
-        # - "sig-ecdsa-mbedtls enc-ec256 validate-primary-slot"
+        - "sig-ecdsa-mbedtls enc-ec256-mbedtls validate-primary-slot"
         - "sig-rsa validate-primary-slot overwrite-only downgrade-prevention"
     runs-on: ubuntu-latest
     env:
