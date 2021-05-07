@@ -69,10 +69,25 @@ in the following files:
 
 ## Flash Map
 
-The bootloader requires a `flash_map` to be able to know how the flash is
-partitioned. A `flash_map` consists of `struct flash_area` entries
-specifying the partitions, where a `flash_area` defined as follows:
+The bootloader requires to be able to address flash regions where the code
+for mcuboot and images of applications are stored, in system-agnostic way.
+For that purpose the mcuboot uses ID, which is integer (uint8_t) number
+that should uniquely identify each flash region.
+Such flash regions are served by object of `const struct flash_area` type while
+layout of these objects is gathered under `flash_map`.
+The common code of mcuboot, that is non-system specific, does not directly
+access contents of that object and never modifies it, instead it calls
+`flash_area_` API to perform any actions on that object.
+This way systems are free to implement internal logic of flash map or define
+`struct flash_area` as they wish; the only restriction is that ID should be
+uniquely tied to region characterized by device, offset and size.
 
+Changes to common mcuboot code should not affect system specific internals
+of flash map, on the other side system specific code, within mcuboot, is
+is not restricted from directly accessing `struct flash_area` elements.
+
+
+An implementation of `struct flash_area` may take form of:
 ```c
 struct flash_area {
     uint8_t  fa_id;         /** The slot/scratch identification */
@@ -82,8 +97,25 @@ struct flash_area {
     uint32_t fa_size;       /** The size of this sector */
 };
 ```
+The above example of structure hold all information that is currently required
+by mcuboot, although the mcuboot will not be trying to access them directly,
+instead a system is required to provide following mandatory getter functions:
 
-`fa_id` is can be one of the following options:
+```c
+/*< Obtains ID of the flash area characterized by `fa` */
+int     flash_area_get_id(const struct flash_area *fa);
+/*< Obtains ID of a device the flash area `fa` described region resides on */
+int     flash_area_get_device_id(const struct flash_area *fa)
+/*< Obtains offset, from the beginning of a device, the flash area described
+ * region starts at */
+uint32_t flash_area_get_off(const struct flash_area *fa)
+/*< Obtains size, from the offset, of the flash area `fa` characterized region */
+uint32_t flash_area_get_size(const struct flash_area *fa)
+
+```
+
+The mcuboot common code uses following defines that should be defined by system
+specific header files and are used to identify destination of flash area by ID:
 
 ```c
 /* Independent from multiple image boot */
@@ -101,7 +133,11 @@ struct flash_area {
 #define FLASH_AREA_IMAGE_SECONDARY    6
 ```
 
-The functions that must be defined for working with the `flash_area`s are:
+The numbers, given above, are provided as an example and depend on system
+implementation.
+
+The main, also required, set of API functions that perform operations on
+flash characterized by `struct flash_area` objects is as follows:
 
 ```c
 /*< Opens the area for use. id is one of the `fa_id`s */
