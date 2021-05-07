@@ -1560,6 +1560,9 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
          * if there is one.
          */
         BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
+        (void) boot_read_image_header(state, BOOT_PRIMARY_SLOT,
+				      boot_img_hdr(state, BOOT_PRIMARY_SLOT),
+				      bs);
         return;
     }
 
