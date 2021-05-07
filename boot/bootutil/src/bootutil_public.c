@@ -583,11 +583,10 @@ boot_set_confirmed(void)
         goto done;
     }
 
-    if (state_primary_slot.copy_done == BOOT_FLAG_UNSET) {
-        /* Swap never completed.  This is unexpected. */
-        rc = BOOT_EBADVECT;
-        goto done;
-    }
+    /* Intentionally do not check copy_done flag
+     * so can confirm a padded image which was programed using a programing
+     * interface.
+     */
 
     if (state_primary_slot.image_ok != BOOT_FLAG_UNSET) {
         /* Already confirmed. */

@@ -53,6 +53,7 @@
 #endif
 
 #define MBEDTLS_ECDSA_C
+#define MBEDTLS_ECDH_C
 
 /* mbed TLS modules */
 #define MBEDTLS_ASN1_PARSE_C
@@ -77,7 +78,7 @@
 
 #define MBEDTLS_MPI_MAX_SIZE             32
 
-#define MBEDTLS_SSL_MAX_CONTENT_LEN 1024
+#define MBEDTLS_SSL_MAX_CONTENT_LEN      1024
 
 /* Save ROM and a few bytes of RAM by specifying our own ciphersuite list */
 #define MBEDTLS_SSL_CIPHERSUITES MBEDTLS_TLS_ECJPAKE_WITH_AES_128_CCM_8

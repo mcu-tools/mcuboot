@@ -231,7 +231,8 @@ int invoke_boot_go(struct sim_context *ctx, struct area_desc *adesc)
     struct boot_loader_state *state;
 
 #if defined(MCUBOOT_SIGN_RSA) || \
-    (defined(MCUBOOT_SIGN_EC256) && defined(MCUBOOT_USE_MBED_TLS))
+    (defined(MCUBOOT_SIGN_EC256) && defined(MCUBOOT_USE_MBED_TLS)) ||\
+    (defined(MCUBOOT_ENCRYPT_EC256) && defined(MCUBOOT_USE_MBED_TLS))
     mbedtls_platform_set_calloc_free(calloc, free);
 #endif
 
