@@ -27,7 +27,7 @@
 #include "bootutil/bootutil_log.h"
 
 #ifdef __ZEPHYR__
-#include <sys/reboot.h>
+#include <power/reboot.h>
 #include <sys/byteorder.h>
 #include <sys/__assert.h>
 #include <drivers/flash.h>
@@ -254,13 +254,16 @@ bs_upload(char *buf, int len)
      * }
      */
 
-    Upload_t upload;
-    if (!cbor_decode_Upload((const uint8_t *)buf, len, &upload)) {
+    struct Upload upload;
+    size_t decoded_len;
+    bool result = cbor_decode_Upload((const uint8_t *)buf, len, &upload, &decoded_len);
+
+    if (!result || (len != decoded_len)) {
         goto out_invalid_data;
     }
 
     for (int i = 0; i < upload._Upload_members_count; i++) {
-        _Member_t *member = &upload._Upload_members[i];
+        struct Member_ *member = &upload._Upload_members[i];
         switch(member->_Member_choice) {
             case _Member_image:
                 img_num = member->_Member_image;
