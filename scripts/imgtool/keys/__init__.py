@@ -33,6 +33,7 @@ from .rsa import RSA, RSAPublic, RSAUsageError, RSA_KEY_SIZES
 from .ecdsa import ECDSA256P1, ECDSA256P1Public, ECDSAUsageError
 from .ed25519 import Ed25519, Ed25519Public, Ed25519UsageError
 from .x25519 import X25519, X25519Public, X25519UsageError
+from .aws_kms_ecdsa import AwsKmsECDSA256
 
 
 class PasswordRequired(Exception):
@@ -41,7 +42,7 @@ class PasswordRequired(Exception):
     pass
 
 
-def load(path, passwd=None):
+def load_local_file(path, passwd=None):
     """Try loading a key from the given path.  Returns None if the password wasn't specified."""
     with open(path, 'rb') as f:
         raw_pem = f.read()
@@ -94,3 +95,30 @@ def load(path, passwd=None):
         return X25519Public(pk)
     else:
         raise Exception("Unknown key type: " + str(type(pk)))
+
+
+def load_aws_key(path):
+    """Try loading a key from the given path.  Returns None if the password wasn't specified."""
+    from boto3 import client
+
+    client = client('kms')
+    key_info = client.describe_key(KeyId=path)
+    public_key_raw = client.get_public_key(KeyId=path)
+
+    if key_info['KeyMetadata']['KeyUsage'] != 'SIGN_VERIFY':
+       raise Exception("Only Sign/verify AWS keys are supported. {} is of usage type {}".format(path, key_info['KeyMetadata']['KeyUsage']))
+    if key_info['KeyMetadata']['KeyState'] != 'Enabled':
+       raise Exception("Key {} is not enabled. Current state {}".format(path, key_info['KeyMetadata']['KeyState']))
+    if key_info['KeyMetadata']['SigningAlgorithms'] != ['ECDSA_SHA_256']:
+       raise Exception("Key {} is of unsuppoted type: {}".format(path, key_info['KeyMetadata']['SigningAlgorithms']))
+    else:
+        return AwsKmsECDSA256(client, key_info, public_key_raw)
+
+
+def load(path, key_backend='local_file', passwd=None):
+    """Try loading a key from the given path.  Returns None if the password wasn't specified."""
+    if key_backend == 'local_file':
+        return load_local_file(path, passwd)
+    elif key_backend == 'aws':
+        return load_aws_key(path)
+

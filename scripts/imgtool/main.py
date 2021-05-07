@@ -69,9 +69,9 @@ keygens = {
 }
 
 
-def load_key(keyfile):
+def load_key(keyfile, key_backend):
     # TODO: better handling of invalid pass-phrase
-    key = keys.load(keyfile)
+    key = keys.load(keyfile, key_backend)
     if key is not None:
         return key
     passwd = getpass.getpass("Enter key passphrase: ").encode('utf-8')
@@ -96,19 +96,21 @@ def get_password():
 @click.option('-t', '--type', metavar='type', required=True,
               type=click.Choice(keygens.keys()), prompt=True,
               help='{}'.format('One of: {}'.format(', '.join(keygens.keys()))))
+@click.option('--key-backend', metavar='location', default='local_file')
 @click.option('-k', '--key', metavar='filename', required=True)
 @click.command(help='Generate pub/private keypair')
-def keygen(type, key, password):
+def keygen(type, key, key_backend, password):
     password = get_password() if password else None
     keygens[type](key, password)
 
 
 @click.option('-l', '--lang', metavar='lang', default=valid_langs[0],
               type=click.Choice(valid_langs))
+@click.option('--key-backend', metavar='location', default='local_file')
 @click.option('-k', '--key', metavar='filename', required=True)
 @click.command(help='Dump public key from keypair')
-def getpub(key, lang):
-    key = load_key(key)
+def getpub(key, key_backend, lang):
+    key = load_key(key, key_backend)
     if key is None:
         print("Invalid passphrase")
     elif lang == 'c':
@@ -124,10 +126,11 @@ def getpub(key, lang):
                    'the minimum amount of data required to decrypt. This '
                    'might require changes to the build config. Check the docs!'
               )
+@click.option('--key-backend', metavar='location', default='local_file')
 @click.option('-k', '--key', metavar='filename', required=True)
 @click.command(help='Dump private key from keypair')
-def getpriv(key, minimal):
-    key = load_key(key)
+def getpriv(key, key_backend, minimal):
+    key = load_key(key, key_backend)
     if key is None:
         print("Invalid passphrase")
     try:
@@ -139,9 +142,10 @@ def getpriv(key, minimal):
 
 @click.argument('imgfile')
 @click.option('-k', '--key', metavar='filename')
+@click.option('--key-backend', metavar='location', default='local_file')
 @click.command(help="Check that signed image can be verified by given key")
-def verify(key, imgfile):
-    key = load_key(key) if key else None
+def verify(key, key_backend, imgfile):
+    key = load_key(key, key_backend) if key else None
     ret, version, digest = image.Image.verify(imgfile, key)
     if ret == image.VerifyResult.OK:
         print("Image was correctly validated")
@@ -289,11 +293,12 @@ class BasedIntParamType(click.ParamType):
 @click.option('--public-key-format', type=click.Choice(['hash', 'full']),
               default='hash', help='In what format to add the public key to '
               'the image manifest: full key or hash of the key.')
+@click.option('--key-backend', metavar='location', default='local_file')
 @click.option('-k', '--key', metavar='filename')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
-def sign(key, public_key_format, align, version, pad_sig, header_size,
+def sign(key, key_backend, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt, infile, outfile, dependencies, load_addr, hex_addr,
          erased_val, save_enctlv, security_counter, boot_record, custom_tlv,
@@ -311,7 +316,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                       erased_val=erased_val, save_enctlv=save_enctlv,
                       security_counter=security_counter)
     img.load(infile)
-    key = load_key(key) if key else None
+    key = load_key(key, key_backend) if key else None
     enckey = load_key(encrypt) if encrypt else None
     if enckey and key:
         if ((isinstance(key, keys.ECDSA256P1) and

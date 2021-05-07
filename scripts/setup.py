@@ -19,6 +19,9 @@ setuptools.setup(
         'click',
         'cbor>=1.0.0',
     ],
+    extras_require=[
+        'boto3>=1.17',
+    ],
     entry_points={
         "console_scripts": ["imgtool=imgtool.main:imgtool"]
     },
