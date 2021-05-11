@@ -18,6 +18,7 @@
 #define SIGNATURE_TYPE_RSA      0
 #define SIGNATURE_TYPE_EC256    1
 #define SIGNATURE_TYPE_ED25519  2
+#define SIGNATURE_TYPE_NONE     3
 
 /*
  * Signature algorithm
