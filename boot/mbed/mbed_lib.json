@@ -35,7 +35,7 @@
             "help": "The algorithm used for digital signing.",
             "macro_name": "MCUBOOT_SIGNATURE_ALGORITHM",
             "required": true,
-            "accepted_values": ["SIGNATURE_TYPE_RSA", "SIGNATURE_TYPE_EC256", "SIGNATURE_TYPE_ED25519"],
+            "accepted_values": ["SIGNATURE_TYPE_RSA", "SIGNATURE_TYPE_EC256", "SIGNATURE_TYPE_ED25519", "SIGNATURE_TYPE_NONE"],
             "value": "SIGNATURE_TYPE_RSA"
         },
         "rsa-signature-length": {
