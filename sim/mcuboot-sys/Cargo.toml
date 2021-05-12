@@ -56,6 +56,11 @@ multiimage = []
 # Check (in software) against version downgrades.
 downgrade-prevention = []
 
+# For ECIES based encryption, add a random salt to the HKDF and expand extra
+# key material to be used to encrypt the key and image using random nonces
+# instead of zeros.
+random-iv = []
+
 [build-dependencies]
 cc = "1.0.25"
 

@@ -1293,18 +1293,10 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
     // TLV signatures work over plain image
     tlv.add_bytes(&b_img);
 
-    // Generate encrypted images
     let flag = TlvFlags::ENCRYPTED as u32;
     let is_encrypted = (tlv.get_flags() & flag) == flag;
-    let mut b_encimg = vec![];
     if is_encrypted {
         tlv.generate_enc_key();
-        let enc_key = tlv.get_enc_key();
-        let key = GenericArray::from_slice(enc_key.as_slice());
-        let nonce = GenericArray::from_slice(&[0; 16]);
-        let mut cipher = Aes128Ctr::new(&key, &nonce);
-        b_encimg = b_img.clone();
-        cipher.apply_keystream(&mut b_encimg);
     }
 
     // Build the TLV itself.
@@ -1312,6 +1304,18 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
         tlv.corrupt_sig();
     }
     let mut b_tlv = tlv.make_tlv();
+
+    // Generate encrypted images
+    let mut b_encimg = vec![];
+    if is_encrypted {
+        let enc_key = tlv.get_enc_key();
+        let key = GenericArray::from_slice(enc_key.as_slice());
+        let enc_nonce = tlv.get_enc_nonce();
+        let nonce = GenericArray::from_slice(enc_nonce.as_slice());
+        let mut cipher = Aes128Ctr::new(&key, &nonce);
+        b_encimg = b_img.clone();
+        cipher.apply_keystream(&mut b_encimg);
+    }
 
     let dev = flash.get_mut(&dev_id).unwrap();
 

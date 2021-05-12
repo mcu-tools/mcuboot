@@ -25,6 +25,7 @@ fn main() {
     let bootstrap = env::var("CARGO_FEATURE_BOOTSTRAP").is_ok();
     let multiimage = env::var("CARGO_FEATURE_MULTIIMAGE").is_ok();
     let downgrade_prevention = env::var("CARGO_FEATURE_DOWNGRADE_PREVENTION").is_ok();
+    let random_iv = env::var("CARGO_FEATURE_RANDOM_IV").is_ok();
 
     let mut conf = cc::Build::new();
     conf.define("__BOOTSIM__", None);
@@ -207,6 +208,9 @@ fn main() {
         conf.define("MCUBOOT_ENC_IMAGES", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
         conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
+        if random_iv {
+            conf.define("MCUBOOT_SWAP_SAVE_ENCTLV_RANDOM_IV", None);
+        }
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
@@ -237,6 +241,9 @@ fn main() {
         conf.define("MCUBOOT_ENC_IMAGES", None);
         conf.define("MCUBOOT_USE_TINYCRYPT", None);
         conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
+        if random_iv {
+            conf.define("MCUBOOT_SWAP_SAVE_ENCTLV_RANDOM_IV", None);
+        }
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");

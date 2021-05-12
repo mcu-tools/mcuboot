@@ -23,6 +23,7 @@ bootstrap = ["mcuboot-sys/bootstrap"]
 multiimage = ["mcuboot-sys/multiimage"]
 large-write = []
 downgrade-prevention = ["mcuboot-sys/downgrade-prevention"]
+random-iv = ["mcuboot-sys/random-iv"]
 
 [dependencies]
 byteorder = "1.3"
