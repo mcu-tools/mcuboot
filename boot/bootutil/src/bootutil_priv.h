@@ -82,7 +82,7 @@ struct boot_status {
     uint8_t swap_type;    /* The type of swap in effect */
     uint32_t swap_size;   /* Total size of swapped image */
 #ifdef MCUBOOT_ENC_IMAGES
-    uint8_t enckey[BOOT_NUM_SLOTS][BOOT_ENC_KEY_SIZE];
+    uint8_t encinfo[BOOT_NUM_SLOTS][BOOT_ENC_ALIGN_SIZE];
 #if MCUBOOT_SWAP_SAVE_ENCTLV
     uint8_t enctlv[BOOT_NUM_SLOTS][BOOT_ENC_TLV_ALIGN_SIZE];
 #endif

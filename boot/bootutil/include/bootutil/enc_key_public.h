@@ -32,6 +32,8 @@
 extern "C" {
 #endif
 
+#define ENC_ALIGN_SIZE(x)       (((x) / BOOT_MAX_ALIGN + 1) * BOOT_MAX_ALIGN)
+
 #ifdef MCUBOOT_AES_256
 #define BOOT_ENC_KEY_SIZE       32
 #else
@@ -45,13 +47,30 @@ extern "C" {
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
 #define BOOT_ENC_TLV_SIZE TLV_ENC_RSA_SZ
+#define BOOT_ENC_NONCE_SIZE 0
 #elif defined(MCUBOOT_ENCRYPT_EC256)
 #define BOOT_ENC_TLV_SIZE TLV_ENC_EC256_SZ
+#if defined(MCUBOOT_SWAP_SAVE_ENCTLV_RANDOM_IV)
+#define BOOT_ENC_TLV_EXT_SIZE 32  /* optional HKDF salt (sha256 digest size) */
+#else
+#define BOOT_ENC_TLV_EXT_SIZE 0
+#endif
+#define BOOT_ENC_NONCE_SIZE 16
 #elif defined(MCUBOOT_ENCRYPT_X25519)
 #define BOOT_ENC_TLV_SIZE TLV_ENC_X25519_SZ
+#if defined(MCUBOOT_SWAP_SAVE_ENCTLV_RANDOM_IV)
+#define BOOT_ENC_TLV_EXT_SIZE 32  /* optional HKDF salt (sha256 digest size) */
+#else
+#define BOOT_ENC_TLV_EXT_SIZE 0
+#endif
+#define BOOT_ENC_NONCE_SIZE 16
 #else
 #define BOOT_ENC_TLV_SIZE TLV_ENC_KW_SZ
+#define BOOT_ENC_TLV_EXT_SIZE 0
+#define BOOT_ENC_NONCE_SIZE 0
 #endif
+
+#define BOOT_ENC_ALIGN_SIZE ENC_ALIGN_SIZE((BOOT_ENC_KEY_SIZE + BOOT_ENC_NONCE_SIZE) - 1)
 
 #ifdef __cplusplus
 }
