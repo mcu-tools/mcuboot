@@ -1323,6 +1323,18 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
     }
     let mut b_tlv = tlv.make_tlv();
 
+    // Generate encrypted images
+    let mut b_encimg = vec![];
+    if is_encrypted {
+        let enc_key = tlv.get_enc_key();
+        let key = GenericArray::from_slice(enc_key.as_slice());
+        let enc_nonce = tlv.get_enc_nonce();
+        let nonce = GenericArray::from_slice(enc_nonce.as_slice());
+        let mut cipher = Aes128Ctr::new(&key, &nonce);
+        b_encimg = b_img.clone();
+        cipher.apply_keystream(&mut b_encimg);
+    }
+
     let dev = flash.get_mut(&dev_id).unwrap();
 
     let mut buf = vec![];
