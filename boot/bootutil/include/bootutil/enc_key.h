@@ -38,14 +38,11 @@
 extern "C" {
 #endif
 
-#define BOOT_ENC_KEY_SIZE_BITS  (BOOT_ENC_KEY_SIZE * 8)
-
-#define BOOT_ENC_TLV_ALIGN_SIZE \
-    ((((BOOT_ENC_TLV_SIZE - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN)
+#define BOOT_ENC_TLV_ALIGN_SIZE ENC_ALIGN_SIZE(BOOT_ENC_TLV_SIZE + BOOT_ENC_TLV_EXT_SIZE - 1)
 
 struct enc_key_data {
     uint8_t valid;
-    uint8_t aes_iv[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE];
+    uint8_t aes_iv[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE];
     bootutil_aes_ctr_context aes_ctr;
 };
 
@@ -59,7 +56,7 @@ int boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
 int boot_enc_load(struct enc_key_data *enc_state, int image_index,
         const struct image_header *hdr, const struct flash_area *fap,
         struct boot_status *bs);
-int boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey, uint32_t sz, uint8_t *enciv);
+int boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey, uint32_t sz);
 bool boot_enc_valid(struct enc_key_data *enc_state, int image_index,
         const struct flash_area *fap);
 void boot_encrypt(struct enc_key_data *enc_state, int image_index,

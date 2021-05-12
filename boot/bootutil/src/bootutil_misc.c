@@ -111,7 +111,7 @@ boot_trailer_sz(uint32_t min_write_sz)
 #  if MCUBOOT_SWAP_SAVE_ENCTLV
            BOOT_ENC_TLV_ALIGN_SIZE * 2            +
 #  else
-           BOOT_ENC_KEY_SIZE * 2                  +
+           BOOT_ENC_ALIGN_SIZE * 2                +
 #  endif
 #endif
            /* swap_type + copy_done + image_ok + swap_size */
@@ -177,10 +177,9 @@ static inline uint32_t
 boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 {
 #if MCUBOOT_SWAP_SAVE_ENCTLV
-    return boot_swap_size_off(fap) - ((slot + 1) *
-            ((((BOOT_ENC_TLV_SIZE - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN));
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_TLV_ALIGN_SIZE);
 #else
-    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_SIZE);
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_ALIGN_SIZE);
 #endif
 }
 #endif
@@ -272,8 +271,6 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
     if (rc == 0) {
         off = boot_enc_key_off(fap, slot);
 #if MCUBOOT_SWAP_SAVE_ENCTLV
-        uint8_t aes_iv[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE];
-
         rc = flash_area_read(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
         if (rc == 0) {
             for (i = 0; i < BOOT_ENC_TLV_ALIGN_SIZE; i++) {
@@ -283,11 +280,12 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
             }
             /* Only try to decrypt non-erased TLV metadata */
             if (i != BOOT_ENC_TLV_ALIGN_SIZE) {
-                rc = boot_enc_decrypt(bs->enctlv[slot], bs->enckey[slot], 0, aes_iv);
+                rc = boot_enc_decrypt(bs->enctlv[slot], bs->encinfo[slot],
+                                      BOOT_ENC_TLV_ALIGN_SIZE);
             }
         }
 #else
-        rc = flash_area_read(fap, off, bs->enckey[slot], BOOT_ENC_KEY_SIZE);
+        rc = flash_area_read(fap, off, bs->encinfo[slot], BOOT_ENC_ALIGN_SIZE);
 #endif
         flash_area_close(fap);
     }
@@ -335,7 +333,7 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
 #if MCUBOOT_SWAP_SAVE_ENCTLV
     rc = flash_area_write(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
 #else
-    rc = flash_area_write(fap, off, bs->enckey[slot], BOOT_ENC_KEY_SIZE);
+    rc = flash_area_write(fap, off, bs->encinfo[slot], BOOT_ENC_ALIGN_SIZE);
 #endif
     if (rc != 0) {
         return BOOT_EFLASH;

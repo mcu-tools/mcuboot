@@ -294,7 +294,7 @@ void
 boot_status_reset(struct boot_status *bs)
 {
 #ifdef MCUBOOT_ENC_IMAGES
-    memset(&bs->enckey, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_KEY_SIZE);
+    memset(&bs->encinfo, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_ALIGN_SIZE);
 #if MCUBOOT_SWAP_SAVE_ENCTLV
     memset(&bs->enctlv, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_TLV_ALIGN_SIZE);
 #endif
@@ -1106,7 +1106,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
                 rc = 0;
             }
         } else {
-            memset(bs->enckey[0], 0xff, BOOT_ENC_KEY_SIZE);
+            memset(bs->encinfo[0], 0xff, BOOT_ENC_ALIGN_SIZE);
         }
 #endif
 
@@ -1130,7 +1130,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
                 rc = 0;
             }
         } else {
-            memset(bs->enckey[1], 0xff, BOOT_ENC_KEY_SIZE);
+            memset(bs->encinfo[1], 0xff, BOOT_ENC_ALIGN_SIZE);
         }
 #endif
 
@@ -1154,13 +1154,13 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             rc = boot_read_enc_key(image_index, slot, bs);
             assert(rc == 0);
 
-            for (i = 0; i < BOOT_ENC_KEY_SIZE; i++) {
-                if (bs->enckey[slot][i] != 0xff) {
+            for (i = 0; i < BOOT_ENC_ALIGN_SIZE; i++) {
+                if (bs->encinfo[slot][i] != 0xff) {
                     break;
                 }
             }
 
-            if (i != BOOT_ENC_KEY_SIZE) {
+            if (i != BOOT_ENC_ALIGN_SIZE) {
                 boot_enc_set_key(BOOT_CURR_ENC(state), slot, bs);
             }
         }
