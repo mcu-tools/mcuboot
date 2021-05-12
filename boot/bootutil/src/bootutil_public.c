@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2021 Arm Limited
  * Copyright (c) 2020 Nordic Semiconductor ASA
  *
  * Original license:
@@ -471,25 +471,28 @@ boot_swap_type(void)
 }
 
 /**
- * Marks the image in the secondary slot as pending.  On the next reboot,
- * the system will perform a one-time boot of the the secondary slot image.
+ * Marks the image with the given index in the secondary slot as pending. On the
+ * next reboot, the system will perform a one-time boot of the the secondary
+ * slot image.
+ *
+ * @param image_index       Image pair index.
  *
  * @param permanent         Whether the image should be used permanently or
- *                              only tested once:
- *                                  0=run image once, then confirm or revert.
- *                                  1=run image forever.
+ *                          only tested once:
+ *                               0=run image once, then confirm or revert.
+ *                               1=run image forever.
  *
  * @return                  0 on success; nonzero on failure.
  */
 int
-boot_set_pending(int permanent)
+boot_set_pending_multi(int image_index, int permanent)
 {
     const struct flash_area *fap;
     struct boot_swap_state state_secondary_slot;
     uint8_t swap_type;
     int rc;
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(0),
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
                                     &state_secondary_slot);
     if (rc != 0) {
         return rc;
@@ -501,7 +504,7 @@ boot_set_pending(int permanent)
         return 0;
 
     case BOOT_MAGIC_UNSET:
-        rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(0), &fap);
+        rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap);
         if (rc != 0) {
             rc = BOOT_EFLASH;
         } else {
@@ -528,7 +531,7 @@ boot_set_pending(int permanent)
         /* The image slot is corrupt.  There is no way to recover, so erase the
          * slot to allow future upgrades.
          */
-        rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(0), &fap);
+        rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap);
         if (rc != 0) {
             return BOOT_EFLASH;
         }
@@ -544,20 +547,41 @@ boot_set_pending(int permanent)
 }
 
 /**
- * Marks the image in the primary slot as confirmed.  The system will continue
- * booting into the image in the primary slot until told to boot from a
- * different slot.
+ * Marks the image with index 0 in the secondary slot as pending. On the next
+ * reboot, the system will perform a one-time boot of the the secondary slot
+ * image. Note that this API is kept for compatibility. The
+ * boot_set_pending_multi() API is recommended.
+ *
+ * @param permanent         Whether the image should be used permanently or
+ *                          only tested once:
+ *                               0=run image once, then confirm or revert.
+ *                               1=run image forever.
  *
  * @return                  0 on success; nonzero on failure.
  */
 int
-boot_set_confirmed(void)
+boot_set_pending(int permanent)
+{
+    return boot_set_pending_multi(0, permanent);
+}
+
+/**
+ * Marks the image with the given index in the primary slot as confirmed.  The
+ * system will continue booting into the image in the primary slot until told to
+ * boot from a different slot.
+ *
+ * @param image_index       Image pair index.
+ *
+ * @return                  0 on success; nonzero on failure.
+ */
+int
+boot_set_confirmed_multi(int image_index)
 {
     const struct flash_area *fap;
     struct boot_swap_state state_primary_slot;
     int rc;
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(0),
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
                                     &state_primary_slot);
     if (rc != 0) {
         return rc;
@@ -577,7 +601,7 @@ boot_set_confirmed(void)
         return BOOT_EBADVECT;
     }
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &fap);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
     if (rc) {
         rc = BOOT_EFLASH;
         goto done;
@@ -598,4 +622,18 @@ boot_set_confirmed(void)
 done:
     flash_area_close(fap);
     return rc;
+}
+
+/**
+ * Marks the image with index 0 in the primary slot as confirmed.  The system
+ * will continue booting into the image in the primary slot until told to boot
+ * from a different slot.  Note that this API is kept for compatibility. The
+ * boot_set_confirmed_multi() API is recommended.
+ *
+ * @return                  0 on success; nonzero on failure.
+ */
+int
+boot_set_confirmed(void)
+{
+    return boot_set_confirmed_multi(0);
 }
