@@ -377,13 +377,19 @@ image trailer. An image trailer has the following structure:
     ~    Swap status (BOOT_MAX_IMG_SECTORS * min-write-size * 3)    ~
     ~                                                               ~
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                 Encryption key 0 (16 octets) [*]              |
+    |                 Encryption key 1 (16 octets) [1]              |
     |                                                               |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                 Encryption key 1 (16 octets) [*]              |
+    |                Encryption nonce 1 (12 octets) [2]             |
+    |                               |     0xff padding (4 octets)   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                 Encryption key 0 (16 octets) [1]              |
     |                                                               |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |                      Swap size (4 octets)                     |
+    |                Encryption nonce 0 (12 octets) [2]             |
+    |                               |     0xff padding (4 octets)   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |    0xff padding (4 octets)    |     Swap size (4 octets)      |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |   Swap info   |           0xff padding (7 octets)             |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -396,7 +402,8 @@ image trailer. An image trailer has the following structure:
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-[*]: Only present if the encryption option is enabled (`MCUBOOT_ENC_IMAGES`).
+[1]: Only present if the encryption option is enabled (`MCUBOOT_ENC_IMAGES`).
+[2]: Only present with encryption using `MCUBOOT_ENC_EC256` or `MCUBOOT_ENC_X25519`.
 
 The offset immediately following such a record represents the start of the next
 flash area.
