@@ -364,7 +364,9 @@ int
 swap_status_source(struct boot_loader_state *state)
 {
     const struct boot_status_table *table;
+#if MCUBOOT_SWAP_USING_SCRATCH
     struct boot_swap_state state_scratch;
+#endif
     struct boot_swap_state state_primary_slot;
     int rc;
     size_t i;
@@ -380,25 +382,30 @@ swap_status_source(struct boot_loader_state *state)
             &state_primary_slot);
     assert(rc == 0);
 
+#if MCUBOOT_SWAP_USING_SCRATCH
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SCRATCH, &state_scratch);
     assert(rc == 0);
+#endif
 
     BOOT_LOG_SWAP_STATE("Primary image", &state_primary_slot);
+#if MCUBOOT_SWAP_USING_SCRATCH
     BOOT_LOG_SWAP_STATE("Scratch", &state_scratch);
-
+#endif
     for (i = 0; i < BOOT_STATUS_TABLES_COUNT; i++) {
         table = &boot_status_tables[i];
 
         if (boot_magic_compatible_check(table->bst_magic_primary_slot,
                           state_primary_slot.magic) &&
+#if MCUBOOT_SWAP_USING_SCRATCH
             boot_magic_compatible_check(table->bst_magic_scratch,
                           state_scratch.magic) &&
+#endif
             (table->bst_copy_done_primary_slot == BOOT_FLAG_ANY ||
              table->bst_copy_done_primary_slot == state_primary_slot.copy_done))
         {
             source = table->bst_status_source;
 
-#if (BOOT_IMAGE_NUMBER > 1)
+#if (BOOT_IMAGE_NUMBER > 1) && MCUBOOT_SWAP_USING_SCRATCH
             /* In case of multi-image boot it can happen that if boot status
              * info is found on scratch area then it does not belong to the
              * currently examined image.
