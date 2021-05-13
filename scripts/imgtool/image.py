@@ -302,7 +302,7 @@ class Image():
 
         if use_random_iv:
             self.hkdf_salt = os.urandom(32)
-            self.hkdf_len += 16 * 2   # 48 for basic scheme + 16 * 2 for random IVs
+            self.hkdf_len += 16 + 12
 
         # Calculate the hash of the public key
         if key is not None:
