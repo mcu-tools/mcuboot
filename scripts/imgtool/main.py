@@ -292,7 +292,8 @@ class BasedIntParamType(click.ParamType):
 @click.option('-k', '--key', metavar='filename')
 @click.option('--use-random-iv', default=False, is_flag=True,
               help='Use random Salt and IV (initial vectors) for the image '
-              'encrypting scheme')
+              'encrypting scheme. This might require build time configuration '
+              'changes in the bootloader.')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
