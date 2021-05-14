@@ -17,17 +17,13 @@
  * limitations under the License
  */
 
-#if MCUBOOT_DIRECT_XIP
-
 #include "flash_map_backend/secondary_bd.h"
 #include "platform/mbed_toolchain.h"
 #include "FlashIAPBlockDevice.h"
+#include "bootutil_priv.h"
 
-/**
- * For an XIP build, the secondary BD is provided by mcuboot by default.
- *
- * This is a weak symbol so the user can override it.
- */
+#if MCUBOOT_DIRECT_XIP
+
 MBED_WEAK mbed::BlockDevice* get_secondary_bd(void) {
     static FlashIAPBlockDevice secondary_bd(MBED_CONF_MCUBOOT_XIP_SECONDARY_SLOT_ADDRESS,
             MCUBOOT_SLOT_SIZE);
@@ -37,4 +33,12 @@ MBED_WEAK mbed::BlockDevice* get_secondary_bd(void) {
 
 #endif
 
+#if MCUBOOT_SWAP_USING_SCRATCH
 
+MBED_WEAK mbed::BlockDevice* get_scratch_bd(void) {
+    static FlashIAPBlockDevice scratch_bd(MCUBOOT_SCRATCH_START_ADDR, MCUBOOT_SCRATCH_SIZE);
+
+    return &scratch_bd;
+}
+
+#endif

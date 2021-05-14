@@ -39,15 +39,14 @@ mbed::BlockDevice* mcuboot_secondary_bd = get_secondary_bd();
 static FlashIAPBlockDevice mcuboot_primary_bd(MCUBOOT_PRIMARY_SLOT_START_ADDR, MCUBOOT_SLOT_SIZE);
 
 #if MCUBOOT_SWAP_USING_SCRATCH
-/** Scratch space is at the end of internal flash, after the main application */
-static FlashIAPBlockDevice mcuboot_scratch_bd(MCUBOOT_SCRATCH_START_ADDR, MCUBOOT_SCRATCH_SIZE);
+mbed::BlockDevice* mcuboot_scratch_bd = get_scratch_bd();
 #endif
 
 static mbed::BlockDevice* flash_map_bd[FLASH_AREAS] = {
-        (mbed::BlockDevice*) &mcuboot_primary_bd,       /** Primary (loadable) image area */
-        mcuboot_secondary_bd,                           /** Secondary (update candidate) image area */
+    (mbed::BlockDevice*) &mcuboot_primary_bd,       /** Primary (loadable) image area */
+    mcuboot_secondary_bd,                           /** Secondary (update candidate) image area */
 #if MCUBOOT_SWAP_USING_SCRATCH
-        (mbed::BlockDevice*) &mcuboot_scratch_bd        /** Scratch space for swapping images */
+    mcuboot_scratch_bd                              /** Scratch space for swapping images */
 #else
         nullptr
 #endif
