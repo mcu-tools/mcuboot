@@ -19,10 +19,14 @@ fn main() {
     let validate_primary_slot =
                   env::var("CARGO_FEATURE_VALIDATE_PRIMARY_SLOT").is_ok();
     let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
+    let enc_aes256_rsa = env::var("CARGO_FEATURE_ENC_AES256_RSA").is_ok();
     let enc_kw = env::var("CARGO_FEATURE_ENC_KW").is_ok();
+    let enc_aes256_kw = env::var("CARGO_FEATURE_ENC_AES256_KW").is_ok();
     let enc_ec256 = env::var("CARGO_FEATURE_ENC_EC256").is_ok();
     let enc_ec256_mbedtls = env::var("CARGO_FEATURE_ENC_EC256_MBEDTLS").is_ok();
+    let enc_aes256_ec256 = env::var("CARGO_FEATURE_ENC_AES256_EC256").is_ok();
     let enc_x25519 = env::var("CARGO_FEATURE_ENC_X25519").is_ok();
+    let enc_aes256_x25519 = env::var("CARGO_FEATURE_ENC_AES256_X25519").is_ok();
     let bootstrap = env::var("CARGO_FEATURE_BOOTSTRAP").is_ok();
     let multiimage = env::var("CARGO_FEATURE_MULTIIMAGE").is_ok();
     let downgrade_prevention = env::var("CARGO_FEATURE_DOWNGRADE_PREVENTION").is_ok();
@@ -148,7 +152,10 @@ fn main() {
         conf.define("MCUBOOT_SWAP_USING_SCRATCH", None);
     }
 
-    if enc_rsa {
+    if enc_rsa || enc_aes256_rsa {
+        if enc_aes256_rsa {
+                conf.define("MCUBOOT_AES_256", None);
+        }
         conf.define("MCUBOOT_ENCRYPT_RSA", None);
         conf.define("MCUBOOT_ENC_IMAGES", None);
         conf.define("MCUBOOT_USE_MBED_TLS", None);
@@ -169,7 +176,10 @@ fn main() {
         conf.file("../../ext/mbedtls/crypto/library/asn1parse.c");
     }
 
-    if enc_kw {
+    if enc_kw || enc_aes256_kw {
+        if enc_aes256_kw {
+            conf.define("MCUBOOT_AES_256", None);
+        }
         conf.define("MCUBOOT_ENCRYPT_KW", None);
         conf.define("MCUBOOT_ENC_IMAGES", None);
 
@@ -234,7 +244,10 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/ctr_mode.c");
         conf.file("../../ext/tinycrypt/lib/source/hmac.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_dh.c");
-    } else if enc_ec256_mbedtls {
+    } else if enc_ec256_mbedtls || enc_aes256_ec256 {
+        if enc_aes256_ec256 {
+            conf.define("MCUBOOT_AES_256", None);
+        }
         conf.define("MCUBOOT_ENCRYPT_EC256", None);
         conf.define("MCUBOOT_ENC_IMAGES", None);
         conf.define("MCUBOOT_USE_MBED_TLS", None);
@@ -283,18 +296,42 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/hmac.c");
     }
 
+    else if enc_aes256_x25519 {
+        conf.define("MCUBOOT_AES_256", None);
+        conf.define("MCUBOOT_ENCRYPT_X25519", None);
+        conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
+
+        conf.file("../../boot/bootutil/src/encrypted.c");
+        conf.file("csupport/keys.c");
+
+        conf.include("../../ext/mbedtls/crypto/include");
+        conf.file("../../ext/fiat/src/curve25519.c");
+        conf.file("../../ext/mbedtls-asn1/src/platform_util.c");
+        conf.file("../../ext/mbedtls-asn1/src/asn1parse.c");
+        conf.file("../../ext/mbedtls/crypto/library/platform.c");
+        conf.file("../../ext/mbedtls/crypto/library/platform_util.c");
+        conf.file("../../ext/mbedtls/crypto/library/aes.c");
+        conf.file("../../ext/mbedtls/crypto/library/sha256.c");
+        conf.file("../../ext/mbedtls/crypto/library/md.c");
+        conf.file("../../ext/mbedtls/crypto/library/sha512.c");
+    }
+
     if sig_rsa && enc_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
-    } else if sig_rsa || sig_rsa3072 || enc_rsa {
+    } else if sig_rsa || sig_rsa3072 || enc_rsa || enc_aes256_rsa {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
-    } else if sig_ecdsa_mbedtls || enc_ec256_mbedtls {
+    } else if sig_ecdsa_mbedtls || enc_ec256_mbedtls || enc_aes256_ec256 {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ec.h>"));
     } else if (sig_ecdsa || enc_ec256) && !enc_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
     } else if sig_ed25519 || enc_x25519 {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
-    } else if enc_kw {
+    } else if enc_kw || enc_aes256_kw {
         conf.define("MBEDTLS_CONFIG_FILE", Some("<config-kw.h>"));
+    } else if enc_aes256_x25519 {
+        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ed25519.h>"));
     }
 
     conf.file("../../boot/bootutil/src/image_validate.c");

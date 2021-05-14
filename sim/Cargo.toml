@@ -16,10 +16,14 @@ overwrite-only = ["mcuboot-sys/overwrite-only"]
 swap-move = ["mcuboot-sys/swap-move"]
 validate-primary-slot = ["mcuboot-sys/validate-primary-slot"]
 enc-rsa = ["mcuboot-sys/enc-rsa"]
+enc-aes256-rsa = ["mcuboot-sys/enc-aes256-rsa"]
 enc-kw = ["mcuboot-sys/enc-kw"]
+enc-aes256-kw = ["mcuboot-sys/enc-aes256-kw"]
 enc-ec256 = ["mcuboot-sys/enc-ec256"]
 enc-ec256-mbedtls = ["mcuboot-sys/enc-ec256-mbedtls"]
+enc-aes256-ec256 = ["mcuboot-sys/enc-aes256-ec256"]
 enc-x25519 = ["mcuboot-sys/enc-x25519"]
+enc-aes256-x25519 = ["mcuboot-sys/enc-aes256-x25519"]
 bootstrap = ["mcuboot-sys/bootstrap"]
 multiimage = ["mcuboot-sys/multiimage"]
 large-write = []
@@ -41,6 +45,7 @@ untrusted = "0.7"
 pem = "0.8"
 aes-ctr = "0.4.0"
 base64 = "0.12.0"
+typenum = "1.13.0"
 
 # The simulator runs very slowly without optimization.  A value of 1
 # compiles in about half the time, but runs about 5-6 times slower.  2

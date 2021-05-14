@@ -174,6 +174,15 @@ done:
 int kw_encrypt_(const uint8_t *kek, const uint8_t *seckey, uint8_t *encbuf)
 {
 #ifdef MCUBOOT_ENCRYPT_KW
+#ifdef MCUBOOT_AES_256
+    int key_len = 256;
+    int out_size = 40;
+    int in_len = 32;
+#else
+    int key_len = 128;
+    int out_size = 24;
+    int in_len = 16;
+#endif
     mbedtls_nist_kw_context kw;
     size_t olen;
     int rc;
@@ -182,13 +191,13 @@ int kw_encrypt_(const uint8_t *kek, const uint8_t *seckey, uint8_t *encbuf)
 
     mbedtls_nist_kw_init(&kw);
 
-    rc = mbedtls_nist_kw_setkey(&kw, MBEDTLS_CIPHER_ID_AES, kek, 128, 1);
+    rc = mbedtls_nist_kw_setkey(&kw, MBEDTLS_CIPHER_ID_AES, kek, key_len, 1);
     if (rc) {
         goto done;
     }
 
-    rc = mbedtls_nist_kw_wrap(&kw, MBEDTLS_KW_MODE_KW, seckey, 16, encbuf,
-            &olen, 24);
+    rc = mbedtls_nist_kw_wrap(&kw, MBEDTLS_KW_MODE_KW, seckey, in_len, encbuf,
+            &olen, out_size);
 
 done:
     mbedtls_nist_kw_free(&kw);
@@ -232,7 +241,8 @@ int invoke_boot_go(struct sim_context *ctx, struct area_desc *adesc)
 
 #if defined(MCUBOOT_SIGN_RSA) || \
     (defined(MCUBOOT_SIGN_EC256) && defined(MCUBOOT_USE_MBED_TLS)) ||\
-    (defined(MCUBOOT_ENCRYPT_EC256) && defined(MCUBOOT_USE_MBED_TLS))
+    (defined(MCUBOOT_ENCRYPT_EC256) && defined(MCUBOOT_USE_MBED_TLS)) ||\
+    (defined(MCUBOOT_ENCRYPT_X25519) && defined(MCUBOOT_USE_MBED_TLS))
     mbedtls_platform_set_calloc_free(calloc, free);
 #endif
 

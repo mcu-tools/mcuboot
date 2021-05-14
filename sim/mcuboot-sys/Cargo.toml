@@ -38,17 +38,29 @@ validate-primary-slot = []
 # Encrypt image in the secondary slot using RSA-OAEP-2048
 enc-rsa = []
 
+# Encrypt  image in the secondary slot using AES-256-CTR and RSA-OAEP-2048
+enc-aes256-rsa = []
+
 # Encrypt image in the secondary slot using AES-KW-128
 enc-kw = []
 
+# Encrypt image in the secondary slot using AES-256-CTR and AES-KW-256
+enc-aes256-kw = []
+
 # Encrypt image in the secondary slot using ECIES-P256
 enc-ec256 = []
+
+# Encrypt image in the secondary slot using AES-256-CTR and ECIES-P256
+enc-aes256-ec256 = []
 
 # Encrypt image in the secondary slot using ECIES-P256 using Mbed TLS
 enc-ec256-mbedtls = []
 
 # Encrypt image in the secondary slot using ECIES-X25519
 enc-x25519 = []
+
+# Encrypt image in the secondary slot using AES-256-CTR and ECIES-X25519
+enc-aes256-x25519 = []
 
 # Allow bootstrapping an empty/invalid primary slot from a valid secondary slot
 bootstrap = []
@@ -58,6 +70,7 @@ multiimage = []
 
 # Check (in software) against version downgrades.
 downgrade-prevention = []
+
 
 [build-dependencies]
 cc = "1.0.25"
