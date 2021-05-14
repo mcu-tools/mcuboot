@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2016-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2021 Arm Limited
  *
  * Original license:
  *
@@ -50,7 +50,8 @@ struct flash_area;
  * Image header flags.
  */
 #define IMAGE_F_PIC                      0x00000001 /* Not supported. */
-#define IMAGE_F_ENCRYPTED                0x00000004 /* Encrypted. */
+#define IMAGE_F_ENCRYPTED_AES128         0x00000004 /* Encrypted using AES128. */
+#define IMAGE_F_ENCRYPTED_AES256         0x00000008 /* Encrypted using AES256. */
 #define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
 /*
  * Indicates that this image should be loaded into RAM instead of run
@@ -89,7 +90,7 @@ struct flash_area;
 #define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
 #define IMAGE_TLV_ED25519           0x24   /* ed25519 of hash output */
 #define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
-#define IMAGE_TLV_ENC_KW128         0x31   /* Key encrypted with AES-KW-128 */
+#define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW 128 or 256*/
 #define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-EC256 */
 #define IMAGE_TLV_ENC_X25519        0x33   /* Key encrypted with ECIES-X25519 */
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
@@ -148,7 +149,8 @@ struct image_tlv {
     uint16_t it_len;    /* Data length (not including TLV header). */
 };
 
-#define IS_ENCRYPTED(hdr) ((hdr)->ih_flags & IMAGE_F_ENCRYPTED)
+#define IS_ENCRYPTED(hdr) (((hdr)->ih_flags && IMAGE_F_ENCRYPTED_AES128) \
+                        || ((hdr)->ih_flags && IMAGE_F_ENCRYPTED_AES256))
 #define MUST_DECRYPT(fap, idx, hdr) \
     ((fap)->fa_id == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
 

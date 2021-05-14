@@ -49,7 +49,7 @@ pub enum TlvKinds {
     RSA3072 = 0x23,
     ED25519 = 0x24,
     ENCRSA2048 = 0x30,
-    ENCKW128 = 0x31,
+    ENCKW = 0x31,
     ENCEC256 = 0x32,
     ENCX25519 = 0x33,
     DEPENDENCY = 0x40,
@@ -181,7 +181,7 @@ impl TlvGen {
     pub fn new_enc_kw() -> TlvGen {
         TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,
-            kinds: vec![TlvKinds::SHA256, TlvKinds::ENCKW128],
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ENCKW],
             ..Default::default()
         }
     }
@@ -190,7 +190,7 @@ impl TlvGen {
     pub fn new_rsa_kw() -> TlvGen {
         TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,
-            kinds: vec![TlvKinds::SHA256, TlvKinds::RSA2048, TlvKinds::ENCKW128],
+            kinds: vec![TlvKinds::SHA256, TlvKinds::RSA2048, TlvKinds::ENCKW],
             ..Default::default()
         }
     }
@@ -199,7 +199,7 @@ impl TlvGen {
     pub fn new_ecdsa_kw() -> TlvGen {
         TlvGen {
             flags: TlvFlags::ENCRYPTED as u32,
-            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256, TlvKinds::ENCKW128],
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256, TlvKinds::ENCKW],
             ..Default::default()
         }
     }
@@ -479,7 +479,7 @@ impl ManifestGen for TlvGen {
             result.extend_from_slice(&encbuf);
         }
 
-        if self.kinds.contains(&TlvKinds::ENCKW128) {
+        if self.kinds.contains(&TlvKinds::ENCKW) {
             let key_bytes = base64::decode(
                 include_str!("../../enc-aes128kw.b64").trim()).unwrap();
 
@@ -491,7 +491,7 @@ impl ManifestGen for TlvGen {
             };
 
             assert!(encbuf.len() == 24);
-            result.write_u16::<LittleEndian>(TlvKinds::ENCKW128 as u16).unwrap();
+            result.write_u16::<LittleEndian>(TlvKinds::ENCKW as u16).unwrap();
             result.write_u16::<LittleEndian>(24).unwrap();
             result.extend_from_slice(&encbuf);
         }

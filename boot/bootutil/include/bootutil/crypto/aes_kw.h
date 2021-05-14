@@ -23,6 +23,9 @@
 #endif /* MCUBOOT_USE_MBED_TLS */
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
+    #if defined(MCUBOOT_AES_256)
+        #error "Cannot use AES-256 for encryption with Tinycrypt library."
+    #endif
     #include <tinycrypt/aes.h>
     #include <tinycrypt/constants.h>
 #endif /* MCUBOOT_USE_TINYCRYPT */

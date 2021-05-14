@@ -59,9 +59,9 @@ applied over the un-encrypted data. Validation on encrypted images, checks
 that the encrypted flag is set and TLV data is OK, then it decrypts each
 image block before sending the data to the hash routines.
 
-The image is encrypted using AES-CTR-128, with a counter that starts
-from zero (over the payload blocks) and increments by 1 for each 16-byte
-block. AES-CTR-128 was chosen for speed/simplicity and allowing for any
+The image is encrypted using AES-CTR-128 or AES-CTR-256, with a counter
+that starts from zero (over the payload blocks) and increments by 1 for each
+16-byte block. AES-CTR was chosen for speed/simplicity and allowing for any
 block to be encrypted/decrypted without requiring knowledge of any other
 block (allowing for simple resume operations on swap interruptions).
 
@@ -70,14 +70,15 @@ The key used is a randomized when creating a new image, by `imgtool` or
 but randomizing a 16-byte block with a TRNG should make it highly
 improbable that duplicates ever happen.
 
-To distribute this AES-CTR-128 key, new TLVs were defined. The key can be
-encrypted using either RSA-OAEP, AES-KW-128, ECIES-P256 or ECIES-X25519.
+To distribute this AES-CTR key, new TLVs were defined. The key can be
+encrypted using either RSA-OAEP, AES-KW (128 or 256 bits depending on the
+AES-CTR key length), ECIES-P256 or ECIES-X25519.
 
 For RSA-OAEP a new TLV with value `0x30` is added to the image, for
-AES-KW-128 a new TLV with value `0x31` is added to the image, for
+AES-KW a new TLV with value `0x31` is added to the image, for
 ECIES-P256 a new TLV with value `0x32` is added, and for ECIES-X25519 a
 newt TLV with value `0x33` is added. The contents of those TLVs
-are the results of applying the given operations over the AES-CTR-128 key.
+are the results of applying the given operations over the AES-CTR key.
 
 ## [ECIES encryption](#ecies-encryption)
 
@@ -94,17 +95,17 @@ libraries. The whole key encryption can be summarized as:
 * Derive the new keys from the secret using HKDF (built on HMAC-SHA256). We
   are not using a `salt` and using an `info` of `MCUBoot_ECIES_v1`, generating
   48 bytes of key material.
-* A new random encryption key of 16 bytes is generated (for AES-128). This is
+* A new random encryption key is generated (for AES). This is
   the AES key used to encrypt the images.
-* The key is encrypted with AES-128-CTR and a `nonce` of 0 using the first
-  16 bytes of key material generated previously by the HKDF.
+* The key is encrypted with AES-128-CTR or AES-256-CTR and a `nonce` of 0 using
+  the first 16 bytes of key material generated previously by the HKDF.
 * The encrypted key now goes through a HMAC-SHA256 using the remaining 32
   bytes of key material from the HKDF.
 
 The final TLV is built from the 65 bytes for ECIES-P256 or 32 bytes for
 ECIES-X25519, which correspond to the ephemeral public key, followed by the
-32 bytes of MAC tag and the 16 bytes of the encrypted key, resulting in a TLV
-of 113 bytes for ECIES-P256 or 80 bytes for ECIES-X25519.
+32 bytes of MAC tag and the 16 or 32 bytes of the encrypted key, resulting in
+a TLV of 113 or 129 bytes for ECIES-P256 and 80 or 96 bytes for ECIES-X25519.
 
 The implemenation of ECIES-P256 is named ENC_EC256 in the source code and
 artifacts while ECIES-X25519 is named ENC_X25519.
@@ -149,7 +150,7 @@ To extract the public key in source file form, use
 `imgtool getpub -k <input.pem> -l <lang>`, where lang can be one of `c` or
 `rust` (defaults to `c`).
 
-If using AES-KW-128, follow the steps in the next section to generate the
+If using AES-KW, follow the steps in the next section to generate the
 required keys.
 
 ## [Creating your keys with Unix tooling](#creating-your-keys-with-unix-tooling)
@@ -161,5 +162,6 @@ required keys.
 * If using ECIES-X25519, generate a private key passing the option `-t x25519`
   to `imgtool keygen` command. To generate public key PEM file the following
   command can be used: `openssl pkey -in <generated-private-key.pem> -pubout`
-* If using AES-KW-128 (`newt` only), the `kek` can be generated with a
-  command like `dd if=/dev/urandom bs=1 count=16 | base64 > my_kek.b64`
+* If using AES-KW (`newt` only), the `kek` can be generated with a
+  command like (change count to 32 for a 256 bit key)
+  `dd if=/dev/urandom bs=1 count=16 | base64 > my_kek.b64`
