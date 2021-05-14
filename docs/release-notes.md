@@ -39,7 +39,7 @@ There are bug fixes, and associated imgtool updates as well.
 
 ### Zephyr-RTOS Compatibility
 
-This release of MCUboot works with the Zephyr "master" at the time of the
+This release of MCUboot works with the Zephyr "main" at the time of the
 release. It was tested as of has 7a3b253ce. This version of MCUboot also
 works with the Zephyr v2.4.0, however it is recommended to enable
 `CONFIG_MCUBOOT_CLEANUP_ARM_CORE` while using that version.
@@ -75,7 +75,7 @@ updates as well.
 
 ### Zephyr-RTOS Compatibility
 
-This release of MCUboot works the Zephyr "master" at the time of the
+This release of MCUboot works the Zephyr "main" at the time of the
 release.  It was tested as of has 1a89ca1238.  When Zephyr v2.3.0 is
 released, there will be a possible 1.6.1 or similar release of Zephyr
 if needed to address any issues.  There also may be branch releases of
@@ -145,7 +145,7 @@ compatible with previous releases of MCUboot.
 
 The 1.3.1 release of MCUboot consists mostly of small bug fixes and updates.
 There are no breaking changes in functionality. This release should work with
-Mynewt 1.6.0 and up, and any Zephyr `master` after sha
+Mynewt 1.6.0 and up, and any Zephyr `main` after sha
 f51e3c296040f73bca0e8fe1051d5ee63ce18e0d.
 
 ### About this release
