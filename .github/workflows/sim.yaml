@@ -15,11 +15,15 @@ jobs:
         - "sig-ecdsa,sig-ecdsa-mbedtls,sig-ed25519,enc-kw,bootstrap"
         - "sig-rsa,sig-rsa3072,overwrite-only,validate-primary-slot,swap-move"
         - "enc-rsa"
+        - "enc-aes256-rsa"
         - "enc-ec256"
+        - "enc-aes256-ec256"
         - "enc-x25519"
+        - "enc-aes256-x25519"
         - "sig-rsa overwrite-only large-write,sig-ecdsa overwrite-only large-write,sig-ecdsa-mbedtls overwrite-only large-write,multiimage overwrite-only large-write"
         - "sig-rsa validate-primary-slot,sig-ecdsa validate-primary-slot,sig-ecdsa-mbedtls validate-primary-slot,sig-rsa multiimage validate-primary-slot"
         - "enc-kw overwrite-only large-write,enc-rsa overwrite-only large-write"
+        - "enc-aes256-kw overwrite-only large-write,enc-rsa overwrite-only large-write"
         - "sig-rsa enc-rsa validate-primary-slot,swap-move enc-rsa sig-rsa validate-primary-slot bootstrap"
         - "sig-rsa enc-kw validate-primary-slot bootstrap,sig-ed25519 enc-x25519 validate-primary-slot"
         - "sig-ecdsa enc-kw validate-primary-slot"
@@ -27,6 +31,7 @@ jobs:
         - "sig-rsa validate-primary-slot overwrite-only large-write"
         - "sig-ecdsa enc-ec256 validate-primary-slot"
         - "sig-ecdsa-mbedtls enc-ec256-mbedtls validate-primary-slot"
+        - "sig-ecdsa-mbedtls enc-aes256-ec256 validate-primary-slot"
         - "sig-rsa validate-primary-slot overwrite-only downgrade-prevention"
     runs-on: ubuntu-latest
     env:
