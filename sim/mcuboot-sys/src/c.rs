@@ -1,6 +1,6 @@
 // Copyright (c) 2017-2019 Linaro LTD
 // Copyright (c) 2017-2019 JUUL Labs
-// Copyright (c) 2019 Arm Limited
+// Copyright (c) 2019-2021 Arm Limited
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -67,9 +67,12 @@ pub fn rsa_oaep_encrypt(pubkey: &[u8], seckey: &[u8]) -> Result<[u8; 256], &'sta
     }
 }
 
-pub fn kw_encrypt(kek: &[u8], seckey: &[u8]) -> Result<[u8; 24], &'static str> {
+pub fn kw_encrypt(kek: &[u8], seckey: &[u8], keylen: u32) -> Result<Vec<u8>, &'static str> {
     unsafe {
-        let mut encbuf = [0u8; 24];
+        let mut encbuf = vec![0u8; 24];
+        if keylen == 32 {
+            encbuf = vec![0u8; 40];
+        }
         if raw::kw_encrypt_(kek.as_ptr(), seckey.as_ptr(), encbuf.as_mut_ptr()) == 0 {
             return Ok(encbuf);
         }
