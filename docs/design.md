@@ -3,7 +3,7 @@
 
   - Copyright (c) 2017-2020 Linaro LTD
   - Copyright (c) 2017-2019 JUUL Labs
-  - Copyright (c) 2019-2020 Arm Limited
+  - Copyright (c) 2019-2021 Arm Limited
 
   - Original license:
 
@@ -96,6 +96,8 @@ struct image_tlv {
  * Image header flags.
  */
 #define IMAGE_F_PIC                      0x00000001 /* Not supported. */
+#define IMAGE_F_ENCRYPTED_AES128         0x00000004 /* Encrypted using AES128. */
+#define IMAGE_F_ENCRYPTED_AES256         0x00000008 /* Encrypted using AES256. */
 #define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
 #define IMAGE_F_RAM_LOAD                 0x00000020
 
@@ -110,7 +112,8 @@ struct image_tlv {
 #define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
 #define IMAGE_TLV_ED25519           0x24   /* ED25519 of hash output */
 #define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
-#define IMAGE_TLV_ENC_KW128         0x31   /* Key encrypted with AES-KW-128 */
+#define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW-128 or
+                                              256 */
 #define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-P256 */
 #define IMAGE_TLV_ENC_X25519        0x33   /* Key encrypted with ECIES-X25519 */
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */

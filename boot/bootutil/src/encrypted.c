@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2018-2019 JUUL Labs
- * Copyright (c) 2019 Arm Limited
+ * Copyright (c) 2019-2021 Arm Limited
  */
 
 #include "mcuboot_config/mcuboot_config.h"
@@ -434,20 +434,20 @@ boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
 #if defined(MCUBOOT_ENCRYPT_RSA)
 #    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_RSA2048
 #elif defined(MCUBOOT_ENCRYPT_KW)
-#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_KW128
+#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_KW
 #elif defined(MCUBOOT_ENCRYPT_EC256)
 #    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_EC256
 #    define EC_PUBK_INDEX       (0)
 #    define EC_TAG_INDEX        (65)
 #    define EC_CIPHERKEY_INDEX  (65 + 32)
-_Static_assert(EC_CIPHERKEY_INDEX + 16 == EXPECTED_ENC_LEN,
+_Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
         "Please fix ECIES-P256 component indexes");
 #elif defined(MCUBOOT_ENCRYPT_X25519)
 #    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_X25519
 #    define EC_PUBK_INDEX       (0)
 #    define EC_TAG_INDEX        (32)
 #    define EC_CIPHERKEY_INDEX  (32 + 32)
-_Static_assert(EC_CIPHERKEY_INDEX + 16 == EXPECTED_ENC_LEN,
+_Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
         "Please fix ECIES-X25519 component indexes");
 #endif
 
@@ -455,7 +455,7 @@ _Static_assert(EC_CIPHERKEY_INDEX + 16 == EXPECTED_ENC_LEN,
  * Decrypt an encryption key TLV.
  *
  * @param buf An encryption TLV read from flash (build time fixed length)
- * @param enckey An AES-128 key sized buffer to store to plain key.
+ * @param enckey An AES-128 or AES-256 key sized buffer to store to plain key.
  */
 int
 boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
@@ -507,7 +507,7 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
 
 #if defined(MCUBOOT_ENCRYPT_KW)
 
-    assert(*bootutil_enc_key.len == 16);
+    assert(*bootutil_enc_key.len == BOOT_ENC_KEY_SIZE);
     rc = key_unwrap(buf, enckey);
 
 #endif /* defined(MCUBOOT_ENCRYPT_KW) */
@@ -586,13 +586,13 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
 
     bootutil_hmac_sha256_init(&hmac);
 
-    rc = bootutil_hmac_sha256_set_key(&hmac, &derived_key[16], 32);
+    rc = bootutil_hmac_sha256_set_key(&hmac, &derived_key[BOOT_ENC_KEY_SIZE], 32);
     if (rc != 0) {
         (void)bootutil_hmac_sha256_drop(&hmac);
         return -1;
     }
 
-    rc = bootutil_hmac_sha256_update(&hmac, &buf[EC_CIPHERKEY_INDEX], 16);
+    rc = bootutil_hmac_sha256_update(&hmac, &buf[EC_CIPHERKEY_INDEX], BOOT_ENC_KEY_SIZE);
     if (rc != 0) {
         (void)bootutil_hmac_sha256_drop(&hmac);
         return -1;
