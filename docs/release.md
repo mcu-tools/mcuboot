@@ -32,7 +32,7 @@ the official a.b.c release).  The intent is to freeze the code for a
 time, and allow testing to happen.
 
 During the time between rc1 and the final release, the only changes
-that should be merged into master are those to fix bugs found in the
+that should be merged into main are those to fix bugs found in the
 rc and Mynewt metadata as described in the next section.
 
 ## imgtool release
@@ -81,7 +81,7 @@ public key is signed by enough parties to be trusted.
 At this point, the tag can be pushed to github to make the actual
 release happen:
 ``` bash
-git push origin HEAD:refs/heads/master
+git push origin HEAD:refs/heads/main
 git push origin va.b.c-rcn
 ```
 

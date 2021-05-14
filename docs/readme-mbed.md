@@ -16,7 +16,7 @@ To use MCUboot, you need to create an Mbed OS project with the following configu
 * `"mcuboot.max-img-sectors"`: maximum number of sectors, should be at least the number of sectors in each slot
 * `"target.restrict_size"`: the maximum size of the bootloader, such that it does not overlap with the primary slot
 
-More configurations such as signing algorithm, slot swapping, etc. can be found in [mbed_lib.json](https://github.com/mcu-tools/mcuboot/tree/master/boot/mbed/mbed_lib.json). Please note that certain features are not currently supported.
+More configurations such as signing algorithm, slot swapping, etc. can be found in [mbed_lib.json](https://github.com/mcu-tools/mcuboot/tree/main/boot/mbed/mbed_lib.json). Please note that certain features are not currently supported.
 
 ### Providing a secondary slot
 

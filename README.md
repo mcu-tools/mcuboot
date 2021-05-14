@@ -5,7 +5,7 @@
 [![Build Status (Sim)](https://github.com/mcu-tools/mcuboot/workflows/Sim/badge.svg)][sim]
 [![Build Status (Mynewt)](https://github.com/mcu-tools/mcuboot/workflows/Mynewt/badge.svg)][mynewt]
 [![Publishing Status (imgtool)](https://github.com/mcu-tools/mcuboot/workflows/imgtool/badge.svg)][imgtool]
-[![Build Status (Travis CI)](https://img.shields.io/travis/mcu-tools/mcuboot/master.svg?label=travis-ci)][travis]
+[![Build Status (Travis CI)](https://img.shields.io/travis/mcu-tools/mcuboot/main.svg?label=travis-ci)][travis]
 [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)][license]
 
 [pypi]: https://pypi.org/project/imgtool/
@@ -14,7 +14,7 @@
 [mynewt]: https://github.com/mcu-tools/mcuboot/actions?query=workflow:Mynewt
 [imgtool]: https://github.com/mcu-tools/mcuboot/actions?query=workflow:imgtool
 [travis]: https://travis-ci.org/mcu-tools/mcuboot
-[license]: https://github.com/mcu-tools/mcuboot/blob/master/LICENSE
+[license]: https://github.com/mcu-tools/mcuboot/blob/main/LICENSE
 
 This is mcuboot version 1.8.0-dev
 
