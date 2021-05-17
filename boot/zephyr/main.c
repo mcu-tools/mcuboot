@@ -390,7 +390,11 @@ static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
 
     if (detect_value == expected) {
         if (delay > 0) {
+#ifdef CONFIG_MULTITHREADING
             k_sleep(K_MSEC(50));
+#else
+            k_busy_wait(50000);
+#endif
 
             /* Get the uptime for debounce purposes. */
             int64_t timestamp = k_uptime_get();
@@ -409,7 +413,11 @@ static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
                 }
 
                 /* Delay 1 ms */
+#ifdef CONFIG_MULTITHREADING
                 k_sleep(K_MSEC(1));
+#else
+                k_busy_wait(1000);
+#endif
             }
         }
     }
