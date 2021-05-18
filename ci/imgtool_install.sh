@@ -13,8 +13,8 @@
 # limitations under the License.
 
 if [[ $TRAVIS == "true" ]]; then
-    if [[ $TRAVIS_PULL_REQUEST != "false" || $TRAVIS_BRANCH != "master" ]]; then
-        echo "Either a PR or not \"master\" branch, exiting"
+    if [[ $TRAVIS_PULL_REQUEST != "false" || $TRAVIS_BRANCH != "main" ]]; then
+        echo "Either a PR or not \"main\" branch, exiting"
         exit 0
     fi
 fi

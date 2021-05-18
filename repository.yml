@@ -20,7 +20,7 @@
 repo.name: mcuboot
 repo.submodules: ""
 repo.versions:
-    "0.0.0": "master"
+    "0.0.0": "main"
     "0.9.0": "v0.9.0"
     "1.0.0": "v1.0.0"
     "1.1.0": "v1.1.0"
@@ -34,7 +34,7 @@ repo.versions:
     "1.7.1": "v1.7.1"
     "1.7.2": "v1.7.2"
 
-    "0-dev": "0.0.0"        # master
+    "0-dev": "0.0.0"        # main
     "0-latest": "1.7.2"     # latest stable release
     "1-latest": "1.7.2"     # latest stable release
 

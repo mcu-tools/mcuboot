@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2021 Arm Limited
  * Copyright (c) 2020 Nordic Semiconductor ASA
  *
  * Original license:
@@ -147,25 +147,54 @@ int boot_swap_type_multi(int image_index);
 int boot_swap_type(void);
 
 /**
- * Marks the image in the secondary slot as pending. On the next reboot,
- * the system will perform a one-time boot of the the secondary slot image.
+ * Marks the image with the given index in the secondary slot as pending. On the
+ * next reboot, the system will perform a one-time boot of the the secondary
+ * slot image.
  *
- * @param permanent Whether the image should be used permanently or
- *                  only tested once:
- *                    0=run image once, then confirm or revert.
- *                    1=run image forever.
+ * @param image_index       Image pair index.
  *
- * @return 0 on success; nonzero on failure.
+ * @param permanent         Whether the image should be used permanently or
+ *                          only tested once:
+ *                               0=run image once, then confirm or revert.
+ *                               1=run image forever.
+ *
+ * @return                  0 on success; nonzero on failure.
+ */
+int boot_set_pending_multi(int image_index, int permanent);
+
+/**
+ * Marks the image with index 0 in the secondary slot as pending. On the next
+ * reboot, the system will perform a one-time boot of the the secondary slot
+ * image. Note that this API is kept for compatibility. The
+ * boot_set_pending_multi() API is recommended.
+ *
+ * @param permanent         Whether the image should be used permanently or
+ *                          only tested once:
+ *                               0=run image once, then confirm or revert.
+ *                               1=run image forever.
+ *
+ * @return                  0 on success; nonzero on failure.
  */
 int boot_set_pending(int permanent);
 
 /**
- * @brief Marks the image in the primary slot as confirmed.
+ * Marks the image with the given index in the primary slot as confirmed.  The
+ * system will continue booting into the image in the primary slot until told to
+ * boot from a different slot.
  *
- * The system will continue booting into the image in the primary slot until
- * told to boot from a different slot.
+ * @param image_index       Image pair index.
  *
- * @return 0 on success; nonzero on failure.
+ * @return                  0 on success; nonzero on failure.
+ */
+int boot_set_confirmed_multi(int image_index);
+
+/**
+ * Marks the image with index 0 in the primary slot as confirmed.  The system
+ * will continue booting into the image in the primary slot until told to boot
+ * from a different slot.  Note that this API is kept for compatibility. The
+ * boot_set_confirmed_multi() API is recommended.
+ *
+ * @return                  0 on success; nonzero on failure.
  */
 int boot_set_confirmed(void);
 

@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - master
+      - main
       - v*-branch
 
 name: imgtool
