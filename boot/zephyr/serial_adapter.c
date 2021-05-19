@@ -222,11 +222,5 @@ boot_uart_fifo_init(void)
 
 	uart_irq_rx_enable(uart_dev);
 
-	/* Enable all interrupts unconditionally. Note that this is due
-	 * to Zephyr issue #8393. This should be removed once the
-	 * issue is fixed in upstream Zephyr.
-	 */
-	irq_unlock(0);
-
 	return 0;
 }
