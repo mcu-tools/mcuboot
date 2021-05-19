@@ -285,6 +285,23 @@ config BOOT_ENCRYPT_X25519
 	  back when swapping from the primary slot to the secondary slot. The
 	  encryption mechanism used in this case is ECIES using primitives
 	  described under "ECIES-X25519 encryption" in docs/encrypted_images.md.
+
+config BOOT_ENCRYPT_KEY_FILE
+	string "PEM key file"
+	depends on BOOT_ENCRYPT_RSA || BOOT_ENCRYPT_EC256 || BOOT_ENCRYPT_X25519
+	default "enc-rsa2048-priv.pem" if BOOT_ENCRYPT_RSA
+	default "enc-ec256-priv.pem" if BOOT_ENCRYPT_EC256
+	default "enc-x25519-priv.pem" if BOOT_ENCRYPT_X25519
+	help
+	  You can use either absolute or relative path.
+	  In case relative path is used, the build system assumes that it starts
+	  from the directory where the MCUBoot KConfig configuration file is
+	  located. If the key file is not there, the build system uses relative
+	  path that starts from the MCUBoot repository root directory.
+	  The key file will be parsed by imgtool's getpriv command and a .c source
+	  with the private key information will be written in a format expected by
+	  MCUboot.
+
 endif # !SINGLE_APPLICATION_SLOT
 
 config BOOT_MAX_IMG_SECTORS

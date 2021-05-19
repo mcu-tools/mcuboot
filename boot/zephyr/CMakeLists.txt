@@ -297,6 +297,38 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
   zephyr_library_sources(${GENERATED_PUBKEY})
 endif()
 
+if(CONFIG_BOOT_ENCRYPT_KEY_FILE)
+  if(IS_ABSOLUTE ${CONFIG_BOOT_ENCRYPT_KEY_FILE})
+    set(ENCRYPTION_KEY_FILE ${CONFIG_BOOT_ENCRYPT_KEY_FILE})
+  elseif((DEFINED CONF_DIR) AND
+	 (EXISTS ${CONF_DIR}/${CONFIG_BOOT_ENCRYPT_KEY_FILE}))
+    set(ENCRYPTION_KEY_FILE ${CONF_DIR}/${CONFIG_BOOT_ENCRYPT_KEY_FILE})
+  else()
+    set(ENCRYPTION_KEY_FILE ${MCUBOOT_DIR}/${CONFIG_BOOT_ENCRYPT_KEY_FILE})
+  endif()
+  message("MCUBoot bootloader encryption key file: ${ENCRYPTION_KEY_FILE}")
+
+  set(GETPRIV_ARGS "")
+  if(CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519)
+    set(GETPRIV_ARGS "--minimal")
+  endif()
+
+  set(GENERATED_PRIVKEY ${ZEPHYR_BINARY_DIR}/autogen-privkey.c)
+  add_custom_command(
+      OUTPUT ${GENERATED_PRIVKEY}
+    COMMAND
+    ${PYTHON_EXECUTABLE}
+    ${MCUBOOT_DIR}/scripts/imgtool.py
+    getpriv
+    ${GETPRIV_ARGS}
+    -k
+    ${ENCRYPTION_KEY_FILE}
+    > ${GENERATED_PRIVKEY}
+    DEPENDS ${ENCRYPTION_KEY_FILE}
+    )
+  zephyr_library_sources(${GENERATED_PRIVKEY})
+endif()
+
 if(CONFIG_MCUBOOT_CLEANUP_ARM_CORE)
 zephyr_library_sources(
   ${BOOT_DIR}/zephyr/arm_cleanup.c
