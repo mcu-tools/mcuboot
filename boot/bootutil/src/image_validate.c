@@ -85,6 +85,9 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     (void)blk_sz;
     (void)off;
     (void)rc;
+    (void)fap;
+    (void)tmp_buf;
+    (void)tmp_buf_sz;
 #endif
 #endif
 
