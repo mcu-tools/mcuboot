@@ -189,43 +189,12 @@ boot_write_sz(struct boot_loader_state *state)
     return elem_sz;
 }
 
-#ifndef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
 static int
 boot_initialize_area(struct boot_loader_state *state, int flash_area)
 {
-    int num_sectors = BOOT_MAX_IMG_SECTORS;
-    int rc;
-
-    if (flash_area == FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state))) {
-        rc = flash_area_to_sectors(flash_area, &num_sectors,
-                                   BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors);
-        BOOT_IMG(state, BOOT_PRIMARY_SLOT).num_sectors = (size_t)num_sectors;
-
-    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
-        rc = flash_area_to_sectors(flash_area, &num_sectors,
-                                 BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors);
-        BOOT_IMG(state, BOOT_SECONDARY_SLOT).num_sectors = (size_t)num_sectors;
-
-#if MCUBOOT_SWAP_USING_SCRATCH
-    } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
-        rc = flash_area_to_sectors(flash_area, &num_sectors,
-                                   state->scratch.sectors);
-        state->scratch.num_sectors = (size_t)num_sectors;
-#endif
-
-    } else {
-        return BOOT_EFLASH;
-    }
-
-    return rc;
-}
-#else  /* defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
-static int
-boot_initialize_area(struct boot_loader_state *state, int flash_area)
-{
-    uint32_t num_sectors;
-    struct flash_sector *out_sectors;
-    size_t *out_num_sectors;
+    uint32_t num_sectors = BOOT_MAX_IMG_SECTORS;
+    boot_sector_t *out_sectors;
+    uint32_t *out_num_sectors;
     int rc;
 
     num_sectors = BOOT_MAX_IMG_SECTORS;
@@ -245,14 +214,18 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
         return BOOT_EFLASH;
     }
 
+#ifdef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
     rc = flash_area_get_sectors(flash_area, &num_sectors, out_sectors);
+#else
+    _Static_assert(sizeof(int) <= sizeof(uint32_t), "Fix needed");
+    rc = flash_area_to_sectors(flash_area, (int *)&num_sectors, out_sectors);
+#endif /* defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
     if (rc != 0) {
         return rc;
     }
     *out_num_sectors = num_sectors;
     return 0;
 }
-#endif  /* !defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
 
 /**
  * Determines the sector layout of both image slots and the scratch area.
