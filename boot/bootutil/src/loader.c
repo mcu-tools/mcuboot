@@ -652,7 +652,7 @@ boot_version_cmp(const struct image_version *ver1,
 }
 #endif
 
-#if defined(MCUBOOT_DIRECT_XIP)
+#if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
 /**
  * Check if image in slot has been set with specific ROM address to run from
  * and whether the slot starts at that address.
