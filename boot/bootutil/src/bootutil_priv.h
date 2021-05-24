@@ -204,14 +204,14 @@ struct boot_loader_state {
         struct image_header hdr;
         const struct flash_area *area;
         boot_sector_t *sectors;
-        size_t num_sectors;
+        uint32_t num_sectors;
     } imgs[BOOT_IMAGE_NUMBER][BOOT_NUM_SLOTS];
 
 #if MCUBOOT_SWAP_USING_SCRATCH
     struct {
         const struct flash_area *area;
         boot_sector_t *sectors;
-        size_t num_sectors;
+        uint32_t num_sectors;
     } scratch;
 #endif
 
