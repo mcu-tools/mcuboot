@@ -399,7 +399,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
  */
 void
 fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
-        const struct flash_area *fap_sec, uint8_t sec_id)
+        const struct flash_area *fap_sec)
 {
     struct boot_swap_state swap_state;
     int rc;
@@ -415,7 +415,7 @@ fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
         return;
     }
 
-    rc = boot_read_swap_state_by_id(sec_id, &swap_state);
+    rc = boot_read_swap_state(fap_sec, &swap_state);
     assert(rc == 0);
 
     BOOT_LOG_SWAP_STATE("Secondary image", &swap_state);
@@ -493,7 +493,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap_sec);
     assert (rc == 0);
 
-    fixup_revert(state, bs, fap_sec, FLASH_AREA_IMAGE_SECONDARY(image_index));
+    fixup_revert(state, bs, fap_sec);
 
     if (bs->op == BOOT_STATUS_OP_MOVE) {
         idx = g_last_idx;
