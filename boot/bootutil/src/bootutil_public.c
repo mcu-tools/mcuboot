@@ -492,24 +492,23 @@ boot_set_pending_multi(int image_index, int permanent)
     uint8_t swap_type;
     int rc;
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
-                                    &state_secondary_slot);
+    rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap);
     if (rc != 0) {
-        return rc;
+        return BOOT_EFLASH;
+    }
+
+    rc = boot_read_swap_state(fap, &state_secondary_slot);
+    if (rc != 0) {
+        goto done;
     }
 
     switch (state_secondary_slot.magic) {
     case BOOT_MAGIC_GOOD:
         /* Swap already scheduled. */
-        return 0;
+        break;
 
     case BOOT_MAGIC_UNSET:
-        rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap);
-        if (rc != 0) {
-            rc = BOOT_EFLASH;
-        } else {
-            rc = boot_write_magic(fap);
-        }
+        rc = boot_write_magic(fap);
 
         if (rc == 0 && permanent) {
             rc = boot_write_image_ok(fap);
@@ -524,26 +523,24 @@ boot_set_pending_multi(int image_index, int permanent)
             rc = boot_write_swap_info(fap, swap_type, 0);
         }
 
-        flash_area_close(fap);
-        return rc;
+        break;
 
     case BOOT_MAGIC_BAD:
         /* The image slot is corrupt.  There is no way to recover, so erase the
          * slot to allow future upgrades.
          */
-        rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap);
-        if (rc != 0) {
-            return BOOT_EFLASH;
-        }
-
         flash_area_erase(fap, 0, fap->fa_size);
-        flash_area_close(fap);
-        return BOOT_EBADIMAGE;
+        rc = BOOT_EBADIMAGE;
+        break;
 
     default:
         assert(0);
-        return BOOT_EBADIMAGE;
+        rc = BOOT_EBADIMAGE;
     }
+
+done:
+    flash_area_close(fap);
+    return rc;
 }
 
 /**
@@ -577,14 +574,18 @@ boot_set_pending(int permanent)
 int
 boot_set_confirmed_multi(int image_index)
 {
-    const struct flash_area *fap;
+    const struct flash_area *fap = NULL;
     struct boot_swap_state state_primary_slot;
     int rc;
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
-                                    &state_primary_slot);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
     if (rc != 0) {
-        return rc;
+        return BOOT_EFLASH;
+    }
+
+    rc = boot_read_swap_state(fap, &state_primary_slot);
+    if (rc != 0) {
+        goto done;
     }
 
     switch (state_primary_slot.magic) {
@@ -594,16 +595,11 @@ boot_set_confirmed_multi(int image_index)
 
     case BOOT_MAGIC_UNSET:
         /* Already confirmed. */
-        return 0;
+        goto done;
 
     case BOOT_MAGIC_BAD:
         /* Unexpected state. */
-        return BOOT_EBADVECT;
-    }
-
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
-    if (rc) {
-        rc = BOOT_EFLASH;
+        rc = BOOT_EBADVECT;
         goto done;
     }
 

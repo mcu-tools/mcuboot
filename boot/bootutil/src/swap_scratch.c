@@ -619,8 +619,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                         (BOOT_STATUS_STATE_COUNT - 1) * BOOT_WRITE_SZ(state));
             BOOT_STATUS_ASSERT(rc == 0);
 
-            rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SCRATCH,
-                                            &swap_state);
+            rc = boot_read_swap_state(fap_scratch, &swap_state);
             assert(rc == 0);
 
             if (swap_state.image_ok == BOOT_FLAG_SET) {
