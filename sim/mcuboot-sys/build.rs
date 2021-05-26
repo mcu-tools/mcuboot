@@ -30,6 +30,7 @@ fn main() {
     let bootstrap = env::var("CARGO_FEATURE_BOOTSTRAP").is_ok();
     let multiimage = env::var("CARGO_FEATURE_MULTIIMAGE").is_ok();
     let downgrade_prevention = env::var("CARGO_FEATURE_DOWNGRADE_PREVENTION").is_ok();
+    let ram_load = env::var("CARGO_FEATURE_RAM_LOAD").is_ok();
 
     let mut conf = cc::Build::new();
     conf.define("__BOOTSIM__", None);
@@ -54,6 +55,13 @@ fn main() {
 
     if downgrade_prevention {
         conf.define("MCUBOOT_DOWNGRADE_PREVENTION", None);
+    }
+
+    if ram_load {
+        conf.define("MCUBOOT_RAM_LOAD", None);
+
+        conf.define("IMAGE_EXECUTABLE_RAM_START", "0x10000");
+        conf.define("IMAGE_EXECUTABLE_RAM_SIZE", "0x10000");
     }
 
     // Currently no more than one sig type can be used simultaneously.
