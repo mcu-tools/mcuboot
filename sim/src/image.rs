@@ -207,6 +207,11 @@ impl ImagesBuilder {
             mark_upgrade(&mut images.flash, &image.slots[1]);
         }
 
+        // The count is meaningless if no flash operations are performed.
+        if !Caps::modifies_flash() {
+            return images;
+        }
+
         // upgrades without fails, counts number of flash operations
         let total_count = match images.run_basic_upgrade(permanent) {
             Some(v)  => v,
@@ -466,7 +471,7 @@ impl Images {
     }
 
     pub fn run_basic_revert(&self) -> bool {
-        if Caps::OverwriteUpgrade.present() {
+        if Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
             return false;
         }
 
@@ -488,6 +493,10 @@ impl Images {
     }
 
     pub fn run_perm_with_fails(&self) -> bool {
+        if !Caps::modifies_flash() {
+            return false;
+        }
+
         let mut fails = 0;
         let total_flash_ops = self.total_count.unwrap();
 
@@ -529,6 +538,10 @@ impl Images {
     }
 
     pub fn run_perm_with_random_fails(&self, total_fails: usize) -> bool {
+        if !Caps::modifies_flash() {
+            return false;
+        }
+
         let mut fails = 0;
         let total_flash_ops = self.total_count.unwrap();
         let (flash, total_counts) = self.try_random_fails(total_flash_ops, total_fails);
@@ -567,7 +580,7 @@ impl Images {
     }
 
     pub fn run_revert_with_fails(&self) -> bool {
-        if Caps::OverwriteUpgrade.present() {
+        if Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
             return false;
         }
 
@@ -587,7 +600,7 @@ impl Images {
     }
 
     pub fn run_norevert(&self) -> bool {
-        if Caps::OverwriteUpgrade.present() {
+        if Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
             return false;
         }
 
@@ -686,6 +699,11 @@ impl Images {
     // image_ok set while there is no image on the secondary slot, so no revert
     // should ever happen...
     pub fn run_norevert_newimage(&self) -> bool {
+        if !Caps::modifies_flash() {
+            info!("Skipping run_norevert_newimage, as configuration doesn't modify flash");
+            return false;
+        }
+
         let mut flash = self.flash.clone();
         let mut fails = 0;
 
@@ -739,6 +757,12 @@ impl Images {
 
         info!("Try upgrade image with bad signature");
 
+        // Only perform this test if an upgrade is expected to happen.
+        if !Caps::modifies_flash() {
+            info!("Skipping upgrade image with bad signature");
+            return false;
+        }
+
         self.mark_upgrades(&mut flash, 0);
         self.mark_permanent_upgrades(&mut flash, 0);
         self.mark_upgrades(&mut flash, 1);
@@ -776,6 +800,10 @@ impl Images {
     // Should detect there is a leftover trailer in an otherwise erased
     // secondary slot and erase its trailer.
     pub fn run_secondary_leftover_trailer(&self) -> bool {
+        if !Caps::modifies_flash() {
+            return false;
+        }
+
         let mut flash = self.flash.clone();
         let mut fails = 0;
 
@@ -821,7 +849,7 @@ impl Images {
     /// allowing for fails in the status area. This should run to the end
     /// and warn that write fails were detected...
     pub fn run_with_status_fails_complete(&self) -> bool {
-        if !Caps::ValidatePrimarySlot.present() {
+        if !Caps::ValidatePrimarySlot.present() || !Caps::modifies_flash() {
             return false;
         }
 
@@ -875,7 +903,7 @@ impl Images {
     /// allowing for fails in the status area. This should run to the end
     /// and warn that write fails were detected...
     pub fn run_with_status_fails_with_reset(&self) -> bool {
-        if Caps::OverwriteUpgrade.present() {
+        if Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
             false
         } else if Caps::ValidatePrimarySlot.present() {
 
