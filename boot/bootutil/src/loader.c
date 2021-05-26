@@ -2416,7 +2416,7 @@ boot_copy_image_to_sram(struct boot_loader_state *state, int slot,
     }
 
     /* Direct copy from flash to its new location in SRAM. */
-    rc = flash_area_read(fap_src, 0, (void *)img_dst, img_sz);
+    rc = flash_area_read(fap_src, 0, (void *)(IMAGE_RAM_BASE + img_dst), img_sz);
     if (rc != 0) {
         BOOT_LOG_INF("Error whilst copying image from Flash to SRAM: %d", rc);
     }
