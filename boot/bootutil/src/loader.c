@@ -857,6 +857,7 @@ boot_validated_swap_type(struct boot_loader_state *state,
 
     return swap_type;
 }
+#endif
 
 /**
  * Erases a region of flash.
@@ -874,6 +875,7 @@ boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz)
     return flash_area_erase(fap, off, sz);
 }
 
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 /**
  * Copies the contents of one flash region to another.  You must erase the
  * destination region prior to calling this function.
