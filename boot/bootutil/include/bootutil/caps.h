@@ -50,6 +50,7 @@ uint32_t bootutil_get_caps(void);
 #define BOOTUTIL_CAP_BOOTSTRAP              (1<<14)
 #define BOOTUTIL_CAP_AES256                 (1<<15)
 #define BOOTUTIL_CAP_RAM_LOAD               (1<<16)
+#define BOOTUTIL_CAP_DIRECT_XIP             (1<<17)
 
 /*
  * Query the number of images this bootloader is configured for.  This
