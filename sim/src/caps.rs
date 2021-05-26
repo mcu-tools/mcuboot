@@ -27,6 +27,7 @@ pub enum Caps {
     Bootstrap            = (1 << 14),
     Aes256               = (1 << 15),
     RamLoad              = (1 << 16),
+    DirectXip            = (1 << 17),
 }
 
 impl Caps {
@@ -44,7 +45,7 @@ impl Caps {
     /// Query if this configuration performs some kind of upgrade by writing to flash.
     pub fn modifies_flash() -> bool {
         // All other configurations perform upgrades by writing to flash.
-        !Self::RamLoad.present()
+        !(Self::RamLoad.present() || Self::DirectXip.present())
     }
 }
 
