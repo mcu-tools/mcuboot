@@ -427,6 +427,11 @@ uint8_t flash_area_get_device_id(const struct flash_area *fa)
     return fa->fa_device_id;
 }
 
+int flash_area_id_from_image_slot(int slot) {
+    /* For single image cases, just use the first image. */
+    return flash_area_id_from_multi_image_slot(0, slot);
+}
+
 void sim_assert(int x, const char *assertion, const char *file, unsigned int line, const char *function)
 {
     if (!(x)) {
