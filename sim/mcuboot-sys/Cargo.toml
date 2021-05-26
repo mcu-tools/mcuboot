@@ -68,6 +68,10 @@ bootstrap = []
 # Support multiple images (currently 2 instead of 1).
 multiimage = []
 
+# Support simulation of ram-loading.  No swaps are performed, and the
+# image is copied to RAM before loading it.
+ram-load = []
+
 # Check (in software) against version downgrades.
 downgrade-prevention = []
 
