@@ -34,6 +34,8 @@ We will make our best effort to respond within a timely manner.  Most
 vulnerabilities found within published code will undergo an embargo of
 90 days to allow time fixes to be developed and deployed.
 
+You may also submit a vulnerability report to HackerOne. Our HackerOne page is https://hackerone.com/mcuboot/
+
 ## Vulnerability Advisories
 
 Vulnerability reports and published fixes will be reported as follows:
