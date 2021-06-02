@@ -23,6 +23,8 @@
 #define APPLICATION_PRIMARY_START_ADDRESS CONFIG_ESP_APPLICATION_PRIMARY_START_ADDRESS
 #define APPLICATION_SECONDARY_START_ADDRESS CONFIG_ESP_APPLICATION_SECONDARY_START_ADDRESS
 #define APPLICATION_SIZE CONFIG_ESP_APPLICATION_SIZE
+#define SCRATCH_OFFSET CONFIG_ESP_SCRATCH_OFFSET
+#define SCRATCH_SIZE CONFIG_ESP_SCRATCH_SIZE
 
 extern int ets_printf(const char *fmt, ...);
 
@@ -47,10 +49,18 @@ static const struct flash_area secondary_img0 = {
   .fa_size = APPLICATION_SIZE,
 };
 
+static const struct flash_area scratch_img0 = {
+    .fa_id = FLASH_AREA_IMAGE_SCRATCH,
+    .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
+    .fa_off = SCRATCH_OFFSET,
+    .fa_size = SCRATCH_SIZE,
+};
+
 static const struct flash_area *s_flash_areas[] = {
   &bootloader,
   &primary_img0,
   &secondary_img0,
+  &scratch_img0,
 };
 
 static const struct flash_area *prv_lookup_flash_area(uint8_t id) {
