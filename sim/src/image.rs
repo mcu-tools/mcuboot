@@ -969,6 +969,35 @@ impl Images {
         }
     }
 
+    /// Test the direct XIP configuration.  With this mode, flash images are never moved, and the
+    /// bootloader merely selects which partition is the proper one to boot.
+    pub fn run_direct_xip(&self) -> bool {
+        if !Caps::DirectXip.present() {
+            return false;
+        }
+
+        // Clone the flash so we can tell if unchanged.
+        let mut flash = self.flash.clone();
+
+        let result = c::boot_go(&mut flash, &self.areadesc, None, true);
+
+        // Ensure the boot was successful.
+        let resp = if let Some(resp) = result.resp() {
+            resp
+        } else {
+            panic!("Boot didn't return a valid result");
+        };
+
+        // This configuration should always try booting from the first upgrade slot.
+        if let Some((offset, _, dev_id)) = self.areadesc.find(FlashId::Image1) {
+            assert_eq!(offset, resp.image_off as usize);
+            assert_eq!(dev_id, resp.flash_dev_id);
+        } else {
+            panic!("Unable to find upgrade image");
+        }
+        false
+    }
+
     /// Adds a new flash area that fails statistically
     fn mark_bad_status_with_rate(&self, flash: &mut SimMultiFlash, slot: usize,
                                  rate: f32) {
