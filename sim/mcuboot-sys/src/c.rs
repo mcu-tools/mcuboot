@@ -13,30 +13,41 @@ use crate::api;
 /// The result of an invocation of `boot_go`.  This is intentionally opaque so that we can provide
 /// accessors for everything we need from this.
 #[derive(Debug)]
-pub struct BootGoResult {
-    result: i32,
-    asserts: u8,
+pub enum BootGoResult {
+    /// This run was stopped by the flash simulation mechanism.
+    Stopped,
+    /// The bootloader ran to completion with the following data.
+    Normal {
+        result: i32,
+        asserts: u8,
+    },
 }
 
 impl BootGoResult {
     /// Was this run interrupted.
     pub fn interrupted(&self) -> bool {
-        self.result == -0x13579
+        matches!(self, BootGoResult::Stopped)
     }
 
     /// Was this boot run successful (returned 0)
     pub fn success(&self) -> bool {
-        self.result == 0
+        matches!(self, BootGoResult::Normal { result: 0, .. })
     }
 
     /// Success, but also no asserts.
     pub fn success_no_asserts(&self) -> bool {
-        self.result == 0 && self.asserts == 0
+        matches!(self, BootGoResult::Normal {
+            result: 0,
+            asserts: 0,
+        })
     }
 
-    /// Get the asserts count.
+    /// Get the asserts count.  An interrupted run will be considered to have no asserts.
     pub fn asserts(&self) -> u8 {
-        self.asserts
+        match self {
+            BootGoResult::Normal { asserts, .. } => *asserts,
+            _ => 0,
+        }
     }
 }
 
@@ -72,7 +83,11 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
     for &dev_id in multiflash.keys() {
         api::clear_flash(dev_id);
     }
-    BootGoResult { result, asserts }
+    if result == -0x13579 {
+        BootGoResult::Stopped
+    } else {
+        BootGoResult::Normal { result, asserts }
+    }
 }
 
 pub fn boot_trailer_sz(align: u32) -> u32 {
