@@ -10,9 +10,39 @@ use crate::area::AreaDesc;
 use simflash::SimMultiFlash;
 use crate::api;
 
+/// The result of an invocation of `boot_go`.  This is intentionally opaque so that we can provide
+/// accessors for everything we need from this.
+#[derive(Debug)]
+pub struct BootGoResult {
+    result: i32,
+    asserts: u8,
+}
+
+impl BootGoResult {
+    /// Was this run interrupted.
+    pub fn interrupted(&self) -> bool {
+        self.result == -0x13579
+    }
+
+    /// Was this boot run successful (returned 0)
+    pub fn success(&self) -> bool {
+        self.result == 0
+    }
+
+    /// Success, but also no asserts.
+    pub fn success_no_asserts(&self) -> bool {
+        self.result == 0 && self.asserts == 0
+    }
+
+    /// Get the asserts count.
+    pub fn asserts(&self) -> u8 {
+        self.asserts
+    }
+}
+
 /// Invoke the bootloader on this flash device.
 pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
-               counter: Option<&mut i32>, catch_asserts: bool) -> (i32, u8) {
+               counter: Option<&mut i32>, catch_asserts: bool) -> BootGoResult {
     for (&dev_id, flash) in multiflash.iter_mut() {
         api::set_flash(dev_id, flash);
     }
@@ -42,7 +72,7 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
     for &dev_id in multiflash.keys() {
         api::clear_flash(dev_id);
     }
-    (result, asserts)
+    BootGoResult { result, asserts }
 }
 
 pub fn boot_trailer_sz(align: u32) -> u32 {
