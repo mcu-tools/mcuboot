@@ -26,6 +26,38 @@ pub struct FlashParamsStruct {
 
 pub type FlashParams = HashMap<u8, FlashParamsStruct>;
 
+/// The `boot_rsp` structure used by boot_go.
+#[repr(C)]
+#[derive(Debug)]
+pub struct BootRsp {
+    pub br_hdr: *const ImageHeader,
+    pub flash_dev_id: u8,
+    pub image_off: u32,
+}
+
+// TODO: Don't duplicate this image header declaration.
+#[repr(C)]
+#[derive(Debug)]
+pub struct ImageHeader {
+    magic: u32,
+    load_addr: u32,
+    hdr_size: u16,
+    protect_tlv_size: u16,
+    img_size: u32,
+    flags: u32,
+    ver: ImageVersion,
+    _pad2: u32,
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub struct ImageVersion {
+    pub major: u8,
+    pub minor: u8,
+    pub revision: u16,
+    pub build_num: u32,
+}
+
 pub struct CAreaDescPtr {
    pub ptr: *const CAreaDesc,
 }
