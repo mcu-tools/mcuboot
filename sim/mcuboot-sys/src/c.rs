@@ -20,6 +20,8 @@ pub enum BootGoResult {
     Normal {
         result: i32,
         asserts: u8,
+
+        resp: api::BootRsp,
     },
 }
 
@@ -39,6 +41,7 @@ impl BootGoResult {
         matches!(self, BootGoResult::Normal {
             result: 0,
             asserts: 0,
+            ..
         })
     }
 
@@ -47,6 +50,14 @@ impl BootGoResult {
         match self {
             BootGoResult::Normal { asserts, .. } => *asserts,
             _ => 0,
+        }
+    }
+
+    /// Retrieve the 'resp' field that is filled in.
+    pub fn resp(&self) -> Option<&api::BootRsp> {
+        match self {
+            BootGoResult::Normal { resp, .. } => Some(resp),
+            _ => None,
         }
     }
 }
@@ -86,7 +97,7 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
     if result == -0x13579 {
         BootGoResult::Stopped
     } else {
-        BootGoResult::Normal { result, asserts }
+        BootGoResult::Normal { result, asserts, resp: rsp }
     }
 }
 
