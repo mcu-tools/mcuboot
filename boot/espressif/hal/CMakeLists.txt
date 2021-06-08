@@ -31,6 +31,7 @@ set(hal_srcs
     ${SRC_DIR}/bootloader_flash.c
     ${SRC_DIR}/bootloader_init.c
     ${SRC_DIR}/bootloader_flash_config_esp32.c
+    ${SRC_DIR}/bootloader_wdt.c
     ${SRC_DIR}/${MCUBOOT_TARGET}/rtc_init.c
     ${SRC_DIR}/${MCUBOOT_TARGET}/rtc_clk.c
     ${SRC_DIR}/${MCUBOOT_TARGET}/rtc_time.c

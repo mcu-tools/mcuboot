@@ -139,7 +139,10 @@
  * to cause an unwanted reset. If implementing this, the OS main.c must also
  * enable the watchdog (if required)!
  */
+#include <bootloader_wdt.h>
   #define MCUBOOT_WATCHDOG_FEED() \
-     do {} while (0)
+      do { \
+          bootloader_wdt_feed(); \
+      } while (0)
 
 #endif /* __MCUBOOT_CONFIG_H__ */
