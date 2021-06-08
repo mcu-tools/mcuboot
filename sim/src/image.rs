@@ -461,6 +461,10 @@ impl Images {
     /// Test a simple upgrade, with dependencies given, and verify that the
     /// image does as is described in the test.
     pub fn run_check_deps(&self, deps: &DepTest) -> bool {
+        if !Caps::modifies_flash() {
+            return false;
+        }
+
         let (flash, _) = self.try_upgrade(None, true);
 
         self.verify_dep_images(&flash, deps)
