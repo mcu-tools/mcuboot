@@ -3,7 +3,7 @@
 
   - Copyright (c) 2017-2020 Linaro LTD
   - Copyright (c) 2017-2019 JUUL Labs
-  - Copyright (c) 2019-2020 Arm Limited
+  - Copyright (c) 2019-2021 Arm Limited
 
   - Original license:
 
@@ -96,6 +96,8 @@ struct image_tlv {
  * Image header flags.
  */
 #define IMAGE_F_PIC                      0x00000001 /* Not supported. */
+#define IMAGE_F_ENCRYPTED_AES128         0x00000004 /* Encrypted using AES128. */
+#define IMAGE_F_ENCRYPTED_AES256         0x00000008 /* Encrypted using AES256. */
 #define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
 #define IMAGE_F_RAM_LOAD                 0x00000020
 
@@ -110,7 +112,8 @@ struct image_tlv {
 #define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
 #define IMAGE_TLV_ED25519           0x24   /* ED25519 of hash output */
 #define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
-#define IMAGE_TLV_ENC_KW128         0x31   /* Key encrypted with AES-KW-128 */
+#define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW-128 or
+                                              256 */
 #define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-P256 */
 #define IMAGE_TLV_ENC_X25519        0x33   /* Key encrypted with ECIES-X25519 */
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
@@ -269,13 +272,22 @@ ram-load is enabled then platform must define the following parameters:
 #define IMAGE_EXECUTABLE_RAM_SIZE     <area_size_in_bytes>
 ```
 
+For multiple image load if multiple ram regions are used platform must define
+the `MULTIPLE_EXECUTABLE_RAM_REGIONS` flag instead and implement the following
+function:
+
+```c
+int boot_get_image_exec_ram_info(uint32_t image_id,
+                                 uint32_t *exec_ram_start,
+                                 uint32_t *exec_ram_size)
+```
+
 When ram-load is enabled, the `--load-addr <addr>` option of the `imgtool`
 script must also be used when signing the images. This option set the `RAM_LOAD`
 flag in the image header which indicates that the image should be loaded to the
 RAM and also set the load address in the image header.
 
-The ram-load mode currently supports only the single image boot and the image
-encryption feature is not supported.
+The ram-load mode currently does not support the image encryption feature.
 
 ## [Boot Swap Types](#boot-swap-types)
 
@@ -688,6 +700,41 @@ process is presented below.
 
 + Boot into image in the primary slot of the 0th image position\
   (other image in the boot chain is started by another image).
+
+### [Multiple Image Boot for RAM loading and direct-xip](#multiple-image-boot-for-ram-loading-and-direct-xip)
+
+The operation of the boot loader is different when the ram-load or the
+direct-xip strategy is chosen. The flash map is very similar to the swap
+strategy but there is no need for Scratch area.
+
++  Loop 1. Until all images are loaded and all dependencies are satisfied
+    1. Subloop 1. Iterate over all images
+        + Does any of the slots contain an image?
+            + Yes:
+                + Choose the newer image.
+                + Copy it to RAM in case of ram-load strategy.
+                + Validate the image (integrity and security check).
+                + If validation fails delete the image from flash and try the other
+                  slot. (Image must be deleted from RAM too in case of ram-load
+                  strategy.)
+            + No: Return with failure.
+
+    2. Subloop 2. Iterate over all images
+        + Does the current image depend on other image(s)?
+            + Yes: Are all the image dependencies satisfied?
+                + Yes: Skip to next image.
+                + No:
+                    + Delete the image from RAM in case of ram-load strategy, but
+                      do not delete it from flash.
+                    + Try to load the image from the other slot.
+                    + Restart dependency check from the first image.
+            + No: Skip to next image.
+
++  Loop 2. Iterate over all images
+    + Increase the security counter if needed.
+    + Do the measured boot and the data sharing if needed.
+
++ Boot the loaded slot of image 0.
 
 ## [Image Swapping](#image-swapping)
 

@@ -1,6 +1,6 @@
 // Copyright (c) 2019 Linaro LTD
 // Copyright (c) 2019-2020 JUUL Labs
-// Copyright (c) 2019 Arm Limited
+// Copyright (c) 2019-2021 Arm Limited
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -26,6 +26,7 @@ use std::{
 };
 use aes_ctr::{
     Aes128Ctr,
+    Aes256Ctr,
     stream_cipher::{
         generic_array::GenericArray,
         NewStreamCipher,
@@ -50,6 +51,7 @@ use crate::depends::{
     UpgradeInfo,
 };
 use crate::tlv::{ManifestGen, TlvGen, TlvFlags};
+use typenum::{U32, U16};
 
 /// A builder for Images.  This describes a single run of the simulator,
 /// capturing the configuration of a particular set of devices, including
@@ -1294,17 +1296,25 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
     tlv.add_bytes(&b_img);
 
     // Generate encrypted images
-    let flag = TlvFlags::ENCRYPTED as u32;
-    let is_encrypted = (tlv.get_flags() & flag) == flag;
+    let flag = TlvFlags::ENCRYPTED_AES128 as u32 | TlvFlags::ENCRYPTED_AES256 as u32;
+    let is_encrypted = (tlv.get_flags() & flag) != 0;
     let mut b_encimg = vec![];
     if is_encrypted {
+        let flag = TlvFlags::ENCRYPTED_AES256 as u32;
+        let aes256 = (tlv.get_flags() & flag) == flag;
         tlv.generate_enc_key();
         let enc_key = tlv.get_enc_key();
-        let key = GenericArray::from_slice(enc_key.as_slice());
         let nonce = GenericArray::from_slice(&[0; 16]);
-        let mut cipher = Aes128Ctr::new(&key, &nonce);
         b_encimg = b_img.clone();
-        cipher.apply_keystream(&mut b_encimg);
+        if aes256 {
+            let key: &GenericArray<u8, U32> = GenericArray::from_slice(enc_key.as_slice());
+            let mut cipher = Aes256Ctr::new(&key, &nonce);
+            cipher.apply_keystream(&mut b_encimg);
+        } else {
+            let key: &GenericArray<u8, U16> = GenericArray::from_slice(enc_key.as_slice());
+            let mut cipher = Aes128Ctr::new(&key, &nonce);
+            cipher.apply_keystream(&mut b_encimg);
+        }
     }
 
     // Build the TLV itself.
@@ -1408,32 +1418,36 @@ fn make_tlv() -> TlvGen {
     if Caps::EcdsaP224.present() {
         panic!("Ecdsa P224 not supported in Simulator");
     }
+    let mut aes_key_size = 128;
+    if Caps::Aes256.present() {
+        aes_key_size = 256;
+    }
 
     if Caps::EncKw.present() {
         if Caps::RSA2048.present() {
-            TlvGen::new_rsa_kw()
+            TlvGen::new_rsa_kw(aes_key_size)
         } else if Caps::EcdsaP256.present() {
-            TlvGen::new_ecdsa_kw()
+            TlvGen::new_ecdsa_kw(aes_key_size)
         } else {
-            TlvGen::new_enc_kw()
+            TlvGen::new_enc_kw(aes_key_size)
         }
     } else if Caps::EncRsa.present() {
         if Caps::RSA2048.present() {
-            TlvGen::new_sig_enc_rsa()
+            TlvGen::new_sig_enc_rsa(aes_key_size)
         } else {
-            TlvGen::new_enc_rsa()
+            TlvGen::new_enc_rsa(aes_key_size)
         }
     } else if Caps::EncEc256.present() {
         if Caps::EcdsaP256.present() {
-            TlvGen::new_ecdsa_ecies_p256()
+            TlvGen::new_ecdsa_ecies_p256(aes_key_size)
         } else {
-            TlvGen::new_ecies_p256()
+            TlvGen::new_ecies_p256(aes_key_size)
         }
     } else if Caps::EncX25519.present() {
         if Caps::Ed25519.present() {
-            TlvGen::new_ed25519_ecies_x25519()
+            TlvGen::new_ed25519_ecies_x25519(aes_key_size)
         } else {
-            TlvGen::new_ecies_x25519()
+            TlvGen::new_ecies_x25519(aes_key_size)
         }
     } else {
         // The non-encrypted configuration.

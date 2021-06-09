@@ -28,7 +28,6 @@ pkg.keywords:
 pkg.deps:
     - "@apache-mynewt-core/hw/hal"
     - "@apache-mynewt-core/kernel/os"
-    - "@apache-mynewt-core/encoding/tinycbor"
     - "@apache-mynewt-core/encoding/base64"
     - "@mcuboot/boot/mynewt/flash_map_backend"
     - "@mcuboot/boot/mynewt/boot_uart"

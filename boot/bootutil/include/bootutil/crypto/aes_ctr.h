@@ -21,11 +21,15 @@
 
 #if defined(MCUBOOT_USE_MBED_TLS)
     #include <mbedtls/aes.h>
-    #define BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE (16)
+    #include "bootutil/enc_key_public.h"
+    #define BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE BOOT_ENC_KEY_SIZE
     #define BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE (16)
 #endif /* MCUBOOT_USE_MBED_TLS */
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
+    #if defined(MCUBOOT_AES_256)
+        #error "Cannot use AES-256 for encryption with Tinycrypt library."
+    #endif
     #include <string.h>
     #include <tinycrypt/aes.h>
     #include <tinycrypt/ctr_mode.h>

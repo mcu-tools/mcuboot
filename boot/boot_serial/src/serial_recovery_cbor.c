@@ -1,16 +1,18 @@
 /*
- * This file has been generated from the cddl_gen submodule.
- * Commit 9d911cf0c7c9f13b5a9fdd5ed6c1012df21e5576
+ * This file has been generated from the cddl-gen submodule.
+ * Commit 8f9358a0b4b0e9b0cd579f0988056ef0b60760e4
  */
 
 /*
- * Copyright (c) 2020 Nordic Semiconductor ASA
+ * Copyright (c) 2021 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* Generated with cddl_gen.py (https://github.com/oyvindronningstad/cddl_gen)
- * at: 2020-05-13 12:19:04
+/*
+ * Generated with cddl_gen.py (https://github.com/NordicSemiconductor/cddl-gen)
+ * at: 2021-05-10 09:40:43
+ * Generated with a default_max_qty of 3
  */
 
 #include <stdint.h>
@@ -20,65 +22,73 @@
 #include "cbor_decode.h"
 #include "serial_recovery_cbor.h"
 
+#if DEFAULT_MAX_QTY != 3
+#error "The type file was generated with a different default_max_qty than this file"
+#endif
+
 
 static bool decode_Member(
-		cbor_decode_state_t *p_state, void * p_result, void * p_min_value,
-		void * p_max_value)
+		cbor_state_t *state, struct Member_ *result)
 {
-	cbor_decode_print("decode_Member\n");
-	uint8_t const * p_payload_bak;
-	size_t elem_count_bak;
-	_Member_t* p_type_result = (_Member_t*)p_result;
+	cbor_print("%s\n", __func__);
+	cbor_string_type_t tmp_str;
+	bool int_res;
 
-	bool result = (((p_payload_bak = p_state->p_payload) && ((elem_count_bak = p_state->elem_count) || 1) && ((((strx_decode(p_state, &((*p_type_result)._Member_image_key), NULL, NULL))&& !memcmp("image", (*p_type_result)._Member_image_key.value, (*p_type_result)._Member_image_key.len)
-	&& (intx32_decode(p_state, &((*p_type_result)._Member_image), NULL, NULL))) && (((*p_type_result)._Member_choice = _Member_image) || 1))
-	|| ((p_state->p_payload = p_payload_bak) && ((p_state->elem_count = elem_count_bak) || 1) && (((strx_decode(p_state, &((*p_type_result)._Member_data_key), NULL, NULL))&& !memcmp("data", (*p_type_result)._Member_data_key.value, (*p_type_result)._Member_data_key.len)
-	&& (strx_decode(p_state, &((*p_type_result)._Member_data), NULL, NULL))) && (((*p_type_result)._Member_choice = _Member_data) || 1)))
-	|| ((p_state->p_payload = p_payload_bak) && ((p_state->elem_count = elem_count_bak) || 1) && (((strx_decode(p_state, &((*p_type_result)._Member_len_key), NULL, NULL))&& !memcmp("len", (*p_type_result)._Member_len_key.value, (*p_type_result)._Member_len_key.len)
-	&& (intx32_decode(p_state, &((*p_type_result)._Member_len), NULL, NULL))) && (((*p_type_result)._Member_choice = _Member_len) || 1)))
-	|| ((p_state->p_payload = p_payload_bak) && ((p_state->elem_count = elem_count_bak) || 1) && (((strx_decode(p_state, &((*p_type_result)._Member_off_key), NULL, NULL))&& !memcmp("off", (*p_type_result)._Member_off_key.value, (*p_type_result)._Member_off_key.len)
-	&& (intx32_decode(p_state, &((*p_type_result)._Member_off), NULL, NULL))) && (((*p_type_result)._Member_choice = _Member_off) || 1)))
-	|| ((p_state->p_payload = p_payload_bak) && ((p_state->elem_count = elem_count_bak) || 1) && (((strx_decode(p_state, &((*p_type_result)._Member_sha_key), NULL, NULL))&& !memcmp("sha", (*p_type_result)._Member_sha_key.value, (*p_type_result)._Member_sha_key.len)
-	&& (strx_decode(p_state, &((*p_type_result)._Member_sha), NULL, NULL))) && (((*p_type_result)._Member_choice = _Member_sha) || 1))))));
+	bool tmp_result = (((union_start_code(state) && (int_res = (((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"image",
+    tmp_str.len = sizeof("image") - 1, &tmp_str)))))
+	&& (intx32_decode(state, (&(*result)._Member_image)))) && (((*result)._Member_choice = _Member_image) || 1))
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"data",
+    tmp_str.len = sizeof("data") - 1, &tmp_str)))))
+	&& (bstrx_decode(state, (&(*result)._Member_data)))) && (((*result)._Member_choice = _Member_data) || 1)))
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"len",
+    tmp_str.len = sizeof("len") - 1, &tmp_str)))))
+	&& (intx32_decode(state, (&(*result)._Member_len)))) && (((*result)._Member_choice = _Member_len) || 1)))
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"off",
+    tmp_str.len = sizeof("off") - 1, &tmp_str)))))
+	&& (intx32_decode(state, (&(*result)._Member_off)))) && (((*result)._Member_choice = _Member_off) || 1)))
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"sha",
+    tmp_str.len = sizeof("sha") - 1, &tmp_str)))))
+	&& (bstrx_decode(state, (&(*result)._Member_sha)))) && (((*result)._Member_choice = _Member_sha) || 1)))), union_end_code(state), int_res))));
 
-	if (!result)
-	{
-		cbor_decode_trace();
-	}
+	if (!tmp_result)
+		cbor_trace();
 
-	return result;
+	return tmp_result;
 }
 
 static bool decode_Upload(
-		cbor_decode_state_t *p_state, void * p_result, void * p_min_value,
-		void * p_max_value)
+		cbor_state_t *state, struct Upload *result)
 {
-	cbor_decode_print("decode_Upload\n");
-	size_t temp_elem_counts[2];
-	size_t *p_temp_elem_count = temp_elem_counts;
-	Upload_t* p_type_result = (Upload_t*)p_result;
+	cbor_print("%s\n", __func__);
+	bool int_res;
 
-	bool result = (((list_start_decode(p_state, &(*(p_temp_elem_count++)), 1, 5))
-	&& multi_decode(1, 5, &(*p_type_result)._Upload_members_count, (void*)decode_Member, p_state, &((*p_type_result)._Upload_members), NULL, NULL, sizeof(_Member_t))
-	&& ((p_state->elem_count = *(--p_temp_elem_count)) || 1)));
+	bool tmp_result = (((map_start_decode(state) && (int_res = (multi_decode(1, 5, &(*result)._Upload_members_count, (void *)decode_Member, state, (&(*result)._Upload_members), sizeof(struct Member_))), ((map_end_decode(state)) && int_res)))));
 
-	if (!result)
-	{
-		cbor_decode_trace();
-	}
+	if (!tmp_result)
+		cbor_trace();
 
-	p_state->elem_count = temp_elem_counts[0];
-	return result;
+	return tmp_result;
 }
 
 
-bool cbor_decode_Upload(const uint8_t * p_payload, size_t payload_len, Upload_t * p_result)
-{
-	cbor_decode_state_t state = {
-		.p_payload = p_payload,
-		.p_payload_end = p_payload + payload_len,
-		.elem_count = 1
-	};
 
-	return decode_Upload(&state, p_result, NULL, NULL);
+__attribute__((unused)) static bool type_test_decode_Upload(
+		struct Upload *result)
+{
+	/* This function should not be called, it is present only to test that
+	 * the types of the function and struct match, since this information
+	 * is lost with the casts in the entry function.
+	 */
+	return decode_Upload(NULL, result);
+}
+
+
+bool cbor_decode_Upload(
+		const uint8_t *payload, uint32_t payload_len,
+		struct Upload *result,
+		uint32_t *payload_len_out)
+{
+	return entry_function(payload, payload_len, (const void *)result,
+		payload_len_out, (void *)decode_Upload,
+		1, 2);
 }

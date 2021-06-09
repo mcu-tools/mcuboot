@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017 Linaro Limited
+ * Copyright (c) 2021 Arm Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +48,7 @@ uint32_t bootutil_get_caps(void);
 #define BOOTUTIL_CAP_DOWNGRADE_PREVENTION   (1<<12)
 #define BOOTUTIL_CAP_ENC_X25519             (1<<13)
 #define BOOTUTIL_CAP_BOOTSTRAP              (1<<14)
+#define BOOTUTIL_CAP_AES256                 (1<<15)
 
 /*
  * Query the number of images this bootloader is configured for.  This

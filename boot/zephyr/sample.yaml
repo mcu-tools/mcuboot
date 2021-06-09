@@ -1,6 +1,10 @@
 sample:
   description: mcuboot test build sample
   name: mcuboot
+common:
+  integration_platforms:
+    - nrf52840dk_nrf52840
+    - nrf52840dongle_nrf52840
 
 tests:
   sample.bootloader.mcuboot:

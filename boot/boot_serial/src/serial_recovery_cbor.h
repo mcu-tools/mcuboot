@@ -1,16 +1,18 @@
 /*
- * This file has been generated from the cddl_gen submodule.
- * Commit 9d911cf0c7c9f13b5a9fdd5ed6c1012df21e5576
+ * This file has been generated from the cddl-gen submodule.
+ * Commit 8f9358a0b4b0e9b0cd579f0988056ef0b60760e4
  */
 
 /*
- * Copyright (c) 2020 Nordic Semiconductor ASA
+ * Copyright (c) 2021 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/* Generated with cddl_gen.py (https://github.com/oyvindronningstad/cddl_gen)
- * at: 2020-05-13 12:19:04
+/*
+ * Generated with cddl_gen.py (https://github.com/NordicSemiconductor/cddl-gen)
+ * at: 2021-05-10 09:40:43
+ * Generated with a default_max_qty of 3
  */
 
 #ifndef SERIAL_RECOVERY_CBOR_H__
@@ -21,45 +23,17 @@
 #include <stddef.h>
 #include <string.h>
 #include "cbor_decode.h"
+#include "types_serial_recovery_cbor.h"
+
+#if DEFAULT_MAX_QTY != 3
+#error "The type file was generated with a different default_max_qty than this file"
+#endif
 
 
-typedef struct {
-	union {
-		struct {
-			cbor_string_type_t _Member_image_key;
-			int32_t _Member_image;
-		};
-		struct {
-			cbor_string_type_t _Member_data_key;
-			cbor_string_type_t _Member_data;
-		};
-		struct {
-			cbor_string_type_t _Member_len_key;
-			int32_t _Member_len;
-		};
-		struct {
-			cbor_string_type_t _Member_off_key;
-			int32_t _Member_off;
-		};
-		struct {
-			cbor_string_type_t _Member_sha_key;
-			cbor_string_type_t _Member_sha;
-		};
-	};
-	enum {
-		_Member_image,
-		_Member_data,
-		_Member_len,
-		_Member_off,
-		_Member_sha,
-	} _Member_choice;
-} _Member_t;
+bool cbor_decode_Upload(
+		const uint8_t *payload, uint32_t payload_len,
+		struct Upload *result,
+		uint32_t *payload_len_out);
 
-typedef struct {
-	_Member_t _Upload_members[5];
-	size_t _Upload_members_count;
-} Upload_t;
 
-bool cbor_decode_Upload(const uint8_t * p_payload, size_t payload_len, Upload_t * p_result);
-
-#endif // SERIAL_RECOVERY_CBOR_H__
+#endif /* SERIAL_RECOVERY_CBOR_H__ */

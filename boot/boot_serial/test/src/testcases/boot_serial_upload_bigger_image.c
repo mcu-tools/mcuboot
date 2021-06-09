@@ -18,7 +18,6 @@
  */
 
 #include <flash_map_backend/flash_map_backend.h>
-#include <tinycbor/cborconstants_p.h>
 
 #include "boot_test.h"
 

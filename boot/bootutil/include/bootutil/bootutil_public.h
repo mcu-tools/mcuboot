@@ -4,7 +4,7 @@
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2021 Arm Limited
- * Copyright (c) 2020 Nordic Semiconductor ASA
+ * Copyright (c) 2020-2021 Nordic Semiconductor ASA
  *
  * Original license:
  *
@@ -223,13 +223,25 @@ int boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok);
 /**
  * @brief Read the image swap state
  *
- * @param flash_area_id Id of flash parttition from which trailer will be read.
- * @param state Struture for holding swap state.
+ * @param flash_area_id id of flash partition from which state will be read;
+ * @param state pointer to structure for storing swap state.
  *
- * @return 0 on success, nonzero errno code on fail.
+ * @return 0 on success; non-zero error code on failure;
  */
 int
 boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state);
+
+/**
+ * @brief Read the image swap state
+ *
+ * @param fa pointer to flash_area object;
+ * @param state pointer to structure for storing swap state.
+ *
+ * @return 0 on success; non-zero error code on failure.
+ */
+int
+boot_read_swap_state(const struct flash_area *fa,
+                     struct boot_swap_state *state);
 
 #define BOOT_MAGIC_ARR_SZ \
     (sizeof boot_img_magic / sizeof boot_img_magic[0])

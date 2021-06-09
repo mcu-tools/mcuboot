@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2020 Linaro LTD
  * Copyright (c) 2017-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2021 Arm Limited
  *
  * Original license:
  *
@@ -143,9 +143,6 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #else
 #define ARE_SLOTS_EQUIVALENT()    1
 
-#if (BOOT_IMAGE_NUMBER != 1)
-#error "The MCUBOOT_DIRECT_XIP and MCUBOOT_RAM_LOAD mode only supports single-image boot (MCUBOOT_IMAGE_NUMBER=1)."
-#endif
 #ifdef MCUBOOT_ENC_IMAGES
 #error "Image encryption (MCUBOOT_ENC_IMAGES) is not supported when MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD mode is selected."
 #endif
@@ -207,14 +204,14 @@ struct boot_loader_state {
         struct image_header hdr;
         const struct flash_area *area;
         boot_sector_t *sectors;
-        size_t num_sectors;
+        uint32_t num_sectors;
     } imgs[BOOT_IMAGE_NUMBER][BOOT_NUM_SLOTS];
 
 #if MCUBOOT_SWAP_USING_SCRATCH
     struct {
         const struct flash_area *area;
         boot_sector_t *sectors;
-        size_t num_sectors;
+        uint32_t num_sectors;
     } scratch;
 #endif
 

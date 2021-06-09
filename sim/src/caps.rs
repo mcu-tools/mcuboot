@@ -1,6 +1,6 @@
 // Copyright (c) 2017-2019 Linaro LTD
 // Copyright (c) 2019 JUUL Labs
-// Copyright (c) 2019 Arm Limited
+// Copyright (c) 2019-2021 Arm Limited
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -25,6 +25,7 @@ pub enum Caps {
     DowngradePrevention  = (1 << 12),
     EncX25519            = (1 << 13),
     Bootstrap            = (1 << 14),
+    Aes256               = (1 << 15),
 }
 
 impl Caps {
