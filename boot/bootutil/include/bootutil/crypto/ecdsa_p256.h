@@ -38,6 +38,27 @@
 extern "C" {
 #endif
 
+#if	defined(MCUBOOT_USE_TINYCRYPT) || \
+	defined(MCUBOOT_USE_CC310) || \
+	defined(MCUBOOT_USE_NRF_EXTERNAL_CRYPTO)
+static inline int check_compression_byte(uint8_t **pk)
+{
+	/* As described on the compact representation in IETF protocols,
+	 * the first byte of the key defines if the ECC points are
+	 * compressed (0x2 or 0x3) or uncompressed (0x4).
+	 * We only support uncompressed keys.
+	 */
+	if (*pk[0] != 0x04)
+		return -1;
+
+
+	/* The first byte should not be passed to the verification function.*/
+	*pk = *pk + 1;
+
+	return 0;
+}
+#endif /* USE_TINYCRYPT || USE_CC310 || USE_NRF_EXTERNAL_CRYPTO */
+
 #if defined(MCUBOOT_USE_TINYCRYPT)
 typedef uintptr_t bootutil_ecdsa_p256_context;
 static inline void bootutil_ecdsa_p256_init(bootutil_ecdsa_p256_context *ctx)
@@ -61,10 +82,10 @@ static inline int bootutil_ecdsa_p256_verify(bootutil_ecdsa_p256_context *ctx,
     (void)sig_len;
 
     /* Only support uncompressed keys. */
-    if (pk[0] != 0x04) {
-        return -1;
-    }
-    pk++;
+	if (check_compression_byte(&pk) < 0)
+		return -1;
+
+
 
     rc = uECC_verify(pk, hash, BOOTUTIL_CRYPTO_ECDSA_P256_HASH_SIZE, sig, uECC_secp256r1());
     if (rc != TC_CRYPTO_SUCCESS) {
@@ -96,10 +117,10 @@ static inline int bootutil_ecdsa_p256_verify(bootutil_ecdsa_p256_context *ctx,
     (void)sig_len;
 
     /* Only support uncompressed keys. */
-    if (pk[0] != 0x04) {
-        return -1;
-    }
-    pk++;
+	if (check_compression_byte(&pk) < 0)
+		return -1;
+
+
 
     return cc310_ecdsa_verify_secp256r1(hash, pk, sig, BOOTUTIL_CRYPTO_ECDSA_P256_HASH_SIZE);
 }
