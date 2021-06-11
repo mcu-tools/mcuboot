@@ -205,4 +205,9 @@
 
 #endif /* CONFIG_BOOT_WATCHDOG_FEED */
 
+#define MCUBOOT_CPU_IDLE() \
+  if (!IS_ENABLED(CONFIG_MULTITHREADING)) { \
+    k_cpu_idle(); \
+  }
+
 #endif /* __MCUBOOT_CONFIG_H__ */
