@@ -121,9 +121,20 @@ impl Default for CSimContextPtr {
     }
 }
 
+/// This struct describes the RAM layout of the current device.  It will be stashed, per test
+/// thread, and queried by the C code.
+#[repr(C)]
+#[derive(Debug, Default)]
+pub struct BootsimRamInfo {
+    pub start: u32,
+    pub size: u32,
+    pub base: usize,
+}
+
 thread_local! {
     pub static THREAD_CTX: RefCell<FlashContext> = RefCell::new(FlashContext::new());
     pub static SIM_CTX: RefCell<CSimContextPtr> = RefCell::new(CSimContextPtr::new());
+    pub static RAM_CTX: RefCell<BootsimRamInfo> = RefCell::new(BootsimRamInfo::default());
 }
 
 /// Set the flash device to be used by the simulation.  The pointer is unsafely stashed away.
@@ -193,6 +204,32 @@ pub extern fn sim_set_context(ptr: *const CSimContext) {
 pub extern fn sim_reset_context() {
     SIM_CTX.with(|ctx| {
         ctx.borrow_mut().ptr = ptr::null();
+    });
+}
+
+#[no_mangle]
+pub extern "C" fn bootsim_get_ram_info() -> *const BootsimRamInfo {
+    RAM_CTX.with(|ctx| {
+        if ctx.borrow().base == 0 {
+            // Option is messier to get a pointer out of, so just check if the base has been set to
+            // anything.
+            panic!("ram info not set, but being used");
+        }
+        ctx.as_ptr()
+    })
+}
+
+/// Store a copy of this RAM info.
+pub fn set_ram_info(info: BootsimRamInfo) {
+    RAM_CTX.with(|ctx| {
+        ctx.replace(info);
+    });
+}
+
+/// Clear out the ram info.
+pub fn clear_ram_info() {
+    RAM_CTX.with(|ctx| {
+        ctx.borrow_mut().base = 0;
     });
 }
 

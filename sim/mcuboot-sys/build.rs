@@ -60,9 +60,6 @@ fn main() {
 
     if ram_load {
         conf.define("MCUBOOT_RAM_LOAD", None);
-
-        conf.define("IMAGE_EXECUTABLE_RAM_START", "0x10000");
-        conf.define("IMAGE_EXECUTABLE_RAM_SIZE", "0x10000");
     }
 
     if direct_xip {
