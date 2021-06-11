@@ -35,7 +35,7 @@ use aes_ctr::{
 };
 
 use simflash::{Flash, SimFlash, SimMultiFlash};
-use mcuboot_sys::{c, AreaDesc, FlashId};
+use mcuboot_sys::{c, AreaDesc, FlashId, RamBlock};
 use crate::{
     ALL_DEVICES,
     DeviceName,
@@ -52,6 +52,18 @@ use crate::depends::{
 };
 use crate::tlv::{ManifestGen, TlvGen, TlvFlags};
 use typenum::{U32, U16};
+
+/// For testing, use a non-zero offset for the ram-load, to make sure the offset is getting used
+/// properly, but the value is not really that important.
+const RAM_LOAD_ADDR: u32 = 1024;
+
+fn ram_load_addr() -> u32 {
+    if Caps::RamLoad.present() {
+        RAM_LOAD_ADDR
+    } else {
+        0
+    }
+}
 
 /// A builder for Images.  This describes a single run of the simulator,
 /// capturing the configuration of a particular set of devices, including
@@ -998,6 +1010,50 @@ impl Images {
         false
     }
 
+    /// Test the ram-loading.
+    pub fn run_ram_load(&self) -> bool {
+        if !Caps::RamLoad.present() {
+            return false;
+        }
+
+        // Clone the flash so we can tell if unchanged.
+        let mut flash = self.flash.clone();
+
+        let image = &self.images[0].primaries;
+
+        // Test with the minimal size.
+
+        // First verify that if the RAM is too small, we reject it.
+        let ram = RamBlock::new(image.plain.len() as u32 - 1, RAM_LOAD_ADDR);
+        let result = ram.invoke(|| c::boot_go(&mut flash, &self.areadesc, None, true));
+        if result.success() {
+            error!("Failed to detect RAM too small");
+            return true;
+        }
+        drop(ram);
+
+        // TODO: The code will erase the flash if it doesn't fit.  Either verify this, or change
+        // this behavior.
+
+        let mut flash = self.flash.clone();
+
+        let ram = RamBlock::new(image.plain.len() as u32, RAM_LOAD_ADDR);
+        let result = ram.invoke(|| c::boot_go(&mut flash, &self.areadesc, None, true));
+        if !result.success() {
+            error!("Failed to ram-load image");
+            return true;
+        }
+        println!("Result: {:?}", result);
+
+        // Verify the image was loaded correctly.
+        if ram.borrow() != &image.plain {
+            error!("Image not loaded correctly");
+            return true;
+        }
+
+        false
+    }
+
     /// Adds a new flash area that fails statistically
     fn mark_bad_status_with_rate(&self, flash: &mut SimMultiFlash, slot: usize,
                                  rate: f32) {
@@ -1312,7 +1368,7 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
     // Generate a boot header.  Note that the size doesn't include the header.
     let header = ImageHeader {
         magic: tlv.get_magic(),
-        load_addr: 0,
+        load_addr: if Caps::RamLoad.present() { ram_load_addr() } else { 0 },
         hdr_size: HDR_SIZE as u16,
         protect_tlv_size: tlv.protect_size(),
         img_size: len as u32,
