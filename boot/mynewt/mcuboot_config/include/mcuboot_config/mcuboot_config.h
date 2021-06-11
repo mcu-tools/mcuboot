@@ -101,4 +101,11 @@
 #define MCUBOOT_WATCHDOG_FEED()    do {} while (0)
 #endif
 
+/*
+ * No direct idle call implemented
+ */
+#define MCUBOOT_CPU_IDLE() \
+    do {                   \
+    } while (0)
+
 #endif /* __MCUBOOT_CONFIG_H__ */
