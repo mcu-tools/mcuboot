@@ -422,6 +422,12 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
     abort();
 }
 
+uint8_t flash_area_get_device_id(const struct flash_area *fa)
+{
+	(void)fa;
+	return 0;
+}
+
 void sim_assert(int x, const char *assertion, const char *file, unsigned int line, const char *function)
 {
     if (!(x)) {
