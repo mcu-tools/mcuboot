@@ -19,7 +19,7 @@ use rand::{
     rngs::SmallRng,
 };
 use std::{
-    collections::HashSet,
+    collections::{BTreeMap, HashSet},
     io::{Cursor, Write},
     mem,
     slice,
@@ -73,6 +73,7 @@ pub struct ImagesBuilder {
     flash: SimMultiFlash,
     areadesc: AreaDesc,
     slots: Vec<[SlotInfo; 2]>,
+    ram: RamData,
 }
 
 /// Images represents the state of a simulation for a given set of images.
@@ -83,6 +84,7 @@ pub struct Images {
     areadesc: AreaDesc,
     images: Vec<OneImage>,
     total_count: Option<i32>,
+    ram: RamData,
 }
 
 /// When doing multi-image, there is an instance of this information for
@@ -99,6 +101,29 @@ struct OneImage {
 struct ImageData {
     plain: Vec<u8>,
     cipher: Option<Vec<u8>>,
+}
+
+/// For the RamLoad test cases, we need a contiguous area of RAM to load these images into.  For
+/// multi-image builds, these may not correspond with the offsets.  This has to be computed early,
+/// before images are built, because each image contains the offset where the image is to be loaded
+/// in the header, which is contained within the signature.
+#[derive(Clone, Debug)]
+struct RamData {
+    places: BTreeMap<SlotKey, SlotPlace>,
+    total: u32,
+}
+
+/// Every slot is indexed by this key.
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct SlotKey {
+    dev_id: u8,
+    index: usize,
+}
+
+#[derive(Clone, Debug)]
+struct SlotPlace {
+    offset: u32,
+    size: u32,
 }
 
 impl ImagesBuilder {
@@ -162,10 +187,13 @@ impl ImagesBuilder {
             slots.push([primary, secondary]);
         }
 
+        let ram = RamData::new(&slots);
+
         Ok(ImagesBuilder {
             flash,
             areadesc,
             slots,
+            ram,
         })
     }
 
@@ -188,16 +216,17 @@ impl ImagesBuilder {
     pub fn make_no_upgrade_image(self, deps: &DepTest) -> Images {
         let num_images = self.num_images();
         let mut flash = self.flash;
+        let ram = self.ram.clone();  // TODO: This is wasteful.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep: Box<dyn Depender> = if num_images > 1 {
                 Box::new(PairDep::new(num_images, image_num, deps))
             } else {
                 Box::new(BoringDep::new(image_num, deps))
             };
-            let primaries = install_image(&mut flash, &slots[0], 42784, &*dep, false);
+            let primaries = install_image(&mut flash, &slots[0], 42784, &ram, &*dep, false);
             let upgrades = match deps.depends[image_num] {
                 DepType::NoUpgrade => install_no_image(),
-                _ => install_image(&mut flash, &slots[1], 46928, &*dep, false)
+                _ => install_image(&mut flash, &slots[1], 46928, &ram, &*dep, false)
             };
             OneImage {
                 slots,
@@ -210,6 +239,7 @@ impl ImagesBuilder {
             areadesc: self.areadesc,
             images,
             total_count: None,
+            ram: self.ram,
         }
     }
 
@@ -241,10 +271,11 @@ impl ImagesBuilder {
 
     pub fn make_bad_secondary_slot_image(self) -> Images {
         let mut bad_flash = self.flash;
+        let ram = self.ram.clone(); // TODO: Avoid this clone.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
-            let primaries = install_image(&mut bad_flash, &slots[0], 32784, &dep, false);
-            let upgrades = install_image(&mut bad_flash, &slots[1], 41928, &dep, true);
+            let primaries = install_image(&mut bad_flash, &slots[0], 32784, &ram, &dep, false);
+            let upgrades = install_image(&mut bad_flash, &slots[1], 41928, &ram, &dep, true);
             OneImage {
                 slots,
                 primaries,
@@ -255,14 +286,16 @@ impl ImagesBuilder {
             areadesc: self.areadesc,
             images,
             total_count: None,
+            ram: self.ram,
         }
     }
 
     pub fn make_erased_secondary_image(self) -> Images {
         let mut flash = self.flash;
+        let ram = self.ram.clone(); // TODO: Avoid this clone.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
-            let primaries = install_image(&mut flash, &slots[0], 32784, &dep, false);
+            let primaries = install_image(&mut flash, &slots[0], 32784, &ram, &dep, false);
             let upgrades = install_no_image();
             OneImage {
                 slots,
@@ -274,15 +307,17 @@ impl ImagesBuilder {
             areadesc: self.areadesc,
             images,
             total_count: None,
+            ram: self.ram,
         }
     }
 
     pub fn make_bootstrap_image(self) -> Images {
         let mut flash = self.flash;
+        let ram = self.ram.clone(); // TODO: Avoid this clone.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_no_image();
-            let upgrades = install_image(&mut flash, &slots[1], 32784, &dep, false);
+            let upgrades = install_image(&mut flash, &slots[1], 32784, &ram, &dep, false);
             OneImage {
                 slots,
                 primaries,
@@ -293,6 +328,7 @@ impl ImagesBuilder {
             areadesc: self.areadesc,
             images,
             total_count: None,
+            ram: self.ram,
         }
     }
 
@@ -1337,6 +1373,28 @@ impl Images {
     }
 }
 
+impl RamData {
+    fn new(slots: &[[SlotInfo; 2]]) -> RamData {
+        let mut addr = RAM_LOAD_ADDR;
+        let mut places = BTreeMap::new();
+        for imgs in slots {
+            for si in imgs {
+                let offset = addr;
+                let size = si.len as u32;
+                addr += size;
+                places.insert(SlotKey {
+                    dev_id: si.dev_id,
+                    index: si.index,
+                }, SlotPlace { offset, size });
+            }
+        }
+        RamData {
+            places,
+            total: addr,
+        }
+    }
+}
+
 /// Show the flash layout.
 #[allow(dead_code)]
 fn show_flash(flash: &dyn Flash) {
@@ -1351,6 +1409,7 @@ fn show_flash(flash: &dyn Flash) {
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
 /// fields used by the given code.  Returns a copy of the image that was written.
 fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
+                 _ram: &RamData,
                  deps: &dyn Depender, bad_sig: bool) -> ImageData {
     let offset = slot.base_off;
     let slot_len = slot.len;
