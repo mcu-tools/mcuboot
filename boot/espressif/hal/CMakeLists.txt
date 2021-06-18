@@ -7,11 +7,13 @@ set(esp_idf_dir ${IDF_PATH})
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INCLUDE_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/include
-    ${CMAKE_CURRENT_LIST_DIR}/include/${MCUBOOT_TARGET})
+    ${CMAKE_CURRENT_LIST_DIR}/include/${MCUBOOT_TARGET}
+    )
 
 list(APPEND INCLUDE_DIRS
     ${esp_idf_dir}/components/esp_common/include
     ${esp_idf_dir}/components/esp_rom/include
+    ${esp_idf_dir}/components/esp_rom/include/${MCUBOOT_TARGET}
     ${esp_idf_dir}/components/xtensa/${MCUBOOT_TARGET}/include
     ${esp_idf_dir}/components/spi_flash/include
     ${esp_idf_dir}/components/spi_flash/private_include
@@ -21,6 +23,7 @@ list(APPEND INCLUDE_DIRS
     ${esp_idf_dir}/components/soc/include
     ${esp_idf_dir}/components/esp_hw_support/include
     ${esp_idf_dir}/components/hal/${MCUBOOT_TARGET}/include
+    ${esp_idf_dir}/components/hal/${MCUBOOT_TARGET}/include/hal
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/private_include
     ${esp_idf_dir}/components/bootloader_support/include
@@ -30,8 +33,8 @@ list(APPEND INCLUDE_DIRS
     ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/include
     )
 set(hal_srcs
-    ${SRC_DIR}/bootloader_init.c
     ${SRC_DIR}/bootloader_wdt.c
+    ${SRC_DIR}/${MCUBOOT_TARGET}/bootloader_init.c
     ${esp_idf_dir}/components/hal/mpu_hal.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash_config_${MCUBOOT_TARGET}.c
@@ -49,6 +52,12 @@ set(hal_srcs
     ${esp_idf_dir}/components/esp_rom/patches/esp_rom_uart.c
     ${esp_idf_dir}/components/${MCUBOOT_TARGET}/clk.c
     )
+
+if ("${MCUBOOT_TARGET}" STREQUAL "esp32s2")
+    list(APPEND hal_srcs
+        ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/regi2c_ctrl.c
+    )
+endif()
 
 set(CFLAGS
     "-nostdlib"
@@ -97,6 +106,7 @@ add_library(hal STATIC ${hal_srcs} ${INCLUDE_DIRS})
 set_source_files_properties(
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash.c
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_clk_init.c
+    ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_init.c
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_clk.c
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_time.c
     PROPERTIES COMPILE_FLAGS
@@ -114,13 +124,23 @@ target_compile_options(
     ${CFLAGS}
     )
 
-target_link_libraries(
-    hal
-    PUBLIC
-    ${LDFLAGS}
+set(LINKER_SCRIPTS
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.ld
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.libgcc.ld
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.api.ld
     -T${esp_idf_dir}/components/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.peripherals.ld
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.newlib-funcs.ld
+    )
+
+if ("${MCUBOOT_TARGET}" STREQUAL "esp32s2")
+    list(APPEND LINKER_SCRIPTS
+        -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.spiflash.ld
+    )
+endif()
+
+target_link_libraries(
+    hal
+    PUBLIC
+    ${LDFLAGS}
+    ${LINKER_SCRIPTS}
     )

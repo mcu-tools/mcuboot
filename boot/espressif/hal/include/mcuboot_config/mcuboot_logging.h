@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "sdkconfig.h"
+
 extern int ets_printf(const char *fmt, ...);
 
 #define MCUBOOT_LOG_LEVEL_OFF      0
@@ -14,8 +16,10 @@ extern int ets_printf(const char *fmt, ...);
 #define MCUBOOT_LOG_LEVEL_INFO     3
 #define MCUBOOT_LOG_LEVEL_DEBUG    4
 
-#if (MCUBOOT_TARGET == esp32)
+#if CONFIG_IDF_TARGET_ESP32
 #define TARGET "[esp32]"
+#elif CONFIG_IDF_TARGET_ESP32S2
+#define TARGET "[esp32s2]"
 #else
 #error "Selected target not supported."
 #endif
