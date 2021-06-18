@@ -231,12 +231,12 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot)
 
 int flash_area_id_from_image_slot(int slot)
 {
-  return flash_area_id_from_multi_image_slot(0, slot);
+    return flash_area_id_from_multi_image_slot(0, slot);
 }
 
 int flash_area_to_sectors(int idx, int *cnt, struct flash_area *fa)
 {
-	return -1;
+    return -1;
 }
 
 void mcuboot_assert_handler(const char *file, int line, const char *func)

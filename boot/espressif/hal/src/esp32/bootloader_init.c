@@ -23,10 +23,10 @@
 
 #include "hal/wdt_hal.h"
 
-#include "esp32/rom/cache.h"
-#include "esp32/rom/ets_sys.h"
-#include "esp32/rom/spi_flash.h"
-#include "esp32/rom/uart.h"
+#include "rom/cache.h"
+#include "rom/ets_sys.h"
+#include "rom/spi_flash.h"
+#include "rom/uart.h"
 
 esp_image_header_t WORD_ALIGNED_ATTR bootloader_image_hdr;
 
