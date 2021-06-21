@@ -2083,7 +2083,7 @@ boot_select_or_erase(struct boot_swap_state *state, uint32_t slot)
          * to prevent it from being selected again on the next reboot.
          */
         BOOT_LOG_DBG("Erasing faulty image in the %s slot.",
-                     (slot == BOOT_PRIMARY_SLOT) ? "primary" : "secondary");
+                     (active_slot == BOOT_PRIMARY_SLOT) ? "primary" : "secondary");
         rc = flash_area_erase(fap, 0, fap->fa_size);
         assert(rc == 0);
 
@@ -2104,7 +2104,7 @@ boot_select_or_erase(struct boot_swap_state *state, uint32_t slot)
             rc = boot_write_copy_done(fap);
             if (rc != 0) {
                 BOOT_LOG_WRN("Failed to set copy_done flag of the image in "
-                             "the %s slot.", (slot == BOOT_PRIMARY_SLOT) ?
+                             "the %s slot.", (active_slot == BOOT_PRIMARY_SLOT) ?
                              "primary" : "secondary");
                 rc = 0;
             }
