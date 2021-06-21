@@ -35,7 +35,6 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
-#include <os/os_malloc.h>
 #include "bootutil/bootutil.h"
 #include "bootutil/image.h"
 #include "bootutil_priv.h"
@@ -48,6 +47,10 @@
 
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
+#endif
+
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+#include <os/os_malloc.h>
 #endif
 
 #include "mcuboot_config/mcuboot_config.h"
