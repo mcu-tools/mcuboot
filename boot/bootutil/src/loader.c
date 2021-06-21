@@ -74,7 +74,7 @@ struct slot_usage_t {
 #endif /* MCUBOOT_RAM_LOAD */
 #ifdef MCUBOOT_DIRECT_XIP_REVERT
     /* Swap status for the active slot */
-    struct boot_swap_state swap_state
+    struct boot_swap_state swap_state;
 #endif /* MCUBOOT_DIRECT_XIP_REVERT */
 };
 #endif
