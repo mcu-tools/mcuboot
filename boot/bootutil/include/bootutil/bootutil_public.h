@@ -96,6 +96,7 @@ extern "C" {
 #define BOOT_ENOMEM      6
 #define BOOT_EBADARGS    7
 #define BOOT_EBADVERSION 8
+#define BOOT_EFLASH_SEC  9
 
 /*
  * Extract the swap type and image number from image trailers's swap_info
