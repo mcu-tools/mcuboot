@@ -13,7 +13,7 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /* Variables passed outside of unit via poiters. */
 static const struct flash_area *_fa_p;

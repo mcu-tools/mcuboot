@@ -41,7 +41,7 @@
 #include "bootutil/enc_key.h"
 #endif
 
-MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /* Currently only used by imgmgr */
 int boot_current_slot;

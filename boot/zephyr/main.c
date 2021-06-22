@@ -105,7 +105,7 @@ static inline bool boot_skip_serial_recovery()
 }
 #endif
 
-MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
+BOOT_LOG_MODULE_REGISTER(mcuboot);
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
 /*
