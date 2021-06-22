@@ -36,6 +36,9 @@ extern "C" {
 #define BOOT_LOG_DBG(...) MCUBOOT_LOG_DBG(__VA_ARGS__)
 #define BOOT_LOG_SIM(...) MCUBOOT_LOG_SIM(__VA_ARGS__)
 
+#define BOOT_LOG_MODULE_DECLARE(module)  MCUBOOT_LOG_MODULE_DECLARE(module)
+#define BOOT_LOG_MODULE_REGISTER(module) MCUBOOT_LOG_MODULE_REGISTER(module)
+
 #else
 
 #define BOOT_LOG_ERR(...) IGNORE(__VA_ARGS__)
@@ -43,6 +46,9 @@ extern "C" {
 #define BOOT_LOG_INF(...) IGNORE(__VA_ARGS__)
 #define BOOT_LOG_DBG(...) IGNORE(__VA_ARGS__)
 #define BOOT_LOG_SIM(...) IGNORE(__VA_ARGS__)
+
+#define BOOT_LOG_MODULE_DECLARE(module)
+#define BOOT_LOG_MODULE_REGISTER(module)
 
 #endif /* MCUBOOT_HAVE_LOGGING */
 

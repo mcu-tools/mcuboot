@@ -26,7 +26,7 @@
 #error Zephyr UART console must been disabled if serial_adapter module is used.
 #endif
 
-MCUBOOT_LOG_MODULE_REGISTER(serial_adapter);
+BOOT_LOG_MODULE_REGISTER(serial_adapter);
 
 /** @brief Console input representation
  *
