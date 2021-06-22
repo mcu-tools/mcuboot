@@ -33,6 +33,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "mcuboot_config/mcuboot_config.h"
 #include "flash_map_backend/flash_map_backend.h"
@@ -40,10 +41,14 @@
 
 #include "bootutil/bootutil_log.h"
 
-#include "cy_pdl.h"
+#include "cy_flash.h"
 
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
 #include "cy_smif_psoc6.h"
+#endif
+
+#ifdef MCUBOOT_SWAP_USING_STATUS
+#include "swap_status.h"
 #endif
 /*
  * For now, we only support one flash device.
@@ -51,23 +56,23 @@
  * Pick a random device ID for it that's unlikely to collide with
  * anything "real".
  */
-#define FLASH_DEVICE_ID 	111
-#define FLASH_MAP_ENTRY_MAGIC 0xd00dbeef
+#define FLASH_DEVICE_ID        111
+#define FLASH_MAP_ENTRY_MAGIC (0xd00dbeefU)
 
 #define FLASH_AREA_IMAGE_SECTOR_SIZE FLASH_AREA_IMAGE_SCRATCH_SIZE
 
 #ifndef CY_BOOTLOADER_START_ADDRESS
-#define CY_BOOTLOADER_START_ADDRESS        (0x10000000)
+#define CY_BOOTLOADER_START_ADDRESS        (0x10000000u)
 #endif
 
 #ifndef CY_BOOT_INTERNAL_FLASH_ERASE_VALUE
 /* This is the value of internal flash bytes after an erase */
-#define CY_BOOT_INTERNAL_FLASH_ERASE_VALUE      (0x00)
+#define CY_BOOT_INTERNAL_FLASH_ERASE_VALUE      (0x00u)
 #endif
 
 #ifndef CY_BOOT_EXTERNAL_FLASH_ERASE_VALUE
 /* This is the value of external flash bytes after an erase */
-#define CY_BOOT_EXTERNAL_FLASH_ERASE_VALUE      (0xff)
+#define CY_BOOT_EXTERNAL_FLASH_ERASE_VALUE      (0xffu)
 #endif
 
 #ifdef CY_FLASH_MAP_EXT_DESC
@@ -89,42 +94,42 @@ static struct flash_area primary_1 =
     .fa_size = CY_BOOT_PRIMARY_1_SIZE
 };
 
-#ifndef CY_BOOT_USE_EXTERNAL_FLASH
 static struct flash_area secondary_1 =
 {
     .fa_id = FLASH_AREA_IMAGE_SECONDARY(0),
+#ifndef CY_BOOT_USE_EXTERNAL_FLASH
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
     .fa_off = CY_FLASH_BASE +\
                 CY_BOOT_BOOTLOADER_SIZE +\
                 CY_BOOT_PRIMARY_1_SIZE,
-    .fa_size = CY_BOOT_SECONDARY_1_SIZE
-};
 #else
-static struct flash_area secondary_1 =
-{
-    .fa_id = FLASH_AREA_IMAGE_SECONDARY(0),
     .fa_device_id = FLASH_DEVICE_EXTERNAL_FLASH(CY_BOOT_EXTERNAL_DEVICE_INDEX),
-    .fa_off = CY_SMIF_BASE_MEM_OFFSET,
+    .fa_off = CY_BOOT_SECONDARY_1_EXT_MEM_OFFSET,
+#endif
     .fa_size = CY_BOOT_SECONDARY_1_SIZE
 };
-#endif
+
 #if (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image */
 static struct flash_area primary_2 =
 {
     .fa_id = FLASH_AREA_IMAGE_PRIMARY(1),
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
+#ifndef CY_BOOT_USE_EXTERNAL_FLASH
     .fa_off = CY_FLASH_BASE +\
                 CY_BOOT_BOOTLOADER_SIZE +\
                 CY_BOOT_PRIMARY_1_SIZE +\
                 CY_BOOT_SECONDARY_1_SIZE,
+#else
+    .fa_off = CY_FLASH_BASE +\
+                CY_BOOT_BOOTLOADER_SIZE +\
+                CY_BOOT_PRIMARY_1_SIZE,
+#endif /* CY_BOOT_USE_EXTERNAL_FLASH */
     .fa_size = CY_BOOT_PRIMARY_2_SIZE
 };
 
 static struct flash_area secondary_2 =
 {
     .fa_id = FLASH_AREA_IMAGE_SECONDARY(1),
-    /* it is for external flash memory
-    .fa_device_id = FLASH_DEVICE_EXTERNAL_FLASH(CY_BOOT_EXTERNAL_DEVICE_INDEX), */
 #ifndef CY_BOOT_USE_EXTERNAL_FLASH
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
     .fa_off = CY_FLASH_BASE +\
@@ -134,31 +139,88 @@ static struct flash_area secondary_2 =
                 CY_BOOT_PRIMARY_2_SIZE,
 #else
     .fa_device_id = FLASH_DEVICE_EXTERNAL_FLASH(CY_BOOT_EXTERNAL_DEVICE_INDEX),
-    .fa_off = CY_SMIF_BASE_MEM_OFFSET + 0x40000,
-#endif
+    .fa_off = CY_BOOT_SECONDARY_2_EXT_MEM_OFFSET,
+#endif /* CY_BOOT_USE_EXTERNAL_FLASH */
     .fa_size = CY_BOOT_SECONDARY_2_SIZE
 };
-#endif
-#endif
+#endif /* MCUBOOT_IMAGE_NUMBER == 2 */
+#endif /* CY_FLASH_MAP_EXT_DESC */
+
+#ifdef MCUBOOT_SWAP_USING_STATUS
+#define SWAP_STATUS_PARTITION_SIZE  (CY_BOOT_SWAP_STATUS_SIZE * BOOT_IMAGE_NUMBER)
+
+#ifndef CY_BOOT_USE_EXTERNAL_FLASH
+#if (MCUBOOT_IMAGE_NUMBER == 1) /* if single image, internal flash */
+#define SWAP_STATUS_PARTITION_OFF   (CY_FLASH_BASE + \
+                                     CY_BOOT_BOOTLOADER_SIZE + \
+                                     CY_BOOT_PRIMARY_1_SIZE + \
+                                     CY_BOOT_SECONDARY_1_SIZE)
+#elif (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image, internal flash */
+#define SWAP_STATUS_PARTITION_OFF   (CY_FLASH_BASE + \
+                                     CY_BOOT_BOOTLOADER_SIZE + \
+                                     CY_BOOT_PRIMARY_1_SIZE + \
+                                     CY_BOOT_SECONDARY_1_SIZE + \
+                                     CY_BOOT_PRIMARY_2_SIZE + \
+                                     CY_BOOT_SECONDARY_2_SIZE)
+#endif /* MCUBOOT_IMAGE_NUMBER */
+#else /* CY_BOOT_USE_EXTERNAL_FLASH */
+#if (MCUBOOT_IMAGE_NUMBER == 1) /* if single image, external flash */
+#define SWAP_STATUS_PARTITION_OFF   (CY_FLASH_BASE + \
+                                     CY_BOOT_BOOTLOADER_SIZE + \
+                                     CY_BOOT_PRIMARY_1_SIZE)
+#elif (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image, external flash */
+#define SWAP_STATUS_PARTITION_OFF   (CY_FLASH_BASE + \
+                                     CY_BOOT_BOOTLOADER_SIZE + \
+                                     CY_BOOT_PRIMARY_1_SIZE + \
+                                     CY_BOOT_PRIMARY_2_SIZE)
+#endif /* MCUBOOT_IMAGE_NUMBER */
+#endif /* CY_BOOT_USE_EXTERNAL_FLASH */
+static struct flash_area status =
+{
+    .fa_id = FLASH_AREA_IMAGE_SWAP_STATUS,
+    .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
+    .fa_off = SWAP_STATUS_PARTITION_OFF,
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
+    .fa_size = (SWAP_STATUS_PARTITION_SIZE + BOOT_SWAP_STATUS_SZ_SCRATCH)
+#else
+    .fa_size = (SWAP_STATUS_PARTITION_SIZE)
+#endif /* MCUBOOT_SWAP_USING_SCRATCH */
+
+};
+#endif /* MCUBOOT_SWAP_USING_STATUS */
 
 #ifdef MCUBOOT_SWAP_USING_SCRATCH
+#ifndef CY_BOOT_SCRATCH_SIZE
+#ifndef CY_BOOT_USE_EXTERNAL_FLASH
+#define CY_BOOT_SCRATCH_SIZE                (CY_FLASH_SIZEOF_ROW)
+#else
+#define CY_BOOT_SCRATCH_SIZE                (CY_BOOT_SCRATCH_SIZE)
+#endif
+#endif
 static struct flash_area scratch =
 {
     .fa_id = FLASH_AREA_IMAGE_SCRATCH,
+#ifndef CY_BOOT_USE_EXTERNAL_FLASH
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
-#if (MCUBOOT_IMAGE_NUMBER == 1) /* if single-image */
+#if (MCUBOOT_IMAGE_NUMBER == 1) /* if single image */
     .fa_off = CY_FLASH_BASE +\
                CY_BOOT_BOOTLOADER_SIZE +\
                CY_BOOT_PRIMARY_1_SIZE +\
-               CY_BOOT_SECONDARY_1_SIZE,
+               CY_BOOT_SECONDARY_1_SIZE + \
+               (SWAP_STATUS_PARTITION_SIZE + BOOT_SWAP_STATUS_SZ_SCRATCH),
 #elif (MCUBOOT_IMAGE_NUMBER == 2) /* if dual-image */
     .fa_off = CY_FLASH_BASE +\
                 CY_BOOT_BOOTLOADER_SIZE +\
                 CY_BOOT_PRIMARY_1_SIZE +\
                 CY_BOOT_SECONDARY_1_SIZE +\
                 CY_BOOT_PRIMARY_2_SIZE +\
-                CY_BOOT_SECONDARY_2_SIZE,
-#endif
+                CY_BOOT_SECONDARY_2_SIZE + \
+                (SWAP_STATUS_PARTITION_SIZE + BOOT_SWAP_STATUS_SZ_SCRATCH),
+#endif /* MCUBOOT_IMAGE_NUMBER */
+#else /* CY_BOOT_USE_EXTERNAL_FLASH */
+    .fa_device_id = FLASH_DEVICE_EXTERNAL_FLASH(CY_BOOT_EXTERNAL_DEVICE_INDEX),
+    .fa_off = CY_SMIF_BASE_MEM_OFFSET + CY_BOOT_EXTERNAL_FLASH_SCRATCH_OFFSET,
+#endif /* CY_BOOT_USE_EXTERNAL_FLASH */
     .fa_size = CY_BOOT_SCRATCH_SIZE
 };
 #endif
@@ -179,14 +241,19 @@ struct flash_area *boot_area_descs[] =
 #ifdef MCUBOOT_SWAP_USING_SCRATCH
     &scratch,
 #endif
+#ifdef MCUBOOT_SWAP_USING_STATUS
+    &status,
+#endif
     NULL
 };
-#endif
+#endif  /* CY_FLASH_MAP_EXT_DESC */
 
-/* Returns device flash start based on supported fa_id */
+/*
+* Returns device flash start based on supported fa_id
+*/
 int flash_device_base(uint8_t fd_id, uintptr_t *ret)
 {
-    if (fd_id != FLASH_DEVICE_INTERNAL_FLASH) {
+    if (fd_id != (uint8_t)FLASH_DEVICE_INTERNAL_FLASH) {
         BOOT_LOG_ERR("invalid flash ID %d; expected %d",
                      fd_id, FLASH_DEVICE_INTERNAL_FLASH);
         return -1;
@@ -195,7 +262,9 @@ int flash_device_base(uint8_t fd_id, uintptr_t *ret)
     return 0;
 }
 
-/* Opens the area for use. id is one of the `fa_id`s */
+/*
+* Opens the area for use. id is one of the `fa_id`s
+*/
 int flash_area_open(uint8_t id, const struct flash_area **fa)
 {
     int ret = -1;
@@ -211,12 +280,16 @@ int flash_area_open(uint8_t id, const struct flash_area **fa)
         }
         i++;
     }
+
     return ret;
 }
 
+/*
+* Clear pointer to flash area fa
+*/
 void flash_area_close(const struct flash_area *fa)
 {
-    (void)fa;/* Nothing to do there */
+    (void)fa; /* Nothing to do there */
 }
 
 /*
@@ -229,20 +302,20 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
     size_t addr;
 
     /* check if requested offset not less then flash area (fa) start */
-    assert(off < fa->fa_off);
-    assert(off + len < fa->fa_off);
+    assert((int)(off < fa->fa_off));
+    assert((int)(off + len < fa->fa_off));
     /* convert to absolute address inside a device*/
-        addr = fa->fa_off + off;
+    addr = fa->fa_off + off;
 
     if (fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
     {
         /* flash read by simple memory copying */
-        memcpy((void *)dst, (const void*)addr, (size_t)len);
+        (void)memcpy((void *)dst, (const void*)addr, (size_t)len);
     }
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
     {
-        rc = psoc6_smif_read(fa, addr, dst, len);
+        rc = psoc6_smif_read(fa, (int32_t)addr, dst, len);
     }
 #endif
     else
@@ -251,7 +324,8 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
         rc = -1;
     }
 
-    if (rc != 0) {
+    if ((rc != 0) && (fa->fa_device_id != FLASH_DEVICE_UNDEFINED))
+    {
         BOOT_LOG_ERR("Flash area read error, rc = %d", (int)rc);
     }
     return rc;
@@ -268,8 +342,8 @@ int flash_area_write(const struct flash_area *fa, uint32_t off,
     size_t write_end_addr;
     const uint32_t * row_ptr = NULL;
 
-    assert(off < fa->fa_off);
-    assert(off + len < fa->fa_off);
+    assert((int)(off < fa->fa_off));
+    assert((int)(off + len < fa->fa_off));
 
     /* convert to absolute address inside a device */
     write_start_addr = fa->fa_off + off;
@@ -280,26 +354,26 @@ int flash_area_write(const struct flash_area *fa, uint32_t off,
         uint32_t row_number = 0;
         uint32_t row_addr = 0;
 
-        assert(!(len % CY_FLASH_SIZEOF_ROW));
-        assert(!(write_start_addr % CY_FLASH_SIZEOF_ROW));
+        assert((int)((len % CY_FLASH_SIZEOF_ROW) == 0U));
+        assert((int)((write_start_addr % CY_FLASH_SIZEOF_ROW) == 0U));
 
         row_number = (write_end_addr - write_start_addr) / CY_FLASH_SIZEOF_ROW;
         row_addr = write_start_addr;
 
-        row_ptr = (uint32_t *) src;
+        row_ptr = (const uint32_t *) src;
 
         for (uint32_t i = 0; i < row_number; i++)
         {
-            rc = Cy_Flash_WriteRow(row_addr, row_ptr);
+            rc = (int)Cy_Flash_WriteRow(row_addr, row_ptr);
 
             row_addr += (uint32_t) CY_FLASH_SIZEOF_ROW;
-            row_ptr = row_ptr + CY_FLASH_SIZEOF_ROW / 4;
+            row_ptr = row_ptr + CY_FLASH_SIZEOF_ROW / 4U;
         }
     }
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
     {
-        rc = psoc6_smif_write(fa, write_start_addr, src, len);
+        rc = psoc6_smif_write(fa, (int32_t)write_start_addr, src, len);
     }
 #endif
     else
@@ -318,9 +392,9 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
     size_t erase_start_addr;
     size_t erase_end_addr;
 
-    assert(off < fa->fa_off);
-    assert(off + len < fa->fa_off);
-    assert(!(len % CY_FLASH_SIZEOF_ROW));
+    assert((int)(len <= fa->fa_size));
+    assert((int)(off < fa->fa_size));
+    assert((int)(off + len < fa->fa_off + fa->fa_size));
 
     /* convert to absolute address inside a device*/
     erase_start_addr = fa->fa_off + off;
@@ -330,20 +404,27 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
     {
         int row_number = 0;
         uint32_t row_addr = 0;
+        uint32_t row_start_addr = (erase_start_addr / CY_FLASH_SIZEOF_ROW) * CY_FLASH_SIZEOF_ROW;
+        uint32_t row_end_addr = (erase_end_addr / CY_FLASH_SIZEOF_ROW) * CY_FLASH_SIZEOF_ROW;
 
-        row_number = (erase_end_addr - erase_start_addr) / CY_FLASH_SIZEOF_ROW;
+        /* assume single row needs to be erased */
+        if (row_start_addr == row_end_addr) {
+            rc = (int)Cy_Flash_EraseRow(row_start_addr);
+        } else {
+            row_number = (int)((row_end_addr - row_start_addr) / CY_FLASH_SIZEOF_ROW);
 
-        while (row_number != 0)
-        {
-            row_number--;
-            row_addr = erase_start_addr + row_number * (uint32_t) CY_FLASH_SIZEOF_ROW;
-            rc = Cy_Flash_EraseRow(row_addr);
-        }
+            while (row_number != 0)
+            {
+                row_number--;
+                row_addr = row_start_addr + (uint32_t) row_number * (uint32_t) CY_FLASH_SIZEOF_ROW;
+                rc = (int)Cy_Flash_EraseRow(row_addr);
+            }
+    }
     }
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
     {
-        rc = psoc6_smif_erase(erase_start_addr, len);
+        rc = psoc6_smif_erase((int)erase_start_addr, len);
     }
 #endif
     else
@@ -357,7 +438,7 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
 /*< Returns this `flash_area`s alignment */
 size_t flash_area_align(const struct flash_area *fa)
 {
-    int ret = -1;
+    size_t ret = (size_t)-1;
     if (fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
     {
         ret = CY_FLASH_ALIGN;
@@ -365,20 +446,20 @@ size_t flash_area_align(const struct flash_area *fa)
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
     else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
     {
-        return qspi_get_prog_size();
+        ret = qspi_get_prog_size();
     }
 #endif
     else
     {
         /* incorrect/non-existing flash device id */
-        ret = -1;
+        ret = (size_t)-1;
     }
     return ret;
 }
 
 #ifdef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
 /*< Initializes an array of flash_area elements for the slot's sectors */
-int     flash_area_to_sectors(int idx, int *cnt, struct flash_area *fa)
+int flash_area_to_sectors(int idx, int *cnt, struct flash_area *fa)
 {
     int rc = 0;
 
@@ -412,13 +493,22 @@ int     flash_area_to_sectors(int idx, int *cnt, struct flash_area *fa)
  */
 int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
+    int rc;
     switch (slot) {
-    case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
-    case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
-    case 2: return FLASH_AREA_IMAGE_SCRATCH;
+        case 0:
+            rc = (int)FLASH_AREA_IMAGE_PRIMARY((uint32_t)image_index);
+            break;
+        case 1:
+            rc = (int)FLASH_AREA_IMAGE_SECONDARY((uint32_t)image_index);
+            break;
+        case 2:
+            rc = (int)FLASH_AREA_IMAGE_SCRATCH;
+            break;
+        default:
+            rc = -1; /* flash_area_open will fail on that */
+            break;
     }
-
-    return -1; /* flash_area_open will fail on that */
+    return rc;
 }
 
 int flash_area_id_from_image_slot(int slot)
@@ -428,10 +518,10 @@ int flash_area_id_from_image_slot(int slot)
 
 int flash_area_id_to_multi_image_slot(int image_index, int area_id)
 {
-    if (area_id == FLASH_AREA_IMAGE_PRIMARY(image_index)) {
+    if (area_id == (int) FLASH_AREA_IMAGE_PRIMARY((uint32_t)image_index)) {
         return 0;
     }
-    if (area_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
+    if (area_id == (int) FLASH_AREA_IMAGE_SECONDARY((uint32_t)image_index)) {
         return 1;
     }
 
@@ -443,58 +533,55 @@ int flash_area_id_to_image_slot(int area_id)
     return flash_area_id_to_multi_image_slot(0, area_id);
 }
 
-uint8_t flash_area_erased_val(const struct flash_area *fap)
+/*
+ * Erases aligned row of flash, where passed address resided
+ */
+int flash_erase_row(uint32_t address)
 {
-    int ret = 0;
+    cy_en_flashdrv_status_t rc = CY_FLASH_DRV_SUCCESS;
+    uint32_t row_addr = 0;
 
-    if (fap->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
+    /* Calculate start of row arbitrary address */
+    row_addr = (address/CY_FLASH_SIZEOF_ROW)*CY_FLASH_SIZEOF_ROW;
+
+    /* Erase whole row of flash */
+    rc = Cy_Flash_EraseRow(row_addr);
+
+    return (int) rc;
+}
+
+uint8_t flash_area_erased_val(const struct flash_area *fa)
+{
+    uint8_t ret = 0;
+
+    if (fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
     {
-        ret = CY_BOOT_INTERNAL_FLASH_ERASE_VALUE;
+        ret = (uint8_t) CY_BOOT_INTERNAL_FLASH_ERASE_VALUE;
     }
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
-    else if ((fap->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
+    else if ((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
     {
-        ret = CY_BOOT_EXTERNAL_FLASH_ERASE_VALUE;
+        ret = (uint8_t) CY_BOOT_EXTERNAL_FLASH_ERASE_VALUE;
     }
 #endif
     else
     {
-        assert(false) ;
+        assert(false);
     }
 
     return ret ;
-}
-
-int flash_area_read_is_empty(const struct flash_area *fa, uint32_t off,
-        void *dst, uint32_t len)
-{
-    uint8_t *mem_dest;
-    int rc;
-
-    mem_dest = (uint8_t *)dst;
-    rc = flash_area_read(fa, off, dst, len);
-    if (rc) {
-        return -1;
-    }
-
-    for (uint8_t i = 0; i < len; i++) {
-        if (mem_dest[i] != flash_area_erased_val(fa)) {
-            return 0;
-        }
-    }
-    return 1;
 }
 
 #ifdef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
 int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
 {
     int rc = 0;
-    uint32_t i = 0;
+    uint32_t i = 0u;
     struct flash_area *fa = NULL;
 
     while(NULL != boot_area_descs[i])
     {
-        if(idx == boot_area_descs[i]->fa_id)
+        if(idx == (int) boot_area_descs[i]->fa_id)
         {
             fa = boot_area_descs[i];
             break;
@@ -502,44 +589,93 @@ int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
         i++;
     }
 
-    if(NULL != boot_area_descs[i])
+    if(NULL != fa)
     {
         size_t sector_size = 0;
+        size_t area_size = fa->fa_size;
 
         if(fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
         {
-            sector_size = CY_FLASH_SIZEOF_ROW;
-        }
+#if defined(CY_BOOT_USE_EXTERNAL_FLASH) && defined(MCUBOOT_SWAP_USING_STATUS) \
+    && !defined(MCUBOOT_SWAP_USING_SCRATCH)
+            if(idx == (int) FLASH_AREA_IMAGE_SWAP_STATUS)
+            {
+                sector_size = CY_FLASH_SIZEOF_ROW;
+            }
+            else
+            {
+                sector_size = qspi_get_erase_size();
+#else
+                sector_size = CY_FLASH_SIZEOF_ROW;
+#endif /* MCUBOOT_SWAP_USING_STATUS && CY_BOOT_USE_EXTERNAL_FLASH */
+            }
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
-        else if((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
-        {
+            else if((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
+            {
             /* implement for SMIF */
             /* lets assume they are equal */
-            sector_size = CY_FLASH_SIZEOF_ROW;
-        }
-#endif
+#ifdef MCUBOOT_SWAP_USING_STATUS
+                sector_size = qspi_get_erase_size();
+#else
+                sector_size = CY_FLASH_SIZEOF_ROW;
+#endif /* MCUBOOT_SWAP_USING_STATUS */
+            }
+#endif /* CY_BOOT_USE_EXTERNAL_FLASH */
         else
         {
-            rc = -1;
+            /* fa->fa_device_id = FLASH_DEVICE_UNDEFINED,
+               in this case the area should be empty with a very simple sector size of 1 byte */
+            area_size = 0u;
+            sector_size = 1u;
         }
 
         if(0 == rc)
         {
-            uint32_t addr = 0;
-            size_t sectors_n = 0;
+            size_t sectors_n;
+            uint32_t my_sector_addr = 0U;
+            uint32_t my_sector_size;
 
-            sectors_n = (fa->fa_size + (sector_size - 1)) / sector_size;
-            assert(sectors_n <= *cnt);
+            sectors_n = (area_size + (sector_size - 1U)) / sector_size;
 
-            addr = fa->fa_off;
-            for(i = 0; i < sectors_n; i++)
+            if (sectors_n > MCUBOOT_MAX_IMG_SECTORS)
             {
-                ret[i].fs_size = sector_size ;
-                ret[i].fs_off = addr ;
-                addr += sector_size ;
+                sector_size *= 2;
             }
 
-            *cnt = sectors_n;
+            sectors_n = 0;
+            my_sector_addr = fa->fa_off;
+            while (area_size > 0)
+            {
+                my_sector_size = sector_size;
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
+                uint32_t my_sector_offs = my_sector_addr % my_sector_size;
+
+                if (my_sector_offs != 0)
+                {
+                    my_sector_size = sector_size - my_sector_offs;
+                }
+
+                if (my_sector_size > area_size)
+                {
+                    my_sector_size = area_size;
+                }
+#endif
+                ret[sectors_n].fs_size = my_sector_size;
+                ret[sectors_n].fs_off = my_sector_addr;
+
+                my_sector_addr += my_sector_size;
+                area_size -= my_sector_size;
+                sectors_n++;
+            }
+
+            if (sectors_n <= *cnt)
+            {
+                *cnt = sectors_n;
+            }
+            else
+            {
+                rc = -1;
+            }
         }
     }
     else

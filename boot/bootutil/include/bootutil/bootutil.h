@@ -72,6 +72,12 @@ fih_int boot_go(struct boot_rsp *rsp);
 struct boot_loader_state;
 fih_int context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp);
 
+int boot_swap_type_multi(int image_index);
+int boot_swap_type(void);
+
+int boot_set_pending(int permanent);
+int boot_set_confirmed(void);
+
 #define SPLIT_GO_OK                 (0)
 #define SPLIT_GO_NON_MATCHING       (-1)
 #define SPLIT_GO_ERR                (-2)

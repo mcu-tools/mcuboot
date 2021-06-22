@@ -98,7 +98,7 @@ $(info $(DEFINES))
 endif
 
 # updating CFLAGS at this point as DEFINES are completed
-CFLAGS += $(DEFINES)
+CFLAGS += $(DEFINES) $(CFLAGS_OPTIMIZATION)
 
 VPATH = $(dir $(C_FILES) $(ASM_FILES))
 
@@ -120,6 +120,7 @@ ASM_FILES=$(MY_ASM_FILES)
 MY_LDFLAGS := $(subst /cygdrive/c,c:,$(LDFLAGS))
 #$(info MY_LDFLAGS $(MY_LDFLAGS))
 LDFLAGS=$(MY_LDFLAGS)
+LDFLAGS += $(LDFLAGS_OPTIMIZATION)
 
 # Default name pattern for output files
 # may be modified in %Application%.mk file
