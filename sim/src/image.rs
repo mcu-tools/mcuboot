@@ -57,14 +57,6 @@ use typenum::{U32, U16};
 /// properly, but the value is not really that important.
 const RAM_LOAD_ADDR: u32 = 1024;
 
-fn ram_load_addr() -> u32 {
-    if Caps::RamLoad.present() {
-        RAM_LOAD_ADDR
-    } else {
-        0
-    }
-}
-
 /// A builder for Images.  This describes a single run of the simulator,
 /// capturing the configuration of a particular set of devices, including
 /// the flash simulator(s) and the information about the slots.
@@ -117,7 +109,7 @@ struct RamData {
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct SlotKey {
     dev_id: u8,
-    index: usize,
+    base_off: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -1055,39 +1047,38 @@ impl Images {
         // Clone the flash so we can tell if unchanged.
         let mut flash = self.flash.clone();
 
-        let image = &self.images[0].primaries;
+        // Setup ram based on the ram configuration we determined earlier for the images.
+        let ram = RamBlock::new(self.ram.total - RAM_LOAD_ADDR, RAM_LOAD_ADDR);
 
-        // Test with the minimal size.
+        // println!("Ram: {:#?}", self.ram);
 
-        // First verify that if the RAM is too small, we reject it.
-        let ram = RamBlock::new(image.plain.len() as u32 - 1, RAM_LOAD_ADDR);
-        let result = ram.invoke(|| c::boot_go(&mut flash, &self.areadesc, None, true));
-        if result.success() {
-            error!("Failed to detect RAM too small");
-            return true;
-        }
-        drop(ram);
-
-        // TODO: The code will erase the flash if it doesn't fit.  Either verify this, or change
-        // this behavior.
-
-        let mut flash = self.flash.clone();
-
-        let ram = RamBlock::new(image.plain.len() as u32, RAM_LOAD_ADDR);
+        // Verify that the images area loaded into this.
         let result = ram.invoke(|| c::boot_go(&mut flash, &self.areadesc, None, true));
         if !result.success() {
-            error!("Failed to ram-load image");
-            return true;
-        }
-        println!("Result: {:?}", result);
-
-        // Verify the image was loaded correctly.
-        if ram.borrow() != &image.plain {
-            error!("Image not loaded correctly");
+            error!("Failed to execute ram-load");
             return true;
         }
 
-        false
+        // Verify each image.
+        for image in &self.images {
+            let place = self.ram.lookup(&image.slots[0]);
+            let ram_image = ram.borrow_part(place.offset as usize - RAM_LOAD_ADDR as usize,
+                place.size as usize);
+            let src_image = &image.upgrades.plain;
+            if src_image.len() > ram_image.len() {
+                error!("Image ended up too large, nonsensical");
+                return true;
+            }
+
+            let ram_image = &ram_image[0..src_image.len()];
+            if ram_image != src_image {
+                error!("Image not loaded correctly");
+                return true;
+            }
+
+        }
+
+        return false;
     }
 
     /// Adds a new flash area that fails statistically
@@ -1374,24 +1365,36 @@ impl Images {
 }
 
 impl RamData {
+    // TODO: This is not correct. The second slot of each image should be at the same address as
+    // the primary.
     fn new(slots: &[[SlotInfo; 2]]) -> RamData {
         let mut addr = RAM_LOAD_ADDR;
         let mut places = BTreeMap::new();
+        // println!("Setup:-------------");
         for imgs in slots {
             for si in imgs {
+                // println!("Setup: si: {:?}", si);
                 let offset = addr;
                 let size = si.len as u32;
-                addr += size;
                 places.insert(SlotKey {
                     dev_id: si.dev_id,
-                    index: si.index,
+                    base_off: si.base_off,
                 }, SlotPlace { offset, size });
+                // println!("  load: offset: {}, size: {}", offset, size);
             }
+            addr += imgs[0].len as u32;
         }
         RamData {
             places,
             total: addr,
         }
+    }
+
+    /// Lookup the ram data associated with a given flash partition.  We just panic if not present,
+    /// because all slots used should be in the map.
+    fn lookup(&self, slot: &SlotInfo) -> &SlotPlace {
+        self.places.get(&SlotKey{dev_id: slot.dev_id, base_off: slot.base_off})
+            .expect("RamData should contain all slots")
     }
 }
 
@@ -1409,7 +1412,7 @@ fn show_flash(flash: &dyn Flash) {
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
 /// fields used by the given code.  Returns a copy of the image that was written.
 fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
-                 _ram: &RamData,
+                 ram: &RamData,
                  deps: &dyn Depender, bad_sig: bool) -> ImageData {
     let offset = slot.base_off;
     let slot_len = slot.len;
@@ -1424,10 +1427,17 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
 
     const HDR_SIZE: usize = 32;
 
+    let place = ram.lookup(&slot);
+    let load_addr = if Caps::RamLoad.present() {
+        place.offset
+    } else {
+        0
+    };
+
     // Generate a boot header.  Note that the size doesn't include the header.
     let header = ImageHeader {
         magic: tlv.get_magic(),
-        load_addr: if Caps::RamLoad.present() { ram_load_addr() } else { 0 },
+        load_addr,
         hdr_size: HDR_SIZE as u16,
         protect_tlv_size: tlv.protect_size(),
         img_size: len as u32,
