@@ -32,6 +32,11 @@ impl RamBlock {
         &self.ram
     }
 
+    /// Borrow a piece of the ram, with 'offset' being the beginning of the buffer.
+    pub fn borrow_part(&self, base: usize, size: usize) -> &[u8] {
+        &self.ram[base..base+size]
+    }
+
     pub fn invoke<F, R>(&self, act: F) -> R
         where F: FnOnce() -> R
     {
