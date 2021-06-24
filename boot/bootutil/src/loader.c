@@ -515,7 +515,7 @@ split_image_check(struct image_header *app_hdr,
                   struct image_header *loader_hdr,
                   const struct flash_area *loader_fap)
 {
-    static void *tmpbuf;
+    static void *tmpbuf = NULL;
     uint8_t loader_hash[32];
     fih_int fih_rc = FIH_FAILURE;
 
@@ -529,13 +529,14 @@ split_image_check(struct image_header *app_hdr,
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, loader_hdr, loader_fap,
              tmpbuf, BOOT_TMPBUF_SZ, NULL, 0, loader_hash);
     if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
-        FIH_RET(fih_rc);
+        goto out;
     }
 
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, app_hdr, app_fap,
              tmpbuf, BOOT_TMPBUF_SZ, loader_hash, 32, NULL);
 
 out:
+    free(tmpbuf);
     FIH_RET(fih_rc);
 }
 #endif /* !MCUBOOT_DIRECT_XIP && !MCUBOOT_RAM_LOAD */
