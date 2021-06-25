@@ -552,6 +552,16 @@ config RECOVERY_UART_DEV_NAME
 	  This option specifies the name of UART device to be used for
 	  serial recovery.
 
+config ENABLE_MGMT_PERUSER
+	bool "Enables system specific mcumgr commands"
+	depends on BOOT_SERIAL_UART
+	help
+	  The option enables processing of system specific mcumgr commands;
+	  system specific commands are within group MGMT_GROUP_ID_PERUSER (64)
+	  and above, as defined within mcumgr library.
+	  These are system specific command and system specific implementation
+	  function is required to process these commands.
+
 endif # MCUBOOT_SERIAL
 
 config BOOT_INTR_VEC_RELOC
