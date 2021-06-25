@@ -145,6 +145,12 @@
 #define MCUBOOT_FIH_PROFILE_HIGH
 #endif
 
+#ifdef CONFIG_ENABLE_MGMT_PERUSER
+#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 1
+#else
+#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 0
+#endif
+
 /*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.
