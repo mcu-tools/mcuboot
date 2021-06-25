@@ -553,7 +553,7 @@ config RECOVERY_UART_DEV_NAME
 	  serial recovery.
 
 config ENABLE_MGMT_PERUSER
-	bool "Enables system specific mcumgr commands"
+	bool "Enable system specific mcumgr commands"
 	depends on BOOT_SERIAL_UART
 	help
 	  The option enables processing of system specific mcumgr commands;
