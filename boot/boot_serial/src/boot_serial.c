@@ -102,6 +102,20 @@ static cbor_state_t cbor_state = {
     .backups = &dummy_backups
 };
 
+/**
+ * Function that processes MGMT_GROUP_ID_PERUSER mcumgr commands.
+ * The function is system specific as the PERUSER commands are system specific.
+ *
+ * @param[in] hdr -- the decoded header of mcumgr message;
+ * @param[in] buffer -- buffer with first mcumgr message;
+ * @param[in] len -- length of of data in buffer;
+ * @param[out] *cs -- object with encoded response.
+ *
+ * @return 0 on success; non-0 error code otherwise.
+ */
+extern int bs_peruser_system_specific(const struct nmgr_hdr *hdr,
+                                      const char *buffer,
+                                      int len, cbor_state_t *cs);
 
 /*
  * Convert version into string without use of snprintf().
@@ -482,6 +496,11 @@ boot_serial_input(char *buf, int len)
             break;
         default:
             break;
+        }
+    } else if (MCUBOOT_PERUSER_MGMT_GROUP_ENABLED == 1 &&
+               hdr->nh_group >= MGMT_GROUP_ID_PERUSER) {
+        if (bs_peruser_system_specific(hdr, buf, len, &cbor_state) == 0) {
+            boot_serial_output();
         }
     }
 }
