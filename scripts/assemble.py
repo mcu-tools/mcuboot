@@ -127,14 +127,14 @@ def main():
             print('Need to either have ZEPHYR_BASE in environment or pass in -z')
             sys.exit(1)
 
-    sys.path.insert(0, os.path.join(zephyr_base, "scripts", "dts"))
-    import edtlib
+    sys.path.insert(0, os.path.join(zephyr_base, "scripts", "dts", "python-devicetree", "src"))
+    import devicetree.edtlib
 
     board = find_board_name(args.bootdir)
 
     dts_path = os.path.join(args.bootdir, "zephyr", board + ".dts.pre.tmp")
 
-    edt = edtlib.EDT(dts_path, [os.path.join(zephyr_base, "dts", "bindings")],
+    edt = devicetree.edtlib.EDT(dts_path, [os.path.join(zephyr_base, "dts", "bindings")],
             warn_reg_unit_address_mismatch=False)
 
     output = Assembly(args.output, args.bootdir, edt)
