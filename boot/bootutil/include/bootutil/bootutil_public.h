@@ -99,6 +99,7 @@ extern "C" {
 #define BOOT_EBADVERSION 8
 #define BOOT_EFLASH_SEC  9
 
+#define BOOT_HOOK_REGULAR 1
 /*
  * Extract the swap type and image number from image trailers's swap_info
  * filed.
