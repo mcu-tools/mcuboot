@@ -116,7 +116,9 @@ extern "C" {
 #include "mcuboot_config/mcuboot_assert.h"
 #else
 #include <assert.h>
+#ifndef ASSERT
 #define ASSERT assert
+#endif
 #endif
 
 struct boot_swap_state {
