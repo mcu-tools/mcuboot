@@ -41,6 +41,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <flash_map_backend/flash_map_backend.h>
+#include <mcuboot_config/mcuboot_config.h>
 
 #ifdef __cplusplus
 extern "C" {
