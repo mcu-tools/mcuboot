@@ -33,6 +33,10 @@ jobs:
         - "sig-ecdsa-mbedtls enc-ec256-mbedtls validate-primary-slot"
         - "sig-ecdsa-mbedtls enc-aes256-ec256 validate-primary-slot"
         - "sig-rsa validate-primary-slot overwrite-only downgrade-prevention"
+        - "sig-rsa validate-primary-slot ram-load"
+        - "sig-rsa validate-primary-slot direct-xip"
+        - "sig-rsa validate-primary-slot ram-load multiimage"
+        - "sig-rsa validate-primary-slot direct-xip multiimage"
     runs-on: ubuntu-latest
     env:
       MULTI_FEATURES: ${{ matrix.features }}

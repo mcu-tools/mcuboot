@@ -857,6 +857,7 @@ boot_validated_swap_type(struct boot_loader_state *state,
 
     return swap_type;
 }
+#endif
 
 /**
  * Erases a region of flash.
@@ -874,6 +875,7 @@ boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz)
     return flash_area_erase(fap, off, sz);
 }
 
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 /**
  * Copies the contents of one flash region to another.  You must erase the
  * destination region prior to calling this function.
@@ -2240,6 +2242,8 @@ print_loaded_images(struct boot_loader_state *state,
 {
     uint32_t active_slot;
 
+    (void)state;
+
     IMAGES_ITER(BOOT_CURR_IMG(state)) {
         active_slot = slot_usage[BOOT_CURR_IMG(state)].active_slot;
 
@@ -2352,6 +2356,9 @@ boot_verify_ram_load_address(struct boot_loader_state *state,
     uint32_t img_end_addr;
     uint32_t exec_ram_start;
     uint32_t exec_ram_size;
+
+    (void)state;
+
 #ifdef MULTIPLE_EXECUTABLE_RAM_REGIONS
     int      rc;
 
@@ -2414,7 +2421,7 @@ boot_copy_image_to_sram(struct boot_loader_state *state, int slot,
     }
 
     /* Direct copy from flash to its new location in SRAM. */
-    rc = flash_area_read(fap_src, 0, (void *)img_dst, img_sz);
+    rc = flash_area_read(fap_src, 0, (void *)(IMAGE_RAM_BASE + img_dst), img_sz);
     if (rc != 0) {
         BOOT_LOG_INF("Error whilst copying image from Flash to SRAM: %d", rc);
     }
@@ -2580,11 +2587,13 @@ static inline int
 boot_remove_image_from_sram(struct boot_loader_state *state,
                             struct slot_usage_t slot_usage[])
 {
+    (void)state;
+
     BOOT_LOG_INF("Removing image from SRAM at address 0x%x",
                  slot_usage[BOOT_CURR_IMG(state)].img_dst);
 
-    memset((void*)slot_usage[BOOT_CURR_IMG(state)].img_dst, 0,
-           slot_usage[BOOT_CURR_IMG(state)].img_sz);
+    memset((void*)(IMAGE_RAM_BASE + slot_usage[BOOT_CURR_IMG(state)].img_dst),
+           0, slot_usage[BOOT_CURR_IMG(state)].img_sz);
 
     slot_usage[BOOT_CURR_IMG(state)].img_dst = 0;
     slot_usage[BOOT_CURR_IMG(state)].img_sz = 0;
@@ -2606,6 +2615,8 @@ boot_remove_image_from_flash(struct boot_loader_state *state, uint32_t slot)
     int area_id;
     int rc;
     const struct flash_area *fap;
+
+    (void)state;
 
     BOOT_LOG_INF("Removing image %d slot %d from flash", BOOT_CURR_IMG(state),
                                                          slot);
@@ -2915,7 +2926,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
     struct slot_usage_t slot_usage[BOOT_IMAGE_NUMBER];
     int rc;
-    fih_int fih_rc;
+    fih_int fih_rc = fih_int_encode(0);
     uint32_t active_slot;
 
     memset(state, 0, sizeof(struct boot_loader_state));

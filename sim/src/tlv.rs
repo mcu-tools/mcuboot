@@ -17,6 +17,7 @@
 use byteorder::{
     LittleEndian, WriteBytesExt,
 };
+use crate::caps::Caps;
 use crate::image::ImageVersion;
 use log::info;
 use ring::{digest, rand, agreement, hkdf, hmac};
@@ -295,7 +296,12 @@ impl ManifestGen for TlvGen {
 
     /// Retrieve the header flags for this configuration.  This can be called at any time.
     fn get_flags(&self) -> u32 {
-        self.flags
+        // For the RamLoad case, add in the flag for this feature.
+        if Caps::RamLoad.present() {
+            self.flags | (TlvFlags::RAM_LOAD as u32)
+        } else {
+            self.flags
+        }
     }
 
     /// Add bytes to the covered hash.

@@ -26,6 +26,8 @@ pub enum Caps {
     EncX25519            = (1 << 13),
     Bootstrap            = (1 << 14),
     Aes256               = (1 << 15),
+    RamLoad              = (1 << 16),
+    DirectXip            = (1 << 17),
 }
 
 impl Caps {
@@ -38,6 +40,12 @@ impl Caps {
     /// MCUboot build.
     pub fn get_num_images() -> usize {
         (unsafe { bootutil_get_num_images() }) as usize
+    }
+
+    /// Query if this configuration performs some kind of upgrade by writing to flash.
+    pub fn modifies_flash() -> bool {
+        // All other configurations perform upgrades by writing to flash.
+        !(Self::RamLoad.present() || Self::DirectXip.present())
     }
 }
 

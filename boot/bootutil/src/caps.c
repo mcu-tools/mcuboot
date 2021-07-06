@@ -72,6 +72,12 @@ uint32_t bootutil_get_caps(void)
 #if defined(MCUBOOT_AES_256)
     res |= BOOTUTIL_CAP_AES256;
 #endif
+#if defined(MCUBOOT_RAM_LOAD)
+    res |= BOOTUTIL_CAP_RAM_LOAD;
+#endif
+#if defined(MCUBOOT_DIRECT_XIP)
+    res |= BOOTUTIL_CAP_DIRECT_XIP;
+#endif
 
     return res;
 }
