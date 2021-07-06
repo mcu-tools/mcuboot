@@ -15,7 +15,7 @@
 
 #include "bootutil/bootutil_log.h"
 
-MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #if (!defined(CONFIG_XTENSA) && defined(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL))
 #define FLASH_DEVICE_ID SOC_FLASH_0_ID

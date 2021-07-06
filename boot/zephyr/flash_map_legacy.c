@@ -49,7 +49,7 @@
 #define FLASH_AREA_IMAGE_SECTOR_SIZE FLASH_AREA_IMAGE_SCRATCH_SIZE
 #endif
 
-MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /*
  * Lookup the sector map for a given flash area.  This should fill in

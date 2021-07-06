@@ -51,9 +51,9 @@
 #endif
 
 #ifdef CONFIG_MCUBOOT
-MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 #else
-MCUBOOT_LOG_MODULE_REGISTER(mcuboot_util);
+BOOT_LOG_MODULE_REGISTER(mcuboot_util);
 #endif
 
 const uint32_t boot_img_magic[] = {
