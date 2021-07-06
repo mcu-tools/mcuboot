@@ -41,6 +41,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <flash_map_backend/flash_map_backend.h>
+#include <mcuboot_config/mcuboot_config.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -116,7 +117,9 @@ extern "C" {
 #include "mcuboot_config/mcuboot_assert.h"
 #else
 #include <assert.h>
+#ifndef ASSERT
 #define ASSERT assert
+#endif
 #endif
 
 struct boot_swap_state {
