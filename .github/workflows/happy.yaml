@@ -1,0 +1,25 @@
+# For development, trigger this on any push.
+on: push
+
+# Eventually, we'll want to limit this to pull requests.
+# on: ???
+
+jobs:
+  builder:
+    runs-on: ubuntu-latest
+    container:
+      image: d3zd3z/zephyr-build:20200813a
+      env:
+        HOME: /root
+
+    steps:
+    - name: Stuff
+      run: |
+        mount
+        env
+        pwd
+        id
+        ls /root/work
+        HOME=/root
+        /entrypoint.sh
+        # /entrypoint.sh
