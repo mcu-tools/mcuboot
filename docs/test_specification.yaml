@@ -1,0 +1,218 @@
+definitions: 
+  hello1: 
+    - A signed hello_word image
+  hello2:
+    - An upgrade image, signed and marked for upgrade 
+  good_key:
+    - A key generated with a cryptosystem set in the bootloader with a correct value
+  bad_key:
+    - A key generated with a cryptosystem set in the bootloader with an incorrect value
+  wrong_key:   
+    - A key generated with a cryptosystem not matching the algorithm set in the bootloader
+  bootloader_output:
+    - 'unable to find bootable image'
+  hello1_output:
+    - 'Hello World from hello1'
+  hello2_output:
+    - 'Hello World from hello2'
+test_suites:
+  test_rsa_variants:
+    description:
+      - Test suite that verifies that boodloader correctly handles images with RSA signatures (good and bad)
+    test_level: system
+    test_type: feature
+    test_group: rsa
+    implemented: False  
+    test_cases:
+      test_good_rsa:
+        description:
+          - Test a good image, with a good upgrade, using RSA signatures
+        test setup:
+          - clean build directories
+          - clean hexes 
+        test procedure:
+          - build bootloader with overlay-rsa.conf
+          - build and sign hello1 with the good RSA key
+          - build and sign hello2 with the good RSA key
+          - erase chip
+          - flash bootloader
+          - Verify output. Expected bootloader_output
+          - flash hello1 hex
+          - Verify output. Expected hello1_output
+          - flash hello2 hex
+          - Verify output. Expected hello2_output
+          - reset chip
+          - Verify output. Expected hello1_output
+        success_criteria:
+          - Procedure complete without errors
+          - Output correctly verified
+      test_wrong_rsa:
+        description:
+          - Test a good image, with a wrong-signature upgrade, using RSA signatures.
+        test setup:
+          - clean build directories
+          - clean hexes 
+        test procedure:
+          - build bootloader with overlay-rsa.conf
+          - build and sign hello1 with the good RSA key
+          - build and sign hello2 with the bad RSA key
+          - erase chip
+          - flash bootloader
+          - Verify output. Expected bootloader_output
+          - flash hello1 hex
+          - Verify output. Expected hello1_output
+          - flash hello2 hex
+          - Verify output. Expected hello1_output
+          - reset chip
+          - Verify output. Expected hello1_output
+        success_criteria:
+          - Procedure complete without errors
+          - Output correctly verified         
+      test_bad_rsa_upgrade:
+        description:
+          - Test that when configured for RSA, a wrong signature in the upgrade image will fail to upgrade.
+        test setup:
+          - clean build directories
+          - clean hexes 
+        test procedure:
+          - build bootloader with overlay-rsa.conf
+          - build and sign hello1 with the good RSA key
+          - build and sign hello2 with the wrong (ECDSA) key
+          - erase chip
+          - flash bootloader
+          - Verify output. Expected bootloader_output
+          - flash hello1 hex
+          - Verify output. Expected hello1_output
+          - flash hello2 hex
+          - Verify output. Expected hello1_output
+          - reset chip
+          - Verify output. Expected hello1_output
+        success_criteria:
+          - Procedure complete without errors
+          - Output correctly verified         
+  test_ecdsa_variants:
+    description:
+      - Test suite that verifies that boodloader correctly handles images with ECDSA signatures (good and bad)
+    test_level: system
+    test_type: feature
+    test_group: ecdsa
+    implemented: False
+    test_cases:
+      test_good_ecdsa:
+        description:
+          - Test a good image, with a good upgrade, using ECDSA signatures
+        test setup:
+          - clean build directories
+          - clean hexes 
+        test procedure:
+          - build bootloader with overlay-ecdsa-p256.conf
+          - build and sign hello1 with the good ECDSA key
+          - build and sign hello2 with the good ECDSA key
+          - erase chip
+          - flash bootloader
+          - Verify output. Expected bootloader_output
+          - flash hello1 hex
+          - Verify output. Expected hello1_output
+          - flash hello2 hex
+          - Verify output. Expected hello2_output
+          - reset chip
+          - Verify output. Expected hello1_output
+        success_criteria:
+          - Procedure complete without errors
+          - Output correctly verified
+      test_wrong_ecdsa:
+        description:
+          - Test a good image, with a wrong-signature upgrade, using ECDSA signatures
+        test setup:
+          - clean build directories
+          - clean hexes 
+        test procedure:
+          - build bootloader with overlay-ecdsa-p256.conf
+          - build and sign hello1 with the good ECDSA key
+          - build and sign hello2 with the bad ECDSA key
+          - erase chip
+          - flash bootloader
+          - Verify output. Expected bootloader_output
+          - flash hello1 hex
+          - Verify output. Expected hello1_output
+          - flash hello2 hex
+          - Verify output. Expected hello1_output
+          - reset chip
+          - Verify output. Expected hello1_output
+        success_criteria:
+          - Procedure complete without errors
+          - Output correctly verified
+      test_bad_ecdsa_upgrade:
+        description:
+          - Test that when configured for ECDSA, a wrong signature in the upgrade image will fail to upgrade
+        test setup:
+          - clean build directories
+          - clean hexes 
+        test procedure:
+          - build bootloader with overlay-ecdsa-p256.conf
+          - build and sign hello1 with the good ECDSA key
+          - build and sign hello2 with the wrong (RSA) key
+          - erase chip
+          - flash bootloader
+          - Verify output. Expected bootloader_output
+          - flash hello1 hex
+          - Verify output. Expected hello1_output
+          - flash hello2 hex
+          - Verify output. Expected hello1_output
+          - reset chip
+          - Verify output. Expected hello1_output
+        success_criteria:
+          - Procedure complete without errors
+          - Output correctly verified
+  test_miscellaneous:
+    description:
+      - Test suite that verifies bootloader behavior not directly related to the cryptosystem
+    test_level: system
+    test_type: feature
+    test_group: misc
+    implemented: False 
+    test_cases:
+      test_overwrite:
+        description:
+          - Test (with RSA) that overwrite-only works. This should boot, upgrade correctly, but not revert once the upgrade has been done.
+        test setup:
+          - clean build directories
+          - clean hexes 
+        test procedure:
+          - build bootloader with overlay-upgrade-only.conf
+          - build and sign hello1 with the good RSA key
+          - build and sign hello2 with the good RSA key
+          - erase chip
+          - flash bootloader
+          - Verify output. Expected bootloader_output
+          - flash hello1 hex
+          - Verify output. Expected hello1_output
+          - flash hello2 hex
+          - Verify output. Expected hello2_output
+          - reset chip
+          - Verify output. Expected hello2_output
+        success_criteria:
+          - Procedure complete without errors
+          - Output correctly verified
+      test_no_bootcheck:
+        description:
+          - Test (with ECDSA) that when configured to not validate the primary slot, we still boot, but do not upgrade.
+        test setup:
+          - clean build directories
+          - clean hexes 
+        test procedure:
+          - build bootloader with overlay-skip-primary-slot-validate.conf
+          - build and sign hello1 with the good ECDSA key
+          - build and sign hello2 with the good ECDSA key
+          - erase chip
+          - flash bootloader. "tries to boot and resets" -verify
+          - Verify output. Expected bootloader_output
+          - flash hello1 hex
+          - Verify output. Expected hello1_output
+          - flash hello2 hex
+          - Verify output. Expected hello1_output
+          - reset chip
+          - Verify output. Expected hello1_output
+        success_criteria:
+          - Procedure complete without errors
+          - Output correctly verified
