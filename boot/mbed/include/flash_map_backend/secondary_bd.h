@@ -27,9 +27,30 @@
  * This is implemented as a weak function and may be redefined
  * by the application. The default case is to return the
  * BlockDevice object returned by BlockDevice::get_default_instance();
+ * 
+ * For an XIP build, the secondary BD is provided by mcuboot by default.
+ * 
+ * This is implemented as a weak symbol so the user can override it.
  *
  * @retval secondary_bd Secondary BlockDevice where update candidates are stored
  */
 mbed::BlockDevice* get_secondary_bd(void);
+
+/**
+ * This is implemented as a weak function and may be redefined
+ * by the application. By default, scratch space is at the end of 
+ * internal flash, after the main application.
+ *
+ * This is implemented as a weak symbol so the user can override it.
+ * 
+ * Security warning: Using an external scratch memory might compromise 
+ * the security of encrypted images. In this case, the scratch and 
+ * slot 0 are encrypted. If the swap is moved to external memory, 
+ * it could be read if the swap were interrupted. Done enough 
+ * times, this could be used to extract the plaintext image.
+ *
+ * @retval scratch_bd BlockDevice containing the scratch region
+ */
+mbed::BlockDevice* get_scratch_bd(void);
 
 #endif /* MCUBOOT_BOOT_MBED_INCLUDE_FLASH_MAP_BACKEND_SECONDARY_BD_H_ */
