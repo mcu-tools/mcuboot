@@ -22,10 +22,6 @@
 #include "bootutil/bootutil_log.h"
 #include <usb/usb_device.h>
 
-#if defined(CONFIG_BOOT_SERIAL_UART) && defined(CONFIG_UART_CONSOLE)
-#error Zephyr UART console must been disabled if serial_adapter module is used.
-#endif
-
 MCUBOOT_LOG_MODULE_REGISTER(serial_adapter);
 
 /** @brief Console input representation
