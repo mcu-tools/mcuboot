@@ -1458,7 +1458,7 @@ boot_verify_dependencies(struct boot_loader_state *state)
         if (rc == 0) {
             /* All dependencies've been satisfied, continue with next image. */
             BOOT_CURR_IMG(state)++;
-        } else if (rc == BOOT_EBADVERSION) {
+        } else {
             /* Cannot upgrade due to non-met dependencies, so disable all
              * image upgrades.
              */
@@ -1467,9 +1467,6 @@ boot_verify_dependencies(struct boot_loader_state *state)
                 BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
             }
             break;
-        } else {
-            /* Other error happened, images are inconsistent */
-            return rc;
         }
     }
     return rc;

@@ -74,9 +74,18 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
         }
         else if (bs->state == BOOT_STATUS_STATE_2) {
             if (slot == 0) {
+#if MCUBOOT_SWAP_USING_SCRATCH
+                uint32_t image_proc_size = boot_scratch_area_size(state) * bs->idx;
+                if ((boot_img_hdr(state, BOOT_SECONDARY_SLOT)->ih_img_size - boot_img_hdr(state, BOOT_PRIMARY_SLOT)->ih_img_size) < image_proc_size) {
+                    slot = 1;
+                }
+                else {
+                    slot = 2;
+                }
+#else
                 slot = 1;
-            }
-            else {
+#endif
+            } else {
                 slot = 2;
             }
         }
