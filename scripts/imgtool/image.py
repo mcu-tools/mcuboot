@@ -158,6 +158,9 @@ class Image():
         self.enckey = None
         self.save_enctlv = save_enctlv
         self.enctlv_len = 0
+        self.hkdf_salt = None
+        self.hkdf_len = 48
+        self.enc_nonce = bytes([0] * 16)
 
         if security_counter == 'auto':
             # Security counter has not been explicitly provided,
@@ -229,7 +232,7 @@ class Image():
                                                   self.save_enctlv,
                                                   self.enctlv_len)
                 trailer_addr = (self.base_addr + self.slot_size) - trailer_size
-                padding = bytearray([self.erased_val] * 
+                padding = bytearray([self.erased_val] *
                                     (trailer_size - len(boot_magic)))
                 if self.confirm and not self.overwrite_only:
                     padding[-MAX_ALIGN] = 0x01  # image_ok = 0x01
@@ -268,13 +271,18 @@ class Image():
             newpk = X25519PrivateKey.generate()
             shared = newpk.exchange(enckey._get_public())
         derived_key = HKDF(
-            algorithm=hashes.SHA256(), length=48, salt=None,
+            algorithm=hashes.SHA256(), length=self.hkdf_len, salt=self.hkdf_salt,
             info=b'MCUBoot_ECIES_v1', backend=default_backend()).derive(shared)
+        if self.hkdf_salt is not None:
+            key_nonce = derived_key[48:64]
+            self.enc_nonce = derived_key[64:76] + bytes([0] * 4)
+        else:
+            key_nonce = bytes([0] * 16)
         encryptor = Cipher(algorithms.AES(derived_key[:16]),
-                           modes.CTR(bytes([0] * 16)),
+                           modes.CTR(key_nonce),
                            backend=default_backend()).encryptor()
         cipherkey = encryptor.update(plainkey) + encryptor.finalize()
-        mac = hmac.HMAC(derived_key[16:], hashes.SHA256(),
+        mac = hmac.HMAC(derived_key[16:48], hashes.SHA256(),
                         backend=default_backend())
         mac.update(cipherkey)
         ciphermac = mac.finalize()
@@ -291,6 +299,10 @@ class Image():
     def create(self, key, public_key_format, enckey, dependencies=None,
                sw_type=None, custom_tlvs=None, encrypt_keylen=128):
         self.enckey = enckey
+
+        if use_random_iv:
+            self.hkdf_salt = os.urandom(32)
+            self.hkdf_len += 16 * 2   # 48 for basic scheme + 16 * 2 for random IVs
 
         # Calculate the hash of the public key
         if key is not None:
@@ -450,13 +462,15 @@ class Image():
                                      x25519.X25519Public)):
                 cipherkey, mac, pubk = self.ecies_hkdf(enckey, plainkey)
                 enctlv = pubk + mac + cipherkey
+                if self.hkdf_salt is not None:
+                    enctlv += self.hkdf_salt
                 self.enctlv_len = len(enctlv)
                 if isinstance(enckey, ecdsa.ECDSA256P1Public):
                     tlv.add('ENCEC256', enctlv)
                 else:
                     tlv.add('ENCX25519', enctlv)
 
-            nonce = bytes([0] * 16)
+            nonce = self.enc_nonce
             cipher = Cipher(algorithms.AES(plainkey), modes.CTR(nonce),
                             backend=default_backend())
             encryptor = cipher.encryptor()

@@ -92,7 +92,7 @@ libraries. The whole key encryption can be summarized as:
   keypair. Those keys will be our ephemeral keys.
 * Generate a new secret (DH) using the ephemeral private key and the public key
   that corresponds to the private key embedded in the HW.
-* Derive the new keys from the secret using HKDF (built on HMAC-SHA256). We
+* Derive the new keys from the secret using HKDF (built on HMAC-SHA256). By default we
   are not using a `salt` and using an `info` of `MCUBoot_ECIES_v1`, generating
   48 bytes of key material.
 * A new random encryption key is generated (for AES). This is
@@ -102,7 +102,7 @@ libraries. The whole key encryption can be summarized as:
 * The encrypted key now goes through a HMAC-SHA256 using the remaining 32
   bytes of key material from the HKDF.
 
-The final TLV is built from the 65 bytes for ECIES-P256 or 32 bytes for
+The final TLV is built from the 65 bytes for ECIES-P256  or 32 bytes for
 ECIES-X25519, which correspond to the ephemeral public key, followed by the
 32 bytes of MAC tag and the 16 or 32 bytes of the encrypted key, resulting in
 a TLV of 113 or 129 bytes for ECIES-P256 and 80 or 96 bytes for ECIES-X25519.
@@ -133,7 +133,9 @@ sectors are re-encrypted when copying from the `primary slot` to
 the `secondary slot`.
 
 PS: Each encrypted image must have its own key TLV that should be unique
-and used only for this particular image.
+and used only for this particular image. Random `nonce` and `salt` can be 
+used as addtional sources of randomised data. Security is not compromised 
+however until unique key is used for each encrypted image.
 
 Also when swap method is employed, the sizes of both images are saved to
 the status area just before starting the upgrade process, because it

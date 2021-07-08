@@ -24,6 +24,9 @@
 #include "bootutil/bootutil.h"
 #include "bootutil_priv.h"
 #include "swap_priv.h"
+#ifdef MCUBOOT_SWAP_USING_STATUS
+#include "swap_status.h"
+#endif
 #include "bootutil/bootutil_log.h"
 
 #include "mcuboot_config/mcuboot_config.h"
@@ -115,6 +118,8 @@ done:
     return rc;
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
+
 int
 swap_read_status_bytes(const struct flash_area *fap,
         struct boot_loader_state *state, struct boot_status *bs)
@@ -181,7 +186,7 @@ swap_read_status_bytes(const struct flash_area *fap,
     } else if (found_idx < move_entries) {
         bs->op = BOOT_STATUS_OP_MOVE;
         bs->idx = (found_idx  / BOOT_STATUS_MOVE_STATE_COUNT) + BOOT_STATUS_IDX_0;
-        bs->state = (found_idx % BOOT_STATUS_MOVE_STATE_COUNT) + BOOT_STATUS_STATE_0;;
+        bs->state = (found_idx % BOOT_STATUS_MOVE_STATE_COUNT) + BOOT_STATUS_STATE_0;
     } else {
         bs->op = BOOT_STATUS_OP_SWAP;
         bs->idx = ((found_idx - move_entries) / BOOT_STATUS_SWAP_STATE_COUNT) + BOOT_STATUS_IDX_0;
@@ -208,6 +213,8 @@ boot_status_internal_off(const struct boot_status *bs, int elem_sz)
     return off;
 }
 
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
+
 int
 boot_slots_compatible(struct boot_loader_state *state)
 {
@@ -219,6 +226,12 @@ boot_slots_compatible(struct boot_loader_state *state)
 
     num_sectors_pri = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
     num_sectors_sec = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT);
+
+    if (num_sectors_sec == 0) {
+        BOOT_LOG_WRN("Upgrade disabled for image %d", BOOT_CURR_IMG(state));
+        return 0;
+    }
+
     if ((num_sectors_pri != num_sectors_sec) &&
             (num_sectors_pri != (num_sectors_sec + 1))) {
         BOOT_LOG_WRN("Cannot upgrade: not a compatible amount of sectors");
@@ -442,8 +455,6 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     uint32_t sz;
     uint32_t sector_sz;
     uint32_t idx;
-    uint32_t trailer_sz;
-    uint32_t first_trailer_idx;
     uint8_t image_index;
     const struct flash_area *fap_pri;
     const struct flash_area *fap_sec;
@@ -461,6 +472,10 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
             break;
         }
     }
+
+#ifndef MCUBOOT_SWAP_USING_STATUS
+    uint32_t trailer_sz;
+    uint32_t first_trailer_idx;
 
     /*
      * When starting a new swap upgrade, check that there is enough space.
@@ -484,6 +499,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
             return;
         }
     }
+#endif
 
     image_index = BOOT_CURR_IMG(state);
 
