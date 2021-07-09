@@ -2867,13 +2867,13 @@ boot_load_and_validate_images(struct boot_loader_state *state,
  * Updates the security counter for the current image.
  *
  * @param  state        Boot loader status information.
- * @param  active_slot  Index of the slot will be loaded for current image.
+ * @param  slot_usage   Information about the active and available slots.
  *
  * @return              0 on success; nonzero on failure.
  */
 static int
 boot_update_hw_rollback_protection(struct boot_loader_state *state,
-                                   uint32_t active_slot)
+                                   const struct slot_usage_t slot_usage[])
 {
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     int rc;
@@ -2889,8 +2889,9 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state,
      */
     if (slot_usage[BOOT_CURR_IMG(state)].swap_state.image_ok == BOOT_FLAG_SET) {
 #endif
-        rc = boot_update_security_counter(BOOT_CURR_IMG(state), active_slot,
-                                            boot_img_hdr(state, active_slot));
+        rc = boot_update_security_counter(BOOT_CURR_IMG(state),
+                                          slot_usage[BOOT_CURR_IMG(state)].active_slot,
+                                          boot_img_hdr(state, slot_usage[BOOT_CURR_IMG(state)].active_slot));
         if (rc != 0) {
             BOOT_LOG_ERR("Security counter update failed after image "
                             "validation.");
@@ -2904,8 +2905,7 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state,
 
 #else /* MCUBOOT_HW_ROLLBACK_PROT */
     (void) (state);
-    (void) (active_slot);
-
+    (void) (slot_usage);
     return 0;
 #endif
 }
@@ -2916,7 +2916,6 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     struct slot_usage_t slot_usage[BOOT_IMAGE_NUMBER];
     int rc;
     fih_int fih_rc;
-    uint32_t active_slot;
 
     memset(state, 0, sizeof(struct boot_loader_state));
     memset(slot_usage, 0, sizeof(struct slot_usage_t) * BOOT_IMAGE_NUMBER);
@@ -2949,15 +2948,12 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 #endif
 
     IMAGES_ITER(BOOT_CURR_IMG(state)) {
-
-        active_slot = slot_usage[BOOT_CURR_IMG(state)].active_slot;
-
-        rc = boot_update_hw_rollback_protection(state, active_slot);
+        rc = boot_update_hw_rollback_protection(state, slot_usage);
         if (rc != 0) {
             goto out;
         }
 
-        rc = boot_add_shared_data(state, active_slot);
+        rc = boot_add_shared_data(state, slot_usage[BOOT_CURR_IMG(state)].active_slot);
         if (rc != 0) {
             goto out;
         }
