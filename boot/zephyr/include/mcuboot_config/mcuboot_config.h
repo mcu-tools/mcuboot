@@ -152,6 +152,14 @@
 #endif
 
 /*
+ * The configuration option enables direct image upload with the
+ * serial recovery.
+ */
+#ifdef CONFIG_MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
+#define MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
+#endif
+
+/*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.
  *
