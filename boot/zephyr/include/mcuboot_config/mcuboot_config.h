@@ -163,6 +163,10 @@
 #define MCUBOOT_MGMT_CUSTOM_IMG_LIST
 #endif
 
+#ifdef CONFIG_BOOT_IMAGE_ACCESS_HOOKS
+#define MCUBOOT_IMAGE_ACCESS_HOOKS
+#endif
+
 /*
  * The configuration option enables direct image upload with the
  * serial recovery.

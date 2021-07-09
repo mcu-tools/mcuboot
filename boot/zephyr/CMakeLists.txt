@@ -302,3 +302,27 @@ zephyr_library_sources(
   ${BOOT_DIR}/zephyr/arm_cleanup.c
 )
 endif()
+
+if(CONFIG_BOOT_IMAGE_ACCESS_HOOKS)
+
+  if(IS_ABSOLUTE ${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE})
+    if(EXISTS ${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE})
+      set(HOOKS_FILE ${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE})
+    endif()
+  elseif((DEFINED CONF_DIR) AND
+  (EXISTS ${CONF_DIR}/${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE}))
+    set(HOOKS_FILE ${CONF_DIR}/${CONFIG_BOOT_SIGNATURE_KEY_FILE})
+  else(EXISTS ${BOOT_DIR}/zephyr/${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE})
+    set(HOOKS_FILE ${BOOT_DIR}/zephyr/${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE})
+  endif()
+
+
+  if(DEFINED HOOKS_FILE)
+    zephyr_library_sources(
+      ${HOOKS_FILE}
+    )
+  else()
+    message(WARNING "Can't access hooks implementation file.")
+  endif()
+
+endif()
