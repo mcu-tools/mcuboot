@@ -160,6 +160,18 @@
 #endif
 
 /*
+ * The option enables code, currently in boot_serial, that attempts
+ * to erase flash progressively, as update fragments are received,
+ * instead of erasing whole image size of flash area after receiving
+ * first frame.
+ * Enabling this options prevents stalling the beginning of transfer
+ * for the time needed to erase large chunk of flash.
+ */
+#ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
+#define MCBOOT_ERASE_PROGRESSIVELY
+#endif
+
+/*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.
  *
