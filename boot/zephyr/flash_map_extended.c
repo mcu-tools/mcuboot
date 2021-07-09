@@ -93,6 +93,30 @@ int flash_area_id_to_image_slot(int area_id)
     return flash_area_id_to_multi_image_slot(0, area_id);
 }
 
+#if defined(CONFIG_MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
+int flash_area_id_from_direct_image(int image_id)
+{
+    switch (image_id) {
+    case 0:
+    case 1:
+        return FLASH_AREA_ID(image_0);
+#if DT_HAS_FIXED_PARTITION_LABEL(image_1)
+    case 2:
+        return FLASH_AREA_ID(image_1);
+#endif
+#if DT_HAS_FIXED_PARTITION_LABEL(image_2)
+    case 3:
+        return FLASH_AREA_ID(image_2);
+#endif
+#if DT_HAS_FIXED_PARTITION_LABEL(image_3)
+    case 4:
+        return FLASH_AREA_ID(image_3);
+#endif
+    }
+    return -EINVAL;
+}
+#endif
+
 int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
 {
     int rc;

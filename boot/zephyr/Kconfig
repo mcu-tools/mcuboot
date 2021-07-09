@@ -493,6 +493,21 @@ config BOOT_SERIAL_CDC_ACM
 
 endchoice
 
+config MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
+	bool "Allow to select image number for DFU"
+	help
+	  With the option enabled, the mcuboot serial recovery will
+	  respect the "image" field in mcumgr image update frame
+	  header.
+	  The mapping of image number to partition is as follows:
+	    0 -> default behaviour, same as 1;
+	    1 -> image-0 (primary slot of the first image);
+	    2 -> image-1 (secondary slot of the first image);
+	    3 -> image-2;
+	    4 -> image-3.
+	  Note that 0 is default upload target when no explicit
+	  selection is done.
+
 config MCUBOOT_INDICATION_LED
 	bool "Turns on LED indication when device is in DFU"
 	default n
