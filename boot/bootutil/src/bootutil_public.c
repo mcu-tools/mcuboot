@@ -50,6 +50,8 @@
 #include "bootutil/enc_key_public.h"
 #endif
 
+#include "bootutil/boot_public_hooks.h"
+
 #ifdef CONFIG_MCUBOOT
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 #else
@@ -417,8 +419,14 @@ boot_swap_type_multi(int image_index)
     int rc;
     size_t i;
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
-                                    &primary_slot);
+#ifdef MCUBOOT_IMAGE_ACCESS_HOOKS
+    rc = boot_read_swap_state_primary_slot_hook(image_index, &primary_slot);
+    if (rc == 1)
+#endif
+    {
+        rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
+                                        &primary_slot);
+    }
     if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
     }
