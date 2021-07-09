@@ -2868,12 +2868,14 @@ boot_load_and_validate_images(struct boot_loader_state *state,
  *
  * @param  state        Boot loader status information.
  * @param  active_slot  Index of the slot will be loaded for current image.
+ * @param  slot_usage   Information about the active and available slots.
  *
  * @return              0 on success; nonzero on failure.
  */
 static int
 boot_update_hw_rollback_protection(struct boot_loader_state *state,
-                                   uint32_t active_slot)
+                                   uint32_t active_slot,
+                                   const struct slot_usage_t slot_usage[])
 {
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     int rc;
@@ -2905,7 +2907,7 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state,
 #else /* MCUBOOT_HW_ROLLBACK_PROT */
     (void) (state);
     (void) (active_slot);
-
+    (void) (slot_usage);
     return 0;
 #endif
 }
@@ -2952,7 +2954,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 
         active_slot = slot_usage[BOOT_CURR_IMG(state)].active_slot;
 
-        rc = boot_update_hw_rollback_protection(state, active_slot);
+        rc = boot_update_hw_rollback_protection(state, active_slot, slot_usage);
         if (rc != 0) {
             goto out;
         }
