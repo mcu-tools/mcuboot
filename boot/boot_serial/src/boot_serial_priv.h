@@ -65,6 +65,19 @@ struct nmgr_hdr {
 void boot_serial_input(char *buf, int len);
 extern const struct boot_uart_funcs *boot_uf;
 
+/**
+ * @brief Selects direct image to upload according to the "image"
+ * parameter of the mcumgr update frame.
+ *
+ * @param[in] image_id  the value of the "image" parameter of the
+ *                      mcumgr update frame to be translated.
+ *
+ * @return flash area ID for the image if defined;
+ *         -EINVAL when flash area for given image number has not been
+ *         defined.
+ */
+extern int flash_area_id_from_direct_image(int image_id);
+
 #ifdef __cplusplus
 }
 #endif
