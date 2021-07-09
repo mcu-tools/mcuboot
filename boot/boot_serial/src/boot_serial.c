@@ -54,7 +54,7 @@
 #include "boot_serial/boot_serial.h"
 #include "boot_serial_priv.h"
 
-#ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
+#ifdef MCUBOOT_ERASE_PROGRESSIVELY
 #include "bootutil_priv.h"
 #endif
 
@@ -218,7 +218,7 @@ bs_upload(char *buf, int len)
     size_t slen;
     const struct flash_area *fap = NULL;
     int rc;
-#ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
+#ifdef MCUBOOT_ERASE_PROGRESSIVELY
     static off_t off_last = -1;
     struct flash_sector sector;
 #endif
@@ -285,7 +285,7 @@ bs_upload(char *buf, int len)
         if (data_len > flash_area_get_size(fap)) {
             goto out_invalid_data;
         }
-#ifndef CONFIG_BOOT_ERASE_PROGRESSIVELY
+#ifndef MCUBOOT_ERASE_PROGRESSIVELY
         rc = flash_area_erase(fap, 0, flash_area_get_size(fap));
         if (rc) {
             goto out_invalid_data;
@@ -310,7 +310,7 @@ bs_upload(char *buf, int len)
         rem_bytes = 0;
     }
 
-#ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
+#ifdef MCUBOOT_ERASE_PROGRESSIVELY
     rc = flash_area_sector_from_off(curr_off + img_blen, &sector);
     if (rc) {
         BOOT_LOG_ERR("Unable to determine flash sector size");
@@ -357,7 +357,7 @@ bs_upload(char *buf, int len)
 
     if (rc == 0) {
         curr_off += img_blen;
-#ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
+#ifdef MCUBOOT_ERASE_PROGRESSIVELY
         if (curr_off == img_size) {
             /* get the last sector offset */
             rc = flash_area_sector_from_off(boot_status_off(fap), &sector);
