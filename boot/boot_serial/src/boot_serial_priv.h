@@ -36,13 +36,17 @@ extern "C" {
 /*
  * From newtmgr.h
  */
+#define MGMT_ERR_OK             0
+#define MGMT_ERR_EUNKNOWN       2
 #define MGMT_ERR_EINVAL         3
+#define MGMT_ERR_ENOTSUP        8
 
 #define NMGR_OP_READ            0
 #define NMGR_OP_WRITE           2
 
 #define MGMT_GROUP_ID_DEFAULT   0
 #define MGMT_GROUP_ID_IMAGE     1
+#define MGMT_GROUP_ID_PERUSER  64
 
 #define NMGR_ID_CONS_ECHO_CTRL  1
 #define NMGR_ID_RESET           5

@@ -60,6 +60,12 @@
 #define MCUBOOT_IMAGE_NUMBER 1
 
 /*
+ * Currently there is no configuration option, for this platform,
+ * that enables the system specific mcumgr commands in mcuboot
+ */
+#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 0
+
+/*
  * Encrypted Images
  */
 #if defined(MCUBOOT_ENCRYPT_RSA) || defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
