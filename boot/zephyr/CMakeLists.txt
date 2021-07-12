@@ -296,3 +296,9 @@ zephyr_library_sources(
   ${BOOT_DIR}/zephyr/arm_cleanup.c
 )
 endif()
+
+if(CONFIG_BOOT_IMAGE_ACCESS_HOOKS)
+zephyr_library_sources(
+  ${BOOT_DIR}/zephyr/hooks_sample.c
+)
+endif()

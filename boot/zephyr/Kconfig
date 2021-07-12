@@ -604,6 +604,12 @@ config BOOT_WATCHDOG_FEED
 	  Enables implementation of MCUBOOT_WATCHDOG_FEED() macro which is
 	  used to feed watchdog while doing time consuming operations.
 
+config BOOT_IMAGE_ACCESS_HOOKS
+	bool "Hooks for override MCUboot's native routines"
+	help
+	  Allow to provide procedures for override native MCUboot's routines
+	  required for access the image data and the image update.
+
 endmenu
 
 config MCUBOOT_DEVICE_SETTINGS

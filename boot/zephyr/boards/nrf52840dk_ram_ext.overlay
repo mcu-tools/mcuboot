@@ -1,0 +1,74 @@
+/*
+ * Copyright (c) 2021 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/delete-node/ &slot1_partition;
+/delete-node/ &slot0_partition;
+/delete-node/ &boot_partition;
+
+&flash0 {
+	partitions {
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x000000000 0x00010000>;
+		};
+		slot0_partition: partition@10000 {
+			label = "image-0";
+			reg = <0x000010000 0x00000A000>;
+		};
+		slot1_partition: partition@1A000 {
+			label = "image-1";
+			reg = <0x00001A000 0x00000A000>;
+		};
+	};
+};
+
+&mx25r64 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		slot3_partition: partition@0 {
+			label = "image-3";
+			reg = <0x000000000 0x00000A000>;
+		};
+	};
+};
+
+/ {
+	soc {
+		flash_controller2: flash-controller@2 {
+			compatible = "zephyr,sim-flash";
+			reg = <0x00000000 DT_SIZE_K(40)>;
+
+			#address-cells = <1>;
+			#size-cells = <1>;
+			erase-value = <0xff>;
+
+			label = "flash_ctrl";
+
+			flash_sim0: flash_sim@0 {
+				status = "okay";
+				compatible = "soc-nv-flash";
+				label = "simulated_flash";
+				erase-block-size = <4096>;
+				write-block-size = <1>;
+				reg = <0x00000000 DT_SIZE_K(40)>;
+
+				partitions {
+					compatible = "fixed-partitions";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					slot2_partition: partition@0 {
+						label = "image-2";
+						reg = <0x00000000 0x00000A000>;
+					};
+				};
+			};
+		};
+	};
+};
