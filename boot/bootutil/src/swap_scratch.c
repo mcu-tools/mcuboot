@@ -74,9 +74,18 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
         }
         else if (bs->state == BOOT_STATUS_STATE_2) {
             if (slot == 0) {
+#if MCUBOOT_SWAP_USING_SCRATCH
+                uint32_t image_proc_size = boot_scratch_area_size(state) * bs->idx;
+                if ((boot_img_hdr(state, BOOT_SECONDARY_SLOT)->ih_img_size - boot_img_hdr(state, BOOT_PRIMARY_SLOT)->ih_img_size) < image_proc_size) {
+                    slot = 1;
+                }
+                else {
+                    slot = 2;
+                }
+#else
                 slot = 1;
-            }
-            else {
+#endif
+            } else {
                 slot = 2;
             }
         }
@@ -468,7 +477,7 @@ swap_status_source(struct boot_loader_state *state)
         {
             source = table->bst_status_source;
 
-#if (BOOT_IMAGE_NUMBER > 1) && MCUBOOT_SWAP_USING_SCRATCH
+#if (BOOT_IMAGE_NUMBER > 1)
             /* In case of multi-image boot it can happen that if boot status
              * info is found on scratch area then it does not belong to the
              * currently examined image.
@@ -570,8 +579,12 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     img_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx);
 
     copy_sz = sz;
-    // trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state)); // TODO: fixme for status use case
-    trailer_sz = BOOT_WRITE_SZ(state);
+
+#ifdef MCUBOOT_SWAP_USING_STATUS
+    trailer_sz = BOOT_WRITE_SZ(state); // TODO: deep investigation in swap_status use case
+#else
+    trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
+#endif
 
     /* sz in this function is always sized on a multiple of the sector size.
      * The check against the start offset of the last sector
