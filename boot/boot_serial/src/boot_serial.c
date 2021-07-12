@@ -274,7 +274,11 @@ bs_upload(char *buf, int len)
         goto out_invalid_data;
     }
 
+#if !defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
     rc = flash_area_open(flash_area_id_from_multi_image_slot(img_num, 0), &fap);
+#else
+    rc = flash_area_open(flash_area_id_from_direct_image(img_num), &fap);
+#endif
     if (rc) {
         rc = MGMT_ERR_EINVAL;
         goto out;
