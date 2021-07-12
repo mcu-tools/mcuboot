@@ -294,6 +294,9 @@ class BasedIntParamType(click.ParamType):
               default='hash', help='In what format to add the public key to '
               'the image manifest: full key or hash of the key.')
 @click.option('-k', '--key', metavar='filename')
+@click.option('--use-random-iv', default=False, is_flag=True,
+              help='Use random Salt and IV (initial vectors) for the image '
+              'encrypting scheme')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
@@ -301,7 +304,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt_keylen, encrypt, infile, outfile, dependencies,
          load_addr, hex_addr, erased_val, save_enctlv, security_counter,
-         boot_record, custom_tlv, rom_fixed):
+         boot_record, custom_tlv, rom_fixed, use_random_iv):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -348,7 +351,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             custom_tlvs[tag] = value.encode('utf-8')
 
     img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, int(encrypt_keylen))
+               custom_tlvs, int(encrypt_keylen), use_random_iv=use_random_iv)
     img.save(outfile, hex_addr)
 
 

@@ -83,10 +83,11 @@ OBJCOPY  := "$(GCC_PATH)/bin/arm-none-eabi-objcopy"
 ifeq ($(COMPILER), GCC_ARM)
 	# set build-in compiler flags
 	CFLAGS_COMMON := -mcpu=cortex-$(CORE_SIFFX) -mthumb -mfloat-abi=soft -fno-stack-protector -ffunction-sections -fdata-sections -ffat-lto-objects -fstrict-aliasing -g -Wall -Wextra
+	# preset default level of optimization - can be changed in application.mk
 	ifeq ($(BUILDCFG), Debug)
-		CFLAGS_COMMON += -Og -g3
+		CFLAGS_OPTIMIZATION ?= -Og -g3
 	else ifeq ($(BUILDCFG), Release)
-		CFLAGS_COMMON += -Os -g
+		CFLAGS_OPTIMIZATION ?= -Os -g
 	else
 $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif
@@ -96,9 +97,10 @@ $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 
 	LDFLAGS_COMMON := -mcpu=cortex-$(CORE_SIFFX) -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -L "$(GCC_PATH)/lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m" -ffat-lto-objects -g --enable-objc-gc
 	ifeq ($(BUILDCFG), Debug)
-		LDFLAGS_COMMON += -Og
+	# preset default level of optimization - can be changed in application.mk
+		LDFLAGS_OPTIMIZATION ?= -Og
 	else ifeq ($(BUILDCFG), Release)
-		LDFLAGS_COMMON += -Os
+		LDFLAGS_OPTIMIZATION ?= -Os
 	else
 $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif
