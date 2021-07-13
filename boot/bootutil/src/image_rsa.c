@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2018 Linaro LTD
  * Copyright (c) 2017-2019 JUUL Labs
- * Copyright (c) 2020 Arm Limited
+ * Copyright (c) 2020-2021 Arm Limited
  *
  * Original license:
  *
@@ -32,6 +32,7 @@
 #ifdef MCUBOOT_SIGN_RSA
 #include "bootutil/sign_key.h"
 #include "bootutil/crypto/sha256.h"
+#include "bootutil/crypto/common.h"
 
 #include "mbedtls/rsa.h"
 #include "mbedtls/asn1.h"
@@ -88,12 +89,12 @@ bootutil_parse_rsakey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
         return -2;
     }
 
-    if ((rc = mbedtls_asn1_get_mpi(p, end, &ctx->N)) != 0 ||
-      (rc = mbedtls_asn1_get_mpi(p, end, &ctx->E)) != 0) {
+    if ((rc = mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(N))) != 0 ||
+        (rc = mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(E))) != 0) {
         return -3;
     }
 
-    ctx->len = mbedtls_mpi_size(&ctx->N);
+    ctx->MBEDTLS_CONTEXT_MEMBER(len) = mbedtls_mpi_size(&ctx->MBEDTLS_CONTEXT_MEMBER(N));
 
     if (*p != end) {
         return -4;
@@ -101,7 +102,8 @@ bootutil_parse_rsakey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
 
     /* The mbedtls version is more than 2.6.1 */
 #if MBEDTLS_VERSION_NUMBER > 0x02060100
-    rc = mbedtls_rsa_import(ctx, &ctx->N, NULL, NULL, NULL, &ctx->E);
+    rc = mbedtls_rsa_import(ctx, &ctx->MBEDTLS_CONTEXT_MEMBER(N), NULL,
+                            NULL, NULL, &ctx->MBEDTLS_CONTEXT_MEMBER(E));
     if (rc != 0) {
         return -5;
     }
@@ -112,7 +114,7 @@ bootutil_parse_rsakey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
         return -6;
     }
 
-    ctx->len = mbedtls_mpi_size(&ctx->N);
+    ctx->MBEDTLS_CONTEXT_MEMBER(len) = mbedtls_mpi_size(&ctx->MBEDTLS_CONTEXT_MEMBER(N));
 
     return 0;
 }
@@ -171,7 +173,8 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
     int rc = 0;
     fih_int fih_rc = FIH_FAILURE;
 
-    if (ctx->len != PSS_EMLEN || PSS_EMLEN > MBEDTLS_MPI_MAX_SIZE) {
+    if (ctx->MBEDTLS_CONTEXT_MEMBER(len) != PSS_EMLEN ||
+        PSS_EMLEN > MBEDTLS_MPI_MAX_SIZE) {
         rc = -1;
         goto out;
     }
@@ -296,13 +299,17 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     uint8_t *cp;
     uint8_t *end;
 
+#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+    mbedtls_rsa_init(&ctx);
+#else
     mbedtls_rsa_init(&ctx, 0, 0);
+#endif
 
     cp = (uint8_t *)bootutil_keys[key_id].key;
     end = cp + *bootutil_keys[key_id].len;
 
     rc = bootutil_parse_rsakey(&ctx, &cp, end);
-    if (rc || slen != ctx.len) {
+    if (rc || slen != ctx.MBEDTLS_CONTEXT_MEMBER(len)) {
         mbedtls_rsa_free(&ctx);
         goto out;
     }

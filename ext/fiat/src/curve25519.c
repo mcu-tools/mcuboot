@@ -36,6 +36,10 @@
 #if defined(MCUBOOT_USE_MBED_TLS)
 #include <mbedtls/platform_util.h>
 #include <mbedtls/sha512.h>
+#include <mbedtls/version.h>
+    #if MBEDTLS_VERSION_NUMBER >= 0x03000000
+        #include <mbedtls/compat-2.x.h>
+    #endif
 #else
 #include <tinycrypt/constants.h>
 #include <tinycrypt/utils.h>
