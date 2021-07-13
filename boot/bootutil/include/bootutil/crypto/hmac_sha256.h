@@ -22,7 +22,6 @@
     #include <stddef.h>
     #include <mbedtls/cmac.h>
     #include <mbedtls/md.h>
-    #include <mbedtls/md_internal.h>
 #endif /* MCUBOOT_USE_MBED_TLS */
 
 #if defined(MCUBOOT_USE_TINYCRYPT)

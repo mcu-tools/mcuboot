@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2016-2018 JUUL Labs
+ * Copyright (C) 2021 Arm Limited
  *
  * Original license:
  *
@@ -34,6 +35,7 @@
 #include "mbedtls/oid.h"
 #include "mbedtls/asn1.h"
 
+#include "bootutil/crypto/common.h"
 #include "bootutil_priv.h"
 
 /*
@@ -70,7 +72,7 @@ bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
         return -4;
     }
 
-    if (mbedtls_ecp_group_load(&ctx->grp, MBEDTLS_ECP_DP_SECP224R1)) {
+    if (mbedtls_ecp_group_load(&ctx->MBEDTLS_CONTEXT_MEMBER(grp), MBEDTLS_ECP_DP_SECP224R1)) {
         return -5;
     }
 
@@ -81,11 +83,11 @@ bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
         return -7;
     }
 
-    if (mbedtls_ecp_point_read_binary(&ctx->grp, &ctx->Q, *p, end - *p)) {
+    if (mbedtls_ecp_point_read_binary(&ctx->MBEDTLS_CONTEXT_MEMBER(grp), &ctx->MBEDTLS_CONTEXT_MEMBER(Q), *p, end - *p)) {
         return -8;
     }
 
-    if (mbedtls_ecp_check_pubkey(&ctx->grp, &ctx->Q)) {
+    if (mbedtls_ecp_check_pubkey(&ctx->MBEDTLS_CONTEXT_MEMBER(grp), &ctx->MBEDTLS_CONTEXT_MEMBER(Q))) {
         return -9;
     }
     return 0;
