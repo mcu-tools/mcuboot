@@ -24,6 +24,7 @@
 
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
 #include <bootutil/bootutil_log.h>
+#include "bootutil/crypto/common.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -91,15 +92,15 @@ parse_pubkey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
         return -6;
     }
 
-    if (mbedtls_asn1_get_mpi(p, end, &ctx->N) != 0) {
+    if (mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(N)) != 0) {
         return -7;
     }
 
-    if (mbedtls_asn1_get_mpi(p, end, &ctx->E) != 0) {
+    if (mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(E)) != 0) {
         return -8;
     }
 
-    ctx->len = mbedtls_mpi_size(&ctx->N);
+    ctx->MBEDTLS_CONTEXT_MEMBER(len) = mbedtls_mpi_size(&ctx->MBEDTLS_CONTEXT_MEMBER(N));
 
     if (*p != end) {
         return -9;
@@ -141,7 +142,12 @@ int rsa_oaep_encrypt_(const uint8_t *pubkey, unsigned pubkey_len,
 
     mbedtls_platform_set_calloc_free(calloc, free);
 
+#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+    mbedtls_rsa_init(&ctx);
+    mbedtls_rsa_set_padding(&ctx, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
+#else
     mbedtls_rsa_init(&ctx, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
+#endif
 
     cp = (uint8_t *)pubkey;
     cpend = cp + pubkey_len;
@@ -151,8 +157,13 @@ int rsa_oaep_encrypt_(const uint8_t *pubkey, unsigned pubkey_len,
         goto done;
     }
 
+#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+    rc = mbedtls_rsa_rsaes_oaep_encrypt(&ctx, fake_rng, NULL,
+            NULL, 0, seckey_len, seckey, encbuf);
+#else
     rc = mbedtls_rsa_rsaes_oaep_encrypt(&ctx, fake_rng, NULL, MBEDTLS_RSA_PUBLIC,
             NULL, 0, seckey_len, seckey, encbuf);
+#endif
     if (rc) {
         goto done;
     }
