@@ -119,4 +119,22 @@ int boot_perform_update_hook(int img_index, struct image_header *img_head,
 int boot_copy_region_post_hook(int img_index, const struct flash_area *area,
                                size_t size);
 
+/** Hook for implement image's post recovery upload action
+ *
+ * This hook is for implement action which might be done right after image was
+ * copied to the primary slot. This hook is called in serial recovery upload
+ * operation.
+ *
+ * @param img_index the index of the image pair
+ * @param area the flash area of the primary image.
+ * @param size size of copied image.
+ *
+ * @retval 0: success, mcuboot will follow normal code execution flow after
+ *            execution of this call.
+ *         non-zero: an error, will be transferred as part of comand response
+ *            as "rc" entry.
+ */
+int boot_serial_uploaded_hook(int img_index, const struct flash_area *area,
+                              size_t size);
+
 #endif /*H_BOOTUTIL_HOOKS*/
