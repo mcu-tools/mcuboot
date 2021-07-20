@@ -20,6 +20,14 @@ endif()
 
 execute_process(
     COMMAND git describe --tags
+    WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+    OUTPUT_VARIABLE MCUBOOT_VER
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+add_definitions(-DMCUBOOT_VER=\"${MCUBOOT_VER}\")
+
+execute_process(
+    COMMAND git describe --tags
     WORKING_DIRECTORY ${IDF_PATH}
     OUTPUT_VARIABLE IDF_VER
     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -145,6 +153,7 @@ target_sources(
     ${bootutil_srcs}
     ${mbedtls_srcs}
     ${CMAKE_CURRENT_LIST_DIR}/port/esp_mcuboot.c
+    ${CMAKE_CURRENT_LIST_DIR}/port/esp_loader.c
     )
 
 target_include_directories(
