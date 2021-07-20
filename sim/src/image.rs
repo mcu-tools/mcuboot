@@ -20,8 +20,10 @@ use rand::{
 };
 use std::{
     collections::{BTreeMap, HashSet},
-    io::{Cursor, Write},
+    fs::File,
+    io::{Cursor, Read, Write},
     mem,
+    path::Path,
     slice,
 };
 use aes_ctr::{
@@ -275,6 +277,35 @@ impl ImagesBuilder {
             }}).collect();
         Images {
             flash: bad_flash,
+            areadesc: self.areadesc,
+            images,
+            total_count: None,
+            ram: self.ram,
+        }
+    }
+
+    pub fn make_loaded_image<P>(self, path: P) -> Images
+        where P: AsRef<Path>,
+    {
+        // let num_images = self.num_images();
+        let mut flash = self.flash;
+        // let ram = self.ram.clone();  // TODO: Avoid this clone.
+        let images = self.slots.into_iter().enumerate().map(|(_image_num, slots)| {
+            let primaries = load_image(&mut flash, &slots[0], path.as_ref());
+            /*
+            let upgrades = match deps.depends[image_num] {
+                DepType::NoUpgrade => install_no_image(),
+                _ => todo!(), // install_image(&mut flash, &slots[1], size, &ram, &*dep, false)
+            };
+            */
+            let upgrades = install_no_image();
+            OneImage {
+                slots,
+                primaries,
+                upgrades,
+            }}).collect();
+        Images {
+            flash,
             areadesc: self.areadesc,
             images,
             total_count: None,
@@ -1081,6 +1112,18 @@ impl Images {
         return false;
     }
 
+    /// Verify a normal boot works on the first image.
+    pub fn test_normal_boot(&self) -> bool {
+        let mut flash = self.flash.clone();
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+            warn!("Failed to boot image");
+            return true;
+        }
+
+        false
+    }
+
     /// Adds a new flash area that fails statistically
     fn mark_bad_status_with_rate(&self, flash: &mut SimMultiFlash, slot: usize,
                                  rate: f32) {
@@ -1576,6 +1619,37 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
             plain: copy,
             cipher: enc_copy,
         }
+    }
+}
+
+/// Install an image coming from an external file.  Returns a copy of the image that was written.
+fn load_image(flash: &mut SimMultiFlash, slot: &SlotInfo, path: &Path) -> ImageData {
+    let mut buf = vec![];
+    // This is not in a Result context, so just expect these.
+    File::open(path).expect("open image file").read_to_end(&mut buf).expect("read data from image file");
+
+    // Corrupt the image so that it doesn't validate.
+    // buf[1025] ^= 1;
+
+    // Corrupt the image.
+    buf[1025] ^= 1;
+
+    // Pad the image to the largest alignment.
+    while buf.len() & 15 != 0 {
+        buf.push(0xFF);
+    }
+
+    let offset = slot.base_off;
+    let dev_id = slot.dev_id;
+    let dev = flash.get_mut(&dev_id).unwrap();
+
+    dev.write(offset, &buf).unwrap();
+    let mut copy = vec![0u8; buf.len()];
+    dev.read(offset, &mut copy).unwrap();
+
+    ImageData {
+        plain: copy,
+        cipher: None,
     }
 }
 

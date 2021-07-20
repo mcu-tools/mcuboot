@@ -62,6 +62,8 @@ sim_test!(downgrade_prevention, make_image(&REV_DEPS, true), run_nodowngrade());
 sim_test!(direct_xip_first, make_no_upgrade_image(&NO_DEPS), run_direct_xip());
 sim_test!(ram_load_first, make_no_upgrade_image(&NO_DEPS), run_ram_load());
 
+sim_test!(external_load, make_loaded_image("loaded.suit"), test_normal_boot());
+
 // Test various combinations of incorrect dependencies.
 test_shell!(dependency_combos, r, {
     // Only test setups with two images.
