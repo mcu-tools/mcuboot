@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2016-2020 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2021 Arm Limited
  *
  * Original license:
  *
@@ -2322,6 +2322,15 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
                              * version.
                              */
                             continue;
+                        } else {
+                            /* An image with a greater version number has
+                             * been found.
+                             * Sanitize the 'rc' variable to prevent the
+                             * occurrence of a false error condition (its value
+                             * may not be overwritten until the end of the
+                             * function).
+                             */
+                            rc = 0;
                         }
                     }
                     selected_slot = slot;
