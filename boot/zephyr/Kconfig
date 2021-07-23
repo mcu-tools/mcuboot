@@ -29,7 +29,6 @@ config BOOT_USE_TINYCRYPT
 	# When building for ECDSA, we use our own copy of mbedTLS, so the
 	# Zephyr one must not be enabled or the MBEDTLS_CONFIG_FILE macros
 	# will collide.
-	depends on ! MBEDTLS
 	help
 	  Use TinyCrypt for crypto primitives.
 
@@ -40,7 +39,6 @@ config BOOT_USE_CC310
 	# When building for ECDSA, we use our own copy of mbedTLS, so the
 	# Zephyr one must not be enabled or the MBEDTLS_CONFIG_FILE macros
 	# will collide.
-	depends on ! MBEDTLS
 	help
 	  Use cc310 for crypto primitives.
 

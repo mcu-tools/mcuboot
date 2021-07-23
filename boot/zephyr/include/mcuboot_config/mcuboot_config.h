@@ -34,6 +34,14 @@
 #define MCUBOOT_SIGN_ED25519
 #endif
 
+#if defined(CONFIG_BOOT_USE_TINYCRYPT)
+#  if defined(CONFIG_MBEDTLS) || defined(CONFIG_BOOT_USE_CC310)
+#     error "One crypto library implementation allowed at a time."
+#  endif
+#elif defined(CONFIG_MBEDTLS) && defined(CONFIG_BOOT_USE_CC310)
+#     error "One crypto library implementation allowed at a time."
+#endif
+
 #ifdef CONFIG_BOOT_USE_MBEDTLS
 #define MCUBOOT_USE_MBED_TLS
 #elif defined(CONFIG_BOOT_USE_TINYCRYPT)
