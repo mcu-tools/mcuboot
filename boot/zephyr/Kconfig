@@ -663,10 +663,6 @@ config MULTITHREADING
 	default n if SOC_FAMILY_NRF
 	default y
 
-config LOG_IMMEDIATE
-	default n if MULTITHREADING
-	default y
-
 config LOG_PROCESS_THREAD
 	default n # mcuboot has its own log processing thread
 
