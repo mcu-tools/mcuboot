@@ -1,34 +1,42 @@
 sample:
   description: mcuboot test build sample
   name: mcuboot
-common:
-  integration_platforms:
-    - nrf52840dk_nrf52840
-    - nrf52840dongle_nrf52840
 
 tests:
   sample.bootloader.mcuboot:
     tags: bootloader_mcuboot
     platform_allow: nrf52840dk_nrf52840 frdm_k64f
+    integration_platforms:
+      - nrf52840dk_nrf52840
   sample.bootloader.mcuboot.serial_recovery:
     extra_args: OVERLAY_CONFIG=serial_recovery.conf
     platform_allow:  nrf52840dk_nrf52840
+    integration_platforms:
+      - nrf52840dk_nrf52840
     tags: bootloader_mcuboot
   sample.bootloader.mcuboot.usb_cdc_acm_recovery:
     tags: bootloader_mcuboot
     platform_allow:  nrf52840dongle_nrf52840
+    integration_platforms:
+      - nrf52840dongle_nrf52840
   sample.bootloader.mcuboot.usb_cdc_acm_recovery_log:
     extra_args: OVERLAY_CONFIG=./usb_cdc_acm_log_recovery.conf
       DTC_OVERLAY_FILE=./boards/nrf52840_big.overlay
     platform_allow:  nrf52840dk_nrf52840
+    integration_platforms:
+      - nrf52840dk_nrf52840
     tags: bootloader_mcuboot
   sample.bootloader.mcuboot.single_slot:
     extra_args: OVERLAY_CONFIG=./single_slot.conf
       DTC_OVERLAY_FILE=./boards/nrf52840_single_slot.overlay
     platform_allow:  nrf52840dk_nrf52840
+    integration_platforms:
+      - nrf52840dk_nrf52840
     tags: bootloader_mcuboot
   sample.bootloader.mcuboot.qspi_nor_slot:
     extra_args: DTC_OVERLAY_FILE=./boards/nrf52840dk_qspi_nor_secondary.overlay
       OVERLAY_CONFIG="./boards/nrf52840dk_qspi_nor.conf;./boards/nrf52840dk_qspi_secondary_boot.conf"
     platform_allow: nrf52840dk_nrf52840
+    integration_platforms:
+      - nrf52840dk_nrf52840
     tags: bootloader_mcuboot
