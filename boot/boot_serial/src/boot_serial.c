@@ -103,8 +103,9 @@ static cbor_state_t cbor_state = {
 };
 
 /**
- * Function that processes MGMT_GROUP_ID_PERUSER mcumgr commands.
- * The function is system specific as the PERUSER commands are system specific.
+ * Function that processes MGMT_GROUP_ID_PERUSER mcumgr group and may be
+ * used to process any groups that have not been processed by generic boot
+ * serial implementation.
  *
  * @param[in] hdr -- the decoded header of mcumgr message;
  * @param[in] buffer -- buffer with first mcumgr message;
@@ -504,8 +505,7 @@ boot_serial_input(char *buf, int len)
         default:
             break;
         }
-    } else if (MCUBOOT_PERUSER_MGMT_GROUP_ENABLED == 1 &&
-               hdr->nh_group >= MGMT_GROUP_ID_PERUSER) {
+    } else if (MCUBOOT_PERUSER_MGMT_GROUP_ENABLED == 1) {
         if (bs_peruser_system_specific(hdr, buf, len, &cbor_state) == 0) {
             boot_serial_output();
         }
