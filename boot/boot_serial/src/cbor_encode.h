@@ -55,10 +55,10 @@ bool bstrx_encode(cbor_state_t *state, const cbor_string_type_t *result);
 bool tstrx_encode(cbor_state_t *state, const cbor_string_type_t *result);
 
 #define tstrx_put(state, string) \
-	tstrx_encode(state, &(cbor_string_type_t){.value = (const uint8_t *)string, len = (sizeof(string) - 1)})
+	tstrx_encode(state, &(cbor_string_type_t){.value = (const uint8_t *)string, .len = (sizeof(string) - 1)})
 
 #define tstrx_put_term(state, string) \
-	tstrx_encode(state, &(cbor_string_type_t){.value = (const uint8_t *)string, len = strlen((const char *)string)})
+	tstrx_encode(state, &(cbor_string_type_t){.value = (const uint8_t *)string, .len = strlen((const char *)string)})
 
 /** Encode a LIST header.
  *
