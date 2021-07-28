@@ -444,14 +444,14 @@ out:
 }
 
 /*
- * Console echo control/image erase. Send empty response, don't do anything.
+ * Send rc code only.
  */
 static void
-bs_empty_rsp(char *buf, int len)
+bs_rc_rsp(int rc_code)
 {
     map_start_encode(&cbor_state, 10);
     tstrx_put(&cbor_state, "rc");
-    uintx32_put(&cbor_state, 0);
+    uintx32_put(&cbor_state, rc_code);
     map_end_encode(&cbor_state, 10);
     boot_serial_output();
 }
@@ -463,7 +463,7 @@ bs_empty_rsp(char *buf, int len)
 static void
 bs_reset(char *buf, int len)
 {
-    bs_empty_rsp(buf, len);
+    bs_rc_rsp(0);
 
 #ifdef __ZEPHYR__
 #ifdef CONFIG_MULTITHREADING
@@ -515,24 +515,27 @@ boot_serial_input(char *buf, int len)
             bs_upload(buf, len);
             break;
         default:
-            bs_empty_rsp(buf, len);
+            bs_rc_rsp(MGMT_ERR_ENOTSUP);
             break;
         }
     } else if (hdr->nh_group == MGMT_GROUP_ID_DEFAULT) {
         switch (hdr->nh_id) {
         case NMGR_ID_CONS_ECHO_CTRL:
-            bs_empty_rsp(buf, len);
+            bs_rc_rsp(0);
             break;
         case NMGR_ID_RESET:
             bs_reset(buf, len);
             break;
         default:
+            bs_rc_rsp(MGMT_ERR_ENOTSUP);
             break;
         }
     } else if (MCUBOOT_PERUSER_MGMT_GROUP_ENABLED == 1) {
         if (bs_peruser_system_specific(hdr, buf, len, &cbor_state) == 0) {
             boot_serial_output();
         }
+    } else {
+        bs_rc_rsp(MGMT_ERR_ENOTSUP);
     }
 }
 
