@@ -50,6 +50,7 @@ static int bs_custom_storage_erase(cbor_state_t *cs)
     return rc;
 }
 
+#ifdef MCUBOOT_MGMT_CUSTOM_IMG_LIST
 static int custom_img_status(int image_index, uint32_t slot,char *buffer,
                         ssize_t len)
 {
@@ -117,6 +118,8 @@ static int bs_custom_img_list(cbor_state_t *cs)
 #ifndef ZEPHYR_MGMT_GRP_BASIC_CMD_IMAGE_LIST
     #define ZEPHYR_MGMT_GRP_BASIC_CMD_IMAGE_LIST 1
 #endif
+#endif /*MCUBOOT_MGMT_CUSTOM_IMG_LIST*/
+
 int bs_peruser_system_specific(const struct nmgr_hdr *hdr, const char *buffer,
                                int len, cbor_state_t *cs)
 {
@@ -128,9 +131,11 @@ int bs_peruser_system_specific(const struct nmgr_hdr *hdr, const char *buffer,
                 mgmt_rc = bs_custom_storage_erase(cs);
             }
         } else if (hdr->nh_op == NMGR_OP_READ) {
+#ifdef MCUBOOT_MGMT_CUSTOM_IMG_LIST
             if (hdr->nh_id == ZEPHYR_MGMT_GRP_BASIC_CMD_IMAGE_LIST) {
                 mgmt_rc = bs_custom_img_list(cs);
             }
+#endif
         }
     }
 

@@ -151,6 +151,10 @@
 #define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 0
 #endif
 
+#ifdef CONFIG_BOOT_MGMT_CUSTOM_IMG_LIST
+#define MCUBOOT_MGMT_CUSTOM_IMG_LIST
+#endif
+
 /*
  * The configuration option enables direct image upload with the
  * serial recovery.
