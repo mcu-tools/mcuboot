@@ -567,7 +567,7 @@ config BOOT_ERASE_PROGRESSIVELY
 	 on some hardware that has long erase times, to prevent long wait
 	 times at the beginning of the DFU process.
 
-config ENABLE_MGMT_PERUSER
+menuconfig ENABLE_MGMT_PERUSER
 	bool "Enable system specific mcumgr commands"
 	depends on BOOT_SERIAL_UART
 	help
@@ -577,6 +577,14 @@ config ENABLE_MGMT_PERUSER
 	  These are system specific command and system specific implementation
 	  function is required to process these commands.
 
+if ENABLE_MGMT_PERUSER
+config BOOT_MGMT_CUSTOM_IMG_LIST
+	bool "Enable custom image list command"
+	help
+	  The option enables command which returns versions and installation
+	  statuses (custom property) for all images.
+
+endif # ENABLE_MGMT_PERUSER
 endif # MCUBOOT_SERIAL
 
 config BOOT_INTR_VEC_RELOC
