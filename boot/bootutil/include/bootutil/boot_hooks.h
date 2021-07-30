@@ -137,4 +137,24 @@ int boot_copy_region_post_hook(int img_index, const struct flash_area *area,
 int boot_serial_uploaded_hook(int img_index, const struct flash_area *area,
                               size_t size);
 
+/** Hook for implement the image's slot installation status fetch operation for
+ *  the MGMT custom command.
+ *
+ * The image's slot installation status is custom property. It's detailed
+ * definition depends on user implementation. It is only defined that the status
+ * will be set to 0 if this hook not provides another value.
+ *
+ * @param img_index the index of the image pair
+ * @param slot slot number
+ * @param img_install_stat the image installation status to be populated
+ *
+ * @retval 0: the installaton status was fetched successfully,
+ *         BOOT_HOOK_REGULAR: follow the normal execution path, status will be
+ *         set to 0
+ *         otherwise an error-code value. Error-code is ignored, but it is up to
+ *         the implementation to reflect this error in img_install_stat.
+ */
+int boot_img_install_stat_hook(int image_index, int slot,
+                               int *img_install_stat);
+
 #endif /*H_BOOTUTIL_HOOKS*/
