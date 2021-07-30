@@ -477,7 +477,6 @@ config BOOT_SERIAL_UART
 config BOOT_SERIAL_CDC_ACM
 	bool "CDC ACM"
 	select USB_DEVICE_STACK
-	select USB_CDC_ACM
 
 endchoice
 
@@ -542,18 +541,6 @@ config BOOT_SERIAL_DETECT_DELAY
 	  Used to prevent the bootloader from loading on button press.
 	  Useful for powering on when using the same button as
 	  the one used to place the device in bootloader mode.
-
-# Workaround for not being able to have commas in macro arguments
-DT_CHOSEN_Z_CONSOLE := zephyr,console
-
-config RECOVERY_UART_DEV_NAME
-	string "UART Device Name for Recovery UART"
-	default "$(dt_chosen_label,$(DT_CHOSEN_Z_CONSOLE))" if HAS_DTS
-	default "UART_0"
-	depends on BOOT_SERIAL_UART
-	help
-	  This option specifies the name of UART device to be used for
-	  serial recovery.
 
 config BOOT_ERASE_PROGRESSIVELY
 	bool "Erase flash progressively when receiving new firmware"
