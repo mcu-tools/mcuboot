@@ -192,27 +192,28 @@ static int
 boot_uart_fifo_init(void)
 {
 #ifdef CONFIG_BOOT_SERIAL_UART
-	uart_dev = device_get_binding(CONFIG_RECOVERY_UART_DEV_NAME);
+	uart_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
 #elif CONFIG_BOOT_SERIAL_CDC_ACM
-	uart_dev = device_get_binding(CONFIG_USB_CDC_ACM_DEVICE_NAME "_0");
-	if (uart_dev) {
-		int rc;
-		rc = usb_enable(NULL);
-		if (rc) {
-			return (-1);
-		}
-	}
+	uart_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
 #endif
-	uint8_t c;
 
-	if (!uart_dev) {
+	if (!device_is_ready(uart_dev)) {
 		return (-1);
 	}
+
+#if CONFIG_BOOT_SERIAL_CDC_ACM
+	int rc = usb_enable(NULL);
+	if (rc) {
+		return (-1);
+	}
+#endif
 
 	uart_irq_callback_set(uart_dev, boot_uart_fifo_callback);
 
 	/* Drain the fifo */
 	if (uart_irq_rx_ready(uart_dev)) {
+		uint8_t c;
+
 		while (uart_fifo_read(uart_dev, &c, 1)) {
 			;
 		}
