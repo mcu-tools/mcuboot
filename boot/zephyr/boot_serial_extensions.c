@@ -16,6 +16,8 @@
 #include "../boot_serial/src/cbor_encode.h"
 
 #include "bootutil/image.h"
+#include "bootutil/bootutil_public.h"
+#include "bootutil/boot_hooks.h"
 
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
@@ -58,33 +60,44 @@ static int custom_img_status(int image_index, uint32_t slot,char *buffer,
     struct flash_area const *fap;
     struct image_header hdr;
     int rc;
-    int img_install_stat = 0;
+    int img_install_stat;
 
-    area_id = flash_area_id_from_multi_image_slot(image_index, slot);
-
-    rc = flash_area_open(area_id, &fap);
-    if (rc) {
-        return rc;
+    rc = BOOT_HOOK_CALL(boot_img_install_stat_hook, BOOT_HOOK_REGULAR,
+                        image_index, slot, &img_install_stat);
+    if (rc == BOOT_HOOK_REGULAR)
+    {
+        img_install_stat = 0;
     }
 
-    rc = flash_area_read(fap, 0, &hdr, sizeof(hdr));
-    if (rc) {
-        goto func_end;
+    rc = BOOT_HOOK_CALL(boot_read_image_header_hook, BOOT_HOOK_REGULAR,
+                        image_index, slot, &hdr);
+    if (rc == BOOT_HOOK_REGULAR)
+    {
+        area_id = flash_area_id_from_multi_image_slot(image_index, slot);
+
+        rc = flash_area_open(area_id, &fap);
+        if (rc) {
+            return rc;
+        }
+
+        rc = flash_area_read(fap, 0, &hdr, sizeof(hdr));
+
+        flash_area_close(fap);
     }
 
-    if (hdr.ih_magic == IMAGE_MAGIC) {
-        snprintf(buffer, len, "ver=%d.%d.%d.%d,install_stat=%d",
-                 hdr.ih_ver.iv_major,
-                 hdr.ih_ver.iv_minor,
-                 hdr.ih_ver.iv_revision,
-                 hdr.ih_ver.iv_build_num,
-                 img_install_stat);
-    } else {
-        rc = 1;
+    if (rc == 0) {
+        if (hdr.ih_magic == IMAGE_MAGIC) {
+            snprintf(buffer, len, "ver=%d.%d.%d.%d,install_stat=%d",
+                    hdr.ih_ver.iv_major,
+                    hdr.ih_ver.iv_minor,
+                    hdr.ih_ver.iv_revision,
+                    hdr.ih_ver.iv_build_num,
+                    img_install_stat);
+        } else {
+            rc = 1;
+        }
     }
 
-func_end:
-    flash_area_close(fap);
     return rc;
 }
 
