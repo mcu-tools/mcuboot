@@ -34,19 +34,19 @@ static bool decode_Member(
 	cbor_string_type_t tmp_str;
 	bool int_res;
 
-	bool tmp_result = (((union_start_code(state) && (int_res = (((((tstrx_expect(state, ((tmp_str.value = "image",
+	bool tmp_result = (((union_start_code(state) && (int_res = (((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"image",
     tmp_str.len = sizeof("image") - 1, &tmp_str)))))
 	&& (intx32_decode(state, (&(*result)._Member_image)))) && (((*result)._Member_choice = _Member_image) || 1))
-	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = "data",
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"data",
     tmp_str.len = sizeof("data") - 1, &tmp_str)))))
 	&& (bstrx_decode(state, (&(*result)._Member_data)))) && (((*result)._Member_choice = _Member_data) || 1)))
-	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = "len",
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"len",
     tmp_str.len = sizeof("len") - 1, &tmp_str)))))
 	&& (intx32_decode(state, (&(*result)._Member_len)))) && (((*result)._Member_choice = _Member_len) || 1)))
-	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = "off",
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"off",
     tmp_str.len = sizeof("off") - 1, &tmp_str)))))
 	&& (intx32_decode(state, (&(*result)._Member_off)))) && (((*result)._Member_choice = _Member_off) || 1)))
-	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = "sha",
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"sha",
     tmp_str.len = sizeof("sha") - 1, &tmp_str)))))
 	&& (bstrx_decode(state, (&(*result)._Member_sha)))) && (((*result)._Member_choice = _Member_sha) || 1)))), union_end_code(state), int_res))));
 
