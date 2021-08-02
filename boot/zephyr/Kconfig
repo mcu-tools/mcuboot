@@ -364,7 +364,7 @@ config BOOT_USB_DFU_NO
 
 config BOOT_USB_DFU_WAIT
 	bool "Wait for a prescribed duration to see if USB DFU is invoked"
-	select USB
+	select USB_DEVICE_STACK
 	select USB_DFU_CLASS
 	select IMG_MANAGER
 	help
@@ -374,7 +374,7 @@ config BOOT_USB_DFU_WAIT
 
 config BOOT_USB_DFU_GPIO
 	bool "Use GPIO to detect whether to trigger DFU mode"
-	select USB
+	select USB_DEVICE_STACK
 	select USB_DFU_CLASS
 	select IMG_MANAGER
 	help
@@ -487,7 +487,6 @@ config BOOT_SERIAL_UART
 
 config BOOT_SERIAL_CDC_ACM
 	bool "CDC ACM"
-	select USB
 	select USB_DEVICE_STACK
 	select USB_CDC_ACM
 
