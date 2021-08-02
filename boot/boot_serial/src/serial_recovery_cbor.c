@@ -1,6 +1,6 @@
 /*
  * This file has been generated from the cddl-gen submodule.
- * Commit 8f9358a0b4b0e9b0cd579f0988056ef0b60760e4
+ * Commit 9f77837f9950da1633d22abf6181a830521a6688
  */
 
 /*
@@ -11,7 +11,7 @@
 
 /*
  * Generated with cddl_gen.py (https://github.com/NordicSemiconductor/cddl-gen)
- * at: 2021-05-10 09:40:43
+ * at: 2021-08-02 17:09:42
  * Generated with a default_max_qty of 3
  */
 
@@ -34,19 +34,19 @@ static bool decode_Member(
 	cbor_string_type_t tmp_str;
 	bool int_res;
 
-	bool tmp_result = (((union_start_code(state) && (int_res = (((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"image",
+	bool tmp_result = (((union_start_code(state) && (int_res = (((((tstrx_expect(state, ((tmp_str.value = "image",
     tmp_str.len = sizeof("image") - 1, &tmp_str)))))
 	&& (intx32_decode(state, (&(*result)._Member_image)))) && (((*result)._Member_choice = _Member_image) || 1))
-	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"data",
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = "data",
     tmp_str.len = sizeof("data") - 1, &tmp_str)))))
 	&& (bstrx_decode(state, (&(*result)._Member_data)))) && (((*result)._Member_choice = _Member_data) || 1)))
-	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"len",
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = "len",
     tmp_str.len = sizeof("len") - 1, &tmp_str)))))
 	&& (intx32_decode(state, (&(*result)._Member_len)))) && (((*result)._Member_choice = _Member_len) || 1)))
-	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"off",
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = "off",
     tmp_str.len = sizeof("off") - 1, &tmp_str)))))
 	&& (intx32_decode(state, (&(*result)._Member_off)))) && (((*result)._Member_choice = _Member_off) || 1)))
-	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = (const uint8_t *)"sha",
+	|| (union_elem_code(state) && ((((tstrx_expect(state, ((tmp_str.value = "sha",
     tmp_str.len = sizeof("sha") - 1, &tmp_str)))))
 	&& (bstrx_decode(state, (&(*result)._Member_sha)))) && (((*result)._Member_choice = _Member_sha) || 1)))), union_end_code(state), int_res))));
 

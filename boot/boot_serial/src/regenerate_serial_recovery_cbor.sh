@@ -30,7 +30,7 @@ copy_with_copy_notice ../../../ext/cddl-gen/include/cbor_encode.h cbor_encode.h
 copy_with_copy_notice ../../../ext/cddl-gen/include/cbor_common.h cbor_common.h
 
 echo "Generating serial_recovery_cbor.c|h"
-python3 ../../../ext/cddl-gen/scripts/cddl_gen.py -c serial_recovery.cddl code -d -t Upload --oc serial_recovery_cbor.c --oh serial_recovery_cbor.h --time-header
+python3 ../../../ext/cddl-gen/cddl_gen/cddl_gen.py -c serial_recovery.cddl code -d -t Upload --oc serial_recovery_cbor.c --oh serial_recovery_cbor.h --time-header
 
 add_copyright() {
 echo "$(printf '/*
