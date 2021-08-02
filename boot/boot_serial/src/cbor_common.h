@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the cddl-gen submodule.
- * Commit 8f9358a0b4b0e9b0cd579f0988056ef0b60760e4
+ * Commit 9f77837f9950da1633d22abf6181a830521a6688
  */
 
 /*
