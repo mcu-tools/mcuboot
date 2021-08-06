@@ -1850,7 +1850,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
          */
         if (BOOT_IMG(state, BOOT_PRIMARY_SLOT).hdr.ih_magic != IMAGE_MAGIC) {
             BOOT_LOG_ERR("bad image magic 0x%lx; Image=%u", (unsigned long)
-                         &boot_img_hdr(state,BOOT_PRIMARY_SLOT)->ih_magic,
+                         BOOT_IMG(state, BOOT_PRIMARY_SLOT).hdr.ih_magic,
                          BOOT_CURR_IMG(state));
             rc = BOOT_EBADIMAGE;
             goto out;
