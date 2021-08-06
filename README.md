@@ -36,6 +36,7 @@ Instructions for different operating systems can be found here:
 - [Mynewt](docs/readme-mynewt.md)
 - [RIOT](docs/readme-riot.md)
 - [Mbed-OS](docs/readme-mbed.md)
+- [NuttX](docs/readme-nuttx.md)
 - [Simulator](sim/README.rst)
 
 ## Roadmap
@@ -62,6 +63,7 @@ For more information in the source, here are some pointers:
 - [boot/boot\_serial](boot/boot_serial): Support for serial upgrade within the bootloader itself.
 - [boot/zephyr](boot/zephyr): Port of the bootloader to Zephyr
 - [boot/mynewt](boot/mynewt): Mynewt bootloader app
+- [boot/nuttx](boot/nuttx): Bootloader application and port of MCUboot interfaces for NuttX.
 - [imgtool](scripts/imgtool.py): A tool to securely sign firmware images for booting by mcuboot.
 - [sim](sim): A bootloader simulator for testing and regression
 
