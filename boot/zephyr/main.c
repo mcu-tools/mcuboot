@@ -132,7 +132,6 @@ static void do_boot(struct boot_rsp *rsp)
                                      rsp->br_image_off +
                                      rsp->br_hdr->ih_hdr_size);
 
-    irq_lock();
 #ifdef CONFIG_SYS_CLOCK_EXISTS
     sys_clock_disable();
 #endif
@@ -151,6 +150,8 @@ static void do_boot(struct boot_rsp *rsp)
 
 #if CONFIG_CPU_HAS_ARM_MPU
     z_arm_clear_arm_mpu_config();
+#else
+    irq_lock();
 #endif
 
 #if defined(CONFIG_BUILTIN_STACK_GUARD) && \
