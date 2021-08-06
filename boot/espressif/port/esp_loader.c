@@ -6,10 +6,13 @@
 
 #include <string.h>
 #include <soc/soc.h>
-#include <soc/dport_reg.h>
 #include "soc/soc_memory_layout.h"
 #include <bootloader_flash.h>
 #include <bootloader_flash_priv.h>
+
+#if defined(CONFIG_IDF_TARGET_ESP32) || defined(CONFIG_IDF_TARGET_ESP32S2)
+#include <soc/dport_reg.h>
+#endif
 
 #include "rom/cache.h"
 #include "rom/efuse.h"
@@ -87,7 +90,7 @@ void esp_app_image_load(int slot, unsigned int hdr_offset)
     }
 
     if (!esp_ptr_in_iram((void *)load_header.entry_addr)) {
-        MCUBOOT_LOG_ERR("Application entry point is not in IRAM. Aborting");
+        MCUBOOT_LOG_ERR("Application entry point (0x%x) is not in IRAM. Aborting", load_header.entry_addr);
         FIH_PANIC;
     }
 

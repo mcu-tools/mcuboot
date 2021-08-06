@@ -8,6 +8,13 @@ project(mcuboot_${MCUBOOT_TARGET})
 
 add_definitions(-DMCUBOOT_TARGET=${MCUBOOT_TARGET})
 
+if ("${MCUBOOT_TARGET}" STREQUAL "esp32" OR
+    "${MCUBOOT_TARGET}" STREQUAL "esp32s2")
+    set(MCUBOOT_ARCH "xtensa")
+elseif("${MCUBOOT_TARGET}" STREQUAL "esp32c3")
+    set(MCUBOOT_ARCH "riscv")
+endif()
+
 if (NOT DEFINED IDF_PATH)
     if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/hal/esp-idf")
         set(IDF_PATH "${CMAKE_CURRENT_LIST_DIR}/hal/esp-idf")
@@ -90,7 +97,6 @@ set(mbedtls_srcs
     )
 
 set(CFLAGS
-    "-mlongcalls"
     "-Wno-frame-address"
     "-Wall"
     "-Wextra"
@@ -120,7 +126,6 @@ set(CFLAGS
 
 set(LDFLAGS
     "-nostdlib"
-    "-mlongcalls"
     "-Wno-frame-address"
     "-Wl,--cref"
     "-Wl,--Map=${APP_NAME}.map"
@@ -132,6 +137,15 @@ set(LDFLAGS
     "-lgcc"
     "-lgcov"
     )
+
+if ("${MCUBOOT_ARCH}" STREQUAL "xtensa")
+    list(APPEND CFLAGS
+        "-mlongcalls"
+        )
+    list(APPEND LDFLAGS
+        "-mlongcalls"
+        )
+endif()
 
 add_subdirectory(hal)
 add_executable(
