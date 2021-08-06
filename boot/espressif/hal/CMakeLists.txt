@@ -11,13 +11,12 @@ set(INCLUDE_DIRS
     )
 
 list(APPEND INCLUDE_DIRS
+    ${esp_idf_dir}/components/${MCUBOOT_ARCH}/include
     ${esp_idf_dir}/components/esp_common/include
     ${esp_idf_dir}/components/esp_rom/include
     ${esp_idf_dir}/components/esp_rom/include/${MCUBOOT_TARGET}
-    ${esp_idf_dir}/components/xtensa/${MCUBOOT_TARGET}/include
     ${esp_idf_dir}/components/spi_flash/include
     ${esp_idf_dir}/components/spi_flash/private_include
-    ${esp_idf_dir}/components/xtensa/include
     ${esp_idf_dir}/components/soc/${MCUBOOT_TARGET}/include
     ${esp_idf_dir}/components/${MCUBOOT_TARGET}/include
     ${esp_idf_dir}/components/soc/include
@@ -32,6 +31,13 @@ list(APPEND INCLUDE_DIRS
     ${esp_idf_dir}/components/efuse/include
     ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/include
     )
+
+if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
+    list(APPEND INCLUDE_DIRS
+        ${esp_idf_dir}/components/${MCUBOOT_ARCH}/${MCUBOOT_TARGET}/include
+        )
+endif()
+
 set(hal_srcs
     ${SRC_DIR}/bootloader_wdt.c
     ${SRC_DIR}/${MCUBOOT_TARGET}/bootloader_init.c
@@ -53,15 +59,8 @@ set(hal_srcs
     ${esp_idf_dir}/components/${MCUBOOT_TARGET}/clk.c
     )
 
-if ("${MCUBOOT_TARGET}" STREQUAL "esp32s2")
-    list(APPEND hal_srcs
-        ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/regi2c_ctrl.c
-    )
-endif()
-
 set(CFLAGS
     "-nostdlib"
-    "-mlongcalls"
     "-Wno-frame-address"
     "-Wall"
     "-Wextra"
@@ -88,7 +87,6 @@ set(CFLAGS
     )
 
 set(LDFLAGS
-    "-mlongcalls"
     "-Wno-frame-address"
     "-Wl,--cref"
     "-Wl,--Map=${APP_NAME}.map"
@@ -101,7 +99,14 @@ set(LDFLAGS
     "-lgcov"
     )
 
-add_library(hal STATIC ${hal_srcs} ${INCLUDE_DIRS})
+if (("${MCUBOOT_TARGET}" STREQUAL "xtensa"))
+    list(APPEND CFLAGS
+        "-mlongcalls"
+        )
+    list(APPEND LDFLAGS
+        "-mlongcalls"
+        )
+endif()
 
 set_source_files_properties(
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash.c
@@ -110,7 +115,19 @@ set_source_files_properties(
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_clk.c
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_time.c
     PROPERTIES COMPILE_FLAGS
-    "-Wno-unused-variable")
+    "-Wno-unused-variable"
+    )
+
+set(LINKER_SCRIPTS
+    -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.ld
+    -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.libgcc.ld
+    -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.api.ld
+    -T${esp_idf_dir}/components/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.peripherals.ld
+    )
+
+include(${CMAKE_CURRENT_LIST_DIR}/include/${MCUBOOT_TARGET}/${MCUBOOT_TARGET}.cmake)
+
+add_library(hal STATIC ${hal_srcs} ${INCLUDE_DIRS})
 
 target_include_directories(
     hal
@@ -123,20 +140,6 @@ target_compile_options(
     PUBLIC
     ${CFLAGS}
     )
-
-set(LINKER_SCRIPTS
-    -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.ld
-    -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.libgcc.ld
-    -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.api.ld
-    -T${esp_idf_dir}/components/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.peripherals.ld
-    -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.newlib-funcs.ld
-    )
-
-if ("${MCUBOOT_TARGET}" STREQUAL "esp32s2")
-    list(APPEND LINKER_SCRIPTS
-        -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.spiflash.ld
-    )
-endif()
 
 target_link_libraries(
     hal
