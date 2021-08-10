@@ -1,0 +1,13 @@
+[workspace]
+members = ["sim"]
+exclude = ["ptest"]
+
+# The simulator runs very slowly without optimization.  A value of 1
+# compiles in about half the time, but runs about 5-6 times slower.  2
+# and 3 are hardly different in either compile time or performance.
+# Use 2 in case that makes the code slightly more debuggable.
+[profile.test]
+opt-level = 2
+
+[profile.dev]
+opt-level = 0
