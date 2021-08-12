@@ -2,6 +2,7 @@ boot/boot_serial/*
 boot/mynewt/*
 boot/zephyr/*
 boot/cypress/*
+boot/espressif/*
 ci/*
 docs/*
 ptest/*
