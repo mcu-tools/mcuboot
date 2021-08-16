@@ -578,6 +578,14 @@ menuconfig ENABLE_MGMT_PERUSER
 	  function is required to process these commands.
 
 if ENABLE_MGMT_PERUSER
+config BOOT_MGMT_CUSTOM_STORAGE_ERASE
+	bool "Enable storage erase command"
+	help
+	  The option enables mcumgr command that allows to erase storage
+	  partition.
+	  Note that the storage partition needs to be defined, in DTS, otherwise
+	  enabling the option will cause a compilation to fail.
+
 config BOOT_MGMT_CUSTOM_IMG_LIST
 	bool "Enable custom image list command"
 	help

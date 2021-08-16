@@ -19,6 +19,7 @@
 
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
+#ifdef CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE
 static int bs_custom_storage_erase(cbor_state_t *cs)
 {
     int rc;
@@ -49,6 +50,7 @@ static int bs_custom_storage_erase(cbor_state_t *cs)
 
     return rc;
 }
+#endif
 
 #ifdef MCUBOOT_MGMT_CUSTOM_IMG_LIST
 static int custom_img_status(int image_index, uint32_t slot,char *buffer,
@@ -127,9 +129,11 @@ int bs_peruser_system_specific(const struct nmgr_hdr *hdr, const char *buffer,
 
     if (hdr->nh_group == ZEPHYR_MGMT_GRP_BASE) {
         if (hdr->nh_op == NMGR_OP_WRITE) {
+#ifdef CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE
             if (hdr->nh_id == ZEPHYR_MGMT_GRP_BASIC_CMD_ERASE_STORAGE) {
                 mgmt_rc = bs_custom_storage_erase(cs);
             }
+#endif
         } else if (hdr->nh_op == NMGR_OP_READ) {
 #ifdef MCUBOOT_MGMT_CUSTOM_IMG_LIST
             if (hdr->nh_id == ZEPHYR_MGMT_GRP_BASIC_CMD_IMAGE_LIST) {
