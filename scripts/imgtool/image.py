@@ -43,7 +43,6 @@ IMAGE_HEADER_SIZE = 32
 BIN_EXT = "bin"
 INTEL_HEX_EXT = "hex"
 DEFAULT_MAX_SECTORS = 128
-MAX_ALIGN = 8
 DEP_IMAGES_KEY = "images"
 DEP_VERSIONS_KEY = "versions"
 MAX_SW_TYPE_LENGTH = 12  # Bytes
@@ -232,7 +231,7 @@ class Image():
                 padding = bytearray([self.erased_val] * 
                                     (trailer_size - len(boot_magic)))
                 if self.confirm and not self.overwrite_only:
-                    padding[-MAX_ALIGN] = 0x01  # image_ok = 0x01
+                    padding[-self.align] = 0x01  # image_ok = 0x01
                 padding += boot_magic
                 h.puts(trailer_addr, bytes(padding))
             h.tofile(path, 'hex')
@@ -353,9 +352,9 @@ class Image():
         # This adds the padding if image is not aligned to the 16 Bytes
         # in encrypted mode
         if self.enckey is not None:
-            pad_len = len(self.payload) % 16
+            pad_len = len(self.payload) % self.align
             if pad_len > 0:
-                pad = bytes(16 - pad_len)
+                pad = bytes(self.align - pad_len)
                 if isinstance(self.payload, bytes):
                     self.payload += pad
                 else:
@@ -516,11 +515,11 @@ class Image():
     def _trailer_size(self, write_size, max_sectors, overwrite_only, enckey,
                       save_enctlv, enctlv_len):
         # NOTE: should already be checked by the argument parser
-        magic_size = 16
+        magic_size = 16 if self.align <= 16 else self.align
         if overwrite_only:
-            return MAX_ALIGN * 2 + magic_size
+            return self.align * 2 + magic_size
         else:
-            if write_size not in set([1, 2, 4, 8]):
+            if write_size not in set([1, 2, 4, 8, 16, 32]):
                 raise click.BadParameter("Invalid alignment: {}".format(
                     write_size))
             m = DEFAULT_MAX_SECTORS if max_sectors is None else max_sectors
@@ -528,11 +527,11 @@ class Image():
             if enckey is not None:
                 if save_enctlv:
                     # TLV saved by the bootloader is aligned
-                    keylen = (int((enctlv_len - 1) / MAX_ALIGN) + 1) * MAX_ALIGN
+                    keylen = (int((enctlv_len - 1) / self.align) + 1) * self.align
                 else:
                     keylen = 16
                 trailer += keylen * 2  # encryption keys
-            trailer += MAX_ALIGN * 4  # image_ok/copy_done/swap_info/swap_size
+            trailer += self.align * 4  # image_ok/copy_done/swap_info/swap_size
             trailer += magic_size
             return trailer
 
@@ -545,7 +544,7 @@ class Image():
         pbytes = bytearray([self.erased_val] * padding)
         pbytes += bytearray([self.erased_val] * (tsize - len(boot_magic)))
         if self.confirm and not self.overwrite_only:
-            pbytes[-MAX_ALIGN] = 0x01  # image_ok = 0x01
+            pbytes[-self.align] = 0x01  # image_ok = 0x01
         pbytes += boot_magic
         self.payload += pbytes
 
