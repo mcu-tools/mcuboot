@@ -64,7 +64,8 @@ struct image_trailer {
     uint8_t image_ok;
     uint8_t pad3[BOOT_MAX_ALIGN - 1];
     uint8_t magic[16];
-};
+} __attribute__((aligned(BOOT_MAX_ALIGN)));
+
 
 /* you must have pre-allocated all the entries within this structure */
 fih_int boot_go(struct boot_rsp *rsp);
