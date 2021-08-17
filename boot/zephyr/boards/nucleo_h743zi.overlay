@@ -1,0 +1,43 @@
+&flash0 {
+ 	partitions {
+ 		compatible = "fixed-partitions";
+ 		#address-cells = <1>;
+ 		#size-cells = <1>;
+ 
+		/* 64KB for bootloader */
+ 		boot_partition: partition@0 {
+ 			label = "mcuboot";
+			reg = <0x00000000 0x00010000>;
+ 			read-only;
+ 		};
+ 
+		/* storage: 8KB for settings */
+		/*
+		 * The flash starting at 0x00010000 and ending at
+		 * 0x0001ffff (sectors 16-31) is reserved for use
+		 * by the application.
+		 */
+		storage_partition: partition@1e000 {
+ 			label = "storage";
+			reg = <0x0001e000 0x00002000>;
+ 		};
+ 
+		/* application image slot: 384KB */
+		slot0_partition: partition@20000 {
+ 			label = "image-0";
+			reg = <0x00020000 0x00060000>;
+ 		};
+
+		/* backup slot: 384KB */
+ 		slot1_partition: partition@80000 {
+ 			label = "image-1";
+			reg = <0x00080000 0x00060000>;
+ 		};
+
+		/* swap slot: 128KB */
+		scratch_partition: partition@e0000 {
+ 			label = "image-scratch";
+			reg = <0x000e0000 0x00020000>;
+ 		};
+ 	};
+ };

@@ -683,4 +683,11 @@ config MCUBOOT_BOOTUTIL_LIB_OWN_LOG
 	bool
 	default n
 
+# flash alignment
+config FLASH_ALIGNMENT_WORD_SIZE_BYTES
+	int "Size of the flash word"
+	default 8
+	help
+	  Sets the alignment size of a flash word.
+
 source "Kconfig.zephyr"
