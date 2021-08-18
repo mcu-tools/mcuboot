@@ -86,12 +86,35 @@ static bool value_encode_len(cbor_state_t *state, cbor_major_type_t major_type,
 static uint32_t get_result_len(const void *const input, uint32_t max_result_len)
 {
 	uint8_t *u8_result  = (uint8_t *)input;
+	size_t i;
 
-	for (; max_result_len > 0; max_result_len--) {
-		if (u8_result[max_result_len - 1] != 0) {
+	for (i = 0; i < max_result_len; i++) {
+#ifdef CONFIG_BIG_ENDIAN
+		size_t idx = i;
+#else
+		size_t idx = max_result_len - 1 - i;
+#endif
+		if (u8_result[idx] != 0) {
 			break;
 		}
 	}
+	max_result_len -= i;
+
+	/* According to specification result length can be encoded on 1, 2, 4
+	 * or 8 bytes.
+	 */
+	cbor_assert(max_result_len <= 8, "Up to 8 bytes can be used to encode length.\n");
+	size_t encode_byte_cnt = 1;
+
+	for (size_t i = 0; i <= 3; i++) {
+		if (max_result_len <= encode_byte_cnt) {
+			max_result_len = encode_byte_cnt;
+			break;
+		}
+
+		encode_byte_cnt *= 2;
+	}
+
 	if ((max_result_len == 1) && (u8_result[0] <= VALUE_IN_HEADER)) {
 		max_result_len = 0;
 	}
