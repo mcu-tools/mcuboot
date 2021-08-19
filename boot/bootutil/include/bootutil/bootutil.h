@@ -63,8 +63,12 @@ struct image_trailer {
     uint8_t pad2[BOOT_MAX_ALIGN - 1];
     uint8_t image_ok;
     uint8_t pad3[BOOT_MAX_ALIGN - 1];
+#if BOOT_MAX_ALIGN > 16
+    uint8_t magic[BOOT_MAX_ALIGN];
+#else
     uint8_t magic[16];
-} __attribute__((aligned(BOOT_MAX_ALIGN)));
+#endif
+};
 
 
 /* you must have pre-allocated all the entries within this structure */

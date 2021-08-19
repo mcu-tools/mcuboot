@@ -128,7 +128,11 @@ struct boot_status {
  *      (`MCUBOOT_ENC_IMAGES`).
  */
 
-extern const uint32_t boot_img_magic[4] __attribute__((aligned(BOOT_MAX_ALIGN)));
+#if BOOT_MAX_ALIGN > 16
+extern const uint32_t boot_img_magic[BOOT_MAX_ALIGN/sizeof(uint32_t)];
+#else
+extern const uint32_t boot_img_magic[4];
+#endif
 
 #ifdef MCUBOOT_IMAGE_NUMBER
 #define BOOT_IMAGE_NUMBER          MCUBOOT_IMAGE_NUMBER

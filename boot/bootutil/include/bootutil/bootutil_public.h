@@ -254,7 +254,11 @@ boot_read_swap_state(const struct flash_area *fa,
 #define BOOT_MAGIC_ARR_SZ \
     (sizeof boot_img_magic / sizeof boot_img_magic[0])
 
-extern const uint32_t boot_img_magic[4] __attribute__((aligned(BOOT_MAX_ALIGN)));
+#if BOOT_MAX_ALIGN > 16
+extern const uint32_t boot_img_magic[BOOT_MAX_ALIGN/sizeof(uint32_t)];
+#else
+extern const uint32_t boot_img_magic[4];
+#endif
 
 #ifdef __cplusplus
 }

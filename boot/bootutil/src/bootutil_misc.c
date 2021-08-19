@@ -46,7 +46,11 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 /* Currently only used by imgmgr */
 int boot_current_slot;
 
-extern const uint32_t boot_img_magic[];
+#if BOOT_MAX_ALIGN > 16
+extern const uint32_t boot_img_magic[BOOT_MAX_ALIGN/sizeof(uint32_t)];
+#else
+extern const uint32_t boot_img_magic[4];
+#endif
 
 #define BOOT_MAGIC_ARR_SZ \
     (sizeof boot_img_magic / sizeof boot_img_magic[0])
@@ -230,6 +234,7 @@ boot_find_status(int image_index, const struct flash_area **fap)
         }
 
         if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0) {
+            /*BOOT_LOG_INF("Boot image magic matches for area %d", i);*/
             return 0;
         }
 
@@ -237,6 +242,7 @@ boot_find_status(int image_index, const struct flash_area **fap)
     }
 
     /* If we got here, no magic was found */
+    /*BOOT_LOG_INF("Boot image magic was not found");*/
     return -1;
 }
 
@@ -294,40 +300,6 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
 }
 #endif
 
-int
-boot_write_trailer(const struct flash_area *fap, uint32_t off,
-        const uint8_t *inbuf, uint8_t inlen)
-{
-    uint8_t buf[BOOT_MAX_ALIGN];
-    uint8_t align;
-    uint8_t erased_val;
-    int rc;
-
-    align = flash_area_align(fap);
-    align = (inlen + align - 1) & ~(align - 1);
-    if (align > BOOT_MAX_ALIGN) {
-        return -1;
-    }
-    erased_val = flash_area_erased_val(fap);
-
-    memcpy(buf, inbuf, inlen);
-    memset(&buf[inlen], erased_val, align - inlen);
-
-    rc = flash_area_write(fap, off, buf, align);
-    if (rc != 0) {
-        return BOOT_EFLASH;
-    }
-
-    return 0;
-}
-
-int
-boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
-        uint8_t flag_val)
-{
-    const uint8_t buf[1] = { flag_val };
-    return boot_write_trailer(fap, off, buf, 1);
-}
 
 int
 boot_write_copy_done(const struct flash_area *fap)

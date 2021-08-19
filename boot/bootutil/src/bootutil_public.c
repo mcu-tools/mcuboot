@@ -318,10 +318,12 @@ boot_write_magic(const struct flash_area *fap)
 
     off = boot_magic_off(fap);
 
-    BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%lx (0x%lx)",
+    BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%lx (0x%lx) size=%d",
                  flash_area_get_id(fap), (unsigned long)off,
-                 (unsigned long)(flash_area_get_off(fap) + off));
+                 (unsigned long)(flash_area_get_off(fap) + off),
+                 BOOT_MAGIC_SZ);
     rc = flash_area_write(fap, off, boot_img_magic, BOOT_MAGIC_SZ);
+    /*BOOT_LOG_INF("flash_area_write:%d",rc);*/
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -420,12 +422,14 @@ boot_swap_type_multi(int image_index)
 
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
                                     &primary_slot);
+    /*BOOT_LOG_INF("primary swap state:%d", rc);*/
     if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
     }
 
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
                                     &secondary_slot);
+    /*BOOT_LOG_INF("secondary swap state:%d", rc);*/
     if (rc == BOOT_EFLASH) {
         BOOT_LOG_INF("Secondary image of image pair (%d.) "
                      "is unreachable. Treat it as empty", image_index);
@@ -441,6 +445,10 @@ boot_swap_type_multi(int image_index)
     for (i = 0; i < BOOT_SWAP_TABLES_COUNT; i++) {
         table = boot_swap_tables + i;
 
+        /*BOOT_LOG_INF("primary magic:%d,%d,%d", table->magic_primary_slot, primary_slot.magic, boot_magic_compatible_check(table->magic_primary_slot,
+                                        primary_slot.magic));
+        BOOT_LOG_INF("secondary magic:%d,%d,%d", table->magic_secondary_slot, secondary_slot.magic, boot_magic_compatible_check(table->magic_secondary_slot,
+                                        secondary_slot.magic));*/
         if (boot_magic_compatible_check(table->magic_primary_slot,
                                         primary_slot.magic) &&
             boot_magic_compatible_check(table->magic_secondary_slot,
@@ -502,22 +510,28 @@ boot_set_pending_multi(int image_index, int permanent)
     int rc;
 
     rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap);
+    /*BOOT_LOG_INF("flash_area_open:%d", rc);*/
     if (rc != 0) {
         return BOOT_EFLASH;
     }
 
     rc = boot_read_swap_state(fap, &state_secondary_slot);
+    /*BOOT_LOG_INF("boot_read_swap_state:%d", rc);*/
     if (rc != 0) {
         goto done;
     }
 
+    /*BOOT_LOG_INF("magic:%d", state_secondary_slot.magic);*/
     switch (state_secondary_slot.magic) {
     case BOOT_MAGIC_GOOD:
+        /*BOOT_LOG_INF("secondary slot magic:GOOD");*/
         /* Swap already scheduled. */
         break;
 
     case BOOT_MAGIC_UNSET:
+        /*BOOT_LOG_INF("secondary slot magic:UNSET");*/
         rc = boot_write_magic(fap);
+        /*BOOT_LOG_INF("boot_write_magic:%d", rc);*/
 
         if (rc == 0 && permanent) {
             rc = boot_write_image_ok(fap);
@@ -530,11 +544,13 @@ boot_set_pending_multi(int image_index, int permanent)
                 swap_type = BOOT_SWAP_TYPE_TEST;
             }
             rc = boot_write_swap_info(fap, swap_type, 0);
+            /*BOOT_LOG_INF("boot_write_swap_info:%d", rc);*/
         }
 
         break;
 
     case BOOT_MAGIC_BAD:
+        /*BOOT_LOG_INF("secondary slot magic:BAD");*/
         /* The image slot is corrupt.  There is no way to recover, so erase the
          * slot to allow future upgrades.
          */
