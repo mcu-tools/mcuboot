@@ -24,6 +24,8 @@
  * Included Files
  ****************************************************************************/
 
+#include <nuttx/config.h>
+
 #ifdef CONFIG_MCUBOOT_WATCHDOG
 #include "watchdog/watchdog.h"
 #endif
@@ -85,13 +87,13 @@
  * available.
  */
 
-/* Uncomment to use ARM's mbedTLS cryptographic primitives */
-
+#ifdef CONFIG_MCUBOOT_USE_MBED_TLS
 #define MCUBOOT_USE_MBED_TLS
+#endif
 
-/* Uncomment to use Tinycrypt's. */
-
-/* #define MCUBOOT_USE_TINYCRYPT */
+#ifdef CONFIG_MCUBOOT_USE_TINYCRYPT
+#define MCUBOOT_USE_TINYCRYPT
+#endif
 
 /* Always check the signature of the image in the primary slot before
  * booting, even if no upgrade was performed. This is recommended if the boot
