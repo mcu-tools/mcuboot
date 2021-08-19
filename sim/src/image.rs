@@ -24,15 +24,18 @@ use std::{
     mem,
     slice,
 };
-use aes_ctr::{
+use aes::{
+    Aes128,
     Aes128Ctr,
+    Aes256,
     Aes256Ctr,
-    stream_cipher::{
-        generic_array::GenericArray,
-        NewStreamCipher,
-        SyncStreamCipher,
-    },
+    NewBlockCipher,
 };
+use cipher::{
+    FromBlockCipher,
+    generic_array::GenericArray,
+    StreamCipher,
+    };
 
 use simflash::{Flash, SimFlash, SimMultiFlash};
 use mcuboot_sys::{c, AreaDesc, FlashId, RamBlock};
@@ -1264,7 +1267,7 @@ impl Images {
         let mut resets = vec![0i32; count];
         let mut remaining_ops = total_ops;
         for reset in &mut resets {
-            let reset_counter = rng.gen_range(1, remaining_ops / 2);
+            let reset_counter = rng.gen_range(1 ..= remaining_ops / 2);
             let mut counter = reset_counter;
             match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false) {
                 x if x.interrupted() => (),
@@ -1481,11 +1484,13 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
         b_encimg = b_img.clone();
         if aes256 {
             let key: &GenericArray<u8, U32> = GenericArray::from_slice(enc_key.as_slice());
-            let mut cipher = Aes256Ctr::new(&key, &nonce);
+            let block = Aes256::new(&key);
+            let mut cipher = Aes256Ctr::from_block_cipher(block, &nonce);
             cipher.apply_keystream(&mut b_encimg);
         } else {
             let key: &GenericArray<u8, U16> = GenericArray::from_slice(enc_key.as_slice());
-            let mut cipher = Aes128Ctr::new(&key, &nonce);
+            let block = Aes128::new(&key);
+            let mut cipher = Aes128Ctr::from_block_cipher(block, &nonce);
             cipher.apply_keystream(&mut b_encimg);
         }
     }
@@ -1879,7 +1884,7 @@ fn mark_permanent_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
 
 // Drop some pseudo-random gibberish onto the data.
 fn splat(data: &mut [u8], seed: usize) {
-    let mut seed_block = [0u8; 16];
+    let mut seed_block = [0u8; 32];
     let mut buf = Cursor::new(&mut seed_block[..]);
     buf.write_u32::<LittleEndian>(0x135782ea).unwrap();
     buf.write_u32::<LittleEndian>(0x92184728).unwrap();
