@@ -42,7 +42,7 @@
 
 static void do_boot(struct boot_rsp *rsp)
 {
-  struct flash_area *flash_area;
+  const struct flash_area *flash_area;
   struct boardioc_boot_info_s info;
   int area_id;
   int ret;
@@ -59,7 +59,7 @@ static void do_boot(struct boot_rsp *rsp)
 
   flash_area_close(flash_area);
 
-  if (boardctl(BOARDIOC_BOOT_IMAGE, &info) != OK)
+  if (boardctl(BOARDIOC_BOOT_IMAGE, (uintptr_t)&info) != OK)
     {
       fprintf(stderr, "Failed to load application image!\n");
       FIH_PANIC;
