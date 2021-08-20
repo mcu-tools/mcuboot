@@ -201,8 +201,6 @@ static void do_boot(struct boot_rsp *rsp)
 
 #if CONFIG_CPU_HAS_ARM_MPU || CONFIG_CPU_HAS_NXP_MPU
     z_arm_clear_arm_mpu_config();
-#else
-    irq_lock();
 #endif
 
 #if defined(CONFIG_BUILTIN_STACK_GUARD) && \
@@ -214,6 +212,8 @@ static void do_boot(struct boot_rsp *rsp)
     __set_MSPLIM(0);
 #endif
 
+#else
+    irq_lock();
 #endif /* CONFIG_MCUBOOT_CLEANUP_ARM_CORE */
 
 #ifdef CONFIG_BOOT_INTR_VEC_RELOC
