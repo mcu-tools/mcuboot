@@ -3,6 +3,7 @@ boot/mynewt/*
 boot/zephyr/*
 boot/cypress/*
 boot/espressif/*
+boot/nuttx/*
 ci/*
 docs/*
 ptest/*
