@@ -131,8 +131,6 @@ set(LDFLAGS
     "-lm"
     "-lgcc"
     "-lgcov"
-    "-lstdc++"
-    "-lc"
     )
 
 add_subdirectory(hal)

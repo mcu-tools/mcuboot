@@ -90,8 +90,6 @@ set(LDFLAGS
     "-lm"
     "-lgcc"
     "-lgcov"
-    "-lstdc++"
-    "-lc"
     )
 
 add_library(hal STATIC ${hal_srcs} ${INCLUDE_DIRS})
