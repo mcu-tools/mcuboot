@@ -673,7 +673,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
         BOOT_STATUS_ASSERT(rc == 0);
 
         if (erase_scratch) {
-            rc = boot_erase_region(fap_scratch, 0, sz);
+            rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch));
             assert(rc == 0);
         }
     }
