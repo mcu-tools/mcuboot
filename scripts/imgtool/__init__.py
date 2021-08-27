@@ -14,4 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-imgtool_version = "1.8.0rc1"
+imgtool_version = "1.8.0rc2"
