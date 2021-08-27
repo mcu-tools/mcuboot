@@ -35,7 +35,8 @@ use aes_ctr::{
 };
 
 use simflash::{Flash, SimFlash, SimMultiFlash};
-use mcuboot_sys::{c, AreaDesc, FlashId, RamBlock};
+use mcuboot_sys::{c, AreaDesc, RamBlock};
+pub use mcuboot_sys::FlashId;
 use crate::{
     ALL_DEVICES,
     DeviceName,
@@ -1022,7 +1023,7 @@ impl Images {
 
     /// Test the direct XIP configuration.  With this mode, flash images are never moved, and the
     /// bootloader merely selects which partition is the proper one to boot.
-    pub fn run_direct_xip(&self) -> bool {
+    pub fn run_direct_xip(&self, image: FlashId) -> bool {
         if !Caps::DirectXip.present() {
             return false;
         }
@@ -1040,7 +1041,7 @@ impl Images {
         };
 
         // This configuration should always try booting from the first upgrade slot.
-        if let Some((offset, _, dev_id)) = self.areadesc.find(FlashId::Image1) {
+        if let Some((offset, _, dev_id)) = self.areadesc.find(image) {
             assert_eq!(offset, resp.image_off as usize);
             assert_eq!(dev_id, resp.flash_dev_id);
         } else {

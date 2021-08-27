@@ -30,6 +30,7 @@ pub use crate::{
     image::{
         ImagesBuilder,
         Images,
+        FlashId,
         show_sizes,
     },
 };
