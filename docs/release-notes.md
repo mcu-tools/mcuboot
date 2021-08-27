@@ -3,6 +3,38 @@
 - Table of Contents
 {:toc}
 
+## Version 1.8.0
+
+The 1.8.0 release of MCUboot contains numerous fixes, and adds support
+for the NuttX RTOS, and the Espressif ESP32 SDK.
+
+### About this release
+
+- Add support for the NuttX RTOS.
+- Add support for the Espressif ESP32 SDK.
+- `boot_serial` changed to use cddl-gen, which removes the dependency
+  on tinycbor.
+- Add various hooks to be able to change how image data is accessed.
+- Cypress supports Mbed TLS for encryption.
+- Support using Mbed TLS for ECDSA.  This can be useful if Mbed TLS is
+  brought in for another reason.
+- Add simulator support for testing direct-XIP and ramload.
+- Support Mbed TLS 3.0.  Updates the submodule for Mbed TLS to 3.0.
+- Enable direct-xip mode in mbed-os port.
+- extract `bootutil_public` library, a common interface for mcuboot
+  and the application.
+- Allow to boot primary image if secondary one is unreachable.
+- Add AES256 image encryption support.
+- Add Multiimage boot for direct-xip and ram-load mode.
+
+### Security fixes
+
+- [GHSA-gcxh-546h-phg4](https://github.com/mcu-tools/mcuboot/security/advisories/GHSA-gcxh-546h-phg4)
+  has been published.  There is not a fix at this time, but a caution
+  to be sure to follow the instructions carefully, and make sure that
+  the development keys in the repo are never used in a production
+  system.
+
 ## Version 1.7.0
 
 The 1.7.0 release of MCUBoot adds support for the Mbed-OS platform,
