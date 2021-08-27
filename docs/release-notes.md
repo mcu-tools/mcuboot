@@ -26,6 +26,10 @@ for the NuttX RTOS, and the Espressif ESP32 SDK.
 - Allow to boot primary image if secondary one is unreachable.
 - Add AES256 image encryption support.
 - Add Multiimage boot for direct-xip and ram-load mode.
+- Cargo files moved to top level, now `cargo test` can be run from the
+  top level directory.
+- Fault injection tests use updated TF-M.
+- Thingy:53 now supports multi-image DFU.
 
 ### Security fixes
 
