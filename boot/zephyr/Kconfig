@@ -553,7 +553,6 @@ config BOOT_ERASE_PROGRESSIVELY
 
 menuconfig ENABLE_MGMT_PERUSER
 	bool "Enable system specific mcumgr commands"
-	depends on BOOT_SERIAL_UART
 	help
 	  The option enables processing of system specific mcumgr commands;
 	  system specific commands are within group MGMT_GROUP_ID_PERUSER (64)
