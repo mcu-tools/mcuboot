@@ -14,12 +14,12 @@ The current port is available for use in the following SoCs within the OSes:
     - Zephyr RTOS - _WIP_
     - NuttX - _WIP_
 
-## Installing Requirements and Dependencies
+## Installing requirements and dependencies
 
 1. Install additional packages required for development with MCUboot:
 
 ```
-  cd ~/mcuboot  # or to your directory where mcuboot is cloned
+  cd ~/mcuboot  # or to your directory where MCUboot is cloned
   pip3 install --user -r scripts/requirements.txt
 ```
 
@@ -30,11 +30,13 @@ git submodule update --init --recursive --checkout boot/espressif/hal/esp-idf
 ```
 
 3. Next, get the mbedtls submodule required by MCUboot.
+
 ```
 git submodule update --init --recursive ext/mbedtls
 ```
 
 4. Now we need to install IDF dependencies and set environment variables. This step may take some time:
+
 ```
 cd boot/espressif/hal/esp-idf
 ./install.sh
@@ -46,7 +48,12 @@ cd ../..
 
 The MCUboot Espressif port bootloader is built using the toolchain and tools provided by ESP-IDF. Additional configuration related to MCUboot features and slot partitioning may be made using the `bootloader.conf`.
 
-**Note:** Replace `<target>` with the target ESP32 family (like `esp32`, `esp32s2` and others).
+---
+***Note*** 
+
+*Replace `<target>` with the target ESP32 family (like `esp32`, `esp32s2` and others).*
+
+---
 
 1. Compile and generate the ELF:
 

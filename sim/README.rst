@@ -1,7 +1,7 @@
 MCUboot Simulator
 #################
 
-This is a small simulator designed to exercise the mcuboot upgrade
+This is a small simulator designed to exercise the MCUboot upgrade
 code, specifically testing untimely reset scenarios to make sure the
 code is robust.
 
@@ -35,7 +35,7 @@ automatically::
   $ cargo test
 
 this should download and compile the necessary dependencies, compile
-the relevant modules from mcuboot, build the simulator, and run the
+the relevant modules from MCUboot, build the simulator, and run the
 tests.
 
 There are several different features you can test. For example,

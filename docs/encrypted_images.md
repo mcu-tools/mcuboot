@@ -21,147 +21,148 @@
 
 # Encrypted images
 
+MCUBoot supports encrypting and decrypting images on the fly while upgrading.
+
 ## [Rationale](#rationale)
 
-To provide confidentiality of image data while in transport to the
-device or while residing on an external flash, `MCUBoot` has support
-for encrypting/decrypting images on-the-fly while upgrading.
+This functionality provides confidentiality of image data while in transport to the device or while residing on external flash memory.
 
-The image header needs to flag this image as `ENCRYPTED` (0x04) and
-a TLV with the key must be present in the image. When upgrading the
-image from the `secondary slot` to the `primary slot` it is automatically
-decrypted (after validation). If swap upgrades are enabled, the image
-located in the `primary slot`, also having the `ENCRYPTED` flag set and the
-TLV present, is re-encrypted while swapping to the `secondary slot`.
+The image header must flag this image as `ENCRYPTED` (`0x04`) and a TLV with the key must be present in the image.
+
+When upgrading the image from the `secondary slot` to the `primary slot`, the image is automatically decrypted, after its validation.
+If swap upgrades are enabled, the image located in the `primary slot`, that also has the `ENCRYPTED` flag set and the TLV present, is re-encrypted while swapping to the `secondary slot`.
 
 ## [Threat model](#threat-model)
 
-The encrypted image support is supposed to allow for confidentiality
-if the image is not residing on the device or is written to external
-storage, eg a SPI flash being used for the secondary slot.
+The encrypted image support is supposed to allow for confidentiality if the image is not residing on the device or is written to external storage (like an SPI flash being used for the secondary slot).
 
-It does not protect against the possibility of attaching a JTAG and
-reading the internal flash memory, or using some attack vector that
-enables dumping the internal flash in any way.
+It does not protect against the possibility of attaching a JTAG and reading the internal flash memory or using some attack vector that enables the dumping of the internal flash memory in any way.
 
-Since decrypting requires a private key (or secret if using symmetric
-crypto) to reside inside the device, it is the responsibility of the
-device manufacturer to guarantee that this key is already in the device
-and not possible to extract.
+Since decrypting requires a private key (or secret, if using symmetric crypto) to reside inside the device, the device manufacturer must guarantee that this key is already in the device and its extraction is not possible.
 
 ## [Design](#design)
 
-When encrypting an image, only the payload (FW) is encrypted. The header,
-TLVs are still sent as plain data.
+When encrypting an image, only the payload (FW) is encrypted.
+The header and TLVs are still sent as plain data.
 
-Hashing and signing also remain functionally the same way as before,
-applied over the un-encrypted data. Validation on encrypted images, checks
-that the encrypted flag is set and TLV data is OK, then it decrypts each
-image block before sending the data to the hash routines.
+Hashing and signing also function as before and are applied over the unencrypted data.
+The validation process on encrypted images checks that the encrypted flag is set and that the TLV data is OK.
+It then decrypts each image block before sending the data to the hash routines.
 
-The image is encrypted using AES-CTR-128 or AES-CTR-256, with a counter
-that starts from zero (over the payload blocks) and increments by 1 for each
-16-byte block. AES-CTR was chosen for speed/simplicity and allowing for any
-block to be encrypted/decrypted without requiring knowledge of any other
-block (allowing for simple resume operations on swap interruptions).
+The image is encrypted using AES-CTR-128 or AES-CTR-256, with a counter that starts from zero (over the payload blocks) and increments by 1 for each 16-byte block.
+AES-CTR was chosen for its speed and simplicity, and because it allows for any block to be encrypted or decrypted without requiring knowledge of any other block.
+This allows for simple resume operations on swap interruptions.
 
-The key used is a randomized when creating a new image, by `imgtool` or
-`newt`. This key should never be reused and no checks are done for this,
-but randomizing a 16-byte block with a TRNG should make it highly
-improbable that duplicates ever happen.
+The key used is randomized when creating a new image, either by `imgtool` or `newt`.
+This key should never be reused and no checks are done for this, but randomizing a 16-byte block with a true random number generator (TRNG) should make it highly improbable that duplicates ever happen.
 
-To distribute this AES-CTR key, new TLVs were defined. The key can be
-encrypted using either RSA-OAEP, AES-KW (128 or 256 bits depending on the
-AES-CTR key length), ECIES-P256 or ECIES-X25519.
+The key can be encrypted using the following standards:
+- RSA-OAEP
+- AES-KW (128 or 256 bits depending on the AES-CTR key length)
+- ECIES-P256
+- ECIES-X25519
 
-For RSA-OAEP a new TLV with value `0x30` is added to the image, for
-AES-KW a new TLV with value `0x31` is added to the image, for
-ECIES-P256 a new TLV with value `0x32` is added, and for ECIES-X25519 a
-newt TLV with value `0x33` is added. The contents of those TLVs
-are the results of applying the given operations over the AES-CTR key.
+To distribute this AES-CTR key, new TLVs were defined:
+- For RSA-OAEP a new TLV with a value of `0x30` is added to the image.
+- For AES-KW a new TLV with a value of `0x31` is added to the image.
+- For ECIES-P256 a new TLV with a value of `0x32` is added to the image.
+- For ECIES-X25519 a newt TLV with a value of `0x33` is added to the image.
+
+The contents of those TLVs are the results of applying the given operations over the AES-CTR key.
 
 ## [ECIES encryption](#ecies-encryption)
 
-ECIES follows a well defined protocol to generate an encryption key. There are
-multiple standards which differ only on which building blocks are used; for
-MCUBoot we settled on some primitives that are easily found on our crypto
-libraries. The whole key encryption can be summarized as:
+ECIES follows a well-defined protocol to generate an encryption key.
+There are multiple standards that differ only on which building blocks are used.
+For MCUBoot we settled on some primitives that are easily found in our crypto libraries.
+The whole key encryption can be summarized as:
 
-* Generate a new private key and derive the public key; when using ECIES-P256
-  this is a secp256r1 keypair, when using ECIES-X25519 this will be a x25519
-  keypair. Those keys will be our ephemeral keys.
-* Generate a new secret (DH) using the ephemeral private key and the public key
-  that corresponds to the private key embedded in the HW.
-* Derive the new keys from the secret using HKDF (built on HMAC-SHA256). We
-  are not using a `salt` and using an `info` of `MCUBoot_ECIES_v1`, generating
-  48 bytes of key material.
-* A new random encryption key is generated (for AES). This is
-  the AES key used to encrypt the images.
-* The key is encrypted with AES-128-CTR or AES-256-CTR and a `nonce` of 0 using
-  the first 16 bytes of key material generated previously by the HKDF.
-* The encrypted key now goes through a HMAC-SHA256 using the remaining 32
-  bytes of key material from the HKDF.
+* Generate a new private key and derive the public key.
+  When using ECIES-P256 this is a secp256r1 keypair.
+  When using ECIES-X25519 this is an x25519 keypair.
+  Those keys will be our ephemeral keys.
+* Generate a new secret (DH) using the ephemeral private key and the public key that corresponds to the private key embedded in the HW.
+* Derive the new keys from the secret using HKDF (built on HMAC-SHA256).
+  We are not using a `salt`.
+  We are using an `info` of `MCUBoot_ECIES_v1`, generating 48 bytes of key material.
+* A new random encryption key is generated (for AES).
+  This is the AES key used to encrypt the images.
+* The key is encrypted with AES-128-CTR or AES-256-CTR and a `nonce` of 0, using the first 16 bytes of key material generated previously by the HKDF.
+* The encrypted key now goes through an HMAC-SHA256 using the remaining 32 bytes of key material from the HKDF.
 
-The final TLV is built from the 65 bytes for ECIES-P256 or 32 bytes for
-ECIES-X25519, which correspond to the ephemeral public key, followed by the
-32 bytes of MAC tag and the 16 or 32 bytes of the encrypted key, resulting in
-a TLV of 113 or 129 bytes for ECIES-P256 and 80 or 96 bytes for ECIES-X25519.
+The final TLV is built from the 65 bytes for ECIES-P256 or 32 bytes for ECIES-X25519, which correspond to the ephemeral public key, followed by the 32 bytes of MAC tag and the 16 or 32 bytes of the encrypted key.
+This results in a TLV of 113 or 129 bytes for ECIES-P256 and 80 or 96 bytes for ECIES-X25519.
 
-The implemenation of ECIES-P256 is named ENC_EC256 in the source code and
-artifacts while ECIES-X25519 is named ENC_X25519.
+The implementation of ECIES-P256 is named `ENC_EC256` in the source code and artifacts.
+The implementation of ECIES-X25519 is named `ENC_X25519` in the source code and artifacts.
 
 ## [Upgrade process](#upgrade-process)
 
-When starting a new upgrade process, `MCUBoot` checks that the image in the
-`secondary slot` has the `ENCRYPTED` flag set and has the required TLV with the
-encrypted key. It then uses its internal private/secret key to decrypt
-the TLV containing the key. Given that no errors are found, it will then
-start the validation process, decrypting the blocks before check. A good
-image being determined, the upgrade consists in reading the blocks from
-the `secondary slot`, decrypting and writing to the `primary slot`.
+When starting a new upgrade process, `MCUboot` checks that the image in the `secondary slot` has the `ENCRYPTED` flag set and has the required TLV with the encrypted key.
+It then uses its internal private or secret key to decrypt the TLV containing the key.
+If no errors are found, it then starts the validation process, decrypting the blocks before check.
+If the validation succeeds, the upgrade consists in reading the blocks from the `secondary slot`, then decrypting and writing to the `primary slot`.
 
-If swap is used for the upgrade process, the encryption happens when
-copying the sectors of the `secondary slot` to the scratch area.
+If swap is used for the upgrade process, the encryption happens when copying the sectors of the `secondary slot` to the scratch area.
 
-The `scratch` area is not encrypted, so it must reside in the internal
-flash of the MCU to avoid attacks that could interrupt the upgrade and
-dump the data.
+The `scratch` area is not encrypted, so it must reside in the internal flash memory of the MCU to avoid attacks that could interrupt the upgrade and dump the data.
 
-Also when swap is used, the image in the `primary slot` is checked for
-presence of the `ENCRYPTED` flag and the key TLV. If those are present the
-sectors are re-encrypted when copying from the `primary slot` to
-the `secondary slot`.
+Also, when a swap is used, the image in the `primary slot` is checked for the presence of the `ENCRYPTED` flag and the key TLV.
+If those are present the sectors are re-encrypted when copying from the `primary slot` to the `secondary slot`.
 
-PS: Each encrypted image must have its own key TLV that should be unique
-and used only for this particular image.
+---
+***Note***
 
-Also when swap method is employed, the sizes of both images are saved to
-the status area just before starting the upgrade process, because it
-would be very hard to determine this information when an interruption
-occurs and the information is spread across multiple areas.
+*Each encrypted image must have its own key TLV that should be unique and used only for this particular image.*
+
+---
+
+Also when a swap method is employed, the sizes of both images are saved to the status area just before starting the upgrade process, because it would be very hard to determine this information when an interruption occurs and the information is spread across multiple areas.
 
 ## [Creating your keys with imgtool](#creating-your-keys-with-imgtool)
 
-`imgtool` can generate keys by using `imgtool keygen -k <output.pem> -t <type>`,
- where type can be one of `rsa-2048`, `rsa-3072`, `ecdsa-p256`, `ecdsa-p224`
-or `ed25519`. This will generate a keypair or private key.
+You can generate keys using the following `imgtool` command:
 
-To extract the public key in source file form, use
-`imgtool getpub -k <input.pem> -l <lang>`, where lang can be one of `c` or
-`rust` (defaults to `c`).
+```
+imgtool keygen -k <output.pem> -t <type>
+```
 
-If using AES-KW, follow the steps in the next section to generate the
-required keys.
+The `<type>` parameter can be one of the following:
+- `rsa-2048`
+- `rsa-3072`
+- `ecdsa-p256`
+- `ecdsa-p224`
+- `ed25519`
 
-## [Creating your keys with Unix tooling](#creating-your-keys-with-unix-tooling)
+This will generate a keypair or private key.
 
-* If using RSA-OAEP, generate a keypair following steps similar to those
-  described in [signed_images](signed_images.md) to create RSA keys.
-* If using ECIES-P256, generate a keypair following steps similar to those
-  described in [signed_images](signed_images.md) to create ECDSA256 keys.
-* If using ECIES-X25519, generate a private key passing the option `-t x25519`
-  to `imgtool keygen` command. To generate public key PEM file the following
-  command can be used: `openssl pkey -in <generated-private-key.pem> -pubout`
-* If using AES-KW (`newt` only), the `kek` can be generated with a
-  command like (change count to 32 for a 256 bit key)
-  `dd if=/dev/urandom bs=1 count=16 | base64 > my_kek.b64`
+To extract the public key in source file form, use the following command:
+
+```
+imgtool getpub -k <input.pem> -l <lang>
+```
+
+The `<lang>` parameter can be either `c` or `rust` (it defaults to `c`).
+
+If using AES-KW, follow the steps in the next section to generate the required keys.
+
+## [Creating your keys with Unix tools](#creating-your-keys-with-unix-tools)
+
+>>>TODO
+
+* If using RSA-OAEP, generate a keypair following steps similar to those described in [signed images](signed images.md) to create RSA keys.
+* If using ECIES-P256, generate a keypair following steps similar to those described in [signed images](signed images.md) to create ECDSA256 keys.
+* If using ECIES-X25519, generate a private key passing the option `-t x25519` to `imgtool keygen` command.
+  To generate a public key PEM file, use the following command:
+
+  ```
+  openssl pkey -in <generated-private-key.pem> -pubout
+  ```
+
+* If using AES-KW (`newt` only), the `kek` can be generated with a command like the following:
+
+  ```
+  dd if=/dev/urandom bs=1 count=16 | base64 > my_kek.b64
+  ```
+
+  Change the value of `count` to 32 for a 256-bit key.

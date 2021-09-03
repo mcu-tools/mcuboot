@@ -21,63 +21,76 @@
 
 ## Image signing
 
-This signs the image by computing hash over the image, and then
-signing that hash. Signature is computed by newt tool when it's
-creating the image. This signature is placed in the image trailer.
+This signs the image by computing the hash over the image and then signing that hash.
+The signature is computed by newt tool when it's creating the image.
+This signature is placed in the image trailer.
 
-The public key of this keypair must be included in the bootloader,
-as it verifies it before allowing the image to run.
+The public key of this keypair must be included in the bootloader, as the bootloader verifies it before allowing the image to run.
 
-This facility allows you to use multiple signing keys. This would
-be useful when you want to prevent production units from booting
-development images, but want development units to be able to boot
-both production images and development images.
+This facility allows you to use multiple signing keys.
+This would be useful when you want to prevent production units from booting development images, but want development units to be able to boot both production images and development images.
 
-For an alternative solution when the public key(s) doesn't need to be
-included in the bootloader, see the [design](design.md) document.
+For an alternative solution when the public keys do not need to be included in the bootloader, see the [design](design.md) document.
 
 ## Creating signing keys
-First you need a keypair to use for signing. You can create
-one with openssl command line tool.
 
+First, you need a keypair to use for signing.
+You can create one with openssl command-line tool:
+
+```
 openssl genrsa -out image_sign.pem 2048
+```
 
-This created a file which contains both the private and public key,
-and will be used when signing images.
+This creates a file that contains both the private and public key and that will be used when signing images.
 
-Then you need to extract the public key from this to include it
-in the bootloader. Bootloader need to keep key parsing minimal,
-so it expects simple key format.
+Then you must extract the public key from this file and include it in the bootloader.
+As the bootloader needs to keep key parsing minimal, it expects a simple key format.
 
+To do so, run the following command:
+
+```
 openssl rsa -in image_sign.pem -pubout -out image_sign_pub.der -outform DER -RSAPublicKey_out
+```
 
-Now the public key is in file called image_sign_pub.der.
+For using ECDSA224, run these commands:
 
-For ECDSA224 these commands are similar.
-
+```
 openssl ecparam -name secp224r1 -genkey -noout -out image_sign.pem
 openssl ec -in image_sign.pem -pubout -outform DER -out image_sign_pub.der
+```
 
-And then the ECDSA256.
+For using ECDSA256, run these commands:
+
+```
 openssl ecparam -name prime256v1 -genkey -noout -out image_sign.pem
 openssl ec -in image_sign.pem -pubout -outform DER -out image_sign_pub.der
+```
+
+Now the public key is in a file called `image_sign_pub.der`.
 
 ## Creating a key package
 
+```
 xxd -i image_sign_pub.der image_sign_pub.c.import
+```
 
 Then you need to create a package containing this key, or keys.
 
 ## Sample pkg.yml
-This gets bootutil to turn on image signature validation.
 
+This gets bootutil to turn on image signature validation:
+
+```
     pkg.name: libs/mykeys
     pkg.deps:
         - "@apache-mynewt-core/boot/bootutil"
+```
 
 ## Sample source file
-This exports the keys.
 
+This exports the keys:
+
+```
     #include <bootutil/sign_key.h>
 
     #include "image_sign_pub.c.import"
@@ -90,17 +103,18 @@ This exports the keys.
     };
 
     const int bootutil_key_cnt = sizeof(bootutil_keys) / sizeof(bootutil_keys[0]);
+```
 
-## Building bootloader
+## Building the bootloader
 
-Enable the BOOTUTIL_SIGN_RSA syscfg setting in your app or target syscfg.yml
-file
+Enable the `BOOTUTIL_SIGN_RSA` syscfg setting in your app or in the target's `syscfg.yml` file:
 
+```
     syscfg.vals:
         BOOTUTIL_SIGN_RSA: 1
+```
 
-After you've created the key package, you must include it in the build
-for bootloader. So modify the pkg.yml for apps/boot to include it.
+After you have created the key package, you must include it in the build for the bootloader.
+To do so, modify the `pkg.yml` for `apps/boot` to include it.
 
-The syscfg variable to enable ECDSA224 is BOOTUTIL_SIGN_EC, and
-BOOTUTIL_SIGN_EC256 for ECDS256.
+The syscfg variable to enable ECDSA224 is `BOOTUTIL_SIGN_EC`, and for ECDS256 it is `BOOTUTIL_SIGN_EC256`.

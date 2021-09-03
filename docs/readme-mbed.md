@@ -1,10 +1,10 @@
 # MCUboot port for Mbed OS
 
-This is an MCUboot port for Mbed OS.
+This page describes the MCUboot port for Mbed OS.
 
 ## Using MCUboot
 
-Note: The following is a general overview. It does not cover MCUboot or Mbed OS basics.
+Please note that the following is a general overview. It does not cover MCUboot or Mbed OS basics.
 
 See https://github.com/AGlass0fMilk/mbed-mcuboot-demo as a detailed example.
 

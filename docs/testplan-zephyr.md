@@ -1,71 +1,103 @@
-# Zephyr Test Plan
+# Zephyr test plan
 
-The following roughly describes how mcuboot is tested on Zephyr.  The
-testing is done with the code in `samples/zephyr`.  These examples
-were written using the FRDM-K64F, but other boards should be similar.
-At this time, however, the partitions are hardcoded in the Makefile
-targets to flash.
+This page describes how MCUboot is tested on Zephyr.
 
-Note that the script "run-tests.sh" in that directory is helpful for
-automating the process, and provides simple "y or n" prompts for each
-test case and expected result.
+The testing is performed with the code in `samples/zephyr`.
+These examples were written using the FRDM-K64F, but other boards should be similar.
+Currently, however, the partitions are hardcoded in the Makefile targets to the flash memory.
 
-## Building and running.
+---
+***Note***
 
-The tests are build using the various `test-*` targets in
-`samples/zephyr/Makefile`.  For each test, invoke `make` with that
-target:
+*The script `run-tests.sh` in the `samples/zephyr` directory helps automate the process and provides simple `y or n` prompts for each test case and expected result.*
 
-    $ make test-good-rsa
+---
 
-Begin by doing a full erase, and programming the bootloader itself:
+## Building and running
 
-    $ pyocd erase --chip
-    $ make flash_boot
+The tests are built using the various `test-*` targets in `samples/zephyr/Makefile`.
+To build and run the tests, do the following:
 
-After it resets, look for "main: Starting bootloader", a few debug
-messages, and lastly: "main: Unable to find bootable image".
+1. For each test, run `make` with the intended test target:
 
-Then, load hello1:
+   ```
+       make test-good-rsa
+   ```
 
-    $ make flash_hello1
+2. Execute a full erase, and program the bootloader itself:
 
-This should print "main: Jumping to the first image slot", and you
-should get an image "hello1".
+   ```
+       pyocd erase --chip
+       make flash_boot
+   ```
 
-Note that there are comments with each test target describing the
-intended behavior for each of these steps.  Sometimes an upgrade will
-happen and sometimes it will not.
+3. After it resets, observe a block of text in the terminal looking as follows:
 
-    $ make flash_hello2
+   ```
+      main: Starting bootloader 
 
-This should print a message: `boot_swap_type: Swap type: test`, and
-you should see "hello2".
+      # (...)a few debug messages(...)
 
-Now reset the target::
+      main: Unable to find bootable image
+   ```
 
-    $ pyocd commander -c reset
+4. Load `hello1`:
 
-And you should see a revert and "hello1" running.
+   ```
+       make flash_hello1
+   ```
 
-## Testing that mark ok works
+   This prints the following message:
 
-Repeat this, to make sure we can mark the image as OK, and that a
-revert doesn't happen:
+   ```
+       main: Jumping to the first image slot
+   ```
+   You will also get the `hello1` image running.
 
-    $ make flash_hello1
-    $ make flash_hello2
+   There are comments within each test target describing the intended behavior for each of these steps, also indicating if an upgrade is either meant to happen or not.
 
-We should have just booted the hello2.  Mark this as OK:
+5. Load `hello2`:
 
-    $ pyocd flash -a 0x7ffe8 image_ok.bin
-    $ pyocd commander -c reset
+   ```
+       make flash_hello2
+   ```
 
-And make sure this stays in the "hello2" image.
+   This prints the following message:
 
-This step doesn't make sense on the tests where the upgrade doesn't
-happen.
+   ```
+       boot_swap_type: Swap type: test
+   ```
+   You will also get the `hello2` image running.
+
+6. Reset the target:
+
+   ```
+       pyocd commander -c reset
+   ```
+
+7. Observe a revert and the `hello1` image running.
+
+## Testing that "mark as OK" works
+
+To make sure we can mark the image as OK, and that a revert does not happen, input the following commands:
+
+```
+    make flash_hello1
+    make flash_hello2
+```
+
+This boots the `hello2` image.
+To mark this image as OK, input the following commands:
+
+```
+    pyocd flash -a 0x7ffe8 image_ok.bin
+    pyocd commander -c reset
+```
+
+Also, make sure this stays in the `hello2` image.
+
+This step does not make sense on the tests where the upgrade does not happen.
 
 ## Testing all configurations
 
-Repeat these steps for each of the `test-*` targest in the Makefile.
+Repeat these steps for each one of the `test-*` targets in the Makefile.

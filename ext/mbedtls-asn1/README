@@ -1,3 +1,3 @@
-This bundles the asn1 parser from mbed-tls into mcuboot, which allows
+This bundles the asn1 parser from mbed-tls into MCUboot, which allows
 adding EC crypto (tinycrypt based) functionality for target OSes that
 don't bundle mbed-tls.
