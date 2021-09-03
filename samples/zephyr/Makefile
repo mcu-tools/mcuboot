@@ -61,6 +61,9 @@ BOARD ?= frdm_k64f
 # the mcuboot Makefile.
 SIGNING_KEY ?= ../../root-rsa-2048.pem
 
+# For encrypting
+ENCRYPTION_KEY ?= ../../enc-rsa2048-priv.pem
+
 # The header size should match that in hello1/prj.conf
 # CONFIG_TEXT_SECTION_OFFSET.  This value needs to be a power of two
 # that is at least as large as the size of the vector table.  The
@@ -160,6 +163,21 @@ hello2: check
 		$(BUILD_DIR_HELLO2)/zephyr/zephyr.bin \
 		signed-hello2.bin
 
+# Sign and encrypt "hello2".
+#
+# It should be flashed into the secondary slot for testing that bootloader is able to decrypt image when upgrading
+hello2_encrypted: hello2
+	$(IMGTOOL) sign \
+		--key $(SIGNING_KEY) \
+		--header-size $(BOOT_HEADER_LEN) \
+		--align $(FLASH_ALIGNMENT) \
+		--version 1.2 \
+		--slot-size 0x60000 \
+		--pad \
+		--encrypt ${ENCRYPTION_KEY} \
+		$(BUILD_DIR_HELLO2)/zephyr/zephyr.bin \
+		signed-encrypted-hello2.bin
+
 clean_hello2: check
 	rm -rf $(BUILD_DIR_HELLO2)
 
@@ -174,6 +192,9 @@ flash_hello1:
 
 flash_hello2:
 	$(PYOCD) flash -a 0x80000 signed-hello2.bin
+
+flash_hello2_encrypted:
+	$(PYOCD) flash -a 0x80000 signed-encrypted-hello2.bin
 
 flash_full:
 	$(PYOCD) flash -e chip -a 0 full.bin
@@ -285,6 +306,87 @@ test-wrong-ecdsa: clean
 		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-ecdsa-p256.conf \
 		SIGNING_KEY=bad-keys/bad-ec-p256.pem \
 		hello2
+
+# Test uprading a good RSA encrypted and RSA signed image.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2_encrypted: hello2 runs
+# reset: hello1 runs
+test-good-encrypted-rsa: clean
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-encrypt-rsa.conf \
+		boot hello1 hello2_encrypted
+
+# Test uprading a wrong RSA encrypted and correct RSA signed image.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2_encrypted: hello1 runs
+test-wrong-encrypted-rsa: clean
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-encrypt-rsa.conf \
+		boot hello1
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-encrypt-rsa.conf \
+		ENCRYPTION_KEY=bad-keys/bad-enc-rsa2048-priv.pem \
+		hello2_encrypted
+
+# Test uprading a correct EC256 encrypted and correct RSA signed image.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2_encrypted: hello2 runs
+# reset: hello1 runs
+test-good-encrypted-ec256: clean
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-encrypt-ec256.conf \
+		SIGNING_KEY=../../root-ec-p256.pem \
+		ENCRYPTION_KEY=../../enc-ec256-priv.pem \
+		boot hello1 hello2_encrypted
+
+# Test uprading a wrong EC256 encrypted and correct RSA signed image.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2_encrypted: hello1 runs
+test-wrong-encrypted-ec256: clean
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-encrypt-ec256.conf \
+		SIGNING_KEY=../../root-ec-p256.pem \
+		ENCRYPTION_KEY=../../enc-ec256-priv.pem \
+		boot hello1
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-encrypt-ec256.conf \
+		SIGNING_KEY=../../root-ec-p256.pem \
+		ENCRYPTION_KEY=bad-keys/bad-enc-ec256-priv.pem \
+		hello2_encrypted
+
+# Test uprading a good X25519 encrypted and good ED25519 signed image.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2_encrypted: hello2 runs
+# reset: hello1 runs
+test-good-encrypted-x25519: clean
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-encrypt-x25519.conf \
+		SIGNING_KEY=../../root-ed25519.pem \
+		ENCRYPTION_KEY=../../enc-x25519-priv.pem \
+		boot hello1 hello2_encrypted
+
+# Test uprading a wrong X25519 encrypted and good ED25519 signed image.
+# flash_boot: Unable to find bootable image
+# flash_hello1: hello1 runs
+# flash_hello2_encrypted: hello2 runs
+# reset: hello1 runs
+test-wrong-encrypted-x25519: clean
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-encrypt-x25519.conf \
+		SIGNING_KEY=../../root-ed25519.pem \
+		ENCRYPTION_KEY=../../enc-x25519-priv.pem \
+		boot hello1
+	$(MAKE) \
+		BOOTLOADER_OVERLAY_CONFIG=$(PWD)/overlay-encrypt-x25519.conf \
+		SIGNING_KEY=../../root-ed25519.pem \
+		ENCRYPTION_KEY=bad-keys/bad-enc-x25519-priv.pem \
+		boot hello2_encrypted
+
 
 check:
 	@if [ -z "$$ZEPHYR_BASE" ]; then echo "Zephyr environment not set up"; false; fi

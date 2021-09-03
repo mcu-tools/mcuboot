@@ -191,6 +191,115 @@ pyocd commander -c reset
 echo "Expected result: hello1 runs"
 ok_yn
 
+echo '--------------------------------------------------------'
+echo '----------------- CORRECT RSA ENCRYPTED ----------------'
+make test-good-encrypted-rsa
+pyocd erase --chip
+make flash_boot
+echo "Expected result: unable to find bootable image"
+ok_yn
+echo "Flashing hello 1"
+make flash_hello1
+echo "Expected result: hello1 runs"
+ok_yn
+echo "Flashing hello 2"
+make flash_hello2_encrypted
+echo "Expected result: hello2 runs"
+ok_yn
+echo "Resetting"
+pyocd commander -c reset
+echo "Expected result: hello1 runs"
+ok_yn
+
+echo '--------------------------------------------------------'
+echo '---------------- CORRECT EC256 ENCRYPTED ---------------'
+make test-good-encrypted-ec256
+pyocd erase --chip
+make flash_boot
+echo "Expected result: unable to find bootable image"
+ok_yn
+echo "Flashing hello 1"
+make flash_hello1
+echo "Expected result: hello1 runs"
+ok_yn
+echo "Flashing hello 2"
+make flash_hello2_encrypted
+echo "Expected result: hello2 runs"
+ok_yn
+echo "Resetting"
+pyocd commander -c reset
+echo "Expected result: hello1 runs"
+ok_yn
+
+echo '--------------------------------------------------------'
+echo '--------------- CORRECT X25519 ENCRYPTED ---------------'
+make test-good-encrypted-x25519
+pyocd erase --chip
+make flash_boot
+echo "Expected result: unable to find bootable image"
+ok_yn
+echo "Flashing hello 1"
+make flash_hello1
+echo "Expected result: hello1 runs"
+ok_yn
+echo "Flashing hello 2"
+make flash_hello2_encrypted
+echo "Expected result: hello2 runs"
+ok_yn
+echo "Resetting"
+pyocd commander -c reset
+echo "Expected result: hello1 runs"
+ok_yn
+
+echo '--------------------------------------------------------'
+echo '----------------- WRONG RSA ENCRYPTED ----------------'
+make test-wrong-encrypted-rsa
+pyocd erase --chip
+make flash_boot
+echo "Expected result: unable to find bootable image"
+ok_yn
+echo "Flashing hello 1"
+make flash_hello1
+echo "Expected result: hello1 runs"
+ok_yn
+echo "Flashing hello 2"
+make flash_hello2_encrypted
+echo "Expected result: hello1 runs"
+ok_yn
+
+echo '--------------------------------------------------------'
+echo '---------------- WRONG EC256 ENCRYPTED ---------------'
+make test-wrong-encrypted-ec256
+pyocd erase --chip
+make flash_boot
+echo "Expected result: unable to find bootable image"
+ok_yn
+echo "Flashing hello 1"
+make flash_hello1
+echo "Expected result: hello1 runs"
+ok_yn
+echo "Flashing hello 2"
+make flash_hello2_encrypted
+echo "Expected result: hello1 runs"
+ok_yn
+
+echo '--------------------------------------------------------'
+echo '--------------- WRONG X25519 ENCRYPTED ---------------'
+make test-wrong-encrypted-x25519
+pyocd erase --chip
+make flash_boot
+echo "Expected result: unable to find bootable image"
+ok_yn
+echo "Flashing hello 1"
+make flash_hello1
+echo "Expected result: hello1 runs"
+ok_yn
+echo "Flashing hello 2"
+make flash_hello2_encrypted
+echo "Expected result: hello1 runs"
+ok_yn
+
+
 echo '========================================================'
 echo '                    ALL TESTS PASSED'
 echo '========================================================'
