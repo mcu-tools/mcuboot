@@ -1,11 +1,17 @@
 /*
+ * Copyright (c) 2021 Espressif Systems (Shanghai) Co., Ltd.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
  * Linker file used to link the bootloader.
  */
 
 MEMORY
 {
     iram_loader_seg (RWX) : org = 0x4009D000, len = 0x3000
-    iram_seg (RWX) : org = 0x40085000, len = 0x8000
+    iram_seg (RWX) : org = 0x40085000, len = 0x9000
     dram_seg (RW) : org = 0x3FFF5000, len = 0xB000
 }
 
@@ -28,7 +34,7 @@ SECTIONS
         *(.gnu.version)
         _loader_text_end = ABSOLUTE(.);
     } > iram_loader_seg
-    
+
     .iram.text :
     {
         . = ALIGN (16);
