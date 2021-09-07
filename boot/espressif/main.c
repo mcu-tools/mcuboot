@@ -9,6 +9,7 @@
 
 #include <mcuboot_config/mcuboot_logging.h>
 
+#include <os/os_malloc.h>
 #include <bootloader_init.h>
 #include <esp_loader.h>
 
@@ -27,6 +28,8 @@ int main()
 #ifdef MCUBOOT_VER
     MCUBOOT_LOG_INF("*** Booting MCUBoot build %s  ***", MCUBOOT_VER);
 #endif
+
+    os_heap_init();
 
     fih_int fih_rc = FIH_FAILURE;
     FIH_CALL(boot_go, fih_rc, &rsp);
