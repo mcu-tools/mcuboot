@@ -425,7 +425,15 @@ boot_swap_type_multi(int image_index)
 
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
                                     &secondary_slot);
-    if (rc) {
+    if (rc == BOOT_EFLASH) {
+        BOOT_LOG_INF("Secondary image of image pair (%d.) "
+                     "is unreachable. Treat it as empty", image_index);
+        secondary_slot.magic = BOOT_MAGIC_UNSET;
+        secondary_slot.swap_type = BOOT_SWAP_TYPE_NONE;
+        secondary_slot.copy_done = BOOT_FLAG_UNSET;
+        secondary_slot.image_ok = BOOT_FLAG_UNSET;
+        secondary_slot.image_num = 0;
+    } else if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
     }
 

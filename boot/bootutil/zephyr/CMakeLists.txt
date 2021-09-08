@@ -12,7 +12,7 @@ target_include_directories(MCUBOOT_BOOTUTIL INTERFACE
   ../../zephyr/include
 )
 
-zephyr_library()
+zephyr_library_named(mcuboot_util)
 zephyr_library_sources(
   ../src/bootutil_public.c
     )
