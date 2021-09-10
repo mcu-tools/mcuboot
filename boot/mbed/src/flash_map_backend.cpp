@@ -27,8 +27,6 @@
 
 #include "mcuboot_config/mcuboot_logging.h"
 
-#include "bootutil_priv.h"
-
 #define FLASH_DEVICE_INTERNAL_FLASH 0
 #define FLASH_AREAS 3
 

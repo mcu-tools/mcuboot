@@ -16,10 +16,6 @@ add_library(${LIB_TARGET} STATIC)
 target_include_directories(${LIB_TARGET}
     PUBLIC
         include
-        include/flash_map_backend/
-        include/mcuboot_config
-        include/os
-        include/sysflash
 )
 
 target_sources(${LIB_TARGET}
@@ -39,7 +35,8 @@ target_link_libraries(${LIB_TARGET}
         mbed-storage-blockdevice
 )
 
-# TODO: Add comment here about bootutil
+# The cross-dependency requires that bootutil have access to the mbed port's 
+# include directory and is linked with the appropriate mbed-specific libraries. 
 target_include_directories(${LIB_BOOTUTIL}
     PUBLIC
         include
