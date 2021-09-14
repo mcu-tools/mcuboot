@@ -568,7 +568,7 @@ boot_is_header_valid(const struct image_header *hdr, const struct flash_area *fa
         return false;
     }
 
-    if (size >= flash_area_get_size(fap)) {
+    if (size > flash_area_get_size(fap)) {
         return false;
     }
 
