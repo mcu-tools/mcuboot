@@ -183,7 +183,6 @@ static void do_boot(struct boot_rsp *rsp)
                                      rsp->br_image_off +
                                      rsp->br_hdr->ih_hdr_size);
 
-    irq_lock();
 #ifdef CONFIG_SYS_CLOCK_EXISTS
     sys_clock_disable();
 #endif
@@ -213,6 +212,8 @@ static void do_boot(struct boot_rsp *rsp)
     __set_MSPLIM(0);
 #endif
 
+#else
+    irq_lock();
 #endif /* CONFIG_MCUBOOT_CLEANUP_ARM_CORE */
 
 #ifdef CONFIG_BOOT_INTR_VEC_RELOC

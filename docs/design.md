@@ -347,14 +347,14 @@ the bit-level contents of flash.
 ### [Revert mechanism in direct-xip mode](#direct-xip-revert)
 
 The direct-xip mode also supports a "revert" mechanism which is the equivalent
-of the swap mode's "revert" swap. It can be enabled with the
-MCUBOOT_DIRECT_XIP_REVERT config option and an image trailer must also be added
-to the signed images (the "--pad" option of the `imgtool` script must be used).
-For more information on this please read the [Image Trailer](#image-trailer)
-section and the [imgtool](imgtool.md) documentation. Making the images permanent
-(marking them as confirmed in advance) is also supported just like in swap mode.
-The individual steps of the direct-xip mode's "revert" mechanism are the
-following:
+of the swap mode's "revert" swap. When the direct-xip mode is selected it can be
+enabled with the MCUBOOT_DIRECT_XIP_REVERT config option and an image trailer
+must also be added to the signed images (the "--pad" option of the `imgtool`
+script must be used). For more information on this please read the
+[Image Trailer](#image-trailer) section and the [imgtool](imgtool.md)
+documentation. Making the images permanent (marking them as confirmed in
+advance) is also supported just like in swap mode. The individual steps of the
+direct-xip mode's "revert" mechanism are the following:
 
 1. Select the slot which holds the newest potential image.
 2. Was the image previously selected to run (during a previous boot)?

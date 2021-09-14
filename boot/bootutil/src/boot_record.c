@@ -62,13 +62,18 @@ boot_add_data_to_shared_area(uint8_t        major_type,
 
     boot_data = (struct shared_boot_data *)MCUBOOT_SHARED_DATA_BASE;
 
-    /* Check whether first time to call this function. If does then initialise
-     * shared data area.
+    /* Check whether first time to call this function. If it is, then check
+     * whether the shared data area needs to be initialised.
      */
     if (!shared_memory_init_done) {
-        memset((void *)MCUBOOT_SHARED_DATA_BASE, 0, MCUBOOT_SHARED_DATA_SIZE);
-        boot_data->header.tlv_magic   = SHARED_DATA_TLV_INFO_MAGIC;
-        boot_data->header.tlv_tot_len = SHARED_DATA_HEADER_SIZE;
+        if ((boot_data->header.tlv_magic != SHARED_DATA_TLV_INFO_MAGIC) ||
+            (boot_data->header.tlv_tot_len > MCUBOOT_SHARED_DATA_SIZE)) {
+            memset((void *)MCUBOOT_SHARED_DATA_BASE, 0,
+                           MCUBOOT_SHARED_DATA_SIZE);
+            boot_data->header.tlv_magic   = SHARED_DATA_TLV_INFO_MAGIC;
+            boot_data->header.tlv_tot_len = SHARED_DATA_HEADER_SIZE;
+        }
+
         shared_memory_init_done = true;
     }
 

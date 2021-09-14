@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the cddl-gen submodule.
- * Commit 8f9358a0b4b0e9b0cd579f0988056ef0b60760e4
+ * Commit 9f77837f9950da1633d22abf6181a830521a6688
  */
 
 /*
@@ -55,10 +55,10 @@ bool bstrx_encode(cbor_state_t *state, const cbor_string_type_t *result);
 bool tstrx_encode(cbor_state_t *state, const cbor_string_type_t *result);
 
 #define tstrx_put(state, string) \
-	tstrx_encode(state, &(cbor_string_type_t){.value = (const uint8_t *)string, len = (sizeof(string) - 1)})
+	tstrx_encode(state, &(cbor_string_type_t){.value = (const uint8_t *)string, .len = (sizeof(string) - 1)})
 
 #define tstrx_put_term(state, string) \
-	tstrx_encode(state, &(cbor_string_type_t){.value = (const uint8_t *)string, len = strlen((const char *)string)})
+	tstrx_encode(state, &(cbor_string_type_t){.value = (const uint8_t *)string, .len = strlen((const char *)string)})
 
 /** Encode a LIST header.
  *

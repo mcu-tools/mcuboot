@@ -30,7 +30,6 @@ config BOOT_USE_TINYCRYPT
 	# When building for ECDSA, we use our own copy of mbedTLS, so the
 	# Zephyr one must not be enabled or the MBEDTLS_CONFIG_FILE macros
 	# will collide.
-	depends on ! MBEDTLS
 	help
 	  Use TinyCrypt for crypto primitives.
 
@@ -41,7 +40,6 @@ config BOOT_USE_CC310
 	# When building for ECDSA, we use our own copy of mbedTLS, so the
 	# Zephyr one must not be enabled or the MBEDTLS_CONFIG_FILE macros
 	# will collide.
-	depends on ! MBEDTLS
 	help
 	  Use cc310 for crypto primitives.
 
@@ -403,8 +401,8 @@ config BOOT_USB_DFU_DETECT_PIN
 	default 6 if BOARD_NRF9160DK_NRF9160
 	default 11 if BOARD_NRF52840DK_NRF52840
 	default 13 if BOARD_NRF52DK_NRF52832
-	default 23 if BOARD_NRF5340_DK_NRF5340_CPUAPP || BOARD_NRF5340_DK_NRF5340_CPUAPPNS
-	default 43 if BOARD_BL5340_DVK_CPUAPP || BOARD_BL5340_DVK_CPUAPPNS
+	default 23 if BOARD_NRF5340_DK_NRF5340_CPUAPP || BOARD_NRF5340_DK_NRF5340_CPUAPP_NS
+	default 43 if BOARD_BL5340_DVK_CPUAPP || BOARD_BL5340_DVK_CPUAPP_NS
 	help
 	  Pin on the DFU detect port that triggers DFU mode.
 
@@ -517,8 +515,8 @@ config BOOT_SERIAL_DETECT_PIN
 	default 6 if BOARD_NRF9160DK_NRF9160
 	default 11 if BOARD_NRF52840DK_NRF52840
 	default 13 if BOARD_NRF52DK_NRF52832 || BOARD_NRF52833DK_NRF52833
-	default 23 if BOARD_NRF5340PDK_NRF5340_CPUAPP || BOARD_NRF5340PDK_NRF5340_CPUAPPNS || \
-		BOARD_NRF5340DK_NRF5340_CPUAPP || BOARD_NRF5340DK_NRF5340_CPUAPPNS
+	default 23 if BOARD_NRF5340PDK_NRF5340_CPUAPP || BOARD_NRF5340PDK_NRF5340_CPUAPP_NS || \
+		BOARD_NRF5340DK_NRF5340_CPUAPP || BOARD_NRF5340DK_NRF5340_CPUAPP_NS
 	help
 	  Pin on the serial detect port that triggers serial recovery mode.
 
@@ -622,10 +620,6 @@ config MULTITHREADING
 	default y if BOOT_SERIAL_CDC_ACM #usb driver requires MULTITHREADING
 	default y if BOOT_USB_DFU_GPIO || BOOT_USB_DFU_WAIT
 	default n if SOC_FAMILY_NRF
-	default y
-
-config LOG_IMMEDIATE
-	default n if MULTITHREADING
 	default y
 
 config LOG_PROCESS_THREAD

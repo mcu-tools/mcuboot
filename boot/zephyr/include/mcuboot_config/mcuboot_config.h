@@ -34,6 +34,14 @@
 #define MCUBOOT_SIGN_ED25519
 #endif
 
+#if defined(CONFIG_BOOT_USE_TINYCRYPT)
+#  if defined(CONFIG_MBEDTLS) || defined(CONFIG_BOOT_USE_CC310)
+#     error "One crypto library implementation allowed at a time."
+#  endif
+#elif defined(CONFIG_MBEDTLS) && defined(CONFIG_BOOT_USE_CC310)
+#     error "One crypto library implementation allowed at a time."
+#endif
+
 #ifdef CONFIG_BOOT_USE_MBEDTLS
 #define MCUBOOT_USE_MBED_TLS
 #elif defined(CONFIG_BOOT_USE_TINYCRYPT)
@@ -204,5 +212,10 @@
     } while (0)
 
 #endif /* CONFIG_BOOT_WATCHDOG_FEED */
+
+#define MCUBOOT_CPU_IDLE() \
+  if (!IS_ENABLED(CONFIG_MULTITHREADING)) { \
+    k_cpu_idle(); \
+  }
 
 #endif /* __MCUBOOT_CONFIG_H__ */

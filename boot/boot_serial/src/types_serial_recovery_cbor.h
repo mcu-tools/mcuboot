@@ -1,11 +1,11 @@
 /*
  * This file has been generated from the cddl-gen submodule.
- * Commit 8f9358a0b4b0e9b0cd579f0988056ef0b60760e4
+ * Commit 9f77837f9950da1633d22abf6181a830521a6688
  */
 
 /*
  * Generated with cddl_gen.py (https://github.com/NordicSemiconductor/cddl-gen)
- * at: 2021-05-10 09:40:43
+ * at: 2021-08-02 17:09:42
  * Generated with a default_max_qty of 3
  */
 

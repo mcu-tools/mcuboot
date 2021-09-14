@@ -67,17 +67,16 @@ struct slot_usage_t {
     /* Index of the slot chosen to be loaded */
     uint32_t active_slot;
     bool slot_available[BOOT_NUM_SLOTS];
-#ifdef MCUBOOT_RAM_LOAD
+#if defined(MCUBOOT_RAM_LOAD)
     /* Image destination and size for the active slot */
     uint32_t img_dst;
     uint32_t img_sz;
-#endif /* MCUBOOT_RAM_LOAD */
-#ifdef MCUBOOT_DIRECT_XIP_REVERT
+#elif defined(MCUBOOT_DIRECT_XIP_REVERT)
     /* Swap status for the active slot */
-    struct boot_swap_state swap_state
-#endif /* MCUBOOT_DIRECT_XIP_REVERT */
-};
+    struct boot_swap_state swap_state;
 #endif
+};
+#endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 
 /*
  * This macro allows some control on the allocation of local variables.
@@ -361,7 +360,8 @@ boot_read_sectors(struct boot_loader_state *state)
 
     rc = boot_initialize_area(state, FLASH_AREA_IMAGE_SECONDARY(image_index));
     if (rc != 0) {
-        return BOOT_EFLASH;
+        /* We need to differentiate from the primary image issue */
+        return BOOT_EFLASH_SEC;
     }
 
 #if MCUBOOT_SWAP_USING_SCRATCH
@@ -907,7 +907,7 @@ boot_copy_region(struct boot_loader_state *state,
     uint8_t image_index;
 #endif
 
-    TARGET_STATIC uint8_t buf[1024];
+    TARGET_STATIC uint8_t buf[1024] __attribute__((aligned(4)));
 
 #if !defined(MCUBOOT_ENC_IMAGES)
     (void)state;
@@ -1654,7 +1654,11 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
          * if there is one.
          */
         BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
-        return;
+        if (rc == BOOT_EFLASH)
+        {
+            /* Only return on error from the primary image flash */
+            return;
+        }
     }
 
     /* Attempt to read an image header from each slot. */
@@ -2247,7 +2251,7 @@ print_loaded_images(struct boot_loader_state *state,
 }
 #endif
 
-#ifdef MCUBOOT_DIRECT_XIP_REVERT
+#if defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_DIRECT_XIP_REVERT)
 /**
  * Checks whether the active slot of the current image was previously selected
  * to run. Erases the image if it was selected but its execution failed,
@@ -2289,7 +2293,7 @@ boot_select_or_erase(struct boot_loader_state *state,
          * to prevent it from being selected again on the next reboot.
          */
         BOOT_LOG_DBG("Erasing faulty image in the %s slot.",
-                     (slot == BOOT_PRIMARY_SLOT) ? "primary" : "secondary");
+                     (active_slot == BOOT_PRIMARY_SLOT) ? "primary" : "secondary");
         rc = flash_area_erase(fap, 0, fap->fa_size);
         assert(rc == 0);
 
@@ -2310,7 +2314,7 @@ boot_select_or_erase(struct boot_loader_state *state,
             rc = boot_write_copy_done(fap);
             if (rc != 0) {
                 BOOT_LOG_WRN("Failed to set copy_done flag of the image in "
-                             "the %s slot.", (slot == BOOT_PRIMARY_SLOT) ?
+                             "the %s slot.", (active_slot == BOOT_PRIMARY_SLOT) ?
                              "primary" : "secondary");
                 rc = 0;
             }
@@ -2320,7 +2324,7 @@ boot_select_or_erase(struct boot_loader_state *state,
 
     return rc;
 }
-#endif /* MCUBOOT_DIRECT_XIP_REVERT */
+#endif /* MCUBOOT_DIRECT_XIP && MCUBOOT_DIRECT_XIP_REVERT */
 
 #ifdef MCUBOOT_RAM_LOAD
 
@@ -2812,7 +2816,6 @@ boot_load_and_validate_images(struct boot_loader_state *state,
                 slot_usage[BOOT_CURR_IMG(state)].active_slot = NO_ACTIVE_SLOT;
                 continue;
             }
-#endif /* MCUBOOT_DIRECT_XIP */
 
 #ifdef MCUBOOT_DIRECT_XIP_REVERT
             rc = boot_select_or_erase(state, slot_usage);
@@ -2823,6 +2826,7 @@ boot_load_and_validate_images(struct boot_loader_state *state,
                 continue;
             }
 #endif /* MCUBOOT_DIRECT_XIP_REVERT */
+#endif /* MCUBOOT_DIRECT_XIP */
 
 #ifdef MCUBOOT_RAM_LOAD
             /* Image is first loaded to RAM and authenticated there in order to
@@ -2877,7 +2881,7 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state,
     /* Update the stored security counter with the newer (active) image's
      * security counter value.
      */
-#ifdef MCUBOOT_DIRECT_XIP_REVERT
+#if defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_DIRECT_XIP_REVERT)
     /* When the 'revert' mechanism is enabled in direct-xip mode, the
      * security counter can be increased only after reboot, if the image
      * has been confirmed at runtime (the image_ok flag has been set).
@@ -2892,7 +2896,7 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state,
                             "validation.");
             return rc;
         }
-#ifdef MCUBOOT_DIRECT_XIP_REVERT
+#if defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_DIRECT_XIP_REVERT)
     }
 #endif
 

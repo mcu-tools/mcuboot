@@ -152,4 +152,11 @@
 #define NUM_ECC_BYTES (256 / 8)
 #endif /* ENC_IMG */
 
+/*
+ * No direct idle call implemented
+ */
+#define MCUBOOT_CPU_IDLE() \
+    do {                   \
+    } while (0)
+
 #endif /* MCUBOOT_CONFIG_H */
