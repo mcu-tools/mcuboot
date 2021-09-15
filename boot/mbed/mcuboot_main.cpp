@@ -50,9 +50,11 @@ int main()
 {
     int rc;
 
+#ifdef MCUBOOT_HAVE_LOGGING
     mbed_trace_init();
 #if MCUBOOT_LOG_BOOTLOADER_ONLY
     mbed_trace_include_filters_set("MCUb,BL");
+#endif
 #endif
 
     tr_info("Starting MCUboot");
