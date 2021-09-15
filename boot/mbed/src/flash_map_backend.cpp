@@ -97,6 +97,9 @@ int flash_area_open(uint8_t id, const struct flash_area** fapp) {
     if (open_count[id] == 1) {
         MCUBOOT_LOG_DBG("initializing flash area %d...", id);
         result = bd->init();
+        if(result) {
+            return result;
+        }
     }
 
     fap->fa_size = (uint32_t) bd->size();
