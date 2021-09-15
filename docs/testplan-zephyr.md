@@ -2,21 +2,24 @@
 
 This page describes how MCUboot is tested on Zephyr.
 
-The testing is performed with the code in `samples/zephyr`.
-These examples were written using the FRDM-K64F, but other boards should be similar.
-Currently, however, the partitions are hardcoded in the Makefile targets to the flash memory.
+The testing is performed with the code in `samples/zephyr`. These examples
+were written using the FRDM-K64F, but other boards should be similar.
+Currently, however, the partitions are hardcoded in the Makefile targets
+to the flash memory.
 
 ---
 ***Note***
 
-*The script `run-tests.sh` in the `samples/zephyr` directory helps automate the process and provides simple `y or n` prompts for each test case and expected result.*
+*The script `run-tests.sh` in the `samples/zephyr` directory helps*
+*automate the process and provides simple `y or n` prompts for each test*
+*case and expected result.*
 
 ---
 
 ## Building and running
 
-The tests are built using the various `test-*` targets in `samples/zephyr/Makefile`.
-To build and run the tests, do the following:
+The tests are built using the various `test-*` targets in
+`samples/zephyr/Makefile`. To build and run the tests, do the following:
 
 1. For each test, run `make` with the intended test target:
 
@@ -31,10 +34,11 @@ To build and run the tests, do the following:
        make flash_boot
    ```
 
-3. After it resets, observe a block of text in the terminal looking as follows:
+3. After it resets, observe a block of text in the terminal looking as
+   follows:
 
    ```
-      main: Starting bootloader 
+      main: Starting bootloader
 
       # (...)a few debug messages(...)
 
@@ -54,7 +58,9 @@ To build and run the tests, do the following:
    ```
    You will also get the `hello1` image running.
 
-   There are comments within each test target describing the intended behavior for each of these steps, also indicating if an upgrade is either meant to happen or not.
+   There are comments within each test target describing the intended
+   behavior for each of these steps, also indicating if an upgrade is
+   either meant to happen or not.
 
 5. Load `hello2`:
 
@@ -79,7 +85,8 @@ To build and run the tests, do the following:
 
 ## Testing that "mark as OK" works
 
-To make sure we can mark the image as OK, and that a revert does not happen, input the following commands:
+To make sure we can mark the image as OK, and that a revert does not
+happen, input the following commands:
 
 ```
     make flash_hello1
@@ -96,7 +103,8 @@ To mark this image as OK, input the following commands:
 
 Also, make sure this stays in the `hello2` image.
 
-This step does not make sense on the tests where the upgrade does not happen.
+This step does not make sense on the tests where the upgrade does not
+happen.
 
 ## Testing all configurations
 

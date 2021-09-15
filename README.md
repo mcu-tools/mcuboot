@@ -18,20 +18,23 @@
 
 This is MCUboot version 1.8.0-rc1
 
-MCUboot is a secure bootloader for 32-bit MCUs.
-The goal of MCUboot is to define a common infrastructure for the bootloader, system flash layout on microcontroller systems, and to provide a secure bootloader that enables simple software upgrades.
+MCUboot is a secure bootloader for 32-bit MCUs. The goal of MCUboot is to
+define a common infrastructure for the bootloader, system flash layout on
+microcontroller systems, and to provide a secure bootloader that enables
+simple software upgrades.
 
-MCUboot is operating-system and hardware independent and relies on hardware porting layers from the operating system.
-Currently, MCUboot works with the following operating systems:
+MCUboot is operating-system and hardware independent and relies on
+hardware porting layers from the operating system. Currently, MCUboot
+works with the following operating systems:
 - [Zephyr](https://www.zephyrproject.org/)
 - [Apache Mynewt](https://mynewt.apache.org/)
 - [Apache NuttX](https://nuttx.apache.org/)
 - [RIOT](https://www.riot-os.org/)
 - [Mbed OS](https://os.mbed.com/)
 
-RIOT is currently supported only as a boot target.
-There is currently no defined plan to add any additional port.
-However, we will accept any new port contributed by the community once it is good enough.
+RIOT is currently supported only as a boot target. There is currently no
+defined plan to add any additional port. However, we will accept any new
+port contributed by the community once it is good enough.
 
 ## Using MCUboot
 
@@ -42,16 +45,20 @@ Instructions for different operating systems can be found below:
 - [RIOT](docs/readme-riot.md)
 - [Mbed OS](docs/readme-mbed.md)
 
-There are also instructions for the [Espressif IDF](docs/readme-espressif.md) SDK and for the [Simulator](sim/README.rst).
+There are also instructions for the [Espressif
+IDF](docs/readme-espressif.md) SDK and for the
+[Simulator](sim/README.rst).
 
 ## Roadmap
 
-The issues being planned and worked on are tracked using GitHub issues.
-To give your input, visit [MCUBoot GitHub Issues](https://github.com/mcu-tools/mcuboot/issues).
+The issues being planned and worked on are tracked using GitHub issues. To
+give your input, visit [MCUBoot GitHub
+Issues](https://github.com/mcu-tools/mcuboot/issues).
 
 ## Browsing
 
-Information and documentation on the bootloader are stored within the source.
+Information and documentation on the bootloader are stored within the
+source.
 
 For more information, use the following pointers to the source:
 
@@ -72,4 +79,5 @@ Developers are welcome.
 Use the following links to join or see more about the project:
 
 * [Our developer mailing list](https://groups.io/g/MCUBoot)
-* [Our Slack channel](https://mcuboot.slack.com/) - get [your invite](https://join.slack.com/t/mcuboot/shared_invite/MjE2NDcwMTQ2MTYyLTE1MDA4MTIzNTAtYzgyZTU0NjFkMg)
+* [Our Slack channel](https://mcuboot.slack.com/) - get [your
+  invite](https://join.slack.com/t/mcuboot/shared_invite/MjE2NDcwMTQ2MTYyLTE1MDA4MTIzNTAtYzgyZTU0NjFkMg)

@@ -1,8 +1,8 @@
-## MCUboot test plan
+# MCUboot test plan
 
 The current target for running the tests is the Freedom K64F board.
 
-### Basic sign support (RSA/EC/EC256)
+## Basic sign support (RSA/EC/EC256)
 
 For each supported signing algorithm, check that non-signed, and signed
 with wrong key images are not swapped to, and image signed with correct key
@@ -37,14 +37,19 @@ key_<sign-algo>.pem. Both others should be erased.
 * `newtmgr image list`
 * `newtmgr image test <hash of slot 1>`
 
-### Image signed with more than one key
-
-FIXME: this is currently not functional, skip this section!
+## Image signed with more than one key
 
 Build and load MCUboot:
 
 * `newt build k64f_boot_rsa_ec`
 * `newt load k64f_boot_rsa_ec`
+
+---
+***Note***
+
+*This is currently not functional, skip this section!*
+
+---
 
 Build and load good image in slot 0:
 
@@ -66,7 +71,7 @@ And load
 * `newtmgr image list`
 * `newtmgr image test <hash of slot 1>`
 
-### Overwrite only functionality
+## Overwrite only functionality
 
 Build/load MCUboot:
 
@@ -90,7 +95,7 @@ This should not swap and delete the image in slot 1 when signed with the wrong
 key, otherwise the image in slot 1 should be *moved* to slot 0 and slot 1 should
 be empty.
 
-### Validate slot 0 option
+## Validate slot 0 option
 
 Build/load MCUboot:
 
@@ -115,7 +120,12 @@ Build signed image with *valid* key:
 * `newt load k64f_blinky`
 * Reset and image *should* run
 
-### Swap with random failures
+## Swap with random failures
+
+Build/load MCUboot:
+
+* `newt build k64f_boot_rsa`
+* `newt load k64f_boot_rsa`
 
 ---
 ***Note***
@@ -124,11 +134,6 @@ Build signed image with *valid* key:
 *target/app!*
 
 ---
-
-Build/load MCUboot:
-
-* `newt build k64f_boot_rsa`
-* `newt load k64f_boot_rsa`
 
 Build/load slinky to slot 0:
 
@@ -151,7 +156,7 @@ in slot 1 and do random swaps (as much as you like!). When the swap finishes
 confirm that the swap was finished with the previous slot 1 image now in
 slot 0 and vice-versa.
 
-### Help
+## Help
 
 * Mass erase MCU
 

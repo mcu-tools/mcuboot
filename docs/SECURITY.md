@@ -1,6 +1,7 @@
 # Project security policy
 
-The MCUboot team takes security, vulnerabilities, and weaknesses seriously.
+The MCUboot team takes security, vulnerabilities, and weaknesses
+seriously.
 
 ## Reporting security issues
 
@@ -25,17 +26,23 @@ and
     uid           [ unknown] Fabio Utzig <utzig@utzig.org>
     sub   rsa4096 2017-07-28 [E]
 
-Please include the word "SECURITY" as well as "MCUboot" in the subject of any messages.
+Please include the word "SECURITY" as well as "MCUboot" in the subject of
+any messages.
 
-We will make our best effort to respond in a timely manner.
-Most vulnerabilities found within published code will undergo an embargo of 90 days to allow time fixes to be developed and deployed.
+We will make our best effort to respond in a timely manner. Most
+vulnerabilities found within published code will undergo an embargo of 90
+days to allow time fixes to be developed and deployed.
 
 ## Vulnerability advisories
 
 Vulnerability reports and published fixes will be reported as follows:
 
-- Issues will be entered into Github's [Security Advisory system](https://github.com/mcu-tools/mcuboot/security/advisories), with the interested parties (including the reporter) added as viewers.
+- Issues will be entered into Github's [Security Advisory system]
+(https://github.com/mcu-tools/mcuboot/security/advisories), with the
+interested parties (including the reporter) added as viewers.
 
 - The release notes will contain a reference to any allocated CVE(s).
 
-- When an embargo is lifted, the Security Advisory page will be made public, and the public CVE database will be updated with all relevant information.
+- When an embargo is lifted, the Security Advisory page will be made
+  public, and the public CVE database will be updated with all relevant
+  information.
