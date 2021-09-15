@@ -198,7 +198,20 @@ uint8_t flash_area_align(const struct flash_area* fap) {
 
 uint8_t flash_area_erased_val(const struct flash_area* fap) {
     mbed::BlockDevice* bd = flash_map_bd[fap->fa_id];
-    return bd->get_erase_value();
+
+    int erased_val = bd->get_erase_value();
+
+    /**
+     * If the BlockDevice returns -1 for the get_erase_value (IMPORTANT: distinct from byte value 0xFF),
+     * this means the erase value is unreliable and cannot be used. MCUboot does not support
+     * such BlockDevices. Some internal checks rely on comparison to a known erase value.
+     *
+     * Wrap this BlockDevice in a FlashSimBlockDevice to provide a known erase value and ensure
+     * compatibility with MCUboot.
+     */
+    assert(erased_val >= 0);
+
+    return (uint8_t) erased_val;
 }
 
 int flash_area_get_sectors(int fa_id, uint32_t* count, struct flash_sector* sectors) {
