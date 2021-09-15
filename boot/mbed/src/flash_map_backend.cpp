@@ -91,15 +91,17 @@ int flash_area_open(uint8_t id, const struct flash_area** fapp) {
     fap->fa_device_id = 0; // not relevant
 
     mbed::BlockDevice* bd = flash_map_bd[id];
-    fap->fa_size = (uint32_t) bd->size();
 
+    int result = 0;
     /* Only initialize if this isn't a nested call to open the flash area */
     if (open_count[id] == 1) {
         MCUBOOT_LOG_DBG("initializing flash area %d...", id);
-        return bd->init();
-    } else {
-        return 0;
+        result = bd->init();
     }
+
+    fap->fa_size = (uint32_t) bd->size();
+
+    return result;
 }
 
 void flash_area_close(const struct flash_area* fap) {
