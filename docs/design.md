@@ -51,6 +51,7 @@ The bootloader currently supports only images with the following
 characteristics:
 * Built to run from flash memory.
 * Built to run from a fixed location (namely, not position-independent).
+* Built to run from RAM (MCUboot loads the images from the flash memory)
 
 ## [Image format](#image-format)
 
@@ -173,8 +174,8 @@ secondary areas are mapped based on the number of the active image
 ## [Image slots](#image-slots)
 
 A portion of the flash memory can be partitioned into multiple image
-areas, each area containing two image slots: a primary slot and a
-secondary slot.
+areas, called "image pairs", where each area contains two image slots:
+a primary and a secondary one.
 
 Normally, the bootloader will only run an image from the primary slot, so
 images must be built such that they can run from that fixed location in
@@ -383,7 +384,7 @@ option and an image trailer must also be added to the signed images (the
 `--pad` option of the `imgtool` script must be used).
 
 For more information on this, read the [Image Trailer](#image-trailer)
-section and the [imgtool](imgtool.md) documentation.
+section and the [documentation](imgtool.md) of the `imgtool sign` command.
 
 Making the images permanent (marking them as confirmed in advance) is also
 supported, just like in swap mode. The individual steps of the direct-xip
@@ -407,7 +408,7 @@ mode's "revert" mechanism are the following:
 
 ## [Image trailer](#image-trailer)
 
-The bootloader uses metadata stored in the image flash memory areas to be
+The bootloader uses metadata stored in the image slots to be
 able to determine the current state and what actions should be taken
 during the current boot operation. While swapping, some of this metadata
 is temporarily copied into and out of the scratch area.

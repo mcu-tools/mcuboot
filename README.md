@@ -23,7 +23,7 @@ define a common infrastructure for the bootloader, system flash layout on
 microcontroller systems, and to provide a secure bootloader that enables
 simple software upgrades.
 
-MCUboot is operating-system and hardware independent and relies on
+MCUboot is operating-system and hardware independent, and relies on
 hardware porting layers from the operating system. Currently, MCUboot
 works with the following operating systems:
 - [Zephyr](https://www.zephyrproject.org/)
@@ -31,9 +31,9 @@ works with the following operating systems:
 - [Apache NuttX](https://nuttx.apache.org/)
 - [RIOT](https://www.riot-os.org/)
 - [Mbed OS](https://os.mbed.com/)
+- [Espressif IDF](https://idf.espressif.com/)
 
-RIOT is currently supported only as a boot target. There is currently no
-defined plan to add any additional port. However, we will accept any new
+RIOT is supported only as a boot target. We will accept any new
 port contributed by the community once it is good enough.
 
 ## Using MCUboot
@@ -44,10 +44,9 @@ Instructions for different operating systems can be found below:
 - [Apache NuttX](docs/readme-nuttx.md)
 - [RIOT](docs/readme-riot.md)
 - [Mbed OS](docs/readme-mbed.md)
+- [Espressif IDF](docs/readme-espressif.md)
 
-There are also instructions for the [Espressif
-IDF](docs/readme-espressif.md) SDK and for the
-[Simulator](sim/README.rst).
+There are also instructions for the [Simulator](sim/README.rst).
 
 ## Roadmap
 
@@ -57,11 +56,8 @@ Issues](https://github.com/mcu-tools/mcuboot/issues).
 
 ## Browsing
 
-Information and documentation on the bootloader are stored within the
-source.
-
-For more information, use the following pointers to the source:
-
+You can find additional documentation on the bootloader in the source
+files. For more information, use the following links:
 - [boot/bootutil](boot/bootutil): The core of the bootloader itself.
 - [boot/boot\_serial](boot/boot_serial): Support for serial upgrade within the bootloader itself.
 - [boot/zephyr](boot/zephyr): Port of the bootloader to Zephyr.
@@ -74,7 +70,7 @@ For more information, use the following pointers to the source:
 
 ## Joining
 
-Developers are welcome.
+Developers are welcome!
 
 Use the following links to join or see more about the project:
 

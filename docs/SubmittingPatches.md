@@ -21,15 +21,15 @@ Certificate of Origin" located at the bottom of this page:
       Signed-off-by: Developer Name <devname@example.com>
   ```
 
-- A line that associate this commit with specific JIRA tickets.
+- A line that links this commit to specific GitHub issues, if present:
+
   ```
-      JIRA: MCUB-1234, MCUB-5678
+  Keyword #GH_issue_number
   ```
 
-  You can mention more than one JIRA ticket, by separating them using a
-  comma and a space. JIRA is quite flexible about where the indicators go,
-  but putting them in a trailer with a common format will make them easier
-  to find later.
+  For more details about linking a GitHub pull request to a GitHub issue,
+  see this [link]
+  (https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue).
 
 ## Developer certificate of origin
 

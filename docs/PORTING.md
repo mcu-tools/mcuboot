@@ -1,7 +1,7 @@
 # Porting how-to
 
-This document describes the requirements and necessary steps needed to
-port `MCUboot` to a new target `OS`.
+This document describes requirements and necessary steps needed to port
+`MCUboot` to a new target `OS`.
 
 # Requirements
 
@@ -17,7 +17,7 @@ These are the requirements for porting `MCUboot`:
   (where `Mbed TLS` is used to provide functionality not existing in
   `tinycrypt`).
 
-# Steps to port
+## Steps to port
 
 These are the steps needed to port `MCUboot`:
   * [Main app and calling the bootloader](#main-app-and-calling-the-bootloader)

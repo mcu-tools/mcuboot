@@ -8,7 +8,7 @@ The goal of MCUboot is to define a common infrastructure for the
 bootloader, system flash layout on microcontroller systems, and to provide
 a secure bootloader that enables easy software upgrades.
 
-MCUboot is operating-system and hardware independent and relies on
+MCUboot is operating-system and hardware independent, and relies on
 hardware porting layers from the operating system it works with.
 Currently, MCUboot works with the following operating systems:
 - [Zephyr](https://www.zephyrproject.org/)
@@ -16,9 +16,9 @@ Currently, MCUboot works with the following operating systems:
 - [Apache NuttX](https://nuttx.apache.org/)
 - [RIOT](https://www.riot-os.org/)
 - [Mbed OS](https://os.mbed.com/)
+- [Espressif IDF](readme-espressif.md)
 
-RIOT is currently supported only as a boot target. There is currently no
-defined plan to add any additional port. However, we will accept any new
+RIOT is supported only as a boot target. We will accept any new
 port contributed by the community once it is good enough.
 
 
@@ -42,6 +42,7 @@ charter](https://github.com/mcu-tools/mcuboot/wiki/MCUboot-Project-Charter)
   - [Apache NuttX](readme-nuttx.md)
   - [RIOT](readme-riot.md)
   - [Mbed OS](readme-mbed.md)
+  - [Espressif IDF](readme-espressif.md)
 - Testing:
   - [Zephyr](testplan-zephyr.md) test plan
   - [Mynewt](testplan-mynewt.md) test plan
@@ -58,10 +59,8 @@ Issues](https://github.com/mcu-tools/mcuboot/issues).
 
 ## Browsing
 
-Information and documentation on the bootloader are stored within the
-source.
-
-For more information, use the following pointers to the source:
+You can find additional documentation on the bootloader in the source
+files. For more information, use the following links:
 - [boot/bootutil](https://github.com/mcu-tools/mcuboot/tree/main/boot/bootutil):
   The core of the bootloader itself.
 - [boot/boot\_serial](https://github.com/mcu-tools/mcuboot/tree/main/boot/boot_serial):
@@ -81,7 +80,7 @@ For more information, use the following pointers to the source:
 
 ## Joining
 
-Developers are welcome.
+Developers are welcome!
 
 Use the following links to join or see more about the project:
 * [Our developer mailing list](https://groups.io/g/MCUBoot)
