@@ -80,6 +80,9 @@ direct-xip = []
 # Check (in software) against version downgrades.
 downgrade-prevention = []
 
+# Large write.  Not meaningful, but present here so that the
+# full-suite tests will work for this configuration.
+large-write = []
 
 [build-dependencies]
 cc = "1.0.25"
