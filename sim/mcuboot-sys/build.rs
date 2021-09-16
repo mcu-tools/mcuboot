@@ -2,10 +2,11 @@
 
 extern crate cc;
 
+use std::collections::BTreeSet;
 use std::env;
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 fn main() {
     // Feature flags.
@@ -33,37 +34,37 @@ fn main() {
     let ram_load = env::var("CARGO_FEATURE_RAM_LOAD").is_ok();
     let direct_xip = env::var("CARGO_FEATURE_DIRECT_XIP").is_ok();
 
-    let mut conf = cc::Build::new();
-    conf.define("__BOOTSIM__", None);
-    conf.define("MCUBOOT_HAVE_LOGGING", None);
-    conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
-    conf.define("MCUBOOT_HAVE_ASSERT_H", None);
-    conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
-    conf.define("MCUBOOT_IMAGE_NUMBER", Some(if multiimage { "2" } else { "1" }));
+    let mut conf = CachedBuild::new();
+    conf.conf.define("__BOOTSIM__", None);
+    conf.conf.define("MCUBOOT_HAVE_LOGGING", None);
+    conf.conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
+    conf.conf.define("MCUBOOT_HAVE_ASSERT_H", None);
+    conf.conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
+    conf.conf.define("MCUBOOT_IMAGE_NUMBER", Some(if multiimage { "2" } else { "1" }));
 
     if downgrade_prevention && !overwrite_only {
         panic!("Downgrade prevention requires overwrite only");
     }
 
     if bootstrap {
-        conf.define("MCUBOOT_BOOTSTRAP", None);
-        conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
+        conf.conf.define("MCUBOOT_BOOTSTRAP", None);
+        conf.conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
     }
 
     if validate_primary_slot {
-        conf.define("MCUBOOT_VALIDATE_PRIMARY_SLOT", None);
+        conf.conf.define("MCUBOOT_VALIDATE_PRIMARY_SLOT", None);
     }
 
     if downgrade_prevention {
-        conf.define("MCUBOOT_DOWNGRADE_PREVENTION", None);
+        conf.conf.define("MCUBOOT_DOWNGRADE_PREVENTION", None);
     }
 
     if ram_load {
-        conf.define("MCUBOOT_RAM_LOAD", None);
+        conf.conf.define("MCUBOOT_RAM_LOAD", None);
     }
 
     if direct_xip {
-        conf.define("MCUBOOT_DIRECT_XIP", None);
+        conf.conf.define("MCUBOOT_DIRECT_XIP", None);
     }
 
     // Currently no more than one sig type can be used simultaneously.
@@ -73,19 +74,19 @@ fn main() {
     }
 
     if sig_rsa || sig_rsa3072 {
-        conf.define("MCUBOOT_SIGN_RSA", None);
+        conf.conf.define("MCUBOOT_SIGN_RSA", None);
         // The Kconfig style defines must be added here as well because
         // they are used internally by "config-rsa.h"
         if sig_rsa {
-            conf.define("MCUBOOT_SIGN_RSA_LEN", "2048");
-            conf.define("CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN", "2048");
+            conf.conf.define("MCUBOOT_SIGN_RSA_LEN", "2048");
+            conf.conf.define("CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN", "2048");
         } else {
-            conf.define("MCUBOOT_SIGN_RSA_LEN", "3072");
-            conf.define("CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN", "3072");
+            conf.conf.define("MCUBOOT_SIGN_RSA_LEN", "3072");
+            conf.conf.define("CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN", "3072");
         }
-        conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
 
-        conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls/include");
         conf.file("../../ext/mbedtls/library/sha256.c");
         conf.file("csupport/keys.c");
 
@@ -95,13 +96,13 @@ fn main() {
         conf.file("../../ext/mbedtls/library/platform_util.c");
         conf.file("../../ext/mbedtls/library/asn1parse.c");
     } else if sig_ecdsa {
-        conf.define("MCUBOOT_SIGN_EC256", None);
-        conf.define("MCUBOOT_USE_TINYCRYPT", None);
+        conf.conf.define("MCUBOOT_SIGN_EC256", None);
+        conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
 
         if !enc_kw {
-            conf.include("../../ext/mbedtls-asn1/include");
+            conf.conf.include("../../ext/mbedtls/include");
         }
-        conf.include("../../ext/tinycrypt/lib/include");
+        conf.conf.include("../../ext/tinycrypt/lib/include");
 
         conf.file("csupport/keys.c");
 
@@ -110,14 +111,13 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/ecc.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_dsa.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_platform_specific.c");
-        conf.include("../../ext/mbedtls/library");
-        conf.file("../../ext/mbedtls-asn1/src/platform_util.c");
-        conf.file("../../ext/mbedtls-asn1/src/asn1parse.c");
+        conf.file("../../ext/mbedtls/library/platform_util.c");
+        conf.file("../../ext/mbedtls/library/asn1parse.c");
     } else if sig_ecdsa_mbedtls {
-        conf.define("MCUBOOT_SIGN_EC256", None);
-        conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.conf.define("MCUBOOT_SIGN_EC256", None);
+        conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
 
-        conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls/include");
         conf.file("../../ext/mbedtls/library/sha256.c");
         conf.file("csupport/keys.c");
 
@@ -129,53 +129,53 @@ fn main() {
         conf.file("../../ext/mbedtls/library/platform.c");
         conf.file("../../ext/mbedtls/library/platform_util.c");
     } else if sig_ed25519 {
-        conf.define("MCUBOOT_SIGN_ED25519", None);
-        conf.define("MCUBOOT_USE_TINYCRYPT", None);
+        conf.conf.define("MCUBOOT_SIGN_ED25519", None);
+        conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
 
-        conf.include("../../ext/tinycrypt/lib/include");
-        conf.include("../../ext/tinycrypt-sha512/lib/include");
-        conf.include("../../ext/mbedtls-asn1/include");
+        conf.conf.include("../../ext/tinycrypt/lib/include");
+        conf.conf.include("../../ext/tinycrypt-sha512/lib/include");
+        conf.conf.include("../../ext/mbedtls/include");
         conf.file("../../ext/tinycrypt/lib/source/sha256.c");
         conf.file("../../ext/tinycrypt-sha512/lib/source/sha512.c");
         conf.file("../../ext/tinycrypt/lib/source/utils.c");
         conf.file("csupport/keys.c");
         conf.file("../../ext/fiat/src/curve25519.c");
-        conf.file("../../ext/mbedtls-asn1/src/platform_util.c");
-        conf.file("../../ext/mbedtls-asn1/src/asn1parse.c");
+        conf.file("../../ext/mbedtls/library/platform_util.c");
+        conf.file("../../ext/mbedtls/library/asn1parse.c");
     } else if !enc_ec256 && !enc_x25519 {
         // No signature type, only sha256 validation. The default
         // configuration file bundled with mbedTLS is sufficient.
         // When using ECIES-P256 rely on Tinycrypt.
-        conf.define("MCUBOOT_USE_MBED_TLS", None);
-        conf.include("../../ext/mbedtls/include");
+        conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.conf.include("../../ext/mbedtls/include");
         conf.file("../../ext/mbedtls/library/sha256.c");
         conf.file("../../ext/mbedtls/library/platform_util.c");
     }
 
     if overwrite_only {
-        conf.define("MCUBOOT_OVERWRITE_ONLY", None);
+        conf.conf.define("MCUBOOT_OVERWRITE_ONLY", None);
     }
 
     if swap_move {
-        conf.define("MCUBOOT_SWAP_USING_MOVE", None);
+        conf.conf.define("MCUBOOT_SWAP_USING_MOVE", None);
     } else if !overwrite_only {
-        conf.define("CONFIG_BOOT_SWAP_USING_SCRATCH", None);
-        conf.define("MCUBOOT_SWAP_USING_SCRATCH", None);
+        conf.conf.define("CONFIG_BOOT_SWAP_USING_SCRATCH", None);
+        conf.conf.define("MCUBOOT_SWAP_USING_SCRATCH", None);
     }
 
     if enc_rsa || enc_aes256_rsa {
         if enc_aes256_rsa {
-                conf.define("MCUBOOT_AES_256", None);
+                conf.conf.define("MCUBOOT_AES_256", None);
         }
-        conf.define("MCUBOOT_ENCRYPT_RSA", None);
-        conf.define("MCUBOOT_ENC_IMAGES", None);
-        conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.conf.define("MCUBOOT_ENCRYPT_RSA", None);
+        conf.conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
-        conf.include("../../ext/mbedtls/include");
-        conf.include("../../ext/mbedtls/library");
+        conf.conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls/library");
         conf.file("../../ext/mbedtls/library/sha256.c");
 
         conf.file("../../ext/mbedtls/library/platform.c");
@@ -190,10 +190,10 @@ fn main() {
 
     if enc_kw || enc_aes256_kw {
         if enc_aes256_kw {
-            conf.define("MCUBOOT_AES_256", None);
+            conf.conf.define("MCUBOOT_AES_256", None);
         }
-        conf.define("MCUBOOT_ENCRYPT_KW", None);
-        conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.conf.define("MCUBOOT_ENCRYPT_KW", None);
+        conf.conf.define("MCUBOOT_ENC_IMAGES", None);
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
@@ -203,9 +203,9 @@ fn main() {
         }
 
         /* Simulator uses Mbed-TLS to wrap keys */
-        conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls/include");
         conf.file("../../ext/mbedtls/library/platform.c");
-        conf.include("../../ext/mbedtls/library");
+        conf.conf.include("../../ext/mbedtls/library");
         conf.file("../../ext/mbedtls/library/platform_util.c");
         conf.file("../../ext/mbedtls/library/nist_kw.c");
         conf.file("../../ext/mbedtls/library/cipher.c");
@@ -213,9 +213,9 @@ fn main() {
         conf.file("../../ext/mbedtls/library/aes.c");
 
         if sig_ecdsa {
-            conf.define("MCUBOOT_USE_TINYCRYPT", None);
+            conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
 
-            conf.include("../../ext/tinycrypt/lib/include");
+            conf.conf.include("../../ext/tinycrypt/lib/include");
 
             conf.file("../../ext/tinycrypt/lib/source/utils.c");
             conf.file("../../ext/tinycrypt/lib/source/sha256.c");
@@ -230,16 +230,16 @@ fn main() {
     }
 
     if enc_ec256 {
-        conf.define("MCUBOOT_ENCRYPT_EC256", None);
-        conf.define("MCUBOOT_ENC_IMAGES", None);
-        conf.define("MCUBOOT_USE_TINYCRYPT", None);
-        conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
+        conf.conf.define("MCUBOOT_ENCRYPT_EC256", None);
+        conf.conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
+        conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
-        conf.include("../../ext/mbedtls-asn1/include");
-        conf.include("../../ext/tinycrypt/lib/include");
+        conf.conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/tinycrypt/lib/include");
 
         /* FIXME: fail with other signature schemes ? */
 
@@ -249,8 +249,8 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/ecc_dsa.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_platform_specific.c");
 
-        conf.file("../../ext/mbedtls-asn1/src/platform_util.c");
-        conf.file("../../ext/mbedtls-asn1/src/asn1parse.c");
+        conf.file("../../ext/mbedtls/library/platform_util.c");
+        conf.file("../../ext/mbedtls/library/asn1parse.c");
 
         conf.file("../../ext/tinycrypt/lib/source/aes_encrypt.c");
         conf.file("../../ext/tinycrypt/lib/source/aes_decrypt.c");
@@ -259,14 +259,14 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/ecc_dh.c");
     } else if enc_ec256_mbedtls || enc_aes256_ec256 {
         if enc_aes256_ec256 {
-            conf.define("MCUBOOT_AES_256", None);
+            conf.conf.define("MCUBOOT_AES_256", None);
         }
-        conf.define("MCUBOOT_ENCRYPT_EC256", None);
-        conf.define("MCUBOOT_ENC_IMAGES", None);
-        conf.define("MCUBOOT_USE_MBED_TLS", None);
-        conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
+        conf.conf.define("MCUBOOT_ENCRYPT_EC256", None);
+        conf.conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
 
-        conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls/include");
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("../../ext/mbedtls/library/sha256.c");
@@ -283,25 +283,25 @@ fn main() {
     }
 
     if enc_x25519 {
-        conf.define("MCUBOOT_ENCRYPT_X25519", None);
-        conf.define("MCUBOOT_ENC_IMAGES", None);
-        conf.define("MCUBOOT_USE_TINYCRYPT", None);
-        conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
+        conf.conf.define("MCUBOOT_ENCRYPT_X25519", None);
+        conf.conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
+        conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
-        conf.include("../../ext/mbedtls-asn1/include");
-        conf.include("../../ext/tinycrypt/lib/include");
-        conf.include("../../ext/tinycrypt-sha512/lib/include");
+        conf.conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/tinycrypt/lib/include");
+        conf.conf.include("../../ext/tinycrypt-sha512/lib/include");
 
         conf.file("../../ext/fiat/src/curve25519.c");
 
         conf.file("../../ext/tinycrypt/lib/source/utils.c");
         conf.file("../../ext/tinycrypt/lib/source/sha256.c");
 
-        conf.file("../../ext/mbedtls-asn1/src/platform_util.c");
-        conf.file("../../ext/mbedtls-asn1/src/asn1parse.c");
+        conf.file("../../ext/mbedtls/library/platform_util.c");
+        conf.file("../../ext/mbedtls/library/asn1parse.c");
 
         conf.file("../../ext/tinycrypt/lib/source/aes_encrypt.c");
         conf.file("../../ext/tinycrypt/lib/source/aes_decrypt.c");
@@ -310,20 +310,18 @@ fn main() {
     }
 
     else if enc_aes256_x25519 {
-        conf.define("MCUBOOT_AES_256", None);
-        conf.define("MCUBOOT_ENCRYPT_X25519", None);
-        conf.define("MCUBOOT_ENC_IMAGES", None);
-        conf.define("MCUBOOT_USE_MBED_TLS", None);
-        conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
+        conf.conf.define("MCUBOOT_AES_256", None);
+        conf.conf.define("MCUBOOT_ENCRYPT_X25519", None);
+        conf.conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
 
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
-        conf.include("../../ext/mbedtls/include");
-        conf.include("../../ext/mbedtls-asn1/include");
+        conf.conf.include("../../ext/mbedtls/include");
         conf.file("../../ext/fiat/src/curve25519.c");
-        conf.file("../../ext/mbedtls-asn1/src/platform_util.c");
-        conf.file("../../ext/mbedtls-asn1/src/asn1parse.c");
+        conf.file("../../ext/mbedtls/library/asn1parse.c");
         conf.file("../../ext/mbedtls/library/platform.c");
         conf.file("../../ext/mbedtls/library/platform_util.c");
         conf.file("../../ext/mbedtls/library/aes.c");
@@ -333,26 +331,26 @@ fn main() {
     }
 
     if sig_rsa && enc_kw {
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
+        conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
     } else if sig_rsa || sig_rsa3072 || enc_rsa || enc_aes256_rsa {
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
+        conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
     } else if sig_ecdsa_mbedtls || enc_ec256_mbedtls || enc_aes256_ec256 {
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ec.h>"));
+        conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ec.h>"));
     } else if (sig_ecdsa || enc_ec256) && !enc_kw {
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
+        conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
     } else if sig_ed25519 || enc_x25519 {
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
+        conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
     } else if enc_kw || enc_aes256_kw {
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-kw.h>"));
+        conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-kw.h>"));
     } else if enc_aes256_x25519 {
-        conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ed25519.h>"));
+        conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ed25519.h>"));
     }
 
     conf.file("../../boot/bootutil/src/image_validate.c");
     if sig_rsa || sig_rsa3072 {
         conf.file("../../boot/bootutil/src/image_rsa.c");
     } else if sig_ecdsa || sig_ecdsa_mbedtls {
-        conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls/include");
         conf.file("../../boot/bootutil/src/image_ec256.c");
     } else if sig_ed25519 {
         conf.file("../../boot/bootutil/src/image_ed25519.c");
@@ -367,19 +365,19 @@ fn main() {
     conf.file("../../boot/bootutil/src/tlv.c");
     conf.file("../../boot/bootutil/src/fault_injection_hardening.c");
     conf.file("csupport/run.c");
-    conf.include("../../boot/bootutil/include");
-    conf.include("csupport");
-    conf.include("../../boot/zephyr/include");
-    conf.debug(true);
-    conf.flag("-Wall");
-    conf.flag("-Werror");
+    conf.conf.include("../../boot/bootutil/include");
+    conf.conf.include("csupport");
+    conf.conf.include("../../boot/zephyr/include");
+    conf.conf.debug(true);
+    conf.conf.flag("-Wall");
+    conf.conf.flag("-Werror");
 
     // FIXME: travis-ci still uses gcc 4.8.4 which defaults to std=gnu90.
     // It has incomplete std=c11 and std=c99 support but std=c99 was checked
     // to build correctly so leaving it here to updated in the future...
-    conf.flag("-std=c99");
+    conf.conf.flag("-std=c99");
 
-    conf.compile("libbootutil.a");
+    conf.conf.compile("libbootutil.a");
 
     walk_dir("../../boot").unwrap();
     walk_dir("../../ext/tinycrypt/lib/source").unwrap();
@@ -406,4 +404,31 @@ fn walk_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
     }
 
     Ok(())
+}
+
+/// Wrap the cc::Build type so that we can make sure that files are only added a single time.
+/// Other methods can be passed through as needed.
+struct CachedBuild {
+    conf: cc::Build,
+    seen: BTreeSet<PathBuf>,
+}
+
+impl CachedBuild {
+    fn new() -> CachedBuild {
+        CachedBuild {
+            conf: cc::Build::new(),
+            seen: BTreeSet::new(),
+        }
+    }
+
+    /// Works like `file` in the Build, but doesn't add a file if the same path has already been
+    /// given.
+    fn file<P: AsRef<Path>>(&mut self, p: P) -> &mut CachedBuild {
+        let p = p.as_ref();
+        if !self.seen.contains(p) {
+            self.conf.file(p);
+            self.seen.insert(p.to_owned());
+        }
+        self
+    }
 }
