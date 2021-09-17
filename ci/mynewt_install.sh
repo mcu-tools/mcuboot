@@ -45,7 +45,7 @@ arm_toolchain_install() {
     mkdir -p $TOOLCHAIN_PATH
 
     if [ ! -s ${TOOLCHAIN_PATH}/$GCC_BASE/bin/arm-none-eabi-gcc ]; then
-      wget --no-check-certificate -O ${TOOLCHAIN_PATH}/${GCC_BASE}.tar.bz2 $GCC_URL
+      wget -O ${TOOLCHAIN_PATH}/${GCC_BASE}.tar.bz2 $GCC_URL
       [[ $? -ne 0 ]] && exit 1
 
       tar xfj ${TOOLCHAIN_PATH}/${GCC_BASE}.tar.bz2 -C $TOOLCHAIN_PATH
