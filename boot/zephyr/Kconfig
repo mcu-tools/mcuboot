@@ -587,12 +587,40 @@ config BOOT_INTR_VEC_RELOC
 	  Select this option if application requires vector relocation,
 	  but it doesn't relocate vector in its reset handler.
 
+if SINGLE_APPLICATION_SLOT
+
 config UPDATEABLE_IMAGE_NUMBER
-	int "Number of updateable images"
+	int
 	default 1
-	range 1 1 if SINGLE_APPLICATION_SLOT
+
+endif
+
+if !SINGLE_APPLICATION_SLOT
+
+choice
+	prompt "Supported updatable images"
 	help
+	  Menu allows to select number of images, slot pairs, that can be updated.
+
+config SUPPORTED_UPDATEABLE_IMAGES_ONE
+	bool "one image"
+
+config SUPPORTED_UPDATEABLE_IMAGES_TWO
+	bool "two images"
+
+endchoice
+
+config UPDATEABLE_IMAGE_NUMBER
+	int "Number of updatable images (deprecated)"
+	default 1 if SUPPORTED_UPDATABLE_IMAGES_ONE
+	default 2 if SUPPORTED_UPDATABLE_IMAGES_TWO
+	range 1 2
+	help
+	  This option is deprecated, use SUPPORTED_UPDATABLE_IMAGES_ONE or
+	  SUPPORTED_UPDATABLE_IMAGES_TWO, to enable one or two updatable images respectively.
 	  Enables support of multi image update.
+
+endif
 
 choice
 	prompt "Downgrade prevention"
