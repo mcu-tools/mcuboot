@@ -104,7 +104,7 @@ EOF
                 echo "    test_exec_ok: True"
                 echo "    skipped: True"
                 echo "    boot: False"
-                echo "    last_line: '$LAST_LINE' "
+                echo "    last_line: \"$LAST_LINE\" "
             fi
         else
             # The target was not stopped at the desired address.
