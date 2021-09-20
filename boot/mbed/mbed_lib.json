@@ -155,6 +155,16 @@
             "macro_name": "MCUBOOT_DATA_SHARING",
             "value": null
         },
+        "share-data-base-address": {
+            "help": "Start of reserved RAM region for data shared between bootloader and application",
+            "macro_name": "MCUBOOT_SHARED_DATA_BASE",
+            "value": null
+        },
+        "share-data-size": {
+            "help": "Size of reserved RAM region for data shared between bootloader and application",
+            "macro_name": "MCUBOOT_SHARED_DATA_SIZE",
+            "value": null
+        },
         "direct-xip": {
             "help": "Enable ability to boot update candidates in-place.",
             "macro_name": "MCUBOOT_DIRECT_XIP",

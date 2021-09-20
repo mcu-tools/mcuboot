@@ -767,7 +767,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
 #endif
     BOOT_HOOK_CALL_FIH(boot_image_check_hook, fih_int_encode(BOOT_HOOK_REGULAR),
                        fih_rc, BOOT_CURR_IMG(state), slot);
-    if (fih_eq(fih_rc, BOOT_HOOK_REGULAR))
+    if (fih_eq(fih_rc, fih_int_encode(BOOT_HOOK_REGULAR)))
     {
         FIH_CALL(boot_image_check, fih_rc, state, hdr, fap, bs);
     }
