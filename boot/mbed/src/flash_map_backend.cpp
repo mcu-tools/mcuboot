@@ -30,6 +30,19 @@
 #define FLASH_DEVICE_INTERNAL_FLASH 0
 #define FLASH_AREAS 3
 
+/* Note: 
+   The scratch area (id = 2) is only enabled when this macro is set. Originally,
+   this file included the bootutil_priv.h where this is defined; since this is
+   no longer the case, the relevant code segment to setup the macro is added
+   below (from bootutil_priv.h).
+*/
+#if !defined(MCUBOOT_OVERWRITE_ONLY) && \
+    !defined(MCUBOOT_SWAP_USING_MOVE) && \
+    !defined(MCUBOOT_DIRECT_XIP) && \
+    !defined(MCUBOOT_RAM_LOAD)
+#define MCUBOOT_SWAP_USING_SCRATCH 1
+#endif
+
 /** Application defined secondary block device */
 mbed::BlockDevice* mcuboot_secondary_bd = get_secondary_bd();
 
