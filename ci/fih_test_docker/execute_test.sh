@@ -37,6 +37,7 @@ fi
 mkdir -p $TFM_BUILD_DIR
 cd $TFM_DIR
 cmake -B $TFM_BUILD_DIR \
+    -DTFM_SPM_LOG_LEVEL=TFM_SPM_LOG_LEVEL_INFO \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DTFM_TOOLCHAIN_FILE=toolchain_GNUARM.cmake \
     -DTFM_PLATFORM=arm/mps2/an521 \
