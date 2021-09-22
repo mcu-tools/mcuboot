@@ -30,10 +30,21 @@ choice BOOT_SERIAL_DEVICE
 config BOOT_SERIAL_UART
 	bool "UART"
 	# SERIAL and UART_INTERRUPT_DRIVEN already selected
+	help
+	  The serial device to use will be fist selected via chosen
+	  node "zephyr,uart-mcumgr", when such node does not exist
+	  the "zephyr,console" is used.  In case when
+	  the "zephyr,uart-mcumgr" points to the same device as
+	  the "zephyr,console" compilation error will be triggered.
 
 config BOOT_SERIAL_CDC_ACM
 	bool "CDC ACM"
 	select USB_DEVICE_STACK
+	help
+	  This setting will choose CDC ACM for serial recovery unless chosen
+	  "zephyr,uart-mcumgr" is present, in which case the chosen takes
+	  precedence and redirects serial recovery to uart pointed by
+	  the chosen, leaving console on CDC ACM.
 
 endchoice
 
