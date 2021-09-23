@@ -25,6 +25,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* mcuboot_config.h is needed for MCUBOOT_HW_KEY to work */
+#include "mcuboot_config/mcuboot_config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
