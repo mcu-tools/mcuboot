@@ -45,10 +45,10 @@ for sha in $commits; do
   IFS=$'\n'
   for line in ${lines}; do
     stripped=$(echo $line | sed -e 's/^\s*//' | sed -e 's/\s*$//')
-    if [[ ${stripped} == ${author} ]]; then
+    if [[ "${stripped}" == "${author}" ]]; then
       found_author=true
     fi
-    if [[ ${stripped} == ${committer} ]]; then
+    if [[ "${stripped}" == "${committer}" ]]; then
       found_committer=true
     fi
 
