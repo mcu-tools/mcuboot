@@ -68,9 +68,21 @@ bootstrap = []
 # Support multiple images (currently 2 instead of 1).
 multiimage = []
 
+# Support simulation of ram-loading.  No swaps are performed, and the
+# image is copied to RAM before loading it.
+ram-load = []
+
+# Support simulation of direct XIP.  No swaps are performed, the image
+# is directly executed out of whichever partition contains the most
+# appropriate image.
+direct-xip = []
+
 # Check (in software) against version downgrades.
 downgrade-prevention = []
 
+# Large write.  Not meaningful, but present here so that the
+# full-suite tests will work for this configuration.
+large-write = []
 
 [build-dependencies]
 cc = "1.0.25"

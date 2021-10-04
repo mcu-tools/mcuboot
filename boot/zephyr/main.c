@@ -105,7 +105,7 @@ static inline bool boot_skip_serial_recovery()
 }
 #endif
 
-MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
+BOOT_LOG_MODULE_REGISTER(mcuboot);
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
 /*
@@ -186,7 +186,7 @@ static void do_boot(struct boot_rsp *rsp)
 #ifdef CONFIG_SYS_CLOCK_EXISTS
     sys_clock_disable();
 #endif
-#ifdef CONFIG_USB
+#ifdef CONFIG_USB_DEVICE_STACK
     /* Disable the USB to prevent it from firing interrupts */
     usb_disable();
 #endif

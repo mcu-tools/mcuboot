@@ -26,33 +26,26 @@ enc-x25519 = ["mcuboot-sys/enc-x25519"]
 enc-aes256-x25519 = ["mcuboot-sys/enc-aes256-x25519"]
 bootstrap = ["mcuboot-sys/bootstrap"]
 multiimage = ["mcuboot-sys/multiimage"]
+ram-load = ["mcuboot-sys/ram-load"]
+direct-xip = ["mcuboot-sys/direct-xip"]
 large-write = []
 downgrade-prevention = ["mcuboot-sys/downgrade-prevention"]
 
 [dependencies]
 byteorder = "1.3"
 libc = "0.2"
-rand = { version = "0.7", features = ["small_rng"] }
+rand = { version = "0.8", features = ["small_rng"] }
 docopt = "1.1.0"
 serde = "1.0"
 serde_derive = "1.0"
 log = "0.4"
-env_logger = "0.7"
+env_logger = "0.9"
 simflash = { path = "simflash" }
 mcuboot-sys = { path = "mcuboot-sys" }
 ring = "0.16.11"
-untrusted = "0.7"
+untrusted = "0.9"
 pem = "0.8"
-aes-ctr = "0.4.0"
-base64 = "0.12.0"
+cipher = "0.3"
+aes = { version = "0.7.4", features = ["ctr"] }
+base64 = "0.13.0"
 typenum = "1.13.0"
-
-# The simulator runs very slowly without optimization.  A value of 1
-# compiles in about half the time, but runs about 5-6 times slower.  2
-# and 3 are hardly different in either compile time or performance.
-# Use 2 in case that makes the code slightly more debuggable.
-[profile.test]
-opt-level = 2
-
-[profile.dev]
-opt-level = 2

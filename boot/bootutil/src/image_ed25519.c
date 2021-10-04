@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2019 JUUL Labs
+ * Copyright (c) 2021 Arm Limited
  */
 
 #include <string.h>
@@ -15,6 +16,7 @@
 #include "mbedtls/asn1.h"
 
 #include "bootutil_priv.h"
+#include "bootutil/crypto/common.h"
 
 static const uint8_t ed25519_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG "\x65\x70";
 #define NUM_ED25519_BYTES 32
@@ -43,8 +45,8 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
         return -2;
     }
 
-    if (alg.len != sizeof(ed25519_pubkey_oid) - 1 ||
-        memcmp(alg.p, ed25519_pubkey_oid, sizeof(ed25519_pubkey_oid) - 1)) {
+    if (alg.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ed25519_pubkey_oid) - 1 ||
+        memcmp(alg.MBEDTLS_CONTEXT_MEMBER(p), ed25519_pubkey_oid, sizeof(ed25519_pubkey_oid) - 1)) {
         return -3;
     }
 

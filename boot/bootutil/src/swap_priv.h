@@ -95,7 +95,7 @@ void swap_run(struct boot_loader_state *state,
 
 static inline size_t boot_scratch_area_size(const struct boot_loader_state *state)
 {
-    return BOOT_SCRATCH_AREA(state)->fa_size;
+    return flash_area_get_size(BOOT_SCRATCH_AREA(state));
 }
 #endif
 

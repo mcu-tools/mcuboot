@@ -36,13 +36,17 @@ extern "C" {
 /*
  * From newtmgr.h
  */
+#define MGMT_ERR_OK             0
+#define MGMT_ERR_EUNKNOWN       2
 #define MGMT_ERR_EINVAL         3
+#define MGMT_ERR_ENOTSUP        8
 
 #define NMGR_OP_READ            0
 #define NMGR_OP_WRITE           2
 
 #define MGMT_GROUP_ID_DEFAULT   0
 #define MGMT_GROUP_ID_IMAGE     1
+#define MGMT_GROUP_ID_PERUSER  64
 
 #define NMGR_ID_CONS_ECHO_CTRL  1
 #define NMGR_ID_RESET           5
@@ -64,6 +68,19 @@ struct nmgr_hdr {
 
 void boot_serial_input(char *buf, int len);
 extern const struct boot_uart_funcs *boot_uf;
+
+/**
+ * @brief Selects direct image to upload according to the "image"
+ * parameter of the mcumgr update frame.
+ *
+ * @param[in] image_id  the value of the "image" parameter of the
+ *                      mcumgr update frame to be translated.
+ *
+ * @return flash area ID for the image if defined;
+ *         -EINVAL when flash area for given image number has not been
+ *         defined.
+ */
+extern int flash_area_id_from_direct_image(int image_id);
 
 #ifdef __cplusplus
 }

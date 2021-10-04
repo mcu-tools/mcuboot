@@ -1,7 +1,7 @@
 /*
  *  Minimal configuration for using TLS in the bootloader
  *
- *  Copyright (C) 2006-2015, ARM Limited, All Rights Reserved
+ *  Copyright (C) 2006-2021, ARM Limited, All Rights Reserved
  *  Copyright (C) 2016, Linaro Ltd
  *  SPDX-License-Identifier: Apache-2.0
  *
@@ -57,6 +57,7 @@
 #define MBEDTLS_CIPHER_MODE_CTR
 
 #define MBEDTLS_SHA256_C
+#define MBEDTLS_SHA224_C
 #define MBEDTLS_AES_C
 #define MBEDTLS_CIPHER_C
 #define MBEDTLS_NIST_KW_C

@@ -1,0 +1,49 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+name: FIH hardening
+
+jobs:
+  config:
+    strategy:
+      matrix:
+        fih_env:
+        # FIH environment must use the following space separated format:
+        #   BUILD_TYPE SKIP_SIZE DAMAGE_TYPE FIH_LEVEL(optional)
+        - "RELEASE 2,4,6,8,10 SIGNATURE"
+        - "RELEASE 2,4,6,8,10 SIGNATURE LOW"
+        - "RELEASE 2,4,6,8,10 SIGNATURE MEDIUM"
+        - "MINSIZEREL 2,4,6 SIGNATURE"
+        - "MINSIZEREL 2,4,6 SIGNATURE LOW"
+        - "MINSIZEREL 2,4,6 SIGNATURE MEDIUM"
+        - "MINSIZEREL 8,10 SIGNATURE"
+        - "MINSIZEREL 8,10 SIGNATURE LOW"
+        - "MINSIZEREL 8,10 SIGNATURE MEDIUM"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        # Uses Mbed TLS from TFM, and nothing else from here.
+        submodules: false
+    - name: Print the environment
+      run: |
+        uname -a
+        lscpu
+        free
+        pwd
+    - name: Signed commit check
+      if: ${{ github.event_name == 'pull_request' }}
+      run: |
+        ./ci/check-signed-off-by.sh
+    - name: FIH hardening test install
+      run: |
+        ./ci/fih-tests_install.sh
+    - name: FIH hardening test run
+      env:
+        FIH_ENV: ${{ matrix.fih_env }}
+      run: |
+        ./ci/fih-tests_run.sh

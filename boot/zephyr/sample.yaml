@@ -41,3 +41,10 @@ tests:
     integration_platforms:
       - nrf52840dk_nrf52840
     tags: bootloader_mcuboot
+  sample.bootloader.mcuboot.hooks_multi:
+    extra_args: DTC_OVERLAY_FILE=./boards/nrf52840dk_ram_multi.overlay
+      OVERLAY_CONFIG=./boards/nrf52840dk_hooks_sample_overlay.conf
+    platform_allow: nrf52840dk_nrf52840
+    integration_platforms:
+      - nrf52840dk_nrf52840
+    tags: bootloader_mcuboot
