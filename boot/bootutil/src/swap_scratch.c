@@ -28,7 +28,7 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #if !defined(MCUBOOT_SWAP_USING_MOVE)
 
@@ -541,7 +541,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         BOOT_LOG_DBG("erasing scratch area");
-        rc = boot_erase_region(fap_scratch, 0, fap_scratch->fa_size);
+        rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch));
         assert(rc == 0);
 
         if (bs->idx == BOOT_STATUS_IDX_0) {
@@ -564,7 +564,8 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                 assert(rc == 0);
 
                 /* Erase the temporary trailer from the scratch area. */
-                rc = boot_erase_region(fap_scratch, 0, fap_scratch->fa_size);
+                rc = boot_erase_region(fap_scratch, 0,
+                        flash_area_get_size(fap_scratch));
                 assert(rc == 0);
             }
         }

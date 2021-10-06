@@ -29,7 +29,7 @@ include host.mk
 # Set default compiler to GCC if not specified from command line
 COMPILER ?= GCC_ARM
 
-USE_CRYPTO_HW ?= 1
+USE_CRYPTO_HW ?= 0
 USE_EXTERNAL_FLASH ?= 0
 MCUBOOT_IMAGE_NUMBER ?= 1
 ENC_IMG ?= 0

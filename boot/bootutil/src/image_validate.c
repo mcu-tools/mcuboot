@@ -85,6 +85,9 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     (void)blk_sz;
     (void)off;
     (void)rc;
+    (void)fap;
+    (void)tmp_buf;
+    (void)tmp_buf_sz;
 #endif
 #endif
 
@@ -113,7 +116,9 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     size += hdr->ih_protect_tlv_size;
 
 #ifdef MCUBOOT_RAM_LOAD
-    bootutil_sha256_update(&sha256_ctx,(void*)(hdr->ih_load_addr), size);
+    bootutil_sha256_update(&sha256_ctx,
+                           (void*)(IMAGE_RAM_BASE + hdr->ih_load_addr),
+                           size);
 #else
     for (off = 0; off < size; off += blk_sz) {
         blk_sz = size - off;

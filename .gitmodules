@@ -22,3 +22,7 @@
 [submodule "ext/cddl-gen"]
 	path = ext/cddl-gen
 	url = https://github.com/NordicSemiconductor/cddl-gen.git
+[submodule "boot/espressif/hal/esp-idf"]
+	path = boot/espressif/hal/esp-idf
+	url = https://github.com/espressif/esp-idf.git
+	branch = release/v4.3

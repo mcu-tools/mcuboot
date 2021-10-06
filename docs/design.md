@@ -438,7 +438,7 @@ mcuboot supports for each image; its value defaults to 128, but allows for
 either decreasing this size, to limit RAM usage, or to increase it in devices
 that have massive amounts of Flash or very small sized sectors and thus require
 a bigger configuration to allow for the handling of all slot's sectors.
-The factor of min-write-sz is due to the behavior of flash hardware. The factor
+The factor of min-write-size is due to the behavior of flash hardware. The factor
 of 3 is explained below.
 
 2. Encryption keys: key-encrypting keys (KEKs).  These keys are needed for
@@ -1311,6 +1311,7 @@ So, running the test on the host looks like the following (The commands below
 are issued from the MCUboot source directory):
 
 ```sh
+$ mkdir docker
 $ ./ci/fih-tests_install.sh
 $ FIH_LEVEL=MCUBOOT_FIH_PROFILE_MEDIUM BUILD_TYPE=RELEASE SKIP_SIZE=2 \
     DAMAGE_TYPE=SIGNATURE ./ci/fih-tests_run.sh

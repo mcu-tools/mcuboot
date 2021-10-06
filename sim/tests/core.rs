@@ -59,6 +59,9 @@ sim_test!(status_write_fails_complete, make_image(&NO_DEPS, true), run_with_stat
 sim_test!(status_write_fails_with_reset, make_image(&NO_DEPS, true), run_with_status_fails_with_reset());
 sim_test!(downgrade_prevention, make_image(&REV_DEPS, true), run_nodowngrade());
 
+sim_test!(direct_xip_first, make_no_upgrade_image(&NO_DEPS), run_direct_xip());
+sim_test!(ram_load_first, make_no_upgrade_image(&NO_DEPS), run_ram_load());
+
 // Test various combinations of incorrect dependencies.
 test_shell!(dependency_combos, r, {
     // Only test setups with two images.

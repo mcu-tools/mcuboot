@@ -17,6 +17,8 @@
 use byteorder::{
     LittleEndian, WriteBytesExt,
 };
+use cipher::FromBlockCipher;
+use crate::caps::Caps;
 use crate::image::ImageVersion;
 use log::info;
 use ring::{digest, rand, agreement, hkdf, hmac};
@@ -28,14 +30,16 @@ use ring::signature::{
     ECDSA_P256_SHA256_ASN1_SIGNING,
     Ed25519KeyPair,
 };
-use aes_ctr::{
+use aes::{
+    Aes128,
     Aes128Ctr,
+    Aes256,
     Aes256Ctr,
-    stream_cipher::{
-        generic_array::GenericArray,
-        NewStreamCipher,
-        SyncStreamCipher,
-    },
+    NewBlockCipher
+};
+use cipher::{
+    generic_array::GenericArray,
+    StreamCipher,
 };
 use mcuboot_sys::c;
 use typenum::{U16, U32};
@@ -295,7 +299,12 @@ impl ManifestGen for TlvGen {
 
     /// Retrieve the header flags for this configuration.  This can be called at any time.
     fn get_flags(&self) -> u32 {
-        self.flags
+        // For the RamLoad case, add in the flag for this feature.
+        if Caps::RamLoad.present() {
+            self.flags | (TlvFlags::RAM_LOAD as u32)
+        } else {
+            self.flags
+        }
     }
 
     /// Add bytes to the covered hash.
@@ -616,11 +625,13 @@ impl ManifestGen for TlvGen {
             let mut cipherkey = self.get_enc_key();
             if aes256 {
                 let key: &GenericArray<u8, U32> = GenericArray::from_slice(&derived_key[..32]);
-                let mut cipher = Aes256Ctr::new(&key, &nonce);
+                let block = Aes256::new(&key);
+                let mut cipher = Aes256Ctr::from_block_cipher(block, &nonce);
                 cipher.apply_keystream(&mut cipherkey);
             } else {
                 let key: &GenericArray<u8, U16> = GenericArray::from_slice(&derived_key[..16]);
-                let mut cipher = Aes128Ctr::new(&key, &nonce);
+                let block = Aes128::new(&key);
+                let mut cipher = Aes128Ctr::from_block_cipher(block, &nonce);
                 cipher.apply_keystream(&mut cipherkey);
             }
 

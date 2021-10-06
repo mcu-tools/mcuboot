@@ -14,7 +14,11 @@
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
 #include "mbedtls/rsa.h"
+#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+#include "rsa_alt_helpers.h"
+#else
 #include "mbedtls/rsa_internal.h"
+#endif
 #include "mbedtls/asn1.h"
 #endif
 
@@ -40,6 +44,7 @@
 #include "bootutil/image.h"
 #include "bootutil/enc_key.h"
 #include "bootutil/sign_key.h"
+#include "bootutil/crypto/common.h"
 
 #include "bootutil_priv.h"
 
@@ -105,16 +110,16 @@ parse_rsa_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
 
     /* Non-optional fields. */
     if ( /* version */
-        mbedtls_asn1_get_int(p, end, &ctx->ver) != 0 ||
+        mbedtls_asn1_get_int(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(ver)) != 0 ||
          /* public modulus */
-        mbedtls_asn1_get_mpi(p, end, &ctx->N) != 0 ||
+        mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(N)) != 0 ||
          /* public exponent */
-        mbedtls_asn1_get_mpi(p, end, &ctx->E) != 0 ||
+        mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(E)) != 0 ||
          /* private exponent */
-        mbedtls_asn1_get_mpi(p, end, &ctx->D) != 0 ||
+        mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(D)) != 0 ||
          /* primes */
-        mbedtls_asn1_get_mpi(p, end, &ctx->P) != 0 ||
-        mbedtls_asn1_get_mpi(p, end, &ctx->Q) != 0) {
+        mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(P)) != 0 ||
+        mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(Q)) != 0) {
 
         return -3;
     }
@@ -127,22 +132,26 @@ parse_rsa_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
      */
     if (*p < end) {
         if ( /* d mod (p-1) and d mod (q-1) */
-            mbedtls_asn1_get_mpi(p, end, &ctx->DP) != 0 ||
-            mbedtls_asn1_get_mpi(p, end, &ctx->DQ) != 0 ||
+            mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(DP)) != 0 ||
+            mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(DQ)) != 0 ||
              /* q ^ (-1) mod p */
-            mbedtls_asn1_get_mpi(p, end, &ctx->QP) != 0) {
+            mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(QP)) != 0) {
 
             return -4;
         }
     } else {
-        if (mbedtls_rsa_deduce_crt(&ctx->P, &ctx->Q, &ctx->D,
-                    &ctx->DP, &ctx->DQ, &ctx->QP) != 0) {
+        if (mbedtls_rsa_deduce_crt(&ctx->MBEDTLS_CONTEXT_MEMBER(P),
+                                   &ctx->MBEDTLS_CONTEXT_MEMBER(Q),
+                                   &ctx->MBEDTLS_CONTEXT_MEMBER(D),
+                                   &ctx->MBEDTLS_CONTEXT_MEMBER(DP),
+                                   &ctx->MBEDTLS_CONTEXT_MEMBER(DQ),
+                                   &ctx->MBEDTLS_CONTEXT_MEMBER(QP)) != 0) {
             return -5;
         }
     }
 #endif
 
-    ctx->len = mbedtls_mpi_size(&ctx->N);
+    ctx->MBEDTLS_CONTEXT_MEMBER(len) = mbedtls_mpi_size(&ctx->MBEDTLS_CONTEXT_MEMBER(N));
 
     if (mbedtls_rsa_check_privkey(ctx) != 0) {
         return -6;
@@ -190,12 +199,12 @@ parse_ec256_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         return -5;
     }
 
-    if (alg.len != sizeof(ec_pubkey_oid) - 1 ||
-        memcmp(alg.p, ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
+    if (alg.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
+        memcmp(alg.MBEDTLS_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -6;
     }
-    if (param.len != sizeof(ec_secp256r1_oid) - 1 ||
-        memcmp(param.p, ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
+    if (param.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_secp256r1_oid) - 1 ||
+        memcmp(param.MBEDTLS_CONTEXT_MEMBER(p), ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
         return -7;
     }
 
@@ -267,8 +276,8 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         return -4;
     }
 
-    if (alg.len != sizeof(ec_pubkey_oid) - 1 ||
-        memcmp(alg.p, ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
+    if (alg.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
+        memcmp(alg.MBEDTLS_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -5;
     }
 
@@ -451,6 +460,24 @@ _Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
         "Please fix ECIES-X25519 component indexes");
 #endif
 
+#if defined(MCUBOOT_ENCRYPT_RSA) || \
+    (defined(MCUBOOT_ENCRYPT_EC256) && defined(MCUBOOT_USE_MBED_TLS))
+#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+static int fake_rng(void *p_rng, unsigned char *output, size_t len)
+{
+    size_t i;
+
+    (void)p_rng;
+    for (i = 0; i < len; i++) {
+        output[i] = (char)i;
+    }
+
+    return 0;
+}
+#endif
+#endif /* defined(MCUBOOT_ENCRYPT_RSA) ||
+          defined(MCUBOOT_ENCRYPT_EC256) && defined(MCUBOOT_USE_MBED_TLS) */
+
 /*
  * Decrypt an encryption key TLV.
  *
@@ -488,8 +515,12 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
 
+#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+    mbedtls_rsa_init(&rsa);
+    mbedtls_rsa_set_padding(&rsa, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
+#else
     mbedtls_rsa_init(&rsa, MBEDTLS_RSA_PKCS_V21, MBEDTLS_MD_SHA256);
-
+#endif
     cp = (uint8_t *)bootutil_enc_key.key;
     cpend = cp + *bootutil_enc_key.len;
 
@@ -498,9 +529,13 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
         mbedtls_rsa_free(&rsa);
         return rc;
     }
-
+#if MBEDTLS_VERSION_NUMBER >= 0x03000000
+    rc = mbedtls_rsa_rsaes_oaep_decrypt(&rsa, fake_rng, NULL,
+            NULL, 0, &olen, buf, enckey, BOOT_ENC_KEY_SIZE);
+#else
     rc = mbedtls_rsa_rsaes_oaep_decrypt(&rsa, NULL, NULL, MBEDTLS_RSA_PRIVATE,
             NULL, 0, &olen, buf, enckey, BOOT_ENC_KEY_SIZE);
+#endif
     mbedtls_rsa_free(&rsa);
 
 #endif /* defined(MCUBOOT_ENCRYPT_RSA) */
@@ -663,7 +698,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
     uint8_t slot;
     int rc;
 
-    rc = flash_area_id_to_multi_image_slot(image_index, fap->fa_id);
+    rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
     if (rc < 0) {
         return rc;
     }
@@ -710,7 +745,7 @@ boot_enc_valid(struct enc_key_data *enc_state, int image_index,
 {
     int rc;
 
-    rc = flash_area_id_to_multi_image_slot(image_index, fap->fa_id);
+    rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
     if (rc < 0) {
         /* can't get proper slot number - skip encryption, */
         /* postpone the error for a upper layer */
@@ -742,7 +777,7 @@ boot_encrypt(struct enc_key_data *enc_state, int image_index,
     nonce[14] = (uint8_t)(off >> 8);
     nonce[15] = (uint8_t)off;
 
-    rc = flash_area_id_to_multi_image_slot(image_index, fap->fa_id);
+    rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
     if (rc < 0) {
         assert(0);
         return;

@@ -33,6 +33,7 @@ repo.versions:
     "1.7.0": "v1.7.0"
     "1.7.1": "v1.7.1"
     "1.7.2": "v1.7.2"
+    "1.8.0": "v1.8.0-rc2"
 
     "0-dev": "0.0.0"        # main
     "0-latest": "1.7.2"     # latest stable release

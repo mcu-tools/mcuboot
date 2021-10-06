@@ -10,9 +10,61 @@ use crate::area::AreaDesc;
 use simflash::SimMultiFlash;
 use crate::api;
 
+/// The result of an invocation of `boot_go`.  This is intentionally opaque so that we can provide
+/// accessors for everything we need from this.
+#[derive(Debug)]
+pub enum BootGoResult {
+    /// This run was stopped by the flash simulation mechanism.
+    Stopped,
+    /// The bootloader ran to completion with the following data.
+    Normal {
+        result: i32,
+        asserts: u8,
+
+        resp: api::BootRsp,
+    },
+}
+
+impl BootGoResult {
+    /// Was this run interrupted.
+    pub fn interrupted(&self) -> bool {
+        matches!(self, BootGoResult::Stopped)
+    }
+
+    /// Was this boot run successful (returned 0)
+    pub fn success(&self) -> bool {
+        matches!(self, BootGoResult::Normal { result: 0, .. })
+    }
+
+    /// Success, but also no asserts.
+    pub fn success_no_asserts(&self) -> bool {
+        matches!(self, BootGoResult::Normal {
+            result: 0,
+            asserts: 0,
+            ..
+        })
+    }
+
+    /// Get the asserts count.  An interrupted run will be considered to have no asserts.
+    pub fn asserts(&self) -> u8 {
+        match self {
+            BootGoResult::Normal { asserts, .. } => *asserts,
+            _ => 0,
+        }
+    }
+
+    /// Retrieve the 'resp' field that is filled in.
+    pub fn resp(&self) -> Option<&api::BootRsp> {
+        match self {
+            BootGoResult::Normal { resp, .. } => Some(resp),
+            _ => None,
+        }
+    }
+}
+
 /// Invoke the bootloader on this flash device.
 pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
-               counter: Option<&mut i32>, catch_asserts: bool) -> (i32, u8) {
+               counter: Option<&mut i32>, catch_asserts: bool) -> BootGoResult {
     for (&dev_id, flash) in multiflash.iter_mut() {
         api::set_flash(dev_id, flash);
     }
@@ -26,8 +78,14 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
         c_catch_asserts: if catch_asserts { 1 } else { 0 },
         boot_jmpbuf: [0; 16],
     };
+    let mut rsp = api::BootRsp {
+        br_hdr: std::ptr::null(),
+        flash_dev_id: 0,
+        image_off: 0,
+    };
     let result = unsafe {
-        raw::invoke_boot_go(&mut sim_ctx as *mut _, &areadesc.get_c() as *const _) as i32
+        raw::invoke_boot_go(&mut sim_ctx as *mut _, &areadesc.get_c() as *const _,
+            &mut rsp as *mut _) as i32
     };
     let asserts = sim_ctx.c_asserts;
     if let Some(c) = counter {
@@ -36,7 +94,11 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
     for &dev_id in multiflash.keys() {
         api::clear_flash(dev_id);
     }
-    (result, asserts)
+    if result == -0x13579 {
+        BootGoResult::Stopped
+    } else {
+        BootGoResult::Normal { result, asserts, resp: rsp }
+    }
 }
 
 pub fn boot_trailer_sz(align: u32) -> u32 {
@@ -82,13 +144,14 @@ pub fn kw_encrypt(kek: &[u8], seckey: &[u8], keylen: u32) -> Result<Vec<u8>, &'s
 
 mod raw {
     use crate::area::CAreaDesc;
-    use crate::api::CSimContext;
+    use crate::api::{BootRsp, CSimContext};
 
     extern "C" {
         // This generates a warning about `CAreaDesc` not being foreign safe.  There doesn't appear to
         // be any way to get rid of this warning.  See https://github.com/rust-lang/rust/issues/34798
         // for information and tracking.
-        pub fn invoke_boot_go(sim_ctx: *mut CSimContext, areadesc: *const CAreaDesc) -> libc::c_int;
+        pub fn invoke_boot_go(sim_ctx: *mut CSimContext, areadesc: *const CAreaDesc,
+            rsp: *mut BootRsp) -> libc::c_int;
 
         pub fn boot_trailer_sz(min_write_sz: u32) -> u32;
         pub fn boot_status_sz(min_write_sz: u32) -> u32;
