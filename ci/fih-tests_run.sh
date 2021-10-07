@@ -16,6 +16,7 @@
 
 set -e
 
+env
 pushd .. &&\
    git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git &&\
    pushd trusted-firmware-m &&\
