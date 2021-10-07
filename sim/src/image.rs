@@ -94,6 +94,7 @@ struct OneImage {
 /// is just the unencrypted payload.  For encrypted images, we store both
 /// the encrypted and the plaintext.
 struct ImageData {
+    size: usize,
     plain: Vec<u8>,
     cipher: Option<Vec<u8>>,
 }
@@ -1067,13 +1068,13 @@ impl Images {
             let place = self.ram.lookup(&image.slots[0]);
             let ram_image = ram.borrow_part(place.offset as usize - RAM_LOAD_ADDR as usize,
                 place.size as usize);
-            let src_image = &image.upgrades.plain;
-            if src_image.len() > ram_image.len() {
+            let src_sz = image.upgrades.size();
+            if src_sz > ram_image.len() {
                 error!("Image ended up too large, nonsensical");
                 return true;
             }
-
-            let ram_image = &ram_image[0..src_image.len()];
+            let src_image = &image.upgrades.plain[0..src_sz];
+            let ram_image = &ram_image[0..src_sz];
             if ram_image != src_image {
                 error!("Image not loaded correctly");
                 return true;
@@ -1510,6 +1511,7 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
 
     // Pad the buffer to a multiple of the flash alignment.
     let align = dev.align();
+    let image_sz = buf.len();
     while buf.len() % align != 0 {
         buf.push(dev.erased_val());
     }
@@ -1552,6 +1554,7 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
         dev.read(offset, &mut copy).unwrap();
 
         ImageData {
+            size: image_sz,
             plain: copy,
             cipher: enc_copy,
         }
@@ -1578,6 +1581,7 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
         }
 
         ImageData {
+            size: image_sz,
             plain: copy,
             cipher: enc_copy,
         }
@@ -1587,6 +1591,7 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
 /// Install no image.  This is used when no upgrade happens.
 fn install_no_image() -> ImageData {
     ImageData {
+        size: 0,
         plain: vec![],
         cipher: None,
     }
@@ -1655,6 +1660,10 @@ impl ImageData {
             (true, 1) => self.cipher.as_ref().expect("Invalid image"),
             _ => panic!("Invalid slot requested"),
         }
+    }
+
+    fn size(&self) -> usize {
+        self.size
     }
 }
 
