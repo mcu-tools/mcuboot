@@ -490,6 +490,18 @@ config MCUBOOT_INDICATION_LED
 	  bootloader-led0 alias must be set in the device's .dts
 	  definitions for this to work.
 
+config MCUBOOT_INDICATION_LED_CUSTOM
+	bool "Custom indication LED handler"
+	depends on MCUBOOT_INDICATION_LED
+	default n
+	help
+		Activate custom indiciation LED-implementation.
+		The custom library needs to implement the functions
+			- mcuboot_led_init
+			- mcuboot_led_active
+			- mcuboot_led_error
+			- mcuboot_led_finish
+
 rsource "Kconfig.serial_recovery"
 
 config BOOT_INTR_VEC_RELOC

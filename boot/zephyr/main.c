@@ -114,6 +114,17 @@ static inline bool boot_skip_serial_recovery()
 BOOT_LOG_MODULE_REGISTER(mcuboot);
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
+
+#ifdef CONFIG_MCUBOOT_INDICATION_LED_CUSTOM
+/**
+ * Define these functions in your custom library
+ */
+extern void mcuboot_led_init(void);
+extern void mcuboot_led_active(void);
+extern void mcuboot_led_error(void);
+extern void mcuboot_led_finish(void);
+
+#else
 /*
  * Devicetree helper macro which gets the 'flags' cell from a 'gpios'
  * property, or returns 0 if the property has no 'flags' cell.
@@ -141,7 +152,7 @@ BOOT_LOG_MODULE_REGISTER(mcuboot);
 
 const static struct device *led;
 
-void led_init(void)
+static void mcuboot_led_init(void)
 {
 
   led = device_get_binding(LED0_GPIO_LABEL);
@@ -154,7 +165,24 @@ void led_init(void)
   gpio_pin_set(led, LED0_GPIO_PIN, 0);
 
 }
-#endif
+
+static inline void mcuboot_led_active(void)
+{
+    gpio_pin_set(led, LED0_GPIO_PIN, 1);
+}
+
+static inline void mcuboot_led_error(void)
+{
+    gpio_pin_set(led, LED0_GPIO_PIN, 0);
+}
+
+static inline void mcuboot_led_finish(void) {
+    gpio_pin_set(led, LED0_GPIO_PIN, 0);
+}
+
+#endif // CONFIG_MCUBOOT_INDICATION_LED_CUSTOM
+
+#endif // CONFIG_MCUBOOT_INDICATION_LED
 
 void os_heap_init(void);
 
@@ -447,7 +475,7 @@ void main(void)
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
     /* LED init */
-    led_init();
+    mcuboot_led_init();
 #endif
 
     os_heap_init();
@@ -478,7 +506,7 @@ void main(void)
                    CONFIG_BOOT_SERIAL_DETECT_DELAY) &&
             !boot_skip_serial_recovery()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set(led, LED0_GPIO_PIN, 1);
+        mcuboot_led_active(led, LED0_GPIO_PIN, 1);
 #endif
 
         BOOT_LOG_INF("Enter the serial recovery mode");
@@ -495,7 +523,7 @@ void main(void)
                    CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL,
                    CONFIG_BOOT_USB_DFU_DETECT_DELAY)) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set(led, LED0_GPIO_PIN, 1);
+        mcuboot_led_active(led, LED0_GPIO_PIN, 1);
 #endif
         rc = usb_enable(NULL);
         if (rc) {
@@ -541,11 +569,18 @@ void main(void)
 
     if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
         BOOT_LOG_ERR("Unable to find bootable image");
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+        mcuboot_led_error();
+#endif
         FIH_PANIC;
     }
 
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
                  rsp.br_image_off);
+
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+    mcuboot_led_finish();
+#endif
 
 #if defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Jumping to the image slot");
