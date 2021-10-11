@@ -120,6 +120,7 @@ BOOT_LOG_MODULE_REGISTER(mcuboot);
  * Define these functions in your custom library
  */
 extern void mcuboot_led_init(void);
+extern void mcuboot_led_deinit(void);
 extern void mcuboot_led_active(void);
 extern void mcuboot_led_error(void);
 extern void mcuboot_led_finish(void);
@@ -164,6 +165,10 @@ static void mcuboot_led_init(void)
   gpio_pin_configure(led, LED0_GPIO_PIN, LED0_GPIO_FLAGS);
   gpio_pin_set(led, LED0_GPIO_PIN, 0);
 
+}
+
+static void mcuboot_led_deinit(void)
+{
 }
 
 static inline void mcuboot_led_active(void)
@@ -580,6 +585,10 @@ void main(void)
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
     mcuboot_led_finish();
+#endif
+
+#ifdef CONFIG_BOOT_INDICATION_LED
+    mcuboot_led_deinit();
 #endif
 
 #if defined(MCUBOOT_DIRECT_XIP)
