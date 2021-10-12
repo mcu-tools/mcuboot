@@ -30,6 +30,8 @@ for the NuttX RTOS, and the Espressif ESP32 SDK.
   top level directory.
 - Fault injection tests use updated TF-M.
 - Thingy:53 now supports multi-image DFU.
+- ram load and image encryption can be used together, allowing the
+  entire contents of flash to always remain encrypted.
 
 ### Security fixes
 
