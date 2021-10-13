@@ -1,14 +1,16 @@
 # Introduction
 
-This is an experimental self-hosted MCUBOOT session that runs on a standard PC. 
+This is an experimental self-hosted MCUBOOT session that runs on a standard PC.
 It emulates flash via RAM and `memcpy`. It is for testing purposes.
 
 # Building
 
-First, build mbedtls, e.g.:
+First, build mbedtls. If you recursively clone the `ext/mbedtls` submodule it
+will exist in `ext/` already, otherwise, update it:
 
 ```
-% git clone git@github.com:armmbed/mbedtls
+% cd ext
+% git submodule update mbedtls
 % cd mbdetls
 % mkdir build
 % cd build
@@ -16,12 +18,10 @@ First, build mbedtls, e.g.:
 % make
 ```
 
-This will create `libmbedcrypto.a` under `build/library`.
+This will create `libmbedcrypto.a` under `build/library`, which is referenced
+in `CMakeFiles.txt`.
 
-Next, modify `CMakeFiles.txt` in this foldter so that `MBEDTLS_ROOT` points to 
-the mbedTLS repository we cloned above.
-
-Standard `cmake` dance:
+Now just build the `selfhosted` example:
 
 ```
 % mkdir build
@@ -30,3 +30,4 @@ Standard `cmake` dance:
 % make
 % ./bootme
 ```
+
