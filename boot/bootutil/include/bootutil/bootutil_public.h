@@ -71,7 +71,17 @@ extern "C" {
 /** Swapping encountered an unrecoverable error */
 #define BOOT_SWAP_TYPE_PANIC    0xff
 
+#define BOOT_MAGIC_SZ           16
+
+#ifdef MCUBOOT_BOOT_MAX_ALIGN
+#define BOOT_MAX_ALIGN          MCUBOOT_BOOT_MAX_ALIGN
+#define BOOT_MAGIC_ALIGN_SIZE \
+    ((((BOOT_MAGIC_SZ - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN)
+#else
 #define BOOT_MAX_ALIGN          8
+#define BOOT_MAGIC_ALIGN_SIZE   BOOT_MAGIC_SZ
+#endif
+
 
 #define BOOT_MAGIC_GOOD     1
 #define BOOT_MAGIC_BAD      2
