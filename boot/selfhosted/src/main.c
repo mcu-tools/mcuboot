@@ -21,6 +21,9 @@
 #include <bootutil/bootutil_log.h>
 #include <flash_map_backend/flash_map_backend.h>
 
+// Utilities from Zephyr for parsing headers
+#include "mcuboot.h"
+
 struct area_desc {
     const char *name;
     uint8_t id;
@@ -108,7 +111,6 @@ static const char *swap_state_magic_str(uint8_t magic)
     return "unknown";
 }
 
-#if 0
 static int cmd_mcuboot_info_area( const struct area_desc *area)
 {
     struct mcuboot_img_header hdr;
@@ -151,8 +153,7 @@ static int cmd_mcuboot_info_area( const struct area_desc *area)
 
     return 0;
 }
-#endif
-#if 0
+
 static int cmd_mcuboot_info()
 {
     int i;
@@ -184,7 +185,6 @@ static int cmd_mcuboot_info()
 
     return 0;
 }
-#endif
 
 extern uint32_t flash_layout[MCUBOOT_SLOT_SIZE+MCUBOOT_SLOT_SIZE+MCUBOOT_SCRATCH_SIZE];
 
@@ -291,7 +291,7 @@ int main(void)
     /* Write working image into primary slot */
     flash_example(firmware_image, firmware_image_len, 0);
 
-    //cmd_mcuboot_info();
+    cmd_mcuboot_info();
 
     printf("\nImage #1 at (0x%x):\n", (unsigned int) flash_layout);
     print_hex( (uint8_t*) &flash_layout[0], 200);
@@ -308,7 +308,7 @@ int main(void)
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x\n",
                  rsp.br_image_off);
 
-    //cmd_mcuboot_info();
+    cmd_mcuboot_info();
 
     printf("---> Writing new image to secondary slot and set it pending\n");
 
@@ -328,7 +328,7 @@ int main(void)
         return -1;
     }
 
-    //cmd_mcuboot_info();
+    cmd_mcuboot_info();
 
     res = boot_go(&rsp);
 
@@ -338,7 +338,7 @@ int main(void)
         return -1;
     }
 
-    //cmd_mcuboot_info();
+    cmd_mcuboot_info();
 
     printf("---> Confirm image as good.\n"); // make permanent
 
@@ -350,7 +350,7 @@ int main(void)
         return -1;
     }
 
-    //cmd_mcuboot_info();
+    cmd_mcuboot_info();
 
     printf("---> Boot confirmed image.\n");
 
@@ -365,7 +365,7 @@ int main(void)
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x\n",
                  rsp.br_image_off);
 
-    //cmd_mcuboot_info();
+    cmd_mcuboot_info();
 
     printf("\nImage #1 at (0x%x):\n", (unsigned int) flash_layout);
     print_hex( (uint8_t*) &flash_layout[0], 200);
