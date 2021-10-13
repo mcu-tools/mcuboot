@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2021 EEMBC
  * Copyright (c) 2020 Embedded Planet
  * Copyright (c) 2020 ARM Limited
  * SPDX-License-Identifier: Apache-2.0
@@ -26,7 +27,7 @@
 //#include <bootutil/bootutil_priv.h>
 
 
-/* mode = 0 for primary slot, 
+/* mode = 0 for primary slot,
 *  mode = 1 for secondary slot */
 int flash_example(uint8_t *buf, uint32_t len, uint8_t mode) {
 
@@ -36,7 +37,7 @@ int flash_example(uint8_t *buf, uint32_t len, uint8_t mode) {
     } else {
         memcpy(MCUBOOT_SECONDARY_SLOT_START_ADDR, buf, len );
     }
-    
+
     return(0);
 }
 
@@ -170,9 +171,9 @@ int flash_area_get_sectors(int fa_id, uint32_t* count, struct flash_sector* sect
     uint32_t* bd = flash_map_bd[fa_id];
 
     // Loop through sectors and collect information on them
-    
+
     uint32_t offset = 0;
-    
+
     //*count = 1;
     uint32_t erase_size;
     erase_size = MCUBOOT_ERASE_SIZE; // bd->get_erase_size(offset);
@@ -185,7 +186,7 @@ int flash_area_get_sectors(int fa_id, uint32_t* count, struct flash_sector* sect
         offset += erase_size;
         *count += 1;
     }
-    
+
     return 0;
 }
 
