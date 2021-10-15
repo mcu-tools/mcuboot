@@ -477,7 +477,7 @@ impl Images {
         if Caps::Bootstrap.present() {
             info!("Try bootstraping image in the primary");
 
-            if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+            if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
                 warn!("Failed first boot");
                 fails += 1;
             }
@@ -658,7 +658,7 @@ impl Images {
         info!("Try norevert");
 
         // First do a normal upgrade...
-        if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
             warn!("Failed first boot");
             fails += 1;
         }
@@ -691,7 +691,7 @@ impl Images {
             fails += 1;
         }
 
-        if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
             warn!("Failed second boot");
             fails += 1;
         }
@@ -726,7 +726,7 @@ impl Images {
         info!("Try no downgrade");
 
         // First, do a normal upgrade.
-        if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
             warn!("Failed first boot");
             fails += 1;
         }
@@ -768,7 +768,7 @@ impl Images {
         }
 
         // Run the bootloader...
-        if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
             warn!("Failed first boot");
             fails += 1;
         }
@@ -822,7 +822,7 @@ impl Images {
         }
 
         // Run the bootloader...
-        if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
             warn!("Failed first boot");
             fails += 1;
         }
@@ -862,7 +862,7 @@ impl Images {
         self.mark_upgrades(&mut flash, 1);
 
         // Run the bootloader...
-        if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
             warn!("Failed first boot");
             fails += 1;
         }
@@ -909,7 +909,7 @@ impl Images {
         self.mark_permanent_upgrades(&mut flash, 1);
         self.mark_bad_status_with_rate(&mut flash, 0, 1.0);
 
-        let result = c::boot_go(&mut flash, &self.areadesc, None, true);
+        let result = c::boot_go(&mut flash, &self.areadesc, None, None, true);
         if !result.success() {
             warn!("Failed!");
             fails += 1;
@@ -935,7 +935,7 @@ impl Images {
 
         info!("validate primary slot enabled; \
                re-run of boot_go should just work");
-        if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
             warn!("Failed!");
             fails += 1;
         }
@@ -967,7 +967,8 @@ impl Images {
             self.mark_bad_status_with_rate(&mut flash, 0, 0.5);
 
             // Should not fail, writing to bad regions does not assert
-            let asserts = c::boot_go(&mut flash, &self.areadesc, Some(&mut count), true).asserts();
+            let asserts = c::boot_go(&mut flash, &self.areadesc,
+                                     Some(&mut count), None, true).asserts();
             if asserts != 0 {
                 warn!("At least one assert() was called");
                 fails += 1;
@@ -976,7 +977,8 @@ impl Images {
             self.reset_bad_status(&mut flash, 0);
 
             info!("Resuming an interrupted swap operation");
-            let asserts = c::boot_go(&mut flash, &self.areadesc, None, true).asserts();
+            let asserts = c::boot_go(&mut flash, &self.areadesc, None, None,
+                                     true).asserts();
 
             // This might throw no asserts, for large sector devices, where
             // a single failure writing is indistinguishable from no failure,
@@ -1003,7 +1005,8 @@ impl Images {
             self.mark_bad_status_with_rate(&mut flash, 0, 1.0);
 
             // This is expected to fail while writing to bad regions...
-            let asserts = c::boot_go(&mut flash, &self.areadesc, None, true).asserts();
+            let asserts = c::boot_go(&mut flash, &self.areadesc, None, None,
+                                     true).asserts();
             if asserts == 0 {
                 warn!("No assert() detected");
                 fails += 1;
@@ -1023,7 +1026,7 @@ impl Images {
         // Clone the flash so we can tell if unchanged.
         let mut flash = self.flash.clone();
 
-        let result = c::boot_go(&mut flash, &self.areadesc, None, true);
+        let result = c::boot_go(&mut flash, &self.areadesc, None, None, true);
 
         // Ensure the boot was successful.
         let resp = if let Some(resp) = result.resp() {
@@ -1057,10 +1060,55 @@ impl Images {
         // println!("Ram: {:#?}", self.ram);
 
         // Verify that the images area loaded into this.
-        let result = ram.invoke(|| c::boot_go(&mut flash, &self.areadesc, None, true));
+        let result = ram.invoke(|| c::boot_go(&mut flash, &self.areadesc, None,
+                                              None, true));
         if !result.success() {
             error!("Failed to execute ram-load");
             return true;
+        }
+
+        // Verify each image.
+        for image in &self.images {
+            let place = self.ram.lookup(&image.slots[0]);
+            let ram_image = ram.borrow_part(place.offset as usize - RAM_LOAD_ADDR as usize,
+                place.size as usize);
+            let src_sz = image.upgrades.size();
+            if src_sz > ram_image.len() {
+                error!("Image ended up too large, nonsensical");
+                return true;
+            }
+            let src_image = &image.upgrades.plain[0..src_sz];
+            let ram_image = &ram_image[0..src_sz];
+            if ram_image != src_image {
+                error!("Image not loaded correctly");
+                return true;
+            }
+
+        }
+
+        return false;
+    }
+
+    /// Test the split ram-loading.
+    pub fn run_split_ram_load(&self) -> bool {
+        if !Caps::RamLoad.present() {
+            return false;
+        }
+
+        // Clone the flash so we can tell if unchanged.
+        let mut flash = self.flash.clone();
+
+        // Setup ram based on the ram configuration we determined earlier for the images.
+        let ram = RamBlock::new(self.ram.total - RAM_LOAD_ADDR, RAM_LOAD_ADDR);
+
+        for (idx, _image) in (&self.images).iter().enumerate() {
+            // Verify that the images area loaded into this.
+            let result = ram.invoke(|| c::boot_go(&mut flash, &self.areadesc,
+                                                  None, Some(idx as i32), true));
+            if !result.success() {
+                error!("Failed to execute ram-load");
+                return true;
+            }
         }
 
         // Verify each image.
@@ -1134,7 +1182,10 @@ impl Images {
 
         let mut counter = stop.unwrap_or(0);
 
-        let (first_interrupted, count) = match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false) {
+        let (first_interrupted, count) = match c::boot_go(&mut flash,
+                                                          &self.areadesc,
+                                                          Some(&mut counter),
+                                                          None, false) {
             x if x.interrupted() => (true, stop.unwrap()),
             x if x.success() => (false, -counter),
             x => panic!("Unknown return: {:?}", x),
@@ -1143,7 +1194,8 @@ impl Images {
         counter = 0;
         if first_interrupted {
             // fl.dump();
-            match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false) {
+            match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter),
+                             None, false) {
                 x if x.interrupted() => panic!("Shouldn't stop again"),
                 x if x.success() => (),
                 x => panic!("Unknown return: {:?}", x),
@@ -1159,7 +1211,7 @@ impl Images {
         // fl.write_file("image0.bin").unwrap();
         for i in 0 .. count {
             info!("Running boot pass {}", i + 1);
-            assert!(c::boot_go(&mut flash, &self.areadesc, None, false).success_no_asserts());
+            assert!(c::boot_go(&mut flash, &self.areadesc, None, None, false).success_no_asserts());
         }
         flash
     }
@@ -1169,7 +1221,8 @@ impl Images {
         let mut fails = 0;
 
         let mut counter = stop;
-        if !c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false).interrupted() {
+        if !c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), None,
+                       false).interrupted() {
             warn!("Should have stopped test at interruption point");
             fails += 1;
         }
@@ -1181,7 +1234,7 @@ impl Images {
             fails += 1;
         }
 
-        if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
             warn!("Should have finished test upgrade");
             fails += 1;
         }
@@ -1209,12 +1262,13 @@ impl Images {
 
         // Do Revert
         let mut counter = stop;
-        if !c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false).interrupted() {
+        if !c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), None,
+                       false).interrupted() {
             warn!("Should have stopped revert at interruption point");
             fails += 1;
         }
 
-        if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
             warn!("Should have finished revert upgrade");
             fails += 1;
         }
@@ -1241,7 +1295,7 @@ impl Images {
             fails += 1;
         }
 
-        if !c::boot_go(&mut flash, &self.areadesc, None, false).success() {
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
             warn!("Should have finished 3rd boot");
             fails += 1;
         }
@@ -1270,7 +1324,8 @@ impl Images {
         for reset in &mut resets {
             let reset_counter = rng.gen_range(1 ..= remaining_ops / 2);
             let mut counter = reset_counter;
-            match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), false) {
+            match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter),
+                             None, false) {
                 x if x.interrupted() => (),
                 x => panic!("Unknown return: {:?}", x),
             }
@@ -1278,7 +1333,7 @@ impl Images {
             *reset = reset_counter;
         }
 
-        match c::boot_go(&mut flash, &self.areadesc, None, false) {
+        match c::boot_go(&mut flash, &self.areadesc, None, None, false) {
             x if x.interrupted() => panic!("Should not be have been interrupted!"),
             x if x.success() => (),
             x => panic!("Unknown return: {:?}", x),
