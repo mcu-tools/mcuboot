@@ -224,6 +224,7 @@ struct boot_loader_state {
 
 #if (BOOT_IMAGE_NUMBER > 1)
     uint8_t curr_img_idx;
+    bool img_mask[BOOT_IMAGE_NUMBER];
 #endif
 
 #if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
