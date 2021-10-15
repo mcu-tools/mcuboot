@@ -14,6 +14,8 @@ else()
 	set(MBEDTLS_ROOT ${MCUBOOT_ROOT}/ext/mbedtls)
 endif()
 
+set(CMAKE_C_FLAGS "-O0 -g")
+
 include_directories(${MCUBOOT_ROOT}/boot/bootutil/include)
 include_directories(${MBEDTLS_ROOT}/include)
 include_directories(${MCUBOOT_ROOT}/boot/selfhosted/include)
@@ -35,7 +37,7 @@ set(SOURCE
 )
 
 add_definitions(-DMCUBOOT_SIGNATURE_ALGORITHM=SIGNATURE_TYPE_EC256)
-add_definitions(-DMCUBOOT_LOG_LEVEL=5)
+add_definitions(-DMCUBOOT_LOG_LEVEL=3)
 add_definitions(-DMCUBOOT_SWAP_USING_SCRATCH=1)
 add_definitions(-DMCUBOOT_HAVE_LOGGING=1)
 

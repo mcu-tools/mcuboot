@@ -20,6 +20,7 @@
 #define __MCUBOOT_LOGGING_H__
 
 #include <stdio.h>
+#include "bootutil/ignore.h"
 
 #ifndef MCUBOOT_LOG_LEVEL
 #define MCUBOOT_LOG_LEVEL 1

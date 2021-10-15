@@ -31,3 +31,23 @@ Now just build the `selfhosted` example:
 % ./bootme
 ```
 
+
+# Status
+
+Failing.
+
+```
+secondary area (1):
+  version: 2.0.0+0
+  image size: 0
+  magic: good
+  swap type: test
+  copy done: unset
+  image ok: unset
+[ERR] Image in the secondary slot is not valid!
+swap type: none
+confirmed: 0
+```
+
+recreated images don't make sense, they are smaller.
+why -S = 4048? shouldn't be 4096?

@@ -775,10 +775,18 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
     }
     if (!boot_is_header_valid(hdr, fap) || fih_not_eq(fih_rc, FIH_SUCCESS)) {
         if ((slot != BOOT_PRIMARY_SLOT) || ARE_SLOTS_EQUIVALENT()) {
+            BOOT_LOG_ERR("Erasing %s on validation fail",
+                (slot == BOOT_PRIMARY_SLOT) ? "primary" : "secondary");
             flash_area_erase(fap, 0, flash_area_get_size(fap));
             /* Image is invalid, erase it to prevent further unnecessary
              * attempts to validate and boot it.
              */
+        }
+        if (!boot_is_header_valid(hdr, fap)) {
+            BOOT_LOG_ERR("Invalid boot header");
+        }
+        if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+            BOOT_LOG_ERR("FIH not equal check failure");
         }
 #if !defined(__BOOTSIM__)
         BOOT_LOG_ERR("Image in the %s slot is not valid!",
