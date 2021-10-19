@@ -427,7 +427,7 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
     const struct flash_area *fap;
     uint32_t off;
     int area_id;
-    int rc;
+    int rc = 0;
     uint8_t buf[BOOT_MAX_ALIGN];
     uint8_t align;
     uint8_t erased_val;
@@ -452,8 +452,7 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
 
     rc = flash_area_open(area_id, &fap);
     if (rc != 0) {
-        rc = BOOT_EFLASH;
-        goto done;
+        return BOOT_EFLASH;
     }
 
     off = boot_status_off(fap) +
@@ -466,13 +465,10 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
     rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
         rc = BOOT_EFLASH;
-        goto done;
     }
 
-    rc = 0;
-
-done:
     flash_area_close(fap);
+
     return rc;
 }
 #endif /* !MCUBOOT_RAM_LOAD */
