@@ -53,7 +53,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
 {
     const struct flash_area *fap;
     int area_id;
-    int rc;
+    int rc = 0;
 
     (void)bs;
 
@@ -62,22 +62,17 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
 #endif
 
     area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
+
     rc = flash_area_open(area_id, &fap);
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-        goto done;
+    if (rc == 0) {
+        rc = flash_area_read(fap, 0, out_hdr, sizeof *out_hdr);
+        flash_area_close(fap);
     }
 
-    rc = flash_area_read(fap, 0, out_hdr, sizeof *out_hdr);
     if (rc != 0) {
         rc = BOOT_EFLASH;
-        goto done;
     }
 
-    rc = 0;
-
-done:
-    flash_area_close(fap);
     return rc;
 }
 
