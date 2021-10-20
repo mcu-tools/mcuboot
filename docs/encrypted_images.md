@@ -24,7 +24,7 @@
 ## [Rationale](#rationale)
 
 To provide confidentiality of image data while in transport to the
-device or while residing on an external flash, `MCUBoot` has support
+device or while residing on an external flash, `MCUboot` has support
 for encrypting/decrypting images on-the-fly while upgrading.
 
 The image header needs to flag this image as `ENCRYPTED` (0x04) and
@@ -84,7 +84,7 @@ are the results of applying the given operations over the AES-CTR key.
 
 ECIES follows a well defined protocol to generate an encryption key. There are
 multiple standards which differ only on which building blocks are used; for
-MCUBoot we settled on some primitives that are easily found on our crypto
+MCUboot we settled on some primitives that are easily found on our crypto
 libraries. The whole key encryption can be summarized as:
 
 * Generate a new private key and derive the public key; when using ECIES-P256
@@ -112,7 +112,7 @@ artifacts while ECIES-X25519 is named ENC_X25519.
 
 ## [Upgrade process](#upgrade-process)
 
-When starting a new upgrade process, `MCUBoot` checks that the image in the
+When starting a new upgrade process, `MCUboot` checks that the image in the
 `secondary slot` has the `ENCRYPTED` flag set and has the required TLV with the
 encrypted key. It then uses its internal private/secret key to decrypt
 the TLV containing the key. Given that no errors are found, it will then

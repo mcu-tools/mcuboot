@@ -21,7 +21,7 @@ for the NuttX RTOS, and the Espressif ESP32 SDK.
 - Add simulator support for testing direct-XIP and ramload.
 - Support Mbed TLS 3.0.  Updates the submodule for Mbed TLS to 3.0.
 - Enable direct-xip mode in mbed-os port.
-- extract `bootutil_public` library, a common interface for mcuboot
+- extract `bootutil_public` library, a common interface for MCUboot
   and the application.
 - Allow to boot primary image if secondary one is unreachable.
 - Add AES256 image encryption support.
@@ -43,7 +43,7 @@ for the NuttX RTOS, and the Espressif ESP32 SDK.
 
 ## Version 1.7.0
 
-The 1.7.0 release of MCUBoot adds support for the Mbed-OS platform,
+The 1.7.0 release of MCUboot adds support for the Mbed-OS platform,
 Equal slots (direct-xip) upgrade mode, RAM loading upgrade mode,
 hardening against hardware level fault injection and timing attacks
 and single image mode.
@@ -52,7 +52,7 @@ There are bug fixes, and associated imgtool updates as well.
 ### About this release
 
 - Initial support for the Mbed-OS platform.
-- Added possibility to enter deep sleep mode after mcuboot app execution
+- Added possibility to enter deep sleep mode after MCUboot app execution
   for cypress platform.
 - Added hardening against hardware level fault injection and timing attacks.
 - Introduced Abstract crypto primitives to simplify porting.
@@ -62,7 +62,7 @@ There are bug fixes, and associated imgtool updates as well.
 - Fixed boostrapping in swap-move mode.
 - Fixed issue causing that interrupted swap-move operation might brick device
   if the primary image was padded.
-- Abstracting mcuboot crypto functions for cleaner porting
+- Abstracting MCUboot crypto functions for cleaner porting
 - Droped flash_area_read_is_empty() porting API.
 - boot/zephyr: Added watchdog feed on nRF devices.
   See `CONFIG_BOOT_WATCHDOG_FEED` option.
@@ -236,7 +236,7 @@ docs](encrypted_images.md) for more information.
 
 The 1.2.0 release of MCUboot brings a lot of fixes/updates, where much of the
 changes were on the boot serial functionality and imgtool utility. There are
-no breaking changes in MCUBoot functionality, but some of the CLI parameters
+no breaking changes in MCUboot functionality, but some of the CLI parameters
 in imgtool were changed (either removed or added or updated).
 
 ### About this release
@@ -282,7 +282,7 @@ newt/imgtool support for password protected keys.
 - imgtool: removed PKCS1.5 support, added support for password
   protected keys
 - tinycrypt 0.2.8 and the mbed-tls ASN1 parser are now bundled with
-  mcuboot (eg secp256r1 is now free of external dependencies!)
+  MCUboot (eg secp256r1 is now free of external dependencies!)
 - Overwrite-only mode was updated to erase/copy only sectors that
   actually store firmware
 - A lot of small code and documentation fixes and updates.

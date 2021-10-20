@@ -1,6 +1,6 @@
 # Release Process
 
-The following documents the release process used with mcuboot.
+The following documents the release process used with MCUboot.
 
 ## Version numbering
 
@@ -15,7 +15,7 @@ incremeting the numbers:
 
 We add pre-release tags of the format MAJOR.MINOR.PATCH-rc1.
 
-We mark in documentation an MCUBoot development version using
+We mark in documentation an MCUboot development version using
 the format MAJOR.MINOR.PATCH-dev.
 
 ## Release Notes
@@ -51,7 +51,7 @@ https://www.python.org/dev/peps/pep-0440/#pre-releases
 
 ## Mynewt release information
 
-On Mynewt, `newt` always fetches a versioned MCUBoot release, so after
+On Mynewt, `newt` always fetches a versioned MCUboot release, so after
 the rc step is finished, the release needs to be exported by modifying
 `repository.yml` in the root directory; it must be updated with the
 new release version, including updates to the pseudo keys
@@ -101,7 +101,7 @@ for bug fixes or required minor updates (eg, new `imgtool` features).
 
 ## Post release actions
 
-Mark the MCUBoot version as a development version. The version number used
+Mark the MCUboot version as a development version. The version number used
 should be specified for the next expected release.
 It should be larger than the last release version by incrementing the MAJOR or
 the MINOR number. It is not necessary to define the next version precisely as
