@@ -71,7 +71,7 @@ directory you chose when running `cmake`. Use the Zephyr build
 system `flash` target to flash these binaries, usually by running
 `make flash` (or `ninja flash`, etc.) from the build directory. Depending
 on the target and flash tool used, this might erase the whole of the flash
-memory (mass erase) or only the sectors where the boot loader resides prior to
+memory (mass erase) or only the sectors where the bootloader resides prior to
 programming the bootloader image itself.
 
 ## Building Applications for the bootloader

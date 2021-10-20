@@ -25,7 +25,7 @@
   - under the License.
 -->
 
-# Boot Loader
+# Bootloader
 
 ## [Summary](#summary)
 
@@ -34,16 +34,16 @@ MCUboot comprises two packages:
 * The bootutil library (boot/bootutil)
 * The boot application (each port has its own at boot/<port>)
 
-The bootutil library performs most of the functions of a boot loader.  In
+The bootutil library performs most of the functions of a bootloader.  In
 particular, the piece that is missing is the final step of actually jumping to
 the main image.  This last step is instead implemented by the boot application.
-Boot loader functionality is separated in this manner to enable unit testing of
-the boot loader.  A library can be unit tested, but an application can't.
+Bootloader functionality is separated in this manner to enable unit testing of
+the bootloader.  A library can be unit tested, but an application can't.
 Therefore, functionality is delegated to the bootutil library when possible.
 
 ## [Limitations](#limitations)
 
-The boot loader currently only supports images with the following
+The bootloader currently only supports images with the following
 characteristics:
 * Built to run from flash.
 * Built to run from a fixed location (i.e., not position-independent).
@@ -142,19 +142,19 @@ region of disk with the following properties:
 1. An area can be fully erased without affecting any other areas.
 2. A write to one area does not restrict writes to other areas.
 
-The boot loader uses the following flash area IDs:
+The bootloader uses the following flash area IDs:
 ```c
 /* Independent from multiple image boot */
 #define FLASH_AREA_BOOTLOADER         0
 #define FLASH_AREA_IMAGE_SCRATCH      3
 ```
 ```c
-/* If the boot loader is working with the first image */
+/* If the bootloader is working with the first image */
 #define FLASH_AREA_IMAGE_PRIMARY      1
 #define FLASH_AREA_IMAGE_SECONDARY    2
 ```
 ```c
-/* If the boot loader is working with the second image */
+/* If the bootloader is working with the second image */
 #define FLASH_AREA_IMAGE_PRIMARY      5
 #define FLASH_AREA_IMAGE_SECONDARY    6
 ```
@@ -169,17 +169,17 @@ working).
 
 A portion of the flash memory can be partitioned into multiple image areas, each
 contains two image slots: a primary slot and a secondary slot.
-Normally, the boot loader will only run an image from the primary slot, so
+Normally, the bootloader will only run an image from the primary slot, so
 images must be built such that they can run from that fixed location in flash
 (the exception to this is the [direct-xip](#direct-xip) and the
-[ram-load](#ram-load) upgrade mode). If the boot loader needs to run the
+[ram-load](#ram-load) upgrade mode). If the bootloader needs to run the
 image resident in the secondary slot, it must copy its contents into the primary
 slot before doing so, either by swapping the two images or by overwriting the
 contents of the primary slot. The bootloader supports either swap- or
 overwrite-based image upgrades, but must be configured at build time to choose
 one of these two strategies.
 
-In addition to the slots of image areas, the boot loader requires a scratch
+In addition to the slots of image areas, the bootloader requires a scratch
 area to allow for reliable image swapping. The scratch area must have a size
 that is enough to store at least the largest sector that is going to be swapped.
 Many devices have small equally sized flash sectors, eg 4K, while others have
@@ -492,7 +492,7 @@ of 3 is explained below.
 
 ## [IMAGE TRAILERS](#image-trailers)
 
-At startup, the boot loader determines the boot swap type by inspecting the
+At startup, the bootloader determines the boot swap type by inspecting the
 image trailers.  When using the term "image trailers" what is meant is the
 aggregate information provided by both image slot's trailers.
 
@@ -587,7 +587,7 @@ case.
 
 ## [High-Level Operation](#high-level-operation)
 
-With the terms defined, we can now explore the boot loader's operation.  First,
+With the terms defined, we can now explore the bootloader's operation.  First,
 a high-level overview of the boot process is presented.  Then, the following
 sections describe each step of the process in more detail.
 
@@ -615,7 +615,7 @@ Procedure:
 
 ### [Multiple Image Boot](#multiple-image-boot)
 
-When the flash contains multiple executable images the boot loader's operation
+When the flash contains multiple executable images the bootloader's operation
 is a bit more complex but similar to the previously described procedure with
 one image. Every image can be updated independently therefore the flash is
 partitioned further to arrange two slots for each image.
@@ -707,7 +707,7 @@ process is presented below.
 
 ### [Multiple Image Boot for RAM loading and direct-xip](#multiple-image-boot-for-ram-loading-and-direct-xip)
 
-The operation of the boot loader is different when the ram-load or the
+The operation of the bootloader is different when the ram-load or the
 direct-xip strategy is chosen. The flash map is very similar to the swap
 strategy but there is no need for Scratch area.
 
@@ -742,18 +742,18 @@ strategy but there is no need for Scratch area.
 
 ## [Image Swapping](#image-swapping)
 
-The boot loader swaps the contents of the two image slots for two reasons:
+The bootloader swaps the contents of the two image slots for two reasons:
 
   * User has issued a "set pending" operation; the image in the secondary slot
     should be run once (state I) or repeatedly (state II), depending on
     whether a permanent swap was specified.
-  * Test image rebooted without being confirmed; the boot loader should
+  * Test image rebooted without being confirmed; the bootloader should
     revert to the original image currently in the secondary slot (state III).
 
 If the image trailers indicates that the image in the secondary slot should be
-run, the boot loader needs to copy it to the primary slot.  The image currently
+run, the bootloader needs to copy it to the primary slot.  The image currently
 in the primary slot also needs to be retained in flash so that it can be used
-later.  Furthermore, both images need to be recoverable if the boot loader
+later.  Furthermore, both images need to be recoverable if the bootloader
 resets in the middle of the swap operation.  The two images are swapped
 according to the following procedure:
 
@@ -838,7 +838,7 @@ should be booted.
 
 ## [Swap Status](#swap-status)
 
-The swap status region allows the boot loader to recover in case it restarts in
+The swap status region allows the bootloader to recover in case it restarts in
 the middle of an image swap operation.  The swap status region consists of a
 series of single-byte records.  These records are written independently, and
 therefore must be padded according to the minimum write size imposed by the
@@ -884,11 +884,11 @@ states:
 3. primary slot: image 1,   secondary slot: image 0,   scratch: N/A     (s->0)
 ```
 
-Each time a sector index transitions to a new state, the boot loader writes a
-record to the swap status region.  Logically, the boot loader only needs one
+Each time a sector index transitions to a new state, the bootloader writes a
+record to the swap status region.  Logically, the bootloader only needs one
 record per sector index to keep track of the current swap state.  However, due
 to limitations imposed by flash hardware, a record cannot be overwritten when
-an index's state changes.  To solve this problem, the boot loader uses three
+an index's state changes.  To solve this problem, the bootloader uses three
 records per sector index rather than just one.
 
 Each sector-state pair is represented as a set of three records.  The record
@@ -919,7 +919,7 @@ sector, it uses at most min-write-size * 3 bytes for its own status area.
 
 ## [Reset Recovery](#reset-recovery)
 
-If the boot loader resets in the middle of a swap operation, the two images may
+If the bootloader resets in the middle of a swap operation, the two images may
 be discontiguous in flash.  Bootutil recovers from this condition by using the
 image trailers to determine how the image parts are distributed in flash.
 
@@ -983,18 +983,18 @@ in the scratch area, this part is copied into the correct location by starting
 at step e or step h in the area-swap procedure, depending on whether the part
 belongs to image 0 or image 1.
 
-After the swap operation has been completed, the boot loader proceeds as though
+After the swap operation has been completed, the bootloader proceeds as though
 it had just been started.
 
 ## [Integrity Check](#integrity-check)
 
 An image is checked for integrity immediately before it gets copied into the
-primary slot.  If the boot loader doesn't perform an image swap, then it can
+primary slot.  If the bootloader doesn't perform an image swap, then it can
 perform an optional integrity check of the image in the primary slot if
 `MCUBOOT_VALIDATE_PRIMARY_SLOT` is set, otherwise it doesn't perform an
 integrity check.
 
-During the integrity check, the boot loader verifies the following aspects of
+During the integrity check, the bootloader verifies the following aspects of
 an image:
 
   * 32-bit magic number must be correct (`IMAGE_MAGIC`).
@@ -1013,12 +1013,12 @@ an image:
 ## [Security](#security)
 
 As indicated above, the final step of the integrity check is signature
-verification.  The boot loader can have one or more public keys embedded in it
-at build time.  During signature verification, the boot loader verifies that an
+verification.  The bootloader can have one or more public keys embedded in it
+at build time.  During signature verification, the bootloader verifies that an
 image was signed with a private key that corresponds to the embedded KEYHASH
 TLV.
 
-For information on embedding public keys in the boot loader, as well as
+For information on embedding public keys in the bootloader, as well as
 producing signed images, see: [signed_images](signed_images.md).
 
 If you want to enable and use encrypted images, see:
@@ -1095,7 +1095,7 @@ dependency entry, but in practice if the platform only supports two individual
 images then there can be maximum one entry which reflects to the other image.
 
 At the phase of dependency check all aborted swaps are finalized if there were
-any. During the dependency check the boot loader verifies whether the image
+any. During the dependency check the bootloader verifies whether the image
 dependencies are all satisfied. If at least one of the dependencies of an image
 is not fulfilled then the swap type of that image has to be modified
 accordingly and the dependency check needs to be restarted. This way the number
