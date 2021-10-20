@@ -74,9 +74,7 @@ For more information in the source, here are some pointers:
 Developers welcome!
 
 * [Our developer mailing list](https://groups.io/g/MCUBoot)
-* [Our Slack channel](https://mcuboot.slack.com/)<br />
-  Get your invite [here!](https://join.slack.com/t/mcuboot/shared_invite/MjE2NDcwMTQ2MTYyLTE1MDA4MTIzNTAtYzgyZTU0NjFkMg)
-* [Our IRC channel](http://irc.freenode.net), channel #mcuboot ([IRC
-  link](irc://chat.freenode.net/#mcuboot)
+* [Our Slack channel](https://mcuboot.slack.com/) <br />
+  Get [your invite](https://join.slack.com/t/mcuboot/shared_invite/MjE2NDcwMTQ2MTYyLTE1MDA4MTIzNTAtYzgyZTU0NjFkMg)
 * [Current members](https://github.com/mcu-tools/mcuboot/wiki/Members)
 * [Project charter](https://github.com/mcu-tools/mcuboot/wiki/MCUboot-Project-Charter)
