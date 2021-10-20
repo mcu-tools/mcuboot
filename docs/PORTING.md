@@ -14,7 +14,7 @@ This document describes the requirements and necessary steps required to port
 
 * `MCUboot` doesn't bundle a cryptographic library, which means the target
   OS must already have it bundled. The supported libraries at the moment are
-  either `mbed TLS` or the set `tinycrypt` + `mbed TLS` (where `mbed TLS` is
+  either `Mbed TLS` or the set `tinycrypt` + `Mbed TLS` (where `Mbed TLS` is
   used to provide functionality not existing in `tinycrypt`).
 
 # Steps to port
@@ -170,21 +170,21 @@ int     flash_area_id_to_multi_image_slot(int image_index, int area_id);
 
 **Note:** As of writing, it is possible that MCUboot will open a flash area multiple times simultaneously (through nested calls to `flash_area_open`). As a result, MCUboot may call `flash_area_close` on a flash area that is still opened by another part of MCUboot. As a workaround when porting, it may be necessary to implement a counter of the number of times a given flash area has been opened by MCUboot. The `flash_area_close` implementation should only fully deinitialize the underlying flash area when the open counter is decremented to 0. See [this GitHub PR](https://github.com/mcu-tools/mcuboot/pull/894/) for a more detailed discussion.
 
-## Memory management for mbed TLS
+## Memory management for Mbed TLS
 
-`mbed TLS` employs dynamic allocation of memory, making use of the pair
-`calloc/free`. If `mbed TLS` is to be used for crypto, your target RTOS
+`Mbed TLS` employs dynamic allocation of memory, making use of the pair
+`calloc/free`. If `Mbed TLS` is to be used for crypto, your target RTOS
 needs to provide this pair of function.
 
 To configure the what functions are called when allocating/deallocating
-memory `mbed TLS` uses the following call:
+memory `Mbed TLS` uses the following call:
 
 ```
 int mbedtls_platform_set_calloc_free (void *(*calloc_func)(size_t, size_t),
                                       void (*free_func)(void *));
 ```
 
-For reference see [mbed TLS platform.h](https://tls.mbed.org/api/platform_8h.html).
+For reference see [Mbed TLS platform.h](https://tls.mbed.org/api/platform_8h.html).
 If your system already provides functions with compatible signatures, those can
 be used directly here, otherwise create new functions that glue to your
 `calloc/free` implementations.

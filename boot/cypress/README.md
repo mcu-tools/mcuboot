@@ -29,7 +29,7 @@ The flash map is defined through sysflash.h and cy_flash_map.c.
 It is also possible to place secondary (upgrade) slots in external memory module. In this case primary slot can be doubled in size.
 For more details about External Memory usage, please refer to separate guiding document `MCUBootApp/ExternalMemory.md`.
 
-MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses either completely software implementation of cryptographic functions or accelerated by hardware - both based on mbedTLS Library.
+MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses either completely software implementation of cryptographic functions or accelerated by hardware - both based on Mbed TLS Library.
 
 ### Downloading Solution's Assets
 
@@ -37,7 +37,7 @@ There is a set assets required:
 
 * MCUBooot Library (root repository)
 * PSoC6 Peripheral Drivers Library (PDL)
-* mbedTLS Cryptographic Library
+* Mbed TLS Cryptographic Library
 
 Those are represented as submodules.
 

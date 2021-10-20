@@ -29,7 +29,7 @@ The current port is available for use in the following SoCs within the OSes:
 git submodule update --init --recursive --checkout boot/espressif/hal/esp-idf
 ```
 
-3. Next, get the mbedtls submodule required by MCUboot.
+3. Next, get the Mbed TLS submodule required by MCUboot.
 ```
 git submodule update --init --recursive ext/mbedtls
 ```
