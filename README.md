@@ -73,8 +73,6 @@ For more information in the source, here are some pointers:
 
 Developers welcome!
 
-* Our developer mailing list:
-  https://groups.io/g/mcuboot
-* Our Slack channel: https://mcuboot.slack.com/ <br />
-  Get your invite [here!](https://join.slack.com/t/mcuboot/shared_invite/MjE2NDcwMTQ2MTYyLTE1MDA4MTIzNTAtYzgyZTU0NjFkMg)
-* Our IRC channel: http://irc.freenode.net, #mcuboot
+* [Our developer mailing list](https://groups.io/g/MCUBoot)
+* [Our Slack channel](https://mcuboot.slack.com/) <br />
+  Get [your invite](https://join.slack.com/t/mcuboot/shared_invite/MjE2NDcwMTQ2MTYyLTE1MDA4MTIzNTAtYzgyZTU0NjFkMg)
