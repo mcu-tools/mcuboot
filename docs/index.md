@@ -33,7 +33,7 @@ for more details.
   - [RIOT](readme-riot.md)
   - [Mbed-OS](readme-mbed.md)
 - [Patch submission](SubmittingPatches.md) - information
-  on how to contribute to mcuboot
+  on how to contribute to MCUboot
 - Testing
   - [Zephyr](testplan-zephyr.md) test plan
   - [mynewt](testplan-mynewt.md) test plan

@@ -1,6 +1,6 @@
 # Submitting Patches
 
-Development on mcuboot primarily takes place in github, at:
+Development on MCUboot primarily takes place in github, at:
 https://github.com/mcu-tools/mcuboot
 
 Changes should be submitted via github pull requests.  Each commit

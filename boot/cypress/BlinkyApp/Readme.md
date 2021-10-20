@@ -1,10 +1,10 @@
-### Blinking LED test application for MCUBoot Bootloader
+### Blinking LED test application for MCUboot Bootloader
 
 ### Description
 
-Implements simple Blinky LED CM4 application to demonstrate MCUBoot Application operation in terms of BOOT and UPGRADE process.
+Implements simple Blinky LED CM4 application to demonstrate MCUboot Application operation in terms of BOOT and UPGRADE process.
 
-It is started by MCUBoot Application which is running on CM0p.
+It is started by MCUboot Application which is running on CM0p.
 
 Functionality:
 
@@ -20,7 +20,7 @@ Currently supported platforms
 
 ### Hardware limitations
 
-Since this application is created to demonstrate MCUBoot library features and not as reference examples some considerations are taken.
+Since this application is created to demonstrate MCUboot library features and not as reference examples some considerations are taken.
 
 1. Port/pin `P5_0` and `P5_1` used to configure serial port for debug prints. These pins are the most commonly used for serial port connection among available Cypress PSoC 6 kits. If you try to use custom hardware with this application - change definitions of `CY_DEBUG_UART_TX` and `CY_DEBUG_UART_RX` in `main.c` of BlinkyApp to port/pin pairs corresponding to your design.
 2. Port `GPIO_PRT13` pin `7U` used to define user connection LED. This pin is the most commonly used for USER_LED connection among available Cypress PSoC 6 kits. If you try to use custom hardware with this application - change definitions of `LED_PORT` and `LED_PIN` in `main.c` of BlinkyApp to port/pin pairs corresponding to your design.
@@ -111,7 +111,7 @@ This also suggests user already placed corresponing `*.pem` key in `\keys` folde
 
 ### Post-Build
 
-Post build action is executed at compile time for `BlinkyApp`. In case of build for `PSOC_062_2M` platform it calls `imgtool` from `MCUBoot` scripts and adds signature to compiled image.
+Post build action is executed at compile time for `BlinkyApp`. In case of build for `PSOC_062_2M` platform it calls `imgtool` from `MCUboot` scripts and adds signature to compiled image.
 
 Flags passed to `imgtool` for signature are defined in `SIGN_ARGS` variable in BlinkyApp.mk.
 
@@ -135,11 +135,11 @@ Files to use for programming are:
 **Flags:**
 - `BUILDCFG` - configuration **Release** or **Debug**
 - `MAKEINFO` - 0 (default) - less build info, 1 - verbose output of compilation.
-- `HEADER_OFFSET` - 0 (default) - no offset of output hex file, 0x%VALUE% - offset for output hex file. Value 0x10000 is slot size MCUBoot Bootloader in this example.
-- `IMG_TYPE` - `BOOT` (default) - build image for BOOT slot of MCUBoot Bootloader, `UPGRADE` - build image for UPGRADE slot of MCUBoot Bootloader.
+- `HEADER_OFFSET` - 0 (default) - no offset of output hex file, 0x%VALUE% - offset for output hex file. Value 0x10000 is slot size MCUboot Bootloader in this example.
+- `IMG_TYPE` - `BOOT` (default) - build image for BOOT slot of MCUboot Bootloader, `UPGRADE` - build image for UPGRADE slot of MCUboot Bootloader.
 - `ENC_IMG` - 0 (default) - build regular upgrade image, `1` - build encrypted upgrade image (MCUBootApp should also be built with this flash set 1)
 
-**NOTE**: In case of `UPGRADE` image `HEADER_OFFSET` should be set to MCUBoot Bootloader slot size.
+**NOTE**: In case of `UPGRADE` image `HEADER_OFFSET` should be set to MCUboot Bootloader slot size.
 
 ### Example terminal output
 

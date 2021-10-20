@@ -1,11 +1,11 @@
-### Port of MCUBoot library to be used with Cypress targets
+### Port of MCUboot library to be used with Cypress targets
 
 **Solution Description**
 
-Given solution demonstrates operation of MCUBoot on Cypress' PSoC6 device.
+Given solution demonstrates operation of MCUboot on Cypress' PSoC6 device.
 
 There are two applications implemented:
-* MCUBootApp - PSoC6 MCUBoot-based bootloading application;
+* MCUBootApp - PSoC6 MCUboot-based bootloading application;
 * BlinkyApp - simple PSoC6 blinking LED application which is a target of BOOT/UPGRADE;
 
 Cypress boards, that can be used with this evaluation example:
@@ -86,7 +86,7 @@ To enable multi-image operation define `MCUBOOT_IMAGE_NUMBER` in `MCUBootApp/con
 
 Default value of `MCUBOOT_IMAGE_NUMBER` is 1, which corresponds to single image configuratios.
 
-In multi-image operation (two images are considered for simplicity) MCUBoot Bootloader application operates as following:
+In multi-image operation (two images are considered for simplicity) MCUboot Bootloader application operates as following:
 
 * Verifies Primary_1 and Primary_2 images;
 * Verifies Secondary_1 and Secondary_2 images;
@@ -98,7 +98,7 @@ This ensures two dependent applications can be accepted by device only in case b
 
 **Default Flash map for Multi-Image operation:**
 
-`0x10000000 - 0x10018000` - MCUBoot Bootloader
+`0x10000000 - 0x10018000` - MCUboot Bootloader
 
 `0x10018000 - 0x10028000` - Primary_1 (BOOT) slot of Bootloader
 
@@ -117,7 +117,7 @@ For more details about External Memory usage, please refer to separate guiding d
 
 ### Hardware limitations
 
-Since this application is created to demonstrate MCUBoot library features and not as reference examples some considerations are taken.
+Since this application is created to demonstrate MCUboot library features and not as reference examples some considerations are taken.
 
 1. `SCB5` used to configure serial port for debug prints. This is the most commonly used Serial Communication Block number among available Cypress PSoC 6 kits. If you try to use custom hardware with this application - change definition of `CYBSP_UART_HW` in `main.c` of MCUBootApp to SCB* that correspond to your design.
 

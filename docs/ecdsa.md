@@ -15,7 +15,7 @@ There are a couple of ways to fix this:
   1.  Use a reversible padding scheme.  This will work, but requires
       at least one pad byte always be added (to set the length).  This
       padding would be somewhat incompatible across versions (older
-      EC256 would work, newer mcuboot code would reject old
+      EC256 would work, newer MCUboot code would reject old
       signatures.  EC code would only reliably work in the new
       combination).
 
@@ -60,7 +60,7 @@ default, but not specifying a specific version of imgtool.
 
 The signature generation in the simulator can be changed at the same
 time the boot code begins to accept unpadded signatures.  The sim is
-always run out of the same tree as the mcuboot code, so there should
+always run out of the same tree as the MCUboot code, so there should
 not be any compatibility issues.
 
 ## Background

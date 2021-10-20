@@ -2,9 +2,9 @@
 
 ### Disclaimer
 
-Given solution is included in `mcuboot` repository with purpose to demonstrate basic consepts and features of MCUBoot library on Cypress PSoC 6 device. Applications are created per mcuboot library maintainers requirements. Implemetation differs from conventional and recomended by Cypress Semiconductors development flow for PSoC 6 devices. These applications are not recomended as a starting point for development and should not be considered as supported examples for PSoC 6 devices.
+Given solution is included in `MCUboot` repository with purpose to demonstrate basic consepts and features of MCUboot library on Cypress PSoC 6 device. Applications are created per MCUboot library maintainers requirements. Implemetation differs from conventional and recomended by Cypress Semiconductors development flow for PSoC 6 devices. These applications are not recomended as a starting point for development and should not be considered as supported examples for PSoC 6 devices.
 
-Examples provided to use with **ModusToolbox® Software Environment** are a recommended reference point to start development of MCUBoot based bootloaders for PSoC 6 devices.
+Examples provided to use with **ModusToolbox® Software Environment** are a recommended reference point to start development of MCUboot based bootloaders for PSoC 6 devices.
 
 Refer to **Cypress Semiconductors** [github](https://github.com/cypresssemiconductorco) page to find examples.
 
@@ -14,7 +14,7 @@ Refer to **Cypress Semiconductors** [github](https://github.com/cypresssemicondu
 ### Solution Description
 
 There are two applications implemented:
-* MCUBootApp - PSoC6 MCUBoot-based bootloading application;
+* MCUBootApp - PSoC6 MCUboot-based bootloading application;
 * BlinkyApp - simple PSoC6 blinking LED application which is a target of BOOT/UPGRADE;
 
 The default flash map for MCUBootApp implemented is next:
@@ -56,11 +56,11 @@ Submodules can also be updated and initialized separately:
 
 Root directory for build is **boot/cypress.**
 
-This folder contains make files infrastructure for building both MCUBoot Bootloader and sample BlinkyApp application used for Bootloader demo functionality.
+This folder contains make files infrastructure for building both MCUboot Bootloader and sample BlinkyApp application used for Bootloader demo functionality.
 
 Instructions on how to build and upload MCUBootApp bootloader application and sample user applocation are located in `Readme.md` files in corresponding folders.
 
-Supported platforms for `MCUBoot`, `BlinkyApp`:
+Supported platforms for `MCUboot`, `BlinkyApp`:
 
 * PSOC_062_2M
 * PSOC_062_1M

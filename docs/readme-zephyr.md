@@ -32,10 +32,10 @@ flash partitions defined is the frdm_k64f's in
 
 ## Installing Requirements and Dependencies
 
-Install additional packages required for development with mcuboot:
+Install additional packages required for development with MCUboot:
 
 ```
-  cd ~/mcuboot  # or to your directory where mcuboot is cloned
+  cd ~/mcuboot  # or to your directory where MCUboot is cloned
   pip3 install --user -r scripts/requirements.txt
 ```
 
