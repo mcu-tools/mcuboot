@@ -26,7 +26,7 @@ Single-image mode.
 
 Size of slots `0x10000` - 64kb
 
-MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on mbedTLS Library.
+MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on Mbed TLS Library.
 
 **Important**: make sure primary, secondary slot and bootloader app sizes are appropriate and correspond to flash area size defined in Applications' linker files.
 
@@ -35,7 +35,7 @@ Memory (stack) corruption of CM0p application can cause failure if SystemCall-se
 
 ### Hardware cryptography acceleration
 
-Cypress PSOC6 MCU family supports hardware acceleration of cryptography based on mbedTLS Library via shim layer. Implementation of this layer is supplied as separate submodule `cy-mbedtls-acceleration`. HW acceleration of cryptography shortens boot time more then 4 times, comparing to software implementation (observation results).
+Cypress PSOC6 MCU family supports hardware acceleration of cryptography based on Mbed TLS Library via shim layer. Implementation of this layer is supplied as separate submodule `cy-mbedtls-acceleration`. HW acceleration of cryptography shortens boot time more then 4 times, comparing to software implementation (observation results).
 
 To enable hardware acceleration in `MCUBootApp` pass flag `USE_CRYPTO_HW=1` to `make` while build.
 
@@ -131,7 +131,7 @@ There is a set assets required:
 * MCUBooot Library (root repository)
 * PSoC6 HAL Library
 * PSoC6 Peripheral Drivers Library (PDL)
-* mbedTLS Cryptographic Library
+* Mbed TLS Cryptographic Library
 
 To get submodules - run the following command:
 
@@ -155,7 +155,7 @@ Root directory for build is **boot/cypress.**
 
 **Encrypted Image Support**
 
-To protect user image from unwanted read - Upgrade Image Encryption can be applied. The ECDH/HKDF with EC256 scheme is used in a given solution as well as mbedTLS as a crypto provider.
+To protect user image from unwanted read - Upgrade Image Encryption can be applied. The ECDH/HKDF with EC256 scheme is used in a given solution as well as Mbed TLS as a crypto provider.
 
 To enable image encryption support use `ENC_IMG=1` build flag (BlinkyApp should also be built with this flash set 1).
 

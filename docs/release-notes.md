@@ -20,7 +20,7 @@ for the NuttX RTOS, and the Espressif ESP32 SDK.
   brought in for another reason.
 - Add simulator support for testing direct-XIP and ramload.
 - Support Mbed TLS 3.0.  Updates the submodule for Mbed TLS to 3.0.
-- Enable direct-xip mode in mbed-os port.
+- Enable direct-xip mode in Mbed-OS port.
 - extract `bootutil_public` library, a common interface for MCUboot
   and the application.
 - Allow to boot primary image if secondary one is unreachable.
@@ -134,7 +134,7 @@ testing coverage and some imgtool updates.
   should work with no changes for little-endian targets, but will
   break compatibility with big-endian targets.
 - A benchmark framework was added to Zephyr
-- ed25519 signature validation can now build without using mbedTLS
+- ed25519 signature validation can now build without using Mbed TLS
   by relying on a bundled tinycrypt based sha-512 implementation.
 - imgtool was updated to correctly detect trailer overruns by image.
 - Encrypted image TLVs can be saved in swap metadata during a swap
@@ -169,8 +169,8 @@ compatible with previous releases of MCUboot.
 - Numerous code cleanups and refactorings
 - Documentation updates for multi-image features
 - Update imgtool.py to support the new features
-- Updated the mbed TLS submodule to current stable version 2.16.3
-- Moved the mbed TLS submodule from within sim/mcuboot-sys to ext.
+- Updated the Mbed TLS submodule to current stable version 2.16.3
+- Moved the Mbed TLS submodule from within sim/mcuboot-sys to ext.
   This will make it easier for other board supports to use this code.
 - Added some additional overflow and bound checks to data in the image
   header, and TLV data.
@@ -281,7 +281,7 @@ newt/imgtool support for password protected keys.
   of ecdsa (secp256r1) was added
 - imgtool: removed PKCS1.5 support, added support for password
   protected keys
-- tinycrypt 0.2.8 and the mbed-tls ASN1 parser are now bundled with
+- tinycrypt 0.2.8 and the Mbed TLS ASN1 parser are now bundled with
   MCUboot (eg secp256r1 is now free of external dependencies!)
 - Overwrite-only mode was updated to erase/copy only sectors that
   actually store firmware
@@ -358,12 +358,12 @@ and RIOT.
   - An overwrite only which upgrades slot 0 with the image in slot 1.
   - A swapping upgrade which enables image test, allowing for rollback to a
     previous known good image.
-- Supports both mbed-TLS and tinycrypt as backend crypto libraries. One of them
+- Supports both Mbed TLS and tinycrypt as backend crypto libraries. One of them
   must be defined and the chosen signing algorithm will require a particular
   library according to this list:
-  - RSA 2048 needs mbed TLS
-  - ECDSA secp224r1 needs mbed TLS
-  - ECDSA secp256r1 needs tinycrypt as well as the ASN.1 code from mbed TLS
+  - RSA 2048 needs Mbed TLS
+  - ECDSA secp224r1 needs Mbed TLS
+  - ECDSA secp256r1 needs tinycrypt as well as the ASN.1 code from Mbed TLS
     (so still needs that present).
 
 ### Known issues
