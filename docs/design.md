@@ -417,10 +417,15 @@ image trailer. An image trailer has the following structure:
 The offset immediately following such a record represents the start of the next
 flash area.
 
-Note: "min-write-size" is a property of the flash hardware.  If the hardware
-allows individual bytes to be written at arbitrary addresses, then
-min-write-size is 1.  If the hardware only allows writes at even addresses,
-then min-write-size is 2, and so on.
+---
+***Note***
+
+*"min-write-size" is a property of the flash hardware.  If the hardware*
+*allows individual bytes to be written at arbitrary addresses, then*
+*min-write-size is 1.  If the hardware only allows writes at even addresses,*
+*then min-write-size is 2, and so on.*
+
+---
 
 An image trailer contains the following fields:
 
@@ -507,9 +512,14 @@ it is difficult to get a sense of the state of the device just by looking at the
 image trailers.  It is better to map all the possible trailer states to the swap
 types described above via a set of tables.  These tables are reproduced below.
 
-Note: An important caveat about the tables described below is that they must
-be evaluated in the order presented here. Lower state numbers must have a
-higher priority when testing the image trailers.
+---
+***Note***
+
+*An important caveat about the tables described below is that they must*
+*be evaluated in the order presented here. Lower state numbers must have a*
+*higher priority when testing the image trailers.*
+
+---
 
 ```
     State I
@@ -571,11 +581,16 @@ fatal error occurs during boot, the result is `BOOT_SWAP_TYPE_PANIC`. If the
 result is either `BOOT_SWAP_TYPE_FAIL` or `BOOT_SWAP_TYPE_PANIC`, MCUboot hangs
 rather than booting an invalid or compromised image.
 
-Note: An important caveat to the above is the result when a swap is requested
-      and the image in the secondary slot fails to validate, due to a hashing or
-      signing error. This state behaves as State IV with the extra action of
-      marking the image in the primary slot as "OK", to prevent further attempts
-      to swap.
+---
+***Note***
+
+*An important caveat to the above is the result when a swap is requested*
+*and the image in the secondary slot fails to validate, due to a hashing or*
+*signing error. This state behaves as State IV with the extra action of*
+*marking the image in the primary slot as "OK", to prevent further attempts*
+*to swap.*
+
+---
 
 ### [Resumed swaps](#resumed-swaps)
 
@@ -798,13 +813,21 @@ trailer can be written by the user at a later time.  With the image trailer
 unwritten, the user can test the image in the secondary slot
 (i.e., transition to state I).
 
-Note1: If the region being copied contains the last sector, then swap status is
-temporarily maintained on scratch for the duration of this operation, always
-using the primary slot's area otherwise.
+---
+***Note***
 
-Note2: The bootloader tries to copy only used sectors (based on largest image
-installed on any of the slots), minimizing the amount of sectors copied and
-reducing the amount of time required for a swap operation.
+*If the region being copied contains the last sector, then swap status is*
+*temporarily maintained on scratch for the duration of this operation, always*
+*using the primary slot's area otherwise.*
+
+---
+***Note***
+
+*The bootloader tries to copy only used sectors (based on largest image*
+*installed on any of the slots), minimizing the amount of sectors copied and*
+*reducing the amount of time required for a swap operation.*
+
+---
 
 The particulars of step 3 vary depending on whether an image is being tested,
 permanently used, reverted or a validation failure of the secondary slot
@@ -914,8 +937,13 @@ in the middle of the region. For example, if a slot uses 64 sectors, the first
 sector index that gets swapped is 63, which corresponds to the exact halfway
 point within the region.
 
-Note: since the scratch area only ever needs to record swapping of the last
-sector, it uses at most min-write-size * 3 bytes for its own status area.
+---
+***Note***
+
+*Since the scratch area only ever needs to record swapping of the last*
+*sector, it uses at most min-write-size * 3 bytes for its own status area.*
+
+---
 
 ## [Reset recovery](#reset-recovery)
 
@@ -1024,8 +1052,13 @@ producing signed images, see: [signed_images](signed_images.md).
 If you want to enable and use encrypted images, see:
 [encrypted_images](encrypted_images.md).
 
-Note: Image encryption is not supported when the direct-xip upgrade strategy
-is selected.
+---
+***Note***
+
+*Image encryption is not supported when the direct-xip upgrade strategy*
+*is selected.*
+
+---
 
 ### [Using hardware keys for verification](#hw-key-support)
 

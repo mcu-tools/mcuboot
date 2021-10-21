@@ -46,7 +46,12 @@ cd ../..
 
 The MCUboot Espressif port bootloader is built using the toolchain and tools provided by ESP-IDF. Additional configuration related to MCUboot features and slot partitioning may be made using the `bootloader.conf`.
 
-**Note:** Replace `<target>` with the target ESP32 family (like `esp32`, `esp32s2` and others).
+---
+***Note***
+
+*Replace `<target>` with the target ESP32 family (like `esp32`, `esp32s2` and others).*
+
+---
 
 1. Compile and generate the ELF:
 
