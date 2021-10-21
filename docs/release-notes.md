@@ -1,7 +1,37 @@
 # MCUboot Release Notes
 
-- Table of Contents
-{:toc}
+- Table of Contents:
+  * [Version 1.8.0](#version-180)
+    + [About this release](#about-this-release)
+    + [Security fixes](#security-fixes)
+  * [Version 1.7.0](#version-170)
+    + [About this release](#about-this-release-1)
+    + [Zephyr-RTOS Compatibility](#zephyr-rtos-compatibility)
+  * [Version 1.6.0](#version-160)
+    + [About this release](#about-this-release-2)
+    + [Security issues addressed](#security-issues-addressed)
+    + [Zephyr-RTOS Compatibility](#zephyr-rtos-compatibility-1)
+  * [Version 1.5.0](#version-150)
+    + [About this release](#about-this-release-3)
+    + [Known issues](#known-issues)
+  * [Version 1.4.0](#version-140)
+    + [About this release](#about-this-release-4)
+  * [Version 1.3.1](#version-131)
+    + [About this release](#about-this-release-5)
+  * [Version 1.3.0](#version-130)
+    + [About this release](#about-this-release-6)
+  * [Version 1.2.0](#version-120)
+    + [About this release](#about-this-release-7)
+    + [Known issues](#known-issues-1)
+  * [Version 1.1.0](#version-110)
+    + [About this release](#about-this-release-8)
+    + [Known issues](#known-issues-2)
+  * [Version 1.0.0](#version-100)
+    + [About this release](#about-this-release-9)
+    + [Known issues](#known-issues-3)
+  * [Version 0.9.0](#version-090)
+    + [About this release](#about-this-release-10)
+    + [Known issues](#known-issues-4)
 
 ## Version 1.8.0
 
