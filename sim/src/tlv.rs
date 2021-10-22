@@ -96,6 +96,11 @@ pub trait ManifestGen {
     /// corrupt the signature.
     fn corrupt_sig(&mut self);
 
+    /// Estimate the size of the TLV.  This can be called before the payload is added (but after
+    /// other information is added).  Some of the signature algorithms can generate variable sized
+    /// data, and therefore, this can slightly overestimate the size.
+    fn estimate_size(&self) -> usize;
+
     /// Construct the manifest for this payload.
     fn make_tlv(self: Box<Self>) -> Vec<u8>;
 
@@ -332,8 +337,67 @@ impl ManifestGen for TlvGen {
         self.gen_corrupted = true;
     }
 
+    fn estimate_size(&self) -> usize {
+        // Begin the estimate with the 4 byte header.
+        let mut estimate = 4;
+        // A very poor estimate.
+
+        // Estimate the size of the image hash.
+        if self.kinds.contains(&TlvKinds::SHA256) {
+            estimate += 4 + 32;
+        }
+
+        // Add an estimate in for each of the signature algorithms.
+        if self.kinds.contains(&TlvKinds::RSA2048) {
+            estimate += 4 + 32; // keyhash
+            estimate += 4 + 256; // RSA2048
+        }
+        if self.kinds.contains(&TlvKinds::RSA3072) {
+            estimate += 4 + 32; // keyhash
+            estimate += 4 + 384; // RSA3072
+        }
+        if self.kinds.contains(&TlvKinds::ECDSA256) {
+            estimate += 4 + 32; // keyhash
+
+            // ECDSA signatures are encoded as ASN.1 with the x and y values stored as signed
+            // integers.  As such, the size can vary by 2 bytes, if the 256-bit value has the high
+            // bit, it takes an extra 0 byte to avoid it being seen as a negative number.
+            estimate += 4 + 72; // ECDSA256 (varies)
+        }
+        if self.kinds.contains(&TlvKinds::ED25519) {
+            estimate += 4 + 32; // keyhash
+            estimate += 4 + 64; // ED25519 signature.
+        }
+
+        // Estimate encryption.
+        let flag = TlvFlags::ENCRYPTED_AES256 as u32;
+        let aes256 = (self.get_flags() & flag) == flag;
+
+        if self.kinds.contains(&TlvKinds::ENCRSA2048) {
+            estimate += 4 + 256;
+        }
+        if self.kinds.contains(&TlvKinds::ENCKW) {
+            estimate += 4 + if aes256 { 40 } else { 24 };
+        }
+        if self.kinds.contains(&TlvKinds::ENCEC256) {
+            estimate += 4 + if aes256 { 129 } else { 113 };
+        }
+        if self.kinds.contains(&TlvKinds::ENCX25519) {
+            estimate += 4 + if aes256 { 96 } else { 80 };
+        }
+
+        // Gather the size of the dependency information.
+        if self.protect_size() > 0 {
+            estimate += 4 + (16 * self.dependencies.len());
+        }
+
+        estimate
+    }
+
     /// Compute the TLV given the specified block of data.
     fn make_tlv(self: Box<Self>) -> Vec<u8> {
+        let size_estimate = self.estimate_size();
+
         let mut protected_tlv: Vec<u8> = vec![];
 
         if self.protect_size() > 0 {
@@ -662,6 +726,14 @@ impl ManifestGen for TlvGen {
         let size = (result.len() - npro_pos) as u16;
         let mut size_buf = &mut result[npro_pos + 2 .. npro_pos + 4];
         size_buf.write_u16::<LittleEndian>(size).unwrap();
+
+        // The size estimate must not be less than the given size, and no more than 3 bytes larger.
+        if size_estimate < result.len() || size_estimate > result.len() + 3 {
+            panic!("Incorrect size estimate: {} (actual {})", size_estimate, result.len());
+        }
+        if size_estimate != result.len() {
+            log::warn!("Size off: {} actual {}", size_estimate, result.len());
+        }
 
         result
     }
