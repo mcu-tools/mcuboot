@@ -1658,10 +1658,7 @@ fn make_tlv() -> TlvGen {
     if Caps::EcdsaP224.present() {
         panic!("Ecdsa P224 not supported in Simulator");
     }
-    let mut aes_key_size = 128;
-    if Caps::Aes256.present() {
-        aes_key_size = 256;
-    }
+    let aes_key_size = if Caps::Aes256.present() { 256 } else { 128 };
 
     if Caps::EncKw.present() {
         if Caps::RSA2048.present() {
