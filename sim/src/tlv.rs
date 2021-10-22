@@ -67,8 +67,8 @@ pub enum TlvFlags {
     PIC = 0x01,
     NON_BOOTABLE = 0x02,
     ENCRYPTED_AES128 = 0x04,
-    RAM_LOAD = 0x20,
     ENCRYPTED_AES256 = 0x08,
+    RAM_LOAD = 0x20,
 }
 
 /// A generator for manifests.  The format of the manifest can be either a
