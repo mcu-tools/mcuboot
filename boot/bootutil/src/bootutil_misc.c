@@ -224,8 +224,9 @@ boot_find_status(int image_index, const struct flash_area **fap)
 
         off = boot_magic_off(*fap);
         rc = flash_area_read(*fap, off, magic, BOOT_MAGIC_SZ);
+        flash_area_close(*fap);
+
         if (rc != 0) {
-            flash_area_close(*fap);
             return rc;
         }
 
@@ -233,7 +234,6 @@ boot_find_status(int image_index, const struct flash_area **fap)
             return 0;
         }
 
-        flash_area_close(*fap);
     }
 
     /* If we got here, no magic was found */
