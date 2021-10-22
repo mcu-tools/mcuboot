@@ -1597,6 +1597,8 @@ fn install_no_image() -> ImageData {
     }
 }
 
+/// Construct a TLV generator based on how MCUboot is currently configured.  The returned
+/// ManifestGen will generate the appropriate entries based on this configuration.
 fn make_tlv() -> TlvGen {
     if Caps::EcdsaP224.present() {
         panic!("Ecdsa P224 not supported in Simulator");
