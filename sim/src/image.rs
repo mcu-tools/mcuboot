@@ -219,10 +219,12 @@ impl ImagesBuilder {
             } else {
                 Box::new(BoringDep::new(image_num, deps))
             };
-            let primaries = install_image(&mut flash, &slots[0], 42784, &ram, &*dep, false);
+            let primaries = install_image(&mut flash, &slots[0],
+                ImageSize::Given(42784), &ram, &*dep, false);
             let upgrades = match deps.depends[image_num] {
                 DepType::NoUpgrade => install_no_image(),
-                _ => install_image(&mut flash, &slots[1], 46928, &ram, &*dep, false)
+                _ => install_image(&mut flash, &slots[1],
+                    ImageSize::Given(46928), &ram, &*dep, false)
             };
             OneImage {
                 slots,
@@ -270,8 +272,10 @@ impl ImagesBuilder {
         let ram = self.ram.clone(); // TODO: Avoid this clone.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
-            let primaries = install_image(&mut bad_flash, &slots[0], 32784, &ram, &dep, false);
-            let upgrades = install_image(&mut bad_flash, &slots[1], 41928, &ram, &dep, true);
+            let primaries = install_image(&mut bad_flash, &slots[0],
+                ImageSize::Given(32784), &ram, &dep, false);
+            let upgrades = install_image(&mut bad_flash, &slots[1],
+                ImageSize::Given(41928), &ram, &dep, true);
             OneImage {
                 slots,
                 primaries,
@@ -291,7 +295,8 @@ impl ImagesBuilder {
         let ram = self.ram.clone(); // TODO: Avoid this clone.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
-            let primaries = install_image(&mut flash, &slots[0], 32784, &ram, &dep, false);
+            let primaries = install_image(&mut flash, &slots[0],
+                ImageSize::Given(32784), &ram, &dep, false);
             let upgrades = install_no_image();
             OneImage {
                 slots,
@@ -313,7 +318,8 @@ impl ImagesBuilder {
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_no_image();
-            let upgrades = install_image(&mut flash, &slots[1], 32784, &ram, &dep, false);
+            let upgrades = install_image(&mut flash, &slots[1],
+                ImageSize::Given(32784), &ram, &dep, false);
             OneImage {
                 slots,
                 primaries,
@@ -1413,9 +1419,17 @@ fn show_flash(flash: &dyn Flash) {
     println!();
 }
 
+#[derive(Debug)]
+enum ImageSize {
+    /// Make the image the specified given size.
+    Given(usize),
+    /// Make the image as large as it can be for the partition/device.
+    Largest,
+}
+
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
 /// fields used by the given code.  Returns a copy of the image that was written.
-fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
+fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
                  ram: &RamData,
                  deps: &dyn Depender, bad_sig: bool) -> ImageData {
     let offset = slot.base_off;
@@ -1436,6 +1450,11 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: usize,
         place.offset
     } else {
         0
+    };
+
+    let len = match len {
+        ImageSize::Given(size) => size,
+        ImageSize::Largest => unimplemented!(),
     };
 
     // Generate a boot header.  Note that the size doesn't include the header.
