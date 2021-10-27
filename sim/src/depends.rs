@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Linaro LTD
+// Copyright (c) 2019-2021 Linaro LTD
 //
 // SPDX-License-Identifier: Apache-2.0
 
