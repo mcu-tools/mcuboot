@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Linaro LTD
+// Copyright (c) 2019-2021 Linaro LTD
 // Copyright (c) 2019-2020 JUUL Labs
 // Copyright (c) 2019-2021 Arm Limited
 //
