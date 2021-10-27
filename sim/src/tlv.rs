@@ -727,9 +727,20 @@ impl ManifestGen for TlvGen {
         let mut size_buf = &mut result[npro_pos + 2 .. npro_pos + 4];
         size_buf.write_u16::<LittleEndian>(size).unwrap();
 
-        // The size estimate must not be less than the given size, and no more than 3 bytes larger.
-        if size_estimate < result.len() || size_estimate > result.len() + 3 {
-            panic!("Incorrect size estimate: {} (actual {})", size_estimate, result.len());
+        // ECDSA is stored as an ASN.1 integer.  For a 128-bit value, this maximally results in 33
+        // bytes of storage for each of the two values.  If the high bit is zero, it will take 32
+        // bytes, if the top 8 bits are zero, it will take 31 bits, and so on.  The smaller size
+        // will occur with decreasing likelihood.  We'll allow this to get a bit smaller, hopefully
+        // allowing the tests to pass with false failures rare.  For this case, we'll handle up to
+        // the top 16 bits of both numbers being all zeros (1 in 2^32).
+        if !Caps::has_ecdsa() {
+            if size_estimate != result.len() {
+                panic!("Incorrect size estimate: {} (actual {})", size_estimate, result.len());
+            }
+        } else {
+            if size_estimate < result.len() || size_estimate > result.len() + 6 {
+                panic!("Incorrect size estimate: {} (actual {})", size_estimate, result.len());
+            }
         }
         if size_estimate != result.len() {
             log::warn!("Size off: {} actual {}", size_estimate, result.len());

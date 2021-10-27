@@ -36,6 +36,11 @@ impl Caps {
         (caps as u32) & (self as u32) != 0
     }
 
+    /// Does this build have ECDSA of some type enabled for signatures.
+    pub fn has_ecdsa() -> bool {
+        Caps::EcdsaP256.present() || Caps::EcdsaP224.present()
+    }
+
     /// Query for the number of images that have been configured into this
     /// MCUboot build.
     pub fn get_num_images() -> usize {
