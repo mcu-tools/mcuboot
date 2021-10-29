@@ -210,6 +210,61 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
     return 0;
 }
 
+static bool aligned_flash_write(size_t dest_addr, const void *src, size_t size)
+{
+    bool flash_encryption_enabled = esp_flash_encryption_enabled();
+
+    if (IS_ALIGNED(dest_addr, 4) && IS_ALIGNED((uintptr_t)src, 4) && IS_ALIGNED(size, 4)) {
+        /* A single write operation is enough when all parameters are aligned */
+
+        return bootloader_flash_write(dest_addr, (void *)src, size, flash_encryption_enabled) == ESP_OK;
+    }
+
+    const uint32_t aligned_addr = ALIGN_DOWN(dest_addr, 4);
+    const uint32_t addr_offset = ALIGN_OFFSET(dest_addr, 4);
+    uint32_t bytes_remaining = size;
+    uint8_t write_data[FLASH_BUFFER_SIZE] = {0};
+
+    /* Perform a read operation considering an offset not aligned to 4-byte boundary */
+
+    uint32_t bytes = MIN(bytes_remaining + addr_offset, sizeof(write_data));
+    if (bootloader_flash_read(aligned_addr, write_data, ALIGN_UP(bytes, 4), true) != ESP_OK) {
+        return false;
+    }
+
+    uint32_t bytes_written = bytes - addr_offset;
+    memcpy(&write_data[addr_offset], src, bytes_written);
+
+    if (bootloader_flash_write(aligned_addr, write_data, ALIGN_UP(bytes, 4), flash_encryption_enabled) != ESP_OK) {
+        return false;
+    }
+
+    bytes_remaining -= bytes_written;
+
+    /* Write remaining data to Flash if any */
+
+    uint32_t offset = bytes;
+
+    while (bytes_remaining != 0) {
+        bytes = MIN(bytes_remaining, sizeof(write_data));
+        if (bootloader_flash_read(aligned_addr + offset, write_data, ALIGN_UP(bytes, 4), true) != ESP_OK) {
+            return false;
+        }
+
+        memcpy(write_data, &((uint8_t *)src)[bytes_written], bytes);
+
+        if (bootloader_flash_write(aligned_addr + offset, write_data, ALIGN_UP(bytes, 4), flash_encryption_enabled) != ESP_OK) {
+            return false;
+        }
+
+        offset += bytes;
+        bytes_written += bytes;
+        bytes_remaining -= bytes;
+    }
+
+    return true;
+}
+
 int flash_area_write(const struct flash_area *fa, uint32_t off, const void *src,
                      uint32_t len)
 {
@@ -223,12 +278,11 @@ int flash_area_write(const struct flash_area *fa, uint32_t off, const void *src,
         return -1;
     }
 
-    bool flash_encryption_enabled = esp_flash_encryption_enabled();
-
     const uint32_t start_addr = fa->fa_off + off;
     BOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
 
-    if (bootloader_flash_write(start_addr, (void *)src, len, flash_encryption_enabled) != ESP_OK) {
+    bool success = aligned_flash_write(start_addr, src, len);
+    if (!success) {
         BOOT_LOG_ERR("%s: Flash write failed", __func__);
         return -1;
     }
