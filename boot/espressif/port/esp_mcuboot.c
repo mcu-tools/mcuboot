@@ -16,7 +16,33 @@
 #include "bootloader_flash.h"
 #include "bootloader_flash_priv.h"
 
-#define ARRAY_SIZE(arr) sizeof(arr)/sizeof(arr[0])
+#ifndef ARRAY_SIZE
+#  define ARRAY_SIZE(arr)           (sizeof(arr) / sizeof((arr)[0]))
+#endif
+
+#ifndef MIN
+#  define MIN(a, b)                 (((a) < (b)) ? (a) : (b))
+#endif
+
+#ifndef ALIGN_UP
+#  define ALIGN_UP(num, align)      (((num) + ((align) - 1)) & ~((align) - 1))
+#endif
+
+#ifndef ALIGN_DOWN
+#  define ALIGN_DOWN(num, align)    ((num) & ~((align) - 1))
+#endif
+
+#ifndef ALIGN_OFFSET
+#  define ALIGN_OFFSET(num, align)  ((num) & ((align) - 1))
+#endif
+
+#ifndef IS_ALIGNED
+#  define IS_ALIGNED(num, align)    (ALIGN_OFFSET((num), (align)) == 0)
+#endif
+
+#define FLASH_BUFFER_SIZE           256 /* SPI Flash block size */
+
+_Static_assert(IS_ALIGNED(FLASH_BUFFER_SIZE, 4), "Buffer size for SPI Flash operations must be 4-byte aligned.");
 
 #define BOOTLOADER_START_ADDRESS 0x1000
 #define BOOTLOADER_SIZE CONFIG_ESP_BOOTLOADER_SIZE
@@ -86,30 +112,73 @@ void flash_area_close(const struct flash_area *area)
 
 }
 
+static bool aligned_flash_read(uintptr_t addr, void *dest, size_t size)
+{
+    if (IS_ALIGNED(addr, 4) && IS_ALIGNED((uintptr_t)dest, 4) && IS_ALIGNED(size, 4)) {
+        /* A single read operation is enough when when all parameters are aligned */
+
+        return bootloader_flash_read(addr, dest, size, true) == ESP_OK;
+    }
+
+    const uint32_t aligned_addr = ALIGN_DOWN(addr, 4);
+    const uint32_t addr_offset = ALIGN_OFFSET(addr, 4);
+    uint32_t bytes_remaining = size;
+    uint8_t read_data[FLASH_BUFFER_SIZE] = {0};
+
+    /* Align the read address to 4-byte boundary and ensure read size is a multiple of 4 bytes */
+
+    uint32_t bytes = MIN(bytes_remaining + addr_offset, sizeof(read_data));
+    if (bootloader_flash_read(aligned_addr, read_data, ALIGN_UP(bytes, 4), true) != ESP_OK) {
+        return false;
+    }
+
+    /* Skip non-useful data which may have been read for adjusting the alignment */
+
+    uint32_t bytes_read = bytes - addr_offset;
+    memcpy(dest, &read_data[addr_offset], bytes_read);
+
+    bytes_remaining -= bytes_read;
+
+    /* Read remaining data from Flash in case requested size is greater than buffer size */
+
+    uint32_t offset = bytes;
+
+    while (bytes_remaining != 0) {
+        bytes = MIN(bytes_remaining, sizeof(read_data));
+        if (bootloader_flash_read(aligned_addr + offset, read_data, ALIGN_UP(bytes, 4), true) != ESP_OK) {
+            return false;
+        }
+
+        memcpy(&((uint8_t *)dest)[bytes_read], read_data, bytes);
+
+        offset += bytes;
+        bytes_read += bytes;
+        bytes_remaining -= bytes;
+    }
+
+    return true;
+}
+
 int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
                     uint32_t len)
 {
-    uint32_t internal_data = 0, read_len = 0;
-    void *read_ptr;
     if (fa->fa_device_id != FLASH_DEVICE_INTERNAL_FLASH) {
         return -1;
     }
 
     const uint32_t end_offset = off + len;
-
     if (end_offset > fa->fa_size) {
         MCUBOOT_LOG_ERR("%s: Out of Bounds (0x%x vs 0x%x)", __func__, end_offset, fa->fa_size);
         return -1;
     }
-    read_len = (len < 4) ? sizeof(uint32_t) : len;
-    read_ptr = (len < 4) ? (void *)&internal_data : dst;
-    if (bootloader_flash_read(fa->fa_off + off, read_ptr, read_len, true) != ESP_OK) {
+
+    bool success = aligned_flash_read(fa->fa_off + off, dst, len);
+    if (!success) {
         MCUBOOT_LOG_ERR("%s: Flash read failed", __func__);
+
         return -1;
     }
-    if (len < 4) {
-        memcpy(dst, read_ptr, len);
-    }
+
     return 0;
 }
 
