@@ -40,9 +40,6 @@
 #endif
 #if MYNEWT_VAL(BOOTUTIL_SIGN_EC256)
 #define MCUBOOT_SIGN_EC256 1
-  #ifndef MCUBOOT_USE_TINYCRYPT
-  #error "EC256 requires the use of tinycrypt."
-  #endif
 #endif
 #if MYNEWT_VAL(BOOTUTIL_SIGN_RSA)
 #define MCUBOOT_SIGN_RSA 1
