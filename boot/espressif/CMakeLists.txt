@@ -79,6 +79,18 @@ set(MCUBOOT_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 set(BOOTUTIL_DIR ${MCUBOOT_ROOT_DIR}/boot/bootutil)
 set(ESPRESSIF_PORT_DIR ${CMAKE_CURRENT_LIST_DIR})
 
+# Find imgtool.
+# Go with an explicitly installed imgtool first, falling
+# back to mcuboot/scripts/imgtool.py.
+find_program(IMGTOOL_COMMAND
+    NAMES imgtool imgtool.py
+    )
+if ("${IMGTOOL_COMMAND}" MATCHES "IMGTOOL_COMMAND-NOTFOUND")
+    set(imgtool_path "${MCUBOOT_ROOT_DIR}/scripts/imgtool.py")
+else()
+    set(imgtool_path "${IMGTOOL_COMMAND}")
+endif()
+
 if (DEFINED CONFIG_ESP_SIGN_RSA)
     if ("${MCUBOOT_TARGET}" STREQUAL "esp32s2" OR
         "${MCUBOOT_TARGET}" STREQUAL "esp32c3")
@@ -116,8 +128,7 @@ if(DEFINED CONFIG_ESP_SIGN_KEY_FILE)
         add_custom_command(
             OUTPUT ${GENERATED_PUBKEY}
             COMMAND
-            ${PYTHON_EXECUTABLE}
-            ${MCUBOOT_ROOT_DIR}/scripts/imgtool.py
+            ${imgtool_path}
             getpub
             -k
             ${KEY_FILE}
