@@ -1,4 +1,4 @@
-# [mcuboot](http://mcuboot.com/)
+# [MCUboot](http://mcuboot.com/)
 
 [![Package on PyPI](https://img.shields.io/pypi/v/imgtool.svg)][pypi]
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/12307/badge.svg)][coverity]
@@ -16,7 +16,7 @@
 [travis]: https://travis-ci.org/mcu-tools/mcuboot
 [license]: https://github.com/mcu-tools/mcuboot/blob/main/LICENSE
 
-This is mcuboot version 1.8.0-rc2
+This is MCUboot version 1.8.0
 
 MCUboot is a secure bootloader for 32-bit MCUs. The goal of MCUboot is to
 define a common infrastructure for the bootloader, system flash layout on
@@ -24,7 +24,7 @@ microcontroller systems, and to provide a secure bootloader that enables
 simple software upgrades.
 
 MCUboot is operating system and hardware independent and relies on
-hardware porting layers from the operating. Currently, mcuboot works
+hardware porting layers from the operating. Currently, MCUboot works
 with both the Apache Mynewt and Zephyr operating systems, but more
 ports are planned in the future. RIOT is currently supported as a boot
 target with a complete port planned.
@@ -45,7 +45,7 @@ Instructions for different operating systems can be found here:
 The issues being planned and worked on are tracked using GitHub issues. To
 participate please visit:
 
-[MCUBoot GitHub Issues](https://github.com/mcu-tools/mcuboot/issues)
+[MCUboot GitHub Issues](https://github.com/mcu-tools/mcuboot/issues)
 
 ~~Issues were previously tracked on [MCUboot JIRA](https://runtimeco.atlassian.net/projects/MCUB/summary)
 , but it is now deprecated.~~
@@ -55,7 +55,7 @@ participate please visit:
 Information and documentation on the bootloader are stored within the source.
 
 ~~It was previously also documented on confluence:
-[MCUBoot Confluence](https://runtimeco.atlassian.net/wiki/discover/all-updates)
+[MCUboot Confluence](https://runtimeco.atlassian.net/wiki/discover/all-updates)
 however, it is now deprecated and not currently maintained~~
 
 For more information in the source, here are some pointers:
@@ -66,15 +66,13 @@ For more information in the source, here are some pointers:
 - [boot/mynewt](boot/mynewt): Mynewt bootloader app
 - [boot/nuttx](boot/nuttx): Bootloader application and port of MCUboot interfaces for NuttX.
 - [boot/espressif](boot/espressif): Bootloader application and MCUboot port for Espressif SoCs.
-- [imgtool](scripts/imgtool.py): A tool to securely sign firmware images for booting by mcuboot.
+- [imgtool](scripts/imgtool.py): A tool to securely sign firmware images for booting by MCUboot.
 - [sim](sim): A bootloader simulator for testing and regression
 
 ## Joining
 
 Developers welcome!
 
-* Our developer mailing list:
-  https://groups.io/g/mcuboot
-* Our Slack channel: https://mcuboot.slack.com/ <br />
-  Get your invite [here!](https://join.slack.com/t/mcuboot/shared_invite/MjE2NDcwMTQ2MTYyLTE1MDA4MTIzNTAtYzgyZTU0NjFkMg)
-* Our IRC channel: http://irc.freenode.net, #mcuboot
+* [Our developer mailing list](https://groups.io/g/MCUBoot)
+* [Our Slack channel](https://mcuboot.slack.com/) <br />
+  Get [your invite](https://join.slack.com/t/mcuboot/shared_invite/MjE2NDcwMTQ2MTYyLTE1MDA4MTIzNTAtYzgyZTU0NjFkMg)

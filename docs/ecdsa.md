@@ -4,7 +4,7 @@ When ECDSA SECP256R1 (EC256) signature support was added to MCUboot, a
 shortcut was taken, and these signatures were padded to make them
 always a fixed length.  Unfortunately, this padding was done in a way
 that is not easily reversible.  Some crypto libraries are fairly
-strict about the formatting of the ECDSA signature (specifically, mbed
+strict about the formatting of the ECDSA signature (specifically, Mbed
 TLS).  This currently means that the ECDSA SECP224R1 (EC) signature
 checking code will fail to boot about 1 out of every 256 images,
 because the signature itself will end in a 0x00 byte, and the code
@@ -15,7 +15,7 @@ There are a couple of ways to fix this:
   1.  Use a reversible padding scheme.  This will work, but requires
       at least one pad byte always be added (to set the length).  This
       padding would be somewhat incompatible across versions (older
-      EC256 would work, newer mcuboot code would reject old
+      EC256 would work, newer MCUboot code would reject old
       signatures.  EC code would only reliably work in the new
       combination).
 
@@ -43,7 +43,7 @@ period.
     without padding), and the existing EC implementation will begin
     accepting padded and unpadded signatures.
 
-  - An mbed TLS implementation of EC256 can be added, but will require
+  - An Mbed TLS implementation of EC256 can be added, but will require
     the `--no-pad-sig` signature to be able to boot all generated
     images (without the argument 3 of out 4 images generated will have
     padding, and be considered invalid).
@@ -60,7 +60,7 @@ default, but not specifying a specific version of imgtool.
 
 The signature generation in the simulator can be changed at the same
 time the boot code begins to accept unpadded signatures.  The sim is
-always run out of the same tree as the mcuboot code, so there should
+always run out of the same tree as the MCUboot code, so there should
 not be any compatibility issues.
 
 ## Background

@@ -143,9 +143,9 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #else
 #define ARE_SLOTS_EQUIVALENT()    1
 
-#ifdef MCUBOOT_ENC_IMAGES
-#error "Image encryption (MCUBOOT_ENC_IMAGES) is not supported when MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD mode is selected."
-#endif
+#if defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_ENC_IMAGES)
+#error "Image encryption (MCUBOOT_ENC_IMAGES) is not supported when MCUBOOT_DIRECT_XIP is selected."
+#endif /* MCUBOOT_DIRECT_XIP && MCUBOOT_ENC_IMAGES */
 #endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 
 #define BOOT_MAX_IMG_SECTORS       MCUBOOT_MAX_IMG_SECTORS

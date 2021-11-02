@@ -7,3 +7,5 @@
 #pragma once
 
 #include <stdlib.h>
+
+void os_heap_init(void);

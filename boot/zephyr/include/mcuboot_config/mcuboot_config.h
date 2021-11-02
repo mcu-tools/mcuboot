@@ -68,6 +68,7 @@
 
 #ifdef CONFIG_SINGLE_APPLICATION_SLOT
 #define MCUBOOT_SINGLE_APPLICATION_SLOT 1
+#define MCUBOOT_IMAGE_NUMBER    1
 #else
 
 #ifdef CONFIG_BOOT_SWAP_USING_MOVE
@@ -195,6 +196,13 @@
  * of simply deprecated.)
  */
 #define MCUBOOT_USE_FLASH_AREA_GET_SECTORS
+
+#if (defined(CONFIG_BOOT_USB_DFU_WAIT) || \
+     defined(CONFIG_BOOT_USB_DFU_GPIO))
+#  ifndef CONFIG_MULTITHREADING
+#    error "USB DFU Requires MULTITHREADING"
+#  endif
+#endif
 
 #ifdef CONFIG_BOOT_MAX_IMG_SECTORS
 

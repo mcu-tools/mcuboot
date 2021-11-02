@@ -23,16 +23,24 @@
 /*
  * Signature types
  *
- * You must choose exactly one signature type.
+ * You must choose exactly one signature type - check bootloader.conf
+ * configuration file
  */
 
 /* Uncomment for RSA signature support */
-/* #define MCUBOOT_SIGN_RSA */
-
-/* Uncomment for ECDSA signatures using curve P-256. */
-/* #define MCUBOOT_SIGN_EC256 */
-
-
+#if defined(CONFIG_ESP_SIGN_RSA)
+#define MCUBOOT_SIGN_RSA
+#  if (CONFIG_ESP_SIGN_RSA_LEN != 2048 && \
+       CONFIG_ESP_SIGN_RSA_LEN != 3072)
+#    error "Invalid RSA key size (must be 2048 or 3072)"
+#  else
+#    define MCUBOOT_SIGN_RSA_LEN CONFIG_ESP_SIGN_RSA_LEN
+#  endif
+#elif defined(CONFIG_ESP_SIGN_EC256)
+#define MCUBOOT_SIGN_EC256
+#elif defined(CONFIG_ESP_SIGN_ED25519)
+#define MCUBOOT_SIGN_ED25519
+#endif
 /*
  * Upgrade mode
  *
@@ -63,15 +71,19 @@
 /*
  * Cryptographic settings
  *
- * You must choose between mbedTLS and Tinycrypt as source of
+ * You must choose between Mbed TLS and Tinycrypt as source of
  * cryptographic primitives. Other cryptographic settings are also
  * available.
  */
 
-/* Uncomment to use ARM's mbedTLS cryptographic primitives */
+/* Uncomment to use Mbed TLS cryptographic primitives */
+#if defined(CONFIG_ESP_USE_MBEDTLS)
 #define MCUBOOT_USE_MBED_TLS
-/* Uncomment to use Tinycrypt's. */
-/* #define MCUBOOT_USE_TINYCRYPT */
+#else
+/* MCUboot requires the definition of a crypto lib,
+ * using Tinycrypt as default */
+#define MCUBOOT_USE_TINYCRYPT
+#endif
 
 /*
  * Always check the signature of the image in the primary slot before booting,
