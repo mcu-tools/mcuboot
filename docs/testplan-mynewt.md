@@ -1,4 +1,4 @@
-## mcuboot test plan
+## MCUboot test plan
 
 The current target for running the tests is the Freedom K64F board.
 

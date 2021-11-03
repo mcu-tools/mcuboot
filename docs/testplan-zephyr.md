@@ -1,4 +1,4 @@
-# Zephyr Test Plan
+# Zephyr test plan
 
 The following roughly describes how MCUboot is tested on Zephyr.  The
 testing is done with the code in `samples/zephyr`.  These examples

@@ -1,4 +1,4 @@
-# MCUboot Release Notes
+# MCUboot release notes
 
 - Table of Contents
 {:toc}
@@ -75,7 +75,7 @@ There are bug fixes, and associated imgtool updates as well.
 - imgtool: added possibility to set confirm flag for hex files as well.
 - imgtool: Print image digest during verify.
 
-### Zephyr-RTOS Compatibility
+### Zephyr-RTOS compatibility
 
 This release of MCUboot works with the Zephyr "main" at the time of the
 release. It was tested as of has 7a3b253ce. This version of MCUboot also
@@ -111,7 +111,7 @@ updates as well.
   2.9.10 has an infinite loop in a certain end-of-file situation." Fix
   by updating a dependency in documentation generation.
 
-### Zephyr-RTOS Compatibility
+### Zephyr-RTOS compatibility
 
 This release of MCUboot works the Zephyr "main" at the time of the
 release.  It was tested as of has 1a89ca1238.  When Zephyr v2.3.0 is

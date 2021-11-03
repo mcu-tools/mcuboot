@@ -1,4 +1,4 @@
-# Submitting Patches
+# Submitting patches
 
 Development on MCUboot primarily takes place in github, at:
 https://github.com/mcu-tools/mcuboot
@@ -27,7 +27,7 @@ space.  JIRA is quite flexible about where the indicators go, but
 putting them in a trailer with a common format will make them easier
 to find later.
 
-# Developer Certificate of Origin
+# Developer certificate of origin
 
 ```
 Developer Certificate of Origin

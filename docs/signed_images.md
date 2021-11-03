@@ -91,7 +91,7 @@ This exports the keys.
 
     const int bootutil_key_cnt = sizeof(bootutil_keys) / sizeof(bootutil_keys[0]);
 
-## Building bootloader
+## Building the bootloader
 
 Enable the BOOTUTIL_SIGN_RSA syscfg setting in your app or target syscfg.yml
 file
