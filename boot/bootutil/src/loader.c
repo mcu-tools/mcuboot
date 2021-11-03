@@ -920,6 +920,7 @@ boot_copy_region(struct boot_loader_state *state,
     uint8_t image_index;
 #endif
 
+    /* buffer size limits maximum header size. This affects IMAGE_HEADER_SIZE_MAX in imgtool.py */
     TARGET_STATIC uint8_t buf[1024] __attribute__((aligned(4)));
 
 #if !defined(MCUBOOT_ENC_IMAGES)
@@ -966,6 +967,10 @@ boot_copy_region(struct boot_loader_state *state,
                 if (off + bytes_copied < hdr->ih_hdr_size) {
                     /* do not decrypt header */
                     blk_off = 0;
+                    /* check for overflow */
+                    if (hdr->ih_hdr_size > chunk_sz) {
+                        return BOOT_EBADIMAGE;
+                    }
                     blk_sz = chunk_sz - hdr->ih_hdr_size;
                     idx = hdr->ih_hdr_size;
                 } else {

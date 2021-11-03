@@ -40,6 +40,7 @@ from cryptography.exceptions import InvalidSignature
 
 IMAGE_MAGIC = 0x96f3b83d
 IMAGE_HEADER_SIZE = 32
+IMAGE_HEADER_SIZE_MAX = 0x400 # limited by buffer size in loader.c:boot_copy_region
 BIN_EXT = "bin"
 INTEL_HEX_EXT = "hex"
 DEFAULT_MAX_SECTORS = 128

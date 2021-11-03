@@ -188,6 +188,10 @@ def validate_header_size(ctx, param, value):
     if value < min_hdr_size:
         raise click.BadParameter(
             "Minimum value for -H/--header-size is {}".format(min_hdr_size))
+    max_hdr_size = image.IMAGE_HEADER_SIZE_MAX
+    if value > max_hdr_size:
+        raise click.BadParameter(
+            "Maximum value for -H/--header-size is {}".format(max_hdr_size))
     return value
 
 
