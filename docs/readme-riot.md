@@ -15,7 +15,7 @@ or Zephyr, following the provided instructions.
 In the next version, it is planned to compile MCUboot using RIOT,
 which should be able to boot any of the supported OS images.
 
-## Building Applications for the bootloader
+## Building applications for the bootloader
 
 A compatible MCUboot image can be compiled by typing: `make mcuboot`.
 

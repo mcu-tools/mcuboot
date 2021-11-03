@@ -14,7 +14,7 @@ The current port is available for use in the following SoCs within the OSes:
     - Zephyr RTOS - _WIP_
     - NuttX - _WIP_
 
-## Installing Requirements and Dependencies
+## Installing requirements and dependencies
 
 1. Install additional packages required for development with MCUboot:
 

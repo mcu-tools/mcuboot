@@ -1,4 +1,4 @@
-# Porting How-To
+# Porting how-to
 
 This document describes the requirements and necessary steps required to port
 `MCUboot` to a new target `OS`.

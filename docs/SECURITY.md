@@ -1,6 +1,6 @@
 # MCUboot project security policy
 
-## Reporting Security Issues
+## Reporting security issues
 
 The MCUboot team takes security, vulnerabilities, and weaknesses
 seriously.
@@ -34,7 +34,7 @@ We will make our best effort to respond within a timely manner.  Most
 vulnerabilities found within published code will undergo an embargo of
 90 days to allow time fixes to be developed and deployed.
 
-## Vulnerability Advisories
+## Vulnerability advisories
 
 Vulnerability reports and published fixes will be reported as follows:
 

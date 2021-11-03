@@ -48,7 +48,7 @@ characteristics:
 * Built to run from flash.
 * Built to run from a fixed location (i.e., not position-independent).
 
-## [Image Format](#image-format)
+## [Image format](#image-format)
 
 The following definitions describe the image format.
 
@@ -134,7 +134,7 @@ The `ih_hdr_size` field indicates the length of the header, and therefore the
 offset of the image itself.  This field provides for backwards compatibility in
 case of changes to the format of the image header.
 
-## [Flash Map](#flash-map)
+## [Flash map](#flash-map)
 
 A device's flash is partitioned according to its _flash map_.  At a high
 level, the flash map maps numeric IDs to _flash areas_.  A flash area is a
@@ -165,7 +165,7 @@ images therefore the flash area IDs of primary and secondary areas are mapped
 based on the number of the active image (on which the bootloader is currently
 working).
 
-## [Image Slots](#image-slots)
+## [Image slots](#image-slots)
 
 A portion of the flash memory can be partitioned into multiple image areas, each
 contains two image slots: a primary slot and a secondary slot.
@@ -251,7 +251,7 @@ work properly even when it is reset during the middle of an image swap. For this
 reason, the rest of the document describes its behavior when configured to swap
 images during an upgrade.
 
-### [RAM Loading](#ram-load)
+### [RAM loading](#ram-load)
 
 In ram-load mode the slots are equal. Like the direct-xip mode, this mode
 also selects the newest image by reading the image version numbers in the image
@@ -293,7 +293,7 @@ happens as described above. If the image is encrypted, it is copied in RAM at
 the provided address and then decrypted. Finally, the decrypted image is
 authenticated in RAM and executed.
 
-## [Boot Swap Types](#boot-swap-types)
+## [Boot swap types](#boot-swap-types)
 
 When the device first boots under normal circumstances, there is an up-to-date
 firmware image in each primary slot, which MCUboot can validate and then
@@ -375,7 +375,7 @@ direct-xip mode's "revert" mechanism are the following:
         - Proceed to step 3.
 3. Proceed to image validation ...
 
-## [Image Trailer](#image-trailer)
+## [Image trailer](#image-trailer)
 
 For the bootloader to be able to determine the current state and what actions
 should be taken during the current boot operation, it uses metadata stored in
@@ -490,7 +490,7 @@ of 3 is explained below.
     };
 ```
 
-## [IMAGE TRAILERS](#image-trailers)
+## [Image trailers](#image-trailers)
 
 At startup, the bootloader determines the boot swap type by inspecting the
 image trailers.  When using the term "image trailers" what is meant is the
@@ -585,7 +585,7 @@ occurred mid-swap), it fully determines the operation to resume by reading the
 0-3. The set of tables in the previous section are not necessary in the resume
 case.
 
-## [High-Level Operation](#high-level-operation)
+## [High-level operation](#high-level-operation)
 
 With the terms defined, we can now explore the bootloader's operation.  First,
 a high-level overview of the boot process is presented.  Then, the following
@@ -613,7 +613,7 @@ Procedure:
 
 3. Boot into image in primary slot.
 
-### [Multiple Image Boot](#multiple-image-boot)
+### [Multiple image boot](#multiple-image-boot)
 
 When the flash contains multiple executable images the bootloader's operation
 is a bit more complex but similar to the previously described procedure with
@@ -705,7 +705,7 @@ process is presented below.
 + Boot into image in the primary slot of the 0th image position\
   (other image in the boot chain is started by another image).
 
-### [Multiple Image Boot for RAM loading and direct-xip](#multiple-image-boot-for-ram-loading-and-direct-xip)
+### [Multiple image boot for RAM loading and direct-xip](#multiple-image-boot-for-ram-loading-and-direct-xip)
 
 The operation of the bootloader is different when the ram-load or the
 direct-xip strategy is chosen. The flash map is very similar to the swap
@@ -740,7 +740,7 @@ strategy but there is no need for Scratch area.
 
 + Boot the loaded slot of image 0.
 
-## [Image Swapping](#image-swapping)
+## [Image swapping](#image-swapping)
 
 The bootloader swaps the contents of the two image slots for two reasons:
 
@@ -836,7 +836,7 @@ happened when a swap was requested:
 After completing the operations as described above the image in the primary slot
 should be booted.
 
-## [Swap Status](#swap-status)
+## [Swap status](#swap-status)
 
 The swap status region allows the bootloader to recover in case it restarts in
 the middle of an image swap operation.  The swap status region consists of a
@@ -917,7 +917,7 @@ point within the region.
 Note: since the scratch area only ever needs to record swapping of the last
 sector, it uses at most min-write-size * 3 bytes for its own status area.
 
-## [Reset Recovery](#reset-recovery)
+## [Reset recovery](#reset-recovery)
 
 If the bootloader resets in the middle of a swap operation, the two images may
 be discontiguous in flash.  Bootutil recovers from this condition by using the
@@ -986,7 +986,7 @@ belongs to image 0 or image 1.
 After the swap operation has been completed, the bootloader proceeds as though
 it had just been started.
 
-## [Integrity Check](#integrity-check)
+## [Integrity check](#integrity-check)
 
 An image is checked for integrity immediately before it gets copied into the
 primary slot.  If the bootloader doesn't perform an image swap, then it can
@@ -1027,7 +1027,7 @@ If you want to enable and use encrypted images, see:
 Note: Image encryption is not supported when the direct-xip upgrade strategy
 is selected.
 
-### [Using Hardware Keys for Verification](#hw-key-support)
+### [Using hardware keys for verification](#hw-key-support)
 
 By default, the whole public key is embedded in the bootloader code and its
 hash is added to the image manifest as a KEYHASH TLV entry. As an alternative
@@ -1082,7 +1082,7 @@ D | +-----------------+ |
   +---------------------+
 ```
 
-## [Dependency Check](#dependency-check)
+## [Dependency check](#dependency-check)
 
 MCUboot can handle multiple firmware images. It is possible to update them
 independently but in many cases it can be desired to be able to describe
@@ -1106,14 +1106,14 @@ state after dependency check.
 For more information on adding dependency entries to an image,
 see: [imgtool](imgtool.md).
 
-## [Downgrade Prevention](#downgrade-prevention)
+## [Downgrade prevention](#downgrade-prevention)
 
 Downgrade prevention is a feature which enforces that the new image must have a
 higher version/security counter number than the image it is replacing, thus
 preventing the malicious downgrading of the device to an older and possibly
 vulnerable version of its firmware.
 
-### [SW Based Downgrade Prevention](#sw-downgrade-prevention)
+### [Software-based downgrade prevention](#sw-downgrade-prevention)
 
 During the software based downgrade prevention the image version numbers are
 compared. This feature is enabled with the `MCUBOOT_DOWNGRADE_PREVENTION`
@@ -1121,7 +1121,7 @@ option. In this case downgrade prevention is only available when the
 overwrite-based image update strategy is used (i.e. `MCUBOOT_OVERWRITE_ONLY`
 is set).
 
-### [HW Based Downgrade Prevention](#hw-downgrade-prevention)
+### [Hardware-based downgrade prevention](#hw-downgrade-prevention)
 
 Each signed image can contain a security counter in its protected TLV area, which
 can be added to the image using the `-s` option of the [imgtool](imgtool.md) script.

@@ -124,7 +124,7 @@ Since this application is created to demonstrate MCUboot library features and no
 2. `CY_SMIF_SLAVE_SELECT_0` is used as definition SMIF driver API. This configuration is used on evaluation kit for this example CY8CPROTO-062-4343W, CY8PROTO-062S3-4343W, CY8CKIT-062-4343W. If you try to use custom hardware with this application - change value of `smif_id` in `main.c` of MCUBootApp to value that corresponds to your design.
 
 
-### Downloading Solution's Assets
+### Downloading solution's assets
 
 There is a set assets required:
 
@@ -137,7 +137,7 @@ To get submodules - run the following command:
 
     git submodule update --init --recursive
 
-### Building Solution
+### Building solution
 
 This folder contains make files infrastructure for building MCUBoot Bootloader. Same approach used in sample BlinkyLedApp application. Example command are provided below for couple different build configurations.
 

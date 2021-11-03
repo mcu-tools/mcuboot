@@ -1,4 +1,4 @@
-# Release Process
+# Release process
 
 The following documents the release process used with MCUboot.
 
@@ -18,13 +18,13 @@ We add pre-release tags of the format MAJOR.MINOR.PATCH-rc1.
 We mark in documentation an MCUboot development version using
 the format MAJOR.MINOR.PATCH-dev.
 
-## Release Notes
+## Release notes
 
 Before making a release, be sure to update the `docs/release-notes.md`
 to describe the release.  This should be a high-level description of
 the changes, not a list of the git commits.
 
-## Release Candidates
+## Release candidates
 
 Prior to each release, tags are made (see below) for at least one
 release candidate (a.b.c-rc1, followed by a.b.c-rc2, etc, followed by
@@ -35,7 +35,7 @@ During the time between rc1 and the final release, the only changes
 that should be merged into main are those to fix bugs found in the
 rc and Mynewt metadata as described in the next section.
 
-## imgtool release
+## Imgtool release
 
 imgtool is released through pypi.org (The Python package index) and
 requires that its version to be updated by editing
@@ -57,7 +57,7 @@ the rc step is finished, the release needs to be exported by modifying
 new release version, including updates to the pseudo keys
 (`*-(latest|dev)`).
 
-## Tagging and Release
+## Tagging and release
 
 To make a release, make sure your local repo is on the tip version by
 fetching from origin.  Typically, the releaser should create a branch
@@ -85,7 +85,7 @@ git push origin HEAD:refs/heads/main
 git push origin va.b.c-rcn
 ```
 
-## Branching after a Release
+## Branching after a release
 
 After the final (non-`rc`) a.b.0 release is made, a new branch must
 be created and pushed:

@@ -1,4 +1,4 @@
-### Blinking LED test application for MCUboot Bootloader
+### Blinking LED test application for MCUboot bootloader
 
 ### Description
 
@@ -109,7 +109,7 @@ To obtain encrypted upgrade image of BlinkyApp extra flag `ENC_IMG=1` should be 
 
 This also suggests user already placed corresponing `*.pem` key in `\keys` folder. The key variables are defined in root `Makefile` as `SIGN_KEY_FILE` and `ENC_KEY_FILE`
 
-### Post-Build
+### Post-build
 
 Post build action is executed at compile time for `BlinkyApp`. In case of build for `PSOC_062_2M` platform it calls `imgtool` from `MCUboot` scripts and adds signature to compiled image.
 
