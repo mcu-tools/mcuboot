@@ -1,11 +1,11 @@
-### Port of MCUBoot library to be used with Cypress targets
+### Port of MCUboot library to be used with Cypress targets
 
 **Solution Description**
 
-Given solution demonstrates operation of MCUBoot on Cypress' PSoC6 device.
+Given solution demonstrates operation of MCUboot on Cypress' PSoC6 device.
 
 There are two applications implemented:
-* MCUBootApp - PSoC6 MCUBoot-based bootloading application;
+* MCUBootApp - PSoC6 MCUboot-based bootloading application;
 * BlinkyApp - simple PSoC6 blinking LED application which is a target of BOOT/UPGRADE;
 
 Cypress boards, that can be used with this evaluation example:
@@ -26,7 +26,7 @@ Single-image mode.
 
 Size of slots `0x10000` - 64kb
 
-MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on mbedTLS Library.
+MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses completely SW implementation of cryptographic functions based on Mbed TLS Library.
 
 **Important**: make sure primary, secondary slot and bootloader app sizes are appropriate and correspond to flash area size defined in Applications' linker files.
 
@@ -35,7 +35,7 @@ Memory (stack) corruption of CM0p application can cause failure if SystemCall-se
 
 ### Hardware cryptography acceleration
 
-Cypress PSOC6 MCU family supports hardware acceleration of cryptography based on mbedTLS Library via shim layer. Implementation of this layer is supplied as separate submodule `cy-mbedtls-acceleration`. HW acceleration of cryptography shortens boot time more then 4 times, comparing to software implementation (observation results).
+Cypress PSOC6 MCU family supports hardware acceleration of cryptography based on Mbed TLS Library via shim layer. Implementation of this layer is supplied as separate submodule `cy-mbedtls-acceleration`. HW acceleration of cryptography shortens boot time more then 4 times, comparing to software implementation (observation results).
 
 To enable hardware acceleration in `MCUBootApp` pass flag `USE_CRYPTO_HW=1` to `make` while build.
 
@@ -86,7 +86,7 @@ To enable multi-image operation define `MCUBOOT_IMAGE_NUMBER` in `MCUBootApp/con
 
 Default value of `MCUBOOT_IMAGE_NUMBER` is 1, which corresponds to single image configuratios.
 
-In multi-image operation (two images are considered for simplicity) MCUBoot Bootloader application operates as following:
+In multi-image operation (two images are considered for simplicity) MCUboot Bootloader application operates as following:
 
 * Verifies Primary_1 and Primary_2 images;
 * Verifies Secondary_1 and Secondary_2 images;
@@ -98,7 +98,7 @@ This ensures two dependent applications can be accepted by device only in case b
 
 **Default Flash map for Multi-Image operation:**
 
-`0x10000000 - 0x10018000` - MCUBoot Bootloader
+`0x10000000 - 0x10018000` - MCUboot Bootloader
 
 `0x10018000 - 0x10028000` - Primary_1 (BOOT) slot of Bootloader
 
@@ -117,7 +117,7 @@ For more details about External Memory usage, please refer to separate guiding d
 
 ### Hardware limitations
 
-Since this application is created to demonstrate MCUBoot library features and not as reference examples some considerations are taken.
+Since this application is created to demonstrate MCUboot library features and not as reference examples some considerations are taken.
 
 1. `SCB5` used to configure serial port for debug prints. This is the most commonly used Serial Communication Block number among available Cypress PSoC 6 kits. If you try to use custom hardware with this application - change definition of `CYBSP_UART_HW` in `main.c` of MCUBootApp to SCB* that correspond to your design.
 
@@ -131,7 +131,7 @@ There is a set assets required:
 * MCUBooot Library (root repository)
 * PSoC6 HAL Library
 * PSoC6 Peripheral Drivers Library (PDL)
-* mbedTLS Cryptographic Library
+* Mbed TLS Cryptographic Library
 
 To get submodules - run the following command:
 
@@ -155,7 +155,7 @@ Root directory for build is **boot/cypress.**
 
 **Encrypted Image Support**
 
-To protect user image from unwanted read - Upgrade Image Encryption can be applied. The ECDH/HKDF with EC256 scheme is used in a given solution as well as mbedTLS as a crypto provider.
+To protect user image from unwanted read - Upgrade Image Encryption can be applied. The ECDH/HKDF with EC256 scheme is used in a given solution as well as Mbed TLS as a crypto provider.
 
 To enable image encryption support use `ENC_IMG=1` build flag (BlinkyApp should also be built with this flash set 1).
 

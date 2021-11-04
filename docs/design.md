@@ -25,25 +25,25 @@
   - under the License.
 -->
 
-# Boot Loader
+# Bootloader
 
 ## [Summary](#summary)
 
-mcuboot comprises two packages:
+MCUboot comprises two packages:
 
 * The bootutil library (boot/bootutil)
 * The boot application (each port has its own at boot/<port>)
 
-The bootutil library performs most of the functions of a boot loader.  In
+The bootutil library performs most of the functions of a bootloader.  In
 particular, the piece that is missing is the final step of actually jumping to
 the main image.  This last step is instead implemented by the boot application.
-Boot loader functionality is separated in this manner to enable unit testing of
-the boot loader.  A library can be unit tested, but an application can't.
+Bootloader functionality is separated in this manner to enable unit testing of
+the bootloader.  A library can be unit tested, but an application can't.
 Therefore, functionality is delegated to the bootutil library when possible.
 
 ## [Limitations](#limitations)
 
-The boot loader currently only supports images with the following
+The bootloader currently only supports images with the following
 characteristics:
 * Built to run from flash.
 * Built to run from a fixed location (i.e., not position-independent).
@@ -142,19 +142,19 @@ region of disk with the following properties:
 1. An area can be fully erased without affecting any other areas.
 2. A write to one area does not restrict writes to other areas.
 
-The boot loader uses the following flash area IDs:
+The bootloader uses the following flash area IDs:
 ```c
 /* Independent from multiple image boot */
 #define FLASH_AREA_BOOTLOADER         0
 #define FLASH_AREA_IMAGE_SCRATCH      3
 ```
 ```c
-/* If the boot loader is working with the first image */
+/* If the bootloader is working with the first image */
 #define FLASH_AREA_IMAGE_PRIMARY      1
 #define FLASH_AREA_IMAGE_SECONDARY    2
 ```
 ```c
-/* If the boot loader is working with the second image */
+/* If the bootloader is working with the second image */
 #define FLASH_AREA_IMAGE_PRIMARY      5
 #define FLASH_AREA_IMAGE_SECONDARY    6
 ```
@@ -169,17 +169,17 @@ working).
 
 A portion of the flash memory can be partitioned into multiple image areas, each
 contains two image slots: a primary slot and a secondary slot.
-Normally, the boot loader will only run an image from the primary slot, so
+Normally, the bootloader will only run an image from the primary slot, so
 images must be built such that they can run from that fixed location in flash
 (the exception to this is the [direct-xip](#direct-xip) and the
-[ram-load](#ram-load) upgrade mode). If the boot loader needs to run the
+[ram-load](#ram-load) upgrade mode). If the bootloader needs to run the
 image resident in the secondary slot, it must copy its contents into the primary
 slot before doing so, either by swapping the two images or by overwriting the
 contents of the primary slot. The bootloader supports either swap- or
 overwrite-based image upgrades, but must be configured at build time to choose
 one of these two strategies.
 
-In addition to the slots of image areas, the boot loader requires a scratch
+In addition to the slots of image areas, the bootloader requires a scratch
 area to allow for reliable image swapping. The scratch area must have a size
 that is enough to store at least the largest sector that is going to be swapped.
 Many devices have small equally sized flash sectors, eg 4K, while others have
@@ -287,36 +287,40 @@ script must also be used when signing the images. This option set the `RAM_LOAD`
 flag in the image header which indicates that the image should be loaded to the
 RAM and also set the load address in the image header.
 
-The ram-load mode currently does not support the image encryption feature.
+When the encryption option is enabled (`MCUBOOT_ENC_IMAGES`) along with ram-load
+the image is checked for encryption. If the image is not encrypted, RAM loading
+happens as described above. If the image is encrypted, it is copied in RAM at
+the provided address and then decrypted. Finally, the decrypted image is
+authenticated in RAM and executed.
 
 ## [Boot Swap Types](#boot-swap-types)
 
 When the device first boots under normal circumstances, there is an up-to-date
-firmware image in each primary slot, which mcuboot can validate and then
+firmware image in each primary slot, which MCUboot can validate and then
 chain-load. In this case, no image swaps are necessary. During device upgrades,
 however, new candidate image(s) is present in the secondary slot(s), which
-mcuboot must swap into the primary slot(s) before booting as discussed above.
+MCUboot must swap into the primary slot(s) before booting as discussed above.
 
 Upgrading an old image with a new one by swapping can be a two-step process. In
-this process, mcuboot performs a "test" swap of image data in flash and boots
+this process, MCUboot performs a "test" swap of image data in flash and boots
 the new image or it will be executed during operation. The new image can then
-update the contents of flash at runtime to mark itself "OK", and mcuboot will
+update the contents of flash at runtime to mark itself "OK", and MCUboot will
 then still choose to run it during the next boot. When this happens, the swap is
-made "permanent". If this doesn't happen, mcuboot will perform a "revert" swap
+made "permanent". If this doesn't happen, MCUboot will perform a "revert" swap
 during the next boot by swapping the image(s) back into its original location(s)
 , and attempting to boot the old image(s).
 
 Depending on the use case, the first swap can also be made permanent directly.
-In this case, mcuboot will never attempt to revert the images on the next reset.
+In this case, MCUboot will never attempt to revert the images on the next reset.
 
 Test swaps are supported to provide a rollback mechanism to prevent devices
 from becoming "bricked" by bad firmware.  If the device crashes immediately
-upon booting a new (bad) image, mcuboot will revert to the old (working) image
+upon booting a new (bad) image, MCUboot will revert to the old (working) image
 at the next device reset, rather than booting the bad image again. This allows
 device firmware to make test swaps permanent only after performing a self-test
 routine.
 
-On startup, mcuboot inspects the contents of flash to decide for each images
+On startup, MCUboot inspects the contents of flash to decide for each images
 which of these "swap types" to perform; this decision determines how it
 proceeds.
 
@@ -341,7 +345,7 @@ The possible swap types, and their meanings, are:
 - `BOOT_SWAP_TYPE_PANIC`: Swapping encountered an unrecoverable error.
 
 The "swap type" is a high-level representation of the outcome of the
-boot. Subsequent sections describe how mcuboot determines the swap type from
+boot. Subsequent sections describe how MCUboot determines the swap type from
 the bit-level contents of flash.
 
 ### [Revert mechanism in direct-xip mode](#direct-xip-revert)
@@ -434,7 +438,7 @@ allows it to compute how far this swap operation has progressed for each
 sector.  The swap status field can thus used to resume a swap operation if the
 bootloader is halted while a swap operation is ongoing and later reset. The
 `BOOT_MAX_IMG_SECTORS` value is the configurable maximum number of sectors
-mcuboot supports for each image; its value defaults to 128, but allows for
+MCUboot supports for each image; its value defaults to 128, but allows for
 either decreasing this size, to limit RAM usage, or to increase it in devices
 that have massive amounts of Flash or very small sized sectors and thus require
 a bigger configuration to allow for the handling of all slot's sectors.
@@ -452,7 +456,7 @@ of 3 is explained below.
 
 4. Swap info: A single byte which encodes the following information:
     - Swap type: Stored in bits 0-3. Indicating the type of swap operation in
-    progress. When mcuboot resumes an interrupted swap, it uses this field to
+    progress. When MCUboot resumes an interrupted swap, it uses this field to
     determine the type of operation to perform. This field contains one of the
     following values in the table below.
     - Image number: Stored in bits 4-7. It has always 0 value at single image
@@ -488,13 +492,13 @@ of 3 is explained below.
 
 ## [IMAGE TRAILERS](#image-trailers)
 
-At startup, the boot loader determines the boot swap type by inspecting the
+At startup, the bootloader determines the boot swap type by inspecting the
 image trailers.  When using the term "image trailers" what is meant is the
 aggregate information provided by both image slot's trailers.
 
 ### [New swaps (non-resumes)](#new-swaps-non-resumes)
 
-For new swaps, mcuboot must inspect a collection of fields to determine which
+For new swaps, MCUboot must inspect a collection of fields to determine which
 swap operation to perform.
 
 The image trailers records are structured around the limitations imposed by
@@ -541,9 +545,9 @@ higher priority when testing the image trailers.
     -------------------------------------------------'
 ```
 
-Any of the above three states results in mcuboot attempting to swap images.
+Any of the above three states results in MCUboot attempting to swap images.
 
-Otherwise, mcuboot does not attempt to swap images, resulting in one of the
+Otherwise, MCUboot does not attempt to swap images, resulting in one of the
 other three swap types, as illustrated by State IV.
 
 ```
@@ -560,11 +564,11 @@ other three swap types, as illustrated by State IV.
     -------------------------------------------------'
 ```
 
-In State IV, when no errors occur, mcuboot will attempt to boot the contents of
+In State IV, when no errors occur, MCUboot will attempt to boot the contents of
 the primary slot directly, and the result is `BOOT_SWAP_TYPE_NONE`. If the image
 in the primary slot is not valid, the result is `BOOT_SWAP_TYPE_FAIL`. If a
 fatal error occurs during boot, the result is `BOOT_SWAP_TYPE_PANIC`. If the
-result is either `BOOT_SWAP_TYPE_FAIL` or `BOOT_SWAP_TYPE_PANIC`, mcuboot hangs
+result is either `BOOT_SWAP_TYPE_FAIL` or `BOOT_SWAP_TYPE_PANIC`, MCUboot hangs
 rather than booting an invalid or compromised image.
 
 Note: An important caveat to the above is the result when a swap is requested
@@ -575,7 +579,7 @@ Note: An important caveat to the above is the result when a swap is requested
 
 ### [Resumed swaps](#resumed-swaps)
 
-If mcuboot determines that it is resuming an interrupted swap (i.e., a reset
+If MCUboot determines that it is resuming an interrupted swap (i.e., a reset
 occurred mid-swap), it fully determines the operation to resume by reading the
 `swap info` field from the active trailer and extracting the swap type from bits
 0-3. The set of tables in the previous section are not necessary in the resume
@@ -583,7 +587,7 @@ case.
 
 ## [High-Level Operation](#high-level-operation)
 
-With the terms defined, we can now explore the boot loader's operation.  First,
+With the terms defined, we can now explore the bootloader's operation.  First,
 a high-level overview of the boot process is presented.  Then, the following
 sections describe each step of the process in more detail.
 
@@ -611,13 +615,13 @@ Procedure:
 
 ### [Multiple Image Boot](#multiple-image-boot)
 
-When the flash contains multiple executable images the boot loader's operation
+When the flash contains multiple executable images the bootloader's operation
 is a bit more complex but similar to the previously described procedure with
 one image. Every image can be updated independently therefore the flash is
 partitioned further to arrange two slots for each image.
 ```
 +--------------------+
-| MCUBoot            |
+| MCUboot            |
 +--------------------+
         ~~~~~            <- memory might be not contiguous
 +--------------------+
@@ -638,7 +642,7 @@ partitioned further to arrange two slots for each image.
 | Scratch            |
 +--------------------+
 ```
-MCUBoot is also capable of handling dependencies between images. For example
+MCUboot is also capable of handling dependencies between images. For example
 if an image needs to be reverted it might be necessary to revert another one too
 (e.g. due to API incompatibilities) or simply to prevent from being updated
 because of an unsatisfied dependency. Therefore all aborted swaps have to be
@@ -703,7 +707,7 @@ process is presented below.
 
 ### [Multiple Image Boot for RAM loading and direct-xip](#multiple-image-boot-for-ram-loading-and-direct-xip)
 
-The operation of the boot loader is different when the ram-load or the
+The operation of the bootloader is different when the ram-load or the
 direct-xip strategy is chosen. The flash map is very similar to the swap
 strategy but there is no need for Scratch area.
 
@@ -738,18 +742,18 @@ strategy but there is no need for Scratch area.
 
 ## [Image Swapping](#image-swapping)
 
-The boot loader swaps the contents of the two image slots for two reasons:
+The bootloader swaps the contents of the two image slots for two reasons:
 
   * User has issued a "set pending" operation; the image in the secondary slot
     should be run once (state I) or repeatedly (state II), depending on
     whether a permanent swap was specified.
-  * Test image rebooted without being confirmed; the boot loader should
+  * Test image rebooted without being confirmed; the bootloader should
     revert to the original image currently in the secondary slot (state III).
 
 If the image trailers indicates that the image in the secondary slot should be
-run, the boot loader needs to copy it to the primary slot.  The image currently
+run, the bootloader needs to copy it to the primary slot.  The image currently
 in the primary slot also needs to be retained in flash so that it can be used
-later.  Furthermore, both images need to be recoverable if the boot loader
+later.  Furthermore, both images need to be recoverable if the bootloader
 resets in the middle of the swap operation.  The two images are swapped
 according to the following procedure:
 
@@ -834,7 +838,7 @@ should be booted.
 
 ## [Swap Status](#swap-status)
 
-The swap status region allows the boot loader to recover in case it restarts in
+The swap status region allows the bootloader to recover in case it restarts in
 the middle of an image swap operation.  The swap status region consists of a
 series of single-byte records.  These records are written independently, and
 therefore must be padded according to the minimum write size imposed by the
@@ -880,11 +884,11 @@ states:
 3. primary slot: image 1,   secondary slot: image 0,   scratch: N/A     (s->0)
 ```
 
-Each time a sector index transitions to a new state, the boot loader writes a
-record to the swap status region.  Logically, the boot loader only needs one
+Each time a sector index transitions to a new state, the bootloader writes a
+record to the swap status region.  Logically, the bootloader only needs one
 record per sector index to keep track of the current swap state.  However, due
 to limitations imposed by flash hardware, a record cannot be overwritten when
-an index's state changes.  To solve this problem, the boot loader uses three
+an index's state changes.  To solve this problem, the bootloader uses three
 records per sector index rather than just one.
 
 Each sector-state pair is represented as a set of three records.  The record
@@ -915,7 +919,7 @@ sector, it uses at most min-write-size * 3 bytes for its own status area.
 
 ## [Reset Recovery](#reset-recovery)
 
-If the boot loader resets in the middle of a swap operation, the two images may
+If the bootloader resets in the middle of a swap operation, the two images may
 be discontiguous in flash.  Bootutil recovers from this condition by using the
 image trailers to determine how the image parts are distributed in flash.
 
@@ -969,7 +973,7 @@ If it does not match then "source: none" is returned.
     -----------------------------------------------------------------------'
 ```
 
-If the swap status region indicates that the images are not contiguous, mcuboot
+If the swap status region indicates that the images are not contiguous, MCUboot
 determines the type of swap operation that was interrupted by reading the `swap
 info` field in the active image trailer and extracting the swap type from bits
 0-3 then resumes the operation. In other words, it applies the procedure defined
@@ -979,18 +983,18 @@ in the scratch area, this part is copied into the correct location by starting
 at step e or step h in the area-swap procedure, depending on whether the part
 belongs to image 0 or image 1.
 
-After the swap operation has been completed, the boot loader proceeds as though
+After the swap operation has been completed, the bootloader proceeds as though
 it had just been started.
 
 ## [Integrity Check](#integrity-check)
 
 An image is checked for integrity immediately before it gets copied into the
-primary slot.  If the boot loader doesn't perform an image swap, then it can
+primary slot.  If the bootloader doesn't perform an image swap, then it can
 perform an optional integrity check of the image in the primary slot if
 `MCUBOOT_VALIDATE_PRIMARY_SLOT` is set, otherwise it doesn't perform an
 integrity check.
 
-During the integrity check, the boot loader verifies the following aspects of
+During the integrity check, the bootloader verifies the following aspects of
 an image:
 
   * 32-bit magic number must be correct (`IMAGE_MAGIC`).
@@ -1009,19 +1013,19 @@ an image:
 ## [Security](#security)
 
 As indicated above, the final step of the integrity check is signature
-verification.  The boot loader can have one or more public keys embedded in it
-at build time.  During signature verification, the boot loader verifies that an
+verification.  The bootloader can have one or more public keys embedded in it
+at build time.  During signature verification, the bootloader verifies that an
 image was signed with a private key that corresponds to the embedded KEYHASH
 TLV.
 
-For information on embedding public keys in the boot loader, as well as
+For information on embedding public keys in the bootloader, as well as
 producing signed images, see: [signed_images](signed_images.md).
 
 If you want to enable and use encrypted images, see:
 [encrypted_images](encrypted_images.md).
 
-Note: Image encryption is not supported when the direct-xip or the ram-load
-upgrade strategy is selected.
+Note: Image encryption is not supported when the direct-xip upgrade strategy
+is selected.
 
 ### [Using Hardware Keys for Verification](#hw-key-support)
 
@@ -1029,16 +1033,16 @@ By default, the whole public key is embedded in the bootloader code and its
 hash is added to the image manifest as a KEYHASH TLV entry. As an alternative
 the bootloader can be made independent of the keys by setting the
 `MCUBOOT_HW_KEY` option. In this case the hash of the public key must be
-provisioned to the target device and mcuboot must be able to retrieve the
+provisioned to the target device and MCUboot must be able to retrieve the
 key-hash from there. For this reason the target must provide a definition
 for the `boot_retrieve_public_key_hash()` function which is declared in
 `boot/bootutil/include/bootutil/sign_key.h`. It is also required to use
 the `full` option for the `--public-key-format` imgtool argument in order to
 add the whole public key (PUBKEY TLV) to the image manifest instead of its
 hash (KEYHASH TLV). During boot the public key is validated before using it for
-signature verification, mcuboot calculates the hash of the public key from the
+signature verification, MCUboot calculates the hash of the public key from the
 TLV area and compares it with the key-hash that was retrieved from the device.
-This way mcuboot is independent from the public key(s). The key(s) can be
+This way MCUboot is independent from the public key(s). The key(s) can be
 provisioned any time and by different parties.
 
 ## [Protected TLVs](#protected-tlvs)
@@ -1080,7 +1084,7 @@ D | +-----------------+ |
 
 ## [Dependency Check](#dependency-check)
 
-MCUBoot can handle multiple firmware images. It is possible to update them
+MCUboot can handle multiple firmware images. It is possible to update them
 independently but in many cases it can be desired to be able to describe
 dependencies between the images (e.g. to ensure API compliance and avoid
 interoperability issues).
@@ -1091,7 +1095,7 @@ dependency entry, but in practice if the platform only supports two individual
 images then there can be maximum one entry which reflects to the other image.
 
 At the phase of dependency check all aborted swaps are finalized if there were
-any. During the dependency check the boot loader verifies whether the image
+any. During the dependency check the bootloader verifies whether the image
 dependencies are all satisfied. If at least one of the dependencies of an image
 is not fulfilled then the swap type of that image has to be modified
 accordingly and the dependency check needs to be restarted. This way the number
@@ -1138,7 +1142,7 @@ provide an implementation of the security counter interface defined in
 
 ## [Measured boot and data sharing](#boot-data-sharing)
 
-MCUBoot defines a mechanism for sharing boot status information (also known as
+MCUboot defines a mechanism for sharing boot status information (also known as
 measured boot) and an interface for sharing application specific information
 with the runtime software. If any of these are enabled the target must provide
 a shared data area between the bootloader and runtime firmware and define the
@@ -1194,7 +1198,7 @@ The `sw_type` string that is passed as the `--boot_record` option's parameter
 will be the value of the "Software type" attribute in the generated BOOT_RECORD
 TLV. The target must also define the `MAX_BOOT_RECORD_SZ` macro which indicates
 the maximum size of the CBOR encoded boot record in bytes.
-During boot, MCUBoot will look for these TLVs (in case of multiple images) in
+During boot, MCUboot will look for these TLVs (in case of multiple images) in
 the manifests of the active images (the latest and validated) and copy the CBOR
 encoded binary data to the shared data area. Preserving all these image
 attributes from the boot stage for use by later runtime services (such as an

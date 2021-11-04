@@ -1,6 +1,6 @@
 # Zephyr sample application.
 
-In order to successfully deploy an application using mcuboot, it is
+In order to successfully deploy an application using MCUboot, it is
 necessary to build at least one other binary: the application itself.
 It is beyond the scope of this documentation to describe what an
 application is able to do, however a working example is certainly

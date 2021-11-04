@@ -18,7 +18,7 @@ set -e
 
 DOCKER_DIR=docker
 
-IMAGE=fih-test:0.0.1
+IMAGE=fih-test:0.0.2
 
 CACHED_IMAGE=$DOCKER_DIR/$IMAGE
 

@@ -12,7 +12,7 @@ For the 3 algorithms supported, rsa, ec and ec256, two files are provided:
 key_<sign-algo>.pem, key_<sign-algo>_2.pem. And a keys file with the C public
 key data for key_<sign-algo>.pem.
 
-Build and load mcuboot:
+Build and load MCUboot:
 
 * `newt build k64f_boot_<sign-algo>`
 * `newt load k64f_boot_<sign-algo>`
@@ -41,7 +41,7 @@ key_<sign-algo>.pem. Both others should be erased.
 
 FIXME: this is currently not functional, skip this section!
 
-Build and load mcuboot:
+Build and load MCUboot:
 
 * `newt build k64f_boot_rsa_ec`
 * `newt load k64f_boot_rsa_ec`
@@ -68,7 +68,7 @@ And load
 
 ### Overwrite only functionality
 
-Build/load mcuboot:
+Build/load MCUboot:
 
 * `newt build k64f_boot_rsa_noswap`
 * `newt load k64f_boot_rsa_noswap`
@@ -92,7 +92,7 @@ be empty.
 
 ### Validate slot 0 option
 
-Build/load mcuboot:
+Build/load MCUboot:
 
 * `newt build k64f_boot_rsa_validate0`
 * `newt load k64f_boot_rsa_validate0`
@@ -120,7 +120,7 @@ Build signed image with *valid* key:
 DISCLAIMER: be careful with copy/paste of commands, this test uses another
 target/app!
 
-Build/load mcuboot:
+Build/load MCUboot:
 
 * `newt build k64f_boot_rsa`
 * `newt load k64f_boot_rsa`
