@@ -950,28 +950,39 @@ boot_copy_region(struct boot_loader_state *state,
             }
 #endif
             if (IS_ENCRYPTED(hdr)) {
-                blk_sz = chunk_sz;
-                idx = 0;
                 if (off + bytes_copied < hdr->ih_hdr_size) {
                     /* do not decrypt header */
-                    blk_off = 0;
-                    blk_sz = chunk_sz - hdr->ih_hdr_size;
-                    idx = hdr->ih_hdr_size;
+                    if (off + bytes_copied + chunk_sz > hdr->ih_hdr_size) {
+                        /* The lower part of the chunk contains header data */
+                        blk_off = 0;
+                        blk_sz = chunk_sz - (hdr->ih_hdr_size - off -
+                                 bytes_copied);
+                        idx = hdr->ih_hdr_size  - off - bytes_copied;
+                    } else {
+                        /* The chunk contains exclusively header data */
+                        blk_sz = 0; /* nothing to decrypt */
+                    }
                 } else {
+                    idx = 0;
+                    blk_sz = chunk_sz;
                     blk_off = ((off + bytes_copied) - hdr->ih_hdr_size) & 0xf;
                 }
-                tlv_off = BOOT_TLV_OFF(hdr);
-                if (off + bytes_copied + chunk_sz > tlv_off) {
-                    /* do not decrypt TLVs */
-                    if (off + bytes_copied >= tlv_off) {
-                        blk_sz = 0;
-                    } else {
-                        blk_sz = tlv_off - (off + bytes_copied);
+
+                if (blk_sz > 0)
+                {
+                    tlv_off = BOOT_TLV_OFF(hdr);
+                    if (off + bytes_copied + chunk_sz > tlv_off) {
+                        /* do not decrypt TLVs */
+                        if (off + bytes_copied >= tlv_off) {
+                            blk_sz = 0;
+                        } else {
+                            blk_sz = tlv_off - (off + bytes_copied);
+                        }
                     }
+                    boot_encrypt(BOOT_CURR_ENC(state), image_index, fap_src,
+                            (off + bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
+                            blk_off, &buf[idx]);
                 }
-                boot_encrypt(BOOT_CURR_ENC(state), image_index, fap_src,
-                        (off + bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
-                        blk_off, &buf[idx]);
             }
         }
 #endif
