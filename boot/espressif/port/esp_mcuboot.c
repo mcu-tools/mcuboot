@@ -185,14 +185,11 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
 int flash_area_write(const struct flash_area *fa, uint32_t off, const void *src,
                      uint32_t len)
 {
-    uint32_t write_len = len, write_data = 0;
-    void *write_ptr = (void *)src;
     if (fa->fa_device_id != FLASH_DEVICE_INTERNAL_FLASH) {
         return -1;
     }
 
     const uint32_t end_offset = off + len;
-
     if (end_offset > fa->fa_size) {
         MCUBOOT_LOG_ERR("%s: Out of Bounds (0x%x vs 0x%x)", __func__, end_offset, fa->fa_size);
         return -1;
@@ -200,23 +197,11 @@ int flash_area_write(const struct flash_area *fa, uint32_t off, const void *src,
 
     const uint32_t start_addr = fa->fa_off + off;
     MCUBOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
-    if (len < 4) {
-        flash_area_read(fa, start_addr, &write_data, sizeof(uint32_t));
-        memcpy(&write_data, src, len);
-        write_ptr = (void *)&write_data;
-        write_len = sizeof(uint32_t);
-    }
 
-    if (bootloader_flash_write(start_addr, write_ptr, write_len, false) != ESP_OK) {
+    if (bootloader_flash_write(start_addr, (void *)src, len, false) != ESP_OK) {
         MCUBOOT_LOG_ERR("%s: Flash write failed", __func__);
         return -1;
     }
-#if VALIDATE_PROGRAM_OP
-    if (memcmp((void *)addr, src, len) != 0) {
-        MCUBOOT_LOG_ERR("%s: Program Failed", __func__);
-        assert(0);
-    }
-#endif
 
     return 0;
 }
