@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Espressif Systems (Shanghai) Co., Ltd.
+ * SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -30,11 +30,8 @@
 #include "soc/efuse_reg.h"
 #include "soc/rtc.h"
 
-#include "rom/cache.h"
-#include "rom/ets_sys.h"
-#include "rom/spi_flash.h"
-#include "rom/uart.h"
-#include "rom/efuse.h"
+#include "esp32c3/rom/cache.h"
+#include "esp32c3/rom/spi_flash.h"
 
 #include "hal/wdt_hal.h"
 
