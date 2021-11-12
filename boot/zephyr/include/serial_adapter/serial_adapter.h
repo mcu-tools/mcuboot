@@ -21,12 +21,12 @@ int
 console_out(int c);
 
 void
-console_write(const char *str, int cnt);
+console_write_boot(const char *str, int cnt);
 
 int
 boot_console_init(void);
 
 int
-console_read(char *str, int str_cnt, int *newline);
+console_read_boot(char *str, int str_cnt, int *newline);
 
 #endif // SERIAL_ADAPTER

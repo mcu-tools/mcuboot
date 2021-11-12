@@ -39,8 +39,8 @@
 #include "serial_adapter/serial_adapter.h"
 
 const struct boot_uart_funcs boot_funcs = {
-    .read = console_read,
-    .write = console_write
+    .read = console_read_boot,
+    .write = console_write_boot
 };
 #endif
 
