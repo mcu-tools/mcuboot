@@ -36,6 +36,8 @@ list(APPEND include_dirs
     ${esp_idf_dir}/components/heap/include
     ${esp_idf_dir}/components/efuse/include
     ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/include
+    ${esp_idf_dir}/components/efuse/private_include
+    ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/private_include
     ${esp_idf_dir}/components/newlib/platform_include
     )
 
@@ -53,14 +55,23 @@ endif()
 
 set(hal_srcs
     ${src_dir}/bootloader_wdt.c
+    ${src_dir}/secure_boot.c
     ${src_dir}/${MCUBOOT_TARGET}/bootloader_init.c
     ${esp_idf_dir}/components/hal/mpu_hal.c
+    ${esp_idf_dir}/components/bootloader_support/src/bootloader_common_loader.c
+    ${esp_idf_dir}/components/bootloader_support/src/bootloader_console_loader.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash_config_${MCUBOOT_TARGET}.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_clock_init.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_efuse_${MCUBOOT_TARGET}.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_panic.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_mem.c
+    ${esp_idf_dir}/components/bootloader_support/src/bootloader_random.c
+    ${esp_idf_dir}/components/bootloader_support/src/bootloader_utility.c
+    ${esp_idf_dir}/components/bootloader_support/src/esp_image_format.c
+    ${esp_idf_dir}/components/bootloader_support/src/secure_boot_v2/secure_boot_signatures_bootloader.c
+    ${esp_idf_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/bootloader_sha.c
+    ${esp_idf_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/secure_boot_secure_features.c
     ${esp_idf_dir}/components/spi_flash/${MCUBOOT_TARGET}/spi_flash_rom_patch.c
     ${esp_idf_dir}/components/esp_hw_support/esp_clk.c
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_init.c
@@ -71,7 +82,23 @@ set(hal_srcs
     ${esp_idf_dir}/components/esp_hw_support/cpu_util.c
     ${esp_idf_dir}/components/esp_rom/patches/esp_rom_uart.c
     ${esp_idf_dir}/components/esp_rom/patches/esp_rom_sys.c
+    ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/esp_efuse_table.c
+    ${esp_idf_dir}/components/efuse/src/esp_efuse_fields.c
+    ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/esp_efuse_fields.c
+    ${esp_idf_dir}/components/efuse/src/esp_efuse_api.c
+    ${esp_idf_dir}/components/efuse/src/esp_efuse_utility.c
+    ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/esp_efuse_utility.c
     )
+
+if("${MCUBOOT_TARGET}" STREQUAL "esp32")
+    list(APPEND hal_srcs
+        ${esp_idf_dir}/components/efuse/src/esp_efuse_api_key_esp32.c
+        )
+else()
+    list(APPEND hal_srcs
+        ${esp_idf_dir}/components/efuse/src/esp_efuse_api_key_esp32xx.c
+        )
+endif()
 
 if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
     list(APPEND hal_srcs
@@ -144,6 +171,12 @@ set(LINKER_SCRIPTS
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.api.ld
     -T${esp_idf_dir}/components/soc/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.peripherals.ld
     )
+
+if("${MCUBOOT_TARGET}" STREQUAL "esp32" OR "${MCUBOOT_TARGET}" STREQUAL "esp32c3")
+    list(APPEND LINKER_SCRIPTS
+        -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.eco3.ld
+        )
+endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/include/${MCUBOOT_TARGET}/${MCUBOOT_TARGET}.cmake)
 
