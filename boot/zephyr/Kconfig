@@ -257,9 +257,14 @@ config BOOT_SWAP_SAVE_ENCTLV
 	  JTAG/SWD or primary slot in external flash).
 	  If unsure, leave at the default value.
 
+config BOOT_ENCRYPT_IMAGE
+	bool
+	help
+	  Hidden option used to check if any image encryption is enabled.
+
 config BOOT_ENCRYPT_RSA
 	bool "Support for encrypted upgrade images using RSA"
-	default n
+	select BOOT_ENCRYPT_IMAGE
 	help
 	  If y, images in the secondary slot can be encrypted and are decrypted
 	  on the fly when upgrading to the primary slot, as well as encrypted
@@ -268,7 +273,7 @@ config BOOT_ENCRYPT_RSA
 
 config BOOT_ENCRYPT_EC256
 	bool "Support for encrypted upgrade images using ECIES-P256"
-	default n
+	select BOOT_ENCRYPT_IMAGE
 	help
 	  If y, images in the secondary slot can be encrypted and are decrypted
 	  on the fly when upgrading to the primary slot, as well as encrypted
@@ -278,7 +283,7 @@ config BOOT_ENCRYPT_EC256
 
 config BOOT_ENCRYPT_X25519
 	bool "Support for encrypted upgrade images using ECIES-X25519"
-	default n
+	select BOOT_ENCRYPT_IMAGE
 	help
 	  If y, images in the secondary slot can be encrypted and are decrypted
 	  on the fly when upgrading to the primary slot, as well as encrypted
@@ -691,5 +696,23 @@ config USB_DEVICE_PRODUCT
 config MCUBOOT_BOOTUTIL_LIB_OWN_LOG
 	bool
 	default n
+
+config MCUBOOT_VERIFY_IMG_ADDRESS
+	bool "Verify reset address of image in secondary slot"
+	depends on UPDATEABLE_IMAGE_NUMBER > 1
+	depends on !BOOT_ENCRYPT_IMAGE
+	depends on ARM
+	default y if BOOT_UPGRADE_ONLY
+	help
+	  Verify that the reset address in the image located in the secondary slot
+	  is contained within the corresponding primary slot. This is recommended
+	  if swapping is not used (that is, BOOT_UPGRADE_ONLY is set). If a user
+	  incorrectly uploads an update for image 1 to image 0's secondary slot
+	  MCUboot will overwrite image 0's primary slot with this image even
+	  though it will not boot. If swapping is enabled this will be handled
+	  since the image will not confirm itself. If, however, swapping is not
+	  enabled then the only mitigation is serial recovery. This feature can
+	  also be useful when BOOT_DIRECT_XIP is enabled, to ensure that the image
+	  linked at the correct address is loaded.
 
 source "Kconfig.zephyr"
