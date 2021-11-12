@@ -65,7 +65,7 @@ config SINGLE_APPLICATION_SLOT
 	  uploading a new application overwrites the one that previously
 	  occupied the area.
 
-choice
+choice BOOT_SIGNATURE_TYPE
 	prompt "Signature type"
 	default BOOT_SIGNATURE_TYPE_RSA
 
@@ -89,7 +89,7 @@ config BOOT_SIGNATURE_TYPE_ECDSA_P256
 	bool "Elliptic curve digital signatures with curve P-256"
 
 if BOOT_SIGNATURE_TYPE_ECDSA_P256
-choice
+choice BOOT_ECDSA_IMPLEMENTATION
 	prompt "Ecdsa implementation"
 	default BOOT_ECDSA_TINYCRYPT
 
@@ -111,7 +111,7 @@ config BOOT_SIGNATURE_TYPE_ED25519
 	bool "Edwards curve digital signatures using ed25519"
 
 if BOOT_SIGNATURE_TYPE_ED25519
-choice
+choice BOOT_ED25519_IMPLEMENTATION
 	prompt "Ecdsa implementation"
 	default BOOT_ED25519_TINYCRYPT
 config BOOT_ED25519_TINYCRYPT
@@ -183,7 +183,7 @@ config BOOT_VALIDATE_SLOT0
 	  able to modify the flash image itself.
 
 if !SINGLE_APPLICATION_SLOT
-choice
+choice BOOT_IMAGE_UPGRADE_MODE
 	prompt "Image upgrade modes"
 	default BOOT_SWAP_USING_MOVE if SOC_FAMILY_NRF
 	default BOOT_SWAP_USING_SCRATCH
@@ -308,7 +308,7 @@ config BOOT_SHARE_DATA
 	bool "Save application specific data in shared memory area"
 	default n
 
-choice
+choice BOOT_FAULT_INJECTION_HARDENING_PROFILE
 	prompt "Fault injection hardening profile"
 	default BOOT_FIH_PROFILE_OFF
 
@@ -465,7 +465,7 @@ menuconfig MCUBOOT_SERIAL
 
 if MCUBOOT_SERIAL
 
-choice
+choice BOOT_SERIAL_DEVICE
 	prompt "Serial device"
 	default BOOT_SERIAL_UART if !BOARD_NRF52840DONGLE_NRF52840
 	default BOOT_SERIAL_CDC_ACM if BOARD_NRF52840DONGLE_NRF52840
@@ -594,7 +594,7 @@ config UPDATEABLE_IMAGE_NUMBER
 	help
 	  Enables support of multi image update.
 
-choice
+choice BOOT_DOWNGRADE_PREVENTION_CHOICE
 	prompt "Downgrade prevention"
 	optional
 
