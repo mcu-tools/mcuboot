@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Espressif Systems (Shanghai) Co., Ltd.
+# SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -36,16 +36,6 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 add_definitions(-DMCUBOOT_VER=\"${MCUBOOT_VER}\")
-
-execute_process(
-    COMMAND git describe --tags
-    WORKING_DIRECTORY ${IDF_PATH}
-    OUTPUT_VARIABLE IDF_VER
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-if (NOT "${IDF_VER}" MATCHES "v4.3")
-    message(FATAL_ERROR "Unsupported ESP-IDF version found in IDF_PATH, please checkout to v4.3")
-endif()
 
 if (DEFINED MCUBOOT_CONFIG_FILE)
     set(mcuboot_config_file ${MCUBOOT_CONFIG_FILE})

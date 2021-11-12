@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Espressif Systems (Shanghai) Co., Ltd.
+ * SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -23,10 +23,9 @@
 
 #include "hal/wdt_hal.h"
 
-#include "rom/cache.h"
-#include "rom/ets_sys.h"
-#include "rom/spi_flash.h"
-#include "rom/uart.h"
+#include "esp32/rom/cache.h"
+#include "esp32/rom/spi_flash.h"
+#include "esp32/rom/uart.h"
 
 esp_image_header_t WORD_ALIGNED_ATTR bootloader_image_hdr;
 

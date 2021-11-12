@@ -1,46 +1,59 @@
+# SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+#
+# SPDX-License-Identifier: Apache-2.0
+
 cmake_minimum_required(VERSION 3.13)
 
 project(hal)
 
 set(esp_idf_dir ${IDF_PATH})
 
-set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
-set(INCLUDE_DIRS
+set(src_dir ${CMAKE_CURRENT_LIST_DIR}/src)
+set(include_dirs
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${CMAKE_CURRENT_LIST_DIR}/include/${MCUBOOT_TARGET}
     )
 
-list(APPEND INCLUDE_DIRS
+list(APPEND include_dirs
     ${esp_idf_dir}/components/${MCUBOOT_ARCH}/include
     ${esp_idf_dir}/components/esp_common/include
     ${esp_idf_dir}/components/esp_rom/include
     ${esp_idf_dir}/components/esp_rom/include/${MCUBOOT_TARGET}
     ${esp_idf_dir}/components/spi_flash/include
-    ${esp_idf_dir}/components/spi_flash/private_include
-    ${esp_idf_dir}/components/soc/${MCUBOOT_TARGET}/include
-    ${esp_idf_dir}/components/${MCUBOOT_TARGET}/include
+    ${esp_idf_dir}/components/spi_flash/include/spi_flash
     ${esp_idf_dir}/components/soc/include
+    ${esp_idf_dir}/components/soc/${MCUBOOT_TARGET}/include
     ${esp_idf_dir}/components/esp_hw_support/include
-    ${esp_idf_dir}/components/hal/${MCUBOOT_TARGET}/include
-    ${esp_idf_dir}/components/hal/${MCUBOOT_TARGET}/include/hal
+    ${esp_idf_dir}/components/esp_hw_support/include/soc
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/private_include
     ${esp_idf_dir}/components/bootloader_support/include
     ${esp_idf_dir}/components/bootloader_support/include_bootloader
     ${esp_idf_dir}/components/hal/include
+    ${esp_idf_dir}/components/hal/platform_port/include
+    ${esp_idf_dir}/components/hal/${MCUBOOT_TARGET}/include
+    ${esp_idf_dir}/components/hal/${MCUBOOT_TARGET}/include/hal
+    ${esp_idf_dir}/components/heap/include
     ${esp_idf_dir}/components/efuse/include
     ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/include
+    ${esp_idf_dir}/components/newlib/platform_include
     )
 
+if("${MCUBOOT_TARGET}" STREQUAL "esp32")
+    list(APPEND include_dirs
+        ${esp_idf_dir}/components/${MCUBOOT_TARGET}/include
+        )
+endif()
+
 if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
-    list(APPEND INCLUDE_DIRS
+    list(APPEND include_dirs
         ${esp_idf_dir}/components/${MCUBOOT_ARCH}/${MCUBOOT_TARGET}/include
         )
 endif()
 
 set(hal_srcs
-    ${SRC_DIR}/bootloader_wdt.c
-    ${SRC_DIR}/${MCUBOOT_TARGET}/bootloader_init.c
+    ${src_dir}/bootloader_wdt.c
+    ${src_dir}/${MCUBOOT_TARGET}/bootloader_init.c
     ${esp_idf_dir}/components/hal/mpu_hal.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash_config_${MCUBOOT_TARGET}.c
@@ -49,6 +62,7 @@ set(hal_srcs
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_panic.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_mem.c
     ${esp_idf_dir}/components/spi_flash/${MCUBOOT_TARGET}/spi_flash_rom_patch.c
+    ${esp_idf_dir}/components/esp_hw_support/esp_clk.c
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_init.c
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_time.c
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_clk.c
@@ -56,8 +70,14 @@ set(hal_srcs
     ${esp_idf_dir}/components/hal/wdt_hal_iram.c
     ${esp_idf_dir}/components/esp_hw_support/cpu_util.c
     ${esp_idf_dir}/components/esp_rom/patches/esp_rom_uart.c
-    ${esp_idf_dir}/components/${MCUBOOT_TARGET}/clk.c
+    ${esp_idf_dir}/components/esp_rom/patches/esp_rom_sys.c
     )
+
+if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
+    list(APPEND hal_srcs
+        ${esp_idf_dir}/components/esp_rom/patches/esp_rom_longjmp.S
+        )
+endif()
 
 set(CFLAGS
     "-nostdlib"
@@ -99,7 +119,7 @@ set(LDFLAGS
     "-lgcov"
     )
 
-if (("${MCUBOOT_TARGET}" STREQUAL "xtensa"))
+if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
     list(APPEND CFLAGS
         "-mlongcalls"
         )
@@ -122,17 +142,17 @@ set(LINKER_SCRIPTS
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.ld
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.libgcc.ld
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.api.ld
-    -T${esp_idf_dir}/components/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.peripherals.ld
+    -T${esp_idf_dir}/components/soc/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.peripherals.ld
     )
 
 include(${CMAKE_CURRENT_LIST_DIR}/include/${MCUBOOT_TARGET}/${MCUBOOT_TARGET}.cmake)
 
-add_library(hal STATIC ${hal_srcs} ${INCLUDE_DIRS})
+add_library(hal STATIC ${hal_srcs} ${include_dirs})
 
 target_include_directories(
     hal
     PUBLIC
-    ${INCLUDE_DIRS}
+    ${include_dirs}
     )
 
 target_compile_options(
