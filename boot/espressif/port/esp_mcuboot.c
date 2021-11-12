@@ -4,17 +4,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <string.h>
+#include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "mcuboot_config/mcuboot_logging.h"
-#include "flash_map_backend/flash_map_backend.h"
-#include "sysflash/sysflash.h"
-#include "bootutil/bootutil.h"
+#include <bootutil/bootutil.h>
+#include <bootutil/bootutil_log.h>
 
 #include "esp_err.h"
-#include "bootloader_flash.h"
 #include "bootloader_flash_priv.h"
+
+#include "flash_map_backend/flash_map_backend.h"
+#include "sysflash/sysflash.h"
 
 #ifndef ARRAY_SIZE
 #  define ARRAY_SIZE(arr)           (sizeof(arr) / sizeof((arr)[0]))
@@ -101,7 +102,7 @@ static const struct flash_area *prv_lookup_flash_area(uint8_t id) {
 
 int flash_area_open(uint8_t id, const struct flash_area **area_outp)
 {
-    MCUBOOT_LOG_DBG("%s: ID=%d", __func__, (int)id);
+    BOOT_LOG_DBG("%s: ID=%d", __func__, (int)id);
     const struct flash_area *area = prv_lookup_flash_area(id);
     *area_outp = area;
     return area != NULL ? 0 : -1;
@@ -168,13 +169,13 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
 
     const uint32_t end_offset = off + len;
     if (end_offset > fa->fa_size) {
-        MCUBOOT_LOG_ERR("%s: Out of Bounds (0x%x vs 0x%x)", __func__, end_offset, fa->fa_size);
+        BOOT_LOG_ERR("%s: Out of Bounds (0x%x vs 0x%x)", __func__, end_offset, fa->fa_size);
         return -1;
     }
 
     bool success = aligned_flash_read(fa->fa_off + off, dst, len);
     if (!success) {
-        MCUBOOT_LOG_ERR("%s: Flash read failed", __func__);
+        BOOT_LOG_ERR("%s: Flash read failed", __func__);
 
         return -1;
     }
@@ -191,15 +192,15 @@ int flash_area_write(const struct flash_area *fa, uint32_t off, const void *src,
 
     const uint32_t end_offset = off + len;
     if (end_offset > fa->fa_size) {
-        MCUBOOT_LOG_ERR("%s: Out of Bounds (0x%x vs 0x%x)", __func__, end_offset, fa->fa_size);
+        BOOT_LOG_ERR("%s: Out of Bounds (0x%x vs 0x%x)", __func__, end_offset, fa->fa_size);
         return -1;
     }
 
     const uint32_t start_addr = fa->fa_off + off;
-    MCUBOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
+    BOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
 
     if (bootloader_flash_write(start_addr, (void *)src, len, false) != ESP_OK) {
-        MCUBOOT_LOG_ERR("%s: Flash write failed", __func__);
+        BOOT_LOG_ERR("%s: Flash write failed", __func__);
         return -1;
     }
 
@@ -213,23 +214,23 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
     }
 
     if ((len % FLASH_SECTOR_SIZE) != 0 || (off % FLASH_SECTOR_SIZE) != 0) {
-        MCUBOOT_LOG_ERR("%s: Not aligned on sector Offset: 0x%x Length: 0x%x", __func__,
-                    (int)off, (int)len);
+        BOOT_LOG_ERR("%s: Not aligned on sector Offset: 0x%x Length: 0x%x",
+                     __func__, (int)off, (int)len);
         return -1;
     }
 
     const uint32_t start_addr = fa->fa_off + off;
-    MCUBOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
+    BOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
 
     if (bootloader_flash_erase_range(start_addr, len) != ESP_OK) {
-        MCUBOOT_LOG_ERR("%s: Flash erase failed", __func__);
+        BOOT_LOG_ERR("%s: Flash erase failed", __func__);
         return -1;
     }
 #if VALIDATE_PROGRAM_OP
     for (size_t i = 0; i < len; i++) {
         uint8_t *val = (void *)(start_addr + i);
         if (*val != 0xff) {
-            MCUBOOT_LOG_ERR("%s: Erase at 0x%x Failed", __func__, (int)val);
+            BOOT_LOG_ERR("%s: Erase at 0x%x Failed", __func__, (int)val);
             assert(0);
         }
     }
@@ -271,7 +272,7 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
 
 int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
-    MCUBOOT_LOG_DBG("%s", __func__);
+    BOOT_LOG_DBG("%s", __func__);
     switch (slot) {
       case 0:
         return FLASH_AREA_IMAGE_PRIMARY(image_index);
@@ -279,7 +280,7 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot)
         return FLASH_AREA_IMAGE_SECONDARY(image_index);
     }
 
-    MCUBOOT_LOG_ERR("Unexpected Request: image_index=%d, slot=%d", image_index, slot);
+    BOOT_LOG_ERR("Unexpected Request: image_index=%d, slot=%d", image_index, slot);
     return -1; /* flash_area_open will fail on that */
 }
 
