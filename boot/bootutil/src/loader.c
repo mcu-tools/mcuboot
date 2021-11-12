@@ -773,6 +773,41 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         goto out;
     }
 
+#if MCUBOOT_IMAGE_NUMBER > 1 && !defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_VERIFY_IMG_ADDRESS)
+    /* Verify that the image in the secondary slot has a reset address
+     * located in the primary slot. This is done to avoid users incorrectly
+     * overwriting an application written to the incorrect slot.
+     * This feature is only supported by ARM platforms.
+     */
+    if (area_id == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
+        const struct flash_area *pri_fa = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+        struct image_header *secondary_hdr = boot_img_hdr(state, slot);
+        uint32_t reset_value = 0;
+        uint32_t reset_addr = secondary_hdr->ih_hdr_size + sizeof(reset_value);
+
+        rc = flash_area_read(fap, reset_addr, &reset_value, sizeof(reset_value));
+        if (rc != 0) {
+            fih_rc = fih_int_encode(1);
+            goto out;
+        }
+
+        if (reset_value < pri_fa->fa_off || reset_value> (pri_fa->fa_off + pri_fa->fa_size)) {
+            BOOT_LOG_ERR("Reset address of image in secondary slot is not in the primary slot");
+            BOOT_LOG_ERR("Erasing image from secondary slot");
+
+            /* The vector table in the image located in the secondary
+             * slot does not target the primary slot. This might
+             * indicate that the image was loaded to the wrong slot.
+             *
+             * Erase the image and continue booting from the primary slot.
+             */
+            flash_area_erase(fap, 0, fap->fa_size);
+            fih_rc = fih_int_encode(1);
+            goto out;
+        }
+    }
+#endif
+
 out:
     flash_area_close(fap);
 

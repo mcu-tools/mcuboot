@@ -168,6 +168,10 @@
 #define MCUBOOT_IMAGE_ACCESS_HOOKS
 #endif
 
+#ifdef CONFIG_MCUBOOT_VERIFY_IMG_ADDRESS
+#define MCUBOOT_VERIFY_IMG_ADDRESS
+#endif
+
 /*
  * The configuration option enables direct image upload with the
  * serial recovery.
