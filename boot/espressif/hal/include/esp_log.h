@@ -7,6 +7,12 @@
 #pragma once
 #include <mcuboot_config/mcuboot_logging.h>
 
+/* Log levels from IDF are similar to MCUboot's */
+
+#ifndef CONFIG_BOOTLOADER_LOG_LEVEL
+#define CONFIG_BOOTLOADER_LOG_LEVEL MCUBOOT_LOG_LEVEL
+#endif
+
 #define ESP_LOGE(tag, fmt, ...) MCUBOOT_LOG_ERR("[%s] " fmt, tag, ##__VA_ARGS__)
 #define ESP_LOGW(tag, fmt, ...) MCUBOOT_LOG_WRN("[%s] " fmt, tag, ##__VA_ARGS__)
 #define ESP_LOGI(tag, fmt, ...) MCUBOOT_LOG_INF("[%s] " fmt, tag, ##__VA_ARGS__)
