@@ -552,7 +552,7 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
       return ERROR;
     }
 
-  memset(buffer, erase_val, sizeof(*buffer));
+  memset(buffer, erase_val, sector_size);
 
   i = 0;
 
