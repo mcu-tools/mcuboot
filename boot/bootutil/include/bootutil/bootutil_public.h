@@ -266,11 +266,6 @@ int
 boot_read_swap_state(const struct flash_area *fa,
                      struct boot_swap_state *state);
 
-#define BOOT_MAGIC_ARR_SZ \
-    (sizeof boot_img_magic / sizeof boot_img_magic[0])
-
-extern const uint32_t boot_img_magic[4];
-
 #ifdef __cplusplus
 }
 #endif

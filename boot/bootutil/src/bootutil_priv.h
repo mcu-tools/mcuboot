@@ -140,7 +140,26 @@ struct boot_status {
  *      (`MCUBOOT_ENC_IMAGES`).
  */
 
-extern const uint32_t boot_img_magic[4];
+union boot_img_magic_t
+{
+    struct {
+        uint16_t align;
+        uint8_t magic[14];
+    };
+    uint8_t val[16];
+};
+
+extern const union boot_img_magic_t boot_img_magic;
+
+#define BOOT_IMG_MAGIC  (boot_img_magic.val)
+
+#if BOOT_MAX_ALIGN == 8
+#define BOOT_IMG_ALIGN  (BOOT_MAX_ALIGN)
+#else
+#define BOOT_IMG_ALIGN  (boot_img_magic.align)
+#endif
+
+_Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image magic");
 
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 #define ARE_SLOTS_EQUIVALENT()    0
