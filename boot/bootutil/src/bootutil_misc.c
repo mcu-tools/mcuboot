@@ -46,11 +46,6 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 /* Currently only used by imgmgr */
 int boot_current_slot;
 
-extern const uint32_t boot_img_magic[];
-
-#define BOOT_MAGIC_ARR_SZ \
-    (sizeof boot_img_magic / sizeof boot_img_magic[0])
-
 /**
  * @brief Determine if the data at two memory addresses is equal
  *
@@ -191,9 +186,9 @@ boot_status_off(const struct flash_area *fap)
 }
 
 static int
-boot_magic_decode(const uint32_t *magic)
+boot_magic_decode(const uint8_t *magic)
 {
-    if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0) {
+    if (memcmp(magic, BOOT_IMG_MAGIC, BOOT_MAGIC_SZ) == 0) {
         return BOOT_MAGIC_GOOD;
     }
     return BOOT_MAGIC_BAD;
@@ -247,7 +242,7 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 static int
 boot_find_status(int image_index, const struct flash_area **fap)
 {
-    uint32_t magic[BOOT_MAGIC_ARR_SZ];
+    uint8_t magic[BOOT_MAGIC_SZ];
     uint32_t off;
     uint8_t areas[2] = {
 #if MCUBOOT_SWAP_USING_SCRATCH

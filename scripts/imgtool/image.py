@@ -81,12 +81,6 @@ TLV_INFO_SIZE = 4
 TLV_INFO_MAGIC = 0x6907
 TLV_PROT_INFO_MAGIC = 0x6908
 
-boot_magic = bytes([
-    0x77, 0xc2, 0x95, 0xf3,
-    0x60, 0xd2, 0xef, 0x7f,
-    0x35, 0x52, 0x50, 0x0f,
-    0x2c, 0xb6, 0x79, 0x80, ])
-
 STRUCT_ENDIAN_DICT = {
         'little': '<',
         'big':    '>'
@@ -98,6 +92,9 @@ VerifyResult = Enum('VerifyResult',
                     INVALID_SIGNATURE
                     """)
 
+def align_up(num, align):
+    assert (align & (align - 1) == 0) and align != 0
+    return (num + (align - 1)) & ~(align - 1)
 
 class TLV():
     def __init__(self, endian, magic=TLV_INFO_MAGIC):
@@ -159,6 +156,21 @@ class Image():
         self.save_enctlv = save_enctlv
         self.enctlv_len = 0
         self.max_align = DEFAULT_MAX_ALIGN if max_align is None else int(max_align)
+
+        if self.max_align == DEFAULT_MAX_ALIGN:
+            self.boot_magic = bytes([
+                0x77, 0xc2, 0x95, 0xf3,
+                0x60, 0xd2, 0xef, 0x7f,
+                0x35, 0x52, 0x50, 0x0f,
+                0x2c, 0xb6, 0x79, 0x80, ])
+        else:
+            align_lsb = self.max_align & 0x00ff
+            align_msb = (self.max_align & 0xff00) >> 8
+            self.boot_magic = bytes([
+                align_lsb, align_msb, 0x2d, 0xe1,
+                0x5d, 0x29, 0x41, 0x0b,
+                0x8d, 0x77, 0x67, 0x9c,
+                0x11, 0x0f, 0x1f, 0x8a, ])
 
         if security_counter == 'auto':
             # Security counter has not been explicitly provided,
@@ -231,11 +243,11 @@ class Image():
                                                   self.enctlv_len)
                 trailer_addr = (self.base_addr + self.slot_size) - trailer_size
                 padding = bytearray([self.erased_val] * 
-                                    (trailer_size - len(boot_magic)))
-                padding += boot_magic
+                                    (trailer_size - len(self.boot_magic)))
+                padding += self.boot_magic
                 if self.confirm and not self.overwrite_only:
                     magic_size = 16
-                    magic_align_size = (int((magic_size - 1) / self.max_align) + 1) * self.max_align
+                    magic_align_size = align_up(magic_size, self.max_align)
                     image_ok_idx = -(magic_align_size + self.max_align)
                     padding[image_ok_idx] = 0x01  # image_ok = 0x01
                 h.puts(trailer_addr, bytes(padding))
@@ -521,7 +533,7 @@ class Image():
                       save_enctlv, enctlv_len):
         # NOTE: should already be checked by the argument parser
         magic_size = 16
-        magic_align_size = (int((magic_size - 1) / self.max_align) + 1) * self.max_align
+        magic_align_size = align_up(magic_size, self.max_align)
         if overwrite_only:
             return self.max_align * 2 + magic_align_size
         else:
@@ -533,9 +545,9 @@ class Image():
             if enckey is not None:
                 if save_enctlv:
                     # TLV saved by the bootloader is aligned
-                    keylen = (int((enctlv_len - 1) / self.max_align) + 1) * self.max_align
+                    keylen = align_up(enctlv_len, self.max_align)
                 else:
-                    keylen = (int((16 - 1) / self.max_align) + 1) * self.max_align
+                    keylen = align_up(16, self.max_align)
                 trailer += keylen * 2  # encryption keys
             trailer += self.max_align * 4  # image_ok/copy_done/swap_info/swap_size
             trailer += magic_align_size
@@ -548,11 +560,11 @@ class Image():
                                    self.save_enctlv, self.enctlv_len)
         padding = size - (len(self.payload) + tsize)
         pbytes = bytearray([self.erased_val] * padding)
-        pbytes += bytearray([self.erased_val] * (tsize - len(boot_magic)))
-        pbytes += boot_magic
+        pbytes += bytearray([self.erased_val] * (tsize - len(self.boot_magic)))
+        pbytes += self.boot_magic
         if self.confirm and not self.overwrite_only:
             magic_size = 16
-            magic_align_size = (int((magic_size - 1) / self.max_align) + 1) * self.max_align
+            magic_align_size = align_up(magic_size, self.max_align)
             image_ok_idx = -(magic_align_size + self.max_align)
             pbytes[image_ok_idx] = 0x01  # image_ok = 0x01
         self.payload += pbytes
