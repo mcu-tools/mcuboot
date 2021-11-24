@@ -595,13 +595,13 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
  *
  ****************************************************************************/
 
-uint8_t flash_area_align(const struct flash_area *fa)
+uint32_t flash_area_align(const struct flash_area *fa)
 {
   /* MTD access alignment is handled by the character and block device
    * drivers.
    */
 
-  const uint8_t minimum_write_length = 1;
+  const uint32_t minimum_write_length = 1;
 
   BOOT_LOG_INF("ID:%" PRIu8 " align:%" PRIu8,
                fa->fa_id, minimum_write_length);

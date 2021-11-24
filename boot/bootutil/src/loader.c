@@ -426,7 +426,7 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
     int area_id;
     int rc = 0;
     uint8_t buf[BOOT_MAX_ALIGN];
-    uint8_t align;
+    uint32_t align;
     uint8_t erased_val;
 
     /* NOTE: The first sector copied (that is the last sector on slot) contains

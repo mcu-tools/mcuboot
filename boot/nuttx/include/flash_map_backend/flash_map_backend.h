@@ -306,7 +306,7 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off,
  *
  ****************************************************************************/
 
-uint8_t flash_area_align(const struct flash_area *fa);
+uint32_t flash_area_align(const struct flash_area *fa);
 
 /****************************************************************************
  * Name: flash_area_erased_val

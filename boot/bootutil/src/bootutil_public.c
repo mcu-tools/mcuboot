@@ -370,8 +370,8 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
         const uint8_t *inbuf, uint8_t inlen)
 {
     uint8_t buf[BOOT_MAX_ALIGN];
-    uint8_t align;
     uint8_t erased_val;
+    uint32_t align;
     int rc;
 
     align = flash_area_align(fap);

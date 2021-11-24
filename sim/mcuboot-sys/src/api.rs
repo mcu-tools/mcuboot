@@ -20,7 +20,7 @@ use std::{
 pub type FlashMap = HashMap<u8, FlashPtr>;
 
 pub struct FlashParamsStruct {
-    align: u16,
+    align: u32,
     erased_val: u8,
 }
 
@@ -146,7 +146,7 @@ thread_local! {
 pub fn set_flash(dev_id: u8, dev: &mut dyn Flash) {
     THREAD_CTX.with(|ctx| {
         ctx.borrow_mut().flash_params.insert(dev_id, FlashParamsStruct {
-            align: dev.align() as u16,
+            align: dev.align() as u32,
             erased_val: dev.erased_val(),
         });
         unsafe {
@@ -272,7 +272,7 @@ pub extern fn sim_flash_write(dev_id: u8, offset: u32, src: *const u8, size: u32
 }
 
 #[no_mangle]
-pub extern fn sim_flash_align(id: u8) -> u16 {
+pub extern fn sim_flash_align(id: u8) -> u32 {
     THREAD_CTX.with(|ctx| {
         ctx.borrow().flash_params.get(&id).unwrap().align
     })

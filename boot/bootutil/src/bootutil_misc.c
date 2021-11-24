@@ -167,7 +167,7 @@ uint32_t
 boot_status_off(const struct flash_area *fap)
 {
     uint32_t off_from_end;
-    uint8_t elem_sz;
+    uint32_t elem_sz;
 
     elem_sz = flash_area_align(fap);
 
