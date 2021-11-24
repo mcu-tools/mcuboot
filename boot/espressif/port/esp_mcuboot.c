@@ -239,7 +239,7 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
     return 0;
 }
 
-size_t flash_area_align(const struct flash_area *area)
+uint32_t flash_area_align(const struct flash_area *area)
 {
     return 4;
 }

@@ -191,7 +191,7 @@ int flash_area_erase(const struct flash_area* fap, uint32_t off, uint32_t len) {
     return bd->erase(off, len);
 }
 
-uint8_t flash_area_align(const struct flash_area* fap) {
+uint32_t flash_area_align(const struct flash_area* fap) {
     mbed::BlockDevice* bd = flash_map_bd[fap->fa_id];
     return bd->get_program_size();
 }
