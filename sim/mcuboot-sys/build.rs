@@ -40,6 +40,13 @@ fn main() {
     conf.conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
     conf.conf.define("MCUBOOT_HAVE_ASSERT_H", None);
     conf.conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
+
+#[cfg(not(feature = "max-align-32"))]
+    conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("8"));
+
+#[cfg(feature = "max-align-32")]
+    conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("32"));
+
     conf.conf.define("MCUBOOT_IMAGE_NUMBER", Some(if multiimage { "2" } else { "1" }));
 
     if downgrade_prevention && !overwrite_only {
