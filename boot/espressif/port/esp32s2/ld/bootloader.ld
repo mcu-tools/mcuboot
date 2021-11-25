@@ -9,12 +9,12 @@
  * The main purpose is to make sure the bootloader can load into main memory
  * without overwriting itself.
  */
- 
+
 MEMORY
 {
   iram_seg (RWX) :                  org = 0x40048000, len = 0x8000
   iram_loader_seg (RWX) :           org = 0x40050000, len = 0x5000
-  dram_seg (RW) :                   org = 0x3FFE5000, len = 0x8000
+  dram_seg (RW) :                   org = 0x3FFE5000, len = 0x8E00
 }
 
 /*  Default entry point:  */

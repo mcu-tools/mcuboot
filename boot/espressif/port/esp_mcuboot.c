@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Espressif Systems (Shanghai) Co., Ltd.
+ * SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,8 +11,10 @@
 #include <bootutil/bootutil.h>
 #include <bootutil/bootutil_log.h>
 
+#include "sdkconfig.h"
 #include "esp_err.h"
 #include "bootloader_flash_priv.h"
+#include "esp_flash_encrypt.h"
 
 #include "flash_map_backend/flash_map_backend.h"
 #include "sysflash/sysflash.h"
@@ -45,7 +47,7 @@
 
 _Static_assert(IS_ALIGNED(FLASH_BUFFER_SIZE, 4), "Buffer size for SPI Flash operations must be 4-byte aligned.");
 
-#define BOOTLOADER_START_ADDRESS 0x1000
+#define BOOTLOADER_START_ADDRESS CONFIG_BOOTLOADER_OFFSET_IN_FLASH
 #define BOOTLOADER_SIZE CONFIG_ESP_BOOTLOADER_SIZE
 #define APPLICATION_PRIMARY_START_ADDRESS CONFIG_ESP_APPLICATION_PRIMARY_START_ADDRESS
 #define APPLICATION_SECONDARY_START_ADDRESS CONFIG_ESP_APPLICATION_SECONDARY_START_ADDRESS
@@ -196,10 +198,12 @@ int flash_area_write(const struct flash_area *fa, uint32_t off, const void *src,
         return -1;
     }
 
+    bool flash_encryption_enabled = esp_flash_encryption_enabled();
+
     const uint32_t start_addr = fa->fa_off + off;
     BOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
 
-    if (bootloader_flash_write(start_addr, (void *)src, len, false) != ESP_OK) {
+    if (bootloader_flash_write(start_addr, (void *)src, len, flash_encryption_enabled) != ESP_OK) {
         BOOT_LOG_ERR("%s: Flash write failed", __func__);
         return -1;
     }
@@ -241,7 +245,18 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
 
 uint32_t flash_area_align(const struct flash_area *area)
 {
-    return 4;
+    static size_t align = 0;
+
+    if (align == 0) {
+        bool flash_encryption_enabled = esp_flash_encryption_enabled();
+
+        if (flash_encryption_enabled) {
+            align = 32;
+        } else {
+            align = 4;
+        }
+    }
+    return align;
 }
 
 uint8_t flash_area_erased_val(const struct flash_area *area)

@@ -8,19 +8,6 @@
 #define __MCUBOOT_CONFIG_H__
 
 /*
- * Template configuration file for MCUboot.
- *
- * When porting MCUboot to a new target, copy it somewhere that your
- * include path can find it as mcuboot_config/mcuboot_config.h, and
- * make adjustments to suit your platform.
- *
- * For examples, see:
- *
- * boot/zephyr/include/mcuboot_config/mcuboot_config.h
- * boot/mynewt/mcuboot_config/include/mcuboot_config/mcuboot_config.h
- */
-
-/*
  * Signature types
  *
  * You must choose exactly one signature type - check bootloader.conf
@@ -41,6 +28,11 @@
 #elif defined(CONFIG_ESP_SIGN_ED25519)
 #define MCUBOOT_SIGN_ED25519
 #endif
+
+#if defined(CONFIG_SECURE_FLASH_ENC_ENABLED)
+#define MCUBOOT_BOOT_MAX_ALIGN 32
+#endif
+
 /*
  * Upgrade mode
  *
@@ -132,6 +124,7 @@
  *    MCUBOOT_LOG_ERR > MCUBOOT_LOG_WRN > MCUBOOT_LOG_INF > MCUBOOT_LOG_DBG
  */
 #define MCUBOOT_HAVE_LOGGING 1
+/* #define MCUBOOT_LOG_LEVEL MCUBOOT_LOG_LEVEL_INFO */
 
 /*
  * Assertions
