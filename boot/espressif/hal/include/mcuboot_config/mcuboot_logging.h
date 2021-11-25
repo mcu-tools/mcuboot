@@ -7,6 +7,7 @@
 #pragma once
 
 #include "sdkconfig.h"
+#include "mcuboot_config.h"
 
 extern int ets_printf(const char *fmt, ...);
 

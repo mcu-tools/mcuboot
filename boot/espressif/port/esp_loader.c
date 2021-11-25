@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Espressif Systems (Shanghai) Co., Ltd.
+ * SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,6 +10,7 @@
 #include <bootutil/fault_injection_hardening.h>
 
 #include "bootloader_flash_priv.h"
+#include "esp_flash_encrypt.h"
 #include "soc/soc_memory_layout.h"
 
 #if CONFIG_IDF_TARGET_ESP32
@@ -20,24 +21,10 @@
 #include "esp32c3/rom/uart.h"
 #endif
 
+#include "esp_mcuboot_image.h"
 #include "esp_loader.h"
 #include "flash_map_backend/flash_map_backend.h"
 
-#define ESP_LOAD_HEADER_MAGIC 0xace637d3   /* Magic is derived from sha256sum of espmcuboot */
-
-/*
- * Load header that should be a part of application image.
- */
-typedef struct image_load_header {
-    uint32_t header_magic;          /* Magic for load header */
-    uint32_t entry_addr;            /* Application entry address */
-    uint32_t iram_dest_addr;        /* Destination address(VMA) for IRAM region */
-    uint32_t iram_flash_offset;     /* Flash offset(LMA) for start of IRAM region */
-    uint32_t iram_size;             /* Size of IRAM region */
-    uint32_t dram_dest_addr;        /* Destination address(VMA) for DRAM region */
-    uint32_t dram_flash_offset;     /* Flash offset(LMA) for start of DRAM region */
-    uint32_t dram_size;             /* Size of DRAM region */
-} image_load_header_t;
 
 static int load_segment(const struct flash_area *fap, uint32_t data_addr, uint32_t data_len, uint32_t load_addr)
 {
@@ -57,16 +44,15 @@ void esp_app_image_load(int slot, unsigned int hdr_offset)
     int area_id;
     int rc;
 
-    image_load_header_t load_header = {0};
-
     area_id = flash_area_id_from_image_slot(slot);
     rc = flash_area_open(area_id, &fap);
     if (rc != 0) {
         BOOT_LOG_ERR("%s: flash_area_open failed with %d", __func__, rc);
     }
 
-    const uint32_t *data = (const uint32_t *)bootloader_mmap((fap->fa_off + hdr_offset), sizeof(image_load_header_t));
-    memcpy((void *)&load_header, data, sizeof(image_load_header_t));
+    const uint32_t *data = (const uint32_t *)bootloader_mmap((fap->fa_off + hdr_offset), sizeof(esp_image_load_header_t));
+    esp_image_load_header_t load_header = {0};
+    memcpy((void *)&load_header, data, sizeof(esp_image_load_header_t));
     bootloader_munmap(data);
 
     if (load_header.header_magic != ESP_LOAD_HEADER_MAGIC) {

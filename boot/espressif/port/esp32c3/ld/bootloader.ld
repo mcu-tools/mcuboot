@@ -14,7 +14,7 @@ MEMORY
 {
   iram_seg (RWX) :                  org = 0x403C8000, len = 0x8000
   iram_loader_seg (RWX) :           org = 0x403D0000, len = 0x4800
-  dram_seg (RW) :                   org = 0x3FCD5000, len = 0x8800
+  dram_seg (RW) :                   org = 0x3FCD5000, len = 0x8C00
 }
 
 /*  Default entry point:  */

@@ -56,6 +56,7 @@ endif()
 set(hal_srcs
     ${src_dir}/bootloader_wdt.c
     ${src_dir}/secure_boot.c
+    ${src_dir}/flash_encrypt.c
     ${src_dir}/${MCUBOOT_TARGET}/bootloader_init.c
     ${esp_idf_dir}/components/hal/mpu_hal.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_common_loader.c
@@ -67,11 +68,13 @@ set(hal_srcs
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_panic.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_mem.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_random.c
+    ${esp_idf_dir}/components/bootloader_support/src/bootloader_random_${MCUBOOT_TARGET}.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_utility.c
     ${esp_idf_dir}/components/bootloader_support/src/esp_image_format.c
     ${esp_idf_dir}/components/bootloader_support/src/secure_boot_v2/secure_boot_signatures_bootloader.c
     ${esp_idf_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/bootloader_sha.c
     ${esp_idf_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/secure_boot_secure_features.c
+    ${esp_idf_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/flash_encryption_secure_features.c
     ${esp_idf_dir}/components/spi_flash/${MCUBOOT_TARGET}/spi_flash_rom_patch.c
     ${esp_idf_dir}/components/esp_hw_support/esp_clk.c
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_init.c
