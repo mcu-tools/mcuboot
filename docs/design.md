@@ -535,6 +535,14 @@ of 3 is explained below.
         0x8079b62c,
     };
 ```
+---
+***Note***
+Be aware that the image trailers make the ending area of the image slot
+unavailable for carrying the image data. In particular, the swap status size
+could be huge. For example, for 128 slot sectors with a 4-byte alignment,
+it would become 1536 B.
+
+---
 
 ## [Image trailers](#image-trailers)
 
