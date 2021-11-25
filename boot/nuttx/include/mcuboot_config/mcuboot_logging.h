@@ -30,6 +30,9 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
+#define MCUBOOT_LOG_MODULE_DECLARE(...)
+#define MCUBOOT_LOG_MODULE_REGISTER(...)
+
 #define MCUBOOT_LOG_ERR(format, ...) \
     syslog(LOG_ERR, "%s: " format "\n", __FUNCTION__, ##__VA_ARGS__)
 
