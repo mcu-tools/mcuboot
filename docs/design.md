@@ -179,8 +179,11 @@ contents of the primary slot. The bootloader supports either swap- or
 overwrite-based image upgrades, but must be configured at build time to choose
 one of these two strategies.
 
-In addition to the slots of image areas, the bootloader requires a scratch
-area to allow for reliable image swapping. The scratch area must have a size
+### [Swap using scratch](#image-swap-using-scratch)
+
+When swap-using-scratch algorithm is used, in addition to the slots of
+image areas, the bootloader requires a scratch area to allow for reliable
+image swapping. The scratch area must have a size
 that is enough to store at least the largest sector that is going to be swapped.
 Many devices have small equally sized flash sectors, eg 4K, while others have
 variable sized sectors where the largest sectors might be 128K or 256K, so the
@@ -219,6 +222,18 @@ consider include the number of times a device will be upgraded both in the field
 and during development, as well as any desired safety margin on the
 manufacturer's specified number of erase cycles. In general, using a ratio that
 allows hundreds to thousands of field upgrades in production is recommended.
+
+swap-using scratch algorithm assumes that the primary and the secondary image
+slot areas sizes are equal.
+The maximum image size available for the application
+will be:  
+```
+maximum-image-size = image-slot-size - image-trailer-size
+```
+
+Where:  
+  `image-slot-size` is the size of the image slot.
+  `image-trailer-sectors-size` is the size of the image trailer.
 
 ### [Swap without using scratch](#image-swap-no-scratch)
 
