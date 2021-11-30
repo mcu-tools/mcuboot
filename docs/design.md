@@ -232,8 +232,8 @@ maximum-image-size = image-slot-size - image-trailer-size
 ```
 
 Where:  
-  `image-slot-size` is the size of the image slot.
-  `image-trailer-sectors-size` is the size of the image trailer.
+  `image-slot-size` is the size of the image slot.  
+  `image-trailer-size` is the size of the image trailer.
 
 ### [Swap without using scratch](#image-swap-no-scratch)
 
