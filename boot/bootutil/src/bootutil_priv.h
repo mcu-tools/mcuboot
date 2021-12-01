@@ -130,14 +130,6 @@ struct boot_status {
 
 extern const uint32_t boot_img_magic[4];
 
-#ifdef MCUBOOT_IMAGE_NUMBER
-#define BOOT_IMAGE_NUMBER          MCUBOOT_IMAGE_NUMBER
-#else
-#define BOOT_IMAGE_NUMBER          1
-#endif
-
-_Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
-
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 #define ARE_SLOTS_EQUIVALENT()    0
 #else

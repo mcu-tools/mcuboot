@@ -36,6 +36,14 @@
 extern "C" {
 #endif
 
+#ifdef MCUBOOT_IMAGE_NUMBER
+#define BOOT_IMAGE_NUMBER          MCUBOOT_IMAGE_NUMBER
+#else
+#define BOOT_IMAGE_NUMBER          1
+#endif
+
+_Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
+
 struct image_header;
 /**
  * A response object provided by the boot loader code; indicates where to jump
