@@ -189,7 +189,7 @@
  * for the time needed to erase large chunk of flash.
  */
 #ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
-#define MCBOOT_ERASE_PROGRESSIVELY
+#define MCUBOOT_ERASE_PROGRESSIVELY
 #endif
 
 /*
