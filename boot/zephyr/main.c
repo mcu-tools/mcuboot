@@ -86,17 +86,13 @@ K_SEM_DEFINE(boot_log_sem, 1, 1);
 #endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) */
 
 #ifdef CONFIG_SOC_FAMILY_NRF
-#include <hal/nrf_power.h>
+#include <helpers/nrfx_reset_reason.h>
 
 static inline bool boot_skip_serial_recovery()
 {
-#if NRF_POWER_HAS_RESETREAS
-    uint32_t rr = nrf_power_resetreas_get(NRF_POWER);
+    uint32_t rr = nrfx_reset_reason_get();
 
-    return !(rr == 0 || (rr & NRF_POWER_RESETREAS_RESETPIN_MASK));
-#else
-    return false;
-#endif
+    return !(rr == 0 || (rr & NRFX_RESET_REASON_RESETPIN_MASK));
 }
 #else
 static inline bool boot_skip_serial_recovery()
