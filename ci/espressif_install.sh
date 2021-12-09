@@ -9,8 +9,13 @@ IDF_PATH="${ESPRESSIF_ROOT}/hal/esp-idf"
 
 set -eo pipefail
 
+install_imgtool() {
+    pip install imgtool
+}
+
 install_idf() {
     "${IDF_PATH}"/install.sh
 }
 
+install_imgtool
 install_idf
