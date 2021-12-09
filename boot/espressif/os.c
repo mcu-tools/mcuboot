@@ -9,7 +9,7 @@
 #include <mbedtls/platform.h>
 #include <mbedtls/memory_buffer_alloc.h>
 
-#define CRYPTO_HEAP_SIZE 16384
+#define CRYPTO_HEAP_SIZE 8192
 
 static unsigned char memory_buf[CRYPTO_HEAP_SIZE];
 
