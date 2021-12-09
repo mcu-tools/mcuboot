@@ -9,15 +9,23 @@ IDF_PATH="${ESPRESSIF_ROOT}/hal/esp-idf"
 
 set -eo pipefail
 
-build_mcuboot() {
-  local target=${MCUBOOT_TARGET}
-  local build_dir=".build-${target}"
-  local toolchain_file="${ESPRESSIF_ROOT}/tools/toolchain-${target}.cmake"
-  local mcuboot_config="${ESPRESSIF_ROOT}/bootloader.conf"
-
+prepare_environment() {
   # Prepare the environment for ESP-IDF
 
   . "${IDF_PATH}"/export.sh
+}
+
+build_mcuboot() {
+  local target=${MCUBOOT_TARGET}
+  local feature=${1}
+  local toolchain_file="${ESPRESSIF_ROOT}/tools/toolchain-${target}.cmake"
+  local mcuboot_config="${ESPRESSIF_ROOT}/bootloader.conf"
+  local build_dir=".build-${target}"
+
+  if [ -n "${feature}" ]; then
+    mcuboot_config="${ESPRESSIF_ROOT}/secureboot-${feature}.conf"
+    build_dir=".build-${target}-${feature}"
+  fi
 
   # Build MCUboot for selected target
 
@@ -31,4 +39,13 @@ build_mcuboot() {
   cmake --build "${build_dir}"/
 }
 
-build_mcuboot
+prepare_environment
+
+if [ -n "${MCUBOOT_FEATURES}" ]; then
+  IFS=','
+  read -ra feature_list <<< "${MCUBOOT_FEATURES}"
+  for feature in "${feature_list[@]}"; do
+    echo "Building MCUboot with support for \"${feature}\""
+    build_mcuboot "${feature}"
+  done
+fi
