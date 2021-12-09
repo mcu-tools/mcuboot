@@ -1,21 +1,27 @@
 /*
- * Linker file used to link the bootloader.
+ * SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* Simplified memory map for the bootloader.
+ *
+ * The main purpose is to make sure the bootloader can load into main memory
+ * without overwriting itself.
  */
 
 MEMORY
 {
-  iram_seg (RWX) :                  org = 0x403CB000, len = 0x5000
-  iram_loader_seg (RWX) :           org = 0x403D0000, len = 0x6000
-  dram_seg (RW) :                   org = 0x3FCD6000, len = 0x7000
+  iram_seg (RWX) :                  org = 0x403C8000, len = 0x8000
+  iram_loader_seg (RWX) :           org = 0x403D0000, len = 0x4800
+  dram_seg (RW) :                   org = 0x3FCD5000, len = 0x8800
 }
 
 /*  Default entry point:  */
 ENTRY(main);
 
-
 SECTIONS
 {
-
   .iram_loader.text :
   {
     . = ALIGN (16);

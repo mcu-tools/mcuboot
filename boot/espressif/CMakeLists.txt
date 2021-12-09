@@ -82,17 +82,10 @@ else()
 endif()
 
 if (DEFINED CONFIG_ESP_SIGN_RSA)
-    if ("${MCUBOOT_TARGET}" STREQUAL "esp32s2" OR
-        "${MCUBOOT_TARGET}" STREQUAL "esp32c3")
-        message(FATAL_ERROR "RSA signature verification is currently not supported on the target")
-    endif()
     include(${CMAKE_CURRENT_LIST_DIR}/include/crypto_config/rsa.cmake)
 elseif (DEFINED CONFIG_ESP_SIGN_EC256)
     include(${CMAKE_CURRENT_LIST_DIR}/include/crypto_config/ec256.cmake)
 elseif (DEFINED CONFIG_ESP_SIGN_ED25519)
-    if ("${MCUBOOT_TARGET}" STREQUAL "esp32c3")
-        message(FATAL_ERROR "ED25519 signature verification is currently not supported on the target")
-    endif()
     include(${CMAKE_CURRENT_LIST_DIR}/include/crypto_config/ed25519.cmake)
 else()
     # No signature verification
