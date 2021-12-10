@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2021 Arm Limited
  *
  * Original license:
  *
@@ -35,6 +35,14 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#ifdef MCUBOOT_IMAGE_NUMBER
+#define BOOT_IMAGE_NUMBER          MCUBOOT_IMAGE_NUMBER
+#else
+#define BOOT_IMAGE_NUMBER          1
+#endif
+
+_Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 
 struct image_header;
 /**
@@ -68,8 +76,10 @@ struct image_trailer {
 
 /* you must have pre-allocated all the entries within this structure */
 fih_int boot_go(struct boot_rsp *rsp);
+fih_int boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id);
 
 struct boot_loader_state;
+void boot_state_clear(struct boot_loader_state *state);
 fih_int context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp);
 
 #define SPLIT_GO_OK                 (0)

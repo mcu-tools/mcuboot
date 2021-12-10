@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2019 Linaro LTD
+// Copyright (c) 2017-2021 Linaro LTD
 // Copyright (c) 2017-2019 JUUL Labs
 // Copyright (c) 2019-2021 Arm Limited
 //
@@ -64,7 +64,8 @@ impl BootGoResult {
 
 /// Invoke the bootloader on this flash device.
 pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
-               counter: Option<&mut i32>, catch_asserts: bool) -> BootGoResult {
+               counter: Option<&mut i32>, image_index: Option<i32>,
+               catch_asserts: bool) -> BootGoResult {
     for (&dev_id, flash) in multiflash.iter_mut() {
         api::set_flash(dev_id, flash);
     }
@@ -83,9 +84,16 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
         flash_dev_id: 0,
         image_off: 0,
     };
-    let result = unsafe {
-        raw::invoke_boot_go(&mut sim_ctx as *mut _, &areadesc.get_c() as *const _,
-            &mut rsp as *mut _) as i32
+    let result: i32 = unsafe {
+        match image_index {
+            None => raw::invoke_boot_go(&mut sim_ctx as *mut _,
+                                        &areadesc.get_c() as *const _,
+                                        &mut rsp as *mut _, -1) as i32,
+            Some(i) => raw::invoke_boot_go(&mut sim_ctx as *mut _,
+                                           &areadesc.get_c() as *const _,
+                                           &mut rsp as *mut _,
+                                           i as i32) as i32
+        }
     };
     let asserts = sim_ctx.c_asserts;
     if let Some(c) = counter {
@@ -151,7 +159,7 @@ mod raw {
         // be any way to get rid of this warning.  See https://github.com/rust-lang/rust/issues/34798
         // for information and tracking.
         pub fn invoke_boot_go(sim_ctx: *mut CSimContext, areadesc: *const CAreaDesc,
-            rsp: *mut BootRsp) -> libc::c_int;
+            rsp: *mut BootRsp, image_index: libc::c_int) -> libc::c_int;
 
         pub fn boot_trailer_sz(min_write_sz: u32) -> u32;
         pub fn boot_status_sz(min_write_sz: u32) -> u32;

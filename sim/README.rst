@@ -1,4 +1,4 @@
-MCUboot Simulator
+MCUboot simulator
 #################
 
 This is a small simulator designed to exercise the mcuboot upgrade

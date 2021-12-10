@@ -51,6 +51,10 @@
 void boot_custom_start(uintptr_t flash_base, struct boot_rsp *rsp);
 #endif
 
+#if MYNEWT_VAL(BOOT_PREBOOT)
+void boot_preboot(void);
+#endif
+
 #if defined(MCUBOOT_SERIAL)
 #define BOOT_SERIAL_REPORT_DUR  \
     (MYNEWT_VAL(OS_CPUTIME_FREQ) / MYNEWT_VAL(BOOT_SERIAL_REPORT_FREQ))
@@ -239,6 +243,9 @@ main(void)
     flash_map_init();
 #endif
 
+#if MYNEWT_VAL(BOOT_PREBOOT)
+    boot_preboot();
+#endif
     FIH_CALL(boot_go, fih_rc, &rsp);
     if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
         assert(fih_int_decode(fih_rc) == FIH_POSITIVE_VALUE);

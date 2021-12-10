@@ -48,7 +48,7 @@ characteristics:
 * Built to run from flash.
 * Built to run from a fixed location (i.e., not position-independent).
 
-## [Image Format](#image-format)
+## [Image format](#image-format)
 
 The following definitions describe the image format.
 
@@ -134,7 +134,7 @@ The `ih_hdr_size` field indicates the length of the header, and therefore the
 offset of the image itself.  This field provides for backwards compatibility in
 case of changes to the format of the image header.
 
-## [Flash Map](#flash-map)
+## [Flash map](#flash-map)
 
 A device's flash is partitioned according to its _flash map_.  At a high
 level, the flash map maps numeric IDs to _flash areas_.  A flash area is a
@@ -165,7 +165,7 @@ images therefore the flash area IDs of primary and secondary areas are mapped
 based on the number of the active image (on which the bootloader is currently
 working).
 
-## [Image Slots](#image-slots)
+## [Image slots](#image-slots)
 
 A portion of the flash memory can be partitioned into multiple image areas, each
 contains two image slots: a primary slot and a secondary slot.
@@ -179,8 +179,11 @@ contents of the primary slot. The bootloader supports either swap- or
 overwrite-based image upgrades, but must be configured at build time to choose
 one of these two strategies.
 
-In addition to the slots of image areas, the bootloader requires a scratch
-area to allow for reliable image swapping. The scratch area must have a size
+### [Swap using scratch](#image-swap-using-scratch)
+
+When swap-using-scratch algorithm is used, in addition to the slots of
+image areas, the bootloader requires a scratch area to allow for reliable
+image swapping. The scratch area must have a size
 that is enough to store at least the largest sector that is going to be swapped.
 Many devices have small equally sized flash sectors, eg 4K, while others have
 variable sized sectors where the largest sectors might be 128K or 256K, so the
@@ -220,6 +223,59 @@ and during development, as well as any desired safety margin on the
 manufacturer's specified number of erase cycles. In general, using a ratio that
 allows hundreds to thousands of field upgrades in production is recommended.
 
+swap-using scratch algorithm assumes that the primary and the secondary image
+slot areas sizes are equal.
+The maximum image size available for the application
+will be:  
+```
+maximum-image-size = image-slot-size - image-trailer-size
+```
+
+Where:  
+  `image-slot-size` is the size of the image slot.  
+  `image-trailer-size` is the size of the image trailer.
+
+### [Swap without using scratch](#image-swap-no-scratch)
+
+This algorithm is an alternative to the swap-using-scratch algorithm.
+It uses an additional sector in the primary slot to make swap possible.
+The algorithm works as follows:
+
+  1.	Moves all sectors of the primary slot up by one sector.  
+    Beginning from N=0:  
+  2.	Copies the N-th sector from the secondary slot to the N-th sector of the
+  primary slot.
+  3.	Copies the (N+1)-th sector from the primary slot to the N-th sector of the
+  secondary slot.
+  4.	Repeats steps 2. and 3. until all the slots' sectors are swapped.
+
+This algorithm is designed so that the higher sector of the primary slot is
+used only for allowing sectors to move up. Therefore the most
+memory-size-effective slot layout is when the primary slot is exactly one sector
+larger than the secondary slot, although same-sized slots are allowed as well.
+The algorithm is limited to support sectors of the same
+sector layout. All slot's sectors should be of the same size.
+
+When using this algorithm the maximum image size available for the application
+will be:  
+```
+maximum-image-size = (N-1) * slot-sector-size - image-trailer-sectors-size
+```
+
+Where:  
+  `N` is the number of sectors in the primary slot.  
+  `image-trailer-sectors-size` is the size of the image trailer rounded up to
+  the total size of sectors its occupied. For instance if the image-trailer-size
+  is equal to 1056 B and the sector size is equal to 1024 B, then
+  `image-trailer-sectors-size` will be equal to 2048 B.
+
+The algorithm does two erase cycles on the primary slot and one on the secondary
+slot during each swap. Assuming that receiving a new image by the DFU
+application requires 1 erase cycle on the secondary slot, this should result in
+leveling the flash wear between the slots.
+
+The algorithm is enabled using the `MCUBOOT_SWAP_USING_MOVE` option.
+
 ### [Equal slots (direct-xip)](#direct-xip)
 
 When the direct-xip mode is enabled the active image flag is "moved" between the
@@ -251,7 +307,7 @@ work properly even when it is reset during the middle of an image swap. For this
 reason, the rest of the document describes its behavior when configured to swap
 images during an upgrade.
 
-### [RAM Loading](#ram-load)
+### [RAM loading](#ram-load)
 
 In ram-load mode the slots are equal. Like the direct-xip mode, this mode
 also selects the newest image by reading the image version numbers in the image
@@ -293,7 +349,7 @@ happens as described above. If the image is encrypted, it is copied in RAM at
 the provided address and then decrypted. Finally, the decrypted image is
 authenticated in RAM and executed.
 
-## [Boot Swap Types](#boot-swap-types)
+## [Boot swap types](#boot-swap-types)
 
 When the device first boots under normal circumstances, there is an up-to-date
 firmware image in each primary slot, which MCUboot can validate and then
@@ -375,7 +431,7 @@ direct-xip mode's "revert" mechanism are the following:
         - Proceed to step 3.
 3. Proceed to image validation ...
 
-## [Image Trailer](#image-trailer)
+## [Image trailer](#image-trailer)
 
 For the bootloader to be able to determine the current state and what actions
 should be taken during the current boot operation, it uses metadata stored in
@@ -417,10 +473,15 @@ image trailer. An image trailer has the following structure:
 The offset immediately following such a record represents the start of the next
 flash area.
 
-Note: "min-write-size" is a property of the flash hardware.  If the hardware
-allows individual bytes to be written at arbitrary addresses, then
-min-write-size is 1.  If the hardware only allows writes at even addresses,
-then min-write-size is 2, and so on.
+---
+***Note***
+
+*"min-write-size" is a property of the flash hardware.  If the hardware*
+*allows individual bytes to be written at arbitrary addresses, then*
+*min-write-size is 1.  If the hardware only allows writes at even addresses,*
+*then min-write-size is 2, and so on.*
+
+---
 
 An image trailer contains the following fields:
 
@@ -489,8 +550,16 @@ of 3 is explained below.
         0x8079b62c,
     };
 ```
+---
+***Note***
+Be aware that the image trailers make the ending area of the image slot
+unavailable for carrying the image data. In particular, the swap status size
+could be huge. For example, for 128 slot sectors with a 4-byte alignment,
+it would become 1536 B.
 
-## [IMAGE TRAILERS](#image-trailers)
+---
+
+## [Image trailers](#image-trailers)
 
 At startup, the bootloader determines the boot swap type by inspecting the
 image trailers.  When using the term "image trailers" what is meant is the
@@ -507,9 +576,14 @@ it is difficult to get a sense of the state of the device just by looking at the
 image trailers.  It is better to map all the possible trailer states to the swap
 types described above via a set of tables.  These tables are reproduced below.
 
-Note: An important caveat about the tables described below is that they must
-be evaluated in the order presented here. Lower state numbers must have a
-higher priority when testing the image trailers.
+---
+***Note***
+
+*An important caveat about the tables described below is that they must*
+*be evaluated in the order presented here. Lower state numbers must have a*
+*higher priority when testing the image trailers.*
+
+---
 
 ```
     State I
@@ -571,11 +645,16 @@ fatal error occurs during boot, the result is `BOOT_SWAP_TYPE_PANIC`. If the
 result is either `BOOT_SWAP_TYPE_FAIL` or `BOOT_SWAP_TYPE_PANIC`, MCUboot hangs
 rather than booting an invalid or compromised image.
 
-Note: An important caveat to the above is the result when a swap is requested
-      and the image in the secondary slot fails to validate, due to a hashing or
-      signing error. This state behaves as State IV with the extra action of
-      marking the image in the primary slot as "OK", to prevent further attempts
-      to swap.
+---
+***Note***
+
+*An important caveat to the above is the result when a swap is requested*
+*and the image in the secondary slot fails to validate, due to a hashing or*
+*signing error. This state behaves as State IV with the extra action of*
+*marking the image in the primary slot as "OK", to prevent further attempts*
+*to swap.*
+
+---
 
 ### [Resumed swaps](#resumed-swaps)
 
@@ -585,7 +664,7 @@ occurred mid-swap), it fully determines the operation to resume by reading the
 0-3. The set of tables in the previous section are not necessary in the resume
 case.
 
-## [High-Level Operation](#high-level-operation)
+## [High-level operation](#high-level-operation)
 
 With the terms defined, we can now explore the bootloader's operation.  First,
 a high-level overview of the boot process is presented.  Then, the following
@@ -613,7 +692,7 @@ Procedure:
 
 3. Boot into image in primary slot.
 
-### [Multiple Image Boot](#multiple-image-boot)
+### [Multiple image boot](#multiple-image-boot)
 
 When the flash contains multiple executable images the bootloader's operation
 is a bit more complex but similar to the previously described procedure with
@@ -705,7 +784,7 @@ process is presented below.
 + Boot into image in the primary slot of the 0th image position\
   (other image in the boot chain is started by another image).
 
-### [Multiple Image Boot for RAM loading and direct-xip](#multiple-image-boot-for-ram-loading-and-direct-xip)
+### [Multiple image boot for RAM loading and direct-xip](#multiple-image-boot-for-ram-loading-and-direct-xip)
 
 The operation of the bootloader is different when the ram-load or the
 direct-xip strategy is chosen. The flash map is very similar to the swap
@@ -740,7 +819,7 @@ strategy but there is no need for Scratch area.
 
 + Boot the loaded slot of image 0.
 
-## [Image Swapping](#image-swapping)
+## [Image swapping](#image-swapping)
 
 The bootloader swaps the contents of the two image slots for two reasons:
 
@@ -798,13 +877,21 @@ trailer can be written by the user at a later time.  With the image trailer
 unwritten, the user can test the image in the secondary slot
 (i.e., transition to state I).
 
-Note1: If the region being copied contains the last sector, then swap status is
-temporarily maintained on scratch for the duration of this operation, always
-using the primary slot's area otherwise.
+---
+***Note***
 
-Note2: The bootloader tries to copy only used sectors (based on largest image
-installed on any of the slots), minimizing the amount of sectors copied and
-reducing the amount of time required for a swap operation.
+*If the region being copied contains the last sector, then swap status is*
+*temporarily maintained on scratch for the duration of this operation, always*
+*using the primary slot's area otherwise.*
+
+---
+***Note***
+
+*The bootloader tries to copy only used sectors (based on largest image*
+*installed on any of the slots), minimizing the amount of sectors copied and*
+*reducing the amount of time required for a swap operation.*
+
+---
 
 The particulars of step 3 vary depending on whether an image is being tested,
 permanently used, reverted or a validation failure of the secondary slot
@@ -836,7 +923,7 @@ happened when a swap was requested:
 After completing the operations as described above the image in the primary slot
 should be booted.
 
-## [Swap Status](#swap-status)
+## [Swap status](#swap-status)
 
 The swap status region allows the bootloader to recover in case it restarts in
 the middle of an image swap operation.  The swap status region consists of a
@@ -914,10 +1001,15 @@ in the middle of the region. For example, if a slot uses 64 sectors, the first
 sector index that gets swapped is 63, which corresponds to the exact halfway
 point within the region.
 
-Note: since the scratch area only ever needs to record swapping of the last
-sector, it uses at most min-write-size * 3 bytes for its own status area.
+---
+***Note***
 
-## [Reset Recovery](#reset-recovery)
+*Since the scratch area only ever needs to record swapping of the last*
+*sector, it uses at most min-write-size * 3 bytes for its own status area.*
+
+---
+
+## [Reset recovery](#reset-recovery)
 
 If the bootloader resets in the middle of a swap operation, the two images may
 be discontiguous in flash.  Bootutil recovers from this condition by using the
@@ -986,7 +1078,7 @@ belongs to image 0 or image 1.
 After the swap operation has been completed, the bootloader proceeds as though
 it had just been started.
 
-## [Integrity Check](#integrity-check)
+## [Integrity check](#integrity-check)
 
 An image is checked for integrity immediately before it gets copied into the
 primary slot.  If the bootloader doesn't perform an image swap, then it can
@@ -1024,10 +1116,15 @@ producing signed images, see: [signed_images](signed_images.md).
 If you want to enable and use encrypted images, see:
 [encrypted_images](encrypted_images.md).
 
-Note: Image encryption is not supported when the direct-xip upgrade strategy
-is selected.
+---
+***Note***
 
-### [Using Hardware Keys for Verification](#hw-key-support)
+*Image encryption is not supported when the direct-xip upgrade strategy*
+*is selected.*
+
+---
+
+### [Using hardware keys for verification](#hw-key-support)
 
 By default, the whole public key is embedded in the bootloader code and its
 hash is added to the image manifest as a KEYHASH TLV entry. As an alternative
@@ -1082,7 +1179,7 @@ D | +-----------------+ |
   +---------------------+
 ```
 
-## [Dependency Check](#dependency-check)
+## [Dependency check](#dependency-check)
 
 MCUboot can handle multiple firmware images. It is possible to update them
 independently but in many cases it can be desired to be able to describe
@@ -1106,14 +1203,14 @@ state after dependency check.
 For more information on adding dependency entries to an image,
 see: [imgtool](imgtool.md).
 
-## [Downgrade Prevention](#downgrade-prevention)
+## [Downgrade prevention](#downgrade-prevention)
 
 Downgrade prevention is a feature which enforces that the new image must have a
 higher version/security counter number than the image it is replacing, thus
 preventing the malicious downgrading of the device to an older and possibly
 vulnerable version of its firmware.
 
-### [SW Based Downgrade Prevention](#sw-downgrade-prevention)
+### [Software-based downgrade prevention](#sw-downgrade-prevention)
 
 During the software based downgrade prevention the image version numbers are
 compared. This feature is enabled with the `MCUBOOT_DOWNGRADE_PREVENTION`
@@ -1121,7 +1218,7 @@ option. In this case downgrade prevention is only available when the
 overwrite-based image update strategy is used (i.e. `MCUBOOT_OVERWRITE_ONLY`
 is set).
 
-### [HW Based Downgrade Prevention](#hw-downgrade-prevention)
+### [Hardware-based downgrade prevention](#hw-downgrade-prevention)
 
 Each signed image can contain a security counter in its protected TLV area, which
 can be added to the image using the `-s` option of the [imgtool](imgtool.md) script.

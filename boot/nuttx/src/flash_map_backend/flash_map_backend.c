@@ -64,9 +64,9 @@ struct flash_device_s
 
   struct partition_info_s partinfo;
 
-  int     fd;          /* File descriptor for an open flash area */
-  int32_t refs;        /* Reference counter */
-  uint8_t erase_state; /* Byte value of the flash erased state */
+  int      fd;          /* File descriptor for an open flash area */
+  uint32_t refs;        /* Reference counter */
+  uint8_t  erase_state; /* Byte value of the flash erased state */
 };
 
 /****************************************************************************
@@ -232,11 +232,11 @@ static struct flash_device_s *lookup_flash_device_by_offset(uint32_t offset)
  *   Retrieve flash area from the flash map for a given ID.
  *
  * Input Parameters:
- *   fa_id - ID of the flash area.
+ *   id - ID of the flash area.
  *
  * Output Parameters:
- *   fa    - Pointer which will contain the reference to flash_area.
- *           If ID is unknown, it will be NULL on output.
+ *   fa - Pointer which will contain the reference to flash_area.
+ *        If ID is unknown, it will be NULL on output.
  *
  * Returned Value:
  *   Zero on success, or negative value in case of error.
@@ -254,7 +254,7 @@ int flash_area_open(uint8_t id, const struct flash_area **fa)
   dev = lookup_flash_device_by_id(id);
   if (dev == NULL)
     {
-      BOOT_LOG_ERR("Undefined flash area: %d", id);
+      BOOT_LOG_ERR("Undefined flash area: %" PRIu8, id);
 
       return ERROR;
     }
@@ -263,7 +263,7 @@ int flash_area_open(uint8_t id, const struct flash_area **fa)
 
   if (dev->refs++ > 0)
     {
-      BOOT_LOG_INF("Flash area ID %d already open, count: %d (+)",
+      BOOT_LOG_INF("Flash area ID %" PRIu8 " already open, count: %" PRIu32 " (+)",
                    id, dev->refs);
 
       return OK;
@@ -319,7 +319,7 @@ int flash_area_open(uint8_t id, const struct flash_area **fa)
 
   dev->fd = fd;
 
-  BOOT_LOG_INF("Flash area %d open, count: %d (+)", id, dev->refs);
+  BOOT_LOG_INF("Flash area %" PRIu8 " open, count: %" PRIu32 " (+)", id, dev->refs);
 
   return OK;
 
@@ -363,7 +363,7 @@ void flash_area_close(const struct flash_area *fa)
       return;
     }
 
-  BOOT_LOG_INF("Close request for flash area %" PRIu8 ", count: %d (-)",
+  BOOT_LOG_INF("Close request for flash area %" PRIu8 ", count: %" PRIu32 " (-)",
                fa->fa_id, dev->refs);
 
   if (--dev->refs == 0)
@@ -552,7 +552,7 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
       return ERROR;
     }
 
-  memset(buffer, erase_val, sizeof(buffer));
+  memset(buffer, erase_val, sector_size);
 
   i = 0;
 
@@ -568,7 +568,7 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
 
   if (ret == OK)
     {
-      BOOT_LOG_DBG("Erasing %zu bytes at offset %" PRIu32,
+      BOOT_LOG_DBG("Erasing %" PRIu32 " bytes at offset %" PRIu32,
                    len - i, off + i);
 
       ret = flash_area_write(fa, off + i, buffer, len - i);
@@ -752,30 +752,30 @@ int flash_area_id_from_image_slot(int slot)
  *
  * Input Parameters:
  *   image_index - Index of the image.
- *   fa_id       - Image slot, which may be 0 (primary) or 1 (secondary).
- *
+ *   area_id     - Unique identifier that is represented by fa_id in the
+ *                 flash_area struct.
  * Returned Value:
  *   Image slot index (0 or 1), or negative value in case ID doesn't
  *   correspond to an image slot.
  *
  ****************************************************************************/
 
-int flash_area_id_to_multi_image_slot(int image_index, int fa_id)
+int flash_area_id_to_multi_image_slot(int image_index, int area_id)
 {
-  BOOT_LOG_INF("image_index:%d fa_id:%d", image_index, fa_id);
+  BOOT_LOG_INF("image_index:%d area_id:%d", image_index, area_id);
 
-  if (fa_id == FLASH_AREA_IMAGE_PRIMARY(image_index))
+  if (area_id == FLASH_AREA_IMAGE_PRIMARY(image_index))
     {
       return 0;
     }
 
-  if (fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index))
+  if (area_id == FLASH_AREA_IMAGE_SECONDARY(image_index))
     {
       return 1;
     }
 
-  BOOT_LOG_ERR("Unexpected Request: image_index:%d, fa_id:%d",
-               image_index, fa_id);
+  BOOT_LOG_ERR("Unexpected Request: image_index:%d, area_id:%d",
+               image_index, area_id);
 
   return ERROR; /* flash_area_open will fail on that */
 }
@@ -790,7 +790,7 @@ int flash_area_id_to_multi_image_slot(int image_index, int fa_id)
  *   offset - Image offset.
  *
  * Returned Value:
- *   Flash area ID (0 or 1), or negative value in case the requested slot
+ *   Flash area ID (0 or 1), or negative value in case the requested offset
  *   is invalid.
  *
  ****************************************************************************/
@@ -801,5 +801,12 @@ int flash_area_id_from_image_offset(uint32_t offset)
 
   BOOT_LOG_INF("offset:%" PRIu32, offset);
 
-  return dev->fa_cfg->fa_id;
+  if (dev != NULL)
+    {
+      return dev->fa_cfg->fa_id;
+    }
+
+  BOOT_LOG_ERR("Unexpected Request: offset:%" PRIu32, offset);
+
+  return ERROR; /* flash_area_open will fail on that */
 }

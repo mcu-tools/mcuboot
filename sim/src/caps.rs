@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2019 Linaro LTD
+// Copyright (c) 2017-2021 Linaro LTD
 // Copyright (c) 2019 JUUL Labs
 // Copyright (c) 2019-2021 Arm Limited
 //
@@ -34,6 +34,11 @@ impl Caps {
     pub fn present(self) -> bool {
         let caps = unsafe { bootutil_get_caps() };
         (caps as u32) & (self as u32) != 0
+    }
+
+    /// Does this build have ECDSA of some type enabled for signatures.
+    pub fn has_ecdsa() -> bool {
+        Caps::EcdsaP256.present() || Caps::EcdsaP224.present()
     }
 
     /// Query for the number of images that have been configured into this

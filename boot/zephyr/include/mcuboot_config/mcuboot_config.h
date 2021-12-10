@@ -168,6 +168,10 @@
 #define MCUBOOT_IMAGE_ACCESS_HOOKS
 #endif
 
+#ifdef CONFIG_MCUBOOT_VERIFY_IMG_ADDRESS
+#define MCUBOOT_VERIFY_IMG_ADDRESS
+#endif
+
 /*
  * The configuration option enables direct image upload with the
  * serial recovery.
@@ -185,7 +189,7 @@
  * for the time needed to erase large chunk of flash.
  */
 #ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
-#define MCBOOT_ERASE_PROGRESSIVELY
+#define MCUBOOT_ERASE_PROGRESSIVELY
 #endif
 
 /*
@@ -240,13 +244,24 @@
 #error "No NRFX WDT instances enabled"
 #endif /* defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1) */
 
-#else /* CONFIG_NRFX_WDT */
+#elif CONFIG_IWDG_STM32 /* CONFIG_NRFX_WDT */
+#include <drivers/watchdog.h>
+
+#define MCUBOOT_WATCHDOG_FEED() \
+    do {                        \
+        const struct device* wdt =                          \
+            device_get_binding(                             \
+                DT_LABEL(DT_INST(0, st_stm32_watchdog)));   \
+        wdt_feed(wdt, 0);                                   \
+    } while (0)
+
+#else /* CONFIG_IWDG_STM32 */
 #warning "MCUBOOT_WATCHDOG_FEED() is no-op"
 /* No vendor implementation, no-op for historical reasons */
 #define MCUBOOT_WATCHDOG_FEED()         \
     do {                                \
     } while (0)
-#endif /* CONFIG_NRFX_WDT */
+#endif
 #else  /* CONFIG_BOOT_WATCHDOG_FEED */
 /* Not enabled, no feed activity */
 #define MCUBOOT_WATCHDOG_FEED()         \

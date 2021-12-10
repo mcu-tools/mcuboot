@@ -11,7 +11,7 @@ Refer to **Cypress Semiconductors** [github](https://github.com/cypresssemicondu
 1. MCUboot-Based Basic Bootloader [mtb-example-psoc6-mcuboot-basic](https://github.com/cypresssemiconductorco/mtb-example-psoc6-mcuboot-basic)
 2. MCUboot-Based Bootloader with Rollback to Factory App in External Flash [mtb-example-anycloud-mcuboot-rollback](https://github.com/cypresssemiconductorco/mtb-example-anycloud-mcuboot-rollback)
 
-### Solution Description
+### Solution description
 
 There are two applications implemented:
 * MCUBootApp - PSoC6 MCUboot-based bootloading application;
@@ -31,7 +31,7 @@ For more details about External Memory usage, please refer to separate guiding d
 
 MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses either completely software implementation of cryptographic functions or accelerated by hardware - both based on Mbed TLS Library.
 
-### Downloading Solution's Assets
+### Downloading solution's assets
 
 There is a set assets required:
 
@@ -52,7 +52,7 @@ Submodules can also be updated and initialized separately:
 
 
 
-### Building Solution
+### Building solution
 
 Root directory for build is **boot/cypress.**
 

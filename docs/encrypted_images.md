@@ -132,8 +132,13 @@ presence of the `ENCRYPTED` flag and the key TLV. If those are present the
 sectors are re-encrypted when copying from the `primary slot` to
 the `secondary slot`.
 
-PS: Each encrypted image must have its own key TLV that should be unique
-and used only for this particular image.
+---
+***Note***
+
+*Each encrypted image must have its own key TLV that should be unique*
+*and used only for this particular image.*
+
+---
 
 Also when swap method is employed, the sizes of both images are saved to
 the status area just before starting the upgrade process, because it

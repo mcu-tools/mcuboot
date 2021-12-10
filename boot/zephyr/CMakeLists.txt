@@ -191,6 +191,13 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   # Use mbedTLS provided by Zephyr for RSA signatures. (Its config file
   # is set using Kconfig.)
   zephyr_include_directories(include)
+  if(CONFIG_BOOT_ENCRYPT_RSA)
+    set_source_files_properties(
+      ${BOOT_DIR}/bootutil/src/encrypted.c
+      PROPERTIES
+      INCLUDE_DIRECTORIES ${ZEPHYR_MBEDTLS_MODULE_DIR}/library
+      )
+  endif()
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
   if(CONFIG_BOOT_USE_TINYCRYPT)
     zephyr_library_include_directories(

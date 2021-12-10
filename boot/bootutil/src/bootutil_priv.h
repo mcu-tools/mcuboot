@@ -130,14 +130,6 @@ struct boot_status {
 
 extern const uint32_t boot_img_magic[4];
 
-#ifdef MCUBOOT_IMAGE_NUMBER
-#define BOOT_IMAGE_NUMBER          MCUBOOT_IMAGE_NUMBER
-#else
-#define BOOT_IMAGE_NUMBER          1
-#endif
-
-_Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
-
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 #define ARE_SLOTS_EQUIVALENT()    0
 #else
@@ -224,7 +216,24 @@ struct boot_loader_state {
 
 #if (BOOT_IMAGE_NUMBER > 1)
     uint8_t curr_img_idx;
+    bool img_mask[BOOT_IMAGE_NUMBER];
 #endif
+
+#if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
+    struct slot_usage_t {
+        /* Index of the slot chosen to be loaded */
+        uint32_t active_slot;
+        bool slot_available[BOOT_NUM_SLOTS];
+#if defined(MCUBOOT_RAM_LOAD)
+        /* Image destination and size for the active slot */
+        uint32_t img_dst;
+        uint32_t img_sz;
+#elif defined(MCUBOOT_DIRECT_XIP_REVERT)
+        /* Swap status for the active slot */
+        struct boot_swap_state swap_state;
+#endif
+    } slot_usage[BOOT_IMAGE_NUMBER];
+#endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 };
 
 fih_int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,

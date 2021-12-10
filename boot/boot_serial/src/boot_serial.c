@@ -63,12 +63,8 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
-#ifndef BOOT_IMAGE_NUMBER
-#define BOOT_IMAGE_NUMBER MCUBOOT_IMAGE_NUMBER
-#endif
-
 #define BOOT_SERIAL_INPUT_MAX   512
-#define BOOT_SERIAL_OUT_MAX     (128 * MCUBOOT_IMAGE_NUMBER)
+#define BOOT_SERIAL_OUT_MAX     (128 * BOOT_IMAGE_NUMBER)
 
 #ifdef __ZEPHYR__
 /* base64 lib encodes data to null-terminated string */
@@ -667,6 +663,7 @@ boot_serial_start(const struct boot_uart_funcs *f)
     off = 0;
     while (1) {
         MCUBOOT_CPU_IDLE();
+        MCUBOOT_WATCHDOG_FEED();
         rc = f->read(in_buf + off, sizeof(in_buf) - off, &full_line);
         if (rc <= 0 && !full_line) {
             continue;

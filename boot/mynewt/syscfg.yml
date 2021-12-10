@@ -28,6 +28,9 @@ syscfg.defs:
     BOOT_CUSTOM_START:
         description: 'Override hal_system_start with a custom start routine'
         value: 0
+    BOOT_PREBOOT:
+        description: 'Call boot_preboot() function before booting application'
+        value:
 
 syscfg.vals:
     SYSINIT_CONSTRAIN_INIT: 0
