@@ -40,6 +40,7 @@ extern "C" {
 #define MGMT_ERR_EUNKNOWN       2
 #define MGMT_ERR_EINVAL         3
 #define MGMT_ERR_ENOTSUP        8
+#define MGMT_ERR_REJECTED_UPD  10
 
 #define NMGR_OP_READ            0
 #define NMGR_OP_WRITE           2

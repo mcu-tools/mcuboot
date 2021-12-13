@@ -58,7 +58,7 @@
 #include "bootutil_priv.h"
 #endif
 
-#ifdef MCUBOOT_ENC_IMAGES
+#if defined MCUBOOT_ENC_IMAGES || defined MCUBOOT_DOWNGRADE_PREVENTION
 #include "single_loader.h"
 #endif
 
@@ -102,6 +102,9 @@ static cbor_state_backups_t dummy_backups;
 static cbor_state_t cbor_state = {
     .backups = &dummy_backups
 };
+#ifdef MCUBOOT_DOWNGRADE_PREVENTION
+static bool updatable;
+#endif /* MCUBOOT_DOWNGRADE_PREVENTION */
 
 /**
  * Function that processes MGMT_GROUP_ID_PERUSER mcumgr group and may be
@@ -266,6 +269,10 @@ bs_upload(char *buf, int len)
     static off_t off_last = -1;
     struct flash_sector sector;
 #endif
+#ifdef MCUBOOT_DOWNGRADE_PREVENTION
+    struct image_header* inc_hdr = NULL;
+    struct image_header st_hdr;
+#endif /* MCUBOOT_DOWNGRADE_PREVENTION */
 
     img_num = 0;
 
@@ -327,6 +334,32 @@ bs_upload(char *buf, int len)
         rc = MGMT_ERR_EINVAL;
         goto out;
     }
+
+#ifdef MCUBOOT_DOWNGRADE_PREVENTION
+    /* Comparison should happen once, on the reception of header */
+    if (off == 0) {
+        inc_hdr = (struct image_header*)img_data;
+        rc = BOOT_HOOK_CALL(boot_read_image_header_hook,
+                            BOOT_HOOK_REGULAR, 0, 0, &st_hdr);
+        if (rc == BOOT_HOOK_REGULAR) {
+            flash_area_read(fap, 0, &st_hdr, sizeof(st_hdr));
+        }
+        updatable = true;
+        /* Check if a firmware is already stored, if yes, compare versions */
+        if (st_hdr.ih_img_size < flash_area_get_size(fap)) {
+            rc = boot_version_cmp(&st_hdr.ih_ver,
+                                  &inc_hdr->ih_ver);
+            if (rc > 0) {
+                BOOT_LOG_INF("Update aborted due to strictly lower firmware version");
+                updatable = false;
+            }
+        }
+    }
+    if (!updatable) {
+        rc = MGMT_ERR_REJECTED_UPD;
+        goto out;
+    }
+#endif /* MCUBOOT_DOWNGRADE_PREVENTION */
 
     if (off == 0) {
         curr_off = 0;

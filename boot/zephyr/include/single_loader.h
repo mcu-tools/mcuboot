@@ -17,4 +17,14 @@ int boot_handle_enc_fw();
 
 fih_int boot_image_validate(const struct flash_area *fa_p,
                     struct image_header *hdr);
+
+/**
+ * Functions required for comparing version in a single slot configuration
+ */
+
+int boot_image_load_header(const struct flash_area *fa_p,
+                           struct image_header *hdr);
+
+int boot_version_cmp(const struct image_version *ver1,
+                     const struct image_version *ver2);
 #endif

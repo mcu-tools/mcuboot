@@ -66,7 +66,7 @@ boot_image_validate(const struct flash_area *fa_p,
  *
  * @return		0 on success, error code otherwise
  */
-static int
+int
 boot_image_load_header(const struct flash_area *fa_p,
                        struct image_header *hdr)
 {
@@ -395,6 +395,47 @@ out:
     return rc;
 }
 #endif
+
+#ifdef MCUBOOT_DOWNGRADE_PREVENTION
+/**
+ * Compare image version numbers not including the build number
+ *
+ * @param ver1           Pointer to the first image version to compare.
+ * @param ver2           Pointer to the second image version to compare.
+ *
+ * @retval -1           If ver1 is strictly less than ver2.
+ * @retval 0            If the image version numbers are equal,
+ *                      (not including the build number).
+ * @retval 1            If ver1 is strictly greater than ver2.
+ */
+int
+boot_version_cmp(const struct image_version *ver1,
+                 const struct image_version *ver2)
+{
+    if (ver1->iv_major > ver2->iv_major) {
+        return 1;
+    }
+    if (ver1->iv_major < ver2->iv_major) {
+        return -1;
+    }
+    /* The major version numbers are equal, continue comparison. */
+    if (ver1->iv_minor > ver2->iv_minor) {
+        return 1;
+    }
+    if (ver1->iv_minor < ver2->iv_minor) {
+        return -1;
+    }
+    /* The minor version numbers are equal, continue comparison. */
+    if (ver1->iv_revision > ver2->iv_revision) {
+        return 1;
+    }
+    if (ver1->iv_revision < ver2->iv_revision) {
+        return -1;
+    }
+
+    return 0;
+}
+#endif /* MCUBOOT_DOWNGRADE_PREVENTION */
 
 /**
  * Gather information on image and prepare for booting.
