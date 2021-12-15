@@ -94,18 +94,15 @@ out:
 }
 #endif
 
-uint32_t
-boot_status_sz(uint32_t min_write_sz)
+/*
+ * Amount of space used to save information required when doing a swap,
+ * or while a swap is under progress, but not the status of sector swap
+ * progress itself.
+ */
+static inline uint32_t
+boot_trailer_info_sz(void)
 {
-    return /* state for all sectors */
-           BOOT_STATUS_MAX_ENTRIES * BOOT_STATUS_STATE_COUNT * min_write_sz;
-}
-
-uint32_t
-boot_trailer_sz(uint32_t min_write_sz)
-{
-    return /* state for all sectors */
-           boot_status_sz(min_write_sz)           +
+    return (
 #ifdef MCUBOOT_ENC_IMAGES
            /* encryption keys */
 #  if MCUBOOT_SWAP_SAVE_ENCTLV
@@ -116,8 +113,45 @@ boot_trailer_sz(uint32_t min_write_sz)
 #endif
            /* swap_type + copy_done + image_ok + swap_size */
            BOOT_MAX_ALIGN * 4                     +
-           BOOT_MAGIC_SZ;
+           BOOT_MAGIC_SZ
+           );
 }
+
+/*
+ * Amount of space used to maintain progress information for a single swap
+ * operation.
+ */
+static inline uint32_t
+boot_status_entry_sz(uint32_t min_write_sz)
+{
+    return BOOT_STATUS_STATE_COUNT * min_write_sz;
+}
+
+uint32_t
+boot_status_sz(uint32_t min_write_sz)
+{
+    return BOOT_STATUS_MAX_ENTRIES * boot_status_entry_sz(min_write_sz);
+}
+
+uint32_t
+boot_trailer_sz(uint32_t min_write_sz)
+{
+    return boot_status_sz(min_write_sz) + boot_trailer_info_sz();
+}
+
+#if MCUBOOT_SWAP_USING_SCRATCH
+/*
+ * Similar to `boot_trailer_sz` but this function returns the space used to
+ * store status in the scratch partition. The scratch partition only stores
+ * status during the swap of the last sector from primary/secondary (which
+ * is the first swap operation) and thus only requires space for one swap.
+ */
+static uint32_t
+boot_scratch_trailer_sz(uint32_t min_write_sz)
+{
+    return boot_status_entry_sz(min_write_sz) + boot_trailer_info_sz();
+}
+#endif
 
 int
 boot_status_entries(int image_index, const struct flash_area *fap)
@@ -142,7 +176,15 @@ boot_status_off(const struct flash_area *fap)
 
     elem_sz = flash_area_align(fap);
 
-    off_from_end = boot_trailer_sz(elem_sz);
+#if MCUBOOT_SWAP_USING_SCRATCH
+    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
+        off_from_end = boot_scratch_trailer_sz(elem_sz);
+    } else {
+#endif
+        off_from_end = boot_trailer_sz(elem_sz);
+#if MCUBOOT_SWAP_USING_SCRATCH
+    }
+#endif
 
     assert(off_from_end <= flash_area_get_size(fap));
     return flash_area_get_size(fap) - off_from_end;
