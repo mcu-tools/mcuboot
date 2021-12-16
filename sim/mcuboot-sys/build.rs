@@ -33,6 +33,7 @@ fn main() {
     let downgrade_prevention = env::var("CARGO_FEATURE_DOWNGRADE_PREVENTION").is_ok();
     let ram_load = env::var("CARGO_FEATURE_RAM_LOAD").is_ok();
     let direct_xip = env::var("CARGO_FEATURE_DIRECT_XIP").is_ok();
+    let max_align_32 = env::var("CARGO_FEATURE_MAX_ALIGN_32").is_ok();
 
     let mut conf = CachedBuild::new();
     conf.conf.define("__BOOTSIM__", None);
@@ -41,11 +42,11 @@ fn main() {
     conf.conf.define("MCUBOOT_HAVE_ASSERT_H", None);
     conf.conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
 
-#[cfg(not(feature = "max-align-32"))]
-    conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("8"));
-
-#[cfg(feature = "max-align-32")]
-    conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("32"));
+    if max_align_32 {
+        conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("32"));
+    } else {
+        conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("8"));
+    }
 
     conf.conf.define("MCUBOOT_IMAGE_NUMBER", Some(if multiimage { "2" } else { "1" }));
 
