@@ -28,7 +28,7 @@
 #include "cbor_encode.h"
 
 #ifdef __ZEPHYR__
-#include <power/reboot.h>
+#include <sys/reboot.h>
 #include <sys/byteorder.h>
 #include <sys/__assert.h>
 #include <drivers/flash.h>
