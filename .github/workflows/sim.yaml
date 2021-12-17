@@ -7,6 +7,10 @@ on:
 
 name: Sim
 
+concurrency:
+  group: sim-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   environment:
     strategy:
