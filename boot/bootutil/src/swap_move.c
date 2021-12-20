@@ -104,6 +104,9 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
 
     /* We only know where the headers are located when bs is valid */
     if (bs != NULL && out_hdr->ih_magic != IMAGE_MAGIC) {
+        /*  Image is not valid, unset all flags to avoid further
+         *  unexpected behaviour */
+        out_hdr->ih_flags = 0;
         rc = -1;
         goto done;
     }

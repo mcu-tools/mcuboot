@@ -73,6 +73,13 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
         rc = BOOT_EFLASH;
     }
 
+    if (out_hdr->ih_magic != IMAGE_MAGIC) {
+       /*  Image is not valid, unset all flags to avoid further
+        *  unexpected behaviour */
+        out_hdr->ih_flags = 0;
+        rc = -1;
+    }
+
     return rc;
 }
 

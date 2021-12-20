@@ -91,6 +91,7 @@ boot_read_image_headers(struct boot_loader_state *state, bool require_all,
         struct boot_status *bs)
 {
     int rc;
+    bool hdr_ok = false;
     int i;
 
     for (i = 0; i < BOOT_NUM_SLOTS; i++) {
@@ -100,22 +101,24 @@ boot_read_image_headers(struct boot_loader_state *state, bool require_all,
         {
             rc = boot_read_image_header(state, i, boot_img_hdr(state, i), bs);
         }
-        if (rc != 0) {
-            /* If `require_all` is set, fail on any single fail, otherwise
-             * if at least the first slot's header was read successfully,
-             * then the boot loader can attempt a boot.
-             *
-             * Failure to read any headers is a fatal error.
-             */
-            if (i > 0 && !require_all) {
-                return 0;
-            } else {
-                return rc;
-            }
-        }
+
+        /* Failure to read any headers is a fatal error. */
+        if (rc > 0)
+            return rc;
+
+        /* If `require_all` is set, fail on any single fail */
+        if (rc != 0 && require_all)
+            return rc;
+
+        /*  Header present */
+        if (rc == 0)
+            hdr_ok = true;
     }
 
-    return 0;
+    /* If at least one slot's header was read successfully,
+     * then the boot loader can attempt to install or boot
+     */
+    return  hdr_ok ? 0 : -1 ;
 }
 
 /**
