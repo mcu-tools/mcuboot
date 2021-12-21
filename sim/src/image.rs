@@ -339,9 +339,13 @@ impl ImagesBuilder {
         match device {
             DeviceName::Stm32f4 => {
                 // STM style flash.  Large sectors, with a large scratch area.
-                let dev = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024,
-                                        64 * 1024,
-                                        128 * 1024, 128 * 1024, 128 * 1024],
+                // The flash layout as described is not present in any real STM32F4 device, but it
+                // serves to exercise support for sectors of varying sizes inside a single slot,
+                // as long as they are compatible in both slots and all fit in the scratch.
+                let dev = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024, 64 * 1024,
+                                        32 * 1024, 32 * 1024, 64 * 1024,
+                                        32 * 1024, 32 * 1024, 64 * 1024,
+                                        128 * 1024],
                                         align as usize, erased_val);
                 let dev_id = 0;
                 let mut areadesc = AreaDesc::new();

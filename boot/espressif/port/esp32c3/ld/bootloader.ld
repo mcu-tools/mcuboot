@@ -4,9 +4,9 @@
 
 MEMORY
 {
-  iram_seg (RWX) :    org = 0x403CA000, len = 0x6000
-  iram_loader_seg (RWX) : org = 0x403D0000, len = 0x2000
-  dram_seg (RW) :     org = 0x3FCD6000, len = 0x6000
+  iram_seg (RWX) :                  org = 0x403CB000, len = 0x5000
+  iram_loader_seg (RWX) :           org = 0x403D0000, len = 0x6000
+  dram_seg (RW) :                   org = 0x3FCD6000, len = 0x7000
 }
 
 /*  Default entry point:  */
@@ -24,6 +24,31 @@ SECTIONS
     *(.iram1 .iram1.*) /* catch stray IRAM_ATTR */
     *libhal.a:bootloader_flash.*(.literal .text .literal.* .text.*)
     *libhal.a:bootloader_flash_config_esp32c3.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_clock_loader.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_common_loader.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_flash.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_random.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_random*.*(.literal.bootloader_random_disable .text.bootloader_random_disable)
+    *libhal.a:bootloader_random*.*(.literal.bootloader_random_enable .text.bootloader_random_enable)
+    *libhal.a:bootloader_efuse_esp32c3.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_utility.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_sha.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_console_loader.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_panic.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_soc.*(.literal .text .literal.* .text.*)
+    *libhal.a:esp_image_format.*(.literal .text .literal.* .text.*)
+    *libhal.a:flash_encrypt.*(.literal .text .literal.* .text.*)
+    *libhal.a:flash_encryption_secure_features.*(.literal .text .literal.* .text.*)
+    *libhal.a:flash_partitions.*(.literal .text .literal.* .text.*)
+    *libhal.a:secure_boot.*(.literal .text .literal.* .text.*)
+    *libhal.a:secure_boot_secure_features.*(.literal .text .literal.* .text.*)
+    *libhal.a:secure_boot_signatures_bootloader.*(.literal .text .literal.* .text.*)
+    *libhal.a:wdt_hal_iram.*(.literal .text .literal.* .text.*)
+    *libhal.a:esp_efuse_table.*(.literal .text .literal.* .text.*)
+    *libhal.a:esp_efuse_fields.*(.literal .text .literal.* .text.*)
+    *libhal.a:esp_efuse_api.*(.literal .text .literal.* .text.*)
+    *libhal.a:esp_efuse_utility.*(.literal .text .literal.* .text.*)
+    *libhal.a:esp_efuse_api_key_esp32xx.*(.literal .text .literal.* .text.*)
     *esp_mcuboot.*(.literal .text .literal.* .text.*)
     *esp_loader.*(.literal .text .literal.* .text.*)
     *(.fini.literal)

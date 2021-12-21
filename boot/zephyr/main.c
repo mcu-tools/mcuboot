@@ -159,8 +159,6 @@ struct arm_vector_table {
     uint32_t reset;
 };
 
-extern void sys_clock_disable(void);
-
 static void do_boot(struct boot_rsp *rsp)
 {
     struct arm_vector_table *vt;
@@ -179,9 +177,8 @@ static void do_boot(struct boot_rsp *rsp)
                                      rsp->br_image_off +
                                      rsp->br_hdr->ih_hdr_size);
 
-#ifdef CONFIG_SYS_CLOCK_EXISTS
     sys_clock_disable();
-#endif
+
 #ifdef CONFIG_USB_DEVICE_STACK
     /* Disable the USB to prevent it from firing interrupts */
     usb_disable();

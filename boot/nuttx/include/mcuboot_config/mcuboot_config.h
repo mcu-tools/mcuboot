@@ -27,7 +27,7 @@
 #include <nuttx/config.h>
 
 #ifdef CONFIG_MCUBOOT_WATCHDOG
-#include "watchdog/watchdog.h"
+#  include "watchdog/watchdog.h"
 #endif
 
 /****************************************************************************
@@ -58,27 +58,43 @@
  * the default upgrade mode.
  */
 
-/* Uncomment to enable the overwrite-only code path. */
+/* Enable the overwrite-only code path. */
 
-/* #define MCUBOOT_OVERWRITE_ONLY */
+#ifdef CONFIG_MCUBOOT_OVERWRITE_ONLY
+#  define MCUBOOT_OVERWRITE_ONLY
+#endif
 
-#ifdef MCUBOOT_OVERWRITE_ONLY
-
-/* Uncomment to only erase and overwrite those primary slot sectors needed
+/* Only erase and overwrite those primary slot sectors needed
  * to install the new image, rather than the entire image slot.
  */
 
-/* #define MCUBOOT_OVERWRITE_ONLY_FAST */
-
+#ifdef CONFIG_MCUBOOT_OVERWRITE_ONLY_FAST
+#  define MCUBOOT_OVERWRITE_ONLY_FAST
 #endif
 
-/* Uncomment to enable the direct-xip code path. */
+/* Enable the direct-xip code path. */
 
-/* #define MCUBOOT_DIRECT_XIP */
+#ifdef CONFIG_MCUBOOT_DIRECT_XIP
+#  define MCUBOOT_DIRECT_XIP
+#endif
 
-/* Uncomment to enable the ram-load code path. */
+/* Enable the revert mechanism in direct-xip mode. */
 
-/* #define MCUBOOT_RAM_LOAD */
+#ifdef CONFIG_MCUBOOT_DIRECT_XIP_REVERT
+#  define MCUBOOT_DIRECT_XIP_REVERT
+#endif
+
+/* Enable the ram-load code path. */
+
+#ifdef CONFIG_MCUBOOT_RAM_LOAD
+#  define MCUBOOT_RAM_LOAD
+#endif
+
+/* Enable bootstrapping the erased primary slot from the secondary slot */
+
+#ifdef CONFIG_MCUBOOT_BOOTSTRAP
+#  define MCUBOOT_BOOTSTRAP
+#endif
 
 /* Cryptographic settings
  *
@@ -88,11 +104,11 @@
  */
 
 #ifdef CONFIG_MCUBOOT_USE_MBED_TLS
-#define MCUBOOT_USE_MBED_TLS
+#  define MCUBOOT_USE_MBED_TLS
 #endif
 
 #ifdef CONFIG_MCUBOOT_USE_TINYCRYPT
-#define MCUBOOT_USE_TINYCRYPT
+#  define MCUBOOT_USE_TINYCRYPT
 #endif
 
 /* Always check the signature of the image in the primary slot before
