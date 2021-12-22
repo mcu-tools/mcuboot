@@ -155,16 +155,6 @@ if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
         )
 endif()
 
-set_source_files_properties(
-    ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash.c
-    ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_clk_init.c
-    ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_init.c
-    ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_clk.c
-    ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_time.c
-    PROPERTIES COMPILE_FLAGS
-    "-Wno-unused-variable"
-    )
-
 set(LINKER_SCRIPTS
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.ld
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.libgcc.ld
