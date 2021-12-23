@@ -699,6 +699,8 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     last_sector_idx = 0;
     last_idx_secondary_slot = 0;
 
+    BOOT_LOG_INF("Starting swap using scratch algorithm.");
+
     /*
      * Knowing the size of the largest image between both slots, here we
      * find what is the last sector in the primary slot that needs swapping.
