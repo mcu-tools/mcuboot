@@ -196,15 +196,22 @@ struct boot_loader_state {
         struct image_header hdr;
         const struct flash_area *area;
         boot_sector_t *sectors;
-        uint32_t num_sectors;
+        size_t num_sectors;
     } imgs[BOOT_IMAGE_NUMBER][BOOT_NUM_SLOTS];
 
 #if MCUBOOT_SWAP_USING_SCRATCH
     struct {
         const struct flash_area *area;
         boot_sector_t *sectors;
-        uint32_t num_sectors;
+        size_t num_sectors;
     } scratch;
+#endif
+#if MCUBOOT_SWAP_USING_STATUS
+    struct {
+        const struct flash_area *area;
+        boot_sector_t *sectors;
+        size_t num_sectors;
+    } status;
 #endif
 
     uint8_t swap_type[BOOT_IMAGE_NUMBER];
@@ -241,11 +248,12 @@ fih_int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
 
 fih_int boot_fih_memequal(const void *s1, const void *s2, size_t n);
 
-int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
+bool boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
 int boot_status_entries(int image_index, const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
+uint32_t boot_swap_info_off(const struct flash_area *fap);
 int boot_read_swap_state(const struct flash_area *fap,
                          struct boot_swap_state *state);
 int boot_read_swap_state_by_id(int flash_area_id,
@@ -273,6 +281,13 @@ int boot_copy_region(struct boot_loader_state *state,
 int boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz);
 bool boot_status_is_reset(const struct boot_status *bs);
 
+#ifdef MCUBOOT_SWAP_USING_STATUS
+uint32_t boot_copy_done_off(const struct flash_area *fap);
+uint32_t boot_image_ok_off(const struct flash_area *fap);
+uint32_t boot_swap_size_off(const struct flash_area *fap);
+#endif
+
+
 #ifdef MCUBOOT_ENC_IMAGES
 int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
                        const struct boot_status *bs);
@@ -284,7 +299,7 @@ int boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs);
  * flash device provided in `flash_area` is.
  *
  * @returns true if the buffer is erased; false if any of the bytes is not
- * erased, or when buffer is NULL, or when len == 0.
+ * erased, or when area is NULL, or when buffer is NULL, or when len == 0.
  */
 bool bootutil_buffer_is_erased(const struct flash_area *area,
                                const void *buffer, size_t len);
@@ -332,7 +347,7 @@ static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
 #if (BOOT_IMAGE_NUMBER > 1)
 #define BOOT_CURR_IMG(state) ((state)->curr_img_idx)
 #else
-#define BOOT_CURR_IMG(state) 0
+#define BOOT_CURR_IMG(state) 0u
 #endif
 #ifdef MCUBOOT_ENC_IMAGES
 #define BOOT_CURR_ENC(state) ((state)->enc[BOOT_CURR_IMG(state)])

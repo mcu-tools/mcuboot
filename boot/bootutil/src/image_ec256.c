@@ -99,7 +99,7 @@ bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
     }
     return 0;
 }
-#endif /* CY_MBEDTLS_HW_ACCELERATION */
+#else /* !CY_MBEDTLS_HW_ACCELERATION */
 static int
 bootutil_import_key(uint8_t **cp, uint8_t *end)
 {
@@ -141,6 +141,7 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
 
     return 0;
 }
+#endif /* CY_MBEDTLS_HW_ACCELERATION */
 
 #ifndef MCUBOOT_ECDSA_NEED_ASN1_SIG
 /*

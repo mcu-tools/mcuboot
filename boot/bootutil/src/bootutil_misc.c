@@ -41,7 +41,11 @@
 #include "bootutil/enc_key.h"
 #endif
 
-BOOT_LOG_MODULE_DECLARE(mcuboot);
+#ifdef MCUBOOT_SWAP_USING_STATUS
+#include "swap_status.h"
+#endif
+
+MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /* Currently only used by imgmgr */
 int boot_current_slot;
@@ -134,6 +138,7 @@ boot_status_entries(int image_index, const struct flash_area *fap)
     return -1;
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 uint32_t
 boot_status_off(const struct flash_area *fap)
 {
@@ -141,18 +146,22 @@ boot_status_off(const struct flash_area *fap)
     uint8_t elem_sz;
 
     elem_sz = flash_area_align(fap);
+    assert(elem_sz != 0u);
 
     off_from_end = boot_trailer_sz(elem_sz);
 
     assert(off_from_end <= flash_area_get_size(fap));
     return flash_area_get_size(fap) - off_from_end;
 }
+#endif
 
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
     return flash_area_get_size(fap) - BOOT_MAGIC_SZ;
 }
+
+#ifndef MCUBOOT_SWAP_USING_STATUS
 
 static inline uint32_t
 boot_image_ok_off(const struct flash_area *fap)
@@ -171,6 +180,7 @@ boot_swap_size_off(const struct flash_area *fap)
 {
     return boot_swap_info_off(fap) - BOOT_MAX_ALIGN;
 }
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
 
 #ifdef MCUBOOT_ENC_IMAGES
 static inline uint32_t
@@ -185,6 +195,7 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 }
 #endif
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
 /**
  * This functions tries to locate the status area after an aborted swap,
  * by looking for the magic in the possible locations.
@@ -224,9 +235,8 @@ boot_find_status(int image_index, const struct flash_area **fap)
 
         off = boot_magic_off(*fap);
         rc = flash_area_read(*fap, off, magic, BOOT_MAGIC_SZ);
-        flash_area_close(*fap);
-
         if (rc != 0) {
+            flash_area_close(*fap);
             return rc;
         }
 
@@ -234,6 +244,7 @@ boot_find_status(int image_index, const struct flash_area **fap)
             return 0;
         }
 
+        flash_area_close(*fap);
     }
 
     /* If we got here, no magic was found */
@@ -294,6 +305,8 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
 }
 #endif
 
+#endif /* !MCUBOOT_SWAP_USING_STATUS */
+
 int
 boot_write_copy_done(const struct flash_area *fap)
 {
@@ -317,6 +330,8 @@ boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
                  (unsigned long)flash_area_get_off(fap) + off);
     return boot_write_trailer(fap, off, (const uint8_t *) &swap_size, 4);
 }
+
+#ifndef MCUBOOT_SWAP_USING_STATUS
 
 #ifdef MCUBOOT_ENC_IMAGES
 int
@@ -342,3 +357,5 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
     return 0;
 }
 #endif
+
+#endif /* !MCUBOOT_SWAP_USING_STATUS */

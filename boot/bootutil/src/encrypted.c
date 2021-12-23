@@ -777,10 +777,20 @@ boot_encrypt(struct enc_key_data *enc_state, int image_index,
     nonce[14] = (uint8_t)(off >> 8);
     nonce[15] = (uint8_t)off;
 
-    rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
-    if (rc < 0) {
-        assert(0);
-        return;
+#if MCUBOOT_SWAP_USING_SCRATCH
+    /* in this case scratch area contains encrypted source block that was copied
+    from secondary slot */
+    if (FLASH_AREA_IMAGE_SCRATCH == flash_area_get_id(fap)) {
+        rc = 1;
+    }
+    else
+#endif
+    {
+        rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
+        if (rc < 0) {
+            assert(0);
+            return;
+        }
     }
 
     enc = &enc_state[rc];
