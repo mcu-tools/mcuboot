@@ -53,12 +53,10 @@
 
 #include "flash_qspi.h"
 
-#ifndef off_t
-typedef long int off_t;
-#endif
+typedef unsigned long offset_t;
 
-int psoc6_smif_read(const struct flash_area *fap, off_t addr, void *data, size_t len);
-int psoc6_smif_write(const struct flash_area *fap, off_t addr, const void *data, size_t len);
-int psoc6_smif_erase(off_t addr, size_t size);
+int psoc6_smif_read(const struct flash_area *fap, offset_t addr, void *data, size_t len);
+int psoc6_smif_write(const struct flash_area *fap, offset_t addr, const void *data, size_t len);
+int psoc6_smif_erase(offset_t addr, size_t size);
 
 #endif /* CY_SMIF_PSOC6_H_ */

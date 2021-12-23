@@ -1,6 +1,6 @@
 /***************************************************************************//**
-* \file cy8c6xxa_cm4_dual.ld
-* \version 2.60
+* \file cy8c6xxa_cm0plus.ld
+* \version 2.91
 *
 * Linker file for the GNU C compiler.
 *
@@ -19,7 +19,7 @@
 *
 ********************************************************************************
 * \copyright
-* Copyright 2016-2019 Cypress Semiconductor Corporation
+* Copyright 2016-2021 Cypress Semiconductor Corporation
 * SPDX-License-Identifier: Apache-2.0
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,18 +34,14 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 *******************************************************************************/
-#include <main.h>
 
 OUTPUT_FORMAT ("elf32-littlearm", "elf32-bigarm", "elf32-littlearm")
 SEARCH_DIR(.)
 GROUP(-lgcc -lc -lnosys)
 ENTRY(Reset_Handler)
 
-/* Size of the stack section at the end of CM4 SRAM */
+/* The size of the stack section at the end of CM0+ SRAM */
 STACK_SIZE = 0x1000;
-
-/* The size of the MCU boot header area at the start of FLASH */
-BOOT_HEADER_SIZE = 0x400;
 
 /* Force symbol to be entered in the output file as an undefined symbol. Doing
 * this may, for example, trigger linking of additional modules from standard
@@ -60,15 +56,23 @@ EXTERN(Reset_Handler)
 */
 MEMORY
 {
-    /* The ram and flash regions control RAM and flash memory allocation for the CM4 core.
+    /* The ram and flash regions control RAM and flash memory allocation for the CM0+ core.
      * You can change the memory allocation by editing the 'ram' and 'flash' regions.
      * Note that 2 KB of RAM (at the end of the SRAM) are reserved for system use.
      * Using this memory region for other purposes will lead to unexpected behavior.
-     * Your changes must be aligned with the corresponding memory regions for CM0+ core in 'xx_cm0plus.ld',
-     * where 'xx' is the device group; for example, 'cy8c6xx7_cm0plus.ld'.
+     * Your changes must be aligned with the corresponding memory regions for the CM4 core in 'xx_cm4_dual.ld',
+     * where 'xx' is the device group; for example, 'cy8c6xx7_cm4_dual.ld'.
      */
-    ram               (rwx)   : ORIGIN = RAM_START, LENGTH = RAM_SIZE
-    flash             (rx)    : ORIGIN = USER_APP_START, LENGTH = USER_APP_SIZE
+    ram               (rwx)   : ORIGIN = 0x08000800, LENGTH = 0x1F800
+    flash             (rx)    : ORIGIN = 0x10000000, LENGTH = 0x18000
+
+
+    /* This is an unprotected public RAM region, with the placed .cy_sharedmem.
+     * This region is used to place objects that require full access from both cores.
+     * Uncomment the following line, define the region origin and length, and uncomment the placement of
+     * the .cy_sharedmem section below.
+     */
+    public_ram        (rw)    : ORIGIN = 0x08000000, LENGTH = 0x800
 
     /* This is a 32K flash region used for EEPROM emulation. This region can also be used as the general purpose flash.
      * You can assign sections to this memory region for only one of the cores.
@@ -126,8 +130,13 @@ GROUP(libgcc.a libc.a libm.a libnosys.a)
 
 SECTIONS
 {
-    /* Cortex-M4 application flash area */
-    .text ORIGIN(flash) + BOOT_HEADER_SIZE :
+    .cy_app_header :
+    {
+        KEEP(*(.cy_app_header))
+    } > flash
+
+    /* Cortex-M0+ application flash area */
+    .text :
     {
         . = ALIGN(4);
         __Vectors = . ;
@@ -180,7 +189,7 @@ SECTIONS
 
     /* To copy multiple ROM to RAM sections,
      * uncomment .copy.table section and,
-     * define __STARTUP_COPY_MULTIPLE in startup_psoc6_02_cm4.S */
+     * define __STARTUP_COPY_MULTIPLE in startup_psoc6_02_cm0plus.S */
     .copy.table :
     {
         . = ALIGN(4);
@@ -202,7 +211,7 @@ SECTIONS
 
     /* To clear multiple BSS sections,
      * uncomment .zero.table section and,
-     * define __STARTUP_CLEAR_BSS_MULTIPLE in startup_psoc6_02_cm4.S */
+     * define __STARTUP_CLEAR_BSS_MULTIPLE in startup_psoc6_02_cm0plus.S */
     .zero.table :
     {
         . = ALIGN(4);
@@ -223,8 +232,9 @@ SECTIONS
     } > ram
 
 
-    .data __ram_vectors_end__ : AT (__etext)
+    .data __ram_vectors_end__ :
     {
+        . = ALIGN(4);
         __data_start__ = .;
 
         *(vtable)
@@ -258,7 +268,12 @@ SECTIONS
 
         __data_end__ = .;
 
-    } > ram
+    } > ram AT>flash
+
+
+    /* Check if code and .data region exceeds FLASH image limit */
+    __FlashImageSize = __etext - ORIGIN(flash) + SIZEOF(.data);
+    ASSERT( __FlashImageSize <= BOOTLOADER_SIZE, "Resulting image does not fit into MCUboot flash region")
 
 
     /* Place variables in the section that should not be initialized during the
@@ -304,6 +319,18 @@ SECTIONS
     } > ram
 
 
+    /* To use unprotected public RAM, uncomment the following .cy_sharedmem section placement.*/
+    /*
+    .cy_sharedmem (NOLOAD):
+    {
+        . = ALIGN(4);
+        __public_ram_start__ = .;
+        KEEP(*(.cy_sharedmem))
+        . = ALIGN(4);
+        __public_ram_end__ = .;
+    } > public_ram
+    */
+
     /* .stack_dummy section doesn't contains any symbols. It is only
      * used for linker to calculate size of stack sections, and assign
      * values to stack symbols later */
@@ -321,14 +348,6 @@ SECTIONS
 
     /* Check if data + heap + stack exceeds RAM limit */
     ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed with stack")
-
-
-    /* Used for the digital signature of the secure application and the Bootloader SDK application.
-    * The size of the section depends on the required data size. */
-    .cy_app_signature ORIGIN(flash) + LENGTH(flash) - 256 :
-    {
-        KEEP(*(.cy_app_signature))
-    } > flash
 
 
     /* Emulated EEPROM Flash area */
@@ -376,9 +395,11 @@ SECTIONS
     /* Places the code in the Execute in Place (XIP) section. See the smif driver
     *  documentation for details.
     */
-    .cy_xip :
+    cy_xip :
     {
+        __cy_xip_start = .;
         KEEP(*(.cy_xip))
+        __cy_xip_end = .;
     } > xip
 
 

@@ -42,6 +42,9 @@ APP_NAME ?= MCUBootApp
 # Weather or now execute post build script after build - set to 0 for CI
 POST_BUILD ?= 1
 
+# Default number of GCC compilation threads
+THREADS_NUM ?= 8
+
 SIGN_KEY_FILE ?= cypress-test-ec-p256
 ENC_KEY_FILE ?= enc-ec256-pub
 ENC_IMG ?= 0
@@ -81,7 +84,7 @@ INCLUDE_DIRS += $(INCLUDE_DIRS_LIBS)
 
 O_FILES := $(notdir $(C_FILES:.c=.o)) $(addsuffix .o, $(notdir $(basename $(ASM_FILES))))
 
-DEFINES := $(DEFINES_APP)
+DEFINES := $(DEFINES_APP) -D$(APP_NAME)
 DEFINES += $(DEFINES_LIBS)
 AS_FLAGS += $(DEFINES)
 
@@ -98,28 +101,11 @@ $(info $(DEFINES))
 endif
 
 # updating CFLAGS at this point as DEFINES are completed
-CFLAGS += $(DEFINES)
+CFLAGS += $(DEFINES) $(CFLAGS_OPTIMIZATION)
 
 VPATH = $(dir $(C_FILES) $(ASM_FILES))
 
-#
-# STDE: For cygwin, adjust paths for compiler
-#
-MY_FILES := $(subst /cygdrive/c,c:,$(C_FILES))
-#$(info MY_FILES $(MY_FILES))
-C_FILES=$(MY_FILES)
-
-MY_DIRS := $(subst /cygdrive/c,c:,$(INCLUDE_DIRS))
-#$(info MY_DIRS $(MY_DIRS))
-INCLUDE_DIRS=$(MY_DIRS)
-
-MY_ASM_FILES := $(subst /cygdrive/c,c:,$(ASM_FILES))
-#$(info MY_ASM_FILES $(MY_ASM_FILES))
-ASM_FILES=$(MY_ASM_FILES)
-
-MY_LDFLAGS := $(subst /cygdrive/c,c:,$(LDFLAGS))
-#$(info MY_LDFLAGS $(MY_LDFLAGS))
-LDFLAGS=$(MY_LDFLAGS)
+LDFLAGS += $(LDFLAGS_OPTIMIZATION)
 
 # Default name pattern for output files
 # may be modified in %Application%.mk file
@@ -138,16 +124,21 @@ app:
 	@`mkdir -p ./$(OUT_CFG)`
 	@`mkdir -p ./$(OUT_OBJ)`
 	$(MAKE) pre_build
-	$(MAKE) build -j8
+	$(MAKE) build -j $(THREADS_NUM)
 	$(MAKE) post_build
 
-build: $(OUT_APP)/$(APP_NAME).hex
+
+build: $(OUT_APP)/$(APP_NAME)_unsigned.hex
 	$(GCC_PATH)/bin/arm-none-eabi-objdump $(OUT_APP)/$(APP_NAME).elf -S --disassemble > $(OUT_APP)/$(APP_NAME).lst
 	$(GCC_PATH)/bin/arm-none-eabi-objdump -h $(OUT_APP)/$(APP_NAME).elf
 	$(GCC_PATH)/bin/arm-none-eabi-size --format=SysV $(OUT_APP)/$(APP_NAME).elf
 
-$(OUT_APP)/$(APP_NAME).hex: $(OUT_APP)/$(APP_NAME).elf
-	$(GCC_PATH)/bin/arm-none-eabi-objcopy --change-addresses=$(HEADER_OFFSET) -O ihex $(OUT_APP)/$(APP_NAME).elf $(OUT_APP)/$(APP_NAME).hex
+$(OUT_APP)/$(APP_NAME)_unsigned.hex: $(OUT_APP)/$(APP_NAME).bin
+	$(GCC_PATH)/bin/arm-none-eabi-objcopy --change-addresses=$(HEADER_OFFSET) -O ihex $(OUT_APP)/$(APP_NAME).elf $(OUT_APP)/$(APP_NAME)_unsigned.hex
+
+$(OUT_APP)/$(APP_NAME).bin: $(OUT_APP)/$(APP_NAME).elf
+	$(info we are here)
+	$(GCC_PATH)/bin/arm-none-eabi-objcopy $(OUT_APP)/$(APP_NAME).elf -S -O binary $(OUT_APP)/$(APP_NAME).bin
 
 $(OUT_APP)/$(APP_NAME).elf: $(addprefix $(OUT_OBJ)/, $(O_FILES))
 	@echo "LD $@"

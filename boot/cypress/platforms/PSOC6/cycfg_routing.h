@@ -1,11 +1,11 @@
 /*******************************************************************************
-* File Name: cycfg_peripherals.h
+* File Name: cycfg_routing.h
 *
 * Description:
-* Peripheral Hardware Block configuration
+* Establishes all necessary connections between hardware elements.
 * This file was automatically generated and should not be modified.
 * Device Configurator: 2.0.0.1483
-* Device Support Library (../../../psoc6pdl): 1.3.1.1499
+* Device Support Library (../../../psoc6pdl): 1.4.0.1889
 *
 ********************************************************************************
 * Copyright 2017-2019 Cypress Semiconductor Corporation
@@ -24,34 +24,25 @@
 * limitations under the License.
 ********************************************************************************/
 
-#if !defined(CYCFG_PERIPHERALS_H)
-#define CYCFG_PERIPHERALS_H
+#if !defined(CYCFG_ROUTING_H)
+#define CYCFG_ROUTING_H
 
-// #include "cycfg_notices.h"
-#include "cy_scb_uart.h"
-#include "cy_sysclk.h"
-#if defined (CY_USING_HAL)
-	#include "cyhal_hwmgr.h"
-#endif //defined (CY_USING_HAL)
+#include "bsp.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
-#define CYBSP_UART_ENABLED 1U
-#define CYBSP_UART_HW SCB5
-#define CYBSP_UART_IRQ scb_5_interrupt_IRQn
+void init_cycfg_routing(void);
 
-extern const cy_stc_scb_uart_config_t CYBSP_UART_config;
-#if defined (CY_USING_HAL)
-	extern const cyhal_resource_inst_t CYBSP_UART_obj;
-#endif //defined (CY_USING_HAL)
+#define init_cycfg_connectivity() init_cycfg_routing()
 
-void init_cycfg_peripherals(void);
+#define ioss_port_pin_rx_HSIOM  JOIN(JOIN(JOIN(JOIN(JOIN(JOIN(P, BSP_UART_PORT), _), BSP_UART_RX_PIN), _SCB), BSP_UART_SCB_NUMBER), _UART_RX)
+#define ioss_port_pin_tx_HSIOM  JOIN(JOIN(JOIN(JOIN(JOIN(JOIN(P, BSP_UART_PORT), _), BSP_UART_TX_PIN), _SCB), BSP_UART_SCB_NUMBER), _UART_TX)
 
 #if defined(__cplusplus)
 }
 #endif
 
 
-#endif /* CYCFG_PERIPHERALS_H */
+#endif /* CYCFG_ROUTING_H */

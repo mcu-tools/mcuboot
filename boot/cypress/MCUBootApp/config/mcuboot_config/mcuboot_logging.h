@@ -54,7 +54,7 @@ int sim_log_enabled(int level);
 #define MCUBOOT_LOG_ERR(_fmt, ...)                                      \
     do {                                                                \
         if (sim_log_enabled(MCUBOOT_LOG_LEVEL_ERROR)) {                 \
-            fprintf(stderr, "[ERR] " _fmt "\n\r", ##__VA_ARGS__);         \
+            (void)fprintf(stderr, "[ERR] " _fmt "\n\r", ##__VA_ARGS__); \
         }                                                               \
     } while (0)
 #else
@@ -65,7 +65,7 @@ int sim_log_enabled(int level);
 #define MCUBOOT_LOG_WRN(_fmt, ...)                                      \
     do {                                                                \
         if (sim_log_enabled(MCUBOOT_LOG_LEVEL_WARNING)) {               \
-            fprintf(stderr, "[WRN] " _fmt "\n\r", ##__VA_ARGS__);         \
+            (void)fprintf(stderr, "[WRN] " _fmt "\n\r", ##__VA_ARGS__); \
         }                                                               \
     } while (0)
 #else
@@ -76,7 +76,7 @@ int sim_log_enabled(int level);
 #define MCUBOOT_LOG_INF(_fmt, ...)                                      \
     do {                                                                \
         if (sim_log_enabled(MCUBOOT_LOG_LEVEL_INFO)) {                  \
-            fprintf(stderr, "[INF] " _fmt "\n\r", ##__VA_ARGS__);         \
+            (void)fprintf(stderr, "[INF] " _fmt "\n\r", ##__VA_ARGS__); \
         }                                                               \
     } while (0)
 #else
@@ -87,13 +87,14 @@ int sim_log_enabled(int level);
 #define MCUBOOT_LOG_DBG(_fmt, ...)                                      \
     do {                                                                \
         if (sim_log_enabled(MCUBOOT_LOG_LEVEL_DEBUG)) {                 \
-            fprintf(stderr, "[DBG] " _fmt "\n\r", ##__VA_ARGS__);         \
+            (void)fprintf(stderr, "[DBG] " _fmt "\n\r", ##__VA_ARGS__); \
         }                                                               \
     } while (0)
 #else
 #define MCUBOOT_LOG_DBG(...) IGNORE(__VA_ARGS__)
 #endif
 
-#define MCUBOOT_LOG_MODULE_DECLARE(...)
+#define MCUBOOT_LOG_MODULE_DECLARE(domain)  /* ignore */
+#define MCUBOOT_LOG_MODULE_REGISTER(domain) /* ignore */
 
 #endif /* MCUBOOT_LOGGING_H */

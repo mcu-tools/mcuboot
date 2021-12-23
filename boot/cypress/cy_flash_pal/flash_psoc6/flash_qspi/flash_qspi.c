@@ -69,6 +69,8 @@
 
 #define CY_SMIF_SYSCLK_HFCLK_DIVIDER     CY_SYSCLK_CLKHF_DIVIDE_BY_4
 
+#define CY_SMIF_INIT_TRY_COUNT           (10U)
+
 /* This is the board specific stuff that should align with your board.
  *
  * QSPI resources:
@@ -97,12 +99,10 @@ struct qspi_ss_config
     en_hsiom_sel_t SS_Mux;
 };
 
-#if (defined(PSOC_064_2M) || \
-    defined(PSOC_064_1M) || \
-    defined(PSOC_062_2M) || \
-    defined(PSOC_062_1M))
+#if defined(PSOC_062_2M) || \
+    defined(PSOC_062_1M)
     #define CY_BOOTLOADER_SMIF_SS_CFG_NUM 4
-#elif defined(PSOC_064_512K) || defined(PSOC_062_512K)
+#elif defined(PSOC_062_512K)
     #define CY_BOOTLOADER_SMIF_SS_CFG_NUM 3
 #else
 #error "Platform device name is unsupported."
@@ -155,7 +155,7 @@ static en_hsiom_sel_t SCKMuxPort = P11_7_SMIF_SPI_CLK;
 
 static SMIF_Type *QSPIPort  = SMIF0;
 
-cy_stc_smif_mem_cmd_t sfdpcmd =
+static cy_stc_smif_mem_cmd_t sfdpcmd =
 {
     .command = 0x5A,
     .cmdWidth = CY_SMIF_WIDTH_SINGLE,
@@ -204,7 +204,7 @@ static cy_stc_smif_mem_config_t mem_sfdp_0 =
     .deviceCfg = &dev_sfdp_0
 };
 
-cy_stc_smif_mem_config_t *mems_sfdp[1] =
+static cy_stc_smif_mem_config_t *mems_sfdp[1] =
 {
     &mem_sfdp_0
 };
@@ -223,10 +223,10 @@ static cy_stc_smif_context_t QSPI_context;
 
 cy_stc_smif_config_t const QSPI_config =
 {
-    .mode = CY_SMIF_NORMAL,
+    .mode = (uint32_t)CY_SMIF_NORMAL,
     .deselectDelay = 1,
-    .rxClockSel = CY_SMIF_SEL_INV_INTERNAL_CLK,
-    .blockEvent = CY_SMIF_BUS_ERROR
+    .rxClockSel = (uint32_t)CY_SMIF_SEL_INV_INTERNAL_CLK,
+    .blockEvent = (uint32_t)CY_SMIF_BUS_ERROR
 };
 
 cy_stc_sysint_t smifIntConfig =
@@ -339,7 +339,7 @@ void Isr_SMIF(void)
     Cy_SMIF_Interrupt(QSPIPort, &QSPI_context);
 }
 
-cy_en_smif_status_t qspi_init_hardware()
+cy_en_smif_status_t qspi_init_hardware(void)
 {
     cy_en_smif_status_t st;
 
@@ -451,7 +451,16 @@ cy_en_smif_status_t qspi_init_sfdp(uint32_t smif_id)
         Cy_GPIO_Pin_Init(SS_Port, SS_Pin, &QSPI_SS_config);
         Cy_GPIO_SetHSIOM(SS_Port, SS_Pin, SS_MuxPort);
 
-        stat = qspi_init(&smifBlockConfig_sfdp);
+        uint32_t try_count = CY_SMIF_INIT_TRY_COUNT;
+        do {
+            stat = qspi_init(&smifBlockConfig_sfdp);
+
+            try_count--;
+            if (stat != CY_SMIF_SUCCESS)
+            {
+                Cy_SysLib_Delay(500U);
+            }
+        } while ((stat != CY_SMIF_SUCCESS) && (try_count > 0U));
     }
     return stat;
 }

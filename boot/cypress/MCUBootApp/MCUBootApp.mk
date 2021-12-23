@@ -25,78 +25,22 @@
 
 include host.mk
 
+APP_NAME := MCUBootApp
+
 # Cypress' MCUBoot Application supports GCC ARM only at this moment
 # Set default compiler to GCC if not specified from command line
 COMPILER ?= GCC_ARM
 
-USE_CRYPTO_HW ?= 0
-USE_EXTERNAL_FLASH ?= 0
 MCUBOOT_IMAGE_NUMBER ?= 1
 ENC_IMG ?= 0
-
-# For which core this application is built
-CORE ?= CM0P
+USE_BOOTSTRAP ?= 1
+MCUBOOT_LOG_LEVEL ?= MCUBOOT_LOG_LEVEL_DEBUG
 
 ifneq ($(COMPILER), GCC_ARM)
 $(error Only GCC ARM is supported at this moment)
 endif
 
 CUR_APP_PATH = $(PRJ_DIR)/$(APP_NAME)
-
-include $(PRJ_DIR)/platforms.mk
-include $(PRJ_DIR)/common_libs.mk
-include $(PRJ_DIR)/toolchains.mk
-
-# default slot size is 0x10000, 512bytes per row/sector, so 128 sectors
-MAX_IMG_SECTORS ?= 128
-
-# Application-specific DEFINES
-DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
-DEFINES_APP += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
-DEFINES_APP += -DCORE=$(CORE)
-DEFINES_APP += -DMCUBOOT_IMAGE_NUMBER=$(MCUBOOT_IMAGE_NUMBER)
-ifeq ($(USE_EXTERNAL_FLASH), 1)
-DEFINES_APP += -DCY_BOOT_USE_EXTERNAL_FLASH
-endif
-DEFINES_APP += -DMCUBOOT_MAX_IMG_SECTORS=$(MAX_IMG_SECTORS)
-# Hardrware acceleration support
-ifeq ($(USE_CRYPTO_HW), 1)
-DEFINES_APP += -DMBEDTLS_USER_CONFIG_FILE="\"mcuboot_crypto_acc_config.h\""
-DEFINES_APP += -DCY_CRYPTO_HAL_DISABLE
-DEFINES_APP += -DCY_MBEDTLS_HW_ACCELERATION
-endif
-# Encrypted image support
-ifeq ($(ENC_IMG), 1)
-DEFINES_APP += -DENC_IMG=1
-endif
-
-# Collect MCUBoot sourses
-SOURCES_MCUBOOT := $(wildcard $(CURDIR)/../bootutil/src/*.c)
-# Collect MCUBoot Application sources
-SOURCES_APP_SRC := $(wildcard $(CUR_APP_PATH)/*.c)
-
-# Collect Flash Layer port sources
-SOURCES_FLASH_PORT := $(wildcard $(CURDIR)/cy_flash_pal/*.c)
-SOURCES_FLASH_PORT += $(wildcard $(CURDIR)/cy_flash_pal/flash_qspi/*.c)
-# Collect all the sources
-SOURCES_APP := $(SOURCES_MCUBOOT)
-SOURCES_APP += $(SOURCES_APP_SRC)
-SOURCES_APP += $(SOURCES_FLASH_PORT)
-
-INCLUDE_DIRS_MCUBOOT := $(addprefix -I, $(CURDIR)/../bootutil/include)
-INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(CURDIR)/../bootutil/src)
-INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(CURDIR)/..)
-
-INCLUDE_DIRS_APP := $(addprefix -I, $(CURDIR))
-INCLUDE_DIRS_APP += $(addprefix -I, $(CURDIR)/cy_flash_pal/flash_qspi)
-INCLUDE_DIRS_APP += $(addprefix -I, $(CURDIR)/cy_flash_pal/include)
-INCLUDE_DIRS_APP += $(addprefix -I, $(CURDIR)/cy_flash_pal/include/flash_map_backend)
-INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))
-INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/config)
-INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/os)
-
-ASM_FILES_APP :=
-ASM_FILES_APP += $(ASM_FILES_STARTUP)
 
 # Output folder
 OUT := $(APP_NAME)/out
@@ -105,9 +49,135 @@ OUT_TARGET := $(OUT)/$(PLATFORM)
 
 OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
 
-# Overwite path to linker script if custom is required
+include $(PRJ_DIR)/platforms.mk
+include $(PRJ_DIR)/common_libs.mk
+include $(PRJ_DIR)/toolchains.mk
+
+# default slot size is 0x10000, 512bytes per row/sector, so 128 sectors
+
+# These parameters can be set from command line as well
+ifeq ($(MAX_IMG_SECTORS), )
+MAX_IMG_SECTORS ?= $(PLATFORM_MAX_IMG_SECTORS)
+endif
+ifeq ($(IMAGE_1_SLOT_SIZE), )
+IMAGE_1_SLOT_SIZE ?= $(PLATFORM_IMAGE_1_SLOT_SIZE)
+endif
+ifeq ($(MCUBOOT_IMAGE_NUMBER), 2)
+ifeq ($(IMAGE_2_SLOT_SIZE), )
+IMAGE_2_SLOT_SIZE ?= $(PLATFORM_IMAGE_2_SLOT_SIZE)
+endif
+endif
+
+# Application-specific DEFINES
+DEFINES_APP := -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
+DEFINES_APP += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
+DEFINES_APP += -DCORE=$(CORE)
+DEFINES_APP += -DMCUBOOT_IMAGE_NUMBER=$(MCUBOOT_IMAGE_NUMBER)
+
+# Define MCUboot size and pass it to linker script
+BOOTLOADER_SIZE ?= $(PLATFORM_BOOTLOADER_SIZE)
+LDFLAGS_DEFSYM  += -Wl,--defsym,BOOTLOADER_SIZE=$(BOOTLOADER_SIZE)
+
+# If this flag is set, user can pass custom values
+ifeq ($(USE_CUSTOM_MEMORY_MAP), 1)
+
+STATUS_PARTITION_OFFSET ?= $(PLATFORM_STATUS_PARTITION_OFFSET)
+SCRATCH_SIZE ?= $(PLATFORM_SCRATCH_SIZE)
+EXTERNAL_FLASH_SCRATCH_OFFSET ?= $(PLATFORM_EXTERNAL_FLASH_SCRATCH_OFFSET)
+EXTERNAL_FLASH_SECONDARY_1_OFFSET ?= $(PLATFORM_EXTERNAL_FLASH_SECONDARY_1_OFFSET)
+EXTERNAL_FLASH_SECONDARY_2_OFFSET ?= $(PLATFORM_EXTERNAL_FLASH_SECONDARY_2_OFFSET)
+
+DEFINES_APP += -DCY_BOOT_BOOTLOADER_SIZE=$(BOOTLOADER_SIZE)
+# status values
+DEFINES_APP += -DSWAP_STATUS_PARTITION_OFF=$(STATUS_PARTITION_OFFSET)
+# scratch values
+DEFINES_APP += -DCY_BOOT_SCRATCH_SIZE=$(SCRATCH_SIZE)
+DEFINES_APP += -DCY_BOOT_EXTERNAL_FLASH_SCRATCH_OFFSET=$(EXTERNAL_FLASH_SCRATCH_OFFSET)
+DEFINES_APP += -DCY_BOOT_EXTERNAL_FLASH_SECONDARY_1_OFFSET=$(EXTERNAL_FLASH_SECONDARY_1_OFFSET)
+ifeq ($(MCUBOOT_IMAGE_NUMBER), 2)
+DEFINES_APP += -DCY_BOOT_EXTERNAL_FLASH_SECONDARY_2_OFFSET=$(EXTERNAL_FLASH_SECONDARY_2_OFFSET)
+endif
+
+endif # USE_CUSTOM_MEMORY_MAP
+
+APP_DEFAULT_POLICY ?= $(PLATFORM_APP_DEFAULT_POLICY)
+
+ifeq ($(USE_EXTERNAL_FLASH), 1)
+DEFINES_APP += -DCY_BOOT_USE_EXTERNAL_FLASH
+DEFINES_APP += -DCY_MAX_EXT_FLASH_ERASE_SIZE=$(PLATFORM_CY_MAX_EXT_FLASH_ERASE_SIZE)
+endif
+DEFINES_APP += -DCY_BOOT_IMAGE_1_SIZE=$(IMAGE_1_SLOT_SIZE)
+ifeq ($(MCUBOOT_IMAGE_NUMBER), 2)
+DEFINES_APP += -DCY_BOOT_IMAGE_2_SIZE=$(IMAGE_2_SLOT_SIZE)
+endif
+ifeq ($(USE_OVERWRITE), 1)
+DEFINES_APP += -DMCUBOOT_OVERWRITE_ONLY
+else
+ifeq ($(USE_BOOTSTRAP), 1)
+DEFINES_APP += -DMCUBOOT_BOOTSTRAP
+endif
+endif
+DEFINES_APP += -DMCUBOOT_MAX_IMG_SECTORS=$(MAX_IMG_SECTORS)
+DEFINES_APP += -DMCUBOOT_LOG_LEVEL=$(MCUBOOT_LOG_LEVEL)
+
+# Hardrware acceleration support
+ifeq ($(USE_CRYPTO_HW), 1)
+DEFINES_APP += -DMBEDTLS_USER_CONFIG_FILE="\"mcuboot_crypto_acc_config.h\""
+DEFINES_APP += -DCY_CRYPTO_HAL_DISABLE
+DEFINES_APP += -DCY_MBEDTLS_HW_ACCELERATION
+endif
+
+# Compile with user redefined values for UART HW, port, pins
+ifeq ($(USE_CUSTOM_DEBUG_UART), 1)
+DEFINES_APP += -DUSE_CUSTOM_DEBUG_UART=1
+endif
+
+# Encrypted image support
+ifeq ($(ENC_IMG), 1)
+DEFINES_APP += -DENC_IMG=1
+# Use maximum optimization level for PSOC6 encrypted image with
+# external flash so it would fit into 0x18000 size of MCUBootApp
+ifeq ($(BUILDCFG), Debug)
+ifeq ($(USE_EXTERNAL_FLASH), 1)
+CFLAGS_OPTIMIZATION := -Os -g3
+endif
+endif
+endif
+
+
+# Collect MCUBoot sourses
+SOURCES_MCUBOOT := $(wildcard $(PRJ_DIR)/../bootutil/src/*.c)
+# Collect MCUBoot Application sources
+SOURCES_APP_SRC := main.c cy_security_cnt.c keys.c
+# Collect platform dependend application files
+SOURCES_APP_SRC += $(PLATFORM_APP_SOURCES)
+
+# Collect Flash Layer sources and header files dirs
+INCLUDE_DIRS_FLASH := $(PLATFORM_INCLUDE_DIRS_FLASH)
+SOURCES_FLASH := $(PLATFORM_SOURCES_FLASH)
+
+# Collect all the sources
+SOURCES_APP := $(SOURCES_MCUBOOT)
+SOURCES_APP += $(SOURCES_FLASH)
+SOURCES_APP += $(addprefix $(CUR_APP_PATH)/, $(SOURCES_APP_SRC))
+
+INCLUDE_DIRS_MCUBOOT := $(addprefix -I, $(PRJ_DIR)/../bootutil/include)
+INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(PRJ_DIR)/../bootutil/src)
+INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(PRJ_DIR)/..)
+
+INCLUDE_DIRS_APP += $(addprefix -I, $(PRJ_DIR))
+INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))
+INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/config)
+INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/os)
+INCLUDE_DIRS_APP += $(addprefix -I, $(INCLUDE_DIRS_FLASH))
+
+ASM_FILES_APP :=
+ASM_FILES_APP += $(ASM_FILES_STARTUP)
+
+# Pass variables to linker script and overwrite path to it, if custom is required
 ifeq ($(COMPILER), GCC_ARM)
-LINKER_SCRIPT := $(subst /cygdrive/c,c:,$(CUR_APP_PATH)/$(APP_NAME).ld)
+LDFLAGS += $(LDFLAGS_DEFSYM)
+LINKER_SCRIPT := $(CUR_APP_PATH)/$(APP_NAME)_$(CORE).ld
 else
 $(error Only GCC ARM is supported at this moment)
 endif

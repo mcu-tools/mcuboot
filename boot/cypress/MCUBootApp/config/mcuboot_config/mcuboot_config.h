@@ -22,7 +22,7 @@
 /* Default maximum number of flash sectors per image slot; change
  * as desirable. */
 #ifndef MCUBOOT_MAX_IMG_SECTORS
-#define MCUBOOT_MAX_IMG_SECTORS 2560
+#define MCUBOOT_MAX_IMG_SECTORS 128u
 #endif
 
 /*
@@ -39,6 +39,8 @@
 
 // #define MCUBOOT_SIGN_EC
 
+//#define MCUBOOT_OVERWRITE_ONLY 1
+
 /*
  * Upgrade mode
  *
@@ -46,14 +48,16 @@
  * simpler code path, which only supports overwriting the
  * existing image with the update image, is also available.
  */
-
-/* Uncomment to enable the overwrite-only code path. */
-#define MCUBOOT_OVERWRITE_ONLY
-
 #ifdef MCUBOOT_OVERWRITE_ONLY
 /* Uncomment to only erase and overwrite those slot 0 sectors needed
  * to install the new image, rather than the entire image slot. */
 /* #define MCUBOOT_OVERWRITE_ONLY_FAST */
+#else
+/* Using SWAP w Scratch by default.
+ * Comment/Uncomment which is needed. */
+#define MCUBOOT_SWAP_USING_SCRATCH 1
+/* #define MCUBOOT_SWAP_USING_MOVE 1 */
+#define MCUBOOT_SWAP_USING_STATUS 1
 #endif
 
 /*
@@ -155,7 +159,6 @@
 #ifdef ENC_IMG
 #define MCUBOOT_ENC_IMAGES
 #define MCUBOOT_ENCRYPT_EC256
-#define NUM_ECC_BYTES (256 / 8)
 #endif /* ENC_IMG */
 
 /*
@@ -164,5 +167,17 @@
 #define MCUBOOT_CPU_IDLE() \
     do {                   \
     } while (0)
+
+/* INFO: Misc functionality defines */
+/*
+#define MCUBOOT_HW_KEY
+#define MCUBOOT_HW_ROLLBACK_PROT
+#define MCUBOOT_MEASURED_BOOT
+#define MCUBOOT_DATA_SHARING
+*/
+/* Use basic fault injection hardening profile */
+//#define MCUBOOT_FIH_PROFILE_LOW
+
+//#define MCUBOOT_FIH_PROFILE_MEDIUM
 
 #endif /* MCUBOOT_CONFIG_H */

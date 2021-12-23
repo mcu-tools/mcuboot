@@ -35,26 +35,27 @@ SOURCES_RETARGET_IO := $(wildcard $(CUR_LIBS_PATH)/retarget-io/*.c)
 SOURCES_WATCHDOG := $(wildcard $(CUR_LIBS_PATH)/watchdog/*.c)
 
 # Collect source files for HAL
-SOURCES_HAL := $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/*.c)
-SOURCES_HAL += $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/triggers/*.c)
-SOURCES_HAL += $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/pin_packages/*.c)
+SOURCES_HAL_BLINKY := $(wildcard $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_PSOC6HAL/source/*.c)
+SOURCES_HAL_BLINKY += $(wildcard $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_PSOC6HAL/COMPONENT_CAT1A/source/*.c)
+SOURCES_HAL_BLINKY += $(wildcard $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_PSOC6HAL/COMPONENT_CAT1A/source/triggers/*.c)
+SOURCES_HAL_BLINKY += $(wildcard $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_PSOC6HAL/COMPONENT_CAT1A/source/pin_packages/*.c)
 
 # Retarget-io related include directories
 INCLUDE_DIRS_RETARGET_IO := $(CUR_LIBS_PATH)/retarget-io
 INCLUDE_DIRS_WATCHDOG := $(CUR_LIBS_PATH)/watchdog
 
 # Collect dirrectories containing headers for PSOC6 HAL
-INCLUDE_DIRS_HAL := $(CUR_LIBS_PATH)/psoc6hal/include
-INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include
-INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/pin_packages
-INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/triggers
+INCLUDE_DIRS_HAL_BLINKY := $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_PSOC6HAL/include
+INCLUDE_DIRS_HAL_BLINKY += $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_PSOC6HAL/COMPONENT_CAT1A/include
+INCLUDE_DIRS_HAL_BLINKY += $(CUR_LIBS_PATH)/mtb-hal-cat1/include
+INCLUDE_DIRS_HAL_BLINKY += $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_PSOC6HAL/COMPONENT_CAT1A/include/pin_packages
 
 # Collected source files for libraries
-SOURCES_LIBS += $(SOURCES_RETARGET_IO)
 SOURCES_LIBS += $(SOURCES_WATCHDOG)
-SOURCES_LIBS += $(SOURCES_HAL)
+SOURCES_LIBS += $(SOURCES_RETARGET_IO)
+SOURCES_LIBS += $(SOURCES_HAL_BLINKY)
 
 # Collected include directories for libraries
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_RETARGET_IO))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_RETARGET_IO))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL_BLINKY))

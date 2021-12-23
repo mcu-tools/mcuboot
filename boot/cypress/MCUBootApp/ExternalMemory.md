@@ -1,87 +1,89 @@
-### External Memory support for Secondary Slot
+### Support of secondary slot in external memory for PSoC™ 6 devices.
 
-**Description**
+#### Description
 
-Given document describes the use of external memory module as a secondary (upgrade) slot with Cypress' PSoC6 devices.
+This document describes the use of the external memory module as a secondary (upgrade) slot with Cypress PSoC™ 6 devices.
 
-The demonstration device is CY8CPROTO-062-4343W board which is PSoC6 device with 2M of Flash available.
-The memory module present on board is S25FL512SAGMFI010 512-Mbit external Quad SPI NOR Flash.
+The demonstration device is the `CY8CPROTO-062-4343W` board, which is a PSoC™ 6 device with 2M-flash, but other kits with 1M (CY8CKIT-062-WIFI-BT) or 512K (CY8CPROTO-062S3-4343W) chips can be used as well.
+The memory module on boards is S25FL512SAGMFI010 512-Mbit external Quad SPI NOR flash.
 
-Using external memory for secondary slot allows to nearly double the size of Boot Image.
+Using external memory for secondary slots allows nearly doubling the Boot Image size.
 
-**Operation Design and Flow**
+#### Operation design and flow
 
-The design is based on using SFDP command's auto-discovery functionality of memory module IC and Cypress' SMIF PDL driver.
+The design is based on using the SFDP command's auto-discovery functionality of memory module IC and Cypress SMIF PDL driver.
 
-It is assumed that user's design meets following:
-* The memory-module used is SFDP-compliant;
-* There only one module is being used for secondary slot;
-* Only "OWERWRITE" bootloading scheme is used;
-* The address for secondary slot should start from 0x18000000.
-This corresponds to PSoC6's SMIF (Serial Memory InterFace) IP block mapping.
-* The slot size for upgrade slot is even (or smaller) to erase size (0x40000) of given memory module.
-This requirement is accepted for code simplicity.
+A user's design example:
+* The memory-module is SFDP-compliant.
+* Only one module is used for the secondary slot.
+* The address for the secondary slot starts from 0x18000000.
+This corresponds to PSoC™ 6 SMIF (Serial Memory InterFace) IP block mapping.
+* The slot size and start address for the upgrade slot meet the requirements, when using swap upgrade.
 
-The default flash map implemented is the following:
+The default flash map can be found in the [MCUBootApp.md](MCUBootApp.md) file.
 
-Single-image mode.
+MCUBootApp's `main.c` contains the call to Init-SFDP API, which performs the required GPIO configurations, SMIF IP block configuration, SFDP protocol read and memory-config structure initialization.
 
-`[0x10000000, 0x10018000]` - MCUBootApp (bootloader) area;
+Now, MCUBootApp is ready to accept an upgrade image from the external memory module.
 
-`[0x10018000, 0x10028000]` - primary slot for BlinkyApp;
+Upgrades from external memory are supported for both `overwrite only` and `swap with status partition` modes of MCUBootApp. 
 
-`[0x18000000, 0x18010000]` - secondary slot for BlinkyApp;
+##### Requirements to size and start address of upgrade slot when using Swap mode
 
-`[0x10038000, 0x10039000]` - scratch area (not used);
+Due to the MCUboot image structure, some restrictions apply when using upgrades from external flash. The main requirement:
 
-Multi(dual)-image mode.
+**The trailer portion of an upgrade image can be erased separately.**
 
-`[0x10000000, 0x10018000]` - MCUBootApp (bootloader) area;
+To meet this requirement, the image trailer is placed separately on a full flash page, which equals 0x40200 for S25FL512SAGMFI010. 
+Considering the default slot size for the external memory case described in the [MCUBootApp.md](MCUBootApp.md) file, occupied external flash looks as follows:
 
-`[0x10018000, 0x10028000]` - primary1 slot for BlinkyApp;
+    0x18000000 [xxxxxxxxxxxxxxxx][ttfffffffffffff][fffffffffffffff]
 
-`[0x18000000, 0x18010000]` - secondary1 slot for BlinkyApp;
+Here:
+`0x18000000` - The start address of external memory.
+`[xxxxxxxxxxxxxxxx]` - The first flash page of minimum erase size 0x40000 occupied by the firmware.
+`[tt]` - The trailer portion (last 0x200 of image) of the upgrade slot placed on a separate flash page.
+`[fffff]` - The remained portion of the flash page, used to store the image trailer - this area cannot be used for anything else.
 
-`[0x10038000, 0x10048000]` - primary2 slot for user app ;
+When using slots sizes other than default, consider the above-described `0x40200`.
 
-`[0x18040000, 0x18050000]` - secondary2 slot for user app;
+When the slot size is not aligned to `0x40200`, the start address of the upgrade image in the external flash is calculated starting from the image trailer location. Consider the following example:
 
-`[0x10058000, 0x10059000]` - scratch area (not used);
+The primary slot size required is 590336 bytes (576k + 512b).
 
-Size of slots `0x10000` - 64kB
+Four flash pages are required to fit the secondary slot (P1-P4):
 
-**Note 1**: make sure primary, secondary slot and bootloader app sizes are appropriate and correspond to flash area size defined in Applications' linker files.
+    0x1800 0000 - 0x1804 0000 - P1
+    0x1804 0000 - 0x1808 0000 - P2
+    0x1808 0000 - 0x180C 0000 - P3
+    0x1808 0000 - 0x180C 0000 - P4
 
-**Note 2**: make sure secondary slot start address is aligned (or smaller) to erase size (0x40000 - 256kB).
+The primary slot consists of 512 bytes of the image trailer, it goes to P4, 2 full sectors of 256k goes in P3 and P2, the remainder of 64k is resided in P1.
 
-MCUBootApp's `main.c` contains the call to Init-SFDP API which performs required GPIO configurations, SMIF IP block configurations, SFDP protocol read and memory-config structure initialization.
+Thus, the start address of the secondary slot is: 0x1804 0000 - 0x10000 (64k) = 0x1803 0000. The size occupied is 4 * 256k = 786k
 
-After that MCUBootApp is ready to accept upgrade image from external memory module.
+##### How to enable external memory support
 
-Once valid upgrade image was accepted the image in external memory will be erased.
+1. Pass the `USE_EXTERNAL_FLASH=1` flag to the `make` command when building MCUBootApp.
+2. Navigate to `cy_flash_map.c` and check if the secondary-slot start address and size meet the application's requirements.
+3. Define which slave select is used for external memory on the board by setting the `smif_id` value in `main.c`.
+4. Build MCUBootApp as described in the [MCUBootApp.md](MCUBootApp.md) file.
 
-**How to enable external memory support:**
+**Note :** External memory code is developed basing on PDL and can be run on the CM0p core only. It may require modification if used on CM4.
 
-1. Pass `USE_EXTERNAL_FLASH=1` flag to `make` command when building MCUBootApp.
-2. Navigate to `cy_flash_map.c` and check if secondary slot start address and size meet the application's needs.
-3. Define which slave select is used for external memory on a board by setting `smif_id` value in `main.c`.
-4. Build MCUBootApp as described in `Readme.md`.
-
-**Note 3**: External memory code is developed basing on PDL and can be run on CM0p core only. It may require modifications if used on CM4.
-
-**How to build upgrade image for external memory:**
+**How to build an upgrade image for external memory:**
 
     make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x7FE8000 ERASED_VALUE=0xff
 
-`HEADER_OFFSET` defines the offset from original boot image address. This one in line above suggests secondary slot will start from `0x18000000`.
+`HEADER_OFFSET` - Defines the offset from the original boot image address. The above line offset suggests the secondary slot will start from `0x18000000`.
 
-`ERASED_VALUE` defines the memory cell contents in erased state. It is `0x00` for PSoC6's internal Flash and `0xff` for S25FL512S.
+`ERASED_VALUE` - Defines the memory cell contents in the erased state. It is `0x00` for PSoC™ 6 internal flash and `0xff` for S25FL512S.
 
 **Programming to external memory**
 
-The MCUBootApp programming can be done similarly to described in `Readme.md`:
+The MCUBootApp can be programmed similarly to described in the [MCUBootApp.md](MCUBootApp.md) file:
 
-        export OPENOCD=/Applications/ModusToolbox/tools_2.1/openocd
+        export OPENOCD=/Applications/ModusToolbox/tools_2.4/openocd
 
         ${OPENOCD}/bin/openocd -s ${OPENOCD}/scripts \
                             -f ${OPENOCD}/scripts/interface/kitprog3.cfg \
@@ -90,11 +92,11 @@ The MCUBootApp programming can be done similarly to described in `Readme.md`:
                             -c "init; reset init; program PATH_TO_APPLICATION.hex" \
                             -c "resume; reset; exit" 
 
-There is a NULL-pointer placed for SMIF configuration pointer in TOC2 (Table Of Contents, `cy_serial_flash_prog.c`).
-This is done to force CY8PROTO-062-4343W DAP Link firmware to program external memory with hardcoded values.
+There is a NULL-pointer placed for the SMIF configuration pointer in TOC2 (Table Of Contents, `cy_serial_flash_prog.c`).
+This is done to force the CY8PROTO-062-4343W DAP Link firmware to program external memory with hardcoded values.
 
-1. Press SW3 Mode button on a board to switch the board into DAP Link mode.
-2. Once DAP Link removable disk appeared drop (copy) the upgrade image HEX file to it.
-This will invoke firmware to program external memory.
+1. Click the SW3 Mode button on the board to switch the board to DAP Link mode.
+2. Once DAP Link removable disk displays, drop (copy) the upgrade image HEX file to it.
+This will invoke the firmware to program external memory.
 
-**Note 3:** the programming of external memory is limited to S25FL512S p/n only at this moment.
+**Note :** the programming of external memory is limited to S25FL512S p/n only at this moment.

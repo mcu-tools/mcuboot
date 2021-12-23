@@ -28,62 +28,82 @@ include host.mk
 ################################################################################
 # PDL library
 ################################################################################
-PSOC6_LIBS_PATH = $(PRJ_DIR)/libs
+CY_LIBS_PATH = $(PRJ_DIR)/libs
 
-ifeq ($(CORE),CM0P)
-CORE_SIFFX=m0plus
-else
-CORE_SIFFX=m4
-endif
+# Collect common source files for PDL
+SOURCES_PDL := $(wildcard $(CY_LIBS_PATH)/mtb-pdl-cat1/drivers/source/*.c)
+SOURCES_PDL += $(wildcard $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/source/*.c)
 
-# Collect source files for PDL
-SOURCES_PDL := $(wildcard $(PSOC6_LIBS_PATH)/mtb-pdl-cat1/drivers/source/*.c)
-SOURCES_PDL += $(wildcard $(PSOC6_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT1A/source/*.c)
+COMPONENT_CORE_PATH := $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/templates/COMPONENT_MTB/COMPONENT_$(CORE)
 
 # PDL startup related files
-SOURCES_PDL_STARTUP := $(PSOC6_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT1A/templates/COMPONENT_MTB/COMPONENT_$(CORE)/system_psoc6_c$(CORE_SIFFX).c
+SYSTEM_FILE_NAME := $(PLATFORM_SYSTEM_FILE_NAME)
+SOURCES_PDL_SYSTEM := $(COMPONENT_CORE_PATH)/$(SYSTEM_FILE_NAME)
+SOURCES_PDL_STARTUP := $(COMPONENT_CORE_PATH)/$(PLATFORM_SOURCES_PDL_STARTUP)
+
+# Collect source files for Retarget-io
+SOURCES_RETARGET_IO := $(PLATFORM_SOURCES_RETARGET_IO)
+
+# HAL source files
+SOURCES_HAL := $(PLATFORM_SOURCES_HAL)
+
+# Add platform folder to build
+SOURCES_PLATFORM := $(wildcard $(PRJ_DIR)/platforms/$(FAMILY)/*.c)
+SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/$(FAMILY)/secure/*.c)
 
 # PDL related include directories
-INCLUDE_DIRS_PDL := $(PSOC6_LIBS_PATH)/mtb-pdl-cat1/drivers/include
-INCLUDE_DIRS_PDL += $(PSOC6_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT1A/include/ip
-INCLUDE_DIRS_PDL += $(PSOC6_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT1A/include
-INCLUDE_DIRS_PDL += $(PSOC6_LIBS_PATH)/mtb-pdl-cat1/cmsis/include
-
-# PDL startup related files
-INCLUDE_DIRS_PDL_STARTUP := $(PSOC6_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT1A/templates/COMPONENT_MTB
+INCLUDE_DIRS_PDL := $(CY_LIBS_PATH)/mtb-pdl-cat1/drivers/include
+INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/ip
+INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include
+INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/cmsis/include
+INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/templates/COMPONENT_MTB
 
 # core-libs related include directories
-INCLUDE_DIRS_CORE_LIB := $(PSOC6_LIBS_PATH)/core-lib/include
+INCLUDE_DIRS_CORE_LIB := $(CY_LIBS_PATH)/core-lib/include
 
-STARTUP_FILE := $(PSOC6_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT1A/templates/COMPONENT_MTB/COMPONENT_$(CORE)/TOOLCHAIN_$(COMPILER)/startup_psoc6_$(PLATFORM_SUFFIX)_c$(CORE_SIFFX)
+# PDL startup related files
+INCLUDE_DIRS_PDL_STARTUP += $(COMPONENT_CORE_PATH)/HEADER_FILES
 
-ifeq ($(COMPILER), GCC_ARM)
-	ASM_FILES_STARTUP := $(STARTUP_FILE).S
-else
-$(error Only GCC ARM is supported at this moment)
-endif
+# Retarget-io related include directories
+INCLUDE_DIRS_RETARGET_IO := $(PLATFORM_INCLUDE_DIRS_RETARGET_IO)
 
+# HAL include directories files
+INCLUDE_DIRS_HAL := $(PLATFORM_INCLUDE_DIRS_HAL)
+
+# Include platforms folder
+INCLUDE_DIRS_PLATFORM := $(PRJ_DIR)/platforms/$(FAMILY)
+INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/$(FAMILY)/secure
+
+# Assembler startup file for platform
+ASM_FILES_STARTUP := $(PLATFORM_STARTUP_FILE)
 
 # Collected source files for libraries
 SOURCES_LIBS := $(SOURCES_PDL)
+SOURCES_LIBS += $(SOURCES_PDL_SYSTEM)
 SOURCES_LIBS += $(SOURCES_PDL_STARTUP)
+SOURCES_LIBS += $(SOURCES_PDL_RUNTIME)
+SOURCES_LIBS += $(SOURCES_HAL)
+SOURCES_LIBS += $(SOURCES_PLATFORM)
+SOURCES_LIBS += $(SOURCES_RETARGET_IO)
 
 # Collected include directories for libraries
 INCLUDE_DIRS_LIBS := $(addprefix -I,$(INCLUDE_DIRS_PDL))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_PDL_STARTUP))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_CORE_LIB))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_PLATFORM))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_RETARGET_IO))
 
-ASM_FILES_PDL :=
-ifeq ($(COMPILER), GCC_ARM)
-ASM_FILES_PDL += $(PSOC6_LIBS_PATH)/mtb-pdl-cat1/drivers/source/TOOLCHAIN_GCC_ARM/cy_syslib_gcc.S
-else
-$(error Only GCC ARM is supported at this moment)
-endif
+# Syslib files
+ASM_FILES_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/drivers/source/TOOLCHAIN_GCC_ARM/cy_syslib_gcc.S
 
 ASM_FILES_LIBS := $(ASM_FILES_PDL)
 
 # Add define for PDL version
 DEFINES_PDL += -DPDL_VERSION=$(PDL_VERSION)
 
-DEFINES_LIBS := $(DEFINES_PLATFORM)
+DEFINES_LIBS := $(PLATFORM_DEFINES)
+DEFINES_LIBS += $(PLATFORM_DEFINES_LIBS)
 DEFINES_LIBS += $(DEFINES_PDL)
+DEFINES_LIBS += -DCOMPONENT_CAT1
+DEFINES_LIBS += -DCOMPONENT_CAT$(PDL_CAT_SUFFIX)

@@ -28,6 +28,7 @@
 
 #include <stdbool.h>
 #include "watchdog.h"
+#include "cy_sysclk.h"
 #include "cy_wdt.h"
 #include "cy_utils.h"
 
@@ -96,8 +97,8 @@ static __INLINE uint32_t _cy_wdg_timeout_to_ignore_bits(uint32_t *timeout_ms) {
 
 static __INLINE uint16_t _cy_wdg_timeout_to_match(uint16_t timeout_ms, uint16_t ignore_bits)
 {
-    // match = (timeout_ms / .030518 ms) - (2 * 2^(16 - ignore_bits))
-    return (uint16_t)(timeout_ms / .030518) - (1UL << (17 - ignore_bits)) + Cy_WDT_GetCount();
+    uint32_t timeout = (uint32_t)timeout_ms * CY_SYSCLK_ILO_FREQ / 1000;
+    return (uint16_t)(timeout - (1UL << (17 - ignore_bits)) + Cy_WDT_GetCount());
 }
 
 /* Start API implementing */

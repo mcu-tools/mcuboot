@@ -23,7 +23,7 @@
 # limitations under the License.
 ################################################################################
 
-include common_libs.mk
+include host.mk
 
 # Compilers
 GCC_ARM	:= 1
@@ -34,24 +34,13 @@ OTHER 	:= 4
 ifeq ($(MAKEINFO), 1)
 $(info $(COMPILER))
 endif
-# Detect host OS to make resolving compiler pathes easier
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S), Darwin)
-	HOST_OS = osx
-else
-	ifeq ($(UNAME_S), Linux)
-		HOST_OS = linux
-	else
-		HOST_OS = win
-	endif
-endif
 
 # Path to the compiler installation
 # NOTE: Absolute pathes for now for the sake of development
 ifeq ($(HOST_OS), win)
 	ifeq ($(COMPILER), GCC_ARM)
-		TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/ModusToolbox/tools_2.2/gcc
-		MY_TOOLCHAIN_PATH:=$(subst \,/,$(TOOLCHAIN_PATH))
+		TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/ModusToolbox/tools_2.4/gcc
+		MY_TOOLCHAIN_PATH := $(call get_os_path, $(TOOLCHAIN_PATH))
 		TOOLCHAIN_PATH := $(MY_TOOLCHAIN_PATH)
 		GCC_PATH := $(TOOLCHAIN_PATH)
 		# executables
@@ -82,23 +71,26 @@ OBJCOPY  := "$(GCC_PATH)/bin/arm-none-eabi-objcopy"
 # Set flags for toolchain executables
 ifeq ($(COMPILER), GCC_ARM)
 	# set build-in compiler flags
-	CFLAGS_COMMON := -mcpu=cortex-$(CORE_SIFFX) -mthumb -mfloat-abi=soft -fno-stack-protector -ffunction-sections -fdata-sections -ffat-lto-objects -fstrict-aliasing -g -Wall -Wextra
+	CFLAGS_COMMON :=  -mthumb -ffunction-sections -fdata-sections  -g -Wall -Wextra
 	ifeq ($(BUILDCFG), Debug)
-		CFLAGS_COMMON += -Og -g3
+		CFLAGS_SPECIAL ?= -Og -g3
+		CFLAGS_COMMON += $(CFLAGS_SPECIAL)
 	else ifeq ($(BUILDCFG), Release)
-		CFLAGS_COMMON += -Os -g
+		CFLAGS_COMMON += -Os -g -DNDEBUG
 	else
 $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif
-	# add defines and includes
-	CFLAGS := $(CFLAGS_COMMON) $(INCLUDES)
+
+	CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_PLATFORM) $(INCLUDES)
+
 	CC_DEPEND = -MD -MP -MF
 
-	LDFLAGS_COMMON := -mcpu=cortex-$(CORE_SIFFX) -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -L "$(GCC_PATH)/lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m" -ffat-lto-objects -g --enable-objc-gc
+	LDFLAGS_COMMON := -mcpu=cortex-$(CORE_SUFFIX) -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -ffat-lto-objects -g --enable-objc-gc
 	ifeq ($(BUILDCFG), Debug)
-		LDFLAGS_COMMON += -Og
+		LDFLAGS_SPECIAL ?= -Og
+		LDFLAGS_COMMON += $(LDFLAGS_SPECIAL)
 	else ifeq ($(BUILDCFG), Release)
-		LDFLAGS_COMMON += -Os
+		LDFLAGS_OPTIMIZATION ?= -Os
 	else
 $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif

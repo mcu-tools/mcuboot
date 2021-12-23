@@ -1607,30 +1607,6 @@
 //#define MBEDTLS_SSL_PROTO_SSL3
 
 /**
- * \def MBEDTLS_SSL_PROTO_TLS1
- *
- * Enable support for TLS 1.0.
- *
- * Requires: MBEDTLS_MD5_C
- *           MBEDTLS_SHA1_C
- *
- * Comment this macro to disable support for TLS 1.0
- */
-#define MBEDTLS_SSL_PROTO_TLS1
-
-/**
- * \def MBEDTLS_SSL_PROTO_TLS1_1
- *
- * Enable support for TLS 1.1 (and DTLS 1.0 if DTLS is enabled).
- *
- * Requires: MBEDTLS_MD5_C
- *           MBEDTLS_SHA1_C
- *
- * Comment this macro to disable support for TLS 1.1 / DTLS 1.0
- */
-#define MBEDTLS_SSL_PROTO_TLS1_1
-
-/**
  * \def MBEDTLS_SSL_PROTO_TLS1_2
  *
  * Enable support for TLS 1.2 (and DTLS 1.2 if DTLS is enabled).
@@ -1760,15 +1736,6 @@
  * Comment this macro to disable support for server name indication in SSL
  */
 #define MBEDTLS_SSL_SERVER_NAME_INDICATION
-
-/**
- * \def MBEDTLS_SSL_TRUNCATED_HMAC
- *
- * Enable support for RFC 6066 truncated HMAC in SSL.
- *
- * Comment this macro to disable support for truncated HMAC in SSL
- */
-#define MBEDTLS_SSL_TRUNCATED_HMAC
 
 /**
  * \def MBEDTLS_SSL_TRUNCATED_HMAC_COMPAT
@@ -2980,6 +2947,7 @@
  * This module is required for the SSL/TLS 1.2 PRF function.
  */
 #define MBEDTLS_SHA256_C
+#define MBEDTLS_SHA224_C
 
 /**
  * \def MBEDTLS_SHA512_C
