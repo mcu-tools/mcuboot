@@ -28,6 +28,7 @@ pub enum Caps {
     Aes256               = (1 << 15),
     RamLoad              = (1 << 16),
     DirectXip            = (1 << 17),
+    SwapUsingStatus      = (1 << 18),
 }
 
 impl Caps {

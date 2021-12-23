@@ -352,7 +352,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                (flash, areadesc, &[Caps::SwapUsingMove, Caps::SwapUsingStatus])
             }
             DeviceName::K64f => {
                 // NXP style flash.  Small sectors, one small sector for scratch.
@@ -367,7 +367,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                (flash, areadesc, &[Caps::SwapUsingStatus])
             }
             DeviceName::K64fBig => {
                 // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
@@ -383,7 +383,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                (flash, areadesc, &[Caps::SwapUsingMove, Caps::SwapUsingStatus])
             }
             DeviceName::Nrf52840 => {
                 // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
@@ -399,7 +399,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                (flash, areadesc, &[Caps::SwapUsingStatus])
             }
             DeviceName::Nrf52840UnequalSlots => {
                 let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
@@ -412,7 +412,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade])
+                (flash, areadesc, &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade, Caps::SwapUsingStatus])
             }
             DeviceName::Nrf52840SpiFlash => {
                 // Simulate nrf52840 with external SPI flash. The external SPI flash
@@ -431,7 +431,7 @@ impl ImagesBuilder {
                 let mut flash = SimMultiFlash::new();
                 flash.insert(0, dev0);
                 flash.insert(1, dev1);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                (flash, areadesc, &[Caps::SwapUsingMove, Caps::SwapUsingStatus])
             }
             DeviceName::K64fMulti => {
                 // NXP style flash, but larger, to support multiple images.
@@ -448,7 +448,23 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                (flash, areadesc, &[Caps::SwapUsingStatus])
+            }
+            DeviceName::PSoC6 => {
+            // PSoC style flash of 512K, single-image case
+                let dev = SimFlash::new(vec![512; 1024], align as usize, erased_val);
+
+                let dev_id = 0;
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(dev_id, &dev);
+                areadesc.add_image(0x018000, 0x010000, FlashId::Image0, dev_id);
+                areadesc.add_image(0x028000, 0x010000, FlashId::Image1, dev_id);
+                areadesc.add_image(0x039800, 0x001000, FlashId::ImageScratch, dev_id);
+                areadesc.add_image(0x038000, 0x001800, FlashId::ImageSwapStatus, dev_id);
+
+                let mut flash = SimMultiFlash::new();
+                flash.insert(dev_id, dev);
+                (flash, areadesc, &[Caps::SwapUsingMove, Caps::SwapUsingScratch])
             }
         }
     }
@@ -1513,12 +1529,18 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
         ImageSize::Largest => {
             // Using the header size we know, the trailer size, and the slot size, we can compute
             // the largest image possible.
-            let trailer = if Caps::OverwriteUpgrade.present() {
-                // This computation is incorrect, and we need to figure out the correct size.
-                // c::boot_status_sz(dev.align() as u32) as usize
-                16 + 4 * dev.align()
+            let trailer = if !Caps::SwapUsingStatus.present() {  
+                if Caps::OverwriteUpgrade.present() {
+                    info!("16 + 4 * dev.align()");
+                    // This computation is incorrect, and we need to figure out the correct size.
+                    // c::boot_status_sz(dev.align() as u32) as usize
+                    16 + 4 * dev.align()
+                } else {
+                    info!("c::boot_trailer_sz");
+                    c::boot_trailer_sz(dev.align() as u32) as usize
+                }
             } else {
-                c::boot_trailer_sz(dev.align() as u32) as usize
+                dev.align() as usize
             };
             let tlv_len = tlv.estimate_size();
             info!("slot: 0x{:x}, HDR: 0x{:x}, trailer: 0x{:x}",
@@ -1946,6 +1968,7 @@ const BOOT_FLAG_SET: Option<u8> = Some(1);
 const BOOT_FLAG_UNSET: Option<u8> = Some(3);
 
 /// Write out the magic so that the loader tries doing an upgrade.
+#[cfg(not(feature = "swap-status"))]
 pub fn mark_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
     let dev = flash.get_mut(&slot.dev_id).unwrap();
     let align = dev.align();
@@ -1962,8 +1985,24 @@ pub fn mark_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
     }
 }
 
+/// Write out the magic so that the loader tries doing an upgrade.
+#[cfg(feature = "swap-status")]
+pub fn mark_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
+    let dev = flash.get_mut(&slot.dev_id).unwrap();
+    let align = dev.align();
+    let offset = slot.trailer_off + c::boot_max_align() * 4;
+    let mask = align - 1;
+    let sector_off = offset & !mask;
+    let mut buf = vec![dev.erased_val(); align];
+    dev.read(sector_off, &mut buf).unwrap();
+    buf[(offset & mask)..].copy_from_slice(MAGIC);
+    dev.erase(sector_off, align).unwrap();
+    dev.write(sector_off, &buf).unwrap();
+}
+
 /// Writes the image_ok flag which, guess what, tells the bootloader
 /// the this image is ok (not a test, and no revert is to be performed).
+#[cfg(not(feature = "swap-status"))]
 fn mark_permanent_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
     // Overwrite mode always is permanent, and only the magic is used in
     // the trailer.  To avoid problems with large write sizes, don't try to
@@ -1978,6 +2017,29 @@ fn mark_permanent_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
     ok[0] = 1u8;
     let off = slot.trailer_off + c::boot_max_align() * 3;
     dev.write(off, &ok).unwrap();
+}
+
+/// Writes the image_ok flag which, guess what, tells the bootloader
+/// the this image is ok (not a test, and no revert is to be performed).
+#[cfg(feature = "swap-status")]
+fn mark_permanent_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
+    // Overwrite mode always is permanent, and only the magic is used in
+    // the trailer.  To avoid problems with large write sizes, don't try to
+    // set anything in this case.
+    if Caps::OverwriteUpgrade.present() {
+        return;
+    }
+    
+    let dev = flash.get_mut(&slot.dev_id).unwrap();
+    let align:usize = dev.align();
+    let mask:usize = align - 1;
+    let ok_off:usize = slot.trailer_off + c::boot_max_align() * 3;
+    let sector_off:usize = ok_off & !mask;
+    let mut buf = vec![dev.erased_val(); align];
+    dev.read(sector_off, &mut buf).unwrap();
+    buf[ok_off & mask] = 1u8;
+    dev.erase(sector_off, align).unwrap();
+    dev.write(sector_off, &buf[..align]).unwrap();
 }
 
 // Drop some pseudo-random gibberish onto the data.
@@ -2021,11 +2083,18 @@ pub fn show_sizes() {
 }
 
 #[cfg(not(feature = "large-write"))]
+#[cfg(not(feature = "swap-status"))]
 fn test_alignments() -> &'static [usize] {
     &[1, 2, 4, 8]
 }
 
 #[cfg(feature = "large-write")]
+#[cfg(not(feature = "swap-status"))]
 fn test_alignments() -> &'static [usize] {
     &[1, 2, 4, 8, 128, 512]
+}
+
+#[cfg(feature = "swap-status")]
+fn test_alignments() -> &'static [usize] {
+    &[512]
 }

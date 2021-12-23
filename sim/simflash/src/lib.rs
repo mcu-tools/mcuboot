@@ -319,6 +319,10 @@ mod test {
             let mut f2 = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 64 * 1024,
                                     128 * 1024, 128 * 1024, 128 * 1024], 1, erased_val);
             test_device(&mut f2, erased_val);
+
+            // PSoC style, uniform sectors.
+            let mut f3 = SimFlash::new(vec![512usize; 1024], 512, erased_val);
+            test_device(&mut f3, erased_val);
         }
     }
 

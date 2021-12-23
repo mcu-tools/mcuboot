@@ -17,4 +17,17 @@
 #define FLASH_AREA_ID_image_2 4
 #define FLASH_AREA_ID_image_3 5
 
+/*
+ * PSoC6 area defines based on file:
+ * boot/cypress/MCUBootApp/sysflash/sysflash.h
+*/
+#define FLASH_AREA_IMAGE_0 1
+#define FLASH_AREA_IMAGE_1 2
+#define FLASH_AREA_ID_image_scratch 3
+#define FLASH_AREA_IMAGE_2 4
+#define FLASH_AREA_IMAGE_3 5
+#define FLASH_AREA_IMAGE_SWAP_STATUS 7
+
+#define BOOT_MAX_SWAP_STATUS_SECTORS 64
+
 #endif /*__DEVICETREE_H__*/

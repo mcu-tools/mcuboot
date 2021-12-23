@@ -42,6 +42,7 @@ extern "C" {
  * and match the target offset specified in download script.
  */
 #include <inttypes.h>
+#include <stddef.h>
 
 /**
  * @brief Structure describing an area on a flash device.

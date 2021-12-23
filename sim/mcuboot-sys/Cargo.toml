@@ -32,6 +32,8 @@ overwrite-only = []
 
 swap-move = []
 
+swap-status = []
+
 # Disable validation of the primary slot
 validate-primary-slot = []
 

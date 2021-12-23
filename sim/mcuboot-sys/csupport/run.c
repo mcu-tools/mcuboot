@@ -257,6 +257,7 @@ int invoke_boot_go(struct sim_context *ctx, struct area_desc *adesc,
     mbedtls_platform_set_calloc_free(calloc, free);
 #endif
 
+    // NOTE: cleared internally by context_boot_go
     state = malloc(sizeof(struct boot_loader_state));
 
     sim_set_flash_areas(adesc);
@@ -364,6 +365,15 @@ int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
         ctx->jumped++;
         longjmp(ctx->boot_jmpbuf, 1);
     }
+
+// Align offset and length to sector size
+#ifdef MCUBOOT_SWAP_USING_STATUS
+    uint32_t sect_off = off / CY_FLASH_ALIGN * CY_FLASH_ALIGN;
+    len = ((off + len - 1) / CY_FLASH_ALIGN + 1) * CY_FLASH_ALIGN - sect_off;
+    off = sect_off;
+    BOOT_LOG_SIM("%s: erase with aligment at area=%d, off=%x, len=%x", __func__, area->fa_id, off, len);
+#endif
+
     return sim_flash_erase(area->fa_device_id, area->fa_off + off, len);
 }
 
