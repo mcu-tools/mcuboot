@@ -16,8 +16,8 @@ prepare_environment() {
 }
 
 build_mcuboot() {
-  local target=${MCUBOOT_TARGET}
-  local feature=${1}
+  local target=${1}
+  local feature=${2}
   local toolchain_file="${ESPRESSIF_ROOT}/tools/toolchain-${target}.cmake"
   local mcuboot_config="${ESPRESSIF_ROOT}/bootloader.conf"
   local build_dir=".build-${target}"
@@ -43,9 +43,12 @@ prepare_environment
 
 if [ -n "${MCUBOOT_FEATURES}" ]; then
   IFS=','
-  read -ra feature_list <<< "${MCUBOOT_FEATURES}"
-  for feature in "${feature_list[@]}"; do
-    echo "Building MCUboot with support for \"${feature}\""
-    build_mcuboot "${feature}"
+  read -ra target_list <<< "${MCUBOOT_TARGETS}"
+  for target in "${target_list[@]}"; do
+    read -ra feature_list <<< "${MCUBOOT_FEATURES}"
+    for feature in "${feature_list[@]}"; do
+      echo "Building MCUboot for \"${target}\" with support for \"${feature}\""
+      build_mcuboot "${target}" "${feature}"
+    done
   done
 fi
