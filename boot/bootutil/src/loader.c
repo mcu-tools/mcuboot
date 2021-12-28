@@ -386,9 +386,11 @@ void
 boot_status_reset(struct boot_status *bs)
 {
 #ifdef MCUBOOT_ENC_IMAGES
-    memset(&bs->enckey, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_KEY_ALIGN_SIZE);
+    (void)memset(&bs->enckey, BOOT_UNINITIALIZED_KEY_FILL,
+                 BOOT_NUM_SLOTS * BOOT_ENC_KEY_SIZE);
 #if MCUBOOT_SWAP_SAVE_ENCTLV
-    memset(&bs->enctlv, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_TLV_ALIGN_SIZE);
+    (void)memset(&bs->enctlv, BOOT_UNINITIALIZED_TLV_FILL,
+                 BOOT_NUM_SLOTS * BOOT_ENC_TLV_ALIGN_SIZE);
 #endif
 #endif /* MCUBOOT_ENC_IMAGES */
 

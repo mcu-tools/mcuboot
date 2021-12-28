@@ -187,15 +187,15 @@ boot_swap_info_off(const struct flash_area *fap)
  * @param val                   The magic value in a trailer, encoded as a
  *                                  BOOT_MAGIC_[...].
  *
- * @return                      1 if the two values are compatible;
- *                              0 otherwise.
+ * @return                      true - if the two values are compatible;
+ *                              false - otherwise.
  */
-int
+bool
 boot_magic_compatible_check(uint8_t tbl_val, uint8_t val)
 {
     switch (tbl_val) {
     case BOOT_MAGIC_ANY:
-        return 1;
+        return true;
 
     case BOOT_MAGIC_NOTGOOD:
         return val != BOOT_MAGIC_GOOD;
@@ -224,7 +224,7 @@ bool bootutil_buffer_is_erased(const struct flash_area *area,
     uint8_t *u8b;
     uint8_t erased_val;
 
-    if (buffer == NULL || len == 0) {
+    if ((area == NULL) || (buffer == NULL) || (len == 0)) {
         return false;
     }
 
@@ -244,10 +244,10 @@ boot_read_flag(const struct flash_area *fap, uint8_t *flag, uint32_t off)
     int rc;
 
     rc = flash_area_read(fap, off, flag, sizeof *flag);
-    if (rc < 0) {
+    if (rc != 0) {
         return BOOT_EFLASH;
     }
-    if (bootutil_buffer_is_erased(fap, flag, sizeof *flag)) {
+    if (*flag == flash_area_erased_val(fap)) {
         *flag = BOOT_FLAG_UNSET;
     } else {
         *flag = boot_flag_decode(*flag);
@@ -274,7 +274,7 @@ boot_read_swap_state(const struct flash_area *fap,
 
     off = boot_magic_off(fap);
     rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
-    if (rc < 0) {
+    if (rc != 0) {
         return BOOT_EFLASH;
     }
     if (bootutil_buffer_is_erased(fap, magic, BOOT_MAGIC_SZ)) {
@@ -285,7 +285,7 @@ boot_read_swap_state(const struct flash_area *fap,
 
     off = boot_swap_info_off(fap);
     rc = flash_area_read(fap, off, &swap_info, sizeof swap_info);
-    if (rc < 0) {
+    if (rc != 0) {
         return BOOT_EFLASH;
     }
 
@@ -300,7 +300,7 @@ boot_read_swap_state(const struct flash_area *fap,
     }
 
     rc = boot_read_copy_done(fap, &state->copy_done);
-    if (rc) {
+    if (rc != 0) {
         return BOOT_EFLASH;
     }
 

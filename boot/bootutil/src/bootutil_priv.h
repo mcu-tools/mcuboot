@@ -82,8 +82,10 @@ struct boot_status {
     uint8_t swap_type;    /* The type of swap in effect */
     uint32_t swap_size;   /* Total size of swapped image */
 #ifdef MCUBOOT_ENC_IMAGES
+#define BOOT_UNINITIALIZED_KEY_FILL 0xFF
     uint8_t enckey[BOOT_NUM_SLOTS][BOOT_ENC_KEY_ALIGN_SIZE];
 #if MCUBOOT_SWAP_SAVE_ENCTLV
+#define BOOT_UNINITIALIZED_TLV_FILL 0xFF
     uint8_t enctlv[BOOT_NUM_SLOTS][BOOT_ENC_TLV_ALIGN_SIZE];
 #endif
 #endif
@@ -261,7 +263,7 @@ fih_int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
 
 fih_int boot_fih_memequal(const void *s1, const void *s2, size_t n);
 
-int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
+bool boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
 int boot_status_entries(int image_index, const struct flash_area *fap);

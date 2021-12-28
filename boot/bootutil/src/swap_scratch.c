@@ -110,8 +110,7 @@ swap_read_status_bytes(const struct flash_area *fap,
         if (rc < 0) {
             return BOOT_EFLASH;
         }
-
-        if (bootutil_buffer_is_erased(fap, &status, 1)) {
+        if (status == flash_area_erased_val(fap)) {
             if (found && !found_idx) {
                 found_idx = i;
             }

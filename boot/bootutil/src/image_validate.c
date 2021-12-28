@@ -209,9 +209,9 @@ bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
     bootutil_sha256_context sha256_ctx;
     int i;
     const struct bootutil_key *key;
-    uint8_t hash[32];
+    uint8_t hash[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
 
-    if (keyhash_len > 32) {
+    if (keyhash_len != BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE) {
         return -1;
     }
 
@@ -416,7 +416,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             /*
              * Determine which key we should be checking.
              */
-            if (len > 32) {
+            if (len != BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE) {
                 rc = -1;
                 goto out;
             }

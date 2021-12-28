@@ -79,15 +79,11 @@ key_unwrap(const uint8_t *wrapped, uint8_t *enckey)
 
     bootutil_aes_kw_init(&aes_kw);
     rc = bootutil_aes_kw_set_unwrap_key(&aes_kw, bootutil_enc_key.key, *bootutil_enc_key.len);
-    if (rc != 0) {
-        goto done;
-    }
-    rc = bootutil_aes_kw_unwrap(&aes_kw, wrapped, TLV_ENC_KW_SZ, enckey, BOOT_ENC_KEY_SIZE);
-    if (rc != 0) {
-        goto done;
+    
+    if (rc == 0) {
+        rc = bootutil_aes_kw_unwrap(&aes_kw, wrapped, TLV_ENC_KW_SZ, enckey, BOOT_ENC_KEY_SIZE);
     }
 
-done:
     bootutil_aes_kw_drop(&aes_kw);
     return rc;
 }
@@ -333,7 +329,7 @@ hkdf(uint8_t *ikm, uint16_t ikm_len, uint8_t *info, uint16_t info_len,
 
     bootutil_hmac_sha256_init(&hmac);
 
-    memset(salt, 0, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
+    (void)memset(salt, 0, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
     rc = bootutil_hmac_sha256_set_key(&hmac, salt, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
     if (rc != 0) {
         goto error;
@@ -663,7 +659,7 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    memset(counter, 0, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
+    (void)memset(counter, 0, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
     rc = bootutil_aes_ctr_decrypt(&aes_ctr, counter, &buf[EC_CIPHERKEY_INDEX], BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE, 0, enckey);
     if (rc != 0) {
         bootutil_aes_ctr_drop(&aes_ctr);
@@ -728,7 +724,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
 
 #if MCUBOOT_SWAP_SAVE_ENCTLV
     buf = bs->enctlv[slot];
-    memset(buf, 0xff, BOOT_ENC_TLV_ALIGN_SIZE);
+    (void)memset(buf, BOOT_UNINITIALIZED_TLV_FILL, BOOT_ENC_TLV_ALIGN_SIZE);
 #endif
 
     rc = flash_area_read(fap, off, buf, EXPECTED_ENC_LEN);
