@@ -28,7 +28,7 @@ SemiSemVersion = namedtuple('SemiSemVersion', ['major', 'minor', 'revision',
                                                'build'])
 
 version_re = re.compile(
-    r"""^([1-9]\d*|0)(\.([1-9]\d*|0)(\.([1-9]\d*|0)(\+([1-9]\d*|0))?)?)?$""")
+    r"""^([0-9]\d*|0)(\.([0-9]\d*|0)(\.([0-9]\d*|0)(\+([0-9]\d*|0))?)?)?$""")
 
 
 def decode_version(text):
