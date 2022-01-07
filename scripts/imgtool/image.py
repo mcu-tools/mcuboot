@@ -305,7 +305,7 @@ class Image():
         return cipherkey, ciphermac, pubk
 
     def create(self, key, public_key_format, enckey, dependencies=None,
-               sw_type=None, custom_tlvs=None, encrypt_keylen=128):
+               sw_type=None, custom_tlvs=None, encrypt_keylen=128, clear=False):
         self.enckey = enckey
 
         # Calculate the hash of the public key
@@ -472,13 +472,14 @@ class Image():
                 else:
                     tlv.add('ENCX25519', enctlv)
 
-            nonce = bytes([0] * 16)
-            cipher = Cipher(algorithms.AES(plainkey), modes.CTR(nonce),
-                            backend=default_backend())
-            encryptor = cipher.encryptor()
-            img = bytes(self.payload[self.header_size:])
-            self.payload[self.header_size:] = \
-                encryptor.update(img) + encryptor.finalize()
+            if not clear:
+                nonce = bytes([0] * 16)
+                cipher = Cipher(algorithms.AES(plainkey), modes.CTR(nonce),
+                                backend=default_backend())
+                encryptor = cipher.encryptor()
+                img = bytes(self.payload[self.header_size:])
+                self.payload[self.header_size:] = \
+                    encryptor.update(img) + encryptor.finalize()
 
         self.payload += prot_tlv.get()
         self.payload += tlv.get()
