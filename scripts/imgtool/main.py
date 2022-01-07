@@ -254,6 +254,10 @@ class BasedIntParamType(click.ParamType):
               type=click.Choice(['128','256']),
               help='When encrypting the image using AES, select a 128 bit or '
                    '256 bit key len.')
+@click.option('-c', '--clear', required=False, is_flag=True, default=False,
+              help='Output a non-encrypted image with encryption capabilities,'
+                   'so it can be installed in the primary slot, and encrypted '
+                   'when swapped to the secondary.')
 @click.option('-e', '--endian', type=click.Choice(['little', 'big']),
               default='little', help="Select little or big endian")
 @click.option('--overwrite-only', default=False, is_flag=True,
@@ -303,7 +307,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt_keylen, encrypt, infile, outfile, dependencies,
          load_addr, hex_addr, erased_val, save_enctlv, security_counter,
-         boot_record, custom_tlv, rom_fixed, max_align):
+         boot_record, custom_tlv, rom_fixed, max_align, clear):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -350,7 +354,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             custom_tlvs[tag] = value.encode('utf-8')
 
     img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, int(encrypt_keylen))
+               custom_tlvs, int(encrypt_keylen), clear)
     img.save(outfile, hex_addr)
 
 
