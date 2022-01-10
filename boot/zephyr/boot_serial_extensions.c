@@ -19,7 +19,7 @@
 #include "bootutil/bootutil_public.h"
 #include "bootutil/boot_hooks.h"
 
-MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #ifdef CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE
 static int bs_custom_storage_erase(cbor_state_t *cs)
@@ -31,11 +31,11 @@ static int bs_custom_storage_erase(cbor_state_t *cs)
     rc = flash_area_open(FLASH_AREA_ID(storage), &fa);
 
     if (rc < 0) {
-        LOG_ERR("failed to open flash area");
+        BOOT_LOG_ERR("failed to open flash area");
     } else {
         rc = flash_area_erase(fa, 0, FLASH_AREA_SIZE(storage));
         if (rc < 0) {
-            LOG_ERR("failed to erase flash area");
+            BOOT_LOG_ERR("failed to erase flash area");
         }
         flash_area_close(fa);
     }
