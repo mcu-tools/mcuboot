@@ -1,85 +1,84 @@
-# MCUboot release notes
+# Release notes
 
 - Table of Contents
 {:toc}
 
 ## Version 1.8.0
 
-The 1.8.0 release of MCUboot contains numerous fixes, and adds support
-for the NuttX RTOS, and the Espressif ESP32 SDK.
+The 1.8.0 release of MCUboot contains numerous fixes and adds support
+for the NuttX RTOS and the Espressif ESP32 SDK.
 
 ### About this release
 
-- Add support for the NuttX RTOS.
-- Add support for the Espressif ESP32 SDK.
+- Added support for the NuttX RTOS.
+- Added support for the Espressif ESP32 SDK.
 - `boot_serial` changed to use cddl-gen, which removes the dependency
   on tinycbor.
-- Add various hooks to be able to change how image data is accessed.
-- Cypress supports Mbed TLS for encryption.
-- Support using Mbed TLS for ECDSA.  This can be useful if Mbed TLS is
-  brought in for another reason.
-- Add simulator support for testing direct-XIP and ramload.
-- Support Mbed TLS 3.0.  Updates the submodule for Mbed TLS to 3.0.
-- Enable direct-xip mode in Mbed-OS port.
-- extract `bootutil_public` library, a common interface for MCUboot
+- Added various hooks to be able to change how the image data is accessed.
+- Cypress now supports Mbed TLS for encryption.
+- Added support for using Mbed TLS for ECDSA. This is useful if Mbed TLS is
+  brought in for other reasons.
+- Added simulator support for testing direct-XIP and ramload.
+- Added support to Mbed TLS 3.0. Updated the submodule for Mbed TLS to 3.0.
+- Enabled direct-xip mode in the Mbed OS port.
+- Extracted the `bootutil_public` library, a common interface for MCUboot
   and the application.
-- Allow to boot primary image if secondary one is unreachable.
-- Add AES256 image encryption support.
-- Add Multiimage boot for direct-xip and ram-load mode.
-- Cargo files moved to top level, now `cargo test` can be run from the
-  top level directory.
-- Fault injection tests use updated TF-M.
+- MCUboot now allows booting the primary image if the secondary one is unreachable.
+- Added AES256 image encryption support.
+- Added multi-image boot for direct-xip and ram-load mode.
+- Cargo files moved to the top level, now `cargo test` can be run from the
+  top-level directory.
+- Fault injection tests now use the updated TF-M.
 - Thingy:53 now supports multi-image DFU.
-- ram load and image encryption can be used together, allowing the
-  entire contents of flash to always remain encrypted.
+- ramload and image encryption can now be used together, allowing the
+  entire contents of the flash memory to always remain encrypted.
 
 ### Security fixes
 
 - [GHSA-gcxh-546h-phg4](https://github.com/mcu-tools/mcuboot/security/advisories/GHSA-gcxh-546h-phg4)
-  has been published.  There is not a fix at this time, but a caution
-  to be sure to follow the instructions carefully, and make sure that
-  the development keys in the repo are never used in a production
-  system.
+  has been published. Currently, there is no fix available. Be sure to
+  follow the instructions carefully and make sure that the development
+  keys in the repo are never used in a production system.
 
 ## Version 1.7.0
 
-The 1.7.0 release of MCUboot adds support for the Mbed-OS platform,
-Equal slots (direct-xip) upgrade mode, RAM loading upgrade mode,
-hardening against hardware level fault injection and timing attacks
+The 1.7.0 release of MCUboot adds support for the Mbed OS platform,
+equal slots (direct-xip) upgrade mode, RAM loading upgrade mode,
+hardening against hardware-level fault injection and timing attacks,
 and single image mode.
-There are bug fixes, and associated imgtool updates as well.
+There are bug fixes and associated imgtool updates as well.
 
 ### About this release
 
-- Initial support for the Mbed-OS platform.
-- Added possibility to enter deep sleep mode after MCUboot app execution
+- Initial support for the Mbed OS platform.
+- Added the possibility to enter deep sleep mode after MCUboot app execution
   for cypress platform.
-- Added hardening against hardware level fault injection and timing attacks.
-- Introduced Abstract crypto primitives to simplify porting.
+- Added hardening against hardware-level fault injection and timing attacks.
+- Introduced abstract crypto primitives to simplify porting.
 - Added RAM-load upgrade mode.
 - Renamed single-image mode to single-slot mode.
-- Allow larger primary slot in swap-move
-- Fixed boostrapping in swap-move mode.
-- Fixed issue causing that interrupted swap-move operation might brick device
+- Allow larger primary slot in swap-move.
+- Fixed bootstrapping in swap-move mode.
+- Fixed an issue causing that an interrupted swap-move operation could brick the device
   if the primary image was padded.
-- Abstracting MCUboot crypto functions for cleaner porting
-- Droped flash_area_read_is_empty() porting API.
-- boot/zephyr: Added watchdog feed on nRF devices.
+- Abstracted MCUboot crypto functions for cleaner porting.
+- Dropped the `flash_area_read_is_empty()` porting API.
+- boot/zephyr: added a watchdog feed on nRF devices.
   See `CONFIG_BOOT_WATCHDOG_FEED` option.
-- boot/zephyr: Added patch for turning off cache for Cortex M7 before
+- boot/zephyr: added a patch for turning off the cache for Cortex M7 before
   chain-loading.
-- boot/zephyr: added option to relocate interrupts to application
-- boot/zephyr: clean ARM core configuration only when selected by user
-- boot/boot_serial: allow nonaligned last image data chunk
+- boot/zephyr: added an option to relocate interrupts to the application.
+- boot/zephyr: it now cleans the ARM core configuration only when selected by the user.
+- boot/boot_serial: it now allows a nonaligned last image data chunk.
 - imgtool: added custom TLV support.
-- imgtool: added possibility to set confirm flag for hex files as well.
-- imgtool: Print image digest during verify.
+- imgtool: added the possibility to set a confirm flag for hex files as well.
+- imgtool: it now prints the image digest during verify.
 
 ### Zephyr-RTOS compatibility
 
 This release of MCUboot works with the Zephyr "main" at the time of the
-release. It was tested as of has 7a3b253ce. This version of MCUboot also
-works with the Zephyr v2.4.0, however it is recommended to enable
+release. It was tested as of SHA `7a3b253ce`. This version of MCUboot also
+works with the Zephyr v2.4.0, however, it is recommended to enable
 `CONFIG_MCUBOOT_CLEANUP_ARM_CORE` while using that version.
 
 ## Version 1.6.0
@@ -87,64 +86,64 @@ works with the Zephyr v2.4.0, however it is recommended to enable
 The 1.6.0 release of MCUboot adds support for the PSOC6 platform,
 X25519 encrypted images, rollback protection, hardware keys, and a
 shared boot record to communicate boot attestation information to
-later boot stages.  There are bug fixes, and associated imgtool
+later boot stages. There are bug fixes and associated imgtool
 updates as well.
 
 ### About this release
 
-- Initial support for the Cypress PSOC6 plaformt.  This platform
+- Initial support for the Cypress PSOC6 platform. This platform
   builds using the Cypress SDK, which has been added as submodules.
-- CBOR decoding in serial recovery replaced by code generated from a
+- Replaced CBOR decoding in serial recovery with code generated from a
   CDDL description.
-- Add support for X25519 encrypted images.
-- Add rollback protection.  There is support for a HW rollback counter
-  (which must be provided as part of the platform), as well as a SW
+- Added support for X25519 encrypted images.
+- Added rollback protection. There is support for a hardware rollback counter
+  (which must be provided as part of the platform), as well as a software
   solution that protects against some types of rollback.
-- Add an optional boot record in shared memory to communicate boot
+- Added an optional boot record in shared memory to communicate boot
   attributes to later-run code.
-- Add support for hardware keys.
+- Added support for hardware keys.
 - Various fixes to work with the latest Zephyr version.
 
 ### Security issues addressed
 
 - CVE-2020-7595 "xmlStringLenDecodeEntities in parser.c in libxml2
-  2.9.10 has an infinite loop in a certain end-of-file situation." Fix
-  by updating a dependency in documentation generation.
+  2.9.10 has an infinite loop in a certain end-of-file situation." Fixed
+  by updating a dependency in the documentation generation.
 
 ### Zephyr-RTOS compatibility
 
-This release of MCUboot works the Zephyr "main" at the time of the
-release.  It was tested as of has 1a89ca1238.  When Zephyr v2.3.0 is
+This release of MCUboot works with the Zephyr "main" at the time of the
+release. It was tested up to SHA `1a89ca1238`. When Zephyr v2.3.0 is
 released, there will be a possible 1.6.1 or similar release of Zephyr
-if needed to address any issues.  There also may be branch releases of
-MCUboot specifically for the current version of Zephyr, e.g.
+if needed to address any issues. There also may be branch releases of
+MCUboot specifically for the current version of Zephyr, for example,
 v1.6.0-zephyr-2.2.1.
 
 ## Version 1.5.0
 
 The 1.5.0 release of MCUboot adds support for encrypted images using
 ECIES with secp256r1 as an Elliptic Curve alternative to RSA-OAEP. A
-new swap method was added which allows for upgrades without using a
-scratch partition. There are also lots of bug fixes, extra simulator
-testing coverage and some imgtool updates.
+new swap method was added, which allows for upgrades without using a
+scratch partition. There are also a lot of bug fixes, extra simulator
+testing coverage, and some imgtool updates.
 
 ### About this release
 
-- TLVs were updated to use 16-bit lengths (from previous 8). This
-  should work with no changes for little-endian targets, but will
+- TLVs were updated to use 16-bit lengths (from the previous 8). This
+  should work with no changes for little-endian targets but will
   break compatibility with big-endian targets.
-- A benchmark framework was added to Zephyr
+- A benchmark framework was added to Zephyr.
 - ed25519 signature validation can now build without using Mbed TLS
-  by relying on a bundled tinycrypt based sha-512 implementation.
-- imgtool was updated to correctly detect trailer overruns by image.
-- Encrypted image TLVs can be saved in swap metadata during a swap
+  by relying on a bundled tinycrypt-based SHA-512 implementation.
+- imgtool was updated to correctly detect trailer overruns by the image.
+- Encrypted image TLVs can be saved in the swap metadata during a swap
   upgrade instead of the plain AES key.
-- imgtool can dump private keys in C format (getpriv command), which
+- imgtool can dump private keys in C format (`getpriv` command), which
   can be added as decryption keys. Optionally can remove superfluous
   fields from the ASN1 by passing it `--minimal`.
 - Lots of other smaller bugs fixes.
 - Added downgrade prevention feature (available when the overwrite-based
-  image update strategy is used)
+  image update strategy is used).
 
 ### Known issues
 
@@ -153,9 +152,9 @@ testing coverage and some imgtool updates.
 ## Version 1.4.0
 
 The 1.4.0 release of MCUboot primarily adds support for multi-image
-booting.  With this release, MCUboot can manage two images that can be
-updated independently.  With this, it also supports additions to the
-TLV that allow these dependencies to be specified.
+booting. With this release, MCUboot can manage two images that can be
+updated independently. With this, it also supports additions to the
+TLV that allows these dependencies to be specified.
 
 Multi-image support adds backward-incompatible changes to the format
 of the images: specifically adding support for protected TLV entries.
@@ -164,19 +163,19 @@ compatible with previous releases of MCUboot.
 
 ### About this release
 
-- Fixed CVE-2019-5477, and CVE-2019-16892.  These fix issue with
-  dependencies used in the generation of the documentation on github.
-- Numerous code cleanups and refactorings
-- Documentation updates for multi-image features
-- Update imgtool.py to support the new features
-- Updated the Mbed TLS submodule to current stable version 2.16.3
-- Moved the Mbed TLS submodule from within sim/mcuboot-sys to ext.
-  This will make it easier for other board supports to use this code.
+- Fixed CVE-2019-5477 and CVE-2019-16892. These fix an issue with
+  dependencies used in the generation of the documentation on GitHub.
+- Numerous code cleanups and refactorings.
+- Documentation updates for multi-image features.
+- Updated imgtool.py to support the new features.
+- Updated the Mbed TLS submodule to the current stable version 2.16.3.
+- Moved the Mbed TLS submodule from within `sim/mcuboot-sys` to ext.
+  This will make it easier for other boards to use this code.
 - Added some additional overflow and bound checks to data in the image
-  header, and TLV data.
-- Add a `-x` (or `--hex_addr`) flag to imgtool to set the base address
-  written to a hex-format image.  This allows the image to be flashed
-  at an offset, without having to use additional tools to modify the
+  header and TLV data.
+- Added a `-x` (or `--hex_addr`) flag to imgtool to set the base address
+  written to a hex-format image. This allows the image to be flashed
+  at an offset without having to use additional tools to modify the
   image.
 
 ## Version 1.3.1
@@ -188,77 +187,77 @@ f51e3c296040f73bca0e8fe1051d5ee63ce18e0d.
 
 ### About this release
 
-- Fixed a revert interruption bug
-- Added ed25519 signing support
-- Added RSA-3072 signing support
-- Allow ec256 to run on CC310 interface
-- Some preparation work was done to allow for multi image support, which
+- Fixed a revert interruption bug.
+- Added ed25519 signing support.
+- Added RSA-3072 signing support.
+- ec256 is now allowed to run on the CC310 interface.
+- Some preparation work was done to allow for multi-image support, which
   should land in 1.4.0. This includes a simulator update for testing
-  multi-images, and a new name for slot0/slot1 which are now called
+  multi-images and a new name for slot0/slot1, which are now called
   "primary slot" and "secondary slot".
-- Other minor bugfixes and improvements
+- Other minor bug fixes and improvements.
 
 ## Version 1.3.0
 
-The 1.3.0 release of MCUboot brings in many fixes and updates.  There
-are no breaking changes in functionality.  Many of the changes are
+The 1.3.0 release of MCUboot brings in many fixes and updates. There
+are no breaking changes in functionality. Many of the changes are
 refactorings that will make the code easier to maintain going forward.
-In addition, support has been added for encrypted images.  See [the
+In addition, support has been added for encrypted images. See [the
 docs](encrypted_images.md) for more information.
 
 ### About this release
 
-- Modernize the Zephyr build scripts.
-- Add a `ptest` utility to help run the simulator in different
+- Modernized the Zephyr build scripts.
+- Added a `ptest` utility to help run the simulator in different
   configurations.
-- Migrate the simulator to Rust 2018 edition.  The sim now requires at
+- Migrated the simulator to Rust 2018 edition. The sim now requires at
   least Rust 1.32 to build.
-- Simulator cleanups.  The simulator code is now built the same way
-  for every configuration, and queries the MCUboot code for how it was
+- Simulator cleanups. The simulator code is now built the same way
+  for every configuration and queries the MCUboot code for how it was
   compiled.
-- Abstract logging in MCUboot.  This was needed to support the new
+- Abstract logging in MCUboot. This was needed to support the new
   logging system used in Zephyr.
-- Add multiple flash support.  Allows slot1/scratch to be stored in an
+- Added multiple flash support, allowing slot1/scratch to be stored in an
   external flash device.
-- Add support for [encrypted images](encrypted_images.md).
-- Add support for flash devices that read as '0' when erased.
-- Add support to Zephyr for the `nrf52840_pca10059`.  This board
+- Added support for [encrypted images](encrypted_images.md).
+- Added support for flash devices that read as '0' when erased.
+- Added support to Zephyr for the `nrf52840_pca10059`. This board
   supports serial recovery over USB with CDC ACM.
 - imgtool is now also available as a python package on pypi.org.
-- Add an option to erase flash pages progressively during recovery to
+- Added an option to erase flash pages progressively during recovery to
   avoid possible timeouts (required especially by serial recovery
   using USB with CDC ACM).
-- imgtool: big-endian support
-- imgtool: saves in intel-hex format when output filename has `.hex`
-  extension; otherwise saves in binary format.
+- imgtool: big-endian support.
+- imgtool: it saves in intel-hex format when the output filename has the `.hex`
+  extension, otherwise it saves in binary format.
 
 ## Version 1.2.0
 
 The 1.2.0 release of MCUboot brings a lot of fixes/updates, where much of the
-changes were on the boot serial functionality and imgtool utility. There are
+changes were on the boot serial functionality and the imgtool utility. There are
 no breaking changes in MCUboot functionality, but some of the CLI parameters
 in imgtool were changed (either removed or added or updated).
 
 ### About this release
 
-- imgtool accepts .hex formatted input
-- Logging system is now configurable
-- Most Zephyr configuration has been switched to Kconfig
-- Build system accepts .pem files in build system to autogenerate required
-  key arrays used internally
-- Zephyr build switched to using built-in flash_map and TinyCBOR modules
-- Serial boot has substantially decreased in space usage after refactorings
-- Serial boot build doesn't require newlib-c anymore on Zephyr
+- imgtool accepts .hex formatted input.
+- Logging system is now configurable.
+- Most Zephyr configuration has been switched to Kconfig.
+- Build system accepts .pem files in the build system to autogenerate the required
+  key arrays used internally.
+- Zephyr build switched to using built-in flash_map and TinyCBOR modules.
+- Serial boot has substantially decreased in space usage after refactorings.
+- Serial boot build doesn't require newlib-c anymore on Zephyr.
 - imgtool updates:
-  + "create" subcommand can be used as an alias for "sign"
+  + "create" subcommand can be used as an alias for "sign".
   + To allow imgtool to always perform the check that firmware does not
-    overflow the status area, `--slot-size` was added and `--pad` was updated
+    overflow the status area, `--slot-size` was added, and `--pad` was updated
     to act as a flag parameter.
-  + `--overwrite-only` can be passed if not using swap upgrades
+  + `--overwrite-only` can be passed if not using swap upgrades.
   + `--max-sectors` can be used to adjust the maximum amount of sectors that
-    a swap can handle; this value must also be configured for the bootloader
+    a swap can handle; this value must also be configured for the bootloader.
   + `--pad-header` substitutes `--included-header` with reverted semantics,
-    so it's not required for firmware built by Zephyr build system
+    so it's not required for any firmware built by the Zephyr build system.
 
 ### Known issues
 
@@ -267,24 +266,24 @@ None
 ## Version 1.1.0
 
 The 1.1.0 release of MCUboot brings a lot of fixes/updates to its
-inner workings, specially to its testing infrastructure which now
+inner workings, especially to its testing infrastructure that now
 enables a more thorough quality assurance of many of the available
 options. As expected of the 1.x.x release cycle, no breaking changes
-were made. From the tooling perpective the main addition is
-newt/imgtool support for password protected keys.
+were made. From the tooling perspective, the main addition is the
+newt/imgtool support for password-protected keys.
 
 ### About this release
 
-- serial recovery functionality support under Zephyr
-- simulator: lots of refactors were applied, which result in the
+- Serial recovery functionality support under Zephyr.
+- Simulator: lots of refactors were applied, which resulted in the
   simulator now leveraging the Rust testing infrastructure; testing
-  of ecdsa (secp256r1) was added
-- imgtool: removed PKCS1.5 support, added support for password
-  protected keys
+  of ECDSA (secp256r1) was added.
+- imgtool: removed PKCS1.5 support, added support for password-protected
+  keys.
 - tinycrypt 0.2.8 and the Mbed TLS ASN1 parser are now bundled with
-  MCUboot (eg secp256r1 is now free of external dependencies!)
+  MCUboot (for example, secp256r1 is now free of external dependencies)
 - Overwrite-only mode was updated to erase/copy only sectors that
-  actually store firmware
+  actually store firmware.
 - A lot of small code and documentation fixes and updates.
 
 ### Known issues
@@ -293,39 +292,39 @@ None
 
 ## Version 1.0.0
 
-The 1.0.0 release of MCUboot introduces a format change.  It is
+The 1.0.0 release of MCUboot introduces a format change. It is
 important to either use the `imgtool.py` also from this release, or
 pass the `-2` to recent versions of the `newt` tool in order to
-generate image headers with the new format.  There should be no
+generate image headers with the new format. There should be no
 incompatible format changes throughout the 1.x.y release series.
 
 ### About this release
 
-- Header format change.  This change was made to move all of the
+- Header format change. This change was made to move all of the
   information about signatures out of the header and into the TLV
-  block appended to the image.  This allows
+  block appended to the image. This allows the following:
   - The signature to be replaced without changing the image.
-  - Multiple signatures to be applied.  This can be used, for example,
-    to sign an image with two algorithms, to support different
-    bootloader configurations based on these image.
+  - Multiple signatures to be applied. This can be used, for example,
+    to sign an image with two algorithms or to support different
+    bootloader configurations based on these images.
   - The public key is referred to by its SHA1 hash (or a prefix of the
     hash), instead of an index that has to be maintained with the
     bootloader.
   - Allow new types of signatures in the future.
-- Support for PKCS#1 v1.5 signatures has been dropped.  All RSA
-  signatures should be made with PSS.  The tools have been changed to
+- Support for PKCS#1 v1.5 signatures has been dropped. All RSA
+  signatures should be made with PSS. The tools have been changed to
   reflect this.
-- The source for Tinycrypt has been placed in the MCUboot tree.  A
-  recent version of Tinycrypt introduced breaking API changes.  To
-  allow MCUboot to work across various platforms, we stop using the
-  Tinycrypt bundled with the OS platform, and use our own version.  A
+- The source for Tinycrypt has been placed in the MCUboot tree. A
+  recent version of Tinycrypt introduced breaking API changes. To
+  allow MCUboot to work across various platforms, we stopped using the
+  Tinycrypt bundled with the OS platform and started using our own version. A
   future release of MCUboot will update the Tinycrypt version.
 - Support for some new targets:
-  - Nordic nRF51 and nRF52832 dev kits
+  - Nordic nRF51 and nRF52832 development kits
   - Hexiwear K64
 - Clearer sample applications have been added under `samples`.
-- Test plans for [zephyr](testplan-zephyr.md), and
-  [mynewt](testplan-mynewt.md).
+- Test plans for [Zephyr](testplan-zephyr.md), and
+  [Apache Mynewt](testplan-mynewt.md).
 - The simulator is now able to test RSA signatures.
 - There is an unimplemented `load_addr` header for future support for
   RAM loading in the bootloader.
@@ -338,10 +337,10 @@ None
 ## Version 0.9.0
 
 This is the first release of MCUboot, a secure bootloader for 32-bit MCUs.
-It is designed to be operating system-agnostic and works over any transport -
-wired or wireless. It is also hardware independent, and relies  on hardware
+It is designed to be operating system-agnostic and to work over any transport -
+wired and wireless. It is also hardware-independent and relies on hardware
 porting layers from the operating system it works with. For the first release,
-we have support for three open source operating systems: Apache Mynewt, Zephyr
+we have support for three open-source operating systems: Apache Mynewt, Zephyr,
 and RIOT.
 
 ### About this release
@@ -355,14 +354,14 @@ and RIOT.
   - RSA 2048 and RSA PKCS#1 v1.5 or v2.1
   - Elliptic curve DSA with secp224r1 and secp256r1
 - Two firmware upgrade algorithms are provided:
-  - An overwrite only which upgrades slot 0 with the image in slot 1.
-  - A swapping upgrade which enables image test, allowing for rollback to a
+  - An overwrite only, which upgrades slot 0 with the image in slot 1.
+  - A swapping upgrade, which enables image test, allowing for rollback to a
     previous known good image.
 - Supports both Mbed TLS and tinycrypt as backend crypto libraries. One of them
-  must be defined and the chosen signing algorithm will require a particular
-  library according to this list:
-  - RSA 2048 needs Mbed TLS
-  - ECDSA secp224r1 needs Mbed TLS
+  must be defined, and the chosen signing algorithm will require a particular
+  library, as indicated in the following list:
+  - RSA 2048 needs Mbed TLS.
+  - ECDSA secp224r1 needs Mbed TLS.
   - ECDSA secp256r1 needs tinycrypt as well as the ASN.1 code from Mbed TLS
     (so still needs that present).
 
