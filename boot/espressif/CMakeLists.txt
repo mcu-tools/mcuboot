@@ -13,7 +13,8 @@ project(mcuboot_${MCUBOOT_TARGET})
 add_definitions(-DMCUBOOT_TARGET=${MCUBOOT_TARGET})
 
 if ("${MCUBOOT_TARGET}" STREQUAL "esp32" OR
-    "${MCUBOOT_TARGET}" STREQUAL "esp32s2")
+    "${MCUBOOT_TARGET}" STREQUAL "esp32s2" OR
+    "${MCUBOOT_TARGET}" STREQUAL "esp32s3")
     set(MCUBOOT_ARCH "xtensa")
 elseif("${MCUBOOT_TARGET}" STREQUAL "esp32c3")
     set(MCUBOOT_ARCH "riscv")

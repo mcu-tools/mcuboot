@@ -19,14 +19,17 @@ list(APPEND include_dirs
     ${esp_idf_dir}/components/esp_common/include
     ${esp_idf_dir}/components/esp_rom/include
     ${esp_idf_dir}/components/esp_rom/include/${MCUBOOT_TARGET}
+    ${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}
     ${esp_idf_dir}/components/spi_flash/include
     ${esp_idf_dir}/components/spi_flash/include/spi_flash
-    ${esp_idf_dir}/components/soc/include
-    ${esp_idf_dir}/components/soc/${MCUBOOT_TARGET}/include
     ${esp_idf_dir}/components/esp_hw_support/include
     ${esp_idf_dir}/components/esp_hw_support/include/soc
+    ${esp_idf_dir}/components/esp_hw_support/include/soc/${MCUBOOT_TARGET}
+    ${esp_idf_dir}/components/esp_hw_support/port/include
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/private_include
+    ${esp_idf_dir}/components/soc/include
+    ${esp_idf_dir}/components/soc/${MCUBOOT_TARGET}/include
     ${esp_idf_dir}/components/bootloader_support/include
     ${esp_idf_dir}/components/bootloader_support/include_bootloader
     ${esp_idf_dir}/components/hal/include
@@ -40,12 +43,6 @@ list(APPEND include_dirs
     ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/private_include
     ${esp_idf_dir}/components/newlib/platform_include
     )
-
-if("${MCUBOOT_TARGET}" STREQUAL "esp32")
-    list(APPEND include_dirs
-        ${esp_idf_dir}/components/${MCUBOOT_TARGET}/include
-        )
-endif()
 
 if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
     list(APPEND include_dirs
@@ -72,6 +69,7 @@ set(hal_srcs
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_utility.c
     ${esp_idf_dir}/components/bootloader_support/src/esp_image_format.c
     ${esp_idf_dir}/components/bootloader_support/src/secure_boot_v2/secure_boot_signatures_bootloader.c
+    ${esp_idf_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/bootloader_soc.c
     ${esp_idf_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/bootloader_sha.c
     ${esp_idf_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/secure_boot_secure_features.c
     ${esp_idf_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/flash_encryption_secure_features.c
@@ -92,16 +90,6 @@ set(hal_srcs
     ${esp_idf_dir}/components/efuse/src/esp_efuse_utility.c
     ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/esp_efuse_utility.c
     )
-
-if("${MCUBOOT_TARGET}" STREQUAL "esp32")
-    list(APPEND hal_srcs
-        ${esp_idf_dir}/components/efuse/src/esp_efuse_api_key_esp32.c
-        )
-else()
-    list(APPEND hal_srcs
-        ${esp_idf_dir}/components/efuse/src/esp_efuse_api_key_esp32xx.c
-        )
-endif()
 
 if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
     list(APPEND hal_srcs
@@ -164,12 +152,6 @@ set(LINKER_SCRIPTS
     -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.api.ld
     -T${esp_idf_dir}/components/soc/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.peripherals.ld
     )
-
-if("${MCUBOOT_TARGET}" STREQUAL "esp32" OR "${MCUBOOT_TARGET}" STREQUAL "esp32c3")
-    list(APPEND LINKER_SCRIPTS
-        -T${esp_idf_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.eco3.ld
-        )
-endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/include/${MCUBOOT_TARGET}/${MCUBOOT_TARGET}.cmake)
 

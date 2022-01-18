@@ -25,4 +25,4 @@
 [submodule "boot/espressif/hal/esp-idf"]
 	path = boot/espressif/hal/esp-idf
 	url = https://github.com/espressif/esp-idf.git
-	branch = release/v4.3
+	branch = release/v4.4
