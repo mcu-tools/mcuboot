@@ -127,7 +127,7 @@ def keygen(type, key, password):
 @click.option('-e', '--encoding', metavar='encoding',
               type=click.Choice(valid_encodings),
               help='Valid encodings: {}'.format(', '.join(valid_encodings)))
-@click.option('-k', '--key', metavar='filename', required=True)
+@click.option('-k', '--key', metavar='filename', required=True, help='Public key filename or PKCS #11 URI')
 @click.command(help='Dump public key from keypair')
 def getpub(key, encoding, lang):
     if encoding and lang:
@@ -173,7 +173,7 @@ def getpriv(key, minimal, format):
 
 
 @click.argument('imgfile')
-@click.option('-k', '--key', metavar='filename')
+@click.option('-k', '--key', metavar='filename', help='Public key filename or PKCS #11 URI')
 @click.command(help="Check that signed image can be verified by given key")
 def verify(key, imgfile):
     key = load_key(key) if key else None
@@ -349,7 +349,7 @@ class BasedIntParamType(click.ParamType):
 @click.option('--public-key-format', type=click.Choice(['hash', 'full']),
               default='hash', help='In what format to add the public key to '
               'the image manifest: full key or hash of the key.')
-@click.option('-k', '--key', metavar='filename')
+@click.option('-k', '--key', metavar='filename', help='Private key filename or PKCS #11 URI')
 @click.option('--fix-sig', metavar='filename',
               help='fixed signature for the image. It will be used instead of '
               'the signature calculated using the public key')
