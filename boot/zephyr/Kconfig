@@ -606,6 +606,21 @@ config BOOT_SERIAL_ENCRYPT_EC256
 	  encryption mechanism used in this case is ECIES using primitives
 	  described under "ECIES-P256 encryption" in docs/encrypted_images.md.
 
+config BOOT_SERIAL_WAIT_FOR_DFU
+	bool "Wait for a prescribed duration to see if DFU is invoked by receiving a mcumgr comand"
+	depends on BOOT_SERIAL_UART
+	help
+	  If y, MCUboot waits for a prescribed duration of time to allow
+	  for DFU to be invoked. The serial recovery can be entered by receiving any
+	  mcumgr command.
+
+config BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
+	int "Duration to wait for the serial DFU timeout in ms"
+	default 500
+	depends on BOOT_SERIAL_WAIT_FOR_DFU
+	help
+	  timeout in ms for MCUboot to wait to allow for DFU to be invoked.
+
 endif # MCUBOOT_SERIAL
 
 config BOOT_INTR_VEC_RELOC
