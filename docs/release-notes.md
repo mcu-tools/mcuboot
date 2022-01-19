@@ -3,6 +3,33 @@
 - Table of Contents
 {:toc}
 
+## Version 1.9.0
+
+The 1.9.0 release of MCUboot contains various bug fixes, improves
+support on some recent targets, and adds support for devices with a
+write alignment larger than 8.
+
+This change introduces a potentially incompatible change to the format
+of the image trailer.  If `BOOT_MAX_ALIGN` is kept at 8, the trailer
+format does not change.  However, to support larger write alignments,
+this value can be increased, which will result in a different magic
+number value.  These targets were previously unsupported in MCUboot,
+so this change should not affect any existing targets.  The change has
+been tested with a `BOOT_MAX_ALIGN` up to 32 bytes.
+
+### About this release
+
+- Add native flash encryption to Espressif targets
+- Numerous documentation improvements
+- Increase coverage of large images in the simulator
+- Add stm32 watchdog support
+- Add support for the `mimxrt685_evk` board
+- Add support for "partial multi-image booting"
+- Add support for clear image generation with encryption capability to
+  imgtool
+
+### Security fixes
+
 ## Version 1.8.0
 
 The 1.8.0 release of MCUboot contains numerous fixes, and adds support
