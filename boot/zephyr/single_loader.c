@@ -41,14 +41,14 @@ boot_image_validate(const struct flash_area *fa_p,
      * the pointer from compilation.
      */
     /* Validate hash */
-    if (hdr->ih_flags & IMAGE_F_ENCRYPTED)
+    if (IS_ENCRYPTED(hdr))
     {
         /* Clear the encrypted flag we didn't supply a key
          * This flag could be set if there was a decryption in place
          * was performed. We will try to validate the image, and if still
          * encrypted the validation will fail, and go in panic mode
          */
-        hdr->ih_flags &= ~IMAGE_F_ENCRYPTED;
+        hdr->ih_flags &= ~(ENCRYPTIONFLAGS);
     }
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, hdr, fa_p, tmpbuf,
              BOOT_TMPBUF_SZ, NULL, 0, NULL);
