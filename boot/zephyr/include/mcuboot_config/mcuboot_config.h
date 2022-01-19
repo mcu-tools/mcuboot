@@ -189,6 +189,10 @@
 #define MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
 #endif
 
+#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
+#define MCUBOOT_SERIAL_WAIT_FOR_DFU
+#endif
+
 /*
  * The option enables code, currently in boot_serial, that attempts
  * to erase flash progressively, as update fragments are received,

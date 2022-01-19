@@ -93,6 +93,7 @@ const struct boot_uart_funcs *boot_uf;
 static uint32_t curr_off;
 static uint32_t img_size;
 static struct nmgr_hdr *bs_hdr;
+static bool bs_entry;
 
 static char bs_obuf[BOOT_SERIAL_OUT_MAX];
 
@@ -563,6 +564,9 @@ boot_serial_input(char *buf, int len)
     } else {
         bs_rc_rsp(MGMT_ERR_ENOTSUP);
     }
+#ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
+    bs_entry = true;
+#endif
 }
 
 static void
@@ -678,25 +682,29 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
  * Task which waits reading console, expecting to get image over
  * serial port.
  */
-void
-boot_serial_start(const struct boot_uart_funcs *f)
+static void
+boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
 {
     int rc;
     int off;
     int dec_off = 0;
     int full_line;
     int max_input;
+    int elapsed_in_ms = 0;
 
     boot_uf = f;
     max_input = sizeof(in_buf);
 
     off = 0;
-    while (1) {
+    while (timeout_in_ms > 0 || bs_entry) {
         MCUBOOT_CPU_IDLE();
         MCUBOOT_WATCHDOG_FEED();
+#ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
+        uint32_t start = k_uptime_get_32();
+#endif
         rc = f->read(in_buf + off, sizeof(in_buf) - off, &full_line);
         if (rc <= 0 && !full_line) {
-            continue;
+            goto check_timeout;
         }
         off += rc;
         if (!full_line) {
@@ -706,7 +714,7 @@ boot_serial_start(const struct boot_uart_funcs *f)
                  */
                 off = 0;
             }
-            continue;
+            goto check_timeout;
         }
         if (in_buf[0] == SHELL_NLIP_PKT_START1 &&
           in_buf[1] == SHELL_NLIP_PKT_START2) {
@@ -722,5 +730,36 @@ boot_serial_start(const struct boot_uart_funcs *f)
             boot_serial_input(&dec_buf[2], dec_off - 2);
         }
         off = 0;
+check_timeout:
+        /* Subtract elapsed time */
+#ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
+        elapsed_in_ms = (k_uptime_get_32() - start);
+#endif
+        timeout_in_ms -= elapsed_in_ms;
     }
 }
+
+/*
+ * Task which waits reading console, expecting to get image over
+ * serial port.
+ */
+void
+boot_serial_start(const struct boot_uart_funcs *f)
+{
+    bs_entry = true;
+    boot_serial_read_console(f,0);
+}
+
+#ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
+/*
+ * Task which waits reading console for a certain amount of timeout.
+ * If within this timeout no mcumgr command is received, the function is
+ * returning, else the serial boot is never exited
+ */
+void
+boot_serial_check_start(const struct boot_uart_funcs *f, int timeout_in_ms)
+{
+    bs_entry = false;
+    boot_serial_read_console(f,timeout_in_ms);
+}
+#endif
