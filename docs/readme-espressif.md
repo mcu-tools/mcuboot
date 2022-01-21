@@ -9,8 +9,8 @@ Documentation about the MCUboot bootloader design, operation and features can be
 The current port is available for use in the following SoCs within the OSes:
 
 | | ESP32 | ESP32-S2 | ESP32-C3 |
-| ----- | ----- | ----- | ----- |
-| Zephyr | Supported | WIP | WIP |
+| :-----: | :-----: | :-----: | :-----: |
+| Zephyr | Supported | Supported | Supported |
 | NuttX | Supported | Supported | Supported |
 
 ## [Installing requirements and dependencies](#installing-requirements-and-dependencies)
@@ -70,20 +70,46 @@ esptool.py --chip <TARGET> elf2image --flash_mode dio --flash_freq 40m --flash_s
 ```
 esptool.py -p <PORT> -b <BAUD> --before default_reset --after hard_reset --chip <TARGET> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <BOOTLOADER_FLASH_OFFSET> build/mcuboot_<TARGET>.bin
 ```
+---
+***Note***  
+You may adjust the port `<PORT>` (like `/dev/ttyUSB0`) and baud rate `<BAUD>` (like `2000000`) according to the connection with your board.  
+You can also skip `<PORT>` and `<BAUD>` parameters so that esptool tries to automatically detect it.
 
-You may adjust the port `<PORT>` (like `/dev/ttyUSB0`) and baud rate `<BAUD>` (like `2000000`) according to the connection with your board.
+*`<FLASH_SIZE>` can be found using the command below:*
+```
+esptool.py -p <PORT> -b <BAUD> flash_id
+```
+The output contains device information and its flash size:  
+```
+Detected flash size: 4MB
+```
+
+
+*`<BOOTLOADER_FLASH_OFFSET>` value must follow one of the addresses below:*
+| ESP32 | ESP32-S2 | ESP32-C3 |
+| :-----: | :-----: | :-----: |
+| 0x1000 | 0x1000 | 0x0000 |
+
+---
 
 ## [Signing and flashing an application](#signing-and-flashing-an-application)
 
 1. Images can be regularly signed with the `scripts/imgtool.py` script:
 
 ```
-imgtool.py sign --align 4 -v 0 -H 32 --pad-header -S 0x00100000 <BIN_IN> <SIGNED_BIN>
+imgtool.py sign --align 4 -v 0 -H 32 --pad-header -S <SLOT_SIZE> <BIN_IN> <SIGNED_BIN>
 ```
 
-For Zephyr images, `--pad-header` is not needed as they already have the padding for MCUboot header.
+---
+
+***Note***  
+`<SLOT_SIZE>` is the size of the slot to be used.  
+Default slot0 size is `0x100000`, but it can change as per application flash partitions.
+
+For Zephyr images, `--pad-header` is not needed as it already has the padding for MCUboot header.
 
 ---
+
 :warning: ***ATTENTION***
 
 *This is the basic signing needed for adding MCUboot headers and trailers.
@@ -280,6 +306,15 @@ CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH=1
 *When on **RELEASE MODE**, **ENSURE** that the application with an update agent is flashed before reset the device.*
 
 ---
+
+### [Signing the image when working with Flash Encryption](#signing-the-image-when-working-with-flash-encryption)
+
+When enabling flash encryption, it is required to signed the image using 32-byte alignment: `--align 32 --max-align 32`.
+
+Command example:
+```
+imgtool.py sign -k <YOUR_SIGNING_KEY.pem> --pad --pad-sig --align 32 --max-align 32 -v 0 -H 32 --pad-header -S <SLOT_SIZE> <BIN_IN> <BIN_OUT>
+```
 
 ### [Device generated key](#device-generated-key)
 
