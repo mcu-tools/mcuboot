@@ -387,3 +387,27 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
     return 0;
 }
 #endif
+
+uint32_t bootutil_max_image_size(const struct flash_area *fap)
+{
+#if defined(MCUBOOT_SWAP_USING_SCRATCH)
+    return boot_status_off(fap);
+#elif defined(MCUBOOT_SWAP_USING_MOVE)
+    struct flash_sector sector;
+    /* get the last sector offset */
+    int rc = flash_area_sector_from_off(boot_status_off(fap), &sector);
+    if (rc) {
+        BOOT_LOG_ERR("Unable to determine flash sector of the image trailer");
+        return 0; /* Returning of zero here should cause any check which uses
+                   * this value to fail.
+                   */
+    }
+    return flash_sector_get_off(&sector);
+#elif defined(MCUBOOT_OVERWRITE_ONLY)
+    return boot_swap_info_off(fap);
+#elif defined(MCUBOOT_DIRECT_XIP)
+    return boot_swap_info_off(fap);
+#elif defined(MCUBOOT_RAM_LOAD)
+    return boot_swap_info_off(fap);
+#endif
+}
