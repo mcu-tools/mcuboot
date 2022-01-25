@@ -36,13 +36,6 @@
 #define MCUBOOT_LOG_LEVEL MCUBOOT_LOG_LEVEL_OFF
 #endif
 
-#if MCUBOOT_LOG_LEVEL == MCUBOOT_LOG_LEVEL_OFF
-#define MBED_CONF_MBED_TRACE_ENABLE 0
-#else
-#define MBED_CONF_MBED_TRACE_ENABLE 1
-#define MCUBOOT_HAVE_LOGGING
-#endif
-
 #if MCUBOOT_LOG_LEVEL == MCUBOOT_LOG_LEVEL_ERROR
 #define MBED_TRACE_MAX_LEVEL TRACE_LEVEL_ERROR
 #elif MCUBOOT_LOG_LEVEL == MCUBOOT_LOG_LEVEL_WARNING
@@ -54,7 +47,7 @@
 #endif
 
 #define TRACE_GROUP "MCUb"
-#include "mbed_trace.h"
+#include "mbed-trace/mbed_trace.h"
 #include "bootutil/ignore.h"
 
 #define MCUBOOT_LOG_MODULE_DECLARE(domain)  /* ignore */

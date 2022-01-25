@@ -21,7 +21,7 @@
 
 #include "flash_map_backend/secondary_bd.h"
 #include "platform/mbed_toolchain.h"
-#include "FlashIAPBlockDevice.h"
+#include "FlashIAP/FlashIAPBlockDevice.h"
 
 /**
  * For an XIP build, the secondary BD is provided by mcuboot by default.

@@ -17,6 +17,11 @@
             "macro_name": "MCUBOOT_SLOT_SIZE",
             "required": true
         },
+        "header-size": {
+            "help": "Size of the header info section, in bytes. Target-dependent, please set on a per-target basis.",
+            "macro_name": "MCUBOOT_HEADER_SIZE",
+            "value": "0x1000"
+        },
         "scratch-address": {
             "help": "Start address of the scratch area. If needed, please set on a per-target basis.",
             "macro_name": "MCUBOOT_SCRATCH_START_ADDR"
@@ -61,6 +66,12 @@
         "overwrite-only-fast": {
             "help": "Only erase and overwrite those primary slot sectors needed to install the new image, rather than the entire image slot.",
             "macro_name": "MCUBOOT_OVERWRITE_ONLY_FAST",
+            "accepted_values": [true, null],
+            "value": null
+        },
+        "log-enable": {
+            "help": "Enable MCUboot logging. Must also enable mbed-trace",
+            "macro_name": "MCUBOOT_HAVE_LOGGING",
             "accepted_values": [true, null],
             "value": null
         },
