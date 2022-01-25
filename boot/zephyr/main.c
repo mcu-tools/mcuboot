@@ -67,7 +67,7 @@ const struct boot_uart_funcs boot_funcs = {
 #else
 #include <logging/log_ctrl.h>
 
-#define BOOT_LOG_PROCESSING_INTERVAL K_MSEC(30) /* [ms] */
+#define BOOT_LOG_PROCESSING_INTERVAL_MS     30 /* [ms] */
 
 /* log are processing in custom routine */
 K_THREAD_STACK_DEFINE(boot_log_stack, CONFIG_MCUBOOT_LOG_THREAD_STACK_SIZE);
@@ -326,7 +326,12 @@ void boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
                     if (boot_log_stop) {
                         break;
                     }
-                    k_sleep(BOOT_LOG_PROCESSING_INTERVAL);
+
+#ifdef CONFIG_MULTITHREADING
+                    k_sleep(K_MSEC(BOOT_LOG_PROCESSING_INTERVAL_MS));
+#else
+                    k_busy_wait(BOOT_LOG_PROCESSING_INTERVAL_MS);
+#endif
              }
      }
 
