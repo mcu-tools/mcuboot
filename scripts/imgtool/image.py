@@ -242,15 +242,15 @@ class Image():
                                                   self.save_enctlv,
                                                   self.enctlv_len)
                 trailer_addr = (self.base_addr + self.slot_size) - trailer_size
-                padding = bytearray([self.erased_val] * 
-                                    (trailer_size - len(self.boot_magic)))
-                padding += self.boot_magic
                 if self.confirm and not self.overwrite_only:
                     magic_size = 16
                     magic_align_size = align_up(magic_size, self.max_align)
                     image_ok_idx = -(magic_align_size + self.max_align)
-                    padding[image_ok_idx] = 0x01  # image_ok = 0x01
-                h.puts(trailer_addr, bytes(padding))
+                    flag = bytearray([self.erased_val] * magic_align_size)
+                    flag[0] = 0x01 # image_ok = 0x01
+                    h.puts(trailer_addr + image_ok_idx, bytes(flag))
+                h.puts(trailer_addr + (trailer_size - len(self.boot_magic)),
+                       bytes(self.boot_magic))
             h.tofile(path, 'hex')
         else:
             if self.pad:
