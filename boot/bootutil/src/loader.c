@@ -743,7 +743,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         goto out;
     }
 
-#if defined(MCUBOOT_OVERWRITE_ONLY) && defined(MCUBOOT_DOWNGRADE_PREVENTION)
+#if defined(MCUBOOT_DOWNGRADE_PREVENTION)
     if (slot != BOOT_PRIMARY_SLOT) {
         /* Check if version of secondary slot is sufficient */
         rc = boot_version_cmp(
