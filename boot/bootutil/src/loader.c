@@ -615,7 +615,7 @@ boot_check_header_erased(struct boot_loader_state *state, int slot)
 #if (BOOT_IMAGE_NUMBER > 1) || \
     defined(MCUBOOT_DIRECT_XIP) || \
     defined(MCUBOOT_RAM_LOAD) || \
-    (defined(MCUBOOT_OVERWRITE_ONLY) && defined(MCUBOOT_DOWNGRADE_PREVENTION))
+    defined(MCUBOOT_DOWNGRADE_PREVENTION)
 /**
  * Compare image version numbers not including the build number
  *
@@ -742,7 +742,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         goto out;
     }
 
-#if defined(MCUBOOT_OVERWRITE_ONLY) && defined(MCUBOOT_DOWNGRADE_PREVENTION)
+#if defined(MCUBOOT_DOWNGRADE_PREVENTION)
     if (slot != BOOT_PRIMARY_SLOT) {
         /* Check if version of secondary slot is sufficient */
         rc = boot_version_cmp(

@@ -1268,9 +1268,8 @@ vulnerable version of its firmware.
 
 During the software based downgrade prevention the image version numbers are
 compared. This feature is enabled with the `MCUBOOT_DOWNGRADE_PREVENTION`
-option. In this case downgrade prevention is only available when the
-overwrite-based image update strategy is used (i.e. `MCUBOOT_OVERWRITE_ONLY`
-is set).
+option. If the new image has a lower version number, it will be erased from
+the flash; otherwise the configured swapping method is used.
 
 ### [Hardware-based downgrade prevention](#hw-downgrade-prevention)
 

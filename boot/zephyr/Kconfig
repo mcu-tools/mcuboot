@@ -514,7 +514,6 @@ choice BOOT_DOWNGRADE_PREVENTION_CHOICE
 
 config MCUBOOT_DOWNGRADE_PREVENTION
 	bool "SW based downgrade prevention"
-	depends on BOOT_UPGRADE_ONLY
 	help
 	  Prevent downgrades by enforcing incrementing version numbers.
 	  When this option is set, any upgrade must have greater major version
