@@ -295,7 +295,10 @@ class BasedIntParamType(click.ParamType):
 @click.option('--align', type=click.Choice(['1', '2', '4', '8', '16', '32']),
               required=True)
 @click.option('--max-align', type=click.Choice(['8', '16', '32']),
-              required=False)
+              required=False,
+              help='Maximum flash alignment. Set if flash alignment of the '
+              'primary and secondary slot differ and any of them is larger '
+              'than 8.')
 @click.option('--public-key-format', type=click.Choice(['hash', 'full']),
               default='hash', help='In what format to add the public key to '
               'the image manifest: full key or hash of the key.')
