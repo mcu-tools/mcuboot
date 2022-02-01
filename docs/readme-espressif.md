@@ -8,10 +8,10 @@ Documentation about the MCUboot bootloader design, operation and features can be
 
 The current port is available for use in the following SoCs within the OSes:
 
-| | ESP32 | ESP32-S2 | ESP32-C3 |
-| :-----: | :-----: | :-----: | :-----: |
-| Zephyr | Supported | Supported | Supported |
-| NuttX | Supported | Supported | Supported |
+| | ESP32 | ESP32-S2 | ESP32-C3 | ESP32-S3 |
+| :-----: | :-----: | :-----: | :-----: | :-----: |
+| Zephyr | Supported | Supported | Supported | WIP |
+| NuttX | Supported | Supported | Supported | WIP |
 
 ## [Installing requirements and dependencies](#installing-requirements-and-dependencies)
 
@@ -86,9 +86,9 @@ Detected flash size: 4MB
 
 
 *`<BOOTLOADER_FLASH_OFFSET>` value must follow one of the addresses below:*
-| ESP32 | ESP32-S2 | ESP32-C3 |
-| :-----: | :-----: | :-----: |
-| 0x1000 | 0x1000 | 0x0000 |
+| ESP32 | ESP32-S2 | ESP32-C3 | ESP32-S3 |
+| :-----: | :-----: | :-----: | :-----: |
+| 0x1000 | 0x1000 | 0x0000 | 0x0000 |
 
 ---
 
@@ -356,7 +356,7 @@ Burn the key into the device's eFuse, this action can be done **only once**:
 espefuse.py --port PORT burn_key flash_encryption <FLASH_ENCRYPTION_KEY.bin>
 ```
 
-- ESP32S2 and ESP32C3
+- ESP32S2, ESP32C3 and ESP32S3
 ```
 espefuse.py --port PORT burn_key BLOCK <FLASH_ENCRYPTION_KEY.bin> <KEYPURPOSE>
 ```
