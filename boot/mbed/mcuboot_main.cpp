@@ -22,7 +22,7 @@
 #include "bootutil/bootutil.h"
 #include "bootutil/image.h"
 #include "hal/serial_api.h"
-#include "mbed_application.h"
+#include "platform/mbed_application.h"
 
 #if (MCUBOOT_CRYPTO_BACKEND == MBEDTLS)
 #include "mbedtls/platform.h"
