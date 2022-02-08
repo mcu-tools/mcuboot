@@ -216,7 +216,7 @@ decrypt_region_inplace(struct boot_loader_state *state,
     uint32_t blk_sz;
     uint8_t image_index;
 
-    static uint8_t buf[1024] __attribute__((aligned));
+    uint8_t buf[sz] __attribute__((aligned));
     assert(sz <= sizeof buf);
 
     bytes_copied = 0;
