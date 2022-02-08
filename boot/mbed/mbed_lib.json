@@ -64,6 +64,12 @@
             "accepted_values": [true, null],
             "value": null
         },
+        "log-enable": {
+            "help": "Enable MCUboot logging. Must also enable mbed-trace",
+            "macro_name": "MCUBOOT_HAVE_LOGGING",
+            "accepted_values": [true, null],
+            "value": null
+        },
         "log-level": {
             "help": "Verbosity of MCUboot logging.",
             "macro_name": "MCUBOOT_LOG_LEVEL",
