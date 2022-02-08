@@ -487,7 +487,7 @@ out:
     flash_area_close(fap);
 
 #ifdef MCUBOOT_ENC_IMAGES
-    if (curr_off == img_size) {
+    if (curr_off == img_size && rc == MGMT_ERR_OK) {
         /* Last sector received, now start a decryption on the image if it is encrypted*/
         rc = boot_handle_enc_fw();
     }
