@@ -17,6 +17,11 @@
             "macro_name": "MCUBOOT_SLOT_SIZE",
             "required": true
         },
+        "header-size": {
+            "help": "Size of the header info section, in bytes. Target-dependent, please set on a per-target basis.",
+            "macro_name": "MCUBOOT_HEADER_SIZE",
+            "value": "0x1000"
+        },
         "scratch-address": {
             "help": "Start address of the scratch area. If needed, please set on a per-target basis.",
             "macro_name": "MCUBOOT_SCRATCH_START_ADDR"
