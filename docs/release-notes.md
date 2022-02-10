@@ -27,6 +27,10 @@ been tested with a `BOOT_MAX_ALIGN` up to 32 bytes.
 - Add support for "partial multi-image booting"
 - Add support for clear image generation with encryption capability to
   imgtool
+- Fix Zephyr when `CONFIG_BOOT_ENCRYPTION_KEY_FILE` is not defined
+- Remove zephyr example test running in shell.  The Go version is
+  primary and much more featureful.
+- imgtool: make `--max-align` default reasonable in most cases.
 
 ### Security fixes
 
