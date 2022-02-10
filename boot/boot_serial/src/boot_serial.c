@@ -555,9 +555,8 @@ boot_serial_output(void)
     bs_hdr->nh_group = htons(bs_hdr->nh_group);
 
 #ifdef __ZEPHYR__
-    crc =  crc16((uint8_t *)bs_hdr, sizeof(*bs_hdr), CRC_CITT_POLYMINAL,
-                 CRC16_INITIAL_CRC, false);
-    crc =  crc16(data, len, CRC_CITT_POLYMINAL, crc, true);
+    crc =  crc16_itu_t(CRC16_INITIAL_CRC, (uint8_t *)bs_hdr, sizeof(*bs_hdr));
+    crc =  crc16_itu_t(crc, data, len);
 #else
     crc = crc16_ccitt(CRC16_INITIAL_CRC, bs_hdr, sizeof(*bs_hdr));
     crc = crc16_ccitt(crc, data, len);
@@ -631,7 +630,7 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
 
     out += sizeof(uint16_t);
 #ifdef __ZEPHYR__
-    crc = crc16(out, len, CRC_CITT_POLYMINAL, CRC16_INITIAL_CRC, true);
+    crc = crc16_itu_t(CRC16_INITIAL_CRC, out, len);
 #else
     crc = crc16_ccitt(CRC16_INITIAL_CRC, out, len);
 #endif
