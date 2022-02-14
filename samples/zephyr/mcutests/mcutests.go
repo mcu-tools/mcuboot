@@ -272,6 +272,192 @@ var Tests = []struct {
 			},
 		},
 	},
+	{
+		Name:      "CORRECT RSA ENCRYPTED",
+		ShortName: "correct-rsa-encrypted",
+		Tests: []OneTest{
+			{
+				Build: [][]string{
+					{"make", "test-good-encrypted-rsa"},
+				},
+				Commands: [][]string{
+					{"pyocd", "erase", "--chip"},
+					{"make", "flash_boot"},
+				},
+				Expect: "Unable to find bootable image",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello1"},
+				},
+				Expect: "Hello World from hello1",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello2_encrypted"},
+				},
+				Expect: "Hello World from hello2",
+			},
+			{
+				Commands: [][]string{
+					{"pyocd", "commander", "-c", "reset"},
+				},
+				Expect: "Hello World from hello1",
+			},
+		},
+	},
+	{
+		Name:      "CORRECT EC256 ENCRYPTED",
+		ShortName: "correct-ec256-encrypted",
+		Tests: []OneTest{
+			{
+				Build: [][]string{
+					{"make", "test-good-encrypted-ec256"},
+				},
+				Commands: [][]string{
+					{"pyocd", "erase", "--chip"},
+					{"make", "flash_boot"},
+				},
+				Expect: "Unable to find bootable image",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello1"},
+				},
+				Expect: "Hello World from hello1",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello2_encrypted"},
+				},
+				Expect: "Hello World from hello2",
+			},
+			{
+				Commands: [][]string{
+					{"pyocd", "commander", "-c", "reset"},
+				},
+				Expect: "Hello World from hello1",
+			},
+		},
+	},
+	{
+		Name:      "CORRECT X25519 ENCRYPTED",
+		ShortName: "correct-x25519-encrypted",
+		Tests: []OneTest{
+			{
+				Build: [][]string{
+					{"make", "test-good-encrypted-x25519"},
+				},
+				Commands: [][]string{
+					{"pyocd", "erase", "--chip"},
+					{"make", "flash_boot"},
+				},
+				Expect: "Unable to find bootable image",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello1"},
+				},
+				Expect: "Hello World from hello1",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello2_encrypted"},
+				},
+				Expect: "Hello World from hello2",
+			},
+			{
+				Commands: [][]string{
+					{"pyocd", "commander", "-c", "reset"},
+				},
+				Expect: "Hello World from hello1",
+			},
+		},
+	},
+	{
+		Name:      "WRONG RSA ENCRYPTED",
+		ShortName: "wrong-rsa-encrypted",
+		Tests: []OneTest{
+			{
+				Build: [][]string{
+					{"make", "test-wrong-encrypted-rsa"},
+				},
+				Commands: [][]string{
+					{"pyocd", "erase", "--chip"},
+					{"make", "flash_boot"},
+				},
+				Expect: "Unable to find bootable image",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello1"},
+				},
+				Expect: "Hello World from hello1",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello2_encrypted"},
+				},
+				Expect: "Hello World from hello1",
+			},
+		},
+	},
+	{
+		Name:      "WRONG EC256 ENCRYPTED",
+		ShortName: "wrong-ec256-encrypted",
+		Tests: []OneTest{
+			{
+				Build: [][]string{
+					{"make", "test-wrong-encrypted-ec256"},
+				},
+				Commands: [][]string{
+					{"pyocd", "erase", "--chip"},
+					{"make", "flash_boot"},
+				},
+				Expect: "Unable to find bootable image",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello1"},
+				},
+				Expect: "Hello World from hello1",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello2_encrypted"},
+				},
+				Expect: "Hello World from hello1",
+			},
+		},
+	},
+	{
+		Name:      "WRONG X25519 ENCRYPTED",
+		ShortName: "wrong-x25519-encrypted",
+		Tests: []OneTest{
+			{
+				Build: [][]string{
+					{"make", "test-wrong-encrypted-x25519"},
+				},
+				Commands: [][]string{
+					{"pyocd", "erase", "--chip"},
+					{"make", "flash_boot"},
+				},
+				Expect: "Unable to find bootable image",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello1"},
+				},
+				Expect: "Hello World from hello1",
+			},
+			{
+				Commands: [][]string{
+					{"make", "flash_hello2_encrypted"},
+				},
+				Expect: "Hello World from hello1",
+			},
+		},
+	},
 }
 
 type OneTest struct {
