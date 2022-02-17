@@ -1,0 +1,103 @@
+# Copyright (c) 2022 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+name: Build Zephyr samples with Twister
+
+# Workflow triggers on PRs, pushes to main, once per day at midnight and can be started manually.
+on:
+  # By default, pull_request includes: opened, synchronize, or reopened
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: 0 0 * * *
+  # When triggered manually, ask for Zephyr and MCUBoot versions to check out
+  workflow_dispatch:
+    inputs:
+      version_zephyr:
+        description: 'Which Zephyr version to checkout?'
+        required: true
+        default: 'main'
+      version_mcuboot:
+        description: 'Which MCUBoot version to checkout?'
+        required: true
+        default: 'main'
+
+env:
+  ZEPHYR_VERSION: 'main'
+  MCUBOOT_VERSION: 'main'
+
+# Only cancel ongoing runs for PRs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build_zephyr_with_twister:
+    runs-on: ubuntu-latest
+    # Docker image from the zephyr upstream. Includes SDK and other required tools
+    container:
+      image: zephyrprojectrtos/ci:v0.21.0
+      options: '--entrypoint /bin/bash'
+      volumes:
+        - /home/runners/zephyrproject:/github/cache/zephyrproject
+    env:
+      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.13.2
+
+    steps:
+      - name: Set versions when workflow_dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "ZEPHYR_VERSION=${{ github.event.inputs.version_zephyr }}" >> $GITHUB_ENV
+          echo "MCUBOOT_VERSION=${{ github.event.inputs.version_mcuboot }}" >> $GITHUB_ENV
+
+      - name: Set versions when pull_request
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "MCUBOOT_VERSION=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+
+      - name: Checkout Zephyr
+        uses: actions/checkout@v2
+        with:
+          repository: 'zephyrproject-rtos/zephyr'
+          ref: ${{ env.ZEPHYR_VERSION }}
+          path: 'repos/zephyr'
+
+      - name: Setup Zephyr
+        working-directory: repos/zephyr
+        run: |
+          west init -l .
+          west update
+
+      - name: Checkout MCUBoot
+        uses: actions/checkout@v2
+        with:
+          repository: 'mcu-tools/mcuboot'
+          ref: ${{ env.MCUBOOT_VERSION }}
+          path: 'repos/bootloader/mcuboot'
+
+      - name: Run Twister tests
+        working-directory: repos/zephyr
+        env:
+          test_paths: >
+              -T ../bootloader/mcuboot/boot/zephyr
+              -T ./tests/subsys/dfu
+              -T ./samples/subsys/mgmt/mcumgr/smp_svr
+        run: |
+          export ZEPHYR_BASE=${PWD}
+          export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
+          echo "Using Zephyr version: ${{ env.ZEPHYR_VERSION }}"
+          echo "Using Mcuboot version: ${{ env.MCUBOOT_VERSION }}"
+          ./scripts/twister --inline-logs -v -N -M --integration --overflow-as-errors --retry-failed 2 ${test_paths}
+
+      - name: Upload Tests Results
+        uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: Tests Results
+          if-no-files-found: ignore
+          path: |
+            repos/zephyr/twister-out/twister.xml
