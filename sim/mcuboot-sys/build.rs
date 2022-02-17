@@ -375,7 +375,6 @@ fn main() {
     conf.file("csupport/run.c");
     conf.conf.include("../../boot/bootutil/include");
     conf.conf.include("csupport");
-    conf.conf.include("../../boot/zephyr/include");
     conf.conf.debug(true);
     conf.conf.flag("-Wall");
     conf.conf.flag("-Werror");
