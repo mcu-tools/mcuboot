@@ -1522,14 +1522,19 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
                 // This computation is incorrect, and we need to figure out the correct size.
                 // c::boot_status_sz(dev.align() as u32) as usize
                 16 + 4 * dev.align()
-            } else {
+            } else if Caps::SwapUsingMove.present() {
                 let sector_size = dev.sector_iter().next().unwrap().size as u32;
                 align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
+            } else if Caps::SwapUsingScratch.present() {
+                c::boot_trailer_sz(dev.align() as u32) as usize
+            } else {
+                panic!("The maximum image size can't be calculated.")
             };
             let tlv_len = tlv.estimate_size();
             info!("slot: 0x{:x}, HDR: 0x{:x}, trailer: 0x{:x}",
                 slot_len, HDR_SIZE, trailer);
             slot_len - HDR_SIZE - trailer - tlv_len
+
         }
     };
 
