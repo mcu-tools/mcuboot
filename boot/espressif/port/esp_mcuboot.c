@@ -49,10 +49,15 @@ _Static_assert(IS_ALIGNED(FLASH_BUFFER_SIZE, 4), "Buffer size for SPI Flash oper
 
 #define BOOTLOADER_START_ADDRESS CONFIG_BOOTLOADER_OFFSET_IN_FLASH
 #define BOOTLOADER_SIZE CONFIG_ESP_BOOTLOADER_SIZE
-#define APPLICATION_PRIMARY_START_ADDRESS CONFIG_ESP_APPLICATION_PRIMARY_START_ADDRESS
-#define APPLICATION_SECONDARY_START_ADDRESS CONFIG_ESP_APPLICATION_SECONDARY_START_ADDRESS
-#define APPLICATION_SIZE CONFIG_ESP_APPLICATION_SIZE
+#define IMAGE0_PRIMARY_START_ADDRESS CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS
+#define IMAGE0_SECONDARY_START_ADDRESS CONFIG_ESP_IMAGE0_SECONDARY_START_ADDRESS
 #define SCRATCH_OFFSET CONFIG_ESP_SCRATCH_OFFSET
+#if (MCUBOOT_IMAGE_NUMBER == 2)
+#define IMAGE1_PRIMARY_START_ADDRESS CONFIG_ESP_IMAGE1_PRIMARY_START_ADDRESS
+#define IMAGE1_SECONDARY_START_ADDRESS CONFIG_ESP_IMAGE1_SECONDARY_START_ADDRESS
+#endif
+
+#define APPLICATION_SIZE CONFIG_ESP_APPLICATION_SIZE
 #define SCRATCH_SIZE CONFIG_ESP_SCRATCH_SIZE
 
 extern int ets_printf(const char *fmt, ...);
@@ -67,16 +72,32 @@ static const struct flash_area bootloader = {
 static const struct flash_area primary_img0 = {
     .fa_id = FLASH_AREA_IMAGE_PRIMARY(0),
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
-    .fa_off = APPLICATION_PRIMARY_START_ADDRESS,
+    .fa_off = IMAGE0_PRIMARY_START_ADDRESS,
     .fa_size = APPLICATION_SIZE,
 };
 
 static const struct flash_area secondary_img0 = {
     .fa_id = FLASH_AREA_IMAGE_SECONDARY(0),
     .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
-    .fa_off = APPLICATION_SECONDARY_START_ADDRESS,
+    .fa_off = IMAGE0_SECONDARY_START_ADDRESS,
     .fa_size = APPLICATION_SIZE,
 };
+
+#if (MCUBOOT_IMAGE_NUMBER == 2)
+static const struct flash_area primary_img1 = {
+    .fa_id = FLASH_AREA_IMAGE_PRIMARY(1),
+    .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
+    .fa_off = IMAGE1_PRIMARY_START_ADDRESS,
+    .fa_size = APPLICATION_SIZE,
+};
+
+static const struct flash_area secondary_img1 = {
+    .fa_id = FLASH_AREA_IMAGE_SECONDARY(1),
+    .fa_device_id = FLASH_DEVICE_INTERNAL_FLASH,
+    .fa_off = IMAGE1_SECONDARY_START_ADDRESS,
+    .fa_size = APPLICATION_SIZE,
+};
+#endif
 
 static const struct flash_area scratch_img0 = {
     .fa_id = FLASH_AREA_IMAGE_SCRATCH,
@@ -89,6 +110,10 @@ static const struct flash_area *s_flash_areas[] = {
     &bootloader,
     &primary_img0,
     &secondary_img0,
+#if (MCUBOOT_IMAGE_NUMBER == 2)
+    &primary_img1,
+    &secondary_img1,
+#endif
     &scratch_img0,
 };
 

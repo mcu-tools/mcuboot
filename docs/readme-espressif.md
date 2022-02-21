@@ -72,7 +72,8 @@ esptool.py -p <PORT> -b <BAUD> --before default_reset --after hard_reset --chip 
 ```
 ---
 ***Note***
-You may adjust the port `<PORT>` (like `/dev/ttyUSB0`) and baud rate `<BAUD>` (like `2000000`) according to the connection to your board.
+
+You may adjust the port `<PORT>` (like `/dev/ttyUSB0`) and baud rate `<BAUD>` (like `2000000`) according to the connection with your board.
 You can also skip `<PORT>` and `<BAUD>` parameters so that esptool tries to automatically detect it.
 
 *`<FLASH_SIZE>` can be found using the command below:*
@@ -104,6 +105,7 @@ imgtool.py sign --align 4 -v 0 -H 32 --pad-header -S <SLOT_SIZE> <BIN_IN> <SIGNE
 ---
 
 ***Note***
+
 `<SLOT_SIZE>` is the size of the slot to be used.
 Default slot0 size is `0x100000`, but it can change as per application flash partitions.
 
@@ -135,6 +137,7 @@ The image that MCUboot is booting can be signed with 4 types of keys: RSA-2048, 
 
 ---
 ***Note***
+
 *It is strongly recommended to generate a new signing key using `imgtool` instead of use the existent samples.*
 
 ---
@@ -447,3 +450,92 @@ The overall final process when all features are enabled:
 ### [Size Limitation](#size-limitation)
 
 When all 3 features are enable at same time, the bootloader size may exceed the fixed limit for the ROM bootloader checking on the Espressif chips **depending on which algorithm** was chosen for MCUboot image signing. The issue https://github.com/mcu-tools/mcuboot/issues/1262 was created to track this limitation.
+
+## [Multi image](#multi-image)
+
+The multi image feature (currently limited to 2 images) allows the images to be updated separately (each one has its own primary and secondary slot) by MCUboot.
+
+The Espressif port bootloader handles the boot in two different approaches:
+
+### [Host OS boots second image](#host-os-boots-second-image)
+
+Host OS from the *first image* is responsible for booting the *second image*, therefore the bootloader is aware of the second image regions and can update it, however it does not load neither boots it.
+
+Configuration example (`bootloader.conf`):
+```
+CONFIG_ESP_BOOTLOADER_SIZE=0xF000
+CONFIG_ESP_MCUBOOT_WDT_ENABLE=y
+
+# Enables multi image, if it is not defined, its assumed
+# only one updatable image
+CONFIG_ESP_IMAGE_NUMBER=2
+
+# Example of values to be used when multi image is enabled
+# Notice that the OS layer and update agent must be aware
+# of these regions
+CONFIG_ESP_APPLICATION_SIZE=0x50000
+CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS=0x10000
+CONFIG_ESP_IMAGE0_SECONDARY_START_ADDRESS=0x60000
+CONFIG_ESP_IMAGE1_PRIMARY_START_ADDRESS=0xB0000
+CONFIG_ESP_IMAGE1_SECONDARY_START_ADDRESS=0x100000
+CONFIG_ESP_SCRATCH_OFFSET=0x150000
+CONFIG_ESP_SCRATCH_SIZE=0x40000
+```
+
+### [Multi boot](#multi-boot)
+
+In the multi boot approach the bootloader is responsible for booting two different images in two different CPUs, firstly the *second image* on the APP CPU and then the *first image* on the PRO CPU (current CPU), it is also responsible for update both images as well. Thus multi boot will be only supported by Espressif multi core chips - currently only ESP32 is implemented.
+
+---
+***Note***
+
+*The host OSes in each CPU must handle how the resources are divided/controlled between then.*
+
+---
+
+Configuration example:
+```
+CONFIG_ESP_BOOTLOADER_SIZE=0xF000
+CONFIG_ESP_MCUBOOT_WDT_ENABLE=y
+
+# Enables multi image, if it is not defined, its assumed
+# only one updatable image
+CONFIG_ESP_IMAGE_NUMBER=2
+
+# Enables multi image boot on independent processors
+# (main host OS is not responsible for booting the second image)
+# Use only with CONFIG_ESP_IMAGE_NUMBER=2
+CONFIG_ESP_MULTI_PROCESSOR_BOOT=y
+
+# Example of values to be used when multi image is enabled
+# Notice that the OS layer and update agent must be aware
+# of these regions
+CONFIG_ESP_APPLICATION_SIZE=0x50000
+CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS=0x10000
+CONFIG_ESP_IMAGE0_SECONDARY_START_ADDRESS=0x60000
+CONFIG_ESP_IMAGE1_PRIMARY_START_ADDRESS=0xB0000
+CONFIG_ESP_IMAGE1_SECONDARY_START_ADDRESS=0x100000
+CONFIG_ESP_SCRATCH_OFFSET=0x150000
+CONFIG_ESP_SCRATCH_SIZE=0x40000
+```
+
+### [Image version dependency](#image-version-dependency)
+
+MCUboot allows version dependency check between the images when updating them. As `imgtool.py` allows a version assigment when signing an image, it is also possible to add the version dependency constraint:
+
+```
+imgtool.py sign --align 4 -v <VERSION> -d "(<IMAGE_INDEX>, <VERSION_DEPENDENCY>)" -H 32 --pad-header -S <SLOT_SIZE> <BIN_IN> <SIGNED_BIN>
+```
+
+- `<VERSION>` defines the version of the image being signed.
+- `"(<IMAGE_INDEX>, <VERSION_DEPENDENCY>)"` defines the minimum version and from which image is needed to satisfy the dependency.
+
+---
+Example:
+```
+imgtool.py sign --align 4 -v 1.0.0 -d "(1, 0.0.1+0)" -H 32 --pad-header -S 0x100000 image0.bin image0-signed.bin
+```
+
+Supposing that the image 0 is being signed, its version is 1.0.0 and it depends on image 1 with version at least 0.0.1+0.
+
+---

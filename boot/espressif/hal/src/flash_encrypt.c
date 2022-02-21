@@ -234,7 +234,7 @@ static esp_err_t encrypt_flash_contents(uint32_t flash_crypt_cnt, bool flash_cry
      * This will need changes when implementing multi-slot support
      */
     ESP_LOGI(TAG, "Encrypting remaining flash...");
-    uint32_t region_addr = CONFIG_ESP_APPLICATION_SECONDARY_START_ADDRESS;
+    uint32_t region_addr = CONFIG_ESP_IMAGE0_SECONDARY_START_ADDRESS;
     size_t region_size = CONFIG_ESP_APPLICATION_SIZE;
     err = esp_flash_encrypt_region(region_addr, region_size);
     if (err != ESP_OK) {
@@ -246,6 +246,21 @@ static esp_err_t encrypt_flash_contents(uint32_t flash_crypt_cnt, bool flash_cry
     if (err != ESP_OK) {
         return err;
     }
+
+#if defined(CONFIG_ESP_IMAGE_NUMBER) && (CONFIG_ESP_IMAGE_NUMBER == 2)
+    region_addr = CONFIG_ESP_IMAGE1_PRIMARY_START_ADDRESS;
+    region_size = CONFIG_ESP_APPLICATION_SIZE;
+    err = esp_flash_encrypt_region(region_addr, region_size);
+    if (err != ESP_OK) {
+        return err;
+    }
+    region_addr = CONFIG_ESP_IMAGE1_SECONDARY_START_ADDRESS;
+    region_size = CONFIG_ESP_APPLICATION_SIZE;
+    err = esp_flash_encrypt_region(region_addr, region_size);
+    if (err != ESP_OK) {
+        return err;
+    }
+#endif
 
 #ifdef CONFIG_SECURE_FLASH_ENCRYPTION_MODE_RELEASE
     // Go straight to max, permanently enabled
@@ -309,20 +324,20 @@ static esp_err_t encrypt_primary_slot(void)
     /* Check if the slot is plaintext or encrypted, 0x20 offset is for skipping
      * MCUboot header
      */
-    err = bootloader_flash_read(CONFIG_ESP_APPLICATION_PRIMARY_START_ADDRESS + 0x20,
+    err = bootloader_flash_read(CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS + 0x20,
                                 &img_header, sizeof(esp_image_load_header_t), true);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read slot img header");
         return err;
     } else {
-        err = verify_img_header(CONFIG_ESP_APPLICATION_PRIMARY_START_ADDRESS,
+        err = verify_img_header(CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS,
                                 &img_header, true);
     }
 
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "Encrypting primary slot...");
 
-        err = esp_flash_encrypt_region(CONFIG_ESP_APPLICATION_PRIMARY_START_ADDRESS,
+        err = esp_flash_encrypt_region(CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS,
                                        CONFIG_ESP_APPLICATION_SIZE);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to encrypt slot in place: 0x%x", err);
