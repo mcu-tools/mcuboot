@@ -221,9 +221,14 @@ done:
 }
 
 
+/* Get the SOC's flash erase block size from the DTS, fallback to 1024. */
+#define SOC_FLASH_ERASE_BLK_SZ \
+         DT_PROP_OR(DT_CHOSEN(zephyr_flash), erase_block_size,1024)
+
 /**
- * reads, decrypts in memory & write back the decrypted image in the same region
- * This function is NOT power failsafe since the image is decrypted in ram (stack)
+ * reads, decrypts in RAM & write back the decrypted image in the same region
+ * This function is NOT power failsafe since the image is decrypted in the RAM
+ * buffer.
  *
  * @param flash_area            The ID of the source flash area.
  * @param off_src               The offset within the flash area to
@@ -247,7 +252,7 @@ decrypt_region_inplace(struct boot_loader_state *state,
     uint32_t blk_sz;
     uint8_t image_index;
 
-    static uint8_t buf[1024] __attribute__((aligned));
+    static uint8_t buf[SOC_FLASH_ERASE_BLK_SZ] __attribute__((aligned));
     assert(sz <= sizeof buf);
 
     bytes_copied = 0;
