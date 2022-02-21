@@ -98,7 +98,11 @@
 
 /* Default number of separately updateable images; change in case of
  * multiple images. */
+#if defined(CONFIG_ESP_IMAGE_NUMBER)
+#define MCUBOOT_IMAGE_NUMBER CONFIG_ESP_IMAGE_NUMBER
+#else
 #define MCUBOOT_IMAGE_NUMBER 1
+#endif
 
 /*
  * Logging
