@@ -25,7 +25,7 @@
 #include "sysflash/sysflash.h"
 
 #include "bootutil/bootutil_log.h"
-#include "cbor_encode.h"
+#include "zcbor_encode.h"
 
 #ifdef __ZEPHYR__
 #include <sys/reboot.h>
@@ -99,17 +99,12 @@ static char bs_obuf[BOOT_SERIAL_OUT_MAX];
 
 static void boot_serial_output(void);
 
-static cbor_state_backups_t dummy_backups;
-static cbor_state_t cbor_state = {
-    .backups = &dummy_backups
-};
+static zcbor_state_t cbor_state[2];
 
 void reset_cbor_state(void)
 {
-    cbor_state.payload_mut = (uint8_t *)bs_obuf;
-    cbor_state.payload_end = (const uint8_t *)bs_obuf
-                             + sizeof(bs_obuf);
-    cbor_state.elem_count = 0;
+    zcbor_new_encode_state(cbor_state, 2, (uint8_t *)bs_obuf,
+        (size_t)bs_obuf + sizeof(bs_obuf), 0);
 }
 
 /**
@@ -126,7 +121,7 @@ void reset_cbor_state(void)
  */
 extern int bs_peruser_system_specific(const struct nmgr_hdr *hdr,
                                       const char *buffer,
-                                      int len, cbor_state_t *cs);
+                                      int len, zcbor_state_t *cs);
 
 /*
  * Convert version into string without use of snprintf().
@@ -157,6 +152,9 @@ u32toa(char *tgt, uint32_t val)
     return dst - tgt;
 }
 
+#define zcbor_tstr_put_lit_cast(state, string) \
+	zcbor_tstr_encode_ptr(state, (uint8_t *)string, sizeof(string) - 1)
+
 /*
  * dst has to be able to fit "255.255.65535.4294967295" (25 characters).
  */
@@ -186,9 +184,9 @@ bs_list(char *buf, int len)
     const struct flash_area *fap;
     uint8_t image_index;
 
-    map_start_encode(&cbor_state, 1);
-    tstrx_put(&cbor_state, "images");
-    list_start_encode(&cbor_state, 5);
+    zcbor_map_start_encode(cbor_state, 1);
+    zcbor_tstr_put_lit_cast(cbor_state, "images");
+    zcbor_list_start_encode(cbor_state, 5);
     image_index = 0;
     IMAGES_ITER(image_index) {
         for (slot = 0; slot < 2; slot++) {
@@ -235,24 +233,24 @@ bs_list(char *buf, int len)
                 continue;
             }
 
-            map_start_encode(&cbor_state, 20);
+            zcbor_map_start_encode(cbor_state, 20);
 
 #if (BOOT_IMAGE_NUMBER > 1)
-            tstrx_put(&cbor_state, "image");
-            uintx32_put(&cbor_state, image_index);
+            zcbor_tstr_put_lit_cast(cbor_state, "image");
+            zcbor_uint32_put(cbor_state, image_index);
 #endif
 
-            tstrx_put(&cbor_state, "slot");
-            uintx32_put(&cbor_state, slot);
-            tstrx_put(&cbor_state, "version");
+            zcbor_tstr_put_lit_cast(cbor_state, "slot");
+            zcbor_uint32_put(cbor_state, slot);
+            zcbor_tstr_put_lit_cast(cbor_state, "version");
 
             bs_list_img_ver((char *)tmpbuf, sizeof(tmpbuf), &hdr.ih_ver);
-            tstrx_put_term(&cbor_state, (char *)tmpbuf);
-            map_end_encode(&cbor_state, 20);
+            zcbor_tstr_encode_ptr(cbor_state, tmpbuf, strlen((char *)tmpbuf));
+            zcbor_map_end_encode(cbor_state, 20);
         }
     }
-    list_end_encode(&cbor_state, 5);
-    map_end_encode(&cbor_state, 1);
+    zcbor_list_end_encode(cbor_state, 5);
+    zcbor_map_end_encode(cbor_state, 1);
     boot_serial_output();
 }
 
@@ -289,15 +287,15 @@ bs_upload(char *buf, int len)
      */
 
     struct Upload upload;
-    uint32_t decoded_len;
-    bool result = cbor_decode_Upload((const uint8_t *)buf, len, &upload, &decoded_len);
+    size_t decoded_len;
+    uint_fast8_t result = cbor_decode_Upload((const uint8_t *)buf, len, &upload, &decoded_len);
 
-    if (!result || (len != decoded_len)) {
+    if ((result != ZCBOR_SUCCESS) || (len != decoded_len)) {
         goto out_invalid_data;
     }
 
     for (int i = 0; i < upload._Upload_members_count; i++) {
-        struct Member_ *member = &upload._Upload_members[i];
+        struct Member_ *member = &upload._Upload_members[i]._Upload_members;
         switch(member->_Member_choice) {
             case _Member_image:
                 img_num = member->_Member_image;
@@ -458,14 +456,14 @@ bs_upload(char *buf, int len)
 
 out:
     BOOT_LOG_INF("RX: 0x%x", rc);
-    map_start_encode(&cbor_state, 10);
-    tstrx_put(&cbor_state, "rc");
-    uintx32_put(&cbor_state, rc);
+    zcbor_map_start_encode(cbor_state, 10);
+    zcbor_tstr_put_lit_cast(cbor_state, "rc");
+    zcbor_uint32_put(cbor_state, rc);
     if (rc == 0) {
-        tstrx_put(&cbor_state, "off");
-        uintx32_put(&cbor_state, curr_off);
+        zcbor_tstr_put_lit_cast(cbor_state, "off");
+        zcbor_uint32_put(cbor_state, curr_off);
     }
-    map_end_encode(&cbor_state, 10);
+    zcbor_map_end_encode(cbor_state, 10);
 
     boot_serial_output();
     flash_area_close(fap);
@@ -484,10 +482,10 @@ out:
 static void
 bs_rc_rsp(int rc_code)
 {
-    map_start_encode(&cbor_state, 10);
-    tstrx_put(&cbor_state, "rc");
-    uintx32_put(&cbor_state, rc_code);
-    map_end_encode(&cbor_state, 10);
+    zcbor_map_start_encode(cbor_state, 10);
+    zcbor_tstr_put_lit_cast(cbor_state, "rc");
+    zcbor_uint32_put(cbor_state, rc_code);
+    zcbor_map_end_encode(cbor_state, 10);
     boot_serial_output();
 }
 
@@ -605,7 +603,7 @@ boot_serial_input(char *buf, int len)
             break;
         }
     } else if (MCUBOOT_PERUSER_MGMT_GROUP_ENABLED == 1) {
-        if (bs_peruser_system_specific(hdr, buf, len, &cbor_state) == 0) {
+        if (bs_peruser_system_specific(hdr, buf, len, cbor_state) == 0) {
             boot_serial_output();
         }
     } else {
@@ -628,7 +626,7 @@ boot_serial_output(void)
     char encoded_buf[BASE64_ENCODE_SIZE(sizeof(buf))];
 
     data = bs_obuf;
-    len = (uint32_t)cbor_state.payload_mut - (uint32_t)bs_obuf;
+    len = (uint32_t)cbor_state->payload_mut - (uint32_t)bs_obuf;
 
     bs_hdr->nh_op++;
     bs_hdr->nh_flags = 0;
