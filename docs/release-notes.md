@@ -31,6 +31,7 @@ been tested with a `BOOT_MAX_ALIGN` up to 32 bytes.
 - Remove zephyr example test running in shell.  The Go version is
   primary and much more featureful.
 - imgtool: make `--max-align` default reasonable in most cases.
+- Implement the mcumgr echo command in serial boot mode
 
 ### Security fixes
 
