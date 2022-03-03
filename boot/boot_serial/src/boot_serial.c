@@ -673,7 +673,7 @@ boot_serial_output(void)
     totlen = base64_encode(buf, totlen, encoded_buf, 1);
 #endif
     boot_uf->write(encoded_buf, totlen);
-    boot_uf->write("\n\r", 2);
+    boot_uf->write("\n", 1);
     BOOT_LOG_INF("TX");
 }
 
