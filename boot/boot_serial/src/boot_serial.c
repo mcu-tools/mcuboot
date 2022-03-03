@@ -614,8 +614,8 @@ boot_serial_output(void)
     uint16_t crc;
     uint16_t totlen;
     char pkt_start[2] = { SHELL_NLIP_PKT_START1, SHELL_NLIP_PKT_START2 };
-    char buf[BOOT_SERIAL_OUT_MAX];
-    char encoded_buf[BASE64_ENCODE_SIZE(BOOT_SERIAL_OUT_MAX)];
+    char buf[BOOT_SERIAL_OUT_MAX + sizeof(*bs_hdr) + sizeof(crc) + sizeof(totlen)];
+    char encoded_buf[BASE64_ENCODE_SIZE(sizeof(buf))];
 
     data = bs_obuf;
     len = (uint32_t)cbor_state.payload_mut - (uint32_t)bs_obuf;
