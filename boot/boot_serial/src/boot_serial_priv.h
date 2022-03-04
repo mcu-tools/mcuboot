@@ -37,7 +37,7 @@ extern "C" {
  * From newtmgr.h
  */
 #define MGMT_ERR_OK             0
-#define MGMT_ERR_EUNKNOWN       2
+#define MGMT_ERR_EUNKNOWN       1
 #define MGMT_ERR_EINVAL         3
 #define MGMT_ERR_ENOTSUP        8
 
