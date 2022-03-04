@@ -104,6 +104,14 @@ static cbor_state_t cbor_state = {
     .backups = &dummy_backups
 };
 
+void reset_cbor_state(void)
+{
+    cbor_state.payload_mut = (uint8_t *)bs_obuf;
+    cbor_state.payload_end = (const uint8_t *)bs_obuf
+                             + sizeof(bs_obuf);
+    cbor_state.elem_count = 0;
+}
+
 /**
  * Function that processes MGMT_GROUP_ID_PERUSER mcumgr group and may be
  * used to process any groups that have not been processed by generic boot
@@ -470,6 +478,20 @@ out:
 #endif //#ifdef MCUBOOT_ENC_IMAGES
 }
 
+/*
+ * Send rc code only.
+ */
+static void
+bs_rc_rsp(int rc_code)
+{
+    map_start_encode(&cbor_state, 10);
+    tstrx_put(&cbor_state, "rc");
+    uintx32_put(&cbor_state, rc_code);
+    map_end_encode(&cbor_state, 10);
+    boot_serial_output();
+}
+
+
 #ifdef MCUBOOT_BOOT_MGMT_ECHO
 static bool
 decode_echo(cbor_state_t *state, cbor_string_type_t *result)
@@ -495,25 +517,15 @@ bs_echo(char *buf, int len)
     if (entry_function((const uint8_t *)buf, len, str, &bsstrdecoded, (void *)decode_echo, 1, 2)) {
         map_start_encode(&cbor_state, 10);
         tstrx_put(&cbor_state, "r");
-        tstrx_encode(&cbor_state, &str[1]);
-        map_end_encode(&cbor_state, 10);
-        boot_serial_output();
+        if (tstrx_encode(&cbor_state, &str[1]) && map_end_encode(&cbor_state, 10)) {
+            boot_serial_output();
+        } else {
+            reset_cbor_state();
+            bs_rc_rsp(MGMT_ERR_ENOMEM);
+        }
     }
 }
 #endif
-
-/*
- * Send rc code only.
- */
-static void
-bs_rc_rsp(int rc_code)
-{
-    map_start_encode(&cbor_state, 10);
-    tstrx_put(&cbor_state, "rc");
-    uintx32_put(&cbor_state, rc_code);
-    map_end_encode(&cbor_state, 10);
-    boot_serial_output();
-}
 
 /*
  * Reset, and (presumably) boot to newly uploaded image. Flush console
@@ -558,9 +570,7 @@ boot_serial_input(char *buf, int len)
     buf += sizeof(*hdr);
     len -= sizeof(*hdr);
 
-    cbor_state.payload_mut = (uint8_t *)bs_obuf;
-    cbor_state.payload_end = (const uint8_t *)bs_obuf
-                             + sizeof(bs_obuf);
+    reset_cbor_state();
 
     /*
      * Limited support for commands.
