@@ -511,7 +511,7 @@ void main(void)
                    CONFIG_BOOT_SERIAL_DETECT_DELAY) &&
             !boot_skip_serial_recovery()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-        mcuboot_led_active(led, LED0_GPIO_PIN, 1);
+        mcuboot_led_active();
 #endif
 
         BOOT_LOG_INF("Enter the serial recovery mode");
@@ -528,7 +528,7 @@ void main(void)
                    CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL,
                    CONFIG_BOOT_USB_DFU_DETECT_DELAY)) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-        mcuboot_led_active(led, LED0_GPIO_PIN, 1);
+        mcuboot_led_active();
 #endif
         rc = usb_enable(NULL);
         if (rc) {

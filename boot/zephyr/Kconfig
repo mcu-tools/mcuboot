@@ -501,7 +501,7 @@ config MCUBOOT_INDICATION_LED_CUSTOM
 			- mcuboot_led_active
 			- mcuboot_led_error
 			- mcuboot_led_finish
-                         - mcuboot_led_deinit
+			- mcuboot_led_deinit
 
 rsource "Kconfig.serial_recovery"
 
