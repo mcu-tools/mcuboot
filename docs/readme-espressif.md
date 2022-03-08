@@ -71,21 +71,22 @@ esptool.py --chip <TARGET> elf2image --flash_mode dio --flash_freq 40m --flash_s
 esptool.py -p <PORT> -b <BAUD> --before default_reset --after hard_reset --chip <TARGET> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <BOOTLOADER_FLASH_OFFSET> build/mcuboot_<TARGET>.bin
 ```
 ---
-***Note***  
-You may adjust the port `<PORT>` (like `/dev/ttyUSB0`) and baud rate `<BAUD>` (like `2000000`) according to the connection with your board.  
+***Note***
+You may adjust the port `<PORT>` (like `/dev/ttyUSB0`) and baud rate `<BAUD>` (like `2000000`) according to the connection to your board.
 You can also skip `<PORT>` and `<BAUD>` parameters so that esptool tries to automatically detect it.
 
 *`<FLASH_SIZE>` can be found using the command below:*
 ```
 esptool.py -p <PORT> -b <BAUD> flash_id
 ```
-The output contains device information and its flash size:  
+The output contains device information and its flash size:
 ```
 Detected flash size: 4MB
 ```
 
 
 *`<BOOTLOADER_FLASH_OFFSET>` value must follow one of the addresses below:*
+
 | ESP32 | ESP32-S2 | ESP32-C3 | ESP32-S3 |
 | :-----: | :-----: | :-----: | :-----: |
 | 0x1000 | 0x1000 | 0x0000 | 0x0000 |
@@ -102,8 +103,8 @@ imgtool.py sign --align 4 -v 0 -H 32 --pad-header -S <SLOT_SIZE> <BIN_IN> <SIGNE
 
 ---
 
-***Note***  
-`<SLOT_SIZE>` is the size of the slot to be used.  
+***Note***
+`<SLOT_SIZE>` is the size of the slot to be used.
 Default slot0 size is `0x100000`, but it can change as per application flash partitions.
 
 For Zephyr images, `--pad-header` is not needed as it already has the padding for MCUboot header.
@@ -213,6 +214,25 @@ CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH=1
 
 ---
 
+---
+:warning: ***ATTENTION***
+
+*You can disable UART Download Mode by adding the following configuration:*
+```
+CONFIG_SECURE_DISABLE_ROM_DL_MODE=1
+```
+
+*This may be suitable for **production** builds. **After disabling UART Download Mode you will not be able to flash other images through UART.***
+
+*Otherwise, you can switch the UART ROM Download Mode to the Secure Download Mode. It will limit the use of Download Mode functions to simple flash read, write and erase operations.*
+```
+CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE=1
+```
+
+*Once the device makes its first full boot, these configurations cannot be reverted*
+
+---
+
 Once the **bootloader image** is built, the resulting binary file is required to be signed with `espsecure.py` tool.
 
 First create a signing key:
@@ -284,6 +304,8 @@ For **development mode**:
 CONFIG_SECURE_FLASH_ENC_ENABLED=1
 CONFIG_SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT=1
 ```
+
+---
 :warning: ***ATTENTION***
 
 *On development phase is strongly recommended adding the following configuration in order to keep the debugging enabled and also to avoid any unrecoverable/permanent state change:*
@@ -297,6 +319,7 @@ CONFIG_SECURE_BOOT_ALLOW_JTAG=1
 CONFIG_EFUSE_VIRTUAL=1
 CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH=1
 ```
+---
 
 ---
 :warning: ***ATTENTION***
@@ -304,6 +327,20 @@ CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH=1
 *Unless the recommended flags for **DEVELOPMENT MODE** were enabled, the actions made by Flash Encryption process are **PERMANENT**.* \
 *Once the bootloader is flashed and the device resets, the **first boot will enable Flash Encryption, encrypt the flash content including bootloader and image slots, burn the eFuses that no longer can be modified** and if device generated the key **it will not be recoverable**.* \
 *When on **RELEASE MODE**, **ENSURE** that the application with an update agent is flashed before reset the device.*
+
+*In the same way as Secure Boot feature, you can disable UART Download Mode by adding the following configuration:*
+```
+CONFIG_SECURE_DISABLE_ROM_DL_MODE=1
+```
+
+*This may be suitable for **production** builds. **After disabling UART Download Mode you will not be able to flash other images through UART.***
+
+*Otherwise, you can switch the UART Download Mode to the Secure Download Mode. It will limit the use of Download Mode functions to simple flash read, write and erase operations.*
+```
+CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE=1
+```
+
+*These configurations cannot be reverted after the device's first boot*
 
 ---
 
@@ -336,18 +373,18 @@ On the **first boot**, the bootloader will:
 
 ### [Host generated key](#host-generated-key)
 
-First ensure that the application image is able to perform encrypted read and write operations to the SPI Flash.
+First ensure that the application image is able to perform encrypted read and write operations to the SPI Flash. Also ensure that the **UART ROM Download Mode is not disabled** - or that the **Secure Download Mode is enabled**.
 Before flashing, generate the encryption key using `espsecure.py` tool:
 ```
 espsecure.py generate_flash_encryption_key <FLASH_ENCRYPTION_KEY.bin>
 ```
 
-Burn the key into the device's eFuse, this action can be done **only once**:
+Burn the key into the device's eFuse (keep a copy on the host), this action can be done **only once**:
 
 ---
 :warning: ***ATTENTION***
 
-*eFuse emulation in Flash configuration options do not have any effect, so if the key burning command is used, it will actually burn the physical eFuse.*
+*eFuse emulation in Flash configuration options do not have any effect, so if the key burning command below is used, it will actually burn the physical eFuse.*
 
 ---
 
@@ -378,6 +415,25 @@ On the **first boot**, the bootloader will:
 1. Encrypt flash in-place including bootloader, image primary/secondary slot and scratch using the written key.
 2. Burn eFuse to enable Flash Encryption.
 3. Reset system to ensure Flash Encryption cache resets properly.
+
+Encrypting data on the host:
+- ESP32
+```
+espsecure.py encrypt_flash_data --keyfile <FLASH_ENCRYPTION_KEY.bin> --address <FLASH_OFFSET> --output <OUTPUT_DATA> <INPUT_DATA>
+```
+
+- ESP32-S2, ESP32-C3 and ESP32-S3
+```
+espsecure.py encrypt_flash_data --aes_xts --keyfile <FLASH_ENCRYPTION_KEY.bin> --address <FLASH_OFFSET> --output <OUTPUT_DATA> <INPUT_DATA>
+```
+
+---
+***Note***
+OTA updates are required to be sent plaintext. The reason is that, as said before, after the Flash Encryption is enabled all read/write operations are decrypted/encrypted in runtime, so as e.g. if pre-encrypted data is sent for an OTA update, it would be wrongly double-encrypted when the update agent writes to the flash.
+
+For updating with an image encrypted on the host, flash it through serial using `esptool.py` as above. **UART ROM Download Mode must not be disabled**.
+
+---
 
 ## [Security Chain scheme](#security-chain-scheme)
 
