@@ -15,6 +15,7 @@
 #include "esp_efuse_table.h"
 #include "esp_log.h"
 #include "hal/wdt_hal.h"
+#include "soc/soc_caps.h"
 
 #include "esp_mcuboot_image.h"
 
@@ -166,6 +167,26 @@ static esp_err_t initialise_flash_encryption(void)
         esp_efuse_batch_write_cancel();
         return err;
     }
+
+#if defined(SOC_SUPPORTS_SECURE_DL_MODE) && defined(CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE)
+    ESP_LOGI(TAG, "Enabling Secure Download mode...");
+    err = esp_efuse_enable_rom_secure_download_mode();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Could not enable Secure Download mode...");
+        esp_efuse_batch_write_cancel();
+        return err;
+    }
+#elif CONFIG_SECURE_DISABLE_ROM_DL_MODE
+    ESP_LOGI(TAG, "Disable ROM Download mode...");
+    err = esp_efuse_disable_rom_download_mode();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Could not disable ROM Download mode...");
+        esp_efuse_batch_write_cancel();
+        return err;
+    }
+#else
+    ESP_LOGW(TAG, "UART ROM Download mode kept enabled - SECURITY COMPROMISED");
+#endif
 
     err = esp_efuse_batch_write_commit();
     if (err != ESP_OK) {
