@@ -159,6 +159,8 @@ struct arm_vector_table {
     uint32_t reset;
 };
 
+extern void sys_clock_disable(void);
+
 static void do_boot(struct boot_rsp *rsp)
 {
     struct arm_vector_table *vt;
