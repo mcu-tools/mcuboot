@@ -504,15 +504,16 @@ void main(void)
     }
 #endif
 
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+        mcuboot_led_active();
+#endif
+
 #ifdef CONFIG_MCUBOOT_SERIAL
     if (detect_pin(CONFIG_BOOT_SERIAL_DETECT_PORT,
                    CONFIG_BOOT_SERIAL_DETECT_PIN,
                    CONFIG_BOOT_SERIAL_DETECT_PIN_VAL,
                    CONFIG_BOOT_SERIAL_DETECT_DELAY) &&
             !boot_skip_serial_recovery()) {
-#ifdef CONFIG_MCUBOOT_INDICATION_LED
-        mcuboot_led_active();
-#endif
 
         BOOT_LOG_INF("Enter the serial recovery mode");
         rc = boot_console_init();
@@ -527,9 +528,6 @@ void main(void)
                    CONFIG_BOOT_USB_DFU_DETECT_PIN,
                    CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL,
                    CONFIG_BOOT_USB_DFU_DETECT_DELAY)) {
-#ifdef CONFIG_MCUBOOT_INDICATION_LED
-        mcuboot_led_active();
-#endif
         rc = usb_enable(NULL);
         if (rc) {
             BOOT_LOG_ERR("Cannot enable USB");
