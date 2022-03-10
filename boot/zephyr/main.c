@@ -585,9 +585,6 @@ void main(void)
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
     mcuboot_led_finish();
-#endif
-
-#ifdef CONFIG_BOOT_INDICATION_LED
     mcuboot_led_deinit();
 #endif
 
