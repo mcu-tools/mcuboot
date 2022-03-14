@@ -44,7 +44,7 @@ The MCUboot documentation is composed of the following pages:
   - [Apache NuttX](readme-nuttx.md)
   - [RIOT](readme-riot.md)
   - [Mbed OS](readme-mbed.md)
-  - [Espressif](docs/readme-espressif.md)
+  - [Espressif](readme-espressif.md)
   - [Cypress/Infineon](../boot/cypress/readme.md)
   - [Simulator](../sim/README.rst)
 - Testing
