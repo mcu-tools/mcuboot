@@ -6,6 +6,10 @@ on:
 
 name: FIH hardening
 
+concurrency:
+  group: fih-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   config:
     strategy:

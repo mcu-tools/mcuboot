@@ -37,7 +37,8 @@ extern "C" {
  * From newtmgr.h
  */
 #define MGMT_ERR_OK             0
-#define MGMT_ERR_EUNKNOWN       2
+#define MGMT_ERR_EUNKNOWN       1
+#define MGMT_ERR_ENOMEM         2
 #define MGMT_ERR_EINVAL         3
 #define MGMT_ERR_ENOTSUP        8
 
@@ -48,6 +49,7 @@ extern "C" {
 #define MGMT_GROUP_ID_IMAGE     1
 #define MGMT_GROUP_ID_PERUSER  64
 
+#define NMGR_ID_ECHO            0
 #define NMGR_ID_CONS_ECHO_CTRL  1
 #define NMGR_ID_RESET           5
 

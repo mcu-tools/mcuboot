@@ -16,7 +16,7 @@
 [travis]: https://travis-ci.org/mcu-tools/mcuboot
 [license]: https://github.com/mcu-tools/mcuboot/blob/main/LICENSE
 
-This is MCUboot version 1.8.0
+This is MCUboot version 1.9.0
 
 MCUboot is a secure bootloader for 32-bits microcontrollers. It defines a
 common infrastructure for the bootloader and the system flash layout on
@@ -31,7 +31,7 @@ Currently, MCUboot works with the following operating systems and SoCs:
 - [Apache NuttX](https://nuttx.apache.org/)
 - [RIOT](https://www.riot-os.org/)
 - [Mbed OS](https://os.mbed.com/)
-- [Espressif IDF](https://idf.espressif.com/)
+- [Espressif](https://www.espressif.com/)
 - [Cypress/Infineon](https://www.cypress.com/)
 
 RIOT is supported only as a boot target. We will accept any new
@@ -46,7 +46,7 @@ operating systems and SoCs:
 - [Apache NuttX](docs/readme-nuttx.md)
 - [RIOT](docs/readme-riot.md)
 - [Mbed OS](docs/readme-mbed.md)
-- [Espressif IDF](docs/readme-espressif.md)
+- [Espressif](docs/readme-espressif.md)
 - [Cypress/Infineon](boot/cypress/readme.md)
 
 There are also instructions for the [Simulator](sim/README.rst).

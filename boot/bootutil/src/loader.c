@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bootutil/bootutil.h"
+#include "bootutil/bootutil_public.h"
 #include "bootutil/image.h"
 #include "bootutil_priv.h"
 #include "swap_priv.h"
@@ -77,6 +78,12 @@ static struct boot_loader_state boot_data;
 #define TARGET_STATIC static
 #else
 #define TARGET_STATIC
+#endif
+
+#if BOOT_MAX_ALIGN > 1024
+#define BUF_SZ BOOT_MAX_ALIGN
+#else
+#define BUF_SZ 1024
 #endif
 
 static int
@@ -379,7 +386,7 @@ void
 boot_status_reset(struct boot_status *bs)
 {
 #ifdef MCUBOOT_ENC_IMAGES
-    memset(&bs->enckey, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_KEY_SIZE);
+    memset(&bs->enckey, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_KEY_ALIGN_SIZE);
 #if MCUBOOT_SWAP_SAVE_ENCTLV
     memset(&bs->enctlv, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_TLV_ALIGN_SIZE);
 #endif
@@ -419,7 +426,7 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
     int area_id;
     int rc = 0;
     uint8_t buf[BOOT_MAX_ALIGN];
-    uint8_t align;
+    uint32_t align;
     uint8_t erased_val;
 
     /* NOTE: The first sector copied (that is the last sector on slot) contains
@@ -944,7 +951,7 @@ boot_copy_region(struct boot_loader_state *state,
     uint8_t image_index;
 #endif
 
-    TARGET_STATIC uint8_t buf[1024] __attribute__((aligned(4)));
+    TARGET_STATIC uint8_t buf[BUF_SZ] __attribute__((aligned(4)));
 
 #if !defined(MCUBOOT_ENC_IMAGES)
     (void)state;
@@ -1254,7 +1261,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
                 rc = 0;
             }
         } else {
-            memset(bs->enckey[0], 0xff, BOOT_ENC_KEY_SIZE);
+            memset(bs->enckey[0], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
         }
 #endif
 
@@ -1278,7 +1285,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
                 rc = 0;
             }
         } else {
-            memset(bs->enckey[1], 0xff, BOOT_ENC_KEY_SIZE);
+            memset(bs->enckey[1], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
         }
 #endif
 

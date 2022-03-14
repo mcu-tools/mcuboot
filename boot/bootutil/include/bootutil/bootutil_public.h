@@ -47,6 +47,14 @@
 extern "C" {
 #endif
 
+#ifndef ALIGN_UP
+#define ALIGN_UP(num, align)    (((num) + ((align) - 1)) & ~((align) - 1))
+#endif
+
+#ifndef ALIGN_DOWN
+#define ALIGN_DOWN(num, align)  ((num) & ~((align) - 1))
+#endif
+
 /** Attempt to boot the contents of the primary slot. */
 #define BOOT_SWAP_TYPE_NONE     1
 
@@ -71,7 +79,19 @@ extern "C" {
 /** Swapping encountered an unrecoverable error */
 #define BOOT_SWAP_TYPE_PANIC    0xff
 
+#define BOOT_MAGIC_SZ           16
+
+#ifdef MCUBOOT_BOOT_MAX_ALIGN
+
+_Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
+               "Unsupported value for MCUBOOT_BOOT_MAX_ALIGN");
+
+#define BOOT_MAX_ALIGN          MCUBOOT_BOOT_MAX_ALIGN
+#define BOOT_MAGIC_ALIGN_SIZE   ALIGN_UP(BOOT_MAGIC_SZ, BOOT_MAX_ALIGN)
+#else
 #define BOOT_MAX_ALIGN          8
+#define BOOT_MAGIC_ALIGN_SIZE   BOOT_MAGIC_SZ
+#endif
 
 #define BOOT_MAGIC_GOOD     1
 #define BOOT_MAGIC_BAD      2
@@ -86,8 +106,6 @@ extern "C" {
 #define BOOT_FLAG_BAD       2
 #define BOOT_FLAG_UNSET     3
 #define BOOT_FLAG_ANY       4  /* NOTE: control only, not dependent on sector */
-
-#define BOOT_MAGIC_SZ (sizeof boot_img_magic)
 
 #define BOOT_EFLASH      1
 #define BOOT_EFILE       2
@@ -247,11 +265,6 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state);
 int
 boot_read_swap_state(const struct flash_area *fa,
                      struct boot_swap_state *state);
-
-#define BOOT_MAGIC_ARR_SZ \
-    (sizeof boot_img_magic / sizeof boot_img_magic[0])
-
-extern const uint32_t boot_img_magic[4];
 
 #ifdef __cplusplus
 }

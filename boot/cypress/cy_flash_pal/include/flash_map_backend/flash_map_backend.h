@@ -167,7 +167,7 @@ int flash_area_write(const struct flash_area *, uint32_t off,
 /*< Erases `len` bytes of flash memory at `off` */
 int flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
 /*< Returns this `flash_area`s alignment */
-size_t flash_area_align(const struct flash_area *);
+uint32_t flash_area_align(const struct flash_area *);
 /*< Initializes an array of flash_area elements for the slot's sectors */
 int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret);
 /*< Returns the `fa_id` for slot, where slot is 0 (primary) or 1 (secondary) */

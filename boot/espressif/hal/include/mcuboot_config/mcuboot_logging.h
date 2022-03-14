@@ -7,6 +7,7 @@
 #pragma once
 
 #include "sdkconfig.h"
+#include "mcuboot_config.h"
 
 extern int ets_printf(const char *fmt, ...);
 
@@ -20,6 +21,8 @@ extern int ets_printf(const char *fmt, ...);
 #define TARGET "[esp32]"
 #elif CONFIG_IDF_TARGET_ESP32S2
 #define TARGET "[esp32s2]"
+#elif CONFIG_IDF_TARGET_ESP32S3
+#define TARGET "[esp32s3]"
 #elif CONFIG_IDF_TARGET_ESP32C3
 #define TARGET "[esp32c3]"
 #else

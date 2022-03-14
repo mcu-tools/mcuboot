@@ -182,6 +182,18 @@ config BOOT_VALIDATE_SLOT0
 	  every boot, but can mitigate against some changes that are
 	  able to modify the flash image itself.
 
+config BOOT_VALIDATE_SLOT0_ONCE
+	bool "Validate image in the primary slot just once after after upgrade"
+	depends on !BOOT_VALIDATE_SLOT0 && SINGLE_APPLICATION_SLOT
+	default n
+	help
+	  If y, the bootloader attempts to validate the signature of the
+	  primary slot only once after an upgrade of the main slot.
+	  It caches the result in the magic area, which makes it an unsecure
+	  method. This option is usefull for lowering the boot up time for
+	  low end devices with as a compromise lowering the security level.
+	  If unsure, leave at the default value.
+
 if !SINGLE_APPLICATION_SLOT
 choice BOOT_IMAGE_UPGRADE_MODE
 	prompt "Image upgrade modes"
@@ -291,6 +303,21 @@ config BOOT_ENCRYPT_X25519
 	  encryption mechanism used in this case is ECIES using primitives
 	  described under "ECIES-X25519 encryption" in docs/encrypted_images.md.
 endif # !SINGLE_APPLICATION_SLOT
+
+config BOOT_ENCRYPTION_KEY_FILE
+	string "encryption key file"
+    depends on BOOT_ENCRYPT_EC256 || BOOT_SERIAL_ENCRYPT_EC256
+	default "enc-ec256-priv.pem" if BOOT_SIGNATURE_TYPE_ECDSA_P256
+	default ""
+	help
+	  You can use either absolute or relative path.
+	  In case relative path is used, the build system assumes that it starts
+	  from the directory where the MCUBoot KConfig configuration file is
+	  located. If the key file is not there, the build system uses relative
+	  path that starts from the MCUBoot repository root directory.
+	  The key file will be parsed by imgtool's getpriv command and a .c source
+	  with the public key information will be written in a format expected by
+	  MCUboot.
 
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
@@ -556,6 +583,11 @@ config BOOT_ERASE_PROGRESSIVELY
 	 on some hardware that has long erase times, to prevent long wait
 	 times at the beginning of the DFU process.
 
+config BOOT_MGMT_ECHO
+	bool "Enable echo command"
+	help
+	  if enabled, support for the mcumgr echo command is being added.
+
 menuconfig ENABLE_MGMT_PERUSER
 	bool "Enable system specific mcumgr commands"
 	help
@@ -581,6 +613,31 @@ config BOOT_MGMT_CUSTOM_IMG_LIST
 	  statuses (custom property) for all images.
 
 endif # ENABLE_MGMT_PERUSER
+
+config BOOT_SERIAL_ENCRYPT_EC256
+	bool "Support for encrypted upgrade images using ECIES-P256 in serial recovery upload"
+	default n
+	help
+	  If y, uploaded images via serial recovery can be decrypted
+	  on the fly when upgrading to the primary slot. The
+	  encryption mechanism used in this case is ECIES using primitives
+	  described under "ECIES-P256 encryption" in docs/encrypted_images.md.
+
+config BOOT_SERIAL_WAIT_FOR_DFU
+	bool "Wait for a prescribed duration to see if DFU is invoked by receiving a mcumgr comand"
+	depends on BOOT_SERIAL_UART
+	help
+	  If y, MCUboot waits for a prescribed duration of time to allow
+	  for DFU to be invoked. The serial recovery can be entered by receiving any
+	  mcumgr command.
+
+config BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
+	int "Duration to wait for the serial DFU timeout in ms"
+	default 500
+	depends on BOOT_SERIAL_WAIT_FOR_DFU
+	help
+	  timeout in ms for MCUboot to wait to allow for DFU to be invoked.
+
 endif # MCUBOOT_SERIAL
 
 config BOOT_INTR_VEC_RELOC

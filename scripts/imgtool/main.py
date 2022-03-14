@@ -254,6 +254,10 @@ class BasedIntParamType(click.ParamType):
               type=click.Choice(['128','256']),
               help='When encrypting the image using AES, select a 128 bit or '
                    '256 bit key len.')
+@click.option('-c', '--clear', required=False, is_flag=True, default=False,
+              help='Output a non-encrypted image with encryption capabilities,'
+                   'so it can be installed in the primary slot, and encrypted '
+                   'when swapped to the secondary.')
 @click.option('-e', '--endian', type=click.Choice(['little', 'big']),
               default='little', help="Select little or big endian")
 @click.option('--overwrite-only', default=False, is_flag=True,
@@ -288,8 +292,13 @@ class BasedIntParamType(click.ParamType):
               help='Specify the value of security counter. Use the `auto` '
               'keyword to automatically generate it from the image version.')
 @click.option('-v', '--version', callback=validate_version,  required=True)
-@click.option('--align', type=click.Choice(['1', '2', '4', '8']),
+@click.option('--align', type=click.Choice(['1', '2', '4', '8', '16', '32']),
               required=True)
+@click.option('--max-align', type=click.Choice(['8', '16', '32']),
+              required=False,
+              help='Maximum flash alignment. Set if flash alignment of the '
+              'primary and secondary slot differ and any of them is larger '
+              'than 8.')
 @click.option('--public-key-format', type=click.Choice(['hash', 'full']),
               default='hash', help='In what format to add the public key to '
               'the image manifest: full key or hash of the key.')
@@ -301,7 +310,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt_keylen, encrypt, infile, outfile, dependencies,
          load_addr, hex_addr, erased_val, save_enctlv, security_counter,
-         boot_record, custom_tlv, rom_fixed):
+         boot_record, custom_tlv, rom_fixed, max_align, clear):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -313,7 +322,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                       max_sectors=max_sectors, overwrite_only=overwrite_only,
                       endian=endian, load_addr=load_addr, rom_fixed=rom_fixed,
                       erased_val=erased_val, save_enctlv=save_enctlv,
-                      security_counter=security_counter)
+                      security_counter=security_counter, max_align=max_align)
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
@@ -348,7 +357,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             custom_tlvs[tag] = value.encode('utf-8')
 
     img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, int(encrypt_keylen))
+               custom_tlvs, int(encrypt_keylen), clear)
     img.save(outfile, hex_addr)
 
 

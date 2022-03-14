@@ -452,16 +452,28 @@ image trailer. An image trailer has the following structure:
     |                 Encryption key 0 (16 octets) [*]              |
     |                                                               |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                    0xff padding as needed                     |
+    |  (BOOT_MAX_ALIGN minus 16 octets from Encryption key 0) [*]   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |                 Encryption key 1 (16 octets) [*]              |
     |                                                               |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                    0xff padding as needed                     |
+    |  (BOOT_MAX_ALIGN minus 16 octets from Encryption key 1) [*]   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |                      Swap size (4 octets)                     |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |   Swap info   |           0xff padding (7 octets)             |
+    |                    0xff padding as needed                     |
+    |        (BOOT_MAX_ALIGN minus 4 octets from Swap size)         |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |   Copy done   |           0xff padding (7 octets)             |
+    |   Swap info   |  0xff padding (BOOT_MAX_ALIGN minus 1 octet)  |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |   Image OK    |           0xff padding (7 octets)             |
+    |   Copy done   |  0xff padding (BOOT_MAX_ALIGN minus 1 octet)  |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |   Image OK    |  0xff padding (BOOT_MAX_ALIGN minus 1 octet)  |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                    0xff padding as needed                     |
+    |         (BOOT_MAX_ALIGN minus 16 octets from MAGIC)           |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |                       MAGIC (16 octets)                       |
     |                                                               |
@@ -540,16 +552,49 @@ of 3 is explained below.
 6. Image OK: A single byte indicating whether the image in this slot has been
    confirmed as good by the user (0x01=confirmed; 0xff=not confirmed).
 
-7. MAGIC: The following 16 bytes, written in host-byte-order:
+7. MAGIC: A 16-byte field identifying the image trailer layout. It may assume
+   distinct values depending on the maximum supported write alignment
+   (`BOOT_MAX_ALIGN`) of the image, as defined by the following construct:
 
 ``` c
-    const uint32_t boot_img_magic[4] = {
-        0xf395c277,
-        0x7fefd260,
-        0x0f505235,
-        0x8079b62c,
+union boot_img_magic_t
+{
+    struct {
+        uint16_t align;
+        uint8_t magic[14];
     };
+    uint8_t val[16];
+};
 ```
+  If `BOOT_MAX_ALIGN` is **8 bytes**, then MAGIC contains the following 16 bytes:
+
+``` c
+const union boot_img_magic_t boot_img_magic = {
+    .val = {
+        0x77, 0xc2, 0x95, 0xf3,
+        0x60, 0xd2, 0xef, 0x7f,
+        0x35, 0x52, 0x50, 0x0f,
+        0x2c, 0xb6, 0x79, 0x80
+    }
+};
+```
+
+  In case `BOOT_MAX_ALIGN` is defined to any value different than **8**, then the maximum
+  supported write alignment value is encoded in the MAGIC field, followed by a fixed
+  14-byte pattern:
+
+``` c
+const union boot_img_magic_t boot_img_magic = {
+    .align = BOOT_MAX_ALIGN,
+    .magic = {
+        0x2d, 0xe1,
+        0x5d, 0x29, 0x41, 0x0b,
+        0x8d, 0x77, 0x67, 0x9c,
+        0x11, 0x0f, 0x1f, 0x8a
+    }
+};
+```
+
 ---
 ***Note***
 Be aware that the image trailers make the ending area of the image slot
@@ -1101,6 +1146,15 @@ an image:
     KEYHASH TLV with the hash of the key that was used to sign. The list of
     keys will then be iterated over looking for the matching key, which then
     will then be used to verify the image contents.
+
+For low performance MCU's where the validation is a heavy process at boot
+(~1-2 seconds on a arm-cortex-M0), the `MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE`
+could be used. This option will cache the validation result as described above
+into the magic area of the primary slot. The next boot, the validation will be
+skipped if the previous validation was succesfull. This option is reducing the
+security level since if an attacker could modify the contents of the flash after
+a good image has been validated, the attacker could run his own image without
+running validation again. Enabling this option should be done with care.
 
 ## [Security](#security)
 

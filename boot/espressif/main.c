@@ -10,12 +10,17 @@
 #include <bootutil/image.h>
 
 #include "bootloader_init.h"
+#include "bootloader_utility.h"
+#include "bootloader_random.h"
 
 #if defined(CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH) || defined(CONFIG_SECURE_BOOT)
 #include "esp_efuse.h"
 #endif
 #ifdef CONFIG_SECURE_BOOT
 #include "esp_secure_boot.h"
+#endif
+#ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
+#include "esp_flash_encrypt.h"
 #endif
 
 #include "esp_loader.h"
@@ -37,12 +42,31 @@ int main()
 {
     bootloader_init();
 
+    BOOT_LOG_INF("Enabling RNG early entropy source...");
+    bootloader_random_enable();
+
+    /* Rough steps for a first boot when Secure Boot and/or Flash Encryption are still disabled on device:
+     * Secure Boot:
+     *   1) Calculate the SHA-256 hash digest of the public key and write to EFUSE.
+     *   2) Validate the application images and prepare the booting process.
+     *   3) Burn EFUSE to enable Secure Boot V2 (ABS_DONE_0).
+     * Flash Encryption:
+     *   4) Generate Flash Encryption key and write to EFUSE.
+     *   5) Encrypt flash in-place including bootloader, image primary/secondary slot and scratch.
+     *   6) Burn EFUSE to enable Flash Encryption.
+     *   7) Reset system to ensure Flash Encryption cache resets properly.
+     */
+
 #ifdef CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH
     BOOT_LOG_WRN("eFuse virtual mode is enabled. If Secure boot or Flash encryption is enabled then it does not provide any security. FOR TESTING ONLY!");
     esp_efuse_init_virtual_mode_in_flash(CONFIG_EFUSE_VIRTUAL_OFFSET, CONFIG_EFUSE_VIRTUAL_SIZE);
 #endif
 
 #ifdef CONFIG_SECURE_BOOT
+    /* Steps 1 (see above for full description):
+     *   1) Compute digest of the public key.
+     */
+
     BOOT_LOG_INF("enabling secure boot v2...");
 
     bool sb_hw_enabled = esp_secure_boot_enabled();
@@ -66,7 +90,12 @@ int main()
     os_heap_init();
 
     struct boot_rsp rsp;
+
     fih_int fih_rc = FIH_FAILURE;
+
+    /* Step 2 (see above for full description):
+     *   2) MCUboot validates the application images and prepares the booting process.
+     */
 
     FIH_CALL(boot_go, fih_rc, &rsp);
 
@@ -79,6 +108,10 @@ int main()
     }
 
 #ifdef CONFIG_SECURE_BOOT
+    /* Step 3 (see above for full description):
+     *   3) Burn EFUSE to enable Secure Boot V2.
+     */
+
     if (!sb_hw_enabled) {
         BOOT_LOG_INF("blowing secure boot efuse...");
         esp_err_t err;
@@ -102,6 +135,35 @@ int main()
         BOOT_LOG_INF("Secure boot permanently enabled");
     }
 #endif
+
+#ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
+    /* Step 4, 5 & 6 (see above for full description):
+     *   4) Generate Flash Encryption key and write to EFUSE.
+     *   5) Encrypt flash in-place including bootloader, image primary/secondary slot and scratch.
+     *   6) Burn EFUSE to enable flash encryption
+     */
+
+    int rc;
+
+    BOOT_LOG_INF("Checking flash encryption...");
+    bool flash_encryption_enabled = esp_flash_encryption_enabled();
+    rc = esp_flash_encrypt_check_and_update();
+    if (rc != ESP_OK) {
+        BOOT_LOG_ERR("Flash encryption check failed (%d).", rc);
+        FIH_PANIC;
+    }
+
+    /* Step 7 (see above for full description):
+     *   7) Reset system to ensure flash encryption cache resets properly.
+     */
+    if (!flash_encryption_enabled && esp_flash_encryption_enabled()) {
+        BOOT_LOG_INF("Resetting with flash encryption enabled...");
+        bootloader_reset();
+    }
+#endif
+
+    BOOT_LOG_INF("Disabling RNG early entropy source...");
+    bootloader_random_disable();
 
     do_boot(&rsp);
 

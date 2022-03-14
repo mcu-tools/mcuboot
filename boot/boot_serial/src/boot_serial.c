@@ -58,6 +58,10 @@
 #include "bootutil_priv.h"
 #endif
 
+#ifdef MCUBOOT_ENC_IMAGES
+#include "single_loader.h"
+#endif
+
 #include "serial_recovery_cbor.h"
 #include "bootutil/boot_hooks.h"
 
@@ -89,6 +93,7 @@ const struct boot_uart_funcs *boot_uf;
 static uint32_t curr_off;
 static uint32_t img_size;
 static struct nmgr_hdr *bs_hdr;
+static bool bs_entry;
 
 static char bs_obuf[BOOT_SERIAL_OUT_MAX];
 
@@ -98,6 +103,14 @@ static cbor_state_backups_t dummy_backups;
 static cbor_state_t cbor_state = {
     .backups = &dummy_backups
 };
+
+void reset_cbor_state(void)
+{
+    cbor_state.payload_mut = (uint8_t *)bs_obuf;
+    cbor_state.payload_end = (const uint8_t *)bs_obuf
+                             + sizeof(bs_obuf);
+    cbor_state.elem_count = 0;
+}
 
 /**
  * Function that processes MGMT_GROUP_ID_PERUSER mcumgr group and may be
@@ -200,6 +213,17 @@ bs_list(char *buf, int len)
                                    fih_rc, image_index, slot);
                 if (fih_eq(fih_rc, BOOT_HOOK_REGULAR))
                 {
+#ifdef MCUBOOT_ENC_IMAGES
+                    if (slot == 0 && IS_ENCRYPTED(&hdr)) {
+                        /* Clear the encrypted flag we didn't supply a key
+                        * This flag could be set if there was a decryption in place
+                        * performed before. We will try to validate the image without
+                        * decryption by clearing the flag in the heder. If
+                        * still encrypted the validation will fail.
+                        */
+                        hdr.ih_flags &= ~(ENCRYPTIONFLAGS);
+                    }
+#endif
                     FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, &hdr, fap, tmpbuf, sizeof(tmpbuf),
                                     NULL, 0, NULL);
                 }
@@ -318,6 +342,14 @@ bs_upload(char *buf, int len)
         if (data_len > flash_area_get_size(fap)) {
             goto out_invalid_data;
         }
+#if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
+        /* We are using swap state at end of flash area to store validation
+         * result. Make sure the user cannot write it from an image to skip validation.
+         */
+        if (data_len > (flash_area_get_size(fap) - BOOT_MAGIC_SZ)) {
+            goto out_invalid_data;
+        }
+#endif
 #ifndef MCUBOOT_ERASE_PROGRESSIVELY
         rc = flash_area_erase(fap, 0, flash_area_get_size(fap));
         if (rc) {
@@ -437,6 +469,13 @@ out:
 
     boot_serial_output();
     flash_area_close(fap);
+
+#ifdef MCUBOOT_ENC_IMAGES
+    if (curr_off == img_size) {
+        /* Last sector received, now start a decryption on the image if it is encrypted*/
+        rc = boot_handle_enc_fw();
+    }
+#endif //#ifdef MCUBOOT_ENC_IMAGES
 }
 
 /*
@@ -451,6 +490,42 @@ bs_rc_rsp(int rc_code)
     map_end_encode(&cbor_state, 10);
     boot_serial_output();
 }
+
+
+#ifdef MCUBOOT_BOOT_MGMT_ECHO
+static bool
+decode_echo(cbor_state_t *state, cbor_string_type_t *result)
+{
+    size_t bsstrdecoded;
+    int ret;
+
+    if (!map_start_decode(state)) {
+        return false;
+    }
+    ret = multi_decode(2, 2, &bsstrdecoded, (void *)tstrx_decode, state, result, sizeof(cbor_string_type_t));
+    map_end_decode(state);
+    return ret;
+}
+
+
+static void
+bs_echo(char *buf, int len)
+{
+    size_t bsstrdecoded;
+    cbor_string_type_t str[2];
+
+    if (entry_function((const uint8_t *)buf, len, str, &bsstrdecoded, (void *)decode_echo, 1, 2)) {
+        map_start_encode(&cbor_state, 10);
+        tstrx_put(&cbor_state, "r");
+        if (tstrx_encode(&cbor_state, &str[1]) && map_end_encode(&cbor_state, 10)) {
+            boot_serial_output();
+        } else {
+            reset_cbor_state();
+            bs_rc_rsp(MGMT_ERR_ENOMEM);
+        }
+    }
+}
+#endif
 
 /*
  * Reset, and (presumably) boot to newly uploaded image. Flush console
@@ -495,9 +570,7 @@ boot_serial_input(char *buf, int len)
     buf += sizeof(*hdr);
     len -= sizeof(*hdr);
 
-    cbor_state.payload_mut = (uint8_t *)bs_obuf;
-    cbor_state.payload_end = (const uint8_t *)bs_obuf
-                             + sizeof(bs_obuf);
+    reset_cbor_state();
 
     /*
      * Limited support for commands.
@@ -516,6 +589,11 @@ boot_serial_input(char *buf, int len)
         }
     } else if (hdr->nh_group == MGMT_GROUP_ID_DEFAULT) {
         switch (hdr->nh_id) {
+        case NMGR_ID_ECHO:
+#ifdef MCUBOOT_BOOT_MGMT_ECHO
+            bs_echo(buf, len);
+#endif
+            break;
         case NMGR_ID_CONS_ECHO_CTRL:
             bs_rc_rsp(0);
             break;
@@ -533,6 +611,9 @@ boot_serial_input(char *buf, int len)
     } else {
         bs_rc_rsp(MGMT_ERR_ENOTSUP);
     }
+#ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
+    bs_entry = true;
+#endif
 }
 
 static void
@@ -543,8 +624,8 @@ boot_serial_output(void)
     uint16_t crc;
     uint16_t totlen;
     char pkt_start[2] = { SHELL_NLIP_PKT_START1, SHELL_NLIP_PKT_START2 };
-    char buf[BOOT_SERIAL_OUT_MAX];
-    char encoded_buf[BASE64_ENCODE_SIZE(BOOT_SERIAL_OUT_MAX)];
+    char buf[BOOT_SERIAL_OUT_MAX + sizeof(*bs_hdr) + sizeof(crc) + sizeof(totlen)];
+    char encoded_buf[BASE64_ENCODE_SIZE(sizeof(buf))];
 
     data = bs_obuf;
     len = (uint32_t)cbor_state.payload_mut - (uint32_t)bs_obuf;
@@ -647,25 +728,29 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
  * Task which waits reading console, expecting to get image over
  * serial port.
  */
-void
-boot_serial_start(const struct boot_uart_funcs *f)
+static void
+boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
 {
     int rc;
     int off;
     int dec_off = 0;
     int full_line;
     int max_input;
+    int elapsed_in_ms = 0;
 
     boot_uf = f;
     max_input = sizeof(in_buf);
 
     off = 0;
-    while (1) {
+    while (timeout_in_ms > 0 || bs_entry) {
         MCUBOOT_CPU_IDLE();
         MCUBOOT_WATCHDOG_FEED();
+#ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
+        uint32_t start = k_uptime_get_32();
+#endif
         rc = f->read(in_buf + off, sizeof(in_buf) - off, &full_line);
         if (rc <= 0 && !full_line) {
-            continue;
+            goto check_timeout;
         }
         off += rc;
         if (!full_line) {
@@ -675,7 +760,7 @@ boot_serial_start(const struct boot_uart_funcs *f)
                  */
                 off = 0;
             }
-            continue;
+            goto check_timeout;
         }
         if (in_buf[0] == SHELL_NLIP_PKT_START1 &&
           in_buf[1] == SHELL_NLIP_PKT_START2) {
@@ -691,5 +776,36 @@ boot_serial_start(const struct boot_uart_funcs *f)
             boot_serial_input(&dec_buf[2], dec_off - 2);
         }
         off = 0;
+check_timeout:
+        /* Subtract elapsed time */
+#ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
+        elapsed_in_ms = (k_uptime_get_32() - start);
+#endif
+        timeout_in_ms -= elapsed_in_ms;
     }
 }
+
+/*
+ * Task which waits reading console, expecting to get image over
+ * serial port.
+ */
+void
+boot_serial_start(const struct boot_uart_funcs *f)
+{
+    bs_entry = true;
+    boot_serial_read_console(f,0);
+}
+
+#ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
+/*
+ * Task which waits reading console for a certain amount of timeout.
+ * If within this timeout no mcumgr command is received, the function is
+ * returning, else the serial boot is never exited
+ */
+void
+boot_serial_check_start(const struct boot_uart_funcs *f, int timeout_in_ms)
+{
+    bs_entry = false;
+    boot_serial_read_console(f,timeout_in_ms);
+}
+#endif

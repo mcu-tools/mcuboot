@@ -490,6 +490,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     const struct flash_area *fap_scratch;
     uint32_t copy_sz;
     uint32_t trailer_sz;
+    uint32_t sector_sz;
     uint32_t img_off;
     uint32_t scratch_trailer_off;
     struct boot_swap_state swap_state;
@@ -514,6 +515,21 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
      * controls if special handling is needed (swapping last sector).
      */
     last_sector = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 1;
+    sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, last_sector);
+
+    if (sector_sz < trailer_sz) {
+        uint32_t trailer_sector_sz = sector_sz;
+
+        while (trailer_sector_sz < trailer_sz) {
+            /* Consider that the image trailer may span across sectors of
+             * different sizes.
+             */
+            sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, --last_sector);
+
+            trailer_sector_sz += sector_sz;
+        }
+    }
+
     if ((img_off + sz) >
         boot_img_sector_off(state, BOOT_PRIMARY_SLOT, last_sector)) {
         copy_sz -= trailer_sz;
@@ -682,6 +698,8 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     secondary_slot_size = 0;
     last_sector_idx = 0;
     last_idx_secondary_slot = 0;
+
+    BOOT_LOG_INF("Starting swap using scratch algorithm.");
 
     /*
      * Knowing the size of the largest image between both slots, here we

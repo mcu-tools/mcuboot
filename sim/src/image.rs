@@ -54,6 +54,7 @@ use crate::depends::{
     UpgradeInfo,
 };
 use crate::tlv::{ManifestGen, TlvGen, TlvFlags};
+use crate::utils::align_up;
 use typenum::{U32, U16};
 
 /// For testing, use a non-zero offset for the ram-load, to make sure the offset is getting used
@@ -1522,7 +1523,8 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
                 // c::boot_status_sz(dev.align() as u32) as usize
                 16 + 4 * dev.align()
             } else {
-                c::boot_trailer_sz(dev.align() as u32) as usize
+                let sector_size = dev.sector_iter().next().unwrap().size as u32;
+                align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
             };
             let tlv_len = tlv.estimate_size();
             info!("slot: 0x{:x}, HDR: 0x{:x}, trailer: 0x{:x}",
@@ -1800,7 +1802,7 @@ fn verify_trailer(flash: &SimMultiFlash, slot: &SlotInfo,
 
     failed |= match magic {
         Some(v) => {
-            let magic_off = c::boot_max_align() * 3;
+            let magic_off = (c::boot_max_align() * 3) + (c::boot_magic_sz() - MAGIC.len());
             if v == 1 && &copy[magic_off..] != MAGIC {
                 warn!("\"magic\" mismatch at {:#x}", offset);
                 true
@@ -1937,10 +1939,17 @@ pub struct SlotInfo {
     pub dev_id: u8,
 }
 
+#[cfg(not(feature = "max-align-32"))]
 const MAGIC: &[u8] = &[0x77, 0xc2, 0x95, 0xf3,
                        0x60, 0xd2, 0xef, 0x7f,
                        0x35, 0x52, 0x50, 0x0f,
                        0x2c, 0xb6, 0x79, 0x80];
+
+#[cfg(feature = "max-align-32")]
+const MAGIC: &[u8] = &[0x20, 0x00, 0x2d, 0xe1,
+                       0x5d, 0x29, 0x41, 0x0b,
+                       0x8d, 0x77, 0x67, 0x9c,
+                       0x11, 0x0f, 0x1f, 0x8a];
 
 // Replicates defines found in bootutil.h
 const BOOT_MAGIC_GOOD: Option<u8> = Some(1);
@@ -1958,8 +1967,9 @@ pub fn mark_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
         // The write size is larger than the magic value.  Fill a buffer
         // with the erased value, put the MAGIC in it, and write it in its
         // entirety.
-        let mut buf = vec![dev.erased_val(); align];
-        buf[(offset % align)..].copy_from_slice(MAGIC);
+        let mut buf = vec![dev.erased_val(); c::boot_max_align()];
+        let magic_off = (offset % align) + (c::boot_magic_sz() - MAGIC.len());
+        buf[magic_off..].copy_from_slice(MAGIC);
         dev.write(offset - (offset % align), &buf).unwrap();
     } else {
         dev.write(offset, MAGIC).unwrap();
@@ -2024,12 +2034,12 @@ pub fn show_sizes() {
     }
 }
 
-#[cfg(not(feature = "large-write"))]
+#[cfg(not(feature = "max-align-32"))]
 fn test_alignments() -> &'static [usize] {
     &[1, 2, 4, 8]
 }
 
-#[cfg(feature = "large-write")]
+#[cfg(feature = "max-align-32")]
 fn test_alignments() -> &'static [usize] {
-    &[1, 2, 4, 8, 128, 512]
+    &[32]
 }

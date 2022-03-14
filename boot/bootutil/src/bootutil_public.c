@@ -51,6 +51,7 @@
 #endif
 
 #include "bootutil/boot_public_hooks.h"
+#include "bootutil_priv.h"
 
 #ifdef CONFIG_MCUBOOT
 BOOT_LOG_MODULE_DECLARE(mcuboot);
@@ -58,15 +59,26 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 BOOT_LOG_MODULE_REGISTER(mcuboot_util);
 #endif
 
-const uint32_t boot_img_magic[] = {
-    0xf395c277,
-    0x7fefd260,
-    0x0f505235,
-    0x8079b62c,
+#if BOOT_MAX_ALIGN == 8
+const union boot_img_magic_t boot_img_magic = {
+    .val = {
+        0x77, 0xc2, 0x95, 0xf3,
+        0x60, 0xd2, 0xef, 0x7f,
+        0x35, 0x52, 0x50, 0x0f,
+        0x2c, 0xb6, 0x79, 0x80
+    }
 };
-
-#define BOOT_MAGIC_ARR_SZ \
-    (sizeof boot_img_magic / sizeof boot_img_magic[0])
+#else
+const union boot_img_magic_t boot_img_magic = {
+    .align = BOOT_MAX_ALIGN,
+    .magic = {
+        0x2d, 0xe1,
+        0x5d, 0x29, 0x41, 0x0b,
+        0x8d, 0x77, 0x67, 0x9c,
+        0x11, 0x0f, 0x1f, 0x8a
+    }
+};
+#endif
 
 struct boot_swap_table {
     uint8_t magic_primary_slot;
@@ -120,9 +132,9 @@ static const struct boot_swap_table boot_swap_tables[] = {
     (sizeof boot_swap_tables / sizeof boot_swap_tables[0])
 
 static int
-boot_magic_decode(const uint32_t *magic)
+boot_magic_decode(const uint8_t *magic)
 {
-    if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0) {
+    if (memcmp(magic, BOOT_IMG_MAGIC, BOOT_MAGIC_SZ) == 0) {
         return BOOT_MAGIC_GOOD;
     }
     return BOOT_MAGIC_BAD;
@@ -146,7 +158,7 @@ boot_magic_off(const struct flash_area *fap)
 static inline uint32_t
 boot_image_ok_off(const struct flash_area *fap)
 {
-    return boot_magic_off(fap) - BOOT_MAX_ALIGN;
+    return ALIGN_DOWN(boot_magic_off(fap) - BOOT_MAX_ALIGN, BOOT_MAX_ALIGN);
 }
 
 static inline uint32_t
@@ -198,10 +210,9 @@ static inline uint32_t
 boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 {
 #if MCUBOOT_SWAP_SAVE_ENCTLV
-    return boot_swap_size_off(fap) - ((slot + 1) *
-            ((((BOOT_ENC_TLV_SIZE - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN));
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_TLV_ALIGN_SIZE);
 #else
-    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_SIZE);
+    return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_ALIGN_SIZE);
 #endif
 }
 #endif
@@ -256,7 +267,7 @@ int
 boot_read_swap_state(const struct flash_area *fap,
                      struct boot_swap_state *state)
 {
-    uint32_t magic[BOOT_MAGIC_ARR_SZ];
+    uint8_t magic[BOOT_MAGIC_SZ];
     uint32_t off;
     uint8_t swap_info;
     int rc;
@@ -316,14 +327,32 @@ int
 boot_write_magic(const struct flash_area *fap)
 {
     uint32_t off;
+    uint32_t pad_off;
     int rc;
+    uint8_t magic[BOOT_MAGIC_ALIGN_SIZE];
+    uint8_t erased_val;
 
     off = boot_magic_off(fap);
+
+    /* image_trailer structure was modified with additional padding such that
+     * the pad+magic ends up in a flash minimum write region. The address
+     * returned by boot_magic_off() is the start of magic which is not the
+     * start of the flash write boundary and thus writes to the magic will fail.
+     * To account for this change, write to magic is first padded with 0xFF
+     * before writing to the trailer.
+     */
+    pad_off = ALIGN_DOWN(off, BOOT_MAX_ALIGN);
+
+    erased_val = flash_area_erased_val(fap);
+
+    memset(&magic[0], erased_val, sizeof(magic));
+    memcpy(&magic[BOOT_MAGIC_ALIGN_SIZE - BOOT_MAGIC_SZ], BOOT_IMG_MAGIC, BOOT_MAGIC_SZ);
 
     BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off));
-    rc = flash_area_write(fap, off, boot_img_magic, BOOT_MAGIC_SZ);
+    rc = flash_area_write(fap, pad_off, &magic[0], BOOT_MAGIC_ALIGN_SIZE);
+
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -341,12 +370,12 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
         const uint8_t *inbuf, uint8_t inlen)
 {
     uint8_t buf[BOOT_MAX_ALIGN];
-    uint8_t align;
     uint8_t erased_val;
+    uint32_t align;
     int rc;
 
     align = flash_area_align(fap);
-    align = (inlen + align - 1) & ~(align - 1);
+    align = ALIGN_UP(inlen, align);
     if (align > BOOT_MAX_ALIGN) {
         return -1;
     }
