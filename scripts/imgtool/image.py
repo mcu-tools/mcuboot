@@ -305,12 +305,17 @@ class Image():
         return cipherkey, ciphermac, pubk
 
     def create(self, key, public_key_format, enckey, dependencies=None,
-               sw_type=None, custom_tlvs=None, encrypt_keylen=128, clear=False):
+               sw_type=None, custom_tlvs=None, encrypt_keylen=128, clear=False, fixed_sig=None, pub_key=None):
         self.enckey = enckey
 
         # Calculate the hash of the public key
         if key is not None:
             pub = key.get_public_bytes()
+            sha = hashlib.sha256()
+            sha.update(pub)
+            pubbytes = sha.digest()
+        elif pub_key is not None:
+            pub = pub_key.get_public_bytes()
             sha = hashlib.sha256()
             sha.update(pub)
             pubbytes = sha.digest()
@@ -428,7 +433,7 @@ class Image():
 
         tlv.add('SHA256', digest)
 
-        if key is not None:
+        if key is not None and fixed_sig is None:
             if public_key_format == 'hash':
                 tlv.add('KEYHASH', pubbytes)
             else:
@@ -442,6 +447,14 @@ class Image():
             else:
                 sig = key.sign_digest(digest)
             tlv.add(key.sig_tlv(), sig)
+        elif fixed_sig is not None and key is None:
+            if public_key_format == 'hash':
+                tlv.add('KEYHASH', pubbytes)
+            else:
+                tlv.add('PUBKEY', pub)
+            tlv.add(pub_key.sig_tlv(), fixed_sig['value'])
+        else:
+            raise click.UsageError("Can not sign using key and provide fixed-signature at the same time")
 
         # At this point the image was hashed + signed, we can remove the
         # protected TLVs from the payload (will be re-added later)
@@ -485,6 +498,9 @@ class Image():
         self.payload += tlv.get()
 
         self.check_trailer()
+
+    def get_signature(self):
+        return self.signature
 
     def add_header(self, enckey, protected_tlv_size, aes_length=128):
         """Install the image header."""
