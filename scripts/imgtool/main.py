@@ -22,6 +22,7 @@ import click
 import getpass
 import imgtool.keys as keys
 import sys
+import base64
 from imgtool import image, imgtool_version
 from imgtool.version import decode_version
 from .keys import (
@@ -68,6 +69,10 @@ keygens = {
     'x25519':     gen_x25519,
 }
 
+def load_signature(sigfile):
+    with open(sigfile, 'rb') as f:
+        signature = base64.b64decode(f.read())
+        return signature
 
 def load_key(keyfile):
     # TODO: better handling of invalid pass-phrase
@@ -303,6 +308,11 @@ class BasedIntParamType(click.ParamType):
               default='hash', help='In what format to add the public key to '
               'the image manifest: full key or hash of the key.')
 @click.option('-k', '--key', metavar='filename')
+@click.option('--fix-sig', metavar='filename',
+              help='fixed signature for the image. It will be used instead of'
+              'the signature calculated using the public key')
+@click.option('--fix-sig-pubkey', metavar='filename',
+              help='public key relevant to fixed signature')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
@@ -310,7 +320,8 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt_keylen, encrypt, infile, outfile, dependencies,
          load_addr, hex_addr, erased_val, save_enctlv, security_counter,
-         boot_record, custom_tlv, rom_fixed, max_align, clear):
+         boot_record, custom_tlv, rom_fixed, max_align, clear, fix_sig,
+         fix_sig_pubkey):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -356,8 +367,25 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
         else:
             custom_tlvs[tag] = value.encode('utf-8')
 
+    # Allow signature calculated externally.
+    raw_signature = load_signature(fix_sig) if fix_sig else None
+
+    baked_signature = None
+    pub_key = None
+
+    if raw_signature is not None:
+        if fix_sig_pubkey is None:
+          raise click.UsageError(
+                'public key of the fixed signature is not specified')
+
+        pub_key = load_key(fix_sig_pubkey)
+
+        baked_signature = {
+            'value' : raw_signature
+        }
+
     img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, int(encrypt_keylen), clear)
+               custom_tlvs, int(encrypt_keylen), clear, baked_signature, pub_key)
     img.save(outfile, hex_addr)
 
 
