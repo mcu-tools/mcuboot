@@ -99,6 +99,8 @@
  * multiple images. */
 #define MCUBOOT_IMAGE_NUMBER 1
 
+/* #define MCUBOOT_MULTI_BOOT 1 */
+
 /*
  * Logging
  */
@@ -149,7 +151,7 @@
 /* If a OS ports support single thread mode or is bare-metal then:
  * This macro implements call that switches CPU to an idle state, from which
  * the CPU may be woken up by, for example, UART transmission event.
- * 
+ *
  * Otherwise this macro should be no-op.
  */
 #define MCUBOOT_CPU_IDLE() \

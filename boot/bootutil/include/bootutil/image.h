@@ -96,6 +96,7 @@ struct flash_area;
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
 #define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
 #define IMAGE_TLV_BOOT_RECORD       0x60   /* measured boot record */
+#define IMAGE_TLV_BOOT_CPU_INDEX    0x70   /* CPU in which the image will be executed */
 					   /*
 					    * vendor reserved TLVs at xxA0-xxFF,
 					    * where xx denotes the upper byte

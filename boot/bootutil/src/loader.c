@@ -192,6 +192,10 @@ fill_rsp(struct boot_loader_state *state, struct boot_rsp *rsp)
     rsp->br_flash_dev_id = flash_area_get_device_id(BOOT_IMG_AREA(state, active_slot));
     rsp->br_image_off = boot_img_slot_off(state, active_slot);
     rsp->br_hdr = boot_img_hdr(state, active_slot);
+#ifdef MCUBOOT_MULTI_BOOT
+    rsp->img_index = BOOT_CURR_IMG(state);
+    rsp->boot_cpu_index = boot_img_cpu_index(state, active_slot);
+#endif
 }
 
 /**
@@ -1902,6 +1906,83 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state)
 #endif
 }
 
+#ifdef MCUBOOT_MULTI_BOOT
+static int
+boot_get_cpu_index(struct boot_loader_state *state, uint32_t slot)
+{
+    uint32_t off;
+    uint16_t len;
+    uint8_t *cpu_index;
+    struct image_tlv_iter it;
+    int rc;
+
+    const struct flash_area *fap;
+    int area_id;
+
+    area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
+    rc = flash_area_open(area_id, &fap);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto out;
+    }
+
+    cpu_index = &BOOT_IMG(state, slot).boot_cpu_index;
+
+    rc = bootutil_tlv_iter_begin(&it, boot_img_hdr(state, slot), fap, IMAGE_TLV_BOOT_CPU_INDEX, false);
+    if (rc != 0) {
+        goto out;
+    }
+
+    while (true) {
+        rc = bootutil_tlv_iter_next(&it, &off, &len, NULL);
+        if (rc < 0) {
+            break;
+        } else if (rc > 0) {
+            rc = 0;
+            break;
+        }
+
+        rc = LOAD_IMAGE_DATA(hdr, fap, off, cpu_index, len);
+        if (rc != 0) {
+            break;
+        }
+    }
+
+out:
+    flash_area_close(fap);
+
+    return rc;
+}
+
+fih_int
+boot_rsp_by_image_id(struct boot_rsp *rsp, uint32_t image_id)
+{
+    fih_int fih_rc = FIH_FAILURE;
+    uint32_t active_slot;
+
+    if (image_id >= BOOT_IMAGE_NUMBER || !rsp) {
+        FIH_RET(FIH_FAILURE);
+    }
+
+    BOOT_CURR_IMG(&boot_data) = image_id;
+
+#if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
+    active_slot = boot_data.slot_usage[BOOT_CURR_IMG(&boot_data)].active_slot;
+#else
+    active_slot = BOOT_PRIMARY_SLOT;
+#endif
+
+    rsp->br_flash_dev_id = flash_area_get_device_id(BOOT_IMG_AREA(&boot_data, active_slot));
+    rsp->br_image_off = boot_img_slot_off(&boot_data, active_slot);
+    rsp->br_hdr = boot_img_hdr(&boot_data, active_slot);
+    rsp->img_index = BOOT_CURR_IMG(&boot_data);
+    rsp->boot_cpu_index = boot_img_cpu_index(&boot_data, active_slot);
+
+    FIH_RET(fih_rc);
+}
+#endif
+
+
 fih_int
 context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
@@ -2120,6 +2201,13 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         if (rc != 0) {
             goto out;
         }
+
+#ifdef MCUBOOT_MULTI_BOOT
+        rc = boot_get_cpu_index(state, BOOT_PRIMARY_SLOT);
+        if (rc != 0) {
+            goto out;
+        }
+#endif
     }
 
     /*

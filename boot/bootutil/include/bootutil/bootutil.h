@@ -59,6 +59,14 @@ struct boot_rsp {
      */
     uint8_t br_flash_dev_id;
     uint32_t br_image_off;
+
+#ifdef MCUBOOT_MULTI_BOOT
+    /**
+     * Indicates in which CPU the image must be executed.
+     */
+    uint8_t img_index;
+    uint8_t boot_cpu_index;
+#endif
 };
 
 /* This is not actually used by mcuboot's code but can be used by apps
@@ -80,6 +88,8 @@ struct image_trailer {
 /* you must have pre-allocated all the entries within this structure */
 fih_int boot_go(struct boot_rsp *rsp);
 fih_int boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id);
+
+fih_int boot_rsp_by_image_id(struct boot_rsp *rsp, uint32_t image_id);
 
 struct boot_loader_state;
 void boot_state_clear(struct boot_loader_state *state);

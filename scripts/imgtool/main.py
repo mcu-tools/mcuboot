@@ -228,6 +228,8 @@ class BasedIntParamType(click.ParamType):
 
 @click.argument('outfile')
 @click.argument('infile')
+@click.option('--cpu-index', type=int,
+              help='CPU on which the image must run')
 @click.option('--custom-tlv', required=False, nargs=2, default=[],
               multiple=True, metavar='[tag] [value]',
               help='Custom TLV that will be placed into protected area. '
@@ -310,7 +312,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt_keylen, encrypt, infile, outfile, dependencies,
          load_addr, hex_addr, erased_val, save_enctlv, security_counter,
-         boot_record, custom_tlv, rom_fixed, max_align, clear):
+         boot_record, custom_tlv, rom_fixed, max_align, clear, cpu_index):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -357,7 +359,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             custom_tlvs[tag] = value.encode('utf-8')
 
     img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, int(encrypt_keylen), clear)
+               custom_tlvs, int(encrypt_keylen), clear, cpu_index)
     img.save(outfile, hex_addr)
 
 

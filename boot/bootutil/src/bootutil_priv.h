@@ -217,6 +217,9 @@ struct boot_loader_state {
         const struct flash_area *area;
         boot_sector_t *sectors;
         uint32_t num_sectors;
+#ifdef MCUBOOT_MULTI_BOOT
+        uint8_t boot_cpu_index;
+#endif
     } imgs[BOOT_IMAGE_NUMBER][BOOT_NUM_SLOTS];
 
 #if MCUBOOT_SWAP_USING_SCRATCH
@@ -381,6 +384,14 @@ boot_img_num_sectors(const struct boot_loader_state *state, size_t slot)
 {
     return BOOT_IMG(state, slot).num_sectors;
 }
+
+#ifdef MCUBOOT_MULTI_BOOT
+static inline uint8_t
+boot_img_cpu_index(const struct boot_loader_state *state, size_t slot)
+{
+    return BOOT_IMG(state, slot).boot_cpu_index;
+}
+#endif
 
 /*
  * Offset of the slot from the beginning of the flash device.

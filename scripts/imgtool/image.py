@@ -74,6 +74,7 @@ TLV_VALUES = {
         'DEPENDENCY': 0x40,
         'SEC_CNT': 0x50,
         'BOOT_RECORD': 0x60,
+        'BOOT_CPU_INDEX': 0x70
 }
 
 TLV_SIZE = 4
@@ -305,7 +306,8 @@ class Image():
         return cipherkey, ciphermac, pubk
 
     def create(self, key, public_key_format, enckey, dependencies=None,
-               sw_type=None, custom_tlvs=None, encrypt_keylen=128, clear=False):
+               sw_type=None, custom_tlvs=None, encrypt_keylen=128, clear=False,
+               cpu_index=None):
         self.enckey = enckey
 
         # Calculate the hash of the public key
@@ -480,6 +482,10 @@ class Image():
                 img = bytes(self.payload[self.header_size:])
                 self.payload[self.header_size:] = \
                     encryptor.update(img) + encryptor.finalize()
+
+        if cpu_index is not None:
+            payload = struct.pack(e + 'I', cpu_index)
+            tlv.add('BOOT_CPU_INDEX', payload)
 
         self.payload += prot_tlv.get()
         self.payload += tlv.get()
