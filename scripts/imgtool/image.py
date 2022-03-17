@@ -447,12 +447,14 @@ class Image():
             else:
                 sig = key.sign_digest(digest)
             tlv.add(key.sig_tlv(), sig)
+            self.signature = sig
         elif fixed_sig is not None and key is None:
             if public_key_format == 'hash':
                 tlv.add('KEYHASH', pubbytes)
             else:
                 tlv.add('PUBKEY', pub)
             tlv.add(pub_key.sig_tlv(), fixed_sig['value'])
+            self.signature = fixed_sig['value']
         else:
             raise click.UsageError("Can not sign using key and provide fixed-signature at the same time")
 
