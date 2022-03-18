@@ -109,6 +109,11 @@ static bool mcumgr_is_busy;
 #define MGMT_GET_BUSY() false
 #endif
 
+#ifdef MCUBOOT_BOOT_SERIAL_IMG_UPLOAD_STALLING
+static bool img_upload_stalling;
+static uint32_t img_upload_stalling_timeout;
+#endif
+
 void reset_cbor_state(void)
 {
     zcbor_new_encode_state(cbor_state, 2, (uint8_t *)bs_obuf,
@@ -322,6 +327,31 @@ static off_t erase_range(const struct flash_area *fap, off_t start, off_t end)
 }
 #endif
 
+static uint32_t next_offset(uint32_t curr_off, uint32_t img_size)
+{
+#ifndef MCUBOOT_BOOT_SERIAL_IMG_UPLOAD_STALLING
+    (void)img_size;
+#else
+
+    if (!img_upload_stalling) {
+        if (curr_off == img_size) {
+            img_upload_stalling = true;
+            img_upload_stalling_timeout =
+                k_uptime_get_32() + MCUBOOT_BOOT_SERIAL_IMG_UPLOAD_STALLING_TIMEOUT;
+            curr_off -= 4;
+        }
+    } else {
+        if (img_upload_stalling_timeout <= k_uptime_get_32()) {
+            img_upload_stalling = false;
+        } else {
+            curr_off -= 4;
+        }
+    }
+    MGMT_SET_BUSY(img_upload_stalling);
+#endif
+    return curr_off;
+}
+
 /*
  * Image upload request.
  */
@@ -399,6 +429,16 @@ bs_upload(char *buf, int len)
          */
         goto out_invalid_data;
     }
+
+#ifdef MCUBOOT_BOOT_SERIAL_IMG_UPLOAD_STALLING
+    /* If in img_upload_stalling state then go directly to sending response, but
+     * skip closing of flash area since we are not opening it anyway.
+     */
+    if (img_upload_stalling) {
+        rc = 0;
+        goto out;
+    }
+#endif
 
 #if !defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
     rc = flash_area_open(flash_area_id_from_multi_image_slot(img_num, 0), &fap);
@@ -538,18 +578,20 @@ bs_upload(char *buf, int len)
     }
 
 out:
+    if (fap != NULL) {
+        flash_area_close(fap);
+    }
     BOOT_LOG_INF("RX: 0x%x", rc);
     zcbor_map_start_encode(cbor_state, 10);
     zcbor_tstr_put_lit_cast(cbor_state, "rc");
     zcbor_uint32_put(cbor_state, rc);
     if (rc == 0) {
         zcbor_tstr_put_lit_cast(cbor_state, "off");
-        zcbor_uint32_put(cbor_state, curr_off);
+        zcbor_uint32_put(cbor_state, next_offset(curr_off, img_size));
     }
     zcbor_map_end_encode(cbor_state, 10);
 
     boot_serial_output();
-    flash_area_close(fap);
 
 #ifdef MCUBOOT_ENC_IMAGES
     if (curr_off == img_size) {
@@ -651,6 +693,11 @@ boot_serial_input(char *buf, int len)
     len -= sizeof(*hdr);
 
     reset_cbor_state();
+#if MCUBOOT_BOOT_SERIAL_IMG_UPLOAD_STALLING
+    if (img_upload_stalling_timeout <= k_uptime_get_32()) {
+        MGMT_SET_BUSY(false);
+    }
+#endif
 
     /*
      * Limited support for commands.

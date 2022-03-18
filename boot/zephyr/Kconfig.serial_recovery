@@ -160,4 +160,31 @@ config BOOT_SERIAL_SMP_BUSY_RESPONSES
 	  task that may require completion before allowing processing of other commands
 	  like reset or image erase.
 
+config BOOT_SERIAL_IMG_UPLOAD_STALLING
+	bool "Stall upload at finish to allow time for completing additional tasks"
+	help
+	  When final bytes of image are successfully written the device will keep
+	  sending request for a few final bytes of image to give itself time
+	  to complete some additional, post upload, tasks before confirming
+	  upload to be success.
+	  Breaking connection does not affect stalling, it will continue until
+	  timeout.
+	  It is advised to also select BOOT_SERIAL_SMP_BUSY_RESPONSES to prevent
+	  accepting reset command and allow background task to complete.
+
+if BOOT_SERIAL_IMG_UPLOAD_STALLING
+
+config BOOT_SERIAL_IMG_UPLOAD_STALLING_TIMEOUT
+	int "Upload stalling timeout in ms"
+	default 5000
+	help
+	  Timeout after which the stalling will stop and finally MGMT_ERR_EOK will
+	  be returned.
+	  This can be used to keep mcumgr waiting for some operation in background
+	  to complete before confirming image upload to be complete.
+	  For the period of stalling all non-image upload operations will be
+	  rejected.
+
+endif # BOOT_SERIAL_IMG_UPLOAD_STALLING
+
 endif # MCUBOOT_SERIAL
