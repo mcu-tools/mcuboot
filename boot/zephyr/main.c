@@ -33,6 +33,7 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 #include "bootutil/fault_injection_hardening.h"
+#include "bootutil/mcuboot_status.h"
 #include "flash_map_backend/flash_map_backend.h"
 
 #ifdef CONFIG_MCUBOOT_SERIAL
@@ -461,6 +462,8 @@ void main(void)
 
     (void)rc;
 
+    mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
+
 #if (!defined(CONFIG_XTENSA) && DT_HAS_CHOSEN(zephyr_flash_controller))
     if (!flash_device_get_binding(DT_LABEL(DT_CHOSEN(zephyr_flash_controller)))) {
         BOOT_LOG_ERR("Flash device %s not found",
@@ -486,6 +489,8 @@ void main(void)
         gpio_pin_set(led, LED0_GPIO_PIN, 1);
 #endif
 
+        mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
+
         BOOT_LOG_INF("Enter the serial recovery mode");
         rc = boot_console_init();
         __ASSERT(rc == 0, "Error initializing boot console.\n");
@@ -502,6 +507,9 @@ void main(void)
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
         gpio_pin_set(led, LED0_GPIO_PIN, 1);
 #endif
+
+        mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_ENTERED);
+
         rc = usb_enable(NULL);
         if (rc) {
             BOOT_LOG_ERR("Cannot enable USB");
@@ -517,8 +525,13 @@ void main(void)
         BOOT_LOG_ERR("Cannot enable USB");
     } else {
         BOOT_LOG_INF("Waiting for USB DFU");
+
+        mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_WAITING);
+
         wait_for_usb_dfu(K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS));
         BOOT_LOG_INF("USB DFU wait time elapsed");
+
+        mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_TIMED_OUT);
     }
 #endif
 
@@ -546,6 +559,9 @@ void main(void)
 
     if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
         BOOT_LOG_ERR("Unable to find bootable image");
+
+        mcuboot_status_change(MCUBOOT_STATUS_NO_BOOTABLE_IMAGE_FOUND);
+
         FIH_PANIC;
     }
 
@@ -557,8 +573,13 @@ void main(void)
 #else
     BOOT_LOG_INF("Jumping to the first image slot");
 #endif
+
+    mcuboot_status_change(MCUBOOT_STATUS_BOOTABLE_IMAGE_FOUND);
+
     ZEPHYR_BOOT_LOG_STOP();
     do_boot(&rsp);
+
+    mcuboot_status_change(MCUBOOT_STATUS_BOOT_FAILED);
 
     BOOT_LOG_ERR("Never should get here");
     while (1)
