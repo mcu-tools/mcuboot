@@ -582,6 +582,16 @@ config BOOT_IMAGE_ACCESS_HOOKS_FILE
 	  located. If the key file is not there, the build system uses relative
 	  path that starts from the zephyr port cmake directory (boot/zephyr/).
 
+config MCUBOOT_ACTION_HOOKS
+	bool "Enable hooks for responding to MCUboot status changes"
+	help
+	  This will call a handler when the MCUboot status changes which allows
+	  for some level of user feedback, for instance to change LED status to
+	  indicate a failure, using the callback:
+	  'void mcuboot_status_change(mcuboot_status_type_t status)' where
+	  'mcuboot_status_type_t' is listed in
+	  boot/bootutil/include/bootutil/mcuboot_status.h
+
 endmenu
 
 config MCUBOOT_DEVICE_SETTINGS
