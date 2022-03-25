@@ -18,6 +18,7 @@
 
 #include <assert.h>
 #include <zephyr.h>
+#include <devicetree.h>
 #include <drivers/gpio.h>
 #include <sys/__assert.h>
 #include <drivers/flash.h>
@@ -455,10 +456,10 @@ void main(void)
 
     (void)rc;
 
-#if (!defined(CONFIG_XTENSA) && defined(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL))
-    if (!flash_device_get_binding(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL)) {
+#if (!defined(CONFIG_XTENSA) && DT_HAS_CHOSEN(zephyr_flash_controller))
+    if (!flash_device_get_binding(DT_LABEL(DT_CHOSEN(zephyr_flash_controller)))) {
         BOOT_LOG_ERR("Flash device %s not found",
-		     DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL);
+		     DT_LABEL(DT_CHOSEN(zephyr_flash_controller)));
         while (1)
             ;
     }
