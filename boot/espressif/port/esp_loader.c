@@ -27,7 +27,6 @@
 #include "esp_loader.h"
 #include "flash_map_backend/flash_map_backend.h"
 
-
 static int load_segment(const struct flash_area *fap, uint32_t data_addr, uint32_t data_len, uint32_t load_addr)
 {
     const uint32_t *data = (const uint32_t *)bootloader_mmap((fap->fa_off + data_addr), data_len);
@@ -40,17 +39,19 @@ static int load_segment(const struct flash_area *fap, uint32_t data_addr, uint32
     return 0;
 }
 
-void esp_app_image_load(int slot, unsigned int hdr_offset)
+void esp_app_image_load(int image_index, int slot, unsigned int hdr_offset, unsigned int *entry_addr)
 {
     const struct flash_area *fap;
     int area_id;
     int rc;
 
-    area_id = flash_area_id_from_image_slot(slot);
+    area_id = flash_area_id_from_multi_image_slot(image_index, slot);
     rc = flash_area_open(area_id, &fap);
     if (rc != 0) {
         BOOT_LOG_ERR("%s: flash_area_open failed with %d", __func__, rc);
     }
+
+    BOOT_LOG_INF("Loading image %d - slot %d from flash, area id: %d", image_index, slot, area_id);
 
     const uint32_t *data = (const uint32_t *)bootloader_mmap((fap->fa_off + hdr_offset), sizeof(esp_image_load_header_t));
     esp_image_load_header_t load_header = {0};
@@ -85,7 +86,7 @@ void esp_app_image_load(int slot, unsigned int hdr_offset)
 
     BOOT_LOG_INF("start=0x%x", load_header.entry_addr);
     uart_tx_wait_idle(0);
-    void *start = (void *) load_header.entry_addr;
-    ((void (*)(void))start)(); /* Call to application entry address should not return */
-    FIH_PANIC;
+
+    assert(entry_addr != NULL);
+    *entry_addr = load_header.entry_addr;
 }

@@ -15,6 +15,7 @@
 #include "esp_efuse_table.h"
 #include "esp_log.h"
 #include "hal/wdt_hal.h"
+#include "soc/soc_caps.h"
 
 #include "esp_mcuboot_image.h"
 
@@ -167,6 +168,26 @@ static esp_err_t initialise_flash_encryption(void)
         return err;
     }
 
+#if defined(SOC_SUPPORTS_SECURE_DL_MODE) && defined(CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE)
+    ESP_LOGI(TAG, "Enabling Secure Download mode...");
+    err = esp_efuse_enable_rom_secure_download_mode();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Could not enable Secure Download mode...");
+        esp_efuse_batch_write_cancel();
+        return err;
+    }
+#elif CONFIG_SECURE_DISABLE_ROM_DL_MODE
+    ESP_LOGI(TAG, "Disable ROM Download mode...");
+    err = esp_efuse_disable_rom_download_mode();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Could not disable ROM Download mode...");
+        esp_efuse_batch_write_cancel();
+        return err;
+    }
+#else
+    ESP_LOGW(TAG, "UART ROM Download mode kept enabled - SECURITY COMPROMISED");
+#endif
+
     err = esp_efuse_batch_write_commit();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Error programming security eFuses (err=0x%x).", err);
@@ -213,7 +234,7 @@ static esp_err_t encrypt_flash_contents(uint32_t flash_crypt_cnt, bool flash_cry
      * This will need changes when implementing multi-slot support
      */
     ESP_LOGI(TAG, "Encrypting remaining flash...");
-    uint32_t region_addr = CONFIG_ESP_APPLICATION_SECONDARY_START_ADDRESS;
+    uint32_t region_addr = CONFIG_ESP_IMAGE0_SECONDARY_START_ADDRESS;
     size_t region_size = CONFIG_ESP_APPLICATION_SIZE;
     err = esp_flash_encrypt_region(region_addr, region_size);
     if (err != ESP_OK) {
@@ -225,6 +246,21 @@ static esp_err_t encrypt_flash_contents(uint32_t flash_crypt_cnt, bool flash_cry
     if (err != ESP_OK) {
         return err;
     }
+
+#if defined(CONFIG_ESP_IMAGE_NUMBER) && (CONFIG_ESP_IMAGE_NUMBER == 2)
+    region_addr = CONFIG_ESP_IMAGE1_PRIMARY_START_ADDRESS;
+    region_size = CONFIG_ESP_APPLICATION_SIZE;
+    err = esp_flash_encrypt_region(region_addr, region_size);
+    if (err != ESP_OK) {
+        return err;
+    }
+    region_addr = CONFIG_ESP_IMAGE1_SECONDARY_START_ADDRESS;
+    region_size = CONFIG_ESP_APPLICATION_SIZE;
+    err = esp_flash_encrypt_region(region_addr, region_size);
+    if (err != ESP_OK) {
+        return err;
+    }
+#endif
 
 #ifdef CONFIG_SECURE_FLASH_ENCRYPTION_MODE_RELEASE
     // Go straight to max, permanently enabled
@@ -288,20 +324,20 @@ static esp_err_t encrypt_primary_slot(void)
     /* Check if the slot is plaintext or encrypted, 0x20 offset is for skipping
      * MCUboot header
      */
-    err = bootloader_flash_read(CONFIG_ESP_APPLICATION_PRIMARY_START_ADDRESS + 0x20,
+    err = bootloader_flash_read(CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS + 0x20,
                                 &img_header, sizeof(esp_image_load_header_t), true);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read slot img header");
         return err;
     } else {
-        err = verify_img_header(CONFIG_ESP_APPLICATION_PRIMARY_START_ADDRESS,
+        err = verify_img_header(CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS,
                                 &img_header, true);
     }
 
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "Encrypting primary slot...");
 
-        err = esp_flash_encrypt_region(CONFIG_ESP_APPLICATION_PRIMARY_START_ADDRESS,
+        err = esp_flash_encrypt_region(CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS,
                                        CONFIG_ESP_APPLICATION_SIZE);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to encrypt slot in place: 0x%x", err);

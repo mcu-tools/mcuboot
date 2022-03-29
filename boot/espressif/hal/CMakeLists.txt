@@ -56,6 +56,7 @@ set(hal_srcs
     ${src_dir}/flash_encrypt.c
     ${src_dir}/${MCUBOOT_TARGET}/bootloader_init.c
     ${esp_idf_dir}/components/hal/mpu_hal.c
+    ${esp_idf_dir}/components/hal/soc_hal.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_common_loader.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_console_loader.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash.c
