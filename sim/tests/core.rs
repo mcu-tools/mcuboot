@@ -22,9 +22,11 @@ use std::{
 
 /// A single test, after setting up logging and such.  Within the $body,
 /// $arg will be bound to each device.
+/// The "$skip_feature" allows to set a feature for which this test will be skipped.
 macro_rules! test_shell {
-    ($name:ident, $arg: ident, $body:expr) => {
+    ($name:ident, $arg:ident, $body:expr, $skip_feature:expr) => {
         #[test]
+        #[cfg_attr(feature = $skip_feature, ignore)]
         fn $name() {
             testlog::setup();
             ImagesBuilder::each_device(|$arg| {
@@ -36,28 +38,34 @@ macro_rules! test_shell {
 
 /// A typical test calls a particular constructor, and runs a given test on
 /// that constructor.
+/// The "$skip_feature" allows to set a feature for which this test will be skipped.
 macro_rules! sim_test {
-    ($name:ident, $maker:ident($($margs:expr),*), $test:ident($($targs:expr),*)) => {
+    ($name:ident, $maker:ident($($margs:expr),*), $test:ident($($targs:expr),*), $skip_feature:expr) => {
         test_shell!($name, r, {
             let image = r.$maker($($margs),*);
             dump_image(&image, stringify!($name));
             assert!(!image.$test($($targs),*));
-        });
+        }, $skip_feature);
     };
 }
 
-sim_test!(bad_secondary_slot, make_bad_secondary_slot_image(), run_signfail_upgrade());
-sim_test!(secondary_trailer_leftover, make_erased_secondary_image(), run_secondary_leftover_trailer());
-sim_test!(bootstrap, make_bootstrap_image(), run_bootstrap());
-sim_test!(norevert_newimage, make_no_upgrade_image(&NO_DEPS), run_norevert_newimage());
-sim_test!(basic_revert, make_image(&NO_DEPS, true), run_basic_revert());
-sim_test!(revert_with_fails, make_image(&NO_DEPS, false), run_revert_with_fails());
-sim_test!(perm_with_fails, make_image(&NO_DEPS, true), run_perm_with_fails());
-sim_test!(perm_with_random_fails, make_image(&NO_DEPS, true), run_perm_with_random_fails(5));
-sim_test!(norevert, make_image(&NO_DEPS, true), run_norevert());
-sim_test!(status_write_fails_complete, make_image(&NO_DEPS, true), run_with_status_fails_complete());
-sim_test!(status_write_fails_with_reset, make_image(&NO_DEPS, true), run_with_status_fails_with_reset());
-sim_test!(downgrade_prevention, make_image(&REV_DEPS, true), run_nodowngrade());
+sim_test!(bad_secondary_slot, make_bad_secondary_slot_image(), run_signfail_upgrade(), "");
+sim_test!(secondary_trailer_leftover, make_erased_secondary_image(), run_secondary_leftover_trailer(), "");
+sim_test!(bootstrap, make_bootstrap_image(), run_bootstrap(), "");
+sim_test!(norevert_newimage, make_no_upgrade_image(&NO_DEPS), run_norevert_newimage(), "");
+sim_test!(basic_revert, make_image(&NO_DEPS, true), run_basic_revert(), "");
+sim_test!(revert_with_fails, make_image(&NO_DEPS, false), run_revert_with_fails(), "");
+sim_test!(perm_with_fails, make_image(&NO_DEPS, true), run_perm_with_fails(), "");
+sim_test!(perm_with_random_fails, make_image(&NO_DEPS, true), run_perm_with_random_fails(5), "");
+sim_test!(norevert, make_image(&NO_DEPS, true), run_norevert(), "");
+sim_test!(status_write_fails_complete, make_image(&NO_DEPS, true), run_with_status_fails_complete(), "");
+
+sim_test!(status_write_fails_with_reset, make_image(&NO_DEPS, true),
+          run_with_status_fails_with_reset(), "swap-status");
+sim_test!(downgrade_prevention, make_image(&REV_DEPS, true), run_nodowngrade(), "");
+
+sim_test!(direct_xip_first, make_no_upgrade_image(&NO_DEPS), run_direct_xip(), "");
+sim_test!(ram_load_first, make_no_upgrade_image(&NO_DEPS), run_ram_load(), "");
 
 // Test various combinations of incorrect dependencies.
 test_shell!(dependency_combos, r, {
@@ -71,7 +79,7 @@ test_shell!(dependency_combos, r, {
         dump_image(&image, "dependency_combos");
         assert!(!image.run_check_deps(&dep));
     }
-});
+}, "");
 
 /// These are the variants of dependencies we will test.
 pub static TEST_DEPS: &[DepTest] = &[

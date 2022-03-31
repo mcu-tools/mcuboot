@@ -3,8 +3,8 @@
  *
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
- * Copyright (c) 2020 Nordic Semiconductor ASA
+ * Copyright (c) 2019-2021 Arm Limited
+ * Copyright (c) 2020-2021 Nordic Semiconductor ASA
  *
  * Original license:
  *
@@ -41,6 +41,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <flash_map_backend/flash_map_backend.h>
+#include <mcuboot_config/mcuboot_config.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,7 +71,7 @@ extern "C" {
 /** Swapping encountered an unrecoverable error */
 #define BOOT_SWAP_TYPE_PANIC    0xff
 
-#define BOOT_MAX_ALIGN          8
+#define BOOT_MAX_ALIGN          8U
 
 #define BOOT_MAGIC_GOOD     1
 #define BOOT_MAGIC_BAD      2
@@ -96,7 +97,9 @@ extern "C" {
 #define BOOT_ENOMEM      6
 #define BOOT_EBADARGS    7
 #define BOOT_EBADVERSION 8
+#define BOOT_EFLASH_SEC  9
 
+#define BOOT_HOOK_REGULAR 1
 /*
  * Extract the swap type and image number from image trailers's swap_info
  * filed.
@@ -115,7 +118,9 @@ extern "C" {
 #include "mcuboot_config/mcuboot_assert.h"
 #else
 #include <assert.h>
+#ifndef ASSERT
 #define ASSERT assert
+#endif
 #endif
 
 struct boot_swap_state {
@@ -147,25 +152,54 @@ int boot_swap_type_multi(int image_index);
 int boot_swap_type(void);
 
 /**
- * Marks the image in the secondary slot as pending. On the next reboot,
- * the system will perform a one-time boot of the the secondary slot image.
+ * Marks the image with the given index in the secondary slot as pending. On the
+ * next reboot, the system will perform a one-time boot of the the secondary
+ * slot image.
  *
- * @param permanent Whether the image should be used permanently or
- *                  only tested once:
- *                    0=run image once, then confirm or revert.
- *                    1=run image forever.
+ * @param image_index       Image pair index.
  *
- * @return 0 on success; nonzero on failure.
+ * @param permanent         Whether the image should be used permanently or
+ *                          only tested once:
+ *                               0=run image once, then confirm or revert.
+ *                               1=run image forever.
+ *
+ * @return                  0 on success; nonzero on failure.
+ */
+int boot_set_pending_multi(int image_index, int permanent);
+
+/**
+ * Marks the image with index 0 in the secondary slot as pending. On the next
+ * reboot, the system will perform a one-time boot of the the secondary slot
+ * image. Note that this API is kept for compatibility. The
+ * boot_set_pending_multi() API is recommended.
+ *
+ * @param permanent         Whether the image should be used permanently or
+ *                          only tested once:
+ *                               0=run image once, then confirm or revert.
+ *                               1=run image forever.
+ *
+ * @return                  0 on success; nonzero on failure.
  */
 int boot_set_pending(int permanent);
 
 /**
- * @brief Marks the image in the primary slot as confirmed.
+ * Marks the image with the given index in the primary slot as confirmed.  The
+ * system will continue booting into the image in the primary slot until told to
+ * boot from a different slot.
  *
- * The system will continue booting into the image in the primary slot until
- * told to boot from a different slot.
+ * @param image_index       Image pair index.
  *
- * @return 0 on success; nonzero on failure.
+ * @return                  0 on success; nonzero on failure.
+ */
+int boot_set_confirmed_multi(int image_index);
+
+/**
+ * Marks the image with index 0 in the primary slot as confirmed.  The system
+ * will continue booting into the image in the primary slot until told to boot
+ * from a different slot.  Note that this API is kept for compatibility. The
+ * boot_set_confirmed_multi() API is recommended.
+ *
+ * @return                  0 on success; nonzero on failure.
  */
 int boot_set_confirmed(void);
 
@@ -194,18 +228,25 @@ int boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok);
 /**
  * @brief Read the image swap state
  *
- * @param flash_area_id Id of flash parttition from which trailer will be read.
- * @param state Struture for holding swap state.
+ * @param flash_area_id id of flash partition from which state will be read;
+ * @param state pointer to structure for storing swap state.
  *
- * @return 0 on success, nonzero errno code on fail.
+ * @return 0 on success; non-zero error code on failure;
  */
 int
 boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state);
 
-#define BOOT_MAGIC_ARR_SZ \
-    (sizeof boot_img_magic / sizeof boot_img_magic[0])
-
-extern const uint32_t boot_img_magic[4];
+/**
+ * @brief Read the image swap state
+ *
+ * @param fa pointer to flash_area object;
+ * @param state pointer to structure for storing swap state.
+ *
+ * @return 0 on success; non-zero error code on failure.
+ */
+int
+boot_read_swap_state(const struct flash_area *fap,
+                     struct boot_swap_state *state);
 
 #ifdef __cplusplus
 }

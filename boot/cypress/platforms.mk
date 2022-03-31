@@ -25,54 +25,39 @@
 
 include host.mk
 
-# Target platform is built for. PSOC_062_2M is set by default
-# Supported:
-#   - PSOC_062_2M
-#   - PSOC_062_1M
-#   - PSOC_062_512K
-
-# default PLATFORM
-PLATFORM ?= PSOC_062_2M
-
 # supported platforms
-PLATFORMS := PSOC_062_2M PSOC_062_1M PSOC_062_512K
+PLATFORMS := PSOC_062_2M PSOC_062_1M PSOC_062_512K CYW20829
 
 ifneq ($(filter $(PLATFORM), $(PLATFORMS)),)
 else
 $(error Not supported platform: '$(PLATFORM)')
 endif
 
-# For which core this application is built
-CORE ?= CM0P
-
-# MCU device selection, based on target device.
-# Default chips are used for supported platforms
-# This can be redefined in case of other chip usage
-ifeq ($(PLATFORM), PSOC_062_2M)
-# base kit CY8CPROTO-062-4343W
-DEVICE ?= CY8C624ABZI-D44
-PLATFORM_SUFFIX := 02
-else ifeq ($(PLATFORM), PSOC_062_1M)
-# base kit CY8CKIT-062-WIFI-BT
-DEVICE ?= CY8C6247BZI-D54
-PLATFORM_SUFFIX := 01
-else ifeq ($(PLATFORM), PSOC_062_512K)
-# base kit CY8CPROTO-062S3-4343W
-DEVICE ?= CY8C6245LQI-S3D72
-PLATFORM_SUFFIX := 03
+ifeq ($(PLATFORM), $(filter $(PLATFORM), PSOC_062_2M PSOC_062_1M PSOC_062_512K))
+FAMILY := PSOC6
+else ifeq ($(PLATFORM), CYW20829)
+FAMILY := CYW20829
 endif
 
-# Add device name to defines
-DEFINES += $(DEVICE)
+# include family related makefile into build
+include platforms/$(FAMILY)/$(FAMILY).mk
+
 DEFINES += $(PLATFORM)
+DEFINES += $(FAMILY)
 
 # Convert defines to regular -DMY_NAME style
 ifneq ($(DEFINES),)
-	DEFINES_PLATFORM :=$(addprefix -D, $(subst -,_,$(DEFINES)))
+	PLATFORM_DEFINES := $(addprefix -D, $(subst -,_,$(DEFINES)))
 endif
 
-ifeq ($(MAKEINFO) , 1)
-$(info $(PLATFORM_SUFFIX))
-$(info $(DEVICE))
-$(info $(DEFINES_PLATFORM))
+###############################################################################
+# Print debug information about all settings used and/or set in this file
+ifeq ($(VERBOSE), 1)
+$(info #### platforms.mk ####)
+$(info DEFINES <-> $(DEFINES))
+$(info FAMILY <-> $(FAMILY))
+$(info PLATFORM <-- $(PLATFORM))
+$(info PLATFORMS <-> $(PLATFORMS))
+$(info PLATFORM_DEFINES <-> $(PLATFORM_DEFINES))
+$(info PLATFORM_SUFFIX <-- $(PLATFORM_SUFFIX))
 endif

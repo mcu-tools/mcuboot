@@ -46,3 +46,12 @@ $(1)
 endif
 
 PRJ_DIR=$(call get_os_path, $(CURDIR))
+
+###############################################################################
+# Print debug information about all settings used and/or set in this file
+ifeq ($(VERBOSE), 1)
+$(info #### host.mk ####)
+$(info CURDIR <-- $(CURDIR))
+$(info HOST_OS <-- $(HOST_OS))
+$(info UNAME_S <-> $(UNAME_S))
+endif

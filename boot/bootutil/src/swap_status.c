@@ -37,6 +37,7 @@
 #include "swap_priv.h"
 #include "swap_status.h"
 #include "bootutil/bootutil_log.h"
+#include "bootutil/fault_injection_hardening.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 
@@ -49,18 +50,25 @@ int
 swap_read_status_bytes(const struct flash_area *fap,
         struct boot_loader_state *state, struct boot_status *bs)
 {
+    const struct flash_area *fap_stat = NULL;
     uint32_t off;
     uint8_t status = 0;
-    uint8_t last_status = 0xff;
-    int max_entries;
+    uint8_t erased_val;
+    uint8_t last_status;
+    uint32_t max_entries;
     int32_t found_idx;
     bool found;
     bool invalid;
     int rc;
-    int i;
+    uint32_t i;
     (void)state;
 
-    BOOT_LOG_DBG("> STATUS: swap_read_status_bytes: fa_id = %d", fap->fa_id);
+    BOOT_LOG_DBG("> STATUS: swap_read_status_bytes: fa_id = %u", (unsigned)fap->fa_id);
+
+    rc = flash_area_open(FLASH_AREA_IMAGE_SWAP_STATUS, &fap_stat);
+    if (rc != 0) {
+        return -1;
+    }
 
     if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
         max_entries = 1;
@@ -68,22 +76,25 @@ swap_read_status_bytes(const struct flash_area *fap,
         max_entries = BOOT_STATUS_MAX_ENTRIES;
     }
 
+    erased_val = flash_area_erased_val(fap_stat);
+
     off = boot_status_off(fap);
 
     found = false;
     found_idx = -1;
     invalid = false;
+    last_status = erased_val;
 
     for (i = 0; i < max_entries; i++) {
         rc = swap_status_retrieve(fap->fa_id, off + i, &status, 1);
         if (rc < 0) {
-            return BOOT_EFLASH;
+            flash_area_close(fap_stat);
+            return -1;
         }
 
-        // if (status != flash_area_erased_val(fap)) { // TODO: fixup for external memory fap's
-        if (status == 0) {
+        if (status == erased_val) {
             if (found && (found_idx == -1)) {
-                found_idx = i;
+                found_idx = (int)i;
             }
         } else {
             last_status = status;
@@ -93,6 +104,8 @@ swap_read_status_bytes(const struct flash_area *fap,
             } else if (found_idx > 0) {
                 invalid = true;
                 break;
+            } else {
+                /* No action required */
             }
         }
     }
@@ -109,7 +122,7 @@ swap_read_status_bytes(const struct flash_area *fap,
         /* With validation of the primary slot disabled, there is no way
          * to be sure the swapped primary slot is OK, so abort!
          */
-        assert(0);
+        FIH_PANIC;
 #endif
     }
 
@@ -120,7 +133,8 @@ swap_read_status_bytes(const struct flash_area *fap,
         uint8_t image_index = BOOT_CURR_IMG(state);
         rc = boot_read_swap_size((int32_t)image_index, &bs->swap_size);
         if (rc < 0) {
-            return BOOT_EFLASH;
+            flash_area_close(fap_stat);
+            return -1;
         }
 
 #ifdef MCUBOOT_SWAP_USING_MOVE
@@ -137,7 +151,7 @@ swap_read_status_bytes(const struct flash_area *fap,
         {
             /* resume swap sectors operation */
             last_status++;
-            if (last_status > BOOT_STATUS_STATE_COUNT) {
+            if (last_status > (uint8_t)BOOT_STATUS_STATE_COUNT) {
                 last_status = BOOT_STATUS_STATE_0;
                 found_idx++;
             }
@@ -148,14 +162,16 @@ swap_read_status_bytes(const struct flash_area *fap,
         }
     }
 
+    flash_area_close(fap_stat);
+
     return 0;
 }
 
 /* this is internal offset in swap status area */
 uint32_t
-boot_status_internal_off(const struct boot_status *bs, int elem_sz)
+boot_status_internal_off(const struct boot_status *bs, uint32_t elem_sz)
 {
-    uint32_t off = (bs->idx - BOOT_STATUS_IDX_0) * (uint32_t)elem_sz;
+    uint32_t off = (bs->idx - BOOT_STATUS_IDX_0) * elem_sz;
 
     return off;
 }

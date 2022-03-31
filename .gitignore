@@ -25,3 +25,6 @@ rusty-tags.*
 # Python egg metadata, regenerated from source files by setuptools.
 /scripts/*.egg-info
 /scripts/*.egg
+
+# The target directory from Rust development
+/target/

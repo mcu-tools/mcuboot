@@ -30,9 +30,9 @@ sig-ed25519 = []
 # Overwrite only upgrade
 overwrite-only = []
 
-swap-status = []
-
 swap-move = []
+
+swap-status = []
 
 # Disable validation of the primary slot
 validate-primary-slot = []
@@ -40,14 +40,29 @@ validate-primary-slot = []
 # Encrypt image in the secondary slot using RSA-OAEP-2048
 enc-rsa = []
 
+# Encrypt  image in the secondary slot using AES-256-CTR and RSA-OAEP-2048
+enc-aes256-rsa = []
+
 # Encrypt image in the secondary slot using AES-KW-128
 enc-kw = []
+
+# Encrypt image in the secondary slot using AES-256-CTR and AES-KW-256
+enc-aes256-kw = []
 
 # Encrypt image in the secondary slot using ECIES-P256
 enc-ec256 = []
 
+# Encrypt image in the secondary slot using AES-256-CTR and ECIES-P256
+enc-aes256-ec256 = []
+
+# Encrypt image in the secondary slot using ECIES-P256 using Mbed TLS
+enc-ec256-mbedtls = []
+
 # Encrypt image in the secondary slot using ECIES-X25519
 enc-x25519 = []
+
+# Encrypt image in the secondary slot using AES-256-CTR and ECIES-X25519
+enc-aes256-x25519 = []
 
 # Allow bootstrapping an empty/invalid primary slot from a valid secondary slot
 bootstrap = []
@@ -55,8 +70,21 @@ bootstrap = []
 # Support multiple images (currently 2 instead of 1).
 multiimage = []
 
+# Support simulation of ram-loading.  No swaps are performed, and the
+# image is copied to RAM before loading it.
+ram-load = []
+
+# Support simulation of direct XIP.  No swaps are performed, the image
+# is directly executed out of whichever partition contains the most
+# appropriate image.
+direct-xip = []
+
 # Check (in software) against version downgrades.
 downgrade-prevention = []
+
+# Large write.  Not meaningful, but present here so that the
+# full-suite tests will work for this configuration.
+large-write = []
 
 [build-dependencies]
 cc = "1.0.25"

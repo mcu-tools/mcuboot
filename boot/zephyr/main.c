@@ -105,7 +105,7 @@ static inline bool boot_skip_serial_recovery()
 }
 #endif
 
-MCUBOOT_LOG_MODULE_REGISTER(mcuboot);
+BOOT_LOG_MODULE_REGISTER(mcuboot);
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
 /*
@@ -183,11 +183,10 @@ static void do_boot(struct boot_rsp *rsp)
                                      rsp->br_image_off +
                                      rsp->br_hdr->ih_hdr_size);
 
-    irq_lock();
 #ifdef CONFIG_SYS_CLOCK_EXISTS
     sys_clock_disable();
 #endif
-#ifdef CONFIG_USB
+#ifdef CONFIG_USB_DEVICE_STACK
     /* Disable the USB to prevent it from firing interrupts */
     usb_disable();
 #endif
@@ -213,6 +212,8 @@ static void do_boot(struct boot_rsp *rsp)
     __set_MSPLIM(0);
 #endif
 
+#else
+    irq_lock();
 #endif /* CONFIG_MCUBOOT_CLEANUP_ARM_CORE */
 
 #ifdef CONFIG_BOOT_INTR_VEC_RELOC
@@ -390,7 +391,11 @@ static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
 
     if (detect_value == expected) {
         if (delay > 0) {
+#ifdef CONFIG_MULTITHREADING
             k_sleep(K_MSEC(50));
+#else
+            k_busy_wait(50000);
+#endif
 
             /* Get the uptime for debounce purposes. */
             int64_t timestamp = k_uptime_get();
@@ -409,7 +414,11 @@ static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
                 }
 
                 /* Delay 1 ms */
+#ifdef CONFIG_MULTITHREADING
                 k_sleep(K_MSEC(1));
+#else
+                k_busy_wait(1000);
+#endif
             }
         }
     }

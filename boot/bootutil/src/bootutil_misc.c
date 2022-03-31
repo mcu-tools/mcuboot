@@ -129,12 +129,12 @@ int
 boot_status_entries(int image_index, const struct flash_area *fap)
 {
 #if MCUBOOT_SWAP_USING_SCRATCH
-    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
+    if (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SCRATCH) {
         return BOOT_STATUS_STATE_COUNT;
     } else
 #endif
-    if (fap->fa_id == FLASH_AREA_IMAGE_PRIMARY(image_index) ||
-               fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
+    if (flash_area_get_id(fap) == FLASH_AREA_IMAGE_PRIMARY(image_index) ||
+        flash_area_get_id(fap) == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
         return BOOT_STATUS_STATE_COUNT * BOOT_STATUS_MAX_ENTRIES;
     }
     return -1;
@@ -145,21 +145,22 @@ uint32_t
 boot_status_off(const struct flash_area *fap)
 {
     uint32_t off_from_end;
-    uint8_t elem_sz;
+    size_t elem_sz;
 
     elem_sz = flash_area_align(fap);
+    assert(elem_sz != 0u);
 
     off_from_end = boot_trailer_sz(elem_sz);
 
-    assert(off_from_end <= fap->fa_size);
-    return fap->fa_size - off_from_end;
+    assert(off_from_end <= flash_area_get_size(fap));
+    return flash_area_get_size(fap) - off_from_end;
 }
 #endif
 
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
-    return fap->fa_size - BOOT_MAGIC_SZ;
+    return flash_area_get_size(fap) - BOOT_MAGIC_SZ;
 }
 
 #ifndef MCUBOOT_SWAP_USING_STATUS
@@ -275,26 +276,20 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
 {
     uint32_t off;
     const struct flash_area *fap;
-#if MCUBOOT_SWAP_SAVE_ENCTLV
-    int i;
-#endif
     int rc;
 
     rc = boot_find_status(image_index, &fap);
-    if (rc == 0) {
+    if (0 == rc) {
         off = boot_enc_key_off(fap, slot);
 #if MCUBOOT_SWAP_SAVE_ENCTLV
-        uint8_t aes_iv[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE];
+        uint8_t aes_iv[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE];
 
         rc = flash_area_read(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
-        if (rc == 0) {
-            for (i = 0; i < BOOT_ENC_TLV_ALIGN_SIZE; i++) {
-                if (bs->enctlv[slot][i] != 0xff) {
-                    break;
-                }
-            }
-            /* Only try to decrypt non-erased TLV metadata */
-            if (i != BOOT_ENC_TLV_ALIGN_SIZE) {
+        if (0 == rc) {
+            /* Only try to decrypt initialized TLV metadata */
+            if (!bootutil_buffer_is_filled(bs->enctlv[slot],
+                                           BOOT_UNINITIALIZED_TLV_FILL,
+                                           BOOT_ENC_TLV_ALIGN_SIZE)) {
                 rc = boot_enc_decrypt(bs->enctlv[slot], bs->enckey[slot], 0, aes_iv);
             }
         }
@@ -316,9 +311,9 @@ boot_write_copy_done(const struct flash_area *fap)
     uint32_t off;
 
     off = boot_copy_done_off(fap);
-    BOOT_LOG_DBG("writing copy_done; fa_id=%d off=0x%lx (0x%lx)",
-                 fap->fa_id, (unsigned long)off,
-                 (unsigned long)(fap->fa_off + off));
+    BOOT_LOG_DBG("writing copy_done; fa_id=%u off=0x%" PRIx32
+                 " (0x%" PRIx32 ")", (unsigned)flash_area_get_id(fap),
+                 off, flash_area_get_off(fap) + off);
     return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
 }
 
@@ -328,9 +323,9 @@ boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
     uint32_t off;
 
     off = boot_swap_size_off(fap);
-    BOOT_LOG_DBG("writing swap_size; fa_id=%d off=0x%lx (0x%lx)",
-                 fap->fa_id, (unsigned long)off,
-                 (unsigned long)fap->fa_off + off);
+    BOOT_LOG_DBG("writing swap_size; fa_id=%u off=0x%" PRIx32
+                 " (0x%" PRIx32 ")", (unsigned)flash_area_get_id(fap),
+                 off, flash_area_get_off(fap) + off);
     return boot_write_trailer(fap, off, (const uint8_t *) &swap_size, 4);
 }
 
@@ -345,9 +340,9 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
     int rc;
 
     off = boot_enc_key_off(fap, slot);
-    BOOT_LOG_DBG("writing enc_key; fa_id=%d off=0x%lx (0x%lx)",
-                 fap->fa_id, (unsigned long)off,
-                 (unsigned long)fap->fa_off + off);
+    BOOT_LOG_DBG("writing enc_key; fa_id=%u off=0x%" PRIx32
+                 " (0x%" PRIx32 ")", (unsigned)flash_area_get_id(fap),
+                 off, flash_area_get_off(fap) + off);
 #if MCUBOOT_SWAP_SAVE_ENCTLV
     rc = flash_area_write(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
 #else

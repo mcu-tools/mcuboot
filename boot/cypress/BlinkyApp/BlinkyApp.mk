@@ -32,89 +32,21 @@ include host.mk
 #     - image type to BOOT
 COMPILER ?= GCC_ARM
 IMG_TYPE ?= BOOT
-
-# For which core this application is built
-CORE ?= CM4
+IMG_ID ?= 1
 
 # image type can be BOOT or UPGRADE
 IMG_TYPES = BOOT UPGRADE
 
-# use SWAP_UPGRADE = 0 for overwrite only mode
-# use SWAP_UPGRADE = 1 for swap upgrade mode
-SWAP_UPGRADE ?= 1
-
-# possible values are 0 and 0xff
-# internal Flash by default
-ERASED_VALUE ?= 0
-
-ifneq ($(COMPILER), GCC_ARM)
-$(error Only GCC ARM is supported at this moment)
-endif
-
 CUR_APP_PATH = $(PRJ_DIR)/$(APP_NAME)
 
-include $(PRJ_DIR)/platforms.mk
-include $(PRJ_DIR)/common_libs.mk
-include $(PRJ_DIR)/toolchains.mk
-
-# Application-specific DEFINES
-ifeq ($(IMG_TYPE), BOOT)
-	DEFINES_APP := -DBOOT_IMG
-else
-	DEFINES_APP := -DUPGRADE_IMG
-	DEFINES_APP += -DSWAP_ENABLED=$(SWAP_UPGRADE)
+ifneq ($(FLASH_MAP), )
+$(CUR_APP_PATH)/flashmap.mk:
+	$(PYTHON_PATH) scripts/flashmap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/cy_flash_pal/cy_flash_map.h -d $(IMG_ID) > $(CUR_APP_PATH)/flashmap.mk
+include $(CUR_APP_PATH)/flashmap.mk
+DEFINES_APP := -DCY_FLASH_MAP_JSON
 endif
 
-# Define start of application, RAM start and size, slot size
-ifeq ($(PLATFORM), PSOC_062_2M)
-	DEFINES_APP += -DRAM_START=0x08040000
-	DEFINES_APP += -DRAM_SIZE=0x10000
-else ifeq ($(PLATFORM), PSOC_062_1M)
-	DEFINES_APP += -DRAM_START=0x08020000
-	DEFINES_APP += -DRAM_SIZE=0x10000
-else ifeq ($(PLATFORM), PSOC_062_512K)
-	DEFINES_APP += -DRAM_START=0x08020000
-	DEFINES_APP += -DRAM_SIZE=0x10000
-endif
-ifeq ($(USE_EXTERNAL_FLASH), 1)
-$(warning You are trying to build BlinkyApp for MCUBootApp with external memory support. Ensure you build MCUBootApp with USE_EXTERNAL_FLASH=1 flag!)
-	SLOT_SIZE ?= 0x40200
-else
-	SLOT_SIZE ?= 0x10000
-endif
-
-DEFINES_APP += -DUSER_APP_SIZE=$(SLOT_SIZE)
-DEFINES_APP += -DUSER_APP_START=0x10018000
-
-# Collect Test Application sources
-SOURCES_APP_SRC := $(wildcard $(CUR_APP_PATH)/*.c)
-# Collect all the sources
-SOURCES_APP += $(SOURCES_APP_SRC)
-
-# Collect includes for BlinkyApp
-INCLUDE_DIRS_APP := $(addprefix -I, $(CURDIR))
-INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))
-
-# Overwite path to linker script if custom is required, otherwise default from BSP is used
-ifeq ($(COMPILER), GCC_ARM)
-LINKER_SCRIPT := $(subst /cygdrive/c,c:,$(CUR_APP_PATH)/linker/$(APP_NAME).ld)
-else
-$(error Only GCC ARM is supported at this moment)
-endif
-
-ASM_FILES_APP :=
-ASM_FILES_APP += $(ASM_FILES_STARTUP)
-
-# We still need this for MCUBoot apps signing
-IMGTOOL_PATH ?=	../../scripts/imgtool.py
-
-# add flag to imgtool if not using swap for upgrade
-ifeq ($(SWAP_UPGRADE), 0)
-UPGRADE_TYPE := --overwrite-only
-endif
-
-SIGN_ARGS := sign --header-size 1024 --pad-header --align 8 -v "2.0" -S $(SLOT_SIZE) -M 512 $(UPGRADE_TYPE) -R $(ERASED_VALUE) -k keys/$(SIGN_KEY_FILE).pem
-
+# TODO: optimize here and in MCUBootApp.mk
 # Output folder
 OUT := $(APP_NAME)/out
 # Output folder to contain build artifacts
@@ -122,25 +54,201 @@ OUT_TARGET := $(OUT)/$(PLATFORM)
 
 OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
 
+BOOTLOADER_SIZE ?= $(PLATFORM_BOOTLOADER_SIZE)
+
 # Set build directory for BOOT and UPGRADE images
 ifeq ($(IMG_TYPE), UPGRADE)
-	ifeq ($(ENC_IMG), 1)
-		SIGN_ARGS += --encrypt ../../$(ENC_KEY_FILE).pem
-		SIGN_ARGS += --use-random-iv
-	endif
-	SIGN_ARGS += --pad
-	UPGRADE_SUFFIX :=_upgrade
 	OUT_CFG := $(OUT_CFG)/upgrade
 else
 	OUT_CFG := $(OUT_CFG)/boot
 endif
 
+# Set parameters needed for signing
+ifeq ($(IMG_TYPE), UPGRADE)
+	UPGRADE_SUFFIX :=_upgrade
+endif
+
+include $(PRJ_DIR)/platforms.mk
+include $(PRJ_DIR)/common_libs.mk
+include $(PRJ_DIR)/toolchains.mk
+
+# use USE_OVERWRITE = 1 for overwrite only mode
+# use USE_OVERWRITE = 0 for swap upgrade mode
+ifeq ($(USE_OVERWRITE), )
+USE_OVERWRITE ?= $(PLATFORM_DEFAULT_USE_OVERWRITE)
+endif
+
+# possible values are 0 and 0xff
+# internal Flash by default
+ifeq ($(ERASED_VALUE), )
+ERASED_VALUE ?= $(PLATFORM_DEFAULT_ERASED_VALUE)
+endif
+
+# Application-specific DEFINES
+ifeq ($(IMG_TYPE), BOOT)
+	DEFINES_APP := -DBOOT_IMAGE
+	ENC_IMG := 0
+else
+	DEFINES_APP := -DUPGRADE_IMAGE
+	DEFINES_APP += -DSWAP_DISABLED=$(USE_OVERWRITE)
+endif
+
+# Inherit platform default values for application start
+# if not set directly as make command argument
+# App start may vary, depending on mode of operation
+# for example in XIP mode image start adress and app start
+# address may be different
+USER_APP_START ?= $(PLATFORM_USER_APP_START)
+
+ifeq ($(USER_APP_RAM_START), )
+USER_APP_RAM_START ?= $(PLATFORM_DEFAULT_RAM_START)
+endif
+ifeq ($(USER_APP_RAM_SIZE), )
+USER_APP_RAM_SIZE ?= $(PLATFORM_DEFAULT_RAM_SIZE)
+endif
+
+DEFINES_APP += -DUSER_APP_RAM_START=$(USER_APP_RAM_START)
+DEFINES_APP += -DUSER_APP_RAM_SIZE=$(USER_APP_RAM_SIZE)
+DEFINES_APP += -DUSER_APP_START=$(USER_APP_START)
+DEFINES_APP += -DPRIMARY_IMG_START=$(PRIMARY_IMG_START)
+DEFINES_APP += -DUSER_APP_SIZE=$(SLOT_SIZE)
+DEFINES_APP += $(PLATFORM_DEFINES_APP)
+
+ifeq ($(USE_XIP), 1)
+DEFINES_APP += -DUSE_XIP
+LD_SUFFIX = _xip
+endif
+
+# Add version metadata to image
+ifneq ($(IMG_VER), )
+IMG_VER_ARG = -v "$(IMG_VER)"
+else
+IMG_VER_ARG = $(PLATFORM_DEFAULT_IMG_VER_ARG)
+$(info WARNING - setting platform default version number, to set custom value - pass IMG_VER=x.x.x argument to make command)
+endif
+
+# Add dependencies metadata to image
+ifneq ($(IMG_DEPS_ID), )
+ifneq ($(IMG_DEPS_VER), )
+IMG_DEPS_ARG = -d "($(IMG_DEPS_ID), $(IMG_DEPS_VER))"
+endif
+endif
+
+# Collect Test Application sources
+SOURCES_APP_SRC := $(wildcard $(CUR_APP_PATH)/*.c)
+
+# Include confirmation flag setting (img_ok) implementation
+ifeq ($(IMG_TYPE), UPGRADE)
+ifeq ($(USE_OVERWRITE), 0)
+SOURCES_APP_SRC += $(PRJ_DIR)/platforms/$(FAMILY)/img_confirm/set_img_ok.c
+endif
+endif
+
+# Set offset for secondary image
+ifeq ($(IMG_TYPE), UPGRADE)
+HEADER_OFFSET := $(SECONDARY_IMG_START)
+else
+HEADER_OFFSET := $(PRIMARY_IMG_START)
+endif
+
+# Collect all the sources
+SOURCES_APP += $(SOURCES_APP_SRC)
+SOURCES_APP += $(PLATFORM_SOURCES_FLASH)
+
+# Collect includes for BlinkyApp
+INCLUDE_DIRS_APP := $(addprefix -I, $(CURDIR))
+INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))
+INCLUDE_DIRS_APP += $(addprefix -I, $(PLATFORM_INCLUDE_DIRS_FLASH))
+
+# ++++
+INCLUDE_DIRS_APP += $(addprefix -I, $(PRJ_DIR)/MCUBootApp/config)
+INCLUDE_DIRS_APP += $(addprefix -I, $(PRJ_DIR)/MCUBootApp)
+INCLUDE_DIRS_APP += $(addprefix -I, $(PRJ_DIR)/../bootutil/include)
+INCLUDE_DIRS_APP += $(addprefix -I, $(PRJ_DIR)/../bootutil/src)
+INCLUDE_DIRS_APP += $(addprefix -I, $(PRJ_DIR)/../bootutil/include/bootutil)
+# +++
+
+# Overwite path to linker script if custom is required, otherwise default from BSP is used
+ifeq ($(COMPILER), GCC_ARM)
+LINKER_SCRIPT := $(CUR_APP_PATH)/linker/$(APP_NAME).ld
+else
+$(error Only GCC ARM is supported at this moment)
+endif
+
+ASM_FILES_APP :=
+ASM_FILES_APP += $(ASM_FILES_STARTUP)
+
+# add flag to imgtool if not using swap for upgrade
+ifeq ($(USE_OVERWRITE), 1)
+UPGRADE_TYPE := --overwrite-only
+endif
+
+SIGN_ARGS := $(PLATFORM_SIGN_ARGS) $(IMG_VER_ARG) $(IMG_DEPS_ARG)
+
+# Set parameters needed for signing
+ifeq ($(IMG_TYPE), UPGRADE)
+	# Set img_ok flag to trigger swap type permanent
+	ifeq ($(CONFIRM), 1)
+		SIGN_ARGS += --confirm
+	endif
+	SIGN_ARGS += --pad
+endif
+
+$(info $(SIGN_ARGS))
+
 pre_build:
 	$(info [PRE_BUILD] - Generating linker script for application $(CUR_APP_PATH)/linker/$(APP_NAME).ld)
-	@$(CC) -E -x c $(CFLAGS) $(INCLUDE_DIRS) $(CUR_APP_PATH)/linker/$(APP_NAME)_template.ld | grep -v '^#' >$(CUR_APP_PATH)/linker/$(APP_NAME).ld
+	@$(CC) -E -x c $(CFLAGS) $(INCLUDE_DIRS) $(CUR_APP_PATH)/linker/$(APP_NAME)_$(CORE)_template$(LD_SUFFIX).ld | grep -v '^#' >$(CUR_APP_PATH)/linker/$(APP_NAME).ld
 
-# Post build action to execute after main build job
-post_build: $(OUT_CFG)/$(APP_NAME).hex
-	$(info [POST_BUILD] - Executing post build script for $(APP_NAME))
-	mv -f $(OUT_CFG)/$(APP_NAME).hex $(OUT_CFG)/$(APP_NAME)_unsigned.hex
-	$(PYTHON_PATH) $(IMGTOOL_PATH) $(SIGN_ARGS) $(OUT_CFG)/$(APP_NAME)_unsigned.hex $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).hex
+###############################################################################
+# Print debug information about all settings used and/or set in this file
+ifeq ($(VERBOSE), 1)
+$(info #### BlinkyApp.mk ####)
+$(info APP_NAME <-- $(APP_NAME))
+$(info ASM_FILES_APP <-> $(ASM_FILES_APP))
+$(info ASM_FILES_STARTUP <-- $(ASM_FILES_STARTUP))
+$(info BUILDCFG <-- $(BUILDCFG))
+$(info CC <-- $(CC))
+$(info CFLAGS <-- $(CFLAGS))
+$(info COMPILER <-> $(COMPILER))
+$(info CONFIRM <-- $(CONFIRM))
+$(info CORE <-- $(CORE))
+$(info CURDIR <-- $(CURDIR))
+$(info CUR_APP_PATH <-- $(CUR_APP_PATH))
+$(info DEFINES_APP <-> $(DEFINES_APP))
+$(info ENC_IMG --> $(ENC_IMG))
+$(info ERASED_VALUE <-> $(ERASED_VALUE))
+$(info IMG_TYPE <-> $(IMG_TYPE))
+$(info INCLUDE_DIRS <-- $(INCLUDE_DIRS))
+$(info INCLUDE_DIRS_APP <-> $(INCLUDE_DIRS_APP))
+$(info LINKER_SCRIPT <-> $(LINKER_SCRIPT))
+$(info OUT <-> $(OUT))
+$(info OUT_CFG <-> $(OUT_CFG))
+$(info OUT_TARGET <-> $(OUT_TARGET))
+$(info PLATFORM <-- $(PLATFORM))
+$(info PLATFORM_DEFAULT_ERASED_VALUE <-- $(PLATFORM_DEFAULT_ERASED_VALUE))
+$(info PLATFORM_DEFAULT_RAM_SIZE <-- $(PLATFORM_DEFAULT_RAM_SIZE))
+$(info PLATFORM_DEFAULT_RAM_START <-- $(PLATFORM_DEFAULT_RAM_START))
+$(info PLATFORM_DEFAULT_SLOT_SIZE <-- $(PLATFORM_DEFAULT_SLOT_SIZE))
+$(info PLATFORM_DEFAULT_USER_APP_START <-- $(PLATFORM_DEFAULT_USER_APP_START))
+$(info PLATFORM_DEFAULT_PRIMARY_IMG_START <-- $(PLATFORM_DEFAULT_PRIMARY_IMG_START))
+$(info PLATFORM_DEFAULT_USE_OVERWRITE <-- $(PLATFORM_DEFAULT_USE_OVERWRITE))
+$(info PLATFORM_DEFINES_APP <-- $(PLATFORM_DEFINES_APP))
+$(info PLATFORM_INCLUDE_DIRS_FLASH <-- $(PLATFORM_INCLUDE_DIRS_FLASH))
+$(info PLATFORM_SIGN_ARGS <-- $(PLATFORM_SIGN_ARGS))
+$(info PLATFORM_SOURCES_FLASH <-- $(PLATFORM_SOURCES_FLASH))
+$(info PRJ_DIR <-- $(PRJ_DIR))
+$(info IMG_VER_ARG <-- $(IMG_VER_ARG))
+$(info IMG_DEPS_ARG <-- $(IMG_DEPS_ARG))
+$(info SIGN_ARGS <-> $(SIGN_ARGS))
+$(info SLOT_SIZE <-> $(SLOT_SIZE))
+$(info SOURCES_APP <-> $(SOURCES_APP))
+$(info SOURCES_APP_SRC <-> $(SOURCES_APP_SRC))
+$(info UPGRADE_SUFFIX --> $(UPGRADE_SUFFIX))
+$(info UPGRADE_TYPE --> $(UPGRADE_TYPE))
+$(info USER_APP_RAM_SIZE <-> $(USER_APP_RAM_SIZE))
+$(info USER_APP_RAM_START <-> $(USER_APP_RAM_START))
+$(info USER_APP_START <-> $(USER_APP_START))
+$(info PRIMARY_IMG_START <-> $(PRIMARY_IMG_START))
+$(info USE_OVERWRITE <-> $(USE_OVERWRITE))
+endif

@@ -18,6 +18,7 @@
 #define SIGNATURE_TYPE_RSA      0
 #define SIGNATURE_TYPE_EC256    1
 #define SIGNATURE_TYPE_ED25519  2
+#define SIGNATURE_TYPE_NONE     3
 
 /*
  * Signature algorithm
@@ -59,6 +60,12 @@
 #define MCUBOOT_IMAGE_NUMBER 1
 
 /*
+ * Currently there is no configuration option, for this platform,
+ * that enables the system specific mcumgr commands in mcuboot
+ */
+#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 0
+
+/*
  * Encrypted Images
  */
 #if defined(MCUBOOT_ENCRYPT_RSA) || defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
@@ -78,5 +85,11 @@
     do {                                        \
     } while (0)
 
+/*
+ * No direct idle call implemented
+ */
+#define MCUBOOT_CPU_IDLE() \
+    do {                   \
+    } while (0)
 
 #endif /* __MCUBOOT_CONFIG_H__ */

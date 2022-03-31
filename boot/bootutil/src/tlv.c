@@ -98,7 +98,9 @@ bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off, uint16_t *len,
     struct image_tlv tlv;
     int rc;
 
-    if (it == NULL || it->hdr == NULL || it->fap == NULL) {
+    if (it == NULL || it->hdr == NULL || it->fap == NULL ||
+        off == NULL || len == NULL) {
+
         return -1;
     }
 

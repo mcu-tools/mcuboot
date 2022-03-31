@@ -37,30 +37,29 @@
 
 #ifdef MCUBOOT_SWAP_USING_STATUS
 
-#define BOOT_LOG_SWAP_STATE_M(area, state)                            \
-    BOOT_LOG_DBG("%s: magic=%s, swap_type=0x%x, copy_done=0x%x, "   \
-                 "image_ok=0x%x",                                   \
-                 (area),                                            \
-                 ((state)->magic == (uint8_t)BOOT_MAGIC_GOOD ? "good" :\
-                  (state)->magic == (uint8_t)BOOT_MAGIC_UNSET ? "unset" :\
-                  "bad"),                                           \
-                 (state)->swap_type,                                \
-                 (state)->copy_done,                                \
-                 (state)->image_ok)
+#define BOOT_LOG_SWAP_STATE_M(area, state)                                      \
+    BOOT_LOG_DBG("%s: magic=%s, swap_type=0x%x, copy_done=0x%x, image_ok=0x%x", \
+                 (area),                                                        \
+                 ((state)->magic == (uint8_t)BOOT_MAGIC_GOOD  ? "good" :        \
+                  (state)->magic == (uint8_t)BOOT_MAGIC_UNSET ? "unset" :       \
+                                                                "bad"),         \
+                 (unsigned)(state)->swap_type,                                  \
+                 (unsigned)(state)->copy_done,                                  \
+                 (unsigned)(state)->image_ok)
 
-#define BOOT_SET_SWAP_INFO_M(swap_info, image, type)  {                          \
-                                                    assert((int)((image) < 0xFu));     \
-                                                    assert((int)((type)  < 0xFu));     \
-                                                    (swap_info) = (image) << 4u \
-                                                                | (type);      \
-                                                    }
+#define BOOT_SET_SWAP_INFO_M(swap_info, image, type) do {                            \
+                                                         assert((image) < 0xFu);     \
+                                                         assert((type)  < 0xFu);     \
+                                                         (swap_info) = (image) << 4u \
+                                                                     | (type);       \
+                                                     } while (false)
 
-#define BOOT_GET_SWAP_TYPE_M(swap_info)    ((swap_info) & 0x0Fu)
-#define BOOT_GET_IMAGE_NUM_M(swap_info)    ((swap_info) >> 4u)
+#define BOOT_GET_SWAP_TYPE_M(swap_info) ((swap_info) & 0x0Fu)
+#define BOOT_GET_IMAGE_NUM_M(swap_info) ((swap_info) >> 4u)
 
 extern const uint32_t stat_part_magic[1];
 
-#define BOOT_SWAP_STATUS_MAGIC       (0xDEADBEAFu)
+#define BOOT_SWAP_STATUS_MAGIC          (0xDEADBEEFu)
 
 #define BOOT_SWAP_STATUS_ENCK1_SZ       16UL
 #define BOOT_SWAP_STATUS_ENCK2_SZ       16UL
@@ -90,9 +89,9 @@ struct image_status_trailer {
 
 /* agreed to name it "a record" */
 #define BOOT_SWAP_STATUS_PAYLD_SZ       (BOOT_SWAP_STATUS_ROW_SZ -\
-                                            BOOT_SWAP_STATUS_MGCREC_SZ - \
-                                            BOOT_SWAP_STATUS_CNT_SZ - \
-                                            BOOT_SWAP_STATUS_CRC_SZ)
+                                         BOOT_SWAP_STATUS_MGCREC_SZ - \
+                                         BOOT_SWAP_STATUS_CNT_SZ - \
+                                         BOOT_SWAP_STATUS_CRC_SZ)
 #define BOOT_SWAP_STATUS_ROW_SZ_MIN     16UL
 
 /* INFO: defining record structure for better understanding */
@@ -133,13 +132,13 @@ struct status_part_record{
 
 /* the size of one copy of status area */
 #define BOOT_SWAP_STATUS_D_SIZE     (BOOT_SWAP_STATUS_ROW_SZ * \
-                                    (BOOT_SWAP_STATUS_SECT_ROWS_NUM + \
-                                    BOOT_SWAP_STATUS_TRAIL_ROWS_NUM))
+                                     (BOOT_SWAP_STATUS_SECT_ROWS_NUM + \
+                                      BOOT_SWAP_STATUS_TRAIL_ROWS_NUM))
 
 /* the size of one copy of status area without cnt and crc fields */
 #define BOOT_SWAP_STATUS_D_SIZE_RAW (BOOT_SWAP_STATUS_PAYLD_SZ * \
-                                    (BOOT_SWAP_STATUS_SECT_ROWS_NUM + \
-                                    BOOT_SWAP_STATUS_TRAIL_ROWS_NUM))
+                                     (BOOT_SWAP_STATUS_SECT_ROWS_NUM + \
+                                      BOOT_SWAP_STATUS_TRAIL_ROWS_NUM))
 
 /* multiplier which defines how many blocks will be used to reduce Flash wear
  * 1 is for single write wear, 2 - twice less wear, 3 - three times less wear, etc */
@@ -153,14 +152,15 @@ struct status_part_record{
 
 #define BOOT_SWAP_STATUS_OFFS_PRIM  0UL
 #define BOOT_SWAP_STATUS_OFFS_SEC   (BOOT_SWAP_STATUS_OFFS_PRIM + \
-                                    BOOT_SWAP_STATUS_SZ_PRIM)
+                                     BOOT_SWAP_STATUS_SZ_PRIM)
 
-int32_t swap_status_init_offset(uint32_t area_id);
-int swap_status_update(uint32_t target_area_id, uint32_t offs, const void *data, uint32_t len);
-int swap_status_retrieve(uint32_t target_area_id, uint32_t offs, void *data, uint32_t len);
+/* size Limit for primary slot trailer buffer */
+#define MAX_TRAILER_BUF_SIZE        CY_FLASH_ALIGN
 
-int boot_write_trailer(const struct flash_area *fap, uint32_t off,
-                        const uint8_t *inbuf, uint8_t inlen);
+int32_t swap_status_init_offset(uint8_t area_id);
+int swap_status_update(uint8_t target_area_id, uint32_t offs, const void *data, uint32_t len);
+int swap_status_retrieve(uint8_t target_area_id, uint32_t offs, void *data, uint32_t len);
+int swap_status_to_image_trailer(const struct flash_area *fap);
 
 #endif /* MCUBOOT_SWAP_USING_STATUS */
 

@@ -28,6 +28,7 @@
 
 #include <stdbool.h>
 #include "watchdog.h"
+#include "cy_sysclk.h"
 #include "cy_wdt.h"
 #include "cy_utils.h"
 
@@ -36,31 +37,31 @@ extern "C" {
 #endif
 
 #if defined(COMPONENT_PSOC6)
-#define _cy_wdg_lock()   Cy_WDT_Lock()
-#define _cy_wdg_unlock() Cy_WDT_Unlock()
+#define cy_wdg_lock()   Cy_WDT_Lock()
+#define cy_wdg_unlock() Cy_WDT_Unlock()
 #else
-#define _cy_wdg_lock()
-#define _cy_wdg_unlock()
+#define cy_wdg_lock()
+#define cy_wdg_unlock()
 #endif
 
 // ((2^16 * 2) + (2^16 - 1)) * .030518 ms
 /** Maximum WDT timeout in milliseconds */
-#define _cy_wdg_MAX_TIMEOUT_MS 6000
+#define cy_wdg_MAX_TIMEOUT_MS 6000U
 
 /** Maximum number of ignore bits */
-#define _cy_wdg_MAX_IGNORE_BITS 12
+#define cy_wdg_MAX_IGNORE_BITS 12U
 
 typedef struct {
     uint16_t min_period_ms; // Minimum period in milliseconds that can be represented with this many ignored bits
     uint16_t round_threshold_ms; // Timeout threshold in milliseconds from which to round up to the minimum period
-} _cy_wdg_ignore_bits_data_t;
+} cy_wdg_ignore_bits_data_t;
 
 // ILO Frequency = 32768 Hz
 // ILO Period = 1 / 32768 Hz = .030518 ms
 // WDT Reset Period (timeout_ms) = .030518 ms * (2 * 2^(16 - ignore_bits) + match)
 // ignore_bits range: 0 - 12
 // match range: 0 - (2^(16 - ignore_bits) - 1)
-static const _cy_wdg_ignore_bits_data_t _cy_wdg_ignore_data[] = {
+static const cy_wdg_ignore_bits_data_t cy_wdg_ignore_data[] = {
     {4001, 3001}, // 0 bits:  min period: 4001ms, max period: 6000ms, round up from 3001+ms
     {2001, 1500}, // 1 bit:   min period: 2001ms, max period: 3000ms, round up from 1500+ms
     {1001, 750},  // 2 bits:  min period: 1001ms, max period: 1499ms, round up from 750+ms
@@ -76,106 +77,103 @@ static const _cy_wdg_ignore_bits_data_t _cy_wdg_ignore_data[] = {
     {1,    1}     // 12 bits: min period: 1ms,    max period: 1ms
 };
 
-static bool _cy_wdg_initialized = false;
-static bool _cy_wdg_pdl_initialized = false;
-static uint16_t _cy_wdg_initial_timeout_ms = 0;
-static uint8_t _cy_wdg_initial_ignore_bits = 0;
+static bool cy_wdg_initialized = false;
+static bool cy_wdg_pdl_initialized = false;
+static uint16_t cy_wdg_initial_timeout_ms = 0;
+static uint8_t cy_wdg_initial_ignore_bits = 0;
 
-static __INLINE uint32_t _cy_wdg_timeout_to_ignore_bits(uint32_t *timeout_ms) {
-    for (uint32_t i = 0; i <= _cy_wdg_MAX_IGNORE_BITS; i++)
-    {
-        if (*timeout_ms >= _cy_wdg_ignore_data[i].round_threshold_ms)
-        {
-            if (*timeout_ms < _cy_wdg_ignore_data[i].min_period_ms)
-                *timeout_ms = _cy_wdg_ignore_data[i].min_period_ms;
+static __INLINE uint8_t cy_wdg_timeout_to_ignore_bits(uint16_t *timeout_ms)
+{
+    for (uint8_t i = 0; i <= cy_wdg_MAX_IGNORE_BITS; i++) {
+        if (*timeout_ms >= cy_wdg_ignore_data[i].round_threshold_ms) {
+            if (*timeout_ms < cy_wdg_ignore_data[i].min_period_ms) {
+                *timeout_ms = cy_wdg_ignore_data[i].min_period_ms;
+            }
             return i;
         }
     }
-    return _cy_wdg_MAX_IGNORE_BITS; // Should never reach this
+    return cy_wdg_MAX_IGNORE_BITS; // Should never reach this
 }
 
-static __INLINE uint16_t _cy_wdg_timeout_to_match(uint16_t timeout_ms, uint16_t ignore_bits)
+static __INLINE uint16_t cy_wdg_timeout_to_match(uint16_t timeout_ms, uint16_t ignore_bits)
 {
-    // match = (timeout_ms / .030518 ms) - (2 * 2^(16 - ignore_bits))
-    return (uint16_t)(timeout_ms / .030518) - (1UL << (17 - ignore_bits)) + Cy_WDT_GetCount();
+    uint32_t timeout = (uint32_t)timeout_ms * CY_SYSCLK_ILO_FREQ / 1000U;
+    return (uint16_t)(timeout - (1UL << (17U - ignore_bits)) + Cy_WDT_GetCount());
 }
 
 /* Start API implementing */
 
-cy_rslt_t cy_wdg_init(uint32_t timeout_ms)
+cy_rslt_t cy_wdg_init(uint16_t timeout_ms)
 {
-    if (timeout_ms == 0 || timeout_ms > _cy_wdg_MAX_TIMEOUT_MS)
-    {
-        return -1;
+    if (timeout_ms == 0U || timeout_ms > cy_wdg_MAX_TIMEOUT_MS) {
+        return ~CY_RSLT_SUCCESS;
     }
 
-    if (_cy_wdg_initialized)
-    {
-        return -1;
+    if (cy_wdg_initialized) {
+        return ~CY_RSLT_SUCCESS;
     }
 
-    _cy_wdg_initialized = true;
+    cy_wdg_initialized = true;
 
-    if (!_cy_wdg_pdl_initialized)
-    {
+    if (!cy_wdg_pdl_initialized) {
         Cy_WDT_Enable();
         Cy_WDT_MaskInterrupt();
-        _cy_wdg_pdl_initialized = true;
+        cy_wdg_pdl_initialized = true;
     }
 
     cy_wdg_stop();
 
-    _cy_wdg_initial_timeout_ms = timeout_ms;
-    uint8_t ignore_bits = _cy_wdg_timeout_to_ignore_bits(&timeout_ms);
-    _cy_wdg_initial_ignore_bits = ignore_bits;
+    cy_wdg_initial_timeout_ms = timeout_ms;
+    uint8_t ignore_bits = cy_wdg_timeout_to_ignore_bits(&timeout_ms);
+    cy_wdg_initial_ignore_bits = ignore_bits;
 
     Cy_WDT_SetIgnoreBits(ignore_bits);
 
-    Cy_WDT_SetMatch(_cy_wdg_timeout_to_match(timeout_ms, ignore_bits));
+    Cy_WDT_SetMatch(cy_wdg_timeout_to_match(timeout_ms, ignore_bits));
 
     cy_wdg_start();
 
     return CY_RSLT_SUCCESS;
 }
 
-void cy_wdg_free()
+void cy_wdg_free(void)
 {
     cy_wdg_stop();
 
-    _cy_wdg_initialized = false;
+    cy_wdg_initialized = false;
 }
 
-void cy_wdg_kick()
+void cy_wdg_kick(void)
 {
     /* Clear to prevent reset from WDT */
     Cy_WDT_ClearWatchdog();
 
-    _cy_wdg_unlock();
-    Cy_WDT_SetMatch(_cy_wdg_timeout_to_match(_cy_wdg_initial_timeout_ms, _cy_wdg_initial_ignore_bits));
-    _cy_wdg_lock();
+    cy_wdg_unlock();
+    Cy_WDT_SetMatch(cy_wdg_timeout_to_match(cy_wdg_initial_timeout_ms, cy_wdg_initial_ignore_bits));
+    cy_wdg_lock();
 }
 
-void cy_wdg_start()
+void cy_wdg_start(void)
 {
-    _cy_wdg_unlock();
+    cy_wdg_unlock();
     Cy_WDT_Enable();
-    _cy_wdg_lock();
+    cy_wdg_lock();
 }
 
-void cy_wdg_stop()
+void cy_wdg_stop(void)
 {
-    _cy_wdg_unlock();
+    cy_wdg_unlock();
     Cy_WDT_Disable();
 }
 
-uint32_t cy_wdg_get_timeout_ms()
+uint32_t cy_wdg_get_timeout_ms(void)
 {
-    return _cy_wdg_initial_timeout_ms;
+    return cy_wdg_initial_timeout_ms;
 }
 
 uint32_t cy_wdg_get_max_timeout_ms(void)
 {
-    return _cy_wdg_MAX_TIMEOUT_MS;
+    return cy_wdg_MAX_TIMEOUT_MS;
 }
 
 #if defined(__cplusplus)

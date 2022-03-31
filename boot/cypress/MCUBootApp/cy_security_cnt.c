@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
-#include "bootutil/security_cnt.h"
+#if defined MCUBootApp && defined MCUBOOT_HW_ROLLBACK_PROT
+
 #include <stdint.h>
+#include <string.h>
+#include "bootutil/security_cnt.h"
+#include "cy_security_cnt_platform.h"
 
 fih_int
 boot_nv_security_counter_init(void)
@@ -25,20 +29,27 @@ boot_nv_security_counter_init(void)
 }
 
 fih_int
-boot_nv_security_counter_get(uint32_t image_id, fih_int *security_cnt)
+boot_nv_security_counter_get(uint32_t image_id, fih_uint *security_cnt)
 {
     (void)image_id;
-    *security_cnt = 30;
+    fih_int fih_ret = FIH_FAILURE;
 
-    return 0;
+    if (NULL != security_cnt) { 
+        FIH_CALL(platform_security_counter_get, fih_ret, security_cnt);
+    }
+
+    FIH_RET(fih_ret);
 }
 
 int32_t
-boot_nv_security_counter_update(uint32_t image_id, uint32_t img_security_cnt)
+boot_nv_security_counter_update(uint32_t image_id, uint32_t img_security_cnt, void * custom_data)
 {
     (void)image_id;
-    (void)img_security_cnt;
+
+    int32_t rc = platform_security_counter_update(img_security_cnt, (uint8_t *)custom_data);
 
     /* Do nothing. */
-    return 0;
+    return rc;
 }
+
+#endif /* defined MCUBootApp && defined MCUBOOT_HW_ROLLBACK_PROT */

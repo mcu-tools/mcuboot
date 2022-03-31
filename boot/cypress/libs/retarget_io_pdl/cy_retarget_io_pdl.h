@@ -29,6 +29,8 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 *******************************************************************************/
+#ifndef CY_RETARGET_IO_PDL_H
+#define CY_RETARGET_IO_PDL_H
 
 #pragma once
 
@@ -60,3 +62,4 @@ void cy_retarget_io_pdl_deinit(void);
 }
 #endif
 
+#endif /* CY_RETARGET_IO_PDL_H */

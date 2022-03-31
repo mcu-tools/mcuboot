@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2016-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2021 Arm Limited
  *
  * Original license:
  *
@@ -38,9 +38,9 @@ extern "C" {
 
 struct flash_area;
 
-#define IMAGE_MAGIC                 0x96f3b83d
-#define IMAGE_MAGIC_V1              0x96f3b83c
-#define IMAGE_MAGIC_NONE            0xffffffff
+#define IMAGE_MAGIC                 0x96f3b83dU
+#define IMAGE_MAGIC_V1              0x96f3b83cU
+#define IMAGE_MAGIC_NONE            0xffffffffU
 #define IMAGE_TLV_INFO_MAGIC        0x6907
 #define IMAGE_TLV_PROT_INFO_MAGIC   0x6908
 
@@ -49,21 +49,22 @@ struct flash_area;
 /*
  * Image header flags.
  */
-#define IMAGE_F_PIC                      0x00000001 /* Not supported. */
-#define IMAGE_F_ENCRYPTED                0x00000004 /* Encrypted. */
-#define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
+#define IMAGE_F_PIC                      0x00000001U /* Not supported. */
+#define IMAGE_F_ENCRYPTED_AES128         0x00000004U /* Encrypted using AES128. */
+#define IMAGE_F_ENCRYPTED_AES256         0x00000008U /* Encrypted using AES256. */
+#define IMAGE_F_NON_BOOTABLE             0x00000010U /* Split image app. */
 /*
  * Indicates that this image should be loaded into RAM instead of run
  * directly from flash.  The address to load should be in the
  * ih_load_addr field of the header.
  */
-#define IMAGE_F_RAM_LOAD                 0x00000020
+#define IMAGE_F_RAM_LOAD                 0x00000020U
 
 /*
  * Indicates that ih_load_addr stores information on flash/ROM address the
  * image has been built for.
  */
-#define IMAGE_F_ROM_FIXED                0x00000100
+#define IMAGE_F_ROM_FIXED                0x00000100U
 
 /*
  * ECSDA224 is with NIST P-224
@@ -89,11 +90,12 @@ struct flash_area;
 #define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
 #define IMAGE_TLV_ED25519           0x24   /* ed25519 of hash output */
 #define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
-#define IMAGE_TLV_ENC_KW128         0x31   /* Key encrypted with AES-KW-128 */
+#define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW 128 or 256*/
 #define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-EC256 */
 #define IMAGE_TLV_ENC_X25519        0x33   /* Key encrypted with ECIES-X25519 */
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
 #define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
+#define IMAGE_TLV_PROV_PACK         0x51   /* Reprovisioning packet */
 #define IMAGE_TLV_BOOT_RECORD       0x60   /* measured boot record */
 					   /*
 					    * vendor reserved TLVs at xxA0-xxFF,
@@ -107,6 +109,11 @@ struct flash_area;
 					    */
 #define IMAGE_TLV_ANY               0xffff /* Used to iterate over all TLV */
 
+#ifdef CYW20829
+#define REPROV_PACK_SIZE            796
+#define HW_ROLLBACK_CNT_VALID       0x00002134
+#define REPROV_PACK_VALID           0x57AC0000
+#endif /* CYW20829 */
 struct image_version {
     uint8_t iv_major;
     uint8_t iv_minor;
@@ -148,9 +155,14 @@ struct image_tlv {
     uint16_t it_len;    /* Data length (not including TLV header). */
 };
 
-#define IS_ENCRYPTED(hdr) ((hdr)->ih_flags & IMAGE_F_ENCRYPTED)
+#define IS_ENCRYPTED(hdr) (IMAGE_F_ENCRYPTED_AES128 == ((hdr)->ih_flags & IMAGE_F_ENCRYPTED_AES128) \
+                            || IMAGE_F_ENCRYPTED_AES256 == ((hdr)->ih_flags & IMAGE_F_ENCRYPTED_AES256))
+#ifdef MCUBOOT_ENC_IMAGES_XIP
+#define MUST_DECRYPT(fap, idx, hdr) (IS_ENCRYPTED(hdr))
+#else
 #define MUST_DECRYPT(fap, idx, hdr) \
-    ((fap)->fa_id == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
+    (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
+#endif
 
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
@@ -182,7 +194,11 @@ int bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off,
 int32_t bootutil_get_img_security_cnt(struct image_header *hdr,
                                       const struct flash_area *fap,
                                       uint32_t *security_cnt);
-
+#ifdef CYW20829
+int32_t bootutil_get_img_reprov_packet(struct image_header *hdr,
+                              const struct flash_area *fap,
+                              uint8_t *reprov_packet);
+#endif /* CYW20829 */
 #ifdef __cplusplus
 }
 #endif

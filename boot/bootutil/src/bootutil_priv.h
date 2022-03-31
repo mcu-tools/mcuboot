@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2020 Linaro LTD
  * Copyright (c) 2017-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2021 Arm Limited
  *
  * Original license:
  *
@@ -28,6 +28,7 @@
 #ifndef H_BOOTUTIL_PRIV_
 #define H_BOOTUTIL_PRIV_
 
+#include <inttypes.h>
 #include <string.h>
 
 #include "sysflash/sysflash.h"
@@ -82,15 +83,17 @@ struct boot_status {
     uint8_t swap_type;    /* The type of swap in effect */
     uint32_t swap_size;   /* Total size of swapped image */
 #ifdef MCUBOOT_ENC_IMAGES
+#define BOOT_UNINITIALIZED_KEY_FILL 0xFF
     uint8_t enckey[BOOT_NUM_SLOTS][BOOT_ENC_KEY_SIZE];
-#if MCUBOOT_SWAP_SAVE_ENCTLV
+#ifdef MCUBOOT_SWAP_SAVE_ENCTLV
+#define BOOT_UNINITIALIZED_TLV_FILL 0xFF
     uint8_t enctlv[BOOT_NUM_SLOTS][BOOT_ENC_TLV_ALIGN_SIZE];
 #endif
 #endif
     int source;           /* Which slot contains swap status metadata */
 };
 
-#define BOOT_STATUS_IDX_0   1
+#define BOOT_STATUS_IDX_0   1U
 
 #define BOOT_STATUS_STATE_0 1
 #define BOOT_STATUS_STATE_1 2
@@ -143,21 +146,19 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #else
 #define ARE_SLOTS_EQUIVALENT()    1
 
-#if (BOOT_IMAGE_NUMBER != 1)
-#error "The MCUBOOT_DIRECT_XIP and MCUBOOT_RAM_LOAD mode only supports single-image boot (MCUBOOT_IMAGE_NUMBER=1)."
-#endif
-#ifdef MCUBOOT_ENC_IMAGES
-#error "Image encryption (MCUBOOT_ENC_IMAGES) is not supported when MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD mode is selected."
-#endif
+#if defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_ENC_IMAGES)
+#error "Image encryption (MCUBOOT_ENC_IMAGES) is not supported when MCUBOOT_DIRECT_XIP is selected."
+#endif /* MCUBOOT_DIRECT_XIP && MCUBOOT_ENC_IMAGES */
 #endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 
 #define BOOT_MAX_IMG_SECTORS       MCUBOOT_MAX_IMG_SECTORS
 
 #define BOOT_LOG_IMAGE_INFO(slot, hdr)                                    \
-    BOOT_LOG_INF("%-9s slot: version=%u.%u.%u+%u",                        \
+    BOOT_LOG_INF("%-9s slot: "                                            \
+                 "version=%u.%u.%" PRIu16 "+%" PRIu32,                    \
                  ((slot) == BOOT_PRIMARY_SLOT) ? "Primary" : "Secondary", \
-                 (hdr)->ih_ver.iv_major,                                  \
-                 (hdr)->ih_ver.iv_minor,                                  \
+                 (unsigned)(hdr)->ih_ver.iv_major,                        \
+                 (unsigned)(hdr)->ih_ver.iv_minor,                        \
                  (hdr)->ih_ver.iv_revision,                               \
                  (hdr)->ih_ver.iv_build_num)
 
@@ -172,7 +173,7 @@ _Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 #error "Too few sectors, please increase BOOT_MAX_IMG_SECTORS to at least 32"
 #endif
 
-#if MCUBOOT_SWAP_USING_MOVE
+#if defined(MCUBOOT_SWAP_USING_MOVE)
 #define BOOT_STATUS_MOVE_STATE_COUNT    1
 #define BOOT_STATUS_SWAP_STATE_COUNT    2
 #define BOOT_STATUS_STATE_COUNT         (BOOT_STATUS_MOVE_STATE_COUNT + BOOT_STATUS_SWAP_STATE_COUNT)
@@ -210,14 +211,14 @@ struct boot_loader_state {
         size_t num_sectors;
     } imgs[BOOT_IMAGE_NUMBER][BOOT_NUM_SLOTS];
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#if defined(MCUBOOT_SWAP_USING_SCRATCH)
     struct {
         const struct flash_area *area;
         boot_sector_t *sectors;
         size_t num_sectors;
     } scratch;
 #endif
-#if MCUBOOT_SWAP_USING_STATUS
+#if defined(MCUBOOT_SWAP_USING_STATUS)
     struct {
         const struct flash_area *area;
         boot_sector_t *sectors;
@@ -242,16 +243,11 @@ fih_int bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
 
 fih_int boot_fih_memequal(const void *s1, const void *s2, size_t n);
 
-int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
+bool boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
 int boot_status_entries(int image_index, const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
-uint32_t boot_swap_info_off(const struct flash_area *fap);
-int boot_read_swap_state(const struct flash_area *fap,
-                         struct boot_swap_state *state);
-int boot_read_swap_state_by_id(int flash_area_id,
-                               struct boot_swap_state *state);
 int boot_write_magic(const struct flash_area *fap);
 int boot_write_status(const struct boot_loader_state *state, struct boot_status *bs);
 int boot_write_copy_done(const struct flash_area *fap);
@@ -265,7 +261,7 @@ int boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
                             uint8_t flag_val);
 int boot_read_swap_size(int image_index, uint32_t *swap_size);
 int boot_slots_compatible(struct boot_loader_state *state);
-uint32_t boot_status_internal_off(const struct boot_status *bs, int elem_sz);
+uint32_t boot_status_internal_off(const struct boot_status *bs, uint32_t elem_sz);
 int boot_read_image_header(struct boot_loader_state *state, int slot,
                            struct image_header *out_hdr, struct boot_status *bs);
 int boot_copy_region(struct boot_loader_state *state,
@@ -289,11 +285,19 @@ int boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs);
 #endif
 
 /**
+ * Checks that a buffer is filled by the specified value.
+ *
+ * @returns true if all bytes in the buffer are equal to `fill`; false if any
+ * of the bytes does not match, or when buffer is NULL, or when len == 0.
+ */
+bool bootutil_buffer_is_filled(const void *buffer, uint8_t fill, size_t len);
+
+/**
  * Checks that a buffer is erased according to what the erase value for the
  * flash device provided in `flash_area` is.
  *
  * @returns true if the buffer is erased; false if any of the bytes is not
- * erased, or when buffer is NULL, or when len == 0.
+ * erased, or when area is NULL, or when buffer is NULL, or when len == 0.
  */
 bool bootutil_buffer_is_erased(const struct flash_area *area,
                                const void *buffer, size_t len);
@@ -324,11 +328,11 @@ static inline bool boot_u32_safe_add(uint32_t *dest, uint32_t a, uint32_t b)
  */
 static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
 {
-    uint32_t tmp = a + b;
+    uint32_t tmp = (uint32_t)a + b;
     if (tmp > UINT16_MAX) {
         return false;
     } else {
-        *dest = tmp;
+        *dest = (uint16_t) tmp;
         return true;
     }
 }
@@ -336,18 +340,17 @@ static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
 /*
  * Accessors for the contents of struct boot_loader_state.
  */
-
-/* These are macros so they can be used as lvalues. */
 #if (BOOT_IMAGE_NUMBER > 1)
 #define BOOT_CURR_IMG(state) ((state)->curr_img_idx)
 #else
-#define BOOT_CURR_IMG(state) 0
+#define BOOT_CURR_IMG(state) 0u
 #endif
 #ifdef MCUBOOT_ENC_IMAGES
 #define BOOT_CURR_ENC(state) ((state)->enc[BOOT_CURR_IMG(state)])
 #else
 #define BOOT_CURR_ENC(state) NULL
 #endif
+/* These are macros so they can be used as lvalues. */
 #define BOOT_IMG(state, slot) ((state)->imgs[BOOT_CURR_IMG(state)][(slot)])
 #define BOOT_IMG_AREA(state, slot) (BOOT_IMG(state, slot).area)
 #define BOOT_WRITE_SZ(state) ((state)->write_sz)
@@ -377,7 +380,7 @@ boot_img_num_sectors(const struct boot_loader_state *state, size_t slot)
 static inline uint32_t
 boot_img_slot_off(struct boot_loader_state *state, size_t slot)
 {
-    return BOOT_IMG(state, slot).area->fa_off;
+    return flash_area_get_off(BOOT_IMG(state, slot).area);
 }
 
 #ifndef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
@@ -386,7 +389,7 @@ static inline size_t
 boot_img_sector_size(const struct boot_loader_state *state,
                      size_t slot, size_t sector)
 {
-    return BOOT_IMG(state, slot).sectors[sector].fa_size;
+    return flash_area_get_size(&BOOT_IMG(state, slot).sectors[sector]);
 }
 
 /*
@@ -397,8 +400,8 @@ static inline uint32_t
 boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
                     size_t sector)
 {
-    return BOOT_IMG(state, slot).sectors[sector].fa_off -
-           BOOT_IMG(state, slot).sectors[0].fa_off;
+    return flash_area_get_off(&BOOT_IMG(state, slot).sectors[sector]) -
+           flash_area_get_off(&BOOT_IMG(state, slot).sectors[0]);
 }
 
 #else  /* defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
@@ -407,24 +410,47 @@ static inline size_t
 boot_img_sector_size(const struct boot_loader_state *state,
                      size_t slot, size_t sector)
 {
-    return BOOT_IMG(state, slot).sectors[sector].fs_size;
+    return flash_sector_get_size(&BOOT_IMG(state, slot).sectors[sector]);
 }
 
 static inline uint32_t
 boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
                     size_t sector)
 {
-    return BOOT_IMG(state, slot).sectors[sector].fs_off -
-           BOOT_IMG(state, slot).sectors[0].fs_off;
+    return flash_sector_get_off(&BOOT_IMG(state, slot).sectors[sector]) -
+           flash_sector_get_off(&BOOT_IMG(state, slot).sectors[0]);
 }
 
 #endif  /* !defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
 
 #ifdef MCUBOOT_RAM_LOAD
+#   ifdef __BOOTSIM__
+
+/* Query for the layout of a RAM buffer appropriate for holding the
+ * image.  This will be per-test-thread, and therefore must be queried
+ * through this call. */
+struct bootsim_ram_info {
+    uint32_t start;
+    uint32_t size;
+    uintptr_t base;
+};
+struct bootsim_ram_info *bootsim_get_ram_info(void);
+
+#define IMAGE_GET_FIELD(field) (bootsim_get_ram_info()->field)
+#define IMAGE_RAM_BASE IMAGE_GET_FIELD(base)
+#define IMAGE_EXECUTABLE_RAM_START IMAGE_GET_FIELD(start)
+#define IMAGE_EXECUTABLE_RAM_SIZE IMAGE_GET_FIELD(size)
+
+#   else
+#       define IMAGE_RAM_BASE ((uintptr_t)0)
+#   endif
+
 #define LOAD_IMAGE_DATA(hdr, fap, start, output, size)       \
-    (memcpy((output),(void*)((hdr)->ih_load_addr + (start)), \
+    (memcpy((output),(void*)(IMAGE_RAM_BASE + (hdr)->ih_load_addr + (start)), \
     (size)), 0)
 #else
+#define IMAGE_RAM_BASE ((uintptr_t)0)
+
 #define LOAD_IMAGE_DATA(hdr, fap, start, output, size)       \
     (flash_area_read((fap), (start), (output), (size)))
 #endif /* MCUBOOT_RAM_LOAD */

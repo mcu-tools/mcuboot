@@ -10,9 +10,9 @@
 /* Variable that could be (but isn't) changed at runtime to force the compiler
  * not to optimize the double check. Value doesn't matter.
  */
-volatile int _fih_mask = _FIH_MASK_VALUE;
-fih_int FIH_SUCCESS = {FIH_POSITIVE_VALUE, _FIH_MASK_VALUE ^ FIH_POSITIVE_VALUE};
-fih_int FIH_FAILURE = {FIH_NEGATIVE_VALUE, _FIH_MASK_VALUE ^ FIH_NEGATIVE_VALUE};
+volatile int _fih_mask = FIH_MASK_VALUE;
+fih_int FIH_SUCCESS = {FIH_POSITIVE_VALUE, FIH_MASK_VALUE ^ FIH_POSITIVE_VALUE};
+fih_int FIH_FAILURE = {FIH_NEGATIVE_VALUE, FIH_MASK_VALUE ^ FIH_NEGATIVE_VALUE};
 #else
 fih_int FIH_SUCCESS = {FIH_POSITIVE_VALUE};
 fih_int FIH_FAILURE = {FIH_NEGATIVE_VALUE};
@@ -21,7 +21,7 @@ fih_int FIH_FAILURE = {FIH_NEGATIVE_VALUE};
 #ifdef FIH_ENABLE_CFI
 
 #ifdef FIH_ENABLE_DOUBLE_VARS
-fih_int _fih_cfi_ctr = {0, 0 ^ _FIH_MASK_VALUE};
+fih_int _fih_cfi_ctr = {0, 0 ^ FIH_MASK_VALUE};
 #else
 fih_int _fih_cfi_ctr = {0};
 #endif /* FIH_ENABLE_DOUBLE_VARS */

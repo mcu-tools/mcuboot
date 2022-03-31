@@ -1,11 +1,12 @@
 /*
  *  Copyright (c) 2019-2020, Arm Limited. All rights reserved.
+ *  Copyright (c) 2021 Infineon Technologies AG
  *
  *  SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef __SECURITY_CNT_H__
-#define __SECURITY_CNT_H__
+#ifndef SECURITY_CNT_H
+#define SECURITY_CNT_H
 
 /**
  * @file security_cnt.h
@@ -47,7 +48,7 @@ fih_int boot_nv_security_counter_init(void);
  *
  * @return                  FIH_SUCCESS on success
  */
-fih_int boot_nv_security_counter_get(uint32_t image_id, fih_int *security_cnt);
+fih_int boot_nv_security_counter_get(uint32_t image_id, fih_uint *security_cnt);
 
 /**
  * Updates the stored value of a given image's security counter with a new
@@ -57,14 +58,17 @@ fih_int boot_nv_security_counter_get(uint32_t image_id, fih_int *security_cnt);
  * @param img_security_cnt  New security counter value. The new value must be
  *                          between 0 and UINT32_MAX and it must be greater than
  *                          or equal to the current security counter value.
+ * @param custom_data       Pointer a custom data, which may be required by various
+ *                          platforms
  *
  * @return                  0 on success; nonzero on failure.
  */
 int32_t boot_nv_security_counter_update(uint32_t image_id,
-                                        uint32_t img_security_cnt);
+                                        uint32_t img_security_cnt,
+                                        void * custom_data);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __SECURITY_CNT_H__ */
+#endif /* SECURITY_CNT_H */

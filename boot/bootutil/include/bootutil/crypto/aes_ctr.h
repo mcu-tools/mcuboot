@@ -7,8 +7,8 @@
  * one of these defined.
  */
 
-#ifndef __BOOTUTIL_CRYPTO_AES_CTR_H_
-#define __BOOTUTIL_CRYPTO_AES_CTR_H_
+#ifndef BOOTUTIL_CRYPTO_AES_CTR_H
+#define BOOTUTIL_CRYPTO_AES_CTR_H
 
 #include <string.h>
 
@@ -21,11 +21,15 @@
 
 #if defined(MCUBOOT_USE_MBED_TLS)
     #include <mbedtls/aes.h>
-    #define BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE (16)
-    #define BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE (16)
+    #include "bootutil/enc_key_public.h"
+    #define BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE BOOT_ENC_KEY_SIZE
+    #define BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE (16U)
 #endif /* MCUBOOT_USE_MBED_TLS */
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
+    #if defined(MCUBOOT_AES_256)
+        #error "Cannot use AES-256 for encryption with Tinycrypt library."
+    #endif
     #include <string.h>
     #include <tinycrypt/aes.h>
     #include <tinycrypt/ctr_mode.h>
@@ -62,12 +66,14 @@ static inline int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const 
 static inline int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter, const uint8_t *m, uint32_t mlen, size_t blk_off, uint8_t *c)
 {
     uint8_t stream_block[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE];
+    (void)memset(&stream_block, 0, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
     return mbedtls_aes_crypt_ctr(ctx, mlen, &blk_off, counter, stream_block, m, c);
 }
 
 static inline int bootutil_aes_ctr_decrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter, const uint8_t *c, uint32_t clen, size_t blk_off, uint8_t *m)
 {
     uint8_t stream_block[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE];
+    (void)memset(&stream_block, 0, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
     return mbedtls_aes_crypt_ctr(ctx, clen, &blk_off, counter, stream_block, c, m);
 }
 #endif /* MCUBOOT_USE_MBED_TLS */
@@ -119,4 +125,4 @@ static inline int bootutil_aes_ctr_decrypt(bootutil_aes_ctr_context *ctx, uint8_
 }
 #endif
 
-#endif /* __BOOTUTIL_CRYPTO_AES_CTR_H_ */
+#endif /* BOOTUTIL_CRYPTO_AES_CTR_H */

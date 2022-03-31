@@ -9,6 +9,8 @@
 #ifndef __DEVICETREE_H__
 #define __DEVICETREE_H__
 
+#define FLASH_AREA_ERROR             255u
+
 #define FLASH_AREA_ID(x) FLASH_AREA_ID_##x
 
 #define FLASH_AREA_ID_image_0 1
@@ -17,11 +19,16 @@
 #define FLASH_AREA_ID_image_2 4
 #define FLASH_AREA_ID_image_3 5
 
-#define FLASH_AREA_IMAGE_0     FLASH_AREA_ID(image_0)
-#define FLASH_AREA_IMAGE_1     FLASH_AREA_ID(image_1)
-#define FLASH_AREA_IMAGE_2     FLASH_AREA_ID(image_2)
-#define FLASH_AREA_IMAGE_3     FLASH_AREA_ID(image_3)
+/*
+ * PSoC6 area defines based on file:
+ * boot/cypress/MCUBootApp/sysflash/sysflash.h
+*/
+#define FLASH_AREA_IMAGE_0 1
+#define FLASH_AREA_IMAGE_1 2
+#define FLASH_AREA_IMAGE_2 4
+#define FLASH_AREA_IMAGE_3 5
+#define FLASH_AREA_IMAGE_SWAP_STATUS 7
 
-#define FLASH_AREA_IMAGE_SWAP_STATUS FLASH_AREA_ID(image_scratch)
+#define BOOT_MAX_SWAP_STATUS_SECTORS 64
 
 #endif /*__DEVICETREE_H__*/

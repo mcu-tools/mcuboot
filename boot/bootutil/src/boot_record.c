@@ -35,6 +35,7 @@
 #define SHARED_MEMORY_OVERFLOW      (1)
 #define SHARED_MEMORY_OVERWRITE     (2)
 #define SHARED_MEMORY_GEN_ERROR     (3)
+#define SHARED_MEMORY_CORRUPTED     (4)
 
 /**
  * @var shared_memory_init_done
@@ -52,6 +53,7 @@ boot_add_data_to_shared_area(uint8_t        major_type,
                              const uint8_t *data)
 {
     struct shared_data_tlv_entry tlv_entry = {0};
+    uint16_t type = SET_TLV_TYPE(major_type, minor_type);
     struct shared_boot_data *boot_data;
     uint16_t boot_data_size;
     uintptr_t tlv_end, offset;
@@ -60,6 +62,7 @@ boot_add_data_to_shared_area(uint8_t        major_type,
         return SHARED_MEMORY_GEN_ERROR;
     }
 
+    assert(((uintptr_t)MCUBOOT_SHARED_DATA_BASE & 3u) == 0u);
     boot_data = (struct shared_boot_data *)MCUBOOT_SHARED_DATA_BASE;
 
     /* Check whether first time to call this function. If does then initialise
@@ -70,6 +73,10 @@ boot_add_data_to_shared_area(uint8_t        major_type,
         boot_data->header.tlv_magic   = SHARED_DATA_TLV_INFO_MAGIC;
         boot_data->header.tlv_tot_len = SHARED_DATA_HEADER_SIZE;
         shared_memory_init_done = true;
+    }
+    else if (boot_data->header.tlv_magic != SHARED_DATA_TLV_INFO_MAGIC ||
+             boot_data->header.tlv_tot_len != SHARED_DATA_HEADER_SIZE) {
+        return SHARED_MEMORY_CORRUPTED;
     }
 
     /* Check whether TLV entry is already added.
@@ -84,8 +91,7 @@ boot_add_data_to_shared_area(uint8_t        major_type,
     while (offset < tlv_end) {
         /* Create local copy to avoid unaligned access */
         memcpy(&tlv_entry, (const void *)offset, SHARED_DATA_ENTRY_HEADER_SIZE);
-        if (GET_MAJOR(tlv_entry.tlv_type) == major_type &&
-            GET_MINOR(tlv_entry.tlv_type) == minor_type) {
+        if (tlv_entry.tlv_type == type) {
             return SHARED_MEMORY_OVERWRITE;
         }
 
@@ -93,7 +99,7 @@ boot_add_data_to_shared_area(uint8_t        major_type,
     }
 
     /* Add TLV entry */
-    tlv_entry.tlv_type = SET_TLV_TYPE(major_type, minor_type);
+    tlv_entry.tlv_type = type;
     tlv_entry.tlv_len  = size;
 
     if (!boot_u16_safe_add(&boot_data_size, boot_data->header.tlv_tot_len,
@@ -107,12 +113,12 @@ boot_add_data_to_shared_area(uint8_t        major_type,
     }
 
     offset = tlv_end;
-    memcpy((void *)offset, &tlv_entry, SHARED_DATA_ENTRY_HEADER_SIZE);
+    (void)memcpy((void *)offset, &tlv_entry, SHARED_DATA_ENTRY_HEADER_SIZE);
 
     offset += SHARED_DATA_ENTRY_HEADER_SIZE;
-    memcpy((void *)offset, data, size);
+    (void)memcpy((void *)offset, data, size);
 
-    boot_data->header.tlv_tot_len += SHARED_DATA_ENTRY_SIZE(size);
+    boot_data->header.tlv_tot_len = boot_data_size;
 
     return SHARED_MEMORY_OK;
 }
@@ -132,11 +138,15 @@ boot_save_boot_status(uint8_t sw_module,
     uint16_t type;
     uint16_t ias_minor;
     size_t record_len = 0;
-    uint8_t image_hash[32]; /* SHA256 - 32 Bytes */
+    uint8_t image_hash[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t buf[MAX_BOOT_RECORD_SZ];
     bool boot_record_found = false;
     bool hash_found = false;
     int rc;
+
+    if (NULL == hdr || NULL == fap) {
+        return -1;
+    }
 
     /* Manifest data is concatenated to the end of the image.
      * It is encoded in TLV format.
@@ -172,7 +182,7 @@ boot_save_boot_status(uint8_t sw_module,
 
         } else if (type == IMAGE_TLV_SHA256) {
             /* Get the image's hash value from the manifest section. */
-            if (len > sizeof(image_hash)) {
+            if (len != BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE) {
                 return -1;
             }
             rc = flash_area_read(fap, offset, image_hash, len);
@@ -204,11 +214,15 @@ boot_save_boot_status(uint8_t sw_module,
      * part of the boot record TLV). For this reason this field has been
      * filled with zeros during the image signing process.
      */
+    if (record_len < sizeof(image_hash)) {
+        return -1;
+    }
+
     offset = record_len - sizeof(image_hash);
     /* The size of 'buf' has already been checked when
      * the BOOT_RECORD TLV was read, it won't overflow.
      */
-    memcpy(buf + offset, image_hash, sizeof(image_hash));
+    (void)memcpy(buf + offset, image_hash, sizeof(image_hash));
 
     /* Add the CBOR encoded boot record to the shared data area. */
     ias_minor = SET_IAS_MINOR(sw_module, SW_BOOT_RECORD);

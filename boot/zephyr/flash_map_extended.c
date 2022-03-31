@@ -15,7 +15,7 @@
 
 #include "bootutil/bootutil_log.h"
 
-MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #if (!defined(CONFIG_XTENSA) && defined(DT_CHOSEN_ZEPHYR_FLASH_CONTROLLER_LABEL))
 #define FLASH_DEVICE_ID SOC_FLASH_0_ID
@@ -59,9 +59,9 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot)
     case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
 #if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
     case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
-#if !defined(CONFIG_BOOT_SWAP_USING_MOVE)
-    case 2: return FLASH_AREA_IMAGE_SCRATCH;
 #endif
+#if defined(CONFIG_BOOT_SWAP_USING_SCRATCH)
+    case 2: return FLASH_AREA_IMAGE_SCRATCH;
 #endif
     }
 
@@ -93,6 +93,30 @@ int flash_area_id_to_image_slot(int area_id)
     return flash_area_id_to_multi_image_slot(0, area_id);
 }
 
+#if defined(CONFIG_MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
+int flash_area_id_from_direct_image(int image_id)
+{
+    switch (image_id) {
+    case 0:
+    case 1:
+        return FLASH_AREA_ID(image_0);
+#if DT_HAS_FIXED_PARTITION_LABEL(image_1)
+    case 2:
+        return FLASH_AREA_ID(image_1);
+#endif
+#if DT_HAS_FIXED_PARTITION_LABEL(image_2)
+    case 3:
+        return FLASH_AREA_ID(image_2);
+#endif
+#if DT_HAS_FIXED_PARTITION_LABEL(image_3)
+    case 4:
+        return FLASH_AREA_ID(image_3);
+#endif
+    }
+    return -EINVAL;
+}
+#endif
+
 int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
 {
     int rc;
@@ -107,6 +131,12 @@ int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
     sector->fs_size = page.size;
 
     return rc;
+}
+
+uint8_t flash_area_get_device_id(const struct flash_area *fa)
+{
+	(void)fa;
+	return FLASH_DEVICE_ID;
 }
 
 #define ERASED_VAL 0xff

@@ -1,3 +1,5 @@
+#ifndef WATCHDOG_H
+#define WATCHDOG_H
 /***************************************************************************//**
 * \file cy_wdg.h
 *
@@ -43,7 +45,7 @@ extern "C" {
 *
 * Returns CY_RSLT_SUCCESS if the operation was successfull.
 */
-cy_rslt_t cy_wdg_init(uint32_t timeout_ms);
+cy_rslt_t cy_wdg_init(uint16_t timeout_ms);
 
 /** Free the WDT
 *
@@ -52,32 +54,32 @@ cy_rslt_t cy_wdg_init(uint32_t timeout_ms);
 * cy_wdg_init().
 */
 
-void cy_wdg_free();
+void cy_wdg_free(void);
 
 /** Resets the WDT
 *
 * This function should be called periodically to prevent the WDT from timing out and resetting the device.
 */
-void cy_wdg_kick();
+void cy_wdg_kick(void);
 
 /** Start (enable) the WDT
 *
 * @return The status of the start request
 */
-void cy_wdg_start();
+void cy_wdg_start(void);
 
 /** Stop (disable) the WDT
 *
 * @return The status of the stop request
 */
-void cy_wdg_stop();
+void cy_wdg_stop(void);
 
 /** Get the WDT timeout
 *
 * Gets the time in milliseconds before the WDT times out.
 * @return The time in milliseconds before the WDT times out
 */
-uint32_t cy_wdg_get_timeout_ms();
+uint32_t cy_wdg_get_timeout_ms(void);
 
 /** Gets the maximum WDT timeout in milliseconds
 *
@@ -88,3 +90,5 @@ uint32_t cy_wdg_get_max_timeout_ms(void);
 #if defined(__cplusplus)
 }
 #endif
+
+#endif /* WATCHDOG_H */

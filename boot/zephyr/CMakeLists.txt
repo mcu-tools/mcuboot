@@ -94,6 +94,12 @@ zephyr_library_sources(
   keys.c
   )
 
+if(DEFINED CONFIG_ENABLE_MGMT_PERUSER)
+  zephyr_library_sources(
+    boot_serial_extensions.c
+    )
+endif()
+
 if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)
   zephyr_library_sources(
     flash_map_legacy.c
@@ -239,6 +245,8 @@ if(CONFIG_MCUBOOT_SERIAL)
   zephyr_sources(${BOOT_DIR}/boot_serial/src/boot_serial.c)
   zephyr_sources(${BOOT_DIR}/boot_serial/src/serial_recovery_cbor.c)
   zephyr_sources(${BOOT_DIR}/boot_serial/src/cbor_decode.c)
+  zephyr_sources(${BOOT_DIR}/boot_serial/src/cbor_encode.c)
+  zephyr_sources(${BOOT_DIR}/boot_serial/src/cbor_common.c)
 
   zephyr_include_directories(${BOOT_DIR}/bootutil/include)
   zephyr_include_directories(${BOOT_DIR}/boot_serial/include)
@@ -250,20 +258,20 @@ if(CONFIG_MCUBOOT_SERIAL)
     )
 endif()
 
-# CONF_FILE points to the KConfig configuration files of the bootloader.
-foreach (filepath ${CONF_FILE})
-  file(READ ${filepath} temp_text)
-  string(FIND "${temp_text}" ${CONFIG_BOOT_SIGNATURE_KEY_FILE} match)
-  if (${match} GREATER_EQUAL 0)
-    if (NOT DEFINED CONF_DIR)
-      get_filename_component(CONF_DIR ${filepath} DIRECTORY)
-    else()
-      message(FATAL_ERROR "Signature key file defined in multiple conf files")
-    endif()
-  endif()
-endforeach()
-
 if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
+  # CONF_FILE points to the KConfig configuration files of the bootloader.
+  foreach (filepath ${CONF_FILE})
+    file(READ ${filepath} temp_text)
+    string(FIND "${temp_text}" ${CONFIG_BOOT_SIGNATURE_KEY_FILE} match)
+    if (${match} GREATER_EQUAL 0)
+      if (NOT DEFINED CONF_DIR)
+        get_filename_component(CONF_DIR ${filepath} DIRECTORY)
+      else()
+        message(FATAL_ERROR "Signature key file defined in multiple conf files")
+      endif()
+    endif()
+  endforeach()
+
   if(IS_ABSOLUTE ${CONFIG_BOOT_SIGNATURE_KEY_FILE})
     set(KEY_FILE ${CONFIG_BOOT_SIGNATURE_KEY_FILE})
   elseif((DEFINED CONF_DIR) AND

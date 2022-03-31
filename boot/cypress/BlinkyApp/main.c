@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2020 Cypress Semiconductor Corporation
+ * Copyright (c) 2021 Infineon Technologies AG
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -21,21 +22,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
- /*******************************************************************************/
 
+#ifdef CYW20829
+#include <inttypes.h>
+#include "cybsp.h"
+#include "cycfg_pins.h"
+#include "cyhal_wdt.h"
+#else
 #include "system_psoc6.h"
+#endif /* CYW20829 */
+
 #include "cy_pdl.h"
-#include "cyhal.h"
 #include "cy_retarget_io.h"
+#include "cyhal.h"
 #include "watchdog.h"
 
-/* Define pins for UART debug output */
+#include "flash_qspi.h"
 
+#if !(SWAP_DISABLED) && defined(UPGRADE_IMAGE)
+#include "set_img_ok.h"
+#endif
+
+/* Define pins for UART debug output */
+#ifdef CYW20829
+#define CY_DEBUG_UART_TX (CYBSP_DEBUG_UART_TX)
+#define CY_DEBUG_UART_RX (CYBSP_DEBUG_UART_RX)
+#else
 #define CY_DEBUG_UART_TX (P5_1)
 #define CY_DEBUG_UART_RX (P5_0)
+#endif /* CYW20829 */
 
 #if defined(PSOC_062_2M)
-#warning "Check if User LED is correct for your target board."
 #define LED_PORT GPIO_PRT13
 #define LED_PIN 7U
 #elif defined(PSOC_062_1M)
@@ -44,11 +61,10 @@
 #elif defined(PSOC_062_512K)
 #define LED_PORT GPIO_PRT11
 #define LED_PIN 1U
+#elif defined(CYW20829)
+#define LED_PORT GPIO_PRT0
+#define LED_PIN 0U
 #endif
-
-#define LED_NUM 5U
-#define LED_DRIVEMODE CY_GPIO_DM_STRONG_IN_OFF
-#define LED_INIT_DRIVESTATE 1
 
 const cy_stc_gpio_pin_config_t LED_config =
 {
@@ -67,51 +83,29 @@ const cy_stc_gpio_pin_config_t LED_config =
     .vohSel = 0UL,
 };
 
-#define WATCHDOG_UPD_MESSAGE  "[BlinkyApp] Update watchdog timer started in MCUBootApp to mark successful start of user app\r\n"
-#define WATCHDOG_FREE_MESSAGE "[BlinkyApp] Turn off watchdog timer\r\n"
+uint32_t smif_id = 1; /* Assume SlaveSelect_0 is used for External Memory */
 
-#ifdef BOOT_IMG
+#ifdef BOOT_IMAGE
     #define BLINK_PERIOD          (1000u)
     #define GREETING_MESSAGE_VER  "[BlinkyApp] BlinkyApp v1.0 [CM4]\r\n"
     #define GREETING_MESSAGE_INFO "[BlinkyApp] Red led blinks with 1 sec period\r\n"
-#elif defined(UPGRADE_IMG)
+#elif defined(UPGRADE_IMAGE)
     #define BLINK_PERIOD          (250u)
     #define GREETING_MESSAGE_VER  "[BlinkyApp] BlinkyApp v2.0 [+]\r\n"
     #define GREETING_MESSAGE_INFO "[BlinkyApp] Red led blinks with 0.25 sec period\r\n"
 #else
-    #error "[BlinkyApp] Please specify type of image: -DBOOT_IMG or -DUPGRADE_IMG\r\n"
+    #error "[BlinkyApp] Please specify type of image: -DBOOT_IMAGE or -DUPGRADE_IMAGE\r\n"
 #endif
 
-void check_result(int res)
+#define WATCHDOG_FREE_MESSAGE "[BlinkyApp] Turn off watchdog timer\r\n"
+
+static void check_result(int res)
 {
     if (res != CY_RSLT_SUCCESS) {
         CY_ASSERT(0);
+        /* Loop forever... */
+        for (;;) {}
     }
-}
-
-/*
-* Writes 1 byte `src` into flash memory at `address`
-* It does a sequence of RD/Modify/WR of data in a Flash Row.
- */
-int flash_write_byte(uint32_t address, uint8_t src)
-{
-    cy_en_flashdrv_status_t rc = CY_FLASH_DRV_SUCCESS;
-    uint32_t row_addr = 0;
-    uint8_t row_buff[512];
-
-    /* accepting arbitrary address */
-    row_addr = (address/CY_FLASH_SIZEOF_ROW)*CY_FLASH_SIZEOF_ROW;
-
-    /* preserving Row */
-    memcpy(row_buff, (void *)row_addr, sizeof(row_buff));
-
-    /* Modifying the target byte */
-    row_buff[address%CY_FLASH_SIZEOF_ROW] = src;
-
-    /* Programming updated row back */
-    rc = Cy_Flash_WriteRow(row_addr, (const uint32_t *)row_buff);
-
-    return (int) rc;
 }
 
 void test_app_init_hardware(void)
@@ -121,6 +115,7 @@ void test_app_init_hardware(void)
 
     /* Disabling watchdog so it will not interrupt normal flow later */
     Cy_GPIO_Pin_Init(LED_PORT, LED_PIN, &LED_config);
+
     /* Initialize retarget-io to use the debug UART port */
     check_result(cy_retarget_io_init(CY_DEBUG_UART_TX, CY_DEBUG_UART_RX,
                                      CY_RETARGET_IO_BAUDRATE));
@@ -133,50 +128,63 @@ void test_app_init_hardware(void)
     printf("[BlinkyApp] UART initialized \r\n");
     printf("[BlinkyApp] Retarget I/O set to 115200 baudrate \r\n");
 
+#ifdef CYW20829
+    cy_en_smif_status_t rc = CY_SMIF_CMD_NOT_FOUND;
+
+    rc = qspi_init_sfdp(smif_id);
+    if (CY_SMIF_SUCCESS == rc) {
+        printf("[BlinkyApp] External Memory initialized w/ SFDP. \r\n");
+    }
+    else {
+        printf("[BlinkyApp] External Memory initialization w/ SFDP FAILED: 0x%" PRIx32 " \r\n", (uint32_t)rc);
+    }
+#endif /* CYW20829 */
 }
 
 int main(void)
 {
     uint32_t blinky_period = BLINK_PERIOD;
 
+#if defined CYW20829
+    cybsp_init();
+#endif /* CYW20829 */
+
     test_app_init_hardware();
 
     printf(GREETING_MESSAGE_INFO);
 
-    /* Update watchdog timer to mark successful start up of application */
-    printf(WATCHDOG_UPD_MESSAGE);
-    cy_wdg_kick();
+    /* Disable watchdog timer to mark successful start up of application.
+     * For PSOC6 WDT is disabled in SystemInit() function.
+     */
     printf(WATCHDOG_FREE_MESSAGE);
+#ifdef CYW20829
+    cyhal_wdt_t *cyw20829_wdt = NULL;
+    cyhal_wdt_free(cyw20829_wdt);
+#else
     cy_wdg_free();
+#endif /* CYW20829 */
 
-#if defined(SWAP_ENABLED) && defined(UPGRADE_IMG)
-
-    #define USER_SWAP_IMAGE_OK_OFFS (24)
-    #define USER_SWAP_IMAGE_OK      (1)
-    uint32_t img_ok_addr;
-    int rc;
+#if !(SWAP_DISABLED) && defined(UPGRADE_IMAGE)
+    int rc = -1;
 
     printf("[BlinkyApp] Try to set img_ok to confirm upgrade image\r\n");
 
     /* Write Image OK flag to the slot trailer, so MCUBoot-loader
-     * will not revert new image */
-    img_ok_addr = USER_APP_START + USER_APP_SIZE - USER_SWAP_IMAGE_OK_OFFS;
-    if (*((uint8_t *)img_ok_addr) != USER_SWAP_IMAGE_OK)
-    {
-        rc = flash_write_byte(img_ok_addr, USER_SWAP_IMAGE_OK);
-        if (0 == rc)
-        {
-            printf("[BlinkyApp] SWAP Status : Image OK was set at 0x%08lx.\r\n", img_ok_addr);
-        }
-        else
-        {
-            printf("[BlinkyApp] SWAP Status : Failed to set Image OK.\r\n");
-        }
-    } else
-    {
+     * will not revert new image
+     */
+    rc = set_img_ok(IMG_OK_ADDR, USER_SWAP_IMAGE_OK);
+
+    if (IMG_OK_ALREADY_SET == rc) {
         printf("[BlinkyApp] Img_ok is already set in trailer\r\n");
     }
-#endif
+    else if (IMG_OK_SET_SUCCESS == rc) {
+        printf("[BlinkyApp] SWAP Status : Image OK was set at 0x%08x.\r\n", IMG_OK_ADDR);
+    }
+    else {
+        printf("[BlinkyApp] SWAP Status : Failed to set Image OK.\r\n");
+    }
+
+#endif /* !(SWAP_DISABLED) && defined(UPGRADE_IMAGE) */
 
     for (;;)
     {
@@ -186,5 +194,6 @@ int main(void)
         /* Invert the USER LED state */
         Cy_GPIO_Inv(LED_PORT, LED_PIN);
     }
+
     return 0;
 }

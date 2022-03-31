@@ -42,6 +42,7 @@ extern "C" {
  * and match the target offset specified in download script.
  */
 #include <inttypes.h>
+#include <stddef.h>
 
 /**
  * @brief Structure describing an area on a flash device.
@@ -123,7 +124,7 @@ int flash_area_erase(const struct flash_area *, uint32_t off, uint32_t len);
 /*
  * Alignment restriction for flash writes.
  */
-uint16_t flash_area_align(const struct flash_area *);
+size_t flash_area_align(const struct flash_area *);
 
 /*
  * What is value is read from erased flash bytes.

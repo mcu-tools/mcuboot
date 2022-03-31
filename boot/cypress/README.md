@@ -1,60 +1,56 @@
-### Port Of Mcuboot Library For Evaluation With Cypress PSoC 6 Chips
+## Port of MCUboot library for evaluation with Cypress PSoC™ 6 and CYW20829 chips
 
 ### Disclaimer
 
-Given solution is included in `mcuboot` repository with purpose to demonstrate basic consepts and features of MCUBoot library on Cypress PSoC 6 device. Applications are created per mcuboot library maintainers requirements. Implemetation differs from conventional and recomended by Cypress Semiconductors development flow for PSoC 6 devices. These applications are not recomended as a starting point for development and should not be considered as supported examples for PSoC 6 devices.
+This solution is included in the `MCUboot` repository in order to demonstrate the basic concepts and features of the MCUboot library on PSoC™ 6 and CYW20829 devices. Applications are created per MCUboot library maintainers requirements. The implementation differs from conventional and recommended by Cypress Semiconductors development flow for PSoC™ 6 and CYW20829 devices. These applications are not recommended as a starting point for development because they are not supported examples.
 
-Examples provided to use with **ModusToolbox® Software Environment** are a recommended reference point to start development of MCUBoot based bootloaders for PSoC 6 devices.
+Examples provided to use with **ModusToolbox™ Software Environment** are a recommended reference point to start development of MCUboot based bootloaders for PSoC™ 6 and CYW20829 devices.
 
-Refer to **Cypress Semiconductors** [github](https://github.com/cypresssemiconductorco) page to find examples.
+For examples, refer to the **Infineon Technologies AG** [github](https://github.com/Infineon/Code-Examples-for-ModusToolbox-Software) page.
 
-1. MCUboot-Based Basic Bootloader [mtb-example-psoc6-mcuboot-basic](https://github.com/cypresssemiconductorco/mtb-example-psoc6-mcuboot-basic)
-2. MCUboot-Based Bootloader with Rollback to Factory App in External Flash [mtb-example-anycloud-mcuboot-rollback](https://github.com/cypresssemiconductorco/mtb-example-anycloud-mcuboot-rollback)
+1. MCUboot-based basic bootloader [mtb-example-psoc6-mcuboot-basic](https://github.com/Infineon/mtb-example-psoc6-mcuboot-basic)
+2. MCUboot-based bootloader with rollback to factory app in external flash [mtb-example-anycloud-mcuboot-rollback](https://github.com/Infineon/mtb-example-anycloud-mcuboot-rollback)
 
-### Solution Description
+### Solution description
 
-There are two applications implemented:
-* MCUBootApp - PSoC 6 MCUBoot-based bootloading application;
-* BlinkyApp - simple PSoC 6 blinking LED application which is a target of BOOT/UPGRADE;
+The two applications implemented:
+* MCUBootApp - PSoC™ 6 and CYW20829 MCUboot-based bootloading application
+* BlinkyApp - a simple PSoC™ 6 and CYW20829 blinking LED application, which is a target of BOOT/UPGRADE
 
 #### MCUBootApp
 
-* There are two types of upgrade operation supported:
-  * **Overwrite only** - secondady image is only copied to primary slot after validation
-  * **Swap** - seconrady and primary slots images are swapped in process of upgrade. Upgrade operation can be reverted in case of bad secondary image. 
+* The two types of upgrade operation supported:
+  * **Overwrite only** - The secondary image is only copied to the primary slot after validation.
+  * **Swap** - The secondary and primary slots images are swapped during the upgrade process. Upgrade operation can be reverted if the secondary image is bad. "Bad image" does not set the imageOK flag in the image trailer. If imageOK is not set, MCUBootApp does not turn off WatchDog Timer and WDT resets the device to start the REVERT procedure.
 
-* There are two types of operation modes supported:
-  * single image
-  * multi image
+* The two types of operation modes supported:
+  * Single image
+  * Multi image
 
-* Secondary (upgrade) slot(s) can be placed in external memory. For more details about External Memory usage refer to separate guiding document `MCUBootApp/ExternalMemory.md`.
+* Some or all partitions (slots) can be placed in external memory. For more details about external memory usage, refer to [ExternalMemory.md](MCUBootApp/ExternalMemory.md).
 
-* MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification
-* Cryptographic functions can be based on completely software implementation or be hardware accelerated. mbedTLS library is used in both cases.
+* MCUBootApp checks the image integrity with SHA256, image authenticity with EC256 digital signature verification.
+* Cryptographic functions can be based on completely software implementation or be hardware accelerated on some platforms. The mbedTLS library is used in both cases.
 
-Detailed description of **MCUBootApp** is provided in `MCUBootApp/MCUBootApp.md`
-
-MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses either completely software implementation of cryptographic functions or accelerated by hardware - both based on mbedTLS Library.
+For more details on **MCUBootApp**, refer to [MCUBootApp.md](MCUBootApp/MCUBootApp.md).
 
 #### BlinkyApp
-* Can be built to use as primary or secondary image for both internal and external flash memory
-* Primary and secondary images differ in text printed to serial terminal and led blinking frequency.
-* Watchdog timer functionality is supported to confirm successful start/upgrade of application
-* User application side of mcuboot swap operation is demonstrated for secondary image build.
+* Can be built to use either primary or secondary image for both internal and external flash memory.
+* Primary and secondary images differ in text printed to the serial terminal and LED-blinking frequency.
+* The watchdog timer functionality is supported to confirm successful start/upgrade of the application.
+* The user-application side of MCUboot swap operation is demonstrated by two kinds of user images, compiled for the primary and secondary slot.
 
-Detailed description of **BlinkyApp** is provided in `BlinkyApp/BlinkyApp.md`
+For more details on **BlinkyApp**, refer to [BlinkyApp.md](BlinkyApp/BlinkyApp.md).
 
-### Downloading Solution's Assets
+### Downloading solution's assets
 
-There is a set assets required:
+The set of required libraries represented as submodules:
 
-* MCUBooot Library (root repository)
-* PSoC 6 Peripheral Drivers Library (PDL)
-* mbedTLS Cryptographic Library
+* MCUBooot library (root repository)
+* Peripheral Drivers library (PDL)
+* mbedTLS Cryptographic library
 
-Those are represented as submodules.
-
-To retrieve source code with subsequent submodules pull:
+To retrieve source code with subsequent submodules, pull:
 
     git clone --recursive https://github.com/mcu-tools/mcuboot.git
 
@@ -63,47 +59,34 @@ Submodules can also be updated and initialized separately:
     cd mcuboot
     git submodule update --init --recursive
 
-### Building Solution
+### Building solution
 
-Root directory for build is `boot/cypress`.
+The root directory for build is `boot/cypress`.
 
-Root folder contains make files infrastructure for building both MCUBootApp bootloading application and BlinkyApp user application.
+The root folder contains a make-files infrastructure for building both MCUBootApp bootloading-application and BlinkyApp user-application.
 
-Instructions on how to build and upload MCUBootApp bootloading application and sample user application are located in `MCUBootApp.md` and `BlinkyApp.md` files in corresponding folders.
+For instructions on how to build and upload MCUBootApp bootloading-application and sample user-application, refer to the [MCUBootApp.md](MCUBootApp/MCUBootApp.md) and [BlinkyApp.md](BlinkyApp/BlinkyApp.md) files in corresponding folders.
 
 **Toolchain**
 
-**GCC_ARM** is the only supported (built and verified on GCC 7.2.1).
+**GCC_ARM** is only supported (built and verified on GCC 9.3.1).
 
-It is inluded with [ModusToolbox® Software Environment](https://www.cypress.com/products/modustoolbox-software-environment) and can be found in folder `./ModusToolbox/tools_2.1/gcc-7.2.1`.
+It is included with [ModusToolbox™ Software Environment](https://www.cypress.com/products/modustoolbox) and can be found in folder `./ModusToolbox/tools_2.4/gcc`.
 
-Default installation folder is expected by makefile build system.
+The default installation folder is expected by the makefile build system.
 
-In case of using another installation folder, version of **ModusToolbox IDE** or another GCC Compiler - path to a toolchain should be specified to a build system using **TOOLCHAIN_PATH** flag.
+To use another installation folder, version of **ModusToolbox™ IDE** or another GCC Compiler, specify the path to a toolchain using the **TOOLCHAIN_PATH** parameter.
 
-**Example:**
+### Build environment troubleshooting
 
-    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=BOOT TOOLCHAIN_PATH=/home/fw-security/ModusToolbox/tools_2.0/gcc-7.2.1
-
-Supported platforms for `MCUBoot`, `BlinkyApp`:
-
-* PSOC_062_2M
-* PSOC_062_1M
-* PSOC_062_512K
-
-### Build Environment Troubleshooting
-
-Following CLI / IDE are supported for project build:
+The following CLI/IDE are supported for project build:
 
 * Cygwin on Windows systems
 * unix style shells on *nix systems
-* Eclipse / ModusToolbox ("makefile project from existing source")
+* Eclipse / ModusToolbox™ ("makefile project from existing source")
 
-*Make* - make sure it is added to system's `PATH` variable and correct path is first in the list;
+*Make* - Ensure that it is added to the system's `PATH` variable and the correct path is the first on the list.
 
-*Python/Python3* - make sure you have correct path referenced in `PATH`;
+*Python/Python3* - Ensure that you have the correct path referenced in `PATH`.
 
-*Msys2* - to use systems PATH navigate to msys2 folder, open `msys2_shell.cmd`, uncomment set `MSYS2_PATH_TYPE=inherit`, restart MSYS2 shell.
-
-This will inherit system's PATH so should find `python3.7` installed in regular way as well as imgtool and its dependencies.
-
+*Msys2* - To use the system's path, navigate to the msys2 folder, open `msys2_shell.cmd`, uncomment set `MSYS2_PATH_TYPE=inherit`, restart the MSYS2 shell. This will inherit the system's path and find `python` installed in a regular way as well as `imgtool` and its dependencies.

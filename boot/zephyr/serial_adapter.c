@@ -26,7 +26,7 @@
 #error Zephyr UART console must been disabled if serial_adapter module is used.
 #endif
 
-MCUBOOT_LOG_MODULE_REGISTER(serial_adapter);
+BOOT_LOG_MODULE_REGISTER(serial_adapter);
 
 /** @brief Console input representation
  *
@@ -192,27 +192,28 @@ static int
 boot_uart_fifo_init(void)
 {
 #ifdef CONFIG_BOOT_SERIAL_UART
-	uart_dev = device_get_binding(CONFIG_RECOVERY_UART_DEV_NAME);
+	uart_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
 #elif CONFIG_BOOT_SERIAL_CDC_ACM
-	uart_dev = device_get_binding(CONFIG_USB_CDC_ACM_DEVICE_NAME "_0");
-	if (uart_dev) {
-		int rc;
-		rc = usb_enable(NULL);
-		if (rc) {
-			return (-1);
-		}
-	}
+	uart_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
 #endif
-	uint8_t c;
 
-	if (!uart_dev) {
+	if (!device_is_ready(uart_dev)) {
 		return (-1);
 	}
+
+#if CONFIG_BOOT_SERIAL_CDC_ACM
+	int rc = usb_enable(NULL);
+	if (rc) {
+		return (-1);
+	}
+#endif
 
 	uart_irq_callback_set(uart_dev, boot_uart_fifo_callback);
 
 	/* Drain the fifo */
 	if (uart_irq_rx_ready(uart_dev)) {
+		uint8_t c;
+
 		while (uart_fifo_read(uart_dev, &c, 1)) {
 			;
 		}
@@ -221,12 +222,6 @@ boot_uart_fifo_init(void)
 	cur = 0;
 
 	uart_irq_rx_enable(uart_dev);
-
-	/* Enable all interrupts unconditionally. Note that this is due
-	 * to Zephyr issue #8393. This should be removed once the
-	 * issue is fixed in upstream Zephyr.
-	 */
-	irq_unlock(0);
 
 	return 0;
 }

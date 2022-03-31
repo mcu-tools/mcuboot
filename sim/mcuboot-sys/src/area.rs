@@ -189,8 +189,8 @@ pub enum FlashId {
     ImageScratch = 3,
     Image2 = 4,
     Image3 = 5,
-    //ImageSwapStatus = 7,
-    //ImageSwapStatus = 3,
+//    Not_used = 6,
+    ImageSwapStatus = 7,
 }
 
 impl Default for FlashId {

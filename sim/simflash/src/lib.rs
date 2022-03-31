@@ -66,8 +66,6 @@ pub trait Flash {
 
     fn align(&self) -> usize;
     fn erased_val(&self) -> u8;
-
-    fn set_erase_by_sector(&mut self, enable: bool);
 }
 
 fn ebounds<T: AsRef<str>>(message: T) -> FlashError {
@@ -96,7 +94,6 @@ pub struct SimFlash {
     align: usize,
     verify_writes: bool,
     erased_val: u8,
-    erase_by_sector: bool,
 }
 
 impl SimFlash {
@@ -133,11 +130,11 @@ impl SimFlash {
 
     // Scan the sector map, and return the base and offset within a sector for this given byte.
     // Returns None if the value is outside of the device.
-    fn get_sector(&self, offset: usize) -> Option<(usize, usize, usize)> {
+    fn get_sector(&self, offset: usize) -> Option<(usize, usize)> {
         let mut offset = offset;
         for (sector, &size) in self.sectors.iter().enumerate() {
             if offset < size {
-                return Some((sector, offset, size));
+                return Some((sector, offset));
             }
             offset -= size;
         }
@@ -153,21 +150,8 @@ impl Flash for SimFlash {
     /// strict, and make sure that the passed arguments are exactly at a sector boundary, otherwise
     /// return an error.
     fn erase(&mut self, offset: usize, len: usize) -> Result<()> {
-        let (_start, mut slen, ssize) = self.get_sector(offset).ok_or_else(|| ebounds("start"))?;
-        let (end, mut elen, _) = self.get_sector(offset + len - 1).ok_or_else(|| ebounds("end"))?;
-
-        let mut offset = offset;
-        let mut len = len;
-
-        if self.erase_by_sector {
-            // info!("erase_by_sector: {:#X}/{:#X} -> {:#X}/{:#X}", offset, len, offset - slen, ssize);
-
-            offset = offset - slen;
-            len = ssize;
-
-            slen = 0;
-            elen = self.sectors[end] - 1;
-        }
+        let (_start, slen) = self.get_sector(offset).ok_or_else(|| ebounds("start"))?;
+        let (end, elen) = self.get_sector(offset + len - 1).ok_or_else(|| ebounds("end"))?;
 
         if slen != 0 {
             bail!(ebounds("offset not at start of sector"));
@@ -283,10 +267,6 @@ impl Flash for SimFlash {
     fn erased_val(&self) -> u8 {
         self.erased_val
     }
-
-    fn set_erase_by_sector(&mut self, enable: bool) {
-        self.erase_by_sector = enable;
-    }
 }
 
 /// It is possible to iterate over the sectors in the device, each element returning this.
@@ -339,6 +319,10 @@ mod test {
             let mut f2 = SimFlash::new(vec![16 * 1024, 16 * 1024, 16 * 1024, 64 * 1024,
                                     128 * 1024, 128 * 1024, 128 * 1024], 1, erased_val);
             test_device(&mut f2, erased_val);
+
+            // PSoC style, uniform sectors.
+            let mut f3 = SimFlash::new(vec![512usize; 1024], 512, erased_val);
+            test_device(&mut f3, erased_val);
         }
     }
 

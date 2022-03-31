@@ -42,6 +42,10 @@
 extern "C" {
 #endif
 
+#ifdef CY_BOOT_USE_EXTERNAL_FLASH
+
+extern const cy_stc_smif_block_config_t smifBlockConfig;
+
 typedef struct
 {
     const cy_stc_smif_block_config_t * smifCfg; /* Pointer to SMIF top-level configuration */
@@ -64,7 +68,11 @@ typedef struct
 CY_SECTION(".cy_sflash_user_data") __attribute__( (used) )
 /* const stc_smif_ipblocks_arr_t smifIpBlocksArr = {&smifBlockConfig_sfdp, 0x00000000}; */
 /* if used zero-pointer to config, DAP link will use hardcoded config for CY8CPROTO-062-4343W */
-const stc_smif_ipblocks_arr_t smifIpBlocksArr = {0x00000000, 0x00000000};
+static const stc_smif_ipblocks_arr_t smifIpBlocksArr =
+{
+    .smifCfg = &smifBlockConfig,
+    .null_t = 0x00000000
+};
 
 /**
  * This data is used to populate the table of contents part 2. When present, it is used by the boot
@@ -75,7 +83,7 @@ const stc_smif_ipblocks_arr_t smifIpBlocksArr = {0x00000000, 0x00000000};
  * or by running 'cymcuelftool -S' to recompute the checksum.
  */
 CY_SECTION(".cy_toc_part2") __attribute__( (used) )
-const uint32_t cyToc[128] =
+static const uint32_t cyToc[128] =
 {
     0x200-4,                /* Offset=0x0000: Object Size, bytes */
     0x01211220,             /* Offset=0x0004: Magic Number (TOC Part 2, ID) */
@@ -92,6 +100,8 @@ const uint32_t cyToc[128] =
 };
 
 /** \} group_serial_flash_variables */
+
+#endif /* CY_BOOT_USE_EXTERNAL_FLASH */
 
 #if defined(__cplusplus)
 }

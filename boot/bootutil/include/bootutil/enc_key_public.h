@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2018-2019 JUUL Labs
- * Copyright (c) 2019 Arm Limited
+ * Copyright (c) 2019-2021 Arm Limited
  * Copyright (c) 2021 Nordic Semiconductor ASA
  *
  * Original license:
@@ -32,12 +32,16 @@
 extern "C" {
 #endif
 
-#define BOOT_ENC_KEY_SIZE       16
+#ifdef MCUBOOT_AES_256
+#define BOOT_ENC_KEY_SIZE       32U
+#else
+#define BOOT_ENC_KEY_SIZE       16U
+#endif
 
-#define TLV_ENC_RSA_SZ    256
-#define TLV_ENC_KW_SZ     24
-#define TLV_ENC_EC256_SZ  (65 + 32 + 16)
-#define TLV_ENC_X25519_SZ (32 + 32 + 16)
+#define TLV_ENC_RSA_SZ    256U
+#define TLV_ENC_KW_SZ     BOOT_ENC_KEY_SIZE + 8U
+#define TLV_ENC_EC256_SZ  (65U + 32U + BOOT_ENC_KEY_SIZE)
+#define TLV_ENC_X25519_SZ (32U + 32U + BOOT_ENC_KEY_SIZE)
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
 #define BOOT_ENC_TLV_SIZE TLV_ENC_RSA_SZ

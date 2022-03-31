@@ -13,7 +13,7 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /* Variables passed outside of unit via poiters. */
 static const struct flash_area *_fa_p;
@@ -83,7 +83,7 @@ boot_image_load_header(const struct flash_area *fa_p,
     }
 
     if (!boot_u32_safe_add(&size, hdr->ih_img_size, hdr->ih_hdr_size) ||
-        size >= fa_p->fa_size) {
+        size >= flash_area_get_size(fa_p)) {
         return BOOT_EBADIMAGE;
     }
 
@@ -120,8 +120,8 @@ boot_go(struct boot_rsp *rsp)
     fih_rc = FIH_SUCCESS;
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT */
 
-    rsp->br_flash_dev_id = _fa_p->fa_device_id;
-    rsp->br_image_off = _fa_p->fa_off;
+    rsp->br_flash_dev_id = flash_area_get_device_id(_fa_p);
+    rsp->br_image_off = flash_area_get_off(_fa_p);
     rsp->br_hdr = &_hdr;
 
 out:

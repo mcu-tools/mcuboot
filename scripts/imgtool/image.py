@@ -1,6 +1,6 @@
 # Copyright 2018 Nordic Semiconductor ASA
 # Copyright 2017-2020 Linaro Limited
-# Copyright 2019-2020 Arm Limited
+# Copyright 2019-2021 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -51,7 +51,8 @@ MAX_SW_TYPE_LENGTH = 12  # Bytes
 # Image header flags.
 IMAGE_F = {
         'PIC':                   0x0000001,
-        'ENCRYPTED':             0x0000004,
+        'ENCRYPTED_AES128':      0x0000004,
+        'ENCRYPTED_AES256':      0x0000008,
         'NON_BOOTABLE':          0x0000010,
         'RAM_LOAD':              0x0000020,
         'ROM_FIXED':             0x0000100,
@@ -67,7 +68,7 @@ TLV_VALUES = {
         'RSA3072': 0x23,
         'ED25519': 0x24,
         'ENCRSA2048': 0x30,
-        'ENCKW128': 0x31,
+        'ENCKW': 0x31,
         'ENCEC256': 0x32,
         'ENCX25519': 0x33,
         'DEPENDENCY': 0x40,
@@ -296,7 +297,7 @@ class Image():
         return cipherkey, ciphermac, pubk
 
     def create(self, key, public_key_format, enckey, dependencies=None,
-               sw_type=None, custom_tlvs=None, use_random_iv=False):
+               sw_type=None, custom_tlvs=None, encrypt_keylen=128, use_random_iv=False):
         self.enckey = enckey
 
         if use_random_iv:
@@ -373,7 +374,10 @@ class Image():
                     self.payload.extend(pad)
 
         # This adds the header to the payload as well
-        self.add_header(enckey, protected_tlv_size)
+        if encrypt_keylen == 256:
+            self.add_header(enckey, protected_tlv_size, 256)
+        else:
+            self.add_header(enckey, protected_tlv_size)
 
         prot_tlv = TLV(self.endian, TLV_PROT_INFO_MAGIC)
 
@@ -441,7 +445,10 @@ class Image():
             self.payload = self.payload[:protected_tlv_off]
 
         if enckey is not None:
-            plainkey = os.urandom(16)
+            if encrypt_keylen == 256:
+                plainkey = os.urandom(32)
+            else:
+                plainkey = os.urandom(16)
 
             if isinstance(enckey, rsa.RSAPublic):
                 cipherkey = enckey._get_public().encrypt(
@@ -476,12 +483,15 @@ class Image():
 
         self.check_trailer()
 
-    def add_header(self, enckey, protected_tlv_size):
+    def add_header(self, enckey, protected_tlv_size, aes_length=128):
         """Install the image header."""
 
         flags = 0
         if enckey is not None:
-            flags |= IMAGE_F['ENCRYPTED']
+            if aes_length == 128:
+                flags |= IMAGE_F['ENCRYPTED_AES128']
+            else:
+                flags |= IMAGE_F['ENCRYPTED_AES256']
         if self.load_addr != 0:
             # Indicates that this image should be loaded into RAM
             # instead of run directly from flash.

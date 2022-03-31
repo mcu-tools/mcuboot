@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 #
 # Copyright 2017-2020 Linaro Limited
-# Copyright 2019-2020 Arm Limited
+# Copyright 2019-2021 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -250,6 +250,10 @@ class BasedIntParamType(click.ParamType):
 @click.option('-E', '--encrypt', metavar='filename',
               help='Encrypt image using the provided public key. '
                    '(Not supported in direct-xip or ram-load mode.)')
+@click.option('--encrypt-keylen', default='128',
+              type=click.Choice(['128','256']),
+              help='When encrypting the image using AES, select a 128 bit or '
+                   '256 bit key len.')
 @click.option('-e', '--endian', type=click.Choice(['little', 'big']),
               default='little', help="Select little or big endian")
 @click.option('--overwrite-only', default=False, is_flag=True,
@@ -298,9 +302,9 @@ class BasedIntParamType(click.ParamType):
                .hex extension, otherwise binary format is used''')
 def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
-         endian, encrypt, infile, outfile, dependencies, load_addr, hex_addr,
-         erased_val, save_enctlv, security_counter, boot_record, custom_tlv,
-         rom_fixed, use_random_iv):
+         endian, encrypt_keylen, encrypt, infile, outfile, dependencies,
+         load_addr, hex_addr, erased_val, save_enctlv, security_counter,
+         boot_record, custom_tlv, rom_fixed, use_random_iv):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -347,7 +351,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             custom_tlvs[tag] = value.encode('utf-8')
 
     img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, use_random_iv=use_random_iv)
+               custom_tlvs, int(encrypt_keylen), use_random_iv=use_random_iv)
     img.save(outfile, hex_addr)
 
 

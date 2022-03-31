@@ -23,7 +23,7 @@
 # limitations under the License.
 ################################################################################
 
-include common_libs.mk
+include host.mk
 
 # Compilers
 GCC_ARM	:= 1
@@ -31,27 +31,16 @@ IAR		:= 2
 ARM		:= 3
 OTHER 	:= 4
 
-ifeq ($(MAKEINFO), 1)
+ifeq ($(VERBOSE), 1)
 $(info $(COMPILER))
-endif
-# Detect host OS to make resolving compiler pathes easier
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S), Darwin)
-	HOST_OS = osx
-else
-	ifeq ($(UNAME_S), Linux)
-		HOST_OS = linux
-	else
-		HOST_OS = win
-	endif
 endif
 
 # Path to the compiler installation
 # NOTE: Absolute pathes for now for the sake of development
 ifeq ($(HOST_OS), win)
 	ifeq ($(COMPILER), GCC_ARM)
-		TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/ModusToolbox/tools_2.2/gcc
-		MY_TOOLCHAIN_PATH:=$(subst \,/,$(TOOLCHAIN_PATH))
+		TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/ModusToolbox/tools_2.3/gcc
+		MY_TOOLCHAIN_PATH := $(call get_os_path, $(TOOLCHAIN_PATH))
 		TOOLCHAIN_PATH := $(MY_TOOLCHAIN_PATH)
 		GCC_PATH := $(TOOLCHAIN_PATH)
 		# executables
@@ -82,23 +71,31 @@ OBJCOPY  := "$(GCC_PATH)/bin/arm-none-eabi-objcopy"
 # Set flags for toolchain executables
 ifeq ($(COMPILER), GCC_ARM)
 	# set build-in compiler flags
-	CFLAGS_COMMON := -mcpu=cortex-$(CORE_SIFFX) -mthumb -mfloat-abi=soft -fno-stack-protector -ffunction-sections -fdata-sections -ffat-lto-objects -fstrict-aliasing -g -Wall -Wextra
-	# preset default level of optimization - can be changed in application.mk
+	CFLAGS_COMMON :=  -mthumb -ffunction-sections -fdata-sections  -g -Wall -Wextra
 	ifeq ($(BUILDCFG), Debug)
-		CFLAGS_OPTIMIZATION ?= -Og -g3
+		CFLAGS_SPECIAL ?= -Og -g3
+		CFLAGS_COMMON += $(CFLAGS_SPECIAL)
 	else ifeq ($(BUILDCFG), Release)
-		CFLAGS_OPTIMIZATION ?= -Os -g
+		CFLAGS_COMMON += -Os -g -DNDEBUG
 	else
 $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif
-	# add defines and includes
-	CFLAGS := $(CFLAGS_COMMON) $(INCLUDES)
+
+	# ifeq ($(CORE), CM33)
+	# 	CFLAGS_PLATFORM := -c -mcpu=cortex-m33+nodsp --specs=nano.specs
+	# else
+	# 	CFLAGS_PLATFORM := -mcpu=cortex-$(CORE_SUFFIX) -mfloat-abi=soft -fno-stack-protector -fstrict-aliasing
+	# endif
+
+	# $CFLAGS_PLATFORM is defined in plaform specific mk file
+	CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_PLATFORM) $(INCLUDES)
+
 	CC_DEPEND = -MD -MP -MF
 
-	LDFLAGS_COMMON := -mcpu=cortex-$(CORE_SIFFX) -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -L "$(GCC_PATH)/lib/gcc/arm-none-eabi/7.2.1/thumb/v6-m" -ffat-lto-objects -g --enable-objc-gc
+	LDFLAGS_COMMON := -mcpu=cortex-$(CORE_SUFFIX) -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -ffat-lto-objects -g --enable-objc-gc
 	ifeq ($(BUILDCFG), Debug)
-	# preset default level of optimization - can be changed in application.mk
-		LDFLAGS_OPTIMIZATION ?= -Og
+		LDFLAGS_SPECIAL ?= -Og
+		LDFLAGS_COMMON += $(LDFLAGS_SPECIAL)
 	else ifeq ($(BUILDCFG), Release)
 		LDFLAGS_OPTIMIZATION ?= -Os
 	else
@@ -106,4 +103,37 @@ $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif
 	LDFLAGS_NANO := -L "$(GCC_PATH)/arm-none-eabi/lib/thumb/v6-m"
 	LDFLAGS := $(LDFLAGS_COMMON) $(LDFLAGS_NANO)
+endif
+
+###############################################################################
+# Print debug information about all settings used and/or set in this file
+ifeq ($(VERBOSE), 1)
+$(info #### toolchains.mk ####)
+$(info ARM --> $(ARM))
+$(info BUILDCFG <-- $(BUILDCFG))
+$(info CC <-> $(CC))
+$(info CFLAGS --> $(CFLAGS))
+$(info CFLAGS_COMMON <-> $(CFLAGS_COMMON))
+$(info CFLAGS_PLATFORM <-- $(CFLAGS_PLATFORM))
+$(info CFLAGS_SPECIAL <-> $(CFLAGS_SPECIAL))
+$(info COMPILER <-- $(COMPILER))
+$(info CORE_SUFFIX <-- $(CORE_SUFFIX))
+$(info GCC_ARM --> $(GCC_ARM))
+$(info GCC_PATH <-> $(GCC_PATH))
+$(info HOST_OS <-- $(HOST_OS))
+$(info IAR --> $(IAR))
+$(info INCLUDES <-- $(INCLUDES))
+$(info LD --> $(LD))
+$(info LDFLAGS --> $(LDFLAGS))
+$(info LDFLAGS_COMMON <-> $(LDFLAGS_COMMON))
+$(info LDFLAGS_NANO <-> $(LDFLAGS_NANO))
+$(info LDFLAGS_OPTIMIZATION --> $(LDFLAGS_OPTIMIZATION))
+$(info LDFLAGS_SPECIAL <-> $(LDFLAGS_SPECIAL))
+$(info MY_TOOLCHAIN_PATH <-> $(MY_TOOLCHAIN_PATH))
+$(info OBJCOPY --> $(OBJCOPY))
+$(info OBJDUMP --> $(OBJDUMP))
+$(info OTHER --> $(OTHER))
+$(info PDL_ELFTOOL --> $(PDL_ELFTOOL))
+$(info TOOLCHAIN_PATH <-> $(TOOLCHAIN_PATH))
+$(info USERNAME <-- $(USERNAME))
 endif

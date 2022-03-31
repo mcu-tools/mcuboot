@@ -89,6 +89,12 @@
 #define MCUBOOT_BOOTSTRAP 1
 #endif
 
+/*
+ * Currently there is no configuration option, for this platform,
+ * that enables the system specific mcumgr commands in mcuboot
+ */
+#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 0
+
 #define MCUBOOT_MAX_IMG_SECTORS       MYNEWT_VAL(BOOTUTIL_MAX_IMG_SECTORS)
 
 #if MYNEWT_VAL(BOOTUTIL_FEED_WATCHDOG) && MYNEWT_VAL(WATCHDOG_INTERVAL)
@@ -100,5 +106,12 @@
 #else
 #define MCUBOOT_WATCHDOG_FEED()    do {} while (0)
 #endif
+
+/*
+ * No direct idle call implemented
+ */
+#define MCUBOOT_CPU_IDLE() \
+    do {                   \
+    } while (0)
 
 #endif /* __MCUBOOT_CONFIG_H__ */

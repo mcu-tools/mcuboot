@@ -146,4 +146,14 @@
  *    do { do watchdog feeding here! } while (0)
  */
 
+/* If a OS ports support single thread mode or is bare-metal then:
+ * This macro implements call that switches CPU to an idle state, from which
+ * the CPU may be woken up by, for example, UART transmission event.
+ * 
+ * Otherwise this macro should be no-op.
+ */
+#define MCUBOOT_CPU_IDLE() \
+    do {                   \
+    } while (0)
+
 #endif /* __MCUBOOT_CONFIG_H__ */

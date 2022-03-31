@@ -31,7 +31,7 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #ifdef MCUBOOT_SWAP_USING_MOVE
 
@@ -128,7 +128,7 @@ swap_read_status_bytes(const struct flash_area *fap,
     uint8_t status;
     int max_entries;
     int found_idx;
-    uint8_t write_sz;
+    uint32_t write_sz;
     int move_entries;
     int rc;
     int last_rc;
@@ -152,7 +152,7 @@ swap_read_status_bytes(const struct flash_area *fap,
             return BOOT_EFLASH;
         }
 
-        if (bootutil_buffer_is_erased(fap, &status, 1)) {
+        if (flash_area_erased_val(fap) == status) {
             if (rc != last_rc) {
                 erased_sections++;
             }
@@ -197,7 +197,7 @@ swap_read_status_bytes(const struct flash_area *fap,
 }
 
 uint32_t
-boot_status_internal_off(const struct boot_status *bs, int elem_sz)
+boot_status_internal_off(const struct boot_status *bs, uint32_t elem_sz)
 {
     uint32_t off;
     int idx_sz;
@@ -228,7 +228,7 @@ boot_slots_compatible(struct boot_loader_state *state)
     num_sectors_sec = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT);
 
     if (num_sectors_sec == 0) {
-        BOOT_LOG_WRN("Upgrade disabled for image %d", BOOT_CURR_IMG(state));
+        BOOT_LOG_WRN("Upgrade disabled for image %u", (unsigned)BOOT_CURR_IMG(state));
         return 0;
     }
 
@@ -262,16 +262,15 @@ boot_slots_compatible(struct boot_loader_state *state)
     return 1;
 }
 
-#define BOOT_LOG_SWAP_STATE(area, state)                            \
-    BOOT_LOG_INF("%s: magic=%s, swap_type=0x%x, copy_done=0x%x, "   \
-                 "image_ok=0x%x",                                   \
-                 (area),                                            \
-                 ((state)->magic == BOOT_MAGIC_GOOD ? "good" :      \
-                  (state)->magic == BOOT_MAGIC_UNSET ? "unset" :    \
-                  "bad"),                                           \
-                 (state)->swap_type,                                \
-                 (state)->copy_done,                                \
-                 (state)->image_ok)
+#define BOOT_LOG_SWAP_STATE(area, state)                                        \
+    BOOT_LOG_INF("%s: magic=%s, swap_type=0x%x, copy_done=0x%x, image_ok=0x%x", \
+                 (area),                                                        \
+                 ((state)->magic == BOOT_MAGIC_GOOD  ? "good" :                 \
+                  (state)->magic == BOOT_MAGIC_UNSET ? "unset" :                \
+                                                       "bad"),                  \
+                 (unsigned)(state)->swap_type,                                  \
+                 (unsigned)(state)->copy_done,                                  \
+                 (unsigned)(state)->image_ok)
 
 int
 swap_status_source(struct boot_loader_state *state)
@@ -412,7 +411,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
  */
 void
 fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
-        const struct flash_area *fap_sec, uint8_t sec_id)
+        const struct flash_area *fap_sec)
 {
     struct boot_swap_state swap_state;
     int rc;
@@ -428,7 +427,7 @@ fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
         return;
     }
 
-    rc = boot_read_swap_state_by_id(sec_id, &swap_state);
+    rc = boot_read_swap_state(fap_sec, &swap_state);
     assert(rc == 0);
 
     BOOT_LOG_SWAP_STATE("Secondary image", &swap_state);
@@ -509,7 +508,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap_sec);
     assert (rc == 0);
 
-    fixup_revert(state, bs, fap_sec, FLASH_AREA_IMAGE_SECONDARY(image_index));
+    fixup_revert(state, bs, fap_sec);
 
     if (bs->op == BOOT_STATUS_OP_MOVE) {
         idx = g_last_idx;

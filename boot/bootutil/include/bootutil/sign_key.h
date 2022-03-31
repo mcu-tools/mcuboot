@@ -19,11 +19,14 @@
  * under the License.
  */
 
-#ifndef __BOOTUTIL_SIGN_KEY_H_
-#define __BOOTUTIL_SIGN_KEY_H_
+#ifndef BOOTUTIL_SIGN_KEY_H
+#define BOOTUTIL_SIGN_KEY_H
 
 #include <stddef.h>
 #include <stdint.h>
+
+/* mcuboot_config.h is needed for MCUBOOT_HW_KEY to work */
+#include "mcuboot_config/mcuboot_config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,4 +68,4 @@ extern const int bootutil_key_cnt;
 }
 #endif
 
-#endif /* __BOOTUTIL_SIGN_KEY_H_ */
+#endif /* BOOTUTIL_SIGN_KEY_H */

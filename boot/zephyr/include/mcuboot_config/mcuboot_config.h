@@ -34,6 +34,14 @@
 #define MCUBOOT_SIGN_ED25519
 #endif
 
+#if defined(CONFIG_BOOT_USE_TINYCRYPT)
+#  if defined(CONFIG_MBEDTLS) || defined(CONFIG_BOOT_USE_CC310)
+#     error "One crypto library implementation allowed at a time."
+#  endif
+#elif defined(CONFIG_MBEDTLS) && defined(CONFIG_BOOT_USE_CC310)
+#     error "One crypto library implementation allowed at a time."
+#endif
+
 #ifdef CONFIG_BOOT_USE_MBEDTLS
 #define MCUBOOT_USE_MBED_TLS
 #elif defined(CONFIG_BOOT_USE_TINYCRYPT)
@@ -60,6 +68,7 @@
 
 #ifdef CONFIG_SINGLE_APPLICATION_SLOT
 #define MCUBOOT_SINGLE_APPLICATION_SLOT 1
+#define MCUBOOT_IMAGE_NUMBER    1
 #else
 
 #ifdef CONFIG_BOOT_SWAP_USING_MOVE
@@ -145,6 +154,40 @@
 #define MCUBOOT_FIH_PROFILE_HIGH
 #endif
 
+#ifdef CONFIG_ENABLE_MGMT_PERUSER
+#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 1
+#else
+#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 0
+#endif
+
+#ifdef CONFIG_BOOT_MGMT_CUSTOM_IMG_LIST
+#define MCUBOOT_MGMT_CUSTOM_IMG_LIST
+#endif
+
+#ifdef CONFIG_BOOT_IMAGE_ACCESS_HOOKS
+#define MCUBOOT_IMAGE_ACCESS_HOOKS
+#endif
+
+/*
+ * The configuration option enables direct image upload with the
+ * serial recovery.
+ */
+#ifdef CONFIG_MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
+#define MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
+#endif
+
+/*
+ * The option enables code, currently in boot_serial, that attempts
+ * to erase flash progressively, as update fragments are received,
+ * instead of erasing whole image size of flash area after receiving
+ * first frame.
+ * Enabling this options prevents stalling the beginning of transfer
+ * for the time needed to erase large chunk of flash.
+ */
+#ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
+#define MCBOOT_ERASE_PROGRESSIVELY
+#endif
+
 /*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.
@@ -153,6 +196,13 @@
  * of simply deprecated.)
  */
 #define MCUBOOT_USE_FLASH_AREA_GET_SECTORS
+
+#if (defined(CONFIG_BOOT_USB_DFU_WAIT) || \
+     defined(CONFIG_BOOT_USB_DFU_GPIO))
+#  ifndef CONFIG_MULTITHREADING
+#    error "USB DFU Requires MULTITHREADING"
+#  endif
+#endif
 
 #ifdef CONFIG_BOOT_MAX_IMG_SECTORS
 
@@ -204,5 +254,10 @@
     } while (0)
 
 #endif /* CONFIG_BOOT_WATCHDOG_FEED */
+
+#define MCUBOOT_CPU_IDLE() \
+  if (!IS_ENABLED(CONFIG_MULTITHREADING)) { \
+    k_cpu_idle(); \
+  }
 
 #endif /* __MCUBOOT_CONFIG_H__ */

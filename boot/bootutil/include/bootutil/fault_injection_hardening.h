@@ -4,8 +4,8 @@
  * Copyright (c) 2020 Arm Limited
  */
 
-#ifndef __FAULT_INJECTION_HARDENING_H__
-#define __FAULT_INJECTION_HARDENING_H__
+#ifndef FAULT_INJECTION_HARDENING_H
+#define FAULT_INJECTION_HARDENING_H
 
 /* Fault injection mitigation library.
  *
@@ -54,6 +54,7 @@
  * fail causing a panic.
  */
 
+#include <stdbool.h>
 #include "mcuboot_config/mcuboot_config.h"
 
 #if defined(MCUBOOT_FIH_PROFILE_HIGH)
@@ -103,7 +104,7 @@ extern "C" {
  * another xor. The mask value doesn't _really_ matter that much, as long as
  * it has reasonably high hamming weight.
  */
-#define _FIH_MASK_VALUE 0xBEEF
+#define FIH_MASK_VALUE 0xBEEF
 
 #ifdef FIH_ENABLE_DOUBLE_VARS
 
@@ -111,14 +112,21 @@ extern "C" {
  * XORed with the mask.
  */
 extern volatile int _fih_mask;
+
 typedef volatile struct {
     volatile int val;
     volatile int msk;
 } fih_int;
 
+typedef volatile struct {
+    volatile unsigned int val;
+    volatile unsigned int msk;
+} fih_uint;
+
 #else
 
 typedef int fih_int;
+typedef unsigned int fih_uint;
 
 #endif /* FIH_ENABLE_DOUBLE_VARS */
 
@@ -133,7 +141,7 @@ __attribute__((noinline)) __attribute__((used))
 void fih_panic_loop(void);
 #define FIH_PANIC fih_panic_loop()
 #else
-#define FIH_PANIC while (1) {}
+#define FIH_PANIC while (true) {}
 #endif  /* FIH_ENABLE_GLOBAL_FAIL */
 
 /* NOTE: For functions to be inlined outside their compilation unit they have to
@@ -143,7 +151,7 @@ void fih_panic_loop(void);
 #ifdef FIH_ENABLE_DELAY
 
 /* Delaying logic, with randomness from a CSPRNG */
-__attribute__((always_inline)) inline
+__attribute__((always_inline)) static inline
 int fih_delay(void)
 {
     unsigned char delay;
@@ -166,13 +174,13 @@ int fih_delay(void)
 
 #else
 
-__attribute__((always_inline)) inline
+__attribute__((always_inline)) static inline
 int fih_delay_init(void)
 {
     return 1;
 }
 
-__attribute__((always_inline)) inline
+__attribute__((always_inline)) static inline
 int fih_delay(void)
 {
     return 1;
@@ -181,7 +189,8 @@ int fih_delay(void)
 
 #ifdef FIH_ENABLE_DOUBLE_VARS
 
-__attribute__((always_inline)) inline
+/* Validate fih_int for tampering. */
+__attribute__((always_inline)) static inline
 void fih_int_validate(fih_int x)
 {
     if (x.val != (x.msk ^ _fih_mask)) {
@@ -190,7 +199,7 @@ void fih_int_validate(fih_int x)
 }
 
 /* Convert a fih_int to an int. Validate for tampering. */
-__attribute__((always_inline)) inline
+__attribute__((always_inline)) static inline
 int fih_int_decode(fih_int x)
 {
     fih_int_validate(x);
@@ -198,15 +207,15 @@ int fih_int_decode(fih_int x)
 }
 
 /* Convert an int to a fih_int, can be used to encode specific error codes. */
-__attribute__((always_inline)) inline
+__attribute__((always_inline)) static inline
 fih_int fih_int_encode(int x)
 {
     fih_int ret = {x, x ^ _fih_mask};
     return ret;
 }
 
-/* Standard equality. If A == B then 1, else 0 */
-__attribute__((always_inline)) inline
+/* Standard equality for fih_int type. If A == B then 1, else 0 */
+__attribute__((always_inline)) static inline
 int fih_eq(fih_int x, fih_int y)
 {
     fih_int_validate(x);
@@ -214,7 +223,8 @@ int fih_eq(fih_int x, fih_int y)
     return (x.val == y.val) && fih_delay() && (x.msk == y.msk);
 }
 
-__attribute__((always_inline)) inline
+/* Standard non equality for fih_int type. If A != B then 1, else 0 */
+__attribute__((always_inline)) static inline
 int fih_not_eq(fih_int x, fih_int y)
 {
     fih_int_validate(x);
@@ -222,10 +232,53 @@ int fih_not_eq(fih_int x, fih_int y)
     return (x.val != y.val) && fih_delay() && (x.msk != y.msk);
 }
 
+/* Validate fih_uint for tampering. */
+__attribute__((always_inline)) static inline
+void fih_uint_validate(fih_uint x)
+{
+    if (x.val != (x.msk ^ _fih_mask)) {
+        FIH_PANIC;
+    }
+}
+
+/* Convert a fih_uint to an unsigned int. Validate for tampering. */
+__attribute__((always_inline)) static inline
+unsigned int fih_uint_decode(fih_uint x)
+{
+    fih_uint_validate(x);
+    return x.val;
+}
+
+/* Convert an unsigned int to a fih_uint, can be used to encode specific error codes. */
+__attribute__((always_inline)) static inline
+fih_uint fih_uint_encode(unsigned int x)
+{
+    fih_uint ret = {x, x ^ _fih_mask};
+    return ret;
+}
+
+/* Standard equality for fih_uint type. If A == B then 1, else 0 */
+__attribute__((always_inline)) static inline
+bool fih_uint_eq(fih_uint x, fih_uint y)
+{
+    fih_uint_validate(x);
+    fih_uint_validate(y);
+    return (x.val == y.val) && fih_delay() && (x.msk == y.msk);
+}
+
+/* Standard non equality for fih_uint type. If A != B then 1, else 0 */
+__attribute__((always_inline)) static inline
+bool fih_uint_not_eq(fih_uint x, fih_uint y)
+{
+    fih_uint_validate(x);
+    fih_uint_validate(y);
+    return (x.val != y.val) && fih_delay() && (x.msk != y.msk);
+}
+
 #else
 
 /* NOOP */
-__attribute__((always_inline)) inline
+__attribute__((always_inline)) static inline
 void fih_int_validate(fih_int x)
 {
     (void) x;
@@ -233,27 +286,61 @@ void fih_int_validate(fih_int x)
 }
 
 /* NOOP */
-__attribute__((always_inline)) inline
+__attribute__((always_inline)) static inline
 int fih_int_decode(fih_int x)
 {
     return x;
 }
 
 /* NOOP */
-__attribute__((always_inline)) inline
+__attribute__((always_inline)) static inline
 fih_int fih_int_encode(int x)
 {
     return x;
 }
 
-__attribute__((always_inline)) inline
+__attribute__((always_inline)) static inline
 int fih_eq(fih_int x, fih_int y)
+{
+    return (int) (x == y);
+}
+
+__attribute__((always_inline)) static inline
+int fih_not_eq(fih_int x, fih_int y)
+{
+    return (int) (x != y);
+}
+
+/* NOOP */
+__attribute__((always_inline)) static inline
+void fih_uint_validate(fih_uint x)
+{
+    (void) x;
+    return;
+}
+
+/* NOOP */
+__attribute__((always_inline)) static inline
+unsigned int fih_uint_decode(fih_uint x)
+{
+    return x;
+}
+
+/* NOOP */
+__attribute__((always_inline)) static inline
+fih_uint fih_uint_encode(unsigned int x)
+{
+    return x;
+}
+
+__attribute__((always_inline)) static inline
+bool fih_uint_eq(fih_uint x, fih_uint y)
 {
     return x == y;
 }
 
-__attribute__((always_inline)) inline
-int fih_not_eq(fih_int x, fih_int y)
+__attribute__((always_inline)) static inline
+bool fih_uint_not_eq(fih_uint x, fih_uint y)
 {
     return x != y;
 }
@@ -263,10 +350,10 @@ int fih_not_eq(fih_int x, fih_int y)
  * errors. This function converts 0 to FIH_SUCCESS and any other number to a
  * value that is not FIH_SUCCESS
  */
-__attribute__((always_inline)) inline
+__attribute__((always_inline)) static inline
 fih_int fih_int_encode_zero_equality(int x)
 {
-    if (x) {
+    if (x != 0) {
         return FIH_FAILURE;
     } else {
         return FIH_SUCCESS;
@@ -313,12 +400,12 @@ void fih_cfi_decrement(void);
         FIH_LABEL("FIH_CALL_START", l, c);        \
         FIH_CFI_PRECALL_BLOCK; \
         ret = FIH_FAILURE; \
-        if (fih_delay()) { \
+        if (fih_delay() != 0) { \
             ret = f(__VA_ARGS__); \
         } \
         FIH_CFI_POSTCALL_BLOCK; \
         FIH_LABEL("FIH_CALL_END", l, c);          \
-    } while (0)
+    } while (false)
 
 #else
 
@@ -326,13 +413,13 @@ void fih_cfi_decrement(void);
     do { \
         FIH_LABEL("FIH_CALL_START"); \
         FIH_CFI_PRECALL_BLOCK; \
-        ret = FIH_FAILURE; \
-        if (fih_delay()) { \
-            ret = f(__VA_ARGS__); \
+        (ret) = FIH_FAILURE; \
+        if (fih_delay() != 0) { \
+            (ret) = (f)(__VA_ARGS__); \
         } \
         FIH_CFI_POSTCALL_BLOCK; \
         FIH_LABEL("FIH_CALL_END"); \
-    } while (0)
+    } while (false)
 #endif
 
 /* FIH return changes the state of the internal state machine. If you do a
@@ -343,7 +430,7 @@ void fih_cfi_decrement(void);
     do { \
         FIH_CFI_PRERET; \
         return ret; \
-    } while (0)
+    } while (false)
 
 
 #ifdef FIH_ENABLE_CFI
@@ -374,4 +461,4 @@ void fih_cfi_decrement(void);
 }
 #endif /* __cplusplus */
 
-#endif /* __FAULT_INJECTION_HARDENING_H__ */
+#endif /* FAULT_INJECTION_HARDENING_H */

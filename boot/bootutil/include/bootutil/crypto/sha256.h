@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2017-2019 JUUL Labs
+ * Copyright (c) 2021 Arm Limited
  */
 
 /*
@@ -27,6 +28,10 @@
 
 #if defined(MCUBOOT_USE_MBED_TLS)
     #include <mbedtls/sha256.h>
+    #include <mbedtls/version.h>
+    #if MBEDTLS_VERSION_NUMBER >= 0x03000000
+        #include <mbedtls/compat-2.x.h>
+    #endif
     #define BOOTUTIL_CRYPTO_SHA256_BLOCK_SIZE (64)
     #define BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE (32)
 #endif /* MCUBOOT_USE_MBED_TLS */

@@ -36,13 +36,31 @@ extern "C" {
 
 /* Tracks the previous character sent to output stream */
 #ifdef CY_RETARGET_IO_CONVERT_LF_TO_CRLF
-static char cy_retarget_io_stdout_prev_char = 0;
+static char cy_retarget_io_stdout_prev_char = '\0';
 #endif /* CY_RETARGET_IO_CONVERT_LF_TO_CRLF */
 
-cy_stc_scb_uart_context_t CYBSP_UART_context;
+static cy_stc_scb_uart_context_t CYBSP_UART_context;
 
 static uint8_t cy_retarget_io_getchar(void);
 static void cy_retarget_io_putchar(char c);
+
+#if defined(__ARMCC_VERSION) /* ARM-MDK */
+
+int fputc(int ch, FILE *f);
+int fgetc(FILE *f);
+
+#elif defined (__ICCARM__) /* IAR */
+
+size_t __write(int handle, const unsigned char * buffer, size_t size);
+size_t __read(int handle, unsigned char * buffer, size_t size);
+
+#else /* (__GNUC__)  GCC */
+
+int _write(int fd, const char *ptr, int len);
+int _read(int fd, char *ptr, int len);
+
+#endif /* defined(__ARMCC_VERSION) */
+
 
 #if defined(__ARMCC_VERSION) /* ARM-MDK */
     /***************************************************************************
@@ -96,13 +114,10 @@ static void cy_retarget_io_putchar(char c);
         return (nChars);
     }
 #else /* (__GNUC__)  GCC */
-    /* Add an explicit reference to the floating point printf library to allow
-    the usage of floating point conversion specifier. */
-    __asm (".global _printf_float");
     /***************************************************************************
     * Function Name: _write
     ***************************************************************************/
-    __attribute__((weak)) int _write (int fd, const char *ptr, int len)
+    __attribute__((weak)) int _write(int fd, const char *ptr, int len)
     {
         int nChars = 0;
         (void)fd;
@@ -118,13 +133,13 @@ static void cy_retarget_io_putchar(char c);
 
                 cy_retarget_io_stdout_prev_char = *ptr;
             #endif /* CY_RETARGET_IO_CONVERT_LF_TO_CRLF */
-                cy_retarget_io_putchar((uint32_t)*ptr);
+                cy_retarget_io_putchar(*ptr);
                 ++ptr;
             }
         }
         return (nChars);
     }
-#endif
+#endif /* defined(__ARMCC_VERSION) */
 
 
 #if defined(__ARMCC_VERSION) /* ARM-MDK */
@@ -152,16 +167,13 @@ static void cy_retarget_io_putchar(char c);
         }
     }
 #else /* (__GNUC__)  GCC */
-    /* Add an explicit reference to the floating point scanf library to allow
-    the usage of floating point conversion specifier. */
-    __asm (".global _scanf_float");
-    __attribute__((weak)) int _read (int fd, char *ptr, int len)
+    __attribute__((weak)) int _read(int fd, char *ptr, int len)
     {
         int nChars = 0;
         (void)fd;
         if (ptr != NULL)
         {
-            for(/* Empty */;nChars < len;++ptr)
+            while (nChars < len)
             {
                 *ptr = (char)cy_retarget_io_getchar();
                 ++nChars;
@@ -169,11 +181,12 @@ static void cy_retarget_io_putchar(char c);
                 {
                     break;
                 }
+                ++ptr;
             }
         }
         return (nChars);
     }
-#endif
+#endif /* defined(__ARMCC_VERSION) */
 
 static uint8_t cy_retarget_io_getchar(void)
 {
@@ -188,10 +201,10 @@ static uint8_t cy_retarget_io_getchar(void)
 
 static void cy_retarget_io_putchar(char c)
 {
-    uint32_t count = 0;
-    while (count == 0)
+    uint32_t count = 0U;
+    while (count == 0U)
     {
-        count = Cy_SCB_UART_Put(CYBSP_UART_HW, c);
+        count = Cy_SCB_UART_Put(CYBSP_UART_HW, (uint8_t)c);
     }
 }
 
@@ -199,24 +212,24 @@ static cy_rslt_t cy_retarget_io_pdl_setbaud(CySCB_Type *base, uint32_t baudrate)
 {
     cy_rslt_t result = CY_RSLT_TYPE_ERROR;
 
-    uint8_t oversample_value = 8u;
-    uint8_t frac_bits = 0u;
+    uint8_t oversample_value = 8U;
+    uint8_t frac_bits = 0U;
     uint32_t divider;
 
     Cy_SCB_UART_Disable(base, NULL);
 
     result = (cy_rslt_t) Cy_SysClk_PeriphDisableDivider(CY_SYSCLK_DIV_16_BIT, 0);
 
-    divider = ((Cy_SysClk_ClkPeriGetFrequency() * (1 << frac_bits)) + ((baudrate * oversample_value) / 2)) / (baudrate * oversample_value) - 1;
+    divider = ((Cy_SysClk_ClkPeriGetFrequency() * (1UL << frac_bits)) + ((baudrate * oversample_value) / 2U)) / (baudrate * oversample_value) - 1U;
 
     if (result == CY_RSLT_SUCCESS)
     {
-        result = (cy_rslt_t) Cy_SysClk_PeriphSetDivider(CY_SYSCLK_DIV_16_BIT, 0u, divider);
+        result = (cy_rslt_t) Cy_SysClk_PeriphSetDivider(CY_SYSCLK_DIV_16_BIT, 0U, divider);
     }
     
     if (result == CY_RSLT_SUCCESS)
     {
-        result = Cy_SysClk_PeriphEnableDivider(CY_SYSCLK_DIV_16_BIT, 0u);
+        result = Cy_SysClk_PeriphEnableDivider(CY_SYSCLK_DIV_16_BIT, 0U);
     }
 
     Cy_SCB_UART_Enable(base);
@@ -249,18 +262,18 @@ cy_rslt_t cy_retarget_io_pdl_init(uint32_t baudrate)
  */
 void cy_retarget_io_wait_tx_complete(CySCB_Type *base, uint32_t tries_count)
 {
-    while(tries_count > 0)
+    while(tries_count > 0U)
     {
         if (!Cy_SCB_UART_IsTxComplete(base)) {
-            Cy_SysLib_DelayCycles(10 * cy_delayFreqKhz);
-            tries_count -= 1;
+            Cy_SysLib_DelayCycles(10U * cy_delayFreqKhz);
+            tries_count -= 1U;
         } else {
             return;
         }
     }
 }
 
-void cy_retarget_io_pdl_deinit()
+void cy_retarget_io_pdl_deinit(void)
 {
     Cy_SCB_UART_DeInit(CYBSP_UART_HW);
 }

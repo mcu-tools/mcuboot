@@ -1,0 +1,39 @@
+{
+    "external_flash": [
+        {
+            "model": "S25HS256T",
+            "mode": "XIP"
+        }
+    ],
+    "boot_and_upgrade":
+    {
+        "bootloader": {
+            "address": {
+                "description": "Address of the bootloader",
+                "value": "0x10000000"
+            },
+            "size": {
+                "description": "Size of the bootloader",
+                "value": "0x18000"
+            }
+        },
+        "application_1": {
+            "address": {
+                "description": "Address of the application primary slot",
+                "value": "0x18000000"
+            },
+            "size": {
+                "description": "Size of the application primary slot",
+                "value": "0x80000"
+            },
+            "upgrade_address": {
+                "description": "Address of the application secondary slot",
+                "value": "0x18080000"
+            },
+            "upgrade_size": {
+                "description": "Size of the application secondary slot",
+                "value": "0x80000"
+            }
+        }
+    }
+}

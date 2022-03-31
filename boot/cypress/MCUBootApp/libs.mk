@@ -26,71 +26,74 @@
 ################################################################################
 # PDL library
 ################################################################################
+
 PDL_VERSION = 121
 
 THIS_APP_PATH = $(PRJ_DIR)/libs
 MBEDTLS_PATH = $(PRJ_DIR)/../../ext
 
-# Add platform folder to build
-SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/*.c)
+# Add watchdog folder to build
 SOURCES_WATCHDOG := $(wildcard $(THIS_APP_PATH)/watchdog/*.c)
 
 # Add retartget IO implementation using pdl
-SOURCES_RETARGET_IO_PDL += $(wildcard $(THIS_APP_PATH)/retarget_io_pdl/*.c)
+SOURCES_RETARGET_IO_PDL := $(PLATFORM_SOURCES_RETARGET_IO_PDL)
 
 # Collect dirrectories containing headers for PLATFORM
-INCLUDE_RETARGET_IO_PDL += $(THIS_APP_PATH)/retarget_io_pdl
+INCLUDE_RETARGET_IO_PDL := $(PLATFORM_INCLUDE_RETARGET_IO_PDL)
 
 # PSOC6HAL source files
-SOURCES_HAL += $(THIS_APP_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/cyhal_crypto_common.c
-SOURCES_HAL += $(THIS_APP_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/cyhal_hwmgr.c
+SOURCES_HAL_MCUB := $(PLATFORM_SOURCES_HAL_MCUB)
+
+# PSOC6HAL include dirs
+INCLUDE_DIRS_HAL_MCUB := $(PLATFORM_INCLUDE_DIRS_HAL_MCUB)
 
 # MbedTLS source files
 SOURCES_MBEDTLS := $(wildcard $(MBEDTLS_PATH)/mbedtls/library/*.c)
-SOURCES_MBEDTLS += $(wildcard $(MBEDTLS_PATH)/mbedtls/crypto/library/*.c)
 
 # Collected source files for libraries
-SOURCES_LIBS += $(SOURCES_HAL)
 SOURCES_LIBS += $(SOURCES_MBEDTLS)
 SOURCES_LIBS += $(SOURCES_WATCHDOG)
-SOURCES_LIBS += $(SOURCES_PLATFORM)
+
+# Collect source files for platform dependent libraries
+SOURCES_LIBS += $(SOURCES_HAL_MCUB)
 SOURCES_LIBS += $(SOURCES_RETARGET_IO_PDL)
-
-# Include platforms folder
-INCLUDE_DIRS_PLATFORM := $(PRJ_DIR)/platforms
-
-# needed for Crypto HW Acceleration and headers inclusion, do not use for peripherals
-# peripherals should be accessed
-INCLUDE_DIRS_HAL := $(THIS_APP_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include
-INCLUDE_DIRS_HAL += $(THIS_APP_PATH)/psoc6hal/include
-INCLUDE_DIRS_HAL += $(THIS_APP_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/pin_packages
-
-# MbedTLS related include directories
-INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/include
-INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/include/mbedtls
-INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/crypto/include
-INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/crypto/include/mbedtls
 
 # Watchdog related includes
 INCLUDE_DIRS_WATCHDOG := $(THIS_APP_PATH)/watchdog
 
+# MbedTLS related include directories
+INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/include
+INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/include/mbedtls
+INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/include/psa
+INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/library
+
 # Collected include directories for libraries
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_MBEDTLS))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_RETARGET_IO_PDL))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_PLATFORM))
 
-################################################################################
-# mbedTLS hardware acceleration settings
-################################################################################
-ifeq ($(USE_CRYPTO_HW), 1)
-# cy-mbedtls-acceleration related include directories
-INCLUDE_DIRS_MBEDTLS_MXCRYPTO := $(THIS_APP_PATH)/cy-mbedtls-acceleration/mbedtls_MXCRYPTO
-# Collect source files for MbedTLS acceleration
-SOURCES_MBEDTLS_MXCRYPTO := $(wildcard $(THIS_APP_PATH)/cy-mbedtls-acceleration/mbedtls_MXCRYPTO/*.c)
-#
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_MBEDTLS_MXCRYPTO))
-# Collected source files for libraries
-SOURCES_LIBS += $(SOURCES_MBEDTLS_MXCRYPTO)
+# Collect platform dependent include dirs
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL_MCUB))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_RETARGET_IO_PDL))
+
+###############################################################################
+# Print debug information about all settings used and/or set in this file
+ifeq ($(VERBOSE), 1)
+$(info #### libs.mk ####)
+$(info INCLUDE_DIRS_HAL_MCUB <-> $(INCLUDE_DIRS_HAL_MCUB))
+$(info INCLUDE_DIRS_LIBS --> $(INCLUDE_DIRS_LIBS))
+$(info INCLUDE_DIRS_MBEDTLS <-> $(INCLUDE_DIRS_MBEDTLS))
+$(info INCLUDE_DIRS_WATCHDOG <-> $(INCLUDE_DIRS_WATCHDOG))
+$(info INCLUDE_RETARGET_IO_PDL <-> $(INCLUDE_RETARGET_IO_PDL))
+$(info MBEDTLS_PATH <-- $(MBEDTLS_PATH))
+$(info PLATFORM_INCLUDE_DIRS_HAL_MCUB <-- $(PLATFORM_INCLUDE_DIRS_HAL_MCUB))
+$(info PLATFORM_INCLUDE_RETARGET_IO_PDL <-- $(PLATFORM_INCLUDE_RETARGET_IO_PDL))
+$(info PLATFORM_SOURCES_HAL_MCUB <-- $(PLATFORM_SOURCES_HAL_MCUB))
+$(info PLATFORM_SOURCES_RETARGET_IO_PDL <-- $(PLATFORM_SOURCES_RETARGET_IO_PDL))
+$(info PRJ_DIR <-- $(PRJ_DIR))
+$(info SOURCES_HAL_MCUB <-> $(SOURCES_HAL_MCUB))
+$(info SOURCES_LIBS --> $(SOURCES_LIBS))
+$(info SOURCES_MBEDTLS <-> $(SOURCES_MBEDTLS))
+$(info SOURCES_RETARGET_IO_PDL <-> $(SOURCES_RETARGET_IO_PDL))
+$(info SOURCES_WATCHDOG <-> $(SOURCES_WATCHDOG))
+$(info THIS_APP_PATH <-- $(THIS_APP_PATH))
 endif

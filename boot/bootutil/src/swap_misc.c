@@ -28,7 +28,7 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
 
@@ -49,7 +49,7 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
     uint8_t image_index;
     int rc;
 
-    BOOT_LOG_DBG("erasing trailer; fa_id=%d", fap->fa_id);
+    BOOT_LOG_DBG("erasing trailer; fa_id=%u", (unsigned)flash_area_get_id(fap));
 
     image_index = BOOT_CURR_IMG(state);
     fa_id_primary = flash_area_id_from_multi_image_slot(image_index,
@@ -57,9 +57,9 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
     fa_id_secondary = flash_area_id_from_multi_image_slot(image_index,
             BOOT_SECONDARY_SLOT);
 
-    if (fap->fa_id == fa_id_primary) {
+    if (flash_area_get_id(fap) == fa_id_primary) {
         slot = BOOT_PRIMARY_SLOT;
-    } else if (fap->fa_id == fa_id_secondary) {
+    } else if (flash_area_get_id(fap) == fa_id_secondary) {
         slot = BOOT_SECONDARY_SLOT;
     } else {
         return BOOT_EFLASH;
@@ -97,7 +97,7 @@ swap_status_init(const struct boot_loader_state *state,
 
     image_index = BOOT_CURR_IMG(state);
 
-    BOOT_LOG_DBG("initializing status; fa_id=%d", fap->fa_id);
+    BOOT_LOG_DBG("initializing status; fa_id=%u", (unsigned)flash_area_get_id(fap));
 
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
             &swap_state);
@@ -167,12 +167,12 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
     rc = swap_read_status_bytes(fap, state, bs);
     if (rc == 0) {
         off = boot_swap_info_off(fap);
-                rc = flash_area_read(fap, off, &swap_info, sizeof swap_info);
+        rc = flash_area_read(fap, off, &swap_info, sizeof swap_info);
         if (rc != 0) {
             return BOOT_EFLASH;
         }
 
-        if (bootutil_buffer_is_erased(fap, &swap_info, sizeof swap_info)) {
+        if (swap_info == flash_area_erased_val(fap)) {
             BOOT_SET_SWAP_INFO(swap_info, 0, BOOT_SWAP_TYPE_NONE);
             rc = 0;
         }
@@ -190,11 +190,10 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
 int
 swap_set_copy_done(uint8_t image_index)
 {
-    const struct flash_area *fap;
+    const struct flash_area *fap = NULL;
     int rc;
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index),
-            &fap);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -207,12 +206,11 @@ swap_set_copy_done(uint8_t image_index)
 int
 swap_set_image_ok(uint8_t image_index)
 {
-    const struct flash_area *fap;
-    struct boot_swap_state state;
+    const struct flash_area *fap = NULL;
+    struct boot_swap_state state = {0};
     int rc;
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index),
-            &fap);
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
     if (rc != 0) {
         return BOOT_EFLASH;
     }

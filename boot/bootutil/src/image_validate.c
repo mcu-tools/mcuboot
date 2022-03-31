@@ -4,6 +4,7 @@
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2021 Infineon Technologies AG
  *
  * Original license:
  *
@@ -37,6 +38,8 @@
 #include "bootutil/sign_key.h"
 #include "bootutil/security_cnt.h"
 #include "bootutil/fault_injection_hardening.h"
+
+#include "bootutil/bootutil_log.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 
@@ -85,6 +88,9 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     (void)blk_sz;
     (void)off;
     (void)rc;
+    (void)fap;
+    (void)tmp_buf;
+    (void)tmp_buf_sz;
 #endif
 #endif
 
@@ -113,7 +119,9 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     size += hdr->ih_protect_tlv_size;
 
 #ifdef MCUBOOT_RAM_LOAD
-    bootutil_sha256_update(&sha256_ctx,(void*)(hdr->ih_load_addr), size);
+    bootutil_sha256_update(&sha256_ctx,
+                           (void*)(IMAGE_RAM_BASE + hdr->ih_load_addr),
+                           size);
 #else
     for (off = 0; off < size; off += blk_sz) {
         blk_sz = size - off;
@@ -143,8 +151,16 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
             /* Only payload is encrypted (area between header and TLVs) */
             if (off >= hdr_size && off < tlv_off) {
                 blk_off = (off - hdr_size) & 0xf;
-                boot_encrypt(enc_state, image_index, fap, off - hdr_size,
+#ifdef MCUBOOT_ENC_IMAGES_XIP
+                rc = bootutil_img_encrypt(enc_state, image_index, hdr, fap, off,
                         blk_sz, blk_off, tmp_buf);
+#else
+                rc = boot_encrypt(enc_state, image_index, fap, off - hdr_size,
+                        blk_sz, blk_off, tmp_buf);
+#endif
+                if (rc) {
+                    return rc;
+                }
             }
         }
 #endif
@@ -204,9 +220,9 @@ bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
     bootutil_sha256_context sha256_ctx;
     int i;
     const struct bootutil_key *key;
-    uint8_t hash[32];
+    uint8_t hash[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
 
-    if (keyhash_len > 32) {
+    if (keyhash_len != BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE) {
         return -1;
     }
 
@@ -229,8 +245,8 @@ static int
 bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 {
     bootutil_sha256_context sha256_ctx;
-    uint8_t hash[32];
-    uint8_t key_hash[32];
+    uint8_t hash[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+    uint8_t key_hash[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     size_t key_hash_size = sizeof(key_hash);
     int rc;
     fih_int fih_rc;
@@ -323,6 +339,67 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
 
     return 0;
 }
+#ifdef CYW20829
+/**
+ * Reads the content of an image's reprovisioning packet.
+ *
+ * @param hdr            Pointer to the image header structure.
+ * @param fap            Pointer to a description structure of the image's
+ *                       flash area.
+ * @param reprov_packet  Pointer to store the reprovisioning packet.
+ *
+ * @return               0 on success; nonzero on failure.
+ */
+int32_t
+bootutil_get_img_reprov_packet(struct image_header *hdr,
+                              const struct flash_area *fap,
+                              uint8_t *reprov_packet)
+{
+    struct image_tlv_iter it;
+    uint32_t off;
+    uint16_t len;
+    int32_t rc;
+
+    if ((hdr == NULL) ||
+        (fap == NULL) ||
+        (reprov_packet == NULL)) {
+        /* Invalid parameter. */
+        return BOOT_EBADARGS;
+    }
+
+    /* The reprovisioning packet TLV is in the protected part of the TLV area. */
+    if (hdr->ih_protect_tlv_size == 0) {
+        return BOOT_EBADIMAGE;
+    }
+
+    rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_PROV_PACK, true);
+    if (rc) {
+        return rc;
+    }
+
+    /* Traverse through the protected TLV area to find
+     * the reprovisioning apcket TLV.
+     */
+
+    rc = bootutil_tlv_iter_next(&it, &off, &len, NULL);
+    if (rc != 0) {
+        /* Reprovisioning packet TLV has not been found. */
+        return -1;
+    }
+
+    if (len != REPROV_PACK_SIZE) {
+        /* Reprovisioning packet is not valid. */
+        return BOOT_EBADIMAGE;
+    }
+
+    rc = LOAD_IMAGE_DATA(hdr, fap, off, reprov_packet, len);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    return 0;
+}
+#endif /* CYW20289 */
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
 
 /*
@@ -349,12 +426,13 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 #endif /* EXPECTED_SIG_TLV */
     struct image_tlv_iter it;
     uint8_t buf[SIG_BUF_SIZE];
-    uint8_t hash[32];
+    uint8_t hash[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     int rc = 0;
     fih_int fih_rc = FIH_FAILURE;
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
-    fih_int security_cnt = fih_int_encode(INT_MAX);
+    fih_uint security_cnt = fih_uint_encode(UINT_MAX);
     uint32_t img_security_cnt = 0;
+    uint8_t reprov_packet[REPROV_PACK_SIZE];
     fih_int security_counter_valid = FIH_FAILURE;
 #endif
 
@@ -365,7 +443,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
     }
 
     if (out_hash) {
-        memcpy(out_hash, hash, 32);
+        memcpy(out_hash, hash, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
     }
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_ANY, false);
@@ -411,7 +489,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             /*
              * Determine which key we should be checking.
              */
-            if (len > 32) {
+            if (len != BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE) {
                 rc = -1;
                 goto out;
             }
@@ -484,18 +562,52 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
                 goto out;
             }
 
+            BOOT_LOG_DBG("NV Counter read from efuse = %u", fih_uint_decode(security_cnt));
+
+            BOOT_LOG_DBG("NV Counter read from image = %" PRIu32, img_security_cnt);
+
             /* Compare the new image's security counter value against the
              * stored security counter value.
              */
             fih_rc = fih_int_encode_zero_equality(img_security_cnt <
-                                   fih_int_decode(security_cnt));
+                                   (uint32_t)fih_uint_decode(security_cnt));
             if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
                 /* The image's security counter is not accepted. */
                 goto out;
             }
-
+#ifndef CYW20829
             /* The image's security counter has been successfully verified. */
             security_counter_valid = fih_rc;
+        }
+#else
+            /* The image's security counter has been successfully verified. */
+            security_counter_valid = fih_int_encode(HW_ROLLBACK_CNT_VALID);
+        } else if (type == IMAGE_TLV_PROV_PACK) {
+
+            if (fih_eq(security_counter_valid, fih_int_encode(HW_ROLLBACK_CNT_VALID))) {
+                /*
+                * Verify the image reprovisioning packet.
+                * This must always be present.
+                */
+                BOOT_LOG_INF("Prov packet length 0x51 TLV = %" PRIu16, len);
+
+                if (len != sizeof(reprov_packet)) {
+                    /* Re-provisioning packet is not valid. */
+                    rc = -1;
+                    goto out;
+                }
+
+                rc = LOAD_IMAGE_DATA(hdr, fap, off, reprov_packet, len);
+                if (rc) {
+                    goto out;
+                }
+
+                security_counter_valid = fih_int_encode(fih_int_decode(security_counter_valid) | REPROV_PACK_VALID);
+            }
+            else{
+                goto out;
+            }
+#endif /* CYW20829 */
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
         }
     }
@@ -509,7 +621,12 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
                                                      FIH_SUCCESS));
 #endif
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
+#ifdef CYW20829
+    if (fih_not_eq(security_counter_valid, fih_int_encode(REPROV_PACK_VALID | HW_ROLLBACK_CNT_VALID))) {
+        BOOT_LOG_DBG("Reprovisioning packet TLV 0x51 is not present image = %d", image_index);
+#else
     if (fih_not_eq(security_counter_valid, FIH_SUCCESS)) {
+#endif /* CYW20829 */
         rc = -1;
         goto out;
     }

@@ -23,6 +23,13 @@
 #ifndef MCUBOOT_MBEDTLS_DEVICE_H
 #define MCUBOOT_MBEDTLS_DEVICE_H
 
+#ifdef CYW20829
+
+/* Only SHA256 is accelerated by Cryptolite */
+#define MBEDTLS_SHA256_ALT
+
+#else
+
 /* Currently this target supports SHA1 */
 // #define MBEDTLS_SHA1_C
 
@@ -50,5 +57,7 @@
 
 #define MBEDTLS_ECDSA_SIGN_ALT
 #define MBEDTLS_ECDSA_VERIFY_ALT
+
+#endif /* CYW20829 */
 
 #endif /* MCUBOOT_MBEDTLS_DEVICE_H */

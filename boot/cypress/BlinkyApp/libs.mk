@@ -31,31 +31,59 @@ PDL_VERSION = 121
 CUR_LIBS_PATH = $(PRJ_DIR)/libs
 
 # Collect source files for Retarget-io
+ifneq ($(PLATFORM), CYW20829)
 SOURCES_RETARGET_IO := $(wildcard $(CUR_LIBS_PATH)/retarget-io/*.c)
+endif
 SOURCES_WATCHDOG := $(wildcard $(CUR_LIBS_PATH)/watchdog/*.c)
 
 # Collect source files for HAL
-SOURCES_HAL := $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/*.c)
-SOURCES_HAL += $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/triggers/*.c)
-SOURCES_HAL += $(wildcard $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/source/pin_packages/*.c)
+ifneq ($(PLATFORM), CYW20829)
+SOURCES_HAL_BLINKY := $(wildcard $(CUR_LIBS_PATH)/mtb-hal-cat1/source/*.c)
+SOURCES_HAL_BLINKY += $(wildcard $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/source/triggers/*.c)
+SOURCES_HAL_BLINKY += $(wildcard $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/source/pin_packages/*.c)
+endif
 
 # Retarget-io related include directories
 INCLUDE_DIRS_RETARGET_IO := $(CUR_LIBS_PATH)/retarget-io
 INCLUDE_DIRS_WATCHDOG := $(CUR_LIBS_PATH)/watchdog
 
 # Collect dirrectories containing headers for PSOC6 HAL
-INCLUDE_DIRS_HAL := $(CUR_LIBS_PATH)/psoc6hal/include
-INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include
-INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/pin_packages
-INCLUDE_DIRS_HAL += $(CUR_LIBS_PATH)/psoc6hal/COMPONENT_PSOC6HAL/include/triggers
+ifneq ($(PLATFORM), CYW20829)
+INCLUDE_DIRS_HAL_BLINKY := $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A
+INCLUDE_DIRS_HAL_BLINKY := $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/include
+INCLUDE_DIRS_HAL_BLINKY += $(CUR_LIBS_PATH)/mtb-hal-cat1/include
+INCLUDE_DIRS_HAL_BLINKY += $(CUR_LIBS_PATH)/mtb-hal-cat1/include_pvt
+INCLUDE_DIRS_HAL_BLINKY += $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/include/pin_packages
+INCLUDE_DIRS_HAL_BLINKY += $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/include/triggers
+endif
 
 # Collected source files for libraries
-SOURCES_LIBS += $(SOURCES_RETARGET_IO)
 SOURCES_LIBS += $(SOURCES_WATCHDOG)
-SOURCES_LIBS += $(SOURCES_HAL)
+ifneq ($(PLATFORM), CYW20829)
+SOURCES_LIBS += $(SOURCES_RETARGET_IO)
+SOURCES_LIBS += $(SOURCES_HAL_BLINKY)
+endif
 
 # Collected include directories for libraries
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
+ifneq ($(PLATFORM), CYW20829)
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_RETARGET_IO))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL_BLINKY))
+endif
+
+###############################################################################
+# Print debug information about all settings used and/or set in this file
+ifeq ($(VERBOSE), 1)
+$(info #### libs.mk ####)
+$(info CUR_LIBS_PATH <-- $(CUR_LIBS_PATH))
+$(info INCLUDE_DIRS_HAL_BLINKY <-> $(INCLUDE_DIRS_HAL_BLINKY))
+$(info INCLUDE_DIRS_LIBS --> $(INCLUDE_DIRS_LIBS))
+$(info INCLUDE_DIRS_RETARGET_IO <-> $(INCLUDE_DIRS_RETARGET_IO))
+$(info INCLUDE_DIRS_WATCHDOG <-> $(INCLUDE_DIRS_WATCHDOG))
+$(info PLATFORM <-- $(PLATFORM))
+$(info PRJ_DIR <-- $(PRJ_DIR))
+$(info SOURCES_HAL_BLINKY <-> $(SOURCES_HAL_BLINKY))
+$(info SOURCES_LIBS --> $(SOURCES_LIBS))
+$(info SOURCES_RETARGET_IO <-> $(SOURCES_RETARGET_IO))
+$(info SOURCES_WATCHDOG <-> $(SOURCES_WATCHDOG))
+endif

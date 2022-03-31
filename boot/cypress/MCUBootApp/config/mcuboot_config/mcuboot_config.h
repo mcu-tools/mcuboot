@@ -22,7 +22,7 @@
 /* Default maximum number of flash sectors per image slot; change
  * as desirable. */
 #ifndef MCUBOOT_MAX_IMG_SECTORS
-#define MCUBOOT_MAX_IMG_SECTORS 128u
+#define MCUBOOT_MAX_IMG_SECTORS 128U
 #endif
 
 /*
@@ -39,6 +39,8 @@
 
 // #define MCUBOOT_SIGN_EC
 
+//#define MCUBOOT_OVERWRITE_ONLY 1
+
 /*
  * Upgrade mode
  *
@@ -52,10 +54,18 @@
 /* #define MCUBOOT_OVERWRITE_ONLY_FAST */
 #else
 /* Using SWAP w Scratch by default.
- * Comment/Uncomment which is needed. */
-#define MCUBOOT_SWAP_USING_SCRATCH 1
-/* #define MCUBOOT_SWAP_USING_MOVE 1 */
-#define MCUBOOT_SWAP_USING_STATUS 1
+ * Uncomment which is needed. */
+#define MCUBOOT_SWAP_USING_SCRATCH  1
+/* #define MCUBOOT_SWAP_USING_MOVE     1 */
+#define MCUBOOT_SWAP_USING_STATUS   1
+#endif
+
+/* This definition is used in boot_copy_region function to define 
+ * minimum size of data chunk to be copied. This most likely is equal
+ * to erase size of target hardware.
+ */
+#ifndef MCUBOOT_PLATFORM_CHUNK_SIZE
+#define MCUBOOT_PLATFORM_CHUNK_SIZE 4096U
 #endif
 
 /*
@@ -92,6 +102,12 @@
 #ifndef MCUBOOT_IMAGE_NUMBER
 #define MCUBOOT_IMAGE_NUMBER 1
 #endif
+
+/*
+ * Currently there is no configuration option, for this platform,
+ * that enables the system specific mcumgr commands in mcuboot
+ */
+#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 0
 
 /*
  * Logging
@@ -151,7 +167,30 @@
 #ifdef ENC_IMG
 #define MCUBOOT_ENC_IMAGES
 #define MCUBOOT_ENCRYPT_EC256
-#define NUM_ECC_BYTES (256 / 8)
 #endif /* ENC_IMG */
+
+/*
+ * No direct idle call implemented
+ */
+#define MCUBOOT_CPU_IDLE() \
+    do {                   \
+    } while (0)
+
+/*
+ * Do not save ENCTLV by default
+ */
+//#define MCUBOOT_SWAP_SAVE_ENCTLV 1
+
+/* INFO: Misc functionality defines */
+/*
+#define MCUBOOT_HW_KEY
+#define MCUBOOT_HW_ROLLBACK_PROT
+#define MCUBOOT_MEASURED_BOOT
+#define MCUBOOT_DATA_SHARING
+*/
+/* Use basic fault injection hardening profile */
+//#define MCUBOOT_FIH_PROFILE_LOW
+
+//#define MCUBOOT_FIH_PROFILE_MEDIUM
 
 #endif /* MCUBOOT_CONFIG_H */
