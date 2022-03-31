@@ -1,0 +1,33 @@
+{
+    "script_config":{
+        "coding_standard":"MISRA",
+        "log_file":".\\coverity.log",
+        "coverity_path":"C:\\Program Files\\Coverity\\Coverity Static Analysis\\bin",
+        "report_to_testrail":false,
+        "report_to_coverity_server":false,
+        "project_source_path":".\\..\\..\\boot\\cypress",
+        "deviations_config":".\\..\\..\\boot\\cypress\\coverity\\all_files\\misrac2012_custom.config",
+        "build_cmd":"make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=CYW20829",
+        "manual_clean":true,
+        "fail_condition":1
+    },
+    "coverity_config":{
+        "coverity_project_name":"mcuboot",
+        "coverity_stream_name":"develop",
+        "analyze_options":[
+            "--all"
+        ],
+        "compiler_type":"gcc",
+        "compiler":"arm-none-eabi-gcc",
+        "enable_checkers":[
+            "ENUM_AS_BOOLEAN",
+            "HFA"
+        ],
+        "disable_checkers":[
+
+        ],
+        "source_filter":[
+
+        ]
+    }
+}

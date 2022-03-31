@@ -1,0 +1,533 @@
+{
+    "script_config":{
+        "coding_standard":"CERT C",
+        "log_file":".\\coverity.log",
+        "coverity_path":"C:\\Program Files\\Coverity\\Coverity Static Analysis\\bin",
+        "report_to_testrail":false,
+        "report_to_coverity_server":false,
+        "project_source_path":".\\..\\..\\boot\\cypress",
+        "deviations_config":".\\..\\..\\boot\\cypress\\coverity\\psoc062\\cert-c-custom.config",
+        "build_cmd":"make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M",
+        "manual_clean":false,
+        "fail_condition":2
+    },
+    "coverity_config":{
+        "coverity_project_name":"mcuboot",
+        "coverity_stream_name":"develop",
+        "analyze_options":[
+            "--all"
+        ],
+        "compiler_type":"gcc",
+        "compiler":"arm-none-eabi-gcc",
+        "enable_checkers":[
+            "ENUM_AS_BOOLEAN",
+            "HFA"
+        ],
+        "disable_checkers":[
+            "SECURE_CODING",
+            "MISRA_CAST"
+        ],
+        "source_filter":[
+            "boot/cypress/libs/mtb-pdl-cat1",
+            "boot/cypress/libs/mtb-hal-cat1",
+            "boot/cypress/libs/cy-mbedtls-acceleration",
+            "ext/mbedtls"
+        ]
+    },
+    "suppress_list":{
+        "/boot/cypress/libs/core-lib":{ "reason":"Third-party library" },
+        "/boot/cypress/libs/cy-mbedtls-acceleration":{ "reason":"Third-party library" },
+        "/boot/cypress/libs/mtb-hal-cat1":{ "reason":"Third-party library" },
+        "/boot/cypress/libs/mtb-pdl-cat1":{ "reason":"Third-party library" },
+        "/boot/cypress/libs/retarget-io":{ "reason":"Third-party library" },
+        "/ext/mbedtls":{ "reason":"Third-party library" },
+        "boot/bootutil/src/bootutil_misc.c":{
+            "rules":{
+                "CERT INT30-C":{
+                    "reason": "The operations were reviewed for possible wrap.",
+                    "count": 14
+                },
+                "CERT INT31-C":{
+                    "violations":[
+                        {
+                            "message": "Casting \"image_index\" from \"int\" to \"unsigned long\" without checking its value may result in lost or misinterpreted data.",
+                            "reason": "image_index can only be a positive number.",
+                            "count": 2
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/bootutil/src/bootutil_public.c":{
+            "rules":{
+                "CERT INT30-C":{
+                    "reason": "The operations were reviewed for possible wrap.",
+                    "count": 9
+                },
+                "CERT INT31-C":{
+                    "violations":[
+                        {
+                            "message": "Casting \"flash_area_id\" from \"int\" to \"unsigned char\" without checking its value may result in lost or misinterpreted data.",
+                            "reason": "flash_area_id can only be a positive number.",
+                            "count": 1,
+                            "source_code": "rc = flash_area_open(flash_area_id, &fap);"
+                        },
+                        {
+                            "message": "Casting \"(image_num << 4) | swap_type\" from \"int\" to \"unsigned char\" without checking its value may result in lost or misinterpreted data.",
+                            "reason": "All operands are always positive numbers.",
+                            "count": 1,
+                            "source_code": "BOOT_SET_SWAP_INFO(swap_info, image_num, swap_type);"
+                        },
+                        {
+                            "message": "Casting \"image_index\" from \"int\" to \"unsigned long\" without checking its value may result in lost or misinterpreted data.",
+                            "reason": "image_index can only be a positive number.",
+                            "count": 4
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/bootutil/src/encrypted.c":{
+            "rules":{
+                "CERT INT31-C":{
+                    "reason": "The results of the expresions were reviewed for not being misinterpreted.",
+                    "count": 5
+                }
+            }
+        },
+        "boot/bootutil/src/image_validate.c":{
+            "rules":{
+                "CERT INT30-C":{
+                    "reason": "Violations were reviewed for possible wrap.",
+                    "count": 4
+                },
+                "CERT INT31-C":{
+                    "violations":[
+                        {
+                            "message": "Casting \"image_index\" from \"int\" to \"unsigned long\" without checking its value may result in lost or misinterpreted data.",
+                            "reason": "image_index is always a positive number.",
+                            "count": 1,
+                            "source_code": "if (MUST_DECRYPT(fap, image_index, hdr) &&"
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/bootutil/src/loader.c":{
+            "rules":{
+                "CERT INT30-C":{
+                    "reason": "Violations were reviewed for possible wrap.",
+                    "count": 5
+                },
+                "CERT INT31-C":{
+                    "reason": "Violations were reviewed for correct interpretation.",
+                    "count": 12
+                }
+            }
+        },
+        "boot/bootutil/src/tlv.c":{
+            "rules":{
+                "CERT INT30-C":{
+                    "violations":[
+                        {
+                            "message": "Unsigned integer operation \"it->tlv_off + 4UL\" may wrap.",
+                            "reason": "The operation is reviewed for possible wrap.",
+                            "count": 1,
+                            "source_code": "*off = it->tlv_off + sizeof(tlv);"
+                        },
+                        {
+                            "message": "Unsigned integer operation \"it->tlv_off += 4U + tlv.it_len\" may wrap.",
+                            "reason": "The operation is reviewed for possible wrap.",
+                            "count": 1,
+                            "source_code": "it->tlv_off += sizeof(tlv) + tlv.it_len;"
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/bootutil/src/swap_scratch.c":{
+            "rules":{
+                "CERT INT30-C":{
+                    "reason": "Violations were reviewed for possible wrap.",
+                    "count": 13
+                },
+                "CERT INT31-C":{
+                    "reason": "Violations were reviewed for correct interpretation.",
+                    "count": 4
+                },
+                "CERT INT32-C":{
+                    "reason": "Violations were reviewed for possible overflow.",
+                    "count": 6
+                }
+            }
+        },
+        "boot/bootutil/src/image_ec256.c":{
+            "rules":{
+                "CERT INT31-C":{
+                    "violations":[
+                        {
+                            "message": "Casting \"end - pubkey\" from \"int\" to \"unsigned int\" without checking its value may result in lost or misinterpreted data.",
+                            "reason": "The result of the expresion was reviewed for not being misinterpreted.",
+                            "count": 1,
+                            "source": "rc = bootutil_ecdsa_p256_verify(&ctx, pubkey, end - pubkey, hash, sig, slen);"
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/bootutil/src/swap_status_misc.c":{
+            "rules":{
+                "CERT INT30-C": {
+                    "violations":[
+                        {
+                            "message":"Unsigned integer operation \"((uint32_t)slot + 1UL) * 16UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "return boot_swap_size_off(fap) - (((uint32_t)slot + 1UL) * (uint32_t)BOOT_ENC_KEY_SIZE);"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"boot_swap_size_off(fap) - ((uint32_t)slot + 1UL) * 16UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "return boot_swap_size_off(fap) - (((uint32_t)slot + 1UL) * (uint32_t)BOOT_ENC_KEY_SIZE);"
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/bootutil/src/swap_status_part.c":{
+            "rules":{
+                "CERT INT30-C": {
+                    "violations":[
+                        {
+                            "message":"Unsigned integer operation \"512UL * calc_rec_idx(offs)\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "return BOOT_SWAP_STATUS_ROW_SZ * calc_rec_idx(offs);"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"rec_offset + i * 2560UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":2,
+                            "source_code": "fin_offset = rec_offset + i * BOOT_SWAP_STATUS_D_SIZE;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"rec_offset + i * 1024UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":2,
+                            "source_code": "fin_offset = rec_offset + i * BOOT_SWAP_STATUS_D_SIZE;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"crc_fail++\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "crc_fail++;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"magic_fail++\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "magic_fail++;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"copy_counter + 1UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "uint32_t next_counter = copy_counter + 1U;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"rec_offset + copy_num * 2560UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "fin_offset = rec_offset + copy_num*BOOT_SWAP_STATUS_D_SIZE;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"rec_offset + copy_num * 1024UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "fin_offset = rec_offset + copy_num*BOOT_SWAP_STATUS_D_SIZE;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"rec_offs += 512UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "rec_offs += BOOT_SWAP_STATUS_ROW_SZ;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"fap->fa_size - primary_trailer_buf_sz\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "rc= flash_area_erase(fap, fap->fa_size - primary_trailer_buf_sz, primary_trailer_buf_sz);"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"rec_offset + i * 1536UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":2,
+                            "source_code": "fin_offset = rec_offset + i * BOOT_SWAP_STATUS_D_SIZE;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"rec_offset + copy_num * 1536UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "fin_offset = rec_offset + copy_num*BOOT_SWAP_STATUS_D_SIZE;"
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/cypress/MCUBootApp/main.c":{
+            "rules":{
+                "CERT INT30-C": {
+                    "violations":[
+                        {
+                            "message":"Unsigned integer operation \"flash_base + rsp->br_image_off + rsp->br_hdr->ih_hdr_size\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "return fih_uint_encode(flash_base +"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"flash_base + rsp->br_image_off\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "return fih_uint_encode(flash_base +"
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/cypress/cy_flash_pal/flash_psoc6/cy_flash_map.c":{
+            "rules":{
+                "CERT INT30-C": {
+                    "violations":[
+                        {
+                            "message":"Unsigned integer operation \"flash_base + fa->fa_off + off\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":5
+                        },
+                        {
+                            "message":"Unsigned integer operation \"flash_base + fa->fa_off\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":5
+                        },
+                        {
+                            "message":"Unsigned integer operation \"flash_base + fa->fa_off + off + len\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":2
+                        },
+                        {
+                            "message":"Unsigned integer operation \"write_end_addr - write_start_addr\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "row_number = (write_end_addr - write_start_addr) / CY_FLASH_SIZEOF_ROW;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"erase_start_addr / 512U * 512U\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "uint32_t row_start_addr = (erase_start_addr / CY_FLASH_SIZEOF_ROW) * CY_FLASH_SIZEOF_ROW;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"erase_end_addr / 512U * 512U\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "uint32_t row_end_addr = (erase_end_addr / CY_FLASH_SIZEOF_ROW) * CY_FLASH_SIZEOF_ROW;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"area_size + (sector_size - 1U)\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "sectors_n = (area_size + (sector_size - 1U)) / sector_size;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"sector_size - 1U\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "sectors_n = (area_size + (sector_size - 1U)) / sector_size;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"sector_size *= 2U\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "sector_size *= 2u;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"my_sector_addr += my_sector_size\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "my_sector_addr += my_sector_size;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"area_size -= my_sector_size\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "area_size -= my_sector_size;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"sectors_n++\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "sectors_n++;"
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/cypress/cy_flash_pal/flash_psoc6/cy_smif_psoc6.c":{
+            "rules":{
+                "CERT INT30-C": {
+                    "violations":[
+                        {
+                            "message":"Unsigned integer operation \"(uint32_t)addr - 402653184UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":3
+                        },
+                        {
+                            "message":"Unsigned integer operation \"memCfg->deviceCfg->eraseSize - 1UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "address = ((uint32_t)addr - CY_SMIF_BASE_MEM_OFFSET ) & ~((uint32_t)(memCfg->deviceCfg->eraseSize - 1u));"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"address += memCfg->deviceCfg->eraseSize\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "address += memCfg->deviceCfg->eraseSize;"
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/cypress/cy_flash_pal/flash_psoc6/flash_qspi/flash_qspi.c":{
+            "rules":{
+                "CERT INT30-C": {
+                    "violations":[
+                        {
+                            "message":"Unsigned integer operation \"smif_id - 1UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "Cy_GPIO_Port_Deinit(qspi_SS_Configuration[smif_id-1U].SS_Port);"
+                        }
+                    ]
+                }
+            }
+        },
+        "/boot/cypress/libs/watchdog/watchdog.c":{
+            "rules":{
+                "CERT INT31-C": {
+                    "violations":[
+                        {
+                            "message":"Casting \"timeout - (1UL << 17U - ignore_bits) + Cy_WDT_GetCount()\" from \"unsigned long\" to \"unsigned short\" without checking its value may result in lost or misinterpreted data.",
+                            "reason":"Used free-running WDT with a maximum of 16-bit resolution.",
+                            "count":1,
+                            "source_code": "return (uint16_t)(timeout - (1UL << (17U - ignore_bits)) + Cy_WDT_GetCount());"
+                        }
+                    ]
+                },
+                "CERT INT30-C": {
+                    "violations":[
+                        {
+                            "message":"Unsigned integer operation \"17U - ignore_bits\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "return (uint16_t)(timeout - (1UL << (17U - ignore_bits)) + Cy_WDT_GetCount());"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"timeout - (1UL << 17U - ignore_bits)\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "return (uint16_t)(timeout - (1UL << (17U - ignore_bits)) + Cy_WDT_GetCount());"
+                        }
+                    ]
+                }
+            }
+        },
+        "/boot/cypress/libs/retarget_io_pdl/cy_retarget_io_pdl.c":{
+            "rules":{
+                "CERT INT31-C": {
+                    "violations":[
+                        {
+                            "message":"Casting \"cy_retarget_io_getchar()\" from \"unsigned char\" to \"char\" without checking its value may result in lost or misinterpreted data.",
+                            "reason":"Type cast was reviewed for correctness.",
+                            "count":1,
+                            "source_code": "*ptr = (char)cy_retarget_io_getchar();"
+                        },
+                        {
+                            "message":"Casting \"c\" from \"char\" to \"unsigned char\" without checking its value may result in lost or misinterpreted data.",
+                            "reason":"Type cast was reviewed for correctness.",
+                            "count":1,
+                            "source_code": "count = Cy_SCB_UART_Put(CYBSP_UART_HW, (uint8_t)c);"
+                        }
+                    ]
+                },
+                "CERT INT30-C": {
+                    "violations":[
+                        {
+                            "message":"Unsigned integer operation \"Cy_SysClk_ClkPeriGetFrequency() * (1UL << frac_bits) + baudrate * oversample_value / 2UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "divider = ((Cy_SysClk_ClkPeriGetFrequency() * (1UL << frac_bits)) + ((baudrate * oversample_value) / 2U)) / (baudrate * oversample_value) - 1U;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"baudrate * oversample_value\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "divider = ((Cy_SysClk_ClkPeriGetFrequency() * (1UL << frac_bits)) + ((baudrate * oversample_value) / 2U)) / (baudrate * oversample_value) - 1U;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"(Cy_SysClk_ClkPeriGetFrequency() * (1UL << frac_bits) + baudrate * oversample_value / 2UL) / (baudrate * oversample_value) - 1UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "divider = ((Cy_SysClk_ClkPeriGetFrequency() * (1UL << frac_bits)) + ((baudrate * oversample_value) / 2U)) / (baudrate * oversample_value) - 1U;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"10UL * cy_delayFreqKhz\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "Cy_SysLib_DelayCycles(10U * cy_delayFreqKhz);"
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/bootutil/src/bootutil_priv.h":{
+            "rules":{
+                "CERT INT30-C": {
+                    "violations":[
+                        {
+                            "message":"Unsigned integer operation \"flash_sector_get_off(&state->imgs[state->curr_img_idx][slot].sectors[sector]) - flash_sector_get_off(&state->imgs[state->curr_img_idx][slot].sectors[0])\" may wrap.",
+                            "reason":"L2 C-CERT violations are not fixed in common MCUboot source files.",
+                            "count":1,
+                            "source_code": "return flash_sector_get_off(&BOOT_IMG(state, slot).sectors[sector]) -"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"flash_sector_get_off(&state->imgs[0U][slot].sectors[sector]) - flash_sector_get_off(&state->imgs[0U][slot].sectors[0])\" may wrap.",
+                            "reason":"L2 C-CERT violations are not fixed in common MCUboot source files.",
+                            "count":1,
+                            "source_code": "return flash_sector_get_off(&BOOT_IMG(state, slot).sectors[sector]) -"
+                        }
+                    ]
+                }
+            }
+        },
+        "boot/bootutil/src/swap_status.c":{
+            "rules":{
+                "CERT INT30-C": {
+                    "violations":[
+                        {
+                            "message":"Unsigned integer operation \"bs->idx - 1UL\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "uint32_t off = (bs->idx - BOOT_STATUS_IDX_0) * elem_sz;"
+                        },
+                        {
+                            "message":"Unsigned integer operation \"(bs->idx - 1UL) * elem_sz\" may wrap.",
+                            "reason":"The operations  were reviewed for possible overflow. All of them either performed with static data or checked (limited) prior to the operation.",
+                            "count":1,
+                            "source_code": "uint32_t off = (bs->idx - BOOT_STATUS_IDX_0) * elem_sz;"
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

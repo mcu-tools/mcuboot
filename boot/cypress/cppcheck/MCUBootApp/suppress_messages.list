@@ -1,0 +1,5 @@
+severity@id@message@file@line
+style@constVariable@Variable 'primary_slot_sectors' can be declared with const@boot/bootutil/src/loader.c@1984:33
+style@constVariable@Variable 'secondary_slot_sectors' can be declared with const@boot/bootutil/src/loader.c@1985:33
+style@redundantInitialization@Redundant initialization for 'align'. The initialized value is overwritten before it is read.@boot/bootutil/src/swap_status_part.c@439:11
+style@knownConditionTrueFalse@Condition 'rc!=0' is always false@boot/bootutil/src/loader.c@1198:12
