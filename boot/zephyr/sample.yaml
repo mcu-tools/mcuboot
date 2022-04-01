@@ -48,3 +48,9 @@ tests:
     integration_platforms:
       - nrf52840dk_nrf52840
     tags: bootloader_mcuboot
+  sample.bootloader.mcuboot.ram_load:
+    extra_args: OVERLAY_CONFIG=./ram_load.conf
+    tags: bootloader_mcuboot
+    platform_allow: mimxrt1020_evk
+    integration_platforms:
+      - mimxrt1020_evk
