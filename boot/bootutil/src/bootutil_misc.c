@@ -157,13 +157,14 @@ boot_status_off(const struct flash_area *fap)
 }
 #endif
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
+
 static inline uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
     return flash_area_get_size(fap) - BOOT_MAGIC_SZ;
 }
 
-#ifndef MCUBOOT_SWAP_USING_STATUS
 
 static inline uint32_t
 boot_image_ok_off(const struct flash_area *fap)

@@ -242,6 +242,7 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
     const struct flash_area *fap = NULL;
     uint32_t off;
     uint8_t area_id;
+    uint8_t tmp_state;
     int rc;
     (void)state;
 
@@ -272,7 +273,7 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
     }
     off = boot_status_off(fap) + boot_status_internal_off(bs, 1);
 
-    uint8_t tmp_state = bs->state;
+    tmp_state = bs->state;
 
     rc = swap_status_update(fap->fa_id, off, &tmp_state, 1);
     if (rc != 0) {
@@ -591,7 +592,7 @@ swap_status_init(const struct boot_loader_state *state,
                  const struct flash_area *fap,
                  const struct boot_status *bs)
 {
-    struct boot_swap_state swap_state;
+    struct boot_swap_state swap_state = {0};
     uint8_t image_index;
     int rc;
 

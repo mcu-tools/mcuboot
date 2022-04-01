@@ -63,9 +63,9 @@ MEMORY
      * Your changes must be aligned with the corresponding memory regions for the CM4 core in 'xx_cm4_dual.ld',
      * where 'xx' is the device group; for example, 'cy8c6xx7_cm4_dual.ld'.
      */
-    ram               (rwx)   : ORIGIN = 0x08000800, LENGTH = 0x1F800
+    ram               (rwx)   : ORIGIN = 0x08000A00, LENGTH = 0x1F600
     flash             (rx)    : ORIGIN = 0x10000000, LENGTH = 0x17E90
-    smif_struct		  (rx)    : ORIGIN = 0x10017E90, LENGTH = 0x170
+    smif_struct       (rx)    : ORIGIN = 0x10017E90, LENGTH = 0x170
 
     /* This is an unprotected public RAM region, with the placed .cy_sharedmem.
      * This region is used to place objects that require full access from both cores.
@@ -73,6 +73,11 @@ MEMORY
      * the .cy_sharedmem section below.
      */
     public_ram        (rw)    : ORIGIN = 0x08000000, LENGTH = 0x800
+
+    /* Shared data ram region.
+     * Used to store boot immage information in TLV format
+     */
+    shared_data_ram   (rw)    : ORIGIN = 0x08000800, LENGTH = 0x200
 
     /* This is a 32K flash region used for EEPROM emulation. This region can also be used as the general purpose flash.
      * You can assign sections to this memory region for only one of the cores.
@@ -335,6 +340,15 @@ SECTIONS
         __public_ram_end__ = .;
     } > public_ram
     */
+
+    .shared_ram (NOLOAD):
+    {
+        . = ALIGN(4);
+        __shared_ram_start__ = .;
+        KEEP(*(.shared_ram))
+        . = ALIGN(4);
+        __shared_ram_end__ = .;
+    } > shared_data_ram
 
     /* .stack_dummy section doesn't contains any symbols. It is only
      * used for linker to calculate size of stack sections, and assign

@@ -132,7 +132,7 @@ SECTIONS
 
         EXCLUDE_FILE(*cy_smif.o *cy_smif_memslot.o *cy_smif_sfdp.o
                 *cy_sysclk.o *cy_smif_hybrid_sect.o *flash_qspi.o
-                *cy_syslib.o *cy_syslib_gcc.o *system_psoc6_cm4.o) *(.text)
+                *cy_syslib.o *cy_syslib_ext.o *system_psoc6_cm4.o) *(.text)
 
         KEEP(*(.init))
         KEEP(*(.fini))
@@ -258,7 +258,7 @@ SECTIONS
         *cy_smif_hybrid_sect.o(.text*)
         *flash_qspi.o(.text*)
         *cy_syslib.o(.text*)
-        *cy_syslib_gcc.o(.text*)
+        *cy_syslib_ext.o(.text*)
 
         __data_end__ = .;
 

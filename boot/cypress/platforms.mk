@@ -26,21 +26,22 @@
 include host.mk
 
 # supported platforms
-PLATFORMS := PSOC_062_2M PSOC_062_1M PSOC_062_512K CYW20829
+PSOC_06X := PSOC_061_2M PSOC_061_1M PSOC_061_512K PSOC_062_2M PSOC_062_1M PSOC_062_512K PSOC_063_1M
+PLATFORMS := $(PSOC_06X) CYW20829
 
 ifneq ($(filter $(PLATFORM), $(PLATFORMS)),)
 else
 $(error Not supported platform: '$(PLATFORM)')
 endif
 
-ifeq ($(PLATFORM), $(filter $(PLATFORM), PSOC_062_2M PSOC_062_1M PSOC_062_512K))
+ifeq ($(PLATFORM), $(filter $(PLATFORM), $(PSOC_06X)))
 FAMILY := PSOC6
 else ifeq ($(PLATFORM), CYW20829)
 FAMILY := CYW20829
 endif
 
 # include family related makefile into build
-include platforms/$(FAMILY)/$(FAMILY).mk
+include platforms/$(FAMILY).mk
 
 DEFINES += $(PLATFORM)
 DEFINES += $(FAMILY)
@@ -58,6 +59,6 @@ $(info DEFINES <-> $(DEFINES))
 $(info FAMILY <-> $(FAMILY))
 $(info PLATFORM <-- $(PLATFORM))
 $(info PLATFORMS <-> $(PLATFORMS))
-$(info PLATFORM_DEFINES <-> $(PLATFORM_DEFINES))
-$(info PLATFORM_SUFFIX <-- $(PLATFORM_SUFFIX))
+$(info PLATFORM_DEFINES --> $(PLATFORM_DEFINES))
+$(info PSOC_06X <-> $(PSOC_06X))
 endif

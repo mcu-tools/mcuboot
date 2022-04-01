@@ -24,6 +24,7 @@
 #include "mcuboot_config/mcuboot_config.h"
 
 #if defined(MCUBOOT_MEASURED_BOOT) || defined(MCUBOOT_DATA_SHARING)
+#include "bootutil/crypto/sha256.h"
 #include "bootutil/boot_record.h"
 #include "bootutil/boot_status.h"
 #include "bootutil_priv.h"
@@ -62,6 +63,7 @@ boot_add_data_to_shared_area(uint8_t        major_type,
         return SHARED_MEMORY_GEN_ERROR;
     }
 
+    /* Shared data section must be aligned as 'void*' */
     assert(((uintptr_t)MCUBOOT_SHARED_DATA_BASE & 3u) == 0u);
     boot_data = (struct shared_boot_data *)MCUBOOT_SHARED_DATA_BASE;
 
@@ -73,10 +75,6 @@ boot_add_data_to_shared_area(uint8_t        major_type,
         boot_data->header.tlv_magic   = SHARED_DATA_TLV_INFO_MAGIC;
         boot_data->header.tlv_tot_len = SHARED_DATA_HEADER_SIZE;
         shared_memory_init_done = true;
-    }
-    else if (boot_data->header.tlv_magic != SHARED_DATA_TLV_INFO_MAGIC ||
-             boot_data->header.tlv_tot_len != SHARED_DATA_HEADER_SIZE) {
-        return SHARED_MEMORY_CORRUPTED;
     }
 
     /* Check whether TLV entry is already added.
@@ -236,4 +234,44 @@ boot_save_boot_status(uint8_t sw_module,
 
     return 0;
 }
+
 #endif /* MCUBOOT_MEASURED_BOOT */
+
+#ifdef MCUBOOT_DATA_SHARING
+
+int boot_save_shared_data(const struct image_header *hdr,
+                          const struct flash_area *fap)
+{
+    uint16_t fwu_minor;
+    const struct flash_area *temp_fap;
+    uint8_t fwu_img_id = 0;
+    uint8_t i;
+
+    if (NULL == hdr || NULL == fap) {
+        return -1;
+    }
+
+    for (i = 0; i < MCUBOOT_IMAGE_NUMBER; i++) {
+        if (flash_area_open(FLASH_AREA_IMAGE_PRIMARY(i),
+                            &temp_fap) != 0) {
+            return -1;
+        }
+
+        if (fap == temp_fap) {
+            fwu_img_id = i;
+            break;
+        }
+    }
+
+    if (MCUBOOT_IMAGE_NUMBER == i) {
+        return -1;
+    }
+
+    /* Currently hardcode it to 0 which indicates the full image. */
+    fwu_minor = SET_FWU_MINOR(fwu_img_id, SW_VERSION);
+    return boot_add_data_to_shared_area(TLV_MAJOR_FWU,
+                                        fwu_minor,
+                                        sizeof(hdr->ih_ver),
+                                        (const uint8_t *)&hdr->ih_ver);
+}
+#endif /* MCUBOOT_DATA_SHARING */

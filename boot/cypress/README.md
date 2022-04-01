@@ -71,11 +71,15 @@ For instructions on how to build and upload MCUBootApp bootloading-application a
 
 **GCC_ARM** is only supported (built and verified on GCC 9.3.1).
 
-It is included with [ModusToolbox™ Software Environment](https://www.cypress.com/products/modustoolbox) and can be found in folder `./ModusToolbox/tools_2.4/gcc`.
+It is included with [ModusToolbox™ Software Environment](https://www.cypress.com/products/modustoolbox).
 
 The default installation folder is expected by the makefile build system.
 
 To use another installation folder, version of **ModusToolbox™ IDE** or another GCC Compiler, specify the path to a toolchain using the **TOOLCHAIN_PATH** parameter.
+
+Below is an example on how to set toolchin path to the latest include with **ModusToolbox™ IDE 3.0**:
+
+    make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/$(USERNAME)/ModusToolbox/tools_3.0/gcc
 
 ### Build environment troubleshooting
 

@@ -79,7 +79,7 @@ bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
         return -4;
     }
 
-    if (mbedtls_ecp_group_load(&ctx->grp, MBEDTLS_ECP_DP_SECP256R1)) {
+    if (mbedtls_ecp_group_load(&ctx->MBEDTLS_CONTEXT_MEMBER(grp), MBEDTLS_ECP_DP_SECP256R1)) {
         return -5;
     }
 
@@ -90,11 +90,14 @@ bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
         return -7;
     }
 
-    if (mbedtls_ecp_point_read_binary(&ctx->grp, &ctx->Q, *p, end - *p)) {
+    if (mbedtls_ecp_point_read_binary(&ctx->MBEDTLS_CONTEXT_MEMBER(grp),
+                                      &ctx->MBEDTLS_CONTEXT_MEMBER(Q),
+                                      *p, end - *p) != 0) {
         return -8;
     }
 
-    if (mbedtls_ecp_check_pubkey(&ctx->grp, &ctx->Q)) {
+    if (mbedtls_ecp_check_pubkey(&ctx->MBEDTLS_CONTEXT_MEMBER(grp),
+                                 &ctx->MBEDTLS_CONTEXT_MEMBER(Q)) != 0) {
         return -9;
     }
     return 0;
@@ -219,7 +222,7 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
 #else
     rc = bootutil_import_key(&pubkey, end);
 #endif
-    if (rc) {
+    if (rc != 0) {
         return -1;
     }
 
@@ -234,9 +237,7 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
      * This is simplified, as the hash length is also 32 bytes.
      */
 #ifdef CY_MBEDTLS_HW_ACCELERATION
-    while (sig[slen - 1] == '\0') {
-        slen--;
-    }
+
     rc = mbedtls_ecdsa_read_signature(&ctx, hash, hlen, sig, slen);
 
 #else /* CY_MBEDTLS_HW_ACCELERATION */

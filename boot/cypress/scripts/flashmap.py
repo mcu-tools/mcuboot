@@ -7,33 +7,98 @@ import getopt
 import json
 
 # Supported Platforms
+cm0pCore = {
+    'cortex-m0+': 'CM0P',
+    'cm0+': 'CM0P',
+    'm0+': 'CM0P',
+    'cortex-m0p': 'CM0P',
+    'cm0p': 'CM0P',
+    'm0p': 'CM0P',
+    'cortex-m0plus': 'CM0P',
+    'cm0plus': 'CM0P',
+    'm0plus': 'CM0P'
+}
+
+cm4Core = {
+    'cortex-m4': 'CM4',
+    'cm4': 'CM4',
+    'm4': 'CM4'
+}
+
+cm33Core = {
+    'cortex-m33': 'CM33',
+    'cm33': 'CM33',
+    'm33': 'CM33'
+}
+
+allCores_PSOC_06x = {**cm0pCore, **cm4Core}
+
+common_PSOC_061 = {
+    'flashAddr': 0x10000000,
+    'eraseSize': 0x200,  # 512 bytes
+    'smifAddr': 0x18000000,
+    'smifSize': 0x8000000,  # i.e., window size
+    'VTAlign': 0x400,  # Vector Table alignment
+    'allCores': cm4Core,
+    'bootCore': 'Cortex-M4',
+    'appCore': 'Cortex-M4'
+}
+
+common_PSOC_06x = {
+    'flashAddr': 0x10000000,
+    'eraseSize': 0x200,  # 512 bytes
+    'smifAddr': 0x18000000,
+    'smifSize': 0x8000000,  # i.e., window size
+    'VTAlign': 0x400,  # Vector Table alignment
+    'allCores': allCores_PSOC_06x,
+    'bootCore': 'Cortex-M0+',
+    'appCore': 'Cortex-M4'
+}
+
 platDict = {
-    'PSOC_062_2M': {
-        'flashAddr': 0x10000000,
+    'PSOC_061_2M': {
         'flashSize': 0x200000,  # 2 MBytes
-        'eraseSize': 0x200,  # 512 bytes
-        'smifAddr': 0x18000000,
-        'smifSize': 0x8000000  # i.e., window size
+        **common_PSOC_061
+    },
+    'PSOC_061_1M': {
+        'flashSize': 0x100000,  # 1 MByte
+        **common_PSOC_061
+    },
+    'PSOC_061_512K': {
+        'flashSize': 0x80000,  # 512 KBytes
+        **common_PSOC_061
+    },
+
+    'PSOC_062_2M': {
+        'flashSize': 0x200000,  # 2 MBytes
+        **common_PSOC_06x
     },
     'PSOC_062_1M': {
-        'flashAddr': 0x10000000,
         'flashSize': 0x100000,  # 1 MByte
-        'eraseSize': 0x200,  # 512 bytes
-        'smifAddr': 0x18000000,
-        'smifSize': 0x8000000  # i.e., window size
+        **common_PSOC_06x
     },
     'PSOC_062_512K': {
-        'flashAddr': 0x10000000,
         'flashSize': 0x80000,  # 512 KBytes
-        'eraseSize': 0x200,  # 512 bytes
-        'smifAddr': 0x18000000,
-        'smifSize': 0x8000000  # i.e., window size
+        **common_PSOC_06x
     },
+
+    'PSOC_063_1M': {
+        'flashSize': 0x100000,  # 1 MByte
+        **common_PSOC_06x
+    },
+
     'CYW20829': {
         'flashSize': 0,  # n/a
         'smifAddr': 0x60000000,
-        'smifSize': 0x8000000  # i.e., window size
-    }
+        'smifSize': 0x8000000,  # i.e., window size
+        'VTAlign': 0x200,  # Vector Table alignment
+        'allCores': cm33Core,
+        'bootCore': 'Cortex-M33',
+        'appCore': 'Cortex-M33',
+        'bitsPerCnt': False
+    },
+
+
 }
 
 # Supported SPI Flash ICs
@@ -115,6 +180,8 @@ class CmdLineParams:
         self.in_file = ''
         self.out_file = ''
         self.img_id = None
+        self.policy = None
+        self.set_core = False
 
         usage = 'USAGE:\n' + sys.argv[0] + \
                 ''' -p <platform> -i <flash_map.json> -o <flash_map.h> -d <img_id>
@@ -124,12 +191,15 @@ OPTIONS:
 -p  --platform=  Target (e.g., PSOC_062_512K)
 -i  --ifile=     JSON flash map file
 -o  --ofile=     C header file to be generated
--d  --img_id     ID of application to build'''
+-d  --img_id     ID of application to build
+-c  --policy     Policy file in JSON format
+-m  --core       Detect and set Cortex-M CORE
+'''
 
         try:
             opts, unused = getopt.getopt(
-                sys.argv[1:], 'hi:o:p:d:',
-                ['help', 'platform=', 'ifile=', 'ofile=', 'img_id='])
+                sys.argv[1:], 'hi:o:p:d:c:m',
+                ['help', 'platform=', 'ifile=', 'ofile=', 'img_id=', 'policy=', 'core'])
             if len(unused) > 0:
                 print(usage, file=sys.stderr)
                 sys.exit(1)
@@ -149,6 +219,10 @@ OPTIONS:
                 self.out_file = arg
             elif opt in ('-d', '--img_id'):
                 self.img_id = arg
+            elif opt in ('-c', '--policy'):
+                self.policy = arg
+            elif opt in ('-m', '--core'):
+                self.set_core = True
 
         if len(self.in_file) == 0 or len(self.out_file) == 0:
             print(usage, file=sys.stderr)
@@ -361,8 +435,9 @@ class AreaList:
         try:
             with open(params.out_file, "w", encoding='UTF-8') as out_f:
                 out_f.write('/* AUTO-GENERATED FILE, DO NOT EDIT.'
-                            ' ALL CHANGES WILL BE LOST! */\n')
-                out_f.write(f'/* Platform: {params.plat_id} */\n')
+                            ' ALL CHANGES WILL BE LOST! */\n\n'
+                            '#ifndef CY_FLASH_MAP_H\n#define CY_FLASH_MAP_H\n')
+                out_f.write(f'\n/* Platform: {params.plat_id} */\n')
                 out_f.write(f'\nstatic struct flash_area {c_array}[] = {{\n')
                 comma = len(self.areas)
                 area_count = 0
@@ -383,7 +458,7 @@ class AreaList:
                             'struct flash_area *boot_area_descs[] = {\n')
                 for area_index in range(area_count):
                     out_f.write(f'    &{c_array}[{area_index}U],\n')
-                out_f.write('    NULL\n};\n')
+                out_f.write('    NULL\n};\n\n#endif /* CY_FLASH_MAP_H */\n')
         except (FileNotFoundError, OSError):
             print('Cannot create', params.out_file, file=sys.stderr)
             sys.exit(4)
@@ -411,7 +486,7 @@ def get_val(obj, attr):
 
 
 def get_bool(obj, attr, def_val=False):
-    """Get JSON boolean value (returns def_val if it missing)"""
+    """Get JSON boolean value (returns def_val if it is missing)"""
     ret_val = def_val
     obj = obj.get(attr)
     if obj is not None:
@@ -425,6 +500,21 @@ def get_bool(obj, attr, def_val=False):
             else:
                 print('Invalid value', val, 'for', desc, file=sys.stderr)
                 sys.exit(6)
+        except KeyError as key:
+            print('Malformed JSON:', key,
+                  'is missing in', "'" + attr + "'",
+                  file=sys.stderr)
+            sys.exit(5)
+    return ret_val
+
+
+def get_str(obj, attr, def_val=None):
+    """Get JSON string value (returns def_val if it is missing)"""
+    ret_val = def_val
+    obj = obj.get(attr)
+    if obj is not None:
+        try:
+            ret_val = str(obj['value'])
         except KeyError as key:
             print('Malformed JSON:', key,
                   'is missing in', "'" + attr + "'",
@@ -514,7 +604,7 @@ def process_images(area_list, boot_and_upgrade):
     slot_sectors_max = 0
     all_shared = get_bool(boot_and_upgrade['bootloader'], 'shared_slot')
     any_shared = all_shared
-
+    app_core = None
     apps_flash_map = [None, ]
 
     for stage in range(2):
@@ -543,6 +633,21 @@ def process_images(area_list, boot_and_upgrade):
                     area_list.chk_area(primary_addr, primary_size)
                     area_list.chk_area(secondary_addr, secondary_size,
                                        primary_addr)
+                    if application.get('core') is None:
+                        if app_index == 1:
+                            app_core = area_list.plat['appCore']
+                    elif app_index > 1:
+                        print('"core" makes sense only for the 1st app',
+                              file=sys.stderr)
+                        sys.exit(6)
+                    else:
+                        app_core = get_str(application, 'core',
+                                           area_list.plat['appCore'])
+                    if app_index == 1:
+                        app_core = area_list.plat['allCores'].get(app_core.lower())
+                        if app_core is None:
+                            print('Unknown "core"', file=sys.stderr)
+                            sys.exit(6)
                 else:
                     slot_sectors_max = max(
                         slot_sectors_max,
@@ -577,7 +682,7 @@ def process_images(area_list, boot_and_upgrade):
                   file=sys.stderr)
             sys.exit(5)
 
-    return app_count, slot_sectors_max, apps_flash_map, any_shared
+    return app_core, app_count, slot_sectors_max, apps_flash_map, any_shared
 
 
 def main():
@@ -642,8 +747,18 @@ def main():
             sys.exit(5)
 
     # Fill flash areas
-    app_count, slot_sectors_max, apps_flash_map, shared_slot = \
+    app_core, app_count, slot_sectors_max, apps_flash_map, shared_slot = \
         process_images(area_list, boot_and_upgrade)
+
+    cy_img_hdr_size = 0x400
+    app_start = int(apps_flash_map[1].get("primary").get("address"), 0) + cy_img_hdr_size
+
+    if app_start % plat['VTAlign'] != 0:
+        print('Starting address', apps_flash_map[1].get("primary").get("address"),
+              '+', hex(cy_img_hdr_size),
+              'must be aligned to', hex(plat['VTAlign']),
+              file=sys.stderr)
+        sys.exit(7)
 
     slot_sectors_max = max(slot_sectors_max, 32)
 
@@ -673,17 +788,19 @@ def main():
 
     # Report necessary values back to make
     print('# AUTO-GENERATED FILE, DO NOT EDIT. ALL CHANGES WILL BE LOST!')
+    print('BOOTLOADER_SIZE :=', hex(boot.fa_size))
+    if params.set_core:
+        print('CORE :=', plat['allCores'][plat['bootCore'].lower()])
+    print('APP_CORE :=', app_core)
 
     if params.img_id is not None:
-        primary_img_start = (apps_flash_map[int(params.img_id)].get("primary")).get("address")
-        secondary_img_start = (apps_flash_map[int(params.img_id)].get("secondary")).get("address")
-        bootloader_size = (bootloader.get("size")).get("value")
-        slot_size = (apps_flash_map[int(params.img_id)].get("primary")).get("size")
+        primary_img_start = apps_flash_map[int(params.img_id)].get("primary").get("address")
+        secondary_img_start = apps_flash_map[int(params.img_id)].get("secondary").get("address")
+        slot_size = apps_flash_map[int(params.img_id)].get("primary").get("size")
 
         print('PRIMARY_IMG_START := ' + primary_img_start)
         print('SECONDARY_IMG_START := ' + secondary_img_start)
         print('SLOT_SIZE := ' + slot_size)
-        print('BOOTLOADER_SIZE := ' + bootloader_size)
     else:
         print('MCUBOOT_IMAGE_NUMBER :=', app_count)
         print('MAX_IMG_SECTORS :=', slot_sectors_max)

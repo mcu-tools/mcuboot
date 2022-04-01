@@ -435,11 +435,11 @@ static const struct boot_status_table boot_status_tables[] = {
 int
 swap_status_source(struct boot_loader_state *state)
 {
-    const struct boot_status_table *table;
+    const struct boot_status_table *table = NULL;
 #if MCUBOOT_SWAP_USING_SCRATCH
-    struct boot_swap_state state_scratch;
+    struct boot_swap_state state_scratch = {0};
 #endif
-    struct boot_swap_state state_primary_slot;
+    struct boot_swap_state state_primary_slot = {0};
     int rc;
     size_t i;
     uint8_t source;

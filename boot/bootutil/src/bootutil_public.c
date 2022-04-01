@@ -240,13 +240,14 @@ boot_read_flag(const struct flash_area *fap, uint8_t *flag, uint32_t off)
     return 0;
 }
 
+#ifndef MCUBOOT_SWAP_USING_STATUS
+
 static inline int
 boot_read_copy_done(const struct flash_area *fap, uint8_t *copy_done)
 {
     return boot_read_flag(fap, copy_done, boot_copy_done_off(fap));
 }
 
-#ifndef MCUBOOT_SWAP_USING_STATUS
 
 int
 boot_read_swap_state(const struct flash_area *fap,
@@ -429,9 +430,9 @@ boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
 int
 boot_swap_type_multi(int image_index)
 {
-    const struct boot_swap_table *table;
-    struct boot_swap_state primary_slot;
-    struct boot_swap_state secondary_slot;
+    const struct boot_swap_table *table = NULL;
+    struct boot_swap_state primary_slot = {0};
+    struct boot_swap_state secondary_slot = {0};
     int rc;
     size_t i;
 

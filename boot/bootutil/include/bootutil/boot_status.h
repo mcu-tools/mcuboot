@@ -65,9 +65,9 @@ extern "C" {
  */
 
 /* General macros to handle TLV type */
-#define MAJOR_MASK 0xF     /* 4  bit */
-#define MAJOR_POS  12      /* 12 bit */
-#define MINOR_MASK 0xFFF   /* 12 bit */
+#define MAJOR_MASK 0xFu     /* 4  bit */
+#define MAJOR_POS  12u      /* 12 bit */
+#define MINOR_MASK 0xFFFu   /* 12 bit */
 
 #define SET_TLV_TYPE(major, minor) \
         (((uint16_t)((major) & MAJOR_MASK) << MAJOR_POS) \
@@ -76,7 +76,7 @@ extern "C" {
 #define GET_MINOR(tlv_type) ((tlv_type) & MINOR_MASK)
 
 /* Magic value which marks the beginning of shared data area in memory */
-#define SHARED_DATA_TLV_INFO_MAGIC    0x2016
+#define SHARED_DATA_TLV_INFO_MAGIC 0x2016u
 
 /* Initial attestation specific macros */
 
@@ -84,27 +84,33 @@ extern "C" {
  * Major numbers (4 bit) to identify the
  * consumer of shared data in runtime SW.
  */
-#define TLV_MAJOR_IAS      0x1
+#define TLV_MAJOR_IAS    0x1u
+#define TLV_MAJOR_FWU    0x2u
 
 /* Initial attestation: Claim per SW components / SW modules */
 /* Bits: 0-2 */
-#define SW_VERSION       0x00
-#define SW_SIGNER_ID     0x01
-/* Reserved              0x02 */
-#define SW_TYPE          0x03
+#define SW_VERSION       0x00u
+#define SW_SIGNER_ID     0x01u
+/* Reserved              0x02u */
+#define SW_TYPE          0x03u
 /* Bits: 3-5 */
-#define SW_MEASURE_VALUE 0x08
-#define SW_MEASURE_TYPE  0x09
-#define SW_BOOT_RECORD   0x3F
+#define SW_MEASURE_VALUE 0x08u
+#define SW_MEASURE_TYPE  0x09u
+#define SW_BOOT_RECORD   0x3Fu
 
-#define MODULE_POS 6               /* 6 bit */
-#define CLAIM_MASK 0x3F            /* 6 bit */
-#define MEASUREMENT_CLAIM_POS 3    /* 3 bit */
+#define MODULE_POS            6u    /* 6 bit */
+#define MODULE_MASK           0x3Fu /* 6 bit */
+#define CLAIM_MASK            0x3Fu /* 6 bit */
+#define MEASUREMENT_CLAIM_POS 3u    /* 3 bit */
 
 #define GET_IAS_MODULE(tlv_type) ((uint16_t)GET_MINOR(tlv_type) >> MODULE_POS)
 #define GET_IAS_CLAIM(tlv_type)  (GET_MINOR(tlv_type) & CLAIM_MASK)
 #define SET_IAS_MINOR(sw_module, claim) \
         (((uint16_t)(sw_module) << MODULE_POS) | (claim))
+
+#define SET_FWU_MINOR(sw_module, claim)                    \
+    ((uint16_t)((sw_module & MODULE_MASK) << MODULE_POS) | \
+     (uint16_t)(claim & CLAIM_MASK))
 
 /**
  * Shared data TLV header.  All fields in little endian.

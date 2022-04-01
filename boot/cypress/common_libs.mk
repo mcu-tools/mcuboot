@@ -34,7 +34,7 @@ CY_LIBS_PATH = $(PRJ_DIR)/libs
 SOURCES_PDL := $(wildcard $(CY_LIBS_PATH)/mtb-pdl-cat1/drivers/source/*.c)
 SOURCES_PDL += $(wildcard $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/source/*.c)
 
-COMPONENT_CORE_PATH := $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/templates/COMPONENT_MTB/COMPONENT_$(CORE)
+COMPONENT_CORE_PATH := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/COMPONENT_$(CORE)
 
 # PDL startup related files
 SYSTEM_FILE_NAME := $(PLATFORM_SYSTEM_FILE_NAME)
@@ -48,15 +48,17 @@ SOURCES_RETARGET_IO := $(PLATFORM_SOURCES_RETARGET_IO)
 SOURCES_HAL := $(PLATFORM_SOURCES_HAL)
 
 # Add platform folder to build
-SOURCES_PLATFORM := $(wildcard $(PRJ_DIR)/platforms/$(FAMILY)/*.c)
-SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/$(FAMILY)/secure/*.c)
+SOURCES_PLATFORM := $(wildcard $(PRJ_DIR)/platforms/BSP/$(FAMILY)/*.c)
+SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/security_counter/*.c)
+SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/security_counter/$(FAMILY)/*.c)
 
 # PDL related include directories
 INCLUDE_DIRS_PDL := $(CY_LIBS_PATH)/mtb-pdl-cat1/drivers/include
 INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/ip
 INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include
-INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/cmsis/include
 INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/templates/COMPONENT_MTB
+
+INCLUDE_DIRS_CMSIS += $(CY_LIBS_PATH)/cmsis/Core/Include
 
 # core-libs related include directories
 INCLUDE_DIRS_CORE_LIB := $(CY_LIBS_PATH)/core-lib/include
@@ -71,8 +73,10 @@ INCLUDE_DIRS_RETARGET_IO := $(PLATFORM_INCLUDE_DIRS_RETARGET_IO)
 INCLUDE_DIRS_HAL := $(PLATFORM_INCLUDE_DIRS_HAL)
 
 # Include platforms folder
-INCLUDE_DIRS_PLATFORM := $(PRJ_DIR)/platforms/$(FAMILY)
-INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/$(FAMILY)/secure
+INCLUDE_DIRS_PLATFORM := $(PRJ_DIR)/platforms//BSP/$(FAMILY)
+INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/security_counter/$(FAMILY)
+INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/security_counter
+INCLUDE_DIRS_PLATFORM += $(PLATFORM_INCLUDE_DIRS_PDL_STARTUP)
 
 # Assembler startup file for platform
 ASM_FILES_STARTUP := $(PLATFORM_STARTUP_FILE)
@@ -87,6 +91,7 @@ SOURCES_LIBS += $(SOURCES_RETARGET_IO)
 
 # Collected include directories for libraries
 INCLUDE_DIRS_LIBS := $(addprefix -I,$(INCLUDE_DIRS_PDL))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_CMSIS))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_PDL_STARTUP))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_CORE_LIB))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL))
@@ -94,7 +99,7 @@ INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_PLATFORM))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_RETARGET_IO))
 
 # Syslib files
-ASM_FILES_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/drivers/source/TOOLCHAIN_GCC_ARM/cy_syslib_gcc.S
+ASM_FILES_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/drivers/source/TOOLCHAIN_GCC_ARM/cy_syslib_ext.S
 
 ASM_FILES_LIBS := $(ASM_FILES_PDL)
 

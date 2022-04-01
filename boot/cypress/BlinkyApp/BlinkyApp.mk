@@ -41,20 +41,23 @@ CUR_APP_PATH = $(PRJ_DIR)/$(APP_NAME)
 
 ifneq ($(FLASH_MAP), )
 $(CUR_APP_PATH)/flashmap.mk:
-	$(PYTHON_PATH) scripts/flashmap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/cy_flash_pal/cy_flash_map.h -d $(IMG_ID) > $(CUR_APP_PATH)/flashmap.mk
+	$(PYTHON_PATH) scripts/flashmap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/cy_flash_pal/cy_flash_map.h -d $(IMG_ID) > $(CUR_APP_PATH)/flashmap.mk
 include $(CUR_APP_PATH)/flashmap.mk
 DEFINES_APP := -DCY_FLASH_MAP_JSON
 endif
 
 # TODO: optimize here and in MCUBootApp.mk
 # Output folder
-OUT := $(APP_NAME)/out
+ifeq ($(IMG_ID), 1)
+        OUT := $(APP_NAME)/out
+else
+        OUT := $(APP_NAME)/out.id$(IMG_ID)
+endif
+
 # Output folder to contain build artifacts
 OUT_TARGET := $(OUT)/$(PLATFORM)
 
 OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
-
-BOOTLOADER_SIZE ?= $(PLATFORM_BOOTLOADER_SIZE)
 
 # Set build directory for BOOT and UPGRADE images
 ifeq ($(IMG_TYPE), UPGRADE)
@@ -112,18 +115,48 @@ DEFINES_APP += -DUSER_APP_RAM_SIZE=$(USER_APP_RAM_SIZE)
 DEFINES_APP += -DUSER_APP_START=$(USER_APP_START)
 DEFINES_APP += -DPRIMARY_IMG_START=$(PRIMARY_IMG_START)
 DEFINES_APP += -DUSER_APP_SIZE=$(SLOT_SIZE)
+DEFINES_APP += -DAPP_$(APP_CORE)
 DEFINES_APP += $(PLATFORM_DEFINES_APP)
+
+#Use default led if no command line parameter added
+ifeq ($(LED_PORT), )
+DEFINES_APP += -DLED_PORT=$(LED_PORT_DEFAULT)
+else
+DEFINES_APP += -DLED_PORT=GPIO_PRT$(LED_PORT)
+endif
+
+ifeq ($(LED_PIN), )
+DEFINES_APP += -DLED_PIN=$(LED_PIN_DEFAULT)
+else
+DEFINES_APP += -DLED_PIN=$(LED_PIN)
+endif
+
+#Use default UART if no command line parameter added
+ifeq ($(UART_TX), )
+DEFINES_APP += -DCY_DEBUG_UART_TX=$(UART_TX_DEFAULT)
+else
+DEFINES_APP += -DCY_DEBUG_UART_TX=$(UART_TX)
+endif
+
+ifeq ($(UART_RX), )
+DEFINES_APP += -DCY_DEBUG_UART_RX=$(UART_RX_DEFAULT)
+else
+DEFINES_APP += -DCY_DEBUG_UART_RX=$(UART_RX)
+endif
 
 ifeq ($(USE_XIP), 1)
 DEFINES_APP += -DUSE_XIP
+DEFINES_APP += -DCY_BOOT_USE_EXTERNAL_FLASH
 LD_SUFFIX = _xip
 endif
 
 # Add version metadata to image
 ifneq ($(IMG_VER), )
 IMG_VER_ARG = -v "$(IMG_VER)"
+DEFINES_APP += -DIMG_VER_MSG=\"$(IMG_VER)\"
 else
-IMG_VER_ARG = $(PLATFORM_DEFAULT_IMG_VER_ARG)
+IMG_VER_ARG = -v "$(PLATFORM_DEFAULT_IMG_VER_ARG)"
+DEFINES_APP += -DIMG_VER_MSG=\"$(PLATFORM_DEFAULT_IMG_VER_ARG)\"
 $(info WARNING - setting platform default version number, to set custom value - pass IMG_VER=x.x.x argument to make command)
 endif
 
@@ -136,13 +169,6 @@ endif
 
 # Collect Test Application sources
 SOURCES_APP_SRC := $(wildcard $(CUR_APP_PATH)/*.c)
-
-# Include confirmation flag setting (img_ok) implementation
-ifeq ($(IMG_TYPE), UPGRADE)
-ifeq ($(USE_OVERWRITE), 0)
-SOURCES_APP_SRC += $(PRJ_DIR)/platforms/$(FAMILY)/img_confirm/set_img_ok.c
-endif
-endif
 
 # Set offset for secondary image
 ifeq ($(IMG_TYPE), UPGRADE)
@@ -168,6 +194,14 @@ INCLUDE_DIRS_APP += $(addprefix -I, $(PRJ_DIR)/../bootutil/src)
 INCLUDE_DIRS_APP += $(addprefix -I, $(PRJ_DIR)/../bootutil/include/bootutil)
 # +++
 
+# Include confirmation flag setting (img_ok) implementation
+ifeq ($(IMG_TYPE), UPGRADE)
+ifeq ($(USE_OVERWRITE), 0)
+SOURCES_APP_SRC += $(PRJ_DIR)/platforms/img_confirm/$(FAMILY)/set_img_ok.c
+INCLUDE_DIRS_APP += $(addprefix -I, $(PRJ_DIR)/platforms/img_confirm)
+endif
+endif
+
 # Overwite path to linker script if custom is required, otherwise default from BSP is used
 ifeq ($(COMPILER), GCC_ARM)
 LINKER_SCRIPT := $(CUR_APP_PATH)/linker/$(APP_NAME).ld
@@ -181,6 +215,17 @@ ASM_FILES_APP += $(ASM_FILES_STARTUP)
 # add flag to imgtool if not using swap for upgrade
 ifeq ($(USE_OVERWRITE), 1)
 UPGRADE_TYPE := --overwrite-only
+endif
+
+ifeq ($(BOOT_RECORD_SW_TYPE), )
+	ifeq ($(IMG_TYPE), BOOT)
+		BOOT_RECORD_IMG_TYPE_STR = B_Blinky$(IMG_ID)
+	else
+		BOOT_RECORD_IMG_TYPE_STR = U_Blinky$(IMG_ID)
+	endif
+	BOOT_RECORD := --boot-record $(BOOT_RECORD_IMG_TYPE_STR)
+else
+	BOOT_RECORD := --boot-record $(BOOT_RECORD_SW_TYPE)
 endif
 
 SIGN_ARGS := $(PLATFORM_SIGN_ARGS) $(IMG_VER_ARG) $(IMG_DEPS_ARG)
@@ -204,51 +249,68 @@ pre_build:
 # Print debug information about all settings used and/or set in this file
 ifeq ($(VERBOSE), 1)
 $(info #### BlinkyApp.mk ####)
+$(info APP_CORE <-- $(APP_CORE))
 $(info APP_NAME <-- $(APP_NAME))
-$(info ASM_FILES_APP <-> $(ASM_FILES_APP))
+$(info ASM_FILES_APP --> $(ASM_FILES_APP))
 $(info ASM_FILES_STARTUP <-- $(ASM_FILES_STARTUP))
+$(info BOOT_RECORD --> $(BOOT_RECORD))
+$(info BOOT_RECORD_IMG_TYPE_STR <-- $(BOOT_RECORD_IMG_TYPE_STR))
+$(info BOOT_RECORD_SW_TYPE <-- $(BOOT_RECORD_SW_TYPE))
 $(info BUILDCFG <-- $(BUILDCFG))
-$(info CC <-- $(CC))
-$(info CFLAGS <-- $(CFLAGS))
 $(info COMPILER <-> $(COMPILER))
 $(info CONFIRM <-- $(CONFIRM))
-$(info CORE <-- $(CORE))
 $(info CURDIR <-- $(CURDIR))
 $(info CUR_APP_PATH <-- $(CUR_APP_PATH))
-$(info DEFINES_APP <-> $(DEFINES_APP))
+$(info DEFINES_APP --> $(DEFINES_APP))
 $(info ENC_IMG --> $(ENC_IMG))
 $(info ERASED_VALUE <-> $(ERASED_VALUE))
+$(info FAMILY <-- $(FAMILY))
+$(info FLASH_MAP <-- $(FLASH_MAP))
+$(info HEADER_OFFSET --> $(HEADER_OFFSET))
+$(info IMG_DEPS_ARG <-- $(IMG_DEPS_ARG))
+$(info IMG_DEPS_ID <-- $(IMG_DEPS_ID))
+$(info IMG_DEPS_VER <-- $(IMG_DEPS_VER))
+$(info IMG_ID <-> $(IMG_ID))
 $(info IMG_TYPE <-> $(IMG_TYPE))
-$(info INCLUDE_DIRS <-- $(INCLUDE_DIRS))
-$(info INCLUDE_DIRS_APP <-> $(INCLUDE_DIRS_APP))
-$(info LINKER_SCRIPT <-> $(LINKER_SCRIPT))
+$(info IMG_VER <-- $(IMG_VER))
+$(info IMG_VER_ARG <-- $(IMG_VER_ARG))
+$(info INCLUDE_DIRS_APP --> $(INCLUDE_DIRS_APP))
+$(info LED_PIN <-- $(LED_PIN))
+$(info LED_PIN_DEFAULT <-- $(LED_PIN_DEFAULT))
+$(info LED_PORT <-- $(LED_PORT))
+$(info LED_PORT_DEFAULT <-- $(LED_PORT_DEFAULT))
+$(info LINKER_SCRIPT --> $(LINKER_SCRIPT))
 $(info OUT <-> $(OUT))
 $(info OUT_CFG <-> $(OUT_CFG))
 $(info OUT_TARGET <-> $(OUT_TARGET))
 $(info PLATFORM <-- $(PLATFORM))
 $(info PLATFORM_DEFAULT_ERASED_VALUE <-- $(PLATFORM_DEFAULT_ERASED_VALUE))
+$(info PLATFORM_DEFAULT_IMG_VER_ARG <-- $(PLATFORM_DEFAULT_IMG_VER_ARG))
 $(info PLATFORM_DEFAULT_RAM_SIZE <-- $(PLATFORM_DEFAULT_RAM_SIZE))
 $(info PLATFORM_DEFAULT_RAM_START <-- $(PLATFORM_DEFAULT_RAM_START))
-$(info PLATFORM_DEFAULT_SLOT_SIZE <-- $(PLATFORM_DEFAULT_SLOT_SIZE))
-$(info PLATFORM_DEFAULT_USER_APP_START <-- $(PLATFORM_DEFAULT_USER_APP_START))
-$(info PLATFORM_DEFAULT_PRIMARY_IMG_START <-- $(PLATFORM_DEFAULT_PRIMARY_IMG_START))
 $(info PLATFORM_DEFAULT_USE_OVERWRITE <-- $(PLATFORM_DEFAULT_USE_OVERWRITE))
 $(info PLATFORM_DEFINES_APP <-- $(PLATFORM_DEFINES_APP))
 $(info PLATFORM_INCLUDE_DIRS_FLASH <-- $(PLATFORM_INCLUDE_DIRS_FLASH))
 $(info PLATFORM_SIGN_ARGS <-- $(PLATFORM_SIGN_ARGS))
 $(info PLATFORM_SOURCES_FLASH <-- $(PLATFORM_SOURCES_FLASH))
+$(info PLATFORM_USER_APP_START <-- $(PLATFORM_USER_APP_START))
+$(info PRIMARY_IMG_START <-- $(PRIMARY_IMG_START))
 $(info PRJ_DIR <-- $(PRJ_DIR))
-$(info IMG_VER_ARG <-- $(IMG_VER_ARG))
-$(info IMG_DEPS_ARG <-- $(IMG_DEPS_ARG))
+$(info PYTHON_PATH <-- $(PYTHON_PATH))
+$(info SECONDARY_IMG_START <-- $(SECONDARY_IMG_START))
 $(info SIGN_ARGS <-> $(SIGN_ARGS))
-$(info SLOT_SIZE <-> $(SLOT_SIZE))
-$(info SOURCES_APP <-> $(SOURCES_APP))
+$(info SLOT_SIZE <-- $(SLOT_SIZE))
+$(info SOURCES_APP --> $(SOURCES_APP))
 $(info SOURCES_APP_SRC <-> $(SOURCES_APP_SRC))
+$(info UART_RX <-- $(UART_RX))
+$(info UART_RX_DEFAULT <-- $(UART_RX_DEFAULT))
+$(info UART_TX <-- $(UART_TX))
+$(info UART_TX_DEFAULT <-- $(UART_TX_DEFAULT))
 $(info UPGRADE_SUFFIX --> $(UPGRADE_SUFFIX))
 $(info UPGRADE_TYPE --> $(UPGRADE_TYPE))
 $(info USER_APP_RAM_SIZE <-> $(USER_APP_RAM_SIZE))
 $(info USER_APP_RAM_START <-> $(USER_APP_RAM_START))
 $(info USER_APP_START <-> $(USER_APP_START))
-$(info PRIMARY_IMG_START <-> $(PRIMARY_IMG_START))
 $(info USE_OVERWRITE <-> $(USE_OVERWRITE))
+$(info USE_XIP <-- $(USE_XIP))
 endif

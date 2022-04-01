@@ -1,4 +1,5 @@
 stages:
+  - mtb_bootloader_solution
   - cyw20829_build
   - build_blinky
   - build_mcuboot_smif
@@ -14,9 +15,6 @@ stages:
   - code_quality_check
 
 variables:
-  #  Uncommnet `COV` variable to run coverity tests only
-  # COV: #Any_value
-
   # MCUBoot/Bootloader test selectors. Can be overwriten by CI variables.
   # TWO_TESTS - minimal boot/upgrade positive tests
   # THREE_TESTS - two positive and one negative test
@@ -25,31 +23,62 @@ variables:
   # ALL - complete set of all suite tests
   # CUSTOM - manualy selected tests in MCUBoot suite repository
 
-    TEST_SWAP: SMOKE
-    TEST_SWAP_RELEASE: TWO_TESTS
+    TEST_SWAP:              '-m smoke'
+    TEST_SWAP_RELEASE:      '-m two_tests'
 
-    TEST_OVERWRITE: SMOKE
-    TEST_OVERWRITE_RELEASE: TWO_TESTS
+    TEST_OVERWRITE:         '-m smoke'
+    TEST_OVERWRITE_RELEASE: '-m two_tests'
 
-    TEST_RBC: RBC_ALL
-    TEST_RBC_RELEASE: RBC_OVERNIGHT
+    TEST_RBC:               '-m rbc_all'
+    TEST_RBC_RELEASE:       '-m rbc_overnight'
 
-  # Skip all following tests when fail (062 only)
-    ERREXIT: 'True'
+    TEST_CUSTOM_FLASHMAP:   '-m custom_flashmap'
+
+  # Change value of COV variable, like `COV: 1` to run coverity tests only
+    COV: 0
+
+  # Run default CI pipeline, insted of quick CI triggered by CySecureTools and SecureBoot test suite
+    CIVAR_MICRO_TEST: 0
+
+  # Skip all following tests after N fails (or set to zero to run the full scope of tests anyway)
+    MAXFAIL: 1
+
+  # Enable Bootstrap by default
+    BOOTSTRAP: 1
+
+  # Disable Explorer platform for MCUBoot 1.8.3 branch only
+    CIVAR_EXPLORER_DISABLED: 1
+
+  # Fault injection hardening mode
+  # Possible values:
+  # OFF     - disabled
+  # LOW     - minimal configuration
+  # MEDIUM  - basic configuration
+  # HIGH    - full configuration
+    FIH_PROFILE: MEDIUM
+
+  # CYW20829 assets for SecureBoot test suite
+    CIVAR_20829_OPENOCD: '4.4.0.2121' # CYW208xx_SMIF.FLM flash-loader file taken from 4.3.0.1746 version
+    CIVAR_20829_BOOTROM: '1.0.0.7120'
 
   # Branch or tag seletct for test suite
-    TEST_BRANCH_062: test/boot_timeout
-    TEST_BRANCH_20829: mcuboot_ci_tag
+    TEST_BRANCH_PSOC6: ci/mcuboot_1.8.3_tc2
+    TEST_BRANCH_20829: ci/mcuboot_1.8.3_tc2
+    TEST_BRANCH_BSE: develop
 
   # Branch or tag with cysecuretools for 20829
-    CY_SECURETOOLS_BRANCH: CYW20829_ES100_TC2
+    CY_SECURETOOLS_BRANCH: CYSECURETOOLS_4.1.0_RC2
     TESTAPPS_CYW20829_BRANCH: testapps_cyw20829
 
   # Branch with CppCheck scripts and config
     CPPCHECK_BRANCH: pr/cypress-mcuboot-cppcheck
 
   # Brach with Coverity scripts and confings
-    COVERITY_BRANCH: feature/mcuboot_config
+    COVERITY_BRANCH: feature/add-active-violetions-check
+
+  # Default git strategies
+    GIT_STRATEGY: clone
+    GIT_SUBMODULE_STRATEGY: none
 
   # DO NOT EDIT. Internal CI runner tools path
     OBJCOPY_PATH: C:/Users/fw_security/ModusToolbox/tools_2.3/gcc/bin/arm-none-eabi-objcopy
@@ -58,6 +87,125 @@ variables:
 #    TOOLCHAIN_PATH: C:/Users/cydesigner/ModusToolbox/tools_2.3/gcc
 #    TOOLCHAIN_PATH: /Applications/ModusToolbox/tools_2.0/gcc-7.2.1
 #    TOOLCHAIN_PATH: /home/fw-security/ModusToolbox/tools_2.3/gcc
+
+  # PSoC 061 Processor module voltage via MiniProg4. Working values is 1700 - 3600 mV basing on 002-21414 datasheet
+    CIVAR_VOLTAGE_061_512K: 3300 # Default value like in PSoC 062 kits
+
+######################################################################################################################################
+###########################  M O D U S T O O L B O X   B O O T L O A D E R   S O L U T I O N   B U I L D  ############################
+######################################################################################################################################
+
+.mtb_bootloader_solution:
+  stage: mtb_bootloader_solution
+  needs: []
+  except:
+    variables:
+      - $COV != "0"
+      - $CI_COMMIT_TAG
+      - $CIVAR_MICRO_TEST != "0"
+      - $CIVAR_EXPLORER_DISABLED !="0"
+  variables:
+    CE_NAME: Bootloader_Solution
+    BOOTLOADER_PRJ_FOLDER: bootloader
+    BLINKY_PRJ_FOLDER: blinky
+    CE_KIT: CY8CPROTO-062-4343W
+  artifacts:
+    expire_in: 4 weeks
+    paths:
+      - ${CE_NAME}/${BOOTLOADER_PRJ_FOLDER}/build/${CE_KIT}/Debug/mtb-example-bootloader-solution.hex
+      - ${CE_NAME}/${BLINKY_PRJ_FOLDER}/build/${CE_KIT}/Debug/blinky.hex
+  script:
+    - env
+
+    - echo "# Update Bootloader Solution branch in manifest, if it's not a 'develop'"
+    - bash -c '[ ${TEST_BRANCH_BSE} != "develop" ] && cat ${CI_PROJECT_DIR}/boot/cypress/manifests/custom-ce-manifest.xml | sed -e "s/develop/${TEST_BRANCH_BSE}/" | tee ${CI_PROJECT_DIR}/boot/cypress/manifests/custom-ce-manifest.xml || true'
+
+    - echo "# Create Modus Toolbox project using manifest from MCUBoot repository"
+    - bash -c 'echo CyRemoteManifestOverride=${CI_PROJECT_DIR}/boot/cypress/manifests/mtb-super-manifest-fv2-test-ce-mcuboot.xml ${CE_TOOLS}/project-creator/project-creator-cli --board-id ${CE_KIT} --board-uri http://git-ore.aus.cypress.com/repo-staging/TARGET_${CE_KIT} --board-commit latest-v3.X --app-id mtb-example-bootloader-solution --app-uri http://git-ore.aus.cypress.com/wpp/ce/mtb/mtb-example-bootloader-solution/ --app-commit ${TEST_BRANCH_BSE} --cypress-tools ${CE_TOOLS} --target-dir ${CI_PROJECT_DIR} --user-app-name ${CE_NAME} --output-for-machine --use-modus-shell'
+    - bash -c      'CyRemoteManifestOverride=${CI_PROJECT_DIR}/boot/cypress/manifests/mtb-super-manifest-fv2-test-ce-mcuboot.xml ${CE_TOOLS}/project-creator/project-creator-cli --board-id ${CE_KIT} --board-uri http://git-ore.aus.cypress.com/repo-staging/TARGET_${CE_KIT} --board-commit latest-v3.X --app-id mtb-example-bootloader-solution --app-uri http://git-ore.aus.cypress.com/wpp/ce/mtb/mtb-example-bootloader-solution/ --app-commit ${TEST_BRANCH_BSE} --cypress-tools ${CE_TOOLS} --target-dir ${CI_PROJECT_DIR} --user-app-name ${CE_NAME} --output-for-machine --use-modus-shell'
+
+    - cd ${CE_NAME}
+    - pushd ${BOOTLOADER_PRJ_FOLDER}
+
+    - echo "# Change MCUBoot branch in deps/mcuboot.mtb dependency file (mtb_shared), if it's not a 'develop'"
+# Powershell echo format (obsolete example)
+#    - echo http://devops-git.aus.cypress.com/repo/cy_mcuboot_project/cy_mcuboot#$env:CI_BUILD_REF#$"$"ASSET_REPO$"$"/mcuboot/develop > deps/mcuboot.mtb
+    - bash -c '[ $CI_BUILD_REF_NAME != "develop" ] && echo http://devops-git.aus.cypress.com/repo/cy_mcuboot_project/cy_mcuboot#$CI_BUILD_REF#$\$ASSET_REPO$\$/mcuboot/develop > deps/mcuboot.mtb || true'
+    - bash -c '[ $CI_BUILD_REF_NAME != "develop" ] && make getlibs || true'
+
+    - echo "# Check MCUBoot and Bootloader Solution commits for build'"
+    - git --git-dir ../mtb_shared/mcuboot/develop/.git rev-parse HEAD
+    - git ls-remote http://git-ore.aus.cypress.com/wpp/ce/mtb/mtb-example-bootloader-solution.git ${TEST_BRANCH_BSE}
+
+    - make build -j4
+    - popd
+    - pushd ${BLINKY_PRJ_FOLDER}
+    - make build -j4
+
+
+lin_gcc_mtb_bootloader_solution:
+  extends: .mtb_bootloader_solution
+  tags:
+    - FWS_LIN_BUILD
+  variables:
+    CE_TOOLS: /home/fw-security/ModusToolbox/tools_2.4
+    TOOLCHAIN: GCC_ARM
+
+lin_arm_mtb_bootloader_solution:
+  extends: .mtb_bootloader_solution
+  tags:
+    - FWS_LIN_BUILD
+  variables:
+    CE_TOOLS: /home/fw-security/ModusToolbox/tools_2.4
+    TOOLCHAIN: ARM
+    CY_COMPILER_PATH: '/opt/arm/6.18'
+  before_script:
+    - echo "# Setup ARM C compiller license'"
+    - export ARMLMD_LICENSE_FILE=3500@auclal11.auc.infineon.com,3500@auclal12.auc.infineon.com,3500@auclal13.auc.infineon.com:27000@licsk1019.infineon.com
+
+mac_gcc_mtb_bootloader_solution:
+  extends: .mtb_bootloader_solution
+  tags:
+    - FWS_MAC_BUILD
+  variables:
+    CE_TOOLS: /Applications/ModusToolbox/tools_2.4
+    CY_TOOLS_PATHS: /Applications/ModusToolbox/tools_2.4
+    TOOLCHAIN: GCC_ARM
+
+win_gcc_mtb_bootloader_solution:
+  extends: .mtb_bootloader_solution
+  tags:
+    - FWS_WIN_BUILD
+  variables:
+    CE_TOOLS: C:/Users/fw-security/ModusToolbox/tools_2.4
+    TOOLCHAIN: GCC_ARM
+  before_script:
+    - echo "# Change output file format from Unicode to ASCII for Powershell'"
+    - $PSDefaultParameterValues = @{"Out-File:Encoding"="ASCII"}
+
+win_iar_mtb_bootloader_solution:
+  extends: .mtb_bootloader_solution
+  tags:
+    - FWS_WIN_BUILD
+  variables:
+    CE_TOOLS: C:/Users/fw-security/ModusToolbox/tools_2.4
+    TOOLCHAIN: IAR
+    CY_COMPILER_PATH: 'C:/Program Files/IAR Systems/Embedded Workbench 9.0/arm'
+  before_script:
+    - echo "# Change output file format from Unicode to ASCII for Powershell'"
+    - $PSDefaultParameterValues = @{"Out-File:Encoding"="ASCII"}
+
+win_arm_mtb_bootloader_solution:
+  extends: .mtb_bootloader_solution
+  tags:
+    - FWS_WIN_BUILD
+  variables:
+    CE_TOOLS: C:/Users/fw-security/ModusToolbox/tools_2.4
+    TOOLCHAIN: ARM
+    CY_COMPILER_PATH: 'C:/Program\ Files/ArmCompilerforEmbedded6.18'
+  before_script:
+    - echo "# Change output file format from Unicode to ASCII for Powershell'"
+    - $PSDefaultParameterValues = @{"Out-File:Encoding"="ASCII"}
 
 ######################################################################################################################################
 ######################################################  2 0 8 2 9   B U I L D  #######################################################
@@ -70,7 +218,6 @@ variables:
     - FWS_MAC_BUILD
 #    - PCVP30_WIN_BUILD
   variables:
-    GIT_STRATEGY: fetch
 #    TOOLCHAIN_PATH: /home/fw-security/ModusToolbox/tools_2.3/gcc
     TOOLCHAIN_PATH: /Applications/ModusToolbox/tools_2.3/gcc
 #    TOOLCHAIN_PATH: C:/Users/PCVP30User/ModusToolbox/tools_2.4/gcc
@@ -106,6 +253,15 @@ variables:
       - boot/cypress/packets/debug_cert.bin
 
   script:
+    - env
+    - '[ ! -z $REPO ] && git remote add remote_repo $REPO'
+    - '[ ! -z $REPO ] && git fetch remote_repo'
+    - '[ ! -z $REPO ] && git checkout -b remote_branch remote_repo/$BRANCH'
+    - '[ ! -z $REPO ] && echo "Using remote branch commit:"'
+    - '[   -z $REPO ] && echo "Using current branch commit:"'
+
+    - git rev-parse HEAD
+    - git submodule deinit --all -f
     - git submodule sync --recursive
     - git submodule update --init --recursive
 
@@ -115,8 +271,8 @@ variables:
 #    - ./venv/scripts/activate.ps1
     - python -V
 
-    - pip install git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${CY_SECURETOOLS_BRANCH}
-    - pip install git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${TESTAPPS_CYW20829_BRANCH}
+    - pip install --upgrade --force-reinstall git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${CY_SECURETOOLS_BRANCH}
+    - pip install --upgrade --force-reinstall git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${TESTAPPS_CYW20829_BRANCH}
     - cysecuretools -v version
 
     - cd boot/cypress
@@ -126,156 +282,242 @@ variables:
     - cysecuretools -t cyw20829 -p policy/policy_secure.json create-key -k 0
     - cysecuretools -t cyw20829 -p policy/policy_secure.json debug-certificate -t packets/debug_cert.json -o packets/debug_cert.bin -k 0
 
-    - echo make app BUILDCFG=Debug   ENC_IMG=${CIVAR_ENCRYPT} LCS=${CIVAR_LCS} APP_NAME=MCUBootApp PLATFORM=CYW20829 CYW20829_PSVP=1 FLASH_MAP=${CIVAR_FLASH_MAP}
-    -      make app BUILDCFG=Debug   ENC_IMG=${CIVAR_ENCRYPT} LCS=${CIVAR_LCS} APP_NAME=MCUBootApp PLATFORM=CYW20829 CYW20829_PSVP=1 FLASH_MAP=${CIVAR_FLASH_MAP}
-    -      make app BUILDCFG=Release ENC_IMG=${CIVAR_ENCRYPT} LCS=${CIVAR_LCS} APP_NAME=MCUBootApp PLATFORM=CYW20829 CYW20829_PSVP=1 FLASH_MAP=${CIVAR_FLASH_MAP}
+    - echo make app BUILDCFG=Debug   ENC_IMG=${CIVAR_ENCRYPT} LCS=${CIVAR_LCS} APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=CYW20829 CYW20829_PSVP=1 FLASH_MAP=${CIVAR_FLASH_MAP}
+    -      make app BUILDCFG=Debug   ENC_IMG=${CIVAR_ENCRYPT} LCS=${CIVAR_LCS} APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=CYW20829 CYW20829_PSVP=1 FLASH_MAP=${CIVAR_FLASH_MAP}
+    -      make app BUILDCFG=Release ENC_IMG=${CIVAR_ENCRYPT} LCS=${CIVAR_LCS} APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=CYW20829 CYW20829_PSVP=1 FLASH_MAP=${CIVAR_FLASH_MAP}
 
-    - echo make app BUILDCFG=Debug IMG_TYPE=BOOT ENC_IMG=${CIVAR_ENCRYPT} APP_DEFAULT_POLICY=${CIVAR_POLICY} APP_NAME=BlinkyApp PLATFORM=CYW20829 FLASH_MAP=${CIVAR_FLASH_MAP} IMG_ID=1
-    - make app BUILDCFG=Debug   IMG_TYPE=BOOT    ENC_IMG=${CIVAR_ENCRYPT} APP_DEFAULT_POLICY=${CIVAR_POLICY} APP_NAME=BlinkyApp PLATFORM=CYW20829 FLASH_MAP=${CIVAR_FLASH_MAP} IMG_ID=1
-    - make app BUILDCFG=Debug   IMG_TYPE=UPGRADE ENC_IMG=${CIVAR_ENCRYPT} APP_DEFAULT_POLICY=${CIVAR_POLICY} APP_NAME=BlinkyApp PLATFORM=CYW20829 FLASH_MAP=${CIVAR_FLASH_MAP} IMG_ID=1
-    - make app BUILDCFG=Release IMG_TYPE=BOOT    ENC_IMG=${CIVAR_ENCRYPT} APP_DEFAULT_POLICY=${CIVAR_POLICY} APP_NAME=BlinkyApp PLATFORM=CYW20829 FLASH_MAP=${CIVAR_FLASH_MAP} IMG_ID=1
-    - make app BUILDCFG=Release IMG_TYPE=UPGRADE ENC_IMG=${CIVAR_ENCRYPT} APP_DEFAULT_POLICY=${CIVAR_POLICY} APP_NAME=BlinkyApp PLATFORM=CYW20829 FLASH_MAP=${CIVAR_FLASH_MAP} IMG_ID=1
+    - echo make app BUILDCFG=Debug   IMG_TYPE=BOOT    ENC_IMG=${CIVAR_ENCRYPT} APP_DEFAULT_POLICY=${CIVAR_POLICY} APP_NAME=BlinkyApp PLATFORM=CYW20829 FLASH_MAP=${CIVAR_FLASH_MAP} IMG_ID=1
+    -      make app BUILDCFG=Debug   IMG_TYPE=BOOT    ENC_IMG=${CIVAR_ENCRYPT} APP_DEFAULT_POLICY=${CIVAR_POLICY} APP_NAME=BlinkyApp PLATFORM=CYW20829 FLASH_MAP=${CIVAR_FLASH_MAP} IMG_ID=1
+    -      make app BUILDCFG=Debug   IMG_TYPE=UPGRADE ENC_IMG=${CIVAR_ENCRYPT} APP_DEFAULT_POLICY=${CIVAR_POLICY} APP_NAME=BlinkyApp PLATFORM=CYW20829 FLASH_MAP=${CIVAR_FLASH_MAP} IMG_ID=1
+    -      make app BUILDCFG=Release IMG_TYPE=BOOT    ENC_IMG=${CIVAR_ENCRYPT} APP_DEFAULT_POLICY=${CIVAR_POLICY} APP_NAME=BlinkyApp PLATFORM=CYW20829 FLASH_MAP=${CIVAR_FLASH_MAP} IMG_ID=1
+    -      make app BUILDCFG=Release IMG_TYPE=UPGRADE ENC_IMG=${CIVAR_ENCRYPT} APP_DEFAULT_POLICY=${CIVAR_POLICY} APP_NAME=BlinkyApp PLATFORM=CYW20829 FLASH_MAP=${CIVAR_FLASH_MAP} IMG_ID=1
 
   after_script:
     - deactivate
     - rm -rf ./venv
 
 
-mac_20829_mcuboot_normal_swap:
+mac_20829_mcuboot_normal_swap_shared:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_ENCRYPT: 0
     CIVAR_LCS: NORMAL_NO_SECURE
     CIVAR_POLICY:  ./policy/policy_no_secure.json
-    CIVAR_FLASH_MAP: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single_psvp.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_shared_psvp.json
+  extends: .cyw20829_build_mcuboot
+
+
+mac_20829_mcuboot_secure_swap_shared:
+  except:
+    variables:
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
+      - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
+  variables:
+    CIVAR_ENCRYPT: 1
+    CIVAR_LCS: SECURE
+    CIVAR_POLICY:  ./policy/policy_no_secure.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_shared_psvp.json
+  extends: .cyw20829_build_mcuboot
+
+
+mac_20829_mcuboot_normal_swap:
+  except:
+    variables:
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
+      - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
+  variables:
+    CIVAR_ENCRYPT: 0
+    CIVAR_LCS: NORMAL_NO_SECURE
+    CIVAR_POLICY:  ./policy/policy_no_secure.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single_psvp.json
+  extends: .cyw20829_build_mcuboot
+
+mac_20829_mcuboot_normal_swap_fih_high:
+  only:
+    - schedules
+  except:
+    variables:
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
+      - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
+  variables:
+    CIVAR_ENCRYPT: 0
+    CIVAR_LCS: NORMAL_NO_SECURE
+    CIVAR_POLICY:  ./policy/policy_no_secure.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single_psvp.json
+    FIH_PROFILE: 'HIGH'
   extends: .cyw20829_build_mcuboot
 
 
 mac_20829_mcuboot_secure_swap:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_ENCRYPT: 0
     CIVAR_LCS: SECURE
     CIVAR_POLICY:  ./policy/policy_secure.json
-    CIVAR_FLASH_MAP: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single_psvp.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single_psvp.json
   extends: .cyw20829_build_mcuboot
 
 
 mac_20829_mcuboot_secure_rollback_swap:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_ENCRYPT: 0
     CIVAR_LCS: SECURE
     CIVAR_POLICY:  ./policy/policy_reprovisioning_secure.json
-    CIVAR_FLASH_MAP: ./cy_flash_pal/flash_cyw208xx/flashmap/hw_rollback_prot/cyw20829_xip_swap_single_psvp.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/hw_rollback_prot/cyw20829_xip_swap_single_psvp.json
   extends: .cyw20829_build_mcuboot
 
 
 mac_20829_mcuboot_secure_encrypt_swap:
   except:
     variables:
-      - $COV
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_ENCRYPT: 1
     CIVAR_LCS: SECURE
     CIVAR_POLICY:  ./policy/policy_secure.json
-    CIVAR_FLASH_MAP: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single_psvp.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single_psvp.json
   extends: .cyw20829_build_mcuboot
 
+mac_20829_mcuboot_secure_encrypt_swap_fih_off:
+  except:
+    variables:
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
+      - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
+  variables:
+    CIVAR_ENCRYPT: 1
+    CIVAR_LCS: SECURE
+    CIVAR_POLICY:  ./policy/policy_secure.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single_psvp.json
+    FIH_PROFILE: 'OFF'
+  extends: .cyw20829_build_mcuboot
 
 mac_20829_mcuboot_secure_encrypt_rollback_swap:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_ENCRYPT: 1
     CIVAR_LCS: SECURE
     CIVAR_POLICY:  ./policy/policy_reprovisioning_secure.json
-    CIVAR_FLASH_MAP: ./cy_flash_pal/flash_cyw208xx/flashmap/hw_rollback_prot/cyw20829_xip_swap_single_psvp.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/hw_rollback_prot/cyw20829_xip_swap_single_psvp.json
   extends: .cyw20829_build_mcuboot
 
 
 mac_20829_mcuboot_normal_overwrite:
   except:
     variables:
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_ENCRYPT: 0
     CIVAR_LCS: NORMAL_NO_SECURE
     CIVAR_POLICY:  ./policy/policy_no_secure.json
-    CIVAR_FLASH_MAP: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_overwrite_single_psvp.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_overwrite_single_psvp.json
   extends: .cyw20829_build_mcuboot
 
 
 mac_20829_mcuboot_secure_overwrite:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_ENCRYPT: 0
     CIVAR_LCS: SECURE
     CIVAR_POLICY:  ./policy/policy_secure.json
-    CIVAR_FLASH_MAP: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_overwrite_single_psvp.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_overwrite_single_psvp.json
   extends: .cyw20829_build_mcuboot
 
 
 mac_20829_mcuboot_secure_rollback_overwrite:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_ENCRYPT: 0
     CIVAR_LCS: SECURE
     CIVAR_POLICY:  ./policy/policy_reprovisioning_secure.json
-    CIVAR_FLASH_MAP: ./cy_flash_pal/flash_cyw208xx/flashmap/hw_rollback_prot/cyw20829_xip_overwrite_single_psvp.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/hw_rollback_prot/cyw20829_xip_overwrite_single_psvp.json
   extends: .cyw20829_build_mcuboot
 
+  
+mac_20829_mcuboot_secure_rollback_overwrite_fih_low:
+  except:
+    variables:
+      - $COV != "0"
+      - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
+  variables:
+    CIVAR_ENCRYPT: 0
+    CIVAR_LCS: SECURE
+    CIVAR_POLICY:  ./policy/policy_reprovisioning_secure.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/hw_rollback_prot/cyw20829_xip_overwrite_single_psvp.json
+    FIH_PROFILE: 'LOW'
+  extends: .cyw20829_build_mcuboot
 
 mac_20829_mcuboot_secure_encrypt_overwrite:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_ENCRYPT: 1
     CIVAR_LCS: SECURE
     CIVAR_POLICY:  ./policy/policy_secure.json
-    CIVAR_FLASH_MAP: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_overwrite_single_psvp.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_overwrite_single_psvp.json
   extends: .cyw20829_build_mcuboot
 
 
 mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_ENCRYPT: 1
     CIVAR_LCS: SECURE
     CIVAR_POLICY:  ./policy/policy_reprovisioning_secure.json
-    CIVAR_FLASH_MAP: ./cy_flash_pal/flash_cyw208xx/flashmap/hw_rollback_prot/cyw20829_xip_overwrite_single_psvp.json
+    CIVAR_FLASH_MAP: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/hw_rollback_prot/cyw20829_xip_overwrite_single_psvp.json
   extends: .cyw20829_build_mcuboot
 
 
@@ -284,26 +526,40 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
 ######################################################################################################################################
 
 .build_blinky:
+  retry:
+    max: 0
   tags:
     - FWS_LIN_BUILD
   needs: []
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
-    GIT_STRATEGY: clone
     TOOLCHAIN_PATH: /home/fw-security/ModusToolbox/tools_2.3/gcc
   artifacts:
     expire_in: 4 weeks
     paths:
-      - boot/cypress/BlinkyApp/out/PSOC_062_${PSOC^^}/Debug/${TYPE,,}/BlinkyApp.elf
-      - boot/cypress/BlinkyApp/out/PSOC_062_${PSOC^^}/Release/${TYPE,,}/BlinkyApp.elf
-      - boot/cypress/BlinkyApp/out/PSOC_062_${PSOC^^}/Debug/${TYPE,,}/BlinkyApp.hex
-      - boot/cypress/BlinkyApp/out/PSOC_062_${PSOC^^}/Release/${TYPE,,}/BlinkyApp.hex
-      - boot/cypress/BlinkyApp/out/PSOC_062_${PSOC^^}/Debug/${TYPE,,}/BlinkyApp_upgrade.hex
-      - boot/cypress/BlinkyApp/out/PSOC_062_${PSOC^^}/Release/${TYPE,,}/BlinkyApp_upgrade.hex
+        #IMG_ID=1
+      - boot/cypress/BlinkyApp/out/${PSOC^^}/Debug/boot/BlinkyApp.elf
+      - boot/cypress/BlinkyApp/out/${PSOC^^}/Release/boot/BlinkyApp.elf
+      - boot/cypress/BlinkyApp/out/${PSOC^^}/Debug/upgrade/BlinkyApp.elf
+      - boot/cypress/BlinkyApp/out/${PSOC^^}/Release/upgrade/BlinkyApp.elf
+      - boot/cypress/BlinkyApp/out/${PSOC^^}/Debug/boot/BlinkyApp.hex
+      - boot/cypress/BlinkyApp/out/${PSOC^^}/Release/boot/BlinkyApp.hex
+      - boot/cypress/BlinkyApp/out/${PSOC^^}/Debug/upgrade/BlinkyApp_upgrade.hex
+      - boot/cypress/BlinkyApp/out/${PSOC^^}/Release/upgrade/BlinkyApp_upgrade.hex
+        #IMG_ID=2
+      #- boot/cypress/BlinkyApp/out.id2/${PSOC^^}/Debug/boot/BlinkyApp.elf
+      #- boot/cypress/BlinkyApp/out.id2/${PSOC^^}/Release/boot/BlinkyApp.elf
+      #- boot/cypress/BlinkyApp/out.id2/${PSOC^^}/Debug/upgrade/BlinkyApp.elf
+      #- boot/cypress/BlinkyApp/out.id2/${PSOC^^}/Release/upgrade/BlinkyApp.elf
+      #- boot/cypress/BlinkyApp/out.id2/${PSOC^^}/Debug/boot/BlinkyApp.hex
+      #- boot/cypress/BlinkyApp/out.id2/${PSOC^^}/Release/boot/BlinkyApp.hex
+      #- boot/cypress/BlinkyApp/out.id2/${PSOC^^}/Debug/upgrade/BlinkyApp_upgrade.hex
+      #- boot/cypress/BlinkyApp/out.id2/${PSOC^^}/Release/upgrade/BlinkyApp_upgrade.hex
   script:
     - env
     - '[ ! -z $REPO ] && git remote add remote_repo $REPO'
@@ -315,27 +571,75 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     - git submodule deinit --all -f
     - git submodule update --init --recursive
     - cd boot/cypress
-    - echo make app APP_NAME=BlinkyApp BUILDCFG=Debug   PLATFORM=PSOC_062_${PSOC^^} IMG_TYPE=${TYPE^^} FLASH_MAP=${JSON} IMG_ID=${IMG_ID^^}
-    -      make app APP_NAME=BlinkyApp BUILDCFG=Debug   PLATFORM=PSOC_062_${PSOC^^} IMG_TYPE=${TYPE^^} FLASH_MAP=${JSON} IMG_ID=${IMG_ID^^}
-    -      make app APP_NAME=BlinkyApp BUILDCFG=Release PLATFORM=PSOC_062_${PSOC^^} IMG_TYPE=${TYPE^^} FLASH_MAP=${JSON} IMG_ID=${IMG_ID^^}
+    - echo make app APP_NAME=BlinkyApp BUILDCFG=Debug   IMG_TYPE=BOOT    PLATFORM=${PSOC^^} IMG_ID=${IMG_ID} FLASH_MAP=${JSON}
+    -      make app APP_NAME=BlinkyApp BUILDCFG=Debug   IMG_TYPE=BOOT    PLATFORM=${PSOC^^} IMG_ID=${IMG_ID} FLASH_MAP=${JSON}
+    -      make app APP_NAME=BlinkyApp BUILDCFG=Debug   IMG_TYPE=UPGRADE PLATFORM=${PSOC^^} IMG_ID=${IMG_ID} FLASH_MAP=${JSON}
+    -      make app APP_NAME=BlinkyApp BUILDCFG=Release IMG_TYPE=BOOT    PLATFORM=${PSOC^^} IMG_ID=${IMG_ID} FLASH_MAP=${JSON}
+    -      make app APP_NAME=BlinkyApp BUILDCFG=Release IMG_TYPE=UPGRADE PLATFORM=${PSOC^^} IMG_ID=${IMG_ID} FLASH_MAP=${JSON}
+
 
 .build_mcuboot:
+  retry:
+    max: 0
   tags:
     - FWS_LIN_BUILD
   needs: []
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
-    GIT_STRATEGY: clone
     TOOLCHAIN_PATH: /home/fw-security/ModusToolbox/tools_2.3/gcc
   artifacts:
     expire_in: 4 weeks
     paths:
-      - boot/cypress/MCUBootApp/out/PSOC_062_${PSOC^^}/Debug/MCUBootApp.hex
-      - boot/cypress/MCUBootApp/out/PSOC_062_${PSOC^^}/Release/MCUBootApp.hex
+      - boot/cypress/MCUBootApp/out/${PSOC^^}/Debug/MCUBootApp.hex
+      - boot/cypress/MCUBootApp/out/${PSOC^^}/Release/MCUBootApp.hex
+  script:
+# HTTP 1.1 workaround for `error: RPC failed; curl 92 HTTP/2 stream 0 was not closed cleanly: PROTOCOL_ERROR (err 1)`
+#    - git config --global http.version HTTP/1.1
+#    - git config http.postBuffer 1048576000
+#    - git config http.postBuffer
+    - env
+    - '[ ! -z $REPO ] && git remote add remote_repo $REPO'
+    - '[ ! -z $REPO ] && git fetch remote_repo'
+    - '[ ! -z $REPO ] && git checkout -b remote_branch remote_repo/$BRANCH'
+    - '[ ! -z $REPO ] && echo "Using remote branch commit:"'
+    - '[   -z $REPO ] && echo "Using current branch commit:"'
+    - git rev-parse HEAD
+    - git submodule deinit --all -f
+    - git submodule update --init --recursive
+    - cd boot/cypress
+    - echo make app APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=${PSOC^^} BUILDCFG=Debug   ENC_IMG=${ENCRYPT} FLASH_MAP=${JSON} USE_BOOTSTRAP=${BOOTSTRAP} ${DEVICE_MPN}
+    -      make app APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=${PSOC^^} BUILDCFG=Debug   ENC_IMG=${ENCRYPT} FLASH_MAP=${JSON} USE_BOOTSTRAP=${BOOTSTRAP} ${DEVICE_MPN}
+    -      make app APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=${PSOC^^} BUILDCFG=Release ENC_IMG=${ENCRYPT} FLASH_MAP=${JSON} USE_BOOTSTRAP=${BOOTSTRAP} ${DEVICE_MPN}
+
+
+# Explorer MCUBoot build job template
+explorer_mcuboot_template:
+  stage: build_mcuboot
+  tags:
+    - FWS_LIN_BUILD
+  needs: []
+  except:
+    variables:
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
+      - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
+      - $CIVAR_EXPLORER_DISABLED !="0"
+  variables:
+    TOOLCHAIN_PATH: /home/fw-security/ModusToolbox/tools_2.3/gcc
+    JSON: ./platforms/cy_flash_pal/flash_explorer/flashmap/explorer_swap_single_psvp.json
+    PSOC: EXPLORER
+    ENCRYPT: 0
+  artifacts:
+    expire_in: 4 weeks
+    paths:
+      - boot/cypress/MCUBootApp/out/${PSOC^^}/Debug/MCUBootApp.hex
+      - boot/cypress/MCUBootApp/out/${PSOC^^}/Release/MCUBootApp.hex
   script:
     - env
     - '[ ! -z $REPO ] && git remote add remote_repo $REPO'
@@ -347,32 +651,76 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     - git submodule deinit --all -f
     - git submodule update --init --recursive
     - cd boot/cypress
-    - echo make app APP_NAME=MCUBootApp PLATFORM=PSOC_062_${PSOC^^} BUILDCFG=Debug   ENC_IMG=${ENCRYPT} FLASH_MAP=${JSON}
-    -      make app APP_NAME=MCUBootApp PLATFORM=PSOC_062_${PSOC^^} BUILDCFG=Debug   ENC_IMG=${ENCRYPT} FLASH_MAP=${JSON}
-    -      make app APP_NAME=MCUBootApp PLATFORM=PSOC_062_${PSOC^^} BUILDCFG=Release ENC_IMG=${ENCRYPT} FLASH_MAP=${JSON}
+    - echo make app APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=${PSOC^^} BUILDCFG=Debug   ENC_IMG=${ENCRYPT} FLASH_MAP=${JSON} USE_BOOTSTRAP=${BOOTSTRAP}
+    -      make app APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=${PSOC^^} BUILDCFG=Debug   ENC_IMG=${ENCRYPT} FLASH_MAP=${JSON} USE_BOOTSTRAP=${BOOTSTRAP}
+    -      make app APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=${PSOC^^} BUILDCFG=Release ENC_IMG=${ENCRYPT} FLASH_MAP=${JSON} USE_BOOTSTRAP=${BOOTSTRAP}
+
 
 .tests_common:
   retry:
     max: 1
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   artifacts:
     when: always
     expire_in: 12 weeks
     paths:
-      - cy_boot_test_suite/test_tools/authomated_run/*.txt
+      - fwsecurity_test/secure_boot/_logs/**/*
   script:
-    - git clone http://git-ore.aus.cypress.com/YNCI/cy_boot_test_suite.git -b $TEST_BRANCH_062
-    - cd cy_boot_test_suite/test_tools
-    - C:/Windows/System32/cmd.exe /c create_binaries.bat
-    - C:/Windows/System32/cmd.exe /c ci\mcuboot\program.bat
-    - C:/Windows/System32/cmd.exe /c ci\multi_062\program.bat
-    - C:/Windows/System32/cmd.exe /c execute_tests.bat
+    - ls "env:"
+    - python -V
+    - virtualenv venv
+    - ./venv/Scripts/activate.ps1
+    - python -V
+    - git clone https://gitlab.auc.infineon.com/repo/fwsecurity_test.git --single-branch -b $TEST_BRANCH_PSOC6
+    - git rev-parse HEAD
+    - cd fwsecurity_test
+    - pip install --upgrade --force-reinstall -r requirements.txt
+    - cd secure_boot
+    - pip install --upgrade --force-reinstall -r secure_boot_req.txt
+    - python -m pytest -s $ENV:TEST_SELECT --maxfail=$ENV:MAXFAIL
+#    - python -m pytest -s -k test_slot_1_progr --exitfirst
+## Autoremoved by global gitlab variable `GIT_STRATEGY = CLONE`
+#  after_script:
+#    - ./venv/Scripts/deactivate
+#    - rm -r venv
 
+
+.061_512k_common:
+  tags:
+    - MCUBOOT_TEST_061_512K_PM_COMMON
+#    - TRBO_LAPTOP
+  variables:
+    OPENOCD_PATH: C:/Users/fw_security/ModusToolbox/tools_2.0/openocd
+    CI_SERIAL_PORT: COM255
+    TARGET_ID: 0C0515B202200400
+#    CI_SERIAL_PORT: COM29
+#    TARGET_ID: 110611C401287400
+  before_script:
+    - C:/Users/fw_security/ModusToolbox/tools_2.0/openocd/bin/openocd -s "scripts" -f "interface/kitprog3.cfg" -c "set ENABLE_CM0 0; set ENABLE_ACQUIRE 1" -c "transport select swd" -f "target/psoc6.cfg" -c "cmsis_dap_serial ${ENV:TARGET_ID}; kitprog3 power_config on ${ENV:CIVAR_VOLTAGE_061_512K}; init; shutdown"
+  after_script:
+    - C:/Users/fw_security/ModusToolbox/tools_2.0/openocd/bin/openocd -s "scripts" -f "interface/kitprog3.cfg" -c "set ENABLE_CM0 0; set ENABLE_ACQUIRE 1" -c "transport select swd" -f "target/psoc6.cfg" -c "cmsis_dap_serial ${ENV:TARGET_ID}; kitprog3 power_config off"
+  extends: .tests_common
+
+#Enable reserved 062S3 kit for SWAP encryption tests
 .512k_swap:
+  stage: 512k_swap_tests
+  tags:
+    - MCUBOOT_TEST_512K_ENCRYPT_SWAP
+  variables:
+    OPENOCD_PATH: C:/Users/fw_security/ModusToolbox/tools_2.0/openocd
+    CI_SERIAL_PORT: COM181
+    TARGET_ID: 18160C1C02179400
+    TEST_ENCRYPT: 0
+  extends: .tests_common
+
+#BOOT_SWAP_TYPE_REVERT FAIL (DISABLE THIS KIT)
+#https://devops-git.aus.cypress.com/repo/cy_mcuboot_project/cy_mcuboot/-/jobs/7432044
+...512k_swap:
   stage: 512k_swap_tests
   tags:
     - MCUBOOT_TEST_512K_SWAP
@@ -383,7 +731,7 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     TEST_ENCRYPT: 0
   extends: .tests_common
 
-.1m_swap:
+.1m_wifi_bt_swap:
   stage: 1m_swap_tests
   tags:
     - MCUBOOT_TEST_1M_SWAP
@@ -391,6 +739,29 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     OPENOCD_PATH: C:/Users/fw_security/ModusToolbox/tools_2.0/openocd
     CI_SERIAL_PORT: COM41
     TARGET_ID: 0C25186C03227400
+    TEST_ENCRYPT: 0
+  extends: .tests_common
+
+.1m_ble_swap:
+  stage: 1m_swap_tests
+  tags:
+    - MCUBOOT_TEST_1M_BLE_SWAP
+  variables:
+    OPENOCD_PATH: C:/Users/fw_security/ModusToolbox/tools_2.0/openocd
+    CI_SERIAL_PORT: COM211
+    TARGET_ID: 140D0F7E01051400
+    TEST_ENCRYPT: 0
+  extends: .tests_common
+
+.063_1m_swap:
+  stage: 1m_swap_tests
+  tags:
+    - MCUBOOT_TEST_416045_SWAP
+#   - MCUBOOT_TEST_063_BLE_ENCRYPT_SWAP / COM207 (Reserved for Swap Encrypt)
+  variables:
+    OPENOCD_PATH: C:/Users/fw_security/ModusToolbox/tools_2.0/openocd
+    CI_SERIAL_PORT: COM201
+    TARGET_ID: 091208F302098400
     TEST_ENCRYPT: 0
   extends: .tests_common
 
@@ -411,8 +782,8 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     - MCUBOOT_TEST_2M_EVAL
   variables:
     OPENOCD_PATH: C:/Users/fw_security/ModusToolbox/tools_2.0/openocd
-    CI_SERIAL_PORT: COM67
-    TARGET_ID: 0D0505CD00020400
+    CI_SERIAL_PORT: COM69
+    TARGET_ID: 050E05CD00020400
     TEST_ENCRYPT: 0
   extends: .tests_common
 
@@ -427,7 +798,7 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     TEST_ENCRYPT: 0
   extends: .tests_common
 
-.1m_overwrite:
+.1m_wifi_bt_overwrite:
   stage: 1m_overwrite_tests
   tags:
     - MCUBOOT_TEST_1M_OVERWRITE
@@ -435,6 +806,17 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     OPENOCD_PATH: C:/Users/fw_security/ModusToolbox/tools_2.0/openocd
     CI_SERIAL_PORT: COM44
     TARGET_ID: 031802F301237400
+    TEST_ENCRYPT: 0
+  extends: .tests_common
+
+.063_1m_overwrite:
+  stage: 1m_overwrite_tests
+  tags:
+    - MCUBOOT_TEST_063_BLE_OVERWRITE
+  variables:
+    OPENOCD_PATH: C:/Users/fw_security/ModusToolbox/tools_2.0/openocd
+    CI_SERIAL_PORT: COM205
+    TARGET_ID: 1B0D136503068400
     TEST_ENCRYPT: 0
   extends: .tests_common
 
@@ -460,7 +842,7 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     TEST_ENCRYPT: 1
   extends: .tests_common
 
-.1m_encrypt_overwrite:
+.1m_wifi_bt_encrypt_overwrite:
   stage: 1m_overwrite_tests
   tags:
     - MCUBOOT_TEST_1M_ENCRYPT_OVERWRITE
@@ -468,6 +850,28 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     OPENOCD_PATH: C:/Users/fw_security/ModusToolbox/tools_2.0/openocd
     CI_SERIAL_PORT: COM164
     TARGET_ID: 0E240FF301237400
+    TEST_ENCRYPT: 1
+  extends: .tests_common
+
+.1m_ble_encrypt_overwrite:
+  stage: 1m_overwrite_tests
+  tags:
+    - MCUBOOT_TEST_1M_BLE_ENCRYPT_OVERWRITE
+  variables:
+    OPENOCD_PATH: C:/Users/fw_security/ModusToolbox/tools_2.0/openocd
+    CI_SERIAL_PORT: COM209
+    TARGET_ID: 0B0C0F7E01051400
+    TEST_ENCRYPT: 1
+  extends: .tests_common
+
+.063_1m_encrypt_overwrite:
+  stage: 1m_overwrite_tests
+  tags:
+    - MCUBOOT_TEST_416045_ENCRYPT_OVERWRITE
+  variables:
+    OPENOCD_PATH: C:/Users/fw_security/ModusToolbox/tools_2.0/openocd
+    CI_SERIAL_PORT: COM203
+    TARGET_ID: 201508F302098400
     TEST_ENCRYPT: 1
   extends: .tests_common
 
@@ -488,14 +892,13 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
 
 .20829_build_blinky:
   stage: cyw20829_build
-  variables:
-    GIT_STRATEGY: clone
   needs: []
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   artifacts:
     expire_in: 4 weeks
     paths:
@@ -516,16 +919,16 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     - git submodule update --init --recursive --force
 
     - python -V
-    - pip install git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${CY_SECURETOOLS_BRANCH}
-    - pip install git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${TESTAPPS_CYW20829_BRANCH}
+    - pip install --upgrade --force-reinstall git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${CY_SECURETOOLS_BRANCH}
+    - pip install --upgrade --force-reinstall git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${TESTAPPS_CYW20829_BRANCH}
     - cysecuretools -v version
     - cd boot/cypress
     - cysecuretools -t cyw20829 init --testapps
 
-    - make app APP_NAME=BlinkyApp BUILDCFG=Debug   PLATFORM=CYW20829 IMG_TYPE=BOOT    FLASH_MAP=./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single.json IMG_ID=1
-    - make app APP_NAME=BlinkyApp BUILDCFG=Debug   PLATFORM=CYW20829 IMG_TYPE=UPGRADE FLASH_MAP=./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single.json IMG_ID=1
-    - make app APP_NAME=BlinkyApp BUILDCFG=Release PLATFORM=CYW20829 IMG_TYPE=BOOT    FLASH_MAP=./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single.json IMG_ID=1
-    - make app APP_NAME=BlinkyApp BUILDCFG=Release PLATFORM=CYW20829 IMG_TYPE=UPGRADE FLASH_MAP=./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single.json IMG_ID=1
+    - make app APP_NAME=BlinkyApp BUILDCFG=Debug   PLATFORM=CYW20829 IMG_TYPE=BOOT    FLASH_MAP=./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single.json IMG_ID=1
+    - make app APP_NAME=BlinkyApp BUILDCFG=Debug   PLATFORM=CYW20829 IMG_TYPE=UPGRADE FLASH_MAP=./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single.json IMG_ID=1
+    - make app APP_NAME=BlinkyApp BUILDCFG=Release PLATFORM=CYW20829 IMG_TYPE=BOOT    FLASH_MAP=./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single.json IMG_ID=1
+    - make app APP_NAME=BlinkyApp BUILDCFG=Release PLATFORM=CYW20829 IMG_TYPE=UPGRADE FLASH_MAP=./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single.json IMG_ID=1
 
 .win_20829_build_blinky:
   when: manual
@@ -564,14 +967,13 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
 
 .20829_build_mcuboot:
   stage: cyw20829_build
-  variables:
-    GIT_STRATEGY: clone
   needs: []
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   artifacts:
     expire_in: 4 weeks
     paths:
@@ -586,15 +988,15 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     - git submodule update --init --recursive --force
 
     - python -V
-    - pip install git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${CY_SECURETOOLS_BRANCH}
-    - pip install git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${TESTAPPS_CYW20829_BRANCH}
+    - pip install --upgrade --force-reinstall git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${CY_SECURETOOLS_BRANCH}
+    - pip install --upgrade --force-reinstall git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${TESTAPPS_CYW20829_BRANCH}
     - cysecuretools -v version
     - cd boot/cypress
     - cysecuretools -t cyw20829 init --testapps
 
-    - echo make app APP_NAME=MCUBootApp PLATFORM=${BOARD} BUILDCFG=Debug FLASH_MAP=${JSON}
-    - make app APP_NAME=MCUBootApp PLATFORM=${BOARD} BUILDCFG=Debug      FLASH_MAP=${JSON}
-    - make app APP_NAME=MCUBootApp PLATFORM=${BOARD} BUILDCFG=Release    FLASH_MAP=${JSON}
+    - echo make app APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=${BOARD} BUILDCFG=Debug FLASH_MAP=${JSON}
+    -      make app APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=${BOARD} BUILDCFG=Debug      FLASH_MAP=${JSON}
+    -      make app APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=${BOARD} BUILDCFG=Release    FLASH_MAP=${JSON}
 
 .win_20829_build_mcuboot_single:
   when: manual
@@ -603,7 +1005,7 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
   variables:
     TOOLCHAIN_PATH: C:/Users/cydesigner/ModusToolbox/tools_2.3/gcc
     BOARD: CYW20829
-    JSON: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single.json
+    JSON: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single.json
   before_script:
     - virtualenv venv
     - ./venv/scripts/activate.ps1
@@ -616,7 +1018,7 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
   variables:
     TOOLCHAIN_PATH: C:/Users/cydesigner/ModusToolbox/tools_2.3/gcc
     BOARD: CYW20829
-    JSON: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_multi.json
+    JSON: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_multi.json
   before_script:
     - virtualenv venv
     - source venv/bin/activate
@@ -629,7 +1031,7 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
   variables:
     TOOLCHAIN_PATH: /Applications/ModusToolbox/tools_2.3/gcc
     BOARD: CYW20829
-    JSON: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single.json
+    JSON: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single.json
   before_script:
     - virtualenv venv
     - source venv/bin/activate
@@ -642,7 +1044,7 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
   variables:
     TOOLCHAIN_PATH: /Applications/ModusToolbox/tools_2.3/gcc
     BOARD: CYW20829
-    JSON: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_multi2.json
+    JSON: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_multi2.json
   before_script:
     - virtualenv venv
     - source venv/bin/activate
@@ -655,7 +1057,7 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
   variables:
     TOOLCHAIN_PATH: /home/fw-security/ModusToolbox/tools_2.3/gcc
     BOARD: CYW20829
-    JSON: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single.json
+    JSON: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single.json
   before_script:
     - virtualenv venv
     - source venv/bin/activate
@@ -668,7 +1070,7 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
   variables:
     TOOLCHAIN_PATH: /home/fw-security/ModusToolbox/tools_2.3/gcc
     BOARD: CYW20829
-    JSON: ./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_multi.json
+    JSON: ./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_multi.json
   before_script:
     - virtualenv venv
     - source venv/bin/activate
@@ -698,21 +1100,36 @@ mac_20829_mcuboot_secure_encrypt_rollback_overwrite:
     - virtualenv venv
     - ./venv/Scripts/activate.ps1
     - python -V
-    - pip install git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${CY_SECURETOOLS_BRANCH}
-    - pip install git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${TESTAPPS_CYW20829_BRANCH}
+    # Force install of PIP < 22, to support Cysecuretools < 4.2.0
+    - python -m pip install --upgrade --force-reinstall pip==21.3.1
+    - pip install --upgrade --force-reinstall git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${CY_SECURETOOLS_BRANCH}
+    - pip install --upgrade --force-reinstall git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${TESTAPPS_CYW20829_BRANCH}
     - cysecuretools -v version
     - git clone http://devops-git.aus.cypress.com/repo/fwsecurity_test.git -b ${TEST_BRANCH_20829}
     - cd fwsecurity_test
-    - pip install -r requirements.txt
+    - pip install --upgrade --force-reinstall -r requirements.txt
     - cd secure_boot
-    - pip install -r secure_boot_req.txt
+    - pip install --upgrade --force-reinstall -r secure_boot_req.txt
     - cd ../../boot/cypress
     - python ../../fwsecurity_test/secure_boot/ci_test_executor.py
+    - cd ../../fwsecurity_test/secure_boot
+    - python -m pytest -s $ENV:TEST_SELECT --maxfail=$ENV:MAXFAIL
   after_script:
     - ./venv/Scripts/deactivate
     - rm -r venv
 
 ######## SWAP DEBUG ########
+cyw20829_swap_normal_shared:
+  only:
+    - schedules
+  variables:
+    CIVAR_POLICY: ./policy/policy_no_secure.json
+    TEST_CONFIG: CI_MCUBoot_20829_single_swap_shared
+    TEST_SELECT: $TEST_SWAP
+  needs:
+    - mac_20829_mcuboot_normal_swap_shared
+  extends: .cyw20829_test
+
 cyw20829_swap_normal:
   only:
     - schedules
@@ -722,6 +1139,17 @@ cyw20829_swap_normal:
     TEST_SELECT: $TEST_SWAP
   needs:
     - mac_20829_mcuboot_normal_swap
+  extends: .cyw20829_test
+
+cyw20829_swap_normal_fih_high:
+  only:
+    - schedules
+  variables:
+    CIVAR_POLICY: ./policy/policy_no_secure.json
+    TEST_CONFIG: CI_MCUBoot_20829_single_swap
+    TEST_SELECT: $TEST_SWAP
+  needs:
+    - mac_20829_mcuboot_normal_swap_fih_high
   extends: .cyw20829_test
 
 cyw20829_swap_secure:
@@ -747,12 +1175,29 @@ cyw20829_swap_secure_enc:
     - mac_20829_mcuboot_secure_encrypt_swap
   extends: .cyw20829_test
 
+cyw20829_swap_secure_enc_fih_off:
+  except:
+    variables:
+      - $COV != "0"
+      - $CIVAR_MICRO_TEST != "0"
+      - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
+  variables:
+    CIVAR_POLICY: ./policy/policy_secure.json
+    TEST_CONFIG: CI_MCUBoot_20829_single_swap_secure
+    TEST_ENCRYPT: 1
+    TEST_SELECT: $TEST_SWAP
+  needs:
+    - mac_20829_mcuboot_secure_encrypt_swap_fih_off
+  extends: .cyw20829_test
+
 cyw20829_swap_secure_rbc:
   except:
     variables:
-      - $COV
-      - $CIVAR_MICRO_TEST
+      - $COV != "0"
+      - $CIVAR_MICRO_TEST != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_DESTRUCTIVE: 1
     CIVAR_POLICY: ./policy/policy_secure.json
@@ -780,8 +1225,10 @@ cyw20829_swap_secure_rbc_enc:
 cyw20829_overwrite_normal:
   except:
     variables:
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_POLICY: ./policy/policy_no_secure.json
     TEST_CONFIG: CI_MCUBoot_20829_single_overwrite
@@ -867,8 +1314,9 @@ cyw20829_swap_secure_release:
 cyw20829_swap_secure_enc_release:
   except:
     variables:
-      - $COV
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CIVAR_POLICY: ./policy/policy_secure.json
     TEST_CONFIG: CI_MCUBoot_20829_single_swap_secure
@@ -972,6 +1420,21 @@ cyw20829_overwrite_secure_rbc_enc_release:
     - mac_20829_mcuboot_secure_encrypt_rollback_overwrite
   extends: .cyw20829_test
 
+cyw20829_overwrite_secure_rbc_fih_low_release:
+  except:
+    variables:
+      - $COV != "0"
+      - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
+  variables:
+    CIVAR_DESTRUCTIVE: 1
+    CIVAR_POLICY: ./policy/policy_secure.json
+    TEST_CONFIG: CI_MCUBoot_20829_single_overwrite_secure_rbc
+    TEST_SELECT: $TEST_RBC_RELEASE
+  needs:
+    - mac_20829_mcuboot_secure_rollback_overwrite_fih_low
+  extends: .cyw20829_test
+
 ######################################################################################################################################
 ################################################  C Y W 2 0 8 2 9  B A S E  T E S T  #################################################
 ######################################################################################################################################
@@ -982,9 +1445,10 @@ cyw20829_overwrite_secure_rbc_enc_release:
     - CST_TEST_20829_WIN
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   artifacts:
     when: always
     expire_in: 12 weeks
@@ -997,9 +1461,9 @@ cyw20829_overwrite_secure_rbc_enc_release:
     - python -V
     - git clone http://git-ore.aus.cypress.com/YNCI/cy_boot_test_suite.git -b $TEST_BRANCH_20829
     - cd cy_boot_test_suite/test_tools/ci/20829
-    - pip install -r requirements.txt
-    - pip install git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${CY_SECURETOOLS_BRANCH}
-    - pip install git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${TESTAPPS_CYW20829_BRANCH}
+    - pip install --upgrade --force-reinstall -r requirements.txt
+    - pip install --upgrade --force-reinstall git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${CY_SECURETOOLS_BRANCH}
+    - pip install --upgrade --force-reinstall git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@${TESTAPPS_CYW20829_BRANCH}
     - cysecuretools -v version
     - python 20829_test.py
   after_script:
@@ -1043,123 +1507,354 @@ cyw20829_overwrite_secure_rbc_enc_release:
   extends: .cyw20829_base_test
 
 ######################################################################################################################################
-#######################################################  B L I N K Y  A P P S ########################################################
+########################################################  B L I N K Y  A P P S  ######################################################
 ######################################################################################################################################
 
-################################################### 5 1 2 K  B L I N K Y  A P P S ####################################################
+################################### 0 6 1   5 1 2 K   B L I N K Y   A P P S  S W A P  M O D E ########################################
 
-512k_blinky_boot:
+061_512k_blinky_swap:
   stage: build_blinky
   variables:
-    PSOC: 512K
-    TYPE: BOOT
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
+    PSOC: PSOC_061_512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
     IMG_ID: 1
   extends: .build_blinky
 
-512k_blinky_upgrade:
+061_512k_blinky_swap_shared:
   stage: build_blinky
   variables:
-    PSOC: 512K
-    TYPE: UPGRADE
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
+    PSOC: PSOC_061_512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_shared.json
     IMG_ID: 1
   extends: .build_blinky
 
-512k_blinky_upgrade_smif:
+############################################# 5 1 2 K  B L I N K Y  A P P S  S W A P  M O D E ########################################
+
+512k_blinky_swap:
   stage: build_blinky
   variables:
-    PSOC: 512K
-    TYPE: UPGRADE
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single_smif.json
+    PSOC: PSOC_062_512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+    IMG_ID: 1
+  extends: .build_blinky
+  
+512k_blinky_swap_smif:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_062_512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_smif.json
     IMG_ID: 1
   extends: .build_blinky
 
-##################################################### 1 M  B L I N K Y  A P P S ######################################################
-
-1m_blinky_boot:
+512k_blinky_xip_swap:
   stage: build_blinky
   variables:
-    PSOC: 1M
-    TYPE: BOOT
+    PSOC: PSOC_062_512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_swap.json
     IMG_ID: 1
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
   extends: .build_blinky
 
-1m_blinky_upgrade:
+512k_blinky_swap_shared:
   stage: build_blinky
+  only:
+    - schedules
   variables:
-    PSOC: 1M
-    TYPE: UPGRADE
+    PSOC: PSOC_062_512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_shared.json
     IMG_ID: 1
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
   extends: .build_blinky
 
-1m_blinky_upgrade_smif:
+512k_blinky_swap_cm0p:
   stage: build_blinky
+  only:
+    - schedules
   variables:
-    PSOC: 1M
-    TYPE: UPGRADE
+    PSOC: PSOC_062_512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_cm0p.json
     IMG_ID: 1
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single_smif.json
   extends: .build_blinky
 
-##################################################### 2 M  B L I N K Y  A P P S ######################################################
+############################################# 1 M  B L I N K Y  A P P S  S W A P  M O D E ############################################
 
-2m_blinky_boot:
+1m_blinky_swap:
   stage: build_blinky
   variables:
-    PSOC: 2M
-    TYPE: BOOT
+    PSOC: PSOC_062_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
     IMG_ID: 1
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
   extends: .build_blinky
 
-2m_blinky_upgrade:
+1m_blinky_swap_smif:
   stage: build_blinky
   variables:
-    PSOC: 2M
-    TYPE: UPGRADE
+    PSOC: PSOC_062_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_smif.json
     IMG_ID: 1
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
   extends: .build_blinky
 
-2m_blinky_upgrade_smif:
+1m_blinky_xip_swap:
+  stage: build_blinky
+  only:
+    - schedules
+  variables:
+    PSOC: PSOC_062_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_swap.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+1m_blinky_swap_shared:
+  stage: build_blinky
+  only:
+    - schedules
+  variables:
+    PSOC: PSOC_062_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_shared.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+1m_blinky_swap_cm0p:
+  stage: build_blinky
+  only:
+    - schedules
+  variables:
+    PSOC: PSOC_062_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_cm0p.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+##################################### 0 6 3   1 M   B L I N K Y   A P P S  S W A P  M O D E ##########################################
+
+063_1m_blinky_swap:
   stage: build_blinky
   variables:
-    PSOC: 2M
-    TYPE: UPGRADE
+    PSOC: PSOC_063_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
     IMG_ID: 1
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single_smif.json
+  extends: .build_blinky
+
+063_1m_blinky_shared:
+  stage: build_blinky
+  only:
+    - schedules
+  variables:
+    PSOC: PSOC_063_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_shared.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+063_1m_blinky_swap_cm0p:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_063_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_cm0p.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+######################################## 2 M  B L I N K Y  A P P S  S W A P  M O D E #################################################
+
+2m_blinky_swap:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_062_2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+2m_blinky_swap_smif:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_062_2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_smif.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+2m_blinky_xip_swap:
+  stage: build_blinky
+  only:
+    - schedules
+  variables:
+    PSOC: PSOC_062_2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_swap.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+2m_blinky_swap_shared:
+  stage: build_blinky
+  only:
+    - schedules
+  variables:
+    PSOC: PSOC_062_2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_shared.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+2m_blinky_swap_cm0p:
+  stage: build_blinky
+  only:
+    - schedules
+  variables:
+    PSOC: PSOC_062_2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_cm0p.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+########################## 0 6 1   5 1 2 K   B L I N K Y   A P P S  O V E R W R I T E  M O D E  #######################################
+
+061_512k_blinky_overwrite:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_061_512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+################################## 5 1 2 K  B L I N K Y  A P P S  O V E R W R I T E  M O D E #########################################
+
+512k_blinky_overwrite:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_062_512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+512k_blinky_overwrite_smif:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_062_512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+512k_blinky_xip_overwrite:
+  stage: build_blinky
+  only:
+    - schedules
+  variables:
+    PSOC: PSOC_062_512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_overwrite.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+################################# 1 M  B L I N K Y  A P P S  O V E R W R I T E  M O D E  #############################################
+
+1m_blinky_overwrite:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_062_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+1m_blinky_overwrite_smif:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_062_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+1m_blinky_xip_overwrite:
+  stage: build_blinky
+  only:
+    - schedules
+  variables:
+    PSOC: PSOC_062_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_overwrite.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+########################### 0 6 3   1 M   B L I N K Y   A P P S  O V E R W R I T E  M O D E  #########################################
+
+063_1m_blinky_overwrite:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_063_1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+################################## 2 M  B L I N K Y  A P P S  O V E R W R I T E  M O D E  ############################################
+
+2m_blinky_overwrite:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_062_2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+2m_blinky_overwrite_smif:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_062_2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
+    IMG_ID: 1
+  extends: .build_blinky
+
+2m_blinky_overwrite_xip:
+  stage: build_blinky
+  variables:
+    PSOC: PSOC_062_2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_overwrite.json
+    IMG_ID: 1
   extends: .build_blinky
 
 ######################################################################################################################################
 ################################################## M C U B O O T   S W A P   M O D E #################################################
 ######################################################################################################################################
 
+######################################### M C U B O O T   0 6 1 - 5 1 2 K   S W A P   M O D E ########################################
+
+061_512k_mcuboot_single_swap:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+    PSOC: PSOC_061_512K
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+061_512k_mcuboot_multi_swap:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi.json
+    PSOC: PSOC_061_512K
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+061_512k_mcuboot_swap_shared:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_shared.json
+    PSOC: PSOC_061_512K
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
 ############################################# M C U B O O T   5 1 2 K   S W A P   M O D E ############################################
 
 512k_mcuboot_single_swap:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 0
   extends: .build_mcuboot
 
 512k_mcuboot_single_smif_swap:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single_smif.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_smif.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 0
   extends: .build_mcuboot
 
 512k_mcuboot_multi_swap:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_multi.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 0
   extends: .build_mcuboot
 
@@ -1167,43 +1862,172 @@ cyw20829_overwrite_secure_rbc_enc_release:
   when: manual
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_multi_smif.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi_smif.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 0
   extends: .build_mcuboot
 
-############################################### M C U B O O T   1 M   S W A P   M O D E ##############################################
-
-1m_mcuboot_single_swap:
-  stage: build_mcuboot
-  variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
-    PSOC: 1M
-    ENCRYPT: 0
-  extends: .build_mcuboot
-
-1m_mcuboot_single_smif_swap:
+512k_mcuboot_swap_xip:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single_smif.json
-    PSOC: 1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_swap.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 0
   extends: .build_mcuboot
 
-1m_mcuboot_multi_swap:
+512k_mcuboot_swap_shared:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_shared.json
+    PSOC: PSOC_062_512K
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+512k_mcuboot_single_swap_cm0p:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_cm0p.json
+    PSOC: PSOC_062_512K
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+###################################### M C U B O O T   1 M   W I F I - B T   S W A P   M O D E ######################################
+
+1m_wifi_bt_mcuboot_single_swap:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_multi.json
-    PSOC: 1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+    PSOC: PSOC_062_1M
     ENCRYPT: 0
   extends: .build_mcuboot
 
-1m_mcuboot_multi_smif_swap:
+1m_wifi_bt_mcuboot_single_smif_swap:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_multi_smif.json
-    PSOC: 1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_smif.json
+    PSOC: PSOC_062_1M
     ENCRYPT: 0
+  extends: .build_mcuboot
+
+1m_wifi_bt_mcuboot_multi_swap:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+1m_wifi_bt_mcuboot_multi_smif_swap:
+  stage: build_mcuboot_smif
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi_smif.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+1m_wifi_bt_mcuboot_swap_xip:
+  stage: build_mcuboot_smif
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_swap.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+1m_wifi_bt_mcuboot_swap_shared:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_shared.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+1m_wifi_bt_mcuboot_single_swap_cm0p:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_cm0p.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+########################################### M C U B O O T   1 M - B L E   S W A P   M O D E #########################################
+
+1m_ble_mcuboot_single_swap:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
+  extends: .build_mcuboot
+
+1m_ble_mcuboot_single_smif_swap:
+  stage: build_mcuboot_smif
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_smif.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
+  extends: .build_mcuboot
+
+1m_ble_mcuboot_multi_swap:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
+  extends: .build_mcuboot
+
+1m_ble_mcuboot_multi_smif_swap:
+  stage: build_mcuboot_smif
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi_smif.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
+  extends: .build_mcuboot
+
+1m_ble_mcuboot_swap_xip:
+  stage: build_mcuboot_smif
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_swap.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
+  extends: .build_mcuboot
+
+1m_ble_mcuboot_swap_shared:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_shared.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
+  extends: .build_mcuboot
+
+1m_ble_mcuboot_single_swap_cm0p:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_cm0p.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
   extends: .build_mcuboot
 
 ############################################### M C U B O O T   2 M   S W A P   M O D E ##############################################
@@ -1211,62 +2035,146 @@ cyw20829_overwrite_secure_rbc_enc_release:
 2m_mcuboot_single_swap:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 0
+  extends: .build_mcuboot
+
+2m_mcuboot_single_swap_fih_high:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+    PSOC: PSOC_062_2M
+    ENCRYPT: 0
+    FIH_PROFILE: 'HIGH'
   extends: .build_mcuboot
 
 2m_mcuboot_single_smif_swap:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single_smif.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_smif.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 0
   extends: .build_mcuboot
 
 2m_mcuboot_multi_swap:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_multi.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 0
   extends: .build_mcuboot
 
 2m_mcuboot_multi_smif_swap:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_multi_smif.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi_smif.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 0
+  extends: .build_mcuboot
+
+2m_mcuboot_multi_smif_swap_fih_high:
+  stage: build_mcuboot_smif
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi_smif.json
+    PSOC: PSOC_062_2M
+    ENCRYPT: 0
+    FIH_PROFILE: 'HIGH'
+  extends: .build_mcuboot
+
+2m_mcuboot_swap_xip:
+  stage: build_mcuboot_smif
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_swap.json
+    PSOC: PSOC_062_2M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+2m_mcuboot_swap_shared:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_shared.json
+    PSOC: PSOC_062_2M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+2m_mcuboot_single_swap_cm0p:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_cm0p.json
+    PSOC: PSOC_062_2M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+# Special MCUBoot build job with disabled Bootstrap
+2m_mcuboot_multi_smif_swap_no_bootstrap:
+  stage: build_mcuboot_smif
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi_smif.json
+    PSOC: PSOC_062_2M
+    ENCRYPT: 0
+    BOOTSTRAP: 0
   extends: .build_mcuboot
 
 ######################################################################################################################################
 ######################################## M C U B O O T   5 1 2 K   O V E R W R I T E   M O D E #######################################
 ######################################################################################################################################
+
+#################################### M C U B O O T   0 6 1 - 5 1 2 K   O V E R W R I T E   M O D E ###################################
+
+061_512k_mcuboot_single_overwrite:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_061_512K
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+061_512k_mcuboot_multi_overwrite:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_061_512K
+    ENCRYPT: 0
+  extends: .build_mcuboot
 
 ######################################## M C U B O O T   5 1 2 K   O V E R W R I T E   M O D E #######################################
 
 512k_mcuboot_single_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 0
   extends: .build_mcuboot
 
 512k_mcuboot_single_smif_overwrite:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single_smif.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 0
   extends: .build_mcuboot
 
 512k_mcuboot_multi_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 0
   extends: .build_mcuboot
 
@@ -1274,42 +2182,62 @@ cyw20829_overwrite_secure_rbc_enc_release:
   when: manual
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi_smif.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi_smif.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 0
   extends: .build_mcuboot
 
-########################################## M C U B O O T   1 M   O V E R W R I T E   M O D E #########################################
+512k_mcuboot_overwrite_xip:
+  stage: build_mcuboot_smif
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_overwrite.json
+    PSOC: PSOC_062_512K
+    ENCRYPT: 0
+  extends: .build_mcuboot
 
-1m_mcuboot_single_overwrite:
+################################## M C U B O O T   1 M   W I F I - B T   O V E R W R I T E   M O D E #################################
+
+1m_wifi_bt_mcuboot_single_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single.json
-    PSOC: 1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_062_1M
     ENCRYPT: 0
   extends: .build_mcuboot
 
-1m_mcuboot_single_smif_overwrite:
+1m_wifi_bt_mcuboot_single_smif_overwrite:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single_smif.json
-    PSOC: 1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
+    PSOC: PSOC_062_1M
     ENCRYPT: 0
   extends: .build_mcuboot
 
-1m_mcuboot_multi_overwrite:
+1m_wifi_bt_mcuboot_multi_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi.json
-    PSOC: 1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_062_1M
     ENCRYPT: 0
   extends: .build_mcuboot
 
-1m_mcuboot_multi_smif_overwrite:
+1m_wifi_bt_mcuboot_multi_smif_overwrite:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi_smif.json
-    PSOC: 1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi_smif.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+1m_wifi_bt_mcuboot_overwrite_xip:
+  stage: build_mcuboot_smif
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_overwrite.json
+    PSOC: PSOC_062_1M
     ENCRYPT: 0
   extends: .build_mcuboot
 
@@ -1318,32 +2246,42 @@ cyw20829_overwrite_secure_rbc_enc_release:
 2m_mcuboot_single_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 0
   extends: .build_mcuboot
 
 2m_mcuboot_single_smif_overwrite:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single_smif.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 0
   extends: .build_mcuboot
 
 2m_mcuboot_multi_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 0
   extends: .build_mcuboot
 
 2m_mcuboot_multi_smif_overwrite:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi_smif.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi_smif.json
+    PSOC: PSOC_062_2M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+2m_mcuboot_overwrite_xip:
+  stage: build_mcuboot_smif
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_overwrite.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 0
   extends: .build_mcuboot
 
@@ -1351,29 +2289,67 @@ cyw20829_overwrite_secure_rbc_enc_release:
 ################################ M C U B O O T   5 1 2 K   E N C R Y P T   O V E R W R I T E   M O D E ###############################
 ######################################################################################################################################
 
+#################################### M C U B O O T   0 6 1 - 5 1 2 K   O V E R W R I T E   M O D E ###################################
+
+061_512k_mcuboot_single_encrypt_overwrite:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_061_512K
+    ENCRYPT: 1
+  extends: .build_mcuboot
+
+061_512k_mcuboot_multi_encrypt_overwrite:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_061_512K
+    ENCRYPT: 1
+  extends: .build_mcuboot
+
 ######################################## M C U B O O T   5 1 2 K   O V E R W R I T E   M O D E #######################################
 
 512k_mcuboot_single_encrypt_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 1
+  extends: .build_mcuboot
+
+512k_mcuboot_single_encrypt_overwrite_fih_off:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_062_512K
+    ENCRYPT: 1
+    FIH_PROFILE: 'OFF'
+  extends: .build_mcuboot
+
+512k_mcuboot_single_encrypt_overwrite_fih_low:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_062_512K
+    ENCRYPT: 1
+    FIH_PROFILE: 'LOW'
   extends: .build_mcuboot
 
 512k_mcuboot_single_smif_encrypt_overwrite:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single_smif.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 1
   extends: .build_mcuboot
 
 512k_mcuboot_multi_encrypt_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 1
   extends: .build_mcuboot
 
@@ -1381,43 +2357,124 @@ cyw20829_overwrite_secure_rbc_enc_release:
   when: manual
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi_smif.json
-    PSOC: 512K
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi_smif.json
+    PSOC: PSOC_062_512K
     ENCRYPT: 1
   extends: .build_mcuboot
 
-########################################## M C U B O O T   1 M   O V E R W R I T E   M O D E #########################################
+512k_mcuboot_overwrite_xip_encrypt:
+  stage: build_mcuboot_smif
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_overwrite.json
+    PSOC: PSOC_062_512K
+    ENCRYPT: 1
+  extends: .build_mcuboot
 
-1m_mcuboot_single_encrypt_overwrite:
+################################# M C U B O O T   1 M   W I F I - B T   O V E R W R I T E   M O D E #################################
+
+1m_wifi_bt_mcuboot_single_encrypt_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single.json
-    PSOC: 1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_062_1M
     ENCRYPT: 1
   extends: .build_mcuboot
 
-1m_mcuboot_single_smif_encrypt_overwrite:
+1m_wifi_bt_mcuboot_single_smif_encrypt_overwrite:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single_smif.json
-    PSOC: 1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
+    PSOC: PSOC_062_1M
     ENCRYPT: 1
   extends: .build_mcuboot
 
-1m_mcuboot_multi_encrypt_overwrite:
+1m_wifi_bt_mcuboot_multi_encrypt_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi.json
-    PSOC: 1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_062_1M
     ENCRYPT: 1
   extends: .build_mcuboot
 
-1m_mcuboot_multi_smif_encrypt_overwrite:
+1m_wifi_bt_mcuboot_multi_smif_encrypt_overwrite:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi_smif.json
-    PSOC: 1M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi_smif.json
+    PSOC: PSOC_062_1M
     ENCRYPT: 1
+  extends: .build_mcuboot
+
+1m_wifi_bt_mcuboot_overwrite_xip_encrypt:
+  stage: build_mcuboot_smif
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_overwrite.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 1
+  extends: .build_mcuboot
+
+#################################### M C U B O O T   1 M  -  B L E   O V E R W R I T E   M O D E ####################################
+
+1m_ble_mcuboot_single_encrypt_overwrite:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 1
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
+  extends: .build_mcuboot
+
+1m_ble_mcuboot_single_smif_encrypt_overwrite:
+  stage: build_mcuboot_smif
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 1
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
+  extends: .build_mcuboot
+
+1m_ble_mcuboot_multi_encrypt_overwrite:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 1
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
+  extends: .build_mcuboot
+
+1m_ble_mcuboot_multi_encrypt_overwrite_fih_off:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 1
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
+    FIH_PROFILE: 'OFF'
+  extends: .build_mcuboot
+
+1m_ble_mcuboot_multi_smif_encrypt_overwrite:
+  stage: build_mcuboot_smif
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi_smif.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 1
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
+  extends: .build_mcuboot
+
+1m_ble_mcuboot_overwrite_xip_encrypt:
+  stage: build_mcuboot_smif
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_overwrite.json
+    PSOC: PSOC_062_1M
+    ENCRYPT: 1
+    DEVICE_MPN: DEVICE=CY8C6347BZI-BLD53
   extends: .build_mcuboot
 
 ########################################## M C U B O O T   2 M   O V E R W R I T E   M O D E #########################################
@@ -1425,633 +2482,1430 @@ cyw20829_overwrite_secure_rbc_enc_release:
 2m_mcuboot_single_encrypt_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 1
   extends: .build_mcuboot
 
 2m_mcuboot_single_smif_encrypt_overwrite:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single_smif.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 1
   extends: .build_mcuboot
 
 2m_mcuboot_multi_encrypt_overwrite:
   stage: build_mcuboot
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 1
   extends: .build_mcuboot
 
 2m_mcuboot_multi_smif_encrypt_overwrite:
   stage: build_mcuboot_smif
   variables:
-    JSON: ./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_multi_smif.json
-    PSOC: 2M
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi_smif.json
+    PSOC: PSOC_062_2M
     ENCRYPT: 1
   extends: .build_mcuboot
+
+2m_mcuboot_overwrite_xip_encrypt:
+  stage: build_mcuboot_smif
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_overwrite.json
+    PSOC: PSOC_062_2M
+    ENCRYPT: 1
+  extends: .build_mcuboot
+
+######################################################################################################################################
+########################################### M C U B O O T   0 6 3   1 M   A L L   M O D E S ##########################################
+######################################################################################################################################
+
+063_1m_mcuboot_single_swap:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+    PSOC: PSOC_063_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+063_1m_mcuboot_multi_swap:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi.json
+    PSOC: PSOC_063_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+063_1m_mcuboot_single_overwrite:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_063_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+063_1m_mcuboot_single_overwrite_fih_low:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_063_1M
+    ENCRYPT: 0
+    FIH_PROFILE: 'LOW'
+  extends: .build_mcuboot
+
+063_1m_mcuboot_multi_overwrite:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_063_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+063_1m_mcuboot_single_encrypt_overwrite:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_063_1M
+    ENCRYPT: 1
+  extends: .build_mcuboot
+
+063_1m_mcuboot_single_encrypt_overwrite_fih_high:
+  stage: build_mcuboot
+  only:
+    - schedules
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json
+    PSOC: PSOC_063_1M
+    ENCRYPT: 1
+    FIH_PROFILE: 'HIGH'
+  extends: .build_mcuboot
+
+063_1m_mcuboot_multi_encrypt_overwrite:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+    PSOC: PSOC_063_1M
+    ENCRYPT: 1
+  extends: .build_mcuboot
+
+063_1m_mcuboot_swap_shared:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_shared.json
+    PSOC: PSOC_063_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+063_1m_mcuboot_single_swap_cm0p:
+  stage: build_mcuboot
+  variables:
+    JSON: ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_cm0p.json
+    PSOC: PSOC_063_1M
+    ENCRYPT: 0
+  extends: .build_mcuboot
+
+######################################################################################################################################
+############################################# S W A P  0 6 1 - 5 1 2 K  T E S T S ####################################################
+######################################################################################################################################
+
+061_512k_swap_single:
+  stage: 512k_swap_tests
+  extends: .061_512k_common
+  only:
+    - schedules
+  needs:
+    - 061_512k_mcuboot_single_swap
+    - 061_512k_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_swap_single
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+061_512k_swap_multi_app1:
+  stage: 512k_swap_tests
+  extends: .061_512k_common
+  only:
+    - schedules
+  needs:
+    - 061_512k_mcuboot_multi_swap
+    - 061_512k_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_swap_multi_app1
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+061_512k_swap_shared:
+  stage: 512k_swap_tests
+  extends: .061_512k_common
+  needs:
+    - 061_512k_mcuboot_swap_shared
+    - 061_512k_blinky_swap_shared
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_swap_shared
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+061_512k_swap_single_release:
+  stage: 512k_swap_tests
+  extends: .061_512k_common
+  needs:
+    - 061_512k_mcuboot_single_swap
+    - 061_512k_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_swap_single
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+061_512k_swap_multi_app1_release:
+  stage: 512k_swap_tests
+  extends: .061_512k_common
+  only:
+    - schedules
+  needs:
+    - 061_512k_mcuboot_multi_swap
+    - 061_512k_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_swap_multi_app1
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
 
 ######################################################################################################################################
 ################################################# S W A P  5 1 2 K  T E S T S ########################################################
 ######################################################################################################################################
 
-512k_single_swap:
+512k_swap_custom_flashmap_internal:
+  extends: .512k_swap
+  only:
+    - schedules
+  needs: []
+  variables:
+    TEST_CONFIG: CI_MCUBoot_512k_swap_custom_flashmap_internal
+    TEST_SELECT: $TEST_CUSTOM_FLASHMAP
+    BUILDCFG_TEST: Release
+    GIT_SUBMODULE_STRATEGY: recursive
+
+512k_swap_single:
   extends: .512k_swap
   needs:
     - 512k_mcuboot_single_swap
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_swap
+    TEST_CONFIG: CI_MCUBoot_512k_swap_single
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-512k_single_smif_swap:
+512k_swap_single_smif:
   extends: .512k_swap
   needs:
     - 512k_mcuboot_single_smif_swap
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade_smif
+    - 512k_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_smif_swap
+    TEST_CONFIG: CI_MCUBoot_512k_swap_single_smif
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-512k_multi_app1_swap:
+512k_swap_multi_app1:
   extends: .512k_swap
   only:
     - schedules
   needs:
     - 512k_mcuboot_multi_swap
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi1_swap
+    TEST_CONFIG: CI_MCUBoot_512k_swap_multi_app1
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-512k_multi_app2_swap:
+....512k_swap_multi_app2:
   extends: .512k_swap
   only:
     - schedules
   needs:
     - 512k_mcuboot_multi_swap
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi2_swap
+    TEST_CONFIG: CI_MCUBoot_512k_swap_multi_app2
     TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Debug
 
-512k_single_swap_release:
+512k_swap_xip:
+  extends: .512k_swap
+  needs:
+    - 512k_mcuboot_swap_xip
+    - 512k_blinky_xip_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_512k_swap_xip
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+512k_swap_single_cm0p:
+  extends: .512k_swap
+  only:
+    - schedules
+  needs:
+    - 512k_mcuboot_single_swap_cm0p
+    - 512k_blinky_swap_cm0p
+  variables:
+    TEST_CONFIG: CI_MCUBoot_512k_swap_single_cm0p
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+512k_swap_single_release:
   extends: .512k_swap
   only:
     - schedules
   needs:
     - 512k_mcuboot_single_swap
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_swap
+    TEST_CONFIG: CI_MCUBoot_512k_swap_single
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-512k_single_smif_swap_release:
+512k_swap_single_smif_release:
   extends: .512k_swap
   only:
     - schedules
   needs:
     - 512k_mcuboot_single_smif_swap
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade_smif
+    - 512k_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_smif_swap
+    TEST_CONFIG: CI_MCUBoot_512k_swap_single_smif
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-512k_multi_app1_swap_release:
+512k_swap_multi_app1_release:
   extends: .512k_swap
   only:
     - schedules
   needs:
     - 512k_mcuboot_multi_swap
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi1_swap
+    TEST_CONFIG: CI_MCUBoot_512k_swap_multi_app1
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-512k_multi_app2_swap_release:
+....512k_swap_multi_app2_release:
   extends: .512k_swap
   only:
     - schedules
   needs:
     - 512k_mcuboot_multi_swap
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi2_swap
+    TEST_CONFIG: CI_MCUBoot_512k_swap_multi_app2
     TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Release
+
+512k_swap_xip_release:
+  extends: .512k_swap
+  only:
+    - schedules
+  needs:
+    - 512k_mcuboot_swap_xip
+    - 512k_blinky_xip_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_512k_swap_xip
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+512k_swap_single_cm0p_release:
+  extends: .512k_swap
+  only:
+    - schedules
+  needs:
+    - 512k_mcuboot_single_swap_cm0p
+    - 512k_blinky_swap_cm0p
+  variables:
+    TEST_CONFIG: CI_MCUBoot_512k_swap_single_cm0p
+    TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
 ######################################################################################################################################
 ################################################### S W A P  1 M  T E S T S ##########################################################
 ######################################################################################################################################
 
-1m_single_swap:
-  extends: .1m_swap
+1m_wifi_bt_swap_single:
+  extends: .1m_wifi_bt_swap
   needs:
-    - 1m_mcuboot_single_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_single_swap
+    - 1m_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-1m_single_smif_swap:
-  extends: .1m_swap
+1m_wifi_bt_swap_single_smif:
+  extends: .1m_wifi_bt_swap
   only:
     - schedules
   needs:
-    - 1m_mcuboot_single_smif_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_single_smif_swap
+    - 1m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_smif_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single_smif
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-1m_multi_app1_swap:
-  extends: .1m_swap
+1m_wifi_bt_swap_multi_app1:
+  extends: .1m_wifi_bt_swap
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_swap
+    - 1m_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_app1
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-1m_multi_app2_swap:
-  extends: .1m_swap
+....1m_wifi_bt_swap_multi_app2:
+  extends: .1m_wifi_bt_swap
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_swap
+    - 1m_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_app2
     TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Debug
 
-1m_multi_app1_smif_swap:
-  extends: .1m_swap
+1m_wifi_bt_swap_multi_smif_app1:
+  extends: .1m_wifi_bt_swap
   needs:
-    - 1m_mcuboot_multi_smif_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_swap
+    - 1m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_smif_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_smif_app1
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-1m_multi_app2_smif_swap:
-  extends: .1m_swap
+....1m_wifi_bt_swap_multi_smif_app2:
+  extends: .1m_wifi_bt_swap
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_smif_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_swap
+    - 1m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_smif_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_smif_app2
     TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Debug
 
-1m_single_swap_release:
-  extends: .1m_swap
+1m_wifi_bt_swap_xip:
+  extends: .1m_wifi_bt_swap
   only:
     - schedules
   needs:
-    - 1m_mcuboot_single_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_swap_xip
+    - 1m_blinky_xip_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_xip
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+1m_wifi_bt_swap_single_cm0p:
+  extends: .1m_wifi_bt_swap
+  only:
+    - schedules
+  needs:
+    - 1m_wifi_bt_mcuboot_single_swap_cm0p
+    - 1m_blinky_swap_cm0p
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single_cm0p
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+1m_wifi_bt_swap_single_release:
+  extends: .1m_wifi_bt_swap
+  only:
+    - schedules
+  needs:
+    - 1m_wifi_bt_mcuboot_single_swap
+    - 1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-1m_single_smif_swap_release:
-  extends: .1m_swap
+1m_wifi_bt_swap_single_smif_release:
+  extends: .1m_wifi_bt_swap
   only:
     - schedules
   needs:
-    - 1m_mcuboot_single_smif_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_single_smif_swap
+    - 1m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_smif_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single_smif
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-1m_multi_app1_swap_release:
-  extends: .1m_swap
+1m_wifi_bt_swap_multi_app1_release:
+  extends: .1m_wifi_bt_swap
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_swap
+    - 1m_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_app1
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-1m_multi_app2_swap_release:
-  extends: .1m_swap
+....1m_wifi_bt_swap_multi_app2_release:
+  extends: .1m_wifi_bt_swap
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_swap
+    - 1m_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_app2
     TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
     BUILDCFG_TEST: Release
 
-1m_multi_app1_smif_swap_release:
-  extends: .1m_swap
+1m_wifi_bt_swap_multi_smif_app1_release:
+  extends: .1m_wifi_bt_swap
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_smif_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_swap
+    - 1m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_smif_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_smif_app1
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-1m_multi_app2_smif_swap_release:
-  extends: .1m_swap
+....1m_wifi_bt_swap_multi_smif_app2_release:
+  extends: .1m_wifi_bt_swap
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_smif_swap
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_swap
+    - 1m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_smif_swap
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_smif_app2
     TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Release
+
+1m_wifi_bt_swap_xip_release:
+  extends: .1m_wifi_bt_swap
+  only:
+    - schedules
+  needs:
+    - 1m_wifi_bt_mcuboot_swap_xip
+    - 1m_blinky_xip_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_xip
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+1m_wifi_bt_swap_single_cm0p_release:
+  extends: .1m_wifi_bt_swap
+  only:
+    - schedules
+  needs:
+    - 1m_wifi_bt_mcuboot_single_swap_cm0p
+    - 1m_blinky_swap_cm0p
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single_cm0p
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+############################################## 1 M - B L E   S W A P   T E S T S #####################################################
+
+1m_ble_swap_single:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_single_swap
+    - 1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+1m_ble_swap_single_smif:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_single_smif_swap
+    - 1m_blinky_swap_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single_smif
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+1m_ble_swap_multi_app1:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_swap
+    - 1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_app1
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+....1m_ble_swap_multi_app2:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_swap
+    - 1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_app2
+    TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Debug
+
+1m_ble_swap_multi_smif_app1:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_smif_swap
+    - 1m_blinky_swap_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_smif_app1
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+....1m_ble_swap_multi_smif_app2:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_smif_swap
+    - 1m_blinky_swap_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_smif_app2
+    TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Debug
+
+1m_ble_swap_xip:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_swap_xip
+    - 1m_blinky_xip_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_xip
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+1m_ble_swap_single_cm0p:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_single_swap_cm0p
+    - 1m_blinky_swap_cm0p
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single_cm0p
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+1m_ble_swap_single_release:
+  extends: .1m_ble_swap
+  needs:
+    - 1m_ble_mcuboot_single_swap
+    - 1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+1m_ble_swap_single_smif_release:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_single_smif_swap
+    - 1m_blinky_swap_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single_smif
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+1m_ble_swap_multi_app1_release:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_swap
+    - 1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_app1
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+....1m_ble_swap_multi_app2_release:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_swap
+    - 1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_app2
+    TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Release
+
+1m_ble_swap_multi_smif_app1_release:
+  extends: .1m_ble_swap
+  needs:
+    - 1m_ble_mcuboot_multi_smif_swap
+    - 1m_blinky_swap_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_smif_app1
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+....1m_ble_swap_multi_smif_app2_release:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_smif_swap
+    - 1m_blinky_swap_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_multi_smif_app2
+    TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Release
+
+1m_ble_swap_xip_release:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_swap_xip
+    - 1m_blinky_xip_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_xip
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+1m_ble_swap_single_cm0p_release:
+  extends: .1m_ble_swap
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_single_swap_cm0p
+    - 1m_blinky_swap_cm0p
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_swap_single_cm0p
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+######################################################################################################################################
+############################################## S W A P  0 6 3   1 M   T E S T S ######################################################
+######################################################################################################################################
+
+063_1m_swap_single:
+  extends: .063_1m_swap
+  needs:
+    - 063_1m_mcuboot_single_swap
+    - 063_1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_swap_single
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+063_1m_swap_multi_app1:
+  extends: .063_1m_swap
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_multi_swap
+    - 063_1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_swap_multi_app1
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+....063_1m_swap_multi_app2:
+  extends: .063_1m_swap
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_multi_swap
+    - 063_1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_swap_multi_app2
+    TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Debug
+
+063_1m_swap_single_cm0p:
+  extends: .063_1m_swap
+  needs:
+    - 063_1m_mcuboot_single_swap_cm0p
+    - 063_1m_blinky_swap_cm0p
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_swap_single_cm0p
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+063_1m_swap_single_release:
+  extends: .063_1m_swap
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_single_swap
+    - 063_1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_swap_single
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+063_1m_swap_multi_app1_release:
+  extends: .063_1m_swap
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_multi_swap
+    - 063_1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_swap_multi_app1
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+....063_1m_swap_multi_app2_release:
+  extends: .063_1m_swap
+  needs:
+    - 063_1m_mcuboot_multi_swap
+    - 063_1m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_swap_multi_app2
+    TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Release
+
+063_1m_swap_single_cm0p_release:
+  extends: .063_1m_swap
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_single_swap_cm0p
+    - 063_1m_blinky_swap_cm0p
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_swap_single_cm0p
+    TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
 ######################################################################################################################################
 ################################################### S W A P  2 M  T E S T S ##########################################################
 ######################################################################################################################################
 
-2m_eval_multi_app1_smif_swap_release:
+2m_eval_swap_custom_flashmap_smif:
+  extends: .2m_eval_swap
+  needs: []
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_swap_custom_flashmap_smif
+    TEST_SELECT: $TEST_CUSTOM_FLASHMAP
+    BUILDCFG_TEST: Debug
+    GIT_SUBMODULE_STRATEGY: recursive
+
+2m_eval_swap_shared:
+  extends: .2m_eval_swap
+  only:
+    - schedules
+  needs:
+    - 2m_mcuboot_swap_shared
+    - 2m_blinky_swap_shared
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_swap_shared
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+2m_eval_swap_multi_smif_app1_release_no_bootstrap:
   extends: .2m_eval_swap
   needs:
-    - 2m_mcuboot_multi_smif_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_mcuboot_multi_smif_swap_no_bootstrap
+    - 2m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_smif_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_multi_smif_app1
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-2m_single_swap:
+2m_swap_single:
   extends: .2m_swap
   only:
     - schedules
   needs:
     - 2m_mcuboot_single_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_single
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-2m_single_smif_swap:
+2m_swap_single_fih_high:
+  extends: .2m_swap
+  only:
+    - schedules
+  needs:
+    - 2m_mcuboot_single_swap_fih_high
+    - 2m_blinky_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_swap_single
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+    FIH_PROFILE: 'HIGH'
+
+2m_swap_single_smif:
   extends: .2m_swap
   needs:
     - 2m_mcuboot_single_smif_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_smif_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_single_smif
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-2m_multi_app1_swap:
+2m_swap_multi_app1:
   extends: .2m_swap
   needs:
     - 2m_mcuboot_multi_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_multi_app1
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-2m_multi_app2_swap:
+....2m_swap_multi_app2:
   extends: .2m_swap
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_multi_app2
     TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Debug
 
-2m_multi_app1_smif_swap:
+2m_swap_multi_smif_app1:
   extends: .2m_swap
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_smif_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_smif_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_multi_smif_app1
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-2m_multi_app2_smif_swap:
+....2m_swap_multi_smif_app2:
   extends: .2m_swap
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_smif_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_smif_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_multi_smif_app2
     TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Debug
 
-2m_single_swap_release:
+2m_swap_xip:
+  extends: .2m_swap
+  only:
+    - schedules
+  needs:
+    - 2m_mcuboot_swap_xip
+    - 2m_blinky_xip_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_swap_xip
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+2m_swap_single_cm0p:
+  extends: .2m_swap
+  only:
+    - schedules
+  needs:
+    - 2m_mcuboot_single_swap_cm0p
+    - 2m_blinky_swap_cm0p
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_swap_single_cm0p
+    TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
+
+2m_swap_single_release:
   extends: .2m_swap
   only:
     - schedules
   needs:
     - 2m_mcuboot_single_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_single
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-2m_single_smif_swap_release:
+2m_swap_single_smif_release:
   extends: .2m_swap
   only:
     - schedules
   needs:
     - 2m_mcuboot_single_smif_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_smif_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_single_smif
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-2m_multi_app1_swap_release:
+2m_swap_multi_app1_release:
   extends: .2m_swap
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_multi_app1
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-2m_multi_app2_swap_release:
+....2m_swap_multi_app2_release:
   extends: .2m_swap
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_swap
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_multi_app2
     TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
     BUILDCFG_TEST: Release
 
-2m_multi_app1_smif_swap_release:
+2m_swap_multi_smif_app1_release:
   extends: .2m_swap
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_smif_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_smif_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_multi_smif_app1
     TEST_SELECT: $TEST_SWAP_RELEASE
     BUILDCFG_TEST: Release
 
-2m_multi_app2_smif_swap_release:
+2m_swap_multi_smif_app1_release_fih_high:
+  extends: .2m_swap
+  only:
+    - schedules
+  needs:
+    - 2m_mcuboot_multi_smif_swap_fih_high
+    - 2m_blinky_swap_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_swap_multi_smif_app1
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+....2m_swap_multi_smif_app2_release:
   extends: .2m_swap
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_smif_swap
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_swap_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_smif_swap
+    TEST_CONFIG: CI_MCUBoot_2m_swap_multi_smif_app2
     TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
     BUILDCFG_TEST: Release
 
+2m_swap_xip_release:
+  extends: .2m_swap
+  only:
+    - schedules
+  needs:
+    - 2m_mcuboot_swap_xip
+    - 2m_blinky_xip_swap
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_swap_xip
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
+2m_swap_single_cm0p_release:
+  extends: .2m_swap
+  only:
+    - schedules
+  needs:
+    - 2m_mcuboot_single_swap_cm0p
+    - 2m_blinky_swap_cm0p
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_swap_single_cm0p
+    TEST_SELECT: $TEST_SWAP_RELEASE
+    BUILDCFG_TEST: Release
+
 ######################################################################################################################################
-############################################# O V E R W R I T E  512 K  T E S T S ####################################################
+######################################## O V E R W R I T E  0 6 1 - 5 1 2 K  T E S T S ###############################################
 ######################################################################################################################################
 
-512k_single_overwrite:
+061_512k_overwrite_single:
+  stage: 512k_overwrite_tests
+  extends: .061_512k_common
+  only:
+    - schedules
+  needs:
+    - 061_512k_mcuboot_single_overwrite
+    - 061_512k_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_overwrite_single
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+061_512k_overwrite_multi_app1:
+  stage: 512k_overwrite_tests
+  extends: .061_512k_common
+  only:
+    - schedules
+  needs:
+    - 061_512k_mcuboot_multi_overwrite
+    - 061_512k_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_overwrite_multi_app1
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+061_512k_overwrite_single_release:
+  stage: 512k_overwrite_tests
+  extends: .061_512k_common
+  only:
+    - schedules
+  needs:
+    - 061_512k_mcuboot_single_overwrite
+    - 061_512k_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_overwrite_single
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+061_512k_overwrite_multi_app1_release:
+  stage: 512k_overwrite_tests
+  extends: .061_512k_common
+  only:
+    - schedules
+  needs:
+    - 061_512k_mcuboot_multi_overwrite
+    - 061_512k_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_overwrite_multi_app1
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+################################## O V E R W R I T E  0 6 1 - 5 1 2 K  T E S T S   E N C R Y P T #####################################
+
+061_512k_overwrite_single_enc:
+  stage: 512k_overwrite_tests
+  extends: .061_512k_common
+  only:
+    - schedules
+  needs:
+    - 061_512k_mcuboot_single_encrypt_overwrite
+    - 061_512k_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_overwrite_single_enc
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+061_512k_overwrite_multi_enc_app1:
+  stage: 512k_overwrite_tests
+  extends: .061_512k_common
+  only:
+    - schedules
+  needs:
+    - 061_512k_mcuboot_multi_encrypt_overwrite
+    - 061_512k_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_overwrite_multi_enc_app1
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+061_512k_overwrite_single_enc_release:
+  stage: 512k_overwrite_tests
+  extends: .061_512k_common
+  only:
+    - schedules
+  needs:
+    - 061_512k_mcuboot_single_encrypt_overwrite
+    - 061_512k_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_overwrite_single_enc
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+061_512k_overwrite_multi_enc_app1_release:
+  stage: 512k_overwrite_tests
+  extends: .061_512k_common
+  needs:
+    - 061_512k_mcuboot_multi_encrypt_overwrite
+    - 061_512k_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_061_512k_overwrite_multi_enc_app1
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+######################################################################################################################################
+############################################# O V E R W R I T E  5 1 2 K  T E S T S ##################################################
+######################################################################################################################################
+
+512k_overwrite_single:
   extends: .512k_overwrite
   needs:
     - 512k_mcuboot_single_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_single
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-512k_single_smif_overwrite:
+512k_overwrite_single_smif:
   extends: .512k_overwrite
   needs:
     - 512k_mcuboot_single_smif_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade_smif
+    - 512k_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_single_smif
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-512k_multi1_overwrite:
+512k_overwrite_multi_app1:
   extends: .512k_overwrite
   needs:
     - 512k_mcuboot_multi_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_multi_app1
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-512k_multi2_overwrite:
+....512k_overwrite_multi_app2:
   extends: .512k_overwrite
   needs:
     - 512k_mcuboot_multi_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_multi_app2
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-512k_single_overwrite_release:
+512k_overwrite_xip:
+  extends: .512k_overwrite
+  only:
+    - schedules
+  needs:
+    - 512k_mcuboot_overwrite_xip
+    - 512k_blinky_xip_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_xip
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+512k_overwrite_single_release:
   extends: .512k_overwrite
   only:
     - schedules
   needs:
     - 512k_mcuboot_single_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_single
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-512k_single_smif_overwrite_release:
+512k_overwrite_single_smif_release:
   extends: .512k_overwrite
   only:
     - schedules
   needs:
     - 512k_mcuboot_single_smif_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade_smif
+    - 512k_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_single_smif
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-512k_multi1_overwrite_release:
+512k_overwrite_multi_app1_release:
   extends: .512k_overwrite
   only:
     - schedules
   needs:
     - 512k_mcuboot_multi_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_multi_app1
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-512k_multi2_overwrite_release:
+....512k_overwrite_multi_app2_release:
   extends: .512k_overwrite
   only:
     - schedules
   needs:
     - 512k_mcuboot_multi_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_multi_app2
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+512k_overwrite_xip_release:
+  extends: .512k_overwrite
+  only:
+    - schedules
+  needs:
+    - 512k_mcuboot_overwrite_xip
+    - 512k_blinky_xip_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_xip
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
 ###################################### O V E R W R I T E  5 1 2 K  T E S T S   E N C R Y P T #########################################
 
-512k_single_encrypt_overwrite:
+512k_overwrite_single_enc:
   extends: .512k_encrypt_overwrite
   needs:
     - 512k_mcuboot_single_encrypt_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_single_enc
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-512k_single_smif_encrypt_overwrite:
+512k_overwrite_single_enc_fih_off:
+  extends: .512k_encrypt_overwrite
+  needs:
+    - 512k_mcuboot_single_encrypt_overwrite_fih_off
+    - 512k_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_single_enc
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+512k_overwrite_single_enc_release_fih_low:
+  extends: .512k_encrypt_overwrite
+  needs:
+    - 512k_mcuboot_single_encrypt_overwrite_fih_low
+    - 512k_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_single_enc
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+512k_overwrite_single_smif_enc:
   extends: .512k_encrypt_overwrite
   needs:
     - 512k_mcuboot_single_smif_encrypt_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade_smif
+    - 512k_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_single_smif_enc
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-512k_multi1_encrypt_overwrite:
+512k_overwrite_multi_enc_app1:
   extends: .512k_encrypt_overwrite
   needs:
     - 512k_mcuboot_multi_encrypt_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_multi_enc_app1
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-512k_multi2_encrypt_overwrite:
+....512k_overwrite_multi_enc_app2:
   extends: .512k_encrypt_overwrite
   needs:
     - 512k_mcuboot_multi_encrypt_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_multi_enc_app2
     TEST_SELECT: $TEST_SWAP
+    BUILDCFG_TEST: Debug
 
-512k_single_encrypt_overwrite_release:
+512k_overwrite_xip_enc:
+  extends: .512k_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 512k_mcuboot_overwrite_xip_encrypt
+    - 512k_blinky_xip_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_xip_enc
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+512k_overwrite_single_enc_release:
   extends: .512k_encrypt_overwrite
   only:
     - schedules
   needs:
     - 512k_mcuboot_single_encrypt_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_single_enc
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-512k_single_smif_encrypt_overwrite_release:
+512k_overwrite_single_smif_enc_release:
   extends: .512k_encrypt_overwrite
   only:
     - schedules
   needs:
     - 512k_mcuboot_single_smif_encrypt_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade_smif
+    - 512k_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_single_smif_enc
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-512k_multi1_encrypt_overwrite_release:
+512k_overwrite_multi_enc_app1_release:
   extends: .512k_encrypt_overwrite
   only:
     - schedules
   needs:
     - 512k_mcuboot_multi_encrypt_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_multi_enc_app1
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-512k_multi2_encrypt_overwrite_release:
+....512k_overwrite_multi_enc_app2_release:
   extends: .512k_encrypt_overwrite
   only:
     - schedules
   needs:
     - 512k_mcuboot_multi_encrypt_overwrite
-    - 512k_blinky_boot
-    - 512k_blinky_upgrade
+    - 512k_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_512K_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_multi_enc_app2
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+512k_overwrite_xip_enc_release:
+  extends: .512k_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 512k_mcuboot_overwrite_xip_encrypt
+    - 512k_blinky_xip_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_512k_overwrite_xip_enc
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
@@ -2059,579 +3913,987 @@ cyw20829_overwrite_secure_rbc_enc_release:
 ############################################## O V E R W R I T E  1 M  T E S T S #####################################################
 ######################################################################################################################################
 
-1m_single_overwrite:
-  extends: .1m_overwrite
+1m_wifi_bt_overwrite_single:
+  extends: .1m_wifi_bt_overwrite
   needs:
-    - 1m_mcuboot_single_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_single_overwrite
+    - 1m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_single_smif_overwrite:
-  extends: .1m_overwrite
+1m_wifi_bt_overwrite_single_smif:
+  extends: .1m_wifi_bt_overwrite
   needs:
-    - 1m_mcuboot_single_smif_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_single_smif_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single_smif
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_multi1_overwrite:
-  extends: .1m_overwrite
+1m_wifi_bt_overwrite_multi_app1:
+  extends: .1m_wifi_bt_overwrite
   needs:
-    - 1m_mcuboot_multi_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_overwrite
+    - 1m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_app1
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_multi2_overwrite:
-  extends: .1m_overwrite
+....1m_wifi_bt_overwrite_multi_app2:
+  extends: .1m_wifi_bt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_overwrite
+    - 1m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_app2
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_multi1_smif_overwrite:
-  extends: .1m_overwrite
+1m_wifi_bt_overwrite_multi_smif_app1:
+  extends: .1m_wifi_bt_overwrite
   needs:
-    - 1m_mcuboot_multi_smif_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_app1
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_multi2_smif_overwrite:
-  extends: .1m_overwrite
+....1m_wifi_bt_overwrite_multi_smif_app2:
+  extends: .1m_wifi_bt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_smif_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_app2
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_single_overwrite_release:
-  extends: .1m_overwrite
+1m_wifi_bt_overwrite_xip:
+  extends: .1m_wifi_bt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_single_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_overwrite_xip
+    - 1m_blinky_xip_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_xip
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+1m_wifi_bt_overwrite_single_release:
+  extends: .1m_wifi_bt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_wifi_bt_mcuboot_single_overwrite
+    - 1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-1m_single_smif_overwrite_release:
-  extends: .1m_overwrite
+1m_wifi_bt_overwrite_single_smif_release:
+  extends: .1m_wifi_bt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_single_smif_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_single_smif_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single_smif
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-1m_multi1_overwrite_release:
-  extends: .1m_overwrite
+1m_wifi_bt_overwrite_multi_app1_release:
+  extends: .1m_wifi_bt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_overwrite
+    - 1m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_app1
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-1m_multi2_overwrite_release:
-  extends: .1m_overwrite
+....1m_wifi_bt_overwrite_multi_app2_release:
+  extends: .1m_wifi_bt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_overwrite
+    - 1m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_app2
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-1m_multi1_smif_overwrite_release:
-  extends: .1m_overwrite
+1m_wifi_bt_overwrite_multi_smif_app1_release:
+  extends: .1m_wifi_bt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_smif_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_app1
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-1m_multi2_smif_overwrite_release:
-  extends: .1m_overwrite
+....1m_wifi_bt_overwrite_multi_smif_app2_release:
+  extends: .1m_wifi_bt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_smif_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_app2
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+1m_wifi_bt_overwrite_xip_release:
+  extends: .1m_wifi_bt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_wifi_bt_mcuboot_overwrite_xip
+    - 1m_blinky_xip_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_xip
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
 ###################################### O V E R W R I T E  1 M  T E S T S   E N C R Y P T #############################################
 
-1m_single_encrypt_overwrite:
-  extends: .1m_encrypt_overwrite
+1m_wifi_bt_overwrite_single_enc:
+  extends: .1m_wifi_bt_encrypt_overwrite
   needs:
-    - 1m_mcuboot_single_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_single_encrypt_overwrite
+    - 1m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single_enc
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_single_smif_encrypt_overwrite:
-  extends: .1m_encrypt_overwrite
+1m_wifi_bt_overwrite_single_smif_enc:
+  extends: .1m_wifi_bt_encrypt_overwrite
   needs:
-    - 1m_mcuboot_single_smif_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_single_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single_smif_enc
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_multi1_encrypt_overwrite:
-  extends: .1m_encrypt_overwrite
+1m_wifi_bt_overwrite_multi_enc_app1:
+  extends: .1m_wifi_bt_encrypt_overwrite
   needs:
-    - 1m_mcuboot_multi_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_encrypt_overwrite
+    - 1m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_enc_app1
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_multi2_encrypt_overwrite:
-  extends: .1m_encrypt_overwrite
+....1m_wifi_bt_overwrite_multi_enc_app2:
+  extends: .1m_wifi_bt_encrypt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_encrypt_overwrite
+    - 1m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_enc_app2
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_multi1_smif_encrypt_overwrite:
-  extends: .1m_encrypt_overwrite
+1m_wifi_bt_overwrite_multi_smif_enc_app1:
+  extends: .1m_wifi_bt_encrypt_overwrite
   needs:
-    - 1m_mcuboot_multi_smif_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_enc_app1
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_multi2_smif_encrypt_overwrite:
-  extends: .1m_encrypt_overwrite
+....1m_wifi_bt_overwrite_multi_smif_enc_app2:
+  extends: .1m_wifi_bt_encrypt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_smif_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_enc_app2
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-1m_single_encrypt_overwrite_release:
-  extends: .1m_encrypt_overwrite
+1m_wifi_bt_overwrite_xip_enc:
+  extends: .1m_wifi_bt_encrypt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_single_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_overwrite_xip_encrypt
+    - 1m_blinky_xip_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_xip_enc
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+1m_wifi_bt_overwrite_single_enc_release:
+  extends: .1m_wifi_bt_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_wifi_bt_mcuboot_single_encrypt_overwrite
+    - 1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single_enc
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-1m_single_smif_encrypt_overwrite_release:
-  extends: .1m_encrypt_overwrite
+1m_wifi_bt_overwrite_single_smif_enc_release:
+  extends: .1m_wifi_bt_encrypt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_single_smif_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_single_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single_smif_enc
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-1m_multi1_encrypt_overwrite_release:
-  extends: .1m_encrypt_overwrite
+1m_wifi_bt_overwrite_multi_enc_app1_release:
+  extends: .1m_wifi_bt_encrypt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_encrypt_overwrite
+    - 1m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_enc_app1
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-1m_multi2_encrypt_overwrite_release:
-  extends: .1m_encrypt_overwrite
+....1m_wifi_bt_overwrite_multi_enc_app2_release:
+  extends: .1m_wifi_bt_encrypt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade
+    - 1m_wifi_bt_mcuboot_multi_encrypt_overwrite
+    - 1m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_enc_app2
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-1m_multi1_smif_encrypt_overwrite_release:
-  extends: .1m_encrypt_overwrite
+1m_wifi_bt_overwrite_multi_smif_enc_app1_release:
+  extends: .1m_wifi_bt_encrypt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_smif_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi1_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_enc_app1
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-1m_multi2_smif_encrypt_overwrite_release:
-  extends: .1m_encrypt_overwrite
+....1m_wifi_bt_overwrite_multi_smif_enc_app2_release:
+  extends: .1m_wifi_bt_encrypt_overwrite
   only:
     - schedules
   needs:
-    - 1m_mcuboot_multi_smif_encrypt_overwrite
-    - 1m_blinky_boot
-    - 1m_blinky_upgrade_smif
+    - 1m_wifi_bt_mcuboot_multi_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_1M_multi2_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_enc_app2
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+1m_wifi_bt_overwrite_xip_enc_release:
+  extends: .1m_wifi_bt_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_wifi_bt_mcuboot_overwrite_xip_encrypt
+    - 1m_blinky_xip_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_xip_enc
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+################################# 1 M - B L E   O V E R W R I T E   E N C R Y P T   T E S T S ########################################
+
+1m_ble_overwrite_single_enc:
+  extends: .1m_ble_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_single_encrypt_overwrite
+    - 1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+1m_ble_overwrite_single_smif_enc:
+  extends: .1m_ble_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_single_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single_smif
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+1m_ble_overwrite_multi_enc_app1:
+  extends: .1m_ble_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_encrypt_overwrite
+    - 1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_app1
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+1m_ble_overwrite_multi_enc_app1_fih_off:
+  extends: .1m_ble_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_encrypt_overwrite_fih_off
+    - 1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_app1
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+....1m_ble_overwrite_multi_enc_app2:
+  extends: .1m_ble_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_encrypt_overwrite
+    - 1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_app2
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+1m_ble_overwrite_multi_smif_enc_app1:
+  extends: .1m_ble_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_app1
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+....1m_ble_overwrite_multi_smif_enc_app2:
+  extends: .1m_ble_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_app2
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+1m_ble_overwrite_xip_enc:
+  extends: .1m_ble_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_overwrite_xip_encrypt
+    - 1m_blinky_xip_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_xip_enc
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+1m_ble_overwrite_single_enc_release:
+  extends: .1m_ble_encrypt_overwrite
+  needs:
+    - 1m_ble_mcuboot_single_encrypt_overwrite
+    - 1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+1m_ble_overwrite_single_smif_enc_release:
+  extends: .1m_ble_encrypt_overwrite
+  needs:
+    - 1m_ble_mcuboot_single_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_single_smif
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+1m_ble_overwrite_multi_enc_app1_release:
+  extends: .1m_ble_encrypt_overwrite
+  needs:
+    - 1m_ble_mcuboot_multi_encrypt_overwrite
+    - 1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_app1
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+....1m_ble_overwrite_multi_enc_app2_release:
+  extends: .1m_ble_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_encrypt_overwrite
+    - 1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_app2
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+1m_ble_overwrite_multi_smif_enc_app1_release:
+  extends: .1m_ble_encrypt_overwrite
+  needs:
+    - 1m_ble_mcuboot_multi_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_app1
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+....1m_ble_overwrite_multi_smif_enc_app2_release:
+  extends: .1m_ble_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_multi_smif_encrypt_overwrite
+    - 1m_blinky_overwrite_smif
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_multi_smif_app2
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+1m_ble_overwrite_xip_enc_release:
+  extends: .1m_ble_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 1m_ble_mcuboot_overwrite_xip_encrypt
+    - 1m_blinky_xip_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_1m_overwrite_xip_enc
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+######################################################################################################################################
+######################################## O V E R W R I T E   0 6 3   1 M   T E S T S #################################################
+######################################################################################################################################
+
+063_1m_overwrite_single:
+  extends: .063_1m_overwrite
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_single_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_single
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+063_1m_overwrite_multi_app1:
+  extends: .063_1m_overwrite
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_multi_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_multi_app1
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+....063_1m_overwrite_multi_app2:
+  extends: .063_1m_overwrite
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_multi_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_multi_app2
+    TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Debug
+
+063_1m_overwrite_single_release:
+  extends: .063_1m_overwrite
+  needs:
+    - 063_1m_mcuboot_single_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_single
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+063_1m_overwrite_single_fih_low_release:
+  extends: .063_1m_overwrite
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_single_overwrite_fih_low
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_single
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+063_1m_overwrite_multi_app1_release:
+  extends: .063_1m_overwrite
+  needs:
+    - 063_1m_mcuboot_multi_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_multi_app1
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+....063_1m_overwrite_multi_app2_release:
+  extends: .063_1m_overwrite
+  needs:
+    - 063_1m_mcuboot_multi_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_multi_app2
+    TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Release
+
+######################################################################################################################################
+################################ O V E R W R I T E   E N C R Y P T   0 6 3   1 M   T E S T S #########################################
+######################################################################################################################################
+
+063_1m_overwrite_single_enc:
+  extends: .063_1m_encrypt_overwrite
+  needs:
+    - 063_1m_mcuboot_single_encrypt_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_single
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+063_1m_overwrite_single_enc_fih_high:
+  extends: .063_1m_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_single_encrypt_overwrite_fih_high
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_single
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+063_1m_overwrite_multi_enc_app1:
+  extends: .063_1m_encrypt_overwrite
+  needs:
+    - 063_1m_mcuboot_multi_encrypt_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_multi_app1
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+....063_1m_overwrite_multi_enc_app2:
+  extends: .063_1m_encrypt_overwrite
+  needs:
+    - 063_1m_mcuboot_multi_encrypt_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_multi_app2
+    TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
+    BUILDCFG_TEST: Debug
+
+063_1m_overwrite_single_enc_release:
+  extends: .063_1m_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_single_encrypt_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_single
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+063_1m_overwrite_multi_enc_app1_release:
+  extends: .063_1m_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_multi_encrypt_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_multi_app1
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+....063_1m_overwrite_multi_enc_app2_release:
+  extends: .063_1m_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 063_1m_mcuboot_multi_encrypt_overwrite
+    - 063_1m_blinky_overwrite
+  variables:
+    TEST_CONFIG: CI_MCUBoot_063_1m_overwrite_multi_app2
+    TEST_SELECT: THREE_TESTS #SMOKE+ tests not applicable for second application with swap
     BUILDCFG_TEST: Release
 
 ######################################################################################################################################
 ############################################## O V E R W R I T E  2 M  T E S T S #####################################################
 ######################################################################################################################################
 
-2m_single_overwrite:
+2m_overwrite_single:
   extends: .2m_overwrite
   needs:
     - 2m_mcuboot_single_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_single
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_single_smif_overwrite:
+2m_overwrite_single_smif:
   extends: .2m_overwrite
   needs:
     - 2m_mcuboot_single_smif_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_single_smif
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_multi_app1_overwrite:
+2m_overwrite_multi_app1:
   extends: .2m_overwrite
   needs:
     - 2m_mcuboot_multi_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_app1
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_multi_app2_overwrite:
+....2m_overwrite_multi_app2:
   extends: .2m_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_app2
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_multi_app1_smif_overwrite:
+2m_overwrite_multi_smif_app1:
   extends: .2m_overwrite
   needs:
     - 2m_mcuboot_multi_smif_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_smif_app1
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_multi_app2_smif_overwrite:
+....2m_overwrite_multi_smif_app2:
   extends: .2m_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_smif_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_smif_app2
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_single_overwrite_release:
+2m_overwrite_xip:
+  extends: .2m_overwrite
+  only:
+    - schedules
+  needs:
+    - 2m_mcuboot_overwrite_xip
+    - 2m_blinky_overwrite_xip
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_xip
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+2m_overwrite_single_release:
   extends: .2m_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_single_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_single
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-2m_single_smif_overwrite_release:
+2m_overwrite_single_smif_release:
   extends: .2m_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_single_smif_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_single_smif
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-2m_multi_app1_overwrite_release:
+2m_overwrite_multi_app1_release:
   extends: .2m_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_app1
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-2m_multi_app2_overwrite_release:
+....2m_overwrite_multi_app2_release:
   extends: .2m_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_app2
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-2m_multi_app1_smif_overwrite_release:
+2m_overwrite_multi_smif_app1_release:
   extends: .2m_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_smif_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_smif_app1
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-2m_multi_app2_smif_overwrite_release:
+....2m_overwrite_multi_smif_app2_release:
   extends: .2m_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_smif_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_smif_app2
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+2m_overwrite_xip_release:
+  extends: .2m_overwrite
+  only:
+    - schedules
+  needs:
+    - 2m_mcuboot_overwrite_xip
+    - 2m_blinky_overwrite_xip
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_xip
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
 ###################################### O V E R W R I T E  2 M  T E S T S   E N C R Y P T #############################################
 
-2m_single_encrypt_overwrite:
+2m_overwrite_single_enc:
   extends: .2m_encrypt_overwrite
   needs:
     - 2m_mcuboot_single_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_single_enc
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_single_smif_encrypt_overwrite:
+2m_overwrite_single_smif_enc:
   extends: .2m_encrypt_overwrite
   needs:
     - 2m_mcuboot_single_smif_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_single_smif_enc
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_multi_app1_encrypt_overwrite:
+2m_overwrite_multi_enc_app1:
   extends: .2m_encrypt_overwrite
   needs:
     - 2m_mcuboot_multi_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_enc_app1
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_multi_app2_encrypt_overwrite:
+....2m_overwrite_multi_enc_app2:
   extends: .2m_encrypt_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_enc_app2
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_multi_app1_smif_encrypt_overwrite:
+2m_overwrite_multi_smif_enc_app1:
   extends: .2m_encrypt_overwrite
   needs:
     - 2m_mcuboot_multi_smif_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_smif_enc_app1
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_multi_app2_smif_encrypt_overwrite:
+....2m_overwrite_multi_smif_enc_app2:
   extends: .2m_encrypt_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_smif_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_smif_enc_app2
     TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
 
-2m_single_encrypt_overwrite_release:
+2m_overwrite_xip_enc:
+  extends: .2m_encrypt_overwrite
+  only:
+    - schedules
+  needs:
+    - 2m_mcuboot_overwrite_xip_encrypt
+    - 2m_blinky_overwrite_xip
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_xip_enc
+    TEST_SELECT: $TEST_OVERWRITE
+    BUILDCFG_TEST: Debug
+
+2m_overwrite_single_enc_release:
   extends: .2m_encrypt_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_single_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_single_enc
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-2m_single_smif_encrypt_overwrite_release:
+2m_overwrite_single_smif_enc_release:
   extends: .2m_encrypt_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_single_smif_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_single_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_single_smif_enc
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-2m_multi_app1_encrypt_overwrite_release:
+2m_overwrite_multi_enc_app1_release:
   extends: .2m_encrypt_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_enc_app1
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-2m_multi_app2_encrypt_overwrite_release:
+....2m_overwrite_multi_enc_app2_release:
   extends: .2m_encrypt_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade
+    - 2m_blinky_overwrite
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_enc_app2
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-2m_multi_app1_smif_encrypt_overwrite_release:
+2m_overwrite_multi_smif_enc_app1_release:
   extends: .2m_encrypt_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_smif_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi1_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_smif_enc_app1
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
-2m_multi_app2_smif_encrypt_overwrite_release:
+....2m_overwrite_multi_smif_enc_app2_release:
   extends: .2m_encrypt_overwrite
   only:
     - schedules
   needs:
     - 2m_mcuboot_multi_smif_encrypt_overwrite
-    - 2m_blinky_boot
-    - 2m_blinky_upgrade_smif
+    - 2m_blinky_overwrite_smif
   variables:
-    TEST_CONFIG: CI_MCUBoot_2M_multi2_smif_overwrite
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_multi_smif_enc_app2
+    TEST_SELECT: $TEST_OVERWRITE_RELEASE
+    BUILDCFG_TEST: Release
+
+2m_overwrite_xip_enc_release:
+  extends: .2m_encrypt_overwrite
+  needs:
+    - 2m_mcuboot_overwrite_xip_encrypt
+    - 2m_blinky_overwrite_xip
+  variables:
+    TEST_CONFIG: CI_MCUBoot_2m_overwrite_xip_enc
     TEST_SELECT: $TEST_OVERWRITE_RELEASE
     BUILDCFG_TEST: Release
 
@@ -2644,9 +4906,10 @@ MCUboot_simulator_basic:
   needs: []
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   tags:
     - MCUBOOT_SIMULATOR_20.04.3
   script:
@@ -2661,9 +4924,10 @@ MCUboot_simulator_PSoC6_swap_status:
   needs: []
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   tags:
     - MCUBOOT_SIMULATOR_20.04.3
   script:
@@ -2678,9 +4942,10 @@ MCUboot_simulator_PSoC6_swap_status:
   needs: []
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   tags:
     - MCUBOOT_SIMULATOR_20.04.3
   script:
@@ -2820,13 +5085,12 @@ cppcheck_20829:
   tags:
     - MCU_CPPCHECK
   needs: []
-  variables:
-    GIT_STRATEGY: clone
   except:
     variables:
-      - $CIVAR_MICRO_TEST
+      - $CIVAR_MICRO_TEST != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   artifacts:
     when: always
     expire_in: 4 weeks
@@ -2839,22 +5103,21 @@ cppcheck_20829:
     - git submodule update --init --recursive
     - cd boot/cypress
     - $PSDefaultParameterValues = @{"Out-File:Encoding"="ASCII"}
-    - python scripts/flashmap.py -p PSOC_062_2M -i ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json -o ./cy_flash_pal/cy_flash_map.h > ./MCUBootApp/flashmap.mk
-    - time make run_cppcheck PLATFORM=CYW20829 APP_NAME=MCUBootApp CPP_CHECK_SCOPE=all BUILDCFG=Debug FLASH_MAP=./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single_psvp.json
-    - time make run_cppcheck PLATFORM=CYW20829 APP_NAME=MCUBootApp CPP_CHECK_SCOPE=all BUILDCFG=Release FLASH_MAP=./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single_psvp.json
+    - python scripts/flashmap.py -p PSOC_062_2M -i ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json -o ./platforms/cy_flash_pal/cy_flash_map.h > ./MCUBootApp/flashmap.mk
+    - time make run_cppcheck PLATFORM=CYW20829 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} CPP_CHECK_SCOPE=all BUILDCFG=Debug FLASH_MAP=./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single_psvp.json
+    - time make run_cppcheck PLATFORM=CYW20829 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} CPP_CHECK_SCOPE=all BUILDCFG=Release FLASH_MAP=./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single_psvp.json
 
 cppcheck_PSOC6:
   stage: code_quality_check
   tags:
     - MCU_CPPCHECK
   needs: []
-  variables:
-    GIT_STRATEGY: clone
   except:
     variables:
-      - $CIVAR_MICRO_TEST
+      - $CIVAR_MICRO_TEST != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   artifacts:
     when: always
     expire_in: 4 weeks
@@ -2867,10 +5130,10 @@ cppcheck_PSOC6:
     - git submodule update --init --recursive
     - cd boot/cypress
     - $PSDefaultParameterValues = @{"Out-File:Encoding"="ASCII"}
-    - python scripts/flashmap.py -p PSOC_062_2M -i ./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json -o ./cy_flash_pal/cy_flash_map.h > ./MCUBootApp/flashmap.mk
-    - make run_cppcheck PLATFORM=PSOC_062_2M APP_NAME=MCUBootApp CPP_CHECK_SCOPE=all BUILDCFG=Release FLASH_MAP=./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
-    - make run_cppcheck PLATFORM=PSOC_062_1M APP_NAME=MCUBootApp CPP_CHECK_SCOPE=all BUILDCFG=Debug FLASH_MAP=./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
-    - time make run_cppcheck PLATFORM=PSOC_062_512K APP_NAME=MCUBootApp CPP_CHECK_SCOPE=all BUILDCFG=Release FLASH_MAP=./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
+    - python scripts/flashmap.py -p PSOC_062_2M -i ./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json -o ./platforms/cy_flash_pal/cy_flash_map.h > ./MCUBootApp/flashmap.mk
+    - make run_cppcheck PLATFORM=PSOC_062_2M APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} CPP_CHECK_SCOPE=all BUILDCFG=Release FLASH_MAP=./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+    - make run_cppcheck PLATFORM=PSOC_062_1M APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} CPP_CHECK_SCOPE=all BUILDCFG=Debug FLASH_MAP=./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+    - time make run_cppcheck PLATFORM=PSOC_062_512K APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} CPP_CHECK_SCOPE=all BUILDCFG=Release FLASH_MAP=./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
 
 #######################################################################################################################################################
 # Coverity MISRA 2012 & CERT C check
@@ -2878,11 +5141,10 @@ cppcheck_PSOC6:
 .coverity_common:
   stage: code_quality_check
   tags:
-    - SFB-CI-COV-001
+    - WIN-CI-COV-003
   needs: []
   variables:
-    GIT_STRATEGY: clone
-    COVERITY_PATH: '.\ci\coverity'
+    COVERITY_PATH: '../../ci/coverity'
   artifacts:
     paths:
       - $COVERITY_PATH\*.log
@@ -2892,14 +5154,17 @@ cppcheck_PSOC6:
   script:
     - git submodule sync --recursive
     - git submodule update --init --recursive
-    - git clone http://devops-git.aus.cypress.com/dmxh/coverity -b $COVERITY_BRANCH $COVERITY_PATH 
-    - pushd $COVERITY_PATH
     - python -V
     - python -m virtualenv venv
     - ./venv/Scripts/activate.ps1
-    - pip install -r requirements.txt
-    - pip install git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@$CY_SECURETOOLS_BRANCH
+# TODO: switch to the latest ${CY_SECURETOOLS_BRANCH} tag after RBC _set_reprovisioning_tlvs method fix
+    - pip install --upgrade --force-reinstall git+http://git-ore.aus.cypress.com/repo/cysecuretools.git@release/v4.2.0
     - cysecuretools -v version
+    - cd boot/cypress
+    - cysecuretools -t cyw20829 init
+    - git clone http://devops-git.aus.cypress.com/dmxh/coverity -b $COVERITY_BRANCH $COVERITY_PATH
+    - pushd $COVERITY_PATH
+    - pip install --upgrade --force-reinstall -r requirements.txt
     - python check_coverity.py -c $CI_COVERITY_CONFIG_FILE
   after_script:
     - 'cat ci\coverity\$CI_COVERITY_LOG_FILE | cut -c 45- | grep -e "| MANDATORY |" -e " | REQUIRED | " -e " | L1 | "  -e " | L2 | " | sort | nl | sed -e "s/MISRA/| MISRA/g" | sed -e "s/violations/| violations/g" | tee ci\coverity\violations.csv'
@@ -2909,77 +5174,83 @@ coverity_misra_20829_default:
   when: manual
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_misra_20829_full.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/all_files/config_mcuboot_misra.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=CYW20829 FLASH_MAP=./cy_flash_pal/flash_cyw208xx/flashmap/cyw20829_xip_swap_single_psvp.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=CYW20829 FLASH_MAP=./platforms/cy_flash_pal/flash_cyw20829/flashmap/cyw20829_xip_swap_single_psvp.json
   extends: .coverity_common
 
 coverity_misra_20829_ow_release:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_misra_20829_ow.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/cyw20829/config_mcuboot_misra.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=CYW20829 BUILDCFG=Release USE_EXTERNAL_FLASH=1 ENC_IMG=1 LCS=SECURE USE_OVERWRITE=1 FLASH_MAP=./cy_flash_pal/flash_cyw208xx/flashmap/hw_rollback_prot/cyw20829_xip_overwrite_single_psvp.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=CYW20829 BUILDCFG=Release USE_EXTERNAL_FLASH=1 ENC_IMG=1 LCS=SECURE USE_OVERWRITE=1 FLASH_MAP=./platforms/cy_flash_pal/flash_cyw20829/flashmap/hw_rollback_prot/cyw20829_xip_overwrite_single_psvp.json
   extends: .coverity_common
 
 coverity_misra_20829_swap_debug:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
+      - $CIVAR_MICRO_TEST != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_misra_20829_swap.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/cyw20829/config_mcuboot_misra.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=CYW20829 BUILDCFG=Debug USE_EXTERNAL_FLASH=1 ENC_IMG=1 LCS=SECURE USE_OVERWRITE=0 FLASH_MAP=./cy_flash_pal/flash_cyw208xx/flashmap/hw_rollback_prot/cyw20829_xip_swap_single_psvp.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=CYW20829 BUILDCFG=Debug USE_EXTERNAL_FLASH=1 ENC_IMG=1 LCS=SECURE USE_OVERWRITE=0 FLASH_MAP=./platforms/cy_flash_pal/flash_cyw20829/flashmap/hw_rollback_prot/cyw20829_xip_swap_single_psvp.json
   extends: .coverity_common
 
 coverity_misra_062_2m:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
+      - $CIVAR_MICRO_TEST != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_misra_062_2m.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/psoc062/config_mcuboot_misra.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Release MCUBOOT_IMAGE_NUMBER=2 USE_EXTERNAL_FLASH=1 USE_OVERWRITE=0 ENC_IMG=1 FLASH_MAP=./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_multi_smif.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=PSOC_062_2M BUILDCFG=Release MCUBOOT_IMAGE_NUMBER=2 USE_EXTERNAL_FLASH=1 USE_OVERWRITE=0 ENC_IMG=1 FLASH_MAP=./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi_smif.json
   extends: .coverity_common
 
 coverity_misra_062_1m:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_misra_062_1m.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/psoc062/config_mcuboot_misra.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=PSOC_062_1M BUILDCFG=Debug MCUBOOT_IMAGE_NUMBER=1 USE_EXTERNAL_FLASH=0 USE_OVERWRITE=0 ENC_IMG=0 FLASH_MAP=./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=PSOC_062_1M BUILDCFG=Debug MCUBOOT_IMAGE_NUMBER=1 USE_EXTERNAL_FLASH=0 USE_OVERWRITE=0 ENC_IMG=0 FLASH_MAP=./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
   extends: .coverity_common
 
 coverity_misra_062_512k:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_misra_062_512k.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/psoc062/config_mcuboot_misra.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=PSOC_062_512K BUILDCFG=Release MCUBOOT_IMAGE_NUMBER=1 USE_EXTERNAL_FLASH=1 USE_OVERWRITE=1 ENC_IMG=1 FLASH_MAP=./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single_smif.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=PSOC_062_512K BUILDCFG=Release MCUBOOT_IMAGE_NUMBER=1 USE_EXTERNAL_FLASH=1 USE_OVERWRITE=1 ENC_IMG=1 FLASH_MAP=./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
   extends: .coverity_common
 
 
@@ -2987,75 +5258,188 @@ coverity_certc_062_2m_default:
   when: manual
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_certc_062_2m_full.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/all_files/config_mcuboot_cert_c.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M FLASH_MAP=./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=PSOC_062_2M FLASH_MAP=./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
   extends: .coverity_common
 
 coverity_certc_20829_ow_release:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_certc_20829_ow.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/cyw20829/config_mcuboot_cert_c.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=CYW20829 BUILDCFG=Release USE_EXTERNAL_FLASH=1 ENC_IMG=1 LCS=SECURE USE_OVERWRITE=1 FLASH_MAP=./cy_flash_pal/flash_cyw208xx/flashmap/hw_rollback_prot/cyw20829_xip_overwrite_single_psvp.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=CYW20829 BUILDCFG=Release USE_EXTERNAL_FLASH=1 ENC_IMG=1 LCS=SECURE USE_OVERWRITE=1 FLASH_MAP=./platforms/cy_flash_pal/flash_cyw20829/flashmap/hw_rollback_prot/cyw20829_xip_overwrite_single_psvp.json
   extends: .coverity_common
 
 coverity_certc_20829_swap_debug:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
+      - $CIVAR_MICRO_TEST != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_certc_20829_swap.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/cyw20829/config_mcuboot_cert_c.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=CYW20829 BUILDCFG=Debug USE_EXTERNAL_FLASH=1 ENC_IMG=1 LCS=SECURE USE_OVERWRITE=0 FLASH_MAP=./cy_flash_pal/flash_cyw208xx/flashmap/hw_rollback_prot/cyw20829_xip_swap_single_psvp.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=CYW20829 BUILDCFG=Debug USE_EXTERNAL_FLASH=1 ENC_IMG=1 LCS=SECURE USE_OVERWRITE=0 FLASH_MAP=./platforms/cy_flash_pal/flash_cyw20829/flashmap/hw_rollback_prot/cyw20829_xip_swap_single_psvp.json
   extends: .coverity_common
 
 coverity_certc_062_2m:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_certc_062_2m.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/psoc062/config_mcuboot_cert_c.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Release MCUBOOT_IMAGE_NUMBER=2 USE_EXTERNAL_FLASH=1 USE_OVERWRITE=0 ENC_IMG=1 FLASH_MAP=./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_multi_smif.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=PSOC_062_2M BUILDCFG=Release MCUBOOT_IMAGE_NUMBER=2 USE_EXTERNAL_FLASH=1 USE_OVERWRITE=0 ENC_IMG=1 FLASH_MAP=./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_multi_smif.json
   extends: .coverity_common
 
 coverity_certc_062_1m:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
-      - $COV
+      - $CIVAR_MICRO_TEST != "0"
+      - $COV != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_certc_062_1m.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/psoc062/config_mcuboot_cert_c.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=PSOC_062_1M BUILDCFG=Debug MCUBOOT_IMAGE_NUMBER=1 USE_EXTERNAL_FLASH=0 USE_OVERWRITE=0 ENC_IMG=0 FLASH_MAP=./cy_flash_pal/flash_psoc6/flashmap/psoc62_swap_single.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=PSOC_062_1M BUILDCFG=Debug MCUBOOT_IMAGE_NUMBER=1 USE_EXTERNAL_FLASH=0 USE_OVERWRITE=0 ENC_IMG=0 FLASH_MAP=./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
   extends: .coverity_common
 
 coverity_certc_062_512k:
   except:
     variables:
-      - $CIVAR_MICRO_TEST
+      - $CIVAR_MICRO_TEST != "0"
       - $REPO
       - $CI_COMMIT_TAG
+      - $TEST_BRANCH_BSE != "develop"
   variables:
     CI_COVERITY_LOG_FILE: coverity_certc_062_512k.log
     CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/psoc062/config_mcuboot_cert_c.json
-    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp PLATFORM=PSOC_062_512K BUILDCFG=Release MCUBOOT_IMAGE_NUMBER=1 USE_EXTERNAL_FLASH=1 USE_OVERWRITE=1 ENC_IMG=1 FLASH_MAP=./cy_flash_pal/flash_psoc6/flashmap/psoc62_overwrite_single_smif.json
+    CI_COVERITY_BUILD_CMD: make clean app POST_BUILD_ENABLE=0 APP_NAME=MCUBootApp FIH_PROFILE_LEVEL=${FIH_PROFILE} PLATFORM=PSOC_062_512K BUILDCFG=Release MCUBOOT_IMAGE_NUMBER=1 USE_EXTERNAL_FLASH=1 USE_OVERWRITE=1 ENC_IMG=1 FLASH_MAP=./platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json
   extends: .coverity_common
+
+coverity_misra_mtb_bootloader_solution:
+  stage: code_quality_check
+  tags:
+    - WIN-CI-COV-003
+  needs: []
+  except:
+    variables:
+      - $CIVAR_MICRO_TEST != "0"
+      - $REPO
+      - $CI_COMMIT_TAG
+      - $CIVAR_EXPLORER_DISABLED !="0"
+  variables:
+    CE_NAME: Bootloader_Solution
+    BOOTLOADER_PRJ_FOLDER: bootloader
+    BLINKY_PRJ_FOLDER: blinky
+    CE_KIT: CY8CPROTO-062-4343W
+    CE_TOOLS: C:/Users/fw_security/ModusToolbox/tools_2.4
+    COVERITY_PATH: '../../ci/coverity'
+    CI_COVERITY_LOG_FILE: coverity_misra_mtb_bootloader_solution.log
+    CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/mtb/config_mcuboot_misra.json
+    CI_COVERITY_BUILD_CMD: make build
+  artifacts:
+    expire_in: 4 weeks
+    when: always
+    paths:
+      - $COVERITY_PATH\*.log
+      - $COVERITY_PATH\violations.csv
+      - ${CE_NAME}/${BOOTLOADER_PRJ_FOLDER}/build/${CE_KIT}/Debug/mtb-example-bootloader-solution.hex
+      - ${CE_NAME}/${BLINKY_PRJ_FOLDER}/build/${CE_KIT}/Debug/blinky.hex
+  before_script:
+    - $PSDefaultParameterValues = @{"Out-File:Encoding"="ASCII"}
+  script:
+    - env
+    - bash -c '[ ${TEST_BRANCH_BSE} != "develop" ] && cat ${CI_PROJECT_DIR}/boot/cypress/manifests/custom-ce-manifest.xml | sed -e "s/develop/${TEST_BRANCH_BSE}/" | tee ${CI_PROJECT_DIR}/boot/cypress/manifests/custom-ce-manifest.xml || true'
+    - sleep 1
+    - bash -c 'echo CyRemoteManifestOverride=${CI_PROJECT_DIR}/boot/cypress/manifests/mtb-super-manifest-fv2-test-ce-mcuboot.xml ${CE_TOOLS}/project-creator/project-creator-cli --board-id ${CE_KIT} --board-uri http://git-ore.aus.cypress.com/repo-staging/TARGET_${CE_KIT} --board-commit latest-v3.X --app-id mtb-example-bootloader-solution --app-uri http://git-ore.aus.cypress.com/wpp/ce/mtb/mtb-example-bootloader-solution/ --app-commit ${TEST_BRANCH_BSE} --cypress-tools ${CE_TOOLS} --target-dir ${CI_PROJECT_DIR} --user-app-name ${CE_NAME} --output-for-machine --use-modus-shell'
+    - bash -c      'CyRemoteManifestOverride=${CI_PROJECT_DIR}/boot/cypress/manifests/mtb-super-manifest-fv2-test-ce-mcuboot.xml ${CE_TOOLS}/project-creator/project-creator-cli --board-id ${CE_KIT} --board-uri http://git-ore.aus.cypress.com/repo-staging/TARGET_${CE_KIT} --board-commit latest-v3.X --app-id mtb-example-bootloader-solution --app-uri http://git-ore.aus.cypress.com/wpp/ce/mtb/mtb-example-bootloader-solution/ --app-commit ${TEST_BRANCH_BSE} --cypress-tools ${CE_TOOLS} --target-dir ${CI_PROJECT_DIR} --user-app-name ${CE_NAME} --output-for-machine --use-modus-shell'
+    - cd ${CE_NAME}
+    - pushd ${BOOTLOADER_PRJ_FOLDER}
+    - echo http://devops-git.aus.cypress.com/repo/cy_mcuboot_project/cy_mcuboot#$env:CI_BUILD_REF#$"$"ASSET_REPO$"$"/mcuboot/develop > deps/mcuboot.mtb
+    - bash -c 'CY_GITBASH_IN_CYGWIN=1 make getlibs'
+    - git --git-dir ../mtb_shared/mcuboot/develop/.git rev-parse HEAD
+    - git ls-remote http://git-ore.aus.cypress.com/wpp/ce/mtb/mtb-example-bootloader-solution.git ${TEST_BRANCH_BSE}
+    - git clone http://devops-git.aus.cypress.com/dmxh/coverity -b $COVERITY_BRANCH $COVERITY_PATH
+    - pushd $COVERITY_PATH
+    - python -V
+    - python -m virtualenv venv
+    - ./venv/Scripts/activate.ps1
+    - pip install --upgrade --force-reinstall -r requirements.txt
+    - python check_coverity.py -c $CI_COVERITY_CONFIG_FILE
+  after_script:
+    - 'cat ci\coverity\$CI_COVERITY_LOG_FILE | cut -c 45- | grep -e "| MANDATORY |" -e " | REQUIRED | " -e " | L1 | "  -e " | L2 | " | sort | nl | sed -e "s/MISRA/| MISRA/g" | sed -e "s/violations/| violations/g" | tee ci\coverity\violations.csv'
+
+coverity_cert-c_mtb_bootloader_solution:
+  stage: code_quality_check
+  tags:
+    - WIN-CI-COV-003
+  needs: []
+  except:
+    variables:
+      - $CIVAR_MICRO_TEST != "0"
+      - $REPO
+      - $CI_COMMIT_TAG
+      - $CIVAR_EXPLORER_DISABLED !="0"
+  variables:
+    CE_NAME: Bootloader_Solution
+    BOOTLOADER_PRJ_FOLDER: bootloader
+    BLINKY_PRJ_FOLDER: blinky
+    CE_KIT: CY8CPROTO-062-4343W
+    CE_TOOLS: C:/Users/fw_security/ModusToolbox/tools_2.4
+    COVERITY_PATH: '../../ci/coverity'
+    CI_COVERITY_LOG_FILE: coverity_cert-c_mtb_bootloader_solution.log
+    CI_COVERITY_CONFIG_FILE: ./../../boot/cypress/coverity/mtb/config_mcuboot_cert_c.json
+    CI_COVERITY_BUILD_CMD: make build
+  artifacts:
+    expire_in: 4 weeks
+    when: always
+    paths:
+      - $COVERITY_PATH\*.log
+      - $COVERITY_PATH\violations.csv
+      - ${CE_NAME}/${BOOTLOADER_PRJ_FOLDER}/build/${CE_KIT}/Debug/mtb-example-bootloader-solution.hex
+      - ${CE_NAME}/${BLINKY_PRJ_FOLDER}/build/${CE_KIT}/Debug/blinky.hex
+  before_script:
+    - $PSDefaultParameterValues = @{"Out-File:Encoding"="ASCII"}
+  script:
+    - env
+    - bash -c '[ ${TEST_BRANCH_BSE} != "develop" ] && cat ${CI_PROJECT_DIR}/boot/cypress/manifests/custom-ce-manifest.xml | sed -e "s/develop/${TEST_BRANCH_BSE}/" | tee ${CI_PROJECT_DIR}/boot/cypress/manifests/custom-ce-manifest.xml || true'
+    - sleep 1
+    - bash -c 'echo CyRemoteManifestOverride=${CI_PROJECT_DIR}/boot/cypress/manifests/mtb-super-manifest-fv2-test-ce-mcuboot.xml ${CE_TOOLS}/project-creator/project-creator-cli --board-id ${CE_KIT} --board-uri http://git-ore.aus.cypress.com/repo-staging/TARGET_${CE_KIT} --board-commit latest-v3.X --app-id mtb-example-bootloader-solution --app-uri http://git-ore.aus.cypress.com/wpp/ce/mtb/mtb-example-bootloader-solution/ --app-commit ${TEST_BRANCH_BSE} --cypress-tools ${CE_TOOLS} --target-dir ${CI_PROJECT_DIR} --user-app-name ${CE_NAME} --output-for-machine --use-modus-shell'
+    - bash -c      'CyRemoteManifestOverride=${CI_PROJECT_DIR}/boot/cypress/manifests/mtb-super-manifest-fv2-test-ce-mcuboot.xml ${CE_TOOLS}/project-creator/project-creator-cli --board-id ${CE_KIT} --board-uri http://git-ore.aus.cypress.com/repo-staging/TARGET_${CE_KIT} --board-commit latest-v3.X --app-id mtb-example-bootloader-solution --app-uri http://git-ore.aus.cypress.com/wpp/ce/mtb/mtb-example-bootloader-solution/ --app-commit ${TEST_BRANCH_BSE} --cypress-tools ${CE_TOOLS} --target-dir ${CI_PROJECT_DIR} --user-app-name ${CE_NAME} --output-for-machine --use-modus-shell'
+    - cd ${CE_NAME}
+    - pushd ${BOOTLOADER_PRJ_FOLDER}
+    - echo http://devops-git.aus.cypress.com/repo/cy_mcuboot_project/cy_mcuboot#$env:CI_BUILD_REF#$"$"ASSET_REPO$"$"/mcuboot/develop > deps/mcuboot.mtb
+    - bash -c 'CY_GITBASH_IN_CYGWIN=1 make getlibs'
+    - git --git-dir ../mtb_shared/mcuboot/develop/.git rev-parse HEAD
+    - git ls-remote http://git-ore.aus.cypress.com/wpp/ce/mtb/mtb-example-bootloader-solution.git ${TEST_BRANCH_BSE}
+    - git clone http://devops-git.aus.cypress.com/dmxh/coverity -b $COVERITY_BRANCH $COVERITY_PATH
+    - pushd $COVERITY_PATH
+    - python -V
+    - python -m virtualenv venv
+    - ./venv/Scripts/activate.ps1
+    - pip install --upgrade --force-reinstall -r requirements.txt
+    - python check_coverity.py -c $CI_COVERITY_CONFIG_FILE
+  after_script:
+    - 'cat ci\coverity\$CI_COVERITY_LOG_FILE | cut -c 45- | grep -e "| MANDATORY |" -e " | REQUIRED | " -e " | L1 | "  -e " | L2 | " | sort | nl | sed -e "s/MISRA/| MISRA/g" | sed -e "s/violations/| violations/g" | tee ci\coverity\violations.csv'
+

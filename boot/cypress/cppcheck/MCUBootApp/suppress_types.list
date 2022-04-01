@@ -1,7 +1,0 @@
-missingInclude
-variableScope
-unusedFunction
-duplicateValueTernary
-unreadVariable
-redundantInitialization
-unmatchedSuppression

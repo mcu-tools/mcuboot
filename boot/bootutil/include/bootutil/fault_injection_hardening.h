@@ -88,6 +88,9 @@
 extern "C" {
 #endif /* __cplusplus */
 
+#define FIH_TRUE   ((int)1)
+#define FIH_FALSE  ((int)0)
+
 /* Non-zero success value to defend against register resets. Zero is the most
  * common value for a corrupted register so complex bit-patterns are used
  */

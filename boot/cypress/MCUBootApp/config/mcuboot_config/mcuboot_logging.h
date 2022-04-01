@@ -30,6 +30,26 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdarg.h>
+#include <inttypes.h>
+#include "timestamp.h"
+
+static inline void print_msg(char const *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+
+#ifdef USE_LOG_TIMESTAMP
+    (void)fprintf(stderr, "[%03" PRIu32 "s"
+                          ".%03" PRIu32 "ms]",
+                          log_timestamp_get()/1000U,
+                          log_timestamp_get()%1000U);
+#endif
+
+    (void)vfprintf(stderr, format, args);
+
+    va_end(args);
+}
 
 #define MCUBOOT_LOG_LEVEL_OFF      0
 #define MCUBOOT_LOG_LEVEL_ERROR    1
@@ -58,44 +78,44 @@ static inline int sim_log_enabled(int level) {
 
 
 #if MCUBOOT_LOG_LEVEL >= MCUBOOT_LOG_LEVEL_ERROR
-#define MCUBOOT_LOG_ERR(_fmt, ...)                                      \
-    do {                                                                \
-        if (sim_log_enabled(MCUBOOT_LOG_LEVEL_ERROR) != 0) {                 \
-            (void)fprintf(stderr, "[ERR] " _fmt "\n\r", ##__VA_ARGS__); \
-        }                                                               \
+#define MCUBOOT_LOG_ERR(_fmt, ...)                           \
+    do {                                                     \
+        if (sim_log_enabled(MCUBOOT_LOG_LEVEL_ERROR) != 0) { \
+            print_msg("[ERR] " _fmt "\n\r", ##__VA_ARGS__);  \
+        }                                                    \
     } while ((bool)0)
 #else
 #define MCUBOOT_LOG_ERR(...) IGNORE(__VA_ARGS__)
 #endif
 
 #if MCUBOOT_LOG_LEVEL >= MCUBOOT_LOG_LEVEL_WARNING
-#define MCUBOOT_LOG_WRN(_fmt, ...)                                      \
-    do {                                                                \
-        if (sim_log_enabled(MCUBOOT_LOG_LEVEL_WARNING) != 0) {               \
-            (void)fprintf(stderr, "[WRN] " _fmt "\n\r", ##__VA_ARGS__); \
-        }                                                               \
+#define MCUBOOT_LOG_WRN(_fmt, ...)                             \
+    do {                                                       \
+        if (sim_log_enabled(MCUBOOT_LOG_LEVEL_WARNING) != 0) { \
+            print_msg("[WRN] " _fmt "\n\r", ##__VA_ARGS__);    \
+        }                                                      \
     } while ((bool)0)
 #else
 #define MCUBOOT_LOG_WRN(...) IGNORE(__VA_ARGS__)
 #endif
 
 #if MCUBOOT_LOG_LEVEL >= MCUBOOT_LOG_LEVEL_INFO
-#define MCUBOOT_LOG_INF(_fmt, ...)                                      \
-    do {                                                                \
-        if (sim_log_enabled(MCUBOOT_LOG_LEVEL_INFO) != 0) {                  \
-            (void)fprintf(stderr, "[INF] " _fmt "\n\r", ##__VA_ARGS__); \
-        }                                                               \
+#define MCUBOOT_LOG_INF(_fmt, ...)                          \
+    do {                                                    \
+        if (sim_log_enabled(MCUBOOT_LOG_LEVEL_INFO) != 0) { \
+            print_msg("[INF] " _fmt "\n\r", ##__VA_ARGS__); \
+        }                                                   \
     } while ((bool)0)
 #else
 #define MCUBOOT_LOG_INF(...) IGNORE(__VA_ARGS__)
 #endif
 
 #if MCUBOOT_LOG_LEVEL >= MCUBOOT_LOG_LEVEL_DEBUG
-#define MCUBOOT_LOG_DBG(_fmt, ...)                                      \
-    do {                                                                \
-        if (sim_log_enabled(MCUBOOT_LOG_LEVEL_DEBUG) != 0) {                 \
-            (void)fprintf(stderr, "[DBG] " _fmt "\n\r", ##__VA_ARGS__); \
-        }                                                               \
+#define MCUBOOT_LOG_DBG(_fmt, ...)                           \
+    do {                                                     \
+        if (sim_log_enabled(MCUBOOT_LOG_LEVEL_DEBUG) != 0) { \
+            print_msg("[DBG] " _fmt "\n\r", ##__VA_ARGS__);  \
+        }                                                    \
     } while ((bool)0)
 #else
 #define MCUBOOT_LOG_DBG(...) IGNORE(__VA_ARGS__)

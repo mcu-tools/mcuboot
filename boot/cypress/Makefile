@@ -56,11 +56,6 @@ CY_SEC_TOOLS_PATH ?= $(shell $(PYTHON_PATH) $(CURDIR)/scripts/find_cysectools.py
 
 BUILDCFG ?= Debug
 
-ifeq ($(PLATFORM), CYW20829)
-# until mbedtls.3.0 support
-USE_CRYPTO_HW ?= 0
-endif
-
 # Set of supported applications
 APPS := MCUBootApp BlinkyApp
 
@@ -213,7 +208,7 @@ endif
 
 clean:
 	@echo "Cleanup out directory..."
-	rm -f ./$(APP_NAME)/flashmap.mk ./cy_flash_pal/cy_flash_map.h
+	rm -f ./$(APP_NAME)/flashmap.mk ./platforms/cy_flash_pal/cy_flash_map.h
 	rm -rf $(OUT_TARGET)/$(BUILDCFG)
 
 clean_boot:
@@ -292,6 +287,5 @@ $(info SOURCES_APP <-- $(SOURCES_APP))
 $(info SOURCES_LIBS <-- $(SOURCES_LIBS))
 $(info SOURCES_PLATFORM <-- $(SOURCES_PLATFORM))
 $(info THREADS_NUM <-> $(THREADS_NUM))
-$(info USE_CRYPTO_HW --> $(USE_CRYPTO_HW))
 $(info WARN_AS_ERR <-> $(WARN_AS_ERR))
 endif
