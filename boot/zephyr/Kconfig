@@ -482,6 +482,14 @@ config MCUBOOT_LOG_THREAD_STACK_SIZE
 	help
 	  Set the internal stack size for MCUBoot log processing thread.
 
+config MCUBOOT_INDICATION_LED
+	bool "Turns on LED indication when device is in DFU"
+	default n
+	help
+	  Device device activates the LED while in bootloader mode.
+	  bootloader-led0 alias must be set in the device's .dts
+	  definitions for this to work.
+
 menuconfig MCUBOOT_SERIAL
 	bool "MCUboot serial recovery"
 	default n
@@ -526,14 +534,6 @@ config MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
 	    4 -> image-3.
 	  Note that 0 is default upload target when no explicit
 	  selection is done.
-
-config MCUBOOT_INDICATION_LED
-	bool "Turns on LED indication when device is in DFU"
-	default n
-	help
-	  Device device activates the LED while in bootloader mode.
-	  bootloader-led0 alias must be set in the device's .dts
-	  definitions for this to work.
 
 config BOOT_MAX_LINE_INPUT_LEN
 	int "Maximum command line length"
