@@ -482,6 +482,12 @@ config MCUBOOT_LOG_THREAD_STACK_SIZE
 	help
 	  Set the internal stack size for MCUBoot log processing thread.
 
+config BOOT_USE_MODE_HOOK
+	bool "Enable hook for obtain bootloade mode"
+
+config BOOT_USE_MODE_GPIO
+	bool
+
 menuconfig MCUBOOT_SERIAL
 	bool "MCUboot serial recovery"
 	default n
@@ -541,6 +547,12 @@ config BOOT_MAX_LINE_INPUT_LEN
 	help
 	  Maximum length of commands transported over the serial port.
 
+config BOOT_SERIAL_USE_PIN_DETECT
+	bool "trigger serial recovery mode uisng GPIO PIN"
+	select BOOT_USE_MODE_GPIO
+	default y
+
+if BOOT_SERIAL_USE_PIN_DETECT
 config BOOT_SERIAL_DETECT_PORT
 	string "GPIO device to trigger serial recovery mode"
 	default GPIO_0 if SOC_FAMILY_NRF
@@ -573,6 +585,7 @@ config BOOT_SERIAL_DETECT_DELAY
 	  Used to prevent the bootloader from loading on button press.
 	  Useful for powering on when using the same button as
 	  the one used to place the device in bootloader mode.
+endif # BOOT_SERIAL_USE_PIN_DETECT
 
 config BOOT_ERASE_PROGRESSIVELY
 	bool "Erase flash progressively when receiving new firmware"

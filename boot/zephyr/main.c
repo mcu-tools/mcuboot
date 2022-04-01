@@ -33,6 +33,7 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 #include "bootutil/fault_injection_hardening.h"
+#include "bootutil/boot_hooks.h"
 #include "flash_map_backend/flash_map_backend.h"
 
 #ifdef CONFIG_MCUBOOT_SERIAL
@@ -472,10 +473,14 @@ void main(void)
 #endif
 
 #ifdef CONFIG_MCUBOOT_SERIAL
-    if (detect_pin(CONFIG_BOOT_SERIAL_DETECT_PORT,
+    if ((BOOT_MODE_HOOK_CALL(boot_mode_get_hook,0)
+#ifdef CONFIG_BOOT_USE_MODE_GPIO
+     || detect_pin(CONFIG_BOOT_SERIAL_DETECT_PORT,
                    CONFIG_BOOT_SERIAL_DETECT_PIN,
                    CONFIG_BOOT_SERIAL_DETECT_PIN_VAL,
-                   CONFIG_BOOT_SERIAL_DETECT_DELAY) &&
+                   CONFIG_BOOT_SERIAL_DETECT_DELAY)
+#endif
+      ) &&
             !boot_skip_serial_recovery()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
         gpio_pin_set(led, LED0_GPIO_PIN, 1);
