@@ -157,4 +157,19 @@ int boot_serial_uploaded_hook(int img_index, const struct flash_area *area,
 int boot_img_install_stat_hook(int image_index, int slot,
                                int *img_install_stat);
 
+
+#ifdef MCUBOOT_BOOT_MODE_HOOK
+#define BOOT_MODE_HOOK_CALL((f, ret_default, ...) f(__VA_ARGS__)
+#else
+#define BOOT_MODE_HOOK_CALL(f, ret_default, ...) ret_default
+#endif
+
+/**
+ * Hook for implement fetch of expected boot mode.
+ *
+ * @retval 0: normal bootloader operation, 1: recovery protocol mode
+ *         otherwise: reserved (behavior undefined)
+ */
+uint8_t boot_mode_get_hook(void);
+
 #endif /*H_BOOTUTIL_HOOKS*/
