@@ -234,7 +234,29 @@ config BOOT_DIRECT_XIP
 	  images must be linked to be executed from the given image slot. Using this
 	  mode results in a simpler code path and smaller code size.
 
+config BOOT_RAM_LOAD
+	bool "RAM load"
+	help
+	  If y, mcuboot selects the newest valid image based on the image version
+	  numbers, thereafter the selected image is copied to RAM and executed from
+	  there. For this reason, the image has to be linked to be executed from RAM.
+	  The address that the image is copied to is specified using the load-addr
+	  argument to the imgtool.py script which writes it to the image header.
+
 endchoice
+
+# Workaround for not being able to have commas in macro arguments
+DT_CHOSEN_Z_SRAM := zephyr,sram
+
+if BOOT_RAM_LOAD
+config BOOT_IMAGE_EXECUTABLE_RAM_START
+	hex "Boot image executable ram start"
+	default $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_SRAM))
+
+config BOOT_IMAGE_EXECUTABLE_RAM_SIZE
+	int "Boot image executable base size"
+	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM),0)
+endif
 
 config BOOT_DIRECT_XIP_REVERT
 	bool "Enable the revert mechanism in direct-xip mode"
