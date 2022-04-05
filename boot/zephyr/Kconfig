@@ -376,7 +376,10 @@ config BOOT_FIH_PROFILE_HIGH
 
 endchoice
 
-choice BOOT_USB_DFU
+config BOOT_USB_DFU
+	bool
+
+choice BOOT_USB_DFU_CHOICE
 	prompt "USB DFU"
 	default BOOT_USB_DFU_NO
 
@@ -388,6 +391,7 @@ config BOOT_USB_DFU_WAIT
 	select USB_DEVICE_STACK
 	select USB_DFU_CLASS
 	select IMG_MANAGER
+	select BOOT_USB_DFU
 	help
 	  If y, MCUboot waits for a prescribed duration of time to allow
 	  for USB DFU to be invoked. Please note DFU always updates the
@@ -399,6 +403,7 @@ config BOOT_USB_DFU_GPIO
 	select USB_DFU_CLASS
 	select IMG_MANAGER
 	select BOOT_USE_MODE_GPIO
+	select BOOT_USB_DFU
 	help
 	  If y, MCUboot uses GPIO to detect whether to invoke USB DFU.
 

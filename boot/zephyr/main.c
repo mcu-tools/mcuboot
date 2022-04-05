@@ -95,6 +95,12 @@ K_SEM_DEFINE(boot_log_sem, 1, 1);
         * !defined(ZEPHYR_LOG_MODE_MINIMAL)
 	*/
 
+#ifdef CONFIG_BOOT_USB_DFU_GPIO
+#define BOOT_USB_DFU_TIMEOUT K_FOREVER
+#elif defined(CONFIG_BOOT_USB_DFU_WAIT)
+#define BOOT_USB_DFU_TIMEOUT K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS)
+#endif
+
 #ifdef CONFIG_MCUBOOT_BOOT_MODE_API
 #include <dfu/mcuboot_boot_mode.h>
 /**
@@ -510,31 +516,26 @@ void main(void)
     }
 #endif
 
-#if defined(CONFIG_BOOT_USB_DFU_GPIO)
-    if (detect_pin(CONFIG_BOOT_USB_DFU_DETECT_PORT,
+#ifdef CONFIG_BOOT_USB_DFU
+if (IS_ENABLED(CONFIG_BOOT_USB_DFU_WAIT)
+#ifdef CONFIG_BOOT_USE_MODE_GPIO
+    || detect_pin(CONFIG_BOOT_USB_DFU_DETECT_PORT,
                    CONFIG_BOOT_USB_DFU_DETECT_PIN,
                    CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL,
-                   CONFIG_BOOT_USB_DFU_DETECT_DELAY)) {
-#ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set(led, LED0_GPIO_PIN, 1);
+                   CONFIG_BOOT_USB_DFU_DETECT_DELAY)
 #endif
+    ) {
+        #ifdef CONFIG_MCUBOOT_INDICATION_LED
+        gpio_pin_set(led, LED0_GPIO_PIN, 1);
+        #endif
         rc = usb_enable(NULL);
         if (rc) {
             BOOT_LOG_ERR("Cannot enable USB");
         } else {
             BOOT_LOG_INF("Waiting for USB DFU");
-            wait_for_usb_dfu(K_FOREVER);
+            wait_for_usb_dfu(BOOT_USB_DFU_TIMEOUT);
             BOOT_LOG_INF("USB DFU wait time elapsed");
         }
-    }
-#elif defined(CONFIG_BOOT_USB_DFU_WAIT)
-    rc = usb_enable(NULL);
-    if (rc) {
-        BOOT_LOG_ERR("Cannot enable USB");
-    } else {
-        BOOT_LOG_INF("Waiting for USB DFU");
-        wait_for_usb_dfu(K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS));
-        BOOT_LOG_INF("USB DFU wait time elapsed");
     }
 #endif
 
