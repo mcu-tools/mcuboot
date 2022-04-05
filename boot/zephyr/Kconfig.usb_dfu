@@ -1,0 +1,81 @@
+# Copyright (c) 2017-2020 Linaro Limited
+# Copyright (c) 2020 Arm Limited
+# Copyright (c) 2017-2022 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: Apache-2.0
+
+config BOOT_USB_DFU
+	bool
+
+choice BOOT_USB_DFU_CHOICE
+	prompt "USB DFU"
+	default BOOT_USB_DFU_NO
+
+config BOOT_USB_DFU_NO
+	prompt "Disabled"
+
+config BOOT_USB_DFU_WAIT
+	bool "Wait for a prescribed duration to see if USB DFU is invoked"
+	select USB_DEVICE_STACK
+	select USB_DFU_CLASS
+	select IMG_MANAGER
+	select BOOT_USB_DFU
+	help
+	  If y, MCUboot waits for a prescribed duration of time to allow
+	  for USB DFU to be invoked. Please note DFU always updates the
+	  slot1 image.
+
+config BOOT_USB_DFU_GPIO
+	bool "Use GPIO to detect whether to trigger DFU mode"
+	select USB_DEVICE_STACK
+	select USB_DFU_CLASS
+	select IMG_MANAGER
+	select BOOT_USE_MODE_GPIO
+	select BOOT_USB_DFU
+	help
+	  If y, MCUboot uses GPIO to detect whether to invoke USB DFU.
+
+endchoice
+
+config BOOT_USB_DFU_WAIT_DELAY_MS
+	int "USB DFU wait duration"
+	depends on BOOT_USB_DFU_WAIT
+	default 12000
+	help
+	  Milliseconds to wait for USB DFU to be invoked.
+
+if BOOT_USB_DFU_GPIO
+
+config BOOT_USB_DFU_DETECT_PORT
+	string "GPIO device to trigger USB DFU mode"
+	default GPIO_0 if SOC_FAMILY_NRF
+	help
+	  Zephyr GPIO device that contains the pin used to trigger
+	  USB DFU.
+
+config BOOT_USB_DFU_DETECT_PIN
+	int "Pin to trigger USB DFU mode"
+	default 6 if BOARD_NRF9160DK_NRF9160
+	default 11 if BOARD_NRF52840DK_NRF52840
+	default 13 if BOARD_NRF52DK_NRF52832
+	default 23 if BOARD_NRF5340_DK_NRF5340_CPUAPP || BOARD_NRF5340_DK_NRF5340_CPUAPP_NS
+	default 43 if BOARD_BL5340_DVK_CPUAPP || BOARD_BL5340_DVK_CPUAPP_NS
+	help
+	  Pin on the DFU detect port that triggers DFU mode.
+
+config BOOT_USB_DFU_DETECT_PIN_VAL
+	int "USB DFU detect pin trigger value"
+	default 0
+	range 0 1
+	help
+	  Logic value of the detect pin that triggers USB DFU mode.
+
+config BOOT_USB_DFU_DETECT_DELAY
+	int "Serial detect pin detection delay time [ms]"
+	default 0
+	help
+	  Used to prevent the bootloader from loading on button press.
+	  Useful for powering on when using the same button as
+	  the one used to place the device in bootloader mode.
+
+endif # BOOT_USB_DFU_GPIO
