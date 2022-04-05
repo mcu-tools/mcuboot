@@ -398,6 +398,7 @@ config BOOT_USB_DFU_GPIO
 	select USB_DEVICE_STACK
 	select USB_DFU_CLASS
 	select IMG_MANAGER
+	select BOOT_USE_MODE_GPIO
 	help
 	  If y, MCUboot uses GPIO to detect whether to invoke USB DFU.
 
@@ -489,6 +490,9 @@ config MCUBOOT_INDICATION_LED
 	  Device device activates the LED while in bootloader mode.
 	  bootloader-led0 alias must be set in the device's .dts
 	  definitions for this to work.
+
+config BOOT_USE_MODE_GPIO
+	bool
 
 rsource "Kconfig.serial_recovery"
 

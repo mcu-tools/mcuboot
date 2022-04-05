@@ -95,6 +95,24 @@ K_SEM_DEFINE(boot_log_sem, 1, 1);
         * !defined(ZEPHYR_LOG_MODE_MINIMAL)
 	*/
 
+#ifdef CONFIG_MCUBOOT_BOOT_MODE_API
+#include <dfu/mcuboot_boot_mode.h>
+/**
+ * The bootloader might obtain the mode requested by the application.
+ * Only first call returns valid value as the implementation should cleanup
+ * hardware resource used for transferring the mode from the application.
+ */
+static inline bool boot_check_if_dfu_requested(void)
+{
+    return boot_mode_get() == BOOT_MODE_REQ_RECOVERY_DFU;
+}
+#else
+static inline bool boot_check_if_dfu_requested(void)
+{
+    return false;
+}
+#endif /* CONFIG_MCUBOOT_BOOT_MODE_API */
+
 #ifdef CONFIG_SOC_FAMILY_NRF
 #include <helpers/nrfx_reset_reason.h>
 
@@ -370,7 +388,7 @@ void zephyr_boot_log_stop(void)
         * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(ZEPHYR_LOG_MODE_MINIMAL)
         */
 
-#if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU_GPIO)
+#if defined(CONFIG_BOOT_USE_MODE_GPIO)
 static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
 {
     int rc;
@@ -472,11 +490,14 @@ void main(void)
 #endif
 
 #ifdef CONFIG_MCUBOOT_SERIAL
-    if (detect_pin(CONFIG_BOOT_SERIAL_DETECT_PORT,
-                   CONFIG_BOOT_SERIAL_DETECT_PIN,
-                   CONFIG_BOOT_SERIAL_DETECT_PIN_VAL,
-                   CONFIG_BOOT_SERIAL_DETECT_DELAY) &&
-            !boot_skip_serial_recovery()) {
+    if ((boot_check_if_dfu_requested()
+#ifdef CONFIG_BOOT_USE_MODE_GPIO
+        || detect_pin(CONFIG_BOOT_SERIAL_DETECT_PORT,
+                      CONFIG_BOOT_SERIAL_DETECT_PIN,
+                      CONFIG_BOOT_SERIAL_DETECT_PIN_VAL,
+                      CONFIG_BOOT_SERIAL_DETECT_DELAY)
+#endif /* BOOT_USE_MODE_GPIO */
+        ) && !boot_skip_serial_recovery()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
         gpio_pin_set(led, LED0_GPIO_PIN, 1);
 #endif
