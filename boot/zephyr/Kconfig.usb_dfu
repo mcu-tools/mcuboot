@@ -5,6 +5,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 config BOOT_USB_DFU
+	select USB_DEVICE_STACK
+	select USB_DFU_CLASS
+	select IMG_MANAGER
 	bool
 
 choice BOOT_USB_DFU_CHOICE
@@ -16,9 +19,6 @@ config BOOT_USB_DFU_NO
 
 config BOOT_USB_DFU_WAIT
 	bool "Wait for a prescribed duration to see if USB DFU is invoked"
-	select USB_DEVICE_STACK
-	select USB_DFU_CLASS
-	select IMG_MANAGER
 	select BOOT_USB_DFU
 	help
 	  If y, MCUboot waits for a prescribed duration of time to allow
@@ -27,13 +27,20 @@ config BOOT_USB_DFU_WAIT
 
 config BOOT_USB_DFU_GPIO
 	bool "Use GPIO to detect whether to trigger DFU mode"
-	select USB_DEVICE_STACK
-	select USB_DFU_CLASS
-	select IMG_MANAGER
 	select BOOT_USE_MODE_GPIO
 	select BOOT_USB_DFU
 	help
 	  If y, MCUboot uses GPIO to detect whether to invoke USB DFU.
+	  If CONFIG_MCUBOOT_BOOT_MODE_API is selected then USB DFU can be
+	  invoked on application's request as well.
+
+config BOOT_USB_DFU_BY_APP
+	bool "Exclusively detect whether the application requested the DFU mode"
+	select BOOT_USB_DFU
+	select MCUBOOT_BOOT_MODE_API
+	help
+	  If y, MCUboot checks whether the application requested the DFU and
+	  invokes USB DFU if so.
 
 endchoice
 

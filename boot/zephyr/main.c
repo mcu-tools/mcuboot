@@ -45,7 +45,7 @@ const struct boot_uart_funcs boot_funcs = {
 };
 #endif
 
-#if defined(CONFIG_BOOT_USB_DFU_WAIT) || defined(CONFIG_BOOT_USB_DFU_GPIO)
+#ifdef CONFIG_BOOT_USB_DFU
 #include <usb/class/usb_dfu.h>
 #endif
 
@@ -95,10 +95,10 @@ K_SEM_DEFINE(boot_log_sem, 1, 1);
         * !defined(ZEPHYR_LOG_MODE_MINIMAL)
 	*/
 
-#ifdef CONFIG_BOOT_USB_DFU_GPIO
-#define BOOT_USB_DFU_TIMEOUT K_FOREVER
-#elif defined(CONFIG_BOOT_USB_DFU_WAIT)
+#ifdef CONFIG_BOOT_USB_DFU_WAIT
 #define BOOT_USB_DFU_TIMEOUT K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS)
+#else
+#define BOOT_USB_DFU_TIMEOUT K_FOREVER
 #endif
 
 #ifdef CONFIG_MCUBOOT_BOOT_MODE_API
@@ -518,6 +518,7 @@ void main(void)
 
 #ifdef CONFIG_BOOT_USB_DFU
 if (IS_ENABLED(CONFIG_BOOT_USB_DFU_WAIT)
+    || boot_check_if_dfu_requested()
 #ifdef CONFIG_BOOT_USE_MODE_GPIO
     || detect_pin(CONFIG_BOOT_USB_DFU_DETECT_PORT,
                    CONFIG_BOOT_USB_DFU_DETECT_PIN,
