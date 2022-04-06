@@ -56,10 +56,32 @@ config BOOT_MAX_LINE_INPUT_LEN
 	help
 	  Maximum length of commands transported over the serial port.
 
+choice BOOT_SERIAL_MODE_CHOICE
+	prompt "serial recovery mode"
+	default BOOT_SERIAL_USE_PIN_DETECT
+
 config BOOT_SERIAL_USE_PIN_DETECT
 	bool "trigger serial recovery mode uisng GPIO PIN"
-	default y
 	select BOOT_USE_MODE_GPIO
+	help
+	  If CONFIG_MCUBOOT_BOOT_MODE_API is selected then USB DFU can be
+	  invoked on application's request as well.
+
+config BOOT_SERIAL_WAIT_FOR_DFU
+	bool "Wait for a prescribed duration to see if DFU is invoked by receiving a mcumgr comand"
+	depends on BOOT_SERIAL_UART
+	help
+	  If y, MCUboot waits for a prescribed duration of time to allow
+	  for DFU to be invoked. The serial recovery can be entered by receiving any
+	  mcumgr command.
+
+config BOOT_SERIAL_DFU_BY_APP
+	bool "Exclusively detect whether the application requested the DFU mode"
+	select MCUBOOT_BOOT_MODE_API
+	help
+	  If y, MCUboot checks whether the application requested the DFU and
+	  invokes USB DFU if so.
+endchoice
 
 if BOOT_SERIAL_USE_PIN_DETECT
 config BOOT_SERIAL_DETECT_PORT
@@ -144,14 +166,6 @@ config BOOT_SERIAL_ENCRYPT_EC256
 	  on the fly when upgrading to the primary slot. The
 	  encryption mechanism used in this case is ECIES using primitives
 	  described under "ECIES-P256 encryption" in docs/encrypted_images.md.
-
-config BOOT_SERIAL_WAIT_FOR_DFU
-	bool "Wait for a prescribed duration to see if DFU is invoked by receiving a mcumgr comand"
-	depends on BOOT_SERIAL_UART
-	help
-	  If y, MCUboot waits for a prescribed duration of time to allow
-	  for DFU to be invoked. The serial recovery can be entered by receiving any
-	  mcumgr command.
 
 config BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
 	int "Duration to wait for the serial DFU timeout in ms"
