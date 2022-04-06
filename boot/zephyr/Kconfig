@@ -376,8 +376,6 @@ config BOOT_FIH_PROFILE_HIGH
 
 endchoice
 
-rsource "Kconfig.usb_dfu"
-
 config ZEPHYR_TRY_MASS_ERASE
 	bool "Try to mass erase flash when flashing MCUboot image"
 	default y
@@ -414,6 +412,11 @@ config MCUBOOT_LOG_THREAD_STACK_SIZE
 	help
 	  Set the internal stack size for MCUBoot log processing thread.
 
+config BOOT_USE_MODE_GPIO
+	bool
+
+menu "Recovery DFU"
+
 config MCUBOOT_INDICATION_LED
 	bool "Turns on LED indication when device is in DFU"
 	default n
@@ -422,10 +425,9 @@ config MCUBOOT_INDICATION_LED
 	  bootloader-led0 alias must be set in the device's .dts
 	  definitions for this to work.
 
-config BOOT_USE_MODE_GPIO
-	bool
-
+rsource "Kconfig.usb_dfu"
 rsource "Kconfig.serial_recovery"
+endmenu
 
 config BOOT_INTR_VEC_RELOC
 	bool "Relocate the interrupt vector to the application"
