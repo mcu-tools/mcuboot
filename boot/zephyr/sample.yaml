@@ -48,3 +48,10 @@ tests:
     integration_platforms:
       - nrf52840dk_nrf52840
     tags: bootloader_mcuboot
+  sample.bootloader.mcuboot.serial_recovery.requested:
+    extra_args: OVERLAY_CONFIG=serial_recovery.conf
+      CONFIG_BOOT_SERIAL_DFU_BY_APP=y
+    platform_allow:  nrf52840dk_nrf52840
+    integration_platforms:
+      - nrf52840dk_nrf52840
+    tags: bootloader_mcuboot
