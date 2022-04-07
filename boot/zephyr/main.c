@@ -554,7 +554,7 @@ void main(void)
         /* at least one check if time was expired */
         timeout_in_ms = 1;
     }
-   boot_serial_check_start(&boot_funcs,timeout_in_ms);
+    boot_serial_check_start(&boot_funcs,timeout_in_ms);
 #endif
 
     if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
