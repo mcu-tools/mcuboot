@@ -297,8 +297,12 @@ static void do_boot(struct boot_rsp *rsp)
  */
 static void do_boot(struct boot_rsp *rsp)
 {
-    uintptr_t flash_base;
     void *start;
+    
+#if defined(MCUBOOT_RAM_LOAD)
+    start = (void *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
+#else
+    uintptr_t flash_base;
     int rc;
 
     rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
@@ -306,6 +310,7 @@ static void do_boot(struct boot_rsp *rsp)
 
     start = (void *)(flash_base + rsp->br_image_off +
                      rsp->br_hdr->ih_hdr_size);
+#endif
 
     /* Lock interrupts and dive into the entry point */
     irq_lock();
