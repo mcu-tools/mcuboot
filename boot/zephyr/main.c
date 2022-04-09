@@ -373,13 +373,27 @@ void zephyr_boot_log_stop(void)
 #if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU_GPIO)
 
 #ifdef CONFIG_MCUBOOT_SERIAL
+#define BUTTON_0_DETECT_DELAY CONFIG_BOOT_SERIAL_DETECT_DELAY
+#else
+#define BUTTON_0_DETECT_DELAY CONFIG_BOOT_USB_DFU_DETECT_DELAY
+#endif
+
+
+#define BUTTON_0_NODE DT_ALIAS(mcuboot_button0)
+
+#if DT_NODE_EXISTS(BUTTON_0_NODE) && DT_NODE_HAS_PROP(BUTTON_0_NODE, gpios)
+
+static const struct gpio_dt_spec button0 = GPIO_DT_SPEC_GET(BUTTON_0_NODE, gpios);
+
+#else /* fallback to legacy configuration */
+
+#if defined(CONFIG_MCUBOOT_SERIAL)
 
 #define BUTTON_0_GPIO_LABEL CONFIG_BOOT_SERIAL_DETECT_PORT
 #define BUTTON_0_GPIO_PIN CONFIG_BOOT_SERIAL_DETECT_PIN
 #define BUTTON_0_GPIO_FLAGS ((CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) ?\
                                 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN) :\
                                 (GPIO_ACTIVE_LOW | GPIO_PULL_UP))
-#define BUTTON_0_DETECT_DELAY CONFIG_BOOT_SERIAL_DETECT_DELAY
 
 #elif defined(CONFIG_BOOT_USB_DFU_GPIO)
 
@@ -388,7 +402,16 @@ void zephyr_boot_log_stop(void)
 #define BUTTON_0_GPIO_FLAGS ((CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL) ?\
                                 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN) :\
                                 (GPIO_ACTIVE_LOW | GPIO_PULL_UP))
-#define BUTTON_0_DETECT_DELAY CONFIG_BOOT_USB_DFU_DETECT_DELAY
+
+#endif
+
+#define BUTTON_0_LEGACY 1
+
+static struct gpio_dt_spec button0 = {
+	.port = NULL,
+	.pin = BUTTON_0_GPIO_PIN,
+	.dt_flags = BUTTON_0_GPIO_FLAGS
+};
 
 #endif
 
@@ -396,20 +419,24 @@ static bool detect_pin(void)
 {
     int rc;
     int pin_active;
-    struct device const *detect_port;
 
-    detect_port = device_get_binding(BUTTON_0_GPIO_LABEL);
-    __ASSERT(detect_port, "Error: Bad port for boot detection.\n");
+#ifdef BUTTON_0_LEGACY
+    button0.port = device_get_binding(BUTTON_0_GPIO_LABEL);
+    if (button0.port == NULL) {
+        __ASSERT(false, "Error: Bad port for boot detection.\n");
+        return false;
+    }
+#else
+    if (!device_is_ready(button0.port)) {
+        __ASSERT(false, "GPIO device is not ready.\n");
+        return false;
+    }
+#endif
 
-    /* The default presence value is 0 which would normally be
-     * active-low, but historically the raw value was checked so we'll
-     * use the raw interface.
-     */
-    rc = gpio_pin_configure(detect_port, BUTTON_0_GPIO_PIN,
-                             BUTTON_0_GPIO_FLAGS | GPIO_INPUT);
+    rc = gpio_pin_configure_dt(&button0, GPIO_INPUT);
     __ASSERT(rc == 0, "Failed to initialize boot detect pin.\n");
 
-    rc = gpio_pin_get(detect_port, BUTTON_0_GPIO_PIN);
+    rc = gpio_pin_get_dt(&button0);
     pin_active = rc;
 
     __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
@@ -426,7 +453,7 @@ static bool detect_pin(void)
             int64_t timestamp = k_uptime_get();
 
             for(;;) {
-                rc = gpio_pin_get(detect_port, BUTTON_0_GPIO_PIN);
+                rc = gpio_pin_get_dt(&button0);
                 pin_active = rc;
                 __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
 
