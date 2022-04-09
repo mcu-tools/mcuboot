@@ -57,14 +57,14 @@ config BOOT_MAX_LINE_INPUT_LEN
 	  Maximum length of commands transported over the serial port.
 
 config BOOT_SERIAL_DETECT_PORT
-	string "GPIO device to trigger serial recovery mode"
+	string "GPIO device to trigger serial recovery mode (DEPRECATED)"
 	default GPIO_0 if SOC_FAMILY_NRF
 	help
 	  Zephyr GPIO device that contains the pin used to trigger
 	  serial recovery mode.
 
 config BOOT_SERIAL_DETECT_PIN
-	int "Pin to trigger serial recovery mode"
+	int "Pin to trigger serial recovery mode (DEPRECATED)"
 	default 6 if BOARD_NRF9160DK_NRF9160
 	default 11 if BOARD_NRF52840DK_NRF52840
 	default 13 if BOARD_NRF52DK_NRF52832 || BOARD_NRF52833DK_NRF52833
@@ -74,7 +74,7 @@ config BOOT_SERIAL_DETECT_PIN
 	  Pin on the serial detect port that triggers serial recovery mode.
 
 config BOOT_SERIAL_DETECT_PIN_VAL
-	int "Serial detect pin trigger value"
+	int "Serial detect pin trigger value (DEPRECATED)"
 	default 0
 	range 0 1
 	help
