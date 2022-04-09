@@ -413,14 +413,14 @@ config BOOT_USB_DFU_WAIT_DELAY_MS
 if BOOT_USB_DFU_GPIO
 
 config BOOT_USB_DFU_DETECT_PORT
-	string "GPIO device to trigger USB DFU mode"
+	string "GPIO device to trigger USB DFU mode (DEPRECATED)"
 	default GPIO_0 if SOC_FAMILY_NRF
 	help
 	  Zephyr GPIO device that contains the pin used to trigger
 	  USB DFU.
 
 config BOOT_USB_DFU_DETECT_PIN
-	int "Pin to trigger USB DFU mode"
+	int "Pin to trigger USB DFU mode (DEPRECATED)"
 	default 6 if BOARD_NRF9160DK_NRF9160
 	default 11 if BOARD_NRF52840DK_NRF52840
 	default 13 if BOARD_NRF52DK_NRF52832
@@ -430,7 +430,7 @@ config BOOT_USB_DFU_DETECT_PIN
 	  Pin on the DFU detect port that triggers DFU mode.
 
 config BOOT_USB_DFU_DETECT_PIN_VAL
-	int "USB DFU detect pin trigger value"
+	int "USB DFU detect pin trigger value (DEPRECATED)"
 	default 0
 	range 0 1
 	help
