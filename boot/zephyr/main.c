@@ -371,30 +371,51 @@ void zephyr_boot_log_stop(void)
         */
 
 #if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU_GPIO)
-static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
+
+#ifdef CONFIG_MCUBOOT_SERIAL
+
+#define BUTTON_0_GPIO_LABEL CONFIG_BOOT_SERIAL_DETECT_PORT
+#define BUTTON_0_GPIO_PIN CONFIG_BOOT_SERIAL_DETECT_PIN
+#define BUTTON_0_GPIO_FLAGS ((CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) ?\
+                                (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN) :\
+                                (GPIO_ACTIVE_LOW | GPIO_PULL_UP))
+#define BUTTON_0_DETECT_DELAY CONFIG_BOOT_SERIAL_DETECT_DELAY
+
+#elif defined(CONFIG_BOOT_USB_DFU_GPIO)
+
+#define BUTTON_0_GPIO_LABEL CONFIG_BOOT_USB_DFU_DETECT_PORT
+#define BUTTON_0_GPIO_PIN CONFIG_BOOT_USB_DFU_DETECT_PIN
+#define BUTTON_0_GPIO_FLAGS ((CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL) ?\
+                                (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN) :\
+                                (GPIO_ACTIVE_LOW | GPIO_PULL_UP))
+#define BUTTON_0_DETECT_DELAY CONFIG_BOOT_USB_DFU_DETECT_DELAY
+
+#endif
+
+static bool detect_pin(void)
 {
     int rc;
-    int detect_value;
+    int pin_active;
     struct device const *detect_port;
 
-    detect_port = device_get_binding(port);
+    detect_port = device_get_binding(BUTTON_0_GPIO_LABEL);
     __ASSERT(detect_port, "Error: Bad port for boot detection.\n");
 
     /* The default presence value is 0 which would normally be
      * active-low, but historically the raw value was checked so we'll
      * use the raw interface.
      */
-    rc = gpio_pin_configure(detect_port, pin,
-                            GPIO_INPUT | GPIO_PULL_UP);
+    rc = gpio_pin_configure(detect_port, BUTTON_0_GPIO_PIN,
+                             BUTTON_0_GPIO_FLAGS | GPIO_INPUT);
     __ASSERT(rc == 0, "Failed to initialize boot detect pin.\n");
 
-    rc = gpio_pin_get_raw(detect_port, pin);
-    detect_value = rc;
+    rc = gpio_pin_get(detect_port, BUTTON_0_GPIO_PIN);
+    pin_active = rc;
 
     __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
 
-    if (detect_value == expected) {
-        if (delay > 0) {
+    if (pin_active) {
+        if (BUTTON_0_DETECT_DELAY > 0) {
 #ifdef CONFIG_MULTITHREADING
             k_sleep(K_MSEC(50));
 #else
@@ -405,15 +426,15 @@ static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
             int64_t timestamp = k_uptime_get();
 
             for(;;) {
-                rc = gpio_pin_get_raw(detect_port, pin);
-                detect_value = rc;
+                rc = gpio_pin_get(detect_port, BUTTON_0_GPIO_PIN);
+                pin_active = rc;
                 __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
 
                 /* Get delta from when this started */
                 uint32_t delta = k_uptime_get() -  timestamp;
 
                 /* If not pressed OR if pressed > debounce period, stop. */
-                if (delta >= delay || detect_value != expected) {
+                if (delta >= BUTTON_0_DETECT_DELAY || !pin_active) {
                     break;
                 }
 
@@ -427,7 +448,7 @@ static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
         }
     }
 
-    return detect_value == expected;
+    return (bool)pin_active;
 }
 #endif
 
@@ -472,10 +493,7 @@ void main(void)
 #endif
 
 #ifdef CONFIG_MCUBOOT_SERIAL
-    if (detect_pin(CONFIG_BOOT_SERIAL_DETECT_PORT,
-                   CONFIG_BOOT_SERIAL_DETECT_PIN,
-                   CONFIG_BOOT_SERIAL_DETECT_PIN_VAL,
-                   CONFIG_BOOT_SERIAL_DETECT_DELAY) &&
+    if (detect_pin() &&
             !boot_skip_serial_recovery()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
         gpio_pin_set(led, LED0_GPIO_PIN, 1);
@@ -490,10 +508,7 @@ void main(void)
 #endif
 
 #if defined(CONFIG_BOOT_USB_DFU_GPIO)
-    if (detect_pin(CONFIG_BOOT_USB_DFU_DETECT_PORT,
-                   CONFIG_BOOT_USB_DFU_DETECT_PIN,
-                   CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL,
-                   CONFIG_BOOT_USB_DFU_DETECT_DELAY)) {
+    if (detect_pin()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
         gpio_pin_set(led, LED0_GPIO_PIN, 1);
 #endif
