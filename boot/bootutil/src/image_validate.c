@@ -268,7 +268,6 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 #endif /* !MCUBOOT_HW_KEY */
 #endif
 
-#ifdef MCUBOOT_HW_ROLLBACK_PROT
 /**
  * Reads the value of an image's security counter.
  *
@@ -328,7 +327,6 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
 
     return 0;
 }
-#endif /* MCUBOOT_HW_ROLLBACK_PROT */
 
 /*
  * Verify the integrity of the image.
