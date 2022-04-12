@@ -76,6 +76,34 @@ syscfg.defs:
     BOOTUTIL_MAX_IMG_SECTORS:
         description: 'Maximum number of sectors that are swapped.'
         value: 128
+    BOOTUTIL_DOWNGRADE_PREVENTION:
+        description: >
+            Select downgrade prevention strategy.
+            - none downgrades are allowed
+            - version:
+                Prevent downgrades by enforcing incrementing version numbers.
+                When this option is set, any upgrade must have greater major version
+                or greater minor version with equal major version. This mechanism
+                only protects against some attacks against version downgrades (for
+                example, a JTAG could be used to write an older version).
+            - security_counter:
+                security counter is used for version eligibility check instead of pure
+                version.  When this option is set, any upgrade must have greater or
+                equal security counter value.
+                Because of the acceptance of equal values it allows for software
+                downgrades to some extent.
+        choices:
+            - none
+            - version
+            - security_counter
+        value: none
+    BOOTUTIL_HW_ROLLBACK_PROT:
+        description: >
+            Prevent undesirable/malicious software downgrades. When this option is
+            set, any upgrade must have greater or equal security counter value.
+            Because of the acceptance of equal values it allows for software
+            downgrade to some extent
+        value: 0
     BOOTUTIL_HAVE_LOGGING:
         description: 'Enable serial logging'
         value: 0
