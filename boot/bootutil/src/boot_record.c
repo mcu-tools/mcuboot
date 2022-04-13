@@ -196,6 +196,13 @@ boot_save_boot_status(uint8_t sw_module,
         return -1;
     }
 
+    /* Ensure that we have enough in the record for the hash.  This
+     * prevents an underflow in the calculation below.
+     */
+    if (record_len < sizeof(image_hash)) {
+	return -1;
+    }
+
     /* Update the measurement value (hash of the image) data item in the
      * boot record. It is always the last item in the structure to make
      * it easy to calculate its position.
