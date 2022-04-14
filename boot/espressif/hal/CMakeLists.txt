@@ -51,6 +51,7 @@ if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
 endif()
 
 set(hal_srcs
+    ${src_dir}/bootloader_init_common.c
     ${src_dir}/bootloader_wdt.c
     ${src_dir}/secure_boot.c
     ${src_dir}/flash_encrypt.c
