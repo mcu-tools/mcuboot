@@ -276,6 +276,15 @@ leveling the flash wear between the slots.
 
 The algorithm is enabled using the `MCUBOOT_SWAP_USING_MOVE` option.
 
+### [Swap using hashes](#image-swap-hash)
+
+The Swap Hash algorithm is a modification of the above Swap Move
+algorithm that makes use of additional insight to greatly reduce the
+number of writes that are needed in the status area.  As more SoCs are
+using flash with larger write alignment, this becomes important.
+
+This algorithm is described in its [own document](docs/swap-hash.md).
+
 ### [Equal slots (direct-xip)](#direct-xip)
 
 When the direct-xip mode is enabled the active image flag is "moved" between the
