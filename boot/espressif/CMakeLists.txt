@@ -4,6 +4,8 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+include(${CMAKE_CURRENT_LIST_DIR}/tools/utils.cmake)
+
 if (NOT DEFINED MCUBOOT_TARGET)
     message(FATAL_ERROR "MCUBOOT_TARGET not defined. Please pass -DMCUBOOT_TARGET flag.")
 endif()
@@ -18,6 +20,19 @@ if ("${MCUBOOT_TARGET}" STREQUAL "esp32" OR
     set(MCUBOOT_ARCH "xtensa")
 elseif("${MCUBOOT_TARGET}" STREQUAL "esp32c3")
     set(MCUBOOT_ARCH "riscv")
+endif()
+
+# Set the minimum revision for each supported chip
+if ("${MCUBOOT_TARGET}" STREQUAL "esp32")
+    set(ESP_MIN_REVISION 3)
+elseif("${MCUBOOT_TARGET}" STREQUAL "esp32s2")
+    set(ESP_MIN_REVISION 0)
+elseif("${MCUBOOT_TARGET}" STREQUAL "esp32s3")
+    set(ESP_MIN_REVISION 0)
+elseif("${MCUBOOT_TARGET}" STREQUAL "esp32c3")
+    set(ESP_MIN_REVISION 3)
+else()
+    message(FATAL_ERROR "Unsupported target ${MCUBOOT_TARGET}")
 endif()
 
 if (NOT DEFINED IDF_PATH)
@@ -38,29 +53,16 @@ execute_process(
     )
 add_definitions(-DMCUBOOT_VER=\"${MCUBOOT_VER}\")
 
-if (DEFINED MCUBOOT_CONFIG_FILE)
-    set(mcuboot_config_file ${MCUBOOT_CONFIG_FILE})
-else()
-    set(mcuboot_config_file "${CMAKE_CURRENT_LIST_DIR}/bootloader.conf")
+if (NOT DEFINED MCUBOOT_CONFIG_FILE)
+    set(MCUBOOT_CONFIG_FILE "${CMAKE_CURRENT_LIST_DIR}/port/${MCUBOOT_TARGET}/bootloader.conf")
 endif()
 
-if (NOT EXISTS "${mcuboot_config_file}")
-    message(FATAL_ERROR "MCUboot configuration file does not exist at ${mcuboot_config_file}")
-endif()
-
-configure_file(${mcuboot_config_file} dummy.conf)
-file(STRINGS ${mcuboot_config_file} BOOTLOADER_CONF)
-foreach(config ${BOOTLOADER_CONF})
-    if (NOT (${config} MATCHES "#"))
-        string(REGEX REPLACE "^[ ]+" "" config ${config})
-        string(REGEX MATCH "^[^=]+" CONFIG_NAME ${config})
-        string(REPLACE "${CONFIG_NAME}=" "" CONFIG_VALUE ${config})
-        if (NOT ("${CONFIG_VALUE}" STREQUAL "n"
-            OR "${CONFIG_VALUE}" STREQUAL "N"))
-            add_definitions(-D${CONFIG_NAME}=${CONFIG_VALUE})
-            set(${CONFIG_NAME} ${CONFIG_VALUE})
-        endif()
+string(REPLACE " " ";" MCUBOOT_CONFIG_FILE_LIST "${MCUBOOT_CONFIG_FILE}")
+foreach(CONFIG_FILE ${MCUBOOT_CONFIG_FILE_LIST})
+    if (NOT EXISTS "${CONFIG_FILE}")
+        message(FATAL_ERROR "MCUboot configuration file does not exist at ${CONFIG_FILE}")
     endif()
+    parse_and_set_config_file(${CONFIG_FILE})
 endforeach()
 
 set(APP_NAME mcuboot_${MCUBOOT_TARGET})
@@ -234,4 +236,38 @@ target_link_libraries(
     ${APP_EXECUTABLE}
     PUBLIC
     hal
+    )
+
+# This step uses esptool.py for generating the final bootloader binary in
+# Espressif compatible format.
+# Note: Both binary generation and flash steps still have some default arguments
+add_custom_command(TARGET ${APP_EXECUTABLE} POST_BUILD
+    COMMAND
+    ${IDF_PATH}/components/esptool_py/esptool/esptool.py
+    --chip ${MCUBOOT_TARGET} elf2image --min-rev ${ESP_MIN_REVISION}
+    --flash_mode dio --flash_freq 40m --flash_size ${CONFIG_ESP_FLASH_SIZE}
+    -o ${APP_NAME}.bin ${APP_NAME}.elf
+    )
+
+if (DEFINED MCUBOOT_FLASH_PORT)
+    set(FLASH_PORT ${MCUBOOT_FLASH_PORT})
+else()
+    # Defaults to the first USB serial port
+    set(FLASH_PORT "/dev/ttyUSB0")
+endif()
+
+if (NOT EXISTS "${FLASH_PORT}")
+    message(WARNING "Could not open ${FLASH_PORT}, serial port does not exist")
+endif()
+
+add_custom_target(flash DEPENDS ${APP_NAME}.bin)
+add_custom_command(TARGET flash
+    USES_TERMINAL
+    COMMAND
+    ${IDF_PATH}/components/esptool_py/esptool/esptool.py
+    -p ${FLASH_PORT} -b 2000000 --before default_reset --after no_reset
+    --chip ${MCUBOOT_TARGET} write_flash
+    --flash_mode dio --flash_size ${CONFIG_ESP_FLASH_SIZE}
+    --flash_freq 40m ${CONFIG_ESP_BOOTLOADER_OFFSET}
+    ${APP_NAME}.bin
     )
