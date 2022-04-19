@@ -172,6 +172,10 @@ esp_err_t bootloader_init(void)
     if ((ret = bootloader_read_bootloader_header()) != ESP_OK) {
         goto err;
     }
+    // read chip revision and check if it's compatible to bootloader
+    if ((ret = bootloader_check_bootloader_validity()) != ESP_OK) {
+        goto err;
+    }
     /* initialize spi flash */
     if ((ret = bootloader_init_spi_flash()) != ESP_OK) {
         goto err;
