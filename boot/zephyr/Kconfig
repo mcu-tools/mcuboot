@@ -194,10 +194,21 @@ config BOOT_VALIDATE_SLOT0_ONCE
 	  low end devices with as a compromise lowering the security level.
 	  If unsure, leave at the default value.
 
+config BOOT_PREFER_SWAP_MOVE
+	bool "Prefer the newer swap move algorithm"
+	default y if SOC_FAMILY_NRF
+	default n
+	help
+	  If y, the BOOT_IMAGE_UPGRADE_MODE will default to using
+	  "move" instead of "scratch".  This is a separate bool config
+	  option, because Kconfig doesn't allow defaults to be
+	  overridden in choice options.  Most devices should be using
+	  swap move.
+
 if !SINGLE_APPLICATION_SLOT
 choice BOOT_IMAGE_UPGRADE_MODE
 	prompt "Image upgrade modes"
-	default BOOT_SWAP_USING_MOVE if SOC_FAMILY_NRF
+	default BOOT_SWAP_USING_MOVE if BOOT_PREFER_SWAP_MOVE
 	default BOOT_SWAP_USING_SCRATCH
 
 config BOOT_SWAP_USING_SCRATCH
