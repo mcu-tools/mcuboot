@@ -48,4 +48,8 @@ target_include_directories(MCUBOOT_BOOTUTIL INTERFACE
   ../../../ext/tinycrypt/lib/include
 )
 endif()
+
+if(CONFIG_BOOT_USE_MBEDTLS)
+  zephyr_link_libraries(mbedTLS)
+endif()
 endif()
