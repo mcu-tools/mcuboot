@@ -27,6 +27,10 @@
 #include "esp_loader.h"
 #include "flash_map_backend/flash_map_backend.h"
 
+#ifdef CONFIG_ESP_MULTI_PROCESSOR_BOOT
+#include "app_cpu_start.h"
+#endif
+
 static int load_segment(const struct flash_area *fap, uint32_t data_addr, uint32_t data_len, uint32_t load_addr)
 {
     const uint32_t *data = (const uint32_t *)bootloader_mmap((fap->fa_off + data_addr), data_len);
@@ -90,3 +94,20 @@ void esp_app_image_load(int image_index, int slot, unsigned int hdr_offset, unsi
     assert(entry_addr != NULL);
     *entry_addr = load_header.entry_addr;
 }
+
+void start_cpu0_image(int image_index, int slot, unsigned int hdr_offset)
+{
+    unsigned int entry_addr;
+    esp_app_image_load(image_index, slot, hdr_offset, &entry_addr);
+    ((void (*)(void))entry_addr)(); /* Call to application entry address should not return */
+    FIH_PANIC; /* It should not get here */
+}
+
+#ifdef CONFIG_ESP_MULTI_PROCESSOR_BOOT
+void start_cpu1_image(int image_index, int slot, unsigned int hdr_offset)
+{
+    unsigned int entry_addr;
+    esp_app_image_load(image_index, slot, hdr_offset, &entry_addr);
+    appcpu_start(entry_addr);
+}
+#endif

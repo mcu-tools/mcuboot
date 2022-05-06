@@ -22,9 +22,6 @@
 #ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
 #include "esp_flash_encrypt.h"
 #endif
-#ifdef CONFIG_ESP_MULTI_PROCESSOR_BOOT
-#include "app_cpu_start.h"
-#endif
 
 #include "esp_loader.h"
 #include "os/os_malloc.h"
@@ -41,13 +38,10 @@ extern esp_err_t check_and_generate_secure_boot_keys(void);
 
 void do_boot(struct boot_rsp *rsp)
 {
-    unsigned int entry_addr;
     BOOT_LOG_INF("br_image_off = 0x%x", rsp->br_image_off);
     BOOT_LOG_INF("ih_hdr_size = 0x%x", rsp->br_hdr->ih_hdr_size);
     int slot = (rsp->br_image_off == CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS) ? PRIMARY_SLOT : SECONDARY_SLOT;
-    esp_app_image_load(IMAGE_INDEX_0, slot, rsp->br_hdr->ih_hdr_size, &entry_addr);
-    ((void (*)(void))entry_addr)(); /* Call to application entry address should not return */
-    FIH_PANIC; /* It should not get here */
+    start_cpu0_image(IMAGE_INDEX_0, slot, rsp->br_hdr->ih_hdr_size);
 }
 
 #ifdef CONFIG_ESP_MULTI_PROCESSOR_BOOT
@@ -79,15 +73,13 @@ done:
 
 void do_boot_appcpu(uint32_t img_index, uint32_t slot)
 {
-    unsigned int entry_addr;
     struct image_header img_header;
 
     if (read_image_header(img_index, slot, &img_header) != 0) {
         FIH_PANIC;
     }
 
-    esp_app_image_load(img_index, slot, img_header.ih_hdr_size, &entry_addr);
-    appcpu_start(entry_addr);
+    start_cpu1_image(img_index, slot, img_header.ih_hdr_size);
 }
 #endif
 
