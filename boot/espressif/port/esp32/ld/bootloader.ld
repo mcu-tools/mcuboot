@@ -55,6 +55,7 @@ SECTIONS
     *libhal.a:esp_efuse_api.*(.literal .text .literal.* .text.*)
     *libhal.a:esp_efuse_utility.*(.literal .text .literal.* .text.*)
     *libhal.a:esp_efuse_api_key_esp32.*(.literal .text .literal.* .text.*)
+    *libhal.a:app_cpu_start.*(.literal .text .literal.* .text.*)
     *esp_mcuboot.*(.literal .text .literal.* .text.*)
     *esp_loader.*(.literal .text .literal.* .text.*)
     *(.fini.literal)
