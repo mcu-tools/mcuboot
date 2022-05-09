@@ -15,7 +15,7 @@
  */
 
 #include <assert.h>
-#include <zephyr/zephyr.h>
+#include <zephyr/kernel.h>
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 #include "bootutil/fault_injection_hardening.h"
