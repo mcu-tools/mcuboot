@@ -3,7 +3,7 @@
 #ifndef __SYSFLASH_H__
 #define __SYSFLASH_H__
 
-#include <devicetree.h>
+#include <zephyr/devicetree.h>
 #include <mcuboot_config/mcuboot_config.h>
 
 #ifndef CONFIG_SINGLE_APPLICATION_SLOT

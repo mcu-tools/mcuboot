@@ -27,7 +27,7 @@
 #define MCUBOOT_LOG_DBG(...) LOG_DBG(__VA_ARGS__)
 #define MCUBOOT_LOG_SIM(...) IGNORE(__VA_ARGS__)
 
-#include <logging/log.h>
+#include <zephyr/logging/log.h>
 
 #endif /* !__BOOTSIM__ */
 

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-#include <zephyr.h>
+#include <zephyr/zephyr.h>
 #include <string.h>
 
 #include "os/os_heap.h"

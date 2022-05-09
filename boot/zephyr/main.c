@@ -17,15 +17,15 @@
  */
 
 #include <assert.h>
-#include <zephyr.h>
-#include <devicetree.h>
-#include <drivers/gpio.h>
-#include <sys/__assert.h>
-#include <drivers/flash.h>
-#include <drivers/timer/system_timer.h>
-#include <usb/usb_device.h>
+#include <zephyr/zephyr.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/sys/__assert.h>
+#include <zephyr/drivers/flash.h>
+#include <zephyr/drivers/timer/system_timer.h>
+#include <zephyr/usb/usb_device.h>
 #include <soc.h>
-#include <linker/linker-defs.h>
+#include <zephyr/linker/linker-defs.h>
 
 #include "target.h"
 
@@ -47,7 +47,7 @@ const struct boot_uart_funcs boot_funcs = {
 #endif
 
 #if defined(CONFIG_BOOT_USB_DFU_WAIT) || defined(CONFIG_BOOT_USB_DFU_GPIO)
-#include <usb/class/usb_dfu.h>
+#include <zephyr/usb/class/usb_dfu.h>
 #endif
 
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
@@ -74,7 +74,7 @@ const struct boot_uart_funcs boot_funcs = {
 #warning "The log internal thread for log processing can't transfer the log"\
          "well for MCUBoot."
 #else
-#include <logging/log_ctrl.h>
+#include <zephyr/logging/log_ctrl.h>
 
 #define BOOT_LOG_PROCESSING_INTERVAL K_MSEC(30) /* [ms] */
 

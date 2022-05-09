@@ -271,7 +271,7 @@
 #endif /* defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1) */
 
 #elif CONFIG_IWDG_STM32 /* CONFIG_NRFX_WDT */
-#include <drivers/watchdog.h>
+#include <zephyr/drivers/watchdog.h>
 
 #define MCUBOOT_WATCHDOG_FEED() \
     do {                        \

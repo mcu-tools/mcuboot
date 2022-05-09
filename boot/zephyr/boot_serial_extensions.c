@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr.h>
-#include <drivers/flash.h>
-#include <mgmt/mcumgr/zephyr_groups.h>
+#include <zephyr/zephyr.h>
+#include <zephyr/drivers/flash.h>
+#include <zephyr/mgmt/mcumgr/zephyr_groups.h>
 
 #include <flash_map_backend/flash_map_backend.h>
 #include <sysflash/sysflash.h>
