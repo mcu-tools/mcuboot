@@ -18,7 +18,7 @@
 #include <zephyr/drivers/uart.h>
 #include <assert.h>
 #include <string.h>
-#include <zephyr/zephyr.h>
+#include <zephyr/kernel.h>
 #include "bootutil/bootutil_log.h"
 #include <zephyr/usb/usb_device.h>
 
