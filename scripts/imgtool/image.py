@@ -435,38 +435,39 @@ class Image():
 
         tlv.add('SHA256', digest)
 
-        if public_key_format == 'hash':
-            tlv.add('KEYHASH', pubbytes)
-        else:
-            tlv.add('PUBKEY', pub)
-
-        if vector_to_sign == 'payload':
-            # Stop amending data to the image
-            # Just keep data vector which is expected to be sigend
-            print('export payload')
-            return
-        elif vector_to_sign == 'digest':
-            self.payload = digest
-            print('export digest')
-            return
-
-        if key is not None and fixed_sig is None:
-            # `sign` expects the full image payload (sha256 done internally),
-            # while `sign_digest` expects only the digest of the payload
-
-            if hasattr(key, 'sign'):
-                print("sign the payload")
-                sig = key.sign(bytes(self.payload))
+        if key is not None or fixed_sig is not None:
+            if public_key_format == 'hash':
+                tlv.add('KEYHASH', pubbytes)
             else:
-                print("sign the digest")
-                sig = key.sign_digest(digest)
-            tlv.add(key.sig_tlv(), sig)
-            self.signature = sig
-        elif fixed_sig is not None and key is None:
-            tlv.add(pub_key.sig_tlv(), fixed_sig['value'])
-            self.signature = fixed_sig['value']
-        else:
-            raise click.UsageError("Can not sign using key and provide fixed-signature at the same time")
+                tlv.add('PUBKEY', pub)
+
+            if vector_to_sign == 'payload':
+                # Stop amending data to the image
+                # Just keep data vector which is expected to be sigend
+                print('export payload')
+                return
+            elif vector_to_sign == 'digest':
+                self.payload = digest
+                print('export digest')
+                return
+
+            if key is not None and fixed_sig is None:
+                # `sign` expects the full image payload (sha256 done internally),
+                # while `sign_digest` expects only the digest of the payload
+
+                if hasattr(key, 'sign'):
+                    print("sign the payload")
+                    sig = key.sign(bytes(self.payload))
+                else:
+                    print("sign the digest")
+                    sig = key.sign_digest(digest)
+                tlv.add(key.sig_tlv(), sig)
+                self.signature = sig
+            elif fixed_sig is not None and key is None:
+                tlv.add(pub_key.sig_tlv(), fixed_sig['value'])
+                self.signature = fixed_sig['value']
+            else:
+                raise click.UsageError("Can not sign using key and provide fixed-signature at the same time")
 
         # At this point the image was hashed + signed, we can remove the
         # protected TLVs from the payload (will be re-added later)
