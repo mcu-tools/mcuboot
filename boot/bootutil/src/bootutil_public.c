@@ -268,14 +268,14 @@ boot_read_swap_state(const struct flash_area *fap,
         return BOOT_EFLASH;
     }
 
-    /* Extract the swap type and image number */
-    state->swap_type = BOOT_GET_SWAP_TYPE(swap_info);
-    state->image_num = BOOT_GET_IMAGE_NUM(swap_info);
-
     if (bootutil_buffer_is_erased(fap, &swap_info, sizeof swap_info) ||
             state->swap_type > BOOT_SWAP_TYPE_REVERT) {
         state->swap_type = BOOT_SWAP_TYPE_NONE;
         state->image_num = 0;
+    } else {
+        /* Extract the swap type and image number */
+        state->swap_type = BOOT_GET_SWAP_TYPE(swap_info);
+        state->image_num = BOOT_GET_IMAGE_NUM(swap_info);
     }
 
     rc = boot_read_copy_done(fap, &state->copy_done);
