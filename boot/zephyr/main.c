@@ -196,7 +196,7 @@ static void do_boot(struct boot_rsp *rsp)
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     cleanup_arm_nvic(); /* cleanup NVIC registers */
 
-#ifdef CONFIG_CPU_CORTEX_M7
+#ifdef CONFIG_CPU_CORTEX_M_HAS_CACHE
     /* Disable instruction cache and data cache before chain-load the application */
     SCB_DisableDCache();
     SCB_DisableICache();
