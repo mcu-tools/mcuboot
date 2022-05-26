@@ -114,51 +114,38 @@ static inline bool boot_skip_serial_recovery()
 BOOT_LOG_MODULE_REGISTER(mcuboot);
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-/*
- * Devicetree helper macro which gets the 'flags' cell from a 'gpios'
- * property, or returns 0 if the property has no 'flags' cell.
- */
-#define FLAGS_OR_ZERO(node)                        \
-  COND_CODE_1(DT_PHA_HAS_CELL(node, gpios, flags), \
-              (DT_GPIO_FLAGS(node, gpios)),        \
-              (0))
 
 /*
  * The led0 devicetree alias is optional. If present, we'll use it
  * to turn on the LED whenever the button is pressed.
  */
 #if DT_NODE_EXISTS(DT_ALIAS(mcuboot_led0))
-#define LED0_NODE DT_ALIAS(mcuboot_led0))
+#define LED0_NODE DT_ALIAS(mcuboot_led0)
 #elif DT_NODE_EXISTS(DT_ALIAS(bootloader_led0))
 #warning "bootloader-led0 alias is deprecated; use mcuboot-led0 instead"
 #define LED0_NODE DT_ALIAS(bootloader_led0)
 #endif
 
 #if DT_NODE_HAS_STATUS(LED0_NODE, okay) && DT_NODE_HAS_PROP(LED0_NODE, gpios)
-#define LED0_GPIO_LABEL DT_GPIO_LABEL(LED0_NODE, gpios)
-#define LED0_GPIO_PIN DT_GPIO_PIN(LED0_NODE, gpios)
-#define LED0_GPIO_FLAGS (GPIO_OUTPUT | FLAGS_OR_ZERO(LED0_NODE))
+static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 #else
 /* A build error here means your board isn't set up to drive an LED. */
 #error "Unsupported board: led0 devicetree alias is not defined"
 #endif
 
-const static struct device *led;
-
 void led_init(void)
 {
 
-  led = device_get_binding(LED0_GPIO_LABEL);
-  if (led == NULL) {
-    BOOT_LOG_ERR("Didn't find LED device %s\n", LED0_GPIO_LABEL);
+  if (!device_is_ready(led0.port)) {
+    BOOT_LOG_ERR("Didn't find LED device referred by the LED0_NODE\n");
     return;
   }
 
-  gpio_pin_configure(led, LED0_GPIO_PIN, LED0_GPIO_FLAGS);
-  gpio_pin_set(led, LED0_GPIO_PIN, 0);
+  gpio_pin_configure_dt(&led0, GPIO_OUTPUT);
+  gpio_pin_set_dt(&led0, 0);
 
 }
-#endif
+#endif /* CONFIG_MCUBOOT_INDICATION_LED */
 
 void os_heap_init(void);
 
@@ -487,7 +474,7 @@ void main(void)
                    CONFIG_BOOT_SERIAL_DETECT_DELAY) &&
             !boot_skip_serial_recovery()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set(led, LED0_GPIO_PIN, 1);
+        gpio_pin_set_dt(&led0, 1);
 #endif
 
         BOOT_LOG_INF("Enter the serial recovery mode");
@@ -504,7 +491,7 @@ void main(void)
                    CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL,
                    CONFIG_BOOT_USB_DFU_DETECT_DELAY)) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set(led, LED0_GPIO_PIN, 1);
+        gpio_pin_set_dt(&led0, 1);
 #endif
         rc = usb_enable(NULL);
         if (rc) {
