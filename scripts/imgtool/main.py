@@ -314,16 +314,16 @@ class BasedIntParamType(click.ParamType):
               'the image manifest: full key or hash of the key.')
 @click.option('-k', '--key', metavar='filename')
 @click.option('--fix-sig', metavar='filename',
-              help='fixed signature for the image. It will be used instead of'
+              help='fixed signature for the image. It will be used instead of '
               'the signature calculated using the public key')
 @click.option('--fix-sig-pubkey', metavar='filename',
               help='public key relevant to fixed signature')
 @click.option('--sig-out', metavar='filename',
-              help='Path to the file to which signature will be written'
+              help='Path to the file to which signature will be written. '
               'The image signature will be encoded as base64 formatted string')
 @click.option('--vector-to-sign', type=click.Choice(['payload', 'digest']),
-              help='send to OUTFILE the payload or payload''s digest instead of'
-              'complied image. These data can be used for external image'
+              help='send to OUTFILE the payload or payload''s digest instead of '
+              'complied image. These data can be used for external image '
               'signing')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
