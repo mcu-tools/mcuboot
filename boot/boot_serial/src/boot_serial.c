@@ -63,6 +63,7 @@
 #endif
 
 #include "serial_recovery_cbor.h"
+#include "serial_recovery_echo.h"
 #include "bootutil/boot_hooks.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
@@ -491,37 +492,34 @@ bs_rc_rsp(int rc_code)
 
 
 #ifdef MCUBOOT_BOOT_MGMT_ECHO
-static bool
-decode_echo(cbor_state_t *state, cbor_string_type_t *result)
-{
-    size_t bsstrdecoded;
-    int ret;
-
-    if (!map_start_decode(state)) {
-        return false;
-    }
-    ret = multi_decode(2, 2, &bsstrdecoded, (void *)tstrx_decode, state, result, sizeof(cbor_string_type_t));
-    map_end_decode(state);
-    return ret;
-}
-
-
 static void
 bs_echo(char *buf, int len)
 {
-    size_t bsstrdecoded;
-    cbor_string_type_t str[2];
+    struct Echo echo = { 0 };
+    size_t decoded_len;
+    uint32_t rc = MGMT_ERR_EINVAL;
+    uint_fast8_t result = cbor_decode_Echo((const uint8_t *)buf, len, &echo, &decoded_len);
 
-    if (entry_function((const uint8_t *)buf, len, str, &bsstrdecoded, (void *)decode_echo, 1, 2)) {
-        map_start_encode(&cbor_state, 10);
-        tstrx_put(&cbor_state, "r");
-        if (tstrx_encode(&cbor_state, &str[1]) && map_end_encode(&cbor_state, 10)) {
-            boot_serial_output();
-        } else {
-            reset_cbor_state();
-            bs_rc_rsp(MGMT_ERR_ENOMEM);
-        }
+    if ((result != ZCBOR_SUCCESS) || (len != decoded_len)) {
+        goto out;
     }
+
+    if (echo._Echo_d.value == NULL) {
+        goto out;
+    }
+
+    zcbor_map_start_encode(cbor_state, 10);
+    zcbor_tstr_put_term(cbor_state, "r");
+    if (zcbor_tstr_encode(cbor_state, &echo._Echo_d) && zcbor_map_end_encode(cbor_state, 10)) {
+        boot_serial_output();
+        return;
+    } else {
+        rc = MGMT_ERR_ENOMEM;
+    }
+
+out:
+    reset_cbor_state();
+    bs_rc_rsp(rc);
 }
 #endif
 
