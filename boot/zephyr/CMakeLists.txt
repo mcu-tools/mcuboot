@@ -256,6 +256,8 @@ if(CONFIG_MCUBOOT_SERIAL)
   zephyr_sources(${BOOT_DIR}/boot_serial/src/zcbor_encode.c)
   zephyr_sources(${BOOT_DIR}/boot_serial/src/zcbor_common.c)
 
+  zephyr_sources_ifdef(CONFIG_BOOT_MGMT_ECHO ${BOOT_DIR}/boot_serial/src/serial_recovery_echo.c)
+
   zephyr_include_directories(${BOOT_DIR}/bootutil/include)
   zephyr_include_directories(${BOOT_DIR}/boot_serial/include)
   zephyr_include_directories(include)
