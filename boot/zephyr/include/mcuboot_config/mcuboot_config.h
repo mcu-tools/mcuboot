@@ -53,6 +53,9 @@
 #endif
 #endif
 
+/* Zephyr, regardless of C library used, provides snprintf */
+#define MCUBOOT_USE_SNPRINTF 1
+
 #ifdef CONFIG_BOOT_HW_KEY
 #define MCUBOOT_HW_KEY
 #endif

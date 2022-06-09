@@ -124,6 +124,10 @@ extern int bs_peruser_system_specific(const struct nmgr_hdr *hdr,
                                       const char *buffer,
                                       int len, zcbor_state_t *cs);
 
+#define zcbor_tstr_put_lit_cast(state, string) \
+	zcbor_tstr_encode_ptr(state, (uint8_t *)string, sizeof(string) - 1)
+
+#ifndef MCUBOOT_USE_SNPRINTF
 /*
  * Convert version into string without use of snprintf().
  */
@@ -153,9 +157,6 @@ u32toa(char *tgt, uint32_t val)
     return dst - tgt;
 }
 
-#define zcbor_tstr_put_lit_cast(state, string) \
-	zcbor_tstr_encode_ptr(state, (uint8_t *)string, sizeof(string) - 1)
-
 /*
  * dst has to be able to fit "255.255.65535.4294967295" (25 characters).
  */
@@ -172,6 +173,17 @@ bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
     dst[off++] = '.';
     off += u32toa(dst + off, ver->iv_build_num);
 }
+#else
+/*
+ * dst has to be able to fit "255.255.65535.4294967295" (25 characters).
+ */
+static void
+bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
+{
+   snprintf(dst, maxlen, "%hu.%hu.%hu.%u", (uint16_t)ver->iv_major,
+            (uint16_t)ver->iv_minor, ver->iv_revision, ver->iv_build_num);
+}
+#endif /* !MCUBOOT_USE_SNPRINTF */
 
 /*
  * List images.
