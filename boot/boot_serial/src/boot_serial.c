@@ -91,8 +91,6 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 static char in_buf[BOOT_SERIAL_INPUT_MAX + 1];
 static char dec_buf[BOOT_SERIAL_INPUT_MAX + 1];
 const struct boot_uart_funcs *boot_uf;
-static uint32_t curr_off;
-static uint32_t img_size;
 static struct nmgr_hdr *bs_hdr;
 static bool bs_entry;
 
@@ -273,18 +271,20 @@ bs_list(char *buf, int len)
 static void
 bs_upload(char *buf, int len)
 {
-    const uint8_t *img_data = NULL;
-    long long int off = UINT64_MAX;
-    size_t img_blen = 0;
-    uint8_t rem_bytes;
-    long long int data_len = UINT64_MAX;
+    static size_t img_size;             /* Total image size, held for duration of upload */
+    static uint32_t curr_off;           /* Expected current offset */
+    const uint8_t *img_chunk = NULL;    /* Pointer to buffer with received image chunk */
+    size_t img_chunk_len = 0;           /* Length of received image chunk */
+    size_t img_chunk_off = SIZE_MAX;    /* Offset of image chunk within image  */
+    uint8_t rem_bytes;                  /* Reminder bytes after aligning chunk write to
+                                         * to flash alignment */
     int img_num;
-    size_t slen;
+    size_t img_size_tmp = SIZE_MAX;     /* Temp variable for image size */
     const struct flash_area *fap = NULL;
     int rc;
 #ifdef MCUBOOT_ERASE_PROGRESSIVELY
-    static off_t off_last = -1;
     struct flash_sector sector;
+    static off_t off_last = -1;         /* Last erased offset */
 #endif
 
     img_num = 0;
@@ -314,15 +314,14 @@ bs_upload(char *buf, int len)
                 img_num = member->_Member_image;
                 break;
             case _Member_data:
-                img_data = member->_Member_data.value;
-                slen = member->_Member_data.len;
-                img_blen = slen;
+                img_chunk = member->_Member_data.value;
+                img_chunk_len = member->_Member_data.len;
                 break;
             case _Member_len:
-                data_len = member->_Member_len;
+                img_size_tmp = member->_Member_len;
                 break;
             case _Member_off:
-                off = member->_Member_off;
+                img_chunk_off = member->_Member_off;
                 break;
             case _Member_sha:
             default:
@@ -331,7 +330,7 @@ bs_upload(char *buf, int len)
         }
     }
 
-    if (off == UINT64_MAX || img_data == NULL) {
+    if (img_chunk_off == SIZE_MAX || img_chunk == NULL) {
         /*
          * Offset must be set in every block.
          */
@@ -348,16 +347,17 @@ bs_upload(char *buf, int len)
         goto out;
     }
 
-    if (off == 0) {
+    if (img_chunk_off == 0) {
         curr_off = 0;
-        if (data_len > flash_area_get_size(fap)) {
+
+        if (img_size_tmp > flash_area_get_size(fap)) {
             goto out_invalid_data;
         }
 #if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
         /* We are using swap state at end of flash area to store validation
          * result. Make sure the user cannot write it from an image to skip validation.
          */
-        if (data_len > (flash_area_get_size(fap) - BOOT_MAGIC_SZ)) {
+        if (img_size_tmp > (flash_area_get_size(fap) - BOOT_MAGIC_SZ)) {
             goto out_invalid_data;
         }
 #endif
@@ -367,27 +367,27 @@ bs_upload(char *buf, int len)
             goto out_invalid_data;
         }
 #endif
-        img_size = data_len;
+        img_size = img_size_tmp;
     }
-    if (off != curr_off) {
+    if (img_chunk_off != curr_off) {
         rc = 0;
         goto out;
     }
 
-    if (curr_off + img_blen > img_size) {
+    if (curr_off + img_chunk_len > img_size) {
         rc = MGMT_ERR_EINVAL;
         goto out;
     }
 
-    rem_bytes = img_blen % flash_area_align(fap);
+    rem_bytes = img_chunk_len % flash_area_align(fap);
 
-    if ((curr_off + img_blen < img_size) && rem_bytes) {
-        img_blen -= rem_bytes;
+    if ((curr_off + img_chunk_len < img_size) && rem_bytes) {
+        img_chunk_len -= rem_bytes;
         rem_bytes = 0;
     }
 
 #ifdef MCUBOOT_ERASE_PROGRESSIVELY
-    rc = flash_area_sector_from_off(curr_off + img_blen, &sector);
+    rc = flash_area_sector_from_off(curr_off + img_chunk_len, &sector);
     if (rc) {
         BOOT_LOG_ERR("Unable to determine flash sector size");
         goto out;
@@ -404,35 +404,35 @@ bs_upload(char *buf, int len)
     }
 #endif
 
-    BOOT_LOG_INF("Writing at 0x%x until 0x%x", curr_off, curr_off + img_blen);
+    BOOT_LOG_INF("Writing at 0x%x until 0x%x", curr_off, curr_off + img_chunk_len);
     if (rem_bytes) {
         /* the last chunk of the image might be unaligned */
         uint8_t wbs_aligned[BOOT_MAX_ALIGN];
-        size_t w_size = img_blen - rem_bytes;
+        size_t w_size = img_chunk_len - rem_bytes;
 
         if (w_size) {
-            rc = flash_area_write(fap, curr_off, img_data, w_size);
+            rc = flash_area_write(fap, curr_off, img_chunk, w_size);
             if (rc) {
                 goto out_invalid_data;
             }
             curr_off += w_size;
-            img_blen -= w_size;
-            img_data += w_size;
+            img_chunk_len -= w_size;
+            img_chunk += w_size;
         }
 
-        if (img_blen) {
-            memcpy(wbs_aligned, img_data, rem_bytes);
+        if (img_chunk_len) {
+            memcpy(wbs_aligned, img_chunk, rem_bytes);
             memset(wbs_aligned + rem_bytes, flash_area_erased_val(fap),
                    sizeof(wbs_aligned) - rem_bytes);
             rc = flash_area_write(fap, curr_off, wbs_aligned, flash_area_align(fap));
         }
 
     } else {
-        rc = flash_area_write(fap, curr_off, img_data, img_blen);
+        rc = flash_area_write(fap, curr_off, img_chunk, img_chunk_len);
     }
 
     if (rc == 0) {
-        curr_off += img_blen;
+        curr_off += img_chunk_len;
         if (curr_off == img_size) {
 #ifdef MCUBOOT_ERASE_PROGRESSIVELY
             /* get the last sector offset */
