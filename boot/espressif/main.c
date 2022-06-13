@@ -13,6 +13,16 @@
 #include "bootloader_utility.h"
 #include "bootloader_random.h"
 
+#ifdef CONFIG_MCUBOOT_SERIAL
+#include "boot_serial/boot_serial.h"
+#include "serial_adapter/serial_adapter.h"
+
+const struct boot_uart_funcs boot_funcs = {
+    .read = console_read,
+    .write = console_write
+};
+#endif
+
 #if defined(CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH) || defined(CONFIG_SECURE_BOOT)
 #include "esp_efuse.h"
 #endif
@@ -139,6 +149,14 @@ int main()
     struct boot_rsp rsp;
 
     fih_int fih_rc = FIH_FAILURE;
+
+#ifdef CONFIG_MCUBOOT_SERIAL
+    boot_console_init();
+    if (boot_serial_detect_pin()) {
+        BOOT_LOG_INF("Enter the serial recovery mode");
+        boot_serial_start(&boot_funcs);
+    }
+#endif
 
     /* Step 2 (see above for full description):
      *   2) MCUboot validates the application images and prepares the booting process.

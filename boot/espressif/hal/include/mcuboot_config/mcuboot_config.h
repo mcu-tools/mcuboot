@@ -139,6 +139,14 @@
  * "assert" is used. */
 #define MCUBOOT_HAVE_ASSERT_H 1
 
+#ifdef CONFIG_ESP_MCUBOOT_SERIAL
+#define CONFIG_MCUBOOT_SERIAL
+#endif
+
+/* Serial extensions are not implemented
+ */
+#define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 0
+
 /*
  * Watchdog feeding
  */
@@ -153,5 +161,9 @@
       do { \
           bootloader_wdt_feed(); \
       } while (0)
+
+#define MCUBOOT_CPU_IDLE() \
+    do {                   \
+    } while (0)
 
 #endif /* __MCUBOOT_CONFIG_H__ */

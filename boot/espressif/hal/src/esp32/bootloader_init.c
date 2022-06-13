@@ -12,6 +12,7 @@
 
 #include "bootloader_init.h"
 #include "bootloader_mem.h"
+#include "bootloader_console.h"
 #include "bootloader_clock.h"
 #include "bootloader_flash_config.h"
 #include "bootloader_flash.h"
@@ -28,7 +29,25 @@
 #include "esp32/rom/spi_flash.h"
 #include "esp32/rom/uart.h"
 
+#include <esp_rom_uart.h>
+#include <esp_rom_gpio.h>
+#include <esp_rom_sys.h>
+#include <soc/uart_periph.h>
+#include <soc/gpio_struct.h>
+#include <hal/gpio_types.h>
+#include <hal/gpio_ll.h>
+#include <hal/uart_ll.h>
+
 extern esp_image_header_t WORD_ALIGNED_ATTR bootloader_image_hdr;
+
+#if CONFIG_ESP_CONSOLE_UART_CUSTOM
+static uart_dev_t *alt_console_uart_dev = (CONFIG_ESP_CONSOLE_UART_NUM == 0) ?
+                                          &UART0 :
+                                          (CONFIG_ESP_CONSOLE_UART_NUM == 1) ?
+                                          &UART1 :
+                                          &UART2;
+#endif
+
 
 static void bootloader_common_vddsdio_configure(void)
 {
@@ -39,7 +58,7 @@ static void bootloader_common_vddsdio_configure(void)
         cfg.drefl = 3;
         cfg.force = 1;
         rtc_vddsdio_set_config(cfg);
-        ets_delay_us(10); /* wait for regulator to become stable */
+        esp_rom_delay_us(10); /* wait for regulator to become stable */
     }
 }
 
@@ -127,17 +146,13 @@ static esp_err_t bootloader_init_spi_flash(void)
     return ESP_OK;
 }
 
-static void bootloader_init_uart_console(void)
+#if CONFIG_ESP_CONSOLE_UART_CUSTOM
+void IRAM_ATTR esp_rom_uart_putc(char c)
 {
-    const int uart_num = 0;
-
-    uartAttach();
-    ets_install_uart_printf();
-    uart_tx_wait_idle(0);
-
-    const int uart_baud = CONFIG_ESP_CONSOLE_UART_BAUDRATE;
-    uart_div_modify(uart_num, (rtc_clk_apb_freq_get() << 4) / uart_baud);
+    while (uart_ll_get_txfifo_len(alt_console_uart_dev) == 0);
+    uart_ll_write_txfifo(alt_console_uart_dev, (const uint8_t *) &c, 1);
 }
+#endif
 
 esp_err_t bootloader_init(void)
 {
@@ -167,7 +182,7 @@ esp_err_t bootloader_init(void)
     /* config clock */
     bootloader_clock_configure();
     /* initialize uart console, from now on, we can use ets_printf */
-    bootloader_init_uart_console();
+    bootloader_console_init();
     /* read bootloader header */
     if ((ret = bootloader_read_bootloader_header()) != ESP_OK) {
         goto err;
