@@ -13,6 +13,7 @@ endif()
 project(mcuboot_${MCUBOOT_TARGET})
 
 add_definitions(-DMCUBOOT_TARGET=${MCUBOOT_TARGET})
+add_definitions(-D__ESPRESSIF__=1)
 
 if ("${MCUBOOT_TARGET}" STREQUAL "esp32" OR
     "${MCUBOOT_TARGET}" STREQUAL "esp32s2" OR
@@ -70,6 +71,7 @@ set(APP_EXECUTABLE ${APP_NAME}.elf)
 
 set(MCUBOOT_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 set(BOOTUTIL_DIR ${MCUBOOT_ROOT_DIR}/boot/bootutil)
+set(BOOT_SERIAL_DIR ${MCUBOOT_ROOT_DIR}/boot/boot_serial)
 set(ESPRESSIF_PORT_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 # Find imgtool.
@@ -207,20 +209,45 @@ target_compile_options(
     ${CFLAGS}
     )
 
+set(port_srcs
+    ${CMAKE_CURRENT_LIST_DIR}/port/esp_mcuboot.c
+    ${CMAKE_CURRENT_LIST_DIR}/port/esp_loader.c
+    ${CMAKE_CURRENT_LIST_DIR}/os.c
+    ${CMAKE_CURRENT_LIST_DIR}/serial_adapter.c
+    )
+
+if(CONFIG_ESP_MCUBOOT_SERIAL)
+    set(MBEDTLS_DIR "${MCUBOOT_ROOT_DIR}/ext/mbedtls")
+
+    list(APPEND bootutil_srcs
+        ${BOOT_SERIAL_DIR}/src/boot_serial.c
+        ${BOOT_SERIAL_DIR}/src/serial_recovery_cbor.c
+        ${BOOT_SERIAL_DIR}/src/zcbor_decode.c
+        ${BOOT_SERIAL_DIR}/src/zcbor_encode.c
+        ${BOOT_SERIAL_DIR}/src/zcbor_common.c
+        )
+    list(APPEND port_srcs
+        ${CMAKE_CURRENT_LIST_DIR}/serial_adapter.c
+        ${MBEDTLS_DIR}/library/base64.c
+        )
+    list(APPEND CRYPTO_INC
+        ${MBEDTLS_DIR}/include
+        )
+endif()
+
 target_sources(
     ${APP_EXECUTABLE}
     PUBLIC
     ${bootutil_srcs}
     ${crypto_srcs}
-    ${CMAKE_CURRENT_LIST_DIR}/port/esp_mcuboot.c
-    ${CMAKE_CURRENT_LIST_DIR}/port/esp_loader.c
-    ${CMAKE_CURRENT_LIST_DIR}/os.c
+    ${port_srcs}
     )
 
 target_include_directories(
     ${APP_EXECUTABLE}
     PUBLIC
     ${BOOTUTIL_DIR}/include
+    ${BOOT_SERIAL_DIR}/include
     ${CRYPTO_INC}
     ${CMAKE_CURRENT_LIST_DIR}/include
     )

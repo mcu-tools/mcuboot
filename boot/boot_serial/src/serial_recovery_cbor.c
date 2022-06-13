@@ -92,8 +92,8 @@ int cbor_decode_Upload(
 	}
 
 	if (!ret) {
-		int ret = zcbor_pop_error(states);
-		return (ret == ZCBOR_SUCCESS) ? ZCBOR_ERR_UNKNOWN : ret;
+		int status = zcbor_pop_error(states);
+		return (status == ZCBOR_SUCCESS) ? ZCBOR_ERR_UNKNOWN : status;
 	}
 	return ZCBOR_SUCCESS;
 }
