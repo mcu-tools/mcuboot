@@ -265,6 +265,54 @@ bs_list(char *buf, int len)
     boot_serial_output();
 }
 
+#ifdef MCUBOOT_ERASE_PROGRESSIVELY
+
+/** Erases range of flash, aligned to sector size
+ *
+ * Function will erase all sectors withing [start, end] range; it does not check
+ * the @p start for alignment, and it will use @p end to find boundaries of las
+ * sector to erase. Function returns offset of the first byte past the last
+ * erased sector, so basically offset of next sector to be erased if needed.
+ * The function is intended to be called iteratively with previously returned
+ * offset as @p start.
+ *
+ * @param   start starting offset, aligned to sector offset;
+ * @param   end ending offset, maybe anywhere within sector;
+ *
+ * @retval On success: offset of the first byte past last erased sector;
+ *         On failure: -EINVAL.
+ */
+static off_t erase_range(const struct flash_area *fap, off_t start, off_t end)
+{
+    struct flash_sector sect;
+    size_t size;
+    int rc;
+
+    if (end >= flash_area_get_size(fap)) {
+        return -EINVAL;
+    }
+
+    if (end < start) {
+        return start;
+    }
+
+    if (flash_area_sector_from_off(end, &sect)) {
+        return -EINVAL;
+    }
+
+    size = flash_sector_get_off(&sect) + flash_sector_get_size(&sect) - start;
+    BOOT_LOG_INF("Erasing range 0x%x:0x%x", start, start + size - 1);
+
+    rc = flash_area_erase(fap, start, size);
+    if (rc != 0) {
+        BOOT_LOG_ERR("Error %d while erasing range", rc);
+        return -EINVAL;
+    }
+
+    return start + size;
+}
+#endif
+
 /*
  * Image upload request.
  */
@@ -283,8 +331,14 @@ bs_upload(char *buf, int len)
     const struct flash_area *fap = NULL;
     int rc;
 #ifdef MCUBOOT_ERASE_PROGRESSIVELY
-    struct flash_sector sector;
-    static off_t off_last = -1;         /* Last erased offset */
+    static off_t not_yet_erased = 0;    /* Offset of next byte to erase; writes to flash
+                                         * are done in consecutive manner and erases are done
+                                         * to allow currently received chunk to be written;
+                                         * this state variable holds information where last
+                                         * erase has stopped to let us know whether erase
+                                         * is needed to be able to write current chunk.
+                                         */
+    static struct flash_sector status_sector;
 #endif
 
     img_num = 0;
@@ -348,61 +402,89 @@ bs_upload(char *buf, int len)
     }
 
     if (img_chunk_off == 0) {
-        curr_off = 0;
+        /* Receiving chunk with 0 offset resets the upload state; this basically
+         * means that upload has started from beginning.
+         */
+        const size_t area_size = flash_area_get_size(fap);
 
-        if (img_size_tmp > flash_area_get_size(fap)) {
-            goto out_invalid_data;
-        }
+        curr_off = 0;
+#ifdef MCUBOOT_ERASE_PROGRESSIVELY
+        /* Get trailer sector information; this is done early because inability to get
+         * that sector information means that upload will not work anyway.
+         * TODO: This is single occurrence issue, it should get detected during tests
+         * and fixed otherwise you are deploying broken mcuboot.
+         */
+        if (flash_area_sector_from_off(boot_status_off(fap), &status_sector)) {
+            rc = MGMT_ERR_EUNKNOWN;
+            BOOT_LOG_ERR("Unable to determine flash sector of the image trailer");
+            goto out;
+         }
+#endif
+
+
 #if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
         /* We are using swap state at end of flash area to store validation
          * result. Make sure the user cannot write it from an image to skip validation.
          */
-        if (img_size_tmp > (flash_area_get_size(fap) - BOOT_MAGIC_SZ)) {
+        if (img_size_tmp > (area_size - BOOT_MAGIC_SZ)) {
             goto out_invalid_data;
         }
+#else
+        if (img_size_tmp > area_size) {
+            goto out_invalid_data;
+        }
+
 #endif
+
 #ifndef MCUBOOT_ERASE_PROGRESSIVELY
-        rc = flash_area_erase(fap, 0, flash_area_get_size(fap));
+        /* Non-progressive erase erases entire image slot when first chunk of
+         * an image is received.
+         */
+        rc = flash_area_erase(fap, 0, area_size);
         if (rc) {
             goto out_invalid_data;
         }
+#else
+        not_yet_erased = 0;
 #endif
+
         img_size = img_size_tmp;
-    }
-    if (img_chunk_off != curr_off) {
+    } else if (img_chunk_off != curr_off) {
+        /* If received chunk offset does not match expected one jump, pretend
+         * success and jump to out; out will respond to client with success
+         * and request the expected offset, held by curr_off.
+         */
         rc = 0;
         goto out;
-    }
-
-    if (curr_off + img_chunk_len > img_size) {
+    } else if (curr_off + img_chunk_len > img_size) {
         rc = MGMT_ERR_EINVAL;
         goto out;
     }
 
+#ifdef MCUBOOT_ERASE_PROGRESSIVELY
+    /* Progressive erase will erase enough flash, aligned to sector size,
+     * as needed for the current chunk to be written.
+     */
+    not_yet_erased = erase_range(fap, not_yet_erased,
+                                 curr_off + img_chunk_len - 1);
+
+    if (not_yet_erased < 0) {
+        rc = MGMT_ERR_EINVAL;
+        goto out;
+    }
+#endif
+
+    /* Writes are aligned to flash write alignment, so may drop a few bytes
+     * from the end of the buffer; we will request these bytes again with
+     * new buffer by responding with request for offset after the last aligned
+     * write.
+     */
     rem_bytes = img_chunk_len % flash_area_align(fap);
 
     if ((curr_off + img_chunk_len < img_size) && rem_bytes) {
         img_chunk_len -= rem_bytes;
         rem_bytes = 0;
     }
-
-#ifdef MCUBOOT_ERASE_PROGRESSIVELY
-    rc = flash_area_sector_from_off(curr_off + img_chunk_len, &sector);
-    if (rc) {
-        BOOT_LOG_ERR("Unable to determine flash sector size");
-        goto out;
-    }
-    if (off_last != flash_sector_get_off(&sector)) {
-        off_last = flash_sector_get_off(&sector);
-        BOOT_LOG_INF("Erasing sector at offset 0x%x", flash_sector_get_off(&sector));
-        rc = flash_area_erase(fap, flash_sector_get_off(&sector),
-                              flash_sector_get_size(&sector));
-        if (rc) {
-            BOOT_LOG_ERR("Error %d while erasing sector", rc);
-            goto out;
-        }
-    }
-#endif
 
     BOOT_LOG_INF("Writing at 0x%x until 0x%x", curr_off, curr_off + img_chunk_len);
     if (rem_bytes) {
@@ -426,7 +508,6 @@ bs_upload(char *buf, int len)
                    sizeof(wbs_aligned) - rem_bytes);
             rc = flash_area_write(fap, curr_off, wbs_aligned, flash_area_align(fap));
         }
-
     } else {
         rc = flash_area_write(fap, curr_off, img_chunk, img_chunk_len);
     }
@@ -435,24 +516,13 @@ bs_upload(char *buf, int len)
         curr_off += img_chunk_len;
         if (curr_off == img_size) {
 #ifdef MCUBOOT_ERASE_PROGRESSIVELY
-            /* get the last sector offset */
-            rc = flash_area_sector_from_off(boot_status_off(fap), &sector);
-            if (rc) {
-                BOOT_LOG_ERR("Unable to determine flash sector of"
-                             "the image trailer");
-                goto out;
-            }
             /* Assure that sector for image trailer was erased. */
             /* Check whether it was erased during previous upload. */
-            if (off_last < flash_sector_get_off(&sector)) {
-                BOOT_LOG_INF("Erasing sector at offset 0x%x",
-                             flash_sector_get_off(&sector));
-                rc = flash_area_erase(fap, flash_sector_get_off(&sector),
-                                      flash_sector_get_size(&sector));
-                if (rc) {
-                    BOOT_LOG_ERR("Error %d while erasing sector", rc);
-                    goto out;
-                }
+            off_t start = flash_sector_get_off(&status_sector);
+
+            if (erase_range(fap, start, start) < 0) {
+                rc = MGMT_ERR_EUNKNOWN;
+                goto out;
             }
 #endif
             rc = BOOT_HOOK_CALL(boot_serial_uploaded_hook, 0, img_num, fap,
