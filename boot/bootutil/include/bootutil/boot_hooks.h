@@ -157,4 +157,28 @@ int boot_serial_uploaded_hook(int img_index, const struct flash_area *area,
 int boot_img_install_stat_hook(int image_index, int slot,
                                int *img_install_stat);
 
+
+/** Hook for getting installation progress.
+ *
+ * @param img_index the index of the image pair
+ * @param slot slot number
+ *
+ * @retval 0 when idle;
+ *         [1,99] when in progress;
+ *         100 when done;
+ *         [-100,-1] when failed, representing percentage at which
+ *             process has failed;
+ *          <= -101 when no status is available.
+ *
+ * Returning value below -100 means that hook does not want caller to
+ * process returned value. This is useful, for example, when boot logic
+ * has chosen path where there will be no installation performed and
+ * so no reporting is required.
+ * Within one upload session hook may start with returning value below -100
+ * and then change to returning progress, but it may not do opposite: starting
+ * with returning progress and then deciding to case providing such information
+ * is considered an error.
+ */
+int boot_img_install_progress_hook(int image_index, int slot)
+
 #endif /*H_BOOTUTIL_HOOKS*/

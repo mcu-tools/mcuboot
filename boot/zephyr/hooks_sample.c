@@ -93,3 +93,8 @@ int boot_img_install_stat_hook(int image_index, int slot, int *img_install_stat)
 {
     return BOOT_HOOK_REGULAR;
 }
+
+int boot_img_install_progress_hook(int image_index, int slot)
+{
+    return -101;     /* Not provided */
+}
