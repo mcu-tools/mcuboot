@@ -480,40 +480,31 @@ bs_upload(char *buf, int len)
      * write.
      */
     rem_bytes = img_chunk_len % flash_area_align(fap);
+    img_chunk_len -= rem_bytes;
 
-    if ((curr_off + img_chunk_len < img_size) && rem_bytes) {
-        img_chunk_len -= rem_bytes;
+    if (curr_off + img_chunk_len + rem_bytes < img_size) {
         rem_bytes = 0;
     }
 
     BOOT_LOG_INF("Writing at 0x%x until 0x%x", curr_off, curr_off + img_chunk_len);
-    if (rem_bytes) {
-        /* the last chunk of the image might be unaligned */
+    /* Write flash aligned chunk, note that img_chunk_len now holds aligned length */
+    rc = flash_area_write(fap, curr_off, img_chunk, img_chunk_len);
+    if (rc == 0 && rem_bytes) {
+        /* Non-zero rem_bytes means that last chunk needs alignment; the aligned
+         * part, in the img_chunk_len - rem_bytes count bytes, has already been
+         * written by the above write, so we are left with the rem_bytes.
+         */
         uint8_t wbs_aligned[BOOT_MAX_ALIGN];
-        size_t w_size = img_chunk_len - rem_bytes;
 
-        if (w_size) {
-            rc = flash_area_write(fap, curr_off, img_chunk, w_size);
-            if (rc) {
-                goto out_invalid_data;
-            }
-            curr_off += w_size;
-            img_chunk_len -= w_size;
-            img_chunk += w_size;
-        }
+        memset(wbs_aligned, flash_area_erased_val(fap), sizeof(wbs_aligned));
+        memcpy(wbs_aligned, img_chunk + img_chunk_len, rem_bytes);
 
-        if (img_chunk_len) {
-            memcpy(wbs_aligned, img_chunk, rem_bytes);
-            memset(wbs_aligned + rem_bytes, flash_area_erased_val(fap),
-                   sizeof(wbs_aligned) - rem_bytes);
-            rc = flash_area_write(fap, curr_off, wbs_aligned, flash_area_align(fap));
-        }
-    } else {
-        rc = flash_area_write(fap, curr_off, img_chunk, img_chunk_len);
+        rc = flash_area_write(fap, curr_off + img_chunk_len, wbs_aligned,
+                              flash_area_align(fap));
     }
 
     if (rc == 0) {
-        curr_off += img_chunk_len;
+        curr_off += img_chunk_len + rem_bytes;
         if (curr_off == img_size) {
 #ifdef MCUBOOT_ERASE_PROGRESSIVELY
             /* Assure that sector for image trailer was erased. */
