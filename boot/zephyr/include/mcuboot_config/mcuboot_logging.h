@@ -7,8 +7,6 @@
 #ifndef __MCUBOOT_LOGGING_H__
 #define __MCUBOOT_LOGGING_H__
 
-#ifndef __BOOTSIM__
-
 /*
  * When building for targets running Zephyr, delegate to its native
  * logging subsystem.
@@ -28,7 +26,5 @@
 #define MCUBOOT_LOG_SIM(...) IGNORE(__VA_ARGS__)
 
 #include <zephyr/logging/log.h>
-
-#endif /* !__BOOTSIM__ */
 
 #endif /* __MCUBOOT_LOGGING_H__ */
