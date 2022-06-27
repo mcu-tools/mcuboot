@@ -321,8 +321,9 @@ static bool str_overflow_check(zcbor_state_t *state, struct zcbor_string *result
 
 bool zcbor_bstr_start_decode(zcbor_state_t *state, struct zcbor_string *result)
 {
+	struct zcbor_string dummy;
+
 	if (result == NULL) {
-		struct zcbor_string dummy;
 		result = &dummy;
 	}
 
