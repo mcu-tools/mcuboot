@@ -19,11 +19,11 @@ build_mcuboot() {
   local target=${1}
   local feature=${2}
   local toolchain_file="${ESPRESSIF_ROOT}/tools/toolchain-${target}.cmake"
-  local mcuboot_config="${ESPRESSIF_ROOT}/bootloader.conf"
+  local mcuboot_config="${ESPRESSIF_ROOT}/port/${target}/bootloader.conf"
   local build_dir=".build-${target}"
 
   if [ -n "${feature}" ]; then
-    mcuboot_config="${ESPRESSIF_ROOT}/secureboot-${feature}.conf"
+    mcuboot_config="${mcuboot_config};${ESPRESSIF_ROOT}/secureboot-${feature}.conf"
     build_dir=".build-${target}-${feature}"
   fi
 

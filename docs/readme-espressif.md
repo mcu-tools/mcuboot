@@ -43,7 +43,7 @@ cd ../..
 
 ## [Building the bootloader itself](#building-the-bootloader-itself)
 
-The MCUboot Espressif port bootloader is built using the toolchain and tools provided by ESP-IDF. Additional configuration related to MCUboot features and slot partitioning may be made using the `bootloader.conf`.
+The MCUboot Espressif port bootloader is built using the toolchain and tools provided by ESP-IDF. Additional configuration related to MCUboot features and slot partitioning may be made using the `port/<TARGET>/bootloader.conf` file or passing a custom config file using the `-DMCUBOOT_CONFIG_FILE` argument on the first step below.
 
 ---
 ***Note***
@@ -52,23 +52,25 @@ The MCUboot Espressif port bootloader is built using the toolchain and tools pro
 
 ---
 
-1. Compile and generate the ELF:
+1. Compile and generate the BIN:
 
 ```
-cmake -DCMAKE_TOOLCHAIN_FILE=tools/toolchain-<TARGET>.cmake -DMCUBOOT_TARGET=<TARGET> -B build -GNinja
-cmake --build build/
+cmake -DCMAKE_TOOLCHAIN_FILE=tools/toolchain-<TARGET>.cmake -DMCUBOOT_TARGET=<TARGET> -DMCUBOOT_FLASH_PORT=<PORT> -B build -GNinja
+ninja --build build/
 ```
 
-2. Convert the ELF to the final bootloader image, ready to be flashed:
+2. Flash MCUboot in your device:
 
 ```
-esptool.py --chip <TARGET> elf2image --flash_mode dio --flash_freq 40m --flash_size <FLASH_SIZE> -o build/mcuboot_<TARGET>.bin build/mcuboot_<TARGET>.elf
+ninja -C build/ flash
 ```
 
-3. Flash MCUboot in your device:
+If `MCUBOOT_FLASH_PORT` arg was not passed to `cmake`, the default `PORT` for flashing will be `/dev/ttyUSB0`.
+
+Alternatively:
 
 ```
-esptool.py -p <PORT> -b <BAUD> --before default_reset --after hard_reset --chip <TARGET> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <BOOTLOADER_FLASH_OFFSET> build/mcuboot_<TARGET>.bin
+esptool.py -p <PORT> -b <BAUD> --before default_reset --after no_reset --chip <TARGET> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <BOOTLOADER_FLASH_OFFSET> build/mcuboot_<TARGET>.bin
 ```
 ---
 ***Note***
@@ -93,6 +95,8 @@ Detected flash size: 4MB
 | 0x1000 | 0x1000 | 0x0000 | 0x0000 |
 
 ---
+
+3. Reset your device
 
 ## [Signing and flashing an application](#signing-and-flashing-an-application)
 

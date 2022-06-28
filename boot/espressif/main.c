@@ -85,7 +85,9 @@ void do_boot_appcpu(uint32_t img_index, uint32_t slot)
 
 int main()
 {
-    bootloader_init();
+    if (bootloader_init() != ESP_OK) {
+        FIH_PANIC;
+    }
 
     BOOT_LOG_INF("Enabling RNG early entropy source...");
     bootloader_random_enable();

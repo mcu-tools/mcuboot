@@ -18,6 +18,7 @@
 #include "esp_rom_sys.h"
 
 #include "bootloader_init.h"
+#include "bootloader_common.h"
 #include "bootloader_clock.h"
 #include "bootloader_flash_config.h"
 #include "bootloader_mem.h"
@@ -33,16 +34,10 @@
 #include "esp32c3/rom/cache.h"
 #include "esp32c3/rom/spi_flash.h"
 
+#include "bootloader_wdt.h"
 #include "hal/wdt_hal.h"
 
-extern uint8_t bootloader_common_get_chip_revision(void);
-
-esp_image_header_t WORD_ALIGNED_ATTR bootloader_image_hdr;
-
-void bootloader_clear_bss_section(void)
-{
-    memset(&_bss_start, 0, (&_bss_end - &_bss_start) * sizeof(_bss_start));
-}
+extern esp_image_header_t WORD_ALIGNED_ATTR bootloader_image_hdr;
 
 void IRAM_ATTR bootloader_configure_spi_pins(int drv)
 {
@@ -82,14 +77,6 @@ static void bootloader_reset_mmu(void)
 
     REG_CLR_BIT(EXTMEM_ICACHE_CTRL1_REG, EXTMEM_ICACHE_SHUT_IBUS);
     REG_CLR_BIT(EXTMEM_ICACHE_CTRL1_REG, EXTMEM_ICACHE_SHUT_DBUS);
-}
-
-esp_err_t bootloader_read_bootloader_header(void)
-{
-    if (bootloader_flash_read(ESP_BOOTLOADER_OFFSET, &bootloader_image_hdr, sizeof(esp_image_header_t), true) != ESP_OK) {
-        return ESP_FAIL;
-    }
-    return ESP_OK;
 }
 
 static void update_flash_config(const esp_image_header_t *bootloader_hdr)
@@ -174,28 +161,6 @@ static void bootloader_super_wdt_auto_feed(void)
     REG_WRITE(RTC_CNTL_SWD_WPROTECT_REG, 0);
 }
 
-void bootloader_config_wdt(void)
-{
-    wdt_hal_context_t rtc_wdt_ctx = {.inst = WDT_RWDT, .rwdt_dev = &RTCCNTL};
-    wdt_hal_write_protect_disable(&rtc_wdt_ctx);
-    wdt_hal_set_flashboot_en(&rtc_wdt_ctx, false);
-    wdt_hal_write_protect_enable(&rtc_wdt_ctx);
-
-#ifdef CONFIG_ESP_MCUBOOT_WDT_ENABLE
-    wdt_hal_init(&rtc_wdt_ctx, WDT_RWDT, 0, false);
-    uint32_t stage_timeout_ticks = (uint32_t)((uint64_t)CONFIG_BOOTLOADER_WDT_TIME_MS * rtc_clk_slow_freq_get_hz() / 1000);
-    wdt_hal_write_protect_disable(&rtc_wdt_ctx);
-    wdt_hal_config_stage(&rtc_wdt_ctx, WDT_STAGE0, stage_timeout_ticks, WDT_STAGE_ACTION_RESET_RTC);
-    wdt_hal_enable(&rtc_wdt_ctx);
-    wdt_hal_write_protect_enable(&rtc_wdt_ctx);
-#endif
-
-    wdt_hal_context_t wdt_ctx = {.inst = WDT_MWDT0, .mwdt_dev = &TIMERG0};
-    wdt_hal_write_protect_disable(&wdt_ctx);
-    wdt_hal_set_flashboot_en(&wdt_ctx, false);
-    wdt_hal_write_protect_enable(&wdt_ctx);
-}
-
 static void bootloader_init_uart_console(void)
 {
     const int uart_num = 0;
@@ -230,6 +195,10 @@ esp_err_t bootloader_init(void)
     bootloader_flash_update_id();
     // read bootloader header
     if ((ret = bootloader_read_bootloader_header()) != ESP_OK) {
+        goto err;
+    }
+    // read chip revision and check if it's compatible to bootloader
+    if ((ret = bootloader_check_bootloader_validity()) != ESP_OK) {
         goto err;
     }
     // initialize spi flash

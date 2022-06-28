@@ -86,6 +86,26 @@
 #define MCUBOOT_BOOTSTRAP 1
 #endif
 
+#if MYNEWT_VAL(MCUBOOT_MEASURED_BOOT)
+#define MCUBOOT_MEASURED_BOOT       1
+#endif
+
+#if MYNEWT_VAL(MCUBOOT_MEASURED_BOOT_MAX_RECORD_SZ)
+#define MAX_BOOT_RECORD_SZ          MYNEWT_VAL(MCUBOOT_MEASURED_BOOT_MAX_RECORD_SZ)
+#endif
+
+#if MYNEWT_VAL(MCUBOOT_DATA_SHARING)
+#define MCUBOOT_DATA_SHARING        1
+#endif
+
+#if MYNEWT_VAL(MCUBOOT_SHARED_DATA_BASE)
+#define MCUBOOT_SHARED_DATA_BASE    MYNEWT_VAL(MCUBOOT_SHARED_DATA_BASE)
+#endif
+
+#if MYNEWT_VAL(MCUBOOT_SHARED_DATA_SIZE)
+#define MCUBOOT_SHARED_DATA_SIZE    MYNEWT_VAL(MCUBOOT_SHARED_DATA_SIZE)
+#endif
+
 /*
  * Currently there is no configuration option, for this platform,
  * that enables the system specific mcumgr commands in mcuboot

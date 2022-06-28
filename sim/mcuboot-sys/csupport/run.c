@@ -443,14 +443,42 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
     abort();
 }
 
-uint8_t flash_area_get_device_id(const struct flash_area *fa)
-{
-    return fa->fa_device_id;
-}
-
 int flash_area_id_from_image_slot(int slot) {
     /* For single image cases, just use the first image. */
     return flash_area_id_from_multi_image_slot(0, slot);
+}
+
+int flash_area_sector_from_off(uint32_t off, struct flash_sector *sector)
+{
+    uint32_t i, sec_off, sec_size;
+    struct area *slot;
+    struct area_desc *flash_areas;
+
+    flash_areas = sim_get_flash_areas();
+    for (i = 0; i < flash_areas->num_slots; i++) {
+        if (flash_areas->slots[i].id == FLASH_AREA_ID(image_0))
+            break;
+    }
+
+    if (i == flash_areas->num_slots) {
+        printf("Unsupported area\n");
+        abort();
+    }
+
+    slot = &flash_areas->slots[i];
+
+    for (i = 0; i < slot->num_areas; i++) {
+        sec_off = slot->areas[i].fa_off - slot->whole.fa_off;
+        sec_size = slot->areas[i].fa_size;
+
+        if (off >= sec_off && off < (sec_off + sec_size)) {
+            sector->fs_off = sec_off;
+            sector->fs_size = sec_size;
+            break;
+        }
+    }
+
+    return (i < slot->num_areas) ? 0 : -1;
 }
 
 void sim_assert(int x, const char *assertion, const char *file, unsigned int line, const char *function)

@@ -17,15 +17,15 @@
  */
 
 #include <assert.h>
-#include <zephyr.h>
-#include <devicetree.h>
-#include <drivers/gpio.h>
-#include <sys/__assert.h>
-#include <drivers/flash.h>
-#include <drivers/timer/system_timer.h>
-#include <usb/usb_device.h>
+#include <zephyr/kernel.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/sys/__assert.h>
+#include <zephyr/drivers/flash.h>
+#include <zephyr/drivers/timer/system_timer.h>
+#include <zephyr/usb/usb_device.h>
 #include <soc.h>
-#include <linker/linker-defs.h>
+#include <zephyr/linker/linker-defs.h>
 
 #include "target.h"
 
@@ -33,6 +33,7 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 #include "bootutil/fault_injection_hardening.h"
+#include "bootutil/mcuboot_status.h"
 #include "flash_map_backend/flash_map_backend.h"
 
 #ifdef CONFIG_MCUBOOT_SERIAL
@@ -46,7 +47,7 @@ const struct boot_uart_funcs boot_funcs = {
 #endif
 
 #if defined(CONFIG_BOOT_USB_DFU_WAIT) || defined(CONFIG_BOOT_USB_DFU_GPIO)
-#include <usb/class/usb_dfu.h>
+#include <zephyr/usb/class/usb_dfu.h>
 #endif
 
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
@@ -73,7 +74,7 @@ const struct boot_uart_funcs boot_funcs = {
 #warning "The log internal thread for log processing can't transfer the log"\
          "well for MCUBoot."
 #else
-#include <logging/log_ctrl.h>
+#include <zephyr/logging/log_ctrl.h>
 
 #define BOOT_LOG_PROCESSING_INTERVAL K_MSEC(30) /* [ms] */
 
@@ -114,47 +115,38 @@ static inline bool boot_skip_serial_recovery()
 BOOT_LOG_MODULE_REGISTER(mcuboot);
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-/*
- * Devicetree helper macro which gets the 'flags' cell from a 'gpios'
- * property, or returns 0 if the property has no 'flags' cell.
- */
-#define FLAGS_OR_ZERO(node)                        \
-  COND_CODE_1(DT_PHA_HAS_CELL(node, gpios, flags), \
-              (DT_GPIO_FLAGS(node, gpios)),        \
-              (0))
 
 /*
  * The led0 devicetree alias is optional. If present, we'll use it
  * to turn on the LED whenever the button is pressed.
  */
-
+#if DT_NODE_EXISTS(DT_ALIAS(mcuboot_led0))
+#define LED0_NODE DT_ALIAS(mcuboot_led0)
+#elif DT_NODE_EXISTS(DT_ALIAS(bootloader_led0))
+#warning "bootloader-led0 alias is deprecated; use mcuboot-led0 instead"
 #define LED0_NODE DT_ALIAS(bootloader_led0)
+#endif
 
 #if DT_NODE_HAS_STATUS(LED0_NODE, okay) && DT_NODE_HAS_PROP(LED0_NODE, gpios)
-#define LED0_GPIO_LABEL DT_GPIO_LABEL(LED0_NODE, gpios)
-#define LED0_GPIO_PIN DT_GPIO_PIN(LED0_NODE, gpios)
-#define LED0_GPIO_FLAGS (GPIO_OUTPUT | FLAGS_OR_ZERO(LED0_NODE))
+static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 #else
 /* A build error here means your board isn't set up to drive an LED. */
 #error "Unsupported board: led0 devicetree alias is not defined"
 #endif
 
-const static struct device *led;
-
 void led_init(void)
 {
 
-  led = device_get_binding(LED0_GPIO_LABEL);
-  if (led == NULL) {
-    BOOT_LOG_ERR("Didn't find LED device %s\n", LED0_GPIO_LABEL);
+  if (!device_is_ready(led0.port)) {
+    BOOT_LOG_ERR("Didn't find LED device referred by the LED0_NODE\n");
     return;
   }
 
-  gpio_pin_configure(led, LED0_GPIO_PIN, LED0_GPIO_FLAGS);
-  gpio_pin_set(led, LED0_GPIO_PIN, 0);
+  gpio_pin_configure_dt(&led0, GPIO_OUTPUT);
+  gpio_pin_set_dt(&led0, 0);
 
 }
-#endif
+#endif /* CONFIG_MCUBOOT_INDICATION_LED */
 
 void os_heap_init(void);
 
@@ -297,8 +289,12 @@ static void do_boot(struct boot_rsp *rsp)
  */
 static void do_boot(struct boot_rsp *rsp)
 {
-    uintptr_t flash_base;
     void *start;
+    
+#if defined(MCUBOOT_RAM_LOAD)
+    start = (void *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
+#else
+    uintptr_t flash_base;
     int rc;
 
     rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
@@ -306,6 +302,7 @@ static void do_boot(struct boot_rsp *rsp)
 
     start = (void *)(flash_base + rsp->br_image_off +
                      rsp->br_hdr->ih_hdr_size);
+#endif
 
     /* Lock interrupts and dive into the entry point */
     irq_lock();
@@ -371,30 +368,78 @@ void zephyr_boot_log_stop(void)
         */
 
 #if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU_GPIO)
-static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
+
+#ifdef CONFIG_MCUBOOT_SERIAL
+#define BUTTON_0_DETECT_DELAY CONFIG_BOOT_SERIAL_DETECT_DELAY
+#else
+#define BUTTON_0_DETECT_DELAY CONFIG_BOOT_USB_DFU_DETECT_DELAY
+#endif
+
+
+#define BUTTON_0_NODE DT_ALIAS(mcuboot_button0)
+
+#if DT_NODE_EXISTS(BUTTON_0_NODE) && DT_NODE_HAS_PROP(BUTTON_0_NODE, gpios)
+
+static const struct gpio_dt_spec button0 = GPIO_DT_SPEC_GET(BUTTON_0_NODE, gpios);
+
+#else /* fallback to legacy configuration */
+
+#if defined(CONFIG_MCUBOOT_SERIAL)
+
+#define BUTTON_0_GPIO_LABEL CONFIG_BOOT_SERIAL_DETECT_PORT
+#define BUTTON_0_GPIO_PIN CONFIG_BOOT_SERIAL_DETECT_PIN
+#define BUTTON_0_GPIO_FLAGS ((CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) ?\
+                                (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN) :\
+                                (GPIO_ACTIVE_LOW | GPIO_PULL_UP))
+
+#elif defined(CONFIG_BOOT_USB_DFU_GPIO)
+
+#define BUTTON_0_GPIO_LABEL CONFIG_BOOT_USB_DFU_DETECT_PORT
+#define BUTTON_0_GPIO_PIN CONFIG_BOOT_USB_DFU_DETECT_PIN
+#define BUTTON_0_GPIO_FLAGS ((CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL) ?\
+                                (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN) :\
+                                (GPIO_ACTIVE_LOW | GPIO_PULL_UP))
+
+#endif
+
+#define BUTTON_0_LEGACY 1
+
+static struct gpio_dt_spec button0 = {
+	.port = NULL,
+	.pin = BUTTON_0_GPIO_PIN,
+	.dt_flags = BUTTON_0_GPIO_FLAGS
+};
+
+#endif
+
+static bool detect_pin(void)
 {
     int rc;
-    int detect_value;
-    struct device const *detect_port;
+    int pin_active;
 
-    detect_port = device_get_binding(port);
-    __ASSERT(detect_port, "Error: Bad port for boot detection.\n");
+#ifdef BUTTON_0_LEGACY
+    button0.port = device_get_binding(BUTTON_0_GPIO_LABEL);
+    if (button0.port == NULL) {
+        __ASSERT(false, "Error: Bad port for boot detection.\n");
+        return false;
+    }
+#else
+    if (!device_is_ready(button0.port)) {
+        __ASSERT(false, "GPIO device is not ready.\n");
+        return false;
+    }
+#endif
 
-    /* The default presence value is 0 which would normally be
-     * active-low, but historically the raw value was checked so we'll
-     * use the raw interface.
-     */
-    rc = gpio_pin_configure(detect_port, pin,
-                            GPIO_INPUT | GPIO_PULL_UP);
+    rc = gpio_pin_configure_dt(&button0, GPIO_INPUT);
     __ASSERT(rc == 0, "Failed to initialize boot detect pin.\n");
 
-    rc = gpio_pin_get_raw(detect_port, pin);
-    detect_value = rc;
+    rc = gpio_pin_get_dt(&button0);
+    pin_active = rc;
 
     __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
 
-    if (detect_value == expected) {
-        if (delay > 0) {
+    if (pin_active) {
+        if (BUTTON_0_DETECT_DELAY > 0) {
 #ifdef CONFIG_MULTITHREADING
             k_sleep(K_MSEC(50));
 #else
@@ -405,15 +450,15 @@ static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
             int64_t timestamp = k_uptime_get();
 
             for(;;) {
-                rc = gpio_pin_get_raw(detect_port, pin);
-                detect_value = rc;
+                rc = gpio_pin_get_dt(&button0);
+                pin_active = rc;
                 __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
 
                 /* Get delta from when this started */
                 uint32_t delta = k_uptime_get() -  timestamp;
 
                 /* If not pressed OR if pressed > debounce period, stop. */
-                if (delta >= delay || detect_value != expected) {
+                if (delta >= BUTTON_0_DETECT_DELAY || !pin_active) {
                     break;
                 }
 
@@ -427,7 +472,7 @@ static bool detect_pin(const char* port, int pin, uint32_t expected, int delay)
         }
     }
 
-    return detect_value == expected;
+    return (bool)pin_active;
 }
 #endif
 
@@ -456,6 +501,8 @@ void main(void)
 
     (void)rc;
 
+    mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
+
 #if (!defined(CONFIG_XTENSA) && DT_HAS_CHOSEN(zephyr_flash_controller))
     if (!flash_device_get_binding(DT_LABEL(DT_CHOSEN(zephyr_flash_controller)))) {
         BOOT_LOG_ERR("Flash device %s not found",
@@ -472,14 +519,13 @@ void main(void)
 #endif
 
 #ifdef CONFIG_MCUBOOT_SERIAL
-    if (detect_pin(CONFIG_BOOT_SERIAL_DETECT_PORT,
-                   CONFIG_BOOT_SERIAL_DETECT_PIN,
-                   CONFIG_BOOT_SERIAL_DETECT_PIN_VAL,
-                   CONFIG_BOOT_SERIAL_DETECT_DELAY) &&
+    if (detect_pin() &&
             !boot_skip_serial_recovery()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set(led, LED0_GPIO_PIN, 1);
+        gpio_pin_set_dt(&led0, 1);
 #endif
+
+        mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
 
         BOOT_LOG_INF("Enter the serial recovery mode");
         rc = boot_console_init();
@@ -490,13 +536,13 @@ void main(void)
 #endif
 
 #if defined(CONFIG_BOOT_USB_DFU_GPIO)
-    if (detect_pin(CONFIG_BOOT_USB_DFU_DETECT_PORT,
-                   CONFIG_BOOT_USB_DFU_DETECT_PIN,
-                   CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL,
-                   CONFIG_BOOT_USB_DFU_DETECT_DELAY)) {
+    if (detect_pin()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set(led, LED0_GPIO_PIN, 1);
+        gpio_pin_set_dt(&led0, 1);
 #endif
+
+        mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_ENTERED);
+
         rc = usb_enable(NULL);
         if (rc) {
             BOOT_LOG_ERR("Cannot enable USB");
@@ -512,8 +558,13 @@ void main(void)
         BOOT_LOG_ERR("Cannot enable USB");
     } else {
         BOOT_LOG_INF("Waiting for USB DFU");
+
+        mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_WAITING);
+
         wait_for_usb_dfu(K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS));
         BOOT_LOG_INF("USB DFU wait time elapsed");
+
+        mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_TIMED_OUT);
     }
 #endif
 
@@ -536,11 +587,14 @@ void main(void)
         /* at least one check if time was expired */
         timeout_in_ms = 1;
     }
-   boot_serial_check_start(&boot_funcs,timeout_in_ms);
+    boot_serial_check_start(&boot_funcs,timeout_in_ms);
 #endif
 
     if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
         BOOT_LOG_ERR("Unable to find bootable image");
+
+        mcuboot_status_change(MCUBOOT_STATUS_NO_BOOTABLE_IMAGE_FOUND);
+
         FIH_PANIC;
     }
 
@@ -552,8 +606,13 @@ void main(void)
 #else
     BOOT_LOG_INF("Jumping to the first image slot");
 #endif
+
+    mcuboot_status_change(MCUBOOT_STATUS_BOOTABLE_IMAGE_FOUND);
+
     ZEPHYR_BOOT_LOG_STOP();
     do_boot(&rsp);
+
+    mcuboot_status_change(MCUBOOT_STATUS_BOOT_FAILED);
 
     BOOT_LOG_ERR("Never should get here");
     while (1)

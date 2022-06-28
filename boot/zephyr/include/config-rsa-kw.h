@@ -70,7 +70,6 @@
 #define MBEDTLS_NIST_KW_C
 
 /* Save RAM by adjusting to our exact needs */
-#define MBEDTLS_ECP_MAX_BITS             2048
 #define MBEDTLS_MPI_MAX_SIZE              256
 
 #define MBEDTLS_SSL_MAX_CONTENT_LEN 1024

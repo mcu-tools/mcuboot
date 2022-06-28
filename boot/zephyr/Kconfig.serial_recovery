@@ -1,0 +1,156 @@
+# Copyright (c) 2017-2020 Linaro Limited
+# Copyright (c) 2020 Arm Limited
+# Copyright (c) 2017-2022 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: Apache-2.0
+
+
+menuconfig MCUBOOT_SERIAL
+	bool "MCUboot serial recovery"
+	default n
+	select REBOOT
+	select GPIO
+	select SERIAL
+	select UART_INTERRUPT_DRIVEN
+	select BASE64
+	help
+	  If y, enables a serial-port based update mode. This allows
+	  MCUboot itself to load update images into flash over a UART.
+	  If unsure, leave at the default value.
+
+if MCUBOOT_SERIAL
+
+choice BOOT_SERIAL_DEVICE
+	prompt "Serial device"
+	default BOOT_SERIAL_UART if !BOARD_NRF52840DONGLE_NRF52840
+	default BOOT_SERIAL_CDC_ACM if BOARD_NRF52840DONGLE_NRF52840
+
+config BOOT_SERIAL_UART
+	bool "UART"
+	# SERIAL and UART_INTERRUPT_DRIVEN already selected
+
+config BOOT_SERIAL_CDC_ACM
+	bool "CDC ACM"
+	select USB_DEVICE_STACK
+
+endchoice
+
+config MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
+	bool "Allow to select image number for DFU"
+	help
+	  With the option enabled, the mcuboot serial recovery will
+	  respect the "image" field in mcumgr image update frame
+	  header.
+	  The mapping of image number to partition is as follows:
+	    0 -> default behaviour, same as 1;
+	    1 -> image-0 (primary slot of the first image);
+	    2 -> image-1 (secondary slot of the first image);
+	    3 -> image-2;
+	    4 -> image-3.
+	  Note that 0 is default upload target when no explicit
+	  selection is done.
+
+config BOOT_MAX_LINE_INPUT_LEN
+	int "Maximum command line length"
+	default 512
+	help
+	  Maximum length of commands transported over the serial port.
+
+config BOOT_SERIAL_DETECT_PORT
+	string "GPIO device to trigger serial recovery mode (DEPRECATED)"
+	default GPIO_0 if SOC_FAMILY_NRF
+	help
+	  Zephyr GPIO device that contains the pin used to trigger
+	  serial recovery mode.
+
+config BOOT_SERIAL_DETECT_PIN
+	int "Pin to trigger serial recovery mode (DEPRECATED)"
+	default 6 if BOARD_NRF9160DK_NRF9160
+	default 11 if BOARD_NRF52840DK_NRF52840
+	default 13 if BOARD_NRF52DK_NRF52832 || BOARD_NRF52833DK_NRF52833
+	default 23 if BOARD_NRF5340PDK_NRF5340_CPUAPP || BOARD_NRF5340PDK_NRF5340_CPUAPP_NS || \
+		BOARD_NRF5340DK_NRF5340_CPUAPP || BOARD_NRF5340DK_NRF5340_CPUAPP_NS
+	help
+	  Pin on the serial detect port that triggers serial recovery mode.
+
+config BOOT_SERIAL_DETECT_PIN_VAL
+	int "Serial detect pin trigger value (DEPRECATED)"
+	default 0
+	range 0 1
+	help
+	  Logic value of the detect pin that triggers serial recovery
+	  mode.
+
+config BOOT_SERIAL_DETECT_DELAY
+	int "Serial detect pin detection delay time [ms]"
+	default 0
+	help
+	  Used to prevent the bootloader from loading on button press.
+	  Useful for powering on when using the same button as
+	  the one used to place the device in bootloader mode.
+
+config BOOT_ERASE_PROGRESSIVELY
+	bool "Erase flash progressively when receiving new firmware"
+	default y if SOC_FAMILY_NRF
+	help
+	 If enabled, flash is erased as necessary when receiving new firmware,
+	 instead of erasing the whole image slot at once. This is necessary
+	 on some hardware that has long erase times, to prevent long wait
+	 times at the beginning of the DFU process.
+
+config BOOT_MGMT_ECHO
+	bool "Enable echo command"
+	help
+	  if enabled, support for the mcumgr echo command is being added.
+
+menuconfig ENABLE_MGMT_PERUSER
+	bool "Enable system specific mcumgr commands"
+	help
+	  The option enables processing of system specific mcumgr commands;
+	  system specific commands are within group MGMT_GROUP_ID_PERUSER (64)
+	  and above, as defined within mcumgr library.
+	  These are system specific command and system specific implementation
+	  function is required to process these commands.
+
+if ENABLE_MGMT_PERUSER
+config BOOT_MGMT_CUSTOM_STORAGE_ERASE
+	bool "Enable storage erase command"
+	help
+	  The option enables mcumgr command that allows to erase storage
+	  partition.
+	  Note that the storage partition needs to be defined, in DTS, otherwise
+	  enabling the option will cause a compilation to fail.
+
+config BOOT_MGMT_CUSTOM_IMG_LIST
+	bool "Enable custom image list command"
+	help
+	  The option enables command which returns versions and installation
+	  statuses (custom property) for all images.
+
+endif # ENABLE_MGMT_PERUSER
+
+config BOOT_SERIAL_ENCRYPT_EC256
+	bool "Support for encrypted upgrade images using ECIES-P256 in serial recovery upload"
+	default n
+	help
+	  If y, uploaded images via serial recovery can be decrypted
+	  on the fly when upgrading to the primary slot. The
+	  encryption mechanism used in this case is ECIES using primitives
+	  described under "ECIES-P256 encryption" in docs/encrypted_images.md.
+
+config BOOT_SERIAL_WAIT_FOR_DFU
+	bool "Wait for a prescribed duration to see if DFU is invoked by receiving a mcumgr comand"
+	depends on BOOT_SERIAL_UART
+	help
+	  If y, MCUboot waits for a prescribed duration of time to allow
+	  for DFU to be invoked. The serial recovery can be entered by receiving any
+	  mcumgr command.
+
+config BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
+	int "Duration to wait for the serial DFU timeout in ms"
+	default 500
+	depends on BOOT_SERIAL_WAIT_FOR_DFU
+	help
+	  timeout in ms for MCUboot to wait to allow for DFU to be invoked.
+
+endif # MCUBOOT_SERIAL

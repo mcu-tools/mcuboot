@@ -47,7 +47,7 @@ operating systems and SoCs:
 - [RIOT](docs/readme-riot.md)
 - [Mbed OS](docs/readme-mbed.md)
 - [Espressif](docs/readme-espressif.md)
-- [Cypress/Infineon](boot/cypress/readme.md)
+- [Cypress/Infineon](boot/cypress/README.md)
 
 There are also instructions for the [Simulator](sim/README.rst).
 
