@@ -20,6 +20,7 @@
 #include <flash_map_backend/flash_map_backend.h>
 
 #include "boot_test.h"
+#include "zcbor_common.h"
 
 TEST_CASE(boot_serial_upload_bigger_image)
 {
@@ -88,7 +89,7 @@ TEST_CASE(boot_serial_upload_bigger_image)
         if (off) {
             memcpy(buf + payload_off, payload_next, sizeof payload_next);
             len = sizeof payload_next;
-            buf[payload_off + len - 2] = Value8Bit;
+            buf[payload_off + len - 2] = ZCBOR_VALUE_IS_1_BYTE;
             buf[payload_off + len - 1] = off;
         } else {
             memcpy(buf + payload_off, payload_first, sizeof payload_first);

@@ -9,17 +9,6 @@
 #ifndef __MCUBOOT_CONFIG_H__
 #define __MCUBOOT_CONFIG_H__
 
-/*
- * This file is also included by the simulator, but we don't want to
- * define anything here in simulator builds.
- *
- * Instead of using mcuboot_config.h, the simulator adds MCUBOOT_xxx
- * configuration flags to the compiler command lines based on the
- * values of environment variables. However, the file still must
- * exist, or bootutil won't build.
- */
-#ifndef __BOOTSIM__
-
 #ifdef CONFIG_BOOT_SIGNATURE_TYPE_RSA
 #define MCUBOOT_SIGN_RSA
 #  if (CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN != 2048 && \
@@ -53,6 +42,9 @@
 #endif
 #endif
 
+/* Zephyr, regardless of C library used, provides snprintf */
+#define MCUBOOT_USE_SNPRINTF 1
+
 #ifdef CONFIG_BOOT_HW_KEY
 #define MCUBOOT_HW_KEY
 #endif
@@ -85,6 +77,12 @@
 
 #ifdef CONFIG_BOOT_DIRECT_XIP_REVERT
 #define MCUBOOT_DIRECT_XIP_REVERT
+#endif
+
+#ifdef CONFIG_BOOT_RAM_LOAD
+#define MCUBOOT_RAM_LOAD 1
+#define IMAGE_EXECUTABLE_RAM_START CONFIG_BOOT_IMAGE_EXECUTABLE_RAM_START
+#define IMAGE_EXECUTABLE_RAM_SIZE CONFIG_BOOT_IMAGE_EXECUTABLE_RAM_SIZE
 #endif
 
 #ifdef CONFIG_UPDATEABLE_IMAGE_NUMBER
@@ -233,8 +231,6 @@
 #define MCUBOOT_MAX_IMG_SECTORS       128
 #endif
 
-#endif /* !__BOOTSIM__ */
-
 #if CONFIG_BOOT_WATCHDOG_FEED
 #if CONFIG_NRFX_WDT
 #include <nrfx_wdt.h>
@@ -262,7 +258,7 @@
 #endif /* defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1) */
 
 #elif CONFIG_IWDG_STM32 /* CONFIG_NRFX_WDT */
-#include <drivers/watchdog.h>
+#include <zephyr/drivers/watchdog.h>
 
 #define MCUBOOT_WATCHDOG_FEED() \
     do {                        \

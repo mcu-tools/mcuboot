@@ -101,3 +101,23 @@ syscfg.defs:
     BOOTUTIL_FEED_WATCHDOG:
         description: 'Enable watchdog feeding while performing a swap upgrade'
         value: 0
+
+    MCUBOOT_MEASURED_BOOT:
+        description: >
+            Store the boot state/measurements in shared memory.
+            If enabled, the bootloader will store certain boot measurements such as
+            the hash of the firmware image in a shared memory area. This data can
+            be used later by runtime services (e.g. by a device attestation service).
+        value:
+    MCUBOOT_MEASURED_BOOT_MAX_RECORD_SZ:
+        description: the maximum size of the CBOR encoded boot record in bytes.
+        value:
+    MCUBOOT_DATA_SHARING:
+        description: Save application specific data in shared memory (RAM).
+        value:
+    MCUBOOT_SHARED_DATA_BASE:
+        description: RAM address of shared data
+        value:
+    MCUBOOT_SHARED_DATA_SIZE:
+        description: Shared data size.
+        value:

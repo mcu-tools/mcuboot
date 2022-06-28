@@ -19,9 +19,9 @@
  * Otherwise, the Zephyr SoC header and the DTS provide most
  * everything we need.
  */
-#include <devicetree.h>
+#include <zephyr/devicetree.h>
 #include <soc.h>
-#include <storage/flash_map.h>
+#include <zephyr/storage/flash_map.h>
 
 #define FLASH_ALIGN FLASH_WRITE_BLOCK_SIZE
 

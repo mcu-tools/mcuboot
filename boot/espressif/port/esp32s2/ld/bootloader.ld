@@ -32,6 +32,7 @@ SECTIONS
     *libhal.a:bootloader_flash_config_esp32s2.*(.literal .text .literal.* .text.*)
     *libhal.a:bootloader_clock_loader.*(.literal .text .literal.* .text.*)
     *libhal.a:bootloader_common_loader.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_init_common.*(.literal .text .literal.* .text.*)
     *libhal.a:bootloader_flash.*(.literal .text .literal.* .text.*)
     *libhal.a:bootloader_random.*(.literal .text .literal.* .text.*)
     *libhal.a:bootloader_random*.*(.literal.bootloader_random_disable .text.bootloader_random_disable)
