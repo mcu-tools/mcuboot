@@ -514,13 +514,24 @@ choice BOOT_DOWNGRADE_PREVENTION_CHOICE
 
 config MCUBOOT_DOWNGRADE_PREVENTION
 	bool "SW based downgrade prevention"
-	depends on BOOT_UPGRADE_ONLY
+	depends on !BOOT_DIRECT_XIP
 	help
 	  Prevent downgrades by enforcing incrementing version numbers.
 	  When this option is set, any upgrade must have greater major version
 	  or greater minor version with equal major version. This mechanism
 	  only protects against some attacks against version downgrades (for
 	  example, a JTAG could be used to write an older version).
+
+config MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER
+	bool "Use image security counter instead of version number"
+	depends on MCUBOOT_DOWNGRADE_PREVENTION
+	depends on (BOOT_SWAP_USING_MOVE || BOOT_SWAP_USING_SCRATCH)
+	help
+       Security counter is used for version eligibility check instead of pure
+       version.  When this option is set, any upgrade must have greater or
+       equal security counter value.
+       Because of the acceptance of equal values it allows for software
+       downgrades to some extent.
 
 config MCUBOOT_HW_DOWNGRADE_PREVENTION
 	bool "HW based downgrade prevention"
