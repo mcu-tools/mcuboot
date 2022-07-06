@@ -93,6 +93,11 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
 #define BOOT_MAGIC_ALIGN_SIZE   BOOT_MAGIC_SZ
 #endif
 
+/** The size of buffer to use for copying regions */
+#ifdef MCUBOOT_BOOT_COPY_REGION_SIZE
+#define BOOT_COPY_REGION_SIZE   MCUBOOT_BOOT_COPY_REGION_SIZE
+#endif
+
 #define BOOT_MAGIC_GOOD     1
 #define BOOT_MAGIC_BAD      2
 #define BOOT_MAGIC_UNSET    3

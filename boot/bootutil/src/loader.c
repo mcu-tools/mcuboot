@@ -81,8 +81,8 @@ static struct boot_loader_state boot_data;
 #define TARGET_STATIC
 #endif
 
-#if BOOT_MAX_ALIGN > 1024
-#define BUF_SZ BOOT_MAX_ALIGN
+#ifdef BOOT_COPY_REGION_SIZE
+#define BUF_SZ BOOT_COPY_REGION_SIZE
 #else
 #define BUF_SZ 1024
 #endif
