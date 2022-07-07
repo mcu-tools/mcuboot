@@ -100,6 +100,15 @@ static void boot_serial_output(void);
 
 static zcbor_state_t cbor_state[2];
 
+#ifdef MCUBOOT_SERIAL_SMP_BUSY_RESPONSES
+static bool mcumgr_is_busy;
+#define MGMT_SET_BUSY(b) (mcumgr_is_busy = b)
+#define MGMT_GET_BUSY() (mcumgr_is_busy)
+#else
+#define MGMT_SET_BUSY(b) false
+#define MGMT_GET_BUSY() false
+#endif
+
 void reset_cbor_state(void)
 {
     zcbor_new_encode_state(cbor_state, 2, (uint8_t *)bs_obuf,
@@ -545,7 +554,9 @@ out:
 #ifdef MCUBOOT_ENC_IMAGES
     if (curr_off == img_size) {
         /* Last sector received, now start a decryption on the image if it is encrypted*/
+        MGMT_SET_BUSY(true);
         rc = boot_handle_enc_fw();
+        MGMT_SET_BUSY(false);
     }
 #endif //#ifdef MCUBOOT_ENC_IMAGES
 }
@@ -667,6 +678,10 @@ boot_serial_input(char *buf, int len)
             bs_rc_rsp(0);
             break;
         case NMGR_ID_RESET:
+            if (MGMT_GET_BUSY()) {
+                bs_rc_rsp(MGMT_ERR_EBUSY);
+                return;
+            }
             bs_reset(buf, len);
             break;
         default:

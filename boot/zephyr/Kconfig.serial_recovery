@@ -153,4 +153,11 @@ config BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
 	help
 	  timeout in ms for MCUboot to wait to allow for DFU to be invoked.
 
+config BOOT_SERIAL_SMP_BUSY_RESPONSES
+	bool "Allow BUSY error response to SMP request"
+	help
+	  This is useful when SMP processor in serial recovery is performing some background
+	  task that may require completion before allowing processing of other commands
+	  like reset or image erase.
+
 endif # MCUBOOT_SERIAL
