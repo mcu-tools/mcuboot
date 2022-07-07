@@ -17,27 +17,12 @@ zephyr_library_sources(
   ../src/bootutil_public.c
     )
 
-if(CONFIG_BOOT_IMAGE_ACCESS_HOOKS)
-  if(NOT CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE STREQUAL "")
-    if(IS_ABSOLUTE ${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE})
-      if(EXISTS ${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE})
-        set(HOOKS_FILE ${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE})
-      endif()
-    elseif((DEFINED CONF_DIR) AND
-           (EXISTS ${CONF_DIR}/${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE}))
-      set(HOOKS_FILE ${CONF_DIR}/${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE})
-    else(EXISTS ${APPLICATION_SOURCE_DIR}/${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE})
-      set(HOOKS_FILE ${APPLICATION_SOURCE_DIR}/${CONFIG_BOOT_IMAGE_ACCESS_HOOKS_FILE})
-    endif()
-  endif()
-
-  if(DEFINED HOOKS_FILE)
-      zephyr_library_sources(
-        ${HOOKS_FILE}
-      )
-  else()
-    message(STATUS "No hooks implementation file.")
-  endif()
+# Sensitivity to the TEST_BOOT_IMAGE_ACCESS_HOOKS define is implemented for
+# allowing the test-build with the hooks feature enabled.
+if(TEST_BOOT_IMAGE_ACCESS_HOOKS)
+  zephyr_library_sources(
+    ${APPLICATION_SOURCE_DIR}/hooks_sample.c
+  )
 endif()
 
 zephyr_library_link_libraries(MCUBOOT_BOOTUTIL)
