@@ -43,7 +43,7 @@ endif()
 
 zephyr_library_include_directories(
   ${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include
-  ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/zephyr/targets
+  targets
   )
 if(EXISTS targets/${BOARD}.h)
   zephyr_library_compile_definitions(MCUBOOT_TARGET_CONFIG="${BOARD}.h")
@@ -51,20 +51,20 @@ endif()
 
 # Zephyr port-specific sources.
 zephyr_library_sources(
-  ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/zephyr/main.c
-  ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/zephyr/flash_map_extended.c
-  ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/zephyr/os.c
+  main.c
+  flash_map_extended.c
+  os.c
   )
 
 if(DEFINED CONFIG_ENABLE_MGMT_PERUSER)
   zephyr_library_sources(
-    ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/zephyr/boot_serial_extensions.c
+    boot_serial_extensions.c
     )
 endif()
 
 if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)
   zephyr_library_sources(
-    ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/zephyr/flash_map_legacy.c
+    flash_map_legacy.c
     )
 endif()
 
@@ -89,7 +89,7 @@ endif()
 
 if(CONFIG_SINGLE_APPLICATION_SLOT)
 zephyr_library_sources(
-  ${BOOT_DIR}/zephyr/single_loader.c
+  single_loader.c
   )
 zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
 else()
@@ -208,7 +208,7 @@ if(CONFIG_BOOT_ENCRYPT_EC256)
 endif()
 
 if(CONFIG_MCUBOOT_SERIAL)
-  zephyr_sources(${BOOT_DIR}/zephyr/serial_adapter.c)
+  zephyr_sources(serial_adapter.c)
   zephyr_sources(${BOOT_DIR}/boot_serial/src/boot_serial.c)
   zephyr_sources(${BOOT_DIR}/boot_serial/src/serial_recovery_cbor.c)
   zephyr_sources(${BOOT_DIR}/boot_serial/src/zcbor_decode.c)
@@ -229,6 +229,6 @@ endif()
 
 if(CONFIG_MCUBOOT_CLEANUP_ARM_CORE)
 zephyr_library_sources(
-  ${BOOT_DIR}/zephyr/arm_cleanup.c
+  arm_cleanup.c
 )
 endif()
