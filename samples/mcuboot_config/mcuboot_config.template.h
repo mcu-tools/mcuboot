@@ -17,7 +17,7 @@
  *
  * For examples, see:
  *
- * boot/zephyr/include/mcuboot_config/mcuboot_config.h
+ * zephyr/include/mcuboot_config/mcuboot_config.h
  * boot/mynewt/mcuboot_config/include/mcuboot_config/mcuboot_config.h
  */
 

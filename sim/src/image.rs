@@ -141,7 +141,7 @@ impl ImagesBuilder {
         let mut slots = Vec::with_capacity(num_images);
         for image in 0..num_images {
             // This mapping must match that defined in
-            // `boot/zephyr/include/sysflash/sysflash.h`.
+            // `zephyr/include/sysflash/sysflash.h`.
             let id0 = match image {
                 0 => FlashId::Image0,
                 1 => FlashId::Image2,

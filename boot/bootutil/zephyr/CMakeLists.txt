@@ -8,9 +8,9 @@ if(CONFIG_MCUBOOT_BOOTUTIL_LIB)
 zephyr_interface_library_named(MCUBOOT_BOOTUTIL)
 
 zephyr_include_directories(MCUBOOT_BOOTUTIL INTERFACE
-  ../
-  ../include
-  ../../zephyr/include
+  ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/bootutil
+  ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/bootutil/include
+  ${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include
 )
 
 zephyr_library_named(mcuboot_util)
@@ -31,7 +31,7 @@ target_link_libraries(MCUBOOT_BOOTUTIL INTERFACE zephyr_interface)
 
 if(CONFIG_BOOT_USE_TINYCRYPT)
 target_include_directories(MCUBOOT_BOOTUTIL INTERFACE
-  ../../../ext/tinycrypt/lib/include
+  ${ZEPHYR_MCUBOOT_MODULE_DIR}/ext/tinycrypt/lib/include
 )
 endif()
 

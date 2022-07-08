@@ -64,7 +64,7 @@ by MCUboot. For example, Mynewt uses MYNEWT_VAL() and Zephyr uses
 Kconfig; these configuration systems are converted to MCUBOOT_ options
 in the following files:
 
-- boot/zephyr/include/mcuboot_config/mcuboot_config.h
+- zephyr/include/mcuboot_config/mcuboot_config.h
 - boot/mynewt/mcuboot_config/include/mcuboot_config/mcuboot_config.h
 
 ## Flash Map

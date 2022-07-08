@@ -1,6 +1,7 @@
 # CMakeLists.txt for building mcuboot as a Zephyr project
 #
 # Copyright (c) 2017 Open Source Foundries Limited
+# Copyright (c) 2022 Legrand North America, LLC.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -79,7 +80,7 @@ endif()
 endif()
 
 zephyr_library_include_directories(
-  include
+  ${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include
   targets
   )
 if(EXISTS targets/${BOARD}.h)
@@ -155,7 +156,7 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_
   if(CONFIG_BOOT_USE_TINYCRYPT)
   # When using ECDSA signatures, pull in our copy of the tinycrypt library.
   zephyr_library_include_directories(
-    ${BOOT_DIR}/zephyr/include
+    ${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include
     ${TINYCRYPT_DIR}/include
     )
   zephyr_include_directories(${TINYCRYPT_DIR}/include)
@@ -176,11 +177,11 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_
   # to set MBEDTLS_CONFIG_FILE ourselves. When using Zephyr's copy, this
   # variable is set by its Kconfig in the Zephyr codebase.
   zephyr_library_compile_definitions(
-    MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h"
+    MBEDTLS_CONFIG_FILE="${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include/mcuboot-mbedtls-cfg.h"
     )
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_NONE)
   zephyr_library_include_directories(
-    ${BOOT_DIR}/zephyr/include
+    ${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include
     ${TINYCRYPT_DIR}/include
     )
 
@@ -191,7 +192,7 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_NONE)
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   # Use mbedTLS provided by Zephyr for RSA signatures. (Its config file
   # is set using Kconfig.)
-  zephyr_include_directories(include)
+  zephyr_include_directories(${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include)
   if(CONFIG_BOOT_ENCRYPT_RSA)
     set_source_files_properties(
       ${BOOT_DIR}/bootutil/src/encrypted.c
@@ -203,7 +204,7 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
   if(CONFIG_BOOT_USE_TINYCRYPT)
     zephyr_library_include_directories(
       ${MBEDTLS_ASN1_DIR}/include
-      ${BOOT_DIR}/zephyr/include
+      ${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include
       ${TINYCRYPT_DIR}/include
       ${TINYCRYPT_SHA512_DIR}/include
       )
@@ -216,14 +217,14 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
       ${MBEDTLS_ASN1_DIR}/src/platform_util.c
       )
     zephyr_library_compile_definitions(
-      MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h"
+      MBEDTLS_CONFIG_FILE="${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include/mcuboot-mbedtls-cfg.h"
       )
   else()
-    zephyr_include_directories(include)
+    zephyr_include_directories(${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include)
   endif()
 
   zephyr_library_include_directories(
-    ${BOOT_DIR}/zephyr/include
+    ${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include
     ${FIAT_DIR}/include/
   )
 
@@ -260,7 +261,7 @@ if(CONFIG_MCUBOOT_SERIAL)
 
   zephyr_include_directories(${BOOT_DIR}/bootutil/include)
   zephyr_include_directories(${BOOT_DIR}/boot_serial/include)
-  zephyr_include_directories(include)
+  zephyr_include_directories(${ZEPHYR_MCUBOOT_MODULE_DIR}/zephyr/include)
 
   zephyr_include_directories_ifdef(
     CONFIG_BOOT_ERASE_PROGRESSIVELY

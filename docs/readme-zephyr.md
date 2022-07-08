@@ -61,7 +61,7 @@ it as usual:
 In addition to the partitions defined in DTS, some additional
 information about the flash layout is currently required to build
 MCUboot itself. All the needed configuration is collected in
-`boot/zephyr/include/target.h`. Depending on the board, this information
+`zephyr/include/target.h`. Depending on the board, this information
 may come from board-specific headers, Device Tree, or be configured by
 MCUboot on a per-SoC family basis.
 
