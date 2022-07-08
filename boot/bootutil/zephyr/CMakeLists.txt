@@ -1,4 +1,5 @@
 # Copyright (c) 2020 Nordic Semiconductor ASA
+# Copyright (c) 2022 Legrand North America, LLC.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -6,7 +7,7 @@ if(CONFIG_MCUBOOT_BOOTUTIL_LIB)
 
 zephyr_interface_library_named(MCUBOOT_BOOTUTIL)
 
-target_include_directories(MCUBOOT_BOOTUTIL INTERFACE
+zephyr_include_directories(MCUBOOT_BOOTUTIL INTERFACE
   ../
   ../include
   ../../zephyr/include

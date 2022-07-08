@@ -1,4 +1,9 @@
+# Copyright (c) 2022 Legrand North America, LLC.
+#
+# SPDX-License-Identifier: Apache-2.0
+
 samples:
   - boot/zephyr
 build:
+  kconfig: zephyr/Kconfig
   cmake: ./boot/bootutil/zephyr
