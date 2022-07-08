@@ -7,4 +7,4 @@ samples:
   - boot/zephyr
 build:
   kconfig: zephyr/Kconfig
-  cmake: ./boot/bootutil/zephyr
+  cmake: zephyr
