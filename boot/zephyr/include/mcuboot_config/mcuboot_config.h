@@ -196,6 +196,15 @@
 #endif
 
 /*
+ * The image list and image upload may report additional key in responses,
+ * "install_progress" that reflects percentage of post processing
+ * completed after image upload.
+ */
+#ifdef CONFIG_BOOT_SERIAL_IMG_INSTALL_PROGRESS
+#define MCUBOOT_BOOT_SERIAL_IMG_INSTALL_PROGRESS
+#endif
+
+/*
  * The option enables code, currently in boot_serial, that attempts
  * to erase flash progressively, as update fragments are received,
  * instead of erasing whole image size of flash area after receiving

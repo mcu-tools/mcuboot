@@ -183,6 +183,22 @@ bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
 }
 #endif /* !MCUBOOT_USE_SNPRINTF */
 
+static void
+bs_put_install_progress(int image, int slot)
+{
+#ifdef MCUBOOT_BOOT_SERIAL_IMG_INSTALL_PROGRESS
+    int rc = BOOT_HOOK_CALL(boot_img_install_stat_hook, -101, image_index, slot);
+
+    if (rc != -101) {
+        zcbor_tstr_put_term(cbor_state, "install_progress");
+        zcbor_int32_put(cbor_state, rc);
+    }
+#else
+    (void)image;
+    (void)slot;
+#endif
+}
+
 /*
  * List images.
  */
@@ -257,6 +273,9 @@ bs_list(char *buf, int len)
 
             bs_list_img_ver((char *)tmpbuf, sizeof(tmpbuf), &hdr.ih_ver);
             zcbor_tstr_encode_ptr(cbor_state, tmpbuf, strlen((char *)tmpbuf));
+
+            bs_put_install_progress(image_index, slot);
+
             zcbor_map_end_encode(cbor_state, 20);
         }
     }
@@ -536,6 +555,7 @@ out:
     if (rc == 0) {
         zcbor_tstr_put_lit_cast(cbor_state, "off");
         zcbor_uint32_put(cbor_state, curr_off);
+        bs_put_install_progress(img_num, 0);
     }
     zcbor_map_end_encode(cbor_state, 10);
 

@@ -35,6 +35,17 @@ config BOOT_SERIAL_CDC_ACM
 
 endchoice
 
+config BOOT_SERIAL_IMG_INSTALL_PROGRESS
+	bool "Post upload installation progress reported in SMP responses"
+	help
+	  The option allows SMP responses for image upload and image list to report
+	  progress of post upload processing of the uploaded image, in form of
+	  "install_progress" key.
+	  The additional key takes values: 0 when not yet started, [1,99] when in
+	  progress, 100 when completed and [-100, -1] as percentage where error
+	  has occurred, in case of error.
+
+
 config MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
 	bool "Allow to select image number for DFU"
 	help

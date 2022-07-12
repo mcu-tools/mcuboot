@@ -179,6 +179,6 @@ int boot_img_install_stat_hook(int image_index, int slot,
  * with returning progress and then deciding to case providing such information
  * is considered an error.
  */
-int boot_img_install_progress_hook(int image_index, int slot)
+int boot_img_install_progress_hook(int image_index, int slot);
 
 #endif /*H_BOOTUTIL_HOOKS*/
