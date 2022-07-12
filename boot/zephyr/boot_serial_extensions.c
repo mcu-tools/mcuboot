@@ -13,7 +13,7 @@
 
 #include "bootutil/bootutil_log.h"
 #include "../boot_serial/src/boot_serial_priv.h"
-#include "../boot_serial/src/cbor_encode.h"
+#include "../boot_serial/src/zcbor_encode.h"
 
 #include "bootutil/image.h"
 #include "bootutil/bootutil_public.h"
@@ -22,7 +22,7 @@
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #ifdef CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE
-static int bs_custom_storage_erase(cbor_state_t *cs)
+static int bs_custom_storage_erase(zcbor_state_t *cs)
 {
     int rc;
 
@@ -45,10 +45,10 @@ static int bs_custom_storage_erase(cbor_state_t *cs)
         rc = MGMT_ERR_EUNKNOWN;
     }
 
-    map_start_encode(cs, 10);
-    tstrx_put(cs, "rc");
-    uintx32_put(cs, rc);
-    map_end_encode(cs, 10);
+    zcbor_map_start_encode(cs, 10);
+    zcbor_tstr_put_lit(cs, "rc");
+    zcbor_uint32_put(cs, rc);
+    zcbor_map_end_encode(cs, 10);
 
     return rc;
 }
@@ -103,29 +103,29 @@ static int custom_img_status(int image_index, uint32_t slot,char *buffer,
     return rc;
 }
 
-static int bs_custom_img_list(cbor_state_t *cs)
+static int bs_custom_img_list(zcbor_state_t *cs)
 {
     int rc = 0;
     char tmpbuf[64];	/* Buffer should fit version and flags */
 
-    map_start_encode(cs, 10);
+    zcbor_map_start_encode(cs, 10);
 
     for (int img = 0; img < MCUBOOT_IMAGE_NUMBER; img++) {
         for (int slot = 0; slot < 2; slot++) {
             rc = custom_img_status(img, slot, tmpbuf, sizeof(tmpbuf));
 
-            intx32_put(cs, img * 2 + slot + 1);
+            zcbor_int32_put(cs, img * 2 + slot + 1);
             if (rc == 0) {
-                tstrx_put_term(cs, tmpbuf);
+                zcbor_tstr_put_term(cs, tmpbuf);
             } else {
-                tstrx_put_term(cs, "");
+                zcbor_tstr_put_lit(cs, "");
             }
         }
     }
 
-    tstrx_put(cs, "rc");
-    uintx32_put(cs, MGMT_ERR_OK);
-    map_end_encode(cs, 10);
+    zcbor_tstr_put_lit(cs, "rc");
+    zcbor_uint32_put(cs, MGMT_ERR_OK);
+    zcbor_map_end_encode(cs, 10);
 
     return rc;
 }
@@ -136,7 +136,7 @@ static int bs_custom_img_list(cbor_state_t *cs)
 #endif /*MCUBOOT_MGMT_CUSTOM_IMG_LIST*/
 
 int bs_peruser_system_specific(const struct nmgr_hdr *hdr, const char *buffer,
-                               int len, cbor_state_t *cs)
+                               int len, zcbor_state_t *cs)
 {
     int mgmt_rc = MGMT_ERR_ENOTSUP;
 
@@ -157,10 +157,10 @@ int bs_peruser_system_specific(const struct nmgr_hdr *hdr, const char *buffer,
     }
 
     if (mgmt_rc == MGMT_ERR_ENOTSUP) {
-        map_start_encode(cs, 10);
-        tstrx_put(cs, "rc");
-        uintx32_put(cs, mgmt_rc);
-        map_end_encode(cs, 10);
+        zcbor_map_start_encode(cs, 10);
+        zcbor_tstr_put_lit(cs, "rc");
+        zcbor_uint32_put(cs, mgmt_rc);
+        zcbor_map_end_encode(cs, 10);
     }
 
     return MGMT_ERR_OK;
