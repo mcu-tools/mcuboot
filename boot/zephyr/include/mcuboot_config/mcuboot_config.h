@@ -232,6 +232,7 @@
 #endif
 
 #if CONFIG_BOOT_WATCHDOG_FEED
+#include <zephyr/devicetree.h>
 #if CONFIG_NRFX_WDT
 #include <nrfx_wdt.h>
 
@@ -268,7 +269,19 @@
         wdt_feed(wdt, 0);                                   \
     } while (0)
 
-#else /* CONFIG_IWDG_STM32 */
+#elif DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) /* CONFIG_IWDG_STM32 */
+#include <zephyr/device.h>
+#include <zephyr/drivers/watchdog.h>
+
+#define MCUBOOT_WATCHDOG_FEED()                               \
+    do {                                                      \
+        const struct device* wdt =                            \
+            DEVICE_DT_GET(DT_ALIAS(watchdog0));               \
+        if (device_is_ready(wdt)) {                           \
+                wdt_feed(wtd, 0);                             \
+        }                                                     \
+    } while (0)
+#else /* DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) */
 #warning "MCUBOOT_WATCHDOG_FEED() is no-op"
 /* No vendor implementation, no-op for historical reasons */
 #define MCUBOOT_WATCHDOG_FEED()         \
