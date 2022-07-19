@@ -28,12 +28,12 @@
 #include "zcbor_encode.h"
 
 #ifdef __ZEPHYR__
-#include <sys/reboot.h>
-#include <sys/byteorder.h>
-#include <sys/__assert.h>
-#include <drivers/flash.h>
-#include <sys/crc.h>
-#include <sys/base64.h>
+#include <zephyr/sys/reboot.h>
+#include <zephyr/sys/byteorder.h>
+#include <zephyr/sys/__assert.h>
+#include <zephyr/drivers/flash.h>
+#include <zephyr/sys/crc.h>
+#include <zephyr/sys/base64.h>
 #include <hal/hal_flash.h>
 #elif __ESPRESSIF__
 #include <bootloader_utility.h>
