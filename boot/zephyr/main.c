@@ -327,7 +327,12 @@ void boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
     log_init();
 
     while (1) {
+#if defined(CONFIG_LOG1) || defined(CONFIG_LOG2)
+        /* support Zephyr legacy logging implementation before commit c5f2cde */
         if (log_process(false) == false) {
+#else
+        if (log_process() == false) {
+#endif
             if (boot_log_stop) {
                 break;
             }
