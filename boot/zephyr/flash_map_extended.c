@@ -21,22 +21,16 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #if (!defined(CONFIG_XTENSA) && DT_HAS_CHOSEN(zephyr_flash_controller))
 #define FLASH_DEVICE_ID SOC_FLASH_0_ID
 #define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
-#elif (defined(CONFIG_XTENSA) && defined(DT_JEDEC_SPI_NOR_0_LABEL))
+#define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash_controller)
+#elif (defined(CONFIG_XTENSA) && DT_NODE_EXISTS(DT_INST(0, jedec_spi_nor))
 #define FLASH_DEVICE_ID SPI_FLASH_0_ID
 #define FLASH_DEVICE_BASE 0
+#define FLASH_DEVICE_NODE DT_INST(0, jedec_spi_nor)
 #else
 #error "FLASH_DEVICE_ID could not be determined"
 #endif
 
-static const struct device *flash_dev;
-
-const struct device *flash_device_get_binding(char *dev_name)
-{
-    if (!flash_dev) {
-        flash_dev = device_get_binding(dev_name);
-    }
-    return flash_dev;
-}
+static const struct device *flash_dev = DEVICE_DT_GET(FLASH_DEVICE_NODE);
 
 int flash_device_base(uint8_t fd_id, uintptr_t *ret)
 {
