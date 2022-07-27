@@ -34,12 +34,6 @@ extern "C" {
 #include <inttypes.h>
 #include <sys/types.h>
 
-/* Retrieve the flash device with the given name.
- *
- * Returns the flash device on success, or NULL on failure.
- */
-const struct device *flash_device_get_binding(char *dev_name);
-
 /*
  * Retrieve a memory-mapped flash device's base address.
  *
