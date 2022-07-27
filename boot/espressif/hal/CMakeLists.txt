@@ -58,7 +58,10 @@ set(hal_srcs
     ${src_dir}/${MCUBOOT_TARGET}/bootloader_init.c
     ${esp_idf_dir}/components/hal/mpu_hal.c
     ${esp_idf_dir}/components/hal/soc_hal.c
+    ${esp_idf_dir}/components/soc/${MCUBOOT_TARGET}/uart_periph.c
+    ${esp_idf_dir}/components/soc/${MCUBOOT_TARGET}/gpio_periph.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_common_loader.c
+    ${esp_idf_dir}/components/bootloader_support/src/bootloader_console.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_console_loader.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash.c
     ${esp_idf_dir}/components/bootloader_support/src/bootloader_flash_config_${MCUBOOT_TARGET}.c

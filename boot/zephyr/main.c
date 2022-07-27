@@ -136,15 +136,13 @@ static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
 void led_init(void)
 {
+    if (!device_is_ready(led0.port)) {
+        BOOT_LOG_ERR("Didn't find LED device referred by the LED0_NODE\n");
+        return;
+    }
 
-  if (!device_is_ready(led0.port)) {
-    BOOT_LOG_ERR("Didn't find LED device referred by the LED0_NODE\n");
-    return;
-  }
-
-  gpio_pin_configure_dt(&led0, GPIO_OUTPUT);
-  gpio_pin_set_dt(&led0, 0);
-
+    gpio_pin_configure_dt(&led0, GPIO_OUTPUT);
+    gpio_pin_set_dt(&led0, 0);
 }
 #endif /* CONFIG_MCUBOOT_INDICATION_LED */
 
@@ -290,7 +288,7 @@ static void do_boot(struct boot_rsp *rsp)
 static void do_boot(struct boot_rsp *rsp)
 {
     void *start;
-    
+
 #if defined(MCUBOOT_RAM_LOAD)
     start = (void *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
 #else
@@ -326,30 +324,35 @@ void boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
     (void)dummy2;
     (void)dummy3;
 
-     log_init();
+    log_init();
 
-     while (1) {
-             if (log_process(false) == false) {
-                    if (boot_log_stop) {
-                        break;
-                    }
-                    k_sleep(BOOT_LOG_PROCESSING_INTERVAL);
-             }
-     }
+    while (1) {
+#if defined(CONFIG_LOG1) || defined(CONFIG_LOG2)
+        /* support Zephyr legacy logging implementation before commit c5f2cde */
+        if (log_process(false) == false) {
+#else
+        if (log_process() == false) {
+#endif
+            if (boot_log_stop) {
+                break;
+            }
+            k_sleep(BOOT_LOG_PROCESSING_INTERVAL);
+        }
+    }
 
-     k_sem_give(&boot_log_sem);
+    k_sem_give(&boot_log_sem);
 }
 
 void zephyr_boot_log_start(void)
 {
-        /* start logging thread */
-        k_thread_create(&boot_log_thread, boot_log_stack,
-                K_THREAD_STACK_SIZEOF(boot_log_stack),
-                boot_log_thread_func, NULL, NULL, NULL,
-                K_HIGHEST_APPLICATION_THREAD_PRIO, 0,
-                BOOT_LOG_PROCESSING_INTERVAL);
+    /* start logging thread */
+    k_thread_create(&boot_log_thread, boot_log_stack,
+                    K_THREAD_STACK_SIZEOF(boot_log_stack),
+                    boot_log_thread_func, NULL, NULL, NULL,
+                    K_HIGHEST_APPLICATION_THREAD_PRIO, 0,
+                    BOOT_LOG_PROCESSING_INTERVAL);
 
-        k_thread_name_set(&boot_log_thread, "logging");
+    k_thread_name_set(&boot_log_thread, "logging");
 }
 
 void zephyr_boot_log_stop(void)

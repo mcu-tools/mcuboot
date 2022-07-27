@@ -28,15 +28,23 @@
 #include "zcbor_encode.h"
 
 #ifdef __ZEPHYR__
-#include <sys/reboot.h>
-#include <sys/byteorder.h>
-#include <sys/__assert.h>
-#include <drivers/flash.h>
-#include <sys/crc.h>
-#include <sys/base64.h>
+#include <zephyr/sys/reboot.h>
+#include <zephyr/sys/byteorder.h>
+#include <zephyr/sys/__assert.h>
+#include <zephyr/drivers/flash.h>
+#include <zephyr/sys/crc.h>
+#include <zephyr/sys/base64.h>
+#include <hal/hal_flash.h>
+#elif __ESPRESSIF__
+#include <bootloader_utility.h>
+#include <esp_rom_sys.h>
+#include <rom/crc.h>
+#include <endian.h>
+#include <mbedtls/base64.h>
 #else
 #include <bsp/bsp.h>
 #include <hal/hal_system.h>
+#include <hal/hal_flash.h>
 #include <os/endian.h>
 #include <os/os_cputime.h>
 #include <crc/crc16.h>
@@ -44,7 +52,6 @@
 #endif /* __ZEPHYR__ */
 
 #include <flash_map_backend/flash_map_backend.h>
-#include <hal/hal_flash.h>
 #include <os/os.h>
 #include <os/os_malloc.h>
 
@@ -53,6 +60,7 @@
 
 #include "boot_serial/boot_serial.h"
 #include "boot_serial_priv.h"
+#include "mcuboot_config/mcuboot_config.h"
 
 #ifdef MCUBOOT_ERASE_PROGRESSIVELY
 #include "bootutil_priv.h"
@@ -80,6 +88,15 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #define ntohs(x) sys_be16_to_cpu(x)
 #define htons(x) sys_cpu_to_be16(x)
+#elif __ESPRESSIF__
+#define BASE64_ENCODE_SIZE(in_size) ((((((in_size) - 1) / 3) * 4) + 4) + 1)
+#define CRC16_INITIAL_CRC       0       /* what to seed crc16 with */
+
+#define ntohs(x) be16toh(x)
+#define htons(x) htobe16(x)
+
+#define base64_decode mbedtls_base64_decode
+#define base64_encode mbedtls_base64_encode
 #endif
 
 #if (BOOT_IMAGE_NUMBER > 1)
@@ -612,6 +629,9 @@ bs_reset(char *buf, int len)
     k_busy_wait(250000);
 #endif
     sys_reboot(SYS_REBOOT_COLD);
+#elif __ESPRESSIF__
+    esp_rom_delay_us(250000);
+    bootloader_reset();
 #else
     os_cputime_delay_usecs(250000);
     hal_system_reset();
@@ -707,6 +727,10 @@ boot_serial_output(void)
 #ifdef __ZEPHYR__
     crc =  crc16_itu_t(CRC16_INITIAL_CRC, (uint8_t *)bs_hdr, sizeof(*bs_hdr));
     crc =  crc16_itu_t(crc, data, len);
+#elif __ESPRESSIF__
+    /* For ESP32 it was used the CRC API in rom/crc.h */
+    crc =  ~crc16_be(~CRC16_INITIAL_CRC, (uint8_t *)bs_hdr, sizeof(*bs_hdr));
+    crc =  ~crc16_be(~crc, (uint8_t *)data, len);
 #else
     crc = crc16_ccitt(CRC16_INITIAL_CRC, bs_hdr, sizeof(*bs_hdr));
     crc = crc16_ccitt(crc, data, len);
@@ -730,6 +754,10 @@ boot_serial_output(void)
     size_t enc_len;
     base64_encode(encoded_buf, sizeof(encoded_buf), &enc_len, buf, totlen);
     totlen = enc_len;
+#elif __ESPRESSIF__
+    size_t enc_len;
+    base64_encode((unsigned char *)encoded_buf, sizeof(encoded_buf), &enc_len, (unsigned char *)buf, totlen);
+    totlen = enc_len;
 #else
     totlen = base64_encode(buf, totlen, encoded_buf, 1);
 #endif
@@ -751,6 +779,12 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
 #ifdef __ZEPHYR__
     int err;
     err = base64_decode( &out[*out_off], maxout - *out_off, &rc, in, inlen - 2);
+    if (err) {
+        return -1;
+    }
+#elif __ESPRESSIF__
+    int err;
+    err = base64_decode((unsigned char *)&out[*out_off], maxout - *out_off, (size_t *)&rc, (unsigned char *)in, inlen);
     if (err) {
         return -1;
     }
@@ -781,6 +815,8 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
     out += sizeof(uint16_t);
 #ifdef __ZEPHYR__
     crc = crc16_itu_t(CRC16_INITIAL_CRC, out, len);
+#elif __ESPRESSIF__
+    crc = ~crc16_be(~CRC16_INITIAL_CRC, (uint8_t *)out, len);
 #else
     crc = crc16_ccitt(CRC16_INITIAL_CRC, out, len);
 #endif
