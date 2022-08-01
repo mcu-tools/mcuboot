@@ -506,21 +506,6 @@ void main(void)
 
     mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
 
-#if (!defined(CONFIG_XTENSA) && DT_HAS_CHOSEN(zephyr_flash_controller))
-    if (!flash_device_get_binding(DT_LABEL(DT_CHOSEN(zephyr_flash_controller)))) {
-        BOOT_LOG_ERR("Flash device %s not found",
-		     DT_LABEL(DT_CHOSEN(zephyr_flash_controller)));
-        while (1)
-            ;
-    }
-#elif (defined(CONFIG_XTENSA) && defined(JEDEC_SPI_NOR_0_LABEL))
-    if (!flash_device_get_binding(JEDEC_SPI_NOR_0_LABEL)) {
-        BOOT_LOG_ERR("Flash device %s not found", JEDEC_SPI_NOR_0_LABEL);
-        while (1)
-            ;
-    }
-#endif
-
 #ifdef CONFIG_MCUBOOT_SERIAL
     if (detect_pin() &&
             !boot_skip_serial_recovery()) {
