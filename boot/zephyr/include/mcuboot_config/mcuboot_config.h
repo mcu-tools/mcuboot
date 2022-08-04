@@ -259,14 +259,16 @@
 #endif /* defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1) */
 
 #elif CONFIG_IWDG_STM32 /* CONFIG_NRFX_WDT */
+#include <zephyr/device.h>
 #include <zephyr/drivers/watchdog.h>
 
 #define MCUBOOT_WATCHDOG_FEED() \
     do {                        \
-        const struct device* wdt =                          \
-            device_get_binding(                             \
-                DT_LABEL(DT_INST(0, st_stm32_watchdog)));   \
-        wdt_feed(wdt, 0);                                   \
+        const struct device* wdt =                            \
+            DEVICE_DT_GET(DT_INST(0, st_stm32_watchdog));     \
+        if (device_is_ready(wdt)) {                           \
+                wdt_feed(wtd, 0);                             \
+        }                                                     \
     } while (0)
 
 #elif DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) /* CONFIG_IWDG_STM32 */
