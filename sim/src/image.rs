@@ -1487,6 +1487,20 @@ enum ImageSize {
     Largest,
 }
 
+#[cfg(not(feature = "max-align-32"))]
+fn tralier_estimation(dev: &dyn Flash) -> usize {
+
+    c::boot_trailer_sz(dev.align() as u32) as usize
+}
+
+#[cfg(feature = "max-align-32")]
+fn tralier_estimation(dev: &dyn Flash) -> usize {
+
+    let sector_size = dev.sector_iter().next().unwrap().size as u32;
+
+    align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
+}
+
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
 /// fields used by the given code.  Returns a copy of the image that was written.
 fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
@@ -1526,7 +1540,7 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
                 let sector_size = dev.sector_iter().next().unwrap().size as u32;
                 align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
             } else if Caps::SwapUsingScratch.present() {
-                c::boot_trailer_sz(dev.align() as u32) as usize
+                tralier_estimation(dev)
             } else {
                 panic!("The maximum image size can't be calculated.")
             };
