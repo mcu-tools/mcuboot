@@ -335,6 +335,28 @@ impl ImagesBuilder {
         }
     }
 
+    pub fn make_oversized_bootstrap_image(self) -> Images {
+        let mut flash = self.flash;
+        let ram = self.ram.clone(); // TODO: Avoid this clone.
+        let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let primaries = install_no_image();
+            let upgrades = install_image(&mut flash, &slots[1],
+                ImageSize::Oversized, &ram, &dep, false);
+            OneImage {
+                slots,
+                primaries,
+                upgrades,
+            }}).collect();
+        Images {
+            flash,
+            areadesc: self.areadesc,
+            images,
+            total_count: None,
+            ram: self.ram,
+        }
+    }
+
     /// Build the Flash and area descriptor for a given device.
     pub fn make_device(device: DeviceName, align: usize, erased_val: u8) -> (SimMultiFlash, AreaDesc, &'static [Caps]) {
         match device {
@@ -499,6 +521,39 @@ impl Images {
             }
 
             if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                     BOOT_FLAG_SET, BOOT_FLAG_SET) {
+                warn!("Mismatched trailer for the primary slot");
+                fails += 1;
+            }
+        }
+
+        if fails > 0 {
+            error!("Expected trailer on secondary slot to be erased");
+        }
+
+        fails > 0
+    }
+
+    pub fn run_oversized_bootstrap(&self) -> bool {
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        if Caps::Bootstrap.present() {
+            info!("Try bootstraping image in the primary");
+
+            let boot_result = c::boot_go(&mut flash, &self.areadesc, None, None, false).interrupted();
+
+            if boot_result {
+                warn!("Failed first boot");
+                fails += 1;
+            }
+
+            if self.verify_images(&flash, 0, 1) {
+                warn!("Image in the first slot was not bootstrapped");
+                fails += 1;
+            }
+
+            if self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
                                      BOOT_FLAG_SET, BOOT_FLAG_SET) {
                 warn!("Mismatched trailer for the primary slot");
                 fails += 1;
@@ -1485,11 +1540,12 @@ enum ImageSize {
     Given(usize),
     /// Make the image as large as it can be for the partition/device.
     Largest,
+    /// Make the image quite larger than it can be for the partition/device/
+    Oversized,
 }
 
 #[cfg(not(feature = "max-align-32"))]
 fn tralier_estimation(dev: &dyn Flash) -> usize {
-
     c::boot_trailer_sz(dev.align() as u32) as usize
 }
 
@@ -1499,6 +1555,25 @@ fn tralier_estimation(dev: &dyn Flash) -> usize {
     let sector_size = dev.sector_iter().next().unwrap().size as u32;
 
     align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
+}
+
+fn image_largest_trailer(dev: &dyn Flash) -> usize {
+            // Using the header size we know, the trailer size, and the slot size, we can compute
+            // the largest image possible.
+            let trailer = if Caps::OverwriteUpgrade.present() {
+                // This computation is incorrect, and we need to figure out the correct size.
+                // c::boot_status_sz(dev.align() as u32) as usize
+                16 + 4 * dev.align()
+            } else if Caps::SwapUsingMove.present() {
+                let sector_size = dev.sector_iter().next().unwrap().size as u32;
+                align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
+            } else if Caps::SwapUsingScratch.present() {
+                tralier_estimation(dev)
+            } else {
+                panic!("The maximum image size can't be calculated.")
+            };
+
+            trailer
 }
 
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
@@ -1530,26 +1605,22 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
     let len = match len {
         ImageSize::Given(size) => size,
         ImageSize::Largest => {
-            // Using the header size we know, the trailer size, and the slot size, we can compute
-            // the largest image possible.
-            let trailer = if Caps::OverwriteUpgrade.present() {
-                // This computation is incorrect, and we need to figure out the correct size.
-                // c::boot_status_sz(dev.align() as u32) as usize
-                16 + 4 * dev.align()
-            } else if Caps::SwapUsingMove.present() {
-                let sector_size = dev.sector_iter().next().unwrap().size as u32;
-                align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
-            } else if Caps::SwapUsingScratch.present() {
-                tralier_estimation(dev)
-            } else {
-                panic!("The maximum image size can't be calculated.")
-            };
+            let trailer = image_largest_trailer(dev);
             let tlv_len = tlv.estimate_size();
             info!("slot: 0x{:x}, HDR: 0x{:x}, trailer: 0x{:x}",
                 slot_len, HDR_SIZE, trailer);
             slot_len - HDR_SIZE - trailer - tlv_len
-
+        },
+        ImageSize::Oversized => {
+            let trailer = image_largest_trailer(dev);
+            let tlv_len = tlv.estimate_size();
+            info!("slot: 0x{:x}, HDR: 0x{:x}, trailer: 0x{:x}",
+                slot_len, HDR_SIZE, trailer);
+            // the overflow size is rougly estimated to work for all
+            // configurations. It might be precise if tlv_len will be maked precise.
+            slot_len - HDR_SIZE - trailer - tlv_len + dev.align()*4
         }
+
     };
 
     // Generate a boot header.  Note that the size doesn't include the header.
