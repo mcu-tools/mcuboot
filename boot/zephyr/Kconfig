@@ -569,18 +569,8 @@ config BOOT_IMAGE_ACCESS_HOOKS
 	help
 	  Allow to provide procedures for override or extend native
 	  MCUboot's routines required for access the image data and the image
-	  update.
-
-config BOOT_IMAGE_ACCESS_HOOKS_FILE
-	string "Hooks implementation file path"
-	depends on BOOT_IMAGE_ACCESS_HOOKS
-	help
-	  Path to the file which implements hooks.
-	  You can use either absolute or relative path.
-	  In case relative path is used, the build system assumes that it starts
-	  from the directory where the MCUBoot KConfig configuration file is
-	  located. If the key file is not there, the build system uses relative
-	  path that starts from the zephyr port cmake directory (boot/zephyr/).
+	  update. It is up to the project customization to add required source
+	  files to the build.
 
 config MCUBOOT_ACTION_HOOKS
 	bool "Enable hooks for responding to MCUboot status changes"
