@@ -849,7 +849,9 @@ boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
 
     off = 0;
     while (timeout_in_ms > 0 || bs_entry) {
+#ifndef MCUBOOT_SERIAL_WAIT_FOR_DFU
         MCUBOOT_CPU_IDLE();
+#endif
         MCUBOOT_WATCHDOG_FEED();
 #ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
         uint32_t start = k_uptime_get_32();
