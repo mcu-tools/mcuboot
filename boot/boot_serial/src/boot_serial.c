@@ -849,6 +849,11 @@ boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
 
     off = 0;
     while (timeout_in_ms > 0 || bs_entry) {
+        /*
+         * Don't enter CPU idle state here if timeout based serial recovery is
+         * used as otherwise the boot process hangs forever, waiting for input
+         * from serial console (if single-thread mode is used).
+         */
 #ifndef MCUBOOT_SERIAL_WAIT_FOR_DFU
         MCUBOOT_CPU_IDLE();
 #endif
