@@ -39,12 +39,9 @@
 			#size-cells = <1>;
 			erase-value = <0xff>;
 
-			label = "flash_ctrl";
-
 			flash_sim0: flash_sim@0 {
 				status = "okay";
 				compatible = "soc-nv-flash";
-				label = "simulated_flash";
 				erase-block-size = <4096>;
 				write-block-size = <1>;
 				reg = <0x00000000 DT_SIZE_K(40)>;
