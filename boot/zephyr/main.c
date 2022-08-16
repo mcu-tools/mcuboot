@@ -183,6 +183,11 @@ static void do_boot(struct boot_rsp *rsp)
     /* Disable the USB to prevent it from firing interrupts */
     usb_disable();
 #endif
+
+#if CONFIG_CPU_HAS_ARM_MPU || CONFIG_CPU_HAS_NXP_MPU
+    z_arm_clear_arm_mpu_config();
+#endif
+
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     cleanup_arm_nvic(); /* cleanup NVIC registers */
 
@@ -192,9 +197,6 @@ static void do_boot(struct boot_rsp *rsp)
     SCB_DisableICache();
 #endif
 
-#if CONFIG_CPU_HAS_ARM_MPU || CONFIG_CPU_HAS_NXP_MPU
-    z_arm_clear_arm_mpu_config();
-#endif
 
 #if defined(CONFIG_BUILTIN_STACK_GUARD) && \
     defined(CONFIG_CPU_CORTEX_M_HAS_SPLIM)
