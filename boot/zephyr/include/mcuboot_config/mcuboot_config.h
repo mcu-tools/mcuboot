@@ -293,7 +293,6 @@
         }                                                     \
     } while (0)
 #else /* DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) */
-#warning "MCUBOOT_WATCHDOG_FEED() is no-op"
 /* No vendor implementation, no-op for historical reasons */
 #define MCUBOOT_WATCHDOG_FEED()         \
     do {                                \

@@ -556,10 +556,10 @@ endchoice
 
 config BOOT_WATCHDOG_FEED
 	bool "Feed the watchdog while doing swap"
-	default y if SOC_FAMILY_NRF
-	imply NRFX_WDT
-	imply NRFX_WDT0
-	imply NRFX_WDT1
+	default y
+	imply NRFX_WDT if SOC_FAMILY_NRF
+	imply NRFX_WDT0 if SOC_FAMILY_NRF
+	imply NRFX_WDT1 if SOC_FAMILY_NRF
 	help
 	  Enables implementation of MCUBOOT_WATCHDOG_FEED() macro which is
 	  used to feed watchdog while doing time consuming operations.
