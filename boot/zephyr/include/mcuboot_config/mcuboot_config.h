@@ -273,11 +273,11 @@
 
 #define MCUBOOT_WATCHDOG_FEED() \
     do {                        \
-        const struct device* wdt =                            \
-            DEVICE_DT_GET(DT_INST(0, st_stm32_watchdog));     \
-        if (device_is_ready(wdt)) {                           \
-                wdt_feed(wtd, 0);                             \
-        }                                                     \
+        const struct device* wdt =                                  \
+            DEVICE_DT_GET_OR_NULL(DT_INST(0, st_stm32_watchdog));   \
+        if (device_is_ready(wdt)) {                                 \
+            wdt_feed(wtd, 0);                                       \
+        }                                                           \
     } while (0)
 
 #elif DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) /* CONFIG_IWDG_STM32 */
