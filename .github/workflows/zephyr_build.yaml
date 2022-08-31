@@ -45,7 +45,7 @@ jobs:
       volumes:
         - /home/runners/zephyrproject:/github/cache/zephyrproject
     env:
-      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.13.2
+      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.15.0
 
     steps:
       - name: Set versions when workflow_dispatch
