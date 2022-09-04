@@ -59,7 +59,7 @@ def gen_x25519(keyfile, passwd):
     keys.X25519.generate().export_private(path=keyfile, passwd=passwd)
 
 
-valid_langs = ['c', 'rust']
+valid_langs = ['c', 'rust', 'pem']
 keygens = {
     'rsa-2048':   gen_rsa2048,
     'rsa-3072':   gen_rsa3072,
@@ -125,6 +125,8 @@ def getpub(key, lang):
         key.emit_c_public()
     elif lang == 'rust':
         key.emit_rust_public()
+    elif lang == 'pem':
+        key.emit_public_pem()
     else:
         raise ValueError("BUG: should never get here!")
 
