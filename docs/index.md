@@ -38,6 +38,7 @@ The MCUboot documentation is composed of the following pages:
 - [Encrypted images](encrypted_images.md)
 - [imgtool](imgtool.md) - image signing and key management
 - [ECDSA](ecdsa.md) - information about ECDSA signature formats
+- [Serial Recovery](serial_recovery.md) - MCUmgr as the serial recovery protocol
 - Usage instructions:
   - [Zephyr](readme-zephyr.md)
   - [Apache Mynewt](readme-mynewt.md)
