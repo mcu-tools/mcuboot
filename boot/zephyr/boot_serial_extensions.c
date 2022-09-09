@@ -28,12 +28,12 @@ static int bs_custom_storage_erase(zcbor_state_t *cs)
 
     const struct flash_area *fa;
 
-    rc = flash_area_open(FLASH_AREA_ID(storage), &fa);
+    rc = flash_area_open(FIXED_PARTITION_ID(storage_partition), &fa);
 
     if (rc < 0) {
         BOOT_LOG_ERR("failed to open flash area");
     } else {
-        rc = flash_area_erase(fa, 0, FLASH_AREA_SIZE(storage));
+        rc = flash_area_erase(fa, 0, flash_area_get_size(fa));
         if (rc < 0) {
             BOOT_LOG_ERR("failed to erase flash area");
         }

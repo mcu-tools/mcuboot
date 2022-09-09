@@ -9,6 +9,8 @@
 #ifndef __MCUBOOT_CONFIG_H__
 #define __MCUBOOT_CONFIG_H__
 
+#include <zephyr/devicetree.h>
+
 #ifdef CONFIG_BOOT_SIGNATURE_TYPE_RSA
 #define MCUBOOT_SIGN_RSA
 #  if (CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN != 2048 && \
@@ -231,8 +233,15 @@
 #define MCUBOOT_MAX_IMG_SECTORS       128
 #endif
 
+/* Support 32-byte aligned flash sizes */
+#if DT_HAS_CHOSEN(zephyr_flash)
+    #if DT_PROP_OR(DT_CHOSEN(zephyr_flash), write_block_size, 0) > 8
+        #define MCUBOOT_BOOT_MAX_ALIGN \
+            DT_PROP(DT_CHOSEN(zephyr_flash), write_block_size)
+    #endif
+#endif
+
 #if CONFIG_BOOT_WATCHDOG_FEED
-#include <zephyr/devicetree.h>
 #if CONFIG_NRFX_WDT
 #include <nrfx_wdt.h>
 
@@ -264,11 +273,11 @@
 
 #define MCUBOOT_WATCHDOG_FEED() \
     do {                        \
-        const struct device* wdt =                            \
-            DEVICE_DT_GET(DT_INST(0, st_stm32_watchdog));     \
-        if (device_is_ready(wdt)) {                           \
-                wdt_feed(wtd, 0);                             \
-        }                                                     \
+        const struct device* wdt =                                  \
+            DEVICE_DT_GET_OR_NULL(DT_INST(0, st_stm32_watchdog));   \
+        if (device_is_ready(wdt)) {                                 \
+            wdt_feed(wtd, 0);                                       \
+        }                                                           \
     } while (0)
 
 #elif DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) /* CONFIG_IWDG_STM32 */
@@ -284,7 +293,6 @@
         }                                                     \
     } while (0)
 #else /* DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) */
-#warning "MCUBOOT_WATCHDOG_FEED() is no-op"
 /* No vendor implementation, no-op for historical reasons */
 #define MCUBOOT_WATCHDOG_FEED()         \
     do {                                \

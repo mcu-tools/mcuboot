@@ -22,7 +22,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define FLASH_DEVICE_ID SOC_FLASH_0_ID
 #define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
 #define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash_controller)
-#elif (defined(CONFIG_XTENSA) && DT_NODE_EXISTS(DT_INST(0, jedec_spi_nor))
+#elif (defined(CONFIG_XTENSA) && DT_NODE_EXISTS(DT_INST(0, jedec_spi_nor)))
 #define FLASH_DEVICE_ID SPI_FLASH_0_ID
 #define FLASH_DEVICE_BASE 0
 #define FLASH_DEVICE_NODE DT_INST(0, jedec_spi_nor)
@@ -94,18 +94,18 @@ int flash_area_id_from_direct_image(int image_id)
     switch (image_id) {
     case 0:
     case 1:
-        return FLASH_AREA_ID(image_0);
-#if DT_HAS_FIXED_PARTITION_LABEL(image_1)
+        return FIXED_PARTITION_ID(slot0_partition);
+#if FIXED_PARTITION_EXISTS(slot1_partition)
     case 2:
-        return FLASH_AREA_ID(image_1);
+        return FIXED_PARTITION_ID(slot1_partition);
 #endif
-#if DT_HAS_FIXED_PARTITION_LABEL(image_2)
+#if FIXED_PARTITION_EXISTS(slot2_partition)
     case 3:
-        return FLASH_AREA_ID(image_2);
+        return FIXED_PARTITION_ID(slot2_partition);
 #endif
-#if DT_HAS_FIXED_PARTITION_LABEL(image_3)
+#if FIXED_PARTITION_EXISTS(slot3_partition)
     case 4:
-        return FLASH_AREA_ID(image_3);
+        return FIXED_PARTITION_ID(slot3_partition);
 #endif
     }
     return -EINVAL;

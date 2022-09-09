@@ -2814,6 +2814,7 @@ boot_remove_image_from_flash(struct boot_loader_state *state, uint32_t slot)
     rc = flash_area_open(area_id, &fap);
     if (rc == 0) {
         flash_area_erase(fap, 0, flash_area_get_size(fap));
+        flash_area_close(fap);
     }
 
     return rc;

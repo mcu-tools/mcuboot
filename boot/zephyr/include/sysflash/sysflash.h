@@ -15,38 +15,38 @@
  * running in single image mode.
  */
 #define FLASH_AREA_IMAGE_PRIMARY(x)    (((x) == 0) ?                \
-                                         FLASH_AREA_ID(image_0) : \
-                                         FLASH_AREA_ID(image_0))
+                                         FIXED_PARTITION_ID(slot0_partition) : \
+                                         FIXED_PARTITION_ID(slot0_partition))
 #define FLASH_AREA_IMAGE_SECONDARY(x)  (((x) == 0) ?                \
-                                         FLASH_AREA_ID(image_1) : \
-                                         FLASH_AREA_ID(image_1))
+                                         FIXED_PARTITION_ID(slot1_partition) : \
+                                         FIXED_PARTITION_ID(slot1_partition))
 #elif (MCUBOOT_IMAGE_NUMBER == 2)
 /* MCUBoot currently supports only up to 2 updateable firmware images.
  * If the number of the current image is greater than MCUBOOT_IMAGE_NUMBER - 1
  * then a dummy value will be assigned to the flash area macros.
  */
 #define FLASH_AREA_IMAGE_PRIMARY(x)    (((x) == 0) ?                \
-                                         FLASH_AREA_ID(image_0) : \
+                                         FIXED_PARTITION_ID(slot0_partition) : \
                                         ((x) == 1) ?                \
-                                         FLASH_AREA_ID(image_2) : \
+                                         FIXED_PARTITION_ID(slot2_partition) : \
                                          255)
 #define FLASH_AREA_IMAGE_SECONDARY(x)  (((x) == 0) ?                \
-                                         FLASH_AREA_ID(image_1) : \
+                                         FIXED_PARTITION_ID(slot1_partition) : \
                                         ((x) == 1) ?                \
-                                         FLASH_AREA_ID(image_3) : \
+                                         FIXED_PARTITION_ID(slot3_partition) : \
                                          255)
 #else
 #error "Image slot and flash area mapping is not defined"
 #endif
 
 #if !defined(CONFIG_BOOT_SWAP_USING_MOVE)
-#define FLASH_AREA_IMAGE_SCRATCH    FLASH_AREA_ID(image_scratch)
+#define FLASH_AREA_IMAGE_SCRATCH    FIXED_PARTITION_ID(scratch_partition)
 #endif
 
 #else /* CONFIG_SINGLE_APPLICATION_SLOT */
 
-#define FLASH_AREA_IMAGE_PRIMARY(x)	FLASH_AREA_ID(image_0)
-#define FLASH_AREA_IMAGE_SECONDARY(x)	FLASH_AREA_ID(image_0)
+#define FLASH_AREA_IMAGE_PRIMARY(x)	FIXED_PARTITION_ID(slot0_partition)
+#define FLASH_AREA_IMAGE_SECONDARY(x)	FIXED_PARTITION_ID(slot0_partition)
 /* NOTE: Scratch parition is not used by single image DFU but some of
  * functions in common files reference it, so the definitions has been
  * provided to allow compilation of common units.
