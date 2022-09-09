@@ -1332,6 +1332,8 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
                      boot_status_fails);
     }
 #endif
+    rc = BOOT_HOOK_CALL(boot_copy_region_post_hook, 0, BOOT_CURR_IMG(state),
+                        BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT), size);
 
     return 0;
 }
