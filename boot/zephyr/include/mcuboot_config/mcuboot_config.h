@@ -289,7 +289,7 @@
         const struct device* wdt =                            \
             DEVICE_DT_GET(DT_ALIAS(watchdog0));               \
         if (device_is_ready(wdt)) {                           \
-                wdt_feed(wtd, 0);                             \
+                wdt_feed(wdt, 0);                             \
         }                                                     \
     } while (0)
 #else /* DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) */
