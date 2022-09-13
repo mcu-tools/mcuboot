@@ -389,6 +389,9 @@ static const struct gpio_dt_spec button0 = GPIO_DT_SPEC_GET(BUTTON_0_NODE, gpios
 
 #if defined(CONFIG_MCUBOOT_SERIAL)
 
+/* The value of -1 is used by default. It must be properly specified for a board before used. */
+BUILD_ASSERT(CONFIG_BOOT_SERIAL_DETECT_PIN != -1);
+
 #define BUTTON_0_GPIO_LABEL CONFIG_BOOT_SERIAL_DETECT_PORT
 #define BUTTON_0_GPIO_PIN CONFIG_BOOT_SERIAL_DETECT_PIN
 #define BUTTON_0_GPIO_FLAGS ((CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) ?\
@@ -396,6 +399,9 @@ static const struct gpio_dt_spec button0 = GPIO_DT_SPEC_GET(BUTTON_0_NODE, gpios
                                 (GPIO_ACTIVE_LOW | GPIO_PULL_UP))
 
 #elif defined(CONFIG_BOOT_USB_DFU_GPIO)
+
+/* The value of -1 is used by default. It must be properly specified for a board before used. */
+BUILD_ASSERT(CONFIG_BOOT_USB_DFU_DETECT_PIN != -1);
 
 #define BUTTON_0_GPIO_LABEL CONFIG_BOOT_USB_DFU_DETECT_PORT
 #define BUTTON_0_GPIO_PIN CONFIG_BOOT_USB_DFU_DETECT_PIN
