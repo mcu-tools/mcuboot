@@ -148,7 +148,7 @@ config BOOT_SERIAL_ENCRYPT_EC256
 
 config BOOT_SERIAL_WAIT_FOR_DFU
 	bool "Wait for a prescribed duration to see if DFU is invoked by receiving a mcumgr comand"
-	depends on BOOT_SERIAL_UART
+	depends on BOOT_SERIAL_UART || BOOT_SERIAL_CDC_ACM
 	help
 	  If y, MCUboot waits for a prescribed duration of time to allow
 	  for DFU to be invoked. The serial recovery can be entered by receiving any
