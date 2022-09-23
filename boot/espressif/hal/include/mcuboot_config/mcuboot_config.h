@@ -143,6 +143,18 @@
 #define CONFIG_MCUBOOT_SERIAL
 #endif
 
+/*
+ * When a serial recovery process is receiving the image data, this option
+ * enables it to erase flash progressively (by sectors) instead of the
+ * default behavior that is erasing whole image size of flash area after
+ * receiving first frame.
+ * Enabling this options prevents stalling the beginning of transfer
+ * for the time needed to erase large chunk of flash.
+ */
+#ifdef CONFIG_ESP_MCUBOOT_ERASE_PROGRESSIVELY
+#define MCUBOOT_ERASE_PROGRESSIVELY
+#endif
+
 /* Serial extensions are not implemented
  */
 #define MCUBOOT_PERUSER_MGMT_GROUP_ENABLED 0
