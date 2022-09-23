@@ -41,6 +41,7 @@ list(APPEND include_dirs
     ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/include
     ${esp_idf_dir}/components/efuse/private_include
     ${esp_idf_dir}/components/efuse/${MCUBOOT_TARGET}/private_include
+    ${esp_idf_dir}/components/esp_system/include
     ${esp_idf_dir}/components/newlib/platform_include
     )
 

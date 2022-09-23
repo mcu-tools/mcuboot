@@ -213,7 +213,6 @@ set(port_srcs
     ${CMAKE_CURRENT_LIST_DIR}/port/esp_mcuboot.c
     ${CMAKE_CURRENT_LIST_DIR}/port/esp_loader.c
     ${CMAKE_CURRENT_LIST_DIR}/os.c
-    ${CMAKE_CURRENT_LIST_DIR}/serial_adapter.c
     )
 
 if(CONFIG_ESP_MCUBOOT_SERIAL)
@@ -227,7 +226,7 @@ if(CONFIG_ESP_MCUBOOT_SERIAL)
         ${BOOT_SERIAL_DIR}/src/zcbor_common.c
         )
     list(APPEND port_srcs
-        ${CMAKE_CURRENT_LIST_DIR}/serial_adapter.c
+        ${CMAKE_CURRENT_LIST_DIR}/port/${MCUBOOT_TARGET}/serial_adapter.c
         ${MBEDTLS_DIR}/library/base64.c
         )
     list(APPEND CRYPTO_INC
@@ -247,6 +246,7 @@ target_include_directories(
     ${APP_EXECUTABLE}
     PUBLIC
     ${BOOTUTIL_DIR}/include
+    ${BOOTUTIL_DIR}/src
     ${BOOT_SERIAL_DIR}/include
     ${CRYPTO_INC}
     ${CMAKE_CURRENT_LIST_DIR}/include
