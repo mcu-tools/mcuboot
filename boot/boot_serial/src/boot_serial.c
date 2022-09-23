@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "sysflash/sysflash.h"
 
