@@ -552,7 +552,7 @@ Serial recovery mode allows management through MCUMGR (more information and how 
 ---
 ***Note***
 
-Supported on ESP32.
+Supported on ESP32 and ESP32-C3.
 
 ---
 
@@ -580,6 +580,28 @@ CONFIG_ESP_SERIAL_BOOT_GPIO_TX=26
 When enabled, the bootloader checks the if the GPIO `<CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT>` configured has the signal value `<CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT_VAL>` for approximately `<CONFIG_ESP_SERIAL_BOOT_DETECT_DELAY_S>` seconds for entering the Serial recovery mode. Example: a button configured on GPIO 32 pressed for 5 seconds.
 
 Serial mode then uses the UART port configured for communication (`<CONFIG_ESP_SERIAL_BOOT_UART_NUM>`, pins `<CONFIG_ESP_SERIAL_BOOT_GPIO_RX>`, `<CONFIG_ESP_SERIAL_BOOT_GPIO_RX>`).
+
+### [Serial Recovery through USB JTAG Serial port](#serial-recovery-through-usb-jtag-serial-port)
+
+Some chips, like ESP32-C3, have an integrated USB JTAG Serial Controller that implements a serial port (CDC) that can also be used for handling MCUboot Serial Recovery.
+More information about the USB pins and hardware configuration on ESP32-C3: https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/api-guides/usb-serial-jtag-console.html.
+
+Configuration example:
+```
+# Use Serial through USB JTAG Serial port for Serial Recovery
+CONFIG_ESP_MCUBOOT_SERIAL_USB_SERIAL_JTAG=y
+# Use sector erasing (recommended) instead of entire image size
+# erasing when uploading through Serial Recovery
+CONFIG_ESP_MCUBOOT_ERASE_PROGRESSIVELY=y
+# GPIO used to boot on Serial Recovery
+CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT=5
+# GPIO input type (0 for Pull-down, 1 for Pull-up)
+CONFIG_ESP_SERIAL_BOOT_GPIO_INPUT_TYPE=0
+# GPIO signal value
+CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT_VAL=1
+# Delay time for identify the GPIO signal
+CONFIG_ESP_SERIAL_BOOT_DETECT_DELAY_S=5
+```
 
 ### [MCUMGR image upload example](#mcumgr-image-upload-example)
 
