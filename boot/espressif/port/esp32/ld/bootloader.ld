@@ -40,6 +40,7 @@ SECTIONS
     *libhal.a:bootloader_efuse_esp32.*(.literal .text .literal.* .text.*)
     *libhal.a:bootloader_utility.*(.literal .text .literal.* .text.*)
     *libhal.a:bootloader_sha.*(.literal .text .literal.* .text.*)
+    *libhal.a:bootloader_console.*(.literal .text .literal.* .text.*)
     *libhal.a:bootloader_console_loader.*(.literal .text .literal.* .text.*)
     *libhal.a:bootloader_panic.*(.literal .text .literal.* .text.*)
     *libhal.a:bootloader_soc.*(.literal .text .literal.* .text.*)
