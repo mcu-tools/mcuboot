@@ -59,7 +59,8 @@ def gen_x25519(keyfile, passwd):
     keys.X25519.generate().export_private(path=keyfile, passwd=passwd)
 
 
-valid_langs = ['c', 'rust', 'pem']
+valid_langs = ['c', 'rust']
+valid_encodings = ['lang-c', 'lang-rust', 'pem']
 keygens = {
     'rsa-2048':   gen_rsa2048,
     'rsa-3072':   gen_rsa3072,
@@ -113,22 +114,34 @@ def keygen(type, key, password):
     keygens[type](key, password)
 
 
-@click.option('-l', '--lang', metavar='lang', default=valid_langs[0],
-              type=click.Choice(valid_langs))
+@click.option('-l', '--lang', metavar='lang',
+              type=click.Choice(valid_langs),
+              help='This option is deprecated. Please use the '
+                   '`--encoding` option. '
+                   'Valid langs: {}'.format(', '.join(valid_langs)))
+@click.option('-e', '--encoding', metavar='encoding',
+              type=click.Choice(valid_encodings),
+              help='Valid encodings: {}'.format(', '.join(valid_encodings)))
 @click.option('-k', '--key', metavar='filename', required=True)
 @click.command(help='Dump public key from keypair')
-def getpub(key, lang):
+def getpub(key, encoding, lang):
+    if encoding and lang:
+        raise click.UsageError('Please use only one of `--encoding/-e` or `--lang/-l`')
+    elif not encoding and not lang:
+        # Preserve old behavior defaulting to `c`. If `lang` is removed,
+        # `default=valid_encodings[0]` should be added to `-e` param.
+        lang = valid_langs[0]
     key = load_key(key)
     if key is None:
         print("Invalid passphrase")
-    elif lang == 'c':
+    elif lang == 'c' or encoding == 'lang-c':
         key.emit_c_public()
-    elif lang == 'rust':
+    elif lang == 'rust' or encoding == 'lang-rust':
         key.emit_rust_public()
-    elif lang == 'pem':
+    elif encoding == 'pem':
         key.emit_public_pem()
     else:
-        raise ValueError("BUG: should never get here!")
+        raise click.UsageError()
 
 
 @click.option('--minimal', default=False, is_flag=True,
