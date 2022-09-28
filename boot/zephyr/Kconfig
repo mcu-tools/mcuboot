@@ -568,7 +568,9 @@ endchoice
 
 config BOOT_WATCHDOG_FEED
 	bool "Feed the watchdog while doing swap"
-	default y
+	default y if WATCHDOG
+	default y if SOC_FAMILY_NRF
+	# for nRF nrfx based implementation is available
 	imply NRFX_WDT if SOC_FAMILY_NRF
 	imply NRFX_WDT0 if SOC_FAMILY_NRF
 	imply NRFX_WDT1 if SOC_FAMILY_NRF
