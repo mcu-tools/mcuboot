@@ -370,9 +370,9 @@ void zephyr_boot_log_stop(void)
         * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(ZEPHYR_LOG_MODE_MINIMAL)
         */
 
-#if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU_GPIO)
+#if defined(CONFIG_MCUBOOT_SERIAL_USE_GPIO) || defined(CONFIG_BOOT_USB_DFU_GPIO)
 
-#ifdef CONFIG_MCUBOOT_SERIAL
+#ifdef CONFIG_MCUBOOT_SERIAL_USE_GPIO
 #define BUTTON_0_DETECT_DELAY CONFIG_BOOT_SERIAL_DETECT_DELAY
 #else
 #define BUTTON_0_DETECT_DELAY CONFIG_BOOT_USB_DFU_DETECT_DELAY
@@ -387,7 +387,7 @@ static const struct gpio_dt_spec button0 = GPIO_DT_SPEC_GET(BUTTON_0_NODE, gpios
 
 #else /* fallback to legacy configuration */
 
-#if defined(CONFIG_MCUBOOT_SERIAL)
+#ifdef CONFIG_MCUBOOT_SERIAL_USE_GPIO
 
 /* The value of -1 is used by default. It must be properly specified for a board before used. */
 BUILD_ASSERT(CONFIG_BOOT_SERIAL_DETECT_PIN != -1);
@@ -483,7 +483,7 @@ static bool detect_pin(void)
 
     return (bool)pin_active;
 }
-#endif
+#endif /* defined(CONFIG_MCUBOOT_SERIAL_USE_GPIO) || defined(CONFIG_BOOT_USB_DFU_GPIO) */
 
 void main(void)
 {
@@ -512,7 +512,7 @@ void main(void)
 
     mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
 
-#ifdef CONFIG_MCUBOOT_SERIAL
+#ifdef CONFIG_MCUBOOT_SERIAL_USE_GPIO
     if (detect_pin() &&
             !boot_skip_serial_recovery()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
