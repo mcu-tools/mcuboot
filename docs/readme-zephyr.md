@@ -145,15 +145,14 @@ The argument to `-t` should be the desired key type.  See the
 
 The generated keypair above contains both the public and the private
 key.  It is necessary to extract the public key and insert it into the
-bootloader.  The keys live in `boot/zephyr/keys.c`, and can be
-extracted using imgtool:
+bootloader.  Use the ``CONFIG_BOOT_SIGNATURE_KEY_FILE`` Kconfig option to
+provide the path to the key file so the build system can extract
+the public key in a format usable by the C compiler.
+The generated public key is saved in `build/zephyr/autogen-pubkey.h`, which is included
+by the `boot/zephyr/keys.c`.
 
-```
-    $ ./scripts/imgtool.py getpub -k mykey.pem
-```
+Currently, the Zephyr RTOS port limits its support to one keypair at the time,
+although MCUboot's key management infrastructure supports multiple keypairs.
 
-This will output the public key as a C array that can be dropped
-directly into the `keys.c` file.
-
-Once this is done, this new keypair file (`mykey.pem` in this
+Once MCUboot is built, this new keypair file (`mykey.pem` in this
 example) can be used to sign images.
