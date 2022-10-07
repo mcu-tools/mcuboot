@@ -37,6 +37,9 @@ class KeyClass(object):
                 indent="    ",
                 file=file)
 
+    def emit_public_pem(self, file=sys.stdout):
+        print(str(self.get_public_pem(), 'utf-8'), file=file, end='')
+
     def emit_private(self, minimal, file=sys.stdout):
         self._emit(
                 header="const unsigned char enc_priv_key[] = {",

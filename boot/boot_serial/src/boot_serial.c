@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <ctype.h>
 #include <stdio.h>
+#include <errno.h>
 
 #include "sysflash/sysflash.h"
 
@@ -32,6 +33,7 @@
 #include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/__assert.h>
 #include <zephyr/drivers/flash.h>
+#include <zephyr/kernel.h>
 #include <zephyr/sys/crc.h>
 #include <zephyr/sys/base64.h>
 #include <hal/hal_flash.h>

@@ -53,6 +53,10 @@
 BOOTLOADER_OVERLAY_CONFIG ?=
 
 BOARD ?= frdm_k64f
+SLOT_SIZE ?= 0x60000
+BOOT_ADDR ?= 0x0
+IMG0_ADDR ?= 0x20000
+IMG1_ADDR ?= 0x80000
 
 .PHONY: check boot hello1 clean_boot clean_hello1 \
 	hello2 clean_hello2 flash_boot flash_hello1 flash_hello2
@@ -130,7 +134,7 @@ hello1: check
 		--header-size $(BOOT_HEADER_LEN) \
 		--align $(FLASH_ALIGNMENT) \
 		--version 1.2 \
-		--slot-size 0x60000 \
+		--slot-size $(SLOT_SIZE) \
 		$(BUILD_DIR_HELLO1)/zephyr/zephyr.bin \
 		signed-hello1.bin
 
@@ -155,7 +159,7 @@ hello2: check
 		--header-size $(BOOT_HEADER_LEN) \
 		--align $(FLASH_ALIGNMENT) \
 		--version 1.2 \
-		--slot-size 0x60000 \
+		--slot-size $(SLOT_SIZE) \
 		--pad \
 		$(BUILD_DIR_HELLO2)/zephyr/zephyr.bin \
 		signed-hello2.bin
@@ -167,16 +171,16 @@ clean_hello2: check
 # are hardcoded at this time.
 
 flash_boot:
-	$(PYOCD) flash -e chip -a 0 mcuboot.bin
+	$(PYOCD) flash -e chip -a $(BOOT_ADDR) mcuboot.bin
 
 flash_hello1:
-	$(PYOCD) flash -a 0x20000 signed-hello1.bin
+	$(PYOCD) flash -a $(IMG0_ADDR) signed-hello1.bin
 
 flash_hello2:
-	$(PYOCD) flash -a 0x80000 signed-hello2.bin
+	$(PYOCD) flash -a $(IMG1_ADDR) signed-hello2.bin
 
 flash_full:
-	$(PYOCD) flash -e chip -a 0 full.bin
+	$(PYOCD) flash -e chip -a $(BOOT_ADDR) full.bin
 
 # These test- targets reinvoke make with the configuration set to test
 # various configurations.  This will generally be followed by using

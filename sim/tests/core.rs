@@ -49,12 +49,17 @@ macro_rules! sim_test {
 sim_test!(bad_secondary_slot, make_bad_secondary_slot_image(), run_signfail_upgrade());
 sim_test!(secondary_trailer_leftover, make_erased_secondary_image(), run_secondary_leftover_trailer());
 sim_test!(bootstrap, make_bootstrap_image(), run_bootstrap());
+sim_test!(oversized_bootstrap, make_oversized_bootstrap_image(), run_oversized_bootstrap());
 sim_test!(norevert_newimage, make_no_upgrade_image(&NO_DEPS), run_norevert_newimage());
 sim_test!(basic_revert, make_image(&NO_DEPS, true), run_basic_revert());
 sim_test!(revert_with_fails, make_image(&NO_DEPS, false), run_revert_with_fails());
 sim_test!(perm_with_fails, make_image(&NO_DEPS, true), run_perm_with_fails());
 sim_test!(perm_with_random_fails, make_image(&NO_DEPS, true), run_perm_with_random_fails(5));
 sim_test!(norevert, make_image(&NO_DEPS, true), run_norevert());
+
+#[cfg(not(feature = "max-align-32"))]
+sim_test!(oversized_secondary_slot, make_oversized_secondary_slot_image(), run_oversizefail_upgrade());
+
 sim_test!(status_write_fails_complete, make_image(&NO_DEPS, true), run_with_status_fails_complete());
 sim_test!(status_write_fails_with_reset, make_image(&NO_DEPS, true), run_with_status_fails_with_reset());
 sim_test!(downgrade_prevention, make_image(&REV_DEPS, true), run_nodowngrade());

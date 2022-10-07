@@ -616,7 +616,7 @@ boot_check_header_erased(struct boot_loader_state *state, int slot)
 #if (BOOT_IMAGE_NUMBER > 1) || \
     defined(MCUBOOT_DIRECT_XIP) || \
     defined(MCUBOOT_RAM_LOAD) || \
-    (defined(MCUBOOT_OVERWRITE_ONLY) && defined(MCUBOOT_DOWNGRADE_PREVENTION))
+    defined(MCUBOOT_DOWNGRADE_PREVENTION)
 /**
  * Compare image version numbers not including the build number
  *
@@ -1332,6 +1332,8 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
                      boot_status_fails);
     }
 #endif
+    rc = BOOT_HOOK_CALL(boot_copy_region_post_hook, 0, BOOT_CURR_IMG(state),
+                        BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT), size);
 
     return 0;
 }
@@ -1903,6 +1905,60 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state)
 #endif
 }
 
+/**
+ * Checks test swap downgrade prevention conditions.
+ *
+ * Function called only for swap upgrades test run.  It may prevent
+ * swap if slot 1 image has <= version number or < security counter
+ *
+ * @param  state        Boot loader status information.
+ *
+ * @return              0 - image can be swapped, -1 downgrade prevention
+ */
+static int
+check_downgrade_prevention(struct boot_loader_state *state)
+{
+#if defined(MCUBOOT_DOWNGRADE_PREVENTION) && \
+    (defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_SCRATCH))
+    uint32_t security_counter[2];
+    int rc;
+
+    if (MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER) {
+        /* If there was security no counter in slot 0, allow swap */
+        rc = bootutil_get_img_security_cnt(&(BOOT_IMG(state, 0).hdr),
+                                           BOOT_IMG(state, 0).area,
+                                           &security_counter[0]);
+        if (rc != 0) {
+            return 0;
+        }
+        /* If there is no security counter in slot 1, or it's lower than
+         * that of slot 0, prevent downgrade */
+        rc = bootutil_get_img_security_cnt(&(BOOT_IMG(state, 1).hdr),
+                                           BOOT_IMG(state, 1).area,
+                                           &security_counter[1]);
+        if (rc != 0 || security_counter[0] > security_counter[1]) {
+            rc = -1;
+        }
+    }
+    else {
+        rc = boot_version_cmp(&boot_img_hdr(state, BOOT_SECONDARY_SLOT)->ih_ver,
+                              &boot_img_hdr(state, BOOT_PRIMARY_SLOT)->ih_ver);
+    }
+    if (rc < 0) {
+        /* Image in slot 0 prevents downgrade, delete image in slot 1 */
+        BOOT_LOG_INF("Image in slot 1 erased due to downgrade prevention");
+        flash_area_erase(BOOT_IMG(state, 1).area, 0,
+                         flash_area_get_size(BOOT_IMG(state, 1).area));
+    } else {
+        rc = 0;
+    }
+    return rc;
+#else
+    (void)state;
+    return 0;
+#endif
+}
+
 fih_int
 context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
@@ -2031,7 +2087,13 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         case BOOT_SWAP_TYPE_NONE:
             break;
 
-        case BOOT_SWAP_TYPE_TEST:          /* fallthrough */
+        case BOOT_SWAP_TYPE_TEST:
+            if (check_downgrade_prevention(state) != 0) {
+                /* Downgrade prevented */
+                BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
+                break;
+            }
+            /* fallthrough */
         case BOOT_SWAP_TYPE_PERM:          /* fallthrough */
         case BOOT_SWAP_TYPE_REVERT:
             rc = BOOT_HOOK_CALL(boot_perform_update_hook, BOOT_HOOK_REGULAR,

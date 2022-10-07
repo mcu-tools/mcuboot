@@ -19,6 +19,7 @@
 
 #include "bootloader_init.h"
 #include "bootloader_common.h"
+#include "bootloader_console.h"
 #include "bootloader_clock.h"
 #include "bootloader_flash_config.h"
 #include "bootloader_mem.h"
@@ -31,6 +32,10 @@
 #include "soc/efuse_reg.h"
 #include "soc/rtc.h"
 
+#include "hal/gpio_hal.h"
+#include <hal/gpio_ll.h>
+#include <hal/uart_ll.h>
+
 #include "esp32c3/rom/cache.h"
 #include "esp32c3/rom/spi_flash.h"
 
@@ -38,6 +43,12 @@
 #include "hal/wdt_hal.h"
 
 extern esp_image_header_t WORD_ALIGNED_ATTR bootloader_image_hdr;
+
+#if CONFIG_ESP_CONSOLE_UART_CUSTOM
+static uart_dev_t *alt_console_uart_dev = (CONFIG_ESP_CONSOLE_UART_NUM == 0) ?
+                                          &UART0 :
+                                          &UART1;
+#endif
 
 void IRAM_ATTR bootloader_configure_spi_pins(int drv)
 {
@@ -161,15 +172,13 @@ static void bootloader_super_wdt_auto_feed(void)
     REG_WRITE(RTC_CNTL_SWD_WPROTECT_REG, 0);
 }
 
-static void bootloader_init_uart_console(void)
+#if CONFIG_ESP_CONSOLE_UART_CUSTOM
+void IRAM_ATTR esp_rom_uart_putc(char c)
 {
-    const int uart_num = 0;
-
-    esp_rom_install_uart_printf();
-    esp_rom_uart_tx_wait_idle(0);
-    uint32_t clock_hz = UART_CLK_FREQ_ROM;
-    esp_rom_uart_set_clock_baudrate(uart_num, clock_hz, CONFIG_ESP_CONSOLE_UART_BAUDRATE);
+    while (uart_ll_get_txfifo_len(alt_console_uart_dev) == 0);
+    uart_ll_write_txfifo(alt_console_uart_dev, (const uint8_t *) &c, 1);
 }
+#endif
 
 esp_err_t bootloader_init(void)
 {
@@ -190,7 +199,7 @@ esp_err_t bootloader_init(void)
     // config clock
     bootloader_clock_configure();
     /* initialize uart console, from now on, we can use ets_printf */
-    bootloader_init_uart_console();
+    bootloader_console_init();
     // update flash ID
     bootloader_flash_update_id();
     // read bootloader header

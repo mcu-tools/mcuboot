@@ -27,6 +27,12 @@
 #include <soc.h>
 #include <zephyr/linker/linker-defs.h>
 
+#if defined(CONFIG_CPU_AARCH32_CORTEX_A) || defined(CONFIG_CPU_AARCH32_CORTEX_R)
+#include <zephyr/arch/arm/aarch32/cortex_a_r/cmsis.h>
+#elif defined(CONFIG_CPU_CORTEX_M)
+#include <zephyr/arch/arm/aarch32/cortex_m/cmsis.h>
+#endif
+
 #include "target.h"
 
 #include "bootutil/bootutil_log.h"
@@ -162,20 +168,27 @@ struct arm_vector_table {
 static void do_boot(struct boot_rsp *rsp)
 {
     struct arm_vector_table *vt;
-    uintptr_t flash_base;
-    int rc;
 
     /* The beginning of the image is the ARM vector table, containing
      * the initial stack pointer address and the reset vector
      * consecutively. Manually set the stack pointer and jump into the
      * reset vector
      */
+#ifdef CONFIG_BOOT_RAM_LOAD
+    /* Get ram address for image */
+    vt = (struct arm_vector_table *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
+#else
+    uintptr_t flash_base;
+    int rc;
+
+    /* Jump to flash image */
     rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
     assert(rc == 0);
 
     vt = (struct arm_vector_table *)(flash_base +
                                      rsp->br_image_off +
                                      rsp->br_hdr->ih_hdr_size);
+#endif
 
     sys_clock_disable();
 

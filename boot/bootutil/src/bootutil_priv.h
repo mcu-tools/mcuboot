@@ -463,6 +463,8 @@ struct bootsim_ram_info *bootsim_get_ram_info(void);
     (flash_area_read((fap), (start), (output), (size)))
 #endif /* MCUBOOT_RAM_LOAD */
 
+uint32_t bootutil_max_image_size(const struct flash_area *fap);
+
 #ifdef __cplusplus
 }
 #endif

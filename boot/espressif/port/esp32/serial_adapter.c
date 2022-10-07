@@ -11,9 +11,12 @@
 #include <esp_rom_sys.h>
 #include <soc/uart_periph.h>
 #include <soc/gpio_struct.h>
+#include <soc/io_mux_reg.h>
+#include <soc/rtc.h>
 #include <hal/gpio_types.h>
 #include <hal/gpio_ll.h>
 #include <hal/uart_ll.h>
+#include <hal/clk_gate_ll.h>
 
 #ifdef CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT
 #define SERIAL_BOOT_GPIO_DETECT     CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT
@@ -88,6 +91,7 @@ int console_read(char *str, int cnt, int *newline)
                 read_len++;
                 if (read_len == cnt || str[read_len - 1] == '\n') {
                     stop = true;
+                    break;
                 }
             }
         }
@@ -118,10 +122,14 @@ int boot_console_init(void)
     gpio_ll_output_enable(&GPIO, SERIAL_BOOT_GPIO_TX);
 
     uart_ll_set_mode_normal(serial_boot_uart_dev);
-    uart_ll_set_baudrate(serial_boot_uart_dev, 115200  );
-    uart_ll_set_stop_bits(serial_boot_uart_dev, 1u );
-    uart_ll_set_parity(serial_boot_uart_dev, UART_PARITY_DISABLE );
-    uart_ll_set_rx_tout(serial_boot_uart_dev, 16 );
+    uart_ll_set_baudrate(serial_boot_uart_dev, 115200);
+    uart_ll_set_stop_bits(serial_boot_uart_dev, 1u);
+    uart_ll_set_parity(serial_boot_uart_dev, UART_PARITY_DISABLE);
+    uart_ll_set_rx_tout(serial_boot_uart_dev, 16);
+    uart_ll_set_data_bit_num(serial_boot_uart_dev, UART_DATA_8_BITS);
+    uart_ll_set_tx_idle_num(serial_boot_uart_dev, 0);
+    uart_ll_set_hw_flow_ctrl(serial_boot_uart_dev, UART_HW_FLOWCTRL_DISABLE, 100);
+    periph_ll_enable_clk_clear_rst(PERIPH_UART0_MODULE + SERIAL_BOOT_UART_NUM);
 
     uart_ll_txfifo_rst(serial_boot_uart_dev);
     uart_ll_rxfifo_rst(serial_boot_uart_dev);
@@ -153,14 +161,14 @@ bool boot_serial_detect_pin(void)
     detected = (pin_value == SERIAL_BOOT_GPIO_DETECT_VAL);
     esp_rom_delay_us(50000);
 
-    if(detected) {
-        if(SERIAL_BOOT_DETECT_DELAY_S > 0) {
+    if (detected) {
+        if (SERIAL_BOOT_DETECT_DELAY_S > 0) {
             /* The delay time is an approximation */
-            for(int i = 0; i < (SERIAL_BOOT_DETECT_DELAY_S * 100); i++) {
+            for (int i = 0; i < (SERIAL_BOOT_DETECT_DELAY_S * 100); i++) {
                 esp_rom_delay_us(10000);
                 pin_value = gpio_ll_get_level(&GPIO, SERIAL_BOOT_GPIO_DETECT);
-                detected =  (pin_value == SERIAL_BOOT_GPIO_DETECT_VAL);
-                if(!detected) {
+                detected = (pin_value == SERIAL_BOOT_GPIO_DETECT_VAL);
+                if (!detected) {
                     break;
                 }
             }
