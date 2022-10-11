@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2021 Arm Limited
+ * Copyright (c) 2019-2023 Arm Limited
  * Copyright (c) 2020-2023 Nordic Semiconductor ASA
  *
  * Original license:
@@ -440,7 +440,7 @@ boot_swap_type_multi(int image_index)
                 table->image_ok_secondary_slot == secondary_slot.image_ok) &&
             (table->copy_done_primary_slot == BOOT_FLAG_ANY  ||
                 table->copy_done_primary_slot == primary_slot.copy_done)) {
-            BOOT_LOG_INF("Swap type: %s",
+            BOOT_LOG_INF("Image index: %d, Swap type: %s", image_index,
                          table->swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
                          table->swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
                          table->swap_type == BOOT_SWAP_TYPE_REVERT ? "revert" :
@@ -454,7 +454,7 @@ boot_swap_type_multi(int image_index)
         }
     }
 
-    BOOT_LOG_INF("Swap type: none");
+    BOOT_LOG_INF("Image index: %d, Swap type: none", image_index);
     return BOOT_SWAP_TYPE_NONE;
 }
 
