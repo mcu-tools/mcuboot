@@ -1,20 +1,22 @@
 # Copyright (c) 2020 Nordic Semiconductor ASA
+# Copyright (c) 2022 Legrand North America, LLC.
 #
 # SPDX-License-Identifier: Apache-2.0
+
 
 if(CONFIG_MCUBOOT_BOOTUTIL_LIB)
 
 zephyr_interface_library_named(MCUBOOT_BOOTUTIL)
 
-target_include_directories(MCUBOOT_BOOTUTIL INTERFACE
-  ../
-  ../include
-  ../../zephyr/include
+zephyr_include_directories(MCUBOOT_BOOTUTIL INTERFACE
+  ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/bootutil/
+  ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/bootutil/include
+  ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/zephyr/include
 )
 
 zephyr_library_named(mcuboot_util)
 zephyr_library_sources(
-  ../src/bootutil_public.c
+  ${ZEPHYR_MCUBOOT_MODULE_DIR}/boot/bootutil/src/bootutil_public.c
     )
 
 # Sensitivity to the TEST_BOOT_IMAGE_ACCESS_HOOKS define is implemented for
@@ -30,7 +32,7 @@ target_link_libraries(MCUBOOT_BOOTUTIL INTERFACE zephyr_interface)
 
 if(CONFIG_BOOT_USE_TINYCRYPT)
 target_include_directories(MCUBOOT_BOOTUTIL INTERFACE
-  ../../../ext/tinycrypt/lib/include
+  ${ZEPHYR_MCUBOOT_MODULE_DIR}/ext/tinycrypt/lib/include
 )
 endif()
 
