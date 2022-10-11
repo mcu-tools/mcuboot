@@ -1,4 +1,5 @@
-# Copyright (c) 2022 Legrand North America, LLC.
+# Copyright (c) 2017 Open Source Foundaries Limited
+#
 # SPDX-License-Identifier: Apache-2.0
 
 # Enable Zephyr runner options which request mass erase if so

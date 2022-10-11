@@ -1,0 +1,36 @@
+/*
+ * Copyright (c) 2020 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/delete-node/ &boot_partition;
+/delete-node/ &slot0_partition;
+/delete-node/ &slot1_partition;
+/delete-node/ &scratch_partition;
+
+&flash0 {
+	partitions {
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x000000000 0x00010000>;
+		};
+		slot0_partition: partition@10000 {
+			label = "image-0";
+			reg = <0x000010000 0x0000e8000>;
+		};
+	};
+};
+
+&mx25r64 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		slot1_partition: partition@0 {
+			label = "image-1";
+			reg = <0x000000000 0x0000e8000>;
+		};
+	};
+};

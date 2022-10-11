@@ -6,6 +6,7 @@
 name: mcuboot
 samples:
   - boot/zephyr
+  - zephyr/samples
 build:
   cmake: ./zephyr
   kconfig: ./zephyr/Kconfig
