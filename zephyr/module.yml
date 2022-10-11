@@ -1,5 +1,6 @@
 name: mcuboot
 samples:
   - boot/zephyr
+  - zephyr/samples
 build:
   cmake: ./boot/bootutil/zephyr
