@@ -1,3 +1,4 @@
+name: mcuboot
 samples:
   - boot/zephyr
 build:
