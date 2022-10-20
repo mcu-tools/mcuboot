@@ -40,7 +40,7 @@
 #elif __ESPRESSIF__
 #include <bootloader_utility.h>
 #include <esp_rom_sys.h>
-#include <rom/crc.h>
+#include <esp_crc.h>
 #include <endian.h>
 #include <mbedtls/base64.h>
 #else
@@ -732,8 +732,8 @@ boot_serial_output(void)
     crc =  crc16_itu_t(crc, data, len);
 #elif __ESPRESSIF__
     /* For ESP32 it was used the CRC API in rom/crc.h */
-    crc =  ~crc16_be(~CRC16_INITIAL_CRC, (uint8_t *)bs_hdr, sizeof(*bs_hdr));
-    crc =  ~crc16_be(~crc, (uint8_t *)data, len);
+    crc =  ~esp_crc16_be(~CRC16_INITIAL_CRC, (uint8_t *)bs_hdr, sizeof(*bs_hdr));
+    crc =  ~esp_crc16_be(~crc, (uint8_t *)data, len);
 #else
     crc = crc16_ccitt(CRC16_INITIAL_CRC, bs_hdr, sizeof(*bs_hdr));
     crc = crc16_ccitt(crc, data, len);
@@ -819,7 +819,7 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
 #ifdef __ZEPHYR__
     crc = crc16_itu_t(CRC16_INITIAL_CRC, out, len);
 #elif __ESPRESSIF__
-    crc = ~crc16_be(~CRC16_INITIAL_CRC, (uint8_t *)out, len);
+    crc = ~esp_crc16_be(~CRC16_INITIAL_CRC, (uint8_t *)out, len);
 #else
     crc = crc16_ccitt(CRC16_INITIAL_CRC, out, len);
 #endif
