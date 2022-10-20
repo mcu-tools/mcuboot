@@ -5,6 +5,7 @@
 list(APPEND hal_srcs
     ${esp_idf_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/regi2c_ctrl.c
     ${esp_idf_dir}/components/efuse/src/esp_efuse_api_key_esp32xx.c
+    ${esp_idf_dir}/components/esp_rom/patches/esp_rom_crc.c
     )
 
 list(APPEND LINKER_SCRIPTS

@@ -14,6 +14,8 @@
 #include "esp_rom_gpio.h"
 
 #include "bootloader_init.h"
+#include "bootloader_common.h"
+#include "bootloader_console.h"
 #include "bootloader_mem.h"
 #include "bootloader_clock.h"
 #include "bootloader_flash_config.h"
@@ -120,18 +122,6 @@ static esp_err_t bootloader_init_spi_flash(void)
     return ESP_OK;
 }
 
-static void bootloader_init_uart_console(void)
-{
-    const int uart_num = 0;
-
-    uartAttach(NULL);
-    ets_install_uart_printf();
-    uart_tx_wait_idle(0);
-
-    const int uart_baud = CONFIG_ESP_CONSOLE_UART_BAUDRATE;
-    uart_div_modify(uart_num, (rtc_clk_apb_freq_get() << 4) / uart_baud);
-}
-
 static void bootloader_super_wdt_auto_feed(void)
 {
     REG_SET_BIT(RTC_CNTL_SWD_CONF_REG, RTC_CNTL_SWD_AUTO_FEED_EN);
@@ -158,7 +148,7 @@ esp_err_t bootloader_init(void)
     /* config clock */
     bootloader_clock_configure();
     /* initialize uart console, from now on, we can use ets_printf */
-    bootloader_init_uart_console();
+    bootloader_console_init();
     /* read bootloader header */
     if ((ret = bootloader_read_bootloader_header()) != ESP_OK) {
         goto err;
