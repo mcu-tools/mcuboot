@@ -552,7 +552,7 @@ Serial recovery mode allows management through MCUMGR (more information and how 
 ---
 ***Note***
 
-Supported on ESP32, ESP32-C3, ESP32-S2.
+Supported on ESP32, ESP32-C3, ESP32-S2 and ESP32-S3.
 
 ---
 
