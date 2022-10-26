@@ -1,0 +1,5 @@
+settings:
+  digits: 5
+  parent: MCUBOOT.SYAD
+  prefix: MCUBOOT.CONSRS
+  sep: '-'

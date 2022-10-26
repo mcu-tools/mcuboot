@@ -1,0 +1,4 @@
+settings:
+  digits: 5
+  prefix: MCUBOOT.STRS
+  sep: '-'
