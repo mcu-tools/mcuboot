@@ -1,0 +1,39 @@
+common:
+  tags: mcuboot_tests
+  platform_allow: native_posix
+  integration_platforms:
+    - native_posix
+  extra_args: MCUBOOT_SWAP_USING_SCRATCH=0
+
+tests:
+  mcuboot.mcuboot_utils.caps.VALIDATE_SLOT0:
+    extra_configs:
+      - CONFIG_BOOT_VALIDATE_SLOT0=y
+  mcuboot.mcuboot_utils.caps.VALIDATE_SLOT0_ONCE:
+    extra_configs:
+      - CONFIG_BOOT_VALIDATE_SLOT0_ONCE=y
+  mcuboot.mcuboot_utils.caps.BOOT_UPGRADE_ONLY:
+    extra_configs:
+      - CONFIG_BOOT_UPGRADE_ONLY=y
+  mcuboot.mcuboot_utils.caps.SINGLE_APPLICATION_SLOT:
+    extra_configs:
+      - CONFIG_SINGLE_APPLICATION_SLOT=y
+  mcuboot.mcuboot_utils.caps.BOOT_SWAP_USING_MOVE:
+    extra_configs:
+      - CONFIG_BOOT_SWAP_USING_MOVE=y
+  mcuboot.mcuboot_utils.caps.BOOT_DIRECT_XIP:
+    extra_configs:
+      - CONFIG_BOOT_DIRECT_XIP=y
+  mcuboot.mcuboot_utils.caps.BOOT_DIRECT_XIP_REVERT:
+    extra_configs:
+      - CONFIG_BOOT_DIRECT_XIP_REVERT=y
+  mcuboot.mcuboot_utils.caps.BOOT_RAM_LOAD:
+    extra_configs:
+      - CONFIG_BOOT_RAM_LOAD=y
+  mcuboot.mcuboot_utils.caps.UPDATEABLE_IMAGE_NUMBER:
+    skip: true  # test still under development
+    extra_configs:
+      - CONFIG_UPDATEABLE_IMAGE_NUMBER=0
+  mcuboot.mcuboot_utils.caps.BOOT_SWAP_SAVE_ENCTLV:
+    extra_configs:
+      - CONFIG_BOOT_SWAP_SAVE_ENCTLV=y

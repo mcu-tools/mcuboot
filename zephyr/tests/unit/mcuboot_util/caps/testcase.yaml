@@ -1,0 +1,45 @@
+common:
+  tags: mcuboot_tests
+  platform_allow: native_posix
+  integration_platforms:
+    - native_posix
+  extra_args: MCUBOOT_SWAP_USING_SCRATCH=0
+  skip: true  # unittest does not generate DTS or process module Kconfigs!!
+
+tests:
+  mcuboot.mcuboot_utils.caps.unit.SIGN_RSA_2048:
+    extra_args: MCUBOOT_SIGN_RSA=1 MCUBOOT_SIGN_RSA_LEN=2048
+  mcuboot.mcuboot_utils.caps.unit.SIGN_RSA_3072:
+    extra_args: MCUBOOT_SIGN_RSA=1 MCUBOOT_SIGN_RSA_LEN=3072
+  mcuboot.mcuboot_utils.caps.unit.SIGN_EC:
+    extra_args: MCUBOOT_SIGN_EC=1
+  mcuboot.mcuboot_utils.caps.unit.SIGN_EC256:
+    extra_args: MCUBOOT_SIGN_EC256=1
+  mcuboot.mcuboot_utils.caps.unit.SIGN_ED25519:
+    extra_args: MCUBOOT_SIGN_ED25519=1
+  mcuboot.mcuboot_utils.caps.unit.OVERWRITE_ONLY:
+    extra_args: MCUBOOT_OVERWRITE_ONLY=1
+  mcuboot.mcuboot_utils.caps.unit.SWAP_USING_MOVE:
+    extra_args: MCUBOOT_SWAP_USING_MOVE=1
+  mcuboot.mcuboot_utils.caps.unit.SWAP_USING_SCRATCH:
+    skip: true  # Behavior when OVERWRITE_ONLY and SWAP_USING_MOVE not defined
+  mcuboot.mcuboot_utils.caps.unit.ENCRYPT_RSA:
+    extra_args: MCUBOOT_ENCRYPT_RSA=1
+  mcuboot.mcuboot_utils.caps.unit.ENCRYPT_KW:
+    extra_args: MCUBOOT_ENCRYPT_KW=1
+  mcuboot.mcuboot_utils.caps.unit.ENCRYPT_EC256:
+    extra_args: MCUBOOT_ENCRYPT_EC256=1
+  mcuboot.mcuboot_utils.caps.unit.VALIDATE_PRIMARY_SLOT:
+    extra_args: MCUBOOT_VALIDATE_PRIMARY_SLOT=1
+  mcuboot.mcuboot_utils.caps.unit.DOWNGRADE_PREVENTION:
+    extra_args: MCUBOOT_DOWNGRADE_PREVENTION=1
+  mcuboot.mcuboot_utils.caps.unit.BOOTSTRAP:
+    extra_args: MCUBOOT_BOOTSTRAP=1
+  mcuboot.mcuboot_utils.caps.unit.AES_256:
+    extra_args: MCUBOOT_AES_256=1
+  mcuboot.mcuboot_utils.caps.unit.RAM_LOAD:
+    extra_args: MCUBOOT_RAM_LOAD=1
+  mcuboot.mcuboot_utils.caps.unit.DIRECT_XIP:
+    extra_args: MCUBOOT_DIRECT_XIP=1
+  mcuboot.mcuboot_utils.caps.unit.IMAGE_NUMBER_2:
+    extra_args: MCUBOOT_IMAGE_NUMBER=2
