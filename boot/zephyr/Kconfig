@@ -197,7 +197,7 @@ config BOOT_VALIDATE_SLOT0_ONCE
 config BOOT_PREFER_SWAP_MOVE
 	bool "Prefer the newer swap move algorithm"
 	default y if SOC_FAMILY_NRF
-	default n
+	default y if !$(dt_nodelabel_enabled,scratch_partition)
 	help
 	  If y, the BOOT_IMAGE_UPGRADE_MODE will default to using
 	  "move" instead of "scratch".  This is a separate bool config
