@@ -421,7 +421,7 @@ int flash_area_read(const struct flash_area *fa, uint32_t off,
   /* Reposition the file offset from the beginning of the flash area */
 
   seekpos = lseek(dev->fd, (off_t)off, SEEK_SET);
-  if (seekpos != off)
+  if (seekpos != (off_t)off)
     {
       int errcode = errno;
 
@@ -489,7 +489,7 @@ int flash_area_write(const struct flash_area *fa, uint32_t off,
   /* Reposition the file offset from the beginning of the flash area */
 
   seekpos = lseek(dev->fd, (off_t)off, SEEK_SET);
-  if (seekpos != off)
+  if (seekpos != (off_t)off)
     {
       int errcode = errno;
 
