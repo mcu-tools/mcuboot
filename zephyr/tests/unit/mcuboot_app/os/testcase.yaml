@@ -1,0 +1,7 @@
+tests:
+  mcuboot.mcuboot_app.os:
+    skip: true  # Zephyr unittest does not include Kconfig from all modules
+    type: unit
+    extra_configs:
+      - CONFIG_BOOT_USE_MBEDTLS=y
+
