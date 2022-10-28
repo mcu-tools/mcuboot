@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 name: mcuboot
+tests:
+  - zephyr/tests
 samples:
   - boot/zephyr
   - zephyr/samples
