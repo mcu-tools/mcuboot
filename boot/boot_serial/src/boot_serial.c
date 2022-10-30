@@ -83,6 +83,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #endif
 
 #define BOOT_SERIAL_OUT_MAX     (128 * BOOT_IMAGE_NUMBER)
+#define BOOT_SERIAL_FRAME_MTU   124 /* 127 - pkt start (2 bytes) and stop (1 byte) */
 
 #ifdef __ZEPHYR__
 /* base64 lib encodes data to null-terminated string */
@@ -758,9 +759,10 @@ static void
 boot_serial_output(void)
 {
     char *data;
-    int len;
+    int len, out;
     uint16_t crc;
     uint16_t totlen;
+    char pkt_cont[2] = { SHELL_NLIP_DATA_START1, SHELL_NLIP_DATA_START2 };
     char pkt_start[2] = { SHELL_NLIP_PKT_START1, SHELL_NLIP_PKT_START2 };
     char buf[BOOT_SERIAL_OUT_MAX + sizeof(*bs_hdr) + sizeof(crc) + sizeof(totlen)];
     char encoded_buf[BASE64_ENCODE_SIZE(sizeof(buf))];
@@ -786,8 +788,6 @@ boot_serial_output(void)
 #endif
     crc = htons(crc);
 
-    boot_uf->write(pkt_start, sizeof(pkt_start));
-
     totlen = len + sizeof(*bs_hdr) + sizeof(crc);
     totlen = htons(totlen);
 
@@ -810,8 +810,23 @@ boot_serial_output(void)
 #else
     totlen = base64_encode(buf, totlen, encoded_buf, 1);
 #endif
-    boot_uf->write(encoded_buf, totlen);
-    boot_uf->write("\n", 1);
+
+    out = 0;
+    while (out < totlen) {
+        if (out == 0) {
+            boot_uf->write(pkt_start, sizeof(pkt_start));
+        } else {
+            boot_uf->write(pkt_cont, sizeof(pkt_cont));
+        }
+
+        len = MIN(BOOT_SERIAL_FRAME_MTU, totlen - out);
+        boot_uf->write(&encoded_buf[out], len);
+
+        out += len;
+
+        boot_uf->write("\n", 1);
+    }
+
     BOOT_LOG_INF("TX");
 }
 
