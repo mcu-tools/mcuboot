@@ -1,0 +1,21 @@
+active: true
+derived: false
+header: |
+  Scope_Breadth
+level: 1.2.1
+links: []
+normative: false
+ref: ''
+reviewed: null
+text: |
+  The scope of the MCUboot Project includes:
+
+  1. Source, verification suites, and documentation for:
+
+    - MCUboot functionality and framework interfaces
+    - MCUboot port glue code into one or more target OS ecosystems (e.g., Mynewt)
+
+  2. Processes and resources for:
+
+    - hosting the MCUboot Project
+    - managing the MCUboot Project
