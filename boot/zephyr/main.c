@@ -303,7 +303,7 @@ static void do_boot(struct boot_rsp *rsp)
     void *start;
 
 #if defined(MCUBOOT_RAM_LOAD)
-    start = (void *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
+    start = (void *)((uintptr_t)rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
 #else
     uintptr_t flash_base;
     int rc;
