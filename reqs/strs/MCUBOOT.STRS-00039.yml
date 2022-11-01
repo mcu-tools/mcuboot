@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Scope_of_MCUboot_Project
+level: 1.2.1
+links: []
+normative: false
+ref: ''
+reviewed: null
+text: |
+  The MCUboot Project seeks to produce, develop and maintain an open-source reference secure bootloader for microcontroller-based systems.
+
+  The scope of the MCUboot Project is a secure boot for 32-bit Microcontrollers.

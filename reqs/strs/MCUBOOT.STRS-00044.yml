@@ -1,0 +1,10 @@
+active: true
+derived: false
+header: ''
+level: 3.2.1
+links: []
+normative: false
+ref: ''
+reviewed: null
+text: |
+  The goal of MCUboot is to define a common infrastructure for the bootloader, system flash layout on microcontroller systems, and to provide a secure bootloader that enables easy software upgrade.

@@ -1,0 +1,23 @@
+active: true
+derived: false
+header: |
+  Project_Charter
+level: 3.3.4
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  The MCUboot Project Charter is located at https://www.mcuboot.com/project-charter. It covers the following items:
+
+  1. Mission of the MCUboot Project.
+  2. Membership
+  3. Project Governing Board
+  4. Conduct of Board Meetings
+  5. Quorum and Voting
+  6. Antitrust Guidelines
+  7. Budget
+  8. Treasury and Project Expenses
+  9. Project IP Policy and Licensing
+  10. Technical Steering Committee("TSC")
+  11: Amendments
