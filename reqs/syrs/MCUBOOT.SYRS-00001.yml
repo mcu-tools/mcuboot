@@ -2,10 +2,20 @@ active: true
 derived: false
 header: |
   Introduction
-level: 1.0
+level: 1
 links: []
 normative: false
 ref: ''
 reviewed: Ghu1smwzjBUGf796hVijvZs_QYt5FSCl_4ve5lYIyQs=
 text: |
-  Introduction
+  This document contains the System Requirements Specification (SyRS) for the MCUboot Project.
+
+  It is organized based on ISO/IEC/IEEE 29148:2018 Systems and software engineering - Life cycle processes - Requirements engineering, section 8.4.2 SyRS example outline.
+
+  Section 1 provides an introduction to the purpose, scope, and context of the MCUboot Project and its deliverables.
+
+  Section 2 lists referenced material.
+
+  Section 3 captures the formal requirements on the operation of the system (system requirements) to meet the subset stakeholder needs agreed upon by the representative stakeholders.
+
+  Section 4 captures how the resulting system will be verified that it meets all the system requirements.

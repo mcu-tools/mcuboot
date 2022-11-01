@@ -2,10 +2,10 @@ active: true
 derived: false
 header: |
   System_Purpose
-level: 1.1.0
+level: 1.1
 links: []
 normative: false
 ref: ''
 reviewed: g-ovgYtgIRm1GLvl3FnUM8YibegH8fBD_IVJ_m--Tcs=
 text: |
-  System Purpose
+  The MCUboot Project seeks to produce, develop and maintain an open-source reference secure bootloader for microcontroller-based systems.
