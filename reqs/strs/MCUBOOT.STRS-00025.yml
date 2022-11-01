@@ -1,11 +1,49 @@
 active: true
 derived: false
 header: |
-  Persona_1
-level: 1.4.6.1.0
+  Persona_Template
+level: 1.4.6.1
 links: []
 normative: false
 ref: ''
 reviewed: jNoYCnxXRo9x8jJtBQjr1C01PeIOqkk6_eTwhkZYIvk=
 text: |
-  Persona 1
+  Name:  Given name, job title
+
+  Description:
+
+  - "Optional quote"
+  - Age:
+  - Job:
+  - Income:
+  - Education:
+  - Family:
+  - Location:
+  - Hobbies/Interests
+
+  Confidence Rating:
+
+  Responsibilities:
+
+  - Responsibility 1
+  - Responsibility 2
+
+  Pain Points:
+
+  - Pain point 1
+  - Pain point 2
+
+  Goals:
+
+  - Goal 1
+
+  Influences:
+
+  - Influence 1
+  - Influence 2
+
+  Technology:
+
+  - Technical Level
+  - Tech Used 1
+  - Tech Used 2

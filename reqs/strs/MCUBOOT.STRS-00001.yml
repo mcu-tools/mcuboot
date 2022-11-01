@@ -2,10 +2,26 @@ active: true
 derived: false
 header: |
   Introduction
-level: 1.0
+level: 1
 links: []
 normative: false
 ref: ''
 reviewed: rpAY0yHt9j_Fksyngr_o1zvSDaBq1_0J0B-wCEeSEKM=
 text: |
-  Introduction
+  This document contains the Stakeholder Requirements Specification (StRS) for the MCUboot Project.
+
+  It is organized based on ISO/IEC/IEEE 29148:2018 Systems and software engineering - Life cycle processes - Requirements engineering, section 8.3.2 StRS example outline.
+
+  Section 1 provides an introduction to the purpose, scope, and context of the MCUboot Project and its deliverables.
+
+  Section 2 lists referenced material.
+
+  Section 3 provides a more detailed description of the business-imposed requirements on the MCUboot Project and its deliverables.
+
+  Section 4 captures the requirements on the operation of the MCUboot Project ant its deliverables.
+
+  Section 5 captures user needs and requirements users face within the problem domain.
+
+  Section 6 captures a _conceptual_ description of the proposed system.
+
+  Section 7 captures any further constraints imposed on performing the MCUboot Project (e.g., cost, schedule).
