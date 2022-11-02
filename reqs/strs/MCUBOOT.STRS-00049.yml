@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Executable_image_source_licensing_check
+level: 5.2.2.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer,
+  I need to verify the compatibility of source licensing of all source files needed in the resulting executable image,
+  so that my business is not exposed to unknown licensing liabilities.

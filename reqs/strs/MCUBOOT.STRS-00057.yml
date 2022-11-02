@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Persistent_security_event_logs
+level: 5.2.19.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer,
+  I need the bootloader to persistently log security events,
+  so I can perform boot and update failure analysis on a returned device.

@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Configurable_as_second-stage_bootloader
+level: 5.2.14.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer using MCU with a lockable boot flash partition too small for my full set of boot functionality,
+  I need the bootloader source to be configurable as a minimal, immutable first stage image and configurable as a full-featured second-stage bootloader image,
+  so the MCU constraint can boot my application.

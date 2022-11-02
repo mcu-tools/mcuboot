@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Configurable_as_single_threaded_image
+level: 5.2.22.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer,
+  I need to configure the bootloader so the boot image is single-threaded,
+  so that the image is as simple (and small) as possible.

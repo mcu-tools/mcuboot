@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Executable_image_SPDX_BOM_generation_support
+level: 5.2.1.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer,
+  I need the bootloader build system to generate a BOM for the boot image,
+  so that I have a publicizable artifact for security investigations.

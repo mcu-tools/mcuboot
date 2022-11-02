@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Easily_retargetable
+level: 5.2.6.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer,
+  I need to quickly and easily retarget my bootloader feature configuration at replacement hardware,
+  so I can rapidly and predictably deliver a bootloader to the manufacturing line for the replacement MCU.

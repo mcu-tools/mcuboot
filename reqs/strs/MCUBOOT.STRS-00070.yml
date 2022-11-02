@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Configurable_as_multi_threaded_image
+level: 5.2.23.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer,
+  I need to configure the bootloader so the boot image is multi-threaded,
+  so that the image can reuse RTOS drivers for complex subsystems (e.g., USB UART device).

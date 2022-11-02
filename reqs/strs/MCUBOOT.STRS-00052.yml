@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Re-verifiable_with_replacable_toolchains
+level: 5.2.5.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer for a regulated device,
+  I need to re-verify all used open source implementations with my replacement qualified toolchain,
+  so that my product can meet certification criteria.

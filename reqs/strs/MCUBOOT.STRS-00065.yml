@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Multi-partition_image_support
+level: 5.2.10.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer of a FW image spread across multiple flash parts (e.g., executable, discontiguous file system),
+  I need the bootloader to atomically update and validate an image spread across discontiguous flash partitions,
+  so the entire application image can be updated.

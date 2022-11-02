@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Configurable_crypto_algorithm
+level: 5.2.15.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer for devices secured with cryptography,
+  I need the bootloader to be configurable to use the standard cryptographic algorithms of my choosing,
+  so that my device uses algorithms appropriate to my product domain.

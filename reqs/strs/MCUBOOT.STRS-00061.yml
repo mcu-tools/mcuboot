@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Well-defined_HW_state_on_image_handoff
+level: 5.2.8.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer,
+  I need the bootloader to have the MCU hardware in a well-defined condition upon handoff to the loaded image,
+  so the loaded image can avoid unnecessary and/or undesirable hardware reconfiguration.

@@ -1,0 +1,14 @@
+active: true
+derived: false
+header: |
+  Documentation_of_Qualified_Development_Process
+level: 5.2.24.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer for a regulated device,
+  I need to produce process documentation that demonstrates that the product
+  was developed according to a qualified process,
+  so that the product can pass a process audit.

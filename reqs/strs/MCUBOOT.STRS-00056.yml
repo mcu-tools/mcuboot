@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Composable_UI
+level: 5.2.18.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer for devices in visble locations,
+  I need the bootloader to drive a User Interface of my specification,
+  so that I can visually distinguish between a device with no valid application image, a device that has finished booting and hung in the application, and a device that is applying an update.

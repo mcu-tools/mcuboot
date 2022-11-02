@@ -1,0 +1,52 @@
+active: true
+derived: false
+header: |
+  Inaya,_Firmware_Integration_Engineer
+level: 1.4.6.2
+links: []
+normative: false
+ref: ''
+reviewed: null
+text: |
+  Name:  Inaya, Firmware Integration Engineer
+
+  Description:
+
+  - "Optional quote"
+  - Age: 31
+  - Job: IoT Device Firmware Developer
+  - Income:
+  - Education: College
+  - Family:
+  - Location:
+  - Hobbies/Interests:
+
+  Confidence Rating: Medium
+
+  Responsibilities:
+
+  A typical day for Inaya is spent integrating and sustaining integration of 10+ closely related products developed over the last 5 years. Each product requires an immutable boot loader and an application image. Some may require multi-stage boot. She is responsible for the integration of each of these, and for sustainment of integrations as security issues are discovered and addressed, and application features are enhanced.
+
+  Pain Points:
+
+  - Instability of interfaces and configuration points.
+  - Finding and resolving feature enhancements bundled with necessary security fixes.
+  - Having to use a different integration/verification process or tools for different sets of products.
+  - Having to integrate, verify and release security fixes for the entire set of products within a couple weeks.
+
+  Goals:
+
+  - Getting the job done right the first time so security, safety, and/or feature issues do not escape to the field.
+  - Having thorough objective evidence that immutable boot code is complete, correct, and meets the security standard chosen by her business.
+
+  Influences:
+
+  - The Engineering architect setting technical direction for the business.
+  - The open source projects being integrated into her product.
+
+
+  Technology:
+
+  - Technical Level: Proficient
+  - Uses Linux and Windows for development
+  - Uses JTAG-based tools for device firmware debugging

@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  FW_downgrade_prevention
+level: 5.2.20.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer of consumer devices,
+  I need the bootloader to prevent downgrading the version of application firmware,
+  so the device will prevent re-opening security holes discovered in downgraded versions.

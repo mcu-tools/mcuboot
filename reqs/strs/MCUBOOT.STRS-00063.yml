@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Configurable_as_bootloader_in_RAM
+level: 5.2.13.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer using MCUs that do not support overlapped execution from the flash being programmed,
+  I need to configure the bootloader to run from RAM,
+  so the bootloader can apply the update.

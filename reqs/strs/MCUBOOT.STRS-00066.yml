@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Image_partition_dependency_checking
+level: 5.2.11.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer of a FW image spread across multiple flash parts (e.g., executable, discontiguous file system),
+  I need the bootloader to only update image partitions based on dependencies,
+  so that update time can be reduced by skipping unnecessary partition updates.

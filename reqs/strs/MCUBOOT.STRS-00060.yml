@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Boot_image_metadata
+level: 5.2.7.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer,
+  I need the bootloader to expose metadata and status about itself to the loaded image,
+  so that the loaded image can report this data out for diagnostics.

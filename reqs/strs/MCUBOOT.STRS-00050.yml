@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Safety-certifiable_bootloaders
+level: 5.2.3.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer for a safety-critical device,
+  I need to configure and generate a bootloader image with all the auditable artifacts needed for the safety certification chosen by my business,
+  so that I can sell my product.

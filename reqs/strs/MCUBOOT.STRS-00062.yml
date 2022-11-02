@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Shared_candidate_image_validation_specs
+level: 5.2.9.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer,
+  I need the application image to validate candidate FW updates in the same way as the boot image will,
+  so that candidate images can be invalidated without having to reboot.

@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  FW_downgrade_allowance
+level: 5.2.21.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer of commercial/industrial devices,
+  I need the bootloader to allow downgrading the version of application firmware,
+  so the existing devices at the customer installation used in system update evaluations can be returned to their prior condition.

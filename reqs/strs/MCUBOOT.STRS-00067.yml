@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Configurable_serial_upgrade_interface
+level: 5.2.16.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  As a Firmware Integration Engineer,
+  I need to configure the bootloader with a serial upgrade capability,
+  so I can more easily diagnose integration issues on new MCUs and board designs.
