@@ -1,0 +1,14 @@
+active: true
+derived: false
+header: |
+  MCUboot_image_automated_source_license_compatibility_verification
+level: 3.1.1.0
+links:
+- MCUBOOT.SYRS-00060: null
+normative: true
+ref: ''
+reviewed: null
+text: |
+  Where automated verification of compatibility of source licensing is available,
+  when automated verification of compatibility of source licensing is requested,
+  the build system of the provided ported MCUboot solution shall verify the compatibility of source licensing of all source files needed in the resulting executable image.

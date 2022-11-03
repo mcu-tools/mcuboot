@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  MCUboot_image_automated_source_license_compatibility_verification
+level: 3.11.1.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  Where automated verification of compatibility of source licensing is available,
+  when automated verification of compatibility of source licensing is requested,
+  the build system of the MCUboot solution shall verify the compatibility of source licensing of all source files needed in the resulting executable image.
