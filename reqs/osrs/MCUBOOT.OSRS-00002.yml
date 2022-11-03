@@ -1,0 +1,11 @@
+active: true
+derived: false
+header: |
+  Purpose
+level: 1.1.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  The Operating System (OS) system element provides basic abstractions for building executables, scheduling work, and sharing resources among different threads/interrupts.

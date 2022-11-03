@@ -1,0 +1,21 @@
+active: true
+derived: false
+header: |
+  Introduction
+level: 1.0
+links: []
+normative: true
+ref: ''
+reviewed: null
+text: |
+  This document contains the OS System Element Requirements Specification (OSRS) for the MCUboot Project.
+
+  It is organized based on ISO/IEC/IEEE 29148:2018 Systems and software engineering - Life cycle processes - Requirements engineering, section 8.4.2 SyRS example outline.
+
+  Section 1 provides an introduction to the purpose, scope, and context of the MCUboot Project and its deliverables.
+
+  Section 2 lists referenced material.
+
+  Section 3 captures the formal requirements on the operation of the system element (system element requirements) to meet the assigned system requirements and architecture definition constraints.
+
+  Section 4 captures how the resulting system element will be verified that it meets all the assigned system element requirements.
