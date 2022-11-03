@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  MCUboot_Executable_Metadata
+level: 3.4.1.1.0
+links:
+- MCUBOOT.STRS-00060: null
+normative: true
+ref: ''
+reviewed: null
+text: |
+  The MCUboot executable shall present metadata about itself to the loaded image.

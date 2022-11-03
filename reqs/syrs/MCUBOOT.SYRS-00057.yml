@@ -1,0 +1,12 @@
+active: true
+derived: false
+header: |
+  Bootloar_Persistently_Log_Security_Events
+level: 3.4.3.1.0
+links:
+- MCUBOOT.STRS-00057: null
+normative: false
+ref: ''
+reviewed: null
+text: |
+  The MCUboot executable shall persistently log security events.

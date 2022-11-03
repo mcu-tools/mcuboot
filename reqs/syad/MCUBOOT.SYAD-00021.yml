@@ -1,0 +1,13 @@
+active: true
+derived: false
+header: |
+  Measured_Boot_Shared_Data_single_fixed_memory_block
+level: 4.1.2.1.0
+links:
+- MCUBOOT.SYRS-00058: null
+- MCUBOOT.SYRS-00059: null
+normative: true
+ref: ''
+reviewed: null
+text: |
+  The MCUboot executable shall report data shared with the loaded image in one memory block of fixed location and size.

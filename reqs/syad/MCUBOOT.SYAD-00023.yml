@@ -1,0 +1,16 @@
+active: true
+derived: false
+header: |
+  Measured_Boot_Shared_Data_block_header
+level: 4.1.2.3.0
+links:
+- MCUBOOT.SYRS-00058: null
+- MCUBOOT.SYRS-00059: null
+normative: true
+ref: ''
+reviewed: null
+text: |
+  The MCUboot executable shall begin the Shared Data with a TLV header where:
+
+  - the TLV header type is a specified, reserved value indicating the beginning of the Shared Data block
+  - the TLV header length indicates the byte length of valid data within the Shared Data block.
