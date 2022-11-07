@@ -114,6 +114,15 @@ int main(int argc, FAR char *argv[])
 
   syslog(LOG_INFO, "*** Booting MCUboot build %s ***\n", CONFIG_MCUBOOT_VERSION);
 
+#ifdef CONFIG_MCUBOOT_WATCHDOG
+  int ret = mcuboot_watchdog_init();
+  if (ret < 0)
+  {
+    syslog(LOG_ERR, "Unable to initialize the watchdog timer\n");
+    FIH_PANIC;
+  }
+#endif
+
   FIH_CALL(boot_go, fih_rc, &rsp);
 
   if (fih_not_eq(fih_rc, FIH_SUCCESS))
