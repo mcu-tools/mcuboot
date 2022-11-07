@@ -181,6 +181,15 @@
  */
 
 #ifdef CONFIG_MCUBOOT_WATCHDOG
+
+#ifndef CONFIG_MCUBOOT_WATCHDOG_DEVPATH
+#  define CONFIG_MCUBOOT_WATCHDOG_DEVPATH "/dev/watchdog0"
+#endif
+
+#ifndef CONFIG_MCUBOOT_WATCHDOG_TIMEOUT
+#  define CONFIG_MCUBOOT_WATCHDOG_TIMEOUT 10000      /* Watchdog timeout in ms */
+#endif
+
 #  define MCUBOOT_WATCHDOG_FEED()       do                           \
                                           {                          \
                                             mcuboot_watchdog_feed(); \

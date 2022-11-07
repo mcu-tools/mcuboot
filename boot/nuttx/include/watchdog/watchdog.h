@@ -41,4 +41,25 @@
 
 void mcuboot_watchdog_feed(void);
 
+/****************************************************************************
+ * Public Function Prototypes
+ ****************************************************************************/
+
+/****************************************************************************
+ * Name: mcuboot_watchdog_init
+ *
+ * Description:
+ *   Initialize the watchdog timer by setting the trigger timeout and 
+ *   starting it.
+ *
+ * Input Parameters:
+ *   None.
+ *
+ * Returned Value:
+ *   OK on success, ERROR if not.
+ *
+ ****************************************************************************/
+
+int mcuboot_watchdog_init(void);
+
 #endif /* __BOOT_NUTTX_INCLUDE_WATCHDOG_WATCHDOG_H */
