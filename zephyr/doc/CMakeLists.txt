@@ -8,6 +8,8 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE} .. COMPONENTS doc)
 file(TO_CMAKE_PATH "${ZEPHYR_BASE}" ZEPHYR_BASE)
 message(STATUS "Zephyr base: ${ZEPHYR_BASE}")
 
+get_filename_component(MANIFEST_BASE ${CMAKE_CURRENT_LIST_DIR} DIRECTORY)
+
 #-------------------------------------------------------------------------------
 # Options
 
@@ -44,8 +46,7 @@ set(SPHINX_ENV
   DOT_EXECUTABLE=${DOXYGEN_DOT_EXECUTABLE}
 )
 
-#set(DOCS_CFG_DIR ${CMAKE_CURRENT_LIST_DIR})
-set(DOCS_CFG_DIR ${ZEPHYR_BASE}/doc)
+set(DOCS_CFG_DIR ${CMAKE_CURRENT_LIST_DIR})
 set(DOCS_DOCTREE_DIR ${CMAKE_CURRENT_BINARY_DIR}/doctrees)
 set(DOCS_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
 set(DOCS_SRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/src)
@@ -105,7 +106,6 @@ set_target_properties(
 #-------------------------------------------------------------------------------
 # devicetree
 
-#set(GEN_DEVICETREE_REST_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/_scripts/gen_devicetree_rest.py)
 set(GEN_DEVICETREE_REST_SCRIPT ${ZEPHYR_BASE}/doc/_scripts/gen_devicetree_rest.py)
 
 set(DTS_ARGS)
@@ -121,6 +121,7 @@ add_custom_target(
   devicetree
   COMMAND ${CMAKE_COMMAND} -E env
   PYTHONPATH=${ZEPHYR_BASE}/scripts/dts/python-devicetree/src${SEP}$ENV{PYTHONPATH}
+  MANIFEST_BASE=${MANIFEST_BASE}
   ZEPHYR_BASE=${ZEPHYR_BASE}
   ${PYTHON_EXECUTABLE} ${GEN_DEVICETREE_REST_SCRIPT}
     --vendor-prefixes ${ZEPHYR_BASE}/dts/bindings/vendor-prefixes.txt
@@ -139,6 +140,8 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${GEN_DEVICETREE_
 add_doc_target(
   html
   COMMAND ${CMAKE_COMMAND} -E env ${SPHINX_ENV}
+  MANIFEST_BASE=${MANIFEST_BASE}
+  ZEPHYR_BASE=${ZEPHYR_BASE}
   ${SPHINXBUILD}
     -b html
     -c ${DOCS_CFG_DIR}
@@ -166,6 +169,8 @@ add_dependencies(html devicetree)
 add_doc_target(
   latex
   COMMAND ${CMAKE_COMMAND} -E env ${SPHINX_ENV}
+  MANIFEST_BASE=${MANIFEST_BASE}
+  ZEPHYR_BASE=${ZEPHYR_BASE}
   ${SPHINXBUILD}
     -b latex
     -c ${DOCS_CFG_DIR}
@@ -217,6 +222,8 @@ endif()
 add_doc_target(
   linkcheck
   COMMAND ${CMAKE_COMMAND} -E env ${SPHINX_ENV}
+  MANIFEST_BASE=${MANIFEST_BASE}
+  ZEPHYR_BASE=${ZEPHYR_BASE}
   ${SPHINXBUILD}
     -b linkcheck
     -c ${DOCS_CFG_DIR}
