@@ -83,8 +83,7 @@ endfunction()
 # Doxygen (standalone)
 
 set(DOXY_OUT ${CMAKE_CURRENT_BINARY_DIR}/doxygen)
-#set(DOXYFILE_IN ${CMAKE_CURRENT_LIST_DIR}/zephyr.doxyfile.in)
-set(DOXYFILE_IN ${ZEPHYR_BASE}/doc/zephyr.doxyfile.in)
+set(DOXYFILE_IN ${CMAKE_CURRENT_LIST_DIR}/zephyr.doxyfile.in)
 set(DOXYFILE_OUT ${CMAKE_CURRENT_BINARY_DIR}/zephyr.doxyfile)
 set(ZEPHYR_VERSION "${Zephyr_VERSION}")
 
