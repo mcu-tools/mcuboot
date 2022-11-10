@@ -139,9 +139,9 @@ html_theme_options = {
     "prev_next_buttons_location": None
 }
 html_title = "MCUboot-on-Zephyr Project Documentation"
-html_logo = str(ZEPHYR_BASE / "doc" / "_static" / "images" / "logo.svg")
-html_favicon = str(ZEPHYR_BASE / "doc" / "_static" / "images" / "favicon.png")
-html_static_path = [str(ZEPHYR_BASE / "doc" / "_static")]
+html_logo = str(MANIFEST_BASE / "doc" / "_static" / "images" / "logo.svg")
+html_favicon = str(MANIFEST_BASE / "doc" / "_static" / "images" / "favicon.png")
+html_static_path = [str(MANIFEST_BASE / "doc" / "_static"), str(ZEPHYR_BASE / "doc" / "_static")]
 html_last_updated_fmt = "%b %d, %Y"
 html_domain_indices = False
 html_split_index = True
@@ -174,8 +174,8 @@ html_context = {
 
 latex_elements = {
     "papersize": "a4paper",
-    "maketitle": open(ZEPHYR_BASE / "doc" / "_static" / "latex" / "title.tex").read(),
-    "preamble": open(ZEPHYR_BASE / "doc" / "_static" / "latex" / "preamble.tex").read(),
+    "maketitle": open(MANIFEST_BASE / "doc" / "_static" / "latex" / "title.tex").read(),
+    "preamble": open(MANIFEST_BASE / "doc" / "_static" / "latex" / "preamble.tex").read(),
     "fontpkg": r"\usepackage{charter}",
     "sphinxsetup": ",".join(
         (
@@ -189,7 +189,7 @@ latex_elements = {
         )
     ),
 }
-latex_logo = str(ZEPHYR_BASE / "doc" / "_static" / "images" / "logo-latex.pdf")
+latex_logo = str(MANIFEST_BASE / "doc" / "_static" / "images" / "logo-latex.pdf")
 latex_documents = [
     ("index-tex", "zephyr.tex", "MCUboot-on-Zephyr Project Documentation", author, "manual"),
 ]
