@@ -164,4 +164,8 @@
        d="m 424.254,172.49932 a 6.29376,6.29376 0 1 1 6.29434,-6.294 6.30082,6.30082 0 0 1 -6.29434,6.294 z m 0,-11.7913 a 5.49754,5.49754 0 1 0 5.49812,5.49735 5.50374,5.50374 0 0 0 -5.49812,-5.49737 z"
        id="path52" />
   </g>
+  <text>
+    <tspan font-weight="bold" font-style="normal" fill="white" font-size="200px" x="0" y="200px">MCUboot</tspan>
+    <tspan font-weight="normal" font-style="italic" fill="white" font-size="120px" x="120px" y="490px">on</tspan>
+  </text>
 </svg>

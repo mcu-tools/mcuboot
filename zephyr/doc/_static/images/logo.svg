@@ -171,4 +171,8 @@
        id="path52"
        style="fill:#ffffff;fill-opacity:1" />
   </g>
+  <text>
+    <tspan font-weight="bold" font-style="normal" fill="white" font-size="200px" x="0" y="200px">MCUboot</tspan>
+    <tspan font-weight="normal" font-style="italic" fill="white" font-size="120px" x="120px" y="490px">on</tspan>
+  </text>
 </svg>
