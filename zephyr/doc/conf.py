@@ -39,6 +39,7 @@ except ImportError:
 project = "MCUboot-on-Zephyr Project"
 copyright = "2015-2022 Mcuboot and Zephyr Project members and individual contributors"
 author = "The MCUboot and Zephyr Project Contributors"
+root_doc = "mcuboot_index"
 
 # parse version from 'VERSION' file
 with open(MANIFEST_BASE / "VERSION") as f:
@@ -265,17 +266,27 @@ vcs_link_exclude = [
 # -- Options for zephyr.kconfig -------------------------------------------
 
 kconfig_generate_db = True
-kconfig_ext_paths = [ZEPHYR_BASE]
+kconfig_ext_paths = [ZEPHYR_BASE, MANIFEST_BASE]
 
 # -- Options for zephyr.external_content ----------------------------------
 
 external_content_contents = [
-    (ZEPHYR_BASE / "doc", "[!_]*"),
-    (ZEPHYR_BASE, "boards/**/*.rst"),
-    (ZEPHYR_BASE, "boards/**/doc"),
-    (ZEPHYR_BASE, "samples/**/*.rst"),
-    (ZEPHYR_BASE, "samples/**/doc"),
+    (b / "doc", "[!_]*") for b in (
+        ZEPHYR_BASE,
+        MANIFEST_BASE,
+    )
+] + [
+    (b, f) for b in (
+        ZEPHYR_BASE,
+        MANIFEST_BASE,
+    ) for f in (
+        "boards/**/*.rst",
+        "boards/**/doc",
+        "samples/**/*.rst",
+        "samples/**/doc",
+    )
 ]
+
 external_content_keep = [
     "reference/kconfig/*",
     "build/dts/api/bindings.rst",
