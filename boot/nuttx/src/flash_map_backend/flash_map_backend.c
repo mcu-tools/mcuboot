@@ -603,7 +603,7 @@ uint32_t flash_area_align(const struct flash_area *fa)
 
   const uint32_t minimum_write_length = 1;
 
-  BOOT_LOG_INF("ID:%" PRIu8 " align:%" PRIu8,
+  BOOT_LOG_INF("ID:%" PRIu8 " align:%" PRIu32,
                fa->fa_id, minimum_write_length);
 
   return minimum_write_length;
