@@ -12,8 +12,10 @@ from cryptography.hazmat.primitives.hashes import SHA256
 
 from .general import KeyClass
 
+
 class ECDSAUsageError(Exception):
     pass
+
 
 class ECDSA256P1Public(KeyClass):
     def __init__(self, key):
@@ -160,7 +162,8 @@ class ECDSA256P1(ECDSA256P1Public):
         return priv
 
     def export_private(self, path, passwd=None):
-        """Write the private key to the given file, protecting it with the optional password."""
+        """Write the private key to the given file, protecting it with '
+          'the optional password."""
         if passwd is None:
             enc = serialization.NoEncryption()
         else:
