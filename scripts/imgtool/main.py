@@ -71,15 +71,18 @@ keygens = {
 }
 valid_formats = ['openssl', 'pkcs8']
 
+
 def load_signature(sigfile):
     with open(sigfile, 'rb') as f:
         signature = base64.b64decode(f.read())
         return signature
 
+
 def save_signature(sigfile, sig):
     with open(sigfile, 'wb') as f:
         signature = base64.b64encode(sig)
         f.write(signature)
+
 
 def load_key(keyfile):
     # TODO: better handling of invalid pass-phrase
@@ -127,7 +130,8 @@ def keygen(type, key, password):
 @click.command(help='Dump public key from keypair')
 def getpub(key, encoding, lang):
     if encoding and lang:
-        raise click.UsageError('Please use only one of `--encoding/-e` or `--lang/-l`')
+        raise click.UsageError('Please use only one of `--encoding/-e` '
+                               'or `--lang/-l`')
     elif not encoding and not lang:
         # Preserve old behavior defaulting to `c`. If `lang` is removed,
         # `default=valid_encodings[0]` should be added to `-e` param.
@@ -281,7 +285,7 @@ class BasedIntParamType(click.ParamType):
               help='Encrypt image using the provided public key. '
                    '(Not supported in direct-xip or ram-load mode.)')
 @click.option('--encrypt-keylen', default='128',
-              type=click.Choice(['128','256']),
+              type=click.Choice(['128', '256']),
               help='When encrypting the image using AES, select a 128 bit or '
                    '256 bit key len.')
 @click.option('-c', '--clear', required=False, is_flag=True, default=False,
@@ -342,8 +346,8 @@ class BasedIntParamType(click.ParamType):
               help='Path to the file to which signature will be written. '
               'The image signature will be encoded as base64 formatted string')
 @click.option('--vector-to-sign', type=click.Choice(['payload', 'digest']),
-              help='send to OUTFILE the payload or payload''s digest instead of '
-              'complied image. These data can be used for external image '
+              help='send to OUTFILE the payload or payload''s digest instead '
+              'of complied image. These data can be used for external image '
               'signing')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
@@ -407,18 +411,18 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
 
     if raw_signature is not None:
         if fix_sig_pubkey is None:
-          raise click.UsageError(
+            raise click.UsageError(
                 'public key of the fixed signature is not specified')
 
         pub_key = load_key(fix_sig_pubkey)
 
         baked_signature = {
-            'value' : raw_signature
+            'value': raw_signature
         }
 
     img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, int(encrypt_keylen), clear, baked_signature, pub_key,
-               vector_to_sign)
+               custom_tlvs, int(encrypt_keylen), clear, baked_signature,
+               pub_key, vector_to_sign)
     img.save(outfile, hex_addr)
 
     if sig_out is not None:
