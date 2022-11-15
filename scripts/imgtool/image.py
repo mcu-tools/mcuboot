@@ -315,7 +315,7 @@ class Image():
             pubbytes = sha.digest()
         elif pub_key is not None:
             if hasattr(pub_key, 'sign'):
-                print("sign the payload")
+                print(os.path.basename(__file__) + ": sign the payload")
             pub = pub_key.get_public_bytes()
             sha = hashlib.sha256()
             sha.update(pub)
@@ -443,11 +443,11 @@ class Image():
             if vector_to_sign == 'payload':
                 # Stop amending data to the image
                 # Just keep data vector which is expected to be sigend
-                print('export payload')
+                print(os.path.basename(__file__) + ': export payload')
                 return
             elif vector_to_sign == 'digest':
                 self.payload = digest
-                print('export digest')
+                print(os.path.basename(__file__) + ': export digest')
                 return
 
             if key is not None and fixed_sig is None:
@@ -455,10 +455,10 @@ class Image():
                 # while `sign_digest` expects only the digest of the payload
 
                 if hasattr(key, 'sign'):
-                    print("sign the payload")
+                    print(os.path.basename(__file__) + ": sign the payload")
                     sig = key.sign(bytes(self.payload))
                 else:
-                    print("sign the digest")
+                    print(os.path.basename(__file__) + ": sign the digest")
                     sig = key.sign_digest(digest)
                 tlv.add(key.sig_tlv(), sig)
                 self.signature = sig
