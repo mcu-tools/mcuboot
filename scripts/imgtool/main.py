@@ -69,6 +69,7 @@ keygens = {
     'ed25519':    gen_ed25519,
     'x25519':     gen_x25519,
 }
+valid_formats = ['openssl', 'pkcs8']
 
 def load_signature(sigfile):
     with open(sigfile, 'rb') as f:
@@ -150,13 +151,17 @@ def getpub(key, encoding, lang):
                    'might require changes to the build config. Check the docs!'
               )
 @click.option('-k', '--key', metavar='filename', required=True)
+@click.option('-f', '--format',
+              type=click.Choice(valid_formats),
+              help='Valid formats: {}'.format(', '.join(valid_formats)),
+              default='pkcs8')
 @click.command(help='Dump private key from keypair')
-def getpriv(key, minimal):
+def getpriv(key, minimal, format):
     key = load_key(key)
     if key is None:
         print("Invalid passphrase")
     try:
-        key.emit_private(minimal)
+        key.emit_private(minimal, format)
     except (RSAUsageError, ECDSAUsageError, Ed25519UsageError,
             X25519UsageError) as e:
         raise click.UsageError(e)
