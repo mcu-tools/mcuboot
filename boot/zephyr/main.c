@@ -498,7 +498,11 @@ static bool detect_pin(void)
 }
 #endif
 
+#if defined(CONFIG_ZTEST) || defined(ZTEST_UNITTEST)
+void mcuboot_main(void)
+#else
 void main(void)
+#endif
 {
     struct boot_rsp rsp;
     int rc;

@@ -1,0 +1,9 @@
+common:
+  tags: mcuboot_tests
+  platform_allow: nrf52840dk_nrf52840
+  integration_platforms:
+    - nrf52840dk_nrf52840
+
+tests:
+  mcuboot.mcuboot_app.main:
+    skip: false
