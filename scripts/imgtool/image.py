@@ -434,21 +434,21 @@ class Image():
 
         tlv.add('SHA256', digest)
 
+        if vector_to_sign == 'payload':
+            # Stop amending data to the image
+            # Just keep data vector which is expected to be signed
+            print(os.path.basename(__file__) + ': export payload')
+            return
+        elif vector_to_sign == 'digest':
+            self.payload = digest
+            print(os.path.basename(__file__) + ': export digest')
+            return
+
         if key is not None or fixed_sig is not None:
             if public_key_format == 'hash':
                 tlv.add('KEYHASH', pubbytes)
             else:
                 tlv.add('PUBKEY', pub)
-
-            if vector_to_sign == 'payload':
-                # Stop amending data to the image
-                # Just keep data vector which is expected to be sigend
-                print(os.path.basename(__file__) + ': export payload')
-                return
-            elif vector_to_sign == 'digest':
-                self.payload = digest
-                print(os.path.basename(__file__) + ': export digest')
-                return
 
             if key is not None and fixed_sig is None:
                 # `sign` expects the full image payload (sha256 done internally),
