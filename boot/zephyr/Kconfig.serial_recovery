@@ -13,6 +13,7 @@ menuconfig MCUBOOT_SERIAL
 	select SERIAL
 	select UART_INTERRUPT_DRIVEN
 	select BASE64
+	select CRC
 	help
 	  If y, enables a serial-port based update mode. This allows
 	  MCUboot itself to load update images into flash over a UART.
