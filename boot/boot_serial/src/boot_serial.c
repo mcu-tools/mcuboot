@@ -349,7 +349,9 @@ bs_upload(char *buf, int len)
     size_t img_chunk_off = SIZE_MAX;    /* Offset of image chunk within image  */
     uint8_t rem_bytes;                  /* Reminder bytes after aligning chunk write to
                                          * to flash alignment */
-    int img_num;
+    int img_num_tmp = 0;                /* Temp variable for image number */
+    static int img_num = 0;
+    bool img_num_requested;
     size_t img_size_tmp = SIZE_MAX;     /* Temp variable for image size */
     const struct flash_area *fap = NULL;
     int rc;
@@ -363,8 +365,6 @@ bs_upload(char *buf, int len)
                                          */
     static struct flash_sector status_sector;
 #endif
-
-    img_num = 0;
 
     /*
      * Expected data format.
@@ -384,11 +384,13 @@ bs_upload(char *buf, int len)
         goto out_invalid_data;
     }
 
+    img_num_requested = false;
     for (int i = 0; i < upload._Upload_members_count; i++) {
         struct Member_ *member = &upload._Upload_members[i]._Upload_members;
         switch(member->_Member_choice) {
             case _Member_image:
-                img_num = member->_Member_image;
+                img_num_tmp = member->_Member_image;
+                img_num_requested = true;
                 break;
             case _Member_data:
                 img_chunk = member->_Member_data.value;
@@ -412,6 +414,15 @@ bs_upload(char *buf, int len)
          * Offset must be set in every block.
          */
         goto out_invalid_data;
+    }
+
+    /* Use image number only from packet with offset == 0. */
+    if (img_chunk_off == 0) {
+        if (img_num_requested) {
+            img_num = img_num_tmp;
+        } else {
+            img_num = 0;
+        }
     }
 
 #if !defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
