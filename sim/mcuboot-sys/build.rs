@@ -103,6 +103,8 @@ fn main() {
         conf.file("../../ext/mbedtls/library/platform.c");
         conf.file("../../ext/mbedtls/library/platform_util.c");
         conf.file("../../ext/mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls/library/md.c");
+
     } else if sig_ecdsa {
         conf.conf.define("MCUBOOT_SIGN_EC256", None);
         conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
