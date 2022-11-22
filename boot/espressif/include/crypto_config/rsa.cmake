@@ -15,6 +15,7 @@ if (DEFINED CONFIG_ESP_USE_MBEDTLS)
         ${MBEDTLS_DIR}/library/rsa.c
         ${MBEDTLS_DIR}/library/bignum.c
         ${MBEDTLS_DIR}/library/asn1parse.c
+        ${MBEDTLS_DIR}/library/md.c
         ${MBEDTLS_DIR}/library/memory_buffer_alloc.c
         )
     if (DEFINED MBEDTLS_CONFIG_FILE)
