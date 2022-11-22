@@ -10,6 +10,9 @@ use crate::area::AreaDesc;
 use simflash::SimMultiFlash;
 use crate::api;
 
+#[allow(unused)]
+use std::sync::Once;
+
 /// The result of an invocation of `boot_go`.  This is intentionally opaque so that we can provide
 /// accessors for everything we need from this.
 #[derive(Debug)]
@@ -66,6 +69,8 @@ impl BootGoResult {
 pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
                counter: Option<&mut i32>, image_index: Option<i32>,
                catch_asserts: bool) -> BootGoResult {
+    init_crypto();
+
     for (&dev_id, flash) in multiflash.iter_mut() {
         api::set_flash(dev_id, flash);
     }
@@ -183,5 +188,38 @@ mod raw {
 
         pub fn kw_encrypt_(kek: *const u8, seckey: *const u8,
                            encbuf: *mut u8) -> libc::c_int;
+
+        #[allow(unused)]
+        pub fn psa_crypto_init() -> u32;
+
+        #[allow(unused)]
+        pub fn mbedtls_test_enable_insecure_external_rng();
     }
+}
+
+#[allow(unused)]
+static PSA_INIT_SYNC: Once = Once::new();
+
+#[allow(unused)]
+static MBEDTLS_EXTERNAL_RNG_ENABLE_SYNC: Once = Once::new();
+
+#[cfg(feature = "psa-crypto-api")]
+fn init_crypto() {
+    PSA_INIT_SYNC.call_once(|| {
+        assert_eq!(unsafe { raw::psa_crypto_init() }, 0);
+    });
+
+    /* The PSA APIs require properly initialisation of the entropy subsystem
+     * The configuration adds the option MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG when the
+     * psa-crypto-api feature is enabled. As a result the tests use the implementation
+     * of the test external rng that needs to be initialised before being able to use it
+     */
+    MBEDTLS_EXTERNAL_RNG_ENABLE_SYNC.call_once(|| {
+        unsafe { raw::mbedtls_test_enable_insecure_external_rng() }
+    });
+}
+
+#[cfg(not(feature = "psa-crypto-api"))]
+fn init_crypto() {
+   // When the feature is not enabled, the init is just empty
 }

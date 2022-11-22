@@ -86,6 +86,9 @@ max-align-32 = []
 # Enable hardware rollback protection
 hw-rollback-protection = []
 
+# Enable the PSA Crypto APIs where supported for cryptography related operations.
+psa-crypto-api = []
+
 [build-dependencies]
 cc = "1.0.25"
 
