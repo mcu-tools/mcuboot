@@ -37,7 +37,7 @@ extern "C" {
  *
  * @return                  FIH_SUCCESS on success
  */
-fih_int boot_nv_security_counter_init(void);
+fih_ret boot_nv_security_counter_init(void);
 
 /**
  * Reads the stored value of a given image's security counter.
@@ -47,7 +47,7 @@ fih_int boot_nv_security_counter_init(void);
  *
  * @return                  FIH_SUCCESS on success
  */
-fih_int boot_nv_security_counter_get(uint32_t image_id, fih_int *security_cnt);
+fih_ret boot_nv_security_counter_get(uint32_t image_id, fih_int *security_cnt);
 
 /**
  * Updates the stored value of a given image's security counter with a new

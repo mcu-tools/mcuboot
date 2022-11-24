@@ -148,7 +148,7 @@ int main()
 
     struct boot_rsp rsp;
 
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
 #ifdef CONFIG_MCUBOOT_SERIAL
     boot_console_init();
@@ -166,7 +166,7 @@ int main()
      * the load information for booting the main image
      */
     FIH_CALL(boot_go, fih_rc, &rsp);
-    if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         BOOT_LOG_ERR("Unable to find bootable image");
 #ifdef CONFIG_SECURE_BOOT
         esp_efuse_batch_write_cancel();

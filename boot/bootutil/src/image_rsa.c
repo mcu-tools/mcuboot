@@ -161,7 +161,7 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
  * v2.2, section 9.1.2, with many parameters required to have fixed
  * values.
  */
-static fih_int
+static fih_ret
 bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
   uint8_t *sig)
 {
@@ -170,22 +170,18 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
     uint8_t db_mask[PSS_MASK_LEN];
     uint8_t h2[PSS_HLEN];
     int i;
-    int rc = 0;
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     if (ctx->MBEDTLS_CONTEXT_MEMBER(len) != PSS_EMLEN ||
         PSS_EMLEN > MBEDTLS_MPI_MAX_SIZE) {
-        rc = -1;
         goto out;
     }
 
     if (hlen != PSS_HLEN) {
-        rc = -1;
         goto out;
     }
 
     if (mbedtls_rsa_public(ctx, sig, em)) {
-        rc = -1;
         goto out;
     }
 
@@ -214,7 +210,6 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
      * 0xbc, output inconsistent and stop.
      */
     if (em[PSS_EMLEN - 1] != 0xbc) {
-        rc = -1;
         goto out;
     }
 
@@ -255,13 +250,11 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
      * hexadecimal value 0x01, output "inconsistent" and stop. */
     for (i = 0; i < PSS_MASK_ZERO_COUNT; i++) {
         if (db_mask[i] != 0) {
-            rc = -1;
             goto out;
         }
     }
 
     if (db_mask[PSS_MASK_ONE_POS] != 1) {
-        rc = -1;
         goto out;
     }
 
@@ -282,20 +275,16 @@ bootutil_cmp_rsasig(mbedtls_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
     FIH_CALL(boot_fih_memequal, fih_rc, h2, &em[PSS_HASH_OFFSET], PSS_HLEN);
 
 out:
-    if (rc) {
-        fih_rc = fih_int_encode(rc);
-    }
-
     FIH_RET(fih_rc);
 }
 
-fih_int
+fih_ret
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
 {
     mbedtls_rsa_context ctx;
     int rc;
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
     uint8_t *cp;
     uint8_t *end;
 

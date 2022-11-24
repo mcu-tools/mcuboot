@@ -235,14 +235,14 @@ bs_list(char *buf, int len)
                 flash_area_read(fap, 0, &hdr, sizeof(hdr));
             }
 
-            fih_int fih_rc = FIH_FAILURE;
+            FIH_DECLARE(fih_rc, FIH_FAILURE);
 
             if (hdr.ih_magic == IMAGE_MAGIC)
             {
                 BOOT_HOOK_CALL_FIH(boot_image_check_hook,
-                                   fih_int_encode(BOOT_HOOK_REGULAR),
+                                   FIH_BOOT_HOOK_REGULAR,
                                    fih_rc, image_index, slot);
-                if (fih_eq(fih_rc, BOOT_HOOK_REGULAR))
+                if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
                 {
 #ifdef MCUBOOT_ENC_IMAGES
                     if (slot == 0 && IS_ENCRYPTED(&hdr)) {
@@ -262,7 +262,7 @@ bs_list(char *buf, int len)
 
             flash_area_close(fap);
 
-            if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+            if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
                 continue;
             }
 

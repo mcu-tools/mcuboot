@@ -80,9 +80,9 @@ int boot_read_image_header_hook(int img_index, int slot,
  * 
  * @retval FIH_SUCCESS: image is valid, skip direct validation
  *         FIH_FAILURE: image is invalid, skip direct validation
- *         fih encoded BOOT_HOOK_REGULAR: follow the normal execution path.
+ *         FIH_BOOT_HOOK_REGULAR: follow the normal execution path.
  */
-fih_int boot_image_check_hook(int img_index, int slot);
+fih_ret boot_image_check_hook(int img_index, int slot);
 
 /** Hook for implement image update
  *

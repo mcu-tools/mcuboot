@@ -43,9 +43,9 @@
  *
  * The basic call pattern is:
  *
- * fih_int fih_rc = FIH_FAILURE;
+ * FIH_DECLARE(fih_rc, FIH_FAILURE);
  * FIH_CALL(vulnerable_function, fih_rc, arg1, arg2);
- * if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+ * if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
  *     FIH_PANIC;
  * }
  *
@@ -93,9 +93,13 @@ extern "C" {
 #ifndef MCUBOOT_FIH_PROFILE_OFF
 #define FIH_POSITIVE_VALUE 0x1AAAAAAA
 #define FIH_NEGATIVE_VALUE 0x15555555
+#define FIH_CONST1 0x1FCDEA88
+#define FIH_CONST2 0x19C1F6E1
 #else
 #define FIH_POSITIVE_VALUE 0
 #define FIH_NEGATIVE_VALUE -1
+#define FIH_CONST1 1
+#define FIH_CONST2 1
 #endif
 
 /* A volatile mask is used to prevent compiler optimization - the mask is xored
@@ -115,15 +119,19 @@ typedef volatile struct {
     volatile int val;
     volatile int msk;
 } fih_int;
+typedef volatile int fih_ret;
 
 #else
 
 typedef int fih_int;
+typedef int fih_ret;
 
 #endif /* FIH_ENABLE_DOUBLE_VARS */
 
-extern fih_int FIH_SUCCESS;
-extern fih_int FIH_FAILURE;
+extern fih_ret FIH_SUCCESS;
+extern fih_ret FIH_FAILURE;
+extern fih_ret FIH_NO_BOOTABLE_IMAGE;
+extern fih_ret FIH_BOOT_HOOK_REGULAR;
 
 #ifdef FIH_ENABLE_GLOBAL_FAIL
 /* Global failure handler - more resistant to unlooping. noinline and used are
@@ -206,21 +214,9 @@ fih_int fih_int_encode(int x)
 }
 
 /* Standard equality. If A == B then 1, else 0 */
-__attribute__((always_inline)) inline
-int fih_eq(fih_int x, fih_int y)
-{
-    fih_int_validate(x);
-    fih_int_validate(y);
-    return (x.val == y.val) && fih_delay() && (x.msk == y.msk);
-}
-
-__attribute__((always_inline)) inline
-int fih_not_eq(fih_int x, fih_int y)
-{
-    fih_int_validate(x);
-    fih_int_validate(y);
-    return (x.val != y.val) && fih_delay() && (x.msk != y.msk);
-}
+#define FIH_EQ(x, y) ((x == y) && fih_delay() && !(y != x))
+#define FIH_NOT_EQ(x, y) ((x != y) || !fih_delay() || !(y == x))
+#define FIH_SET(x, y) x = y; if(fih_delay() && (x != y)) FIH_PANIC
 
 #else
 
@@ -246,25 +242,22 @@ fih_int fih_int_encode(int x)
     return x;
 }
 
-__attribute__((always_inline)) inline
-int fih_eq(fih_int x, fih_int y)
-{
-    return x == y;
-}
+#define FIH_EQ(x, y) (x == y)
+#define FIH_NOT_EQ(x, y) (x != y)
+#define FIH_SET(x, y) x = y
 
-__attribute__((always_inline)) inline
-int fih_not_eq(fih_int x, fih_int y)
-{
-    return x != y;
-}
 #endif /* FIH_ENABLE_DOUBLE_VARS */
+
+#define FIH_DECLARE(var, val) \
+    fih_ret var; \
+    FIH_SET(var, val);
 
 /* C has a common return pattern where 0 is a correct value and all others are
  * errors. This function converts 0 to FIH_SUCCESS and any other number to a
  * value that is not FIH_SUCCESS
  */
 __attribute__((always_inline)) inline
-fih_int fih_int_encode_zero_equality(int x)
+fih_ret fih_ret_encode_zero_equality(int x)
 {
     if (x) {
         return FIH_FAILURE;

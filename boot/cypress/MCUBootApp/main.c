@@ -82,7 +82,7 @@ int main(void)
     struct boot_rsp rsp;
     cy_rslt_t rc = CY_RSLT_TYPE_ERROR;
     bool boot_succeeded = false;
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     SystemInit();
     //init_cycfg_clocks();
@@ -138,7 +138,7 @@ int main(void)
     {
 
         FIH_CALL(boot_go, fih_rc, &rsp);
-        if (fih_eq(fih_rc, FIH_SUCCESS))
+        if (FIH_EQ(fih_rc, FIH_SUCCESS))
         {
             BOOT_LOG_INF("User Application validated successfully");
             /* initialize watchdog timer. it should be updated from user app

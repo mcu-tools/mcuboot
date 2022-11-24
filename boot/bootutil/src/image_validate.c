@@ -238,7 +238,7 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
     uint8_t key_hash[32];
     size_t key_hash_size = sizeof(key_hash);
     int rc;
-    fih_int fih_rc;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     bootutil_sha256_init(&sha256_ctx);
     bootutil_sha256_update(&sha256_ctx, key, key_len);
@@ -257,7 +257,7 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
      *   HW) a fault is injected to accept the public key as valid one.
      */
     FIH_CALL(boot_fih_memequal, fih_rc, hash, key_hash, key_hash_size);
-    if (fih_eq(fih_rc, FIH_SUCCESS)) {
+    if (FIH_EQ(fih_rc, FIH_SUCCESS)) {
         bootutil_keys[0].key = key;
         pub_key_len = key_len;
         return 0;
@@ -332,7 +332,7 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
  * Verify the integrity of the image.
  * Return non-zero if image could not be validated/does not validate.
  */
-fih_int
+fih_ret
 bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
                       struct image_header *hdr, const struct flash_area *fap,
                       uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *seed,
@@ -343,7 +343,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
     uint16_t type;
     int sha256_valid = 0;
 #ifdef EXPECTED_SIG_TLV
-    fih_int valid_signature = FIH_FAILURE;
+    FIH_DECLARE(valid_signature, FIH_FAILURE);
     int key_id = -1;
 #ifdef MCUBOOT_HW_KEY
     /* Few extra bytes for encoding and for public exponent. */
@@ -354,11 +354,11 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
     uint8_t buf[SIG_BUF_SIZE];
     uint8_t hash[32];
     int rc = 0;
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     fih_int security_cnt = fih_int_encode(INT_MAX);
     uint32_t img_security_cnt = 0;
-    fih_int security_counter_valid = FIH_FAILURE;
+    FIH_DECLARE(security_counter_valid, FIH_FAILURE);
 #endif
 
     rc = bootutil_img_hash(enc_state, image_index, hdr, fap, tmp_buf,
@@ -408,7 +408,8 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             }
 
             FIH_CALL(boot_fih_memequal, fih_rc, hash, buf, sizeof(hash));
-            if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+            if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                FIH_SET(fih_rc, FIH_FAILURE);
                 goto out;
             }
 
@@ -488,16 +489,18 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 
             FIH_CALL(boot_nv_security_counter_get, fih_rc, image_index,
                                                            &security_cnt);
-            if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+            if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                FIH_SET(fih_rc, FIH_FAILURE);
                 goto out;
             }
 
             /* Compare the new image's security counter value against the
              * stored security counter value.
              */
-            fih_rc = fih_int_encode_zero_equality(img_security_cnt <
+            fih_rc = fih_ret_encode_zero_equality(img_security_cnt <
                                    fih_int_decode(security_cnt));
-            if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+            if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                FIH_SET(fih_rc, FIH_FAILURE);
                 goto out;
             }
 
@@ -512,11 +515,10 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
         goto out;
     }
 #ifdef EXPECTED_SIG_TLV
-    fih_rc = fih_int_encode_zero_equality(fih_not_eq(valid_signature,
-                                                     FIH_SUCCESS));
+    FIH_SET(fih_rc, valid_signature);
 #endif
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
-    if (fih_not_eq(security_counter_valid, FIH_SUCCESS)) {
+    if (FIH_NOT_EQ(security_counter_valid, FIH_SUCCESS)) {
         rc = -1;
         goto out;
     }
@@ -524,7 +526,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 
 out:
     if (rc) {
-        fih_rc = fih_int_encode(rc);
+        FIH_SET(fih_rc, FIH_FAILURE);
     }
 
     FIH_RET(fih_rc);

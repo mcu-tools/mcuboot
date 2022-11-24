@@ -63,17 +63,17 @@ int boot_current_slot;
  */
 #ifdef MCUBOOT_FIH_PROFILE_OFF
 inline
-fih_int boot_fih_memequal(const void *s1, const void *s2, size_t n)
+fih_ret boot_fih_memequal(const void *s1, const void *s2, size_t n)
 {
     return memcmp(s1, s2, n);
 }
 #else
-fih_int boot_fih_memequal(const void *s1, const void *s2, size_t n)
+fih_ret boot_fih_memequal(const void *s1, const void *s2, size_t n)
 {
     size_t i;
     uint8_t *s1_p = (uint8_t*) s1;
     uint8_t *s2_p = (uint8_t*) s2;
-    fih_int ret = FIH_FAILURE;
+    FIH_DECLARE(ret, FIH_FAILURE);
 
     for (i = 0; i < n; i++) {
         if (s1_p[i] != s2_p[i]) {
