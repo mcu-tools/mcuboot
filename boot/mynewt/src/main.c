@@ -219,7 +219,7 @@ main(void)
     struct boot_rsp rsp;
     uintptr_t flash_base;
     int rc;
-    fih_int fih_rc = FIH_FAILURE;
+    fih_ret fih_rc = FIH_FAILURE;
 
     hal_bsp_init();
 
@@ -247,8 +247,8 @@ main(void)
     boot_preboot();
 #endif
     FIH_CALL(boot_go, fih_rc, &rsp);
-    if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
-        assert(fih_int_decode(fih_rc) == FIH_POSITIVE_VALUE);
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+        assert(fih_rc == FIH_SUCCESS);
         FIH_PANIC;
     }
 

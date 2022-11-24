@@ -17,20 +17,20 @@
 #include "bootutil/security_cnt.h"
 #include <stdint.h>
 
-fih_int
+fih_ret
 boot_nv_security_counter_init(void)
 {
     /* Do nothing. */
-    return 0;
+    return FIH_SUCCESS;
 }
 
-fih_int
+fih_ret
 boot_nv_security_counter_get(uint32_t image_id, fih_int *security_cnt)
 {
     (void)image_id;
     *security_cnt = 30;
 
-    return 0;
+    return FIH_SUCCESS;
 }
 
 int32_t

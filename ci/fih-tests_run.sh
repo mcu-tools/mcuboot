@@ -19,7 +19,7 @@ set -e
 pushd .. &&\
    git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git &&\
    pushd trusted-firmware-m &&\
-   git checkout TF-Mv1.7.0 &&\
+   git fetch https://review.trustedfirmware.org/TF-M/trusted-firmware-m refs/changes/09/18309/2 && git checkout FETCH_HEAD &&\
    popd
 
 if [[ $GITHUB_ACTIONS == true ]]; then

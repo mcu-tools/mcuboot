@@ -98,7 +98,7 @@ static void do_boot(struct boot_rsp *rsp)
 int main(int argc, FAR char *argv[])
 {
   struct boot_rsp rsp;
-  fih_int fih_rc = FIH_FAILURE;
+  FIH_DECLARE(fih_rc, FIH_FAILURE);
 
 #ifdef NEED_BOARDINIT
   /* Perform architecture-specific initialization (if configured) */
@@ -125,7 +125,7 @@ int main(int argc, FAR char *argv[])
 
   FIH_CALL(boot_go, fih_rc, &rsp);
 
-  if (fih_not_eq(fih_rc, FIH_SUCCESS))
+  if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS))
     {
       syslog(LOG_ERR, "Unable to find bootable image\n");
       FIH_PANIC;

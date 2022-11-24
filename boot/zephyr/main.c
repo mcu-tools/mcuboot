@@ -504,7 +504,7 @@ void main(void)
 {
     struct boot_rsp rsp;
     int rc;
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     MCUBOOT_WATCHDOG_FEED();
 
@@ -599,7 +599,7 @@ void main(void)
     boot_serial_check_start(&boot_funcs,timeout_in_ms);
 #endif
 
-    if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         BOOT_LOG_ERR("Unable to find bootable image");
 
         mcuboot_status_change(MCUBOOT_STATUS_NO_BOOTABLE_IMAGE_FOUND);

@@ -28,12 +28,12 @@ static struct image_header _hdr = { 0 };
  *
  * @return		FIH_SUCCESS on success, error code otherwise
  */
-fih_int
+fih_ret
 boot_image_validate(const struct flash_area *fa_p,
                     struct image_header *hdr)
 {
     static uint8_t tmpbuf[BOOT_TMPBUF_SZ];
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     /* NOTE: The first argument to boot_image_validate, for enc_state pointer,
      * is allowed to be NULL only because the single image loader compiles
@@ -58,13 +58,13 @@ boot_image_validate(const struct flash_area *fa_p,
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT || MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE*/
 
 
-inline static fih_int
+inline static fih_ret
 boot_image_validate_once(const struct flash_area *fa_p,
                     struct image_header *hdr)
 {
     static struct boot_swap_state state;
     int rc;
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     memset(&state, 0, sizeof(struct boot_swap_state));
     rc = boot_read_swap_state(fa_p, &state);
@@ -74,7 +74,7 @@ boot_image_validate_once(const struct flash_area *fa_p,
             || state.image_ok != BOOT_FLAG_SET) {
         /* At least validate the image once */
         FIH_CALL(boot_image_validate, fih_rc, fa_p, hdr);
-        if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+        if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
             FIH_RET(FIH_FAILURE);
         }
         if (state.magic != BOOT_MAGIC_GOOD) {
@@ -140,12 +140,12 @@ boot_image_load_header(const struct flash_area *fa_p,
  *
  * @return		FIH_SUCCESS on success, error code otherwise
  */
-inline static fih_int
+inline static fih_ret
 boot_image_validate_encrypted(const struct flash_area *fa_p,
                     struct image_header *hdr)
 {
     static uint8_t tmpbuf[BOOT_TMPBUF_SZ];
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     struct boot_loader_state boot_data;
     struct boot_loader_state *state = &boot_data;
@@ -329,11 +329,11 @@ decrypt_region_inplace(struct boot_loader_state *state,
  *
  * @return		FIH_SUCCESS on success, error code otherwise
  */
-inline static fih_int
+inline static fih_ret
 decrypt_image_inplace(const struct flash_area *fa_p,
                      struct image_header *hdr)
 {
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
     int rc;
     struct boot_loader_state boot_data;
     struct boot_loader_state *state = &boot_data;
@@ -359,7 +359,7 @@ decrypt_image_inplace(const struct flash_area *fa_p,
 #if 0 //Skip this step?, the image will just not boot if it's not decrypted properly
          /* First check if the encrypted image is a good image before decrypting */
         FIH_CALL(boot_image_validate_encrypted,fih_rc,_fa_p,&_hdr);
-        if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+        if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
              FIH_RET(fih_rc);
         }
 #endif
@@ -403,7 +403,7 @@ int
 boot_handle_enc_fw()
 {
     int rc = -1;
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &_fa_p);
     assert(rc == 0);
@@ -416,7 +416,7 @@ boot_handle_enc_fw()
     if (IS_ENCRYPTED(&_hdr)) {
         //encrypted, we need to decrypt in place
         FIH_CALL(decrypt_image_inplace,fih_rc,_fa_p,&_hdr);
-        if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+        if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
             rc = -1;
             goto out;
         }
@@ -439,11 +439,11 @@ out:
  *
  * @return		FIH_SUCCESS on success; nonzero on failure.
  */
-fih_int
+fih_ret
 boot_go(struct boot_rsp *rsp)
 {
     int rc = -1;
-    fih_int fih_rc = FIH_FAILURE;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &_fa_p);
     assert(rc == 0);
@@ -454,12 +454,12 @@ boot_go(struct boot_rsp *rsp)
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
     FIH_CALL(boot_image_validate, fih_rc, _fa_p, &_hdr);
-    if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         goto out;
     }
 #elif defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
     FIH_CALL(boot_image_validate_once, fih_rc, _fa_p, &_hdr);
-    if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         goto out;
     }
 #else
