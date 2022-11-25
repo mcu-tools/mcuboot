@@ -130,6 +130,28 @@ For signing with a crypto key and guarantee the authenticity of the image being 
 esptool.py -p <PORT> -b <BAUD> --before default_reset --after hard_reset --chip <TARGET>  write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <SLOT_OFFSET> <SIGNED_BIN>
 ```
 
+# [Downgrade prevention](#downgrade-prevention)
+
+Downgrade prevention (avoid updating of images to an older version) can be enabled using the following configuration:
+
+```
+CONFIG_ESP_DOWNGRADE_PREVENTION=y
+```
+
+MCUboot will then verify and compare the new image version number with the current one before perform an update swap.
+
+Version number is added to the image when signing it with `imgtool` (`-v` parameter, e.g. `-v 1.0.0`).
+
+### [Downgrade prevention with security counter](#downgrade-prevention-with-security-counter)
+
+It is also possible to rely on a security counter, also added to the image when signing with `imgtool` (`-s` parameter), apart from version number. This allows image downgrade at some extent, since any update must have greater or equal security counter value. Enable using the following configuration:
+
+```
+CONFIG_ESP_DOWNGRADE_PREVENTION_SECURITY_COUNTER=y
+```
+
+E.g.: if the current image was signed using `-s 1` parameter, an eventual update image must have been signed using security counter `-s 1` or greater.
+
 # [Security Chain on Espressif port](#security-chain-on-espressif-port)
 
 [MCUboot encrypted images](encrypted_images.md) do not provide full code confidentiality when only external storage is available (see [Threat model](encrypted_images.md#threat-model)) since by MCUboot design the image in Primary Slot, from where the image is executed, is stored plaintext.
