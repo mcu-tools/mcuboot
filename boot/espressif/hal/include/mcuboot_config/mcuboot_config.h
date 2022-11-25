@@ -84,6 +84,18 @@
  */
 #define MCUBOOT_VALIDATE_PRIMARY_SLOT
 
+#ifdef CONFIG_ESP_DOWNGRADE_PREVENTION
+#define MCUBOOT_DOWNGRADE_PREVENTION 1
+/* MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER is used later as bool value so it is
+ * always defined, (unlike MCUBOOT_DOWNGRADE_PREVENTION which is only used in
+ * preprocessor condition and my be not defined) */
+#  ifdef CONFIG_ESP_DOWNGRADE_PREVENTION_SECURITY_COUNTER
+#    define MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER 1
+#  else
+#    define MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER 0
+#  endif
+#endif
+
 /*
  * Flash abstraction
  */
