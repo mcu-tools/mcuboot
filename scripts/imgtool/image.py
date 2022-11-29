@@ -111,9 +111,9 @@ class TLV():
         """
         e = STRUCT_ENDIAN_DICT[self.endian]
         if isinstance(kind, int):
-            buf = struct.pack(e + 'BBH', kind, 0, len(payload))
+            buf = struct.pack(e + 'HH', kind, len(payload))
         else:
-            buf = struct.pack(e + 'BBH', TLV_VALUES[kind], 0, len(payload))
+            buf = struct.pack(e + 'HH', TLV_VALUES[kind], len(payload))
         self.buf += buf
         self.buf += payload
 
