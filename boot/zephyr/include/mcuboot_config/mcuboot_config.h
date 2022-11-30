@@ -245,6 +245,10 @@
 #define MCUBOOT_SERIAL_MAX_RECEIVE_SIZE CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE
 #endif
 
+#ifdef CONFIG_BOOT_SERIAL_UNALIGNED_BUFFER_SIZE
+#define MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE CONFIG_BOOT_SERIAL_UNALIGNED_BUFFER_SIZE
+#endif
+
 /* Support 32-byte aligned flash sizes */
 #if DT_HAS_CHOSEN(zephyr_flash)
     #if DT_PROP_OR(DT_CHOSEN(zephyr_flash), write_block_size, 0) > 8
