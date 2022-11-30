@@ -51,6 +51,14 @@ config MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
 	  Note that 0 is default upload target when no explicit
 	  selection is done.
 
+config BOOT_SERIAL_UNALIGNED_BUFFER_SIZE
+	int "Stack buffer for unaligned memory writes"
+	default 64
+	help
+	  Specifies the stack usage for a buffer which is used for unaligned
+	  memory access when data is written to a device with memory alignment
+	  requirements. Set to 0 to disable.
+
 config BOOT_MAX_LINE_INPUT_LEN
 	int "Maximum input line length"
 	default 512
