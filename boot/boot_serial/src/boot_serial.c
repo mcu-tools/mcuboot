@@ -552,7 +552,7 @@ out:
     BOOT_LOG_INF("RX: 0x%x", rc);
     zcbor_map_start_encode(cbor_state, 10);
     zcbor_tstr_put_lit_cast(cbor_state, "rc");
-    zcbor_uint32_put(cbor_state, rc);
+    zcbor_int32_put(cbor_state, rc);
     if (rc == 0) {
         zcbor_tstr_put_lit_cast(cbor_state, "off");
         zcbor_uint32_put(cbor_state, curr_off);
@@ -578,7 +578,7 @@ bs_rc_rsp(int rc_code)
 {
     zcbor_map_start_encode(cbor_state, 10);
     zcbor_tstr_put_lit_cast(cbor_state, "rc");
-    zcbor_uint32_put(cbor_state, rc_code);
+    zcbor_int32_put(cbor_state, rc_code);
     zcbor_map_end_encode(cbor_state, 10);
     boot_serial_output();
 }
