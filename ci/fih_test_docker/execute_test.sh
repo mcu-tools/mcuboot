@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-# Copyright (c) 2020-2021 Arm Limited
+# Copyright (c) 2020-2022 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ cmake -B $TFM_BUILD_DIR \
 cd $TFM_BUILD_DIR
 make -j install
 
-BOOTLOADER_AXF='./install/outputs/ARM/MPS2/AN521/bl2.axf'
+BOOTLOADER_AXF='./install/outputs/bl2.axf'
 
 $MCUBOOT_PATH/ci/fih_test_docker/run_fi_test.sh $BOOTLOADER_AXF $SKIP_SIZE $DAMAGE_TYPE> fih_test_output.yaml
 

@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-# Copyright (c) 2020-2021 Arm Limited
+# Copyright (c) 2020-2022 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ set -e
 pushd .. &&\
    git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git &&\
    pushd trusted-firmware-m &&\
-   git checkout TF-Mv1.4.0 &&\
+   git checkout TF-Mv1.7.0 &&\
    popd
 
 if [[ $GITHUB_ACTIONS == true ]]; then
