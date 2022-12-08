@@ -203,7 +203,7 @@ boot_uart_fifo_init(void)
 
 #if CONFIG_BOOT_SERIAL_CDC_ACM
 	int rc = usb_enable(NULL);
-	if (rc) {
+	if (rc && rc != -EALREADY) {
 		return (-1);
 	}
 #endif
