@@ -157,4 +157,25 @@ int boot_serial_uploaded_hook(int img_index, const struct flash_area *area,
 int boot_img_install_stat_hook(int image_index, int slot,
                                int *img_install_stat);
 
+/** Hook will be invoked when boot_serial requests device reset.
+ *  The hook may be used to prevent device reset.
+ *
+ * @param force set to true when request tries to force reset.
+ *
+ * @retval 0 when reset should be performed;
+ *         BOOT_RESET_REQUEST_HOOK_BUSY when some processing is still in
+ *         progress;
+ *         BOOT_RESET_REQUEST_HOOK_TIMEOUT internal process timed out;
+ *         BOOT_RESET_REQUEST_HOOK_CHECK_FAILED internal code failed to
+ *         obtian status;
+ *         BOOT_RESET_REQUEST_HOOK_INTERNAL_ERROR unspecified internal
+ *         error while checking status.
+ */
+int boot_reset_request_hook(bool force);
+
+#define BOOT_RESET_REQUEST_HOOK_BUSY		1
+#define BOOT_RESET_REQUEST_HOOK_TIMEOUT		2
+#define BOOT_RESET_REQUEST_HOOK_CHECK_FAILED	3
+#define BOOT_RESET_REQUEST_HOOK_INTERNAL_ERROR	4
+
 #endif /*H_BOOTUTIL_HOOKS*/
