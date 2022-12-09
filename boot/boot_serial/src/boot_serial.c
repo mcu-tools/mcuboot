@@ -657,22 +657,34 @@ out:
 static void
 bs_reset(char *buf, int len)
 {
-    bs_rc_rsp(0);
+    int rc = BOOT_HOOK_CALL(boot_reset_request_hook, 0, false);
+    if (rc == BOOT_RESET_REQUEST_HOOK_BUSY) {
+	rc = MGMT_ERR_EBUSY;
+    } else {
+        /* Currently whatever else is returned it is just converted
+         * to 0/no error. Boot serial starts accepting "force" parameter
+         * in command this needs to change.
+         */
+         rc = 0;
+    }
+    bs_rc_rsp(rc);
 
+    if (rc == 0) {
 #ifdef __ZEPHYR__
 #ifdef CONFIG_MULTITHREADING
-    k_sleep(K_MSEC(250));
+        k_sleep(K_MSEC(250));
 #else
-    k_busy_wait(250000);
+        k_busy_wait(250000);
 #endif
-    sys_reboot(SYS_REBOOT_COLD);
+        sys_reboot(SYS_REBOOT_COLD);
 #elif __ESPRESSIF__
-    esp_rom_delay_us(250000);
-    bootloader_reset();
+        esp_rom_delay_us(250000);
+        bootloader_reset();
 #else
-    os_cputime_delay_usecs(250000);
-    hal_system_reset();
+        os_cputime_delay_usecs(250000);
+        hal_system_reset();
 #endif
+    }
 }
 
 /*
