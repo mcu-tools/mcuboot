@@ -620,6 +620,10 @@ int main(void)
     rc = boot_console_init();
     int timeout_in_ms = CONFIG_BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT;
     uint32_t start = k_uptime_get_32();
+
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+    gpio_pin_set_dt(&led0, 1);
+#endif
 #endif
 
     FIH_CALL(boot_go, fih_rc, &rsp);
@@ -643,6 +647,10 @@ int main(void)
         timeout_in_ms = 1;
     }
     boot_serial_check_start(&boot_funcs,timeout_in_ms);
+
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+    gpio_pin_set_dt(&led0, 0);
+#endif
 #endif
 
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
