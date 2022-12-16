@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Nordic Semiconductor ASA
+ * Copyright (c) 2018-2022 Nordic Semiconductor ASA
  * Copyright (c) 2015 Runtime Inc
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -139,4 +139,29 @@ __weak uint8_t flash_area_erased_val(const struct flash_area *fap)
 {
     (void)fap;
     return ERASED_VAL;
+}
+
+uint32_t flash_area_get_size(const struct flash_area *fa)
+{
+	return (uint32_t)fa->fa_size;
+}
+
+uint32_t flash_area_get_off(const struct flash_area *fa)
+{
+	return (uint32_t)fa->fa_off;
+}
+
+uint8_t flash_area_get_id(const struct flash_area *fa)
+{
+	return fa->fa_id;
+}
+
+uint32_t flash_sector_get_off(const struct flash_sector *fs)
+{
+	return fs->fs_off;
+}
+
+uint32_t flash_sector_get_size(const struct flash_sector *fs)
+{
+	return fs->fs_size;
 }
