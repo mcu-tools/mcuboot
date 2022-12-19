@@ -1,12 +1,11 @@
 /*
- * Copyright (c) 2021 Nordic Semiconductor ASA
+ * Copyright (c) 2021-2022 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/flash.h>
-#include <zephyr/mgmt/mcumgr/zephyr_groups.h>
 
 #include <flash_map_backend/flash_map_backend.h>
 #include <sysflash/sysflash.h>
@@ -20,6 +19,9 @@
 #include "bootutil/boot_hooks.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
+
+#define ZEPHYR_MGMT_GRP_BASIC (MGMT_GROUP_ID_PERUSER - 1)
+#define ZEPHYR_MGMT_GRP_BASIC_CMD_ERASE_STORAGE 0
 
 #ifdef CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE
 static int bs_custom_storage_erase(zcbor_state_t *cs)
@@ -140,7 +142,7 @@ int bs_peruser_system_specific(const struct nmgr_hdr *hdr, const char *buffer,
 {
     int mgmt_rc = MGMT_ERR_ENOTSUP;
 
-    if (hdr->nh_group == ZEPHYR_MGMT_GRP_BASE) {
+    if (hdr->nh_group == ZEPHYR_MGMT_GRP_BASIC) {
         if (hdr->nh_op == NMGR_OP_WRITE) {
 #ifdef CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE
             if (hdr->nh_id == ZEPHYR_MGMT_GRP_BASIC_CMD_ERASE_STORAGE) {
