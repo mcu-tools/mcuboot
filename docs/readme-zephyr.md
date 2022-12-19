@@ -13,21 +13,21 @@ The first step required for Zephyr is making sure your board has flash
 partitions defined in its device tree. These partitions are:
 
 - `boot_partition`: for MCUboot itself
-- `image_0_primary_partition`: the primary slot of Image 0
-- `image_0_secondary_partition`: the secondary slot of Image 0
+- `slot0_partition`: the primary slot of Image 0
+- `slot1_partition`: the secondary slot of Image 0
 - `scratch_partition`: the scratch slot
 
 Currently, the two image slots must be contiguous. If you are running
 MCUboot as your stage 1 bootloader, `boot_partition` must be configured
 so your SoC runs it out of reset. If there are multiple updateable images
 then the corresponding primary and secondary partitions must be defined for
-the rest of the images too (e.g. `image_1_primary_partition` and
-`image_1_secondary_partition` for Image 1).
+the rest of the images too (for example, `slot2_partition` and
+`slot3_partition` for Image 1).
 
 The flash partitions are typically defined in the Zephyr boards folder, in a
 file named `boards/<arch>/<board>/<board>.dts`. An example `.dts` file with
 flash partitions defined is the frdm_k64f's in
-`boards/arm/frdm_k64f/frdm_k64f.dts`. Make sure the labels in your board's
+`boards/arm/frdm_k64f/frdm_k64f.dts`. Make sure the DT node labels in your board's
 `.dts` file match the ones used there.
 
 ## Installing requirements and dependencies
@@ -53,9 +53,7 @@ it as usual:
 
 ```
   cd boot/zephyr
-  mkdir build && cd build
-  cmake -GNinja -DBOARD=<board> ..
-  ninja
+  west build -b <board>
 ```
 
 In addition to the partitions defined in DTS, some additional
@@ -67,9 +65,8 @@ MCUboot on a per-SoC family basis.
 
 After building the bootloader, the binaries should reside in
 `build/zephyr/zephyr.{bin,hex,elf}`, where `build` is the build
-directory you chose when running `cmake`. Use the Zephyr build
-system `flash` target to flash these binaries, usually by running
-`make flash` (or `ninja flash`, etc.) from the build directory. Depending
+directory you chose when running `west build`. Use `west flash`
+to flash these binaries from the build directory. Depending
 on the target and flash tool used, this might erase the whole of the flash
 memory (mass erase) or only the sectors where the bootloader resides prior to
 programming the bootloader image itself.
@@ -148,15 +145,14 @@ The argument to `-t` should be the desired key type.  See the
 
 The generated keypair above contains both the public and the private
 key.  It is necessary to extract the public key and insert it into the
-bootloader.  The keys live in `boot/zephyr/keys.c`, and can be
-extracted using imgtool:
+bootloader.  Use the ``CONFIG_BOOT_SIGNATURE_KEY_FILE`` Kconfig option to
+provide the path to the key file so the build system can extract
+the public key in a format usable by the C compiler.
+The generated public key is saved in `build/zephyr/autogen-pubkey.h`, which is included
+by the `boot/zephyr/keys.c`.
 
-```
-    $ ./scripts/imgtool.py getpub -k mykey.pem
-```
+Currently, the Zephyr RTOS port limits its support to one keypair at the time,
+although MCUboot's key management infrastructure supports multiple keypairs.
 
-This will output the public key as a C array that can be dropped
-directly into the `keys.c` file.
-
-Once this is done, this new keypair file (`mykey.pem` in this
+Once MCUboot is built, this new keypair file (`mykey.pem` in this
 example) can be used to sign images.

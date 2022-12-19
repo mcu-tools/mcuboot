@@ -40,7 +40,7 @@
 #elif __ESPRESSIF__
 #include <bootloader_utility.h>
 #include <esp_rom_sys.h>
-#include <rom/crc.h>
+#include <esp_crc.h>
 #include <endian.h>
 #include <mbedtls/base64.h>
 #else
@@ -78,7 +78,10 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
-#define BOOT_SERIAL_INPUT_MAX   512
+#ifndef MCUBOOT_SERIAL_MAX_RECEIVE_SIZE
+#define MCUBOOT_SERIAL_MAX_RECEIVE_SIZE 512
+#endif
+
 #define BOOT_SERIAL_OUT_MAX     (128 * BOOT_IMAGE_NUMBER)
 
 #ifdef __ZEPHYR__
@@ -107,8 +110,8 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define IMAGES_ITER(x)
 #endif
 
-static char in_buf[BOOT_SERIAL_INPUT_MAX + 1];
-static char dec_buf[BOOT_SERIAL_INPUT_MAX + 1];
+static char in_buf[MCUBOOT_SERIAL_MAX_RECEIVE_SIZE + 1];
+static char dec_buf[MCUBOOT_SERIAL_MAX_RECEIVE_SIZE + 1];
 const struct boot_uart_funcs *boot_uf;
 static struct nmgr_hdr *bs_hdr;
 static bool bs_entry;
@@ -552,7 +555,7 @@ out:
     BOOT_LOG_INF("RX: 0x%x", rc);
     zcbor_map_start_encode(cbor_state, 10);
     zcbor_tstr_put_lit_cast(cbor_state, "rc");
-    zcbor_uint32_put(cbor_state, rc);
+    zcbor_int32_put(cbor_state, rc);
     if (rc == 0) {
         zcbor_tstr_put_lit_cast(cbor_state, "off");
         zcbor_uint32_put(cbor_state, curr_off);
@@ -578,7 +581,7 @@ bs_rc_rsp(int rc_code)
 {
     zcbor_map_start_encode(cbor_state, 10);
     zcbor_tstr_put_lit_cast(cbor_state, "rc");
-    zcbor_uint32_put(cbor_state, rc_code);
+    zcbor_int32_put(cbor_state, rc_code);
     zcbor_map_end_encode(cbor_state, 10);
     boot_serial_output();
 }
@@ -732,8 +735,8 @@ boot_serial_output(void)
     crc =  crc16_itu_t(crc, data, len);
 #elif __ESPRESSIF__
     /* For ESP32 it was used the CRC API in rom/crc.h */
-    crc =  ~crc16_be(~CRC16_INITIAL_CRC, (uint8_t *)bs_hdr, sizeof(*bs_hdr));
-    crc =  ~crc16_be(~crc, (uint8_t *)data, len);
+    crc =  ~esp_crc16_be(~CRC16_INITIAL_CRC, (uint8_t *)bs_hdr, sizeof(*bs_hdr));
+    crc =  ~esp_crc16_be(~crc, (uint8_t *)data, len);
 #else
     crc = crc16_ccitt(CRC16_INITIAL_CRC, bs_hdr, sizeof(*bs_hdr));
     crc = crc16_ccitt(crc, data, len);
@@ -819,7 +822,7 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
 #ifdef __ZEPHYR__
     crc = crc16_itu_t(CRC16_INITIAL_CRC, out, len);
 #elif __ESPRESSIF__
-    crc = ~crc16_be(~CRC16_INITIAL_CRC, (uint8_t *)out, len);
+    crc = ~esp_crc16_be(~CRC16_INITIAL_CRC, (uint8_t *)out, len);
 #else
     crc = crc16_ccitt(CRC16_INITIAL_CRC, out, len);
 #endif

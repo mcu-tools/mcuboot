@@ -421,7 +421,7 @@ int flash_area_read(const struct flash_area *fa, uint32_t off,
   /* Reposition the file offset from the beginning of the flash area */
 
   seekpos = lseek(dev->fd, (off_t)off, SEEK_SET);
-  if (seekpos != off)
+  if (seekpos != (off_t)off)
     {
       int errcode = errno;
 
@@ -489,7 +489,7 @@ int flash_area_write(const struct flash_area *fa, uint32_t off,
   /* Reposition the file offset from the beginning of the flash area */
 
   seekpos = lseek(dev->fd, (off_t)off, SEEK_SET);
-  if (seekpos != off)
+  if (seekpos != (off_t)off)
     {
       int errcode = errno;
 
@@ -603,7 +603,7 @@ uint32_t flash_area_align(const struct flash_area *fa)
 
   const uint32_t minimum_write_length = 1;
 
-  BOOT_LOG_INF("ID:%" PRIu8 " align:%" PRIu8,
+  BOOT_LOG_INF("ID:%" PRIu8 " align:%" PRIu32,
                fa->fa_id, minimum_write_length);
 
   return minimum_write_length;

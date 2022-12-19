@@ -3,6 +3,7 @@ ECDSA key management
 """
 
 # SPDX-License-Identifier: Apache-2.0
+import os.path
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -11,8 +12,10 @@ from cryptography.hazmat.primitives.hashes import SHA256
 
 from .general import KeyClass
 
+
 class ECDSAUsageError(Exception):
     pass
+
 
 class ECDSA256P1Public(KeyClass):
     def __init__(self, key):
@@ -102,41 +105,65 @@ class ECDSA256P1(ECDSA256P1Public):
     def _get_public(self):
         return self.key.public_key()
 
-    def _build_minimal_ecdsa_privkey(self, der):
+    def _build_minimal_ecdsa_privkey(self, der, format):
         '''
         Builds a new DER that only includes the EC private key, removing the
         public key that is added as an "optional" BITSTRING.
         '''
-        offset_PUB = 68
+
+        if format == serialization.PrivateFormat.OpenSSH:
+            print(os.path.basename(__file__) +
+                  ': Warning: --minimal is supported only for PKCS8 '
+                  'or TraditionalOpenSSL formats')
+            return bytearray(der)
+
         EXCEPTION_TEXT = "Error parsing ecdsa key. Please submit an issue!"
-        if der[offset_PUB] != 0xa1:
-            raise ECDSAUsageError(EXCEPTION_TEXT)
-        len_PUB = der[offset_PUB + 1]
-        b = bytearray(der[:-offset_PUB])
-        offset_SEQ = 29
-        if b[offset_SEQ] != 0x30:
-            raise ECDSAUsageError(EXCEPTION_TEXT)
-        b[offset_SEQ + 1] -= len_PUB
-        offset_OCT_STR = 27
-        if b[offset_OCT_STR] != 0x04:
-            raise ECDSAUsageError(EXCEPTION_TEXT)
-        b[offset_OCT_STR + 1] -= len_PUB
-        if b[0] != 0x30 or b[1] != 0x81:
-            raise ECDSAUsageError(EXCEPTION_TEXT)
-        b[2] -= len_PUB
+        if format == serialization.PrivateFormat.PKCS8:
+            offset_PUB = 68  # where the context specific TLV starts (tag 0xA1)
+            if der[offset_PUB] != 0xa1:
+                raise ECDSAUsageError(EXCEPTION_TEXT)
+            len_PUB = der[offset_PUB + 1] + 2  # + 2 for 0xA1 0x44 bytes
+            b = bytearray(der[:offset_PUB])  # remove the TLV with the PUB key
+            offset_SEQ = 29
+            if b[offset_SEQ] != 0x30:
+                raise ECDSAUsageError(EXCEPTION_TEXT)
+            b[offset_SEQ + 1] -= len_PUB
+            offset_OCT_STR = 27
+            if b[offset_OCT_STR] != 0x04:
+                raise ECDSAUsageError(EXCEPTION_TEXT)
+            b[offset_OCT_STR + 1] -= len_PUB
+            if b[0] != 0x30 or b[1] != 0x81:
+                raise ECDSAUsageError(EXCEPTION_TEXT)
+            # as b[1] has bit7 set, the length is on b[2]
+            b[2] -= len_PUB
+            if b[2] < 0x80:
+                del(b[1])
+
+        elif format == serialization.PrivateFormat.TraditionalOpenSSL:
+            offset_PUB = 51
+            if der[offset_PUB] != 0xA1:
+                raise ECDSAUsageError(EXCEPTION_TEXT)
+            len_PUB = der[offset_PUB + 1] + 2
+            b = bytearray(der[0:offset_PUB])
+            b[1] -= len_PUB
+
         return b
 
-    def get_private_bytes(self, minimal):
+    def get_private_bytes(self, minimal, format):
+        formats = {'pkcs8': serialization.PrivateFormat.PKCS8,
+                   'openssl': serialization.PrivateFormat.TraditionalOpenSSL
+                   }
         priv = self.key.private_bytes(
                 encoding=serialization.Encoding.DER,
-                format=serialization.PrivateFormat.PKCS8,
+                format=formats[format],
                 encryption_algorithm=serialization.NoEncryption())
         if minimal:
-            priv = self._build_minimal_ecdsa_privkey(priv)
+            priv = self._build_minimal_ecdsa_privkey(priv, formats[format])
         return priv
 
     def export_private(self, path, passwd=None):
-        """Write the private key to the given file, protecting it with the optional password."""
+        """Write the private key to the given file, protecting it with '
+          'the optional password."""
         if passwd is None:
             enc = serialization.NoEncryption()
         else:

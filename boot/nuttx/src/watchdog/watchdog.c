@@ -74,3 +74,57 @@ void mcuboot_watchdog_feed(void)
 
   close(fd);
 }
+
+/****************************************************************************
+ * Name: mcuboot_watchdog_init
+ *
+ * Description:
+ *   Initialize the watchdog timer by setting the trigger timeout and 
+ *   starting it.
+ *
+ * Input Parameters:
+ *   None.
+ *
+ * Returned Value:
+ *   OK on success, ERROR if not.
+ *
+ ****************************************************************************/
+
+int mcuboot_watchdog_init(void)
+{
+  int fd;
+  int ret;
+
+  fd = open(CONFIG_MCUBOOT_WATCHDOG_DEVPATH, O_RDONLY);
+  if (fd < 0)
+    {
+      BOOT_LOG_ERR("Failed to open %s", CONFIG_MCUBOOT_WATCHDOG_DEVPATH);
+      goto errout;
+    }
+
+  ret = ioctl(fd, WDIOC_SETTIMEOUT, (unsigned long)CONFIG_MCUBOOT_WATCHDOG_TIMEOUT);
+  if (ret < 0)
+    {
+      int errcode = errno;
+
+      BOOT_LOG_ERR("Failed to set timeout in watchdog device: %d", errcode);
+      goto errout_with_dev;
+    }
+
+  ret = ioctl(fd, WDIOC_START, 0);
+  if (ret < 0)
+    {
+      int errcode = errno;
+
+      BOOT_LOG_ERR("Failed to start watchdog device: %d", errcode);
+      goto errout_with_dev;
+    }
+
+  close(fd);
+  return OK;
+  
+errout_with_dev:
+  close(fd);
+errout:
+  return ERROR;
+}

@@ -17,6 +17,8 @@
 #include "esp_efuse.h"
 
 #include "bootloader_init.h"
+#include "bootloader_common.h"
+#include "bootloader_console.h"
 #include "bootloader_mem.h"
 #include "bootloader_clock.h"
 #include "bootloader_flash_config.h"
@@ -142,16 +144,6 @@ static esp_err_t bootloader_init_spi_flash(void)
     return ESP_OK;
 }
 
-static void bootloader_init_uart_console(void)
-{
-    const int uart_num = 0;
-
-    esp_rom_install_uart_printf();
-    esp_rom_uart_tx_wait_idle(0);
-    uint32_t clock_hz = UART_CLK_FREQ_ROM;
-    esp_rom_uart_set_clock_baudrate(uart_num, clock_hz, CONFIG_ESP_CONSOLE_UART_BAUDRATE);
-}
-
 static void wdt_reset_cpu0_info_enable(void)
 {
     REG_SET_BIT(SYSTEM_CPU_PERI_CLK_EN_REG, SYSTEM_CLK_EN_ASSIST_DEBUG);
@@ -261,7 +253,7 @@ esp_err_t bootloader_init(void)
     // config clock
     bootloader_clock_configure();
     /* initialize uart console, from now on, we can use ets_printf */
-    bootloader_init_uart_console();
+    bootloader_console_init();
     // Check and run XMC startup flow
     if ((ret = bootloader_flash_xmc_startup()) != ESP_OK) {
        goto err;
