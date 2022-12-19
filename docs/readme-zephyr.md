@@ -15,6 +15,12 @@ partitions defined in its device tree. These partitions are:
 - `boot_partition`: for MCUboot itself
 - `slot0_partition`: the primary slot of Image 0
 - `slot1_partition`: the secondary slot of Image 0
+
+It is not recommended to use the swap-using-scratch algorithm of MCUboot, but
+if this operating mode is desired then the following flash partition is also
+needed (see end of this help file for details on creating a scratch partition
+and how to use the swap-using-scratch algorithm):
+
 - `scratch_partition`: the scratch slot
 
 Currently, the two image slots must be contiguous. If you are running
@@ -156,3 +162,50 @@ although MCUboot's key management infrastructure supports multiple keypairs.
 
 Once MCUboot is built, this new keypair file (`mykey.pem` in this
 example) can be used to sign images.
+
+## Using swap-using-scratch flash algorithm
+
+To use the swap-using-scratch flash algorithm, a scratch partition needs to be
+present for the target board which is used for holding the data being swapped
+from both slots, this section must be at least as big as the largest sector
+size of the 2 partitions (e.g. if a device has a primary slot in main flash
+with a sector size of 512 bytes and secondar slot in external off-chip flash
+with a sector size of 4KB then the scratch area must be at least 4KB in size).
+The number of sectors must also be evenly divisable by this sector size, e.g.
+4KB, 8KB, 12KB, 16KB are allowed, 7KB, 7.5KB are not. This scratch partition
+needs adding to the .dts file for the board, e.g. for the nrf52dk_nrf52832
+board thus would involve updating
+`<zephyr>/boards/arm/nrf52dk_nrf52832/nrf52dk_nrf52832.dts` with:
+
+```
+    boot_partition: partition@0 {
+        label = "mcuboot";
+        reg = <0x00000000 0xc000>;
+    };
+    slot0_partition: partition@c000 {
+        label = "image-0";
+        reg = <0x0000C000 0x37000>;
+    };
+    slot1_partition: partition@43000 {
+        label = "image-1";
+        reg = <0x00043000 0x37000>;
+    };
+    storage_partition: partition@7a000 {
+        label = "storage";
+        reg = <0x0007a000 0x00006000>;
+    };
+```
+
+Which would make the application size 220KB and scratch size 24KB (the nRF52832
+has a 4KB sector size so the size of the scratch partition can be reduced at
+the cost of vastly reducing flash lifespan, e.g. for a 32KB firmware update
+with an 8KB scratch area, the scratch area would be erased and programmed 8
+times per image upgrade/revert). To configure MCUboot to work in
+swap-using-scratch mode, the Kconfig value must be set when building it:
+`CONFIG_BOOT_SWAP_USING_SCRATCH=y`.
+
+Note that it is possible for an application to get into a stuck state when
+swap-using-scratch is used whereby an application has loaded a firmware update
+and marked it as test/confirmed but MCUboot will not swap the images and
+erasing the secondary slot from the zephyr application returns an error
+because the slot is marked for upgrade.
