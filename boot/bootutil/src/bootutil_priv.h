@@ -64,7 +64,8 @@ struct flash_area;
 #if !defined(MCUBOOT_OVERWRITE_ONLY) && \
     !defined(MCUBOOT_SWAP_USING_MOVE) && \
     !defined(MCUBOOT_DIRECT_XIP) && \
-    !defined(MCUBOOT_RAM_LOAD)
+    !defined(MCUBOOT_RAM_LOAD) && \
+    !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
 #define MCUBOOT_SWAP_USING_SCRATCH 1
 #endif
 
