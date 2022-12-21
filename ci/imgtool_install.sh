@@ -19,5 +19,5 @@ if [[ $TRAVIS == "true" ]]; then
     fi
 fi
 
-pip install setuptools twine packaging wheel
+pip install setuptools twine packaging==21.3 wheel
 pip install --pre imgtool
