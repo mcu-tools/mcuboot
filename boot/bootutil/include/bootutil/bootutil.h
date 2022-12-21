@@ -77,6 +77,26 @@ struct image_trailer {
     uint8_t magic[BOOT_MAGIC_SZ];
 };
 
+#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
+#define FLASH_AREA_IMAGES 1
+#elif MCUBOOT_IMAGE_NUMBER == 1
+#define FLASH_AREA_IMAGES 2
+#elif MCUBOOT_IMAGE_NUMBER == 2
+#define FLASH_AREA_IMAGES 4
+#endif
+
+#if !defined(MCUBOOT_SWAP_USING_SCRATCH)
+#define FLASH_AREA_OBJECTS FLASH_AREA_IMAGES
+#else
+#define FLASH_AREA_OBJECTS (FLASH_AREA_IMAGES + 1)
+#define SCRATCH_FA flash_area_objects[FLASH_AREA_OBJECTS - 1]
+#endif
+
+extern const struct flash_area *flash_area_objects[FLASH_AREA_OBJECTS];
+
+#define PRIMARY_IMAGE_FA(x) flash_area_objects[(x) + 0]
+#define SECONDARY_IMAGE_FA(x) flash_area_objects[(x) + 1]
+
 /* you must have pre-allocated all the entries within this structure */
 fih_int boot_go(struct boot_rsp *rsp);
 fih_int boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id);

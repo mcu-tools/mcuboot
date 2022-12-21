@@ -698,7 +698,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
     uint8_t slot;
     int rc;
 
-    rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
+    rc = flash_area_multi_image_slot(image_index, fap);
     if (rc < 0) {
         return rc;
     }
@@ -745,7 +745,7 @@ boot_enc_valid(struct enc_key_data *enc_state, int image_index,
 {
     int rc;
 
-    rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
+    rc = flash_area_to_multi_image_slot(image_index, fap);
     if (rc < 0) {
         /* can't get proper slot number - skip encryption, */
         /* postpone the error for a upper layer */
@@ -777,7 +777,7 @@ boot_encrypt(struct enc_key_data *enc_state, int image_index,
     nonce[14] = (uint8_t)(off >> 8);
     nonce[15] = (uint8_t)off;
 
-    rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
+    rc = flash_area_to_multi_image_slot(image_index, fap);
     if (rc < 0) {
         assert(0);
         return;

@@ -41,22 +41,22 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
     uint32_t total_sz;
     uint32_t off;
     uint32_t sz;
-    int fa_id_primary;
-    int fa_id_secondary;
+    const struct flash_area *fa_primary;
+    const struct flash_area *fa_secondary;
     uint8_t image_index;
     int rc;
 
     BOOT_LOG_DBG("erasing trailer; fa_id=%d", flash_area_get_id(fap));
 
     image_index = BOOT_CURR_IMG(state);
-    fa_id_primary = flash_area_id_from_multi_image_slot(image_index,
-            BOOT_PRIMARY_SLOT);
-    fa_id_secondary = flash_area_id_from_multi_image_slot(image_index,
-            BOOT_SECONDARY_SLOT);
+    fa_primary = flash_area_from_multi_image_slot(image_index,
+                    BOOT_PRIMARY_SLOT);
+    fa_secondary = flash_area_from_multi_image_slot(image_index,
+                    BOOT_SECONDARY_SLOT);
 
-    if (flash_area_get_id(fap) == fa_id_primary) {
+    if (fap == fa_primary) {
         slot = BOOT_PRIMARY_SLOT;
-    } else if (flash_area_get_id(fap) == fa_id_secondary) {
+    } else if (fap == fa_secondary) {
         slot = BOOT_SECONDARY_SLOT;
     } else {
         return BOOT_EFLASH;
@@ -96,8 +96,8 @@ swap_status_init(const struct boot_loader_state *state,
 
     BOOT_LOG_DBG("initializing status; fa_id=%d", flash_area_get_id(fap));
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
-            &swap_state);
+    rc = boot_read_swap_state(SECONDARY_IMAGE_FA(image_index),
+                              &swap_state);
     assert(rc == 0);
 
     if (bs->swap_type != BOOT_SWAP_TYPE_NONE) {
@@ -133,7 +133,6 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
     const struct flash_area *fap;
     uint32_t off;
     uint8_t swap_info;
-    int area_id;
     int rc;
 
     bs->source = swap_status_source(state);
@@ -143,22 +142,17 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
 
 #if MCUBOOT_SWAP_USING_SCRATCH
     case BOOT_STATUS_SOURCE_SCRATCH:
-        area_id = FLASH_AREA_IMAGE_SCRATCH;
+        fap = SCRATCH_FA;
         break;
 #endif
 
     case BOOT_STATUS_SOURCE_PRIMARY_SLOT:
-        area_id = FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state));
+        fap = PRIMARY_IMAGE_FA(BOOT_CURR_IMG(state));
         break;
 
     default:
         assert(0);
         return BOOT_EBADARGS;
-    }
-
-    rc = flash_area_open(area_id, &fap);
-    if (rc != 0) {
-        return BOOT_EFLASH;
     }
 
     rc = swap_read_status_bytes(fap, state, bs);
@@ -180,40 +174,21 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
     }
 
 done:
-    flash_area_close(fap);
-
     return rc;
 }
 
 int
 swap_set_copy_done(uint8_t image_index)
 {
-    const struct flash_area *fap;
-    int rc;
-
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index),
-            &fap);
-    if (rc != 0) {
-        return BOOT_EFLASH;
-    }
-
-    rc = boot_write_copy_done(fap);
-    flash_area_close(fap);
-    return rc;
+    return boot_write_copy_done(PRIMARY_IMAGE_FA(image_index));
 }
 
 int
 swap_set_image_ok(uint8_t image_index)
 {
-    const struct flash_area *fap;
+    const struct flash_area *const fap = PRIMARY_IMAGE_FA(image_index);
     struct boot_swap_state state;
     int rc;
-
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index),
-            &fap);
-    if (rc != 0) {
-        return BOOT_EFLASH;
-    }
 
     rc = boot_read_swap_state(fap, &state);
     if (rc != 0) {
@@ -226,7 +201,6 @@ swap_set_image_ok(uint8_t image_index)
     }
 
 out:
-    flash_area_close(fap);
     return rc;
 }
 

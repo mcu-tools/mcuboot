@@ -44,8 +44,9 @@ extern "C" {
  */
 int flash_device_base(uint8_t fd_id, uintptr_t *ret);
 
-int flash_area_id_from_image_slot(int slot);
-int flash_area_id_from_multi_image_slot(int image_index, int slot);
+const struct flash_area *flash_area_from_image_slot(int slot);
+const struct flash_area *flash_area_from_multi_image_slot(int image_index,
+    int slot);
 
 /**
  * Converts the specified flash area ID and image index (in multi-image setup)
@@ -55,6 +56,7 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot);
  * slot.
  */
 int flash_area_id_to_multi_image_slot(int image_index, int area_id);
+int flash_area_to_multi_image_slot(int image_index, const struct flash_area *fa);
 
 /* Retrieve the flash sector a given offset belongs to.
  *

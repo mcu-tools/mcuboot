@@ -405,8 +405,11 @@ boot_handle_enc_fw()
     int rc = -1;
     fih_int fih_rc = FIH_FAILURE;
 
+#if 0
     rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &_fa_p);
     assert(rc == 0);
+#endif
+    _fa_p = PRIMARY_IMAGE_FA(0);
 
     rc = boot_image_load_header(_fa_p, &_hdr);
     if (rc != 0) {
@@ -427,7 +430,6 @@ boot_handle_enc_fw()
     }
 
 out:
-    flash_area_close(_fa_p);
     return rc;
 }
 #endif
@@ -445,8 +447,7 @@ boot_go(struct boot_rsp *rsp)
     int rc = -1;
     fih_int fih_rc = FIH_FAILURE;
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &_fa_p);
-    assert(rc == 0);
+    _fa_p = PRIMARY_IMAGE_FA(0);
 
     rc = boot_image_load_header(_fa_p, &_hdr);
     if (rc != 0)
@@ -471,7 +472,5 @@ boot_go(struct boot_rsp *rsp)
     rsp->br_hdr = &_hdr;
 
 out:
-    flash_area_close(_fa_p);
-
     FIH_RET(fih_rc);
 }

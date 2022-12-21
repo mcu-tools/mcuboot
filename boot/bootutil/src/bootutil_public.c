@@ -432,15 +432,15 @@ boot_swap_type_multi(int image_index)
                         BOOT_HOOK_REGULAR, image_index, &primary_slot);
     if (rc == BOOT_HOOK_REGULAR)
     {
-        rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
-                                        &primary_slot);
+        rc = boot_read_swap_state(PRIMARY_IMAGE_FA(image_index),
+                                  &primary_slot);
     }
     if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
     }
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
-                                    &secondary_slot);
+    rc = boot_read_swap_state(SECONDARY_IMAGE_FA(image_index),
+                              &secondary_slot);
     if (rc == BOOT_EFLASH) {
         BOOT_LOG_INF("Secondary image of image pair (%d.) "
                      "is unreachable. Treat it as empty", image_index);

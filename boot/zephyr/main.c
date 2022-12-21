@@ -26,6 +26,7 @@
 #include <zephyr/usb/usb_device.h>
 #include <soc.h>
 #include <zephyr/linker/linker-defs.h>
+#include "sysflash/sysflash.h"
 
 #if defined(CONFIG_CPU_AARCH32_CORTEX_A) || defined(CONFIG_CPU_AARCH32_CORTEX_R)
 #include <zephyr/arch/arm/aarch32/cortex_a_r/cmsis.h>
@@ -117,6 +118,8 @@ static inline bool boot_skip_serial_recovery()
     return false;
 }
 #endif
+
+const struct flash_area *flash_area_objects[FLASH_AREA_OBJECTS];
 
 BOOT_LOG_MODULE_REGISTER(mcuboot);
 
@@ -498,6 +501,33 @@ static bool detect_pin(void)
 }
 #endif
 
+bool flash_area_open_all()
+{
+    int rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &PRIMARY_IMAGE_FA(0));
+
+    if (rc != 0) {
+        BOOT_LOG_ERR("%s open failed", "Primary image");
+        return false;
+    }
+#if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
+    rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(0), &SECONDARY_IMAGE_FA(0));
+    if (rc != 0) {
+        BOOT_LOG_ERR("%s open failed", "Secondary image");
+        return false;
+    }
+#if defined(MCUBOOT_SWAP_USING_SCRATCH)
+    rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(0), &SCRATCH_FA);
+    if (rc != 0) {
+        BOOT_LOG_ERR("%s open failed", "Scratch");
+        return false;
+    }
+#endif /* defined(MCUBOOT_SWAP_USING_SCRATCH */
+
+#endif /* !defined(MCUBOOT_SINGLE_APPLICATION_SLOT) */
+
+    return true;
+}
+
 void main(void)
 {
     struct boot_rsp rsp;
@@ -524,6 +554,10 @@ void main(void)
     (void)rc;
 
     mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
+
+    if (!flash_area_open_all()) {
+        FIH_PANIC;
+    }
 
 #ifdef CONFIG_MCUBOOT_SERIAL
     if (detect_pin() &&

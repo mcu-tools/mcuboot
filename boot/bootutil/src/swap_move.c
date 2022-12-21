@@ -56,7 +56,9 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
     const struct flash_area *fap;
     uint32_t off;
     uint32_t sz;
+#if OLD
     int area_id;
+#endif
     int rc;
 
 #if (BOOT_IMAGE_NUMBER == 1)
@@ -89,12 +91,15 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
         }
     }
 
+#if OLD
     area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
     rc = flash_area_open(area_id, &fap);
     if (rc != 0) {
         rc = BOOT_EFLASH;
         goto done;
     }
+#endif
+    fap = flash_area_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
 
     rc = flash_area_read(fap, off, out_hdr, sizeof *out_hdr);
     if (rc != 0) {
@@ -111,7 +116,9 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
     rc = 0;
 
 done:
+#if OLD
     flash_area_close(fap);
+#endif
     return rc;
 }
 
@@ -275,15 +282,24 @@ swap_status_source(struct boot_loader_state *state)
 
     image_index = BOOT_CURR_IMG(state);
 
+#if OLD
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
+            &state_primary_slot);
+    assert(rc == 0);
+#endif
+    rc = boot_read_swap_state(PRIMARY_IMAGE_FA(image_index),
             &state_primary_slot);
     assert(rc == 0);
 
     BOOT_LOG_SWAP_STATE("Primary image", &state_primary_slot);
 
+#if OLD
     rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
             &state_secondary_slot);
     assert(rc == 0);
+#endif
+    rc = boot_read_swap_state(SECONDARY_IMAGE_FA(image_index),
+            &state_secondary_slot);
 
     BOOT_LOG_SWAP_STATE("Secondary image", &state_secondary_slot);
 
@@ -445,8 +461,10 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     uint32_t trailer_sz;
     uint32_t first_trailer_idx;
     uint8_t image_index;
+#ifdef OLD
     const struct flash_area *fap_pri;
     const struct flash_area *fap_sec;
+#endif
     int rc;
 
     BOOT_LOG_INF("Starting swap using move algorithm.");
@@ -492,6 +510,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
     image_index = BOOT_CURR_IMG(state);
 
+#ifdef OLD
     rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap_pri);
     assert (rc == 0);
 
@@ -499,12 +518,16 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     assert (rc == 0);
 
     fixup_revert(state, bs, fap_sec);
+#endif
+    fixup_revert(state, bs, SECONDARY_IMAGE_FA(image_index));
 
     if (bs->op == BOOT_STATUS_OP_MOVE) {
         idx = g_last_idx;
         while (idx > 0) {
             if (idx <= (g_last_idx - bs->idx + 1)) {
-                boot_move_sector_up(idx, sector_sz, state, bs, fap_pri, fap_sec);
+                boot_move_sector_up(idx, sector_sz, state, bs,
+                                    PRIMARY_IMAGE_FA(image_index),
+                                    SECONDARY_IMAGE_FA(image_index));
             }
             idx--;
         }
@@ -516,13 +539,17 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     idx = 1;
     while (idx <= g_last_idx) {
         if (idx >= bs->idx) {
-            boot_swap_sectors(idx, sector_sz, state, bs, fap_pri, fap_sec);
+            boot_swap_sectors(idx, sector_sz, state, bs,
+                              PRIMARY_IMAGE_FA(image_index),
+                              SECONDARY_IMAGE_FA(image_index));
         }
         idx++;
     }
 
+#if OLD
     flash_area_close(fap_pri);
     flash_area_close(fap_sec);
+#endif
 }
 
 #endif

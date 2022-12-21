@@ -52,7 +52,6 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
                        struct image_header *out_hdr, struct boot_status *bs)
 {
     const struct flash_area *fap;
-    int area_id;
     int rc = 0;
 
     (void)bs;
@@ -61,13 +60,8 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
     (void)state;
 #endif
 
-    area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
-
-    rc = flash_area_open(area_id, &fap);
-    if (rc == 0) {
-        rc = flash_area_read(fap, 0, out_hdr, sizeof *out_hdr);
-        flash_area_close(fap);
-    }
+    fap = flash_area_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
+    rc = flash_area_read(fap, 0, out_hdr, sizeof *out_hdr);
 
     if (rc != 0) {
         rc = BOOT_EFLASH;
@@ -373,12 +367,12 @@ swap_status_source(struct boot_loader_state *state)
 #endif
 
     image_index = BOOT_CURR_IMG(state);
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
+    rc = boot_read_swap_state(PRIMARY_IMAGE_FA(image_index),
             &state_primary_slot);
     assert(rc == 0);
 
 #if MCUBOOT_SWAP_USING_SCRATCH
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SCRATCH, &state_scratch);
+    rc = boot_read_swap_state(SCRATCH_FA, &state_scratch);
     assert(rc == 0);
 #endif
 

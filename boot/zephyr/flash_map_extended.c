@@ -14,6 +14,7 @@
 #include <flash_map_backend/flash_map_backend.h>
 #include <sysflash/sysflash.h>
 
+#include "bootutil/bootutil.h"
 #include "bootutil/bootutil_log.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
@@ -43,29 +44,24 @@ int flash_device_base(uint8_t fd_id, uintptr_t *ret)
     return 0;
 }
 
-/*
- * This depends on the mappings defined in sysflash.h.
- * MCUBoot uses continuous numbering for the primary slot, the secondary slot,
- * and the scratch while zephyr might number it differently.
- */
-int flash_area_id_from_multi_image_slot(int image_index, int slot)
+const struct flash_area* flash_area_from_multi_image_slot(int image_index, int slot)
 {
     switch (slot) {
-    case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
+    case 0: return PRIMARY_IMAGE_FA(image_index);
 #if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
-    case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
+    case 1: return SECONDARY_IMAGE_FA(image_index);
 #endif
 #if defined(CONFIG_BOOT_SWAP_USING_SCRATCH)
-    case 2: return FLASH_AREA_IMAGE_SCRATCH;
+    case 2: return SCRATCH_FA;
 #endif
     }
-
-    return -EINVAL; /* flash_area_open will fail on that */
+    __ASSERT(false, "Reqesting non-existent area should have never happened");
+    return NULL;
 }
 
-int flash_area_id_from_image_slot(int slot)
+const struct flash_area *flash_area_from_image_slot(int slot)
 {
-    return flash_area_id_from_multi_image_slot(0, slot);
+    return flash_area_from_multi_image_slot(0, slot);
 }
 
 int flash_area_id_to_multi_image_slot(int image_index, int area_id)
@@ -83,8 +79,23 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
     return -1;
 }
 
+int flash_area_to_multi_image_slot(int image_index, const struct flash_area *fa)
+{
+    if (fa == PRIMARY_IMAGE_FA(image_index)) {
+        return 0;
+    }
+#if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
+    if (fa == SECONDARY_IMAGE_FA(image_index)) {
+        return 1;
+    }
+#endif
+
+    BOOT_LOG_ERR("invalid flash area");
+    return -1;
+}
+
 #if defined(CONFIG_MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
-int flash_area_id_from_direct_image(int image_id)
+const struct flash_area *flash_area_from_direct_image(int image_id)
 {
     switch (image_id) {
     case 0:
