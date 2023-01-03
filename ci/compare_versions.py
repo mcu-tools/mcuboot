@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from packaging.version import parse, LegacyVersion
+from packaging.version import parse, InvalidVersion
 import argparse
 import sys
+
+try:
+    from packaging.version import LegacyVersion
+except ImportError:
+    LegacyVersion = ()  # trick isinstance!
 
 # exit with 0 if --new is equal to --old
 # exit with 1 on errors
@@ -30,9 +35,20 @@ if args.old is None or args.new is None:
     parser.print_help()
     exit(1)
 
-old, new = parse(args.old), parse(args.new)
+# packaging>=22 only supports PEP-440 version numbers, and a non-valid version
+# will throw InvalidVersion. Previous packaging releases would create a
+# LegacyVersion object if the given version string failed to parse as PEP-440,
+# and since we use versions closer to semver, we want to fail in that case.
 
-# only accept versions that were correctly parsed
+versions = []
+for version in [args.old, args.new]:
+    try:
+        versions.append(parse(version))
+    except InvalidVersion:
+        print("Invalid version parsed: {}".format(version))
+        sys.exit(1)
+
+old, new = versions[0], versions[1]
 for version in [old, new]:
     if isinstance(version, LegacyVersion):
         print("Invalid version parsed: {}".format(version))
