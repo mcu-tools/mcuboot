@@ -172,8 +172,6 @@ uint32_t flash_area_align(const struct flash_area *);
 int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret);
 /*< Returns the `fa_id` for slot, where slot is 0 (primary) or 1 (secondary) */
 int flash_area_id_from_image_slot(int slot);
-/*< Returns the slot, for the `fa_id` supplied */
-int flash_area_id_to_image_slot(int area_id);
 
 int flash_area_id_from_multi_image_slot(int image_index, int slot);
 int flash_area_id_to_multi_image_slot(int image_index, int area_id);

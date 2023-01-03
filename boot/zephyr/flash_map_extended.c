@@ -83,11 +83,6 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
     return -1;
 }
 
-int flash_area_id_to_image_slot(int area_id)
-{
-    return flash_area_id_to_multi_image_slot(0, area_id);
-}
-
 #if defined(CONFIG_MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
 int flash_area_id_from_direct_image(int image_id)
 {

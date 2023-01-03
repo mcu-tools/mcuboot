@@ -231,10 +231,6 @@ int flash_area_id_from_image_slot(int slot) {
     return slot;
 }
 
-int flash_area_id_to_image_slot(int area_id) {
-    return area_id;
-}
-
 /**
  * Multi images support not implemented yet
  */
