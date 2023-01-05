@@ -342,15 +342,9 @@ uint8_t flash_area_erased_val(const struct flash_area *area)
 {
     return 0xff;
 }
-
-int flash_area_get_sectors(int fa_id, uint32_t *count,
-                           struct flash_sector *sectors)
+int flash_area_get_sectors_fa(const struct flash_area *fa, uint32_t *count,
+                              struct flash_sector *sectors)
 {
-    const struct flash_area *fa = prv_lookup_flash_area(fa_id);
-    if (fa->fa_device_id != FLASH_DEVICE_INTERNAL_FLASH) {
-        return -1;
-    }
-
     const size_t sector_size = FLASH_SECTOR_SIZE;
     uint32_t total_count = 0;
     for (size_t off = 0; off < fa->fa_size; off += sector_size) {
@@ -362,6 +356,17 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
 
     *count = total_count;
     return 0;
+}
+
+int flash_area_get_sectors(int fa_id, uint32_t *count,
+                           struct flash_sector *sectors)
+{
+    const struct flash_area *fa = prv_lookup_flash_area(fa_id);
+    if (fa->fa_device_id != FLASH_DEVICE_INTERNAL_FLASH) {
+        return -1;
+    }
+
+    return flash_area_get_sectors_fa(fa, count, sectors);
 }
 
 int flash_area_sector_from_off(uint32_t off, struct flash_sector *sector)
