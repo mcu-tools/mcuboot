@@ -318,7 +318,7 @@ static off_t erase_range(const struct flash_area *fap, off_t start, off_t end)
         return start;
     }
 
-    if (flash_area_sector_from_off(end, &sect)) {
+    if (flash_area_get_sector(fap, end, &sect)) {
         return -EINVAL;
     }
 
@@ -437,7 +437,7 @@ bs_upload(char *buf, int len)
          * TODO: This is single occurrence issue, it should get detected during tests
          * and fixed otherwise you are deploying broken mcuboot.
          */
-        if (flash_area_sector_from_off(boot_status_off(fap), &status_sector)) {
+        if (flash_area_get_sector(fap, boot_status_off(fap), &status_sector)) {
             rc = MGMT_ERR_EUNKNOWN;
             BOOT_LOG_ERR("Unable to determine flash sector of the image trailer");
             goto out;

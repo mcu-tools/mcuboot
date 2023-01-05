@@ -350,7 +350,7 @@ uint32_t bootutil_max_image_size(const struct flash_area *fap)
 #elif defined(MCUBOOT_SWAP_USING_MOVE)
     struct flash_sector sector;
     /* get the last sector offset */
-    int rc = flash_area_sector_from_off(boot_status_off(fap), &sector);
+    int rc = flash_area_get_sector(fap, boot_status_off(fap), &sector);
     if (rc) {
         BOOT_LOG_ERR("Unable to determine flash sector of the image trailer");
         return 0; /* Returning of zero here should cause any check which uses
