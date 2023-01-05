@@ -80,6 +80,10 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
 //! Retrieve the flash sector a given offset belongs to.
 int flash_area_sector_from_off(uint32_t off, struct flash_sector *sector);
 
+//! Retrieve the flash sector a given offset belongs to.
+int flash_area_get_sector(const struct flash_area *area, uint32_t off,
+                          struct flash_sector *sector);
+
 //! Returns the `fa_id` for slot, where slot is 0 (primary) or 1 (secondary).
 //!
 //! `image_index` (0 or 1) is the index of the image. Image index is
