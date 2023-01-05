@@ -372,6 +372,15 @@ int flash_area_sector_from_off(uint32_t off, struct flash_sector *sector)
     return 0;
 }
 
+int flash_area_get_sector(const struct flash_area *fa, uint32_t off,
+                          struct flash_sector *sector)
+{
+    sector->fs_off = (off / FLASH_SECTOR_SIZE) * FLASH_SECTOR_SIZE;
+    sector->fs_size = FLASH_SECTOR_SIZE;
+
+    return 0;
+}
+
 int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
     BOOT_LOG_DBG("%s", __func__);
