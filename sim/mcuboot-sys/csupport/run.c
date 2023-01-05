@@ -396,6 +396,40 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
     return 0;
 }
 
+int flash_area_get_sectors_fa(const struct flash_area *fa, uint32_t *count,
+                              struct flash_sector *sectors)
+{
+    uint32_t i;
+    struct area *slot;
+    struct area_desc *flash_areas;
+
+    flash_areas = sim_get_flash_areas();
+    for (i = 0; i < flash_areas->num_slots; i++) {
+        if (flash_areas->slots[i].id == fa->fa_id)
+            break;
+    }
+    if (i == flash_areas->num_slots) {
+        printf("Unsupported area\n");
+        abort();
+    }
+
+    slot = &flash_areas->slots[i];
+
+    if (slot->num_areas > *count) {
+        printf("Too many areas in slot\n");
+        abort();
+    }
+
+    for (i = 0; i < slot->num_areas; i++) {
+        sectors[i].fs_off = slot->areas[i].fa_off -
+            slot->whole.fa_off;
+        sectors[i].fs_size = slot->areas[i].fa_size;
+    }
+    *count = slot->num_areas;
+
+    return 0;
+}
+
 int flash_area_get_sectors(int fa_id, uint32_t *count,
                            struct flash_sector *sectors)
 {

@@ -135,6 +135,11 @@ uint8_t flash_area_erased_val(const struct flash_area *);
  */
 int flash_area_get_sectors(int fa_id, uint32_t *count,
   struct flash_sector *sectors);
+/*
+ * Given flash area object poiner, return info about sectors within the area.
+ */
+int flash_area_get_sectors_fa(const struct flash_area *fa, uint32_t *count,
+  struct flash_sector *sectors);
 
 
 /* Retrieve the flash sector a given offset belongs to.
