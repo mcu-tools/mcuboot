@@ -177,6 +177,8 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot);
 int flash_area_id_to_multi_image_slot(int image_index, int area_id);
 #ifdef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
 int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret);
+int flash_area_get_sectors_fa(const struct flash_area *fa, uint32_t *cnt,
+                              struct flash_sector *ret);
 #endif
 /*
  * Returns the value expected to be read when accesing any erased

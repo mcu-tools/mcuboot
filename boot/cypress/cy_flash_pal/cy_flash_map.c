@@ -481,9 +481,55 @@ int flash_area_read_is_empty(const struct flash_area *fa, uint32_t off,
 }
 
 #ifdef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
-int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
+int flash_area_get_sectors_fa(const struct flash_area *fa, uint32_t *cnt, struct flash_sector *ret)
 {
     int rc = 0;
+    uint32_t i = 0;
+    struct flash_area *fa = NULL;
+
+    size_t sector_size = 0;
+
+    if(fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
+    {
+        sector_size = CY_FLASH_SIZEOF_ROW;
+    }
+#ifdef CY_BOOT_USE_EXTERNAL_FLASH
+    else if((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
+    {
+        /* implement for SMIF */
+        /* lets assume they are equal */
+        sector_size = CY_FLASH_SIZEOF_ROW;
+    }
+#endif
+    else
+    {
+        rc = -1;
+    }
+
+    if(0 == rc)
+    {
+        uint32_t addr = 0;
+        size_t sectors_n = 0;
+
+        sectors_n = (fa->fa_size + (sector_size - 1)) / sector_size;
+        assert(sectors_n <= *cnt);
+
+        addr = fa->fa_off;
+        for(i = 0; i < sectors_n; i++)
+        {
+            ret[i].fs_size = sector_size ;
+            ret[i].fs_off = addr ;
+            addr += sector_size ;
+        }
+
+        *cnt = sectors_n;
+    }
+    return rc;
+}
+
+int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
+{
+    int rc = -1;
     uint32_t i = 0;
     struct flash_area *fa = NULL;
 
@@ -497,51 +543,11 @@ int flash_area_get_sectors(int idx, uint32_t *cnt, struct flash_sector *ret)
         i++;
     }
 
-    if(NULL != boot_area_descs[i])
+    if(NULL != fa)
     {
-        size_t sector_size = 0;
-
-        if(fa->fa_device_id == FLASH_DEVICE_INTERNAL_FLASH)
-        {
-            sector_size = CY_FLASH_SIZEOF_ROW;
-        }
-#ifdef CY_BOOT_USE_EXTERNAL_FLASH
-        else if((fa->fa_device_id & FLASH_DEVICE_EXTERNAL_FLAG) == FLASH_DEVICE_EXTERNAL_FLAG)
-        {
-            /* implement for SMIF */
-            /* lets assume they are equal */
-            sector_size = CY_FLASH_SIZEOF_ROW;
-        }
-#endif
-        else
-        {
-            rc = -1;
-        }
-
-        if(0 == rc)
-        {
-            uint32_t addr = 0;
-            size_t sectors_n = 0;
-
-            sectors_n = (fa->fa_size + (sector_size - 1)) / sector_size;
-            assert(sectors_n <= *cnt);
-
-            addr = fa->fa_off;
-            for(i = 0; i < sectors_n; i++)
-            {
-                ret[i].fs_size = sector_size ;
-                ret[i].fs_off = addr ;
-                addr += sector_size ;
-            }
-
-            *cnt = sectors_n;
-        }
+        flash_area_get_sectors_fa(fa, cnt, ret);
     }
-    else
-    {
-        rc = -1;
-    }
-
     return rc;
 }
+
 #endif
