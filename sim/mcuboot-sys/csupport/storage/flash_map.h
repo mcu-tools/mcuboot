@@ -143,6 +143,16 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
  */
 int flash_area_sector_from_off(uint32_t off, struct flash_sector *sector);
 
+/* Retrieve the flash sector a given offset, within flash area.
+ *
+ * @param fa        flash area.
+ * @param off       offset of sector.
+ * @param sector    pointer to structure for obtained information.
+ * Returns 0 on success, or an error code on failure.
+ */
+int flash_area_get_sector(const struct flash_area *fa, uint32_t off,
+  struct flash_sector *sector);
+
 /*
  * Similar to flash_area_get_sectors(), but return the values in an
  * array of struct flash_area instead.
