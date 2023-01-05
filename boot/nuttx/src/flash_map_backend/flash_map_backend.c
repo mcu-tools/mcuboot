@@ -641,6 +641,47 @@ uint8_t flash_area_erased_val(const struct flash_area *fa)
 }
 
 /****************************************************************************
+ * Name: flash_area_get_sectors_fa
+ *
+ * Description:
+ *   Retrieve info about sectors within the area.
+ *
+ * Input Parameters:
+ *   fa      - pointer to flash area object.
+ *   count   - On input, represents the capacity of the sectors buffer.
+ *
+ * Output Parameters:
+ *   count   - On output, it shall contain the number of retrieved sectors.
+ *   sectors - Buffer for sectors data.
+ *
+ * Returned Value:
+ *   Zero on success, or negative value in case of error.
+ *
+ ****************************************************************************/
+
+int flash_area_get_sectors_fa(const struct flash_area *fa, uint32_t *count,
+                              struct flash_sector *sectors)
+{
+  for (off = 0; off < fa->fa_size; off += sector_size)
+    {
+      /* Note: Offset here is relative to flash area, not device */
+
+      sectors[total_count].fs_off = off;
+      sectors[total_count].fs_size = sector_size;
+      total_count++;
+    }
+
+  *count = total_count;
+
+  DEBUGASSERT(total_count == dev->mtdgeo.neraseblocks);
+
+  BOOT_LOG_INF("ID:%d count:%" PRIu32, fa_id, *count);
+
+  return OK;
+}
+
+
+/****************************************************************************
  * Name: flash_area_get_sectors
  *
  * Description:
@@ -668,22 +709,7 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
   const size_t sector_size = dev->mtdgeo.erasesize;
   const struct flash_area *fa = fa = dev->fa_cfg;
 
-  for (off = 0; off < fa->fa_size; off += sector_size)
-    {
-      /* Note: Offset here is relative to flash area, not device */
-
-      sectors[total_count].fs_off = off;
-      sectors[total_count].fs_size = sector_size;
-      total_count++;
-    }
-
-  *count = total_count;
-
-  DEBUGASSERT(total_count == dev->mtdgeo.neraseblocks);
-
-  BOOT_LOG_INF("ID:%d count:%" PRIu32, fa_id, *count);
-
-  return OK;
+  return flash_area_get_sectors_fa(fa, count, sectors);
 }
 
 /****************************************************************************

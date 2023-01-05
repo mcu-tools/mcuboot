@@ -352,6 +352,28 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
                            struct flash_sector *sectors);
 
 /****************************************************************************
+ * Name: flash_area_get_sectors_fa
+ *
+ * Description:
+ *   Retrieve info about sectors within the area.
+ *
+ * Input Parameters:
+ *   fa      - flash area object pointer.
+ *   count   - On input, represents the capacity of the sectors buffer.
+ *
+ * Output Parameters:
+ *   count   - On output, it shall contain the number of retrieved sectors.
+ *   sectors - Buffer for sectors data.
+ *
+ * Returned Value:
+ *   Zero on success, or negative value in case of error.
+ *
+ ****************************************************************************/
+
+int flash_area_get_sectors(const struct flash_area *fa, uint32_t *count,
+                           struct flash_sector *sectors);
+
+/****************************************************************************
  * Name: flash_area_id_from_multi_image_slot
  *
  * Description:
