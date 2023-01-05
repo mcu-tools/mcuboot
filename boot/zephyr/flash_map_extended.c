@@ -135,3 +135,24 @@ __weak uint8_t flash_area_erased_val(const struct flash_area *fap)
     (void)fap;
     return ERASED_VAL;
 }
+
+int flash_area_get_sector(const struct flash_area *fap, off_t off,
+                          struct flash_sector *fsp)
+{
+    struct flash_pages_info fpi;
+    int rc;
+
+    if (off >= fap->fa_size) {
+        return -ERANGE;
+    }
+
+    rc = flash_get_page_info_by_offs(fap->fa_dev, fap->fa_off + off,
+            &fpi);
+
+    if (rc == 0) {
+        fsp->fs_off = fpi.start_offset - fap->fa_off;
+        fsp->fs_size = fpi.size;
+    }
+
+    return rc;
+}

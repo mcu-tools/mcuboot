@@ -95,6 +95,17 @@ static inline uint32_t flash_sector_get_size(const struct flash_sector *fs)
 	return fs->fs_size;
 }
 
+/* Retrieve the flash sector withing given flash area, at a given offset.
+ *
+ * @param fa        flash area where the sector is taken from.
+ * @param off       offset within flash area.
+ * @param sector    structure of sector information.
+ * Returns 0 on success, -ERANGE if @p off is beyond flash area size,
+ *         other negative errno code on failure.
+ */
+int flash_area_get_sector(const struct flash_area *fa, off_t off,
+                          struct flash_sector *fs);
+
 #ifdef __cplusplus
 }
 #endif
