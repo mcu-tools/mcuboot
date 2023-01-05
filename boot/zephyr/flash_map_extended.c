@@ -135,3 +135,33 @@ __weak uint8_t flash_area_erased_val(const struct flash_area *fap)
     (void)fap;
     return ERASED_VAL;
 }
+
+int flash_area_get_sectors_fa(const struct flash_area *fa, uint32_t *count,
+    struct flash_sector *ret)
+{
+    off_t fa_off = fa->fa_off;
+    off_t offset = 0;
+    size_t fa_size = fa->fa_size;
+    int max_sectors = *count;
+    int sector_idx = 0;
+    int rc = 0;
+
+    while (rc == 0 && sector_idx < max_sectors && offset < fa_size) {
+        struct flash_pages_info fpi;
+
+        rc = flash_get_page_info_by_offs(fa->fa_dev, fa_off + offset, &fpi);
+
+        if (rc == 0) {
+            ret[sector_idx].fs_off = fpi.start_offset - fa_off;
+            ret[sector_idx].fs_size = fpi.size;
+            ++sector_idx;
+            offset += fpi.size;
+        }
+    }
+
+    if (sector_idx >= max_sectors && offset >= fa_size) {
+        return -ENOENT;
+    }
+
+    return rc;
+}

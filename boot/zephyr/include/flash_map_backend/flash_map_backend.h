@@ -62,6 +62,21 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id);
  */
 int flash_area_sector_from_off(off_t off, struct flash_sector *sector);
 
+/* Get sectors for given flash_area object. This function is similar to
+ * flash_area_get_sectors but takes flash_area object pointer instead
+ * of flash area identifier.
+ *
+ * @param fa    pointer to flash_area object.
+ * @param count in: size of array for returned sectors, out: number
+ *              of sectors filled in.
+ * @param ret   array of sectors.
+ *
+ * Returns 0 on success, -ERANGE when there is not enough space in
+ * @p ret for sector information; other negative errno code.
+ */
+int flash_area_get_sectors_fa(const struct flash_area *fa, uint32_t *count,
+                              struct flash_sector *ret);
+
 static inline uint32_t flash_area_get_off(const struct flash_area *fa)
 {
 	return (uint32_t)fa->fa_off;
