@@ -350,7 +350,7 @@ decrypt_image_inplace(const struct flash_area *fa_p,
     memset(&_bs, 0, sizeof(struct boot_status));
 
     /* Get size from last sector to know page/sector erase size */
-    rc = flash_area_sector_from_off(boot_status_off(fa_p), &sector);
+    rc = flash_area_get_sector(fap, boot_status_off(fa_p), &sector);
 
 
     image_index = BOOT_CURR_IMG(state);
