@@ -157,8 +157,8 @@ def getpub(key, encoding, lang):
 @click.option('-k', '--key', metavar='filename', required=True)
 @click.option('-f', '--format',
               type=click.Choice(valid_formats),
-              help='Valid formats: {}'.format(', '.join(valid_formats)),
-              default='pkcs8')
+              help='Valid formats: {}'.format(', '.join(valid_formats))
+              )
 @click.command(help='Dump private key from keypair')
 def getpriv(key, minimal, format):
     key = load_key(key)

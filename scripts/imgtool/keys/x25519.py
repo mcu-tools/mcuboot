@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import x25519
 
 from .general import KeyClass
+from .privatebytes import PrivateBytesMixin
 
 
 class X25519UsageError(Exception):
@@ -39,7 +40,7 @@ class X25519Public(KeyClass):
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo)
 
-    def get_private_bytes(self, minimal):
+    def get_private_bytes(self, minimal, format):
         self._unsupported('get_private_bytes')
 
     def export_private(self, path, passwd=None):
@@ -63,7 +64,7 @@ class X25519Public(KeyClass):
         return 32
 
 
-class X25519(X25519Public):
+class X25519(X25519Public, PrivateBytesMixin):
     """
     Wrapper around an X25519 private key.
     """
@@ -80,11 +81,15 @@ class X25519(X25519Public):
     def _get_public(self):
         return self.key.public_key()
 
-    def get_private_bytes(self, minimal):
-        return self.key.private_bytes(
-            encoding=serialization.Encoding.DER,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption())
+    _VALID_FORMATS = {
+        'pkcs8': serialization.PrivateFormat.PKCS8
+    }
+    _DEFAULT_FORMAT = 'pkcs8'
+
+    def get_private_bytes(self, minimal, format):
+        _, priv = self._get_private_bytes(minimal, format,
+                                          X25519UsageError)
+        return priv
 
     def export_private(self, path, passwd=None):
         """
