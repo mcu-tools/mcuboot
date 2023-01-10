@@ -6,8 +6,13 @@
 #include <mcuboot_config/mcuboot_config.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/dfu/mcuboot_partitions.h>
 
 #ifndef CONFIG_SINGLE_APPLICATION_SLOT
+
+#if !ZEPHYR_MCUBOOT_APP_0_SECONDARY_SLOT_EXISTS
+#error "Not in single app slot mode but secondary slot is missing"
+#endif
 
 #if (MCUBOOT_IMAGE_NUMBER == 1)
 /*
@@ -15,27 +20,30 @@
  * purpose, to avoid having to mark x as non-used by all callers when
  * running in single image mode.
  */
-#define FLASH_AREA_IMAGE_PRIMARY(x)    (((x) == 0) ?                \
-                                         FIXED_PARTITION_ID(slot0_partition) : \
-                                         FIXED_PARTITION_ID(slot0_partition))
-#define FLASH_AREA_IMAGE_SECONDARY(x)  (((x) == 0) ?                \
-                                         FIXED_PARTITION_ID(slot1_partition) : \
-                                         FIXED_PARTITION_ID(slot1_partition))
+#define FLASH_AREA_IMAGE_PRIMARY(x)                            \
+          (((x) == 0) ? ZEPHYR_MCUBOOT_APP_0_PRIMARY_SLOT_ID : \
+                          ZEPHYR_MCUBOOT_APP_0_PRIMARY_SLOT_ID)
+
+#define FLASH_AREA_IMAGE_SECONDARY(x)                            \
+          (((x) == 0) ? ZEPHYR_MCUBOOT_APP_0_SECONDARY_SLOT_ID : \
+                          ZEPHYR_MCUBOOT_APP_0_SECONDARY_SLOT_ID)
+
 #elif (MCUBOOT_IMAGE_NUMBER == 2)
 /* MCUBoot currently supports only up to 2 updateable firmware images.
  * If the number of the current image is greater than MCUBOOT_IMAGE_NUMBER - 1
  * then a dummy value will be assigned to the flash area macros.
  */
-#define FLASH_AREA_IMAGE_PRIMARY(x)    (((x) == 0) ?                \
-                                         FIXED_PARTITION_ID(slot0_partition) : \
-                                        ((x) == 1) ?                \
-                                         FIXED_PARTITION_ID(slot2_partition) : \
-                                         255)
-#define FLASH_AREA_IMAGE_SECONDARY(x)  (((x) == 0) ?                \
-                                         FIXED_PARTITION_ID(slot1_partition) : \
-                                        ((x) == 1) ?                \
-                                         FIXED_PARTITION_ID(slot3_partition) : \
-                                         255)
+#define FLASH_AREA_IMAGE_PRIMARY(x)                                            \
+          (((x) == 0) ? ZEPHYR_MCUBOOT_APP_0_PRIMARY_SLOT_ID :               \
+                        (((x) == 1) ? ZEPHYR_MCUBOOT_APP_1_PRIMARY_SLOT_ID : \
+                                      255)                                   \
+          )
+
+#define FLASH_AREA_IMAGE_SECONDARY(x)                                          \
+          (((x) == 0) ? ZEPHYR_MCUBOOT_APP_0_SECONDARY_SLOT_ID :               \
+                        (((x) == 1) ? ZEPHYR_MCUBOOT_APP_1_SECONDARY_SLOT_ID : \
+                                      255)                                     \
+          )
 #else
 #error "Image slot and flash area mapping is not defined"
 #endif
@@ -44,11 +52,17 @@
 #define FLASH_AREA_IMAGE_SCRATCH    FIXED_PARTITION_ID(scratch_partition)
 #endif
 
-#else /* CONFIG_SINGLE_APPLICATION_SLOT */
+#else /* to ifndef CONFIG_SINGLE_APPLICATION_SLOT */
+#define FLASH_AREA_IMAGE_PRIMARY(x)                             \
+            (ZEPHYR_MCUBOOT_APP_0_PRIMARY_SLOT_ID + (x - x))
+#define FLASH_AREA_IMAGE_SECONDARY(x)                           \
+            (ZEPHYR_MCUBOOT_APP_0_PRIMARY_SLOT_ID + (x - x))
+/* NOTE: Scratch parition is not used by single image DFU but some of
+ * functions in common files reference it, so the definitions has been
+ * provided to allow compilation of common units.
+ */
+#define FLASH_AREA_IMAGE_SCRATCH	0
 
-#define FLASH_AREA_IMAGE_PRIMARY(x)	FIXED_PARTITION_ID(slot0_partition)
-#define FLASH_AREA_IMAGE_SECONDARY(x)	FIXED_PARTITION_ID(slot0_partition)
-
-#endif /* CONFIG_SINGLE_APPLICATION_SLOT */
+#endif /* to else to ifndef CONFIG_SINGLE_APPLICATION_SLOT */
 
 #endif /* __SYSFLASH_H__ */
