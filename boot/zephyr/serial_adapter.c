@@ -22,9 +22,24 @@
 #include "bootutil/bootutil_log.h"
 #include <zephyr/usb/usb_device.h>
 
-#if defined(CONFIG_BOOT_SERIAL_UART) && defined(CONFIG_UART_CONSOLE)
-#error Zephyr UART console must been disabled if serial_adapter module is used.
+#if defined(CONFIG_BOOT_SERIAL_UART)
+	#if (DT_NODE_HAS_STATUS(DT_CHOSEN(mcuboot_recovery_uart), okay))
+		#define RECOVERY_UART DT_CHOSEN(mcuboot_recovery_uart)
+	#elif (DT_NODE_HAS_STATUS(DT_ALIAS(mcuboot_recovery_uart), okay))
+		#define RECOVERY_UART DT_ALIAS(mcuboot_recovery_uart)
+	#elif (DT_NODE_HAS_STATUS(DT_ALIAS(recovery_uart), okay))
+		#define RECOVERY_UART DT_ALIAS(recovery_uart)
+	#else
+		/* note that if a recovery uart is specified, and it happens to be
+		 * the same node as zephyr-console, we don't detect that at build time
+		 */
+		#define RECOVERY_UART DT_CHOSEN(zephyr_console)
+		#if defined(CONFIG_UART_CONSOLE)
+			#error Zephyr UART console must be disabled if serial_adapter module is used.
+		#endif
+	#endif
 #endif
+
 
 BOOT_LOG_MODULE_REGISTER(serial_adapter);
 
@@ -192,7 +207,7 @@ static int
 boot_uart_fifo_init(void)
 {
 #ifdef CONFIG_BOOT_SERIAL_UART
-	uart_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
+	uart_dev = DEVICE_DT_GET(RECOVERY_UART);
 #elif CONFIG_BOOT_SERIAL_CDC_ACM
 	uart_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
 #endif
