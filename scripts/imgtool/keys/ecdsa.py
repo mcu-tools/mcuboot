@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.hashes import SHA256
 
 from .general import KeyClass
+from .privatebytes import PrivateBytesMixin
 
 
 class ECDSAUsageError(Exception):
@@ -41,7 +42,7 @@ class ECDSA256P1Public(KeyClass):
                 encoding=serialization.Encoding.PEM,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo)
 
-    def get_private_bytes(self, minimal):
+    def get_private_bytes(self, minimal, format):
         self._unsupported('get_private_bytes')
 
     def export_private(self, path, passwd=None):
@@ -85,7 +86,7 @@ class ECDSA256P1Public(KeyClass):
                         signature_algorithm=ec.ECDSA(SHA256()))
 
 
-class ECDSA256P1(ECDSA256P1Public):
+class ECDSA256P1(ECDSA256P1Public, PrivateBytesMixin):
     """
     Wrapper around an ECDSA private key.
     """
@@ -149,16 +150,17 @@ class ECDSA256P1(ECDSA256P1Public):
 
         return b
 
+    _VALID_FORMATS = {
+        'pkcs8': serialization.PrivateFormat.PKCS8,
+        'openssl': serialization.PrivateFormat.TraditionalOpenSSL
+    }
+    _DEFAULT_FORMAT='pkcs8'
+
     def get_private_bytes(self, minimal, format):
-        formats = {'pkcs8': serialization.PrivateFormat.PKCS8,
-                   'openssl': serialization.PrivateFormat.TraditionalOpenSSL
-                   }
-        priv = self.key.private_bytes(
-                encoding=serialization.Encoding.DER,
-                format=formats[format],
-                encryption_algorithm=serialization.NoEncryption())
+        format, priv = self._get_private_bytes(minimal, format, ECDSAUsageError)
         if minimal:
-            priv = self._build_minimal_ecdsa_privkey(priv, formats[format])
+            priv = self._build_minimal_ecdsa_privkey(priv,
+                                                     self._VALID_FORMATS[format])
         return priv
 
     def export_private(self, path, passwd=None):

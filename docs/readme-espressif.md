@@ -16,28 +16,34 @@ The current port is available for use in the following SoCs within the OSes:
 ## [Installing requirements and dependencies](#installing-requirements-and-dependencies)
 
 1. Install additional packages required for development with MCUboot:
-
-```
+```bash
   cd ~/mcuboot  # or to your directory where MCUboot is cloned
+```
+```bash
   pip3 install --user -r scripts/requirements.txt
 ```
 
 2. Update the submodules needed by the Espressif port. This may take a while.
-
-```
+```bash
 git submodule update --init --recursive --checkout boot/espressif/hal/esp-idf
 ```
 
 3. Next, get the Mbed TLS submodule required by MCUboot.
-```
+```bash
 git submodule update --init --recursive ext/mbedtls
 ```
 
 4. Now we need to install IDF dependencies and set environment variables. This step may take some time:
-```
+```bash
 cd boot/espressif/hal/esp-idf
+```
+```bash
 ./install.sh
+```
+```bash
 . ./export.sh
+```
+```bash
 cd ../..
 ```
 
@@ -53,23 +59,22 @@ The MCUboot Espressif port bootloader is built using the toolchain and tools pro
 ---
 
 1. Compile and generate the BIN:
-
-```
+```bash
 cmake -DCMAKE_TOOLCHAIN_FILE=tools/toolchain-<TARGET>.cmake -DMCUBOOT_TARGET=<TARGET> -DMCUBOOT_FLASH_PORT=<PORT> -B build -GNinja
+```
+```bash
 ninja -C build/
 ```
 
 2. Flash MCUboot in your device:
-
-```
+```bash
 ninja -C build/ flash
 ```
 
 If `MCUBOOT_FLASH_PORT` arg was not passed to `cmake`, the default `PORT` for flashing will be `/dev/ttyUSB0`.
 
 Alternatively:
-
-```
+```bash
 esptool.py -p <PORT> -b <BAUD> --before default_reset --after no_reset --chip <TARGET> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <BOOTLOADER_FLASH_OFFSET> build/mcuboot_<TARGET>.bin
 ```
 ---
@@ -79,7 +84,7 @@ You may adjust the port `<PORT>` (like `/dev/ttyUSB0`) and baud rate `<BAUD>` (l
 You can also skip `<PORT>` and `<BAUD>` parameters so that esptool tries to automatically detect it.
 
 *`<FLASH_SIZE>` can be found using the command below:*
-```
+```bash
 esptool.py -p <PORT> -b <BAUD> flash_id
 ```
 The output contains device information and its flash size:
@@ -101,8 +106,7 @@ Detected flash size: 4MB
 ## [Signing and flashing an application](#signing-and-flashing-an-application)
 
 1. Images can be regularly signed with the `scripts/imgtool.py` script:
-
-```
+```bash
 imgtool.py sign --align 4 -v 0 -H 32 --pad-header -S <SLOT_SIZE> <BIN_IN> <SIGNED_BIN>
 ```
 
@@ -125,8 +129,7 @@ For signing with a crypto key and guarantee the authenticity of the image being 
 ---
 
 2. Flash the signed application:
-
-```
+```bash
 esptool.py -p <PORT> -b <BAUD> --before default_reset --after hard_reset --chip <TARGET>  write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <SLOT_OFFSET> <SIGNED_BIN>
 ```
 
@@ -205,8 +208,7 @@ Notice that the public key will be embedded in the bootloader code, since the ha
 ### [Signing the image](#signing-the-image)
 
 Now you need to sign the **image binary**, use the `imgtool` with `-k` parameter:
-
-```
+```bash
 imgtool.py sign -k <YOUR_SIGNING_KEY.pem> --pad --pad-sig --align 4 -v 0 -H 32 --pad-header -S 0x00100000 <BIN_IN> <BIN_OUT>
 ```
 If signing a Zephyr image, the `--pad-header` is not needed, as it already have the padding for MCUboot header.
@@ -265,12 +267,12 @@ CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE=1
 Once the **bootloader image** is built, the resulting binary file is required to be signed with `espsecure.py` tool.
 
 First create a signing key:
-```
+```bash
 espsecure.py generate_signing_key --version 2 <BOOTLOADER_SIGNING_KEY.pem>
 ```
 
 Then sign the bootloader image:
-```
+```bash
 espsecure.py sign_data --version 2 --keyfile <BOOTLOADER_SIGNING_KEY.pem> -o <BOOTLOADER_BIN_OUT> <BOOTLOADER_BIN_IN>
 ```
 
@@ -282,7 +284,7 @@ espsecure.py sign_data --version 2 --keyfile <BOOTLOADER_SIGNING_KEY.pem> -o <BO
 ---
 
 Flash the bootloader as following, with `--after no_reset` flag, so you can reset the device only when assured:
-```
+```bash
 esptool.py -p <PORT> -b 2000000 --after no_reset --chip <ESP_CHIP> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <BOOTLOADER_FLASH_OFFSET> <SIGNED_BOOTLOADER_BIN>
 ```
 
@@ -378,7 +380,7 @@ CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE=1
 When enabling flash encryption, it is required to signed the image using 32-byte alignment: `--align 32 --max-align 32`.
 
 Command example:
-```
+```bash
 imgtool.py sign -k <YOUR_SIGNING_KEY.pem> --pad --pad-sig --align 32 --max-align 32 -v 0 -H 32 --pad-header -S <SLOT_SIZE> <BIN_IN> <BIN_OUT>
 ```
 
@@ -386,11 +388,10 @@ imgtool.py sign -k <YOUR_SIGNING_KEY.pem> --pad --pad-sig --align 32 --max-align
 
 First ensure that the application image is able to perform encrypted read and write operations to the SPI Flash.
 Flash the bootloader and application normally:
-
-```
+```bash
 esptool.py -p <PORT> -b 2000000 --after no_reset --chip <ESP_CHIP> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <BOOTLOADER_FLASH_OFFSET> <BOOTLOADER_BIN>
 ```
-```
+```bash
 esptool.py -p <PORT> -b 2000000 --after no_reset --chip <ESP_CHIP> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <PRIMARY_SLOT_FLASH_OFFSET> <APPLICATION_BIN>
 ```
 
@@ -404,7 +405,7 @@ On the **first boot**, the bootloader will:
 
 First ensure that the application image is able to perform encrypted read and write operations to the SPI Flash. Also ensure that the **UART ROM Download Mode is not disabled** - or that the **Secure Download Mode is enabled**.
 Before flashing, generate the encryption key using `espsecure.py` tool:
-```
+```bash
 espsecure.py generate_flash_encryption_key <FLASH_ENCRYPTION_KEY.bin>
 ```
 
@@ -418,12 +419,12 @@ Burn the key into the device's eFuse (keep a copy on the host), this action can 
 ---
 
 - ESP32
-```
+```bash
 espefuse.py --port PORT burn_key flash_encryption <FLASH_ENCRYPTION_KEY.bin>
 ```
 
 - ESP32S2, ESP32C3 and ESP32S3
-```
+```bash
 espefuse.py --port PORT burn_key BLOCK <FLASH_ENCRYPTION_KEY.bin> <KEYPURPOSE>
 ```
 
@@ -432,11 +433,10 @@ BLOCK is a free keyblock between BLOCK_KEY0 and BLOCK_KEY5. And KEYPURPOSE is ei
 Now, similar as the Device generated key, the bootloader and application can be flashed plaintext. The **first boot** will encrypt the flash content using the host key burned in the eFuse instead of generate a new one.
 
 Flashing the bootloader and application:
-
-```
+```bash
 esptool.py -p <PORT> -b 2000000 --after no_reset --chip <ESP_CHIP> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <BOOTLOADER_FLASH_OFFSET> <BOOTLOADER_BIN>
 ```
-```
+```bash
 esptool.py -p <PORT> -b 2000000 --after no_reset --chip <ESP_CHIP> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <PRIMARY_SLOT_FLASH_OFFSET> <APPLICATION_BIN>
 ```
 
@@ -447,12 +447,12 @@ On the **first boot**, the bootloader will:
 
 Encrypting data on the host:
 - ESP32
-```
+```bash
 espsecure.py encrypt_flash_data --keyfile <FLASH_ENCRYPTION_KEY.bin> --address <FLASH_OFFSET> --output <OUTPUT_DATA> <INPUT_DATA>
 ```
 
 - ESP32-S2, ESP32-C3 and ESP32-S3
-```
+```bash
 espsecure.py encrypt_flash_data --aes_xts --keyfile <FLASH_ENCRYPTION_KEY.bin> --address <FLASH_OFFSET> --output <OUTPUT_DATA> <INPUT_DATA>
 ```
 
@@ -549,8 +549,7 @@ CONFIG_ESP_SCRATCH_SIZE=0x40000
 ### [Image version dependency](#image-version-dependency)
 
 MCUboot allows version dependency check between the images when updating them. As `imgtool.py` allows a version assigment when signing an image, it is also possible to add the version dependency constraint:
-
-```
+```bash
 imgtool.py sign --align 4 -v <VERSION> -d "(<IMAGE_INDEX>, <VERSION_DEPENDENCY>)" -H 32 --pad-header -S <SLOT_SIZE> <BIN_IN> <SIGNED_BIN>
 ```
 
@@ -559,7 +558,7 @@ imgtool.py sign --align 4 -v <VERSION> -d "(<IMAGE_INDEX>, <VERSION_DEPENDENCY>)
 
 ---
 Example:
-```
+```bash
 imgtool.py sign --align 4 -v 1.0.0 -d "(1, 0.0.1+0)" -H 32 --pad-header -S 0x100000 image0.bin image0-signed.bin
 ```
 
@@ -570,13 +569,6 @@ Supposing that the image 0 is being signed, its version is 1.0.0 and it depends 
 ## [Serial recovery mode](#serial-recovery-mode)
 
 Serial recovery mode allows management through MCUMGR (more information and how to install it: https://github.com/apache/mynewt-mcumgr-cli) for communicating and uploading a firmware to the device.
-
----
-***Note***
-
-Supported on ESP32, ESP32-C3, ESP32-S2 and ESP32-S3.
-
----
 
 Configuration example:
 ```
@@ -605,8 +597,10 @@ Serial mode then uses the UART port configured for communication (`<CONFIG_ESP_S
 
 ### [Serial Recovery through USB JTAG Serial port](#serial-recovery-through-usb-jtag-serial-port)
 
-Some chips, like ESP32-C3, have an integrated USB JTAG Serial Controller that implements a serial port (CDC) that can also be used for handling MCUboot Serial Recovery.
-More information about the USB pins and hardware configuration on ESP32-C3: https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/api-guides/usb-serial-jtag-console.html.
+Some chips, like ESP32-C3 and ESP32-S3 have an integrated USB JTAG Serial Controller that implements a serial port (CDC) that can also be used for handling MCUboot Serial Recovery.
+More information about the USB pins and hardware configuration:
+- ESP32-C3: https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/api-guides/usb-serial-jtag-console.html
+- ESP32-S3: https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/usb-serial-jtag-console.html.
 
 Configuration example:
 ```
@@ -625,22 +619,29 @@ CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT_VAL=1
 CONFIG_ESP_SERIAL_BOOT_DETECT_DELAY_S=5
 ```
 
+---
+:warning: ***ATTENTION***
+
+*When working with Flash Encryption enabled, `CONFIG_ESP_MCUBOOT_ERASE_PROGRESSIVELY` must be ***disabled***, although it is recommended for common Serial Recovery usage*
+
+---
+
 ### [MCUMGR image upload example](#mcumgr-image-upload-example)
 
 After entering the Serial recovery mode on the device, MCUMGR can be used as following:
 
 Configure the connection:
-```
+```bash
 mcumgr conn add esp type="serial" connstring="dev=<PORT>,baud=115200,mtu=256"
 ```
 
 Upload the image (the process may take some time):
-```
+```bash
 mcumgr -c esp image upload <IMAGE_BIN>
 ```
 
 Reset the device:
-```
+```bash
 mcumgr -c esp reset
 ```
 
