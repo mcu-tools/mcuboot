@@ -182,6 +182,10 @@ fill_rsp(struct boot_loader_state *state, struct boot_rsp *rsp)
             break;
         }
     }
+    /* At least one image must be active, otherwise skip the execution */
+    if (BOOT_CURR_IMG(state) >= BOOT_IMAGE_NUMBER) {
+        return;
+    }
 #endif
 
 #if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
