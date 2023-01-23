@@ -22,10 +22,18 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define FLASH_DEVICE_ID SOC_FLASH_0_ID
 #define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
 #define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash_controller)
+
 #elif (defined(CONFIG_XTENSA) && DT_NODE_EXISTS(DT_INST(0, jedec_spi_nor)))
 #define FLASH_DEVICE_ID SPI_FLASH_0_ID
 #define FLASH_DEVICE_BASE 0
 #define FLASH_DEVICE_NODE DT_INST(0, jedec_spi_nor)
+
+#elif defined(CONFIG_SOC_FAMILY_ESP32)
+
+#define FLASH_DEVICE_ID SPI_FLASH_0_ID
+#define FLASH_DEVICE_BASE 0
+#define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash_controller)
+
 #else
 #error "FLASH_DEVICE_ID could not be determined"
 #endif
