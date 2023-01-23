@@ -42,6 +42,30 @@
 #include "bootutil/mcuboot_status.h"
 #include "flash_map_backend/flash_map_backend.h"
 
+/* Check if Espressif target is supported */
+#ifdef CONFIG_SOC_FAMILY_ESP32
+
+#include <bootloader_init.h>
+#include <esp_loader.h>
+
+#define IMAGE_INDEX_0   0
+#define IMAGE_INDEX_1   1
+
+#define PRIMARY_SLOT    0
+#define SECONDARY_SLOT  1
+
+#define IMAGE0_PRIMARY_START_ADDRESS \
+          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_0), reg, 0)
+#define IMAGE0_PRIMARY_SIZE \
+          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_0), reg, 1)
+
+#define IMAGE1_PRIMARY_START_ADDRESS \
+          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_1), reg, 0)
+#define IMAGE1_PRIMARY_SIZE \
+          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_1), reg, 1)
+
+#endif /* CONFIG_SOC_FAMILY_ESP32 */
+
 #ifdef CONFIG_MCUBOOT_SERIAL
 #include "boot_serial/boot_serial.h"
 #include "serial_adapter/serial_adapter.h"
@@ -267,7 +291,10 @@ static void do_boot(struct boot_rsp *rsp)
     ((void (*)(void))vt->reset)();
 }
 
-#elif defined(CONFIG_XTENSA)
+#elif defined(CONFIG_XTENSA) || defined(CONFIG_RISCV)
+
+#ifndef CONFIG_SOC_FAMILY_ESP32
+
 #define SRAM_BASE_ADDRESS	0xBE030000
 
 static void copy_img_to_SRAM(int slot, unsigned int hdr_offset)
@@ -295,6 +322,7 @@ static void copy_img_to_SRAM(int slot, unsigned int hdr_offset)
 done:
     flash_area_close(fap);
 }
+#endif /* !CONFIG_SOC_FAMILY_ESP32 */
 
 /* Entry point (.ResetVector) is at the very beginning of the image.
  * Simply copy the image to a suitable location and jump there.
@@ -306,12 +334,19 @@ static void do_boot(struct boot_rsp *rsp)
     BOOT_LOG_INF("br_image_off = 0x%x\n", rsp->br_image_off);
     BOOT_LOG_INF("ih_hdr_size = 0x%x\n", rsp->br_hdr->ih_hdr_size);
 
+#ifdef CONFIG_SOC_FAMILY_ESP32
+    int slot = (rsp->br_image_off == IMAGE0_PRIMARY_START_ADDRESS) ?
+                PRIMARY_SLOT : SECONDARY_SLOT;
+    /* Load memory segments and start from entry point */
+    start_cpu0_image(IMAGE_INDEX_0, slot, rsp->br_hdr->ih_hdr_size);
+#else
     /* Copy from the flash to HP SRAM */
     copy_img_to_SRAM(0, rsp->br_hdr->ih_hdr_size);
 
     /* Jump to entry point */
     start = (void *)(SRAM_BASE_ADDRESS + rsp->br_hdr->ih_hdr_size);
     ((void (*)(void))start)();
+#endif /* CONFIG_SOC_FAMILY_ESP32 */
 }
 
 #else

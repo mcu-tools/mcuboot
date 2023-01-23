@@ -628,6 +628,7 @@ config MULTITHREADING
 	default y if BOOT_SERIAL_CDC_ACM #usb driver requires MULTITHREADING
 	default y if BOOT_USB_DFU_GPIO || BOOT_USB_DFU_WAIT
 	default n if SOC_FAMILY_NRF
+	default n if SOC_FAMILY_ESP32 && MCUBOOT
 	default y
 
 config LOG_PROCESS_THREAD

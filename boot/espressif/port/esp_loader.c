@@ -72,7 +72,7 @@ void esp_app_image_load(int image_index, int slot, unsigned int hdr_offset, unsi
         FIH_PANIC;
     }
 
-    if (!esp_ptr_in_dram((void *)load_header.dram_dest_addr) || !esp_ptr_in_dram((void *)load_header.dram_dest_addr + load_header.dram_size)) {
+    if (!esp_ptr_in_dram((void *)load_header.dram_dest_addr) || !esp_ptr_in_dram((void *)(load_header.dram_dest_addr + load_header.dram_size))) {
         BOOT_LOG_ERR("DRAM region in load header is not valid. Aborting");
         FIH_PANIC;
     }
