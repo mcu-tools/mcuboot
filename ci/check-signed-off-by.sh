@@ -12,17 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# this retrieves the merge commit created by GH
 parents=(`git log -n 1 --format=%p HEAD`)
 
-if [[ "${#parents[@]}" -ne 2 ]]; then
-  echo "This PR's merge commit is missing a parent!"
+if [[ "${#parents[@]}" -eq 1 ]]; then
+  # CI doesn't use a merge commit
+  commits=$(git show -s --format=%h ${parents})
+elif [[ "${#parents[@]}" -eq 2 ]]; then
+  # CI uses a merge commit, eg GH / Travis
+  from="${parents[0]}"
+  into="${parents[1]}"
+  commits=$(git show -s --format=%h ${from}..${into})
+else
+  echo "Unexpected behavior, cannot verify more than 2 parent commits!"
   exit 1
 fi
-
-from="${parents[0]}"
-into="${parents[1]}"
-commits=$(git show -s --format=%h ${from}..${into})
 
 has_commits=false
 for sha in $commits; do
