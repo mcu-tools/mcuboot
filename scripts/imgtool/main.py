@@ -25,6 +25,7 @@ import sys
 import base64
 from imgtool import image, imgtool_version
 from imgtool.version import decode_version
+from imgtool.dumpinfo import dump_imginfo
 from .keys import (
     RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError)
 
@@ -193,6 +194,18 @@ def verify(key, imgfile):
     else:
         print("Unknown return code: {}".format(ret))
     sys.exit(1)
+
+
+@click.argument('imgfile')
+@click.option('-o', '--outfile', metavar='filename', required=False,
+              help='Save image information to outfile in YAML format')
+@click.option('-s', '--silent', default=False, is_flag=True,
+              help='Do not print image information to output')
+@click.command(help='Print header, TLV area and trailer information '
+                    'of a signed image')
+def dumpinfo(imgfile, outfile, silent):
+    dump_imginfo(imgfile, outfile, silent)
+    print("dumpinfo has run successfully")
 
 
 def validate_version(ctx, param, value):
@@ -467,6 +480,7 @@ imgtool.add_command(getpriv)
 imgtool.add_command(verify)
 imgtool.add_command(sign)
 imgtool.add_command(version)
+imgtool.add_command(dumpinfo)
 
 
 if __name__ == '__main__':
