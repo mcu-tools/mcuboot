@@ -18,12 +18,17 @@ prepare_environment() {
 build_mcuboot() {
   local target=${1}
   local feature=${2}
-  local toolchain_file="${ESPRESSIF_ROOT}/tools/toolchain-${target}.cmake"
-  local mcuboot_config="${ESPRESSIF_ROOT}/port/${target}/bootloader.conf"
+  local img_num=${3}
   local build_dir=".build-${target}"
+  local toolchain_file="${ESPRESSIF_ROOT}/tools/toolchain-${target}.cmake"
+
+  if [ -n "$img_num" ]; then
+    img_num="-${img_num}"
+  fi
+  local mcuboot_config="${ESPRESSIF_ROOT}/port/${target}/bootloader${img_num}.conf"
 
   if [ -n "${feature}" ]; then
-    mcuboot_config="${mcuboot_config};${ESPRESSIF_ROOT}/secureboot-${feature}.conf"
+    mcuboot_config="${mcuboot_config};${ESPRESSIF_ROOT}/ci_configs/${feature}.conf"
     build_dir=".build-${target}-${feature}"
   fi
 
@@ -44,11 +49,12 @@ prepare_environment
 if [ -n "${MCUBOOT_FEATURES}" ]; then
   IFS=','
   read -ra target_list <<< "${MCUBOOT_TARGETS}"
+  read img_num <<< "${MCUBOOT_IMG_NUM}"
   for target in "${target_list[@]}"; do
     read -ra feature_list <<< "${MCUBOOT_FEATURES}"
     for feature in "${feature_list[@]}"; do
       echo "Building MCUboot for \"${target}\" with support for \"${feature}\""
-      build_mcuboot "${target}" "${feature}"
+      build_mcuboot "${target}" "${feature}" "${img_num}"
     done
   done
 fi
