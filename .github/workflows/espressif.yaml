@@ -20,11 +20,20 @@ jobs:
       matrix:
         targets: [esp32, esp32s2, esp32s3, esp32c3]
         features:
-        - "sign-rsa2048,sign-rsa3072,sign-ec256,sign-ed25519"
+        - "secureboot-sign-rsa2048,secureboot-sign-rsa3072,secureboot-sign-ec256,secureboot-sign-ed25519"
+        - "serialrecovery"
+        include:
+          - targets: esp32
+            features: "multi-image,multi-boot"
+            img: "multi"
+          - targets: esp32s3
+            features: "multi-image,multi-boot"
+            img: "multi"
     runs-on: ubuntu-latest
     env:
       MCUBOOT_TARGETS: ${{ matrix.targets }}
       MCUBOOT_FEATURES: ${{ matrix.features }}
+      MCUBOOT_IMG_NUM: ${{ matrix.img }}
     steps:
     - uses: actions/checkout@v2
       with:
