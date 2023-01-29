@@ -45,8 +45,8 @@ The MCUboot documentation is composed of the following pages:
   - [RIOT](readme-riot.md)
   - [Mbed OS](readme-mbed.md)
   - [Espressif](readme-espressif.md)
-  - [Cypress/Infineon](../boot/cypress/README.md)
-  - [Simulator](../sim/README.rst)
+  - [Cypress/Infineon](https://github.com/mcu-tools/mcuboot/tree/main/boot/cypress/README.md)
+  - [Simulator](https://github.com/mcu-tools/mcuboot/tree/main/sim/README.rst)
 - Testing
   - [Zephyr](testplan-zephyr.md) - Zephyr test plan
   - [Apache Mynewt](testplan-mynewt.md) - Apache Mynewt test plan
