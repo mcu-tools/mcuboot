@@ -39,9 +39,17 @@
  * You must choose exactly one signature type.
  */
 
-/* Uncomment for RSA signature support */
+/* Config for RSA signature support */
 
-/* #define MCUBOOT_SIGN_RSA */
+#ifdef CONFIG_BOOT_SIGNATURE_TYPE_RSA
+#define MCUBOOT_SIGN_RSA
+#  if (CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN != 2048 && \
+       CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN != 3072)
+#    error "Invalid RSA key size (must be 2048 or 3072)"
+#  else
+#    define MCUBOOT_SIGN_RSA_LEN CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN
+#  endif
+#endif
 
 /* Uncomment for ECDSA signatures using curve P-256. */
 
