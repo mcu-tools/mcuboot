@@ -62,10 +62,12 @@ TLV_VALUES = {
         'KEYHASH': 0x01,
         'PUBKEY': 0x02,
         'SHA256': 0x10,
+        'SHA384': 0x11,
         'RSA2048': 0x20,
         'ECDSA256': 0x22,
         'RSA3072': 0x23,
         'ED25519': 0x24,
+        'ECDSASIG': 0x25,
         'ENCRSA2048': 0x30,
         'ENCKW': 0x31,
         'ENCEC256': 0x32,
@@ -94,9 +96,11 @@ VerifyResult = Enum('VerifyResult',
                     INVALID_SIGNATURE
                     """)
 
+
 def align_up(num, align):
     assert (align & (align - 1) == 0) and align != 0
     return (num + (align - 1)) & ~(align - 1)
+
 
 class TLV():
     def __init__(self, endian, magic=TLV_INFO_MAGIC):
@@ -116,7 +120,7 @@ class TLV():
             if not TLV_VENDOR_RES_MIN <= kind <= TLV_VENDOR_RES_MAX:
                 msg = "Invalid custom TLV type value '0x{:04x}', allowed " \
                       "value should be between 0x{:04x} and 0x{:04x}".format(
-                      kind, TLV_VENDOR_RES_MIN, TLV_VENDOR_RES_MAX)
+                        kind, TLV_VENDOR_RES_MIN, TLV_VENDOR_RES_MAX)
                 raise click.UsageError(msg)
             buf = struct.pack(e + 'HH', kind, len(payload))
         else:
@@ -250,11 +254,13 @@ class Image():
                                                   self.enctlv_len)
                 trailer_addr = (self.base_addr + self.slot_size) - trailer_size
                 if self.confirm and not self.overwrite_only:
-                    magic_align_size = align_up(len(self.boot_magic), self.max_align)
+                    magic_align_size = align_up(len(self.boot_magic),
+                                                self.max_align)
                     image_ok_idx = -(magic_align_size + self.max_align)
                     flag = bytearray([self.erased_val] * self.max_align)
-                    flag[0] = 0x01 # image_ok = 0x01
-                    h.puts(trailer_addr + trailer_size + image_ok_idx, bytes(flag))
+                    flag[0] = 0x01  # image_ok = 0x01
+                    h.puts(trailer_addr + trailer_size + image_ok_idx,
+                           bytes(flag))
                 h.puts(trailer_addr + (trailer_size - len(self.boot_magic)),
                        bytes(self.boot_magic))
             h.tofile(path, 'hex')
@@ -311,20 +317,31 @@ class Image():
         return cipherkey, ciphermac, pubk
 
     def create(self, key, public_key_format, enckey, dependencies=None,
-               sw_type=None, custom_tlvs=None, encrypt_keylen=128, clear=False, fixed_sig=None, pub_key=None, vector_to_sign=None):
+               sw_type=None, custom_tlvs=None, encrypt_keylen=128, clear=False,
+               fixed_sig=None, pub_key=None, vector_to_sign=None,
+               use_legacy_tlv=False):
         self.enckey = enckey
 
+        # Check what hashing algorithm should be used
+        if (key is not None and isinstance(key, ecdsa.ECDSA384P1) or
+                pub_key is not None and isinstance(pub_key,
+                                                   ecdsa.ECDSA384P1Public)):
+            hash_algorithm = hashlib.sha384
+            hash_tlv = "SHA384"
+        else:
+            hash_algorithm = hashlib.sha256
+            hash_tlv = "SHA256"
         # Calculate the hash of the public key
         if key is not None:
             pub = key.get_public_bytes()
-            sha = hashlib.sha256()
+            sha = hash_algorithm()
             sha.update(pub)
             pubbytes = sha.digest()
         elif pub_key is not None:
             if hasattr(pub_key, 'sign'):
                 print(os.path.basename(__file__) + ": sign the payload")
             pub = pub_key.get_public_bytes()
-            sha = hashlib.sha256()
+            sha = hash_algorithm()
             sha.update(pub)
             pubbytes = sha.digest()
         else:
@@ -354,11 +371,11 @@ class Image():
             # before it is even calculated. For this reason the script fills
             # this field with zeros and the bootloader will insert the right
             # value later.
-            digest = bytes(hashlib.sha256().digest_size)
+            digest = bytes(hash_algorithm().digest_size)
 
             # Create CBOR encoded boot record
             boot_record = create_sw_component_data(sw_type, image_version,
-                                                   "SHA256", digest,
+                                                   hash_tlv, digest,
                                                    pubbytes)
 
             protected_tlv_size += TLV_SIZE + len(boot_record)
@@ -435,11 +452,10 @@ class Image():
 
         # Note that ecdsa wants to do the hashing itself, which means
         # we get to hash it twice.
-        sha = hashlib.sha256()
+        sha = hash_algorithm()
         sha.update(self.payload)
         digest = sha.digest()
-
-        tlv.add('SHA256', digest)
+        tlv.add(hash_tlv, digest)
 
         if vector_to_sign == 'payload':
             # Stop amending data to the image
@@ -458,8 +474,9 @@ class Image():
                 tlv.add('PUBKEY', pub)
 
             if key is not None and fixed_sig is None:
-                # `sign` expects the full image payload (sha256 done internally),
-                # while `sign_digest` expects only the digest of the payload
+                # `sign` expects the full image payload (hashing done
+                # internally), while `sign_digest` expects only the digest
+                # of the payload
 
                 if hasattr(key, 'sign'):
                     print(os.path.basename(__file__) + ": sign the payload")
@@ -551,17 +568,18 @@ class Image():
                )  # }
         assert struct.calcsize(fmt) == IMAGE_HEADER_SIZE
         header = struct.pack(fmt,
-                IMAGE_MAGIC,
-                self.rom_fixed or self.load_addr,
-                self.header_size,
-                protected_tlv_size,  # TLV Info header + Protected TLVs
-                len(self.payload) - self.header_size,  # ImageSz
-                flags,
-                self.version.major,
-                self.version.minor or 0,
-                self.version.revision or 0,
-                self.version.build or 0,
-                0)  # Pad1
+                             IMAGE_MAGIC,
+                             self.rom_fixed or self.load_addr,
+                             self.header_size,
+                             protected_tlv_size,  # TLV Info header +
+                                                  # Protected TLVs
+                             len(self.payload) - self.header_size,  # ImageSz
+                             flags,
+                             self.version.major,
+                             self.version.minor or 0,
+                             self.version.revision or 0,
+                             self.version.build or 0,
+                             0)  # Pad1
         self.payload = bytearray(self.payload)
         self.payload[:len(header)] = header
 
@@ -627,7 +645,13 @@ class Image():
         if magic != TLV_INFO_MAGIC:
             return VerifyResult.INVALID_TLV_INFO_MAGIC, None, None
 
-        sha = hashlib.sha256()
+        if isinstance(key, ecdsa.ECDSA384P1Public):
+            sha = hashlib.sha384()
+            hash_tlv = "SHA384"
+        else:
+            sha = hashlib.sha256()
+            hash_tlv = "SHA256"
+
         prot_tlv_size = tlv_off
         sha.update(b[:prot_tlv_size])
         digest = sha.digest()
@@ -637,7 +661,7 @@ class Image():
         while tlv_off < tlv_end:
             tlv = b[tlv_off:tlv_off+TLV_SIZE]
             tlv_type, _, tlv_len = struct.unpack('BBH', tlv)
-            if tlv_type == TLV_VALUES["SHA256"]:
+            if tlv_type == TLV_VALUES[hash_tlv]:
                 off = tlv_off + TLV_SIZE
                 if digest == b[off:off+tlv_len]:
                     if key is None:
