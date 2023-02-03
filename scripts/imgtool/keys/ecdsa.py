@@ -4,11 +4,12 @@ ECDSA key management
 
 # SPDX-License-Identifier: Apache-2.0
 import os.path
+import hashlib
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.hashes import SHA256
+from cryptography.hazmat.primitives.hashes import SHA256, SHA384
 
 from .general import KeyClass
 from .privatebytes import PrivateBytesMixin
@@ -18,18 +19,18 @@ class ECDSAUsageError(Exception):
     pass
 
 
-class ECDSA256P1Public(KeyClass):
+class ECDSAPublicKey(KeyClass):
+    """
+    Wrapper around an ECDSA public key.
+    """
     def __init__(self, key):
         self.key = key
-
-    def shortname(self):
-        return "ecdsa"
 
     def _unsupported(self, name):
         raise ECDSAUsageError("Operation {} requires private key".format(name))
 
     def _get_public(self):
-        return self.key
+        return self.key.public_key()
 
     def get_public_bytes(self):
         # The key is embedded into MBUboot in "SubjectPublicKeyInfo" format
@@ -56,55 +57,13 @@ class ECDSA256P1Public(KeyClass):
         with open(path, 'wb') as f:
             f.write(pem)
 
-    def sig_type(self):
-        return "ECDSA256_SHA256"
 
-    def sig_tlv(self):
-        return "ECDSA256"
-
-    def sig_len(self):
-        # Early versions of MCUboot (< v1.5.0) required ECDSA
-        # signatures to be padded to 72 bytes.  Because the DER
-        # encoding is done with signed integers, the size of the
-        # signature will vary depending on whether the high bit is set
-        # in each value.  This padding was done in a
-        # not-easily-reversible way (by just adding zeros).
-        #
-        # The signing code no longer requires this padding, and newer
-        # versions of MCUboot don't require it.  But, continue to
-        # return the total length so that the padding can be done if
-        # requested.
-        return 72
-
-    def verify(self, signature, payload):
-        # strip possible paddings added during sign
-        signature = signature[:signature[1] + 2]
-        k = self.key
-        if isinstance(self.key, ec.EllipticCurvePrivateKey):
-            k = self.key.public_key()
-        return k.verify(signature=signature, data=payload,
-                        signature_algorithm=ec.ECDSA(SHA256()))
-
-
-class ECDSA256P1(ECDSA256P1Public, PrivateBytesMixin):
+class ECDSAPrivateKey(PrivateBytesMixin):
     """
     Wrapper around an ECDSA private key.
     """
-
     def __init__(self, key):
-        """key should be an instance of EllipticCurvePrivateKey"""
         self.key = key
-        self.pad_sig = False
-
-    @staticmethod
-    def generate():
-        pk = ec.generate_private_key(
-                ec.SECP256R1(),
-                backend=default_backend())
-        return ECDSA256P1(pk)
-
-    def _get_public(self):
-        return self.key.public_key()
 
     def _build_minimal_ecdsa_privkey(self, der, format):
         '''
@@ -154,13 +113,14 @@ class ECDSA256P1(ECDSA256P1Public, PrivateBytesMixin):
         'pkcs8': serialization.PrivateFormat.PKCS8,
         'openssl': serialization.PrivateFormat.TraditionalOpenSSL
     }
-    _DEFAULT_FORMAT='pkcs8'
+    _DEFAULT_FORMAT = 'pkcs8'
 
     def get_private_bytes(self, minimal, format):
-        format, priv = self._get_private_bytes(minimal, format, ECDSAUsageError)
+        format, priv = self._get_private_bytes(minimal,
+                                               format, ECDSAUsageError)
         if minimal:
-            priv = self._build_minimal_ecdsa_privkey(priv,
-                                                     self._VALID_FORMATS[format])
+            priv = self._build_minimal_ecdsa_privkey(
+                priv, self._VALID_FORMATS[format])
         return priv
 
     def export_private(self, path, passwd=None):
@@ -177,11 +137,144 @@ class ECDSA256P1(ECDSA256P1Public, PrivateBytesMixin):
         with open(path, 'wb') as f:
             f.write(pem)
 
+
+class ECDSA256P1Public(ECDSAPublicKey):
+    """
+    Wrapper around an ECDSA (p256) public key.
+    """
+    def __init__(self, key):
+        super().__init__(key)
+        self.key = key
+
+    def shortname(self):
+        return "ecdsa"
+
+    def sig_type(self):
+        return "ECDSA256_SHA256"
+
+    def sig_tlv(self):
+        return "ECDSASIG"
+
+    def sig_len(self):
+        # Early versions of MCUboot (< v1.5.0) required ECDSA
+        # signatures to be padded to 72 bytes.  Because the DER
+        # encoding is done with signed integers, the size of the
+        # signature will vary depending on whether the high bit is set
+        # in each value.  This padding was done in a
+        # not-easily-reversible way (by just adding zeros).
+        #
+        # The signing code no longer requires this padding, and newer
+        # versions of MCUboot don't require it.  But, continue to
+        # return the total length so that the padding can be done if
+        # requested.
+        return 72
+
+    def verify(self, signature, payload):
+        # strip possible paddings added during sign
+        signature = signature[:signature[1] + 2]
+        k = self.key
+        if isinstance(self.key, ec.EllipticCurvePrivateKey):
+            k = self.key.public_key()
+        return k.verify(signature=signature, data=payload,
+                        signature_algorithm=ec.ECDSA(SHA256()))
+
+
+class ECDSA256P1(ECDSA256P1Public, ECDSAPrivateKey):
+    """
+    Wrapper around an ECDSA (p256) private key.
+    """
+    def __init__(self, key):
+        super().__init__(key)
+        self.key = key
+        self.pad_sig = False
+
+    @staticmethod
+    def generate():
+        pk = ec.generate_private_key(
+                ec.SECP256R1(),
+                backend=default_backend())
+        return ECDSA256P1(pk)
+
     def raw_sign(self, payload):
         """Return the actual signature"""
         return self.key.sign(
                 data=payload,
                 signature_algorithm=ec.ECDSA(SHA256()))
+
+    def sign(self, payload):
+        sig = self.raw_sign(payload)
+        if self.pad_sig:
+            # To make fixed length, pad with one or two zeros.
+            sig += b'\000' * (self.sig_len() - len(sig))
+            return sig
+        else:
+            return sig
+
+
+class ECDSA384P1Public(ECDSAPublicKey):
+    """
+    Wrapper around an ECDSA (p384) public key.
+    """
+    def __init__(self, key):
+        super().__init__(key)
+        self.key = key
+
+    def shortname(self):
+        return "ecdsap384"
+
+    def sig_type(self):
+        return "ECDSA384_SHA384"
+
+    def sig_tlv(self):
+        return "ECDSASIG"
+
+    def sig_len(self):
+        # Early versions of MCUboot (< v1.5.0) required ECDSA
+        # signatures to be padded to a fixed length.  Because the DER
+        # encoding is done with signed integers, the size of the
+        # signature will vary depending on whether the high bit is set
+        # in each value.  This padding was done in a
+        # not-easily-reversible way (by just adding zeros).
+        #
+        # The signing code no longer requires this padding, and newer
+        # versions of MCUboot don't require it.  But, continue to
+        # return the total length so that the padding can be done if
+        # requested.
+        return 103
+
+    def verify(self, signature, payload):
+        # strip possible paddings added during sign
+        signature = signature[:signature[1] + 2]
+        k = self.key
+        if isinstance(self.key, ec.EllipticCurvePrivateKey):
+            k = self.key.public_key()
+        return k.verify(signature=signature, data=payload,
+                        signature_algorithm=ec.ECDSA(SHA384()))
+
+
+class ECDSA384P1(ECDSA384P1Public, ECDSAPrivateKey):
+    """
+    Wrapper around an ECDSA (p384) private key.
+    """
+
+    def __init__(self, key):
+        """key should be an instance of EllipticCurvePrivateKey"""
+        super().__init__(key)
+        self.key = key
+        self.pad_sig = False
+
+    @staticmethod
+    def generate():
+        pk = ec.generate_private_key(
+                ec.SECP384R1(),
+                backend=default_backend())
+        return ECDSA384P1(pk)
+
+    def raw_sign(self, payload):
+        """Return the actual signature"""
+        return self.key.sign(
+                data=payload,
+                signature_algorithm=ec.ECDSA(SHA384()))
 
     def sign(self, payload):
         sig = self.raw_sign(payload)

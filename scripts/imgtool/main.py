@@ -48,6 +48,10 @@ def gen_ecdsa_p256(keyfile, passwd):
     keys.ECDSA256P1.generate().export_private(keyfile, passwd=passwd)
 
 
+def gen_ecdsa_p384(keyfile, passwd):
+    keys.ECDSA384P1.generate().export_private(keyfile, passwd=passwd)
+
+
 def gen_ed25519(keyfile, passwd):
     keys.Ed25519.generate().export_private(path=keyfile, passwd=passwd)
 
@@ -62,6 +66,7 @@ keygens = {
     'rsa-2048':   gen_rsa2048,
     'rsa-3072':   gen_rsa3072,
     'ecdsa-p256': gen_ecdsa_p256,
+    'ecdsa-p384': gen_ecdsa_p384,
     'ed25519':    gen_ed25519,
     'x25519':     gen_x25519,
 }
@@ -183,7 +188,7 @@ def verify(key, imgfile):
     elif ret == image.VerifyResult.INVALID_TLV_INFO_MAGIC:
         print("Invalid TLV info magic; is this an MCUboot image?")
     elif ret == image.VerifyResult.INVALID_HASH:
-        print("Image has an invalid sha256 digest")
+        print("Image has an invalid hash")
     elif ret == image.VerifyResult.INVALID_SIGNATURE:
         print("No signature found for the given key")
     else:
@@ -384,6 +389,8 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     if enckey and key:
         if ((isinstance(key, keys.ECDSA256P1) and
              not isinstance(enckey, keys.ECDSA256P1Public))
+           or (isinstance(key, keys.ECDSA384P1) and
+               not isinstance(enckey, keys.ECDSA384P1Public))
                 or (isinstance(key, keys.RSA) and
                     not isinstance(enckey, keys.RSAPublic))):
             # FIXME
