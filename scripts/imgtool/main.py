@@ -362,6 +362,8 @@ class BasedIntParamType(click.ParamType):
               help='send to OUTFILE the payload or payload''s digest instead '
               'of complied image. These data can be used for external image '
               'signing')
+@click.option('--legacy-ecdsa-tlv', default=False, is_flag=True,
+              help='Use the old curve specific ECDSA TLV')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
@@ -370,7 +372,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          endian, encrypt_keylen, encrypt, infile, outfile, dependencies,
          load_addr, hex_addr, erased_val, save_enctlv, security_counter,
          boot_record, custom_tlv, rom_fixed, max_align, clear, fix_sig,
-         fix_sig_pubkey, sig_out, vector_to_sign):
+         fix_sig_pubkey, sig_out, vector_to_sign, legacy_ecdsa_tlv):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -437,7 +439,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
 
     img.create(key, public_key_format, enckey, dependencies, boot_record,
                custom_tlvs, int(encrypt_keylen), clear, baked_signature,
-               pub_key, vector_to_sign)
+               pub_key, vector_to_sign, legacy_ecdsa_tlv)
     img.save(outfile, hex_addr)
 
     if sig_out is not None:
