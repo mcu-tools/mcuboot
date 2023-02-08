@@ -184,10 +184,11 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 #    endif
 #    define SIG_BUF_SIZE (MCUBOOT_SIGN_RSA_LEN / 8)
 #    define EXPECTED_SIG_LEN(x) ((x) == SIG_BUF_SIZE) /* 2048 bits */
-#elif defined(MCUBOOT_SIGN_EC256)
-#    define EXPECTED_SIG_TLV IMAGE_TLV_ECDSA256
+#elif defined(MCUBOOT_SIGN_EC256) || \
+      defined(MCUBOOT_SIGN_EC)
+#    define EXPECTED_SIG_TLV IMAGE_TLV_ECDSA_SIG
 #    define SIG_BUF_SIZE 128
-#    define EXPECTED_SIG_LEN(x)  (1) /* always true, ASN.1 will validate */
+#    define EXPECTED_SIG_LEN(x) (1) /* always true, ASN.1 will validate */
 #elif defined(MCUBOOT_SIGN_ED25519)
 #    define EXPECTED_SIG_TLV IMAGE_TLV_ED25519
 #    define SIG_BUF_SIZE 64
