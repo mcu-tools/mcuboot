@@ -51,7 +51,6 @@ pub enum TlvKinds {
     KEYHASH = 0x01,
     SHA256 = 0x10,
     RSA2048 = 0x20,
-    ECDSA256 = 0x22,
     RSA3072 = 0x23,
     ED25519 = 0x24,
     ECDSASIG = 0x25,
@@ -157,16 +156,9 @@ impl TlvGen {
     #[allow(dead_code)]
     pub fn new_ecdsa() -> TlvGen {
         TlvGen {
-            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256],
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSASIG],
             ..Default::default()
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn new_generic_ecdsa() -> TlvGen {
-        TlvGen {
-            kinds: vec![TlvKinds::SHA256,TlvKinds::ECDSASIG],
-            ..Default::default()}
     }
 
     #[allow(dead_code)]
@@ -242,7 +234,7 @@ impl TlvGen {
         };
         TlvGen {
             flags: flag,
-            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256, TlvKinds::ENCKW],
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSASIG, TlvKinds::ENCKW],
             ..Default::default()
         }
     }
@@ -270,7 +262,7 @@ impl TlvGen {
         };
         TlvGen {
             flags: flag,
-            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSA256, TlvKinds::ENCEC256],
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSASIG, TlvKinds::ENCEC256],
             ..Default::default()
         }
     }
@@ -363,20 +355,16 @@ impl ManifestGen for TlvGen {
             estimate += 4 + 32; // keyhash
             estimate += 4 + 384; // RSA3072
         }
-        if self.kinds.contains(&TlvKinds::ECDSA256) {
-            estimate += 4 + 32; // keyhash
-
-            // ECDSA signatures are encoded as ASN.1 with the x and y values stored as signed
-            // integers.  As such, the size can vary by 2 bytes, if the 256-bit value has the high
-            // bit, it takes an extra 0 byte to avoid it being seen as a negative number.
-            estimate += 4 + 72; // ECDSA256 (varies)
-        }
         if self.kinds.contains(&TlvKinds::ED25519) {
             estimate += 4 + 32; // keyhash
             estimate += 4 + 64; // ED25519 signature.
         }
         if self.kinds.contains(&TlvKinds::ECDSASIG) {
             estimate += 4 + 32; // keyhash
+
+            // ECDSA signatures are encoded as ASN.1 with the x and y values stored as signed
+            // integers.  As such, the size can vary by 2 bytes, if the 256-bit value has the high
+            // bit, it takes an extra 0 byte to avoid it being seen as a negative number.
             estimate += 4 + 72; // ECDSA256 (varies)
         }
 
@@ -462,7 +450,7 @@ impl ManifestGen for TlvGen {
             // signature verification can be validated.
             let mut corrupt_hash = self.gen_corrupted;
             for k in &[TlvKinds::RSA2048, TlvKinds::RSA3072,
-                TlvKinds::ECDSA256, TlvKinds::ED25519, TlvKinds::ECDSASIG]
+                TlvKinds::ED25519, TlvKinds::ECDSASIG]
             {
                 if self.kinds.contains(k) {
                     corrupt_hash = false;
@@ -560,32 +548,6 @@ impl ManifestGen for TlvGen {
             result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
             result.extend_from_slice(&signature);
         }
-
-        if self.kinds.contains(&TlvKinds::ECDSA256) {
-            let keyhash = digest::digest(&digest::SHA256, ECDSA256_PUB_KEY);
-            let keyhash = keyhash.as_ref();
-
-            assert!(keyhash.len() == 32);
-            result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
-            result.write_u16::<LittleEndian>(32).unwrap();
-            result.extend_from_slice(keyhash);
-
-            let key_bytes = pem::parse(include_bytes!("../../root-ec-p256-pkcs8.pem").as_ref()).unwrap();
-            assert_eq!(key_bytes.tag, "PRIVATE KEY");
-
-            let key_pair = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING,
-                                                    &key_bytes.contents).unwrap();
-            let rng = rand::SystemRandom::new();
-            let signature = key_pair.sign(&rng, &sig_payload).unwrap();
-
-            result.write_u16::<LittleEndian>(TlvKinds::ECDSA256 as u16).unwrap();
-
-            let signature = signature.as_ref().to_vec();
-
-            result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
-            result.extend_from_slice(signature.as_ref());
-        }
-
         if self.kinds.contains(&TlvKinds::ED25519) {
             let keyhash = digest::digest(&digest::SHA256, ED25519_PUB_KEY);
             let keyhash = keyhash.as_ref();
