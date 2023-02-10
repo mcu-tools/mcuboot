@@ -35,6 +35,7 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 #include "bootutil_priv.h"
+#include "bootutil_misc.h"
 #include "bootutil/bootutil_log.h"
 #include "bootutil/fault_injection_hardening.h"
 #ifdef MCUBOOT_ENC_IMAGES
@@ -183,39 +184,6 @@ boot_status_off(const struct flash_area *fap)
 
     assert(off_from_end <= flash_area_get_size(fap));
     return flash_area_get_size(fap) - off_from_end;
-}
-
-static int
-boot_magic_decode(const uint8_t *magic)
-{
-    if (memcmp(magic, BOOT_IMG_MAGIC, BOOT_MAGIC_SZ) == 0) {
-        return BOOT_MAGIC_GOOD;
-    }
-    return BOOT_MAGIC_BAD;
-}
-
-static inline uint32_t
-boot_magic_off(const struct flash_area *fap)
-{
-    return flash_area_get_size(fap) - BOOT_MAGIC_SZ;
-}
-
-static inline uint32_t
-boot_image_ok_off(const struct flash_area *fap)
-{
-    return ALIGN_DOWN(boot_magic_off(fap) - BOOT_MAX_ALIGN, BOOT_MAX_ALIGN);
-}
-
-static inline uint32_t
-boot_copy_done_off(const struct flash_area *fap)
-{
-    return boot_image_ok_off(fap) - BOOT_MAX_ALIGN;
-}
-
-static inline uint32_t
-boot_swap_size_off(const struct flash_area *fap)
-{
-    return boot_swap_info_off(fap) - BOOT_MAX_ALIGN;
 }
 
 #ifdef MCUBOOT_ENC_IMAGES
