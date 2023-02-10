@@ -242,16 +242,13 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 static int
 boot_find_status(int image_index, const struct flash_area **fap)
 {
-    uint8_t magic[BOOT_MAGIC_SZ];
-    uint32_t off;
-    uint8_t areas[2] = {
+    uint8_t areas[] = {
 #if MCUBOOT_SWAP_USING_SCRATCH
         FLASH_AREA_IMAGE_SCRATCH,
 #endif
         FLASH_AREA_IMAGE_PRIMARY(image_index),
     };
     unsigned int i;
-    int rc;
 
     /*
      * In the middle a swap, tries to locate the area that is currently
@@ -262,26 +259,26 @@ boot_find_status(int image_index, const struct flash_area **fap)
      */
 
     for (i = 0; i < sizeof(areas) / sizeof(areas[0]); i++) {
-        rc = flash_area_open(areas[i], fap);
-        if (rc != 0) {
-            return rc;
+        uint8_t magic[BOOT_MAGIC_SZ];
+
+        if (flash_area_open(areas[i], fap)) {
+            break;
         }
 
-        off = boot_magic_off(*fap);
-        rc = flash_area_read(*fap, off, magic, BOOT_MAGIC_SZ);
-        flash_area_close(*fap);
-
-        if (rc != 0) {
-            return rc;
+        if (flash_area_read(*fap, boot_magic_off(*fap), magic, BOOT_MAGIC_SZ)) {
+            flash_area_close(*fap);
+            break;
         }
 
         if (BOOT_MAGIC_GOOD == boot_magic_decode(magic)) {
             return 0;
         }
 
+        flash_area_close(*fap);
     }
 
     /* If we got here, no magic was found */
+    fap = NULL;
     return -1;
 }
 
