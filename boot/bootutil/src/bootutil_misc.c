@@ -207,7 +207,7 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
  *
  * @returns 0 on success, -1 on errors
  */
-static int
+int
 boot_find_status(int image_index, const struct flash_area **fap)
 {
     uint8_t areas[] = {
@@ -251,54 +251,44 @@ boot_find_status(int image_index, const struct flash_area **fap)
 }
 
 int
-boot_read_swap_size(int image_index, uint32_t *swap_size)
+boot_read_swap_size(const struct flash_area *fap, uint32_t *swap_size)
 {
     uint32_t off;
-    const struct flash_area *fap;
     int rc;
 
-    rc = boot_find_status(image_index, &fap);
-    if (rc == 0) {
-        off = boot_swap_size_off(fap);
-        rc = flash_area_read(fap, off, swap_size, sizeof *swap_size);
-        flash_area_close(fap);
-    }
+    off = boot_swap_size_off(fap);
+    rc = flash_area_read(fap, off, swap_size, sizeof *swap_size);
 
     return rc;
 }
 
 #ifdef MCUBOOT_ENC_IMAGES
 int
-boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
+boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status *bs)
 {
     uint32_t off;
-    const struct flash_area *fap;
 #if MCUBOOT_SWAP_SAVE_ENCTLV
     int i;
 #endif
     int rc;
 
-    rc = boot_find_status(image_index, &fap);
-    if (rc == 0) {
-        off = boot_enc_key_off(fap, slot);
+    off = boot_enc_key_off(fap, slot);
 #if MCUBOOT_SWAP_SAVE_ENCTLV
-        rc = flash_area_read(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
-        if (rc == 0) {
-            for (i = 0; i < BOOT_ENC_TLV_ALIGN_SIZE; i++) {
-                if (bs->enctlv[slot][i] != 0xff) {
-                    break;
-                }
-            }
-            /* Only try to decrypt non-erased TLV metadata */
-            if (i != BOOT_ENC_TLV_ALIGN_SIZE) {
-                rc = boot_enc_decrypt(bs->enctlv[slot], bs->enckey[slot]);
+    rc = flash_area_read(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
+    if (rc == 0) {
+        for (i = 0; i < BOOT_ENC_TLV_ALIGN_SIZE; i++) {
+            if (bs->enctlv[slot][i] != 0xff) {
+                break;
             }
         }
-#else
-        rc = flash_area_read(fap, off, bs->enckey[slot], BOOT_ENC_KEY_ALIGN_SIZE);
-#endif
-        flash_area_close(fap);
+        /* Only try to decrypt non-erased TLV metadata */
+        if (i != BOOT_ENC_TLV_ALIGN_SIZE) {
+            rc = boot_enc_decrypt(bs->enctlv[slot], bs->enckey[slot]);
+        }
     }
+#else
+    rc = flash_area_read(fap, off, bs->enckey[slot], BOOT_ENC_KEY_ALIGN_SIZE);
+#endif
 
     return rc;
 }

@@ -262,6 +262,7 @@ fih_ret bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
 
 fih_ret boot_fih_memequal(const void *s1, const void *s2, size_t n);
 
+int boot_find_status(int image_index, const struct flash_area **fap);
 int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
@@ -282,7 +283,7 @@ int boot_write_trailer(const struct flash_area *fap, uint32_t off,
                        const uint8_t *inbuf, uint8_t inlen);
 int boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
                             uint8_t flag_val);
-int boot_read_swap_size(int image_index, uint32_t *swap_size);
+int boot_read_swap_size(const struct flash_area *fap, uint32_t *swap_size);
 int boot_slots_compatible(struct boot_loader_state *state);
 uint32_t boot_status_internal_off(const struct boot_status *bs, int elem_sz);
 int boot_read_image_header(struct boot_loader_state *state, int slot,
@@ -297,7 +298,8 @@ bool boot_status_is_reset(const struct boot_status *bs);
 #ifdef MCUBOOT_ENC_IMAGES
 int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
                        const struct boot_status *bs);
-int boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs);
+int boot_read_enc_key(const struct flash_area *fap, uint8_t slot,
+                      struct boot_status *bs);
 #endif
 
 /**

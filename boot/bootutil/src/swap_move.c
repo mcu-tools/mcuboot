@@ -86,11 +86,12 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
 
     off = 0;
     if (bs && !boot_status_is_reset(bs)) {
-        rc = boot_read_swap_size(BOOT_CURR_IMG(state), &swap_size);
-        if (rc) {
+	boot_find_status(BOOT_CURR_IMG(state), &fap);
+        if (fap == NULL || boot_read_swap_size(fap, &swap_size)) {
             rc = BOOT_EFLASH;
             goto done;
         }
+        flash_area_close(fap);
 
         last_idx = find_last_idx(state, swap_size);
         sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);

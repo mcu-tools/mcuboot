@@ -1223,8 +1223,8 @@ static int
 boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 {
     struct image_header *hdr;
-#ifdef MCUBOOT_ENC_IMAGES
     const struct flash_area *fap;
+#ifdef MCUBOOT_ENC_IMAGES
     uint8_t slot;
     uint8_t i;
 #endif
@@ -1300,14 +1300,17 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
          * If a swap was under way, the swap_size should already be present
          * in the trailer...
          */
-        rc = boot_read_swap_size(image_index, &bs->swap_size);
+
+        rc = boot_find_status(image_index, &fap);
+        assert(fap != NULL);
+        rc = boot_read_swap_size(fap, &bs->swap_size);
         assert(rc == 0);
 
         copy_size = bs->swap_size;
 
 #ifdef MCUBOOT_ENC_IMAGES
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
-            rc = boot_read_enc_key(image_index, slot, bs);
+            rc = boot_read_enc_key(fap, slot, bs);
             assert(rc == 0);
 
             for (i = 0; i < BOOT_ENC_KEY_SIZE; i++) {
@@ -1321,6 +1324,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             }
         }
 #endif
+        flash_area_close(fap);
     }
 
     swap_run(state, bs, copy_size);
