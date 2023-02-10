@@ -49,6 +49,7 @@
 
 #include "bootutil/boot_public_hooks.h"
 #include "bootutil_priv.h"
+#include "bootutil_misc.h"
 
 #ifdef CONFIG_MCUBOOT
 BOOT_LOG_MODULE_DECLARE(mcuboot);
@@ -129,39 +130,12 @@ static const struct boot_swap_table boot_swap_tables[] = {
     (sizeof boot_swap_tables / sizeof boot_swap_tables[0])
 
 static int
-boot_magic_decode(const uint8_t *magic)
-{
-    if (memcmp(magic, BOOT_IMG_MAGIC, BOOT_MAGIC_SZ) == 0) {
-        return BOOT_MAGIC_GOOD;
-    }
-    return BOOT_MAGIC_BAD;
-}
-
-static int
 boot_flag_decode(uint8_t flag)
 {
     if (flag != BOOT_FLAG_SET) {
         return BOOT_FLAG_BAD;
     }
     return BOOT_FLAG_SET;
-}
-
-static inline uint32_t
-boot_magic_off(const struct flash_area *fap)
-{
-    return flash_area_get_size(fap) - BOOT_MAGIC_SZ;
-}
-
-static inline uint32_t
-boot_image_ok_off(const struct flash_area *fap)
-{
-    return ALIGN_DOWN(boot_magic_off(fap) - BOOT_MAX_ALIGN, BOOT_MAX_ALIGN);
-}
-
-static inline uint32_t
-boot_copy_done_off(const struct flash_area *fap)
-{
-    return boot_image_ok_off(fap) - BOOT_MAX_ALIGN;
 }
 
 uint32_t
