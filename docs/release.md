@@ -24,6 +24,12 @@ Before making a release, update the `docs/release-notes.md` file
 to describe the release. This should be a high-level description of
 the changes, not a list of the git commits.
 
+Provided that changes going into the release have followed the
+contribution guidelines, this should mostly consist of collecting the
+various snippets in the `docs/release-notes.d` directory.  After
+incorporating these snippets into the release notes, the snippet files
+should be removed to ready the directory for the next release cycle.
+
 ## Release candidates
 
 Before each release, tags are made (see below) for at least one
