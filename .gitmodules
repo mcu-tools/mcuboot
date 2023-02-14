@@ -23,3 +23,6 @@
 	path = boot/espressif/hal/esp-idf
 	url = https://github.com/espressif/esp-idf.git
 	branch = release/v4.4
+[submodule "boot/hpmicro/hal/hpm_sdk"]
+	path = boot/hpmicro/hal/hpm_sdk
+	url = https://github.com/hpmicro/hpm_sdk.git
