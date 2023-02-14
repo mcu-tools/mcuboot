@@ -4,6 +4,7 @@
  * Copyright (c) 2017-2020 Linaro LTD
  * Copyright (c) 2017-2019 JUUL Labs
  * Copyright (c) 2019-2021 Arm Limited
+ * Copyright (c) 2023 HPMicro Limited
  *
  * Original license:
  *
@@ -181,6 +182,8 @@ _Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image 
                  (hdr)->ih_ver.iv_revision,                               \
                  (hdr)->ih_ver.iv_build_num)
 
+#if defined(MCUBOOT_SWAP_USING_MOVE)
+
 #if MCUBOOT_SWAP_USING_MOVE
 #define BOOT_STATUS_MOVE_STATE_COUNT    1
 #define BOOT_STATUS_SWAP_STATE_COUNT    2
@@ -188,6 +191,11 @@ _Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image 
 #else
 #define BOOT_STATUS_STATE_COUNT         3
 #endif
+
+#else  /* else #if defined(MCUBOOT_SWAP_USING_MOVE) */
+
+#define BOOT_STATUS_STATE_COUNT         3
+#endif /* end #if defined(MCUBOOT_SWAP_USING_MOVE) */
 
 /** Maximum number of image sectors supported by the bootloader. */
 #define BOOT_STATUS_MAX_ENTRIES         BOOT_MAX_IMG_SECTORS
