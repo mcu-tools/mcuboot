@@ -30,6 +30,20 @@ Certificate of Origin" located at the bottom of this page:
   see this [link]
   (https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue).
 
+## Release notes
+
+To facilitate creating release notes at release time, all non-trivial
+changes must include a release note snippet in the pull request.
+This can be either a separate commit, or as part of a single commit
+(generally, if there are multiple commits to the pull request, the
+release note snippet should be a separate commit, and a pull request
+that is a single commit can include the release note snippet in that
+commit).  In either case, the release notes must be included in the
+same PR that makes the given change.
+
+The release notes should be placed in the `docs/release-notes.d`
+directory. Please see the readme file in that directory for specifics.
+
 ## Developer certificate of origin
 
 The following is the "Developer Certificate of Origin":
