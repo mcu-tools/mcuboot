@@ -55,6 +55,15 @@ config NRF_CC310_BL
 	bool
 	default n
 
+DT_CHOSEN_FLASH_NODE := $(dt_chosen_path,$(zephyr,flash))
+
+config BOOT_MAX_ALIGN
+	int
+	prompt "Custom value"
+	default $(dt_node_int_prop_int,$(DT_CHOSEN_FLASH_NODE),write-block-size) \
+		if $(dt_node_has_prop,$(DT_CHOSEN_FLASH_NODE),write-block-size)
+	default 8 if !$(dt_node_has_prop,$(DT_CHOSEN_FLASH_NODE),write-block-size)
+
 menu "MCUBoot settings"
 
 config SINGLE_APPLICATION_SLOT

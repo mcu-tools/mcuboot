@@ -249,12 +249,8 @@
 #define MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE CONFIG_BOOT_SERIAL_UNALIGNED_BUFFER_SIZE
 #endif
 
-/* Support 32-byte aligned flash sizes */
-#if DT_HAS_CHOSEN(zephyr_flash)
-    #if DT_PROP_OR(DT_CHOSEN(zephyr_flash), write_block_size, 0) > 8
-        #define MCUBOOT_BOOT_MAX_ALIGN \
-            DT_PROP(DT_CHOSEN(zephyr_flash), write_block_size)
-    #endif
+#ifdef CONFIG_BOOT_MAX_ALIGN
+#define MCUBOOT_BOOT_MAX_ALIGN CONFIG_BOOT_MAX_ALIGN
 #endif
 
 #if CONFIG_BOOT_WATCHDOG_FEED
