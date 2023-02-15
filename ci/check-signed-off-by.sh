@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+DEPENDABOT_COMMITER='GitHub <noreply@github.com>'
+DEPENDABOT_AUTHOR='dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>'
+
+# this retrieves the merge commit created by GH
 parents=(`git log -n 1 --format=%p HEAD`)
 
 if [[ "${#parents[@]}" -eq 1 ]]; then
@@ -27,10 +31,17 @@ else
   exit 1
 fi
 
-has_commits=false
 for sha in $commits; do
-  author="Signed-off-by: $(git show -s --format="%an <%ae>" ${sha})"
-  committer="Signed-off-by: $(git show -s --format="%cn <%ce>" ${sha})"
+  author="$(git show -s --format="%an <%ae>" ${sha})"
+  committer="$(git show -s --format="%cn <%ce>" ${sha})"
+
+  if [[ "${committer}" == "${DEPENDABOT_COMMITER}" ]] &&
+     [[ "${author}" == "${DEPENDABOT_AUTHOR}" ]]; then
+    continue
+  fi
+
+  author="Signed-off-by: ${author}"
+  committer="Signed-off-by: ${committer}"
 
   lines="$(git show -s --format=%B ${sha})"
 
@@ -68,10 +79,9 @@ for sha in $commits; do
     exit 1
   fi
 
-  has_commits=true
 done
 
-if [[ ${has_commits} = false ]]; then
+if [[ -z "${commits}" ]]; then
   echo "No commits found in this PR!"
   exit 1
 fi
