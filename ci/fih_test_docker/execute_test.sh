@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-# Copyright (c) 2020-2022 Arm Limited
+# Copyright (c) 2020-2023 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -63,3 +63,4 @@ echo "    - SKIP_SIZE: $SKIP_SIZE"
 echo "    - DAMAGE_TYPE: $DAMAGE_TYPE"
 
 python3 $MCUBOOT_PATH/ci/fih_test_docker/generate_test_report.py fih_test_output.yaml
+python3 $MCUBOOT_PATH/ci/fih_test_docker/validate_output.py fih_test_output.yaml $SKIP_SIZE $FIH_LEVEL

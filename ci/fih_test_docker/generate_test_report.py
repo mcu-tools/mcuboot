@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Arm Limited
+# Copyright (c) 2020-2023 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,47 +13,12 @@
 # limitations under the License.
 
 import argparse
-import yaml
-import collections
-
-CATEGORIES = {
-        'TOTAL': 'Total tests run',
-        'SUCCESS': 'Tests executed successfully',
-        'FAILED': 'Tests failed to execute successfully',
-        # the execution never reached the address
-        'ADDRES_NOEXEC': 'Address was not executed',
-        # The address was successfully skipped by the debugger
-        'SKIPPED': 'Address was skipped',
-        'NO_BOOT': 'System not booted (desired behaviour)',
-        'BOOT': 'System booted (undesired behaviour)'
-}
+from utils import CATEGORIES, parse_yaml_file
 
 
 def print_results(results):
-    test_stats = collections.Counter()
-    failed_boot_last_lines = collections.Counter()
-    exec_fail_reasons = collections.Counter()
 
-    for test in results:
-        test = test["skip_test"]
-
-        test_stats.update([CATEGORIES['TOTAL']])
-
-        if test["test_exec_ok"]:
-            test_stats.update([CATEGORIES['SUCCESS']])
-
-            if "skipped" in test.keys() and not test["skipped"]:
-                # The debugger didn't stop at this address
-                test_stats.update([CATEGORIES['ADDRES_NOEXEC']])
-                continue
-
-            if test["boot"]:
-                test_stats.update([CATEGORIES['BOOT']])
-                continue
-
-            failed_boot_last_lines.update([test["last_line"]])
-        else:
-            exec_fail_reasons.update([test["test_exec_fail_reason"]])
+    test_stats, failed_boot_last_lines, exec_fail_reasons = results
 
     print("{:s}: {:d}.".format(CATEGORIES['TOTAL'], test_stats[CATEGORIES['TOTAL']]))
     print("{:s} ({:d}):".format(CATEGORIES['SUCCESS'], test_stats[CATEGORIES['SUCCESS']]))
@@ -74,14 +39,8 @@ def main():
     parser.add_argument('filename', help='yaml file to process')
 
     args = parser.parse_args()
-
-    with open(args.filename) as output_yaml_file:
-        results = yaml.safe_load(output_yaml_file)
-
-        if results:
-            print_results(results)
-        else:
-            print("Failed to parse output yaml file.")
+    results = parse_yaml_file(args.filename)
+    print_results(results)
 
 
 if __name__ == "__main__":
