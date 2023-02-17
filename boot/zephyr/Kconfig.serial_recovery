@@ -61,22 +61,27 @@ config BOOT_SERIAL_UNALIGNED_BUFFER_SIZE
 
 config BOOT_MAX_LINE_INPUT_LEN
 	int "Maximum input line length"
-	default 512
+	default 128
 	help
-	  Maximum length of input serial port buffer.
+	  Maximum length of input serial port buffer (SMP serial transport uses
+	  fragments of 128-bytes, this should not need to be changed unless a
+	  different value is used for the transport).
+
+config BOOT_LINE_BUFS
+	int "Number of receive buffers"
+	range 2 128
+	default 8
+	help
+	  Number of receive buffers for data received via the serial port.
 
 config BOOT_SERIAL_MAX_RECEIVE_SIZE
 	int "Maximum command line length"
 	default 1024
 	help
-	  Maximum length of received commands via the serial port.
-
-config BOOT_LINE_BUFS
-	int "Number of receive buffers"
-	range 2 128
-	default 2
-	help
-	  Number of receive buffers for data received via the serial port.
+	  Maximum length of received commands via the serial port (this should
+	  be equal to the maximum line length, BOOT_MAX_LINE_INPUT_LEN times
+	  by the number of receive buffers, BOOT_LINE_BUFS to allow for
+	  optimal data transfer speeds).
 
 config BOOT_SERIAL_DETECT_PORT
 	string "GPIO device to trigger serial recovery mode (DEPRECATED)"
