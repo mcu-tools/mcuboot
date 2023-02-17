@@ -16,7 +16,7 @@ parents=(`git log -n 1 --format=%p HEAD`)
 
 if [[ "${#parents[@]}" -eq 1 ]]; then
   # CI doesn't use a merge commit
-  commits=$(git show -s --format=%h ${parents})
+  commits=$(git show -s --format=%h ${parents}...HEAD)
 elif [[ "${#parents[@]}" -eq 2 ]]; then
   # CI uses a merge commit, eg GH / Travis
   from="${parents[0]}"
