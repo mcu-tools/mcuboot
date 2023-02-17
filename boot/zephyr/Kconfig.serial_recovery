@@ -54,6 +54,7 @@ config MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
 config BOOT_SERIAL_UNALIGNED_BUFFER_SIZE
 	int "Stack buffer for unaligned memory writes"
 	default 64
+	range 0 128
 	help
 	  Specifies the stack usage for a buffer which is used for unaligned
 	  memory access when data is written to a device with memory alignment
