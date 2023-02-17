@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 Nordic Semiconductor ASA
+ * Copyright (c) 2017-2023 Nordic Semiconductor ASA
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ struct line_input {
 };
 
 static struct device const *uart_dev;
-static struct line_input line_bufs[2];
+static struct line_input line_bufs[CONFIG_BOOT_LINE_BUFS];
 
 static sys_slist_t avail_queue;
 static sys_slist_t lines_queue;
