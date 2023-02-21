@@ -25,6 +25,7 @@
 #include "bootutil_priv.h"
 #include "swap_priv.h"
 #include "bootutil/bootutil_log.h"
+#include "sysflash/sysflash.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 

@@ -23,8 +23,6 @@
 #include <stdio.h>
 #include <errno.h>
 
-#include "sysflash/sysflash.h"
-
 #include "bootutil/bootutil_log.h"
 #include "zcbor_encode.h"
 

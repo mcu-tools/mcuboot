@@ -47,6 +47,7 @@
 #include "bootutil/ramload.h"
 #include "bootutil/boot_hooks.h"
 #include "bootutil/mcuboot_status.h"
+#include "sysflash/sysflash.h"
 
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"

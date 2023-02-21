@@ -27,6 +27,7 @@
 #include "bootutil/bootutil_log.h"
 
 #include "mcuboot_config/mcuboot_config.h"
+#include "sysflash/sysflash.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
