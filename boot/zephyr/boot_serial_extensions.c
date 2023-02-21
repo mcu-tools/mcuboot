@@ -9,7 +9,6 @@
 #include <zephyr/mgmt/mcumgr/zephyr_groups.h>
 
 #include <flash_map_backend/flash_map_backend.h>
-#include <sysflash/sysflash.h>
 
 #include "bootutil/bootutil_log.h"
 #include "../boot_serial/src/boot_serial_priv.h"

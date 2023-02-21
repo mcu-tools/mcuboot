@@ -10,6 +10,7 @@
 #include "bootutil_priv.h"
 #include "bootutil/bootutil_log.h"
 #include "bootutil/fault_injection_hardening.h"
+#include "sysflash/sysflash.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 
