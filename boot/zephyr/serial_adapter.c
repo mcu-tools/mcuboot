@@ -25,17 +25,13 @@
 #if defined(CONFIG_BOOT_SERIAL_UART)
 	#if (DT_NODE_HAS_STATUS(DT_CHOSEN(mcuboot_recovery_uart), okay))
 		#define RECOVERY_UART DT_CHOSEN(mcuboot_recovery_uart)
-	#elif (DT_NODE_HAS_STATUS(DT_ALIAS(mcuboot_recovery_uart), okay))
-		#define RECOVERY_UART DT_ALIAS(mcuboot_recovery_uart)
-	#elif (DT_NODE_HAS_STATUS(DT_ALIAS(recovery_uart), okay))
-		#define RECOVERY_UART DT_ALIAS(recovery_uart)
 	#else
 		/* note that if a recovery uart is specified, and it happens to be
 		 * the same node as zephyr-console, we don't detect that at build time
 		 */
 		#define RECOVERY_UART DT_CHOSEN(zephyr_console)
 		#if defined(CONFIG_UART_CONSOLE)
-			#error Zephyr UART console must be disabled if serial_adapter module is used.
+			#error Zephyr UART console must be disabled if serial_adapter module is used on console UART.
 		#endif
 	#endif
 #endif
