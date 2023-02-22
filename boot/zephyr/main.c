@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2012-2014 Wind River Systems, Inc.
  * Copyright (c) 2020 Arm Limited
- * Copyright (c) 2021 Nordic Semiconductor ASA
+ * Copyright (c) 2021-2023 Nordic Semiconductor ASA
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,6 +50,10 @@ const struct boot_uart_funcs boot_funcs = {
     .read = console_read,
     .write = console_write
 };
+#endif
+
+#ifdef CONFIG_BOOT_SERIAL_BOOT_MODE
+#include <zephyr/retention/bootmode.h>
 #endif
 
 #if defined(CONFIG_BOOT_USB_DFU_WAIT) || defined(CONFIG_BOOT_USB_DFU_GPIO)
@@ -119,6 +123,15 @@ static inline bool boot_skip_serial_recovery()
 #endif
 
 BOOT_LOG_MODULE_REGISTER(mcuboot);
+
+/* Validate serial recovery configuration */
+#ifdef CONFIG_MCUBOOT_SERIAL
+#if !defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) && \
+    !defined(CONFIG_BOOT_SERIAL_WAIT_FOR_DFU) && \
+    !defined(CONFIG_BOOT_SERIAL_BOOT_MODE)
+#error "Serial recovery selected without an entrance mode set"
+#endif
+#endif
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
 
@@ -385,7 +398,7 @@ void zephyr_boot_log_stop(void)
         * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(ZEPHYR_LOG_MODE_MINIMAL)
         */
 
-#if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU_GPIO)
+#if defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) || defined(CONFIG_BOOT_USB_DFU_GPIO)
 
 #ifdef CONFIG_MCUBOOT_SERIAL
 #define BUTTON_0_DETECT_DELAY CONFIG_BOOT_SERIAL_DETECT_DELAY
@@ -393,17 +406,12 @@ void zephyr_boot_log_stop(void)
 #define BUTTON_0_DETECT_DELAY CONFIG_BOOT_USB_DFU_DETECT_DELAY
 #endif
 
-
 #define BUTTON_0_NODE DT_ALIAS(mcuboot_button0)
 
 #if DT_NODE_EXISTS(BUTTON_0_NODE) && DT_NODE_HAS_PROP(BUTTON_0_NODE, gpios)
-
 static const struct gpio_dt_spec button0 = GPIO_DT_SPEC_GET(BUTTON_0_NODE, gpios);
-
-#elif defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU_GPIO)
-
+#else
 #error "Serial recovery/USB DFU button must be declared in device tree as 'mcuboot_button0'"
-
 #endif
 
 static bool detect_pin(void)
@@ -468,6 +476,10 @@ void main(void)
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
+#ifdef CONFIG_BOOT_SERIAL_BOOT_MODE
+    int32_t boot_mode;
+#endif
+
     MCUBOOT_WATCHDOG_FEED();
 
 #if !defined(MCUBOOT_DIRECT_XIP)
@@ -489,7 +501,7 @@ void main(void)
 
     mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
 
-#ifdef CONFIG_MCUBOOT_SERIAL
+#ifdef CONFIG_BOOT_SERIAL_ENTRANCE_GPIO
     if (detect_pin() &&
             !boot_skip_serial_recovery()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
@@ -551,6 +563,24 @@ void main(void)
 #endif
 
     FIH_CALL(boot_go, fih_rc, &rsp);
+
+#ifdef CONFIG_BOOT_SERIAL_BOOT_MODE
+    boot_mode = bootmode_check(BOOT_MODE_TYPE_BOOTLOADER);
+
+    if (boot_mode == 1) {
+        /* Boot mode to stay in bootloader, clear status and enter serial
+         * recovery mode
+         */
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+        gpio_pin_set_dt(&led0, 1);
+#endif
+
+        mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
+        rc = boot_console_init();
+        bootmode_clear();
+        boot_serial_start(&boot_funcs);
+    }
+#endif
 
 #ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
     timeout_in_ms -= (k_uptime_get_32() - start);

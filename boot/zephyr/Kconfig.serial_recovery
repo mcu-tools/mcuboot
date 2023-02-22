@@ -1,15 +1,13 @@
 # Copyright (c) 2017-2020 Linaro Limited
 # Copyright (c) 2020 Arm Limited
-# Copyright (c) 2017-2022 Nordic Semiconductor ASA
+# Copyright (c) 2017-2023 Nordic Semiconductor ASA
 #
 # SPDX-License-Identifier: Apache-2.0
-
 
 menuconfig MCUBOOT_SERIAL
 	bool "MCUboot serial recovery"
 	default n
 	select REBOOT
-	select GPIO
 	select SERIAL
 	select UART_INTERRUPT_DRIVEN
 	select BASE64
@@ -96,14 +94,6 @@ config BOOT_SERIAL_MAX_RECEIVE_SIZE
 	  by the number of receive buffers, BOOT_LINE_BUFS to allow for
 	  optimal data transfer speeds).
 
-config BOOT_SERIAL_DETECT_DELAY
-	int "Serial detect pin detection delay time [ms]"
-	default 0
-	help
-	  Used to prevent the bootloader from loading on button press.
-	  Useful for powering on when using the same button as
-	  the one used to place the device in bootloader mode.
-
 config BOOT_ERASE_PROGRESSIVELY
 	bool "Erase flash progressively when receiving new firmware"
 	default y if SOC_FAMILY_NRF
@@ -128,6 +118,7 @@ menuconfig ENABLE_MGMT_PERUSER
 	  function is required to process these commands.
 
 if ENABLE_MGMT_PERUSER
+
 config BOOT_MGMT_CUSTOM_STORAGE_ERASE
 	bool "Enable storage erase command"
 	help
@@ -153,8 +144,26 @@ config BOOT_SERIAL_ENCRYPT_EC256
 	  encryption mechanism used in this case is ECIES using primitives
 	  described under "ECIES-P256 encryption" in docs/encrypted_images.md.
 
-config BOOT_SERIAL_WAIT_FOR_DFU
-	bool "Wait for a prescribed duration to see if DFU is invoked by receiving a mcumgr comand"
+menu "Entrance methods"
+
+menuconfig BOOT_SERIAL_ENTRANCE_GPIO
+	bool "GPIO"
+	default y
+	depends on GPIO
+	help
+	  Use a GPIO to enter serial recovery mode.
+
+config BOOT_SERIAL_DETECT_DELAY
+	int "Serial detect pin detection delay time [ms]"
+	default 0
+	depends on BOOT_SERIAL_ENTRANCE_GPIO
+	help
+	  Used to prevent the bootloader from loading on button press.
+	  Useful for powering on when using the same button as
+	  the one used to place the device in bootloader mode.
+
+menuconfig BOOT_SERIAL_WAIT_FOR_DFU
+	bool "Wait a prescribed duration to see if DFU is invoked by receiving a MCUmgr comand"
 	depends on BOOT_SERIAL_UART || BOOT_SERIAL_CDC_ACM
 	help
 	  If y, MCUboot waits for a prescribed duration of time to allow
@@ -166,7 +175,17 @@ config BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
 	default 500
 	depends on BOOT_SERIAL_WAIT_FOR_DFU
 	help
-	  timeout in ms for MCUboot to wait to allow for DFU to be invoked.
+	  Timeout in ms for MCUboot to wait to allow for DFU to be invoked.
+
+config BOOT_SERIAL_BOOT_MODE
+	bool "Check boot mode via retention subsystem"
+	depends on RETENTION_BOOT_MODE
+	help
+	  Allows for entering serial recovery mode by using Zephyr's boot mode
+	  retention system (i.e. an application must set the boot mode to stay
+	  in serial recovery mode and reboot the module).
+
+endmenu
 
 config BOOT_SERIAL_IMG_GRP_HASH
 	bool "Image list hash support"
