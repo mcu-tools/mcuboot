@@ -57,6 +57,13 @@ class Ed25519Public(KeyClass):
     def sig_len(self):
         return 64
 
+    def verify_digest(self, signature, digest):
+        """Verify that signature is valid for given digest"""
+        k = self.key
+        if isinstance(self.key, ed25519.Ed25519PrivateKey):
+            k = self.key.public_key()
+        return k.verify(signature=signature, data=digest)
+
 
 class Ed25519(Ed25519Public):
     """
@@ -98,10 +105,3 @@ class Ed25519(Ed25519Public):
     def sign_digest(self, digest):
         """Return the actual signature"""
         return self.key.sign(data=digest)
-
-    def verify_digest(self, signature, digest):
-        """Verify that signature is valid for given digest"""
-        k = self.key
-        if isinstance(self.key, ed25519.Ed25519PrivateKey):
-            k = self.key.public_key()
-        return k.verify(signature=signature, data=digest)
