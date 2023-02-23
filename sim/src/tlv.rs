@@ -1,6 +1,6 @@
 // Copyright (c) 2017-2021 Linaro LTD
 // Copyright (c) 2017-2020 JUUL Labs
-// Copyright (c) 2021 Arm Limited
+// Copyright (c) 2021-2023 Arm Limited
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -51,7 +51,6 @@ pub enum TlvKinds {
     KEYHASH = 0x01,
     SHA256 = 0x10,
     RSA2048 = 0x20,
-    ECDSA224 = 0x21,
     ECDSA256 = 0x22,
     RSA3072 = 0x23,
     ED25519 = 0x24,
@@ -451,8 +450,7 @@ impl ManifestGen for TlvGen {
             // signature verification can be validated.
             let mut corrupt_hash = self.gen_corrupted;
             for k in &[TlvKinds::RSA2048, TlvKinds::RSA3072,
-                TlvKinds::ECDSA224, TlvKinds::ECDSA256,
-                TlvKinds::ED25519]
+                TlvKinds::ECDSA256, TlvKinds::ED25519]
             {
                 if self.kinds.contains(k) {
                     corrupt_hash = false;
