@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 #
 # Copyright 2017-2020 Linaro Limited
-# Copyright 2019-2021 Arm Limited
+# Copyright 2019-2023 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -47,10 +47,6 @@ def gen_ecdsa_p256(keyfile, passwd):
     keys.ECDSA256P1.generate().export_private(keyfile, passwd=passwd)
 
 
-def gen_ecdsa_p224(keyfile, passwd):
-    print("TODO: p-224 not yet implemented")
-
-
 def gen_ed25519(keyfile, passwd):
     keys.Ed25519.generate().export_private(path=keyfile, passwd=passwd)
 
@@ -65,7 +61,6 @@ keygens = {
     'rsa-2048':   gen_rsa2048,
     'rsa-3072':   gen_rsa3072,
     'ecdsa-p256': gen_ecdsa_p256,
-    'ecdsa-p224': gen_ecdsa_p224,
     'ed25519':    gen_ed25519,
     'x25519':     gen_x25519,
 }
