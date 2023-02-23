@@ -1,6 +1,6 @@
 # Copyright 2018 Nordic Semiconductor ASA
 # Copyright 2017-2020 Linaro Limited
-# Copyright 2019-2021 Arm Limited
+# Copyright 2019-2023 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -63,7 +63,6 @@ TLV_VALUES = {
         'PUBKEY': 0x02,
         'SHA256': 0x10,
         'RSA2048': 0x20,
-        'ECDSA224': 0x21,
         'ECDSA256': 0x22,
         'RSA3072': 0x23,
         'ED25519': 0x24,
