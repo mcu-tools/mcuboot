@@ -21,6 +21,7 @@ import re
 import click
 import getpass
 import imgtool.keys as keys
+import os
 import sys
 import base64
 from imgtool import image, imgtool_version
@@ -91,6 +92,10 @@ def load_key(keyfile):
     key = keys.load(keyfile)
     if key is not None:
         return key
+    pwenv = click.get_current_context().obj.get('password_env')
+    if pwenv:
+        click.echo('Using key passphrase from environment')
+        return keys.load(keyfile, os.environ.get(pwenv, '').encode('utf-8'))
     passwd = getpass.getpass("Enter key passphrase: ").encode('utf-8')
     return keys.load(keyfile, passwd)
 
@@ -509,8 +514,11 @@ def version():
 
 @click.command(cls=AliasesGroup,
                context_settings=dict(help_option_names=['-h', '--help']))
-def imgtool():
-    pass
+@click.option('--password-env', type=str, default=None, help='Specifies an environment variable to read key passwords from')
+@click.pass_context
+def imgtool(ctx, password_env):
+    ctx.ensure_object(dict)
+    ctx.obj['password_env'] = password_env
 
 
 imgtool.add_command(keygen)
