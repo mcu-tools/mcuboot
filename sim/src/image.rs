@@ -1,6 +1,6 @@
 // Copyright (c) 2019-2021 Linaro LTD
 // Copyright (c) 2019-2020 JUUL Labs
-// Copyright (c) 2019-2021 Arm Limited
+// Copyright (c) 2019-2023 Arm Limited
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -1853,9 +1853,6 @@ fn install_no_image() -> ImageData {
 /// Construct a TLV generator based on how MCUboot is currently configured.  The returned
 /// ManifestGen will generate the appropriate entries based on this configuration.
 fn make_tlv() -> TlvGen {
-    if Caps::EcdsaP224.present() {
-        panic!("Ecdsa P224 not supported in Simulator");
-    }
     let aes_key_size = if Caps::Aes256.present() { 256 } else { 128 };
 
     if Caps::EncKw.present() {
