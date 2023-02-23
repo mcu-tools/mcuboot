@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2017 Linaro Limited
- * Copyright (c) 2021 Arm Limited
+ * Copyright (c) 2021-2023 Arm Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,9 +31,6 @@ uint32_t bootutil_get_caps(void)
 #if MCUBOOT_SIGN_RSA_LEN == 3072
     res |= BOOTUTIL_CAP_RSA3072;
 #endif
-#endif
-#if defined(MCUBOOT_SIGN_EC)
-    res |= BOOTUTIL_CAP_ECDSA_P224;
 #endif
 #if defined(MCUBOOT_SIGN_EC256)
     res |= BOOTUTIL_CAP_ECDSA_P256;

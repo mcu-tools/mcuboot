@@ -31,9 +31,6 @@ syscfg.defs:
     BOOTUTIL_SIGN_RSA_LEN:
         description: 'Key size for RSA keys (2048 or 3072).'
         value: 2048
-    BOOTUTIL_SIGN_EC:
-        description: 'Images are signed using ECDSA NIST P-224.'
-        value: 0
     BOOTUTIL_SIGN_EC256:
         description: 'Images are signed using ECDSA NIST P-256.'
         value: 0

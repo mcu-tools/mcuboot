@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2023 Arm Limited
  *
  * Original license:
  *
@@ -46,11 +46,11 @@
 #if defined(MCUBOOT_SIGN_RSA)
 #include "mbedtls/rsa.h"
 #endif
-#if defined(MCUBOOT_SIGN_EC) || defined(MCUBOOT_SIGN_EC256)
+#if defined(MCUBOOT_SIGN_EC256)
 #include "mbedtls/ecdsa.h"
 #endif
 #if defined(MCUBOOT_ENC_IMAGES) || defined(MCUBOOT_SIGN_RSA) || \
-    defined(MCUBOOT_SIGN_EC) || defined(MCUBOOT_SIGN_EC256)
+    defined(MCUBOOT_SIGN_EC256)
 #include "mbedtls/asn1.h"
 #endif
 
@@ -169,7 +169,6 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
  * configured for any signature, don't define this macro.
  */
 #if (defined(MCUBOOT_SIGN_RSA)      + \
-     defined(MCUBOOT_SIGN_EC)       + \
      defined(MCUBOOT_SIGN_EC256)    + \
      defined(MCUBOOT_SIGN_ED25519)) > 1
 #error "Only a single signature type is supported!"
@@ -185,10 +184,6 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 #    endif
 #    define SIG_BUF_SIZE (MCUBOOT_SIGN_RSA_LEN / 8)
 #    define EXPECTED_SIG_LEN(x) ((x) == SIG_BUF_SIZE) /* 2048 bits */
-#elif defined(MCUBOOT_SIGN_EC)
-#    define EXPECTED_SIG_TLV IMAGE_TLV_ECDSA224
-#    define SIG_BUF_SIZE 128
-#    define EXPECTED_SIG_LEN(x)  (1) /* always true, ASN.1 will validate */
 #elif defined(MCUBOOT_SIGN_EC256)
 #    define EXPECTED_SIG_TLV IMAGE_TLV_ECDSA256
 #    define SIG_BUF_SIZE 128

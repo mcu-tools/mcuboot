@@ -5,10 +5,6 @@ shortcut was taken, and these signatures were padded to make them
 always a fixed length. Unfortunately, this padding was done in a way
 that is not easily reversible. Some crypto libraries (specifically, Mbed
 TLS) are fairly strict about the formatting of the ECDSA signature.
-This currently means that the ECDSA SECP224R1 (EC) signature
-checking code will fail to boot about 1 out of every 256 images,
-because the signature itself will end in a 0x00 byte, and the code
-will remove too much data, invalidating the signature.
 
 There are two ways to fix this:
 
