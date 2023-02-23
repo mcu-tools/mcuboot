@@ -134,7 +134,6 @@ set(bootutil_srcs
     ${BOOTUTIL_DIR}/src/encrypted.c
     ${BOOTUTIL_DIR}/src/fault_injection_hardening.c
     ${BOOTUTIL_DIR}/src/fault_injection_hardening_delay_rng_mbedtls.c
-    ${BOOTUTIL_DIR}/src/image_ec.c
     ${BOOTUTIL_DIR}/src/image_ec256.c
     ${BOOTUTIL_DIR}/src/image_ed25519.c
     ${BOOTUTIL_DIR}/src/image_rsa.c
