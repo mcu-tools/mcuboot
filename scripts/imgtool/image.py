@@ -81,6 +81,9 @@ TLV_INFO_SIZE = 4
 TLV_INFO_MAGIC = 0x6907
 TLV_PROT_INFO_MAGIC = 0x6908
 
+TLV_VENDOR_RES_MIN = 0x00a0
+TLV_VENDOR_RES_MAX = 0xfffe
+
 STRUCT_ENDIAN_DICT = {
         'little': '<',
         'big':    '>'
@@ -111,7 +114,12 @@ class TLV():
         """
         e = STRUCT_ENDIAN_DICT[self.endian]
         if isinstance(kind, int):
-            buf = struct.pack(e + 'BBH', kind, 0, len(payload))
+            if not TLV_VENDOR_RES_MIN <= kind <= TLV_VENDOR_RES_MAX:
+                msg = "Invalid custom TLV type value '0x{:04x}', allowed " \
+                      "value should be between 0x{:04x} and 0x{:04x}".format(
+                      kind, TLV_VENDOR_RES_MIN, TLV_VENDOR_RES_MAX)
+                raise click.UsageError(msg)
+            buf = struct.pack(e + 'HH', kind, len(payload))
         else:
             buf = struct.pack(e + 'BBH', TLV_VALUES[kind], 0, len(payload))
         self.buf += buf
