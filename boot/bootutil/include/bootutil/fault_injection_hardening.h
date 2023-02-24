@@ -249,8 +249,7 @@ fih_int fih_int_encode(int x)
 #endif /* FIH_ENABLE_DOUBLE_VARS */
 
 #define FIH_DECLARE(var, val) \
-    fih_ret var; \
-    FIH_SET(var, val);
+    fih_ret FIH_SET(var, val)
 
 /* C has a common return pattern where 0 is a correct value and all others are
  * errors. This function converts 0 to FIH_SUCCESS and any other number to a
