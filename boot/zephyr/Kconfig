@@ -146,20 +146,18 @@ config BOOT_SIGNATURE_KEY_FILE
 config MCUBOOT_CLEANUP_ARM_CORE
 	bool "Perform core cleanup before chain-load the application"
 	depends on CPU_CORTEX_M
-	default y if !ARCH_SUPPORTS_ARCH_HW_INIT
+	default y
 	help
 	  This option instructs MCUboot to perform a clean-up of a set of
 	  architecture core HW registers before junping to the application
 	  firmware. The clean-up sets these registers to their warm-reset
 	  values as specified by the architecture.
 
-	  By default, this option is enabled only if the architecture does
-	  not have the functionality to perform such a register clean-up
-	  during application firmware boot.
-
-	  Zephyr applications on Cortex-M will perform this register clean-up
-	  by default, if they are chain-loadable by MCUboot, so MCUboot does
-	  not need to perform such a cleanup itself.
+	  This option is enabled by default to prevent possible problems when
+	  booting zephyr (or other) applications whereby e.g. a MPU stack guard
+	  may be initialised in RAM which is then used by the application
+	  start-up code which can cause a module fault and potentially make the
+	  module irrecoverable.
 
 config MBEDTLS_CFG_FILE
 	default "mcuboot-mbedtls-cfg.h"
