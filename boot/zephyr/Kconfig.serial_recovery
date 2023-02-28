@@ -85,32 +85,6 @@ config BOOT_SERIAL_MAX_RECEIVE_SIZE
 	  by the number of receive buffers, BOOT_LINE_BUFS to allow for
 	  optimal data transfer speeds).
 
-config BOOT_SERIAL_DETECT_PORT
-	string "GPIO device to trigger serial recovery mode (DEPRECATED)"
-	default GPIO_0 if SOC_FAMILY_NRF
-	help
-	  Zephyr GPIO device that contains the pin used to trigger
-	  serial recovery mode.
-
-config BOOT_SERIAL_DETECT_PIN
-	int "Pin to trigger serial recovery mode (DEPRECATED)"
-	default 6 if BOARD_NRF9160DK_NRF9160
-	default 11 if BOARD_NRF52840DK_NRF52840
-	default 13 if BOARD_NRF52DK_NRF52832 || BOARD_NRF52833DK_NRF52833
-	default 23 if BOARD_NRF5340PDK_NRF5340_CPUAPP || BOARD_NRF5340PDK_NRF5340_CPUAPP_NS || \
-		BOARD_NRF5340DK_NRF5340_CPUAPP || BOARD_NRF5340DK_NRF5340_CPUAPP_NS
-	default -1
-	help
-	  Pin on the serial detect port that triggers serial recovery mode.
-
-config BOOT_SERIAL_DETECT_PIN_VAL
-	int "Serial detect pin trigger value (DEPRECATED)"
-	default 0
-	range 0 1
-	help
-	  Logic value of the detect pin that triggers serial recovery
-	  mode.
-
 config BOOT_SERIAL_DETECT_DELAY
 	int "Serial detect pin detection delay time [ms]"
 	default 0

@@ -400,39 +400,9 @@ void zephyr_boot_log_stop(void)
 
 static const struct gpio_dt_spec button0 = GPIO_DT_SPEC_GET(BUTTON_0_NODE, gpios);
 
-#else /* fallback to legacy configuration */
+#elif defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU_GPIO)
 
-#if defined(CONFIG_MCUBOOT_SERIAL)
-
-/* The value of -1 is used by default. It must be properly specified for a board before used. */
-BUILD_ASSERT(CONFIG_BOOT_SERIAL_DETECT_PIN != -1);
-
-#define BUTTON_0_GPIO_LABEL CONFIG_BOOT_SERIAL_DETECT_PORT
-#define BUTTON_0_GPIO_PIN CONFIG_BOOT_SERIAL_DETECT_PIN
-#define BUTTON_0_GPIO_FLAGS ((CONFIG_BOOT_SERIAL_DETECT_PIN_VAL) ?\
-                                (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN) :\
-                                (GPIO_ACTIVE_LOW | GPIO_PULL_UP))
-
-#elif defined(CONFIG_BOOT_USB_DFU_GPIO)
-
-/* The value of -1 is used by default. It must be properly specified for a board before used. */
-BUILD_ASSERT(CONFIG_BOOT_USB_DFU_DETECT_PIN != -1);
-
-#define BUTTON_0_GPIO_LABEL CONFIG_BOOT_USB_DFU_DETECT_PORT
-#define BUTTON_0_GPIO_PIN CONFIG_BOOT_USB_DFU_DETECT_PIN
-#define BUTTON_0_GPIO_FLAGS ((CONFIG_BOOT_USB_DFU_DETECT_PIN_VAL) ?\
-                                (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN) :\
-                                (GPIO_ACTIVE_LOW | GPIO_PULL_UP))
-
-#endif
-
-#define BUTTON_0_LEGACY 1
-
-static struct gpio_dt_spec button0 = {
-	.port = NULL,
-	.pin = BUTTON_0_GPIO_PIN,
-	.dt_flags = BUTTON_0_GPIO_FLAGS
-};
+#error "Serial recovery/USB DFU button must be declared in device tree as 'mcuboot_button0'"
 
 #endif
 
@@ -441,18 +411,10 @@ static bool detect_pin(void)
     int rc;
     int pin_active;
 
-#ifdef BUTTON_0_LEGACY
-    button0.port = device_get_binding(BUTTON_0_GPIO_LABEL);
-    if (button0.port == NULL) {
-        __ASSERT(false, "Error: Bad port for boot detection.\n");
-        return false;
-    }
-#else
     if (!device_is_ready(button0.port)) {
         __ASSERT(false, "GPIO device is not ready.\n");
         return false;
     }
-#endif
 
     rc = gpio_pin_configure_dt(&button0, GPIO_INPUT);
     __ASSERT(rc == 0, "Failed to initialize boot detect pin.\n");
