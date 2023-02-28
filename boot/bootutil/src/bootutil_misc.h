@@ -16,7 +16,7 @@
 #include "bootutil/enc_key.h"
 #endif
 
-static int
+static boot_magic_t
 boot_magic_decode(const uint8_t *magic)
 {
     if (memcmp(magic, BOOT_IMG_MAGIC, BOOT_MAGIC_SZ) == 0) {

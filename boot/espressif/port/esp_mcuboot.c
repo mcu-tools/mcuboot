@@ -28,19 +28,19 @@
 #endif
 
 #ifndef ALIGN_UP
-#  define ALIGN_UP(num, align)      (((num) + ((align) - 1)) & ~((align) - 1))
+#  define ALIGN_UP(num, align)      (((num) + ((align) - 1U)) & ~((align) - 1U))
 #endif
 
 #ifndef ALIGN_DOWN
-#  define ALIGN_DOWN(num, align)    ((num) & ~((align) - 1))
+#  define ALIGN_DOWN(num, align)    ((num) & ~((align) - 1U))
 #endif
 
 #ifndef ALIGN_OFFSET
-#  define ALIGN_OFFSET(num, align)  ((num) & ((align) - 1))
+#  define ALIGN_OFFSET(num, align)  ((num) & ((align) - 1U))
 #endif
 
 #ifndef IS_ALIGNED
-#  define IS_ALIGNED(num, align)    (ALIGN_OFFSET((num), (align)) == 0)
+#  define IS_ALIGNED(num, align)    (ALIGN_OFFSET((num), (align)) == 0U)
 #endif
 
 #define FLASH_BUFFER_SIZE           256 /* SPI Flash block size */

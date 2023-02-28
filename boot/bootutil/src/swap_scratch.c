@@ -269,10 +269,10 @@ boot_slots_compatible(struct boot_loader_state *state)
                  (state)->image_ok)
 
 struct boot_status_table {
-    uint8_t bst_magic_primary_slot;
-    uint8_t bst_magic_scratch;
-    uint8_t bst_copy_done_primary_slot;
-    uint8_t bst_status_source;
+    boot_magic_t bst_magic_primary_slot;
+    boot_magic_t bst_magic_scratch;
+    boot_flag_t bst_copy_done_primary_slot;
+    boot_status_source_t bst_status_source;
 };
 
 /**

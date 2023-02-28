@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 #ifndef ALIGN_UP
-#define ALIGN_UP(num, align)    (((num) + ((align) - 1)) & ~((align) - 1))
+#define ALIGN_UP(num, align)    (((num) + ((align) - 1U)) & ~((align) - 1U))
 #endif
 
 #ifdef MCUBOOT_AES_256

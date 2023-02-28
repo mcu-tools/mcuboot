@@ -38,6 +38,7 @@
 #ifndef H_BOOTUTIL_PUBLIC
 #define H_BOOTUTIL_PUBLIC
 
+#include <stdbool.h>
 #include <inttypes.h>
 #include <string.h>
 #include <flash_map_backend/flash_map_backend.h>
@@ -48,38 +49,61 @@ extern "C" {
 #endif
 
 #ifndef ALIGN_UP
-#define ALIGN_UP(num, align)    (((num) + ((align) - 1)) & ~((align) - 1))
+#define ALIGN_UP(num, align)    (((num) + ((align) - 1U)) & ~((align) - 1U))
 #endif
 
 #ifndef ALIGN_DOWN
-#define ALIGN_DOWN(num, align)  ((num) & ~((align) - 1))
+#define ALIGN_DOWN(num, align)  ((num) & ~((align) - 1U))
 #endif
 
-/** Attempt to boot the contents of the primary slot. */
-#define BOOT_SWAP_TYPE_NONE     1
+#ifndef PTR_CAST
+#define PTR_CAST(type, source)          \
+    ({                                  \
+        union                           \
+        {                               \
+            const void* void_p;         \
+            type* type_p;               \
+        } res_p;                        \
+        res_p.void_p = (source);        \
+        (res_p.type_p);                 \
+    })
+#endif
 
-/**
- * Swap to the secondary slot.
- * Absent a confirm command, revert back on next boot.
- */
-#define BOOT_SWAP_TYPE_TEST     2
+typedef enum
+{
+    /** Attempt to boot the contents of the primary slot. */
+    BOOT_SWAP_TYPE_NONE = 0x01U,
 
-/**
- * Swap to the secondary slot,
- * and permanently switch to booting its contents.
- */
-#define BOOT_SWAP_TYPE_PERM     3
+    /**
+     * Swap to the secondary slot.
+     * Absent a confirm command, revert back on next boot.
+     */
+    BOOT_SWAP_TYPE_TEST = 0x02U,
 
-/** Swap back to alternate slot.  A confirm changes this state to NONE. */
-#define BOOT_SWAP_TYPE_REVERT   4
+    /**
+     * Swap to the secondary slot,
+     * and permanently switch to booting its contents.
+     */
+    BOOT_SWAP_TYPE_PERM = 0x03U,
 
-/** Swap failed because image to be run is not valid */
-#define BOOT_SWAP_TYPE_FAIL     5
+    /** Swap back to alternate slot.  A confirm changes this state to NONE. */
+    BOOT_SWAP_TYPE_REVERT = 0x04U,
 
-/** Swapping encountered an unrecoverable error */
-#define BOOT_SWAP_TYPE_PANIC    0xff
+    /** Swap failed because image to be run is not valid */
+    BOOT_SWAP_TYPE_FAIL = 0x05U,
 
-#define BOOT_MAGIC_SZ           16
+    /** Swapping encountered an unrecoverable error */
+    BOOT_SWAP_TYPE_PANIC = 0xFFU
+} boot_swap_type_t;
+
+#define IS_VALID_SWAP_TYPE(swap_type)                            \
+    (((uint8_t)(swap_type) == (uint8_t)BOOT_SWAP_TYPE_NONE)   || \
+     ((uint8_t)(swap_type) == (uint8_t)BOOT_SWAP_TYPE_TEST)   || \
+     ((uint8_t)(swap_type) == (uint8_t)BOOT_SWAP_TYPE_PERM)   || \
+     ((uint8_t)(swap_type) == (uint8_t)BOOT_SWAP_TYPE_REVERT) || \
+     ((uint8_t)(swap_type) == (uint8_t)BOOT_SWAP_TYPE_FAIL))
+
+#define BOOT_MAGIC_SZ           16U
 
 #ifdef MCUBOOT_BOOT_MAX_ALIGN
 
@@ -89,23 +113,29 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
 #define BOOT_MAX_ALIGN          MCUBOOT_BOOT_MAX_ALIGN
 #define BOOT_MAGIC_ALIGN_SIZE   ALIGN_UP(BOOT_MAGIC_SZ, BOOT_MAX_ALIGN)
 #else
-#define BOOT_MAX_ALIGN          8
+#define BOOT_MAX_ALIGN          8U
 #define BOOT_MAGIC_ALIGN_SIZE   BOOT_MAGIC_SZ
 #endif
 
-#define BOOT_MAGIC_GOOD     1
-#define BOOT_MAGIC_BAD      2
-#define BOOT_MAGIC_UNSET    3
-#define BOOT_MAGIC_ANY      4  /* NOTE: control only, not dependent on sector */
-#define BOOT_MAGIC_NOTGOOD  5  /* NOTE: control only, not dependent on sector */
+typedef enum
+{
+    BOOT_MAGIC_GOOD = 0x01U,
+    BOOT_MAGIC_BAD = 0x02U,
+    BOOT_MAGIC_UNSET = 0x03U,
+    BOOT_MAGIC_ANY = 0x04U,     /* NOTE: control only, not dependent on sector */
+    BOOT_MAGIC_NOTGOOD = 0x05U, /* NOTE: control only, not dependent on sector */
+} boot_magic_t;
 
 /*
  * NOTE: leave BOOT_FLAG_SET equal to one, this is written to flash!
  */
-#define BOOT_FLAG_SET       1
-#define BOOT_FLAG_BAD       2
-#define BOOT_FLAG_UNSET     3
-#define BOOT_FLAG_ANY       4  /* NOTE: control only, not dependent on sector */
+typedef enum
+{
+    BOOT_FLAG_SET = 0x01U,
+    BOOT_FLAG_BAD = 0x02U,
+    BOOT_FLAG_UNSET = 0x03U,
+    BOOT_FLAG_ANY = 0x04U,
+} boot_flag_t;
 
 #define BOOT_EFLASH      1
 #define BOOT_EFILE       2
@@ -123,7 +153,7 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
  * filed.
  */
 #define BOOT_GET_SWAP_TYPE(swap_info)    ((swap_info) & 0x0F)
-#define BOOT_GET_IMAGE_NUM(swap_info)    ((swap_info) >> 4)
+#define BOOT_GET_IMAGE_NUM(swap_info) ((swap_info) >> 4)
 
 /* Construct the swap_info field from swap type and image number */
 #define BOOT_SET_SWAP_INFO(swap_info, image, type)  {                          \
@@ -131,7 +161,7 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
                                                     assert((type)  < 0xF);     \
                                                     (swap_info) = (image) << 4 \
                                                                 | (type);      \
-                                                    }
+    }
 #ifdef MCUBOOT_HAVE_ASSERT_H
 #include "mcuboot_config/mcuboot_assert.h"
 #else
@@ -141,12 +171,13 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
 #endif
 #endif
 
-struct boot_swap_state {
-    uint8_t magic;      /* One of the BOOT_MAGIC_[...] values. */
-    uint8_t swap_type;  /* One of the BOOT_SWAP_TYPE_[...] values. */
-    uint8_t copy_done;  /* One of the BOOT_FLAG_[...] values. */
-    uint8_t image_ok;   /* One of the BOOT_FLAG_[...] values. */
-    uint8_t image_num;  /* Boot status belongs to this image */
+struct boot_swap_state
+{
+    boot_magic_t magic;         /* One of the BOOT_MAGIC_[...] values. */
+    boot_swap_type_t swap_type; /* One of the BOOT_SWAP_TYPE_[...] values. */
+    boot_flag_t copy_done;      /* One of the BOOT_FLAG_[...] values. */
+    boot_flag_t image_ok;       /* One of the BOOT_FLAG_[...] values. */
+    uint8_t image_num;      /* Boot status belongs to this image */
 };
 
 /**
@@ -157,7 +188,7 @@ struct boot_swap_state {
  * @return a BOOT_SWAP_TYPE_[...] constant on success, negative errno code on
  * fail.
  */
-int boot_swap_type_multi(int image_index);
+boot_swap_type_t boot_swap_type_multi(int image_index);
 
 /**
  * @brief Determines the action, if any, that mcuboot will take.
@@ -167,7 +198,7 @@ int boot_swap_type_multi(int image_index);
  * @return a BOOT_SWAP_TYPE_[...] constant on success, negative errno code on
  * fail.
  */
-int boot_swap_type(void);
+boot_swap_type_t boot_swap_type(void);
 
 /**
  * Marks the image with the given index in the secondary slot as pending. On the
@@ -183,7 +214,7 @@ int boot_swap_type(void);
  *
  * @return                  0 on success; nonzero on failure.
  */
-int boot_set_pending_multi(int image_index, int permanent);
+int boot_set_pending_multi(int image_index, bool permanent);
 
 /**
  * Marks the image with index 0 in the secondary slot as pending. On the next
@@ -198,7 +229,7 @@ int boot_set_pending_multi(int image_index, int permanent);
  *
  * @return                  0 on success; nonzero on failure.
  */
-int boot_set_pending(int permanent);
+int boot_set_pending(bool permanent);
 
 /**
  * Marks the image with the given index in the primary slot as confirmed.  The
@@ -241,7 +272,7 @@ uint32_t boot_swap_info_off(const struct flash_area *fap);
  *
  * @return 0 on success; nonzero on failure.
  */
-int boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok);
+int boot_read_image_ok(const struct flash_area *fap, boot_flag_t *image_ok);
 
 /**
  * @brief Read the image swap state

@@ -80,7 +80,7 @@ struct boot_status {
     uint8_t state;        /* Which part of the swapping process are we at */
     uint8_t op;           /* What operation are we performing? */
     uint8_t use_scratch;  /* Are status bytes ever written to scratch? */
-    uint8_t swap_type;    /* The type of swap in effect */
+    boot_swap_type_t swap_type;    /* The type of swap in effect */
     uint32_t swap_size;   /* Total size of swapped image */
 #ifdef MCUBOOT_ENC_IMAGES
     uint8_t enckey[BOOT_NUM_SLOTS][BOOT_ENC_KEY_ALIGN_SIZE];
@@ -196,9 +196,12 @@ _Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image 
 #define BOOT_PRIMARY_SLOT               0
 #define BOOT_SECONDARY_SLOT             1
 
-#define BOOT_STATUS_SOURCE_NONE         0
-#define BOOT_STATUS_SOURCE_SCRATCH      1
-#define BOOT_STATUS_SOURCE_PRIMARY_SLOT 2
+typedef enum
+{
+    BOOT_STATUS_SOURCE_NONE = 0x00,
+    BOOT_STATUS_SOURCE_SCRATCH = 0x01,
+    BOOT_STATUS_SOURCE_PRIMARY_SLOT = 0x02,
+} boot_status_source_t;
 
 /**
  * Compatibility shim for flash sector type.
@@ -228,7 +231,7 @@ struct boot_loader_state {
     } scratch;
 #endif
 
-    uint8_t swap_type[BOOT_IMAGE_NUMBER];
+    boot_swap_type_t swap_type[BOOT_IMAGE_NUMBER];
     uint32_t write_sz;
 
 #if defined(MCUBOOT_ENC_IMAGES)
@@ -263,7 +266,7 @@ fih_ret bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
 fih_ret boot_fih_memequal(const void *s1, const void *s2, size_t n);
 
 int boot_find_status(int image_index, const struct flash_area **fap);
-int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
+bool boot_magic_compatible_check(boot_magic_t tbl_val, boot_magic_t val);
 uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
 int boot_status_entries(int image_index, const struct flash_area *fap);
@@ -276,13 +279,13 @@ int boot_write_magic(const struct flash_area *fap);
 int boot_write_status(const struct boot_loader_state *state, struct boot_status *bs);
 int boot_write_copy_done(const struct flash_area *fap);
 int boot_write_image_ok(const struct flash_area *fap);
-int boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
+int boot_write_swap_info(const struct flash_area *fap, boot_swap_type_t swap_type,
                          uint8_t image_num);
 int boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size);
 int boot_write_trailer(const struct flash_area *fap, uint32_t off,
                        const uint8_t *inbuf, uint8_t inlen);
 int boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
-                            uint8_t flag_val);
+                            boot_flag_t flag_val);
 int boot_read_swap_size(const struct flash_area *fap, uint32_t *swap_size);
 int boot_slots_compatible(struct boot_loader_state *state);
 uint32_t boot_status_internal_off(const struct boot_status *bs, int elem_sz);
@@ -338,11 +341,12 @@ static inline bool boot_u32_safe_add(uint32_t *dest, uint32_t a, uint32_t b)
  */
 static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
 {
-    uint32_t tmp = a + b;
-    if (tmp > UINT16_MAX) {
+    uint32_t tmp = (uint32_t)a + (uint32_t)b;
+
+    if (tmp > (uint32_t)UINT16_MAX) {
         return false;
     } else {
-        *dest = tmp;
+        *dest = (uint16_t)tmp;
         return true;
     }
 }

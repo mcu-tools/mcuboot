@@ -880,11 +880,11 @@ done:
  *
  * @return                      The type of swap to perform (BOOT_SWAP_TYPE...)
  */
-static int
+static boot_swap_type_t
 boot_validated_swap_type(struct boot_loader_state *state,
                          struct boot_status *bs)
 {
-    int swap_type;
+    boot_swap_type_t swap_type;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     swap_type = boot_swap_type_multi(BOOT_CURR_IMG(state));
@@ -1523,7 +1523,7 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
 {
     int rc;
 #ifndef MCUBOOT_OVERWRITE_ONLY
-    uint8_t swap_type;
+    boot_swap_type_t swap_type;
 #endif
 
     /* At this point there are no aborted swaps. */

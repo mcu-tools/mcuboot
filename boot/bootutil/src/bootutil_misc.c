@@ -76,7 +76,7 @@ fih_ret boot_fih_memequal(const void *s1, const void *s2, size_t n)
     uint8_t *s2_p = (uint8_t*) s2;
     FIH_DECLARE(ret, FIH_FAILURE);
 
-    for (i = 0; i < n; i++) {
+    for (i = 0U; i < n; i++) {
         if (s1_p[i] != s2_p[i]) {
             goto out;
         }
@@ -226,7 +226,7 @@ boot_find_status(int image_index, const struct flash_area **fap)
      * because magic is always written in the last step.
      */
 
-    for (i = 0; i < sizeof(areas) / sizeof(areas[0]); i++) {
+    for (i = 0U; i < sizeof(areas) / sizeof(areas[0]); i++) {
         uint8_t magic[BOOT_MAGIC_SZ];
 
         if (flash_area_open(areas[i], fap)) {
@@ -268,7 +268,7 @@ boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status
 {
     uint32_t off;
 #if MCUBOOT_SWAP_SAVE_ENCTLV
-    int i;
+    unsigned int i;
 #endif
     int rc;
 
@@ -276,7 +276,7 @@ boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status
 #if MCUBOOT_SWAP_SAVE_ENCTLV
     rc = flash_area_read(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
     if (rc == 0) {
-        for (i = 0; i < BOOT_ENC_TLV_ALIGN_SIZE; i++) {
+        for (i = 0U; i < BOOT_ENC_TLV_ALIGN_SIZE; i++) {
             if (bs->enctlv[slot][i] != 0xff) {
                 break;
             }
