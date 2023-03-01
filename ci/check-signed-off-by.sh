@@ -15,19 +15,19 @@
 DEPENDABOT_COMMITER='GitHub <noreply@github.com>'
 DEPENDABOT_AUTHOR='dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>'
 
-# this retrieves the merge commit created by GH
-parents=(`git log -n 1 --format=%p HEAD`)
-
-if [[ "${#parents[@]}" -eq 1 ]]; then
-  # CI doesn't use a merge commit
-  commits=$(git show -s --format=%h ${parents})
-elif [[ "${#parents[@]}" -eq 2 ]]; then
-  # CI uses a merge commit, eg GH / Travis
-  from="${parents[0]}"
-  into="${parents[1]}"
-  commits=$(git show -s --format=%h ${from}..${into})
+if [[ -n "$1" ]]; then
+    commits=$(git show -s --format=%h ${1}~..HEAD)
 else
-  echo "Unexpected behavior, cannot verify more than 2 parent commits!"
+    parents=(`git log -n 1 --format=%p HEAD`)
+    if [[ "${#parents[@]}" -ne 2 ]]; then
+        echo "HEAD is not a merge commit, please supply the oldest SHA"
+        exit 1
+    fi
+    commits=$(git show -s --format=%h ${parents[0]}..${parents[1]})
+fi
+
+if [[ -z "${commits}" ]]; then
+  echo "No commits found in this PR!"
   exit 1
 fi
 
@@ -78,10 +78,4 @@ for sha in $commits; do
   if [[ ${found_author} == false || ${found_committer} == false ]]; then
     exit 1
   fi
-
 done
-
-if [[ -z "${commits}" ]]; then
-  echo "No commits found in this PR!"
-  exit 1
-fi
