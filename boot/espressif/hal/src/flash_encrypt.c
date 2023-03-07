@@ -41,6 +41,36 @@ static esp_err_t encrypt_flash_contents(uint32_t flash_crypt_cnt, bool flash_cry
 static esp_err_t encrypt_bootloader(void);
 static esp_err_t encrypt_primary_slot(void);
 
+/**
+ * This former inlined function must not be defined in the header file anymore.
+ * As it depends on efuse component, any use of it outside of `bootloader_support`,
+ * would require the caller component to include `efuse` as part of its `REQUIRES` or
+ * `PRIV_REQUIRES` entries.
+ * Attribute IRAM_ATTR must be specified for the app build.
+ */
+bool IRAM_ATTR esp_flash_encryption_enabled(void)
+{
+    uint32_t flash_crypt_cnt = 0;
+#ifndef CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH
+    flash_crypt_cnt = efuse_ll_get_flash_crypt_cnt();
+#else
+#if CONFIG_IDF_TARGET_ESP32
+    esp_efuse_read_field_blob(ESP_EFUSE_FLASH_CRYPT_CNT, &flash_crypt_cnt, ESP_EFUSE_FLASH_CRYPT_CNT[0]->bit_count);
+#else
+    esp_efuse_read_field_blob(ESP_EFUSE_SPI_BOOT_CRYPT_CNT, &flash_crypt_cnt, ESP_EFUSE_SPI_BOOT_CRYPT_CNT[0]->bit_count);
+#endif
+#endif
+    /* __builtin_parity is in flash, so we calculate parity inline */
+    bool enabled = false;
+    while (flash_crypt_cnt) {
+        if (flash_crypt_cnt & 1) {
+            enabled = !enabled;
+        }
+        flash_crypt_cnt >>= 1;
+    }
+    return enabled;
+}
+
 esp_err_t esp_flash_encrypt_check_and_update(void)
 {
     size_t flash_crypt_cnt = 0;
@@ -360,7 +390,7 @@ esp_err_t esp_flash_encrypt_region(uint32_t src_addr, size_t data_length)
         return ESP_FAIL;
     }
 
-    wdt_hal_context_t rtc_wdt_ctx = {.inst = WDT_RWDT, .rwdt_dev = &RTCCNTL};
+    wdt_hal_context_t rtc_wdt_ctx = RWDT_HAL_CONTEXT_DEFAULT();
     for (size_t i = 0; i < data_length; i += FLASH_SECTOR_SIZE) {
         wdt_hal_write_protect_disable(&rtc_wdt_ctx);
         wdt_hal_feed(&rtc_wdt_ctx);

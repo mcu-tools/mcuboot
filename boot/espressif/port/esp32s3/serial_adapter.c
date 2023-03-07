@@ -172,7 +172,7 @@ int boot_console_init(void)
 
     uart_ll_set_sclk(serial_boot_uart_dev, UART_SCLK_APB);
     uart_ll_set_mode_normal(serial_boot_uart_dev);
-    uart_ll_set_baudrate(serial_boot_uart_dev, 115200);
+    uart_ll_set_baudrate(serial_boot_uart_dev, 115200, UART_SCLK_APB);
     uart_ll_set_stop_bits(serial_boot_uart_dev, 1u);
     uart_ll_set_parity(serial_boot_uart_dev, UART_PARITY_DISABLE);
     uart_ll_set_rx_tout(serial_boot_uart_dev, 16);

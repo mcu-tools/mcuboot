@@ -5,6 +5,7 @@
  */
 
 #pragma once
+#include <inttypes.h>
 #include <mcuboot_config/mcuboot_logging.h>
 
 /* Log levels from IDF are similar to MCUboot's */
@@ -24,3 +25,5 @@
 #define ESP_EARLY_LOGI(tag, fmt, ...) MCUBOOT_LOG_INF("[%s] " fmt, tag, ##__VA_ARGS__)
 #define ESP_EARLY_LOGD(tag, fmt, ...) MCUBOOT_LOG_DBG("[%s] " fmt, tag, ##__VA_ARGS__)
 #define ESP_EARLY_LOGV(tag, fmt, ...) MCUBOOT_LOG_DBG("[%s] " fmt, tag, ##__VA_ARGS__)
+
+uint32_t esp_log_early_timestamp(void);

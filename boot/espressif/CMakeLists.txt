@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 3.13)
+cmake_policy(SET CMP0109 NEW)
 
 include(${CMAKE_CURRENT_LIST_DIR}/tools/utils.cmake)
 
@@ -36,13 +37,15 @@ else()
     message(FATAL_ERROR "Unsupported target ${MCUBOOT_TARGET}")
 endif()
 
-if (NOT DEFINED IDF_PATH)
-    if (EXISTS "${CMAKE_CURRENT_LIST_DIR}/hal/esp-idf")
-        set(IDF_PATH "${CMAKE_CURRENT_LIST_DIR}/hal/esp-idf")
-    elseif (DEFINED ENV{IDF_PATH})
-        set(IDF_PATH $ENV{IDF_PATH})
+if (NOT DEFINED ESP_HAL_PATH)
+    if (DEFINED ENV{ESP_HAL_PATH})
+        set(ESP_HAL_PATH $ENV{ESP_HAL_PATH})
     else()
-        message(FATAL_ERROR "IDF_PATH not found. Please update submodules or set IDF_PATH environment variable or pass -DIDF_PATH flag.")
+        message(WARNING "ESP_HAL_PATH not found. Please set -DESP_HAL_PATH parameter or define ESP_HAL_PATH environment variable.")
+        if (DEFINED ENV{IDF_PATH})
+            set(ESP_HAL_PATH $ENV{IDF_PATH})
+            message("IDF installation found in the system, using IDF_PATH as ESP_HAL_PATH.")
+        endif()
     endif()
 endif()
 
@@ -92,7 +95,11 @@ find_program(ESPTOOL_COMMAND
     NAMES esptool esptool.py
     )
 if ("${ESPTOOL_COMMAND}" MATCHES "ESPTOOL_COMMAND-NOTFOUND")
-    set(esptool_path "${IDF_PATH}/components/esptool_py/esptool/esptool.py")
+    if (DEFINED ENV{IDF_PATH})
+        set(esptool_path "${IDF_PATH}/components/esptool_py/esptool/esptool.py")
+    else()
+        message(FATAL_ERROR "esptool.py not found. Please install it using \'pip install esptool\'.")
+    endif()
 else()
     set(esptool_path "${ESPTOOL_COMMAND}")
 endif()
@@ -179,7 +186,7 @@ set(CFLAGS
     "-ggdb"
     "-Os"
     "-D_GNU_SOURCE"
-    "-std=gnu99"
+    "-std=gnu17"
     "-Wno-old-style-declaration"
     "-Wno-implicit-int"
     "-Wno-declaration-after-statement"
