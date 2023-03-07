@@ -19,7 +19,3 @@
 [submodule "boot/cypress/libs/cy-mbedtls-acceleration"]
 	path = boot/cypress/libs/cy-mbedtls-acceleration
 	url = https://github.com/cypresssemiconductorco/cy-mbedtls-acceleration.git
-[submodule "boot/espressif/hal/esp-idf"]
-	path = boot/espressif/hal/esp-idf
-	url = https://github.com/espressif/esp-idf.git
-	branch = release/v4.4

@@ -6,4 +6,3 @@
 #pragma once
 
 void bootloader_wdt_feed(void);
-void bootloader_config_wdt(void);

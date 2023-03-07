@@ -13,6 +13,8 @@
 #include "bootloader_utility.h"
 #include "bootloader_random.h"
 
+#include "esp_assert.h"
+
 #ifdef CONFIG_MCUBOOT_SERIAL
 #include "boot_serial/boot_serial.h"
 #include "serial_adapter/serial_adapter.h"
@@ -99,9 +101,6 @@ int main()
         FIH_PANIC;
     }
 
-    BOOT_LOG_INF("Enabling RNG early entropy source...");
-    bootloader_random_enable();
-
     /* Rough steps for a first boot when Secure Boot and/or Flash Encryption are still disabled on device:
      * Secure Boot:
      *   1) Calculate the SHA-256 hash digest of the public key and write to EFUSE.
@@ -141,8 +140,6 @@ int main()
         }
     }
 #endif
-
-    BOOT_LOG_INF("*** Booting MCUboot build %s ***", MCUBOOT_VER);
 
     os_heap_init();
 

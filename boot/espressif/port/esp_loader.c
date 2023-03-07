@@ -9,19 +9,11 @@
 #include <bootutil/bootutil_log.h>
 #include <bootutil/fault_injection_hardening.h>
 
+#include "bootloader_memory_utils.h"
 #include "bootloader_flash_priv.h"
 #include "esp_flash_encrypt.h"
-#include "soc/soc_memory_layout.h"
 
-#if CONFIG_IDF_TARGET_ESP32
-#include "esp32/rom/uart.h"
-#elif CONFIG_IDF_TARGET_ESP32S2
-#include "esp32s2/rom/uart.h"
-#elif CONFIG_IDF_TARGET_ESP32S3
-#include "esp32s3/rom/uart.h"
-#elif CONFIG_IDF_TARGET_ESP32C3
-#include "esp32c3/rom/uart.h"
-#endif
+#include "rom/uart.h"
 
 #include "esp_mcuboot_image.h"
 #include "esp_loader.h"

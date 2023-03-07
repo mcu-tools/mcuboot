@@ -212,7 +212,11 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
 
 static bool aligned_flash_write(size_t dest_addr, const void *src, size_t size)
 {
-    bool flash_encryption_enabled = esp_flash_encryption_enabled();
+#ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
+        bool flash_encryption_enabled = esp_flash_encryption_enabled();
+#else
+        bool flash_encryption_enabled = false;
+#endif
 
     if (IS_ALIGNED(dest_addr, 4) && IS_ALIGNED((uintptr_t)src, 4) && IS_ALIGNED(size, 4)) {
         /* A single write operation is enough when all parameters are aligned */
@@ -327,7 +331,11 @@ uint32_t flash_area_align(const struct flash_area *area)
     static size_t align = 0;
 
     if (align == 0) {
+#ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
         bool flash_encryption_enabled = esp_flash_encryption_enabled();
+#else
+        bool flash_encryption_enabled = false;
+#endif
 
         if (flash_encryption_enabled) {
             align = 32;
