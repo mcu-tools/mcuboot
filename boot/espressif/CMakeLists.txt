@@ -87,6 +87,16 @@ else()
     set(imgtool_path "${IMGTOOL_COMMAND}")
 endif()
 
+# Find installed esptool, if not found falls to IDF's
+find_program(ESPTOOL_COMMAND
+    NAMES esptool esptool.py
+    )
+if ("${ESPTOOL_COMMAND}" MATCHES "ESPTOOL_COMMAND-NOTFOUND")
+    set(esptool_path "${IDF_PATH}/components/esptool_py/esptool/esptool.py")
+else()
+    set(esptool_path "${ESPTOOL_COMMAND}")
+endif()
+
 if (DEFINED CONFIG_ESP_SIGN_RSA)
     include(${CMAKE_CURRENT_LIST_DIR}/include/crypto_config/rsa.cmake)
 elseif (DEFINED CONFIG_ESP_SIGN_EC256)
@@ -275,7 +285,7 @@ target_link_libraries(
 # Note: Both binary generation and flash steps still have some default arguments
 add_custom_command(TARGET ${APP_EXECUTABLE} POST_BUILD
     COMMAND
-    ${IDF_PATH}/components/esptool_py/esptool/esptool.py
+    ${esptool_path}
     --chip ${MCUBOOT_TARGET} elf2image --min-rev ${ESP_MIN_REVISION}
     --flash_mode dio --flash_freq 40m --flash_size ${CONFIG_ESP_FLASH_SIZE}
     -o ${APP_NAME}.bin ${APP_NAME}.elf
@@ -296,7 +306,7 @@ add_custom_target(flash DEPENDS ${APP_NAME}.bin)
 add_custom_command(TARGET flash
     USES_TERMINAL
     COMMAND
-    ${IDF_PATH}/components/esptool_py/esptool/esptool.py
+    ${esptool_path}
     -p ${FLASH_PORT} -b 2000000 --before default_reset --after no_reset
     --chip ${MCUBOOT_TARGET} write_flash
     --flash_mode dio --flash_size ${CONFIG_ESP_FLASH_SIZE}
