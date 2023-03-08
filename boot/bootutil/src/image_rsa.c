@@ -43,7 +43,7 @@
  */
 #if !defined(MCUBOOT_USE_PSA_CRYPTO)
 
-#include "bootutil/crypto/sha256.h"
+#include "bootutil/crypto/sha.h"
 
 /*
  * Constants for this particular constrained implementation of
@@ -86,17 +86,17 @@ static const uint8_t pss_zeros[8] = {0};
 static void
 pss_mgf1(uint8_t *mask, const uint8_t *hash)
 {
-    bootutil_sha256_context ctx;
+    bootutil_sha_context ctx;
     uint8_t counter[4] = { 0, 0, 0, 0 };
     uint8_t htmp[PSS_HLEN];
     int count = PSS_MASK_LEN;
     int bytes;
 
     while (count > 0) {
-        bootutil_sha256_init(&ctx);
-        bootutil_sha256_update(&ctx, hash, PSS_HLEN);
-        bootutil_sha256_update(&ctx, counter, 4);
-        bootutil_sha256_finish(&ctx, htmp);
+        bootutil_sha_init(&ctx);
+        bootutil_sha_update(&ctx, hash, PSS_HLEN);
+        bootutil_sha_update(&ctx, counter, 4);
+        bootutil_sha_finish(&ctx, htmp);
 
         counter[3]++;
 
@@ -109,7 +109,7 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
         count -= bytes;
     }
 
-    bootutil_sha256_drop(&ctx);
+    bootutil_sha_drop(&ctx);
 }
 
 /*
@@ -121,7 +121,7 @@ static fih_ret
 bootutil_cmp_rsasig(bootutil_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
   uint8_t *sig, size_t slen)
 {
-    bootutil_sha256_context shactx;
+    bootutil_sha_context shactx;
     uint8_t em[MBEDTLS_MPI_MAX_SIZE];
     uint8_t db_mask[PSS_MASK_LEN];
     uint8_t h2[PSS_HLEN];
@@ -221,12 +221,12 @@ bootutil_cmp_rsasig(bootutil_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
     /* Step 12.  Let M' = 0x00 00 00 00 00 00 00 00 || mHash || salt; */
 
     /* Step 13.  Let H' = Hash(M') */
-    bootutil_sha256_init(&shactx);
-    bootutil_sha256_update(&shactx, pss_zeros, 8);
-    bootutil_sha256_update(&shactx, hash, PSS_HLEN);
-    bootutil_sha256_update(&shactx, &db_mask[PSS_MASK_SALT_POS], PSS_SLEN);
-    bootutil_sha256_finish(&shactx, h2);
-    bootutil_sha256_drop(&shactx);
+    bootutil_sha_init(&shactx);
+    bootutil_sha_update(&shactx, pss_zeros, 8);
+    bootutil_sha_update(&shactx, hash, PSS_HLEN);
+    bootutil_sha_update(&shactx, &db_mask[PSS_MASK_SALT_POS], PSS_SLEN);
+    bootutil_sha_finish(&shactx, h2);
+    bootutil_sha_drop(&shactx);
 
     /* Step 14.  If H = H', output "consistent".  Otherwise, output
      * "inconsistent". */
