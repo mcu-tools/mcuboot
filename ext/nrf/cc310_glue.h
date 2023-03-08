@@ -32,7 +32,7 @@
 #define NRF_CRYPTOCELL   NRF_CRYPTOCELL_S
 #endif
 
-typedef nrf_cc310_bl_hash_context_sha256_t bootutil_sha256_context;
+typedef nrf_cc310_bl_hash_context_sha256_t bootutil_sha_context;
 
 int cc310_ecdsa_verify_secp256r1(uint8_t *hash,
                                  uint8_t *public_key,
@@ -66,7 +66,7 @@ static inline void cc310_sha256_init(nrf_cc310_bl_hash_context_sha256_t * ctx)
     nrf_cc310_bl_hash_sha256_init(ctx);
 }
 
-static inline void cc310_sha256_finalize(bootutil_sha256_context *ctx,
+static inline void cc310_sha256_finalize(nrf_cc310_bl_hash_context_sha256_t *ctx,
                                           uint8_t *output)
 {
     nrf_cc310_bl_hash_sha256_finalize(ctx,

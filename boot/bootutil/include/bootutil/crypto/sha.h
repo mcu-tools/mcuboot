@@ -18,8 +18,8 @@
  * the MCUBOOT_USE_PSA_CRYPTO will take precedence.
  */
 
-#ifndef __BOOTUTIL_CRYPTO_SHA256_H_
-#define __BOOTUTIL_CRYPTO_SHA256_H_
+#ifndef __BOOTUTIL_CRYPTO_SHA_H_
+#define __BOOTUTIL_CRYPTO_SHA_H_
 
 #include "mcuboot_config/mcuboot_config.h"
 #include "mcuboot_config/mcuboot_logging.h"
@@ -34,8 +34,16 @@
     #error "One crypto backend must be defined: either CC310/MBED_TLS/TINYCRYPT/PSA_CRYPTO"
 #endif
 
+#if defined(MCUBOOT_SIGN_EC384)
+    #define IMAGE_HASH_SIZE (48)
+    #define EXPECTED_HASH_TLV IMAGE_TLV_SHA384
+#else
+    #define IMAGE_HASH_SIZE (32)
+    #define EXPECTED_HASH_TLV IMAGE_TLV_SHA256
+#endif /* MCUBOOT_SIGN_EC384 */
+
 /* Universal defines for SHA-256 */
-#define BOOTUTIL_CRYPTO_SHA256_BLOCK_SIZE (64)
+#define BOOTUTIL_CRYPTO_SHA256_BLOCK_SIZE  (64)
 #define BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE (32)
 
 #if defined(MCUBOOT_USE_PSA_CRYPTO)
@@ -69,45 +77,54 @@ extern "C" {
 
 #if defined(MCUBOOT_USE_PSA_CRYPTO)
 
-typedef psa_hash_operation_t bootutil_sha256_context;
+typedef psa_hash_operation_t bootutil_sha_context;
 
-static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
+static inline int bootutil_sha_init(bootutil_sha_context *ctx)
 {
     *ctx = psa_hash_operation_init();
-    return (int)psa_hash_setup(ctx, PSA_ALG_SHA_256);
+#if defined(MCUBOOT_SIGN_EC384)
+    psa_status_t status = psa_hash_setup(ctx, PSA_ALG_SHA_384);
+#else
+    psa_status_t status = psa_hash_setup(ctx, PSA_ALG_SHA_256);
+#endif
+    return (int)status;
 }
 
-static inline int bootutil_sha256_drop(bootutil_sha256_context *ctx)
+static inline int bootutil_sha_drop(bootutil_sha_context *ctx)
 {
     return (int)psa_hash_abort(ctx);
 }
 
-static inline int bootutil_sha256_update(bootutil_sha256_context *ctx,
-                                         const void *data,
-                                         uint32_t data_len)
+static inline int bootutil_sha_update(bootutil_sha_context *ctx,
+                                      const void *data,
+                                      uint32_t data_len)
 {
     return (int)psa_hash_update(ctx, data, data_len);
 }
 
-static inline int bootutil_sha256_finish(bootutil_sha256_context *ctx,
-                                          uint8_t *output)
+static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
+                                      uint8_t *output)
 {
     size_t hash_length = 0;
     /* Assumes the output buffer is at least the expected size of the hash */
+#if defined(MCUBOOT_SIGN_EC384)
+    return (int)psa_hash_finish(ctx, output, PSA_HASH_LENGTH(PSA_ALG_SHA_384), &hash_length);
+#else
     return (int)psa_hash_finish(ctx, output, PSA_HASH_LENGTH(PSA_ALG_SHA_256), &hash_length);
+#endif
 }
 
 #elif defined(MCUBOOT_USE_MBED_TLS)
 
-typedef mbedtls_sha256_context bootutil_sha256_context;
+typedef mbedtls_sha256_context bootutil_sha_context;
 
-static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
+static inline int bootutil_sha_init(bootutil_sha_context *ctx)
 {
     mbedtls_sha256_init(ctx);
     return mbedtls_sha256_starts_ret(ctx, 0);
 }
 
-static inline int bootutil_sha256_drop(bootutil_sha256_context *ctx)
+static inline int bootutil_sha_drop(bootutil_sha_context *ctx)
 {
     /* XXX: config defines MBEDTLS_PLATFORM_NO_STD_FUNCTIONS so no need to free */
     /* (void)mbedtls_sha256_free(ctx); */
@@ -115,15 +132,15 @@ static inline int bootutil_sha256_drop(bootutil_sha256_context *ctx)
     return 0;
 }
 
-static inline int bootutil_sha256_update(bootutil_sha256_context *ctx,
-                                         const void *data,
-                                         uint32_t data_len)
+static inline int bootutil_sha_update(bootutil_sha_context *ctx,
+                                      const void *data,
+                                      uint32_t data_len)
 {
     return mbedtls_sha256_update_ret(ctx, data, data_len);
 }
 
-static inline int bootutil_sha256_finish(bootutil_sha256_context *ctx,
-                                          uint8_t *output)
+static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
+                                      uint8_t *output)
 {
     return mbedtls_sha256_finish_ret(ctx, output);
 }
@@ -131,57 +148,58 @@ static inline int bootutil_sha256_finish(bootutil_sha256_context *ctx,
 #endif /* MCUBOOT_USE_MBED_TLS */
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
-typedef struct tc_sha256_state_struct bootutil_sha256_context;
-static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
+typedef struct tc_sha256_state_struct bootutil_sha_context;
+
+static inline int bootutil_sha_init(bootutil_sha_context *ctx)
 {
     tc_sha256_init(ctx);
     return 0;
 }
 
-static inline int bootutil_sha256_drop(bootutil_sha256_context *ctx)
+static inline int bootutil_sha_drop(bootutil_sha_context *ctx)
 {
     (void)ctx;
     return 0;
 }
 
-static inline int bootutil_sha256_update(bootutil_sha256_context *ctx,
-                                         const void *data,
-                                         uint32_t data_len)
+static inline int bootutil_sha_update(bootutil_sha_context *ctx,
+                                      const void *data,
+                                      uint32_t data_len)
 {
     return tc_sha256_update(ctx, data, data_len);
 }
 
-static inline int bootutil_sha256_finish(bootutil_sha256_context *ctx,
-                                          uint8_t *output)
+static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
+                                      uint8_t *output)
 {
     return tc_sha256_final(output, ctx);
 }
 #endif /* MCUBOOT_USE_TINYCRYPT */
 
 #if defined(MCUBOOT_USE_CC310)
-static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
+static inline int bootutil_sha_init(bootutil_sha_context *ctx)
 {
     cc310_sha256_init(ctx);
     return 0;
 }
 
-static inline int bootutil_sha256_drop(bootutil_sha256_context *ctx)
+static inline int bootutil_sha_drop(bootutil_sha_context *ctx)
 {
     (void)ctx;
     nrf_cc310_disable();
     return 0;
 }
 
-static inline int bootutil_sha256_update(bootutil_sha256_context *ctx,
-                                          const void *data,
-                                          uint32_t data_len)
+static inline int bootutil_sha_update(bootutil_sha_context *ctx,
+                                      const void *data,
+                                      uint32_t data_len)
 {
     cc310_sha256_update(ctx, data, data_len);
     return 0;
 }
 
-static inline int bootutil_sha256_finish(bootutil_sha256_context *ctx,
-                                          uint8_t *output)
+static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
+                                      uint8_t *output)
 {
     cc310_sha256_finalize(ctx, output);
     return 0;
@@ -192,4 +210,4 @@ static inline int bootutil_sha256_finish(bootutil_sha256_context *ctx,
 }
 #endif
 
-#endif /* __BOOTUTIL_CRYPTO_SHA256_H_ */
+#endif /* __BOOTUTIL_CRYPTO_SHA_H_ */
