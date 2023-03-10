@@ -128,7 +128,8 @@ BOOT_LOG_MODULE_REGISTER(mcuboot);
 #ifdef CONFIG_MCUBOOT_SERIAL
 #if !defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) && \
     !defined(CONFIG_BOOT_SERIAL_WAIT_FOR_DFU) && \
-    !defined(CONFIG_BOOT_SERIAL_BOOT_MODE)
+    !defined(CONFIG_BOOT_SERIAL_BOOT_MODE) && \
+    !defined(CONFIG_BOOT_SERIAL_NO_APPLICATION)
 #error "Serial recovery selected without an entrance mode set"
 #endif
 #endif
@@ -595,6 +596,19 @@ void main(void)
         BOOT_LOG_ERR("Unable to find bootable image");
 
         mcuboot_status_change(MCUBOOT_STATUS_NO_BOOTABLE_IMAGE_FOUND);
+
+#ifdef CONFIG_BOOT_SERIAL_NO_APPLICATION
+        /* No bootable image and configuration set to remain in serial
+         * recovery mode
+         */
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+        gpio_pin_set_dt(&led0, 1);
+#endif
+
+        mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
+        rc = boot_console_init();
+        boot_serial_start(&boot_funcs);
+#endif
 
         FIH_PANIC;
     }

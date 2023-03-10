@@ -185,6 +185,12 @@ config BOOT_SERIAL_BOOT_MODE
 	  retention system (i.e. an application must set the boot mode to stay
 	  in serial recovery mode and reboot the module).
 
+config BOOT_SERIAL_NO_APPLICATION
+	bool "Stay in bootloader if no application"
+	help
+	  Allows for entering serial recovery mode if there is no bootable
+	  application that the bootloader can jump to.
+
 endmenu
 
 config BOOT_SERIAL_IMG_GRP_HASH
