@@ -205,6 +205,10 @@
 #define MCUBOOT_SERIAL_WAIT_FOR_DFU
 #endif
 
+#ifdef CONFIG_BOOT_SERIAL_IMG_GRP_HASH
+#define MCUBOOT_SERIAL_IMG_GRP_HASH
+#endif
+
 /*
  * The option enables code, currently in boot_serial, that attempts
  * to erase flash progressively, as update fragments are received,
