@@ -168,4 +168,11 @@ config BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
 	help
 	  timeout in ms for MCUboot to wait to allow for DFU to be invoked.
 
+config BOOT_SERIAL_IMG_GRP_HASH
+	bool "Image list hash support"
+	default y
+	help
+	  If y, image list responses will include the image hash (adds ~100
+	  bytes of flash).
+
 endif # MCUBOOT_SERIAL
