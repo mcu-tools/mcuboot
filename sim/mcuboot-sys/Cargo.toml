@@ -24,6 +24,12 @@ sig-ecdsa = []
 # Verify ECDSA (secp256r1) signatures using mbed TLS
 sig-ecdsa-mbedtls = []
 
+# Verify ECDSA (p256 or p384) signatures using PSA Crypto API
+sig-ecdsa-psa = []
+
+# Enable P384 Curve support (instead of P256) for PSA Crypto
+sig-p384 = []
+
 # Verify ED25519 signatures.
 sig-ed25519 = []
 

@@ -29,6 +29,7 @@ pub enum Caps {
     RamLoad              = (1 << 16),
     DirectXip            = (1 << 17),
     HwRollbackProtection = (1 << 18),
+    EcdsaP384            = (1 << 19),
 }
 
 impl Caps {
@@ -39,7 +40,7 @@ impl Caps {
 
     /// Does this build have ECDSA of some type enabled for signatures.
     pub fn has_ecdsa() -> bool {
-        Caps::EcdsaP256.present()
+        Caps::EcdsaP256.present() || Caps::EcdsaP384.present()
     }
 
     /// Query for the number of images that have been configured into this

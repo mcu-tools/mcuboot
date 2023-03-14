@@ -15,6 +15,8 @@ fn main() {
     let sig_rsa3072 = env::var("CARGO_FEATURE_SIG_RSA3072").is_ok();
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
     let sig_ecdsa_mbedtls = env::var("CARGO_FEATURE_SIG_ECDSA_MBEDTLS").is_ok();
+    let sig_ecdsa_psa = env::var("CARGO_FEATURE_SIG_ECDSA_PSA").is_ok();
+    let sig_p384 = env::var("CARGO_FEATURE_SIG_P384").is_ok();
     let sig_ed25519 = env::var("CARGO_FEATURE_SIG_ED25519").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
     let swap_move = env::var("CARGO_FEATURE_SWAP_MOVE").is_ok();
@@ -201,6 +203,24 @@ fn main() {
         conf.file("../../ext/mbedtls/library/asn1parse.c");
         conf.file("../../ext/mbedtls/library/bignum.c");
         conf.file("../../ext/mbedtls/library/ecdsa.c");
+        conf.file("../../ext/mbedtls/library/ecp.c");
+        conf.file("../../ext/mbedtls/library/ecp_curves.c");
+        conf.file("../../ext/mbedtls/library/platform.c");
+        conf.file("../../ext/mbedtls/library/platform_util.c");
+    } else if sig_ecdsa_psa {
+        conf.conf.include("../../ext/mbedtls/include");
+
+        if sig_p384 {
+            conf.conf.define("MCUBOOT_SIGN_EC384", None);
+            conf.file("../../ext/mbedtls/library/sha512.c");
+        } else {
+            conf.conf.define("MCUBOOT_SIGN_EC256", None);
+            conf.file("../../ext/mbedtls/library/sha256.c");
+        }
+
+        conf.file("csupport/keys.c");
+        conf.file("../../ext/mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls/library/bignum.c");
         conf.file("../../ext/mbedtls/library/ecp.c");
         conf.file("../../ext/mbedtls/library/ecp_curves.c");
         conf.file("../../ext/mbedtls/library/platform.c");
@@ -421,17 +441,19 @@ fn main() {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-kw.h>"));
     } else if enc_aes256_x25519 {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ed25519.h>"));
+    } else if sig_ecdsa_psa {
+        conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ec-psa.h>"));
     }
 
     conf.file("../../boot/bootutil/src/image_validate.c");
     if sig_rsa || sig_rsa3072 {
         conf.file("../../boot/bootutil/src/image_rsa.c");
-    } else if sig_ecdsa || sig_ecdsa_mbedtls {
-        conf.conf.include("../../ext/mbedtls/include");
+    } else if sig_ecdsa || sig_ecdsa_mbedtls || sig_ecdsa_psa {
         conf.file("../../boot/bootutil/src/image_ecdsa.c");
     } else if sig_ed25519 {
         conf.file("../../boot/bootutil/src/image_ed25519.c");
     }
+
     conf.file("../../boot/bootutil/src/loader.c");
     conf.file("../../boot/bootutil/src/swap_misc.c");
     conf.file("../../boot/bootutil/src/swap_scratch.c");

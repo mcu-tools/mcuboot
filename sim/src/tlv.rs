@@ -29,6 +29,7 @@ use ring::signature::{
     EcdsaKeyPair,
     ECDSA_P256_SHA256_ASN1_SIGNING,
     Ed25519KeyPair,
+    ECDSA_P384_SHA384_ASN1_SIGNING,
 };
 use aes::{
     Aes128,
@@ -385,12 +386,17 @@ impl ManifestGen for TlvGen {
             estimate += 4 + 64; // ED25519 signature.
         }
         if self.kinds.contains(&TlvKinds::ECDSASIG) {
-            estimate += 4 + 32; // keyhash
-
-            // ECDSA signatures are encoded as ASN.1 with the x and y values stored as signed
-            // integers.  As such, the size can vary by 2 bytes, if the 256-bit value has the high
-            // bit, it takes an extra 0 byte to avoid it being seen as a negative number.
-            estimate += 4 + 72; // ECDSA256 (varies)
+            // ECDSA signatures are encoded as ASN.1 with the x and y values
+            // stored as signed integers. As such, the size can vary by 2 bytes,
+            // if for example the 256-bit value has the high bit, it takes an
+            // extra 0 byte to avoid it being seen as a negative number.
+            if cfg!(feature = "use-p384-curve") {
+                estimate += 4 + 48;  // keyhash
+                estimate += 4 + 104; // ECDSA384 (varies)
+            } else {
+                estimate += 4 + 32;  // keyhash
+                estimate += 4 + 72;  // ECDSA256 (varies)
+            }
         }
 
         // Estimate encryption.
@@ -559,11 +565,19 @@ impl ManifestGen for TlvGen {
 
         if self.kinds.contains(&TlvKinds::ECDSASIG) {
             let rng = rand::SystemRandom::new();
-            let keyhash = digest::digest(&digest::SHA256, ECDSA256_PUB_KEY);
-            let key_bytes = pem::parse(include_bytes!("../../root-ec-p256-pkcs8.pem").as_ref()).unwrap();
-            let sign_algo = &ECDSA_P256_SHA256_ASN1_SIGNING;
-            let key_pair = EcdsaKeyPair::from_pkcs8(sign_algo, &key_bytes.contents).unwrap();
-            let signature = key_pair.sign(&rng,&sig_payload).unwrap();
+            let (signature, keyhash) = if cfg!(feature = "use-p384-curve") {
+                let keyhash = digest::digest(&digest::SHA384, ECDSAP384_PUB_KEY);
+                let key_bytes = pem::parse(include_bytes!("../../root-ec-p384-pkcs8.pem").as_ref()).unwrap();
+                let sign_algo = &ECDSA_P384_SHA384_ASN1_SIGNING;
+                let key_pair = EcdsaKeyPair::from_pkcs8(sign_algo, &key_bytes.contents).unwrap();
+                (key_pair.sign(&rng, &sig_payload).unwrap(), keyhash)
+             } else {
+                let keyhash = digest::digest(&digest::SHA256, ECDSA256_PUB_KEY);
+                let key_bytes = pem::parse(include_bytes!("../../root-ec-p256-pkcs8.pem").as_ref()).unwrap();
+                let sign_algo = &ECDSA_P256_SHA256_ASN1_SIGNING;
+                let key_pair = EcdsaKeyPair::from_pkcs8(sign_algo, &key_bytes.contents).unwrap();
+                (key_pair.sign(&rng, &sig_payload).unwrap(), keyhash)
+             };
 
             // Write public key
             let keyhash_slice = keyhash.as_ref();
@@ -578,6 +592,7 @@ impl ManifestGen for TlvGen {
             result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
             result.extend_from_slice(&signature);
         }
+
         if self.kinds.contains(&TlvKinds::ED25519) {
             let keyhash = digest::digest(&digest::SHA256, ED25519_PUB_KEY);
             let keyhash = keyhash.as_ref();
