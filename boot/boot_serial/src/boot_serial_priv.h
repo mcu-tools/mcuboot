@@ -61,7 +61,7 @@ struct nmgr_hdr {
     uint16_t nh_group;          /* NMGR_GROUP_XXX */
     uint8_t  nh_seq;            /* sequence number */
     uint8_t  nh_id;             /* message ID within group */
-};
+} __packed;
 
 /*
  * From imgmgr.h
