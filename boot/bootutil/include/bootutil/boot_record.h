@@ -61,11 +61,13 @@ int boot_save_boot_status(uint8_t sw_module,
  *
  * @param[in]  hdr        Pointer to the image header stored in RAM.
  * @param[in]  fap        Pointer to the flash area where image is stored.
+ * @param[in]  slot       The currently active slot being booted.
  *
  * @return                0 on success; nonzero on failure.
  */
 int boot_save_shared_data(const struct image_header *hdr,
-                          const struct flash_area *fap);
+                          const struct flash_area *fap,
+                          const uint32_t active_slot);
 
 #ifdef __cplusplus
 }

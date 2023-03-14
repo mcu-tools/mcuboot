@@ -146,7 +146,8 @@ boot_add_shared_data(struct boot_loader_state *state,
 
 #ifdef MCUBOOT_DATA_SHARING
     rc = boot_save_shared_data(boot_img_hdr(state, active_slot),
-                                BOOT_IMG_AREA(state, active_slot));
+                                BOOT_IMG_AREA(state, active_slot),
+                                active_slot);
     if (rc != 0) {
         BOOT_LOG_ERR("Failed to add data to shared memory area.");
         return rc;
