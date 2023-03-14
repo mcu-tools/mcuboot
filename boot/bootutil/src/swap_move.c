@@ -542,4 +542,26 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     flash_area_close(fap_sec);
 }
 
+int app_max_size(struct boot_loader_state *state)
+{
+    uint32_t sz = 0;
+    uint32_t sector_sz;
+    uint32_t trailer_sz;
+    uint32_t first_trailer_idx;
+
+    sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
+    first_trailer_idx = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 1;
+
+    while (1) {
+        sz += sector_sz;
+        if  (sz >= trailer_sz) {
+            break;
+        }
+        first_trailer_idx--;
+    }
+
+    return (first_trailer_idx * sector_sz);
+}
+
 #endif

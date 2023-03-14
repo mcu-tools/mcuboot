@@ -129,10 +129,14 @@ boot_read_image_headers(struct boot_loader_state *state, bool require_all,
  */
 static int
 boot_add_shared_data(struct boot_loader_state *state,
-                     uint32_t active_slot)
+                     uint8_t active_slot)
 {
 #if defined(MCUBOOT_MEASURED_BOOT) || defined(MCUBOOT_DATA_SHARING)
     int rc;
+
+#ifdef MCUBOOT_DATA_SHARING
+    int max_app_size;
+#endif
 
 #ifdef MCUBOOT_MEASURED_BOOT
     rc = boot_save_boot_status(BOOT_CURR_IMG(state),
@@ -145,8 +149,10 @@ boot_add_shared_data(struct boot_loader_state *state,
 #endif /* MCUBOOT_MEASURED_BOOT */
 
 #ifdef MCUBOOT_DATA_SHARING
+    max_app_size = app_max_size(state);
     rc = boot_save_shared_data(boot_img_hdr(state, active_slot),
-                                BOOT_IMG_AREA(state, active_slot));
+                                BOOT_IMG_AREA(state, active_slot),
+                                active_slot, max_app_size);
     if (rc != 0) {
         BOOT_LOG_ERR("Failed to add data to shared memory area.");
         return rc;
@@ -3278,7 +3284,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
             goto out;
         }
 
-        rc = boot_add_shared_data(state, state->slot_usage[BOOT_CURR_IMG(state)].active_slot);
+        rc = boot_add_shared_data(state, (uint8_t)state->slot_usage[BOOT_CURR_IMG(state)].active_slot);
         if (rc != 0) {
             FIH_SET(fih_rc, FIH_FAILURE);
             goto out;
