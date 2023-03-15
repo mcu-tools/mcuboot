@@ -25,6 +25,16 @@
 extern "C" {
 #endif
 
+/** Error codes for using the shared memory area. */
+enum shared_memory_status {
+    SHARED_MEMORY_OK           = 0,
+    SHARED_MEMORY_OVERFLOW,
+    SHARED_MEMORY_OVERWRITE,
+    SHARED_MEMORY_GEN_ERROR,
+    SHARED_MEMORY_WRITE_ERROR,
+    SHARED_MEMORY_READ_ERROR,
+};
+
 /**
  * @brief Add a data item to the shared data area between bootloader and
  *        runtime SW
