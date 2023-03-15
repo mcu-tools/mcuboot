@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2018-2021 Arm Limited
  * Copyright (c) 2020 Linaro Limited
+ * Copyright (c) 2023, Nordic Semiconductor ASA
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,12 +30,6 @@
 #include "bootutil_priv.h"
 #include "bootutil/image.h"
 #include "flash_map_backend/flash_map_backend.h"
-
-/* Error codes for using the shared memory area. */
-#define SHARED_MEMORY_OK            (0)
-#define SHARED_MEMORY_OVERFLOW      (1)
-#define SHARED_MEMORY_OVERWRITE     (2)
-#define SHARED_MEMORY_GEN_ERROR     (3)
 
 /**
  * @var shared_memory_init_done
@@ -191,7 +186,6 @@ boot_save_boot_status(uint8_t sw_module,
         }
     }
 
-
     if (!boot_record_found || !hash_found) {
         return -1;
     }
@@ -230,3 +224,105 @@ boot_save_boot_status(uint8_t sw_module,
     return 0;
 }
 #endif /* MCUBOOT_MEASURED_BOOT */
+
+#ifdef MCUBOOT_DATA_SHARING_BOOTINFO
+int boot_save_shared_data(const struct image_header *hdr, const struct flash_area *fap,
+                          const uint8_t slot, const int max_app_size)
+{
+    int rc;
+
+#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
+    uint8_t mode = MCUBOOT_MODE_SINGLE_SLOT;
+#elif defined(MCUBOOT_SWAP_USING_SCRATCH)
+    uint8_t mode = MCUBOOT_MODE_SWAP_USING_SCRATCH;
+#elif defined(MCUBOOT_OVERWRITE_ONLY)
+    uint8_t mode = MCUBOOT_MODE_UPGRADE_ONLY;
+#elif defined(MCUBOOT_SWAP_USING_MOVE)
+    uint8_t mode = MCUBOOT_MODE_SWAP_USING_MOVE;
+#elif defined(MCUBOOT_DIRECT_XIP)
+    uint8_t mode = MCUBOOT_MODE_DIRECT_XIP;
+#elif defined(MCUBOOT_RAM_LOAD)
+    uint8_t mode = MCUBOOT_MODE_RAM_LOAD;
+#else
+#error "Unknown mcuboot operating mode"
+#endif
+
+#if defined(MCUBOOT_SIGN_RSA)
+    uint8_t signature_type = MCUBOOT_SIGNATURE_TYPE_RSA;
+#elif defined(MCUBOOT_SIGN_EC256)
+    uint8_t signature_type = MCUBOOT_SIGNATURE_TYPE_ECDSA_P256;
+#elif defined(MCUBOOT_SIGN_ED25519)
+    uint8_t signature_type = MCUBOOT_SIGNATURE_TYPE_ED25519;
+#else
+    uint8_t signature_type = MCUBOOT_SIGNATURE_TYPE_NONE;
+#endif
+
+#if defined(MCUBOOT_SERIAL_RECOVERY)
+    uint8_t recovery = MCUBOOT_RECOVERY_MODE_SERIAL_RECOVERY;
+#elif defined(MCUBOOT_USB_DFU)
+    uint8_t recovery = MCUBOOT_RECOVERY_MODE_DFU;
+#else
+    uint8_t recovery = MCUBOOT_RECOVERY_MODE_NONE;
+#endif
+
+#if defined(MCUBOOT_VERSION_AVAILABLE)
+    struct image_version mcuboot_version = {
+        .iv_major = MCUBOOT_VERSION_MAJOR,
+        .iv_minor = MCUBOOT_VERSION_MINOR,
+
+#if defined(MCUBOOT_VERSION_PATCHLEVEL)
+        .iv_revision = MCUBOOT_VERSION_PATCHLEVEL,
+#else
+        .iv_revision = 0,
+#endif
+
+#if defined(MCUBOOT_VERSION_TWEAK)
+        .iv_build_num = MCUBOOT_VERSION_TWEAK,
+#else
+        .iv_build_num = 0,
+#endif
+    };
+#endif
+
+    /* Write out all fields */
+    rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO, BLINFO_MODE,
+                                      sizeof(mode), &mode);
+
+    if (!rc) {
+        rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO,
+                                          BLINFO_SIGNATURE_TYPE,
+                                          sizeof(signature_type),
+                                          &signature_type);
+    }
+
+    if (!rc) {
+        rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO,
+                                          BLINFO_RECOVERY,
+                                          sizeof(recovery), &recovery);
+    }
+
+    if (!rc) {
+        rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO,
+                                          BLINFO_RUNNING_SLOT,
+                                          sizeof(slot), (void *)&slot);
+    }
+
+#if defined(MCUBOOT_VERSION_AVAILABLE)
+    if (!rc) {
+        rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO,
+                                          BLINFO_BOOTLOADER_VERSION,
+                                          sizeof(mcuboot_version),
+                                          (void *)&mcuboot_version);
+    }
+#endif
+
+    if (!rc) {
+        rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO,
+                                          BLINFO_MAX_APPLICATION_SIZE,
+                                          sizeof(max_app_size),
+                                          (void *)&max_app_size);
+    }
+
+    return rc;
+}
+#endif /* MCUBOOT_DATA_SHARING_BOOTINFO */

@@ -217,6 +217,15 @@
 #define MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
 #endif
 
+#ifdef CONFIG_MCUBOOT_SERIAL
+#define MCUBOOT_SERIAL_RECOVERY
+#endif
+
+#if (defined(CONFIG_BOOT_USB_DFU_WAIT) || \
+     defined(CONFIG_BOOT_USB_DFU_GPIO))
+#define MCUBOOT_USB_DFU
+#endif
+
 /*
  * The option enables code, currently in boot_serial, that attempts
  * to erase flash progressively, as update fragments are received,
