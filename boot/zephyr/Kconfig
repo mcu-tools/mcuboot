@@ -370,6 +370,14 @@ config MEASURED_BOOT
 config BOOT_SHARE_DATA
 	bool "Save application specific data in shared memory area"
 	default n
+	depends on RETAINED_MEM
+	depends on RETENTION
+	depends on RETENTION_BOOTLOADER_CONFIG
+	help
+	  This will place information about the mcuboot configuration and
+	  running application into a shared memory area (requires that the
+	  `zephyr,bootloader-config` chosen node by correctly assigned) that the
+	  application can then read and use as is needed.
 
 choice BOOT_FAULT_INJECTION_HARDENING_PROFILE
 	prompt "Fault injection hardening profile"
