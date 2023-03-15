@@ -48,6 +48,12 @@ struct flash_sector {
 
 int flash_area_sector_from_off(off_t off, struct flash_sector *sector);
 
+static inline int flash_area_get_sector(const struct flash_area *fa, off_t off,
+    struct flash_sector *sector)
+{
+    return flash_area_sector_from_off(off, sector);
+}
+
 static inline uint8_t flash_area_get_id(const struct flash_area *fa)
 {
     return fa->fa_id;
