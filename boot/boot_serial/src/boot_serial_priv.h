@@ -54,6 +54,10 @@ extern "C" {
 #define NMGR_ID_CONS_ECHO_CTRL  1
 #define NMGR_ID_RESET           5
 
+#ifndef __packed
+#define __packed __attribute__((__packed__))
+#endif
+
 struct nmgr_hdr {
     uint8_t  nh_op;             /* NMGR_OP_XXX */
     uint8_t  nh_flags;
