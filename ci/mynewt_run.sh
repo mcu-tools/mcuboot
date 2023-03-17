@@ -25,4 +25,9 @@ for target in $(ls ci/mynewt_targets); do
     [[ $? -ne 0 ]] && exit 1
 done
 
+mkdir targets
+cp -r repos/apache-mynewt-core/targets/unittest targets
+newt test boot/boot_serial
+[[ $? -ne 0 ]] && exit 1
+
 exit 0
