@@ -3,6 +3,38 @@
 - Table of Contents
 {:toc}
 
+## Version 1.10.0
+
+The 1.10.0 release of MCUboot contains...
+
+### About this release
+
+- Various fixes to boot serial.
+- Various fixes to the mbed target.
+- Various fixes to the Espressif native target.
+- Various fixes to the Zephyr target.
+- Workflow improvements with Zephyr CI.
+- Add multi image support to the espressif esp32 target.
+- Improvements and corrections to the simulator.
+- Improve imgtool, including adding 3rd party signing support.
+- Various fixes to the mynewt target.
+- Various fixes to the nuttx target.
+- Dates to dependencies for doc generation.
+- Add downgrade prevention for modes using swap.
+- Various general fixes to the boot code.
+- Prefer swap move on zephyr if the scratch partition is not enabled.
+- Upgrade fault-injection hardening, improving cases injections are detected.
+- Add a new flash api `flash_area_get_sector`, along with support for each
+  target, that replaces `flash_area_sector_from_off`. This is a step in cleaning
+  up the flash API used by MCUboot.
+
+### Security fixes
+
+There are no security vulnerabilities reported on the MCUboot code for this
+release. There have been several updates to the dependencies in the Ruby code
+used to generate the documentation. This should only affect users that generate
+their own documentation.
+
 ## Version 1.9.0
 
 The 1.9.0 release of MCUboot contains various bug fixes, improves
