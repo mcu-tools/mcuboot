@@ -57,9 +57,15 @@ arm_toolchain_install() {
     done
 }
 
+native_test_setup() {
+    sudo apt-get update
+    sudo apt-get install -y gcc-multilib
+}
+
 mkdir -p $HOME/bin
 export PATH=$HOME/bin:$PATH
 
 install_newt
 shallow_clone_mynewt
 arm_toolchain_install
+native_test_setup
