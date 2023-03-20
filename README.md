@@ -16,7 +16,7 @@
 [travis]: https://travis-ci.org/mcu-tools/mcuboot
 [license]: https://github.com/mcu-tools/mcuboot/blob/main/LICENSE
 
-This is MCUboot version 1.10.0-dev
+This is MCUboot version 1.10.0-rc1
 
 MCUboot is a secure bootloader for 32-bits microcontrollers. It defines a
 common infrastructure for the bootloader and the system flash layout on
