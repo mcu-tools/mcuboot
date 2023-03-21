@@ -53,11 +53,16 @@ class PKCS11UsageError(Exception):
 
 class PKCS11(KeyClass):
     def __init__(self, uri, env=os.environ):
-        if not 'PKCS11_PIN' in env.keys():
-            raise RuntimeError("Environment variable PKCS11_PIN not set. Set it to the user PIN.")
         params = get_pkcs11_uri_params(uri)
+
+        if b'pin-value' in params.keys():
+            self.user_pin = str(params[b'pin-value'], "utf-8")
+        elif 'PKCS11_PIN' in env.keys():
+            self.user_pin = env['PKCS11_PIN']
+        else:
+            raise RuntimeError("Environment variable PKCS11_PIN not set. Set it to the user PIN.")
+
         assert(b'serial' in params.keys())
-        self.user_pin = env['PKCS11_PIN']
 
         # Try to find PKCS #11 module path like this:
         # Use the environment variable $PKCS11_MODULE,
