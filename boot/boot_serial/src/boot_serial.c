@@ -196,8 +196,11 @@ bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
     off += u32toa(dst + off, ver->iv_minor);
     dst[off++] = '.';
     off += u32toa(dst + off, ver->iv_revision);
-    dst[off++] = '.';
-    off += u32toa(dst + off, ver->iv_build_num);
+
+    if (ver->iv_build_num != 0) {
+        dst[off++] = '.';
+        off += u32toa(dst + off, ver->iv_build_num);
+    }
 }
 #else
 /*
@@ -206,8 +209,14 @@ bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
 static void
 bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
 {
-   snprintf(dst, maxlen, "%hu.%hu.%hu.%u", (uint16_t)ver->iv_major,
-            (uint16_t)ver->iv_minor, ver->iv_revision, ver->iv_build_num);
+   int len;
+
+   len = snprintf(dst, maxlen, "%hu.%hu.%hu", (uint16_t)ver->iv_major,
+                  (uint16_t)ver->iv_minor, ver->iv_revision);
+
+   if (ver->iv_build_num != 0 && len > 0 && len < maxlen) {
+      snprintf(&dst[len], (maxlen - len), "%u", ver->iv_build_num);
+   }
 }
 #endif /* !MCUBOOT_USE_SNPRINTF */
 
