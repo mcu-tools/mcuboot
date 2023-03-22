@@ -43,7 +43,7 @@ def get_pkcs11_uri_params(uri):
         in [
             line.split('=')
             for line
-            in uri_tokens.path.split(';')
+            in uri_tokens.path.replace(':', ';').split(';')
         ]
     }
 
