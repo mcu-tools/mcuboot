@@ -292,7 +292,7 @@ add_custom_command(TARGET flash
     USES_TERMINAL
     COMMAND
     ${IDF_PATH}/components/esptool_py/esptool/esptool.py
-    -p ${FLASH_PORT} -b 2000000 --before default_reset --after no_reset
+    -p ${FLASH_PORT} --before default_reset --after no_reset
     --chip ${MCUBOOT_TARGET} write_flash
     --flash_mode dio --flash_size ${CONFIG_ESP_FLASH_SIZE}
     --flash_freq 40m ${CONFIG_ESP_BOOTLOADER_OFFSET}
