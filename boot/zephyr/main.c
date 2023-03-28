@@ -64,6 +64,10 @@ const struct boot_uart_funcs boot_funcs = {
 #include <arm_cleanup.h>
 #endif
 
+#ifdef CONFIG_BOOT_SERIAL_PIN_RESET
+#include <zephyr/drivers/hwinfo.h>
+#endif
+
 /* CONFIG_LOG_MINIMAL is the legacy Kconfig property,
  * replaced by CONFIG_LOG_MODE_MINIMAL.
  */
@@ -129,7 +133,8 @@ BOOT_LOG_MODULE_REGISTER(mcuboot);
 #if !defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) && \
     !defined(CONFIG_BOOT_SERIAL_WAIT_FOR_DFU) && \
     !defined(CONFIG_BOOT_SERIAL_BOOT_MODE) && \
-    !defined(CONFIG_BOOT_SERIAL_NO_APPLICATION)
+    !defined(CONFIG_BOOT_SERIAL_NO_APPLICATION) && \
+    !defined(CONFIG_BOOT_SERIAL_PIN_RESET)
 #error "Serial recovery selected without an entrance mode set"
 #endif
 #endif
@@ -481,6 +486,10 @@ void main(void)
     int32_t boot_mode;
 #endif
 
+#ifdef CONFIG_BOOT_SERIAL_PIN_RESET
+    uint32_t reset_cause;
+#endif
+
     MCUBOOT_WATCHDOG_FEED();
 
 #if !defined(MCUBOOT_DIRECT_XIP)
@@ -510,6 +519,25 @@ void main(void)
 #endif
 
         mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
+
+        BOOT_LOG_INF("Enter the serial recovery mode");
+        rc = boot_console_init();
+        __ASSERT(rc == 0, "Error initializing boot console.\n");
+        boot_serial_start(&boot_funcs);
+        __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
+    }
+#endif
+
+#ifdef CONFIG_BOOT_SERIAL_PIN_RESET
+    rc = hwinfo_get_reset_cause(&reset_cause);
+
+    if (rc == 0 && reset_cause == RESET_PIN) {
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+        gpio_pin_set_dt(&led0, 1);
+#endif
+
+        mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
+        (void)hwinfo_clear_reset_cause();
 
         BOOT_LOG_INF("Enter the serial recovery mode");
         rc = boot_console_init();
