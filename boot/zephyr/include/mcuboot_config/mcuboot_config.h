@@ -213,6 +213,10 @@
 #define MCUBOOT_SERIAL_IMG_GRP_HASH
 #endif
 
+#ifdef CONFIG_BOOT_SERIAL_IMG_GRP_IMAGE_STATE
+#define MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
+#endif
+
 /*
  * The option enables code, currently in boot_serial, that attempts
  * to erase flash progressively, as update fragments are received,
