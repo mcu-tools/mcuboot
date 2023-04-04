@@ -476,6 +476,25 @@ static bool detect_pin(void)
 }
 #endif
 
+#ifdef CONFIG_MCUBOOT_SERIAL
+static void boot_serial_enter()
+{
+    int rc;
+
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+    gpio_pin_set_dt(&led0, 1);
+#endif
+
+    mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
+
+    BOOT_LOG_INF("Enter the serial recovery mode");
+    rc = boot_console_init();
+    __ASSERT(rc == 0, "Error initializing boot console.\n");
+    boot_serial_start(&boot_funcs);
+    __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
+}
+#endif
+
 void main(void)
 {
     struct boot_rsp rsp;
@@ -514,17 +533,7 @@ void main(void)
 #ifdef CONFIG_BOOT_SERIAL_ENTRANCE_GPIO
     if (detect_pin() &&
             !boot_skip_serial_recovery()) {
-#ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set_dt(&led0, 1);
-#endif
-
-        mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
-
-        BOOT_LOG_INF("Enter the serial recovery mode");
-        rc = boot_console_init();
-        __ASSERT(rc == 0, "Error initializing boot console.\n");
-        boot_serial_start(&boot_funcs);
-        __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
+        boot_serial_enter();
     }
 #endif
 
@@ -532,18 +541,8 @@ void main(void)
     rc = hwinfo_get_reset_cause(&reset_cause);
 
     if (rc == 0 && reset_cause == RESET_PIN) {
-#ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set_dt(&led0, 1);
-#endif
-
-        mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
         (void)hwinfo_clear_reset_cause();
-
-        BOOT_LOG_INF("Enter the serial recovery mode");
-        rc = boot_console_init();
-        __ASSERT(rc == 0, "Error initializing boot console.\n");
-        boot_serial_start(&boot_funcs);
-        __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
+        boot_serial_enter();
     }
 #endif
 
@@ -600,14 +599,8 @@ void main(void)
         /* Boot mode to stay in bootloader, clear status and enter serial
          * recovery mode
          */
-#ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set_dt(&led0, 1);
-#endif
-
-        mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
-        rc = boot_console_init();
         bootmode_clear();
-        boot_serial_start(&boot_funcs);
+        boot_serial_enter();
     }
 #endif
 
@@ -629,13 +622,7 @@ void main(void)
         /* No bootable image and configuration set to remain in serial
          * recovery mode
          */
-#ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set_dt(&led0, 1);
-#endif
-
-        mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
-        rc = boot_console_init();
-        boot_serial_start(&boot_funcs);
+        boot_serial_enter();
 #endif
 
         FIH_PANIC;
