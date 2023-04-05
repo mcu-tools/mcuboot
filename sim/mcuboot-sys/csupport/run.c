@@ -274,7 +274,11 @@ int invoke_boot_go(struct sim_context *ctx, struct area_desc *adesc,
         (void) image_id;
 #endif /* BOOT_IMAGE_NUMBER > 1 */
 
-        res = context_boot_go(state, rsp);
+#if defined(MCUBOOT_RAM_LOAD)
+        res = context_boot_go_ram(state, rsp);
+#else
+        res = context_boot_go_flash(state, rsp);
+#endif
         sim_reset_flash_areas();
         sim_reset_context();
         free(state);

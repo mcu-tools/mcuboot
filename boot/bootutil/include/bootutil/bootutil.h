@@ -83,7 +83,14 @@ fih_ret boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id);
 
 struct boot_loader_state;
 void boot_state_clear(struct boot_loader_state *state);
-fih_ret context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp);
+
+fih_ret context_boot_go_flash(struct boot_loader_state *state, struct boot_rsp *rsp);
+
+#if defined(MCUBOOT_RAM_LOAD)
+fih_ret context_boot_go_ram(struct boot_loader_state *state, struct boot_rsp *rsp);
+fih_ret boot_go_for_image_id_ram(struct boot_rsp *rsp, uint32_t image_id);
+#endif
+
 
 #define SPLIT_GO_OK                 (0)
 #define SPLIT_GO_NON_MATCHING       (-1)

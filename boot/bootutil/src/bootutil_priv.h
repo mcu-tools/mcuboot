@@ -193,6 +193,7 @@ _Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image 
 /** Maximum number of image sectors supported by the bootloader. */
 #define BOOT_STATUS_MAX_ENTRIES         BOOT_MAX_IMG_SECTORS
 
+#define NO_ACTIVE_SLOT                  UINT32_MAX
 #define BOOT_PRIMARY_SLOT               0
 #define BOOT_SECONDARY_SLOT             1
 
@@ -240,7 +241,7 @@ struct boot_loader_state {
     bool img_mask[BOOT_IMAGE_NUMBER];
 #endif
 
-#if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
+#if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD) || defined(MCUBOOT_MULTI_MEMORY_BOOT)
     struct slot_usage_t {
         /* Index of the slot chosen to be loaded */
         uint32_t active_slot;
@@ -279,6 +280,7 @@ int boot_write_image_ok(const struct flash_area *fap);
 int boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
                          uint8_t image_num);
 int boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size);
+uint32_t bootutil_max_image_size(const struct flash_area *fap);
 int boot_write_trailer(const struct flash_area *fap, uint32_t off,
                        const uint8_t *inbuf, uint8_t inlen);
 int boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
@@ -434,7 +436,7 @@ boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
 
 #endif  /* !defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
 
-#ifdef MCUBOOT_RAM_LOAD
+#if defined(MCUBOOT_RAM_LOAD)
 #   ifdef __BOOTSIM__
 
 /* Query for the layout of a RAM buffer appropriate for holding the
@@ -456,17 +458,36 @@ struct bootsim_ram_info *bootsim_get_ram_info(void);
 #       define IMAGE_RAM_BASE ((uintptr_t)0)
 #   endif
 
-#define LOAD_IMAGE_DATA(hdr, fap, start, output, size)       \
-    (memcpy((output),(void*)(IMAGE_RAM_BASE + (hdr)->ih_load_addr + (start)), \
-    (size)), 0)
 #else
 #define IMAGE_RAM_BASE ((uintptr_t)0)
-
-#define LOAD_IMAGE_DATA(hdr, fap, start, output, size)       \
-    (flash_area_read((fap), (start), (output), (size)))
 #endif /* MCUBOOT_RAM_LOAD */
 
-uint32_t bootutil_max_image_size(const struct flash_area *fap);
+#define LOAD_IMAGE_DATA_RAM(hdr, fap, start, output, size)                    \
+    (memcpy((output),(void*)(IMAGE_RAM_BASE + (hdr)->ih_load_addr + (start)), \
+    (size)), 0)
+
+#define LOAD_IMAGE_DATA_FLASH(hdr, fap, start, output, size)    \
+    (flash_area_read((fap), (start), (output), (size)))
+
+#if defined(MCUBOOT_MULTI_MEMORY_LOAD) && defined(MCUBOOT_RAM_LOAD)
+#define LOAD_IMAGE_DATA(hdr, fap, start, output, size)                         \
+    ({                                                                         \
+        int rc;                                                                \
+        if (IS_RAM_BOOTABLE(hdr)) {                                            \
+            rc = LOAD_IMAGE_DATA_RAM((hdr), (fap), (start), (output), (size)); \
+        } else {                                                               \
+            rc = LOAD_IMAGE_DATA_FLASH((hdr), (fap), (start), (output),        \
+                                       (size));                                \
+        }                                                                      \
+        rc;                                                                    \
+    })
+#elif defined(MCUBOOT_RAM_LOAD)
+#define LOAD_IMAGE_DATA(hdr, fap, start, output, size) \
+    LOAD_IMAGE_DATA_RAM((hdr), (fap), (start), (output), (size))
+#else /* !defined(MCUBOOT_RAM_LOAD)*/
+#define LOAD_IMAGE_DATA(hdr, fap, start, output, size) \
+    LOAD_IMAGE_DATA_FLASH((hdr), (fap), (start), (output), (size))
+#endif /* MCUBOOT_MULTI_MEMORY_LOAD */
 
 #ifdef __cplusplus
 }

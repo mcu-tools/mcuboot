@@ -155,6 +155,14 @@ struct image_tlv {
 #define MUST_DECRYPT(fap, idx, hdr) \
     (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
 
+#if defined(MCUBOOT_RAM_LOAD)
+#define IS_RAM_BOOTABLE(hdr)                                       \
+    ((((hdr)->ih_flags & IMAGE_F_RAM_LOAD) == IMAGE_F_RAM_LOAD) && \
+     ((hdr)->ih_load_addr != 0U) && ((hdr)->ih_load_addr != (uintptr_t)(-1)))
+#else
+#define IS_RAM_BOOTABLE(hdr) (false)
+#endif
+
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 
