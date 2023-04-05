@@ -188,14 +188,10 @@ fill_rsp(struct boot_loader_state *state, struct boot_rsp *rsp)
     }
 #endif
 
-#if defined(MCUBOOT_MULTI_MEMORY_LOAD)
-    if ((state->slot_usage[BOOT_CURR_IMG(state)].active_slot != BOOT_PRIMARY_SLOT) &&
-        (state->slot_usage[BOOT_CURR_IMG(state)].active_slot != NO_ACTIVE_SLOT))
-#endif
 #if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
-    {
         active_slot = state->slot_usage[BOOT_CURR_IMG(state)].active_slot;
-    }
+#else
+    active_slot = BOOT_PRIMARY_SLOT;
 #endif
 
     rsp->br_flash_dev_id = flash_area_get_device_id(BOOT_IMG_AREA(state, active_slot));
