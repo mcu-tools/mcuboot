@@ -39,6 +39,7 @@
 #define H_BOOTUTIL_PUBLIC
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <string.h>
 #include <flash_map_backend/flash_map_backend.h>
 #include <mcuboot_config/mcuboot_config.h>
@@ -265,6 +266,33 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state);
 int
 boot_read_swap_state(const struct flash_area *fa,
                      struct boot_swap_state *state);
+
+/**
+ * @brief Set next image application slot by flash area pointer
+ *
+ * @param fa pointer to flash_area representing image to set for next boot;
+ * @param active should be true if @fa points to currently running image
+ *        slot, false otherwise;
+ * @param confirm confirms image; when @p active is true, this is considered
+ *        true, regardless of passed value.
+ *
+ * It is users responsibility to identify whether @p fa provided as parameter
+ * is currently running/active image and provide proper value to @p active.
+ * Failing to do so may render device non-upgradeable.
+ *
+ * Note that in multi-image setup running/active application is the one
+ * that is currently being executed by any MCU core, from the pair of
+ * slots dedicated to that MCU core. As confirming application currently
+ * running on a given slot should be, preferably, done after functional
+ * tests prove application to function correctly, it may not be a good idea
+ * to cross-confirm running images.
+ * An application should only confirm slots designated to MCU core it is
+ * running on.
+ *
+ * @return 0 on success; non-zero error code on failure.
+ */
+int
+boot_set_next(const struct flash_area *fa, bool active, bool confirm);
 
 #ifdef __cplusplus
 }
