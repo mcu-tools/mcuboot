@@ -1,25 +1,33 @@
 [submodule "sim/mbedtls"]
 	path = ext/mbedtls
 	url = https://github.com/ARMmbed/mbedtls
+	update = none
 [submodule "boot/cypress/libs/mtb-pdl-cat1"]
 	path = boot/cypress/libs/mtb-pdl-cat1
 	url = https://github.com/cypresssemiconductorco/mtb-pdl-cat1.git
+	update = none
 [submodule "boot/cypress/libs/pdl/psoc6pdl"]
 	path = boot/cypress/libs/pdl/psoc6pdl
 	url = https://github.com/cypresssemiconductorco/psoc6pdl.git
+	update = none
 [submodule "boot/cypress/libs/retarget-io"]
 	path = boot/cypress/libs/retarget-io
 	url = https://github.com/cypresssemiconductorco/retarget-io.git
+	update = none
 [submodule "boot/cypress/libs/core-lib"]
 	path = boot/cypress/libs/core-lib
 	url = https://github.com/cypresssemiconductorco/core-lib.git
+	update = none
 [submodule "boot/cypress/libs/psoc6hal"]
 	path = boot/cypress/libs/psoc6hal
 	url = https://github.com/cypresssemiconductorco/psoc6hal.git
+	update = none
 [submodule "boot/cypress/libs/cy-mbedtls-acceleration"]
 	path = boot/cypress/libs/cy-mbedtls-acceleration
 	url = https://github.com/cypresssemiconductorco/cy-mbedtls-acceleration.git
+	update = none
 [submodule "boot/espressif/hal/esp-idf"]
 	path = boot/espressif/hal/esp-idf
 	url = https://github.com/espressif/esp-idf.git
 	branch = release/v4.4
+	update = none
