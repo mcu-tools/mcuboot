@@ -509,6 +509,7 @@ void main(void)
     uint32_t reset_cause;
 #endif
 
+    MCUBOOT_WATCHDOG_SETUP();
     MCUBOOT_WATCHDOG_FEED();
 
 #if !defined(MCUBOOT_DIRECT_XIP)
