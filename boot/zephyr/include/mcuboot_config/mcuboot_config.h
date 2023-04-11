@@ -308,6 +308,15 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/watchdog.h>
 
+#define MCUBOOT_WATCHDOG_SETUP()                              \
+    do {                                                      \
+        const struct device* wdt =                            \
+            DEVICE_DT_GET(DT_ALIAS(watchdog0));               \
+        if (device_is_ready(wdt)) {                           \
+            wdt_setup(wdt, 0);                                \
+        }                                                     \
+    } while (0)
+
 #define MCUBOOT_WATCHDOG_FEED()                               \
     do {                                                      \
         const struct device* wdt =                            \
@@ -329,6 +338,10 @@
     } while (0)
 
 #endif /* CONFIG_BOOT_WATCHDOG_FEED */
+
+#ifndef MCUBOOT_WATCHDOG_SETUP
+#define MCUBOOT_WATCHDOG_SETUP()
+#endif
 
 #define MCUBOOT_CPU_IDLE() \
   if (!IS_ENABLED(CONFIG_MULTITHREADING)) { \
