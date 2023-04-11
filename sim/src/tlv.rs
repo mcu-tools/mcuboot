@@ -112,6 +112,10 @@ pub trait ManifestGen {
 
     /// Set the security counter to the specified value.
     fn set_security_counter(&mut self, security_cnt: Option<u32>);
+
+    /// Sets the ignore_ram_load_flag so that can be validated when it is missing,
+    /// it will not load successfully.
+    fn set_ignore_ram_load_flag(&mut self);
 }
 
 #[derive(Debug, Default)]
@@ -124,6 +128,8 @@ pub struct TlvGen {
     /// Should this signature be corrupted.
     gen_corrupted: bool,
     security_cnt: Option<u32>,
+    /// Ignore RAM_LOAD flag
+    ignore_ram_load_flag: bool,
 }
 
 #[derive(Debug)]
@@ -318,7 +324,7 @@ impl ManifestGen for TlvGen {
     /// Retrieve the header flags for this configuration.  This can be called at any time.
     fn get_flags(&self) -> u32 {
         // For the RamLoad case, add in the flag for this feature.
-        if Caps::RamLoad.present() {
+        if Caps::RamLoad.present() && !self.ignore_ram_load_flag {
             self.flags | (TlvFlags::RAM_LOAD as u32)
         } else {
             self.flags
@@ -792,6 +798,10 @@ impl ManifestGen for TlvGen {
 
     fn set_security_counter(&mut self, security_cnt: Option<u32>) {
         self.security_cnt = security_cnt;
+    }
+
+    fn set_ignore_ram_load_flag(&mut self) {
+        self.ignore_ram_load_flag = true;
     }
 }
 

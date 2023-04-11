@@ -1,6 +1,6 @@
 // Copyright (c) 2017-2021 Linaro LTD
 // Copyright (c) 2017-2019 JUUL Labs
-// Copyright (c) 2023 Arm Limited
+// Copyright (c) 2021-2023 Arm Limited
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -15,6 +15,7 @@ use bootsim::{
     NO_DEPS,
     REV_DEPS,
     testlog,
+    ImageManipulation
 };
 use std::{
     env,
@@ -51,7 +52,7 @@ sim_test!(bad_secondary_slot, make_bad_secondary_slot_image(), run_signfail_upgr
 sim_test!(secondary_trailer_leftover, make_erased_secondary_image(), run_secondary_leftover_trailer());
 sim_test!(bootstrap, make_bootstrap_image(), run_bootstrap());
 sim_test!(oversized_bootstrap, make_oversized_bootstrap_image(), run_oversized_bootstrap());
-sim_test!(norevert_newimage, make_no_upgrade_image(&NO_DEPS), run_norevert_newimage());
+sim_test!(norevert_newimage, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_norevert_newimage());
 sim_test!(basic_revert, make_image(&NO_DEPS, true), run_basic_revert());
 sim_test!(revert_with_fails, make_image(&NO_DEPS, false), run_revert_with_fails());
 sim_test!(perm_with_fails, make_image(&NO_DEPS, true), run_perm_with_fails());
@@ -65,11 +66,20 @@ sim_test!(status_write_fails_complete, make_image(&NO_DEPS, true), run_with_stat
 sim_test!(status_write_fails_with_reset, make_image(&NO_DEPS, true), run_with_status_fails_with_reset());
 sim_test!(downgrade_prevention, make_image(&REV_DEPS, true), run_nodowngrade());
 
-sim_test!(direct_xip_first, make_no_upgrade_image(&NO_DEPS), run_direct_xip());
-sim_test!(ram_load_first, make_no_upgrade_image(&NO_DEPS), run_ram_load());
-sim_test!(ram_load_split, make_no_upgrade_image(&NO_DEPS), run_split_ram_load());
+sim_test!(direct_xip_first, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_direct_xip());
+sim_test!(ram_load_first, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_ram_load());
+sim_test!(ram_load_split, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_split_ram_load());
 sim_test!(hw_prot_failed_security_cnt_check, make_image_with_security_counter(Some(0)), run_hw_rollback_prot());
 sim_test!(hw_prot_missing_security_cnt, make_image_with_security_counter(None), run_hw_rollback_prot());
+sim_test!(ram_load_out_of_bounds, make_no_upgrade_image(&NO_DEPS, ImageManipulation::WrongOffset), run_ram_load_boot_with_result(false));
+sim_test!(ram_load_missing_header_flag, make_no_upgrade_image(&NO_DEPS, ImageManipulation::IgnoreRamLoadFlag), run_ram_load_boot_with_result(false));
+sim_test!(ram_load_failed_validation, make_no_upgrade_image(&NO_DEPS, ImageManipulation::BadSignature), run_ram_load_boot_with_result(false));
+sim_test!(ram_load_corrupt_higher_version_image, make_no_upgrade_image(&NO_DEPS, ImageManipulation::CorruptHigherVersionImage), run_ram_load_boot_with_result(true));
+
+#[cfg(feature = "multiimage")]
+sim_test!(ram_load_overlapping_images_same_base, make_no_upgrade_image(&NO_DEPS, ImageManipulation::OverlapImages(true)), run_ram_load_boot_with_result(false));
+#[cfg(feature = "multiimage")]
+sim_test!(ram_load_overlapping_images_offset, make_no_upgrade_image(&NO_DEPS, ImageManipulation::OverlapImages(false)), run_ram_load_boot_with_result(false));
 
 // Test various combinations of incorrect dependencies.
 test_shell!(dependency_combos, r, {
