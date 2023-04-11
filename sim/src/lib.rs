@@ -1,6 +1,6 @@
 // Copyright (c) 2017-2019 Linaro LTD
 // Copyright (c) 2017-2019 JUUL Labs
-// Copyright (c) 2019 Arm Limited
+// Copyright (c) 2019-2023 Arm Limited
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -30,6 +30,7 @@ pub use crate::{
     image::{
         ImagesBuilder,
         Images,
+        ImageManipulation,
         show_sizes,
     },
 };
@@ -201,7 +202,7 @@ impl RunStatus {
 
         failed |= bad_secondary_slot_image.run_signfail_upgrade();
 
-        let images = run.clone().make_no_upgrade_image(&NO_DEPS);
+        let images = run.clone().make_no_upgrade_image(&NO_DEPS, ImageManipulation::None);
         failed |= images.run_norevert_newimage();
 
         let images = run.make_image(&NO_DEPS, true);
