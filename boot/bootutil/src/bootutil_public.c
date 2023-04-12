@@ -477,6 +477,20 @@ static int flash_area_id_to_image(int id)
 }
 
 int
+boot_write_copy_done(const struct flash_area *fap)
+{
+    uint32_t off;
+
+    off = boot_copy_done_off(fap);
+    BOOT_LOG_DBG("writing copy_done; fa_id=%d off=0x%lx (0x%lx)",
+                 flash_area_get_id(fap), (unsigned long)off,
+                 (unsigned long)(flash_area_get_off(fap) + off));
+    return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
+}
+
+
+#ifndef MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP
+int
 boot_set_next(const struct flash_area *fa, bool active, bool confirm)
 {
     struct boot_swap_state slot_state;
@@ -547,6 +561,72 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
 
     return rc;
 }
+#else
+int
+boot_set_next(const struct flash_area *fa, bool active, bool confirm)
+{
+    struct boot_swap_state slot_state;
+    int rc;
+
+    if (active) {
+        /* The only way to set active slot for next boot is to confirm it,
+         * as DirectXIP will conclude that, since slot has not been confirmed
+         * last boot, it is bad and will remove it.
+         */
+        confirm = true;
+    }
+
+    rc = boot_read_swap_state(fa, &slot_state);
+    if (rc != 0) {
+        return rc;
+    }
+
+    switch (slot_state.magic) {
+    case BOOT_MAGIC_UNSET:
+        /* Magic is needed for MCUboot to even consider booting an image */
+        rc = boot_write_magic(fa);
+        if (rc != 0) {
+            break;
+        }
+        /* Pass */
+
+    case BOOT_MAGIC_GOOD:
+        if (confirm) {
+            if (slot_state.copy_done == BOOT_FLAG_UNSET) {
+                /* Magic is needed for DirectXIP to even try to boot application.
+                 * DirectXIP will set copy-done flag before attempting to boot
+                 * application. Next boot, application that has copy-done flag
+                 * is expected to already have ok flag, otherwise it will be removed.
+                 */
+                rc = boot_write_copy_done(fa);
+                if (rc != 0) {
+                    break;
+                }
+            }
+
+            if (slot_state.image_ok == BOOT_FLAG_UNSET) {
+                rc = boot_write_image_ok(fa);
+                if (rc != 0) {
+                    break;
+                }
+            }
+        }
+        break;
+
+    case BOOT_MAGIC_BAD:
+        /* This image will not be boot next time anyway */
+        rc = BOOT_EBADIMAGE;
+        break;
+
+    default:
+        /* Something is not OK, this should never happen */
+        assert(0);
+        rc = BOOT_EBADSTATUS;
+    }
+
+    return rc;
+}
+#endif
 
 /*
  * This function is not used by the bootloader itself, but its required API

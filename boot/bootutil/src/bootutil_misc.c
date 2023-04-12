@@ -295,18 +295,6 @@ boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status
 #endif
 
 int
-boot_write_copy_done(const struct flash_area *fap)
-{
-    uint32_t off;
-
-    off = boot_copy_done_off(fap);
-    BOOT_LOG_DBG("writing copy_done; fa_id=%d off=0x%lx (0x%lx)",
-                 flash_area_get_id(fap), (unsigned long)off,
-                 (unsigned long)(flash_area_get_off(fap) + off));
-    return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
-}
-
-int
 boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
 {
     uint32_t off;
