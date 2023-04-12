@@ -2,6 +2,7 @@
  * Copyright (c) 2018 Open Source Foundries Limited
  * Copyright (c) 2019-2020 Arm Limited
  * Copyright (c) 2019-2020 Linaro Limited
+ * Copyright (c) 2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -259,6 +260,10 @@
         #define MCUBOOT_BOOT_MAX_ALIGN \
             DT_PROP(DT_CHOSEN(zephyr_flash), write_block_size)
     #endif
+#endif
+
+#ifdef CONFIG_MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP
+#define MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP 1
 #endif
 
 #if CONFIG_BOOT_WATCHDOG_FEED
