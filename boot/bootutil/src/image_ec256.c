@@ -35,7 +35,7 @@
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/crypto/ecdsa_p256.h"
 
-fih_int
+fih_ret
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
                     uint8_t key_id)
 {
@@ -51,11 +51,16 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
 
     rc = bootutil_ecdsa_p256_parse_public_key(&ctx, &pubkey, end);
     if (rc) {
-        FIH_SET(fih_rc, FIH_FAILURE);
-        FIH_RET(fih_rc);
+        goto out;
     }
 
-    FIH_CALL(bootutil_ecdsa_p256_verify, fih_rc, &ctx, pubkey, end-pubkey, hash, hlen, sig, slen);
+    rc = bootutil_ecdsa_p256_verify(&ctx, pubkey, end-pubkey, hash, hlen, sig, slen);
+    fih_rc = fih_ret_encode_zero_equality(rc);
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+        FIH_SET(fih_rc, FIH_FAILURE);
+    }
+
+out:
     bootutil_ecdsa_p256_drop(&ctx);
 
     FIH_RET(fih_rc);
