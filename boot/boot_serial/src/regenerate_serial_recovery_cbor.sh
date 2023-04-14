@@ -22,10 +22,6 @@ copy_with_copy_notice() {
 	add_copy_notice $2 "copied"
 }
 
-
-echo "Generating serial_recovery_cbor.c|h"
-zcbor code -c serial_recovery.cddl -d -t Upload --oc serial_recovery_cbor.c --oh serial_recovery_cbor.h --time-header --copy-sources
-
 add_copyright() {
 echo "$(printf '/*
  * Copyright (c) %s
@@ -36,9 +32,6 @@ echo "$(printf '/*
 ' "$2"; cat $1;)" > $1
 }
 
-add_copyright serial_recovery_cbor.c "$1"
-add_copyright serial_recovery_cbor.h "$1"
-add_copyright serial_recovery_cbor_types.h "$1"
 add_copy_notice zcbor_decode.c "copied"
 add_copy_notice zcbor_encode.c "copied"
 add_copy_notice zcbor_common.c "copied"
