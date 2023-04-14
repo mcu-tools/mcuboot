@@ -71,14 +71,10 @@ extern "C" {
 
 typedef psa_hash_operation_t bootutil_sha256_context;
 
-static inline void bootutil_sha256_init(bootutil_sha256_context *ctx)
+static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
 {
     *ctx = psa_hash_operation_init();
-    psa_status_t status = psa_hash_setup(ctx, PSA_ALG_SHA_256);
-    if (status != PSA_SUCCESS) {
-        MCUBOOT_LOG_ERR("Failed setting up a hash operation for PSA Crypto APIs");
-        while(1) {}
-    }
+    return (int)psa_hash_setup(ctx, PSA_ALG_SHA_256);
 }
 
 static inline void bootutil_sha256_drop(bootutil_sha256_context *ctx)
@@ -105,10 +101,10 @@ static inline int bootutil_sha256_finish(bootutil_sha256_context *ctx,
 
 typedef mbedtls_sha256_context bootutil_sha256_context;
 
-static inline void bootutil_sha256_init(bootutil_sha256_context *ctx)
+static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
 {
     mbedtls_sha256_init(ctx);
-    (void)mbedtls_sha256_starts_ret(ctx, 0);
+    return mbedtls_sha256_starts_ret(ctx, 0);
 }
 
 static inline void bootutil_sha256_drop(bootutil_sha256_context *ctx)
@@ -135,9 +131,10 @@ static inline int bootutil_sha256_finish(bootutil_sha256_context *ctx,
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
 typedef struct tc_sha256_state_struct bootutil_sha256_context;
-static inline void bootutil_sha256_init(bootutil_sha256_context *ctx)
+static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
 {
     tc_sha256_init(ctx);
+    return 0;
 }
 
 static inline void bootutil_sha256_drop(bootutil_sha256_context *ctx)
@@ -160,9 +157,10 @@ static inline int bootutil_sha256_finish(bootutil_sha256_context *ctx,
 #endif /* MCUBOOT_USE_TINYCRYPT */
 
 #if defined(MCUBOOT_USE_CC310)
-static inline void bootutil_sha256_init(bootutil_sha256_context *ctx)
+static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
 {
     cc310_sha256_init(ctx);
+    return 0;
 }
 
 static inline void bootutil_sha256_drop(bootutil_sha256_context *ctx)
