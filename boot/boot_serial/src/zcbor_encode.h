@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the zcbor library.
- * Commit zcbor 0.4.0
+ * Commit zcbor 0.7.0
  */
 
 /*
@@ -11,10 +11,15 @@
 
 #ifndef ZCBOR_ENCODE_H__
 #define ZCBOR_ENCODE_H__
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include "zcbor_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** The zcbor_encode library provides functions for encoding CBOR data elements.
  *
@@ -35,17 +40,20 @@
 /** Encode a pint/nint. */
 bool zcbor_int32_put(zcbor_state_t *state, int32_t input);
 bool zcbor_int64_put(zcbor_state_t *state, int64_t input);
-bool zcbor_uint32_put(zcbor_state_t *state, uint32_t result);
+bool zcbor_uint32_put(zcbor_state_t *state, uint32_t input);
 bool zcbor_uint64_put(zcbor_state_t *state, uint64_t input);
+bool zcbor_size_put(zcbor_state_t *state, size_t input);
 
 /** Encode a pint/nint from a pointer.
  *
  *  Can be used for bulk encoding with @ref zcbor_multi_encode.
  */
+bool zcbor_int_encode(zcbor_state_t *state, const void *input_int, size_t int_size);
 bool zcbor_int32_encode(zcbor_state_t *state, const int32_t *input);
 bool zcbor_int64_encode(zcbor_state_t *state, const int64_t *input);
-bool zcbor_uint32_encode(zcbor_state_t *state, const uint32_t *result);
+bool zcbor_uint32_encode(zcbor_state_t *state, const uint32_t *input);
 bool zcbor_uint64_encode(zcbor_state_t *state, const uint64_t *input);
+bool zcbor_size_encode(zcbor_state_t *state, const size_t *input);
 
 /** Encode a bstr. */
 bool zcbor_bstr_encode(zcbor_state_t *state, const struct zcbor_string *input);
@@ -58,13 +66,17 @@ bool zcbor_tstr_encode(zcbor_state_t *state, const struct zcbor_string *input);
  * @param[in]    string  The value to encode. A pointer to the string
  * @param[in]    len     The length of the string pointed to by @p string.
  */
-static inline bool zcbor_bstr_encode_ptr(zcbor_state_t *state, uint8_t *ptr, size_t len)
+static inline bool zcbor_bstr_encode_ptr(zcbor_state_t *state, const char *ptr, size_t len)
 {
-	return zcbor_bstr_encode(state, &(struct zcbor_string){.value = ptr, .len = len});
+	const struct zcbor_string zs = { .value = (const uint8_t *)ptr, .len = len };
+
+	return zcbor_bstr_encode(state, &zs);
 }
-static inline bool zcbor_tstr_encode_ptr(zcbor_state_t *state, uint8_t *ptr, size_t len)
+static inline bool zcbor_tstr_encode_ptr(zcbor_state_t *state, const char *ptr, size_t len)
 {
-	return zcbor_tstr_encode(state, &(struct zcbor_string){.value = ptr, .len = len});
+	const struct zcbor_string zs = { .value = (const uint8_t *)ptr, .len = len };
+
+	return zcbor_tstr_encode(state, &zs);
 }
 
 /** Encode a string literal as a bstr/tstr.
@@ -253,17 +265,13 @@ bool zcbor_present_encode(const uint_fast32_t *present,
 		const void *input);
 
 /** See @ref zcbor_new_state() */
-bool zcbor_new_encode_state(zcbor_state_t *state_array, uint_fast32_t n_states,
+void zcbor_new_encode_state(zcbor_state_t *state_array, uint_fast32_t n_states,
 		uint8_t *payload, size_t payload_len, uint_fast32_t elem_count);
 
 /** Convenience macro for declaring and initializing a state with backups.
  *
  *  This gives you a state variable named @p name. The variable functions like
  *  a pointer.
- *
- *  The return value from @ref zcbor_new_encode_state can be safely ignored
- *  because the only error condition is n_states < 2, and this macro adds 2 to
- *  num_backups to get n_states, so it can never be < 2.
  *
  *  @param[in]  name          The name of the new state variable.
  *  @param[in]  num_backups   The number of backup slots to keep in the state.
@@ -274,7 +282,11 @@ bool zcbor_new_encode_state(zcbor_state_t *state_array, uint_fast32_t n_states,
 #define ZCBOR_STATE_E(name, num_backups, payload, payload_size, elem_count) \
 zcbor_state_t name[((num_backups) + 2)]; \
 do { \
-	(void)zcbor_new_encode_state(name, ARRAY_SIZE(name), payload, payload_size, elem_count); \
+	zcbor_new_encode_state(name, ZCBOR_ARRAY_SIZE(name), payload, payload_size, elem_count); \
 } while(0)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ZCBOR_ENCODE_H__ */

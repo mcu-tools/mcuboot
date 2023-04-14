@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the zcbor library.
- * Commit zcbor 0.4.0
+ * Commit zcbor 0.7.0
  */
 
 /*
@@ -48,7 +48,7 @@ static bool encode_header_byte(zcbor_state_t *state,
 	ZCBOR_CHECK_ERROR();
 	ZCBOR_CHECK_PAYLOAD();
 
-	zcbor_assert(additional < 32, NULL);
+	zcbor_assert_state(additional < 32, NULL);
 
 	*(state->payload_mut++) = (uint8_t)((major_type << 5) | (additional & 0x1F));
 	return true;
@@ -116,7 +116,7 @@ static const void *get_result(const void *const input, uint_fast32_t max_result_
 	uint_fast32_t result_len)
 {
 #ifdef CONFIG_BIG_ENDIAN
-	return &((uint8_t *)input)[max_result_len - result_len];
+	return &((uint8_t *)input)[max_result_len - (result_len ? result_len : 1)];
 #else
 	return input;
 #endif
@@ -137,7 +137,7 @@ static uint_fast32_t get_encoded_len(const void *const result, uint_fast32_t res
 static bool value_encode(zcbor_state_t *state, zcbor_major_type_t major_type,
 		const void *const input, uint_fast32_t max_result_len)
 {
-	zcbor_assert(max_result_len != 0, "0-length result not supported.\r\n");
+	zcbor_assert_state(max_result_len != 0, "0-length result not supported.\r\n");
 
 	uint_fast32_t result_len = get_result_len(input, max_result_len);
 	const void *const result = get_result(input, max_result_len, result_len);
@@ -146,26 +146,35 @@ static bool value_encode(zcbor_state_t *state, zcbor_major_type_t major_type,
 }
 
 
-bool zcbor_int32_put(zcbor_state_t *state, int32_t input)
-{
-	return zcbor_int64_put(state, input);
-}
-
-
-bool zcbor_int64_put(zcbor_state_t *state, int64_t input)
+bool zcbor_int_encode(zcbor_state_t *state, const void *input_int, size_t int_size)
 {
 	zcbor_major_type_t major_type;
+	uint8_t input_buf[8];
+	const uint8_t *input_uint8 = input_int;
+	const int8_t *input_int8 = input_int;
+	const uint8_t *input = input_int;
 
-	if (input < 0) {
-		major_type = ZCBOR_MAJOR_TYPE_NINT;
-		/* Convert from CBOR's representation. */
-		input = -1 - input;
-	} else {
-		major_type = ZCBOR_MAJOR_TYPE_PINT;
-		input = input;
+	if (int_size > sizeof(int64_t)) {
+		ZCBOR_ERR(ZCBOR_ERR_INT_SIZE);
 	}
 
-	if (!value_encode(state, major_type, &input, 8)) {
+#ifdef CONFIG_BIG_ENDIAN
+	if (input_int8[0] < 0) {
+#else
+	if (input_int8[int_size - 1] < 0) {
+#endif
+		major_type = ZCBOR_MAJOR_TYPE_NINT;
+
+		/* Convert to CBOR's representation by flipping all bits. */
+		for (int i = 0; i < int_size; i++) {
+			input_buf[i] = (uint8_t)~input_uint8[i];
+		}
+		input = input_buf;
+	} else {
+		major_type = ZCBOR_MAJOR_TYPE_PINT;
+	}
+
+	if (!value_encode(state, major_type, input, int_size)) {
 		ZCBOR_FAIL();
 	}
 
@@ -175,7 +184,13 @@ bool zcbor_int64_put(zcbor_state_t *state, int64_t input)
 
 bool zcbor_int32_encode(zcbor_state_t *state, const int32_t *input)
 {
-	return zcbor_int32_put(state, *input);
+	return zcbor_int_encode(state, input, sizeof(*input));
+}
+
+
+bool zcbor_int64_encode(zcbor_state_t *state, const int64_t *input)
+{
+	return zcbor_int_encode(state, input, sizeof(*input));
 }
 
 
@@ -198,12 +213,6 @@ bool zcbor_uint32_encode(zcbor_state_t *state, const uint32_t *input)
 }
 
 
-bool zcbor_int64_encode(zcbor_state_t *state, const int64_t *input)
-{
-	return zcbor_int64_put(state, *input);
-}
-
-
 static bool uint64_encode(zcbor_state_t *state, const uint64_t *input,
 		zcbor_major_type_t major_type)
 {
@@ -223,6 +232,18 @@ bool zcbor_uint64_encode(zcbor_state_t *state, const uint64_t *input)
 }
 
 
+bool zcbor_int32_put(zcbor_state_t *state, int32_t input)
+{
+	return zcbor_int_encode(state, &input, sizeof(input));
+}
+
+
+bool zcbor_int64_put(zcbor_state_t *state, int64_t input)
+{
+	return zcbor_int_encode(state, &input, sizeof(input));
+}
+
+
 bool zcbor_uint32_put(zcbor_state_t *state, uint32_t input)
 {
 	return zcbor_uint64_put(state, input);
@@ -237,6 +258,19 @@ bool zcbor_uint64_put(zcbor_state_t *state, uint64_t input)
 	return true;
 }
 
+
+#ifdef ZCBOR_SUPPORTS_SIZE_T
+bool zcbor_size_put(zcbor_state_t *state, size_t input)
+{
+	return zcbor_uint64_put(state, input);
+}
+
+
+bool zcbor_size_encode(zcbor_state_t *state, const size_t *input)
+{
+	return zcbor_size_put(state, *input);
+}
+#endif
 
 static bool str_start_encode(zcbor_state_t *state,
 		const struct zcbor_string *input, zcbor_major_type_t major_type)
@@ -411,6 +445,15 @@ static bool list_map_end_encode(zcbor_state_t *state, uint_fast32_t max_num,
 
 	zcbor_print("list_count: %" PRIuFAST32 "\r\n", list_count);
 
+
+	/** If max_num is smaller than the actual number of encoded elements,
+	  * the value_encode() below will corrupt the data if the encoded
+	  * header is larger than the previously encoded header. */
+	if (header_len > max_header_len) {
+		zcbor_print("max_num too small.\r\n");
+		ZCBOR_ERR(ZCBOR_ERR_HIGH_ELEM_COUNT);
+	}
+
 	/* Reencode header of list now that we know the number of elements. */
 	if (!(value_encode(state, major_type, &list_count, sizeof(list_count)))) {
 		ZCBOR_FAIL();
@@ -419,9 +462,8 @@ static bool list_map_end_encode(zcbor_state_t *state, uint_fast32_t max_num,
 	if (max_header_len != header_len) {
 		const uint8_t *start = state->payload + max_header_len - header_len;
 		size_t body_size = (size_t)payload - (size_t)start;
-		memmove(state->payload_mut,
-			state->payload + max_header_len - header_len,
-			body_size);
+
+		memmove(state->payload_mut, start, body_size);
 		/* Reset payload pointer to end of list */
 		state->payload += body_size;
 	} else {
@@ -495,7 +537,7 @@ bool zcbor_bool_put(zcbor_state_t *state, bool input)
 
 bool zcbor_float64_encode(zcbor_state_t *state, const double *input)
 {
-	if (!value_encode(state, ZCBOR_MAJOR_TYPE_PRIM, input,
+	if (!value_encode_len(state, ZCBOR_MAJOR_TYPE_PRIM, input,
 			sizeof(*input))) {
 		ZCBOR_FAIL();
 	}
@@ -512,7 +554,7 @@ bool zcbor_float64_put(zcbor_state_t *state, double input)
 
 bool zcbor_float32_encode(zcbor_state_t *state, const float *input)
 {
-	if (!value_encode(state, ZCBOR_MAJOR_TYPE_PRIM, input,
+	if (!value_encode_len(state, ZCBOR_MAJOR_TYPE_PRIM, input,
 			sizeof(*input))) {
 		ZCBOR_FAIL();
 	}
@@ -580,8 +622,8 @@ bool zcbor_present_encode(const uint_fast32_t *present,
 }
 
 
-bool zcbor_new_encode_state(zcbor_state_t *state_array, uint_fast32_t n_states,
+void zcbor_new_encode_state(zcbor_state_t *state_array, uint_fast32_t n_states,
 		uint8_t *payload, size_t payload_len, uint_fast32_t elem_count)
 {
-	return zcbor_new_state(state_array, n_states, payload, payload_len, elem_count);
+	zcbor_new_state(state_array, n_states, payload, payload_len, elem_count);
 }

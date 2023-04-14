@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 /*
- * Generated using zcbor version 0.4.0
+ * Generated using zcbor version 0.7.0
  * https://github.com/NordicSemiconductor/zcbor
- * at: 2022-03-31 12:37:11
+ * at: 2023-04-14 11:34:28
  * Generated with a --default-max-qty of 3
  */
 
@@ -23,6 +23,10 @@
 #include <zcbor_decode.h>
 #else
 #include "zcbor_decode.h"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /** Which value for --default-max-qty this file was created with.
@@ -67,8 +71,11 @@ struct Upload_members {
 
 struct Upload {
 	struct Upload_members _Upload_members[5];
-	uint_fast32_t _Upload_members_count;
+	size_t _Upload_members_count;
 };
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SERIAL_RECOVERY_CBOR_TYPES_H__ */

@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the zcbor library.
- * Commit zcbor 0.4.0
+ * Commit zcbor 0.7.0
  */
 
 /*
@@ -128,7 +128,7 @@ bool zcbor_union_end_code(zcbor_state_t *state)
 	return true;
 }
 
-bool zcbor_new_state(zcbor_state_t *state_array, uint_fast32_t n_states,
+void zcbor_new_state(zcbor_state_t *state_array, uint_fast32_t n_states,
 		const uint8_t *payload, size_t payload_len, uint_fast32_t elem_count)
 {
 	state_array[0].payload = payload;
@@ -139,7 +139,7 @@ bool zcbor_new_state(zcbor_state_t *state_array, uint_fast32_t n_states,
 	state_array[0].constant_state = NULL;
 
 	if(n_states < 2) {
-		return false;
+		return;
 	}
 
 	/* Use the last state as a struct zcbor_state_constant object. */
@@ -154,7 +154,6 @@ bool zcbor_new_state(zcbor_state_t *state_array, uint_fast32_t n_states,
 	if (n_states > 2) {
 		state_array[0].constant_state->backup_list = &state_array[1];
 	}
-	return true;
 }
 
 void zcbor_update_state(zcbor_state_t *state,
