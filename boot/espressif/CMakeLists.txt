@@ -221,7 +221,7 @@ if(CONFIG_ESP_MCUBOOT_SERIAL)
 
     list(APPEND bootutil_srcs
         ${BOOT_SERIAL_DIR}/src/boot_serial.c
-        ${BOOT_SERIAL_DIR}/src/serial_recovery_cbor.c
+        ${BOOT_SERIAL_DIR}/src/zcbor_bulk.c
         ${ZCBOR_DIR}/src/zcbor_decode.c
         ${ZCBOR_DIR}/src/zcbor_encode.c
         ${ZCBOR_DIR}/src/zcbor_common.c

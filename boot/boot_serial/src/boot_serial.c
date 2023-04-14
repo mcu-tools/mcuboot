@@ -36,16 +36,13 @@
 #include <zephyr/sys/crc.h>
 #include <zephyr/sys/base64.h>
 #include <hal/hal_flash.h>
-#include <zcbor_encode.h>
 #elif __ESPRESSIF__
-#include "zcbor_encode.h"
 #include <bootloader_utility.h>
 #include <esp_rom_sys.h>
 #include <esp_crc.h>
 #include <endian.h>
 #include <mbedtls/base64.h>
 #else
-#include "zcbor_encode.h"
 #include <bsp/bsp.h>
 #include <hal/hal_system.h>
 #include <hal/hal_flash.h>
@@ -54,6 +51,10 @@
 #include <crc/crc16.h>
 #include <base64/base64.h>
 #endif /* __ZEPHYR__ */
+
+#include <zcbor_decode.h>
+#include <zcbor_encode.h>
+#include "zcbor_bulk.h"
 
 #include <flash_map_backend/flash_map_backend.h>
 #include <os/os.h>
@@ -74,11 +75,13 @@
 #include "single_loader.h"
 #endif
 
-#include "serial_recovery_cbor.h"
-#include "serial_recovery_echo.h"
 #include "bootutil/boot_hooks.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE ZCBOR_ARRAY_SIZE
+#endif
 
 #ifndef MCUBOOT_SERIAL_MAX_RECEIVE_SIZE
 #define MCUBOOT_SERIAL_MAX_RECEIVE_SIZE 512
@@ -383,10 +386,13 @@ bs_upload(char *buf, int len)
     size_t img_chunk_off = SIZE_MAX;    /* Offset of image chunk within image  */
     uint8_t rem_bytes;                  /* Reminder bytes after aligning chunk write to
                                          * to flash alignment */
-    int img_num;
+    uint32_t img_num;
     size_t img_size_tmp = SIZE_MAX;     /* Temp variable for image size */
     const struct flash_area *fap = NULL;
     int rc;
+    struct zcbor_string img_chunk_data;
+    size_t decoded = 0;
+    bool ok;
 #ifdef MCUBOOT_ERASE_PROGRESSIVELY
     static off_t not_yet_erased = 0;    /* Offset of next byte to erase; writes to flash
                                          * are done in consecutive manner and erases are done
@@ -398,7 +404,25 @@ bs_upload(char *buf, int len)
     static struct flash_sector status_sector;
 #endif
 
-    img_num = 0;
+    zcbor_state_t zsd[4];
+    zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1);
+
+    struct zcbor_map_decode_key_val image_upload_decode[] = {
+        ZCBOR_MAP_DECODE_KEY_DECODER("image", zcbor_uint32_decode, &img_num),
+        ZCBOR_MAP_DECODE_KEY_DECODER("data", zcbor_bstr_decode, &img_chunk_data),
+        ZCBOR_MAP_DECODE_KEY_DECODER("len", zcbor_size_decode, &img_size_tmp),
+        ZCBOR_MAP_DECODE_KEY_DECODER("off", zcbor_size_decode, &img_chunk_off),
+    };
+
+    ok = zcbor_map_decode_bulk(zsd, image_upload_decode, ARRAY_SIZE(image_upload_decode),
+                               &decoded) == 0;
+
+    if (!ok) {
+        goto out_invalid_data;
+    }
+
+    img_chunk = img_chunk_data.value;
+    img_chunk_len = img_chunk_data.len;
 
     /*
      * Expected data format.
@@ -409,37 +433,6 @@ bs_upload(char *buf, int len)
      *   "off":<current offset of image data>
      * }
      */
-
-    struct Upload upload;
-    size_t decoded_len;
-    uint_fast8_t result = cbor_decode_Upload((const uint8_t *)buf, len, &upload, &decoded_len);
-
-    if ((result != ZCBOR_SUCCESS) || (len != decoded_len)) {
-        goto out_invalid_data;
-    }
-
-    for (int i = 0; i < upload._Upload_members_count; i++) {
-        struct Member_ *member = &upload._Upload_members[i]._Upload_members;
-        switch(member->_Member_choice) {
-            case _Member_image:
-                img_num = member->_Member_image;
-                break;
-            case _Member_data:
-                img_chunk = member->_Member_data.value;
-                img_chunk_len = member->_Member_data.len;
-                break;
-            case _Member_len:
-                img_size_tmp = member->_Member_len;
-                break;
-            case _Member_off:
-                img_chunk_off = member->_Member_off;
-                break;
-            case _Member_sha:
-            default:
-                /* Nothing to do. */
-                break;
-        }
-    }
 
     if (img_chunk_off == SIZE_MAX || img_chunk == NULL) {
         /*
@@ -477,7 +470,6 @@ bs_upload(char *buf, int len)
             goto out;
          }
 #endif
-
 
 #if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
         /* We are using swap state at end of flash area to store validation
@@ -656,22 +648,38 @@ bs_rc_rsp(int rc_code)
 static void
 bs_echo(char *buf, int len)
 {
-    struct Echo echo = { 0 };
-    size_t decoded_len;
+    struct zcbor_string value = { 0 };
+    struct zcbor_string key;
+    bool ok;
     uint32_t rc = MGMT_ERR_EINVAL;
-    uint_fast8_t result = cbor_decode_Echo((const uint8_t *)buf, len, &echo, &decoded_len);
 
-    if ((result != ZCBOR_SUCCESS) || (len != decoded_len)) {
+    zcbor_state_t zsd[4];
+    zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1);
+
+    if (!zcbor_map_start_decode(zsd)) {
         goto out;
     }
 
-    if (echo._Echo_d.value == NULL) {
+    do {
+        ok = zcbor_tstr_decode(zsd, &key);
+
+        if (ok) {
+            if (key.len == 1 && *key.value == 'd') {
+                ok = zcbor_tstr_decode(zsd, &value);
+                break;
+            }
+
+            ok = zcbor_any_skip(zsd, NULL);
+        }
+    } while (ok);
+
+    if (!ok || !zcbor_map_end_decode(zsd)) {
         goto out;
     }
 
     zcbor_map_start_encode(cbor_state, 10);
     zcbor_tstr_put_term(cbor_state, "r");
-    if (zcbor_tstr_encode(cbor_state, &echo._Echo_d) && zcbor_map_end_encode(cbor_state, 10)) {
+    if (zcbor_tstr_encode(cbor_state, &value) && zcbor_map_end_encode(cbor_state, 10)) {
         boot_serial_output();
         return;
     } else {
