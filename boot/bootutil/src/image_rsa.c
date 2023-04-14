@@ -38,7 +38,7 @@
 #include "bootutil/crypto/rsa.h"
 
 /* PSA Crypto APIs provide an integrated API to perform the verification
- * while for other crypto backend we need to implement each step at this
+ * while for other crypto backends we need to implement each step at this
  * abstraction level
  */
 #if !defined(MCUBOOT_USE_PSA_CRYPTO)

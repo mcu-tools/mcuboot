@@ -92,7 +92,7 @@ static int bootutil_rsa_oaep_decrypt(
     psa_status_t status = PSA_ERROR_INVALID_ARGUMENT;
 
     /* Perform an additional defensive check to compare the modulus of the RSA
-     * key to the expected input to the decryption function, i.e. TLV_ENC_RSA_SZ
+     * key to the expected input of the decryption function, i.e. TLV_ENC_RSA_SZ
      */
     psa_key_attributes_t key_attr =  psa_key_attributes_init();
     status = psa_get_key_attributes(ctx->key_id, &key_attr);
