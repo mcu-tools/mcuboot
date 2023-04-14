@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the zcbor library.
- * Commit zcbor 0.4.0
+ * Commit zcbor 0.7.0
  */
 
 /*
@@ -11,10 +11,15 @@
 
 #ifndef ZCBOR_DECODE_H__
 #define ZCBOR_DECODE_H__
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include "zcbor_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** The zcbor_decode library provides functions for decoding CBOR data elements.
  *
@@ -39,6 +44,8 @@ bool zcbor_int32_decode(zcbor_state_t *state, int32_t *result);
 bool zcbor_int64_decode(zcbor_state_t *state, int64_t *result);
 bool zcbor_uint32_decode(zcbor_state_t *state, uint32_t *result);
 bool zcbor_uint64_decode(zcbor_state_t *state, uint64_t *result);
+bool zcbor_size_decode(zcbor_state_t *state, size_t *result);
+bool zcbor_int_decode(zcbor_state_t *state, void *result_int, size_t int_size);
 
 /** The following applies to all _expect() functions that don't have docs.
  *
@@ -54,11 +61,14 @@ bool zcbor_int32_expect(zcbor_state_t *state, int32_t result);
 bool zcbor_int64_expect(zcbor_state_t *state, int64_t result);
 bool zcbor_uint32_expect(zcbor_state_t *state, uint32_t result);
 bool zcbor_uint64_expect(zcbor_state_t *state, uint64_t result);
+bool zcbor_size_expect(zcbor_state_t *state, size_t result);
 
-/** Consume and expect a pint with a certain value, within a union.
+/** Consume and expect a pint/nint with a certain value, within a union.
  *
- * Calls @ref zcbor_union_elem_code then @ref zcbor_uint32_expect.
+ * Calls @ref zcbor_union_elem_code then @ref zcbor_[u]int[32|64]_expect.
  */
+bool zcbor_int32_expect_union(zcbor_state_t *state, int32_t result);
+bool zcbor_int64_expect_union(zcbor_state_t *state, int64_t result);
 bool zcbor_uint32_expect_union(zcbor_state_t *state, uint32_t result);
 bool zcbor_uint64_expect_union(zcbor_state_t *state, uint64_t result);
 
@@ -74,13 +84,17 @@ bool zcbor_tstr_expect(zcbor_state_t *state, struct zcbor_string *result);
  * @param[in]    string  The value to expect. A pointer to the string.
  * @param[in]    len     The length of the string pointed to by @p string.
  */
-static inline bool zcbor_bstr_expect_ptr(zcbor_state_t *state, uint8_t *ptr, size_t len)
+static inline bool zcbor_bstr_expect_ptr(zcbor_state_t *state, char const *ptr, size_t len)
 {
-	return zcbor_bstr_expect(state, &(struct zcbor_string){.value = ptr, .len = len});
+	struct zcbor_string zs = { .value = (const uint8_t *)ptr, .len = len };
+
+	return zcbor_bstr_expect(state, &zs);
 }
-static inline bool zcbor_tstr_expect_ptr(zcbor_state_t *state, uint8_t *ptr, size_t len)
+static inline bool zcbor_tstr_expect_ptr(zcbor_state_t *state, char const *ptr, size_t len)
 {
-	return zcbor_tstr_expect(state, &(struct zcbor_string){.value = ptr, .len = len});
+	struct zcbor_string zs = { .value = (const uint8_t *)ptr, .len = len };
+
+	return zcbor_tstr_expect(state, &zs);
 }
 
 
@@ -309,17 +323,13 @@ bool zcbor_present_decode(uint_fast32_t *present,
 		void *result);
 
 /** See @ref zcbor_new_state() */
-bool zcbor_new_decode_state(zcbor_state_t *state_array, uint_fast32_t n_states,
+void zcbor_new_decode_state(zcbor_state_t *state_array, uint_fast32_t n_states,
 		const uint8_t *payload, size_t payload_len, uint_fast32_t elem_count);
 
 /** Convenience macro for declaring and initializing a state with backups.
  *
  *  This gives you a state variable named @p name. The variable functions like
  *  a pointer.
- *
- *  The return value from @ref zcbor_new_encode_state can be safely ignored
- *  because the only error condition is n_states < 2, and this macro adds 2 to
- *  num_backups to get n_states, so it can never be < 2.
  *
  *  @param[in]  name          The name of the new state variable.
  *  @param[in]  num_backups   The number of backup slots to keep in the state.
@@ -330,7 +340,11 @@ bool zcbor_new_decode_state(zcbor_state_t *state_array, uint_fast32_t n_states,
 #define ZCBOR_STATE_D(name, num_backups, payload, payload_size, elem_count) \
 zcbor_state_t name[((num_backups) + 2)]; \
 do { \
-	(void)zcbor_new_decode_state(name, ARRAY_SIZE(name), payload, payload_size, elem_count); \
+	zcbor_new_decode_state(name, ZCBOR_ARRAY_SIZE(name), payload, payload_size, elem_count); \
 } while(0)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ZCBOR_DECODE_H__ */

@@ -1,13 +1,13 @@
 /*
- * Copyright (c) 2022 Nordic Semiconductor ASA
+ * Copyright (c) 2023 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 /*
- * Generated using zcbor version 0.4.0
+ * Generated using zcbor version 0.7.0
  * https://github.com/NordicSemiconductor/zcbor
- * at: 2022-03-31 12:37:11
+ * at: 2023-04-14 11:34:28
  * Generated with a --default-max-qty of 3
  */
 
@@ -28,6 +28,10 @@
 #error "The type file was generated with a different default_max_qty than this file"
 #endif
 
+static bool decode_Member(zcbor_state_t *state, struct Member_ *result);
+static bool decode_repeated_Upload_members(zcbor_state_t *state, struct Upload_members *result);
+static bool decode_Upload(zcbor_state_t *state, struct Upload *result);
+
 
 static bool decode_Member(
 		zcbor_state_t *state, struct Member_ *result)
@@ -37,15 +41,15 @@ static bool decode_Member(
 	bool int_res;
 
 	bool tmp_result = (((zcbor_union_start_code(state) && (int_res = (((((zcbor_tstr_expect(state, ((tmp_str.value = (uint8_t *)"image", tmp_str.len = sizeof("image") - 1, &tmp_str)))))
-	&& (zcbor_int32_decode(state, (&(*result)._Member_image)))) && (((*result)._Member_choice = _Member_image) || 1))
+	&& (zcbor_int32_decode(state, (&(*result)._Member_image)))) && (((*result)._Member_choice = _Member_image), true))
 	|| (zcbor_union_elem_code(state) && ((((zcbor_tstr_expect(state, ((tmp_str.value = (uint8_t *)"data", tmp_str.len = sizeof("data") - 1, &tmp_str)))))
-	&& (zcbor_bstr_decode(state, (&(*result)._Member_data)))) && (((*result)._Member_choice = _Member_data) || 1)))
+	&& (zcbor_bstr_decode(state, (&(*result)._Member_data)))) && (((*result)._Member_choice = _Member_data), true)))
 	|| (zcbor_union_elem_code(state) && ((((zcbor_tstr_expect(state, ((tmp_str.value = (uint8_t *)"len", tmp_str.len = sizeof("len") - 1, &tmp_str)))))
-	&& (zcbor_int32_decode(state, (&(*result)._Member_len)))) && (((*result)._Member_choice = _Member_len) || 1)))
+	&& (zcbor_int32_decode(state, (&(*result)._Member_len)))) && (((*result)._Member_choice = _Member_len), true)))
 	|| (zcbor_union_elem_code(state) && ((((zcbor_tstr_expect(state, ((tmp_str.value = (uint8_t *)"off", tmp_str.len = sizeof("off") - 1, &tmp_str)))))
-	&& (zcbor_int32_decode(state, (&(*result)._Member_off)))) && (((*result)._Member_choice = _Member_off) || 1)))
+	&& (zcbor_int32_decode(state, (&(*result)._Member_off)))) && (((*result)._Member_choice = _Member_off), true)))
 	|| (zcbor_union_elem_code(state) && ((((zcbor_tstr_expect(state, ((tmp_str.value = (uint8_t *)"sha", tmp_str.len = sizeof("sha") - 1, &tmp_str)))))
-	&& (zcbor_bstr_decode(state, (&(*result)._Member_sha)))) && (((*result)._Member_choice = _Member_sha) || 1)))), zcbor_union_end_code(state), int_res))));
+	&& (zcbor_bstr_decode(state, (&(*result)._Member_sha)))) && (((*result)._Member_choice = _Member_sha), true)))), zcbor_union_end_code(state), int_res))));
 
 	if (!tmp_result)
 		zcbor_trace();
@@ -98,8 +102,10 @@ int cbor_decode_Upload(
 	}
 
 	if (!ret) {
-		int status = zcbor_pop_error(states);
-		return (status == ZCBOR_SUCCESS) ? ZCBOR_ERR_UNKNOWN : status;
+		int err = zcbor_pop_error(states);
+
+		zcbor_print("Return error: %d\r\n", err);
+		return (err == ZCBOR_SUCCESS) ? ZCBOR_ERR_UNKNOWN : err;
 	}
 	return ZCBOR_SUCCESS;
 }

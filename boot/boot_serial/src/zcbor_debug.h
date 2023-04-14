@@ -6,10 +6,15 @@
 
 #ifndef ZCBOR_DEBUG_H__
 #define ZCBOR_DEBUG_H__
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include "zcbor_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 __attribute__((used))
 static void zcbor_print_compare_lines(const uint8_t *str1, const uint8_t *str2, uint32_t size)
@@ -56,5 +61,9 @@ static void zcbor_print_compare_strings_diff(const uint8_t *str1, const uint8_t 
 		printk("\r\n");
 	}
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ZCBOR_DEBUG_H__ */

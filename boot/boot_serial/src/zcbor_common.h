@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the zcbor library.
- * Commit zcbor 0.4.0
+ * Commit zcbor 0.7.0
  */
 
 /*
@@ -11,10 +11,14 @@
 
 #ifndef ZCBOR_COMMON_H__
 #define ZCBOR_COMMON_H__
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /** Convenience type that allows pointing to strings directly inside the payload
  *  without the need to copy out.
@@ -40,10 +44,10 @@ struct zcbor_string_fragment {
 #define ZCBOR_STRING_FRAGMENT_UNKNOWN_LENGTH SIZE_MAX
 
 #ifdef ZCBOR_VERBOSE
-#include <sys/printk.h>
-#define zcbor_trace() (printk("bytes left: %zu, byte: 0x%x, elem_count: 0x%" PRIxFAST32 ", %s:%d\n",\
-	(size_t)state->payload_end - (size_t)state->payload, *state->payload, \
-	state->elem_count, __FILE__, __LINE__))
+#include <zephyr/sys/printk.h>
+#define zcbor_trace() (printk("bytes left: %zu, byte: 0x%x, elem_count: 0x%" PRIxFAST32 ", err: %d, %s:%d\n",\
+	(size_t)state->payload_end - (size_t)state->payload, *state->payload, state->elem_count, \
+	state->constant_state ? state->constant_state->error : 0, __FILE__, __LINE__))
 
 #define zcbor_print_assert(expr, ...) \
 do { \
@@ -67,18 +71,34 @@ do { \
 		ZCBOR_FAIL(); \
 	} \
 } while(0)
+#define zcbor_assert_state(expr, ...) \
+do { \
+	if (!(expr)) { \
+		zcbor_print_assert(expr, __VA_ARGS__); \
+		ZCBOR_ERR(ZCBOR_ERR_ASSERTION); \
+	} \
+} while(0)
 #else
 #define zcbor_assert(expr, ...)
+#define zcbor_assert_state(expr, ...)
 #endif
 
 #ifndef MIN
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #endif
 
-#ifndef ARRAY_SIZE
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+#ifndef ZCBOR_ARRAY_SIZE
+#define ZCBOR_ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif
 
+#if SIZE_MAX <= UINT64_MAX
+/** The ZCBOR_SUPPORTS_SIZE_T will be defined if processing of size_t type variables directly
+ * with zcbor_size_ functions is supported.
+**/
+#define ZCBOR_SUPPORTS_SIZE_T
+#else
+#warning "zcbor: Unsupported size_t encoding size"
+#endif
 
 struct zcbor_state_constant;
 
@@ -269,33 +289,46 @@ bool zcbor_union_elem_code(zcbor_state_t *state);
 bool zcbor_union_end_code(zcbor_state_t *state);
 
 /** Initialize a state with backups.
- *  One of the states in the array is used as a struct zcbor_state_constant object.
+ *  As long as n_states is more than 1, one of the states in the array is used
+ *  as a struct zcbor_state_constant object.
+ *  If there is no struct zcbor_state_constant (n_states == 1), error codes are
+ *  not available.
  *  This means that you get a state with (n_states - 2) backups.
- *  The constant state is mandatory so n_states must be at least 2.
  *  payload, payload_len, and elem_count are used to initialize the first state.
  *  in the array, which is the state that can be passed to cbor functions.
- *
- *  @retval false  if n_states < 2
- *  @retval true   otherwise
  */
-bool zcbor_new_state(zcbor_state_t *state_array, uint_fast32_t n_states,
+void zcbor_new_state(zcbor_state_t *state_array, uint_fast32_t n_states,
 		const uint8_t *payload, size_t payload_len, uint_fast32_t elem_count);
 
 #ifdef ZCBOR_STOP_ON_ERROR
 /** Check stored error and fail if present, but only if stop_on_error is true. */
 static inline bool zcbor_check_error(const zcbor_state_t *state)
 {
-	return !(state->constant_state->stop_on_error && state->constant_state->error);
+	struct zcbor_state_constant  *cs = state->constant_state;
+	return !(cs && cs->stop_on_error && cs->error);
 }
 #endif
 
 /** Return the current error state, replacing it with SUCCESS. */
 static inline int zcbor_pop_error(zcbor_state_t *state)
 {
+	if (!state->constant_state) {
+		return ZCBOR_SUCCESS;
+	}
 	int err = state->constant_state->error;
 
 	state->constant_state->error = ZCBOR_SUCCESS;
 	return err;
+}
+
+/** Look at current error state without altering it */
+static inline int zcbor_peek_error(const zcbor_state_t *state)
+{
+	if (!state->constant_state) {
+		return ZCBOR_SUCCESS;
+	} else {
+		return state->constant_state->error;
+	}
 }
 
 /** Write the provided error to the error state. */
@@ -305,7 +338,9 @@ static inline void zcbor_error(zcbor_state_t *state, int err)
 	if (zcbor_check_error(state))
 #endif
 	{
-		state->constant_state->error = err;
+		if (state->constant_state) {
+			state->constant_state->error = err;
+		}
 	}
 }
 
@@ -367,5 +402,9 @@ bool zcbor_validate_string_fragments(struct zcbor_string_fragment *fragments,
  */
 bool zcbor_splice_string_fragments(struct zcbor_string_fragment *fragments,
 		uint_fast32_t num_fragments, uint8_t *result, size_t *result_len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ZCBOR_COMMON_H__ */

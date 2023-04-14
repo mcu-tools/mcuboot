@@ -24,7 +24,7 @@ copy_with_copy_notice() {
 
 
 echo "Generating serial_recovery_cbor.c|h"
-zcbor -c serial_recovery.cddl code -d -t Upload --oc serial_recovery_cbor.c --oh serial_recovery_cbor.h --time-header --copy-sources
+zcbor code -c serial_recovery.cddl -d -t Upload --oc serial_recovery_cbor.c --oh serial_recovery_cbor.h --time-header --copy-sources
 
 add_copyright() {
 echo "$(printf '/*

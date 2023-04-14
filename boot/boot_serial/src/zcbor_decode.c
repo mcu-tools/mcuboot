@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the zcbor library.
- * Commit zcbor 0.4.0
+ * Commit zcbor 0.7.0
  */
 
 /*
@@ -33,7 +33,7 @@ static uint_fast32_t additional_len(uint8_t additional)
 }
 
 /** Extract the major type, i.e. the first 3 bits of the header byte. */
-#define MAJOR_TYPE(header_byte) (((header_byte) >> 5) & 0x7)
+#define MAJOR_TYPE(header_byte) ((zcbor_major_type_t)(((header_byte) >> 5) & 0x7))
 
 /** Extract the additional info, i.e. the last 5 bits of the header byte. */
 #define ADDITIONAL(header_byte) ((header_byte) & 0x1F)
@@ -117,8 +117,8 @@ static bool value_extract(zcbor_state_t *state,
 		void *const result, uint_fast32_t result_len)
 {
 	zcbor_trace();
-	zcbor_assert(result_len != 0, "0-length result not supported.\r\n");
-	zcbor_assert(result != NULL, NULL);
+	zcbor_assert_state(result_len != 0, "0-length result not supported.\r\n");
+	zcbor_assert_state(result != NULL, NULL);
 
 	INITIAL_CHECKS();
 	ZCBOR_ERR_IF((state->elem_count == 0), ZCBOR_ERR_LOW_ELEM_COUNT);
@@ -160,28 +160,12 @@ static bool value_extract(zcbor_state_t *state,
 }
 
 
-bool zcbor_int32_decode(zcbor_state_t *state, int32_t *result)
-{
-	int64_t result64;
-
-	if (zcbor_int64_decode(state, &result64)) {
-		if (result64 > INT32_MAX) {
-			ERR_RESTORE(ZCBOR_ERR_INT_SIZE);
-		}
-		*result = (int32_t)result64;
-		return true;
-	} else {
-		ZCBOR_FAIL();
-	}
-}
-
-
-bool zcbor_int64_decode(zcbor_state_t *state, int64_t *result)
+bool zcbor_int_decode(zcbor_state_t *state, void *result_int, size_t int_size)
 {
 	INITIAL_CHECKS();
-	uint8_t major_type = MAJOR_TYPE(*state->payload);
-	uint64_t uint_result;
-	int64_t int_result;
+	zcbor_major_type_t major_type = MAJOR_TYPE(*state->payload);
+	uint8_t *result_uint8 = (uint8_t *)result_int;
+	int8_t *result_int8 = (int8_t *)result_int;
 
 	if (major_type != ZCBOR_MAJOR_TYPE_PINT
 		&& major_type != ZCBOR_MAJOR_TYPE_NINT) {
@@ -189,28 +173,39 @@ bool zcbor_int64_decode(zcbor_state_t *state, int64_t *result)
 		ZCBOR_ERR(ZCBOR_ERR_WRONG_TYPE);
 	}
 
-	if (!value_extract(state, &uint_result, sizeof(uint_result))) {
+	if (!value_extract(state, result_int, int_size)) {
 		ZCBOR_FAIL();
 	}
 
-	zcbor_print("uintval: %" PRIu64 "\r\n", uint_result);
-
-	int_result = (int64_t)uint_result;
-
-	if (int_result < 0) {
+#ifdef CONFIG_BIG_ENDIAN
+	if (result_int8[0] < 0) {
+#else
+	if (result_int8[int_size - 1] < 0) {
+#endif
 		/* Value is too large to fit in a signed integer. */
 		ERR_RESTORE(ZCBOR_ERR_INT_SIZE);
 	}
 
 	if (major_type == ZCBOR_MAJOR_TYPE_NINT) {
-		/* Convert from CBOR's representation. */
-		*result = -1 - int_result;
-	} else {
-		*result = int_result;
+		/* Convert from CBOR's representation by flipping all bits. */
+		for (int i = 0; i < int_size; i++) {
+			result_uint8[i] = (uint8_t)~result_uint8[i];
+		}
 	}
 
-	zcbor_print("val: %" PRIi64 "\r\n", *result);
 	return true;
+}
+
+
+bool zcbor_int32_decode(zcbor_state_t *state, int32_t *result)
+{
+	return zcbor_int_decode(state, result, sizeof(*result));
+}
+
+
+bool zcbor_int64_decode(zcbor_state_t *state, int64_t *result)
+{
+	return zcbor_int_decode(state, result, sizeof(*result));
 }
 
 
@@ -225,16 +220,38 @@ bool zcbor_uint32_decode(zcbor_state_t *state, uint32_t *result)
 }
 
 
+bool zcbor_int32_expect_union(zcbor_state_t *state, int32_t result)
+{
+	if (!zcbor_union_elem_code(state)) {
+		ZCBOR_FAIL();
+	}
+	return zcbor_int32_expect(state, result);
+}
+
+
+bool zcbor_int64_expect_union(zcbor_state_t *state, int64_t result)
+{
+	if (!zcbor_union_elem_code(state)) {
+		ZCBOR_FAIL();
+	}
+	return zcbor_int64_expect(state, result);
+}
+
+
 bool zcbor_uint32_expect_union(zcbor_state_t *state, uint32_t result)
 {
-	zcbor_union_elem_code(state);
+	if (!zcbor_union_elem_code(state)) {
+		ZCBOR_FAIL();
+	}
 	return zcbor_uint32_expect(state, result);
 }
 
 
 bool zcbor_uint64_expect_union(zcbor_state_t *state, uint64_t result)
 {
-	zcbor_union_elem_code(state);
+	if (!zcbor_union_elem_code(state)) {
+		ZCBOR_FAIL();
+	}
 	return zcbor_uint64_expect(state, result);
 }
 
@@ -272,6 +289,14 @@ bool zcbor_uint64_decode(zcbor_state_t *state, uint64_t *result)
 }
 
 
+#ifdef ZCBOR_SUPPORTS_SIZE_T
+bool zcbor_size_decode(zcbor_state_t *state, size_t *result)
+{
+	return value_extract(state, result, sizeof(size_t));
+}
+#endif
+
+
 bool zcbor_uint32_expect(zcbor_state_t *state, uint32_t result)
 {
 	return zcbor_uint64_expect(state, result);
@@ -291,6 +316,14 @@ bool zcbor_uint64_expect(zcbor_state_t *state, uint64_t result)
 	}
 	return true;
 }
+
+
+#ifdef ZCBOR_SUPPORTS_SIZE_T
+bool zcbor_size_expect(zcbor_state_t *state, size_t result)
+{
+	return zcbor_uint64_expect(state, result);
+}
+#endif
 
 
 static bool str_start_decode(zcbor_state_t *state,
@@ -322,7 +355,6 @@ static bool str_overflow_check(zcbor_state_t *state, struct zcbor_string *result
 bool zcbor_bstr_start_decode(zcbor_state_t *state, struct zcbor_string *result)
 {
 	struct zcbor_string dummy;
-
 	if (result == NULL) {
 		result = &dummy;
 	}
@@ -760,11 +792,11 @@ bool zcbor_float_expect(zcbor_state_t *state, double result)
 
 bool zcbor_any_skip(zcbor_state_t *state, void *result)
 {
-	zcbor_assert(result == NULL,
+	zcbor_assert_state(result == NULL,
 			"'any' type cannot be returned, only skipped.\r\n");
 
 	INITIAL_CHECKS();
-	uint8_t major_type = MAJOR_TYPE(*state->payload);
+	zcbor_major_type_t major_type = MAJOR_TYPE(*state->payload);
 	uint8_t additional = ADDITIONAL(*state->payload);
 	uint_fast32_t value;
 	uint_fast32_t num_decode;
@@ -906,15 +938,15 @@ bool zcbor_present_decode(uint_fast32_t *present,
 	uint_fast32_t num_decode;
 	bool retval = zcbor_multi_decode(0, 1, &num_decode, decoder, state, result, 0);
 
-	zcbor_assert(retval, "zcbor_multi_decode should not fail with these parameters.\r\n");
+	zcbor_assert_state(retval, "zcbor_multi_decode should not fail with these parameters.\r\n");
 
 	*present = num_decode;
 	return retval;
 }
 
 
-bool zcbor_new_decode_state(zcbor_state_t *state_array, uint_fast32_t n_states,
+void zcbor_new_decode_state(zcbor_state_t *state_array, uint_fast32_t n_states,
 		const uint8_t *payload, size_t payload_len, uint_fast32_t elem_count)
 {
-	return zcbor_new_state(state_array, n_states, payload, payload_len, elem_count);
+	zcbor_new_state(state_array, n_states, payload, payload_len, elem_count);
 }

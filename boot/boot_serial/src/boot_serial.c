@@ -153,7 +153,7 @@ extern int bs_peruser_system_specific(const struct nmgr_hdr *hdr,
                                       int len, zcbor_state_t *cs);
 
 #define zcbor_tstr_put_lit_cast(state, string) \
-	zcbor_tstr_encode_ptr(state, (uint8_t *)string, sizeof(string) - 1)
+	zcbor_tstr_encode_ptr(state, (char *)string, sizeof(string) - 1)
 
 #ifndef MCUBOOT_USE_SNPRINTF
 /*
@@ -312,7 +312,7 @@ bs_list(char *buf, int len)
 
             bs_list_img_ver((char *)tmpbuf, sizeof(tmpbuf), &hdr.ih_ver);
 
-            zcbor_tstr_encode_ptr(cbor_state, tmpbuf, strlen((char *)tmpbuf));
+            zcbor_tstr_encode_ptr(cbor_state, (char *)tmpbuf, strlen((char *)tmpbuf));
             zcbor_map_end_encode(cbor_state, 20);
         }
     }
