@@ -77,9 +77,9 @@ static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
     return (int)psa_hash_setup(ctx, PSA_ALG_SHA_256);
 }
 
-static inline void bootutil_sha256_drop(bootutil_sha256_context *ctx)
+static inline int bootutil_sha256_drop(bootutil_sha256_context *ctx)
 {
-    (void)psa_hash_abort(ctx);
+    return (int)psa_hash_abort(ctx);
 }
 
 static inline int bootutil_sha256_update(bootutil_sha256_context *ctx,
@@ -107,11 +107,12 @@ static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
     return mbedtls_sha256_starts_ret(ctx, 0);
 }
 
-static inline void bootutil_sha256_drop(bootutil_sha256_context *ctx)
+static inline int bootutil_sha256_drop(bootutil_sha256_context *ctx)
 {
     /* XXX: config defines MBEDTLS_PLATFORM_NO_STD_FUNCTIONS so no need to free */
     /* (void)mbedtls_sha256_free(ctx); */
     (void)ctx;
+    return 0;
 }
 
 static inline int bootutil_sha256_update(bootutil_sha256_context *ctx,
@@ -137,9 +138,10 @@ static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
     return 0;
 }
 
-static inline void bootutil_sha256_drop(bootutil_sha256_context *ctx)
+static inline int bootutil_sha256_drop(bootutil_sha256_context *ctx)
 {
     (void)ctx;
+    return 0;
 }
 
 static inline int bootutil_sha256_update(bootutil_sha256_context *ctx,
@@ -163,10 +165,11 @@ static inline int bootutil_sha256_init(bootutil_sha256_context *ctx)
     return 0;
 }
 
-static inline void bootutil_sha256_drop(bootutil_sha256_context *ctx)
+static inline int bootutil_sha256_drop(bootutil_sha256_context *ctx)
 {
     (void)ctx;
     nrf_cc310_disable();
+    return 0;
 }
 
 static inline int bootutil_sha256_update(bootutil_sha256_context *ctx,
