@@ -15,7 +15,13 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+
+#ifdef __ZEPHYR__
+#include <zcbor_decode.h>
+#else
 #include "zcbor_decode.h"
+#endif
+
 #include "serial_recovery_cbor.h"
 
 #if DEFAULT_MAX_QTY != 3
