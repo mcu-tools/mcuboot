@@ -1175,8 +1175,8 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     }
 #endif
 
-    BOOT_LOG_INF("Copying the secondary slot to the primary slot: 0x%zx bytes",
-                 size);
+    BOOT_LOG_INF("Image %d copying the secondary slot to the primary slot: 0x%zx bytes",
+                 image_index, size);
     rc = boot_copy_region(state, fap_secondary_slot, fap_primary_slot, 0, 0, size);
     if (rc != 0) {
         return rc;
@@ -1981,7 +1981,7 @@ check_downgrade_prevention(struct boot_loader_state *state)
     }
     if (rc < 0) {
         /* Image in slot 0 prevents downgrade, delete image in slot 1 */
-        BOOT_LOG_INF("Image in slot 1 erased due to downgrade prevention");
+        BOOT_LOG_INF("Image %d in slot 1 erased due to downgrade prevention", BOOT_CURR_IMG(state));
         flash_area_erase(BOOT_IMG(state, 1).area, 0,
                          flash_area_get_size(BOOT_IMG(state, 1).area));
     } else {
@@ -2733,7 +2733,8 @@ boot_copy_image_to_sram(struct boot_loader_state *state, int slot,
     /* Direct copy from flash to its new location in SRAM. */
     rc = flash_area_read(fap_src, 0, (void *)(IMAGE_RAM_BASE + img_dst), img_sz);
     if (rc != 0) {
-        BOOT_LOG_INF("Error whilst copying image from Flash to SRAM: %d", rc);
+        BOOT_LOG_INF("Error whilst copying image %d from Flash to SRAM: %d",
+                     BOOT_CURR_IMG(state), rc);
     }
 
     flash_area_close(fap_src);
