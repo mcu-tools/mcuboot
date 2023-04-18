@@ -57,7 +57,7 @@ extern "C" {
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_EC_ALG_UNRESTRICTED;
 static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
 
-#ifndef MCUBOOT_ECDSA_NEED_ASN1_SIG
+#ifdef MCUBOOT_USE_TINYCRYPT
 /*
  * cp points to ASN1 string containing an integer.
  * Verify the tag, and that the length is 32 bytes.
@@ -107,7 +107,7 @@ static int bootutil_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp
     }
     return 0;
 }
-#endif /* not MCUBOOT_ECDSA_NEED_ASN1_SIG */
+#endif /* MCUBOOT_USE_TINYCRYPT */
 
 static int bootutil_import_key(uint8_t **cp, uint8_t *end)
 {
