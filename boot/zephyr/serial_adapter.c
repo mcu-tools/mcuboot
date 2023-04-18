@@ -199,17 +199,21 @@ boot_uart_fifo_getline(char **line)
 static int
 boot_uart_fifo_init(void)
 {
+
+#if defined(CONFIG_BOOT_SERIAL_UART)
+
 #if DT_HAS_CHOSEN(zephyr_uart_mcumgr)
 	uart_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_uart_mcumgr));
 #else
-
-#if defined(CONFIG_BOOT_SERIAL_UART)
 	uart_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
+#endif
+
 #elif defined(CONFIG_BOOT_SERIAL_CDC_ACM)
         uart_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
+#else
+#error No serial recovery device selected
 #endif
 
-#endif
 
 	if (!device_is_ready(uart_dev)) {
 		return (-1);
