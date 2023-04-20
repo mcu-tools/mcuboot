@@ -44,6 +44,8 @@ jobs:
         - "sig-rsa validate-primary-slot ram-load multiimage"
         - "sig-rsa validate-primary-slot direct-xip multiimage"
         - "sig-ecdsa hw-rollback-protection multiimage"
+        - "ram-load enc-aes256-kw multiimage"
+        - "ram-load enc-aes256-kw sig-ecdsa-mbedtls multiimage"
     runs-on: ubuntu-latest
     env:
       MULTI_FEATURES: ${{ matrix.features }}
