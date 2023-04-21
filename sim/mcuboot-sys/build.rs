@@ -359,7 +359,7 @@ fn main() {
         conf.file("../../boot/bootutil/src/image_rsa.c");
     } else if sig_ecdsa || sig_ecdsa_mbedtls {
         conf.conf.include("../../ext/mbedtls/include");
-        conf.file("../../boot/bootutil/src/image_ec256.c");
+        conf.file("../../boot/bootutil/src/image_ecdsa.c");
     } else if sig_ed25519 {
         conf.file("../../boot/bootutil/src/image_ed25519.c");
     }
