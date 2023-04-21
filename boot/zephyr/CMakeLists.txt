@@ -100,7 +100,7 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/tlv.c
   ${BOOT_DIR}/bootutil/src/encrypted.c
   ${BOOT_DIR}/bootutil/src/image_rsa.c
-  ${BOOT_DIR}/bootutil/src/image_ec256.c
+  ${BOOT_DIR}/bootutil/src/image_ecdsa.c
   ${BOOT_DIR}/bootutil/src/image_ed25519.c
   ${BOOT_DIR}/bootutil/src/bootutil_misc.c
   ${BOOT_DIR}/bootutil/src/fault_injection_hardening.c
