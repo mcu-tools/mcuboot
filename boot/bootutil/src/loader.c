@@ -622,15 +622,17 @@ boot_check_header_erased(struct boot_loader_state *state, int slot)
     defined(MCUBOOT_RAM_LOAD) || \
     defined(MCUBOOT_DOWNGRADE_PREVENTION)
 /**
- * Compare image version numbers not including the build number
+ * Compare image version numbers
+ *
+ * By default, the comparison does not take build number into account.
+ * Enable MCUBOOT_VERSION_CMP_USE_BUILD_NUMBER to take the build number into account.
  *
  * @param ver1           Pointer to the first image version to compare.
  * @param ver2           Pointer to the second image version to compare.
  *
- * @retval -1           If ver1 is strictly less than ver2.
- * @retval 0            If the image version numbers are equal,
- *                      (not including the build number).
- * @retval 1            If ver1 is strictly greater than ver2.
+ * @retval -1           If ver1 is less than ver2.
+ * @retval 0            If the image version numbers are equal.
+ * @retval 1            If ver1 is greater than ver2.
  */
 static int
 boot_version_cmp(const struct image_version *ver1,
@@ -656,6 +658,16 @@ boot_version_cmp(const struct image_version *ver1,
     if (ver1->iv_revision < ver2->iv_revision) {
         return -1;
     }
+
+#if defined(MCUBOOT_VERSION_CMP_USE_BUILD_NUMBER)
+    /* The revisions are equal, continue comparison. */
+    if (ver1->iv_build_num > ver2->iv_build_num) {
+        return 1;
+    }
+    if (ver1->iv_build_num < ver2->iv_build_num) {
+        return -1;
+    }
+#endif
 
     return 0;
 }

@@ -522,6 +522,15 @@ config UPDATEABLE_IMAGE_NUMBER
 	help
 	  Enables support of multi image update.
 
+config BOOT_VERSION_CMP_USE_BUILD_NUMBER
+	bool "Use build number while comparing image version"
+	depends on (UPDATEABLE_IMAGE_NUMBER > 1) || BOOT_DIRECT_XIP || \
+		   BOOT_RAM_LOAD || MCUBOOT_DOWNGRADE_PREVENTION
+	help
+	  By default, the image version comparison relies only on version major,
+	  minor and revision. Enable this option to take into account the build
+	  number as well.
+
 choice BOOT_DOWNGRADE_PREVENTION_CHOICE
 	prompt "Downgrade prevention"
 	optional
