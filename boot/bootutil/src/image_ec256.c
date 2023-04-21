@@ -44,6 +44,9 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     FIH_DECLARE(fih_rc, FIH_FAILURE);
     uint8_t *pubkey;
     uint8_t *end;
+#ifndef MCUBOOT_ECDSA_NEED_ASN1_SIG
+    uint8_t signature[2 * NUM_ECC_BYTES];
+#endif
 
     pubkey = (uint8_t *)bootutil_keys[key_id].key;
     end = pubkey + *bootutil_keys[key_id].len;
@@ -55,7 +58,16 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
         FIH_RET(fih_rc);
     }
 
+#ifdef MCUBOOT_ECDSA_NEED_ASN1_SIG
     FIH_CALL(bootutil_ecdsa_p256_verify, fih_rc, &ctx, pubkey, end-pubkey, hash, hlen, sig, slen);
+#else
+    rc = bootutil_decode_sig(signature, sig, sig + slen);
+    if (rc) {
+        return -1;
+    }
+    FIH_CALL(bootutil_ecdsa_p256_verify, fih_rc, &ctx, pubkey, end-pubkey, hash, hlen, signature,
+                                         2 * NUM_ECC_BYTES);
+#endif
     bootutil_ecdsa_p256_drop(&ctx);
 
     FIH_RET(fih_rc);
