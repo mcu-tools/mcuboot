@@ -370,6 +370,8 @@ static inline void parse_signature_from_rfc5480_encoding(const uint8_t *sig,
 const uint8_t IdEcPublicKey[] = {0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01};
 // OID secp256r1 1.2.840.10045.3.1.7.
 const uint8_t Secp256r1[] = {0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07};
+// OID secp384r1 1.3.132.0.34
+const uint8_t Secp384r1[] = {0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x22};
 
 static inline void bootutil_ecdsa_p256_init(bootutil_ecdsa_p256_context *ctx)
 {
@@ -391,6 +393,7 @@ static inline void bootutil_ecdsa_p256_drop(bootutil_ecdsa_p256_context *ctx)
  * OID for icEcPublicKey is 1.2.840.10045.2.1
  * OIDs for supported curves are as follows:
  *     secp256r1 (prime256v1): 1.2.840.10045.3.1.7
+ *     secp384r1: 1.3.132.0.34
  */
 static inline int bootutil_ecdsa_p256_parse_public_key(bootutil_ecdsa_p256_context *ctx,
                                                        uint8_t **cp, uint8_t *end)
@@ -407,6 +410,9 @@ static inline int bootutil_ecdsa_p256_parse_public_key(bootutil_ecdsa_p256_conte
     if (!memcmp(CURVE_TYPE_OID_OFFSET(cp), Secp256r1, sizeof(Secp256r1))) {
         ctx->curve_byte_count = 32;
         ctx->required_algorithm = PSA_ALG_SHA_256;
+    } else if (!memcmp(CURVE_TYPE_OID_OFFSET(p), Secp384r1, sizeof(Secp384r1))) {
+        ctx->curve_byte_count = 48;
+        ctx->required_algorithm = PSA_ALG_SHA_384;
     } else {
         return (int)PSA_ERROR_INVALID_ARGUMENT;
     }
@@ -428,7 +434,7 @@ static inline int bootutil_ecdsa_p256_verify(const bootutil_ecdsa_p256_context *
 {
     (void)slen;
 
-    uint8_t reformatted_signature[64] = {0}; /* Enough for P-256 signature sizes */
+    uint8_t reformatted_signature[96] = {0}; /* Enough for P-384 signature sizes */
     parse_signature_from_rfc5480_encoding(sig, ctx->curve_byte_count,reformatted_signature);
 
     return (int) psa_verify_hash(ctx->key_id, PSA_ALG_ECDSA(ctx->required_algorithm),
