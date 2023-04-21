@@ -1,4 +1,10 @@
 /*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Copyright (c) 2023 Arm Limited
+ */
+
+/*
  * This module provides a thin abstraction over some of the crypto
  * primitives to make it easier to swap out the used crypto library.
  *
