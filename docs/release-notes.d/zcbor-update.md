@@ -1,0 +1,1 @@
+- zcbor library files have been updated to version 0.7.0
