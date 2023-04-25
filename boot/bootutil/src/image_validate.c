@@ -494,7 +494,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
              * stored security counter value.
              */
             fih_rc = fih_ret_encode_zero_equality(img_security_cnt <
-                                   fih_int_decode(security_cnt));
+                                   (uint32_t)fih_int_decode(security_cnt));
             if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
                 FIH_SET(fih_rc, FIH_FAILURE);
                 goto out;
