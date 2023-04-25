@@ -16,7 +16,7 @@
 
 import argparse
 import os.path
-import toml
+import tomllib as toml
 
 parser = argparse.ArgumentParser(description='Print features from a Cargo.toml.')
 parser.add_argument('infile', help='Input file to parse')
