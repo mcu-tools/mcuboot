@@ -20,6 +20,7 @@
 #ifndef __BOOTUTIL_CRYPTO_ECDSA_H_
 #define __BOOTUTIL_CRYPTO_ECDSA_H_
 
+#include <stdint.h>
 #include "mcuboot_config/mcuboot_config.h"
 
 #if defined(MCUBOOT_USE_PSA_CRYPTO) || defined(MCUBOOT_USE_MBED_TLS)
@@ -190,9 +191,9 @@ static inline void bootutil_ecdsa_drop(bootutil_ecdsa_context *ctx)
 }
 
 static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
-                                             uint8_t *pk, size_t pk_len,
-                                             uint8_t *hash, size_t hash_len,
-                                             uint8_t *sig, size_t sig_len)
+                                        uint8_t *pk, size_t pk_len,
+                                        uint8_t *hash, size_t hash_len,
+                                        uint8_t *sig, size_t sig_len)
 {
     int rc;
     (void)ctx;
@@ -220,7 +221,7 @@ static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
 }
 
 static inline int bootutil_ecdsa_parse_public_key(bootutil_ecdsa_context *ctx,
-                                                       uint8_t **cp,uint8_t *end)
+                                                  uint8_t **cp,uint8_t *end)
 {
     (void)ctx;
     return bootutil_import_key(cp, end);
@@ -240,9 +241,9 @@ static inline void bootutil_ecdsa_drop(bootutil_ecdsa_context *ctx)
 }
 
 static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
-                                             uint8_t *pk, size_t pk_len,
-                                             uint8_t *hash, size_t hash_len,
-                                             uint8_t *sig, size_t sig_len)
+                                        uint8_t *pk, size_t pk_len,
+                                        uint8_t *hash, size_t hash_len,
+                                        uint8_t *sig, size_t sig_len)
 {
     (void)ctx;
     (void)pk_len;
@@ -259,7 +260,7 @@ static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
 }
 
 static inline int bootutil_ecdsa_parse_public_key(bootutil_ecdsa_context *ctx,
-                                                       uint8_t **cp,uint8_t *end)
+                                                  uint8_t **cp,uint8_t *end)
 {
     (void)ctx;
     return bootutil_import_key(cp, end);
@@ -332,9 +333,9 @@ static inline void get_public_key_from_rfc5280_encoding(uint8_t **p, size_t *siz
  *                               responsibility to ensure the buffer is big enough to
  *                               hold the parsed (r,s) pair.
  */
-static inline void parse_signature_from_rfc5480_encoding(const uint8_t *sig,
-                                                         size_t num_of_curve_bytes,
-                                                         uint8_t *r_s_pair)
+static void parse_signature_from_rfc5480_encoding(const uint8_t *sig,
+                                                  size_t num_of_curve_bytes,
+                                                  uint8_t *r_s_pair)
 {
     const uint8_t *sig_ptr = NULL;
 
@@ -400,8 +401,8 @@ static inline void bootutil_ecdsa_drop(bootutil_ecdsa_context *ctx)
  *     secp256r1 (prime256v1): 1.2.840.10045.3.1.7
  *     secp384r1: 1.3.132.0.34
  */
-static inline int bootutil_ecdsa_parse_public_key(bootutil_ecdsa_context *ctx,
-                                                       uint8_t **cp, uint8_t *end)
+static int bootutil_ecdsa_parse_public_key(bootutil_ecdsa_context *ctx,
+                                           uint8_t **cp, uint8_t *end)
 {
     psa_key_attributes_t key_attributes = psa_key_attributes_init();
     size_t key_size;
@@ -434,9 +435,13 @@ static inline int bootutil_ecdsa_parse_public_key(bootutil_ecdsa_context *ctx,
 /* Verify the signature against the provided hash. The signature gets parsed from
  * the encoding first, then PSA Crypto has a dedicated API for ECDSA verification
  */
-static inline int bootutil_ecdsa_verify(const bootutil_ecdsa_context *ctx,
-    uint8_t *hash, size_t hlen, uint8_t *sig, size_t slen)
+static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
+                                        uint8_t *pk, size_t pk_len,
+                                        uint8_t *hash, size_t hlen,
+                                        uint8_t *sig, size_t slen)
 {
+    (void)pk;
+    (void)pk_len;
     (void)slen;
 
     uint8_t reformatted_signature[96] = {0}; /* Enough for P-384 signature sizes */
@@ -508,9 +513,9 @@ static int bootutil_parse_eckey(bootutil_ecdsa_context *ctx, uint8_t **p, uint8_
 }
 
 static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
-                                             uint8_t *pk, size_t pk_len,
-                                             uint8_t *hash, size_t hash_len,
-                                             uint8_t *sig, size_t sig_len)
+                                        uint8_t *pk, size_t pk_len,
+                                        uint8_t *hash, size_t hash_len,
+                                        uint8_t *sig, size_t sig_len)
 {
     (void)pk;
     (void)pk_len;
@@ -519,17 +524,17 @@ static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
      * This is simplified, as the hash length is also 32 bytes.
      */
     while (sig[sig_len - 1] == '\0') {
-            sig_len--;
-        }
+        sig_len--;
+    }
     return mbedtls_ecdsa_read_signature(&ctx, hash, hash_len, sig, sig_len);
 }
 
 #else /* CY_MBEDTLS_HW_ACCELERATION */
 
 static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
-                                             uint8_t *pk, size_t pk_len,
-                                             uint8_t *hash, size_t hash_len,
-                                             uint8_t *sig, size_t sig_len)
+                                        uint8_t *pk, size_t pk_len,
+                                        uint8_t *hash, size_t hash_len,
+                                        uint8_t *sig, size_t sig_len)
 {
     int rc;
 
@@ -564,7 +569,7 @@ static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
 #endif /* CY_MBEDTLS_HW_ACCELERATION */
 
 static inline int bootutil_ecdsa_parse_public_key(bootutil_ecdsa_context *ctx,
-                                                       uint8_t **cp,uint8_t *end)
+                                                  uint8_t **cp,uint8_t *end)
 {
     int rc;
 #ifdef CY_MBEDTLS_HW_ACCELERATION
