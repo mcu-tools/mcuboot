@@ -41,12 +41,10 @@
 #if defined(MCUBOOT_USE_TINYCRYPT)
     #include <tinycrypt/ecc_dsa.h>
     #include <tinycrypt/constants.h>
-    #define BOOTUTIL_CRYPTO_ECDSA_P256_HASH_SIZE (4 * 8)
 #endif /* MCUBOOT_USE_TINYCRYPT */
 
 #if defined(MCUBOOT_USE_CC310)
     #include <cc310_glue.h>
-    #define BOOTUTIL_CRYPTO_ECDSA_P256_HASH_SIZE (4 * 8)
 #endif /* MCUBOOT_USE_CC310 */
 
 #if defined(MCUBOOT_USE_PSA_CRYPTO)
@@ -54,7 +52,6 @@
     #include <string.h>
 #elif defined(MCUBOOT_USE_MBED_TLS)
     #include <mbedtls/ecdsa.h>
-    #define BOOTUTIL_CRYPTO_ECDSA_P256_HASH_SIZE (4 * 8)
     /* Indicate to the caller that the verify function needs the raw ASN.1
      * signature, not a decoded one. */
     #define MCUBOOT_ECDSA_NEED_ASN1_SIG
@@ -64,6 +61,9 @@
 #if defined(MCUBOOT_USE_CC310) || defined(MCUBOOT_USE_MBED_TLS)
 #define NUM_ECC_BYTES (256 / 8)
 #endif
+
+/* Universal defines */
+#define BOOTUTIL_CRYPTO_ECDSA_P256_HASH_SIZE (32)
 
 #include "mbedtls/oid.h"
 #include "mbedtls/asn1.h"
