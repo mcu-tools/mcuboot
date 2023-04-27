@@ -59,6 +59,7 @@ pub enum TlvKinds {
     ENCEC256 = 0x32,
     ENCX25519 = 0x33,
     DEPENDENCY = 0x40,
+    SECCNT = 0x50,
 }
 
 #[allow(dead_code, non_camel_case_types)]
@@ -108,6 +109,9 @@ pub trait ManifestGen {
 
     /// Return the current encryption key
     fn get_enc_key(&self) -> Vec<u8>;
+
+    /// Set the security counter to the specified value.
+    fn set_security_counter(&mut self, security_cnt: Option<u32>);
 }
 
 #[derive(Debug, Default)]
@@ -119,6 +123,7 @@ pub struct TlvGen {
     enc_key: Vec<u8>,
     /// Should this signature be corrupted.
     gen_corrupted: bool,
+    security_cnt: Option<u32>,
 }
 
 #[derive(Debug)]
@@ -294,6 +299,15 @@ impl TlvGen {
             ..Default::default()
         }
     }
+
+    #[allow(dead_code)]
+    pub fn new_sec_cnt() -> TlvGen {
+       TlvGen {
+            kinds: vec![TlvKinds::SHA256, TlvKinds::SECCNT],
+            ..Default::default()
+        }
+    }
+
 }
 
 impl ManifestGen for TlvGen {
@@ -317,12 +331,17 @@ impl ManifestGen for TlvGen {
     }
 
     fn protect_size(&self) -> u16 {
-        if self.dependencies.is_empty() {
-            0
-        } else {
-            // Include the header and space for each dependency.
-            4 + (self.dependencies.len() as u16) * (4 + 4 + 8)
+        let mut size = 0;
+        if !self.dependencies.is_empty() || (Caps::HwRollbackProtection.present() && self.security_cnt.is_some()) {
+            // include the TLV area header.
+            size += 4;
+            // add space for each dependency.
+            size +=  (self.dependencies.len() as u16) * (4 + std::mem::size_of::<Dependency>() as u16);
+            if Caps::HwRollbackProtection.present() && self.security_cnt.is_some() {
+                size += 4 + 4;
+            }
         }
+        size
     }
 
     fn add_dependency(&mut self, id: u8, version: &ImageVersion) {
@@ -385,10 +404,8 @@ impl ManifestGen for TlvGen {
             estimate += 4 + if aes256 { 96 } else { 80 };
         }
 
-        // Gather the size of the dependency information.
-        if self.protect_size() > 0 {
-            estimate += 4 + (16 * self.dependencies.len());
-        }
+        // Gather the size of the protected TLV area.
+        estimate += self.protect_size() as usize;
 
         estimate
     }
@@ -416,6 +433,13 @@ impl ManifestGen for TlvGen {
                 protected_tlv.push(dep.version.minor);
                 protected_tlv.write_u16::<LittleEndian>(dep.version.revision).unwrap();
                 protected_tlv.write_u32::<LittleEndian>(dep.version.build_num).unwrap();
+            }
+
+            // Security counter has to be at the protected TLV area also
+            if Caps::HwRollbackProtection.present() && self.security_cnt.is_some() {
+                protected_tlv.write_u16::<LittleEndian>(TlvKinds::SECCNT as u16).unwrap();
+                protected_tlv.write_u16::<LittleEndian>(std::mem::size_of::<u32>() as u16).unwrap();
+                protected_tlv.write_u32::<LittleEndian>(self.security_cnt.unwrap() as u32).unwrap();
             }
 
             assert_eq!(size, protected_tlv.len() as u16, "protected TLV length incorrect");
@@ -764,6 +788,10 @@ impl ManifestGen for TlvGen {
             panic!("No random key was generated");
         }
         self.enc_key.clone()
+    }
+
+    fn set_security_counter(&mut self, security_cnt: Option<u32>) {
+        self.security_cnt = security_cnt;
     }
 }
 

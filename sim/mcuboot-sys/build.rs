@@ -34,6 +34,7 @@ fn main() {
     let ram_load = env::var("CARGO_FEATURE_RAM_LOAD").is_ok();
     let direct_xip = env::var("CARGO_FEATURE_DIRECT_XIP").is_ok();
     let max_align_32 = env::var("CARGO_FEATURE_MAX_ALIGN_32").is_ok();
+    let hw_rollback_protection = env::var("CARGO_FEATURE_HW_ROLLBACK_PROTECTION").is_ok();
 
     let mut conf = CachedBuild::new();
     conf.conf.define("__BOOTSIM__", None);
@@ -73,6 +74,11 @@ fn main() {
 
     if direct_xip {
         conf.conf.define("MCUBOOT_DIRECT_XIP", None);
+    }
+
+    if hw_rollback_protection {
+        conf.conf.define("MCUBOOT_HW_ROLLBACK_PROT", None);
+        conf.file("csupport/security_cnt.c");
     }
 
     // Currently no more than one sig type can be used simultaneously.

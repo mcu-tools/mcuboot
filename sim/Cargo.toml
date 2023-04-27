@@ -30,6 +30,7 @@ ram-load = ["mcuboot-sys/ram-load"]
 direct-xip = ["mcuboot-sys/direct-xip"]
 downgrade-prevention = ["mcuboot-sys/downgrade-prevention"]
 max-align-32 = ["mcuboot-sys/max-align-32"]
+hw-rollback-protection = ["mcuboot-sys/hw-rollback-protection"]
 
 [dependencies]
 byteorder = "1.4"
