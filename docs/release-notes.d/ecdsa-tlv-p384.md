@@ -1,2 +1,2 @@
-- Add generic ECDSA TLV, remove the ECDSA256 and ECDSA224 curve TLVs.
-- Add P384 support to imgtool.
+- Make the ECDSA256 TLV curve agnostic and rename it to ECDSA_SIG.
+- imgtool: add P384 support along with SHA384.
