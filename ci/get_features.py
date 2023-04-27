@@ -16,7 +16,10 @@
 
 import argparse
 import os.path
-import toml
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 parser = argparse.ArgumentParser(description='Print features from a Cargo.toml.')
 parser.add_argument('infile', help='Input file to parse')
@@ -32,7 +35,7 @@ except Exception:
     print("Error reading \"{}\"".format(args.infile))
     exit(1)
 
-config = toml.loads(cargo_toml)
+config = tomllib.loads(cargo_toml)
 if 'features' not in config:
     print("Missing \"[features]\" section")
     exit(1)
