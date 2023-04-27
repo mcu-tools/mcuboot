@@ -83,6 +83,9 @@ downgrade-prevention = []
 # Support images with 32-byte maximum write alignment value.
 max-align-32 = []
 
+# Enable hardware rollback protection
+hw-rollback-protection = []
+
 [build-dependencies]
 cc = "1.0.25"
 

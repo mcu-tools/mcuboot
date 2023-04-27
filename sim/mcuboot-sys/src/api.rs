@@ -1,5 +1,6 @@
 // Copyright (c) 2017-2021 Linaro LTD
 // Copyright (c) 2018-2019 JUUL Labs
+// Copyright (c) 2023 Arm Limited
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -131,10 +132,32 @@ pub struct BootsimRamInfo {
     pub base: usize,
 }
 
+/// This struct stores the non-volatile security counter per image. It will be stored per test thread,
+/// and the C code will set / get the values here.
+#[repr(C)]
+#[derive(Debug, Default)]
+pub struct NvCounterStorage {
+    pub storage: Vec<u32>,
+}
+
+impl NvCounterStorage {
+    pub fn new() -> Self {
+        let count = if cfg!(feature = "multiimage") {
+            2
+        } else {
+            1
+        };
+        Self {
+            storage: vec![0; count]
+        }
+    }
+}
+
 thread_local! {
     pub static THREAD_CTX: RefCell<FlashContext> = RefCell::new(FlashContext::new());
     pub static SIM_CTX: RefCell<CSimContextPtr> = RefCell::new(CSimContextPtr::new());
     pub static RAM_CTX: RefCell<BootsimRamInfo> = RefCell::new(BootsimRamInfo::default());
+    pub static NV_COUNTER_CTX: RefCell<NvCounterStorage> = RefCell::new(NvCounterStorage::new());
 }
 
 /// Set the flash device to be used by the simulation.  The pointer is unsafely stashed away.
@@ -316,4 +339,40 @@ pub extern fn sim_log_enabled(level: libc::c_int) -> libc::c_int {
     } else {
         0
     }
+}
+
+#[no_mangle]
+pub extern "C" fn sim_set_nv_counter_for_image(image_index: u32, security_counter_value: u32) -> libc::c_int {
+    let mut rc = 0;
+    NV_COUNTER_CTX.with(|ctx| {
+        let mut counter_storage = ctx.borrow_mut();
+        if image_index as usize >= counter_storage.storage.len() {
+            rc = -1;
+            return;
+        }
+        if counter_storage.storage[image_index as usize] > security_counter_value {
+            rc = -2;
+            warn!("Failed to set security counter value ({}) for image index {}", security_counter_value, image_index);
+            return;
+        }
+
+        counter_storage.storage[image_index as usize] = security_counter_value;
+    });
+
+    return rc;
+}
+
+#[no_mangle]
+pub extern "C" fn sim_get_nv_counter_for_image(image_index: u32, security_counter_value: *mut u32) -> libc::c_int {
+    let mut rc = 0;
+    NV_COUNTER_CTX.with(|ctx| {
+        let counter_storage = ctx.borrow();
+        if image_index as usize >= counter_storage.storage.len() {
+            rc = -1;
+            return;
+        }
+        unsafe { *security_counter_value = counter_storage.storage[image_index as usize] };
+
+    });
+    return rc;
 }

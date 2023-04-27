@@ -27,6 +27,7 @@ pub enum Caps {
     Aes256               = (1 << 14),
     RamLoad              = (1 << 15),
     DirectXip            = (1 << 16),
+    HwRollbackProtection = (1 << 17),
 }
 
 impl Caps {

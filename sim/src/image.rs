@@ -221,11 +221,11 @@ impl ImagesBuilder {
                 Box::new(BoringDep::new(image_num, deps))
             };
             let primaries = install_image(&mut flash, &slots[0],
-                maximal(42784), &ram, &*dep, false);
+                maximal(42784), &ram, &*dep, false, Some(0));
             let upgrades = match deps.depends[image_num] {
                 DepType::NoUpgrade => install_no_image(),
                 _ => install_image(&mut flash, &slots[1],
-                    maximal(46928), &ram, &*dep, false)
+                    maximal(46928), &ram, &*dep, false, Some(0))
             };
             OneImage {
                 slots,
@@ -274,9 +274,9 @@ impl ImagesBuilder {
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_image(&mut bad_flash, &slots[0],
-                maximal(32784), &ram, &dep, false);
+                maximal(32784), &ram, &dep, false, Some(0));
             let upgrades = install_image(&mut bad_flash, &slots[1],
-                maximal(41928), &ram, &dep, true);
+                maximal(41928), &ram, &dep, true, Some(0));
             OneImage {
                 slots,
                 primaries,
@@ -297,9 +297,9 @@ impl ImagesBuilder {
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_image(&mut bad_flash, &slots[0],
-                maximal(32784), &ram, &dep, false);
+                maximal(32784), &ram, &dep, false, Some(0));
             let upgrades = install_image(&mut bad_flash, &slots[1],
-                ImageSize::Oversized, &ram, &dep, false);
+                ImageSize::Oversized, &ram, &dep, false, Some(0));
             OneImage {
                 slots,
                 primaries,
@@ -320,7 +320,7 @@ impl ImagesBuilder {
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_image(&mut flash, &slots[0],
-                maximal(32784), &ram, &dep, false);
+                maximal(32784), &ram, &dep, false, Some(0));
             let upgrades = install_no_image();
             OneImage {
                 slots,
@@ -343,7 +343,7 @@ impl ImagesBuilder {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_no_image();
             let upgrades = install_image(&mut flash, &slots[1],
-                maximal(32784), &ram, &dep, false);
+                maximal(32784), &ram, &dep, false, Some(0));
             OneImage {
                 slots,
                 primaries,
@@ -365,7 +365,31 @@ impl ImagesBuilder {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_no_image();
             let upgrades = install_image(&mut flash, &slots[1],
-                ImageSize::Oversized, &ram, &dep, false);
+                ImageSize::Oversized, &ram, &dep, false, Some(0));
+            OneImage {
+                slots,
+                primaries,
+                upgrades,
+            }}).collect();
+        Images {
+            flash,
+            areadesc: self.areadesc,
+            images,
+            total_count: None,
+            ram: self.ram,
+        }
+    }
+
+    /// If security_cnt is None then do not add a security counter TLV, otherwise add the specified value.
+    pub fn make_image_with_security_counter(self, security_cnt: Option<u32>) -> Images {
+        let mut flash = self.flash;
+        let ram = self.ram.clone(); // TODO: Avoid this clone.
+        let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let primaries = install_image(&mut flash, &slots[0],
+                maximal(32784), &ram, &dep, false, security_cnt);
+            let upgrades = install_image(&mut flash, &slots[1],
+                maximal(41928), &ram, &dep, false, security_cnt.map(|v| v + 1));
             OneImage {
                 slots,
                 primaries,
@@ -1269,6 +1293,31 @@ impl Images {
         return false;
     }
 
+    pub fn run_hw_rollback_prot(&self) -> bool {
+        if !Caps::HwRollbackProtection.present() {
+            return false;
+        }
+
+        let mut flash = self.flash.clone();
+
+        // set the "stored" security counter to a fixed value.
+        c::set_security_counter(0, 30);
+
+        let result = c::boot_go(&mut flash, &self.areadesc, None, None, true);
+
+        if result.success() {
+            warn!("Successful boot when it did not suppose to happen!");
+            return true;
+        }
+        let counter_val =  c::get_security_counter(0);
+        if counter_val != 30 {
+            warn!("Counter was changed when it did not suppose to!");
+            return true;
+        }
+
+        false
+    }
+
     /// Adds a new flash area that fails statistically
     fn mark_bad_status_with_rate(&self, flash: &mut SimMultiFlash, slot: usize,
                                  rate: f32) {
@@ -1650,13 +1699,15 @@ fn image_largest_trailer(dev: &dyn Flash) -> usize {
 /// fields used by the given code.  Returns a copy of the image that was written.
 fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
                  ram: &RamData,
-                 deps: &dyn Depender, bad_sig: bool) -> ImageData {
+                 deps: &dyn Depender, bad_sig: bool, security_counter:Option<u32>) -> ImageData {
     let offset = slot.base_off;
     let slot_len = slot.len;
     let dev_id = slot.dev_id;
     let dev = flash.get_mut(&dev_id).unwrap();
 
     let mut tlv: Box<dyn ManifestGen> = Box::new(make_tlv());
+
+    tlv.set_security_counter(security_counter);
 
     // Add the dependencies early to the tlv.
     for dep in deps.my_deps(offset, slot.index) {
@@ -1891,6 +1942,8 @@ fn make_tlv() -> TlvGen {
             TlvGen::new_ecdsa()
         } else if Caps::Ed25519.present() {
             TlvGen::new_ed25519()
+        } else if Caps::HwRollbackProtection.present() {
+            TlvGen::new_sec_cnt()
         } else {
             TlvGen::new_hash_only()
         }

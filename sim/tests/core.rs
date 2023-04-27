@@ -1,5 +1,6 @@
 // Copyright (c) 2017-2021 Linaro LTD
 // Copyright (c) 2017-2019 JUUL Labs
+// Copyright (c) 2023 Arm Limited
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -67,6 +68,8 @@ sim_test!(downgrade_prevention, make_image(&REV_DEPS, true), run_nodowngrade());
 sim_test!(direct_xip_first, make_no_upgrade_image(&NO_DEPS), run_direct_xip());
 sim_test!(ram_load_first, make_no_upgrade_image(&NO_DEPS), run_ram_load());
 sim_test!(ram_load_split, make_no_upgrade_image(&NO_DEPS), run_split_ram_load());
+sim_test!(hw_prot_failed_security_cnt_check, make_image_with_security_counter(Some(0)), run_hw_rollback_prot());
+sim_test!(hw_prot_missing_security_cnt, make_image_with_security_counter(None), run_hw_rollback_prot());
 
 // Test various combinations of incorrect dependencies.
 test_shell!(dependency_combos, r, {

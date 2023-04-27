@@ -1,6 +1,6 @@
 // Copyright (c) 2017-2021 Linaro LTD
 // Copyright (c) 2017-2019 JUUL Labs
-// Copyright (c) 2019-2021 Arm Limited
+// Copyright (c) 2019-2023 Arm Limited
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -148,6 +148,16 @@ pub fn kw_encrypt(kek: &[u8], seckey: &[u8], keylen: u32) -> Result<Vec<u8>, &'s
         }
         Err("Failed to encrypt buffer")
     }
+}
+
+pub fn set_security_counter(image_index: u32, security_counter_value: u32) {
+    api::sim_set_nv_counter_for_image(image_index, security_counter_value);
+}
+
+pub fn get_security_counter(image_index: u32) -> u32 {
+    let mut counter_val: u32 = 0;
+    api::sim_get_nv_counter_for_image(image_index, &mut counter_val as *mut u32);
+    return counter_val;
 }
 
 mod raw {
