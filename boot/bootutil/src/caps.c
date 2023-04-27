@@ -75,6 +75,9 @@ uint32_t bootutil_get_caps(void)
 #if defined(MCUBOOT_DIRECT_XIP)
     res |= BOOTUTIL_CAP_DIRECT_XIP;
 #endif
+#if defined(MCUBOOT_HW_ROLLBACK_PROT)
+    res |= BOOTUTIL_CAP_HW_ROLLBACK_PROT;
+#endif
 
     return res;
 }
