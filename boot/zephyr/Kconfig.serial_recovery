@@ -187,6 +187,7 @@ config BOOT_SERIAL_BOOT_MODE
 
 config BOOT_SERIAL_NO_APPLICATION
 	bool "Stay in bootloader if no application"
+	default y
 	help
 	  Allows for entering serial recovery mode if there is no bootable
 	  application that the bootloader can jump to.
