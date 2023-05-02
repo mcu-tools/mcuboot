@@ -373,11 +373,15 @@ static void parse_signature_from_rfc5480_encoding(const uint8_t *sig,
 }
 
 // OID id-ecPublicKey 1.2.840.10045.2.1.
-const uint8_t IdEcPublicKey[] = {0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01};
+static const uint8_t IdEcPublicKey[] = {0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01};
+#if defined(MCUBOOT_SIGN_EC256)
 // OID secp256r1 1.2.840.10045.3.1.7.
-const uint8_t Secp256r1[] = {0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07};
+static const uint8_t Secp256r1[] = {0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07};
+#endif /* MCUBOOT_SIGN_EC256 */
+#if defined(MCUBOOT_SIGN_EC384)
 // OID secp384r1 1.3.132.0.34
-const uint8_t Secp384r1[] = {0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x22};
+static const uint8_t Secp384r1[] = {0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x22};
+#endif /* MCUBOOT_SIGN_EC384 */
 
 static inline void bootutil_ecdsa_init(bootutil_ecdsa_context *ctx)
 {
@@ -413,13 +417,19 @@ static int bootutil_ecdsa_parse_public_key(bootutil_ecdsa_context *ctx,
         return (int)PSA_ERROR_INVALID_ARGUMENT;
     }
 
+#if defined(MCUBOOT_SIGN_EC256)
     if (!memcmp(CURVE_TYPE_OID_OFFSET(cp), Secp256r1, sizeof(Secp256r1))) {
         ctx->curve_byte_count = 32;
         ctx->required_algorithm = PSA_ALG_SHA_256;
-    } else if (!memcmp(CURVE_TYPE_OID_OFFSET(p), Secp384r1, sizeof(Secp384r1))) {
+    } else
+#endif /* MCUBOOT_SIGN_EC256 */
+#if defined(MCUBOOT_SIGN_EC384)
+    if (!memcmp(CURVE_TYPE_OID_OFFSET(cp), Secp384r1, sizeof(Secp384r1))) {
         ctx->curve_byte_count = 48;
         ctx->required_algorithm = PSA_ALG_SHA_384;
-    } else {
+    } else
+#endif /* MCUBOOT_SIGN_EC384 */
+    {
         return (int)PSA_ERROR_INVALID_ARGUMENT;
     }
 
