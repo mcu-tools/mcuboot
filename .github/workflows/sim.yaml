@@ -43,6 +43,7 @@ jobs:
         - "sig-rsa validate-primary-slot direct-xip"
         - "sig-rsa validate-primary-slot ram-load multiimage"
         - "sig-rsa validate-primary-slot direct-xip multiimage"
+        - "sig-ecdsa hw-rollback-protection multiimage"
     runs-on: ubuntu-latest
     env:
       MULTI_FEATURES: ${{ matrix.features }}
