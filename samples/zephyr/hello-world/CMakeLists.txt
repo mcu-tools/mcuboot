@@ -12,7 +12,7 @@
 cmake_minimum_required(VERSION 3.8)
 
 # find_package(Zephyr) in order to load application boilerplate:
-# http://docs.zephyrproject.org/application/application.html
+# https://docs.zephyrproject.org/latest/develop/application/index.html
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(NONE)
 
