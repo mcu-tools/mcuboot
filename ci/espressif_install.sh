@@ -2,11 +2,6 @@
 # SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 
-SCRIPT_ROOTDIR=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
-MCUBOOT_ROOTDIR=$(realpath "${SCRIPT_ROOTDIR}/..")
-ESPRESSIF_ROOT="${MCUBOOT_ROOTDIR}/boot/espressif"
-IDF_PATH="${ESPRESSIF_ROOT}/hal/esp-idf"
-
 set -eo pipefail
 
 install_imgtool() {
@@ -14,7 +9,14 @@ install_imgtool() {
 }
 
 install_idf() {
-    "${IDF_PATH}"/install.sh
+    pushd $HOME
+    git clone --depth=1 https://github.com/espressif/esp-idf.git --branch release/v5.1
+    [[ $? -ne 0 ]] && exit 1
+
+    $HOME/esp-idf/install.sh
+    [[ $? -ne 0 ]] && exit 1
+
+    popd
 }
 
 install_imgtool
