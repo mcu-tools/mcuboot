@@ -5,7 +5,7 @@
 SCRIPT_ROOTDIR=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
 MCUBOOT_ROOTDIR=$(realpath "${SCRIPT_ROOTDIR}/..")
 ESPRESSIF_ROOT="${MCUBOOT_ROOTDIR}/boot/espressif"
-IDF_PATH="${ESPRESSIF_ROOT}/hal/esp-idf"
+IDF_PATH="${HOME}/esp-idf"
 
 set -eo pipefail
 
@@ -38,7 +38,7 @@ build_mcuboot() {
   cmake -DCMAKE_TOOLCHAIN_FILE="${toolchain_file}"  \
         -DMCUBOOT_TARGET="${target}"                \
         -DMCUBOOT_CONFIG_FILE="${mcuboot_config}"   \
-        -DIDF_PATH="${IDF_PATH}"                    \
+        -DESP_HAL_PATH="${IDF_PATH}"                \
         -B "${build_dir}"                           \
         "${ESPRESSIF_ROOT}"
   cmake --build "${build_dir}"/
