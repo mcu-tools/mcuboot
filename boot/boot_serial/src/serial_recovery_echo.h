@@ -11,12 +11,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
-
-#ifdef __ZEPHYR__
 #include <zcbor_decode.h>
-#else
-#include "zcbor_decode.h"
-#endif
 
 #include "serial_recovery_echo_types.h"
 

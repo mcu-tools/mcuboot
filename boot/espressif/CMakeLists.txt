@@ -72,6 +72,7 @@ set(APP_EXECUTABLE ${APP_NAME}.elf)
 set(MCUBOOT_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
 set(BOOTUTIL_DIR ${MCUBOOT_ROOT_DIR}/boot/bootutil)
 set(BOOT_SERIAL_DIR ${MCUBOOT_ROOT_DIR}/boot/boot_serial)
+set(ZCBOR_DIR ${MCUBOOT_ROOT_DIR}/boot/zcbor)
 set(ESPRESSIF_PORT_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 # Find imgtool.
@@ -144,6 +145,7 @@ set(bootutil_srcs
     ${BOOTUTIL_DIR}/src/swap_scratch.c
     ${BOOTUTIL_DIR}/src/tlv.c
     )
+set(bootutil_paths)
 
 set(CFLAGS
     "-Wno-frame-address"
@@ -220,9 +222,12 @@ if(CONFIG_ESP_MCUBOOT_SERIAL)
     list(APPEND bootutil_srcs
         ${BOOT_SERIAL_DIR}/src/boot_serial.c
         ${BOOT_SERIAL_DIR}/src/serial_recovery_cbor.c
-        ${BOOT_SERIAL_DIR}/src/zcbor_decode.c
-        ${BOOT_SERIAL_DIR}/src/zcbor_encode.c
-        ${BOOT_SERIAL_DIR}/src/zcbor_common.c
+        ${ZCBOR_DIR}/src/zcbor_decode.c
+        ${ZCBOR_DIR}/src/zcbor_encode.c
+        ${ZCBOR_DIR}/src/zcbor_common.c
+        )
+    list(APPEND bootutil_paths
+        ${ZCBOR_DIR}/include
         )
     list(APPEND port_srcs
         ${CMAKE_CURRENT_LIST_DIR}/port/${MCUBOOT_TARGET}/serial_adapter.c
@@ -249,6 +254,7 @@ target_include_directories(
     ${BOOT_SERIAL_DIR}/include
     ${CRYPTO_INC}
     ${CMAKE_CURRENT_LIST_DIR}/include
+    ${bootutil_paths}
     )
 
 target_link_libraries(

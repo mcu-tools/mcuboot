@@ -17,22 +17,11 @@
 # under the License.
 #
 
-pkg.name: boot/boot_serial
-pkg.description: The boot_serial library is used when downloading image over serial port.
-pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
-pkg.homepage: "http://mynewt.apache.org/"
+pkg.name: boot/zcbor
+pkg.description: Library for encoding and decoding data to/from cbor.
+pkg.author: "Nordic Semiconductor"
+pkg.homepage: "https://github.com/NordicSemiconductor/zcbor"
 pkg.keywords:
-    - boot
-    - bootloader
+    - zcbor
 
-pkg.deps:
-    - "@apache-mynewt-core/hw/hal"
-    - "@apache-mynewt-core/kernel/os"
-    - "@apache-mynewt-core/encoding/base64"
-    - "@mcuboot/boot/mynewt/flash_map_backend"
-    - "@mcuboot/boot/mynewt/boot_uart"
-    - "@mcuboot/boot/zcbor"
-    - "@apache-mynewt-core/util/crc"
-
-pkg.req_apis:
-    - bootloader
+#pkg.src_dirs: src
