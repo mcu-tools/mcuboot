@@ -1835,8 +1835,11 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
     // an encrypted image, re-read to use for verification, erase + flash
     // un-encrypted. In the secondary slot the image is written un-encrypted,
     // and if encryption is requested, it follows an erase + flash encrypted.
-
-    if slot.index == 0 {
+    //
+    // In the case of ram-load when encryption is enabled both slots have to
+    // be encrypted so in the event when the image is in the primary slot
+    // the verification will fail as the image is not encrypted.
+    if slot.index == 0 && !Caps::RamLoad.present() {
         let enc_copy: Option<Vec<u8>>;
 
         if is_encrypted {
