@@ -90,3 +90,7 @@ syscfg.defs:
             - '(BOOT_SERIAL_DETECT_PIN != -1) ||
                (BOOT_SERIAL_DETECT_TIMEOUT != 0) ||
                (BOOT_SERIAL_NVREG_INDEX != -1)'
+
+    BOOT_SERIAL_MGMT_ECHO:
+        description: If enabled, support for the mcumgr echo command is being added.
+        value: 0
