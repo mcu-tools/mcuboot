@@ -34,6 +34,10 @@ shallow_clone_mynewt() {
     mkdir -p repos/apache-mynewt-core
     git clone --depth=1 https://github.com/apache/mynewt-core repos/apache-mynewt-core
     [[ $? -ne 0 ]] && exit 1
+
+    # nrfx is now taken from original repository
+    git clone --depth=1 --branch v2.8.0 https://github.com/NordicSemiconductor/nrfx.git repos/nordic-nrfx
+    [[ $? -ne 0 ]] && exit 1
 }
 
 arm_toolchain_install() {
