@@ -11,12 +11,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
-
-#ifdef __ZEPHYR__
 #include <zcbor_decode.h>
-#else
-#include "zcbor_decode.h"
-#endif
 
 /** Which value for --default-max-qty this file was created with.
  *
