@@ -1,6 +1,6 @@
 # [Building and using MCUboot with Espressif's chips](#building-and-using-mcuboot-with-espressifs-chips)
 
-The Espressif port is build on top of ESP-IDF HAL, therefore it is required in order to build MCUboot for Espressif SoCs.
+The MCUBoot Espressif's port depends on HAL (Hardware Abstraction Layer) sources based on ESP-IDF or 3rd party frameworks as such as Zephyr-RTOS (`zephyrproject-rtos/hal_espressif/`) or NuttX RTOS (`espressif/esp-hal-3rdparty`). Building the MCUboot Espressif's port and its features is platform dependent, therefore, the system environment including toolchains, must be set accordingly. A standalone build version means that ESP-IDF and its toolchain are used as source. For 3rd parties framework, HAL path and toolchain must be set.
 
 Documentation about the MCUboot bootloader design, operation and features can be found in the [design document](design.md).
 
@@ -10,46 +10,58 @@ The current port is available for use in the following SoCs within the OSes:
 
 | | ESP32 | ESP32-S2 | ESP32-C3 | ESP32-S3 |
 | :-----: | :-----: | :-----: | :-----: | :-----: |
-| Zephyr | Supported | Supported | Supported | WIP |
-| NuttX | Supported | Supported | Supported | WIP |
+| Zephyr | Supported | Supported | Supported | Supported |
+| NuttX | Supported | Supported | Supported | Supported |
+
+Notice that any customization in the memory layout from the OS application must be done aware of the bootloader own memory layout to avoid overlapping.
 
 ## [Installing requirements and dependencies](#installing-requirements-and-dependencies)
 
+The following instructions considers a MCUboot Espressif port standalone build.
+
 1. Install additional packages required for development with MCUboot:
 ```bash
-  cd ~/mcuboot  # or to your directory where MCUboot is cloned
+cd ~/mcuboot  # or to your directory where MCUboot is cloned
 ```
 ```bash
-  pip3 install --user -r scripts/requirements.txt
+pip3 install --user -r scripts/requirements.txt
 ```
 
-2. Update the submodules needed by the Espressif port. This may take a while.
-```bash
-git submodule update --init --recursive --checkout boot/espressif/hal/esp-idf
-```
-
-3. Next, get the Mbed TLS submodule required by MCUboot.
+2. Update the Mbed TLS submodule required by MCUboot:
 ```bash
 git submodule update --init --recursive ext/mbedtls
 ```
 
-4. Now we need to install IDF dependencies and set environment variables. This step may take some time:
+3. If ESP-IDF is the chosen option for use as HAL layer and the system already have ESP-IDF installed, ensure that the environment is set:
 ```bash
-cd boot/espressif/hal/esp-idf
+<IDF_PATH>/install.sh
 ```
 ```bash
-./install.sh
+. <IDF_PATH>/export.sh
 ```
+
+---
+***Note***
+
+*If desirable, instructions for ESP-IDF installation can be found [here](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html#manual-installation)*
+
+---
+
+---
+***Note***
+
+*The other HALs mentioned above like `hal_espressif` from Zephyr RTOS or `esp-hal-3rdparty` from NuttX RTOS environments also can be used for the bootloader standalone build, however as eventually code revision may differ from what is currently expected, it is recommended using them only within their RTOS build system.*
+
+---
+
+4. If ESP-IDF is not installed and will not be used, install `esptool`:
 ```bash
-. ./export.sh
-```
-```bash
-cd ../..
+pip3 install esptool
 ```
 
 ## [Building the bootloader itself](#building-the-bootloader-itself)
 
-The MCUboot Espressif port bootloader is built using the toolchain and tools provided by ESP-IDF. Additional configuration related to MCUboot features and slot partitioning may be made using the `port/<TARGET>/bootloader.conf` file or passing a custom config file using the `-DMCUBOOT_CONFIG_FILE` argument on the first step below.
+The MCUboot Espressif port bootloader is built using the toolchain and tools provided by Espressif. Additional configuration related to MCUboot features and slot partitioning may be made using the `port/<TARGET>/bootloader.conf` file or passing a custom config file using the `-DMCUBOOT_CONFIG_FILE` argument on the first step below.
 
 ---
 ***Note***
@@ -60,11 +72,18 @@ The MCUboot Espressif port bootloader is built using the toolchain and tools pro
 
 1. Compile and generate the BIN:
 ```bash
-cmake -DCMAKE_TOOLCHAIN_FILE=tools/toolchain-<TARGET>.cmake -DMCUBOOT_TARGET=<TARGET> -DMCUBOOT_FLASH_PORT=<PORT> -B build -GNinja
+cmake -DCMAKE_TOOLCHAIN_FILE=tools/toolchain-<TARGET>.cmake -DMCUBOOT_TARGET=<TARGET> -DESP_HAL_PATH=<ESP_HAL_PATH> -DMCUBOOT_FLASH_PORT=<PORT> -B build -GNinja
 ```
 ```bash
 ninja -C build/
 ```
+
+---
+***Note***
+
+*If using ESP-IDF as HAL layer source, `ESP_HAL_PATH` can be ommited.*
+
+---
 
 2. Flash MCUboot in your device:
 ```bash
