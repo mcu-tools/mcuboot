@@ -30,17 +30,18 @@ install_newt() {
     popd
 }
 
-shallow_clone_mynewt() {
-    mkdir -p repos/apache-mynewt-core
-    git clone --depth=1 https://github.com/apache/mynewt-core repos/apache-mynewt-core
+install_mynewt() {
+    build="$PWD/build"
+    newt new "$build"
     [[ $? -ne 0 ]] && exit 1
 
-    # nrfx is now taken from original repository
-    git clone --depth=1 --branch v2.8.0 https://github.com/NordicSemiconductor/nrfx.git repos/nordic-nrfx
+    pushd "$build"
+    newt upgrade --shallow=1
     [[ $? -ne 0 ]] && exit 1
 
-    # Mbed-TLS is now taken from original repository
-    git clone --depth=1 --branch v2.28.3 https://github.com/Mbed-TLS/mbedtls.git repos/mbedtls
+    popd
+    rm "$build"/repos/mcuboot -rf
+    mv "$build"/repos .
     [[ $? -ne 0 ]] && exit 1
 }
 
@@ -74,6 +75,6 @@ mkdir -p $HOME/bin
 export PATH=$HOME/bin:$PATH
 
 install_newt
-shallow_clone_mynewt
+install_mynewt
 arm_toolchain_install
 native_test_setup
