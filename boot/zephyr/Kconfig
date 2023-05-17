@@ -501,7 +501,7 @@ config MCUBOOT_INDICATION_LED
 	default n
 	help
 	  Device device activates the LED while in bootloader mode.
-	  bootloader-led0 alias must be set in the device's .dts
+	  mcuboot-led0 alias must be set in the device's .dts
 	  definitions for this to work.
 
 rsource "Kconfig.serial_recovery"
