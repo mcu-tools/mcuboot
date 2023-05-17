@@ -149,7 +149,7 @@ config MCUBOOT_CLEANUP_ARM_CORE
 	default y
 	help
 	  This option instructs MCUboot to perform a clean-up of a set of
-	  architecture core HW registers before junping to the application
+	  architecture core HW registers before jumping to the application
 	  firmware. The clean-up sets these registers to their warm-reset
 	  values as specified by the architecture.
 
