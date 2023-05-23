@@ -36,7 +36,7 @@
 #if defined APP_CM0P || defined CM4
 #include "cyw_platform_utils.h"
 #endif /* defined APP_CM0P || defined CM4  */
-#endif /* defined CYW20829 || defined EXPLORER  */
+#endif /* defined CYW20829 */
 
 #if defined(CY_BOOT_USE_EXTERNAL_FLASH) || defined(CYW20829)
 #include "flash_qspi.h"
@@ -167,7 +167,7 @@ static bool do_boot(struct boot_rsp *rsp)
 #error "Application should run on Cortex-M33"
 #endif /* APP_CM33 */
 
-#else /* defined CYW20829 || defined EXPLORER */
+#else /* defined CYW20829 */
 
 #ifdef USE_XIP
             BOOT_LOG_DBG("XIP: Switch to SMIF XIP mode");

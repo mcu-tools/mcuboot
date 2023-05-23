@@ -435,10 +435,14 @@ class AreaList:
         try:
             with open(params.out_file, "w", encoding='UTF-8') as out_f:
                 out_f.write('/* AUTO-GENERATED FILE, DO NOT EDIT.'
-                            ' ALL CHANGES WILL BE LOST! */\n\n'
-                            '#ifndef CY_FLASH_MAP_H\n#define CY_FLASH_MAP_H\n')
-                out_f.write(f'\n/* Platform: {params.plat_id} */\n')
-                out_f.write(f'\nstatic struct flash_area {c_array}[] = {{\n')
+                            ' ALL CHANGES WILL BE LOST! */\n')
+                out_f.write(f'/* Platform: {params.plat_id} */\n')
+                out_f.write("#ifndef CY_FLASH_MAP_H\n")
+                out_f.write("#define CY_FLASH_MAP_H\n\n")
+
+                if self.plat.get('bitsPerCnt'):
+                    out_f.write('#ifdef NEED_FLASH_MAP\n')
+                out_f.write(f'static struct flash_area {c_array}[] = {{\n')
                 comma = len(self.areas)
                 area_count = 0
                 for area in self.areas:
@@ -458,7 +462,21 @@ class AreaList:
                             'struct flash_area *boot_area_descs[] = {\n')
                 for area_index in range(area_count):
                     out_f.write(f'    &{c_array}[{area_index}U],\n')
-                out_f.write('    NULL\n};\n\n#endif /* CY_FLASH_MAP_H */\n')
+                out_f.write('    NULL\n};\n')
+
+                if self.plat.get('bitsPerCnt'):
+                    out_f.write('#endif /* NEED_FLASH_MAP */\n')
+                    out_f.close()
+
+                    # inserted here to fix misra 'header guard'
+                    list_counters = process_policy_20829(params.policy)
+                    if list_counters is not None:
+                        form_max_counter_array(list_counters, params.out_file)
+                    with open(params.out_file, "a", encoding='UTF-8') as out_f:
+                        out_f.write("#endif /* CY_FLASH_MAP_H */\n")
+                else:
+                    out_f.write("#endif /* CY_FLASH_MAP_H */\n")
+
         except (FileNotFoundError, OSError):
             print('Cannot create', params.out_file, file=sys.stderr)
             sys.exit(4)
@@ -684,6 +702,83 @@ def process_images(area_list, boot_and_upgrade):
 
     return app_core, app_count, slot_sectors_max, apps_flash_map, any_shared
 
+def process_policy_20829(in_policy):
+    """Process policy file to get data of NV-counter"""
+    list_counters = None
+
+    try:
+        with open(in_policy, encoding='UTF-8') as in_f:
+            try:
+                policy = json.load(in_f)
+            except ValueError:
+                print('\nERROR: Cannot parse', in_policy,'\n', file=sys.stderr)
+                sys.exit(4)
+            finally:
+                in_f.close()
+    except (FileNotFoundError, OSError):
+        print('Cannot open', in_policy, file=sys.stderr)
+        sys.exit(4)
+
+    try:
+        nv_cnt = policy["device_policy"]['reprovisioning']['nv_counter']
+        list_values = nv_cnt["value"]
+        list_counters = nv_cnt["bits_per_cnt"]
+    except KeyError:
+        print("\nERROR: Check path to 'nv_counter' and its correctness in policy file", in_policy,
+            ".\n", file=sys.stderr)
+        sys.exit(2)
+
+    #Check correctness of NV-counter
+    try:
+        len_list_value = len(list_values)
+        len_list_counters = len(list_counters)
+    except TypeError:
+        print("\nERROR: Fields 'value' and 'bits_per_cnt' of 'nv_counter' in policy file",
+            in_policy,"must be arrays.\n", file=sys.stderr)
+        sys.exit(2)
+
+    if len_list_value != len_list_counters:
+        print("\nERROR: Fields 'value' and 'bits_per_cnt' of 'nv_counter' in policy file",
+            in_policy,"must have the same size.\n", file=sys.stderr)
+        sys.exit(2)
+
+    sum_all_counters = 0
+    for i in range(len_list_value):
+        sum_all_counters += list_counters[i]
+        if list_values[i] > list_counters[i]:
+            print("\nERROR: Field 'value' cannot be more then 'bits_per_cnt'.", file=sys.stderr)
+            print("Check 'nv_counter' in policy file", in_policy,"\n", file=sys.stderr)
+            sys.exit(2)
+
+    sum_all_bit_nv_counter = 32
+    if sum_all_counters != sum_all_bit_nv_counter:
+        print("\nERROR: The sum of all 'bits_per_cnt' must be equal to 32.", file=sys.stderr)
+        print("Check 'nv_counter' in policy file", in_policy,"\n", file=sys.stderr)
+        sys.exit(2)
+
+    return list_counters
+
+
+def form_max_counter_array(in_list, out_file):
+    '''Write bit_per_count array to output file
+    There is expected, that "out_file" already exists'''
+
+    out_array_str = "\n#ifdef NEED_MAX_COUNTERS\nstatic const uint8_t bits_per_cnt[] = {"
+
+    #in_list is checked in prior function 'process_policy()'
+    for i, list_member in enumerate(in_list):
+        out_array_str += str(list_member)
+        if i < len(in_list) - 1:
+            out_array_str += ", "
+    out_array_str += "};\n#endif\n"
+
+    try:
+        with open(out_file, "a", encoding='UTF-8') as out_f:
+            out_f.write(out_array_str)
+    except (FileNotFoundError, OSError):
+        print('\nERROR: Cannot open ', out_file, file=sys.stderr)
+        sys.exit(7)
+
 
 def main():
     """Flash map converter"""
@@ -781,6 +876,19 @@ def main():
         area_list.add_area('scratch area',
                            'FLASH_AREA_IMAGE_SCRATCH',
                            scratch.fa_addr, scratch.fa_size)
+
+    # Compare size 'bit_per_cnt' and number of images.
+    # 'service_app' is used only when HW rollback counter exists
+    if plat.get('bitsPerCnt') is not None and service_app is not None:
+        plat['bitsPerCnt'] = True
+        list_counters = process_policy_20829(params.policy)
+        if list_counters is not None and len(list_counters) != app_count:
+            print("\nERROR: 'bits_per_cnt' must be present for each image!",
+                file=sys.stderr)
+            print("Please, check secure provisioning and reprovisioning policies.\n",
+                file=sys.stderr)
+            sys.exit(7)
+
 
     # Image id parameter is not used for MCUBootApp
     if params.img_id is None:

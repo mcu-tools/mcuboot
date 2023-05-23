@@ -31,11 +31,10 @@ boot_nv_security_counter_init(void)
 fih_int
 boot_nv_security_counter_get(uint32_t image_id, fih_uint *security_cnt)
 {
-    (void)image_id;
     fih_int fih_ret = FIH_FAILURE;
 
     if (NULL != security_cnt) { 
-        FIH_CALL(platform_security_counter_get, fih_ret, security_cnt);
+        FIH_CALL(platform_security_counter_get, fih_ret, image_id, security_cnt);
     }
 
     FIH_RET(fih_ret);
@@ -44,9 +43,8 @@ boot_nv_security_counter_get(uint32_t image_id, fih_uint *security_cnt)
 int32_t
 boot_nv_security_counter_update(uint32_t image_id, uint32_t img_security_cnt, void * custom_data)
 {
-    (void)image_id;
 
-    int32_t rc = platform_security_counter_update(img_security_cnt, (uint8_t *)custom_data);
+    int32_t rc = platform_security_counter_update(image_id, img_security_cnt, (uint8_t *)custom_data);
 
     /* Do nothing. */
     return rc;

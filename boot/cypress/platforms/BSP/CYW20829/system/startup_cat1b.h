@@ -27,10 +27,6 @@
 #ifndef STARTUP_CAT1B_H_
 #define STARTUP_CAT1B_H_
 
-#if defined (CY_DEVICE_CYW20829) /* Declarations for CYW20829 */
-
-#include "cyw20829_config.h"
-
 #define CM33_FIXED_EXP_NR       (15u)
 #define VECTORTABLE_SIZE        (MXCM33_SYSTEM_INT_NR + CM33_FIXED_EXP_NR + 1u) /* +1 is for Stack pointer */
 #define VECTORTABLE_ALIGN       (512) /* alignment for 85 entries (85x4=340) is 512 bytes */
@@ -54,7 +50,6 @@
     #error "An unsupported toolchain"
 #endif  /* (__ARMCC_VERSION) */
 extern ExecFuncPtr __ns_vector_table[]; /**< Non-secure vector table in non-secure SRAM */
-#endif /* CY_DEVICE_CYW20829 */
 
 #endif /* STARTUP_CAT1B_H_ */
 

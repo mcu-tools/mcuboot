@@ -37,13 +37,13 @@
 #include "cmsis_compiler.h"
 
 CY_MISRA_FP_BLOCK_START('MISRA C-2012 Rule 8.6', 3, \
-'Checked manually. The definition is a part of linker script or application.');
+'Checked manually. The definition is a part of linker script or application.')
 CY_MISRA_DEVIATE_BLOCK_START('ARRAY_VS_SINGLETON', 1, \
-'Checked manually. Using pointer as an array will not corrupt or misinterpret adjacent memory locations.');
+'Checked manually. Using pointer as an array will not corrupt or misinterpret adjacent memory locations.')
 CY_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 18.1', 3, \
-'Checked manually. Dereferencing a pointer to one beyond the end of an array will not result in undefined behaviour.');
+'Checked manually. Dereferencing a pointer to one beyond the end of an array will not result in undefined behaviour.')
 CY_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 18.3', 1, \
-'Checked manually. Attempting to make comparisons between pointers will not result in undefined behaviour.');
+'Checked manually. Attempting to make comparisons between pointers will not result in undefined behaviour.')
 
 #if defined (__ARMCC_VERSION)
 extern uint32_t Region$$Table$$Base;
@@ -477,9 +477,9 @@ __WEAK interrupt_type void Reset_Handler(void)
    __PROGRAM_START();
 }
 
-CY_MISRA_BLOCK_END('MISRA C-2012 Rule 18.3');
-CY_MISRA_BLOCK_END('MISRA C-2012 Rule 18.1');
-CY_MISRA_BLOCK_END('ARRAY_VS_SINGLETON');
-CY_MISRA_BLOCK_END('MISRA C-2012 Rule 8.6');
+CY_MISRA_BLOCK_END('MISRA C-2012 Rule 18.3')
+CY_MISRA_BLOCK_END('MISRA C-2012 Rule 18.1')
+CY_MISRA_BLOCK_END('ARRAY_VS_SINGLETON')
+CY_MISRA_BLOCK_END('MISRA C-2012 Rule 8.6')
 
 #endif /* defined (CY_DEVICE_CYW20829) */

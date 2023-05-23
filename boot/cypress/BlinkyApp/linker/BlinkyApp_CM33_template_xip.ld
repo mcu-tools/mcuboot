@@ -50,8 +50,8 @@ FLASH_START_ADDR_SAHB       = 0x60000000 + USER_APP_START_ADDR;
 FLASH_START_ADDR_CBUS       = 0x08000000 + USER_APP_START_ADDR;
 RAM_START_ADDR_SAHB         = 0x20000000;
 RAM_START_ADDR_CBUS         = 0x04000000;
-RAM_END_ADDR_SAHB           = 0x20020000; /* 128K */
-RAM_END_ADDR_CBUS           = 0x04020000; /* 128K */
+RAM_END_ADDR_SAHB           = 0x20040000; /* 256K */
+RAM_END_ADDR_CBUS           = 0x04040000; /* 256K */
 FLASH_END_ADDR_SAHB         = 0x60080000; /* 512K */
 
 BOOTSTRAP_OFFSET_FLASH      = 0x00000050; /* toc2=0x10, l1_desc=0x1C, sign_header=0x20, padding=0x4 (encrypted data should be aligned to 0x10 boundary) */
@@ -85,7 +85,7 @@ XIP_LMA                     = FLASH_START_ADDR_SAHB + APPCODE_OFFSET_FLASH; /* 0
 /* size of XIP region */
 XIP_SIZE                    = FLASH_END_ADDR_SAHB - XIP_LMA;
 /* Total size of SRAM */
-RAM_SIZE                    = RAM_END_ADDR_SAHB - RAM_START_ADDR_SAHB; /* 0x00020000 */
+RAM_SIZE                    = RAM_END_ADDR_SAHB - RAM_START_ADDR_SAHB; /* 0x00040000 */
 /* Size of Bootstrap data is kept same as BOOTSTRAP_SIZE */
 DATA_BS_SIZE                = BOOTSTRAP_SIZE;
 

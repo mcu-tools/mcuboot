@@ -4,21 +4,21 @@
 [submodule "ext/cddl-gen"]
 	path = ext/cddl-gen
 	url = https://github.com/NordicSemiconductor/cddl-gen.git
-[submodule "boot/cypress/libs/mtb-pdl-cat1"]
-	path = boot/cypress/libs/mtb-pdl-cat1
-	url = https://github.com/Infineon/mtb-pdl-cat1.git
-[submodule "boot/cypress/libs/mtb-hal-cat1"]
-	path = boot/cypress/libs/mtb-hal-cat1
-	url = https://github.com/Infineon/mtb-hal-cat1.git
 [submodule "boot/cypress/libs/cmsis"]
 	path = boot/cypress/libs/cmsis
 	url = https://github.com/Infineon/cmsis.git
 [submodule "boot/cypress/libs/retarget-io"]
 	path = boot/cypress/libs/retarget-io
 	url = https://github.com/Infineon/retarget-io.git
-[submodule "boot/cypress/libs/cy-mbedtls-acceleration"]
-	path = boot/cypress/libs/cy-mbedtls-acceleration
-	url = https://github.com/Infineon/cy-mbedtls-acceleration.git
 [submodule "boot/cypress/libs/core-lib"]
 	path = boot/cypress/libs/core-lib
 	url = https://github.com/Infineon/core-lib.git
+[submodule "boot/cypress/libs/mtb-pdl-cat1"]
+	path = boot/cypress/libs/mtb-pdl-cat1
+	url = https://github.com/Infineon/mtb-pdl-cat1.git
+[submodule "boot/cypress/libs/mtb-hal-cat1"]
+	path = boot/cypress/libs/mtb-hal-cat1
+	url = https://github.com/Infineon/mtb-hal-cat1.git
+[submodule "boot/cypress/libs/cy-mbedtls-acceleration"]
+	path = boot/cypress/libs/cy-mbedtls-acceleration
+	url = https://github.com/Infineon/cy-mbedtls-acceleration.git

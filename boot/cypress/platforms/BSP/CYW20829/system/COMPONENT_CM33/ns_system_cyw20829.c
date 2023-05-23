@@ -34,13 +34,13 @@
 #include "cy_syspm.h"
 
 CY_MISRA_DEVIATE_BLOCK_START('ARRAY_VS_SINGLETON', 1, \
-'Checked manually. Using pointer as an array will not corrupt or misinterpret adjacent memory locations.');
+'Checked manually. Using pointer as an array will not corrupt or misinterpret adjacent memory locations.')
 CY_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 18.1', 1, \
-'Checked manually. Dereferencing a pointer to one beyond the end of an array will not result in undefined behaviour.');
+'Checked manually. Dereferencing a pointer to one beyond the end of an array will not result in undefined behaviour.')
 CY_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 18.3', 1, \
-'Checked manually. Attempting to make comparisons between pointers will not result in undefined behaviour.');
+'Checked manually. Attempting to make comparisons between pointers will not result in undefined behaviour.')
 CY_MISRA_FP_BLOCK_START('MISRA C-2012 Rule 8.6', 2, \
-'Checked manually. The definition is a part of linker script or application.');
+'Checked manually. The definition is a part of linker script or application.')
 
 /*******************************************************************************
 * SystemCoreClockUpdate()
@@ -146,6 +146,85 @@ void SystemInit_CAT1B_CM33(void)
     SystemCoreClockUpdate();
 }
 
+CY_SECTION_RAMFUNC_BEGIN
+/*******************************************************************************
+* Function Name: SystemInit_Warmboot_CAT1B_CM33
+****************************************************************************//**
+*
+* Prepares the system to work after warmboot:
+* - Intializes Vector Table
+* - Enables all the IP's through Slave Control Registers
+* - Unfreezes the IO's
+*
+*******************************************************************************/
+void SystemInit_Warmboot_CAT1B_CM33()
+{
+    SCB->VTOR = (uint32_t)__ns_vector_table_rw;
+    (void)Cy_SysClk_PeriGroupSetSlaveCtl(1, CY_SYSCLK_PERI_GROUP_SL_CTL2, 0x0U);
+    (void)Cy_SysClk_PeriGroupSetSlaveCtl(2, CY_SYSCLK_PERI_GROUP_SL_CTL2, 0x0U);
+    (void)Cy_SysClk_PeriGroupSetSlaveCtl(1, CY_SYSCLK_PERI_GROUP_SL_CTL, 0xFFFFFFFFU);
+    (void)Cy_SysClk_PeriGroupSetSlaveCtl(2, CY_SYSCLK_PERI_GROUP_SL_CTL, 0xFFFFFFFFU);
+    (void)Cy_SysClk_PeriGroupSetSlaveCtl(3, CY_SYSCLK_PERI_GROUP_SL_CTL, 0xFFFFFFFFU);
+
+    if (Cy_SysPm_DeepSleepIoIsFrozen())
+    {
+        Cy_SysPm_DeepSleepIoUnfreeze();
+    }
+}
+CY_SECTION_RAMFUNC_END
+
+#define CY_NVIC_REG_COUNT 3U
+#define CY_NVIC_IPR_REG_COUNT 69U
+
+uint32_t nvicStoreRestore[CY_NVIC_REG_COUNT];
+uint32_t nvicIPRStoreRestore[CY_NVIC_IPR_REG_COUNT];
+uint32_t scbSHPR3StoreRestore;
+#define SCB_SHPR3_REG     ( *( ( volatile uint32_t * ) 0xe000ed20 ) )
+
+/*******************************************************************************
+* Function Name: System_Store_NVIC_Reg
+****************************************************************************//**
+*
+* Stores the NVIC register before Deepsleep RAM:
+*
+*******************************************************************************/
+void System_Store_NVIC_Reg(void)
+{
+    for (uint32_t idx = 0; idx < CY_NVIC_REG_COUNT; idx++)
+    {
+        nvicStoreRestore[idx] = NVIC->ISER[idx];
+    }
+
+    for (uint32_t idx = 0; idx < CY_NVIC_IPR_REG_COUNT; idx++)
+    {
+        nvicIPRStoreRestore[idx] = NVIC->IPR[idx];
+    }
+
+    scbSHPR3StoreRestore = SCB_SHPR3_REG;
+}
+
+
+/*******************************************************************************
+* Function Name: System_Restore_NVIC_Reg
+****************************************************************************//**
+*
+* Restores the NVIC register After Deepsleep RAM Wakeup i.e. Warmboot:
+*
+*******************************************************************************/
+void System_Restore_NVIC_Reg(void)
+{
+    for (uint32_t idx = 0; idx < CY_NVIC_REG_COUNT; idx++)
+    {
+        NVIC->ISER[idx] = nvicStoreRestore[idx];
+    }
+
+    for (uint32_t idx = 0; idx < CY_NVIC_IPR_REG_COUNT; idx++)
+    {
+        NVIC->IPR[idx] = nvicIPRStoreRestore[idx];
+    }
+
+    SCB_SHPR3_REG = scbSHPR3StoreRestore;
+}
 void SystemInit(void)
 {
     SystemInit_CAT1B_CM33();
@@ -202,10 +281,10 @@ void SystemCoreClockUpdate (void)
     cy_AhbFreqHz = Cy_SysClk_ClkHfGetFrequency(0UL);
 }
 
-CY_MISRA_BLOCK_END('MISRA C-2012 Rule 8.6');
-CY_MISRA_BLOCK_END('MISRA C-2012 Rule 18.3');
-CY_MISRA_BLOCK_END('MISRA C-2012 Rule 18.1');
-CY_MISRA_BLOCK_END('ARRAY_VS_SINGLETON');
+CY_MISRA_BLOCK_END('MISRA C-2012 Rule 8.6')
+CY_MISRA_BLOCK_END('MISRA C-2012 Rule 18.3')
+CY_MISRA_BLOCK_END('MISRA C-2012 Rule 18.1')
+CY_MISRA_BLOCK_END('ARRAY_VS_SINGLETON')
 
 #endif /* defined (CY_DEVICE_CYW20829) */
 /* [] END OF FILE */

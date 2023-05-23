@@ -40,8 +40,14 @@ IMG_TYPES = BOOT UPGRADE
 CUR_APP_PATH = $(PRJ_DIR)/$(APP_NAME)
 
 ifneq ($(FLASH_MAP), )
+#to compare NV-counters for each images with number of images on CYW20829
+ifeq ($(PLATFORM), CYW20829)
+$(CUR_APP_PATH)/flashmap.mk:
+	$(PYTHON_PATH) scripts/flashmap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/cy_flash_pal/cy_flash_map.h -d $(IMG_ID) -c $(PRJ_DIR)/policy/policy_reprovisioning_secure.json > $(CUR_APP_PATH)/flashmap.mk
+else
 $(CUR_APP_PATH)/flashmap.mk:
 	$(PYTHON_PATH) scripts/flashmap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/cy_flash_pal/cy_flash_map.h -d $(IMG_ID) > $(CUR_APP_PATH)/flashmap.mk
+endif
 include $(CUR_APP_PATH)/flashmap.mk
 DEFINES_APP := -DCY_FLASH_MAP_JSON
 endif

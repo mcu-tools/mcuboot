@@ -272,6 +272,9 @@ extern "C" {
 
 /** \cond */
 void SystemInit(void);
+void SystemInit_Warmboot_CAT1B_CM33(void);
+void System_Store_NVIC_Reg(void);
+void System_Restore_NVIC_Reg(void);
 extern void SystemCoreClockUpdate(void);
 
 extern void     Cy_SystemInit(void);

@@ -59,6 +59,10 @@
 
 #include "bootutil_priv.h"
 
+#ifdef CYW20829
+#include "cy_security_cnt_platform.h"
+#endif
+
 /*
  * Compute SHA256 over the image.
  */
@@ -434,7 +438,10 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
     uint32_t img_security_cnt = 0;
     uint8_t reprov_packet[REPROV_PACK_SIZE];
     fih_int security_counter_valid = FIH_FAILURE;
-#endif
+    #ifdef CYW20829
+        fih_uint extracted_img_cnt = fih_uint_encode(UINT_MAX);
+    #endif /* CYW20829 */
+#endif /* MCUBOOT_HW_ROLLBACK_PROT */
 
     rc = bootutil_img_hash(enc_state, image_index, hdr, fap, tmp_buf,
             tmp_buf_sz, hash, seed, seed_len);
@@ -564,13 +571,28 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 
             BOOT_LOG_DBG("NV Counter read from efuse = %u", fih_uint_decode(security_cnt));
 
+#ifdef CYW20829
+            BOOT_LOG_DBG("Full NV Counter read from image = 0x%X", img_security_cnt);
+
+            FIH_CALL(platform_security_counter_check_extract, fih_rc, 
+                    (uint32_t)image_index, fih_uint_encode(img_security_cnt), &extracted_img_cnt);
+        
+            if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+                /* The image's security counter exceeds registered value for this image */
+                goto out;
+            }
+
+            img_security_cnt = fih_uint_decode(extracted_img_cnt);
+#endif /*CYW20829*/
+
             BOOT_LOG_DBG("NV Counter read from image = %" PRIu32, img_security_cnt);
 
             /* Compare the new image's security counter value against the
              * stored security counter value.
              */
-            fih_rc = fih_int_encode_zero_equality(img_security_cnt <
-                                   (uint32_t)fih_uint_decode(security_cnt));
+            fih_rc = fih_int_encode_zero_equality( (int32_t)(img_security_cnt <
+                                    fih_uint_decode(security_cnt)) );
+
             if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
                 /* The image's security counter is not accepted. */
                 goto out;

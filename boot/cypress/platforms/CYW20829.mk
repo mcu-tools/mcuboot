@@ -36,7 +36,7 @@ CRYPTO_ACC_TYPE := MXCRYPTOLITE
 # MCU device selection, based on target device.
 # Default chips are used for supported platforms
 # This can be redefined in case of other chip usage
-DEVICE ?= CYW20829A0LKML
+DEVICE ?= CYW20829B0LKML
 # If PSVP build is required
 ifeq ($(CYW20829_PSVP), 1)
 SERVICE_APP_PLATFORM_SUFFIX := _psvp
@@ -196,7 +196,8 @@ PLATFORM_SOURCES_FLASH += $(wildcard $(PRJ_DIR)/platforms/cy_flash_pal/flash_cyw
 
 PLATFORM_DEFAULT_IMG_VER_ARG ?= 1.0.0
 
-PLATFORM_SIGN_ARGS := --image-format $(SIGN_TYPE) -i $(OUT_CFG)/$(APP_NAME).final.bin -o $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).bin --key-path $(PRJ_DIR)/keys/cypress-test-ec-p256.pem --update-key-path $(PRJ_DIR)/keys/priv_oem_0.pem --slot-size $(SLOT_SIZE) --align 1
+SIGN_IMG_ID = $(shell expr $(IMG_ID) - 1)
+PLATFORM_SIGN_ARGS := --image-format $(SIGN_TYPE) -i $(OUT_CFG)/$(APP_NAME).final.bin -o $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).bin --key-path $(PRJ_DIR)/keys/cypress-test-ec-p256.pem --update-key-path $(PRJ_DIR)/keys/priv_oem_0.pem --slot-size $(SLOT_SIZE) --align 1 --image-id $(SIGN_IMG_ID)
 
 # Use encryption and random initial vector for image
 ifeq ($(ENC_IMG), 1)
@@ -209,6 +210,8 @@ ifeq ($(POST_BUILD_ENABLE), 1)
 	$(info [POST BUILD] - Executing post build script for $(APP_NAME))
 	$(info [TOC2_Generate] - Execute toc2 generator script for $(APP_NAME))
 	$(shell $(PRJ_DIR)/run_toc2_generator.sh $(LCS) $(OUT_CFG) $(APP_NAME) $(APPTYPE) $(PRJ_DIR) $(SMIF_CRYPTO_CONFIG) $(TOOLCHAIN_PATH))
+
+	$(info SIGN_ARGS <-> $(SIGN_ARGS))
 
 	$(shell cysecuretools -q -t cyw20829 -p $(APP_DEFAULT_POLICY) sign-image $(SIGN_ARGS))
 

@@ -23,25 +23,55 @@
 #define MAX_SEC_COUNTER_VAL      (32U)
 
 /**
- * Reads a data corresponding to security counter which is stored in
- * efuses of chip and converts it actual value of security conter
- *
- * @param security_cnt     Pointer to a variable, where security conter value would be stored
+ * Reads the security counter data from chip's EFUSEs and converts it to the actual value of 
+ * security counter for each image.
+ * 
+ * @param image_id          The image number for which you want to get a security counter,
+ *                          saved in EFUSE (from 0)
+ * @param security_cnt      Pointer to a variable, where security conter value would be stored
  *
  * @return                  FIH_SUCESS on success; FIH_FAILURE on failure.
  */
-fih_int platform_security_counter_get(fih_uint *security_cnt);
+fih_int platform_security_counter_get(uint32_t image_id, fih_uint *security_cnt);
+
 
 /**
  * Updates the stored value of a given image's security counter with a new
- * security counter value if the new one is greater.
+ * security counter value if the new one is greater. 
+ * Only one security counter is available in system. Maximum value is 32.
+ * Since more than one image can be used, 32 bits of NV counter are divided into 
+ * number of images (it's on a user decision how many bits for each image).
  *
+ * @param image_id          The image number for which you want to get a security counter,
+ *                          saved in EFUSE (from 0)
+ * @param img_security_cnt  Security counter value of image: appropriated bit array inside of 32bits
  * @param reprov_packet     Pointer to a reprovisioning packet containing NV counter.
- * @param packet_len        Length of a packet
- * @param img_security_cnt  Security conter value of image
- *
  * @return                  0 on success; nonzero on failure.
  */
-int32_t platform_security_counter_update(uint32_t img_security_cnt, uint8_t * reprov_packet);
+
+int32_t platform_security_counter_update(uint32_t image_id, uint32_t img_security_cnt, uint8_t * reprov_packet);
+
+
+/**
+ * Extracts security counter for the desired image from full NV
+ * counter and converts it to integer value.
+ * Efuse stores nv counter value as a consequent bits. This means
+ * NV counter set to 5 in policy would be written as 0x1F.
+ * Only one security counter is available in system. Maximum value is 32.
+ * Since more than one image can be used, 32 bits of NV counter are divided into
+ * number of images (it's on a user decision how many bits for each image).
+ *
+ * @param image_id          Index of the image (from 0)
+ *
+ * @param nv_counter        Full security counter to get specific efuse value for desired image
+ * 
+ * @param extracted_img_cnt Pointer to a variable, where extracted counter for the 'image_id'
+ *                          would be stored
+ *
+ * @return                  FIH_FAILURE on failure, otherwise FIH_SUCCESS.
+ *
+ */
+
+fih_int platform_security_counter_check_extract(uint32_t image_id, fih_uint nv_counter, fih_uint *extracted_img_cnt);
 
 #endif /* CY_SECURITY_CNT_PLATFORM_H */

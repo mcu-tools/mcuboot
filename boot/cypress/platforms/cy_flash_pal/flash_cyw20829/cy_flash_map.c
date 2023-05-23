@@ -37,6 +37,13 @@
 #include "bootutil/bootutil_public.h"
 
 #include "cy_flash.h"
+
+#ifdef NEED_MAX_COUNTERS
+#undef NEED_MAX_COUNTERS
+#endif 
+
+#define NEED_FLASH_MAP /*must be before "cy_flash_map.h"*/
+
 #include "cy_flash_map.h"
 
 #include "cy_smif_cyw20829.h"
