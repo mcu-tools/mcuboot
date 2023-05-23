@@ -1,4 +1,4 @@
-# Copyright (c) 2022 Nordic Semiconductor ASA
+# Copyright (c) 2022-2023 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
 name: Build Zephyr samples with Twister
@@ -40,12 +40,12 @@ jobs:
     runs-on: ubuntu-latest
     # Docker image from the zephyr upstream. Includes SDK and other required tools
     container:
-      image: zephyrprojectrtos/ci:v0.24.2
+      image: zephyrprojectrtos/ci:v0.26.4
       options: '--entrypoint /bin/bash'
       volumes:
         - /home/runners/zephyrproject:/github/cache/zephyrproject
     env:
-      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.15.0
+      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.16.1
 
     steps:
       - name: Set versions when workflow_dispatch
