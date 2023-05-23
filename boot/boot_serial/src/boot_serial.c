@@ -136,7 +136,7 @@ static zcbor_state_t cbor_state[2];
 void reset_cbor_state(void)
 {
     zcbor_new_encode_state(cbor_state, 2, (uint8_t *)bs_obuf,
-        (size_t)bs_obuf + sizeof(bs_obuf), 0);
+        sizeof(bs_obuf), 0);
 }
 
 /**
