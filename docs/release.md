@@ -65,6 +65,15 @@ the RC step is finished, the release needs to be exported by modifying
 new release version, including updates to the pseudo keys
 (`*-(latest|dev)`).
 
+## Zephyr release information
+
+There is a version file used by Zephyr builds to indicate the version
+of MCUboot being used which needs to be updated at
+`boot/zephyr/VERSION`. For alignment with Zephyr versions, development
+versions should set `PATCHLEVEL` to `99` and `EXTRAVERSION` to `dev`,
+whilst production versions should correctly set `PATCHLEVEL` and clear
+`EXTRAVERSION`.
+
 ## Tagging and release
 
 To make a release, make sure your local repo is on the tip version by
