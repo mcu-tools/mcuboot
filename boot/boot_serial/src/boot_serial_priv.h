@@ -40,6 +40,7 @@ extern "C" {
 #define MGMT_ERR_EUNKNOWN       1
 #define MGMT_ERR_ENOMEM         2
 #define MGMT_ERR_EINVAL         3
+#define MGMT_ERR_ENOENT         5
 #define MGMT_ERR_ENOTSUP        8
 #define MGMT_ERR_EBUSY		10
 

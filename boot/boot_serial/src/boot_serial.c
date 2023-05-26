@@ -87,7 +87,20 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define MCUBOOT_SERIAL_MAX_RECEIVE_SIZE 512
 #endif
 
-#define BOOT_SERIAL_OUT_MAX     (160 * BOOT_IMAGE_NUMBER)
+#ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
+#define BOOT_SERIAL_IMAGE_STATE_SIZE_MAX 48
+#else
+#define BOOT_SERIAL_IMAGE_STATE_SIZE_MAX 0
+#endif
+#ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
+#define BOOT_SERIAL_HASH_SIZE_MAX 36
+#else
+#define BOOT_SERIAL_HASH_SIZE_MAX 0
+#endif
+
+#define BOOT_SERIAL_OUT_MAX     ((128 + BOOT_SERIAL_IMAGE_STATE_SIZE_MAX + \
+                                  BOOT_SERIAL_HASH_SIZE_MAX) * BOOT_IMAGE_NUMBER)
+
 #define BOOT_SERIAL_FRAME_MTU   124 /* 127 - pkt start (2 bytes) and stop (1 byte) */
 
 #ifdef __ZEPHYR__
@@ -136,7 +149,7 @@ static zcbor_state_t cbor_state[2];
 void reset_cbor_state(void)
 {
     zcbor_new_encode_state(cbor_state, 2, (uint8_t *)bs_obuf,
-        (size_t)bs_obuf + sizeof(bs_obuf), 0);
+        sizeof(bs_obuf), 0);
 }
 
 /**
@@ -232,7 +245,6 @@ static void
 bs_list(char *buf, int len)
 {
     struct image_header hdr;
-    uint8_t tmpbuf[64];
     uint32_t slot, area_id;
     const struct flash_area *fap;
     uint8_t image_index;
@@ -245,7 +257,20 @@ bs_list(char *buf, int len)
     zcbor_list_start_encode(cbor_state, 5);
     image_index = 0;
     IMAGES_ITER(image_index) {
+#ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
+        int swap_status = boot_swap_type_multi(image_index);
+#endif
+
         for (slot = 0; slot < 2; slot++) {
+            uint8_t tmpbuf[64];
+
+#ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
+            bool active = false;
+            bool confirmed = false;
+            bool pending = false;
+            bool permanent = false;
+#endif
+
             area_id = flash_area_id_from_multi_image_slot(image_index, slot);
             if (flash_area_open(area_id, &fap)) {
                 continue;
@@ -258,10 +283,10 @@ bs_list(char *buf, int len)
                 flash_area_read(fap, 0, &hdr, sizeof(hdr));
             }
 
-            FIH_DECLARE(fih_rc, FIH_FAILURE);
-
             if (hdr.ih_magic == IMAGE_MAGIC)
             {
+                FIH_DECLARE(fih_rc, FIH_FAILURE);
+
                 BOOT_HOOK_CALL_FIH(boot_image_check_hook,
                                    FIH_BOOT_HOOK_REGULAR,
                                    fih_rc, image_index, slot);
@@ -281,6 +306,10 @@ bs_list(char *buf, int len)
                     FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, &hdr, fap, tmpbuf, sizeof(tmpbuf),
                                     NULL, 0, NULL);
                 }
+
+                if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                    continue;
+                }
             }
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
@@ -289,16 +318,64 @@ bs_list(char *buf, int len)
 #endif
 
             flash_area_close(fap);
-
-            if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
-                continue;
-            }
-
             zcbor_map_start_encode(cbor_state, 20);
 
 #if (BOOT_IMAGE_NUMBER > 1)
             zcbor_tstr_put_lit_cast(cbor_state, "image");
             zcbor_uint32_put(cbor_state, image_index);
+#endif
+
+#ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
+            if (swap_status == BOOT_SWAP_TYPE_NONE) {
+                if (slot == BOOT_PRIMARY_SLOT) {
+                    confirmed = true;
+                    active = true;
+                }
+            } else if (swap_status == BOOT_SWAP_TYPE_TEST) {
+                if (slot == BOOT_PRIMARY_SLOT) {
+                    confirmed = true;
+                } else {
+                    pending = true;
+                }
+            } else if (swap_status == BOOT_SWAP_TYPE_PERM) {
+                if (slot == BOOT_PRIMARY_SLOT) {
+                    confirmed = true;
+                } else {
+                    pending = true;
+                    permanent = true;
+                }
+            } else if (swap_status == BOOT_SWAP_TYPE_REVERT) {
+                if (slot == BOOT_PRIMARY_SLOT) {
+                    active = true;
+                } else {
+                    confirmed = true;
+                }
+            }
+
+            if (!(hdr.ih_flags & IMAGE_F_NON_BOOTABLE)) {
+                zcbor_tstr_put_lit_cast(cbor_state, "bootable");
+                zcbor_bool_put(cbor_state, 1);
+            }
+
+            if (confirmed) {
+                zcbor_tstr_put_lit_cast(cbor_state, "confirmed");
+                zcbor_bool_put(cbor_state, true);
+            }
+
+            if (active) {
+                zcbor_tstr_put_lit_cast(cbor_state, "active");
+                zcbor_bool_put(cbor_state, true);
+            }
+
+            if (pending) {
+                zcbor_tstr_put_lit_cast(cbor_state, "pending");
+                zcbor_bool_put(cbor_state, true);
+            }
+
+            if (permanent) {
+                zcbor_tstr_put_lit_cast(cbor_state, "permanent");
+                zcbor_bool_put(cbor_state, true);
+            }
 #endif
 
             zcbor_tstr_put_lit_cast(cbor_state, "slot");
@@ -324,8 +401,162 @@ bs_list(char *buf, int len)
     boot_serial_output();
 }
 
-#ifdef MCUBOOT_ERASE_PROGRESSIVELY
+#ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
+/*
+ * Set image state.
+ */
+static void
+bs_set(char *buf, int len)
+{
+    /*
+     * Expected data format.
+     * {
+     *   "confirm":<true for confirm, false for test>
+     *   "hash":<hash of image (OPTIONAL for single image only)>
+     * }
+     */
+    uint8_t image_index = 0;
+    size_t decoded = 0;
+    uint8_t hash[32];
+    bool confirm;
+    struct zcbor_string img_hash;
+    bool ok;
+    int rc;
 
+#ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
+    bool found = false;
+#endif
+
+    zcbor_state_t zsd[4];
+    zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1);
+
+    struct zcbor_map_decode_key_val image_set_state_decode[] = {
+        ZCBOR_MAP_DECODE_KEY_DECODER("confirm", zcbor_uint32_decode, &confirm),
+#ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
+        ZCBOR_MAP_DECODE_KEY_DECODER("hash", zcbor_bstr_decode, &img_hash),
+#endif
+    };
+
+    ok = zcbor_map_decode_bulk(zsd, image_set_state_decode, ARRAY_SIZE(image_set_state_decode),
+                               &decoded) == 0;
+
+    if (!ok || len != decoded) {
+        rc = MGMT_ERR_EINVAL;
+        goto out;
+    }
+
+#ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
+    if ((img_hash.len != sizeof(hash) && img_hash.len != 0) ||
+        (img_hash.len == 0 && BOOT_IMAGE_NUMBER > 1)) {
+        /* Hash is required and was not provided or is invalid size */
+        rc = MGMT_ERR_EINVAL;
+        goto out;
+    }
+
+    if (img_hash.len != 0) {
+        for (image_index = 0; image_index < BOOT_IMAGE_NUMBER; ++image_index) {
+            struct image_header hdr;
+            uint32_t area_id;
+            const struct flash_area *fap;
+            uint8_t tmpbuf[64];
+
+            area_id = flash_area_id_from_multi_image_slot(image_index, 1);
+            if (flash_area_open(area_id, &fap)) {
+                BOOT_LOG_ERR("Failed to open flash area ID %d", area_id);
+                continue;
+            }
+
+            rc = BOOT_HOOK_CALL(boot_read_image_header_hook,
+                                BOOT_HOOK_REGULAR, image_index, 1, &hdr);
+            if (rc == BOOT_HOOK_REGULAR)
+            {
+                flash_area_read(fap, 0, &hdr, sizeof(hdr));
+            }
+
+            if (hdr.ih_magic == IMAGE_MAGIC)
+            {
+                FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+                BOOT_HOOK_CALL_FIH(boot_image_check_hook,
+                                   FIH_BOOT_HOOK_REGULAR,
+                                   fih_rc, image_index, 1);
+                if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
+                {
+                    FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, &hdr, fap,
+                             tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
+                }
+
+                if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                    continue;
+                }
+            }
+
+            /* Retrieve SHA256 hash of image for identification */
+            rc = boot_serial_get_hash(&hdr, fap, hash);
+            flash_area_close(fap);
+
+            if (rc == 0 && memcmp(hash, img_hash.value, sizeof(hash)) == 0) {
+                /* Hash matches, set this slot for test or confirmation */
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            /* Image was not found with specified hash */
+            BOOT_LOG_ERR("Did not find image with specified hash");
+            rc = MGMT_ERR_ENOENT;
+            goto out;
+        }
+    }
+#endif
+
+    rc = boot_set_pending_multi(image_index, confirm);
+
+out:
+    if (rc == 0) {
+        /* Success - return updated list of images */
+        bs_list(buf, len);
+    } else {
+        /* Error code, only return the error */
+        zcbor_map_start_encode(cbor_state, 10);
+        zcbor_tstr_put_lit_cast(cbor_state, "rc");
+        zcbor_int32_put(cbor_state, rc);
+        zcbor_map_end_encode(cbor_state, 10);
+
+        boot_serial_output();
+    }
+}
+#endif
+
+/*
+ * Send rc code only.
+ */
+static void
+bs_rc_rsp(int rc_code)
+{
+    zcbor_map_start_encode(cbor_state, 10);
+    zcbor_tstr_put_lit_cast(cbor_state, "rc");
+    zcbor_int32_put(cbor_state, rc_code);
+    zcbor_map_end_encode(cbor_state, 10);
+    boot_serial_output();
+}
+
+static void
+bs_list_set(uint8_t op, char *buf, int len)
+{
+    if (op == NMGR_OP_READ) {
+        bs_list(buf, len);
+    } else {
+#ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
+        bs_set(buf, len);
+#else
+        bs_rc_rsp(MGMT_ERR_ENOTSUP);
+#endif
+    }
+}
+
+#ifdef MCUBOOT_ERASE_PROGRESSIVELY
 /** Erases range of flash, aligned to sector size
  *
  * Function will erase all sectors withing [start, end] range; it does not check
@@ -630,20 +861,6 @@ out:
 #endif //#ifdef MCUBOOT_ENC_IMAGES
 }
 
-/*
- * Send rc code only.
- */
-static void
-bs_rc_rsp(int rc_code)
-{
-    zcbor_map_start_encode(cbor_state, 10);
-    zcbor_tstr_put_lit_cast(cbor_state, "rc");
-    zcbor_int32_put(cbor_state, rc_code);
-    zcbor_map_end_encode(cbor_state, 10);
-    boot_serial_output();
-}
-
-
 #ifdef MCUBOOT_BOOT_MGMT_ECHO
 static void
 bs_echo(char *buf, int len)
@@ -758,7 +975,7 @@ boot_serial_input(char *buf, int len)
     if (hdr->nh_group == MGMT_GROUP_ID_IMAGE) {
         switch (hdr->nh_id) {
         case IMGMGR_NMGR_ID_STATE:
-            bs_list(buf, len);
+            bs_list_set(hdr->nh_op, buf, len);
             break;
         case IMGMGR_NMGR_ID_UPLOAD:
             bs_upload(buf, len);

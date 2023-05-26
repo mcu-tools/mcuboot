@@ -207,4 +207,12 @@ config BOOT_SERIAL_IMG_GRP_HASH
 	  If y, image list responses will include the image hash (adds ~100
 	  bytes of flash).
 
+config BOOT_SERIAL_IMG_GRP_IMAGE_STATE
+	bool "Image state support"
+	depends on !SINGLE_APPLICATION_SLOT
+	select BOOT_SERIAL_IMG_GRP_HASH if UPDATEABLE_IMAGE_NUMBER > 1
+	help
+	  If y, image states will be included with image lists and the set
+	  state command can be used to mark an image as test/confirmed.
+
 endif # MCUBOOT_SERIAL
