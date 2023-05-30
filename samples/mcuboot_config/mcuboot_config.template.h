@@ -35,6 +35,33 @@
 
 
 /*
+ * Encryption types 
+ *
+ * You must choose one key encryption type and provide a private key
+ * when image encryption is enable (MCUBOOT_ENC_IMAGES).
+ * 
+ * For examples, see :
+ * 
+ * boot/espressif/keys.c
+ * boot/zephyr/keys.c
+ */
+
+/* Uncomment to enable image encryption. */
+/* #define MCUBOOT_ENC_IMAGES */
+
+/* Uncomment for RSA encryption support. */
+/* #define MCUBOOT_ENCRYPT_RSA */
+
+/* Uncomment for ECIES-P256 encryption support. */
+/* #define MCUBOOT_ENCRYPT_EC256 */
+
+/* Uncomment for ECIES-X25519 encryption support. */
+/* #define MCUBOOT_ENCRYPT_X25519 */
+
+/* Uncomment for AES-128 Keywrap encryption support. */
+/* #define MCUBOOT_ENCRYPT_KW */
+
+/*
  * Upgrade mode
  *
  * The default is to support A/B image swapping with rollback.  Other modes

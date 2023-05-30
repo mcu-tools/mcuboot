@@ -1,3 +1,9 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Copyright (c) 2018-2019 JUUL Labs
+ * Copyright (c) 2019-2021 Arm Limited
+ */
 
 #ifndef H_ENCRYPTED_PRIV_
 #define H_ENCRYPTED_PRIV_
