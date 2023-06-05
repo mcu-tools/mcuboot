@@ -1,0 +1,2 @@
+- Move code in encrypted.c related to encryption configurations into different files
+- Add a description of encryption config macros in mcuboot_config.template.h
