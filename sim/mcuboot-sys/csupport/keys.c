@@ -328,3 +328,12 @@ const struct bootutil_key bootutil_enc_key = {
     .len = &enc_key_len,
 };
 #endif
+
+#if !defined(MCUBOOT_HW_KEY) && defined(MCUBOOT_ENC_IMAGES)
+int boot_enc_retrieve_private_key(struct bootutil_key **private_key)
+{
+    *private_key = (struct bootutil_key *)&bootutil_enc_key;
+
+    return 0;
+}
+#endif /* !MCUBOOT_HW_KEY && MCUBOOT_ENC_IMAGES */
