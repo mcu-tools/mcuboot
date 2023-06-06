@@ -67,13 +67,13 @@ static int bootutil_constant_time_compare(const uint8_t *a, const uint8_t *b, si
 
 #if defined(MCUBOOT_ENCRYPT_KW)
 static int
-key_unwrap(const uint8_t *wrapped, uint8_t *enckey)
+key_unwrap(const uint8_t *wrapped, uint8_t *enckey, struct bootutil_key *bootutil_enc_key)
 {
     bootutil_aes_kw_context aes_kw;
     int rc;
 
     bootutil_aes_kw_init(&aes_kw);
-    rc = bootutil_aes_kw_set_unwrap_key(&aes_kw, bootutil_enc_key.key, *bootutil_enc_key.len);
+    rc = bootutil_aes_kw_set_unwrap_key(&aes_kw, bootutil_enc_key->key, *bootutil_enc_key->len);
     if (rc != 0) {
         goto done;
     }
@@ -441,13 +441,23 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
     uint8_t counter[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE];
     uint16_t len;
 #endif
+    struct bootutil_key *bootutil_enc_key = NULL;
     int rc = -1;
+
+    rc = boot_enc_retrieve_private_key(&bootutil_enc_key);
+    if (rc) {
+        return rc;
+    }
+
+    if (bootutil_enc_key == NULL) {
+        return rc;
+    }
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
 
     bootutil_rsa_init(&rsa);
-    cp = (uint8_t *)bootutil_enc_key.key;
-    cpend = cp + *bootutil_enc_key.len;
+    cp = (uint8_t *)bootutil_enc_key->key;
+    cpend = cp + *bootutil_enc_key->len;
 
     /* The enckey is encrypted through RSA so for decryption we need the private key */
     rc = bootutil_rsa_parse_private_key(&rsa, &cp, cpend);
@@ -466,15 +476,15 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
 
 #if defined(MCUBOOT_ENCRYPT_KW)
 
-    assert(*bootutil_enc_key.len == BOOT_ENC_KEY_SIZE);
-    rc = key_unwrap(buf, enckey);
+    assert(*bootutil_enc_key->len == BOOT_ENC_KEY_SIZE);
+    rc = key_unwrap(buf, enckey, bootutil_enc_key);
 
 #endif /* defined(MCUBOOT_ENCRYPT_KW) */
 
 #if defined(MCUBOOT_ENCRYPT_EC256)
 
-    cp = (uint8_t *)bootutil_enc_key.key;
-    cpend = cp + *bootutil_enc_key.len;
+    cp = (uint8_t *)bootutil_enc_key->key;
+    cpend = cp + *bootutil_enc_key->len;
 
     /*
      * Load the stored EC256 decryption private key
@@ -500,8 +510,8 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
 
 #if defined(MCUBOOT_ENCRYPT_X25519)
 
-    cp = (uint8_t *)bootutil_enc_key.key;
-    cpend = cp + *bootutil_enc_key.len;
+    cp = (uint8_t *)bootutil_enc_key->key;
+    cpend = cp + *bootutil_enc_key->len;
 
     /*
      * Load the stored X25519 decryption private key
