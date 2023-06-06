@@ -85,6 +85,7 @@ extern "C" {
  * consumer of shared data in runtime SW.
  */
 #define TLV_MAJOR_IAS      0x1
+#define TLV_MAJOR_BLINFO   0x2
 
 /* Initial attestation: Claim per SW components / SW modules */
 /* Bits: 0-2 */
@@ -105,6 +106,36 @@ extern "C" {
 #define GET_IAS_CLAIM(tlv_type)  (GET_MINOR(tlv_type) & CLAIM_MASK)
 #define SET_IAS_MINOR(sw_module, claim) \
         (((uint16_t)(sw_module) << MODULE_POS) | (claim))
+
+/* Bootloader information */
+#define BLINFO_MODE                 0x00
+#define BLINFO_SIGNATURE_TYPE       0x01
+#define BLINFO_RECOVERY             0x02
+#define BLINFO_RUNNING_SLOT         0x03
+#define BLINFO_BOOTLOADER_VERSION   0x04
+#define BLINFO_MAX_APPLICATION_SIZE 0x05
+
+enum mcuboot_mode {
+    MCUBOOT_MODE_SINGLE_SLOT,
+    MCUBOOT_MODE_SWAP_USING_SCRATCH,
+    MCUBOOT_MODE_UPGRADE_ONLY,
+    MCUBOOT_MODE_SWAP_USING_MOVE,
+    MCUBOOT_MODE_DIRECT_XIP,
+    MCUBOOT_MODE_RAM_LOAD
+};
+
+enum mcuboot_signature_type {
+    MCUBOOT_SIGNATURE_TYPE_NONE,
+    MCUBOOT_SIGNATURE_TYPE_RSA,
+    MCUBOOT_SIGNATURE_TYPE_ECDSA_P256,
+    MCUBOOT_SIGNATURE_TYPE_ED25519
+};
+
+enum mcuboot_recovery_mode {
+    MCUBOOT_RECOVERY_MODE_NONE,
+    MCUBOOT_RECOVERY_MODE_SERIAL_RECOVERY,
+    MCUBOOT_RECOVERY_MODE_DFU,
+};
 
 /**
  * Shared data TLV header.  All fields in little endian.
