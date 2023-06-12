@@ -43,10 +43,20 @@ fi
 if [[ ! -z $MULTI_FEATURES ]]; then
   IFS=','
   read -ra multi_features <<< "$MULTI_FEATURES"
+
+  # psa crypto tests require single thread mode
+  TEST_ARGS=''
+  for features in "${multi_features[@]}"; do
+    if [[ $features =~ "psa" ]]; then
+        TEST_ARGS='--test-threads=1'
+        break
+    fi
+  done
+
   for features in "${multi_features[@]}"; do
     echo "Running cargo for features=\"${features}\""
-    time cargo test --no-run --features "$features"
-    time cargo test --features "$features"
+    time cargo test --no-run --features "$features" -- $TEST_ARGS
+    time cargo test --features "$features" -- $TEST_ARGS
     rc=$? && [ $rc -ne 0 ] && EXIT_CODE=$rc
   done
 fi
