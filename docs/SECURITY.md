@@ -5,9 +5,11 @@ seriously.
 
 ## Reporting security issues
 
-You should report security issues either using our page at [Hackerone]
-(https://hackerone.com/mcuboot?type=team) or contacting directly the
-current maintainers of the project:
+The preferred way to report security issues with MCUboot is via the "Report a
+security vulnerability" button on the main [security
+page](https://github.com/mcu-tools/mcuboot/security).
+
+You can also directly contact the following maintainers of the project:
 
 - David Brown: davidb@davidb.org or david.brown@linaro.org
 - Fabio Utzig: utzig@apache.org
