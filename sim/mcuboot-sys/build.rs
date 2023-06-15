@@ -247,7 +247,9 @@ fn main() {
         conf.conf.define("MCUBOOT_ENCRYPT_RSA", None);
         conf.conf.define("MCUBOOT_ENC_IMAGES", None);
         conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
-
+ 
+        conf.file("../../boot/bootutil/src/encrypt_misc.c");
+        conf.file("../../boot/bootutil/src/encrypt_rsa.c");
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
@@ -272,6 +274,7 @@ fn main() {
         conf.conf.define("MCUBOOT_ENCRYPT_KW", None);
         conf.conf.define("MCUBOOT_ENC_IMAGES", None);
 
+        conf.file("../../boot/bootutil/src/encrypt_kw.c");
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
@@ -312,6 +315,8 @@ fn main() {
         conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
         conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
 
+        conf.file("../../boot/bootutil/src/encrypt_ec256.c");
+        conf.file("../../boot/bootutil/src/encrypt_misc.c");
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
@@ -345,6 +350,8 @@ fn main() {
 
         conf.conf.include("../../ext/mbedtls/include");
 
+        conf.file("../../boot/bootutil/src/encrypt_ec256.c");
+        conf.file("../../boot/bootutil/src/encrypt_misc.c");
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("../../ext/mbedtls/library/sha256.c");
         conf.file("../../ext/mbedtls/library/asn1parse.c");
@@ -365,6 +372,8 @@ fn main() {
         conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
         conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
 
+        conf.file("../../boot/bootutil/src/encrypt_misc.c");
+        conf.file("../../boot/bootutil/src/encrypt_x25519.c");
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
@@ -393,6 +402,8 @@ fn main() {
         conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
         conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
 
+        conf.file("../../boot/bootutil/src/encrypt_misc.c");
+        conf.file("../../boot/bootutil/src/encrypt_x25519.c");
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 

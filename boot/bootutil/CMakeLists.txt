@@ -20,6 +20,11 @@ target_sources(bootutil
         src/bootutil_misc.c
         src/bootutil_public.c
         src/caps.c
+        src/encrypt_ec256.c
+        src/encrypt_kw.c
+        src/encrypt_misc.c
+        src/encrypt_rsa.c
+        src/encrypt_x25519.c
         src/encrypted.c
         src/fault_injection_hardening.c
         src/fault_injection_hardening_delay_rng_mbedtls.c

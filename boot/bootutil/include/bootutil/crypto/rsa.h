@@ -193,7 +193,7 @@ static inline void bootutil_rsa_drop(bootutil_rsa_context *ctx)
 }
 
 #if defined(BOOTUTIL_CRYPTO_RSA_CRYPT_ENABLED) && (MBEDTLS_VERSION_NUMBER >= 0x03000000)
-static int fake_rng(void *p_rng, unsigned char *output, size_t len);
+int fake_rng(void *p_rng, unsigned char *output, size_t len);
 #endif /* BOOTUTIL_CRYPTO_RSA_CRYPT_ENABLED && MBEDTLS_VERSION_NUMBER >= 3.0 */
 
 #if defined(BOOTUTIL_CRYPTO_RSA_CRYPT_ENABLED)

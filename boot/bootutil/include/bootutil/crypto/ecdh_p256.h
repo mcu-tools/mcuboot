@@ -71,7 +71,7 @@ static inline int bootutil_ecdh_p256_shared_secret(bootutil_ecdh_p256_context *c
 #define NUM_ECC_BYTES 32
 
 #if MBEDTLS_VERSION_NUMBER >= 0x03000000
-static int fake_rng(void *p_rng, unsigned char *output, size_t len);
+int fake_rng(void *p_rng, unsigned char *output, size_t len);
 #endif
 
 typedef struct bootutil_ecdh_p256_context {

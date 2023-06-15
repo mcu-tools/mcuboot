@@ -98,6 +98,11 @@ zephyr_library_include_directories(${BOOT_DIR}/bootutil/include)
 zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/image_validate.c
   ${BOOT_DIR}/bootutil/src/tlv.c
+  ${BOOT_DIR}/bootutil/src/encrypt_ec256.c
+  ${BOOT_DIR}/bootutil/src/encrypt_kw.c
+  ${BOOT_DIR}/bootutil/src/encrypt_misc.c
+  ${BOOT_DIR}/bootutil/src/encrypt_rsa.c
+  ${BOOT_DIR}/bootutil/src/encrypt_x25519.c
   ${BOOT_DIR}/bootutil/src/encrypted.c
   ${BOOT_DIR}/bootutil/src/image_rsa.c
   ${BOOT_DIR}/bootutil/src/image_ecdsa.c
@@ -181,6 +186,8 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   zephyr_include_directories(include)
   if(CONFIG_BOOT_ENCRYPT_RSA)
     set_source_files_properties(
+      ${BOOT_DIR}/bootutil/src/encrypt_misc.c
+      ${BOOT_DIR}/bootutil/src/encrypt_rsa.c
       ${BOOT_DIR}/bootutil/src/encrypted.c
       PROPERTIES
       INCLUDE_DIRECTORIES ${ZEPHYR_MBEDTLS_MODULE_DIR}/library
