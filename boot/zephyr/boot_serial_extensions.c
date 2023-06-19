@@ -13,7 +13,7 @@
 
 #include "bootutil/bootutil_log.h"
 #include "../boot_serial/src/boot_serial_priv.h"
-#include "../boot_serial/src/zcbor_encode.h"
+#include <zcbor_encode.h>
 
 #include "bootutil/image.h"
 #include "bootutil/bootutil_public.h"
