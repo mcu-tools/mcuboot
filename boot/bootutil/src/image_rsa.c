@@ -148,7 +148,7 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
         if (bytes > count)
             bytes = count;
 
-        memcpy(mask, htmp, bytes);
+        (void)memcpy(mask, htmp, bytes);
         mask += bytes;
         count -= bytes;
     }

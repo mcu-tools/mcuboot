@@ -230,7 +230,7 @@ parse_ec256_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         return -12;
     }
 
-    memcpy(private_key, *p, len);
+    (void)memcpy(private_key, *p, len);
 
     /* publicKey usually follows but is not parsed here */
 
@@ -289,7 +289,7 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         return -8;
     }
 
-    memcpy(private_key, *p, PRIV_KEY_LEN);
+    (void)memcpy(private_key, *p, PRIV_KEY_LEN);
     return 0;
 }
 #endif /* defined(MCUBOOT_ENCRYPT_X25519) */
@@ -385,10 +385,10 @@ hkdf(const uint8_t *ikm, uint16_t ikm_len, const uint8_t *info, uint16_t info_le
         }
 
         if (len > BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE) {
-            memcpy(&okm[off], T, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
+            (void)memcpy(&okm[off], T, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
             len -= BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
         } else {
-            memcpy(&okm[off], T, len);
+            (void)memcpy(&okm[off], T, len);
             len = 0;
         }
     }
@@ -424,7 +424,7 @@ boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
 
     rc = bootutil_aes_ctr_set_key(&enc_state[slot].aes_ctr, bs->enckey[slot]);
     if (rc != 0) {
-        boot_enc_drop(enc_state, slot);
+        (void)boot_enc_drop(enc_state, slot);
         enc_state[slot].valid = 0;
         return -1;
     }
@@ -640,7 +640,7 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey, uint32_t sz, uint8_t *enci
     }
 
     out_len = len;
-    rc = hkdf(shared, SHARED_KEY_LEN, (uint8_t *)"MCUBoot_ECIES_v1", BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE,
+    rc = hkdf(shared, SHARED_KEY_LEN, (const uint8_t *)"MCUBoot_ECIES_v1", BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE,
               my_salt, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE, derived_key, &out_len);
 
     if (rc != 0 || len != out_len) {
@@ -719,7 +719,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
     uint32_t off;
     uint16_t len;
     struct image_tlv_iter it;
-#if MCUBOOT_SWAP_SAVE_ENCTLV
+#ifdef MCUBOOT_SWAP_SAVE_ENCTLV
     uint8_t *buf;
 #else
     uint8_t buf[EXPECTED_ENC_EXT_LEN];
@@ -741,7 +741,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
 #endif
 
     /* Initialize the AES context */
-    boot_enc_init(enc_state, slot);
+    (void)boot_enc_init(enc_state, slot);
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, EXPECTED_ENC_TLV, false);
     if (rc) {
@@ -757,7 +757,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
         return -1;
     }
 
-#if MCUBOOT_SWAP_SAVE_ENCTLV
+#ifdef MCUBOOT_SWAP_SAVE_ENCTLV
     buf = bs->enctlv[slot];
     (void)memset(buf, BOOT_UNINITIALIZED_TLV_FILL, BOOT_ENC_TLV_ALIGN_SIZE);
 #endif

@@ -23,7 +23,7 @@
 
 #include <nuttx/config.h>
 
-#include <stdio.h>
+#include <syslog.h>
 
 #include <sys/boardctl.h>
 
@@ -52,7 +52,7 @@ static void do_boot(struct boot_rsp *rsp)
   ret = flash_area_open(area_id, &flash_area);
   assert(ret == OK);
 
-  printf("Booting from %s...\n", flash_area->fa_mtd_path);
+  syslog(LOG_INFO, "Booting from %s...\n", flash_area->fa_mtd_path);
 
   info.path        = flash_area->fa_mtd_path;
   info.header_size = rsp->br_hdr->ih_hdr_size;
@@ -61,7 +61,7 @@ static void do_boot(struct boot_rsp *rsp)
 
   if (boardctl(BOARDIOC_BOOT_IMAGE, (uintptr_t)&info) != OK)
     {
-      fprintf(stderr, "Failed to load application image!\n");
+      syslog(LOG_ERR, "Failed to load application image!\n");
       FIH_PANIC;
     }
 }
@@ -79,13 +79,13 @@ int main(int argc, FAR char *argv[])
   struct boot_rsp rsp;
   fih_int fih_rc = FIH_FAILURE;
 
-  printf("*** Booting MCUboot build %s ***\n", CONFIG_MCUBOOT_VERSION);
+  syslog(LOG_INFO, "*** Booting MCUboot build %s ***\n", CONFIG_MCUBOOT_VERSION);
 
   FIH_CALL(boot_go, fih_rc, &rsp);
 
   if (fih_not_eq(fih_rc, FIH_SUCCESS))
     {
-      fprintf(stderr, "Unable to find bootable image\n");
+      syslog(LOG_ERR, "Unable to find bootable image\n");
       FIH_PANIC;
     }
 

@@ -186,6 +186,7 @@ PROVIDE(__stack = __StackTop);
         *cy_smif_sfdp.o(.text*)
         *cy_gpio.o(.text*)
         *cy_smif_hybrid_sect.o(.text*)
+        *fault_injection_hardening.o(.text*)
 
         . = ALIGN(4);
         __app_text_ram_end__ = .;
@@ -319,6 +320,7 @@ PROVIDE(__stack = __StackTop);
         *cy_smif_sfdp.o(.text*)
         *cy_gpio.o(.text*)
         *cyhal_system.o(.text*)
+        *fault_injection_hardening.o(.text*)
         *lib_a-memset.o(.text*)
         *lib_a-memcpy-stub.o(.text*)
 
@@ -368,6 +370,7 @@ PROVIDE(__stack = __StackTop);
         *cy_gpio.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
         *cycfg_qspi_memslot.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
         *cyhal_system.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
+        *fault_injection_hardening.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
         *lib_a-memset.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
         *lib_a-memcpy-stub.o(.data* .rodata .rodata.* .constdata .constdata.* .conststring .conststring.*)
 
@@ -402,6 +405,7 @@ PROVIDE(__stack = __StackTop);
         *cy_smif_memslot.o(.bss* COMMON)
         *cy_smif_sfdp.o(.bss* COMMON)
         *cy_gpio.o(.bss* COMMON)
+        *fault_injection_hardening.o(.bss* COMMON)
         *lib_a-memset.o(.bss* COMMON)
         *lib_a-memcpy-stub.o(.bss* COMMON)
         KEEP(*(.cy_l1bss*))
@@ -423,7 +427,7 @@ PROVIDE(__stack = __StackTop);
         . = ALIGN(4);
         __text_begin = .;
 
-        *(EXCLUDE_FILE(*cy_smif.o *cy_smif_memslot.o *cy_smif_sfdp.o *cy_gpio.o *cy_smif_hybrid_sect.o) .text*)
+        *(EXCLUDE_FILE(*cy_smif.o *cy_smif_memslot.o *cy_smif_sfdp.o *cy_gpio.o *cy_smif_hybrid_sect.o *fault_injection_hardening.o) .text*)
 
         KEEP(*(.init))
         KEEP(*(.fini))

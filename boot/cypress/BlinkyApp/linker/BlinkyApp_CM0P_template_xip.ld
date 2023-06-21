@@ -133,7 +133,7 @@ SECTIONS
 
         EXCLUDE_FILE(*cy_smif.o *cy_smif_memslot.o *cy_smif_sfdp.o
                 *cy_sysclk.o *cy_smif_hybrid_sect.o *flash_qspi.o
-                *cy_syslib.o *cy_syslib_ext.o *system_psoc6_cm0plus.o) *(.text)
+                *cy_syslib.o *cy_syslib_ext.o *system_psoc6_cm0plus.o, *libgcc.a) *(.text)
 
         KEEP(*(.init))
         KEEP(*(.fini))
@@ -252,6 +252,7 @@ SECTIONS
         KEEP(*(.cy_ramfunc*))
         . = ALIGN(4);
 
+        *libgcc.a(.text*)
         *cy_smif.o(.text*)
         *cy_smif_memslot.o(.text*)
         *cy_smif_sfdp.o(.text*)

@@ -16,6 +16,7 @@ mod caps;
 mod depends;
 mod image;
 mod tlv;
+mod utils;
 pub mod testlog;
 
 pub use crate::{
@@ -52,8 +53,6 @@ Options:
 
 #[derive(Debug, Deserialize)]
 struct Args {
-    flag_help: bool,
-    flag_version: bool,
     flag_device: Option<DeviceName>,
     flag_align: Option<AlignArg>,
     cmd_sizes: bool,

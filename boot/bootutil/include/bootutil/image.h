@@ -81,22 +81,22 @@ struct flash_area;
  *   1st on identifies the public key which should be used to verify it.
  *   2nd one is the actual signature.
  */
-#define IMAGE_TLV_KEYHASH           0x01   /* hash of the public key */
-#define IMAGE_TLV_PUBKEY            0x02   /* public key */
-#define IMAGE_TLV_SHA256            0x10   /* SHA256 of image hdr and body */
-#define IMAGE_TLV_RSA2048_PSS       0x20   /* RSA2048 of hash output */
-#define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output */
-#define IMAGE_TLV_ECDSA256          0x22   /* ECDSA of hash output */
-#define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
-#define IMAGE_TLV_ED25519           0x24   /* ed25519 of hash output */
-#define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
-#define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW 128 or 256*/
-#define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-EC256 */
-#define IMAGE_TLV_ENC_X25519        0x33   /* Key encrypted with ECIES-X25519 */
-#define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
-#define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
-#define IMAGE_TLV_PROV_PACK         0x51   /* Reprovisioning packet */
-#define IMAGE_TLV_BOOT_RECORD       0x60   /* measured boot record */
+#define IMAGE_TLV_KEYHASH           (0x01)   /* hash of the public key */
+#define IMAGE_TLV_PUBKEY            (0x02)   /* public key */
+#define IMAGE_TLV_SHA256            (0x10)   /* SHA256 of image hdr and body */
+#define IMAGE_TLV_RSA2048_PSS       (0x20)   /* RSA2048 of hash output */
+#define IMAGE_TLV_ECDSA224          (0x21)   /* ECDSA of hash output */
+#define IMAGE_TLV_ECDSA256          (0x22)   /* ECDSA of hash output */
+#define IMAGE_TLV_RSA3072_PSS       (0x23)   /* RSA3072 of hash output */
+#define IMAGE_TLV_ED25519           (0x24)   /* ed25519 of hash output */
+#define IMAGE_TLV_ENC_RSA2048       (0x30)   /* Key encrypted with RSA-OAEP-2048 */
+#define IMAGE_TLV_ENC_KW            (0x31)   /* Key encrypted with AES-KW 128 or 256*/
+#define IMAGE_TLV_ENC_EC256         (0x32)   /* Key encrypted with ECIES-EC256 */
+#define IMAGE_TLV_ENC_X25519        (0x33)   /* Key encrypted with ECIES-X25519 */
+#define IMAGE_TLV_DEPENDENCY        (0x40)   /* Image depends on other image */
+#define IMAGE_TLV_SEC_CNT           (0x50)   /* security counter */
+#define IMAGE_TLV_PROV_PACK         (0x51)   /* Reprovisioning packet */
+#define IMAGE_TLV_BOOT_RECORD       (0x60)   /* measured boot record */
 					   /*
 					    * vendor reserved TLVs at xxA0-xxFF,
 					    * where xx denotes the upper byte
@@ -164,15 +164,23 @@ struct image_tlv {
     (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
 #endif
 
+#if defined(MCUBOOT_RAM_LOAD)
+#define IS_RAM_BOOTABLE(hdr)                                       \
+    ((((hdr)->ih_flags & IMAGE_F_RAM_LOAD) == IMAGE_F_RAM_LOAD) && \
+     ((hdr)->ih_load_addr != 0U) && ((hdr)->ih_load_addr != (uintptr_t)(-1)))
+#else
+#define IS_RAM_BOOTABLE(hdr) (false)
+#endif
+
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 
 struct enc_key_data;
 fih_int bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
-                              struct image_header *hdr,
-                              const struct flash_area *fap,
-                              uint8_t *tmp_buf, uint32_t tmp_buf_sz,
-                              uint8_t *seed, int seed_len, uint8_t *out_hash);
+                                  struct image_header *hdr,
+                                  const struct flash_area *fap,
+                                  uint8_t *tmp_buf, uint32_t tmp_buf_sz,
+                                  uint8_t *seed, int seed_len, uint8_t *out_hash);
 
 struct image_tlv_iter {
     const struct image_header *hdr;
@@ -191,9 +199,9 @@ int bootutil_tlv_iter_begin(struct image_tlv_iter *it,
 int bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off,
                            uint16_t *len, uint16_t *type);
 
-int32_t bootutil_get_img_security_cnt(struct image_header *hdr,
-                                      const struct flash_area *fap,
-                                      uint32_t *security_cnt);
+fih_int bootutil_get_img_security_cnt(struct image_header *hdr,
+                                          const struct flash_area *fap,
+                                          fih_uint *security_cnt);
 #ifdef CYW20829
 int32_t bootutil_get_img_reprov_packet(struct image_header *hdr,
                               const struct flash_area *fap,

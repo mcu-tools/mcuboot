@@ -38,10 +38,7 @@
 extern "C" {
 #endif
 
-#define BOOT_ENC_KEY_SIZE_BITS  (BOOT_ENC_KEY_SIZE * 8)
-
-#define BOOT_ENC_TLV_ALIGN_SIZE \
-    ((((BOOT_ENC_TLV_SIZE - 1) / BOOT_MAX_ALIGN) + 1) * BOOT_MAX_ALIGN)
+#define BOOT_ENC_TLV_ALIGN_SIZE ALIGN_UP(BOOT_ENC_TLV_SIZE, BOOT_MAX_ALIGN)
 
 struct enc_key_data {
     uint8_t valid;
@@ -65,6 +62,11 @@ bool boot_enc_valid(struct enc_key_data *enc_state, int image_index,
 int boot_encrypt(struct enc_key_data *enc_state, int image_index,
         const struct flash_area *fap, uint32_t off, uint32_t sz,
         uint32_t blk_off, uint8_t *buf);
+#ifdef MCUBOOT_ENC_IMAGES_XIP
+int bootutil_img_encrypt(struct enc_key_data *enc_state, int image_index,
+        struct image_header *hdr, const struct flash_area *fap, uint32_t off, uint32_t sz,
+        uint32_t blk_off, uint8_t *buf);
+#endif /* MCUBOOT_ENC_IMAGES_XIP */
 void boot_enc_zeroize(struct enc_key_data *enc_state);
 
 #ifdef __cplusplus

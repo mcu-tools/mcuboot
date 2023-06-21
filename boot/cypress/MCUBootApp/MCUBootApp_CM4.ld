@@ -317,14 +317,6 @@ SECTIONS
     ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed with stack")
 
 
-    /* Used for the digital signature of the secure application and the Bootloader SDK application.
-    * The size of the section depends on the required data size. */
-    .cy_app_signature ORIGIN(flash) + LENGTH(flash) - 256 :
-    {
-        KEEP(*(.cy_app_signature))
-    } > flash
-
-
     /* Emulated EEPROM Flash area */
     .cy_em_eeprom :
     {

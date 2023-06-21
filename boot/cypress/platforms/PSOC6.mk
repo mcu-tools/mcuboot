@@ -81,8 +81,8 @@ endif
 
 #UART default config
 ifeq ($(PLATFORM), PSOC_062_512K)
-UART_TX_DEFAULT ?= P10_1
-UART_RX_DEFAULT ?= P10_0
+UART_TX_DEFAULT ?= P5_1
+UART_RX_DEFAULT ?= P5_0
 else ifeq ($(PLATFORM), PSOC_061_512K)
 # INFO: Since 061 platform development 
 # is happening on processor module (PM),
@@ -94,16 +94,32 @@ USE_CUSTOM_DEBUG_UART := 1
 # Definitions for BlinkyApp
 UART_TX_DEFAULT ?= P10_1
 UART_RX_DEFAULT ?= P10_0
+
 else
 UART_TX_DEFAULT ?= P5_1
 UART_RX_DEFAULT ?= P5_0
 endif
 
+DEFINES += CY_DEBUG_UART_TX=$(UART_TX_DEFAULT)
+DEFINES += CY_DEBUG_UART_RX=$(UART_RX_DEFAULT)
+DEFINES += CYBSP_DEBUG_UART_TX=$(UART_TX_DEFAULT)
+DEFINES += CYBSP_DEBUG_UART_RX=$(UART_RX_DEFAULT)
+
 # Add device name to defines
 DEFINES += $(DEVICE)
+DEFINES += CY_USING_HAL
+DEFINES += CORE_NAME_$(CORE)_0=1
+DEFINES += COMPONENT_CAT1 COMPONENT_CAT1A COMPONENT_$(CORE)
+
+# Minimum erase size of underlying memory hardware
+PLATFORM_MEMORY_ALIGN := 0x200
+PLATFORM_MAX_TRAILER_PAGE_SIZE := 0x200
 
 # Default upgrade method
 PLATFORM_DEFAULT_USE_OVERWRITE ?= 0
+
+# Default chung size
+PLATFORM_CHUNK_SIZE := 512U
 
 ###############################################################################
 # Application specific libraries
@@ -121,23 +137,8 @@ else
 CORE_SUFFIX = m4
 endif
 
-# Add retartget IO implementation using pdl
-PLATFORM_SOURCES_RETARGET_IO_PDL := $(wildcard $(THIS_APP_PATH)/retarget_io_pdl/*.c)
-
-# Collect dirrectories containing headers for PLATFORM
-PLATFORM_INCLUDE_RETARGET_IO_PDL := $(THIS_APP_PATH)/retarget_io_pdl
-
-# PSOC6HAL source files
-PLATFORM_SOURCES_HAL_MCUB := $(THIS_APP_PATH)/mtb-hal-cat1/source/cyhal_crypto_common.c
-PLATFORM_SOURCES_HAL_MCUB += $(THIS_APP_PATH)/mtb-hal-cat1/source/cyhal_hwmgr.c
-
-# needed for Crypto HW Acceleration and headers inclusion, do not use for peripherals
-# peripherals should be accessed
-PLATFORM_INCLUDE_DIRS_HAL_MCUB := $(THIS_APP_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/include
-PLATFORM_INCLUDE_DIRS_HAL_MCUB += $(THIS_APP_PATH)/mtb-hal-cat1/include
-PLATFORM_INCLUDE_DIRS_HAL_MCUB += $(THIS_APP_PATH)/mtb-hal-cat1/include_pvt
-PLATFORM_INCLUDE_DIRS_HAL_MCUB += $(THIS_APP_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/include/pin_packages
-
+PLATFORM_APP_SOURCES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/cyw_platform_utils.c
+PLATFORM_INCLUDE_DIRS_UTILS := $(PRJ_DIR)/platforms/utils/$(FAMILY)
 ###############################################################################
 # Application dependent definitions
 # MCUBootApp default settings
@@ -145,33 +146,10 @@ PLATFORM_INCLUDE_DIRS_HAL_MCUB += $(THIS_APP_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/
 USE_CRYPTO_HW ?= 1
 ###############################################################################
 
-PLATFORM_INCLUDE_DIRS_FLASH := $(PRJ_DIR)/platforms/cy_flash_pal
-PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/cy_flash_pal/flash_psoc6/include
-PLATFORM_SOURCES_FLASH := $(wildcard $(PRJ_DIR)/platforms/cy_flash_pal/flash_psoc6/*.c)
-
-ifneq ($(USE_EXTERNAL_FLASH), 1)
-PLATFORM_SOURCES_FLASH := $(filter-out $(PRJ_DIR)/platforms/cy_flash_pal/flash_psoc6/cy_smif_psoc6.c, $(PLATFORM_SOURCES_FLASH))
-endif
-
-ifeq ($(USE_EXTERNAL_FLASH), 1)
-PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/cy_flash_pal/flash_psoc6/flash_qspi
-PLATFORM_SOURCES_FLASH += $(wildcard $(PRJ_DIR)/platforms/cy_flash_pal/flash_psoc6/flash_qspi/*.c)
-ifeq ($(BUILDCFG), Debug)
-# Include files with statically defined SMIF configuration to enable
-# OpenOCD debugging of external memory
-PLATFORM_SOURCES_FLASH += cy_serial_flash_prog.c
-PLATFORM_SOURCES_FLASH += $(PRJ_DIR)/platforms/cy_flash_pal/flash_psoc6/smif_cfg_dbg/cycfg_qspi_memslot.c
-PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/cy_flash_pal/flash_psoc6/smif_cfg_dbg
-endif
-endif
-
-# Platform dependend utils files
-PLATFORM_APP_SOURCES := $(PRJ_DIR)/platforms/utils/$(FAMILY)/cyw_platform_utils.c
 ifeq ($(PLATFORM), $(filter $(PLATFORM), PSOC_061_2M PSOC_061_1M PSOC_061_512K))
 # FIXME: not needed for real PSoC 61!
 PLATFORM_APP_SOURCES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/psoc6_02_cm0p_sleep.c
 endif
-PLATFORM_INCLUDE_DIRS_UTILS := $(PRJ_DIR)/platforms/utils/$(FAMILY)
 
 # Post build job to execute for platform
 post_build: $(OUT_CFG)/$(APP_NAME)_unsigned.hex
@@ -240,12 +218,14 @@ PLATFORM_USER_APP_START ?= $(PRIMARY_IMG_START)
 # from external memory in XIP mode.
 PLATFORM_DEFAULT_PRIMARY_IMG_START ?= $(PLATFORM_DEFAULT_USER_APP_START)
 
-PLATFORM_INCLUDE_DIRS_FLASH := $(PRJ_DIR)/platforms/cy_flash_pal
-PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/cy_flash_pal/flash_psoc6/include
+#PLATFORM_INCLUDE_DIRS_FLASH := $(PRJ_DIR)/platforms/memory
+#PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/$(FAMILY)
+#PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/flash_map_backend
+#PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/$(FAMILY)/include
 
 ifeq ($(USE_EXTERNAL_FLASH), 1)
-PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/cy_flash_pal/flash_psoc6/flash_qspi
-PLATFORM_SOURCES_FLASH += $(wildcard $(PRJ_DIR)/platforms/cy_flash_pal/flash_psoc6/flash_qspi/*.c)
+#PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/$(FAMILY)/flash_qspi
+#PLATFORM_SOURCES_FLASH += $(wildcard $(PRJ_DIR)/platforms/memory/$(FAMILY)/flash_qspi/*.c)
 endif
 
 # We still need this for MCUBoot apps signing
@@ -330,11 +310,9 @@ $(info PLATFORM_INCLUDE_DIRS_FLASH --> $(PLATFORM_INCLUDE_DIRS_FLASH))
 $(info PLATFORM_INCLUDE_DIRS_HAL_MCUB --> $(PLATFORM_INCLUDE_DIRS_HAL_MCUB))
 $(info PLATFORM_INCLUDE_DIRS_PDL_STARTUP --> $(PLATFORM_INCLUDE_DIRS_PDL_STARTUP))
 $(info PLATFORM_INCLUDE_DIRS_UTILS --> $(PLATFORM_INCLUDE_DIRS_UTILS))
-$(info PLATFORM_INCLUDE_RETARGET_IO_PDL --> $(PLATFORM_INCLUDE_RETARGET_IO_PDL))
 $(info PLATFORM_SIGN_ARGS --> $(PLATFORM_SIGN_ARGS))
 $(info PLATFORM_SOURCES_FLASH <-> $(PLATFORM_SOURCES_FLASH))
 $(info PLATFORM_SOURCES_HAL_MCUB --> $(PLATFORM_SOURCES_HAL_MCUB))
-$(info PLATFORM_SOURCES_RETARGET_IO_PDL --> $(PLATFORM_SOURCES_RETARGET_IO_PDL))
 $(info PLATFORM_STARTUP_FILE --> $(PLATFORM_STARTUP_FILE))
 $(info PLATFORM_SUFFIX <-> $(PLATFORM_SUFFIX))
 $(info PLATFORM_SYSTEM_FILE_NAME --> $(PLATFORM_SYSTEM_FILE_NAME))

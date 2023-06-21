@@ -45,16 +45,27 @@ fih_int platform_security_counter_get(uint32_t image_id, fih_uint *security_cnt)
  * @param image_id          The image number for which you want to get a security counter,
  *                          saved in EFUSE (from 0)
  * @param img_security_cnt  Security counter value of image: appropriated bit array inside of 32bits
+ * 
  * @param reprov_packet     Pointer to a reprovisioning packet containing NV counter.
+ * 
  * @return                  0 on success; nonzero on failure.
  */
 
-int32_t platform_security_counter_update(uint32_t image_id, uint32_t img_security_cnt, uint8_t * reprov_packet);
+int32_t platform_security_counter_update(uint32_t image_id, fih_uint img_security_cnt, uint8_t * reprov_packet);
 
 
 /**
- * Extracts security counter for the desired image from full NV
- * counter and converts it to integer value.
+ * Converts security counter for the desired image from full NV-counter 
+ * to a decimal integer value with validation of all bits in 'nv_counter'.
+ * If NV-counter has bit(s) in position for another 'image_id', it returns an error.
+ * For example, the folowing case updates counter for image 0 - it returns an error
+ * because the counter for image 0 contains bits in position for the image 1:
+ * *************************************************
+ *  bits for image 1  | 5 bits are reserved for image 0
+ * ***************************
+ *                   1111111 *
+ * ***************************
+ * 
  * Efuse stores nv counter value as a consequent bits. This means
  * NV counter set to 5 in policy would be written as 0x1F.
  * Only one security counter is available in system. Maximum value is 32.
@@ -63,13 +74,15 @@ int32_t platform_security_counter_update(uint32_t image_id, uint32_t img_securit
  *
  * @param image_id          Index of the image (from 0)
  *
- * @param nv_counter        Full security counter to get specific efuse value for desired image
+ * @param nv_counter        Image security counter read out from TLV packet of image_id.
  * 
  * @param extracted_img_cnt Pointer to a variable, where extracted counter for the 'image_id'
  *                          would be stored
- *
  * @return                  FIH_FAILURE on failure, otherwise FIH_SUCCESS.
- *
+ * 
+ * @warning                 Don't use this function inside of 'platform_security_counter_get' or
+ *                          'platform_security_counter_update' functions.
+ *                          For this purpose please use the function 'counter_extract'.
  */
 
 fih_int platform_security_counter_check_extract(uint32_t image_id, fih_uint nv_counter, fih_uint *extracted_img_cnt);

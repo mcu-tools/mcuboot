@@ -100,7 +100,7 @@ bootutil_cmp_sig(mbedtls_ecdsa_context *ctx, uint8_t *hash, uint32_t hlen,
     return mbedtls_ecdsa_read_signature(ctx, hash, hlen, sig, slen);
 }
 
-int
+fih_int
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
 {
@@ -125,6 +125,6 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     rc = bootutil_cmp_sig(&ctx, hash, hlen, sig, slen);
     mbedtls_ecdsa_free(&ctx);
 
-    return rc;
+    FIH_RET(fih_int_encode_zero_equality(rc));
 }
 #endif /* MCUBOOT_SIGN_EC */

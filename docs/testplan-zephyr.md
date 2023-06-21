@@ -1,6 +1,6 @@
-# Zephyr Test Plan
+# Zephyr test plan
 
-The following roughly describes how mcuboot is tested on Zephyr.  The
+The following roughly describes how MCUboot is tested on Zephyr.  The
 testing is done with the code in `samples/zephyr`.  These examples
 were written using the FRDM-K64F, but other boards should be similar.
 At this time, however, the partitions are hardcoded in the Makefile

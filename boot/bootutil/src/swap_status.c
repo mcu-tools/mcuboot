@@ -45,7 +45,6 @@ MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #ifdef MCUBOOT_SWAP_USING_STATUS
 
-#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 int
 swap_read_status_bytes(const struct flash_area *fap,
         struct boot_loader_state *state, struct boot_status *bs)
@@ -171,10 +170,7 @@ swap_read_status_bytes(const struct flash_area *fap,
 uint32_t
 boot_status_internal_off(const struct boot_status *bs, uint32_t elem_sz)
 {
-    uint32_t off = (bs->idx - BOOT_STATUS_IDX_0) * elem_sz;
-
-    return off;
+    return (bs->idx - BOOT_STATUS_IDX_0) * elem_sz;
 }
-#endif /* !MCUBOOT_DIRECT_XIP && !MCUBOOT_RAM_LOAD */
 
 #endif /* MCUBOOT_SWAP_USING_STATUS */

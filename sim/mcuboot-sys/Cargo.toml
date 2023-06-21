@@ -82,9 +82,8 @@ direct-xip = []
 # Check (in software) against version downgrades.
 downgrade-prevention = []
 
-# Large write.  Not meaningful, but present here so that the
-# full-suite tests will work for this configuration.
-large-write = []
+# Support images with 32-byte maximum write alignment value.
+max-align-32 = []
 
 [build-dependencies]
 cc = "1.0.25"
@@ -93,8 +92,3 @@ cc = "1.0.25"
 libc = "0.2"
 log = "0.4"
 simflash = { path = "../simflash" }
-
-# Optimize some, even when building for debugging, otherwise the tests
-# are too slow.
-[profile.test]
-opt-level = 1

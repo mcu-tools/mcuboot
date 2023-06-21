@@ -28,3 +28,5 @@ rusty-tags.*
 
 # The target directory from Rust development
 /target/
+boot/cypress/platforms/memory/memorymap.c
+boot/cypress/platforms/memory/memorymap.h

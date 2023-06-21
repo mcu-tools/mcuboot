@@ -30,6 +30,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "swap_status.h"
+#include "sysflash/sysflash.h"
 
 #ifdef MCUBOOT_SWAP_USING_STATUS
 
@@ -67,32 +68,46 @@ static inline uint32_t pack_bytes_u32(const uint8_t *data)
 
 int32_t swap_status_init_offset(uint8_t area_id)
 {
-    uint8_t order[] = {
-        FLASH_AREA_IMAGE_PRIMARY(0U)
-      , FLASH_AREA_IMAGE_SECONDARY(0U)
-#ifdef MCUBOOT_SWAP_USING_SCRATCH
-      , FLASH_AREA_IMAGE_SCRATCH
-#endif /* MCUBOOT_SWAP_USING_SCRATCH */
-#if BOOT_IMAGE_NUMBER >= 2
-      , FLASH_AREA_IMAGE_PRIMARY(1U)
-      , FLASH_AREA_IMAGE_SECONDARY(1U)
-#endif /* BOOT_IMAGE_NUMBER >= 2 */
-#if BOOT_IMAGE_NUMBER >= 3
-      , FLASH_AREA_IMAGE_PRIMARY(2U)
-      , FLASH_AREA_IMAGE_SECONDARY(2U)
-#endif /* BOOT_IMAGE_NUMBER >= 3 */
-#if BOOT_IMAGE_NUMBER == 4
-      , FLASH_AREA_IMAGE_PRIMARY(3U)
-      , FLASH_AREA_IMAGE_SECONDARY(3U)
-#endif /* BOOT_IMAGE_NUMBER == 4 */
-    };
-
     int32_t result = -1;
     int32_t offset = 0;
     uint32_t i;
 
-    for (i = 0U; i < sizeof(order) / sizeof(order[0U]); i++) {
-        if (order[i] == area_id) {
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
+    #define ADD_ARRAY_MEMBER_FOR_SCRATCH (1U)
+#else
+    #define ADD_ARRAY_MEMBER_FOR_SCRATCH (0U)
+#endif /* MCUBOOT_SWAP_USING_SCRATCH */
+
+    /* we always have at least 2 images in BOOT and UPGRADE slots */
+#define ARR_SIZE  (SLOTS_FOR_IMAGE + ADD_ARRAY_MEMBER_FOR_SCRATCH + ((uint8_t)BOOT_IMAGE_NUMBER - 1U) * SLOTS_FOR_IMAGE)
+
+    uint8_t slots_ids[ARR_SIZE];
+
+    slots_ids[0] = FLASH_AREA_IMAGE_PRIMARY(0U);
+    slots_ids[1] = FLASH_AREA_IMAGE_SECONDARY(0U);
+
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
+    /* The third position of SCRATCH is saved as it was before */
+    slots_ids[2] = FLASH_AREA_IMAGE_SCRATCH;
+#endif /* MCUBOOT_SWAP_USING_SCRATCH */
+
+#if (BOOT_IMAGE_NUMBER > 1)
+
+    uint8_t primary_slots_per_id = SLOTS_FOR_IMAGE + ADD_ARRAY_MEMBER_FOR_SCRATCH;
+    uint8_t secondary_slots_per_id = primary_slots_per_id + 1U;
+
+    for (i = 1U; i < (uint32_t) BOOT_IMAGE_NUMBER; ++i)
+    {
+        slots_ids[primary_slots_per_id] = FLASH_AREA_IMAGE_PRIMARY( i );
+        slots_ids[secondary_slots_per_id] = FLASH_AREA_IMAGE_SECONDARY( i );
+        primary_slots_per_id += 2U;
+        secondary_slots_per_id += 2U;
+    }
+
+#endif /* BOOT_IMAGE_NUMBER > 1 */
+
+    for (i = 0U; i < ARR_SIZE; i++) {
+        if (slots_ids[i] == area_id) {
             result = offset;
             break;
         }
@@ -247,7 +262,7 @@ static int swap_status_write_record(uint32_t rec_offset, uint32_t copy_num, uint
 
 static int boot_magic_decode(uint8_t *magic)
 {
-    if (memcmp(magic, (const uint8_t *)boot_img_magic, BOOT_MAGIC_SZ) == 0) {
+    if (memcmp((const void *)magic, (const void *)&boot_img_magic.val, BOOT_MAGIC_SZ) == 0) {
         return BOOT_MAGIC_GOOD;
     }
     return BOOT_MAGIC_BAD;
@@ -430,7 +445,7 @@ int swap_status_to_image_trailer(const struct flash_area *fap)
     uint32_t cur_trailer_pos;
     uint32_t primary_trailer_sz;
     uint32_t primary_trailer_buf_sz;
-    uint32_t align = CY_FLASH_ALIGN;
+    uint32_t align = MEMORY_ALIGN;
     int rc = 0;
     const struct flash_area *fap_stat = NULL;
     uint8_t primary_trailer_buf[MAX_TRAILER_BUF_SIZE];
@@ -464,8 +479,20 @@ int swap_status_to_image_trailer(const struct flash_area *fap)
     /* align image trailer buffer size to minimal write size */
 #if !defined(__BOOTSIM__)
     align = flash_area_align(fap);
+    /* TODO: this code needs to be refined. It is introduced to overcome
+     * situation when MCUBootApp lives in internal memory, but user app
+     * is executed from different type memory - external in XIP mode in
+     * this case. This situation now arise on PSOC6 when XIP execution is
+     * used, bay may be applicable to other devices, where solution is
+     * distributed between memories with different write/erase sizes.
+     */
+#ifdef CY_BOOT_USE_EXTERNAL_FLASH
+    if (align > MEMORY_ALIGN) {
+        align = MEMORY_ALIGN;
+    }
+#endif
 #else
-    align = CY_FLASH_ALIGN;
+    align = MEMORY_ALIGN;
 #endif
 
     if ((align > MAX_TRAILER_BUF_SIZE) || (align == 0U)) {

@@ -70,23 +70,23 @@ In the XIP mode firmware image can be placed in the external memory and executed
 
 On CYW20829 platform XIP mode is always used due to absence of internal memory.
 
-This is optional for PSoC™ 6 devices. The JSON flash map should contain `"mode": "XIP"` in the `"external_flash" section`. `USE_XIP` flag is added to auto-generated `flashmap.mk` on pre-build action.
+This is optional for PSoC™ 6 devices. The JSON flash map should contain `"mode": "XIP"` in the `"external_flash" section`. `USE_XIP` flag is added to auto-generated `memorymap.mk` on pre-build action.
 
 When XIP mode is used primary slot of an image can be placed in external memory.
 
-This repository provides default flash map files with suffix _xip_ to be used for XIP mode in `platforms/cy_flash_pal/flash_%platform_name%/flashmap`.
+This repository provides default flash map files with suffix _xip_ to be used for XIP mode in `platforms/memory/flash_%platform_name%/flashmap`.
 
 #### How to enable external memory support
 
-External memory is enabled when `make` flag `USE_EXTERNAL_FLASH` is set to `1`. Value of this flag is set in auto-generated `flashmap.mk` files when field `"external_flash"` is present in JSON file. 
+External memory is enabled when `make` flag `USE_EXTERNAL_FLASH` is set to `1`. Value of this flag is set in auto-generated `memorymap.mk` files when field `"external_flash"` is present in JSON file. 
 
-Default flash maps with suffix _smif_ are provided in `platforms/cy_flash_pal/flash_psoc6/flashmap` folder for PSoC™ 6 devices, where presense of external memory in system is optional.
+Default flash maps with suffix _smif_ are provided in `platforms/memory/PSOC6/flashmap` folder for PSoC™ 6 devices, where presense of external memory in system is optional.
 
 Build MCUBootApp as described in the [MCUBootApp.md](MCUBootApp.md) file.
 
 **Building an upgrade image for external memory:**
 
-    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE ERASED_VALUE=0xff FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_smif.json IMG_ID=1
+    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE ERASED_VALUE=0xff FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single_smif.json IMG_ID=1
 
 `ERASED_VALUE` - Defines the memory cell contents in the erased state. It is `0x00` for PSoC™ 6 internal flash and `0xff` for S25FL512S.
 

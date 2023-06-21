@@ -64,7 +64,7 @@ fih_int boot_nv_security_counter_get(uint32_t image_id, fih_uint *security_cnt);
  * @return                  0 on success; nonzero on failure.
  */
 int32_t boot_nv_security_counter_update(uint32_t image_id,
-                                        uint32_t img_security_cnt,
+                                        fih_uint img_security_cnt,
                                         void * custom_data);
 
 #ifdef __cplusplus

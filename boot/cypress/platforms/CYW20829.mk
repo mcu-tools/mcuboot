@@ -36,7 +36,7 @@ CRYPTO_ACC_TYPE := MXCRYPTOLITE
 # MCU device selection, based on target device.
 # Default chips are used for supported platforms
 # This can be redefined in case of other chip usage
-DEVICE ?= CYW20829B0LKML
+DEVICE ?= CYW20829A0LKML
 # If PSVP build is required
 ifeq ($(CYW20829_PSVP), 1)
 SERVICE_APP_PLATFORM_SUFFIX := _psvp
@@ -58,6 +58,10 @@ DEFINES += $(DEVICE)
 # Default upgrade method
 PLATFORM_DEFAULT_USE_OVERWRITE ?= 0
 
+# Minimum erase size of underlying memory hardware
+PLATFORM_MEMORY_ALIGN := 0x1000
+PLATFORM_MAX_TRAILER_PAGE_SIZE := 0x1000
+
 # Device flash start
 FLASH_START := 0x60000000
 FLASH_XIP_START := 0x08000000
@@ -70,12 +74,6 @@ FLASH_XIP_START := 0x08000000
 THIS_APP_PATH = $(PRJ_DIR)/libs
 
 ifeq ($(APP_NAME), MCUBootApp)
-
-PLATFORM_INCLUDE_DIRS_FLASH := $(PRJ_DIR)/platforms/cy_flash_pal
-PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/cy_flash_pal/flash_cyw20829/flash_qspi
-PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/cy_flash_pal/flash_cyw20829/include
-PLATFORM_SOURCES_FLASH := $(wildcard $(PRJ_DIR)/platforms/cy_flash_pal/flash_cyw20829/*.c)
-PLATFORM_SOURCES_FLASH += $(wildcard $(PRJ_DIR)/platforms/cy_flash_pal/flash_cyw20829/flash_qspi/*.c)
 
 # Platform dependend utils files
 PLATFORM_APP_SOURCES := $(PRJ_DIR)/platforms/utils/$(FAMILY)/cyw_platform_utils.c
@@ -121,6 +119,8 @@ PLATFORM_MAX_IMG_SECTORS = 32U
 USE_CUSTOM_MEMORY_MAP ?= 1
 
 PLATFORM_CY_MAX_EXT_FLASH_ERASE_SIZE ?= 4096U
+
+# Default memory single chunk size
 PLATFORM_CHUNK_SIZE := 4096U
 ###############################################################################
 
@@ -189,11 +189,6 @@ PLATFORM_DEFAULT_RAM_SIZE  ?= 0x10000
 
 PLATFORM_DEFINES_APP += -DUSER_APP_START_OFF=0x20000
 
-PLATFORM_INCLUDE_DIRS_FLASH := $(PRJ_DIR)/platforms/cy_flash_pal
-PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/cy_flash_pal/flash_cyw20829/flash_qspi
-PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/cy_flash_pal/flash_cyw20829/include
-PLATFORM_SOURCES_FLASH += $(wildcard $(PRJ_DIR)/platforms/cy_flash_pal/flash_cyw20829/flash_qspi/*.c)
-
 PLATFORM_DEFAULT_IMG_VER_ARG ?= 1.0.0
 
 SIGN_IMG_ID = $(shell expr $(IMG_ID) - 1)
@@ -212,7 +207,6 @@ ifeq ($(POST_BUILD_ENABLE), 1)
 	$(shell $(PRJ_DIR)/run_toc2_generator.sh $(LCS) $(OUT_CFG) $(APP_NAME) $(APPTYPE) $(PRJ_DIR) $(SMIF_CRYPTO_CONFIG) $(TOOLCHAIN_PATH))
 
 	$(info SIGN_ARGS <-> $(SIGN_ARGS))
-
 	$(shell cysecuretools -q -t cyw20829 -p $(APP_DEFAULT_POLICY) sign-image $(SIGN_ARGS))
 
 	$(GCC_PATH)/bin/arm-none-eabi-objcopy --change-address=$(HEADER_OFFSET) -I binary -O ihex $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).bin $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).hex
@@ -235,15 +229,13 @@ CFLAGS_PLATFORM := -c -mcpu=cortex-m33+nodsp --specs=nano.specs
 PLATFORM_SYSTEM_FILE_NAME := ns_system_$(PLATFORM_SUFFIX).c
 PLATFORM_SOURCES_PDL_STARTUP := ns_start_$(PLATFORM_SUFFIX).c
 
-PLATFORM_SOURCES_RETARGET_IO := $(wildcard $(PRJ_DIR)/libs/retarget-io/*.c)
-
 PLATFORM_SOURCES_HAL := $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/source/pin_packages/cyhal_cyw20829_56_qfn.c
 PLATFORM_SOURCES_HAL += $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/source/triggers/cyhal_triggers_cyw20829.c
 PLATFORM_SOURCES_HAL += $(wildcard $(PRJ_DIR)/libs/mtb-hal-cat1/source/*.c)
 
 PLATFORM_INCLUDE_DIRS_PDL_STARTUP := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system
 
-PLATFORM_INCLUDE_DIRS_RETARGET_IO := $(PRJ_DIR)/libs/retarget-io
+PLATFORM_INCLUDE_RETARGET_IO := $(PRJ_DIR)/libs/retarget-io
 
 PLATFORM_INCLUDE_DIRS_HAL := $(PRJ_DIR)/libs/mtb-hal-cat1/include
 PLATFORM_INCLUDE_DIRS_HAL += $(PRJ_DIR)/libs/mtb-hal-cat1/include_pvt

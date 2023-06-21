@@ -86,17 +86,13 @@ K_SEM_DEFINE(boot_log_sem, 1, 1);
 #endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_IMMEDIATE) */
 
 #ifdef CONFIG_SOC_FAMILY_NRF
-#include <hal/nrf_power.h>
+#include <helpers/nrfx_reset_reason.h>
 
 static inline bool boot_skip_serial_recovery()
 {
-#if NRF_POWER_HAS_RESETREAS
-    uint32_t rr = nrf_power_resetreas_get(NRF_POWER);
+    uint32_t rr = nrfx_reset_reason_get();
 
-    return !(rr == 0 || (rr & NRF_POWER_RESETREAS_RESETPIN_MASK));
-#else
-    return false;
-#endif
+    return !(rr == 0 || (rr & NRFX_RESET_REASON_RESETPIN_MASK));
 }
 #else
 static inline bool boot_skip_serial_recovery()
@@ -163,8 +159,6 @@ struct arm_vector_table {
     uint32_t reset;
 };
 
-extern void sys_clock_disable(void);
-
 static void do_boot(struct boot_rsp *rsp)
 {
     struct arm_vector_table *vt;
@@ -183,9 +177,8 @@ static void do_boot(struct boot_rsp *rsp)
                                      rsp->br_image_off +
                                      rsp->br_hdr->ih_hdr_size);
 
-#ifdef CONFIG_SYS_CLOCK_EXISTS
     sys_clock_disable();
-#endif
+
 #ifdef CONFIG_USB_DEVICE_STACK
     /* Disable the USB to prevent it from firing interrupts */
     usb_disable();
@@ -513,7 +506,28 @@ void main(void)
     }
 #endif
 
+#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
+    /* Initialize the boot console, so we can already fill up our buffers while
+     * waiting for the boot image check to finish. This image check, can take
+     * some time, so it's better to reuse thistime to already receive the
+     * initial mcumgr command(s) into our buffers
+     */
+    rc = boot_console_init();
+    int timeout_in_ms = CONFIG_BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT;
+    uint32_t start = k_uptime_get_32();
+#endif
+
     FIH_CALL(boot_go, fih_rc, &rsp);
+
+#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
+    timeout_in_ms -= (k_uptime_get_32() - start);
+    if( timeout_in_ms <= 0 ) {
+        /* at least one check if time was expired */
+        timeout_in_ms = 1;
+    }
+   boot_serial_check_start(&boot_funcs,timeout_in_ms);
+#endif
+
     if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
         BOOT_LOG_ERR("Unable to find bootable image");
         FIH_PANIC;

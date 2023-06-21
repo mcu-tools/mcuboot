@@ -74,7 +74,7 @@ bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
       memcmp(alg.MBEDTLS_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -3;
     }
-    if (param.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_secp256r1_oid) - 1||
+    if (param.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_secp256r1_oid) - 1 ||
       memcmp(param.MBEDTLS_CONTEXT_MEMBER(p), ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
         return -4;
     }
@@ -92,12 +92,12 @@ bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
 
     if (mbedtls_ecp_point_read_binary(&ctx->MBEDTLS_CONTEXT_MEMBER(grp),
                                       &ctx->MBEDTLS_CONTEXT_MEMBER(Q),
-                                      *p, end - *p) != 0) {
+                                      *p, end - *p)) {
         return -8;
     }
 
     if (mbedtls_ecp_check_pubkey(&ctx->MBEDTLS_CONTEXT_MEMBER(grp),
-                                 &ctx->MBEDTLS_CONTEXT_MEMBER(Q)) != 0) {
+                                 &ctx->MBEDTLS_CONTEXT_MEMBER(Q))) {
         return -9;
     }
     return 0;
@@ -161,10 +161,10 @@ bootutil_read_bigint(uint8_t i[NUM_ECC_BYTES], uint8_t **cp, uint8_t *end)
     }
 
     if (len >= NUM_ECC_BYTES) {
-        memcpy(i, *cp + len - NUM_ECC_BYTES, NUM_ECC_BYTES);
+        (void)memcpy(i, *cp + len - NUM_ECC_BYTES, NUM_ECC_BYTES);
     } else {
-        memset(i, 0, NUM_ECC_BYTES - len);
-        memcpy(i + NUM_ECC_BYTES - len, *cp, len);
+        (void)memset(i, 0, NUM_ECC_BYTES - len);
+        (void)memcpy(i + NUM_ECC_BYTES - len, *cp, len);
     }
     *cp += len;
     return 0;
@@ -200,7 +200,7 @@ bootutil_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp, uint8_t *
 }
 #endif /* not MCUBOOT_ECDSA_NEED_ASN1_SIG */
 
-int
+fih_int
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
 {
@@ -223,13 +223,13 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     rc = bootutil_import_key(&pubkey, end);
 #endif
     if (rc != 0) {
-        return -1;
+        return FIH_FAILURE;
     }
 
 #ifndef MCUBOOT_ECDSA_NEED_ASN1_SIG
     rc = bootutil_decode_sig(signature, sig, sig + slen);
-    if (rc) {
-        return -1;
+    if (rc != 0) {
+        return FIH_FAILURE;
     }
 #endif
 
@@ -242,7 +242,7 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
 
 #else /* CY_MBEDTLS_HW_ACCELERATION */
     if (hlen != NUM_ECC_BYTES) {
-        return -1;
+        return FIH_FAILURE;
     }
 
     bootutil_ecdsa_p256_init(&ctx);
@@ -256,7 +256,7 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
 
     bootutil_ecdsa_p256_drop(&ctx);
 
-    return rc;
+    FIH_RET(fih_int_encode_zero_equality(rc));
 }
 
 #endif /* MCUBOOT_USE_TINYCRYPT || defined MCUBOOT_USE_CC310 */

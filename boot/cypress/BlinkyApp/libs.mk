@@ -30,60 +30,19 @@ PDL_VERSION = 121
 #
 CUR_LIBS_PATH = $(PRJ_DIR)/libs
 
-# Collect source files for Retarget-io
-ifneq ($(PLATFORM), CYW20829)
-ifeq ($(APP_CORE), CM0P)
-SOURCES_RETARGET_IO := $(wildcard $(THIS_APP_PATH)/retarget_io_pdl/*.c)
-endif
-ifneq ($(APP_CORE), CM0P)
-SOURCES_RETARGET_IO := $(wildcard $(CUR_LIBS_PATH)/retarget-io/*.c)
-endif
-endif
 SOURCES_WATCHDOG := $(wildcard $(CUR_LIBS_PATH)/watchdog/*.c)
 
-# Collect source files for HAL
-ifneq ($(PLATFORM), CYW20829)
-ifneq ($(APP_CORE), CM0P)
-SOURCES_HAL_BLINKY := $(wildcard $(CUR_LIBS_PATH)/mtb-hal-cat1/source/*.c)
-SOURCES_HAL_BLINKY += $(wildcard $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/source/triggers/*.c)
-SOURCES_HAL_BLINKY += $(wildcard $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/source/pin_packages/*.c)
-endif
-endif
-
-# Retarget-io related include directories
-ifeq ($(APP_CORE), CM0P)
-INCLUDE_DIRS_RETARGET_IO := $(THIS_APP_PATH)/retarget_io_pdl
-endif
-ifneq ($(APP_CORE), CM0P)
-INCLUDE_DIRS_RETARGET_IO := $(CUR_LIBS_PATH)/retarget-io
-endif
 INCLUDE_DIRS_WATCHDOG := $(CUR_LIBS_PATH)/watchdog
-
-# Collect dirrectories containing headers for PSOC6 HAL
-ifneq ($(PLATFORM), CYW20829)
-ifneq ($(APP_CORE), CM0P)
-INCLUDE_DIRS_HAL_BLINKY := $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A
-INCLUDE_DIRS_HAL_BLINKY := $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/include
-INCLUDE_DIRS_HAL_BLINKY += $(CUR_LIBS_PATH)/mtb-hal-cat1/include
-INCLUDE_DIRS_HAL_BLINKY += $(CUR_LIBS_PATH)/mtb-hal-cat1/include_pvt
-INCLUDE_DIRS_HAL_BLINKY += $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/include/pin_packages
-INCLUDE_DIRS_HAL_BLINKY += $(CUR_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT1A/include/triggers
-endif
-endif
 
 # Collected source files for libraries
 SOURCES_LIBS += $(SOURCES_WATCHDOG)
-ifneq ($(PLATFORM), CYW20829)
-SOURCES_LIBS += $(SOURCES_RETARGET_IO)
-SOURCES_LIBS += $(SOURCES_HAL_BLINKY)
-endif
+SOURCES_LIBS += $(SOURCES_FIH)
+
 
 # Collected include directories for libraries
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
-ifneq ($(PLATFORM), CYW20829)
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_RETARGET_IO))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL_BLINKY))
-endif
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_FIH))
+
 
 ###############################################################################
 # Print debug information about all settings used and/or set in this file

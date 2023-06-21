@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+# SPDX-License-Identifier: Apache-2.0
+
+# For development, trigger this on any push.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+name: Espressif
+
+concurrency:
+  group: espressif-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  environment:
+    strategy:
+      matrix:
+        targets: [esp32, esp32s2, esp32s3, esp32c3]
+        features:
+        - "sign-rsa2048,sign-rsa3072,sign-ec256,sign-ed25519"
+    runs-on: ubuntu-latest
+    env:
+      MCUBOOT_TARGETS: ${{ matrix.targets }}
+      MCUBOOT_FEATURES: ${{ matrix.features }}
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: recursive
+    - name: Print the environment
+      run: |
+        uname -a
+        lscpu
+        free
+        pwd
+    - name: Signed commit check
+      if: ${{ github.event_name == 'pull_request' }}
+      run: |
+        ./ci/check-signed-off-by.sh
+    - name: Espressif install
+      run: |
+        ./ci/espressif_install.sh
+    - name: Espressif run
+      run: |
+        ./ci/espressif_run.sh

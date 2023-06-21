@@ -1,8 +1,8 @@
-# Building MCUBoot with nRF52840 CC310 enabled
+# Building MCUboot with nRF52840 CC310 enabled
 
-## Pre-prerequisites
+## Prerequisites
 
-Clone [nrfxlib](https://github.com/NordicPlayground/nrfxlib) next to the mcuboot root folder. So that it's located `../nrfxlib` from mcuboots root folder.
+Clone [nrfxlib](https://github.com/NordicPlayground/nrfxlib) next to the MCUboot root folder. So that it's located `../nrfxlib` from MCUboot root folder.
 
 ## Building
 

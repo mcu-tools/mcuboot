@@ -1,0 +1,49 @@
+{
+    "boot_and_upgrade":
+    {
+        "bootloader": {
+            "address": {
+                "description": "Address of the bootloader",
+                "value": "0x10000000"
+            },
+            "size": {
+                "description": "Size of the bootloader",
+                "value": "0x28000"
+            },
+            "scratch_address": {
+                "description": "Address of the scratch area",
+                "value": "0x10050000"
+            },
+            "scratch_size": {
+                "description": "Size of the scratch area",
+                "value": "0x2000"
+            },
+            "status_address": {
+                "description": "Address of the swap status partition",
+                "value": "0x10048000"
+            },
+            "status_size": {
+                "description": "Size of the swap status partition",
+                "value": "0x1800"
+            }
+        },
+        "application_1": {
+            "address": {
+                "description": "Address of the application primary slot",
+                "value": "0x10028000"
+            },
+            "size": {
+                "description": "Size of the application primary slot",
+                "value": "0x10000"
+            },
+            "upgrade_address": {
+                "description": "Address of the application secondary slot",
+                "value": "0x10038000"
+            },
+            "upgrade_size": {
+                "description": "Size of the application secondary slot",
+                "value": "0x10000"
+            }
+        }
+    }
+}

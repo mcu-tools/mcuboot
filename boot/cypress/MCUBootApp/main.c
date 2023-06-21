@@ -22,21 +22,16 @@
 
 /* Cypress pdl headers */
 #include "cy_pdl.h"
-
-#ifdef CYW20829
-#include "cy_retarget_io.h"
-#include "cybsp.h"
+#include "cyhal.h"
 #include "cyhal_wdt.h"
-#include "cyw_platform_utils.h"
+
+#if defined CYW20829
 #include "cy_service_app.h"
-#else
-#include "cy_retarget_io_pdl.h"
-#include "cycfg_clocks.h"
-#include "cycfg_peripherals.h"
-#if defined APP_CM0P || defined CM4
+#endif
+
+#include "cybsp.h"
+#include "cy_retarget_io.h"
 #include "cyw_platform_utils.h"
-#endif /* defined APP_CM0P || defined CM4  */
-#endif /* defined CYW20829 */
 
 #if defined(CY_BOOT_USE_EXTERNAL_FLASH) || defined(CYW20829)
 #include "flash_qspi.h"
@@ -54,8 +49,6 @@
 #include "bootutil/bootutil_log.h"
 
 #include "bootutil/fault_injection_hardening.h"
-
-#include "watchdog.h"
 
 #ifdef USE_EXEC_TIME_CHECK
 #include "misc/timebase_us.h"
@@ -85,7 +78,7 @@
 #define SMIF_ID         (1U) /* Assume SlaveSelect_0 is used for External Memory */
 #endif /* CY_BOOT_USE_EXTERNAL_FLASH */
 
-#define BOOT_MSG_FINISH "MCUBoot Bootloader finished.\n" \
+#define BOOT_MSG_FINISH "MCUBoot Bootloader finished.\r\n" \
                         "Deinitializing hardware..."
 
 static void hw_deinit(void);
@@ -98,7 +91,7 @@ fih_uint calc_app_addr(uintptr_t flash_base, const struct boot_rsp *rsp)
                            rsp->br_hdr->ih_hdr_size);
 }
 
-#ifdef CYW20829
+#if defined CYW20829
 
 #if defined(CY_BOOT_USE_EXTERNAL_FLASH) && !defined(MCUBOOT_ENC_IMAGES_XIP)
 CY_RAMFUNC_BEGIN /* SMIF will be deinitialized in this case! */
@@ -117,18 +110,18 @@ static void cyw20829_launch_app(fih_uint app_addr, uint32_t *key, uint32_t *iv)
 CY_RAMFUNC_END /* SMIF will be deinitialized in this case! */
 #endif /* defined(CY_BOOT_USE_EXTERNAL_FLASH) && !defined(MCUBOOT_ENC_IMAGES_XIP) */
 
-#endif /* CYW20829 */
+#endif /* defined CYW20829 */
 
 static bool do_boot(struct boot_rsp *rsp)
 {
     uintptr_t flash_base = 0;
 
-#ifdef CYW20829
+#if defined CYW20829
     uint32_t *key = NULL;
     uint32_t *iv = NULL;
-#endif /* CYW20829 */
+#endif /* defined CYW20829 */
 
-    if (rsp != NULL) {
+    if ((rsp != NULL) && (rsp->br_hdr != NULL)) {
         int rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
 
         if (0 == rc) {
@@ -141,11 +134,12 @@ static bool do_boot(struct boot_rsp *rsp)
             BOOT_LOG_INF("Start slot Address: 0x%08" PRIx32, (uint32_t)fih_uint_decode(app_addr));
 
             rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
-            if ((rc != 0) || fih_uint_not_eq(calc_app_addr(flash_base, rsp), app_addr)) {
+            if (rc != 0 || fih_uint_eq(calc_app_addr(flash_base, rsp), app_addr) != FIH_TRUE) {
                 return false;
             }
 
-#ifdef CYW20829
+#if defined CYW20829
+
 #ifdef MCUBOOT_ENC_IMAGES_XIP
             if (IS_ENCRYPTED(rsp->br_hdr)) {
                 key = rsp->xip_key;
@@ -179,15 +173,15 @@ static bool do_boot(struct boot_rsp *rsp)
             BOOT_LOG_INF("Launching app on CM4 core");
             BOOT_LOG_INF(BOOT_MSG_FINISH);
             hw_deinit();
-#ifdef CM0P
+#ifdef BOOT_CM0P
             Cy_SysEnableCM4(fih_uint_decode(app_addr));
             return true;
 #else
             psoc6_launch_cm4_app(app_addr);
-#endif /* CM0P */
+#endif /* BOOT_CM0P */
 
 #elif defined APP_CM0P
-#ifdef CM0P
+#ifdef BOOT_CM0P
             /* This function does not return */
             BOOT_LOG_INF("Launching app on CM0P core");
             BOOT_LOG_INF(BOOT_MSG_FINISH);
@@ -195,8 +189,15 @@ static bool do_boot(struct boot_rsp *rsp)
             psoc6_launch_cm0p_app(app_addr);
 #else
 #error "Application should run on Cortex-M4"
-#endif /* CM0P */
+#endif /* BOOT_CM0P */
 
+#elif defined APP_CM7
+            /* This function does not return */
+            BOOT_LOG_INF("Launching app on CM7 core");
+            BOOT_LOG_INF(BOOT_MSG_FINISH);
+            hw_deinit();
+            xmc7000_launch_cm7_app(app_addr);
+            return true;
 #else
 #error "Application should run on either Cortex-M0+ or Cortex-M4"
 #endif /* APP_CM4 */
@@ -213,13 +214,12 @@ static bool do_boot(struct boot_rsp *rsp)
 
 int main(void)
 {
-    struct boot_rsp rsp;
-    cy_rslt_t rc = MCUBOOTAPP_RSLT_ERR;
+    struct boot_rsp rsp = {};
     bool boot_succeeded = false;
     fih_int fih_rc = FIH_FAILURE;
+    cy_rslt_t rc = cybsp_init();
 
-#ifdef CYW20829
-    rc = cybsp_init();
+
     if (rc != CY_RSLT_SUCCESS) {
         CY_ASSERT((bool)0);
         /* Loop forever... */
@@ -227,11 +227,6 @@ int main(void)
             __WFI();
         }
     }
-#else
-    SystemInit();
-    init_cycfg_peripherals();
-    init_cycfg_pins();
-#endif /* CYW20829 */
 
 #ifdef USE_EXEC_TIME_CHECK
     timebase_us_init();
@@ -251,20 +246,16 @@ int main(void)
      * to keep CM4 disabled. Note that debugging of CM4 is not supported when it
      * is disabled.
      */
-#if !defined CYW20829
-#if defined(CY_DEVICE_PSOC6ABLE2) && !defined(CM4)
+#if defined(CY_DEVICE_PSOC6ABLE2) && !defined(BOOT_CM4)
     if (CY_SYS_CM4_STATUS_ENABLED == Cy_SysGetCM4Status()) {
         Cy_SysDisableCM4();
     }
-#endif /* defined(CY_DEVICE_PSOC6ABLE2) && !defined(CM4) */
-    /* Initialize retarget-io to use the debug UART port (CYBSP_UART_HW) */
-    rc = cy_retarget_io_pdl_init(CY_RETARGET_IO_BAUDRATE);
-#else
+#endif /* defined(CY_DEVICE_PSOC6ABLE2) && !defined(BOOT_CM4) */
     /* Initialize retarget-io to use the debug UART port */
     rc = cy_retarget_io_init(CYBSP_DEBUG_UART_TX,
                              CYBSP_DEBUG_UART_RX,
                              CY_RETARGET_IO_BAUDRATE);
-#endif /* CYW20829 */
+
     if (rc != CY_RSLT_SUCCESS) {
         CY_ASSERT((bool)0);
         /* Loop forever... */
@@ -303,7 +294,6 @@ int main(void)
         }
 #endif /* CYW20829 && MCUBOOT_HW_ROLLBACK_PROT */
 
-        (void)memset(&rsp, 0, sizeof(rsp));
 #ifdef USE_EXEC_TIME_CHECK
         {
             uint32_t exec_time;
@@ -315,20 +305,17 @@ int main(void)
             BOOT_LOG_INF("Exec time: %" PRIu32 " [ms]", exec_time / 1000U);
         }
 #endif /* USE_EXEC_TIME_CHECK */
-        if (true == fih_eq(fih_rc, FIH_SUCCESS)) {
+        if (FIH_TRUE == fih_eq(fih_rc, FIH_SUCCESS)) {
             BOOT_LOG_INF("User Application validated successfully");
             /* initialize watchdog timer. it should be updated from user app
             * to mark successful start up of this app. if the watchdog is not updated,
             * reset will be initiated by watchdog timer and swap revert operation started
             * to roll back to operable image.
             */
-#ifdef CYW20829
-            cyhal_wdt_t *cyw20829_wdt = NULL;
+            cyhal_wdt_t *wdt = NULL;
 
-            rc = cyhal_wdt_init(cyw20829_wdt, WDT_TIME_OUT_MS);
-#else
-            rc = cy_wdg_init(WDT_TIME_OUT_MS);
-#endif /* CYW20829 */
+            rc = cyhal_wdt_init(wdt, WDT_TIME_OUT_MS);
+
             if (CY_RSLT_SUCCESS == rc) {
 
                 boot_succeeded = do_boot(&rsp);
@@ -355,23 +342,13 @@ int main(void)
 
 static void hw_deinit(void)
 {
-#ifdef CYW20829
-    /* Flush the TX buffer, need to be fixed in retarget_io */
-    Cy_SysLib_Delay(50);
-
-    cy_retarget_io_deinit();
-    cy_wdg_stop();
-    cy_wdg_free();
-    /* Note: qspi_deinit() is called (if needed) in cyw20829_launch_app() above */
-#else
-    cy_retarget_io_wait_tx_complete(CYBSP_UART_HW, 10);
-    cy_retarget_io_pdl_deinit();
-    Cy_GPIO_Port_Deinit(CYBSP_UART_RX_PORT);
-    Cy_GPIO_Port_Deinit(CYBSP_UART_TX_PORT);
 #if defined(CY_BOOT_USE_EXTERNAL_FLASH) && !defined(MCUBOOT_ENC_IMAGES_XIP) && !defined(USE_XIP)
     qspi_deinit(SMIF_ID);
 #endif /* defined(CY_BOOT_USE_EXTERNAL_FLASH) && !defined(MCUBOOT_ENC_IMAGES_XIP) */
-#endif /* CYW20829 */
+
+    /* Flush the TX buffer, need to be fixed in retarget_io */
+    while(cy_retarget_io_is_tx_active()){}
+    cy_retarget_io_deinit();
 
 #ifdef USE_EXEC_TIME_CHECK
     timebase_us_deinit();

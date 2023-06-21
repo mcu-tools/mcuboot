@@ -1,0 +1,81 @@
+{
+    "external_flash": [
+        {
+            "model": "FM25W04",
+            "mode": "XIP"
+        }
+    ],
+    "boot_and_upgrade":
+    {
+        "bootloader": {
+            "address": {
+                "description": "Address of the bootloader",
+                "value": "0x60000000"
+            },
+            "size": {
+                "description": "Size of the bootloader",
+                "value": "0x20000"
+            },
+            "scratch_address": {
+                "description": "Address of the scratch area",
+                "value": "0x6007E000"
+            },
+            "scratch_size": {
+                "description": "Size of the scratch area",
+                "value": "0x2000"
+            },
+            "status_address": {
+                "description": "Address of the swap status partition",
+                "value": "0x6005C000"
+            },
+            "status_size": {
+                "description": "Size of the swap status partition",
+                "value": "0x1C000"
+            }
+        },
+        "application_1": {
+            "address": {
+                "description": "Address of the application primary slot",
+                "value": "0x60020000"
+            },
+            "size": {
+                "description": "Size of the application primary slot",
+                "value": "0x10000"
+            },
+            "shared_slot": {
+                "description": "Using shared secondary slot",
+                "value": true
+            },
+            "upgrade_address": {
+                "description": "Address of the application secondary slot",
+                "value": "0x60040000"
+            },
+            "upgrade_size": {
+                "description": "Size of the application secondary slot",
+                "value": "0x10000"
+            }
+        },
+        "application_2": {
+            "address": {
+                "description": "Address of the application primary slot",
+                "value": "0x60030000"
+            },
+            "size": {
+                "description": "Size of the application primary slot",
+                "value": "0x10000"
+            },
+            "shared_slot": {
+                "description": "Using shared secondary slot",
+                "value": true
+            },
+            "upgrade_address": {
+                "description": "Address of the application secondary slot",
+                "value": "0x60041000"
+            },
+            "upgrade_size": {
+                "description": "Size of the application secondary slot",
+                "value": "0x10000"
+            }
+        }
+    }
+}

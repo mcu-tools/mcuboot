@@ -122,55 +122,66 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     /* If protected TLVs are present they are also hashed. */
     size += hdr->ih_protect_tlv_size;
 
-#ifdef MCUBOOT_RAM_LOAD
-    bootutil_sha256_update(&sha256_ctx,
-                           (void*)(IMAGE_RAM_BASE + hdr->ih_load_addr),
-                           size);
-#else
-    for (off = 0; off < size; off += blk_sz) {
-        blk_sz = size - off;
-        if (blk_sz > tmp_buf_sz) {
-            blk_sz = tmp_buf_sz;
+    do
+    {      
+#if defined(MCUBOOT_RAM_LOAD)
+#if defined(MCUBOOT_MULTI_MEMORY_LOAD)
+        if (IS_RAM_BOOTABLE(hdr))
+#endif /* MCUBOOT_MULTI_MEMORY_LOAD */
+        {
+            bootutil_sha256_update(
+                &sha256_ctx, (void *)(IMAGE_RAM_BASE + hdr->ih_load_addr), size);
+                break;
         }
+#endif /* MCUBOOT_RAM_LOAD */
+#if !(defined(MCUBOOT_RAM_LOAD) && !defined(MCUBOOT_MULTI_MEMORY_LOAD))
+        {
+            for (off = 0; off < size; off += blk_sz) {
+                blk_sz = size - off;
+                if (blk_sz > tmp_buf_sz) {
+                    blk_sz = tmp_buf_sz;
+                }
 #ifdef MCUBOOT_ENC_IMAGES
-        /* The only data that is encrypted in an image is the payload;
-         * both header and TLVs (when protected) are not.
-         */
-        if ((off < hdr_size) && ((off + blk_sz) > hdr_size)) {
-            /* read only the header */
-            blk_sz = hdr_size - off;
-        }
-        if ((off < tlv_off) && ((off + blk_sz) > tlv_off)) {
-            /* read only up to the end of the image payload */
-            blk_sz = tlv_off - off;
-        }
-#endif
-        rc = flash_area_read(fap, off, tmp_buf, blk_sz);
-        if (rc) {
-            bootutil_sha256_drop(&sha256_ctx);
-            return rc;
-        }
-#ifdef MCUBOOT_ENC_IMAGES
-        if (MUST_DECRYPT(fap, image_index, hdr)) {
-            /* Only payload is encrypted (area between header and TLVs) */
-            if (off >= hdr_size && off < tlv_off) {
-                blk_off = (off - hdr_size) & 0xf;
-#ifdef MCUBOOT_ENC_IMAGES_XIP
-                rc = bootutil_img_encrypt(enc_state, image_index, hdr, fap, off,
-                        blk_sz, blk_off, tmp_buf);
-#else
-                rc = boot_encrypt(enc_state, image_index, fap, off - hdr_size,
-                        blk_sz, blk_off, tmp_buf);
-#endif
+                /* The only data that is encrypted in an image is the payload;
+                * both header and TLVs (when protected) are not.
+                */
+                if ((off < hdr_size) && ((off + blk_sz) > hdr_size)) {
+                    /* read only the header */
+                    blk_sz = hdr_size - off;
+                }
+                if ((off < tlv_off) && ((off + blk_sz) > tlv_off)) {
+                    /* read only up to the end of the image payload */
+                    blk_sz = tlv_off - off;
+                }
+#endif /* MCUBOOT_ENC_IMAGES */
+                rc = flash_area_read(fap, off, tmp_buf, blk_sz);
                 if (rc) {
+                    bootutil_sha256_drop(&sha256_ctx);
                     return rc;
                 }
+#ifdef MCUBOOT_ENC_IMAGES
+                if (MUST_DECRYPT(fap, image_index, hdr)) {
+                    /* Only payload is encrypted (area between header and TLVs) */
+                    if (off >= hdr_size && off < tlv_off) {
+                        blk_off = (off - hdr_size) & 0xf;
+#ifdef MCUBOOT_ENC_IMAGES_XIP
+                        rc = bootutil_img_encrypt(enc_state, image_index, hdr, fap, off,
+                                blk_sz, blk_off, tmp_buf);
+#else
+                        rc = boot_encrypt(enc_state, image_index, fap, off - hdr_size,
+                                blk_sz, blk_off, tmp_buf);
+#endif /* MCUBOOT_ENC_IMAGES_XIP */
+                        if (rc) {
+                            return rc;
+                        }
+                    }
+                }
+#endif /* MCUBOOT_ENC_IMAGES */
+                bootutil_sha256_update(&sha256_ctx, tmp_buf, blk_sz);
             }
         }
-#endif
-        bootutil_sha256_update(&sha256_ctx, tmp_buf, blk_sz);
-    }
-#endif /* MCUBOOT_RAM_LOAD */
+#endif /* !MCUBOOT_RAM_LOAD || MCUBOOT_MULTI_MEMORY_LOAD */
+    } while (false);
     bootutil_sha256_finish(&sha256_ctx, hash_result);
     bootutil_sha256_drop(&sha256_ctx);
 
@@ -272,7 +283,7 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
      *   HW) a fault is injected to accept the public key as valid one.
      */
     FIH_CALL(boot_fih_memequal, fih_rc, hash, key_hash, key_hash_size);
-    if (fih_eq(fih_rc, FIH_SUCCESS)) {
+    if (FIH_TRUE == fih_eq(fih_rc, FIH_SUCCESS)) {
         bootutil_keys[0].key = key;
         pub_key_len = key_len;
         return 0;
@@ -292,33 +303,36 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
  *                      flash area.
  * @param security_cnt  Pointer to store the security counter value.
  *
- * @return              0 on success; nonzero on failure.
+ * @return              FIH_SUCCESS on success; FIH_FAILURE on failure.
  */
-int32_t
+fih_int
 bootutil_get_img_security_cnt(struct image_header *hdr,
                               const struct flash_area *fap,
-                              uint32_t *img_security_cnt)
+                              fih_uint *img_security_cnt)
 {
-    struct image_tlv_iter it;
-    uint32_t off;
-    uint16_t len;
-    int32_t rc;
+    uint32_t img_sec_cnt = 0u;
+    uint32_t img_chk_cnt = 0u;
+    struct image_tlv_iter it = {0};
+    uint32_t off = 0u;
+    uint16_t len = 0u;
+    int32_t rc = -1;
+    fih_int fih_rc = FIH_FAILURE;
 
-    if ((hdr == NULL) ||
-        (fap == NULL) ||
-        (img_security_cnt == NULL)) {
+    if ((NULL == hdr) ||
+        (NULL == fap) ||
+        (NULL == img_security_cnt)) {
         /* Invalid parameter. */
-        return BOOT_EBADARGS;
+        goto out;
     }
 
     /* The security counter TLV is in the protected part of the TLV area. */
-    if (hdr->ih_protect_tlv_size == 0) {
-        return BOOT_EBADIMAGE;
+    if (0u == hdr->ih_protect_tlv_size) {
+        goto out;
     }
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_SEC_CNT, true);
-    if (rc) {
-        return rc;
+    if (rc != 0) {
+        goto out;
     }
 
     /* Traverse through the protected TLV area to find
@@ -328,20 +342,36 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
     rc = bootutil_tlv_iter_next(&it, &off, &len, NULL);
     if (rc != 0) {
         /* Security counter TLV has not been found. */
-        return -1;
+        goto out;
     }
 
-    if (len != sizeof(*img_security_cnt)) {
+    if (len != sizeof(img_sec_cnt)) {
         /* Security counter is not valid. */
-        return BOOT_EBADIMAGE;
+        goto out;
     }
 
-    rc = LOAD_IMAGE_DATA(hdr, fap, off, img_security_cnt, len);
+    rc = LOAD_IMAGE_DATA(hdr, fap, off, &img_sec_cnt, len);
     if (rc != 0) {
-        return BOOT_EFLASH;
+        goto out;
     }
 
-    return 0;
+    *img_security_cnt = fih_uint_encode(img_sec_cnt);
+
+    rc = LOAD_IMAGE_DATA(hdr, fap, off, &img_chk_cnt, len);
+    if (rc != 0) {
+        goto out;
+    }
+
+    if (FIH_TRUE == fih_uint_eq(fih_uint_encode(img_chk_cnt),
+                                *img_security_cnt)) {
+
+        if (img_sec_cnt == img_chk_cnt) {
+            fih_rc = FIH_SUCCESS;
+        }
+    }
+
+out:
+    FIH_RET(fih_rc);
 }
 #ifdef CYW20829
 /**
@@ -434,12 +464,12 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
     int rc = 0;
     fih_int fih_rc = FIH_FAILURE;
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
-    fih_uint security_cnt = fih_uint_encode(UINT_MAX);
+    fih_uint security_cnt = FIH_UINT_MAX;
     uint32_t img_security_cnt = 0;
     uint8_t reprov_packet[REPROV_PACK_SIZE];
     fih_int security_counter_valid = FIH_FAILURE;
     #ifdef CYW20829
-        fih_uint extracted_img_cnt = fih_uint_encode(UINT_MAX);
+    fih_uint extracted_img_cnt = FIH_UINT_MAX;
     #endif /* CYW20829 */
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
 
@@ -450,7 +480,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
     }
 
     if (out_hash) {
-        memcpy(out_hash, hash, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
+        (void)memcpy(out_hash, hash, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
     }
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_ANY, false);
@@ -485,7 +515,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             }
 
             FIH_CALL(boot_fih_memequal, fih_rc, hash, buf, sizeof(hash));
-            if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+            if (fih_eq(fih_rc, FIH_SUCCESS) != FIH_TRUE) {
                 goto out;
             }
 
@@ -565,7 +595,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 
             FIH_CALL(boot_nv_security_counter_get, fih_rc, image_index,
                                                            &security_cnt);
-            if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+            if (fih_eq(fih_rc, FIH_SUCCESS) != FIH_TRUE) {
                 goto out;
             }
 
@@ -576,8 +606,8 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 
             FIH_CALL(platform_security_counter_check_extract, fih_rc, 
                     (uint32_t)image_index, fih_uint_encode(img_security_cnt), &extracted_img_cnt);
-        
-            if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+
+            if (fih_eq(fih_rc, FIH_SUCCESS) != FIH_TRUE) {
                 /* The image's security counter exceeds registered value for this image */
                 goto out;
             }
@@ -593,7 +623,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             fih_rc = fih_int_encode_zero_equality( (int32_t)(img_security_cnt <
                                     fih_uint_decode(security_cnt)) );
 
-            if (fih_not_eq(fih_rc, FIH_SUCCESS)) {
+            if (fih_eq(fih_rc, FIH_SUCCESS) != FIH_TRUE) {
                 /* The image's security counter is not accepted. */
                 goto out;
             }
@@ -606,7 +636,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             security_counter_valid = fih_int_encode(HW_ROLLBACK_CNT_VALID);
         } else if (type == IMAGE_TLV_PROV_PACK) {
 
-            if (fih_eq(security_counter_valid, fih_int_encode(HW_ROLLBACK_CNT_VALID))) {
+            if (FIH_TRUE == fih_eq(security_counter_valid, fih_int_encode(HW_ROLLBACK_CNT_VALID))) {
                 /*
                 * Verify the image reprovisioning packet.
                 * This must always be present.
@@ -639,15 +669,17 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
         goto out;
     }
 #ifdef EXPECTED_SIG_TLV
-    fih_rc = fih_int_encode_zero_equality(fih_not_eq(valid_signature,
-                                                     FIH_SUCCESS));
+    fih_rc = FIH_FAILURE;
+    if (FIH_TRUE == fih_eq(valid_signature, FIH_SUCCESS)) {
+        fih_rc = valid_signature;
+    }
 #endif
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
 #ifdef CYW20829
-    if (fih_not_eq(security_counter_valid, fih_int_encode(REPROV_PACK_VALID | HW_ROLLBACK_CNT_VALID))) {
+    if (fih_eq(security_counter_valid, fih_int_encode(REPROV_PACK_VALID | HW_ROLLBACK_CNT_VALID)) != FIH_TRUE) {
         BOOT_LOG_DBG("Reprovisioning packet TLV 0x51 is not present image = %d", image_index);
 #else
-    if (fih_not_eq(security_counter_valid, FIH_SUCCESS)) {
+    if (fih_eq(security_counter_valid, FIH_SUCCESS) != FIH_TRUE) {
 #endif /* CYW20829 */
         rc = -1;
         goto out;

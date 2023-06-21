@@ -22,11 +22,10 @@
 #if defined(CY_BOOT_USE_EXTERNAL_FLASH) || defined(CYW20829)
 #include "flash_qspi.h"
 #endif /* defined(CY_BOOT_USE_EXTERNAL_FLASH) || defined(CYW20829) */
-#include "sysflash/sysflash.h"
 #include <string.h>
 
-#define FLASH_ROW_BUF_SZ        CY_FLASH_ALIGN
-#define IMG_TRAILER_SZ          CY_FLASH_ALIGN
+#define FLASH_ROW_BUF_SZ        MEMORY_ALIGN
+#define IMG_TRAILER_SZ          MEMORY_ALIGN
 
 #define USER_SWAP_IMAGE_OK_OFFS (24)
 #define USER_SWAP_IMAGE_OK      (1)

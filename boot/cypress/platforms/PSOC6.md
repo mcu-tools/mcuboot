@@ -4,10 +4,11 @@
 
 ### Default memory map
 
-This repository provides a set of predefined memory maps in JSON files. They are located in `platforms/cy_flash_pal/flash_psoc6/flashmap`. One can use the predefined flash map or define its own using the predefined file as a template.
+This repository provides a set of predefined memory maps in JSON files. They are located in `platforms/memory/PSOC6/flashmap`. One can use the predefined flash map or define its own using the predefined file as a template.
 
 ### JSON flash map
 As absolute addresses are used in JSON flash maps, the placement of flash area in internal or external memory is derived from its address. For instance:
+
 ```
         "application_1": {
             "address": {
@@ -34,6 +35,7 @@ declares primary slot in the internal Flash, and secondary slot in the external 
 Some Flash ICs have large erase block. For SEMPER™ Secure NOR Flash it is 256 kilobytes, so placing each image trailer in a separate erase block seems a waste.
 
 Specific technique is needed to place all trailers of the shared secondary slot in the single erase block. Since the whole erase block with trailer is occasionally cleared by MCUBoot, image padding is required to place trailers at different addresses and to avoid unintended erasing of image bytes.
+
 ```
               /|           |-----------|           |
              / |           |           |           |
@@ -75,7 +77,7 @@ After MCUBootApp is built with these settings, unencrypted and encrypted images 
 
 An example of the command:
 
-    make app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json ENC_IMG=1
+    make app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json ENC_IMG=1
 
 NOTE: Debug configuration of MCUBootApp with Multi-image encrypted upgrades in external flash (built with flags `BUILDCFG=Debug` `MCUBOOT_IMG_NUMBER=2 USE_EXTERNAL_FLASH=1 ENC_IMG=1`) is set to use optimization level `-O2 -g3` to fit into `0x18000` allocated for `MCUBootApp`.
 

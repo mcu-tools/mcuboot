@@ -33,27 +33,29 @@ COMPILER ?= GCC_ARM
 
 CUR_APP_PATH = $(PRJ_DIR)/$(APP_NAME)
 
-ifneq ($(FLASH_MAP), )
-#to 'Bit_per_cnt' generation for CYW20829
-ifeq ($(PLATFORM), CYW20829)
-$(CUR_APP_PATH)/flashmap.mk:
-	$(PYTHON_PATH) scripts/flashmap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/cy_flash_pal/cy_flash_map.h -c $(PRJ_DIR)/policy/policy_secure.json > $(CUR_APP_PATH)/flashmap.mk
-else
-$(CUR_APP_PATH)/flashmap.mk:
-	$(PYTHON_PATH) scripts/flashmap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/cy_flash_pal/cy_flash_map.h > $(CUR_APP_PATH)/flashmap.mk
-endif
-include $(CUR_APP_PATH)/flashmap.mk
-DEFINES_APP := -DCY_FLASH_MAP_JSON
-endif
+-include $(CUR_APP_PATH)/memorymap.mk
 
 MCUBOOT_IMAGE_NUMBER ?= 1
 ENC_IMG ?= 0
+USE_HW_KEY ?= 0
 USE_BOOTSTRAP ?= 1
 MCUBOOT_LOG_LEVEL ?= MCUBOOT_LOG_LEVEL_DEBUG
 USE_SHARED_SLOT ?= 0
+FIH_PROFILE_LEVEL_LIST := OFF LOW MEDIUM HIGH
+FIH_PROFILE_LEVEL ?= MEDIUM
 
 ifneq ($(COMPILER), GCC_ARM)
 $(error Only GCC ARM is supported at this moment)
+endif
+
+# Check FIH profile param
+ifneq ($(filter $(FIH_PROFILE_LEVEL), $(FIH_PROFILE_LEVEL_LIST)),)
+ifneq ($(FIH_PROFILE_LEVEL), OFF) 
+DEFINES_APP += -DMCUBOOT_FIH_PROFILE_ON
+DEFINES_APP += -DMCUBOOT_FIH_PROFILE_$(FIH_PROFILE_LEVEL)
+endif
+else
+$(error Wrong FIH_PROFILE_LEVEL param)
 endif
 
 # Output folder
@@ -64,6 +66,21 @@ OUT_TARGET := $(OUT)/$(PLATFORM)
 OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
 
 include $(PRJ_DIR)/platforms.mk
+
+ifneq ($(FLASH_MAP), )
+ifeq ($(FAMILY), CYW20829)
+$(CUR_APP_PATH)/memorymap.mk:
+	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h -c $(PRJ_DIR)/policy/policy_secure.json > $(CUR_APP_PATH)/memorymap.mk
+else ifeq ($(FAMILY), XMC7000)
+$(CUR_APP_PATH)/memorymap.mk:
+	$(PYTHON_PATH) scripts/memorymap_rework.py run -p $(PLATFORM_CONFIG) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory -n memorymap > $(CUR_APP_PATH)/memorymap.mk
+else
+$(CUR_APP_PATH)/memorymap.mk:
+	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h > $(CUR_APP_PATH)/memorymap.mk
+endif
+DEFINES_APP += -DCY_FLASH_MAP_JSON
+endif
+
 include $(PRJ_DIR)/common_libs.mk
 include $(PRJ_DIR)/toolchains.mk
 
@@ -74,10 +91,14 @@ endif
 # Application-specific DEFINES
 DEFINES_APP += -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
 DEFINES_APP += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
-DEFINES_APP += -D$(CORE)
+DEFINES_APP += -DBOOT_$(CORE)
 DEFINES_APP += -DAPP_$(APP_CORE)
+DEFINES_APP += -DAPP_CORE_ID=$(APP_CORE_ID)
 DEFINES_APP += -DMCUBOOT_IMAGE_NUMBER=$(MCUBOOT_IMAGE_NUMBER)
 DEFINES_APP += -DUSE_SHARED_SLOT=$(USE_SHARED_SLOT)
+DEFINES_APP += -DMCUBOOT_PLATFORM_CHUNK_SIZE=$(PLATFORM_CHUNK_SIZE)
+DEFINES_APP += -DMEMORY_ALIGN=$(PLATFORM_MEMORY_ALIGN)
+DEFINES_APP += -DPLATFORM_MAX_TRAILER_PAGE_SIZE=$(PLATFORM_MAX_TRAILER_PAGE_SIZE)
 
 # Define MCUboot size and pass it to linker script
 LDFLAGS_DEFSYM  += -Wl,--defsym,BOOTLOADER_SIZE=$(BOOTLOADER_SIZE)
@@ -137,6 +158,12 @@ INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_MBEDTLS_MXCRYPTO))
 SOURCES_LIBS += $(SOURCES_MBEDTLS_MXCRYPTO)
 endif
 
+# Use key provisioned in device to verify images
+ifeq ($(USE_HW_KEY), 1)
+DEFINES_APP=-DMCUBOOT_HW_KEY
+
+endif
+
 # Compile with user redefined values for UART HW, port, pins
 ifeq ($(USE_CUSTOM_DEBUG_UART), 1)
 DEFINES_APP += -DUSE_CUSTOM_DEBUG_UART=1
@@ -186,6 +213,7 @@ endif
 
 # Collect MCUBoot sourses
 SOURCES_MCUBOOT := $(wildcard $(PRJ_DIR)/../bootutil/src/*.c)
+
 # Collect MCUBoot Application sources
 SOURCES_APP_SRC := main.c keys.c
 ifeq ($(USE_EXEC_TIME_CHECK), 1)
@@ -193,18 +221,16 @@ DEFINES_APP += -DUSE_EXEC_TIME_CHECK=1
 SOURCES_APP_SRC += misc/timebase_us.c
 endif
 
-# Collect Flash Layer sources and header files dirs
-INCLUDE_DIRS_FLASH := $(PLATFORM_INCLUDE_DIRS_FLASH)
 INCLUDE_DIRS_UTILS := $(PLATFORM_INCLUDE_DIRS_UTILS)
-SOURCES_FLASH := $(PLATFORM_SOURCES_FLASH)
 
 # Collect all the sources
 SOURCES_APP := $(SOURCES_MCUBOOT)
-SOURCES_APP += $(SOURCES_FLASH)
 SOURCES_APP += $(addprefix $(CUR_APP_PATH)/, $(SOURCES_APP_SRC))
 SOURCES_APP += $(PLATFORM_APP_SOURCES)
 
 INCLUDE_DIRS_MCUBOOT := $(addprefix -I, $(PRJ_DIR)/../bootutil/include)
+INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(PRJ_DIR)/../bootutil/include/bootutil)
+INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(PRJ_DIR)/../bootutil/include/bootutil/crypto)
 INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(PRJ_DIR)/../bootutil/src)
 INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(PRJ_DIR)/..)
 
@@ -222,6 +248,9 @@ ASM_FILES_APP += $(ASM_FILES_STARTUP)
 ifeq ($(COMPILER), GCC_ARM)
 LDFLAGS += $(LDFLAGS_DEFSYM)
 LINKER_SCRIPT := $(CUR_APP_PATH)/$(APP_NAME)_$(CORE).ld
+ifeq ($(FAMILY), XMC7000)
+LINKER_SCRIPT := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/COMPONENT_$(CORE)/TOOLCHAIN_$(COMPILER)/linker.ld
+endif
 else
 $(error Only GCC ARM is supported at this moment)
 endif

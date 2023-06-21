@@ -17,7 +17,7 @@ setuptools.setup(
         'cryptography>=2.4.2',
         'intelhex>=2.2.1',
         'click',
-        'cbor>=1.0.0',
+        'cbor2',
     ],
     entry_points={
         "console_scripts": ["imgtool=imgtool.main:imgtool"]

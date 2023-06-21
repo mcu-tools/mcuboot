@@ -65,7 +65,7 @@
  * to erase size of target hardware.
  */
 #ifndef MCUBOOT_PLATFORM_CHUNK_SIZE
-#define MCUBOOT_PLATFORM_CHUNK_SIZE 4096U
+#define MCUBOOT_PLATFORM_CHUNK_SIZE 0x200U
 #endif
 
 /*

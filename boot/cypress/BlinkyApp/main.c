@@ -57,6 +57,11 @@ int main(void)
 
     printf("[BlinkyApp] Image type: " IMAGE_TYPE " on %s core\r\n", detect_core_message);
 
+    /* Disable watchdog timer to mark successful start up of application. */
+    cyhal_wdt_free(NULL);
+
+    printf(WATCHDOG_FREE_MESSAGE);
+
     for (;;) {
         /* Toggle the user LED periodically */
         Cy_SysLib_Delay(BLINK_PERIOD / 2);

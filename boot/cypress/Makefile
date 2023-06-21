@@ -46,6 +46,8 @@ POST_BUILD_ENABLE ?= 1
 THREADS_NUM ?= 8
 
 SIGN_KEY_FILE ?= cypress-test-ec-p256
+SECURE_MODE_KEY_NAME ?= cypress-test-rsa2k
+SECURE_MODE_KEY_TYPE ?= RSA2048
 ENC_KEY_FILE ?= enc-ec256-pub
 ENC_IMG ?= 0
 
@@ -108,10 +110,6 @@ endif
 
 # updating CFLAGS at this point as DEFINES are completed
 CFLAGS += $(DEFINES) $(CFLAGS_OPTIMIZATION)
-
-ifeq ($(WARN_AS_ERR), 1)
-CC_WARN_IN_ERR_FLAGS := -Werror
-endif
 
 VPATH = $(dir $(C_FILES) $(ASM_FILES) $(C_LIBS))
 
@@ -181,9 +179,9 @@ $(OUT_OBJ)/%.o: %.c
 	@echo "CC $<"
 ifeq ($(VERBOSE), 1)
 	@echo
-	@echo $(CC) $(CFLAGS) $(CC_WARN_IN_ERR_FLAGS) $(INCLUDE_DIRS) $(CC_DEPEND) $(@:.o=.d) -c $< -o $@
+	@echo $(CC) $(CFLAGS) $(INCLUDE_DIRS) $(CC_DEPEND) $(@:.o=.d) -c $< -o $@
 endif
-	@$(CC) $(CFLAGS) $(CC_WARN_IN_ERR_FLAGS) $(INCLUDE_DIRS) $(CC_DEPEND) $(@:.o=.d) -c $< -o $@
+	@$(CC) $(CFLAGS) $(INCLUDE_DIRS) $(CC_DEPEND) $(@:.o=.d) -c $< -o $@
 
 $(OUT_OBJ)/%.o: %.S
 	@echo "AS $<"
@@ -208,17 +206,17 @@ endif
 
 clean:
 	@echo "Cleanup out directory..."
-	rm -f ./$(APP_NAME)/flashmap.mk ./platforms/cy_flash_pal/cy_flash_map.h
+	rm -f ./$(APP_NAME)/memorymap.mk ./platforms/memory/cy_flash_map.h ./platforms/memory/memorymap.h ./platforms/memory/memorymap.c
 	rm -rf $(OUT_TARGET)/$(BUILDCFG)
 
 clean_boot:
 	@echo "Cleanup out BOOT directory of $(APP_NAME)..."
-	rm -f ./$(APP_NAME)/flashmap.mk
+	rm -f ./$(APP_NAME)/memorymap.mk
 	rm -rf $(OUT_TARGET)/$(BUILDCFG)/boot
 
 clean_upgrade:
 	@echo "Cleanup out UPGRADE directory of $(APP_NAME)..."
-	rm -f ./$(APP_NAME)/flashmap.mk
+	rm -f ./$(APP_NAME)/memorymap.mk
 	rm -rf $(OUT_TARGET)/$(BUILDCFG)/upgrade
 
 run_cppcheck:
@@ -229,6 +227,15 @@ gen_key_ecc256:
 	@echo Generate ECC256 keys: $(SIGN_KEY_FILE).pem and $(SIGN_KEY_FILE).pub
 	../../scripts/imgtool.py keygen -k keys/$(SIGN_KEY_FILE).pem -t ecdsa-p256
 	../../scripts/imgtool.py getpub -k keys/$(SIGN_KEY_FILE).pem > keys/$(SIGN_KEY_FILE).pub
+
+gen_secure_cfgs:
+ifeq ($(SECURE_MODE_KEY_NAME), cypress-test-rsa2k)
+	@echo "Generating public $(SECURE_MODE_KEY_TYPE) keys"
+	cysecuretools -t $(PLATFORM) create-key --key-type $(SECURE_MODE_KEY_TYPE) -o ./keys/$(SECURE_MODE_KEY_NAME).pem ./keys/$(SECURE_MODE_KEY_NAME).pub --format PEM
+endif
+	@echo "Generating secure mode key config"
+	cysecuretools convert-key -k ./keys/$(SECURE_MODE_KEY_NAME).pub -o ./platforms/utils/$(FAMILY)/cy_si_key.c --fmt secure_boot --endian little
+
 
 ###############################################################################
 # Print debug information about all settings used and/or set in this file
@@ -244,7 +251,6 @@ $(info AS_FLAGS <-> $(AS_FLAGS))
 $(info BUILDCFG <-> $(BUILDCFG))
 $(info CC <-- $(CC))
 $(info CC_DEPEND <-- $(CC_DEPEND))
-$(info CC_WARN_IN_ERR_FLAGS <-> $(CC_WARN_IN_ERR_FLAGS))
 $(info CFLAGS <-> $(CFLAGS))
 $(info CFLAGS_OPTIMIZATION <-- $(CFLAGS_OPTIMIZATION))
 $(info COMPILER <-- $(COMPILER))

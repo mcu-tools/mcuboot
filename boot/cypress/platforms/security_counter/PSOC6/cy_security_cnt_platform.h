@@ -40,6 +40,6 @@ fih_int platform_security_counter_get(fih_uint *security_cnt);
  *
  * @return                  0 on success; nonzero on failure.
  */
-int32_t platform_security_counter_update(uint32_t img_security_cnt, void * custom_data);
+int32_t platform_security_counter_update(fih_uint img_security_cnt, void *custom_data);
 
 #endif /* CY_SECURITY_CNT_PLATFORM_H */

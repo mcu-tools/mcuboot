@@ -47,31 +47,51 @@
 extern "C" {
 #endif
 
+#ifndef ALIGN_UP
+#define ALIGN_UP(num, align)    (((num) + ((align) - 1U)) & ~((align) - 1U))
+#endif
+
+#ifndef ALIGN_DOWN
+#define ALIGN_DOWN(num, align)  ((num) & ~((align) - 1U))
+#endif
+
 /** Attempt to boot the contents of the primary slot. */
-#define BOOT_SWAP_TYPE_NONE     1
+#define BOOT_SWAP_TYPE_NONE     1U
 
 /**
  * Swap to the secondary slot.
  * Absent a confirm command, revert back on next boot.
  */
-#define BOOT_SWAP_TYPE_TEST     2
+#define BOOT_SWAP_TYPE_TEST     2U
 
 /**
  * Swap to the secondary slot,
  * and permanently switch to booting its contents.
  */
-#define BOOT_SWAP_TYPE_PERM     3
+#define BOOT_SWAP_TYPE_PERM     3U
 
 /** Swap back to alternate slot.  A confirm changes this state to NONE. */
-#define BOOT_SWAP_TYPE_REVERT   4
+#define BOOT_SWAP_TYPE_REVERT   4U
 
 /** Swap failed because image to be run is not valid */
-#define BOOT_SWAP_TYPE_FAIL     5
+#define BOOT_SWAP_TYPE_FAIL     5U
 
 /** Swapping encountered an unrecoverable error */
-#define BOOT_SWAP_TYPE_PANIC    0xff
+#define BOOT_SWAP_TYPE_PANIC    0xFFU
 
+#define BOOT_MAGIC_SZ           16U
+
+#ifdef MCUBOOT_BOOT_MAX_ALIGN
+
+_Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
+               "Unsupported value for MCUBOOT_BOOT_MAX_ALIGN");
+
+#define BOOT_MAX_ALIGN          MCUBOOT_BOOT_MAX_ALIGN
+#define BOOT_MAGIC_ALIGN_SIZE   ALIGN_UP(BOOT_MAGIC_SZ, BOOT_MAX_ALIGN)
+#else
 #define BOOT_MAX_ALIGN          8U
+#define BOOT_MAGIC_ALIGN_SIZE   BOOT_MAGIC_SZ
+#endif
 
 #define BOOT_MAGIC_GOOD     1
 #define BOOT_MAGIC_BAD      2
@@ -86,8 +106,6 @@ extern "C" {
 #define BOOT_FLAG_BAD       2
 #define BOOT_FLAG_UNSET     3
 #define BOOT_FLAG_ANY       4  /* NOTE: control only, not dependent on sector */
-
-#define BOOT_MAGIC_SZ (sizeof boot_img_magic)
 
 #define BOOT_EFLASH      1
 #define BOOT_EFILE       2
@@ -104,15 +122,15 @@ extern "C" {
  * Extract the swap type and image number from image trailers's swap_info
  * filed.
  */
-#define BOOT_GET_SWAP_TYPE(swap_info)    ((swap_info) & 0x0F)
-#define BOOT_GET_IMAGE_NUM(swap_info)    ((swap_info) >> 4)
+#define BOOT_GET_SWAP_TYPE(swap_info)    ((swap_info) & 0x0FU)
+#define BOOT_GET_IMAGE_NUM(swap_info)    ((swap_info) >> 4U)
 
 /* Construct the swap_info field from swap type and image number */
-#define BOOT_SET_SWAP_INFO(swap_info, image, type)  {                          \
-                                                    assert((image) < 0xF);     \
-                                                    assert((type)  < 0xF);     \
-                                                    (swap_info) = (image) << 4 \
-                                                                | (type);      \
+#define BOOT_SET_SWAP_INFO(swap_info, image, type)  {                           \
+                                                    assert((image) < 0xFU);     \
+                                                    assert((type)  < 0xFU);     \
+                                                    (swap_info) = (image) << 4U;\
+                                                    (swap_info) |= (type);      \
                                                     }
 #ifdef MCUBOOT_HAVE_ASSERT_H
 #include "mcuboot_config/mcuboot_assert.h"

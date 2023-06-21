@@ -68,11 +68,11 @@ static __NO_RETURN void hang(void)
  *
  * @param app_addr  FIH-protected address of the app's vector table.
  */
-#ifdef CM0P
+#ifdef BOOT_CM0P
 __NO_RETURN void psoc6_launch_cm0p_app(fih_uint app_addr)
 #else
 __NO_RETURN void psoc6_launch_cm4_app(fih_uint app_addr)
-#endif /* CM0P */
+#endif /* BOOT_CM0P */
 {
     register vect_tbl_start_t* const vect_tbl1 = (vect_tbl_start_t*)fih_uint_decode(app_addr);
     register vect_tbl_start_t* const vect_tbl2 = (vect_tbl_start_t*)fih_uint_decode(app_addr);
@@ -97,7 +97,7 @@ __NO_RETURN void psoc6_launch_cm4_app(fih_uint app_addr)
         (void)memset(__bss_start__,  0, (size_t)((uintptr_t)__bss_end__  - (uintptr_t)__bss_start__));
 
         /* Relocate Vector Table */
-        #ifdef CM0P
+        #ifdef BOOT_CM0P
             CPUSS->CM0_VECTOR_TABLE_BASE = (uintptr_t)vect_tbl1;
             if((uintptr_t)CPUSS->CM0_VECTOR_TABLE_BASE != (uintptr_t)vect_tbl2)
             {
@@ -109,7 +109,7 @@ __NO_RETURN void psoc6_launch_cm4_app(fih_uint app_addr)
             {
                 break;
             }
-        #endif /* CM0P */
+        #endif /* BOOT_CM0P */
             SCB->VTOR = (uintptr_t)vect_tbl1;
             if((uintptr_t)SCB->VTOR != (uintptr_t)vect_tbl2)
             {

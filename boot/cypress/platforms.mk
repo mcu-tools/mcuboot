@@ -27,7 +27,8 @@ include host.mk
 
 # supported platforms
 PSOC_06X := PSOC_061_2M PSOC_061_1M PSOC_061_512K PSOC_062_2M PSOC_062_1M PSOC_062_512K PSOC_063_1M
-PLATFORMS := $(PSOC_06X) CYW20829
+XMC7000 := XMC7200 XMC7100
+PLATFORMS := $(PSOC_06X) CYW20829 $(XMC7000)
 
 ifneq ($(filter $(PLATFORM), $(PLATFORMS)),)
 else
@@ -38,6 +39,8 @@ ifeq ($(PLATFORM), $(filter $(PLATFORM), $(PSOC_06X)))
 FAMILY := PSOC6
 else ifeq ($(PLATFORM), CYW20829)
 FAMILY := CYW20829
+else ifeq ($(PLATFORM), $(filter $(PLATFORM), $(XMC7000)))
+FAMILY := XMC7000
 endif
 
 # include family related makefile into build

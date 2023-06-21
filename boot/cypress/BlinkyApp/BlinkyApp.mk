@@ -33,24 +33,14 @@ include host.mk
 COMPILER ?= GCC_ARM
 IMG_TYPE ?= BOOT
 IMG_ID ?= 1
+USE_HW_KEY ?= 0
 
 # image type can be BOOT or UPGRADE
 IMG_TYPES = BOOT UPGRADE
 
 CUR_APP_PATH = $(PRJ_DIR)/$(APP_NAME)
 
-ifneq ($(FLASH_MAP), )
-#to compare NV-counters for each images with number of images on CYW20829
-ifeq ($(PLATFORM), CYW20829)
-$(CUR_APP_PATH)/flashmap.mk:
-	$(PYTHON_PATH) scripts/flashmap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/cy_flash_pal/cy_flash_map.h -d $(IMG_ID) -c $(PRJ_DIR)/policy/policy_reprovisioning_secure.json > $(CUR_APP_PATH)/flashmap.mk
-else
-$(CUR_APP_PATH)/flashmap.mk:
-	$(PYTHON_PATH) scripts/flashmap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/cy_flash_pal/cy_flash_map.h -d $(IMG_ID) > $(CUR_APP_PATH)/flashmap.mk
-endif
-include $(CUR_APP_PATH)/flashmap.mk
-DEFINES_APP := -DCY_FLASH_MAP_JSON
-endif
+-include $(CUR_APP_PATH)/memorymap.mk
 
 # TODO: optimize here and in MCUBootApp.mk
 # Output folder
@@ -78,7 +68,32 @@ ifeq ($(IMG_TYPE), UPGRADE)
 endif
 
 include $(PRJ_DIR)/platforms.mk
+
+ifneq ($(FLASH_MAP), )
+ifeq ($(FAMILY), CYW20829)
+$(CUR_APP_PATH)/memorymap.mk:
+	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h -c $(PRJ_DIR)/policy/policy_secure.json -d $(IMG_ID) -c $(PRJ_DIR)/policy/policy_reprovisioning_secure.json > $(CUR_APP_PATH)/memorymap.mk
+else ifeq ($(FAMILY), XMC7000)
+$(CUR_APP_PATH)/memorymap.mk:
+	$(PYTHON_PATH) scripts/memorymap_rework.py run -p $(PLATFORM_CONFIG) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory -n memorymap -d $(IMG_ID) > $(CUR_APP_PATH)/memorymap.mk
+else
+$(CUR_APP_PATH)/memorymap.mk:
+	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h -d $(IMG_ID) > $(CUR_APP_PATH)/memorymap.mk
+endif
+DEFINES_APP += -DCY_FLASH_MAP_JSON
+endif
+
 include $(PRJ_DIR)/common_libs.mk
+
+#Blinky Release XIP mode workaround
+ifneq ($(PLATFORM), CYW20829)
+ifeq ($(BUILDCFG), Release)
+ifeq ($(USE_EXTERNAL_FLASH), 1)
+CFLAGS_OPTIMIZATION := -Og -g3
+endif
+endif
+endif
+
 include $(PRJ_DIR)/toolchains.mk
 
 # use USE_OVERWRITE = 1 for overwrite only mode
@@ -116,13 +131,18 @@ ifeq ($(USER_APP_RAM_SIZE), )
 USER_APP_RAM_SIZE ?= $(PLATFORM_DEFAULT_RAM_SIZE)
 endif
 
+DEFINES_APP += -DMCUBOOT_IMAGE_NUMBER=$(MCUBOOT_IMAGE_NUMBER)
 DEFINES_APP += -DUSER_APP_RAM_START=$(USER_APP_RAM_START)
 DEFINES_APP += -DUSER_APP_RAM_SIZE=$(USER_APP_RAM_SIZE)
 DEFINES_APP += -DUSER_APP_START=$(USER_APP_START)
 DEFINES_APP += -DPRIMARY_IMG_START=$(PRIMARY_IMG_START)
 DEFINES_APP += -DUSER_APP_SIZE=$(SLOT_SIZE)
 DEFINES_APP += -DAPP_$(APP_CORE)
+DEFINES_APP += -DBOOT_$(APP_CORE)
+DEFINES_APP += -DAPP_CORE_ID=$(APP_CORE_ID)
 DEFINES_APP += $(PLATFORM_DEFINES_APP)
+DEFINES_APP += -DMEMORY_ALIGN=$(PLATFORM_MEMORY_ALIGN)
+DEFINES_APP += -DPLATFORM_MAX_TRAILER_PAGE_SIZE=$(PLATFORM_MAX_TRAILER_PAGE_SIZE)
 
 #Use default led if no command line parameter added
 ifeq ($(LED_PORT), )
@@ -150,10 +170,12 @@ else
 DEFINES_APP += -DCY_DEBUG_UART_RX=$(UART_RX)
 endif
 
+ifeq ($(USE_EXTERNAL_FLASH), 1)
 ifeq ($(USE_XIP), 1)
 DEFINES_APP += -DUSE_XIP
-DEFINES_APP += -DCY_BOOT_USE_EXTERNAL_FLASH
 LD_SUFFIX = _xip
+endif
+DEFINES_APP += -DCY_BOOT_USE_EXTERNAL_FLASH
 endif
 
 # Add version metadata to image
@@ -175,6 +197,7 @@ endif
 
 # Collect Test Application sources
 SOURCES_APP_SRC := $(wildcard $(CUR_APP_PATH)/*.c)
+SOURCES_APP_SRC += $(PLATFORM_APP_SOURCES)
 
 # Set offset for secondary image
 ifeq ($(IMG_TYPE), UPGRADE)
@@ -191,6 +214,7 @@ SOURCES_APP += $(PLATFORM_SOURCES_FLASH)
 INCLUDE_DIRS_APP := $(addprefix -I, $(CURDIR))
 INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))
 INCLUDE_DIRS_APP += $(addprefix -I, $(PLATFORM_INCLUDE_DIRS_FLASH))
+INCLUDE_DIRS_APP += $(addprefix -I, $(PLATFORM_INCLUDE_DIRS_UTILS))
 
 # ++++
 INCLUDE_DIRS_APP += $(addprefix -I, $(PRJ_DIR)/MCUBootApp/config)
@@ -221,6 +245,7 @@ ASM_FILES_APP += $(ASM_FILES_STARTUP)
 # add flag to imgtool if not using swap for upgrade
 ifeq ($(USE_OVERWRITE), 1)
 UPGRADE_TYPE := --overwrite-only
+DEFINES_APP += -DMCUBOOT_OVERWRITE_ONLY
 endif
 
 ifeq ($(BOOT_RECORD_SW_TYPE), )
@@ -235,6 +260,11 @@ else
 endif
 
 SIGN_ARGS := $(PLATFORM_SIGN_ARGS) $(IMG_VER_ARG) $(IMG_DEPS_ARG)
+
+# Include full public key to signed image TLV insted of its hash
+ifeq ($(USE_HW_KEY), 1)
+SIGN_ARGS += --public-key-format
+endif
 
 # Set parameters needed for signing
 ifeq ($(IMG_TYPE), UPGRADE)

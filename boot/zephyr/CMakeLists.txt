@@ -143,7 +143,7 @@ zephyr_library_sources(
   )
 endif()
 
-if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
+if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_SERIAL_ENCRYPT_EC256)
   zephyr_library_include_directories(
     ${MBEDTLS_ASN1_DIR}/include
     )
@@ -158,6 +158,7 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
     ${BOOT_DIR}/zephyr/include
     ${TINYCRYPT_DIR}/include
     )
+  zephyr_include_directories(${TINYCRYPT_DIR}/include)
 
   zephyr_library_sources(
     ${TINYCRYPT_DIR}/source/ecc.c
@@ -191,6 +192,13 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   # Use mbedTLS provided by Zephyr for RSA signatures. (Its config file
   # is set using Kconfig.)
   zephyr_include_directories(include)
+  if(CONFIG_BOOT_ENCRYPT_RSA)
+    set_source_files_properties(
+      ${BOOT_DIR}/bootutil/src/encrypted.c
+      PROPERTIES
+      INCLUDE_DIRECTORIES ${ZEPHYR_MBEDTLS_MODULE_DIR}/library
+      )
+  endif()
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
   if(CONFIG_BOOT_USE_TINYCRYPT)
     zephyr_library_include_directories(
@@ -224,7 +232,7 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
   )
 endif()
 
-if(CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519)
+if(CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519 OR CONFIG_BOOT_SERIAL_ENCRYPT_EC256)
   zephyr_library_sources(
     ${TINYCRYPT_DIR}/source/aes_encrypt.c
     ${TINYCRYPT_DIR}/source/aes_decrypt.c
@@ -295,6 +303,46 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
     DEPENDS ${KEY_FILE}
     )
   zephyr_library_sources(${GENERATED_PUBKEY})
+endif()
+
+if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQUAL "")
+  # CONF_FILE points to the KConfig configuration files of the bootloader.
+  unset(CONF_DIR)
+  foreach(filepath ${CONF_FILE})
+    file(READ ${filepath} temp_text)
+    string(FIND "${temp_text}" ${CONFIG_BOOT_ENCRYPTION_KEY_FILE} match)
+    if(${match} GREATER_EQUAL 0)
+      if(NOT DEFINED CONF_DIR)
+        get_filename_component(CONF_DIR ${filepath} DIRECTORY)
+      else()
+        message(FATAL_ERROR "Encryption key file defined in multiple conf files")
+      endif()
+    endif()
+  endforeach()
+
+  if(IS_ABSOLUTE ${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+    set(KEY_FILE ${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+  elseif((DEFINED CONF_DIR) AND
+	 (EXISTS ${CONF_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE}))
+    set(KEY_FILE ${CONF_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+  else()
+    set(KEY_FILE ${MCUBOOT_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+  endif()
+  message("MCUBoot bootloader encryption key file: ${KEY_FILE}")
+
+  set(GENERATED_ENCKEY ${ZEPHYR_BINARY_DIR}/autogen-enckey.c)
+  add_custom_command(
+    OUTPUT ${GENERATED_ENCKEY}
+    COMMAND
+    ${PYTHON_EXECUTABLE}
+    ${MCUBOOT_DIR}/scripts/imgtool.py
+    getpriv
+    -k
+    ${KEY_FILE}
+    > ${GENERATED_ENCKEY}
+    DEPENDS ${KEY_FILE}
+    )
+  zephyr_library_sources(${GENERATED_ENCKEY})
 endif()
 
 if(CONFIG_MCUBOOT_CLEANUP_ARM_CORE)

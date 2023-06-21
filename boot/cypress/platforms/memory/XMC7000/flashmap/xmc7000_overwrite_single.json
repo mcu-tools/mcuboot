@@ -1,0 +1,19 @@
+{
+    "bootloader":
+    {
+        "bootloader_area":
+        {
+            "address"           : "0x10000000",
+            "size"              : "0x20000"
+        }
+    },
+    "application_1":
+    {
+        "slots":
+        {
+            "boot"              : "0x10020000",
+            "upgrade"           : "0x10040000",
+            "size"              : "0x20000"
+        }
+    }
+}

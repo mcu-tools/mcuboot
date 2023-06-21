@@ -459,6 +459,8 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     const struct flash_area *fap_sec;
     int rc;
 
+    BOOT_LOG_INF("Starting swap using move algorithm.");
+
     sz = 0;
     g_last_idx = 0;
 
@@ -494,6 +496,9 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
         if (g_last_idx >= first_trailer_idx) {
             BOOT_LOG_WRN("Not enough free space to run swap upgrade");
+            BOOT_LOG_WRN("required %d bytes but only %d are available",
+                         (g_last_idx + 1) * sector_sz ,
+                         first_trailer_idx * sector_sz);
             bs->swap_type = BOOT_SWAP_TYPE_NONE;
             return;
         }

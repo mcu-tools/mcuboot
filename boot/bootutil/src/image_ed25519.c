@@ -64,32 +64,24 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
     return 0;
 }
 
-int
+fih_int
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
   uint8_t key_id)
 {
-    int rc;
-    uint8_t *pubkey;
-    uint8_t *end;
+    fih_int fih_rc = FIH_FAILURE;
 
-    if (hlen != 32 || slen != 64) {
-        return -1;
+    if (hlen == 32 && slen == 64) {
+        uint8_t *pubkey = (uint8_t *)bootutil_keys[key_id].key;
+        uint8_t *end = pubkey + *bootutil_keys[key_id].len;
+
+        if (0 == bootutil_import_key(&pubkey, end) &&
+            ED25519_verify(hash, 32, sig, pubkey)) {
+
+            fih_rc = FIH_SUCCESS;
+        }
     }
 
-    pubkey = (uint8_t *)bootutil_keys[key_id].key;
-    end = pubkey + *bootutil_keys[key_id].len;
-
-    rc = bootutil_import_key(&pubkey, end);
-    if (rc) {
-        return -1;
-    }
-
-    rc = ED25519_verify(hash, 32, sig, pubkey);
-    if (rc == 0) {
-        return -2;
-    }
-
-    return 0;
+    FIH_RET(fih_rc);
 }
 
 #endif /* MCUBOOT_SIGN_ED25519 */

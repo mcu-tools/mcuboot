@@ -191,11 +191,11 @@ static inline uint32_t flash_sector_get_size(const struct flash_sector *fs)
  *   Retrieve flash area from the flash map for a given partition.
  *
  * Input Parameters:
- *   fa_id - ID of the flash partition.
+ *   id - ID of the flash partition.
  *
  * Output Parameters:
- *   fa    - Pointer which will contain the reference to flash_area.
- *           If ID is unknown, it will be NULL on output.
+ *   fa - Pointer which will contain the reference to flash_area.
+ *        If ID is unknown, it will be NULL on output.
  *
  * Returned Value:
  *   Zero on success, or negative value in case of error.
@@ -306,7 +306,7 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off,
  *
  ****************************************************************************/
 
-uint8_t flash_area_align(const struct flash_area *fa);
+uint32_t flash_area_align(const struct flash_area *fa);
 
 /****************************************************************************
  * Name: flash_area_erased_val
@@ -392,15 +392,15 @@ int flash_area_id_from_image_slot(int slot);
  *
  * Input Parameters:
  *   image_index - Index of the image.
- *   fa_id       - Image slot, which may be 0 (primary) or 1 (secondary).
- *
+ *   area_id     - Unique identifier that is represented by fa_id in the
+ *                 flash_area struct.
  * Returned Value:
  *   Image slot index (0 or 1), or negative value in case ID doesn't
  *   correspond to an image slot.
  *
  ****************************************************************************/
 
-int flash_area_id_to_multi_image_slot(int image_index, int fa_id);
+int flash_area_id_to_multi_image_slot(int image_index, int area_id);
 
 /****************************************************************************
  * Name: flash_area_id_from_image_offset
@@ -412,7 +412,7 @@ int flash_area_id_to_multi_image_slot(int image_index, int fa_id);
  *   offset - Image offset.
  *
  * Returned Value:
- *   Flash area ID (0 or 1), or negative value in case the requested slot
+ *   Flash area ID (0 or 1), or negative value in case the requested offset
  *   is invalid.
  *
  ****************************************************************************/

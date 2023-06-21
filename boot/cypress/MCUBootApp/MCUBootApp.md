@@ -20,6 +20,7 @@ The evaluation kits are:
 * `CYBLE-416045-EVAL`
 * `CY8CPROTO-063-BLE`
 * `CY8CKIT-062-BLE`
+* `KIT_XMC72_EVK`
 
 ### Platfrom specifics
 
@@ -31,7 +32,7 @@ The MCUboot terminology names a slot from which **boot** occurs as **primary** a
 
 The flash map of the bootloader is defined at compile-time and cannot be changed dynamically. Flash map is prepared in the industry-accepted JSON (JavaScript Object Notation) format. It should follow the rules described in section **How to modify the flash map**.
 
-`MCUBootApp` contains JSON templates for flash maps with commonly used configurations. They can be found in `platforms/cy_flash_pal/flash_%platform_name%/flashmap` The slots' sizes are defined per platform to be compatible with all supported device families.
+`MCUBootApp` contains JSON templates for flash maps with commonly used configurations. They can be found in `platforms/memory/flash_%platform_name%/flashmap` The slots' sizes are defined per platform to be compatible with all supported device families.
 
 The actual addresses are provided in corresponding platform doc files:
 
@@ -100,12 +101,6 @@ Here an application identifier should follow the pattern, i.e., the 2nd image in
 For each image, the location and size of its primary slot are given in the `"address"` and `"size"` parameters. The location and size of the secondary slot are specified in the `"upgrade_address"` and `"upgrade_size"`. All four values described above are mandatory.
 
 There also should be a mandatory `"bootloader"` section, describing the location and size of `MCUBootApp` in the `"address"` and `"size"` parameters, respectively.
-
-Under some circumstances (e.g., PSoC™ 62 with application slots in both internal and external flash memories), the slot address must be properly aligned, as the image trailer should start exactly at the erase block boundary. When an improper address is specified, `make` will fail with a message like:
-```
-Misaligned application_1 (secondary slot) - suggested address 0x18030200
-```
-This gives the nearest larger address that satisfies the slot location requirements. Other errors, such as overlapping flash areas, are also checked and reported.
 
 ###### Scratch area
 The scratch area location and size are given in the `"scratch_address"` and `"scratch_size"` parameters of the `"bootloader"` subsection.
@@ -264,8 +259,6 @@ A shared secondary slot is rather a virtual concept, we still create individual 
 ```
 The purpose of such a layout is to allow MCUBoot to understand what image is placed in the shared secondary slot. While secondary images now can (and should) overlap, their trailers must under no circumstances share the same address!
 
-Normally image trailer occupies the whole erase block (e.g. 512 bytes for PSoC™ 62 internal Flash, or 256 kilobytes for SEMPER™ Secure NOR Flash). There is a specific case when images are placed in both memory types, refer to the [PSOC6.md](../platforms/PSOC6.md) file.
-
 One can declare all secondary slots as shared using the following JSON syntax:
 
 ```
@@ -395,11 +388,11 @@ Note that in the multi-image case this option makes sense only for `application_
 ```
 
 ###### Flash map internals
-When the `FLASH_MAP=` option is supplied to `make`, it involves the Python script `boot/cypress/scripts/flashmap.py`. It takes the JSON file and converts flash map into the C header file `boot/cypress/platforms/cy_flash_pal/cy_flash_map.h`.
+When the `FLASH_MAP=` option is supplied to `make`, it involves the Python script `boot/cypress/scripts/memorymap.py`. It takes the JSON file and converts flash map into the C header file `boot/cypress/platforms/memory/memory.h`.
 
-At the same time it creates the `boot/cypress/MCUBootApp/flashmap.mk`, which is conditionally included from the `boot/cypress/MCUBootApp/MCUBootApp.mk`. The generated file contains various definitions derived from the flash map, such as `MCUBOOT_IMAGE_NUMBER`, `MAX_IMG_SECTORS`, `USE_EXTERNAL_FLASH`, and `USE_XIP`. So, there is no need to specify these and similar parameters manually.
+At the same time it creates the `boot/cypress/MCUBootApp/memorymap.mk`, which is conditionally included from the `boot/cypress/MCUBootApp/MCUBootApp.mk`. The generated file contains various definitions derived from the flash map, such as `MCUBOOT_IMAGE_NUMBER`, `MAX_IMG_SECTORS`, `USE_EXTERNAL_FLASH`, and `USE_XIP`. So, there is no need to specify these and similar parameters manually.
 
-Do not edit either `sysflash/cy_flash_map.h` or `flashmap.mk`, as both files are overwritten on every build.
+Do not edit either `sysflash/memory.h` or `memorymap.mk`, as both files are overwritten on every build.
 
 #### External flash
 
@@ -436,7 +429,7 @@ __NOTE__: To reduce boot time for MCUBoot in `SWAP` mode, in the case when only 
 
 Multi-image operation considers upgrading and verification of more than one image on a device.
 
-Single or multi-image mode is dictated by the `MCUBOOT_IMAGE_NUMBER` `make` flag. This flag's value is set in an auto-generated `flashmap.mk` file per flash map used. There is no need to pass it manually.
+Single or multi-image mode is dictated by the `MCUBOOT_IMAGE_NUMBER` `make` flag. This flag's value is set in an auto-generated `memorymap.mk` file per flash map used. There is no need to pass it manually.
 
 In Multi-image operation, up to four images are supported. 
 
@@ -464,7 +457,7 @@ To build MCUBootApp for overwrite upgrades only, `MCUBootApp/config/mcuboot_conf
 
 `#define MCUBOOT_OVERWRITE_ONLY 1`
 
-This flag's value is set in an auto-generated `flashmap.mk` file per flash map used. There is no need to pass it manually.
+This flag's value is set in an auto-generated `memorymap.mk` file per flash map used. There is no need to pass it manually.
 
 In Overwrite-only mode, MCUBootApp first checks if any upgrade image is present in the secondary slot(s), then validates the digital signature of the upgrade image in the secondary slot(s). If validation is successful, MCUBootApp starts copying the secondary slot content to the primary slot. After the copy is done, MCUBootApp starts the upgrade image execution from the primary slot.
 
@@ -579,6 +572,16 @@ It is expected that the product stays in the `Upgraded` state until the end of i
 
 If there is a need to wipe out the product and flash new firmware directly to the primary (BOOT) slot, the device is transferred to the `Empty` or `Ready` state and then walks through all the states again.
 
+### Software limitation
+For both internal and external flash memories, the slot address must be properly aligned, as the image trailer should occupy a separate sector.
+
+Normally image trailer occupies the whole erase block (e.g. 512 bytes for PSoC™ 62 internal Flash, or 256 kilobytes for SEMPER™ Secure NOR Flash). There is a specific case when images are placed in both memory types, refer to the [PSOC6.md](../platforms/PSOC6.md) file.
+
+When an improper address is specified, `make` will fail with a message like:
+```
+Misaligned application_1 (secondary slot) - suggested address 0x18030200
+```
+This gives the nearest larger address that satisfies the slot location requirements. Other errors, such as overlapping flash areas, are also checked and reported.
 ### Hardware limitations
 
 This application is created to demonstrate the MCUboot library features and not as a reference example. So, some considerations are taken.
@@ -616,12 +619,12 @@ To get submodules - run the following command:
 
 1. Choose Upgrade mode and number of images.
 
-`platforms/cy_flash_pal/flash_%platform_name%/flashmap` folder contains a set of predefined flash map JSON files with suffixes _overwrite_ or _swap_ for upgrade methods and _single_ or _multi_ for images number in its names. Depending on the file chosen upgrade method and images number are configured:
+`platforms/memory/flash_%platform_name%/flashmap` folder contains a set of predefined flash map JSON files with suffixes _overwrite_ or _swap_ for upgrade methods and _single_ or _multi_ for images number in its names. Depending on the file chosen upgrade method and images number are configured:
 
 `USE_OVERWRITE` `make` flag is set to 1 or 0 for `overwrite` or `swap` mode;
 `MCUBOOT_IMAGE_NUMBER` flag is set to a number of corresponding `application_#` sections in the flash map file.
 
-These flag values are set in an auto-generated `flashmap.mk` file per flash map used. There is no need to pass them manually.
+These flag values are set in an auto-generated `memorymap.mk` file per flash map used. There is no need to pass them manually.
 
 __NOTE__: Do not use flash map JSON files with suffixes xip or smif for `PSoC™ 063` kits.
 
@@ -629,9 +632,9 @@ __NOTE__: Do not use flash map JSON files with suffixes xip or smif for `PSoC™
 
 Pass `USE_CRYPTO_HW=1` to the `make` command. This option is temporarily disabled by default - see paragraph **Hardware cryptography acceleration**.
 
-Additionally, users can configure hardware rollback protection on the supported platforms. To do this flash map file from `platforms/cy_flash_pal/flash_%platform_name%/flashmap/hw_rollback_prot` folder should be used.
+Additionally, users can configure hardware rollback protection on the supported platforms. To do this flash map file from `platforms/memory/flash_%platform_name%/flashmap/hw_rollback_prot` folder should be used.
 
-`USE_HW_ROLLBACK_PROT` `make` flag is set to 1 in auto-generated `flashmap.mk`. 
+`USE_HW_ROLLBACK_PROT` `make` flag is set to 1 in auto-generated `memorymap.mk`. 
 
 The rollback protection feature is currently supported on CYW20829 devices in Secure mode only.
 
@@ -641,49 +644,58 @@ Folder `boot/cypress` contains make-files infrastructure for building MCUBootApp
 
 Toolchain is set by default in `toolchains.mk` file, depending on `COMPILER` makefile variable. MCUBoot is currently support only `GCC_ARM` as compiler. Toolchain path can be redefined, by setting `TOOLCHAIN_PATH` build flag to desired toolchain path. Below is an example on how to set toolchain path from **ModusToolbox™ IDE 3.0**:
 
-    make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/$(USERNAME)/ModusToolbox/tools_3.0/gcc
+    make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/${USERNAME}/ModusToolbox/tools_3.0/gcc
 
 * Build MCUBootApp in the `Debug` configuration for Single-image mode with swap upgrade.
 
     `PSoC™ 062`
 
-        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json
 
     `PSoC™ 063`
 
-        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_063_1M BUILDCFG=Debug FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json
+        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_063_1M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json
+
+    `XMC7200`
+
+        make clean app APP_NAME=MCUBootApp PLATFORM=XMC7200 BUILDCFG=Debug FLASH_MAP=platforms/memory/XMC7000/flashmap/xmc7000_swap_single.json PLATFORM_CONFIG=platforms/memory/XMC7000/flashmap/xmc7200_platform.json CORE=CM0P APP_CORE=CM7 APP_CORE_ID=0
+
+    `XMC7100`
+
+        make clean app APP_NAME=MCUBootApp PLATFORM=XMC7100 BUILDCFG=Debug FLASH_MAP=platforms/memory/XMC7000/flashmap/xmc7000_swap_single.json PLATFORM_CONFIG=platforms/memory/XMC7000/flashmap/xmc7100_platform.json CORE=CM0P APP_CORE=CM7 APP_CORE_ID=0
 
 * Build MCUBootApp in `Release` configuration for Multi-image mode with overwriting update.
 
     `PSoC™ 062`
 
-        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Release FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Release FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_multi.json
 
     `PSoC™ 063`
 
-        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_063_1M BUILDCFG=Release FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi.json
+        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_063_1M BUILDCFG=Release FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_multi.json
+
 
 * Build MCUBootApp in `Debug` configuration for Single-image mode with swap upgrade and in `smif` mode.
 
     `PSoC™ 062`
 
-        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_smif.json
+        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single_smif.json
 
     `PSoC™ 063`
 
         Supported only for `PLATFORM=PSOC_063_1M DEVICE=CY8C6347BZI-BLD53`
-        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_1M DEVICE=CY8C6347BZI-BLD53 BUILDCFG=Debug FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single_smif.json
+        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_1M DEVICE=CY8C6347BZI-BLD53 BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single_smif.json
         `NOTE:` PSOC_062_1M platform is used here since kit, where particular MPN is installed is called CY8CKIT-062-BLE
 
 * Build MCUBootApp in `Debug` configuration for Single-image mode with swap upgrade and in `xip` mode.
 
     `PSoC™ 062`
 
-        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_swap.json
+        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_xip_swap.json
 
     `PSoC™ 063`
 
-        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_1M DEVICE=CY8C6347BZI-BLD53 BUILDCFG=Debug FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_xip_swap.json
+        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_1M DEVICE=CY8C6347BZI-BLD53 BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_xip_swap.json
     `NOTE:` PSOC_062_1M platform is used here since kit, where particular MPN is installed is called CY8CKIT-062-BLE
 
 The root directory for the build is `boot/cypress`.
@@ -716,13 +728,13 @@ Can be passed to `make` or set in makefiles.
 `DEVICE` - is used to set a particular MPN for a platform since multiple MPNs are associated with one platform, for example:   
 `PLATFORM=PSOC_062_1M DEVICE=CY8C6347BZI-BLD53`   
 
-The next flags will be set by script in auto-generated makefile 'flashmap.mk':   
+The next flags will be set by script in auto-generated makefile 'memorymap.mk':   
 `MCUBOOT_IMAGE_NUMBER` - The number of images to be supported by the current build of MCUBootApp.    
 `USE_OVERWRITE` - `0` - Use swap with Scratch upgrade mode, `1` - use Overwrite only upgrade.   
 `USE_EXTERNAL_FLASH` - When set to `1`, it enables the external memory support on the PSoC™ 6 platform. This value is always set to `1` on CYW20829.   
 `USE_HW_ROLLBACK_PROT` - When set to `1`, it enables the hardware rollback protection on the CYW20829 platform with Secure mode enabled.   
 
-Adding `clean` to `make` will clean the build folder, and files boot/cypress/MCUBootApp/flashmap.mk and boot/cypress/platforms/cy_flash_pal/cy_flash_map.h  will be removed and re-generated.   
+Adding `clean` to `make` will clean the build folder, and files boot/cypress/MCUBootApp/memorymap.mk and boot/cypress/platforms/memory/memorymap.h will be removed and re-generated.   
 
 ### Programming solution
 

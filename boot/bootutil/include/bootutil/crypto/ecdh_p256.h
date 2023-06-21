@@ -124,7 +124,7 @@ static inline int bootutil_ecdh_p256_shared_secret(bootutil_ecdh_p256_context *c
         return -1;
     }
 
-    mbedtls_mpi_read_binary(&ctx->d, sk, NUM_ECC_BYTES);
+    (void)mbedtls_mpi_read_binary(&ctx->d, sk, NUM_ECC_BYTES);
 
 #if MBEDTLS_VERSION_NUMBER >= 0x03000000
     rc = mbedtls_ecdh_compute_shared(&ctx->grp,
@@ -141,7 +141,7 @@ static inline int bootutil_ecdh_p256_shared_secret(bootutil_ecdh_p256_context *c
                                      NULL,
                                      NULL);
 #endif
-    mbedtls_mpi_write_binary(&ctx->z, z, NUM_ECC_BYTES);
+    (void)mbedtls_mpi_write_binary(&ctx->z, z, NUM_ECC_BYTES);
 
     return rc;
 }

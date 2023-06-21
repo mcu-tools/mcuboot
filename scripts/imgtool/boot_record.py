@@ -1,4 +1,4 @@
-# Copyright (c) 2019, Arm Limited.
+# Copyright (c) 2019-2021, Arm Limited.
 # Copyright (c) 2020, Linaro Limited
 #
 # SPDX-License-Identifier: Apache-2.0
@@ -16,8 +16,11 @@
 # limitations under the License.
 
 from enum import Enum
-import cbor
 
+try:
+    from cbor2 import dumps
+except ImportError:
+    from cbor import dumps
 
 class SwComponent(int, Enum):
     """
@@ -46,4 +49,4 @@ def create_sw_component_data(sw_type, sw_version, sw_measurement_description,
     #       list because later it will be modified by the bootloader.
     properties[SwComponent.MEASUREMENT_VALUE] = sw_measurement_value
 
-    return cbor.dumps(properties)
+    return dumps(properties)

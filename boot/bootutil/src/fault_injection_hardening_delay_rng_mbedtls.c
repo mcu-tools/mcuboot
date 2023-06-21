@@ -6,7 +6,7 @@
 
 #include "bootutil/fault_injection_hardening.h"
 
-#ifdef FIH_ENABLE_DELAY
+#ifdef FIH_ENABLE_DELAY_
 
 #include "mcuboot-mbedtls-cfg.h"
 #include "mbedtls/ctr_drbg.h"

@@ -1,0 +1,55 @@
+{
+    "memory_regions":
+    [
+        {
+            "address"       : "0x10000000",
+            "size"          : "0x3F0000",
+            "erase_size"    : "0x8000",
+            "erase_value"   : "0xFF",
+            "type"          : "INTERNAL_FLASH_CODE_LARGE"
+        },
+
+        {
+            "address"       : "0x107F0000",
+            "size"          : "0x20000",
+            "erase_size"    : "0x2000",
+            "erase_value"   : "0xFF",
+            "type"          : "INTERNAL_FLASH_CODE_SMALL"
+        },
+
+        {
+            "address"       : "0x14000000",
+            "size"          : "0x30000",
+            "erase_size"    : "0x800",
+            "erase_value"   : "0xFF",
+            "type"          : "INTERNAL_FLASH_WORK_LARGE"
+        },
+
+        {
+            "address"       : "0x14030000",
+            "size"          : "0x10000",
+            "erase_size"    : "0x80",
+            "erase_value"   : "0xFF",
+            "type"          : "INTERNAL_FLASH_WORK_SMALL"
+        }
+    ],
+
+    "core_list":
+    [
+        {
+            "name"      : "CM0P",
+            "id"        : 0
+        },
+
+        {
+            "name"      : "CM7_0",
+            "id"        : 1
+        },
+
+        {
+            "name"      : "CM7_1",
+            "id"        : 2
+        }
+    ]
+
+}

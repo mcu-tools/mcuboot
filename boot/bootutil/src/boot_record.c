@@ -71,16 +71,16 @@ boot_add_data_to_shared_area(uint8_t        major_type,
      * shared data area.
      */
     if (!shared_memory_init_done) {
-        memset((void *)MCUBOOT_SHARED_DATA_BASE, 0, MCUBOOT_SHARED_DATA_SIZE);
+        (void)memset((void *)MCUBOOT_SHARED_DATA_BASE, 0, MCUBOOT_SHARED_DATA_SIZE);
         boot_data->header.tlv_magic   = SHARED_DATA_TLV_INFO_MAGIC;
-        boot_data->header.tlv_tot_len = SHARED_DATA_HEADER_SIZE;
+        boot_data->header.tlv_tot_len = (uint16_t)SHARED_DATA_HEADER_SIZE;
         shared_memory_init_done = true;
     }
 
     /* Check whether TLV entry is already added.
      * Get the boundaries of TLV section
      */
-    tlv_end = MCUBOOT_SHARED_DATA_BASE + boot_data->header.tlv_tot_len;
+    tlv_end = MCUBOOT_SHARED_DATA_BASE + (uint32_t)(boot_data->header.tlv_tot_len);
     offset  = MCUBOOT_SHARED_DATA_BASE + SHARED_DATA_HEADER_SIZE;
 
     /* Iterates over the TLV section looks for the same entry if found then
@@ -88,7 +88,7 @@ boot_add_data_to_shared_area(uint8_t        major_type,
      */
     while (offset < tlv_end) {
         /* Create local copy to avoid unaligned access */
-        memcpy(&tlv_entry, (const void *)offset, SHARED_DATA_ENTRY_HEADER_SIZE);
+        (void)memcpy((void*)&tlv_entry, (const void *)offset, SHARED_DATA_ENTRY_HEADER_SIZE);
         if (tlv_entry.tlv_type == type) {
             return SHARED_MEMORY_OVERWRITE;
         }
@@ -98,10 +98,14 @@ boot_add_data_to_shared_area(uint8_t        major_type,
 
     /* Add TLV entry */
     tlv_entry.tlv_type = type;
-    tlv_entry.tlv_len  = size;
 
+    if (size > (unsigned)UINT16_MAX - SHARED_DATA_ENTRY_HEADER_SIZE) {
+        return SHARED_MEMORY_GEN_ERROR;
+    }
+
+    tlv_entry.tlv_len = (uint16_t)size;
     if (!boot_u16_safe_add(&boot_data_size, boot_data->header.tlv_tot_len,
-                           SHARED_DATA_ENTRY_SIZE(size))) {
+                            (uint16_t)SHARED_DATA_ENTRY_SIZE(size))) {
         return SHARED_MEMORY_GEN_ERROR;
     }
 
@@ -111,10 +115,10 @@ boot_add_data_to_shared_area(uint8_t        major_type,
     }
 
     offset = tlv_end;
-    (void)memcpy((void *)offset, &tlv_entry, SHARED_DATA_ENTRY_HEADER_SIZE);
+    (void)memcpy((void *)offset, (const void *)&tlv_entry, SHARED_DATA_ENTRY_HEADER_SIZE);
 
     offset += SHARED_DATA_ENTRY_HEADER_SIZE;
-    (void)memcpy((void *)offset, data, size);
+    (void)memcpy((void *)offset, (const void *)data, size);
 
     boot_data->header.tlv_tot_len = boot_data_size;
 
@@ -151,7 +155,7 @@ boot_save_boot_status(uint8_t sw_module,
      */
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_ANY, false);
-    if (rc) {
+    if (rc != 0) {
         return -1;
     }
 
@@ -165,26 +169,29 @@ boot_save_boot_status(uint8_t sw_module,
         } else if (rc > 0) {
             break;
         }
+        else {
+            /* No action required - for MISRA C-2012 Rule 15.7 rule */
+        }
 
-        if (type == IMAGE_TLV_BOOT_RECORD) {
+        if ((uint16_t)IMAGE_TLV_BOOT_RECORD == type) {
             if (len > sizeof(buf)) {
                 return -1;
             }
             rc = flash_area_read(fap, offset, buf, len);
-            if (rc) {
+            if (rc != 0) {
                 return -1;
             }
 
             record_len = len;
             boot_record_found = true;
 
-        } else if (type == IMAGE_TLV_SHA256) {
+        } else if ((uint16_t)IMAGE_TLV_SHA256 == type) {
             /* Get the image's hash value from the manifest section. */
-            if (len != BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE) {
+            if (len != (uint16_t)BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE) {
                 return -1;
             }
             rc = flash_area_read(fap, offset, image_hash, len);
-            if (rc) {
+            if (rc != 0) {
                 return -1;
             }
 
@@ -196,6 +203,9 @@ boot_save_boot_status(uint8_t sw_module,
              * as the boot record TLV should have already been found.
              */
             break;
+        }
+        else {
+            /* No action required - for MISRA C-2012 Rule 15.7 rule */
         }
     }
 
@@ -251,7 +261,7 @@ int boot_save_shared_data(const struct image_header *hdr,
         return -1;
     }
 
-    for (i = 0; i < MCUBOOT_IMAGE_NUMBER; i++) {
+    for (i = 0; i < (uint8_t)MCUBOOT_IMAGE_NUMBER; i++) {
         if (flash_area_open(FLASH_AREA_IMAGE_PRIMARY(i),
                             &temp_fap) != 0) {
             return -1;
@@ -263,7 +273,7 @@ int boot_save_shared_data(const struct image_header *hdr,
         }
     }
 
-    if (MCUBOOT_IMAGE_NUMBER == i) {
+    if ((uint8_t)MCUBOOT_IMAGE_NUMBER == i) {
         return -1;
     }
 

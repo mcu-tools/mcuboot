@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2021 Arm Limited
  *
  * Original license:
  *
@@ -32,9 +32,21 @@
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/bootutil_public.h"
 
+#ifdef MCUBOOT_ENC_IMAGES_XIP
+#include "bootutil/enc_key.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#ifdef MCUBOOT_IMAGE_NUMBER
+#define BOOT_IMAGE_NUMBER          MCUBOOT_IMAGE_NUMBER
+#else
+#define BOOT_IMAGE_NUMBER          1
+#endif
+
+_Static_assert(BOOT_IMAGE_NUMBER > 0, "Invalid value for BOOT_IMAGE_NUMBER");
 
 struct image_header;
 /**
@@ -68,14 +80,25 @@ struct image_trailer {
     uint8_t pad2[BOOT_MAX_ALIGN - 1];
     uint8_t image_ok;
     uint8_t pad3[BOOT_MAX_ALIGN - 1];
-    uint8_t magic[16];
+#if BOOT_MAX_ALIGN > BOOT_MAGIC_SZ
+    uint8_t pad4[BOOT_MAGIC_ALIGN_SIZE - BOOT_MAGIC_SZ];
+#endif
+    uint8_t magic[BOOT_MAGIC_SZ];
 };
 
 /* you must have pre-allocated all the entries within this structure */
 fih_int boot_go(struct boot_rsp *rsp);
+fih_int boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id);
 
 struct boot_loader_state;
-fih_int context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp);
+void boot_state_clear(struct boot_loader_state *state);
+fih_int context_boot_go_flash(struct boot_loader_state *state, struct boot_rsp *rsp);
+
+#if defined(MCUBOOT_RAM_LOAD)
+fih_int context_boot_go_ram(struct boot_loader_state *state, struct boot_rsp *rsp);
+fih_int boot_go_for_image_id_ram(struct boot_rsp *rsp, uint32_t image_id);
+#endif
+
 
 #define SPLIT_GO_OK                 (0)
 #define SPLIT_GO_NON_MATCHING       (-1)

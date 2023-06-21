@@ -20,10 +20,11 @@
 
 #include "bootutil/image.h"
 #include "bootutil_priv.h"
-#include "sysflash/sysflash.h"
+#include "flash_map_backend_platform.h"
 #include "cy_service_app.h"
 #include "flash_qspi.h"
-#include "cy_smif_cyw20829.h"
+
+extern const struct flash_area_interface external_mem_interface;
 
 #if defined MCUBOOT_HW_ROLLBACK_PROT
 
@@ -181,12 +182,13 @@ int32_t check_service_app_status(void)
             rc = 0;
         }
         else {
-            rc = cyw20829_smif_erase((CY_XIP_BASE + SERVICE_APP_DESC_OFFSET), qspi_get_erase_size());
+            rc = external_mem_interface.erase(
+                FLASH_DEVICE_EXTERNAL_FLASH(0),
+                (CY_XIP_BASE + SERVICE_APP_DESC_OFFSET), qspi_get_erase_size());
             if (0 == rc) {
                 if (CYAPP_SUCCESS == SRSS->TST_DEBUG_STATUS) {
                     rc = 0;
-                }
-                else {
+                } else {
                     rc = -1;
                 }
             }

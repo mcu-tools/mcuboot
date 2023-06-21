@@ -30,7 +30,7 @@
 #ifdef CYW20829
 
 #define CY_GET_XIP_REMAP_ADDR(addr)     ((addr) - CY_XIP_BASE + CY_XIP_REMAP_OFFSET)
-#define CY_GET_XIP_REMAP_ADDR_FIH(addr) fih_uint_encode(fih_uint_decode((addr)) - CY_XIP_BASE + CY_XIP_REMAP_OFFSET)
+#define CY_GET_XIP_REMAP_ADDR_FIH(addr) fih_uint_encode(CY_GET_XIP_REMAP_ADDR(addr))
 
 #define CY_GET_SRAM0_REMAP_ADDR(addr)   ((addr) - CY_SRAM0_BASE + CY_SRAM0_REMAP_OFFSET)
 
@@ -298,8 +298,8 @@ CY_RAMFUNC_END
 CY_RAMFUNC_BEGIN
 __NO_RETURN void platform_RunNextApp(fih_uint toc2_addr, uint32_t *key, uint32_t *iv)
 {
-    fih_uint l1_app_descr_addr = (fih_uint)FIH_FAILURE;
-    fih_uint ns_vect_tbl_addr = (fih_uint)FIH_FAILURE;
+    fih_uint l1_app_descr_addr = FIH_UINT_MAX;
+    fih_uint ns_vect_tbl_addr = FIH_UINT_MAX;
 
     uint32_t bootstrap_src_addr = 0u;
     uint32_t bootstrap_dst_addr = 0u;

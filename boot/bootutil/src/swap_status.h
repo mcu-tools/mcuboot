@@ -85,7 +85,7 @@ struct image_status_trailer {
 #define BOOT_SWAP_STATUS_CNT_SZ         4UL
 #define BOOT_SWAP_STATUS_CRC_SZ         4UL
 
-#define BOOT_SWAP_STATUS_ROW_SZ         CY_FLASH_ALIGN
+#define BOOT_SWAP_STATUS_ROW_SZ         MEMORY_ALIGN
 
 /* agreed to name it "a record" */
 #define BOOT_SWAP_STATUS_PAYLD_SZ       (BOOT_SWAP_STATUS_ROW_SZ -\
@@ -155,7 +155,7 @@ struct status_part_record{
                                      BOOT_SWAP_STATUS_SZ_PRIM)
 
 /* size Limit for primary slot trailer buffer */
-#define MAX_TRAILER_BUF_SIZE        CY_FLASH_ALIGN
+#define MAX_TRAILER_BUF_SIZE        PLATFORM_MAX_TRAILER_PAGE_SIZE
 
 int32_t swap_status_init_offset(uint8_t area_id);
 int swap_status_update(uint8_t target_area_id, uint32_t offs, const void *data, uint32_t len);

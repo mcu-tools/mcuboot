@@ -32,14 +32,12 @@ PDL_VERSION = 121
 THIS_APP_PATH = $(PRJ_DIR)/libs
 MBEDTLS_PATH = $(PRJ_DIR)/../../ext
 
+ifneq ($(FAMILY), XMC7000)
 # Add watchdog folder to build
 SOURCES_WATCHDOG := $(wildcard $(THIS_APP_PATH)/watchdog/*.c)
-
-# Add retartget IO implementation using pdl
-SOURCES_RETARGET_IO_PDL := $(PLATFORM_SOURCES_RETARGET_IO_PDL)
-
-# Collect dirrectories containing headers for PLATFORM
-INCLUDE_RETARGET_IO_PDL := $(PLATFORM_INCLUDE_RETARGET_IO_PDL)
+# Watchdog related includes
+INCLUDE_DIRS_WATCHDOG := $(THIS_APP_PATH)/watchdog
+endif
 
 # PSOC6HAL source files
 SOURCES_HAL_MCUB := $(PLATFORM_SOURCES_HAL_MCUB)
@@ -53,13 +51,10 @@ SOURCES_MBEDTLS := $(wildcard $(MBEDTLS_PATH)/mbedtls/library/*.c)
 # Collected source files for libraries
 SOURCES_LIBS += $(SOURCES_MBEDTLS)
 SOURCES_LIBS += $(SOURCES_WATCHDOG)
+SOURCES_LIBS += $(SOURCES_FIH)
 
 # Collect source files for platform dependent libraries
 SOURCES_LIBS += $(SOURCES_HAL_MCUB)
-SOURCES_LIBS += $(SOURCES_RETARGET_IO_PDL)
-
-# Watchdog related includes
-INCLUDE_DIRS_WATCHDOG := $(THIS_APP_PATH)/watchdog
 
 # MbedTLS related include directories
 ifeq ($(USE_CRYPTO_HW), 1)
@@ -76,31 +71,29 @@ INCLUDE_DIRS_MBEDTLS += $(MBEDTLS_PATH)/mbedtls/library
 # Collected include directories for libraries
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_MBEDTLS))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_FIH))
 
 # Collect platform dependent include dirs
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL_MCUB))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_RETARGET_IO_PDL))
 
 ###############################################################################
 # Print debug information about all settings used and/or set in this file
 ifeq ($(VERBOSE), 1)
 $(info #### libs.mk ####)
+$(info INCLUDE_DIRS_FIH <-> $(INCLUDE_DIRS_FIH))
 $(info INCLUDE_DIRS_HAL_MCUB <-> $(INCLUDE_DIRS_HAL_MCUB))
-$(info INCLUDE_DIRS_LIBS --> $(INCLUDE_DIRS_LIBS))
+$(info INCLUDE_DIRS_LIBS <-> $(INCLUDE_DIRS_LIBS))
 $(info INCLUDE_DIRS_MBEDTLS <-> $(INCLUDE_DIRS_MBEDTLS))
 $(info INCLUDE_DIRS_WATCHDOG <-> $(INCLUDE_DIRS_WATCHDOG))
-$(info INCLUDE_RETARGET_IO_PDL <-> $(INCLUDE_RETARGET_IO_PDL))
 $(info MBEDTLS_PATH <-- $(MBEDTLS_PATH))
 $(info PLATFORM <-- $(PLATFORM))
 $(info PLATFORM_INCLUDE_DIRS_HAL_MCUB <-- $(PLATFORM_INCLUDE_DIRS_HAL_MCUB))
-$(info PLATFORM_INCLUDE_RETARGET_IO_PDL <-- $(PLATFORM_INCLUDE_RETARGET_IO_PDL))
 $(info PLATFORM_SOURCES_HAL_MCUB <-- $(PLATFORM_SOURCES_HAL_MCUB))
-$(info PLATFORM_SOURCES_RETARGET_IO_PDL <-- $(PLATFORM_SOURCES_RETARGET_IO_PDL))
 $(info PRJ_DIR <-- $(PRJ_DIR))
+$(info SOURCES_FIH <-> $(SOURCES_FIH))
 $(info SOURCES_HAL_MCUB <-> $(SOURCES_HAL_MCUB))
-$(info SOURCES_LIBS --> $(SOURCES_LIBS))
+$(info SOURCES_LIBS <-> $(SOURCES_LIBS))
 $(info SOURCES_MBEDTLS <-> $(SOURCES_MBEDTLS))
-$(info SOURCES_RETARGET_IO_PDL <-> $(SOURCES_RETARGET_IO_PDL))
 $(info SOURCES_WATCHDOG <-> $(SOURCES_WATCHDOG))
 $(info THIS_APP_PATH <-- $(THIS_APP_PATH))
 $(info USE_CRYPTO_HW <-- $(USE_CRYPTO_HW))

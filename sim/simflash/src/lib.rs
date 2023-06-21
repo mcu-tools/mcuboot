@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2019 Linaro LTD
+// Copyright (c) 2017-2021 Linaro LTD
 // Copyright (c) 2017-2018 JUUL Labs
 //
 // SPDX-License-Identifier: Apache-2.0

@@ -32,14 +32,20 @@
 extern "C" {
 #endif
 
+#ifndef ALIGN_UP
+#define ALIGN_UP(num, align)    (((num) + ((align) - 1U)) & ~((align) - 1U))
+#endif
+
 #ifdef MCUBOOT_AES_256
 #define BOOT_ENC_KEY_SIZE       32U
 #else
 #define BOOT_ENC_KEY_SIZE       16U
 #endif
 
+#define BOOT_ENC_KEY_ALIGN_SIZE ALIGN_UP(BOOT_ENC_KEY_SIZE, BOOT_MAX_ALIGN)
+
 #define TLV_ENC_RSA_SZ    256U
-#define TLV_ENC_KW_SZ     BOOT_ENC_KEY_SIZE + 8U
+#define TLV_ENC_KW_SZ     (BOOT_ENC_KEY_SIZE + 8U)
 #define TLV_ENC_EC256_SZ  (65U + 32U + BOOT_ENC_KEY_SIZE)
 #define TLV_ENC_X25519_SZ (32U + 32U + BOOT_ENC_KEY_SIZE)
 

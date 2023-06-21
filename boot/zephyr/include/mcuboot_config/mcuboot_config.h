@@ -61,6 +61,10 @@
 #define MCUBOOT_VALIDATE_PRIMARY_SLOT
 #endif
 
+#ifdef CONFIG_BOOT_VALIDATE_SLOT0_ONCE
+#define MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE
+#endif
+
 #ifdef CONFIG_BOOT_UPGRADE_ONLY
 #define MCUBOOT_OVERWRITE_ONLY
 #define MCUBOOT_OVERWRITE_ONLY_FAST
@@ -105,6 +109,11 @@
 #endif
 
 #ifdef CONFIG_BOOT_ENCRYPT_EC256
+#define MCUBOOT_ENC_IMAGES
+#define MCUBOOT_ENCRYPT_EC256
+#endif
+
+#ifdef CONFIG_BOOT_SERIAL_ENCRYPT_EC256
 #define MCUBOOT_ENC_IMAGES
 #define MCUBOOT_ENCRYPT_EC256
 #endif
@@ -164,8 +173,16 @@
 #define MCUBOOT_MGMT_CUSTOM_IMG_LIST
 #endif
 
+#ifdef CONFIG_BOOT_MGMT_ECHO
+#define MCUBOOT_BOOT_MGMT_ECHO
+#endif
+
 #ifdef CONFIG_BOOT_IMAGE_ACCESS_HOOKS
 #define MCUBOOT_IMAGE_ACCESS_HOOKS
+#endif
+
+#ifdef CONFIG_MCUBOOT_VERIFY_IMG_ADDRESS
+#define MCUBOOT_VERIFY_IMG_ADDRESS
 #endif
 
 /*
@@ -174,6 +191,10 @@
  */
 #ifdef CONFIG_MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
 #define MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
+#endif
+
+#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
+#define MCUBOOT_SERIAL_WAIT_FOR_DFU
 #endif
 
 /*
@@ -185,7 +206,7 @@
  * for the time needed to erase large chunk of flash.
  */
 #ifdef CONFIG_BOOT_ERASE_PROGRESSIVELY
-#define MCBOOT_ERASE_PROGRESSIVELY
+#define MCUBOOT_ERASE_PROGRESSIVELY
 #endif
 
 /*
@@ -240,13 +261,24 @@
 #error "No NRFX WDT instances enabled"
 #endif /* defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1) */
 
-#else /* CONFIG_NRFX_WDT */
+#elif CONFIG_IWDG_STM32 /* CONFIG_NRFX_WDT */
+#include <drivers/watchdog.h>
+
+#define MCUBOOT_WATCHDOG_FEED() \
+    do {                        \
+        const struct device* wdt =                          \
+            device_get_binding(                             \
+                DT_LABEL(DT_INST(0, st_stm32_watchdog)));   \
+        wdt_feed(wdt, 0);                                   \
+    } while (0)
+
+#else /* CONFIG_IWDG_STM32 */
 #warning "MCUBOOT_WATCHDOG_FEED() is no-op"
 /* No vendor implementation, no-op for historical reasons */
 #define MCUBOOT_WATCHDOG_FEED()         \
     do {                                \
     } while (0)
-#endif /* CONFIG_NRFX_WDT */
+#endif
 #else  /* CONFIG_BOOT_WATCHDOG_FEED */
 /* Not enabled, no feed activity */
 #define MCUBOOT_WATCHDOG_FEED()         \

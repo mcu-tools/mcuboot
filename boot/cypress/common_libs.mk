@@ -42,21 +42,38 @@ SOURCES_PDL_SYSTEM := $(COMPONENT_CORE_PATH)/$(SYSTEM_FILE_NAME)
 SOURCES_PDL_STARTUP := $(COMPONENT_CORE_PATH)/$(PLATFORM_SOURCES_PDL_STARTUP)
 
 # Collect source files for Retarget-io
-SOURCES_RETARGET_IO := $(PLATFORM_SOURCES_RETARGET_IO)
+SOURCES_RETARGET_IO := $(wildcard $(PRJ_DIR)/libs/retarget-io/*.c)
 
 # HAL source files
-SOURCES_HAL := $(PLATFORM_SOURCES_HAL)
+SOURCES_HAL := $(wildcard $(PRJ_DIR)/libs/mtb-hal-cat1/source/*.c)
+SOURCES_HAL += $(wildcard $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/source/pin_packages/*.c)
+SOURCES_HAL += $(wildcard $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/source/triggers/*.c)
 
 # Add platform folder to build
 SOURCES_PLATFORM := $(wildcard $(PRJ_DIR)/platforms/BSP/$(FAMILY)/*.c)
 SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/security_counter/*.c)
 SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/security_counter/$(FAMILY)/*.c)
+SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/memory/*.c)
+SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/memory/$(FAMILY)/*.c)
+ifeq ($(USE_EXTERNAL_FLASH), 1)
+SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/memory/external_memory/*.c)
+SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/memory/$(FAMILY)/flash_qspi/*.c)
+endif
+SOURCES_PLATFORM += $(PLATFORM_SOURCES_FLASH)
 
 # PDL related include directories
 INCLUDE_DIRS_PDL := $(CY_LIBS_PATH)/mtb-pdl-cat1/drivers/include
+INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/drivers/third_party/ethernet/include
 INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/ip
 INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include
 INCLUDE_DIRS_PDL += $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/templates/COMPONENT_MTB
+
+# HAL related include directories
+INCLUDE_DIRS_HAL := $(CY_LIBS_PATH)/mtb-hal-cat1/include
+INCLUDE_DIRS_HAL += $(CY_LIBS_PATH)/mtb-hal-cat1/include_pvt
+INCLUDE_DIRS_HAL += $(CY_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/
+INCLUDE_DIRS_HAL += $(CY_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/pin_packages
+INCLUDE_DIRS_HAL += $(CY_LIBS_PATH)/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/triggers
 
 INCLUDE_DIRS_CMSIS += $(CY_LIBS_PATH)/cmsis/Core/Include
 
@@ -67,15 +84,21 @@ INCLUDE_DIRS_CORE_LIB := $(CY_LIBS_PATH)/core-lib/include
 INCLUDE_DIRS_PDL_STARTUP += $(COMPONENT_CORE_PATH)/HEADER_FILES
 
 # Retarget-io related include directories
-INCLUDE_DIRS_RETARGET_IO := $(PLATFORM_INCLUDE_DIRS_RETARGET_IO)
-
-# HAL include directories files
-INCLUDE_DIRS_HAL := $(PLATFORM_INCLUDE_DIRS_HAL)
+INCLUDE_DIRS_RETARGET_IO := $(THIS_APP_PATH)/retarget-io
 
 # Include platforms folder
-INCLUDE_DIRS_PLATFORM := $(PRJ_DIR)/platforms//BSP/$(FAMILY)
+INCLUDE_DIRS_PLATFORM := $(PRJ_DIR)/platforms/BSP/$(FAMILY)
 INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/security_counter/$(FAMILY)
 INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/security_counter
+INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/memory
+INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/memory/flash_map_backend
+INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/memory/$(FAMILY)
+INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/memory/$(FAMILY)/include
+ifeq ($(USE_EXTERNAL_FLASH), 1)
+INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/memory/external_memory
+INCLUDE_DIRS_PLATFORM += $(PRJ_DIR)/platforms/memory/$(FAMILY)/flash_qspi
+endif
+INCLUDE_DIRS_PLATFORM += $(PLATFORM_INCLUDE_DIRS_FLASH)
 INCLUDE_DIRS_PLATFORM += $(PLATFORM_INCLUDE_DIRS_PDL_STARTUP)
 
 # Assembler startup file for platform
@@ -83,14 +106,15 @@ ASM_FILES_STARTUP := $(PLATFORM_STARTUP_FILE)
 
 # Collected source files for libraries
 SOURCES_LIBS := $(SOURCES_PDL)
+SOURCES_LIBS += $(SOURCES_HAL)
 SOURCES_LIBS += $(SOURCES_PDL_SYSTEM)
 SOURCES_LIBS += $(SOURCES_PDL_STARTUP)
 SOURCES_LIBS += $(SOURCES_PDL_RUNTIME)
-SOURCES_LIBS += $(SOURCES_HAL)
 SOURCES_LIBS += $(SOURCES_RETARGET_IO)
 
 # Collected include directories for libraries
 INCLUDE_DIRS_LIBS := $(addprefix -I,$(INCLUDE_DIRS_PDL))
+INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_HAL))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_CMSIS))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_PDL_STARTUP))
 INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_CORE_LIB))

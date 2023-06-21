@@ -20,7 +20,8 @@
 #define FLASH_AREA_ID_image_3 5
 
 /*
- * PSoC6 area defines based on file:
+ * Flash area defines are calculated inside of FLASH_AREA_IMAGE_PRIMARY()
+ * and FLASH_AREA_IMAGE_SECONDARY(), file
  * boot/cypress/MCUBootApp/sysflash/sysflash.h
 */
 #define FLASH_AREA_IMAGE_0 1

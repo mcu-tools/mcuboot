@@ -1,7 +1,39 @@
-# MCUboot Release Notes
+# MCUboot release notes
 
 - Table of Contents
 {:toc}
+
+## Version 1.9.0
+
+The 1.9.0 release of MCUboot contains various bug fixes, improves
+support on some recent targets, and adds support for devices with a
+write alignment larger than 8.
+
+This change introduces a potentially incompatible change to the format
+of the image trailer.  If `BOOT_MAX_ALIGN` is kept at 8, the trailer
+format does not change.  However, to support larger write alignments,
+this value can be increased, which will result in a different magic
+number value.  These targets were previously unsupported in MCUboot,
+so this change should not affect any existing targets.  The change has
+been tested with a `BOOT_MAX_ALIGN` up to 32 bytes.
+
+### About this release
+
+- Add native flash encryption to Espressif targets
+- Numerous documentation improvements
+- Increase coverage of large images in the simulator
+- Add stm32 watchdog support
+- Add support for the `mimxrt685_evk` board
+- Add support for "partial multi-image booting"
+- Add support for clear image generation with encryption capability to
+  imgtool
+- Fix Zephyr when `CONFIG_BOOT_ENCRYPTION_KEY_FILE` is not defined
+- Remove zephyr example test running in shell.  The Go version is
+  primary and much more featureful.
+- imgtool: make `--max-align` default reasonable in most cases.
+- Implement the mcumgr echo command in serial boot mode
+
+### Security fixes
 
 ## Version 1.8.0
 
@@ -20,8 +52,8 @@ for the NuttX RTOS, and the Espressif ESP32 SDK.
   brought in for another reason.
 - Add simulator support for testing direct-XIP and ramload.
 - Support Mbed TLS 3.0.  Updates the submodule for Mbed TLS to 3.0.
-- Enable direct-xip mode in mbed-os port.
-- extract `bootutil_public` library, a common interface for mcuboot
+- Enable direct-xip mode in Mbed-OS port.
+- extract `bootutil_public` library, a common interface for MCUboot
   and the application.
 - Allow to boot primary image if secondary one is unreachable.
 - Add AES256 image encryption support.
@@ -43,7 +75,7 @@ for the NuttX RTOS, and the Espressif ESP32 SDK.
 
 ## Version 1.7.0
 
-The 1.7.0 release of MCUBoot adds support for the Mbed-OS platform,
+The 1.7.0 release of MCUboot adds support for the Mbed-OS platform,
 Equal slots (direct-xip) upgrade mode, RAM loading upgrade mode,
 hardening against hardware level fault injection and timing attacks
 and single image mode.
@@ -52,7 +84,7 @@ There are bug fixes, and associated imgtool updates as well.
 ### About this release
 
 - Initial support for the Mbed-OS platform.
-- Added possibility to enter deep sleep mode after mcuboot app execution
+- Added possibility to enter deep sleep mode after MCUboot app execution
   for cypress platform.
 - Added hardening against hardware level fault injection and timing attacks.
 - Introduced Abstract crypto primitives to simplify porting.
@@ -62,7 +94,7 @@ There are bug fixes, and associated imgtool updates as well.
 - Fixed boostrapping in swap-move mode.
 - Fixed issue causing that interrupted swap-move operation might brick device
   if the primary image was padded.
-- Abstracting mcuboot crypto functions for cleaner porting
+- Abstracting MCUboot crypto functions for cleaner porting
 - Droped flash_area_read_is_empty() porting API.
 - boot/zephyr: Added watchdog feed on nRF devices.
   See `CONFIG_BOOT_WATCHDOG_FEED` option.
@@ -75,7 +107,7 @@ There are bug fixes, and associated imgtool updates as well.
 - imgtool: added possibility to set confirm flag for hex files as well.
 - imgtool: Print image digest during verify.
 
-### Zephyr-RTOS Compatibility
+### Zephyr-RTOS compatibility
 
 This release of MCUboot works with the Zephyr "main" at the time of the
 release. It was tested as of has 7a3b253ce. This version of MCUboot also
@@ -111,7 +143,7 @@ updates as well.
   2.9.10 has an infinite loop in a certain end-of-file situation." Fix
   by updating a dependency in documentation generation.
 
-### Zephyr-RTOS Compatibility
+### Zephyr-RTOS compatibility
 
 This release of MCUboot works the Zephyr "main" at the time of the
 release.  It was tested as of has 1a89ca1238.  When Zephyr v2.3.0 is
@@ -134,7 +166,7 @@ testing coverage and some imgtool updates.
   should work with no changes for little-endian targets, but will
   break compatibility with big-endian targets.
 - A benchmark framework was added to Zephyr
-- ed25519 signature validation can now build without using mbedTLS
+- ed25519 signature validation can now build without using Mbed TLS
   by relying on a bundled tinycrypt based sha-512 implementation.
 - imgtool was updated to correctly detect trailer overruns by image.
 - Encrypted image TLVs can be saved in swap metadata during a swap
@@ -169,8 +201,8 @@ compatible with previous releases of MCUboot.
 - Numerous code cleanups and refactorings
 - Documentation updates for multi-image features
 - Update imgtool.py to support the new features
-- Updated the mbed TLS submodule to current stable version 2.16.3
-- Moved the mbed TLS submodule from within sim/mcuboot-sys to ext.
+- Updated the Mbed TLS submodule to current stable version 2.16.3
+- Moved the Mbed TLS submodule from within sim/mcuboot-sys to ext.
   This will make it easier for other board supports to use this code.
 - Added some additional overflow and bound checks to data in the image
   header, and TLV data.
@@ -236,7 +268,7 @@ docs](encrypted_images.md) for more information.
 
 The 1.2.0 release of MCUboot brings a lot of fixes/updates, where much of the
 changes were on the boot serial functionality and imgtool utility. There are
-no breaking changes in MCUBoot functionality, but some of the CLI parameters
+no breaking changes in MCUboot functionality, but some of the CLI parameters
 in imgtool were changed (either removed or added or updated).
 
 ### About this release
@@ -281,8 +313,8 @@ newt/imgtool support for password protected keys.
   of ecdsa (secp256r1) was added
 - imgtool: removed PKCS1.5 support, added support for password
   protected keys
-- tinycrypt 0.2.8 and the mbed-tls ASN1 parser are now bundled with
-  mcuboot (eg secp256r1 is now free of external dependencies!)
+- tinycrypt 0.2.8 and the Mbed TLS ASN1 parser are now bundled with
+  MCUboot (eg secp256r1 is now free of external dependencies!)
 - Overwrite-only mode was updated to erase/copy only sectors that
   actually store firmware
 - A lot of small code and documentation fixes and updates.
@@ -358,12 +390,12 @@ and RIOT.
   - An overwrite only which upgrades slot 0 with the image in slot 1.
   - A swapping upgrade which enables image test, allowing for rollback to a
     previous known good image.
-- Supports both mbed-TLS and tinycrypt as backend crypto libraries. One of them
+- Supports both Mbed TLS and tinycrypt as backend crypto libraries. One of them
   must be defined and the chosen signing algorithm will require a particular
   library according to this list:
-  - RSA 2048 needs mbed TLS
-  - ECDSA secp224r1 needs mbed TLS
-  - ECDSA secp256r1 needs tinycrypt as well as the ASN.1 code from mbed TLS
+  - RSA 2048 needs Mbed TLS
+  - ECDSA secp224r1 needs Mbed TLS
+  - ECDSA secp256r1 needs tinycrypt as well as the ASN.1 code from Mbed TLS
     (so still needs that present).
 
 ### Known issues

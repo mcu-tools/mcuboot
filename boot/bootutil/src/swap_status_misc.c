@@ -43,18 +43,17 @@
 
 MCUBOOT_LOG_MODULE_DECLARE(mcuboot);
 
-#if defined(MCUBOOT_SWAP_USING_STATUS)
+#define ERROR_VALUE      (UINT32_MAX)
 
-#define BOOT_MAGIC_ARR_SZ \
-    (sizeof boot_img_magic / sizeof boot_img_magic[0])
+#if defined(MCUBOOT_SWAP_USING_STATUS)
 
 static int
 boot_find_status(int image_index, const struct flash_area **fap);
 
 static int
-boot_magic_decode(const uint32_t *magic)
+boot_magic_decode(const union boot_img_magic_t *magic_p)
 {
-    if (memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ) == 0) {
+    if (memcmp((const void*)magic_p->val, (const void *)&boot_img_magic.val, BOOT_MAGIC_SZ) == 0) {
         return BOOT_MAGIC_GOOD;
     }
     return BOOT_MAGIC_BAD;
@@ -111,15 +110,28 @@ boot_status_off(const struct flash_area *fap)
 }
 
 #ifdef MCUBOOT_ENC_IMAGES
+/**
+ * @returns ERROR_VALUE on error, otherwise result.
+ */
 static inline uint32_t
 boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 {
+    uint32_t slot_offset;
+    uint32_t res = ERROR_VALUE;
+    uint32_t boot_swap_size_offset = boot_swap_size_off(fap);
+
 #ifdef MCUBOOT_SWAP_SAVE_ENCTLV
     /* suggest encryption key is also stored in status partition */
-    return boot_swap_size_off(fap) - (((uint32_t)slot + 1UL) * (uint32_t)BOOT_ENC_TLV_SIZE);
+    slot_offset = ((uint32_t)slot + 1UL) * (uint32_t)BOOT_ENC_TLV_SIZE;
 #else
-    return boot_swap_size_off(fap) - (((uint32_t)slot + 1UL) * (uint32_t)BOOT_ENC_KEY_SIZE);
+    slot_offset = ((uint32_t)slot + 1UL) * (uint32_t)BOOT_ENC_KEY_SIZE;
 #endif
+
+    if (boot_swap_size_offset >= slot_offset)
+    {
+        res = boot_swap_size_offset - slot_offset;
+    }
+    return res;
 }
 #endif
 
@@ -160,10 +172,12 @@ int
 boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
         const struct boot_status *bs)
 {
-    uint32_t off;
     int rc;
-
-    off = boot_enc_key_off(fap, slot);
+    uint32_t off = boot_enc_key_off(fap, slot);
+    if (ERROR_VALUE == off)
+    {
+        return -1;
+    }
 #ifdef MCUBOOT_SWAP_SAVE_ENCTLV
     rc = swap_status_update(fap->fa_id, off,
                             bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
@@ -188,6 +202,10 @@ boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs)
     rc = boot_find_status(image_index, &fap);
     if (0 == rc) {
         off = boot_enc_key_off(fap, slot);
+        if (ERROR_VALUE == off)
+        {
+            return -1;
+        }
 #ifdef MCUBOOT_SWAP_SAVE_ENCTLV
         rc = swap_status_retrieve(fap->fa_id, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
         if (0 == rc) {
@@ -220,7 +238,7 @@ boot_write_magic(const struct flash_area *fap)
     off = boot_magic_off(fap);
 
     rc = swap_status_update(fap->fa_id, off,
-                            boot_img_magic, BOOT_MAGIC_SZ);
+                            (const uint8_t *)&boot_img_magic, BOOT_MAGIC_SZ);
 
     if (rc != 0) {
         return -1;
@@ -291,11 +309,11 @@ int
 boot_read_swap_state(const struct flash_area *fap,
                      struct boot_swap_state *state)
 {
-    uint32_t magic[BOOT_MAGIC_ARR_SZ];
-    uint32_t off;
+    union boot_img_magic_t magic = {0U};
+    uint32_t off = 0U;
     uint32_t trailer_off = 0U;
     uint8_t swap_info = 0U;
-    int rc;
+    int rc = 0;
     uint32_t erase_trailer = 0;
     bool buf_is_clean = false;
     bool is_primary = false;
@@ -311,7 +329,7 @@ boot_read_swap_state(const struct flash_area *fap,
 
     off = boot_magic_off(fap);
     /* retrieve value for magic field from status partition area */
-    rc = swap_status_retrieve(fap->fa_id, off, magic, BOOT_MAGIC_SZ);
+    rc = swap_status_retrieve(fap->fa_id, off, &magic, BOOT_MAGIC_SZ);
     if (rc < 0) {
         return -1;
     }
@@ -328,26 +346,26 @@ boot_read_swap_state(const struct flash_area *fap,
     }
 
     /* fill magic number value if equal to expected */
-    if (bootutil_buffer_is_erased(fap_stat, magic, BOOT_MAGIC_SZ)) {
+    if (bootutil_buffer_is_erased(fap_stat, &magic, BOOT_MAGIC_SZ)) {
         state->magic = BOOT_MAGIC_UNSET;
 
         /* attempt to find magic in upgrade img slot trailer */
         if (is_secondary) {
             trailer_off = fap->fa_size - BOOT_MAGIC_SZ;
 
-            rc = flash_area_read(fap, trailer_off, magic, BOOT_MAGIC_SZ);
+            rc = flash_area_read(fap, trailer_off, &magic, BOOT_MAGIC_SZ);
             if (rc != 0) {
                 return -1;
             }
-            buf_is_clean = bootutil_buffer_is_erased(fap, magic, BOOT_MAGIC_SZ);
+            buf_is_clean = bootutil_buffer_is_erased(fap, &magic, BOOT_MAGIC_SZ);
             if (buf_is_clean) {
                 state->magic = BOOT_MAGIC_UNSET;
             } else {
-                state->magic = (uint8_t)boot_magic_decode(magic);
+                state->magic = (uint8_t)boot_magic_decode(&magic);
                 /* put magic to status partition for upgrade slot*/
                 if ((uint32_t)BOOT_MAGIC_GOOD == state->magic) {
                     rc = swap_status_update(fap->fa_id, off,
-                                    (uint8_t *) magic, BOOT_MAGIC_SZ);
+                                    (uint8_t *)&magic, BOOT_MAGIC_SZ);
                 }
                 if (rc < 0) {
                     return -1;
@@ -357,7 +375,7 @@ boot_read_swap_state(const struct flash_area *fap,
             }
         }
     } else {
-        state->magic = (uint8_t)boot_magic_decode(magic);
+        state->magic = (uint8_t)boot_magic_decode(&magic);
     }
 
     off = boot_swap_info_off(fap);
@@ -468,7 +486,7 @@ boot_read_swap_state(const struct flash_area *fap,
 static int
 boot_find_status(int image_index, const struct flash_area **fap)
 {
-    uint32_t magic[BOOT_MAGIC_ARR_SZ] = {0};
+    union boot_img_magic_t magic = {0};
     uint32_t off;
     int rc = -1;
     uint8_t area = FLASH_AREA_ERROR;
@@ -492,10 +510,10 @@ boot_find_status(int image_index, const struct flash_area **fap)
          return rc;
     }
     off = boot_magic_off(*fap);
-    rc = swap_status_retrieve(area, off, magic, BOOT_MAGIC_SZ);
+    rc = swap_status_retrieve(area, off, &magic, BOOT_MAGIC_SZ);
 
     if (0 == rc) {
-        rc = memcmp(magic, boot_img_magic, BOOT_MAGIC_SZ);
+        rc = memcmp((const void*)&magic.val, (const void *)&boot_img_magic.val, BOOT_MAGIC_SZ);
     }
 
     flash_area_close(*fap);

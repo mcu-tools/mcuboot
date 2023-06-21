@@ -56,7 +56,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
 {
     const struct flash_area *fap = NULL;
     int area_id;
-    int rc;
+    int rc = 0;
 
     int saved_slot = slot;
 
@@ -95,6 +95,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
     }
 
     area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
+
     rc = flash_area_open(area_id, &fap);
     if (rc != 0) {
         rc = BOOT_EFLASH;
@@ -140,8 +141,6 @@ done:
     flash_area_close(fap);
     return rc;
 }
-
-#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 
 #ifndef MCUBOOT_SWAP_USING_STATUS
 /**
@@ -569,13 +568,14 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     const struct flash_area *fap_scratch = NULL;
     uint32_t copy_sz;
     uint32_t trailer_sz;
+    uint32_t sector_sz;
     uint32_t img_off;
     uint32_t scratch_trailer_off;
     struct boot_swap_state swap_state = {0};
     size_t last_sector;
     bool erase_scratch;
     uint8_t image_index;
-    int rc;
+    __attribute__((unused)) int rc;
 
     /* Calculate offset from start of image area. */
     img_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx);
@@ -584,6 +584,18 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
 #ifdef MCUBOOT_SWAP_USING_STATUS
     trailer_sz = BOOT_WRITE_SZ(state); // TODO: deep investigation in swap_status use case
+    /* TODO: this code needs to be refined. It is introduced to overcome
+     * situation when MCUBootApp lives in internal memory, but user app
+     * is executed from different type memory - external in XIP mode in
+     * this case. This situation now arise on PSOC6 when XIP execution is
+     * used, bay may be applicable to other devices, where solution is
+     * distributed between memories with different write/erase sizes.
+     */
+#ifdef CY_BOOT_USE_EXTERNAL_FLASH
+    if (trailer_sz > MEMORY_ALIGN) {
+        trailer_sz = MEMORY_ALIGN;
+    }
+#endif
 #else
     trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
 #endif
@@ -598,6 +610,21 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
      * controls if special handling is needed (swapping last sector).
      */
     last_sector = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 1;
+    sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, last_sector);
+
+    if (sector_sz < trailer_sz) {
+        uint32_t trailer_sector_sz = sector_sz;
+
+        while (trailer_sector_sz < trailer_sz) {
+            /* Consider that the image trailer may span across sectors of
+             * different sizes.
+             */
+            sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, --last_sector);
+
+            trailer_sector_sz += sector_sz;
+        }
+    }
+
     if ((img_off + sz) >
         boot_img_sector_off(state, BOOT_PRIMARY_SLOT, last_sector)) {
         copy_sz -= trailer_sz;
@@ -780,6 +807,8 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     last_sector_idx = 0;
     last_idx_secondary_slot = 0;
 
+    BOOT_LOG_INF("Starting swap using scratch algorithm.");
+
     /*
      * Knowing the size of the largest image between both slots, here we
      * find what is the last sector in the primary slot that needs swapping.
@@ -823,7 +852,5 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
-
-#endif /* !MCUBOOT_DIRECT_XIP && !MCUBOOT_RAM_LOAD */
 
 #endif /* !MCUBOOT_SWAP_USING_MOVE */

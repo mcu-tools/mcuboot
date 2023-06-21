@@ -63,7 +63,7 @@ else ifeq ($(HOST_OS), linux)
 	LD := $(CC)
 endif
 
-PDL_ELFTOOL := "hal/tools/$(HOST_OS)/elf/cymcuelftool"
+PDL_ELFTOOL := $(TOOLCHAIN_PATH)/../cymcuelftool-1.0/bin/cymcuelftool
 
 OBJDUMP  := "$(GCC_PATH)/bin/arm-none-eabi-objdump"
 OBJCOPY  := "$(GCC_PATH)/bin/arm-none-eabi-objcopy"
@@ -72,37 +72,47 @@ OBJCOPY  := "$(GCC_PATH)/bin/arm-none-eabi-objcopy"
 ifeq ($(COMPILER), GCC_ARM)
 	# set build-in compiler flags
 	CFLAGS_COMMON :=  -mthumb -ffunction-sections -fdata-sections  -g -Wall -Wextra
+	CFLAGS_COMMON += -Wno-discarded-qualifiers -Wno-ignored-qualifiers # KILLME
+
+	ifeq ($(WARN_AS_ERR), 1)
+		CFLAGS_COMMON += -Werror
+	endif
+
 	ifeq ($(BUILDCFG), Debug)
 		CFLAGS_SPECIAL ?= -Og -g3
 		CFLAGS_COMMON += $(CFLAGS_SPECIAL)
 	else ifeq ($(BUILDCFG), Release)
-		CFLAGS_COMMON += -Os -g -DNDEBUG
+		ifeq ($(CFLAGS_OPTIMIZATION), )
+			# Blinky upgrade releas XIP WORKAROUND
+			CFLAGS_COMMON += -Os -g -DNDEBUG
+		endif
 	else
 $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif
 
-	# ifeq ($(CORE), CM33)
-	# 	CFLAGS_PLATFORM := -c -mcpu=cortex-m33+nodsp --specs=nano.specs
-	# else
-	# 	CFLAGS_PLATFORM := -mcpu=cortex-$(CORE_SUFFIX) -mfloat-abi=soft -fno-stack-protector -fstrict-aliasing
-	# endif
-
-	# $CFLAGS_PLATFORM is defined in plaform specific mk file
 	CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_PLATFORM) $(INCLUDES)
 
 	CC_DEPEND = -MD -MP -MF
 
 	LDFLAGS_COMMON := -mcpu=cortex-$(CORE_SUFFIX) -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -ffat-lto-objects -g --enable-objc-gc
+
+	ifeq ($(WARN_AS_ERR), 1)
+		LDFLAGS_COMMON += -Wl,--fatal-warnings
+	endif
+
 	ifeq ($(BUILDCFG), Debug)
 		LDFLAGS_SPECIAL ?= -Og
 		LDFLAGS_COMMON += $(LDFLAGS_SPECIAL)
 	else ifeq ($(BUILDCFG), Release)
-		LDFLAGS_OPTIMIZATION ?= -Os
+		ifeq ($(CFLAGS_OPTIMIZATION), )
+			# Blinky upgrade releas XIP WORKAROUND
+			LDFLAGS_OPTIMIZATION ?= -Os
+		endif
 	else
 $(error BUILDCFG : '$(BUILDCFG)' is not supported)
 	endif
 	LDFLAGS_NANO := -L "$(GCC_PATH)/arm-none-eabi/lib/thumb/v6-m"
-	LDFLAGS := $(LDFLAGS_COMMON) $(LDFLAGS_NANO)
+	LDFLAGS := $(LDFLAGS_COMMON) $(LDFLAGS_NANO) $(LDFLAGS_PLATFORM)
 endif
 
 ###############################################################################

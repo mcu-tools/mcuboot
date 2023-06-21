@@ -30,12 +30,12 @@ flash partitions defined is the frdm_k64f's in
 `boards/arm/frdm_k64f/frdm_k64f.dts`. Make sure the labels in your board's
 `.dts` file match the ones used there.
 
-## Installing Requirements and Dependencies
+## Installing requirements and dependencies
 
-Install additional packages required for development with mcuboot:
+Install additional packages required for development with MCUboot:
 
 ```
-  cd ~/mcuboot  # or to your directory where mcuboot is cloned
+  cd ~/mcuboot  # or to your directory where MCUboot is cloned
   pip3 install --user -r scripts/requirements.txt
 ```
 
@@ -71,10 +71,10 @@ directory you chose when running `cmake`. Use the Zephyr build
 system `flash` target to flash these binaries, usually by running
 `make flash` (or `ninja flash`, etc.) from the build directory. Depending
 on the target and flash tool used, this might erase the whole of the flash
-memory (mass erase) or only the sectors where the boot loader resides prior to
+memory (mass erase) or only the sectors where the bootloader resides prior to
 programming the bootloader image itself.
 
-## Building Applications for the bootloader
+## Building applications for the bootloader
 
 In addition to flash partitions in DTS, some additional configuration
 is required to build applications for MCUboot.

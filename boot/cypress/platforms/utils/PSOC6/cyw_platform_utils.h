@@ -29,7 +29,7 @@
 #include "cy_pdl.h"
 #include "bootutil/fault_injection_hardening.h"
 
-#if defined CM0P
+#if defined BOOT_CM0P
 /**
  * Starts the application on the Cortex-M0+ core. MCUBoot is also running on
  * this core, so we just clean up memory, set up the vector table and stack,
@@ -38,7 +38,7 @@
  * @param app_addr  FIH-protected address of the app's vector table.
  */
 __NO_RETURN void psoc6_launch_cm0p_app(fih_uint app_addr);
-#elif defined CM4
+#elif defined BOOT_CM4
 /**
  * Starts the application on the Cortex-M4 core. MCUBoot is also running on
  * this core, so we just clean up memory, set up the vector table and stack,

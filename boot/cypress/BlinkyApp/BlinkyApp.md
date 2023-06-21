@@ -28,7 +28,7 @@ Pre-build action is implemented to define the start address and flash size, as w
 
 `FLASH_MAP` `make` parameter is used to provide an input file for pre-build action. Refer to `MCUBootApp.md` for details.
 
-The result of the pre-build script is an auto-generated `flashmap.mk` file with a set of makefile flags:
+The result of the pre-build script is an auto-generated `memorymap.mk` file with a set of makefile flags:
 
 `PRIMARY_IMG_START` - start address of the primary image in flash, this value is defined in the JSON flash map as the `"value"` field of the address section for `"application_#"`.
 
@@ -57,7 +57,9 @@ Memory (stack) corruption of the CM0p application can cause a failure if SystemC
 
 Toolchain is set by default in `toolchains.mk` file, depending on `COMPILER` makefile variable. MCUBoot is currently support only `GCC_ARM` as compiler. Toolchain path can be redefined, by setting `TOOLCHAIN_PATH` build flag to desired toolchain path. Below is an example on how to set toolchain path from **ModusToolbox™ IDE 3.0**:
 
-    make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/$(USERNAME)/ModusToolbox/tools_3.0/gcc
+    make clean_boot app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/${USERNAME}/ModusToolbox/tools_3.0/gcc
+
+    make clean_boot app APP_NAME=BlinkyApp PLATFORM=XMC7200 BUILDCFG=Debug FLASH_MAP=platforms/memory/XMC7000/flashmap/xmc7000_overwrite_single.json PLATFORM_CONFIG=platforms/memory/XMC7000/flashmap/xmc7200_platform.json CORE=CM7 APP_CORE=CM7 CORE_ID=0 IMG_TYPE=BOOT IMG_ID=1 TOOLCHAIN_PATH=c:/Users/${USERNAME}/ModusToolbox/tools_3.0/gcc
 
 The supported platforms:
 
@@ -66,6 +68,8 @@ The supported platforms:
 * PSOC_062_512K
 * PSOC_063_1M
 * CYW20829
+* XMC7200
+* XMC7100
 
 The root directory is boot/cypress.
 Since BlinkyApp built for BOOT or UPGRADE slot has its own folder BlinkyApp/out/boot or BlinkyApp/out/upgrade consider using following jobs to clear build folder before build.
@@ -75,7 +79,7 @@ Since BlinkyApp built for BOOT or UPGRADE slot has its own folder `BlinkyApp/out
  - **clean_boot** - to clean the BOOT image directory
  - **clean_upgrade** - to clean the UPGRADE image directory.   
  
-These jobs also remove auto-generated files 'flashmap.mk' and 'cy_flash_map.h', which is required to eliminate possible errors.   
+These jobs also remove auto-generated files 'memorymap.mk' and 'memory.h', which is required to eliminate possible errors.   
 
 **Upgrade mode dependency**
 
@@ -83,21 +87,25 @@ These jobs also remove auto-generated files 'flashmap.mk' and 'cy_flash_map.h', 
 To build `BlinkyApp` for different upgrade modes choose flash map JSON file with the corresponding suffix - either `_swap_` or `_overwrite_`.  
 But hold in the mind, that `MCUBootApp` and `BlinkyApp` should use the same flash map file!  
 For example: to building `MCUBootApp` and `BlinkyApp` in the 'single overwride' mode use the flash map file:   
-`FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json`  
+`FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_single.json`  
 
 **Single-image**
 
 The following command will build BlinkyApp as a regular HEX file for the primary (BOOT) slot to be used in a single image case with `swap` upgrade type of Bootloader:
 
-    make clean_boot app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=BOOT FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json IMG_ID=1
+    make clean_boot app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=BOOT FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json IMG_ID=1
+
+    make clean_boot app APP_NAME=BlinkyApp PLATFORM=XMC7200 BUILDCFG=Debug FLASH_MAP=platforms/memory/XMC7000/flashmap/xmc7000_overwrite_single.json PLATFORM_CONFIG=platforms/memory/XMC7000/flashmap/xmc7200_platform.json CORE=CM7 APP_CORE=CM7 CORE_ID=0 IMG_TYPE=BOOT IMG_ID=1
 
 To build an image for the secondary (UPGRADE) slot to be used in a single image case with `swap` upgrade type of Bootloader:
 
-    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_swap_single.json IMG_ID=1
+    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json IMG_ID=1
+
+    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=XMC7200 BUILDCFG=Debug FLASH_MAP=platforms/memory/XMC7000/flashmap/xmc7000_overwrite_single.json PLATFORM_CONFIG=platforms/memory/XMC7000/flashmap/xmc7200_platform.json CORE=CM7 APP_CORE=CM7 CORE_ID=0 IMG_TYPE=UPGRADE IMG_ID=1
 
 To build an image for the secondary (UPGRADE) slot to be used in a single image case with `overwrite` upgrade type of Bootloader:
 
-    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json IMG_ID=1
+    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_single.json IMG_ID=1
 
 **Multi-image**
 
@@ -109,7 +117,7 @@ To obtain the appropriate hex files to use with multi-image MCUBootApp, the make
 
 `IMG_ID` flag value should correspond to the `application_#` number of JSON flash map file used for the build. For example, to build `BlinkyApp` for the UPGRADE slot of the second image following command is used:
 
-    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json IMG_ID=2
+    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_single.json IMG_ID=2
 
 When this option is omitted, `IMG_ID=1` is assumed.    
 
@@ -120,13 +128,13 @@ To prepare MCUBootApp for work with external memory, refer to [ExternalMemory.md
 
 To build a `BlinkyApp` upgrade image for external memory to be used in a single image configuration with overwrite upgrade mode, use the command:
 
-    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single_smif.json IMG_ID=1
+    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_single_smif.json IMG_ID=1
 
 `ERASED_VALUE` defines the memory cell contents in the erased state. It is `0x00` for PSoC™ 6 internal flash and `0xff` for S25FL512S. For `CYW20289` default value is `0xff` since it only uses an external flash.
 
 In the multi-image configuration, an upgrade image for the second application is built using the command:
 
-    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_multi_smif.json IMG_ID=2
+    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_multi_smif.json IMG_ID=2
 
 **Encrypted upgrade image**
 
@@ -134,7 +142,7 @@ To prepare MCUBootApp for work with an encrypted upgrade image, refer to [MCUBoo
 
 To obtain an encrypted upgrade image of BlinkyApp, pass extra flag `ENC_IMG=1` in the command line, for example:
 
-    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/cy_flash_pal/flash_psoc6/flashmap/psoc6_overwrite_single.json IMG_ID=1 ENC_IMG=1
+    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_single.json IMG_ID=1 ENC_IMG=1
 
 This also suggests that the user has already placed a corresponding *.pem key in the \keys folder. The key variables are defined in the root Makefile as SIGN_KEY_FILE and ENC_KEY_FILE
 
@@ -152,6 +160,8 @@ Refer to [CYW20829.md](../platforms/CYW20829.md) for details of encrypted image 
     - `PSOC_062_1M`
     - `PSOC_062_512K`
     - `CYW20289`
+    - `XMC7200`
+    - `XMC7100`
 - `SLOT_SIZE` - The size of the primary/secondary slot of MCUBootApp. This app will be used with
     - 0x%VALUE%
 - `IMG_TYPE` - The slot of MCUBootApp, for which the image is being built.
@@ -164,7 +174,7 @@ Refer to [CYW20829.md](../platforms/CYW20829.md) for details of encrypted image 
     - Example: TOOLCHAIN_PATH=/home/user/ModusToolbox/tools_2.4/gcc
     - Example: TOOLCHAIN_PATH=C:/ModusToolbox/tools_2.4/gcc
 
-Flags are set by pre-build action. Result of pre-build can be found in autogenerated file `BlinkyApp/flashmap.mk`.   
+Flags are set by pre-build action. Result of pre-build can be found in autogenerated file `BlinkyApp/memorymap.mk`.   
 
 - `USE_OVERWRITE` - Define the Upgrade mode type of `MCUBootApp` to use with this app.
     - `1` - For Overwrite mode.
@@ -178,7 +188,7 @@ Flags are set by pre-build action. Result of pre-build can be found in autogener
 
 ### Post-build
 
-The post-build action is executed at the compile time for `BlinkyApp`. For the `PSOC_062_2M`, `PSOC_062_1M`, `PSOC_062_512K` platforms, it calls `imgtool` from `MCUboot` scripts and adds a signature to the compiled image.
+The post-build action is executed at the compile time for `BlinkyApp`. For the `XMC7200` `XMC7100` `PSOC_062_2M`, `PSOC_062_1M`, `PSOC_062_512K` platforms, it calls `imgtool` from `MCUboot` scripts and adds a signature to the compiled image.
 
 Flags passed to `imgtool` for a signature are defined in the `SIGN_ARGS` variable in BlinkyApp.mk.
 
