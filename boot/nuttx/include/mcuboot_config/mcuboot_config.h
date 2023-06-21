@@ -58,6 +58,12 @@
  * the default upgrade mode.
  */
 
+/* Use image swap without using scratch area.*/
+
+#ifdef CONFIG_MCUBOOT_SWAP_USING_MOVE
+#  define MCUBOOT_SWAP_USING_MOVE 1
+#endif
+
 /* Enable the overwrite-only code path. */
 
 #ifdef CONFIG_MCUBOOT_OVERWRITE_ONLY
