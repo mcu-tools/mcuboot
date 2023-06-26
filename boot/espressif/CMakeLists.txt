@@ -104,6 +104,26 @@ else()
     set(esptool_path "${ESPTOOL_COMMAND}")
 endif()
 
+# Flash frequency parameter for esptool.py, for more information, check `esptool.py -h`
+if (NOT DEFINED ESP_FLASH_FREQ)
+    if ("${MCUBOOT_TARGET}" STREQUAL "esp32" OR
+        "${MCUBOOT_TARGET}" STREQUAL "esp32s2" OR
+        "${MCUBOOT_TARGET}" STREQUAL "esp32s3" OR
+        "${MCUBOOT_TARGET}" STREQUAL "esp32c3")
+        set(ESP_FLASH_FREQ "40m")
+    endif()
+endif()
+
+# Flash mode parameter for esptool.py, for more information, check `esptool.py -h`
+if (NOT DEFINED ESP_FLASH_MODE)
+    set(ESP_FLASH_MODE "dio")
+endif()
+
+# Serial baud rate parameter for esptool.py flash use, for more information, check `esptool.py -h`
+if (NOT DEFINED ESP_BAUD_RATE)
+    set(ESP_BAUD_RATE 115200)
+endif()
+
 if (DEFINED CONFIG_ESP_SIGN_RSA)
     include(${CMAKE_CURRENT_LIST_DIR}/include/crypto_config/rsa.cmake)
 elseif (DEFINED CONFIG_ESP_SIGN_EC256)
@@ -294,7 +314,7 @@ add_custom_command(TARGET ${APP_EXECUTABLE} POST_BUILD
     COMMAND
     ${esptool_path}
     --chip ${MCUBOOT_TARGET} elf2image --min-rev ${ESP_MIN_REVISION}
-    --flash_mode dio --flash_freq 40m --flash_size ${CONFIG_ESP_FLASH_SIZE}
+    --flash_mode ${ESP_FLASH_MODE} --flash_freq ${ESP_FLASH_FREQ} --flash_size ${CONFIG_ESP_FLASH_SIZE}
     -o ${APP_NAME}.bin ${APP_NAME}.elf
     )
 
@@ -314,9 +334,9 @@ add_custom_command(TARGET flash
     USES_TERMINAL
     COMMAND
     ${esptool_path}
-    -p ${FLASH_PORT} -b 2000000 --before default_reset --after no_reset
+    -p ${FLASH_PORT} -b ${ESP_BAUD_RATE} --before default_reset --after no_reset
     --chip ${MCUBOOT_TARGET} write_flash
-    --flash_mode dio --flash_size ${CONFIG_ESP_FLASH_SIZE}
-    --flash_freq 40m ${CONFIG_ESP_BOOTLOADER_OFFSET}
+    --flash_mode ${ESP_FLASH_MODE} --flash_size ${CONFIG_ESP_FLASH_SIZE}
+    --flash_freq ${ESP_FLASH_FREQ} ${CONFIG_ESP_BOOTLOADER_OFFSET}
     ${APP_NAME}.bin
     )
