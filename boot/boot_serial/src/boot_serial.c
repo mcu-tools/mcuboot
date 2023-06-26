@@ -262,6 +262,7 @@ bs_list(char *buf, int len)
 #endif
 
         for (slot = 0; slot < 2; slot++) {
+            FIH_DECLARE(fih_rc, FIH_FAILURE);
             uint8_t tmpbuf[64];
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
@@ -285,8 +286,6 @@ bs_list(char *buf, int len)
 
             if (hdr.ih_magic == IMAGE_MAGIC)
             {
-                FIH_DECLARE(fih_rc, FIH_FAILURE);
-
                 BOOT_HOOK_CALL_FIH(boot_image_check_hook,
                                    FIH_BOOT_HOOK_REGULAR,
                                    fih_rc, image_index, slot);
@@ -306,10 +305,11 @@ bs_list(char *buf, int len)
                     FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, &hdr, fap, tmpbuf, sizeof(tmpbuf),
                                     NULL, 0, NULL);
                 }
+            }
 
-                if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
-                    continue;
-                }
+            if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                flash_area_close(fap);
+                continue;
             }
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
@@ -354,7 +354,7 @@ bs_list(char *buf, int len)
 
             if (!(hdr.ih_flags & IMAGE_F_NON_BOOTABLE)) {
                 zcbor_tstr_put_lit_cast(cbor_state, "bootable");
-                zcbor_bool_put(cbor_state, 1);
+                zcbor_bool_put(cbor_state, true);
             }
 
             if (confirmed) {
