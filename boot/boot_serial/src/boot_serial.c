@@ -22,6 +22,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <errno.h>
+#include <limits.h>
 
 #include "sysflash/sysflash.h"
 
@@ -617,7 +618,8 @@ bs_upload(char *buf, int len)
     size_t img_chunk_off = SIZE_MAX;    /* Offset of image chunk within image  */
     uint8_t rem_bytes;                  /* Reminder bytes after aligning chunk write to
                                          * to flash alignment */
-    uint32_t img_num;
+    uint32_t img_num_tmp = UINT_MAX;    /* Temp variable for image number */
+    static uint32_t img_num = 0;
     size_t img_size_tmp = SIZE_MAX;     /* Temp variable for image size */
     const struct flash_area *fap = NULL;
     int rc;
@@ -639,7 +641,7 @@ bs_upload(char *buf, int len)
     zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1);
 
     struct zcbor_map_decode_key_val image_upload_decode[] = {
-        ZCBOR_MAP_DECODE_KEY_DECODER("image", zcbor_uint32_decode, &img_num),
+        ZCBOR_MAP_DECODE_KEY_DECODER("image", zcbor_uint32_decode, &img_num_tmp),
         ZCBOR_MAP_DECODE_KEY_DECODER("data", zcbor_bstr_decode, &img_chunk_data),
         ZCBOR_MAP_DECODE_KEY_DECODER("len", zcbor_size_decode, &img_size_tmp),
         ZCBOR_MAP_DECODE_KEY_DECODER("off", zcbor_size_decode, &img_chunk_off),
@@ -670,6 +672,15 @@ bs_upload(char *buf, int len)
          * Offset must be set in every block.
          */
         goto out_invalid_data;
+    }
+
+    /* Use image number only from packet with offset == 0. */
+    if (img_chunk_off == 0) {
+        if (img_num_tmp != UINT_MAX) {
+            img_num = img_num_tmp;
+        } else {
+            img_num = 0;
+        }
     }
 
 #if !defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
