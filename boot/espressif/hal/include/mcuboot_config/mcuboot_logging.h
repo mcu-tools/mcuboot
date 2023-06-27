@@ -27,6 +27,8 @@ extern int ets_printf(const char *fmt, ...);
 #define TARGET "[esp32c3]"
 #elif CONFIG_IDF_TARGET_ESP32C6
 #define TARGET "[esp32c6]"
+#elif CONFIG_IDF_TARGET_ESP32C2
+#define TARGET "[esp32c2]"
 #elif CONFIG_IDF_TARGET_ESP32H2
 #define TARGET "[esp32h2]"
 #else
