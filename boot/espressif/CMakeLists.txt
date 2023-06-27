@@ -21,7 +21,8 @@ if ("${MCUBOOT_TARGET}" STREQUAL "esp32" OR
     "${MCUBOOT_TARGET}" STREQUAL "esp32s3")
     set(MCUBOOT_ARCH "xtensa")
 elseif("${MCUBOOT_TARGET}" STREQUAL "esp32c3" OR
-    "${MCUBOOT_TARGET}" STREQUAL "esp32c6")
+    "${MCUBOOT_TARGET}" STREQUAL "esp32c6" OR
+    "${MCUBOOT_TARGET}" STREQUAL "esp32h2")
     set(MCUBOOT_ARCH "riscv")
 endif()
 
@@ -35,6 +36,8 @@ elseif("${MCUBOOT_TARGET}" STREQUAL "esp32s3")
 elseif("${MCUBOOT_TARGET}" STREQUAL "esp32c3")
     set(ESP_MIN_REVISION 3)
 elseif("${MCUBOOT_TARGET}" STREQUAL "esp32c6")
+    set(ESP_MIN_REVISION 0)
+elseif("${MCUBOOT_TARGET}" STREQUAL "esp32h2")
     set(ESP_MIN_REVISION 0)
 else()
     message(FATAL_ERROR "Unsupported target ${MCUBOOT_TARGET}")
@@ -115,6 +118,8 @@ if (NOT DEFINED ESP_FLASH_FREQ)
         "${MCUBOOT_TARGET}" STREQUAL "esp32c3" OR
         "${MCUBOOT_TARGET}" STREQUAL "esp32c6")
         set(ESP_FLASH_FREQ "40m")
+    elseif("${MCUBOOT_TARGET}" STREQUAL "esp32h2")
+        set(ESP_FLASH_FREQ "24m")
     endif()
 endif()
 
