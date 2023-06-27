@@ -240,7 +240,7 @@ bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
  * List images.
  */
 static void
-bs_list(char *buf, int len)
+bs_list(void)
 {
     struct image_header hdr;
     uint32_t slot, area_id;
@@ -521,7 +521,7 @@ bs_set(char *buf, int len)
 out:
     if (rc == 0) {
         /* Success - return updated list of images */
-        bs_list(buf, len);
+        bs_list();
     } else {
         /* Error code, only return the error */
         zcbor_map_start_encode(cbor_state, 10);
@@ -551,7 +551,7 @@ static void
 bs_list_set(uint8_t op, char *buf, int len)
 {
     if (op == NMGR_OP_READ) {
-        bs_list(buf, len);
+        bs_list();
     } else {
 #ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
         bs_set(buf, len);
