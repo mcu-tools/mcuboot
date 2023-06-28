@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 
 fn main() {
     // Feature flags.
+    let psa_crypto_api = env::var("CARGO_FEATURE_PSA_CRYPTO_API").is_ok();
     let sig_rsa = env::var("CARGO_FEATURE_SIG_RSA").is_ok();
     let sig_rsa3072 = env::var("CARGO_FEATURE_SIG_RSA3072").is_ok();
     let sig_ecdsa = env::var("CARGO_FEATURE_SIG_ECDSA").is_ok();
@@ -85,6 +86,66 @@ fn main() {
     if vec![sig_rsa, sig_rsa3072, sig_ecdsa, sig_ed25519].iter()
         .fold(0, |sum, &v| sum + v as i32) > 1 {
         panic!("mcuboot does not support more than one sig type at the same time");
+    }
+
+    if psa_crypto_api {
+        if sig_ecdsa || enc_ec256 || enc_x25519 ||
+                enc_aes256_ec256 || sig_ecdsa_mbedtls || enc_aes256_x25519 ||
+                enc_kw  || enc_aes256_kw {
+            conf.file("csupport/psa_crypto_init_stub.c");
+        } else {
+            conf.conf.define("MCUBOOT_USE_PSA_CRYPTO", None);
+            conf.file("../../ext/mbedtls/library/aes.c");
+            conf.file("../../ext/mbedtls/library/aesni.c");
+            conf.file("../../ext/mbedtls/library/aria.c");
+            conf.file("../../ext/mbedtls/library/asn1write.c");
+            conf.file("../../ext/mbedtls/library/base64.c");
+            conf.file("../../ext/mbedtls/library/camellia.c");
+            conf.file("../../ext/mbedtls/library/ccm.c");
+            conf.file("../../ext/mbedtls/library/chacha20.c");
+            conf.file("../../ext/mbedtls/library/chachapoly.c");
+            conf.file("../../ext/mbedtls/library/cipher.c");
+            conf.file("../../ext/mbedtls/library/cipher_wrap.c");
+            conf.file("../../ext/mbedtls/library/ctr_drbg.c");
+            conf.file("../../ext/mbedtls/library/des.c");
+            conf.file("../../ext/mbedtls/library/ecdsa.c");
+            conf.file("../../ext/mbedtls/library/ecp.c");
+            conf.file("../../ext/mbedtls/library/ecp_curves.c");
+            conf.file("../../ext/mbedtls/library/entropy.c");
+            conf.file("../../ext/mbedtls/library/entropy_poll.c");
+            conf.file("../../ext/mbedtls/library/gcm.c");
+            conf.file("../../ext/mbedtls/library/md5.c");
+            conf.file("../../ext/mbedtls/library/nist_kw.c");
+            conf.file("../../ext/mbedtls/library/oid.c");
+            conf.file("../../ext/mbedtls/library/pem.c");
+            conf.file("../../ext/mbedtls/library/pk.c");
+            conf.file("../../ext/mbedtls/library/pkcs5.c");
+            conf.file("../../ext/mbedtls/library/pkcs12.c");
+            conf.file("../../ext/mbedtls/library/pkparse.c");
+            conf.file("../../ext/mbedtls/library/pk_wrap.c");
+            conf.file("../../ext/mbedtls/library/pkwrite.c");
+            conf.file("../../ext/mbedtls/library/poly1305.c");
+            conf.file("../../ext/mbedtls/library/psa_crypto.c");
+            conf.file("../../ext/mbedtls/library/psa_crypto_cipher.c");
+            conf.file("../../ext/mbedtls/library/psa_crypto_client.c");
+            conf.file("../../ext/mbedtls/library/psa_crypto_driver_wrappers.c");
+            conf.file("../../ext/mbedtls/library/psa_crypto_ecp.c");
+            conf.file("../../ext/mbedtls/library/psa_crypto_hash.c");
+            conf.file("../../ext/mbedtls/library/psa_crypto_mac.c");
+            conf.file("../../ext/mbedtls/library/psa_crypto_rsa.c");
+            conf.file("../../ext/mbedtls/library/psa_crypto_slot_management.c");
+            conf.file("../../ext/mbedtls/library/psa_crypto_storage.c");
+            conf.file("../../ext/mbedtls/library/psa_its_file.c");
+            conf.file("../../ext/mbedtls/library/ripemd160.c");
+            conf.file("../../ext/mbedtls/library/rsa_alt_helpers.c");
+            conf.file("../../ext/mbedtls/library/sha1.c");
+            conf.file("../../ext/mbedtls/library/sha512.c");
+            conf.file("../../ext/mbedtls/tests/src/random.c");
+            conf.conf.include("../../ext/mbedtls/library");
+        }
+
+        conf.conf.include("../../ext/mbedtls/tests/include/");
+        conf.file("../../ext/mbedtls/tests/src/fake_external_rng_for_test.c");
     }
 
     if sig_rsa || sig_rsa3072 {
