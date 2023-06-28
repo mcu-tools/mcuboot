@@ -141,7 +141,7 @@ menu "Entrance methods"
 menuconfig BOOT_SERIAL_ENTRANCE_GPIO
 	bool "GPIO"
 	default y
-	depends on GPIO
+	depends on GPIO && !BOOT_SERIAL_WAIT_FOR_DFU
 	help
 	  Use a GPIO to enter serial recovery mode.
 
