@@ -440,7 +440,7 @@ bs_set(char *buf, int len)
     ok = zcbor_map_decode_bulk(zsd, image_set_state_decode, ARRAY_SIZE(image_set_state_decode),
                                &decoded) == 0;
 
-    if (!ok || len != decoded) {
+    if (!ok) {
         rc = MGMT_ERR_EINVAL;
         goto out;
     }
