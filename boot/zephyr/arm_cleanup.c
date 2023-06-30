@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr/arch/arm/aarch32/cortex_m/cmsis.h>
 #include <zephyr/toolchain.h>
 
+#include <cmsis_core.h>
 #if CONFIG_CPU_HAS_NXP_MPU
 #include <fsl_sysmpu.h>
 #endif
