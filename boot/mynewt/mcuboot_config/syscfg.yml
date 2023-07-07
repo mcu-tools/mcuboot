@@ -94,6 +94,14 @@ syscfg.defs:
             - version
             - security_counter
         value: none
+    BOOTUTIL_VERSION_CMP_USE_BUILD_NUMBER:
+        description: >
+            Use build number while comparing image version.
+            By default, the image version comparison relies only on version major,
+            minor and revision. Enable this option to take into account the build
+            number as well.
+            This only affect builds with BOOTUTIL_DOWNGRADE_PREVENTION set to version.
+        value: 0
     BOOTUTIL_HW_ROLLBACK_PROT:
         description: >
             Prevent undesirable/malicious software downgrades. When this option is
