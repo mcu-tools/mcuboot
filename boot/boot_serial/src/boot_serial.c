@@ -1037,7 +1037,7 @@ boot_serial_output(void)
     char encoded_buf[BASE64_ENCODE_SIZE(sizeof(buf))];
 
     data = bs_obuf;
-    len = (uint32_t)cbor_state->payload_mut - (uint32_t)bs_obuf;
+    len = (uintptr_t)cbor_state->payload_mut - (uintptr_t)bs_obuf;
 
     bs_hdr->nh_op++;
     bs_hdr->nh_flags = 0;
