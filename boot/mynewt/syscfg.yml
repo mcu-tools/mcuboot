@@ -31,6 +31,14 @@ syscfg.defs:
     BOOT_PREBOOT:
         description: 'Call boot_preboot() function before booting application'
         value:
+    BOOT_MYNEWT_SYSINIT:
+        description: >
+            When not 0 performs device initialization and calls newt
+            generated sysinit() function.
+            Note: this functionality is implicitly turned on when one of the
+            following settings are not 0:
+            MCUBOOT_SERIAL, MCUBOOT_HAVE_LOGGING, CRYPTO, HASH
+        value: 0
 
 syscfg.vals:
     SYSINIT_CONSTRAIN_INIT: 0
