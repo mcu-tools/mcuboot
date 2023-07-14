@@ -229,7 +229,7 @@ main(void)
 #endif
 
 #if defined(MCUBOOT_SERIAL) || defined(MCUBOOT_HAVE_LOGGING) || \
-        MYNEWT_VAL(CRYPTO) || MYNEWT_VAL(HASH)
+        MYNEWT_VAL(CRYPTO) || MYNEWT_VAL(HASH) || MYNEWT_VAL(BOOT_MYNEWT_SYSINIT)
     /* initialize uart/crypto without os */
     os_dev_initialize_all(OS_DEV_INIT_PRIMARY);
     os_dev_initialize_all(OS_DEV_INIT_SECONDARY);
