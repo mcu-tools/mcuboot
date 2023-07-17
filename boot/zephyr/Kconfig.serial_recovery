@@ -48,6 +48,7 @@ endchoice
 
 config MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
 	bool "Allow to select image number for DFU"
+	depends on !SINGLE_APPLICATION_SLOT
 	help
 	  With the option enabled, the mcuboot serial recovery will
 	  respect the "image" field in mcumgr image update frame
