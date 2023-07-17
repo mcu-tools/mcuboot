@@ -77,6 +77,7 @@ config BOOT_SIGNATURE_TYPE_RSA
 	bool "RSA signatures"
 	select BOOT_USE_MBEDTLS
 	select MBEDTLS
+	select BOOT_ENCRYPTION_SUPPORT
 
 if BOOT_SIGNATURE_TYPE_RSA
 config BOOT_SIGNATURE_TYPE_RSA_LEN
@@ -87,6 +88,7 @@ endif
 
 config BOOT_SIGNATURE_TYPE_ECDSA_P256
 	bool "Elliptic curve digital signatures with curve P-256"
+	select BOOT_ENCRYPTION_SUPPORT
 
 if BOOT_SIGNATURE_TYPE_ECDSA_P256
 choice BOOT_ECDSA_IMPLEMENTATION
@@ -109,6 +111,7 @@ endif
 
 config BOOT_SIGNATURE_TYPE_ED25519
 	bool "Edwards curve digital signatures using ed25519"
+	select BOOT_ENCRYPTION_SUPPORT
 
 if BOOT_SIGNATURE_TYPE_ED25519
 choice BOOT_ED25519_IMPLEMENTATION
@@ -300,45 +303,57 @@ config BOOT_SWAP_SAVE_ENCTLV
 	  JTAG/SWD or primary slot in external flash).
 	  If unsure, leave at the default value.
 
-config BOOT_ENCRYPT_IMAGE
-	bool
-	help
-	  Hidden option used to check if any image encryption is enabled.
-
-config BOOT_ENCRYPT_RSA
-	bool "Support for encrypted upgrade images using RSA"
-	select BOOT_ENCRYPT_IMAGE
-	help
-	  If y, images in the secondary slot can be encrypted and are decrypted
-	  on the fly when upgrading to the primary slot, as well as encrypted
-	  back when swapping from the primary slot to the secondary slot. The
-	  encryption mechanism used in this case is RSA-OAEP (2048 bits).
-
-config BOOT_ENCRYPT_EC256
-	bool "Support for encrypted upgrade images using ECIES-P256"
-	select BOOT_ENCRYPT_IMAGE
-	help
-	  If y, images in the secondary slot can be encrypted and are decrypted
-	  on the fly when upgrading to the primary slot, as well as encrypted
-	  back when swapping from the primary slot to the secondary slot. The
-	  encryption mechanism used in this case is ECIES using primitives
-	  described under "ECIES-P256 encryption" in docs/encrypted_images.md.
-
-config BOOT_ENCRYPT_X25519
-	bool "Support for encrypted upgrade images using ECIES-X25519"
-	select BOOT_ENCRYPT_IMAGE
-	help
-	  If y, images in the secondary slot can be encrypted and are decrypted
-	  on the fly when upgrading to the primary slot, as well as encrypted
-	  back when swapping from the primary slot to the secondary slot. The
-	  encryption mechanism used in this case is ECIES using primitives
-	  described under "ECIES-X25519 encryption" in docs/encrypted_images.md.
 endif # !SINGLE_APPLICATION_SLOT
 
+config BOOT_ENCRYPTION_SUPPORT
+	bool
+	help
+	  Hidden option used to check if image encryption is supported.
+
+config BOOT_ENCRYPT_IMAGE
+	bool "Support for encrypted image updates"
+	depends on BOOT_ENCRYPTION_SUPPORT
+	select BOOT_ENCRYPT_RSA if BOOT_SIGNATURE_TYPE_RSA
+	select BOOT_ENCRYPT_EC256 if BOOT_SIGNATURE_TYPE_ECDSA_P256
+	select BOOT_ENCRYPT_X25519 if BOOT_SIGNATURE_TYPE_ED25519
+	depends on !SINGLE_APPLICATION_SLOT || MCUBOOT_SERIAL
+	help
+	  If y, images in the secondary slot can be encrypted and are decrypted
+	  on the fly when upgrading to the primary slot, as well as encrypted
+	  back when swapping from the primary slot to the secondary slot. The
+	  encryption mechanism must match the same type as the signature type,
+	  supported types include:
+	   - RSA-OAEP (2048 bits).
+	   - ECIES using primitives described under "ECIES-P256 encryption" in
+	     docs/encrypted_images.md.
+	   - ECIES using primitives described under "ECIES-X25519 encryption"
+	     in docs/encrypted_images.md.
+
+	  Note that for single slot operation, this can still be used to allow
+	  loading encrypted images via serial recovery which are then
+	  decrypted on-the-fly without needing a second slot.
+
+config BOOT_ENCRYPT_RSA
+	bool
+	help
+	  Hidden option selecting RSA encryption.
+
+config BOOT_ENCRYPT_EC256
+	bool
+	help
+	  Hidden option selecting EC256 encryption.
+
+config BOOT_ENCRYPT_X25519
+	bool
+	help
+	  Hidden option selecting x25519 encryption.
+
 config BOOT_ENCRYPTION_KEY_FILE
-	string "encryption key file"
-    depends on BOOT_ENCRYPT_EC256 || BOOT_SERIAL_ENCRYPT_EC256
-	default "enc-ec256-priv.pem" if BOOT_SIGNATURE_TYPE_ECDSA_P256
+	string "Encryption key file"
+	depends on BOOT_ENCRYPT_IMAGE
+	default "enc-rsa2048-priv.pem" if BOOT_ENCRYPT_RSA
+	default "enc-ec256-priv.pem" if BOOT_ENCRYPT_EC256
+	default "enc-x25519-priv.pem" if BOOT_ENCRYPT_X25519
 	default ""
 	help
 	  You can use either absolute or relative path.
