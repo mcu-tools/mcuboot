@@ -30,7 +30,7 @@ class ECDSAPublicKey(KeyClass):
         raise ECDSAUsageError("Operation {} requires private key".format(name))
 
     def _get_public(self):
-        return self.key.public_key()
+        return self.key
 
     def get_public_bytes(self):
         # The key is embedded into MBUboot in "SubjectPublicKeyInfo" format
@@ -64,6 +64,9 @@ class ECDSAPrivateKey(PrivateBytesMixin):
     """
     def __init__(self, key):
         self.key = key
+
+    def _get_public(self):
+        return self.key.public_key()
 
     def _build_minimal_ecdsa_privkey(self, der, format):
         '''
@@ -179,7 +182,7 @@ class ECDSA256P1Public(ECDSAPublicKey):
                         signature_algorithm=ec.ECDSA(SHA256()))
 
 
-class ECDSA256P1(ECDSA256P1Public, ECDSAPrivateKey):
+class ECDSA256P1(ECDSAPrivateKey, ECDSA256P1Public):
     """
     Wrapper around an ECDSA (p256) private key.
     """
@@ -252,7 +255,7 @@ class ECDSA384P1Public(ECDSAPublicKey):
                         signature_algorithm=ec.ECDSA(SHA384()))
 
 
-class ECDSA384P1(ECDSA384P1Public, ECDSAPrivateKey):
+class ECDSA384P1(ECDSAPrivateKey, ECDSA384P1Public):
     """
     Wrapper around an ECDSA (p384) private key.
     """
