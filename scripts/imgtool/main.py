@@ -61,6 +61,7 @@ def gen_x25519(keyfile, passwd):
 
 
 valid_langs = ['c', 'rust']
+valid_hash_encodings = ['lang-c', 'raw']
 valid_encodings = ['lang-c', 'lang-rust', 'pem', 'raw']
 keygens = {
     'rsa-2048':   gen_rsa2048,
@@ -154,6 +155,34 @@ def getpub(key, encoding, lang, output):
         key.emit_public_pem(file=output)
     elif encoding == 'raw':
         key.emit_raw_public(file=output)
+    else:
+        raise click.UsageError()
+
+
+@click.option('-e', '--encoding', metavar='encoding',
+              type=click.Choice(valid_hash_encodings),
+              help='Valid encodings: {}. '
+                   'Default value is {}.'
+                   .format(', '.join(valid_hash_encodings),
+                           valid_hash_encodings[0]))
+@click.option('-k', '--key', metavar='filename', required=True)
+@click.option('-o', '--output', metavar='output', required=False,
+              help='Specify the output file\'s name. \
+                    The stdout is used if it is not provided.')
+@click.command(help='Dump the SHA256 hash of the public key')
+def getpubhash(key, output, encoding):
+    if not encoding:
+        encoding = valid_hash_encodings[0]
+    key = load_key(key)
+
+    if not output:
+        output = sys.stdout
+    if key is None:
+        print("Invalid passphrase")
+    elif encoding == 'lang-c':
+        key.emit_c_public_hash(file=output)
+    elif encoding == 'raw':
+        key.emit_raw_public_hash(file=output)
     else:
         raise click.UsageError()
 
@@ -486,6 +515,7 @@ def imgtool():
 
 imgtool.add_command(keygen)
 imgtool.add_command(getpub)
+imgtool.add_command(getpubhash)
 imgtool.add_command(getpriv)
 imgtool.add_command(verify)
 imgtool.add_command(sign)
