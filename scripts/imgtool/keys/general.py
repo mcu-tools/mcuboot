@@ -41,6 +41,13 @@ class KeyClass(object):
                 len_format="const unsigned int {}_pub_key_len = {{}};".format(self.shortname()),
                 file=file)
 
+    def emit_raw_public(self, file=sys.stdout):
+        if file and file is not sys.stdout:
+            with open(file, 'wb') as file:
+                file.write(self.get_public_bytes())
+        else:
+            sys.stdout.buffer.write(self.get_public_bytes())
+
     def emit_rust_public(self, file=sys.stdout):
         self._emit(
                 header="static {}_PUB_KEY: &[u8] = &[".format(self.shortname().upper()),

@@ -61,7 +61,7 @@ def gen_x25519(keyfile, passwd):
 
 
 valid_langs = ['c', 'rust']
-valid_encodings = ['lang-c', 'lang-rust', 'pem']
+valid_encodings = ['lang-c', 'lang-rust', 'pem', 'raw']
 keygens = {
     'rsa-2048':   gen_rsa2048,
     'rsa-3072':   gen_rsa3072,
@@ -152,6 +152,8 @@ def getpub(key, encoding, lang, output):
         key.emit_rust_public(file=output)
     elif encoding == 'pem':
         key.emit_public_pem(file=output)
+    elif encoding == 'raw':
+        key.emit_raw_public(file=output)
     else:
         raise click.UsageError()
 
