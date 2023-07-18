@@ -128,8 +128,11 @@ def keygen(type, key, password):
               type=click.Choice(valid_encodings),
               help='Valid encodings: {}'.format(', '.join(valid_encodings)))
 @click.option('-k', '--key', metavar='filename', required=True)
+@click.option('-o', '--output', metavar='output', required=False,
+              help='Specify the output file\'s name. \
+                    The stdout is used if it is not provided.')
 @click.command(help='Dump public key from keypair')
-def getpub(key, encoding, lang):
+def getpub(key, encoding, lang, output):
     if encoding and lang:
         raise click.UsageError('Please use only one of `--encoding/-e` '
                                'or `--lang/-l`')
@@ -138,14 +141,17 @@ def getpub(key, encoding, lang):
         # `default=valid_encodings[0]` should be added to `-e` param.
         lang = valid_langs[0]
     key = load_key(key)
+
+    if not output:
+        output = sys.stdout
     if key is None:
         print("Invalid passphrase")
     elif lang == 'c' or encoding == 'lang-c':
-        key.emit_c_public()
+        key.emit_c_public(file=output)
     elif lang == 'rust' or encoding == 'lang-rust':
-        key.emit_rust_public()
+        key.emit_rust_public(file=output)
     elif encoding == 'pem':
-        key.emit_public_pem()
+        key.emit_public_pem(file=output)
     else:
         raise click.UsageError()
 
