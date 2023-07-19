@@ -1,0 +1,1 @@
+- imgtool: add 'getpubhash' command to dump the sha256 hash of the public key
