@@ -60,7 +60,15 @@ extern "C" {
 #endif
 
 struct nmgr_hdr {
-    uint8_t  nh_op;             /* NMGR_OP_XXX */
+#if (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+    uint8_t  _res1:3;
+    uint8_t  nh_version:2;
+    uint8_t  nh_op:3;		/* NMGR_OP_XXX */
+#else
+    uint8_t  nh_op:3;		/* NMGR_OP_XXX */
+    uint8_t  nh_version:2;
+    uint8_t  _res1:3;
+#endif
     uint8_t  nh_flags;
     uint16_t nh_len;            /* length of the payload */
     uint16_t nh_group;          /* NMGR_GROUP_XXX */
