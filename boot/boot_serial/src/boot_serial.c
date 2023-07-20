@@ -432,7 +432,7 @@ bs_set(char *buf, int len)
     zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1);
 
     struct zcbor_map_decode_key_val image_set_state_decode[] = {
-        ZCBOR_MAP_DECODE_KEY_DECODER("confirm", zcbor_uint32_decode, &confirm),
+        ZCBOR_MAP_DECODE_KEY_DECODER("confirm", zcbor_bool_decode, &confirm),
 #ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
         ZCBOR_MAP_DECODE_KEY_DECODER("hash", zcbor_bstr_decode, &img_hash),
 #endif
