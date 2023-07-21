@@ -73,7 +73,7 @@
 #endif
 
 #ifdef MCUBOOT_ENC_IMAGES
-#include "single_loader.h"
+#include "boot_serial/boot_serial_encryption.h"
 #endif
 
 #include "bootutil/boot_hooks.h"
@@ -293,18 +293,16 @@ bs_list(char *buf, int len)
                 if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
                 {
 #ifdef MCUBOOT_ENC_IMAGES
-                    if (slot == 0 && IS_ENCRYPTED(&hdr)) {
-                        /* Clear the encrypted flag we didn't supply a key
-                        * This flag could be set if there was a decryption in place
-                        * performed before. We will try to validate the image without
-                        * decryption by clearing the flag in the heder. If
-                        * still encrypted the validation will fail.
-                        */
-                        hdr.ih_flags &= ~(ENCRYPTIONFLAGS);
+                    if (IS_ENCRYPTED(&hdr)) {
+                        FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
+                                 &hdr, tmpbuf, sizeof(tmpbuf));
+                    } else {
+#endif
+                        FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, &hdr,
+                                 fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
+#ifdef MCUBOOT_ENC_IMAGES
                     }
 #endif
-                    FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, &hdr, fap, tmpbuf, sizeof(tmpbuf),
-                                    NULL, 0, NULL);
                 }
             }
 
@@ -483,8 +481,17 @@ bs_set(char *buf, int len)
                                    fih_rc, image_index, 1);
                 if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
                 {
-                    FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, &hdr, fap,
-                             tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
+#ifdef MCUBOOT_ENC_IMAGES
+                    if (IS_ENCRYPTED(&hdr)) {
+                        FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
+                                 &hdr, tmpbuf, sizeof(tmpbuf));
+                    } else {
+#endif
+                        FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, &hdr,
+                                 fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
+#ifdef MCUBOOT_ENC_IMAGES
+                    }
+#endif
                 }
 
                 if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
@@ -862,14 +869,23 @@ out:
     zcbor_map_end_encode(cbor_state, 10);
 
     boot_serial_output();
-    flash_area_close(fap);
 
 #ifdef MCUBOOT_ENC_IMAGES
-    if (curr_off == img_size) {
-        /* Last sector received, now start a decryption on the image if it is encrypted*/
-        rc = boot_handle_enc_fw();
+    /* Check if this upload was for the primary slot */
+#if !defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
+    if (flash_area_id_from_multi_image_slot(img_num, 0) == FLASH_AREA_IMAGE_PRIMARY(0))
+#else
+    if (flash_area_id_from_direct_image(img_num) == FLASH_AREA_IMAGE_PRIMARY(0))
+#endif
+    {
+        if (curr_off == img_size) {
+            /* Last sector received, now start a decryption on the image if it is encrypted */
+            rc = boot_handle_enc_fw(fap);
+        }
     }
-#endif //#ifdef MCUBOOT_ENC_IMAGES
+#endif
+
+    flash_area_close(fap);
 }
 
 #ifdef MCUBOOT_BOOT_MGMT_ECHO
