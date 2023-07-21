@@ -251,12 +251,6 @@ Use the ``CONFIG_ENABLE_MGMT_PERUSER=y`` Kconfig option to enable the following 
 * Storage erase - This command allows erasing the storage partition (enable with ``CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE=y``).
 * Custom image list - This command allows fetching version and installation status (custom properties) for all images (enable with ``CONFIG_BOOT_MGMT_CUSTOM_IMG_LIST=y``).
 
-### In-place image decryption
-
-Images uploaded by the serial recovery can be decrypted on the fly by using ECIES primitives described in the [ECIES encryption](encrypted_images.md#ecies-encryption) section.
-
-Enable support for this feature by using ``CONFIG_BOOT_SERIAL_ENCRYPT_EC256=y``.
-
 ### More configuration
 
 For details on other available configuration options for the serial recovery protocol, check the Kconfig options  (for example by using ``menuconfig``).

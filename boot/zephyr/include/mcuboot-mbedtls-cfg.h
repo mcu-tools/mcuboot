@@ -25,7 +25,6 @@
 #include "config-rsa.h"
 #elif defined(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256) || \
       defined(CONFIG_BOOT_ENCRYPT_EC256) || \
-      defined(CONFIG_BOOT_SERIAL_ENCRYPT_EC256) || \
       (defined(CONFIG_BOOT_ENCRYPT_X25519) && !defined(CONFIG_BOOT_SIGNATURE_TYPE_ED25519))
 #include "config-asn1.h"
 #elif defined(CONFIG_BOOT_SIGNATURE_TYPE_ED25519)

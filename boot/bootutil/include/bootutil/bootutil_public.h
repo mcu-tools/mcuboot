@@ -43,6 +43,7 @@
 #include <string.h>
 #include <flash_map_backend/flash_map_backend.h>
 #include <mcuboot_config/mcuboot_config.h>
+#include <bootutil/image.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -293,6 +294,18 @@ boot_read_swap_state(const struct flash_area *fa,
  */
 int
 boot_set_next(const struct flash_area *fa, bool active, bool confirm);
+
+/**
+ * Attempts to load image header from flash; verifies flash header fields.
+ *
+ * @param[in]   fa_p    flash area pointer
+ * @param[out]  hdr     buffer for image header
+ *
+ * @return              0 on success, error code otherwise
+ */
+int
+boot_image_load_header(const struct flash_area *fa_p,
+                       struct image_header *hdr);
 
 #ifdef __cplusplus
 }

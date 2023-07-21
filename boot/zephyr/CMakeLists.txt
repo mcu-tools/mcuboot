@@ -130,7 +130,7 @@ zephyr_library_sources(
   )
 endif()
 
-if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_SERIAL_ENCRYPT_EC256)
+if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   zephyr_library_include_directories(
     ${MBEDTLS_ASN1_DIR}/include
     )
@@ -219,7 +219,7 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
   )
 endif()
 
-if(CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519 OR CONFIG_BOOT_SERIAL_ENCRYPT_EC256)
+if(CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519)
   zephyr_library_sources(
     ${TINYCRYPT_DIR}/source/aes_encrypt.c
     ${TINYCRYPT_DIR}/source/aes_decrypt.c
@@ -248,6 +248,12 @@ if(CONFIG_MCUBOOT_SERIAL)
     CONFIG_BOOT_ERASE_PROGRESSIVELY
     ${BOOT_DIR}/bootutil/src
     )
+
+  if(CONFIG_BOOT_ENCRYPT_IMAGE)
+    zephyr_library_sources(
+      ${BOOT_DIR}/boot_serial/src/boot_serial_encryption.c
+    )
+  endif()
 endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")

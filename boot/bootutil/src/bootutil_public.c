@@ -643,3 +643,36 @@ boot_set_confirmed(void)
 {
     return boot_set_confirmed_multi(0);
 }
+
+int
+boot_image_load_header(const struct flash_area *fa_p,
+                       struct image_header *hdr)
+{
+    uint32_t size;
+    int rc = flash_area_read(fa_p, 0, hdr, sizeof *hdr);
+
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        BOOT_LOG_ERR("Failed reading image header");
+	return BOOT_EFLASH;
+    }
+
+    if (hdr->ih_magic != IMAGE_MAGIC) {
+        BOOT_LOG_ERR("Bad image magic 0x%lx", (unsigned long)hdr->ih_magic);
+
+        return BOOT_EBADIMAGE;
+    }
+
+    if (hdr->ih_flags & IMAGE_F_NON_BOOTABLE) {
+        BOOT_LOG_ERR("Image not bootable");
+
+        return BOOT_EBADIMAGE;
+    }
+
+    if (!boot_u32_safe_add(&size, hdr->ih_img_size, hdr->ih_hdr_size) ||
+        size >= flash_area_get_size(fa_p)) {
+        return BOOT_EBADIMAGE;
+    }
+
+    return 0;
+}

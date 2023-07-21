@@ -136,15 +136,6 @@ config BOOT_MGMT_CUSTOM_IMG_LIST
 
 endif # ENABLE_MGMT_PERUSER
 
-config BOOT_SERIAL_ENCRYPT_EC256
-	bool "Support for encrypted upgrade images using ECIES-P256 in serial recovery upload"
-	default n
-	help
-	  If y, uploaded images via serial recovery can be decrypted
-	  on the fly when upgrading to the primary slot. The
-	  encryption mechanism used in this case is ECIES using primitives
-	  described under "ECIES-P256 encryption" in docs/encrypted_images.md.
-
 menu "Entrance methods"
 
 menuconfig BOOT_SERIAL_ENTRANCE_GPIO
