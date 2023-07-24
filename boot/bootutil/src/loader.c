@@ -2124,13 +2124,14 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
             break;
 
         case BOOT_SWAP_TYPE_TEST:
+            /* fallthrough */
+        case BOOT_SWAP_TYPE_PERM:
             if (check_downgrade_prevention(state) != 0) {
                 /* Downgrade prevented */
                 BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
                 break;
             }
             /* fallthrough */
-        case BOOT_SWAP_TYPE_PERM:          /* fallthrough */
         case BOOT_SWAP_TYPE_REVERT:
             rc = BOOT_HOOK_CALL(boot_perform_update_hook, BOOT_HOOK_REGULAR,
                                 BOOT_CURR_IMG(state), &(BOOT_IMG(state, 1).hdr),
