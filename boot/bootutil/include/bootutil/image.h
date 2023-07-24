@@ -36,6 +36,10 @@
 extern "C" {
 #endif
 
+#ifndef __packed
+#define __packed __attribute__((__packed__))
+#endif
+
 struct flash_area;
 
 #define IMAGE_MAGIC                 0x96f3b83d
@@ -45,6 +49,7 @@ struct flash_area;
 #define IMAGE_TLV_PROT_INFO_MAGIC   0x6908
 
 #define IMAGE_HEADER_SIZE           32
+#define IMAGE_HASH_LEN              32 /* Size of SHA256 TLV hash */
 
 /*
  * Image header flags.
@@ -113,7 +118,7 @@ struct image_version {
     uint8_t iv_minor;
     uint16_t iv_revision;
     uint32_t iv_build_num;
-};
+} __packed;
 
 struct image_dependency {
     uint8_t image_id;                       /* Image index (from 0) */
@@ -135,19 +140,19 @@ struct image_header {
     uint32_t ih_flags;              /* IMAGE_F_[...]. */
     struct image_version ih_ver;
     uint32_t _pad1;
-};
+} __packed;
 
 /** Image TLV header.  All fields in little endian. */
 struct image_tlv_info {
     uint16_t it_magic;
     uint16_t it_tlv_tot;  /* size of TLV area (including tlv_info header) */
-};
+} __packed;
 
 /** Image trailer TLV format. All fields in little endian. */
 struct image_tlv {
     uint16_t it_type;   /* IMAGE_TLV_[...]. */
     uint16_t it_len;    /* Data length (not including TLV header). */
-};
+} __packed;
 
 #define ENCRYPTIONFLAGS (IMAGE_F_ENCRYPTED_AES128 | IMAGE_F_ENCRYPTED_AES256)
 #define IS_ENCRYPTED(hdr) (((hdr)->ih_flags & IMAGE_F_ENCRYPTED_AES128) \
