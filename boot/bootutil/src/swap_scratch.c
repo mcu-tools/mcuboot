@@ -76,7 +76,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
     return rc;
 }
 
-#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD) || defined(MCUBOOT_MULTI_MEMORY_LOAD)
 /**
  * Reads the status of a partially-completed swap, if any.  This is necessary
  * to recover in case the boot lodaer was reset in the middle of a swap
@@ -743,6 +743,6 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
 
-#endif /* !MCUBOOT_DIRECT_XIP && !MCUBOOT_RAM_LOAD */
+#endif /* !MCUBOOT_DIRECT_XIP && !MCUBOOT_RAM_LOAD || MCUBOOT_MULTI_MEMORY_LOAD */
 
 #endif /* !MCUBOOT_SWAP_USING_MOVE */

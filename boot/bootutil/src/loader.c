@@ -52,7 +52,7 @@
 #include "bootutil/enc_key.h"
 #endif
 
-#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD) || defined(MCUBOOT_MULTI_MEMORY_LOAD)
 #include <os/os_malloc.h>
 #endif
 
@@ -62,10 +62,14 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 static struct boot_loader_state boot_data;
 
+#if defined(MCUBOOT_RAM_LOAD) || defined(MCUBOOT_DIRECT_XIP)
+static bool boot_ram = false;
+#endif
+
 #if (BOOT_IMAGE_NUMBER > 1)
 #define IMAGES_ITER(x) for ((x) = 0; (x) < BOOT_IMAGE_NUMBER; ++(x))
 #else
-#define IMAGES_ITER(x)
+#define IMAGES_ITER(x) for (int iter = 0; iter < 1; ++iter)
 #endif
 
 /*
@@ -172,7 +176,7 @@ boot_add_shared_data(struct boot_loader_state *state,
 static void
 fill_rsp(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
-    uint32_t active_slot;
+    uint32_t active_slot = BOOT_PRIMARY_SLOT;
 
 #if (BOOT_IMAGE_NUMBER > 1)
     /* Always boot from the first enabled image. */
@@ -189,9 +193,10 @@ fill_rsp(struct boot_loader_state *state, struct boot_rsp *rsp)
 #endif
 
 #if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
-    active_slot = state->slot_usage[BOOT_CURR_IMG(state)].active_slot;
-#else
-    active_slot = BOOT_PRIMARY_SLOT;
+    if (IS_RAM_BOOT_STAGE())
+    {
+        active_slot = state->slot_usage[BOOT_CURR_IMG(state)].active_slot;
+    }
 #endif
 
     rsp->br_flash_dev_id = flash_area_get_device_id(BOOT_IMG_AREA(state, active_slot));
@@ -499,8 +504,8 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
 
 /* In the case of ram loading the image has already been decrypted as it is
  * decrypted when copied in ram */
-#if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_RAM_LOAD)
-    if (MUST_DECRYPT(fap, image_index, hdr)) {
+#if defined(MCUBOOT_ENC_IMAGES)
+    if (MUST_DECRYPT(fap, image_index, hdr) && !IS_RAM_BOOTABLE(hdr)) {
         rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs);
         if (rc < 0) {
             FIH_RET(fih_rc);
@@ -517,7 +522,7 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
     FIH_RET(fih_rc);
 }
 
-#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD) || defined(MCUBOOT_MULTI_MEMORY_LOAD)
 static fih_ret
 split_image_check(struct image_header *app_hdr,
                   const struct flash_area *app_fap,
@@ -883,7 +888,7 @@ done:
 }
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
 
-#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD) || defined(MCUBOOT_MULTI_MEMORY_LOAD)
 /**
  * Determines which swap operation to perform, if any.  If it is determined
  * that a swap operation is required, the image in the secondary slot is checked
@@ -934,7 +939,7 @@ boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz)
     return flash_area_erase(fap, off, sz);
 }
 
-#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD) || defined(MCUBOOT_MULTI_MEMORY_LOAD)
 
 #if defined(MCUBOOT_ENC_IMAGES) || defined(MCUBOOT_SWAP_SAVE_ENCTLV)
 /* Replacement for memset(p, 0, sizeof(*p) that does not get
@@ -1384,7 +1389,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
  * @return                  0 on success; nonzero on failure.
  */
 static int
-boot_verify_slot_dependency(struct boot_loader_state *state,
+boot_verify_slot_dependency_flash(struct boot_loader_state *state,
                             struct image_dependency *dep)
 {
     struct image_version *dep_version;
@@ -1435,7 +1440,7 @@ boot_verify_slot_dependency(struct boot_loader_state *state,
  * @return                  0 on success; nonzero on failure.
  */
 static int
-boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
+boot_verify_slot_dependencies_flash(struct boot_loader_state *state, uint32_t slot)
 {
     const struct flash_area *fap;
     struct image_tlv_iter it;
@@ -1484,7 +1489,7 @@ boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
         }
 
         /* Verify dependency and modify the swap type if not satisfied. */
-        rc = boot_verify_slot_dependency(state, &dep);
+        rc = boot_verify_slot_dependency_flash(state, &dep);
         if (rc != 0) {
             /* Dependency not satisfied. */
             goto done;
@@ -1501,7 +1506,7 @@ done:
  * TLV area are all satisfied and update the related swap type if necessary.
  */
 static int
-boot_verify_dependencies(struct boot_loader_state *state)
+boot_verify_dependencies_flash(struct boot_loader_state *state)
 {
     int rc = -1;
     uint8_t slot;
@@ -1519,7 +1524,7 @@ boot_verify_dependencies(struct boot_loader_state *state)
             slot = BOOT_PRIMARY_SLOT;
         }
 
-        rc = boot_verify_slot_dependencies(state, slot);
+        rc = boot_verify_slot_dependencies_flash(state, slot);
         if (rc == 0) {
             /* All dependencies've been satisfied, continue with next image. */
             BOOT_CURR_IMG(state)++;
@@ -1904,7 +1909,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
  * @return              0 on success; nonzero on failure.
  */
 static int
-boot_update_hw_rollback_protection(struct boot_loader_state *state)
+boot_update_hw_rollback_protection_flash(struct boot_loader_state *state)
 {
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     int rc;
@@ -1995,7 +2000,7 @@ check_downgrade_prevention(struct boot_loader_state *state)
 }
 
 fih_ret
-context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
+context_boot_go_flash(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
     size_t slot;
     struct boot_status bs;
@@ -2078,7 +2083,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         /* Iterate over all the images and verify whether the image dependencies
          * are all satisfied and update swap type if necessary.
          */
-        rc = boot_verify_dependencies(state);
+        rc = boot_verify_dependencies_flash(state);
         if (rc != 0) {
             /*
              * It was impossible to upgrade because the expected dependency version
@@ -2203,16 +2208,22 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         }
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
-        FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_PRIMARY_SLOT, NULL);
-        /* Check for all possible values is redundant in normal operation it
-         * is meant to prevent FI attack.
-         */
-        if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS) ||
-            FIH_EQ(fih_rc, FIH_FAILURE) ||
-            FIH_EQ(fih_rc, FIH_NO_BOOTABLE_IMAGE)) {
-            FIH_SET(fih_rc, FIH_FAILURE);
-            goto out;
+#if defined(MCUBOOT_RAM_LOAD)
+        if(IS_RAM_BOOTABLE(boot_img_hdr(state, BOOT_PRIMARY_SLOT)) == false) {
+#endif /* defined(MCUBOOT_RAM_LOAD) */
+            FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_PRIMARY_SLOT, NULL);
+            /* Check for all possible values is redundant in normal operation it
+            * is meant to prevent FI attack.
+            */
+            if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS) ||
+                FIH_EQ(fih_rc, FIH_FAILURE) ||
+                FIH_EQ(fih_rc, FIH_NO_BOOTABLE_IMAGE)) {
+                FIH_SET(fih_rc, FIH_FAILURE);
+                goto out;
+            }
+#if defined(MCUBOOT_RAM_LOAD)
         }
+#endif /* defined(MCUBOOT_RAM_LOAD) */
 #else
         /* Even if we're not re-validating the primary slot, we could be booting
          * onto an empty flash chip. At least do a basic sanity check that
@@ -2228,7 +2239,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         }
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT */
 
-        rc = boot_update_hw_rollback_protection(state);
+        rc = boot_update_hw_rollback_protection_flash(state);
         if (rc != 0) {
             FIH_SET(fih_rc, FIH_FAILURE);
             goto out;
@@ -2337,7 +2348,9 @@ done:
     FIH_RET(fih_rc);
 }
 
-#else /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
+#endif
+
+#if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
 
 #define NO_ACTIVE_SLOT UINT32_MAX
 
@@ -2956,7 +2969,7 @@ boot_remove_image_from_flash(struct boot_loader_state *state, uint32_t slot)
  * @return              0 if dependencies are met; nonzero otherwise.
  */
 static int
-boot_verify_slot_dependency(struct boot_loader_state *state,
+boot_verify_slot_dependency_ram(struct boot_loader_state *state,
                             struct image_dependency *dep)
 {
     struct image_version *dep_version;
@@ -2987,7 +3000,7 @@ boot_verify_slot_dependency(struct boot_loader_state *state,
  * @return              0 if dependencies are met; nonzero otherwise.
  */
 static int
-boot_verify_slot_dependencies(struct boot_loader_state *state)
+boot_verify_slot_dependencies_ram(struct boot_loader_state *state)
 {
     uint32_t active_slot;
     const struct flash_area *fap;
@@ -3040,7 +3053,7 @@ boot_verify_slot_dependencies(struct boot_loader_state *state)
             goto done;
         }
 
-        rc = boot_verify_slot_dependency(state, &dep);
+        rc = boot_verify_slot_dependency_ram(state, &dep);
         if (rc != 0) {
             /* Dependency not satisfied. */
             goto done;
@@ -3062,7 +3075,7 @@ done:
  * @return              0 if dependencies are met; nonzero otherwise.
  */
 static int
-boot_verify_dependencies(struct boot_loader_state *state)
+boot_verify_dependencies_ram(struct boot_loader_state *state)
 {
     int rc = -1;
     uint32_t active_slot;
@@ -3071,7 +3084,7 @@ boot_verify_dependencies(struct boot_loader_state *state)
         if (state->img_mask[BOOT_CURR_IMG(state)]) {
             continue;
         }
-        rc = boot_verify_slot_dependencies(state);
+        rc = boot_verify_slot_dependencies_ram(state);
         if (rc != 0) {
             /* Dependencies not met or invalid dependencies. */
 
@@ -3103,7 +3116,6 @@ boot_load_and_validate_images(struct boot_loader_state *state)
 {
     uint32_t active_slot;
     int rc;
-    fih_ret fih_rc;
 
     /* Go over all the images and try to load one */
     IMAGES_ITER(BOOT_CURR_IMG(state)) {
@@ -3170,6 +3182,7 @@ boot_load_and_validate_images(struct boot_loader_state *state)
             }
 #endif /* MCUBOOT_RAM_LOAD */
 
+            fih_ret fih_rc;
             FIH_CALL(boot_validate_slot, fih_rc, state, active_slot, NULL);
             if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
                 /* Image is invalid. */
@@ -3197,7 +3210,7 @@ boot_load_and_validate_images(struct boot_loader_state *state)
  * @return              0 on success; nonzero on failure.
  */
 static int
-boot_update_hw_rollback_protection(struct boot_loader_state *state)
+boot_update_hw_rollback_protection_ram(struct boot_loader_state *state)
 {
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     int rc;
@@ -3233,10 +3246,11 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state)
 }
 
 fih_ret
-context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
+context_boot_go_ram(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+    boot_ram = true;
 
     rc = boot_get_slot_usage(state);
     if (rc != 0) {
@@ -3253,7 +3267,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         }
 
 #if (BOOT_IMAGE_NUMBER > 1)
-        rc = boot_verify_dependencies(state);
+        rc = boot_verify_dependencies_ram(state);
         if (rc != 0) {
             /* Dependency check failed for an image, it has been removed from
              * SRAM in case of MCUBOOT_RAM_LOAD strategy, and set to
@@ -3272,7 +3286,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
             continue;
         }
 #endif
-        rc = boot_update_hw_rollback_protection(state);
+        rc = boot_update_hw_rollback_protection_ram(state);
         if (rc != 0) {
             FIH_SET(fih_rc, FIH_FAILURE);
             goto out;
@@ -3299,6 +3313,8 @@ out:
         FIH_SET(fih_rc, FIH_FAILURE);
     }
 
+    boot_ram = false;
+
     FIH_RET(fih_rc);
 }
 #endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
@@ -3318,8 +3334,26 @@ boot_go(struct boot_rsp *rsp)
 
     boot_state_clear(NULL);
 
-    FIH_CALL(context_boot_go, fih_rc, &boot_data, rsp);
+#if !defined(MCUBOOT_RAM_LOAD) && !defined(MCUBOOT_DIRECT_XIP)
+    FIH_CALL(context_boot_go_flash, fih_rc, &boot_data, rsp);
+#else
+    FIH_CALL(context_boot_go_ram, fih_rc, &boot_data, rsp);
+#endif
     FIH_RET(fih_rc);
+}
+
+fih_ret
+boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id)
+{
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+#if !defined(MCUBOOT_RAM_LOAD) && !defined(MCUBOOT_DIRECT_XIP)
+    FIH_CALL(boot_go_for_image_id_flash, fih_rc, rsp, image_id);
+#else
+    FIH_CALL(boot_go_for_image_id_ram, fih_rc, rsp, image_id);
+#endif
+
+    return fih_rc;
 }
 
 /**
@@ -3334,7 +3368,7 @@ boot_go(struct boot_rsp *rsp)
  * @return                      FIH_SUCCESS on success; nonzero on failure.
  */
 fih_ret
-boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id)
+boot_go_for_image_id_flash(struct boot_rsp *rsp, uint32_t image_id)
 {
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
@@ -3347,9 +3381,40 @@ boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id)
     boot_data.img_mask[image_id] = 0;
 #endif
 
-    FIH_CALL(context_boot_go, fih_rc, &boot_data, rsp);
+    FIH_CALL(context_boot_go_flash, fih_rc, &boot_data, rsp);
     FIH_RET(fih_rc);
 }
+
+#if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
+/**
+ * Prepares the booting process, considering only a single image. This function
+ * moves images around in ram as appropriate, and tells you what address to
+ * boot from.
+ *
+ * @param rsp                   On success, indicates how booting should occur.
+ *
+ * @param image_id              The image ID to prepare the boot process for.
+ *
+ * @return                      FIH_SUCCESS on success; nonzero on failure.
+ */
+fih_ret
+boot_go_for_image_id_ram(struct boot_rsp *rsp, uint32_t image_id)
+{
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    if (image_id >= BOOT_IMAGE_NUMBER) {
+        FIH_RET(FIH_FAILURE);
+    }
+
+#if BOOT_IMAGE_NUMBER > 1
+    memset(&boot_data.img_mask, 1, BOOT_IMAGE_NUMBER);
+    boot_data.img_mask[image_id] = 0;
+#endif
+
+    FIH_CALL(context_boot_go_ram, fih_rc, &boot_data, rsp);
+    FIH_RET(fih_rc);
+}
+#endif
 
 /**
  * Clears the boot state, so that previous operations have no effect on new

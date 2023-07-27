@@ -41,7 +41,7 @@ function skip_instruction {
     cat >commands.gdb <<EOF
 target remote localhost: 1234
 file $IMAGE_DIR/bl2.axf
-b boot_go_for_image_id if image_id == 0
+b boot_go_for_image_id_flash if image_id == 0
 continue
 delete breakpoints 1
 b *$SKIP_ADDRESS
