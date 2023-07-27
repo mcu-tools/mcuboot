@@ -498,7 +498,7 @@ config MCUBOOT_LOG_THREAD_STACK_SIZE
 
 config MCUBOOT_INDICATION_LED
 	bool "Turns on LED indication when device is in DFU"
-	default n
+	select GPIO
 	help
 	  Device device activates the LED while in bootloader mode.
 	  mcuboot-led0 alias must be set in the device's .dts
