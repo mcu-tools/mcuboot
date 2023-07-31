@@ -458,6 +458,20 @@ boot_swap_type_multi(int image_index)
     return BOOT_SWAP_TYPE_NONE;
 }
 
+static int flash_area_id_to_image(int id)
+{
+#if BOOT_IMAGE_NUMBER > 2
+#error "BOOT_IMAGE_NUMBER > 2 requires change to flash_area_id_to_image"
+#elif BOOT_IMAGE_NUMBER > 1
+    if (FLASH_AREA_IMAGE_SECONDARY(0) == id || (FLASH_AREA_IMAGE_SECONDARY(1) == id)) {
+        return 1;
+    }
+#else
+    (void)id;
+#endif
+    return 0;
+}
+
 int
 boot_set_next(const struct flash_area *fa, bool active, bool confirm)
 {
@@ -503,7 +517,8 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
                 } else {
                     swap_type = BOOT_SWAP_TYPE_TEST;
                 }
-                rc = boot_write_swap_info(fa, swap_type, 0);
+                rc = boot_write_swap_info(fa, swap_type,
+                                          flash_area_id_to_image(flash_area_get_id(fa)));
             }
         }
         break;
