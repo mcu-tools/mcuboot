@@ -2,3 +2,7 @@ cryptography>=2.6
 intelhex
 click
 cbor2
+oscrypto
+
+# the current release doesn't parse 0-bytes in token labels correctly
+-e git+https://github.com/danni/python-pkcs11.git@3639994#egg=python-pkcs11
