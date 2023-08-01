@@ -946,7 +946,7 @@ bs_reset(char *buf, int len)
 #else
         k_busy_wait(250000);
 #endif
-        sys_reboot(SYS_REBOOT_COLD);
+        sys_reboot();
 #elif __ESPRESSIF__
         esp_rom_delay_us(250000);
         bootloader_reset();
