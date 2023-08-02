@@ -92,10 +92,9 @@ board and then just make a copy of it to get started on your own
 application; see samples/zephyr/README.md for a tutorial.
 
 The Zephyr `CONFIG_BOOTLOADER_MCUBOOT` configuration option
-[documentation](http://docs.zephyrproject.org/reference/kconfig/CONFIG_BOOTLOADER_MCUBOOT.html)
+[documentation](https://docs.zephyrproject.org/latest/kconfig.html#CONFIG_BOOTLOADER_MCUBOOT)
 provides additional details regarding the changes it makes to the image
-placement and generation in order for an application to be bootable by
-MCUboot.
+placement and generation in order for an application to be bootable by MCUboot.
 
 With this, build the application as your normally would.
 
