@@ -18,13 +18,12 @@
 #include <hal/gpio_ll.h>
 #include <hal/uart_ll.h>
 #include <hal/clk_gate_ll.h>
-#include <hal/usb_serial_jtag_ll.h>
 #include <hal/gpio_hal.h>
 
 #ifdef CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT
 #define SERIAL_BOOT_GPIO_DETECT     CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT
 #else
-#define SERIAL_BOOT_GPIO_DETECT     GPIO_NUM_5
+#define SERIAL_BOOT_GPIO_DETECT     GPIO_NUM_18
 #endif
 
 #ifdef CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT_VAL
@@ -46,8 +45,6 @@
 #define SERIAL_BOOT_GPIO_INPUT_TYPE    0
 #endif
 
-#ifndef CONFIG_ESP_MCUBOOT_SERIAL_USB_SERIAL_JTAG
-
 #ifdef CONFIG_ESP_SERIAL_BOOT_UART_NUM
 #define SERIAL_BOOT_UART_NUM    CONFIG_ESP_SERIAL_BOOT_UART_NUM
 #else
@@ -57,31 +54,21 @@
 #ifdef CONFIG_ESP_SERIAL_BOOT_GPIO_RX
 #define SERIAL_BOOT_GPIO_RX     CONFIG_ESP_SERIAL_BOOT_GPIO_RX
 #else
-#define SERIAL_BOOT_GPIO_RX     GPIO_NUM_8
+#define SERIAL_BOOT_GPIO_RX     GPIO_NUM_2
 #endif
 
 #ifdef CONFIG_ESP_SERIAL_BOOT_GPIO_TX
 #define SERIAL_BOOT_GPIO_TX     CONFIG_ESP_SERIAL_BOOT_GPIO_TX
 #else
-#define SERIAL_BOOT_GPIO_TX     GPIO_NUM_9
+#define SERIAL_BOOT_GPIO_TX     GPIO_NUM_3
 #endif
 
 static uart_dev_t *serial_boot_uart_dev = (SERIAL_BOOT_UART_NUM == 0) ?
                                           &UART0 :
                                           &UART1;
 
-#endif
-
 void console_write(const char *str, int cnt)
 {
-#ifdef CONFIG_ESP_MCUBOOT_SERIAL_USB_SERIAL_JTAG
-    usb_serial_jtag_ll_txfifo_flush();
-    while (!usb_serial_jtag_ll_txfifo_writable()) {
-        MCUBOOT_WATCHDOG_FEED();
-    }
-    usb_serial_jtag_ll_write_txfifo((const uint8_t *)str, cnt);
-    usb_serial_jtag_ll_txfifo_flush();
-#else
     uint32_t tx_len;
     uint32_t write_len;
 
@@ -95,27 +82,10 @@ void console_write(const char *str, int cnt)
         MCUBOOT_WATCHDOG_FEED();
         esp_rom_delay_us(1000);
     } while (cnt > 0);
-#endif
 }
 
 int console_read(char *str, int cnt, int *newline)
 {
-#ifdef CONFIG_ESP_MCUBOOT_SERIAL_USB_SERIAL_JTAG
-    uint32_t read_len = 0;
-
-    esp_rom_delay_us(1000);
-    do {
-        if (usb_serial_jtag_ll_rxfifo_data_available()) {
-            usb_serial_jtag_ll_read_rxfifo((uint8_t *)&str[read_len], 1);
-            read_len++;
-        }
-        MCUBOOT_WATCHDOG_FEED();
-        esp_rom_delay_us(1000);
-    }  while (!(read_len == cnt || str[read_len - 1] == '\n'));
-    *newline = (str[read_len - 1] == '\n') ? 1 : 0;
-
-    return read_len;
-#else
     uint32_t len = 0;
     uint32_t read_len = 0;
     bool stop = false;
@@ -140,17 +110,12 @@ int console_read(char *str, int cnt, int *newline)
 
     *newline = (str[read_len - 1] == '\n') ? 1 : 0;
     return read_len;
-#endif
 }
 
 int boot_console_init(void)
 {
     BOOT_LOG_INF("Initializing serial boot pins");
 
-#ifdef CONFIG_ESP_MCUBOOT_SERIAL_USB_SERIAL_JTAG
-    usb_serial_jtag_ll_txfifo_flush();
-    esp_rom_uart_tx_wait_idle(0);
-#else
     /* Enable GPIO for UART RX */
     esp_rom_gpio_pad_select_gpio(SERIAL_BOOT_GPIO_RX);
     esp_rom_gpio_connect_in_signal(SERIAL_BOOT_GPIO_RX,
@@ -167,9 +132,9 @@ int boot_console_init(void)
                                     0, 0);
     gpio_ll_output_enable(&GPIO, SERIAL_BOOT_GPIO_TX);
 
-    uart_ll_set_sclk(serial_boot_uart_dev, UART_SCLK_APB);
+    uart_ll_set_sclk(serial_boot_uart_dev, UART_SCLK_DEFAULT);
     uart_ll_set_mode_normal(serial_boot_uart_dev);
-    uart_ll_set_baudrate(serial_boot_uart_dev, 115200, UART_SCLK_APB);
+    uart_ll_set_baudrate(serial_boot_uart_dev, 115200, UART_SCLK_DEFAULT);
     uart_ll_set_stop_bits(serial_boot_uart_dev, 1u);
     uart_ll_set_parity(serial_boot_uart_dev, UART_PARITY_DISABLE);
     uart_ll_set_rx_tout(serial_boot_uart_dev, 16);
@@ -181,7 +146,6 @@ int boot_console_init(void)
     uart_ll_txfifo_rst(serial_boot_uart_dev);
     uart_ll_rxfifo_rst(serial_boot_uart_dev);
     esp_rom_delay_us(50000);
-#endif
 
     return 0;
 }

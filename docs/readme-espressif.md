@@ -238,6 +238,8 @@ If signing a Zephyr image, the `--pad-header` is not needed, as it already have 
 The Secure Boot implementation is based on [IDF's Secure Boot V2](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v2.html), is hardware-assisted and RSA based, and has the role for ensuring that only authorized code will be executed on the device. This is done through bootloader signature checking by the ROM bootloader. \
 ***Note***: ROM bootloader is the First Stage Bootloader, while the Espressif MCUboot port is the Second Stage Bootloader.
 
+***Note***: Currently on MCUboot Espressif Port, the Secure Boot V2 for ESP32-C2 is not supported yet.
+
 ### [Building bootloader with Secure Boot](#building-bootloader-with-secure-boot)
 
 In order to build the bootloader with the feature on, the following configurations must be enabled:
