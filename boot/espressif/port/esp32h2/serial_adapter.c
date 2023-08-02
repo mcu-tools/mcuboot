@@ -24,7 +24,7 @@
 #ifdef CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT
 #define SERIAL_BOOT_GPIO_DETECT     CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT
 #else
-#define SERIAL_BOOT_GPIO_DETECT     GPIO_NUM_5
+#define SERIAL_BOOT_GPIO_DETECT     GPIO_NUM_12
 #endif
 
 #ifdef CONFIG_ESP_SERIAL_BOOT_GPIO_DETECT_VAL
@@ -57,13 +57,13 @@
 #ifdef CONFIG_ESP_SERIAL_BOOT_GPIO_RX
 #define SERIAL_BOOT_GPIO_RX     CONFIG_ESP_SERIAL_BOOT_GPIO_RX
 #else
-#define SERIAL_BOOT_GPIO_RX     GPIO_NUM_8
+#define SERIAL_BOOT_GPIO_RX     GPIO_NUM_10
 #endif
 
 #ifdef CONFIG_ESP_SERIAL_BOOT_GPIO_TX
 #define SERIAL_BOOT_GPIO_TX     CONFIG_ESP_SERIAL_BOOT_GPIO_TX
 #else
-#define SERIAL_BOOT_GPIO_TX     GPIO_NUM_9
+#define SERIAL_BOOT_GPIO_TX     GPIO_NUM_11
 #endif
 
 static uart_dev_t *serial_boot_uart_dev = (SERIAL_BOOT_UART_NUM == 0) ?
@@ -167,9 +167,9 @@ int boot_console_init(void)
                                     0, 0);
     gpio_ll_output_enable(&GPIO, SERIAL_BOOT_GPIO_TX);
 
-    uart_ll_set_sclk(serial_boot_uart_dev, UART_SCLK_APB);
+    uart_ll_set_sclk(serial_boot_uart_dev, UART_SCLK_DEFAULT);
     uart_ll_set_mode_normal(serial_boot_uart_dev);
-    uart_ll_set_baudrate(serial_boot_uart_dev, 115200, UART_SCLK_APB);
+    uart_ll_set_baudrate(serial_boot_uart_dev, 115200, UART_SCLK_DEFAULT);
     uart_ll_set_stop_bits(serial_boot_uart_dev, 1u);
     uart_ll_set_parity(serial_boot_uart_dev, UART_PARITY_DISABLE);
     uart_ll_set_rx_tout(serial_boot_uart_dev, 16);
