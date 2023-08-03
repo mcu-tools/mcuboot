@@ -1360,7 +1360,12 @@ specific data using the same shared data area as for the measured boot. For
 this, the target must provide a definition for the `boot_save_shared_data()`
 function which is declared in `boot/bootutil/include/bootutil/boot_record.h`.
 The `boot_add_data_to_shared_area()` function can be used for adding new TLV
-entries to the shared data area.
+entries to the shared data area. Alternatively, setting the
+`MCUBOOT_DATA_SHARING_BOOTINFO` option will provide a default function for
+this which saves information such as the maximum application size, bootloader
+version (if available), running slot number, if recovery is part of MCUboot
+and the signature type. Details of the TLVs for this information can be found
+in `boot/bootutil/include/bootutil/boot_status.h` with `BLINFO_` prefixes.
 
 ## [Testing in CI](#testing-in-ci)
 
