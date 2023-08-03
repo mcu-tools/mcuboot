@@ -93,6 +93,12 @@ if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)
     )
 endif()
 
+if(DEFINED CONFIG_BOOT_SHARE_BACKEND_RETENTION)
+  zephyr_library_sources(
+    shared_data.c
+    )
+endif()
+
 # Generic bootutil sources and includes.
 zephyr_library_include_directories(${BOOT_DIR}/bootutil/include)
 zephyr_library_sources(
@@ -105,6 +111,19 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/bootutil_misc.c
   ${BOOT_DIR}/bootutil/src/fault_injection_hardening.c
   )
+
+if(DEFINED CONFIG_MEASURED_BOOT OR DEFINED CONFIG_BOOT_SHARE_DATA)
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/boot_record.c
+    )
+
+  # Set a define for this file which will allow inclusion of the Zephyr version
+  # include file
+  set_source_files_properties(
+    ${BOOT_DIR}/bootutil/src/boot_record.c
+    PROPERTIES COMPILE_FLAGS -DZEPHYR_VER_INCLUDE=1
+    )
+endif()
 
 # library which might be common source code for MCUBoot and an application
 zephyr_link_libraries(MCUBOOT_BOOTUTIL)
