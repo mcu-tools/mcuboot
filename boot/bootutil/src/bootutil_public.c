@@ -472,10 +472,11 @@ boot_write_copy_done(const struct flash_area *fap)
 
 #ifndef MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP
 
-static int flash_area_id_to_image(int id)
+static int flash_area_to_image(const struct flash_area *fa)
 {
 #if BOOT_IMAGE_NUMBER > 1
     uint8_t i = 0;
+    int id = flash_area_get_id(fa);
 
     while (i < BOOT_IMAGE_NUMBER) {
         if (FLASH_AREA_IMAGE_PRIMARY(i) == id || (FLASH_AREA_IMAGE_SECONDARY(i) == id)) {
@@ -485,7 +486,7 @@ static int flash_area_id_to_image(int id)
         ++i;
     }
 #else
-    (void)id;
+    (void)fa;
 #endif
     return 0;
 }
@@ -535,8 +536,7 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
                 } else {
                     swap_type = BOOT_SWAP_TYPE_TEST;
                 }
-                rc = boot_write_swap_info(fa, swap_type,
-                                          flash_area_id_to_image(flash_area_get_id(fa)));
+                rc = boot_write_swap_info(fa, swap_type, flash_area_to_image(fa));
             }
         }
         break;
