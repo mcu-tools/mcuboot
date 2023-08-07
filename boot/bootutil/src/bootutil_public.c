@@ -463,7 +463,7 @@ static int flash_area_id_to_image(int id)
 #if BOOT_IMAGE_NUMBER > 2
 #error "BOOT_IMAGE_NUMBER > 2 requires change to flash_area_id_to_image"
 #elif BOOT_IMAGE_NUMBER > 1
-    if (FLASH_AREA_IMAGE_SECONDARY(0) == id || (FLASH_AREA_IMAGE_SECONDARY(1) == id)) {
+    if (FLASH_AREA_IMAGE_PRIMARY(1) == id || (FLASH_AREA_IMAGE_SECONDARY(1) == id)) {
         return 1;
     }
 #else
