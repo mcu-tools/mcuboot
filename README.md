@@ -1,5 +1,7 @@
 # [MCUboot](http://mcuboot.com/)
 
+Pointless change to provoke CI.
+
 [![Package on PyPI](https://img.shields.io/pypi/v/imgtool.svg)][pypi]
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/12307/badge.svg)][coverity]
 [![Build Status (Sim)](https://github.com/mcu-tools/mcuboot/workflows/Sim/badge.svg)][sim]
