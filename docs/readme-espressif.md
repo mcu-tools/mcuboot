@@ -13,7 +13,7 @@ The current port is available for use in the following SoCs within the OSes:
 | Zephyr | Supported | Supported | Supported | Supported | In progress | In progress | In progress |
 | NuttX | Supported | Supported | Supported | Supported | In progress | In progress | In progress |
 
-Notice that any customization in the memory layout from the OS application must be done aware of the bootloader own memory layout to avoid overlapping.
+Notice that any customization in the memory layout from the OS application must be done aware of the bootloader own memory layout to avoid overlapping. More information on the section [Memory map organization for OS compatibility](#memory-map-organization-for-os-compatibility).
 
 ## [Installing requirements and dependencies](#installing-requirements-and-dependencies)
 
@@ -674,3 +674,380 @@ mcumgr -c esp reset
 *Serial recovery mode uploads the image to the PRIMARY_SLOT, therefore if the upload process gets interrupted the image may be corrupted and unable to boot*
 
 ---
+
+## [Memory map organization for OS compatibility](#memory-map-organization-for-os-compatibility)
+
+When adding support for this MCUboot port to an OS or even customizing an already supported application memory layout, it is mandatory for the OS linker script to avoid overlaping on `iram_loader_seg` and `dram_seg` bootloader RAM regions. Although part of the RAM becomes initially unavailable, it is reclaimable by the OS after boot as heap.
+
+Therefore, the application must be designed aware of the bootloader memory usage.
+
+---
+***Note***
+
+*Mostly of the Espressif chips have a separation on the address space for the same physical memory ammount: IRAM (accessed by the instruction bus) and DRAM (accessed by the data bus), which means that they need to be accessed by different addresses ranges depending on type, but refer to the same region. More information on the [Espressif TRMs](https://www.espressif.com/en/support/documents/technical-documents?keys=&field_download_document_type_tid%5B%5D=963).*
+
+---
+
+The following diagrams illustrate a memory organization from the bootloader point of view (notice that the addresses and sizes may vary depending on the chip), they reflect the linker script `boot/espressif/port/<TARGET>/ld/bootloader.ld`:
+
+### ESP32
+
+#### ESP32 standard
+```
+  SRAM0
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40070000 / --------- - SRAM0 START
+ *  |        ^                    |
+ *  |        | PRO CPU Cache      |  *NOT CLAIMABLE BY OS RAM
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x40078000 / ----------
+ *  |        ^                    |
+ *  |        |                    |  *NOT CLAIMABLE BY OS RAM
+ *  |        | iram_loader_seg    |  *Region usable as iram_loader_seg during boot
+ *  |        | (APP CPU Cache)    |   as APP CPU is not initialized yet
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x40080000 / ----------
+ *  |        ^                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        v                    |
+ *  +------------------------------+ 0x40090000 / ----------
+ *  |        ^                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x40099000 / ----------
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  +------------------------------+ 0x4009FFFF / ---------- - SRAM0 END
+
+  SRAM1
+                                     IRAM ADDR  / DRAM ADDR
+ *  +------------------------------+ 0x400A0000 / 0x3FFFFFFF - SRAM1 START
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | dram_seg           |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x400AB900 / 0x3FFF4700
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x400BFFFF / 0x3FFE0000 - SRAM1 END
+ Note: On ESP32 the SRAM1 addresses are accessed in reverse order comparing Instruction bus (IRAM) and Data bus (DRAM), but refer to the same location. See the TRM for more information.
+
+  SRAM2
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ ---------- / 0x3FFAE000 - SRAM2 START
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  +--------+--------------+------+ ---------- / 0x3FFDFFFF - SRAM2 END
+```
+
+#### ESP32 Multi Processor Boot
+
+This is the linker script mapping when the `CONFIG_ESP_MULTI_PROCESSOR_BOOT` is enabled ([Multi boot](#multi-boot)) since APP CPU Cache region cannot be used for `iram_loader_seg` region as there would be conflict when the bootloader starts the APP CPU before jump to the main application.
+
+```
+  SRAM0
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40070000 / --------- - SRAM0 START
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | Cache              |  *Used by PRO CPU and APP CPU as Cache
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x40080000 / ----------
+ *  |        ^                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        v                    |
+ *  +------------------------------+ 0x40090000 / ----------
+ *  |        ^                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x40099000 / ----------
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  +------------------------------+ 0x4009FFFF / ---------- - SRAM0 END
+
+  SRAM1
+                                     IRAM ADDR  / DRAM ADDR
+ *  +------------------------------+ 0x400A0000 / 0x3FFFFFFF - SRAM1 START
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | dram_seg           |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x400AB900 / 0x3FFF4700
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | iram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x400B1E00 / 0x3FFEE200
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x400BFFFF / 0x3FFE0000 - SRAM1 END
+ Note: On ESP32 the SRAM1 addresses are accessed in reverse order comparing Instruction bus (IRAM) and Data bus (DRAM), but refer to the same location. See the TRM for more information.
+
+  SRAM2
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ ---------- / 0x3FFAE000 - SRAM2 START
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  +--------+--------------+------+ ---------- / 0x3FFDFFFF - SRAM2 END
+```
+
+### ESP32-S2
+
+```
+  SRAM0
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40020000 / 0x3FFB0000 - SRAM0 START
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  +--------+--------------+------+ 0x40027FFF / 0x3FFB7FFF - SRAM0 END
+
+  SRAM1
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40028000 / 0x3FFB8000 - SRAM1 START
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x40047000 / 0x3FFD7000
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x40050000 / 0x3FFE0000
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x40056000 / 0x3FFE6000
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x4006FFFF / 0x3FFFFFFF - SRAM1 END
+```
+
+### ESP32-S3
+
+```
+  SRAM0
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40370000 / ---------- - SRAM0 START
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  +--------+--------------+------+ 0x40377FFF / ---------- - SRAM0 END
+
+  SRAM1
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40378000 / 0x3FC88000 - SRAM1 START
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x403B0000 / 0x3FCC0000
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x403BA000 / 0x3FCCA000
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x403C0000 / 0x3FCD0000
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x403DFFFF / 0x3FCEFFFF - SRAM1 END
+
+  SRAM2
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ ---------- / 0x3FCF0000 - SRAM2 START
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  +--------+--------------+------+ ---------- / 0x3FCFFFFF - SRAM2 END
+```
+
+### ESP32-C2
+
+```
+  SRAM0
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x4037C000 / ---------- - SRAM0 START
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  +--------+--------------+------+ 0x4037FFFF / ---------- - SRAM0 END
+
+  SRAM1
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40380000 / 0x3FCA0000 - SRAM1 START
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x403A1370 / 0x3FCC1370
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x403A9B70 / 0x3FCC9B70
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x403B0B70 / 0x3FCD0B70
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x403BFFFF / 0x3FCDFFFF - SRAM1 END
+```
+
+### ESP32-C3
+
+```
+  SRAM0
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x4037C000 / ---------- - SRAM0 START
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  +--------+--------------+------+ 0x4037FFFF / ---------- - SRAM0 END
+
+  SRAM1
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40380000 / 0x3FC80000 - SRAM1 START
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x403C7000 / 0x3FCC7000
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x403D0000 / 0x3FCD0000
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x403D5000 / 0x3FCD5000
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x403DFFFF / 0x3FCDFFFF - SRAM1 END
+```
+
+### ESP32-C6
+
+```
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40800000 / 0x40800000 - HP SRAM START
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x40860610 / 0x40860610
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x40869610 / 0x40869610
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x40870610 / 0x40870610
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x4087FFFF / 0x4087FFFF - HP SRAM END
+```
+
+### ESP32-H2
+
+```
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40800000 / 0x40800000 - HP SRAM START
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x408317D0 / 0x408317D0
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x40839FD0 / 0x40839FD0
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x40840FD0 / 0x40840FD0
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x4084FFFF / 0x4084FFFF - HP SRAM END
+```
