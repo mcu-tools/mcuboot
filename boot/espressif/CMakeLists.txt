@@ -308,10 +308,28 @@ target_include_directories(
     ${bootutil_paths}
     )
 
+set(ld_input ${CMAKE_CURRENT_LIST_DIR}/port/${MCUBOOT_TARGET}/ld/bootloader.ld)
+set(ld_output ${CMAKE_CURRENT_BINARY_DIR}/ld/bootloader.ld)
+
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/ld")
+
+get_directory_property(configs COMPILE_DEFINITIONS)
+foreach(c ${configs})
+    list(APPEND conf_defines "-D${c}")
+endforeach()
+
+# Preprocess linker script
+add_custom_command(
+    TARGET ${APP_EXECUTABLE} PRE_LINK
+    COMMAND ${CMAKE_C_COMPILER} -x c -E -P -o ${ld_output} ${conf_defines} ${ld_input}
+    MAIN_DEPENDENCY ${ld_input}
+    COMMENT "Preprocessing bootloader.ld linker script..."
+    )
+
 target_link_libraries(
     ${APP_EXECUTABLE}
     PUBLIC
-    -T${CMAKE_CURRENT_LIST_DIR}/port/${MCUBOOT_TARGET}/ld/bootloader.ld
+    -T${ld_output}
     ${LDFLAGS}
     )
 
