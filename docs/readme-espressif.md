@@ -8,10 +8,10 @@ Documentation about the MCUboot bootloader design, operation and features can be
 
 The current port is available for use in the following SoCs within the OSes:
 
-| | ESP32 | ESP32-S2 | ESP32-C3 | ESP32-S3 |
-| :-----: | :-----: | :-----: | :-----: | :-----: |
-| Zephyr | Supported | Supported | Supported | Supported |
-| NuttX | Supported | Supported | Supported | Supported |
+| | ESP32 | ESP32-S2 | ESP32-C3 | ESP32-S3 | ESP32-C2 | ESP32-C6 | ESP32-H2 |
+| :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
+| Zephyr | Supported | Supported | Supported | Supported | In progress | In progress | In progress |
+| NuttX | Supported | Supported | Supported | Supported | In progress | In progress | In progress |
 
 Notice that any customization in the memory layout from the OS application must be done aware of the bootloader own memory layout to avoid overlapping.
 
@@ -114,9 +114,9 @@ Detected flash size: 4MB
 
 *`<BOOTLOADER_FLASH_OFFSET>` value must follow one of the addresses below:*
 
-| ESP32 | ESP32-S2 | ESP32-C3 | ESP32-S3 |
-| :-----: | :-----: | :-----: | :-----: |
-| 0x1000 | 0x1000 | 0x0000 | 0x0000 |
+| ESP32 | ESP32-S2 | ESP32-C3 | ESP32-S3 | ESP32-C2 | ESP32-C6 | ESP32-H2 |
+| :-----: | :-----: | :-----: | :-----: | :-----: | :-----: | :-----: |
+| 0x1000 | 0x1000 | 0x0000 | 0x0000 | 0x0000 | 0x0000 | 0x0000 |
 
 ---
 
@@ -622,6 +622,8 @@ Some chips, like ESP32-C3 and ESP32-S3 have an integrated USB JTAG Serial Contro
 More information about the USB pins and hardware configuration:
 - ESP32-C3: https://docs.espressif.com/projects/esp-idf/en/latest/esp32c3/api-guides/usb-serial-jtag-console.html
 - ESP32-S3: https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-guides/usb-serial-jtag-console.html.
+- ESP32-C6: https://docs.espressif.com/projects/esp-idf/en/latest/esp32c6/api-guides/usb-serial-jtag-console.html
+- ESP32-H2: https://docs.espressif.com/projects/esp-idf/en/latest/esp32h2/api-guides/usb-serial-jtag-console.html
 
 Configuration example:
 ```
