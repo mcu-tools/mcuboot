@@ -38,6 +38,10 @@ shallow_clone_mynewt() {
     # nrfx is now taken from original repository
     git clone --depth=1 --branch v2.8.0 https://github.com/NordicSemiconductor/nrfx.git repos/nordic-nrfx
     [[ $? -ne 0 ]] && exit 1
+
+    # Mbed-TLS is now taken from original repository
+    git clone --depth=1 --branch v2.28.3 https://github.com/Mbed-TLS/mbedtls.git repos/mbedtls
+    [[ $? -ne 0 ]] && exit 1
 }
 
 arm_toolchain_install() {
