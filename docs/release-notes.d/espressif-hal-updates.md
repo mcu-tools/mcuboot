@@ -1,0 +1,3 @@
+- espressif: refactor after removing IDF submodule
+- espressif: add ESP32-C6, ESP32-C2 and ESP32-H2 new chips support
+- espressif: adjustments after IDF v5.1 compatibility, secure boot build and memory map organization
