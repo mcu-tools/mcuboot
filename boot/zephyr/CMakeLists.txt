@@ -56,6 +56,7 @@ endif()
 # Zephyr port-specific sources.
 zephyr_library_sources(
   main.c
+  io.c
   flash_map_extended.c
   os.c
   keys.c
