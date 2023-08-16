@@ -1,0 +1,47 @@
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: Apache-2.0
+
+if BOOT_FIRMWARE_LOADER
+
+menu "Firmware loader entrance methods"
+
+menuconfig BOOT_FIRMWARE_LOADER_ENTRANCE_GPIO
+	bool "GPIO"
+	depends on GPIO
+	help
+	  Use a GPIO to enter firmware loader mode.
+
+config BOOT_FIRMWARE_LOADER_DETECT_DELAY
+	int "Serial detect pin detection delay time [ms]"
+	default 0
+	depends on BOOT_FIRMWARE_LOADER_ENTRANCE_GPIO
+	help
+	  Used to prevent the bootloader from loading on button press.
+	  Useful for powering on when using the same button as
+	  the one used to place the device in bootloader mode.
+
+config BOOT_FIRMWARE_LOADER_BOOT_MODE
+	bool "Check boot mode via retention subsystem"
+	depends on RETENTION_BOOT_MODE
+	help
+	  Allows for entering firmware loader mode by using Zephyr's boot mode
+	  retention system (i.e. an application must set the boot mode to stay
+	  in firmware loader mode and reboot the module).
+
+config BOOT_FIRMWARE_LOADER_NO_APPLICATION
+	bool "Stay in bootloader if no application"
+	help
+	  Allows for entering firmware loader mode if there is no bootable
+	  application that the bootloader can jump to.
+
+config BOOT_FIRMWARE_LOADER_PIN_RESET
+	bool "Check for device reset by pin"
+	select HWINFO
+	help
+	  Checks if the module reset was caused by the reset pin and will
+	  remain in bootloader firmware loader mode if it was.
+
+endmenu
+
+endif

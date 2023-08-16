@@ -256,6 +256,18 @@ config BOOT_RAM_LOAD
 	  The address that the image is copied to is specified using the load-addr
 	  argument to the imgtool.py script which writes it to the image header.
 
+config BOOT_FIRMWARE_LOADER
+	bool "Firmware loader"
+	help
+	  If y, mcuboot will have a single application slot, and the secondary
+	  slot will be for a non-upgradeable firmware loaded image (e.g. for
+	  loading firmware via Bluetooth). The main application will boot by
+	  default unless there is an error with it or the boot mode has been
+	  forced to the firmware loader.
+
+	  Note: The firmware loader image must be signed with the same signing
+	  key as the primary image.
+
 endchoice
 
 # Workaround for not being able to have commas in macro arguments
@@ -581,6 +593,8 @@ config MCUBOOT_INDICATION_LED
 	  definitions for this to work.
 
 rsource "Kconfig.serial_recovery"
+
+rsource "Kconfig.firmware_loader"
 
 config BOOT_INTR_VEC_RELOC
 	bool "Relocate the interrupt vector to the application"

@@ -131,6 +131,11 @@ zephyr_library_sources(
   ${BOOT_DIR}/zephyr/single_loader.c
   )
 zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
+elseif(CONFIG_BOOT_FIRMWARE_LOADER)
+zephyr_library_sources(
+  ${BOOT_DIR}/zephyr/firmware_loader.c
+  )
+zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
 else()
 zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/loader.c

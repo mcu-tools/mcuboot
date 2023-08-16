@@ -250,6 +250,8 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
 #endif
 #elif defined(MCUBOOT_RAM_LOAD)
     uint8_t mode = MCUBOOT_MODE_RAM_LOAD;
+#elif defined(MCUBOOT_FIRMWARE_LOADER)
+    uint8_t mode = MCUBOOT_MODE_FIRMWARE_LOADER;
 #else
 #error "Unknown mcuboot operating mode"
 #endif
