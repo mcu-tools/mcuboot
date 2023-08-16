@@ -57,15 +57,17 @@ struct flash_area;
 #if (defined(MCUBOOT_OVERWRITE_ONLY) + \
      defined(MCUBOOT_SWAP_USING_MOVE) + \
      defined(MCUBOOT_DIRECT_XIP) + \
-     defined(MCUBOOT_RAM_LOAD)) > 1
-#error "Please enable only one of MCUBOOT_OVERWRITE_ONLY, MCUBOOT_SWAP_USING_MOVE, MCUBOOT_DIRECT_XIP or MCUBOOT_RAM_LOAD"
+     defined(MCUBOOT_RAM_LOAD) + \
+     defined(MCUBOOT_FIRMWARE_LOADER)) > 1
+#error "Please enable only one of MCUBOOT_OVERWRITE_ONLY, MCUBOOT_SWAP_USING_MOVE, MCUBOOT_DIRECT_XIP, MCUBOOT_RAM_LOAD or MCUBOOT_FIRMWARE_LOADER"
 #endif
 
 #if !defined(MCUBOOT_OVERWRITE_ONLY) && \
     !defined(MCUBOOT_SWAP_USING_MOVE) && \
     !defined(MCUBOOT_DIRECT_XIP) && \
     !defined(MCUBOOT_RAM_LOAD) && \
-    !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
+    !defined(MCUBOOT_SINGLE_APPLICATION_SLOT) && \
+    !defined(MCUBOOT_FIRMWARE_LOADER)
 #define MCUBOOT_SWAP_USING_SCRATCH 1
 #endif
 

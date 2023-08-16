@@ -29,11 +29,11 @@
 
 #include "target.h"
 
-#if defined(CONFIG_BOOT_SERIAL_PIN_RESET)
+#if defined(CONFIG_BOOT_SERIAL_PIN_RESET) || defined(CONFIG_BOOT_FIRMWARE_LOADER_PIN_RESET)
 #include <zephyr/drivers/hwinfo.h>
 #endif
 
-#if defined(CONFIG_BOOT_SERIAL_BOOT_MODE)
+#if defined(CONFIG_BOOT_SERIAL_BOOT_MODE) || defined(CONFIG_BOOT_FIRMWARE_LOADER_BOOT_MODE)
 #include <zephyr/retention/bootmode.h>
 #endif
 
@@ -45,6 +45,16 @@
     !defined(CONFIG_BOOT_SERIAL_NO_APPLICATION) && \
     !defined(CONFIG_BOOT_SERIAL_PIN_RESET)
 #error "Serial recovery selected without an entrance mode set"
+#endif
+#endif
+
+/* Validate firmware loader configuration */
+#ifdef CONFIG_BOOT_FIRMWARE_LOADER
+#if !defined(CONFIG_BOOT_FIRMWARE_LOADER_ENTRANCE_GPIO) && \
+    !defined(CONFIG_BOOT_FIRMWARE_LOADER_BOOT_MODE) && \
+    !defined(CONFIG_BOOT_FIRMWARE_LOADER_NO_APPLICATION) && \
+    !defined(CONFIG_BOOT_FIRMWARE_LOADER_PIN_RESET)
+#error "Firmware loader selected without an entrance mode set"
 #endif
 #endif
 
@@ -80,10 +90,13 @@ void io_led_init(void)
 }
 #endif /* CONFIG_MCUBOOT_INDICATION_LED */
 
-#if defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) || defined(CONFIG_BOOT_USB_DFU_GPIO)
+#if defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) || defined(CONFIG_BOOT_USB_DFU_GPIO) || \
+    defined(CONFIG_BOOT_FIRMWARE_LOADER_ENTRANCE_GPIO)
 
 #if defined(CONFIG_MCUBOOT_SERIAL)
 #define BUTTON_0_DETECT_DELAY CONFIG_BOOT_SERIAL_DETECT_DELAY
+#elif defined(CONFIG_BOOT_FIRMWARE_LOADER)
+#define BUTTON_0_DETECT_DELAY CONFIG_BOOT_FIRMWARE_LOADER_DETECT_DELAY
 #else
 #define BUTTON_0_DETECT_DELAY CONFIG_BOOT_USB_DFU_DETECT_DELAY
 #endif
@@ -152,7 +165,7 @@ bool io_detect_pin(void)
 }
 #endif
 
-#if defined(CONFIG_BOOT_SERIAL_PIN_RESET)
+#if defined(CONFIG_BOOT_SERIAL_PIN_RESET) || defined(CONFIG_BOOT_FIRMWARE_LOADER_PIN_RESET)
 bool io_detect_pin_reset(void)
 {
     uint32_t reset_cause;
@@ -169,7 +182,7 @@ bool io_detect_pin_reset(void)
 }
 #endif
 
-#if defined(CONFIG_BOOT_SERIAL_BOOT_MODE)
+#if defined(CONFIG_BOOT_SERIAL_BOOT_MODE) || defined(CONFIG_BOOT_FIRMWARE_LOADER_BOOT_MODE)
 bool io_detect_boot_mode(void)
 {
     int32_t boot_mode;
