@@ -460,11 +460,15 @@ boot_swap_type_multi(int image_index)
 
 static int flash_area_id_to_image(int id)
 {
-#if BOOT_IMAGE_NUMBER > 2
-#error "BOOT_IMAGE_NUMBER > 2 requires change to flash_area_id_to_image"
-#elif BOOT_IMAGE_NUMBER > 1
-    if (FLASH_AREA_IMAGE_PRIMARY(1) == id || (FLASH_AREA_IMAGE_SECONDARY(1) == id)) {
-        return 1;
+#if BOOT_IMAGE_NUMBER > 1
+    uint8_t i = 0;
+
+    while (i < BOOT_IMAGE_NUMBER) {
+        if (FLASH_AREA_IMAGE_PRIMARY(i) == id || (FLASH_AREA_IMAGE_SECONDARY(i) == id)) {
+            return i;
+        }
+
+        ++i;
     }
 #else
     (void)id;
