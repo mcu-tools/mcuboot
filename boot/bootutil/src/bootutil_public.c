@@ -458,6 +458,20 @@ boot_swap_type_multi(int image_index)
     return BOOT_SWAP_TYPE_NONE;
 }
 
+int
+boot_write_copy_done(const struct flash_area *fap)
+{
+    uint32_t off;
+
+    off = boot_copy_done_off(fap);
+    BOOT_LOG_DBG("writing copy_done; fa_id=%d off=0x%lx (0x%lx)",
+                 flash_area_get_id(fap), (unsigned long)off,
+                 (unsigned long)(flash_area_get_off(fap) + off));
+    return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
+}
+
+#ifndef MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP
+
 static int flash_area_id_to_image(int id)
 {
 #if BOOT_IMAGE_NUMBER > 1
@@ -476,20 +490,6 @@ static int flash_area_id_to_image(int id)
     return 0;
 }
 
-int
-boot_write_copy_done(const struct flash_area *fap)
-{
-    uint32_t off;
-
-    off = boot_copy_done_off(fap);
-    BOOT_LOG_DBG("writing copy_done; fa_id=%d off=0x%lx (0x%lx)",
-                 flash_area_get_id(fap), (unsigned long)off,
-                 (unsigned long)(flash_area_get_off(fap) + off));
-    return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
-}
-
-
-#ifndef MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP
 int
 boot_set_next(const struct flash_area *fa, bool active, bool confirm)
 {
