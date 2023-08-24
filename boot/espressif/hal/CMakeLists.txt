@@ -71,11 +71,8 @@ set(hal_srcs
     ${esp_hal_dir}/components/bootloader_support/src/bootloader_random_${MCUBOOT_TARGET}.c
     ${esp_hal_dir}/components/bootloader_support/src/bootloader_utility.c
     ${esp_hal_dir}/components/bootloader_support/src/esp_image_format.c
-    ${esp_hal_dir}/components/bootloader_support/src/secure_boot_v2/secure_boot_signatures_bootloader.c
     ${esp_hal_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/bootloader_soc.c
     ${esp_hal_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/bootloader_sha.c
-    ${esp_hal_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/secure_boot_secure_features.c
-    ${esp_hal_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/flash_encryption_secure_features.c
     ${esp_hal_dir}/components/hal/mpu_hal.c
     ${esp_hal_dir}/components/hal/efuse_hal.c
     ${esp_hal_dir}/components/hal/mmu_hal.c
@@ -103,12 +100,23 @@ set(hal_srcs
 if(DEFINED CONFIG_SECURE_BOOT_V2_ENABLED)
     list(APPEND hal_srcs
         ${src_dir}/secure_boot.c
+        ${esp_hal_dir}/components/bootloader_support/src/secure_boot_v2/secure_boot_signatures_bootloader.c
+        ${esp_hal_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/secure_boot_secure_features.c
+        )
+    list(APPEND include_dirs
+        ${esp_hal_dir}/components/bootloader_support/src/secure_boot_v2
         )
 endif()
 
 if(DEFINED CONFIG_SECURE_FLASH_ENC_ENABLED)
     list(APPEND hal_srcs
         ${src_dir}/flash_encrypt.c
+        ${esp_hal_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/flash_encryption_secure_features.c
+        )
+    set_source_files_properties(
+        ${src_dir}/flash_encrypt.c
+        PROPERTIES COMPILE_FLAGS
+        "-Wno-unused-variable"
         )
 endif()
 

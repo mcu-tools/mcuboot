@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2021 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -15,7 +15,11 @@
 #include "esp_efuse_table.h"
 #include "esp_log.h"
 #include "hal/wdt_hal.h"
+#include "hal/efuse_hal.h"
 #include "soc/soc_caps.h"
+#ifdef CONFIG_SOC_EFUSE_CONSISTS_OF_ONE_KEY_BLOCK
+#include "soc/sensitive_reg.h"
+#endif
 
 #include "esp_mcuboot_image.h"
 
@@ -27,6 +31,8 @@
 #define WR_DIS_CRYPT_CNT ESP_EFUSE_WR_DIS_SPI_BOOT_CRYPT_CNT
 #endif
 
+#define FLASH_ENC_CNT_MAX (CRYPT_CNT[0]->bit_count)
+
 /* This file implements FLASH ENCRYPTION related APIs to perform
  * various operations such as programming necessary flash encryption
  * eFuses, detect whether flash encryption is enabled (by reading eFuse)
@@ -36,10 +42,9 @@
 static const char *TAG = "flash_encrypt";
 
 /* Static functions for stages of flash encryption */
-static esp_err_t initialise_flash_encryption(void);
-static esp_err_t encrypt_flash_contents(uint32_t flash_crypt_cnt, bool flash_crypt_wr_dis) __attribute__((unused));
 static esp_err_t encrypt_bootloader(void);
 static esp_err_t encrypt_primary_slot(void);
+static size_t get_flash_encrypt_cnt_value(void);
 
 /**
  * This former inlined function must not be defined in the header file anymore.
@@ -50,15 +55,14 @@ static esp_err_t encrypt_primary_slot(void);
  */
 bool IRAM_ATTR esp_flash_encryption_enabled(void)
 {
-    uint32_t flash_crypt_cnt = 0;
 #ifndef CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH
-    flash_crypt_cnt = efuse_ll_get_flash_crypt_cnt();
+    return efuse_hal_flash_encryption_enabled();
 #else
+    uint32_t flash_crypt_cnt = 0;
 #if CONFIG_IDF_TARGET_ESP32
     esp_efuse_read_field_blob(ESP_EFUSE_FLASH_CRYPT_CNT, &flash_crypt_cnt, ESP_EFUSE_FLASH_CRYPT_CNT[0]->bit_count);
 #else
     esp_efuse_read_field_blob(ESP_EFUSE_SPI_BOOT_CRYPT_CNT, &flash_crypt_cnt, ESP_EFUSE_SPI_BOOT_CRYPT_CNT[0]->bit_count);
-#endif
 #endif
     /* __builtin_parity is in flash, so we calculate parity inline */
     bool enabled = false;
@@ -69,34 +73,84 @@ bool IRAM_ATTR esp_flash_encryption_enabled(void)
         flash_crypt_cnt >>= 1;
     }
     return enabled;
+#endif // CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH
 }
 
-esp_err_t esp_flash_encrypt_check_and_update(void)
+static size_t get_flash_encrypt_cnt_value(void)
 {
     size_t flash_crypt_cnt = 0;
     esp_efuse_read_field_cnt(CRYPT_CNT, &flash_crypt_cnt);
-    bool flash_crypt_wr_dis = esp_efuse_read_field_bit(WR_DIS_CRYPT_CNT);
+    return flash_crypt_cnt;
+}
+
+bool esp_flash_encrypt_initialized_once(void)
+{
+    return get_flash_encrypt_cnt_value() != 0;
+}
+
+bool esp_flash_encrypt_is_write_protected(bool print_error)
+{
+    if (esp_efuse_read_field_bit(WR_DIS_CRYPT_CNT)) {
+        if (print_error) {
+            ESP_LOGE(TAG, "Flash Encryption cannot be enabled (CRYPT_CNT (%d) is write protected)", get_flash_encrypt_cnt_value());
+        }
+        return true;
+    }
+    return false;
+}
+
+bool esp_flash_encrypt_state(void)
+{
+    size_t flash_crypt_cnt = get_flash_encrypt_cnt_value();
+    bool flash_crypt_wr_dis = esp_flash_encrypt_is_write_protected(false);
 
     ESP_LOGV(TAG, "CRYPT_CNT %d, write protection %d", flash_crypt_cnt, flash_crypt_wr_dis);
 
     if (flash_crypt_cnt % 2 == 1) {
         /* Flash is already encrypted */
-        int left = (CRYPT_CNT[0]->bit_count - flash_crypt_cnt) / 2;
+        int left = (FLASH_ENC_CNT_MAX - flash_crypt_cnt) / 2;
         if (flash_crypt_wr_dis) {
             left = 0; /* can't update FLASH_CRYPT_CNT, no more flashes */
         }
         ESP_LOGI(TAG, "flash encryption is enabled (%d plaintext flashes left)", left);
-        return ESP_OK;
-    } else {
+        return true;
+    }
+    return false;
+}
+
+esp_err_t esp_flash_encrypt_check_and_update(void)
+{
+    bool flash_encryption_enabled = esp_flash_encrypt_state();
+    if (!flash_encryption_enabled) {
 #ifndef CONFIG_SECURE_FLASH_REQUIRE_ALREADY_ENABLED
-        /* Flash is not encrypted, so encrypt it! */
-        return encrypt_flash_contents(flash_crypt_cnt, flash_crypt_wr_dis);
+        if (esp_flash_encrypt_is_write_protected(true)) {
+            return ESP_FAIL;
+        }
+
+        esp_err_t err = esp_flash_encrypt_init();
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Initialization of Flash encryption key failed (%d)", err);
+            return err;
+        }
+
+        err = esp_flash_encrypt_contents();
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Encryption flash contents failed (%d)", err);
+            return err;
+        }
+
+        err = esp_flash_encrypt_enable();
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Enabling of Flash encryption failed (%d)", err);
+            return err;
+        }
 #else
         ESP_LOGE(TAG, "flash encryption is not enabled, and SECURE_FLASH_REQUIRE_ALREADY_ENABLED "
                       "is set, refusing to boot.");
         return ESP_ERR_INVALID_STATE;
 #endif // CONFIG_SECURE_FLASH_REQUIRE_ALREADY_ENABLED
     }
+    return ESP_OK;
 }
 
 static esp_err_t check_and_generate_encryption_keys(void)
@@ -127,10 +181,18 @@ static esp_err_t check_and_generate_encryption_keys(void)
         return ESP_ERR_INVALID_STATE;
     }
 #else
+#ifdef CONFIG_SECURE_FLASH_ENCRYPTION_AES128_DERIVED
+    enum { BLOCKS_NEEDED = 1 };
+    esp_efuse_purpose_t purposes[BLOCKS_NEEDED] = {
+        ESP_EFUSE_KEY_PURPOSE_XTS_AES_128_KEY_DERIVED_FROM_128_EFUSE_BITS,
+    };
+    key_size = 16;
+#else
     enum { BLOCKS_NEEDED = 1 };
     esp_efuse_purpose_t purposes[BLOCKS_NEEDED] = {
         ESP_EFUSE_KEY_PURPOSE_XTS_AES_128_KEY,
     };
+#endif // CONFIG_SECURE_FLASH_ENCRYPTION_AES128_DERIVED
 #endif // CONFIG_SECURE_FLASH_ENCRYPTION_AES256
 #endif // CONFIG_IDF_TARGET_ESP32
 
@@ -181,8 +243,14 @@ static esp_err_t check_and_generate_encryption_keys(void)
     return ESP_OK;
 }
 
-static esp_err_t initialise_flash_encryption(void)
+esp_err_t esp_flash_encrypt_init(void)
 {
+    if (esp_flash_encryption_enabled() || esp_flash_encrypt_initialized_once()) {
+        return ESP_OK;
+    }
+
+    /* Very first flash encryption pass: generate keys, etc. */
+
     esp_efuse_batch_write_begin(); /* Batch all efuse writes at the end of this function */
 
     /* Before first flash encryption pass, need to initialise key & crypto config */
@@ -198,26 +266,6 @@ static esp_err_t initialise_flash_encryption(void)
         return err;
     }
 
-#if defined(SOC_SUPPORTS_SECURE_DL_MODE) && defined(CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE)
-    ESP_LOGI(TAG, "Enabling Secure Download mode...");
-    err = esp_efuse_enable_rom_secure_download_mode();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Could not enable Secure Download mode...");
-        esp_efuse_batch_write_cancel();
-        return err;
-    }
-#elif CONFIG_SECURE_DISABLE_ROM_DL_MODE
-    ESP_LOGI(TAG, "Disable ROM Download mode...");
-    err = esp_efuse_disable_rom_download_mode();
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Could not disable ROM Download mode...");
-        esp_efuse_batch_write_cancel();
-        return err;
-    }
-#else
-    ESP_LOGW(TAG, "UART ROM Download mode kept enabled - SECURITY COMPROMISED");
-#endif
-
     err = esp_efuse_batch_write_commit();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Error programming security eFuses (err=0x%x).", err);
@@ -228,24 +276,13 @@ static esp_err_t initialise_flash_encryption(void)
 }
 
 /* Encrypt all flash data that should be encrypted */
-static esp_err_t encrypt_flash_contents(uint32_t flash_crypt_cnt, bool flash_crypt_wr_dis)
+esp_err_t esp_flash_encrypt_contents(void)
 {
     esp_err_t err;
 
-    /* If all flash_crypt_cnt bits are burned or write-disabled, the
-       device can't re-encrypt itself. */
-    if (flash_crypt_wr_dis || flash_crypt_cnt == CRYPT_CNT[0]->bit_count) {
-        ESP_LOGE(TAG, "Cannot re-encrypt data CRYPT_CNT %d write disabled %d", flash_crypt_cnt, flash_crypt_wr_dis);
-        return ESP_FAIL;
-    }
-
-    if (flash_crypt_cnt == 0) {
-        /* Very first flash of encrypted data: generate keys, etc. */
-        err = initialise_flash_encryption();
-        if (err != ESP_OK) {
-            return err;
-        }
-    }
+#ifdef CONFIG_SOC_EFUSE_CONSISTS_OF_ONE_KEY_BLOCK
+    REG_WRITE(SENSITIVE_XTS_AES_KEY_UPDATE_REG, 1);
+#endif
 
     err = encrypt_bootloader();
     if (err != ESP_OK) {
@@ -292,20 +329,48 @@ static esp_err_t encrypt_flash_contents(uint32_t flash_crypt_cnt, bool flash_cry
     }
 #endif
 
-#ifdef CONFIG_SECURE_FLASH_ENCRYPTION_MODE_RELEASE
-    // Go straight to max, permanently enabled
-    ESP_LOGI(TAG, "Setting CRYPT_CNT for permanent encryption");
-    size_t new_flash_crypt_cnt = CRYPT_CNT[0]->bit_count - flash_crypt_cnt;
-#else
-    /* Set least significant 0-bit in flash_crypt_cnt */
-    size_t new_flash_crypt_cnt = 1;
-#endif
-    ESP_LOGD(TAG, "CRYPT_CNT %d -> %d", flash_crypt_cnt, new_flash_crypt_cnt);
-    err = esp_efuse_write_field_cnt(CRYPT_CNT, new_flash_crypt_cnt);
-
     ESP_LOGI(TAG, "Flash encryption completed");
 
     return ESP_OK;
+}
+
+esp_err_t esp_flash_encrypt_enable(void)
+{
+    esp_err_t err = ESP_OK;
+    if (!esp_flash_encryption_enabled()) {
+
+        if (esp_flash_encrypt_is_write_protected(true)) {
+            return ESP_FAIL;
+        }
+
+        size_t flash_crypt_cnt = get_flash_encrypt_cnt_value();
+
+#ifdef CONFIG_SECURE_FLASH_ENCRYPTION_MODE_RELEASE
+        // Go straight to max, permanently enabled
+        ESP_LOGI(TAG, "Setting CRYPT_CNT for permanent encryption");
+        size_t new_flash_crypt_cnt = FLASH_ENC_CNT_MAX - flash_crypt_cnt;
+#else
+        /* Set least significant 0-bit in flash_crypt_cnt */
+        size_t new_flash_crypt_cnt = 1;
+#endif
+        ESP_LOGD(TAG, "CRYPT_CNT %d -> %d", flash_crypt_cnt, new_flash_crypt_cnt);
+        err = esp_efuse_write_field_cnt(CRYPT_CNT, new_flash_crypt_cnt);
+
+#if defined(CONFIG_SECURE_FLASH_ENCRYPTION_MODE_RELEASE) && defined(CONFIG_SOC_FLASH_ENCRYPTION_XTS_AES_128_DERIVED)
+        // For AES128_DERIVED, FE key is 16 bytes and XTS_KEY_LENGTH_256 is 0.
+        // It is important to protect XTS_KEY_LENGTH_256 from further changing it to 1. Set write protection for this bit.
+        // Burning WR_DIS_CRYPT_CNT, blocks further changing of eFuses: DOWNLOAD_DIS_MANUAL_ENCRYPT, SPI_BOOT_CRYPT_CNT, [XTS_KEY_LENGTH_256], SECURE_BOOT_EN.
+        esp_efuse_write_field_bit(WR_DIS_CRYPT_CNT);
+#endif
+    }
+
+    ESP_LOGI(TAG, "Flash encryption completed");
+
+#ifdef CONFIG_EFUSE_VIRTUAL
+    ESP_LOGW(TAG, "Flash encryption not really completed. Must disable virtual efuses");
+#endif
+
+    return err;
 }
 
 static esp_err_t encrypt_bootloader(void)
