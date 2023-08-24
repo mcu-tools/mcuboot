@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2021 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2022 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,7 +14,8 @@
 #include "esp_image_format.h"
 #include "esp_efuse.h"
 #include "esp_efuse_table.h"
-#include "rom/secure_boot.h"
+#include "secure_boot_signature_priv.h"
+
 
 /* The following API implementations are used only when called
  * from the bootloader code.
@@ -99,12 +100,20 @@ static esp_err_t s_calculate_image_public_key_digests(uint32_t flash_offset, uin
         /* Generating the SHA of the public key components in the signature block */
         bootloader_sha256_handle_t sig_block_sha;
         sig_block_sha = bootloader_sha256_start();
+#if CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME
         bootloader_sha256_data(sig_block_sha, &block->key, sizeof(block->key));
+#elif CONFIG_SECURE_SIGNED_APPS_ECDSA_V2_SCHEME
+        bootloader_sha256_data(sig_block_sha, &block->ecdsa.key, sizeof(block->ecdsa.key));
+#endif
         bootloader_sha256_finish(sig_block_sha, key_digest);
 
         // Check we can verify the image using this signature and this key
         uint8_t temp_verified_digest[ESP_SECURE_BOOT_DIGEST_LEN];
+#if CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME
         bool verified = ets_rsa_pss_verify(&block->key, block->signature, image_digest, temp_verified_digest);
+#elif CONFIG_SECURE_SIGNED_APPS_ECDSA_V2_SCHEME
+        bool verified = ets_ecdsa_verify(&block->ecdsa.key.point[0], block->ecdsa.signature, block->ecdsa.key.curve_id, image_digest, temp_verified_digest);
+#endif
 
         if (!verified) {
             /* We don't expect this: the signature blocks before we enable secure boot should all be verifiable or invalid,
@@ -133,21 +142,22 @@ esp_err_t check_and_generate_secure_boot_keys(void)
 {
     esp_err_t ret;
 #ifdef CONFIG_IDF_TARGET_ESP32
-    esp_efuse_purpose_t secure_boot_key_purpose[SECURE_BOOT_NUM_BLOCKS] = {
-        ESP_EFUSE_KEY_PURPOSE_SECURE_BOOT_V2,
-    };
     esp_efuse_coding_scheme_t coding_scheme = esp_efuse_get_coding_scheme(EFUSE_BLK_SECURE_BOOT);
     if (coding_scheme != EFUSE_CODING_SCHEME_NONE) {
         ESP_LOGE(TAG, "No coding schemes are supported in secure boot v2.(Detected scheme: 0x%x)", coding_scheme);
         return ESP_ERR_NOT_SUPPORTED;
     }
-#else
+#endif // CONFIG_IDF_TARGET_ESP32
+
     esp_efuse_purpose_t secure_boot_key_purpose[SECURE_BOOT_NUM_BLOCKS] = {
+#if SECURE_BOOT_NUM_BLOCKS == 1
+        ESP_EFUSE_KEY_PURPOSE_SECURE_BOOT_V2,
+#else
         ESP_EFUSE_KEY_PURPOSE_SECURE_BOOT_DIGEST0,
         ESP_EFUSE_KEY_PURPOSE_SECURE_BOOT_DIGEST1,
         ESP_EFUSE_KEY_PURPOSE_SECURE_BOOT_DIGEST2,
+#endif
     };
-#endif // CONFIG_IDF_TARGET_ESP32
 
     /* Verify the bootloader */
     esp_image_metadata_t bootloader_data = { 0 };
@@ -209,17 +219,24 @@ esp_err_t check_and_generate_secure_boot_keys(void)
                 continue;
             }
 #endif
+#ifndef CONFIG_SOC_EFUSE_CONSISTS_OF_ONE_KEY_BLOCK
             if (esp_efuse_get_key_dis_read(blocks[i])) {
                 ESP_LOGE(TAG, "Key digest (BLK%d) read protected, aborting...", blocks[i]);
                 return ESP_FAIL;
             }
+#endif
             if (esp_efuse_block_is_empty(blocks[i])) {
                 ESP_LOGE(TAG, "%d eFuse block is empty, aborting...", blocks[i]);
                 return ESP_FAIL;
             }
             esp_efuse_set_key_dis_write(blocks[i]);
-            ret = esp_efuse_read_block(blocks[i], boot_key_digests.key_digests[boot_key_digests.num_digests], 0,
-                                            sizeof(boot_key_digests.key_digests[0]) * 8);
+#ifdef CONFIG_SOC_EFUSE_CONSISTS_OF_ONE_KEY_BLOCK
+            size_t offset = 128;
+#else
+            size_t offset = 0;
+#endif
+             ret = esp_efuse_read_block(blocks[i], boot_key_digests.key_digests[boot_key_digests.num_digests], offset,
+                                            ESP_SECURE_BOOT_KEY_DIGEST_LEN * 8);
             if (ret) {
                 ESP_LOGE(TAG, "Error during reading %d eFuse block (err=0x%x)", blocks[i], ret);
                 return ret;

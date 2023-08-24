@@ -12,6 +12,7 @@
 #include "bootloader_init.h"
 #include "bootloader_utility.h"
 #include "bootloader_random.h"
+#include "bootloader_soc.h"
 
 #include "esp_assert.h"
 
@@ -118,6 +119,21 @@ int main()
     esp_efuse_init_virtual_mode_in_flash(CONFIG_EFUSE_VIRTUAL_OFFSET, CONFIG_EFUSE_VIRTUAL_SIZE);
 #endif
 
+#if defined(CONFIG_SECURE_BOOT) || defined(CONFIG_SECURE_FLASH_ENC_ENABLED)
+    esp_err_t err;
+#endif
+
+#ifdef CONFIG_SECURE_BOOT_FLASH_ENC_KEYS_BURN_TOGETHER
+    if (esp_secure_boot_enabled() ^ esp_flash_encrypt_initialized_once()) {
+        BOOT_LOG_ERR("Secure Boot and Flash Encryption cannot be enabled separately, only together (their keys go into one eFuse key block)");
+        FIH_PANIC;
+    }
+
+    if (!esp_secure_boot_enabled() || !esp_flash_encryption_enabled()) {
+        esp_efuse_batch_write_begin();
+    }
+#endif // CONFIG_SECURE_BOOT_FLASH_ENC_KEYS_BURN_TOGETHER
+
 #ifdef CONFIG_SECURE_BOOT
     /* Steps 1 (see above for full description):
      *   1) Compute digest of the public key.
@@ -132,7 +148,6 @@ int main()
     } else {
         esp_efuse_batch_write_begin(); /* Batch all efuse writes at the end of this function */
 
-        esp_err_t err;
         err = check_and_generate_secure_boot_keys();
         if (err != ESP_OK) {
             esp_efuse_batch_write_cancel();
@@ -178,7 +193,6 @@ int main()
 
     if (!sb_hw_enabled) {
         BOOT_LOG_INF("blowing secure boot efuse...");
-        esp_err_t err;
         err = esp_secure_boot_enable_secure_features();
         if (err != ESP_OK) {
             esp_efuse_batch_write_cancel();
@@ -195,8 +209,10 @@ int main()
         assert(esp_efuse_read_field_bit(ESP_EFUSE_SECURE_BOOT_AGGRESSIVE_REVOKE));
 #endif
 
+#ifndef CONFIG_SECURE_BOOT_FLASH_ENC_KEYS_BURN_TOGETHER
         assert(esp_secure_boot_enabled());
         BOOT_LOG_INF("Secure boot permanently enabled");
+#endif
     }
 #endif
 
@@ -206,16 +222,50 @@ int main()
      *   5) Encrypt flash in-place including bootloader, image primary/secondary slot and scratch.
      *   6) Burn EFUSE to enable flash encryption
      */
-
-    int rc;
-
     BOOT_LOG_INF("Checking flash encryption...");
-    bool flash_encryption_enabled = esp_flash_encryption_enabled();
-    rc = esp_flash_encrypt_check_and_update();
-    if (rc != ESP_OK) {
-        BOOT_LOG_ERR("Flash encryption check failed (%d).", rc);
+    bool flash_encryption_enabled = esp_flash_encrypt_state();
+    if (!flash_encryption_enabled) {
+#ifdef CONFIG_SECURE_FLASH_REQUIRE_ALREADY_ENABLED
+        BOOT_LOG_ERR("flash encryption is not enabled, and SECURE_FLASH_REQUIRE_ALREADY_ENABLED is set, refusing to boot.");
         FIH_PANIC;
+#endif // CONFIG_SECURE_FLASH_REQUIRE_ALREADY_ENABLED
+
+        if (esp_flash_encrypt_is_write_protected(true)) {
+            FIH_PANIC;
+        }
+
+        err = esp_flash_encrypt_init();
+        if (err != ESP_OK) {
+            BOOT_LOG_ERR("Initialization of Flash Encryption key failed (%d)", err);
+            FIH_PANIC;
+        }
     }
+
+    if (!flash_encryption_enabled) {
+        err = esp_flash_encrypt_contents();
+        if (err != ESP_OK) {
+            BOOT_LOG_ERR("Encryption flash contents failed (%d)", err);
+            FIH_PANIC;
+        }
+
+        err = esp_flash_encrypt_enable();
+        if (err != ESP_OK) {
+            BOOT_LOG_ERR("Enabling of Flash encryption failed (%d)", err);
+            FIH_PANIC;
+        }
+    }
+
+#ifdef CONFIG_SECURE_BOOT_FLASH_ENC_KEYS_BURN_TOGETHER
+    if (!esp_secure_boot_enabled() || !flash_encryption_enabled) {
+        err = esp_efuse_batch_write_commit();
+        if (err != ESP_OK) {
+            BOOT_LOG_ERR("Error programming eFuses (err=0x%x).", err);
+            FIH_PANIC;
+        }
+        assert(esp_secure_boot_enabled());
+        BOOT_LOG_INF("Secure boot permanently enabled");
+    }
+#endif // CONFIG_SECURE_BOOT_FLASH_ENC_KEYS_BURN_TOGETHER
 
     /* Step 7 (see above for full description):
      *   7) Reset system to ensure flash encryption cache resets properly.
@@ -228,6 +278,12 @@ int main()
 
     BOOT_LOG_INF("Disabling RNG early entropy source...");
     bootloader_random_disable();
+
+    /* Disable glitch reset after all the security checks are completed.
+     * Glitch detection can be falsely triggered by EMI interference (high RF TX power, etc)
+     * and to avoid such false alarms, disable it.
+     */
+    bootloader_ana_clock_glitch_reset_config(false);
 
 #ifdef CONFIG_ESP_MULTI_PROCESSOR_BOOT
     /* Multi image independent boot

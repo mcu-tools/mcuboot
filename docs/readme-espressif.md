@@ -293,14 +293,12 @@ MCUboot header.
 
 The Secure Boot implementation is based on
 [IDF's Secure Boot V2](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v2.html),
-is hardware-assisted and RSA based, and has the role for ensuring that only authorized code will be
-executed on the device. This is done through bootloader signature checking by the ROM bootloader.
+is hardware-assisted and RSA based - except ESP32-C2 that uses ECDSA signing scheme - and has the
+role for ensuring that only authorized code will be executed on the device. This is done through
+bootloader signature checking by the ROM bootloader.
 
 ***Note***: ROM bootloader is the First Stage Bootloader, while the Espressif MCUboot port is the
 Second Stage Bootloader.
-
-***Note***: Currently on MCUboot Espressif Port, the Secure Boot V2 for ESP32-C2 is not supported
-yet.
 
 ### [Building bootloader with Secure Boot](#building-bootloader-with-secure-boot)
 
@@ -310,8 +308,22 @@ In order to build the bootloader with the feature on, the following configuratio
 CONFIG_SECURE_BOOT=1
 CONFIG_SECURE_BOOT_V2_ENABLED=1
 CONFIG_SECURE_SIGNED_ON_BOOT=1
+```
+
+For the currently supported chips, with exception of ESP32-C2, enable RSA signing scheme:
+
+```
 CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME=1
 CONFIG_SECURE_BOOT_SUPPORTS_RSA=1
+```
+
+For ESP32-C2, enable ECDSA signing scheme and, if working with Flash Encryption too, enable the
+configuration to burn keys to efuse together:
+
+```
+CONFIG_SECURE_SIGNED_APPS_ECDSA_V2_SCHEME=1
+
+CONFIG_SECURE_BOOT_FLASH_ENC_KEYS_BURN_TOGETHER=1
 ```
 
 ---
@@ -1152,7 +1164,7 @@ application.
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
  *  |        |                    |
  *  |        v                    |
- *  +------------------------------+ 0x403D5000 / 0x3FCD5000
+ *  +------------------------------+ 0x403D5400 / 0x3FCD5400
  *  |        ^                    |
  *  |        |                    |
  *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
