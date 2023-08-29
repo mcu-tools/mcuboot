@@ -128,12 +128,6 @@ config BOOT_MGMT_CUSTOM_STORAGE_ERASE
 	  Note that the storage partition needs to be defined, in DTS, otherwise
 	  enabling the option will cause a compilation to fail.
 
-config BOOT_MGMT_CUSTOM_IMG_LIST
-	bool "Enable custom image list command"
-	help
-	  The option enables command which returns versions and installation
-	  statuses (custom property) for all images.
-
 endif # ENABLE_MGMT_PERUSER
 
 menu "Entrance methods"

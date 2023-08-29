@@ -85,6 +85,17 @@ if(DEFINED CONFIG_ENABLE_MGMT_PERUSER)
   zephyr_library_sources(
     boot_serial_extensions.c
     )
+
+  zephyr_linker_sources_ifdef(
+    CONFIG_ENABLE_MGMT_PERUSER
+    SECTIONS include/boot_serial/boot_serial.ld
+  )
+
+  if(DEFINED CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE OR DEFINED CONFIG_BOOT_MGMT_CUSTOM_IMG_LIST)
+    zephyr_library_sources(
+      boot_serial_extension_zephyr_basic.c
+      )
+  endif()
 endif()
 
 if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)
