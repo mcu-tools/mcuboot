@@ -96,6 +96,7 @@ Alternatively:
 ```bash
 esptool.py -p <PORT> -b <BAUD> --before default_reset --after no_reset --chip <TARGET> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <BOOTLOADER_FLASH_OFFSET> build/mcuboot_<TARGET>.bin
 ```
+
 ---
 ***Note***
 
@@ -106,6 +107,7 @@ You can also skip `<PORT>` and `<BAUD>` parameters so that esptool tries to auto
 ```bash
 esptool.py -p <PORT> -b <BAUD> flash_id
 ```
+
 The output contains device information and its flash size:
 ```
 Detected flash size: 4MB
@@ -130,7 +132,6 @@ imgtool.py sign --align 4 -v 0 -H 32 --pad-header -S <SLOT_SIZE> <BIN_IN> <SIGNE
 ```
 
 ---
-
 ***Note***
 
 `<SLOT_SIZE>` is the size of the slot to be used.
@@ -140,6 +141,7 @@ For Zephyr images, `--pad-header` is not needed as it already has the padding fo
 
 ---
 
+---
 :warning: ***ATTENTION***
 
 *This is the basic signing needed for adding MCUboot headers and trailers.
@@ -230,12 +232,14 @@ Now you need to sign the **image binary**, use the `imgtool` with `-k` parameter
 ```bash
 imgtool.py sign -k <YOUR_SIGNING_KEY.pem> --pad --pad-sig --align 4 -v 0 -H 32 --pad-header -S 0x00100000 <BIN_IN> <BIN_OUT>
 ```
+
 If signing a Zephyr image, the `--pad-header` is not needed, as it already have the padding for MCUboot header.
 
 
 ## [Secure Boot](#secure-boot)
 
-The Secure Boot implementation is based on [IDF's Secure Boot V2](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v2.html), is hardware-assisted and RSA based, and has the role for ensuring that only authorized code will be executed on the device. This is done through bootloader signature checking by the ROM bootloader. \
+The Secure Boot implementation is based on [IDF's Secure Boot V2](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/security/secure-boot-v2.html), is hardware-assisted and RSA based, and has the role for ensuring that only authorized code will be executed on the device. This is done through bootloader signature checking by the ROM bootloader.
+
 ***Note***: ROM bootloader is the First Stage Bootloader, while the Espressif MCUboot port is the Second Stage Bootloader.
 
 ***Note***: Currently on MCUboot Espressif Port, the Secure Boot V2 for ESP32-C2 is not supported yet.
@@ -371,6 +375,7 @@ CONFIG_SECURE_BOOT_ALLOW_JTAG=1
 CONFIG_EFUSE_VIRTUAL=1
 CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH=1
 ```
+
 ---
 
 ---
