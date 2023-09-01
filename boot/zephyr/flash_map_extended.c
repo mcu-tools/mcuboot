@@ -28,11 +28,13 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define FLASH_DEVICE_NODE DT_INST(0, st_stm32_xspi_nor)
 #define FLASH_DEVICE_BASE DT_REG_ADDR_BY_IDX(DT_INST_PARENT(0), 1)
 #elif DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_ospi_nor), okay)
+#define DT_DRV_COMPAT st_stm32_ospi_nor
 #define FLASH_DEVICE_NODE DT_INST(0, st_stm32_ospi_nor)
-#define FLASH_DEVICE_BASE DT_REG_ADDR(DT_INST(0, st_stm32_ospi_nor))
+#define FLASH_DEVICE_BASE DT_REG_ADDR_BY_IDX(DT_INST_PARENT(0), 1)
 #elif DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_qspi_nor), okay)
+#define DT_DRV_COMPAT st_stm32_qspi_nor
 #define FLASH_DEVICE_NODE DT_INST(0, st_stm32_qspi_nor)
-#define FLASH_DEVICE_BASE DT_REG_ADDR(DT_INST(0, st_stm32_qspi_nor))
+#define FLASH_DEVICE_BASE DT_REG_ADDR_BY_IDX(DT_INST_PARENT(0), 1)
 #else
 #error "FLASH_DEVICE_NODE could not be determined"
 #endif
