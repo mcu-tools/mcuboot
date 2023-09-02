@@ -183,6 +183,11 @@ set(bootutil_srcs
     ${BOOTUTIL_DIR}/src/bootutil_misc.c
     ${BOOTUTIL_DIR}/src/bootutil_public.c
     ${BOOTUTIL_DIR}/src/caps.c
+    ${BOOTUTIL_DIR}/src/encrypt_ec256.c
+    ${BOOTUTIL_DIR}/src/encrypt_kw.c
+    ${BOOTUTIL_DIR}/src/encrypt_misc.c
+    ${BOOTUTIL_DIR}/src/encrypt_rsa.c
+    ${BOOTUTIL_DIR}/src/encrypt_x25519.c
     ${BOOTUTIL_DIR}/src/encrypted.c
     ${BOOTUTIL_DIR}/src/fault_injection_hardening.c
     ${BOOTUTIL_DIR}/src/fault_injection_hardening_delay_rng_mbedtls.c
