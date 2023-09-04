@@ -138,7 +138,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
             max_align = 8
         elif trailer_magic[-len(BOOT_MAGIC_2):] == BOOT_MAGIC_2:
             # The alignment value is encoded in the magic field
-            max_align = int(trailer_magic[:2], 0)
+            max_align = int.from_bytes(trailer_magic[:2], "little")
         else:
             # Invalid magic: the rest of the image trailer cannot be processed.
             print("Warning: the trailer magic value is invalid!")
