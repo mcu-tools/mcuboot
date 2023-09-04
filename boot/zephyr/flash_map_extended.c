@@ -110,6 +110,14 @@ int flash_area_id_from_direct_image(int image_id)
     case 4:
         return FIXED_PARTITION_ID(slot3_partition);
 #endif
+#if FIXED_PARTITION_EXISTS(slot4_partition)
+    case 5:
+        return FIXED_PARTITION_ID(slot4_partition);
+#endif
+#if FIXED_PARTITION_EXISTS(slot5_partition)
+    case 6:
+        return FIXED_PARTITION_ID(slot5_partition);
+#endif
     }
     return -EINVAL;
 }
