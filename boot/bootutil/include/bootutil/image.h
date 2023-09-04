@@ -30,6 +30,7 @@
 
 #include <inttypes.h>
 #include <stdbool.h>
+#include <assert.h>
 #include "bootutil/fault_injection_hardening.h"
 
 #ifdef __cplusplus
@@ -160,7 +161,7 @@ struct image_tlv {
 #define MUST_DECRYPT(fap, idx, hdr) \
     (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
 
-_Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
+static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 
 struct enc_key_data;

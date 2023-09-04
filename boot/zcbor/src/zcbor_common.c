@@ -13,12 +13,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <assert.h>
 #include "zcbor_common.h"
 
-_Static_assert((sizeof(size_t) == sizeof(void *)),
+static_assert((sizeof(size_t) == sizeof(void *)),
 	"This code needs size_t to be the same length as pointers.");
 
-_Static_assert((sizeof(zcbor_state_t) >= sizeof(struct zcbor_state_constant)),
+static_assert((sizeof(zcbor_state_t) >= sizeof(struct zcbor_state_constant)),
 	"This code needs zcbor_state_t to be at least as large as zcbor_backups_t.");
 
 bool zcbor_new_backup(zcbor_state_t *state, uint_fast32_t new_elem_count)

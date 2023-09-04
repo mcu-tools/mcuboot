@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <inttypes.h>
 #include <string.h>
+#include <assert.h>
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
 #define BOOTUTIL_CRYPTO_RSA_CRYPT_ENABLED
@@ -376,14 +377,14 @@ boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
 #    define EC_PUBK_INDEX       (0)
 #    define EC_TAG_INDEX        (65)
 #    define EC_CIPHERKEY_INDEX  (65 + 32)
-_Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
+static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
         "Please fix ECIES-P256 component indexes");
 #elif defined(MCUBOOT_ENCRYPT_X25519)
 #    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_X25519
 #    define EC_PUBK_INDEX       (0)
 #    define EC_TAG_INDEX        (32)
 #    define EC_CIPHERKEY_INDEX  (32 + 32)
-_Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
+static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
         "Please fix ECIES-X25519 component indexes");
 #endif
 

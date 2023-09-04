@@ -85,7 +85,7 @@ extern "C" {
 
 #ifdef MCUBOOT_BOOT_MAX_ALIGN
 
-_Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
+static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
                "Unsupported value for MCUBOOT_BOOT_MAX_ALIGN");
 
 #define BOOT_MAX_ALIGN          MCUBOOT_BOOT_MAX_ALIGN

@@ -29,6 +29,7 @@
 #define H_BOOTUTIL_PRIV_
 
 #include <string.h>
+#include <assert.h>
 
 #include "sysflash/sysflash.h"
 
@@ -160,7 +161,7 @@ extern const union boot_img_magic_t boot_img_magic;
 #define BOOT_IMG_ALIGN  (boot_img_magic.align)
 #endif
 
-_Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image magic");
+static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image magic");
 
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 #define ARE_SLOTS_EQUIVALENT()    0
