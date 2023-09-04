@@ -255,6 +255,7 @@ PLATFORMS
 
 DEPENDENCIES
   github-pages
+  jemoji (~> 0.12.0)
   tzinfo-data
 
 BUNDLED WITH
