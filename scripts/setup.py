@@ -18,6 +18,7 @@ setuptools.setup(
         'intelhex>=2.2.1',
         'click',
         'cbor2',
+        'pyyaml',
     ],
     entry_points={
         "console_scripts": ["imgtool=imgtool.main:imgtool"]
