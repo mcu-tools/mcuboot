@@ -27,7 +27,9 @@
 #include <soc.h>
 #include <zephyr/linker/linker-defs.h>
 
+#if defined(CONFIG_ARM)
 #include <cmsis_core.h>
+#endif
 
 #include "target.h"
 
