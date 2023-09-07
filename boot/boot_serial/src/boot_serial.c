@@ -234,7 +234,7 @@ bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
                   (uint16_t)ver->iv_minor, ver->iv_revision);
 
    if (ver->iv_build_num != 0 && len > 0 && len < maxlen) {
-      snprintf(&dst[len], (maxlen - len), "%u", ver->iv_build_num);
+      snprintf(&dst[len], (maxlen - len), ".%u", ver->iv_build_num);
    }
 }
 #endif /* !MCUBOOT_USE_SNPRINTF */
