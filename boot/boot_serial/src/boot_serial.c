@@ -596,8 +596,13 @@ static off_t erase_range(const struct flash_area *fap, off_t start, off_t end)
     }
 
     size = flash_sector_get_off(&sect) + flash_sector_get_size(&sect) - start;
+#if defined(__ZEPHYR__) && defined(CONFIG_MINIMAL_LIBC) && defined(CONFIG_CBPRINTF_NANO)
+    BOOT_LOG_INF("Erasing range 0x%lx:0x%lx", (fap->fa_off + start),
+		 (fap->fa_off + start + size - 1));
+#else
     BOOT_LOG_INF("Erasing range 0x%jx:0x%jx", (intmax_t)(fap->fa_off + start),
 		 (intmax_t)(fap->fa_off + start + size - 1));
+#endif
 
     rc = flash_area_erase(fap, start, size);
     if (rc != 0) {
