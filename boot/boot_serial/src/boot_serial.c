@@ -259,7 +259,11 @@ bs_list(char *buf, int len)
         int swap_status = boot_swap_type_multi(image_index);
 #endif
 
+#ifdef MCUBOOT_SINGLE_APPLICATION_SLOT
+        for (slot = 0; slot < 1; slot++) {
+#else
         for (slot = 0; slot < 2; slot++) {
+#endif
             FIH_DECLARE(fih_rc, FIH_FAILURE);
             uint8_t tmpbuf[64];
 
@@ -289,15 +293,24 @@ bs_list(char *buf, int len)
                                    fih_rc, image_index, slot);
                 if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
                 {
-#ifdef MCUBOOT_ENC_IMAGES
-                    if (IS_ENCRYPTED(&hdr)) {
+#if defined(MCUBOOT_ENC_IMAGES)
+                    if (IS_ENCRYPTED(&hdr) && MUST_DECRYPT(fap, image_index, &hdr)) {
                         FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
                                  &hdr, tmpbuf, sizeof(tmpbuf));
                     } else {
+                        if (IS_ENCRYPTED(&hdr)) {
+                            /*
+                             * There is an image present which has an encrypted flag set but is
+                             * not encrypted, therefore remove the flag from the header and run a
+                             * normal image validation on it.
+                             */
+                            hdr.ih_flags &= ~ENCRYPTIONFLAGS;
+                        }
 #endif
+
                         FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, &hdr,
                                  fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
-#ifdef MCUBOOT_ENC_IMAGES
+#if defined(MCUBOOT_ENC_IMAGES)
                     }
 #endif
                 }
