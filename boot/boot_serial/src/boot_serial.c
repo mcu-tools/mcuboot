@@ -1189,6 +1189,10 @@ boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
     int max_input;
     int elapsed_in_ms = 0;
 
+#ifndef MCUBOOT_SERIAL_WAIT_FOR_DFU
+    bool allow_idle = true;
+#endif
+
     boot_uf = f;
     max_input = sizeof(in_buf);
 
@@ -1200,7 +1204,10 @@ boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
          * from serial console (if single-thread mode is used).
          */
 #ifndef MCUBOOT_SERIAL_WAIT_FOR_DFU
-        MCUBOOT_CPU_IDLE();
+        if (allow_idle == true) {
+            MCUBOOT_CPU_IDLE();
+            allow_idle = false;
+        }
 #endif
         MCUBOOT_WATCHDOG_FEED();
 #ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
@@ -1208,6 +1215,9 @@ boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
 #endif
         rc = f->read(in_buf + off, sizeof(in_buf) - off, &full_line);
         if (rc <= 0 && !full_line) {
+#ifndef MCUBOOT_SERIAL_WAIT_FOR_DFU
+            allow_idle = true;
+#endif
             goto check_timeout;
         }
         off += rc;
