@@ -2064,11 +2064,22 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
             fa_id = flash_area_id_from_multi_image_slot(image_index, slot);
             rc = flash_area_open(fa_id, &BOOT_IMG_AREA(state, slot));
             assert(rc == 0);
+
+            if (rc != 0) {
+                BOOT_LOG_ERR("Failed to open flash area ID %d (image %d slot %d): %d, "
+                             "cannot continue", fa_id, image_index, (int8_t)slot, rc);
+                FIH_PANIC;
+            }
         }
 #if MCUBOOT_SWAP_USING_SCRATCH
         rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH,
                              &BOOT_SCRATCH_AREA(state));
         assert(rc == 0);
+
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed to open scratch flash area: %d, cannot continue", rc);
+            FIH_PANIC;
+        }
 #endif
 
         /* Determine swap type and complete swap if it has been aborted. */
