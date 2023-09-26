@@ -3,6 +3,7 @@ on:
     branches:
       - main
       - v*-branch
+  pull_request:
 
 name: imgtool
 
@@ -11,7 +12,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.x", "pypy3.9"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pipenv'
+        cache-dependency-path: |
+          scripts/setup.py
+    - name: Install dependencies
+      run: |
+        pip install --user pipenv
+    - name: Run tests
+      run: |
+        cd scripts
+        pipenv run pip install pytest -e .
+        pipenv run pytest --junitxml=../junit/pytest-results-${{ matrix.python-version }}.xml
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: pytest-results-${{ matrix.python-version }}
+        path: |
+          junit/pytest-results-${{ matrix.python-version }}*.xml
+        if-no-files-found: ignore
   environment:
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
