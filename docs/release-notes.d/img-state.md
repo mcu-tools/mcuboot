@@ -1,1 +1,0 @@
-- Serial recovery image state and image set state optional commands added

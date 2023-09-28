@@ -1,1 +1,0 @@
-- imgtool can dump the raw versions of the public keys

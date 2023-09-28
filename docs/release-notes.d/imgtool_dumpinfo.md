@@ -1,1 +1,0 @@
-- imgtool: add 'dumpinfo' command for signed image parsing.
