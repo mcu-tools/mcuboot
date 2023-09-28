@@ -30,7 +30,6 @@
 
 #include <inttypes.h>
 #include <stdbool.h>
-#include "bootutil/fault_injection_hardening.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -192,13 +191,6 @@ struct image_tlv {
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 
-struct enc_key_data;
-fih_ret bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
-                              struct image_header *hdr,
-                              const struct flash_area *fap,
-                              uint8_t *tmp_buf, uint32_t tmp_buf_sz,
-                              uint8_t *seed, int seed_len, uint8_t *out_hash);
-
 struct image_tlv_iter {
     const struct image_header *hdr;
     const struct flash_area *fap;
@@ -208,18 +200,6 @@ struct image_tlv_iter {
     uint32_t tlv_off;
     uint32_t tlv_end;
 };
-
-int bootutil_tlv_iter_begin(struct image_tlv_iter *it,
-                            const struct image_header *hdr,
-                            const struct flash_area *fap, uint16_t type,
-                            bool prot);
-int bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off,
-                           uint16_t *len, uint16_t *type);
-int bootutil_tlv_iter_is_prot(struct image_tlv_iter *it, uint32_t off);
-
-int32_t bootutil_get_img_security_cnt(struct image_header *hdr,
-                                      const struct flash_area *fap,
-                                      uint32_t *security_cnt);
 
 #ifdef __cplusplus
 }

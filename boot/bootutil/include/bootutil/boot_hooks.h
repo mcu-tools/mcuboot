@@ -34,6 +34,9 @@
 #ifndef H_BOOTUTIL_HOOKS
 #define H_BOOTUTIL_HOOKS
 
+#include <bootutil/image.h>
+#include <bootutil/image_api_priv.h>
+
 #ifdef MCUBOOT_IMAGE_ACCESS_HOOKS
 
 #define BOOT_HOOK_CALL(f, ret_default, ...) f(__VA_ARGS__)
