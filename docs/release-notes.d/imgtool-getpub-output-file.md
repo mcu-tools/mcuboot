@@ -1,1 +1,0 @@
-- imgtool's getpub can print the output to a file

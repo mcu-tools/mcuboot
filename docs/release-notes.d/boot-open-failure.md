@@ -1,2 +1,0 @@
-- Add error when flash device fails to open.
-- Panic bootloader when flash device fails to open.
