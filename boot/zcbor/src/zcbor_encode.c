@@ -13,10 +13,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+#include <assert.h>
 #include "zcbor_encode.h"
 #include "zcbor_common.h"
 
-_Static_assert((sizeof(size_t) == sizeof(void *)),
+static_assert((sizeof(size_t) == sizeof(void *)),
 	"This code needs size_t to be the same length as pointers.");
 
 

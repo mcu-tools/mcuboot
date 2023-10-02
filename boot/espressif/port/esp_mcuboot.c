@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include <bootutil/bootutil.h>
 #include <bootutil/bootutil_log.h>
@@ -45,7 +46,7 @@
 
 #define FLASH_BUFFER_SIZE           256 /* SPI Flash block size */
 
-_Static_assert(IS_ALIGNED(FLASH_BUFFER_SIZE, 4), "Buffer size for SPI Flash operations must be 4-byte aligned.");
+static_assert(IS_ALIGNED(FLASH_BUFFER_SIZE, 4), "Buffer size for SPI Flash operations must be 4-byte aligned.");
 
 #define BOOTLOADER_START_ADDRESS CONFIG_BOOTLOADER_OFFSET_IN_FLASH
 #define BOOTLOADER_SIZE CONFIG_ESP_BOOTLOADER_SIZE

@@ -35,6 +35,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include "bootutil/bootutil.h"
 #include "bootutil/bootutil_public.h"
 #include "bootutil/image.h"
@@ -346,7 +347,7 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
 #ifdef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
     rc = flash_area_get_sectors(flash_area, &num_sectors, out_sectors);
 #else
-    _Static_assert(sizeof(int) <= sizeof(uint32_t), "Fix needed");
+    static_assert(sizeof(int) <= sizeof(uint32_t), "Fix needed");
     rc = flash_area_to_sectors(flash_area, (int *)&num_sectors, out_sectors);
 #endif /* defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
     if (rc != 0) {

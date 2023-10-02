@@ -114,7 +114,7 @@ typedef uint32_t fe_limb_t;
   } while (0)
 
 //FIXME: use Zephyr macro
-_Static_assert(sizeof(fe) == sizeof(fe_limb_t) * FE_NUM_LIMBS,
+static_assert(sizeof(fe) == sizeof(fe_limb_t) * FE_NUM_LIMBS,
                "fe_limb_t[FE_NUM_LIMBS] is inconsistent with fe");
 
 static void fe_frombytes_strict(fe *h, const uint8_t s[32]) {
@@ -234,7 +234,7 @@ static void fe_copy(fe *h, const fe *f) {
 
 static void fe_copy_lt(fe_loose *h, const fe *f) {
   //FIXME: use Zephyr macro
-  _Static_assert(sizeof(fe_loose) == sizeof(fe), "fe and fe_loose mismatch");
+  static_assert(sizeof(fe_loose) == sizeof(fe), "fe and fe_loose mismatch");
   memmove(h, f, sizeof(fe));
 }
 
