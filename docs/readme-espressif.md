@@ -107,6 +107,11 @@ Additional configuration related to MCUboot features and slot partitioning may b
 
     *If using ESP-IDF as HAL layer source, `ESP_HAL_PATH` can be ommited.*
 
+    *If desirable, `<TOOLCHAIN_BIN_DIR>` can be defined with the path for a different compatible
+    toolchain, however it is recommended to actually create a CMake toolchain file and
+    pass it through `<CMAKE_TOOLCHAIN_FILE>` variable since it may require a distinct set of
+    compilation flags.*
+
     ---
 
 2. Flash MCUboot in your device:

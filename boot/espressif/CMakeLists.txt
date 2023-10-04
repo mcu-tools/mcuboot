@@ -11,8 +11,6 @@ if (NOT DEFINED MCUBOOT_TARGET)
     message(FATAL_ERROR "MCUBOOT_TARGET not defined. Please pass -DMCUBOOT_TARGET flag.")
 endif()
 
-project(mcuboot_${MCUBOOT_TARGET})
-
 add_definitions(-DMCUBOOT_TARGET=${MCUBOOT_TARGET})
 add_definitions(-D__ESPRESSIF__=1)
 
@@ -26,6 +24,41 @@ elseif("${MCUBOOT_TARGET}" STREQUAL "esp32c3" OR
     "${MCUBOOT_TARGET}" STREQUAL "esp32h2")
     set(MCUBOOT_ARCH "riscv")
 endif()
+
+if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    if (DEFINED TOOLCHAIN_BIN_DIR)
+        message("CMAKE_TOOLCHAIN_FILE not defined, searching for toolchain compiler in TOOLCHAIN_BIN_DIR: ${TOOLCHAIN_BIN_DIR}")
+        set(CMAKE_SYSTEM_NAME Generic)
+
+        file(GLOB C_COMPILER_BIN "${TOOLCHAIN_BIN_DIR}/*${MCUBOOT_ARCH}*elf-gcc")
+        if (NOT C_COMPILER_BIN)
+            message(FATAL_ERROR "No C compiler found. Please ensure that TOOLCHAIN_BIN_DIR directory contains a set of C compiling tools compatible with the target")
+        endif()
+        set(CMAKE_C_COMPILER ${C_COMPILER_BIN})
+        set(CMAKE_ASM_COMPILER ${C_COMPILER_BIN})
+        message("C compiler found: ${CMAKE_C_COMPILER}")
+
+        file(GLOB CXX_COMPILER_BIN "${TOOLCHAIN_BIN_DIR}/*${MCUBOOT_ARCH}*elf-g++")
+        if (NOT CXX_COMPILER_BIN)
+            message(FATAL_ERROR "No C++ compiler found. Please ensure that TOOLCHAIN_BIN_DIR directory contains a set of C++ compiling tools compatible with the target")
+        endif()
+        set(CMAKE_CXX_COMPILER ${CXX_COMPILER_BIN})
+        message("CXX compiler found: ${CMAKE_CXX_COMPILER}")
+    else()
+        # Set toolchain file that expect the same toolchain as IDF sets on PATH
+        set(CMAKE_TOOLCHAIN_FILE ${CMAKE_CURRENT_LIST_DIR}/tools/toolchain-${MCUBOOT_TARGET}.cmake)
+        message("No user-defined toolchain, setting default toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
+    endif()
+
+    # This flag is needed when redefining a different compiler toolchain at this point
+    # on CMakeLists, the reason is that CMake does a compiler testing prior to building
+    # that may fail due to cross-compilation
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
+else()
+    message("CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
+endif()
+
+project(mcuboot_${MCUBOOT_TARGET})
 
 # Set the minimum revision for each supported chip
 if ("${MCUBOOT_TARGET}" STREQUAL "esp32")
@@ -50,10 +83,12 @@ if (NOT DEFINED ESP_HAL_PATH)
     if (DEFINED ENV{ESP_HAL_PATH})
         set(ESP_HAL_PATH $ENV{ESP_HAL_PATH})
     else()
-        message(WARNING "ESP_HAL_PATH not found. Please set -DESP_HAL_PATH parameter or define ESP_HAL_PATH environment variable.")
+        message(WARNING "ESP_HAL_PATH not defined, checking if IDF_PATH exists.")
         if (DEFINED ENV{IDF_PATH})
             set(ESP_HAL_PATH $ENV{IDF_PATH})
             message("IDF installation found in the system, using IDF_PATH as ESP_HAL_PATH.")
+        else ()
+            message(FATAL_ERROR "Please set -DESP_HAL_PATH parameter or define ESP_HAL_PATH environment variable.")
         endif()
     endif()
 endif()
