@@ -64,6 +64,7 @@ function `boot_save_shared_data`.
   partitions.
 - Serial recovery with MBEDTLS no longer has undefined operations which
   led to usage faults when the secondary slot image was encrypted.
+- espressif: allow the use of a different toolchain for building
 
 ## Version 1.10.0
 
