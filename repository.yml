@@ -36,9 +36,12 @@ repo.versions:
     "1.8.0": "v1.8.0"
     "1.9.0": "v1.9.0"
     "1.10.0": "v1.10.0"
+    "2.0.0": "v2.0.0"
 
     "0-dev": "0.0.0"        # main
-    "0-latest": "1.10.0"     # latest stable release
-    "1-latest": "1.10.0"     # latest stable release
+    "0-latest": "2.0.0"     # latest stable release
+    "1-latest": "1.11.0"
+    "2-latest": "2.0.0"
 
-    "1.0-latest": "1.10.0"
+    "1.0-latest": "1.11.0"
+    "2.0-latest": "2.0.0"
