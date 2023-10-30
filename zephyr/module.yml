@@ -2,3 +2,4 @@ samples:
   - boot/zephyr
 build:
   cmake: ./boot/bootutil/zephyr
+  sysbuild-cmake: boot/zephyr/sysbuild

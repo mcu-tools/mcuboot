@@ -1,6 +1,7 @@
 # CMakeLists.txt for building mcuboot as a Zephyr project
 #
 # Copyright (c) 2017 Open Source Foundries Limited
+# Copyright (c) 2023 Nordic Semiconductor ASA
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -355,4 +356,131 @@ if(CONFIG_MCUBOOT_CLEANUP_ARM_CORE)
 zephyr_library_sources(
   ${BOOT_DIR}/zephyr/arm_cleanup.c
 )
+endif()
+
+if(SYSBUILD)
+  function(align_up num align result)
+    math(EXPR out "(((${num}) + ((${align}) - 1)) & ~((${align}) - 1))")
+    set(${result} "${out}" PARENT_SCOPE)
+  endfunction()
+
+  function(dt_get_parent node)
+    string(FIND "${${node}}" "/" pos REVERSE)
+
+    if(pos EQUAL -1)
+      message(ERROR "Unable to get parent of node: ${${node}}")
+    endif()
+
+    string(SUBSTRING "${${node}}" 0 ${pos} ${node})
+    set(${node} "${${node}}" PARENT_SCOPE)
+  endfunction()
+
+  if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_BOOT_FIRMWARE_LOADER OR CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_UPGRADE_ONLY OR CONFIG_BOOT_DIRECT_XIP OR CONFIG_BOOT_RAM_LOAD)
+    # TODO: RAM LOAD support
+    dt_nodelabel(slot0_flash NODELABEL "slot0_partition")
+    dt_get_parent(slot0_flash)
+    dt_get_parent(slot0_flash)
+
+    if(NOT CONFIG_SINGLE_APPLICATION_SLOT)
+      dt_nodelabel(slot1_flash NODELABEL "slot1_partition")
+      dt_get_parent(slot1_flash)
+      dt_get_parent(slot1_flash)
+
+      if(NOT "${slot0_flash}" STREQUAL "${slot1_flash}")
+        # Check both slots for the one with the largest write/erase block size
+        dt_prop(erase_size_slot0 PATH "${slot0_flash}" PROPERTY "erase-block-size")
+        dt_prop(write_size_slot0 PATH "${slot0_flash}" PROPERTY "write-block-size")
+        dt_prop(erase_size_slot1 PATH "${slot1_flash}" PROPERTY "erase-block-size")
+        dt_prop(write_size_slot1 PATH "${slot1_flash}" PROPERTY "write-block-size")
+
+        if(${erase_size_slot0} GREATER ${erase_size_slot1})
+          set(erase_size ${erase_size_slot0})
+        else()
+          set(erase_size ${erase_size_slot1})
+        endif()
+
+        if(${write_size_slot0} GREATER ${write_size_slot1})
+          set(write_size ${write_size_slot0})
+        else()
+          set(write_size ${write_size_slot1})
+        endif()
+      else()
+        dt_prop(erase_size PATH "${slot0_flash}" PROPERTY "erase-block-size")
+        dt_prop(write_size PATH "${slot0_flash}" PROPERTY "write-block-size")
+      endif()
+    else()
+      dt_prop(erase_size PATH "${slot0_flash}" PROPERTY "erase-block-size")
+      dt_prop(write_size PATH "${slot0_flash}" PROPERTY "write-block-size")
+    endif()
+
+    if(write_size LESS 8)
+      set(write_size 8)
+    endif()
+
+    set(key_size 0)
+
+    # Boot trailer magic size
+    set(boot_magic_size 16)
+
+    # Estimates for trailer TLV data size, this was taken from hello world builds for nrf52840dk
+    if(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
+      if(CONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN EQUAL 3072)
+        set(boot_tlv_estimate 464)
+      else()
+        set(boot_tlv_estimate 336)
+      endif()
+    elseif(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
+      set(boot_tlv_estimate 150)
+    elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519)
+      set(boot_tlv_estimate 144)
+    else()
+      set(boot_tlv_estimate 40)
+    endif()
+
+    if(CONFIG_BOOT_ENCRYPT_RSA OR CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519)
+      # 128-bit AES key size
+      set(boot_enc_key_size 16)
+
+      if(CONFIG_BOOT_SWAP_SAVE_ENCTLV)
+        if(CONFIG_BOOT_ENCRYPT_RSA)
+          set(key_size 256)
+        elseif(CONFIG_BOOT_ENCRYPT_EC256)
+          math(EXPR key_size "65 + 32 + ${boot_enc_key_size}")
+        elseif(CONFIG_BOOT_ENCRYPT_X25519)
+          math(EXPR key_size "32 + 32 + ${boot_enc_key_size}")
+        endif()
+      else()
+        set(key_size "${boot_enc_key_size}")
+      endif()
+
+      align_up(${key_size} ${write_size} key_size)
+      math(EXPR key_size "${key_size} * 2")
+    endif()
+
+    align_up(${boot_magic_size} ${write_size} boot_magic_size)
+
+    if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_BOOT_FIRMWARE_LOADER)
+      set(boot_swap_data_size 0)
+    else()
+      math(EXPR boot_swap_data_size "${write_size} * 4")
+    endif()
+
+    if(CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE)
+      math(EXPR boot_status_data_size "${CONFIG_BOOT_MAX_IMG_SECTORS} * (3 * ${write_size})")
+    else()
+      set(boot_status_data_size 0)
+    endif()
+
+    math(EXPR required_size "${key_size} + ${boot_magic_size} + ${boot_swap_data_size} + ${boot_status_data_size} + ${boot_tlv_estimate}")
+
+    align_up(${required_size} ${erase_size} required_size)
+
+    if(CONFIG_BOOT_SWAP_USING_MOVE)
+      math(EXPR required_size "${required_size} + ${erase_size}")
+    endif()
+  else()
+    set(required_size 0)
+  endif()
+
+  set(mcuboot_image_footer_size ${required_size} CACHE INTERNAL "Estimated MCUboot image trailer size" FORCE)
 endif()
