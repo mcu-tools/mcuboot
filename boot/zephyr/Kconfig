@@ -546,20 +546,6 @@ config BOOT_USB_DFU_DETECT_DELAY
 
 endif # BOOT_USB_DFU_GPIO
 
-config ZEPHYR_TRY_MASS_ERASE
-	bool "Try to mass erase flash when flashing MCUboot image (DEPRECATED)"
-	select DEPRECATED
-	help
-	  If y, attempt to configure the Zephyr build system's "flash"
-	  target to mass-erase the flash device before flashing the
-	  MCUboot image. This ensures the scratch and other partitions
-	  are in a consistent state.
-
-	  This is not available for all targets.
-
-	  This option has been deprecated, to perform a mass erase when
-	  flashing a board, `west flash --erase` should be used instead.
-
 config BOOT_USE_BENCH
         bool "Enable benchmark code"
         default n
