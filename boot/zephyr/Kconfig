@@ -306,6 +306,7 @@ config BOOT_BOOTSTRAP
 config BOOT_SWAP_SAVE_ENCTLV
 	bool "Save encrypted key TLVs instead of plaintext keys in swap metadata"
 	default n
+	depends on BOOT_ENCRYPT_IMAGE
 	help
 	  If y, instead of saving the encrypted image keys in plaintext in the
 	  swap resume metadata, save the encrypted image TLVs. This should be used
