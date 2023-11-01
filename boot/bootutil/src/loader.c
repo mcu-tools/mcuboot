@@ -2307,7 +2307,14 @@ boot_load_and_validate_images(struct boot_loader_state *state)
              * when loading images from external (untrusted) flash to internal
              * (trusted) RAM and image is authenticated before copying.
              */
-            rc = boot_load_image_to_sram(state);
+            rc = BOOT_HOOK_CALL(boot_load_image_to_sram_hook, BOOT_HOOK_REGULAR,
+                    BOOT_CURR_IMG(state), active_slot,
+                    &state->slot_usage[BOOT_CURR_IMG(state)].img_dst,
+                    &state->slot_usage[BOOT_CURR_IMG(state)].img_sz);
+            if (rc == BOOT_HOOK_REGULAR)
+            {
+                rc = boot_load_image_to_sram(state);
+            }
             if (rc != 0 ) {
                 /* Image cannot be ramloaded. */
                 boot_remove_image_from_flash(state, active_slot);
