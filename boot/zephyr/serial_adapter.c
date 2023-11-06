@@ -35,6 +35,11 @@
        has not been redirected to other UART with DTS chosen zephyr,uart-mcumgr.
 #endif
 
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) && CONFIG_MAIN_THREAD_PRIORITY < 0
+#error CONFIG_MAIN_THREAD_PRIORITY must be preemptible to support USB CDC ACM \
+       (0 or above)
+#endif
+
 BOOT_LOG_MODULE_REGISTER(serial_adapter);
 
 /** @brief Console input representation
