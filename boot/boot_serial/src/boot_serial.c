@@ -1023,11 +1023,11 @@ boot_serial_input(char *buf, int len)
         }
     } else if (hdr->nh_group == MGMT_GROUP_ID_DEFAULT) {
         switch (hdr->nh_id) {
-        case NMGR_ID_ECHO:
 #ifdef MCUBOOT_BOOT_MGMT_ECHO
+        case NMGR_ID_ECHO:
             bs_echo(buf, len);
-#endif
             break;
+#endif
         case NMGR_ID_CONS_ECHO_CTRL:
             bs_rc_rsp(0);
             break;
