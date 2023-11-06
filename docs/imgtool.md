@@ -61,7 +61,7 @@ primary slot and adds a header and trailer that the bootloader is expecting:
     Options:
       -k, --key filename
       --public-key-format [hash|full]
-      --align [1|2|4|8]             [required]
+      --align [1|2|4|8|16|32]       Alignment used by swap update modes.
       -v, --version TEXT            [required]
       -s, --security-counter TEXT   Specify the value of security counter. Use
                                     the `auto` keyword to automatically generate
