@@ -64,8 +64,8 @@ MEMORY
      * where 'xx' is the device group; for example, 'cy8c6xx7_cm4_dual.ld'.
      */
     ram               (rwx)   : ORIGIN = 0x08000A00, LENGTH = 0x1F600
-    flash             (rx)    : ORIGIN = 0x10000000, LENGTH = 0x27E90
-    smif_struct		  (rx)    : ORIGIN = 0x10027E90, LENGTH = 0x170
+    flash             (rx)    : ORIGIN = 0x10000000, LENGTH = BOOTLOADER_SIZE
+    smif_struct		  (rx)    : ORIGIN = 0x10000000 + BOOTLOADER_SIZE - 0x170, LENGTH = 0x170
 
     /* This is an unprotected public RAM region, with the placed .cy_sharedmem.
      * This region is used to place objects that require full access from both cores.

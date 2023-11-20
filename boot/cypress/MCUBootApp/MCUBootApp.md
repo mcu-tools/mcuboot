@@ -586,18 +586,14 @@ This gives the nearest larger address that satisfies the slot location requireme
 
 This application is created to demonstrate the MCUboot library features and not as a reference example. So, some considerations are taken.
 
-1. `SCB5` is used to configure a serial port for debug prints. This is the most commonly used Serial Communication Block number among available Cypress PSoC™ 6 kits. To use custom hardware with this application, set custom `SCB*` and pins in the  `cypress/MCUBootApp/custom_debug_uart_cfg.h` file and pass the `USE_CUSTOM_DEBUG_UART=1` parameter to the `make` command upon MCUBootApp build.
+1. To use custom UART hardware pass the `UART_RX_DEFAULT=xx` and `UART_TX_DEFAULT=xx` parameters to the `make` command upon MCUBootApp build. 
 
-The `custom_debug_uart_cfg.h` file description:
+    For example:
 
-`CUSTOM_UART_HW`           - Sets a custom SCB name used as the debug serial port. (e.g. `SCB1`, `SCB2`, ...)  
-`CUSTOM_UART_SCB_NUMBER`   - Sets the number of SCB. It is `x` in the custom SCBx, which is set in `CUSTOM_UART_HW`.
-                                 (e.g. `1` if `CUSTOM_UART_HW` is  set to  SCB1, `2` if `CUSTOM_UART_HW`is  set to  SCB2, ...)  
-`CUSTOM_UART_PORT`         - Sets the GPIO port number whose pins are used as RX and TX of the debug serial port.  
-`CUSTOM_UART_RX_PIN`       - Sets the pin number in the GPIO port used as RX of the debug serial port.  
-`CUSTOM_UART_TX_PIN`       - Sets the pin number in the GPIO port used as TX of the debug serial port.  
+        make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M FLASH_MAP=./psoc62_2m_swap_single.json UART_TX_DEFAULT?=P0_3 UART_RX_DEFAULT?=P0_2
 
-The above-described applies to `PSoC™ 62` and `PSoC™ 63` platforms.
+`UART_RX_DEFAULT` - Sets the pin number in the GPIO port used as RX of the debug serial port.  
+`UART_TX_DEFAULT` - Sets the pin number in the GPIO port used as TX of the debug serial port.  
 
 2. `CY_SMIF_SLAVE_SELECT_0` is used to define the chip select for the SMIF driver. This configuration is used on the evaluation kit for this example CY8CPROTO-062-4343W. To use custom hardware with this application, change the value of `smif_id` in `main.c` of MCUBootApp to a value that corresponds to your design.
 __NOTE__: SMIF driver not supported with `PSoC™ 063` based kits.

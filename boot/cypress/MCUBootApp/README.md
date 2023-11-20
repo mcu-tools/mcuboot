@@ -167,6 +167,8 @@ Example command:
 
         make app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug MCUBOOT_IMAGE_NUMBER=1 ENC_IMG=1
 
+**KNOWN ISSUE:** On **CYW20829** platform MCUBootApp compiled in `BUILDCFG=Release` mode and with enabled encryption `ENC_IMG=1` and hardware rollback support does not start valid next application `BlinkyApp`. This would be fixed in next releases.
+
 **Programming solution**
 
 There are couple ways of programming hex of MCUBootApp and BlinkyApp. Following instructions assume one of Cypress development kits, for example `CY8CPROTO_062_4343W`.

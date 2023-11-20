@@ -212,6 +212,23 @@ static bool do_boot(struct boot_rsp *rsp)
     return false;
 }
 
+static void DeepSleep_Prepare(void)
+{
+    static cy_stc_syspm_callback_params_t syspmSleepAppParams;
+    static cy_stc_syspm_callback_t syspmAppSleepCallbackHandler =
+        {
+            Cy_SCB_UART_DeepSleepCallback, CY_SYSPM_DEEPSLEEP, 0u, &syspmSleepAppParams,
+            NULL, NULL, 0};
+
+    syspmSleepAppParams.base = cy_retarget_io_uart_obj.base;
+    syspmSleepAppParams.context = (void *)&(cy_retarget_io_uart_obj.context);
+
+    if (!Cy_SysPm_RegisterCallback(&syspmAppSleepCallbackHandler)) {
+        BOOT_LOG_ERR("Failed to register syspmAppSleepCallbackHandler");
+        CY_ASSERT(false);
+    }
+}
+
 int main(void)
 {
     struct boot_rsp rsp = {};
@@ -221,7 +238,7 @@ int main(void)
 
 
     if (rc != CY_RSLT_SUCCESS) {
-        CY_ASSERT((bool)0);
+        CY_ASSERT(false);
         /* Loop forever... */
         while (true) {
             __WFI();
@@ -257,7 +274,7 @@ int main(void)
                              CY_RETARGET_IO_BAUDRATE);
 
     if (rc != CY_RSLT_SUCCESS) {
-        CY_ASSERT((bool)0);
+        CY_ASSERT(false);
         /* Loop forever... */
         while (true) {
             __WFI();
@@ -286,7 +303,7 @@ int main(void)
         /* Check service application completion status */
         if (check_service_app_status() != 0) {
             BOOT_LOG_ERR("Service application failed");
-            CY_ASSERT((bool)0);
+            CY_ASSERT(false);
             /* Loop forever... */
             while (true) {
                 __WFI();
@@ -330,6 +347,8 @@ int main(void)
             BOOT_LOG_ERR("MCUBoot Bootloader found none of bootable images");
         }
     }
+
+    DeepSleep_Prepare();
 
     while (true) {
         if (boot_succeeded) {

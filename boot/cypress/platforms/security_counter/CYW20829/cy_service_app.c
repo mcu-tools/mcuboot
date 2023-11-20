@@ -149,7 +149,7 @@ void call_service_app(uint8_t * reprov_packet)
                                     (uint8_t *)&reprov_app_desc, sizeof(reprov_app_desc));
             if (0 == rc) {
                 /* Set code to tell BootROM to launch a service app downloaded to RAM from an external memory */
-                SRSS->TST_DEBUG_CTL = CYBOOT_REQUEST_EXT_APP;
+                SRSS->BOOT_DLM_CTL = CYBOOT_REQUEST_EXT_APP;
                 /* Trigger device reset */
                 __NVIC_SystemReset();
             }
@@ -161,13 +161,13 @@ void call_service_app(uint8_t * reprov_packet)
 * Checks the service application completion status.
 *
 * Reads the service app descriptor from the flash. If it is populated, erases the service app
-* descriptor and verifies that the application status in the TST_DEBUG_STATUS register
+* descriptor and verifies that the application status in the BOOT_DLM_CTL2 register
 * contains the CYAPP_SUCCESS value.
 * Function limitations:
 *     - assumes that the service app descriptor is located in external flash;
 *     - erases the entire sector where the service app descriptor is located.
 *
-* Returns 0 if the service app descriptor is empty or TST_DEBUG_STATUS register
+* Returns 0 if the service app descriptor is empty or BOOT_DLM_CTL2 register
 * contains the CYAPP_SUCCESS value. Otherwise it returns -1.
 */
 int32_t check_service_app_status(void)
@@ -186,7 +186,7 @@ int32_t check_service_app_status(void)
                 FLASH_DEVICE_EXTERNAL_FLASH(0),
                 (CY_XIP_BASE + SERVICE_APP_DESC_OFFSET), qspi_get_erase_size());
             if (0 == rc) {
-                if (CYAPP_SUCCESS == SRSS->TST_DEBUG_STATUS) {
+                if (CYAPP_SUCCESS == SRSS->BOOT_DLM_CTL2) {
                     rc = 0;
                 } else {
                     rc = -1;

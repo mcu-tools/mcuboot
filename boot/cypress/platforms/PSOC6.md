@@ -65,6 +65,8 @@ Note: application_2 (secondary slot) requires 512 padding bytes before trailer
 ```
 to remind about the necessary padding.
 
+**Attention**: shared slot feature support two images only.
+
 ### Encrypted Image Support
 
 To protect the user's image from unwanted read, Upgrade Image Encryption can be applied. The ECDH/HKDF with the EC256 scheme is used in a given solution as well as mbedTLS as a crypto provider.

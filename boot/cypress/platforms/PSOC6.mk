@@ -81,8 +81,8 @@ endif
 
 #UART default config
 ifeq ($(PLATFORM), PSOC_062_512K)
-UART_TX_DEFAULT ?= P5_1
-UART_RX_DEFAULT ?= P5_0
+UART_TX_DEFAULT ?= P10_1
+UART_RX_DEFAULT ?= P10_0
 else ifeq ($(PLATFORM), PSOC_061_512K)
 # INFO: Since 061 platform development 
 # is happening on processor module (PM),
@@ -151,6 +151,12 @@ ifeq ($(PLATFORM), $(filter $(PLATFORM), PSOC_061_2M PSOC_061_1M PSOC_061_512K))
 PLATFORM_APP_SOURCES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/psoc6_02_cm0p_sleep.c
 endif
 
+ifeq ($(USE_EXTERNAL_FLASH), 1)
+PLATFORM_SOURCES_FLASH += cy_serial_flash_prog.c
+PLATFORM_SOURCES_FLASH += $(PRJ_DIR)/platforms/memory/PSOC6/smif_cfg_dbg/cycfg_qspi_memslot.c
+PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/PSOC6/smif_cfg_dbg
+endif
+
 # Post build job to execute for platform
 post_build: $(OUT_CFG)/$(APP_NAME)_unsigned.hex
 ifeq ($(POST_BUILD_ENABLE), 1)
@@ -217,16 +223,6 @@ PLATFORM_USER_APP_START ?= $(PRIMARY_IMG_START)
 # for access with another address range. For example, execution of code
 # from external memory in XIP mode.
 PLATFORM_DEFAULT_PRIMARY_IMG_START ?= $(PLATFORM_DEFAULT_USER_APP_START)
-
-#PLATFORM_INCLUDE_DIRS_FLASH := $(PRJ_DIR)/platforms/memory
-#PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/$(FAMILY)
-#PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/flash_map_backend
-#PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/$(FAMILY)/include
-
-ifeq ($(USE_EXTERNAL_FLASH), 1)
-#PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/$(FAMILY)/flash_qspi
-#PLATFORM_SOURCES_FLASH += $(wildcard $(PRJ_DIR)/platforms/memory/$(FAMILY)/flash_qspi/*.c)
-endif
 
 # We still need this for MCUBoot apps signing
 IMGTOOL_PATH ?=	../../scripts/imgtool.py

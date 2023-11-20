@@ -34,21 +34,9 @@
     #include "cyhal_hwmgr.h"
 #endif //defined (CY_USING_HAL)
 
-#include "bsp.h"
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-#define CYBSP_UART_ENABLED  1U
-#define CYBSP_UART_HW       BSP_UART_HW
-#define CYBSP_UART_IRQ      JOIN(JOIN(scb_, USE_UART_SCB_NUMBER), _interrupt_IRQn)
-#define PCLK_SCBx_CLOCK     JOIN(JOIN(PCLK_SCB, BSP_UART_SCB_NUMBER), _CLOCK)
-
-extern const cy_stc_scb_uart_config_t CYBSP_UART_config;
-#if defined (CY_USING_HAL)
-    extern const cyhal_resource_inst_t CYBSP_UART_obj;
-#endif //defined (CY_USING_HAL)
 
 void init_cycfg_peripherals(void);
 

@@ -36,11 +36,7 @@ CRYPTO_ACC_TYPE := MXCRYPTOLITE
 # MCU device selection, based on target device.
 # Default chips are used for supported platforms
 # This can be redefined in case of other chip usage
-DEVICE ?= CYW20829A0LKML
-# If PSVP build is required
-ifeq ($(CYW20829_PSVP), 1)
-SERVICE_APP_PLATFORM_SUFFIX := _psvp
-endif
+DEVICE ?= CYW20829B0LKML
 
 #Led pin default config
 LED_PORT_DEFAULT ?= GPIO_PRT0
@@ -54,6 +50,10 @@ PLATFORM_SUFFIX ?= cyw20829
 
 # Add device name to defines
 DEFINES += $(DEVICE)
+
+# A0 compatibility workaround
+DEFINES += CY_XIP_REMAP_OFFSET=0x08000000UL
+DEFINES += CY_SRAM0_REMAP_OFFSET=0x04000000UL
 
 # Default upgrade method
 PLATFORM_DEFAULT_USE_OVERWRITE ?= 0
@@ -246,7 +246,6 @@ PLATFORM_INCLUDE_DIRS_HAL += $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT
 PLATFORM_DEFINES_LIBS := -DCY_USING_HAL
 PLATFORM_DEFINES_LIBS += -DCOMPONENT_CM33
 PLATFORM_DEFINES_LIBS += -DCOMPONENT_PSOC6HAL
-PLATFORM_DEFINES_LIBS += -DCOMPONENT_PSVP_CYW20829
 PLATFORM_DEFINES_LIBS += -DCOMPONENT_SOFTFP
 PLATFORM_DEFINES_LIBS += -DFLASH_BOOT
 
@@ -261,7 +260,6 @@ $(info BOOTLOADER_SIZE <-- $(BOOTLOADER_SIZE))
 $(info CFLAGS_PLATFORM --> $(CFLAGS_PLATFORM))
 $(info CORE <-> $(CORE))
 $(info CORE_SUFFIX --> $(CORE_SUFFIX))
-$(info CYW20829_PSVP <-- $(CYW20829_PSVP))
 $(info DEFINES --> $(DEFINES))
 $(info DEVICE <-> $(DEVICE))
 $(info ENC_IMG <-- $(ENC_IMG))

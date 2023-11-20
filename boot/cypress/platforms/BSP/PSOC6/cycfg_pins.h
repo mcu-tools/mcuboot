@@ -33,78 +33,9 @@
 #endif //defined (CY_USING_HAL)
 #include "cycfg_routing.h"
 
-#include "bsp.h"
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-#define CYBSP_UART_RX_ENABLED                           1U
-#define CYBSP_UART_RX_PORT                              JOIN(GPIO_PRT, BSP_UART_PORT)
-#define CYBSP_UART_RX_PORT_NUM                          BSP_UART_PORT
-#define CYBSP_UART_RX_PIN                               BSP_UART_RX_PIN
-#define CYBSP_UART_RX_NUM                               BSP_UART_RX_PIN
-#define CYBSP_UART_RX_DRIVEMODE                         CY_GPIO_DM_HIGHZ
-#define CYBSP_UART_RX_INIT_DRIVESTATE                   1U
-/*#ifndef ioss_0_port_10_pin_0_HSIOM
-    #define ioss_0_port_10_pin_0_HSIOM HSIOM_SEL_GPIO
-#endif*/
-
-#define CYBSP_UART_RX_HSIOM                             ioss_port_pin_rx_HSIOM
-#define CYBSP_UART_RX_IRQ                               JOIN(JOIN(ioss_interrupts_gpio_, BSP_UART_PORT), _IRQn)
-
-#if defined (CY_USING_HAL)
-    #define CYBSP_UART_RX_HAL_PORT_PIN                  JOIN(JOIN(JOIN(P, BSP_UART_PORT), _), BSP_UART_RX_PIN)
-#endif //defined (CY_USING_HAL)
-#if defined (CY_USING_HAL)
-    #define CYBSP_UART_RX_HAL_IRQ                       CYHAL_GPIO_IRQ_NONE
-#endif //defined (CY_USING_HAL)
-#if defined (CY_USING_HAL)
-    #define CYBSP_UART_RX_HAL_DIR                       CYHAL_GPIO_DIR_INPUT
-#endif //defined (CY_USING_HAL)
-#if defined (CY_USING_HAL)
-    #define CYBSP_UART_RX_HAL_DRIVEMODE                 CYHAL_GPIO_DRIVE_NONE
-#endif //defined (CY_USING_HAL)
-#define CYBSP_UART_TX_ENABLED                           1U
-#define CYBSP_UART_TX_PORT                              JOIN(GPIO_PRT, BSP_UART_PORT)
-#define CYBSP_UART_TX_PORT_NUM                          BSP_UART_PORT
-#define CYBSP_UART_TX_PIN                               BSP_UART_TX_PIN
-#define CYBSP_UART_TX_NUM                               BSP_UART_TX_PIN
-#define CYBSP_UART_TX_DRIVEMODE                         CY_GPIO_DM_STRONG_IN_OFF
-#define CYBSP_UART_TX_INIT_DRIVESTATE 1
-/*#ifndef ioss_0_port_10_pin_1_HSIOM
-    #define ioss_0_port_10_pin_1_HSIOM HSIOM_SEL_GPIO
-#endif*/
-#define CYBSP_UART_TX_HSIOM                             ioss_port_pin_tx_HSIOM
-#define CYBSP_UART_TX_IRQ                               JOIN(JOIN(ioss_interrupts_gpio_, BSP_UART_PORT), _IRQn)
-#if defined (CY_USING_HAL)
-    #define CYBSP_UART_TX_HAL_PORT_PIN                  JOIN(JOIN(JOIN(P, BSP_UART_PORT), _), BSP_UART_TX_PIN)
-#endif //defined (CY_USING_HAL)
-#if defined (CY_USING_HAL)
-    #define CYBSP_UART_TX_HAL_IRQ CYHAL_GPIO_IRQ_NONE
-#endif //defined (CY_USING_HAL)
-#if defined (CY_USING_HAL)
-    #define CYBSP_UART_TX_HAL_DIR CYHAL_GPIO_DIR_OUTPUT
-#endif //defined (CY_USING_HAL)
-#if defined (CY_USING_HAL)
-    #define CYBSP_UART_TX_HAL_DRIVEMODE CYHAL_GPIO_DRIVE_STRONG
-#endif //defined (CY_USING_HAL)
-
-#if defined (CY_USING_HAL)
-    extern const cyhal_resource_inst_t CYBSP_WCO_IN_obj;
-#endif //defined (CY_USING_HAL)
-
-#if defined (CY_USING_HAL)
-    extern const cyhal_resource_inst_t CYBSP_WCO_OUT_obj;
-#endif //defined (CY_USING_HAL)
-extern const cy_stc_gpio_pin_config_t CYBSP_UART_RX_config;
-#if defined (CY_USING_HAL)
-    extern const cyhal_resource_inst_t CYBSP_UART_RX_obj;
-#endif //defined (CY_USING_HAL)
-extern const cy_stc_gpio_pin_config_t CYBSP_UART_TX_config;
-#if defined (CY_USING_HAL)
-    extern const cyhal_resource_inst_t CYBSP_UART_TX_obj;
-#endif //defined (CY_USING_HAL)
 
 void init_cycfg_pins(void);
 

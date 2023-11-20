@@ -39,7 +39,7 @@ endif
 # NOTE: Absolute pathes for now for the sake of development
 ifeq ($(HOST_OS), win)
 	ifeq ($(COMPILER), GCC_ARM)
-		TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/ModusToolbox/tools_2.4/gcc
+		TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/ModusToolbox/tools_3.1/gcc
 		MY_TOOLCHAIN_PATH := $(call get_os_path, $(TOOLCHAIN_PATH))
 		TOOLCHAIN_PATH := $(MY_TOOLCHAIN_PATH)
 		GCC_PATH := $(TOOLCHAIN_PATH)

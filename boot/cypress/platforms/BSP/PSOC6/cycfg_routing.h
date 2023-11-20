@@ -27,8 +27,6 @@
 #if !defined(CYCFG_ROUTING_H)
 #define CYCFG_ROUTING_H
 
-#include "bsp.h"
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -36,9 +34,6 @@ extern "C" {
 void init_cycfg_routing(void);
 
 #define init_cycfg_connectivity() init_cycfg_routing()
-
-#define ioss_port_pin_rx_HSIOM  JOIN(JOIN(JOIN(JOIN(JOIN(JOIN(P, BSP_UART_PORT), _), BSP_UART_RX_PIN), _SCB), BSP_UART_SCB_NUMBER), _UART_RX)
-#define ioss_port_pin_tx_HSIOM  JOIN(JOIN(JOIN(JOIN(JOIN(JOIN(P, BSP_UART_PORT), _), BSP_UART_TX_PIN), _SCB), BSP_UART_SCB_NUMBER), _UART_TX)
 
 #if defined(__cplusplus)
 }

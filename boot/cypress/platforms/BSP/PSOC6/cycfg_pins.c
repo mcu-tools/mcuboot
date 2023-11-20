@@ -26,64 +26,7 @@
 
 #include "cycfg_pins.h"
 
-const cy_stc_gpio_pin_config_t CYBSP_UART_RX_config =
-{
-    .outVal = 1,
-    .driveMode = CY_GPIO_DM_HIGHZ,
-    .hsiom = CYBSP_UART_RX_HSIOM,
-    .intEdge = CY_GPIO_INTR_DISABLE,
-    .intMask = 0UL,
-    .vtrip = CY_GPIO_VTRIP_CMOS,
-    .slewRate = CY_GPIO_SLEW_FAST,
-    .driveSel = CY_GPIO_DRIVE_1_2,
-    .vregEn = 0UL,
-    .ibufMode = 0UL,
-    .vtripSel = 0UL,
-    .vrefSel = 0UL,
-    .vohSel = 0UL,
-};
-#if defined (CY_USING_HAL)
-    const cyhal_resource_inst_t CYBSP_UART_RX_obj =
-    {
-        .type = CYHAL_RSC_GPIO,
-        .block_num = CYBSP_UART_RX_PORT_NUM,
-        .channel_num = CYBSP_UART_RX_PIN,
-    };
-#endif //defined (CY_USING_HAL)
-const cy_stc_gpio_pin_config_t CYBSP_UART_TX_config =
-{
-    .outVal = 1,
-    .driveMode = CY_GPIO_DM_STRONG_IN_OFF,
-    .hsiom = CYBSP_UART_TX_HSIOM,
-    .intEdge = CY_GPIO_INTR_DISABLE,
-    .intMask = 0UL,
-    .vtrip = CY_GPIO_VTRIP_CMOS,
-    .slewRate = CY_GPIO_SLEW_FAST,
-    .driveSel = CY_GPIO_DRIVE_1_2,
-    .vregEn = 0UL,
-    .ibufMode = 0UL,
-    .vtripSel = 0UL,
-    .vrefSel = 0UL,
-    .vohSel = 0UL,
-};
-#if defined (CY_USING_HAL)
-    const cyhal_resource_inst_t CYBSP_UART_TX_obj =
-    {
-        .type = CYHAL_RSC_GPIO,
-        .block_num = CYBSP_UART_TX_PORT_NUM,
-        .channel_num = CYBSP_UART_TX_PIN,
-    };
-#endif //defined (CY_USING_HAL)
-
 void init_cycfg_pins(void)
 {
-    (void)Cy_GPIO_Pin_Init(CYBSP_UART_RX_PORT, CYBSP_UART_RX_PIN, &CYBSP_UART_RX_config);
-#if defined (CY_USING_HAL)
-    cyhal_hwmgr_reserve(&CYBSP_UART_RX_obj);
-#endif //defined (CY_USING_HAL)
-
-    (void)Cy_GPIO_Pin_Init(CYBSP_UART_TX_PORT, CYBSP_UART_TX_PIN, &CYBSP_UART_TX_config);
-#if defined (CY_USING_HAL)
-    cyhal_hwmgr_reserve(&CYBSP_UART_TX_obj);
-#endif //defined (CY_USING_HAL)
+    
 }
