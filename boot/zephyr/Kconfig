@@ -30,6 +30,7 @@ config BOOT_USE_TINYCRYPT
 	# When building for ECDSA, we use our own copy of mbedTLS, so the
 	# Zephyr one must not be enabled or the MBEDTLS_CONFIG_FILE macros
 	# will collide.
+	select MBEDTLS_PROMPTLESS
 	help
 	  Use TinyCrypt for crypto primitives.
 
