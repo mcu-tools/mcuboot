@@ -294,10 +294,12 @@ bs_list(char *buf, int len)
                 if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
                 {
 #if defined(MCUBOOT_ENC_IMAGES)
+#if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     if (IS_ENCRYPTED(&hdr) && MUST_DECRYPT(fap, image_index, &hdr)) {
                         FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
                                  &hdr, tmpbuf, sizeof(tmpbuf));
                     } else {
+#endif
                         if (IS_ENCRYPTED(&hdr)) {
                             /*
                              * There is an image present which has an encrypted flag set but is
@@ -310,7 +312,7 @@ bs_list(char *buf, int len)
 
                         FIH_CALL(bootutil_img_validate, fih_rc, NULL, 0, &hdr,
                                  fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
-#if defined(MCUBOOT_ENC_IMAGES)
+#if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     }
 #endif
                 }
