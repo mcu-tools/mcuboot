@@ -1,4 +1,4 @@
-# Copyright 2023 Arm Limited
+# Copyright 2023-2024 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -28,15 +28,15 @@ HEADER_ITEMS = ("magic", "load_addr", "hdr_size", "protected_tlv_size",
                 "img_size", "flags", "version")
 TLV_TYPES = dict((value, key) for key, value in image.TLV_VALUES.items())
 BOOT_MAGIC = bytes([
-                0x77, 0xc2, 0x95, 0xf3,
-                0x60, 0xd2, 0xef, 0x7f,
-                0x35, 0x52, 0x50, 0x0f,
-                0x2c, 0xb6, 0x79, 0x80, ])
+    0x77, 0xc2, 0x95, 0xf3,
+    0x60, 0xd2, 0xef, 0x7f,
+    0x35, 0x52, 0x50, 0x0f,
+    0x2c, 0xb6, 0x79, 0x80, ])
 BOOT_MAGIC_2 = bytes([
-                0x2d, 0xe1, 0x5d, 0x29,
-                0x41, 0x0b, 0x8d, 0x77,
-                0x67, 0x9c, 0x11, 0x0f,
-                0x1f, 0x8a, ])
+    0x2d, 0xe1, 0x5d, 0x29,
+    0x41, 0x0b, 0x8d, 0x77,
+    0x67, 0x9c, 0x11, 0x0f,
+    0x1f, 0x8a, ])
 BOOT_MAGIC_SIZE = len(BOOT_MAGIC)
 _LINE_LENGTH = 60
 
@@ -47,20 +47,32 @@ def print_tlv_records(tlv_list):
         print(" " * indent, "-" * 45)
         tlv_type, tlv_length, tlv_data = tlv.keys()
 
-        print(" " * indent, "{}: {} ({})".format(
+        if tlv[tlv_type] in TLV_TYPES:
+            print(" " * indent, "{}: {} ({})".format(
                 tlv_type, TLV_TYPES[tlv[tlv_type]], hex(tlv[tlv_type])))
+        else:
+            print(" " * indent, "{}: {} ({})".format(
+                tlv_type, "UNKNOWN", hex(tlv[tlv_type])))
         print(" " * indent, "{}: ".format(tlv_length), hex(tlv[tlv_length]))
         print(" " * indent, "{}: ".format(tlv_data), end="")
 
         for j, data in enumerate(tlv[tlv_data]):
-            print("{0:#04x}".format(data),  end=" ")
-            if ((j+1) % 8 == 0) and ((j+1) != len(tlv[tlv_data])):
-                print("\n", end=" " * (indent+7))
+            print("{0:#04x}".format(data), end=" ")
+            if ((j + 1) % 8 == 0) and ((j + 1) != len(tlv[tlv_data])):
+                print("\n", end=" " * (indent + 7))
         print()
 
 
 def dump_imginfo(imgfile, outfile=None, silent=False):
-    '''Parse a signed image binary and print/save the available information.'''
+    """Parse a signed image binary and print/save the available information."""
+    trailer_magic = None
+    swap_size = 0
+    swap_info = 0
+    copy_done = 0
+    image_ok = 0
+    trailer = {}
+    key_field_len = None
+
     try:
         with open(imgfile, "rb") as f:
             b = f.read()
@@ -128,7 +140,6 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
 
     if _img_pad_size:
         # Parsing the image trailer
-        trailer = {}
         trailer_off = -BOOT_MAGIC_SIZE
         trailer_magic = b[trailer_off:]
         trailer["magic"] = trailer_magic
@@ -138,7 +149,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
             max_align = 8
         elif trailer_magic[-len(BOOT_MAGIC_2):] == BOOT_MAGIC_2:
             # The alignment value is encoded in the magic field
-            max_align = int(trailer_magic[:2], 0)
+            max_align = int.from_bytes(trailer_magic[:2], "little")
         else:
             # Invalid magic: the rest of the image trailer cannot be processed.
             print("Warning: the trailer magic value is invalid!")
@@ -165,7 +176,6 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
             trailer["swap_size"] = swap_size
 
             # Encryption key 0/1
-            key_field_len = None
             if ((header["flags"] & image.IMAGE_F["ENCRYPTED_AES128"]) or
                (header["flags"] & image.IMAGE_F["ENCRYPTED_AES256"])):
                 # The image is encrypted
@@ -200,7 +210,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
             else:
                 flag_string = ""
                 for flag in image.IMAGE_F.keys():
-                    if (value & image.IMAGE_F[flag]):
+                    if value & image.IMAGE_F[flag]:
                         if flag_string:
                             flag_string += ("\n" + (" " * 20))
                         flag_string += "{} ({})".format(
@@ -209,7 +219,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
 
         if type(value) != str:
             value = hex(value)
-        print(key, ":", " " * (19-len(key)), value, sep="")
+        print(key, ":", " " * (19 - len(key)), value, sep="")
     print("#" * _LINE_LENGTH)
 
     # Image payload
@@ -281,7 +291,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
         print("boot magic:  ", end="")
         for i in range(BOOT_MAGIC_SIZE):
             print("{0:#04x}".format(trailer_magic[i]),  end=" ")
-            if (i == (BOOT_MAGIC_SIZE/2 - 1)):
+            if i == (BOOT_MAGIC_SIZE / 2 - 1):
                 print("\n", end="             ")
         print()
 
