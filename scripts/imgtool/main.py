@@ -228,6 +228,8 @@ def verify(key, imgfile):
         print("Image has an invalid hash")
     elif ret == image.VerifyResult.INVALID_SIGNATURE:
         print("No signature found for the given key")
+    elif ret == image.VerifyResult.KEY_MISMATCH:
+        print("Key type does not match TLV record")
     else:
         print("Unknown return code: {}".format(ret))
     sys.exit(1)
