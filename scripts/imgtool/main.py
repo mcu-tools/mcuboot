@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 #
 # Copyright 2017-2020 Linaro Limited
-# Copyright 2019-2023 Arm Limited
+# Copyright 2019-2024 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -24,6 +24,7 @@ import imgtool.keys as keys
 import sys
 import base64
 from imgtool import image, imgtool_version
+from imgtool.keys.general import key_types_matching
 from imgtool.version import decode_version
 from imgtool.dumpinfo import dump_imginfo
 from .keys import (
@@ -87,12 +88,22 @@ def save_signature(sigfile, sig):
 
 
 def load_key(keyfile):
-    # TODO: better handling of invalid pass-phrase
-    key = keys.load(keyfile)
+    try:
+        key = keys.load(keyfile)
+    except FileNotFoundError as e:
+        print("Key File Not Found in the path: " + keyfile)
+        raise e
     if key is not None:
         return key
     passwd = getpass.getpass("Enter key passphrase: ").encode('utf-8')
-    return keys.load(keyfile, passwd)
+    try:
+        key = keys.load(keyfile, passwd)
+    except Exception as e:
+        msg = str(e)
+        if "Invalid passphrase" in msg:
+            print(msg)
+            exit(1)
+    return key
 
 
 def get_password():
@@ -145,9 +156,8 @@ def getpub(key, encoding, lang, output):
 
     if not output:
         output = sys.stdout
-    if key is None:
-        print("Invalid passphrase")
-    elif lang == 'c' or encoding == 'lang-c':
+
+    if lang == 'c' or encoding == 'lang-c':
         key.emit_c_public(file=output)
     elif lang == 'rust' or encoding == 'lang-rust':
         key.emit_rust_public(file=output)
@@ -177,9 +187,8 @@ def getpubhash(key, output, encoding):
 
     if not output:
         output = sys.stdout
-    if key is None:
-        print("Invalid passphrase")
-    elif encoding == 'lang-c':
+
+    if encoding == 'lang-c':
         key.emit_c_public_hash(file=output)
     elif encoding == 'raw':
         key.emit_raw_public_hash(file=output)
@@ -200,8 +209,6 @@ def getpubhash(key, output, encoding):
 @click.command(help='Dump private key from keypair')
 def getpriv(key, minimal, format):
     key = load_key(key)
-    if key is None:
-        print("Invalid passphrase")
     try:
         key.emit_private(minimal, format)
     except (RSAUsageError, ECDSAUsageError, Ed25519UsageError,
@@ -427,16 +434,9 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
-    if enckey and key:
-        if ((isinstance(key, keys.ECDSA256P1) and
-             not isinstance(enckey, keys.ECDSA256P1Public))
-           or (isinstance(key, keys.ECDSA384P1) and
-               not isinstance(enckey, keys.ECDSA384P1Public))
-                or (isinstance(key, keys.RSA) and
-                    not isinstance(enckey, keys.RSAPublic))):
-            # FIXME
-            raise click.UsageError("Signing and encryption must use the same "
-                                   "type of key")
+    if enckey and key and not key_types_matching(key, enckey):
+        raise click.UsageError("Encryption must use the public pair of the "
+                               "same type of key used for signing")
 
     if pad_sig and hasattr(key, 'pad_sig'):
         key.pad_sig = True
