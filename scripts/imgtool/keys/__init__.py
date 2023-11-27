@@ -1,5 +1,5 @@
 # Copyright 2017 Linaro Limited
-# Copyright 2023 Arm Limited
+# Copyright 2023-2024 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -58,14 +58,19 @@ def load(path, passwd=None):
     except TypeError as e:
         msg = str(e)
         if "private key is encrypted" in msg:
+            print(msg)
             return None
         raise e
-    except ValueError:
+    except ValueError as e:
+        msg1 = str(e)
+        if "Incorrect password" in msg1:
+            raise Exception("Invalid passphrase")
         # This seems to happen if the key is a public key, let's try
         # loading it as a public key.
         pk = serialization.load_pem_public_key(
-                raw_pem,
-                backend=default_backend())
+            raw_pem,
+            backend=default_backend())
+
 
     if isinstance(pk, RSAPrivateKey):
         if pk.key_size not in RSA_KEY_SIZES:
