@@ -28,7 +28,7 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-#if defined(MCUBOOT_USE_PSA_CRYPTO) || defined(MCUBOOT_USE_MBED_TLS)
+#if defined(MCUBOOT_USE_PSA_CRYPTO) || defined(MCUBOOT_USE_MBED_TLS) || defined(MCUBOOT_USE_CUSTOM_CRYPT)
 #define MCUBOOT_USE_PSA_OR_MBED_TLS
 #endif /* MCUBOOT_USE_PSA_CRYPTO || MCUBOOT_USE_MBED_TLS */
 
@@ -57,6 +57,9 @@
 
 #endif /* MCUBOOT_USE_MBED_TLS */
 
+#if defined(MCUBOOT_USE_CUSTOM_CRYPT)
+    #include "rsa_custom.h"
+#endif /* MCUBOOT_USE_CUSTOM_CRYPT */
 #include <stdint.h>
 
 #ifdef __cplusplus

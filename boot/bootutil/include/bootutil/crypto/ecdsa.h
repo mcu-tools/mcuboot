@@ -34,8 +34,9 @@
 
 #if (defined(MCUBOOT_USE_TINYCRYPT) + \
      defined(MCUBOOT_USE_CC310) + \
-     defined(MCUBOOT_USE_PSA_OR_MBED_TLS)) != 1
-    #error "One crypto backend must be defined: either CC310/TINYCRYPT/MBED_TLS/PSA_CRYPTO"
+     defined(MCUBOOT_USE_PSA_OR_MBED_TLS) +\
+     defined (MCUBOOT_USE_CUSTOM_CRYPT)) != 1
+    #error "One crypto backend must be defined: either CC310/TINYCRYPT/MBED_TLS/PSA_CRYPTO/CUSTOM_CRYPT"
 #endif
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
@@ -62,6 +63,10 @@
 #define NUM_ECC_BYTES (256 / 8)
 #endif
 
+#if  defined (MCUBOOT_USE_CUSTOM_CRYPT)
+    #include "ecdsa_custom.h"
+#endif /* MCUBOOT_USE_CUSTOM_CRYPT */
+
 /* Universal defines */
 #define BOOTUTIL_CRYPTO_ECDSA_P256_HASH_SIZE (32)
 
@@ -74,7 +79,7 @@
 extern "C" {
 #endif
 
-#if (defined(MCUBOOT_USE_TINYCRYPT) || defined(MCUBOOT_USE_MBED_TLS) || \
+#if (defined(MCUBOOT_USE_TINYCRYPT) || defined(MCUBOOT_USE_MBED_TLS) ||\
      defined(MCUBOOT_USE_CC310)) && !defined(MCUBOOT_USE_PSA_CRYPTO)
 /*
  * Declaring these like this adds NULL termination.

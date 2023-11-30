@@ -15,8 +15,9 @@
 #include "mcuboot_config/mcuboot_config.h"
 
 #if (defined(MCUBOOT_USE_MBED_TLS) + \
-     defined(MCUBOOT_USE_TINYCRYPT)) != 1
-    #error "One crypto backend must be defined: either MBED_TLS or TINYCRYPT"
+     defined(MCUBOOT_USE_TINYCRYPT) + \
+     defined (MCUBOOT_USE_CUSTOM_CRYPT)) != 1
+    #error "One crypto backend must be defined: either MBED_TLS, TINYCRYPT or CUSTOM_CRYPT"
 #endif
 
 #if defined(MCUBOOT_USE_MBED_TLS)
@@ -37,6 +38,10 @@
     #define BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE TC_AES_KEY_SIZE
     #define BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE TC_AES_BLOCK_SIZE
 #endif /* MCUBOOT_USE_TINYCRYPT */
+
+#if defined (MCUBOOT_USE_CUSTOM_CRYPT)
+    #include "aes_ctr_custom.h"
+#endif /* MCUBOOT_USE_CUSTOM_CRYPT */
 
 #include <stdint.h>
 
