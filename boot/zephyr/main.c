@@ -407,7 +407,7 @@ int main(void)
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
     /* LED init */
-    led_init();
+    io_led_init();
 #endif
 
     os_heap_init();
