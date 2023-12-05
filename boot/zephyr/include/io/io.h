@@ -35,6 +35,11 @@ extern "C" {
 void io_led_init(void);
 
 /*
+ * Sets value of the configured LED.
+ */
+void io_led_set(int value);
+
+/*
  * Checks if GPIO is set in the required way to remain in serial recovery mode
  *
  * @retval	false for normal boot, true for serial recovery boot
