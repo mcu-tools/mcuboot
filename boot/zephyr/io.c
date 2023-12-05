@@ -28,6 +28,7 @@
 #include <zephyr/linker/linker-defs.h>
 
 #include "target.h"
+#include "bootutil/bootutil_log.h"
 
 #if defined(CONFIG_BOOT_SERIAL_PIN_RESET) || defined(CONFIG_BOOT_FIRMWARE_LOADER_PIN_RESET)
 #include <zephyr/drivers/hwinfo.h>
@@ -77,6 +78,8 @@ static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 /* A build error here means your board isn't set up to drive an LED. */
 #error "Unsupported board: led0 devicetree alias is not defined"
 #endif
+
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 void io_led_init(void)
 {
