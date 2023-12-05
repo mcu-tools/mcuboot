@@ -377,7 +377,7 @@ static void boot_serial_enter()
     int rc;
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-    gpio_pin_set_dt(&led0, 1);
+    io_led_set(1);
 #endif
 
     mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
@@ -434,7 +434,7 @@ int main(void)
 #if defined(CONFIG_BOOT_USB_DFU_GPIO)
     if (io_detect_pin()) {
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-        gpio_pin_set_dt(&led0, 1);
+        io_led_set(1);
 #endif
 
         mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_ENTERED);
@@ -475,7 +475,7 @@ int main(void)
     uint32_t start = k_uptime_get_32();
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-    gpio_pin_set_dt(&led0, 1);
+    io_led_set(1);
 #endif
 #endif
 
@@ -499,7 +499,7 @@ int main(void)
     boot_serial_check_start(&boot_funcs,timeout_in_ms);
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
-    gpio_pin_set_dt(&led0, 0);
+    io_led_set(0);
 #endif
 #endif
 

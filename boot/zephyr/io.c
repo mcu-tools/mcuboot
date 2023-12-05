@@ -91,6 +91,11 @@ void io_led_init(void)
     gpio_pin_configure_dt(&led0, GPIO_OUTPUT);
     gpio_pin_set_dt(&led0, 0);
 }
+
+void io_led_set(int value)
+{
+    gpio_pin_set_dt(&led0, value);
+}
 #endif /* CONFIG_MCUBOOT_INDICATION_LED */
 
 #if defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) || defined(CONFIG_BOOT_USB_DFU_GPIO) || \
