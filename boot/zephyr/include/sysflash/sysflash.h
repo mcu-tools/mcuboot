@@ -12,7 +12,7 @@
 #include <zephyr/storage/flash_map.h>
 #include <zephyr/sys/util_macro.h>
 
-#ifndef CONFIG_SINGLE_APPLICATION_SLOT
+#if !defined(CONFIG_SINGLE_APPLICATION_SLOT) && !defined(CONFIG_MCUBOOT_BOOTLOADER_MODE_SINGLE_APP)
 
 /* Each pair of slots is separated by , and there is no terminating character */
 #define FLASH_AREA_IMAGE_0_SLOTS    slot0_partition, slot1_partition
@@ -50,7 +50,7 @@ static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
 #define FLASH_AREA_IMAGE_SCRATCH    FIXED_PARTITION_ID(scratch_partition)
 #endif
 
-#else /* CONFIG_SINGLE_APPLICATION_SLOT */
+#else /* !CONFIG_SINGLE_APPLICATION_SLOT && !CONFIG_MCUBOOT_BOOTLOADER_MODE_SINGLE_APP */
 
 #define FLASH_AREA_IMAGE_PRIMARY(x)	FIXED_PARTITION_ID(slot0_partition)
 #define FLASH_AREA_IMAGE_SECONDARY(x)	FIXED_PARTITION_ID(slot0_partition)
