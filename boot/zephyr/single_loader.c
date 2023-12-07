@@ -58,6 +58,7 @@ boot_image_validate(const struct flash_area *fa_p,
 }
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT || MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE*/
 
+#if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
 inline static fih_ret
 boot_image_validate_once(const struct flash_area *fa_p,
                     struct image_header *hdr)
@@ -88,6 +89,7 @@ boot_image_validate_once(const struct flash_area *fa_p,
     }
     FIH_RET(FIH_SUCCESS);
 }
+#endif
 
 /**
  * Gather information on image and prepare for booting.
