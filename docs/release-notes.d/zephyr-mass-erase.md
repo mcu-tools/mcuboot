@@ -1,0 +1,1 @@
+- Zephyr: Remove deprecated ZEPHYR_TRY_MASS_ERASE Kconfig option.
