@@ -1,0 +1,1 @@
+- Zephyr: Add estimated image footer size to cache in sysbuild.

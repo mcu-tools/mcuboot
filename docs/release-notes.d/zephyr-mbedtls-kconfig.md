@@ -1,0 +1,1 @@
+- Zephyr: Prevent MBEDTLS Kconfig selection when tinycrypt is used.
