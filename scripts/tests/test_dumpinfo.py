@@ -326,3 +326,12 @@ class TestDumpInfo:
         assert "ROM_FIXED" in result.stdout
         assert DUMPINFO_SUCCESS_LITERAL in result.stdout
         assert DUMPINFO_ENCRYPTED_TRAILER in result.stdout
+
+    @pytest.mark.parametrize("hex_addr", ("0", "16", "35"))
+    def test_dumpinfo_hex(self, tmp_path_persistent, hex_addr):
+        self.image_signed = signed_images_dir + "/hex/" + f"zero_hex-addr_{hex_addr}" + ".hex"
+        result = self.runner.invoke(
+            imgtool, ["dumpinfo", str(self.image_signed)]
+        )
+        assert result.exit_code == 0
+        assert DUMPINFO_SUCCESS_LITERAL in result.stdout

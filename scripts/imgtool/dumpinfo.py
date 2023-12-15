@@ -23,8 +23,10 @@ import sys
 
 import click
 import yaml
+from intelhex import IntelHex
 
 from imgtool import image
+from imgtool.image import INTEL_HEX_EXT
 
 HEADER_ITEMS = ("magic", "load_addr", "hdr_size", "protected_tlv_size",
                 "img_size", "flags", "version")
@@ -129,9 +131,14 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
     trailer = {}
     key_field_len = None
 
+    ext = os.path.splitext(imgfile)[1][1:].lower()
     try:
-        with open(imgfile, "rb") as f:
-            b = f.read()
+        if ext == INTEL_HEX_EXT:
+            ih = IntelHex(imgfile)
+            b = ih.tobinstr()
+        else:
+            with open(imgfile, "rb") as f:
+                b = f.read()
     except FileNotFoundError:
         raise click.UsageError("Image file not found ({})".format(imgfile))
 
