@@ -377,6 +377,7 @@ class BasedIntParamType(click.ParamType):
               'keyword to automatically generate it from the image version.')
 @click.option('-v', '--version', callback=validate_version,  required=True)
 @click.option('--align', type=click.Choice(['1', '2', '4', '8', '16', '32']),
+              default='1',
               required=False,
               help='Alignment used by swap update modes.')
 @click.option('--max-align', type=click.Choice(['8', '16', '32']),
