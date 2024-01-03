@@ -470,6 +470,10 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
     memset(buf, erased_val, BOOT_MAX_ALIGN);
     buf[0] = bs->state;
 
+    BOOT_LOG_DBG("writing swap status; fa_id=%d off=0x%lx (0x%lx)",
+                 flash_area_get_id(fap), (unsigned long)off,
+                 (unsigned long)flash_area_get_off(fap) + off);
+
     rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
         rc = BOOT_EFLASH;
