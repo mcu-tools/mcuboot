@@ -240,7 +240,7 @@ bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
  * List images.
  */
 static void
-bs_list(char *buf, int len)
+bs_list(void)
 {
     struct image_header hdr;
     uint32_t slot, area_id;
@@ -536,7 +536,7 @@ bs_set(char *buf, int len)
 out:
     if (rc == 0) {
         /* Success - return updated list of images */
-        bs_list(buf, len);
+        bs_list();
     } else {
         /* Error code, only return the error */
         zcbor_map_start_encode(cbor_state, 10);
@@ -566,7 +566,7 @@ static void
 bs_list_set(uint8_t op, char *buf, int len)
 {
     if (op == NMGR_OP_READ) {
-        bs_list(buf, len);
+        bs_list();
     } else {
 #ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
         bs_set(buf, len);
@@ -611,8 +611,13 @@ static off_t erase_range(const struct flash_area *fap, off_t start, off_t end)
     }
 
     size = flash_sector_get_off(&sect) + flash_sector_get_size(&sect) - start;
-    BOOT_LOG_INF("Erasing range 0x%jx:0x%jx", (intmax_t)start,
-		 (intmax_t)(start + size - 1));
+#if defined(__ZEPHYR__) && defined(CONFIG_MINIMAL_LIBC) && defined(CONFIG_CBPRINTF_NANO)
+    BOOT_LOG_INF("Erasing range 0x%lx:0x%lx", (fap->fa_off + start),
+		 (fap->fa_off + start + size - 1));
+#else
+    BOOT_LOG_INF("Erasing range 0x%jx:0x%jx", (intmax_t)(fap->fa_off + start),
+		 (intmax_t)(fap->fa_off + start + size - 1));
+#endif
 
     rc = flash_area_erase(fap, start, size);
     if (rc != 0) {
@@ -796,7 +801,8 @@ bs_upload(char *buf, int len)
         rem_bytes = 0;
     }
 
-    BOOT_LOG_INF("Writing at 0x%x until 0x%x", curr_off, curr_off + img_chunk_len);
+    BOOT_LOG_INF("Writing at 0x%lx until 0x%lx", fap->fa_off + curr_off,
+                 fap->fa_off + curr_off + img_chunk_len);
     /* Write flash aligned chunk, note that img_chunk_len now holds aligned length */
 #if defined(MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE) && MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE > 0
     if (flash_area_align(fap) > 1 &&
