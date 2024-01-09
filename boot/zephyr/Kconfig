@@ -665,6 +665,8 @@ config BOOT_WATCHDOG_FEED
 	imply NRFX_WDT if SOC_FAMILY_NRF
 	imply NRFX_WDT0 if SOC_FAMILY_NRF
 	imply NRFX_WDT1 if SOC_FAMILY_NRF
+	imply NRFX_WDT30 if SOC_FAMILY_NRF
+	imply NRFX_WDT31 if SOC_FAMILY_NRF
 	help
 	  Enables implementation of MCUBOOT_WATCHDOG_FEED() macro which is
 	  used to feed watchdog while doing time consuming operations.

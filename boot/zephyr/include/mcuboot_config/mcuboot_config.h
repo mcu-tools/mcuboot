@@ -329,9 +329,21 @@
 #elif defined(CONFIG_NRFX_WDT0)
 #define MCUBOOT_WATCHDOG_FEED() \
     FEED_WDT_INST(0);
-#else /* defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1) */
+#elif defined(CONFIG_NRFX_WDT30) && defined(CONFIG_NRFX_WDT31)
+#define MCUBOOT_WATCHDOG_FEED() \
+    do {                        \
+        FEED_WDT_INST(30);      \
+        FEED_WDT_INST(31);      \
+    } while (0)
+#elif defined(CONFIG_NRFX_WDT30)
+#define MCUBOOT_WATCHDOG_FEED() \
+    FEED_WDT_INST(30);
+#elif defined(CONFIG_NRFX_WDT31)
+#define MCUBOOT_WATCHDOG_FEED() \
+    FEED_WDT_INST(31);
+#else
 #error "No NRFX WDT instances enabled"
-#endif /* defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1) */
+#endif
 
 #elif DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) /* CONFIG_NRFX_WDT */
 #include <zephyr/device.h>
