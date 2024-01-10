@@ -439,7 +439,7 @@ bs_set(char *buf, int len)
 #endif
 
     zcbor_state_t zsd[4];
-    zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1);
+    zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1, NULL, 0);
 
     struct zcbor_map_decode_key_val image_set_state_decode[] = {
         ZCBOR_MAP_DECODE_KEY_DECODER("confirm", zcbor_bool_decode, &confirm),
@@ -657,7 +657,7 @@ bs_upload(char *buf, int len)
 #endif
 
     zcbor_state_t zsd[4];
-    zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1);
+    zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1, NULL, 0);
 
     struct zcbor_map_decode_key_val image_upload_decode[] = {
         ZCBOR_MAP_DECODE_KEY_DECODER("image", zcbor_uint32_decode, &img_num_tmp),
@@ -910,7 +910,7 @@ bs_echo(char *buf, int len)
     uint32_t rc = MGMT_ERR_EINVAL;
 
     zcbor_state_t zsd[4];
-    zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1);
+    zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1, NULL, 0);
 
     if (!zcbor_map_start_decode(zsd)) {
         goto out;
