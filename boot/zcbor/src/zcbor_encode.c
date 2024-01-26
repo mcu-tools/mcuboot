@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the zcbor library.
- * Commit zcbor 0.8.0
+ * Commit zcbor 0.8.1
  */
 
 /*
