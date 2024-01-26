@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the zcbor library.
- * Commit zcbor 0.8.0
+ * Commit zcbor 0.8.1
  */
 
 /*
@@ -21,6 +21,23 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define ZCBOR_STRINGIFY_PRE(x) #x
+#define ZCBOR_STRINGIFY(s) ZCBOR_STRINGIFY_PRE(s)
+
+#define ZCBOR_VERSION_MAJOR 0
+#define ZCBOR_VERSION_MINOR 8
+#define ZCBOR_VERSION_BUGFIX 1
+
+/** The version string with dots and not prefix. */
+#define ZCBOR_VERSION_STR   ZCBOR_STRINGIFY(ZCBOR_VERSION_MAJOR) \
+			"." ZCBOR_STRINGIFY(ZCBOR_VERSION_MINOR) \
+			"." ZCBOR_STRINGIFY(ZCBOR_VERSION_BUGFIX)
+
+/** Monotonically increasing integer representing the version. */
+#define ZCBOR_VERSION    ((ZCBOR_VERSION_MAJOR << 24) \
+			+ (ZCBOR_VERSION_MINOR << 16) \
+			+ (ZCBOR_VERSION_BUGFIX << 8))
 
 /** Convenience type that allows pointing to strings directly inside the payload
  *  without the need to copy out.
@@ -487,6 +504,8 @@ static inline size_t zcbor_flags_to_states(size_t num_flags)
 #else
 #define ZCBOR_FLAG_STATES(n_flags) 0
 #endif
+
+size_t strnlen(const char *, size_t);
 
 #ifdef __cplusplus
 }
