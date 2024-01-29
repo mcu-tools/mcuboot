@@ -934,7 +934,7 @@ bs_echo(char *buf, int len)
     }
 
     zcbor_map_start_encode(cbor_state, 10);
-    zcbor_tstr_put_term(cbor_state, "r");
+    zcbor_tstr_put_lit(cbor_state, "r");
     if (zcbor_tstr_encode(cbor_state, &value) && zcbor_map_end_encode(cbor_state, 10)) {
         boot_serial_output();
         return;
