@@ -31,9 +31,12 @@ function(${SYSBUILD_CURRENT_MODULE_NAME}_post_image_cmake)
 
     if("${app_type}" STREQUAL "MAIN")
       sysbuild_get(mcuboot_image_footer_size IMAGE mcuboot CACHE)
+      sysbuild_get(mcuboot_image_upgrade_footer_size IMAGE mcuboot CACHE)
       math(EXPR mcuboot_image_footer_size "${mcuboot_image_footer_size}" OUTPUT_FORMAT HEXADECIMAL)
+      math(EXPR mcuboot_image_upgrade_footer_size "${mcuboot_image_upgrade_footer_size}" OUTPUT_FORMAT HEXADECIMAL)
 
       set_property(TARGET ${image} APPEND_STRING PROPERTY CONFIG "CONFIG_ROM_END_OFFSET=${mcuboot_image_footer_size}\n")
+      set_property(TARGET ${image} APPEND_STRING PROPERTY CONFIG "CONFIG_MCUBOOT_UPDATE_FOOTER_SIZE=${mcuboot_image_upgrade_footer_size}\n")
       return()
     endif()
   endforeach()
