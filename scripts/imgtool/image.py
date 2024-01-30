@@ -623,8 +623,15 @@ class Image():
 
     @staticmethod
     def verify(imgfile, key):
-        with open(imgfile, "rb") as f:
-            b = f.read()
+        ext = os.path.splitext(imgfile)[1][1:].lower()
+        try:
+            if ext == INTEL_HEX_EXT:
+                b = IntelHex(imgfile).tobinstr()
+            else:
+                with open(imgfile, 'rb') as f:
+                    b = f.read()
+        except FileNotFoundError:
+            raise click.UsageError(f"Image file {imgfile} not found")
 
         magic, _, header_size, _, img_size = struct.unpack('IIHHI', b[:16])
         version = struct.unpack('BBHI', b[20:28])
