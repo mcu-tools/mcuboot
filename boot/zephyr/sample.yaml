@@ -5,51 +5,51 @@ sample:
 tests:
   sample.bootloader.mcuboot:
     tags: bootloader_mcuboot
-    platform_allow:  nrf52840dk_nrf52840 frdm_k64f disco_l475_iot1
+    platform_allow:  nrf52840dk/nrf52840 frdm_k64f disco_l475_iot1
     integration_platforms:
-      - nrf52840dk_nrf52840
+      - nrf52840dk/nrf52840
       - frdm_k64f
       - disco_l475_iot1
   sample.bootloader.mcuboot.serial_recovery:
     extra_args: OVERLAY_CONFIG=serial_recovery.conf
-    platform_allow:  nrf52840dk_nrf52840
+    platform_allow:  nrf52840dk/nrf52840
     integration_platforms:
-      - nrf52840dk_nrf52840
+      - nrf52840dk/nrf52840
     tags: bootloader_mcuboot
   sample.bootloader.mcuboot.usb_cdc_acm_recovery:
     tags: bootloader_mcuboot
-    platform_allow:  nrf52840dongle_nrf52840
+    platform_allow:  nrf52840dongle/nrf52840
     extra_args: DTC_OVERLAY_FILE="./usb_cdc_acm.overlay;app.overlay"
     integration_platforms:
-      - nrf52840dongle_nrf52840
+      - nrf52840dongle/nrf52840
   sample.bootloader.mcuboot.usb_cdc_acm_recovery_log:
     extra_args: OVERLAY_CONFIG=./usb_cdc_acm_log_recovery.conf
       DTC_OVERLAY_FILE="./boards/nrf52840_big.overlay;app.overlay"
-    platform_allow:  nrf52840dk_nrf52840
+    platform_allow:  nrf52840dk/nrf52840
     integration_platforms:
-      - nrf52840dk_nrf52840
+      - nrf52840dk/nrf52840
     tags: bootloader_mcuboot
   sample.bootloader.mcuboot.single_slot:
     extra_args: OVERLAY_CONFIG=./single_slot.conf
       DTC_OVERLAY_FILE="./boards/nrf52840_single_slot.overlay;app.overlay"
-    platform_allow:  nrf52840dk_nrf52840
+    platform_allow:  nrf52840dk/nrf52840
     integration_platforms:
-      - nrf52840dk_nrf52840
+      - nrf52840dk/nrf52840
     tags: bootloader_mcuboot
   sample.bootloader.mcuboot.qspi_nor_slot:
     extra_args: DTC_OVERLAY_FILE="./boards/nrf52840dk_qspi_nor_secondary.overlay;app.overlay"
       OVERLAY_CONFIG="./boards/nrf52840dk_qspi_nor.conf;./boards/nrf52840dk_qspi_secondary_boot.conf"
-    platform_allow: nrf52840dk_nrf52840
+    platform_allow: nrf52840dk/nrf52840
     integration_platforms:
-      - nrf52840dk_nrf52840
+      - nrf52840dk/nrf52840
     tags: bootloader_mcuboot
   sample.bootloader.mcuboot.hooks_multi:
     extra_args: DTC_OVERLAY_FILE="./boards/nrf52840dk_ram_multi.overlay;app.overlay"
       OVERLAY_CONFIG=./boards/nrf52840dk_hooks_sample_overlay.conf
       TEST_BOOT_IMAGE_ACCESS_HOOKS=Y
-    platform_allow: nrf52840dk_nrf52840
+    platform_allow: nrf52840dk/nrf52840
     integration_platforms:
-      - nrf52840dk_nrf52840
+      - nrf52840dk/nrf52840
     tags: bootloader_mcuboot
   sample.bootloader.mcuboot.ram_load:
     extra_args: OVERLAY_CONFIG=./ram_load.conf
