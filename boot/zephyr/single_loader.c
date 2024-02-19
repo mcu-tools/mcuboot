@@ -83,7 +83,7 @@ boot_image_validate_once(const struct flash_area *fa_p,
             if (rc != 0)
                 FIH_RET(FIH_FAILURE);
         }
-        rc = boot_write_image_ok(fa_p);
+        rc = boot_write_image_flag(fa_p, BOOT_FLAG_SET);
         if (rc != 0)
             FIH_RET(FIH_FAILURE);
     }

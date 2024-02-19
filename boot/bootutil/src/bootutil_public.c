@@ -354,7 +354,7 @@ boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
 }
 
 int
-boot_write_image_ok(const struct flash_area *fap)
+boot_write_image_flag(const struct flash_area *fap, int flag)
 {
     uint32_t off;
 
@@ -362,7 +362,7 @@ boot_write_image_ok(const struct flash_area *fap)
     BOOT_LOG_DBG("writing image_ok; fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off));
-    return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
+    return boot_write_trailer_flag(fap, off, flag);
 }
 
 int
@@ -515,7 +515,7 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
              * confirm a padded image which has been programmed using
              * a programming interface.
              */
-            rc = boot_write_image_ok(fa);
+            rc = boot_write_image_flag(fa, BOOT_FLAG_SET);
         }
 
         break;
@@ -525,7 +525,7 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
             rc = boot_write_magic(fa);
 
             if (rc == 0 && confirm) {
-                rc = boot_write_image_ok(fa);
+                rc = boot_write_image_flag(fa, BOOT_FLAG_SET);
             }
 
             if (rc == 0) {
@@ -605,7 +605,7 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
             }
 
             if (slot_state.image_ok == BOOT_FLAG_UNSET) {
-                rc = boot_write_image_ok(fa);
+                rc = boot_write_image_flag(fa, BOOT_FLAG_SET);
                 if (rc != 0) {
                     break;
                 }

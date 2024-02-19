@@ -635,7 +635,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
             assert(rc == 0);
 
             if (swap_state.image_ok == BOOT_FLAG_SET) {
-                rc = boot_write_image_ok(fap_primary_slot);
+                rc = boot_write_image_flag(fap_primary_slot, BOOT_FLAG_SET);
                 assert(rc == 0);
             }
 
