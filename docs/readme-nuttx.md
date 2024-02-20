@@ -5,6 +5,7 @@
 The NuttX port of MCUboot secure boot library expects that the platform provides a Flash storage with the following partitions:
 - `CONFIG_MCUBOOT_PRIMARY_SLOT_PATH`: MTD partition for the application firmware image PRIMARY slot;
 - `CONFIG_MCUBOOT_SECONDARY_SLOT_PATH`: MTD partition for the application firmware image SECONDARY slot;
+- `CONFIG_MCUBOOT_TERTIARY_SLOT_PATH`: MTD partition for the application firmware image TERTIARY slot if copy with revert algorithm is used;
 - `CONFIG_MCUBOOT_SCRATCH_PATH`: MTD partition for the Scratch area;
 
 Also, these are optional features that may be enabled:
