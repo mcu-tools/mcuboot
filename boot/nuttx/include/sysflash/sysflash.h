@@ -26,7 +26,8 @@
 
 #define PRIMARY_ID      0
 #define SECONDARY_ID    1
-#define SCRATCH_ID      2
+#define TERTIARY_ID     2
+#define SCRATCH_ID      3
 
 #define FLASH_AREA_IMAGE_PRIMARY(x)    (((x) == 0) ?        \
                                          PRIMARY_ID :       \
@@ -34,6 +35,9 @@
 #define FLASH_AREA_IMAGE_SECONDARY(x)  (((x) == 0) ?        \
                                          SECONDARY_ID :     \
                                          SECONDARY_ID)
+#define FLASH_AREA_IMAGE_TERTIARY(x)   (((x) == 0) ?        \
+                                         TERTIARY_ID :      \
+                                         TERTIARY_ID)
 #define FLASH_AREA_IMAGE_SCRATCH       SCRATCH_ID
 
 #endif /* __BOOT_NUTTX_INCLUDE_SYSFLASH_SYSFLASH_H */

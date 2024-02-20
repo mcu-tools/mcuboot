@@ -78,6 +78,16 @@
 #  define MCUBOOT_OVERWRITE_ONLY_FAST
 #endif
 
+/* Enable copy with revert algorithm. This algorithm uses three slots and
+ * always keep the current image in both primary and secondary or tertiary
+ * partitions. This way update can be done without swapping while keeping
+ * the ability to revert.
+ */
+
+#ifdef CONFIG_MCUBOOT_COPY_WITH_REVERT
+#  define MCUBOOT_COPY_WITH_REVERT
+#endif
+
 /* Enable the direct-xip code path. */
 
 #ifdef CONFIG_MCUBOOT_DIRECT_XIP
