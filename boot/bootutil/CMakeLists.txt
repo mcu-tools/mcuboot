@@ -20,6 +20,7 @@ target_sources(bootutil
         src/bootutil_misc.c
         src/bootutil_public.c
         src/caps.c
+        src/copy.c
         src/encrypted.c
         src/fault_injection_hardening.c
         src/fault_injection_hardening_delay_rng_mbedtls.c

@@ -5,6 +5,7 @@
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2021 Arm Limited
  * Copyright (c) 2020-2021 Nordic Semiconductor ASA
+ * Copyright (c) 2024 Elektroline Inc.
  *
  * Original license:
  *
@@ -110,6 +111,8 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
 #define BOOT_FLAG_BAD       2
 #define BOOT_FLAG_UNSET     3
 #define BOOT_FLAG_ANY       4  /* NOTE: control only, not dependent on sector */
+#define BOOT_FLAG_UPDATED   5  /* NOTE: for copy with revert alg only */
+#define BOOT_FLAG_AVAIL     6  /* NOTE: for copy with revert alg only */
 
 #define BOOT_EFLASH      1
 #define BOOT_EFILE       2
@@ -152,6 +155,25 @@ struct boot_swap_state {
     uint8_t image_ok;   /* One of the BOOT_FLAG_[...] values. */
     uint8_t image_num;  /* Boot status belongs to this image */
 };
+
+struct boot_copy_state {
+    int update;            /* Number of update slot */
+    int recovery;          /* Number of recovery slot */
+    bool recovery_valid;   /* True if recovery image is valid */
+};
+
+/**
+ * @brief Determines the action, if any, that mcuboot will take on a image pair
+ *        for copy with rever algorithm.
+ *
+ * @param image_index Image pair index.
+ * @param state       Pointer to copy state structure.
+ *
+ * @return a BOOT_SWAP_TYPE_[...] constant on success, negative errno code on
+ * fail.
+ */
+int
+boot_copy_type_multi(int image_index, struct boot_copy_state *state);
 
 /**
  * @brief Determines the action, if any, that mcuboot will take on a image pair.
@@ -257,6 +279,19 @@ int boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok);
  */
 int
 boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state);
+
+/**
+ * @brief Read the image copy state
+ *
+ * @param image_index Image index pair
+ * @param state Pointer to structure for storing copy state.
+ *
+ * @return 0 on success; non-zero error code on failure.
+ */
+#ifdef MCUBOOT_COPY_WITH_REVERT
+int
+boot_read_copy_state(int image_index, struct boot_copy_state *state);
+#endif
 
 /**
  * @brief Read the image swap state

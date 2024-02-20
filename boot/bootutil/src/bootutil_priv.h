@@ -51,8 +51,12 @@ struct flash_area;
 
 #define BOOT_TMPBUF_SZ  256
 
-/** Number of image slots in flash; currently limited to two. */
-#define BOOT_NUM_SLOTS                  2
+/** Number of image slots in flash; 3 if MCUBOOT_COPY_WITH_REVERT, 2 otherwise */
+#ifdef MCUBOOT_COPY_WITH_REVERT
+#  define BOOT_NUM_SLOTS                  3
+#else
+#  define BOOT_NUM_SLOTS                  2
+#endif
 
 #if (defined(MCUBOOT_OVERWRITE_ONLY) + \
      defined(MCUBOOT_SWAP_USING_MOVE) + \
@@ -67,7 +71,8 @@ struct flash_area;
     !defined(MCUBOOT_DIRECT_XIP) && \
     !defined(MCUBOOT_RAM_LOAD) && \
     !defined(MCUBOOT_SINGLE_APPLICATION_SLOT) && \
-    !defined(MCUBOOT_FIRMWARE_LOADER)
+    !defined(MCUBOOT_FIRMWARE_LOADER) && \
+    !defined(MCUBOOT_COPY_WITH_REVERT)
 #define MCUBOOT_SWAP_USING_SCRATCH 1
 #endif
 
@@ -197,6 +202,7 @@ _Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image 
 
 #define BOOT_PRIMARY_SLOT               0
 #define BOOT_SECONDARY_SLOT             1
+#define BOOT_TERTIARY_SLOT              2
 
 #define BOOT_STATUS_SOURCE_NONE         0
 #define BOOT_STATUS_SOURCE_SCRATCH      1
@@ -228,6 +234,10 @@ struct boot_loader_state {
         boot_sector_t *sectors;
         uint32_t num_sectors;
     } scratch;
+#endif
+
+#ifdef MCUBOOT_COPY_WITH_REVERT
+    struct boot_copy_state copy[BOOT_IMAGE_NUMBER];
 #endif
 
     uint8_t swap_type[BOOT_IMAGE_NUMBER];

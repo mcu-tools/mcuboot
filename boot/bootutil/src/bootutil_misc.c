@@ -347,6 +347,8 @@ uint32_t bootutil_max_image_size(const struct flash_area *fap)
                    */
     }
     return flash_sector_get_off(&sector);
+#elif defined(MCUBOOT_COPY_WITH_REVERT)
+    return boot_swap_info_off(fap);
 #elif defined(MCUBOOT_OVERWRITE_ONLY)
     return boot_swap_info_off(fap);
 #elif defined(MCUBOOT_DIRECT_XIP)
