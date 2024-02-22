@@ -385,8 +385,12 @@ static void boot_serial_enter()
     BOOT_LOG_INF("Enter the serial recovery mode");
     rc = boot_console_init();
     __ASSERT(rc == 0, "Error initializing boot console.\n");
+#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
+    boot_serial_check_start(&boot_funcs, CONFIG_BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT);
+#else
     boot_serial_start(&boot_funcs);
     __ASSERT(0, "Bootloader serial process was terminated unexpectedly.\n");
+#endif 
 }
 #endif
 
@@ -464,7 +468,7 @@ int main(void)
     }
 #endif
 
-#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
+#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU_ALWAYS
     /* Initialize the boot console, so we can already fill up our buffers while
      * waiting for the boot image check to finish. This image check, can take
      * some time, so it's better to reuse thistime to already receive the
@@ -490,7 +494,7 @@ int main(void)
     }
 #endif
 
-#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
+#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU_ALWAYS
     timeout_in_ms -= (k_uptime_get_32() - start);
     if( timeout_in_ms <= 0 ) {
         /* at least one check if time was expired */

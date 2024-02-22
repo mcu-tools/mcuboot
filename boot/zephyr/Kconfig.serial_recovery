@@ -150,12 +150,20 @@ config BOOT_SERIAL_DETECT_DELAY
 	  the one used to place the device in bootloader mode.
 
 menuconfig BOOT_SERIAL_WAIT_FOR_DFU
-	bool "Wait a prescribed duration to see if DFU is invoked by receiving a MCUmgr comand"
+	bool "Wait a prescribed duration to see if DFU is invoked by receiving a MCUmgr command"
 	depends on BOOT_SERIAL_UART || BOOT_SERIAL_CDC_ACM
 	help
 	  If y, MCUboot waits for a prescribed duration of time to allow
 	  for DFU to be invoked. The serial recovery can be entered by receiving any
 	  mcumgr command.
+
+config BOOT_SERIAL_WAIT_FOR_DFU_ALWAYS
+	bool "Always enter serial recovery mode upon startup"
+	depends on BOOT_SERIAL_WAIT_FOR_DFU
+	help
+	  If y, MCUboot always enters serial recovery mode upon startup for the
+	  duration of BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT. Otherwise, MCUboot only
+	  enters serial recovery mode if the board was physically reset.
 
 config BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
 	int "Duration to wait for the serial DFU timeout in ms"
