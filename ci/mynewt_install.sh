@@ -36,11 +36,15 @@ shallow_clone_mynewt() {
     [[ $? -ne 0 ]] && exit 1
 
     # nrfx is now taken from original repository
-    git clone --depth=1 --branch v2.8.0 https://github.com/NordicSemiconductor/nrfx.git repos/nordic-nrfx
+    git clone --depth=1 --branch v3.3.0 https://github.com/NordicSemiconductor/nrfx.git repos/nordic-nrfx
     [[ $? -ne 0 ]] && exit 1
 
     # Mbed-TLS is now taken from original repository
-    git clone --depth=1 --branch v2.28.3 https://github.com/Mbed-TLS/mbedtls.git repos/mbedtls
+    git clone --depth=1 --branch v2.28.4 https://github.com/Mbed-TLS/mbedtls.git repos/mbedtls
+    [[ $? -ne 0 ]] && exit 1
+
+    # CMSIS is now taken from original repository
+    git clone --depth=1 --branch 5.4.0 https://github.com/ARM-software/CMSIS_5.git repos/arm-CMSIS_5
     [[ $? -ne 0 ]] && exit 1
 }
 
