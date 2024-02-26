@@ -142,7 +142,8 @@ class Image():
                  slot_size=0, max_sectors=DEFAULT_MAX_SECTORS,
                  overwrite_only=False, endian="little", load_addr=0,
                  rom_fixed=None, erased_val=None, save_enctlv=False,
-                 security_counter=None, max_align=None):
+                 security_counter=None, max_align=None,
+                 non_bootable=False):
 
         if load_addr and rom_fixed:
             raise click.UsageError("Can not set rom_fixed and load_addr at the same time")
@@ -166,6 +167,7 @@ class Image():
         self.save_enctlv = save_enctlv
         self.enctlv_len = 0
         self.max_align = max(DEFAULT_MAX_ALIGN, align) if max_align is None else int(max_align)
+        self.non_bootable = non_bootable
 
         if self.max_align == DEFAULT_MAX_ALIGN:
             self.boot_magic = bytes([
@@ -551,6 +553,8 @@ class Image():
             flags |= IMAGE_F['RAM_LOAD']
         if self.rom_fixed:
             flags |= IMAGE_F['ROM_FIXED']
+        if self.non_bootable:
+            flags |= IMAGE_F['NON_BOOTABLE']
 
         e = STRUCT_ENDIAN_DICT[self.endian]
         fmt = (e +
