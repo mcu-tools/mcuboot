@@ -88,6 +88,8 @@ static struct boot_loader_state boot_data;
 #define BUF_SZ 1024
 #endif
 
+#define NO_ACTIVE_SLOT UINT32_MAX
+
 static int
 boot_read_image_headers(struct boot_loader_state *state, bool require_all,
         struct boot_status *bs)
@@ -230,6 +232,285 @@ close_all_flash_areas(struct boot_loader_state *state)
         }
     }
 }
+
+#if (BOOT_IMAGE_NUMBER > 1) || \
+    defined(MCUBOOT_DIRECT_XIP) || \
+    defined(MCUBOOT_RAM_LOAD) || \
+    defined(MCUBOOT_DOWNGRADE_PREVENTION)
+/**
+ * Compare image version numbers
+ *
+ * By default, the comparison does not take build number into account.
+ * Enable MCUBOOT_VERSION_CMP_USE_BUILD_NUMBER to take the build number into account.
+ *
+ * @param ver1           Pointer to the first image version to compare.
+ * @param ver2           Pointer to the second image version to compare.
+ *
+ * @retval -1           If ver1 is less than ver2.
+ * @retval 0            If the image version numbers are equal.
+ * @retval 1            If ver1 is greater than ver2.
+ */
+static int
+boot_version_cmp(const struct image_version *ver1,
+                 const struct image_version *ver2)
+{
+    if (ver1->iv_major > ver2->iv_major) {
+        return 1;
+    }
+    if (ver1->iv_major < ver2->iv_major) {
+        return -1;
+    }
+    /* The major version numbers are equal, continue comparison. */
+    if (ver1->iv_minor > ver2->iv_minor) {
+        return 1;
+    }
+    if (ver1->iv_minor < ver2->iv_minor) {
+        return -1;
+    }
+    /* The minor version numbers are equal, continue comparison. */
+    if (ver1->iv_revision > ver2->iv_revision) {
+        return 1;
+    }
+    if (ver1->iv_revision < ver2->iv_revision) {
+        return -1;
+    }
+
+#if defined(MCUBOOT_VERSION_CMP_USE_BUILD_NUMBER)
+    /* The revisions are equal, continue comparison. */
+    if (ver1->iv_build_num > ver2->iv_build_num) {
+        return 1;
+    }
+    if (ver1->iv_build_num < ver2->iv_build_num) {
+        return -1;
+    }
+#endif
+
+    return 0;
+}
+#endif
+
+
+#if (BOOT_IMAGE_NUMBER > 1)
+
+static int
+boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot);
+
+/**
+ * Check the image dependency whether it is satisfied and modify
+ * the swap type if necessary.
+ *
+ * @param dep               Image dependency which has to be verified.
+ *
+ * @return                  0 on success; nonzero on failure.
+ */
+static int
+boot_verify_slot_dependency(struct boot_loader_state *state,
+                            struct image_dependency *dep)
+{
+    struct image_version *dep_version;
+    size_t dep_slot;
+    int rc;
+
+    /* Determine the source of the image which is the subject of
+     * the dependency and get it's version. */
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+    uint8_t swap_type = state->swap_type[dep->image_id];
+    dep_slot = BOOT_IS_UPGRADE(swap_type) ? BOOT_SECONDARY_SLOT
+                                          : BOOT_PRIMARY_SLOT;
+#else
+    dep_slot = state->slot_usage[dep->image_id].active_slot;
+#endif
+
+    dep_version = &state->imgs[dep->image_id][dep_slot].hdr.ih_ver;
+
+    rc = boot_version_cmp(dep_version, &dep->image_min_version);
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+    if (rc < 0) {
+        /* Dependency not satisfied.
+         * Modify the swap type to decrease the version number of the image
+         * (which will be located in the primary slot after the boot process),
+         * consequently the number of unsatisfied dependencies will be
+         * decreased or remain the same.
+         */
+        switch (BOOT_SWAP_TYPE(state)) {
+        case BOOT_SWAP_TYPE_TEST:
+        case BOOT_SWAP_TYPE_PERM:
+            BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
+            break;
+        case BOOT_SWAP_TYPE_NONE:
+            BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_REVERT;
+            break;
+        default:
+            break;
+        }
+    } else {
+        /* Dependency satisfied. */
+        rc = 0;
+    }
+#endif
+
+    return rc;
+}
+
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+/**
+ * Iterate over all the images and verify whether the image dependencies in the
+ * TLV area are all satisfied and update the related swap type if necessary.
+ */
+static int
+boot_verify_dependencies(struct boot_loader_state *state)
+{
+    int rc = -1;
+    uint8_t slot;
+
+    BOOT_CURR_IMG(state) = 0;
+    while (BOOT_CURR_IMG(state) < BOOT_IMAGE_NUMBER) {
+        if (state->img_mask[BOOT_CURR_IMG(state)]) {
+            BOOT_CURR_IMG(state)++;
+            continue;
+        }
+        if (BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_NONE &&
+            BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_FAIL) {
+            slot = BOOT_SECONDARY_SLOT;
+        } else {
+            slot = BOOT_PRIMARY_SLOT;
+        }
+
+        rc = boot_verify_slot_dependencies(state, slot);
+        if (rc == 0) {
+            /* All dependencies've been satisfied, continue with next image. */
+            BOOT_CURR_IMG(state)++;
+        } else {
+            /* Cannot upgrade due to non-met dependencies, so disable all
+             * image upgrades.
+             */
+            for (int idx = 0; idx < BOOT_IMAGE_NUMBER; idx++) {
+                BOOT_CURR_IMG(state) = idx;
+                BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
+            }
+            break;
+        }
+    }
+    return rc;
+}
+#else
+
+#if defined MCUBOOT_RAM_LOAD
+static inline int
+boot_remove_image_from_sram(struct boot_loader_state *state);
+#endif
+
+/**
+ * Checks the dependency of all the active slots. If an image found with
+ * invalid or not satisfied dependencies the image is removed from SRAM (in
+ * case of MCUBOOT_RAM_LOAD strategy) and its slot is set to unavailable.
+ *
+ * @param  state        Boot loader status information.
+ *
+ * @return              0 if dependencies are met; nonzero otherwise.
+ */
+static int
+boot_verify_dependencies(struct boot_loader_state *state)
+{
+    int rc = -1;
+    uint32_t active_slot;
+
+    IMAGES_ITER(BOOT_CURR_IMG(state)) {
+        if (state->img_mask[BOOT_CURR_IMG(state)]) {
+            continue;
+        }
+        active_slot = state->slot_usage[BOOT_CURR_IMG(state)].active_slot;
+        rc = boot_verify_slot_dependencies(state, active_slot);
+        if (rc != 0) {
+            /* Dependencies not met or invalid dependencies. */
+
+#ifdef MCUBOOT_RAM_LOAD
+            boot_remove_image_from_sram(state);
+#endif /* MCUBOOT_RAM_LOAD */
+
+            state->slot_usage[BOOT_CURR_IMG(state)].slot_available[active_slot] = false;
+            state->slot_usage[BOOT_CURR_IMG(state)].active_slot = NO_ACTIVE_SLOT;
+
+            return rc;
+        }
+    }
+
+    return rc;
+}
+#endif
+
+/**
+ * Read all dependency TLVs of an image from the flash and verify
+ * one after another to see if they are all satisfied.
+ *
+ * @param slot              Image slot number.
+ *
+ * @return                  0 on success; nonzero on failure.
+ */
+static int
+boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
+{
+    const struct flash_area *fap;
+    struct image_tlv_iter it;
+    struct image_dependency dep;
+    uint32_t off;
+    uint16_t len;
+    int area_id;
+    int rc;
+
+    area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
+    rc = flash_area_open(area_id, &fap);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto done;
+    }
+
+    rc = bootutil_tlv_iter_begin(&it, boot_img_hdr(state, slot), fap,
+            IMAGE_TLV_DEPENDENCY, true);
+    if (rc != 0) {
+        goto done;
+    }
+
+    while (true) {
+        rc = bootutil_tlv_iter_next(&it, &off, &len, NULL);
+        if (rc < 0) {
+            return -1;
+        } else if (rc > 0) {
+            rc = 0;
+            break;
+        }
+
+        if (len != sizeof(dep)) {
+            rc = BOOT_EBADIMAGE;
+            goto done;
+        }
+
+        rc = LOAD_IMAGE_DATA(boot_img_hdr(state, slot),
+                             fap, off, &dep, len);
+        if (rc != 0) {
+            rc = BOOT_EFLASH;
+            goto done;
+        }
+
+        if (dep.image_id >= BOOT_IMAGE_NUMBER) {
+            rc = BOOT_EBADARGS;
+            goto done;
+        }
+
+        /* Verify dependency and modify the swap type if not satisfied. */
+        rc = boot_verify_slot_dependency(state, &dep);
+        if (rc != 0) {
+            /* Dependency not satisfied */
+            goto done;
+        }
+    }
+
+done:
+    flash_area_close(fap);
+    return rc;
+}
+
+#endif /* (BOOT_IMAGE_NUMBER > 1) */
 
 #if !defined(MCUBOOT_DIRECT_XIP)
 /*
@@ -627,62 +908,6 @@ boot_check_header_erased(struct boot_loader_state *state, int slot)
 
     return 0;
 }
-
-#if (BOOT_IMAGE_NUMBER > 1) || \
-    defined(MCUBOOT_DIRECT_XIP) || \
-    defined(MCUBOOT_RAM_LOAD) || \
-    defined(MCUBOOT_DOWNGRADE_PREVENTION)
-/**
- * Compare image version numbers
- *
- * By default, the comparison does not take build number into account.
- * Enable MCUBOOT_VERSION_CMP_USE_BUILD_NUMBER to take the build number into account.
- *
- * @param ver1           Pointer to the first image version to compare.
- * @param ver2           Pointer to the second image version to compare.
- *
- * @retval -1           If ver1 is less than ver2.
- * @retval 0            If the image version numbers are equal.
- * @retval 1            If ver1 is greater than ver2.
- */
-static int
-boot_version_cmp(const struct image_version *ver1,
-                 const struct image_version *ver2)
-{
-    if (ver1->iv_major > ver2->iv_major) {
-        return 1;
-    }
-    if (ver1->iv_major < ver2->iv_major) {
-        return -1;
-    }
-    /* The major version numbers are equal, continue comparison. */
-    if (ver1->iv_minor > ver2->iv_minor) {
-        return 1;
-    }
-    if (ver1->iv_minor < ver2->iv_minor) {
-        return -1;
-    }
-    /* The minor version numbers are equal, continue comparison. */
-    if (ver1->iv_revision > ver2->iv_revision) {
-        return 1;
-    }
-    if (ver1->iv_revision < ver2->iv_revision) {
-        return -1;
-    }
-
-#if defined(MCUBOOT_VERSION_CMP_USE_BUILD_NUMBER)
-    /* The revisions are equal, continue comparison. */
-    if (ver1->iv_build_num > ver2->iv_build_num) {
-        return 1;
-    }
-    if (ver1->iv_build_num < ver2->iv_build_num) {
-        return -1;
-    }
-#endif
-
-    return 0;
-}
-#endif
 
 #if defined(MCUBOOT_DIRECT_XIP)
 /**
@@ -1385,169 +1610,6 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 }
 #endif
 
-#if (BOOT_IMAGE_NUMBER > 1)
-/**
- * Check the image dependency whether it is satisfied and modify
- * the swap type if necessary.
- *
- * @param dep               Image dependency which has to be verified.
- *
- * @return                  0 on success; nonzero on failure.
- */
-static int
-boot_verify_slot_dependency(struct boot_loader_state *state,
-                            struct image_dependency *dep)
-{
-    struct image_version *dep_version;
-    size_t dep_slot;
-    int rc;
-    uint8_t swap_type;
-
-    /* Determine the source of the image which is the subject of
-     * the dependency and get it's version. */
-    swap_type = state->swap_type[dep->image_id];
-    dep_slot = BOOT_IS_UPGRADE(swap_type) ? BOOT_SECONDARY_SLOT
-                                          : BOOT_PRIMARY_SLOT;
-    dep_version = &state->imgs[dep->image_id][dep_slot].hdr.ih_ver;
-
-    rc = boot_version_cmp(dep_version, &dep->image_min_version);
-    if (rc < 0) {
-        /* Dependency not satisfied.
-         * Modify the swap type to decrease the version number of the image
-         * (which will be located in the primary slot after the boot process),
-         * consequently the number of unsatisfied dependencies will be
-         * decreased or remain the same.
-         */
-        switch (BOOT_SWAP_TYPE(state)) {
-        case BOOT_SWAP_TYPE_TEST:
-        case BOOT_SWAP_TYPE_PERM:
-            BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
-            break;
-        case BOOT_SWAP_TYPE_NONE:
-            BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_REVERT;
-            break;
-        default:
-            break;
-        }
-    } else {
-        /* Dependency satisfied. */
-        rc = 0;
-    }
-
-    return rc;
-}
-
-/**
- * Read all dependency TLVs of an image from the flash and verify
- * one after another to see if they are all satisfied.
- *
- * @param slot              Image slot number.
- *
- * @return                  0 on success; nonzero on failure.
- */
-static int
-boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
-{
-    const struct flash_area *fap;
-    struct image_tlv_iter it;
-    struct image_dependency dep;
-    uint32_t off;
-    uint16_t len;
-    int area_id;
-    int rc;
-
-    area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
-    rc = flash_area_open(area_id, &fap);
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-        goto done;
-    }
-
-    rc = bootutil_tlv_iter_begin(&it, boot_img_hdr(state, slot), fap,
-            IMAGE_TLV_DEPENDENCY, true);
-    if (rc != 0) {
-        goto done;
-    }
-
-    while (true) {
-        rc = bootutil_tlv_iter_next(&it, &off, &len, NULL);
-        if (rc < 0) {
-            return -1;
-        } else if (rc > 0) {
-            rc = 0;
-            break;
-        }
-
-        if (len != sizeof(dep)) {
-            rc = BOOT_EBADIMAGE;
-            goto done;
-        }
-
-        rc = flash_area_read(fap, off, &dep, len);
-        if (rc != 0) {
-            rc = BOOT_EFLASH;
-            goto done;
-        }
-
-        if (dep.image_id >= BOOT_IMAGE_NUMBER) {
-            rc = BOOT_EBADARGS;
-            goto done;
-        }
-
-        /* Verify dependency and modify the swap type if not satisfied. */
-        rc = boot_verify_slot_dependency(state, &dep);
-        if (rc != 0) {
-            /* Dependency not satisfied. */
-            goto done;
-        }
-    }
-
-done:
-    flash_area_close(fap);
-    return rc;
-}
-
-/**
- * Iterate over all the images and verify whether the image dependencies in the
- * TLV area are all satisfied and update the related swap type if necessary.
- */
-static int
-boot_verify_dependencies(struct boot_loader_state *state)
-{
-    int rc = -1;
-    uint8_t slot;
-
-    BOOT_CURR_IMG(state) = 0;
-    while (BOOT_CURR_IMG(state) < BOOT_IMAGE_NUMBER) {
-        if (state->img_mask[BOOT_CURR_IMG(state)]) {
-            BOOT_CURR_IMG(state)++;
-            continue;
-        }
-        if (BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_NONE &&
-            BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_FAIL) {
-            slot = BOOT_SECONDARY_SLOT;
-        } else {
-            slot = BOOT_PRIMARY_SLOT;
-        }
-
-        rc = boot_verify_slot_dependencies(state, slot);
-        if (rc == 0) {
-            /* All dependencies've been satisfied, continue with next image. */
-            BOOT_CURR_IMG(state)++;
-        } else {
-            /* Cannot upgrade due to non-met dependencies, so disable all
-             * image upgrades.
-             */
-            for (int idx = 0; idx < BOOT_IMAGE_NUMBER; idx++) {
-                BOOT_CURR_IMG(state) = idx;
-                BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
-            }
-            break;
-        }
-    }
-    return rc;
-}
-#endif /* (BOOT_IMAGE_NUMBER > 1) */
 
 /**
  * Performs a clean (not aborted) image update.
@@ -2367,8 +2429,6 @@ done:
 
 #else /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 
-#define NO_ACTIVE_SLOT UINT32_MAX
-
 /**
  * Opens all flash areas and checks which contain an image with a valid header.
  *
@@ -2974,150 +3034,6 @@ boot_remove_image_from_flash(struct boot_loader_state *state, uint32_t slot)
 }
 #endif /* MCUBOOT_RAM_LOAD */
 
-#if (BOOT_IMAGE_NUMBER > 1)
-/**
- * Checks the image dependency whether it is satisfied.
- *
- * @param  state        Boot loader status information.
- * @param  dep          Image dependency which has to be verified.
- *
- * @return              0 if dependencies are met; nonzero otherwise.
- */
-static int
-boot_verify_slot_dependency(struct boot_loader_state *state,
-                            struct image_dependency *dep)
-{
-    struct image_version *dep_version;
-    uint32_t dep_slot;
-    int rc;
-
-    /* Determine the source of the image which is the subject of
-     * the dependency and get it's version.
-     */
-    dep_slot = state->slot_usage[dep->image_id].active_slot;
-    dep_version = &state->imgs[dep->image_id][dep_slot].hdr.ih_ver;
-
-    rc = boot_version_cmp(dep_version, &dep->image_min_version);
-    if (rc >= 0) {
-        /* Dependency satisfied. */
-        rc = 0;
-    }
-
-    return rc;
-}
-
-/**
- * Reads all dependency TLVs of an image and verifies one after another to see
- * if they are all satisfied.
- *
- * @param  state        Boot loader status information.
- *
- * @return              0 if dependencies are met; nonzero otherwise.
- */
-static int
-boot_verify_slot_dependencies(struct boot_loader_state *state)
-{
-    uint32_t active_slot;
-    const struct flash_area *fap;
-    struct image_tlv_iter it;
-    struct image_dependency dep;
-    uint32_t off;
-    uint16_t len;
-    int area_id;
-    int rc;
-
-    active_slot = state->slot_usage[BOOT_CURR_IMG(state)].active_slot;
-
-    area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state),
-                                                                active_slot);
-    rc = flash_area_open(area_id, &fap);
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-        goto done;
-    }
-
-    rc = bootutil_tlv_iter_begin(&it, boot_img_hdr(state, active_slot), fap,
-            IMAGE_TLV_DEPENDENCY, true);
-    if (rc != 0) {
-        goto done;
-    }
-
-    while (true) {
-        rc = bootutil_tlv_iter_next(&it, &off, &len, NULL);
-        if (rc < 0) {
-            return -1;
-        } else if (rc > 0) {
-            rc = 0;
-            break;
-        }
-
-        if (len != sizeof(dep)) {
-            rc = BOOT_EBADIMAGE;
-            goto done;
-        }
-
-        rc = LOAD_IMAGE_DATA(boot_img_hdr(state, active_slot),
-                             fap, off, &dep, len);
-        if (rc != 0) {
-            rc = BOOT_EFLASH;
-            goto done;
-        }
-
-        if (dep.image_id >= BOOT_IMAGE_NUMBER) {
-            rc = BOOT_EBADARGS;
-            goto done;
-        }
-
-        rc = boot_verify_slot_dependency(state, &dep);
-        if (rc != 0) {
-            /* Dependency not satisfied. */
-            goto done;
-        }
-    }
-
-done:
-    flash_area_close(fap);
-    return rc;
-}
-
-/**
- * Checks the dependency of all the active slots. If an image found with
- * invalid or not satisfied dependencies the image is removed from SRAM (in
- * case of MCUBOOT_RAM_LOAD strategy) and its slot is set to unavailable.
- *
- * @param  state        Boot loader status information.
- *
- * @return              0 if dependencies are met; nonzero otherwise.
- */
-static int
-boot_verify_dependencies(struct boot_loader_state *state)
-{
-    int rc = -1;
-    uint32_t active_slot;
-
-    IMAGES_ITER(BOOT_CURR_IMG(state)) {
-        if (state->img_mask[BOOT_CURR_IMG(state)]) {
-            continue;
-        }
-        rc = boot_verify_slot_dependencies(state);
-        if (rc != 0) {
-            /* Dependencies not met or invalid dependencies. */
-
-#ifdef MCUBOOT_RAM_LOAD
-            boot_remove_image_from_sram(state);
-#endif /* MCUBOOT_RAM_LOAD */
-
-            active_slot = state->slot_usage[BOOT_CURR_IMG(state)].active_slot;
-            state->slot_usage[BOOT_CURR_IMG(state)].slot_available[active_slot] = false;
-            state->slot_usage[BOOT_CURR_IMG(state)].active_slot = NO_ACTIVE_SLOT;
-
-            return rc;
-        }
-    }
-
-    return rc;
-}
-#endif /* (BOOT_IMAGE_NUMBER > 1) */
 
 /**
  * Tries to load a slot for all the images with validation.
