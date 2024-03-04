@@ -32,7 +32,7 @@
  */
 #if (!defined(CONFIG_XTENSA) && !DT_HAS_CHOSEN(zephyr_flash_controller)) || \
     (defined(CONFIG_XTENSA) && !DT_NODE_EXISTS(DT_INST(0, jedec_spi_nor)) && \
-    !defined(CONFIG_SOC_FAMILY_ESP32)) || \
+    !defined(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)) || \
     !defined(FLASH_ALIGN) ||                  \
     !(FIXED_PARTITION_EXISTS(slot0_partition)) || \
     !(FIXED_PARTITION_EXISTS(slot1_partition) || CONFIG_SINGLE_APPLICATION_SLOT) || \
