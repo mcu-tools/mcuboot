@@ -21,7 +21,7 @@
 
 #include <stddef.h>
 
-#ifdef CONFIG_SOC_FAMILY_NRF
+#ifdef CONFIG_SOC_FAMILY_NORDIC_NRF
 #include <helpers/nrfx_reset_reason.h>
 #endif
 
@@ -62,7 +62,7 @@ bool io_detect_pin_reset(void);
  */
 bool io_detect_boot_mode(void);
 
-#ifdef CONFIG_SOC_FAMILY_NRF
+#ifdef CONFIG_SOC_FAMILY_NORDIC_NRF
 static inline bool io_boot_skip_serial_recovery()
 {
     uint32_t rr = nrfx_reset_reason_get();
