@@ -123,7 +123,7 @@ class TLV():
                 raise click.UsageError(msg)
             buf = struct.pack(e + 'HH', kind, len(payload))
         else:
-            buf = struct.pack(e + 'BBH', TLV_VALUES[kind], 0, len(payload))
+            buf = struct.pack(e + 'HH', TLV_VALUES[kind], len(payload))
         self.buf += buf
         self.buf += payload
 
