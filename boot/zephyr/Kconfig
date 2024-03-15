@@ -365,9 +365,12 @@ config BOOT_ENCRYPTION_KEY_FILE
 	  with the public key information will be written in a format expected by
 	  MCUboot.
 
+config BOOT_MAX_IMG_SECTORS_OVERRIDE
+	bool "Use external default for BOOT_MAX_IMG_SECTORS"
+
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
-	default 128
+	default 128 if !BOOT_MAX_IMG_SECTORS_OVERRIDE
 	help
 	  This option controls the maximum number of sectors that each of
 	  the two image areas can contain. Smaller values reduce MCUboot's
