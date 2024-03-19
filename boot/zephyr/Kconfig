@@ -690,6 +690,16 @@ config MCUBOOT_ACTION_HOOKS
 	  'mcuboot_status_type_t' is listed in
 	  boot/bootutil/include/bootutil/mcuboot_status.h
 
+config BOOT_DISABLE_CACHES
+	bool "Disable I/D caches before chain-loading application"
+	depends on CPU_HAS_ICACHE || CPU_HAS_DCACHE
+	default y
+	help
+	  Will flush and disable the instruction and data caches on the CPU prior to
+	  booting an application, this is required on some ARM Cortex devices and
+	  increases protection against data leakage from MCUboot to applications via
+	  these caches.
+
 endmenu
 
 config MCUBOOT_DEVICE_SETTINGS
