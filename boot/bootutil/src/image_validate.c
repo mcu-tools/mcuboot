@@ -245,7 +245,7 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
     bootutil_sha_finish(&sha_ctx, hash);
     bootutil_sha_drop(&sha_ctx);
 
-    rc = boot_retrieve_public_key_hash(image_index, key_hash, &key_hash_size);
+    rc = boot_retrieve_public_key_hash(image_index, hash, key_hash, &key_hash_size);
     if (rc) {
         return -1;
     }
