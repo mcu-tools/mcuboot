@@ -1450,6 +1450,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     }
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
 
+#ifndef MCUBOOT_OVERWRITE_ONLY_KEEP_BACKUP
     /*
      * Erases header and trailer. The trailer is erased because when a new
      * image is written without a trailer as is the case when using newt, the
@@ -1460,6 +1461,8 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
                            boot_img_sector_off(state, BOOT_SECONDARY_SLOT, 0),
                            boot_img_sector_size(state, BOOT_SECONDARY_SLOT, 0));
     assert(rc == 0);
+#endif
+
     last_sector = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT) - 1;
     BOOT_LOG_DBG("erasing secondary trailer");
     rc = boot_erase_region(fap_secondary_slot,
