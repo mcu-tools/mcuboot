@@ -5,11 +5,11 @@ sample:
 tests:
   sample.bootloader.mcuboot:
     tags: bootloader_mcuboot
-    platform_allow:  nrf52840dk/nrf52840 frdm_k64f disco_l475_iot1
+    platform_allow:  nrf52840dk/nrf52840 frdm_k64f/mk64f12 disco_l475_iot1/stm32l475xx
     integration_platforms:
       - nrf52840dk/nrf52840
-      - frdm_k64f
-      - disco_l475_iot1
+      - frdm_k64f/mk64f12
+      - disco_l475_iot1/stm32l475xx
   sample.bootloader.mcuboot.serial_recovery:
     extra_args: OVERLAY_CONFIG=serial_recovery.conf
     platform_allow:  nrf52840dk/nrf52840
@@ -54,6 +54,6 @@ tests:
   sample.bootloader.mcuboot.ram_load:
     extra_args: OVERLAY_CONFIG=./ram_load.conf
     tags: bootloader_mcuboot
-    platform_allow: mimxrt1020_evk
+    platform_allow: mimxrt1020_evk/mimxrt1021
     integration_platforms:
-      - mimxrt1020_evk
+      - mimxrt1020_evk/mimxrt1021
