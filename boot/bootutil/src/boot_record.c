@@ -23,6 +23,11 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
+#if defined USE_IFX_SE_CRYPTO
+#include "ifx_se_platform.h"
+#define SE_RT_SYSCALL_NOT_SUPPORTED (ifx_se_status_t) FIH_UINT_INIT(0xF7000001u)
+#endif
+
 #if defined(MCUBOOT_MEASURED_BOOT) || defined(MCUBOOT_DATA_SHARING)
 #include "bootutil/crypto/sha256.h"
 #include "bootutil/boot_record.h"
@@ -37,6 +42,73 @@
 #define SHARED_MEMORY_OVERWRITE     (2)
 #define SHARED_MEMORY_GEN_ERROR     (3)
 #define SHARED_MEMORY_CORRUPTED     (4)
+
+#if defined USE_IFX_SE_CRYPTO
+/* See in boot_record.h */
+int
+boot_add_data_to_shared_area(uint8_t        major_type,
+                             uint16_t       minor_type,
+                             size_t         size,
+                             const uint8_t *data)
+{
+    struct shared_data_tlv_entry tlv_entry = {0};
+    uint16_t type = SET_TLV_TYPE(major_type, minor_type);
+    uint8_t boot_data_arr[MCUBOOT_SHARED_DATA_SIZE] = {0};
+    struct shared_boot_data *boot_data = (struct shared_boot_data *)boot_data_arr;
+    uint16_t boot_data_size = 0;
+
+    ifx_se_status_t if_se_rc = IFX_SE_INVALID;
+
+    if (data == NULL) {
+        return SHARED_MEMORY_GEN_ERROR;
+    }
+    
+    /* Fill boot_data structure - tlv header portions */
+    boot_data->header.tlv_magic   = SHARED_DATA_TLV_INFO_MAGIC;
+    boot_data->header.tlv_tot_len = (uint16_t)SHARED_DATA_HEADER_SIZE;
+
+    /* Add TLV entry type portion */
+    tlv_entry.tlv_type = type;
+
+    if (size > (unsigned)UINT16_MAX - SHARED_DATA_ENTRY_HEADER_SIZE) {
+        return SHARED_MEMORY_GEN_ERROR;
+    }
+
+    /* Add TLV entry length portion */
+    tlv_entry.tlv_len = (uint16_t)size;
+    if (!boot_u16_safe_add(&boot_data_size, boot_data->header.tlv_tot_len,
+                            (uint16_t)SHARED_DATA_ENTRY_SIZE(size))) {
+        return SHARED_MEMORY_GEN_ERROR;
+    }
+
+    /* Verify overflow of shared area */
+    if (boot_data_size > MCUBOOT_SHARED_DATA_SIZE) {
+        return SHARED_MEMORY_OVERFLOW;
+    }
+
+    (void)memcpy((void *)boot_data + SHARED_DATA_HEADER_SIZE, (const void *)&tlv_entry, SHARED_DATA_ENTRY_HEADER_SIZE);
+    (void)memcpy((void *)boot_data + SHARED_DATA_HEADER_SIZE + SHARED_DATA_ENTRY_HEADER_SIZE, (const void *)data, size);
+
+    boot_data->header.tlv_tot_len = boot_data_size;
+
+    if_se_rc = ifx_se_set_shared_data(fih_ptr_encode(boot_data), fih_uint_encode(boot_data_size), IFX_SE_NULL_CTX);
+
+    if (fih_uint_eq(if_se_rc, SE_RT_SYSCALL_NOT_SUPPORTED)) {
+        /* return as okay, because syscall is not implemented in SE RT nowm but our job is done here */
+        return SHARED_MEMORY_OK;
+    }
+    else if (fih_uint_eq(if_se_rc, IFX_SE_SUCCESS)) {
+        /* return error if we get here and rc is supported */
+        return SHARED_MEMORY_GEN_ERROR;
+    }
+    else {
+        /* return success otherwise */
+        return SHARED_MEMORY_OK;
+    }
+    
+}
+
+#else /* USE_IFX_SE_CRYPTO */
 
 /**
  * @var shared_memory_init_done
@@ -124,6 +196,7 @@ boot_add_data_to_shared_area(uint8_t        major_type,
 
     return SHARED_MEMORY_OK;
 }
+#endif /* USE_IFX_SE_CRYPTO */
 #endif /* MCUBOOT_MEASURED_BOOT OR MCUBOOT_DATA_SHARING */
 
 #ifdef MCUBOOT_MEASURED_BOOT

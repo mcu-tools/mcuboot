@@ -261,7 +261,7 @@ int flash_area_id_to_image_slot(int area_id)
  */
 uint8_t flash_area_erased_val(const struct flash_area *fa)
 {
-    if ((fa != NULL) && (flash_area_get_api(fa->fa_device_id))) {
+    if ((fa != NULL) && (flash_area_get_api(fa->fa_device_id) != NULL)) {
         return flash_area_get_api(fa->fa_device_id)->get_erase_val(fa->fa_device_id);
     } else {
         return 0u;

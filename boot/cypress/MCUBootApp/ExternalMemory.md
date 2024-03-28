@@ -1,6 +1,6 @@
 ### Support of secondary slot in external memory for PSoC™ 6 devices
 
-* For the CYW20829 external memory support, see the [CYW20829.md](../platforms/CYW20829.md) file.
+* For the CYW20829/CYW89829 external memory support, see the [CYW20829.md](../platforms/CYW20829.md) file.
 
 #### Description
 
@@ -68,7 +68,7 @@ Thus, the start address of the secondary slot is: 0x1804 0000 - 0x10000 (64k) = 
 
 In the XIP mode firmware image can be placed in the external memory and executed from there directly. This mode is useful for devices with small internal flash or when one wishes to reserve internal flash for other purposes.
 
-On CYW20829 platform XIP mode is always used due to absence of internal memory.
+On CYW20829/CYW89829 platforms XIP mode is always used due to absence of internal memory.
 
 This is optional for PSoC™ 6 devices. The JSON flash map should contain `"mode": "XIP"` in the `"external_flash" section`. `USE_XIP` flag is added to auto-generated `memorymap.mk` on pre-build action.
 
@@ -100,7 +100,7 @@ At SFlash address `0x16007c00` updated content of TOC2 structure is placed.
 
 The MCUBootApp can be programmed similarly to described in the [MCUBootApp.md](MCUBootApp.md) file:
 
-        export OPENOCD=/Applications/ModusToolbox/tools_2.4/openocd
+        export OPENOCD=/Applications/ModusToolbox/tools_3.2/openocd
 
         ${OPENOCD}/bin/openocd -s ${OPENOCD}/scripts \
                             -f ${OPENOCD}/scripts/interface/kitprog3.cfg \

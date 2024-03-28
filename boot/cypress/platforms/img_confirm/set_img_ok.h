@@ -18,11 +18,7 @@
 #if !defined(SET_IMG_OK_H)
 #define SET_IMG_OK_H
 
-#include "cy_flash.h"
-#if defined(CY_BOOT_USE_EXTERNAL_FLASH) || defined(CYW20829)
-#include "flash_qspi.h"
-#endif /* defined(CY_BOOT_USE_EXTERNAL_FLASH) || defined(CYW20829) */
-#include <string.h>
+#include <stdint.h>
 
 #define FLASH_ROW_BUF_SZ        MEMORY_ALIGN
 #define IMG_TRAILER_SZ          MEMORY_ALIGN
@@ -31,6 +27,8 @@
 #define USER_SWAP_IMAGE_OK      (1)
 #define IMG_OK_ADDR             (PRIMARY_IMG_START + USER_APP_SIZE - USER_SWAP_IMAGE_OK_OFFS)
 
+
+#define IMG_OK_SET_UNDEFINED    0x55
 #define IMG_OK_SET_FAILED       -1
 #define IMG_OK_ALREADY_SET      1
 #define IMG_OK_SET_SUCCESS      0

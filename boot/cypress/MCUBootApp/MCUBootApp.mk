@@ -39,10 +39,15 @@ MCUBOOT_IMAGE_NUMBER ?= 1
 ENC_IMG ?= 0
 USE_HW_KEY ?= 0
 USE_BOOTSTRAP ?= 1
-MCUBOOT_LOG_LEVEL ?= MCUBOOT_LOG_LEVEL_DEBUG
 USE_SHARED_SLOT ?= 0
 FIH_PROFILE_LEVEL_LIST := OFF LOW MEDIUM HIGH
 FIH_PROFILE_LEVEL ?= MEDIUM
+
+ifeq ($(BUILDCFG), Release)
+MCUBOOT_LOG_LEVEL ?= MCUBOOT_LOG_LEVEL_INFO
+else
+MCUBOOT_LOG_LEVEL ?= MCUBOOT_LOG_LEVEL_DEBUG
+endif
 
 ifneq ($(COMPILER), GCC_ARM)
 $(error Only GCC ARM is supported at this moment)
@@ -76,7 +81,7 @@ $(CUR_APP_PATH)/memorymap.mk:
 	$(PYTHON_PATH) scripts/memorymap_rework.py run -p $(PLATFORM_CONFIG) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory -n memorymap > $(CUR_APP_PATH)/memorymap.mk
 else
 $(CUR_APP_PATH)/memorymap.mk:
-	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h > $(CUR_APP_PATH)/memorymap.mk
+	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h > $(CUR_APP_PATH)/memorymap.mk		
 endif
 DEFINES_APP += -DCY_FLASH_MAP_JSON
 endif
@@ -145,7 +150,7 @@ DEFINES_APP += -DCY_MBEDTLS_HW_ACCELERATION
 INCLUDE_DIRS_MBEDTLS_MXCRYPTO := $(CY_LIBS_PATH)/cy-mbedtls-acceleration
 INCLUDE_DIRS_MBEDTLS_MXCRYPTO += $(CY_LIBS_PATH)/cy-mbedtls-acceleration/COMPONENT_CAT1/include
 
-ifeq ($(PLATFORM), CYW20829)
+ifeq ($(FAMILY), CYW20829)
 INCLUDE_DIRS_MBEDTLS_MXCRYPTO += $(CY_LIBS_PATH)/cy-mbedtls-acceleration/COMPONENT_CAT1/mbedtls_$(CRYPTO_ACC_TYPE)
 SOURCES_MBEDTLS_MXCRYPTO := $(wildcard $(CY_LIBS_PATH)/cy-mbedtls-acceleration/COMPONENT_CAT1/mbedtls_$(CRYPTO_ACC_TYPE)/*.c)
 DEFINES_APP += -Dcy_stc_cryptolite_context_sha256_t=cy_stc_cryptolite_context_sha_t
@@ -177,12 +182,12 @@ endif
 # Encrypted image support
 ifeq ($(ENC_IMG), 1)
 DEFINES_APP += -DENC_IMG=1
-ifeq ($(PLATFORM), CYW20829)
+ifeq ($(FAMILY), CYW20829)
 DEFINES_APP += -DMCUBOOT_ENC_IMAGES_XIP
 endif
 # Use maximum optimization level for PSOC6 encrypted image with
 # external flash so it would fit into 0x18000 size of MCUBootApp
-ifneq ($(PLATFORM), CYW20829)
+ifneq ($(FAMILY), CYW20829)
 ifeq ($(BUILDCFG), Debug)
 ifeq ($(USE_EXTERNAL_FLASH), 1)
 CFLAGS_OPTIMIZATION := -Os -g3
@@ -245,14 +250,22 @@ ASM_FILES_APP :=
 ASM_FILES_APP += $(ASM_FILES_STARTUP)
 
 # Pass variables to linker script and overwrite path to it, if custom is required
-ifeq ($(COMPILER), GCC_ARM)
-LDFLAGS += $(LDFLAGS_DEFSYM)
-LINKER_SCRIPT := $(CUR_APP_PATH)/$(APP_NAME)_$(CORE).ld
 ifeq ($(FAMILY), XMC7000)
-LINKER_SCRIPT := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/COMPONENT_$(CORE)/TOOLCHAIN_$(COMPILER)/linker.ld
-endif
+    LINKER_SCRIPT := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/COMPONENT_$(CORE)/TOOLCHAIN_$(COMPILER)/linker.ld
 else
-$(error Only GCC ARM is supported at this moment)
+    LINKER_SCRIPT := $(CUR_APP_PATH)/$(APP_NAME)_$(CORE).ld
+endif
+
+ifeq ($(COMPILER), GCC_ARM)
+    LDFLAGS += $(LDFLAGS_DEFSYM)
+else ifeq ($(COMPILER), IAR)
+    $(error $(COMPILER) not supported at this moment)
+
+else ifeq ($(COMPILER), ARM)
+    $(error $(COMPILER) not supported at this moment)
+
+else
+    $(error $(COMPILER) not supported at this moment)
 endif
 
 ###############################################################################

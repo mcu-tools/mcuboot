@@ -33,7 +33,7 @@ def load_json(file_path):
 
     except FileNotFoundError:
         print(f'\nERROR: Cannot find {file_path}')
-        sys.exit(-1)
+        sys.exit(1)
 
     return data_json
 
@@ -66,19 +66,24 @@ class FieldsValidator:
         if f_security_setup:
 
             if p_security_setup is None:
-                raise AttributeError("This platform doesn't have any 'secure_setup' features")
+                print("\nThis platform doesn't have any 'secure_setup' features")
+                sys.exit(1)
 
             if f_security_setup.get('hw_rollback_prot'):
                 if p_security_setup.get('hw_rollback_prot') is None:
-                    raise AttributeError("This platform doesn't have HW anti roll-back counter")
+                    print("\nThis platform doesn't have HW anti roll-back counter")
+                    sys.exit(1)
 
             if f_security_setup.get('hw_crypto_acceleration'):
                 if p_security_setup.get('hw_crypto_acceleration') is None:
-                    raise AttributeError("The platform doesn't support HW crypto acceleration")
+                    print("\nThe platform doesn't support HW crypto acceleration")
+                    sys.exit(1)
 
             if f_security_setup.get('validate_upgrade').get('value') is False:
-                raise AttributeError("Deactivation of image validation during the upgrade \
-                                        process isn't implemented yet")
+                if f_security_setup.get('validate_boot').get('value'):
+                    print("\nERROR: Boot slot validation cannot be enabled if upgrade "\
+                                "slot validation is disabled")
+                    sys.exit(1)
 
 
 class FeatureProcessor:
@@ -88,10 +93,11 @@ class FeatureProcessor:
     """
 
     settings_dict = {
-        'validate_boot'             :   'MCUBOOT_SKIP_IMAGE_VALIDATION',
+        'validate_boot'             :   'MCUBOOT_SKIP_BOOT_VALIDATION',
         'validate_upgrade'          :   'MCUBOOT_SKIP_UPGRADE_VALIDATION',
         'dependency_check'          :   'MCUBOOT_DEPENDENCY_CHECK',
         'serial_logging'            :   'MCUBOOT_LOG_LEVEL',
+        'watch_dog_timer'           :   'USE_WDT',
         'hw_rollback_prot'          :   'USE_HW_ROLLBACK_PROT',
         'hw_crypto_acceleration'    :   "USE_CRYPTO_HW",
         'sw_downgrade_prev'         :   'USE_SW_DOWNGRADE_PREV',

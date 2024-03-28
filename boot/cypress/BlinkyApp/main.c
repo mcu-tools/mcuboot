@@ -57,10 +57,12 @@ int main(void)
 
     printf("[BlinkyApp] Image type: " IMAGE_TYPE " on %s core\r\n", detect_core_message);
 
-    /* Disable watchdog timer to mark successful start up of application. */
+#if !defined(DISABLE_WDT_FREE)
+    /* Disable watchdog timer to mark successful start up of application. The default BlikyApp flow */
     cyhal_wdt_free(NULL);
 
     printf(WATCHDOG_FREE_MESSAGE);
+#endif /* !(DISABLE_WDT_FREE) */
 
     for (;;) {
         /* Toggle the user LED periodically */

@@ -151,10 +151,12 @@ ifeq ($(PLATFORM), $(filter $(PLATFORM), PSOC_061_2M PSOC_061_1M PSOC_061_512K))
 PLATFORM_APP_SOURCES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/psoc6_02_cm0p_sleep.c
 endif
 
-ifeq ($(USE_EXTERNAL_FLASH), 1)
-PLATFORM_SOURCES_FLASH += cy_serial_flash_prog.c
-PLATFORM_SOURCES_FLASH += $(PRJ_DIR)/platforms/memory/PSOC6/smif_cfg_dbg/cycfg_qspi_memslot.c
-PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/PSOC6/smif_cfg_dbg
+ifeq ($(USE_SMIF_CONFIG), 1)
+	ifeq ($(USE_EXTERNAL_FLASH), 1)
+		PLATFORM_SOURCES_FLASH += cy_serial_flash_prog.c
+		PLATFORM_SOURCES_FLASH += $(PRJ_DIR)/platforms/memory/PSOC6/smif_cfg_dbg/cycfg_qspi_memslot.c
+		PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/PSOC6/smif_cfg_dbg
+	endif
 endif
 
 # Post build job to execute for platform

@@ -20,18 +20,27 @@
 
 #include <string.h>
 
+struct mbedtls_sha256_context;
+
 #define mbedtls_sha256_starts_ret mbedtls_sha256_starts
 #define mbedtls_sha256_finish_ret mbedtls_sha256_finish
 
-static inline int mbedtls_sha256_update_ret(struct mbedtls_sha256_context *ctx,
+#define MBEDTLS_ERR_SHA256_BAD_INPUT_DATA                 -0x0074  /**< SHA-256 input data was malformed. */
+
+int mbedtls_sha256_update( struct mbedtls_sha256_context *ctx,
+                           const unsigned char *input,
+                           size_t ilen );
+
+static inline int mbedtls_sha256_update_ret(void *ctx,
+
                                             const unsigned char           *input,
                                             size_t                        ilen)
 {
     /* Cryptolite accelerator does not work on CBUS! */
-    if (input >= (const unsigned char *)CY_XIP_REMAP_OFFSET &&
-        input < (const unsigned char *)(CY_XIP_REMAP_OFFSET + CY_XIP_SIZE)) {
+    if (input >= (const unsigned char *)CY_XIP_CBUS_BASE &&
+        input < (const unsigned char *)(CY_XIP_CBUS_BASE + CY_XIP_SIZE)) {
 
-        if (input + ilen > (const unsigned char *)(CY_XIP_REMAP_OFFSET + CY_XIP_SIZE)) {
+        if (input + ilen > (const unsigned char *)(CY_XIP_CBUS_BASE + CY_XIP_SIZE)) {
             return -MBEDTLS_ERR_SHA256_BAD_INPUT_DATA;
         }
         else {

@@ -1,8 +1,8 @@
-#ifndef CYBSP_TYPES_H
-#define CYBSP_TYPES_H
 /***********************************************************************************************//**
  * \copyright
- * Copyright 2018-2021 Cypress Semiconductor Corporation
+ * Copyright 2018-2022 Cypress Semiconductor Corporation (an Infineon company) or
+ * an affiliate of Cypress Semiconductor Corporation
+ *
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,25 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+/**
+ * \cond INTERNAL
+ */
+/* WIFI interface types */
+#define CYBSP_SDIO_INTERFACE             (0)
+#define CYBSP_SPI_INTERFACE              (1)
+#define CYBSP_M2M_INTERFACE              (2)
+
+/* Map from the new components to the old interface names for
+ * compatibility with code that still depends on those defines */
+#if defined(COMPONENT_WIFI_INTERFACE_SDIO)
+#define CYBSP_WIFI_INTERFACE_TYPE (CYBSP_SDIO_INTERFACE)
+#elif defined(COMPONENT_WIFI_INTERFACE_SPI)
+#define CYBSP_WIFI_INTERFACE_TYPE (CYBSP_SPI_INTERFACE)
+#elif defined(COMPONENT_WIFI_INTERFACE_M2M)
+#define CYBSP_WIFI_INTERFACE_TYPE (CYBSP_M2M_INTERFACE)
+#endif
+/** \endcond */
 
 /**
  * \addtogroup group_bsp_pin_state Pin States
@@ -52,5 +71,3 @@ extern "C" {
 #if defined(__cplusplus)
 }
 #endif
-
-#endif /* CYBSP_TYPES_H */

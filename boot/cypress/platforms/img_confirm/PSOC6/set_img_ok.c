@@ -17,7 +17,13 @@
 
 #if !(SWAP_DISABLED) && defined(UPGRADE_IMAGE)
 
+#include "string.h"
 #include "set_img_ok.h"
+#include "cy_flash.h"
+
+#if defined(CY_BOOT_USE_EXTERNAL_FLASH)
+#include "flash_qspi.h"
+#endif /* defined(CY_BOOT_USE_EXTERNAL_FLASH) */
 
 static uint8_t row_buff[FLASH_ROW_BUF_SZ];
 

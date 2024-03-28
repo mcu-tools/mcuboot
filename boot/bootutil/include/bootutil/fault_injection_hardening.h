@@ -123,7 +123,12 @@ FIH_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 10.4', 10, 'Signed integer bitw
  * it has reasonably high Hamming weight.
  */
 #define FIH_MASK_VALUE          0xA5C35A3CU
+#ifndef USE_IFX_SE_CRYPTO /* TODO: Remove this after TFM-1749 resolved */
 #define FIH_UINT_MASK_VALUE     0xB779A31CU
+#else
+#define FIH_UINT_MASK_VALUE     0xA5C35A3CU
+#endif /* USE_IFX_SE_CRYPTO */
+
 
 #define FIH_INT_VAL_MASK(val) ((int32_t)((val) ^ FIH_MASK_VALUE))
 #define FIH_UINT_VAL_MASK(val) ((val) ^ FIH_UINT_MASK_VALUE)
@@ -167,6 +172,7 @@ typedef struct {
 #define FIH_SUCCESS     (fih_int_encode(FIH_POSITIVE_VALUE))
 #define FIH_FAILURE     (fih_int_encode(FIH_NEGATIVE_VALUE))
 #define FIH_UINT_ZERO   (fih_uint_encode(0U))
+#define FIH_INT_ZERO    (fih_int_encode((signed)0))
 #define FIH_UINT_MAX    (fih_uint_encode(0xFFFFFFFFU))
 
 #ifdef FIH_ENABLE_GLOBAL_FAIL
@@ -856,6 +862,36 @@ fih_uint fih_uint_or(fih_uint x, fih_uint y)
 }
 
 /**
+ * Standard logical OR for fih_int values.
+ *
+ * @param x  1st fih_int value to be ORed.
+ * @param y  2nd fih_int value to be ORed.
+ *
+ * @return   ORed value
+ */
+__attribute__((always_inline)) static inline
+fih_int fih_or(fih_int x, fih_int y)
+{
+    int32_t y_val, y_msk;
+    volatile fih_int rc = {0};
+
+    fih_int_validate(x);
+    fih_int_validate(y);
+
+    y_val = y.val;
+    rc.val = x.val | y_val;
+
+    fih_delay();
+
+    y_msk = y.msk;
+    rc.msk = FIH_INT_VAL_MASK(FIH_INT_VAL_MASK(x.msk) | FIH_INT_VAL_MASK(y_msk));
+
+    fih_int_validate(rc);
+
+    return rc;
+}
+
+/**
  * Standard logical AND for fih_uint values.
  *
  * @param x  1st fih_uint value to be ORed.
@@ -1234,6 +1270,28 @@ fih_uint fih_uint_or(fih_uint x, fih_uint y)
 }
 
 /**
+ * Standard logical OR for fih_int values.
+ *
+ * @param x  1st fih_int value to be ORed.
+ * @param y  2nd fih_int value to be ORed.
+ *
+ * @return   ORed value
+ */
+__attribute__((always_inline)) static inline
+fih_int fih_or(fih_int x, fih_int y)
+{
+    fih_int rc = {x.val | y.val};
+
+    fih_delay();
+
+    if (rc.val != (x.val | y.val)) {
+        FIH_PANIC;
+    }
+
+    return rc;
+}
+
+/**
  * Standard logical AND for fih_uint values.
  *
  * @param x  1st fih_uint value to be ORed.
@@ -1344,7 +1402,7 @@ void fih_cfi_decrement(void);
  * number of the critical steps. It should be called before execution starts.
  */
 #define FIH_CFI_STEP_INIT(x) \
-        fih_int fih_cfi_step_saved_value = fih_cfi_get_and_increment(x)
+        fih_uint fih_cfi_step_saved_value = fih_cfi_get_and_increment(x)
 
 /*
  * FIH_CFI_STEP_DECREMENT() decrease the CFI counter by one. It can be called
@@ -1463,6 +1521,7 @@ typedef fih_uint fih_uint;
 #define FIH_SUCCESS             (0)
 #define FIH_FAILURE            (-1)
 #define FIH_UINT_ZERO           (0UL)
+#define FIH_INT_ZERO            ((signed)0)
 #define FIH_UINT_MAX            (0xFFFFFFFFUL)
 
 #define FIH_TRUE                (1)
@@ -1497,6 +1556,7 @@ typedef fih_uint fih_uint;
 #define fih_le(x, y)            ((x) <= (y))
 #define fih_uint_le(x, y)       ((x) <= (y))
 
+#define fih_or(x, y)            ((x) | (y))
 #define fih_uint_or(x, y)       ((x) | (y))
 #define fih_uint_and(x, y)      ((x) & (y))
 

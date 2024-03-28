@@ -4,7 +4,17 @@
 
 Implements a simple Blinky LED application to demonstrate the MCUBootApp bootloader application operation for the boot and upgrade processes.
 
-It is validated and started by MCUBootApp, which is running on the CM0p core of PSoC™ 6 devices, or CM33 core for the CYW20829 device.
+This demo supports PSoC™ 6 chips with the 1M-, 2M-, and 512K-flash on board; XMC7200, XMC7100; CYW20829/CYW89829 chips with no internal flash.
+The evaluation kits are:
+* `CY8CPROTO-062-4343W`
+* `CY8CKIT-062-WIFI-BT`
+* `CY8CPROTO-062S3-4343W`
+* `CYW920829M2EVB-01`
+* `CYW989829M2EVB-01`
+* `CYBLE-416045-EVAL`
+* `CY8CPROTO-063-BLE`
+* `CY8CKIT-062-BLE`
+* `KIT_XMC72_EVK`
 
 Functionality:
 
@@ -45,7 +55,7 @@ The result of the pre-build script is an auto-generated `memorymap.mk` file with
 These values are set by specifying the following macros (default values shown):
 `SLOT_SIZE ?= 0x10000` - for slot located in internal flash of PSoC™ 6 chips
 `SLOT_SIZE ?= 0x40200` - for slot located in external flash of PsoC™ 6 kits
-`SLOT_SIZE ?= 0x20000` - for slot located in external flash of CYW20829 kits
+`SLOT_SIZE ?= 0x20000` - for slot located in external flash of CYW20829/CYW89829 kits
 
 During pre-build action, the GCC preprocessor is used to generate the target linker script from a template `BlinkyApp_template.ld`.
 
@@ -55,11 +65,11 @@ Memory (stack) corruption of the CM0p application can cause a failure if SystemC
 
 ### Building an application
 
-Toolchain is set by default in `toolchains.mk` file, depending on `COMPILER` makefile variable. MCUBoot is currently support only `GCC_ARM` as compiler. Toolchain path can be redefined, by setting `TOOLCHAIN_PATH` build flag to desired toolchain path. Below is an example on how to set toolchain path from **ModusToolbox™ IDE 3.0**:
+Toolchain is set by default in `toolchains.mk` file, depending on `COMPILER` makefile variable. MCUBoot is currently support only `GCC_ARM` as compiler. Toolchain path can be redefined, by setting `TOOLCHAIN_PATH` build flag to desired toolchain path. Below is an example on how to set toolchain path from **ModusToolbox™ IDE**:
 
-    make clean_boot app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/${USERNAME}/ModusToolbox/tools_3.0/gcc
+    make clean_boot app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/${USERNAME}/ModusToolbox/tools_3.2/gcc
 
-    make clean_boot app APP_NAME=BlinkyApp PLATFORM=XMC7200 BUILDCFG=Debug FLASH_MAP=platforms/memory/XMC7000/flashmap/xmc7000_overwrite_single.json PLATFORM_CONFIG=platforms/memory/XMC7000/flashmap/xmc7200_platform.json CORE=CM7 APP_CORE=CM7 CORE_ID=0 IMG_TYPE=BOOT IMG_ID=1 TOOLCHAIN_PATH=c:/Users/${USERNAME}/ModusToolbox/tools_3.0/gcc
+    make clean_boot app APP_NAME=BlinkyApp PLATFORM=XMC7200 BUILDCFG=Debug FLASH_MAP=platforms/memory/XMC7000/flashmap/xmc7000_overwrite_single.json PLATFORM_CONFIG=platforms/memory/XMC7000/flashmap/xmc7200_platform.json CORE=CM7 APP_CORE=CM7 CORE_ID=0 IMG_TYPE=BOOT IMG_ID=1 TOOLCHAIN_PATH=c:/Users/${USERNAME}/ModusToolbox/tools_3.2/gcc
 
 The supported platforms:
 
@@ -68,6 +78,7 @@ The supported platforms:
 * PSOC_062_512K
 * PSOC_063_1M
 * CYW20829
+* CYW89829
 * XMC7200
 * XMC7100
 
@@ -130,7 +141,7 @@ To build a `BlinkyApp` upgrade image for external memory to be used in a single 
 
     make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_single_smif.json IMG_ID=1
 
-`ERASED_VALUE` defines the memory cell contents in the erased state. It is `0x00` for PSoC™ 6 internal flash and `0xff` for S25FL512S. For `CYW20289` default value is `0xff` since it only uses an external flash.
+`ERASED_VALUE` defines the memory cell contents in the erased state. It is `0x00` for PSoC™ 6 internal flash and `0xff` for S25FL512S. For `CYW20829` default value is `0xff` since it only uses an external flash.
 
 In the multi-image configuration, an upgrade image for the second application is built using the command:
 
@@ -146,7 +157,7 @@ To obtain an encrypted upgrade image of BlinkyApp, pass extra flag `ENC_IMG=1` i
 
 This also suggests that the user has already placed a corresponding *.pem key in the \keys folder. The key variables are defined in the root Makefile as SIGN_KEY_FILE and ENC_KEY_FILE
 
-Refer to [CYW20829.md](../platforms/CYW20829.md) for details of encrypted image build for the CYW20289 platfrom.
+Refer to [CYW20829.md](../platforms/CYW20829.md) for details of encrypted image build for the CYW20829/CYW89829 platforms.
 
 ### Complete build flags description
 - `BUILDCFG` - The configuration type
@@ -159,7 +170,8 @@ Refer to [CYW20829.md](../platforms/CYW20829.md) for details of encrypted image 
     - `PSOC_062_2M`
     - `PSOC_062_1M`
     - `PSOC_062_512K`
-    - `CYW20289`
+    - `CYW20829`
+    - `CYW89829`
     - `XMC7200`
     - `XMC7100`
 - `SLOT_SIZE` - The size of the primary/secondary slot of MCUBootApp. This app will be used with
@@ -171,8 +183,8 @@ Refer to [CYW20829.md](../platforms/CYW20829.md) for details of encrypted image 
     - `0x0` - Internal memory.
     - `0xff` - External memory.
 - `TOOLCHAIN_PATH` - The path to the GCC compiler to use for the build.
-    - Example: TOOLCHAIN_PATH=/home/user/ModusToolbox/tools_2.4/gcc
-    - Example: TOOLCHAIN_PATH=C:/ModusToolbox/tools_2.4/gcc
+    - Example: TOOLCHAIN_PATH=/home/user/ModusToolbox/tools_3.2/gcc
+    - Example: TOOLCHAIN_PATH=C:/ModusToolbox/tools_3.2/gcc
 
 Flags are set by pre-build action. Result of pre-build can be found in autogenerated file `BlinkyApp/memorymap.mk`.   
 
@@ -192,7 +204,7 @@ The post-build action is executed at the compile time for `BlinkyApp`. For the `
 
 Flags passed to `imgtool` for a signature are defined in the `SIGN_ARGS` variable in BlinkyApp.mk.
 
-For `CYW20829`, `cysecuretools` is used for the image signing.
+For `CYWxx829` and `XMC7x00` platforms, `cysecuretools` is used for the image signing.
 
 ### How to program an application
 
@@ -202,11 +214,11 @@ BlinkyApp firmware can be programmed in different ways. The following instructio
 
 Connect a board to your computer. Switch Kitprog3 to DAP-BULK mode by clicking the `SW3 MODE` button until `LED2 STATUS` constantly shines.
 
-The OpenOCD package is supplied with ModusToolbox™ IDE and can be found in the ModusToolbox™ installation folder `ModusToolbox/tools_2.4/openocd`.
+The OpenOCD package is supplied with ModusToolbox™ IDE and can be found in the ModusToolbox™ installation folder `ModusToolbox/tools_3.2/openocd`.
 
 Open the terminal application and execute the following command after substitution of the `PATH_TO_APPLICATION.hex` and `OPENOCD_PATH` paths:
 
-        export OPENOCD_PATH=/Applications/ModusToolbox/tools_2.4/openocd 
+        export OPENOCD_PATH=/Applications/ModusToolbox/tools_3.2/openocd 
 
         ${OPENOCD_PATH}/bin/openocd -s ${OPENOCD_PATH}/scripts \
                             -f ${OPENOCD_PATH}/scripts/interface/kitprog3.cfg \

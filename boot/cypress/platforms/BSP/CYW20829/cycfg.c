@@ -4,13 +4,13 @@
 * Description:
 * Wrapper function to initialize all generated code.
 * This file was automatically generated and should not be modified.
-* Tools Package 2.2.1.3040
-* integration_mxs40sv2-LATEST 3.0.0.5994
-* personalities 3.0.0.0
-* udd 3.0.0.775
+* Configurator Backend 3.10.0
+* device-db 4.100.0.4783
+* mtb-pdl-cat1 3.9.0.29592
 *
 ********************************************************************************
-* Copyright 2021 Cypress Semiconductor Corporation
+* Copyright 2024 Cypress Semiconductor Corporation (an Infineon company) or
+* an affiliate of Cypress Semiconductor Corporation.
 * SPDX-License-Identifier: Apache-2.0
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,21 @@
 
 #include "cycfg.h"
 
+/* This function is provided for compatibility with older 2.X style projects. */
 void init_cycfg_all(void)
 {
-	init_cycfg_system();
+    cycfg_config_init();
+    cycfg_config_reservations();
+}
+void cycfg_config_init(void)
+{
+    init_cycfg_system();
+    init_cycfg_routing();
+    init_cycfg_pins();
+}
+void cycfg_config_reservations(void)
+{
+    reserve_cycfg_system();
+    reserve_cycfg_peripherals();
+    reserve_cycfg_pins();
 }

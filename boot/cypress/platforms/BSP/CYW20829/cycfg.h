@@ -4,13 +4,13 @@
 * Description:
 * Simple wrapper header containing all generated files.
 * This file was automatically generated and should not be modified.
-* Tools Package 2.2.1.3040
-* integration_mxs40sv2-LATEST 3.0.0.5994
-* personalities 3.0.0.0
-* udd 3.0.0.775
+* Configurator Backend 3.10.0
+* device-db 4.100.0.4783
+* mtb-pdl-cat1 3.9.0.29592
 *
 ********************************************************************************
-* Copyright 2021 Cypress Semiconductor Corporation
+* Copyright 2024 Cypress Semiconductor Corporation (an Infineon company) or
+* an affiliate of Cypress Semiconductor Corporation.
 * SPDX-License-Identifier: Apache-2.0
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,9 +35,13 @@ extern "C" {
 
 #include "cycfg_notices.h"
 #include "cycfg_system.h"
+#include "cycfg_routing.h"
+#include "cycfg_peripherals.h"
 #include "cycfg_pins.h"
 
 void init_cycfg_all(void);
+void cycfg_config_init(void);
+void cycfg_config_reservations(void);
 
 
 #if defined(__cplusplus)

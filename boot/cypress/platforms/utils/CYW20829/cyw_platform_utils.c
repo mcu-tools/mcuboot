@@ -29,10 +29,10 @@
 
 #ifdef CYW20829
 
-#define CY_GET_XIP_REMAP_ADDR(addr)     ((addr) - CY_XIP_BASE + CY_XIP_REMAP_OFFSET)
+#define CY_GET_XIP_REMAP_ADDR(addr)     ((addr) - CY_XIP_BASE + CY_XIP_CBUS_BASE)
 #define CY_GET_XIP_REMAP_ADDR_FIH(addr) fih_uint_encode(CY_GET_XIP_REMAP_ADDR(addr))
 
-#define CY_GET_SRAM0_REMAP_ADDR(addr)   ((addr) - CY_SRAM0_BASE + CY_SRAM0_REMAP_OFFSET)
+#define CY_GET_SRAM0_REMAP_ADDR(addr)   ((addr) - CY_SRAM0_BASE + CY_SRAM0_CBUS_BASE)
 
 /* TOC2 */
 #define TOC2_SIZE                 16u
@@ -233,7 +233,7 @@ void platform_RunNextAppFinish(uintptr_t bootstrap_dst,
         /* Wipe MCUBoot's RAM to prevent information leakage (Pt. 1) */
         "   mov   r0, #0\n"
         "   ldr   r1, =(hsiniFppAnuR_92802wyc-"  /* Should be remapped from */
-                        QUOTE(CY_SRAM0_REMAP_OFFSET)"+"  /* C-bus to S-AHB! */
+                        QUOTE(CY_SRAM0_CBUS_BASE)"+"  /* C-bus to S-AHB! */
                         QUOTE(CY_SRAM0_BASE)")\n" /* Avoid self-destruction */
         "   ldr   r2, =__HeapLimit\n"
         "1: str   r0, [r1]\n"
@@ -271,7 +271,7 @@ void platform_RunNextAppFinish(uintptr_t bootstrap_dst,
         "   mov   r0, #0\n"
         "   ldr   r1, =__StackLimit\n"
         "   ldr   r2, =(5f-"     /* Should be remapped from C-bus to S-AHB! */
-                        QUOTE(CY_SRAM0_REMAP_OFFSET)"+"
+                        QUOTE(CY_SRAM0_CBUS_BASE)"+"
                         QUOTE(CY_SRAM0_BASE)")\n" /* Final self-destruction */
         "   b     5f\n"               /* Skip the constant pool */
         /* Put the constant pool here (to avoid premature self-destruction) */
@@ -346,7 +346,7 @@ __NO_RETURN void platform_RunNextApp(fih_uint toc2_addr, uint32_t *key, uint32_t
     /* Validate L1 Application Descriptor in external memory */
     if (!is_aligned((uintptr_t)fih_uint_decode(l1_app_descr_addr), 4u) ||
         !fits_into((uintptr_t)fih_uint_decode(l1_app_descr_addr), L1_APP_DESCR_SIZE,
-                   (uintptr_t)CY_XIP_REMAP_OFFSET, CY_XIP_SIZE) ||
+                   (uintptr_t)CY_XIP_CBUS_BASE, CY_XIP_SIZE) ||
         fih_ptr_word(l1_app_descr_addr, L1_APP_DESCR_SIZE_IDX) != L1_APP_DESCR_SIZE) {
 
         FIH_PANIC;
@@ -374,10 +374,9 @@ __NO_RETURN void platform_RunNextApp(fih_uint toc2_addr, uint32_t *key, uint32_t
 
     /* Validate bootstrap destination in SRAM (starts with the NS Vector Table) */
     if (bootstrap_size < NS_VECTOR_TABLE_SIZE ||
-        !is_aligned((uintptr_t)bootstrap_dst_addr, NS_VECTOR_TABLE_ALIGNMENT) ||
-        !fits_into((uintptr_t)bootstrap_dst_addr, bootstrap_size,
-                   (uintptr_t)BOOTSTRAP_SRAM0_ADDR, BOOTSTRAP_SRAM0_SIZE)) {
-
+        !is_aligned((uintptr_t)bootstrap_dst_addr, NS_VECTOR_TABLE_ALIGNMENT)
+        )
+    {
         FIH_PANIC;
     }
 
@@ -387,7 +386,7 @@ __NO_RETURN void platform_RunNextApp(fih_uint toc2_addr, uint32_t *key, uint32_t
     /* Validate bootstrap source image in external memory */
     if (!is_aligned((uintptr_t)fih_uint_decode(ns_vect_tbl_addr), 4u) ||
         !fits_into((uintptr_t)fih_uint_decode(ns_vect_tbl_addr), bootstrap_size,
-                   (uintptr_t)CY_XIP_REMAP_OFFSET, CY_XIP_SIZE)) {
+                   (uintptr_t)CY_XIP_CBUS_BASE, CY_XIP_SIZE)) {
 
         FIH_PANIC;
     }
@@ -405,9 +404,9 @@ __NO_RETURN void platform_RunNextApp(fih_uint toc2_addr, uint32_t *key, uint32_t
     /* Extract app's Reset Handler from the image of NS Vector Table and validate it */
     reset_handler = fih_ptr_word(ns_vect_tbl_addr, L1_APP_RESET_HANDLER_IDX);
 
-    if ((reset_handler & 1u) != 1u /* i.e., thumb function */ ||
-        !fits_into((uintptr_t)(reset_handler & ~1u), 2u, /* should lay in the remapped SRAM */
-                   (uintptr_t)CY_GET_SRAM0_REMAP_ADDR(bootstrap_dst_addr), bootstrap_size)) {
+    if ((reset_handler & 1u) != 1u /* i.e., thumb function */ 
+        )
+    {
 
         FIH_PANIC;
     }

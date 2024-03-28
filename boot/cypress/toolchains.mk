@@ -79,7 +79,7 @@ ifeq ($(COMPILER), GCC_ARM)
 	endif
 
 	ifeq ($(BUILDCFG), Debug)
-		CFLAGS_SPECIAL ?= -Og -g3
+		CFLAGS_SPECIAL ?= -Og -g3 -ffile-prefix-map=$(CURDIR)=.
 		CFLAGS_COMMON += $(CFLAGS_SPECIAL)
 	else ifeq ($(BUILDCFG), Release)
 		ifeq ($(CFLAGS_OPTIMIZATION), )

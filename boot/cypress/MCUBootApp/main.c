@@ -91,6 +91,51 @@ fih_uint calc_app_addr(uintptr_t flash_base, const struct boot_rsp *rsp)
                            rsp->br_hdr->ih_hdr_size);
 }
 
+/*******************************************************************************
+ * Function Name: fih_calc_app_addr
+ ********************************************************************************
+ * Summary:
+ * Calculate start address of user application.
+ *
+ * Parameters:
+ *  image_base - base address of flash;
+ *
+ *  rsp - provided by the boot loader code; indicates where to jump
+ *				to execute the main image;
+ *
+ *  output - calculated address of application;
+ *
+ * Return:
+ * fih_int
+ *
+ *******************************************************************************/
+static inline __attribute__((always_inline)) fih_int fih_calc_app_addr(
+    uintptr_t image_base, const struct boot_rsp *rsp, fih_uint *app_address)
+{
+    fih_int fih_rc = FIH_FAILURE;
+
+#if defined(MCUBOOT_RAM_LOAD)
+    if (IS_RAM_BOOTABLE(rsp->br_hdr) == true) {
+        if ((UINT32_MAX - rsp->br_hdr->ih_hdr_size) >= image_base) {
+            *app_address =
+                fih_uint_encode(image_base + rsp->br_hdr->ih_hdr_size);
+            fih_rc = FIH_SUCCESS;
+        }
+    } else
+#endif
+    {
+        if (((UINT32_MAX - rsp->br_image_off) >= image_base) &&
+            ((UINT32_MAX - rsp->br_hdr->ih_hdr_size) >=
+             (image_base + rsp->br_image_off))) {
+            *app_address = fih_uint_encode(image_base + rsp->br_image_off +
+                                           rsp->br_hdr->ih_hdr_size);
+            fih_rc = FIH_SUCCESS;
+        }
+    }
+
+    FIH_RET(fih_rc);
+}
+
 #if defined CYW20829
 
 #if defined(CY_BOOT_USE_EXTERNAL_FLASH) && !defined(MCUBOOT_ENC_IMAGES_XIP)
@@ -122,9 +167,8 @@ static bool do_boot(struct boot_rsp *rsp)
 #endif /* defined CYW20829 */
 
     if ((rsp != NULL) && (rsp->br_hdr != NULL)) {
-        int rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
 
-        if (0 == rc) {
+        if (flash_device_base(rsp->br_flash_dev_id, &flash_base) == 0) {
             fih_uint app_addr = calc_app_addr(flash_base, rsp);
 
             BOOT_LOG_INF("Starting User Application (wait)...");
@@ -133,8 +177,11 @@ static bool do_boot(struct boot_rsp *rsp)
             }
             BOOT_LOG_INF("Start slot Address: 0x%08" PRIx32, (uint32_t)fih_uint_decode(app_addr));
 
-            rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
-            if (rc != 0 || fih_uint_eq(calc_app_addr(flash_base, rsp), app_addr) != FIH_TRUE) {
+            if (flash_device_base(rsp->br_flash_dev_id, &flash_base) != 0) {
+                return false;
+            }
+
+            if (fih_uint_eq(calc_app_addr(flash_base, rsp), app_addr) != FIH_TRUE) {
                 return false;
             }
 
@@ -238,7 +285,7 @@ int main(void)
 
 
     if (rc != CY_RSLT_SUCCESS) {
-        CY_ASSERT(false);
+        CY_ASSERT((bool)0);
         /* Loop forever... */
         while (true) {
             __WFI();
@@ -274,7 +321,7 @@ int main(void)
                              CY_RETARGET_IO_BAUDRATE);
 
     if (rc != CY_RSLT_SUCCESS) {
-        CY_ASSERT(false);
+        CY_ASSERT((bool)0);
         /* Loop forever... */
         while (true) {
             __WFI();
@@ -303,7 +350,7 @@ int main(void)
         /* Check service application completion status */
         if (check_service_app_status() != 0) {
             BOOT_LOG_ERR("Service application failed");
-            CY_ASSERT(false);
+            CY_ASSERT((bool)0);
             /* Loop forever... */
             while (true) {
                 __WFI();

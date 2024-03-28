@@ -18,7 +18,8 @@ echo_run() { echo "\$ ${@/eval/}" ; "$@" ; }
 # 8. path to policy
 # 9. default application slot size
 # 10. enable encryption
-# 11. service application descriptor address
+# 11. platform (CYW20829 or CYW89829)
+# 12. service application descriptor address
 
 # Combined image configuration
 LCS=$1
@@ -86,7 +87,9 @@ else
     ENC_OPTION=""
 fi
 
-SERVICE_APP_DESCR_ADDR=${11}
+TARGET_PLATFORM=${11}
+
+SERVICE_APP_DESCR_ADDR=${12}
 : ${SERVICE_APP_DESCR_ADDR:=0x0}
 
 ######################## Validate Input Args #################################
@@ -338,7 +341,7 @@ elif [ "$LCS" == "SECURE" ]; then
 	fi
 
 	# Sign l1 user app L1_USER_APP_BIN_SIGN
-	cysecuretools -q -t cyw20829 -p $POLICY_PATH sign-image --image-format bootrom_next_app -i $L1_USER_APP_BIN -k 0 -o $L1_USER_APP_BIN_SIGN --slot-size $SLOT_SIZE --app-addr 0x08000030 $ENC_OPTION
+	cysecuretools -q -t $TARGET_PLATFORM -p $POLICY_PATH sign-image --image-format bootrom_next_app -i $L1_USER_APP_BIN -k 0 -o $L1_USER_APP_BIN_SIGN --slot-size $SLOT_SIZE --app-addr 0x08000030 $ENC_OPTION
 
 	if [ ! -f "$L1_USER_APP_BIN_SIGN" ]; then
 		echo "Error: $L1_USER_APP_BIN_SIGN has not been created." > /dev/tty

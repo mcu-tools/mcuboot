@@ -172,6 +172,14 @@ struct image_tlv {
 #define IS_RAM_BOOTABLE(hdr) (false)
 #endif
 
+/* boot_ram is outside of the define IS_RAM_BOOT_STAGE to avoid MISRA C-2012 Rule 8.5 violation */
+extern bool boot_ram;
+
+#define IS_RAM_BOOT_STAGE()   \
+    ({                        \
+        boot_ram;             \
+    })
+
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 

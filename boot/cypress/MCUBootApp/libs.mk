@@ -58,7 +58,7 @@ SOURCES_LIBS += $(SOURCES_HAL_MCUB)
 
 # MbedTLS related include directories
 ifeq ($(USE_CRYPTO_HW), 1)
-ifeq ($(PLATFORM), CYW20829)
+ifeq ($(FAMILY), CYW20829)
 # Override mbedtls/compat-2.x.h for Cryptolite CBUS workaround
 INCLUDE_DIRS_MBEDTLS += $(PRJ_DIR)/platforms/crypto/CYW20829
 endif

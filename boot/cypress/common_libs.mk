@@ -53,8 +53,10 @@ SOURCES_HAL += $(wildcard $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SU
 SOURCES_PLATFORM := $(wildcard $(PRJ_DIR)/platforms/BSP/$(FAMILY)/*.c)
 SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/security_counter/*.c)
 SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/security_counter/$(FAMILY)/*.c)
+ifneq ($(APP_NAME), BlinkyApp)
 SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/memory/*.c)
 SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/memory/$(FAMILY)/*.c)
+endif
 ifeq ($(USE_EXTERNAL_FLASH), 1)
 SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/memory/external_memory/*.c)
 SOURCES_PLATFORM += $(wildcard $(PRJ_DIR)/platforms/memory/$(FAMILY)/flash_qspi/*.c)

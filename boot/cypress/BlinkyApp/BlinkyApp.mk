@@ -34,6 +34,7 @@ COMPILER ?= GCC_ARM
 IMG_TYPE ?= BOOT
 IMG_ID ?= 1
 USE_HW_KEY ?= 0
+DISABLE_WDT_FREE ?= 0
 
 # image type can be BOOT or UPGRADE
 IMG_TYPES = BOOT UPGRADE
@@ -45,9 +46,9 @@ CUR_APP_PATH = $(PRJ_DIR)/$(APP_NAME)
 # TODO: optimize here and in MCUBootApp.mk
 # Output folder
 ifeq ($(IMG_ID), 1)
-        OUT := $(APP_NAME)/out
+        OUT ?= $(APP_NAME)/out
 else
-        OUT := $(APP_NAME)/out.id$(IMG_ID)
+        OUT ?= $(APP_NAME)/out.id$(IMG_ID)
 endif
 
 # Output folder to contain build artifacts
@@ -86,7 +87,7 @@ endif
 include $(PRJ_DIR)/common_libs.mk
 
 #Blinky Release XIP mode workaround
-ifneq ($(PLATFORM), CYW20829)
+ifneq ($(FAMILY), CYW20829)
 ifeq ($(BUILDCFG), Release)
 ifeq ($(USE_EXTERNAL_FLASH), 1)
 CFLAGS_OPTIMIZATION := -Og -g3
@@ -233,11 +234,8 @@ endif
 endif
 
 # Overwite path to linker script if custom is required, otherwise default from BSP is used
-ifeq ($(COMPILER), GCC_ARM)
+
 LINKER_SCRIPT := $(CUR_APP_PATH)/linker/$(APP_NAME).ld
-else
-$(error Only GCC ARM is supported at this moment)
-endif
 
 ASM_FILES_APP :=
 ASM_FILES_APP += $(ASM_FILES_STARTUP)
@@ -277,6 +275,11 @@ endif
 
 $(info $(SIGN_ARGS))
 
+# Disble wdt free hal call
+ifneq ($(DISABLE_WDT_FREE), 0)
+DEFINES_APP += -DISABLE_WDT_FREE
+endif
+
 pre_build:
 	$(info [PRE_BUILD] - Generating linker script for application $(CUR_APP_PATH)/linker/$(APP_NAME).ld)
 	@$(CC) -E -x c $(CFLAGS) $(INCLUDE_DIRS) $(CUR_APP_PATH)/linker/$(APP_NAME)_$(CORE)_template$(LD_SUFFIX).ld | grep -v '^#' >$(CUR_APP_PATH)/linker/$(APP_NAME).ld
@@ -298,6 +301,7 @@ $(info CONFIRM <-- $(CONFIRM))
 $(info CURDIR <-- $(CURDIR))
 $(info CUR_APP_PATH <-- $(CUR_APP_PATH))
 $(info DEFINES_APP --> $(DEFINES_APP))
+$(info DISABLE_WDT_FREE <-- $(DISABLE_WDT_FREE))
 $(info ENC_IMG --> $(ENC_IMG))
 $(info ERASED_VALUE <-> $(ERASED_VALUE))
 $(info FAMILY <-- $(FAMILY))

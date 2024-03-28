@@ -126,7 +126,7 @@ static int write(uint8_t fa_device_id, uintptr_t addr, const void *src, uint32_t
                     rc = 0;
                 }
 
-                row_addr += (uint32_t) CY_FLASH_SIZEOF_ROW;
+                row_addr += CY_FLASH_SIZEOF_ROW;
                 row_ptr = row_ptr + CY_FLASH_SIZEOF_ROW / 4U;
             }
 
@@ -164,7 +164,7 @@ static int erase(uint8_t fa_device_id, uintptr_t addr, uint32_t len)
 
         while (row_number != 0u) {
             row_number--;
-            row_addr = row_start_addr + row_number * (uint32_t) CY_FLASH_SIZEOF_ROW;
+            row_addr = row_start_addr + (row_number * CY_FLASH_SIZEOF_ROW);
             if (Cy_Flash_EraseRow(row_addr) != CY_FLASH_DRV_SUCCESS) {
                 rc = BOOT_EFLASH;
                 break;

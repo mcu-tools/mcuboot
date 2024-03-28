@@ -40,6 +40,7 @@ settings_dict = {
     ,   'bootloader_app_size'       :   'BOOTLOADER_SIZE'
     ,   'bootloader_ram_address'    :   'BOOTLOADER_RAM_ORIGIN'
     ,   'bootloader_ram_size'       :   'BOOTLOADER_RAM_SIZE'
+    ,   'bootloader_area'           :   'BOOTLOADER_AREA'
     ,   'application_count'         :   'MCUBOOT_IMAGE_NUMBER'
     ,   'boot_image'                :   'BOOT_IMAGE_NUMBER'
     ,   'sectors_count'             :   'MAX_IMG_SECTORS'
@@ -47,19 +48,27 @@ settings_dict = {
     ,   'image_ram_address'         :   'IMG_RAM_ORIGIN'
     ,   'image_ram_size'            :   'IMG_RAM_SIZE'
     ,   'primary_image_start'       :   'PRIMARY_IMG_START'
+    ,   'primary_image_area'        :   'PRIMARY_IMG_AREA'
     ,   'secondary_image_start'     :   'SECONDARY_IMG_START'
+    ,   'secondary_image_area'      :   'SECONDARY_IMG_AREA'
     ,   'image_size'                :   'SLOT_SIZE'
 }
 
 def header_guard_generate(file):
+    '''
+        Header quard generation
+    '''
     file.write('/* AUTO-GENERATED FILE, DO NOT EDIT.'
                     ' ALL CHANGES WILL BE LOST! */\n')
     file.write("#pragma once\n\n")
 
-def is_overlap(x : int, y : int) -> bool:
-    if x.start == x.stop or y.start == y.stop:
+def is_overlap(x_region, y_region) -> bool:
+    '''
+        Check if memory regions are overlapped
+    '''
+    if x_region.start == x_region.stop or y_region.start == y_region.stop:
         return False
-    return x.start < y.stop and y.start < x.stop
+    return x_region.start < y_region.stop and y_region.start < x_region.stop
 
 def is_aligned(addr : int, sz : int) -> bool:
     ''' Check address alignment '''
@@ -82,7 +91,8 @@ class Memory:
 
     def fits_with(self, other) -> bool:
         '''
-
+            Checks if "self" belongs "other".
+            @return True, if "self" fits into "other".
         '''
         return \
             self.addr >= other.addr and \
@@ -90,11 +100,11 @@ class Memory:
 
 class MemoryRegion(Memory):
     ''' Memory region handler '''
-    def __init__(self, addr, sz, erase_sz, erase_val, type):
+    def __init__(self, addr, sz, erase_sz, erase_val, mem_type):
         super().__init__(addr, sz)
-        self.erase_sz   : int   = erase_sz
-        self.erase_val  : int   = erase_val
-        self.type               = type
+        self.erase_sz           : int       = erase_sz
+        self.erase_val          : int       = erase_val
+        self.mem_type           : [str]     = mem_type
 
 class BootloaderLayout:
     '''
@@ -143,7 +153,8 @@ class BootloaderLayout:
                 self.core_name = core
 
         except KeyError as key:
-            print('Malformed JSON:', key, 'is missing')
+            print('Malformed JSON:', key, 'is missing', file=sys.stderr)
+            sys.exit(-3)
 
 class MemoryAreaConfig:
     '''
@@ -211,19 +222,21 @@ class MemoryMap:
         General handler
     '''
     def __init__(self):
-        self.boot_layout    : BootloaderLayout      = None
-        self.regions        : MemoryRegion          = []
-        self.region_types   : str                   = []
-        self.apps           : ApplicationLayout     = []
-        self.primary_slots  : str                   = []
-        self.secondary_slots: str                   = []
-        self.mem_areas      : MemoryAreaConfig      = []
-        self.param_dict                             = {}
-        self.map_json       : json                  = None
-        self.platform_json  : json                  = None
-        self.output_folder                          = None
-        self.output_name                            = None
-        self.max_sectors                            = 32
+        self.boot_layout        : BootloaderLayout      = None
+        self.regions            : MemoryRegion          = []
+        self.region_types       : str                   = []
+        self.region_types_alt   : str                   = []
+        self.apps               : ApplicationLayout     = []
+        self.app_id             : int                   = None
+        self.primary_slots      : str                   = []
+        self.secondary_slots    : str                   = []
+        self.mem_areas          : MemoryAreaConfig      = []
+        self.param_dict                                 = {}
+        self.map_json           : json                  = None
+        self.platform_json      : json                  = None
+        self.output_folder                              = None
+        self.output_name                                = None
+        self.max_sectors                                = 32
 
     def __apps_init(self):
         for image_number in range(1, APP_LIMIT):
@@ -243,21 +256,28 @@ class MemoryMap:
         self.boot_layout.parse(self.map_json['bootloader'])
 
     def __memory_regions_init(self):
+        '''
+            Parser for "platform.json".
+            It fills memory_regions.
+        '''
         memory_regions = self.platform_json['memory_regions']
+
+        # it's critical to use 'regions' here!
+        # If not, please align the code with enum generation in the __header_gen()
         for region in memory_regions:
             try:
                 addr        = int(region['address'], 0)
                 size        = int(region['size'], 0)
                 erase_size  = int(region['erase_size'], 0)
                 erase_value = int(region['erase_value'], 0)
-                type        = str(region['type'])
+                mem_type    = region['mem_type'] if isinstance(region['mem_type'],\
+                                    list) else [region['mem_type']]
 
-                if type not in self.region_types:
-                    self.region_types.append(type)
+                self.regions.append(MemoryRegion(addr, size, erase_size, erase_value, mem_type))
 
-                self.regions.append(MemoryRegion(addr, size, erase_size, erase_value, type))
             except KeyError as key:
-                print('Malformed JSON:', key, 'is missing')
+                print('Malformed JSON:', key, 'is missing', file=sys.stderr)
+                sys.exit(-2)
 
         # Check regions for overlap
         for this in self.regions:
@@ -281,7 +301,13 @@ class MemoryMap:
 
         region_id = self.__memory_area_find_region_id(area)
         region = self.regions[region_id]
-        region_name = region.type
+        region_name = region.mem_type[0]
+        region_name_alt = region.mem_type[1] if len(region.mem_type) > 1 else None
+
+        if region_name_alt:
+            if "boot" in key:
+                if region_name_alt not in self.region_types_alt:
+                    self.region_types_alt.append(region_name_alt)
 
         offset = area.addr - region.addr
         size = area.sz
@@ -292,6 +318,9 @@ class MemoryMap:
                                        size)
 
         self.mem_areas.append(area_config)
+
+        if region_name not in self.region_types:
+            self.region_types.append(region_name)
 
         # Update max sectors
         slot_sectors = int((offset % region.erase_sz +
@@ -350,6 +379,9 @@ class MemoryMap:
             self.__memory_area_config_create(key)
 
     def __source_gen(self):
+        '''
+            C-file generation, file name and path must be given by script user
+        '''
         path = f'{self.output_folder}/{self.output_name}.c'
         include = f'{self.output_name}.h'
 
@@ -359,13 +391,14 @@ class MemoryMap:
             f_out.write('struct flash_device flash_devices[] =\n')
             f_out.write('{\n')
             for region in self.regions:
-                f_out.write('\t{\n')
-                f_out.write(f'\t\t.address      = {hex(region.addr)}U,\n')
-                f_out.write(f'\t\t.size         = {hex(region.sz)}U,\n')
-                f_out.write(f'\t\t.erase_size   = {hex(region.erase_sz)}U,\n')
-                f_out.write(f'\t\t.erase_val    = {hex(region.erase_val)}U,\n')
-                f_out.write(f'\t\t.device_id    = {str(region.type)},\n')
-                f_out.write('\t},\n')
+                if region.mem_type[0] in self.region_types:
+                    f_out.write(f'\t[{region.mem_type[0]}] = ' + '{\n')
+                    f_out.write(f'\t\t.address      = {hex(region.addr)}U,\n')
+                    f_out.write(f'\t\t.size         = {hex(region.sz)}U,\n')
+                    f_out.write(f'\t\t.erase_size   = {hex(region.erase_sz)}U,\n')
+                    f_out.write(f'\t\t.erase_val    = {hex(region.erase_val)}U,\n')
+                    f_out.write(f'\t\t.device_id    = {str(region.mem_type[0])},\n')
+                    f_out.write('\t},\n')
             f_out.write('};\n\n')
 
             f_out.write(f'struct flash_area flash_areas[] =\n')
@@ -387,16 +420,26 @@ class MemoryMap:
             f_out.write('\tNULL\n};\n\n')
 
             f_out.write('uint8_t memory_areas_primary[] =\n')
-            f_out.write('{\n')
+            f_out.write('{')
             for slot in self.primary_slots:
-                f_out.write(f'\t{slot}, ')
+                f_out.write(f'\n\t{slot}, ')
             f_out.write('\n};\n\n')
 
             f_out.write('uint8_t memory_areas_secondary[] =\n')
-            f_out.write('{\n')
+            f_out.write('{')
             for slot in self.secondary_slots:
-                f_out.write(f'\t{slot}, ')
+                f_out.write(f'\n\t{slot}, ')
             f_out.write('\n};\n\n')
+
+            f_out.write('image_boot_config_t image_boot_config[BOOT_IMAGE_NUMBER] = {\n')
+            for app in self.apps:
+                f_out.writelines('\n'.join([
+                    '\t{\n'
+                    f"\t\t.mode     = {'IMAGE_BOOT_MODE_RAM'    if app.has_ram_boot else 'IMAGE_BOOT_MODE_FLASH'},",
+                    f"\t\t.address  = {hex(app.ram_boot.addr)   if app.has_ram_boot else hex(app.boot_area.addr)},",
+                    f"\t\t.size     = {hex(app.ram_boot.sz)     if app.has_ram_boot else hex(app.boot_area.sz)},",
+                    '\t},\n']))
+            f_out.write('};\n')
 
     def __header_gen(self):
         path = f'{self.output_folder}/{self.output_name}.h'
@@ -404,6 +447,7 @@ class MemoryMap:
             header_guard_generate(f_out)
 
             f_out.write(f'#include <stdint.h>\n')
+            f_out.write('#include "bootutil/bootutil.h"\n')
             f_out.write(f'#include "flash_map_backend.h"\n\n')
             f_out.write(f'#define MEMORYMAP_GENERATED_AREAS 1\n\n')
             f_out.write('extern struct flash_device flash_devices[];\n')
@@ -412,8 +456,12 @@ class MemoryMap:
             f_out.write('extern uint8_t memory_areas_secondary[];\n\n')
 
             f_out.write('enum \n{\n')
-            for id, type in enumerate(self.region_types):
-                f_out.write(f'\t{type} = {id}U,\n')
+
+            # it's critical to use 'regions' here!
+            # because it fixes the bug when enum {INTERNAL_RRAM, EXTERNAL_FLASH,}
+            # is generated in incorrect sequence.
+            for region in self.regions:
+                    f_out.write(f'\t{str(region.mem_type[0])},\n')
             f_out.write('};\n\n')
 
             f_out.write('enum \n{\n')
@@ -421,18 +469,38 @@ class MemoryMap:
                 f_out.write(f'\t{area_param[1]} = {area_param[2]}U,\n')
             f_out.write('};\n\n')
 
+            f_out.write('typedef enum \n{\n')
+            f_out.write('\tIMAGE_BOOT_MODE_FLASH = 0U,\n')
+            f_out.write('\tIMAGE_BOOT_MODE_RAM = 1U,\n')
+            f_out.write('} image_boot_mode_t;\n\n')
+
+            f_out.write('typedef struct image_boot_config_s \n{\n')
+            f_out.write('\timage_boot_mode_t mode;\n')
+            f_out.write('\tuint32_t address;\n')
+            f_out.write('\tuint32_t size;\n')
+            f_out.write('} image_boot_config_t;\n\n')
+
+            f_out.write('extern image_boot_config_t image_boot_config[BOOT_IMAGE_NUMBER];\n\n')
+
     def __bootloader_mk_file_gen(self):
         boot = self.boot_layout
+
+        for mem_type in self.region_types:
+            print(f'USE_{mem_type} := 1')
+
+        for mem_type in self.region_types_alt:
+            print(f'USE_{mem_type} := 1')
+
         # Upgrade mode
         if boot.scratch_area is None and boot.status_area is None:
             print(settings_dict['overwrite'], ':= 1')
         else:
-            print(settings_dict['overwrite'], ':= 0')
             print(settings_dict['swap'], ':= 1')
             print(settings_dict['scratch'], f':= {0 if boot.scratch_area is None else 1}')
             print(settings_dict['status'], f':= {0 if boot.status_area is None else 1}')
-        print('# Shared data')
+
         if boot.shared_data is not None:
+            print('# Shared data')
             shared_data = boot.shared_data
             print(settings_dict['measured_boot'], ':= 1')
             print(settings_dict['data_sharing'], ':= 1')
@@ -442,25 +510,30 @@ class MemoryMap:
             print(f'{settings_dict["shared_data_record_size"]} :=', hex(shared_data.sz))
 
         print('# Bootloader app area')
+        for region in self.regions:
+            if boot.bootloader_area.fits_with(region):
+                print(f'{settings_dict["bootloader_area"]} :=', str(region.mem_type[0]))
+                break
+
         print(f'{settings_dict["bootloader_app_address"]} :=', hex(boot.bootloader_area.addr))
         print(f'{settings_dict["bootloader_app_size"]} :=', hex(boot.bootloader_area.sz))
 
-        print('# Bootloader ram area')
         if boot.ram is not None:
+            print('# Bootloader ram area')
             print(f'{settings_dict["bootloader_ram_address"]} :=', hex(boot.ram.addr))
             print(f'{settings_dict["bootloader_ram_size"]} :=', hex(boot.ram.sz))
 
         print('# Application area')
-        for id, app in enumerate(self.apps):
-            print(f'APPLICATION_{id+1}_BOOT_SLOT_ADDRESS := {hex(app.boot_area.addr)}')
-            print(f'APPLICATION_{id+1}_BOOT_SLOT_SIZE := {hex(app.boot_area.sz)}')
-            print(f'APPLICATION_{id+1}_UPGRADE_SLOT_ADDRESS := {hex(app.upgrade_area.addr)}')
-            print(f'APPLICATION_{id+1}_UPGRADE_SLOT_SIZE := {hex(app.upgrade_area.sz)}')
+        for img_id, app in enumerate(self.apps):
+            print(f'APPLICATION_{img_id+1}_BOOT_SLOT_ADDRESS := {hex(app.boot_area.addr)}')
+            print(f'APPLICATION_{img_id+1}_BOOT_SLOT_SIZE := {hex(app.boot_area.sz)}')
+            print(f'APPLICATION_{img_id+1}_UPGRADE_SLOT_ADDRESS := {hex(app.upgrade_area.addr)}')
+            print(f'APPLICATION_{img_id+1}_UPGRADE_SLOT_SIZE := {hex(app.upgrade_area.sz)}')
 
-        print('# Ram load')
         # Ram load single
         if len(self.apps) == 1:
             if self.apps[0].ram_boot is not None:
+                print('# Ram load')
                 ram_boot = self.apps[0].ram_boot
                 print(settings_dict['ram_load'], ':= 1')
                 print(f'{settings_dict["ram_load_address"]} :=', hex(ram_boot.addr))
@@ -477,13 +550,13 @@ class MemoryMap:
                     if app1.overlaps_with(app2):
                         ram_addr_overlap_counter += 1
 
-            for id, app in enumerate(self.apps):
+            for img_id, app in enumerate(self.apps):
                 if app.ram_boot is not None:
                     ram_boot_counter += 1
                     ram_boot = app.ram_boot
 
-                    print(f'APPLICATION_{id+1}_RAM_LOAD_ADDRESS := {hex(ram_boot.addr)}')
-                    print(f'APPLICATION_{id+1}_RAM_LOAD_SIZE := {hex(ram_boot.sz)}')
+                    print(f'APPLICATION_{img_id+1}_RAM_LOAD_ADDRESS := {hex(ram_boot.addr)}')
+                    print(f'APPLICATION_{img_id+1}_RAM_LOAD_SIZE := {hex(ram_boot.sz)}')
 
             if ram_boot_counter != 0:
                 print(settings_dict['ram_load'], ':= 1')
@@ -494,8 +567,15 @@ class MemoryMap:
         print('# Mcuboot')
         print(settings_dict['application_count'], f'= {len(self.apps)}')
         print(settings_dict['sectors_count'], f'= {self.max_sectors}')
+        print('\n',settings_dict['application_count'], f'= {len(self.apps)}', file=sys.stderr)
 
     def __application_mk_file_gen(self):
+        for mem_type in self.region_types:
+            print(f'USE_{mem_type} := 1')
+
+        for mem_type in self.region_types_alt:
+            print(f'USE_{mem_type} := 1')
+
         app = self.apps[self.app_id-1]
         boot = self.boot_layout
         # Upgrade mode
@@ -512,8 +592,17 @@ class MemoryMap:
         print(settings_dict['primary_image_start'], ':=', hex(app.boot_area.addr))
         print(settings_dict['secondary_image_start'], ':=', hex(app.upgrade_area.addr))
         print(settings_dict['image_size'], ':=', hex(app.boot_area.sz))
+
+        for region in self.regions:
+            if app.boot_area.fits_with(region):
+                print(settings_dict['primary_image_area'], ':=', str(region.mem_type[0]))
+            if app.upgrade_area.fits_with(region):
+                print(settings_dict['secondary_image_area'], ':=', str(region.mem_type[0]))
+
         if app.ram_boot:
             print(settings_dict['ram_load'], ':= 1')
+            print(settings_dict['image_ram_address'], ':=',  hex(app.ram_boot.addr))
+            print(settings_dict['image_ram_size'], ':=',  hex(app.ram_boot.sz))
         if app.ram:
             print(settings_dict['image_ram_address'], ':=',  hex(app.ram.addr))
             print(settings_dict['image_ram_size'], ':=',  hex(app.ram.sz))
@@ -521,6 +610,9 @@ class MemoryMap:
             print(settings_dict['core'], ':=',  app.core_name)
 
     def parse(self, memory_map, platform_config, output_folder, output_name, app_id):
+        ''''
+            Parser to process memory maps, platform config and generation of all need files
+        '''
         try:
             with open(memory_map, "r", encoding='UTF-8') as f_in:
                 self.map_json = json.load(f_in)
@@ -539,10 +631,9 @@ class MemoryMap:
             self.__apps_init()
             self.__memory_areas_create()
 
-            self.__source_gen()
-            self.__header_gen()
-
             if app_id is None:
+                self.__source_gen()
+                self.__header_gen()
                 self.__bootloader_mk_file_gen()
             else:
                 self.__application_mk_file_gen()
@@ -571,8 +662,11 @@ def cli():
               help='application image number')
 
 def run(memory_config, platform_config, output_folder, output_name, image_id):
-    map = MemoryMap()
-    map.parse(memory_config,
+    ''''
+        The main method to be used by cli()
+    '''
+    imemmap = MemoryMap()
+    imemmap.parse(memory_config,
               platform_config,
               output_folder,
               output_name,

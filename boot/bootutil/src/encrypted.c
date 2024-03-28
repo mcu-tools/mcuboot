@@ -506,6 +506,7 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey, uint32_t sz, uint8_t *enci
     bootutil_aes_ctr_context aes_ctr;
     uint8_t salt[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t tag[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+    uint8_t info[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE] = "MCUBoot_ECIES_v1";
     uint8_t shared[SHARED_KEY_LEN];
     uint8_t derived_key[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE + BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE * 2];
     uint8_t *cp;
@@ -640,7 +641,7 @@ boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey, uint32_t sz, uint8_t *enci
     }
 
     out_len = len;
-    rc = hkdf(shared, SHARED_KEY_LEN, (const uint8_t *)"MCUBoot_ECIES_v1", BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE,
+    rc = hkdf(shared, SHARED_KEY_LEN, info, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE,
               my_salt, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE, derived_key, &out_len);
 
     if (rc != 0 || len != out_len) {

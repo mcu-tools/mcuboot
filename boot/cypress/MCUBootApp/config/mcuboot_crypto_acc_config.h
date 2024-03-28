@@ -27,7 +27,8 @@
 
 /* Only SHA256 is accelerated by Cryptolite */
 #define MBEDTLS_SHA256_ALT
-
+#define MBEDTLS_ECDSA_SIGN_ALT
+#define MBEDTLS_ECDSA_VERIFY_ALT
 #else
 
 /* Currently this target supports SHA1 */

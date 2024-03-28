@@ -36,6 +36,24 @@
 
 static uint8_t record_buff[BOOT_SWAP_STATUS_ROW_SZ];
 static uint8_t status_buff[BOOT_SWAP_STATUS_PAYLD_SZ];
+static const struct flash_area *last_fap_stat;
+static uint32_t last_fin_offset;
+
+static void status_buff_cache_inv(void) 
+{
+    last_fap_stat = NULL;
+}
+
+static void status_buff_cache_upd(const struct flash_area* fap, uint32_t offset) 
+{
+    last_fap_stat = fap;
+    last_fin_offset = offset;
+}
+
+static bool status_buff_cache_valid(const struct flash_area* fap, uint32_t offset) 
+{
+    return (last_fap_stat == fap) && (last_fin_offset == offset);
+}
 
 const uint32_t stat_part_magic[] = {
     BOOT_SWAP_STATUS_MAGIC
@@ -180,7 +198,10 @@ static int swap_status_read_record(uint32_t rec_offset, uint8_t *data, uint32_t 
         *max_idx = BOOT_SWAP_STATUS_MULT - 1U;
         *copy_counter = 0;
         /* return all erased values */
-        (void)memset(data, (int32_t)flash_area_erased_val(fap_stat), BOOT_SWAP_STATUS_PAYLD_SZ);
+        if (status_buff_cache_valid(fap_stat, fin_offset) == false) {
+            (void)memset(data, (int32_t)flash_area_erased_val(fap_stat), BOOT_SWAP_STATUS_PAYLD_SZ);
+            status_buff_cache_upd(fap_stat, fin_offset);
+        }
     }
     else {
         /* no valid CRC found - status pre-read failure */
@@ -191,6 +212,7 @@ static int swap_status_read_record(uint32_t rec_offset, uint8_t *data, uint32_t 
             *copy_counter = max_cnt;
             /* read payload data */
             rc = flash_area_read(fap_stat, data_offset, data, BOOT_SWAP_STATUS_PAYLD_SZ);
+            status_buff_cache_inv();
             if (rc != 0) {
                 rc = -1;
             }
@@ -330,6 +352,7 @@ int swap_status_update(uint8_t target_area_id, uint32_t offs, const void *data, 
         }
 
         (void)memcpy(status_buff + buff_idx, (const uint8_t *)data + data_idx, copy_sz);
+        status_buff_cache_inv();
         buff_idx = 0;
 
         /* write record back */

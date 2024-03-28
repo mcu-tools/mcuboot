@@ -18,6 +18,7 @@
 #if !(SWAP_DISABLED) && defined(UPGRADE_IMAGE)
 
 #include "set_img_ok.h"
+#include "flash_qspi.h"
 
 static uint8_t row_buff[FLASH_ROW_BUF_SZ];
 

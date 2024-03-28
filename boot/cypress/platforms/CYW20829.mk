@@ -36,7 +36,11 @@ CRYPTO_ACC_TYPE := MXCRYPTOLITE
 # MCU device selection, based on target device.
 # Default chips are used for supported platforms
 # This can be redefined in case of other chip usage
+ifeq ($(PLATFORM), CYW20829)
 DEVICE ?= CYW20829B0LKML
+else ifeq ($(PLATFORM), CYW89829)
+DEVICE ?= CYW89829B01MKSBG
+endif
 
 #Led pin default config
 LED_PORT_DEFAULT ?= GPIO_PRT0
@@ -50,10 +54,6 @@ PLATFORM_SUFFIX ?= cyw20829
 
 # Add device name to defines
 DEFINES += $(DEVICE)
-
-# A0 compatibility workaround
-DEFINES += CY_XIP_REMAP_OFFSET=0x08000000UL
-DEFINES += CY_SRAM0_REMAP_OFFSET=0x04000000UL
 
 # Default upgrade method
 PLATFORM_DEFAULT_USE_OVERWRITE ?= 0
@@ -146,8 +146,8 @@ endif
 post_build: $(OUT_CFG)/$(APP_NAME).elf
 ifeq ($(POST_BUILD_ENABLE), 1)
 	$(info [TOC2_Generate] - Execute toc2 generator script for $(APP_NAME))
-	@echo $(SHELL) $(PRJ_DIR)/run_toc2_generator.sh $(LCS) $(OUT_CFG) $(APP_NAME) $(APPTYPE) $(PROVISION_PATH) $(SMIF_CRYPTO_CONFIG) $(TOOLCHAIN_PATH) $(APP_DEFAULT_POLICY) $(BOOTLOADER_SIZE) $(ENC_IMG) $(PLATFORM_SERVICE_APP_DESC_OFFSET)
-	$(shell        $(PRJ_DIR)/run_toc2_generator.sh $(LCS) $(OUT_CFG) $(APP_NAME) $(APPTYPE) $(PROVISION_PATH) $(SMIF_CRYPTO_CONFIG) $(TOOLCHAIN_PATH) $(APP_DEFAULT_POLICY) $(BOOTLOADER_SIZE) $(ENC_IMG) $(PLATFORM_SERVICE_APP_DESC_OFFSET))
+	@echo $(SHELL) $(PRJ_DIR)/run_toc2_generator.sh $(LCS) $(OUT_CFG) $(APP_NAME) $(APPTYPE) $(PROVISION_PATH) $(SMIF_CRYPTO_CONFIG) $(TOOLCHAIN_PATH) $(APP_DEFAULT_POLICY) $(BOOTLOADER_SIZE) $(ENC_IMG) $(PLATFORM) $(PLATFORM_SERVICE_APP_DESC_OFFSET)
+	$(shell        $(PRJ_DIR)/run_toc2_generator.sh $(LCS) $(OUT_CFG) $(APP_NAME) $(APPTYPE) $(PROVISION_PATH) $(SMIF_CRYPTO_CONFIG) $(TOOLCHAIN_PATH) $(APP_DEFAULT_POLICY) $(BOOTLOADER_SIZE) $(ENC_IMG) $(PLATFORM) $(PLATFORM_SERVICE_APP_DESC_OFFSET))
 
 	# Convert binary to hex and rename
 	$(shell mv -f $(OUT_CFG)/$(APP_NAME).final.bin $(OUT_CFG)/$(APP_NAME).bin || rm -f $(OUT_CFG)/$(APP_NAME).bin)

@@ -488,7 +488,7 @@ struct bootsim_ram_info *bootsim_get_ram_info(void);
 #define LOAD_IMAGE_DATA(hdr, fap, start, output, size)                         \
     ({                                                                         \
         int rc;                                                                \
-        if (IS_RAM_BOOTABLE(hdr)) {                                            \
+        if (IS_RAM_BOOTABLE(hdr) && IS_RAM_BOOT_STAGE()) {                     \
             rc = LOAD_IMAGE_DATA_RAM((hdr), (fap), (start), (output), (size)); \
         } else {                                                               \
             rc = LOAD_IMAGE_DATA_FLASH((hdr), (fap), (start), (output),        \

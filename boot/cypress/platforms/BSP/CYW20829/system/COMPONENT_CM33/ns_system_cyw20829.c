@@ -1,6 +1,6 @@
 /***************************************************************************//**
-* \file ns_system_cyw20829.c
-* \version 1.1
+* \file system_cyw20829.c
+* \version 1.3
 *
 * The device system-source file.
 *
@@ -26,8 +26,9 @@
 #include "cy_device.h"
 
 #if defined (CY_DEVICE_CYW20829)
+
 #include <stdbool.h>
-#include "system_cyw20829.h"
+#include "system_cat1b.h"
 #include "cy_syslib.h"
 #include "cy_wdt.h"
 #include "cy_sysclk.h"
@@ -114,9 +115,10 @@ void bootstrapInit(void)
 
 void SystemInit_CAT1B_CM33(void)
 {
-    /* Release reset for all groups IP except group 0 */
+    /* Release reset for all groups IP except group 0 and group 3 */
     (void)Cy_SysClk_PeriGroupSetSlaveCtl(1, CY_SYSCLK_PERI_GROUP_SL_CTL2, 0x0U); /* typecast void to suppress a compiler warning about unused return value */
     (void)Cy_SysClk_PeriGroupSetSlaveCtl(2, CY_SYSCLK_PERI_GROUP_SL_CTL2, 0x0U); /* typecast void to suppress a compiler warning about unused return value */
+    (void)Cy_SysClk_PeriGroupSetSlaveCtl(3, CY_SYSCLK_PERI_GROUP_SL_CTL2, 0x1U); /* typecast void to suppress a compiler warning about unused return value */
 
     (void)Cy_SysClk_PeriGroupSetSlaveCtl(1, CY_SYSCLK_PERI_GROUP_SL_CTL, 0xFFFFFFFFU); /* typecast void to suppress a compiler warning about unused return value */
     (void)Cy_SysClk_PeriGroupSetSlaveCtl(2, CY_SYSCLK_PERI_GROUP_SL_CTL, 0xFFFFFFFFU); /* typecast void to suppress a compiler warning about unused return value */
@@ -124,20 +126,6 @@ void SystemInit_CAT1B_CM33(void)
 
     Cy_PDL_Init(CY_DEVICE_CFG);
     (void)Cy_SystemInit(); /* typecast void to suppress a compiler warning about unused return value */
-
-    if(CY_SYSPM_WARM_BOOT_MODE == Cy_SysPm_GetBootMode())
-    {
-        /* Unfreeze the IO's which are frozen during DEEPSLEEP-RAM and DEEPSLEEP-OFF Entry */
-        if(Cy_SysPm_DeepSleepIoIsFrozen())
-        {
-            Cy_SysPm_DeepSleepIoUnfreeze();
-        }
-    }
-    else
-    {
-        /* Reset BT IP only during cold boot */
-        (void)Cy_SysClk_PeriGroupSetSlaveCtl(3, CY_SYSCLK_PERI_GROUP_SL_CTL2, 0x0U); /* typecast void to suppress a compiler warning about unused return value */
-    }
 
     /* Unlock and disable WDT */
     Cy_WDT_Unlock();
@@ -170,6 +158,8 @@ void SystemInit_Warmboot_CAT1B_CM33()
     {
         Cy_SysPm_DeepSleepIoUnfreeze();
     }
+
+    cy_WakeupFromWarmBootStatus = true;
 }
 CY_SECTION_RAMFUNC_END
 
@@ -188,6 +178,7 @@ uint32_t scbSHPR3StoreRestore;
 * Stores the NVIC register before Deepsleep RAM:
 *
 *******************************************************************************/
+CY_SECTION_RAMFUNC_BEGIN
 void System_Store_NVIC_Reg(void)
 {
     for (uint32_t idx = 0; idx < CY_NVIC_REG_COUNT; idx++)
@@ -202,6 +193,7 @@ void System_Store_NVIC_Reg(void)
 
     scbSHPR3StoreRestore = SCB_SHPR3_REG;
 }
+CY_SECTION_RAMFUNC_END
 
 
 /*******************************************************************************
@@ -211,6 +203,7 @@ void System_Store_NVIC_Reg(void)
 * Restores the NVIC register After Deepsleep RAM Wakeup i.e. Warmboot:
 *
 *******************************************************************************/
+CY_SECTION_RAMFUNC_BEGIN
 void System_Restore_NVIC_Reg(void)
 {
     for (uint32_t idx = 0; idx < CY_NVIC_REG_COUNT; idx++)
@@ -225,8 +218,17 @@ void System_Restore_NVIC_Reg(void)
 
     SCB_SHPR3_REG = scbSHPR3StoreRestore;
 }
+CY_SECTION_RAMFUNC_END
+
 void SystemInit(void)
 {
+
+    #ifdef CY_PDL_FLASH_BOOT
+    #if !defined (__ARMCC_VERSION)
+        bootstrapInit();
+    #endif
+    #endif
+
     SystemInit_CAT1B_CM33();
 };
 

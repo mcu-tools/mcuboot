@@ -2,7 +2,7 @@
 
 ### Solution description
 
-This solution demonstrates the operation of MCUboot on Cypress PSoC™ 6 and CYW20829 devices.
+This solution demonstrates the operation of MCUboot on Cypress PSoC™ 6 and CYWxx829 devices.
 
 * Single-/Multi-image operation modes
 * Overwrite/Swap upgrade modes
@@ -11,12 +11,13 @@ This solution demonstrates the operation of MCUboot on Cypress PSoC™ 6 and CYW
 * Revert bad upgrade images
 * Secondary slots located in external flash
 
-This demo supports PSoC™ 6 chips with the 1M-, 2M-, and 512K-flash on board, and the CYW20829 chip with no internal flash.
+This demo supports PSoC™ 6 chips with the 1M-, 2M-, and 512K-flash on board; XMC7200, XMC7100; CYW20829/CYW89829 chips with no internal flash.
 The evaluation kits are:
 * `CY8CPROTO-062-4343W`
 * `CY8CKIT-062-WIFI-BT`
 * `CY8CPROTO-062S3-4343W`
 * `CYW920829M2EVB-01`
+* `CYW989829M2EVB-01`
 * `CYBLE-416045-EVAL`
 * `CY8CPROTO-063-BLE`
 * `CY8CKIT-062-BLE`
@@ -37,7 +38,7 @@ The flash map of the bootloader is defined at compile-time and cannot be changed
 The actual addresses are provided in corresponding platform doc files:
 
 - [PSOC6.md](../platforms/PSOC6.md)
-- [CYW20289.md](../platforms/CYW20829.md)
+- [CYW20829.md](../platforms/CYW20829.md)
 
 #### How to modify the flash map
 
@@ -193,7 +194,7 @@ If the main application image is located in the external flash, `XIP` (eXecute I
     . . .
 ```
 ###### Service RAM Application
-The CYW20829 platform has a hardware-supported security counter. For more details on rollback protection support, refer to the [CYW20289.md](../platforms/CYW20829.md) file.
+The CYW20829/CYW89829 platforms has a hardware-supported security counter. For more details on rollback protection support, refer to the [CYW20829.md](../platforms/CYW20829.md) file.
 The mentioned feature requires a dedicated area in the flash memory to store the Service RAM Application and other required data. The layout of these areas is defined in the `"service_app"` JSON section:
 
 ```
@@ -407,15 +408,15 @@ RAM areas in the MCUBootApp bootloader application and BlinkyApp are defined as 
 
 The MCUBootApp linker script also contains the special section `public_ram`, which serves as a shared RAM area between the CM0p and CM4 cores. When CM4 and CM0p cores perform operations with internal flash, this area is used for interprocessor data sharing.
 
-#### CYW20829 RAM
+#### CYW20829/CYW89829 RAM
 
-Only one CM33 core is used in the CYW20829 chips, so there are no restrictions for the RAM usage by the layer1 and layer2 applications (i.e. MCUBootApp and BlinkyApp).
+Only one CM33 core is used in the CYW89829/CYW89829 chips, so there are no restrictions for the RAM usage by the layer1 and layer2 applications (i.e. MCUBootApp and BlinkyApp).
 
 ### Hardware cryptography acceleration
 
 Cypress PSoC™ 6 MCU family supports hardware acceleration of the cryptography based on the mbedTLS Library via a shim layer. The implementation of this layer is supplied as the separate submodule `cy-mbedtls-acceleration`. The hardware acceleration of the cryptography shortens the boot time by more than four times compared to the software implementation (observation results).
 
-The CYW20289 chip has hardware acceleration of the SHA256 algorithm only, and in other cases, uses pure software implementation of the cryptography based on MbedTLS.
+The CYW20829/CYW89829 chips has hardware acceleration of the SHA256 algorithm only, and in other cases, uses pure software implementation of the cryptography based on MbedTLS.
 
 To enable the hardware acceleration in `MCUBootApp`, pass flag `USE_CRYPTO_HW=1` to `make` during the build.
 
@@ -632,15 +633,15 @@ Additionally, users can configure hardware rollback protection on the supported 
 
 `USE_HW_ROLLBACK_PROT` `make` flag is set to 1 in auto-generated `memorymap.mk`. 
 
-The rollback protection feature is currently supported on CYW20829 devices in Secure mode only.
+The rollback protection feature is currently supported on CYW20829/CYW89829 devices in Secure mode only.
 
 ### Building solution
 
 Folder `boot/cypress` contains make-files infrastructure for building MCUBootApp bootloader applications. Example build commands are provided later in this document for different build configurations.
 
-Toolchain is set by default in `toolchains.mk` file, depending on `COMPILER` makefile variable. MCUBoot is currently support only `GCC_ARM` as compiler. Toolchain path can be redefined, by setting `TOOLCHAIN_PATH` build flag to desired toolchain path. Below is an example on how to set toolchain path from **ModusToolbox™ IDE 3.0**:
+Toolchain is set by default in `toolchains.mk` file, depending on `COMPILER` makefile variable. MCUBoot is currently support only `GCC_ARM` as compiler. Toolchain path can be redefined, by setting `TOOLCHAIN_PATH` build flag to desired toolchain path. Below is an example on how to set toolchain path from **ModusToolbox™ IDE**:
 
-    make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/${USERNAME}/ModusToolbox/tools_3.0/gcc
+    make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/${USERNAME}/ModusToolbox/tools_3.2/gcc
 
 * Build MCUBootApp in the `Debug` configuration for Single-image mode with swap upgrade.
 
@@ -702,14 +703,14 @@ To protect firmware content from reading, plain binary data can be encrypted. MC
 
 On PSoC™ 6, an upgrade image can be encrypted and then programmed to the corresponding Secondary slot of MCUBootApp. It is then decrypted and transferred to the primary slot using the preferred upgrade method. For more details on the encrypted image implementation, refer to the [PSOC6.md](../platforms/PSOC6.md) file.
 
-On CYW20829, an encrypted image is supported in both slots. The firmware here is located in external memory, so, the chip's SMIF block encrypted eXecution In Place (XIP) feature is used. Encrypted firmware is placed directly in the primary slot and is decrypted on the fly. The encrypted upgrade image is first validated by MCUBootApp in the secondary slot and then transferred to the primary slot as it is. For more details on the encrypted image implementation, refer to the [CYW20289.md](../platforms/CYW20829.md) file.
+On CYW20829/CYW89829, an encrypted image is supported in both slots. The firmware here is located in external memory, so, the chip's SMIF block encrypted eXecution In Place (XIP) feature is used. Encrypted firmware is placed directly in the primary slot and is decrypted on the fly. The encrypted upgrade image is first validated by MCUBootApp in the secondary slot and then transferred to the primary slot as it is. For more details on the encrypted image implementation, refer to the [CYW20829.md](../platforms/CYW20829.md) file.
 
 ### Rollback protection
 
 MCUboot supports the security counter implementation to provide downgrade prevention. This mechanism allows the user to explicitly restrict the possibility to execute/upgrade images whose security counters are less than the current firmware counter. So, it can be guaranteed, that obsolete firmware with possible vulnerabilities can not be executed on the device.
 
-**Currently, only the CYW20829 platform supports the hardware rollback counter protection.**
-For more details on the implementation, refer to the [CYW20289.md](../platforms/CYW20829.md) file.
+**Currently, only the CYW20829/CYW89829 platforms supports the hardware rollback counter protection.**
+For more details on the implementation, refer to the [CYW20829.md](../platforms/CYW20829.md) file.
 
 ### Complete build flags and parameters description
  
@@ -717,18 +718,18 @@ Can be passed to `make` or set in makefiles.
 
 `MCUBOOT_LOG_LEVEL` - Can be set at `MCUBOOT_LOG_LEVEL_DEBUG` to enable the verbose output of MCUBootApp.   
 `ENC_IMG` - When set to `1`, it enables the encrypted image support in MCUBootApp.   
-`APP_DEFAULT_POLICY` - The path to a policy file to use for signing MCUBootApp and user application (BlinkyApp) on the CYW20829 platform.   
+`APP_DEFAULT_POLICY` - The path to a policy file to use for signing MCUBootApp and user application (BlinkyApp) on the CYWxx829 platforms.   
 `USE_BOOTSTRAP` - When set to `1` and Swap mode is enabled, the application in the secondary slot will overwrite the primary slot if the primary slot application is invalid.   
-`USE_CRYPTO_HW` - When set to `1`, uses the hardware-accelerated cryptography on the PSoC™ 6 platform, and SHA-256 HW acceleration for the CYW20289 platform.   
-`LSC` - The lifecycle state of the chip. Possible options are `SECURE` and `NORMAL_NO_SECURE` (effective on CYW20829 chip only).   
+`USE_CRYPTO_HW` - When set to `1`, uses the hardware-accelerated cryptography on the PSoC™ 6 platform, and SHA-256 HW acceleration for the CYW20829/CYW89829 platforms.   
+`LSC` - The lifecycle state of the chip. Possible options are `SECURE` and `NORMAL_NO_SECURE` (effective on CYW20829/CYW89829 chips only).   
 `DEVICE` - is used to set a particular MPN for a platform since multiple MPNs are associated with one platform, for example:   
 `PLATFORM=PSOC_062_1M DEVICE=CY8C6347BZI-BLD53`   
 
 The next flags will be set by script in auto-generated makefile 'memorymap.mk':   
 `MCUBOOT_IMAGE_NUMBER` - The number of images to be supported by the current build of MCUBootApp.    
 `USE_OVERWRITE` - `0` - Use swap with Scratch upgrade mode, `1` - use Overwrite only upgrade.   
-`USE_EXTERNAL_FLASH` - When set to `1`, it enables the external memory support on the PSoC™ 6 platform. This value is always set to `1` on CYW20829.   
-`USE_HW_ROLLBACK_PROT` - When set to `1`, it enables the hardware rollback protection on the CYW20829 platform with Secure mode enabled.   
+`USE_EXTERNAL_FLASH` - When set to `1`, it enables the external memory support on the PSoC™ 6 platform. This value is always set to `1` on CYW20829 and CYW89829 platforms.   
+`USE_HW_ROLLBACK_PROT` - When set to `1`, it enables the hardware rollback protection on the CYW20829/CYW89829 platforms with Secure mode enabled.   
 
 Adding `clean` to `make` will clean the build folder, and files boot/cypress/MCUBootApp/memorymap.mk and boot/cypress/platforms/memory/memorymap.h will be removed and re-generated.   
 
@@ -738,7 +739,7 @@ The MCUBootApp firmware can be programmed in different ways.
 
 1. The direct usage of OpenOCD.
 
-The OpenOCD package is supplied with ModusToolbox™ IDE and can be found in the installation folder `ModusToolbox/tools_2.4/openocd`.
+The OpenOCD package is supplied with ModusToolbox™ IDE and can be found in the installation folder `ModusToolbox/tools_3.2/openocd`.
 
 Set environment variable `OPENOCD` to the path to the openocd folder in ModusToolbox™. Exact commands for programming images are provided in the corresponding platform readme files.
 

@@ -1,8 +1,8 @@
 /***************************************************************************//**
-* \file ns_start_cyw20829.c
-* \version 1.1
+* \file startup_cat1b_cm33.c
+* \version 1.2
 *
-* The cyw20829 startup source.
+* The CAT1B CM33 startup source.
 *
 ********************************************************************************
 * \copyright
@@ -24,82 +24,85 @@
 *******************************************************************************/
 
 #include "cy_device.h"
-#if defined (CY_DEVICE_CYW20829)
+
+#if defined (CY_IP_M33SYSCPUSS)
 
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
 
 #include "startup_cat1b.h"
-#include "cy_sysint.h"
-#include "cy_syspm.h"
 #include "cy_syslib.h"
 #include "cmsis_compiler.h"
 
-CY_MISRA_FP_BLOCK_START('MISRA C-2012 Rule 8.6', 3, \
-'Checked manually. The definition is a part of linker script or application.')
-CY_MISRA_DEVIATE_BLOCK_START('ARRAY_VS_SINGLETON', 1, \
-'Checked manually. Using pointer as an array will not corrupt or misinterpret adjacent memory locations.')
-CY_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 18.1', 3, \
-'Checked manually. Dereferencing a pointer to one beyond the end of an array will not result in undefined behaviour.')
-CY_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 18.3', 1, \
-'Checked manually. Attempting to make comparisons between pointers will not result in undefined behaviour.')
+/*----------------------------------------------------------------------------
+  External References
+ *----------------------------------------------------------------------------*/
+extern unsigned int __INITIAL_SP;
+extern unsigned int __STACK_LIMIT;
 
-#if defined (__ARMCC_VERSION)
-extern uint32_t Region$$Table$$Base;
-extern uint32_t Region$$Table$$Limit;
-typedef  void(*pGenericFunction)(uint8_t *pSrc, uint8_t* pDst, uint32_t len);     /* typedef for the generic function pointers */
+#if defined (__ARM_FEATURE_CMSE) && (__ARM_FEATURE_CMSE == 3U)
+extern uint32_t __STACK_SEAL;
 #endif
 
-__WEAK interrupt_type void Reset_Handler(void);
-interrupt_type void MemManage_Handler(void);
-interrupt_type void BusFault_Handler(void);
-interrupt_type void UsageFault_Handler(void);
-__WEAK interrupt_type void SVC_Handler(void);
-interrupt_type void DebugMon_Handler(void);
-__WEAK interrupt_type void PendSV_Handler(void);
-__WEAK interrupt_type void SysTick_Handler(void);
-interrupt_type void InterruptHandler(void);
-interrupt_type void NMIException_Handler(void);
-interrupt_type void HardFault_Handler(void);
-void delay_infinite(void);
-void SysLib_FaultHandler(uint32_t const *faultStackAddr);
-__WEAK void cy_toolchain_init(void);
-
-extern int main(void);
-
-#if defined (__ARMCC_VERSION)
-void __attribute__((optnone)) Cy_RuntimeInit(void);
-#else
-void Cy_RuntimeInit(void);
-#endif
+extern __NO_RETURN void __PROGRAM_START(void);
 
 #if defined(__ARMCC_VERSION)
-extern unsigned int Image$$ARM_LIB_STACK$$ZI$$Limit;            /* for (default) One Region model */
-interrupt_type extern void __main(void);
-typedef void(* ExecFuncPtrRw)(void) interrupt_type;
-ExecFuncPtrRw __ns_vector_table_rw[VECTORTABLE_SIZE] __attribute__( ( section(".bss.noinit.RESET_RAM"))) __attribute__((aligned(VECTORTABLE_ALIGN)));
+#if defined(CY_PDL_TZ_ENABLED)
+cy_israddress_cat1b __s_vector_table_rw[VECTORTABLE_SIZE] __attribute__( ( section(".bss.noinit.RESET_RAM"))) __attribute__((aligned(VECTORTABLE_ALIGN)));
+#else
+cy_israddress_cat1b __ns_vector_table_rw[VECTORTABLE_SIZE] __attribute__( ( section(".bss.noinit.RESET_RAM"))) __attribute__((aligned(VECTORTABLE_ALIGN)));
+#endif
 #elif defined (__GNUC__)
-extern unsigned int __StackTop;
-extern uint32_t __StackLimit;
-typedef void(* interrupt_type ExecFuncPtrRw)(void);
-ExecFuncPtrRw __ns_vector_table_rw[VECTORTABLE_SIZE]   __attribute__( ( section(".ram_vectors"))) __attribute__((aligned(VECTORTABLE_ALIGN)));
+#if defined(CY_PDL_TZ_ENABLED)
+cy_israddress_cat1b __s_vector_table_rw[VECTORTABLE_SIZE] __attribute__( ( section(".ram_vectors"))) __attribute__((aligned(VECTORTABLE_ALIGN)));
+#else
+cy_israddress_cat1b __ns_vector_table_rw[VECTORTABLE_SIZE] __attribute__( ( section(".ram_vectors"))) __attribute__((aligned(VECTORTABLE_ALIGN)));
+#endif
 #elif defined (__ICCARM__)
-extern unsigned int CSTACK$$Limit;                      /* for (default) One Region model */
-interrupt_type extern void  __cmain();
-ExecFuncPtrRw __ns_vector_table_rw[VECTORTABLE_SIZE]   __attribute__( ( section(".intvec_ram"))) __attribute__((aligned(VECTORTABLE_ALIGN)));
+#if defined(CY_PDL_TZ_ENABLED)
+cy_israddress_cat1b __s_vector_table_rw[VECTORTABLE_SIZE]  __attribute__( ( section(".intvec_ram"))) __attribute__((aligned(VECTORTABLE_ALIGN)));
+#else
+cy_israddress_cat1b __ns_vector_table_rw[VECTORTABLE_SIZE] __attribute__( ( section(".intvec_ram"))) __attribute__((aligned(VECTORTABLE_ALIGN)));
+#endif
 #else
     #error "An unsupported toolchain"
 #endif  /* (__ARMCC_VERSION) */
+
+
+/*----------------------------------------------------------------------------
+  Internal References
+ *----------------------------------------------------------------------------*/
+__NO_RETURN void Reset_Handler (void);
+void SysLib_FaultHandler(uint32_t const *faultStackAddr);
+void Default_Handler(void);
 
 void SysLib_FaultHandler(uint32_t const *faultStackAddr)
 {
     Cy_SysLib_FaultHandler(faultStackAddr);
 }
 
+/*----------------------------------------------------------------------------
+  Default Handler for Exceptions / Interrupts
+ *----------------------------------------------------------------------------*/
+void Default_Handler(void)
+{
+    while(1);
+}
+
+
+/*----------------------------------------------------------------------------
+  Exception / Interrupt Handler
+ *----------------------------------------------------------------------------*/
+void NMIException_Handler(void);
+void HardFault_Handler(void);
+void InterruptHandler(void);
+__WEAK void cy_toolchain_init(void);
+
+
 // Exception Vector Table & Handlers
 //----------------------------------------------------------------
-interrupt_type void NMIException_Handler(void)
+void NMIException_Handler(void)
 {
     __asm volatile(
         "bkpt #10\n"
@@ -107,7 +110,7 @@ interrupt_type void NMIException_Handler(void)
     );
 }
 
-interrupt_type void HardFault_Handler(void)
+void HardFault_Handler(void)
 {
     __asm (
         "MRS R0, CONTROL\n"
@@ -119,15 +122,8 @@ interrupt_type void HardFault_Handler(void)
     );
 }
 
-interrupt_type void MemManage_Handler(void)        {while(true){}}
-interrupt_type void BusFault_Handler(void)    {while(true){}}
-interrupt_type void UsageFault_Handler(void)    {while(true){}}
-__WEAK interrupt_type void SVC_Handler(void)    {while(true){}}
-interrupt_type void DebugMon_Handler(void)       {while(true){}}
-__WEAK interrupt_type void PendSV_Handler(void)      {while(true){}}
-__WEAK interrupt_type void SysTick_Handler(void)    {while(true){}}
 
-interrupt_type void InterruptHandler(void)
+void InterruptHandler(void)
 {
     __asm volatile(
         "bkpt #1\n"
@@ -135,273 +131,77 @@ interrupt_type void InterruptHandler(void)
     );
 }
 
-ExecFuncPtr __ns_vector_table[] __VECTOR_TABLE_ATTRIBUTE = {
-    (ExecFuncPtr)&__INITIAL_SP,
-    (ExecFuncPtr)Reset_Handler,           // initial PC/Reset
-    (ExecFuncPtr)NMIException_Handler,
-    (ExecFuncPtr)HardFault_Handler,
-    (ExecFuncPtr)MemManage_Handler,       // Memory Manage Fault
-    (ExecFuncPtr)BusFault_Handler,        // Bus Fault
-    (ExecFuncPtr)UsageFault_Handler,      // Usage Fault
-    0,                                                  // Secire Fault
-    0,                                                  // RESERVED
-    0,                                                  // RESERVED
-    0,                                                  // RESERVED
-    (ExecFuncPtr)SVC_Handler,             // SVC
-    0,                                                  // debug
-    0,                                                  // RESERVED
-    (ExecFuncPtr)PendSV_Handler,         // Pend SV
-    (ExecFuncPtr)SysTick_Handler,         // Secure systick
-    /* External interrupts */
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler,
-    (ExecFuncPtr)InterruptHandler
+void MemManage_Handler      (void) __attribute__ ((weak, alias("Default_Handler")));
+void BusFault_Handler       (void) __attribute__ ((weak, alias("HardFault_Handler")));
+void UsageFault_Handler     (void) __attribute__ ((weak, alias("HardFault_Handler")));
+ void SVC_Handler            (void) __attribute__ ((weak, alias("HardFault_Handler")));
+void DebugMon_Handler       (void) __attribute__ ((weak, alias("Default_Handler")));
+void PendSV_Handler         (void) __attribute__ ((weak, alias("Default_Handler")));
+void SysTick_Handler        (void) __attribute__ ((weak, alias("Default_Handler")));
+
+void Interrupt0_Handler     (void) __attribute__ ((weak, alias("InterruptHandler")));
+void Interrupt1_Handler     (void) __attribute__ ((weak, alias("InterruptHandler")));
+void Interrupt2_Handler     (void) __attribute__ ((weak, alias("InterruptHandler")));
+void Interrupt3_Handler     (void) __attribute__ ((weak, alias("InterruptHandler")));
+void Interrupt4_Handler     (void) __attribute__ ((weak, alias("InterruptHandler")));
+void Interrupt5_Handler     (void) __attribute__ ((weak, alias("InterruptHandler")));
+void Interrupt6_Handler     (void) __attribute__ ((weak, alias("InterruptHandler")));
+void Interrupt7_Handler     (void) __attribute__ ((weak, alias("InterruptHandler")));
+void Interrupt8_Handler     (void) __attribute__ ((weak, alias("InterruptHandler")));
+void Interrupt9_Handler     (void) __attribute__ ((weak, alias("InterruptHandler")));
+
+/*----------------------------------------------------------------------------
+  Exception / Interrupt Vector table
+ *----------------------------------------------------------------------------*/
+
+const cy_israddress __Vectors[VECTORTABLE_SIZE];
+
+#if defined ( __GNUC__ )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
+const cy_israddress __Vectors[VECTORTABLE_SIZE] __VECTOR_TABLE_ATTRIBUTE  = {
+  (cy_israddress)(&__INITIAL_SP),                          /*     Initial Stack Pointer */
+  (cy_israddress)Reset_Handler,                            /*     Reset Handler */
+  (cy_israddress)NMIException_Handler,                     /* -14 NMI Handler */
+  (cy_israddress)HardFault_Handler,                        /* -13 Hard Fault Handler */
+  (cy_israddress)MemManage_Handler,                        /* -12 MPU Fault Handler */
+  (cy_israddress)BusFault_Handler,                         /* -11 Bus Fault Handler */
+  (cy_israddress)UsageFault_Handler,                       /* -10 Usage Fault Handler */
+  0,                                                       /*  -9 Secure Fault Handler */
+  0,                                                       /*     Reserved */
+  0,                                                       /*     Reserved */
+  0,                                                       /*     Reserved */
+  (cy_israddress)SVC_Handler,                              /*  -5 SVCall Handler */
+  0,                                                       /*  -4 Debug Monitor Handler */
+  0,                                        /*     Reserved */
+  (cy_israddress)PendSV_Handler,                           /*  -2 PendSV Handler */
+  (cy_israddress)SysTick_Handler,                          /*  -1 SysTick Handler */
+
+  /* Interrupts */
+  (cy_israddress)Interrupt0_Handler,                       /*   0 Interrupt 0 */
+  (cy_israddress)Interrupt1_Handler,                       /*   1 Interrupt 1 */
+  (cy_israddress)Interrupt2_Handler,                       /*   2 Interrupt 2 */
+  (cy_israddress)Interrupt3_Handler,                       /*   3 Interrupt 3 */
+  (cy_israddress)Interrupt4_Handler,                       /*   4 Interrupt 4 */
+  (cy_israddress)Interrupt5_Handler,                       /*   5 Interrupt 5 */
+  (cy_israddress)Interrupt6_Handler,                       /*   6 Interrupt 6 */
+  (cy_israddress)Interrupt7_Handler,                       /*   7 Interrupt 7 */
+  (cy_israddress)Interrupt8_Handler,                       /*   8 Interrupt 8 */
+  (cy_israddress)Interrupt9_Handler,                       /*   9 Interrupt 9 */
+                                            /* Interrupts 10 .. 480 are left out */
+
 };
 
+#if defined ( __GNUC__ )
+#pragma GCC diagnostic pop
+#endif
 
 /* Provide empty __WEAK implementation for the low-level initialization
    routine required by the RTOS-enabled applications.
    clib-support library provides FreeRTOS-specific implementation:
    https://github.com/Infineon/clib-support */
-void cy_toolchain_init(void);
 __WEAK void cy_toolchain_init(void)
 {
 }
@@ -433,9 +233,10 @@ int __low_level_init(void)
 /**/
 #endif /* defined(__GNUC__) && !defined(__ARMCC_VERSION) */
 
-
-// Reset Handler
-__WEAK interrupt_type void Reset_Handler(void)
+/*----------------------------------------------------------------------------
+  Reset Handler called on controller reset
+ *----------------------------------------------------------------------------*/
+__NO_RETURN void Reset_Handler(void)
 {
     /* Disable I cache */
     ICACHE0->CTL = ICACHE0->CTL & (~ICACHE_CTL_CA_EN_Msk);
@@ -450,17 +251,22 @@ __WEAK interrupt_type void Reset_Handler(void)
 
     for (uint32_t count = 0; count < VECTORTABLE_SIZE; count++)
     {
-        __ns_vector_table_rw[count] =__ns_vector_table[count];
+        #if defined(CY_PDL_TZ_ENABLED)
+        __s_vector_table_rw[count] =__Vectors[count];
+        #else
+        __ns_vector_table_rw[count] =__Vectors[count];
+        #endif
     }
-
+    #if defined(CY_PDL_TZ_ENABLED)
+    SCB->VTOR = (uint32_t)__s_vector_table_rw;
+    #else
     SCB->VTOR = (uint32_t)__ns_vector_table_rw;
+    #endif
+
     __DMB();
 
-#ifdef CY_PDL_FLASH_BOOT
-#if !defined (__ARMCC_VERSION)
-    bootstrapInit();
-#endif
-#endif
+    __set_MSPLIM((uint32_t)(&__STACK_LIMIT));
+
     SystemInit();
 
 #if defined(__ICCARM__)
@@ -477,9 +283,15 @@ __WEAK interrupt_type void Reset_Handler(void)
    __PROGRAM_START();
 }
 
-CY_MISRA_BLOCK_END('MISRA C-2012 Rule 18.3')
-CY_MISRA_BLOCK_END('MISRA C-2012 Rule 18.1')
-CY_MISRA_BLOCK_END('ARRAY_VS_SINGLETON')
-CY_MISRA_BLOCK_END('MISRA C-2012 Rule 8.6')
 
-#endif /* defined (CY_DEVICE_CYW20829) */
+#if defined(__ARMCC_VERSION) && (__ARMCC_VERSION >= 6010050)
+  #pragma clang diagnostic push
+  #pragma clang diagnostic ignored "-Wmissing-noreturn"
+#endif
+
+
+#if defined(__ARMCC_VERSION) && (__ARMCC_VERSION >= 6010050)
+  #pragma clang diagnostic pop
+#endif
+
+#endif /* CY_IP_M33SYSCPUSS */

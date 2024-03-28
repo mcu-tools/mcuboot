@@ -8,6 +8,8 @@ import json
 from enum import Enum
 import os.path
 
+MAX_IMAGE_NUMBERS = 16
+
 class Error(Enum):
     ''' Application error codes '''
     ARG             = 1
@@ -77,27 +79,26 @@ common_PSOC_06x = {
     'appCore': 'Cortex-M4'
 }
 
+common_CYW20829 = {
+    'flashSize': 0,  # n/a
+    'smifAddr': 0x60000000,
+    'smifSize': 0x8000000,  # i.e., window size
+    'VTAlign': 0x200,  # Vector Table alignment
+    'allCores': cm33Core,
+    'bootCore': 'Cortex-M33',
+    'appCore': 'Cortex-M33',
+    'bitsPerCnt': False
+}
+
 common_XMC7000 = {
     'flashAddr': 0x10000000,
-    'eraseSize': 0x8000,  # 512 bytes
+    'eraseSize': 0x8000,  # 32k
     'smifAddr': 0x18000000,
     'smifSize': 0x8000000,  # i.e., window size
     'VTAlign': 0x400,  # Vector Table alignment
     'allCores': cm7Core,
     'bootCore': 'Cortex-M7',
     'appCore': 'Cortex-M7'
-}
-
-common_PSE84 = {
-    'flashAddr': 0x32000000,
-    'flashSize': 0x40000,
-    'eraseSize': 0x20,  # 32 bytes
-    'smifAddr': 0x60000000, #secure address 
-    'smifSize': 0x4000000,  # i.e., window size
-    'VTAlign': 0x400,  # Vector Table alignment
-    'allCores': cm33Core,
-    'bootCore': 'Cortex-M33',
-    'appCore': 'Cortex-M33'
 }
 
 platDict = {
@@ -143,22 +144,11 @@ platDict = {
     },
 
     'CYW20829': {
-        'flashSize': 0,  # n/a
-        'smifAddr': 0x60000000,
-        'smifSize': 0x8000000,  # i.e., window size
-        'VTAlign': 0x200,  # Vector Table alignment
-        'allCores': cm33Core,
-        'bootCore': 'Cortex-M33',
-        'appCore': 'Cortex-M33',
-        'bitsPerCnt': False
+        **common_CYW20829
     },
 
-    'PSE84_L4': {
-        **common_PSE84
-    },
-
-    'PSE84_L2': {
-        **common_PSE84
+    'CYW89829': {
+        **common_CYW20829
     }
 }
 
@@ -632,7 +622,6 @@ class AreaList:
                     if not over:  # images in shared slot should overlap
                         print(title, 'is not shared with', area['title'],
                               file=sys.stderr)
-                        sys.exit(Error.CONFIG_MISMATCH)
                 elif over:
                     print(title, 'overlaps with', area['title'],
                           file=sys.stderr)
@@ -646,7 +635,7 @@ class AreaList:
                            'fa_size': fa_size})
         return slot_sectors
 
-    def generate_c_source(self, params):
+    def generate_c_source(self, params, boot_and_upgrade):
         '''
         Generate C source
         Parameters:
@@ -686,7 +675,24 @@ class AreaList:
                             'struct flash_area *boot_area_descs[] = {\n')
                 for area_index in range(area_count):
                     out_f.write(f'    &{c_array}[{area_index}U],\n')
-                out_f.write('    NULL\n};\n')                
+                out_f.write('    NULL\n};\n')
+
+                image_boot_mode = None
+
+                if params.image_boot_config:
+                    image_boot_mode = process_boot_type(boot_and_upgrade)
+
+                if image_boot_mode:
+                    out_f.write('\nimage_boot_config_t image_boot_config[BOOT_IMAGE_NUMBER] = {\n')
+                    for mode in image_boot_mode:
+                        out_f.writelines('\n'.join([
+                            '\t{\n'
+                            f"\t\t.mode     = {mode['mode']},",
+                            f"\t\t.address  = {mode['address']},",
+                            f"\t\t.size     = {mode['size']},",
+                            '\t},\n']))
+                    out_f.write('};\n')
+
                 out_f.close()
 
         except (FileNotFoundError, OSError):
@@ -709,11 +715,11 @@ class AreaList:
 
         try:
             with open(params.fa_file, "w", encoding='UTF-8') as fa_f:
-                fa_f.write("#ifndef MEMORYMAP_H\n")
-                fa_f.write("#define MEMORYMAP_H\n\n")
+                fa_f.write("#pragma once\n")
                 fa_f.write('/* AUTO-GENERATED FILE, DO NOT EDIT.'
                             ' ALL CHANGES WILL BE LOST! */\n')
                 fa_f.write(f'#include "flash_map_backend.h"\n\n')
+                fa_f.write('#include "bootutil/bootutil.h"\n')
 
                 fa_f.write(f'extern struct flash_area {c_array}[];\n')
                 fa_f.write(f'extern struct flash_area *boot_area_descs[];\n')
@@ -749,15 +755,29 @@ class AreaList:
 
                     fa_f.write(f"#define FLASH_AREA_IMG_{img}_PRIMARY       ( {img_id_primary}u)\n")
                     fa_f.write(f"#define FLASH_AREA_IMG_{img}_SECONDARY     ( {img_id_secondary}u)\n\n")
-                
+
                 if self.plat.get('bitsPerCnt'):
-                    fa_f.close()
-                    
                     list_counters = process_policy_20829(params.policy)
                     if list_counters is not None:
-                        form_max_counter_array(list_counters, params.fa_file)
-                else:
-                    fa_f.write("#endif /* MEMORYMAP_H */")
+                        form_max_counter_array(list_counters, fa_f)
+
+                fa_f.writelines('\n'.join([
+                    '',
+                    'typedef enum',
+                    '{',
+                        '\tIMAGE_BOOT_MODE_FLASH = 0U,',
+                        '\tIMAGE_BOOT_MODE_RAM = 1U,',
+                    '} image_boot_mode_t;',
+                    '',
+                    'typedef struct image_boot_config_s {',
+                        '\timage_boot_mode_t mode;',
+                        '\tuint32_t address;',
+                        '\tuint32_t size;',
+                    '} image_boot_config_t;',
+                    '',
+                    'extern image_boot_config_t image_boot_config[BOOT_IMAGE_NUMBER];'
+                ]))
+
                 fa_f.close()
 
         except (FileNotFoundError, OSError):
@@ -906,66 +926,27 @@ def process_boot_type(boot_and_upgrade):
         application = boot_and_upgrade.get(app_ident)
 
         if application:
-            ram = application.get('ram', application.get('ram_boot'))
+            mem = application.get('ram_boot')
 
-            if ram:
+            if mem:
                 image_boot_mode.append(
                     {
-                        'mode': 'IMAGE_BOOT_MODE_FLASH' if application.get('ram') else 'IMAGE_BOOT_MODE_RAM',
-                        'address': ram.get('address', {}).get('value', 0),
-                        'size': ram.get('size', {}).get('value', 0),
+                        'mode': 'IMAGE_BOOT_MODE_RAM',
+                        'address': mem.get('address', {}).get('value', 0),
+                        'size': mem.get('size', {}).get('value', 0),
+                    }
+                )
+            else :
+                mem = application.get('flash')
+                image_boot_mode.append(
+                    {
+                        'mode': 'IMAGE_BOOT_MODE_FLASH',
+                        'address': mem.get('address', {}).get('value', 0),
+                        'size': mem.get('size', {}).get('value', 0),
                     }
                 )
 
     return image_boot_mode
-
-def generate_boot_type(image_boot_mode):
-    c_file = "image_boot_config.c"
-    h_file = "image_boot_config.h"
-    try:
-        with open(c_file, "w", encoding='UTF-8') as out_f:
-            out_f.write('/* AUTO-GENERATED FILE, DO NOT EDIT.'
-                        ' ALL CHANGES WILL BE LOST! */\n')
-            
-            out_f.write(f'#include "{h_file}"\n')
-            out_f.write('\nimage_boot_config_t image_boot_config[BOOT_IMAGE_NUMBER] = {\n')
-            for mode in image_boot_mode:
-                out_f.writelines('\n'.join([
-                    '\t{\n'
-                    f"\t\t.mode     = {mode['mode']},",
-                    f"\t\t.address  = {mode['address']},",
-                    f"\t\t.size     = {mode['size']},",
-                    '\t},\n']))
-            out_f.write('};\n')
-
-        with open(h_file, "w", encoding='UTF-8') as out_f:
-            out_f.write('/* AUTO-GENERATED FILE, DO NOT EDIT.'
-                        ' ALL CHANGES WILL BE LOST! */\n')
-            out_f.write('#ifndef IMAGE_BOOT_CONFIG_H\n')
-            out_f.write('#define IMAGE_BOOT_CONFIG_H\n')
-            out_f.write('#include "bootutil/bootutil.h"\n')
-            out_f.writelines('\n'.join([
-                ' ',
-                'typedef enum',
-                '{',
-                    '\tIMAGE_BOOT_MODE_FLASH = 0U,',
-                    '\tIMAGE_BOOT_MODE_RAM = 1U,',
-                '} image_boot_mode_t;',
-                '',
-                'typedef struct image_boot_config_s {',
-                    '\timage_boot_mode_t mode;',
-                    '\tuint32_t address;',
-                    '\tuint32_t size;',
-                '} image_boot_config_t;',
-                '',
-                'extern image_boot_config_t image_boot_config[BOOT_IMAGE_NUMBER];'
-            ]))
-            out_f.write('\n#endif /* IMAGE_BOOT_CONFIG_H */\n')
-
-    except (FileNotFoundError, OSError):
-        print('Cannot create', out_f, file=sys.stderr)
-        sys.exit(Error.IO)
-                         
 
 def process_images(area_list, boot_and_upgrade):
     """Process images"""
@@ -978,7 +959,7 @@ def process_images(area_list, boot_and_upgrade):
     apps_ram_map = [None, ]
 
     for stage in range(2):
-        for app_index in range(1, 5):
+        for app_index in range(1, MAX_IMAGE_NUMBERS):
 
             app_flash_map = {}
             app_ram_map = {}
@@ -1152,10 +1133,8 @@ def process_policy_20829(in_policy):
     return list_counters
 
 
-def form_max_counter_array(in_list, out_file):
-    '''Write bit_per_count array to output file
-    There is expected, that "out_file" already exists'''
-
+def form_max_counter_array(in_list, fa_f):
+    '''Write bit_per_count array to output file '''
     #ifdef here is needed to fix Rule 12.2 MISRA violation
     out_array_str = "\n#ifdef NEED_MAX_COUNTERS\nstatic const uint8_t bits_per_cnt[] = {"
 
@@ -1166,13 +1145,7 @@ def form_max_counter_array(in_list, out_file):
             out_array_str += ", "
     out_array_str += "};\n#endif\n"
 
-    try:
-        with open(out_file, "a", encoding='UTF-8') as out_f:
-            out_f.write(out_array_str)
-            out_f.write("\n#endif /* MEMORYMAP_H */")
-    except (FileNotFoundError, OSError):
-        print('\nERROR: Cannot open ', out_file, file=sys.stderr)
-        sys.exit(Error.CONFIG_MISMATCH)
+    fa_f.write(out_array_str)
 
 
 def main():
@@ -1285,12 +1258,6 @@ def main():
     app_core, app_count, slot_sectors_max, apps_flash_map, apps_ram_map, shared_slot = \
         process_images(area_list, boot_and_upgrade)
 
-    if params.image_boot_config:
-        image_boot_mode = process_boot_type(boot_and_upgrade)
-
-        if image_boot_mode:
-            generate_boot_type(image_boot_mode)
-
     cy_img_hdr_size = 0x400
     app_start = int(apps_flash_map[1].get("primary").get("address"), 0) + cy_img_hdr_size
 
@@ -1337,7 +1304,7 @@ def main():
 
     # Image id parameter is not used for MCUBootApp
     if params.img_id is None:
-        area_list.generate_c_source(params)
+        area_list.generate_c_source(params, boot_and_upgrade)
 
     area_list.create_flash_area_id(app_count, params)
 
@@ -1375,6 +1342,7 @@ def main():
     print('BOOTLOADER_RAM_SIZE :=', hex(boot_ram_area.size))
     print('APP_CORE :=', app_core)
 
+    # for blinky
     if params.img_id is not None:
         primary_img_start = apps_flash_map[int(params.img_id)].get("primary").get("address")
         secondary_img_start = apps_flash_map[int(params.img_id)].get("secondary").get("address")
@@ -1393,6 +1361,7 @@ def main():
         print('PRIMARY_IMG_START := ' + primary_img_start)
         print('SECONDARY_IMG_START := ' + secondary_img_start)
         print('SLOT_SIZE := ' + slot_size)
+    # for bootloader
     else:
         if apps_ram_map:
             ram_load_counter = 0
@@ -1401,8 +1370,8 @@ def main():
                     ram_load_counter += 1
 
             if ram_load_counter != 0:
-                if ram_load_counter == 1 and app_count == 1:
-                    print('USE_MCUBOOT_RAM_LOAD := 1')
+                print('USE_MCUBOOT_RAM_LOAD := 1')
+                if ram_load_counter == 1:
                     print(f'IMAGE_EXECUTABLE_RAM_START := {hex(apps_ram_map[1].get("address"))}')
                     print(f'IMAGE_EXECUTABLE_RAM_SIZE := {hex(apps_ram_map[1].get("size"))}')
                 else:

@@ -18,7 +18,8 @@
 #if !(SWAP_DISABLED) && defined(UPGRADE_IMAGE)
 
 #include "set_img_ok.h"
-
+#include "cy_flash.h"
+#include <string.h>
 static uint8_t row_buff[FLASH_ROW_BUF_SZ];
 
 #ifndef USE_XIP

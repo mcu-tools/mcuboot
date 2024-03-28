@@ -362,9 +362,9 @@ cy_en_smif_status_t qspi_init_hardware(void)
     (void)Cy_GPIO_Pin_Init(SCKPort, SCKPin, &QSPI_SCK_config);
     Cy_GPIO_SetHSIOM(SCKPort, SCKPin, SCKMuxPort);
 
-    (void)Cy_SysClk_ClkHfSetSource(CY_SYSCLK_CLKHF_IN_CLKPATH2, CY_SYSCLK_CLKHF_IN_CLKPATH0);
-    (void)Cy_SysClk_ClkHfSetDivider(CY_SYSCLK_CLKHF_IN_CLKPATH2, CY_SMIF_SYSCLK_HFCLK_DIVIDER);
-    (void)Cy_SysClk_ClkHfEnable(CY_SYSCLK_CLKHF_IN_CLKPATH2);
+    (void)Cy_SysClk_ClkHfSetSource((uint32_t)CY_SYSCLK_CLKHF_IN_CLKPATH2, CY_SYSCLK_CLKHF_IN_CLKPATH0);
+    (void)Cy_SysClk_ClkHfSetDivider((uint32_t)CY_SYSCLK_CLKHF_IN_CLKPATH2, CY_SMIF_SYSCLK_HFCLK_DIVIDER);
+    (void)Cy_SysClk_ClkHfEnable((uint32_t)CY_SYSCLK_CLKHF_IN_CLKPATH2);
 
     /*
      * Setup the interrupt for the SMIF block.  For the CM0 there
@@ -505,7 +505,7 @@ void qspi_deinit(uint32_t smif_id)
 
     Cy_SMIF_Disable(QSPIPort);
 
-    (void)Cy_SysClk_ClkHfDisable(CY_SYSCLK_CLKHF_IN_CLKPATH2);
+    (void)Cy_SysClk_ClkHfDisable((uint32_t)CY_SYSCLK_CLKHF_IN_CLKPATH2);
 
 #ifdef BOOT_CM0P
     NVIC_DisableIRQ(smifIntConfig.intrSrc);
