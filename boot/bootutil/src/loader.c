@@ -1056,7 +1056,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
             goto out;
         }
 
-        if (reset_value < pri_fa->fa_off || reset_value> (pri_fa->fa_off + pri_fa->fa_size)) {
+        if (reset_value < flash_area_get_off(pri_fa) || reset_value > (flash_area_get_off(pri_fa) + flash_area_get_size(pri_fa))) {
             BOOT_LOG_ERR("Reset address of image in secondary slot is not in the primary slot");
             BOOT_LOG_ERR("Erasing image from secondary slot");
 

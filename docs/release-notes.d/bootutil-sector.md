@@ -1,3 +1,5 @@
+- bootutil: Removed manual mentions to `flash_area::fa_xyz`,
+  allowing for an opaque `flash_area` definition.
 - bootutil: Fixed issue with comparing sector sizes for
   compatibility, this now also checks against the number of usable
   sectors (which is the slot size minus the swap status and moved
