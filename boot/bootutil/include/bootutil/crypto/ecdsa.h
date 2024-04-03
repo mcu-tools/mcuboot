@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
  *
- * Copyright (c) 2023 Arm Limited
+ * Copyright (c) 2023-2024 Arm Limited
  */
 
 /*
@@ -340,7 +340,7 @@ static void parse_signature_from_rfc5480_encoding(const uint8_t *sig,
 {
     const uint8_t *sig_ptr = NULL;
 
-    /* r or s can be greater than the expected size by one, due to the way 
+    /* r or s can be greater than the expected size by one, due to the way
      * ASN.1 encodes signed integers. If either r or s starts with a bit 1,
      * a zero byte will be added in front of the encoding
      */
@@ -386,9 +386,26 @@ static const uint8_t Secp384r1[] = {0x06, 0x05, 0x2b, 0x81, 0x04, 0x00, 0x22};
 
 static inline void bootutil_ecdsa_init(bootutil_ecdsa_context *ctx)
 {
+#if !defined(MCUBOOT_BUILTIN_KEY)
     ctx->key_id = PSA_KEY_ID_NULL;
     ctx->curve_byte_count = 0;
     ctx->required_algorithm = 0;
+
+#else /* !MCUBOOT_BUILTIN_KEY */
+    /* The incoming key ID is equal to the image index. The key ID value must be
+     * shifted (by one in this case) because zero is reserved (PSA_KEY_ID_NULL)
+     * and considered invalid.
+     */
+    ctx->key_id++; /* Make sure it is not equal to 0. */
+#if defined(MCUBOOT_SIGN_EC256)
+    ctx->curve_byte_count = 32;
+    ctx->required_algorithm = PSA_ALG_SHA_256;
+#endif /* MCUBOOT_SIGN_EC256 */
+#if defined(MCUBOOT_SIGN_EC384)
+    ctx->curve_byte_count = 48;
+    ctx->required_algorithm = PSA_ALG_SHA_384;
+#endif /* MCUBOOT_SIGN_EC384 */
+#endif /* !MCUBOOT_BUILTIN_KEY */
 }
 
 static inline void bootutil_ecdsa_drop(bootutil_ecdsa_context *ctx)
@@ -398,6 +415,7 @@ static inline void bootutil_ecdsa_drop(bootutil_ecdsa_context *ctx)
     }
 }
 
+#if !defined(MCUBOOT_BUILTIN_KEY)
 /*
  * Parse a ECDSA public key with format specified in RFC5280 et al.
  *
@@ -442,6 +460,7 @@ static int bootutil_ecdsa_parse_public_key(bootutil_ecdsa_context *ctx,
 
     return (int)psa_import_key(&key_attributes, *cp, key_size, &ctx->key_id);
 }
+#endif /* !MCUBOOT_BUILTIN_KEY */
 
 /* Verify the signature against the provided hash. The signature gets parsed from
  * the encoding first, then PSA Crypto has a dedicated API for ECDSA verification
