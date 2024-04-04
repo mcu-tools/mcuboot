@@ -276,6 +276,8 @@ hkdf(uint8_t *ikm, uint16_t ikm_len, uint8_t *info, uint16_t info_len,
         goto error;
     }
 
+    bootutil_hmac_sha256_drop(&hmac);
+
     /*
      * Expand
      */
@@ -315,6 +317,8 @@ hkdf(uint8_t *ikm, uint16_t ikm_len, uint8_t *info, uint16_t info_len,
             goto error;
         }
 
+        bootutil_hmac_sha256_drop(&hmac);
+
         if (len > BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE) {
             memcpy(&okm[off], T, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
             len -= BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
@@ -324,7 +328,6 @@ hkdf(uint8_t *ikm, uint16_t ikm_len, uint8_t *info, uint16_t info_len,
         }
     }
 
-    bootutil_hmac_sha256_drop(&hmac);
     return 0;
 
 error:
