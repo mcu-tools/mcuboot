@@ -17,9 +17,13 @@
 #define FLASH_AREA_IMAGE_PRIMARY(x)    (((x) == 0) ?          \
                                          FLASH_AREA_IMAGE_0 : \
                                          FLASH_AREA_IMAGE_0)
+#if MYNEWT_VAL(BOOTUTIL_SINGLE_APPLICATION_SLOT)
+#define FLASH_AREA_IMAGE_SECONDARY FLASH_AREA_IMAGE_PRIMARY
+#else
 #define FLASH_AREA_IMAGE_SECONDARY(x)  (((x) == 0) ?          \
                                          FLASH_AREA_IMAGE_1 : \
                                          FLASH_AREA_IMAGE_1)
+#endif
 
 #elif (MCUBOOT_IMAGE_NUMBER == 2)
 
