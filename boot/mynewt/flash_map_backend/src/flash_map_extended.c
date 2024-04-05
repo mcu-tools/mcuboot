@@ -26,7 +26,9 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
     switch (slot) {
     case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
+#ifndef MCUBOOT_SINGLE_APPLICATION_SLOT
     case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
+#endif
 #if MCUBOOT_SWAP_USING_SCRATCH
     case 2: return FLASH_AREA_IMAGE_SCRATCH;
 #endif
@@ -39,9 +41,11 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
     if (area_id == FLASH_AREA_IMAGE_PRIMARY(image_index)) {
         return 0;
     }
+#ifndef MCUBOOT_SINGLE_APPLICATION_SLOT
     if (area_id == FLASH_AREA_IMAGE_SECONDARY(image_index)) {
         return 1;
     }
+#endif
     return 255;
 }
 
