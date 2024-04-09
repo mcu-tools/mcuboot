@@ -35,6 +35,9 @@ pkg.deps:
     - "@apache-mynewt-core/kernel/os"
     - "@apache-mynewt-core/sys/log/stub"
 
+pkg.ign_files.!BOOTUTIL_SINGLE_APPLICATION_SLOT:
+    - "single_loader.c"
+
 pkg.deps.BOOTUTIL_NO_LOGGING:
     - "@apache-mynewt-core/sys/console/stub"
 
