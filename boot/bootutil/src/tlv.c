@@ -132,3 +132,23 @@ bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off, uint16_t *len,
 
     return 1;
 }
+
+/*
+ * Return if a TLV entry is in the protected area.
+ *
+ * @param it The image TLV iterator struct
+ * @param off The offset of the entry to check.
+ *
+ * @return 0 if this TLV iterator entry is not protected.
+ *         1 if this TLV iterator entry is in the protected region
+ *         -1 if the iterator is invalid.
+ */
+int
+bootutil_tlv_iter_is_prot(struct image_tlv_iter *it, uint32_t off)
+{
+    if (it == NULL || it->hdr == NULL || it->fap == NULL) {
+        return -1;
+    }
+
+    return off < it->prot_end;
+}
