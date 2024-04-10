@@ -349,6 +349,30 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
     return 0;
 }
 
+#ifndef ALLOW_ROGUE_TLVS
+/*
+ * The following list of TLVs are the only entries allowed in the unprotected
+ * TLV section.  All other TLV entries must be in the protected section.
+ */
+static const uint16_t allowed_unprot_tlvs[] = {
+     IMAGE_TLV_KEYHASH,
+     IMAGE_TLV_PUBKEY,
+     IMAGE_TLV_SHA256,
+     IMAGE_TLV_SHA384,
+     IMAGE_TLV_RSA2048_PSS,
+     IMAGE_TLV_ECDSA224,
+     IMAGE_TLV_ECDSA_SIG,
+     IMAGE_TLV_RSA3072_PSS,
+     IMAGE_TLV_ED25519,
+     IMAGE_TLV_ENC_RSA2048,
+     IMAGE_TLV_ENC_KW,
+     IMAGE_TLV_ENC_EC256,
+     IMAGE_TLV_ENC_X25519,
+     /* Mark end with ANY. */
+     IMAGE_TLV_ANY,
+};
+#endif
+
 /*
  * Verify the integrity of the image.
  * Return non-zero if image could not be validated/does not validate.
@@ -419,6 +443,27 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
         } else if (rc > 0) {
             break;
         }
+
+#ifndef ALLOW_ROGUE_TLVS
+        /*
+         * Ensure that the non-protected TLV only has entries necessary to hold
+         * the signature.  We also allow encryption related keys to be in the
+         * unprotected area.
+         */
+        if (!bootutil_tlv_iter_is_prot(&it, off)) {
+             bool found = false;
+             for (const uint16_t *p = allowed_unprot_tlvs; *p != IMAGE_TLV_ANY; p++) {
+                  if (type == *p) {
+                       found = true;
+                       break;
+                  }
+             }
+             if (!found) {
+                  FIH_SET(fih_rc, FIH_FAILURE);
+                  goto out;
+             }
+        }
+#endif
 
         if (type == EXPECTED_HASH_TLV) {
             /* Verify the image hash. This must always be present. */
