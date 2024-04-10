@@ -102,13 +102,13 @@ static int bootutil_import_key(uint8_t **cp, uint8_t *end)
         return -2;
     }
     /* id-ecPublicKey (RFC5480) */
-    if (alg.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
-        memcmp(alg.MBEDTLS_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
+    if (alg.len != sizeof(ec_pubkey_oid) - 1 ||
+        memcmp(alg.p, ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -3;
     }
     /* namedCurve (RFC5480) */
-    if (param.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_secp256r1_oid) - 1 ||
-        memcmp(param.MBEDTLS_CONTEXT_MEMBER(p), ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
+    if (param.len != sizeof(ec_secp256r1_oid) - 1 ||
+        memcmp(param.p, ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
         return -4;
     }
     /* ECPoint (RFC5480) */

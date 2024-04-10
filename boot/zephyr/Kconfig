@@ -101,6 +101,11 @@ config BOOT_ECDSA_TINYCRYPT
 	bool "Use tinycrypt"
 	select BOOT_USE_TINYCRYPT
 
+config BOOT_ECDSA_MBEDTLS
+	bool "Use mbedTLS"
+	select BOOT_USE_MBEDTLS
+	select MBEDTLS
+
 config BOOT_ECDSA_CC310
 	bool "Use CC310"
 	depends on HAS_HW_NRF_CC310
