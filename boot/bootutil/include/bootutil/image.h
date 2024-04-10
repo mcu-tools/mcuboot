@@ -186,6 +186,7 @@ int bootutil_tlv_iter_begin(struct image_tlv_iter *it,
                             bool prot);
 int bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off,
                            uint16_t *len, uint16_t *type);
+int bootutil_tlv_iter_is_prot(struct image_tlv_iter *it, uint32_t off);
 
 int32_t bootutil_get_img_security_cnt(struct image_header *hdr,
                                       const struct flash_area *fap,
