@@ -34,6 +34,7 @@
 
 #include "bootutil/image.h"
 #include "bootutil/crypto/sha.h"
+#include "bootutil/image_api_priv.h"
 #include "bootutil/sign_key.h"
 #include "bootutil/security_cnt.h"
 #include "bootutil/fault_injection_hardening.h"
