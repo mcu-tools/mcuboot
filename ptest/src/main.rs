@@ -48,6 +48,10 @@ fn main() -> Result<()> {
 
     let matrix = Matrix::from_yaml(&workflow);
 
+    let matrix = if args.test.len() == 0 { matrix } else {
+        matrix.only(&args.test)
+    };
+
     match args.command {
         Commands::List => {
             matrix.show();
@@ -95,6 +99,10 @@ struct Cli {
     /// The workflow file to use.
     #[arg(short, long, default_value = "../.github/workflows/sim.yaml")]
     workflow: String,
+
+    /// The tests to run (defaults to all)
+    #[arg(short, long)]
+    test: Vec<usize>,
 
     #[command(subcommand)]
     command: Commands,
@@ -258,6 +266,20 @@ impl Matrix {
         for (i, feature) in self.envs.iter().enumerate() {
             println!("{:3}. {}", i, feature.simple_textual());
         }
+    }
+
+    /// Replace this matrix with one that only has the chosen tests in it. Note
+    /// that the original order is preserved, not that given in `pick`.
+    fn only(self, pick: &[usize]) -> Self {
+        let pick: HashSet<usize> = pick.iter().cloned().collect();
+        let envs: Vec<_> = self
+            .envs
+            .into_iter()
+            .enumerate()
+            .filter(|(ind, _)| pick.contains(ind))
+            .map(|(_, item)| item)
+            .collect();
+        Matrix { envs }
     }
 }
 
