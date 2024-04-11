@@ -689,6 +689,10 @@ impl Images {
         let mut fails = 0;
         let total_flash_ops = self.total_count.unwrap();
 
+        if skip_slow_test() {
+            return false;
+        }
+
         // Let's try an image halfway through.
         for i in 1 .. total_flash_ops {
             info!("Try interruption at {}", i);
@@ -774,6 +778,10 @@ impl Images {
         }
 
         let mut fails = 0;
+
+        if skip_slow_test() {
+            return false;
+        }
 
         if self.is_swap_upgrade() {
             for i in 1 .. self.total_count.unwrap() {
@@ -2313,4 +2321,15 @@ fn test_alignments() -> &'static [usize] {
 #[cfg(feature = "max-align-32")]
 fn test_alignments() -> &'static [usize] {
     &[32]
+}
+
+/// For testing, some of the tests are quite slow. This will query for an
+/// environment variable `MCUBOOT_SKIP_SLOW_TESTS`, which can be set to avoid
+/// running these tests.
+fn skip_slow_test() -> bool {
+    if let Ok(_) = std::env::var("MCUBOOT_SKIP_SLOW_TESTS") {
+        true
+    } else {
+        false
+    }
 }
