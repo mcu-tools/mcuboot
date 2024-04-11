@@ -40,10 +40,6 @@ fn main() -> Result<()> {
 
     let args = Cli::parse();
 
-    match args.command {
-        Commands::Run => (),
-    }
-
     let workflow_text = fs::read_to_string(&args.workflow)?;
     let workflow = YamlLoader::load_from_str(&workflow_text)?;
 
@@ -51,6 +47,14 @@ fn main() -> Result<()> {
     let limiter = Arc::new(Semaphore::new(ncpus as isize));
 
     let matrix = Matrix::from_yaml(&workflow);
+
+    match args.command {
+        Commands::List => {
+            matrix.show();
+            return Ok(());
+        }
+        Commands::Run => (),
+    }
 
     let mut children = vec![];
     let state = State::new(matrix.envs.len());
@@ -100,6 +104,8 @@ struct Cli {
 enum Commands {
     /// Runs the tests.
     Run,
+    /// List available tests.
+    List,
 }
 
 /// State, for printing status.
@@ -246,6 +252,13 @@ impl Matrix {
             envs,
         }
     }
+
+    /// Print out all of the feature sets.
+    fn show(&self) {
+        for (i, feature) in self.envs.iter().enumerate() {
+            println!("{:3}. {}", i, feature.simple_textual());
+        }
+    }
 }
 
 impl FeatureSet {
@@ -298,6 +311,18 @@ impl FeatureSet {
         let mut buf = String::new();
 
         write!(&mut buf, "{}:", self.env).unwrap();
+        for v in &self.values {
+            write!(&mut buf, " {}", v).unwrap();
+        }
+
+        buf
+    }
+
+    /// Generate a simpler textual representation, without showing the environment.
+    fn simple_textual(&self) -> String {
+        use std::fmt::Write;
+
+        let mut buf = String::new();
         for v in &self.values {
             write!(&mut buf, " {}", v).unwrap();
         }
