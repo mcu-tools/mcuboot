@@ -12,3 +12,7 @@ log = "0.4.17"
 num_cpus = "1.13.1"
 std-semaphore = "0.1"
 yaml-rust = "0.4"
+
+[dependencies.clap]
+version = "4.0"
+features = ["derive"]
