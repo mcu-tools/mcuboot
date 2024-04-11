@@ -32,6 +32,4 @@
 #define MBEDTLS_ECP_DP_SECP256R1_ENABLED
 #endif /* MCUBOOT_SIGN_EC384 */
 
-#include "mbedtls/check_config.h"
-
 #endif /* MCUBOOT_PSA_CRYPTO_CONFIG_ECDSA */

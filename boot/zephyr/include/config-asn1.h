@@ -41,6 +41,4 @@
 // #define MBEDTLS_OID_C
 // #define MBEDTLS_SHA256_C
 
-#include "mbedtls/check_config.h"
-
 #endif /* MBEDTLS_CONFIG_ASN1_H */

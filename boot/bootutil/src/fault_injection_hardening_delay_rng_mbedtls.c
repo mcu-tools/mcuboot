@@ -8,7 +8,6 @@
 
 #ifdef FIH_ENABLE_DELAY
 
-#include "mcuboot-mbedtls-cfg.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
 

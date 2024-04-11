@@ -92,6 +92,4 @@
 #define MBEDTLS_NIST_KW_C
 #endif /* MCUBOOT_ENC_IMAGES */
 
-#include "mbedtls/check_config.h"
-
 #endif /* MCUBOOT_MBEDTLS_CONFIG_ECDSA */
