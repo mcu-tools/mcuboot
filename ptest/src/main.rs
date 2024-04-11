@@ -11,6 +11,7 @@
 //! jobs->environment->strategy->matric->features
 
 use chrono::Local;
+use clap::{Parser, Subcommand};
 use log::{debug, error, warn};
 use std::{
     collections::HashSet,
@@ -36,6 +37,12 @@ type Result<T> = result::Result<T, failure::Error>;
 
 fn main() -> Result<()> {
     env_logger::init();
+
+    let args = Cli::parse();
+
+    match args.command {
+        Commands::Run => (),
+    }
 
     let workflow_text = fs::read_to_string("../.github/workflows/sim.yaml")?;
     let workflow = YamlLoader::load_from_str(&workflow_text)?;
@@ -74,6 +81,21 @@ fn main() -> Result<()> {
     println!();
 
     Ok(())
+}
+
+/// The main Cli.
+#[derive(Debug, Parser)]
+#[command(name = "ptest")]
+#[command(about = "Run MCUboot CI tests stand alone")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    /// Runs the tests.
+    Run,
 }
 
 /// State, for printing status.
