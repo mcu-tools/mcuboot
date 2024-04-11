@@ -3596,8 +3596,6 @@
 #include MBEDTLS_USER_CONFIG_FILE
 #endif
 
-#include "mbedtls/check_config.h"
-
 #ifdef MCUBOOT_ENC_IMAGES
 #define MBEDTLS_SHA256_DIGEST_SIZE (32)
 #define MBEDTLS_AES_KEY_SIZE 16

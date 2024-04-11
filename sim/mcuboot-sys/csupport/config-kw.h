@@ -62,6 +62,4 @@
 #define MBEDTLS_CIPHER_C
 #define MBEDTLS_NIST_KW_C
 
-#include "mbedtls/check_config.h"
-
 #endif /* MCUBOOT_MBEDTLS_CONFIG_KW */
