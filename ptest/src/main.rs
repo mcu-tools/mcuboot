@@ -44,7 +44,7 @@ fn main() -> Result<()> {
         Commands::Run => (),
     }
 
-    let workflow_text = fs::read_to_string("../.github/workflows/sim.yaml")?;
+    let workflow_text = fs::read_to_string(&args.workflow)?;
     let workflow = YamlLoader::load_from_str(&workflow_text)?;
 
     let ncpus = num_cpus::get();
@@ -88,6 +88,10 @@ fn main() -> Result<()> {
 #[command(name = "ptest")]
 #[command(about = "Run MCUboot CI tests stand alone")]
 struct Cli {
+    /// The workflow file to use.
+    #[arg(short, long, default_value = "../.github/workflows/sim.yaml")]
+    workflow: String,
+
     #[command(subcommand)]
     command: Commands,
 }
