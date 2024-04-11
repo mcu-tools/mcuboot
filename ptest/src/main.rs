@@ -264,7 +264,7 @@ impl Matrix {
     /// Print out all of the feature sets.
     fn show(&self) {
         for (i, feature) in self.envs.iter().enumerate() {
-            println!("{:3}. {}", i, feature.simple_textual());
+            println!("{:3}. {}", i + 1, feature.simple_textual());
         }
     }
 
@@ -276,7 +276,7 @@ impl Matrix {
             .envs
             .into_iter()
             .enumerate()
-            .filter(|(ind, _)| pick.contains(ind))
+            .filter(|(ind, _)| pick.contains(&(ind + 1)))
             .map(|(_, item)| item)
             .collect();
         Matrix { envs }
