@@ -358,6 +358,11 @@ zephyr_library_sources(
 )
 endif()
 
+if(CONFIG_MCUBOOT_BOOT_BANNER)
+  # Replace Zephyr's boot banner with the MCUboot one
+  zephyr_sources(kernel/banner.c)
+endif()
+
 if(SYSBUILD)
   function(align_up num align result)
     math(EXPR out "(((${num}) + ((${align}) - 1)) & ~((${align}) - 1))")
