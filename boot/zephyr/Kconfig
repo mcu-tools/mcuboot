@@ -700,6 +700,23 @@ config BOOT_DISABLE_CACHES
 	  increases protection against data leakage from MCUboot to applications via
 	  these caches.
 
+config MCUBOOT_BOOT_BANNER
+	bool "Use MCUboot boot banner"
+	depends on BOOT_BANNER
+	depends on "$(APP_VERSION_EXTENDED_STRING)" != ""
+	default y
+	help
+	  Uses a MCUboot boot banner instead of the default zephyr one, which will output the
+	  MCUboot name and version, followed by the zephyr name and version.
+
+	  For example:
+
+	    *** Booting MCUboot v2.0.0-72-g8c0e36c88663 ***
+	    *** Using Zephyr OS build v3.6.0-2607-gd0be2010c31f ***
+
+config BOOT_BANNER_STRING
+        default "Using Zephyr OS build" if MCUBOOT_BOOT_BANNER
+
 endmenu
 
 config MCUBOOT_DEVICE_SETTINGS
