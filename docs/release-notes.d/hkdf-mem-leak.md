@@ -1,0 +1,1 @@
+- fix a memory leak in the HKDF implementation.
