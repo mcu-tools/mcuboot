@@ -49,6 +49,13 @@
   failure if the main thread priority is below 0 (cooperative
   thread), this would prevent USB CDC from working as the driver
   would not have been able to fire callbacks.
+- Use general flash operations to determine the flash reset vector. This
+  improves support a bit for some configurations of external flash.
+- fix a memory leak in the HKDF implementation.
+- Zephyr: Added a MCUboot banner which displays the version of
+  MCUboot being used and the version of zephyr. This can be
+  disabled by setting ``CONFIG_MCUBOOT_BOOT_BANNER=n`` which
+  will revert back to the default zephyr boot banner.
 
 ## Version 2.0.0
 
