@@ -681,7 +681,7 @@ boot_enc_valid(struct enc_key_data *enc_state, int image_index,
 
 void
 boot_encrypt(struct enc_key_data *enc_state, int image_index,
-        const struct flash_area *fap, uint32_t off, uint32_t sz,
+        int fa_id, uint32_t off, uint32_t sz,
         uint32_t blk_off, uint8_t *buf)
 {
     struct enc_key_data *enc;
@@ -701,7 +701,7 @@ boot_encrypt(struct enc_key_data *enc_state, int image_index,
     nonce[14] = (uint8_t)(off >> 8);
     nonce[15] = (uint8_t)off;
 
-    rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
+    rc = flash_area_id_to_multi_image_slot(image_index, fa_id);
     if (rc < 0) {
         assert(0);
         return;
