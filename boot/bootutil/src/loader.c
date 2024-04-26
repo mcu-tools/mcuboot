@@ -1872,7 +1872,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
         }
 #endif
 
-#ifdef MCUBOOT_SWAP_USING_MOVE
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
         /*
          * Must re-read image headers because the boot status might
          * have been updated in the previous function call.

@@ -47,35 +47,6 @@ int boot_status_fails = 0;
 #define BOOT_STATUS_ASSERT(x) ASSERT(x)
 #endif
 
-int
-boot_read_image_header(struct boot_loader_state *state, int slot,
-                       struct image_header *out_hdr, struct boot_status *bs)
-{
-    const struct flash_area *fap;
-    int area_id;
-    int rc = 0;
-
-    (void)bs;
-
-#if (BOOT_IMAGE_NUMBER == 1)
-    (void)state;
-#endif
-
-    area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
-
-    rc = flash_area_open(area_id, &fap);
-    if (rc == 0) {
-        rc = flash_area_read(fap, 0, out_hdr, sizeof *out_hdr);
-        flash_area_close(fap);
-    }
-
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-    }
-
-    return rc;
-}
-
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 /**
  * Reads the status of a partially-completed swap, if any.  This is necessary
@@ -471,6 +442,84 @@ boot_copy_sz(const struct boot_loader_state *state, int last_sector_idx,
 }
 
 /**
+ * Finds the index of the last sector in the primary slot that needs swapping.
+ *
+ * @param state     Current bootloader's state.
+ * @param copy_size Total number of bytes to swap.
+ *
+ * @return          Index of the last sector in the primary slot that needs swapping.
+ */
+static int
+find_last_sector_idx(const struct boot_loader_state *state, uint32_t copy_size)
+{
+    int last_sector_idx;
+    uint32_t primary_slot_size;
+    uint32_t secondary_slot_size;
+
+    primary_slot_size = 0;
+    secondary_slot_size = 0;
+    last_sector_idx = 0;
+
+    /*
+     * Knowing the size of the largest image between both slots, here we
+     * find what is the last sector in the primary slot that needs swapping.
+     * Since we already know that both slots are compatible, the secondary
+     * slot's last sector is not really required after this check is finished.
+     */
+    while (1) {
+        if ((primary_slot_size < copy_size) ||
+            (primary_slot_size < secondary_slot_size)) {
+           primary_slot_size += boot_img_sector_size(state,
+                                                     BOOT_PRIMARY_SLOT,
+                                                     last_sector_idx);
+        }
+        if ((secondary_slot_size < copy_size) ||
+            (secondary_slot_size < primary_slot_size)) {
+           secondary_slot_size += boot_img_sector_size(state,
+                                                       BOOT_SECONDARY_SLOT,
+                                                       last_sector_idx);
+        }
+        if (primary_slot_size >= copy_size &&
+                secondary_slot_size >= copy_size &&
+                primary_slot_size == secondary_slot_size) {
+            break;
+        }
+        last_sector_idx++;
+    }
+
+    return last_sector_idx;
+}
+
+/**
+ * Finds the number of swap operations that have to be performed to swap the two images.
+ *
+ * @param state     Current bootloader's state.
+ * @param copy_size Total number of bytes to swap.
+ *
+ * @return          The number of swap operations that have to be performed.
+*/
+static uint32_t
+find_swap_count(const struct boot_loader_state *state, uint32_t copy_size)
+{
+    int first_sector_idx;
+    int last_sector_idx;
+    uint32_t swap_count;
+
+    last_sector_idx = find_last_sector_idx(state, copy_size);
+
+    swap_count = 0;
+
+    while (last_sector_idx >= 0) {
+        boot_copy_sz(state, last_sector_idx, &first_sector_idx);
+
+        last_sector_idx = first_sector_idx - 1;
+        swap_count++;
+    }
+
+    return swap_count;
+}
+
+/**
  * Swaps the contents of two flash regions within the two image slots.
  *
  * @param idx                   The index of the first sector in the range of
@@ -691,43 +740,10 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     int first_sector_idx;
     int last_sector_idx;
     uint32_t swap_idx;
-    int last_idx_secondary_slot;
-    uint32_t primary_slot_size;
-    uint32_t secondary_slot_size;
-    primary_slot_size = 0;
-    secondary_slot_size = 0;
-    last_sector_idx = 0;
-    last_idx_secondary_slot = 0;
 
     BOOT_LOG_INF("Starting swap using scratch algorithm.");
 
-    /*
-     * Knowing the size of the largest image between both slots, here we
-     * find what is the last sector in the primary slot that needs swapping.
-     * Since we already know that both slots are compatible, the secondary
-     * slot's last sector is not really required after this check is finished.
-     */
-    while (1) {
-        if ((primary_slot_size < copy_size) ||
-            (primary_slot_size < secondary_slot_size)) {
-           primary_slot_size += boot_img_sector_size(state,
-                                                     BOOT_PRIMARY_SLOT,
-                                                     last_sector_idx);
-        }
-        if ((secondary_slot_size < copy_size) ||
-            (secondary_slot_size < primary_slot_size)) {
-           secondary_slot_size += boot_img_sector_size(state,
-                                                       BOOT_SECONDARY_SLOT,
-                                                       last_idx_secondary_slot);
-        }
-        if (primary_slot_size >= copy_size &&
-                secondary_slot_size >= copy_size &&
-                primary_slot_size == secondary_slot_size) {
-            break;
-        }
-        last_sector_idx++;
-        last_idx_secondary_slot++;
-    }
+    last_sector_idx = find_last_sector_idx(state, copy_size);
 
     swap_idx = 0;
     while (last_sector_idx >= 0) {
@@ -856,5 +872,96 @@ int app_max_size(struct boot_loader_state *state)
 }
 
 #endif /* !MCUBOOT_DIRECT_XIP && !MCUBOOT_RAM_LOAD */
+
+int
+boot_read_image_header(struct boot_loader_state *state, int slot,
+                       struct image_header *out_hdr, struct boot_status *bs)
+{
+    const struct flash_area *fap;
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
+    uint32_t swap_count;
+    uint32_t swap_size;
+#endif
+    int area_id;
+    int hdr_slot;
+    int rc = 0;
+
+#ifndef MCUBOOT_SWAP_USING_SCRATCH
+    (void)bs;
+#endif
+
+#if (BOOT_IMAGE_NUMBER == 1)
+    (void)state;
+#endif
+
+    hdr_slot = slot;
+
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
+    /* If the slots are being swapped, the headers might have been moved to scratch area or to the
+     * other slot depending on the progress of the swap process.
+     */
+    if (bs && !boot_status_is_reset(bs)) {
+        rc = boot_find_status(BOOT_CURR_IMG(state), &fap);
+
+        if (rc != 0) {
+            rc = BOOT_EFLASH;
+            goto done;
+        }
+
+        rc = boot_read_swap_size(fap, &swap_size);
+        flash_area_close(fap);
+
+        if (rc != 0) {
+            rc = BOOT_EFLASH;
+            goto done;
+        }
+
+        swap_count = find_swap_count(state, swap_size);
+
+        if (bs->idx - BOOT_STATUS_IDX_0 >= swap_count) {
+            /* If all segments have been swapped, the header is located in the other slot */
+            hdr_slot = (slot == BOOT_PRIMARY_SLOT) ? BOOT_SECONDARY_SLOT : BOOT_PRIMARY_SLOT;
+        } else if (bs->idx - BOOT_STATUS_IDX_0 == swap_count - 1) {
+            /* If the last swap operation is in progress, the headers are currently being swapped
+             * since the first segment of each slot is the last to be processed.
+             */
+
+            if (slot == BOOT_SECONDARY_SLOT && bs->state >= BOOT_STATUS_STATE_1) {
+                /* After BOOT_STATUS_STATE_1, the secondary image's header has been moved to the
+                 * scratch area.
+                 */
+                hdr_slot = BOOT_NUM_SLOTS;
+            } else if (slot == BOOT_PRIMARY_SLOT && bs->state >= BOOT_STATUS_STATE_2) {
+                /* After BOOT_STATUS_STATE_2, the primary image's header has been moved to the
+                 * secondary slot.
+                 */
+                hdr_slot = BOOT_SECONDARY_SLOT;
+            }
+        }
+    }
+
+    if (hdr_slot == BOOT_NUM_SLOTS) {
+        area_id = FLASH_AREA_IMAGE_SCRATCH;
+    } else {
+        area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), hdr_slot);
+    }
+#else
+    area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), hdr_slot);
+#endif
+
+    rc = flash_area_open(area_id, &fap);
+    if (rc == 0) {
+        rc = flash_area_read(fap, 0, out_hdr, sizeof *out_hdr);
+        flash_area_close(fap);
+    }
+
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto done;
+    }
+
+done:
+    return rc;
+}
 
 #endif /* !MCUBOOT_SWAP_USING_MOVE */
