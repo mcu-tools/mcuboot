@@ -174,7 +174,7 @@ The number of sectors must also be evenly divisable by this sector size, e.g.
 4KB, 8KB, 12KB, 16KB are allowed, 7KB, 7.5KB are not. This scratch partition
 needs adding to the .dts file for the board, e.g. for the nrf52dk_nrf52832
 board thus would involve updating
-`<zephyr>/boards/arm/nrf52dk_nrf52832/nrf52dk_nrf52832.dts` with:
+`<zephyr>/boards/nordic/nrf52dk/nrf52dk_nrf52832.dts` with:
 
 ```
     boot_partition: partition@0 {
@@ -189,8 +189,8 @@ board thus would involve updating
         label = "image-1";
         reg = <0x00043000 0x37000>;
     };
-    storage_partition: partition@7a000 {
-        label = "storage";
+    scratch_partition: partition@7a000 {
+        label = "image-scratch";
         reg = <0x0007a000 0x00006000>;
     };
 ```
