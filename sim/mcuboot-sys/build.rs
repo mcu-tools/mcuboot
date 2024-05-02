@@ -255,7 +255,7 @@ fn main() {
 
     if swap_move {
         conf.conf.define("MCUBOOT_SWAP_USING_MOVE", None);
-    } else if !overwrite_only {
+    } else if !overwrite_only && !direct_xip && !ram_load {
         conf.conf.define("CONFIG_BOOT_SWAP_USING_SCRATCH", None);
         conf.conf.define("MCUBOOT_SWAP_USING_SCRATCH", None);
     }
