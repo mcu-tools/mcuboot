@@ -57,7 +57,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 BOOT_LOG_MODULE_REGISTER(mcuboot_util);
 #endif
 
-#if BOOT_MAX_ALIGN == 8
+#if (BOOT_MAX_ALIGN == 8) || (BOOT_MAX_ALIGN == 16)
 const union boot_img_magic_t boot_img_magic = {
     .val = {
         0x77, 0xc2, 0x95, 0xf3,
