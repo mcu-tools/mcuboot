@@ -536,6 +536,9 @@ int main(void)
 
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
                  rsp.br_image_off);
+    BOOT_LOG_INF("Image version: v%d.%d.%d", rsp.br_hdr->ih_ver.iv_major,
+                                                    rsp.br_hdr->ih_ver.iv_minor,
+                                                    rsp.br_hdr->ih_ver.iv_revision);
 
 #if defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Jumping to the image slot");
