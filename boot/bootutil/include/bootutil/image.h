@@ -96,6 +96,7 @@ struct flash_area;
 #define IMAGE_TLV_PUBKEY            0x02   /* public key */
 #define IMAGE_TLV_SHA256            0x10   /* SHA256 of image hdr and body */
 #define IMAGE_TLV_SHA384            0x11   /* SHA384 of image hdr and body */
+#define IMAGE_TLV_SHA512            0x12   /* SHA512 of image hdr and body */
 #define IMAGE_TLV_RSA2048_PSS       0x20   /* RSA2048 of hash output */
 #define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output - Not supported anymore */
 #define IMAGE_TLV_ECDSA_SIG         0x22   /* ECDSA of hash output */

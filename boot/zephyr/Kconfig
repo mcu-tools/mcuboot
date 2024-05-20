@@ -24,6 +24,12 @@ config BOOT_USE_MBEDTLS
 	help
 	  Use mbedTLS for crypto primitives.
 
+config BOOT_USE_PSA_CRYPTO
+	bool
+	# Hidden option
+	help
+	  Hidden option set if using PSA crypt for cryptography functionality
+
 config BOOT_USE_TINYCRYPT
 	bool
 	# Hidden option
@@ -67,6 +73,52 @@ config SINGLE_APPLICATION_SLOT
 	  uploading a new application overwrites the one that previously
 	  occupied the area.
 
+config BOOT_IMG_HASH_ALG_SHA256_ALLOW
+	bool
+	help
+	  Hidden option set by configurations that allow SHA256
+
+config BOOT_IMG_HASH_ALG_SHA384_ALLOW
+	bool
+	help
+	  Hidden option set by configurations that allow SHA384
+
+config BOOT_IMG_HASH_ALG_SHA512_ALLOW
+	bool
+	depends on BOOT_USE_PSA_CRYPTO
+	help
+	  Hidden option set by configurations that allow SHA512
+
+choice BOOT_IMG_HASH_ALG
+	prompt "Selected image hash algorithm"
+	default BOOT_IMG_HASH_ALG_SHA256 if BOOT_IMG_HASH_ALG_SHA256_ALLOW
+	default BOOT_IMG_HASH_ALG_SHA384 if BOOT_IMG_HASH_ALG_SHA384_ALLOW
+	default BOOT_IMG_HASH_ALG_SHA512 if BOOT_IMG_HASH_ALG_SHA512_ALLOW
+	help
+	  Hash algorithm used for image verification. Selection
+	  here may be limited by other configurations, like for
+	  example selected cryptographic signature.
+
+config BOOT_IMG_HASH_ALG_SHA256
+	bool "SHA256"
+	depends on BOOT_IMG_HASH_ALG_SHA256_ALLOW
+	help
+	  SHA256 algorithm
+
+config BOOT_IMG_HASH_ALG_SHA384
+	bool "SHA384"
+	depends on BOOT_IMG_HASH_ALG_SHA384_ALLOW
+	help
+	  SHA384 algorithm
+
+config BOOT_IMG_HASH_ALG_SHA512
+	bool "SHA512"
+	depends on BOOT_IMG_HASH_ALG_SHA512_ALLOW
+	help
+	  SHA512 algorithm
+
+endchoice # BOOT_IMG_HASH_ALG
+
 choice BOOT_SIGNATURE_TYPE
 	prompt "Signature type"
 	default BOOT_SIGNATURE_TYPE_RSA
@@ -74,12 +126,14 @@ choice BOOT_SIGNATURE_TYPE
 config BOOT_SIGNATURE_TYPE_NONE
 	bool "No signature; use only hash check"
 	select BOOT_USE_TINYCRYPT
+	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 
 config BOOT_SIGNATURE_TYPE_RSA
 	bool "RSA signatures"
 	select BOOT_USE_MBEDTLS
 	select MBEDTLS
 	select BOOT_ENCRYPTION_SUPPORT
+	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 
 if BOOT_SIGNATURE_TYPE_RSA
 config BOOT_SIGNATURE_TYPE_RSA_LEN
@@ -91,6 +145,7 @@ endif
 config BOOT_SIGNATURE_TYPE_ECDSA_P256
 	bool "Elliptic curve digital signatures with curve P-256"
 	select BOOT_ENCRYPTION_SUPPORT
+	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 
 if BOOT_SIGNATURE_TYPE_ECDSA_P256
 choice BOOT_ECDSA_IMPLEMENTATION
@@ -114,6 +169,7 @@ endif
 config BOOT_SIGNATURE_TYPE_ED25519
 	bool "Edwards curve digital signatures using ed25519"
 	select BOOT_ENCRYPTION_SUPPORT
+	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 
 if BOOT_SIGNATURE_TYPE_ED25519
 choice BOOT_ED25519_IMPLEMENTATION

@@ -34,13 +34,16 @@
     #error "One crypto backend must be defined: either CC310/MBED_TLS/TINYCRYPT/PSA_CRYPTO"
 #endif
 
-#if defined(MCUBOOT_SIGN_EC384)
+#if defined(MCUBOOT_SHA512)
+    #define IMAGE_HASH_SIZE (64)
+    #define EXPECTED_HASH_TLV IMAGE_TLV_SHA512
+#elif defined(MCUBOOT_SIGN_EC384)
     #define IMAGE_HASH_SIZE (48)
     #define EXPECTED_HASH_TLV IMAGE_TLV_SHA384
 #else
     #define IMAGE_HASH_SIZE (32)
     #define EXPECTED_HASH_TLV IMAGE_TLV_SHA256
-#endif /* MCUBOOT_SIGN_EC384 */
+#endif /* MCUBOOT_SIGN */
 
 /* Universal defines for SHA-256 */
 #define BOOTUTIL_CRYPTO_SHA256_BLOCK_SIZE  (64)
@@ -82,7 +85,9 @@ typedef psa_hash_operation_t bootutil_sha_context;
 static inline int bootutil_sha_init(bootutil_sha_context *ctx)
 {
     *ctx = psa_hash_operation_init();
-#if defined(MCUBOOT_SIGN_EC384)
+#if defined(MCUBOOT_SHA512)
+    psa_status_t status = psa_hash_setup(ctx, PSA_ALG_SHA_512);
+#elif defined(MCUBOOT_SIGN_EC384)
     psa_status_t status = psa_hash_setup(ctx, PSA_ALG_SHA_384);
 #else
     psa_status_t status = psa_hash_setup(ctx, PSA_ALG_SHA_256);
@@ -107,7 +112,9 @@ static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
 {
     size_t hash_length = 0;
     /* Assumes the output buffer is at least the expected size of the hash */
-#if defined(MCUBOOT_SIGN_EC384)
+#if defined(MCUBOOT_SHA512)
+    return (int)psa_hash_finish(ctx, output, PSA_HASH_LENGTH(PSA_ALG_SHA_512), &hash_length);
+#elif defined(MCUBOOT_SIGN_EC384)
     return (int)psa_hash_finish(ctx, output, PSA_HASH_LENGTH(PSA_ALG_SHA_384), &hash_length);
 #else
     return (int)psa_hash_finish(ctx, output, PSA_HASH_LENGTH(PSA_ALG_SHA_256), &hash_length);

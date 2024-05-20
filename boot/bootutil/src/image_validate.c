@@ -362,6 +362,7 @@ static const uint16_t allowed_unprot_tlvs[] = {
      IMAGE_TLV_PUBKEY,
      IMAGE_TLV_SHA256,
      IMAGE_TLV_SHA384,
+     IMAGE_TLV_SHA512,
      IMAGE_TLV_RSA2048_PSS,
      IMAGE_TLV_ECDSA224,
      IMAGE_TLV_ECDSA_SIG,
