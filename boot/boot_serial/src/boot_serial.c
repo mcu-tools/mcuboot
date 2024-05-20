@@ -611,7 +611,7 @@ static off_t erase_range(const struct flash_area *fap, off_t start, off_t end)
     }
 
     size = flash_sector_get_off(&sect) + flash_sector_get_size(&sect) - start;
-    BOOT_LOG_INF("Erasing range 0x%jx:0x%jx", (intmax_t)start,
+    BOOT_LOG_DBG("Erasing range 0x%jx:0x%jx", (intmax_t)start,
 		 (intmax_t)(start + size - 1));
 
     rc = flash_area_erase(fap, start, size);
@@ -796,7 +796,7 @@ bs_upload(char *buf, int len)
         rem_bytes = 0;
     }
 
-    BOOT_LOG_INF("Writing at 0x%x until 0x%x", curr_off, curr_off + img_chunk_len);
+    BOOT_LOG_DBG("Writing at 0x%x until 0x%x", curr_off, curr_off + img_chunk_len);
     /* Write flash aligned chunk, note that img_chunk_len now holds aligned length */
 #if defined(MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE) && MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE > 0
     if (flash_area_align(fap) > 1 &&
@@ -870,7 +870,7 @@ bs_upload(char *buf, int len)
     }
 
 out:
-    BOOT_LOG_INF("RX: 0x%x", rc);
+    BOOT_LOG_DBG("RX: 0x%x", rc);
     zcbor_map_start_encode(cbor_state, 10);
     zcbor_tstr_put_lit_cast(cbor_state, "rc");
     zcbor_int32_put(cbor_state, rc);
@@ -1124,7 +1124,7 @@ boot_serial_output(void)
         boot_uf->write("\n", 1);
     }
 
-    BOOT_LOG_INF("TX");
+    BOOT_LOG_DBG("TX");
 }
 
 /*
