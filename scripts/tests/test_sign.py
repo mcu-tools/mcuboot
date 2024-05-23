@@ -1264,7 +1264,7 @@ class TestSignHex(TestSign):
             ],
         )
         assert result.exit_code != 0
-        assert "Input file not found" in result.output
+        assert "Image file not found" in result.output
 
     @pytest.mark.parametrize("key_type", KEY_TYPES)
     def test_sign_hex_padded(self, key_type, tmp_path_persistent):
