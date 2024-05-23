@@ -140,7 +140,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
             with open(imgfile, "rb") as f:
                 b = f.read()
     except FileNotFoundError:
-        raise click.UsageError("Image file not found ({})".format(imgfile))
+        raise click.UsageError(f"Image file not found: {imgfile}")
 
     # Parsing the image header
     _header = struct.unpack('IIHHIIBBHI', b[:28])
