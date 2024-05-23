@@ -113,7 +113,7 @@ def load_key(keyfile):
     try:
         key = keys.load(keyfile)
     except FileNotFoundError as e:
-        print("Key File Not Found in the path: " + keyfile)
+        print(f"Key file not found: {keyfile}")
         raise e
     if key is not None:
         return key
