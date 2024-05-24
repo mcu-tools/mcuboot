@@ -8,8 +8,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/init.h>
 #include <zephyr/device.h>
-#include <version.h>
-#include <app_version.h>
+#include <zephyr/version.h>
+#include <zephyr/app_version.h>
 
 #if defined(CONFIG_BOOT_DELAY) && (CONFIG_BOOT_DELAY > 0)
 #define DELAY_STR STRINGIFY(CONFIG_BOOT_DELAY)
