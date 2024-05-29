@@ -47,6 +47,8 @@ pkg.ign_files.BOOTUTIL_SINGLE_APPLICATION_SLOT:
 
 pkg.ign_files:
     - "ram_load.c"
+    - "ed25519_psa.c"       # Currently no PSA for mynewet
+    - "encrypted_psa.c"
 
 pkg.deps.BOOTUTIL_USE_MBED_TLS:
     - "@apache-mynewt-core/crypto/mbedtls"
