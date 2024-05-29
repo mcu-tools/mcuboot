@@ -15,8 +15,8 @@
 #include "mcuboot_config/mcuboot_config.h"
 
 #if (defined(MCUBOOT_USE_MBED_TLS) + \
-     defined(MCUBOOT_USE_TINYCRYPT)) != 1
-    #error "One crypto backend must be defined: either MBED_TLS or TINYCRYPT"
+     defined(MCUBOOT_USE_TINYCRYPT) + defined(MCUBOOT_USE_PSA_CRYPTO)) != 1
+    #error "One crypto backend must be defined: either MBED_TLS or TINYCRYPT or PSA"
 #endif
 
 #if defined(MCUBOOT_USE_MBED_TLS)
@@ -38,10 +38,43 @@
     #define BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE TC_AES_BLOCK_SIZE
 #endif /* MCUBOOT_USE_TINYCRYPT */
 
+#if defined(MCUBOOT_USE_PSA_CRYPTO)
+    #include <psa/crypto.h>
+    #include "bootutil/enc_key_public.h"
+    #define BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE BOOT_ENC_KEY_SIZE
+    #define BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE (16)
+#endif
+
 #include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#if defined(MCUBOOT_USE_PSA_CRYPTO)
+typedef struct {
+	/* Fixme: This should not be, here, psa_key_id should be passed */
+	uint8_t key[BOOT_ENC_KEY_SIZE];
+} bootutil_aes_ctr_context;
+
+void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx);
+
+static inline void bootutil_aes_ctr_drop(bootutil_aes_ctr_context *ctx)
+{
+    memset(ctx, 0, sizeof(ctx));
+}
+
+static inline int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k)
+{
+    memcpy(ctx->key, k, sizeof(ctx->key));
+
+    return 0;
+}
+
+int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
+                             const uint8_t *m, uint32_t mlen, size_t blk_off, uint8_t *c);
+int bootutil_aes_ctr_decrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
+                             const uint8_t *c, uint32_t clen, size_t blk_off, uint8_t *m);
 #endif
 
 #if defined(MCUBOOT_USE_MBED_TLS)
