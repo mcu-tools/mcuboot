@@ -1,0 +1,2 @@
+- imgtool: added initial sanity tests for imgtool commands,
+- imgtool: added and enabled unittests in GitGub workflow,
