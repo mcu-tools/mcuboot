@@ -87,7 +87,7 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
         goto out;
     }
 
-    rc = ED25519_verify(hash, 32, sig, pubkey);
+    rc = ED25519_verify(hash, slen, sig, pubkey);
 
     if (rc == 0) {
         /* if verify returns 0, there was an error. */
