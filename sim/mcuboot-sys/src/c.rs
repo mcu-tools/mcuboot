@@ -13,6 +13,8 @@ use crate::api;
 #[allow(unused)]
 use std::sync::Once;
 
+use std::borrow::Borrow;
+
 /// The result of an invocation of `boot_go`.  This is intentionally opaque so that we can provide
 /// accessors for everything we need from this.
 #[derive(Debug)]
@@ -90,12 +92,13 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
         image_off: 0,
     };
     let result: i32 = unsafe {
+        let adesc = areadesc.get_c();
         match image_index {
             None => raw::invoke_boot_go(&mut sim_ctx as *mut _,
-                                        &areadesc.get_c() as *const _,
+                                        adesc.borrow() as *const _,
                                         &mut rsp as *mut _, -1) as i32,
             Some(i) => raw::invoke_boot_go(&mut sim_ctx as *mut _,
-                                           &areadesc.get_c() as *const _,
+                                           adesc.borrow() as *const _,
                                            &mut rsp as *mut _,
                                            i as i32) as i32
         }
