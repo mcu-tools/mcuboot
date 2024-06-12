@@ -1,6 +1,7 @@
 [workspace]
 members = ["sim"]
 exclude = ["ptest"]
+resolver = "2"
 
 # The simulator runs very slowly without optimization.  A value of 1
 # compiles in about half the time, but runs about 5-6 times slower.  2
