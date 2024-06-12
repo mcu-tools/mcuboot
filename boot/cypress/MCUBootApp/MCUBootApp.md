@@ -583,6 +583,9 @@ When an improper address is specified, `make` will fail with a message like:
 Misaligned application_1 (secondary slot) - suggested address 0x18030200
 ```
 This gives the nearest larger address that satisfies the slot location requirements. Other errors, such as overlapping flash areas, are also checked and reported.
+
+To improve boot time user may specify build variables `MCUBOOT_SWAP_STATUS_FAST_BOOT=1` `USE_BOOTSTRAP=0` and comment out `MCUBOOT_VALIDATE_PRIMARY_SLOT` in "mcuboot_config.h" to achieve faser boot.
+
 ### Hardware limitations
 
 This application is created to demonstrate the MCUboot library features and not as a reference example. So, some considerations are taken.

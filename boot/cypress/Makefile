@@ -65,7 +65,7 @@ HEADER_OFFSET ?= 0
 
 # Defines whether or not make all compile warnings into errors for application
 # source code (but not for library source code)
-WARN_AS_ERR = 0
+WARN_AS_ERR ?= 1
 
 ifneq ($(filter $(APP_NAME), $(APPS)),)
 include ./$(APP_NAME)/$(APP_NAME).mk

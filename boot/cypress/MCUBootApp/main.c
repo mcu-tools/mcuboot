@@ -25,13 +25,14 @@
 #include "cyhal.h"
 #include "cyhal_wdt.h"
 
+#include "cyw_platform_utils.h"
+
 #if defined CYW20829
 #include "cy_service_app.h"
 #endif
 
 #include "cybsp.h"
 #include "cy_retarget_io.h"
-#include "cyw_platform_utils.h"
 
 #if defined(CY_BOOT_USE_EXTERNAL_FLASH) || defined(CYW20829)
 #include "flash_qspi.h"

@@ -23,7 +23,6 @@
 *******************************************************************************/
 
 #include <stdbool.h>
-#include "system_cat1c.h"
 #include "cy_device.h"
 #include "cy_device_headers.h"
 #include "cy_syslib.h"
@@ -219,31 +218,29 @@ void Cy_DefaultUserHandler(void)
 * The system interrupt mapped to CPU interrupt will be fetched and executed
 *
 *******************************************************************************/
+
 void CM7_CpuIntr_Handler(uint8_t intrNum)
 {
     uint32_t system_int_idx;
     cy_israddress handler;
 
-    if(CY_IS_CM7_CORE_0 && (_FLD2VAL(CPUSS_CM7_0_INT_STATUS_SYSTEM_INT_VALID, CPUSS_CM7_0_INT_STATUS[intrNum])))
+#ifdef CORE_NAME_CM7_0
+    if((_FLD2VAL(CPUSS_CM7_0_INT_STATUS_SYSTEM_INT_VALID, CPUSS_CM7_0_INT_STATUS[intrNum])))
     {
         system_int_idx = _FLD2VAL(CPUSS_CM7_0_INT_STATUS_SYSTEM_INT_IDX, CPUSS_CM7_0_INT_STATUS[intrNum]);
         handler = Cy_SystemIrqUserTable[system_int_idx];
-        if(handler != NULL)
         handler(); // jump to system interrupt handler
     }
-    else if(CY_IS_CM7_CORE_1 && (_FLD2VAL(CPUSS_CM7_1_INT_STATUS_SYSTEM_INT_VALID, CPUSS_CM7_1_INT_STATUS[intrNum])))
+#endif
+#ifdef CORE_NAME_CM7_1
+    if((_FLD2VAL(CPUSS_CM7_1_INT_STATUS_SYSTEM_INT_VALID, CPUSS_CM7_1_INT_STATUS[intrNum])))
     {
         system_int_idx = _FLD2VAL(CPUSS_CM7_1_INT_STATUS_SYSTEM_INT_IDX, CPUSS_CM7_1_INT_STATUS[intrNum]);
         handler = Cy_SystemIrqUserTable[system_int_idx];
-        if(handler != NULL)
         handler(); // jump to system interrupt handler
     }
-    else
-    {
-        // Triggered by software or because of software cleared a peripheral interrupt flag but did not clear the pending flag at NVIC
-    }
+#endif
     NVIC_ClearPendingIRQ((IRQn_Type)intrNum);
 }
-
 
 

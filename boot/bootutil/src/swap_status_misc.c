@@ -305,6 +305,7 @@ done:
     return rc;
 }
 
+#if defined (MCUBOOT_SWAP_STATUS_FAST_BOOT)
 static inline int
 boot_read_flag(const struct flash_area *fap, uint8_t *flag, uint32_t off)
 {
@@ -406,6 +407,7 @@ boot_read_swap_state_trailer(const struct flash_area *fap,
 
     return rc;
 }
+#endif
 
 int
 boot_read_swap_state(const struct flash_area *fap,
@@ -420,7 +422,6 @@ boot_read_swap_state(const struct flash_area *fap,
     bool buf_is_clean = false;
     bool is_primary = false;
     bool is_secondary = false;
-    bool is_scratch = fap->fa_id == FLASH_AREA_IMAGE_SCRATCH;
     uint32_t i;
 
     const struct flash_area *fap_stat = NULL;
@@ -436,23 +437,24 @@ boot_read_swap_state(const struct flash_area *fap,
         }
     }
 
-    rc = boot_read_swap_state_trailer(fap, state);
-
-    if (is_primary)
+#if defined(MCUBOOT_SWAP_STATUS_FAST_BOOT)
     {
-        if (state->image_ok == BOOT_FLAG_SET && state->copy_done == BOOT_FLAG_SET && state->magic == BOOT_MAGIC_GOOD)
-        {
-            return 0;
+        bool is_scratch = fap->fa_id == FLASH_AREA_IMAGE_SCRATCH;
+        boot_read_swap_state_trailer(fap, state);
+
+        if (is_primary) {
+            if (state->image_ok == BOOT_FLAG_SET && state->copy_done == BOOT_FLAG_SET && state->magic == BOOT_MAGIC_GOOD) {
+                return 0;
+            }
+        }
+
+        if (is_secondary || is_scratch) {
+            if (state->image_ok == BOOT_FLAG_UNSET && state->copy_done == BOOT_FLAG_UNSET && state->magic == BOOT_MAGIC_UNSET) {
+                return 0;
+            }
         }
     }
-
-    if (is_secondary || is_scratch)
-    {
-        if (state->image_ok == BOOT_FLAG_UNSET && state->copy_done == BOOT_FLAG_UNSET && state->magic == BOOT_MAGIC_UNSET)
-        {
-            return 0;
-        }
-    }
+#endif
 
     rc = flash_area_open(FLASH_AREA_IMAGE_SWAP_STATUS, &fap_stat);
     if (rc != 0) {

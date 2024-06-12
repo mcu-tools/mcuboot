@@ -277,7 +277,7 @@ $(info $(SIGN_ARGS))
 
 # Disble wdt free hal call
 ifneq ($(DISABLE_WDT_FREE), 0)
-DEFINES_APP += -DISABLE_WDT_FREE
+DEFINES_APP += -DDISABLE_WDT_FREE
 endif
 
 pre_build:

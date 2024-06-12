@@ -75,6 +75,8 @@ THIS_APP_PATH = $(PRJ_DIR)/libs
 
 ifeq ($(APP_NAME), MCUBootApp)
 
+DEFINES += COMPONENT_CUSTOM_DESIGN_MODUS
+
 # Platform dependend utils files
 PLATFORM_APP_SOURCES := $(PRJ_DIR)/platforms/utils/$(FAMILY)/cyw_platform_utils.c
 PLATFORM_INCLUDE_DIRS_UTILS := $(PRJ_DIR)/platforms/utils/$(FAMILY)
