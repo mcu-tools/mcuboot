@@ -51,6 +51,7 @@ extern struct bootutil_key bootutil_keys[];
  * Retrieve the hash of the corresponding public key for image authentication.
  *
  * @param[in]      image_index      Index of the image to be authenticated.
+ * @param[in]      actual_key_hash  hash of the key to test
  * @param[out]     public_key_hash  Buffer to store the key-hash in.
  * @param[in,out]  key_hash_size    As input the size of the buffer. As output
  *                                  the actual key-hash length.
@@ -58,6 +59,7 @@ extern struct bootutil_key bootutil_keys[];
  * @return                          0 on success; nonzero on failure.
  */
 int boot_retrieve_public_key_hash(uint8_t image_index,
+                                  const uint8_t *actual_key_hash,
                                   uint8_t *public_key_hash,
                                   size_t *key_hash_size);
 #endif /* !MCUBOOT_HW_KEY */
