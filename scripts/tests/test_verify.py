@@ -18,7 +18,7 @@ import pytest
 from click.testing import CliRunner
 
 from imgtool.main import imgtool
-from tests.constants import KEY_TYPES, GEN_KEY_EXT, tmp_name, signed_images_dir
+from tests.constants import KEY_TYPES, GEN_KEY_EXT, tmp_name, signed_images_dir, keys_dir
 
 KEY_TYPE_MISMATCH_TLV = "Key type does not match TLV record"
 NO_SIG_FOR_KEY = "No signature found for the given key"
@@ -51,7 +51,7 @@ class TestVerifyBasic(TestVerify):
 
     @pytest.fixture(autouse=True)
     def setup(self, request, tmp_path_persistent, key_type):
-        self.key = "./keys/" + key_type + ".key"
+        self.key = keys_dir + key_type + ".key"
         self.gen_key = tmp_name(tmp_path_persistent, key_type, GEN_KEY_EXT)
         self.runner.invoke(
             imgtool, ["keygen", "--key", str(self.gen_key), "--type", key_type]
@@ -191,7 +191,7 @@ class TestVerifyEncryptedClear(TestVerify):
 
     @pytest.fixture(autouse=True)
     def setup(self, request, tmp_path_persistent, key_type):
-        self.key = "./keys/" + key_type + ".key"
+        self.key = keys_dir + key_type + ".key"
         self.gen_key = tmp_name(tmp_path_persistent, key_type, GEN_KEY_EXT)
         self.runner.invoke(
             imgtool, ["keygen", "--key", str(self.gen_key), "--type", key_type]
@@ -240,7 +240,7 @@ class TestVerifyCustomTLV(TestVerify):
 
     @pytest.fixture(autouse=True)
     def setup(self, request, tmp_path_persistent, key_type):
-        self.key = "./keys/" + key_type + ".key"
+        self.key = keys_dir + key_type + ".key"
         self.gen_key = tmp_name(tmp_path_persistent, key_type, GEN_KEY_EXT)
         self.runner.invoke(
             imgtool, ["keygen", "--key", str(self.gen_key), "--type", key_type]
@@ -301,7 +301,7 @@ class TestVerifyNoKey(TestVerify):
     def test_verify_no_key_image_with_key(self):
         """Test verify image signed without key, attempt to verify with a key should fail on signature check"""
 
-        self.key = "./keys/" + "rsa-2048" + ".key"
+        self.key = keys_dir + "rsa-2048" + ".key"
         self.image_signed = self.test_signed_images_dir + "noKey256" + ".bin"
 
         result = self.runner.invoke(
@@ -319,7 +319,7 @@ class TestVerifyNoKey(TestVerify):
     def test_verify_no_key_image_with_wrong_key(self):
         """Test verify image signed without key, attempt to verify with wrong key should fail on hash check"""
 
-        self.key = "./keys/" + "ecdsa-p384" + ".key"
+        self.key = keys_dir + "ecdsa-p384" + ".key"
         self.image_signed = self.test_signed_images_dir + "noKey256" + ".bin"
 
         result = self.runner.invoke(
@@ -343,7 +343,7 @@ class TestVerifyPubKey(TestVerify):
 
     @pytest.fixture(autouse=True)
     def setup(self, request, tmp_path_persistent, key_type):
-        self.key = "./keys/" + key_type + ".key"
+        self.key = keys_dir + key_type + ".key"
         self.gen_key = tmp_name(tmp_path_persistent, key_type, GEN_KEY_EXT)
         self.runner.invoke(
             imgtool, ["keygen", "--key", str(self.gen_key), "--type", key_type]
@@ -383,7 +383,7 @@ class TestVerifyPubKey(TestVerify):
     def test_verify_key_not_matching(self, key_type, tmp_path_persistent):
         """Test verify image with mismatching key """
 
-        self.key = "./keys/" + "ecdsa-p384" + ".key"
+        self.key = keys_dir + "ecdsa-p384" + ".key"
         self.image_signed = self.test_signed_images_dir + key_type + ".bin"
 
         result = self.runner.invoke(
@@ -423,7 +423,7 @@ class TestVerifyHex(TestVerify):
 
     @pytest.fixture(autouse=True)
     def setup(self, request, tmp_path_persistent, key_type="rsa-2048"):
-        self.key = "./keys/" + key_type + ".key"
+        self.key = keys_dir + key_type + ".key"
 
     @pytest.mark.parametrize("hex_addr", ("0", "16", "35"))
     def test_verify_basic(self, hex_addr, tmp_path_persistent):
