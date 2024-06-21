@@ -24,14 +24,12 @@ from click.testing import CliRunner
 
 from imgtool.dumpinfo import dump_imginfo
 from imgtool.main import imgtool
-from tests.constants import KEY_TYPES, GEN_KEY_EXT, PUB_KEY_EXT, tmp_name
+from tests.constants import KEY_TYPES, GEN_KEY_EXT, PUB_KEY_EXT, tmp_name, images_dir, keys_dir
 
 try:
     KEY_TYPES.remove("x25519")  # x25519 is not used for signing, so directory does not contain any such image
 except ValueError:
     pass
-
-KEY_DIR = "./keys/"
 
 
 def assert_image_signed(result, image_signed, verify=True):
@@ -63,7 +61,7 @@ class TestSign:
     def setup(self, tmp_path_persistent):
         """Generate keys and images for testing"""
 
-        self.image = Path("./images/zero.bin")
+        self.image = Path(images_dir + "/zero.bin")
         self.image_signed = tmp_name(tmp_path_persistent, "image", ".signed")
 
     @pytest.fixture(autouse=True)
@@ -252,7 +250,7 @@ class TestSignBasic(TestSign):
     def test_sign_header_not_padded(self, tmp_path_persistent):
         """Test with un-padded header with non-zero start should fail"""
 
-        self.image = Path("./images/one.bin")
+        self.image = Path(images_dir + "/one.bin")
 
         result = self.runner.invoke(
             imgtool,
@@ -545,7 +543,7 @@ class TestSignKey(TestSign):
     def test_sign_pub_key_format(self, key_type, tmp_path_persistent, key_format):
         """Test with pub key format"""
 
-        loaded_key = KEY_DIR + key_type + ".key"
+        loaded_key = keys_dir + key_type + ".key"
 
         result = self.runner.invoke(
             imgtool,
@@ -683,7 +681,7 @@ class TestSignKey(TestSign):
     def test_sign_load_addr(self, key_type, tmp_path_persistent):
         """Test sign with load addr"""
 
-        loaded_key = KEY_DIR + key_type + ".key"
+        loaded_key = keys_dir + key_type + ".key"
 
         result = self.runner.invoke(
             imgtool,
@@ -712,7 +710,7 @@ class TestSignKey(TestSign):
     def test_sign_load_addr_rom_fixed(self, key_type, tmp_path_persistent):
         """Test sign with both load addr and rom fixed should fail"""
 
-        loaded_key = KEY_DIR + key_type + ".key"
+        loaded_key = keys_dir + key_type + ".key"
 
         result = self.runner.invoke(
             imgtool,
@@ -1207,8 +1205,8 @@ class TestSignHex(TestSign):
     def test_sign_basic_hex(self, key_type, tmp_path_persistent):
         """Test basic sign and verify hex file"""
 
-        loaded_key = KEY_DIR + key_type + ".key"
-        self.image = "./images/zero.hex"
+        loaded_key = keys_dir + key_type + ".key"
+        self.image = images_dir + "/zero.hex"
         self.image_signed = tmp_name(tmp_path_persistent, "image", ".hex")
 
         result = self.runner.invoke(
@@ -1238,7 +1236,7 @@ class TestSignHex(TestSign):
     def test_sign_hex_file_not_exists(self, key_type, tmp_path_persistent):
         """Test sign hex file with non-existent file"""
 
-        loaded_key = KEY_DIR + key_type + ".key"
+        loaded_key = keys_dir + key_type + ".key"
         self.image = "./images/invalid/path/file.hex"
         self.image_signed = tmp_name(tmp_path_persistent, "image", ".hex")
 
@@ -1270,8 +1268,8 @@ class TestSignHex(TestSign):
     def test_sign_hex_padded(self, key_type, tmp_path_persistent):
         """Test hex file with pad"""
 
-        loaded_key = KEY_DIR + key_type + ".key"
-        self.image = "./images/one_offset.hex"
+        loaded_key = keys_dir + key_type + ".key"
+        self.image = images_dir + "/one_offset.hex"
         # image above generated as below:
         # ih = IntelHex()
         # ih.puts(10, '1' * 1024)
@@ -1307,8 +1305,8 @@ class TestSignHex(TestSign):
     def test_sign_hex_confirm(self, key_type, tmp_path_persistent):
         """Test hex file with confirm"""
 
-        loaded_key = KEY_DIR + key_type + ".key"
-        self.image = "./images/zero.hex"
+        loaded_key = keys_dir + key_type + ".key"
+        self.image = images_dir + "/zero.hex"
         self.image_signed = tmp_name(tmp_path_persistent, "image", ".hex")
 
         result = self.runner.invoke(
@@ -1339,8 +1337,8 @@ class TestSignHex(TestSign):
     def test_sign_basic_hex_bad_image_size(self, key_type, tmp_path_persistent):
         """Test basic sign hex file with insufficient size should fail"""
 
-        loaded_key = KEY_DIR + key_type + ".key"
-        self.image = "./images/zero.hex"
+        loaded_key = keys_dir + key_type + ".key"
+        self.image = images_dir + "/zero.hex"
         self.image_signed = tmp_name(tmp_path_persistent, "image", ".hex")
 
         result = self.runner.invoke(
