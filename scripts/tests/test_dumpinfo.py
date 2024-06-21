@@ -21,7 +21,7 @@ import pytest
 from click.testing import CliRunner
 
 from imgtool.main import imgtool
-from tests.constants import tmp_name, KEY_TYPES, signed_images_dir
+from tests.constants import tmp_name, KEY_TYPES, signed_images_dir, images_dir
 
 DUMPINFO_SUCCESS_LITERAL = "dumpinfo has run successfully"
 
@@ -63,7 +63,7 @@ class TestDumpInfo:
             imgtool, ["keygen", "--key", str(self.key), "--type", key_type]
         )
 
-        self.image = "./images/zero.bin"
+        self.image = images_dir + "/zero.bin"
         self.image_signed = tmp_name(tmp_path_persistent, "image", ".signed")
 
     @pytest.mark.parametrize("key_type", ("rsa-2048",))

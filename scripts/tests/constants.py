@@ -35,9 +35,9 @@ GEN_KEY_EXT = ".key"
 PUB_KEY_EXT = ".pub"
 PUB_KEY_HASH_EXT = ".pubhash"
 
-images_dir = "./images"
+images_dir = "./tests/assets/images"
 signed_images_dir = images_dir + "/signed"
-
+keys_dir = "./tests/assets/keys/"
 
 def tmp_name(tmp_path, key_type, suffix=""):
     return tmp_path / (key_type + suffix)
