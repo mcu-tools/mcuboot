@@ -30,7 +30,8 @@
 
 #if (defined(MCUBOOT_USE_PSA_OR_MBED_TLS) + \
      defined(MCUBOOT_USE_TINYCRYPT) + \
-     defined(MCUBOOT_USE_CC310)) != 1
+     defined(MCUBOOT_USE_CC310) +\
+     defined (MCUBOOT_USE_CUSTOM_CRYPT)) != 1
     #error "One crypto backend must be defined: either CC310/MBED_TLS/TINYCRYPT/PSA_CRYPTO"
 #endif
 
@@ -68,6 +69,10 @@
 #if defined(MCUBOOT_USE_CC310)
     #include <cc310_glue.h>
 #endif /* MCUBOOT_USE_CC310 */
+
+#if defined (MCUBOOT_USE_CUSTOM_CRYPT)
+    #include "sha_custom.h"
+#endif /* MCUBOOT_USE_CUSTOM_CRYPT */
 
 #include <stdint.h>
 

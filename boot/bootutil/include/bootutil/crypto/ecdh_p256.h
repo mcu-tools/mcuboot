@@ -13,8 +13,9 @@
 #include "mcuboot_config/mcuboot_config.h"
 
 #if (defined(MCUBOOT_USE_MBED_TLS) + \
-     defined(MCUBOOT_USE_TINYCRYPT)) != 1
-    #error "One crypto backend must be defined: either MBED_TLS or TINYCRYPT"
+     defined(MCUBOOT_USE_TINYCRYPT) + \
+     defined (MCUBOOT_USE_CUSTOM_CRYPT)) != 1
+    #error "One crypto backend must be defined: either MBED_TLS, TINYCRYPT or CUSTOM_CRYPT"
 #endif
 
 #if defined(MCUBOOT_USE_MBED_TLS)
@@ -29,6 +30,9 @@
     #define BOOTUTIL_CRYPTO_ECDH_P256_HASH_SIZE (4 * 8)
 #endif /* MCUBOOT_USE_TINYCRYPT */
 
+#if  defined (MCUBOOT_USE_CUSTOM_CRYPT)
+    #include "ecdh_p256_custom.h"
+#endif /* MCUBOOT_USE_CUSTOM_CRYPT */
 #ifdef __cplusplus
 extern "C" {
 #endif
