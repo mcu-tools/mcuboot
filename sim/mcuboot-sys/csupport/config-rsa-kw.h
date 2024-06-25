@@ -63,6 +63,7 @@
 
 /* mbed TLS modules */
 #define MBEDTLS_ASN1_PARSE_C
+#define MBEDTLS_ASN1_WRITE_C
 #define MBEDTLS_BIGNUM_C
 #define MBEDTLS_MD_C
 #define MBEDTLS_OID_C
@@ -71,10 +72,6 @@
 #define MBEDTLS_AES_C
 #define MBEDTLS_CIPHER_C
 #define MBEDTLS_NIST_KW_C
-
-/* Save RAM by adjusting to our exact needs */
-#define MBEDTLS_ECP_MAX_BITS             2048
-#define MBEDTLS_MPI_MAX_SIZE              256
 
 #define MBEDTLS_SSL_MAX_CONTENT_LEN 1024
 
