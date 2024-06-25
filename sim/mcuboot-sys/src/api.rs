@@ -90,7 +90,7 @@ impl Default for FlashContext {
 }
 
 #[repr(C)]
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct CSimContext {
     pub flash_counter: libc::c_int,
     pub jumped: libc::c_int,
@@ -99,7 +99,19 @@ pub struct CSimContext {
     // NOTE: Always leave boot_jmpbuf declaration at the end; this should
     // store a "jmp_buf" which is arch specific and not defined by libc crate.
     // The size below is enough to store data on a x86_64 machine.
-    pub boot_jmpbuf: [u64; 16],
+    pub boot_jmpbuf: [u64; 48],
+}
+
+impl Default for CSimContext {
+    fn default() -> Self {
+        CSimContext {
+            flash_counter: 0,
+            jumped: 0,
+            c_asserts: 0,
+            c_catch_asserts: 0,
+            boot_jmpbuf: [0; 48],
+        }
+    }
 }
 
 pub struct CSimContextPtr {

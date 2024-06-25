@@ -81,10 +81,8 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
             None => 0,
             Some(ref c) => **c as libc::c_int
         },
-        jumped: 0,
-        c_asserts: 0,
         c_catch_asserts: if catch_asserts { 1 } else { 0 },
-        boot_jmpbuf: [0; 16],
+        .. Default::default()
     };
     let mut rsp = api::BootRsp {
         br_hdr: std::ptr::null(),
