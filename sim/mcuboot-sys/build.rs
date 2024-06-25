@@ -108,6 +108,7 @@ fn main() {
             conf.file("../../ext/mbedtls/library/chachapoly.c");
             conf.file("../../ext/mbedtls/library/cipher.c");
             conf.file("../../ext/mbedtls/library/cipher_wrap.c");
+            conf.file("../../ext/mbedtls/library/constant_time.c");
             conf.file("../../ext/mbedtls/library/ctr_drbg.c");
             conf.file("../../ext/mbedtls/library/des.c");
             conf.file("../../ext/mbedtls/library/ecdsa.c");
@@ -130,7 +131,6 @@ fn main() {
             conf.file("../../ext/mbedtls/library/psa_crypto.c");
             conf.file("../../ext/mbedtls/library/psa_crypto_cipher.c");
             conf.file("../../ext/mbedtls/library/psa_crypto_client.c");
-            conf.file("../../ext/mbedtls/library/psa_crypto_driver_wrappers.c");
             conf.file("../../ext/mbedtls/library/psa_crypto_ecp.c");
             conf.file("../../ext/mbedtls/library/psa_crypto_hash.c");
             conf.file("../../ext/mbedtls/library/psa_crypto_mac.c");
@@ -138,6 +138,7 @@ fn main() {
             conf.file("../../ext/mbedtls/library/psa_crypto_slot_management.c");
             conf.file("../../ext/mbedtls/library/psa_crypto_storage.c");
             conf.file("../../ext/mbedtls/library/psa_its_file.c");
+            conf.file("../../ext/mbedtls/library/psa_util.c");
             conf.file("../../ext/mbedtls/library/ripemd160.c");
             conf.file("../../ext/mbedtls/library/rsa_alt_helpers.c");
             conf.file("../../ext/mbedtls/library/sha1.c");
@@ -169,6 +170,9 @@ fn main() {
 
         conf.file("../../ext/mbedtls/library/rsa.c");
         conf.file("../../ext/mbedtls/library/bignum.c");
+        conf.file("../../ext/mbedtls/library/bignum_core.c");
+        conf.file("../../ext/mbedtls/library/constant_time.c");
+        conf.file("../../ext/mbedtls/library/nist_kw.c");
         conf.file("../../ext/mbedtls/library/platform.c");
         conf.file("../../ext/mbedtls/library/platform_util.c");
         conf.file("../../ext/mbedtls/library/asn1parse.c");
@@ -202,6 +206,9 @@ fn main() {
 
         conf.file("../../ext/mbedtls/library/asn1parse.c");
         conf.file("../../ext/mbedtls/library/bignum.c");
+        conf.file("../../ext/mbedtls/library/bignum_core.c");
+        conf.file("../../ext/mbedtls/library/constant_time.c");
+        conf.file("../../ext/mbedtls/library/nist_kw.c");
         conf.file("../../ext/mbedtls/library/ecdsa.c");
         conf.file("../../ext/mbedtls/library/ecp.c");
         conf.file("../../ext/mbedtls/library/ecp_curves.c");
@@ -221,6 +228,9 @@ fn main() {
         conf.file("csupport/keys.c");
         conf.file("../../ext/mbedtls/library/asn1parse.c");
         conf.file("../../ext/mbedtls/library/bignum.c");
+        conf.file("../../ext/mbedtls/library/bignum_core.c");
+        conf.file("../../ext/mbedtls/library/constant_time.c");
+        conf.file("../../ext/mbedtls/library/nist_kw.c");
         conf.file("../../ext/mbedtls/library/ecp.c");
         conf.file("../../ext/mbedtls/library/ecp_curves.c");
         conf.file("../../ext/mbedtls/library/platform.c");
@@ -282,6 +292,9 @@ fn main() {
         conf.file("../../ext/mbedtls/library/md.c");
         conf.file("../../ext/mbedtls/library/aes.c");
         conf.file("../../ext/mbedtls/library/bignum.c");
+        conf.file("../../ext/mbedtls/library/bignum_core.c");
+        conf.file("../../ext/mbedtls/library/constant_time.c");
+        conf.file("../../ext/mbedtls/library/nist_kw.c");
         conf.file("../../ext/mbedtls/library/asn1parse.c");
     }
 
@@ -305,6 +318,7 @@ fn main() {
         conf.conf.include("../../ext/mbedtls/library");
         conf.file("../../ext/mbedtls/library/platform_util.c");
         conf.file("../../ext/mbedtls/library/nist_kw.c");
+        conf.file("../../ext/mbedtls/library/constant_time.c");
         conf.file("../../ext/mbedtls/library/cipher.c");
         conf.file("../../ext/mbedtls/library/cipher_wrap.c");
         conf.file("../../ext/mbedtls/library/aes.c");
@@ -369,6 +383,9 @@ fn main() {
         conf.file("../../ext/mbedtls/library/sha256.c");
         conf.file("../../ext/mbedtls/library/asn1parse.c");
         conf.file("../../ext/mbedtls/library/bignum.c");
+        conf.file("../../ext/mbedtls/library/bignum_core.c");
+        conf.file("../../ext/mbedtls/library/constant_time.c");
+        conf.file("../../ext/mbedtls/library/nist_kw.c");
         conf.file("../../ext/mbedtls/library/ecdh.c");
         conf.file("../../ext/mbedtls/library/md.c");
         conf.file("../../ext/mbedtls/library/aes.c");
