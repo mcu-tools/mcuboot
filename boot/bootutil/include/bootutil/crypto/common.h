@@ -17,4 +17,13 @@
 #define MBEDTLS_CONTEXT_MEMBER(X) X
 #endif
 
+/* Newer versions of Mbed TLS have removed the private accessor requirement for
+ * the ASN1 fields.
+ */
+#if (MBEDTLS_VERSION_NUMBER >= 0x03000000) && (MBEDTLS_VERSION_NUMBER < 0x03010000)
+#define ASN1_CONTEXT_MEMBER(X) MBEDTLS_PRIVATE(X)
+#else
+#define ASN1_CONTEXT_MEMBER(X) X
+#endif
+
 #endif /* __BOOTUTIL_CRYPTO_COMMON_H__ */
