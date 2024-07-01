@@ -277,8 +277,6 @@ done:
  */
 static void do_boot(struct boot_rsp *rsp)
 {
-    void *start;
-
     BOOT_LOG_INF("br_image_off = 0x%x\n", rsp->br_image_off);
     BOOT_LOG_INF("ih_hdr_size = 0x%x\n", rsp->br_hdr->ih_hdr_size);
 
@@ -292,7 +290,7 @@ static void do_boot(struct boot_rsp *rsp)
     copy_img_to_SRAM(0, rsp->br_hdr->ih_hdr_size);
 
     /* Jump to entry point */
-    start = (void *)(SRAM_BASE_ADDRESS + rsp->br_hdr->ih_hdr_size);
+    void *start = (void *)(SRAM_BASE_ADDRESS + rsp->br_hdr->ih_hdr_size);
     ((void (*)(void))start)();
 #endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 }
