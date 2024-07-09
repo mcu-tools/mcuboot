@@ -26,7 +26,7 @@ import yaml
 from intelhex import IntelHex
 
 from imgtool import image
-from imgtool.image import INTEL_HEX_EXT
+from imgtool.image import INTEL_HEX_EXT, IMAGE_MAGIC_LE
 
 HEADER_ITEMS = ("magic", "load_addr", "hdr_size", "protected_tlv_size",
                 "img_size", "flags", "version")
@@ -142,8 +142,12 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
     except FileNotFoundError:
         raise click.UsageError(f"Image file not found: {imgfile}")
 
+    # Detect image byteorder by image magic
+    magic = int.from_bytes(b[:4], "big")
+    order = '<' if magic == IMAGE_MAGIC_LE else '>'
+
     # Parsing the image header
-    _header = struct.unpack('IIHHIIBBHI', b[:28])
+    _header = struct.unpack(order + 'IIHHIIBBHI', b[:28])
     # Image version consists of the last 4 item ('BBHI')
     _version = _header[-4:]
     header = {}
@@ -162,9 +166,8 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
     protected_tlv_size = header["protected_tlv_size"]
 
     if protected_tlv_size != 0:
-        _tlv_prot_head = struct.unpack(
-            'HH',
-            b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
+        _tlv_prot_head = struct.unpack(order + 'HH',
+                                       b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
         tlv_area["tlv_hdr_prot"]["magic"] = _tlv_prot_head[0]
         tlv_area["tlv_hdr_prot"]["tlv_tot"] = _tlv_prot_head[1]
         tlv_end = tlv_off + tlv_area["tlv_hdr_prot"]["tlv_tot"]
@@ -173,7 +176,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
         # Iterating through the protected TLV area
         while tlv_off < tlv_end:
             tlv_type, tlv_len = struct.unpack(
-                'HH',
+                order + 'HH',
                 b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
             tlv_off += image.TLV_INFO_SIZE
             tlv_data = b[tlv_off:(tlv_off + tlv_len)]
@@ -181,7 +184,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
                 {"type": tlv_type, "len": tlv_len, "data": tlv_data})
             tlv_off += tlv_len
 
-    _tlv_head = struct.unpack('HH', b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
+    _tlv_head = struct.unpack(order + 'HH', b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
     tlv_area["tlv_hdr"]["magic"] = _tlv_head[0]
     tlv_area["tlv_hdr"]["tlv_tot"] = _tlv_head[1]
 
@@ -190,9 +193,8 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
 
     # Iterating through the TLV area
     while tlv_off < tlv_end:
-        tlv_type, tlv_len = struct.unpack(
-            'HH',
-            b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
+        tlv_type, _, tlv_len = struct.unpack(order + 'BBH',
+                                             b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
         tlv_off += image.TLV_INFO_SIZE
         tlv_data = b[tlv_off:(tlv_off + tlv_len)]
         tlv_area["tlvs"].append(
@@ -212,7 +214,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
             max_align = 8
         elif trailer_magic[-len(BOOT_MAGIC_2):] == BOOT_MAGIC_2:
             # The alignment value is encoded in the magic field
-            max_align = int.from_bytes(trailer_magic[:2], "little")
+            max_align = int.from_bytes(trailer_magic[:2], "big" if order == '>' else "little")
         else:
             # Invalid magic: the rest of the image trailer cannot be processed.
             print("Warning: the trailer magic value is invalid!")
@@ -235,7 +237,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
 
             trailer_off -= max_align
             swap_size = int.from_bytes(b[trailer_off:(trailer_off + 4)],
-                                       "little")
+                                       "big" if order == '>' else "little")
             trailer["swap_size"] = swap_size
 
             # Encryption key 0/1
