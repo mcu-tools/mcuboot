@@ -434,7 +434,7 @@ class TestSignBasic(TestSign):
 
     @pytest.mark.parametrize("endian", ("little", "big"))
     def test_sign_endian(self, tmp_path_persistent, endian):
-        """Test sign endian"""
+        """Test signing image with endian option"""
 
         result = self.runner.invoke(
             imgtool,
@@ -455,7 +455,7 @@ class TestSignBasic(TestSign):
                 str(self.image_signed),
             ],
         )
-        assert_image_signed(result, self.image_signed, verify=False)
+        assert_image_signed(result, self.image_signed)
 
     def test_sign_rom_fixed(self, tmp_path_persistent):
         """Test sign with rom fixed"""
@@ -738,6 +738,43 @@ class TestSignKey(TestSign):
         assert result.exit_code != 0
         assert "Can not set rom_fixed and load_addr at the same time" in result.output
 
+    @pytest.mark.parametrize("endian", ("little", "big"))
+    @pytest.mark.parametrize("key_type", KEY_TYPES)
+    def test_sign_endian_key(self, tmp_path_persistent, endian, key_type):
+        """Test signing image with endian and key option"""
+        key = tmp_name(tmp_path_persistent, key_type, GEN_KEY_EXT)
+        # Enable for preserving outputs:
+        # self.image_signed = signed_images_dir + "/endian/" + key_type + "_" + endian + ".signed"
+
+        result = self.runner.invoke(
+            imgtool,
+            [
+                "sign",
+                "--key",
+                key,
+                "--align",
+                "16",
+                "--version",
+                "1.0.0",
+                "--header-size",
+                "0x20",
+                "--slot-size",
+                "0x2500",
+                "--pad-header",
+                "--endian",
+                endian,
+                str(self.image),
+                str(self.image_signed),
+            ],
+        )
+        assert result.exit_code == 0
+
+        runner = CliRunner()
+        result = runner.invoke(
+            imgtool, ["verify", "--key", key, str(self.image_signed), ],
+        )
+        assert result.exit_code == 0
+
     @pytest.mark.parametrize("key_type", KEY_TYPES)
     def test_sign_custom_tlv(self, tmp_path_persistent, key_type):
         """Test signing with custom TLV"""
@@ -929,6 +966,45 @@ class TestSignKey(TestSign):
         )
         assert result.exit_code != 0
         assert "Invalid custom TLV type value" in result.stdout
+
+    @pytest.mark.parametrize("endian", ("little", "big"))
+    @pytest.mark.parametrize("key_type", KEY_TYPES)
+    def test_sign_custom_tlv_endian(self, tmp_path_persistent, key_type, endian):
+        key = keys_dir + key_type + ".key"
+        # Enable for preserving outputs:
+        # self.image_signed = signed_images_dir + "/endian/" + key_type + "_" + endian + "_custom.signed"
+
+        result = self.runner.invoke(
+            imgtool,
+            [
+                "sign",
+                "--key",
+                key,
+                "--align",
+                "16",
+                "--version",
+                "1.0.0",
+                "--header-size",
+                "0x20",
+                "--slot-size",
+                "0x2500",
+                "--pad-header",
+                "--endian",
+                endian,
+                "--custom-tlv",
+                "0x00a0",
+                "0x00ffddee",
+                str(self.image),
+                str(self.image_signed),
+            ],
+        )
+        assert result.exit_code == 0
+
+        runner = CliRunner()
+        result = runner.invoke(
+            imgtool, ["verify", "--key", key, str(self.image_signed), ],
+        )
+        assert result.exit_code == 0
 
     @pytest.mark.parametrize("key_type", KEY_TYPES)
     def test_sign_pad_sig(self, tmp_path_persistent, key_type):
