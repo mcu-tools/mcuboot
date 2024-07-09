@@ -335,3 +335,194 @@ class TestDumpInfo:
         )
         assert result.exit_code == 0
         assert DUMPINFO_SUCCESS_LITERAL in result.stdout
+
+    @pytest.mark.parametrize("endian", ("little", "big"))
+    @pytest.mark.parametrize("key_type", ("rsa-2048",))
+    def test_dumpinfo_endian(self, tmp_path_persistent, key_type, endian):
+        self.image_signed = signed_images_dir + "/endian/" + key_type + "_" + endian + ".signed"
+        result = self.runner.invoke(
+            imgtool, ["dumpinfo", str(self.image_signed)]
+        )
+        assert result.exit_code == 0
+        assert DUMPINFO_SUCCESS_LITERAL in result.stdout
+        assert "magic:              0x96f3b83d" in result.stdout
+        assert "type: SHA256 (0x10)" in result.stdout
+        assert "len:  0x20" in result.stdout
+
+    @pytest.mark.parametrize("endian", ("big", "little"))
+    @pytest.mark.parametrize("key_type", ("rsa-2048",))
+    def test_dumpinfo_endian_custom_tlv(self, tmp_path_persistent, key_type, endian):
+        self.image_signed = signed_images_dir + "/endian/" + key_type + "_" + endian + "_custom.signed"
+
+        result = self.runner.invoke(
+            imgtool, ["dumpinfo", str(self.image_signed)]
+        )
+        assert result.exit_code == 0
+        assert DUMPINFO_SUCCESS_LITERAL in result.stdout
+        assert "magic:              0x96f3b83d" in result.stdout
+        assert "type: SHA256 (0x10)" in result.stdout
+        assert "len:  0x20" in result.stdout
+        assert """type: UNKNOWN (0xa0)
+        len:  0x4""" in result.stdout
+
+        # assert encoding for custom tlv of integer type
+        int_tlv = "0xee 0xdd 0xff 0x00" if endian == "little" else "0x00 0xff 0xdd 0xee"
+        assert f"data: {int_tlv}" in result.stdout
+
+    @pytest.mark.parametrize("endian", ("big", "little"))
+    @pytest.mark.parametrize("key_type", ("rsa-2048",))
+    def test_dumpinfo_endian_complex(self, tmp_path_persistent, key_type, endian):
+        encoding = "pem"
+        enckey = tmp_name(tmp_path_persistent, key_type, ".key")
+        pub_key = tmp_name(tmp_path_persistent, key_type, ".pub." + encoding)
+
+        self.runner.invoke(
+            imgtool, ["keygen", "--key", str(enckey), "--type", key_type]
+        )
+
+        self.runner.invoke(
+            imgtool,
+            [
+                "getpub",
+                "--key",
+                str(enckey),
+                "--output",
+                str(pub_key),
+                "--encoding",
+                encoding,
+            ],
+        )
+
+        result = self.runner.invoke(
+            imgtool,
+            [
+                "sign",
+                "--key",
+                self.key,
+                "--encrypt",
+                pub_key,
+                "--align",
+                "16",
+                "--version",
+                "1.0.0",
+                "--header-size",
+                "0x400",
+                "--slot-size",
+                "0x2300",
+                "--endian",
+                endian,
+                "--custom-tlv",
+                "0xfffe",
+                "0x00ffddee",
+                "--pad-header",
+                "--pad",
+                "--rom-fixed",
+                "32",
+                str(self.image),
+                str(self.image_signed),
+            ],
+        )
+        assert result.exit_code == 0
+
+        result = self.runner.invoke(
+            imgtool, ["dumpinfo", str(self.image_signed)]
+        )
+        assert result.exit_code == 0
+        assert DUMPINFO_SUCCESS_LITERAL in result.stdout
+        assert "magic:              0x96f3b83d" in result.stdout
+        assert "type: SHA256 (0x10)" in result.stdout
+        assert "len:  0x20" in result.stdout
+
+    @pytest.mark.parametrize("endian", ("big", "little"))
+    @pytest.mark.parametrize("key_type", ("rsa-2048",))
+    def test_dumpinfo_endian_all_tlvs(self, tmp_path_persistent, key_type, endian):
+        encoding = "pem"
+        enckey = tmp_name(tmp_path_persistent, key_type, ".key")
+        pub_key = tmp_name(tmp_path_persistent, key_type, ".pub." + encoding)
+
+        self.runner.invoke(
+            imgtool, ["keygen", "--key", str(enckey), "--type", key_type]
+        )
+
+        self.runner.invoke(
+            imgtool,
+            [
+                "getpub",
+                "--key",
+                str(enckey),
+                "--output",
+                str(pub_key),
+                "--encoding",
+                encoding,
+            ],
+        )
+
+        result = self.runner.invoke(
+            imgtool,
+            [
+                "sign",
+                "--key",
+                self.key,
+                "--encrypt",
+                pub_key,
+                "--align",
+                "16",
+                "--version",
+                "1.0.0",
+                "--header-size",
+                "0x400",
+                "--slot-size",
+                "0x2300",
+                "--endian",
+                endian,
+                "--custom-tlv",
+                "0xfffe",
+                "0x00ffddee",
+                "--security-counter",
+                "268435473",  # 0x10000011
+                "--dependencies",
+                "(1, 1.2.3+0)"
+                "--pad-header",
+                "--pad",
+                "--rom-fixed",
+                "32",
+                str(self.image),
+                str(self.image_signed),
+            ],
+        )
+        assert result.exit_code == 0
+
+        result = self.runner.invoke(
+            imgtool, ["dumpinfo", str(self.image_signed)]
+        )
+        assert result.exit_code == 0
+        assert DUMPINFO_SUCCESS_LITERAL in result.stdout
+
+        sec_data = "0x11 0x00 0x00 0x10" if endian == "little" else "0x10 0x00 0x00 0x11"
+        dep_data = "0x01 0x00 0x00 0x00 0x01 0x02 0x03 0x00" if endian == "little" else \
+            "0x01 0x00 0x00 0x00 0x01 0x02 0x00 0x03"
+
+        assert "magic:              0x96f3b83d" in result.stdout
+        # check if all TLVs appear with correct length
+        assert """type: SEC_CNT (0x50)
+        len:  0x4
+        data: """ + sec_data in result.stdout
+
+        assert """type: DEPENDENCY (0x40)
+        len:  0xc
+        data: """ + dep_data in result.stdout
+
+        assert """type: UNKNOWN (0xfffe)
+        len:  0x4""" in result.stdout
+
+        assert """type: SHA256 (0x10)
+        len:  0x20""" in result.stdout
+
+        assert """type: KEYHASH (0x1)
+        len:  0x20""" in result.stdout
+
+        assert """type: RSA2048 (0x20)
+        len:  0x100""" in result.stdout
+
+        assert """type: ENCRSA2048 (0x30)
+        len:  0x100""" in result.stdout
