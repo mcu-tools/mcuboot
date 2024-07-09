@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-# Copyright (c) 2020-2023 Arm Limited
+# Copyright (c) 2020-2024 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,11 @@ pushd .. &&\
    pushd trusted-firmware-m &&\
    git checkout 8faae452712b630dc69c24da61e84c88a901d2d4 &&\
    popd
+
+# check installed version of...
+python3 -m pip show \
+    cryptography    \
+    imgtool
 
 if [[ $GITHUB_ACTIONS == true ]]; then
     if [[ -z $FIH_ENV ]]; then
