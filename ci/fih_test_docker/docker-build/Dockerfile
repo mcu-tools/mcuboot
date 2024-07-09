@@ -34,7 +34,8 @@ RUN \
         imgtool==1.7.0 \
         Jinja2==2.10 \
         PyYAML==3.12 \
-        pyasn1==0.1.9
+        pyasn1==0.1.9 \
+        cryptography>=40.0.0
 
 # Add tfm work directory
 RUN mkdir -p /root/work/tfm
