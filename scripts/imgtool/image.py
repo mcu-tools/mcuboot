@@ -41,6 +41,7 @@ from .boot_record import create_sw_component_data
 from .keys import rsa, ecdsa, x25519
 
 IMAGE_MAGIC = 0x96f3b83d
+IMAGE_MAGIC_LE = 0x3db8f396
 IMAGE_HEADER_SIZE = 32
 BIN_EXT = "bin"
 INTEL_HEX_EXT = "hex"
@@ -101,7 +102,7 @@ def align_up(num, align):
     return (num + (align - 1)) & ~(align - 1)
 
 
-class TLV():
+class TLV:
     def __init__(self, endian, magic=TLV_INFO_MAGIC):
         self.magic = magic
         self.buf = bytearray()
@@ -194,10 +195,11 @@ class Image:
             lsb = self.max_align & 0x00ff
             msb = (self.max_align & 0xff00) >> 8
             align = bytes([msb, lsb]) if self.endian == "big" else bytes([lsb, msb])
-            self.boot_magic = align + bytes([0x2d, 0xe1,
-                                             0x5d, 0x29, 0x41, 0x0b,
-                                             0x8d, 0x77, 0x67, 0x9c,
-                                             0x11, 0x0f, 0x1f, 0x8a, ])
+            self.boot_magic = align + bytes([
+                0x2d, 0xe1,
+                0x5d, 0x29, 0x41, 0x0b,
+                0x8d, 0x77, 0x67, 0x9c,
+                0x11, 0x0f, 0x1f, 0x8a, ])
 
         if security_counter == 'auto':
             # Security counter has not been explicitly provided,
@@ -649,19 +651,23 @@ class Image:
         except FileNotFoundError:
             raise click.UsageError(f"Image file not found: {imgfile}")
 
-        magic, _, header_size, _, img_size = struct.unpack('IIHHI', b[:16])
-        version = struct.unpack('BBHI', b[20:28])
+        # Detect image byteorder by image magic
+        magic = int.from_bytes(b[:4], "big")
+        e = '<' if magic == IMAGE_MAGIC_LE else '>'
+
+        magic, _, header_size, _, img_size = struct.unpack(e + 'IIHHI', b[:16])
+        version = struct.unpack(e + 'BBHI', b[20:28])
 
         if magic != IMAGE_MAGIC:
             return VerifyResult.INVALID_MAGIC, None, None
 
         tlv_off = header_size + img_size
         tlv_info = b[tlv_off:tlv_off + TLV_INFO_SIZE]
-        magic, tlv_tot = struct.unpack('HH', tlv_info)
+        magic, tlv_tot = struct.unpack(e + 'HH', tlv_info)
         if magic == TLV_PROT_INFO_MAGIC:
             tlv_off += tlv_tot
             tlv_info = b[tlv_off:tlv_off + TLV_INFO_SIZE]
-            magic, tlv_tot = struct.unpack('HH', tlv_info)
+            magic, tlv_tot = struct.unpack(e + 'HH', tlv_info)
 
         if magic != TLV_INFO_MAGIC:
             return VerifyResult.INVALID_TLV_INFO_MAGIC, None, None
@@ -673,7 +679,7 @@ class Image:
         tlv_off += TLV_INFO_SIZE  # skip tlv info
         while tlv_off < tlv_end:
             tlv = b[tlv_off:tlv_off + TLV_SIZE]
-            tlv_type, _, tlv_len = struct.unpack('BBH', tlv)
+            tlv_type, _, tlv_len = struct.unpack(e + 'BBH', tlv)
             if tlv_type == TLV_VALUES["SHA256"] or tlv_type == TLV_VALUES["SHA384"]:
                 if not tlv_matches_key_type(tlv_type, key):
                     return VerifyResult.KEY_MISMATCH, None, None
