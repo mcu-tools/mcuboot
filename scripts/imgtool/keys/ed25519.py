@@ -4,7 +4,6 @@ ED25519 key management
 
 # SPDX-License-Identifier: Apache-2.0
 
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
@@ -33,6 +32,11 @@ class Ed25519Public(KeyClass):
         return self._get_public().public_bytes(
                 encoding=serialization.Encoding.DER,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo)
+
+    def get_public_pem(self):
+        return self._get_public().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo)
 
     def get_private_bytes(self, minimal, format):
         self._unsupported('get_private_bytes')
