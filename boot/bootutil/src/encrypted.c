@@ -607,7 +607,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
  * Load encryption key.
  */
 int
-boot_enc_load(struct enc_key_data *enc_state, int image_index,
+boot_enc_load(struct enc_key_data *enc_state, int slot,
         const struct image_header *hdr, const struct flash_area *fap,
         struct boot_status *bs)
 {
@@ -619,14 +619,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
 #else
     uint8_t buf[EXPECTED_ENC_LEN];
 #endif
-    uint8_t slot;
     int rc;
-
-    rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
-    if (rc < 0) {
-        return rc;
-    }
-    slot = rc;
 
     /* Already loaded... */
     if (enc_state[slot].valid) {

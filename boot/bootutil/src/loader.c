@@ -781,7 +781,6 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
                  const struct flash_area *fap, struct boot_status *bs)
 {
     TARGET_STATIC uint8_t tmpbuf[BOOT_TMPBUF_SZ];
-    uint8_t image_index;
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
@@ -792,13 +791,11 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
     (void)bs;
     (void)rc;
 
-    image_index = BOOT_CURR_IMG(state);
-
 /* In the case of ram loading the image has already been decrypted as it is
  * decrypted when copied in ram */
 #if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_RAM_LOAD)
-    if (MUST_DECRYPT(fap, image_index, hdr)) {
-        rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs);
+    if (MUST_DECRYPT(fap, BOOT_CURR_IMG(state), hdr)) {
+        rc = boot_enc_load(BOOT_CURR_ENC(state), 1, hdr, fap, bs);
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
@@ -808,8 +805,9 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
     }
 #endif
 
-    FIH_CALL(bootutil_img_validate, fih_rc, BOOT_CURR_ENC(state), image_index,
-             hdr, fap, tmpbuf, BOOT_TMPBUF_SZ, NULL, 0, NULL);
+    FIH_CALL(bootutil_img_validate, fih_rc, BOOT_CURR_ENC(state),
+             BOOT_CURR_IMG(state), hdr, fap, tmpbuf, BOOT_TMPBUF_SZ,
+             NULL, 0, NULL);
 
     FIH_RET(fih_rc);
 }
@@ -1403,7 +1401,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 
 #ifdef MCUBOOT_ENC_IMAGES
     if (IS_ENCRYPTED(boot_img_hdr(state, BOOT_SECONDARY_SLOT))) {
-        rc = boot_enc_load(BOOT_CURR_ENC(state), image_index,
+        rc = boot_enc_load(BOOT_CURR_ENC(state), BOOT_SECONDARY_SLOT,
                 boot_img_hdr(state, BOOT_SECONDARY_SLOT),
                 fap_secondary_slot, bs);
 
@@ -1527,7 +1525,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 #ifdef MCUBOOT_ENC_IMAGES
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
-            rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs);
+            rc = boot_enc_load(BOOT_CURR_ENC(state), 0, hdr, fap, bs);
             assert(rc >= 0);
 
             if (rc == 0) {
@@ -1551,7 +1549,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         hdr = boot_img_hdr(state, BOOT_SECONDARY_SLOT);
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT);
-            rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap, bs);
+            rc = boot_enc_load(BOOT_CURR_ENC(state), 1, hdr, fap, bs);
             assert(rc >= 0);
 
             if (rc == 0) {
@@ -2750,7 +2748,7 @@ boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
         goto done;
     }
 
-    rc = boot_enc_load(BOOT_CURR_ENC(state), image_index, hdr, fap_src, &bs);
+    rc = boot_enc_load(BOOT_CURR_ENC(state), slot, hdr, fap_src, &bs);
     if (rc < 0) {
         goto done;
     }
