@@ -1594,6 +1594,8 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
                 }
             }
 
+            boot_enc_init(BOOT_CURR_ENC(state), slot);
+
             if (i != BOOT_ENC_KEY_SIZE) {
                 boot_enc_set_key(BOOT_CURR_ENC(state), slot, bs);
             }
