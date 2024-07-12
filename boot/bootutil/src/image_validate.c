@@ -96,7 +96,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 #ifdef MCUBOOT_ENC_IMAGES
     /* Encrypted images only exist in the secondary slot */
     if (MUST_DECRYPT(fap, image_index, hdr) &&
-            !boot_enc_valid(enc_state, image_index, fap)) {
+            !boot_enc_valid(enc_state, 1)) {
         return -1;
     }
 #endif
