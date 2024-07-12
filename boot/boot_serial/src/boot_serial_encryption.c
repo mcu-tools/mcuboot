@@ -40,10 +40,6 @@ boot_image_validate_encrypted(const struct flash_area *fa_p,
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
-        rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fa_p));
-        if (rc < 0) {
-            FIH_RET(fih_rc);
-        }
         rc = boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs);
         if (rc < 0) {
             FIH_RET(fih_rc);
