@@ -682,19 +682,9 @@ boot_enc_load(struct enc_key_data *enc_state, int slot,
 }
 
 bool
-boot_enc_valid(struct enc_key_data *enc_state, int image_index,
-        const struct flash_area *fap)
+boot_enc_valid(struct enc_key_data *enc_state, int slot)
 {
-    int rc;
-
-    rc = flash_area_id_to_multi_image_slot(image_index, flash_area_get_id(fap));
-    if (rc < 0) {
-        /* can't get proper slot number - skip encryption, */
-        /* postpone the error for a upper layer */
-        return false;
-    }
-
-    return enc_state[rc].valid;
+    return enc_state[slot].valid;
 }
 
 void
