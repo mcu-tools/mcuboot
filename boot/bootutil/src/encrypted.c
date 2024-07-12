@@ -415,7 +415,7 @@ static int fake_rng(void *p_rng, unsigned char *output, size_t len)
  * @param enckey An AES-128 or AES-256 key sized buffer to store to plain key.
  */
 int
-boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey)
+boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 {
 #if defined(MCUBOOT_ENCRYPT_RSA)
     bootutil_rsa_context rsa;
@@ -660,7 +660,7 @@ boot_enc_load(struct enc_key_data *enc_state, int image_index,
         return -1;
     }
 
-    return boot_enc_decrypt(buf, bs->enckey[slot]);
+    return boot_decrypt_key(buf, bs->enckey[slot]);
 }
 
 bool

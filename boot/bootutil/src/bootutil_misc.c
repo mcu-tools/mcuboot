@@ -283,7 +283,7 @@ boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status
         }
         /* Only try to decrypt non-erased TLV metadata */
         if (i != BOOT_ENC_TLV_ALIGN_SIZE) {
-            rc = boot_enc_decrypt(bs->enctlv[slot], bs->enckey[slot]);
+            rc = boot_decrypt_key(bs->enctlv[slot], bs->enckey[slot]);
         }
     }
 #else
