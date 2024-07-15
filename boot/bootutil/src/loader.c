@@ -1281,8 +1281,7 @@ boot_copy_region(struct boot_loader_state *state,
                     blk_off = (abs_off - hdr->ih_hdr_size) & 0xf;
                 }
 
-                if (blk_sz > 0)
-                {
+                if (blk_sz > 0) {
                     tlv_off = BOOT_TLV_OFF(hdr);
                     if (abs_off + chunk_sz > tlv_off) {
                         /* do not decrypt TLVs */
