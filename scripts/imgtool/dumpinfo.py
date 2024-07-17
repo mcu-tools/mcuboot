@@ -175,9 +175,8 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
 
         # Iterating through the protected TLV area
         while tlv_off < tlv_end:
-            tlv_type, tlv_len = struct.unpack(
-                order + 'HH',
-                b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
+            tlv_type, tlv_len = struct.unpack(order + 'HH',
+                                              b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
             tlv_off += image.TLV_INFO_SIZE
             tlv_data = b[tlv_off:(tlv_off + tlv_len)]
             tlv_area["tlvs_prot"].append(
@@ -193,8 +192,8 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
 
     # Iterating through the TLV area
     while tlv_off < tlv_end:
-        tlv_type, _, tlv_len = struct.unpack(order + 'BBH',
-                                             b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
+        tlv_type, tlv_len = struct.unpack(order + 'HH',
+                                          b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
         tlv_off += image.TLV_INFO_SIZE
         tlv_data = b[tlv_off:(tlv_off + tlv_len)]
         tlv_area["tlvs"].append(

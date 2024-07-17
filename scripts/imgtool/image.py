@@ -124,7 +124,7 @@ class TLV:
                 raise click.UsageError(msg)
             buf = struct.pack(e + 'HH', kind, len(payload))
         else:
-            buf = struct.pack(e + 'BBH', TLV_VALUES[kind], 0, len(payload))
+            buf = struct.pack(e + 'HH', TLV_VALUES[kind], len(payload))
         self.buf += buf
         self.buf += payload
 
@@ -679,7 +679,7 @@ class Image:
         tlv_off += TLV_INFO_SIZE  # skip tlv info
         while tlv_off < tlv_end:
             tlv = b[tlv_off:tlv_off + TLV_SIZE]
-            tlv_type, _, tlv_len = struct.unpack(e + 'BBH', tlv)
+            tlv_type, tlv_len = struct.unpack(e + 'HH', tlv)
             if tlv_type == TLV_VALUES["SHA256"] or tlv_type == TLV_VALUES["SHA384"]:
                 if not tlv_matches_key_type(tlv_type, key):
                     return VerifyResult.KEY_MISMATCH, None, None
