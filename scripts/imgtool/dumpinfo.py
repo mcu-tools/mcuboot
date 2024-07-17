@@ -262,7 +262,8 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
         sys.exit(0)
 
     print("Printing content of signed image:", os.path.basename(imgfile), "\n")
-
+    byteorder_text = "Byte order: " + "little" if order == "<" else "big"
+    print_in_row(byteorder_text)
     # Image header
     section_name = "Image header (offset: 0x0)"
     print_in_row(section_name)
