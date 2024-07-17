@@ -17,16 +17,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-import click
-import getpass
-import imgtool.keys as keys
-import sys
 import base64
+import getpass
+import re
+import sys
+
+import click
+
+import imgtool.keys as keys
 from imgtool import image, imgtool_version
+from imgtool.dumpinfo import dump_imginfo
 from imgtool.keys.general import key_types_matching
 from imgtool.version import decode_version
-from imgtool.dumpinfo import dump_imginfo
 from .keys import (
     RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError)
 
@@ -455,7 +457,10 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
         if value.startswith('0x'):
             if len(value[2:]) % 2:
                 raise click.UsageError('Custom TLV length is odd.')
-            custom_tlvs[tag] = bytes.fromhex(value[2:])
+            ctlv_ba = bytearray.fromhex(value[2:])
+            # encode integer TLVs as per byteorder
+            ctlv_ba.reverse() if endian == "little" else None
+            custom_tlvs[tag] = ctlv_ba
         else:
             custom_tlvs[tag] = value.encode('utf-8')
 
