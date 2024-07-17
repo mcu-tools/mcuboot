@@ -673,13 +673,11 @@ boot_enc_valid(struct enc_key_data *enc_state, int image_index,
 }
 
 void
-boot_encrypt(struct enc_key_data *enc_state, int image_index,
-        int fa_id, uint32_t off, uint32_t sz,
-        uint32_t blk_off, uint8_t *buf)
+boot_encrypt(struct enc_key_data *enc_state, int slot, uint32_t off,
+             uint32_t sz, uint32_t blk_off, uint8_t *buf)
 {
     struct enc_key_data *enc;
     uint8_t nonce[16];
-    int rc;
 
     /* boot_copy_region will call boot_encrypt with sz = 0 when skipping over
        the TLVs. */
@@ -694,13 +692,7 @@ boot_encrypt(struct enc_key_data *enc_state, int image_index,
     nonce[14] = (uint8_t)(off >> 8);
     nonce[15] = (uint8_t)off;
 
-    rc = flash_area_id_to_multi_image_slot(image_index, fa_id);
-    if (rc < 0) {
-        assert(0);
-        return;
-    }
-
-    enc = &enc_state[rc];
+    enc = &enc_state[slot];
     assert(enc->valid == 1);
     bootutil_aes_ctr_encrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf);
 }
