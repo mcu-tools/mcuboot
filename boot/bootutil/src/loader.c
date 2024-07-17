@@ -1216,13 +1216,14 @@ boot_copy_region(struct boot_loader_state *state,
     uint32_t off;
     uint32_t tlv_off;
     size_t blk_off;
-    int enc_area_id;
     struct image_header *hdr;
     uint16_t idx;
     uint32_t blk_sz;
     uint8_t image_index;
     bool encrypted_src;
     bool encrypted_dst;
+    /* Assuming the secondary slot is source and needs decryption */
+    int source_slot = 1;
 #endif
 
     TARGET_STATIC uint8_t buf[BUF_SZ] __attribute__((aligned(4)));
@@ -1255,11 +1256,11 @@ boot_copy_region(struct boot_loader_state *state,
             if (encrypted_dst) {
                 /* Need encryption, metadata from the primary slot */
                 hdr = boot_img_hdr(state, BOOT_PRIMARY_SLOT);
-                enc_area_id = FLASH_AREA_IMAGE_PRIMARY(image_index);
+                source_slot = 0;
             } else {
                 /* Need decryption, metadata from the secondary slot */
                 hdr = boot_img_hdr(state, BOOT_SECONDARY_SLOT);
-                enc_area_id = FLASH_AREA_IMAGE_SECONDARY(image_index);
+                source_slot = 1;
             }
 
             if (IS_ENCRYPTED(hdr)) {
@@ -1291,7 +1292,7 @@ boot_copy_region(struct boot_loader_state *state,
                             blk_sz = tlv_off - abs_off;
                         }
                     }
-                    boot_encrypt(BOOT_CURR_ENC(state), image_index, enc_area_id,
+                    boot_encrypt(BOOT_CURR_ENC(state), source_slot,
                             (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
                             blk_off, &buf[idx]);
                 }
@@ -2726,13 +2727,11 @@ boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
     uint32_t chunk_sz;
     uint32_t max_sz = 1024;
     uint16_t idx;
-    uint8_t image_index;
     uint8_t * cur_dst;
     int area_id;
     int rc;
     uint8_t * ram_dst = (void *)(IMAGE_RAM_BASE + img_dst);
 
-    image_index = BOOT_CURR_IMG(state);
     area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
     rc = flash_area_open(area_id, &fap_src);
     if (rc != 0){
@@ -2774,7 +2773,7 @@ boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
              * Part of the chunk is encrypted payload */
             blk_sz = tlv_off - (bytes_copied);
         }
-        boot_encrypt(BOOT_CURR_ENC(state), image_index, area_id,
+        boot_encrypt(BOOT_CURR_ENC(state), slot,
             (bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
             blk_off, cur_dst);
 

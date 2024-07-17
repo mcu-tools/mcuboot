@@ -125,10 +125,11 @@ decrypt_region_inplace(struct boot_loader_state *state,
     size_t blk_off;
     uint16_t idx;
     uint32_t blk_sz;
-    uint8_t image_index;
-
+    int slot = flash_area_id_to_multi_image_slot(BOOT_CURR_IMG(state),
+                                                 flash_area_get_id(fap));
     uint8_t buf[sz] __attribute__((aligned));
     assert(sz <= sizeof buf);
+    assert(slot >= 0);
 
     bytes_copied = 0;
     while (bytes_copied < sz) {
@@ -143,7 +144,6 @@ decrypt_region_inplace(struct boot_loader_state *state,
             return BOOT_EFLASH;
         }
 
-        image_index = BOOT_CURR_IMG(state);
         if (IS_ENCRYPTED(hdr)) {
             blk_sz = chunk_sz;
             idx = 0;
@@ -171,7 +171,7 @@ decrypt_region_inplace(struct boot_loader_state *state,
                     blk_sz = tlv_off - (off + bytes_copied);
                 }
             }
-            boot_encrypt(BOOT_CURR_ENC(state), image_index, flash_area_get_id(fap),
+            boot_encrypt(BOOT_CURR_ENC(state), slot,
                     (off + bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
                     blk_off, &buf[idx]);
         }
