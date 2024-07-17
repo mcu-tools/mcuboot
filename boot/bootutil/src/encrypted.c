@@ -347,6 +347,7 @@ int
 boot_enc_drop(struct enc_key_data *enc_state, uint8_t slot)
 {
     bootutil_aes_ctr_drop(&enc_state[slot].aes_ctr);
+    enc_state[slot].valid = 0;
     return 0;
 }
 
@@ -359,7 +360,6 @@ boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
     rc = bootutil_aes_ctr_set_key(&enc_state[slot].aes_ctr, bs->enckey[slot]);
     if (rc != 0) {
         boot_enc_drop(enc_state, slot);
-        enc_state[slot].valid = 0;
         return -1;
     }
 
