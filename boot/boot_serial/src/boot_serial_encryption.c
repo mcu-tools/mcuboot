@@ -171,7 +171,7 @@ decrypt_region_inplace(struct boot_loader_state *state,
                     blk_sz = tlv_off - (off + bytes_copied);
                 }
             }
-            boot_encrypt(BOOT_CURR_ENC(state), slot,
+            boot_enc_decrypt(BOOT_CURR_ENC(state), slot,
                     (off + bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
                     blk_off, &buf[idx]);
         }
