@@ -1391,9 +1391,15 @@ boot_copy_region(struct boot_loader_state *state,
                         blk_sz = tlv_off - abs_off;
                     }
                 }
-                boot_encrypt(BOOT_CURR_ENC(state), source_slot,
-                        (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
-                        blk_off, &buf[idx]);
+                if (source_slot == 0) {
+                    boot_enc_encrypt(BOOT_CURR_ENC(state), source_slot,
+                            (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
+                            blk_off, &buf[idx]);
+                } else {
+                    boot_enc_decrypt(BOOT_CURR_ENC(state), source_slot,
+                            (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
+                            blk_off, &buf[idx]);
+                }
             }
         }
 #endif
@@ -2897,10 +2903,9 @@ boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
              * Part of the chunk is encrypted payload */
             blk_sz = tlv_off - (bytes_copied);
         }
-        boot_encrypt(BOOT_CURR_ENC(state), slot,
-            (bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
-            blk_off, cur_dst);
-
+        boot_enc_decrypt(BOOT_CURR_ENC(state), slot,
+                (bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
+                blk_off, cur_dst);
         bytes_copied += chunk_sz;
     }
     rc = 0;

@@ -153,8 +153,8 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 
             if (off >= hdr_size && off < tlv_off) {
                 blk_off = (off - hdr_size) & 0xf;
-                boot_encrypt(enc_state, slot, off - hdr_size,
-                             blk_sz, blk_off, tmp_buf);
+                boot_enc_decrypt(enc_state, slot, off - hdr_size,
+                                 blk_sz, blk_off, tmp_buf);
             }
         }
 #endif
