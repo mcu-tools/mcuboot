@@ -2769,21 +2769,15 @@ boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
         cur_dst = ram_dst + bytes_copied;
         blk_sz = chunk_sz;
         idx = 0;
+        blk_off = ((bytes_copied) - hdr->ih_hdr_size) & 0xf;
         if (bytes_copied + chunk_sz > tlv_off) {
             /* Going over TLV section
              * Part of the chunk is encrypted payload */
-            blk_off = ((bytes_copied) - hdr->ih_hdr_size) & 0xf;
             blk_sz = tlv_off - (bytes_copied);
-            boot_encrypt(BOOT_CURR_ENC(state), image_index, area_id,
-                (bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
-                blk_off, cur_dst);
-        } else {
-            /* Image encrypted payload section */
-            blk_off = ((bytes_copied) - hdr->ih_hdr_size) & 0xf;
-            boot_encrypt(BOOT_CURR_ENC(state), image_index, area_id,
-                    (bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
-                    blk_off, cur_dst);
         }
+        boot_encrypt(BOOT_CURR_ENC(state), image_index, area_id,
+            (bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
+            blk_off, cur_dst);
 
         bytes_copied += chunk_sz;
     }
