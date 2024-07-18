@@ -70,7 +70,9 @@ int boot_enc_load(struct enc_key_data *enc_state, int slot,
         const struct image_header *hdr, const struct flash_area *fap,
         struct boot_status *bs);
 bool boot_enc_valid(struct enc_key_data *enc_state, int slot);
-void boot_encrypt(struct enc_key_data *enc_state, int slot,
+void boot_enc_encrypt(struct enc_key_data *enc_state, int slot,
+        uint32_t off, uint32_t sz, uint32_t blk_off, uint8_t *buf);
+void boot_enc_decrypt(struct enc_key_data *enc_state, int slot,
         uint32_t off, uint32_t sz, uint32_t blk_off, uint8_t *buf);
 void boot_enc_zeroize(struct enc_key_data *enc_state);
 

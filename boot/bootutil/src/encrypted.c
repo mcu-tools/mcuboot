@@ -688,14 +688,13 @@ boot_enc_valid(struct enc_key_data *enc_state, int slot)
 }
 
 void
-boot_encrypt(struct enc_key_data *enc_state, int slot, uint32_t off,
+boot_enc_encrypt(struct enc_key_data *enc_state, int slot, uint32_t off,
              uint32_t sz, uint32_t blk_off, uint8_t *buf)
 {
-    struct enc_key_data *enc;
+    struct enc_key_data *enc = &enc_state[slot];
     uint8_t nonce[16];
 
-    /* boot_copy_region will call boot_encrypt with sz = 0 when skipping over
-       the TLVs. */
+    /* Nothing to do with size == 0 */
     if (sz == 0) {
        return;
     }
@@ -707,9 +706,31 @@ boot_encrypt(struct enc_key_data *enc_state, int slot, uint32_t off,
     nonce[14] = (uint8_t)(off >> 8);
     nonce[15] = (uint8_t)off;
 
-    enc = &enc_state[slot];
     assert(enc->valid == 1);
     bootutil_aes_ctr_encrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf);
+}
+
+void
+boot_enc_decrypt(struct enc_key_data *enc_state, int slot, uint32_t off,
+             uint32_t sz, uint32_t blk_off, uint8_t *buf)
+{
+    struct enc_key_data *enc = &enc_state[slot];
+    uint8_t nonce[16];
+
+    /* Nothing to do with size == 0 */
+    if (sz == 0) {
+       return;
+    }
+
+    memset(nonce, 0, 12);
+    off >>= 4;
+    nonce[12] = (uint8_t)(off >> 24);
+    nonce[13] = (uint8_t)(off >> 16);
+    nonce[14] = (uint8_t)(off >> 8);
+    nonce[15] = (uint8_t)off;
+
+    assert(enc->valid == 1);
+    bootutil_aes_ctr_decrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf);
 }
 
 /**
