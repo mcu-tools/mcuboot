@@ -786,4 +786,13 @@ config MCUBOOT_VERIFY_IMG_ADDRESS
 	  also be useful when BOOT_DIRECT_XIP is enabled, to ensure that the image
 	  linked at the correct address is loaded.
 
+# When used with MCUboot, the external flash page size must match
+# the internal SoC flash page size, which is 4096 for Nordic MCUs.
+configdefault NORDIC_QSPI_NOR_FLASH_LAYOUT_PAGE_SIZE
+	default 4096
+# Use a slightly larger default value for stack writes that is unlikely
+# to lead to any stack overflows.
+configdefault NORDIC_QSPI_NOR_STACK_WRITE_BUFFER_SIZE
+	default 32
+
 source "Kconfig.zephyr"
