@@ -455,6 +455,9 @@ fn main() {
     }
 
     conf.file("../../boot/bootutil/src/loader.c");
+    if ram_load {
+        conf.file("../../boot/bootutil/src/ram_load.c");
+    }
     conf.file("../../boot/bootutil/src/swap_misc.c");
     conf.file("../../boot/bootutil/src/swap_scratch.c");
     conf.file("../../boot/bootutil/src/swap_move.c");

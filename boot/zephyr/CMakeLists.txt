@@ -143,6 +143,12 @@ zephyr_library_sources(
   )
 endif()
 
+if(CONFIG_BOOT_RAM_LOAD)
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/ram_load.c
+    )
+endif()
+
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   zephyr_library_include_directories(
     ${MBEDTLS_ASN1_DIR}/include

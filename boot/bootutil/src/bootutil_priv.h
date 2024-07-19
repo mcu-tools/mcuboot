@@ -51,6 +51,8 @@ struct flash_area;
 
 #define BOOT_TMPBUF_SZ  256
 
+#define NO_ACTIVE_SLOT UINT32_MAX
+
 /** Number of image slots in flash; currently limited to two. */
 #define BOOT_NUM_SLOTS                  2
 
@@ -467,14 +469,23 @@ struct bootsim_ram_info *bootsim_get_ram_info(void);
 #define LOAD_IMAGE_DATA(hdr, fap, start, output, size)       \
     (memcpy((output),(void*)(IMAGE_RAM_BASE + (hdr)->ih_load_addr + (start)), \
     (size)), 0)
+
+int boot_load_image_to_sram(struct boot_loader_state *state);
+int boot_remove_image_from_sram(struct boot_loader_state *state);
+int boot_remove_image_from_flash(struct boot_loader_state *state,
+                                 uint32_t slot);
 #else
 #define IMAGE_RAM_BASE ((uintptr_t)0)
 
 #define LOAD_IMAGE_DATA(hdr, fap, start, output, size)       \
     (flash_area_read((fap), (start), (output), (size)))
+
 #endif /* MCUBOOT_RAM_LOAD */
 
 uint32_t bootutil_max_image_size(const struct flash_area *fap);
+
+int boot_read_image_size(struct boot_loader_state *state, int slot,
+                         uint32_t *size);
 
 #ifdef __cplusplus
 }

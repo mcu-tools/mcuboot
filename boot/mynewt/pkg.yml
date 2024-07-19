@@ -39,6 +39,8 @@ pkg.ign_files.!BOOTUTIL_SINGLE_APPLICATION_SLOT:
     - "single_loader.c"
 pkg.ign_files.BOOTUTIL_SINGLE_APPLICATION_SLOT:
     - "swap_scratch.c"
+pkg.ign_files:
+    - "ram_load.c"
 
 pkg.deps.BOOTUTIL_NO_LOGGING:
     - "@apache-mynewt-core/sys/console/stub"
