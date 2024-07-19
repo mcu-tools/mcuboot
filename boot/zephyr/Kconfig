@@ -748,8 +748,8 @@ comment "Zephyr configuration options"
 config MULTITHREADING
 	default y if BOOT_SERIAL_CDC_ACM #usb driver requires MULTITHREADING
 	default y if BOOT_USB_DFU_GPIO || BOOT_USB_DFU_WAIT
-	default n if SOC_FAMILY_NORDIC_NRF
 	default n if SOC_FAMILY_ESPRESSIF_ESP32 && MCUBOOT
+	default n if SOC_SERIES_NRF51X # Minimal flash available
 	default y
 
 config LOG_PROCESS_THREAD
