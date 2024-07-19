@@ -320,6 +320,18 @@ config BOOT_IMAGE_EXECUTABLE_RAM_SIZE
 	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM),0)
 endif
 
+config FLASH_MAP_CUSTOM_SOURCES
+	bool "Flash map custom sources"
+	select BOOT_RAM_LOAD
+	select SINGLE_APPLICATION_SLOT
+	help
+	  Instead of using normal slots on flash to store the images, get images
+	  from custom "sources", like I2C or eSPI. The application must provide
+	  `flash_map_id_get_next` and `flash_map_id_get_next` functions tell
+	  mcuboot where to find the images. The application must also have
+	  a custom flash backend that can read the images from the custom sources.
+	  Note that such images are always ready directly to RAM.
+
 config BOOT_ENCRYPTION_SUPPORT
 	bool
 	help
