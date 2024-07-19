@@ -45,6 +45,9 @@ pkg.ign_files.BOOTUTIL_SINGLE_APPLICATION_SLOT:
     - "loader.c"
     - "swap_scratch.c"
 
+pkg.ign_files:
+    - "ram_load.c"
+
 pkg.deps.BOOTUTIL_USE_MBED_TLS:
     - "@apache-mynewt-core/crypto/mbedtls"
 
