@@ -382,12 +382,16 @@ config BOOT_ENCRYPTION_KEY_FILE
 
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
+	default 512 if $(dt_nodelabel_reg_size_int,slot0_partition) > 1048576
+	default 256 if $(dt_nodelabel_reg_size_int,slot0_partition) > 524288
 	default 128
 	help
 	  This option controls the maximum number of sectors that each of
 	  the two image areas can contain. Smaller values reduce MCUboot's
 	  memory usage; larger values allow it to support larger images.
-	  If unsure, leave at the default value.
+	  If unsure, leave at the default value. The required condition is
+	  that (IMAGE_SIZE <= (BOOT_MAX_IMG_SECTORS * SECTOR_SIZE)). The
+	  defaults are configured for a SECTOR_SIZE of 4096.
 
 config BOOT_SHARE_BACKEND_AVAILABLE
 	bool
