@@ -231,6 +231,12 @@ set(bootutil_srcs
     ${BOOTUTIL_DIR}/src/swap_scratch.c
     ${BOOTUTIL_DIR}/src/tlv.c
     )
+
+if(CONFIG_BOOT_RAM_LOAD)
+    list(APPEND bootutil_srcs
+        ${BOOTUTIL_DIR}/src/ram_load.c
+        )
+endif()
 set(bootutil_paths)
 
 set(CFLAGS
