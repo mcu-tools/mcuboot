@@ -534,8 +534,13 @@ int main(void)
         FIH_PANIC;
     }
 
+#ifdef CONFIG_BOOT_RAM_LOAD
+    BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
+                 rsp.br_hdr->ih_load_addr);
+#else
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
                  rsp.br_image_off);
+#endif
 
 #if defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Jumping to the image slot");
