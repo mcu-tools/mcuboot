@@ -380,9 +380,21 @@ config BOOT_ENCRYPTION_KEY_FILE
 	  with the public key information will be written in a format expected by
 	  MCUboot.
 
+config BOOT_MAX_IMG_SECTORS_AUTO
+	bool "Calculate maximum sectors automatically"
+	default y
+	help
+	  If this option is enabled then the maximum number of supported sectors per image will
+	  be calculated automatically from the flash erase sizes and size of each partition for
+	  the first image.
+
+	  If this information is not available, or multiple images are used, then this option
+	  should be disabled and BOOT_MAX_IMG_SECTORS should be set instead
+
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
 	default 128
+	depends on !BOOT_MAX_IMG_SECTORS_AUTO
 	help
 	  This option controls the maximum number of sectors that each of
 	  the two image areas can contain. Smaller values reduce MCUboot's
