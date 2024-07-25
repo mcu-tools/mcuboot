@@ -4,9 +4,9 @@ function(mathup num align result)
 endfunction()
 
 function(${SYSBUILD_CURRENT_MODULE_NAME}_pre_image_cmake)
-  cmake_parse_arguments(POST_IMAGE_CMAKE "" "IMAGE" "IMAGES" ${ARGN})
+  cmake_parse_arguments(PRE_IMAGE_CMAKE "" "IMAGE" "IMAGES" ${ARGN})
 
-  if(NOT "${POST_IMAGE_CMAKE_IMAGE}" STREQUAL "mcuboot")
+  if(NOT "${PRE_IMAGE_CMAKE_IMAGE}" STREQUAL "mcuboot" OR NOT SB_CONFIG_BOOTLOADER_MCUBOOT)
     return()
   endif()
 
@@ -21,7 +21,7 @@ endfunction(${SYSBUILD_CURRENT_MODULE_NAME}_pre_image_cmake)
 function(${SYSBUILD_CURRENT_MODULE_NAME}_post_image_cmake)
   cmake_parse_arguments(POST_IMAGE_CMAKE "" "IMAGE" "IMAGES" ${ARGN})
 
-  if(NOT "${POST_IMAGE_CMAKE_IMAGE}" STREQUAL "mcuboot")
+  if(NOT "${POST_IMAGE_CMAKE_IMAGE}" STREQUAL "mcuboot" OR NOT SB_CONFIG_BOOTLOADER_MCUBOOT)
     return()
   endif()
 
