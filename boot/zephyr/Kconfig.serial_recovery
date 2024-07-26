@@ -202,4 +202,11 @@ config BOOT_SERIAL_IMG_GRP_IMAGE_STATE
 	  If y, image states will be included with image lists and the set
 	  state command can be used to mark an image as test/confirmed.
 
+config BOOT_SERIAL_IMG_GRP_SLOT_INFO
+	bool "Slot info"
+	default y if UPDATEABLE_IMAGE_NUMBER > 1
+	help
+	  If y, will include the slot info command which lists what available
+	  slots there are in the system.
+
 endif # MCUBOOT_SERIAL
