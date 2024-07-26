@@ -63,6 +63,10 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 static struct boot_loader_state boot_data;
 
+#if defined(MCUBOOT_DATA_SHARING)
+static struct image_max_size image_max_sizes[BOOT_IMAGE_NUMBER] = {0};
+#endif
+
 #if (BOOT_IMAGE_NUMBER > 1)
 #define IMAGES_ITER(x) for ((x) = 0; (x) < BOOT_IMAGE_NUMBER; ++(x))
 #else
@@ -137,10 +141,6 @@ boot_add_shared_data(struct boot_loader_state *state,
 #if defined(MCUBOOT_MEASURED_BOOT) || defined(MCUBOOT_DATA_SHARING)
     int rc;
 
-#ifdef MCUBOOT_DATA_SHARING
-    int max_app_size;
-#endif
-
 #ifdef MCUBOOT_MEASURED_BOOT
     rc = boot_save_boot_status(BOOT_CURR_IMG(state),
                                 boot_img_hdr(state, active_slot),
@@ -152,10 +152,9 @@ boot_add_shared_data(struct boot_loader_state *state,
 #endif /* MCUBOOT_MEASURED_BOOT */
 
 #ifdef MCUBOOT_DATA_SHARING
-    max_app_size = app_max_size(state);
     rc = boot_save_shared_data(boot_img_hdr(state, active_slot),
                                 BOOT_IMG_AREA(state, active_slot),
-                                active_slot, max_app_size);
+                                active_slot, image_max_sizes);
     if (rc != 0) {
         BOOT_LOG_ERR("Failed to add data to shared memory area.");
         return rc;
@@ -1841,6 +1840,10 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
+#if defined(MCUBOOT_DATA_SHARING)
+    int max_size;
+#endif
+
     /* Determine the sector layout of the image slots and scratch area. */
     rc = boot_read_sectors(state);
     if (rc != 0) {
@@ -1866,6 +1869,16 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
         BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
         return;
     }
+
+#if defined(MCUBOOT_DATA_SHARING)
+    /* Fetch information on maximum sizes for later usage, if needed */
+    max_size = app_max_size(state);
+
+    if (max_size > 0) {
+        image_max_sizes[BOOT_CURR_IMG(state)].calculated = true;
+        image_max_sizes[BOOT_CURR_IMG(state)].max_size = max_size;
+    }
+#endif
 
     /* If the current image's slots aren't compatible, no swap is possible.
      * Just boot into primary slot.
@@ -3323,3 +3336,13 @@ void boot_state_clear(struct boot_loader_state *state)
         memset(&boot_data, 0, sizeof(struct boot_loader_state));
     }
 }
+
+#if defined(MCUBOOT_DATA_SHARING)
+/**
+* Fetches the maximum allowed size of the image
+*/
+const struct image_max_size *boot_get_max_app_size(void)
+{
+    return image_max_sizes;
+}
+#endif
