@@ -81,6 +81,7 @@ struct nmgr_hdr {
  */
 #define IMGMGR_NMGR_ID_STATE            0
 #define IMGMGR_NMGR_ID_UPLOAD           1
+#define IMGMGR_NMGR_ID_SLOT_INFO        6
 
 void boot_serial_input(char *buf, int len);
 extern const struct boot_uart_funcs *boot_uf;

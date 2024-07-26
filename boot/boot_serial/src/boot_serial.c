@@ -95,11 +95,27 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #else
 #define BOOT_SERIAL_HASH_SIZE_MAX 0
 #endif
+#ifdef MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO
+#define BOOT_SERIAL_SLOT_INFO_SIZE_MAX 164
+#else
+#define BOOT_SERIAL_SLOT_INFO_SIZE_MAX 0
+#endif
 
-#define BOOT_SERIAL_OUT_MAX     ((128 + BOOT_SERIAL_IMAGE_STATE_SIZE_MAX + \
-                                  BOOT_SERIAL_HASH_SIZE_MAX) * BOOT_IMAGE_NUMBER)
+#if (128 + BOOT_SERIAL_IMAGE_STATE_SIZE_MAX + BOOT_SERIAL_HASH_SIZE_MAX) > \
+    BOOT_SERIAL_SLOT_INFO_SIZE_MAX
+#define BOOT_SERIAL_MAX_MESSAGE_SIZE (128 + BOOT_SERIAL_IMAGE_STATE_SIZE_MAX + \
+        BOOT_SERIAL_HASH_SIZE_MAX)
+#else
+#define BOOT_SERIAL_MAX_MESSAGE_SIZE BOOT_SERIAL_SLOT_INFO_SIZE_MAX
+#endif
+
+#define BOOT_SERIAL_OUT_MAX     (BOOT_SERIAL_MAX_MESSAGE_SIZE * BOOT_IMAGE_NUMBER)
 
 #define BOOT_SERIAL_FRAME_MTU   124 /* 127 - pkt start (2 bytes) and stop (1 byte) */
+
+/* Number of estimated CBOR elements for responses */
+#define CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP 4
+#define CBOR_ENTRIES_SLOT_INFO_SLOTS_MAP 3
 
 #ifdef __ZEPHYR__
 /* base64 lib encodes data to null-terminated string */
@@ -259,11 +275,7 @@ bs_list(char *buf, int len)
         int swap_status = boot_swap_type_multi(image_index);
 #endif
 
-#ifdef MCUBOOT_SINGLE_APPLICATION_SLOT
-        for (slot = 0; slot < 1; slot++) {
-#else
-        for (slot = 0; slot < 2; slot++) {
-#endif
+        for (slot = 0; slot < MCUBOOT_IMAGE_NUMBER; slot++) {
             FIH_DECLARE(fih_rc, FIH_FAILURE);
             uint8_t tmpbuf[64];
 
@@ -575,6 +587,139 @@ bs_list_set(uint8_t op, char *buf, int len)
 #endif
     }
 }
+
+#ifdef MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO
+static void
+bs_slot_info(uint8_t op, char *buf, int len)
+{
+    uint32_t slot, area_id;
+    const struct flash_area *fap;
+    uint8_t image_index = 0;
+    int rc;
+    bool ok = true;
+    const struct image_max_size *image_max_sizes;
+
+    if (op != NMGR_OP_READ) {
+        bs_rc_rsp(MGMT_ERR_ENOTSUP);
+    }
+
+    image_max_sizes = boot_get_max_app_size();
+
+    zcbor_map_start_encode(cbor_state, 1);
+    zcbor_tstr_put_lit_cast(cbor_state, "images");
+    zcbor_list_start_encode(cbor_state, MCUBOOT_IMAGE_NUMBER);
+
+    IMAGES_ITER(image_index) {
+        for (slot = 0; slot < MCUBOOT_IMAGE_NUMBER; slot++) {
+            if (slot == 0) {
+                    ok = zcbor_map_start_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP) &&
+                         zcbor_tstr_put_lit(cbor_state, "image") &&
+                         zcbor_uint32_put(cbor_state, (uint32_t)image_index) &&
+                         zcbor_tstr_put_lit(cbor_state, "slots") &&
+                         zcbor_list_start_encode(cbor_state, MCUBOOT_IMAGE_NUMBER);
+
+                    if (!ok) {
+                            goto finish;
+                    }
+                }
+
+                ok = zcbor_map_start_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_SLOTS_MAP) &&
+                     zcbor_tstr_put_lit(cbor_state, "slot") &&
+                     zcbor_uint32_put(cbor_state, slot);
+
+                if (!ok) {
+                    goto finish;
+                }
+
+                area_id = flash_area_id_from_multi_image_slot(image_index, slot);
+                rc = flash_area_open(area_id, &fap);
+
+                if (rc) {
+                    ok = zcbor_tstr_put_lit(cbor_state, "rc") &&
+                         zcbor_int32_put(cbor_state, rc);
+                } else {
+                    if (sizeof(fap->fa_size) == sizeof(uint64_t)) {
+                        ok = zcbor_tstr_put_lit(cbor_state, "size") &&
+                             zcbor_uint64_put(cbor_state, fap->fa_size);
+                    } else {
+                        ok = zcbor_tstr_put_lit(cbor_state, "size") &&
+                             zcbor_uint32_put(cbor_state, fap->fa_size);
+                    }
+
+                    if (!ok) {
+                        flash_area_close(fap);
+                        goto finish;
+                    }
+
+                    /*
+                     * Check if we support uploading to this slot and if so, return the
+                     * image ID
+                     */
+#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
+                    ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
+                         zcbor_uint32_put(cbor_state, (image_index + 1));
+#elif defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
+                    ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
+                         zcbor_uint32_put(cbor_state, (image_index * 2 + slot + 1));
+#else
+                    if (slot == 1) {
+                        ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
+                             zcbor_uint32_put(cbor_state, (image_index * 2 + 1));
+                    }
+#endif
+
+                    flash_area_close(fap);
+
+                    if (!ok) {
+                        goto finish;
+                    }
+
+                    ok = zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_SLOTS_MAP);
+
+                    if (!ok) {
+                            goto finish;
+                    }
+
+                    if (slot == (MCUBOOT_IMAGE_NUMBER - 1)) {
+                        ok = zcbor_list_end_encode(cbor_state, MCUBOOT_IMAGE_NUMBER);
+
+                        if (!ok) {
+                            goto finish;
+                        }
+
+                        if (image_max_sizes[image_index].calculated == true) {
+                            ok = zcbor_tstr_put_lit(cbor_state, "max_image_size") &&
+                                 zcbor_uint32_put(cbor_state,
+                                                  image_max_sizes[image_index].max_size);
+
+                            if (!ok) {
+                                goto finish;
+                            }
+                        }
+
+                        ok = zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP);
+
+                    }
+                }
+
+                if (!ok) {
+                    goto finish;
+                }
+            }
+        }
+
+        ok = zcbor_list_end_encode(cbor_state, MCUBOOT_IMAGE_NUMBER) &&
+             zcbor_map_end_encode(cbor_state, 1);
+
+finish:
+    if (!ok) {
+        reset_cbor_state();
+        bs_rc_rsp(MGMT_ERR_ENOMEM);
+    }
+
+    boot_serial_output();
+}
+#endif
 
 #ifdef MCUBOOT_ERASE_PROGRESSIVELY
 /** Erases range of flash, aligned to sector size
@@ -1019,6 +1164,11 @@ boot_serial_input(char *buf, int len)
         case IMGMGR_NMGR_ID_UPLOAD:
             bs_upload(buf, len);
             break;
+#ifdef MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO
+        case IMGMGR_NMGR_ID_SLOT_INFO:
+            bs_slot_info(hdr->nh_op, buf, len);
+            break;
+#endif
         default:
             bs_rc_rsp(MGMT_ERR_ENOTSUP);
             break;
