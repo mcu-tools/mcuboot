@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-# Copyright (c) 2020-2023 Arm Limited
+# Copyright (c) 2020-2024 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,6 +32,11 @@ if test -z "$FIH_LEVEL"; then
 else
     CMAKE_FIH_LEVEL="-DMCUBOOT_FIH_PROFILE=\"$FIH_LEVEL\""
 fi
+
+# check installed version of...
+python3 -m pip show \
+    cryptography    \
+    imgtool
 
 # build TF-M with MCUBoot
 mkdir -p $TFM_BUILD_DIR
