@@ -58,8 +58,7 @@ int boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
 int boot_enc_load(struct enc_key_data *enc_state, int slot,
         const struct image_header *hdr, const struct flash_area *fap,
         struct boot_status *bs);
-bool boot_enc_valid(struct enc_key_data *enc_state, int image_index,
-        const struct flash_area *fap);
+bool boot_enc_valid(struct enc_key_data *enc_state, int slot);
 void boot_encrypt(struct enc_key_data *enc_state, int image_index,
         int fa_id, uint32_t off, uint32_t sz,
         uint32_t blk_off, uint8_t *buf);
