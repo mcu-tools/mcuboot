@@ -72,8 +72,10 @@ choice BOOT_SIGNATURE_TYPE
 	default BOOT_SIGNATURE_TYPE_RSA
 
 config BOOT_SIGNATURE_TYPE_NONE
-	bool "No signature; use only hash check"
-	select BOOT_USE_TINYCRYPT
+	bool "No signature; use only sha256 check"
+
+config BOOT_SIGNATURE_TYPE_NONE_SHA512
+	bool "No signature; use only sha512 check"
 
 config BOOT_SIGNATURE_TYPE_RSA
 	bool "RSA signatures"
