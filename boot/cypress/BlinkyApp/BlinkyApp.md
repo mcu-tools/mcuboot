@@ -4,17 +4,7 @@
 
 Implements a simple Blinky LED application to demonstrate the MCUBootApp bootloader application operation for the boot and upgrade processes.
 
-This demo supports PSoC™ 6 chips with the 1M-, 2M-, and 512K-flash on board; XMC7200, XMC7100; CYW20829/CYW89829 chips with no internal flash.
-The evaluation kits are:
-* `CY8CPROTO-062-4343W`
-* `CY8CKIT-062-WIFI-BT`
-* `CY8CPROTO-062S3-4343W`
-* `CYW920829M2EVB-01`
-* `CYW989829M2EVB-01`
-* `CYBLE-416045-EVAL`
-* `CY8CPROTO-063-BLE`
-* `CY8CKIT-062-BLE`
-* `KIT_XMC72_EVK`
+It is validated and started by MCUBootApp, which is running on the CM0p core of PSoC™ 6 devices, or CM33 core for the CYW20829/CYW89829 devices.
 
 Functionality:
 
@@ -97,7 +87,7 @@ These jobs also remove auto-generated files 'memorymap.mk' and 'memory.h', which
 `MCUBootApp` can upgrade an image either by overwriting the image from a secondary slot to a primary slot or by swapping the two images.  
 To build `BlinkyApp` for different upgrade modes choose flash map JSON file with the corresponding suffix - either `_swap_` or `_overwrite_`.  
 But hold in the mind, that `MCUBootApp` and `BlinkyApp` should use the same flash map file!  
-For example: to building `MCUBootApp` and `BlinkyApp` in the 'single overwride' mode use the flash map file:   
+For example: to building `MCUBootApp` and `BlinkyApp` in the 'single overwrite' mode use the flash map file:   
 `FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_single.json`  
 
 **Single-image**
@@ -265,7 +255,7 @@ To erase the swap status partition area in MCUBootApp with multi-image configura
 
     $OPENOCD_PATH/bin/openocd -s "$OPENOCD_PATH/scripts" -f "$OPENOCD_PATH/ scripts/interface/kitprog3.cfg" -f "$OPENOCD_PATH/scripts/target/psoc6_2m.cfg" -c "init; reset init" -c "flash erase_address 0x10078000 0x2000" -c "reset; shutdown"
 
-In both cases, it is easier to erase the whole device flash or all flash after MCUBootApp. This command erases all flash after MCUBootApp, including the primary, secondary, and swap status partiton:
+In both cases, it is easier to erase the whole device flash or all flash after MCUBootApp. This command erases all flash after MCUBootApp, including the primary, secondary, and swap status partition:
 
     $OPENOCD_PATH/bin/openocd -s "$OPENOCD_PATH/scripts" -f "$OPENOCD_PATH/ scripts/interface/kitprog3.cfg" -f "$OPENOCD_PATH/scripts/target/psoc6_2m.cfg" -c "init; reset init" -c "flash erase_address 0x10018000 0x1E8000" -c "reset; shutdown"
 

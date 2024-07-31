@@ -220,7 +220,7 @@ static cy_stc_smif_mem_config_t mem_sfdp_0 =
     /* The size allocated in the PSoC memory map, for the memory slave device.
     The size is allocated from the base address. Valid when the memory mapped mode is enabled. */
 /*    .memMappedSize = 0x4000000U, */
-    .flags = CY_SMIF_FLAG_DETECT_SFDP,
+    .flags = CY_SMIF_FLAG_DETECT_SFDP | CY_SMIF_FLAG_MEMORY_MAPPED | CY_SMIF_FLAG_CRYPTO_ENABLE,
     .slaveSelect = CY_SMIF_SLAVE_SELECT_0,
     .dataSelect = CY_SMIF_DATA_SEL0,
     .deviceCfg = &dev_sfdp_0
@@ -436,20 +436,26 @@ void qspi_disable(void)
 CY_RAMFUNC_END /* SMIF will be deinitialized in this case! */
 #endif /* defined(CY_BOOT_USE_EXTERNAL_FLASH) && !defined(MCUBOOT_ENC_IMAGES_XIP) */
 
+CY_RAMFUNC_BEGIN
 cy_stc_smif_mem_config_t *qspi_get_memory_config(uint8_t index)
 {
     return smif_blk_config->memConfig[index];
 }
+CY_RAMFUNC_END
 
+CY_RAMFUNC_BEGIN
 SMIF_Type *qspi_get_device(void)
 {
     return QSPIPort;
 }
+CY_RAMFUNC_END
 
+CY_RAMFUNC_BEGIN
 cy_stc_smif_context_t *qspi_get_context(void)
 {
     return &QSPI_context;
 }
+CY_RAMFUNC_END
 
 cy_en_smif_status_t qspi_init(cy_stc_smif_block_config_t *blk_config)
 {

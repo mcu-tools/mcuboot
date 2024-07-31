@@ -1753,6 +1753,9 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
 
     if (BOOT_IS_UPGRADE(swap_type)) {
         rc = swap_set_copy_done(BOOT_CURR_IMG(state));
+#if defined(MCUBOOT_ENC_IMAGES_SMIF)
+        rc |= swap_clear_magic_upgrade(BOOT_CURR_IMG(state));
+#endif
         if (rc != 0) {
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_PANIC;
         }

@@ -72,6 +72,11 @@ int swap_read_status_bytes(const struct flash_area *fap,
 int swap_set_copy_done(uint8_t image_index);
 
 /**
+ * Marks the image in the secondary slot as upgraded.
+ */
+int swap_clear_magic_upgrade(uint8_t image_index);
+
+/**
  * Marks a reverted image in the primary slot as confirmed. This is necessary to
  * ensure the status bytes from the image revert operation don't get processed
  * on a subsequent boot.

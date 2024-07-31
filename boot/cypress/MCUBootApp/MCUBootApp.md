@@ -11,7 +11,7 @@ This solution demonstrates the operation of MCUboot on Cypress PSoC™ 6 and CYW
 * Revert bad upgrade images
 * Secondary slots located in external flash
 
-This demo supports PSoC™ 6 chips with the 1M-, 2M-, and 512K-flash on board; XMC7200, XMC7100; CYW20829/CYW89829 chips with no internal flash.
+This demo supports PSoC™ 6 chips with the 1M-, 2M-, and 512K-flash on board, and the CYW20829/CYW89829 chips with no internal flash.
 The evaluation kits are:
 * `CY8CPROTO-062-4343W`
 * `CY8CKIT-062-WIFI-BT`
@@ -23,7 +23,7 @@ The evaluation kits are:
 * `CY8CKIT-062-BLE`
 * `KIT_XMC72_EVK`
 
-### Platfrom specifics
+### Platform specifics
 
 MCUBootApp can be built for different platforms. So, the main application makefile `MCUBootApp.mk` operates with common build variables and flags. Most of them can be passed to the build system as a `make` command parameter and each platform defines the default value prefixed with `PLATFORM_` in the corresponding makefile - `PSOC6.mk` or `CYW20829.mk`. The build flags and variables are described in detail in the following paragraphs.
 
@@ -152,6 +152,8 @@ The required size of the status partition relies on many factors. If an insuffic
 Insufficient swap status area - suggested size 0x3800
 ```
 To calculate the minimal correct size of the status partition, one could specify `"value": "0"` for the `"status_size"`. After the intentional `make` failure, copy the correct size from the error message.
+
+To improve boot time user may specify build variables `MCUBOOT_SWAP_STATUS_FAST_BOOT=1` `USE_BOOTSTRAP=0` and comment out `MCUBOOT_VALIDATE_PRIMARY_SLOT` in "mcuboot_config.h" to achieve faster boot.
 
 ###### External flash
 If external flash memory is used, one should specify its parameters. The first way is to specify the exact model:
@@ -583,9 +585,6 @@ When an improper address is specified, `make` will fail with a message like:
 Misaligned application_1 (secondary slot) - suggested address 0x18030200
 ```
 This gives the nearest larger address that satisfies the slot location requirements. Other errors, such as overlapping flash areas, are also checked and reported.
-
-To improve boot time user may specify build variables `MCUBOOT_SWAP_STATUS_FAST_BOOT=1` `USE_BOOTSTRAP=0` and comment out `MCUBOOT_VALIDATE_PRIMARY_SLOT` in "mcuboot_config.h" to achieve faser boot.
-
 ### Hardware limitations
 
 This application is created to demonstrate the MCUboot library features and not as a reference example. So, some considerations are taken.

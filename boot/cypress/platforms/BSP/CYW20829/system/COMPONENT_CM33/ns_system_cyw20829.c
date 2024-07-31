@@ -128,8 +128,10 @@ void SystemInit_CAT1B_CM33(void)
     (void)Cy_SystemInit(); /* typecast void to suppress a compiler warning about unused return value */
 
     /* Unlock and disable WDT */
+#if !defined(DISABLE_WDT_FREE)
     Cy_WDT_Unlock();
     Cy_WDT_Disable();
+#endif
 
     SystemCoreClockUpdate();
 }

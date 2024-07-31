@@ -39,7 +39,7 @@ CRYPTO_ACC_TYPE := MXCRYPTOLITE
 ifeq ($(PLATFORM), CYW20829)
 DEVICE ?= CYW20829B0LKML
 else ifeq ($(PLATFORM), CYW89829)
-DEVICE ?= CYW89829B01MKSBG
+DEVICE ?= CYW89829B0KML
 endif
 
 #Led pin default config
@@ -55,6 +55,12 @@ PLATFORM_SUFFIX ?= cyw20829
 # Add device name to defines
 DEFINES += $(DEVICE)
 
+USE_SWAP_STATUS ?= 1
+
+ifeq ($(USE_SWAP_STATUS), 1)
+DEFINES += USE_SWAP_STATUS=1
+endif
+
 # Default upgrade method
 PLATFORM_DEFAULT_USE_OVERWRITE ?= 0
 
@@ -66,6 +72,10 @@ PLATFORM_MAX_TRAILER_PAGE_SIZE := 0x1000
 FLASH_START := 0x60000000
 FLASH_XIP_START := 0x08000000
 
+ifeq ($(SMIF_ENC), 1)
+    DEFINES += MCUBOOT_ENC_IMAGES_SMIF=1
+endif
+
 ###############################################################################
 # Application specific libraries
 ###############################################################################
@@ -75,6 +85,7 @@ THIS_APP_PATH = $(PRJ_DIR)/libs
 
 ifeq ($(APP_NAME), MCUBootApp)
 
+SMIF_ENC ?= 0
 DEFINES += COMPONENT_CUSTOM_DESIGN_MODUS
 
 # Platform dependend utils files
@@ -126,6 +137,8 @@ PLATFORM_CY_MAX_EXT_FLASH_ERASE_SIZE ?= 4096U
 PLATFORM_CHUNK_SIZE := 4096U
 ###############################################################################
 
+SIGN_ENC := 0
+
 ###############################################################################
 # MCUBootApp service app definitions
 ###############################################################################
@@ -134,6 +147,14 @@ ifeq ($(LCS), SECURE)
 # Service app path and file name
 SERVICE_APP_PATH := $(PRJ_DIR)/packets/apps/reprovisioning$(SERVICE_APP_PLATFORM_SUFFIX)
 SERVICE_APP_NAME := cyapp_reprovisioning_signed_icv0
+
+ifeq ($(SMIF_ENC), 1)
+    SIGN_ENC := 1
+endif
+
+ifeq ($(ENC_IMG), 1)
+    SIGN_ENC := 1
+endif
 
 # Service app size is calculated here and converted to hex format
 PLATFORM_SERVICE_APP_SIZE ?= 0x$(shell printf "%x" `wc -c < $(SERVICE_APP_PATH)/$(SERVICE_APP_NAME).bin`)
@@ -148,8 +169,8 @@ endif
 post_build: $(OUT_CFG)/$(APP_NAME).elf
 ifeq ($(POST_BUILD_ENABLE), 1)
 	$(info [TOC2_Generate] - Execute toc2 generator script for $(APP_NAME))
-	@echo $(SHELL) $(PRJ_DIR)/run_toc2_generator.sh $(LCS) $(OUT_CFG) $(APP_NAME) $(APPTYPE) $(PROVISION_PATH) $(SMIF_CRYPTO_CONFIG) $(TOOLCHAIN_PATH) $(APP_DEFAULT_POLICY) $(BOOTLOADER_SIZE) $(ENC_IMG) $(PLATFORM) $(PLATFORM_SERVICE_APP_DESC_OFFSET)
-	$(shell        $(PRJ_DIR)/run_toc2_generator.sh $(LCS) $(OUT_CFG) $(APP_NAME) $(APPTYPE) $(PROVISION_PATH) $(SMIF_CRYPTO_CONFIG) $(TOOLCHAIN_PATH) $(APP_DEFAULT_POLICY) $(BOOTLOADER_SIZE) $(ENC_IMG) $(PLATFORM) $(PLATFORM_SERVICE_APP_DESC_OFFSET))
+	@echo $(SHELL) $(PRJ_DIR)/run_toc2_generator.sh $(LCS) $(OUT_CFG) $(APP_NAME) $(APPTYPE) $(PROVISION_PATH) $(SMIF_CRYPTO_CONFIG) $(TOOLCHAIN_PATH) $(APP_DEFAULT_POLICY) $(BOOTLOADER_SIZE) $(SIGN_ENC) $(PLATFORM) $(PLATFORM_SERVICE_APP_DESC_OFFSET)
+	$(shell        $(PRJ_DIR)/run_toc2_generator.sh $(LCS) $(OUT_CFG) $(APP_NAME) $(APPTYPE) $(PROVISION_PATH) $(SMIF_CRYPTO_CONFIG) $(TOOLCHAIN_PATH) $(APP_DEFAULT_POLICY) $(BOOTLOADER_SIZE) $(SIGN_ENC) $(PLATFORM) $(PLATFORM_SERVICE_APP_DESC_OFFSET))
 
 	# Convert binary to hex and rename
 	$(shell mv -f $(OUT_CFG)/$(APP_NAME).final.bin $(OUT_CFG)/$(APP_NAME).bin || rm -f $(OUT_CFG)/$(APP_NAME).bin)

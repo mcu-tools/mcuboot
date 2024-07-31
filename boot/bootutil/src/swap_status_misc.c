@@ -69,7 +69,7 @@ boot_flag_decode(uint8_t flag)
 }
 
 /* Offset Section */
-static inline uint32_t
+uint32_t
 boot_magic_off(const struct flash_area *fap)
 {
     (void)fap;
@@ -239,6 +239,25 @@ boot_write_magic(const struct flash_area *fap)
 
     rc = swap_status_update(fap->fa_id, off,
                             (const uint8_t *)&boot_img_magic, BOOT_MAGIC_SZ);
+
+    if (rc != 0) {
+        return -1;
+    }
+    return 0;
+}
+
+int
+boot_clear_magic(const struct flash_area *fap)
+{
+    uint32_t off;
+    int rc;
+    uint8_t tmp[BOOT_MAGIC_SZ];
+
+    off = fap->fa_size - BOOT_MAGIC_SZ;
+
+    (void) memset(tmp, flash_area_erased_val(fap), BOOT_MAGIC_SZ);
+
+    rc = flash_area_write(fap, off, tmp, BOOT_MAGIC_ALIGN_SIZE);
 
     if (rc != 0) {
         return -1;

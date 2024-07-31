@@ -126,7 +126,7 @@ static const struct boot_swap_table boot_swap_tables[] = {
         .image_ok_secondary_slot =  BOOT_FLAG_ANY,
         .copy_done_primary_slot =   BOOT_FLAG_SET,
         .swap_type =                BOOT_SWAP_TYPE_REVERT,
-    },
+    }
 };
 
 #define BOOT_SWAP_TABLES_COUNT \
@@ -153,11 +153,6 @@ boot_flag_decode(uint8_t flag)
 }
 
 #ifndef MCUBOOT_SWAP_USING_STATUS
-static inline uint32_t
-boot_magic_off(const struct flash_area *fap)
-{
-    return flash_area_get_size(fap) - BOOT_MAGIC_SZ;
-}
 
 static inline uint32_t
 boot_image_ok_off(const struct flash_area *fap)
@@ -324,6 +319,42 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
 }
 
 #ifndef MCUBOOT_SWAP_USING_STATUS
+
+int
+boot_clear_magic(const struct flash_area *fap)
+{
+    uint32_t off;
+    uint32_t pad_off;
+    int rc;
+    uint8_t magic[BOOT_MAGIC_ALIGN_SIZE];
+    uint8_t erased_val;
+
+    off = boot_magic_off(fap);
+
+    /* image_trailer structure was modified with additional padding such that
+     * the pad+magic ends up in a flash minimum write region. The address
+     * returned by boot_magic_off() is the start of magic which is not the
+     * start of the flash write boundary and thus writes to the magic will fail.
+     * To account for this change, write to magic is first padded with 0xFF
+     * before writing to the trailer.
+     */
+    pad_off = ALIGN_DOWN(off, BOOT_MAX_ALIGN);
+
+    erased_val = flash_area_erased_val(fap);
+
+    (void)memset(&magic[0], erased_val, sizeof(magic));
+
+    BOOT_LOG_DBG("clearing magic; fa_id=%u off=0x%" PRIx32
+                 " (0x%" PRIx32 ")", (unsigned)flash_area_get_id(fap),
+                 off, flash_area_get_off(fap) + off);
+    rc = flash_area_write(fap, pad_off, &magic[0], BOOT_MAGIC_ALIGN_SIZE);
+
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    return 0;
+}
 
 int
 boot_write_magic(const struct flash_area *fap)

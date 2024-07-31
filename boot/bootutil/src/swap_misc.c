@@ -87,7 +87,7 @@ swap_status_init(const struct boot_loader_state *state,
                  const struct flash_area *fap,
                  const struct boot_status *bs)
 {
-    struct boot_swap_state swap_state;
+    struct boot_swap_state swap_state = {0};
     uint8_t image_index;
     int rc;
 
@@ -127,7 +127,7 @@ swap_status_init(const struct boot_loader_state *state,
     rc = boot_write_magic(fap);
     assert(rc == 0);
 
-    return 0;
+    return rc;
 }
 
 int
@@ -201,6 +201,21 @@ swap_set_copy_done(uint8_t image_index)
     }
 
     rc = boot_write_copy_done(fap);
+    flash_area_close(fap);
+    return rc;
+}
+
+int swap_clear_magic_upgrade(uint8_t image_index)
+{
+    const struct flash_area *fap = NULL;
+    int rc;
+
+    rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    rc = boot_clear_magic(fap);
     flash_area_close(fap);
     return rc;
 }

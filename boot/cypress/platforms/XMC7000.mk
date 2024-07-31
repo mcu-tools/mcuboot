@@ -57,6 +57,12 @@ UART_TX_DEFAULT ?= P13_1
 UART_RX_DEFAULT ?= P13_0
 endif
 
+USE_SWAP_STATUS ?= 1
+
+ifeq ($(USE_SWAP_STATUS), 1)
+DEFINES += USE_SWAP_STATUS=1
+endif
+
 # Add device name to defines
 DEFINES += $(DEVICE)
 

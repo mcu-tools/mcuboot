@@ -2,32 +2,44 @@
 
 ### Disclaimer
 
-Given solution is included in `MCUboot` repository with purpose to demonstrate basic consepts and features of MCUboot library on Infineon Technologies devices.
+Given solution is included in `MCUboot` repository with purpose to demonstrate basic concepts and features of MCUboot library on Cypress PSoC 6 device. Applications are created per MCUboot library maintainers requirements. Implementation differs from conventional and recommended by Cypress Semiconductors development flow for PSoC 6 devices. These applications are not recommended as a starting point for development and should not be considered as supported examples for PSoC 6 devices.
 
-### Supported platforms
+Examples provided to use with **ModusToolbox® Software Environment** are a recommended reference point to start development of MCUboot based bootloaders for PSoC 6 devices.
 
-| Family   | Platforms          |
----------- | -------------------|
-| PSOC6    | PSOC6 1M, 2M, 512K |
-| CYWxx829 | CYW20829, CYW89829 |
-| XMC7x00  | XMC7200, XMC7100   |
+Refer to **Cypress Semiconductors** [github](https://github.com/cypresssemiconductorco) page to find examples.
+
+1. MCUboot-Based Basic Bootloader [mtb-example-psoc6-mcuboot-basic](https://github.com/cypresssemiconductorco/mtb-example-psoc6-mcuboot-basic)
+2. MCUboot-Based Bootloader with Rollback to Factory App in External Flash [mtb-example-anycloud-mcuboot-rollback](https://github.com/cypresssemiconductorco/mtb-example-anycloud-mcuboot-rollback)
 
 ### Solution description
 
 There are two applications implemented:
-* MCUBootApp - MCUboot-based bootloader implementation;
-* BlinkyApp - simple blinking LED application which is a target of BOOT/UPGRADE;
+* MCUBootApp - PSoC6 MCUboot-based bootloading application;
+* BlinkyApp - simple PSoC6 blinking LED application which is a target of BOOT/UPGRADE;
 
-Detailed description on each application is provided in dedicated files:
+The default flash map for MCUBootApp implemented is next:
 
-Bootloader - [MCUBootApp.md](./MCUBootApp/MCUBootApp.md)
-Test Application - [BlinkyApp.md](./BlinkyApp/BlinkyApp.md)
+* [0x10000000, 0x10018000] - MCUBootApp (bootloader) area;
+* [0x10018000, 0x10028000] - primary slot for BlinkyApp;
+* [0x10028000, 0x10038000] - secondary slot for BlinkyApp;
+* [0x10038000, 0x10039000] - scratch area;
 
-Separate documentation is available for External Memory usage in mcuboot [ExternalMemory.md](./MCUBootApp/ExternalMemory.md)
+The flash map is defined through sysflash.h and memory.c.
 
-### Downloading solution
+It is also possible to place secondary (upgrade) slots in external memory module. In this case primary slot can be doubled in size.
+For more details about External Memory usage, please refer to separate guiding document `MCUBootApp/ExternalMemory.md`.
 
-Since libraries required by mcuboot Infineon implementation are implemented as submodules following commands needs to be executed.
+MCUBootApp checks image integrity with SHA256, image authenticity with EC256 digital signature verification and uses either completely software implementation of cryptographic functions or accelerated by hardware - both based on Mbed TLS Library.
+
+### Downloading solution's assets
+
+There is a set assets required:
+
+* MCUBooot Library (root repository)
+* PSoC6 Peripheral Drivers Library (PDL)
+* Mbed TLS Cryptographic Library
+
+Those are represented as submodules.
 
 To retrieve source code with subsequent submodules pull:
 
@@ -44,21 +56,23 @@ Submodules can also be updated and initialized separately:
 
 Root directory for build is **boot/cypress.**
 
-This folder contains make files infrastructure for building both MCUbootApp and sample BlinkyApp application used for Bootloader demo functionality.
+This folder contains make files infrastructure for building both MCUboot Bootloader and sample BlinkyApp application used for Bootloader demo functionality.
 
-**GCC_ARM** is only supported toolchain.
+Instructions on how to build and upload MCUBootApp bootloader application and sample user application are located in `Readme.md` files in corresponding folders.
 
-It is recommended to use [ModusToolbox™ Software Environment](https://www.cypress.com/products/modustoolbox) which includes GCC Toolchain.
+Supported platforms for `MCUboot`, `BlinkyApp`:
+
+**GCC_ARM** is only supported (built and verified on GCC 9.3.1).
+
+It is included with [ModusToolbox™ Software Environment](https://www.cypress.com/products/modustoolbox).
 
 The default installation folder is expected by the makefile build system.
 
 To use another installation folder, version of **ModusToolbox™ IDE** or another GCC Compiler, specify the path to a toolchain using the **TOOLCHAIN_PATH** parameter.
 
-Below is an example on how to set toolchain path to the latest include with **ModusToolbox™ IDE**:
+Below is an example on how to set toolchain path to the latest include with **ModusToolbox™ IDE 3.2**:
 
     make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/${USERNAME}/ModusToolbox/tools_3.2/gcc
-
-**Python3** needs to be installed in system since build process required execution of prebuild and postbuild scripts in python.
 
 ### Build environment troubleshooting
 

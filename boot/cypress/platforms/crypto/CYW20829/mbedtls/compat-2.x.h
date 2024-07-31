@@ -32,7 +32,6 @@ int mbedtls_sha256_update( struct mbedtls_sha256_context *ctx,
                            size_t ilen );
 
 static inline int mbedtls_sha256_update_ret(void *ctx,
-
                                             const unsigned char           *input,
                                             size_t                        ilen)
 {
@@ -44,7 +43,7 @@ static inline int mbedtls_sha256_update_ret(void *ctx,
             return -MBEDTLS_ERR_SHA256_BAD_INPUT_DATA;
         }
         else {
-#ifdef MCUBOOT_ENC_IMAGES_XIP
+#if defined(MCUBOOT_ENC_IMAGES_XIP) || defined(MCUBOOT_ENC_IMAGES_SMIF)
             /* Process chunks copied to SRAM */
             uint8_t tmp_buf[0x400];
             size_t offs = 0;

@@ -31,6 +31,11 @@ static uint32_t get_min_erase_size(uint8_t fa_device_id)
     return flash_devices[fa_device_id].erase_size;
 }
 
+static uint32_t get_align_size(uint8_t fa_device_id)
+{
+    return flash_devices[fa_device_id].erase_size;
+}
+
 static uint8_t get_erase_val(uint8_t fa_device_id)
 {
     return flash_devices[fa_device_id].erase_val;
@@ -163,4 +168,5 @@ const struct flash_area_interface internal_mem_interface = {
     .erase            = &erase,
     .get_erase_val    = &get_erase_val,
     .get_erase_size   = &get_min_erase_size,
+    .get_align_size   = &get_align_size,
     .get_base_address = &get_base_address};

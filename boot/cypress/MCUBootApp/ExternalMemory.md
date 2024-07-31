@@ -80,7 +80,7 @@ This repository provides default flash map files with suffix _xip_ to be used fo
 
 External memory is enabled when `make` flag `USE_EXTERNAL_FLASH` is set to `1`. Value of this flag is set in auto-generated `memorymap.mk` files when field `"external_flash"` is present in JSON file. 
 
-Default flash maps with suffix _smif_ are provided in `platforms/memory/PSOC6/flashmap` folder for PSoC™ 6 devices, where presense of external memory in system is optional.
+Default flash maps with suffix _smif_ are provided in `platforms/memory/PSOC6/flashmap` folder for PSoC™ 6 devices, where presence of external memory in system is optional.
 
 Build MCUBootApp as described in the [MCUBootApp.md](MCUBootApp.md) file.
 

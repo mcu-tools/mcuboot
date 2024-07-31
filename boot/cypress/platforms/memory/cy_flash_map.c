@@ -184,7 +184,7 @@ size_t flash_area_align(const struct flash_area *fa)
     size_t rc = 0u; /* error code (alignment cannot be zero) */
 
     if ((fa != NULL) && (flash_area_get_api(fa->fa_device_id) != NULL)) {
-        rc = flash_area_get_api(fa->fa_device_id)->get_erase_size(fa->fa_device_id);
+        rc = flash_area_get_api(fa->fa_device_id)->get_align_size(fa->fa_device_id);
     }
 
     return rc;

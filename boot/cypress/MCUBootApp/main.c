@@ -377,9 +377,11 @@ int main(void)
             * reset will be initiated by watchdog timer and swap revert operation started
             * to roll back to operable image.
             */
-            cyhal_wdt_t *wdt = NULL;
+            cyhal_wdt_t wdt_obj;
 
-            rc = cyhal_wdt_init(wdt, WDT_TIME_OUT_MS);
+            rc = cyhal_wdt_init(&wdt_obj, WDT_TIME_OUT_MS);
+
+            cyhal_wdt_start(&wdt_obj);
 
             if (CY_RSLT_SUCCESS == rc) {
 

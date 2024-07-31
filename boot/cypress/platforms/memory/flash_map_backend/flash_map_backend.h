@@ -59,6 +59,7 @@ struct flash_area_interface {
     int (*erase)(uint8_t fa_device_id, uintptr_t addr, uint32_t len);
     uint8_t (*get_erase_val)(uint8_t fa_device_id);
     uint32_t (*get_erase_size)(uint8_t fa_device_id);
+    uint32_t (*get_align_size)(uint8_t fa_device_id);
     uint32_t (*get_base_address)(uint8_t fa_device_id);
 };
 

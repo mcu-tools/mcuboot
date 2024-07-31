@@ -57,7 +57,9 @@
  * Uncomment which is needed. */
 #define MCUBOOT_SWAP_USING_SCRATCH  1
 /* #define MCUBOOT_SWAP_USING_MOVE     1 */
+#ifdef USE_SWAP_STATUS
 #define MCUBOOT_SWAP_USING_STATUS   1
+#endif
 #endif
 
 /* This definition is used in boot_copy_region function to define 
