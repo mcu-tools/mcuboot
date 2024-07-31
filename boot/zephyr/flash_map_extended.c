@@ -18,7 +18,23 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
-#if (!defined(CONFIG_XTENSA) && DT_HAS_CHOSEN(zephyr_flash_controller))
+#if defined(CONFIG_STM32_MEMMAP)
+/* MEMORY MAPPED for XiP on external NOR flash takes the sspi-nor or ospi-nor or qspi-nor device */
+#define FLASH_DEVICE_ID SPI_FLASH_0_ID
+#if DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_xspi_nor), okay)
+#define FLASH_DEVICE_NODE DT_INST(0, st_stm32_xspi_nor)
+#define FLASH_DEVICE_BASE DT_REG_ADDR(DT_INST(0, st_stm32_xspi_nor))
+#elif DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_ospi_nor), okay)
+#define FLASH_DEVICE_NODE DT_INST(0, st_stm32_ospi_nor)
+#define FLASH_DEVICE_BASE DT_REG_ADDR(DT_INST(0, st_stm32_ospi_nor))
+#elif DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_qspi_nor), okay)
+#define FLASH_DEVICE_NODE DT_INST(0, st_stm32_qspi_nor)
+#define FLASH_DEVICE_BASE DT_REG_ADDR(DT_INST(0, st_stm32_qspi_nor))
+#else
+#error "FLASH_DEVICE_NODE could not be determined"
+#endif
+
+#elif (!defined(CONFIG_XTENSA) && DT_HAS_CHOSEN(zephyr_flash_controller))
 #define FLASH_DEVICE_ID SOC_FLASH_0_ID
 #define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
 #define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash_controller)
