@@ -72,6 +72,7 @@ TLV_VALUES = {
         'ECDSASIG': 0x22,
         'RSA3072': 0x23,
         'ED25519': 0x24,
+        'SIG_PURE': 0x25,
         'ENCRSA2048': 0x30,
         'ENCKW': 0x31,
         'ENCEC256': 0x32,
