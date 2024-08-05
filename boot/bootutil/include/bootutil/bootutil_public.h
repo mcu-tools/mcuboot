@@ -93,7 +93,11 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
 #define BOOT_MAX_ALIGN          MCUBOOT_BOOT_MAX_ALIGN
 #define BOOT_MAGIC_ALIGN_SIZE   ALIGN_UP(BOOT_MAGIC_SZ, BOOT_MAX_ALIGN)
 #else
+
+#if !defined( BOOT_MAX_ALIGN )
 #define BOOT_MAX_ALIGN          8
+#endif
+
 #define BOOT_MAGIC_ALIGN_SIZE   BOOT_MAGIC_SZ
 #endif
 
