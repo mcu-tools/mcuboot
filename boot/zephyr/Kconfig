@@ -382,12 +382,16 @@ config BOOT_ENCRYPTION_KEY_FILE
 
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
+	default 512 if $(dt_nodelabel_reg_size_int,slot0_partition) > 1048576
+	default 256 if $(dt_nodelabel_reg_size_int,slot0_partition) > 524288
 	default 128
 	help
 	  This option controls the maximum number of sectors that each of
 	  the two image areas can contain. Smaller values reduce MCUboot's
 	  memory usage; larger values allow it to support larger images.
-	  If unsure, leave at the default value.
+	  If unsure, leave at the default value. The required condition is
+	  that (IMAGE_SIZE <= (BOOT_MAX_IMG_SECTORS * SECTOR_SIZE)). The
+	  defaults are configured for a SECTOR_SIZE of 4096.
 
 config BOOT_SHARE_BACKEND_AVAILABLE
 	bool
@@ -748,8 +752,8 @@ comment "Zephyr configuration options"
 config MULTITHREADING
 	default y if BOOT_SERIAL_CDC_ACM #usb driver requires MULTITHREADING
 	default y if BOOT_USB_DFU_GPIO || BOOT_USB_DFU_WAIT
-	default n if SOC_FAMILY_NORDIC_NRF
 	default n if SOC_FAMILY_ESPRESSIF_ESP32 && MCUBOOT
+	default n if SOC_SERIES_NRF51X # Minimal flash available
 	default y
 
 config LOG_PROCESS_THREAD
@@ -781,5 +785,14 @@ config MCUBOOT_VERIFY_IMG_ADDRESS
 	  enabled then the only mitigation is serial recovery. This feature can
 	  also be useful when BOOT_DIRECT_XIP is enabled, to ensure that the image
 	  linked at the correct address is loaded.
+
+# When used with MCUboot, the external flash page size must match
+# the internal SoC flash page size, which is 4096 for Nordic MCUs.
+configdefault NORDIC_QSPI_NOR_FLASH_LAYOUT_PAGE_SIZE
+	default 4096
+# Use a slightly larger default value for stack writes that is unlikely
+# to lead to any stack overflows.
+configdefault NORDIC_QSPI_NOR_STACK_WRITE_BUFFER_SIZE
+	default 32
 
 source "Kconfig.zephyr"

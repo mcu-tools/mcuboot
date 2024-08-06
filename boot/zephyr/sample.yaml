@@ -38,7 +38,6 @@ tests:
     tags: bootloader_mcuboot
   sample.bootloader.mcuboot.qspi_nor_slot:
     extra_args: DTC_OVERLAY_FILE="./boards/nrf52840dk_qspi_nor_secondary.overlay;app.overlay"
-      OVERLAY_CONFIG="./boards/nrf52840dk_qspi_nor.conf;./boards/nrf52840dk_qspi_secondary_boot.conf"
     platform_allow: nrf52840dk/nrf52840
     integration_platforms:
       - nrf52840dk/nrf52840
