@@ -32,7 +32,6 @@
 #include <flash_map_backend/flash_map_backend.h>
 #include "bootutil/crypto/aes_ctr.h"
 #include "bootutil/image.h"
-#include "bootutil/sign_key.h"
 #include "bootutil/enc_key_public.h"
 
 #ifdef __cplusplus
@@ -46,17 +45,7 @@ struct enc_key_data {
     bootutil_aes_ctr_context aes_ctr;
 };
 
-/**
- * Retrieve the private key for image encryption.
- *
- * @param[out]  private_key  structure to store the private key and
- *                           its length.
- *
- * @return                   0 on success; nonzero on failure.
- *
- */
-int boot_enc_retrieve_private_key(struct bootutil_key **private_key);
-
+extern const struct bootutil_key bootutil_enc_key;
 struct boot_status;
 
 /* Decrypt random, symmetric encryption key */
