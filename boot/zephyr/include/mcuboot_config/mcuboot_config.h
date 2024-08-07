@@ -287,7 +287,7 @@
 #endif
 
 #if defined(MCUBOOT_DATA_SHARING) && defined(ZEPHYR_VER_INCLUDE)
-#include <app_version.h>
+#include <zephyr/app_version.h>
 
 #define MCUBOOT_VERSION_AVAILABLE
 #define MCUBOOT_VERSION_MAJOR APP_VERSION_MAJOR
