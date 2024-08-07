@@ -1,0 +1,3 @@
+name: testmod
+build:
+  cmake: .
