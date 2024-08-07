@@ -14,6 +14,10 @@
 #include <flash_map_backend/flash_map_backend.h>
 #include <sysflash/sysflash.h>
 
+#if defined(CONFIG_FLASH_RUNTIME_SOURCES)
+#include <flash_runtime_sources.h>
+#endif
+
 #include "bootutil/bootutil_log.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
