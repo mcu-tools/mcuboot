@@ -332,6 +332,17 @@ config FLASH_MAP_CUSTOM_SOURCES
 	  a custom flash backend that can read the images from the custom sources.
 	  Note that such images are always ready directly to RAM.
 
+if FLASH_MAP_CUSTOM_SOURCES
+config AARDVARK_I2C_FLASH
+	bool "Use aardvark to emulate an I2C device from where a firmware image is read"
+	default n
+	depends on I2C
+	help
+	  If you have an I2C device that acts as a flash memory, you can enable this
+	  option to read the firmware image from it.
+
+endif
+
 config BOOT_ENCRYPTION_SUPPORT
 	bool
 	help
