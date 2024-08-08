@@ -30,13 +30,14 @@
 /*
  * Sanity check the target support.
  */
-#if (!defined(CONFIG_XTENSA) && !DT_HAS_CHOSEN(zephyr_flash_controller)) || \
+#if (!defined(CONFIG_FLASH_MAP_CUSTOM_SOURCES)) && \
+    ((!defined(CONFIG_XTENSA) && !DT_HAS_CHOSEN(zephyr_flash_controller)) || \
     (defined(CONFIG_XTENSA) && !DT_NODE_EXISTS(DT_INST(0, jedec_spi_nor)) && \
     !defined(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)) || \
     !defined(FLASH_ALIGN) ||                  \
     !(FIXED_PARTITION_EXISTS(slot0_partition)) || \
     !(FIXED_PARTITION_EXISTS(slot1_partition) || CONFIG_SINGLE_APPLICATION_SLOT) || \
-    (defined(CONFIG_BOOT_SWAP_USING_SCRATCH) && !FIXED_PARTITION_EXISTS(scratch_partition))
+    (defined(CONFIG_BOOT_SWAP_USING_SCRATCH) && !FIXED_PARTITION_EXISTS(scratch_partition)))
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
 

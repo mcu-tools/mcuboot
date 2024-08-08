@@ -80,7 +80,7 @@ if(DEFINED CONFIG_ENABLE_MGMT_PERUSER)
   endif()
 endif()
 
-if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)
+if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT AND NOT DEFINED CONFIG_FLASH_MAP_CUSTOM_SOURCES)
   zephyr_library_sources(
     flash_map_legacy.c
     )
@@ -145,6 +145,12 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/swap_move.c
   ${BOOT_DIR}/bootutil/src/caps.c
   )
+endif()
+
+if(CONFIG_BOOT_RAM_LOAD)
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/ram_load.c
+    )
 endif()
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
@@ -361,6 +367,16 @@ endif()
 if(CONFIG_MCUBOOT_BOOT_BANNER)
   # Replace Zephyr's boot banner with the MCUboot one
   zephyr_sources(kernel/banner.c)
+endif()
+
+if(CONFIG_AARDVARK_I2C_FLASH)
+    zephyr_library_sources(
+        ${MCUBOOT_DIR}/samples/non-flash-source/zephyr/aardvark_i2c_flash.c
+        ${MCUBOOT_DIR}/samples/non-flash-source/zephyr/flash_map_dispatcher.c
+    )
+    zephyr_library_include_directories(
+        ${MCUBOOT_DIR}/samples/non-flash-source/zephyr/include
+    )
 endif()
 
 if(SYSBUILD)

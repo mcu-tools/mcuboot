@@ -14,6 +14,10 @@
 #include <flash_map_backend/flash_map_backend.h>
 #include <sysflash/sysflash.h>
 
+#ifdef CONFIG_FLASH_MAP_CUSTOM_SOURCES
+#include <flash_map_custom_sources.h>
+#endif
+
 #include "bootutil/bootutil_log.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
@@ -34,11 +38,20 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define FLASH_DEVICE_BASE 0
 #define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash_controller)
 
+#elif defined(CONFIG_FLASH_MAP_CUSTOM_SOURCES)
+
+#define FLASH_DEVICE_ID 0
+#define FLASH_DEVICE_BASE 0
+
 #else
 #error "FLASH_DEVICE_ID could not be determined"
 #endif
 
+#if !defined(CONFIG_FLASH_MAP_CUSTOM_SOURCES)
 static const struct device *flash_dev = DEVICE_DT_GET(FLASH_DEVICE_NODE);
+#else
+static const struct device *flash_dev = NULL;
+#endif
 
 int flash_device_base(uint8_t fd_id, uintptr_t *ret)
 {
@@ -58,6 +71,14 @@ int flash_device_base(uint8_t fd_id, uintptr_t *ret)
  */
 int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
+#ifdef CONFIG_FLASH_MAP_CUSTOM_SOURCES
+    uint8_t id;
+
+    if (flash_map_id_get_current(&id)) {
+        return id;
+    }
+    return -1;
+#endif
     switch (slot) {
     case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
 #if !defined(CONFIG_SINGLE_APPLICATION_SLOT)

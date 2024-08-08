@@ -33,3 +33,9 @@ target_sources(bootutil
         src/swap_scratch.c
         src/tlv.c
 )
+if(CONFIG_BOOT_RAM_LOAD)
+    target_sources(bootutil
+        PRIVATE
+            src/ram_load.c
+    )
+endif()
