@@ -72,6 +72,12 @@ struct flash_area;
 #define IMAGE_F_ROM_FIXED                0x00000100
 
 /*
+ * Flags that indicate if the image data is compressed
+ */
+#define IMAGE_F_COMPRESSED_LZMA1         0x00000200
+#define IMAGE_F_COMPRESSED_LZMA2         0x00000400
+
+/*
  * ECSDA224 is with NIST P-224
  * ECSDA256 is with NIST P-256
  */
@@ -101,6 +107,18 @@ struct flash_area;
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
 #define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
 #define IMAGE_TLV_BOOT_RECORD       0x60   /* measured boot record */
+/* The following flags relate to compressed images and are for the decompressed image data */
+#define IMAGE_TLV_COMP_SIZE         0x70   /* Decompressed image size */
+#define IMAGE_TLV_COMP_SHA          0x71   /*
+                                            * Decompressed image shaX hash, this field must match
+                                            * the format and size of the raw slot (compressed)
+                                            * shaX hash
+                                            */
+#define IMAGE_TLV_COMP_SIGNATURE    0x72   /*
+                                            * Decompressed image signature, this field must match
+                                            * the format and size of the raw slot (compressed)
+                                            * signature
+                                            */
 					   /*
 					    * vendor reserved TLVs at xxA0-xxFF,
 					    * where xx denotes the upper byte
