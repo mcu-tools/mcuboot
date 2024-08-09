@@ -123,6 +123,31 @@ static struct flash_device_s g_secondary_priv =
   .erase_state = CONFIG_MCUBOOT_DEFAULT_FLASH_ERASE_STATE
 };
 
+static struct flash_area g_tertiary_img0 =
+{
+  .fa_id = FLASH_AREA_IMAGE_TERTIARY(0),
+  .fa_device_id = 0,
+  .fa_off = 0,
+  .fa_size = 0,
+  .fa_mtd_path = CONFIG_MCUBOOT_TERTIARY_SLOT_PATH
+};
+
+static struct flash_device_s g_tertiary_priv =
+{
+  .fa_cfg = &g_tertiary_img0,
+  .mtdgeo =
+            {
+              0
+            },
+  .partinfo =
+              {
+                0
+              },
+  .fd = -1,
+  .refs = 0,
+  .erase_state = CONFIG_MCUBOOT_DEFAULT_FLASH_ERASE_STATE
+};
+
 static struct flash_area g_scratch_img0 =
 {
   .fa_id = FLASH_AREA_IMAGE_SCRATCH,
@@ -152,6 +177,7 @@ static struct flash_device_s *g_flash_devices[] =
 {
   &g_primary_priv,
   &g_secondary_priv,
+  &g_tertiary_priv,
   &g_scratch_priv,
 };
 
@@ -713,6 +739,8 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot)
         return FLASH_AREA_IMAGE_PRIMARY(image_index);
       case 1:
         return FLASH_AREA_IMAGE_SECONDARY(image_index);
+      case 2:
+        return FLASH_AREA_IMAGE_TERTIARY(image_index);
     }
 
   BOOT_LOG_ERR("Unexpected Request: image_index:%d, slot:%d",
