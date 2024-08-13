@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "bootutil/image.h"
+#include "bootutil/bootutil.h"
 
 #ifdef __cplusplus
 extern "C" {
