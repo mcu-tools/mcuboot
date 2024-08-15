@@ -336,12 +336,12 @@ error:
 }
 #endif /* MCUBOOT_ENCRYPT_EC256 || MCUBOOT_ENCRYPT_X25519 */
 
-#if !defined(MCUBOOT_HW_KEY)
+#if !defined(MCUBOOT_ENC_BUILTIN_KEY)
 extern const struct bootutil_key bootutil_enc_key;
 
 /*
  * Default implementation to retrieve the private encryption key which is
- * embedded in the bootloader code (when MCUBOOT_HW_KEY is not defined).
+ * embedded in the bootloader code (when MCUBOOT_ENC_BUILTIN_KEY is not defined).
  */
 int boot_enc_retrieve_private_key(struct bootutil_key **private_key)
 {
@@ -349,7 +349,7 @@ int boot_enc_retrieve_private_key(struct bootutil_key **private_key)
 
     return 0;
 }
-#endif /* !MCUBOOT_HW_KEY */
+#endif /* !MCUBOOT_ENC_BUILTIN_KEY */
 
 int
 boot_enc_init(struct enc_key_data *enc_state, uint8_t slot)

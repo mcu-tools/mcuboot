@@ -89,6 +89,33 @@
 /* #define MCUBOOT_USE_TINYCRYPT */
 
 /*
+ * Encrypted images
+ *
+ * Uncomment one of the below options (MCUBOOT_ENCRYPT_x) to enable
+ * encrypted image upgrades.
+ */
+
+/* Uncomment to use RSA-OAEP for key encryption */
+/* #define MCUBOOT_ENCRYPT_RSA */
+/* Uncomment to use AES-KW for key encryption */
+/* #define MCUBOOT_ENCRYPT_KW */
+/* Uncomment to use ECIES-P256 for key encryption */
+/* #define MCUBOOT_ENCRYPT_EC256 */
+/* Uncomment to use ECIES-X25519 for key encryption */
+/* #define MCUBOOT_ENCRYPT_X25519 */
+
+/* Uncomment to use a builtin key-encryption key (retrieved from a trusted
+ * source - if implemented) instead of a key embedded in the bootloader. */
+/* #define MCUBOOT_ENC_BUILTIN_KEY */
+
+#if defined(MCUBOOT_ENCRYPT_RSA)    || \
+    defined(MCUBOOT_ENCRYPT_KW)     || \
+    defined(MCUBOOT_ENCRYPT_EC256)  || \
+    defined(MCUBOOT_ENCRYPT_X25519)
+#define MCUBOOT_ENC_IMAGES
+#endif
+
+/*
  * Always check the signature of the image in the primary slot before booting,
  * even if no upgrade was performed. This is recommended if the boot
  * time penalty is acceptable.
