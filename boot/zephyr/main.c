@@ -49,7 +49,7 @@
 #ifdef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
 
 #include <bootloader_init.h>
-#include <esp_loader.h>
+#include <esp_image_loader.h>
 
 #define IMAGE_INDEX_0   0
 #define IMAGE_INDEX_1   1
