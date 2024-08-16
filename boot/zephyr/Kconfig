@@ -383,6 +383,18 @@ config BOOT_IMAGE_EXECUTABLE_RAM_SIZE
 	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM),0)
 endif
 
+config FLASH_RUNTIME_SOURCES
+	bool "Images are read from flash partitions defined at runtime"
+	select SINGLE_APPLICATION_SLOT
+	help
+	  Instead of using information on the flash slots to decide which images
+	  to load/update, the application provides the information from which
+	  flash slot to load in runtime. This is useful when the application
+	  reads the state for hardware straps or other sources to decide which
+	  image to load. The application must provide `flash_map_id_get_next`
+	  and `flash_map_id_get_next` functions to tell mcuboot where to find
+	  the images.
+
 config BOOT_ENCRYPTION_SUPPORT
 	bool
 	help
