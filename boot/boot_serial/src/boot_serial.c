@@ -1283,7 +1283,7 @@ boot_serial_output(void)
 static int
 boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
 {
-    int rc;
+    size_t rc;
     uint16_t crc;
     uint16_t len;
 
@@ -1295,7 +1295,7 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
     }
 #elif __ESPRESSIF__
     int err;
-    err = base64_decode((unsigned char *)&out[*out_off], maxout - *out_off, (size_t *)&rc, (unsigned char *)in, inlen);
+    err = base64_decode((unsigned char *)&out[*out_off], maxout - *out_off, &rc, (unsigned char *)in, inlen);
     if (err) {
         return -1;
     }
