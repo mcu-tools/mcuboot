@@ -941,7 +941,7 @@ bs_upload(char *buf, int len)
         rem_bytes = 0;
     }
 
-    BOOT_LOG_DBG("Writing at 0x%x until 0x%x", curr_off, curr_off + img_chunk_len);
+    BOOT_LOG_DBG("Writing at 0x%x until 0x%x", curr_off, curr_off + (uint32_t)img_chunk_len);
     /* Write flash aligned chunk, note that img_chunk_len now holds aligned length */
 #if defined(MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE) && MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE > 0
     if (flash_area_align(fap) > 1 &&
