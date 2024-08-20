@@ -491,35 +491,6 @@ find_last_sector_idx(const struct boot_loader_state *state, uint32_t copy_size)
 }
 
 /**
- * Finds the number of swap operations that have to be performed to swap the two images.
- *
- * @param state     Current bootloader's state.
- * @param copy_size Total number of bytes to swap.
- *
- * @return          The number of swap operations that have to be performed.
-*/
-static uint32_t
-find_swap_count(const struct boot_loader_state *state, uint32_t copy_size)
-{
-    int first_sector_idx;
-    int last_sector_idx;
-    uint32_t swap_count;
-
-    last_sector_idx = find_last_sector_idx(state, copy_size);
-
-    swap_count = 0;
-
-    while (last_sector_idx >= 0) {
-        boot_copy_sz(state, last_sector_idx, &first_sector_idx);
-
-        last_sector_idx = first_sector_idx - 1;
-        swap_count++;
-    }
-
-    return swap_count;
-}
-
-/**
  * Swaps the contents of two flash regions within the two image slots.
  *
  * @param idx                   The index of the first sector in the range of
@@ -758,6 +729,37 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
+
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
+/**
+ * Finds the number of swap operations that have to be performed to swap the two images.
+ *
+ * @param state     Current bootloader's state.
+ * @param copy_size Total number of bytes to swap.
+ *
+ * @return          The number of swap operations that have to be performed.
+*/
+static uint32_t
+find_swap_count(const struct boot_loader_state *state, uint32_t copy_size)
+{
+    int first_sector_idx;
+    int last_sector_idx;
+    uint32_t swap_count;
+
+    last_sector_idx = find_last_sector_idx(state, copy_size);
+
+    swap_count = 0;
+
+    while (last_sector_idx >= 0) {
+        boot_copy_sz(state, last_sector_idx, &first_sector_idx);
+
+        last_sector_idx = first_sector_idx - 1;
+        swap_count++;
+    }
+
+    return swap_count;
+}
+#endif /* MCUBOOT_SWAP_USING_SCRATCH */
 
 int app_max_size(struct boot_loader_state *state)
 {
