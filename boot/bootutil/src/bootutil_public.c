@@ -427,31 +427,29 @@ boot_swap_type_multi(int image_index)
         return BOOT_SWAP_TYPE_PANIC;
     }
 
-    for (i = 0; i < BOOT_SWAP_TABLES_COUNT; i++) {
-        table = boot_swap_tables + i;
+    table = boot_swap_tables + image_index;
 
-        if (boot_magic_compatible_check(table->magic_primary_slot,
-                                        primary_slot.magic) &&
-            boot_magic_compatible_check(table->magic_secondary_slot,
-                                        secondary_slot.magic) &&
-            (table->image_ok_primary_slot == BOOT_FLAG_ANY   ||
-                table->image_ok_primary_slot == primary_slot.image_ok) &&
-            (table->image_ok_secondary_slot == BOOT_FLAG_ANY ||
-                table->image_ok_secondary_slot == secondary_slot.image_ok) &&
-            (table->copy_done_primary_slot == BOOT_FLAG_ANY  ||
-                table->copy_done_primary_slot == primary_slot.copy_done)) {
-            BOOT_LOG_INF("Image index: %d, Swap type: %s", image_index,
-                         table->swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
-                         table->swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
-                         table->swap_type == BOOT_SWAP_TYPE_REVERT ? "revert" :
-                         "BUG; can't happen");
-            if (table->swap_type != BOOT_SWAP_TYPE_TEST &&
-                    table->swap_type != BOOT_SWAP_TYPE_PERM &&
-                    table->swap_type != BOOT_SWAP_TYPE_REVERT) {
-                return BOOT_SWAP_TYPE_PANIC;
-            }
-            return table->swap_type;
+    if (boot_magic_compatible_check(table->magic_primary_slot,
+                                    primary_slot.magic) &&
+        boot_magic_compatible_check(table->magic_secondary_slot,
+                                    secondary_slot.magic) &&
+        (table->image_ok_primary_slot == BOOT_FLAG_ANY   ||
+            table->image_ok_primary_slot == primary_slot.image_ok) &&
+        (table->image_ok_secondary_slot == BOOT_FLAG_ANY ||
+            table->image_ok_secondary_slot == secondary_slot.image_ok) &&
+        (table->copy_done_primary_slot == BOOT_FLAG_ANY  ||
+            table->copy_done_primary_slot == primary_slot.copy_done)) {
+        BOOT_LOG_INF("Image index: %d, Swap type: %s", image_index,
+                     table->swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
+                     table->swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
+                     table->swap_type == BOOT_SWAP_TYPE_REVERT ? "revert" :
+                     "BUG; can't happen");
+        if (table->swap_type != BOOT_SWAP_TYPE_TEST &&
+                table->swap_type != BOOT_SWAP_TYPE_PERM &&
+                table->swap_type != BOOT_SWAP_TYPE_REVERT) {
+            return BOOT_SWAP_TYPE_PANIC;
         }
+        return table->swap_type;
     }
 
     BOOT_LOG_INF("Image index: %d, Swap type: none", image_index);
