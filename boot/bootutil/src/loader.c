@@ -1030,13 +1030,16 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         }
     }
 #endif
-    BOOT_HOOK_CALL_FIH(boot_image_check_hook, FIH_BOOT_HOOK_REGULAR,
-                       fih_rc, BOOT_CURR_IMG(state), slot);
-    if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
-    {
-        FIH_CALL(boot_image_check, fih_rc, state, hdr, fap, bs);
+    if (!boot_is_header_valid(hdr, fap, state)) {
+        fih_rc = FIH_FAILURE;
+    } else {
+        BOOT_HOOK_CALL_FIH(boot_image_check_hook, FIH_BOOT_HOOK_REGULAR,
+                           fih_rc, BOOT_CURR_IMG(state), slot);
+        if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR)) {
+            FIH_CALL(boot_image_check, fih_rc, state, hdr, fap, bs);
+        }
     }
-    if (!boot_is_header_valid(hdr, fap, state) || FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         if ((slot != BOOT_PRIMARY_SLOT) || ARE_SLOTS_EQUIVALENT()) {
             flash_area_erase(fap, 0, flash_area_get_size(fap));
             /* Image is invalid, erase it to prevent further unnecessary
