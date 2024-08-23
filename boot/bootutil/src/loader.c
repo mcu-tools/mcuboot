@@ -880,6 +880,16 @@ boot_is_header_valid(const struct image_header *hdr, const struct flash_area *fa
         return false;
     }
 
+#ifdef MCUBOOT_DECOMPRESS_IMAGES
+    if (!MUST_DECOMPRESS(fap, BOOT_CURR_IMG(state), hdr)) {
+#else
+    if (1) {
+#endif
+        if (!boot_u32_safe_add(&size, size, hdr->ih_protect_tlv_size)) {
+            return false;
+        }
+    }
+
     if (size >= flash_area_get_size(fap)) {
         return false;
     }
