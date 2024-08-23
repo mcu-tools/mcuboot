@@ -729,6 +729,33 @@ config MCUBOOT_BOOT_BANNER
 config BOOT_BANNER_STRING
         default "Using Zephyr OS build" if MCUBOOT_BOOT_BANNER
 
+config BOOT_DECOMPRESSION_SUPPORT
+	bool
+	help
+	  Hidden symbol which should be selected if a system provided decompression support.
+
+if BOOT_DECOMPRESSION_SUPPORT
+
+menuconfig BOOT_DECOMPRESSION
+	bool "Decompression"
+	help
+	  If enabled, will include support for compressed images being loaded to the secondary slot
+	  which then get decompressed into the primary slot. This mode allows the secondary slot to
+	  be smaller than primary slot which otherwise would not be allowed.
+
+if BOOT_DECOMPRESSION
+
+config BOOT_DECOMPRESSION_BUFFER_SIZE
+	int "Write buffer size"
+	range 16 16384
+	default 4096
+	help
+	  The size of a secondary buffer used for writing decompressed data to the storage device.
+
+endif # BOOT_DECOMPRESSION
+
+endif # BOOT_DECOMPRESSION_SUPPORT
+
 endmenu
 
 config MCUBOOT_DEVICE_SETTINGS
