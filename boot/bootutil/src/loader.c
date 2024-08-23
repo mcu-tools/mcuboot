@@ -860,7 +860,9 @@ out:
  * Check that this is a valid header.  Valid means that the magic is
  * correct, and that the sizes/offsets are "sane".  Sane means that
  * there is no overflow on the arithmetic, and that the result fits
- * within the flash area we are in.
+ * within the flash area we are in. Also check the flags in the image
+ * and class the image as invalid if flags for encryption/compression
+ * are present but these features are not enabled.
  */
 static bool
 boot_is_header_valid(const struct image_header *hdr, const struct flash_area *fap)
@@ -878,6 +880,18 @@ boot_is_header_valid(const struct image_header *hdr, const struct flash_area *fa
     if (size >= flash_area_get_size(fap)) {
         return false;
     }
+
+#if !defined(MCUBOOT_ENC_IMAGES)
+    if (IS_ENCRYPTED(hdr)) {
+        return false;
+    }
+#endif
+
+#if !defined(MCUBOOT_DECOMPRESS_IMAGES)
+    if (IS_COMPRESSED(hdr)) {
+        return false;
+    }
+#endif
 
     return true;
 }
