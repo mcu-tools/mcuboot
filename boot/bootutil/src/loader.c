@@ -885,10 +885,22 @@ boot_is_header_valid(const struct image_header *hdr, const struct flash_area *fa
     if (IS_ENCRYPTED(hdr)) {
         return false;
     }
+#else
+    if ((hdr->ih_flags & IMAGE_F_ENCRYPTED_AES128) &&
+        (hdr->ih_flags & IMAGE_F_ENCRYPTED_AES256))
+    {
+        return false;
+    }
 #endif
 
 #if !defined(MCUBOOT_DECOMPRESS_IMAGES)
     if (IS_COMPRESSED(hdr)) {
+        return false;
+    }
+#else
+    if ((hdr->ih_flags & IMAGE_F_COMPRESSED_LZMA1) &&
+        (hdr->ih_flags & IMAGE_F_COMPRESSED_LZMA2))
+    {
         return false;
     }
 #endif
