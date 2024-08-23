@@ -218,12 +218,14 @@ boot_slots_compatible(struct boot_loader_state *state)
 #endif
     }
 
+#ifndef MCUBOOT_DECOMPRESS_IMAGES
     if ((i != num_sectors_primary) ||
         (j != num_sectors_secondary) ||
         (primary_slot_sz != secondary_slot_sz)) {
         BOOT_LOG_WRN("Cannot upgrade: slots are not compatible");
         return 0;
     }
+#endif
 
     return 1;
 }
