@@ -531,6 +531,14 @@ int main(void)
          * recovery mode
          */
         boot_serial_enter();
+#elif defined(CONFIG_BOOT_USB_DFU_NO_APPLICATION)
+        rc = usb_enable(NULL);
+        if (rc && rc != -EALREADY) {
+            BOOT_LOG_ERR("Cannot enable USB");
+        } else {
+            BOOT_LOG_INF("Waiting for USB DFU");
+            wait_for_usb_dfu(K_FOREVER);
+        }
 #endif
 
         FIH_PANIC;
