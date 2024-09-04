@@ -16,9 +16,11 @@
 
 set -e
 
+source $(dirname "$0")/fih-tests_version.sh
+
 DOCKER_DIR=docker
 
-IMAGE=fih-test:0.0.2
+IMAGE=fih-test:$FIH_IMAGE_VERSION
 
 CACHED_IMAGE=$DOCKER_DIR/$IMAGE
 
