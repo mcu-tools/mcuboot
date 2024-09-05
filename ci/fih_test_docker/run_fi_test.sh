@@ -28,16 +28,17 @@ MCUBOOT_AXF=$1
 SKIP_SIZES=$2
 DAMAGE_TYPE=$3
 
+source $(dirname "$0")/paths.sh
+
 # Take an image and make it unbootable. This is done by replacing one of the
 # strings in the image with a different string. This causes the signature check
 # to fail
 function damage_image
 {
-    IMAGEDIR=$(dirname $MCUBOOT_AXF)
-    local IMAGE_NAME=tfm_s_ns_signed.bin
-    local BACKUP_IMAGE_NAME=tfm_s_ns_signed.bin.orig
-    local IMAGE=$IMAGEDIR/$IMAGE_NAME
-    mv $IMAGE $IMAGEDIR/$BACKUP_IMAGE_NAME
+    local IMAGE_NAME=${TFM_IMAGE_NAME}
+    local BACKUP_IMAGE_NAME=${TFM_IMAGE_NAME}.orig
+    local IMAGE=$TFM_IMAGE_OUTPUT_PATH/$IMAGE_NAME
+    mv $IMAGE $TFM_IMAGE_OUTPUT_PATH/$BACKUP_IMAGE_NAME
 
     if [ "$DAMAGE_TYPE" = "SIGNATURE" ]; then
         DAMAGE_PARAM="--signature"
@@ -48,7 +49,7 @@ function damage_image
         exit -1
     fi
 
-    python3 $DIR/damage_image.py -i $IMAGEDIR/$BACKUP_IMAGE_NAME -o $IMAGE $DAMAGE_PARAM 1>&2
+    python3 $DIR/damage_image.py -i $TFM_IMAGE_OUTPUT_PATH/$BACKUP_IMAGE_NAME -o $IMAGE $DAMAGE_PARAM 1>&2
 }
 
 function run_test
@@ -73,7 +74,7 @@ function run_test
         END=$(printf "0x%X" $((END + PAD)))
 
         # Invoke the fi tester script
-        $DIR/fi_tester_gdb.sh $IMAGEDIR $START $END --skip $SKIP_SIZE
+        $DIR/fi_tester_gdb.sh $TFM_IMAGE_OUTPUT_PATH $START $END --skip $SKIP_SIZE
     done
 }
 
