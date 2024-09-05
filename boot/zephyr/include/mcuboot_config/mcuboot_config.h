@@ -149,6 +149,13 @@
 #define MCUBOOT_DECOMPRESS_IMAGES
 #endif
 
+/* Invoke hashing functions directly on storage device. This requires the device
+ * be able to map storage to address space or RAM.
+ */
+#ifdef CONFIG_BOOT_IMG_HASH_DIRECTLY_ON_STORAGE
+#define MCUBOOT_HASH_STORAGE_DIRECTLY
+#endif
+
 #ifdef CONFIG_BOOT_BOOTSTRAP
 #define MCUBOOT_BOOTSTRAP 1
 #endif

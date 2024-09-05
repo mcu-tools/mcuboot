@@ -88,6 +88,22 @@ config BOOT_IMG_HASH_ALG_SHA512_ALLOW
 	help
 	  Hidden option set by configurations that allow SHA512
 
+config BOOT_IMG_HASH_DIRECTLY_ON_STORAGE
+	bool "Hash calculation functions access storage through address space"
+	depends on !BOOT_ENCRYPT_IMAGE
+	help
+	  When possible to map storage device, at least for read operations,
+	  to address space or RAM area, enabling this option allows hash
+	  calculation functions to directly access the storage through that address
+	  space or using its own DMA. This reduces flash read overhead done
+	  by MCUboot.
+	  Notes:
+	    - not supported when encrypted images are in use, because calculating
+	      SHA requires image to be decrypted first, which is done in RAM.
+	    - currently only supported on internal storage of devices; this
+	      option will not work with devices that use external storage for
+	      either of the image slots.
+
 choice BOOT_IMG_HASH_ALG
 	prompt "Selected image hash algorithm"
 	default BOOT_IMG_HASH_ALG_SHA256 if BOOT_IMG_HASH_ALG_SHA256_ALLOW
