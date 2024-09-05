@@ -68,13 +68,15 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
                   uint8_t *seed, int seed_len)
 {
     bootutil_sha_context sha_ctx;
-    uint32_t blk_sz;
     uint32_t size;
     uint16_t hdr_size;
-    uint32_t off;
-    int rc;
     uint32_t blk_off;
     uint32_t tlv_off;
+#if !defined(MCUBOOT_HASH_STORAGE_DIRECTLY)
+    int rc;
+    uint32_t off;
+    uint32_t blk_sz;
+#endif
 
 #if (BOOT_IMAGE_NUMBER == 1) || !defined(MCUBOOT_ENC_IMAGES) || \
     defined(MCUBOOT_RAM_LOAD)
@@ -117,6 +119,12 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     /* If protected TLVs are present they are also hashed. */
     size += hdr->ih_protect_tlv_size;
 
+#ifdef MCUBOOT_HASH_STORAGE_DIRECTLY
+    /* No chunk loading, storage is mapped to address space and can
+     * be directly given to hashing function.
+     */
+    bootutil_sha_update(&sha_ctx, (void *)flash_area_get_off(fap), size);
+#else /* MCUBOOT_HASH_STORAGE_DIRECTLY */
 #ifdef MCUBOOT_RAM_LOAD
     bootutil_sha_update(&sha_ctx,
                         (void*)(IMAGE_RAM_BASE + hdr->ih_load_addr),
@@ -161,6 +169,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
         bootutil_sha_update(&sha_ctx, tmp_buf, blk_sz);
     }
 #endif /* MCUBOOT_RAM_LOAD */
+#endif /* MCUBOOT_HASH_STORAGE_DIRECTLY */
     bootutil_sha_finish(&sha_ctx, hash_result);
     bootutil_sha_drop(&sha_ctx);
 
