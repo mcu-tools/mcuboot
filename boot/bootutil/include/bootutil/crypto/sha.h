@@ -55,7 +55,12 @@
 
 #elif defined(MCUBOOT_USE_MBED_TLS)
 
+#ifdef MCUBOOT_SHA512
+#include <mbedtls/sha512.h>
+#else
 #include <mbedtls/sha256.h>
+#endif
+
 #include <mbedtls/version.h>
 #if MBEDTLS_VERSION_NUMBER >= 0x03000000
 #include <mbedtls/compat-2.x.h>
@@ -123,17 +128,35 @@ static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
 
 #elif defined(MCUBOOT_USE_MBED_TLS)
 
+#ifdef MCUBOOT_SHA512
+typedef mbedtls_sha512_context bootutil_sha_context;
+#else
 typedef mbedtls_sha256_context bootutil_sha_context;
+#endif
 
 static inline int bootutil_sha_init(bootutil_sha_context *ctx)
 {
+    int ret;
+
+#ifdef MCUBOOT_SHA512
+    mbedtls_sha512_init(ctx);
+    ret = mbedtls_sha512_starts_ret(ctx, 0);
+#else
     mbedtls_sha256_init(ctx);
-    return mbedtls_sha256_starts_ret(ctx, 0);
+    ret = mbedtls_sha256_starts_ret(ctx, 0);
+#endif
+
+    return ret;
 }
 
 static inline int bootutil_sha_drop(bootutil_sha_context *ctx)
 {
+#ifdef MCUBOOT_SHA512
+    mbedtls_sha512_free(ctx);
+#else
     mbedtls_sha256_free(ctx);
+#endif
+
     return 0;
 }
 
@@ -141,13 +164,29 @@ static inline int bootutil_sha_update(bootutil_sha_context *ctx,
                                       const void *data,
                                       uint32_t data_len)
 {
-    return mbedtls_sha256_update_ret(ctx, data, data_len);
+    int ret;
+
+#ifdef MCUBOOT_SHA512
+    ret = mbedtls_sha512_update_ret(ctx, data, data_len);
+#else
+    ret = mbedtls_sha256_update_ret(ctx, data, data_len);
+#endif
+
+    return ret;
 }
 
 static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
                                       uint8_t *output)
 {
-    return mbedtls_sha256_finish_ret(ctx, output);
+    int ret;
+
+#ifdef MCUBOOT_SHA512
+    ret = mbedtls_sha512_finish_ret(ctx, output);
+#else
+    ret = mbedtls_sha256_finish_ret(ctx, output);
+#endif
+
+    return ret;
 }
 
 #endif /* MCUBOOT_USE_MBED_TLS */
