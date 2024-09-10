@@ -298,6 +298,19 @@ boot_slots_compatible(struct boot_loader_state *state)
         }
     }
 
+#ifdef MCUBOOT_SLOT0_EXPECTED_ERASE_SIZE
+    if (sector_sz_pri != MCUBOOT_SLOT0_EXPECTED_ERASE_SIZE) {
+        BOOT_LOG_DBG("Discrepancy, slot0 expected erase size: %d, actual: %d",
+                     MCUBOOT_SLOT0_EXPECTED_ERASE_SIZE, sector_sz_pri);
+    }
+#endif
+#ifdef MCUBOOT_SLOT1_EXPECTED_ERASE_SIZE
+    if (sector_sz_sec != MCUBOOT_SLOT1_EXPECTED_ERASE_SIZE) {
+        BOOT_LOG_DBG("Discrepancy, slot1 expected erase size: %d, actual: %d",
+                     MCUBOOT_SLOT1_EXPECTED_ERASE_SIZE, sector_sz_sec);
+    }
+#endif
+
     if (num_sectors_pri > num_sectors_sec) {
         if (sector_sz_pri != boot_img_sector_size(state, BOOT_PRIMARY_SLOT, i)) {
             BOOT_LOG_WRN("Cannot upgrade: not same sector layout");
