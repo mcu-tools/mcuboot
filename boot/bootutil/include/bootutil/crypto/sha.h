@@ -126,9 +126,7 @@ static inline int bootutil_sha_init(bootutil_sha_context *ctx)
 
 static inline int bootutil_sha_drop(bootutil_sha_context *ctx)
 {
-    /* XXX: config defines MBEDTLS_PLATFORM_NO_STD_FUNCTIONS so no need to free */
-    /* (void)mbedtls_sha256_free(ctx); */
-    (void)ctx;
+    mbedtls_sha256_free(ctx);
     return 0;
 }
 
