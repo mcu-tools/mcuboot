@@ -1,0 +1,9 @@
+boot/boot_serial @nordicjm @de-nordic
+boot/bootutil @davidvincze
+boot/cypress @romanjoe
+boot/espressif @almir-okato
+boot/mynewt @kasjer
+boot/nuttx @michallenc
+boot/zcbor @nordicjm @de-nordic
+boot/zephyr @nordicjm @de-nordic
+* @d3zd3z
