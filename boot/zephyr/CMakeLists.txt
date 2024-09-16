@@ -372,7 +372,7 @@ function(dt_get_parent node)
   string(FIND "${${node}}" "/" pos REVERSE)
 
   if(pos EQUAL -1)
-    message(ERROR "Unable to get parent of node: ${${node}}")
+    message(FATAL_ERROR "Unable to get parent of node: ${${node}}")
   endif()
 
   string(SUBSTRING "${${node}}" 0 ${pos} ${node})
