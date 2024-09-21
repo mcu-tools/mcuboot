@@ -48,11 +48,7 @@ endif()
 
 zephyr_library_include_directories(
   include
-  targets
   )
-if(EXISTS targets/${BOARD}.h)
-  zephyr_library_compile_definitions(MCUBOOT_TARGET_CONFIG="${BOARD}.h")
-endif()
 
 # Zephyr port-specific sources.
 zephyr_library_sources(
