@@ -311,6 +311,13 @@ boot_slots_compatible(struct boot_loader_state *state)
     }
 #endif
 
+#if defined(MCUBOOT_SLOT0_EXPECTED_WRITE_SIZE) || defined(MCUBOOT_SLOT1_EXPECTED_WRITE_SIZE)
+    if (!swap_write_block_size_check(state)) {
+        BOOT_LOG_WRN("Cannot upgrade: slot write sizes are not compatible");
+        return 0;
+    }
+#endif
+
     if (num_sectors_pri > num_sectors_sec) {
         if (sector_sz_pri != boot_img_sector_size(state, BOOT_PRIMARY_SLOT, i)) {
             BOOT_LOG_WRN("Cannot upgrade: not same sector layout");

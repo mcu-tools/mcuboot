@@ -101,6 +101,19 @@ static inline size_t boot_scratch_area_size(const struct boot_loader_state *stat
 
 #endif /* defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) */
 
+#if defined(MCUBOOT_SWAP_USING_MOVE)
+/**
+ * Check if device write block sizes are as expected, function should emit an error if there is
+ * a problem. If true is returned, the slots are marked as compatible, otherwise the slots are
+ * marked as incompatible.
+ *
+ * Requires MCUBOOT_SLOT0_EXPECTED_WRITE_SIZE be set to the write block size of image 0 primary
+ * slot and MCUBOOT_SLOT1_EXPECTED_WRITE_SIZE be set to the write block size of image 0 secondary
+ * slot.
+ */
+bool swap_write_block_size_check(struct boot_loader_state *state);
+#endif /* defined(MCUBOOT_SWAP_USING_MOVE) */
+
 /**
  * Returns the maximum size of an application that can be loaded to a slot.
  */
