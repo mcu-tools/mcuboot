@@ -275,7 +275,7 @@ bs_list(char *buf, int len)
         int swap_status = boot_swap_type_multi(image_index);
 #endif
 
-        for (slot = 0; slot < MCUBOOT_IMAGE_NUMBER; slot++) {
+        for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             FIH_DECLARE(fih_rc, FIH_FAILURE);
             uint8_t tmpbuf[64];
 
@@ -610,13 +610,13 @@ bs_slot_info(uint8_t op, char *buf, int len)
     zcbor_list_start_encode(cbor_state, MCUBOOT_IMAGE_NUMBER);
 
     IMAGES_ITER(image_index) {
-        for (slot = 0; slot < MCUBOOT_IMAGE_NUMBER; slot++) {
+        for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             if (slot == 0) {
                     ok = zcbor_map_start_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP) &&
                          zcbor_tstr_put_lit(cbor_state, "image") &&
                          zcbor_uint32_put(cbor_state, (uint32_t)image_index) &&
                          zcbor_tstr_put_lit(cbor_state, "slots") &&
-                         zcbor_list_start_encode(cbor_state, MCUBOOT_IMAGE_NUMBER);
+                         zcbor_list_start_encode(cbor_state, BOOT_NUM_SLOTS);
 
                     if (!ok) {
                             goto finish;
@@ -680,8 +680,8 @@ bs_slot_info(uint8_t op, char *buf, int len)
                             goto finish;
                     }
 
-                    if (slot == (MCUBOOT_IMAGE_NUMBER - 1)) {
-                        ok = zcbor_list_end_encode(cbor_state, MCUBOOT_IMAGE_NUMBER);
+                    if (slot == (BOOT_NUM_SLOTS - 1)) {
+                        ok = zcbor_list_end_encode(cbor_state, BOOT_NUM_SLOTS);
 
                         if (!ok) {
                             goto finish;
