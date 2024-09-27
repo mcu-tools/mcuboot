@@ -67,17 +67,22 @@ static struct boot_loader_state boot_data;
 static struct image_max_size image_max_sizes[BOOT_IMAGE_NUMBER] = {0};
 #endif
 
+#if (!defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)) || \
+defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
 #if !defined(__BOOTSIM__)
 /* Used for holding static buffers in multiple functions to work around issues
  * in older versions of gcc (e.g. 4.8.4)
  */
 struct sector_buffer_t {
-    boot_sector_t *primary;
-    boot_sector_t *secondary;
+    boot_sector_t primary[BOOT_IMAGE_NUMBER][BOOT_MAX_IMG_SECTORS];
+    boot_sector_t secondary[BOOT_IMAGE_NUMBER][BOOT_MAX_IMG_SECTORS];
 #if MCUBOOT_SWAP_USING_SCRATCH
-    boot_sector_t *scratch;
+    boot_sector_t scratch[BOOT_MAX_IMG_SECTORS];
 #endif
 };
+
+static struct sector_buffer_t sector_buffers;
+#endif
 #endif
 
 #if (BOOT_IMAGE_NUMBER > 1)
@@ -303,28 +308,6 @@ boot_version_cmp(const struct image_version *ver1,
 
 #if (!defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)) || \
 defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
-#if !defined(__BOOTSIM__)
-static void boot_get_sector_buffers(struct sector_buffer_t *buffers)
-{
-    /* The array of slot sectors are defined here (as opposed to file scope) so
-     * that they don't get allocated for non-boot-loader apps.  This is
-     * necessary because the gcc option "-fdata-sections" doesn't seem to have
-     * any effect in older gcc versions (e.g., 4.8.4).
-     */
-    static boot_sector_t primary_slot_sectors[BOOT_IMAGE_NUMBER][BOOT_MAX_IMG_SECTORS];
-    static boot_sector_t secondary_slot_sectors[BOOT_IMAGE_NUMBER][BOOT_MAX_IMG_SECTORS];
-#if MCUBOOT_SWAP_USING_SCRATCH
-    static boot_sector_t scratch_sectors[BOOT_MAX_IMG_SECTORS];
-#endif
-
-    buffers->primary = (boot_sector_t *)&primary_slot_sectors;
-    buffers->secondary = (boot_sector_t *)&secondary_slot_sectors;
-#if MCUBOOT_SWAP_USING_SCRATCH
-    buffers->scratch = (boot_sector_t *)&scratch_sectors;
-#endif
-}
-#endif
-
 static int
 boot_initialize_area(struct boot_loader_state *state, int flash_area)
 {
@@ -2209,9 +2192,6 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
     size_t slot;
     struct boot_status bs;
-#if !defined(__BOOTSIM__)
-    struct sector_buffer_t sector_buffers;
-#endif
     int rc = -1;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
     int fa_id;
@@ -2238,10 +2218,6 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     (void)has_upgrade;
 #endif
 
-#if !defined(__BOOTSIM__)
-    boot_get_sector_buffers(&sector_buffers);
-#endif
-
     /* Iterate over all the images. By the end of the loop the swap type has
      * to be determined for each image and all aborted swaps have to be
      * completed.
@@ -2264,9 +2240,9 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 
 #if !defined(__BOOTSIM__)
         BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors =
-            &sector_buffers.primary[image_index];
+            sector_buffers.primary[image_index];
         BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors =
-            &sector_buffers.secondary[image_index];
+            sector_buffers.secondary[image_index];
 #if MCUBOOT_SWAP_USING_SCRATCH
         state->scratch.sectors = sector_buffers.scratch;
 #endif
@@ -3463,18 +3439,15 @@ void boot_state_clear(struct boot_loader_state *state)
 #if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
 /**
  * Reads image data to find out the maximum application sizes. Only needs to
- * be called in serial recovery mode, as the state informatio is unpopulated
+ * be called in serial recovery mode, as the state information is unpopulated
  * at that time
  */
 static void boot_fetch_slot_state_sizes(void)
 {
-    struct sector_buffer_t sector_buffers;
     size_t slot;
     int rc = -1;
     int fa_id;
     int image_index;
-
-    boot_get_sector_buffers(&sector_buffers);
 
     IMAGES_ITER(BOOT_CURR_IMG(&boot_data)) {
         int max_size = 0;
@@ -3482,11 +3455,11 @@ static void boot_fetch_slot_state_sizes(void)
         image_index = BOOT_CURR_IMG(&boot_data);
 
         BOOT_IMG(&boot_data, BOOT_PRIMARY_SLOT).sectors =
-            &sector_buffers.primary[image_index];
+            sector_buffers.primary[image_index];
         BOOT_IMG(&boot_data, BOOT_SECONDARY_SLOT).sectors =
-            &sector_buffers.secondary[image_index];
+            sector_buffers.secondary[image_index];
 #if MCUBOOT_SWAP_USING_SCRATCH
-        boot_data.scratch.sectors = sector_buffers.scratch;;
+        boot_data.scratch.sectors = sector_buffers.scratch;
 #endif
 
         /* Open primary and secondary image areas for the duration
