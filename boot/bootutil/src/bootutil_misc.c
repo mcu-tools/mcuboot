@@ -334,7 +334,7 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
 uint32_t bootutil_max_image_size(const struct flash_area *fap)
 {
 #if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SINGLE_APPLICATION_SLOT) || \
-    defined(MCUBOOT_FIRMWARE_LOADER)
+    defined(MCUBOOT_FIRMWARE_LOADER) || defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
     return boot_status_off(fap);
 #elif defined(MCUBOOT_SWAP_USING_MOVE)
     struct flash_sector sector;
@@ -355,3 +355,68 @@ uint32_t bootutil_max_image_size(const struct flash_area *fap)
     return boot_swap_info_off(fap);
 #endif
 }
+
+/*
+ * Compute the total size of the given image.  Includes the size of
+ * the TLVs.
+ */
+#if !defined(MCUBOOT_DIRECT_XIP) && \
+    (!defined(MCUBOOT_OVERWRITE_ONLY) || \
+    defined(MCUBOOT_OVERWRITE_ONLY_FAST))
+int
+boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
+{
+    const struct flash_area *fap;
+    struct image_tlv_info info;
+    uint32_t off;
+    uint32_t protect_tlv_size;
+    int area_id;
+    int rc;
+
+#if (BOOT_IMAGE_NUMBER == 1)
+    (void)state;
+#endif
+
+    area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
+    rc = flash_area_open(area_id, &fap);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto done;
+    }
+
+    off = BOOT_TLV_OFF(boot_img_hdr(state, slot));
+
+    if (flash_area_read(fap, off, &info, sizeof(info))) {
+        rc = BOOT_EFLASH;
+        goto done;
+    }
+
+    protect_tlv_size = boot_img_hdr(state, slot)->ih_protect_tlv_size;
+    if (info.it_magic == IMAGE_TLV_PROT_INFO_MAGIC) {
+        if (protect_tlv_size != info.it_tlv_tot) {
+            rc = BOOT_EBADIMAGE;
+            goto done;
+        }
+
+        if (flash_area_read(fap, off + info.it_tlv_tot, &info, sizeof(info))) {
+            rc = BOOT_EFLASH;
+            goto done;
+        }
+    } else if (protect_tlv_size != 0) {
+        rc = BOOT_EBADIMAGE;
+        goto done;
+    }
+
+    if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
+        rc = BOOT_EBADIMAGE;
+        goto done;
+    }
+
+    *size = off + protect_tlv_size + info.it_tlv_tot;
+    rc = 0;
+
+done:
+    flash_area_close(fap);
+    return rc;
+}
+#endif /* !MCUBOOT_OVERWRITE_ONLY */

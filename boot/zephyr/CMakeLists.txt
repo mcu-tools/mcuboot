@@ -123,7 +123,7 @@ zephyr_library_sources(
   )
 endif()
 
-if(CONFIG_SINGLE_APPLICATION_SLOT)
+if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
 zephyr_library_sources(
   ${BOOT_DIR}/zephyr/single_loader.c
   )
@@ -141,6 +141,12 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/swap_move.c
   ${BOOT_DIR}/bootutil/src/caps.c
   )
+endif()
+
+if(CONFIG_BOOT_RAM_LOAD OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/ram_load.c
+    )
 endif()
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
@@ -392,7 +398,7 @@ if(CONFIG_BOOT_SWAP_USING_MOVE)
   endif()
 endif()
 
-if(NOT CONFIG_SINGLE_APPLICATION_SLOT)
+if(NOT CONFIG_SINGLE_APPLICATION_SLOT AND NOT CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
   dt_nodelabel(slot1_flash NODELABEL "slot1_partition")
   dt_prop(slot1_size PATH "${slot1_flash}" PROPERTY "reg" INDEX 1)
   dt_get_parent(slot1_flash)
@@ -420,7 +426,7 @@ if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO)
     math(EXPR slot_min_sectors "${slot0_size} / ${erase_size_slot0}")
   endif()
 
-  if(NOT CONFIG_SINGLE_APPLICATION_SLOT)
+  if(NOT CONFIG_SINGLE_APPLICATION_SLOT AND NOT CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
     if(NOT DEFINED slot1_size)
       message(WARNING "Unable to determine size of slot1 partition, cannot calculate minimum sector usage")
     elseif(NOT DEFINED erase_size_slot1)
