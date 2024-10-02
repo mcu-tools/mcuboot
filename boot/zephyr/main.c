@@ -389,7 +389,8 @@ void zephyr_boot_log_stop(void)
         * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(ZEPHYR_LOG_MODE_MINIMAL)
         */
 
-#ifdef CONFIG_MCUBOOT_SERIAL
+#if defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) || defined(CONFIG_BOOT_SERIAL_PIN_RESET) \
+    || defined(CONFIG_BOOT_SERIAL_BOOT_MODE) || defined(CONFIG_BOOT_SERIAL_NO_APPLICATION)
 static void boot_serial_enter()
 {
     int rc;
