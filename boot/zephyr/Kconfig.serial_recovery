@@ -98,7 +98,7 @@ config BOOT_SERIAL_MAX_RECEIVE_SIZE
 
 config BOOT_ERASE_PROGRESSIVELY
 	bool "Erase flash progressively when receiving new firmware"
-	default y if SOC_FAMILY_NORDIC_NRF
+	default y if SOC_FAMILY_NORDIC_NRF || SOC_FAMILY_NXP_IMXRT
 	help
 	 If enabled, flash is erased as necessary when receiving new firmware,
 	 instead of erasing the whole image slot at once. This is necessary
