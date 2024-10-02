@@ -64,7 +64,11 @@
 #endif /* MCUBOOT_USE_MBED_TLS */
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
+#if defined(MCUBOOT_SHA512)
+    #include <tinycrypt/sha512.h>
+#else
     #include <tinycrypt/sha256.h>
+#endif
     #include <tinycrypt/constants.h>
 #endif /* MCUBOOT_USE_TINYCRYPT */
 
@@ -153,11 +157,19 @@ static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
 #endif /* MCUBOOT_USE_MBED_TLS */
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
+#if defined(MCUBOOT_SHA512)
+typedef struct tc_sha512_state_struct bootutil_sha_context;
+#else
 typedef struct tc_sha256_state_struct bootutil_sha_context;
+#endif
 
 static inline int bootutil_sha_init(bootutil_sha_context *ctx)
 {
+#if defined(MCUBOOT_SHA512)
+    tc_sha512_init(ctx);
+#else
     tc_sha256_init(ctx);
+#endif
     return 0;
 }
 
@@ -171,13 +183,21 @@ static inline int bootutil_sha_update(bootutil_sha_context *ctx,
                                       const void *data,
                                       uint32_t data_len)
 {
+#if defined(MCUBOOT_SHA512)
+    return tc_sha512_update(ctx, data, data_len);
+#else
     return tc_sha256_update(ctx, data, data_len);
+#endif
 }
 
 static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
                                       uint8_t *output)
 {
+#if defined(MCUBOOT_SHA512)
+    return tc_sha512_final(output, ctx);
+#else
     return tc_sha256_final(output, ctx);
+#endif
 }
 #endif /* MCUBOOT_USE_TINYCRYPT */
 

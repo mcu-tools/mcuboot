@@ -17,13 +17,16 @@
 
 #include "bootutil_priv.h"
 #include "bootutil/crypto/common.h"
+#include "bootutil/crypto/sha.h"
+
+#define EDDSA_SIGNATURE_LENGTH 64
 
 static const uint8_t ed25519_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG "\x65\x70";
 #define NUM_ED25519_BYTES 32
 
 extern int ED25519_verify(const uint8_t *message, size_t message_len,
-                          const uint8_t signature[64],
-                          const uint8_t public_key[32]);
+                          const uint8_t signature[EDDSA_SIGNATURE_LENGTH],
+                          const uint8_t public_key[NUM_ED25519_BYTES]);
 
 /*
  * Parse the public key used for signing.
@@ -73,7 +76,8 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     uint8_t *pubkey;
     uint8_t *end;
 
-    if (hlen != 32 || slen != 64) {
+    if (hlen != IMAGE_HASH_SIZE ||
+        slen != EDDSA_SIGNATURE_LENGTH) {
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
     }
@@ -87,7 +91,7 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
         goto out;
     }
 
-    rc = ED25519_verify(hash, 32, sig, pubkey);
+    rc = ED25519_verify(hash, IMAGE_HASH_SIZE, sig, pubkey);
 
     if (rc == 0) {
         /* if verify returns 0, there was an error. */
