@@ -70,6 +70,7 @@ IMAGE_F = {
         'ROM_FIXED':             0x0000100,
         'COMPRESSED_LZMA1':      0x0000200,
         'COMPRESSED_LZMA2':      0x0000400,
+        'COMPRESSED_ARM_THUMB':  0x0000800,
 }
 
 TLV_VALUES = {
@@ -533,8 +534,10 @@ class Image:
 
         compression_flags = 0x0
         if compression_tlvs is not None:
-            if compression_type == "lzma2":
+            if compression_type in ["lzma2", "lzma2armthumb"]:
                 compression_flags = IMAGE_F['COMPRESSED_LZMA2']
+                if compression_type == "lzma2armthumb":
+                    compression_flags |= IMAGE_F['COMPRESSED_ARM_THUMB']
         # This adds the header to the payload as well
         if encrypt_keylen == 256:
             self.add_header(enckey, protected_tlv_size, compression_flags, 256)
