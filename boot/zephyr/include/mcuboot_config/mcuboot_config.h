@@ -34,6 +34,10 @@
 #     error "One crypto library implementation allowed at a time."
 #endif
 
+#if defined(CONFIG_BOOT_KEY_IMPORT_BYPASS_ASN)
+#define MCUBOOT_KEY_IMPORT_BYPASS_ASN
+#endif
+
 #ifdef CONFIG_BOOT_USE_MBEDTLS
 #define MCUBOOT_USE_MBED_TLS
 #elif defined(CONFIG_BOOT_USE_TINYCRYPT)
