@@ -240,6 +240,15 @@ config BOOT_ED25519_MBEDTLS
 	select BOOT_AES_MBEDTLS_DEPENDENCIES if MBEDTLS_BUILTIN && BOOT_ENCRYPT_IMAGE
 
 endchoice
+
+config BOOT_KEY_IMPORT_BYPASS_ASN
+	bool "Directly access key value without ASN.1 parsing"
+	help
+	  Originally, public keys compiled into MCUboot were
+	  stored in ASN.1 encoded format. Enabling this option
+	  bypasses the ASN.1 decoding and directly accesses the key
+	  in ASN.1 bitstream; this reduces MCUboot code by removing
+	  the ASN.1 processing.
 endif
 
 endchoice
