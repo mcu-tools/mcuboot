@@ -293,6 +293,21 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
   endif()
   message("MCUBoot bootloader key file: ${KEY_FILE}")
 
+  set(mcuboot_default_signature_files
+      ${MCUBOOT_DIR}/root-ec-p256-pkcs8.pem
+      ${MCUBOOT_DIR}/root-ec-p384.pem
+      ${MCUBOOT_DIR}/root-ec-p384-pkcs8.pem
+      ${MCUBOOT_DIR}/root-ed25519.pem
+      ${MCUBOOT_DIR}/root-rsa-2048.pem
+      ${MCUBOOT_DIR}/root-rsa-3072.pem
+      ${MCUBOOT_DIR}/root-ec-p256.pem
+  )
+
+  # Emit a warning if using one of the default MCUboot key files
+  if(${KEY_FILE} IN_LIST mcuboot_default_signature_files)
+    message(WARNING "WARNING: Using default MCUboot signing key file, this file is for debug use only and is not secure!")
+  endif()
+
   set(GENERATED_PUBKEY ${ZEPHYR_BINARY_DIR}/autogen-pubkey.c)
   add_custom_command(
     OUTPUT ${GENERATED_PUBKEY}
@@ -332,6 +347,20 @@ if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQ
     set(KEY_FILE ${MCUBOOT_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
   endif()
   message("MCUBoot bootloader encryption key file: ${KEY_FILE}")
+
+  # Emit a warning if using one of the default MCUboot key files
+  set(mcuboot_default_encryption_files
+      ${MCUBOOT_DIR}/enc-ec256-priv.pem
+      ${MCUBOOT_DIR}/enc-ec256-pub.pem
+      ${MCUBOOT_DIR}/enc-rsa2048-priv.pem
+      ${MCUBOOT_DIR}/enc-rsa2048-pub.pem
+      ${MCUBOOT_DIR}/enc-x25519-priv.pem
+      ${MCUBOOT_DIR}/enc-x25519-pub.pem
+  )
+
+  if(${KEY_FILE} IN_LIST mcuboot_default_encryption_files)
+    message(WARNING "WARNING: Using default MCUboot encryption key file, this file is for debug use only and is not secure!")
+  endif()
 
   set(GENERATED_ENCKEY ${ZEPHYR_BINARY_DIR}/autogen-enckey.c)
   add_custom_command(
