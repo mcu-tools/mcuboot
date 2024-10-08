@@ -85,7 +85,6 @@ config BOOT_IMG_HASH_ALG_SHA384_ALLOW
 
 config BOOT_IMG_HASH_ALG_SHA512_ALLOW
 	bool
-	depends on BOOT_USE_PSA_CRYPTO
 	help
 	  Hidden option set by configurations that allow SHA512
 
