@@ -204,7 +204,8 @@ config BOOT_SERIAL_IMG_GRP_IMAGE_STATE
 
 config BOOT_SERIAL_IMG_GRP_SLOT_INFO
 	bool "Slot info"
-	default y if UPDATEABLE_IMAGE_NUMBER > 1
+	depends on !BOOT_DIRECT_XIP && !BOOT_RAM_LOAD
+	default y if (UPDATEABLE_IMAGE_NUMBER > 1)
 	help
 	  If y, will include the slot info command which lists what available
 	  slots there are in the system.
