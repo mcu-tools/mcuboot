@@ -363,7 +363,7 @@ class BasedIntParamType(click.ParamType):
               help='When encrypting the image using AES, select a 128 bit or '
                    '256 bit key len.')
 @click.option('--compression', default='disabled',
-              type=click.Choice(['disabled', 'lzma2']),
+              type=click.Choice(['disabled', 'lzma2', 'lzma2armthumb']),
               help='Enable image compression using specified type. '
                    'Will fall back without image compression automatically '
                    'if the compression increases the image size.')
@@ -513,7 +513,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                custom_tlvs, compression_tlvs, int(encrypt_keylen), clear,
                baked_signature, pub_key, vector_to_sign, user_sha)
 
-    if compression == "lzma2":
+    if compression in ["lzma2", "lzma2armthumb"]:
         compressed_img = image.Image(version=decode_version(version),
                   header_size=header_size, pad_header=pad_header,
                   pad=pad, confirm=confirm, align=int(align),
@@ -527,6 +527,8 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                 "dict_size": comp_default_dictsize, "lp": comp_default_lp,
                 "lc": comp_default_lc}
         ]
+        if compression == "lzma2armthumb":
+            compression_filters.insert(0, {"id":lzma.FILTER_ARMTHUMB})
         compressed_data = lzma.compress(img.get_infile_data(),filters=compression_filters,
             format=lzma.FORMAT_RAW)
         uncompressed_size = len(img.get_infile_data())
