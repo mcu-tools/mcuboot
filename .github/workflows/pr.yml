@@ -8,11 +8,11 @@ jobs:
   auto-assign:
     runs-on: ubuntu-latest
     permissions:
-      issues: write
+      pull-requests: write
     if: github.repository == 'mcu-tools/mcuboot'
     steps:
       - uses: actions/checkout@v1
       - uses: ohnogumi/auto-reviewers@v0.0.5
         with:
-          token: ${{ secrets.USER_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           config: CODEOWNERS
