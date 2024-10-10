@@ -106,7 +106,7 @@ swap_status_init(const struct boot_loader_state *state,
     }
 
     if (swap_state.image_ok == BOOT_FLAG_SET) {
-        rc = boot_write_image_ok(fap);
+        rc = boot_write_image_flag(fap, BOOT_FLAG_SET);
         assert(rc == 0);
     }
 
@@ -222,7 +222,7 @@ swap_set_image_ok(uint8_t image_index)
     }
 
     if (state.image_ok == BOOT_FLAG_UNSET) {
-        rc = boot_write_image_ok(fap);
+        rc = boot_write_image_flag(fap, BOOT_FLAG_SET);
     }
 
 out:

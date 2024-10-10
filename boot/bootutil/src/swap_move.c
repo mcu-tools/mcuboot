@@ -503,7 +503,7 @@ fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
         rc = swap_erase_trailer_sectors(state, fap_sec);
         assert(rc == 0);
 
-        rc = boot_write_image_ok(fap_sec);
+        rc = boot_write_image_flag(fap_sec, BOOT_FLAG_SET);
         assert(rc == 0);
 
         rc = boot_write_swap_size(fap_sec, bs->swap_size);
