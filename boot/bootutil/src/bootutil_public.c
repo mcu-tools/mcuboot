@@ -5,6 +5,7 @@
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2023 Arm Limited
  * Copyright (c) 2020-2023 Nordic Semiconductor ASA
+ * Copyright (c) 2024 Elektroline Inc.
  *
  * Original license:
  *
@@ -132,10 +133,19 @@ static const struct boot_swap_table boot_swap_tables[] = {
 static int
 boot_flag_decode(uint8_t flag)
 {
-    if (flag != BOOT_FLAG_SET) {
-        return BOOT_FLAG_BAD;
+    switch (flag) {
+        case BOOT_FLAG_SET:
+            return BOOT_FLAG_SET;
+
+        case BOOT_FLAG_UPDATED:
+            return BOOT_FLAG_UPDATED;
+
+        case BOOT_FLAG_AVAIL:
+            return BOOT_FLAG_AVAIL;
+
+        default:
+            return BOOT_FLAG_BAD;
     }
-    return BOOT_FLAG_SET;
 }
 
 uint32_t
@@ -215,6 +225,61 @@ boot_read_copy_done(const struct flash_area *fap, uint8_t *copy_done)
     return boot_read_flag(fap, copy_done, boot_copy_done_off(fap));
 }
 
+#ifdef MCUBOOT_COPY_WITH_REVERT
+int
+boot_read_copy_state(int image_index, struct boot_copy_state *state)
+{
+    int rc;
+    struct boot_swap_state primary_state;
+    struct boot_swap_state secondary_state;
+    struct boot_swap_state tertiary_state;
+
+    /* Read state from all slots */
+
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
+                                    &primary_state);
+    if (rc != 0) {
+        return rc;
+    }
+
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
+                                    &secondary_state);
+    if (rc != 0) {
+        return rc;
+    }
+
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_TERTIARY(image_index),
+                                    &tertiary_state);
+    if (rc != 0) {
+        return rc;
+    }
+
+    if (secondary_state.magic == BOOT_MAGIC_UNSET) {
+        /* Secondary is either empty or corrupted. In any case, we want
+         * this to mark as a partition for update.
+         */
+        state->update = FLASH_AREA_IMAGE_SECONDARY(image_index);
+        state->recovery = FLASH_AREA_IMAGE_TERTIARY(image_index);
+    } else if (tertiary_state.magic == BOOT_MAGIC_UNSET) {
+        /* Tertiary is either empty or corrupted. In any case, we want
+         * this to mark as a partition for update.
+         */
+        state->update = FLASH_AREA_IMAGE_TERTIARY(image_index);
+        state->recovery = FLASH_AREA_IMAGE_SECONDARY(image_index);
+    } else if ((tertiary_state.image_ok == BOOT_FLAG_AVAIL) ||
+               (tertiary_state.image_ok == BOOT_FLAG_UPDATED)) {
+        /* Secondary image is marked as available, use it for update */
+        state->update = FLASH_AREA_IMAGE_TERTIARY(image_index);
+        state->recovery = FLASH_AREA_IMAGE_SECONDARY(image_index);
+    } else {
+        /* Any other case. */
+        state->update = FLASH_AREA_IMAGE_SECONDARY(image_index);
+        state->recovery = FLASH_AREA_IMAGE_TERTIARY(image_index);
+    }
+
+    return 0;
+}
+#endif
 
 int
 boot_read_swap_state(const struct flash_area *fap,
@@ -354,7 +419,7 @@ boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,
 }
 
 int
-boot_write_image_ok(const struct flash_area *fap)
+boot_write_image_flag(const struct flash_area *fap, int flag)
 {
     uint32_t off;
 
@@ -362,7 +427,7 @@ boot_write_image_ok(const struct flash_area *fap)
     BOOT_LOG_DBG("writing image_ok; fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off));
-    return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
+    return boot_write_trailer_flag(fap, off, flag);
 }
 
 int
@@ -392,6 +457,112 @@ boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
                  swap_type, image_num);
     return boot_write_trailer(fap, off, (const uint8_t *) &swap_info, 1);
 }
+
+#ifdef MCUBOOT_COPY_WITH_REVERT
+int
+boot_copy_type_multi(int image_index, struct boot_copy_state *state)
+{
+    const struct boot_swap_table *table;
+    struct boot_swap_state primary_slot;
+    struct boot_swap_state update_slot;
+    struct boot_swap_state recovery_slot;
+    int update;
+    int recovery;
+    int rc;
+    size_t i;
+
+    update = state->update;
+    recovery = state->recovery;
+
+    /* Get state from all three slots. */
+
+    rc = BOOT_HOOK_CALL(boot_read_swap_state_primary_slot_hook,
+                        BOOT_HOOK_REGULAR, image_index, &primary_slot);
+    if (rc == BOOT_HOOK_REGULAR)
+    {
+        rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
+                                        &primary_slot);
+    }
+    if (rc) {
+        return BOOT_SWAP_TYPE_PANIC;
+    }
+
+    rc = boot_read_swap_state_by_id(update, &update_slot);
+    if (rc == BOOT_EFLASH) {
+        BOOT_LOG_INF("Secondary image of image pair"
+                     "is unreachable. Treat it as empty");
+        update_slot.magic = BOOT_MAGIC_UNSET;
+        update_slot.swap_type = BOOT_SWAP_TYPE_NONE;
+        update_slot.copy_done = BOOT_FLAG_UNSET;
+        update_slot.image_ok = BOOT_FLAG_UNSET;
+        update_slot.image_num = 0;
+    } else if (rc) {
+        return BOOT_SWAP_TYPE_PANIC;
+    }
+
+    rc = boot_read_swap_state_by_id(recovery, &recovery_slot);
+    if (rc == BOOT_EFLASH) {
+        BOOT_LOG_INF("Tertiary image of image pair"
+                     "is unreachable. Treat it as empty");
+        update_slot.magic = BOOT_MAGIC_UNSET;
+        update_slot.swap_type = BOOT_SWAP_TYPE_NONE;
+        update_slot.copy_done = BOOT_FLAG_UNSET;
+        update_slot.image_ok = BOOT_FLAG_UNSET;
+        update_slot.image_num = 0;
+    } else if (rc) {
+        return BOOT_SWAP_TYPE_PANIC;
+    }
+
+    /* First check revert type. Bootloader should do revert only if
+     * image in primary slot is not ok, image in recovery slot is ok
+     * and image in update slot is marked as updated.
+     *
+     * Regular update should be done if image in update slot is not
+     * marked as updated.
+     */
+
+    if ((primary_slot.image_ok == BOOT_FLAG_UNSET) &&
+         (recovery_slot.image_ok == BOOT_FLAG_SET) &&
+         (update_slot.image_ok == BOOT_FLAG_UPDATED)) {
+        BOOT_LOG_DBG("Image index: %d, Swap type: revert", image_index);
+        return BOOT_SWAP_TYPE_REVERT;
+    }
+
+    /* Check whether bootloader should perform update. */
+
+    for (i = 0; i < BOOT_SWAP_TABLES_COUNT; i++) {
+        table = boot_swap_tables + i;
+
+        if (boot_magic_compatible_check(table->magic_primary_slot,
+                                        primary_slot.magic) &&
+            boot_magic_compatible_check(table->magic_secondary_slot,
+                                        update_slot.magic) &&
+            (table->image_ok_primary_slot == BOOT_FLAG_ANY   ||
+                table->image_ok_primary_slot == primary_slot.image_ok) &&
+            (table->image_ok_secondary_slot == BOOT_FLAG_ANY ||
+                table->image_ok_secondary_slot == update_slot.image_ok) &&
+            (table->copy_done_primary_slot == BOOT_FLAG_ANY  ||
+                table->copy_done_primary_slot == primary_slot.copy_done)) {
+            BOOT_LOG_DBG("Image index: %d, Swap type: %s",
+                         image_index,
+                         table->swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
+                         table->swap_type == BOOT_SWAP_TYPE_PERM   ? "perm"   :
+                         "BUG; can't happen");
+            if (table->swap_type == BOOT_SWAP_TYPE_REVERT) {
+                return BOOT_SWAP_TYPE_NONE;
+            }
+            if (table->swap_type != BOOT_SWAP_TYPE_TEST &&
+                    table->swap_type != BOOT_SWAP_TYPE_PERM) {
+                return BOOT_SWAP_TYPE_PANIC;
+            }
+            return table->swap_type;
+        }
+    }
+
+    BOOT_LOG_INF("Image index: %d, Swap type: none", image_index);
+    return BOOT_SWAP_TYPE_NONE;
+}
+#endif
 
 int
 boot_swap_type_multi(int image_index)
@@ -495,7 +666,17 @@ int
 boot_set_next(const struct flash_area *fa, bool active, bool confirm)
 {
     struct boot_swap_state slot_state;
+#ifdef MCUBOOT_COPY_WITH_REVERT
+    struct boot_swap_state sec_state;
+    struct boot_swap_state ter_state;
+    const struct flash_area *fap_update;
+    const struct flash_area *fap_recover;
+    int update_slot = -1;
+    int recovery_slot;
+#endif
     int rc;
+
+    BOOT_LOG_DBG("boot_set_next active %d confirm %d", active, confirm);
 
     if (active) {
         confirm = true;
@@ -509,13 +690,59 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
     switch (slot_state.magic) {
     case BOOT_MAGIC_GOOD:
         /* If non-active then swap already scheduled, else confirm needed.*/
-
         if (active && slot_state.image_ok == BOOT_FLAG_UNSET) {
             /* Intentionally do not check copy_done flag to be able to
              * confirm a padded image which has been programmed using
              * a programming interface.
              */
-            rc = boot_write_image_ok(fa);
+            rc = boot_write_image_flag(fa, BOOT_FLAG_SET);
+#ifdef MCUBOOT_COPY_WITH_REVERT
+            if (rc != 0) {
+                return rc;
+            }
+            rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(0),
+                                &sec_state);
+            if (rc != 0) {
+                return rc;
+            }
+            rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_TERTIARY(0),
+                                &ter_state);
+            if (rc != 0) {
+                return rc;
+            }
+
+            /* Check which slot is update and recovery. This can be done by
+             * BOOT_FLAG_UPDATED flag. If slot is marked as BOOT_FLAG_UPDATED
+             * then it is update slot and should be confirmed. Once confirmed,
+             * it becomes new recovery and old recovery is marked as
+             * BOOT_FLAG_AVAIL -> new slot where to upload update.
+             */
+            if (sec_state.image_ok == BOOT_FLAG_UPDATED) {
+                update_slot = FLASH_AREA_IMAGE_SECONDARY(0);
+                recovery_slot = FLASH_AREA_IMAGE_TERTIARY(0);
+            } else if (ter_state.image_ok == BOOT_FLAG_UPDATED) {
+                update_slot = FLASH_AREA_IMAGE_TERTIARY(0);
+                recovery_slot = FLASH_AREA_IMAGE_SECONDARY(0);
+            }
+
+            if (update_slot != -1) {
+                rc = flash_area_open(update_slot, &fap_update);
+                if (rc != 0) {
+                    return rc;
+                }
+                rc = boot_write_image_flag(fap_update, BOOT_FLAG_SET);
+                flash_area_close(fap_update);
+                if (rc != 0) {
+                    return rc;
+                }
+                rc = flash_area_open(recovery_slot, &fap_recover);
+                if (rc != 0) {
+                    return rc;
+                }
+                rc = boot_write_image_flag(fap_recover, BOOT_FLAG_AVAIL);
+                flash_area_close(fap_recover);
+            }
+#endif
         }
 
         break;
@@ -525,7 +752,7 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
             rc = boot_write_magic(fa);
 
             if (rc == 0 && confirm) {
-                rc = boot_write_image_ok(fa);
+                rc = boot_write_image_flag(fa, BOOT_FLAG_SET);
             }
 
             if (rc == 0) {
@@ -605,7 +832,7 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
             }
 
             if (slot_state.image_ok == BOOT_FLAG_UNSET) {
-                rc = boot_write_image_ok(fa);
+                rc = boot_write_image_flag(fa, BOOT_FLAG_SET);
                 if (rc != 0) {
                     break;
                 }

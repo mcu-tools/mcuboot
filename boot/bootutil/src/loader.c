@@ -5,6 +5,7 @@
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2023 Arm Limited
  * Copyright (c) 2024 Nordic Semiconductor ASA
+ * Copyright (c) 2024 Elektroline Inc.
  *
  * Original license:
  *
@@ -48,6 +49,10 @@
 #include "bootutil/ramload.h"
 #include "bootutil/boot_hooks.h"
 #include "bootutil/mcuboot_status.h"
+
+#ifdef MCUBOOT_COPY_WITH_REVERT
+#include "copy_priv.h"
+#endif
 
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
@@ -604,7 +609,9 @@ done:
  * Compute the total size of the given image.  Includes the size of
  * the TLVs.
  */
-#if !defined(MCUBOOT_OVERWRITE_ONLY) ||  defined(MCUBOOT_OVERWRITE_ONLY_FAST)
+#if (!defined(MCUBOOT_OVERWRITE_ONLY) || \
+     defined(MCUBOOT_OVERWRITE_ONLY_FAST)) && \
+    !defined(MCUBOOT_COPY_WITH_REVERT)
 static int
 boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
 {
@@ -1224,11 +1231,24 @@ boot_validated_swap_type(struct boot_loader_state *state,
     int swap_type;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
+#ifdef MCUBOOT_COPY_WITH_REVERT
+    swap_type = boot_copy_type_multi(BOOT_CURR_IMG(state),
+                                     &state->copy[BOOT_CURR_IMG(state)]);
+#else
     swap_type = boot_swap_type_multi(BOOT_CURR_IMG(state));
+#endif
     if (BOOT_IS_UPGRADE(swap_type)) {
         /* Boot loader wants to switch to the secondary slot.
          * Ensure image is valid.
          */
+
+#ifdef MCUBOOT_COPY_WITH_REVERT
+        /* Slot validation was already done, just return swap_type */
+        if (swap_type == BOOT_SWAP_TYPE_REVERT) {
+            return swap_type;
+        }
+#endif
+
         FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SECONDARY_SLOT, bs);
         if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
             if (FIH_EQ(fih_rc, FIH_NO_BOOTABLE_IMAGE)) {
@@ -1583,7 +1603,167 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 }
 #endif
 
-#if !defined(MCUBOOT_OVERWRITE_ONLY)
+/**
+ * Perform copy with revert algorithm. This is either update process where
+ * image is copied from secondary or tertiary slot to primary slot or
+ * revert process.
+ *
+ * @param state                 Current boot process state.
+ * @param bs                    The current boot status.  This function reads
+ *                                  this struct to determine if it is resuming
+ *                                  an interrupted swap operation.  This
+ *                                  function writes the updated status to this
+ *                                  function on return.
+ *
+ * @return                      0 on success; nonzero on failure.
+ */
+#ifdef MCUBOOT_COPY_WITH_REVERT
+static int
+boot_copy_image_with_revert(struct boot_loader_state *state,
+                            struct boot_status *bs)
+{
+    size_t sect_count;
+    size_t sect;
+    int rc;
+    size_t size;
+    size_t this_size;
+    const struct flash_area *fap_primary_slot;
+    const struct flash_area *fap_secondary_slot;
+    const struct flash_area *fap_tertiary_slot;
+    const struct flash_area *fap_update_slot;
+    const struct flash_area *fap_recovery_slot;
+    uint8_t image_index;
+    uint8_t image_ok;
+    struct boot_copy_state *copy_state;
+    struct image_header *hdr;
+    int primary;
+    int secondary;
+    int tertiary;
+
+    (void)bs;
+
+    image_index = BOOT_CURR_IMG(state);
+    primary = FLASH_AREA_IMAGE_PRIMARY(image_index);
+    secondary = FLASH_AREA_IMAGE_SECONDARY(image_index);
+    tertiary = FLASH_AREA_IMAGE_TERTIARY(image_index);
+
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index),
+            &fap_primary_slot);
+    assert (rc == 0);
+
+    rc = flash_area_open(secondary, &fap_secondary_slot);
+    assert (rc == 0);
+
+    rc = flash_area_open(tertiary, &fap_tertiary_slot);
+    assert (rc == 0);
+
+    rc = copy_get_slot_type(state);
+    if (rc != 0) {
+        return rc;
+    }
+
+    copy_state = &state->copy[image_index];
+    if (copy_state->update == secondary) {
+        fap_update_slot = fap_secondary_slot;
+        fap_recovery_slot = fap_tertiary_slot;
+    } else {
+        fap_update_slot = fap_tertiary_slot;
+        fap_recovery_slot = fap_secondary_slot;
+    }
+
+    if (BOOT_SWAP_TYPE(state) == BOOT_SWAP_TYPE_REVERT) {
+        /* Just do revert -> copy recovery image to primary image */
+        BOOT_LOG_DBG("Recover image from %s slot",
+                     secondary == copy_state->recovery ? "secondary" :
+                     "tertiary");
+        size = BOOT_IMG_AREA(state, copy_state->recovery)->fa_size;
+        rc = boot_copy_region(state, fap_recovery_slot, fap_primary_slot,
+                              0, 0, size);
+    } else {
+        /* Do we have recovery image saved in recovery flash? */
+        if (!copy_state->recovery_valid) {
+            boot_read_image_ok(fap_primary_slot, &image_ok);
+            hdr = boot_img_hdr(state, primary);
+            rc = boot_image_check(state, hdr, fap_primary_slot, bs);
+            if ((rc == 0) && (image_ok == BOOT_FLAG_SET)) {
+                /* Save current image as recovery only if it is valid and
+                 * confirmed. We have to check this in case of restart
+                 * during update process.
+                 * If board is restarted during update, primary slot contains
+                 * non-valid image and we do not want to copy this image to
+                 * recovery slot.
+                 * There also might be a case where primary image is valid
+                 * but not confirmed (timing of board reset right after
+                 * update is uploaded to secondary). Still we do not want
+                 * to upload this to recovery.
+                 */
+                size = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT)->fa_size;
+
+                BOOT_LOG_DBG("Saving recovery image to %s slot",
+                             secondary == copy_state->update ? "tertiary" :
+                             "secondary");
+
+                /* Just copy entire recovery to primary slot */
+                rc = boot_copy_region(state, fap_primary_slot,
+                                      fap_recovery_slot, 0, 0, size);
+            }
+        }
+
+        /* Now we can start update process. First erase primary slot.
+         * Recovery is already saved in recovery partition, so we have the
+         * backup available if needed.
+         */
+        sect_count = boot_img_num_sectors(state, primary);
+        for (sect = 0, size = 0; sect < sect_count; sect++) {
+            this_size = boot_img_sector_size(state, primary, sect);
+            rc = boot_erase_region(fap_primary_slot, size, this_size);
+            assert(rc == 0);
+
+            size += this_size;
+        }
+
+        BOOT_LOG_DBG("Copying update image from %s slot to primary slot. %s "
+                     "slot is used as recovery",
+                     secondary == copy_state->update ? "secondary" :
+                     "tertiary",
+                     secondary == copy_state->recovery ? "Secondary" :
+                     "Tertiary");
+
+        /* Just copy update slot to primary slot */
+        rc = boot_copy_region(state, fap_update_slot, fap_primary_slot, 0, 0,
+                              size);
+        if (rc != 0) {
+            return rc;
+        }
+
+        rc = BOOT_HOOK_CALL(boot_copy_region_post_hook, 0,
+                            BOOT_CURR_IMG(state),
+                            BOOT_IMG_AREA(state, primary), size);
+        if (rc != 0) {
+            return rc;
+        }
+
+        /* Mark update slot as already updated. This is to prevent
+         * the update to trigger itself after another reboot. We do not want
+         * to delete entire header and tail as in swap algorithm, because
+         * this image will be used as recovery once primary slot is
+         * confirmed.
+         */
+        rc = boot_write_image_flag(fap_update_slot, BOOT_FLAG_UPDATED);
+        if (rc != 0) {
+            return rc;
+        }
+    }
+
+    flash_area_close(fap_primary_slot);
+    flash_area_close(fap_secondary_slot);
+    flash_area_close(fap_tertiary_slot);
+
+    return rc;
+}
+#endif
+
+#if !defined(MCUBOOT_OVERWRITE_ONLY) && !defined(MCUBOOT_COPY_WITH_REVERT)
 /**
  * Swaps the two images in flash.  If a prior copy operation was interrupted
  * by a system reset, this function completes that operation.
@@ -1734,13 +1914,15 @@ static int
 boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
 {
     int rc;
-#ifndef MCUBOOT_OVERWRITE_ONLY
+#if !defined(MCUBOOT_OVERWRITE_ONLY) && !defined(MCUBOOT_COPY_WITH_REVERT)
     uint8_t swap_type;
 #endif
 
     /* At this point there are no aborted swaps. */
 #if defined(MCUBOOT_OVERWRITE_ONLY)
     rc = boot_copy_image(state, bs);
+#elif defined(MCUBOOT_COPY_WITH_REVERT)
+    rc = boot_copy_image_with_revert(state, bs);
 #elif defined(MCUBOOT_BOOTSTRAP)
     /* Check if the image update was triggered by a bad image in the
      * primary slot (the validity of the image in the secondary slot had
@@ -1759,7 +1941,7 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
 #endif
     assert(rc == 0);
 
-#ifndef MCUBOOT_OVERWRITE_ONLY
+#if !defined(MCUBOOT_OVERWRITE_ONLY) && !defined(MCUBOOT_COPY_WITH_REVERT)
     /* The following state needs image_ok be explicitly set after the
      * swap was finished to avoid a new revert.
      */
@@ -1813,7 +1995,7 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
  *
  * @return                      0 on success; nonzero on failure.
  */
-#if !defined(MCUBOOT_OVERWRITE_ONLY)
+#if !defined(MCUBOOT_OVERWRITE_ONLY) && !defined(MCUBOOT_COPY_WITH_REVERT)
 static int
 boot_complete_partial_swap(struct boot_loader_state *state,
         struct boot_status *bs)
@@ -1979,7 +2161,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
     if (boot_slots_compatible(state)) {
         boot_status_reset(bs);
 
-#ifndef MCUBOOT_OVERWRITE_ONLY
+#if !defined(MCUBOOT_OVERWRITE_ONLY) && !defined(MCUBOOT_COPY_WITH_REVERT)
         rc = swap_read_status(state, bs);
         if (rc != 0) {
             BOOT_LOG_WRN("Failed reading boot status; Image=%u",
@@ -2021,7 +2203,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
             boot_review_image_swap_types(state, true);
 #endif
 
-#ifdef MCUBOOT_OVERWRITE_ONLY
+#if defined(MCUBOOT_OVERWRITE_ONLY) || defined(MCUBOOT_COPY_WITH_REVERT)
             /* Should never arrive here, overwrite-only mode has
              * no swap state.
              */
@@ -2042,6 +2224,13 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
             /* Swap has finished set to NONE */
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
         } else {
+#ifdef MCUBOOT_COPY_WITH_REVERT
+            rc = copy_get_slot_type(state);
+            if (rc != 0) {
+                BOOT_LOG_WRN("Failed to get information about slots\n");
+                return;
+            }
+#endif
             /* There was no partial swap, determine swap type. */
             if (bs->swap_type == BOOT_SWAP_TYPE_NONE) {
                 BOOT_SWAP_TYPE(state) = boot_validated_swap_type(state, bs);
@@ -2213,6 +2402,9 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
      */
     TARGET_STATIC boot_sector_t primary_slot_sectors[BOOT_IMAGE_NUMBER][BOOT_MAX_IMG_SECTORS];
     TARGET_STATIC boot_sector_t secondary_slot_sectors[BOOT_IMAGE_NUMBER][BOOT_MAX_IMG_SECTORS];
+#ifdef MCUBOOT_COPY_WITH_REVERT
+    TARGET_STATIC boot_sector_t tertiary_slot_sectors[BOOT_IMAGE_NUMBER][BOOT_MAX_IMG_SECTORS];
+#endif
 #if MCUBOOT_SWAP_USING_SCRATCH
     TARGET_STATIC boot_sector_t scratch_sectors[BOOT_MAX_IMG_SECTORS];
 #endif
@@ -2257,13 +2449,17 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
             primary_slot_sectors[image_index];
         BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors =
             secondary_slot_sectors[image_index];
+#ifdef MCUBOOT_COPY_WITH_REVERT
+        BOOT_IMG(state, BOOT_TERTIARY_SLOT).sectors =
+            tertiary_slot_sectors[image_index];
+#endif
 #if MCUBOOT_SWAP_USING_SCRATCH
         state->scratch.sectors = scratch_sectors;
 #endif
 #endif
 
-        /* Open primary and secondary image areas for the duration
-         * of this call.
+        /* Open primary secondary and tertiary (if used) image areas for the
+         * duration of this call.
          */
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             fa_id = flash_area_id_from_multi_image_slot(image_index, slot);
@@ -2275,6 +2471,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
                              "cannot continue", fa_id, image_index, (int8_t)slot, rc);
                 FIH_PANIC;
             }
+
         }
 #if MCUBOOT_SWAP_USING_SCRATCH
         rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH,
@@ -2340,7 +2537,6 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 
         /* Set the previously determined swap type */
         bs.swap_type = BOOT_SWAP_TYPE(state);
-
         switch (BOOT_SWAP_TYPE(state)) {
         case BOOT_SWAP_TYPE_NONE:
             break;
@@ -2370,7 +2566,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
              * we don't try to boot into it again on the next reboot. Do this by
              * pretending we just reverted back to primary slot.
              */
-#ifndef MCUBOOT_OVERWRITE_ONLY
+#if !defined(MCUBOOT_OVERWRITE_ONLY) && !defined(MCUBOOT_COPY_WITH_REVERT)
             /* image_ok needs to be explicitly set to avoid a new revert. */
             rc = swap_set_image_ok(BOOT_CURR_IMG(state));
             if (rc != 0) {

@@ -4,6 +4,7 @@
   - Copyright (c) 2017-2020 Linaro LTD
   - Copyright (c) 2017-2019 JUUL Labs
   - Copyright (c) 2019-2024 Arm Limited
+  - Copyright (c) 2024 Elektroline Inc.
 
   - Original license:
 
@@ -165,6 +166,18 @@ images therefore the flash area IDs of primary and secondary areas are mapped
 based on the number of the active image (on which the bootloader is currently
 working).
 
+Most of the algorithms use just primary and secondary ares, but algorithm
+with tertiary area might also be used. This algorithm and its functionality
+is described in subsequent sections. Definition of scratch area is not
+required in this case, therefore flash area IDs would be defined as:
+
+```c
+#define FLASH_AREA_BOOTLOADER         0
+#define FLASH_AREA_IMAGE_PRIMARY      1
+#define FLASH_AREA_IMAGE_SECONDARY    2
+#define FLASH_AREA_IMAGE_TERTIARY     3
+```
+
 ## [Image slots](#image-slots)
 
 A portion of the flash memory can be partitioned into multiple image areas, each
@@ -175,7 +188,7 @@ images must be built such that they can run from that fixed location in flash
 [ram-load](#ram-load) upgrade mode). If the bootloader needs to run the
 image resident in the secondary slot, it must copy its contents into the primary
 slot before doing so, either by swapping the two images or by overwriting the
-contents of the primary slot. The bootloader supports either swap- or
+contents of the primary slot. The bootloader supports either swap-, copy- or
 overwrite-based image upgrades, but must be configured at build time to choose
 one of these two strategies.
 
@@ -275,6 +288,71 @@ application requires 1 erase cycle on the secondary slot, this should result in
 leveling the flash wear between the slots.
 
 The algorithm is enabled using the `MCUBOOT_SWAP_USING_MOVE` option.
+
+### [Copy with three partitions and revert](#copy-with-revert)
+
+Swap based algorithms described above have to swap two images between flash
+partitions. If secondary partition is on external flash (NOR for example), the
+longer erase and write times may prolong the boot process. Also having the
+secondary partition on external flash usually means slower
+[swap-using-scratch](#image-swap-using-scratch) algorithm has to be used as
+sector size of embedded and external flash is diffent. As a result, booting
+larger image from external flash may take up to several minutes.
+
+However, there is a way to speed up the process for devices with spare space
+on external flash. This algorithm requirest three flash partitions; primary,
+secondary and tertiary. This algorithm do not swap images but rather just copy
+them to primary slot from either secondary or tertiary slot while keeping the
+possibility of revert if image is not confirmed. Therefore all writes and
+erases during boot process are only to embedded flash and thus the process is
+not prolonged by external flash latencies. The algorithm works as follows:
+
+  1.	Check secondary and tertiary partition if update image and valid recovery
+      image are present.
+  2.	If valid recovery is not present, copy image from primary to either.
+      secondary or tertiary (based on where update image is not located)
+  3.  Erase primary slot.
+  4.  Copy update image to primary slot.
+  5.  During image confirm, mark both primary and secondary or tertiary (the
+      one with update image) as confirmed. Mark old recovery partition as
+      ready for update. New image will be uploaded to this partition while the
+      other one will be used as recovery.
+
+Image is copied from primary partition to tertiary or secondary partition only
+if recovery is not present there. In reality, this is only for the first update
+(or if user' application manually erases recovery slot), therefore all
+subsequent update processes will be as fast as overwrite only algorithm.
+
+The bootloader has to check secondary and tertiary partition during each boot
+and determine based on present images which partition is used as recovery and
+update. Also the user application has to retrieve this information in order
+to save new image to the correct partition. This can be done by following
+function:
+
+```c
+int
+boot_read_copy_state(int image_index, struct boot_copy_state *state)
+```
+
+where state structure is defined as:
+
+```c
+struct boot_copy_state {
+    int update;
+    int recovery;
+    bool recovery_valid;
+};
+```
+
+Recovery valid field is true if there is a valid recovery present on either
+secondary or tertiary partition.
+
+This algorithm may speed up boot process by considerable amount of time,
+depending on write/erase times difference between external flash and
+embedded flash. Morover, the entire process of saving swap info to image
+tail is ommited here as the algorithm is basically just copy of entire
+partition to another slot. Update process starts from the begining if
+it is interrupted by power reset.
 
 ### [Equal slots (direct-xip)](#direct-xip)
 
