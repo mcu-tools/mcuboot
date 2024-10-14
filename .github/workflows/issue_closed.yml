@@ -1,0 +1,19 @@
+name: Issue closed
+
+on:
+  issues:
+    types: [close]
+
+jobs:
+  move-to-todo:
+    runs-on: ubuntu-latest
+    if: github.repository == 'mcu-tools/mcuboot'
+    steps:
+      - uses: fojia/action-move-issues-to-column@master
+        with:
+          project: 'MCUboot releases'
+          column: 'Done'
+          owner: 'mcu-tools'
+          repo: 'action-move-issues-to-column'
+          type: 'repo'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
