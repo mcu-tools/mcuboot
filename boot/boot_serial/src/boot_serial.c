@@ -780,7 +780,7 @@ bs_upload(char *buf, int len)
     const uint8_t *img_chunk = NULL;    /* Pointer to buffer with received image chunk */
     size_t img_chunk_len = 0;           /* Length of received image chunk */
     size_t img_chunk_off = SIZE_MAX;    /* Offset of image chunk within image  */
-    uint8_t rem_bytes;                  /* Reminder bytes after aligning chunk write to
+    size_t rem_bytes;                   /* Reminder bytes after aligning chunk write to
                                          * to flash alignment */
     uint32_t img_num_tmp = UINT_MAX;    /* Temp variable for image number */
     static uint32_t img_num = 0;
@@ -947,7 +947,7 @@ bs_upload(char *buf, int len)
     if (flash_area_align(fap) > 1 &&
         (((size_t)img_chunk) & (flash_area_align(fap) - 1)) != 0) {
         /* Buffer address incompatible with write address, use buffer to write */
-        uint8_t write_size = MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE;
+        size_t write_size = MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE;
         uint8_t wbs_aligned[MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE];
 
         while (img_chunk_len >= flash_area_align(fap)) {
