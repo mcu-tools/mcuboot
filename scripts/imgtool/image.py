@@ -189,7 +189,15 @@ ALLOWED_KEY_SHA = {
     keys.X25519             : ['256', '512']
 }
 
-def key_and_user_sha_to_alg_and_tlv(key, user_sha):
+ALLOWED_PURE_KEY_SHA = {
+    keys.Ed25519            : ['512']
+}
+
+ALLOWED_PURE_SIG_TLVS = [
+    TLV_VALUES['ED25519']
+]
+
+def key_and_user_sha_to_alg_and_tlv(key, user_sha, is_pure = False):
     """Matches key and user requested sha to sha alogrithm and TLV name.
 
        The returned tuple will contain hash functions and TVL name.
@@ -203,12 +211,16 @@ def key_and_user_sha_to_alg_and_tlv(key, user_sha):
 
     # If key is not None, then we have to filter hash to only allowed
     allowed = None
+    allowed_key_ssh = ALLOWED_PURE_KEY_SHA if is_pure else ALLOWED_KEY_SHA
     try:
-        allowed = ALLOWED_KEY_SHA[type(key)]
+        allowed = allowed_key_ssh[type(key)]
+
     except KeyError:
         raise click.UsageError("Colud not find allowed hash algorithms for {}"
                                .format(type(key)))
-    if user_sha == 'auto':
+
+    # Pure enforces auto, and user selection is ignored
+    if user_sha == 'auto' or is_pure:
         return USER_SHA_TO_ALG_AND_TLV[allowed[0]]
 
     if user_sha in allowed:
@@ -446,12 +458,13 @@ class Image:
     def create(self, key, public_key_format, enckey, dependencies=None,
                sw_type=None, custom_tlvs=None, compression_tlvs=None,
                compression_type=None, encrypt_keylen=128, clear=False,
-               fixed_sig=None, pub_key=None, vector_to_sign=None, user_sha='auto'):
+               fixed_sig=None, pub_key=None, vector_to_sign=None,
+               user_sha='auto', is_pure=False):
         self.enckey = enckey
 
         # key decides on sha, then pub_key; of both are none default is used
         check_key = key if key is not None else pub_key
-        hash_algorithm, hash_tlv = key_and_user_sha_to_alg_and_tlv(check_key, user_sha)
+        hash_algorithm, hash_tlv = key_and_user_sha_to_alg_and_tlv(check_key, user_sha, is_pure)
 
         # Calculate the hash of the public key
         if key is not None:
@@ -591,9 +604,16 @@ class Image:
         sha = hash_algorithm()
         sha.update(self.payload)
         digest = sha.digest()
-        message = digest;
         tlv.add(hash_tlv, digest)
-        self.image_hash = digest
+        # Unless pure, we are signing digest.
+        message = digest
+
+        if is_pure:
+            # Note that when Pure signature is used, hash TLV is not present.
+            message = bytes(self.payload)
+            e = STRUCT_ENDIAN_DICT[self.endian]
+            sig_pure = struct.pack(e + '?', True)
+            tlv.add('SIG_PURE', sig_pure)
 
         if vector_to_sign == 'payload':
             # Stop amending data to the image
@@ -785,7 +805,7 @@ class Image:
         version = struct.unpack('BBHI', b[20:28])
 
         if magic != IMAGE_MAGIC:
-            return VerifyResult.INVALID_MAGIC, None, None
+            return VerifyResult.INVALID_MAGIC, None, None, None
 
         tlv_off = header_size + img_size
         tlv_info = b[tlv_off:tlv_off + TLV_INFO_SIZE]
@@ -796,11 +816,27 @@ class Image:
             magic, tlv_tot = struct.unpack('HH', tlv_info)
 
         if magic != TLV_INFO_MAGIC:
-            return VerifyResult.INVALID_TLV_INFO_MAGIC, None, None
+            return VerifyResult.INVALID_TLV_INFO_MAGIC, None, None, None
+
+        # This is set by existence of TLV SIG_PURE
+        is_pure = False
 
         prot_tlv_size = tlv_off
         hash_region = b[:prot_tlv_size]
+        tlv_end = tlv_off + tlv_tot
+        tlv_off += TLV_INFO_SIZE  # skip tlv info
+
+        # First scan all TLVs in search of SIG_PURE
+        while tlv_off < tlv_end:
+            tlv = b[tlv_off:tlv_off + TLV_SIZE]
+            tlv_type, _, tlv_len = struct.unpack('BBH', tlv)
+            if tlv_type == TLV_VALUES['SIG_PURE']:
+                is_pure = True
+                break
+            tlv_off += TLV_SIZE + tlv_len
+
         digest = None
+        tlv_off = header_size + img_size
         tlv_end = tlv_off + tlv_tot
         tlv_off += TLV_INFO_SIZE  # skip tlv info
         while tlv_off < tlv_end:
@@ -808,15 +844,15 @@ class Image:
             tlv_type, _, tlv_len = struct.unpack('BBH', tlv)
             if is_sha_tlv(tlv_type):
                 if not tlv_matches_key_type(tlv_type, key):
-                    return VerifyResult.KEY_MISMATCH, None, None
+                    return VerifyResult.KEY_MISMATCH, None, None, None
                 off = tlv_off + TLV_SIZE
                 digest = get_digest(tlv_type, hash_region)
                 if digest == b[off:off + tlv_len]:
                     if key is None:
-                        return VerifyResult.OK, version, digest
+                        return VerifyResult.OK, version, digest, None
                 else:
-                    return VerifyResult.INVALID_HASH, None, None
-            elif key is not None and tlv_type == TLV_VALUES[key.sig_tlv()]:
+                    return VerifyResult.INVALID_HASH, None, None, None
+            elif not is_pure and key is not None and tlv_type == TLV_VALUES[key.sig_tlv()]:
                 off = tlv_off + TLV_SIZE
                 tlv_sig = b[off:off + tlv_len]
                 payload = b[:prot_tlv_size]
@@ -825,9 +861,18 @@ class Image:
                         key.verify(tlv_sig, payload)
                     else:
                         key.verify_digest(tlv_sig, digest)
-                    return VerifyResult.OK, version, digest
+                    return VerifyResult.OK, version, digest, None
+                except InvalidSignature:
+                    # continue to next TLV
+                    pass
+            elif is_pure and key is not None and tlv_type in ALLOWED_PURE_SIG_TLVS:
+                off = tlv_off + TLV_SIZE
+                tlv_sig = b[off:off + tlv_len]
+                try:
+                    key.verify_digest(tlv_sig, hash_region)
+                    return VerifyResult.OK, version, None, tlv_sig
                 except InvalidSignature:
                     # continue to next TLV
                     pass
             tlv_off += TLV_SIZE + tlv_len
-        return VerifyResult.INVALID_SIGNATURE, None, None
+        return VerifyResult.INVALID_SIGNATURE, None, None, None
