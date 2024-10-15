@@ -510,7 +510,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
         }
 
     img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, compression_tlvs, int(encrypt_keylen), clear,
+               custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
                baked_signature, pub_key, vector_to_sign, user_sha)
 
     if compression in ["lzma2", "lzma2armthumb"]:
