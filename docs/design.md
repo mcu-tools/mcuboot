@@ -658,7 +658,7 @@ types described above via a set of tables.  These tables are reproduced below.
     State III
                      | primary slot | secondary slot |
     -----------------+--------------+----------------|
-               magic | Good         | Unset          |
+               magic | Good         | Any            |
             image-ok | 0xff         | Any            |
            copy-done | 0x01         | Any            |
     -----------------+--------------+----------------'
