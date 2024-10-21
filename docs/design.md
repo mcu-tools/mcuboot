@@ -974,9 +974,8 @@ The swap status region allows the bootloader to recover in case it restarts in
 the middle of an image swap operation.  The swap status region consists of a
 series of single-byte records.  These records are written independently, and
 therefore must be padded according to the minimum write size imposed by the
-flash hardware.  In the below figure, a min-write-size of 1 is assumed for
-simplicity.  The structure of the swap status region is illustrated below.  In
-this figure, a min-write-size of 1 is assumed for simplicity.
+flash hardware.  The structure of the swap status region is illustrated below.
+In this figure, a min-write-size of 1 is assumed for simplicity.
 
 ```
      0                   1                   2                   3
