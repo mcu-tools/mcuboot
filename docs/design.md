@@ -251,8 +251,10 @@ The algorithm works as follows:
 
 This algorithm is designed so that the higher sector of the primary slot is
 used only for allowing sectors to move up. Therefore the most
-memory-size-effective slot layout is when the primary slot is exactly one sector
-larger than the secondary slot, although same-sized slots are allowed as well.
+memory-size-effective slot layout is when the primary slot is larger than
+the secondary slot by exactly one sector plus the size of the swap status area,
+rounded up to the total size of the sectors it occupies,
+although same-sized slots are allowed as well.
 The algorithm is limited to support sectors of the same
 sector layout. All slot's sectors should be of the same size.
 
