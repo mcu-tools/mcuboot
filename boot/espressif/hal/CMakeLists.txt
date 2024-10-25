@@ -4,6 +4,23 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+if(CONFIG_BUILD_FROM_ZEPHYR)
+    message(STATUS "Building HAL for MCUboot Espressif Port")
+
+    if(${CONFIG_ESP_CONSOLE_UART})
+        add_compile_definitions(CONFIG_ESP_CONSOLE_UART=${CONFIG_ESP_CONSOLE_UART})
+        add_compile_definitions(CONFIG_ESP_CONSOLE_UART_NUM=${CONFIG_ESP_CONSOLE_UART_NUM})
+        if(${CONFIG_ESP_CONSOLE_UART_CUSTOM})
+            add_compile_definitions(CONFIG_ESP_CONSOLE_UART_CUSTOM=${CONFIG_ESP_CONSOLE_UART_CUSTOM})
+            add_compile_definitions(CONFIG_ESP_CONSOLE_UART_TX_GPIO=${CONFIG_ESP_CONSOLE_UART_TX_GPIO})
+            add_compile_definitions(CONFIG_ESP_CONSOLE_UART_RX_GPIO=${CONFIG_ESP_CONSOLE_UART_RX_GPIO})
+        endif()
+    elseif(${CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG})
+        add_compile_definitions(CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=${CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG})
+    endif()
+    add_compile_definitions(CONFIG_MCUBOOT_ESPRESSIF=1)
+endif()
+
 project(hal)
 
 set(esp_hal_dir ${ESP_HAL_PATH})
@@ -156,7 +173,6 @@ set(CFLAGS
 set(LDFLAGS
     "-Wno-frame-address"
     "-Wl,--cref"
-    "-Wl,--Map=${APP_NAME}.map"
     "-fno-rtti"
     "-fno-lto"
     "-Wl,--gc-sections"
@@ -165,6 +181,16 @@ set(LDFLAGS
     "-lgcc"
     "-lgcov"
     )
+
+if(CONFIG_BUILD_FROM_ZEPHYR)
+    list(APPEND include_dirs
+        ${ESPRESSIF_PORT_DIR}/zephyr/include
+        )
+else()
+    list(APPEND LDFLAGS
+        "-Wl,--Map=${APP_NAME}.map"
+        )
+endif()
 
 if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
     list(APPEND CFLAGS
