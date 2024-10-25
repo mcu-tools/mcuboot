@@ -7,66 +7,83 @@ cmake_policy(SET CMP0109 NEW)
 
 include(${CMAKE_CURRENT_LIST_DIR}/tools/utils.cmake)
 
-set(MCUBOOT_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
-set(ESPRESSIF_PORT_DIR ${MCUBOOT_ROOT_DIR}/boot/espressif)
+# SYSBUILD variable indicates that the build was triggered by Zephyr sysbuild
+if(SYSBUILD)
+    message(STATUS "Building MCUboot for Zephyr OS -- ESPRESSIF PORT")
 
-set(APP_NAME mcuboot_${MCUBOOT_TARGET})
-set(APP_EXECUTABLE ${APP_NAME}.elf)
-set(EXPECTED_IDF_HAL_VERSION "5.1.4")
+    find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
-project(mcuboot_${MCUBOOT_TARGET})
+    # Set Zephyr referenced variables
+    set(MCUBOOT_ROOT_DIR ${ZEPHYR_MCUBOOT_MODULE_DIR})
+    set(ESPRESSIF_PORT_DIR ${MCUBOOT_ROOT_DIR}/boot/espressif)
+    set(MCUBOOT_TARGET ${CONFIG_SOC})
+    set(ESP_HAL_PATH ${ZEPHYR_HAL_ESPRESSIF_MODULE_DIR})
+    set(APP_EXECUTABLE ${ZEPHYR_CURRENT_LIBRARY})
+    set(EXPECTED_IDF_HAL_VERSION "5.1.5")
 
-add_executable(
-    ${APP_EXECUTABLE}
-    ${ESPRESSIF_PORT_DIR}/main.c
-    )
-
-# Set MCUboot Espressif Port configuration file
-if(NOT DEFINED MCUBOOT_CONFIG_FILE)
-    set(MCUBOOT_CONFIG_FILE "${ESPRESSIF_PORT_DIR}/port/${MCUBOOT_TARGET}/bootloader.conf")
-    message("MCUBOOT_CONFIG_FILE: ${MCUBOOT_CONFIG_FILE}")
-endif()
-
-string(REPLACE " " ";" MCUBOOT_CONFIG_FILE_LIST "${MCUBOOT_CONFIG_FILE}")
-foreach(CONFIG_FILE ${MCUBOOT_CONFIG_FILE_LIST})
-    if(NOT EXISTS "${CONFIG_FILE}")
-        message(FATAL_ERROR "MCUboot configuration file does not exist at ${CONFIG_FILE}")
-    endif()
-    parse_and_set_config_file(${CONFIG_FILE})
-endforeach()
-
-# Fetch and set toolchain
-if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-    if(DEFINED TOOLCHAIN_BIN_DIR)
-        message("CMAKE_TOOLCHAIN_FILE not defined, searching for toolchain compiler in TOOLCHAIN_BIN_DIR: ${TOOLCHAIN_BIN_DIR}")
-        set(CMAKE_SYSTEM_NAME Generic)
-
-        file(GLOB C_COMPILER_BIN "${TOOLCHAIN_BIN_DIR}/*${MCUBOOT_ARCH}*elf-gcc")
-        if(NOT C_COMPILER_BIN)
-            message(FATAL_ERROR "No C compiler found. Please ensure that TOOLCHAIN_BIN_DIR directory contains a set of C compiling tools compatible with the target")
-        endif()
-        set(CMAKE_C_COMPILER ${C_COMPILER_BIN})
-        set(CMAKE_ASM_COMPILER ${C_COMPILER_BIN})
-        message("C compiler found: ${CMAKE_C_COMPILER}")
-
-        file(GLOB CXX_COMPILER_BIN "${TOOLCHAIN_BIN_DIR}/*${MCUBOOT_ARCH}*elf-g++")
-        if(NOT CXX_COMPILER_BIN)
-            message(FATAL_ERROR "No C++ compiler found. Please ensure that TOOLCHAIN_BIN_DIR directory contains a set of C++ compiling tools compatible with the target")
-        endif()
-        set(CMAKE_CXX_COMPILER ${CXX_COMPILER_BIN})
-        message("CXX compiler found: ${CMAKE_CXX_COMPILER}")
-    else()
-        # Set toolchain file that expect the same toolchain as IDF sets on PATH
-        set(CMAKE_TOOLCHAIN_FILE ${ESPRESSIF_PORT_DIR}/tools/toolchain-${MCUBOOT_TARGET}.cmake)
-        message("No user-defined toolchain, setting default toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
-    endif()
-
-    # This flag is needed when redefining a different compiler toolchain at this point
-    # on CMakeLists, the reason is that CMake does a compiler testing prior to building
-    # that may fail due to cross-compilation
-    set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
+    project(NONE)
 else()
-    message("CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
+    set(MCUBOOT_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR}/../..)
+    set(ESPRESSIF_PORT_DIR ${MCUBOOT_ROOT_DIR}/boot/espressif)
+
+    set(APP_NAME mcuboot_${MCUBOOT_TARGET})
+    set(APP_EXECUTABLE ${APP_NAME}.elf)
+    set(EXPECTED_IDF_HAL_VERSION "5.1.4")
+
+    project(mcuboot_${MCUBOOT_TARGET})
+
+    add_executable(
+        ${APP_EXECUTABLE}
+        ${ESPRESSIF_PORT_DIR}/main.c
+        )
+
+    # Set MCUboot Espressif Port configuration file
+    if(NOT DEFINED MCUBOOT_CONFIG_FILE)
+        set(MCUBOOT_CONFIG_FILE "${ESPRESSIF_PORT_DIR}/port/${MCUBOOT_TARGET}/bootloader.conf")
+        message("MCUBOOT_CONFIG_FILE: ${MCUBOOT_CONFIG_FILE}")
+    endif()
+
+    string(REPLACE " " ";" MCUBOOT_CONFIG_FILE_LIST "${MCUBOOT_CONFIG_FILE}")
+    foreach(CONFIG_FILE ${MCUBOOT_CONFIG_FILE_LIST})
+        if(NOT EXISTS "${CONFIG_FILE}")
+            message(FATAL_ERROR "MCUboot configuration file does not exist at ${CONFIG_FILE}")
+        endif()
+        parse_and_set_config_file(${CONFIG_FILE})
+    endforeach()
+
+    # Fetch and set toolchain
+    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+        if(DEFINED TOOLCHAIN_BIN_DIR)
+            message("CMAKE_TOOLCHAIN_FILE not defined, searching for toolchain compiler in TOOLCHAIN_BIN_DIR: ${TOOLCHAIN_BIN_DIR}")
+            set(CMAKE_SYSTEM_NAME Generic)
+
+            file(GLOB C_COMPILER_BIN "${TOOLCHAIN_BIN_DIR}/*${MCUBOOT_ARCH}*elf-gcc")
+            if(NOT C_COMPILER_BIN)
+                message(FATAL_ERROR "No C compiler found. Please ensure that TOOLCHAIN_BIN_DIR directory contains a set of C compiling tools compatible with the target")
+            endif()
+            set(CMAKE_C_COMPILER ${C_COMPILER_BIN})
+            set(CMAKE_ASM_COMPILER ${C_COMPILER_BIN})
+            message("C compiler found: ${CMAKE_C_COMPILER}")
+
+            file(GLOB CXX_COMPILER_BIN "${TOOLCHAIN_BIN_DIR}/*${MCUBOOT_ARCH}*elf-g++")
+            if(NOT CXX_COMPILER_BIN)
+                message(FATAL_ERROR "No C++ compiler found. Please ensure that TOOLCHAIN_BIN_DIR directory contains a set of C++ compiling tools compatible with the target")
+            endif()
+            set(CMAKE_CXX_COMPILER ${CXX_COMPILER_BIN})
+            message("CXX compiler found: ${CMAKE_CXX_COMPILER}")
+        else()
+            # Set toolchain file that expect the same toolchain as IDF sets on PATH
+            set(CMAKE_TOOLCHAIN_FILE ${ESPRESSIF_PORT_DIR}/tools/toolchain-${MCUBOOT_TARGET}.cmake)
+            message("No user-defined toolchain, setting default toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
+        endif()
+
+        # This flag is needed when redefining a different compiler toolchain at this point
+        # on CMakeLists, the reason is that CMake does a compiler testing prior to building
+        # that may fail due to cross-compilation
+        set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
+    else()
+        message("CMAKE_TOOLCHAIN_FILE: ${CMAKE_TOOLCHAIN_FILE}")
+    endif()
 endif()
 
 # Set directories
@@ -342,9 +359,16 @@ add_custom_command(
     COMMENT "Preprocessing bootloader.ld linker script..."
     )
 
-list(APPEND LDFLAGS
-    "-Wl,--Map=${APP_NAME}.map"
-    )
+if(SYSBUILD)
+    # Building from Zephyr uses its own defined functions to set the
+    # sources for building
+    include(zephyr/zephyr.cmake)
+    return()
+else()
+    list(APPEND LDFLAGS
+        "-Wl,--Map=${APP_NAME}.map"
+        )
+endif()
 
 add_subdirectory(hal)
 

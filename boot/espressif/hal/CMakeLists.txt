@@ -4,6 +4,13 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+if(SYSBUILD)
+    message(STATUS "Building HAL for MCUboot Espressif Port")
+
+    add_compile_definitions(CONFIG_ESP_CONSOLE_UART=${CONFIG_ESP_CONSOLE_UART})
+    add_compile_definitions(CONFIG_ESP_CONSOLE_UART_NUM=${CONFIG_ESP_CONSOLE_UART_NUM})
+endif()
+
 project(hal)
 
 set(esp_hal_dir ${ESP_HAL_PATH})
@@ -156,7 +163,6 @@ set(CFLAGS
 set(LDFLAGS
     "-Wno-frame-address"
     "-Wl,--cref"
-    "-Wl,--Map=${APP_NAME}.map"
     "-fno-rtti"
     "-fno-lto"
     "-Wl,--gc-sections"
@@ -165,6 +171,12 @@ set(LDFLAGS
     "-lgcc"
     "-lgcov"
     )
+
+if(NOT SYSBUILD)
+    list(APPEND LDFLAGS
+        "-Wl,--Map=${APP_NAME}.map"
+        )
+endif()
 
 if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
     list(APPEND CFLAGS
