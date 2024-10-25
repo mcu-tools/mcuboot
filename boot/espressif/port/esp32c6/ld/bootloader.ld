@@ -4,49 +4,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** Simplified memory map for the bootloader.
- *  Make sure the bootloader can load into main memory without overwriting itself.
+/* Simplified memory map for the bootloader.
  *
- *  ESP32-C6 ROM static data usage is as follows:
- *  - 0x4086ad08 - 0x4087c610: Shared buffers, used in UART/USB/SPI download mode only
- *  - 0x4087c610 - 0x4087e610: PRO CPU stack, can be reclaimed as heap after RTOS startup
- *  - 0x4087e610 - 0x40880000: ROM .bss and .data (not easily reclaimable)
- *
- *  The 2nd stage bootloader can take space up to the end of ROM shared
- *  buffers area (0x4087c610).
+ * The main purpose is to make sure the bootloader can load into main memory
+ * without overwriting itself.
  */
 
-/* We consider 0x4087c610 to be the last usable address for 2nd stage bootloader stack overhead, dram_seg,
- * and work out iram_seg and iram_loader_seg addresses from there, backwards.
- */
-
-/* These lengths can be adjusted, if necessary: */
-bootloader_usable_dram_end = 0x4087c610;
-bootloader_stack_overhead = 0x2000; /* For safety margin between bootloader data section and startup stacks */
-bootloader_dram_seg_len = 0xA000;
-bootloader_iram_loader_seg_len = 0x7000;
-bootloader_iram_seg_len = 0x9000;
-
-/* Start of the lower region is determined by region size and the end of the higher region */
-bootloader_dram_seg_end = bootloader_usable_dram_end - bootloader_stack_overhead; /* 0x4087c610 - 0x2000 = 0x4087a610 */
-bootloader_dram_seg_start = bootloader_dram_seg_end - bootloader_dram_seg_len; /* 0x4087a610 - 0x5000 = 0x40875610 */
-bootloader_iram_loader_seg_start = bootloader_dram_seg_start - bootloader_iram_loader_seg_len; /* 0x40875610 - 0x7000 = 0x4086e610 */
-bootloader_iram_seg_start = bootloader_iram_loader_seg_start - bootloader_iram_seg_len; /* 0x4086e610 - 0x3000 = 0x4086b610 */
+#include "memory.h"
 
 MEMORY
 {
-  iram_seg (RWX) :                  org = bootloader_iram_seg_start, len = bootloader_iram_seg_len
-  iram_loader_seg (RWX) :           org = bootloader_iram_loader_seg_start, len = bootloader_iram_loader_seg_len
-  dram_seg (RW) :                   org = bootloader_dram_seg_start, len = bootloader_dram_seg_len
+  iram_seg (RWX) :                  org = BOOTLOADER_IRAM_SEG_START, len = BOOTLOADER_IRAM_SEG_LEN
+  iram_loader_seg (RWX) :           org = BOOTLOADER_IRAM_LOADER_SEG_START, len = BOOTLOADER_IRAM_LOADER_SEG_LEN
+  dram_seg (RW) :                   org = BOOTLOADER_DRAM_SEG_START, len = BOOTLOADER_DRAM_SEG_LEN
 }
-
-/* The app may use RAM for static allocations up to the start of iram_loader_seg.
- * If you have changed something above and this assert fails:
- * 1. Check what the new value of bootloader_iram_loader_seg start is.
- * 2. Update the value in this assert.
- * 3. Update SRAM_DRAM_END in components/esp_system/ld/esp32c6/memory.ld.in to the same value.
- */
-ASSERT(bootloader_iram_loader_seg_start == 0x40869610, "bootloader_iram_loader_seg_start inconsistent with SRAM_DRAM_END");
 
 /*  Default entry point:  */
 ENTRY(main);
