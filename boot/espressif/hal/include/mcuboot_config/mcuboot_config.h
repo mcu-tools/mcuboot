@@ -57,10 +57,8 @@
 /* Uncomment to enable the direct-xip code path. */
 /* #define MCUBOOT_DIRECT_XIP */
 
-/* Define to enable the ram-load code path. */
-#if defined(CONFIG_BOOT_RAM_LOAD)
-#define MCUBOOT_RAM_LOAD
-#endif
+/* Uncomment to enable the ram-load code path. */
+/* #define MCUBOOT_RAM_LOAD */
 
 /*
  * Cryptographic settings
