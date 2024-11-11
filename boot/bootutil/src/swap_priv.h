@@ -26,10 +26,21 @@
 /**
  * Calculates the amount of space required to store the trailer, and erases
  * all sectors required for this storage in the given flash_area.
+ * The erase will only happen on devices that require erase as a preparation
+ * for write. To just remove swap status, the swap_scramble_trailer_sectors
+ * should be called.
  */
 int swap_erase_trailer_sectors(const struct boot_loader_state *state,
                                const struct flash_area *fap);
 
+/**
+ * Calculate the amount of space required to store the trailer and remove
+ * data from trailer. This is similar to swap_erase_trailer_sectors, but
+ * is intended to remove swap status not to prepare device with explicit
+ * erase requirements before write.
+ */
+int swap_scramble_trailer_sectors(const struct boot_loader_state *state,
+                                  const struct flash_area *fap);
 /**
  * Initialize the given flash_area with the metadata required to start a new
  * swap upgrade.
