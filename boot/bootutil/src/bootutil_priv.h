@@ -302,6 +302,16 @@ const struct flash_area *boot_find_status(const struct boot_loader_state *state,
 int boot_magic_compatible_check(uint8_t tbl_val, uint8_t val);
 uint32_t boot_status_sz(uint32_t min_write_sz);
 uint32_t boot_trailer_sz(uint32_t min_write_sz);
+/* Get offset of trailer aligned to either device erase unit or alignment
+ * depending on whether device has erase or not.
+ */
+int boot_trailer_scramble_offset(const struct flash_area *fa, size_t alignment,
+                                 size_t *off);
+/* Get size of header aligned to device erase unit or write block,
+ * depending on whether device has erase or not.
+ */
+int boot_header_scramble_off_sz(const struct flash_area *fa, int slot, size_t *off,
+                                size_t *size);
 int boot_status_entries(int image_index, const struct flash_area *fap);
 uint32_t boot_status_off(const struct flash_area *fap);
 int boot_read_swap_state(const struct flash_area *fap,
@@ -333,7 +343,19 @@ int boot_copy_region(struct boot_loader_state *state,
                      const struct flash_area *fap_dst,
                      uint32_t off_src, uint32_t off_dst, uint32_t sz);
 #endif
+/* Prepare for write device that requires erase prior to write. This will
+ * do nothing on devices without erase requirement.
+ */
 int boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz);
+/* Similar to boot_erase_region but will always remove data */
+int boot_scramble_region(const struct flash_area *fap, uint32_t off, uint32_t sz);
+/* Similar to boot_scramble_region but works backwards */
+int boot_scramble_region_backwards(const struct flash_area *fap, uint32_t off, uint32_t sz);
+/* Makes slot unbootable, either by scrambling header magic, header sector
+ * or entire slot, depending on settings.
+ * Note: slot is passed here becuase at this point there is no function
+ * matching flash_area object to slot */
+int boot_scramble_slot(const struct flash_area *fap, int slot);
 bool boot_status_is_reset(const struct boot_status *bs);
 
 #ifdef MCUBOOT_ENC_IMAGES
@@ -528,6 +550,20 @@ uint32_t bootutil_max_image_size(struct boot_loader_state *state, const struct f
 
 int boot_read_image_size(struct boot_loader_state *state, int slot,
                          uint32_t *size);
+
+/* Helper macro to avoid compile errors with systems that do not
+ * provide function to check device type.
+ * Note: it used to be inline, but somehow compiler would not
+ * optimize out branches that were impossible when this evaluated to
+ * just "true".
+ */
+#if defined(MCUBOOT_SUPPORT_DEV_WITHOUT_ERASE) && defined(MCUBOOT_SUPPORT_DEV_WITH_ERASE)
+#define device_requires_erase(fa) (flash_area_erase_required(fa))
+#elif defined(MCUBOOT_SUPPORT_DEV_WITHOUT_ERASE)
+#define device_requires_erase(fa) (false)
+#else
+#define device_requires_erase(fa) (true)
+#endif
 
 #ifdef __cplusplus
 }

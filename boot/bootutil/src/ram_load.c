@@ -415,7 +415,7 @@ boot_remove_image_from_flash(struct boot_loader_state *state, uint32_t slot)
     fap = BOOT_IMG_AREA(state, slot);
     assert(fap != NULL);
 
-    return flash_area_erase(fap, 0, flash_area_get_size(fap));
+    return boot_scramble_slot(fap, slot);
 }
 
 int boot_load_image_from_flash_to_sram(struct boot_loader_state *state,

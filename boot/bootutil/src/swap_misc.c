@@ -35,41 +35,73 @@ int
 swap_erase_trailer_sectors(const struct boot_loader_state *state,
                            const struct flash_area *fap)
 {
-    uint8_t slot;
-    uint32_t sector;
-    uint32_t trailer_sz;
-    uint32_t total_sz;
-    uint32_t off;
-    uint32_t sz;
-    int rc;
+    int rc = 0;
 
-    BOOT_LOG_DBG("erasing trailer; fa_id=%d", flash_area_get_id(fap));
+    /* Intention is to prepare slot for write, if device does not require/support
+     * erase, there is nothing to do here.
+     */
+    if (device_requires_erase(fap)) {
+        uint8_t slot = BOOT_PRIMARY_SLOT;
+        uint32_t sector;
+        uint32_t trailer_sz;
+        uint32_t total_sz;
 
-    if (fap == BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT)) {
-        slot = BOOT_PRIMARY_SLOT;
-    } else if (fap == BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT)) {
-        slot = BOOT_SECONDARY_SLOT;
+        BOOT_LOG_DBG("Erasing trailer; fa_id=%d", flash_area_get_id(fap));
+
+        /* By default it is assumed that slot is primary */
+        if (fap == BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT)) {
+            slot = BOOT_SECONDARY_SLOT;
+        }
+
+        /* Delete starting from last sector and moving to beginning */
+        sector = boot_img_num_sectors(state, slot) - 1;
+        trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
+        total_sz = 0;
+        do {
+            uint32_t sz = boot_img_sector_size(state, slot, sector);
+            uint32_t off = boot_img_sector_off(state, slot, sector);
+
+            rc = boot_erase_region(fap, off, sz);
+            assert(rc == 0);
+
+            sector--;
+            total_sz += sz;
+        } while (total_sz < trailer_sz);
     } else {
-        return BOOT_EFLASH;
+        BOOT_LOG_DBG("Erasing trailer not required; fa_id=%d", flash_area_get_id(fap));
     }
-
-    /* delete starting from last sector and moving to beginning */
-    sector = boot_img_num_sectors(state, slot) - 1;
-    trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
-    total_sz = 0;
-    do {
-        sz = boot_img_sector_size(state, slot, sector);
-        off = boot_img_sector_off(state, slot, sector);
-        rc = boot_erase_region(fap, off, sz);
-        assert(rc == 0);
-
-        sector--;
-        total_sz += sz;
-    } while (total_sz < trailer_sz);
-
     return rc;
 }
 
+int
+swap_scramble_trailer_sectors(const struct boot_loader_state *state,
+                              const struct flash_area *fap)
+{
+    size_t off;
+    int rc;
+
+    BOOT_LOG_DBG("Scrambling trailer; fa_id=%d", flash_area_get_id(fap));
+
+    /* Delete starting from last sector and moving to beginning */
+    rc = boot_trailer_scramble_offset(fap, BOOT_WRITE_SZ(state), &off);
+    if (rc < 0) {
+        return BOOT_EFLASH;
+    }
+    rc = boot_scramble_region_backwards(fap, off, flash_area_get_size(fap) - off);
+    if (rc < 0) {
+        return BOOT_EFLASH;
+    }
+
+    return 0;
+}
+
+/* NOTE: There is often call made to swap_scramble_trailer_sectors followed
+ * by swap_status_init to initialize swap status: this is not efficient on
+ * devices that do not require erase; we need implementation of swap_status_init
+ * or swap_status_reinit, that will remove old status and initialize new one
+ * in a single call; the current approach writes certain parts of status
+ * twice on these devices.
+ */
 int
 swap_status_init(const struct boot_loader_state *state,
                  const struct flash_area *fap,
