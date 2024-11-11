@@ -633,7 +633,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                  * last sector is not being used by the image data so it's safe
                  * to erase.
                  */
-                rc = swap_erase_trailer_sectors(state, fap_primary_slot);
+                rc = swap_scramble_trailer_sectors(state, fap_primary_slot);
                 assert(rc == 0);
 
                 rc = swap_status_init(state, fap_primary_slot, bs);
@@ -690,6 +690,14 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
         rc = boot_copy_region(state, fap_primary_slot, fap_secondary_slot,
                               img_off, img_off, copy_sz);
         assert(rc == 0);
+
+        if (bs->idx == BOOT_STATUS_IDX_0 && !bs->use_scratch) {
+            /* If not all sectors of the slot are being swapped,
+             * guarantee here that only the primary slot will have the state.
+             */
+            rc = swap_scramble_trailer_sectors(state, fap_secondary_slot);
+            assert(rc == 0);
+        }
 
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_2;

@@ -596,7 +596,7 @@ void fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
     BOOT_LOG_SWAP_STATE("Secondary image", &swap_state);
 
     if (swap_state.magic == BOOT_MAGIC_UNSET) {
-        rc = swap_erase_trailer_sectors(state, fap_sec);
+        rc = swap_scramble_trailer_sectors(state, fap_sec);
         assert(rc == 0);
 
         rc = boot_write_copy_done(fap_sec);
@@ -664,14 +664,14 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
         int rc;
 
         if (bs->source != BOOT_STATUS_SOURCE_PRIMARY_SLOT) {
-            rc = swap_erase_trailer_sectors(state, fap_pri);
+            rc = swap_scramble_trailer_sectors(state, fap_pri);
             assert(rc == 0);
 
             rc = swap_status_init(state, fap_pri, bs);
             assert(rc == 0);
         }
 
-        rc = swap_erase_trailer_sectors(state, fap_sec);
+        rc = swap_scramble_trailer_sectors(state, fap_sec);
         assert(rc == 0);
     }
 
@@ -705,10 +705,10 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
          * status is not wrongly used as a valid header. Also erase the trailer in the secondary
          * to allow for a future update to be loaded
          */
-        rc = boot_erase_region(fap_sec, boot_img_sector_off(state, BOOT_SECONDARY_SLOT, 0),
-                               sector_sz);
+        rc = boot_scramble_region(fap_sec, boot_img_sector_off(state, BOOT_SECONDARY_SLOT, 0),
+                                  sector_sz);
         assert(rc == 0);
-        rc = swap_erase_trailer_sectors(state, fap_sec);
+        rc = swap_scramble_trailer_sectors(state, fap_sec);
         assert(rc == 0);
     } else {
         while (idx <= last_idx) {
