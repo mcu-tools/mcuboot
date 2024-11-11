@@ -32,6 +32,10 @@
 #include "bootutil/image.h"
 #include "flash_map_backend/flash_map_backend.h"
 
+#if defined(MCUBOOT_DATA_SHARING_BOOTINFO)
+static bool saved_bootinfo = false;
+#endif
+
 #if !defined(MCUBOOT_CUSTOM_DATA_SHARING_FUNCTION)
 /**
  * @var shared_memory_init_done
@@ -296,6 +300,11 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
     };
 #endif
 
+    if (saved_bootinfo) {
+        /* Boot info has already been saved, nothing to do */
+        return 0;
+    }
+
     /* Write out all fields */
     rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO, BLINFO_MODE,
                                       sizeof(mode), &mode);
@@ -338,6 +347,10 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
         }
 
         ++image;
+    }
+
+    if (!rc) {
+        saved_bootinfo = true;
     }
 
     return rc;
