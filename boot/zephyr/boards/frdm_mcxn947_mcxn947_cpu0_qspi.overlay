@@ -7,6 +7,7 @@
 / {
         chosen {
                 zephyr,flash = &flash;
+                zephyr,code-partition = &boot_partition;
         };
 };
 
