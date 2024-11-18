@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: fojia/action-move-issues-to-column@master
         with:
-          project: 'MCUboot releases'
+          project: 'Issue Tracking'
           column: 'No Status'
           owner: 'mcu-tools'
           repo: 'mcuboot'
