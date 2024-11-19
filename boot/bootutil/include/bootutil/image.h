@@ -36,8 +36,10 @@
 extern "C" {
 #endif
 
-#ifndef __packed
-#define __packed __attribute__((__packed__))
+#if defined(__IAR_SYSTEMS_ICC__)
+    #define STRUCT_PACKED   __packed struct
+#else
+    #define STRUCT_PACKED   struct __attribute__((__packed__))
 #endif
 
 struct flash_area;
@@ -136,12 +138,12 @@ struct flash_area;
 					    */
 #define IMAGE_TLV_ANY               0xffff /* Used to iterate over all TLV */
 
-struct image_version {
+STRUCT_PACKED image_version {
     uint8_t iv_major;
     uint8_t iv_minor;
     uint16_t iv_revision;
     uint32_t iv_build_num;
-} __packed;
+};
 
 struct image_dependency {
     uint8_t image_id;                       /* Image index (from 0) */
@@ -154,7 +156,7 @@ struct image_dependency {
 };
 
 /** Image header.  All fields are in little endian byte order. */
-struct image_header {
+STRUCT_PACKED image_header {
     uint32_t ih_magic;
     uint32_t ih_load_addr;
     uint16_t ih_hdr_size;           /* Size of image header (bytes). */
@@ -163,19 +165,19 @@ struct image_header {
     uint32_t ih_flags;              /* IMAGE_F_[...]. */
     struct image_version ih_ver;
     uint32_t _pad1;
-} __packed;
+};
 
 /** Image TLV header.  All fields in little endian. */
-struct image_tlv_info {
+STRUCT_PACKED image_tlv_info {
     uint16_t it_magic;
     uint16_t it_tlv_tot;  /* size of TLV area (including tlv_info header) */
-} __packed;
+};
 
 /** Image trailer TLV format. All fields in little endian. */
-struct image_tlv {
+STRUCT_PACKED image_tlv {
     uint16_t it_type;   /* IMAGE_TLV_[...]. */
     uint16_t it_len;    /* Data length (not including TLV header). */
-} __packed;
+};
 
 #define ENCRYPTIONFLAGS (IMAGE_F_ENCRYPTED_AES128 | IMAGE_F_ENCRYPTED_AES256)
 #define IS_ENCRYPTED(hdr) (((hdr)->ih_flags & IMAGE_F_ENCRYPTED_AES128) \
