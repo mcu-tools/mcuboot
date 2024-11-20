@@ -236,7 +236,34 @@ static void do_boot(struct boot_rsp *rsp)
     __set_CONTROL(0x00); /* application will configures core on its own */
     __ISB();
 #endif
+#if CONFIG_MCUBOOT_CLEANUP_RAM
+    __asm__ volatile (
+        /* vt->reset -> r0 */
+        "   mov     r0, %0\n"
+        /* base to write -> r1 */
+        "   mov     r1, %1\n"
+        /* size to write -> r2 */
+        "   mov     r2, %2\n"
+        /* value to write -> r3 */
+        "   mov     r3, %3\n"
+        "clear:\n"
+        "   str     r3, [r1]\n"
+        "   add     r1, r1, #4\n"
+        "   sub     r2, r2, #4\n"
+        "   cbz     r2, out\n"
+        "   b       clear\n"
+        "out:\n"
+        "   dsb\n"
+        /* jump to reset vector of an app */
+        "   bx      r0\n"
+        :
+        : "r" (vt->reset), "i" (CONFIG_SRAM_BASE_ADDRESS),
+          "i" (CONFIG_SRAM_SIZE * 1024), "i" (0)
+        : "r0", "r1", "r2", "r3", "memory"
+    );
+#else
     ((void (*)(void))vt->reset)();
+#endif
 }
 
 #elif defined(CONFIG_XTENSA) || defined(CONFIG_RISCV)

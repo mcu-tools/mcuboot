@@ -219,6 +219,12 @@ config MCUBOOT_CLEANUP_ARM_CORE
 	  start-up code which can cause a module fault and potentially make the
 	  module irrecoverable.
 
+config MCUBOOT_CLEANUP_RAM
+	bool "Perform RAM cleanup"
+	depends on CPU_CORTEX_M4 || CPU_CORTEX_M33
+	help
+	  Sets contents of memory to 0 before jumping to application.
+
 config MBEDTLS_CFG_FILE
 	default "mcuboot-mbedtls-cfg.h"
 
