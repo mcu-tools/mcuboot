@@ -392,6 +392,7 @@
         const struct device* wdt =                            \
             DEVICE_DT_GET(DT_ALIAS(watchdog0));               \
         if (device_is_ready(wdt)) {                           \
+            MCUBOOT_WATCHDOG_INSTALL_TIMEOUT();               \
             wdt_setup(wdt, 0);                                \
         }                                                     \
     } while (0)
@@ -401,7 +402,6 @@
         const struct device* wdt =                            \
             DEVICE_DT_GET(DT_ALIAS(watchdog0));               \
         if (device_is_ready(wdt)) {                           \
-            MCUBOOT_WATCHDOG_INSTALL_TIMEOUT();               \
             wdt_feed(wdt, 0);                                 \
         }                                                     \
     } while (0)
