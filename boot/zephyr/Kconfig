@@ -750,6 +750,14 @@ config BOOT_WATCHDOG_FEED_NRFX_WDT
 	imply NRFX_WDT30
 	imply NRFX_WDT31
 
+config MCUBOOT_WATCHDOG_TIMEOUT
+	int "Watchdog timeout in milliseconds"
+	default 0
+	depends on BOOT_WATCHDOG_FEED
+	help
+	  Specify the watchdog timeout for devices that require a timeout 
+	  installed to setup the watchdog.
+
 config BOOT_IMAGE_ACCESS_HOOKS
 	bool "Enable hooks for overriding MCUboot's native routines"
 	help
