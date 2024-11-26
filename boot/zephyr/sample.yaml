@@ -19,7 +19,9 @@ tests:
   sample.bootloader.mcuboot.usb_cdc_acm_recovery:
     tags: bootloader_mcuboot
     platform_allow:  nrf52840dongle/nrf52840
-    extra_args: DTC_OVERLAY_FILE="./usb_cdc_acm.overlay;app.overlay"
+    extra_args:
+      - EXTRA_CONF_FILE=./usb_cdc_acm_recovery.conf
+      - DTC_OVERLAY_FILE="./usb_cdc_acm.overlay;app.overlay"
     integration_platforms:
       - nrf52840dongle/nrf52840
   sample.bootloader.mcuboot.usb_cdc_acm_recovery_log:
