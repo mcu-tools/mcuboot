@@ -50,7 +50,12 @@ extern "C" {
 
 struct flash_area;
 
+#ifdef USE_IFX_SE_CRYPTO
+#define BOOT_TMPBUF_SZ  4096
+#else
 #define BOOT_TMPBUF_SZ  256
+#endif /* USE_IFX_SE_CRYPTO */
+
 
 /** Number of image slots in flash; currently limited to two. */
 #define BOOT_NUM_SLOTS                  2
@@ -309,6 +314,9 @@ uint32_t boot_swap_size_off(const struct flash_area *fap);
 
 
 #ifdef MCUBOOT_ENC_IMAGES
+uint32_t boot_iv_offset(const struct flash_area *fap, uint8_t slot);
+int boot_read_iv(int image_index, uint8_t slot, uint8_t* dst);
+int boot_write_iv(const struct flash_area *fap, uint8_t* iv);
 int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
                        const struct boot_status *bs);
 int boot_read_enc_key(int image_index, uint8_t slot, struct boot_status *bs);

@@ -1,5 +1,5 @@
 """
-Copyright 2023 Cypress Semiconductor Corporation (an Infineon company)
+Copyright 2024 Cypress Semiconductor Corporation (an Infineon company)
 or an affiliate of Cypress Semiconductor Corporation. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,9 +15,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-import sys
+import argparse
 import json
-import click
+import sys
+import os
 
 APP_LIMIT = 8
 
@@ -41,6 +42,10 @@ settings_dict = {
     ,   'bootloader_ram_address'    :   'BOOTLOADER_RAM_ORIGIN'
     ,   'bootloader_ram_size'       :   'BOOTLOADER_RAM_SIZE'
     ,   'bootloader_area'           :   'BOOTLOADER_AREA'
+    ,   'staging_area'              :   'USE_RAM_APPS_STAGING'
+    ,   'ram_apps_staging_addr'     :   'RAM_APPS_STAGING_ADDR'
+    ,   'ram_apps_staging_size'     :   'RAM_APPS_STAGING_SIZE'
+    ,   'bootloader_ram_load'       :   'BOOTLOADER_IN_RAM'
     ,   'application_count'         :   'MCUBOOT_IMAGE_NUMBER'
     ,   'boot_image'                :   'BOOT_IMAGE_NUMBER'
     ,   'sectors_count'             :   'MAX_IMG_SECTORS'
@@ -113,10 +118,12 @@ class BootloaderLayout:
     def __init__(self):
         self.bootloader_area    : Memory    = None
         self.ram                : Memory    = None
+        self.ram_boot           : Memory    = None
         self.scratch_area       : Memory    = None
         self.status_area        : Memory    = None
         self.shared_data        : Memory    = None
         self.shared_upgrade     : Memory    = None
+        self.staging_area       : Memory    = None
         self.core_name          : int       = None
 
     @property
@@ -135,14 +142,17 @@ class BootloaderLayout:
     def has_status_area(self) -> bool:
         return self.status_area is not None
 
+    @property
+    def has_staging_area(self) -> bool:
+        return self.staging_area is not None
+
     def parse(self, section : json):
         '''
-            Parse JSON section and init fields.
+            Parse JSON 'bootloader' section and init fields.
         '''
         try:
-            fields = ('bootloader_area', 'scratch_area', 'status_area', \
-                      'shared_data', 'shared_upgrade', 'ram')
-            for field in fields:
+            list_of_fields = section.keys()
+            for field in list_of_fields:
                 area = section.get(field)
                 if area:
                     setattr(self, field, Memory(int(area['address'], 0),
@@ -337,6 +347,7 @@ class MemoryMap:
         boot_area = main_app.boot_area
         upgrade_area = main_app.upgrade_area
         scratch_area = self.boot_layout.scratch_area
+        staging_area = self.boot_layout.staging_area
 
         param_dict.update({'bootloader': [bootloader_area, 'FLASH_AREA_BOOTLOADER', 0]})
         param_dict.update({'app_1_boot': [boot_area, 'FLASH_AREA_IMG_1_PRIMARY', 1]})
@@ -348,6 +359,10 @@ class MemoryMap:
         # Generate scratch area index
         if self.boot_layout.has_scratch_area:
             param_dict.update({'scratch_area': [scratch_area, 'FLASH_AREA_IMAGE_SCRATCH', 3]})
+
+        # Generate scratch area index
+        if self.boot_layout.has_staging_area:
+            param_dict.update({'staging_area': [staging_area, 'FLASH_AREA_RAM_APP_STAGING', 255]})
 
         # Generate multiple app area indexes
         multi_app_area_idx = 4
@@ -382,8 +397,11 @@ class MemoryMap:
         '''
             C-file generation, file name and path must be given by script user
         '''
-        path = f'{self.output_folder}/{self.output_name}.c'
+        path = os.path.join(self.output_folder, f'{self.output_name}.c')
         include = f'{self.output_name}.h'
+
+        if not os.path.exists(self.output_folder):
+            os.mkdir(self.output_folder)
 
         with open(path, "w", encoding='UTF-8') as f_out:
             f_out.write(f'#include "{include}"\n')
@@ -392,7 +410,7 @@ class MemoryMap:
             f_out.write('{\n')
             for region in self.regions:
                 if region.mem_type[0] in self.region_types:
-                    f_out.write(f'\t[{region.mem_type[0]}] = ' + '{\n')
+                    f_out.write('\t{\n')
                     f_out.write(f'\t\t.address      = {hex(region.addr)}U,\n')
                     f_out.write(f'\t\t.size         = {hex(region.sz)}U,\n')
                     f_out.write(f'\t\t.erase_size   = {hex(region.erase_sz)}U,\n')
@@ -432,6 +450,7 @@ class MemoryMap:
             f_out.write('\n};\n\n')
 
             f_out.write('image_boot_config_t image_boot_config[BOOT_IMAGE_NUMBER] = {\n')
+            
             for app in self.apps:
                 f_out.writelines('\n'.join([
                     '\t{\n'
@@ -442,7 +461,11 @@ class MemoryMap:
             f_out.write('};\n')
 
     def __header_gen(self):
-        path = f'{self.output_folder}/{self.output_name}.h'
+        path = os.path.join(self.output_folder, f'{self.output_name}.h')
+
+        if not os.path.exists(self.output_folder):
+            os.mkdir(self.output_folder)
+
         with open(path, "w", encoding='UTF-8') as f_out:
             header_guard_generate(f_out)
 
@@ -457,10 +480,11 @@ class MemoryMap:
 
             f_out.write('enum \n{\n')
 
-            # it's critical to use 'regions' here!
+            # it's critical to use 'self.regions' here!
             # because it fixes the bug when enum {INTERNAL_RRAM, EXTERNAL_FLASH,}
             # is generated in incorrect sequence.
             for region in self.regions:
+                if region.mem_type[0] in self.region_types:
                     f_out.write(f'\t{str(region.mem_type[0])},\n')
             f_out.write('};\n\n')
 
@@ -483,6 +507,8 @@ class MemoryMap:
             f_out.write('extern image_boot_config_t image_boot_config[BOOT_IMAGE_NUMBER];\n\n')
 
     def __bootloader_mk_file_gen(self):
+        print('\n[memorymap_rework.py] Generating boot mk file', file=sys.stderr)
+
         boot = self.boot_layout
 
         for mem_type in self.region_types:
@@ -490,6 +516,10 @@ class MemoryMap:
 
         for mem_type in self.region_types_alt:
             print(f'USE_{mem_type} := 1')
+
+        # RAM app staging area
+        if boot.staging_area is None:
+            print(settings_dict['staging_area'], ':= 1')
 
         # Upgrade mode
         if boot.scratch_area is None and boot.status_area is None:
@@ -518,10 +548,21 @@ class MemoryMap:
         print(f'{settings_dict["bootloader_app_address"]} :=', hex(boot.bootloader_area.addr))
         print(f'{settings_dict["bootloader_app_size"]} :=', hex(boot.bootloader_area.sz))
 
-        if boot.ram is not None:
+        if boot.ram:
             print('# Bootloader ram area')
             print(f'{settings_dict["bootloader_ram_address"]} :=', hex(boot.ram.addr))
             print(f'{settings_dict["bootloader_ram_size"]} :=', hex(boot.ram.sz))
+        
+        if boot.ram_boot:
+            print(f'{settings_dict["bootloader_ram_load"]} := 1')
+            print(f'{settings_dict["bootloader_ram_address"]} :=',  hex(boot.ram_boot.addr))
+            print(f'{settings_dict["bootloader_ram_size"]} :=',  hex(boot.ram_boot.sz))
+
+        if boot.staging_area:
+            print('# Bootloader RAM app staging area')
+            print(f'{settings_dict["staging_area"]} := 1')
+            print(f'{settings_dict["ram_apps_staging_addr"]} :=',  hex(boot.staging_area.addr))
+            print(f'{settings_dict["ram_apps_staging_size"]} :=',  hex(boot.staging_area.sz))
 
         print('# Application area')
         for img_id, app in enumerate(self.apps):
@@ -632,10 +673,12 @@ class MemoryMap:
             self.__memory_areas_create()
 
             if app_id is None:
+                print('\n[memorymap_rework.py] Generating boot sources', file=sys.stderr)
                 self.__source_gen()
                 self.__header_gen()
                 self.__bootloader_mk_file_gen()
             else:
+                print('\n[memorymap_rework.py] Generating app sources', file=sys.stderr)
                 self.__application_mk_file_gen()
 
         except (FileNotFoundError, OSError):
@@ -643,23 +686,27 @@ class MemoryMap:
             sys.exit(-1)
 
 
-@click.group()
 def cli():
-    '''
-        Memory map layout parser-configurator
-    '''
+    parser = argparse.ArgumentParser(description='Memory map layout parser-configurator')
 
-@cli.command()
-@click.option('-i', '--memory_config', required=True,
-              help='memory configuration file path')
-@click.option('-p', '--platform_config', required=True,
-              help='platform configuration file path')
-@click.option('-n', '--output_name', required=True,
-              help='generated areas path')
-@click.option('-o', '--output_folder', required=True,
-              help='generated regions path')
-@click.option('-d', '--image_id', required=False,
-              help='application image number')
+    parser.add_argument('-i', '--memory_config', required=True,
+                        help='memory configuration file path')
+    parser.add_argument('-p', '--platform_config', required=True,
+                        help='platform configuration file path')
+    parser.add_argument('-n', '--output_name', required=True,
+                        help='generated areas path')
+    parser.add_argument('-o', '--output_folder', required=True,
+                        help='generated regions path')
+    parser.add_argument('-d', '--image_id', required=False,
+                        help='application image number')
+    parser.add_argument('other_args', nargs='?',
+                        help='Ignore all other arguments, such as: run')
+
+    args = parser.parse_args()
+
+    run(args.memory_config, args.platform_config, args.output_folder, args.output_name,
+        args.image_id)
+
 
 def run(memory_config, platform_config, output_folder, output_name, image_id):
     ''''

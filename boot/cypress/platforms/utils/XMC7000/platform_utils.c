@@ -1,5 +1,5 @@
 /***************************************************************************//**
-* \file cyw_platform_utils.h
+* \file platform_utils.h
 *
 * \brief
 * xmc7000 platform utilities
@@ -25,7 +25,7 @@
 *******************************************************************************/
 
 #include <string.h>
-#include "cyw_platform_utils.h"
+#include "platform_utils.h"
 
 #define IVT_ALIGNMENT (0x3FFu) /* IVT alignment requires to have these bits as zeros in IVT */
 #define STACK_ALIGNMENT (7u) /* Per ARM AABI, a stack should be aligned to 64 bits, thus should have these bits as zeros */

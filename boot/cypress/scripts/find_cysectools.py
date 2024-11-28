@@ -17,7 +17,7 @@ limitations under the License.
 import subprocess
 import sys
 
-package = 'cysecuretools'
+package = 'edgeprotecttools'
 
 def find_cysectools(package_name):
 

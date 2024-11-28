@@ -1,5 +1,5 @@
 /***************************************************************************//**
-* \file cyw_platform_utils.h
+* \file platform_utils.h
 *
 * \brief
 * PSoC6 platform utilities

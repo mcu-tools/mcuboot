@@ -26,39 +26,8 @@
 ################################################################################
 # PDL library
 ################################################################################
-PDL_VERSION = 121
-#
 CUR_LIBS_PATH = $(PRJ_DIR)/libs
 
-SOURCES_WATCHDOG := $(wildcard $(CUR_LIBS_PATH)/watchdog/*.c)
+C_FILES += $(wildcard $(CUR_LIBS_PATH)/watchdog/*.c)
 
-INCLUDE_DIRS_WATCHDOG := $(CUR_LIBS_PATH)/watchdog
-
-# Collected source files for libraries
-SOURCES_LIBS += $(SOURCES_WATCHDOG)
-SOURCES_LIBS += $(SOURCES_FIH)
-
-
-# Collected include directories for libraries
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_WATCHDOG))
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_FIH))
-
-
-###############################################################################
-# Print debug information about all settings used and/or set in this file
-ifeq ($(VERBOSE), 1)
-$(info #### libs.mk ####)
-$(info APP_CORE <-- $(APP_CORE))
-$(info CUR_LIBS_PATH <-- $(CUR_LIBS_PATH))
-$(info INCLUDE_DIRS_HAL_BLINKY <-> $(INCLUDE_DIRS_HAL_BLINKY))
-$(info INCLUDE_DIRS_LIBS --> $(INCLUDE_DIRS_LIBS))
-$(info INCLUDE_DIRS_RETARGET_IO <-> $(INCLUDE_DIRS_RETARGET_IO))
-$(info INCLUDE_DIRS_WATCHDOG <-> $(INCLUDE_DIRS_WATCHDOG))
-$(info PLATFORM <-- $(PLATFORM))
-$(info PRJ_DIR <-- $(PRJ_DIR))
-$(info SOURCES_HAL_BLINKY <-> $(SOURCES_HAL_BLINKY))
-$(info SOURCES_LIBS --> $(SOURCES_LIBS))
-$(info SOURCES_RETARGET_IO <-> $(SOURCES_RETARGET_IO))
-$(info SOURCES_WATCHDOG <-> $(SOURCES_WATCHDOG))
-$(info THIS_APP_PATH <-- $(THIS_APP_PATH))
-endif
+INCLUDE_DIRS += $(CUR_LIBS_PATH)/watchdog

@@ -38,27 +38,54 @@
 #include "mcuboot_config/mcuboot_config.h"
 #include "memorymap.h"
 
-/*
- * Macro takes flash API parameters fa, off and len
- * Checks flash area boundaries considering off and len
- * Returns absolute address of flash area memory where
- * operation should execute
- */
-#define MEM_VALIDATE_AND_GET_ADDRES(fa, off, len, addr, rc)          \
-    uintptr_t mem_base = 0u;                                         \
-    if ((fa) != NULL) {                                              \
-        if ((off) > (fa)->fa_size ||                                 \
-            (len) > (fa)->fa_size ||                                 \
-            (off) + (len) > (fa)->fa_size) {                         \
-            (rc) = BOOT_EBADARGS;                                    \
-        }                                                            \
-        if (flash_area_get_api((fa)->fa_device_id) != NULL) {        \
-            (rc) = flash_device_base((fa)->fa_device_id, &mem_base); \
-            if ((0 == (rc)) && (mem_base != 0u)) {                   \
-                (addr) = mem_base + (fa)->fa_off + (off);            \
-            }                                                        \
-        }                                                            \
-    }
+static bool flash_validate_boundaries(const struct flash_area *fa, uint32_t off, uint32_t len)
+{
+    bool is_valid = false;
+
+    do {
+        if ((fa) == NULL) {
+            break;
+        }
+
+        if ((off) > (fa)->fa_size ||
+            (len) > (fa)->fa_size ||
+            (off) + (len) > (fa)->fa_size) {
+            /* TODO: FWSECURITY-5960 */   
+        }
+
+        is_valid = true;
+
+    } while (false);
+
+    return is_valid;
+}
+
+static uintptr_t flash_get_abs_address(const struct flash_area *fa, uint32_t off)
+{
+    uintptr_t addr = 0u;
+    uintptr_t mem_base = 0u;
+
+    do {
+        if ((fa) == NULL) {
+            break;
+        }
+
+        if (flash_area_get_api(fa->fa_device_id) == NULL) {
+            break;
+        }
+
+        if (flash_device_base(fa->fa_device_id, &mem_base) != 0) {
+            break;
+        }
+
+        if (mem_base != 0u) {
+            addr = mem_base + fa->fa_off + off;
+        }
+
+    } while (false);
+
+    return addr;
+}
 
 /*
  * PORTING GUIDE: REQUIRED
@@ -124,13 +151,17 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
                     uint32_t len)
 {
     int rc = -1;
-    uintptr_t addr = 0u;
-
-    MEM_VALIDATE_AND_GET_ADDRES(fa, off, len, addr, rc);
-    if (addr != 0u) {
-        rc = flash_area_get_api(fa->fa_device_id)->read(fa->fa_device_id, addr, dst, len);
-    } else {
-        /* do nothing */
+    if (fa != NULL) {
+        if (flash_validate_boundaries(fa, off, len)) {
+            uintptr_t addr = flash_get_abs_address(fa, off);
+            if (addr != 0u) {
+                if (flash_area_get_api(fa->fa_device_id) != NULL) {
+                    rc = flash_area_get_api(fa->fa_device_id)->read(fa->fa_device_id, addr, dst, len);
+                }
+            } else {
+                /* do nothing */
+            }
+        }
     }
 
     return rc;
@@ -144,13 +175,18 @@ int flash_area_write(const struct flash_area *fa, uint32_t off,
                      const void *src, uint32_t len)
 {
     int rc = BOOT_EFLASH;
-    uintptr_t addr = 0u;
 
-    MEM_VALIDATE_AND_GET_ADDRES(fa, off, len, addr, rc);
-    if (addr != 0u) {
-        rc = flash_area_get_api(fa->fa_device_id)->write(fa->fa_device_id, addr, src, len);
-    } else {
-        /* do nothing */
+    if (fa != NULL) {
+        if (flash_validate_boundaries(fa, off, len)) {
+            uintptr_t addr = flash_get_abs_address(fa, off);
+            if (addr != 0u) {
+                if (flash_area_get_api(fa->fa_device_id) != NULL) {
+                    rc = flash_area_get_api(fa->fa_device_id)->write(fa->fa_device_id, addr, src, len);
+                }
+            } else {
+                /* do nothing */
+            }
+        }
     }
 
     return rc;
@@ -163,13 +199,15 @@ int flash_area_write(const struct flash_area *fa, uint32_t off,
 int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
 {
     int rc = -1;
-    uintptr_t addr = 0u;
-
-    MEM_VALIDATE_AND_GET_ADDRES(fa, off, len, addr, rc);
-    if (addr != 0u) {
-        rc = flash_area_get_api(fa->fa_device_id)->erase(fa->fa_device_id, addr, len);
-    } else {
-        /* do nothing */
+    if (fa != NULL) {
+        uintptr_t addr = flash_get_abs_address(fa, off);
+        if (addr != 0u) {
+            if (flash_area_get_api(fa->fa_device_id) != NULL) {
+                rc = flash_area_get_api(fa->fa_device_id)->erase(fa->fa_device_id, addr, len);
+            }
+        } else {
+            /* do nothing */
+        }
     }
 
     return rc;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "cyw_platform_utils.h"
+#include "platform_utils.h"
 
 /* Cypress pdl headers */
 #include "cy_pdl.h"

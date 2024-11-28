@@ -120,7 +120,7 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
     if (mbedtls_asn1_get_alg(cp, end, &alg, &param)) {
         return -2;
     }
-    /* id-ecPublicKey (RFC5480) */
+
     if (alg.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
         memcmp(alg.MBEDTLS_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -3;
@@ -130,6 +130,7 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
         memcmp(param.MBEDTLS_CONTEXT_MEMBER(p), ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
         return -4;
     }
+
     /* ECPoint (RFC5480) */
     if (mbedtls_asn1_get_bitstring_null(cp, end, &len)) {
         return -6;

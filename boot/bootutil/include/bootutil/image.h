@@ -97,6 +97,8 @@ struct flash_area;
 #define IMAGE_TLV_SEC_CNT           (0x50)   /* security counter */
 #define IMAGE_TLV_PROV_PACK         (0x51)   /* Reprovisioning packet */
 #define IMAGE_TLV_BOOT_RECORD       (0x60)   /* measured boot record */
+
+#define IMAGE_TLV_BUILT_IN_KEY_ID   (0x77)   /* ID if Built in keys in device key storage */
 					   /*
 					    * vendor reserved TLVs at xxA0-xxFF,
 					    * where xx denotes the upper byte

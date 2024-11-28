@@ -1,0 +1,16 @@
+{
+    "version": "1.0",
+    "description": "Properties of the platform",
+    "target": ["PSC3"],
+    "security_setup": {
+        "hw_rollback_prot": {
+            "description" :"HW anti roll-back counter support"
+        },
+        "hw_crypto_acceleration": {
+            "description" :"HW crypto acceleration support"
+        },
+        "keys": {
+            "TBD": "TBD"
+        }
+    }
+}

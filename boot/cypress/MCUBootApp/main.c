@@ -24,8 +24,9 @@
 #include "cy_pdl.h"
 #include "cyhal.h"
 #include "cyhal_wdt.h"
+#include "cy_wdt.h"
 
-#include "cyw_platform_utils.h"
+#include "platform_utils.h"
 
 #if defined CYW20829
 #include "cy_service_app.h"
@@ -67,9 +68,6 @@
 #define MCUBOOTAPP_RSLT_ERR                     \
     (CY_RSLT_CREATE_EX(CY_RSLT_TYPE_ERROR, CY_RSLT_MODULE_MCUBOOTAPP, CY_RSLT_MODULE_MCUBOOTAPP_MAIN, 0))
 
-/* WDT time out for reset mode, in milliseconds. */
-#define WDT_TIME_OUT_MS 4000
-
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
 /* Choose SMIF slot number (slave select).
  * Acceptable values are:
@@ -82,7 +80,37 @@
 #define BOOT_MSG_FINISH "MCUBoot Bootloader finished.\r\n" \
                         "Deinitializing hardware..."
 
+/* WDT time out for reset mode, in milliseconds. */
+#define WDT_TIME_OUT_MS                     4000
+/* Match count =  Desired interrupt interval in seconds x ILO Frequency in Hz */
+#define WDT_MATCH_COUNT                     (WDT_TIME_OUT_MS*32000)/1000
+
 static void hw_deinit(void);
+
+#if defined(USE_WDT_PDL)
+cy_rslt_t initialize_wdt()
+{
+   /* Step 1- Unlock WDT */
+   Cy_WDT_Unlock();
+
+   /* Step 2- Write the ignore bits - operate with only 14 bits */
+   Cy_WDT_SetIgnoreBits(16);
+
+   /* Step 3- Write match value */
+   Cy_WDT_SetMatch(WDT_MATCH_COUNT);
+
+   /* Step 4- Clear match event interrupt, if any */
+   Cy_WDT_ClearInterrupt();
+
+   /* Step 5- Enable WDT */
+   Cy_WDT_Enable();
+
+   /* Step 6- Lock WDT configuration */
+   Cy_WDT_Lock();
+
+   return CY_RSLT_SUCCESS;
+}
+#endif
 
 static inline __attribute__((always_inline))
 fih_uint calc_app_addr(uintptr_t flash_base, const struct boot_rsp *rsp)
@@ -182,9 +210,16 @@ static bool do_boot(struct boot_rsp *rsp)
                 return false;
             }
 
-            if (fih_uint_eq(calc_app_addr(flash_base, rsp), app_addr) != FIH_TRUE) {
+            if (!fih_uint_eq(calc_app_addr(flash_base, rsp), app_addr)) {
                 return false;
             }
+
+#if defined PSC3
+    BOOT_LOG_INF("Launching app on CM33 core");
+    BOOT_LOG_INF(BOOT_MSG_FINISH);
+    hw_deinit();
+    launch_cm33_app((void*)fih_uint_decode(app_addr));
+#else
 
 #if defined CYW20829
 
@@ -249,6 +284,7 @@ static bool do_boot(struct boot_rsp *rsp)
 #else
 #error "Application should run on either Cortex-M0+ or Cortex-M4"
 #endif /* APP_CM4 */
+#endif
 
 #endif /* defined CYW20829 */
         } else {
@@ -329,6 +365,12 @@ int main(void)
         }
     }
 
+    #ifdef FIH_ENABLE_DELAY
+    /*If random delay is used in FIH APIs then
+     * fih_delay must be initialized */
+    fih_delay_init();
+    #endif /* FIH_ENABLE_DELAY */
+
     BOOT_LOG_INF("MCUBoot Bootloader Started");
 
 #ifdef CY_BOOT_USE_EXTERNAL_FLASH
@@ -370,21 +412,24 @@ int main(void)
             BOOT_LOG_INF("Exec time: %" PRIu32 " [ms]", exec_time / 1000U);
         }
 #endif /* USE_EXEC_TIME_CHECK */
-        if (FIH_TRUE == fih_eq(fih_rc, FIH_SUCCESS)) {
+        if (fih_eq(fih_rc, FIH_SUCCESS)) {
             BOOT_LOG_INF("User Application validated successfully");
             /* initialize watchdog timer. it should be updated from user app
             * to mark successful start up of this app. if the watchdog is not updated,
             * reset will be initiated by watchdog timer and swap revert operation started
             * to roll back to operable image.
             */
+#if defined(USE_WDT_PDL)
+            rc = initialize_wdt();
+#else
             cyhal_wdt_t wdt_obj;
 
             rc = cyhal_wdt_init(&wdt_obj, WDT_TIME_OUT_MS);
 
             cyhal_wdt_start(&wdt_obj);
+#endif
 
             if (CY_RSLT_SUCCESS == rc) {
-
                 boot_succeeded = do_boot(&rsp);
 
                 if (!boot_succeeded) {

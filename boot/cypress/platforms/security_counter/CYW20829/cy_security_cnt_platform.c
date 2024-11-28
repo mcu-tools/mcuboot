@@ -136,7 +136,7 @@ fih_int platform_security_counter_check_extract(uint32_t image_id, fih_uint nv_c
     bit_mask_to_check_others_images <<= start_bit_for_image_id;
 
     /* Return an error if recieved full NV-counter has any bits of others image_id */
-    if(FIH_TRUE == fih_uint_eq(fih_uint_encode(
+    if(fih_uint_eq(fih_uint_encode(
         (uint32_t)(~bit_mask_to_check_others_images & fih_uint_decode(nv_counter))), FIH_UINT_ZERO)) {
         /* Extract number of set bits from full NV-counter in the upgrade image */
         *extracted_img_cnt = counter_extract(image_id, nv_counter);
@@ -186,7 +186,7 @@ fih_int platform_security_counter_get(uint32_t image_id, fih_uint *security_cnt)
         }
         if (CY_EFUSE_SUCCESS == efuse_stat) {
 
-            if (FIH_TRUE == fih_uint_eq(nv_counter_secure, fih_uint_encode(nv_counter))) {
+            if (fih_uint_eq(nv_counter_secure, fih_uint_encode(nv_counter))) {
 
                 *security_cnt = counter_extract(image_id, fih_uint_encode(nv_counter));
 
@@ -228,7 +228,7 @@ int32_t platform_security_counter_update(uint32_t image_id, fih_uint img_securit
     */
     FIH_CALL(platform_security_counter_get, fih_rc, image_id, &efuse_img_counter);
 
-    if (FIH_TRUE == fih_eq(fih_rc, FIH_SUCCESS)) {
+    if (fih_eq(fih_rc, FIH_SUCCESS)) {
 
         /* Compare the new image's security counter value against the
         * stored security counter value for that image index.
@@ -237,8 +237,8 @@ int32_t platform_security_counter_update(uint32_t image_id, fih_uint img_securit
         BOOT_LOG_DBG("image_id = %u, packet_img_counter = %u, efuse_img_counter = %u\n",
                 image_id, fih_uint_decode(packet_img_counter), fih_uint_decode(efuse_img_counter));
         
-        if (FIH_TRUE == fih_uint_gt(packet_img_counter, efuse_img_counter) &&
-            FIH_TRUE == fih_uint_le(packet_img_counter, fih_uint_encode(MAX_SEC_COUNTER_VAL))) {
+        if (fih_uint_gt(packet_img_counter, efuse_img_counter) &&
+            fih_uint_le(packet_img_counter, FIH_UINT_INIT(MAX_SEC_COUNTER_VAL))) {
 
             BOOT_LOG_INF("service_app is called\n", __func__ );
             /* Attention: This function initiates system reset */
