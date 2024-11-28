@@ -1,5 +1,7 @@
 /********************************************************************************
- * Copyright 2021 Infineon Technologies AG
+ * Copyright 2018-2024 Cypress Semiconductor Corporation (an Infineon company) or
+ * an affiliate of Cypress Semiconductor Corporation
+ *
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +22,8 @@
 #include "set_img_ok.h"
 #include <flash_map_backend/flash_map_backend.h>
 
+#define EXT_MEM_INTERFACE_ID 0
+
 extern const struct flash_area_interface external_mem_interface;
 
 static uint8_t row_buff[FLASH_ROW_BUF_SZ];
@@ -33,9 +37,9 @@ static uint8_t row_buff[FLASH_ROW_BUF_SZ];
 
 static int read_img_ok_value(uint32_t address)
 {
-    uint8_t tmp;
+    uint8_t tmp = 0U;
     
-    external_mem_interface.read(0, address, &tmp, 1);
+    external_mem_interface.read(EXT_MEM_INTERFACE_ID, address, &tmp, 1);
 
     return tmp;
 }
@@ -56,14 +60,14 @@ static int write_img_ok_value(uint32_t address, uint8_t src)
     /* Accepting an arbitrary address */
     uint32_t row_mask = external_mem_interface.get_erase_size(0) - 1U;
 
-    rc |= external_mem_interface.read(0, address & ~row_mask, row_buff, FLASH_ROW_BUF_SZ);
+    rc |= external_mem_interface.read(EXT_MEM_INTERFACE_ID, address & ~row_mask, row_buff, FLASH_ROW_BUF_SZ);
 
     /* Modifying the target byte */
     row_buff[address & row_mask] = src;
 
-    rc |= external_mem_interface.erase(0, address & ~row_mask, FLASH_ROW_BUF_SZ);
+    rc |= external_mem_interface.erase(EXT_MEM_INTERFACE_ID, address & ~row_mask, FLASH_ROW_BUF_SZ);
 
-    rc |= external_mem_interface.write(0, address & ~row_mask, row_buff, FLASH_ROW_BUF_SZ);
+    rc |= external_mem_interface.write(EXT_MEM_INTERFACE_ID, address & ~row_mask, row_buff, FLASH_ROW_BUF_SZ);
 
     return rc;
 }
@@ -95,6 +99,5 @@ int set_img_ok(uint32_t address, uint8_t value)
 
     return rc;
 }
-
 
 #endif /* !(SWAP_DISABLED) && defined(UPGRADE_IMAGE) */

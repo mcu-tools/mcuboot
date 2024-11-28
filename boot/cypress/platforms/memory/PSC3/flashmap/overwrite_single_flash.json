@@ -1,0 +1,32 @@
+{
+    "bootloader":
+    {
+        "bootloader_area":
+        {
+            "address"           : "0x32000000",
+            "size"              : "0x18000"
+        },
+
+        "ram":
+        {
+            "address"           : "0x34000000",
+            "size"              : "0xF000"
+        }
+    },
+
+    "application_1":
+    {
+        "slots":
+        {
+            "boot"              : "0x32018000",
+            "upgrade"           : "0x32028000",
+            "size"              : "0x10000"
+        },
+
+        "ram":
+        {
+            "address"           : "0x34000000",
+            "size"              : "0xF000"
+        }
+    }
+}

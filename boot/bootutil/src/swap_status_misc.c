@@ -140,17 +140,23 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
  *
  * @returns 0 on success, -1 on error.
  */
-int
-boot_write_trailer(const struct flash_area *fap, uint32_t off,
-        const uint8_t *inbuf, uint8_t inlen)
+int boot_write_trailer(const struct flash_area *fap, uint32_t off,
+                       const uint8_t *inbuf, uint8_t inlen)
 {
     int rc;
 
-    /* copy status part trailer to primary image before set copy_done flag */
-    if (boot_copy_done_off(fap) == off &&
-        fap->fa_id == FLASH_AREA_IMAGE_PRIMARY(0u) &&
-        BOOT_SWAP_STATUS_COPY_DONE_SZ == inlen) {
+    bool is_primary = false;
 
+    for (uint32_t i = 0u; i < BOOT_IMAGE_NUMBER; i++) {
+        if (fap->fa_id == FLASH_AREA_IMAGE_PRIMARY(i)) {
+            is_primary = true;
+            break;
+        }
+    }
+
+    /* copy status part trailer to primary image before set copy_done flag */
+    if (boot_copy_done_off(fap) == off && is_primary &&
+        BOOT_SWAP_STATUS_COPY_DONE_SZ == inlen) {
         BOOT_LOG_DBG("copy status part trailer to primary image slot");
         rc = swap_status_to_image_trailer(fap);
         if (rc != 0) {
@@ -168,6 +174,43 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
 }
 
 #ifdef MCUBOOT_ENC_IMAGES
+uint32_t boot_iv_offset(const struct flash_area *fap, uint8_t slot)
+{
+    (void)(slot);
+
+    return boot_enc_key_off(fap, 0) - 32;
+}
+
+int
+boot_read_iv(int image_index, uint8_t slot, uint8_t* dst)
+{
+    uint32_t off;
+    const struct flash_area *fap;
+    int rc;
+
+    rc = boot_find_status(image_index, &fap);
+
+    if (0 == rc) {
+        off = boot_iv_offset(fap, slot);
+
+        rc = swap_status_retrieve(fap->fa_id, off, dst, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
+    }
+
+    return rc;
+}
+
+int
+boot_write_iv(const struct flash_area *fap, uint8_t* iv)
+{
+    int rc;
+    uint32_t off = boot_iv_offset(fap, 0);
+
+    rc = swap_status_update(fap->fa_id, off,
+                            iv, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
+
+    return rc;
+}
+
 int
 boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
         const struct boot_status *bs)
@@ -249,9 +292,9 @@ boot_write_magic(const struct flash_area *fap)
 int
 boot_clear_magic(const struct flash_area *fap)
 {
-    uint32_t off;
-    int rc;
-    uint8_t tmp[BOOT_MAGIC_SZ];
+    uint32_t off = 0;
+    int rc = -1;
+    uint8_t tmp[BOOT_MAGIC_SZ] = {0};
 
     off = fap->fa_size - BOOT_MAGIC_SZ;
 
@@ -324,110 +367,6 @@ done:
     return rc;
 }
 
-#if defined (MCUBOOT_SWAP_STATUS_FAST_BOOT)
-static inline int
-boot_read_flag(const struct flash_area *fap, uint8_t *flag, uint32_t off)
-{
-    int rc;
-
-    do {
-        rc = flash_area_read(fap, off, flag, sizeof *flag);
-
-        if (rc != 0) {
-            break;
-        }
-
-        if (*flag == flash_area_erased_val(fap)) {
-            *flag = BOOT_FLAG_UNSET;
-        } else {
-            *flag = boot_flag_decode(*flag);
-        }
-
-    } while (false);
-
-    return rc;
-}
-
-static inline uint32_t
-boot_magic_off_trailer(const struct flash_area *fap)
-{
-    return flash_area_get_size(fap) - BOOT_MAGIC_SZ;
-}
-
-static inline uint32_t
-boot_image_ok_off_trailer(const struct flash_area *fap)
-{
-    return ALIGN_DOWN(boot_magic_off_trailer(fap) - BOOT_MAX_ALIGN, BOOT_MAX_ALIGN);
-}
-
-static inline uint32_t
-boot_copy_done_off_trailer(const struct flash_area *fap)
-{
-    return boot_image_ok_off_trailer(fap) - BOOT_MAX_ALIGN;
-}
-
-static inline uint32_t
-boot_swap_info_off_trailer(const struct flash_area *fap)
-{
-    return boot_copy_done_off_trailer(fap) - BOOT_MAX_ALIGN;
-}
-
-int
-boot_read_swap_state_trailer(const struct flash_area *fap,
-                     struct boot_swap_state *state)
-{
-    union boot_img_magic_t magic = {0U};
-    uint32_t off;
-    uint8_t swap_info;
-    int rc;
-
-    do {
-        off = boot_magic_off_trailer(fap);
-        rc = flash_area_read(fap, off, &magic, BOOT_MAGIC_SZ);
-
-        if (rc != 0) {
-            break;
-        }
-
-        if (bootutil_buffer_is_erased(fap, &magic, BOOT_MAGIC_SZ)) {
-            state->magic = BOOT_MAGIC_UNSET;
-        } else {
-            state->magic = boot_magic_decode(&magic);
-        }
-
-        off = boot_swap_info_off_trailer(fap);
-        rc = flash_area_read(fap, off, &swap_info, sizeof swap_info);
-
-        if (rc != 0) {
-            break;
-        }
-
-        /* Extract the swap type and image number */
-        state->swap_type = BOOT_GET_SWAP_TYPE(swap_info);
-        state->image_num = BOOT_GET_IMAGE_NUM(swap_info);
-
-        if (swap_info == flash_area_erased_val(fap) ||
-            state->swap_type > BOOT_SWAP_TYPE_REVERT) {
-            state->swap_type = BOOT_SWAP_TYPE_NONE;
-            state->image_num = 0;
-        }
-
-        off = boot_copy_done_off_trailer(fap);
-        rc = boot_read_flag(fap, &state->copy_done, off);
-
-        if (rc != 0) {
-            break;
-        }
-
-        off = boot_image_ok_off_trailer(fap);
-        rc = boot_read_flag(fap, &state->image_ok, off);
-
-    } while (false);
-
-    return rc;
-}
-#endif
-
 int
 boot_read_swap_state(const struct flash_area *fap,
                      struct boot_swap_state *state)
@@ -445,36 +384,6 @@ boot_read_swap_state(const struct flash_area *fap,
 
     const struct flash_area *fap_stat = NULL;
 
-    for (i = 0u; i < (uint32_t)BOOT_IMAGE_NUMBER; i++) {
-        if (fap->fa_id == FLASH_AREA_IMAGE_PRIMARY(i)) {
-            is_primary = true;
-            break;
-        }
-        if (fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(i)) {
-            is_secondary = true;
-            break;
-        }
-    }
-
-#if defined(MCUBOOT_SWAP_STATUS_FAST_BOOT)
-    {
-        bool is_scratch = fap->fa_id == FLASH_AREA_IMAGE_SCRATCH;
-        boot_read_swap_state_trailer(fap, state);
-
-        if (is_primary) {
-            if (state->image_ok == BOOT_FLAG_SET && state->copy_done == BOOT_FLAG_SET && state->magic == BOOT_MAGIC_GOOD) {
-                return 0;
-            }
-        }
-
-        if (is_secondary || is_scratch) {
-            if (state->image_ok == BOOT_FLAG_UNSET && state->copy_done == BOOT_FLAG_UNSET && state->magic == BOOT_MAGIC_UNSET) {
-                return 0;
-            }
-        }
-    }
-#endif
-
     rc = flash_area_open(FLASH_AREA_IMAGE_SWAP_STATUS, &fap_stat);
     if (rc != 0) {
         return -1;
@@ -485,6 +394,17 @@ boot_read_swap_state(const struct flash_area *fap,
     rc = swap_status_retrieve(fap->fa_id, off, &magic, BOOT_MAGIC_SZ);
     if (rc < 0) {
         return -1;
+    }
+
+    for (i = 0u; i < (uint32_t)BOOT_IMAGE_NUMBER; i++) {
+        if (fap->fa_id == FLASH_AREA_IMAGE_PRIMARY(i)) {
+            is_primary = true;
+            break;
+        }
+        if (fap->fa_id == FLASH_AREA_IMAGE_SECONDARY(i)) {
+            is_secondary = true;
+            break;
+        }
     }
 
     /* fill magic number value if equal to expected */

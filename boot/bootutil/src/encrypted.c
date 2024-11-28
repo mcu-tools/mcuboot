@@ -48,6 +48,10 @@
 
 #include "bootutil_priv.h"
 
+#ifdef MCUBOOT_ENC_IMAGES_XIP_MULTI
+#include "xip_encryption.h"
+#endif /* MCUBOOT_ENC_IMAGES_XIP_MULTI */
+
 #if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
 #if defined(_compare)
 static inline int bootutil_constant_time_compare(const uint8_t *a, const uint8_t *b, size_t size)
@@ -158,8 +162,10 @@ parse_rsa_enckey(mbedtls_rsa_context *ctx, uint8_t **p, uint8_t *end)
 #endif
 
 #if defined(MCUBOOT_ENCRYPT_EC256)
+#if !defined(MCUBOOT_USE_PSA_CRYPTO)
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_EC_ALG_UNRESTRICTED;
 static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
+#endif
 
 #define SHARED_KEY_LEN NUM_ECC_BYTES
 #define PRIV_KEY_LEN   NUM_ECC_BYTES
@@ -195,6 +201,7 @@ parse_ec256_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         return -5;
     }
 
+#if !defined(MCUBOOT_USE_PSA_CRYPTO)
     if (alg.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
         memcmp(alg.MBEDTLS_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -6;
@@ -203,6 +210,7 @@ parse_ec256_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         memcmp(param.MBEDTLS_CONTEXT_MEMBER(p), ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
         return -7;
     }
+#endif
 
     if ((rc = mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING)) != 0) {
         return -8;
@@ -240,8 +248,10 @@ parse_ec256_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
 
 #if defined(MCUBOOT_ENCRYPT_X25519)
 #define X25519_OID "\x6e"
+#if !defined(MCUBOOT_USE_PSA_CRYPTO)
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
                                        MBEDTLS_OID_ORG_GOV X25519_OID;
+#endif
 
 #define SHARED_KEY_LEN 32
 #define PRIV_KEY_LEN   32
@@ -272,10 +282,12 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         return -4;
     }
 
+#if !defined(MCUBOOT_USE_PSA_CRYPTO)
     if (alg.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
         memcmp(alg.MBEDTLS_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -5;
     }
+#endif
 
     if (mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING) != 0) {
         return -6;
@@ -311,6 +323,7 @@ static int
 hkdf(const uint8_t *ikm, uint16_t ikm_len, const uint8_t *info, uint16_t info_len,
         const uint8_t *salt, uint16_t salt_len, uint8_t *okm, uint16_t *okm_len)
 {
+#if !defined(MCUBOOT_USE_PSA_CRYPTO)
     bootutil_hmac_sha256_context hmac;
     uint8_t prk[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t T[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
@@ -399,6 +412,56 @@ hkdf(const uint8_t *ikm, uint16_t ikm_len, const uint8_t *info, uint16_t info_le
 error:
     bootutil_hmac_sha256_drop(&hmac);
     return -1;
+#else
+    psa_status_t status;
+    psa_key_handle_t key_handle;
+    psa_key_derivation_operation_t operation = psa_key_derivation_operation_init();
+
+    {
+        psa_key_attributes_t key_attributes = psa_key_attributes_init();
+        psa_set_key_usage_flags(&key_attributes, PSA_KEY_USAGE_DERIVE);
+        psa_set_key_algorithm(&key_attributes, PSA_ALG_HKDF(PSA_ALG_SHA_256));
+        psa_set_key_type(&key_attributes, PSA_KEY_TYPE_DERIVE);
+        psa_set_key_bits(&key_attributes, 256u);
+
+        status = psa_import_key(&key_attributes, ikm, ikm_len, &key_handle);
+    }
+
+    if (status == PSA_SUCCESS)
+    {
+        status = psa_key_derivation_setup(&operation, PSA_ALG_HKDF(PSA_ALG_SHA_256));
+    }
+
+    if (status == PSA_SUCCESS)
+    {
+        status = psa_key_derivation_input_bytes(&operation, PSA_KEY_DERIVATION_INPUT_SALT, salt, salt_len);
+    }
+
+    if (status == PSA_SUCCESS)
+    {
+        status = psa_key_derivation_input_key(&operation, PSA_KEY_DERIVATION_INPUT_SECRET, key_handle);
+    }
+
+    if (status == PSA_SUCCESS)
+    {
+        status = psa_key_derivation_input_bytes(&operation, PSA_KEY_DERIVATION_INPUT_INFO, info, info_len);
+    }
+
+    if (status == PSA_SUCCESS)
+    {
+        status = psa_key_derivation_output_bytes(&operation, okm, *okm_len);
+    }
+
+    psa_key_derivation_abort(&operation);
+    psa_destroy_key(key_handle);
+
+    if (status != PSA_SUCCESS)
+    {
+        return -1;
+    }
+
+    return 0;
+#endif
 }
 #endif
 
@@ -464,6 +527,7 @@ _Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
 #if defined(MCUBOOT_ENCRYPT_RSA) || \
     (defined(MCUBOOT_ENCRYPT_EC256) && defined(MCUBOOT_USE_MBED_TLS))
 #if MBEDTLS_VERSION_NUMBER >= 0x03000000
+#if !defined(MCUBOOT_USE_PSA_CRYPTO)
 static int fake_rng(void *p_rng, unsigned char *output, size_t len)
 {
     size_t i;
@@ -475,10 +539,10 @@ static int fake_rng(void *p_rng, unsigned char *output, size_t len)
 
     return 0;
 }
+#endif /* MCUBOOT_USE_PSA_CRYPTO */
 #endif
 #endif /* defined(MCUBOOT_ENCRYPT_RSA) ||
           defined(MCUBOOT_ENCRYPT_EC256) && defined(MCUBOOT_USE_MBED_TLS) */
-
 /*
  * Decrypt an encryption key TLV.
  *
@@ -818,18 +882,18 @@ from secondary slot */
         }
     }
 
-    enc = &enc_state[rc];
-    assert(enc->valid == 1);
+   enc = &enc_state[rc];
+   assert(enc->valid == 1);
 
-    nonce = enc->aes_iv;
+   nonce = enc->aes_iv;
 
-    off >>= 4;
-    nonce[12] = (uint8_t)(off >> 24);
-    nonce[13] = (uint8_t)(off >> 16);
-    nonce[14] = (uint8_t)(off >> 8);
-    nonce[15] = (uint8_t)off;
+   off >>= 4;
+   nonce[12] = (uint8_t)(off >> 24);
+   nonce[13] = (uint8_t)(off >> 16);
+   nonce[14] = (uint8_t)(off >> 8);
+   nonce[15] = (uint8_t)off;
 
-    return bootutil_aes_ctr_encrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf);
+   return bootutil_aes_ctr_encrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf);
 }
 
 /**
@@ -846,3 +910,9 @@ boot_enc_zeroize(struct enc_key_data *enc_state)
 }
 
 #endif /* MCUBOOT_ENC_IMAGES */
+
+/*
+ * Avoid warning from -pedantic. This is included
+ * because ISO C forbids an empty translation unit.
+ */
+typedef int encrypted_iso_c_forbids_empty_translation_units;

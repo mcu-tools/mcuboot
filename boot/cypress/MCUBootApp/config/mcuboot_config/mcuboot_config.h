@@ -88,8 +88,9 @@
  * even if no upgrade was performed. This is recommended if the boot
  * time penalty is acceptable.
  */
+#ifndef MCUBOOT_SKIP_VALIDATE_PRIMARY_SLOT
 #define MCUBOOT_VALIDATE_PRIMARY_SLOT
-
+#endif
 /*
  * Flash abstraction
  */

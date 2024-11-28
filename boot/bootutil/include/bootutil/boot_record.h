@@ -24,6 +24,16 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+/*
+ * User can redefine sw_module start id by passing SW_MODULE_START_ID value
+ * at compile time. This may be needed if mcuboot is a part of a system with
+ * several boot stages and previous stages are also fill measured boot data.
+ */ 
+#if defined(SW_MODULE_START_ID)
+#define GET_SW_MODULE_ID(sw_module) ((sw_module) + (SW_MODULE_START_ID))
+#else
+#define GET_SW_MODULE_ID(sw_module) sw_module
+#endif
 
 /**
  * @brief Add a data item to the shared data area between bootloader and
@@ -39,7 +49,8 @@ extern "C" {
 int boot_add_data_to_shared_area(uint8_t        major_type,
                                  uint16_t       minor_type,
                                  size_t         size,
-                                 const uint8_t *data);
+                                 const uint8_t *data,
+                                 const struct flash_area *fap);
 
 /**
  * Add an image's all boot status information to the shared memory area

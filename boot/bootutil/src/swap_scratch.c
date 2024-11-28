@@ -685,6 +685,11 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                               img_off, 0, copy_sz);
         assert(rc == 0);
 
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_SAVE_ENC_IV)
+        rc = boot_write_iv(fap_primary_slot, state->enc[image_index][1].aes_iv);
+        assert(rc == 0);
+#endif
+
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_1;
         BOOT_STATUS_ASSERT(rc == 0);
@@ -705,6 +710,11 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
             rc = swap_erase_trailer_sectors(state, fap_secondary_slot);
             assert(rc == 0);
         }
+
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_SAVE_ENC_IV)
+        rc = boot_write_iv(fap_primary_slot, state->enc[image_index][1].aes_iv);
+        assert(rc == 0);
+#endif
 
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_2;
@@ -766,6 +776,11 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
          */
         erase_scratch = bs->use_scratch;
         bs->use_scratch = 0;
+
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_SAVE_ENC_IV)
+        rc = boot_write_iv(fap_primary_slot, state->enc[image_index][1].aes_iv);
+        assert(rc == 0);
+#endif
 
         rc = boot_write_status(state, bs);
         bs->idx++;

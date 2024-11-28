@@ -10,6 +10,7 @@
 #include "cycfg.h"
 #include "cyhal.h"
 #include "cyhal_wdt.h"
+#include "cy_wdt.h"
 
 #if defined(CY_BOOT_USE_EXTERNAL_FLASH) || defined(CYW20829)
 #include "flash_qspi.h"
@@ -130,7 +131,11 @@ static inline const char* test_app_init_hardware(void)
     printf("[BlinkyApp] GPIO initialized \r\n");
     printf("[BlinkyApp] UART initialized \r\n");
     printf("[BlinkyApp] Retarget I/O set to 115200 baudrate \r\n");
+#if defined(USE_WDT_PDL)
+    Cy_WDT_ClearWatchdog();
+#else
     cyhal_wdt_kick(NULL);
+#endif
 
     return (detect_core_message);
 }

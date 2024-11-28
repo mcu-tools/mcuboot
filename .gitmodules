@@ -4,14 +4,12 @@
 [submodule "boot/cypress/libs/cy-mbedtls-acceleration"]
 	path = boot/cypress/libs/cy-mbedtls-acceleration
 	url = https://github.com/Infineon/cy-mbedtls-acceleration.git
-	branch = c5f703d0354c69611e6c8226a609cead96e1f8a6
 [submodule "boot/cypress/libs/mtb-hal-cat1"]
 	path = boot/cypress/libs/mtb-hal-cat1
 	url = https://github.com/Infineon/mtb-hal-cat1.git
 [submodule "boot/cypress/libs/mtb-pdl-cat1"]
 	path = boot/cypress/libs/mtb-pdl-cat1
 	url = https://github.com/Infineon/mtb-pdl-cat1.git
-	branch = 4eb815bb8c6f455b0c516ec86b2e16b02bd367d7
 [submodule "boot/cypress/libs/cmsis"]
 	path = boot/cypress/libs/cmsis
 	url = https://github.com/Infineon/cmsis.git

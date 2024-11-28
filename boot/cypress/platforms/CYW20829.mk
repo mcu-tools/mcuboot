@@ -39,7 +39,12 @@ CRYPTO_ACC_TYPE := MXCRYPTOLITE
 ifeq ($(PLATFORM), CYW20829)
 DEVICE ?= CYW20829B0LKML
 else ifeq ($(PLATFORM), CYW89829)
-DEVICE ?= CYW89829B0KML
+DEVICE ?= CYW89829B0232
+endif
+
+# If PSVP build is required
+ifeq ($(CYW20829_PSVP), 1)
+SERVICE_APP_PLATFORM_SUFFIX := _psvp
 endif
 
 #Led pin default config
@@ -53,12 +58,12 @@ UART_RX_DEFAULT ?= CYBSP_DEBUG_UART_RX
 PLATFORM_SUFFIX ?= cyw20829
 
 # Add device name to defines
-DEFINES += $(DEVICE)
+DEFINES += -D$(DEVICE)
 
 USE_SWAP_STATUS ?= 1
 
 ifeq ($(USE_SWAP_STATUS), 1)
-DEFINES += USE_SWAP_STATUS=1
+DEFINES += -DUSE_SWAP_STATUS=1
 endif
 
 # Default upgrade method
@@ -73,7 +78,7 @@ FLASH_START := 0x60000000
 FLASH_XIP_START := 0x08000000
 
 ifeq ($(SMIF_ENC), 1)
-    DEFINES += MCUBOOT_ENC_IMAGES_SMIF=1
+    DEFINES += -DMCUBOOT_ENC_IMAGES_SMIF=1
 endif
 
 ###############################################################################
@@ -86,22 +91,22 @@ THIS_APP_PATH = $(PRJ_DIR)/libs
 ifeq ($(APP_NAME), MCUBootApp)
 
 SMIF_ENC ?= 0
-DEFINES += COMPONENT_CUSTOM_DESIGN_MODUS
+
+ifeq ($(CYW20829_PSVP), )
+DEFINES += -DCOMPONENT_CUSTOM_DESIGN_MODUS
+endif
 
 # Platform dependend utils files
-PLATFORM_APP_SOURCES := $(PRJ_DIR)/platforms/utils/$(FAMILY)/cyw_platform_utils.c
-PLATFORM_INCLUDE_DIRS_UTILS := $(PRJ_DIR)/platforms/utils/$(FAMILY)
+C_FILES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/platform_utils.c
+INCLUDE_DIRS += $(PRJ_DIR)/platforms/utils/$(FAMILY)
 
 # mbedTLS hardware acceleration settings
 ifeq ($(USE_CRYPTO_HW), 1)
 # cy-mbedtls-acceleration related include directories
-INCLUDE_DIRS_MBEDTLS_CRYPTOLITE := $(PRJ_DIR)/platforms/crypto/$(FAMILY)/mbedtls_Cryptolite
+INCLUDE_DIRS += $(PRJ_DIR)/platforms/crypto/$(FAMILY)/mbedtls_Cryptolite
 # Collect source files for MbedTLS acceleration
-SOURCES_MBEDTLS_CRYPTOLITE := $(wildcard $(PRJ_DIR)/platforms/crypto/$(FAMILY)/mbedtls_Cryptolite/*.c)
+C_FILES += $(wildcard $(PRJ_DIR)/platforms/crypto/$(FAMILY)/mbedtls_Cryptolite/*.c)
 #
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_MBEDTLS_CRYPTOLITE))
-# Collected source files for libraries
-SOURCES_LIBS += $(SOURCES_MBEDTLS_CRYPTOLITE)
 endif
 
 ###############################################################################
@@ -115,6 +120,7 @@ LCS ?= NORMAL_NO_SECURE
 APPTYPE ?= flash
 SIGN_TYPE ?= bootrom_next_app
 SMIF_CRYPTO_CONFIG ?= NONE
+MCUBOOT_DEPENDENCY_CHECK ?= 1
 
 ifeq ($(LCS), NORMAL_NO_SECURE)
 APP_DEFAULT_POLICY ?= $(PRJ_DIR)/policy/policy_no_secure.json
@@ -210,7 +216,7 @@ PLATFORM_USER_APP_START ?= $(shell echo $$(($(PRIMARY_IMG_START)-$(FLASH_START)+
 PLATFORM_DEFAULT_RAM_START ?= 0x2000C000
 PLATFORM_DEFAULT_RAM_SIZE  ?= 0x10000
 
-PLATFORM_DEFINES_APP += -DUSER_APP_START_OFF=0x20000
+DEFINES += -DUSER_APP_START_OFF=0x20000
 
 PLATFORM_DEFAULT_IMG_VER_ARG ?= 1.0.0
 
@@ -222,6 +228,10 @@ ifeq ($(ENC_IMG), 1)
 	PLATFORM_SIGN_ARGS += --encrypt --enckey ../../$(ENC_KEY_FILE).pem
 	PLATFORM_SIGN_ARGS += --app-addr=$(PLATFORM_USER_APP_START)
 endif
+
+pre_build:
+	$(info [PRE_BUILD] - Generating linker script for application $(CUR_APP_PATH)/linker/$(APP_NAME).ld)
+	@$(CC) -E -x c $(CFLAGS) $(INCLUDE_DIRS) $(CUR_APP_PATH)/linker/$(APP_NAME)_$(CORE)_template$(LD_SUFFIX).ld | grep -v '^#' >$(CUR_APP_PATH)/linker/$(APP_NAME).ld
 
 post_build: $(OUT_CFG)/$(APP_NAME).bin
 ifeq ($(POST_BUILD_ENABLE), 1)
@@ -249,104 +259,22 @@ CFLAGS_PLATFORM := -c -mcpu=cortex-m33+nodsp --specs=nano.specs
 ###############################################################################
 # Common libraries
 ###############################################################################
-PLATFORM_SYSTEM_FILE_NAME := ns_system_$(PLATFORM_SUFFIX).c
-PLATFORM_SOURCES_PDL_STARTUP := ns_start_$(PLATFORM_SUFFIX).c
+C_FILES += ns_system_$(PLATFORM_SUFFIX).c
+C_FILES += ns_start_$(PLATFORM_SUFFIX).c
 
-PLATFORM_SOURCES_HAL := $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/source/pin_packages/cyhal_cyw20829_56_qfn.c
-PLATFORM_SOURCES_HAL += $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/source/triggers/cyhal_triggers_cyw20829.c
-PLATFORM_SOURCES_HAL += $(wildcard $(PRJ_DIR)/libs/mtb-hal-cat1/source/*.c)
+INCLUDE_DIRS += $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system
 
-PLATFORM_INCLUDE_DIRS_PDL_STARTUP := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system
+INCLUDE_DIRS += $(PRJ_DIR)/libs/retarget-io
 
-PLATFORM_INCLUDE_RETARGET_IO := $(PRJ_DIR)/libs/retarget-io
+INCLUDE_DIRS += $(PRJ_DIR)/libs/mtb-hal-cat1/include
+INCLUDE_DIRS += $(PRJ_DIR)/libs/mtb-hal-cat1/include_pvt
+INCLUDE_DIRS += $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/
+INCLUDE_DIRS += $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/pin_packages
 
-PLATFORM_INCLUDE_DIRS_HAL := $(PRJ_DIR)/libs/mtb-hal-cat1/include
-PLATFORM_INCLUDE_DIRS_HAL += $(PRJ_DIR)/libs/mtb-hal-cat1/include_pvt
-PLATFORM_INCLUDE_DIRS_HAL += $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/
-PLATFORM_INCLUDE_DIRS_HAL += $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/pin_packages
-#PLATFORM_INCLUDE_DIRS_HAL += $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/triggers
+DEFINES += -DCY_USING_HAL
+DEFINES += -DCOMPONENT_CM33
+DEFINES += -DCOMPONENT_PSOC6HAL
+DEFINES += -DCOMPONENT_PSVP_CYW20829
+DEFINES += -DCOMPONENT_SOFTFP
+DEFINES += -DFLASH_BOOT
 
-PLATFORM_DEFINES_LIBS := -DCY_USING_HAL
-PLATFORM_DEFINES_LIBS += -DCOMPONENT_CM33
-PLATFORM_DEFINES_LIBS += -DCOMPONENT_PSOC6HAL
-PLATFORM_DEFINES_LIBS += -DCOMPONENT_SOFTFP
-PLATFORM_DEFINES_LIBS += -DFLASH_BOOT
-
-###############################################################################
-# Print debug information about all settings used and/or set in this file
-ifeq ($(VERBOSE), 1)
-$(info #### CYW20829.mk ####)
-$(info APPTYPE <-> $(APPTYPE))
-$(info APP_DEFAULT_POLICY <-> $(APP_DEFAULT_POLICY))
-$(info APP_NAME <-- $(APP_NAME))
-$(info BOOTLOADER_SIZE <-- $(BOOTLOADER_SIZE))
-$(info CFLAGS_PLATFORM --> $(CFLAGS_PLATFORM))
-$(info CORE <-> $(CORE))
-$(info CORE_SUFFIX --> $(CORE_SUFFIX))
-$(info DEFINES --> $(DEFINES))
-$(info DEVICE <-> $(DEVICE))
-$(info ENC_IMG <-- $(ENC_IMG))
-$(info ENC_KEY_FILE <-- $(ENC_KEY_FILE))
-$(info FAMILY <-- $(FAMILY))
-$(info FLASH_START <-> $(FLASH_START))
-$(info FLASH_XIP_START <-> $(FLASH_XIP_START))
-$(info GCC_PATH <-- $(GCC_PATH))
-$(info HEADER_FILES <-- $(HEADER_FILES))
-$(info HEADER_OFFSET <-- $(HEADER_OFFSET))
-$(info INCLUDE_DIRS_LIBS --> $(INCLUDE_DIRS_LIBS))
-$(info INCLUDE_DIRS_MBEDTLS_CRYPTOLITE <-> $(INCLUDE_DIRS_MBEDTLS_CRYPTOLITE))
-$(info LCS <-> $(LCS))
-$(info LED_PIN_DEFAULT --> $(LED_PIN_DEFAULT))
-$(info LED_PORT_DEFAULT --> $(LED_PORT_DEFAULT))
-$(info OUT_CFG <-- $(OUT_CFG))
-$(info PDL_CAT_SUFFIX <-> $(PDL_CAT_SUFFIX))
-$(info PLATFORM_APP_SOURCES --> $(PLATFORM_APP_SOURCES))
-$(info PLATFORM_CHUNK_SIZE --> $(PLATFORM_CHUNK_SIZE))
-$(info PLATFORM_CY_MAX_EXT_FLASH_ERASE_SIZE --> $(PLATFORM_CY_MAX_EXT_FLASH_ERASE_SIZE))
-$(info PLATFORM_DEFAULT_ERASED_VALUE --> $(PLATFORM_DEFAULT_ERASED_VALUE))
-$(info PLATFORM_DEFAULT_IMG_VER_ARG --> $(PLATFORM_DEFAULT_IMG_VER_ARG))
-$(info PLATFORM_DEFAULT_RAM_SIZE --> $(PLATFORM_DEFAULT_RAM_SIZE))
-$(info PLATFORM_DEFAULT_RAM_START --> $(PLATFORM_DEFAULT_RAM_START))
-$(info PLATFORM_DEFAULT_USE_OVERWRITE --> $(PLATFORM_DEFAULT_USE_OVERWRITE))
-$(info PLATFORM_DEFINES_APP --> $(PLATFORM_DEFINES_APP))
-$(info PLATFORM_DEFINES_LIBS --> $(PLATFORM_DEFINES_LIBS))
-$(info PLATFORM_INCLUDE_DIRS_FLASH --> $(PLATFORM_INCLUDE_DIRS_FLASH))
-$(info PLATFORM_INCLUDE_DIRS_HAL --> $(PLATFORM_INCLUDE_DIRS_HAL))
-$(info PLATFORM_INCLUDE_DIRS_PDL_STARTUP --> $(PLATFORM_INCLUDE_DIRS_PDL_STARTUP))
-$(info PLATFORM_INCLUDE_DIRS_RETARGET_IO --> $(PLATFORM_INCLUDE_DIRS_RETARGET_IO))
-$(info PLATFORM_INCLUDE_DIRS_UTILS --> $(PLATFORM_INCLUDE_DIRS_UTILS))
-$(info PLATFORM_SERVICE_APP_DESC_OFFSET <-- $(PLATFORM_SERVICE_APP_DESC_OFFSET))
-$(info PLATFORM_SERVICE_APP_OFFSET <-- $(PLATFORM_SERVICE_APP_OFFSET))
-$(info PLATFORM_SERVICE_APP_SIZE --> $(PLATFORM_SERVICE_APP_SIZE))
-$(info PLATFORM_SIGN_ARGS --> $(PLATFORM_SIGN_ARGS))
-$(info PLATFORM_SOURCES_FLASH --> $(PLATFORM_SOURCES_FLASH))
-$(info PLATFORM_SOURCES_HAL --> $(PLATFORM_SOURCES_HAL))
-$(info PLATFORM_SOURCES_PDL_RUNTIME --> $(PLATFORM_SOURCES_PDL_RUNTIME))
-$(info PLATFORM_SOURCES_PDL_STARTUP --> $(PLATFORM_SOURCES_PDL_STARTUP))
-$(info PLATFORM_SOURCES_RETARGET_IO --> $(PLATFORM_SOURCES_RETARGET_IO))
-$(info PLATFORM_SUFFIX <-> $(PLATFORM_SUFFIX))
-$(info PLATFORM_SYSTEM_FILE_NAME --> $(PLATFORM_SYSTEM_FILE_NAME))
-$(info PLATFORM_USER_APP_START <-> $(PLATFORM_USER_APP_START))
-$(info POST_BUILD_ENABLE <-- $(POST_BUILD_ENABLE))
-$(info PRIMARY_IMG_START <-- $(PRIMARY_IMG_START))
-$(info PRJ_DIR <-- $(PRJ_DIR))
-$(info PROVISION_PATH <-> $(PROVISION_PATH))
-$(info SERVICE_APP_NAME <-> $(SERVICE_APP_NAME))
-$(info SERVICE_APP_PATH <-> $(SERVICE_APP_PATH))
-$(info SERVICE_APP_PLATFORM_SUFFIX <-> $(SERVICE_APP_PLATFORM_SUFFIX))
-$(info SHELL <-- $(SHELL))
-$(info SIGN_ARGS <-- $(SIGN_ARGS))
-$(info SIGN_TYPE <-> $(SIGN_TYPE))
-$(info SLOT_SIZE <-- $(SLOT_SIZE))
-$(info SMIF_CRYPTO_CONFIG <-> $(SMIF_CRYPTO_CONFIG))
-$(info SOURCES_LIBS --> $(SOURCES_LIBS))
-$(info SOURCES_MBEDTLS_CRYPTOLITE <-> $(SOURCES_MBEDTLS_CRYPTOLITE))
-$(info TOOLCHAIN_PATH <-- $(TOOLCHAIN_PATH))
-$(info UART_RX_DEFAULT --> $(UART_RX_DEFAULT))
-$(info UART_TX_DEFAULT --> $(UART_TX_DEFAULT))
-$(info UPGRADE_SUFFIX <-- $(UPGRADE_SUFFIX))
-$(info USE_CRYPTO_HW <-> $(USE_CRYPTO_HW))
-$(info USE_CUSTOM_MEMORY_MAP --> $(USE_CUSTOM_MEMORY_MAP))
-$(info USE_EXTERNAL_FLASH --> $(USE_EXTERNAL_FLASH))
-$(info USE_HW_ROLLBACK_PROT <-- $(USE_HW_ROLLBACK_PROT))
-endif

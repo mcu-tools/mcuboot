@@ -152,46 +152,49 @@ static int swap_status_read_record(uint32_t rec_offset, uint8_t *data, uint32_t 
     if (rc != 0) {
         return -1;
     }
-    else {
-        /* loop over copies/duplicates */
-        for (uint32_t i = 0; i < BOOT_SWAP_STATUS_MULT; i++) {
-            /* calculate final duplicate offset */
-            fin_offset = rec_offset + i * BOOT_SWAP_STATUS_D_SIZE;
 
+    /* loop over copies/duplicates */
+    for (uint32_t i = 0; i < BOOT_SWAP_STATUS_MULT; i++) {
+        /* calculate final duplicate offset */
+        fin_offset = rec_offset + i * BOOT_SWAP_STATUS_D_SIZE;
+
+        rc = flash_area_read(fap_stat, fin_offset + BOOT_SWAP_STATUS_PAYLD_SZ, &magic, sizeof(magic));
+        if (rc != 0) {
+            return -1;
+        }
+
+        if (magic == BOOT_SWAP_STATUS_MAGIC) {
             rc = flash_area_read(fap_stat, fin_offset, record_buff, sizeof(record_buff));
             if (rc != 0) {
                 return -1;
             }
-            else {
-                /* read magic value to know if area was pre-erased */
-                magic = pack_bytes_u32(&record_buff[BOOT_SWAP_STATUS_PAYLD_SZ]);
-                if (magic == BOOT_SWAP_STATUS_MAGIC) {   /* read CRC */
-                    crc = pack_bytes_u32(&record_buff[BOOT_SWAP_STATUS_ROW_SZ -
-                                            BOOT_SWAP_STATUS_CRC_SZ]);
-                    /* check record data integrity first */
-                    if (crc == calc_record_crc(record_buff, BOOT_SWAP_STATUS_ROW_SZ-BOOT_SWAP_STATUS_CRC_SZ)) {
-                        /* look for counter */
-                        counter = pack_bytes_u32(&record_buff[BOOT_SWAP_STATUS_ROW_SZ -
-                                                    BOOT_SWAP_STATUS_CNT_SZ -
-                                                    BOOT_SWAP_STATUS_CRC_SZ]);
-                        /* find out counter max */
-                        if (counter >= max_cnt) {
-                            max_cnt = counter;
-                            *max_idx = i;
-                            data_offset = fin_offset;
-                        }
-                    }
-                    /* if crc != calculated() */
-                    else {
-                        crc_fail++;
-                    }
-                }
-                else {
-                    magic_fail++;
+
+            crc = pack_bytes_u32(&record_buff[BOOT_SWAP_STATUS_ROW_SZ -
+                                              BOOT_SWAP_STATUS_CRC_SZ]);
+            /* check record data integrity first */
+            if (crc == calc_record_crc(record_buff, BOOT_SWAP_STATUS_ROW_SZ - BOOT_SWAP_STATUS_CRC_SZ)) {
+                /* look for counter */
+                counter = pack_bytes_u32(&record_buff[BOOT_SWAP_STATUS_ROW_SZ -
+                                                      BOOT_SWAP_STATUS_CNT_SZ -
+                                                      BOOT_SWAP_STATUS_CRC_SZ]);
+                /* find out counter max */
+                if (counter >= max_cnt) {
+                    max_cnt = counter;
+                    *max_idx = i;
+                    data_offset = fin_offset;
                 }
             }
+            /* if crc != calculated() */
+            else {
+                (void) flash_area_erase(fap_stat, fin_offset, sizeof(record_buff));
+                crc_fail++;
+            }
+
+        } else {
+            magic_fail++;
         }
     }
+
     /* no magic found - status area is pre-erased, start from scratch */
     if (magic_fail == BOOT_SWAP_STATUS_MULT) {
         /* emulate last index was received, so next will start from beginning */
@@ -228,10 +231,11 @@ static int swap_status_write_record(uint32_t rec_offset, uint32_t copy_num, uint
 { /* it receives explicitly BOOT_SWAP_STATUS_PAYLD_SZ of data */
     int rc = -1;
 
-    uint32_t fin_offset;
+    uint32_t fin_offset, fin_offset_prev;
     /* increment counter field */
     uint32_t next_counter = copy_counter + 1U;
     uint32_t next_crc;
+    uint32_t copy_num_prev;
 
     const struct flash_area *fap_stat = NULL;
 
@@ -260,12 +264,15 @@ static int swap_status_write_record(uint32_t rec_offset, uint32_t copy_num, uint
     /* we already know what copy number was last and correct */
     /* increment duplicate index */
     /* calculate final duplicate offset */
+    copy_num_prev = copy_num;
+
     if (copy_num == (BOOT_SWAP_STATUS_MULT - 1U)) {
         copy_num = 0;
     }
     else {
         copy_num++;
     }
+    fin_offset_prev = rec_offset + copy_num_prev*BOOT_SWAP_STATUS_D_SIZE;
     fin_offset = rec_offset + copy_num*BOOT_SWAP_STATUS_D_SIZE;
 
     /* erase obsolete status record before write */
@@ -276,6 +283,11 @@ static int swap_status_write_record(uint32_t rec_offset, uint32_t copy_num, uint
 
     /* write prepared record into flash */
     rc = flash_area_write(fap_stat, fin_offset, record_buff, sizeof(record_buff));
+    if (rc != 0) {
+        return -1;
+    }
+
+    rc = flash_area_erase(fap_stat, fin_offset_prev, sizeof(record_buff));
 
     flash_area_close(fap_stat);
 

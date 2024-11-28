@@ -36,21 +36,40 @@
 
 static inline const struct flash_area_interface* flash_area_get_api(uint8_t fd_id)
 {
+#if defined(USE_INTERNAL_FLASH_CODE_LARGE) || defined(USE_INTERNAL_FLASH_CODE_SMALL)
     extern const struct flash_area_interface internal_mem_interface;
+#endif /* defined(USE_INTERNAL_FLASH_CODE_LARGE) || defined(USE_INTERNAL_FLASH_CODE_SMALL) */
+
+#if defined(USE_INTERNAL_FLASH_WORK_LARGE) || defined(USE_INTERNAL_FLASH_WORK_SMALL)
     extern const struct flash_area_interface internal_mem_eeprom_interface;
+#endif /* defined(USE_INTERNAL_FLASH_WORK_LARGE) || defined(USE_INTERNAL_FLASH_WORK_SMALL) */
 
     const struct flash_area_interface* interface = NULL;
 
     switch (fd_id) {
+#if defined(USE_INTERNAL_FLASH_CODE_LARGE)
         case INTERNAL_FLASH_CODE_LARGE:
+            interface = &internal_mem_interface;
+            break;
+#endif /* defined(USE_INTERNAL_FLASH_CODE_LARGE) */
+
+#if defined(USE_INTERNAL_FLASH_CODE_SMALL)
         case INTERNAL_FLASH_CODE_SMALL:
             interface = &internal_mem_interface;
             break;
+#endif /* defined(USE_INTERNAL_FLASH_CODE_SMALL) */
 
+#if defined(USE_INTERNAL_FLASH_WORK_LARGE)
         case INTERNAL_FLASH_WORK_LARGE:
+            interface = &internal_mem_eeprom_interface;
+            break;
+#endif /* defined(USE_INTERNAL_FLASH_WORK_LARGE) */
+
+#if defined(USE_INTERNAL_FLASH_WORK_SMALL)
         case INTERNAL_FLASH_WORK_SMALL:
             interface = &internal_mem_eeprom_interface;
             break;
+#endif /* defined(USE_INTERNAL_FLASH_WORK_SMALL) */
 
         default:
             assert(false);

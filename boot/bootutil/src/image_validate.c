@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <string.h>
+#include <assert.h>
 
 #include <flash_map_backend/flash_map_backend.h>
 
@@ -123,7 +124,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     size += hdr->ih_protect_tlv_size;
 
     do
-    {      
+    {
 #if defined(MCUBOOT_RAM_LOAD)
 #if defined(MCUBOOT_MULTI_MEMORY_LOAD)
         if (IS_RAM_BOOTABLE(hdr) && IS_RAM_BOOT_STAGE())
@@ -229,15 +230,15 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 
 /* Complex result masks for bootutil_img_validate() */
 #define SET_MASK_IMAGE_TLV_SHA256       ((signed)0x0000002E)
-fih_int FIH_MASK_IMAGE_TLV_SHA256 = FIH_INT_INIT(
+fih_int FIH_MASK_IMAGE_TLV_SHA256 = FIH_INT_INIT_GLOBAL(
         SET_MASK_IMAGE_TLV_SHA256);
 
 #define SET_MASK_SIG_TLV_EXPECTED       ((signed)0x00007400)
-fih_int FIH_MASK_SIG_TLV_EXPECTED = FIH_INT_INIT(
+fih_int FIH_MASK_SIG_TLV_EXPECTED = FIH_INT_INIT_GLOBAL(
         SET_MASK_SIG_TLV_EXPECTED);
 
 #define SET_MASK_IMAGE_TLV_SEC_CNT      ((signed)0x005C0000)
-fih_int FIH_MASK_IMAGE_TLV_SEC_CNT = FIH_INT_INIT(
+fih_int FIH_MASK_IMAGE_TLV_SEC_CNT = FIH_INT_INIT_GLOBAL(
         SET_MASK_IMAGE_TLV_SEC_CNT);
 
 #define CHK_MASK_IMAGE_TLV_SHA256       SET_MASK_IMAGE_TLV_SHA256
@@ -271,7 +272,7 @@ fih_int FIH_MASK_IMAGE_TLV_SEC_CNT = FIH_INT_INIT(
     #define CHK_MASK_IMAGE_TLV_SEC_CNT      ((signed)0)
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
 
-fih_int FIH_IMG_VALIDATE_COMPLEX_OK = FIH_INT_INIT( \
+fih_int FIH_IMG_VALIDATE_COMPLEX_OK = FIH_INT_INIT_GLOBAL( \
     CHK_MASK_IMAGE_TLV_SHA256  |                      \
     CHK_MASK_SIG_TLV_EXPECTED  |                      \
     CHK_MASK_IMAGE_TLV_SEC_CNT);
@@ -340,7 +341,7 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
      *   HW) a fault is injected to accept the public key as valid one.
      */
     FIH_CALL(boot_fih_memequal, fih_rc, hash, key_hash, key_hash_size);
-    if (FIH_TRUE == fih_eq(fih_rc, FIH_SUCCESS)) {
+    if (fih_eq(fih_rc, FIH_SUCCESS)) {
         bootutil_keys[0].key = key;
         pub_key_len = key_len;
         return 0;
@@ -419,8 +420,7 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
         goto out;
     }
 
-    if (FIH_TRUE == fih_uint_eq(fih_uint_encode(img_chk_cnt),
-                                *img_security_cnt)) {
+    if (fih_uint_eq(fih_uint_encode(img_chk_cnt), *img_security_cnt)) {
 
         if (img_sec_cnt == img_chk_cnt) {
             fih_rc = FIH_SUCCESS;
@@ -529,11 +529,11 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     fih_uint security_cnt = FIH_UINT_MAX;
     uint32_t img_security_cnt = 0;
+#ifdef CYW20829
     uint8_t reprov_packet[REPROV_PACK_SIZE];
     fih_int security_counter_valid = FIH_FAILURE;
-    #ifdef CYW20829
     fih_uint extracted_img_cnt = FIH_UINT_MAX;
-    #endif /* CYW20829 */
+#endif /* CYW20829 */
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
 
     rc = bootutil_img_hash(enc_state, image_index, hdr, fap, tmp_buf,
@@ -579,7 +579,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 
             FIH_CALL(boot_fih_memequal, fih_rc, hash, buf, sizeof(hash));
 
-            if (fih_eq(fih_rc, FIH_SUCCESS) == FIH_TRUE) {
+            if (fih_eq(fih_rc, FIH_SUCCESS)) {
                 /* Encode succesful completion pattern to complex_result */
                 fih_complex_result = fih_or(fih_complex_result,
                                                  FIH_MASK_IMAGE_TLV_SHA256);
@@ -646,7 +646,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
                                                            buf, len, key_id);
             key_id = -1;
 
-            if (FIH_TRUE == fih_eq(FIH_SUCCESS, valid_signature)) {
+            if (fih_eq(FIH_SUCCESS, valid_signature)) {
                 /* Encode succesful completion pattern to complex_result */
                 fih_complex_result = fih_or(fih_complex_result,
                                                  FIH_MASK_SIG_TLV_EXPECTED);
@@ -677,7 +677,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 
             FIH_CALL(boot_nv_security_counter_get, fih_rc, image_index,
                                                            &security_cnt);
-            if (fih_eq(fih_rc, FIH_SUCCESS) != FIH_TRUE) {
+            if (!fih_eq(fih_rc, FIH_SUCCESS)) {
                 rc = -1;
                 goto out;
             }
@@ -690,7 +690,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             FIH_CALL(platform_security_counter_check_extract, fih_rc, 
                     (uint32_t)image_index, fih_uint_encode(img_security_cnt), &extracted_img_cnt);
 
-            if (fih_eq(fih_rc, FIH_SUCCESS) != FIH_TRUE) {
+            if (!fih_eq(fih_rc, FIH_SUCCESS)) {
                 /* The image's security counter exceeds registered value for this image */
                 rc = -1;
                 goto out;
@@ -704,13 +704,13 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             /* Compare the new image's security counter value against the
              * stored security counter value.
              */
-            if (FIH_TRUE == fih_uint_ge(fih_uint_encode(img_security_cnt), security_cnt)) {
+            if (fih_uint_ge(fih_uint_encode(img_security_cnt), security_cnt)) {
                 /* Encode succesful completion pattern to complex_result */
                 fih_complex_result = fih_or(fih_complex_result,
                                                  FIH_MASK_IMAGE_TLV_SEC_CNT);
 #ifdef CYW20829
                 /* The image's security counter has been successfully verified. */
-                security_counter_valid = fih_int_encode(HW_ROLLBACK_CNT_VALID);
+                security_counter_valid = FIH_INT_INIT(HW_ROLLBACK_CNT_VALID);
 #endif
             } else {
                 /* The image's security counter is not accepted. */
@@ -721,7 +721,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 #ifdef CYW20829
         } else if (type == IMAGE_TLV_PROV_PACK) {
 
-            if (FIH_TRUE == fih_eq(security_counter_valid, fih_int_encode(HW_ROLLBACK_CNT_VALID))) {
+            if (fih_eq(security_counter_valid, FIH_INT_INIT(HW_ROLLBACK_CNT_VALID))) {
                 /*
                 * Verify the image reprovisioning packet.
                 * This must always be present.
@@ -752,7 +752,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
 #ifdef CYW20829
-    if (fih_eq(security_counter_valid, fih_int_encode(REPROV_PACK_VALID | HW_ROLLBACK_CNT_VALID)) != FIH_TRUE) {
+    if (!fih_eq(security_counter_valid, FIH_INT_INIT(REPROV_PACK_VALID | HW_ROLLBACK_CNT_VALID))) {
         BOOT_LOG_DBG("Reprovisioning packet TLV 0x51 is not present image = %d", image_index);
         rc = -1;
         goto out;

@@ -7,8 +7,14 @@
 
 #include "bootutil/fault_injection_hardening.h"
 
+#ifdef FIH_ENABLE_DELAY
+#include "boot_rng.h"
+
+#define FIH_DELAY_MSK 0x3FUL
+#endif /* FIH_ENABLE_DELAY */
+
 #ifdef FIH_ENABLE_CFI
-fih_uint fih_cfi_ctr = FIH_UINT_INIT(0u);
+fih_uint fih_cfi_ctr = FIH_UINT_INIT_GLOBAL(0u);
 
 fih_uint fih_cfi_get_and_increment(uint8_t cnt)
 {
@@ -21,18 +27,16 @@ fih_uint fih_cfi_get_and_increment(uint8_t cnt)
 
     fih_cfi_ctr = fih_uint_encode(fih_uint_decode(fih_cfi_ctr) + cnt);
 
-    fih_uint_validate(fih_cfi_ctr);
-    fih_uint_validate(saved_ctr);
+    (void)fih_uint_validate(fih_cfi_ctr);
+    (void)fih_uint_validate(saved_ctr);
 
     return saved_ctr;
 }
 
 void fih_cfi_validate(fih_uint saved)
 {
-    volatile int32_t rc = FIH_FALSE;
-
-    rc = fih_uint_eq(saved, fih_cfi_ctr);
-    if (rc != FIH_TRUE) {
+    if (!fih_uint_eq(saved, fih_cfi_ctr))
+    {
         FIH_PANIC;
     }
 }
@@ -45,7 +49,7 @@ void fih_cfi_decrement(void)
 
     fih_cfi_ctr = fih_uint_encode(fih_uint_decode(fih_cfi_ctr) - 1u);
 
-    fih_uint_validate(fih_cfi_ctr);
+    (void)fih_uint_validate(fih_cfi_ctr);
 }
 #endif /* FIH_ENABLE_CFI */
 
@@ -74,15 +78,61 @@ void fih_panic_loop(void)
 #endif /* FIH_ENABLE_GLOBAL_FAIL */
 
 #ifdef FIH_ENABLE_DELAY
+
+/*******************************************************************************
+ * Function Name: fih_delay_init
+ *******************************************************************************
+ * \brief Initialize assets which are required for random delay generation.
+ *
+ ******************************************************************************/
 void fih_delay_init(void)
 {
-    /* Implement here */
+    if(!boot_rng_init())
+    {
+        FIH_PANIC;
+    }
 }
 
-uint8_t fih_delay_random(void)
+
+/*******************************************************************************
+ * Function Name: fih_delay_random
+ *******************************************************************************
+ * \brief Generate 8-bit random delay number masked with FIH_DELAY_MSK.
+ *
+ * \return  8-bit random delay number masked with FIH_DELAY_MSK.
+ *
+ ******************************************************************************/
+static uint8_t fih_delay_random(void)
 {
-    /* Implement here */
-
-    return 0xFF;
+    return (uint8_t)(boot_rng_random_generate() & FIH_DELAY_MSK);
 }
+
+
+/*******************************************************************************
+ * Function Name: fih_delay
+ *******************************************************************************
+ * \brief FIH delay execution.
+ *
+ * \return  status of execution. The return value is required by calling macros
+ *          like fih_uint_eq(). It always returns true or hang in FIH_PANIC.
+ *
+ ******************************************************************************/
+bool fih_delay(void)
+{
+    volatile uint8_t counter = 0U;
+    uint8_t delay = fih_delay_random();
+
+    for (uint8_t i = 0; i < delay; i++)
+    {
+        counter++;
+    }
+
+    if (counter != delay)
+    {
+        FIH_PANIC;
+    }
+
+    return true;
+}
+
 #endif /* FIH_ENABLE_DELAY */

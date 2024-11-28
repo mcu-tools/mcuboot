@@ -20,6 +20,10 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
+#if defined(MCUBOOT_SHA256_CUSTOM_INTERFACE)
+    #include "sha256_port.h"
+#else
+
 #if (defined(MCUBOOT_USE_MBED_TLS) + \
      defined(MCUBOOT_USE_TINYCRYPT) + \
      defined(MCUBOOT_USE_CC310)) != 1
@@ -142,5 +146,7 @@ static inline int bootutil_sha256_finish(bootutil_sha256_context *ctx,
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* MCUBOOT_SHA256_CUSTOM_INTERFACE */
 
 #endif /* __BOOTUTIL_CRYPTO_SHA256_H_ */

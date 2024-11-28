@@ -45,27 +45,23 @@ FIH_PROFILE_LEVEL ?= MEDIUM
 MCUBOOT_SWAP_STATUS_FAST_BOOT ?= 0
 
 ifeq ($(BUILDCFG), Release)
-MCUBOOT_LOG_LEVEL ?= MCUBOOT_LOG_LEVEL_INFO
+    MCUBOOT_LOG_LEVEL ?= MCUBOOT_LOG_LEVEL_INFO
 else
-MCUBOOT_LOG_LEVEL ?= MCUBOOT_LOG_LEVEL_DEBUG
+    MCUBOOT_LOG_LEVEL ?= MCUBOOT_LOG_LEVEL_DEBUG
 endif
 
 ifneq ($(COMPILER), GCC_ARM)
 $(error Only GCC ARM is supported at this moment)
 endif
 
-ifeq ($(MCUBOOT_SWAP_STATUS_FAST_BOOT), 1)
-DEFINES_APP += -DMCUBOOT_SWAP_STATUS_FAST_BOOT
-endif
-
 # Check FIH profile param
 ifneq ($(filter $(FIH_PROFILE_LEVEL), $(FIH_PROFILE_LEVEL_LIST)),)
-ifneq ($(FIH_PROFILE_LEVEL), OFF) 
-DEFINES_APP += -DMCUBOOT_FIH_PROFILE_ON
-DEFINES_APP += -DMCUBOOT_FIH_PROFILE_$(FIH_PROFILE_LEVEL)
-endif
+    ifneq ($(FIH_PROFILE_LEVEL), OFF) 
+        DEFINES += -DMCUBOOT_FIH_PROFILE_ON
+        DEFINES += -DMCUBOOT_FIH_PROFILE_$(FIH_PROFILE_LEVEL)
+    endif
 else
-$(error Wrong FIH_PROFILE_LEVEL param)
+    $(error Wrong FIH_PROFILE_LEVEL param)
 endif
 
 # Output folder
@@ -78,37 +74,43 @@ OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
 include $(PRJ_DIR)/platforms.mk
 
 ifneq ($(FLASH_MAP), )
+
 ifeq ($(FAMILY), CYW20829)
 $(CUR_APP_PATH)/memorymap.mk:
 	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h -c $(PRJ_DIR)/policy/policy_secure.json > $(CUR_APP_PATH)/memorymap.mk
-else ifeq ($(FAMILY), XMC7000)
+else ifeq ($(FAMILY), PSOC6)
 $(CUR_APP_PATH)/memorymap.mk:
-	$(PYTHON_PATH) scripts/memorymap_rework.py run -p $(PLATFORM_CONFIG) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory -n memorymap > $(CUR_APP_PATH)/memorymap.mk
+	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h > $(CUR_APP_PATH)/memorymap.mk
 else
 $(CUR_APP_PATH)/memorymap.mk:
-	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h > $(CUR_APP_PATH)/memorymap.mk		
+	$(PYTHON_PATH) scripts/memorymap_rework.py run -p $(PLATFORM_CONFIG) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory -n memorymap > $(CUR_APP_PATH)/memorymap.mk
 endif
-DEFINES_APP += -DCY_FLASH_MAP_JSON
+
+    DEFINES += -DCY_FLASH_MAP_JSON
 endif
 
 include $(PRJ_DIR)/common_libs.mk
 include $(PRJ_DIR)/toolchains.mk
 
 ifeq ($(MAX_IMG_SECTORS), )
-MAX_IMG_SECTORS ?= $(PLATFORM_MAX_IMG_SECTORS)
+    MAX_IMG_SECTORS ?= $(PLATFORM_MAX_IMG_SECTORS)
 endif
 
 # Application-specific DEFINES
-DEFINES_APP += -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
-DEFINES_APP += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
-DEFINES_APP += -DBOOT_$(CORE)
-DEFINES_APP += -DAPP_$(APP_CORE)
-DEFINES_APP += -DAPP_CORE_ID=$(APP_CORE_ID)
-DEFINES_APP += -DMCUBOOT_IMAGE_NUMBER=$(MCUBOOT_IMAGE_NUMBER)
-DEFINES_APP += -DUSE_SHARED_SLOT=$(USE_SHARED_SLOT)
-DEFINES_APP += -DMCUBOOT_PLATFORM_CHUNK_SIZE=$(PLATFORM_CHUNK_SIZE)
-DEFINES_APP += -DMEMORY_ALIGN=$(PLATFORM_MEMORY_ALIGN)
-DEFINES_APP += -DPLATFORM_MAX_TRAILER_PAGE_SIZE=$(PLATFORM_MAX_TRAILER_PAGE_SIZE)
+DEFINES += -DMBEDTLS_CONFIG_FILE="\"mcuboot_crypto_config.h\""
+DEFINES += -DECC256_KEY_FILE="\"keys/$(SIGN_KEY_FILE).pub\""
+DEFINES += -DBOOT_$(CORE)
+DEFINES += -DAPP_$(APP_CORE)
+
+ifneq ($(APP_CORE_ID),)
+    DEFINES += -DAPP_CORE_ID=$(APP_CORE_ID)
+endif
+
+DEFINES += -DMCUBOOT_IMAGE_NUMBER=$(MCUBOOT_IMAGE_NUMBER)
+DEFINES += -DUSE_SHARED_SLOT=$(USE_SHARED_SLOT)
+DEFINES += -DMCUBOOT_PLATFORM_CHUNK_SIZE=$(PLATFORM_CHUNK_SIZE)
+DEFINES += -DMEMORY_ALIGN=$(PLATFORM_MEMORY_ALIGN)
+DEFINES += -DPLATFORM_MAX_TRAILER_PAGE_SIZE=$(PLATFORM_MAX_TRAILER_PAGE_SIZE)
 
 # Define MCUboot size and pass it to linker script
 LDFLAGS_DEFSYM  += -Wl,--defsym,BOOTLOADER_SIZE=$(BOOTLOADER_SIZE)
@@ -116,143 +118,138 @@ LDFLAGS_DEFSYM  += -Wl,--defsym,BOOTLOADER_SIZE=$(BOOTLOADER_SIZE)
 APP_DEFAULT_POLICY ?= $(PLATFORM_APP_DEFAULT_POLICY)
 
 ifeq ($(USE_EXTERNAL_FLASH), 1)
-ifeq ($(USE_XIP), 1)
-DEFINES_APP += -DUSE_XIP
-endif
-DEFINES_APP += -DCY_BOOT_USE_EXTERNAL_FLASH
-DEFINES_APP += -DCY_MAX_EXT_FLASH_ERASE_SIZE=$(PLATFORM_CY_MAX_EXT_FLASH_ERASE_SIZE)
+    ifeq ($(USE_XIP), 1)
+        DEFINES += -DUSE_XIP
+    endif
+
+    DEFINES += -DCY_BOOT_USE_EXTERNAL_FLASH
+    DEFINES += -DCY_MAX_EXT_FLASH_ERASE_SIZE=$(PLATFORM_CY_MAX_EXT_FLASH_ERASE_SIZE)
 endif
 
 ifeq ($(USE_OVERWRITE), 1)
-DEFINES_APP += -DMCUBOOT_OVERWRITE_ONLY
-ifeq ($(USE_SW_DOWNGRADE_PREV), 1)
-DEFINES_APP += -DMCUBOOT_DOWNGRADE_PREVENTION
-endif
+    DEFINES += -DMCUBOOT_OVERWRITE_ONLY
+    ifeq ($(USE_SW_DOWNGRADE_PREV), 1)
+        DEFINES += -DMCUBOOT_DOWNGRADE_PREVENTION
+    endif
 else
-ifeq ($(USE_BOOTSTRAP), 1)
-DEFINES_APP += -DMCUBOOT_BOOTSTRAP
+    ifeq ($(USE_BOOTSTRAP), 1)
+        DEFINES += -DMCUBOOT_BOOTSTRAP
+    endif
 endif
-endif
-DEFINES_APP += -DMCUBOOT_MAX_IMG_SECTORS=$(MAX_IMG_SECTORS)
-DEFINES_APP += -DMCUBOOT_LOG_LEVEL=$(MCUBOOT_LOG_LEVEL)
+
+DEFINES += -DMCUBOOT_MAX_IMG_SECTORS=$(MAX_IMG_SECTORS)
+DEFINES += -DMCUBOOT_LOG_LEVEL=$(MCUBOOT_LOG_LEVEL)
+
 ifeq ($(USE_HW_ROLLBACK_PROT), 1)
-DEFINES_APP += -DMCUBOOT_HW_ROLLBACK_PROT
-# Service RAM app address (size 0x8000)
-DEFINES_APP += -DSERVICE_APP_OFFSET=$(PLATFORM_SERVICE_APP_OFFSET)
-# Service RAM app input parameters address (size 0x400)
-DEFINES_APP += -DSERVICE_APP_INPUT_PARAMS_OFFSET=$(PLATFORM_SERVICE_APP_INPUT_PARAMS_OFFSET)
-# Service RAM app descriptor addr (size 0x20)
-DEFINES_APP += -DSERVICE_APP_DESC_OFFSET=$(PLATFORM_SERVICE_APP_DESC_OFFSET)
-# Service RAM app size
-DEFINES_APP += -DSERVICE_APP_SIZE=$(PLATFORM_SERVICE_APP_SIZE)
+    DEFINES += -DMCUBOOT_HW_ROLLBACK_PROT
+    # Service RAM app address (size 0x8000)
+    DEFINES += -DSERVICE_APP_OFFSET=$(PLATFORM_SERVICE_APP_OFFSET)
+    # Service RAM app input parameters address (size 0x400)
+    DEFINES += -DSERVICE_APP_INPUT_PARAMS_OFFSET=$(PLATFORM_SERVICE_APP_INPUT_PARAMS_OFFSET)
+    # Service RAM app descriptor addr (size 0x20)
+    DEFINES += -DSERVICE_APP_DESC_OFFSET=$(PLATFORM_SERVICE_APP_DESC_OFFSET)
+    # Service RAM app size
+    DEFINES += -DSERVICE_APP_SIZE=$(PLATFORM_SERVICE_APP_SIZE)
 endif
+
 # Hardware acceleration support
 ifeq ($(USE_CRYPTO_HW), 1)
-DEFINES_APP += -DMBEDTLS_USER_CONFIG_FILE="\"mcuboot_crypto_acc_config.h\""
-DEFINES_APP += -DCY_CRYPTO_HAL_DISABLE
-DEFINES_APP += -DCY_MBEDTLS_HW_ACCELERATION
+    DEFINES += -DMBEDTLS_USER_CONFIG_FILE="\"mcuboot_crypto_acc_config.h\""
+    DEFINES += -DCY_CRYPTO_HAL_DISABLE
+    DEFINES += -DCY_MBEDTLS_HW_ACCELERATION
 
-INCLUDE_DIRS_MBEDTLS_MXCRYPTO := $(CY_LIBS_PATH)/cy-mbedtls-acceleration
-INCLUDE_DIRS_MBEDTLS_MXCRYPTO += $(CY_LIBS_PATH)/cy-mbedtls-acceleration/COMPONENT_CAT1/include
+    INCLUDE_DIRS += $(CY_LIBS_PATH)/cy-mbedtls-acceleration
+    INCLUDE_DIRS += $(CY_LIBS_PATH)/cy-mbedtls-acceleration/COMPONENT_CAT1/include
 
-ifeq ($(FAMILY), CYW20829)
-INCLUDE_DIRS_MBEDTLS_MXCRYPTO += $(CY_LIBS_PATH)/cy-mbedtls-acceleration/COMPONENT_CAT1/mbedtls_$(CRYPTO_ACC_TYPE)
-SOURCES_MBEDTLS_MXCRYPTO := $(wildcard $(CY_LIBS_PATH)/cy-mbedtls-acceleration/COMPONENT_CAT1/mbedtls_$(CRYPTO_ACC_TYPE)/*.c)
-DEFINES_APP += -Dcy_stc_cryptolite_context_sha256_t=cy_stc_cryptolite_context_sha_t
-else
-INCLUDE_DIRS_MBEDTLS_MXCRYPTO += $(CY_LIBS_PATH)/cy-mbedtls-acceleration/COMPONENT_CAT1/mbedtls_$(CRYPTO_ACC_TYPE)
-SOURCES_MBEDTLS_MXCRYPTO := $(wildcard $(CY_LIBS_PATH)/cy-mbedtls-acceleration/COMPONENT_CAT1/mbedtls_$(CRYPTO_ACC_TYPE)/*.c)
+    INCLUDE_DIRS += $(CY_LIBS_PATH)/cy-mbedtls-acceleration/COMPONENT_CAT1/mbedtls_$(CRYPTO_ACC_TYPE)
+    C_FILES += $(wildcard $(CY_LIBS_PATH)/cy-mbedtls-acceleration/COMPONENT_CAT1/mbedtls_$(CRYPTO_ACC_TYPE)/*.c)
+    
+    ifeq ($(FAMILY), CYW20829)
+        DEFINES += -Dcy_stc_cryptolite_context_sha256_t=cy_stc_cryptolite_context_sha_t
+    endif
+
 endif
 
-INCLUDE_DIRS_LIBS += $(addprefix -I,$(INCLUDE_DIRS_MBEDTLS_MXCRYPTO))
-SOURCES_LIBS += $(SOURCES_MBEDTLS_MXCRYPTO)
+ifneq ($(MCUBOOT_IMAGE_NUMBER), 1)
+    ifeq ($(MCUBOOT_DEPENDENCY_CHECK), 1)
+        DEFINES += -DMCUBOOT_DEPENDENCY_CHECK
+    endif
 endif
 
 # Use key provisioned in device to verify images
 ifeq ($(USE_HW_KEY), 1)
-DEFINES_APP=-DMCUBOOT_HW_KEY
-
+    DEFINES += -DMCUBOOT_HW_KEY
 endif
 
 # Compile with user redefined values for UART HW, port, pins
 ifeq ($(USE_CUSTOM_DEBUG_UART), 1)
-DEFINES_APP += -DUSE_CUSTOM_DEBUG_UART=1
+    DEFINES += -DUSE_CUSTOM_DEBUG_UART=1
 endif
 
 # Log timestamp information
 ifeq ($(USE_LOG_TIMESTAMP), 1)
-DEFINES_APP += -DUSE_LOG_TIMESTAMP
+    DEFINES += -DUSE_LOG_TIMESTAMP
 endif
 
 # Encrypted image support
 ifeq ($(ENC_IMG), 1)
-DEFINES_APP += -DENC_IMG=1
-ifeq ($(FAMILY), CYW20829)
-DEFINES_APP += -DMCUBOOT_ENC_IMAGES_XIP
-endif
+    DEFINES += -DENC_IMG=1
+    ifeq ($(FAMILY), CYW20829)
+        DEFINES += -DMCUBOOT_ENC_IMAGES_XIP
+    endif
 # Use maximum optimization level for PSOC6 encrypted image with
 # external flash so it would fit into 0x18000 size of MCUBootApp
-ifneq ($(FAMILY), CYW20829)
-ifeq ($(BUILDCFG), Debug)
-ifeq ($(USE_EXTERNAL_FLASH), 1)
-CFLAGS_OPTIMIZATION := -Os -g3
-endif
-endif
-endif
+    ifneq ($(FAMILY), CYW20829)
+        ifeq ($(BUILDCFG), Debug)
+            ifeq ($(USE_EXTERNAL_FLASH), 1)
+                CFLAGS_OPTIMIZATION := -Os -g3
+            endif
+        endif
+    endif
 endif
 
 ifeq ($(USE_MEASURED_BOOT), 1)
-DEFINES_APP += -DMCUBOOT_MEASURED_BOOT
-DEFINES_APP += -DMAX_BOOT_RECORD_SZ=512
-DEFINES_APP += -DMCUBOOT_SHARED_DATA_BASE=0x08000800
-DEFINES_APP += -DMCUBOOT_SHARED_DATA_SIZE=0x200
+    DEFINES += -DMCUBOOT_MEASURED_BOOT
+    DEFINES += -DMAX_BOOT_RECORD_SZ=512
+    DEFINES += -DMCUBOOT_SHARED_DATA_BASE=0x08000800
+    DEFINES += -DMCUBOOT_SHARED_DATA_SIZE=0x200
 endif
 
 ifeq ($(USE_DATA_SHARING), 1)
-DEFINES_APP += -DMCUBOOT_DATA_SHARING
-DEFINES_APP += -DMAX_BOOT_RECORD_SZ=512
-DEFINES_APP += -DMCUBOOT_SHARED_DATA_BASE=0x08000800
-DEFINES_APP += -DMCUBOOT_SHARED_DATA_SIZE=0x200
+    DEFINES += -DMCUBOOT_DATA_SHARING
+    DEFINES += -DMAX_BOOT_RECORD_SZ=512
+    DEFINES += -DMCUBOOT_SHARED_DATA_BASE=0x08000800
+    DEFINES += -DMCUBOOT_SHARED_DATA_SIZE=0x200
 endif
 
 ifeq ($(BOOT_RECORD_SW_TYPE), )
-BOOT_RECORD := --boot-record MCUBootApp
+    BOOT_RECORD := --boot-record MCUBootApp
 else
-BOOT_RECORD := --boot-record $(BOOT_RECORD_SW_TYPE)
+    BOOT_RECORD := --boot-record $(BOOT_RECORD_SW_TYPE)
 endif
 
 # Collect MCUBoot sourses
-SOURCES_MCUBOOT := $(wildcard $(PRJ_DIR)/../bootutil/src/*.c)
+C_FILES += $(wildcard $(PRJ_DIR)/../bootutil/src/*.c)
 
 # Collect MCUBoot Application sources
-SOURCES_APP_SRC := main.c keys.c
+C_FILES += $(CUR_APP_PATH)/main.c $(CUR_APP_PATH)/keys.c
+
 ifeq ($(USE_EXEC_TIME_CHECK), 1)
-DEFINES_APP += -DUSE_EXEC_TIME_CHECK=1
-SOURCES_APP_SRC += misc/timebase_us.c
+    DEFINES += -DUSE_EXEC_TIME_CHECK=1
+    C_FILES += $(CUR_APP_PATH)/misc/timebase_us.c
 endif
 
-INCLUDE_DIRS_UTILS := $(PLATFORM_INCLUDE_DIRS_UTILS)
 
-# Collect all the sources
-SOURCES_APP := $(SOURCES_MCUBOOT)
-SOURCES_APP += $(addprefix $(CUR_APP_PATH)/, $(SOURCES_APP_SRC))
-SOURCES_APP += $(PLATFORM_APP_SOURCES)
+INCLUDE_DIRS += $(PRJ_DIR)/../bootutil/include
+INCLUDE_DIRS += $(PRJ_DIR)/../bootutil/include/bootutil
+INCLUDE_DIRS += $(PRJ_DIR)/../bootutil/include/bootutil/crypto
+INCLUDE_DIRS += $(PRJ_DIR)/../bootutil/src
+INCLUDE_DIRS += $(PRJ_DIR)/..
 
-INCLUDE_DIRS_MCUBOOT := $(addprefix -I, $(PRJ_DIR)/../bootutil/include)
-INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(PRJ_DIR)/../bootutil/include/bootutil)
-INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(PRJ_DIR)/../bootutil/include/bootutil/crypto)
-INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(PRJ_DIR)/../bootutil/src)
-INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(PRJ_DIR)/..)
-
-INCLUDE_DIRS_APP += $(addprefix -I, $(PRJ_DIR))
-INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH))
-INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/config)
-INCLUDE_DIRS_APP += $(addprefix -I, $(CUR_APP_PATH)/os)
-INCLUDE_DIRS_APP += $(addprefix -I, $(INCLUDE_DIRS_FLASH))
-INCLUDE_DIRS_APP += $(addprefix -I, $(INCLUDE_DIRS_UTILS))
-
-ASM_FILES_APP :=
-ASM_FILES_APP += $(ASM_FILES_STARTUP)
+INCLUDE_DIRS += $(PRJ_DIR)
+INCLUDE_DIRS += $(CUR_APP_PATH)
+INCLUDE_DIRS += $(CUR_APP_PATH)/config
+INCLUDE_DIRS += $(CUR_APP_PATH)/os
 
 # Pass variables to linker script and overwrite path to it, if custom is required
 ifeq ($(FAMILY), XMC7000)
@@ -272,75 +269,4 @@ else ifeq ($(COMPILER), ARM)
 else
     $(error $(COMPILER) not supported at this moment)
 endif
-
-###############################################################################
-# Print debug information about all settings used and/or set in this file
-ifeq ($(VERBOSE), 1)
-$(info #### MCUBootApp.mk ####)
-$(info APP_CORE <-- $(APP_CORE))
-$(info APP_DEFAULT_POLICY --> $(APP_DEFAULT_POLICY))
-$(info APP_NAME <-> $(APP_NAME))
-$(info ASM_FILES_APP --> $(ASM_FILES_APP))
-$(info ASM_FILES_STARTUP <-- $(ASM_FILES_STARTUP))
-$(info BOOTLOADER_SIZE <-- $(BOOTLOADER_SIZE))
-$(info BOOT_RECORD --> $(BOOT_RECORD))
-$(info BOOT_RECORD_SW_TYPE <-- $(BOOT_RECORD_SW_TYPE))
-$(info BUILDCFG <-- $(BUILDCFG))
-$(info CFLAGS_OPTIMIZATION --> $(CFLAGS_OPTIMIZATION))
-$(info COMPILER <-> $(COMPILER))
-$(info CORE <-- $(CORE))
-$(info CUR_APP_PATH <-- $(CUR_APP_PATH))
-$(info CY_LIBS_PATH <-- $(CY_LIBS_PATH))
-$(info DEFINES_APP --> $(DEFINES_APP))
-$(info ENC_IMG <-> $(ENC_IMG))
-$(info FLASH_MAP <-- $(FLASH_MAP))
-$(info INCLUDE_DIRS_APP --> $(INCLUDE_DIRS_APP))
-$(info INCLUDE_DIRS_FLASH <-> $(INCLUDE_DIRS_FLASH))
-$(info INCLUDE_DIRS_LIBS --> $(INCLUDE_DIRS_LIBS))
-$(info INCLUDE_DIRS_MBEDTLS_MXCRYPTO <-> $(INCLUDE_DIRS_MBEDTLS_MXCRYPTO))
-$(info INCLUDE_DIRS_MCUBOOT --> $(INCLUDE_DIRS_MCUBOOT))
-$(info INCLUDE_DIRS_UTILS <-> $(INCLUDE_DIRS_UTILS))
-$(info LDFLAGS --> $(LDFLAGS))
-$(info LDFLAGS_DEFSYM <-> $(LDFLAGS_DEFSYM))
-$(info LINKER_SCRIPT --> $(LINKER_SCRIPT))
-$(info MAX_IMG_SECTORS <-> $(MAX_IMG_SECTORS))
-$(info MCUBOOT_IMAGE_NUMBER <-> $(MCUBOOT_IMAGE_NUMBER))
-$(info MCUBOOT_LOG_LEVEL <-> $(MCUBOOT_LOG_LEVEL))
-$(info OUT <-> $(OUT))
-$(info OUT_CFG --> $(OUT_CFG))
-$(info OUT_TARGET <-> $(OUT_TARGET))
-$(info PLATFORM <-- $(PLATFORM))
-$(info PLATFORM_APP_DEFAULT_POLICY <-- $(PLATFORM_APP_DEFAULT_POLICY))
-$(info PLATFORM_APP_SOURCES <-- $(PLATFORM_APP_SOURCES))
-$(info PLATFORM_CY_MAX_EXT_FLASH_ERASE_SIZE <-- $(PLATFORM_CY_MAX_EXT_FLASH_ERASE_SIZE))
-$(info PLATFORM_INCLUDE_DIRS_FLASH <-- $(PLATFORM_INCLUDE_DIRS_FLASH))
-$(info PLATFORM_INCLUDE_DIRS_UTILS <-- $(PLATFORM_INCLUDE_DIRS_UTILS))
-$(info PLATFORM_MAX_IMG_SECTORS <-- $(PLATFORM_MAX_IMG_SECTORS))
-$(info PLATFORM_SERVICE_APP_DESC_OFFSET <-- $(PLATFORM_SERVICE_APP_DESC_OFFSET))
-$(info PLATFORM_SERVICE_APP_INPUT_PARAMS_OFFSET <-- $(PLATFORM_SERVICE_APP_INPUT_PARAMS_OFFSET))
-$(info PLATFORM_SERVICE_APP_OFFSET <-- $(PLATFORM_SERVICE_APP_OFFSET))
-$(info PLATFORM_SERVICE_APP_SIZE <-- $(PLATFORM_SERVICE_APP_SIZE))
-$(info PLATFORM_SOURCES_FLASH <-- $(PLATFORM_SOURCES_FLASH))
-$(info PRJ_DIR <-- $(PRJ_DIR))
-$(info PYTHON_PATH <-- $(PYTHON_PATH))
-$(info SIGN_KEY_FILE <-- $(SIGN_KEY_FILE))
-$(info SOURCES_APP --> $(SOURCES_APP))
-$(info SOURCES_APP_SRC <-> $(SOURCES_APP_SRC))
-$(info SOURCES_FLASH <-> $(SOURCES_FLASH))
-$(info SOURCES_LIBS --> $(SOURCES_LIBS))
-$(info SOURCES_MBEDTLS_MXCRYPTO <-> $(SOURCES_MBEDTLS_MXCRYPTO))
-$(info SOURCES_MCUBOOT <-> $(SOURCES_MCUBOOT))
-$(info USE_BOOTSTRAP <-> $(USE_BOOTSTRAP))
-$(info USE_CRYPTO_HW <-- $(USE_CRYPTO_HW))
-$(info USE_CUSTOM_DEBUG_UART <-- $(USE_CUSTOM_DEBUG_UART))
-$(info USE_DATA_SHARING <-- $(USE_DATA_SHARING))
-$(info USE_EXEC_TIME_CHECK <-- $(USE_EXEC_TIME_CHECK))
-$(info USE_EXTERNAL_FLASH <-- $(USE_EXTERNAL_FLASH))
-$(info USE_HW_ROLLBACK_PROT <-- $(USE_HW_ROLLBACK_PROT))
-$(info USE_LOG_TIMESTAMP <-- $(USE_LOG_TIMESTAMP))
-$(info USE_MEASURED_BOOT <-- $(USE_MEASURED_BOOT))
-$(info USE_OVERWRITE <-- $(USE_OVERWRITE))
-$(info USE_SHARED_SLOT <-> $(USE_SHARED_SLOT))
-$(info USE_SW_DOWNGRADE_PREV <-- $(USE_SW_DOWNGRADE_PREV))
-$(info USE_XIP <-- $(USE_XIP))
-endif
+       

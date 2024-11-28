@@ -59,7 +59,12 @@ int main(void)
 
 #if !defined(DISABLE_WDT_FREE)
     /* Disable watchdog timer to mark successful start up of application. The default BlikyApp flow */
+#if defined(USE_WDT_PDL)
+    Cy_WDT_Unlock();
+    Cy_WDT_Disable();
+#else
     cyhal_wdt_free(NULL);
+#endif
 
     printf(WATCHDOG_FREE_MESSAGE);
 #endif /* !(DISABLE_WDT_FREE) */

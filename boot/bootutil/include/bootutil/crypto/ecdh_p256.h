@@ -67,7 +67,7 @@ static inline int bootutil_ecdh_p256_shared_secret(bootutil_ecdh_p256_context *c
 }
 #endif /* MCUBOOT_USE_TINYCRYPT */
 
-#if defined(MCUBOOT_USE_MBED_TLS)
+#if defined(MCUBOOT_USE_MBED_TLS) && !defined(MCUBOOT_USE_PSA_CRYPTO)
 #define NUM_ECC_BYTES 32
 
 #if MBEDTLS_VERSION_NUMBER >= 0x03000000
@@ -146,6 +146,67 @@ static inline int bootutil_ecdh_p256_shared_secret(bootutil_ecdh_p256_context *c
     return rc;
 }
 #endif /* MCUBOOT_USE_MBED_TLS */
+
+
+#if defined(MCUBOOT_USE_PSA_CRYPTO)
+
+#include "crypto.h"
+#include "crypto_values.h"
+
+#define NUM_ECC_BYTES 32
+
+typedef void* bootutil_ecdh_p256_context;
+
+static inline void bootutil_ecdh_p256_init(bootutil_ecdh_p256_context *ctx)
+{
+    (void) ctx;
+}
+
+static inline void bootutil_ecdh_p256_drop(bootutil_ecdh_p256_context *ctx)
+{
+    (void) ctx;
+}
+
+static inline int bootutil_ecdh_p256_shared_secret(bootutil_ecdh_p256_context *ctx, const uint8_t *pub_key, const uint8_t *priv_key, uint8_t *shared)
+{
+    (void) ctx;
+
+    psa_status_t status;
+    psa_key_handle_t private_key_handle;
+
+    psa_key_attributes_t private_key_attributes = psa_key_attributes_init();
+
+    psa_set_key_usage_flags(&private_key_attributes, PSA_KEY_USAGE_DERIVE);
+    psa_set_key_algorithm(&private_key_attributes, PSA_ALG_ECDH);
+    psa_set_key_type(&private_key_attributes, PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1));
+    psa_set_key_bits(&private_key_attributes, 256u);
+
+    status = psa_import_key(&private_key_attributes, priv_key, 32, &private_key_handle);
+
+    if (status == PSA_SUCCESS)
+    {
+        size_t res_len;
+
+        status = psa_raw_key_agreement(PSA_ALG_ECDH,
+                                    private_key_handle,
+                                    pub_key,
+                                    65,
+                                    shared,
+                                    32,
+                                    &res_len);
+    }
+
+    psa_destroy_key(private_key_handle);
+
+    if (status != PSA_SUCCESS)
+    {
+        return -1;
+    }
+    
+    return 0;
+}
+#endif /* MCUBOOT_USE_PSA_CRYPTO */
+
 
 #ifdef __cplusplus
 }

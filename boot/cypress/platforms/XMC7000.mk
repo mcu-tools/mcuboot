@@ -60,11 +60,27 @@ endif
 USE_SWAP_STATUS ?= 1
 
 ifeq ($(USE_SWAP_STATUS), 1)
-DEFINES += USE_SWAP_STATUS=1
+DEFINES += -DUSE_SWAP_STATUS=1
+endif
+
+ifeq ($(USE_INTERNAL_FLASH_CODE_LARGE), 1)
+DEFINES += -DUSE_INTERNAL_FLASH_CODE_LARGE
+endif
+
+ifeq ($(USE_INTERNAL_FLASH_CODE_SMALL), 1)
+DEFINES += -DUSE_INTERNAL_FLASH_CODE_SMALL
+endif
+
+ifeq ($(USE_INTERNAL_FLASH_WORK_LARGE), 1)
+DEFINES += -DUSE_INTERNAL_FLASH_WORK_LARGE
+endif
+
+ifeq ($(USE_INTERNAL_FLASH_WORK_SMALL), 1)
+DEFINES += -DUSE_INTERNAL_FLASH_WORK_SMALL
 endif
 
 # Add device name to defines
-DEFINES += $(DEVICE)
+DEFINES += -D$(DEVICE)
 
 # Default upgrade method
 PLATFORM_DEFAULT_USE_OVERWRITE ?= 0
@@ -93,19 +109,8 @@ ifeq ($(CORE), CM0P)
 CORE_SUFFIX = m0plus
 else
 CORE_SUFFIX = m7
-PLATFORM_SOURCES_CM0P_SLEEP := $(PRJ_DIR)/platforms/BSP/XMC7000/system/COMPONENT_XMC7x_CM0P_SLEEP/xmc7200_cm0p_sleep.c
+C_FILES += $(PRJ_DIR)/platforms/BSP/XMC7000/system/COMPONENT_XMC7x_CM0P_SLEEP/xmc7200_cm0p_sleep.c
 endif
-
-# PSOC6HAL source files
-# PLATFORM_SOURCES_HAL_MCUB := $(THIS_APP_PATH)/mtb-hal-cat1/source/cyhal_crypto_common.c
-# PLATFORM_SOURCES_HAL_MCUB += $(THIS_APP_PATH)/mtb-hal-cat1/source/cyhal_hwmgr.c
-
-# needed for Crypto HW Acceleration and headers inclusion, do not use for peripherals
-# peripherals should be accessed
-# PLATFORM_INCLUDE_DIRS_HAL_MCUB := $(THIS_APP_PATH)/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include
-# PLATFORM_INCLUDE_DIRS_HAL_MCUB += $(THIS_APP_PATH)/mtb-hal-cat1/include
-# PLATFORM_INCLUDE_DIRS_HAL_MCUB += $(THIS_APP_PATH)/mtb-hal-cat1/include_pvt
-# PLATFORM_INCLUDE_DIRS_HAL_MCUB += $(THIS_APP_PATH)/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/include/pin_packages
 
 ###############################################################################
 # Application dependent definitions
@@ -115,13 +120,12 @@ USE_CRYPTO_HW ?= 0
 ###############################################################################
 
 # Platform dependend utils files
-PLATFORM_APP_SOURCES := $(PRJ_DIR)/platforms/utils/$(FAMILY)/cyw_platform_utils.c
-PLATFORM_APP_SOURCES += $(PLATFORM_SOURCES_CM0P_SLEEP)
-PLATFORM_INCLUDE_DIRS_UTILS := $(PRJ_DIR)/platforms/utils/$(FAMILY)
+C_FILES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/platform_utils.c
+INCLUDE_DIRS += $(PRJ_DIR)/platforms/utils/$(FAMILY)
 
 ifeq ($(USE_SECURE_MODE), 1)
-PLATFORM_APP_SOURCES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/cy_si_config.c
-PLATFORM_APP_SOURCES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/cy_si_key.c
+C_FILES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/cy_si_config.c
+C_FILES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/cy_si_key.c
 endif
 
 # Post build job to execute for platform
@@ -192,6 +196,10 @@ ifeq ($(IMG_TYPE), UPGRADE)
 	endif
 endif
 
+pre_build:
+	$(info [PRE_BUILD] - Generating linker script for application $(CUR_APP_PATH)/linker/$(APP_NAME).ld)
+	@$(CC) -E -x c $(CFLAGS) $(INCLUDE_DIRS) $(CUR_APP_PATH)/linker/$(APP_NAME)_$(CORE)_template$(LD_SUFFIX).ld | grep -v '^#' >$(CUR_APP_PATH)/linker/$(APP_NAME).ld
+
 # Post build action to execute after main build job
 post_build: $(OUT_CFG)/$(APP_NAME).bin
 ifeq ($(POST_BUILD_ENABLE), 1)
@@ -222,78 +230,14 @@ PLATFORM_SYSTEM_FILE_NAME := system_cm7.c
 PLATFORM_STARTUP_FILE := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/COMPONENT_$(CORE)/TOOLCHAIN_$(COMPILER)/startup_cm7.S
 endif
 
-PLATFORM_INCLUDE_DIRS_PDL_STARTUP := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system
-PLATFORM_INCLUDE_DIRS_PDL_STARTUP += $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/COMPONENT_$(CORE)
+INCLUDE_DIRS += $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system
+INCLUDE_DIRS += $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/COMPONENT_$(CORE)
 
-PLATFORM_DEFINES_LIBS := -DCY_USING_HAL
-PLATFORM_DEFINES_LIBS += -DCOMPONENT_$(CORE)
-PLATFORM_DEFINES_LIBS += -DCOMPONENT_$(CORE)_$(CORE_ID)
-PLATFORM_DEFINES_LIBS += -DCORE_NAME_$(CORE)_$(CORE_ID)=1
-PLATFORM_DEFINES_LIBS += -DCOMPONENT_CAT1
-PLATFORM_DEFINES_LIBS += -DCOMPONENT_CAT1C
-PLATFORM_DEFINES_LIBS += -DCOMPONENT_CAT1C8M
+DEFINES += -DCY_USING_HAL
+DEFINES += -DCOMPONENT_$(CORE)
+DEFINES += -DCOMPONENT_$(CORE)_$(CORE_ID)
+DEFINES += -DCORE_NAME_$(CORE)_$(CORE_ID)=1
+DEFINES += -DCOMPONENT_CAT1
+DEFINES += -DCOMPONENT_CAT1C
+DEFINES += -DCOMPONENT_CAT1C8M
 
-###############################################################################
-# Print debug information about all settings used and/or set in this file
-ifeq ($(VERBOSE), 1)
-$(info #### PSOC6.mk ####)
-$(info APP_CORE <-- $(APP_CORE))
-$(info APP_NAME <-- $(APP_NAME))
-$(info BOOT_RECORD <-- $(BOOT_RECORD))
-$(info BUILDCFG <-- $(BUILDCFG))
-$(info CFLAGS_PLATFORM --> $(CFLAGS_PLATFORM))
-$(info COMPILER <-- $(COMPILER))
-$(info CORE <-> $(CORE))
-$(info CORE_SUFFIX <-- $(CORE_SUFFIX))
-$(info DEFINES --> $(DEFINES))
-$(info DEVICE <-> $(DEVICE))
-$(info ENC_IMG <-- $(ENC_IMG))
-$(info ENC_KEY_FILE <-- $(ENC_KEY_FILE))
-$(info ERASED_VALUE <-- $(ERASED_VALUE))
-$(info FAMILY <-- $(FAMILY))
-$(info GCC_PATH <-- $(GCC_PATH))
-$(info HEADER_OFFSET <-- $(HEADER_OFFSET))
-$(info IMGTOOL_PATH <-> $(IMGTOOL_PATH))
-$(info IMG_TYPE <-- $(IMG_TYPE))
-$(info LED_PIN_DEFAULT --> $(LED_PIN_DEFAULT))
-$(info LED_PORT_DEFAULT --> $(LED_PORT_DEFAULT))
-$(info OUT_CFG <-- $(OUT_CFG))
-$(info PDL_CAT_SUFFIX <-> $(PDL_CAT_SUFFIX))
-$(info PLATFORM <-- $(PLATFORM))
-$(info PLATFORM_APP_SOURCES --> $(PLATFORM_APP_SOURCES))
-$(info PLATFORM_DEFAULT_ERASED_VALUE --> $(PLATFORM_DEFAULT_ERASED_VALUE))
-$(info PLATFORM_DEFAULT_IMG_VER_ARG --> $(PLATFORM_DEFAULT_IMG_VER_ARG))
-$(info PLATFORM_DEFAULT_PRIMARY_IMG_START --> $(PLATFORM_DEFAULT_PRIMARY_IMG_START))
-$(info PLATFORM_DEFAULT_RAM_SIZE --> $(PLATFORM_DEFAULT_RAM_SIZE))
-$(info PLATFORM_DEFAULT_RAM_START --> $(PLATFORM_DEFAULT_RAM_START))
-$(info PLATFORM_DEFAULT_USER_APP_START <-- $(PLATFORM_DEFAULT_USER_APP_START))
-$(info PLATFORM_DEFAULT_USE_OVERWRITE --> $(PLATFORM_DEFAULT_USE_OVERWRITE))
-$(info PLATFORM_INCLUDE_DIRS_FLASH --> $(PLATFORM_INCLUDE_DIRS_FLASH))
-$(info PLATFORM_INCLUDE_DIRS_HAL_MCUB --> $(PLATFORM_INCLUDE_DIRS_HAL_MCUB))
-$(info PLATFORM_INCLUDE_DIRS_PDL_STARTUP --> $(PLATFORM_INCLUDE_DIRS_PDL_STARTUP))
-$(info PLATFORM_INCLUDE_DIRS_UTILS --> $(PLATFORM_INCLUDE_DIRS_UTILS))
-$(info PLATFORM_INCLUDE_RETARGET_IO_PDL --> $(PLATFORM_INCLUDE_RETARGET_IO_PDL))
-$(info PLATFORM_SIGN_ARGS --> $(PLATFORM_SIGN_ARGS))
-$(info PLATFORM_SOURCES_FLASH <-> $(PLATFORM_SOURCES_FLASH))
-$(info PLATFORM_SOURCES_HAL_MCUB --> $(PLATFORM_SOURCES_HAL_MCUB))
-$(info PLATFORM_SOURCES_RETARGET_IO_PDL --> $(PLATFORM_SOURCES_RETARGET_IO_PDL))
-$(info PLATFORM_STARTUP_FILE --> $(PLATFORM_STARTUP_FILE))
-$(info PLATFORM_SUFFIX <-> $(PLATFORM_SUFFIX))
-$(info PLATFORM_SYSTEM_FILE_NAME --> $(PLATFORM_SYSTEM_FILE_NAME))
-$(info PLATFORM_USER_APP_START --> $(PLATFORM_USER_APP_START))
-$(info POST_BUILD_ENABLE <-- $(POST_BUILD_ENABLE))
-$(info PRIMARY_IMG_START <-- $(PRIMARY_IMG_START))
-$(info PRJ_DIR <-- $(PRJ_DIR))
-$(info PYTHON_PATH <-- $(PYTHON_PATH))
-$(info SIGN_ARGS <-- $(SIGN_ARGS))
-$(info SIGN_KEY_FILE <-- $(SIGN_KEY_FILE))
-$(info SLOT_SIZE <-- $(SLOT_SIZE))
-$(info THIS_APP_PATH <-- $(THIS_APP_PATH))
-$(info UART_RX_DEFAULT --> $(UART_RX_DEFAULT))
-$(info UART_TX_DEFAULT --> $(UART_TX_DEFAULT))
-$(info UPGRADE_SUFFIX <-- $(UPGRADE_SUFFIX))
-$(info UPGRADE_TYPE <-- $(UPGRADE_TYPE))
-$(info USE_CRYPTO_HW --> $(USE_CRYPTO_HW))
-$(info USE_EXTERNAL_FLASH <-- $(USE_EXTERNAL_FLASH))
-$(info USE_XIP <-- $(USE_XIP))
-endif

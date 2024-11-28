@@ -38,22 +38,22 @@ DEVICE ?= CY8C624ABZI_S2D44
 PLATFORM_SUFFIX := 02
 else ifeq ($(PLATFORM), PSOC_062_1M)
 # base kit CY8CKIT-062-WIFI-BT
-DEVICE ?= CY8C6247BZI-D54
+DEVICE ?= CY8C6247BZI_D54
 PLATFORM_SUFFIX := 01
 else ifeq ($(PLATFORM), PSOC_062_512K)
 # base kit CY8CPROTO-062S3-4343W
-DEVICE ?= CY8C6245LQI-S3D72
+DEVICE ?= CY8C6245LQI_S3D72
 PLATFORM_SUFFIX := 03
 else ifeq ($(PLATFORM), PSOC_063_1M)
 # base kit CY8CPROTO-063-BLE
-DEVICE ?= CYBLE-416045-02-device
+DEVICE ?= CYBLE_416045_02_device
 PLATFORM_SUFFIX := 01
 else ifeq ($(PLATFORM), PSOC_061_2M)
 # FIXME!
-DEVICE ?= CY8C614ABZI-S2F44
+DEVICE ?= CY8C614ABZI_S2F44
 PLATFORM_SUFFIX := 02
 else ifeq ($(PLATFORM), PSOC_061_512K)
-DEVICE ?= CY8C6136BZI-F34
+DEVICE ?= CY8C6136BZI_F34
 PLATFORM_SUFFIX := 03
 USE_CRYPTO_HW := 0
 endif
@@ -100,17 +100,19 @@ UART_TX_DEFAULT ?= P5_1
 UART_RX_DEFAULT ?= P5_0
 endif
 
-DEFINES += USE_SWAP_STATUS=1
-DEFINES += CY_DEBUG_UART_TX=$(UART_TX_DEFAULT)
-DEFINES += CY_DEBUG_UART_RX=$(UART_RX_DEFAULT)
-DEFINES += CYBSP_DEBUG_UART_TX=$(UART_TX_DEFAULT)
-DEFINES += CYBSP_DEBUG_UART_RX=$(UART_RX_DEFAULT)
+DEFINES += -DUSE_SWAP_STATUS=1
+DEFINES += -DCY_DEBUG_UART_TX=$(UART_TX_DEFAULT)
+DEFINES += -DCY_DEBUG_UART_RX=$(UART_RX_DEFAULT)
+DEFINES += -DCYBSP_DEBUG_UART_TX=$(UART_TX_DEFAULT)
+DEFINES += -DCYBSP_DEBUG_UART_RX=$(UART_RX_DEFAULT)
 
 # Add device name to defines
-DEFINES += $(DEVICE)
-DEFINES += CY_USING_HAL
-DEFINES += CORE_NAME_$(CORE)_0=1
-DEFINES += COMPONENT_CAT1 COMPONENT_CAT1A COMPONENT_$(CORE)
+DEFINES += -D$(DEVICE)
+DEFINES += -DCY_USING_HAL
+DEFINES += -DCORE_NAME_$(CORE)_0=1
+DEFINES += -DCOMPONENT_CAT1 
+DEFINES += -DCOMPONENT_CAT1A
+DEFINES += -DCOMPONENT_$(CORE)
 
 # Minimum erase size of underlying memory hardware
 PLATFORM_MEMORY_ALIGN := 0x200
@@ -138,25 +140,26 @@ else
 CORE_SUFFIX = m4
 endif
 
-PLATFORM_APP_SOURCES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/cyw_platform_utils.c
-PLATFORM_INCLUDE_DIRS_UTILS := $(PRJ_DIR)/platforms/utils/$(FAMILY)
+C_FILES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/platform_utils.c
+INCLUDE_DIRS += $(PRJ_DIR)/platforms/utils/$(FAMILY)
 ###############################################################################
 # Application dependent definitions
 # MCUBootApp default settings
 
 USE_CRYPTO_HW ?= 1
+MCUBOOT_DEPENDENCY_CHECK ?= 1
 ###############################################################################
 
 ifeq ($(PLATFORM), $(filter $(PLATFORM), PSOC_061_2M PSOC_061_1M PSOC_061_512K))
 # FIXME: not needed for real PSoC 61!
-PLATFORM_APP_SOURCES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/psoc6_02_cm0p_sleep.c
+C_FILES += $(PRJ_DIR)/platforms/utils/$(FAMILY)/psoc6_02_cm0p_sleep.c
 endif
 
 ifeq ($(USE_SMIF_CONFIG), 1)
 	ifeq ($(USE_EXTERNAL_FLASH), 1)
-		PLATFORM_SOURCES_FLASH += cy_serial_flash_prog.c
-		PLATFORM_SOURCES_FLASH += $(PRJ_DIR)/platforms/memory/PSOC6/smif_cfg_dbg/cycfg_qspi_memslot.c
-		PLATFORM_INCLUDE_DIRS_FLASH += $(PRJ_DIR)/platforms/memory/PSOC6/smif_cfg_dbg
+		C_FILES += cy_serial_flash_prog.c
+		C_FILES += $(PRJ_DIR)/platforms/memory/PSOC6/smif_cfg_dbg/cycfg_qspi_memslot.c
+		INCLUDE_DIRS += $(PRJ_DIR)/platforms/memory/PSOC6/smif_cfg_dbg
 	endif
 endif
 
@@ -243,6 +246,10 @@ ifeq ($(IMG_TYPE), UPGRADE)
 	endif
 endif
 
+pre_build:
+	$(info [PRE_BUILD] - Generating linker script for application $(CUR_APP_PATH)/linker/$(APP_NAME).ld)
+	@$(CC) -E -x c $(CFLAGS) $(INCLUDE_DIRS) $(CUR_APP_PATH)/linker/$(APP_NAME)_$(CORE)_template$(LD_SUFFIX).ld | grep -v '^#' >$(CUR_APP_PATH)/linker/$(APP_NAME).ld
+
 # Post build action to execute after main build job
 post_build: $(OUT_CFG)/$(APP_NAME).bin
 ifeq ($(POST_BUILD_ENABLE), 1)
@@ -268,67 +275,4 @@ CFLAGS_PLATFORM := -mcpu=cortex-$(CORE_SUFFIX) -mfloat-abi=soft -fno-stack-prote
 PLATFORM_SYSTEM_FILE_NAME := system_psoc6_c$(CORE_SUFFIX).c
 PLATFORM_STARTUP_FILE := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/COMPONENT_$(CORE)/TOOLCHAIN_$(COMPILER)/startup_psoc6_$(PLATFORM_SUFFIX)_c$(CORE_SUFFIX).S
 
-PLATFORM_INCLUDE_DIRS_PDL_STARTUP := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system
-
-###############################################################################
-# Print debug information about all settings used and/or set in this file
-ifeq ($(VERBOSE), 1)
-$(info #### PSOC6.mk ####)
-$(info APP_CORE <-- $(APP_CORE))
-$(info APP_NAME <-- $(APP_NAME))
-$(info BOOT_RECORD <-- $(BOOT_RECORD))
-$(info BUILDCFG <-- $(BUILDCFG))
-$(info CFLAGS_PLATFORM --> $(CFLAGS_PLATFORM))
-$(info COMPILER <-- $(COMPILER))
-$(info CORE <-> $(CORE))
-$(info CORE_SUFFIX <-- $(CORE_SUFFIX))
-$(info DEFINES --> $(DEFINES))
-$(info DEVICE <-> $(DEVICE))
-$(info ENC_IMG <-- $(ENC_IMG))
-$(info ENC_KEY_FILE <-- $(ENC_KEY_FILE))
-$(info ERASED_VALUE <-- $(ERASED_VALUE))
-$(info FAMILY <-- $(FAMILY))
-$(info GCC_PATH <-- $(GCC_PATH))
-$(info HEADER_OFFSET <-- $(HEADER_OFFSET))
-$(info IMGTOOL_PATH <-> $(IMGTOOL_PATH))
-$(info IMG_TYPE <-- $(IMG_TYPE))
-$(info LED_PIN_DEFAULT --> $(LED_PIN_DEFAULT))
-$(info LED_PORT_DEFAULT --> $(LED_PORT_DEFAULT))
-$(info OUT_CFG <-- $(OUT_CFG))
-$(info PDL_CAT_SUFFIX <-> $(PDL_CAT_SUFFIX))
-$(info PLATFORM <-- $(PLATFORM))
-$(info PLATFORM_APP_SOURCES --> $(PLATFORM_APP_SOURCES))
-$(info PLATFORM_DEFAULT_ERASED_VALUE --> $(PLATFORM_DEFAULT_ERASED_VALUE))
-$(info PLATFORM_DEFAULT_IMG_VER_ARG --> $(PLATFORM_DEFAULT_IMG_VER_ARG))
-$(info PLATFORM_DEFAULT_PRIMARY_IMG_START --> $(PLATFORM_DEFAULT_PRIMARY_IMG_START))
-$(info PLATFORM_DEFAULT_RAM_SIZE --> $(PLATFORM_DEFAULT_RAM_SIZE))
-$(info PLATFORM_DEFAULT_RAM_START --> $(PLATFORM_DEFAULT_RAM_START))
-$(info PLATFORM_DEFAULT_USER_APP_START <-- $(PLATFORM_DEFAULT_USER_APP_START))
-$(info PLATFORM_DEFAULT_USE_OVERWRITE --> $(PLATFORM_DEFAULT_USE_OVERWRITE))
-$(info PLATFORM_INCLUDE_DIRS_FLASH --> $(PLATFORM_INCLUDE_DIRS_FLASH))
-$(info PLATFORM_INCLUDE_DIRS_HAL_MCUB --> $(PLATFORM_INCLUDE_DIRS_HAL_MCUB))
-$(info PLATFORM_INCLUDE_DIRS_PDL_STARTUP --> $(PLATFORM_INCLUDE_DIRS_PDL_STARTUP))
-$(info PLATFORM_INCLUDE_DIRS_UTILS --> $(PLATFORM_INCLUDE_DIRS_UTILS))
-$(info PLATFORM_SIGN_ARGS --> $(PLATFORM_SIGN_ARGS))
-$(info PLATFORM_SOURCES_FLASH <-> $(PLATFORM_SOURCES_FLASH))
-$(info PLATFORM_SOURCES_HAL_MCUB --> $(PLATFORM_SOURCES_HAL_MCUB))
-$(info PLATFORM_STARTUP_FILE --> $(PLATFORM_STARTUP_FILE))
-$(info PLATFORM_SUFFIX <-> $(PLATFORM_SUFFIX))
-$(info PLATFORM_SYSTEM_FILE_NAME --> $(PLATFORM_SYSTEM_FILE_NAME))
-$(info PLATFORM_USER_APP_START --> $(PLATFORM_USER_APP_START))
-$(info POST_BUILD_ENABLE <-- $(POST_BUILD_ENABLE))
-$(info PRIMARY_IMG_START <-- $(PRIMARY_IMG_START))
-$(info PRJ_DIR <-- $(PRJ_DIR))
-$(info PYTHON_PATH <-- $(PYTHON_PATH))
-$(info SIGN_ARGS <-- $(SIGN_ARGS))
-$(info SIGN_KEY_FILE <-- $(SIGN_KEY_FILE))
-$(info SLOT_SIZE <-- $(SLOT_SIZE))
-$(info THIS_APP_PATH <-- $(THIS_APP_PATH))
-$(info UART_RX_DEFAULT --> $(UART_RX_DEFAULT))
-$(info UART_TX_DEFAULT --> $(UART_TX_DEFAULT))
-$(info UPGRADE_SUFFIX <-- $(UPGRADE_SUFFIX))
-$(info UPGRADE_TYPE <-- $(UPGRADE_TYPE))
-$(info USE_CRYPTO_HW --> $(USE_CRYPTO_HW))
-$(info USE_EXTERNAL_FLASH <-- $(USE_EXTERNAL_FLASH))
-$(info USE_XIP <-- $(USE_XIP))
-endif
+INCLUDE_DIRS += $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system

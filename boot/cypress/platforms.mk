@@ -27,43 +27,27 @@ include host.mk
 
 # supported platforms list
 PSOC_06X := PSOC_061_2M PSOC_061_1M PSOC_061_512K PSOC_062_2M PSOC_062_1M PSOC_062_512K PSOC_063_1M
+CYW_xx829 := CYW20829 CYW89829
 XMC7000 := XMC7200 XMC7100
-PLATFORMS := $(PSOC_06X) CYW20829 CYW89829 $(XMC7000)
+PLATFORMS := $(PSOC_06X) $(CYW_xx829) $(XMC7000)
 
 ifneq ($(filter $(PLATFORM), $(PLATFORMS)),)
 else
-$(error Not supported platform: '$(PLATFORM)')
+    $(error Not supported platform: '$(PLATFORM)')
 endif
 
 ifeq ($(PLATFORM), $(filter $(PLATFORM), $(PSOC_06X)))
-FAMILY := PSOC6
+    FAMILY := PSOC6
 else ifeq ($(PLATFORM), CYW20829)
-FAMILY := CYW20829
+    FAMILY := CYW20829
 else ifeq ($(PLATFORM), CYW89829)
-FAMILY := CYW20829
+    FAMILY := CYW20829
 else ifeq ($(PLATFORM), $(filter $(PLATFORM), $(XMC7000)))
-FAMILY := XMC7000
+    FAMILY := XMC7000
 endif
 
 # include family related makefile into build
 include platforms/$(FAMILY).mk
 
-DEFINES += $(PLATFORM)
-DEFINES += $(FAMILY)
-
-# Convert defines to regular -DMY_NAME style
-ifneq ($(DEFINES),)
-	PLATFORM_DEFINES := $(addprefix -D, $(subst -,_,$(DEFINES)))
-endif
-
-###############################################################################
-# Print debug information about all settings used and/or set in this file
-ifeq ($(VERBOSE), 1)
-$(info #### platforms.mk ####)
-$(info DEFINES <-> $(DEFINES))
-$(info FAMILY <-> $(FAMILY))
-$(info PLATFORM <-- $(PLATFORM))
-$(info PLATFORMS <-> $(PLATFORMS))
-$(info PLATFORM_DEFINES --> $(PLATFORM_DEFINES))
-$(info PSOC_06X <-> $(PSOC_06X))
-endif
+DEFINES += -D$(PLATFORM)
+DEFINES += -D$(FAMILY)

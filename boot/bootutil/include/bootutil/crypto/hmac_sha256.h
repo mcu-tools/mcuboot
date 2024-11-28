@@ -84,7 +84,7 @@ static inline int bootutil_hmac_sha256_finish(bootutil_hmac_sha256_context *ctx,
 }
 #endif /* MCUBOOT_USE_TINYCRYPT */
 
-#if defined(MCUBOOT_USE_MBED_TLS)
+#if defined(MCUBOOT_USE_MBED_TLS) && !defined(MCUBOOT_USE_PSA_CRYPTO)
 /**
  * The generic message-digest context.
  */
@@ -124,6 +124,78 @@ static inline int bootutil_hmac_sha256_finish(bootutil_hmac_sha256_context *ctx,
      * HMAC the key and check that our received MAC matches the generated tag
      */
     return mbedtls_md_hmac_finish(ctx, tag);
+}
+#endif /* MCUBOOT_USE_MBED_TLS */
+
+#if defined(MCUBOOT_USE_PSA_CRYPTO)
+/**
+ * The generic message-digest context.
+ */
+typedef struct
+{
+    psa_key_handle_t key_handle;
+    psa_mac_operation_t operation;
+} bootutil_hmac_sha256_context;
+
+static inline void bootutil_hmac_sha256_init(bootutil_hmac_sha256_context *ctx)
+{
+    ctx->operation = psa_mac_operation_init();
+}
+
+static inline void bootutil_hmac_sha256_drop(bootutil_hmac_sha256_context *ctx)
+{
+    psa_mac_abort(&ctx->operation);
+    psa_destroy_key(ctx->key_handle);
+}
+
+static inline int bootutil_hmac_sha256_set_key(bootutil_hmac_sha256_context *ctx, const uint8_t *key, unsigned int key_size)
+{
+    psa_status_t status;
+    psa_key_attributes_t key_attributes = psa_key_attributes_init();
+
+    psa_set_key_usage_flags(&key_attributes, PSA_KEY_USAGE_SIGN_HASH);
+    psa_set_key_algorithm(&key_attributes, PSA_ALG_HMAC(PSA_ALG_SHA_256));
+    psa_set_key_type(&key_attributes, PSA_KEY_TYPE_HMAC);
+    psa_set_key_bits(&key_attributes, 256u);
+    
+    status = psa_import_key(&key_attributes, key, key_size, &ctx->key_handle);
+
+    if (status == PSA_SUCCESS) {
+        status = psa_mac_sign_setup(&ctx->operation, ctx->key_handle, PSA_ALG_HMAC(PSA_ALG_SHA_256));
+    }
+
+    if (status != PSA_SUCCESS) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static inline int bootutil_hmac_sha256_update(bootutil_hmac_sha256_context *ctx, const void *data, unsigned int data_length)
+{
+    psa_status_t status;
+
+    status = psa_mac_update(&ctx->operation, data, data_length);
+    
+    if (status != PSA_SUCCESS) {
+        return -1;
+    }
+
+    return 0;
+}
+
+static inline int bootutil_hmac_sha256_finish(bootutil_hmac_sha256_context *ctx, uint8_t *tag, unsigned int taglen)
+{
+    size_t output_len;
+    psa_status_t status;
+
+    status = psa_mac_sign_finish(&ctx->operation, tag, taglen, &output_len);
+
+    if (status != PSA_SUCCESS) {
+        return -1;
+    }
+
+    return 0;
 }
 #endif /* MCUBOOT_USE_MBED_TLS */
 

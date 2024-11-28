@@ -1,5 +1,5 @@
 """
-Copyright 2023 Cypress Semiconductor Corporation (an Infineon company)
+Copyright 2024 Cypress Semiconductor Corporation (an Infineon company)
 or an affiliate of Cypress Semiconductor Corporation. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,10 +15,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-
-import sys
+import argparse
 import json
-import click
+import sys
+import os
+
 
 def load_json(file_path):
     """
@@ -106,7 +107,8 @@ class FeatureProcessor:
         'image_encryption'          :   'ENC_IMG',
         'fault_injection_hardening' :   'FIH_PROFILE_LEVEL',
         'combine_hex'               :   'COMBINE_HEX',
-        'hw_key'                    :   'USE_HW_KEY'
+        'hw_key'                    :   'USE_HW_KEY',
+        'built_in_keys'              :  'USE_BUILT_IN_KEYS'
     }
 
     debug_level_dict = {
@@ -193,7 +195,7 @@ class FeatureProcessor:
         """
             Handle any dictionary of 'feature_config'
         """
-        dont_print_list = set(("validation_key", "version", "description", "target"))
+        dont_print_list = set(("validation_key", "encryption_key", "version", "description", "target"))
 
         for k in f_dict:
 
@@ -206,11 +208,26 @@ class FeatureProcessor:
             if k == 'serial_logging':
                 f_out.write(self.__gen_debug_level(f_dict.get(k).get("value")))
 
+            if k == "validation_key":
+                value = f_dict.get(k).get("value")
+                if value != '':
+                    f_out.write(f'ECDSA_PUBLIC_KEY={value}\n')
+
+            if k == "encryption_key":
+                value = f_dict.get(k).get("value")
+                if value != '':
+                    f_out.write(f'ENC_PRIVATE_KEY={value}\n')
+
 
     def make_file_generate(self, feature_json):
         """
             Processing all keys and creation of a mk-file
         """
+
+        out_dir = os.path.dirname(self.out_f)
+
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
 
         with open(self.out_f, "w", encoding='UTF-8') as f_out:
             f_out.write(FeatureProcessor.generate_header_guard())
@@ -224,19 +241,25 @@ class FeatureProcessor:
             self.__handle_dictionary(feature_json, f_out)
 
 
-@click.group()
 def cli():
-    """
-        Feature config parser to run from CLI
-    """
+    parser = argparse.ArgumentParser(description='Feature config parser to run from CLI')
 
-@cli.command()
-@click.option('-f', '--feature_config', required=True,
-              help='feature configuration file path')
-@click.option('-p', '--platform_properties', required=True,
-              help='platform properties file path')
-@click.option('-n', '--output_name', required=True,
-              help='the name of the make file that will be generated')
+    parser.add_argument('-f', '--feature_config', required=True,
+                        help='Feature configuration file path')
+    parser.add_argument('-p', '--platform_properties', required=True,
+                        help='Platform properties file path')
+    parser.add_argument('-n', '--output_name', required=True,
+                        help='The name of the make file that will be generated')
+    parser.add_argument('other_args', nargs='?',
+                        help='Ignore all other arguments, such as: run')
+
+    args = parser.parse_args()
+
+    run(args.feature_config, args.platform_properties, args.output_name)
+    
+    # run('C:/Work/mcuboot/mtb-example-bootloader-solution/platforms/PSC3/feature_config.json',
+    #     'C:/Work/mcuboot/mtb-example-bootloader-solution/mtb_shared/mcuboot/1.9.3-ifx-boy2-es10/boot/cypress/platforms/memory/PSC3/flashmap/platform_properties.json',
+    #     'C:/Work/mcuboot/mtb-example-bootloader-solution/platforms/PSC3/feature_config.mk')
 
 
 def run(feature_config, platform_properties, output_name):

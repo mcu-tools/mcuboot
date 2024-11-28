@@ -83,8 +83,8 @@ _Pragma(CY_COVERITY_PRAGMA_STR(coverity compliance end_block MISRA))
 #define FIH_MISRA_BLOCK_END(MISRA)
 #endif /* CY_COVERITY_2012_CHECK */
 
-FIH_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 10.1', 10, 'Signed integer bitwise operations');
-FIH_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 10.4', 10, 'Signed integer bitwise operations');
+FIH_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 10.1', 10, 'Signed integer bitwise operations')
+FIH_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 10.4', 10, 'Signed integer bitwise operations')
 
 #ifdef MCUBOOT_FIH_PROFILE_ON
 #if defined(MCUBOOT_FIH_PROFILE_LOW)
@@ -107,13 +107,13 @@ FIH_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 10.4', 10, 'Signed integer bitw
 #endif /* MCUBOOT_FIH_PROFILE */
 
 /* Where possible, glue the FIH_TRUE from two components. */
-#define FIH_TRUE_1              ((int32_t)0x300AUL)
-#define FIH_TRUE_2              ((int32_t)0x0C50UL)
-#define FIH_TRUE                ((int32_t)0x3C5AUL) /* i.e., FIH_TRUE_1 | FIH_TRUE_2 */
+#define FIH_TRUE_1              ((int32_t)0xC00AUL)
+#define FIH_TRUE_2              ((int32_t)0x0350UL)
+#define FIH_TRUE                ((int32_t)0xC35AUL) /* i.e., FIH_TRUE_1 | FIH_TRUE_2 */
 #define FIH_FALSE               ((int32_t)0xA5C3UL)
 
 #define FIH_POSITIVE_VALUE      ((int32_t) 0x5555AAAAUL)
-#define FIH_NEGATIVE_VALUE      ((int32_t)-0x5555AAABL)
+#define FIH_NEGATIVE_VALUE      ((int32_t) 0xAAAA5555UL)
 
 #ifdef FIH_ENABLE_DOUBLE_VARS
 /*
@@ -122,15 +122,10 @@ FIH_MISRA_DEVIATE_BLOCK_START('MISRA C-2012 Rule 10.4', 10, 'Signed integer bitw
  * another xor. The mask value doesn't _really_ matter that much, as long as
  * it has reasonably high Hamming weight.
  */
-#define FIH_MASK_VALUE          0xA5C35A3CU
-#ifndef USE_IFX_SE_CRYPTO /* TODO: Remove this after TFM-1749 resolved */
-#define FIH_UINT_MASK_VALUE     0xB779A31CU
-#else
+#define FIH_MASK_VALUE          0xA5C35A3C
 #define FIH_UINT_MASK_VALUE     0xA5C35A3CU
-#endif /* USE_IFX_SE_CRYPTO */
 
-
-#define FIH_INT_VAL_MASK(val) ((int32_t)((val) ^ FIH_MASK_VALUE))
+#define FIH_INT_VAL_MASK(val) ((int32_t)((val) ^ (int32_t)FIH_MASK_VALUE))
 #define FIH_UINT_VAL_MASK(val) ((val) ^ FIH_UINT_MASK_VALUE)
 
 /*
@@ -142,14 +137,24 @@ typedef struct {
     volatile int32_t msk;
 } fih_int;
 
-#define FIH_INT_INIT(x)         {(x), FIH_INT_VAL_MASK(x)}
+#define FIH_INT_INIT(x)                 ((fih_int){(x), FIH_INT_VAL_MASK(x)})
+
+/* FIH_INT_INIT_GLOBAL is created to declare global or static global veriables to 
+  avoid the compile time Error[Pe028]: expression must have a constant value
+  on IAR compiler */
+#define FIH_INT_INIT_GLOBAL(x)          {(x), FIH_INT_VAL_MASK(x)}
 
 typedef struct {
     volatile uint32_t val;
     volatile uint32_t msk;
 } fih_uint;
 
-#define FIH_UINT_INIT(x)        {(x), FIH_UINT_VAL_MASK(x)}
+#define FIH_UINT_INIT(x)                ((fih_uint){(x), FIH_UINT_VAL_MASK(x)})
+
+/* FIH_UINT_INIT_GLOBAL is created to declare global or static global veriables to 
+  avoid the compile time Error[Pe028]: expression must have a constant value
+  on IAR compiler */
+#define FIH_UINT_INIT_GLOBAL(x)         {(x), FIH_UINT_VAL_MASK(x)}
 
 #else /* FIH_ENABLE_DOUBLE_VARS */
 /*
@@ -165,15 +170,22 @@ typedef struct {
     volatile uint32_t val;
 } fih_uint;
 
-#define FIH_INT_INIT(x)         {(x)}
-#define FIH_UINT_INIT(x)        {(x)}
+#define FIH_INT_INIT(x)                 ((fih_int){(x)})
+
+/* FIH_UINT_INIT_GLOBAL and FIH_INT_INIT_GLOBAL are created to declare global
+  or static global veriables to avoid the compile time Error[Pe028]: expression
+  must have a constant value on IAR compiler */
+#define FIH_INT_INIT_GLOBAL(x)          {(x)}
+#define FIH_UINT_INIT(x)                ((fih_uint){(x)})
+#define FIH_UINT_INIT_GLOBAL(x)         {(x)}
 #endif /* FIH_ENABLE_DOUBLE_VARS */
 
-#define FIH_SUCCESS     (fih_int_encode(FIH_POSITIVE_VALUE))
-#define FIH_FAILURE     (fih_int_encode(FIH_NEGATIVE_VALUE))
-#define FIH_UINT_ZERO   (fih_uint_encode(0U))
-#define FIH_INT_ZERO    (fih_int_encode((signed)0))
-#define FIH_UINT_MAX    (fih_uint_encode(0xFFFFFFFFU))
+#define FIH_SUCCESS                     (FIH_INT_INIT(FIH_POSITIVE_VALUE))
+#define FIH_FAILURE                     (FIH_INT_INIT(FIH_NEGATIVE_VALUE))
+#define FIH_UINT_ZERO                   (FIH_UINT_INIT(0U))
+#define FIH_INT_ZERO                    (FIH_INT_INIT(0L))
+#define FIH_UINT_MAX                    (FIH_UINT_INIT(0xFFFFFFFFU))
+
 
 #ifdef FIH_ENABLE_GLOBAL_FAIL
 /**
@@ -207,48 +219,14 @@ void fih_panic_loop(void);
  */
 void fih_delay_init(void);
 
-/**
- * Get a random uint8_t value from an RNG seeded with an entropy source.
- * NOTE: do not directly call this function!
- *
- * @return   random value.
- */
-uint8_t fih_delay_random(void);
+bool fih_delay(void);
 
-/**
- * Delaying logic, with randomness from a CSPRNG.
- */
-__attribute__((always_inline)) static inline
-void fih_delay(void)
-{
-    uint32_t i = 0;
-    volatile uint32_t delay = 10u; /* TODO: REMOVE */
-    volatile uint32_t counter = 0;
-
-#if 0
-    delay = fih_delay_random();
-
-    if (delay == FIH_NEGATIVE_VALUE) {
-        FIH_PANIC;
-    }
-
-    delay &= 0xFF;
-#endif
-
-    for (i = 0; i < delay; i++) {
-        counter++;
-    }
-
-    if (counter != delay) {
-        FIH_PANIC;
-    }
-}
 #else /* FIH_ENABLE_DELAY */
 /* NOOP */
 #define fih_delay_init()
 
 /* NOOP */
-#define fih_delay()
+#define fih_delay() (true)
 #endif /* FIH_ENABLE_DELAY */
 
 #ifdef FIH_ENABLE_DOUBLE_VARS
@@ -258,13 +236,15 @@ void fih_delay(void)
  * @param x  fih_int value to be validated.
  */
 __attribute__((always_inline)) static inline
-void fih_int_validate(fih_int x)
+bool fih_int_validate(fih_int x)
 {
     int32_t x_msk = x.msk;
 
     if (x.val != FIH_INT_VAL_MASK(x_msk)) {
         FIH_PANIC;
     }
+
+    return true;
 }
 
 /**
@@ -273,13 +253,15 @@ void fih_int_validate(fih_int x)
  * @param x  fih_uint value to be validated.
  */
 __attribute__((always_inline)) static inline
-void fih_uint_validate(fih_uint x)
+bool fih_uint_validate(fih_uint x)
 {
     uint32_t x_msk = x.msk;
 
     if (x.val != FIH_UINT_VAL_MASK(x_msk)) {
         FIH_PANIC;
     }
+
+    return true;
 }
 
 /**
@@ -292,7 +274,7 @@ void fih_uint_validate(fih_uint x)
 __attribute__((always_inline)) static inline
 int32_t fih_int_decode(fih_int x)
 {
-    fih_int_validate(x);
+    (void)fih_int_validate(x);
     return x.val;
 }
 
@@ -306,7 +288,7 @@ int32_t fih_int_decode(fih_int x)
 __attribute__((always_inline)) static inline
 uint32_t fih_uint_decode(fih_uint x)
 {
-    fih_uint_validate(x);
+    (void)fih_uint_validate(x);
     return x.val;
 }
 
@@ -345,40 +327,17 @@ fih_uint fih_uint_encode(uint32_t x)
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x == y, other otherwise.
+ * @return   true if x == y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_eq(fih_int x, fih_int y)
-{
-    int32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_int_validate(x);
-    fih_int_validate(y);
-
-    y_val = y.val;
-    if (x.val == y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (x.msk == y_msk) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val != y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_eq(x, y) \
+        ( fih_int_validate(x) && \
+          fih_int_validate(y) && \
+          ((x).val == (y).val) && \
+          fih_delay() && \
+          ((x).msk == (y).msk) && \
+          fih_delay() && \
+          ((x).val == FIH_INT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard equality for fih_uint values.
@@ -386,40 +345,17 @@ int32_t fih_eq(fih_int x, fih_int y)
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x == y, other otherwise.
+ * @return   true if x == y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_eq(fih_uint x, fih_uint y)
-{
-    uint32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_uint_validate(x);
-    fih_uint_validate(y);
-
-    y_val = y.val;
-    if (x.val == y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (x.msk == y_msk) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val != y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_uint_eq(x, y) \
+        ( fih_uint_validate(x) && \
+          fih_uint_validate(y) && \
+          ((x).val == (y).val) && \
+          fih_delay() && \
+          ((x).msk == (y).msk) && \
+          fih_delay() && \
+          ((x).val == FIH_UINT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard non-equality for fih_int values.
@@ -427,40 +363,17 @@ int32_t fih_uint_eq(fih_uint x, fih_uint y)
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x != y, FIH_FALSE otherwise.
+ * @return   true if x != y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_not_eq(fih_int x, fih_int y)
-{
-    int32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_int_validate(x);
-    fih_int_validate(y);
-
-    y_val = y.val;
-    if (x.val != y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (x.msk != y_msk) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val == y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_not_eq(x, y) \
+        ( fih_int_validate(x) && \
+          fih_int_validate(y) && \
+          ((x).val != (y).val) && \
+          fih_delay() && \
+          ((x).msk != (y).msk) && \
+          fih_delay() && \
+          ((x).val != FIH_INT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard non-equality for fih_uint values.
@@ -468,40 +381,17 @@ int32_t fih_not_eq(fih_int x, fih_int y)
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x != y, FIH_FALSE otherwise.
+ * @return   true if x != y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_not_eq(fih_uint x, fih_uint y)
-{
-    uint32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_uint_validate(x);
-    fih_uint_validate(y);
-
-    y_val = y.val;
-    if (x.val != y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (x.msk != y_msk) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val == y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_uint_not_eq(x, y) \
+        ( fih_uint_validate(x) && \
+          fih_uint_validate(y) && \
+          ((x).val != (y).val) && \
+          fih_delay() && \
+          ((x).msk != (y).msk) && \
+          fih_delay() && \
+          ((x).val != FIH_UINT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard greater than comparison for fih_int values.
@@ -509,40 +399,17 @@ int32_t fih_uint_not_eq(fih_uint x, fih_uint y)
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x > y, FIH_FALSE otherwise.
+ * @return   true if x > y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_gt(fih_int x, fih_int y)
-{
-    int32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_int_validate(x);
-    fih_int_validate(y);
-
-    y_val = y.val;
-    if (x.val > y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (FIH_INT_VAL_MASK(x.msk) > FIH_INT_VAL_MASK(y_msk)) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val <= y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_gt(x, y) \
+        ( fih_int_validate(x)  && \
+          fih_int_validate(y) && \
+          ((x).val > (y).val) && \
+          fih_delay() && \
+          (FIH_INT_VAL_MASK((x).msk) > FIH_INT_VAL_MASK((y).msk)) && \
+          fih_delay() && \
+          ((x).val > FIH_INT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard greater than comparison for fih_uint values.
@@ -550,40 +417,17 @@ int32_t fih_gt(fih_int x, fih_int y)
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x > y, FIH_FALSE otherwise.
+ * @return   true if x > y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_gt(fih_uint x, fih_uint y)
-{
-    uint32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_uint_validate(x);
-    fih_uint_validate(y);
-
-    y_val = y.val;
-    if (x.val > y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (FIH_UINT_VAL_MASK(x.msk) > FIH_UINT_VAL_MASK(y_msk)) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val <= y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_uint_gt(x, y) \
+        ( fih_uint_validate(x)  && \
+          fih_uint_validate(y) && \
+          ((x).val > (y).val) && \
+          fih_delay() && \
+          (FIH_UINT_VAL_MASK((x).msk) > FIH_UINT_VAL_MASK((y).msk)) && \
+          fih_delay() && \
+          ((x).val > FIH_UINT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard greater than or equal comparison for fih_int values.
@@ -591,40 +435,17 @@ int32_t fih_uint_gt(fih_uint x, fih_uint y)
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x >= y, FIH_FALSE otherwise.
+ * @return   true if x >= y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_ge(fih_int x, fih_int y)
-{
-    int32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_int_validate(x);
-    fih_int_validate(y);
-
-    y_val = y.val;
-    if (x.val >= y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (FIH_INT_VAL_MASK(x.msk) >= FIH_INT_VAL_MASK(y_msk)) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val < y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_ge(x, y) \
+        ( fih_int_validate(x)  && \
+          fih_int_validate(y) && \
+          ((x).val >= (y).val) && \
+          fih_delay() && \
+          (FIH_INT_VAL_MASK((x).msk) >= FIH_INT_VAL_MASK((y).msk)) && \
+          fih_delay() && \
+          ((x).val >= FIH_INT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard greater than or equal comparison for fih_uint values.
@@ -632,40 +453,17 @@ int32_t fih_ge(fih_int x, fih_int y)
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x >= y, FIH_FALSE otherwise.
+ * @return   true if x >= y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_ge(fih_uint x, fih_uint y)
-{
-    uint32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_uint_validate(x);
-    fih_uint_validate(y);
-
-    y_val = y.val;
-    if (x.val >= y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (FIH_UINT_VAL_MASK(x.msk) >= FIH_UINT_VAL_MASK(y_msk)) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val < y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_uint_ge(x, y) \
+        ( fih_uint_validate(x)  && \
+          fih_uint_validate(y) && \
+          ((x).val >= (y).val) && \
+          fih_delay() && \
+          (FIH_UINT_VAL_MASK((x).msk) >= FIH_UINT_VAL_MASK((y).msk)) && \
+          fih_delay() && \
+          ((x).val >= FIH_UINT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard less than comparison for fih_int values.
@@ -673,40 +471,17 @@ int32_t fih_uint_ge(fih_uint x, fih_uint y)
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x < y, FIH_FALSE otherwise.
+ * @return   true if x < y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_lt(fih_int x, fih_int y)
-{
-    int32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_int_validate(x);
-    fih_int_validate(y);
-
-    y_val = y.val;
-    if (x.val < y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (FIH_INT_VAL_MASK(x.msk) < FIH_INT_VAL_MASK(y_msk)) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val >= y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_lt(x, y) \
+        ( fih_int_validate(x)  && \
+          fih_int_validate(y) && \
+          ((x).val < (y).val) && \
+          fih_delay() && \
+          (FIH_INT_VAL_MASK((x).msk) < FIH_INT_VAL_MASK((y).msk)) && \
+          fih_delay() && \
+          ((x).val < FIH_INT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard less than comparison for fih_uint values.
@@ -714,40 +489,17 @@ int32_t fih_lt(fih_int x, fih_int y)
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x < y, FIH_FALSE otherwise.
+ * @return   true if x < y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_lt(fih_uint x, fih_uint y)
-{
-    uint32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_uint_validate(x);
-    fih_uint_validate(y);
-
-    y_val = y.val;
-    if (x.val < y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (FIH_UINT_VAL_MASK(x.msk) < FIH_UINT_VAL_MASK(y_msk)) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val >= y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_uint_lt(x, y) \
+        ( fih_uint_validate(x)  && \
+          fih_uint_validate(y) && \
+          ((x).val < (y).val) && \
+          fih_delay() && \
+          (FIH_UINT_VAL_MASK((x).msk) < FIH_UINT_VAL_MASK((y).msk)) && \
+          fih_delay() && \
+          ((x).val < FIH_UINT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard less than or equal comparison for fih_int values.
@@ -755,40 +507,17 @@ int32_t fih_uint_lt(fih_uint x, fih_uint y)
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x <= y, FIH_FALSE otherwise.
+ * @return   true if x <= y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_le(fih_int x, fih_int y)
-{
-    int32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_int_validate(x);
-    fih_int_validate(y);
-
-    y_val = y.val;
-    if (x.val <= y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (FIH_INT_VAL_MASK(x.msk) <= FIH_INT_VAL_MASK(y_msk)) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val > y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_le(x, y) \
+        ( fih_int_validate(x)  && \
+          fih_int_validate(y) && \
+          ((x).val <= (y).val) && \
+          fih_delay() && \
+          (FIH_INT_VAL_MASK((x).msk) <= FIH_INT_VAL_MASK((y).msk)) && \
+          fih_delay() && \
+          ((x).val <= FIH_INT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard less than or equal comparison for fih_uint values.
@@ -796,40 +525,17 @@ int32_t fih_le(fih_int x, fih_int y)
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x <= y, FIH_FALSE otherwise.
+ * @return   true if x <= y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_le(fih_uint x, fih_uint y)
-{
-    uint32_t y_val, y_msk;
-    volatile int32_t rc = FIH_FALSE;
-
-    fih_uint_validate(x);
-    fih_uint_validate(y);
-
-    y_val = y.val;
-    if (x.val <= y_val) {
-        rc = FIH_TRUE_1;
-    }
-
-    fih_delay();
-
-    y_msk = y.msk;
-    if (FIH_UINT_VAL_MASK(x.msk) <= FIH_UINT_VAL_MASK(y_msk)) {
-        rc |= FIH_TRUE_2;
-    }
-
-    fih_delay();
-
-    y_val = y.val;
-    if (x.val > y_val) {
-        if (rc == FIH_TRUE) {
-            FIH_PANIC;
-        }
-    }
-
-    return rc;
-}
+#define fih_uint_le(x, y) \
+        ( fih_uint_validate(x)  && \
+          fih_uint_validate(y) && \
+          ((x).val <= (y).val) && \
+          fih_delay() && \
+          (FIH_UINT_VAL_MASK((x).msk) <= FIH_UINT_VAL_MASK((y).msk)) && \
+          fih_delay() && \
+          ((x).val <= FIH_UINT_VAL_MASK((y).msk)) \
+        )
 
 /**
  * Standard logical OR for fih_uint values.
@@ -842,21 +548,15 @@ int32_t fih_uint_le(fih_uint x, fih_uint y)
 __attribute__((always_inline)) static inline
 fih_uint fih_uint_or(fih_uint x, fih_uint y)
 {
-    uint32_t y_val, y_msk;
+    /* Use local variable to avoid persistent side effect MISRA violation
+     * in operations with volatile variables. */
+    uint32_t y_val = y.val;
+    uint32_t y_msk = y.msk;
     volatile fih_uint rc = {0};
 
-    fih_uint_validate(x);
-    fih_uint_validate(y);
-
-    y_val = y.val;
     rc.val = x.val | y_val;
 
-    fih_delay();
-
-    y_msk = y.msk;
     rc.msk = FIH_UINT_VAL_MASK(FIH_UINT_VAL_MASK(x.msk) | FIH_UINT_VAL_MASK(y_msk));
-
-    fih_uint_validate(rc);
 
     return rc;
 }
@@ -872,21 +572,15 @@ fih_uint fih_uint_or(fih_uint x, fih_uint y)
 __attribute__((always_inline)) static inline
 fih_int fih_or(fih_int x, fih_int y)
 {
-    int32_t y_val, y_msk;
+    /* Use local variable to avoid persistent side effect MISRA violation
+     * in operations with volatile variables. */
+    int32_t y_val = y.val;
+    int32_t y_msk = y.msk;
     volatile fih_int rc = {0};
 
-    fih_int_validate(x);
-    fih_int_validate(y);
-
-    y_val = y.val;
     rc.val = x.val | y_val;
 
-    fih_delay();
-
-    y_msk = y.msk;
     rc.msk = FIH_INT_VAL_MASK(FIH_INT_VAL_MASK(x.msk) | FIH_INT_VAL_MASK(y_msk));
-
-    fih_int_validate(rc);
 
     return rc;
 }
@@ -902,21 +596,15 @@ fih_int fih_or(fih_int x, fih_int y)
 __attribute__((always_inline)) static inline
 fih_uint fih_uint_and(fih_uint x, fih_uint y)
 {
-    uint32_t y_val, y_msk;
+    /* Use local variable to avoid persistent side effect MISRA violation
+     * in operations with volatile variables. */
+    uint32_t y_val = y.val;
+    uint32_t y_msk = y.msk;
     volatile fih_uint rc = {0};
 
-    fih_uint_validate(x);
-    fih_uint_validate(y);
-
-    y_val = y.val;
     rc.val = x.val & y_val;
 
-    fih_delay();
-
-    y_msk = y.msk;
     rc.msk = FIH_UINT_VAL_MASK(FIH_UINT_VAL_MASK(x.msk) & FIH_UINT_VAL_MASK(y_msk));
-
-    fih_uint_validate(rc);
 
     return rc;
 }
@@ -924,16 +612,16 @@ fih_uint fih_uint_and(fih_uint x, fih_uint y)
 #else /* FIH_ENABLE_DOUBLE_VARS */
 
 /* NOOP */
-#define fih_int_validate(x)
-#define fih_uint_validate(x)
+#define fih_int_validate(x)  (true)
+#define fih_uint_validate(x) (true)
 
 /* NOOP */
 #define fih_int_decode(x)       ((x).val)
 #define fih_uint_decode(x)      ((x).val)
 
 /* NOOP */
-#define fih_int_encode(x)       ((fih_int)FIH_INT_INIT(x))
-#define fih_uint_encode(x)      ((fih_uint)FIH_UINT_INIT(x))
+#define fih_int_encode(x)       (FIH_INT_INIT(x))
+#define fih_uint_encode(x)      (FIH_UINT_INIT(x))
 
 /**
  * Standard equality for fih_int values.
@@ -941,25 +629,13 @@ fih_uint fih_uint_and(fih_uint x, fih_uint y)
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x == y, FIH_FALSE otherwise.
+ * @return   true if x == y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_eq(fih_int x, fih_int y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val == y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val != y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
+#define fih_eq(x, y) \
+        ( ((x).val == (y).val) && \
+          fih_delay() && \
+          !((x).val != (y).val) \
+        )
 
 /**
  * Standard equality for fih_uint values.
@@ -967,25 +643,13 @@ int32_t fih_eq(fih_int x, fih_int y)
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x == y, FIH_FALSE otherwise.
+ * @return   true if x == y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_eq(fih_uint x, fih_uint y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val == y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val != y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
+#define fih_uint_eq(x, y) \
+        ( ((x).val == (y).val) && \
+          fih_delay() && \
+          !((x).val != (y).val) \
+        )
 
 /**
  * Standard non-equality for fih_int values.
@@ -993,25 +657,13 @@ int32_t fih_uint_eq(fih_uint x, fih_uint y)
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x != y, FIH_FALSE otherwise.
+ * @return    true if x != y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_not_eq(fih_int x, fih_int y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val != y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val == y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
+#define fih_not_eq(x, y) \
+        ( ((x).val != (y).val) && \
+          fih_delay() && \
+          !((x).val == (y).val) \
+        )
 
 /**
  * Standard non-equality for fih_uint values.
@@ -1019,103 +671,52 @@ int32_t fih_not_eq(fih_int x, fih_int y)
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x != y, FIH_FALSE otherwise.
+ * @return    true if x != y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_not_eq(fih_uint x, fih_uint y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val != y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val == y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
-
+#define fih_uint_not_eq(x, y) \
+        ( ((x).val != (y).val) && \
+          fih_delay() && \
+          !((x).val == (y).val) \
+        )
 /**
  * Standard greater than comparison for fih_int values.
  *
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x > y, FIH_FALSE otherwise.
+ * @return   true if x > y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_gt(fih_int x, fih_int y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val > y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val <= y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
-
+#define fih_gt(x, y) \
+        ( ((x).val > (y).val) && \
+          fih_delay() && \
+          !((x).val <= (y).val) \
+        )
 /**
  * Standard greater than comparison for fih_uint values.
  *
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x > y, FIH_FALSE otherwise.
+ * @return   true if x > y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_gt(fih_uint x, fih_uint y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val > y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val <= y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
-
+#define fih_uint_gt(x, y) \
+        ( ((x).val > (y).val) && \
+          fih_delay() && \
+          !((x).val <= (y).val) \
+        )
 /**
  * Standard greater than or equal comparison for fih_int values.
  *
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x >= y, FIH_FALSE otherwise.
+ * @return   true if x >= y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_ge(fih_int x, fih_int y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val >= y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val < y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
+#define fih_ge(x, y) \
+        ( ((x).val >= (y).val) && \
+          fih_delay() && \
+          !((x).val < (y).val) \
+        )
 
 /**
  * Standard greater than or equal comparison for fih_uint values.
@@ -1123,51 +724,26 @@ int32_t fih_ge(fih_int x, fih_int y)
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x >= y, FIH_FALSE otherwise.
+ * @return   true if x >= y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_ge(fih_uint x, fih_uint y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val >= y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val < y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
-
+#define fih_uint_ge(x, y) \
+        ( ((x).val >= (y).val) && \
+          fih_delay() && \
+          !((x).val < (y).val) \
+        )
 /**
  * Standard less than comparison for fih_int values.
  *
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x < y, FIH_FALSE otherwise.
+ * @return   true if x < y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_lt(fih_int x, fih_int y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val < y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val >= y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
+#define fih_lt(x, y) \
+        ( ((x).val < (y).val) && \
+          fih_delay() && \
+          !((x).val >= (y).val) \
+        )
 
 /**
  * Standard less than comparison for fih_uint values.
@@ -1175,51 +751,26 @@ int32_t fih_lt(fih_int x, fih_int y)
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x < y, FIH_FALSE otherwise.
+ * @return   true if x < y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_lt(fih_uint x, fih_uint y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val < y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val >= y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
-
+#define fih_uint_lt(x, y) \
+        ( ((x).val < (y).val) && \
+          fih_delay() && \
+          !((x).val >= (y).val) \
+        )
 /**
  * Standard less than or equal comparison for fih_int values.
  *
  * @param x  1st fih_int value to be compared.
  * @param y  2nd fih_int value to be compared.
  *
- * @return   FIH_TRUE if x <= y, FIH_FALSE otherwise.
+ * @return   true if x <= y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_le(fih_int x, fih_int y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val <= y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val > y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
+#define fih_le(x, y) \
+        ( ((x).val <= (y).val) && \
+          fih_delay() && \
+          !((x).val > (y).val) \
+        )
 
 /**
  * Standard less than or equal comparison for fih_uint values.
@@ -1227,25 +778,13 @@ int32_t fih_le(fih_int x, fih_int y)
  * @param x  1st fih_uint value to be compared.
  * @param y  2nd fih_uint value to be compared.
  *
- * @return   FIH_TRUE if x <= y, FIH_FALSE otherwise.
+ * @return   true if x <= y, false otherwise.
  */
-__attribute__((always_inline)) static inline
-int32_t fih_uint_le(fih_uint x, fih_uint y)
-{
-    volatile int32_t rc = FIH_FALSE;
-
-    if (x.val <= y.val) {
-        rc = FIH_TRUE;
-    }
-
-    fih_delay();
-
-    if (x.val > y.val) {
-        rc = FIH_FALSE;
-    }
-
-    return rc;
-}
+#define fih_uint_le(x, y) \
+        ( ((x).val <= (y).val) && \
+          fih_delay() && \
+          !((x).val > (y).val) \
+        )
 
 /**
  * Standard logical OR for fih_uint values.
@@ -1255,12 +794,13 @@ int32_t fih_uint_le(fih_uint x, fih_uint y)
  *
  * @return   ORed value
  */
+
 __attribute__((always_inline)) static inline
 fih_uint fih_uint_or(fih_uint x, fih_uint y)
 {
     fih_uint rc = {x.val | y.val};
 
-    fih_delay();
+    (void)fih_delay();
 
     if (rc.val != (x.val | y.val)) {
         FIH_PANIC;
@@ -1282,7 +822,7 @@ fih_int fih_or(fih_int x, fih_int y)
 {
     fih_int rc = {x.val | y.val};
 
-    fih_delay();
+    (void)fih_delay();
 
     if (rc.val != (x.val | y.val)) {
         FIH_PANIC;
@@ -1304,7 +844,7 @@ fih_uint fih_uint_and(fih_uint x, fih_uint y)
 {
     fih_uint rc = {x.val & y.val};
 
-    fih_delay();
+    (void)fih_delay();
 
     if (rc.val != (x.val & y.val)) {
         FIH_PANIC;
@@ -1421,7 +961,7 @@ void fih_cfi_decrement(void);
 #define FIH_CFI_STEP_ERR_RESET() \
         do { \
             fih_cfi_ctr = fih_cfi_step_saved_value; \
-            fih_int_validate(fih_cfi_ctr); \
+            (void)fih_int_validate(fih_cfi_ctr); \
         } while(0)
 
 #else /* FIH_ENABLE_CFI */
@@ -1462,10 +1002,10 @@ void fih_cfi_decrement(void);
         FIH_LABEL("FIH_CALL_START_" # f); \
         FIH_CFI_PRECALL_BLOCK; \
         (ret) = FIH_FAILURE; \
-        fih_delay(); \
+        (void)fih_delay(); \
         (ret) = (f)(__VA_ARGS__); \
         FIH_CFI_POSTCALL_BLOCK; \
-        fih_int_validate(ret); \
+        (void)fih_int_validate(ret); \
         FIH_LABEL("FIH_CALL_END"); \
     } while (false)
 
@@ -1475,7 +1015,7 @@ void fih_cfi_decrement(void);
 #define FIH_VOID(f, ...) \
     do { \
         FIH_CFI_PRECALL_BLOCK; \
-        fih_delay(); \
+        (void)fih_delay(); \
         (void)(f)(__VA_ARGS__); \
         FIH_CFI_POSTCALL_BLOCK; \
         FIH_LABEL("FIH_CALL_END"); \
@@ -1490,10 +1030,10 @@ void fih_cfi_decrement(void);
         FIH_LABEL("FIH_CALL_START_" # f); \
         FIH_CFI_PRECALL_BLOCK; \
         (ret) = FIH_UINT_ZERO; \
-        fih_delay(); \
+        (void)fih_delay(); \
         (ret) = (f)(__VA_ARGS__); \
         FIH_CFI_POSTCALL_BLOCK; \
-        fih_uint_validate(ret); \
+        (void)fih_uint_validate(ret); \
         FIH_LABEL("FIH_CALL_END"); \
     } while (false)
 
@@ -1515,8 +1055,14 @@ typedef uint32_t fih_uint;
 typedef fih_int fih_int;
 typedef fih_uint fih_uint;
 
+
+/* FIH_UINT_INIT_GLOBAL and FIH_INT_INIT_GLOBAL are created to declare global 
+  or static global veriables to avoid the compile time Error[Pe028]: expression
+  must have a constant value on IAR compiler */
 #define FIH_INT_INIT(x)         (x)
+#define FIH_INT_INIT_GLOBAL(x)  (x)
 #define FIH_UINT_INIT(x)        (x)
+#define FIH_UINT_INIT_GLOBAL(x) (x)
 
 #define FIH_SUCCESS             (0)
 #define FIH_FAILURE            (-1)
@@ -1599,7 +1145,7 @@ typedef fih_uint fih_uint;
 }
 #endif /* __cplusplus */
 
-FIH_MISRA_BLOCK_END('MISRA C-2012 Rule 10.1');
-FIH_MISRA_BLOCK_END('MISRA C-2012 Rule 10.4');
+FIH_MISRA_BLOCK_END('MISRA C-2012 Rule 10.1')
+FIH_MISRA_BLOCK_END('MISRA C-2012 Rule 10.4')
 
 #endif /* FAULT_INJECTION_HARDENING_H */
