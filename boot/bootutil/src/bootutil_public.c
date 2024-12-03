@@ -548,7 +548,11 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
             /* The image slot is corrupt.  There is no way to recover, so erase the
              * slot to allow future upgrades.
              */
+#if !defined(CONFIG_MCUBOOT) && defined(__ZEPHYR__)
+            flash_area_flatten(fa, 0, flash_area_get_size(fa));
+#else
             flash_area_erase(fa, 0, flash_area_get_size(fa));
+#endif
             rc = BOOT_EBADIMAGE;
         }
         break;

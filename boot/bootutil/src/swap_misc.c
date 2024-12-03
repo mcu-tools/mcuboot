@@ -69,7 +69,7 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
     do {
         sz = boot_img_sector_size(state, slot, sector);
         off = boot_img_sector_off(state, slot, sector);
-        rc = boot_erase_region(fap, off, sz);
+        rc = boot_scramble_region(fap, off, sz);
         assert(rc == 0);
 
         sector--;

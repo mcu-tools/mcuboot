@@ -302,7 +302,15 @@ int boot_copy_region(struct boot_loader_state *state,
                      const struct flash_area *fap_src,
                      const struct flash_area *fap_dst,
                      uint32_t off_src, uint32_t off_dst, uint32_t sz);
+/* Prepare for write device that requires erase prior to write. This will
+ * do nothing on devices without erase requirement.
+ */
 int boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz);
+/* SImilar to boot_erase_region but will alwasy remove data */
+int boot_scramble_region(const struct flash_area *fap, uint32_t off, uint32_t sz);
+/* Makes slot unbootable, either by scrambling header magic, header sector
+ * or entire slot, depending on settings */
+int boot_scramble_slot(const struct flash_area *fap);
 bool boot_status_is_reset(const struct boot_status *bs);
 
 #ifdef MCUBOOT_ENC_IMAGES
