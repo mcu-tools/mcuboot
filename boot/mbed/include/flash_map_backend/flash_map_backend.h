@@ -152,6 +152,11 @@ uint8_t flash_area_erased_val(const struct flash_area * fap);
 
 /*
  * Given flash area ID, return info about sectors within the area.
+ *
+ * Note: the sectors array has size MCUBOOT_MAX_IMG_SECTORS, and only that many elements should
+ * be stored into it.  However, if the flash area has more than MCUBOOT_MAX_IMG_SECTORS sectors,
+ * the count variable should be set to indicate the real sector count.  This will trigger the appropriate
+ * warning to be printed.
  */
 int flash_area_get_sectors(int fa_id, uint32_t *count,
   struct flash_sector *sectors);
