@@ -88,7 +88,7 @@
             "value": true
         },
         "max-img-sectors": {
-            "help": "Maximum number of flash sectors per image slot. Target-dependent, please set on a per-target basis.",
+            "help": "Maximum number of flash sectors per image slot. This should be set to account for the sector sizes of both the main and secondary block devices. Target-dependent, please set on a per-target basis.",
             "macro_name": "MCUBOOT_MAX_IMG_SECTORS",
             "required": true
         },
