@@ -8,6 +8,8 @@
 #include <assert.h>
 #include "bootutil/image.h"
 #include "bootutil_priv.h"
+#include "bootutil/boot_record.h"
+#include "bootutil/bootutil.h"
 #include "bootutil/bootutil_log.h"
 #include "bootutil/bootutil_public.h"
 #include "bootutil/fault_injection_hardening.h"
@@ -139,6 +141,22 @@ boot_go(struct boot_rsp *rsp)
 #else
     fih_rc = FIH_SUCCESS;
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT */
+
+#ifdef MCUBOOT_MEASURED_BOOT
+    rc = boot_save_boot_status(0, &_hdr, _fa_p);
+    if (rc != 0) {
+        BOOT_LOG_ERR("Failed to add image data to shared area");
+        return rc;
+    }
+#endif /* MCUBOOT_MEASURED_BOOT */
+
+#ifdef MCUBOOT_DATA_SHARING
+    rc = boot_save_shared_data(&_hdr, _fa_p, 0, NULL);
+    if (rc != 0) {
+        BOOT_LOG_ERR("Failed to add data to shared memory area.");
+        return rc;
+    }
+#endif /* MCUBOOT_DATA_SHARING */
 
     rsp->br_flash_dev_id = flash_area_get_device_id(_fa_p);
     rsp->br_image_off = flash_area_get_off(_fa_p);
