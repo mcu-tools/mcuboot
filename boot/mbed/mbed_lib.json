@@ -88,7 +88,7 @@
             "value": true
         },
         "max-img-sectors": {
-            "help": "Maximum number of flash sectors per image slot. Target-dependent, please set on a per-target basis.",
+            "help": "Maximum number of flash sectors per image slot. This should be set to account for the sector sizes of both the main and secondary block devices. Target-dependent, please set on a per-target basis.",
             "macro_name": "MCUBOOT_MAX_IMG_SECTORS",
             "required": true
         },
@@ -119,7 +119,7 @@
             "value": null
         },
         "encrypt-rsa": {
-            "help": "Encrypt images using RSA (NOT TESTED)",
+            "help": "Encrypt update images using RSA",
             "macro_name": "MCUBOOT_ENCRYPT_RSA",
             "accepted_values": [true, null],
             "value": null
@@ -189,6 +189,11 @@
         "xip-secondary-slot-address": {
             "help": "Specify start address for secondary slot address in XIP-accessible memory. This is required if direct-xip is enabled.",
             "value": null
+        },
+        "flash-block-size": {
+            "help": "Size in bytes of a programmable block of the flash memory.",
+            "macro_name": "MCUBOOT_BOOT_MAX_ALIGN",
+            "value": 8
         }
     }
 }

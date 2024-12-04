@@ -19,6 +19,7 @@
 #if MCUBOOT_BOOTLOADER_BUILD
 
 #include <stdlib.h>
+#include <cinttypes>
 #include "bootutil/bootutil.h"
 #include "bootutil/image.h"
 #include "hal/serial_api.h"
@@ -83,7 +84,7 @@ int main()
     // Workaround: The extra \n ensures the last trace gets flushed
     // before mbed_start_application() destroys the stack and jumps
     // to the application
-    tr_info("Booting firmware image at 0x%x\n", address);
+    tr_info("Booting firmware image at 0x%" PRIx32 "\n", address);
 
     // Run the application in the primary slot
     // Add header size offset to calculate the actual start address of application
