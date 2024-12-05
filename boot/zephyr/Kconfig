@@ -88,6 +88,22 @@ config BOOT_IMG_HASH_ALG_SHA512_ALLOW
 	help
 	  Hidden option set by configurations that allow SHA512
 
+config BOOT_IMG_HASH_DIRECTLY_ON_STORAGE
+	bool "Hash calculation functions access storage through address space"
+	depends on !BOOT_ENCRYPT_IMAGE
+	help
+	  When possible to map storage device, at least for read operations,
+	  to address space or RAM area, enabling this option allows hash
+	  calculation functions to directly access the storage through that address
+	  space or using its own DMA. This reduces flash read overhead done
+	  by MCUboot.
+	  Notes:
+	    - not supported when encrypted images are in use, because calculating
+	      SHA requires image to be decrypted first, which is done in RAM.
+	    - currently only supported on internal storage of devices; this
+	      option will not work with devices that use external storage for
+	      either of the image slots.
+
 choice BOOT_IMG_HASH_ALG
 	prompt "Selected image hash algorithm"
 	default BOOT_IMG_HASH_ALG_SHA256 if BOOT_IMG_HASH_ALG_SHA256_ALLOW
@@ -117,6 +133,14 @@ config BOOT_IMG_HASH_ALG_SHA512
 	  SHA512 algorithm
 
 endchoice # BOOT_IMG_HASH_ALG
+
+config BOOT_SIGNATURE_TYPE_PURE_ALLOW
+	bool
+	help
+	  Hidden option set by configurations that allow Pure variant,
+	  for example ed25519. The pure variant means that image
+	  signature is calculated over entire image instead of hash
+	  of an image.
 
 choice BOOT_SIGNATURE_TYPE
 	prompt "Signature type"
@@ -167,16 +191,35 @@ endif
 
 config BOOT_SIGNATURE_TYPE_ED25519
 	bool "Edwards curve digital signatures using ed25519"
-	select BOOT_ENCRYPTION_SUPPORT
-	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
+	select BOOT_ENCRYPTION_SUPPORT if !BOOT_SIGNATURE_TYPE_PURE
+	select BOOT_IMG_HASH_ALG_SHA256_ALLOW if !BOOT_SIGNATURE_TYPE_PURE
+	# The SHA is used only for key hashing, not for images.
+	select BOOT_SIGNATURE_TYPE_PURE_ALLOW
+	help
+	  This is ed25519 signature calculated over SHA512 of SHA256 of application
+	  image.
+	  To check signature over entire image directly, rather than hash,
+	  select BOOT_SIGNATURE_TYPE_PURE.
 
 if BOOT_SIGNATURE_TYPE_ED25519
+
+config BOOT_SIGNATURE_TYPE_PURE
+	bool "Use Pure signature of image"
+	depends on BOOT_SIGNATURE_TYPE_PURE_ALLOW
+	help
+	  The Pure signature is calculated directly over image rather than
+	  hash of an image, as the BOOT_SIGNATURE_TYPE_ED25519 does by
+	  default.
+	  Image to be verified needs to be accessible through memory address
+	  space that cryptography functions can access via pointers.
+
 choice BOOT_ED25519_IMPLEMENTATION
 	prompt "Ecdsa implementation"
 	default BOOT_ED25519_TINYCRYPT
 config BOOT_ED25519_TINYCRYPT
 	bool "Use tinycrypt"
 	select BOOT_USE_TINYCRYPT
+	select BOOT_IMG_HASH_ALG_SHA512_ALLOW
 config BOOT_ED25519_MBEDTLS
 	bool "Use mbedTLS"
 	select BOOT_USE_MBEDTLS

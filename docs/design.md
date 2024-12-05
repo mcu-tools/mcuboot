@@ -111,6 +111,8 @@ struct image_tlv {
 #define IMAGE_TLV_ECDSA_SIG         0x22   /* ECDSA of hash output */
 #define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
 #define IMAGE_TLV_ED25519           0x24   /* ED25519 of hash output */
+#define IMAGE_TLV_SIG_PURE          0x25   /* If true then any signature found has been
+                                            * calculated over image directly. */
 #define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
 #define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW-128 or
                                               256 */
