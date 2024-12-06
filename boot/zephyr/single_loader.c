@@ -20,6 +20,30 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 static const struct flash_area *_fa_p;
 static struct image_header _hdr = { 0 };
 
+__weak bool
+flash_map_id_get_next(uint8_t *id, bool reset)
+{
+    if (!reset || !id) {
+        return false;
+    }
+
+    *id = FLASH_AREA_IMAGE_PRIMARY(0);
+
+    return true;
+}
+
+__weak bool
+flash_map_id_get_current(uint8_t *id)
+{
+    if (!id) {
+        return false;
+    }
+
+    *id = FLASH_AREA_IMAGE_PRIMARY(0);
+
+    return true;
+}
+
 #if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT) || defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
 /**
  * Validate hash of a primary boot image.
@@ -102,50 +126,65 @@ fih_ret
 boot_go(struct boot_rsp *rsp)
 {
     int rc = -1;
+    uint8_t flash_id;
+    bool reset = true;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &_fa_p);
-    assert(rc == 0);
+    while (flash_map_id_get_next(&flash_id, reset)) {
+        reset = false;
+        rc = flash_area_open(flash_id, &_fa_p);
+        if (rc != 0) {
+            continue;
+        }
 
-    rc = boot_image_load_header(_fa_p, &_hdr);
-    if (rc != 0)
-        goto out;
+        rc = boot_image_load_header(_fa_p, &_hdr);
+        if (rc != 0) {
+            flash_area_close(_fa_p);
+            continue;
+        }
 
 #ifdef MCUBOOT_RAM_LOAD
         static struct boot_loader_state state;
         state.imgs[0][0].hdr = _hdr;
 
         rc = boot_load_image_to_sram(&state);
-        if (rc != 0)
-            goto out;
+        if (rc != 0) {
+            flash_area_close(_fa_p);
+            continue;
+        }
 #endif
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
-    FIH_CALL(boot_image_validate, fih_rc, _fa_p, &_hdr);
-    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+        FIH_CALL(boot_image_validate, fih_rc, _fa_p, &_hdr);
+        if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+            flash_area_close(_fa_p);
 #ifdef MCUBOOT_RAM_LOAD
-        boot_remove_image_from_sram(&state);
+            boot_remove_image_from_sram(&state);
 #endif
-        goto out;
-    }
+            continue;
+        }
 #elif defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
-    FIH_CALL(boot_image_validate_once, fih_rc, _fa_p, &_hdr);
-    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+        FIH_CALL(boot_image_validate_once, fih_rc, _fa_p, &_hdr);
+        if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+            flash_area_close(_fa_p);
 #ifdef MCUBOOT_RAM_LOAD
-        boot_remove_image_from_sram(&state);
+            boot_remove_image_from_sram(&state);
 #endif
-        goto out;
-    }
+            continue;
+        }
 #else
-    fih_rc = FIH_SUCCESS;
+        fih_rc = FIH_SUCCESS;
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT */
 
-    rsp->br_flash_dev_id = flash_area_get_device_id(_fa_p);
-    rsp->br_image_off = flash_area_get_off(_fa_p);
-    rsp->br_hdr = &_hdr;
+        rsp->br_flash_dev_id = flash_area_get_device_id(_fa_p);
+        rsp->br_image_off = flash_area_get_off(_fa_p);
+        rsp->br_hdr = &_hdr;
 
-out:
-    flash_area_close(_fa_p);
+        flash_area_close(_fa_p);
+
+        break;
+    }
+
 
     FIH_RET(fih_rc);
 }

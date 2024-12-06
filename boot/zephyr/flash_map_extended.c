@@ -14,6 +14,10 @@
 #include <flash_map_backend/flash_map_backend.h>
 #include <sysflash/sysflash.h>
 
+#if defined(CONFIG_FLASH_RUNTIME_SOURCES)
+#include <flash_runtime_sources.h>
+#endif
+
 #include "bootutil/bootutil_log.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
@@ -58,6 +62,15 @@ int flash_device_base(uint8_t fd_id, uintptr_t *ret)
  */
 int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
+#if defined(CONFIG_FLASH_RUNTIME_SOURCES)
+    uint8_t id;
+
+    if (flash_map_id_get_current(&id)) {
+        return id;
+    }
+    return -1;
+#endif
+
     switch (slot) {
     case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
 #if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
@@ -141,7 +154,7 @@ int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
 
 uint8_t flash_area_get_device_id(const struct flash_area *fa)
 {
-#if defined(CONFIG_ARM)
+#if defined(CONFIG_ARM) || defined(CONFIG_FLASH_RUNTIME_SOURCES)
     return fa->fa_id;
 #else
     (void)fa;
