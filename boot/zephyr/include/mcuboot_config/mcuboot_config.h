@@ -379,11 +379,28 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/watchdog.h>
 
+#if CONFIG_MCUBOOT_WATCHDOG_TIMEOUT
+#define MCUBOOT_WATCHDOG_INSTALL_TIMEOUT()                    \
+    do {                                                      \
+        struct wdt_timeout_cfg wdtConfig = {                  \
+            .flags = WDT_FLAG_RESET_SOC,                      \
+            .window.min = 0,                                  \
+            .window.max = CONFIG_MCUBOOT_WATCHDOG_TIMEOUT     \
+        };                                                    \
+        wdt_install_timeout(wdt, &wdtConfig);                 \
+    } while (0)
+#else
+#define MCUBOOT_WATCHDOG_INSTALL_TIMEOUT()                    \
+    do {                                                      \
+    } while (0)
+#endif /* CONFIG_MCUBOOT_WATCHDOG_TIMEOUT */
+
 #define MCUBOOT_WATCHDOG_SETUP()                              \
     do {                                                      \
         const struct device* wdt =                            \
             DEVICE_DT_GET(DT_ALIAS(watchdog0));               \
         if (device_is_ready(wdt)) {                           \
+            MCUBOOT_WATCHDOG_INSTALL_TIMEOUT();               \
             wdt_setup(wdt, 0);                                \
         }                                                     \
     } while (0)
