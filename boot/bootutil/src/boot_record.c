@@ -237,7 +237,6 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
                           const uint8_t slot, const struct image_max_size *max_app_sizes)
 {
     int rc;
-    uint8_t image = 0;
 
 #if defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
     uint8_t mode = MCUBOOT_MODE_SINGLE_SLOT;
@@ -322,11 +321,13 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
                                           sizeof(recovery), &recovery);
     }
 
+#if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
     if (!rc) {
         rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO,
                                           BLINFO_RUNNING_SLOT,
                                           sizeof(slot), (void *)&slot);
     }
+#endif
 
 #if defined(MCUBOOT_VERSION_AVAILABLE)
     if (!rc) {
@@ -336,6 +337,9 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
                                           (void *)&mcuboot_version);
     }
 #endif
+
+#if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
+    uint8_t image = 0;
 
     while (image < BOOT_IMAGE_NUMBER && !rc) {
         if (max_app_sizes[image].calculated == true) {
@@ -348,6 +352,7 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
 
         ++image;
     }
+#endif
 
     if (!rc) {
         saved_bootinfo = true;
