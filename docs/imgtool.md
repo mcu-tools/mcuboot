@@ -51,7 +51,7 @@ enabled, this last step is unnecessary and can be skipped.
 Image signing takes an image in binary or Intel Hex format intended for the
 primary slot and adds a header and trailer that the bootloader is expecting:
 
-    Usage: imgtool.py sign [OPTIONS] INFILE OUTFILE
+    Usage: imgtool sign [OPTIONS] INFILE OUTFILE
 
       Create a signed or unsigned image
 
@@ -59,42 +59,92 @@ primary slot and adds a header and trailer that the bootloader is expecting:
       extension, otherwise binary format is used
 
     Options:
+      --vector-to-sign [payload|digest]
+                                      send to OUTFILE the payload or payloads
+                                      digest instead of complied image. These data
+                                      can be used for external image signing
+      --sha [auto|256|384|512]        selected sha algorithm to use; defaults to
+                                      "auto" which is 256 if no cryptographic
+                                      signature is used, or default for signature
+                                      type
+      --sig-out filename              Path to the file to which signature will be
+                                      written. The image signature will be encoded
+                                      as base64 formatted string
+      --pure                          Expected Pure variant of signature; the Pure
+                                      variant is expected to be signature done
+                                      over an image rather than hash of that
+                                      image.
+      --fix-sig-pubkey filename       public key relevant to fixed signature
+      --fix-sig filename              fixed signature for the image. It will be
+                                      used instead of the signature calculated
+                                      using the public key
       -k, --key filename
       --public-key-format [hash|full]
-      --align [1|2|4|8|16|32]       Alignment used by swap update modes.
-      -v, --version TEXT            [required]
-      -s, --security-counter TEXT   Specify the value of security counter. Use
-                                    the `auto` keyword to automatically generate
-                                    it from the image version.
-      -d, --dependencies TEXT
-      --pad-sig                     Add 0-2 bytes of padding to ECDSA signature
-                                    (for MCUboot <1.5)
-      -H, --header-size INTEGER     [required]
-      --pad-header                  Add --header-size zeroed bytes at the
-                                    beginning of the image
-      -S, --slot-size INTEGER       Size of the slot where the image will be
-                                    written [required]
-      --pad                         Pad image to --slot-size bytes, adding
-                                    trailer magic
-      --confirm                     When padding the image, mark it as confirmed
-      -M, --max-sectors INTEGER     When padding allow for this amount of
-                                    sectors (defaults to 128)
-      --boot-record sw_type         Create CBOR encoded boot record TLV. The
-                                    sw_type represents the role of the software
-                                    component (e.g. CoFM for coprocessor
-                                    firmware). [max. 12 characters]
-      --overwrite-only              Use overwrite-only instead of swap upgrades
-      -e, --endian [little|big]     Select little or big endian
-      -E, --encrypt filename        Encrypt image using the provided public key
-      --save-enctlv                 When upgrading, save encrypted key TLVs
-                                    instead of plain keys. Enable when
-                                    BOOT_SWAP_SAVE_ENCTLV config option was set.
-      -L, --load-addr INTEGER       Load address for image when it should run
-                                    from RAM.
-      -x, --hex-addr INTEGER        Adjust address in hex output file.
-      -R, --erased-val [0|0xff]     The value that is read back from erased
-                                    flash.
-      -h, --help                    Show this message and exit.
+                                      In what format to add the public key to the
+                                      image manifest: full key or hash of the key.
+      --max-align [8|16|32]           Maximum flash alignment. Set if flash
+                                      alignment of the primary and secondary slot
+                                      differ and any of them is larger than 8.
+      --align [1|2|4|8|16|32]         Alignment used by swap update modes.
+      -v, --version TEXT              [required]
+      -s, --security-counter TEXT     Specify the value of security counter. Use
+                                      the `auto` keyword to automatically generate
+                                      it from the image version.
+      -d, --dependencies TEXT         Add dependence on another image, format:
+                                      "(<image_ID>,<image_version>), ... "
+      --pad-sig                       Add 0-2 bytes of padding to ECDSA signature
+                                      (for mcuboot <1.5)
+      -H, --header-size INTEGER       [required]
+      --pad-header                    Add --header-size zeroed bytes at the
+                                      beginning of the image
+      -S, --slot-size INTEGER         Size of the slot. If the slots have
+                                      different sizes, use the size of the
+                                      secondary slot.  [required]
+      --pad                           Pad image to --slot-size bytes, adding
+                                      trailer magic
+      --confirm                       When padding the image, mark it as confirmed
+                                      (implies --pad)
+      -M, --max-sectors INTEGER       When padding allow for this amount of
+                                      sectors (defaults to 128)
+      --boot-record sw_type           Create CBOR encoded boot record TLV. The
+                                      sw_type represents the role of the software
+                                      component (e.g. CoFM for coprocessor
+                                      firmware). [max. 12 characters]
+      --overwrite-only                Use overwrite-only instead of swap upgrades
+      -e, --endian [little|big]       Select little or big endian
+      -c, --clear                     Output a non-encrypted image with encryption
+                                      capabilities,so it can be installed in the
+                                      primary slot, and encrypted when swapped to
+                                      the secondary.
+      --skip-encryption               Set encryption flags and TLV's without
+                                      applying encryption.
+      --compression [disabled|lzma2|lzma2armthumb]
+                                      Enable image compression using specified
+                                      type. Will fall back without image
+                                      compression automatically if the compression
+                                      increases the image size.
+      --encrypt-keylen [128|256]      When encrypting the image using AES, select
+                                      a 128 bit or 256 bit key len.
+      -E, --encrypt filename          Encrypt image using the provided public key.
+                                      (Not supported in direct-xip or ram-load
+                                      mode.)
+      --save-enctlv                   When upgrading, save encrypted key TLVs
+                                      instead of plain keys. Enable when
+                                      BOOT_SWAP_SAVE_ENCTLV config option was set.
+      -F, --rom-fixed INTEGER         Set flash address the image is built for.
+      -L, --load-addr INTEGER         Load address for image when it should run
+                                      from RAM.
+      -x, --hex-addr INTEGER          Adjust address in hex output file.
+      -R, --erased-val [0|0xff]       The value that is read back from erased
+                                      flash.
+      --custom-tlv [tag] [value]      Custom TLV that will be placed into
+                                      protected area. Add "0x" prefix if the value
+                                      should be interpreted as an integer,
+                                      otherwise it will be interpreted as a
+                                      string. Specify the option multiple times to
+                                      add multiple TLVs.
+      --non-bootable                  Mark the image as non-bootable.
+      -h, --help                      Show this message and exit.
 
 The main arguments given are the key file generated above, a version
 field to place in the header (1.2.3 for example), the alignment of the
@@ -110,6 +160,12 @@ is used with an Intel Hex file, `--header-size` bytes will be subtracted from
 the load address (in Intel Hex terms, the Extended Linear Address record) to
 adjust for the new bytes prepended to the file. The load address of all data
 existing in the file should not change.
+
+The `--compression` option enables LZMA compression over payload. Details
+about internals of image generated with this option can be found here
+[here](./compression_format.md)
+This isn't fully supported on the embedded side but can be utilised when
+project is built on top of the mcuboot.
 
 The `--slot-size` argument is required and used to check that the firmware
 does not overflow into the swap status area (metadata). If swap upgrades are
