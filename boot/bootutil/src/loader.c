@@ -2244,7 +2244,9 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 #endif
 
     /* Trigger status change callback with upgrading status */
-    mcuboot_status_change(MCUBOOT_STATUS_UPGRADING);
+    if (has_upgrade) {
+        mcuboot_status_change(MCUBOOT_STATUS_UPGRADING);
+    }
 
     /* Iterate over all the images. At this point there are no aborted swaps
      * and the swap types are determined for each image. By the end of the loop
