@@ -43,8 +43,8 @@ offset_re = re.compile(r"^#define DT_FLASH_AREA_([0-9A-Z_]+)_OFFSET(_0)?\s+(0x[0
 size_re   = re.compile(r"^#define DT_FLASH_AREA_([0-9A-Z_]+)_SIZE(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
 
 class Assembly():
-    def __init__(self, output, bootdir, edt):
-        self.find_slots(edt)
+    def __init__(self, output, bootdir, edt, is_secondary=True):
+        self.find_slots(edt, is_secondary)
         try:
             os.unlink(output)
         except OSError as e:
@@ -52,7 +52,7 @@ class Assembly():
                 raise
         self.output = output
 
-    def find_slots(self, edt):
+    def find_slots(self, edt, is_secondary):
         offsets = {}
         sizes = {}
 
@@ -74,7 +74,7 @@ class Assembly():
         if 'image-0' not in offsets:
             raise Exception("Board partition table does not have image-0 partition")
 
-        if 'image-1' not in offsets:
+        if ('image-1' not in offsets) and is_secondary:
             raise Exception("Board partition table does not have image-1 partition")
 
         self.offsets = offsets
@@ -137,11 +137,12 @@ def main():
         edt = pickle.load(f)
         assert isinstance(edt, devicetree.edtlib.EDT)
 
-    output = Assembly(args.output, args.bootdir, edt)
+    is_secondary = args.secondary is not None
+    output = Assembly(args.output, args.bootdir, edt, is_secondary)
 
     output.add_image(os.path.join(args.bootdir, 'zephyr', 'zephyr.bin'), 'mcuboot')
     output.add_image(args.primary, "image-0")
-    if args.secondary is not None:
+    if is_secondary:
         output.add_image(args.secondary, "image-1")
 
 if __name__ == '__main__':
