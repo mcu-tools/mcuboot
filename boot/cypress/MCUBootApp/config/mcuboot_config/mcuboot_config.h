@@ -83,6 +83,8 @@
 // TODO: FWSECURITY-755
 #define MCUBOOT_USE_FLASH_AREA_GET_SECTORS
 
+#define MCUBOOT_DEV_WITH_ERASE
+
 /* Default number of separately updateable images; change in case of
  * multiple images. */
 #ifndef MCUBOOT_IMAGE_NUMBER
