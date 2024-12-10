@@ -135,6 +135,55 @@ boot_trailer_sz(uint32_t min_write_sz)
     return boot_status_sz(min_write_sz) + boot_trailer_info_sz();
 }
 
+int boot_trailer_scramble_params(const struct flash_area *fa, size_t *off, size_t *size)
+{
+    int ret = 0;
+    const size_t write_block = flash_area_align(fa);
+
+    if (device_requires_erase(fa)) {
+        /* For device requiring arese align to erase unit */
+        struct flash_sector sector;
+
+        ret = flash_area_get_sector(fa, flash_area_get_size(fa) - boot_trailer_sz(write_block),
+                                    &sector);
+        if (ret < 0) {
+            return ret;
+        }
+
+        *off = flash_sector_get_off(&sector);
+        *size = flash_sector_get_size(&sector);
+    } else {
+        /* For device not requirng erase align to write block */
+        *off = ALIGN_DOWN(boot_trailer_sz(write_block), write_block);
+        *size = ALIGN_UP(boot_trailer_sz(write_block), write_block);
+    }
+
+    return ret;
+}
+
+int boot_header_scramble_sz(const struct flash_area *fa, size_t *size)
+{
+    int ret = 0;
+    const size_t write_block = flash_area_align(fa);
+
+    if (device_requires_erase(fa)) {
+        /* For device requiring arese align to erase unit */
+        struct flash_sector sector;
+
+        ret = flash_area_get_sector(fa, 0, &sector);
+        if (ret < 0) {
+            return ret;
+        }
+
+        *size = flash_sector_get_size(&sector);
+    } else {
+        /* For device not requirng erase align to write block */
+        *size = ALIGN_UP(sizeof(((struct image_header *)0)->ih_magic), write_block);
+    }
+
+    return ret;
+}
+
 #if MCUBOOT_SWAP_USING_SCRATCH
 /*
  * Similar to `boot_trailer_sz` but this function returns the space used to

@@ -36,11 +36,8 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
                            const struct flash_area *fap)
 {
     uint8_t slot;
-    uint32_t sector;
-    uint32_t trailer_sz;
-    uint32_t total_sz;
-    uint32_t off;
-    uint32_t sz;
+    size_t off;
+    size_t sz;
     int fa_id_primary;
     int fa_id_secondary;
     uint8_t image_index;
@@ -63,19 +60,13 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
     }
 
     /* delete starting from last sector and moving to beginning */
-    sector = boot_img_num_sectors(state, slot) - 1;
-    trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
-    total_sz = 0;
-    do {
-        sz = boot_img_sector_size(state, slot, sector);
-        off = boot_img_sector_off(state, slot, sector);
-        rc = boot_erase_region(fap, off, sz);
-        assert(rc == 0);
-
-        sector--;
-        total_sz += sz;
-    } while (total_sz < trailer_sz);
-
+    rc  = boot_trailer_scramble_params(fap, &off, &sz);
+    if (rc < 0) {
+        goto out;
+    }
+    rc = boot_scramble_region_backwards(fap, off, sz);
+out:
+    assert(rc == 0);
     return rc;
 }
 
