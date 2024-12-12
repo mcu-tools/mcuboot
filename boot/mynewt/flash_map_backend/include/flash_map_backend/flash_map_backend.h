@@ -83,4 +83,9 @@ static inline uint32_t flash_sector_get_off(const struct flash_sector *fs)
     return fs->fs_off;
 }
 
+static inline uint32_t flash_sector_get_size(const struct flash_sector *fs)
+{
+    return fs->fs_size;
+}
+
 #endif /* __FLASH_MAP_BACKEND_H__ */
