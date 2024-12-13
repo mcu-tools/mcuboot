@@ -1,0 +1,20 @@
+name: Issue assignment
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  move-to-todo:
+    runs-on: ubuntu-latest
+    if: github.repository == 'mcu-tools/mcuboot'
+    steps:
+      - uses: fojia/action-move-issues-to-column@master
+        with:
+          project: 'Issue Tracking'
+          column: 'No Status'
+          owner: 'mcu-tools'
+          repo: 'mcuboot'
+          type: 'repo'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          marker: 'issue:todo'

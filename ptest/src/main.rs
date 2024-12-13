@@ -11,6 +11,7 @@
 //! jobs->environment->strategy->matric->features
 
 use chrono::Local;
+use clap::{Parser, Subcommand};
 use log::{debug, error, warn};
 use std::{
     collections::HashSet,
@@ -37,13 +38,27 @@ type Result<T> = result::Result<T, failure::Error>;
 fn main() -> Result<()> {
     env_logger::init();
 
-    let workflow_text = fs::read_to_string("../.github/workflows/sim.yaml")?;
+    let args = Cli::parse();
+
+    let workflow_text = fs::read_to_string(&args.workflow)?;
     let workflow = YamlLoader::load_from_str(&workflow_text)?;
 
     let ncpus = num_cpus::get();
     let limiter = Arc::new(Semaphore::new(ncpus as isize));
 
     let matrix = Matrix::from_yaml(&workflow);
+
+    let matrix = if args.test.len() == 0 { matrix } else {
+        matrix.only(&args.test)
+    };
+
+    match args.command {
+        Commands::List => {
+            matrix.show();
+            return Ok(());
+        }
+        Commands::Run => (),
+    }
 
     let mut children = vec![];
     let state = State::new(matrix.envs.len());
@@ -74,6 +89,31 @@ fn main() -> Result<()> {
     println!();
 
     Ok(())
+}
+
+/// The main Cli.
+#[derive(Debug, Parser)]
+#[command(name = "ptest")]
+#[command(about = "Run MCUboot CI tests stand alone")]
+struct Cli {
+    /// The workflow file to use.
+    #[arg(short, long, default_value = "../.github/workflows/sim.yaml")]
+    workflow: String,
+
+    /// The tests to run (defaults to all)
+    #[arg(short, long)]
+    test: Vec<usize>,
+
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    /// Runs the tests.
+    Run,
+    /// List available tests.
+    List,
 }
 
 /// State, for printing status.
@@ -220,6 +260,27 @@ impl Matrix {
             envs,
         }
     }
+
+    /// Print out all of the feature sets.
+    fn show(&self) {
+        for (i, feature) in self.envs.iter().enumerate() {
+            println!("{:3}. {}", i + 1, feature.simple_textual());
+        }
+    }
+
+    /// Replace this matrix with one that only has the chosen tests in it. Note
+    /// that the original order is preserved, not that given in `pick`.
+    fn only(self, pick: &[usize]) -> Self {
+        let pick: HashSet<usize> = pick.iter().cloned().collect();
+        let envs: Vec<_> = self
+            .envs
+            .into_iter()
+            .enumerate()
+            .filter(|(ind, _)| pick.contains(&(ind + 1)))
+            .map(|(_, item)| item)
+            .collect();
+        Matrix { envs }
+    }
 }
 
 impl FeatureSet {
@@ -272,6 +333,18 @@ impl FeatureSet {
         let mut buf = String::new();
 
         write!(&mut buf, "{}:", self.env).unwrap();
+        for v in &self.values {
+            write!(&mut buf, " {}", v).unwrap();
+        }
+
+        buf
+    }
+
+    /// Generate a simpler textual representation, without showing the environment.
+    fn simple_textual(&self) -> String {
+        use std::fmt::Write;
+
+        let mut buf = String::new();
         for v in &self.values {
             write!(&mut buf, " {}", v).unwrap();
         }

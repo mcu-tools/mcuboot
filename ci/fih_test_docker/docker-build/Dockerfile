@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:focal
+FROM ubuntu:jammy
 
-# get dependencies for retrieving and building TF-M with MCUBoot, and QEMU.
+# Get dependencies for retrieving and building TF-M with MCUBoot, and QEMU.
 RUN apt-get update && \
     DEBIAN_FRONTEND="noninteractive" \
     apt-get install -y \
@@ -26,18 +26,20 @@ RUN apt-get update && \
     libncurses5 \
     python3 \
     python3-pip \
-    qemu-system-arm
+    qemu-system-arm \
+    file &&\
+    apt-get clean all
 
-RUN \
-    # installing python packages
-    python3 -m pip install \
-        imgtool==1.7.0 \
-        Jinja2==2.10 \
-        PyYAML==3.12 \
-        pyasn1==0.1.9
+# Installing python packages
+RUN python3 -m pip install \
+    imgtool>=1.9.0 \
+    Jinja2>=2.10.3 \
+    PyYAML \
+    pyasn1
 
-# Add tfm work directory
-RUN mkdir -p /root/work/tfm
+# Add tfm work directory && get rid of spurious git ownership errors
+RUN mkdir -p /root/work/tfm &&\
+    git config --global --add safe.directory '*'
 
 # run the command
 CMD ["bash"]

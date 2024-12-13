@@ -1,5 +1,7 @@
-cryptography>=2.6
+cryptography>=40.0.0
 intelhex
 click
 cbor2
+setuptools
 pyyaml
+pytest

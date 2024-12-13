@@ -118,7 +118,7 @@ static const struct boot_swap_table boot_swap_tables[] = {
     },
     {
         .magic_primary_slot =       BOOT_MAGIC_GOOD,
-        .magic_secondary_slot =     BOOT_MAGIC_UNSET,
+        .magic_secondary_slot =     BOOT_MAGIC_ANY,
         .image_ok_primary_slot =    BOOT_FLAG_UNSET,
         .image_ok_secondary_slot =  BOOT_FLAG_ANY,
         .copy_done_primary_slot =   BOOT_FLAG_SET,

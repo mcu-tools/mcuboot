@@ -43,6 +43,16 @@
 #ifdef CONFIG_BOOT_USE_NRF_CC310_BL
 #define MCUBOOT_USE_NRF_CC310_BL
 #endif
+#elif defined(CONFIG_MBEDTLS_PSA_CRYPTO_CLIENT)
+#define MCUBOOT_USE_PSA_CRYPTO
+#endif
+
+#ifdef CONFIG_BOOT_IMG_HASH_ALG_SHA512
+#define MCUBOOT_SHA512
+#endif
+
+#ifdef CONFIG_BOOT_IMG_HASH_ALG_SHA256
+#define MCUBOOT_SHA256
 #endif
 
 /* Zephyr, regardless of C library used, provides snprintf */
@@ -108,6 +118,14 @@
 
 #endif /* CONFIG_SINGLE_APPLICATION_SLOT */
 
+#ifdef CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD
+#define MCUBOOT_RAM_LOAD    1
+#define MCUBOOT_IMAGE_NUMBER    1
+#define MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD    1
+#define IMAGE_EXECUTABLE_RAM_START CONFIG_BOOT_IMAGE_EXECUTABLE_RAM_START
+#define IMAGE_EXECUTABLE_RAM_SIZE CONFIG_BOOT_IMAGE_EXECUTABLE_RAM_SIZE
+#endif
+
 #ifdef CONFIG_LOG
 #define MCUBOOT_HAVE_LOGGING 1
 #endif
@@ -125,6 +143,10 @@
 #ifdef CONFIG_BOOT_ENCRYPT_X25519
 #define MCUBOOT_ENC_IMAGES
 #define MCUBOOT_ENCRYPT_X25519
+#endif
+
+#ifdef CONFIG_BOOT_DECOMPRESSION
+#define MCUBOOT_DECOMPRESS_IMAGES
 #endif
 
 #ifdef CONFIG_BOOT_BOOTSTRAP
@@ -233,6 +255,10 @@
 #define MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
 #endif
 
+#ifdef CONFIG_BOOT_SERIAL_IMG_GRP_SLOT_INFO
+#define MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO
+#endif
+
 #ifdef CONFIG_MCUBOOT_SERIAL
 #define MCUBOOT_SERIAL_RECOVERY
 #endif
@@ -270,7 +296,11 @@
 #  endif
 #endif
 
-#ifdef CONFIG_BOOT_MAX_IMG_SECTORS
+#if defined(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO) && defined(MIN_SECTOR_COUNT)
+
+#define MCUBOOT_MAX_IMG_SECTORS       MIN_SECTOR_COUNT
+
+#elif defined(CONFIG_BOOT_MAX_IMG_SECTORS)
 
 #define MCUBOOT_MAX_IMG_SECTORS       CONFIG_BOOT_MAX_IMG_SECTORS
 
@@ -287,7 +317,7 @@
 #endif
 
 #if defined(MCUBOOT_DATA_SHARING) && defined(ZEPHYR_VER_INCLUDE)
-#include <app_version.h>
+#include <zephyr/app_version.h>
 
 #define MCUBOOT_VERSION_AVAILABLE
 #define MCUBOOT_VERSION_MAJOR APP_VERSION_MAJOR
@@ -308,7 +338,7 @@
 #endif
 
 #if CONFIG_BOOT_WATCHDOG_FEED
-#if CONFIG_NRFX_WDT
+#if CONFIG_BOOT_WATCHDOG_FEED_NRFX_WDT
 #include <nrfx_wdt.h>
 
 #define FEED_WDT_INST(id)                                    \
@@ -345,7 +375,7 @@
 #error "No NRFX WDT instances enabled"
 #endif
 
-#elif DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) /* CONFIG_NRFX_WDT */
+#elif DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) /* CONFIG_BOOT_WATCHDOG_FEED_NRFX_WDT */
 #include <zephyr/device.h>
 #include <zephyr/drivers/watchdog.h>
 

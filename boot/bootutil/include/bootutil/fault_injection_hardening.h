@@ -278,6 +278,8 @@ void fih_cfi_decrement(void);
  */
 #if defined(__ICCARM__)
 #define FIH_LABEL(str, lin, cnt) __asm volatile ("FIH_LABEL_" str "_" #lin "_" #cnt "::" ::);
+#elif defined(__APPLE__)
+#define FIH_LABEL(str) do {} while (0)
 #else
 #define FIH_LABEL(str) __asm volatile ("FIH_LABEL_" str "_%=:" ::);
 #endif

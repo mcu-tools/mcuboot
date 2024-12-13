@@ -53,9 +53,7 @@ static inline void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx)
 
 static inline void bootutil_aes_ctr_drop(bootutil_aes_ctr_context *ctx)
 {
-    /* XXX: config defines MBEDTLS_PLATFORM_NO_STD_FUNCTIONS so no need to free */
-    /* (void)mbedtls_aes_free(ctx); */
-    (void)ctx;
+    mbedtls_aes_free(ctx);
 }
 
 static inline int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k)

@@ -40,12 +40,12 @@ jobs:
     runs-on: ubuntu-latest
     # Docker image from the zephyr upstream. Includes SDK and other required tools
     container:
-      image: zephyrprojectrtos/ci:v0.26.4
+      image: zephyrprojectrtos/ci:v0.27.4
       options: '--entrypoint /bin/bash'
       volumes:
         - /home/runners/zephyrproject:/github/cache/zephyrproject
     env:
-      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.16.1
+      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.17.0
 
     steps:
       - name: Set versions when workflow_dispatch
@@ -69,6 +69,7 @@ jobs:
       - name: Setup Zephyr
         working-directory: repos/zephyr
         run: |
+          west config --system manifest.project-filter -- -.*,+cmsis,+hal_nordic,+hal_nxp,+hal_stm32,+libmetal,+littlefs,+mbedtls,+mcuboot,+open-amp,+picolibc,+segger,+tinycrypt,+trusted-firmware-m,+zcbor
           west init -l .
           west update
 
@@ -94,7 +95,7 @@ jobs:
           ./scripts/twister --inline-logs -v -N -M --integration --overflow-as-errors --retry-failed 2 ${test_paths}
 
       - name: Upload Tests Results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Tests Results

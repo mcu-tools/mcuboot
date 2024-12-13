@@ -32,6 +32,10 @@
 #include "bootutil/image.h"
 #include "flash_map_backend/flash_map_backend.h"
 
+#if defined(MCUBOOT_DATA_SHARING_BOOTINFO)
+static bool saved_bootinfo = false;
+#endif
+
 #if !defined(MCUBOOT_CUSTOM_DATA_SHARING_FUNCTION)
 /**
  * @var shared_memory_init_done
@@ -230,9 +234,12 @@ boot_save_boot_status(uint8_t sw_module,
 
 #ifdef MCUBOOT_DATA_SHARING_BOOTINFO
 int boot_save_shared_data(const struct image_header *hdr, const struct flash_area *fap,
-                          const uint8_t slot, const int max_app_size)
+                          const uint8_t slot, const struct image_max_size *max_app_sizes)
 {
     int rc;
+#if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
+    uint8_t image = 0;
+#endif
 
 #if defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
     uint8_t mode = MCUBOOT_MODE_SINGLE_SLOT;
@@ -252,6 +259,8 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
     uint8_t mode = MCUBOOT_MODE_RAM_LOAD;
 #elif defined(MCUBOOT_FIRMWARE_LOADER)
     uint8_t mode = MCUBOOT_MODE_FIRMWARE_LOADER;
+#elif defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+    uint8_t mode = MCUBOOT_MODE_SINGLE_SLOT_RAM_LOAD;
 #else
 #error "Unknown mcuboot operating mode"
 #endif
@@ -293,6 +302,11 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
     };
 #endif
 
+    if (saved_bootinfo) {
+        /* Boot info has already been saved, nothing to do */
+        return 0;
+    }
+
     /* Write out all fields */
     rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO, BLINFO_MODE,
                                       sizeof(mode), &mode);
@@ -310,11 +324,13 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
                                           sizeof(recovery), &recovery);
     }
 
+#if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
     if (!rc) {
         rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO,
                                           BLINFO_RUNNING_SLOT,
                                           sizeof(slot), (void *)&slot);
     }
+#endif
 
 #if defined(MCUBOOT_VERSION_AVAILABLE)
     if (!rc) {
@@ -325,11 +341,22 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
     }
 #endif
 
+#if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
+    while (image < BOOT_IMAGE_NUMBER && !rc) {
+        if (max_app_sizes[image].calculated == true) {
+            rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO,
+                                              (BLINFO_MAX_APPLICATION_SIZE + image),
+                                              sizeof(max_app_sizes[image].max_size),
+                                              (void *)&max_app_sizes[image].max_size);
+
+        }
+
+        ++image;
+    }
+#endif
+
     if (!rc) {
-        rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO,
-                                          BLINFO_MAX_APPLICATION_SIZE,
-                                          sizeof(max_app_size),
-                                          (void *)&max_app_size);
+        saved_bootinfo = true;
     }
 
     return rc;

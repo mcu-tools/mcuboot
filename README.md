@@ -18,7 +18,7 @@
 [travis]: https://travis-ci.org/mcu-tools/mcuboot
 [license]: https://github.com/mcu-tools/mcuboot/blob/main/LICENSE
 
-This is MCUboot version 2.1.0-dev
+This is MCUboot version 2.1.0
 
 MCUboot is a secure bootloader for 32-bits microcontrollers. It defines a
 common infrastructure for the bootloader and the system flash layout on
@@ -81,5 +81,5 @@ Developers are welcome!
 Use the following links to join or see more about the project:
 
 * [Our developer mailing list](https://groups.io/g/MCUBoot)
-* [Our Slack channel](https://mcuboot.slack.com/) <br />
-  Get [your invite](https://join.slack.com/t/mcuboot/shared_invite/MjE2NDcwMTQ2MTYyLTE1MDA4MTIzNTAtYzgyZTU0NjFkMg)
+* [Our Discord channel](https://discord.com/channels/1106321706588577904/1106322802308550716) <br />
+  Get [your invite](https://discord.com/invite/5PpXhvda5p)

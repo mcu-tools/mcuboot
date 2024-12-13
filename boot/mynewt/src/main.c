@@ -214,7 +214,7 @@ int flash_device_base(uint8_t fd_id, uintptr_t *ret)
 }
 
 int
-main(void)
+mynewt_main(void)
 {
     struct boot_rsp rsp;
     uintptr_t flash_base;
@@ -264,4 +264,15 @@ main(void)
 #endif
 
     return 0;
+}
+
+/*
+ * Mynewt startup code jump to mynewt_main()
+ * This function is here for compatibility with
+ * pre 1.12. mynewt-core that still wanted main()
+ */
+int
+main(void)
+{
+    mynewt_main();
 }

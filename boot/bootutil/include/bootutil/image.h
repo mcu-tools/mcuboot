@@ -72,6 +72,13 @@ struct flash_area;
 #define IMAGE_F_ROM_FIXED                0x00000100
 
 /*
+ * Flags that indicate if the image data is compressed
+ */
+#define IMAGE_F_COMPRESSED_LZMA1         0x00000200
+#define IMAGE_F_COMPRESSED_LZMA2         0x00000400
+#define IMAGE_F_COMPRESSED_ARM_THUMB_FLT 0x00000800
+
+/*
  * ECSDA224 is with NIST P-224
  * ECSDA256 is with NIST P-256
  */
@@ -89,11 +96,15 @@ struct flash_area;
 #define IMAGE_TLV_PUBKEY            0x02   /* public key */
 #define IMAGE_TLV_SHA256            0x10   /* SHA256 of image hdr and body */
 #define IMAGE_TLV_SHA384            0x11   /* SHA384 of image hdr and body */
+#define IMAGE_TLV_SHA512            0x12   /* SHA512 of image hdr and body */
 #define IMAGE_TLV_RSA2048_PSS       0x20   /* RSA2048 of hash output */
 #define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output - Not supported anymore */
 #define IMAGE_TLV_ECDSA_SIG         0x22   /* ECDSA of hash output */
 #define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
 #define IMAGE_TLV_ED25519           0x24   /* ed25519 of hash output */
+#define IMAGE_TLV_SIG_PURE          0x25   /* Indicator that attached signature has been prepared
+                                            * over image rather than its digest.
+                                            */
 #define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
 #define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW 128 or 256*/
 #define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-EC256 */
@@ -101,6 +112,18 @@ struct flash_area;
 #define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
 #define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
 #define IMAGE_TLV_BOOT_RECORD       0x60   /* measured boot record */
+/* The following flags relate to compressed images and are for the decompressed image data */
+#define IMAGE_TLV_DECOMP_SIZE       0x70   /* Decompressed image size excluding header/TLVs */
+#define IMAGE_TLV_DECOMP_SHA        0x71   /*
+                                            * Decompressed image shaX hash, this field must match
+                                            * the format and size of the raw slot (compressed)
+                                            * shaX hash
+                                            */
+#define IMAGE_TLV_DECOMP_SIGNATURE  0x72   /*
+                                            * Decompressed image signature, this field must match
+                                            * the format and size of the raw slot (compressed)
+                                            * signature
+                                            */
 					   /*
 					    * vendor reserved TLVs at xxA0-xxFF,
 					    * where xx denotes the upper byte
@@ -160,6 +183,12 @@ struct image_tlv {
 #define MUST_DECRYPT(fap, idx, hdr) \
     (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_ENCRYPTED(hdr))
 
+#define COMPRESSIONFLAGS (IMAGE_F_COMPRESSED_LZMA1 | IMAGE_F_COMPRESSED_LZMA2 \
+                          | IMAGE_F_COMPRESSED_ARM_THUMB_FLT)
+#define IS_COMPRESSED(hdr) ((hdr)->ih_flags & COMPRESSIONFLAGS)
+#define MUST_DECOMPRESS(fap, idx, hdr) \
+    (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_COMPRESSED(hdr))
+
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 
@@ -186,6 +215,7 @@ int bootutil_tlv_iter_begin(struct image_tlv_iter *it,
                             bool prot);
 int bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off,
                            uint16_t *len, uint16_t *type);
+int bootutil_tlv_iter_is_prot(struct image_tlv_iter *it, uint32_t off);
 
 int32_t bootutil_get_img_security_cnt(struct image_header *hdr,
                                       const struct flash_area *fap,

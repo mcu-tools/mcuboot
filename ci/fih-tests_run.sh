@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-# Copyright (c) 2020-2023 Arm Limited
+# Copyright (c) 2020-2024 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,10 +16,17 @@
 
 set -e
 
+source $(dirname "$0")/fih-tests_version.sh
+
 pushd .. &&\
    git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git &&\
    pushd trusted-firmware-m &&\
-   git checkout 8faae452712b630dc69c24da61e84c88a901d2d4 &&\
+   git checkout eb8ff0db7d657b77abcd0262d5bf7f38eb1e1cdc &&\
+   source lib/ext/tf-m-tests/version.txt &&\
+   popd &&\
+   git clone https://git.trustedfirmware.org/TF-M/tf-m-tests.git &&\
+   pushd tf-m-tests &&\
+   git checkout $version &&\
    popd
 
 if [[ $GITHUB_ACTIONS == true ]]; then
@@ -45,7 +52,7 @@ if [[ $GITHUB_ACTIONS == true ]]; then
 fi
 
 if test -z "$FIH_LEVEL"; then
-    docker run --rm -v $(pwd):/root/work/tfm:rw,z mcuboot/fih-test /bin/sh -c '/root/work/tfm/mcuboot/ci/fih_test_docker/execute_test.sh $0 $1 $2' $SKIP_SIZE $BUILD_TYPE $DAMAGE_TYPE
+    docker run --rm -v $(pwd):/root/work/tfm:rw,z mcuboot/fih-test:$FIH_IMAGE_VERSION /bin/sh -c '/root/work/tfm/mcuboot/ci/fih_test_docker/execute_test.sh $0 $1 $2' $SKIP_SIZE $BUILD_TYPE $DAMAGE_TYPE
 else
-    docker run --rm -v $(pwd):/root/work/tfm:rw,z mcuboot/fih-test /bin/sh -c '/root/work/tfm/mcuboot/ci/fih_test_docker/execute_test.sh $0 $1 $2 $3' $SKIP_SIZE $BUILD_TYPE $DAMAGE_TYPE $FIH_LEVEL
+    docker run --rm -v $(pwd):/root/work/tfm:rw,z mcuboot/fih-test:$FIH_IMAGE_VERSION /bin/sh -c '/root/work/tfm/mcuboot/ci/fih_test_docker/execute_test.sh $0 $1 $2 $3' $SKIP_SIZE $BUILD_TYPE $DAMAGE_TYPE $FIH_LEVEL
 fi

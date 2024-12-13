@@ -3,7 +3,7 @@
 
   - Copyright (c) 2017-2020 Linaro LTD
   - Copyright (c) 2017-2019 JUUL Labs
-  - Copyright (c) 2019-2023 Arm Limited
+  - Copyright (c) 2019-2024 Arm Limited
 
   - Original license:
 
@@ -251,8 +251,10 @@ The algorithm works as follows:
 
 This algorithm is designed so that the higher sector of the primary slot is
 used only for allowing sectors to move up. Therefore the most
-memory-size-effective slot layout is when the primary slot is exactly one sector
-larger than the secondary slot, although same-sized slots are allowed as well.
+memory-size-effective slot layout is when the primary slot is larger than
+the secondary slot by exactly one sector plus the size of the swap status area,
+rounded up to the total size of the sectors it occupies,
+although same-sized slots are allowed as well.
 The algorithm is limited to support sectors of the same
 sector layout. All slot's sectors should be of the same size.
 
@@ -656,7 +658,7 @@ types described above via a set of tables.  These tables are reproduced below.
     State III
                      | primary slot | secondary slot |
     -----------------+--------------+----------------|
-               magic | Good         | Unset          |
+               magic | Good         | Any            |
             image-ok | 0xff         | Any            |
            copy-done | 0x01         | Any            |
     -----------------+--------------+----------------'
@@ -974,9 +976,8 @@ The swap status region allows the bootloader to recover in case it restarts in
 the middle of an image swap operation.  The swap status region consists of a
 series of single-byte records.  These records are written independently, and
 therefore must be padded according to the minimum write size imposed by the
-flash hardware.  In the below figure, a min-write-size of 1 is assumed for
-simplicity.  The structure of the swap status region is illustrated below.  In
-this figure, a min-write-size of 1 is assumed for simplicity.
+flash hardware.  The structure of the swap status region is illustrated below.
+In this figure, a min-write-size of 1 is assumed for simplicity.
 
 ```
      0                   1                   2                   3
@@ -1182,8 +1183,15 @@ If you want to enable and use encrypted images, see:
 
 By default, the whole public key is embedded in the bootloader code and its
 hash is added to the image manifest as a KEYHASH TLV entry. As an alternative
-the bootloader can be made independent of the keys by setting the
-`MCUBOOT_HW_KEY` option. In this case the hash of the public key must be
+the bootloader can be made independent of the keys (avoiding the incorporation
+of the public key into the code) by using one of the following options:
+`MCUBOOT_HW_KEY` or `MCUBOOT_BUILTIN_KEY`.
+
+Using any of these options makes MCUboot independent from the public key(s).
+The key(s) can be provisioned any time and by different parties.
+
+Hardware KEYs support options details:
+- `MCUBOOT_HW_KEY`: In this case the hash of the public key must be
 provisioned to the target device and MCUboot must be able to retrieve the
 key-hash from there. For this reason the target must provide a definition
 for the `boot_retrieve_public_key_hash()` function which is declared in
@@ -1193,8 +1201,17 @@ add the whole public key (PUBKEY TLV) to the image manifest instead of its
 hash (KEYHASH TLV). During boot the public key is validated before using it for
 signature verification, MCUboot calculates the hash of the public key from the
 TLV area and compares it with the key-hash that was retrieved from the device.
-This way MCUboot is independent from the public key(s). The key(s) can be
-provisioned any time and by different parties.
+- `MCUBOOT_BUILTIN_KEY`: With this option the whole public key(s) used for
+signature verification must be provisioned to the target device and the used
+[cryptographic library](PORTING.md) must support the usage of builtin keys based
+on key IDs. In this case, neither the code nor the image metadata needs to
+contain any public key data. During image validation only a key ID is passed to
+the verifier function. The key handling is entirely the responsibility of the
+crypto library and the details of the key handling mechanism are abstracted away
+from the boot code.\
+***Note:*** *At the moment the usage of builtin keys is only available with the*
+*PSA Crypto API based crypto backend (`MCUBOOT_USE_PSA_CRYPTO`) for ECDSA*
+*signatures.*
 
 ## [Protected TLVs](#protected-tlvs)
 

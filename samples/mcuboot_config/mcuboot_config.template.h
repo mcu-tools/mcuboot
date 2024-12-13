@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 Open Source Foundries Limited
- * Copyright (c) 2019 Arm Limited
+ * Copyright (c) 2019-2024 Arm Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -33,6 +33,18 @@
 /* Uncomment for ECDSA signatures using curve P-256. */
 /* #define MCUBOOT_SIGN_EC256 */
 
+/*
+ * Public key handling
+ *
+ * Choose one or none from the different public key handling options.
+ */
+
+/* Uncomment to use key hash(es) instead of incorporating
+ * the public key into the code. */
+/* #define MCUBOOT_HW_KEY */
+/* Uncomment to use builtin key(s) instead of incorporating
+ * the public key into the code. */
+/* #define MCUBOOT_BUILTIN_KEY */
 
 /*
  * Upgrade mode
@@ -75,6 +87,33 @@
 /* #define MCUBOOT_USE_MBED_TLS */
 /* Uncomment to use Tinycrypt's. */
 /* #define MCUBOOT_USE_TINYCRYPT */
+
+/*
+ * Encrypted images
+ *
+ * Uncomment one of the below options (MCUBOOT_ENCRYPT_x) to enable
+ * encrypted image upgrades.
+ */
+
+/* Uncomment to use RSA-OAEP for key encryption */
+/* #define MCUBOOT_ENCRYPT_RSA */
+/* Uncomment to use AES-KW for key encryption */
+/* #define MCUBOOT_ENCRYPT_KW */
+/* Uncomment to use ECIES-P256 for key encryption */
+/* #define MCUBOOT_ENCRYPT_EC256 */
+/* Uncomment to use ECIES-X25519 for key encryption */
+/* #define MCUBOOT_ENCRYPT_X25519 */
+
+/* Uncomment to use a builtin key-encryption key (retrieved from a trusted
+ * source - if implemented) instead of a key embedded in the bootloader. */
+/* #define MCUBOOT_ENC_BUILTIN_KEY */
+
+#if defined(MCUBOOT_ENCRYPT_RSA)    || \
+    defined(MCUBOOT_ENCRYPT_KW)     || \
+    defined(MCUBOOT_ENCRYPT_EC256)  || \
+    defined(MCUBOOT_ENCRYPT_X25519)
+#define MCUBOOT_ENC_IMAGES
+#endif
 
 /*
  * Always check the signature of the image in the primary slot before booting,
@@ -149,7 +188,7 @@
 /* If a OS ports support single thread mode or is bare-metal then:
  * This macro implements call that switches CPU to an idle state, from which
  * the CPU may be woken up by, for example, UART transmission event.
- * 
+ *
  * Otherwise this macro should be no-op.
  */
 #define MCUBOOT_CPU_IDLE() \

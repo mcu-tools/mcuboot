@@ -65,8 +65,10 @@ config MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
 
 config BOOT_SERIAL_UNALIGNED_BUFFER_SIZE
 	int "Stack buffer for unaligned memory writes"
+	default 512 if SOC_SERIES_LPC55XXX
+	default 128 if SOC_SERIES_MCXN
 	default 64
-	range 0 128
+	range 0 1024
 	help
 	  Specifies the stack usage for a buffer which is used for unaligned
 	  memory access when data is written to a device with memory alignment
@@ -98,7 +100,7 @@ config BOOT_SERIAL_MAX_RECEIVE_SIZE
 
 config BOOT_ERASE_PROGRESSIVELY
 	bool "Erase flash progressively when receiving new firmware"
-	default y if SOC_FAMILY_NORDIC_NRF
+	default y if SOC_FAMILY_NORDIC_NRF || SOC_FAMILY_NXP_IMXRT
 	help
 	 If enabled, flash is erased as necessary when receiving new firmware,
 	 instead of erasing the whole image slot at once. This is necessary
@@ -201,5 +203,12 @@ config BOOT_SERIAL_IMG_GRP_IMAGE_STATE
 	help
 	  If y, image states will be included with image lists and the set
 	  state command can be used to mark an image as test/confirmed.
+
+config BOOT_SERIAL_IMG_GRP_SLOT_INFO
+	bool "Slot info"
+	default y if UPDATEABLE_IMAGE_NUMBER > 1
+	help
+	  If y, will include the slot info command which lists what available
+	  slots there are in the system.
 
 endif # MCUBOOT_SERIAL

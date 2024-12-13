@@ -32,6 +32,7 @@
 #include <flash_map_backend/flash_map_backend.h>
 #include "bootutil/crypto/aes_ctr.h"
 #include "bootutil/image.h"
+#include "bootutil/sign_key.h"
 #include "bootutil/enc_key_public.h"
 
 #ifdef __cplusplus
@@ -45,22 +46,34 @@ struct enc_key_data {
     bootutil_aes_ctr_context aes_ctr;
 };
 
-extern const struct bootutil_key bootutil_enc_key;
+/**
+ * Retrieve the private key for image encryption.
+ *
+ * @param[out]  private_key  structure to store the private key and
+ *                           its length.
+ *
+ * @return                   0 on success; nonzero on failure.
+ *
+ */
+int boot_enc_retrieve_private_key(struct bootutil_key **private_key);
+
 struct boot_status;
+
+/* Decrypt random, symmetric encryption key */
+int boot_decrypt_key(const uint8_t *buf, uint8_t *enckey);
 
 int boot_enc_init(struct enc_key_data *enc_state, uint8_t slot);
 int boot_enc_drop(struct enc_key_data *enc_state, uint8_t slot);
 int boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
         const struct boot_status *bs);
-int boot_enc_load(struct enc_key_data *enc_state, int image_index,
+int boot_enc_load(struct enc_key_data *enc_state, int slot,
         const struct image_header *hdr, const struct flash_area *fap,
         struct boot_status *bs);
-int boot_enc_decrypt(const uint8_t *buf, uint8_t *enckey);
-bool boot_enc_valid(struct enc_key_data *enc_state, int image_index,
-        const struct flash_area *fap);
-void boot_encrypt(struct enc_key_data *enc_state, int image_index,
-        const struct flash_area *fap, uint32_t off, uint32_t sz,
-        uint32_t blk_off, uint8_t *buf);
+bool boot_enc_valid(struct enc_key_data *enc_state, int slot);
+void boot_enc_encrypt(struct enc_key_data *enc_state, int slot,
+        uint32_t off, uint32_t sz, uint32_t blk_off, uint8_t *buf);
+void boot_enc_decrypt(struct enc_key_data *enc_state, int slot,
+        uint32_t off, uint32_t sz, uint32_t blk_off, uint8_t *buf);
 void boot_enc_zeroize(struct enc_key_data *enc_state);
 
 #ifdef __cplusplus

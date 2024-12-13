@@ -24,6 +24,12 @@ config BOOT_USE_MBEDTLS
 	help
 	  Use mbedTLS for crypto primitives.
 
+config BOOT_USE_PSA_CRYPTO
+	bool
+	# Hidden option
+	help
+	  Hidden option set if using PSA crypt for cryptography functionality
+
 config BOOT_USE_TINYCRYPT
 	bool
 	# Hidden option
@@ -67,6 +73,51 @@ config SINGLE_APPLICATION_SLOT
 	  uploading a new application overwrites the one that previously
 	  occupied the area.
 
+config BOOT_IMG_HASH_ALG_SHA256_ALLOW
+	bool
+	help
+	  Hidden option set by configurations that allow SHA256
+
+config BOOT_IMG_HASH_ALG_SHA384_ALLOW
+	bool
+	help
+	  Hidden option set by configurations that allow SHA384
+
+config BOOT_IMG_HASH_ALG_SHA512_ALLOW
+	bool
+	help
+	  Hidden option set by configurations that allow SHA512
+
+choice BOOT_IMG_HASH_ALG
+	prompt "Selected image hash algorithm"
+	default BOOT_IMG_HASH_ALG_SHA256 if BOOT_IMG_HASH_ALG_SHA256_ALLOW
+	default BOOT_IMG_HASH_ALG_SHA384 if BOOT_IMG_HASH_ALG_SHA384_ALLOW
+	default BOOT_IMG_HASH_ALG_SHA512 if BOOT_IMG_HASH_ALG_SHA512_ALLOW
+	help
+	  Hash algorithm used for image verification. Selection
+	  here may be limited by other configurations, like for
+	  example selected cryptographic signature.
+
+config BOOT_IMG_HASH_ALG_SHA256
+	bool "SHA256"
+	depends on BOOT_IMG_HASH_ALG_SHA256_ALLOW
+	help
+	  SHA256 algorithm
+
+config BOOT_IMG_HASH_ALG_SHA384
+	bool "SHA384"
+	depends on BOOT_IMG_HASH_ALG_SHA384_ALLOW
+	help
+	  SHA384 algorithm
+
+config BOOT_IMG_HASH_ALG_SHA512
+	bool "SHA512"
+	depends on BOOT_IMG_HASH_ALG_SHA512_ALLOW
+	help
+	  SHA512 algorithm
+
+endchoice # BOOT_IMG_HASH_ALG
+
 choice BOOT_SIGNATURE_TYPE
 	prompt "Signature type"
 	default BOOT_SIGNATURE_TYPE_RSA
@@ -74,12 +125,14 @@ choice BOOT_SIGNATURE_TYPE
 config BOOT_SIGNATURE_TYPE_NONE
 	bool "No signature; use only hash check"
 	select BOOT_USE_TINYCRYPT
+	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 
 config BOOT_SIGNATURE_TYPE_RSA
 	bool "RSA signatures"
 	select BOOT_USE_MBEDTLS
 	select MBEDTLS
 	select BOOT_ENCRYPTION_SUPPORT
+	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 
 if BOOT_SIGNATURE_TYPE_RSA
 config BOOT_SIGNATURE_TYPE_RSA_LEN
@@ -91,6 +144,7 @@ endif
 config BOOT_SIGNATURE_TYPE_ECDSA_P256
 	bool "Elliptic curve digital signatures with curve P-256"
 	select BOOT_ENCRYPTION_SUPPORT
+	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 
 if BOOT_SIGNATURE_TYPE_ECDSA_P256
 choice BOOT_ECDSA_IMPLEMENTATION
@@ -119,6 +173,7 @@ endif
 config BOOT_SIGNATURE_TYPE_ED25519
 	bool "Edwards curve digital signatures using ed25519"
 	select BOOT_ENCRYPTION_SUPPORT
+	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 
 if BOOT_SIGNATURE_TYPE_ED25519
 choice BOOT_ED25519_IMPLEMENTATION
@@ -168,6 +223,12 @@ config MCUBOOT_CLEANUP_ARM_CORE
 	  may be initialised in RAM which is then used by the application
 	  start-up code which can cause a module fault and potentially make the
 	  module irrecoverable.
+
+config MCUBOOT_CLEANUP_RAM
+	bool "Perform RAM cleanup"
+	depends on CPU_CORTEX_M4 || CPU_CORTEX_M33
+	help
+	  Sets contents of memory to 0 before jumping to application.
 
 config MBEDTLS_CFG_FILE
 	default "mcuboot-mbedtls-cfg.h"
@@ -276,19 +337,6 @@ config BOOT_FIRMWARE_LOADER
 
 endchoice
 
-# Workaround for not being able to have commas in macro arguments
-DT_CHOSEN_Z_SRAM := zephyr,sram
-
-if BOOT_RAM_LOAD
-config BOOT_IMAGE_EXECUTABLE_RAM_START
-	hex "Boot image executable ram start"
-	default $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_SRAM))
-
-config BOOT_IMAGE_EXECUTABLE_RAM_SIZE
-	int "Boot image executable base size"
-	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM),0)
-endif
-
 config BOOT_DIRECT_XIP_REVERT
 	bool "Enable the revert mechanism in direct-xip mode"
 	depends on BOOT_DIRECT_XIP
@@ -324,6 +372,27 @@ config BOOT_SWAP_SAVE_ENCTLV
 	  If unsure, leave at the default value.
 
 endif # !SINGLE_APPLICATION_SLOT
+
+config SINGLE_APPLICATION_SLOT_RAM_LOAD
+	bool "RAM load for single application slot"
+	help
+	  If y, the image is loaded to RAM and executed from there. For this reason,
+	  the image has to be linked to be executed from RAM. The address that the
+	  image is copied to is specified using the load-addr argument to the
+	  imgtool.py script which writes it to the image header.
+
+# Workaround for not being able to have commas in macro arguments
+DT_CHOSEN_Z_SRAM := zephyr,sram
+
+if BOOT_RAM_LOAD || SINGLE_APPLICATION_SLOT_RAM_LOAD
+config BOOT_IMAGE_EXECUTABLE_RAM_START
+	hex "Boot image executable ram start"
+	default $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_SRAM))
+
+config BOOT_IMAGE_EXECUTABLE_RAM_SIZE
+	int "Boot image executable base size"
+	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM),0)
+endif
 
 config BOOT_ENCRYPTION_SUPPORT
 	bool
@@ -385,9 +454,21 @@ config BOOT_ENCRYPTION_KEY_FILE
 	  with the public key information will be written in a format expected by
 	  MCUboot.
 
+config BOOT_MAX_IMG_SECTORS_AUTO
+	bool "Calculate maximum sectors automatically"
+	default y
+	help
+	  If this option is enabled then the maximum number of supported sectors per image will
+	  be calculated automatically from the flash erase sizes and size of each partition for
+	  the first image.
+
+	  If this information is not available, or multiple images are used, then this option
+	  should be disabled and BOOT_MAX_IMG_SECTORS should be set instead
+
 config BOOT_MAX_IMG_SECTORS
 	int "Maximum number of sectors per image slot"
 	default 128
+	depends on !BOOT_MAX_IMG_SECTORS_AUTO
 	help
 	  This option controls the maximum number of sectors that each of
 	  the two image areas can contain. Smaller values reduce MCUboot's
@@ -566,6 +647,12 @@ config BOOT_USB_DFU_DETECT_DELAY
 
 endif # BOOT_USB_DFU_GPIO
 
+config BOOT_USB_DFU_NO_APPLICATION
+	bool "Stay in bootloader if no application"
+	help
+	  Allows for entering USB DFU recovery mode if there is no bootable
+	  application that the bootloader can jump to.
+
 config BOOT_USE_BENCH
         bool "Enable benchmark code"
         default n
@@ -615,7 +702,7 @@ config BOOT_INTR_VEC_RELOC
 config UPDATEABLE_IMAGE_NUMBER
 	int "Number of updateable images"
 	default 1
-	range 1 1 if SINGLE_APPLICATION_SLOT
+	range 1 1 if SINGLE_APPLICATION_SLOT || SINGLE_APPLICATION_SLOT_RAM_LOAD
 	help
 	  Enables support of multi image update.
 
@@ -667,15 +754,20 @@ config BOOT_WATCHDOG_FEED
 	bool "Feed the watchdog while doing swap"
 	default y if WATCHDOG
 	default y if SOC_FAMILY_NORDIC_NRF
-	# for nRF nrfx based implementation is available
-	imply NRFX_WDT if SOC_FAMILY_NORDIC_NRF
-	imply NRFX_WDT0 if SOC_FAMILY_NORDIC_NRF
-	imply NRFX_WDT1 if SOC_FAMILY_NORDIC_NRF
-	imply NRFX_WDT30 if SOC_FAMILY_NORDIC_NRF
-	imply NRFX_WDT31 if SOC_FAMILY_NORDIC_NRF
+	imply BOOT_WATCHDOG_FEED_NRFX_WDT if SOC_FAMILY_NORDIC_NRF
 	help
 	  Enables implementation of MCUBOOT_WATCHDOG_FEED() macro which is
 	  used to feed watchdog while doing time consuming operations.
+
+config BOOT_WATCHDOG_FEED_NRFX_WDT
+	bool "Feed the watchdog using NRFX WDT directly"
+	depends on SOC_FAMILY_NORDIC_NRF
+	# for nRF nrfx based implementation is available
+	imply NRFX_WDT
+	imply NRFX_WDT0
+	imply NRFX_WDT1
+	imply NRFX_WDT30
+	imply NRFX_WDT31
 
 config BOOT_IMAGE_ACCESS_HOOKS
 	bool "Enable hooks for overriding MCUboot's native routines"
@@ -704,6 +796,50 @@ config BOOT_DISABLE_CACHES
 	  booting an application, this is required on some ARM Cortex devices and
 	  increases protection against data leakage from MCUboot to applications via
 	  these caches.
+
+config MCUBOOT_BOOT_BANNER
+	bool "Use MCUboot boot banner"
+	depends on BOOT_BANNER
+	depends on "$(APP_VERSION_EXTENDED_STRING)" != ""
+	default y
+	help
+	  Uses a MCUboot boot banner instead of the default zephyr one, which will output the
+	  MCUboot name and version, followed by the zephyr name and version.
+
+	  For example:
+
+	    *** Booting MCUboot v2.0.0-72-g8c0e36c88663 ***
+	    *** Using Zephyr OS build v3.6.0-2607-gd0be2010c31f ***
+
+config BOOT_BANNER_STRING
+        default "Using Zephyr OS build" if MCUBOOT_BOOT_BANNER
+
+config BOOT_DECOMPRESSION_SUPPORT
+	bool
+	help
+	  Hidden symbol which should be selected if a system provided decompression support.
+
+if BOOT_DECOMPRESSION_SUPPORT
+
+menuconfig BOOT_DECOMPRESSION
+	bool "Decompression"
+	help
+	  If enabled, will include support for compressed images being loaded to the secondary slot
+	  which then get decompressed into the primary slot. This mode allows the secondary slot to
+	  be smaller than primary slot which otherwise would not be allowed.
+
+if BOOT_DECOMPRESSION
+
+config BOOT_DECOMPRESSION_BUFFER_SIZE
+	int "Write buffer size"
+	range 16 16384
+	default 4096
+	help
+	  The size of a secondary buffer used for writing decompressed data to the storage device.
+
+endif # BOOT_DECOMPRESSION
+
+endif # BOOT_DECOMPRESSION_SUPPORT
 
 endmenu
 

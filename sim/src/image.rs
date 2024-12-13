@@ -19,10 +19,7 @@ use rand::{
     rngs::SmallRng,
 };
 use std::{
-    collections::{BTreeMap, HashSet},
-    io::{Cursor, Write},
-    mem,
-    slice,
+    collections::{BTreeMap, HashSet}, io::{Cursor, Write}, mem, rc::Rc, slice
 };
 use aes::{
     Aes128,
@@ -67,7 +64,7 @@ const RAM_LOAD_ADDR: u32 = 1024;
 #[derive(Clone)]
 pub struct ImagesBuilder {
     flash: SimMultiFlash,
-    areadesc: AreaDesc,
+    areadesc: Rc<AreaDesc>,
     slots: Vec<[SlotInfo; 2]>,
     ram: RamData,
 }
@@ -77,7 +74,7 @@ pub struct ImagesBuilder {
 /// and upgrades hold the expected contents of these images.
 pub struct Images {
     flash: SimMultiFlash,
-    areadesc: AreaDesc,
+    areadesc: Rc<AreaDesc>,
     images: Vec<OneImage>,
     total_count: Option<i32>,
     ram: RamData,
@@ -433,7 +430,7 @@ impl ImagesBuilder {
     }
 
     /// Build the Flash and area descriptor for a given device.
-    pub fn make_device(device: DeviceName, align: usize, erased_val: u8) -> (SimMultiFlash, AreaDesc, &'static [Caps]) {
+    pub fn make_device(device: DeviceName, align: usize, erased_val: u8) -> (SimMultiFlash, Rc<AreaDesc>, &'static [Caps]) {
         match device {
             DeviceName::Stm32f4 => {
                 // STM style flash.  Large sectors, with a large scratch area.
@@ -454,7 +451,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove])
             }
             DeviceName::K64f => {
                 // NXP style flash.  Small sectors, one small sector for scratch.
@@ -469,7 +466,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                (flash, Rc::new(areadesc), &[])
             }
             DeviceName::K64fBig => {
                 // Simulating an STM style flash on top of an NXP style flash.  Underlying flash device
@@ -485,7 +482,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove])
             }
             DeviceName::Nrf52840 => {
                 // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
@@ -501,7 +498,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                (flash, Rc::new(areadesc), &[])
             }
             DeviceName::Nrf52840UnequalSlots => {
                 let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
@@ -514,7 +511,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade])
             }
             DeviceName::Nrf52840SpiFlash => {
                 // Simulate nrf52840 with external SPI flash. The external SPI flash
@@ -533,7 +530,7 @@ impl ImagesBuilder {
                 let mut flash = SimMultiFlash::new();
                 flash.insert(0, dev0);
                 flash.insert(1, dev1);
-                (flash, areadesc, &[Caps::SwapUsingMove])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove])
             }
             DeviceName::K64fMulti => {
                 // NXP style flash, but larger, to support multiple images.
@@ -550,7 +547,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, areadesc, &[])
+                (flash, Rc::new(areadesc), &[])
             }
         }
     }
@@ -689,6 +686,10 @@ impl Images {
         let mut fails = 0;
         let total_flash_ops = self.total_count.unwrap();
 
+        if skip_slow_test() {
+            return false;
+        }
+
         // Let's try an image halfway through.
         for i in 1 .. total_flash_ops {
             info!("Try interruption at {}", i);
@@ -774,6 +775,10 @@ impl Images {
         }
 
         let mut fails = 0;
+
+        if skip_slow_test() {
+            return false;
+        }
 
         if self.is_swap_upgrade() {
             for i in 1 .. self.total_count.unwrap() {
@@ -2313,4 +2318,15 @@ fn test_alignments() -> &'static [usize] {
 #[cfg(feature = "max-align-32")]
 fn test_alignments() -> &'static [usize] {
     &[32]
+}
+
+/// For testing, some of the tests are quite slow. This will query for an
+/// environment variable `MCUBOOT_SKIP_SLOW_TESTS`, which can be set to avoid
+/// running these tests.
+fn skip_slow_test() -> bool {
+    if let Ok(_) = std::env::var("MCUBOOT_SKIP_SLOW_TESTS") {
+        true
+    } else {
+        false
+    }
 }

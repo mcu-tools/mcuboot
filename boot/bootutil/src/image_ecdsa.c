@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2017 Linaro LTD
- * Copyright (C) 2021-2023 Arm Limited
+ * Copyright (C) 2021-2024 Arm Limited
  *
  * Original license:
  *
@@ -35,6 +35,7 @@
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/crypto/ecdsa.h"
 
+#if !defined(MCUBOOT_BUILTIN_KEY)
 fih_ret
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
                     uint8_t key_id)
@@ -65,5 +66,30 @@ out:
 
     FIH_RET(fih_rc);
 }
+#else /* !MCUBOOT_BUILTIN_KEY */
+fih_ret
+bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
+                    uint8_t key_id)
+{
+    int rc;
+    bootutil_ecdsa_context ctx;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    /* Use builtin key for image verification, no key parsing is required. */
+    ctx.key_id = key_id;
+    bootutil_ecdsa_init(&ctx);
+
+    /* The public key pointer and key size can be omitted. */
+    rc = bootutil_ecdsa_verify(&ctx, NULL, 0, hash, hlen, sig, slen);
+    fih_rc = fih_ret_encode_zero_equality(rc);
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+        FIH_SET(fih_rc, FIH_FAILURE);
+    }
+
+    bootutil_ecdsa_drop(&ctx);
+
+    FIH_RET(fih_rc);
+}
+#endif /* MCUBOOT_BUILTIN_KEY */
 
 #endif /* MCUBOOT_SIGN_EC256 || MCUBOOT_SIGN_EC384 */

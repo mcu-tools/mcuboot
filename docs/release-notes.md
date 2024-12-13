@@ -3,6 +3,60 @@
 - Table of Contents
 {:toc}
 
+## Version 2.1.0
+
+- Boot serial: Add response to echo command if support is not
+  enabled, previously the command would have been accepted but no
+  response indicating that the command is not supported would have
+  been sent.
+- Added support for using builtin keys for image validation
+  (available with the PSA Crypto API based crypto backend for ECDSA signatures).
+- Enforce that TLV entries that should be protected are.
+  This can be disabled by defining `ALLOW_ROGUE_TLVS`
+- bootutil: Fixed issue with comparing sector sizes for
+  compatibility, this now also checks against the number of usable
+  sectors (which is the slot size minus the swap status and moved
+  up by one sector).
+- bootutil: Added debug logging to show write location of swap status
+  and details on sectors including if slot sizes are not optimal for
+  a given board.
+- Update ptest to support test selection. Ptest can now be invoked with `list`
+  to show the available tests and `run` to run them. The `-t` argument will
+  select specific tests to run.
+- Allow sim tests to skip slow tests.  By setting `MCUBOOT_SKIP_SLOW_TESTS` in
+  the environment, the sim will skip two tests that are very slow.  In one
+  instance this reduces the test time from 2 hours to about 5 minutes.  These
+  slow tests are useful, in that they test bad powerdown recovery, but are
+  inconvenient when testing other areas.
+- Zephyr: Fixes support for disabling instruction/data caches prior
+  to chain-loading an application, this will be automatically
+  enabled if one or both of these caches are present. This feature
+  can be disabled by setting `CONFIG_BOOT_DISABLE_CACHES` to `n`.
+- Zephyr: Fix issue with single application slot mode, serial
+  recovery and encryption whereby an encrypted image is loaded
+  and being wrongly treated as encrypted after decryption.
+- Zephyr: Add estimated image footer size to cache in sysbuild.
+- Added firmware loader configuration type support for Zephyr, this
+  allows for a single application slot and firmware loader image in
+  the secondary slot which is used to update the primary image
+  (loading it in any way it sees fit e.g. via Bluetooth).
+- Zephyr: Remove deprecated ZEPHYR_TRY_MASS_ERASE Kconfig option.
+- Zephyr: Prevent MBEDTLS Kconfig selection when tinycrypt is used.
+- Zephyr: Add USB CDC serial recovery check that now causes a build
+  failure if console is enabled and device is the same as the USB
+  CDC device.
+- Zephyr: Add USB CDC serial recovery check that now causes a build
+  failure if the main thread priority is below 0 (cooperative
+  thread), this would prevent USB CDC from working as the driver
+  would not have been able to fire callbacks.
+- Use general flash operations to determine the flash reset vector. This
+  improves support a bit for some configurations of external flash.
+- fix a memory leak in the HKDF implementation.
+- Zephyr: Added a MCUboot banner which displays the version of
+  MCUboot being used and the version of zephyr. This can be
+  disabled by setting ``CONFIG_MCUBOOT_BOOT_BANNER=n`` which
+  will revert back to the default zephyr boot banner.
+
 ## Version 2.0.0
 
 Note that this release, 2.0.0 is a new major number, and contains a small API

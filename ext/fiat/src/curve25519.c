@@ -27,11 +27,10 @@
 //
 // The field functions are shared by Ed25519 and X25519 where possible.
 
-#include <assert.h>
 #include <string.h>
 #include <stdint.h>
 
-#include <mcuboot_config/mcuboot_config.h>
+#include <bootutil/bootutil_public.h>
 
 #if defined(MCUBOOT_USE_MBED_TLS)
 #include <mbedtls/platform_util.h>

@@ -255,7 +255,7 @@ fn main() {
 
     if swap_move {
         conf.conf.define("MCUBOOT_SWAP_USING_MOVE", None);
-    } else if !overwrite_only {
+    } else if !overwrite_only && !direct_xip && !ram_load {
         conf.conf.define("CONFIG_BOOT_SWAP_USING_SCRATCH", None);
         conf.conf.define("MCUBOOT_SWAP_USING_SCRATCH", None);
     }
@@ -455,6 +455,9 @@ fn main() {
     }
 
     conf.file("../../boot/bootutil/src/loader.c");
+    if ram_load {
+        conf.file("../../boot/bootutil/src/ram_load.c");
+    }
     conf.file("../../boot/bootutil/src/swap_misc.c");
     conf.file("../../boot/bootutil/src/swap_scratch.c");
     conf.file("../../boot/bootutil/src/swap_move.c");

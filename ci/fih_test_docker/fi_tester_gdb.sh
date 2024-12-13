@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+source $(dirname "$0")/paths.sh
+
 function skip_instruction {
 
     local SKIP_ADDRESS=$1
@@ -40,7 +42,7 @@ function skip_instruction {
 
     cat >commands.gdb <<EOF
 target remote localhost: 1234
-file $IMAGE_DIR/bl2.axf
+file $AXF_FILE
 b boot_go_for_image_id if image_id == 0
 continue
 delete breakpoints 1
@@ -71,8 +73,8 @@ EOF
     /usr/bin/qemu-system-arm \
         -M mps2-an521 \
         -s -S \
-        -kernel $IMAGE_DIR/bl2.axf \
-        -device loader,file=$IMAGE_DIR/tfm_s_ns_signed.bin,addr=0x10080000 \
+        -kernel $AXF_FILE \
+        -device loader,file=$TFM_IMAGE_PATH,addr=0x10080000 \
         -chardev file,id=char0,path=$QEMU_LOG_FILE \
         -serial chardev:char0 \
         -display none \
@@ -100,7 +102,7 @@ EOF
                 #print the address that was skipped, and some context to the console
                 echo "" 1>&2
                 echo "Boot success: address: $SKIP_ADDRESS skipped: $SKIP_SIZE" 1>&2
-                arm-none-eabi-objdump -d $IMAGE_DIR/bl2.axf --start-address=$SKIP_ADDRESS -S | tail -n +7 | head -n 14 1>&2
+                arm-none-eabi-objdump -d $AXF_FILE --start-address=$SKIP_ADDRESS -S | tail -n +7 | head -n 14 1>&2
                 echo "" 1>&2
                 echo "" 1>&2
             else
@@ -142,8 +144,7 @@ usage() {
 
 #defaults
 SKIP=2
-BIN_DIR=$(pwd)/install/outputs
-AXF_FILE=$BIN_DIR/bl2.axf
+AXF_FILE=${BOOTLOADER_AXF_PATH}
 GDB=gdb-multiarch
 BOOTLOADER=true
 

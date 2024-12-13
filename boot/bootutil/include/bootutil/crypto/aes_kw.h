@@ -45,9 +45,7 @@ static inline void bootutil_aes_kw_init(bootutil_aes_kw_context *ctx)
 
 static inline void bootutil_aes_kw_drop(bootutil_aes_kw_context *ctx)
 {
-    /* XXX: config defines MBEDTLS_PLATFORM_NO_STD_FUNCTIONS so no need to free */
-    /* (void)mbedtls_aes_free(ctx); */
-    (void)ctx;
+    mbedtls_nist_kw_free(ctx);
 }
 
 static inline int bootutil_aes_kw_set_unwrap_key(bootutil_aes_kw_context *ctx, const uint8_t *k, uint32_t klen)

@@ -53,17 +53,36 @@ class Ed25519KeyGeneration(unittest.TestCase):
         """Basic sanity check on the code emitters."""
         k = Ed25519.generate()
 
+        pubpem = io.StringIO()
+        k.emit_public_pem(pubpem)
+        self.assertIn("BEGIN PUBLIC KEY", pubpem.getvalue())
+        self.assertIn("END PUBLIC KEY", pubpem.getvalue())
+
         ccode = io.StringIO()
         k.emit_c_public(ccode)
         self.assertIn("ed25519_pub_key", ccode.getvalue())
         self.assertIn("ed25519_pub_key_len", ccode.getvalue())
 
+        hashccode = io.StringIO()
+        k.emit_c_public_hash(hashccode)
+        self.assertIn("ed25519_pub_key_hash", hashccode.getvalue())
+        self.assertIn("ed25519_pub_key_hash_len", hashccode.getvalue())
+
         rustcode = io.StringIO()
         k.emit_rust_public(rustcode)
         self.assertIn("ED25519_PUB_KEY", rustcode.getvalue())
 
+        # raw data - bytes
+        pubraw = io.BytesIO()
+        k.emit_raw_public(pubraw)
+        self.assertTrue(len(pubraw.getvalue()) > 0)
+
+        hashraw = io.BytesIO()
+        k.emit_raw_public_hash(hashraw)
+        self.assertTrue(len(hashraw.getvalue()) > 0)
+
     def test_emit_pub(self):
-        """Basic sanity check on the code emitters."""
+        """Basic sanity check on the code emitters, from public key."""
         pubname = self.tname("public.pem")
         k = Ed25519.generate()
         k.export_public(pubname)

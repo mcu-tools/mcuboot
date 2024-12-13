@@ -63,14 +63,33 @@ class KeyGeneration(unittest.TestCase):
         for key_size in RSA_KEY_SIZES:
             k = RSA.generate(key_size=key_size)
 
+            pubpem = io.StringIO()
+            k.emit_public_pem(pubpem)
+            self.assertIn("BEGIN PUBLIC KEY", pubpem.getvalue())
+            self.assertIn("END PUBLIC KEY", pubpem.getvalue())
+
             ccode = io.StringIO()
             k.emit_c_public(ccode)
             self.assertIn("rsa_pub_key", ccode.getvalue())
             self.assertIn("rsa_pub_key_len", ccode.getvalue())
 
+            hashccode = io.StringIO()
+            k.emit_c_public_hash(hashccode)
+            self.assertIn("rsa_pub_key_hash", hashccode.getvalue())
+            self.assertIn("rsa_pub_key_hash_len", hashccode.getvalue())
+
             rustcode = io.StringIO()
             k.emit_rust_public(rustcode)
             self.assertIn("RSA_PUB_KEY", rustcode.getvalue())
+
+            # raw data - bytes
+            pubraw = io.BytesIO()
+            k.emit_raw_public(pubraw)
+            self.assertTrue(len(pubraw.getvalue()) > 0)
+
+            hashraw = io.BytesIO()
+            k.emit_raw_public_hash(hashraw)
+            self.assertTrue(len(hashraw.getvalue()) > 0)
 
     def test_emit_pub(self):
         """Basic sanity check on the code emitters, from public key."""

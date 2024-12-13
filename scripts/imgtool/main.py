@@ -22,12 +22,23 @@ import click
 import getpass
 import imgtool.keys as keys
 import sys
+import struct
+import os
+import lzma
+import hashlib
 import base64
 from imgtool import image, imgtool_version
 from imgtool.version import decode_version
 from imgtool.dumpinfo import dump_imginfo
 from .keys import (
     RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError)
+
+comp_default_dictsize=131072
+comp_default_pb=2
+comp_default_lc=3
+comp_default_lp=1
+comp_default_preset=9
+
 
 MIN_PYTHON_VERSION = (3, 6)
 if sys.version_info < MIN_PYTHON_VERSION:
@@ -72,6 +83,7 @@ keygens = {
     'x25519':     gen_x25519,
 }
 valid_formats = ['openssl', 'pkcs8']
+valid_sha = [ 'auto', '256', '384', '512' ]
 
 
 def load_signature(sigfile):
@@ -228,6 +240,8 @@ def verify(key, imgfile):
         print("Image has an invalid hash")
     elif ret == image.VerifyResult.INVALID_SIGNATURE:
         print("No signature found for the given key")
+    elif ret == image.VerifyResult.KEY_MISMATCH:
+        print("Key type does not match TLV record")
     else:
         print("Unknown return code: {}".format(ret))
     sys.exit(1)
@@ -297,6 +311,14 @@ def get_dependencies(ctx, param, value):
         dependencies[image.DEP_VERSIONS_KEY] = versions
         return dependencies
 
+def create_lzma2_header(dictsize, pb, lc, lp):
+    header = bytearray()
+    for i in range(0, 40):
+        if dictsize <= ((2 | ((i) & 1)) << int((i) / 2 + 11)):
+            header.append(i)
+            break
+    header.append( ( pb * 5 + lp) * 9 + lc)
+    return header
 
 class BasedIntParamType(click.ParamType):
     name = 'integer'
@@ -312,6 +334,8 @@ class BasedIntParamType(click.ParamType):
 
 @click.argument('outfile')
 @click.argument('infile')
+@click.option('--non-bootable', default=False, is_flag=True,
+              help='Mark the image as non-bootable.')
 @click.option('--custom-tlv', required=False, nargs=2, default=[],
               multiple=True, metavar='[tag] [value]',
               help='Custom TLV that will be placed into protected area. '
@@ -338,6 +362,11 @@ class BasedIntParamType(click.ParamType):
               type=click.Choice(['128', '256']),
               help='When encrypting the image using AES, select a 128 bit or '
                    '256 bit key len.')
+@click.option('--compression', default='disabled',
+              type=click.Choice(['disabled', 'lzma2', 'lzma2armthumb']),
+              help='Enable image compression using specified type. '
+                   'Will fall back without image compression automatically '
+                   'if the compression increases the image size.')
 @click.option('-c', '--clear', required=False, is_flag=True, default=False,
               help='Output a non-encrypted image with encryption capabilities,'
                    'so it can be installed in the primary slot, and encrypted '
@@ -397,6 +426,9 @@ class BasedIntParamType(click.ParamType):
 @click.option('--sig-out', metavar='filename',
               help='Path to the file to which signature will be written. '
               'The image signature will be encoded as base64 formatted string')
+@click.option('--sha', 'user_sha', type=click.Choice(valid_sha), default='auto',
+              help='selected sha algorithm to use; defaults to "auto" which is 256 if '
+              'no cryptographic signature is used, or default for signature type')
 @click.option('--vector-to-sign', type=click.Choice(['payload', 'digest']),
               help='send to OUTFILE the payload or payload''s digest instead '
               'of complied image. These data can be used for external image '
@@ -406,10 +438,11 @@ class BasedIntParamType(click.ParamType):
                .hex extension, otherwise binary format is used''')
 def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
-         endian, encrypt_keylen, encrypt, infile, outfile, dependencies,
-         load_addr, hex_addr, erased_val, save_enctlv, security_counter,
-         boot_record, custom_tlv, rom_fixed, max_align, clear, fix_sig,
-         fix_sig_pubkey, sig_out, vector_to_sign):
+         endian, encrypt_keylen, encrypt, compression, infile, outfile,
+         dependencies, load_addr, hex_addr, erased_val, save_enctlv,
+         security_counter, boot_record, custom_tlv, rom_fixed, max_align,
+         clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, vector_to_sign,
+         non_bootable):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -421,7 +454,9 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                       max_sectors=max_sectors, overwrite_only=overwrite_only,
                       endian=endian, load_addr=load_addr, rom_fixed=rom_fixed,
                       erased_val=erased_val, save_enctlv=save_enctlv,
-                      security_counter=security_counter, max_align=max_align)
+                      security_counter=security_counter, max_align=max_align,
+                      non_bootable=non_bootable)
+    compression_tlvs = {}
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
@@ -475,10 +510,51 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
         }
 
     img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, int(encrypt_keylen), clear, baked_signature,
-               pub_key, vector_to_sign)
-    img.save(outfile, hex_addr)
+               custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
+               baked_signature, pub_key, vector_to_sign, user_sha)
 
+    if compression in ["lzma2", "lzma2armthumb"]:
+        compressed_img = image.Image(version=decode_version(version),
+                  header_size=header_size, pad_header=pad_header,
+                  pad=pad, confirm=confirm, align=int(align),
+                  slot_size=slot_size, max_sectors=max_sectors,
+                  overwrite_only=overwrite_only, endian=endian,
+                  load_addr=load_addr, rom_fixed=rom_fixed,
+                  erased_val=erased_val, save_enctlv=save_enctlv,
+                  security_counter=security_counter, max_align=max_align)
+        compression_filters = [
+            {"id": lzma.FILTER_LZMA2, "preset": comp_default_preset,
+                "dict_size": comp_default_dictsize, "lp": comp_default_lp,
+                "lc": comp_default_lc}
+        ]
+        if compression == "lzma2armthumb":
+            compression_filters.insert(0, {"id":lzma.FILTER_ARMTHUMB})
+        compressed_data = lzma.compress(img.get_infile_data(),filters=compression_filters,
+            format=lzma.FORMAT_RAW)
+        uncompressed_size = len(img.get_infile_data())
+        compressed_size = len(compressed_data)
+        print(f"compressed image size: {compressed_size} bytes")
+        print(f"original image size: {uncompressed_size} bytes")
+        compression_tlvs["DECOMP_SIZE"] = struct.pack(
+            img.get_struct_endian() + 'L', img.image_size)
+        compression_tlvs["DECOMP_SHA"] = img.image_hash
+        compression_tlvs_size = len(compression_tlvs["DECOMP_SIZE"])
+        compression_tlvs_size += len(compression_tlvs["DECOMP_SHA"])
+        if img.get_signature():
+            compression_tlvs["DECOMP_SIGNATURE"] = img.get_signature()
+            compression_tlvs_size += len(compression_tlvs["DECOMP_SIGNATURE"])
+        if (compressed_size + compression_tlvs_size) < uncompressed_size:
+            compression_header = create_lzma2_header(
+                dictsize = comp_default_dictsize, pb = comp_default_pb,
+                lc = comp_default_lc, lp = comp_default_lp)
+            compressed_img.load_compressed(compressed_data, compression_header)
+            compressed_img.base_addr = img.base_addr
+            compressed_img.create(key, public_key_format, enckey,
+               dependencies, boot_record, custom_tlvs, compression_tlvs,
+               compression, int(encrypt_keylen), clear, baked_signature,
+               pub_key, vector_to_sign, user_sha=user_sha)
+            img = compressed_img
+    img.save(outfile, hex_addr)
     if sig_out is not None:
         new_signature = img.get_signature()
         save_signature(sig_out, new_signature)

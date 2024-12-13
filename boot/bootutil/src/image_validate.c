@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2023 Arm Limited
+ * Copyright (c) 2019-2024 Arm Limited
  *
  * Original license:
  *
@@ -96,7 +96,7 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 #ifdef MCUBOOT_ENC_IMAGES
     /* Encrypted images only exist in the secondary slot */
     if (MUST_DECRYPT(fap, image_index, hdr) &&
-            !boot_enc_valid(enc_state, image_index, fap)) {
+            !boot_enc_valid(enc_state, 1)) {
         return -1;
     }
 #endif
@@ -148,10 +148,13 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 #ifdef MCUBOOT_ENC_IMAGES
         if (MUST_DECRYPT(fap, image_index, hdr)) {
             /* Only payload is encrypted (area between header and TLVs) */
+            int slot = flash_area_id_to_multi_image_slot(image_index,
+                            flash_area_get_id(fap));
+
             if (off >= hdr_size && off < tlv_off) {
                 blk_off = (off - hdr_size) & 0xf;
-                boot_encrypt(enc_state, image_index, fap, off - hdr_size,
-                        blk_sz, blk_off, tmp_buf);
+                boot_enc_decrypt(enc_state, slot, off - hdr_size,
+                                 blk_sz, blk_off, tmp_buf);
             }
         }
 #endif
@@ -201,7 +204,27 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 #    define SIG_BUF_SIZE 32 /* no signing, sha256 digest only */
 #endif
 
+#if (defined(MCUBOOT_HW_KEY)       + \
+     defined(MCUBOOT_BUILTIN_KEY)) > 1
+#error "Please use either MCUBOOT_HW_KEY or the MCUBOOT_BUILTIN_KEY feature."
+#endif
+
 #ifdef EXPECTED_SIG_TLV
+
+#if !defined(MCUBOOT_BUILTIN_KEY)
+#if !defined(MCUBOOT_HW_KEY)
+/* The key TLV contains the hash of the public key. */
+#   define EXPECTED_KEY_TLV     IMAGE_TLV_KEYHASH
+#   define KEY_BUF_SIZE         IMAGE_HASH_SIZE
+#else
+/* The key TLV contains the whole public key.
+ * Add a few extra bytes to the key buffer size for encoding and
+ * for public exponent.
+ */
+#   define EXPECTED_KEY_TLV     IMAGE_TLV_PUBKEY
+#   define KEY_BUF_SIZE         (SIG_BUF_SIZE + 24)
+#endif /* !MCUBOOT_HW_KEY */
+
 #if !defined(MCUBOOT_HW_KEY)
 static int
 bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
@@ -228,7 +251,7 @@ bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
     bootutil_sha_drop(&sha_ctx);
     return -1;
 }
-#else
+#else /* !MCUBOOT_HW_KEY */
 extern unsigned int pub_key_len;
 static int
 bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
@@ -266,7 +289,8 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
     return -1;
 }
 #endif /* !MCUBOOT_HW_KEY */
-#endif
+#endif /* !MCUBOOT_BUILTIN_KEY */
+#endif /* EXPECTED_SIG_TLV */
 
 /**
  * Reads the value of an image's security counter.
@@ -328,6 +352,31 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
     return 0;
 }
 
+#ifndef ALLOW_ROGUE_TLVS
+/*
+ * The following list of TLVs are the only entries allowed in the unprotected
+ * TLV section.  All other TLV entries must be in the protected section.
+ */
+static const uint16_t allowed_unprot_tlvs[] = {
+     IMAGE_TLV_KEYHASH,
+     IMAGE_TLV_PUBKEY,
+     IMAGE_TLV_SHA256,
+     IMAGE_TLV_SHA384,
+     IMAGE_TLV_SHA512,
+     IMAGE_TLV_RSA2048_PSS,
+     IMAGE_TLV_ECDSA224,
+     IMAGE_TLV_ECDSA_SIG,
+     IMAGE_TLV_RSA3072_PSS,
+     IMAGE_TLV_ED25519,
+     IMAGE_TLV_ENC_RSA2048,
+     IMAGE_TLV_ENC_KW,
+     IMAGE_TLV_ENC_EC256,
+     IMAGE_TLV_ENC_X25519,
+     /* Mark end with ANY. */
+     IMAGE_TLV_ANY,
+};
+#endif
+
 /*
  * Verify the integrity of the image.
  * Return non-zero if image could not be validated/does not validate.
@@ -344,10 +393,16 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
     int image_hash_valid = 0;
 #ifdef EXPECTED_SIG_TLV
     FIH_DECLARE(valid_signature, FIH_FAILURE);
+#ifndef MCUBOOT_BUILTIN_KEY
     int key_id = -1;
+#else
+    /* Pass a key ID equal to the image index, the underlying crypto library
+     * is responsible for mapping the image index to a builtin key ID.
+     */
+    int key_id = image_index;
+#endif /* !MCUBOOT_BUILTIN_KEY */
 #ifdef MCUBOOT_HW_KEY
-    /* Few extra bytes for encoding and for public exponent. */
-    uint8_t key_buf[SIG_BUF_SIZE + 24];
+    uint8_t key_buf[KEY_BUF_SIZE];
 #endif
 #endif /* EXPECTED_SIG_TLV */
     struct image_tlv_iter it;
@@ -393,6 +448,27 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             break;
         }
 
+#ifndef ALLOW_ROGUE_TLVS
+        /*
+         * Ensure that the non-protected TLV only has entries necessary to hold
+         * the signature.  We also allow encryption related keys to be in the
+         * unprotected area.
+         */
+        if (!bootutil_tlv_iter_is_prot(&it, off)) {
+             bool found = false;
+             for (const uint16_t *p = allowed_unprot_tlvs; *p != IMAGE_TLV_ANY; p++) {
+                  if (type == *p) {
+                       found = true;
+                       break;
+                  }
+             }
+             if (!found) {
+                  FIH_SET(fih_rc, FIH_FAILURE);
+                  goto out;
+             }
+        }
+#endif
+
         if (type == EXPECTED_HASH_TLV) {
             /* Verify the image hash. This must always be present. */
             if (len != sizeof(hash)) {
@@ -411,44 +487,34 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
             }
 
             image_hash_valid = 1;
-#ifdef EXPECTED_SIG_TLV
-#ifndef MCUBOOT_HW_KEY
-        } else if (type == IMAGE_TLV_KEYHASH) {
+#ifdef EXPECTED_KEY_TLV
+        } else if (type == EXPECTED_KEY_TLV) {
             /*
              * Determine which key we should be checking.
              */
-            if (len > IMAGE_HASH_SIZE) {
+            if (len > KEY_BUF_SIZE) {
                 rc = -1;
                 goto out;
             }
+#ifndef MCUBOOT_HW_KEY
             rc = LOAD_IMAGE_DATA(hdr, fap, off, buf, len);
             if (rc) {
                 goto out;
             }
             key_id = bootutil_find_key(buf, len);
-            /*
-             * The key may not be found, which is acceptable.  There
-             * can be multiple signatures, each preceded by a key.
-             */
 #else
-        } else if (type == IMAGE_TLV_PUBKEY) {
-            /*
-             * Determine which key we should be checking.
-             */
-            if (len > sizeof(key_buf)) {
-                rc = -1;
-                goto out;
-            }
             rc = LOAD_IMAGE_DATA(hdr, fap, off, key_buf, len);
             if (rc) {
                 goto out;
             }
             key_id = bootutil_find_key(image_index, key_buf, len);
+#endif /* !MCUBOOT_HW_KEY */
             /*
              * The key may not be found, which is acceptable.  There
              * can be multiple signatures, each preceded by a key.
              */
-#endif /* !MCUBOOT_HW_KEY */
+#endif /* EXPECTED_KEY_TLV */
+#ifdef EXPECTED_SIG_TLV
         } else if (type == EXPECTED_SIG_TLV) {
             /* Ignore this signature if it is out of bounds. */
             if (key_id < 0 || key_id >= bootutil_key_cnt) {
