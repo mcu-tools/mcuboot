@@ -102,7 +102,6 @@ static int bootutil_import_key(uint8_t **cp, uint8_t *end)
         return -2;
     }
     /* id-ecPublicKey (RFC5480) */
-
     if (alg.ASN1_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
         memcmp(alg.ASN1_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -3;
