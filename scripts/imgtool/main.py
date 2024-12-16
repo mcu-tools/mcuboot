@@ -226,11 +226,14 @@ def getpriv(key, minimal, format):
 @click.command(help="Check that signed image can be verified by given key")
 def verify(key, imgfile):
     key = load_key(key) if key else None
-    ret, version, digest = image.Image.verify(imgfile, key)
+    ret, version, digest, signature = image.Image.verify(imgfile, key)
     if ret == image.VerifyResult.OK:
         print("Image was correctly validated")
         print("Image version: {}.{}.{}+{}".format(*version))
-        print("Image digest: {}".format(digest.hex()))
+        if digest:
+            print("Image digest: {}".format(digest.hex()))
+        if signature and digest is None:
+            print("Image signature over image: {}".format(signature.hex()))
         return
     elif ret == image.VerifyResult.INVALID_MAGIC:
         print("Invalid image magic; is this an MCUboot image?")
@@ -423,6 +426,10 @@ class BasedIntParamType(click.ParamType):
               'the signature calculated using the public key')
 @click.option('--fix-sig-pubkey', metavar='filename',
               help='public key relevant to fixed signature')
+@click.option('--pure', 'is_pure', is_flag=True, default=False, show_default=True,
+              help='Expected Pure variant of signature; the Pure variant is '
+              'expected to be signature done over an image rather than hash of '
+              'that image.')
 @click.option('--sig-out', metavar='filename',
               help='Path to the file to which signature will be written. '
               'The image signature will be encoded as base64 formatted string')
@@ -441,8 +448,8 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          endian, encrypt_keylen, encrypt, compression, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, rom_fixed, max_align,
-         clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, vector_to_sign,
-         non_bootable):
+         clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, is_pure,
+         vector_to_sign, non_bootable):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -509,9 +516,15 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             'value': raw_signature
         }
 
+    if is_pure and user_sha != 'auto':
+        raise click.UsageError(
+            'Pure signatures, currently, enforces preferred hash algorithm, '
+            'and forbids sha selection by user.')
+
     img.create(key, public_key_format, enckey, dependencies, boot_record,
                custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
-               baked_signature, pub_key, vector_to_sign, user_sha)
+               baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
+               is_pure=is_pure)
 
     if compression in ["lzma2", "lzma2armthumb"]:
         compressed_img = image.Image(version=decode_version(version),
