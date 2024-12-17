@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-# Copyright (c) 2020-2023 Arm Limited
+# Copyright (c) 2020-2024 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,6 +29,9 @@ if test -z "$FIH_LEVEL"; then
 else
     CMAKE_FIH_LEVEL="-DMCUBOOT_FIH_PROFILE=\"$FIH_LEVEL\""
 fi
+
+# Install imgtool dependencies
+pip install -r $MCUBOOT_PATH/scripts/requirements.txt
 
 # build TF-M with MCUBoot
 mkdir -p $TFM_BUILD_PATH $TFM_SPE_BUILD_PATH
