@@ -47,7 +47,7 @@ static int bs_custom_storage_erase(const struct nmgr_hdr *hdr,
     if (rc < 0) {
         BOOT_LOG_ERR("failed to open flash area");
     } else {
-        rc = flash_area_erase(fa, 0, flash_area_get_size(fa));
+        rc = flash_area_flatten(fa, 0, flash_area_get_size(fa));
         if (rc < 0) {
             BOOT_LOG_ERR("failed to erase flash area");
         }
