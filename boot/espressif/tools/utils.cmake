@@ -29,3 +29,16 @@ function(parse_and_set_config_file CONFIG_FILE)
         endif()
     endforeach()
 endfunction()
+
+# Auxiliar function to get IDF version from esp_idf_version.h file
+function(get_version_from_header VAR_NAME HEADER_FILE VERSION_OUT)
+    # Read the header file and extract the value of the specified macro
+    file(READ "${HEADER_FILE}" CONTENTS)
+    string(REGEX MATCH "#define ${VAR_NAME}[ ]+([0-9]+)" MATCH "${CONTENTS}")
+    if(MATCH)
+        string(REGEX REPLACE "#define ${VAR_NAME}[ ]+([0-9]+)" "\\1" VERSION "${MATCH}")
+        set(${VERSION_OUT} "${VERSION}" PARENT_SCOPE)
+    else()
+        message(FATAL_ERROR "Could not find ${VAR_NAME} in ${HEADER_FILE}")
+    endif()
+endfunction()

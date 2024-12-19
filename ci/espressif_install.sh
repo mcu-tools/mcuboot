@@ -10,7 +10,7 @@ install_imgtool() {
 
 install_idf() {
     pushd $HOME
-    git clone --depth=1 https://github.com/espressif/esp-idf.git --branch release/v5.1
+    git clone --depth=1 https://github.com/espressif/esp-idf.git --branch v5.1.4
     [[ $? -ne 0 ]] && exit 1
 
     $HOME/esp-idf/install.sh

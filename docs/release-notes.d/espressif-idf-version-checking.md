@@ -1,0 +1,2 @@
+- Added verification for supported IDF-based HAL version.
+- Fixed missing macro for XMC flash devices on ESP32-S3

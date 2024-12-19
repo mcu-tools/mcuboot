@@ -14,6 +14,8 @@ endif()
 add_definitions(-DMCUBOOT_TARGET=${MCUBOOT_TARGET})
 add_definitions(-D__ESPRESSIF__=1)
 
+set(EXPECTED_IDF_HAL_VERSION "5.1.4")
+
 if ("${MCUBOOT_TARGET}" STREQUAL "esp32" OR
     "${MCUBOOT_TARGET}" STREQUAL "esp32s2" OR
     "${MCUBOOT_TARGET}" STREQUAL "esp32s3")
@@ -91,6 +93,25 @@ if (NOT DEFINED ESP_HAL_PATH)
             message(FATAL_ERROR "Please set -DESP_HAL_PATH parameter or define ESP_HAL_PATH environment variable.")
         endif()
     endif()
+endif()
+message(STATUS "Defined ESP_HAL_PATH: ${ESP_HAL_PATH}")
+
+# Verify from which IDF version the HAL is based on
+set(IDF_VER_HEADER_FILE "${ESP_HAL_PATH}/components/esp_common/include/esp_idf_version.h")
+
+get_version_from_header("ESP_IDF_VERSION_MAJOR" ${IDF_VER_HEADER_FILE} IDF_VERSION_MAJOR)
+get_version_from_header("ESP_IDF_VERSION_MINOR" ${IDF_VER_HEADER_FILE} IDF_VERSION_MINOR)
+get_version_from_header("ESP_IDF_VERSION_PATCH" ${IDF_VER_HEADER_FILE} IDF_VERSION_PATCH)
+
+set(IDF_VERSION "${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}.${IDF_VERSION_PATCH}")
+
+if (NOT IDF_VERSION VERSION_EQUAL ${EXPECTED_IDF_HAL_VERSION})
+    message(FATAL_ERROR
+            "Unsupported HAL version ${IDF_VERSION}, expected ${EXPECTED_IDF_HAL_VERSION}. \
+             Verify if the RTOS repository, where you are trying to build from, is up to date, \
+             or check the installation pointed on ESP_HAL_PATH.")
+else ()
+    message(STATUS "HAL based on ESP-IDF version: ${IDF_VERSION}")
 endif()
 
 execute_process(
