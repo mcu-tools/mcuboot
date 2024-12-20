@@ -82,6 +82,17 @@
 
 #endif /* MCUBOOT_BOOT_GO_HOOKS  */
 
+#ifdef MCUBOOT_FLASH_AREA_HOOKS
+
+#define BOOT_HOOK_FLASH_AREA_CALL(f, ret_default, ...) \
+    DO_HOOK_CALL(f, ret_default, __VA_ARGS__)
+
+#else
+
+#define BOOT_HOOK_FLASH_AREA_CALL(f, ret_default, ...) \
+    HOOK_CALL_NOP(f, ret_default, __VA_ARGS__)
+
+#endif /* MCUBOOT_FLASH_AREA_ID_HOOKS */
 
 /** Hook for provide image header data.
  *
@@ -214,6 +225,35 @@ int boot_reset_request_hook(bool force);
  *         FIH_BOOT_HOOK_REGULAR: follow the normal execution path.
  */
 fih_ret boot_go_hook(struct boot_rsp *rsp);
+
+/**
+ * Hook to implement custom action before retrieving flash area ID.
+ *
+ * @param image_index the index of the image pair
+ * @param slot slot number
+ * @param area_id the flash area ID to be populated
+ *
+ * @retval 0 the flash area ID was fetched successfully;
+ *         BOOT_HOOK_REGULAR follow the normal execution path to get the flash
+ *         area ID;
+ *         otherwise an error-code value.
+ */
+int flash_area_id_from_multi_image_slot_hook(int image_index, int slot,
+                                             int *area_id);
+
+/**
+ * Hook to implement custom action before retrieving flash area device ID.
+ *
+ * @param fa the flash area structure
+ * @param device_id the device ID to be populated
+ *
+ * @retval 0 the device ID was fetched successfully;
+ *         BOOT_HOOK_REGULAR follow the normal execution path to get the device
+ *         ID;
+ *         otherwise an error-code value.
+ */
+int flash_area_get_device_id_hook(const struct flash_area *fa,
+                                  uint8_t *device_id);
 
 #define BOOT_RESET_REQUEST_HOOK_BUSY		1
 #define BOOT_RESET_REQUEST_HOOK_TIMEOUT		2
