@@ -472,6 +472,17 @@ config BOOT_IMAGE_EXECUTABLE_RAM_SIZE
 	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM),0)
 endif
 
+config FLASH_RUNTIME_SOURCES
+	bool "Images are read from flash partitions defined at runtime"
+	depends on SINGLE_APPLICATION_SLOT
+	help
+	  Instead of using information on the flash slots to decide which images
+	  to load/update, the application provides the information from which
+	  flash slot to load in runtime. This is useful when the application
+	  reads the state for hardware straps or other sources to decide which
+	  image to load. Usually, application will provide a boot_go_hook() to
+	  decide which image to load.
+
 config BOOT_ENCRYPTION_SUPPORT
 	bool
 	help
@@ -860,6 +871,13 @@ config BOOT_GO_HOOKS
 	help
 	  Allow to provide procedures for override or extend native
 	  MCUboot's boot_go routine. It is up to the project customization to
+	  add required source files to the build.
+
+config BOOT_FLASH_AREA_HOOKS
+	bool "Enable hooks for overriding MCUboot's flash area routines"
+	help
+	  Allow to provide procedures for override or extend native
+	  MCUboot's flash area routines. It is up to the project customization to
 	  add required source files to the build.
 
 config MCUBOOT_ACTION_HOOKS
