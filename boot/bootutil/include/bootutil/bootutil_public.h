@@ -145,6 +145,8 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
 #endif
 #endif
 
+struct boot_loader_state;
+
 struct boot_swap_state {
     uint8_t magic;      /* One of the BOOT_MAGIC_[...] values. */
     uint8_t swap_type;  /* One of the BOOT_SWAP_TYPE_[...] values. */
