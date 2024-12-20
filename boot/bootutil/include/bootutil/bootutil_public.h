@@ -311,6 +311,41 @@ int
 boot_image_load_header(const struct flash_area *fa_p,
                        struct image_header *hdr);
 
+#ifdef MCUBOOT_RAM_LOAD
+/**
+ * Loads image with given header to RAM.
+ *
+ * Destination on RAM and size is described on image header.
+ *
+ * @param[in]   state   boot loader state
+ * @param[in]   hdr     image header
+ *
+ * @return              0 on success, error code otherwise
+ */
+int boot_load_image_from_flash_to_sram(struct boot_loader_state *state,
+                                       struct image_header *hdr);
+
+/**
+ * Removes an image from SRAM, by overwriting it with zeros.
+ *
+ * @param  state        Boot loader status information.
+ *
+ * @return              0 on success; nonzero on failure.
+ */
+int boot_remove_image_from_sram(struct boot_loader_state *state);
+
+/**
+ * Removes an image from flash by erasing the corresponding flash area
+ *
+ * @param  state    Boot loader status information.
+ * @param  slot     The flash slot of the image to be erased.
+ *
+ * @return          0 on success; nonzero on failure.
+ */
+int boot_remove_image_from_flash(struct boot_loader_state *state,
+                                 uint32_t slot);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

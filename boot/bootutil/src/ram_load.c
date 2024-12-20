@@ -438,3 +438,17 @@ boot_remove_image_from_flash(struct boot_loader_state *state, uint32_t slot)
 
     return rc;
 }
+
+int boot_load_image_from_flash_to_sram(struct boot_loader_state *state,
+                                       struct image_header *hdr)
+{
+    int active_slot;
+
+    /* boot_load_image_to_sram will load the image from state active_slot,
+     * so force it before loading the image.
+     */
+    active_slot = state->slot_usage[BOOT_CURR_IMG(state)].active_slot;
+    BOOT_IMG(state, active_slot).hdr = *hdr;
+
+    return boot_load_image_to_sram(state);
+}
