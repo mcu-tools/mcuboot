@@ -118,6 +118,11 @@ static struct sector_buffer_t sector_buffers;
         boot_copy_region(state, fap_pri, fap_sec, pri_off, sec_off, sz)
 #endif
 
+struct boot_loader_state *boot_get_loader_state(void)
+{
+    return &boot_data;
+}
+
 static int
 boot_read_image_headers(struct boot_loader_state *state, bool require_all,
         struct boot_status *bs)
