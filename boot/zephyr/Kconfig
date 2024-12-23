@@ -855,6 +855,13 @@ config BOOT_IMAGE_ACCESS_HOOKS
 	  update. It is up to the project customization to add required source
 	  files to the build.
 
+config BOOT_GO_HOOKS
+	bool "Enable hooks for overriding MCUBOOT's boot_go routine"
+	help
+	  Allow to provide procedures for override or extend native
+	  MCUboot's boot_go routine. It is up to the project customization to
+	  add required source files to the build.
+
 config MCUBOOT_ACTION_HOOKS
 	bool "Enable hooks for responding to MCUboot status changes"
 	help

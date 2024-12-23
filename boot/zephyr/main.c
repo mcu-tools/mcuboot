@@ -41,6 +41,7 @@
 #include "bootutil/bootutil_log.h"
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
+#include "bootutil/boot_hooks.h"
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/mcuboot_status.h"
 #include "flash_map_backend/flash_map_backend.h"
@@ -525,7 +526,10 @@ int main(void)
 #endif
 #endif
 
-    FIH_CALL(boot_go, fih_rc, &rsp);
+    BOOT_HOOK_GO_CALL_FIH(boot_go_hook, FIH_BOOT_HOOK_REGULAR, fih_rc, &rsp);
+    if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR)) {
+        FIH_CALL(boot_go, fih_rc, &rsp);
+    }
 
 #ifdef CONFIG_BOOT_SERIAL_BOOT_MODE
     if (io_detect_boot_mode()) {
