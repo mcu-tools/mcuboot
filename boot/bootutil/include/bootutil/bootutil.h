@@ -90,6 +90,8 @@ struct boot_loader_state;
 void boot_state_clear(struct boot_loader_state *state);
 fih_ret context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp);
 const struct image_max_size *boot_get_max_app_size(void);
+uint32_t boot_get_state_secondary_offset(struct boot_loader_state *state,
+                                         const struct flash_area *fap);
 
 #define SPLIT_GO_OK                 (0)
 #define SPLIT_GO_NON_MATCHING       (-1)

@@ -655,6 +655,10 @@ boot_enc_load(struct boot_loader_state *state, int slot,
     /* Initialize the AES context */
     boot_enc_init(enc_state, slot);
 
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    it.start_off = boot_get_state_secondary_offset(state, fap);
+#endif
+
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, EXPECTED_ENC_TLV, false);
     if (rc) {
         return -1;

@@ -211,6 +211,9 @@ struct image_tlv_iter {
     uint32_t prot_end;
     uint32_t tlv_off;
     uint32_t tlv_end;
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    uint32_t start_off;
+#endif
 };
 
 int bootutil_tlv_iter_begin(struct image_tlv_iter *it,
