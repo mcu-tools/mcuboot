@@ -85,7 +85,7 @@ extern "C" {
 
 #ifdef MCUBOOT_BOOT_MAX_ALIGN
 
-#if defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_SCRATCH)
+#if defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_OFFSET)
 _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
                "Unsupported value for MCUBOOT_BOOT_MAX_ALIGN for SWAP upgrade modes");
 #endif

@@ -84,6 +84,9 @@ bootutil_img_hash(struct boot_loader_state *state,
     struct enc_key_data *enc_state;
     int image_index;
 #endif
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    uint32_t sector_off = 0;
+#endif
 
 #if (BOOT_IMAGE_NUMBER == 1) || !defined(MCUBOOT_ENC_IMAGES) || \
     defined(MCUBOOT_RAM_LOAD)
@@ -115,6 +118,13 @@ bootutil_img_hash(struct boot_loader_state *state,
             !boot_enc_valid(enc_state, 1)) {
         return -1;
     }
+#endif
+
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    /* For swap using offset mode, the image starts in the second sector of the upgrade slot, so
+     * apply the offset when this is needed
+     */
+    sector_off = boot_get_state_secondary_offset(state, fap);
 #endif
 
     bootutil_sha_init(&sha_ctx);
@@ -162,7 +172,11 @@ bootutil_img_hash(struct boot_loader_state *state,
             blk_sz = tlv_off - off;
         }
 #endif
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+        rc = flash_area_read(fap, off + sector_off, tmp_buf, blk_sz);
+#else
         rc = flash_area_read(fap, off, tmp_buf, blk_sz);
+#endif
         if (rc) {
             bootutil_sha_drop(&sha_ctx);
             return rc;
@@ -350,6 +364,10 @@ bootutil_get_img_security_cnt(struct boot_loader_state *state, int slot,
         return BOOT_EBADIMAGE;
     }
 
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    it.start_off = boot_get_state_secondary_offset(state, fap);
+#endif
+
     rc = bootutil_tlv_iter_begin(&it, boot_img_hdr(state, slot), fap, IMAGE_TLV_SEC_CNT, true);
     if (rc) {
         return rc;
@@ -506,6 +524,10 @@ bootutil_img_validate(struct boot_loader_state *state,
     if (rc != 0) {
 	goto out;
     }
+#endif
+
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    it.start_off = boot_get_state_secondary_offset(state, fap);
 #endif
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_ANY, false);

@@ -336,7 +336,7 @@ uint32_t bootutil_max_image_size(const struct flash_area *fap)
 #if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SINGLE_APPLICATION_SLOT) || \
     defined(MCUBOOT_FIRMWARE_LOADER) || defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
     return boot_status_off(fap);
-#elif defined(MCUBOOT_SWAP_USING_MOVE)
+#elif defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
     struct flash_sector sector;
     /* get the last sector offset */
     int rc = flash_area_get_sector(fap, boot_status_off(fap), &sector);
@@ -361,6 +361,7 @@ uint32_t bootutil_max_image_size(const struct flash_area *fap)
  * the TLVs.
  */
 #if !defined(MCUBOOT_DIRECT_XIP) && \
+    !defined(MCUBOOT_SWAP_USING_OFFSET) && \
     (!defined(MCUBOOT_OVERWRITE_ONLY) || \
     defined(MCUBOOT_OVERWRITE_ONLY_FAST))
 int

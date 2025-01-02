@@ -30,7 +30,7 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
-#if !defined(MCUBOOT_SWAP_USING_MOVE)
+#if !defined(MCUBOOT_SWAP_USING_MOVE) && !defined(MCUBOOT_SWAP_USING_OFFSET)
 
 #if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT)
 /*
@@ -976,4 +976,4 @@ done:
     return rc;
 }
 
-#endif /* !MCUBOOT_SWAP_USING_MOVE */
+#endif /* !MCUBOOT_SWAP_USING_MOVE && !MCUBOOT_SWAP_USING_OFFSET */
