@@ -94,6 +94,7 @@ TLV_VALUES = {
         'DECOMP_SIZE': 0x70,
         'DECOMP_SHA': 0x71,
         'DECOMP_SIGNATURE': 0x72,
+        'COMP_DEC_SIZE' : 0x73,
 }
 
 TLV_SIZE = 4
@@ -460,7 +461,7 @@ class Image:
                sw_type=None, custom_tlvs=None, compression_tlvs=None,
                compression_type=None, encrypt_keylen=128, clear=False,
                fixed_sig=None, pub_key=None, vector_to_sign=None,
-               user_sha='auto', is_pure=False):
+               user_sha='auto', is_pure=False, keep_comp_size=False, dont_encrypt=False):
         self.enckey = enckey
 
         # key decides on sha, then pub_key; of both are none default is used
@@ -522,6 +523,9 @@ class Image:
             dependencies_num = len(dependencies[DEP_IMAGES_KEY])
             protected_tlv_size += (dependencies_num * 16)
 
+        if keep_comp_size:
+            compression_tlvs["COMP_DEC_SIZE"] = struct.pack(
+                self.get_struct_endian() + 'L', self.image_size)
         if compression_tlvs is not None:
             for value in compression_tlvs.values():
                 protected_tlv_size += TLV_SIZE + len(value)
@@ -537,7 +541,7 @@ class Image:
         #
         # This adds the padding if image is not aligned to the 16 Bytes
         # in encrypted mode
-        if self.enckey is not None:
+        if self.enckey is not None and dont_encrypt is False:
             pad_len = len(self.payload) % 16
             if pad_len > 0:
                 pad = bytes(16 - pad_len)
@@ -594,6 +598,7 @@ class Image:
                     prot_tlv.add(tag, value)
 
             protected_tlv_off = len(self.payload)
+
             self.payload += prot_tlv.get()
 
         tlv = TLV(self.endian)
@@ -657,7 +662,7 @@ class Image:
         if protected_tlv_off is not None:
             self.payload = self.payload[:protected_tlv_off]
 
-        if enckey is not None:
+        if enckey is not None and dont_encrypt is False:
             if encrypt_keylen == 256:
                 plainkey = os.urandom(32)
             else:

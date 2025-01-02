@@ -521,12 +521,11 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             'Pure signatures, currently, enforces preferred hash algorithm, '
             'and forbids sha selection by user.')
 
-    img.create(key, public_key_format, enckey, dependencies, boot_record,
+    if compression in ["lzma2", "lzma2armthumb"]:
+        img.create(key, public_key_format, enckey, dependencies, boot_record,
                custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
-               is_pure=is_pure)
-
-    if compression in ["lzma2", "lzma2armthumb"]:
+               is_pure=is_pure, keep_comp_size=False, dont_encrypt=True)
         compressed_img = image.Image(version=decode_version(version),
                   header_size=header_size, pad_header=pad_header,
                   pad=pad, confirm=confirm, align=int(align),
@@ -562,12 +561,20 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                 lc = comp_default_lc, lp = comp_default_lp)
             compressed_img.load_compressed(compressed_data, compression_header)
             compressed_img.base_addr = img.base_addr
+            keep_comp_size = False;
+            if enckey:
+                keep_comp_size = True
             compressed_img.create(key, public_key_format, enckey,
                dependencies, boot_record, custom_tlvs, compression_tlvs,
                compression, int(encrypt_keylen), clear, baked_signature,
                pub_key, vector_to_sign, user_sha=user_sha,
-               is_pure=is_pure)
+               is_pure=is_pure, keep_comp_size=keep_comp_size)
             img = compressed_img
+    else:
+        img.create(key, public_key_format, enckey, dependencies, boot_record,
+               custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
+               baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
+               is_pure=is_pure)
     img.save(outfile, hex_addr)
     if sig_out is not None:
         new_signature = img.get_signature()
