@@ -54,7 +54,7 @@ static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
 #define FLASH_AREA_IMAGE_PRIMARY(x) __flash_area_ids_for_slot(x, 0)
 #define FLASH_AREA_IMAGE_SECONDARY(x) __flash_area_ids_for_slot(x, 1)
 
-#if !defined(CONFIG_BOOT_SWAP_USING_MOVE)
+#if !defined(CONFIG_BOOT_SWAP_USING_MOVE) && !defined(CONFIG_BOOT_SWAP_USING_OFFSET)
 #define FLASH_AREA_IMAGE_SCRATCH    FIXED_PARTITION_ID(scratch_partition)
 #endif
 
