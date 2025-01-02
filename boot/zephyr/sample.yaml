@@ -90,3 +90,9 @@ tests:
     platform_allow: mimxrt1020_evk
     integration_platforms:
       - mimxrt1020_evk
+  sample.bootloader.mcuboot.swap_offset:
+    extra_args: EXTRA_CONF_FILE=./swap_offset.conf
+    platform_allow:  nrf52840dk/nrf52840
+    integration_platforms:
+      - nrf52840dk/nrf52840
+    tags: bootloader_mcuboot

@@ -125,30 +125,48 @@ zephyr_library_sources(
   )
 endif()
 
-if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
-zephyr_library_sources(
-  ${BOOT_DIR}/zephyr/single_loader.c
-  )
-zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
-elseif(CONFIG_BOOT_FIRMWARE_LOADER)
-zephyr_library_sources(
-  ${BOOT_DIR}/zephyr/firmware_loader.c
-  )
-zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
-else()
-zephyr_library_sources(
-  ${BOOT_DIR}/bootutil/src/loader.c
-  ${BOOT_DIR}/bootutil/src/swap_misc.c
-  ${BOOT_DIR}/bootutil/src/swap_scratch.c
-  ${BOOT_DIR}/bootutil/src/swap_move.c
-  ${BOOT_DIR}/bootutil/src/caps.c
-  )
-endif()
-
-if(CONFIG_BOOT_RAM_LOAD OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+if(CONFIG_SINGLE_APPLICATION_SLOT)
   zephyr_library_sources(
+    ${BOOT_DIR}/zephyr/single_loader.c
+    )
+  zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
+elseif(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+  zephyr_library_sources(
+    ${BOOT_DIR}/zephyr/single_loader.c
     ${BOOT_DIR}/bootutil/src/ram_load.c
     )
+  zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
+elseif(CONFIG_BOOT_FIRMWARE_LOADER)
+  zephyr_library_sources(
+    ${BOOT_DIR}/zephyr/firmware_loader.c
+    )
+  zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
+else()
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/loader.c
+    ${BOOT_DIR}/bootutil/src/swap_misc.c
+    ${BOOT_DIR}/bootutil/src/caps.c
+    )
+
+  if(CONFIG_BOOT_SWAP_USING_MOVE)
+    zephyr_library_sources(
+      ${BOOT_DIR}/bootutil/src/swap_move.c
+      )
+  elseif(CONFIG_BOOT_SWAP_USING_OFFSET)
+    zephyr_library_sources(
+      ${BOOT_DIR}/bootutil/src/swap_offset.c
+      )
+  else()
+    zephyr_library_sources(
+      ${BOOT_DIR}/bootutil/src/swap_scratch.c
+      )
+
+    if(CONFIG_BOOT_RAM_LOAD OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+      zephyr_library_sources(
+        ${BOOT_DIR}/bootutil/src/ram_load.c
+        )
+    endif()
+  endif()
 endif()
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
@@ -427,7 +445,7 @@ dt_get_parent(slot0_flash)
 dt_prop(erase_size_slot0 PATH "${slot0_flash}" PROPERTY "erase-block-size")
 dt_prop(write_size_slot0 PATH "${slot0_flash}" PROPERTY "write-block-size")
 
-if(CONFIG_BOOT_SWAP_USING_MOVE)
+if(CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET)
   if(DEFINED erase_size_slot0)
     zephyr_compile_definitions("MCUBOOT_SLOT0_EXPECTED_ERASE_SIZE=${erase_size_slot0}")
   endif()
@@ -445,7 +463,7 @@ if(NOT CONFIG_SINGLE_APPLICATION_SLOT AND NOT CONFIG_SINGLE_APPLICATION_SLOT_RAM
   dt_prop(erase_size_slot1 PATH "${slot1_flash}" PROPERTY "erase-block-size")
   dt_prop(write_size_slot1 PATH "${slot1_flash}" PROPERTY "write-block-size")
 
-  if(CONFIG_BOOT_SWAP_USING_MOVE)
+  if(CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET)
     if(DEFINED erase_size_slot1)
       zephyr_compile_definitions("MCUBOOT_SLOT1_EXPECTED_ERASE_SIZE=${erase_size_slot1}")
     endif()
@@ -487,12 +505,12 @@ if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO)
   endif()
 endif()
 
-if((CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE) AND (DEFINED write_size_slot0 OR DEFINED write_size_slot1))
+if((CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET) AND (DEFINED write_size_slot0 OR DEFINED write_size_slot1))
   zephyr_library_sources(flash_check.c)
 endif()
 
 if(SYSBUILD)
-  if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_BOOT_FIRMWARE_LOADER OR CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_UPGRADE_ONLY OR CONFIG_BOOT_DIRECT_XIP OR CONFIG_BOOT_RAM_LOAD)
+  if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_BOOT_FIRMWARE_LOADER OR CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET OR CONFIG_BOOT_UPGRADE_ONLY OR CONFIG_BOOT_DIRECT_XIP OR CONFIG_BOOT_RAM_LOAD)
     # TODO: RAM LOAD support
     dt_nodelabel(slot0_flash NODELABEL "slot0_partition")
     dt_get_parent(slot0_flash)
@@ -617,6 +635,17 @@ if(SYSBUILD)
           math(EXPR boot_status_data_size "128 * (3 * ${write_size})")
         endif()
       endif()
+    elseif(CONFIG_BOOT_SWAP_USING_OFFSET)
+      if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO AND DEFINED slot_min_sectors AND "${slot_min_sectors}" GREATER "0")
+        math(EXPR boot_status_data_size "${slot_min_sectors} * (2 * ${write_size})")
+      else()
+        if(CONFIG_BOOT_MAX_IMG_SECTORS)
+          math(EXPR boot_status_data_size "${CONFIG_BOOT_MAX_IMG_SECTORS} * (2 * ${write_size})")
+        else()
+          message(WARNING "CONFIG_BOOT_MAX_IMG_SECTORS is not defined, falling back to 128 sector default. Please set CONFIG_BOOT_MAX_IMG_SECTORS to the required value")
+          math(EXPR boot_status_data_size "128 * (2 * ${write_size})")
+        endif()
+      endif()
     else()
       set(boot_status_data_size 0)
     endif()
@@ -634,6 +663,10 @@ if(SYSBUILD)
     if(CONFIG_BOOT_SWAP_USING_MOVE)
       math(EXPR required_size "${required_size} + ${erase_size}")
       math(EXPR required_upgrade_size "${required_upgrade_size} + ${erase_size}")
+    elseif(CONFIG_BOOT_SWAP_USING_OFFSET)
+#todo: check how different slot sizes are...
+#      math(EXPR required_size "${required_size} + ${erase_size}")
+#      math(EXPR required_upgrade_size "${required_upgrade_size} + ${erase_size}")
     endif()
   else()
     set(required_size 0)
