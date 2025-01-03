@@ -36,6 +36,10 @@ sig-ed25519 = []
 # Overwrite only upgrade
 overwrite-only = []
 
+# Swap using offset mode
+swap-offset = []
+
+# Swap using move move
 swap-move = []
 
 # Disable validation of the primary slot
