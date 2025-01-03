@@ -235,20 +235,20 @@ impl ImagesBuilder {
             let (primaries,upgrades) =  if img_manipulation == ImageManipulation::CorruptHigherVersionImage && !higher_version_corrupted {
                 higher_version_corrupted = true;
                let prim =  install_image(&mut flash, &slots[0],
-                    maximal(42784), &ram, &*dep, ImageManipulation::None, Some(0));
+                    maximal(42784), &ram, &*dep, ImageManipulation::None, Some(0), false);
                 let upgr   = match deps.depends[image_num] {
                     DepType::NoUpgrade => install_no_image(),
                     _ => install_image(&mut flash, &slots[1],
-                        maximal(46928), &ram, &*dep, ImageManipulation::BadSignature, Some(0))
+                        maximal(46928), &ram, &*dep, ImageManipulation::BadSignature, Some(0), true)
                 };
                 (prim, upgr)
             } else {
                 let prim = install_image(&mut flash, &slots[0],
-                    maximal(42784), &ram, &*dep, img_manipulation, Some(0));
+                    maximal(42784), &ram, &*dep, img_manipulation, Some(0), false);
                 let upgr = match deps.depends[image_num] {
                         DepType::NoUpgrade => install_no_image(),
                         _ => install_image(&mut flash, &slots[1],
-                            maximal(46928), &ram, &*dep, img_manipulation, Some(0))
+                            maximal(46928), &ram, &*dep, img_manipulation, Some(0), true)
                     };
                 (prim, upgr)
             };
@@ -299,9 +299,9 @@ impl ImagesBuilder {
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_image(&mut bad_flash, &slots[0],
-                maximal(32784), &ram, &dep, ImageManipulation::None, Some(0));
+                maximal(32784), &ram, &dep, ImageManipulation::None, Some(0), false);
             let upgrades = install_image(&mut bad_flash, &slots[1],
-                maximal(41928), &ram, &dep, ImageManipulation::BadSignature, Some(0));
+                maximal(41928), &ram, &dep, ImageManipulation::BadSignature, Some(0), true);
             OneImage {
                 slots,
                 primaries,
@@ -322,9 +322,9 @@ impl ImagesBuilder {
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_image(&mut bad_flash, &slots[0],
-                maximal(32784), &ram, &dep, ImageManipulation::None, Some(0));
+                maximal(32784), &ram, &dep, ImageManipulation::None, Some(0), false);
             let upgrades = install_image(&mut bad_flash, &slots[1],
-                ImageSize::Oversized, &ram, &dep, ImageManipulation::None, Some(0));
+                ImageSize::Oversized, &ram, &dep, ImageManipulation::None, Some(0), true);
             OneImage {
                 slots,
                 primaries,
@@ -345,7 +345,7 @@ impl ImagesBuilder {
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_image(&mut flash, &slots[0],
-                maximal(32784), &ram, &dep,ImageManipulation::None, Some(0));
+                maximal(32784), &ram, &dep,ImageManipulation::None, Some(0), false);
             let upgrades = install_no_image();
             OneImage {
                 slots,
@@ -368,7 +368,7 @@ impl ImagesBuilder {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_no_image();
             let upgrades = install_image(&mut flash, &slots[1],
-                maximal(32784), &ram, &dep, ImageManipulation::None, Some(0));
+                maximal(32784), &ram, &dep, ImageManipulation::None, Some(0), true);
             OneImage {
                 slots,
                 primaries,
@@ -390,7 +390,7 @@ impl ImagesBuilder {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_no_image();
             let upgrades = install_image(&mut flash, &slots[1],
-                ImageSize::Oversized, &ram, &dep, ImageManipulation::None, Some(0));
+                ImageSize::Oversized, &ram, &dep, ImageManipulation::None, Some(0), true);
             OneImage {
                 slots,
                 primaries,
@@ -412,9 +412,9 @@ impl ImagesBuilder {
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_image(&mut flash, &slots[0],
-                maximal(32784), &ram, &dep,  ImageManipulation::None, security_cnt);
+                maximal(32784), &ram, &dep,  ImageManipulation::None, security_cnt, false);
             let upgrades = install_image(&mut flash, &slots[1],
-                maximal(41928), &ram, &dep, ImageManipulation::None, security_cnt.map(|v| v + 1));
+                maximal(41928), &ram, &dep, ImageManipulation::None, security_cnt.map(|v| v + 1), true);
             OneImage {
                 slots,
                 primaries,
@@ -451,7 +451,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset])
             }
             DeviceName::K64f => {
                 // NXP style flash.  Small sectors, one small sector for scratch.
@@ -482,7 +482,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset])
             }
             DeviceName::Nrf52840 => {
                 // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
@@ -511,7 +511,20 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade, Caps::SwapUsingOffset])
+            }
+            DeviceName::Nrf52840UnequalSlotsLargerSlot1 => {
+                let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
+
+                let dev_id = 0;
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(dev_id, &dev);
+                areadesc.add_image(0x008000, 0x03b000, FlashId::Image0, dev_id);
+                areadesc.add_image(0x043000, 0x03c000, FlashId::Image1, dev_id);
+
+                let mut flash = SimMultiFlash::new();
+                flash.insert(dev_id, dev);
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade, Caps::SwapUsingMove, Caps::RamLoad, Caps::DirectXip])
             }
             DeviceName::Nrf52840SpiFlash => {
                 // Simulate nrf52840 with external SPI flash. The external SPI flash
@@ -530,7 +543,7 @@ impl ImagesBuilder {
                 let mut flash = SimMultiFlash::new();
                 flash.insert(0, dev0);
                 flash.insert(1, dev1);
-                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset])
             }
             DeviceName::K64fMulti => {
                 // NXP style flash, but larger, to support multiple images.
@@ -653,7 +666,7 @@ impl Images {
     }
 
     fn is_swap_upgrade(&self) -> bool {
-        Caps::SwapUsingScratch.present() || Caps::SwapUsingMove.present()
+        Caps::SwapUsingScratch.present() || Caps::SwapUsingMove.present() || Caps::SwapUsingOffset.present()
     }
 
     pub fn run_basic_revert(&self) -> bool {
@@ -1738,7 +1751,7 @@ fn image_largest_trailer(dev: &dyn Flash) -> usize {
                 // This computation is incorrect, and we need to figure out the correct size.
                 // c::boot_status_sz(dev.align() as u32) as usize
                 16 + 4 * dev.align()
-            } else if Caps::SwapUsingMove.present() {
+            } else if Caps::SwapUsingOffset.present() || Caps::SwapUsingMove.present() {
                 let sector_size = dev.sector_iter().next().unwrap().size as u32;
                 align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
             } else if Caps::SwapUsingScratch.present() {
@@ -1754,13 +1767,19 @@ fn image_largest_trailer(dev: &dyn Flash) -> usize {
 /// fields used by the given code.  Returns a copy of the image that was written.
 fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
                  ram: &RamData,
-                 deps: &dyn Depender, img_manipulation: ImageManipulation, security_counter:Option<u32>) -> ImageData {
-    let offset = slot.base_off;
+                 deps: &dyn Depender, img_manipulation: ImageManipulation, security_counter:Option<u32>, secondary_slot:bool) -> ImageData {
+    let mut offset = slot.base_off;
     let slot_len = slot.len;
     let dev_id = slot.dev_id;
     let dev = flash.get_mut(&dev_id).unwrap();
 
     let mut tlv: Box<dyn ManifestGen> = Box::new(make_tlv());
+
+    if Caps::SwapUsingOffset.present() && secondary_slot {
+        let sector_size = dev.sector_iter().next().unwrap().size as usize;
+        offset += sector_size;
+    }
+
     if img_manipulation == ImageManipulation::IgnoreRamLoadFlag {
         tlv.set_ignore_ram_load_flag();
     }
@@ -1798,11 +1817,19 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
         ImageSize::Oversized => {
             let trailer = image_largest_trailer(dev);
             let tlv_len = tlv.estimate_size();
+            let mut sector_offset = 0;
+
+            if Caps::SwapUsingOffset.present() && secondary_slot {
+                // This accounts for when both slots have the same size, it will not work where
+                // the second slot is one sector larger than the primary
+                sector_offset = dev.sector_iter().next().unwrap().size as usize;
+            }
+
             info!("slot: 0x{:x}, HDR: 0x{:x}, trailer: 0x{:x}",
                 slot_len, HDR_SIZE, trailer);
             // the overflow size is rougly estimated to work for all
             // configurations. It might be precise if tlv_len will be maked precise.
-            slot_len - HDR_SIZE - trailer - tlv_len + dev.align()*4
+            slot_len - HDR_SIZE - trailer - tlv_len - sector_offset + dev.align()*4
         }
 
     };
@@ -2046,17 +2073,37 @@ fn verify_image(flash: &SimMultiFlash, slot: &SlotInfo, images: &ImageData) -> b
     let dev = flash.get(&dev_id).unwrap();
     dev.read(offset, &mut copy).unwrap();
 
-    if buf != &copy[..] {
-        for i in 0 .. buf.len() {
-            if buf[i] != copy[i] {
-                info!("First failure for slot{} at {:#x} ({:#x} within) {:#x}!={:#x}",
-                      slot.index, offset + i, i, buf[i], copy[i]);
-                break;
+    if Caps::SwapUsingOffset.present() && (slot.index % 2) == 1 {
+        let sector_size = dev.sector_iter().next().unwrap().size as usize;
+        let mut copy_offset = vec![0u8; buf.len()];
+        let offset_offset = slot.base_off + sector_size;
+        dev.read(offset_offset, &mut copy_offset).unwrap();
+
+        if buf != &copy[..] && buf != &copy_offset[..] {
+            for i in 0 .. buf.len() {
+                if buf[i] != copy[i] && buf[i] != copy_offset[i] {
+                    info!("First failure for slot{} at {:#x} ({:#x} within) {:#x}!=({:#x} or {:#x})",
+                          slot.index, offset + i, i, buf[i], copy[i], copy_offset[i]);
+                    break;
+                }
             }
+            false
+        } else {
+            true
         }
-        false
     } else {
-        true
+        if buf != &copy[..] {
+            for i in 0 .. buf.len() {
+                if buf[i] != copy[i] {
+                    info!("First failure for slot{} at {:#x} ({:#x} within) {:#x}!={:#x}",
+                          slot.index, offset + i, i, buf[i], copy[i]);
+                    break;
+                }
+            }
+            false
+        } else {
+            true
+        }
     }
 }
 
@@ -2294,6 +2341,7 @@ trait AsRaw : Sized {
 /// Returns an ImageSize representing the best size to test, possibly just with the given size.
 fn maximal(size: usize) -> ImageSize {
     if Caps::OverwriteUpgrade.present() ||
+        Caps::SwapUsingOffset.present() ||
         Caps::SwapUsingMove.present()
     {
         ImageSize::Given(size)
