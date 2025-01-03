@@ -63,9 +63,6 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot)
 #if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
     case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
 #endif
-#if defined(CONFIG_BOOT_SWAP_USING_SCRATCH)
-    case 2: return FLASH_AREA_IMAGE_SCRATCH;
-#endif
     }
 
     return -EINVAL; /* flash_area_open will fail on that */
