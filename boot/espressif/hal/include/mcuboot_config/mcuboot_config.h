@@ -45,22 +45,42 @@
  * the default upgrade mode.
  */
 
-/* Uncomment to enable the overwrite-only code path. */
-/* #define MCUBOOT_OVERWRITE_ONLY */
+/* Define to enable the swap-using-move code path. */
+#if defined(CONFIG_ESP_BOOT_SWAP_USING_MOVE)
+#define MCUBOOT_SWAP_USING_MOVE 1
+#endif
 
-#ifdef MCUBOOT_OVERWRITE_ONLY
+/* Define to enable the overwrite-only code path. */
+#if defined(CONFIG_ESP_BOOT_UPGRADE_ONLY)
+#define MCUBOOT_OVERWRITE_ONLY
 /* Uncomment to only erase and overwrite those primary slot sectors needed
  * to install the new image, rather than the entire image slot. */
 /* #define MCUBOOT_OVERWRITE_ONLY_FAST */
 #endif
 
-/* Uncomment to enable the direct-xip code path. */
-/* #define MCUBOOT_DIRECT_XIP */
+/* Define to enable the direct-xip code path (CURRENTLY UNSUPPORTED!). */
+#if defined(CONFIG_ESP_BOOT_DIRECT_XIP)
+#define MCUBOOT_DIRECT_XIP
+#endif
 
-/* Define to enable the ram-load code path. */
-#if defined(CONFIG_BOOT_RAM_LOAD)
+/* Define to enable the ram-load code path (CURRENTLY UNSUPPORTED!). */
+#if defined(CONFIG_ESP_BOOT_RAM_LOAD)
 #define MCUBOOT_RAM_LOAD
 #endif
+
+/* If none of the above paths is defined, define CONFIG_ESP_BOOT_SWAP_USING_SCRATCH.
+ *
+ * Note: MCUBOOT_SWAP_USING_SCRATCH does not have to be defined, as it will be defined
+ *       by MCUboot in bootutil_priv.h.
+ */
+#if !defined(CONFIG_ESP_BOOT_SWAP_USING_SCRATCH) && \
+    !defined(CONFIG_ESP_BOOT_SWAP_USING_MOVE) && \
+    !defined(CONFIG_ESP_BOOT_UPGRADE_ONLY) && \
+    !defined(CONFIG_ESP_BOOT_DIRECT_XIP) && \
+    !defined(CONFIG_ESP_BOOT_RAM_LOAD)
+#define CONFIG_ESP_BOOT_SWAP_USING_SCRATCH
+#endif
+
 
 /*
  * Cryptographic settings

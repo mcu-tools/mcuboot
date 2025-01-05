@@ -307,12 +307,15 @@ esp_err_t esp_flash_encrypt_contents(void)
     if (err != ESP_OK) {
         return err;
     }
+
+#ifdef CONFIG_ESP_BOOT_SWAP_USING_SCRATCH
     region_addr = CONFIG_ESP_SCRATCH_OFFSET;
     region_size = CONFIG_ESP_SCRATCH_SIZE;
     err = esp_flash_encrypt_region(region_addr, region_size);
     if (err != ESP_OK) {
         return err;
     }
+#endif
 
 #if defined(CONFIG_ESP_IMAGE_NUMBER) && (CONFIG_ESP_IMAGE_NUMBER == 2)
     region_addr = CONFIG_ESP_IMAGE1_PRIMARY_START_ADDRESS;
