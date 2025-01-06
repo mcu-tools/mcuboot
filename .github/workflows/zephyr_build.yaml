@@ -87,6 +87,7 @@ jobs:
               -T ../bootloader/mcuboot/boot/zephyr
               -T ./tests/subsys/dfu
               -T ./samples/subsys/mgmt/mcumgr/smp_svr
+              -T ../bootloader/mcuboot/samples/runtime-source/zephyr/app
         run: |
           export ZEPHYR_BASE=${PWD}
           export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
