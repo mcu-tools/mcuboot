@@ -126,6 +126,7 @@ struct flash_area;
                                             * the format and size of the raw slot (compressed)
                                             * signature
                                             */
+#define IMAGE_TLV_COMP_DEC_SIZE     0x73   /* Compressed decrypted image size */
 					   /*
 					    * vendor reserved TLVs at xxA0-xxFF,
 					    * where xx denotes the upper byte
