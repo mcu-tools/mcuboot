@@ -279,7 +279,7 @@ int invoke_boot_go(struct sim_context *ctx, struct area_desc *adesc,
         sim_reset_flash_areas();
         sim_reset_context();
         free(state);
-        /* printf("boot_go off: %d (0x%08x)\n", res, rsp.br_image_off); */
+        /* printf("boot_go off: %d (0x%08x)\n", res, rsp->br_image_off); */
         return res;
     } else {
         sim_reset_flash_areas();
