@@ -80,7 +80,7 @@ function(_mcuboot_generate_image TARGET IMAGE_TYPE IMAGE_BASE_PATH)
   elseif(${IMAGE_TYPE} STREQUAL "initial" AND "MCUBOOT_ENCRYPT_RSA=1" IN_LIST MBED_CONFIG_DEFINITIONS)
     # If encryption is enabled, generate unencrypted initial image which supports encryption.
     # See https://github.com/mbed-ce/mbed-os/issues/401#issuecomment-2567099213
-    set(IMGTOOL_EXTRA_ARGS --clear)
+    set(IMGTOOL_EXTRA_ARGS --encrypt ${MCUBOOT_ENCRYPTION_KEY_ABSPATH} --clear)
   else()
     set(IMGTOOL_EXTRA_ARGS "")
   endif()
