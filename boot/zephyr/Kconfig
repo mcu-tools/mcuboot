@@ -512,6 +512,22 @@ config BOOT_SHARE_BACKEND_EXTERNAL
 	help
 	  Use a custom user-specified storage.
 
+if BOOT_SHARE_BACKEND_EXTERNAL
+config BOOT_SHARE_BACKEND_EXTERNAL_DATA_BASE
+	hex "Shared memory area base address"
+	depends on BOOT_SHARE_BACKEND_EXTERNAL
+	help
+	  Base address of user-defined memory area shared between
+	  bootloader and runtime firmware.
+
+config BOOT_SHARE_BACKEND_EXTERNAL_DATA_SIZE
+	int "Shared memory area size in bytes"
+	depends on BOOT_SHARE_BACKEND_EXTERNAL
+	help
+	  Size of user-defined memory area shared between
+	  bootloader and runtime firmware.
+endif
+
 endchoice
 
 menuconfig BOOT_SHARE_DATA
