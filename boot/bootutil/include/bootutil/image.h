@@ -196,7 +196,8 @@ _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 
 struct enc_key_data;
-fih_ret bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
+struct boot_loader_state;
+fih_ret bootutil_img_validate(struct boot_loader_state *state,
                               struct image_header *hdr,
                               const struct flash_area *fap,
                               uint8_t *tmp_buf, uint32_t tmp_buf_sz,
@@ -220,9 +221,9 @@ int bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off,
                            uint16_t *len, uint16_t *type);
 int bootutil_tlv_iter_is_prot(struct image_tlv_iter *it, uint32_t off);
 
-int32_t bootutil_get_img_security_cnt(struct image_header *hdr,
+int32_t bootutil_get_img_security_cnt(struct boot_loader_state *state, int slot,
                                       const struct flash_area *fap,
-                                      uint32_t *security_cnt);
+                                      uint32_t *img_security_cnt);
 
 #ifdef __cplusplus
 }

@@ -153,7 +153,7 @@ boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
         goto done;
     }
 
-    rc = boot_enc_load(BOOT_CURR_ENC(state), slot, hdr, fap_src, &bs);
+    rc = boot_enc_load(state, slot, hdr, fap_src, &bs);
     if (rc < 0) {
         goto done;
     }

@@ -4,6 +4,7 @@
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2024 Arm Limited
+ * Copyright (c) 2025 Nordic Semiconductor ASA
  *
  * Original license:
  *
@@ -29,6 +30,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <string.h>
+#include <errno.h>
 
 #include <flash_map_backend/flash_map_backend.h>
 
@@ -63,7 +65,7 @@
  *  SHA256 otherwise).
  */
 static int
-bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
+bootutil_img_hash(struct boot_loader_state *state,
                   struct image_header *hdr, const struct flash_area *fap,
                   uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *hash_result,
                   uint8_t *seed, int seed_len)
@@ -78,11 +80,14 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
     uint32_t off;
     uint32_t blk_sz;
 #endif
+#if defined(MCUBOOT_ENC_IMAGES)
+    struct enc_key_data *enc_state;
+    int image_index;
+#endif
 
 #if (BOOT_IMAGE_NUMBER == 1) || !defined(MCUBOOT_ENC_IMAGES) || \
     defined(MCUBOOT_RAM_LOAD)
-    (void)enc_state;
-    (void)image_index;
+    (void)state;
     (void)hdr_size;
     (void)blk_off;
     (void)tlv_off;
@@ -97,6 +102,14 @@ bootutil_img_hash(struct enc_key_data *enc_state, int image_index,
 #endif
 
 #ifdef MCUBOOT_ENC_IMAGES
+    if (state == NULL) {
+        enc_state = NULL;
+        image_index = 0;
+    } else {
+        enc_state = BOOT_CURR_ENC(state);
+        image_index = BOOT_CURR_IMG(state);
+    }
+
     /* Encrypted images only exist in the secondary slot */
     if (MUST_DECRYPT(fap, image_index, hdr) &&
             !boot_enc_valid(enc_state, 1)) {
@@ -306,7 +319,8 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 /**
  * Reads the value of an image's security counter.
  *
- * @param hdr           Pointer to the image header structure.
+ * @param state         Pointer to the boot state object.
+ * @param slot          Slot of the current image to get the security counter of.
  * @param fap           Pointer to a description structure of the image's
  *                      flash area.
  * @param security_cnt  Pointer to store the security counter value.
@@ -314,7 +328,7 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
  * @return              0 on success; nonzero on failure.
  */
 int32_t
-bootutil_get_img_security_cnt(struct image_header *hdr,
+bootutil_get_img_security_cnt(struct boot_loader_state *state, int slot,
                               const struct flash_area *fap,
                               uint32_t *img_security_cnt)
 {
@@ -323,7 +337,8 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
     uint16_t len;
     int32_t rc;
 
-    if ((hdr == NULL) ||
+    if ((state == NULL) ||
+        (boot_img_hdr(state, slot) == NULL) ||
         (fap == NULL) ||
         (img_security_cnt == NULL)) {
         /* Invalid parameter. */
@@ -331,11 +346,11 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
     }
 
     /* The security counter TLV is in the protected part of the TLV area. */
-    if (hdr->ih_protect_tlv_size == 0) {
+    if (boot_img_hdr(state, slot)->ih_protect_tlv_size == 0) {
         return BOOT_EBADIMAGE;
     }
 
-    rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_SEC_CNT, true);
+    rc = bootutil_tlv_iter_begin(&it, boot_img_hdr(state, slot), fap, IMAGE_TLV_SEC_CNT, true);
     if (rc) {
         return rc;
     }
@@ -355,7 +370,7 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
         return BOOT_EBADIMAGE;
     }
 
-    rc = LOAD_IMAGE_DATA(hdr, fap, off, img_security_cnt, len);
+    rc = LOAD_IMAGE_DATA(boot_img_hdr(state, slot), fap, off, img_security_cnt, len);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
@@ -434,11 +449,14 @@ static const uint16_t allowed_unprot_tlvs[] = {
  * Return non-zero if image could not be validated/does not validate.
  */
 fih_ret
-bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
+bootutil_img_validate(struct boot_loader_state *state,
                       struct image_header *hdr, const struct flash_area *fap,
                       uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *seed,
                       int seed_len, uint8_t *out_hash)
 {
+#if (defined(EXPECTED_KEY_TLV) && defined(MCUBOOT_HW_KEY)) || defined(MCUBOOT_HW_ROLLBACK_PROT)
+    int image_index = (state == NULL ? 0 : BOOT_CURR_IMG(state));
+#endif
     uint32_t off;
     uint16_t len;
     uint16_t type;
@@ -471,7 +489,7 @@ bootutil_img_validate(struct enc_key_data *enc_state, int image_index,
 #endif
 
 #if defined(EXPECTED_HASH_TLV) && !defined(MCUBOOT_SIGN_PURE)
-    rc = bootutil_img_hash(enc_state, image_index, hdr, fap, tmp_buf,
+    rc = bootutil_img_hash(state, hdr, fap, tmp_buf,
             tmp_buf_sz, hash, seed, seed_len);
     if (rc) {
         goto out;
