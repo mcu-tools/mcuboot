@@ -58,6 +58,7 @@ struct enc_key_data {
 int boot_enc_retrieve_private_key(struct bootutil_key **private_key);
 
 struct boot_status;
+struct boot_loader_state;
 
 /* Decrypt random, symmetric encryption key */
 int boot_decrypt_key(const uint8_t *buf, uint8_t *enckey);
@@ -66,7 +67,7 @@ int boot_enc_init(struct enc_key_data *enc_state, uint8_t slot);
 int boot_enc_drop(struct enc_key_data *enc_state, uint8_t slot);
 int boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
         const struct boot_status *bs);
-int boot_enc_load(struct enc_key_data *enc_state, int slot,
+int boot_enc_load(struct boot_loader_state *state, int slot,
         const struct image_header *hdr, const struct flash_area *fap,
         struct boot_status *bs);
 bool boot_enc_valid(struct enc_key_data *enc_state, int slot);
