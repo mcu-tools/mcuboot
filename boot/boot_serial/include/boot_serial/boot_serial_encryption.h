@@ -15,13 +15,18 @@
  * @param[in]   hdr       boot image header pointer
  * @param[in]   buf       buffer which is used for validating data
  * @param[in]   buf_size  size of input buffer
+ * @param[in]   start_off start offset inside of image (swap using offset only)
  *
  * @return                FIH_SUCCESS on success, error code otherwise
  */
 fih_ret
 boot_image_validate_encrypted(const struct flash_area *fa_p,
                               struct image_header *hdr, uint8_t *buf,
-                              uint16_t buf_size);
+                              uint16_t buf_size
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+                              , uint32_t start_off
+#endif
+);
 
 /**
  * Handle an encrypted firmware in the main flash.

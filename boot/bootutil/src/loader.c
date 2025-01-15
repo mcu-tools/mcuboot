@@ -792,7 +792,11 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
      */
 #if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_RAM_LOAD)
     if (MUST_DECRYPT(fap, BOOT_CURR_IMG(state), hdr)) {
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
+        rc = boot_enc_load(state, 1, hdr, fap, bs, 0);
+#else
         rc = boot_enc_load(state, 1, hdr, fap, bs);
+#endif
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
@@ -802,8 +806,13 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
     }
 #endif
 
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
+    FIH_CALL(bootutil_img_validate, fih_rc, state, hdr, fap, tmpbuf, BOOT_TMPBUF_SZ,
+             NULL, 0, NULL, 0);
+#else
     FIH_CALL(bootutil_img_validate, fih_rc, state, hdr, fap, tmpbuf, BOOT_TMPBUF_SZ,
              NULL, 0, NULL);
+#endif
 
     FIH_RET(fih_rc);
 }
@@ -826,14 +835,24 @@ split_image_check(struct image_header *app_hdr,
         }
     }
 
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
+    FIH_CALL(bootutil_img_validate, fih_rc, NULL, loader_hdr, loader_fap,
+             tmpbuf, BOOT_TMPBUF_SZ, NULL, 0, loader_hash, 0);
+#else
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, loader_hdr, loader_fap,
              tmpbuf, BOOT_TMPBUF_SZ, NULL, 0, loader_hash);
+#endif
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         FIH_RET(fih_rc);
     }
 
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
+    FIH_CALL(bootutil_img_validate, fih_rc, NULL, app_hdr, app_fap,
+             tmpbuf, BOOT_TMPBUF_SZ, loader_hash, 32, NULL, 0);
+#else
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, app_hdr, app_fap,
              tmpbuf, BOOT_TMPBUF_SZ, loader_hash, 32, NULL);
+#endif
 
 out:
     FIH_RET(fih_rc);
@@ -1497,9 +1516,15 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 
 #ifdef MCUBOOT_ENC_IMAGES
     if (IS_ENCRYPTED(boot_img_hdr(state, BOOT_SECONDARY_SLOT))) {
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
+        rc = boot_enc_load(state, BOOT_SECONDARY_SLOT,
+                boot_img_hdr(state, BOOT_SECONDARY_SLOT),
+                fap_secondary_slot, bs, 0);
+#else
         rc = boot_enc_load(state, BOOT_SECONDARY_SLOT,
                 boot_img_hdr(state, BOOT_SECONDARY_SLOT),
                 fap_secondary_slot, bs);
+#endif
 
         if (rc < 0) {
             return BOOT_EBADIMAGE;
@@ -1625,7 +1650,11 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 #ifdef MCUBOOT_ENC_IMAGES
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
+            rc = boot_enc_load(state, 0, hdr, fap, bs, 0);
+#else
             rc = boot_enc_load(state, 0, hdr, fap, bs);
+#endif
             assert(rc >= 0);
 
             if (rc == 0) {
@@ -1649,7 +1678,11 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         hdr = boot_img_hdr(state, BOOT_SECONDARY_SLOT);
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT);
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
+            rc = boot_enc_load(state, 1, hdr, fap, bs, 0);
+#else
             rc = boot_enc_load(state, 1, hdr, fap, bs);
+#endif
             assert(rc >= 0);
 
             if (rc == 0) {
