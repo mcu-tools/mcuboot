@@ -358,20 +358,18 @@ bootutil_get_img_security_cnt(struct image_header *hdr,
  * TLV section.  All other TLV entries must be in the protected section.
  */
 static const uint16_t allowed_unprot_tlvs[] = {
-     IMAGE_TLV_KEYHASH,
-     IMAGE_TLV_PUBKEY,
-     IMAGE_TLV_SHA256,
-     IMAGE_TLV_SHA384,
-     IMAGE_TLV_SHA512,
-     IMAGE_TLV_RSA2048_PSS,
-     IMAGE_TLV_ECDSA224,
-     IMAGE_TLV_ECDSA_SIG,
-     IMAGE_TLV_RSA3072_PSS,
-     IMAGE_TLV_ED25519,
-     IMAGE_TLV_ENC_RSA2048,
-     IMAGE_TLV_ENC_KW,
-     IMAGE_TLV_ENC_EC256,
-     IMAGE_TLV_ENC_X25519,
+#ifdef EXPECTED_KEY_TLV
+     EXPECTED_KEY_TLV,
+#endif
+#ifdef EXPECTED_HASH_TLV
+     EXPECTED_HASH_TLV,
+#endif
+#ifdef EXPECTED_SIG_TLV
+     EXPECTED_SIG_TLV,
+#endif
+#ifdef EXPECTED_ENC_TLV
+     EXPECTED_ENC_TLV,
+#endif
      /* Mark end with ANY. */
      IMAGE_TLV_ANY,
 };

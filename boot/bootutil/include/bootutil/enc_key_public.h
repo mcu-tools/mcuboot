@@ -59,6 +59,28 @@ extern "C" {
 #define BOOT_ENC_TLV_SIZE TLV_ENC_KW_SZ
 #endif
 
+#define EXPECTED_ENC_LEN        BOOT_ENC_TLV_SIZE
+
+#if defined(MCUBOOT_ENCRYPT_RSA)
+#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_RSA2048
+#elif defined(MCUBOOT_ENCRYPT_KW)
+#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_KW
+#elif defined(MCUBOOT_ENCRYPT_EC256)
+#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_EC256
+#    define EC_PUBK_INDEX       (0)
+#    define EC_TAG_INDEX        (65)
+#    define EC_CIPHERKEY_INDEX  (65 + 32)
+_Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
+        "Please fix ECIES-P256 component indexes");
+#elif defined(MCUBOOT_ENCRYPT_X25519)
+#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_X25519
+#    define EC_PUBK_INDEX       (0)
+#    define EC_TAG_INDEX        (32)
+#    define EC_CIPHERKEY_INDEX  (32 + 32)
+_Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
+        "Please fix ECIES-X25519 component indexes");
+#endif
+
 #ifdef __cplusplus
 }
 #endif
