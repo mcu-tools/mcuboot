@@ -154,6 +154,9 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define IMAGES_ITER(x)
 #endif
 
+#define SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN 1
+#define BOOT_DIRECT_UPLOAD_SECONDARY_SLOT_ID_REMAINDER 0
+
 static char in_buf[MCUBOOT_SERIAL_MAX_RECEIVE_SIZE + 1];
 static char dec_buf[MCUBOOT_SERIAL_MAX_RECEIVE_SIZE + 1];
 const struct boot_uart_funcs *boot_uf;
@@ -165,8 +168,13 @@ static char bs_obuf[BOOT_SERIAL_OUT_MAX];
 static void boot_serial_output(void);
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+static int boot_serial_get_hash(const struct image_header *hdr,
+                                const struct flash_area *fap, uint8_t *hash, uint32_t start_off);
+#else
 static int boot_serial_get_hash(const struct image_header *hdr,
                                 const struct flash_area *fap, uint8_t *hash);
+#endif
 #endif
 
 static zcbor_state_t cbor_state[2];
@@ -288,6 +296,7 @@ bs_list(char *buf, int len)
 
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             FIH_DECLARE(fih_rc, FIH_FAILURE);
+            int rc;
             uint8_t tmpbuf[64];
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
@@ -297,16 +306,41 @@ bs_list(char *buf, int len)
             bool permanent = false;
 #endif
 
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+            uint32_t start_off = 0;
+#endif
+
             area_id = flash_area_id_from_multi_image_slot(image_index, slot);
             if (flash_area_open(area_id, &fap)) {
                 continue;
             }
 
-            int rc = BOOT_HOOK_CALL(boot_read_image_header_hook,
-                                    BOOT_HOOK_REGULAR, image_index, slot, &hdr);
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+            if (slot == BOOT_SECONDARY_SLOT && swap_status != BOOT_SWAP_TYPE_REVERT) {
+                uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
+                struct flash_sector sector_data;
+
+                rc = flash_area_sectors(fap, &num_sectors, &sector_data);
+
+                if ((rc != 0 && rc != -ENOMEM) ||
+                    num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
+                    flash_area_close(fap);
+                    continue;
+                }
+
+                start_off = sector_data.fs_size;
+            }
+#endif
+
+            rc = BOOT_HOOK_CALL(boot_read_image_header_hook,
+                                BOOT_HOOK_REGULAR, image_index, slot, &hdr);
             if (rc == BOOT_HOOK_REGULAR)
             {
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+                flash_area_read(fap, start_off, &hdr, sizeof(hdr));
+#else
                 flash_area_read(fap, 0, &hdr, sizeof(hdr));
+#endif
             }
 
             if (hdr.ih_magic == IMAGE_MAGIC)
@@ -319,8 +353,13 @@ bs_list(char *buf, int len)
 #if defined(MCUBOOT_ENC_IMAGES)
 #if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     if (IS_ENCRYPTED(&hdr) && MUST_DECRYPT(fap, image_index, &hdr)) {
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+                        FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
+                                 &hdr, tmpbuf, sizeof(tmpbuf), start_off);
+#else
                         FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
                                  &hdr, tmpbuf, sizeof(tmpbuf));
+#endif
                     } else {
 #endif
                         if (IS_ENCRYPTED(&hdr)) {
@@ -333,8 +372,13 @@ bs_list(char *buf, int len)
                         }
 #endif
 
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+                        FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
+                                 fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL, start_off);
+#else
                         FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
                                  fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
+#endif
 #if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     }
 #endif
@@ -348,7 +392,11 @@ bs_list(char *buf, int len)
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
             /* Retrieve hash of image for identification */
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+            rc = boot_serial_get_hash(&hdr, fap, hash, start_off);
+#else
             rc = boot_serial_get_hash(&hdr, fap, hash);
+#endif
 #endif
 
             flash_area_close(fap);
@@ -494,17 +542,39 @@ bs_set(char *buf, int len)
             const struct flash_area *fap;
             uint8_t tmpbuf[64];
 
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+            uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
+            struct flash_sector sector_data;
+            uint32_t start_off = 0;
+#endif
+
             area_id = flash_area_id_from_multi_image_slot(image_index, 1);
             if (flash_area_open(area_id, &fap)) {
                 BOOT_LOG_ERR("Failed to open flash area ID %d", area_id);
                 continue;
             }
 
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+            rc = flash_area_sectors(fap, &num_sectors, &sector_data);
+
+            if ((rc != 0 && rc != -ENOMEM) ||
+                num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
+                flash_area_close(fap);
+                continue;
+            }
+
+            start_off = sector_data.fs_size;
+#endif
+
             rc = BOOT_HOOK_CALL(boot_read_image_header_hook,
                                 BOOT_HOOK_REGULAR, image_index, 1, &hdr);
             if (rc == BOOT_HOOK_REGULAR)
             {
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+                flash_area_read(fap, start_off, &hdr, sizeof(hdr));
+#else
                 flash_area_read(fap, 0, &hdr, sizeof(hdr));
+#endif
             }
 
             if (hdr.ih_magic == IMAGE_MAGIC)
@@ -518,12 +588,22 @@ bs_set(char *buf, int len)
                 {
 #ifdef MCUBOOT_ENC_IMAGES
                     if (IS_ENCRYPTED(&hdr)) {
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+                        FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
+                                 &hdr, tmpbuf, sizeof(tmpbuf), start_off);
+#else
                         FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
                                  &hdr, tmpbuf, sizeof(tmpbuf));
+#endif
                     } else {
 #endif
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+                        FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
+                                 fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL, start_off);
+#else
                         FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
                                  fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
+#endif
 #ifdef MCUBOOT_ENC_IMAGES
                     }
 #endif
@@ -534,8 +614,14 @@ bs_set(char *buf, int len)
                 }
             }
 
+#ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
             /* Retrieve hash of image for identification */
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+            rc = boot_serial_get_hash(&hdr, fap, hash, start_off);
+#else
             rc = boot_serial_get_hash(&hdr, fap, hash);
+#endif
+#endif
             flash_area_close(fap);
 
             if (rc == 0 && memcmp(hash, img_hash.value, sizeof(hash)) == 0) {
@@ -811,6 +897,9 @@ bs_upload(char *buf, int len)
                                          */
     static struct flash_sector status_sector;
 #endif
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+    static uint32_t start_off = 0;
+#endif
 
     zcbor_state_t zsd[4];
     zcbor_new_state(zsd, sizeof(zsd) / sizeof(zcbor_state_t), (uint8_t *)buf, len, 1, NULL, 0);
@@ -874,6 +963,11 @@ bs_upload(char *buf, int len)
          */
         const size_t area_size = flash_area_get_size(fap);
 
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+        uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
+        struct flash_sector sector_data;
+#endif
+
         curr_off = 0;
 #ifdef MCUBOOT_ERASE_PROGRESSIVELY
         /* Get trailer sector information; this is done early because inability to get
@@ -915,6 +1009,35 @@ bs_upload(char *buf, int len)
 #endif
 
         img_size = img_size_tmp;
+
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+#ifdef MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
+        if (img_num > 0 &&
+            (img_num % BOOT_NUM_SLOTS) == BOOT_DIRECT_UPLOAD_SECONDARY_SLOT_ID_REMAINDER) {
+            rc = flash_area_sectors(fap, &num_sectors, &sector_data);
+
+            if ((rc != 0 && rc != -ENOMEM) ||
+                num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
+                rc = MGMT_ERR_ENOENT;
+                goto out;
+            }
+
+            start_off = sector_data.fs_size;
+        } else {
+            start_off = 0;
+        }
+#else
+        rc = flash_area_sectors(fap, &num_sectors, &sector_data);
+
+        if ((rc != 0 && rc != -ENOMEM) ||
+            num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
+            rc = MGMT_ERR_ENOENT;
+            goto out;
+        }
+
+        start_off = sector_data.fs_size;
+#endif
+#endif
     } else if (img_chunk_off != curr_off) {
         /* If received chunk offset does not match expected one jump, pretend
          * success and jump to out; out will respond to client with success
@@ -931,8 +1054,13 @@ bs_upload(char *buf, int len)
     /* Progressive erase will erase enough flash, aligned to sector size,
      * as needed for the current chunk to be written.
      */
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+    not_yet_erased = erase_range(fap, not_yet_erased,
+                                 curr_off + img_chunk_len - 1 + start_off);
+#else
     not_yet_erased = erase_range(fap, not_yet_erased,
                                  curr_off + img_chunk_len - 1);
+#endif
 
     if (not_yet_erased < 0) {
         rc = MGMT_ERR_EINVAL;
@@ -969,7 +1097,11 @@ bs_upload(char *buf, int len)
             memset(wbs_aligned, flash_area_erased_val(fap), sizeof(wbs_aligned));
             memcpy(wbs_aligned, img_chunk, write_size);
 
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+            rc = flash_area_write(fap, curr_off + start_off, wbs_aligned, write_size);
+#else
             rc = flash_area_write(fap, curr_off, wbs_aligned, write_size);
+#endif
 
             if (rc != 0) {
                 goto out;
@@ -980,10 +1112,18 @@ bs_upload(char *buf, int len)
             img_chunk_len -= write_size;
         }
     } else {
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+        rc = flash_area_write(fap, curr_off + start_off, img_chunk, img_chunk_len);
+#else
         rc = flash_area_write(fap, curr_off, img_chunk, img_chunk_len);
+#endif
     }
 #else
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+    rc = flash_area_write(fap, curr_off + start_off, img_chunk, img_chunk_len);
+#else
     rc = flash_area_write(fap, curr_off, img_chunk, img_chunk_len);
+#endif
 #endif
 
     if (rc == 0 && rem_bytes) {
@@ -996,8 +1136,13 @@ bs_upload(char *buf, int len)
         memset(wbs_aligned, flash_area_erased_val(fap), sizeof(wbs_aligned));
         memcpy(wbs_aligned, img_chunk + img_chunk_len, rem_bytes);
 
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+        rc = flash_area_write(fap, curr_off + img_chunk_len + start_off, wbs_aligned,
+                              flash_area_align(fap));
+#else
         rc = flash_area_write(fap, curr_off + img_chunk_len, wbs_aligned,
                               flash_area_align(fap));
+#endif
     }
 
     if (rc == 0) {
@@ -1452,8 +1597,13 @@ boot_serial_check_start(const struct boot_uart_funcs *f, int timeout_in_ms)
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
 /* Function to find the hash of an image, returns 0 on success. */
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+static int boot_serial_get_hash(const struct image_header *hdr,
+                                const struct flash_area *fap, uint8_t *hash, uint32_t start_off)
+#else
 static int boot_serial_get_hash(const struct image_header *hdr,
                                 const struct flash_area *fap, uint8_t *hash)
+#endif
 {
     struct image_tlv_iter it;
     uint32_t offset;
@@ -1464,6 +1614,10 @@ static int boot_serial_get_hash(const struct image_header *hdr,
     /* Manifest data is concatenated to the end of the image.
      * It is encoded in TLV format.
      */
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    it.start_off = start_off;
+#endif
+
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_ANY, false);
     if (rc) {
         return -1;

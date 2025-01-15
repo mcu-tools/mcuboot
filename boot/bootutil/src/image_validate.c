@@ -68,7 +68,11 @@ static int
 bootutil_img_hash(struct boot_loader_state *state,
                   struct image_header *hdr, const struct flash_area *fap,
                   uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *hash_result,
-                  uint8_t *seed, int seed_len)
+                  uint8_t *seed, int seed_len
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
+                  , uint32_t start_offset
+#endif
+                 )
 {
     bootutil_sha_context sha_ctx;
     uint32_t size;
@@ -124,7 +128,11 @@ bootutil_img_hash(struct boot_loader_state *state,
     /* For swap using offset mode, the image starts in the second sector of the upgrade slot, so
      * apply the offset when this is needed
      */
+#if defined(MCUBOOT_SERIAL_RECOVERY)
+    sector_off = boot_get_state_secondary_offset(state, fap) + start_offset;
+#else
     sector_off = boot_get_state_secondary_offset(state, fap);
+#endif
 #endif
 
     bootutil_sha_init(&sha_ctx);
@@ -470,7 +478,11 @@ fih_ret
 bootutil_img_validate(struct boot_loader_state *state,
                       struct image_header *hdr, const struct flash_area *fap,
                       uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *seed,
-                      int seed_len, uint8_t *out_hash)
+                      int seed_len, uint8_t *out_hash
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
+                      , uint32_t start_offset
+#endif
+                     )
 {
 #if (defined(EXPECTED_KEY_TLV) && defined(MCUBOOT_HW_KEY)) || defined(MCUBOOT_HW_ROLLBACK_PROT)
     int image_index = (state == NULL ? 0 : BOOT_CURR_IMG(state));
@@ -507,8 +519,12 @@ bootutil_img_validate(struct boot_loader_state *state,
 #endif
 
 #if defined(EXPECTED_HASH_TLV) && !defined(MCUBOOT_SIGN_PURE)
-    rc = bootutil_img_hash(state, hdr, fap, tmp_buf,
-            tmp_buf_sz, hash, seed, seed_len);
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
+    rc = bootutil_img_hash(state, hdr, fap, tmp_buf, tmp_buf_sz, hash, seed, seed_len,
+                           start_offset);
+#else
+    rc = bootutil_img_hash(state, hdr, fap, tmp_buf, tmp_buf_sz, hash, seed, seed_len);
+#endif
     if (rc) {
         goto out;
     }
@@ -527,7 +543,11 @@ bootutil_img_validate(struct boot_loader_state *state,
 #endif
 
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
+#if defined(MCUBOOT_SERIAL_RECOVERY)
+    it.start_off = boot_get_state_secondary_offset(state, fap) + start_offset;
+#else
     it.start_off = boot_get_state_secondary_offset(state, fap);
+#endif
 #endif
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_ANY, false);
