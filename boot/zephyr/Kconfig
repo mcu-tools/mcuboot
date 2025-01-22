@@ -131,6 +131,8 @@ config BOOT_SIGNATURE_TYPE_RSA
 	bool "RSA signatures"
 	select BOOT_USE_MBEDTLS
 	select MBEDTLS
+	select MBEDTLS_ASN1_PARSE_C if MBEDTLS_BUILTIN
+	select MBEDTLS_KEY_EXCHANGE_RSA_ENABLED if MBEDTLS_BUILTIN
 	select BOOT_ENCRYPTION_SUPPORT
 	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 
@@ -181,6 +183,8 @@ config BOOT_ED25519_MBEDTLS
 	bool "Use mbedTLS"
 	select BOOT_USE_MBEDTLS
 	select MBEDTLS
+	select MBEDTLS_ASN1_PARSE_C if MBEDTLS_BUILTIN
+
 endchoice
 endif
 
@@ -225,8 +229,13 @@ config MCUBOOT_CLEANUP_RAM
 	help
 	  Sets contents of memory to 0 before jumping to application.
 
+if MBEDTLS
+
 config MBEDTLS_CFG_FILE
-	default "mcuboot-mbedtls-cfg.h"
+	default "config-tls-generic.h" if MBEDTLS_BUILTIN
+	default "mcuboot-mbedtls-cfg.h" if BOOT_USE_MBEDTLS
+
+endif
 
 config BOOT_HW_KEY
 	bool "Use HW key for image verification"
