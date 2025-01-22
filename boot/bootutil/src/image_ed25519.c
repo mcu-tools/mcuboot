@@ -12,6 +12,8 @@
 #ifdef MCUBOOT_SIGN_ED25519
 #include "bootutil/sign_key.h"
 
+/* We are not really using the MBEDTLS but need the ASN.1 parsing functions */
+#define MBEDTLS_ASN1_PARSE_C
 #include "mbedtls/oid.h"
 #include "mbedtls/asn1.h"
 
