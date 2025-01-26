@@ -23,6 +23,24 @@
 #include "app_cpu_start.h"
 #endif
 
+#include "esp_rom_sys.h"
+#include "esp_cpu.h"
+
+#if CONFIG_IDF_TARGET_ESP32
+#define LP_RTC_PREFIX "RTC"
+#elif CONFIG_IDF_TARGET_ESP32S2
+#define LP_RTC_PREFIX "RTC"
+#elif CONFIG_IDF_TARGET_ESP32S3
+#define LP_RTC_PREFIX "RTC"
+#elif CONFIG_IDF_TARGET_ESP32C2
+#elif CONFIG_IDF_TARGET_ESP32C3
+#define LP_RTC_PREFIX "RTC"
+#elif CONFIG_IDF_TARGET_ESP32C6
+#define LP_RTC_PREFIX "LP"
+#elif CONFIG_IDF_TARGET_ESP32H2
+#define LP_RTC_PREFIX "LP"
+#endif
+
 static int load_segment(const struct flash_area *fap, uint32_t data_addr, uint32_t data_len, uint32_t load_addr)
 {
     const uint32_t *data = (const uint32_t *)bootloader_mmap((fap->fa_off + data_addr), data_len);
@@ -69,6 +87,26 @@ void esp_app_image_load(int image_index, int slot, unsigned int hdr_offset, unsi
         FIH_PANIC;
     }
 
+#if SOC_RTC_FAST_MEM_SUPPORTED
+    if (load_header.lp_rtc_iram_size > 0) {
+        if (!esp_ptr_in_rtc_iram_fast((void *)load_header.lp_rtc_iram_dest_addr) ||
+            !esp_ptr_in_rtc_iram_fast((void *)(load_header.lp_rtc_iram_dest_addr + load_header.lp_rtc_iram_size))) {
+            BOOT_LOG_ERR("%s_IRAM region in load header is not valid. Aborting", LP_RTC_PREFIX);
+            FIH_PANIC;
+        }
+    }
+#endif
+
+#if SOC_RTC_SLOW_MEM_SUPPORTED
+    if (load_header.lp_rtc_dram_size > 0) {
+        if (!esp_ptr_in_rtc_slow((void *)load_header.lp_rtc_dram_dest_addr) ||
+            !esp_ptr_in_rtc_slow((void *)(load_header.lp_rtc_dram_dest_addr + load_header.lp_rtc_dram_size))) {
+            BOOT_LOG_ERR("%s_RAM region in load header is not valid. Aborting %p", LP_RTC_PREFIX, load_header.lp_rtc_dram_dest_addr);
+            FIH_PANIC;
+        }
+    }
+#endif
+
     if (!esp_ptr_in_iram((void *)load_header.entry_addr)) {
         BOOT_LOG_ERR("Application entry point (0x%x) is not in IRAM. Aborting", load_header.entry_addr);
         FIH_PANIC;
@@ -79,6 +117,33 @@ void esp_app_image_load(int image_index, int slot, unsigned int hdr_offset, unsi
 
     BOOT_LOG_INF("IRAM segment: start=0x%x, size=0x%x, vaddr=0x%x", fap->fa_off + load_header.iram_flash_offset, load_header.iram_size, load_header.iram_dest_addr);
     load_segment(fap, load_header.iram_flash_offset, load_header.iram_size, load_header.iram_dest_addr);
+
+#if SOC_RTC_FAST_MEM_SUPPORTED || SOC_RTC_SLOW_MEM_SUPPORTED
+    if (load_header.lp_rtc_dram_size > 0) {
+        soc_reset_reason_t reset_reason = esp_rom_get_reset_reason(0);
+
+        /* Unless waking from deep sleep (implying RTC memory is intact), load its segments */
+        if (reset_reason != RESET_REASON_CORE_DEEP_SLEEP) {
+            BOOT_LOG_INF("%s_RAM segment: paddr=%08xh, vaddr=%08xh, size=%05xh (%6d) load", LP_RTC_PREFIX,
+                         (fap->fa_off + load_header.lp_rtc_dram_flash_offset), load_header.lp_rtc_dram_dest_addr,
+                         load_header.lp_rtc_dram_size, load_header.lp_rtc_dram_size);
+            load_segment(fap, load_header.lp_rtc_dram_flash_offset,
+                         load_header.lp_rtc_dram_size, load_header.lp_rtc_dram_dest_addr);
+        } else {
+            BOOT_LOG_INF("%s_RAM segment: paddr=%08xh, vaddr=%08xh, size=%05xh (%6d) noload", LP_RTC_PREFIX,
+                         load_header.lp_rtc_dram_flash_offset, load_header.lp_rtc_dram_dest_addr,
+                         load_header.lp_rtc_dram_size, load_header.lp_rtc_dram_size);
+        }
+    }
+
+    if (load_header.lp_rtc_iram_size > 0) {
+        BOOT_LOG_INF("%s_IRAM segment: paddr=%08xh, vaddr=%08xh, size=%05xh (%6d) load", LP_RTC_PREFIX,
+                     (fap->fa_off + load_header.lp_rtc_iram_flash_offset), load_header.lp_rtc_iram_dest_addr,
+                     load_header.lp_rtc_iram_size, load_header.lp_rtc_iram_size);
+        load_segment(fap, load_header.lp_rtc_iram_flash_offset,
+                     load_header.lp_rtc_iram_size, load_header.lp_rtc_iram_dest_addr);
+    }
+#endif
 
     BOOT_LOG_INF("start=0x%x", load_header.entry_addr);
     uart_tx_wait_idle(0);

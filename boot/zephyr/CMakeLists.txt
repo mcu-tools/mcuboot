@@ -25,8 +25,10 @@ assert_exists(TINYCRYPT_SHA512_DIR)
 set(FIAT_DIR "${MCUBOOT_DIR}/ext/fiat")
 assert_exists(FIAT_DIR)
 # Path to mbed-tls' asn1 parser library.
-set(MBEDTLS_ASN1_DIR "${MCUBOOT_DIR}/ext/mbedtls-asn1")
-assert_exists(MBEDTLS_ASN1_DIR)
+if(NOT CONFIG_MBEDTLS_BUILTIN)
+  set(MBEDTLS_ASN1_DIR "${MCUBOOT_DIR}/ext/mbedtls-asn1")
+  assert_exists(MBEDTLS_ASN1_DIR)
+endif()
 set(NRF_DIR "${MCUBOOT_DIR}/ext/nrf")
 
 if(CONFIG_BOOT_USE_NRF_CC310_BL)
@@ -150,14 +152,16 @@ if(CONFIG_BOOT_RAM_LOAD OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
 endif()
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
-  zephyr_library_include_directories(
-    ${MBEDTLS_ASN1_DIR}/include
+  if(MBEDTLS_ASN1_DIR)
+    zephyr_library_include_directories(
+      ${MBEDTLS_ASN1_DIR}/include
     )
-  zephyr_library_sources(
-    # Additionally pull in just the ASN.1 parser from mbedTLS.
-    ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
-    ${MBEDTLS_ASN1_DIR}/src/platform_util.c
+    zephyr_library_sources(
+      # Additionally pull in just the ASN.1 parser from mbedTLS.
+      ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
+      ${MBEDTLS_ASN1_DIR}/src/platform_util.c
     )
+  endif()
   if(CONFIG_BOOT_USE_TINYCRYPT)
   # When using ECDSA signatures, pull in our copy of the tinycrypt library.
   zephyr_library_include_directories(
@@ -207,8 +211,17 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
   endif()
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
   if(CONFIG_BOOT_USE_TINYCRYPT)
+    if(MBEDTLS_ASN1_DIR)
+      zephyr_library_include_directories(
+        ${MBEDTLS_ASN1_DIR}/include
+      )
+      zephyr_library_sources(
+        # Additionally pull in just the ASN.1 parser from mbedTLS.
+        ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
+        ${MBEDTLS_ASN1_DIR}/src/platform_util.c
+      )
+    endif()
     zephyr_library_include_directories(
-      ${MBEDTLS_ASN1_DIR}/include
       ${BOOT_DIR}/zephyr/include
       ${TINYCRYPT_DIR}/include
       ${TINYCRYPT_SHA512_DIR}/include
@@ -217,9 +230,6 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
       ${TINYCRYPT_DIR}/source/sha256.c
       ${TINYCRYPT_DIR}/source/utils.c
       ${TINYCRYPT_SHA512_DIR}/source/sha512.c
-      # Additionally pull in just the ASN.1 parser from mbedTLS.
-      ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
-      ${MBEDTLS_ASN1_DIR}/src/platform_util.c
       )
     zephyr_library_compile_definitions(
       MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h"

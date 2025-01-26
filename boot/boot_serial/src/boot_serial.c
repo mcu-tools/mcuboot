@@ -452,8 +452,8 @@ bs_set(char *buf, int len)
     uint8_t image_index = 0;
     size_t decoded = 0;
     uint8_t hash[IMAGE_HASH_SIZE];
-    bool confirm;
-    struct zcbor_string img_hash;
+    bool confirm = false;
+    struct zcbor_string img_hash = { 0 };
     bool ok;
     int rc;
 
@@ -798,7 +798,7 @@ bs_upload(char *buf, int len)
     size_t img_size_tmp = SIZE_MAX;     /* Temp variable for image size */
     const struct flash_area *fap = NULL;
     int rc;
-    struct zcbor_string img_chunk_data;
+    struct zcbor_string img_chunk_data = { 0 };
     size_t decoded = 0;
     bool ok;
 #ifdef MCUBOOT_ERASE_PROGRESSIVELY
@@ -1021,7 +1021,7 @@ bs_upload(char *buf, int len)
             }
         }
     } else {
-    out_invalid_data:
+out_invalid_data:
         rc = MGMT_ERR_EINVAL;
     }
 
