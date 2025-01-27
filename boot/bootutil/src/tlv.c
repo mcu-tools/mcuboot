@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2019 JUUL Labs
  * Copyright (c) 2020 Arm Limited
+ * Copyright (c) 2025 Nordic Semiconductor ASA
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +47,12 @@ bootutil_tlv_iter_begin(struct image_tlv_iter *it, const struct image_header *hd
         return -1;
     }
 
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    off_ = BOOT_TLV_OFF(hdr) + it->start_off;
+#else
     off_ = BOOT_TLV_OFF(hdr);
+#endif
+
     if (LOAD_IMAGE_DATA(hdr, fap, off_, &info, sizeof(info))) {
         return -1;
     }

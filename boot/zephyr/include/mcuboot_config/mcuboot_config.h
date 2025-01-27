@@ -84,6 +84,10 @@
 #define MCUBOOT_SWAP_USING_MOVE 1
 #endif
 
+#ifdef CONFIG_BOOT_SWAP_USING_OFFSET
+#define MCUBOOT_SWAP_USING_OFFSET 1
+#endif
+
 #ifdef CONFIG_BOOT_DIRECT_XIP
 #define MCUBOOT_DIRECT_XIP
 #endif
@@ -147,6 +151,17 @@
 
 #ifdef CONFIG_BOOT_DECOMPRESSION
 #define MCUBOOT_DECOMPRESS_IMAGES
+#endif
+
+/* Invoke hashing functions directly on storage device. This requires the device
+ * be able to map storage to address space or RAM.
+ */
+#ifdef CONFIG_BOOT_IMG_HASH_DIRECTLY_ON_STORAGE
+#define MCUBOOT_HASH_STORAGE_DIRECTLY
+#endif
+
+#ifdef CONFIG_BOOT_SIGNATURE_TYPE_PURE
+#define MCUBOOT_SIGN_PURE
 #endif
 
 #ifdef CONFIG_BOOT_BOOTSTRAP

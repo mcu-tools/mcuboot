@@ -22,7 +22,11 @@ BOOT_LOG_MODULE_DECLARE(serial_encryption);
 fih_ret
 boot_image_validate_encrypted(const struct flash_area *fa_p,
                               struct image_header *hdr, uint8_t *buf,
-                              uint16_t buf_size)
+                              uint16_t buf_size
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+                              , uint32_t start_off
+#endif
+                             )
 {
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
@@ -30,13 +34,15 @@ boot_image_validate_encrypted(const struct flash_area *fa_p,
     struct boot_loader_state *state = &boot_data;
     struct boot_status _bs;
     struct boot_status *bs = &_bs;
-    uint8_t image_index;
     int rc;
 
     memset(&boot_data, 0, sizeof(struct boot_loader_state));
-    image_index = BOOT_CURR_IMG(state);
     if(IS_ENCRYPTED(hdr)) {
-        rc = boot_enc_load(BOOT_CURR_ENC(state), 1, hdr, fa_p, bs);
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+        rc = boot_enc_load(state, 1, hdr, fa_p, bs, start_off);
+#else
+        rc = boot_enc_load(state, 1, hdr, fa_p, bs);
+#endif
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
@@ -45,8 +51,14 @@ boot_image_validate_encrypted(const struct flash_area *fa_p,
             FIH_RET(fih_rc);
         }
     }
-    FIH_CALL(bootutil_img_validate, fih_rc, BOOT_CURR_ENC(state), image_index,
+
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+    FIH_CALL(bootutil_img_validate, fih_rc, state,
+             hdr, fa_p, buf, buf_size, NULL, 0, NULL, start_off);
+#else
+    FIH_CALL(bootutil_img_validate, fih_rc, state,
              hdr, fa_p, buf, buf_size, NULL, 0, NULL);
+#endif
 
     FIH_RET(fih_rc);
 }
@@ -226,7 +238,6 @@ decrypt_image_inplace(const struct flash_area *fa_p,
     /* Get size from last sector to know page/sector erase size */
     rc = flash_area_get_sector(fa_p, boot_status_off(fa_p), &sector);
 
-
     if(IS_ENCRYPTED(hdr)) {
 #if 0 //Skip this step?, the image will just not boot if it's not decrypted properly
         static uint8_t tmpbuf[BOOT_TMPBUF_SZ];
@@ -238,7 +249,11 @@ decrypt_image_inplace(const struct flash_area *fa_p,
 #endif
         memset(&boot_data, 0, sizeof(struct boot_loader_state));
         /* Load the encryption keys into cache */
-        rc = boot_enc_load(BOOT_CURR_ENC(state), 0, hdr, fa_p, bs);
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+        rc = boot_enc_load(state, 0, hdr, fa_p, bs, 0);
+#else
+        rc = boot_enc_load(state, 0, hdr, fa_p, bs);
+#endif
         if (rc < 0) {
             FIH_RET(fih_rc);
         }

@@ -111,6 +111,8 @@ struct image_tlv {
 #define IMAGE_TLV_ECDSA_SIG         0x22   /* ECDSA of hash output */
 #define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
 #define IMAGE_TLV_ED25519           0x24   /* ED25519 of hash output */
+#define IMAGE_TLV_SIG_PURE          0x25   /* If true then any signature found has been
+                                              calculated over image directly. */
 #define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
 #define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW-128 or
                                               256 */
@@ -235,7 +237,48 @@ Where:
   `image-slot-size` is the size of the image slot.
   `image-trailer-size` is the size of the image trailer.
 
-### [Swap without using scratch](#image-swap-no-scratch)
+### [Swap using offset (without using scratch)](#image-swap-offset-no-scratch)
+
+This algorithm is an alternative to the swap-using-scratch algorithm and an
+enhancement of the swap using move algorithm.
+It uses an additional sector in the secondary slot to make swap possible.
+The algorithm works as follows:
+
+  1.	Update image must be placed starting at the second sector in the secondary slot
+  2.	Copies the N-th sector from the primary slot to the N-th sector of the
+  secondary slot.
+  3.	Copies the (N+1)-th sector from the secondary slot to the N-th sector of the
+  primary slot.
+  4.	Repeats steps 2. and 3. until all the slots' sectors are swapped.
+
+This algorithm is designed so that the lower sector of the secondary slot is
+used only for allowing sectors to move down during a swap. Therefore the most
+memory-size-effective slot layout is when the secondary slot is larger than
+the primary slot by exactly one sector, although same-sized slots are allowed
+as well. The algorithm is limited to support sectors of the same sector layout.
+All slot's sectors should be of the same size. This algorithm uses 2 flags per
+sector update rather than the 3 flags used by swap using move, which requires
+a smaller swap status area size.
+
+When using this algorithm the maximum image size available for the application
+will be:
+```
+maximum-image-size1 = N * slot-sector-size - image-trailer-sectors-size
+```
+
+Where:
+  `N` is the number of sectors in the primary slot.
+  `image-trailer-sectors-size` is the size of the image trailer rounded up to
+  the total size of sectors its occupied. For instance if the image-trailer-size
+  is equal to 1056 B and the sector size is equal to 1024 B, then
+  `image-trailer-sectors-size` will be equal to 2048 B.
+
+The algorithm does one erase cycle on both the primary and secondary slots
+during each swap.
+
+The algorithm is enabled using the `MCUBOOT_SWAP_USING_OFFSET` option.
+
+### [Swap using move (without using scratch)](#image-swap-no-scratch)
 
 This algorithm is an alternative to the swap-using-scratch algorithm.
 It uses an additional sector in the primary slot to make swap possible.
@@ -633,7 +676,17 @@ types described above via a set of tables.  These tables are reproduced below.
 ---
 
 ```
-    State I
+    State I (swap using offset only)
+                     | primary slot | secondary slot |
+    -----------------+--------------+----------------|
+               magic | Any          | Good           |
+            image-ok | Any          | Unset          |
+           copy-done | Any          | Set            |
+    -----------------+--------------+----------------'
+     result: BOOT_SWAP_TYPE_REVERT                   |
+    -------------------------------------------------'
+
+    State II
                      | primary slot | secondary slot |
     -----------------+--------------+----------------|
                magic | Any          | Good           |
@@ -644,7 +697,7 @@ types described above via a set of tables.  These tables are reproduced below.
     -------------------------------------------------'
 
 
-    State II
+    State III
                      | primary slot | secondary slot |
     -----------------+--------------+----------------|
                magic | Any          | Good           |
@@ -655,7 +708,7 @@ types described above via a set of tables.  These tables are reproduced below.
     -------------------------------------------------'
 
 
-    State III
+    State IV
                      | primary slot | secondary slot |
     -----------------+--------------+----------------|
                magic | Good         | Any            |
@@ -672,7 +725,7 @@ Otherwise, MCUboot does not attempt to swap images, resulting in one of the
 other three swap types, as illustrated by State IV.
 
 ```
-    State IV
+    State V
                      | primary slot | secondary slot |
     -----------------+--------------+----------------|
                magic | Any          | Any            |
@@ -685,7 +738,7 @@ other three swap types, as illustrated by State IV.
     -------------------------------------------------'
 ```
 
-In State IV, when no errors occur, MCUboot will attempt to boot the contents of
+In State V, when no errors occur, MCUboot will attempt to boot the contents of
 the primary slot directly, and the result is `BOOT_SWAP_TYPE_NONE`. If the image
 in the primary slot is not valid, the result is `BOOT_SWAP_TYPE_FAIL`. If a
 fatal error occurs during boot, the result is `BOOT_SWAP_TYPE_PANIC`. If the
@@ -977,7 +1030,10 @@ the middle of an image swap operation.  The swap status region consists of a
 series of single-byte records.  These records are written independently, and
 therefore must be padded according to the minimum write size imposed by the
 flash hardware.  The structure of the swap status region is illustrated below.
-In this figure, a min-write-size of 1 is assumed for simplicity.
+In this figure, a min-write-size of 1 is assumed for simplicity, this diagram
+shows 3 states per sector which is applicable to swap using scratch and swap
+using move, however in swap using offset mode there are only 2 states per
+sector and the overall state size required is less.
 
 ```
      0                   1                   2                   3
@@ -1038,14 +1094,15 @@ values map to the above four states as follows
 
 The swap status region can accommodate `BOOT_MAX_IMG_SECTORS` sector indices.
 Hence, the size of the region, in bytes, is
-`BOOT_MAX_IMG_SECTORS * min-write-size * 3`. The only requirement for the index
-count is that it is great enough to account for a maximum-sized image
-(i.e., at least as great as the total sector count in an image slot).  If a
-device's image slots have been configured with `BOOT_MAX_IMG_SECTORS: 128` and
-use less than 128 sectors, the first record that gets written will be somewhere
-in the middle of the region. For example, if a slot uses 64 sectors, the first
-sector index that gets swapped is 63, which corresponds to the exact halfway
-point within the region.
+`BOOT_MAX_IMG_SECTORS * min-write-size * s` where `s` is 3 for swap using
+scratch and swap using move modes, and is 2 for swap using offset mode. The
+only requirement for the index count is that it is great enough to account
+for a maximum-sized image (i.e., at least as great as the total sector count in
+an image slot).  If a device's image slots have been configured with
+`BOOT_MAX_IMG_SECTORS: 128` and use less than 128 sectors, the first record
+that gets written will be somewhere in the middle of the region. For example,
+if a slot uses 64 sectors, the first sector index that gets swapped is 63,
+which corresponds to the exact halfway point within the region.
 
 ---
 ***Note***

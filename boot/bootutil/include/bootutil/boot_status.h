@@ -130,6 +130,7 @@ enum mcuboot_mode {
     MCUBOOT_MODE_RAM_LOAD,
     MCUBOOT_MODE_FIRMWARE_LOADER,
     MCUBOOT_MODE_SINGLE_SLOT_RAM_LOAD,
+    MCUBOOT_MODE_SWAP_USING_OFFSET,
 };
 
 enum mcuboot_signature_type {

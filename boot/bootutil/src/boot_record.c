@@ -143,6 +143,9 @@ boot_save_boot_status(uint8_t sw_module,
     /* Manifest data is concatenated to the end of the image.
      * It is encoded in TLV format.
      */
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    it.start_off = 0;
+#endif
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_ANY, false);
     if (rc) {
@@ -249,6 +252,8 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
     uint8_t mode = MCUBOOT_MODE_UPGRADE_ONLY;
 #elif defined(MCUBOOT_SWAP_USING_MOVE)
     uint8_t mode = MCUBOOT_MODE_SWAP_USING_MOVE;
+#elif defined(MCUBOOT_SWAP_USING_OFFSET)
+    uint8_t mode = MCUBOOT_MODE_SWAP_USING_OFFSET;
 #elif defined(MCUBOOT_DIRECT_XIP)
 #if defined(MCUBOOT_DIRECT_XIP_REVERT)
     uint8_t mode = MCUBOOT_MODE_DIRECT_XIP_WITH_REVERT;

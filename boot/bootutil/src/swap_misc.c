@@ -30,7 +30,7 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
-#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
 int
 swap_erase_trailer_sectors(const struct boot_loader_state *state,
                            const struct flash_area *fap)
@@ -231,4 +231,4 @@ out:
 }
 
 
-#endif /* defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) */
+#endif /* defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET) */

@@ -21,7 +21,7 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
-#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
 
 /**
  * Calculates the amount of space required to store the trailer, and erases
@@ -99,9 +99,9 @@ static inline size_t boot_scratch_area_size(const struct boot_loader_state *stat
 }
 #endif
 
-#endif /* defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) */
+#endif /* defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET) */
 
-#if defined(MCUBOOT_SWAP_USING_MOVE)
+#if defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
 /**
  * Check if device write block sizes are as expected, function should emit an error if there is
  * a problem. If true is returned, the slots are marked as compatible, otherwise the slots are
@@ -112,7 +112,7 @@ static inline size_t boot_scratch_area_size(const struct boot_loader_state *stat
  * slot.
  */
 bool swap_write_block_size_check(struct boot_loader_state *state);
-#endif /* defined(MCUBOOT_SWAP_USING_MOVE) */
+#endif /* defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET) */
 
 /**
  * Returns the maximum size of an application that can be loaded to a slot.

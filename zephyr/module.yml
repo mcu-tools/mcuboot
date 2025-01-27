@@ -3,3 +3,7 @@ samples:
 build:
   cmake: ./boot/bootutil/zephyr
   sysbuild-cmake: boot/zephyr/sysbuild
+package-managers:
+  pip:
+    requirement-files:
+      - zephyr/requirements.txt

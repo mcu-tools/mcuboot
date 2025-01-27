@@ -63,6 +63,15 @@ config NRF_CC310_BL
 	bool
 	default n
 
+if BOOT_USE_MBEDTLS && MBEDTLS_BUILTIN
+
+config BOOT_AES_MBEDTLS_DEPENDENCIES
+	bool
+	select MBEDTLS_CIPHER_AES_ENABLED
+	select MBEDTLS_CIPHER_MODE_CTR_ENABLED
+
+endif
+
 menu "MCUBoot settings"
 
 config SINGLE_APPLICATION_SLOT
@@ -87,6 +96,22 @@ config BOOT_IMG_HASH_ALG_SHA512_ALLOW
 	bool
 	help
 	  Hidden option set by configurations that allow SHA512
+
+config BOOT_IMG_HASH_DIRECTLY_ON_STORAGE
+	bool "Hash calculation functions access storage through address space"
+	depends on !BOOT_ENCRYPT_IMAGE
+	help
+	  When possible to map storage device, at least for read operations,
+	  to address space or RAM area, enabling this option allows hash
+	  calculation functions to directly access the storage through that address
+	  space or using its own DMA. This reduces flash read overhead done
+	  by MCUboot.
+	  Notes:
+	    - not supported when encrypted images are in use, because calculating
+	      SHA requires image to be decrypted first, which is done in RAM.
+	    - currently only supported on internal storage of devices; this
+	      option will not work with devices that use external storage for
+	      either of the image slots.
 
 choice BOOT_IMG_HASH_ALG
 	prompt "Selected image hash algorithm"
@@ -118,6 +143,14 @@ config BOOT_IMG_HASH_ALG_SHA512
 
 endchoice # BOOT_IMG_HASH_ALG
 
+config BOOT_SIGNATURE_TYPE_PURE_ALLOW
+	bool
+	help
+	  Hidden option set by configurations that allow Pure variant,
+	  for example ed25519. The pure variant means that image
+	  signature is calculated over entire image instead of hash
+	  of an image.
+
 choice BOOT_SIGNATURE_TYPE
 	prompt "Signature type"
 	default BOOT_SIGNATURE_TYPE_RSA
@@ -135,6 +168,7 @@ config BOOT_SIGNATURE_TYPE_RSA
 	select MBEDTLS_KEY_EXCHANGE_RSA_ENABLED if MBEDTLS_BUILTIN
 	select BOOT_ENCRYPTION_SUPPORT
 	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
+	select BOOT_AES_MBEDTLS_DEPENDENCIES if MBEDTLS_BUILTIN && BOOT_ENCRYPT_IMAGE
 
 if BOOT_SIGNATURE_TYPE_RSA
 config BOOT_SIGNATURE_TYPE_RSA_LEN
@@ -169,21 +203,41 @@ endif
 
 config BOOT_SIGNATURE_TYPE_ED25519
 	bool "Edwards curve digital signatures using ed25519"
-	select BOOT_ENCRYPTION_SUPPORT
-	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
+	select BOOT_ENCRYPTION_SUPPORT if !BOOT_SIGNATURE_TYPE_PURE
+	select BOOT_IMG_HASH_ALG_SHA256_ALLOW if !BOOT_SIGNATURE_TYPE_PURE
+	# The SHA is used only for key hashing, not for images.
+	select BOOT_SIGNATURE_TYPE_PURE_ALLOW
+	help
+	  This is ed25519 signature calculated over SHA512 of SHA256 of application
+	  image.
+	  To check signature over entire image directly, rather than hash,
+	  select BOOT_SIGNATURE_TYPE_PURE.
 
 if BOOT_SIGNATURE_TYPE_ED25519
+
+config BOOT_SIGNATURE_TYPE_PURE
+	bool "Use Pure signature of image"
+	depends on BOOT_SIGNATURE_TYPE_PURE_ALLOW
+	help
+	  The Pure signature is calculated directly over image rather than
+	  hash of an image, as the BOOT_SIGNATURE_TYPE_ED25519 does by
+	  default.
+	  Image to be verified needs to be accessible through memory address
+	  space that cryptography functions can access via pointers.
+
 choice BOOT_ED25519_IMPLEMENTATION
 	prompt "Ecdsa implementation"
 	default BOOT_ED25519_TINYCRYPT
 config BOOT_ED25519_TINYCRYPT
 	bool "Use tinycrypt"
 	select BOOT_USE_TINYCRYPT
+	select BOOT_IMG_HASH_ALG_SHA512_ALLOW
 config BOOT_ED25519_MBEDTLS
 	bool "Use mbedTLS"
 	select BOOT_USE_MBEDTLS
 	select MBEDTLS
 	select MBEDTLS_ASN1_PARSE_C if MBEDTLS_BUILTIN
+	select BOOT_AES_MBEDTLS_DEPENDENCIES if MBEDTLS_BUILTIN && BOOT_ENCRYPT_IMAGE
 
 endchoice
 endif
@@ -267,6 +321,13 @@ config BOOT_VALIDATE_SLOT0_ONCE
 	  low end devices with as a compromise lowering the security level.
 	  If unsure, leave at the default value.
 
+config BOOT_PREFER_SWAP_OFFSET
+	bool "Prefer the newer swap offset algorithm"
+	help
+	  If y, the BOOT_IMAGE_UPGRADE_MODE will default to using "offset" instead of "scratch".
+	  This is a separate bool config option, because Kconfig doesn't allow defaults to be
+	  overridden in choice options. Most devices should be using swap using offset mode.
+
 config BOOT_PREFER_SWAP_MOVE
 	bool "Prefer the newer swap move algorithm"
 	default y if SOC_FAMILY_NORDIC_NRF
@@ -275,12 +336,14 @@ config BOOT_PREFER_SWAP_MOVE
 	  If y, the BOOT_IMAGE_UPGRADE_MODE will default to using
 	  "move" instead of "scratch".  This is a separate bool config
 	  option, because Kconfig doesn't allow defaults to be
-	  overridden in choice options.  Most devices should be using
-	  swap move.
+	  overridden in choice options. This mode has been superceded
+	  by swap using offset, but is kept to allow existing projects
+	  to make use of it.
 
 if !SINGLE_APPLICATION_SLOT
 choice BOOT_IMAGE_UPGRADE_MODE
 	prompt "Image upgrade modes"
+	default BOOT_SWAP_USING_OFFSET if BOOT_PREFER_SWAP_OFFSET
 	default BOOT_SWAP_USING_MOVE if BOOT_PREFER_SWAP_MOVE
 	default BOOT_SWAP_USING_SCRATCH
 
@@ -297,8 +360,19 @@ config BOOT_UPGRADE_ONLY
 	  of swapping them. This prevents the fallback recovery, but
 	  uses a much simpler code path.
 
+config BOOT_SWAP_USING_OFFSET
+	bool "Swap using offset mode without scratch partition"
+	help
+	  If y, the swap upgrade is done by each sector X+1 in the secondary slot moved index X in
+	  the primary slot, then the sector at X+1 in the primary is moved to index X in the
+	  secondary.
+	  This allows a swap upgrade without using a scratch partition, but is currently limited
+	  to all sectors in both slots being of the same size. This mode offers faster swap times
+	  with less flash endurance usage than swap using move, firmware updates must be placed at
+	  the second sector in the second slot instead of the first.
+
 config BOOT_SWAP_USING_MOVE
-	bool "Swap mode that can run without a scratch partition"
+	bool "Swap using mode mode without scratch partition"
 	help
 	  If y, the swap upgrade is done in two steps, where first every
 	  sector of the primary slot is moved up one sector, then for
@@ -736,7 +810,7 @@ config MCUBOOT_DOWNGRADE_PREVENTION
 config MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER
 	bool "Use image security counter instead of version number"
 	depends on MCUBOOT_DOWNGRADE_PREVENTION
-	depends on (BOOT_SWAP_USING_MOVE || BOOT_SWAP_USING_SCRATCH)
+	depends on (BOOT_SWAP_USING_MOVE || BOOT_SWAP_USING_SCRATCH || BOOT_SWAP_USING_OFFSET)
 	help
        Security counter is used for version eligibility check instead of pure
        version.  When this option is set, any upgrade must have greater or

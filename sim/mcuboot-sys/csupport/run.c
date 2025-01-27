@@ -7,6 +7,7 @@
 #include <string.h>
 #include <bootutil/bootutil.h>
 #include <bootutil/image.h>
+#include <errno.h>
 
 #include <flash_map_backend/flash_map_backend.h>
 
@@ -278,7 +279,7 @@ int invoke_boot_go(struct sim_context *ctx, struct area_desc *adesc,
         sim_reset_flash_areas();
         sim_reset_context();
         free(state);
-        /* printf("boot_go off: %d (0x%08x)\n", res, rsp.br_image_off); */
+        /* printf("boot_go off: %d (0x%08x)\n", res, rsp->br_image_off); */
         return res;
     } else {
         sim_reset_flash_areas();
@@ -369,6 +370,7 @@ int flash_area_erase(const struct flash_area *area, uint32_t off, uint32_t len)
 
 int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 {
+    int rc = 0;
     uint32_t i;
     struct area *slot;
     struct area_desc *flash_areas;
@@ -385,20 +387,21 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *ret)
 
     slot = &flash_areas->slots[i];
 
-    if (slot->num_areas > (uint32_t)*cnt) {
-        printf("Too many areas in slot\n");
-        abort();
+    if ((uint32_t)*cnt > slot->num_areas) {
+        *cnt = slot->num_areas;
+    } else if (slot->num_areas > (uint32_t)*cnt) {
+        rc = -ENOMEM;
     }
 
-    *cnt = slot->num_areas;
-    memcpy(ret, slot->areas, slot->num_areas * sizeof(struct flash_area));
+    memcpy(ret, slot->areas, *cnt * sizeof(struct flash_area));
 
-    return 0;
+    return rc;
 }
 
 int flash_area_get_sectors(int fa_id, uint32_t *count,
                            struct flash_sector *sectors)
 {
+    int rc = 0;
     uint32_t i;
     struct area *slot;
     struct area_desc *flash_areas;
@@ -415,19 +418,19 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
 
     slot = &flash_areas->slots[i];
 
-    if (slot->num_areas > *count) {
-        printf("Too many areas in slot\n");
-        abort();
+    if (*count > slot->num_areas) {
+        *count = slot->num_areas;
+    } else if (slot->num_areas > *count) {
+        rc = -ENOMEM;
     }
 
-    for (i = 0; i < slot->num_areas; i++) {
+    for (i = 0; i < *count; i++) {
         sectors[i].fs_off = slot->areas[i].fa_off -
             slot->whole.fa_off;
         sectors[i].fs_size = slot->areas[i].fa_size;
     }
-    *count = slot->num_areas;
 
-    return 0;
+    return rc;
 }
 
 int flash_area_id_to_multi_image_slot(int image_index, int area_id)
