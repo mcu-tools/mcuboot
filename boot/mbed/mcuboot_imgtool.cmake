@@ -75,16 +75,13 @@ function(_mcuboot_generate_image TARGET IMAGE_TYPE IMAGE_BASE_PATH)
 
   get_property(objcopy GLOBAL PROPERTY ELF2BIN)
 
-  # Temporal workaround with hard coded path to encryption public key
-  # ENC_PUBLIC_KEY_ABSPATH remain null even after mcuboot_generate_encryption_public_key_file() runs
-  set(ENC_PUBLIC_KEY_ABSPATH ${CMAKE_CURRENT_BINARY_DIR}/mcuboot/boot/mbed/enc_key_public.pem)
-
   if(${IMAGE_TYPE} STREQUAL "update" AND "MCUBOOT_ENCRYPT_RSA=1" IN_LIST MBED_CONFIG_DEFINITIONS)
-    set(IMGTOOL_EXTRA_ARGS --encrypt ${ENC_PUBLIC_KEY_ABSPATH})
+    # MCUBOOT_ENCRYPTION_PUBLIC_KEY_PATH is set in CMakeLists.txt
+    set(IMGTOOL_EXTRA_ARGS --encrypt ${MCUBOOT_ENCRYPTION_PUBLIC_KEY_PATH})
   elseif(${IMAGE_TYPE} STREQUAL "initial" AND "MCUBOOT_ENCRYPT_RSA=1" IN_LIST MBED_CONFIG_DEFINITIONS)
     # If encryption is enabled, generate unencrypted initial image which supports encryption.
     # See https://github.com/mbed-ce/mbed-os/issues/401#issuecomment-2567099213
-    set(IMGTOOL_EXTRA_ARGS --encrypt ${ENC_PUBLIC_KEY_ABSPATH} --clear)
+    set(IMGTOOL_EXTRA_ARGS --encrypt ${MCUBOOT_ENCRYPTION_PUBLIC_KEY_PATH} --clear)
   else()
     set(IMGTOOL_EXTRA_ARGS "")
   endif()
@@ -118,7 +115,9 @@ function(_mcuboot_generate_image TARGET IMAGE_TYPE IMAGE_BASE_PATH)
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     VERBATIM
   )
-  add_dependencies(${TARGET} mcuboot-gen-enc-public-key)
+  if("MCUBOOT_ENCRYPT_RSA=1" IN_LIST MBED_CONFIG_DEFINITIONS)
+    add_dependencies(${TARGET} mcuboot-gen-enc-public-key)
+  endif()
 endfunction(_mcuboot_generate_image)
 
 #
@@ -227,8 +226,6 @@ endfunction(mcuboot_generate_encryption_private_key_file)
 # This is a temporal file, should be stored in the build folder
 #
 function(mcuboot_generate_encryption_public_key_file ENC_PUBLIC_KEY_PATH)
-  # ENC_PUBLIC_KEY_PATH seems already absolute path
-  set(ENC_PUBLIC_KEY_ABSPATH ${ENC_PUBLIC_KEY_PATH})
   add_custom_command(
     OUTPUT ${ENC_PUBLIC_KEY_PATH}
     COMMAND
