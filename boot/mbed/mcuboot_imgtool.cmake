@@ -62,13 +62,13 @@ function(_mcuboot_generate_image TARGET IMAGE_TYPE IMAGE_BASE_PATH)
   set(TARGET_HEX_FILE ${CMAKE_CURRENT_BINARY_DIR}/$<TARGET_FILE_BASE_NAME:${TARGET}>.hex)
 
   # Grab header size
-  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_HEADER_SIZE=(0x[0-9A-Fa-f]+)")
+  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_HEADER_SIZE=((0x[0-9A-Fa-f]+)|([0-9]+))")
     message(FATAL_ERROR "Couldn't find MCUBOOT_HEADER_SIZE in Mbed configuration!")
   endif()
   set(HEADER_SIZE_HEX ${CMAKE_MATCH_1})
 
   # Grab slot size
-  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_SLOT_SIZE=(0x[0-9A-Fa-f]+)")
+  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_SLOT_SIZE=((0x[0-9A-Fa-f]+)|([0-9]+))")
     message(FATAL_ERROR "Couldn't find MCUBOOT_SLOT_SIZE in Mbed configuration!")
   endif()
   set(SLOT_SIZE_HEX ${CMAKE_MATCH_1})
@@ -144,7 +144,7 @@ function(mcuboot_generate_initial_image TARGET) # optional 2nd arg: initial imag
   # We need to be slightly creative here -- Mbed thinks that the application start address
   # is <primary slot address> + <header size>, but we actually want to upload to <primary slot address>.
   # So we need to temporarily override MBED_UPLOAD_BASE_ADDR with an offset value
-  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_HEADER_SIZE=(0x[0-9A-Fa-f]+)")
+  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_HEADER_SIZE=((0x[0-9A-Fa-f]+)|([0-9]+))")
     message(FATAL_ERROR "Couldn't find MCUBOOT_HEADER_SIZE in Mbed configuration!")
   endif()
   set(HEADER_SIZE_HEX ${CMAKE_MATCH_1})
