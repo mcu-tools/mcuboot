@@ -85,6 +85,10 @@ primary slot and adds a header and trailer that the bootloader is expecting:
                                     firmware). [max. 12 characters]
       --overwrite-only              Use overwrite-only instead of swap upgrades
       -e, --endian [little|big]     Select little or big endian
+      -c, --clear                   Output a non-encrypted image with encryption
+                                    capabilities,so it can be installed in the
+                                    primary slot, and encrypted when swapped to
+                                    the secondary.
       -E, --encrypt filename        Encrypt image using the provided public key
       --save-enctlv                 When upgrading, save encrypted key TLVs
                                     instead of plain keys. Enable when
@@ -133,3 +137,13 @@ public key is incorporated into the bootloader). When the `full` option is used
 instead, the TLV area will contain the whole public key and thus the bootloader
 can be independent from the key(s). For more information on the additional
 requirements of this option, see the [design](design.md) document.
+
+The encryption key passed to `--encrypt` argument shall be derived from a
+different key (not the sign key) per NIST recommendation, please refer to discussion
+[here](https://github.com/mcu-tools/mcuboot/pull/2152#issuecomment-2581420713). Also
+an extra tag `--clear` shall be provided to generate initial download images
+that are not encrypted but support encryption during firmware upgrade, otherwise when
+upgrading to encrypted images for the first time, an unencrypted image will be saved into
+secondary slot, please refer to discussion [here](https://github.com/mcu-tools/mcuboot/issues/1555).
+Please also refer to now partially updated documentation on [encrypted images](encrypted_images.md)
+on how to generate and manage keys used for image encryption.

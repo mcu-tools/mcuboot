@@ -149,14 +149,24 @@ occurs and the information is spread across multiple areas.
 
 ## [Creating your keys with imgtool](#creating-your-keys-with-imgtool)
 
-`imgtool` can generate keys by using `imgtool keygen -k <output.pem> -t <type>`,
- where type can be one of `rsa-2048`, `rsa-3072`, `ecdsa-p256`
-or `ed25519`. This will generate a keypair or private key.
+`imgtool` can be used to generate keys used for image encryption, similar to
+how to generate keys for imaging signing:
+```
+./scripts/imgtool.py keygen -k encryption-keys.pem -t rsa-2048
+```
+The type of keys to generate will depend on which type of encryption is supported.
+For mbed-os and mbed-ce ports, only RSA is currently supported.
 
-To extract the public key in source file form, use
-`imgtool getpub -k <input.pem> -e <encoding>`, where `encoding` can be one of
-`lang-c` or `lang-rust` (defaults to `lang-c`). To extract a public key in PEM
-format, use `imgtool getpub -k <input.pem> -e pem`.
+Once an encryption key is generated, the next step is to extract the private key into
+c format, and incorporate into your source files:
+```
+./scripts/imgtool.py getpriv -k encryption-keys.pem -f openssl >> enc-key-priv.c
+```
+The final step is to extract public key and pass it to `imgtool` during image signing
+and encryption process.
+```
+./scripts/imgtool.py getpub -k encryption-keys.pem -e pem -o enc-key-pub.pem
+```
 
 If using AES-KW, follow the steps in the next section to generate the
 required keys.
