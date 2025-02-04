@@ -85,7 +85,7 @@ bootutil_verify(uint8_t *buf, uint32_t blen,
     uint8_t *pubkey;
     uint8_t *end;
 
-    if (slen != EDDSA_SIGNATURE_LENGTH) {
+    if (hlen != IMAGE_HASH_SIZE || slen != EDDSA_SIGNATURE_LENGTH) {
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
     }
