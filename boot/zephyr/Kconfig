@@ -504,6 +504,17 @@ config BOOT_DIRECT_XIP_REVERT
 	  attempt to boot the previous image. The images can also be made permanent
 	  (marked as confirmed in advance) just like in swap mode.
 
+config BOOT_RAM_LOAD_REVERT
+	bool "Enable the revert mechanism in ram-load mode"
+	depends on BOOT_RAM_LOAD
+	help
+	  If y, enables the revert mechanism in ram-load similar to the one in
+	  swap mode. It requires the trailer magic to be added to the signed image.
+	  When a reboot happens without the image being confirmed at runtime, the
+	  bootloader considers the image faulty and erases it. After this it will
+	  attempt to boot the previous image. The images can also be made permanent
+	  (marked as confirmed in advance) just like in swap mode.
+
 config BOOT_BOOTSTRAP
 	bool "Bootstrap erased the primary slot from the secondary slot"
 	help

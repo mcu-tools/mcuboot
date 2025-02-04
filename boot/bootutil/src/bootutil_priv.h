@@ -275,7 +275,8 @@ struct boot_loader_state {
         /* Image destination and size for the active slot */
         uint32_t img_dst;
         uint32_t img_sz;
-#elif defined(MCUBOOT_DIRECT_XIP_REVERT)
+#endif
+#if defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT)
         /* Swap status for the active slot */
         struct boot_swap_state swap_state;
 #endif
