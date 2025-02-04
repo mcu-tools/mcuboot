@@ -125,15 +125,15 @@ zephyr_library_sources(
   )
 endif()
 
-if(CONFIG_SINGLE_APPLICATION_SLOT)
-  zephyr_library_sources(
-    ${BOOT_DIR}/zephyr/single_loader.c
-    )
-  zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
-elseif(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+if(CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
   zephyr_library_sources(
     ${BOOT_DIR}/zephyr/single_loader.c
     ${BOOT_DIR}/bootutil/src/ram_load.c
+    )
+  zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
+elseif(CONFIG_SINGLE_APPLICATION_SLOT)
+  zephyr_library_sources(
+    ${BOOT_DIR}/zephyr/single_loader.c
     )
   zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
 elseif(CONFIG_BOOT_FIRMWARE_LOADER)
@@ -161,7 +161,7 @@ else()
       ${BOOT_DIR}/bootutil/src/swap_scratch.c
       )
 
-    if(CONFIG_BOOT_RAM_LOAD OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+    if(CONFIG_BOOT_RAM_LOAD)
       zephyr_library_sources(
         ${BOOT_DIR}/bootutil/src/ram_load.c
         )
