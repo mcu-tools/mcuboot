@@ -21,6 +21,12 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 /* Variables passed outside of unit via poiters. */
 static const struct flash_area *_fa_p;
 static struct image_header _hdr = { 0 };
+static struct boot_loader_state boot_data;
+
+struct boot_loader_state *boot_get_loader_state(void)
+{
+    return &boot_data;
+}
 
 #if defined(MCUBOOT_VALIDATE_PRIMARY_SLOT) || defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
 /**

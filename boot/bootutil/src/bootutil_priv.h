@@ -503,9 +503,6 @@ struct bootsim_ram_info *bootsim_get_ram_info(void);
     (size)), 0)
 
 int boot_load_image_to_sram(struct boot_loader_state *state);
-int boot_remove_image_from_sram(struct boot_loader_state *state);
-int boot_remove_image_from_flash(struct boot_loader_state *state,
-                                 uint32_t slot);
 #else
 #define IMAGE_RAM_BASE ((uintptr_t)0)
 

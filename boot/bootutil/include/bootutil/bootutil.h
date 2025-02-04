@@ -86,9 +86,9 @@ struct image_max_size {
 fih_ret boot_go(struct boot_rsp *rsp);
 fih_ret boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id);
 
-struct boot_loader_state;
 void boot_state_clear(struct boot_loader_state *state);
 fih_ret context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp);
+struct boot_loader_state *boot_get_loader_state(void);
 const struct image_max_size *boot_get_max_app_size(void);
 uint32_t boot_get_state_secondary_offset(struct boot_loader_state *state,
                                          const struct flash_area *fap);

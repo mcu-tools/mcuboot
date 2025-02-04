@@ -7,6 +7,12 @@
 
 cmake_minimum_required(VERSION 3.13.1)
 
+# This sample shows usage of an external module and we need to set the
+# set the extra module path before calling find_package(Zephyr).
+if(TEST_RUNTIME_SOURCE_HOOKS)
+  set(EXTRA_ZEPHYR_MODULES "${CMAKE_SOURCE_DIR}/../../samples/runtime-source/zephyr/hooks")
+endif()
+
 # find_package(Zephyr) in order to load application boilerplate:
 # http://docs.zephyrproject.org/application/application.html
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
@@ -125,15 +131,15 @@ zephyr_library_sources(
   )
 endif()
 
-if(CONFIG_SINGLE_APPLICATION_SLOT)
-  zephyr_library_sources(
-    ${BOOT_DIR}/zephyr/single_loader.c
-    )
-  zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
-elseif(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+if(CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
   zephyr_library_sources(
     ${BOOT_DIR}/zephyr/single_loader.c
     ${BOOT_DIR}/bootutil/src/ram_load.c
+    )
+  zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
+elseif(CONFIG_SINGLE_APPLICATION_SLOT)
+  zephyr_library_sources(
+    ${BOOT_DIR}/zephyr/single_loader.c
     )
   zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
 elseif(CONFIG_BOOT_FIRMWARE_LOADER)
@@ -161,7 +167,7 @@ else()
       ${BOOT_DIR}/bootutil/src/swap_scratch.c
       )
 
-    if(CONFIG_BOOT_RAM_LOAD OR CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+    if(CONFIG_BOOT_RAM_LOAD)
       zephyr_library_sources(
         ${BOOT_DIR}/bootutil/src/ram_load.c
         )

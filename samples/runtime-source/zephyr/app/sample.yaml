@@ -1,0 +1,10 @@
+sample:
+  name: Runtime source target
+  description: Application loaded from mcuboot using runtime source hooks
+common:
+  build_only: true
+tests:
+    sample.zephyr.runtime_source.app:
+      tags: samples tests runtime_source
+      platform_allow:
+        - frdm_k64f

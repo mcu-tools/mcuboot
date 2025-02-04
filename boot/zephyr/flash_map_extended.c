@@ -14,7 +14,9 @@
 #include <flash_map_backend/flash_map_backend.h>
 #include <sysflash/sysflash.h>
 
+#include "bootutil/boot_hooks.h"
 #include "bootutil/bootutil_log.h"
+#include "bootutil/bootutil_public.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
@@ -58,6 +60,14 @@ int flash_device_base(uint8_t fd_id, uintptr_t *ret)
  */
 int flash_area_id_from_multi_image_slot(int image_index, int slot)
 {
+    int rc, id;
+
+    rc = BOOT_HOOK_FLASH_AREA_CALL(flash_area_id_from_multi_image_slot_hook,
+                                   BOOT_HOOK_REGULAR, image_index, slot, &id);
+    if (rc != BOOT_HOOK_REGULAR) {
+        return id;
+    }
+
     switch (slot) {
     case 0: return FLASH_AREA_IMAGE_PRIMARY(image_index);
 #if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
@@ -138,6 +148,15 @@ int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
 
 uint8_t flash_area_get_device_id(const struct flash_area *fa)
 {
+    uint8_t device_id;
+    int rc;
+
+    rc = BOOT_HOOK_FLASH_AREA_CALL(flash_area_get_device_id_hook,
+                                   BOOT_HOOK_REGULAR, fa, &device_id);
+    if (rc != BOOT_HOOK_REGULAR) {
+        return device_id;
+    }
+
 #if defined(CONFIG_ARM)
     return fa->fa_id;
 #else

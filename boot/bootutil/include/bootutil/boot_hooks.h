@@ -34,25 +34,65 @@
 #ifndef H_BOOTUTIL_HOOKS
 #define H_BOOTUTIL_HOOKS
 
-#ifdef MCUBOOT_IMAGE_ACCESS_HOOKS
+#include "bootutil/bootutil.h"
+#include "bootutil/fault_injection_hardening.h"
 
-#define BOOT_HOOK_CALL(f, ret_default, ...) f(__VA_ARGS__)
+#define DO_HOOK_CALL(f, ret_default, ...) \
+    f(__VA_ARGS__)
 
-#define BOOT_HOOK_CALL_FIH(f, fih_ret_default, fih_rc, ...) \
+#define DO_HOOK_CALL_FIH(f, fih_ret_default, fih_rc, ...) \
     do { \
         FIH_CALL(f, fih_rc, __VA_ARGS__); \
     } while(0);
 
-#else
+#define HOOK_CALL_NOP(f, ret_default, ...) ret_default
 
-#define BOOT_HOOK_CALL(f, ret_default, ...) ret_default
-
-#define BOOT_HOOK_CALL_FIH(f, fih_ret_default, fih_rc, ...) \
+#define HOOK_CALL_FIH_NOP(f, fih_ret_default, fih_rc, ...) \
     do { \
         fih_rc = fih_ret_default; \
     } while(0);
 
-#endif
+#ifdef MCUBOOT_IMAGE_ACCESS_HOOKS
+
+#define BOOT_HOOK_CALL(f, ret_default, ...) \
+    DO_HOOK_CALL(f, ret_default, __VA_ARGS__)
+
+#define BOOT_HOOK_CALL_FIH(f, fih_ret_default, fih_rc, ...) \
+    DO_HOOK_CALL_FIH(f, fih_ret_default, fih_rc, __VA_ARGS__)
+
+#else
+
+#define BOOT_HOOK_CALL(f, ret_default, ...) \
+    HOOK_CALL_NOP(f, ret_default, __VA_ARGS__)
+
+#define BOOT_HOOK_CALL_FIH(f, fih_ret_default, fih_rc, ...) \
+    HOOK_CALL_FIH_NOP(f, fih_ret_default, fih_rc, __VA_ARGS__)
+
+#endif /* MCUBOOT_IMAGE_ACCESS_HOOKS */
+
+#ifdef MCUBOOT_BOOT_GO_HOOKS
+
+#define BOOT_HOOK_GO_CALL_FIH(f, fih_ret_default, fih_rc, ...) \
+    DO_HOOK_CALL_FIH(f, fih_ret_default, fih_rc, __VA_ARGS__);
+
+#else
+
+#define BOOT_HOOK_GO_CALL_FIH(f, fih_ret_default, fih_rc, ...) \
+    HOOK_CALL_FIH_NOP(f, fih_ret_default, fih_rc, __VA_ARGS__)
+
+#endif /* MCUBOOT_BOOT_GO_HOOKS  */
+
+#ifdef MCUBOOT_FLASH_AREA_HOOKS
+
+#define BOOT_HOOK_FLASH_AREA_CALL(f, ret_default, ...) \
+    DO_HOOK_CALL(f, ret_default, __VA_ARGS__)
+
+#else
+
+#define BOOT_HOOK_FLASH_AREA_CALL(f, ret_default, ...) \
+    HOOK_CALL_NOP(f, ret_default, __VA_ARGS__)
+
+#endif /* MCUBOOT_FLASH_AREA_ID_HOOKS */
 
 /** Hook for provide image header data.
  *
@@ -172,6 +212,48 @@ int boot_img_install_stat_hook(int image_index, int slot,
  *         error while checking status.
  */
 int boot_reset_request_hook(bool force);
+
+/**
+ * Hook to implement custom action before boot_go() function.
+ *
+ * @param rsp boot response structure.
+ *
+ * @retval FIH_SUCCESS: boot_go() should be skipped, boot response is already
+ *         filled.
+ *         FIH_FAILURE: boot_go() should be skipped, boot response is already
+ *         filled with error.
+ *         FIH_BOOT_HOOK_REGULAR: follow the normal execution path.
+ */
+fih_ret boot_go_hook(struct boot_rsp *rsp);
+
+/**
+ * Hook to implement custom action before retrieving flash area ID.
+ *
+ * @param image_index the index of the image pair
+ * @param slot slot number
+ * @param area_id the flash area ID to be populated
+ *
+ * @retval 0 the flash area ID was fetched successfully;
+ *         BOOT_HOOK_REGULAR follow the normal execution path to get the flash
+ *         area ID;
+ *         otherwise an error-code value.
+ */
+int flash_area_id_from_multi_image_slot_hook(int image_index, int slot,
+                                             int *area_id);
+
+/**
+ * Hook to implement custom action before retrieving flash area device ID.
+ *
+ * @param fa the flash area structure
+ * @param device_id the device ID to be populated
+ *
+ * @retval 0 the device ID was fetched successfully;
+ *         BOOT_HOOK_REGULAR follow the normal execution path to get the device
+ *         ID;
+ *         otherwise an error-code value.
+ */
+int flash_area_get_device_id_hook(const struct flash_area *fa,
+                                  uint8_t *device_id);
 
 #define BOOT_RESET_REQUEST_HOOK_BUSY		1
 #define BOOT_RESET_REQUEST_HOOK_TIMEOUT		2
