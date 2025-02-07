@@ -261,7 +261,7 @@ class Image:
                  overwrite_only=False, endian="little", load_addr=0,
                  rom_fixed=None, erased_val=None, save_enctlv=False,
                  security_counter=None, max_align=None,
-                 non_bootable=False):
+                 non_bootable=False, skip_encryption=False):
 
         if load_addr and rom_fixed:
             raise click.UsageError("Can not set rom_fixed and load_addr at the same time")
@@ -290,6 +290,7 @@ class Image:
         self.enctlv_len = 0
         self.max_align = max(DEFAULT_MAX_ALIGN, align) if max_align is None else int(max_align)
         self.non_bootable = non_bootable
+        self.skip_encryption = skip_encryption
 
         if self.max_align == DEFAULT_MAX_ALIGN:
             self.boot_magic = bytes([
@@ -690,10 +691,11 @@ class Image:
                 nonce = bytes([0] * 16)
                 cipher = Cipher(algorithms.AES(plainkey), modes.CTR(nonce),
                                 backend=default_backend())
-                encryptor = cipher.encryptor()
-                img = bytes(self.payload[self.header_size:])
-                self.payload[self.header_size:] = \
-                    encryptor.update(img) + encryptor.finalize()
+                if not self.skip_encryption:
+                    encryptor = cipher.encryptor()
+                    img = bytes(self.payload[self.header_size:])
+                    self.payload[self.header_size:] = \
+                        encryptor.update(img) + encryptor.finalize()
 
         self.payload += prot_tlv.get()
         self.payload += tlv.get()

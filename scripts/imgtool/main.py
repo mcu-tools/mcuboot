@@ -370,6 +370,8 @@ class BasedIntParamType(click.ParamType):
               help='Enable image compression using specified type. '
                    'Will fall back without image compression automatically '
                    'if the compression increases the image size.')
+@click.option('--skip-encryption', default=False, is_flag=True,
+              help='Set encryption flags and TLV\'s without applying encryption.')
 @click.option('-c', '--clear', required=False, is_flag=True, default=False,
               help='Output a non-encrypted image with encryption capabilities,'
                    'so it can be installed in the primary slot, and encrypted '
@@ -449,7 +451,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, rom_fixed, max_align,
          clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, is_pure,
-         vector_to_sign, non_bootable):
+         vector_to_sign, non_bootable, skip_encryption):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -462,7 +464,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                       endian=endian, load_addr=load_addr, rom_fixed=rom_fixed,
                       erased_val=erased_val, save_enctlv=save_enctlv,
                       security_counter=security_counter, max_align=max_align,
-                      non_bootable=non_bootable)
+                      non_bootable=non_bootable, skip_encryption=skip_encryption)
     compression_tlvs = {}
     img.load(infile)
     key = load_key(key) if key else None
