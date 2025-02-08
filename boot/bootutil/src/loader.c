@@ -1069,9 +1069,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         }
 
         if (first_sector_hdr.ih_magic == IMAGE_MAGIC) {
-            BOOT_LOG_ERR("Secondary header magic detected in first sector, wrong upload address?");
-            fih_rc = FIH_NO_BOOTABLE_IMAGE;
-            goto check_validity;
+            BOOT_LOG_WRN("Secondary header magic detected in first sector, wrong upload address?");
         }
     }
 #endif
