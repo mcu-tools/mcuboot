@@ -147,6 +147,14 @@ the status area just before starting the upgrade process, because it
 would be very hard to determine this information when an interruption
 occurs and the information is spread across multiple areas.
 
+## [Factory-programing requirement](#factory-programing-requirement)
+
+It is important to have updates without any voids in encryption. 
+Therefore, from the very beginning, flags and TLV's must be set accordingly.
+Perform the first flashing with an image signed by imgtool with encryption settings
+intended for DFU.
+Append it with the `--clear` flag to keep the image unencrypted and ready for use.
+
 ## [Creating your keys with imgtool](#creating-your-keys-with-imgtool)
 
 `imgtool` can generate keys by using `imgtool keygen -k <output.pem> -t <type>`,
