@@ -433,7 +433,7 @@ boot_img_num_sectors(const struct boot_loader_state *state, size_t slot)
 static inline uint32_t
 boot_img_slot_off(struct boot_loader_state *state, size_t slot)
 {
-    return flash_area_get_off(BOOT_IMG(state, slot).area);
+    return flash_area_get_off(BOOT_IMG_AREA(state, slot));
 }
 
 #ifndef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
