@@ -454,7 +454,8 @@ int swap_status_source(struct boot_loader_state *state)
 
 static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                               struct boot_status *bs, const struct flash_area *fap_pri,
-                              const struct flash_area *fap_sec)
+                              const struct flash_area *fap_sec, bool skip_primary,
+                              bool skip_secondary)
 {
     uint32_t pri_off;
     uint32_t sec_off;
@@ -466,14 +467,19 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *st
     sec_up_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, (idx + 1));
 
     if (bs->state == BOOT_STATUS_STATE_0) {
-        /* Copy from slot 0 X to slot 1 X */
-        BOOT_LOG_DBG("Erasing secondary 0x%x of 0x%x", sec_off, sz);
-        rc = boot_erase_region(fap_sec, sec_off, sz);
-        assert(rc == 0);
+        if (skip_primary == true) {
+            BOOT_LOG_DBG("Skipping erase of secondary 0x%x and copy from primary 0x%x", sec_off,
+                         pri_off);
+        } else {
+            /* Copy from slot 0 X to slot 1 X */
+            BOOT_LOG_DBG("Erasing secondary 0x%x of 0x%x", sec_off, sz);
+            rc = boot_erase_region(fap_sec, sec_off, sz);
+            assert(rc == 0);
 
-        BOOT_LOG_DBG("Copying primary 0x%x -> secondary 0x%x of 0x%x", pri_off, sec_off, sz);
-        rc = BOOT_COPY_REGION(state, fap_pri, fap_sec, pri_off, sec_off, sz, 0);
-        assert(rc == 0);
+            BOOT_LOG_DBG("Copying primary 0x%x -> secondary 0x%x of 0x%x", pri_off, sec_off, sz);
+            rc = BOOT_COPY_REGION(state, fap_pri, fap_sec, pri_off, sec_off, sz, 0);
+            assert(rc == 0);
+        }
 
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_1;
@@ -481,16 +487,21 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *st
     }
 
     if (bs->state == BOOT_STATUS_STATE_1) {
-        /* Erase slot 0 X */
-        BOOT_LOG_DBG("Erasing primary 0x%x of 0x%x", pri_off, sz);
-        rc = boot_erase_region(fap_pri, pri_off, sz);
-        assert(rc == 0);
+        if (skip_secondary == true) {
+            BOOT_LOG_DBG("Skipping erase of primary 0x%x and copy from secondary 0x%x", pri_off,
+                         sec_up_off);
+        } else {
+            /* Erase slot 0 X */
+            BOOT_LOG_DBG("Erasing primary 0x%x of 0x%x", pri_off, sz);
+            rc = boot_erase_region(fap_pri, pri_off, sz);
+            assert(rc == 0);
 
-        /* Copy from slot 1 (X + 1) to slot 0 X */
-        BOOT_LOG_DBG("Copying secondary 0x%x -> primary 0x%x of 0x%x", sec_up_off, pri_off,
-                     sz);
-        rc = BOOT_COPY_REGION(state, fap_sec, fap_pri, sec_up_off, pri_off, sz, 0);
-        assert(rc == 0);
+            /* Copy from slot 1 (X + 1) to slot 0 X */
+            BOOT_LOG_DBG("Copying secondary 0x%x -> primary 0x%x of 0x%x", sec_up_off, pri_off,
+                         sz);
+            rc = BOOT_COPY_REGION(state, fap_sec, fap_pri, sec_up_off, pri_off, sz, 0);
+            assert(rc == 0);
+        }
 
         rc = boot_write_status(state, bs);
         bs->idx++;
@@ -501,7 +512,8 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *st
 
 static void boot_swap_sectors_revert(int idx, uint32_t sz, struct boot_loader_state *state,
                                      struct boot_status *bs, const struct flash_area *fap_pri,
-                                     const struct flash_area *fap_sec, uint32_t sector_sz)
+                                     const struct flash_area *fap_sec, uint32_t sector_sz,
+                                     bool skip_primary, bool skip_secondary)
 {
     uint32_t pri_off;
     uint32_t sec_off;
@@ -516,14 +528,19 @@ static void boot_swap_sectors_revert(int idx, uint32_t sz, struct boot_loader_st
     sec_up_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx);
 
     if (bs->state == BOOT_STATUS_STATE_0) {
-        /* Copy from slot 0 X to slot 1 X */
-        BOOT_LOG_DBG("Erasing secondary 0x%x of 0x%x", sec_off, sz);
-        rc = boot_erase_region(fap_sec, sec_off, sz);
-        assert(rc == 0);
+        if (skip_primary == true) {
+            BOOT_LOG_DBG("Skipping erase of secondary 0x%x and copy from primary 0x%x", sec_off,
+                         pri_off);
+        } else {
+            /* Copy from slot 0 X to slot 1 X */
+            BOOT_LOG_DBG("Erasing secondary 0x%x of 0x%x", sec_off, sz);
+            rc = boot_erase_region(fap_sec, sec_off, sz);
+            assert(rc == 0);
 
-        BOOT_LOG_DBG("Copying primary 0x%x -> secondary 0x%x of 0x%x", pri_off, sec_off, sz);
-        rc = BOOT_COPY_REGION(state, fap_pri, fap_sec, pri_off, sec_off, sz, sector_sz);
-        assert(rc == 0);
+            BOOT_LOG_DBG("Copying primary 0x%x -> secondary 0x%x of 0x%x", pri_off, sec_off, sz);
+            rc = BOOT_COPY_REGION(state, fap_pri, fap_sec, pri_off, sec_off, sz, sector_sz);
+            assert(rc == 0);
+        }
 
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_1;
@@ -531,16 +548,21 @@ static void boot_swap_sectors_revert(int idx, uint32_t sz, struct boot_loader_st
     }
 
     if (bs->state == BOOT_STATUS_STATE_1) {
-        /* Erase slot 0 X */
-        BOOT_LOG_DBG("Erasing primary 0x%x of 0x%x", pri_off, sz);
-        rc = boot_erase_region(fap_pri, pri_off, sz);
-        assert(rc == 0);
+        if (skip_secondary == true) {
+            BOOT_LOG_DBG("Skipping erase of primary 0x%x and copy from secondary 0x%x", pri_off,
+                         sec_up_off);
+        } else {
+            /* Erase slot 0 X */
+            BOOT_LOG_DBG("Erasing primary 0x%x of 0x%x", pri_off, sz);
+            rc = boot_erase_region(fap_pri, pri_off, sz);
+            assert(rc == 0);
 
-        /* Copy from slot 1 (X + 1) to slot 0 X */
-        BOOT_LOG_DBG("Copying secondary 0x%x -> primary 0x%x of 0x%x", sec_up_off, pri_off,
-                     sz);
-        rc = BOOT_COPY_REGION(state, fap_sec, fap_pri, sec_up_off, pri_off, sz, 0);
-        assert(rc == 0);
+            /* Copy from slot 1 (X + 1) to slot 0 X */
+            BOOT_LOG_DBG("Copying secondary 0x%x -> primary 0x%x of 0x%x", sec_up_off, pri_off,
+                         sz);
+            rc = BOOT_COPY_REGION(state, fap_sec, fap_pri, sec_up_off, pri_off, sz, 0);
+            assert(rc == 0);
+        }
 
         rc = boot_write_status(state, bs);
         bs->idx++;
@@ -601,6 +623,8 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
     uint32_t trailer_sz;
     uint32_t first_trailer_idx;
     uint32_t last_idx;
+    uint32_t used_sectors_pri;
+    uint32_t used_sectors_sec;
     uint8_t image_index;
     const struct flash_area *fap_pri;
     const struct flash_area *fap_sec;
@@ -663,6 +687,14 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
     bs->op = BOOT_STATUS_OP_SWAP;
     idx = 0;
+    used_sectors_pri = ((state->imgs[BOOT_CURR_IMG(state)][BOOT_PRIMARY_SLOT].hdr.ih_hdr_size +
+        state->imgs[BOOT_CURR_IMG(state)][BOOT_PRIMARY_SLOT].hdr.ih_protect_tlv_size +
+        state->imgs[BOOT_CURR_IMG(state)][BOOT_PRIMARY_SLOT].hdr.ih_img_size) + sector_sz - 1) /
+        sector_sz;
+    used_sectors_sec = ((state->imgs[BOOT_CURR_IMG(state)][BOOT_SECONDARY_SLOT].hdr.ih_hdr_size +
+        state->imgs[BOOT_CURR_IMG(state)][BOOT_SECONDARY_SLOT].hdr.ih_protect_tlv_size +
+        state->imgs[BOOT_CURR_IMG(state)][BOOT_SECONDARY_SLOT].hdr.ih_img_size) + sector_sz - 1) /
+        sector_sz;
 
     if (bs->swap_type == BOOT_SWAP_TYPE_REVERT ||
         boot_swap_type_multi(BOOT_CURR_IMG(state)) == BOOT_SWAP_TYPE_REVERT) {
@@ -671,7 +703,9 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
                 uint32_t mirror_idx = last_idx - idx;
 
                 boot_swap_sectors_revert(mirror_idx, sector_sz, state, bs, fap_pri, fap_sec,
-                                         sector_sz);
+                                         sector_sz,
+                                         (mirror_idx > used_sectors_pri ? true : false),
+                                         (mirror_idx > used_sectors_sec ? true : false));
             }
 
             idx++;
@@ -689,7 +723,9 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
     } else {
         while (idx <= last_idx) {
             if (idx >= (bs->idx - BOOT_STATUS_IDX_0)) {
-                boot_swap_sectors(idx, sector_sz, state, bs, fap_pri, fap_sec);
+                boot_swap_sectors(idx, sector_sz, state, bs, fap_pri, fap_sec,
+                                  (idx > used_sectors_pri ? true : false),
+                                  (idx > used_sectors_sec ? true : false));
             }
 
             idx++;

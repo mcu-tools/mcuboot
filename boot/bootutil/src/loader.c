@@ -1034,7 +1034,6 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
     hdr = boot_img_hdr(state, slot);
     if (boot_check_header_erased(state, slot) == 0 ||
         (hdr->ih_flags & IMAGE_F_NON_BOOTABLE)) {
-
 #if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
         /*
          * This fixes an issue where an image might be erased, but a trailer
@@ -1048,6 +1047,27 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
          */
         if (slot != BOOT_PRIMARY_SLOT) {
             swap_erase_trailer_sectors(state, fap);
+
+#if defined(MCUBOOT_SWAP_USING_MOVE)
+            if (bs->swap_type == BOOT_SWAP_TYPE_REVERT ||
+                boot_swap_type_multi(BOOT_CURR_IMG(state)) == BOOT_SWAP_TYPE_REVERT) {
+                const struct flash_area *fap_pri;
+
+                rc = flash_area_open(flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state),
+                                                                         BOOT_PRIMARY_SLOT),
+                                                                         &fap_pri);
+
+                if (rc == 0) {
+                    rc = swap_erase_trailer_sectors(state, fap_pri);
+                    flash_area_close(fap_pri);
+
+                    if (rc == 0) {
+                        BOOT_LOG_INF("Cleared image %d primary slot trailer due to stuck revert",
+                                     BOOT_CURR_IMG(state));
+                    }
+                }
+            }
+#endif
         }
 #endif
 
