@@ -63,12 +63,13 @@ struct Args {
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum DeviceName {
-    Stm32f4, K64f, K64fBig, K64fMulti, Nrf52840, Nrf52840SpiFlash,
+    Stm32f4, Stm32f4SpiFlash, K64f, K64fBig, K64fMulti, Nrf52840, Nrf52840SpiFlash,
     Nrf52840UnequalSlots, Nrf52840UnequalSlotsLargerSlot1,
 }
 
 pub static ALL_DEVICES: &[DeviceName] = &[
     DeviceName::Stm32f4,
+    DeviceName::Stm32f4SpiFlash,
     DeviceName::K64f,
     DeviceName::K64fBig,
     DeviceName::K64fMulti,
@@ -82,6 +83,7 @@ impl fmt::Display for DeviceName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let name = match *self {
             DeviceName::Stm32f4 => "stm32f4",
+            DeviceName::Stm32f4SpiFlash => "stm32f4SpiFlash",
             DeviceName::K64f => "k64f",
             DeviceName::K64fBig => "k64fbig",
             DeviceName::K64fMulti => "k64fmulti",
