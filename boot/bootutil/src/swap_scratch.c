@@ -535,6 +535,33 @@ find_swap_count(const struct boot_loader_state *state, uint32_t copy_size)
 }
 
 /**
+ * Finds the first sector of a given slot that holds image trailer data.
+ *
+ * @param state      Current bootloader's state.
+ * @param slot       The index of the slot to consider.
+ * @param trailer_sz The size of the trailer, in bytes.
+ *
+ * @return The index of the first sector of the slot that holds image trailer data.
+ */
+static size_t
+get_first_trailer_sector(struct boot_loader_state *state, size_t slot, size_t trailer_sz)
+{
+    size_t first_trailer_sector = boot_img_num_sectors(state, slot) - 1;
+    size_t sector_sz = boot_img_sector_size(state, slot, first_trailer_sector);
+    size_t trailer_sector_sz = sector_sz;
+
+    while (trailer_sector_sz < trailer_sz) {
+        /* Consider that the image trailer may span across sectors of different sizes */
+        --first_trailer_sector;
+        sector_sz = boot_img_sector_size(state, slot, first_trailer_sector);
+
+        trailer_sector_sz += sector_sz;
+    }
+
+    return first_trailer_sector;
+}
+
+/**
  * Swaps the contents of two flash regions within the two image slots.
  *
  * @param idx                   The index of the first sector in the range of
@@ -554,11 +581,10 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     const struct flash_area *fap_scratch;
     uint32_t copy_sz;
     uint32_t trailer_sz;
-    uint32_t sector_sz;
     uint32_t img_off;
     uint32_t scratch_trailer_off;
     struct boot_swap_state swap_state;
-    size_t last_sector;
+    size_t first_trailer_sector_primary;
     bool erase_scratch;
     uint8_t image_index;
     int rc;
@@ -581,33 +607,23 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
 
     /* sz in this function is always sized on a multiple of the sector size.
-     * The check against the start offset of the last sector
-     * is to determine if we're swapping the last sector. The last sector
-     * needs special handling because it's where the trailer lives. If we're
-     * copying it, we need to use scratch to write the trailer temporarily.
+     * The check against the start offset of the first trailer sector is to determine if we're
+     * swapping that sector, which might contains both part of the firmware image and part of the
+     * trailer (or the whole trailer if the latter is small enough). Therefore, that sector needs
+     * special handling: if we're copying it, we need to use scratch to write the trailer
+     * temporarily.
+     *
+     * Since the primary and secondary slots don't necessarily have the same layout, the index of
+     * the first trailer sector may be different for each slot.
      *
      * NOTE: `use_scratch` is a temporary flag (never written to flash) which
-     * controls if special handling is needed (swapping last sector).
+     * controls if special handling is needed (swapping the first trailer sector).
      */
-    last_sector = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 1;
-    sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, last_sector);
-
-    if (sector_sz < trailer_sz) {
-        uint32_t trailer_sector_sz = sector_sz;
-
-        while (trailer_sector_sz < trailer_sz) {
-            /* Consider that the image trailer may span across sectors of
-             * different sizes.
-             */
-            sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, --last_sector);
-
-            trailer_sector_sz += sector_sz;
-        }
-    }
+    first_trailer_sector_primary = get_first_trailer_sector(state, BOOT_PRIMARY_SLOT, trailer_sz);
 
     /* Check if the currently swapped sector(s) contain the trailer or part of it */
     if ((img_off + sz) >
-        boot_img_sector_off(state, BOOT_PRIMARY_SLOT, last_sector)) {
+        boot_img_sector_off(state, BOOT_PRIMARY_SLOT, first_trailer_sector_primary)) {
         copy_sz = flash_area_get_size(fap_primary_slot) - img_off - trailer_sz;
 
         /* Check if the computed copy size would cause the beginning of the trailer in the scratch
@@ -666,20 +682,40 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     }
 
     if (bs->state == BOOT_STATUS_STATE_1) {
-        rc = boot_erase_region(fap_secondary_slot, img_off, sz);
-        assert(rc == 0);
+        uint32_t erase_sz = sz;
+
+        if (bs->idx == BOOT_STATUS_IDX_0) {
+            /* Guarantee here that only the primary slot will have the state.
+             *
+             * This is necessary even though the current area being swapped contains part of the
+             * trailer since in case the trailer spreads over multiple sector erasing the [img_off,
+             * img_off + sz) might not erase the entire trailer.
+              */
+            rc = swap_erase_trailer_sectors(state, fap_secondary_slot);
+            assert(rc == 0);
+
+            if (bs->use_scratch) {
+                /* If the area being swapped contains the trailer or part of it, ensure the
+                 * sector(s) containing the beginning of the trailer won't be erased again.
+                 */
+                size_t trailer_sector_secondary =
+                    get_first_trailer_sector(state, BOOT_SECONDARY_SLOT, trailer_sz);
+
+                uint32_t trailer_sector_offset =
+                    boot_img_sector_off(state, BOOT_SECONDARY_SLOT, trailer_sector_secondary);
+
+                erase_sz = trailer_sector_offset - img_off;
+            }
+        }
+
+        if (erase_sz > 0) {
+            rc = boot_erase_region(fap_secondary_slot, img_off, erase_sz);
+            assert(rc == 0);
+        }
 
         rc = boot_copy_region(state, fap_primary_slot, fap_secondary_slot,
                               img_off, img_off, copy_sz);
         assert(rc == 0);
-
-        if (bs->idx == BOOT_STATUS_IDX_0 && !bs->use_scratch) {
-            /* If not all sectors of the slot are being swapped,
-             * guarantee here that only the primary slot will have the state.
-             */
-            rc = swap_erase_trailer_sectors(state, fap_secondary_slot);
-            assert(rc == 0);
-        }
 
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_2;
@@ -687,8 +723,28 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     }
 
     if (bs->state == BOOT_STATUS_STATE_2) {
-        rc = boot_erase_region(fap_primary_slot, img_off, sz);
-        assert(rc == 0);
+        uint32_t erase_sz = sz;
+
+        if (bs->use_scratch) {
+            /* The current area that is being swapped contains the trailer or part of it. In that
+             * case, make sure to erase all sectors containing the trailer in the primary slot to be
+             * able to write the new trailer. This is not always equivalent to erasing the [img_off,
+             * img_off + sz) range when the trailer spreads across multiple sectors.
+             */
+            rc = swap_erase_trailer_sectors(state, fap_primary_slot);
+            assert(rc == 0);
+
+            /* Ensure the sector(s) containing the beginning of the trailer won't be erased twice */
+            uint32_t trailer_sector_off =
+                boot_img_sector_off(state, BOOT_PRIMARY_SLOT, first_trailer_sector_primary);
+
+            erase_sz = trailer_sector_off - img_off;
+        }
+
+        if (erase_sz > 0) {
+            rc = boot_erase_region(fap_primary_slot, img_off, erase_sz);
+            assert(rc == 0);
+        }
 
         /* NOTE: If this is the final sector, we exclude the image trailer from
          * this copy (copy_sz was truncated earlier).
