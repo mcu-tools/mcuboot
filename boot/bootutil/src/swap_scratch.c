@@ -563,6 +563,17 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     uint8_t image_index;
     int rc;
 
+    image_index = BOOT_CURR_IMG(state);
+
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap_primary_slot);
+    assert (rc == 0);
+
+    rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index), &fap_secondary_slot);
+    assert (rc == 0);
+
+    rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap_scratch);
+    assert (rc == 0);
+
     /* Calculate offset from start of image area. */
     img_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx);
 
@@ -594,25 +605,13 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
         }
     }
 
+    /* Check if the currently swapped sector(s) contain the trailer or part of it */
     if ((img_off + sz) >
         boot_img_sector_off(state, BOOT_PRIMARY_SLOT, last_sector)) {
-        copy_sz -= trailer_sz;
+        copy_sz = flash_area_get_size(fap_primary_slot) - img_off - trailer_sz;
     }
 
     bs->use_scratch = (bs->idx == BOOT_STATUS_IDX_0 && copy_sz != sz);
-
-    image_index = BOOT_CURR_IMG(state);
-
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index),
-            &fap_primary_slot);
-    assert (rc == 0);
-
-    rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index),
-            &fap_secondary_slot);
-    assert (rc == 0);
-
-    rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &fap_scratch);
-    assert (rc == 0);
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         BOOT_LOG_DBG("erasing scratch area");
