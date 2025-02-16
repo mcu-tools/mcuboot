@@ -609,6 +609,18 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     if ((img_off + sz) >
         boot_img_sector_off(state, BOOT_PRIMARY_SLOT, last_sector)) {
         copy_sz = flash_area_get_size(fap_primary_slot) - img_off - trailer_sz;
+
+        /* Check if the computed copy size would cause the beginning of the trailer in the scratch
+         * area to be overwritten. If so, adjust the copy size to avoid this.
+         *
+         * This could happen if the trailer is larger than a single sector since in that case the
+         * first part of the trailer may be smaller than the trailer in the scratch area.
+         */
+        scratch_trailer_off = boot_status_off(fap_scratch);
+
+        if (copy_sz > scratch_trailer_off) {
+            copy_sz = scratch_trailer_off;
+        }
     }
 
     bs->use_scratch = (bs->idx == BOOT_STATUS_IDX_0 && copy_sz != sz);
