@@ -22,6 +22,7 @@
 #define MBEDTLS_BIGNUM_C
 #define MBEDTLS_MD_C
 #define MBEDTLS_OID_C
+#define MBEDTLS_CIPHER_C
 #if defined(MCUBOOT_SIGN_EC384)
 #define MBEDTLS_SHA384_C
 #define MBEDTLS_SHA512_C
