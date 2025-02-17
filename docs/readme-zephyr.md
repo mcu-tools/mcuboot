@@ -33,7 +33,7 @@ the rest of the images too (for example, `slot2_partition` and
 The flash partitions are typically defined in the Zephyr boards folder, in a
 file named `boards/<arch>/<board>/<board>.dts`. An example `.dts` file with
 flash partitions defined is the frdm_k64f's in
-`boards/arm/frdm_k64f/frdm_k64f.dts`. Make sure the DT node labels in your board's
+`boards/nxp/frdm_k64f/frdm_k64f.dts`. Make sure the DT node labels in your board's
 `.dts` file match the ones used there.
 
 ## Installing requirements and dependencies
