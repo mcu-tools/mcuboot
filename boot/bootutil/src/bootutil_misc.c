@@ -205,16 +205,17 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
  * If the magic is successfully found, a flash_area * is returned and it
  * is the responsibility of the called to close it.
  *
- * @returns 0 on success, -1 on errors
+ * @returns flash_area pointer on success, NULL on failure.
  */
-int
-boot_find_status(int image_index, const struct flash_area **fap)
+const struct flash_area *
+boot_find_status(const struct boot_loader_state *state, int image_index)
 {
-    uint8_t areas[] = {
+    const struct flash_area *fa_p = NULL;
+    const struct flash_area *areas[] = {
 #if MCUBOOT_SWAP_USING_SCRATCH
-        FLASH_AREA_IMAGE_SCRATCH,
+        state->scratch.area,
 #endif
-        FLASH_AREA_IMAGE_PRIMARY(image_index),
+        state->imgs[image_index][BOOT_PRIMARY_SLOT].area,
     };
     unsigned int i;
 
@@ -225,29 +226,26 @@ boot_find_status(int image_index, const struct flash_area **fap)
      * is assumed that if magic is valid then other metadata is too,
      * because magic is always written in the last step.
      */
-
     for (i = 0; i < sizeof(areas) / sizeof(areas[0]); i++) {
         uint8_t magic[BOOT_MAGIC_SZ];
+        int rc = 0;
 
-        if (flash_area_open(areas[i], fap)) {
-            break;
-        }
+        fa_p = areas[i];
+        rc = flash_area_read(fa_p, boot_magic_off(fa_p), magic, BOOT_MAGIC_SZ);
 
-        if (flash_area_read(*fap, boot_magic_off(*fap), magic, BOOT_MAGIC_SZ)) {
-            flash_area_close(*fap);
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed to read status from %d, err %d\n",
+                         flash_area_get_id(fa_p), rc);
+            fa_p = NULL;
             break;
         }
 
         if (BOOT_MAGIC_GOOD == boot_magic_decode(magic)) {
-            return 0;
+            break;
         }
-
-        flash_area_close(*fap);
     }
 
-    /* If we got here, no magic was found */
-    fap = NULL;
-    return -1;
+    return fa_p;
 }
 
 int

@@ -41,22 +41,13 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
     uint32_t total_sz;
     uint32_t off;
     uint32_t sz;
-    int fa_id_primary;
-    int fa_id_secondary;
-    uint8_t image_index;
     int rc;
 
     BOOT_LOG_DBG("erasing trailer; fa_id=%d", flash_area_get_id(fap));
 
-    image_index = BOOT_CURR_IMG(state);
-    fa_id_primary = flash_area_id_from_multi_image_slot(image_index,
-            BOOT_PRIMARY_SLOT);
-    fa_id_secondary = flash_area_id_from_multi_image_slot(image_index,
-            BOOT_SECONDARY_SLOT);
-
-    if (flash_area_get_id(fap) == fa_id_primary) {
+    if (fap == BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT)) {
         slot = BOOT_PRIMARY_SLOT;
-    } else if (flash_area_get_id(fap) == fa_id_secondary) {
+    } else if (fap == BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT)) {
         slot = BOOT_SECONDARY_SLOT;
     } else {
         return BOOT_EFLASH;
@@ -96,8 +87,8 @@ swap_status_init(const struct boot_loader_state *state,
 
     BOOT_LOG_DBG("initializing status; fa_id=%d", flash_area_get_id(fap));
 
-    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_SECONDARY(image_index),
-            &swap_state);
+    rc = boot_read_swap_state(state->imgs[image_index][BOOT_SECONDARY_SLOT].area,
+                              &swap_state);
     assert(rc == 0);
 
     if (bs->swap_type != BOOT_SWAP_TYPE_NONE) {
