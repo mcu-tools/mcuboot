@@ -729,6 +729,9 @@ config MEASURED_BOOT_MAX_CBOR_SIZE
 
 choice BOOT_FAULT_INJECTION_HARDENING_PROFILE
 	prompt "Fault injection hardening profile"
+	default BOOT_FIH_PROFILE_HIGH if BOOT_FIH_PROFILE_DEFAULT_HIGH
+	default BOOT_FIH_PROFILE_MEDIUM if BOOT_FIH_PROFILE_DEFAULT_MEDIUM
+	default BOOT_FIH_PROFILE_LOW if BOOT_FIH_PROFILE_DEFAULT_LOW
 	default BOOT_FIH_PROFILE_OFF
 
 config BOOT_FIH_PROFILE_OFF
@@ -1020,6 +1023,22 @@ config BOOT_DECOMPRESSION_BUFFER_SIZE
 endif # BOOT_DECOMPRESSION
 
 endif # BOOT_DECOMPRESSION_SUPPORT
+
+menu "Defaults"
+	# Items in this menu should not be manually set. These options are for modules/sysbuild to
+	# set as defaults to allow MCUboot's default configuration to be set, but still allow it
+	# to be overridden by users.
+
+config BOOT_FIH_PROFILE_DEFAULT_LOW
+	bool "Default to low fault inject hardening level"
+
+config BOOT_FIH_PROFILE_DEFAULT_MEDIUM
+	bool "Default to medium fault inject hardening level"
+
+config BOOT_FIH_PROFILE_DEFAULT_HIGH
+	bool "Default to high fault inject hardening level"
+
+endmenu
 
 endmenu
 
