@@ -360,13 +360,12 @@ config MCUBOOT_CLEANUP_RAM
 	help
 	  Sets contents of memory to 0 before jumping to application.
 
-if MBEDTLS
-
 config MBEDTLS_CFG_FILE
-	default "config-tls-generic.h" if MBEDTLS_BUILTIN || BOOT_USE_PSA_CRYPTO
-	default "mcuboot-mbedtls-cfg.h" if BOOT_USE_MBEDTLS
-
-endif
+	# It might be awkward to define an Mbed TLS header file when TinyCrypt
+	# is used, but the fact is that Mbed TLS' ASN1 parse module is used
+	# also when TinyCrypt is used as crypto backend.
+	default "mcuboot-mbedtls-cfg.h" if BOOT_USE_TINYCRYPT
+	default "mcuboot-mbedtls-cfg.h" if BOOT_USE_MBEDTLS && !MBEDTLS_BUILTIN
 
 config BOOT_HW_KEY
 	bool "Use HW key for image verification"
