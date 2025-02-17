@@ -535,33 +535,6 @@ find_swap_count(const struct boot_loader_state *state, uint32_t copy_size)
 }
 
 /**
- * Finds the first sector of a given slot that holds image trailer data.
- *
- * @param state      Current bootloader's state.
- * @param slot       The index of the slot to consider.
- * @param trailer_sz The size of the trailer, in bytes.
- *
- * @return The index of the first sector of the slot that holds image trailer data.
- */
-static size_t
-get_first_trailer_sector(struct boot_loader_state *state, size_t slot, size_t trailer_sz)
-{
-    size_t first_trailer_sector = boot_img_num_sectors(state, slot) - 1;
-    size_t sector_sz = boot_img_sector_size(state, slot, first_trailer_sector);
-    size_t trailer_sector_sz = sector_sz;
-
-    while (trailer_sector_sz < trailer_sz) {
-        /* Consider that the image trailer may span across sectors of different sizes */
-        --first_trailer_sector;
-        sector_sz = boot_img_sector_size(state, slot, first_trailer_sector);
-
-        trailer_sector_sz += sector_sz;
-    }
-
-    return first_trailer_sector;
-}
-
-/**
  * Swaps the contents of two flash regions within the two image slots.
  *
  * @param idx                   The index of the first sector in the range of
@@ -619,7 +592,8 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
      * NOTE: `use_scratch` is a temporary flag (never written to flash) which
      * controls if special handling is needed (swapping the first trailer sector).
      */
-    first_trailer_sector_primary = get_first_trailer_sector(state, BOOT_PRIMARY_SLOT, trailer_sz);
+    first_trailer_sector_primary =
+        boot_get_first_trailer_sector(state, BOOT_PRIMARY_SLOT, trailer_sz);
 
     /* Check if the currently swapped sector(s) contain the trailer or part of it */
     if ((img_off + sz) >
@@ -699,7 +673,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                  * sector(s) containing the beginning of the trailer won't be erased again.
                  */
                 size_t trailer_sector_secondary =
-                    get_first_trailer_sector(state, BOOT_SECONDARY_SLOT, trailer_sz);
+                    boot_get_first_trailer_sector(state, BOOT_SECONDARY_SLOT, trailer_sz);
 
                 uint32_t trailer_sector_offset =
                     boot_img_sector_off(state, BOOT_SECONDARY_SLOT, trailer_sector_secondary);
