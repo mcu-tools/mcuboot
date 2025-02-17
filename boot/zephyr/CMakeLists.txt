@@ -220,7 +220,7 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   # to set MBEDTLS_CONFIG_FILE ourselves. When using Zephyr's copy, this
   # variable is set by its Kconfig in the Zephyr codebase.
   zephyr_library_compile_definitions(
-    MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h"
+    MBEDTLS_CONFIG_FILE="${CONFIG_MBEDTLS_CFG_FILE}"
     )
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_NONE)
   zephyr_library_include_directories(
@@ -266,7 +266,7 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
       ${TINYCRYPT_SHA512_DIR}/source/sha512.c
       )
     zephyr_library_compile_definitions(
-      MBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_LIST_DIR}/include/mcuboot-mbedtls-cfg.h"
+      MBEDTLS_CONFIG_FILE="${CONFIG_MBEDTLS_CFG_FILE}"
       )
   else()
     zephyr_include_directories(include)
