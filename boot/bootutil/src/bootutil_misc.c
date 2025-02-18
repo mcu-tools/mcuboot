@@ -135,6 +135,7 @@ boot_trailer_sz(uint32_t min_write_sz)
     return boot_status_sz(min_write_sz) + boot_trailer_info_sz();
 }
 
+#if defined(MCUBOOT_MINIMAL_SCRAMBLE)
 int boot_trailer_scramble_offset(const struct flash_area *fa, size_t alignment,
                                  size_t *off)
 {
@@ -202,6 +203,7 @@ int boot_header_scramble_off_sz(const struct flash_area *fa, int slot, size_t *o
 
     return ret;
 }
+#endif /* defined(MCUBOOT_MINIMAL_SCRAMBLE) */
 
 #if MCUBOOT_SWAP_USING_SCRATCH
 /*
