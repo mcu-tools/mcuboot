@@ -1051,7 +1051,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
          * is erased.
          */
         if (slot != BOOT_PRIMARY_SLOT) {
-            swap_scramble_trailer_sectors(state, fap);
+            swap_erase_trailer_sectors(state, fap);
 
 #if defined(MCUBOOT_SWAP_USING_MOVE)
             if (bs->swap_type == BOOT_SWAP_TYPE_REVERT ||
@@ -1063,7 +1063,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
                                                                          &fap_pri);
 
                 if (rc == 0) {
-                    rc = swap_scramble_trailer_sectors(state, fap_pri);
+                    rc = swap_erase_trailer_sectors(state, fap_pri);
                     flash_area_close(fap_pri);
 
                     if (rc == 0) {
@@ -1109,7 +1109,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
                 &boot_img_hdr(state, BOOT_PRIMARY_SLOT)->ih_ver);
         if (rc < 0 && boot_check_header_erased(state, BOOT_PRIMARY_SLOT)) {
             BOOT_LOG_ERR("insufficient version in secondary slot");
-            boot_scramble_slot(fap, slot);
+            flash_area_erase(fap, 0, flash_area_get_size(fap));
             /* Image in the secondary slot does not satisfy version requirement.
              * Erase the image and continue booting from the primary slot.
              */
@@ -1132,7 +1132,7 @@ check_validity:
 #endif
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         if ((slot != BOOT_PRIMARY_SLOT) || ARE_SLOTS_EQUIVALENT()) {
-            boot_scramble_slot(fap, slot);
+            flash_area_erase(fap, 0, flash_area_get_size(fap));
             /* Image is invalid, erase it to prevent further unnecessary
              * attempts to validate and boot it.
              */
@@ -1173,7 +1173,7 @@ check_validity:
              *
              * Erase the image and continue booting from the primary slot.
              */
-            boot_scramble_slot(fap, slot);
+            flash_area_erase(fap, 0, fap->fa_size);
             fih_rc = FIH_NO_BOOTABLE_IMAGE;
             goto out;
         }
@@ -1267,12 +1267,11 @@ boot_validated_swap_type(struct boot_loader_state *state,
 #endif
 
 /**
- * Erases a region of device that requires erase prior to write; does
- * nothing on devices without erase.
+ * Erases a region of flash.
  *
- * @param fap                   The flash_area containing the region to erase.
+ * @param flash_area           The flash_area containing the region to erase.
  * @param off                   The offset within the flash area to start the
- *                              erase.
+ *                                  erase.
  * @param sz                    The number of bytes to erase.
  *
  * @return                      0 on success; nonzero on failure.
@@ -1280,197 +1279,7 @@ boot_validated_swap_type(struct boot_loader_state *state,
 int
 boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz)
 {
-    if (device_requires_erase(fap)) {
-        return flash_area_erase(fap, off, sz);
-    }
-    return 0;
-}
-
-/**
- * Removes data from specified region either by writing erase value in place of
- * data or by doing erase, if device has such hardware requirement.
- * Note that function will fail if off or size are not aligned to device
- * write block size or erase block size.
- *
- * @param fa                    The flash_area containing the region to erase.
- * @param off                   The offset within the flash area to start the
- *                              erase.
- * @param size                  The number of bytes to erase.
- *
- * @return                      0 on success; nonzero on failure.
- */
-int
-boot_scramble_region(const struct flash_area *fa, uint32_t off, uint32_t size)
-{
-    int ret = 0;
-
-    if (size == 0) {
-        return 0;
-    }
-
-    if (device_requires_erase(fa)) {
-        return flash_area_erase(fa, off, size);
-    } else {
-        uint8_t buf[BOOT_MAX_ALIGN];
-        size_t size_done = 0;
-        const size_t write_block = flash_area_align(fa);
-
-        memset(buf, flash_area_erased_val(fa), sizeof(buf));
-
-        while (size_done < size) {
-            ret = flash_area_write(fa, size_done + off, buf, write_block);
-            if (ret != 0) {
-                break;
-            }
-            size_done += write_block;
-        }
-    }
-    return ret;
-}
-
-/**
- * Removes data from specified region backwards either by writing erase_value
- * in place of data or by doing erase, if device has such hardware requirement.
- * Note that function will fail if off or size are not aligned to device
- * write block size or erase block size.
- *
- * @param fa                    The flash_area containing the region to erase.
- * @param off                   The offset within the flash area to start the
- *                              erase.
- * @param size                  The number of bytes to erase.
- *
- * @return                      0 on success; nonzero on failure.
- */
-int boot_scramble_region_backwards(const struct flash_area *fa, uint32_t off, uint32_t size)
-{
-    int ret = 0;
-    uint32_t first_offset = 0;
-
-    if (size == 0) {
-        return 0;
-    }
-
-    if (off >= flash_area_get_size(fa) || (flash_area_get_size(fa) - off) < size) {
-        return -1;
-    }
-
-    if (device_requires_erase(fa)) {
-        struct flash_sector sector;
-
-        /* Get the lowest erased page offset first */
-        ret = flash_area_get_sector(fa, off, &sector);
-        if (ret < 0) {
-            return ret;
-        }
-        first_offset = flash_sector_get_off(&sector);
-
-        /* Set boundary condition, the highest probable offset to erase, within
-         * last sector to erase
-         */
-        off += size - 1;
-
-        while (true) {
-            /* Size to read in this iteration */
-            size_t csize;
-
-            /* Get current sector and, also, correct offset */
-            ret = flash_area_get_sector(fa, off, &sector);
-            if (ret < 0) {
-                return ret;
-            }
-
-            /* Corrected offset and size of current sector to erase */
-            off = flash_sector_get_off(&sector);
-            csize = flash_sector_get_size(&sector);
-
-            ret = flash_area_erase(fa, off, csize);
-            if (ret < 0) {
-                return ret;
-            }
-
-            if (first_offset >= off) {
-                /* Reached the first offsset in range and already erased it */
-                break;
-            }
-
-            /* Move down to previous sector, the flash_area_get_sector will
-             * correct the value to real page offset
-             */
-            off -= 1;
-        }
-    } else {
-        uint8_t buf[BOOT_MAX_ALIGN];
-        const size_t write_block = flash_area_align(fa);
-        uint32_t first_offset = ALIGN_DOWN(off, write_block);
-
-        memset(buf, flash_area_erased_val(fa), sizeof(buf));
-
-        /* Starting at the last write block in range */
-        off += size - write_block;
-
-        while (true) {
-            /* Write over the area to scramble data that is there */
-            ret = flash_area_write(fa, off, buf, write_block);
-            if (ret != 0) {
-                break;
-            }
-
-            if (first_offset >= off) {
-                /* Reached the first offset in range and already scrambled it */
-                break;
-            }
-
-            off -= write_block;
-        }
-    }
-    return ret;
-}
-
-/**
- * Remove enough data from slot to mark is as unused
- * Assumption: header and trailer are not overlapping on write block or
- * erase block, if device has erase requirement.
- * Note that this function is intended for removing data not preparing device
- * for write.
- *
- * @param fa        Pointer to flash area object for slot
- * @param slot      Slot the @p fa represents
- *
- * @return          0 on success; nonzero on failure.
- */
-int
-boot_scramble_slot(const struct flash_area *fa, int slot)
-{
-    size_t size;
-    int ret = 0;
-
-    (void)slot;
-
-    /* Without minimal entire area needs to be scrambled */
-#if !defined(MCUBOOT_MINIMAL_SCRAMBLE)
-    size = flash_area_get_size(fa);
-    ret = boot_scramble_region(fa, 0, size);
-#else
-    size_t off = 0;
-
-    ret = boot_header_scramble_off_sz(fa, slot, &off, &size);
-    if (ret < 0) {
-        return ret;
-    }
-
-    ret = boot_scramble_region(fa, off, size);
-    if (ret < 0) {
-        return ret;
-    }
-
-    ret = boot_trailer_scramble_offset(fa, 0, &off);
-    if (ret < 0) {
-        return ret;
-    }
-
-    ret = boot_scramble_region_backwards(fa, off, flash_area_get_size(fa) - off);
-#endif
-    return ret;
+    return flash_area_erase(fap, off, sz);
 }
 
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
@@ -1967,6 +1776,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 }
 #endif
 
+
 /**
  * Performs a clean (not aborted) image update.
  *
@@ -2429,7 +2239,8 @@ check_downgrade_prevention(struct boot_loader_state *state)
     if (rc < 0) {
         /* Image in slot 0 prevents downgrade, delete image in slot 1 */
         BOOT_LOG_INF("Image %d in slot 1 erased due to downgrade prevention", BOOT_CURR_IMG(state));
-        boot_scramble_slot(BOOT_IMG_AREA(state, 1), BOOT_SECONDARY_SLOT);
+        flash_area_erase(BOOT_IMG_AREA(state, 1), 0,
+                         flash_area_get_size(BOOT_IMG_AREA(state, 1)));
     } else {
         rc = 0;
     }
