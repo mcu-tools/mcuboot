@@ -1023,44 +1023,6 @@ endif # BOOT_DECOMPRESSION_SUPPORT
 
 endmenu
 
-config MCUBOOT_STORAGE_WITHOUT_ERASE
-	bool "Support for devices without erase"
-	depends on FLASH_HAS_NO_EXPLICIT_ERASE
-	default y
-	help
-	  Not all devices require erase before write and, depending on driver,
-	  may emulate erase by write, as a way to scramble data rather then
-	  by hardware requirement. This unfortunately means that code that
-	  does erase before write, when not needed, will write device twice
-	  which not only reduces device life time but also doubles time
-	  of any write operation (one write for erase and one write for actual
-	  write).
-	  When this option is enabled, MCUboot will check for type of device
-	  and will avoid erase where not needed.
-
-config MCUBOOT_STORAGE_WITH_ERASE
-	bool "Support for devices with erase"
-	depends on FLASH_HAS_EXPLICIT_ERASE
-	default y
-	help
-	  Support for devices with erase
-
-config MCUBOOT_STORAGE_MINIMAL_SCRAMBLE
-	bool "Do minimal required work to remove data (EXPERIMENTAL)"
-	help
-	  In some cases MCUboot has to remove data, which usually means make
-	  it non-viable for MCUboot rather then completely destroyed.
-	  For example when MCUboot does not want to bother with broken image,
-	  in some slot, it will remove it.
-	  The same can be achieved with just removal of header and footer,
-	  leaving the rest of image untouched, as without header MCUboot will
-	  not be able to recognize image in slot as bootable.
-	  When this option is enabled, MCUboot will not attempt to erase
-	  entire slot or image, instead it will just remove enough of
-	  data from slot to not recognize it as image anymore.
-	  Depending on type of device this may be done by erase of minimal
-	  number of pages or overwrite of part of image.
-
 config MCUBOOT_DEVICE_SETTINGS
 	# Hidden selector for device-specific settings
 	bool
