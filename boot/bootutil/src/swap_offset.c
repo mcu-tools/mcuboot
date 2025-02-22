@@ -68,10 +68,10 @@ uint32_t find_last_idx(struct boot_loader_state *state, uint32_t swap_size)
 
     while (1) {
         sz += sector_sz;
-        last_idx++;
         if (sz >= swap_size) {
             break;
         }
+        last_idx++;
     }
 
     return last_idx;
