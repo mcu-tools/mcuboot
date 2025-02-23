@@ -1748,9 +1748,8 @@ fn image_largest_trailer(dev: &dyn Flash) -> usize {
             // Using the header size we know, the trailer size, and the slot size, we can compute
             // the largest image possible.
             let trailer = if Caps::OverwriteUpgrade.present() {
-                // This computation is incorrect, and we need to figure out the correct size.
-                // c::boot_status_sz(dev.align() as u32) as usize
-                16 + 4 * dev.align()
+                // magic + image-ok + copy-done + swap-info
+                c::boot_magic_sz() + 3 * c::boot_max_align()
             } else if Caps::SwapUsingOffset.present() || Caps::SwapUsingMove.present() {
                 let sector_size = dev.sector_iter().next().unwrap().size as u32;
                 align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
