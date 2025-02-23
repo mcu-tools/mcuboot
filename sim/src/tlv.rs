@@ -579,20 +579,57 @@ impl ManifestGen for TlvGen {
         }
 
         if self.kinds.contains(&TlvKinds::ECDSASIG) {
+            let keyhash;
+            let key_bytes;
+            let sign_algo;
+            let key_pair;
+            let keyhash_size;
+            let max_sig_size;
+
+            if self.kinds.contains(&TlvKinds::SHA384) {
+                keyhash = digest::digest(&digest::SHA384, ECDSAP384_PUB_KEY);
+                keyhash_size = 48;
+                key_bytes = pem::parse(include_bytes!("../../root-ec-p384-pkcs8.pem").as_ref()).unwrap();
+                sign_algo = &ECDSA_P384_SHA384_ASN1_SIGNING;
+                key_pair = EcdsaKeyPair::from_pkcs8(sign_algo, &key_bytes.contents).unwrap();
+                max_sig_size = 104; // 96 bytes for "raw" r and s + at most 8 bytes for ASN.1 encoding
+            } else {
+                keyhash = digest::digest(&digest::SHA256, ECDSA256_PUB_KEY);
+                keyhash_size = 32;
+                key_bytes = pem::parse(include_bytes!("../../root-ec-p256-pkcs8.pem").as_ref()).unwrap();
+                sign_algo = &ECDSA_P256_SHA256_ASN1_SIGNING;
+                key_pair = EcdsaKeyPair::from_pkcs8(sign_algo, &key_bytes.contents).unwrap();
+                max_sig_size = 72; // 64 bytes for "raw" r and s + at most 8 bytes for ASN.1 encoding
+            }
+
+            // ECDSA signatures are encoded as ASN.1 with the r and s values stored as signed
+            // integers. As such, the size can vary depending on the value of the high bits of r and
+            // s. The maximum size is obtained when the high bit of both r and s is '1'. To generate
+            // the largest possible image, the size of the TLV area was estimated assuming the
+            // signature has the maximal size. To obtain a TLV area size exactly equal to the
+            // estimated size, the signing process is repeated multiple times until a signature
+            // having the largest possible size is obtained. This is taking advantage of the fact
+            // ECDSA signing uses a randomly-generated nonce and is therefore non-deterministic.
+            // Theoretically, four tries should be needed on average and the probability of not
+            // having obtained a signature of the desired size after 100 tries is lower than 10e-12.
             let rng = rand::SystemRandom::new();
-            let (signature, keyhash, keyhash_size) =  if self.kinds.contains(&TlvKinds::SHA384) {
-                let keyhash = digest::digest(&digest::SHA384, ECDSAP384_PUB_KEY);
-                let key_bytes = pem::parse(include_bytes!("../../root-ec-p384-pkcs8.pem").as_ref()).unwrap();
-                let sign_algo = &ECDSA_P384_SHA384_ASN1_SIGNING;
-                let key_pair = EcdsaKeyPair::from_pkcs8(sign_algo, &key_bytes.contents).unwrap();
-                (key_pair.sign(&rng, &sig_payload).unwrap(), keyhash, 48)
-             } else {
-                let keyhash = digest::digest(&digest::SHA256, ECDSA256_PUB_KEY);
-                let key_bytes = pem::parse(include_bytes!("../../root-ec-p256-pkcs8.pem").as_ref()).unwrap();
-                let sign_algo = &ECDSA_P256_SHA256_ASN1_SIGNING;
-                let key_pair = EcdsaKeyPair::from_pkcs8(sign_algo, &key_bytes.contents).unwrap();
-                (key_pair.sign(&rng, &sig_payload).unwrap(), keyhash, 32)
-             };
+            let max_tries = 100;
+            let mut signature;
+            let mut tries = 0;
+
+            loop {
+                signature = key_pair.sign(&rng, &sig_payload).unwrap();
+
+                if signature.as_ref().len() == max_sig_size {
+                    break;
+                }
+
+                tries += 1;
+
+                if tries >= max_tries {
+                    panic!("Failed to generate signature of correct size");
+                }
+            }
 
             // Write public key
             let keyhash_slice = keyhash.as_ref();
@@ -781,23 +818,8 @@ impl ManifestGen for TlvGen {
         let mut size_buf = &mut result[npro_pos + 2 .. npro_pos + 4];
         size_buf.write_u16::<LittleEndian>(size).unwrap();
 
-        // ECDSA is stored as an ASN.1 integer.  For a 128-bit value, this maximally results in 33
-        // bytes of storage for each of the two values.  If the high bit is zero, it will take 32
-        // bytes, if the top 8 bits are zero, it will take 31 bits, and so on.  The smaller size
-        // will occur with decreasing likelihood.  We'll allow this to get a bit smaller, hopefully
-        // allowing the tests to pass with false failures rare.  For this case, we'll handle up to
-        // the top 16 bits of both numbers being all zeros (1 in 2^32).
-        if !Caps::has_ecdsa() {
-            if size_estimate != result.len() {
-                panic!("Incorrect size estimate: {} (actual {})", size_estimate, result.len());
-            }
-        } else {
-            if size_estimate < result.len() || size_estimate > result.len() + 6 {
-                panic!("Incorrect size estimate: {} (actual {})", size_estimate, result.len());
-            }
-        }
         if size_estimate != result.len() {
-            log::warn!("Size off: {} actual {}", size_estimate, result.len());
+            panic!("Incorrect size estimate: {} (actual {})", size_estimate, result.len());
         }
 
         result
