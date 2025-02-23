@@ -1827,9 +1827,8 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
 
             info!("slot: 0x{:x}, HDR: 0x{:x}, trailer: 0x{:x}",
                 slot_len, HDR_SIZE, trailer);
-            // the overflow size is rougly estimated to work for all
-            // configurations. It might be precise if tlv_len will be maked precise.
-            slot_len - HDR_SIZE - trailer - tlv_len - sector_offset + dev.align()*4
+
+            slot_len - HDR_SIZE - trailer - tlv_len - sector_offset + dev.align()
         }
 
     };
