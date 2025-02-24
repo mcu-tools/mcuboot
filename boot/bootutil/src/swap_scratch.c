@@ -464,13 +464,15 @@ boot_copy_sz(const struct boot_loader_state *state, int last_sector_idx,
 static int
 find_last_sector_idx(const struct boot_loader_state *state, uint32_t copy_size)
 {
-    int last_sector_idx;
+    int last_sector_idx_primary;
+    int last_sector_idx_secondary;
     uint32_t primary_slot_size;
     uint32_t secondary_slot_size;
 
     primary_slot_size = 0;
     secondary_slot_size = 0;
-    last_sector_idx = 0;
+    last_sector_idx_primary = 0;
+    last_sector_idx_secondary = 0;
 
     /*
      * Knowing the size of the largest image between both slots, here we
@@ -483,23 +485,24 @@ find_last_sector_idx(const struct boot_loader_state *state, uint32_t copy_size)
             (primary_slot_size < secondary_slot_size)) {
            primary_slot_size += boot_img_sector_size(state,
                                                      BOOT_PRIMARY_SLOT,
-                                                     last_sector_idx);
+                                                     last_sector_idx_primary);
+            ++last_sector_idx_primary;
         }
         if ((secondary_slot_size < copy_size) ||
             (secondary_slot_size < primary_slot_size)) {
            secondary_slot_size += boot_img_sector_size(state,
                                                        BOOT_SECONDARY_SLOT,
-                                                       last_sector_idx);
+                                                       last_sector_idx_secondary);
+            ++last_sector_idx_secondary;
         }
         if (primary_slot_size >= copy_size &&
                 secondary_slot_size >= copy_size &&
                 primary_slot_size == secondary_slot_size) {
             break;
         }
-        last_sector_idx++;
     }
 
-    return last_sector_idx;
+    return last_sector_idx_primary - 1;
 }
 
 /**

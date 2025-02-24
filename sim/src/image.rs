@@ -453,6 +453,29 @@ impl ImagesBuilder {
                 flash.insert(dev_id, dev);
                 (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset])
             }
+            DeviceName::Stm32f4SpiFlash => {
+                // STM style internal flash and external SPI flash.
+                let dev0 = SimFlash::new(vec![
+                                        16 * 1024, 16 * 1024, 16 * 1024, 16 * 1024, 64 * 1024,
+                                        32 * 1024, 32 * 1024, 64 * 1024,
+                                        32 * 1024, 32 * 1024, 64 * 1024,
+                                        128 * 1024],
+                                        align as usize, erased_val);
+
+                let dev1: SimFlash = SimFlash::new(vec![8192; 64], align as usize, erased_val);
+
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(0, &dev0);
+                areadesc.add_flash_sectors(1, &dev1);
+                areadesc.add_image(0x020000, 0x020000, FlashId::Image0, 0);
+                areadesc.add_image(0x000000, 0x020000, FlashId::Image1, 1);
+                areadesc.add_image(0x020000, 0x020000, FlashId::ImageScratch, 1);
+
+                let mut flash = SimMultiFlash::new();
+                flash.insert(0, dev0);
+                flash.insert(1, dev1);
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset])
+            }
             DeviceName::K64f => {
                 // NXP style flash.  Small sectors, one small sector for scratch.
                 let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
