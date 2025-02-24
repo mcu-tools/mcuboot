@@ -234,20 +234,20 @@ impl ImagesBuilder {
 
             let (primaries,upgrades) =  if img_manipulation == ImageManipulation::CorruptHigherVersionImage && !higher_version_corrupted {
                 higher_version_corrupted = true;
-               let prim =  install_image(&mut flash, &slots[0],
+               let prim =  install_image(&mut flash, &self.areadesc, &slots[0],
                     maximal(42784), &ram, &*dep, ImageManipulation::None, Some(0), false);
                 let upgr   = match deps.depends[image_num] {
                     DepType::NoUpgrade => install_no_image(),
-                    _ => install_image(&mut flash, &slots[1],
+                    _ => install_image(&mut flash, &self.areadesc, &slots[1],
                         maximal(46928), &ram, &*dep, ImageManipulation::BadSignature, Some(0), true)
                 };
                 (prim, upgr)
             } else {
-                let prim = install_image(&mut flash, &slots[0],
+                let prim = install_image(&mut flash, &self.areadesc, &slots[0],
                     maximal(42784), &ram, &*dep, img_manipulation, Some(0), false);
                 let upgr = match deps.depends[image_num] {
                         DepType::NoUpgrade => install_no_image(),
-                        _ => install_image(&mut flash, &slots[1],
+                        _ => install_image(&mut flash, &self.areadesc, &slots[1],
                             maximal(46928), &ram, &*dep, img_manipulation, Some(0), true)
                     };
                 (prim, upgr)
@@ -298,9 +298,9 @@ impl ImagesBuilder {
         let ram = self.ram.clone(); // TODO: Avoid this clone.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
-            let primaries = install_image(&mut bad_flash, &slots[0],
+            let primaries = install_image(&mut bad_flash, &self.areadesc, &slots[0],
                 maximal(32784), &ram, &dep, ImageManipulation::None, Some(0), false);
-            let upgrades = install_image(&mut bad_flash, &slots[1],
+            let upgrades = install_image(&mut bad_flash, &self.areadesc, &slots[1],
                 maximal(41928), &ram, &dep, ImageManipulation::BadSignature, Some(0), true);
             OneImage {
                 slots,
@@ -321,9 +321,9 @@ impl ImagesBuilder {
         let ram = self.ram.clone(); // TODO: Avoid this clone.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
-            let primaries = install_image(&mut bad_flash, &slots[0],
+            let primaries = install_image(&mut bad_flash, &self.areadesc, &slots[0],
                 maximal(32784), &ram, &dep, ImageManipulation::None, Some(0), false);
-            let upgrades = install_image(&mut bad_flash, &slots[1],
+            let upgrades = install_image(&mut bad_flash, &self.areadesc, &slots[1],
                 ImageSize::Oversized, &ram, &dep, ImageManipulation::None, Some(0), true);
             OneImage {
                 slots,
@@ -344,7 +344,7 @@ impl ImagesBuilder {
         let ram = self.ram.clone(); // TODO: Avoid this clone.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
-            let primaries = install_image(&mut flash, &slots[0],
+            let primaries = install_image(&mut flash, &self.areadesc, &slots[0],
                 maximal(32784), &ram, &dep,ImageManipulation::None, Some(0), false);
             let upgrades = install_no_image();
             OneImage {
@@ -367,7 +367,7 @@ impl ImagesBuilder {
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_no_image();
-            let upgrades = install_image(&mut flash, &slots[1],
+            let upgrades = install_image(&mut flash, &self.areadesc, &slots[1],
                 maximal(32784), &ram, &dep, ImageManipulation::None, Some(0), true);
             OneImage {
                 slots,
@@ -389,7 +389,7 @@ impl ImagesBuilder {
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
             let primaries = install_no_image();
-            let upgrades = install_image(&mut flash, &slots[1],
+            let upgrades = install_image(&mut flash, &self.areadesc, &slots[1],
                 ImageSize::Oversized, &ram, &dep, ImageManipulation::None, Some(0), true);
             OneImage {
                 slots,
@@ -411,9 +411,9 @@ impl ImagesBuilder {
         let ram = self.ram.clone(); // TODO: Avoid this clone.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
-            let primaries = install_image(&mut flash, &slots[0],
+            let primaries = install_image(&mut flash, &self.areadesc, &slots[0],
                 maximal(32784), &ram, &dep,  ImageManipulation::None, security_cnt, false);
-            let upgrades = install_image(&mut flash, &slots[1],
+            let upgrades = install_image(&mut flash, &self.areadesc, &slots[1],
                 maximal(41928), &ram, &dep, ImageManipulation::None, security_cnt.map(|v| v + 1), true);
             OneImage {
                 slots,
@@ -1731,20 +1731,54 @@ enum ImageSize {
     Oversized,
 }
 
-#[cfg(not(feature = "max-align-32"))]
-fn tralier_estimation(dev: &dyn Flash) -> usize {
-    c::boot_trailer_sz(dev.align() as u32) as usize
+/// Estimate the number of bytes in each slot that must be reserved for the trailer when
+/// swap-scratch is used.
+fn estimate_swap_scratch_trailer_size(dev: &dyn Flash, areadesc: &AreaDesc, slot: &SlotInfo) -> usize {
+    // Compute the minimal size that must be allocated to the trailer, without considering the
+    // trailer in the sratch area.
+    let mut trailer_sz = c::boot_trailer_sz(dev.align() as u32) as usize;
+
+    // If the trailer is not a multiple of the sector size, the last sector that can hold firmware
+    // data also contains the trailer or a part of it. Let's compute the size of the part of the
+    // trailer that is in the last firmware sector.
+    let mut trailer_sz_in_fw_sector = trailer_sz;
+
+    let flash_id = match slot.index {
+        0 => FlashId::Image0,
+        1 => FlashId::Image1,
+        _ => panic!("Invalid slot index"),
+    };
+
+    let slot_sectors = areadesc.get_area_sectors(flash_id).unwrap();
+
+    for sector in slot_sectors.iter().rev() {
+        let sector_sz = sector.size as usize;
+
+        if sector_sz > trailer_sz_in_fw_sector {
+            break;
+        }
+
+        trailer_sz_in_fw_sector -= sector_sz;
+    }
+
+    // If the trailer is not a multiple of the sector size, when the last sector containing firmware
+    // data will be copied to the scratch area, it must be ensured enough space is left to write the
+    // scratch trailer.
+    if trailer_sz_in_fw_sector != 0 {
+        // The scratch contains a single boot status entry
+        let boot_status_entry_sz = 3 * dev.align();
+        let trailer_info_sz = trailer_sz - c::boot_status_sz(dev.align() as u32) as usize;
+        let scratch_trailer_sz = boot_status_entry_sz + trailer_info_sz;
+
+        if scratch_trailer_sz > trailer_sz_in_fw_sector {
+            trailer_sz += scratch_trailer_sz - trailer_sz_in_fw_sector;
+        }
+    }
+
+    trailer_sz
 }
 
-#[cfg(feature = "max-align-32")]
-fn tralier_estimation(dev: &dyn Flash) -> usize {
-
-    let sector_size = dev.sector_iter().next().unwrap().size as u32;
-
-    align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
-}
-
-fn image_largest_trailer(dev: &dyn Flash) -> usize {
+fn image_largest_trailer(dev: &dyn Flash, areadesc: &AreaDesc, slot: &SlotInfo) -> usize {
             // Using the header size we know, the trailer size, and the slot size, we can compute
             // the largest image possible.
             let trailer = if Caps::OverwriteUpgrade.present() {
@@ -1755,7 +1789,7 @@ fn image_largest_trailer(dev: &dyn Flash) -> usize {
                 let sector_size = dev.sector_iter().next().unwrap().size as u32;
                 align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
             } else if Caps::SwapUsingScratch.present() {
-                tralier_estimation(dev)
+                estimate_swap_scratch_trailer_size(dev, areadesc, slot)
             } else {
                 panic!("The maximum image size can't be calculated.")
             };
@@ -1765,7 +1799,7 @@ fn image_largest_trailer(dev: &dyn Flash) -> usize {
 
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the
 /// fields used by the given code.  Returns a copy of the image that was written.
-fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
+fn install_image(flash: &mut SimMultiFlash, areadesc: &AreaDesc, slot: &SlotInfo, len: ImageSize,
                  ram: &RamData,
                  deps: &dyn Depender, img_manipulation: ImageManipulation, security_counter:Option<u32>, secondary_slot:bool) -> ImageData {
     let mut offset = slot.base_off;
@@ -1808,14 +1842,14 @@ fn install_image(flash: &mut SimMultiFlash, slot: &SlotInfo, len: ImageSize,
     let len = match len {
         ImageSize::Given(size) => size,
         ImageSize::Largest => {
-            let trailer = image_largest_trailer(dev);
+            let trailer = image_largest_trailer(dev, &areadesc, &slot);
             let tlv_len = tlv.estimate_size();
             info!("slot: 0x{:x}, HDR: 0x{:x}, trailer: 0x{:x}",
                 slot_len, HDR_SIZE, trailer);
             slot_len - HDR_SIZE - trailer - tlv_len
         },
         ImageSize::Oversized => {
-            let trailer = image_largest_trailer(dev);
+            let trailer = image_largest_trailer(dev, &areadesc, &slot);
             let tlv_len = tlv.estimate_size();
             let mut sector_offset = 0;
 

@@ -331,12 +331,87 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
 }
 #endif
 
-uint32_t bootutil_max_image_size(const struct flash_area *fap)
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
+size_t
+boot_get_first_trailer_sector(struct boot_loader_state *state, size_t slot, size_t trailer_sz)
 {
-#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SINGLE_APPLICATION_SLOT) || \
-    defined(MCUBOOT_FIRMWARE_LOADER) || defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+    size_t first_trailer_sector = boot_img_num_sectors(state, slot) - 1;
+    size_t sector_sz = boot_img_sector_size(state, slot, first_trailer_sector);
+    size_t trailer_sector_sz = sector_sz;
+
+    while (trailer_sector_sz < trailer_sz) {
+        /* Consider that the image trailer may span across sectors of different sizes */
+        --first_trailer_sector;
+        sector_sz = boot_img_sector_size(state, slot, first_trailer_sector);
+
+        trailer_sector_sz += sector_sz;
+    }
+
+    return first_trailer_sector;
+}
+
+/**
+ * Returns the offset to the end of the first sector of a given slot that holds image trailer data.
+ *
+ * @param state      Current bootloader's state.
+ * @param slot       The index of the slot to consider.
+ * @param trailer_sz The size of the trailer, in bytes.
+ *
+ * @return The offset to the end of the first sector of the slot that holds image trailer data.
+ */
+static uint32_t
+get_first_trailer_sector_end_off(struct boot_loader_state *state, size_t slot, size_t trailer_sz)
+{
+    size_t first_trailer_sector = boot_get_first_trailer_sector(state, slot, trailer_sz);
+
+    return boot_img_sector_off(state, slot, first_trailer_sector) +
+           boot_img_sector_size(state, slot, first_trailer_sector);
+}
+#endif /* MCUBOOT_SWAP_USING_SCRATCH */
+
+uint32_t bootutil_max_image_size(struct boot_loader_state *state, const struct flash_area *fap)
+{
+#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) ||      \
+    defined(MCUBOOT_FIRMWARE_LOADER) ||              \
+    defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+    (void) state;
     return boot_status_off(fap);
+#elif defined(MCUBOOT_SWAP_USING_SCRATCH)
+    size_t slot_trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
+    size_t slot_trailer_off = flash_area_get_size(fap) - slot_trailer_sz;
+
+    /* If the trailer doesn't fit in the last sector of the primary or secondary slot, some padding
+     * might have to be inserted between the end of the firmware image and the beginning of the
+     * trailer to ensure there is enough space for the trailer in the scratch area when the last
+     * sector of the secondary will be copied to the scratch area.
+     *
+     * The value of the padding depends on the amount of trailer data that is contained in the first
+     * trailer containing part of the trailer in the primary and secondary slot.
+     */
+    size_t trailer_sector_primary_end_off =
+        get_first_trailer_sector_end_off(state, BOOT_PRIMARY_SLOT, slot_trailer_sz);
+    size_t trailer_sector_secondary_end_off =
+        get_first_trailer_sector_end_off(state, BOOT_SECONDARY_SLOT, slot_trailer_sz);
+
+    size_t trailer_sz_in_first_sector;
+
+    if (trailer_sector_primary_end_off > trailer_sector_secondary_end_off) {
+        trailer_sz_in_first_sector = trailer_sector_primary_end_off - slot_trailer_off;
+    } else {
+        trailer_sz_in_first_sector = trailer_sector_secondary_end_off - slot_trailer_off;
+    }
+
+    size_t trailer_padding = 0;
+    size_t scratch_trailer_sz = boot_scratch_trailer_sz(BOOT_WRITE_SZ(state));
+
+    if (scratch_trailer_sz > trailer_sz_in_first_sector) {
+        trailer_padding = scratch_trailer_sz - trailer_sz_in_first_sector;
+    }
+
+    return slot_trailer_off - trailer_padding;
 #elif defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
+    (void) state;
+
     struct flash_sector sector;
     /* get the last sector offset */
     int rc = flash_area_get_sector(fap, boot_status_off(fap), &sector);
@@ -348,10 +423,13 @@ uint32_t bootutil_max_image_size(const struct flash_area *fap)
     }
     return flash_sector_get_off(&sector);
 #elif defined(MCUBOOT_OVERWRITE_ONLY)
+    (void) state;
     return boot_swap_info_off(fap);
 #elif defined(MCUBOOT_DIRECT_XIP)
+    (void) state;
     return boot_swap_info_off(fap);
 #elif defined(MCUBOOT_RAM_LOAD)
+    (void) state;
     return boot_swap_info_off(fap);
 #endif
 }

@@ -555,7 +555,7 @@ bootutil_img_validate(struct boot_loader_state *state,
         goto out;
     }
 
-    if (it.tlv_end > bootutil_max_image_size(fap)) {
+    if (it.tlv_end > bootutil_max_image_size(state, fap)) {
         rc = -1;
         goto out;
     }
