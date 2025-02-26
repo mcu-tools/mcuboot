@@ -62,13 +62,13 @@ function(_mcuboot_generate_image TARGET IMAGE_TYPE IMAGE_BASE_PATH)
   set(TARGET_HEX_FILE ${CMAKE_CURRENT_BINARY_DIR}/$<TARGET_FILE_BASE_NAME:${TARGET}>.hex)
 
   # Grab header size
-  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_HEADER_SIZE=(0x[0-9A-Fa-f]+)")
+  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_HEADER_SIZE=((0x[0-9A-Fa-f]+)|([0-9]+))")
     message(FATAL_ERROR "Couldn't find MCUBOOT_HEADER_SIZE in Mbed configuration!")
   endif()
   set(HEADER_SIZE_HEX ${CMAKE_MATCH_1})
 
   # Grab slot size
-  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_SLOT_SIZE=(0x[0-9A-Fa-f]+)")
+  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_SLOT_SIZE=((0x[0-9A-Fa-f]+)|([0-9]+))")
     message(FATAL_ERROR "Couldn't find MCUBOOT_SLOT_SIZE in Mbed configuration!")
   endif()
   set(SLOT_SIZE_HEX ${CMAKE_MATCH_1})
@@ -76,11 +76,12 @@ function(_mcuboot_generate_image TARGET IMAGE_TYPE IMAGE_BASE_PATH)
   get_property(objcopy GLOBAL PROPERTY ELF2BIN)
 
   if(${IMAGE_TYPE} STREQUAL "update" AND "MCUBOOT_ENCRYPT_RSA=1" IN_LIST MBED_CONFIG_DEFINITIONS)
-    set(IMGTOOL_EXTRA_ARGS --encrypt ${MCUBOOT_ENCRYPTION_KEY_ABSPATH})
+    # MCUBOOT_ENCRYPTION_PUBLIC_KEY_PATH is set in CMakeLists.txt
+    set(IMGTOOL_EXTRA_ARGS --encrypt ${MCUBOOT_ENCRYPTION_PUBLIC_KEY_PATH})
   elseif(${IMAGE_TYPE} STREQUAL "initial" AND "MCUBOOT_ENCRYPT_RSA=1" IN_LIST MBED_CONFIG_DEFINITIONS)
     # If encryption is enabled, generate unencrypted initial image which supports encryption.
     # See https://github.com/mbed-ce/mbed-os/issues/401#issuecomment-2567099213
-    set(IMGTOOL_EXTRA_ARGS --clear)
+    set(IMGTOOL_EXTRA_ARGS --encrypt ${MCUBOOT_ENCRYPTION_PUBLIC_KEY_PATH} --clear)
   else()
     set(IMGTOOL_EXTRA_ARGS "")
   endif()
@@ -88,7 +89,6 @@ function(_mcuboot_generate_image TARGET IMAGE_TYPE IMAGE_BASE_PATH)
   add_custom_command(
     TARGET ${TARGET}
     POST_BUILD
-    DEPENDS ${MCUBOOT_SIGNING_KEY_ABSPATH}
     COMMAND
       ${Python3_EXECUTABLE} -m imgtool.main
       sign
@@ -115,6 +115,9 @@ function(_mcuboot_generate_image TARGET IMAGE_TYPE IMAGE_BASE_PATH)
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     VERBATIM
   )
+  if("MCUBOOT_ENCRYPT_RSA=1" IN_LIST MBED_CONFIG_DEFINITIONS)
+    add_dependencies(${TARGET} mcuboot-gen-enc-public-key)
+  endif()
 endfunction(_mcuboot_generate_image)
 
 #
@@ -141,7 +144,7 @@ function(mcuboot_generate_initial_image TARGET) # optional 2nd arg: initial imag
   # We need to be slightly creative here -- Mbed thinks that the application start address
   # is <primary slot address> + <header size>, but we actually want to upload to <primary slot address>.
   # So we need to temporarily override MBED_UPLOAD_BASE_ADDR with an offset value
-  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_HEADER_SIZE=(0x[0-9A-Fa-f]+)")
+  if(NOT "${MBED_CONFIG_DEFINITIONS}" MATCHES "MCUBOOT_HEADER_SIZE=((0x[0-9A-Fa-f]+)|([0-9]+))")
     message(FATAL_ERROR "Couldn't find MCUBOOT_HEADER_SIZE in Mbed configuration!")
   endif()
   set(HEADER_SIZE_HEX ${CMAKE_MATCH_1})
@@ -202,18 +205,43 @@ endfunction(mcuboot_generate_signing_keys_file)
 # Generate a C source file with the encryption private key in it at the given location.
 # The file should be added as a source file to a library built in the same directory.
 #
-function(mcuboot_generate_encryption_key_file ENC_KEY_C_PATH)
+function(mcuboot_generate_encryption_private_key_file ENC_PRIVATE_KEY_C_PATH)
   add_custom_command(
-    OUTPUT ${ENC_KEY_C_PATH}
+    OUTPUT ${ENC_PRIVATE_KEY_C_PATH}
     COMMAND
       ${Python3_EXECUTABLE} -m imgtool.main
       getpriv
-      --key ${MCUBOOT_SIGNING_KEY_ABSPATH}
-      > ${ENC_KEY_C_PATH}
+      --key ${MCUBOOT_ENCRYPTION_KEY_ABSPATH}
+      > ${ENC_PRIVATE_KEY_C_PATH}
 
-    DEPENDS ${MCUBOOT_SIGNING_KEY_ABSPATH}
+    DEPENDS ${MCUBOOT_ENCRYPTION_KEY_ABSPATH}
     COMMENT "Converting encryption key to C source..."
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     VERBATIM
   )
-endfunction(mcuboot_generate_encryption_key_file)
+endfunction(mcuboot_generate_encryption_private_key_file)
+
+#
+# Generate a PEM file with the encryption public key in it
+# This is a temporal file, should be stored in the build folder
+#
+function(mcuboot_generate_encryption_public_key_file ENC_PUBLIC_KEY_PATH)
+  add_custom_command(
+    OUTPUT ${ENC_PUBLIC_KEY_PATH}
+    COMMAND
+      ${Python3_EXECUTABLE} -m imgtool.main
+      getpub
+      --key ${MCUBOOT_ENCRYPTION_KEY_ABSPATH}
+      --encoding pem
+      > ${ENC_PUBLIC_KEY_PATH}
+
+    DEPENDS ${MCUBOOT_ENCRYPTION_KEY_ABSPATH}
+    COMMENT "Extracting encryption public key to PEM format..."
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    VERBATIM
+  )
+  # Custom target to ensure that public key gets generated
+  add_custom_target(mcuboot-gen-enc-public-key
+  ALL
+  DEPENDS ${ENC_PUBLIC_KEY_PATH})
+endfunction(mcuboot_generate_encryption_public_key_file)
