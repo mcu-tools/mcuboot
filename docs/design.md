@@ -345,7 +345,7 @@ image. After a successful validation of the selected image the bootloader
 chain-loads it.
 
 An additional "revert" mechanism is also supported. For more information, please
-read the [corresponding section](#direct-xip-revert).
+read the [corresponding section](#direct-xip-ram-load-revert).
 Handling the primary and secondary slots as equals has its drawbacks. Since the
 images are not moved between the slots, the on-the-fly image
 encryption/decryption can't be supported (it only applies to storing the image
@@ -399,6 +399,11 @@ the image is checked for encryption. If the image is not encrypted, RAM loading
 happens as described above. If the image is encrypted, it is copied in RAM at
 the provided address and then decrypted. Finally, the decrypted image is
 authenticated in RAM and executed.
+
+Similar to direct-xip, ram-load mode also supports a "revert" mechanism.
+This mechanism works in the same manner as the direct-xip revert mechanism does,
+so please see the [corresponding section](#direct-xip-ram-load-revert) for
+more details.
 
 ## [Boot swap types](#boot-swap-types)
 
@@ -455,19 +460,22 @@ The "swap type" is a high-level representation of the outcome of the
 boot. Subsequent sections describe how MCUboot determines the swap type from
 the bit-level contents of flash.
 
-### [Revert mechanism in direct-xip mode](#direct-xip-revert)
+### [Revert mechanism in direct-xip and ram-load mode](#direct-xip-ram-load-revert)
 
-The direct-xip mode also supports a "revert" mechanism which is the equivalent
-of the swap mode's "revert" swap. When the direct-xip mode is selected it can be
-enabled with the MCUBOOT_DIRECT_XIP_REVERT config option and an image trailer
-must also be added to the signed images (the "--pad" option of the `imgtool`
-script must be used). For more information on this please read the
-[Image Trailer](#image-trailer) section and the [imgtool](imgtool.md)
-documentation. Making the images permanent (marking them as confirmed in
-advance) is also supported just like in swap mode. The individual steps of the
-direct-xip mode's "revert" mechanism are the following:
+The direct-xip and ram-load modes also support a "revert" mechanism which is the
+equivalent of the swap mode's "revert" swap. When the direct-xip mode is
+selected it can be enabled with the `MCUBOOT_DIRECT_XIP_REVERT` config option.
+In ram-load mode, the feature is enabled with `MCUBOOT_RAM_LOAD_REVERT` config
+option.  Note that an image trailer must also be added to the signed images (the
+"--pad" option of the `imgtool` script must be used). Otherwise, MCUboot will
+not recognize the image as valid and will attempt to revert it. For more
+information on this please read the [Image Trailer](#image-trailer) section and
+the [imgtool](imgtool.md) documentation. Making the images permanent (marking
+them as confirmed in advance) is also supported just like in swap mode. The
+individual steps of this "revert" mechanism are the following:
 
-1. Select the slot which holds the newest potential image.
+1. Select the slot which holds the newest potential image, based on the
+   version number
 2. Was the image previously selected to run (during a previous boot)?
     + Yes: Did the image mark itself "OK" (was the self-test successful)?
         + Yes.
