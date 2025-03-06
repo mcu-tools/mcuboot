@@ -78,6 +78,8 @@
  */
 #define MCUBOOT_USE_FLASH_AREA_GET_SECTORS
 
+#define MCUBOOT_DEV_WITH_ERASE
+
 /*
  * No watchdog integration for now
  */
