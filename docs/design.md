@@ -584,12 +584,13 @@ of 3 is explained below.
     the trailer belongs to if boot status is found on scratch area when the swap
     operation is resumed.
 
-| Name                      | Value |
-| ------------------------- | ----- |
-| `BOOT_SWAP_TYPE_TEST`     | 2     |
-| `BOOT_SWAP_TYPE_PERM`     | 3     |
-| `BOOT_SWAP_TYPE_REVERT`   | 4     |
-
+```
+    | Name                      | Value |
+    | ------------------------- | ----- |
+    | `BOOT_SWAP_TYPE_TEST`     | 2     |
+    | `BOOT_SWAP_TYPE_PERM`     | 3     |
+    | `BOOT_SWAP_TYPE_REVERT`   | 4     |
+```
 
 5. Copy done: A single byte indicating whether the image in this slot is
    complete (0x01=done; 0xff=not done).
