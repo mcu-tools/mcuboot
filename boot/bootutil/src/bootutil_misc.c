@@ -447,19 +447,12 @@ boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
     struct image_tlv_info info;
     uint32_t off;
     uint32_t protect_tlv_size;
-    int area_id;
     int rc;
 
-#if (BOOT_IMAGE_NUMBER == 1)
-    (void)state;
-#endif
+    assert(slot == BOOT_PRIMARY_SLOT || slot == BOOT_SECONDARY_SLOT);
 
-    area_id = flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), slot);
-    rc = flash_area_open(area_id, &fap);
-    if (rc != 0) {
-        rc = BOOT_EFLASH;
-        goto done;
-    }
+    fap = BOOT_IMG_AREA(state, slot);
+    assert(fap != NULL);
 
     off = BOOT_TLV_OFF(boot_img_hdr(state, slot));
 
@@ -493,7 +486,6 @@ boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
     rc = 0;
 
 done:
-    flash_area_close(fap);
     return rc;
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
