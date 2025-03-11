@@ -716,7 +716,6 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
 {
     const struct flash_area *fap;
     uint32_t off;
-    int area_id;
     int rc = 0;
     uint8_t buf[BOOT_MAX_ALIGN];
     uint32_t align;
@@ -731,19 +730,14 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
 #if MCUBOOT_SWAP_USING_SCRATCH
     if (bs->use_scratch) {
         /* Write to scratch. */
-        area_id = FLASH_AREA_IMAGE_SCRATCH;
+        fap = state->scratch.area;
     } else {
 #endif
         /* Write to the primary slot. */
-        area_id = FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state));
+        fap = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
 #if MCUBOOT_SWAP_USING_SCRATCH
     }
 #endif
-
-    rc = flash_area_open(area_id, &fap);
-    if (rc != 0) {
-        return BOOT_EFLASH;
-    }
 
     off = boot_status_off(fap) +
           boot_status_internal_off(bs, BOOT_WRITE_SZ(state));
@@ -760,8 +754,6 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
     if (rc != 0) {
         rc = BOOT_EFLASH;
     }
-
-    flash_area_close(fap);
 
     return rc;
 }
@@ -1470,13 +1462,11 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     BOOT_LOG_INF("Image %d upgrade secondary slot -> primary slot", image_index);
     BOOT_LOG_INF("Erasing the primary slot");
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index),
-            &fap_primary_slot);
-    assert (rc == 0);
+    fap_primary_slot = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+    assert(fap_primary_slot != NULL);
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_SECONDARY(image_index),
-            &fap_secondary_slot);
-    assert (rc == 0);
+    fap_secondary_slot = BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT);
+    assert(fap_secondary_slot != NULL);
 
     sect_count = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
     for (sect = 0, size = 0; sect < sect_count; sect++) {
@@ -1589,9 +1579,6 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
                            boot_img_sector_size(state, BOOT_SECONDARY_SLOT,
                                last_sector));
     assert(rc == 0);
-
-    flash_area_close(fap_primary_slot);
-    flash_area_close(fap_secondary_slot);
 
     /* TODO: Perhaps verify the primary slot's signature again? */
 

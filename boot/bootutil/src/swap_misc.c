@@ -124,7 +124,6 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
     const struct flash_area *fap;
     uint32_t off;
     uint8_t swap_info;
-    int area_id;
     int rc;
 
     bs->source = swap_status_source(state);
@@ -134,12 +133,12 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
 
 #if MCUBOOT_SWAP_USING_SCRATCH
     case BOOT_STATUS_SOURCE_SCRATCH:
-        area_id = FLASH_AREA_IMAGE_SCRATCH;
+        fap = state->scratch.area;
         break;
 #endif
 
     case BOOT_STATUS_SOURCE_PRIMARY_SLOT:
-        area_id = FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state));
+        fap = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
         break;
 
     default:
@@ -147,10 +146,7 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
         return BOOT_EBADARGS;
     }
 
-    rc = flash_area_open(area_id, &fap);
-    if (rc != 0) {
-        return BOOT_EFLASH;
-    }
+    assert(fap != NULL);
 
     rc = swap_read_status_bytes(fap, state, bs);
     if (rc == 0) {
@@ -171,8 +167,6 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
     }
 
 done:
-    flash_area_close(fap);
-
     return rc;
 }
 
