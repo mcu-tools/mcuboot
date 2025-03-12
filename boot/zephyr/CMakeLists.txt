@@ -31,7 +31,7 @@ assert_exists(TINYCRYPT_SHA512_DIR)
 set(FIAT_DIR "${MCUBOOT_DIR}/ext/fiat")
 assert_exists(FIAT_DIR)
 # Path to mbed-tls' asn1 parser library.
-if(NOT CONFIG_MBEDTLS_BUILTIN)
+if(NOT CONFIG_MBEDTLS_BUILTIN AND NOT CONFIG_BOOT_KEY_IMPORT_BYPASS_ASN)
   set(MBEDTLS_ASN1_DIR "${MCUBOOT_DIR}/ext/mbedtls-asn1")
   assert_exists(MBEDTLS_ASN1_DIR)
 endif()
