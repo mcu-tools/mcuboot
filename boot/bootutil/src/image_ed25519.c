@@ -18,10 +18,10 @@
 #define MBEDTLS_ASN1_PARSE_C
 #include "mbedtls/oid.h"
 #include "mbedtls/asn1.h"
+#include "bootutil/crypto/common.h"
 #endif
 
 #include "bootutil_priv.h"
-#include "bootutil/crypto/common.h"
 #include "bootutil/crypto/sha.h"
 
 #define EDDSA_SIGNATURE_LENGTH 64
