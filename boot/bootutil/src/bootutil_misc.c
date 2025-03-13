@@ -173,7 +173,7 @@ boot_status_off(const struct flash_area *fap)
     elem_sz = flash_area_align(fap);
 
 #if MCUBOOT_SWAP_USING_SCRATCH
-    if (fap->fa_id == FLASH_AREA_IMAGE_SCRATCH) {
+    if (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SCRATCH) {
         off_from_end = boot_scratch_trailer_sz(elem_sz);
     } else {
 #endif
