@@ -20,7 +20,6 @@ config MCUBOOT
 config BOOT_USE_MBEDTLS
 	bool
 	# Hidden option
-	default n
 	help
 	  Use mbedTLS for crypto primitives.
 
@@ -33,7 +32,6 @@ config BOOT_USE_PSA_CRYPTO
 config BOOT_USE_TINYCRYPT
 	bool
 	# Hidden option
-	default n
 	# When building for ECDSA, we use our own copy of mbedTLS, so the
 	# Zephyr one must not be enabled or the MBEDTLS_CONFIG_FILE macros
 	# will collide.
@@ -44,7 +42,6 @@ config BOOT_USE_TINYCRYPT
 config BOOT_USE_CC310
 	bool
 	# Hidden option
-	default n
 	# When building for ECDSA, we use our own copy of mbedTLS, so the
 	# Zephyr one must not be enabled or the MBEDTLS_CONFIG_FILE macros
 	# will collide.
@@ -53,15 +50,12 @@ config BOOT_USE_CC310
 
 config BOOT_USE_NRF_CC310_BL
 	bool
-	default n
 
 config NRFXLIB_CRYPTO
 	bool
-	default n
 
 config NRF_CC310_BL
 	bool
-	default n
 
 if BOOT_USE_MBEDTLS && MBEDTLS_BUILTIN
 
@@ -130,7 +124,6 @@ menu "MCUBoot settings"
 
 config SINGLE_APPLICATION_SLOT
 	bool "Single slot bootloader"
-	default n
 	help
 	  Single image area is used for application which means that
 	  uploading a new application overwrites the one that previously
@@ -376,7 +369,6 @@ config MBEDTLS_CFG_FILE
 
 config BOOT_HW_KEY
 	bool "Use HW key for image verification"
-	default n
 	help
 	  Use HW key for image verification, otherwise the public key is embedded
 	  in MCUBoot. If enabled the public key is appended to the signed image
@@ -395,7 +387,6 @@ config BOOT_VALIDATE_SLOT0
 config BOOT_VALIDATE_SLOT0_ONCE
 	bool "Validate image in the primary slot just once after after upgrade"
 	depends on !BOOT_VALIDATE_SLOT0 && SINGLE_APPLICATION_SLOT
-	default n
 	help
 	  If y, the bootloader attempts to validate the signature of the
 	  primary slot only once after an upgrade of the main slot.
@@ -501,7 +492,6 @@ endchoice
 config BOOT_DIRECT_XIP_REVERT
 	bool "Enable the revert mechanism in direct-xip mode"
 	depends on BOOT_DIRECT_XIP
-	default n
 	help
 	  If y, enables the revert mechanism in direct-xip similar to the one in
 	  swap mode. It requires the trailer magic to be added to the signed image.
@@ -512,7 +502,6 @@ config BOOT_DIRECT_XIP_REVERT
 
 config BOOT_BOOTSTRAP
 	bool "Bootstrap erased the primary slot from the secondary slot"
-	default n
 	help
 	  If y, enables bootstraping support. Bootstrapping allows an erased
 	  primary slot to be initialized from a valid image in the secondary slot.
@@ -520,7 +509,6 @@ config BOOT_BOOTSTRAP
 
 config BOOT_SWAP_SAVE_ENCTLV
 	bool "Save encrypted key TLVs instead of plaintext keys in swap metadata"
-	default n
 	depends on BOOT_ENCRYPT_IMAGE
 	help
 	  If y, instead of saving the encrypted image keys in plaintext in the
@@ -649,7 +637,6 @@ config BOOT_MAX_IMG_SECTORS
 
 config BOOT_SHARE_BACKEND_AVAILABLE
 	bool
-	default n
 	help
 	  Hidden open which indicates if there is a sharing backend available.
 
@@ -658,7 +645,6 @@ DT_CHOSEN_BOOTLOADER_INFO := zephyr,bootloader-info
 
 config BOOT_SHARE_BACKEND_AVAILABLE
 	bool
-	default n
 	help
 	  Hidden open which indicates if there is a sharing backend available.
 
@@ -693,7 +679,6 @@ endchoice
 
 menuconfig BOOT_SHARE_DATA
 	bool "Save application specific data"
-	default n
 	depends on BOOT_SHARE_BACKEND_AVAILABLE
 	help
 	  This will allow data to be shared between MCUboot and an application,
@@ -705,7 +690,6 @@ menuconfig BOOT_SHARE_DATA
 
 config BOOT_SHARE_DATA_BOOTINFO
 	bool "Save boot information data"
-	default n
 	depends on BOOT_SHARE_DATA
 	help
 	  This will place information about the MCUboot configuration and
@@ -713,7 +697,6 @@ config BOOT_SHARE_DATA_BOOTINFO
 
 menuconfig MEASURED_BOOT
 	bool "Store the boot state/measurements in shared memory area"
-	default n
 	depends on BOOT_SHARE_BACKEND_AVAILABLE
 	help
 	  If enabled, the bootloader will store certain boot measurements such as
@@ -830,7 +813,6 @@ config BOOT_USB_DFU_NO_APPLICATION
 
 config BOOT_USE_BENCH
         bool "Enable benchmark code"
-        default n
         help
           If y, adds support for simple benchmarking that can record
           time intervals between two calls.  The time printed depends
@@ -867,7 +849,6 @@ rsource "Kconfig.firmware_loader"
 
 config BOOT_INTR_VEC_RELOC
 	bool "Relocate the interrupt vector to the application"
-	default n
 	depends on SW_VECTOR_RELAY || CPU_CORTEX_M_HAS_VTOR
 	help
 	  Relocate the interrupt vector to the application before it is started.
@@ -1062,7 +1043,6 @@ config MCUBOOT_DEVICE_SETTINGS
 config MCUBOOT_DEVICE_CPU_CORTEX_M0
 	# Hidden selector for Cortex-M0 settings
 	bool
-	default n
 	select SW_VECTOR_RELAY if !CPU_CORTEX_M0_HAS_VECTOR_TABLE_REMAP
 
 comment "Zephyr configuration options"
@@ -1091,7 +1071,6 @@ config USB_DEVICE_PRODUCT
 # use MCUboot's own log configuration
 config MCUBOOT_BOOTUTIL_LIB_OWN_LOG
 	bool
-	default n
 
 config MCUBOOT_VERIFY_IMG_ADDRESS
 	bool "Verify reset address of image in secondary slot"
