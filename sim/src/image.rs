@@ -1805,9 +1805,8 @@ fn image_largest_trailer(dev: &dyn Flash, areadesc: &AreaDesc, slot: &SlotInfo) 
             // Using the header size we know, the trailer size, and the slot size, we can compute
             // the largest image possible.
             let trailer = if Caps::OverwriteUpgrade.present() {
-                // This computation is incorrect, and we need to figure out the correct size.
-                // c::boot_status_sz(dev.align() as u32) as usize
-                16 + 4 * dev.align()
+                // magic + image-ok + copy-done + swap-info
+                c::boot_magic_sz() + 3 * c::boot_max_align()
             } else if Caps::SwapUsingOffset.present() || Caps::SwapUsingMove.present() {
                 let sector_size = dev.sector_iter().next().unwrap().size as u32;
                 align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
@@ -1884,9 +1883,8 @@ fn install_image(flash: &mut SimMultiFlash, areadesc: &AreaDesc, slot: &SlotInfo
 
             info!("slot: 0x{:x}, HDR: 0x{:x}, trailer: 0x{:x}",
                 slot_len, HDR_SIZE, trailer);
-            // the overflow size is rougly estimated to work for all
-            // configurations. It might be precise if tlv_len will be maked precise.
-            slot_len - HDR_SIZE - trailer - tlv_len - sector_offset + dev.align()*4
+
+            slot_len - HDR_SIZE - trailer - tlv_len - sector_offset + dev.align()
         }
 
     };
