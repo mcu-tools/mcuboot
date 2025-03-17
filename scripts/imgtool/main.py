@@ -259,7 +259,8 @@ def verify(key, imgfile):
                     'of a signed image')
 def dumpinfo(imgfile, outfile, silent):
     dump_imginfo(imgfile, outfile, silent)
-    print("dumpinfo has run successfully")
+    if not silent:
+        print("dumpinfo has run successfully")
 
 
 def validate_version(ctx, param, value):
