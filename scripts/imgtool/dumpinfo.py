@@ -251,7 +251,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
     ###############################################################################
 
     if silent:
-        sys.exit(0)
+        return
 
     print("Printing content of signed image:", os.path.basename(imgfile), "\n")
 
