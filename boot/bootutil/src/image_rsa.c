@@ -94,9 +94,15 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
 
     while (count > 0) {
         bootutil_sha_init(&ctx);
-        bootutil_sha_update(&ctx, hash, PSS_HLEN);
-        bootutil_sha_update(&ctx, counter, 4);
-        bootutil_sha_finish(&ctx, htmp);
+        if (bootutil_sha_update(&ctx, hash, PSS_HLEN)) {
+            goto out;
+        }
+        if (bootutil_sha_update(&ctx, counter, 4)) {
+            goto out;
+        }
+        if(bootutil_sha_finish(&ctx, htmp)){
+            goto out;
+        }
 
         counter[3]++;
 
@@ -109,6 +115,7 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
         count -= bytes;
     }
 
+out:
     bootutil_sha_drop(&ctx);
 }
 
@@ -222,17 +229,25 @@ bootutil_cmp_rsasig(bootutil_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
 
     /* Step 13.  Let H' = Hash(M') */
     bootutil_sha_init(&shactx);
-    bootutil_sha_update(&shactx, pss_zeros, 8);
-    bootutil_sha_update(&shactx, hash, PSS_HLEN);
-    bootutil_sha_update(&shactx, &db_mask[PSS_MASK_SALT_POS], PSS_SLEN);
-    bootutil_sha_finish(&shactx, h2);
-    bootutil_sha_drop(&shactx);
+    if (bootutil_sha_update(&shactx, pss_zeros, 8)) {
+        goto out;
+    }
+    if (bootutil_sha_update(&shactx, hash, PSS_HLEN)) {
+        goto out;
+    }
+    if (bootutil_sha_update(&shactx, &db_mask[PSS_MASK_SALT_POS], PSS_SLEN)) {
+        goto out;
+    }
+    if (bootutil_sha_finish(&shactx, h2)) {
+        goto out;
+    }
 
     /* Step 14.  If H = H', output "consistent".  Otherwise, output
      * "inconsistent". */
     FIH_CALL(boot_fih_memequal, fih_rc, h2, &em[PSS_HASH_OFFSET], PSS_HLEN);
 
 out:
+    bootutil_sha_drop(&shactx);
     FIH_RET(fih_rc);
 }
 

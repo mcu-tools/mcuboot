@@ -726,7 +726,9 @@ boot_enc_encrypt(struct enc_key_data *enc_state, int slot, uint32_t off,
     nonce[15] = (uint8_t)off;
 
     assert(enc->valid == 1);
-    bootutil_aes_ctr_encrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf);
+    if (bootutil_aes_ctr_encrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf)) {
+        bootutil_aes_ctr_drop(&enc->aes_ctr);
+    }
 }
 
 void
@@ -749,7 +751,9 @@ boot_enc_decrypt(struct enc_key_data *enc_state, int slot, uint32_t off,
     nonce[15] = (uint8_t)off;
 
     assert(enc->valid == 1);
-    bootutil_aes_ctr_decrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf);
+    if (bootutil_aes_ctr_decrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf)) {
+        bootutil_aes_ctr_drop(&enc->aes_ctr);
+    }
 }
 
 /**
