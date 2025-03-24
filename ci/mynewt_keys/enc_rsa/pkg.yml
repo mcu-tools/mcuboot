@@ -20,6 +20,3 @@
 pkg.name: keys/enc_rsa
 pkg.author: "Apache Mynewt <dev@mynewt.apache.org>"
 pkg.homepage: "http://mynewt.apache.org/"
-
-pkg.cflags:
-    - '-DMBEDTLS_USER_CONFIG_FILE="mbedtls/config_mynewt.h"'

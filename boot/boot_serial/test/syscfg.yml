@@ -21,3 +21,6 @@
 syscfg.vals:
     # This is here to work around the $notnull syscfg restriction.
     BOOT_SERIAL_DETECT_PIN: 0
+
+syscfg.vals.BOOTUTIL_USE_MBED_TLS:
+    MBEDTLS_CIPHER_MODE_CTR: 1
