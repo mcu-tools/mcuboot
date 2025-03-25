@@ -72,7 +72,7 @@ fih_ret boot_go_hook(struct boot_rsp *rsp)
 #ifdef MCUBOOT_RAM_LOAD
 		state = boot_get_loader_state();
 
-		rc = boot_load_image_from_flash_to_sram(state, &_hdr);
+		rc = boot_load_image_from_flash_to_sram(state, &_hdr, _fa_p);
 		if (rc != 0) {
 			flash_area_close(_fa_p);
 			continue;

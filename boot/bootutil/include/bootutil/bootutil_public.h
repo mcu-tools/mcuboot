@@ -319,11 +319,13 @@ boot_image_load_header(const struct flash_area *fa_p,
  *
  * @param[in]   state   boot loader state
  * @param[in]   hdr     image header
+ * @param[in]   fa      flash area pointer
  *
  * @return              0 on success, error code otherwise
  */
 int boot_load_image_from_flash_to_sram(struct boot_loader_state *state,
-                                       struct image_header *hdr);
+                                       struct image_header *hdr,
+                                       const struct flash_area *fa);
 
 /**
  * Removes an image from SRAM, by overwriting it with zeros.
