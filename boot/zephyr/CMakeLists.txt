@@ -197,18 +197,18 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
     )
   endif()
   if(CONFIG_BOOT_USE_TINYCRYPT)
-  # When using ECDSA signatures, pull in our copy of the tinycrypt library.
-  zephyr_library_include_directories(
-    ${BOOT_DIR}/zephyr/include
-    ${TINYCRYPT_DIR}/include
+    # When using ECDSA signatures, pull in our copy of the tinycrypt library.
+    zephyr_library_include_directories(
+      ${BOOT_DIR}/zephyr/include
+      ${TINYCRYPT_DIR}/include
     )
-  zephyr_include_directories(${TINYCRYPT_DIR}/include)
+    zephyr_include_directories(${TINYCRYPT_DIR}/include)
 
-  zephyr_library_sources(
-    ${TINYCRYPT_DIR}/source/ecc.c
-    ${TINYCRYPT_DIR}/source/ecc_dsa.c
-    ${TINYCRYPT_DIR}/source/sha256.c
-    ${TINYCRYPT_DIR}/source/utils.c
+    zephyr_library_sources(
+      ${TINYCRYPT_DIR}/source/ecc.c
+      ${TINYCRYPT_DIR}/source/ecc_dsa.c
+      ${TINYCRYPT_DIR}/source/sha256.c
+      ${TINYCRYPT_DIR}/source/utils.c
     )
   elseif(CONFIG_BOOT_USE_NRF_CC310_BL)
     zephyr_library_sources(${NRF_DIR}/cc310_glue.c)
@@ -216,12 +216,14 @@ if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
     zephyr_link_libraries(nrfxlib_crypto)
   endif()
 
-  # Since here we are not using Zephyr's mbedTLS but rather our own, we need
-  # to set MBEDTLS_CONFIG_FILE ourselves. When using Zephyr's copy, this
-  # variable is set by its Kconfig in the Zephyr codebase.
-  zephyr_library_compile_definitions(
-    MBEDTLS_CONFIG_FILE="${CONFIG_MBEDTLS_CFG_FILE}"
+  if(CONFIG_MBEDTLS_CFG_FILE)
+    # Since here we are not using Zephyr's mbedTLS but rather our own, we need
+    # to set MBEDTLS_CONFIG_FILE ourselves. When using Zephyr's copy, this
+    # variable is set by its Kconfig in the Zephyr codebase.
+    zephyr_library_compile_definitions(
+      MBEDTLS_CONFIG_FILE="${CONFIG_MBEDTLS_CFG_FILE}"
     )
+  endif()
 elseif(CONFIG_BOOT_SIGNATURE_TYPE_NONE)
   zephyr_library_include_directories(
     ${BOOT_DIR}/zephyr/include
