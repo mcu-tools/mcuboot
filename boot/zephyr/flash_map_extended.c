@@ -178,7 +178,7 @@ int flash_area_get_sector(const struct flash_area *fap, off_t off,
     struct flash_pages_info fpi;
     int rc;
 
-    if (off >= fap->fa_size) {
+    if (off < 0 || (size_t) off >= fap->fa_size) {
         return -ERANGE;
     }
 
