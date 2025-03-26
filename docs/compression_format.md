@@ -35,7 +35,7 @@ Compression parameters have the following default values:
 
 You can calculate the `dict_size` using the following method:
 
-``` {.c}
+```c
 unsigned int i = 0;
 
 for (i = 0; i < 40; i++) {
@@ -103,14 +103,14 @@ The second byte of the `lzma2_header` carries the following parameters:
 
     These parameters are encoded with the following formula:
 
-    ``` {.c}
+    ```c
     pb_lp_lc = (uint8_t)((pb * 5 + lp) * 9 + lc);
     ```
 
     To decode these values from the combined `pb_lp_lc` byte, run the
     following code:
 
-    ``` {.c}
+    ```c
     lc = pb_lp_lc % 9;
     pb_lp_lc /= 9;
     pb = pb_lp_lc / 5;
@@ -132,13 +132,13 @@ steps:
 
  -   Without an ARM thumb filter:
 
-     ``` {.bash}
+     ```bash
      unlzma --lzma2 --format=raw --suffix=.lzma raw.lzma
      ```
 
  -   With an ARM thumb filter:
 
-     ``` {.bash}
+     ```bash
      unlzma --armthumb --lzma2 --format=raw --suffix=.lzma raw.lzma
      ```
 
