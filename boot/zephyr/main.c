@@ -154,7 +154,7 @@ static void do_boot(struct boot_rsp *rsp)
      * consecutively. Manually set the stack pointer and jump into the
      * reset vector
      */
-#ifdef CONFIG_BOOT_RAM_LOAD
+#ifdef MCUBOOT_RAM_LOAD
     /* Get ram address for image */
     vt = (struct arm_vector_table *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
 #else
@@ -576,7 +576,7 @@ int main(void)
         FIH_PANIC;
     }
 
-#ifdef CONFIG_BOOT_RAM_LOAD
+#ifdef MCUBOOT_RAM_LOAD
     BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
                  rsp.br_hdr->ih_load_addr);
 #else
