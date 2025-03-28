@@ -924,6 +924,7 @@ config BOOT_WATCHDOG_FEED_NRFX_WDT
 	imply NRFX_WDT1
 	imply NRFX_WDT30
 	imply NRFX_WDT31
+	imply NRFX_WDT010
 
 config BOOT_IMAGE_ACCESS_HOOKS
 	bool "Enable hooks for overriding MCUboot's native routines"

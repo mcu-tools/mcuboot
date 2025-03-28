@@ -422,6 +422,9 @@
 #elif defined(CONFIG_NRFX_WDT31)
 #define MCUBOOT_WATCHDOG_FEED() \
     FEED_WDT_INST(31);
+#elif defined(CONFIG_NRFX_WDT010)
+#define MCUBOOT_WATCHDOG_FEED() \
+    FEED_WDT_INST(010);
 #else
 #error "No NRFX WDT instances enabled"
 #endif
