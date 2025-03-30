@@ -689,11 +689,8 @@ void
 swap_run(struct boot_loader_state *state, struct boot_status *bs,
          uint32_t copy_size)
 {
-    uint32_t sz;
     uint32_t sector_sz;
     uint32_t idx;
-    uint32_t trailer_sz;
-    uint32_t first_trailer_idx;
     uint32_t last_idx;
     size_t fallback_trailer_sector;
     const struct flash_area *fap_pri;
@@ -703,32 +700,6 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
     last_idx = find_last_idx(state, copy_size);
     sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
-
-    /*
-     * When starting a new swap upgrade, check that there is enough space.
-     */
-    if (boot_status_is_reset(bs)) {
-        sz = 0;
-        trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
-        first_trailer_idx = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 1;
-
-        while (1) {
-            sz += sector_sz;
-            if  (sz >= trailer_sz) {
-                break;
-            }
-            first_trailer_idx--;
-        }
-
-        if (last_idx >= first_trailer_idx) {
-            BOOT_LOG_WRN("Not enough free space to run swap upgrade");
-            BOOT_LOG_WRN("required %d bytes but only %d are available",
-                         (last_idx + 1) * sector_sz,
-                         first_trailer_idx * sector_sz);
-            bs->swap_type = BOOT_SWAP_TYPE_NONE;
-            return;
-        }
-    }
 
     fap_pri = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
     assert(fap_pri != NULL);
