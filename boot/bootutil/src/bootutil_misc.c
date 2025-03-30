@@ -397,12 +397,13 @@ boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
 }
 #endif
 
-#ifdef MCUBOOT_SWAP_USING_SCRATCH
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
 size_t
-boot_get_first_trailer_sector(struct boot_loader_state *state, size_t slot, size_t trailer_sz)
+boot_get_first_trailer_sector(struct boot_loader_state *state, size_t slot)
 {
     size_t first_trailer_sector = boot_img_num_sectors(state, slot) - 1;
     size_t sector_sz = boot_img_sector_size(state, slot, first_trailer_sector);
+    size_t trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
     size_t trailer_sector_sz = sector_sz;
 
     while (trailer_sector_sz < trailer_sz) {
@@ -415,20 +416,21 @@ boot_get_first_trailer_sector(struct boot_loader_state *state, size_t slot, size
 
     return first_trailer_sector;
 }
+#endif /* MCUBOOT_SWAP_USING_SCRATCH || MCUBOOT_SWAP_USING_MOVE */
 
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
 /**
  * Returns the offset to the end of the first sector of a given slot that holds image trailer data.
  *
  * @param state      Current bootloader's state.
  * @param slot       The index of the slot to consider.
- * @param trailer_sz The size of the trailer, in bytes.
  *
  * @return The offset to the end of the first sector of the slot that holds image trailer data.
  */
 static uint32_t
-get_first_trailer_sector_end_off(struct boot_loader_state *state, size_t slot, size_t trailer_sz)
+get_first_trailer_sector_end_off(struct boot_loader_state *state, size_t slot)
 {
-    size_t first_trailer_sector = boot_get_first_trailer_sector(state, slot, trailer_sz);
+    size_t first_trailer_sector = boot_get_first_trailer_sector(state, slot);
 
     return boot_img_sector_off(state, slot, first_trailer_sector) +
            boot_img_sector_size(state, slot, first_trailer_sector);
@@ -455,9 +457,9 @@ uint32_t bootutil_max_image_size(struct boot_loader_state *state, const struct f
      * trailer containing part of the trailer in the primary and secondary slot.
      */
     size_t trailer_sector_primary_end_off =
-        get_first_trailer_sector_end_off(state, BOOT_PRIMARY_SLOT, slot_trailer_sz);
+        get_first_trailer_sector_end_off(state, BOOT_PRIMARY_SLOT);
     size_t trailer_sector_secondary_end_off =
-        get_first_trailer_sector_end_off(state, BOOT_SECONDARY_SLOT, slot_trailer_sz);
+        get_first_trailer_sector_end_off(state, BOOT_SECONDARY_SLOT);
 
     size_t trailer_sz_in_first_sector;
 
