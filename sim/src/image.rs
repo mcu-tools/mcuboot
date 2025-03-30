@@ -742,8 +742,7 @@ impl Images {
                 fails += 1;
             }
 
-            if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
-                                     BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+            if !self.verify_post_upgrade_secondary_trailer(&flash) {
                 warn!("Mismatched trailer for the secondary slot");
                 fails += 1;
             }
@@ -792,8 +791,7 @@ impl Images {
             error!("Mismatched trailer for the primary slot");
             fails += 1;
         }
-        if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
-                                 BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+        if !self.verify_post_upgrade_secondary_trailer(&flash) {
             error!("Mismatched trailer for the secondary slot");
             fails += 1;
         }
@@ -852,13 +850,14 @@ impl Images {
             warn!("Primary slot image verification FAIL");
             fails += 1;
         }
+
         if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
                                  BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
             warn!("Mismatched trailer for the primary slot");
             fails += 1;
         }
-        if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
-                                 BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+
+        if !self.verify_post_upgrade_secondary_trailer(&flash) {
             warn!("Mismatched trailer for the secondary slot");
             fails += 1;
         }
@@ -1530,8 +1529,7 @@ impl Images {
             warn!("Mismatched trailer for the primary slot before revert");
             fails += 1;
         }
-        if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
-                                BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+        if !self.verify_post_upgrade_secondary_trailer(&flash) {
             warn!("Mismatched trailer for the secondary slot before revert");
             fails += 1;
         }
@@ -1668,6 +1666,17 @@ impl Images {
             verify_trailer(flash, &image.slots[slot],
                            magic, image_ok, copy_done)
         })
+    }
+
+    // Verify the trailers in the secondary slot contains the expected values after an upgrade.
+    fn verify_post_upgrade_secondary_trailer(&self, flash: &SimMultiFlash) -> bool {
+        if Caps::SwapUsingMove.present() {
+            return self.verify_trailers(&flash, 1, BOOT_MAGIC_GOOD,
+                                        BOOT_FLAG_UNSET, BOOT_FLAG_SET);
+        } else {
+            return self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
+                                        BOOT_FLAG_UNSET, BOOT_FLAG_UNSET);
+        }
     }
 
     /// Mark each of the images for permanent upgrade.
