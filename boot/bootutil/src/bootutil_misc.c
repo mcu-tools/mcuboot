@@ -477,7 +477,14 @@ uint32_t bootutil_max_image_size(struct boot_loader_state *state, const struct f
     }
 
     return slot_trailer_off - trailer_padding;
-#elif defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
+#elif defined(MCUBOOT_SWAP_USING_MOVE)
+    (void) fap;
+
+    const struct flash_area *fap_pri = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+    assert(fap_pri != NULL);
+
+    return boot_status_off(fap_pri) - boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+#elif defined(MCUBOOT_SWAP_USING_OFFSET)
     (void) state;
 
     struct flash_sector sector;
