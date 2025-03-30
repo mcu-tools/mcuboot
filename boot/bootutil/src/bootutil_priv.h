@@ -365,19 +365,18 @@ int boot_read_enc_key(const struct flash_area *fap, uint8_t slot,
                       struct boot_status *bs);
 #endif
 
-#ifdef MCUBOOT_SWAP_USING_SCRATCH
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE)
 /**
  * Finds the first sector of a given slot that holds image trailer data.
  *
  * @param state      Current bootloader's state.
  * @param slot       The index of the slot to consider.
- * @param trailer_sz The size of the trailer, in bytes.
  *
  * @return The index of the first sector of the slot that holds image trailer data.
  */
 size_t
-boot_get_first_trailer_sector(struct boot_loader_state *state, size_t slot, size_t trailer_sz);
-#endif
+boot_get_first_trailer_sector(struct boot_loader_state *state, size_t slot);
+#endif /* MCUBOOT_SWAP_USING_SCRATCH || MCUBOOT_SWAP_USING_MOVE */
 
 /**
  * Checks that a buffer is erased according to what the erase value for the
