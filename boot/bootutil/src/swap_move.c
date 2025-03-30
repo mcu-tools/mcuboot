@@ -477,6 +477,32 @@ boot_swap_sectors(size_t idx, size_t last_idx, uint32_t sz, struct boot_loader_s
             rc = swap_scramble_trailer_sectors(state, fap_sec);
             assert(rc == 0);
 
+            /* When starting a revert the swap status of the primary slot is erased then
+             * re-initialized. If a reset occurs after the erasure but before the re-initialization
+             * is complete, there has to be, somewhere, a flag indicating a revert is in progress.
+             * Otherwise, the bootloader wouldn't be able to resume the revert operation.
+             *
+             * Initially, the swap-move algorithm was assuming the trailers were stored in dedicated
+             * sectors and it was therefore possible to rewrite the secondary trailer before
+             * starting the revert process, to make the revert look like a permanent upgrade in case
+             * an unfortunate reset occurs during the rewriting of the primary trailer.
+             *
+             * However, considering now the first trailer sector could also hold firmware data, this
+             * trick is no more possible since it could potentially erase part of the firmware image
+             * to be restored. A solution is to rewrite here the secondary trailer with the
+             * 'copy_done' flag set, meaning after an upgrade the secondary trailer is no more
+             * erased. The bootloader will consider a revert must be started or resumed if the
+             * primary image is not confirmed and the 'copy_done' flag is set in the secondary
+             * trailer.
+             */
+            if (bs->swap_type != BOOT_SWAP_TYPE_REVERT) {
+                rc = boot_write_copy_done(fap_sec);
+                assert(rc == 0);
+
+                rc = boot_write_magic(fap_sec);
+                assert(rc == 0);
+            }
+
             size_t first_trailer_sector_pri =
                 boot_get_first_trailer_sector(state, BOOT_PRIMARY_SLOT);
             size_t first_trailer_sector_sec =
@@ -513,55 +539,6 @@ boot_swap_sectors(size_t idx, size_t last_idx, uint32_t sz, struct boot_loader_s
         bs->idx++;
         bs->state = BOOT_STATUS_STATE_0;
         BOOT_STATUS_ASSERT(rc == 0);
-    }
-}
-
-/*
- * When starting a revert the swap status exists in the primary slot, and
- * the status in the secondary slot is erased. To start the swap, the status
- * area in the primary slot must be re-initialized; if during the small
- * window of time between re-initializing it and writing the first metadata
- * a reset happens, the swap process is broken and cannot be resumed.
- *
- * This function handles the issue by making the revert look like a permanent
- * upgrade (by initializing the secondary slot).
- */
-void
-fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
-        const struct flash_area *fap_sec)
-{
-    struct boot_swap_state swap_state;
-    int rc;
-
-#if (BOOT_IMAGE_NUMBER == 1)
-    (void)state;
-#endif
-
-    /* No fixup required */
-    if (bs->swap_type != BOOT_SWAP_TYPE_REVERT ||
-        bs->op != BOOT_STATUS_OP_MOVE ||
-        bs->idx != BOOT_STATUS_IDX_0) {
-        return;
-    }
-
-    rc = boot_read_swap_state(fap_sec, &swap_state);
-    assert(rc == 0);
-
-    BOOT_LOG_SWAP_STATE("Secondary image", &swap_state);
-
-    if (swap_state.magic == BOOT_MAGIC_UNSET) {
-        /* Remove trailer and prepare area for write on devices requiring erase */
-        rc = swap_scramble_trailer_sectors(state, fap_sec);
-        assert(rc == 0);
-
-        rc = boot_write_image_ok(fap_sec);
-        assert(rc == 0);
-
-        rc = boot_write_swap_size(fap_sec, bs->swap_size);
-        assert(rc == 0);
-
-        rc = boot_write_magic(fap_sec);
-        assert(rc == 0);
     }
 }
 
@@ -614,8 +591,6 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
     fap_sec = BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT);
     assert(fap_sec != NULL);
-
-    fixup_revert(state, bs, fap_sec);
 
     if (bs->op == BOOT_STATUS_OP_MOVE) {
         idx = last_idx;
