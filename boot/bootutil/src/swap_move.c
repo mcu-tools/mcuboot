@@ -379,13 +379,15 @@ swap_status_source(struct boot_loader_state *state)
  * "Moves" the sector located at idx - 1 to idx.
  */
 static void
-boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
+boot_move_sector_up(size_t idx, uint32_t sz, struct boot_loader_state *state,
         struct boot_status *bs, const struct flash_area *fap_pri,
         const struct flash_area *fap_sec)
 {
     uint32_t new_off;
     uint32_t old_off;
+    uint32_t copy_sz;
     int rc;
+    bool sector_erased_with_trailer;
 
     /*
      * FIXME: assuming sectors of size == sz, a single off variable
@@ -396,14 +398,32 @@ boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
     new_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx);
     old_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx - 1);
 
-    if (bs->idx == BOOT_STATUS_IDX_0) {
-        if (bs->source != BOOT_STATUS_SOURCE_PRIMARY_SLOT) {
-            /* Remove data and prepare for write on devices requiring erase */
-            rc = swap_scramble_trailer_sectors(state, fap_pri);
-            assert(rc == 0);
+    copy_sz = sz;
+    sector_erased_with_trailer = false;
 
-            rc = swap_status_init(state, fap_pri, bs);
-            assert(rc == 0);
+    if (bs->idx == BOOT_STATUS_IDX_0) {
+        rc = swap_scramble_trailer_sectors(state, fap_pri);
+        assert(rc == 0);
+
+        rc = swap_status_init(state, fap_pri, bs);
+        assert(rc == 0);
+
+        /* The first sector to be moved is the last sector containing part of the firmware image. If
+         * the trailer size is not a multiple of the sector size, the destination sector will
+         * contain both firmware and trailer data. In that case:
+         *   - Only the firmware data must be copied to the destination sector to avoid overwriting
+         *     the trailer data.
+         *   - The destination sector has already been erased with the trailer.
+         */
+        size_t first_trailer_idx = boot_get_first_trailer_sector(state, BOOT_PRIMARY_SLOT);
+
+        if (idx == first_trailer_idx) {
+            /* Swap-move => constant sector size, so 'sz' is the size of a sector and 'swap_size %
+             * sz' gives the number of bytes used by the largest firmware image in the last sector
+             * to be moved.
+             */
+            copy_sz = bs->swap_size % sz;
+            sector_erased_with_trailer = true;
         }
 
         /* Remove status from secondary slot trailer, in case of device with
@@ -413,10 +433,12 @@ boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
         assert(rc == 0);
     }
 
-    rc = boot_erase_region(fap_pri, new_off, sz);
-    assert(rc == 0);
+    if (!sector_erased_with_trailer) {
+        rc = boot_erase_region(fap_pri, new_off, sz);
+        assert(rc == 0);
+    }
 
-    rc = boot_copy_region(state, fap_pri, fap_pri, old_off, new_off, sz);
+    rc = boot_copy_region(state, fap_pri, fap_pri, old_off, new_off, copy_sz);
     assert(rc == 0);
 
     rc = boot_write_status(state, bs);
