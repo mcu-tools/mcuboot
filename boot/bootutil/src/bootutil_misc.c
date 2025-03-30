@@ -477,7 +477,31 @@ uint32_t bootutil_max_image_size(struct boot_loader_state *state, const struct f
     }
 
     return slot_trailer_off - trailer_padding;
-#elif defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
+#elif defined(MCUBOOT_SWAP_USING_MOVE)
+    (void) fap;
+
+    const struct flash_area *fap_pri = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+    assert(fap_pri != NULL);
+
+    /* Swap-move needs to reserve in the primary slot the size of one full sector plus some space at
+     * the end of the slot to write the trailer. Also, it must be ensured at least
+     * BOOT_MAGIC_ALIGN_SIZE bytes are available in the last sector that is not containing part of
+     * the slot's trailer to be able to write the fallback trailer. That is always the case unless
+     * the trailer is only a few bytes larger than the size of a sector, i.e. unless:
+     *                      0 < trailer_sz % sector_sz < BOOT_MAGIC_ALIGN_SIZE
+     */
+    size_t trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
+    size_t sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    size_t padding = sector_sz;
+
+    size_t trailer_sz_in_padding_sector = trailer_sz % sector_sz;
+
+    if (trailer_sz_in_padding_sector > 0 && trailer_sz_in_padding_sector < BOOT_MAGIC_ALIGN_SIZE) {
+        padding += BOOT_MAGIC_ALIGN_SIZE - trailer_sz_in_padding_sector;
+    }
+
+    return flash_area_get_size(fap_pri) - trailer_sz - padding;
+#elif defined(MCUBOOT_SWAP_USING_OFFSET)
     (void) state;
 
     struct flash_sector sector;
