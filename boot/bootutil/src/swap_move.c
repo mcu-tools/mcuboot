@@ -23,6 +23,7 @@
 #include <string.h>
 #include "bootutil/bootutil.h"
 #include "bootutil_priv.h"
+#include "bootutil_misc.h"
 #include "swap_priv.h"
 #include "bootutil/bootutil_log.h"
 
@@ -66,6 +67,123 @@ find_last_idx(struct boot_loader_state *state, uint32_t swap_size)
     }
 
     return last_idx;
+}
+
+/**
+ * Returns the index of the sector containing the fallback trailer in the primary slot.
+ *
+ * The fallback trailer is needed during a revert process, in case a reboot occurs between the time
+ * the primary slot's trailer is erased and the time it is fully rewritten. When this happens, the
+ * bootloader will be able to detect that a revert process was in progress by the looking at the
+ * fallback trailer. The fallback trailer is located in the last sector of the primary slot that
+ * doesn't contain part of the slot's trailer, so in other words, in the sector right before the
+ * first sector holding part of the slot's trailer. It is written at the end of the upgrade process.
+ *
+ * Example:
+ *          PRIMARY
+ * |          ...          |
+ * +-----------------------+
+ * | Firmware (3968 bytes) | Sector N-2
+ * |  Padding (128 bytes)  | <---- Fallback trailer stored here
+ * +-----------------------+
+ * |  Padding (3968 bytes) | Sector N-1
+ * |  Trailer (128 bytes)  |
+ * +-----------------------+
+ * |  Trailer (4096 bytes) | Sector N
+ * |           .           |
+ * +-----------------------+
+ *
+ * @param state Current bootloader's state.
+ *
+ * @return The index of the sector containg the fallback trailer in the primary slot.
+ */
+static size_t
+get_fallback_trailer_sector(struct boot_loader_state *state)
+{
+    size_t first_trailer_sector = boot_get_first_trailer_sector(state, BOOT_PRIMARY_SLOT);
+
+    return first_trailer_sector - 1;
+}
+
+/**
+ * Returns the offset of the fallback trailer in the primary slot.
+ *
+ * The fallback trailer is composed only of the magic field. When computing the maximum image size,
+ * it is ensured at least BOOT_MAGIC_ALIGN_SIZE bytes are available at the end of the firmware image
+ * to write the fallback trailer.
+  *
+ * @param state Current bootloader's state.
+ *
+ * @return The offset of the fallback trailer in the primary slot.
+ */
+static uint32_t
+get_fallback_trailer_off(struct boot_loader_state *state)
+{
+    size_t fallback_trailer_sector = get_fallback_trailer_sector(state);
+    size_t end_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, fallback_trailer_sector + 1);
+
+    return end_off - BOOT_MAGIC_ALIGN_SIZE;
+}
+
+/**
+ * Writes the fallback trailer in the primary slot.
+ *
+ * @param state      Current bootloader's state.
+ * @param need_erase True if the sector has to be erased before writing, false otherwise.
+ */
+static void
+write_fallback_trailer(struct boot_loader_state *state, bool need_erase)
+{
+    int rc;
+    uint32_t fallback_trailer_off;
+    const struct flash_area *fap_pri;
+
+    fap_pri = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+    assert(fap_pri != NULL);
+
+    if (need_erase) {
+        size_t fallback_trailer_sector = get_fallback_trailer_sector(state);
+        uint32_t sector_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, fallback_trailer_sector);
+        uint32_t sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+
+        rc = boot_erase_region(fap_pri, sector_off, sector_sz);
+        assert(rc == 0);
+    }
+
+    fallback_trailer_off = get_fallback_trailer_off(state);
+
+    rc = boot_write_magic_at_off(fap_pri, fallback_trailer_off);
+    assert(rc == 0);
+}
+
+/**
+ * Reads the magic field of the fallback trailer.
+ *
+ * @param state Current bootloader's state.
+ *
+ * @return BOOT_MAGIC_GOOD if the magic is valid, BOOT_MAGIC_BAD otherwise.
+ */
+static int
+read_fallback_trailer_magic(struct boot_loader_state *state)
+{
+    int rc;
+    const struct flash_area *fap_pri;
+    uint32_t fallback_trailer_off;
+    uint32_t magic_off;
+    uint8_t magic[BOOT_MAGIC_SZ];
+
+    fap_pri = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+    assert(fap_pri != NULL);
+
+    fallback_trailer_off = get_fallback_trailer_off(state);
+
+    /* The magic has to be read without including the padding */
+    magic_off = fallback_trailer_off + BOOT_MAGIC_ALIGN_SIZE - BOOT_MAGIC_SZ;
+
+    rc = flash_area_read(fap_pri, magic_off, magic, BOOT_MAGIC_SZ);
+    assert(rc == 0);
+
+    return boot_magic_decode(magic);
 }
 
 int
@@ -337,6 +455,8 @@ boot_slots_compatible(struct boot_loader_state *state)
 int
 swap_status_source(struct boot_loader_state *state)
 {
+    const struct flash_area *fap_pri;
+    const struct flash_area *fap_sec;
     struct boot_swap_state state_primary_slot;
     struct boot_swap_state state_secondary_slot;
     int rc;
@@ -349,14 +469,18 @@ swap_status_source(struct boot_loader_state *state)
 
     image_index = BOOT_CURR_IMG(state);
 
-    rc = boot_read_swap_state(state->imgs[image_index][BOOT_PRIMARY_SLOT].area,
-                              &state_primary_slot);
+    fap_pri = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+    assert(fap_pri != NULL);
+
+    fap_sec = BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT);
+    assert(fap_sec != NULL);
+
+    rc = boot_read_swap_state(fap_pri, &state_primary_slot);
     assert(rc == 0);
 
     BOOT_LOG_SWAP_STATE("Primary image", &state_primary_slot);
 
-    rc = boot_read_swap_state(state->imgs[image_index][BOOT_SECONDARY_SLOT].area,
-                              &state_secondary_slot);
+    rc = boot_read_swap_state(fap_sec, &state_secondary_slot);
     assert(rc == 0);
 
     BOOT_LOG_SWAP_STATE("Secondary image", &state_secondary_slot);
@@ -374,6 +498,31 @@ swap_status_source(struct boot_loader_state *state)
 
         BOOT_LOG_INF("Boot source: primary slot");
         return source;
+    }
+
+    /* If both primary and secondary trailers are absent and the fallback trailer is present, it
+     * means a revert process was interrupted in the middle of rewriting of the primary trailer.
+     * This can only happen at the very beggining of the revert process.
+     */
+    if (state_primary_slot.magic != BOOT_MAGIC_GOOD &&
+            state_secondary_slot.magic != BOOT_MAGIC_GOOD &&
+            read_fallback_trailer_magic(state) == BOOT_MAGIC_GOOD) {
+        /* In that case, the primary trailer is rewritten with just enough data to allow to the
+         * revert process to be resumed. Only the swap-type and the magic are needed since we are at
+         * the beginning of the revert process so the process has to be restarted from scratch,
+         * which will rewrite the primary trailer with all required data (swap size, encryption
+         * keys, ...).
+         */
+        rc = swap_scramble_trailer_sectors(state, fap_pri);
+        assert(rc == 0);
+
+        rc = boot_write_swap_info(fap_pri, BOOT_SWAP_TYPE_REVERT, image_index);
+        assert(rc == 0);
+
+        rc = boot_write_magic(fap_pri);
+        assert(rc == 0);
+
+        return BOOT_STATUS_SOURCE_PRIMARY_SLOT;
     }
 
     BOOT_LOG_INF("Boot source: none");
@@ -460,10 +609,28 @@ boot_swap_sectors(size_t idx, size_t last_idx, uint32_t sz, struct boot_loader_s
     sec_off = boot_img_sector_off(state, BOOT_SECONDARY_SLOT, idx - 1);
 
     if (bs->state == BOOT_STATUS_STATE_0) {
+        uint32_t copy_sz = sz;
+        size_t fallback_trailer_sector = get_fallback_trailer_sector(state);
+
         rc = boot_erase_region(fap_pri, pri_off, sz);
         assert(rc == 0);
 
-        rc = boot_copy_region(state, fap_sec, fap_pri, sec_off, pri_off, sz);
+        /* The last sector containing part of the firmware image is about to be written to the
+         * primary slot. If we are not reverting, a fallback trailer must be written in case a
+         * revert is performed later and is interrupted. The fallback trailer is located in the last
+         * sector not containing part of the slot's trailer. This sector can be the one being
+         * written at this step, so in that case write the fallback trailer now. Otherwise, it will
+         * be written at the very end of the swap.
+         */
+        if (fallback_trailer_sector == idx - 1 && bs->swap_type != BOOT_SWAP_TYPE_REVERT) {
+            /* The sector has already been erased, no need to erase twice */
+            write_fallback_trailer(state, false);
+
+            /* Adjust the copy size to ensure the fallback trailer won't be rewritten. */
+            copy_sz = bs->swap_size % sz;
+        }
+
+        rc = boot_copy_region(state, fap_sec, fap_pri, sec_off, pri_off, copy_sz);
         assert(rc == 0);
 
         rc = boot_write_status(state, bs);
@@ -518,55 +685,6 @@ boot_swap_sectors(size_t idx, size_t last_idx, uint32_t sz, struct boot_loader_s
     }
 }
 
-/*
- * When starting a revert the swap status exists in the primary slot, and
- * the status in the secondary slot is erased. To start the swap, the status
- * area in the primary slot must be re-initialized; if during the small
- * window of time between re-initializing it and writing the first metadata
- * a reset happens, the swap process is broken and cannot be resumed.
- *
- * This function handles the issue by making the revert look like a permanent
- * upgrade (by initializing the secondary slot).
- */
-void
-fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
-        const struct flash_area *fap_sec)
-{
-    struct boot_swap_state swap_state;
-    int rc;
-
-#if (BOOT_IMAGE_NUMBER == 1)
-    (void)state;
-#endif
-
-    /* No fixup required */
-    if (bs->swap_type != BOOT_SWAP_TYPE_REVERT ||
-        bs->op != BOOT_STATUS_OP_MOVE ||
-        bs->idx != BOOT_STATUS_IDX_0) {
-        return;
-    }
-
-    rc = boot_read_swap_state(fap_sec, &swap_state);
-    assert(rc == 0);
-
-    BOOT_LOG_SWAP_STATE("Secondary image", &swap_state);
-
-    if (swap_state.magic == BOOT_MAGIC_UNSET) {
-        /* Remove trailer and prepare area for write on devices requiring erase */
-        rc = swap_scramble_trailer_sectors(state, fap_sec);
-        assert(rc == 0);
-
-        rc = boot_write_image_ok(fap_sec);
-        assert(rc == 0);
-
-        rc = boot_write_swap_size(fap_sec, bs->swap_size);
-        assert(rc == 0);
-
-        rc = boot_write_magic(fap_sec);
-        assert(rc == 0);
-    }
-}
-
 void
 swap_run(struct boot_loader_state *state, struct boot_status *bs,
          uint32_t copy_size)
@@ -577,6 +695,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     uint32_t trailer_sz;
     uint32_t first_trailer_idx;
     uint32_t last_idx;
+    size_t fallback_trailer_sector;
     const struct flash_area *fap_pri;
     const struct flash_area *fap_sec;
 
@@ -617,8 +736,6 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     fap_sec = BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT);
     assert(fap_sec != NULL);
 
-    fixup_revert(state, bs, fap_sec);
-
     if (bs->op == BOOT_STATUS_OP_MOVE) {
         idx = last_idx;
         while (idx > 0) {
@@ -638,6 +755,18 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
             boot_swap_sectors(idx, last_idx, sector_sz, state, bs, fap_pri, fap_sec);
         }
         idx++;
+    }
+
+    /* The swap is done, if we are upgrading and the fallback trailer has not been written during
+     * the swap, write it now. This is necessary if the fallback trailer sector is not part of the
+     * sectors that have been swapped, either because the images are not large enough to include
+     * that sector, or because the trailer is sector-aligned and the fallback trailer is therefore
+     * stored at the end of the padding sector.
+     */
+    fallback_trailer_sector = get_fallback_trailer_sector(state);
+
+    if (last_idx <= fallback_trailer_sector && bs->swap_type != BOOT_SWAP_TYPE_REVERT) {
+        write_fallback_trailer(state, true);
     }
 }
 
