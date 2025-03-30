@@ -1807,9 +1807,11 @@ fn image_largest_trailer(dev: &dyn Flash, areadesc: &AreaDesc, slot: &SlotInfo) 
             let trailer = if Caps::OverwriteUpgrade.present() {
                 // magic + image-ok + copy-done + swap-info
                 c::boot_magic_sz() + 3 * c::boot_max_align()
-            } else if Caps::SwapUsingOffset.present() || Caps::SwapUsingMove.present() {
+            } else if Caps::SwapUsingOffset.present() {
                 let sector_size = dev.sector_iter().next().unwrap().size as u32;
                 align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
+            } else if Caps::SwapUsingMove.present() {
+                c::boot_trailer_sz(dev.align() as u32) as usize
             } else if Caps::SwapUsingScratch.present() {
                 estimate_swap_scratch_trailer_size(dev, areadesc, slot)
             } else {
