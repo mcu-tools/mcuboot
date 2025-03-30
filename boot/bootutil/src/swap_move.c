@@ -362,9 +362,14 @@ swap_status_source(struct boot_loader_state *state)
     BOOT_LOG_SWAP_STATE("Secondary image", &state_secondary_slot);
 
     if (state_primary_slot.magic == BOOT_MAGIC_GOOD &&
-            state_primary_slot.copy_done == BOOT_FLAG_UNSET &&
-            state_secondary_slot.magic != BOOT_MAGIC_GOOD) {
-
+            state_primary_slot.copy_done == BOOT_FLAG_UNSET) {
+        /* In this case, either:
+         *   - A swap operation was interrupted and can be resumed from the status stored in the
+         *     primary slot's trailer.
+         *   - No swap was ever made and the initial firmware image has been written with a MCUboot
+         *     trailer. In this case, the status in the primary slot's trailer is empty and there is
+         *     no harm in loading it.
+         */
         source = BOOT_STATUS_SOURCE_PRIMARY_SLOT;
 
         BOOT_LOG_INF("Boot source: primary slot");
@@ -380,8 +385,7 @@ swap_status_source(struct boot_loader_state *state)
  */
 static void
 boot_move_sector_up(size_t idx, uint32_t sz, struct boot_loader_state *state,
-        struct boot_status *bs, const struct flash_area *fap_pri,
-        const struct flash_area *fap_sec)
+        struct boot_status *bs, const struct flash_area *fap_pri)
 {
     uint32_t new_off;
     uint32_t old_off;
@@ -425,12 +429,6 @@ boot_move_sector_up(size_t idx, uint32_t sz, struct boot_loader_state *state,
             copy_sz = bs->swap_size % sz;
             sector_erased_with_trailer = true;
         }
-
-        /* Remove status from secondary slot trailer, in case of device with
-	 * erase requirement this will also prepare traier for write.
-	 */
-        rc = swap_scramble_trailer_sectors(state, fap_sec);
-        assert(rc == 0);
     }
 
     if (!sector_erased_with_trailer) {
@@ -448,7 +446,7 @@ boot_move_sector_up(size_t idx, uint32_t sz, struct boot_loader_state *state,
 }
 
 static void
-boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
+boot_swap_sectors(size_t idx, size_t last_idx, uint32_t sz, struct boot_loader_state *state,
         struct boot_status *bs, const struct flash_area *fap_pri,
         const struct flash_area *fap_sec)
 {
@@ -474,10 +472,43 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     }
 
     if (bs->state == BOOT_STATUS_STATE_1) {
-        rc = boot_erase_region(fap_sec, sec_off, sz);
-        assert(rc == 0);
+        bool sector_erased_with_trailer = false;
+        uint32_t copy_sz = sz;
 
-        rc = boot_copy_region(state, fap_pri, fap_sec, pri_up_off, sec_off, sz);
+        if (idx == last_idx) {
+            rc = swap_scramble_trailer_sectors(state, fap_sec);
+            assert(rc == 0);
+
+            size_t first_trailer_sector_pri =
+                boot_get_first_trailer_sector(state, BOOT_PRIMARY_SLOT);
+            size_t first_trailer_sector_sec =
+                boot_get_first_trailer_sector(state, BOOT_SECONDARY_SLOT);
+
+            if (first_trailer_sector_sec == idx - 1) {
+                /* The destination sector was containing part of the trailer and has therefore
+                 * already been erased.
+                 */
+                sector_erased_with_trailer = true;
+            }
+
+            if (first_trailer_sector_pri == idx) {
+                /* The source sector contains both firmware and trailer data, so only the firmware
+                 * data must be copied to the destination sector.
+                 *
+                 * Swap-move => constant sector size, so 'sz' is the size of a sector and 'swap_size
+                 * % sz' gives the number of bytes used by the largest firmware image in the last
+                 * sector to be moved.
+                 */
+                copy_sz = bs->swap_size % sz;
+            }
+        }
+
+        if (!sector_erased_with_trailer) {
+            rc = boot_erase_region(fap_sec, sec_off, sz);
+            assert(rc == 0);
+        }
+
+        rc = boot_copy_region(state, fap_pri, fap_sec, pri_up_off, sec_off, copy_sz);
         assert(rc == 0);
 
         rc = boot_write_status(state, bs);
@@ -592,7 +623,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
         idx = last_idx;
         while (idx > 0) {
             if (idx <= (last_idx - bs->idx + 1)) {
-                boot_move_sector_up(idx, sector_sz, state, bs, fap_pri, fap_sec);
+                boot_move_sector_up(idx, sector_sz, state, bs, fap_pri);
             }
             idx--;
         }
@@ -604,7 +635,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     idx = 1;
     while (idx <= last_idx) {
         if (idx >= bs->idx) {
-            boot_swap_sectors(idx, sector_sz, state, bs, fap_pri, fap_sec);
+            boot_swap_sectors(idx, last_idx, sector_sz, state, bs, fap_pri, fap_sec);
         }
         idx++;
     }
