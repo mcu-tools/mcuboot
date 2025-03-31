@@ -36,10 +36,14 @@
 extern "C" {
 #endif
 
+#if defined(STRUCT_PACKED)
+#undef STRUCT_PACKED
+#endif
+
 #if defined(__IAR_SYSTEMS_ICC__)
-    #define STRUCT_PACKED   __packed struct
+#define STRUCT_PACKED __packed struct
 #else
-    #define STRUCT_PACKED   struct __attribute__((__packed__))
+#define STRUCT_PACKED struct __attribute__((__packed__))
 #endif
 
 struct flash_area;
