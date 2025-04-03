@@ -592,8 +592,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
      * NOTE: `use_scratch` is a temporary flag (never written to flash) which
      * controls if special handling is needed (swapping the first trailer sector).
      */
-    first_trailer_sector_primary =
-        boot_get_first_trailer_sector(state, BOOT_PRIMARY_SLOT, trailer_sz);
+    first_trailer_sector_primary = boot_get_first_trailer_sector(state, BOOT_PRIMARY_SLOT);
 
     /* Check if the currently swapped sector(s) contain the trailer or part of it */
     if ((img_off + sz) >
@@ -673,7 +672,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                  * sector(s) containing the beginning of the trailer won't be erased again.
                  */
                 size_t trailer_sector_secondary =
-                    boot_get_first_trailer_sector(state, BOOT_SECONDARY_SLOT, trailer_sz);
+                    boot_get_first_trailer_sector(state, BOOT_SECONDARY_SLOT);
 
                 uint32_t trailer_sector_offset =
                     boot_img_sector_off(state, BOOT_SECONDARY_SLOT, trailer_sector_secondary);
