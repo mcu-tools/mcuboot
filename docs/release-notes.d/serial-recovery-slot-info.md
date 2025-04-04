@@ -1,1 +1,0 @@
-- Added slot info command support to serial recovery mode
