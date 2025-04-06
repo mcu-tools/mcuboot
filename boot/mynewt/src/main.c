@@ -226,6 +226,7 @@ mynewt_main(void)
 #if !MYNEWT_VAL(OS_SCHEDULING) && MYNEWT_VAL(WATCHDOG_INTERVAL)
     rc = hal_watchdog_init(MYNEWT_VAL(WATCHDOG_INTERVAL));
     assert(rc == 0);
+    hal_watchdog_enable();
 #endif
 
 #if defined(MCUBOOT_SERIAL) || defined(MCUBOOT_HAVE_LOGGING) || \
