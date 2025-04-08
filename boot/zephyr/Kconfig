@@ -1,6 +1,7 @@
 # Copyright (c) 2017-2020 Linaro Limited
 # Copyright (c) 2020 Arm Limited
 # Copyright (c) 2023 Nordic Semiconductor ASA
+# Copyright (c) 2025 Siemens Mobility GmbH
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -340,7 +341,7 @@ config BOOT_SIGNATURE_KEY_FILE
 
 config MCUBOOT_CLEANUP_ARM_CORE
 	bool "Perform core cleanup before chain-load the application"
-	depends on CPU_CORTEX_M
+	depends on CPU_CORTEX_M || CPU_CORTEX_R5
 	default y
 	help
 	  This option instructs MCUboot to perform a clean-up of a set of
