@@ -236,7 +236,8 @@ static int app_max_sectors(struct boot_loader_state *state)
 
     sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
     trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
-    first_trailer_idx = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 1;
+    /* subtract 1 for swap and at least 1 for trailer */
+    first_trailer_idx = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 2;
 
     while (1) {
         sz += sector_sz;
@@ -276,9 +277,10 @@ boot_slots_compatible(struct boot_loader_state *state)
         return 0;
     }
 
-    if (num_usable_sectors_pri != (num_sectors_sec + 1)) {
+    /* Optimal says primary has one more than secondary. Always. Both have trailers. */
+    if (num_sectors_pri != (num_sectors_sec + 1)) {
         BOOT_LOG_DBG("Non-optimal sector distribution, slot0 has %d usable sectors (%d assigned) "
-                     "but slot1 has %d assigned", (int)(num_usable_sectors_pri - 1),
+                     "but slot1 has %d assigned", (int)num_usable_sectors_pri,
                      (int)num_sectors_pri, (int)num_sectors_sec);
     }
 
@@ -598,7 +600,7 @@ int app_max_size(struct boot_loader_state *state)
 
     /* Account for image flags and move sector */
     sz_primary = app_max_sectors(state) * sector_sz_primary - sector_sz_primary;
-    sz_secondary = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT) * sector_sz_secondary;
+    sz_secondary = app_max_sectors(state) * sector_sz_secondary;
 
     return (sz_primary <= sz_secondary ? sz_primary : sz_secondary);
 }

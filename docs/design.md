@@ -314,6 +314,12 @@ Where:
   is equal to 1056 B and the sector size is equal to 1024 B, then
   `image-trailer-sectors-size` will be equal to 2048 B.
 
+This does imply, if there is any doubt, that the primary slot will be exactly
+one sector larger than the secondary slot due to the swap sector alone. It is
+the case that both the primary and secondary slots both have a trailer in
+addition to the application payload and these trailers are identical in size
+to one another.
+
 The algorithm does two erase cycles on the primary slot and one on the secondary
 slot during each swap. Assuming that receiving a new image by the DFU
 application requires 1 erase cycle on the secondary slot, this should result in
