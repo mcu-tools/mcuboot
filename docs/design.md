@@ -296,7 +296,6 @@ This algorithm is designed so that the higher sector of the primary slot is
 used only for allowing sectors to move up. Therefore the most
 memory-size-effective slot layout is when the primary slot is larger than
 the secondary slot by exactly one sector plus the size of the swap status area,
-rounded up to the total size of the sectors it occupies,
 although same-sized slots are allowed as well.
 The algorithm is limited to support sectors of the same
 sector layout. All slot's sectors should be of the same size.
@@ -304,15 +303,12 @@ sector layout. All slot's sectors should be of the same size.
 When using this algorithm the maximum image size available for the application
 will be:
 ```
-maximum-image-size = (N-1) * slot-sector-size - image-trailer-sectors-size
+maximum-image-size = (N-1) * slot-sector-size - image-trailer-size
 ```
 
 Where:
   `N` is the number of sectors in the primary slot.
-  `image-trailer-sectors-size` is the size of the image trailer rounded up to
-  the total size of sectors its occupied. For instance if the image-trailer-size
-  is equal to 1056 B and the sector size is equal to 1024 B, then
-  `image-trailer-sectors-size` will be equal to 2048 B.
+  `image-trailer-size` is the size of the image trailer.
 
 This does imply, if there is any doubt, that the primary slot will be exactly
 one sector larger than the secondary slot due to the swap sector alone. It is
@@ -682,39 +678,49 @@ types described above via a set of tables.  These tables are reproduced below.
 ---
 
 ```
-    State I (swap using offset only)
+    State I (swap using offset and swap using move only)
                      | primary slot | secondary slot |
     -----------------+--------------+----------------|
-               magic | Any          | Good           |
+               magic | Not good     | Good           |
             image-ok | Any          | Unset          |
            copy-done | Any          | Set            |
     -----------------+--------------+----------------'
      result: BOOT_SWAP_TYPE_REVERT                   |
     -------------------------------------------------'
 
-    State II
+    State II (swap using offset and swap using move only)
                      | primary slot | secondary slot |
     -----------------+--------------+----------------|
-               magic | Any          | Good           |
-            image-ok | Any          | Unset          |
-           copy-done | Any          | Any            |
+               magic | Good         | Good           |
+            image-ok | Unset        | Unset          |
+           copy-done | Any          | Set            |
     -----------------+--------------+----------------'
-     result: BOOT_SWAP_TYPE_TEST                     |
+     result: BOOT_SWAP_TYPE_REVERT                   |
     -------------------------------------------------'
-
 
     State III
                      | primary slot | secondary slot |
     -----------------+--------------+----------------|
                magic | Any          | Good           |
+            image-ok | Any          | Unset          |
+           copy-done | Any          | Unset          |
+    -----------------+--------------+----------------'
+     result: BOOT_SWAP_TYPE_TEST                     |
+    -------------------------------------------------'
+
+
+    State IV
+                     | primary slot | secondary slot |
+    -----------------+--------------+----------------|
+               magic | Any          | Good           |
             image-ok | Any          | 0x01           |
-           copy-done | Any          | Any            |
+           copy-done | Any          | Unset          |
     -----------------+--------------+----------------'
      result: BOOT_SWAP_TYPE_PERM                     |
     -------------------------------------------------'
 
 
-    State IV
+    State V
                      | primary slot | secondary slot |
     -----------------+--------------+----------------|
                magic | Good         | Any            |
@@ -725,13 +731,13 @@ types described above via a set of tables.  These tables are reproduced below.
     -------------------------------------------------'
 ```
 
-Any of the above three states results in MCUboot attempting to swap images.
+Any of the above five states results in MCUboot attempting to swap images.
 
 Otherwise, MCUboot does not attempt to swap images, resulting in one of the
-other three swap types, as illustrated by State IV.
+other three swap types, as illustrated by State VI.
 
 ```
-    State V
+    State VI
                      | primary slot | secondary slot |
     -----------------+--------------+----------------|
                magic | Any          | Any            |
@@ -744,7 +750,7 @@ other three swap types, as illustrated by State IV.
     -------------------------------------------------'
 ```
 
-In State V, when no errors occur, MCUboot will attempt to boot the contents of
+In State VI, when no errors occur, MCUboot will attempt to boot the contents of
 the primary slot directly, and the result is `BOOT_SWAP_TYPE_NONE`. If the image
 in the primary slot is not valid, the result is `BOOT_SWAP_TYPE_FAIL`. If a
 fatal error occurs during boot, the result is `BOOT_SWAP_TYPE_PANIC`. If the
@@ -756,7 +762,7 @@ rather than booting an invalid or compromised image.
 
 *An important caveat to the above is the result when a swap is requested*
 *and the image in the secondary slot fails to validate, due to a hashing or*
-*signing error. This state behaves as State IV with the extra action of*
+*signing error. This state behaves as State VI with the extra action of*
 *marking the image in the primary slot as "OK", to prevent further attempts*
 *to swap.*
 

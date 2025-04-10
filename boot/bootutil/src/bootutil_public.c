@@ -84,9 +84,9 @@ struct boot_swap_table {
     uint8_t image_ok_primary_slot;
     uint8_t image_ok_secondary_slot;
     uint8_t copy_done_primary_slot;
-#if defined(MCUBOOT_SWAP_USING_OFFSET)
+#if defined(MCUBOOT_SWAP_USING_OFFSET) || defined(MCUBOOT_SWAP_USING_MOVE)
     uint8_t copy_done_secondary_slot;
-#endif
+#endif /* MCUBOOT_SWAP_USING_OFFSET || MCUBOOT_SWAP_USING_MOVE */
 
     uint8_t swap_type;
 };
@@ -103,9 +103,9 @@ struct boot_swap_table {
  * the bootloader, as in starting/finishing a swap operation.
  */
 static const struct boot_swap_table boot_swap_tables[] = {
-#if defined(MCUBOOT_SWAP_USING_OFFSET)
+#if defined(MCUBOOT_SWAP_USING_OFFSET) || defined(MCUBOOT_SWAP_USING_MOVE)
     {
-        .magic_primary_slot =       BOOT_MAGIC_ANY,
+        .magic_primary_slot =       BOOT_MAGIC_NOTGOOD,
         .magic_secondary_slot =     BOOT_MAGIC_GOOD,
         .image_ok_primary_slot =    BOOT_FLAG_ANY,
         .image_ok_secondary_slot =  BOOT_FLAG_UNSET,
@@ -113,16 +113,25 @@ static const struct boot_swap_table boot_swap_tables[] = {
         .copy_done_secondary_slot = BOOT_FLAG_SET,
         .swap_type =                BOOT_SWAP_TYPE_REVERT,
     },
-#endif
+    {
+        .magic_primary_slot =       BOOT_MAGIC_GOOD,
+        .magic_secondary_slot =     BOOT_MAGIC_GOOD,
+        .image_ok_primary_slot =    BOOT_FLAG_UNSET,
+        .image_ok_secondary_slot =  BOOT_FLAG_UNSET,
+        .copy_done_primary_slot =   BOOT_FLAG_ANY,
+        .copy_done_secondary_slot = BOOT_FLAG_SET,
+        .swap_type =                BOOT_SWAP_TYPE_REVERT,
+    },
+#endif /* MCUBOOT_SWAP_USING_OFFSET || MCUBOOT_SWAP_USING_MOVE */
     {
         .magic_primary_slot =       BOOT_MAGIC_ANY,
         .magic_secondary_slot =     BOOT_MAGIC_GOOD,
         .image_ok_primary_slot =    BOOT_FLAG_ANY,
         .image_ok_secondary_slot =  BOOT_FLAG_UNSET,
         .copy_done_primary_slot =   BOOT_FLAG_ANY,
-#if defined(MCUBOOT_SWAP_USING_OFFSET)
-        .copy_done_secondary_slot = BOOT_FLAG_ANY,
-#endif
+#if defined(MCUBOOT_SWAP_USING_OFFSET) || defined(MCUBOOT_SWAP_USING_MOVE)
+        .copy_done_secondary_slot = BOOT_FLAG_UNSET,
+#endif /* MCUBOOT_SWAP_USING_OFFSET || MCUBOOT_SWAP_USING_MOVE */
         .swap_type =                BOOT_SWAP_TYPE_TEST,
     },
     {
@@ -131,9 +140,9 @@ static const struct boot_swap_table boot_swap_tables[] = {
         .image_ok_primary_slot =    BOOT_FLAG_ANY,
         .image_ok_secondary_slot =  BOOT_FLAG_SET,
         .copy_done_primary_slot =   BOOT_FLAG_ANY,
-#if defined(MCUBOOT_SWAP_USING_OFFSET)
-        .copy_done_secondary_slot = BOOT_FLAG_ANY,
-#endif
+#if defined(MCUBOOT_SWAP_USING_OFFSET) || defined(MCUBOOT_SWAP_USING_MOVE)
+        .copy_done_secondary_slot = BOOT_FLAG_UNSET,
+#endif /* MCUBOOT_SWAP_USING_OFFSET || MCUBOOT_SWAP_USING_MOVE */
         .swap_type =                BOOT_SWAP_TYPE_PERM,
     },
     {
@@ -142,9 +151,9 @@ static const struct boot_swap_table boot_swap_tables[] = {
         .image_ok_primary_slot =    BOOT_FLAG_UNSET,
         .image_ok_secondary_slot =  BOOT_FLAG_ANY,
         .copy_done_primary_slot =   BOOT_FLAG_SET,
-#if defined(MCUBOOT_SWAP_USING_OFFSET)
+#if defined(MCUBOOT_SWAP_USING_OFFSET) || defined(MCUBOOT_SWAP_USING_MOVE)
         .copy_done_secondary_slot = BOOT_FLAG_ANY,
-#endif
+#endif /* MCUBOOT_SWAP_USING_OFFSET || MCUBOOT_SWAP_USING_MOVE */
         .swap_type =                BOOT_SWAP_TYPE_REVERT,
     },
 };
@@ -463,10 +472,10 @@ boot_swap_type_multi(int image_index)
                 table->image_ok_secondary_slot == secondary_slot.image_ok) &&
             (table->copy_done_primary_slot == BOOT_FLAG_ANY  ||
                 table->copy_done_primary_slot == primary_slot.copy_done)
-#if defined(MCUBOOT_SWAP_USING_OFFSET)
+#if defined(MCUBOOT_SWAP_USING_OFFSET) || defined(MCUBOOT_SWAP_USING_MOVE)
             && (table->copy_done_secondary_slot == BOOT_FLAG_ANY  ||
                 table->copy_done_secondary_slot == secondary_slot.copy_done)
-#endif
+#endif /* MCUBOOT_SWAP_USING_OFFSET || MCUBOOT_SWAP_USING_MOVE */
             ) {
             BOOT_LOG_INF("Image index: %d, Swap type: %s", image_index,
                          table->swap_type == BOOT_SWAP_TYPE_TEST   ? "test"   :
