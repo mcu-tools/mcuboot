@@ -9,6 +9,11 @@ IDF_PATH="${HOME}/esp-idf"
 
 set -eo pipefail
 
+revert_mcuboot() {
+  (cd "${MCUBOOT_ROOTDIR}/ext/mbedtls";
+   git checkout v3.0.0)
+}
+
 prepare_environment() {
   # Prepare the environment for ESP-IDF
 
@@ -44,6 +49,7 @@ build_mcuboot() {
   cmake --build "${build_dir}"/
 }
 
+revert_mcuboot
 prepare_environment
 
 if [ -n "${MCUBOOT_FEATURES}" ]; then
