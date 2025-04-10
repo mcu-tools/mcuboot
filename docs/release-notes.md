@@ -3,6 +3,70 @@
 - Table of Contents
 {:toc}
 
+## Version 2.2.0
+
+- Added support for retrieving HW embedded private keys for image encryption
+  (The private key can be retrieved from trusted sources like OTP, TPM.).
+- Changed bootutil's order of events to verify the image header
+  before checking the image.
+- Added the bootloader state object to the bootutil
+  boot_is_header_valid() function
+- Added optional write block size checking to ensure expected
+  sizes match what is available on the hardware.
+- Added optional erase size checking to ensure expected sizes
+  match what is available on the hardware.
+- Added debug logs for zephyr to output discrepencies in erase
+  and write block sizes in dts vs actual hardware configuration
+  at run-time.
+- When using swap with scratch, the image is now decrypted when copying from
+  the scratch partition to the primary slot. Therefore, the scratch partition
+  doesn't contain plaintext firmware data anymore.
+- Added verification for supported IDF-based HAL version.
+- Fixed missing macro for XMC flash devices on ESP32-S3
+- Extended image loader header to include RTC/LP RAM, DROM and IROM segments.
+- Fixed errors when building for `thingy52`, `thingy53` and
+  `nrf9160dk` boards.
+- Fixed chain load address output log message for RAM load
+  mode in Zephyr
+- Fixed issue for swap using move whereby a device could get
+  stuck in a revert loop despite there being no image in the
+  secondary slot
+- Fixed clash when using sysbuild with other
+  applications (i.e. tests) using the name mcuboot
+- imgtool: added initial sanity tests for imgtool commands,
+- imgtool: added and enabled unittests in GitGub workflow,
+- Fixed wrong maximum application size calculation when
+  operating in swap using move mode
+- Added additional images max size support to shared data
+  function
+- Fixed issue with serial recovery image list wrongly using
+  number of images as the number of slots and not returning
+  complete information for 1 updateable image
+- Added slot info command support to serial recovery mode
+- Fixed issue with serial recovery variables not being
+  correctly initialised to default values which could cause
+  some commands to do unexpected operations
+- Added a new swap using offset algorithm which is set with
+  `MCUBOOT_SWAP_USING_OFFSET`. This algorithm is similar to swap
+  using move but avoids moving the sectors in the primary slot
+  up by having the update image written in the second sector in
+  the update slot, which offers a faster update process and
+  requires a smaller swap status area
+- Added support for automatically calculating the maximum number
+  of sectors that are needed for a build by checking the erase
+  sizes of the partitions using CMake for Zephyr. This behaviour
+  can be reverted to the old manual behaviour by disabling
+  `CONFIG_BOOT_MAX_IMG_SECTORS_AUTO`
+- Added protected TLV size to image size check in bootutil
+- Added Kconfig for decompression support in Zephyr
+- Added compressed image flags and TLV to bootutil
+- Added support for removing images with conflicting flags in
+  bootutil
+- Added support for removing encrypted/compressed images when
+  MCUboot is compiled without support for them
+- Added support for devices that do not require erase prior to write operation.
+- Add corrections to the max app size calculations.
+
 ## Version 2.1.0
 
 - Boot serial: Add response to echo command if support is not
