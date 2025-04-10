@@ -1,0 +1,1 @@
+- Added support for booting Cortex-R5 images
