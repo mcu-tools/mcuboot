@@ -36,6 +36,7 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
+#include "flash_map_backend/flash_map_backend.h"
 #include "bootutil/bootutil.h"
 #include "bootutil/bootutil_public.h"
 #include "bootutil/image.h"
