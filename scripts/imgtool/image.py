@@ -299,6 +299,7 @@ class Image:
         self.enctlv_len = 0
         self.max_align = max(DEFAULT_MAX_ALIGN, align) if max_align is None else int(max_align)
         self.non_bootable = non_bootable
+        self.key_ids = None
 
         if self.max_align == DEFAULT_MAX_ALIGN:
             self.boot_magic = bytes([
@@ -472,7 +473,7 @@ class Image:
                 format=PublicFormat.Raw)
         return cipherkey, ciphermac, pubk
 
-    def create(self, key, public_key_format, enckey, dependencies=None,
+    def create(self, keys, public_key_format, enckey, dependencies=None,
                sw_type=None, custom_tlvs=None, compression_tlvs=None,
                compression_type=None, encrypt_keylen=128, clear=False,
                fixed_sig=None, pub_key=None, vector_to_sign=None,
@@ -480,25 +481,33 @@ class Image:
                dont_encrypt=False):
         self.enckey = enckey
 
-        # key decides on sha, then pub_key; of both are none default is used
-        check_key = key if key is not None else pub_key
+        # key decides on sha, then pub_key; if both are none default is used
+        check_key = keys[0] if keys[0] is not None else pub_key
         hash_algorithm, hash_tlv = key_and_user_sha_to_alg_and_tlv(check_key, user_sha, is_pure)
 
         # Calculate the hash of the public key
-        if key is not None:
-            pub = key.get_public_bytes()
-            sha = hash_algorithm()
-            sha.update(pub)
-            pubbytes = sha.digest()
-        elif pub_key is not None:
-            if hasattr(pub_key, 'sign'):
-                print(os.path.basename(__file__) + ": sign the payload")
-            pub = pub_key.get_public_bytes()
-            sha = hash_algorithm()
-            sha.update(pub)
-            pubbytes = sha.digest()
+        pub_digests = []
+        pub_list = []
+
+        if keys is None:
+            if pub_key is not None:
+                if hasattr(pub_key, 'sign'):
+                    print(os.path.basename(__file__) + ": sign the payload")
+                pub = pub_key.get_public_bytes()
+                sha = hash_algorithm()
+                sha.update(pub)
+                pubbytes = sha.digest()
+            else:
+                pubbytes = bytes(hashlib.sha256().digest_size)
         else:
-            pubbytes = bytes(hashlib.sha256().digest_size)
+            for key in keys or []:
+                pub = key.get_public_bytes()
+                sha = hash_algorithm()
+                sha.update(pub)
+                pubbytes = sha.digest()
+                pub_digests.append(pubbytes)
+                pub_list.append(pub)
+
 
         protected_tlv_size = 0
 
@@ -526,10 +535,14 @@ class Image:
             # value later.
             digest = bytes(hash_algorithm().digest_size)
 
+            if pub_digests:
+                boot_pub_digest = pub_digests[0]
+            else:
+                boot_pub_digest = pubbytes
             # Create CBOR encoded boot record
             boot_record = create_sw_component_data(sw_type, image_version,
                                                    hash_tlv, digest,
-                                                   pubbytes)
+                                                   boot_pub_digest)
 
             protected_tlv_size += TLV_SIZE + len(boot_record)
 
@@ -648,20 +661,30 @@ class Image:
             print(os.path.basename(__file__) + ': export digest')
             return
 
-        if self.key_ids is not None:
-            self._add_key_id_tlv_to_unprotected(tlv, self.key_ids[0])
+        if fixed_sig is not None and keys is not None:
+            raise click.UsageError("Can not sign using key and provide fixed-signature at the same time")
 
-        if key is not None or fixed_sig is not None:
-            if public_key_format == 'hash':
-                tlv.add('KEYHASH', pubbytes)
-            else:
-                tlv.add('PUBKEY', pub)
+        if fixed_sig is not None:
+            tlv.add(pub_key.sig_tlv(), fixed_sig['value'])
+            self.signatures[0] = fixed_sig['value']
+        else:
+            # Multi-signature handling: iterate through each provided key and sign.
+            self.signatures = []
+            for i, key in enumerate(keys):
+                # If key IDs are provided, and we have enough for this key, add it first.
+                if self.key_ids is not None and len(self.key_ids) > i:
+                    # Convert key id (an integer) to 4-byte defined endian bytes.
+                    kid_bytes = self.key_ids[i].to_bytes(4, self.endian)
+                    tlv.add('KEYID', kid_bytes)  # Using the TLV tag that corresponds to key IDs.
 
-            if key is not None and fixed_sig is None:
+                if public_key_format == 'hash':
+                    tlv.add('KEYHASH', pub_digests[i])
+                else:
+                    tlv.add('PUBKEY', pub_list[i])
+
                 # `sign` expects the full image payload (hashing done
                 # internally), while `sign_digest` expects only the digest
                 # of the payload
-
                 if hasattr(key, 'sign'):
                     print(os.path.basename(__file__) + ": sign the payload")
                     sig = key.sign(bytes(self.payload))
@@ -669,12 +692,8 @@ class Image:
                     print(os.path.basename(__file__) + ": sign the digest")
                     sig = key.sign_digest(message)
                 tlv.add(key.sig_tlv(), sig)
-                self.signature = sig
-            elif fixed_sig is not None and key is None:
-                tlv.add(pub_key.sig_tlv(), fixed_sig['value'])
-                self.signature = fixed_sig['value']
-            else:
-                raise click.UsageError("Can not sign using key and provide fixed-signature at the same time")
+                self.signatures.append(sig)
+
 
         # At this point the image was hashed + signed, we can remove the
         # protected TLVs from the payload (will be re-added later)
@@ -738,7 +757,7 @@ class Image:
         return STRUCT_ENDIAN_DICT[self.endian]
 
     def get_signature(self):
-        return self.signature
+        return self.signatures
 
     def get_infile_data(self):
         return self.infile_data
@@ -848,75 +867,99 @@ class Image:
         if magic != IMAGE_MAGIC:
             return VerifyResult.INVALID_MAGIC, None, None, None
 
+        # Locate the first TLV info header
         tlv_off = header_size + img_size
         tlv_info = b[tlv_off:tlv_off + TLV_INFO_SIZE]
         magic, tlv_tot = struct.unpack('HH', tlv_info)
+
+        # If it's the protected-TLV block, skip it
         if magic == TLV_PROT_INFO_MAGIC:
-            tlv_off += tlv_tot
+            tlv_off += TLV_INFO_SIZE + tlv_tot
             tlv_info = b[tlv_off:tlv_off + TLV_INFO_SIZE]
             magic, tlv_tot = struct.unpack('HH', tlv_info)
 
         if magic != TLV_INFO_MAGIC:
             return VerifyResult.INVALID_TLV_INFO_MAGIC, None, None, None
 
+        # Define the unprotected-TLV window
+        unprot_off = tlv_off + TLV_INFO_SIZE
+        unprot_end = unprot_off + tlv_tot
+
+        # Region up to the start of unprotected TLVs is hashed
+        prot_tlv_end = unprot_off - TLV_INFO_SIZE
+        hash_region = b[:prot_tlv_end]
+
         # This is set by existence of TLV SIG_PURE
         is_pure = False
-
-        prot_tlv_size = tlv_off
-        hash_region = b[:prot_tlv_size]
-        tlv_end = tlv_off + tlv_tot
-        tlv_off += TLV_INFO_SIZE  # skip tlv info
-
-        # First scan all TLVs in search of SIG_PURE
-        while tlv_off < tlv_end:
-            tlv = b[tlv_off:tlv_off + TLV_SIZE]
+        scan_off = unprot_off
+        while scan_off < unprot_end:
+            tlv = b[scan_off:scan_off + TLV_SIZE]
             tlv_type, _, tlv_len = struct.unpack('BBH', tlv)
             if tlv_type == TLV_VALUES['SIG_PURE']:
                 is_pure = True
                 break
-            tlv_off += TLV_SIZE + tlv_len
+            scan_off += TLV_SIZE + tlv_len
 
+        if key is not None and not isinstance(key, list):
+            key = [key]
+
+        verify_results = []
+        scan_off = unprot_off
         digest = None
-        tlv_off = prot_tlv_size
-        tlv_end = tlv_off + tlv_tot
-        tlv_off += TLV_INFO_SIZE  # skip tlv info
-        while tlv_off < tlv_end:
-            tlv = b[tlv_off:tlv_off + TLV_SIZE]
+        prot_tlv_size = unprot_off - TLV_INFO_SIZE
+
+        # Verify hash and signatures
+        while scan_off < unprot_end:
+            tlv = b[scan_off:scan_off + TLV_SIZE]
             tlv_type, _, tlv_len = struct.unpack('BBH', tlv)
             if is_sha_tlv(tlv_type):
-                if not tlv_matches_key_type(tlv_type, key):
+                if not tlv_matches_key_type(tlv_type, key[0]):
                     return VerifyResult.KEY_MISMATCH, None, None, None
-                off = tlv_off + TLV_SIZE
+                off = scan_off + TLV_SIZE
                 digest = get_digest(tlv_type, hash_region)
-                if digest == b[off:off + tlv_len]:
-                    if key is None:
-                        return VerifyResult.OK, version, digest, None
-                else:
-                    return VerifyResult.INVALID_HASH, None, None, None
-            elif not is_pure and key is not None and tlv_type == TLV_VALUES[key.sig_tlv()]:
-                off = tlv_off + TLV_SIZE
-                tlv_sig = b[off:off + tlv_len]
-                payload = b[:prot_tlv_size]
-                try:
-                    if hasattr(key, 'verify'):
-                        key.verify(tlv_sig, payload)
-                    else:
-                        key.verify_digest(tlv_sig, digest)
-                    return VerifyResult.OK, version, digest, None
-                except InvalidSignature:
-                    # continue to next TLV
-                    pass
+                if digest != b[off:off + tlv_len]:
+                    verify_results.append(("Digest", "INVALID_HASH"))
+
+            elif not is_pure and key is not None and tlv_type == TLV_VALUES[key[0].sig_tlv()]:
+                for idx, k in enumerate(key):
+                    if tlv_type == TLV_VALUES[k.sig_tlv()]:
+                        off = scan_off + TLV_SIZE
+                        tlv_sig = b[off:off + tlv_len]
+                        payload = b[:prot_tlv_size]
+                        try:
+                            if hasattr(k, 'verify'):
+                                k.verify(tlv_sig, payload)
+                            else:
+                                k.verify_digest(tlv_sig, digest)
+                            verify_results.append((f"Key {idx}", "OK"))
+                            break
+                        except InvalidSignature:
+                            # continue to next TLV
+                            verify_results.append((f"Key {idx}", "INVALID_SIGNATURE"))
+                            continue
+
             elif is_pure and key is not None and tlv_type in ALLOWED_PURE_SIG_TLVS:
-                off = tlv_off + TLV_SIZE
+                # pure signature verification
+                off = scan_off + TLV_SIZE
                 tlv_sig = b[off:off + tlv_len]
+                k = key[0]
                 try:
-                    key.verify_digest(tlv_sig, hash_region)
+                    k.verify_digest(tlv_sig, hash_region)
                     return VerifyResult.OK, version, None, tlv_sig
                 except InvalidSignature:
-                    # continue to next TLV
-                    pass
-            tlv_off += TLV_SIZE + tlv_len
-        return VerifyResult.INVALID_SIGNATURE, None, None, None
+                    return VerifyResult.INVALID_SIGNATURE, None, None, None
+
+            scan_off += TLV_SIZE + tlv_len
+        # Now print out the verification results:
+        for k, result in verify_results:
+            print(f"{k}: {result}")
+
+        # Decide on a final return (for example, OK only if at least one signature is valid)
+        if any(result == "OK" for _, result in verify_results):
+            return VerifyResult.OK, version, digest, None
+        else:
+            return VerifyResult.INVALID_SIGNATURE, None, None, None
+
 
     def set_key_ids(self, key_ids):
         """Set list of key IDs (integers) to be inserted before each signature."""
