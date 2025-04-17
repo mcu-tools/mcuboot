@@ -591,18 +591,10 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 int app_max_size(struct boot_loader_state *state)
 {
     uint32_t sector_sz_primary;
-    uint32_t sector_sz_secondary;
-    uint32_t sz_primary;
-    uint32_t sz_secondary;
 
     sector_sz_primary = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
-    sector_sz_secondary = boot_img_sector_size(state, BOOT_SECONDARY_SLOT, 0);
 
-    /* Account for image flags and move sector */
-    sz_primary = app_max_sectors(state) * sector_sz_primary - sector_sz_primary;
-    sz_secondary = app_max_sectors(state) * sector_sz_secondary;
-
-    return (sz_primary <= sz_secondary ? sz_primary : sz_secondary);
+    return app_max_sectors(state) * sector_sz_primary;
 }
 
 #endif
