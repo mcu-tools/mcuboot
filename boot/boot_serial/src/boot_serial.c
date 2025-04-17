@@ -290,7 +290,7 @@ bs_list(char *buf, int len)
     zcbor_list_start_encode(cbor_state, 5);
     image_index = 0;
     IMAGES_ITER(image_index) {
-#ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
+#if defined(MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE) || defined(MCUBOOT_SWAP_USING_OFFSET)
         int swap_status = boot_swap_type_multi(image_index);
 #endif
 
