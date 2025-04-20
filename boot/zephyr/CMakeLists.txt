@@ -678,7 +678,10 @@ if(SYSBUILD)
     endif()
 
     math(EXPR trailer_size "${key_size} + ${boot_magic_size} + ${boot_swap_data_size} + ${boot_status_data_size}")
-    align_up(${trailer_size} ${erase_size} trailer_size)
+
+    if(CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET)
+      align_up(${trailer_size} ${erase_size} trailer_size)
+    endif()
 
     math(EXPR required_size "${trailer_size} + ${boot_tlv_estimate}")
 
@@ -686,7 +689,10 @@ if(SYSBUILD)
       set(required_upgrade_size "0")
     else()
       math(EXPR required_upgrade_size "${boot_magic_size} + ${boot_swap_data_size} + ${boot_status_data_size}")
-      align_up(${required_upgrade_size} ${erase_size} required_upgrade_size)
+
+      if(CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET)
+        align_up(${required_upgrade_size} ${erase_size} required_upgrade_size)
+      endif()
     endif()
 
     if(CONFIG_BOOT_SWAP_USING_MOVE)
