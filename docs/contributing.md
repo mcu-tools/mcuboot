@@ -1,7 +1,7 @@
 # Contributing to the MCUboot project
 
 When contributing to MCUboot, please first discuss the changes you
-wish to make via issue, email or slack.
+wish to make via issue, email or Discord.
 
 ## Pull Request Process
 

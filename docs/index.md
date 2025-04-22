@@ -1,6 +1,7 @@
 # MCUboot
 
-MCUboot is a secure bootloader for 32-bits microcontrollers.
+MCUboot is a secure bootloader for 32-bits microcontrollers.  This document is
+for release v2.2.0-rc1.
 
 Please see [Contributing](contributing.md) on how you can contribute to MCUboot.
 
