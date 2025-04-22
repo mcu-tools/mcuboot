@@ -2,6 +2,8 @@
 
 MCUboot is a secure bootloader for 32-bits microcontrollers.
 
+Please see [Contributing](contributing.md) on how you can contribute to MCUboot.
+
 ## Overview
 
 MCUboot defines a common infrastructure for the bootloader and the system flash
