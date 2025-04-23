@@ -166,6 +166,10 @@ pub fn get_security_counter(image_index: u32) -> u32 {
     return counter_val;
 }
 
+pub fn reset_security_counters() {
+    api::sim_reset_nv_counters();
+}
+
 mod raw {
     use crate::area::CAreaDesc;
     use crate::api::{BootRsp, CSimContext};
