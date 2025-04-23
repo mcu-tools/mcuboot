@@ -158,26 +158,16 @@ static void do_boot(struct boot_rsp *rsp)
     /* Get ram address for image */
     vt = (struct arm_vector_table *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
 #else
+    uintptr_t flash_base;
     int rc;
-    const struct flash_area *fap;
-    static uint32_t dst[2];
 
     /* Jump to flash image */
-    rc = flash_area_open(rsp->br_flash_dev_id, &fap);
+    rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
     assert(rc == 0);
 
-    rc = flash_area_read(fap, rsp->br_hdr->ih_hdr_size, dst, sizeof(dst));
-    assert(rc == 0);
-#ifndef CONFIG_ASSERT
-    /* Enter a lock up as asserts are disabled */
-    if (rc != 0) {
-        while (1);
-    }
-#endif
-
-    flash_area_close(fap);
-
-    vt = (struct arm_vector_table *)dst;
+    vt = (struct arm_vector_table *)(flash_base +
+                                     rsp->br_image_off +
+                                     rsp->br_hdr->ih_hdr_size);
 #endif
 
     if (IS_ENABLED(CONFIG_SYSTEM_TIMER_HAS_DISABLE_SUPPORT)) {

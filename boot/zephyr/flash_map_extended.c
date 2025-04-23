@@ -155,21 +155,8 @@ int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
 
 uint8_t flash_area_get_device_id(const struct flash_area *fa)
 {
-    uint8_t device_id;
-    int rc;
-
-    rc = BOOT_HOOK_FLASH_AREA_CALL(flash_area_get_device_id_hook,
-                                   BOOT_HOOK_REGULAR, fa, &device_id);
-    if (rc != BOOT_HOOK_REGULAR) {
-        return device_id;
-    }
-
-#if defined(CONFIG_ARM)
-    return fa->fa_id;
-#else
     (void)fa;
     return FLASH_DEVICE_ID;
-#endif
 }
 
 #define ERASED_VAL 0xff
