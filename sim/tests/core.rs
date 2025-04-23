@@ -21,6 +21,7 @@ use std::{
     env,
     sync::atomic::{AtomicUsize, Ordering},
 };
+use mcuboot_sys::c;
 
 /// A single test, after setting up logging and such.  Within the $body,
 /// $arg will be bound to each device.
@@ -90,6 +91,7 @@ test_shell!(dependency_combos, r, {
         let image = r.clone().make_image(&dep, true);
         dump_image(&image, "dependency_combos");
         assert!(!image.run_check_deps(&dep));
+        c::reset_security_counters();
     }
 });
 

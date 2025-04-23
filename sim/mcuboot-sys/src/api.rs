@@ -388,3 +388,13 @@ pub extern "C" fn sim_get_nv_counter_for_image(image_index: u32, security_counte
     });
     return rc;
 }
+
+pub fn sim_reset_nv_counters() {
+    NV_COUNTER_CTX.with(|ctx| {
+        let mut counter_storage = ctx.borrow_mut();
+
+        for i in 0..counter_storage.storage.len() {
+            counter_storage.storage[i] = 0;
+        }
+    });
+}

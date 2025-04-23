@@ -239,7 +239,7 @@ impl ImagesBuilder {
                 let upgr   = match deps.depends[image_num] {
                     DepType::NoUpgrade => install_no_image(),
                     _ => install_image(&mut flash, &self.areadesc, &slots, 1,
-                        maximal(46928), &ram, &*dep, ImageManipulation::BadSignature, Some(0))
+                        maximal(46928), &ram, &*dep, ImageManipulation::BadSignature, Some(1))
                 };
                 (prim, upgr)
             } else {
@@ -248,7 +248,7 @@ impl ImagesBuilder {
                 let upgr = match deps.depends[image_num] {
                         DepType::NoUpgrade => install_no_image(),
                         _ => install_image(&mut flash, &self.areadesc, &slots, 1,
-                            maximal(46928), &ram, &*dep, img_manipulation, Some(0))
+                            maximal(46928), &ram, &*dep, img_manipulation, Some(1))
                     };
                 (prim, upgr)
             };
@@ -288,6 +288,10 @@ impl ImagesBuilder {
                     panic!("Unable to perform basic upgrade");
                 }
         };
+
+        // As a side effect, the upgrade performed above has updated the security counters. Reset
+        // them to their original value.
+        c::reset_security_counters();
 
         images.total_count = Some(total_count);
         images
