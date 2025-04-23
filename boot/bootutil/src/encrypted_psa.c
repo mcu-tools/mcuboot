@@ -28,10 +28,12 @@
 BOOT_LOG_MODULE_DECLARE(mcuboot_psa_enc);
 
 #define EXPECTED_ENC_LEN    BOOT_ENC_TLV_SIZE
-#define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_X25519
 #define EC_PUBK_INDEX       (0)
-#define EC_TAG_INDEX        (32)
-#define EC_CIPHERKEY_INDEX  (32 + 32)
+#define EC_PUBK_LEN         (32)
+#define EC_TAG_INDEX        (EC_PUBK_INDEX + EC_PUBK_LEN)
+#define EC_TAG_LEN          (32)
+#define EC_CIPHERKEY_INDEX  (EC_TAG_INDEX + EC_TAG_LEN)
+#define EC_CIPHERKEY_LEN    BOOT_ENC_KEY_SIZE
 _Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
         "Please fix ECIES-X25519 component indexes");
 
@@ -39,7 +41,6 @@ _Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
                                        MBEDTLS_OID_ORG_GOV X25519_OID;
 
-#define SHARED_KEY_LEN 32
 #define PRIV_KEY_LEN   32
 
 /* Fixme: This duplicates code from encrypted.c and depends on mbedtls */
@@ -180,7 +181,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      */
     psa_ret = psa_key_derivation_key_agreement(&key_do, PSA_KEY_DERIVATION_INPUT_SECRET,
                                                kid, &buf[EC_PUBK_INDEX],
-                                               BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
+                                               EC_PUBK_LEN);
     psa_cleanup_ret = psa_destroy_key(kid);
     if (psa_cleanup_ret != PSA_SUCCESS) {
         BOOT_LOG_WRN("Built-in key destruction failed %d", psa_cleanup_ret);
@@ -242,9 +243,9 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
     /* Verify the MAC tag of the random encryption key */
     psa_ret = psa_mac_verify(kid, PSA_ALG_HMAC(PSA_ALG_SHA_256),
-                             &buf[EC_CIPHERKEY_INDEX], BOOT_ENC_KEY_SIZE,
+                             &buf[EC_CIPHERKEY_INDEX], EC_CIPHERKEY_LEN,
                              &buf[EC_TAG_INDEX],
-                             BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
+                             EC_TAG_LEN);
     psa_cleanup_ret = psa_destroy_key(kid);
     if (psa_cleanup_ret != PSA_SUCCESS) {
         BOOT_LOG_WRN("MAC key destruction failed %d", psa_cleanup_ret);
