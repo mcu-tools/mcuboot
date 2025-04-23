@@ -61,7 +61,7 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
             uint32_t sz = boot_img_sector_size(state, slot, sector);
             uint32_t off = boot_img_sector_off(state, slot, sector);
 
-            rc = boot_erase_region(fap, off, sz);
+            rc = boot_erase_region(fap, off, sz, false);
             assert(rc == 0);
 
             sector--;
@@ -87,7 +87,7 @@ swap_scramble_trailer_sectors(const struct boot_loader_state *state,
     if (rc < 0) {
         return BOOT_EFLASH;
     }
-    rc = boot_scramble_region_backwards(fap, off, flash_area_get_size(fap) - off);
+    rc = boot_scramble_region(fap, off, (flash_area_get_size(fap) - off), true);
     if (rc < 0) {
         return BOOT_EFLASH;
     }

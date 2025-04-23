@@ -875,7 +875,7 @@ static off_t erase_range(const struct flash_area *fap, off_t start, off_t end)
     BOOT_LOG_DBG("Erasing range 0x%jx:0x%jx", (intmax_t)start,
 		 (intmax_t)(start + size - 1));
 
-    rc = boot_erase_region(fap, start, size);
+    rc = boot_erase_region(fap, start, size, false);
     if (rc != 0) {
         BOOT_LOG_ERR("Error %d while erasing range", rc);
         return -EINVAL;
@@ -1019,7 +1019,7 @@ bs_upload(char *buf, int len)
         /* Non-progressive erase erases entire image slot when first chunk of
          * an image is received.
          */
-        rc = boot_erase_region(fap, 0, area_size);
+        rc = boot_erase_region(fap, 0, area_size, false);
         if (rc) {
             goto out_invalid_data;
         }

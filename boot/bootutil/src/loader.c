@@ -1239,36 +1239,70 @@ boot_validated_swap_type(struct boot_loader_state *state,
  * @param off                   The offset within the flash area to start the
  *                              erase.
  * @param size                  The number of bytes to erase.
+ * @param backwards             If set to true will erase from end to start
+ *                              addresses, otherwise erases from start to end
+ *                              addresses.
  *
  * @return                      0 on success; nonzero on failure.
  */
 int
-boot_scramble_region(const struct flash_area *fa, uint32_t off, uint32_t size)
+boot_scramble_region(const struct flash_area *fa, uint32_t off, uint32_t size, bool backwards)
 {
-    int ret = 0;
+    int rc = 0;
 
     if (size == 0) {
-        return 0;
+        goto done;
     }
 
     if (device_requires_erase(fa)) {
-        return flash_area_erase(fa, off, size);
+        rc = boot_erase_region(fa, off, size, backwards);
+    } else if (off >= flash_area_get_size(fa) || (flash_area_get_size(fa) - off) < size) {
+        rc = -1;
+        goto done;
     } else {
         uint8_t buf[BOOT_MAX_ALIGN];
-        size_t size_done = 0;
         const size_t write_block = flash_area_align(fa);
+        uint32_t end_offset;
 
         memset(buf, flash_area_erased_val(fa), sizeof(buf));
 
-        while (size_done < size) {
-            ret = flash_area_write(fa, size_done + off, buf, write_block);
-            if (ret != 0) {
+        if (backwards) {
+            end_offset = ALIGN_DOWN(off, write_block);
+            /* Starting at the last write block in range */
+            off += size - write_block;
+        } else {
+            end_offset = ALIGN_DOWN((off + size), write_block);
+        }
+
+        while (true) {
+            /* Write over the area to scramble data that is there */
+            rc = flash_area_write(fa, off, buf, write_block);
+            if (rc != 0) {
                 break;
             }
-            size_done += write_block;
+
+            MCUBOOT_WATCHDOG_FEED();
+
+            if (backwards) {
+                if (end_offset >= off) {
+                    /* Reached the first offset in range and already scrambled it */
+                    break;
+                }
+
+                off -= write_block;
+            } else {
+                if (end_offset < off) {
+                    /* Reached the end offset in range and already scrambled it */
+                    break;
+                }
+
+                off += write_block;
+            }
         }
     }
-    return ret;
+
+done:
+    return rc;
 }
 
 /**
@@ -1284,90 +1318,6 @@ boot_scramble_region(const struct flash_area *fa, uint32_t off, uint32_t size)
  *
  * @return                      0 on success; nonzero on failure.
  */
-int boot_scramble_region_backwards(const struct flash_area *fa, uint32_t off, uint32_t size)
-{
-    int ret = 0;
-    uint32_t first_offset = 0;
-
-    if (size == 0) {
-        return 0;
-    }
-
-    if (off >= flash_area_get_size(fa) || (flash_area_get_size(fa) - off) < size) {
-        return -1;
-    }
-
-    if (device_requires_erase(fa)) {
-        struct flash_sector sector;
-
-        /* Get the lowest erased page offset first */
-        ret = flash_area_get_sector(fa, off, &sector);
-        if (ret < 0) {
-            return ret;
-        }
-        first_offset = flash_sector_get_off(&sector);
-
-        /* Set boundary condition, the highest probable offset to erase, within
-         * last sector to erase
-         */
-        off += size - 1;
-
-        while (true) {
-            /* Size to read in this iteration */
-            size_t csize;
-
-            /* Get current sector and, also, correct offset */
-            ret = flash_area_get_sector(fa, off, &sector);
-            if (ret < 0) {
-                return ret;
-            }
-
-            /* Corrected offset and size of current sector to erase */
-            off = flash_sector_get_off(&sector);
-            csize = flash_sector_get_size(&sector);
-
-            ret = flash_area_erase(fa, off, csize);
-            if (ret < 0) {
-                return ret;
-            }
-
-            if (first_offset >= off) {
-                /* Reached the first offsset in range and already erased it */
-                break;
-            }
-
-            /* Move down to previous sector, the flash_area_get_sector will
-             * correct the value to real page offset
-             */
-            off -= 1;
-        }
-    } else {
-        uint8_t buf[BOOT_MAX_ALIGN];
-        const size_t write_block = flash_area_align(fa);
-        uint32_t first_offset = ALIGN_DOWN(off, write_block);
-
-        memset(buf, flash_area_erased_val(fa), sizeof(buf));
-
-        /* Starting at the last write block in range */
-        off += size - write_block;
-
-        while (true) {
-            /* Write over the area to scramble data that is there */
-            ret = flash_area_write(fa, off, buf, write_block);
-            if (ret != 0) {
-                break;
-            }
-
-            if (first_offset >= off) {
-                /* Reached the first offset in range and already scrambled it */
-                break;
-            }
-
-            off -= write_block;
-        }
-    }
-    return ret;
-}
 
 /**
  * Remove enough data from slot to mark is as unused
@@ -1392,7 +1342,7 @@ boot_scramble_slot(const struct flash_area *fa, int slot)
     /* Without minimal entire area needs to be scrambled */
 #if !defined(MCUBOOT_MINIMAL_SCRAMBLE)
     size = flash_area_get_size(fa);
-    ret = boot_scramble_region(fa, 0, size);
+    ret = boot_scramble_region(fa, 0, size, false);
 #else
     size_t off = 0;
 
@@ -1401,7 +1351,7 @@ boot_scramble_slot(const struct flash_area *fa, int slot)
         return ret;
     }
 
-    ret = boot_scramble_region(fa, off, size);
+    ret = boot_scramble_region(fa, off, size, false);
     if (ret < 0) {
         return ret;
     }
@@ -1411,7 +1361,7 @@ boot_scramble_slot(const struct flash_area *fa, int slot)
         return ret;
     }
 
-    ret = boot_scramble_region_backwards(fa, off, flash_area_get_size(fa) - off);
+    ret = boot_scramble_region(fa, off, (flash_area_get_size(fa) - off), true);
 #endif
     return ret;
 }
@@ -1643,7 +1593,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     sect_count = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
     for (sect = 0, size = 0; sect < sect_count; sect++) {
         this_size = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, sect);
-        rc = boot_erase_region(fap_primary_slot, size, this_size);
+        rc = boot_erase_region(fap_primary_slot, size, this_size, false);
         assert(rc == 0);
 
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
@@ -1667,7 +1617,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
         sector--;
     } while (sz < trailer_sz);
 
-    rc = boot_erase_region(fap_primary_slot, off, sz);
+    rc = boot_erase_region(fap_primary_slot, off, sz, false);
     assert(rc == 0);
 #endif
 
@@ -1739,7 +1689,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     BOOT_LOG_DBG("erasing secondary header");
     rc = boot_erase_region(fap_secondary_slot,
                            boot_img_sector_off(state, BOOT_SECONDARY_SLOT, 0),
-                           boot_img_sector_size(state, BOOT_SECONDARY_SLOT, 0));
+                           boot_img_sector_size(state, BOOT_SECONDARY_SLOT, 0), false);
     assert(rc == 0);
 #endif
 
@@ -1749,7 +1699,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
                            boot_img_sector_off(state, BOOT_SECONDARY_SLOT,
                                last_sector),
                            boot_img_sector_size(state, BOOT_SECONDARY_SLOT,
-                               last_sector));
+                               last_sector), false);
     assert(rc == 0);
 
     /* TODO: Perhaps verify the primary slot's signature again? */
@@ -2917,9 +2867,8 @@ boot_select_or_erase(struct boot_loader_state *state)
          */
         BOOT_LOG_DBG("Erasing faulty image in the %s slot.",
                      (active_slot == BOOT_PRIMARY_SLOT) ? "primary" : "secondary");
-        rc = flash_area_erase(fap, 0, flash_area_get_size(fap));
+        rc = boot_scramble_region(fap, 0, flash_area_get_size(fap), false);
         assert(rc == 0);
-
         rc = -1;
     } else {
         if (active_swap_state->copy_done != BOOT_FLAG_SET) {

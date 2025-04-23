@@ -346,11 +346,9 @@ int boot_copy_region(struct boot_loader_state *state,
 /* Prepare for write device that requires erase prior to write. This will
  * do nothing on devices without erase requirement.
  */
-int boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz);
+int boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz, bool backwards);
 /* Similar to boot_erase_region but will always remove data */
-int boot_scramble_region(const struct flash_area *fap, uint32_t off, uint32_t sz);
-/* Similar to boot_scramble_region but works backwards */
-int boot_scramble_region_backwards(const struct flash_area *fap, uint32_t off, uint32_t sz);
+int boot_scramble_region(const struct flash_area *fap, uint32_t off, uint32_t sz, bool backwards);
 /* Makes slot unbootable, either by scrambling header magic, header sector
  * or entire slot, depending on settings.
  * Note: slot is passed here becuase at this point there is no function
