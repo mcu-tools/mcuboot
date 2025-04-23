@@ -4,6 +4,7 @@
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2025 Nordic Semiconductor ASA
  *
  * Original license:
  *
@@ -562,18 +563,103 @@ done:
  * Erases a region of device that requires erase prior to write; does
  * nothing on devices without erase.
  *
- * @param fap                   The flash_area containing the region to erase.
+ * @param fa                    The flash_area containing the region to erase.
  * @param off                   The offset within the flash area to start the
  *                              erase.
- * @param sz                    The number of bytes to erase.
+ * @param size                  The number of bytes to erase.
+ * @param backwards             If set to true will erase from end to start
+ *                              addresses, otherwise erases from start to end
+ *                              addresses.
  *
  * @return                      0 on success; nonzero on failure.
  */
 int
-boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz)
+boot_erase_region(const struct flash_area *fa, uint32_t off, uint32_t size, bool backwards)
 {
-    if (device_requires_erase(fap)) {
-        return flash_area_erase(fap, off, sz);
+    int rc = 0;
+
+    if (off >= flash_area_get_size(fa) || (flash_area_get_size(fa) - off) < size) {
+        rc = -1;
+        goto end;
+    } else if (device_requires_erase(fa)) {
+        uint32_t end_offset = 0;
+        struct flash_sector sector;
+
+        if (backwards) {
+            /* Get the lowest page offset first */
+            rc = flash_area_get_sector(fa, off, &sector);
+
+            if (rc < 0) {
+                goto end;
+            }
+
+            end_offset = flash_sector_get_off(&sector);
+
+            /* Set boundary condition, the highest probable offset to erase, within
+             * last sector to erase
+             */
+            off += size - 1;
+        } else {
+            /* Get the highest page offset first */
+            rc = flash_area_get_sector(fa, (off + size - 1), &sector);
+
+            if (rc < 0) {
+                goto end;
+            }
+
+            end_offset = flash_sector_get_off(&sector);
+        }
+
+        while (true) {
+            /* Size to read in this iteration */
+            size_t csize;
+
+            /* Get current sector and, also, correct offset */
+            rc = flash_area_get_sector(fa, off, &sector);
+
+            if (rc < 0) {
+                goto end;
+            }
+
+            /* Corrected offset and size of current sector to erase */
+            off = flash_sector_get_off(&sector);
+            csize = flash_sector_get_size(&sector);
+
+            rc = flash_area_erase(fa, off, csize);
+
+            if (rc < 0) {
+                goto end;
+            }
+
+            MCUBOOT_WATCHDOG_FEED();
+
+            if (backwards) {
+                if (end_offset >= off) {
+                    /* Reached the first offset in range and already erased it */
+                    break;
+                }
+
+                /* Move down to previous sector, the flash_area_get_sector will
+                 * correct the value to real page offset
+                 */
+                off -= 1;
+            } else {
+                /* Move up to next sector */
+                off += csize;
+
+                if (off > end_offset) {
+                    /* Reached the end offset in range and already erased it */
+                    break;
+                }
+
+                /* Workaround for flash_sector_get_off() being broken in mynewt, hangs with
+                 * infinite loop if this is not present, should be removed if bug is fixed.
+                 */
+                off += 1;
+            }
+        }
     }
-    return 0;
+
+end:
+    return rc;
 }

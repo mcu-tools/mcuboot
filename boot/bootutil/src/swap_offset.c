@@ -470,7 +470,7 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *st
         } else {
             /* Copy from slot 0 X to slot 1 X */
             BOOT_LOG_DBG("Erasing secondary 0x%x of 0x%x", sec_off, sz);
-            rc = boot_erase_region(fap_sec, sec_off, sz);
+            rc = boot_erase_region(fap_sec, sec_off, sz, false);
             assert(rc == 0);
 
             BOOT_LOG_DBG("Copying primary 0x%x -> secondary 0x%x of 0x%x", pri_off, sec_off, sz);
@@ -490,7 +490,7 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *st
         } else {
             /* Erase slot 0 X */
             BOOT_LOG_DBG("Erasing primary 0x%x of 0x%x", pri_off, sz);
-            rc = boot_erase_region(fap_pri, pri_off, sz);
+            rc = boot_erase_region(fap_pri, pri_off, sz, false);
             assert(rc == 0);
 
             /* Copy from slot 1 (X + 1) to slot 0 X */
@@ -531,7 +531,7 @@ static void boot_swap_sectors_revert(int idx, uint32_t sz, struct boot_loader_st
         } else {
             /* Copy from slot 0 X to slot 1 X */
             BOOT_LOG_DBG("Erasing secondary 0x%x of 0x%x", sec_off, sz);
-            rc = boot_erase_region(fap_sec, sec_off, sz);
+            rc = boot_erase_region(fap_sec, sec_off, sz, false);
             assert(rc == 0);
 
             BOOT_LOG_DBG("Copying primary 0x%x -> secondary 0x%x of 0x%x", pri_off, sec_off, sz);
@@ -551,7 +551,7 @@ static void boot_swap_sectors_revert(int idx, uint32_t sz, struct boot_loader_st
         } else {
             /* Erase slot 0 X */
             BOOT_LOG_DBG("Erasing primary 0x%x of 0x%x", pri_off, sz);
-            rc = boot_erase_region(fap_pri, pri_off, sz);
+            rc = boot_erase_region(fap_pri, pri_off, sz, false);
             assert(rc == 0);
 
             /* Copy from slot 1 (X + 1) to slot 0 X */
@@ -710,7 +710,7 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
          * to allow for a future update to be loaded
          */
         rc = boot_scramble_region(fap_sec, boot_img_sector_off(state, BOOT_SECONDARY_SLOT, 0),
-                                  sector_sz);
+                                  sector_sz, false);
         assert(rc == 0);
         rc = swap_scramble_trailer_sectors(state, fap_sec);
         assert(rc == 0);
