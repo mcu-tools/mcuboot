@@ -114,7 +114,7 @@ extern const struct bootutil_key bootutil_enc_key;
 int
 boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 {
-    uint8_t derived_key[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+    uint8_t derived_key[BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t *cp;
     uint8_t *cpend;
     uint8_t private_key[PRIV_KEY_LEN];
@@ -134,7 +134,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      * the beginning of the input buffer.
      */
     uint8_t iv_and_key[PSA_CIPHER_IV_LENGTH(PSA_KEY_TYPE_AES, PSA_ALG_CTR) +
-                       BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE];
+                       BOOT_ENC_KEY_SIZE];
 
     psa_ret = psa_crypto_init();
     if (psa_ret != PSA_SUCCESS) {
@@ -208,7 +208,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    len = BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
+    len = BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
     psa_ret = psa_key_derivation_output_bytes(&key_do, derived_key, len);
     psa_cleanup_ret = psa_key_derivation_abort(&key_do);
     if (psa_cleanup_ret != PSA_SUCCESS) {
@@ -219,7 +219,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    /* The derived key consists of BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE bytes
+    /* The derived key consists of BOOT_ENC_KEY_SIZE bytes
      * followed by BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE bytes. Both parts will
      * be imported at the point where needed and discarded immediately after.
      */
@@ -228,11 +228,11 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     psa_set_key_algorithm(&kattr, PSA_ALG_HMAC(PSA_ALG_SHA_256));
 
     /* Import the MAC tag key part of derived key, that is the part that starts
-     * after BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE and has length of
+     * after BOOT_ENC_KEY_SIZE and has length of
      * BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE bytes.
      */
     psa_ret = psa_import_key(&kattr,
-                             &derived_key[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE],
+                             &derived_key[BOOT_ENC_KEY_SIZE],
                              BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE, &kid);
     psa_reset_key_attributes(&kattr);
     if (psa_ret != PSA_SUCCESS) {
@@ -262,8 +262,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     psa_set_key_algorithm(&kattr, PSA_ALG_CTR);
 
     /* Import the AES partition of derived key, the first 16 bytes */
-    psa_ret = psa_import_key(&kattr, &derived_key[0],
-                             BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE, &kid);
+    psa_ret = psa_import_key(&kattr, &derived_key[0], BOOT_ENC_KEY_SIZE, &kid);
     memset(derived_key, 0, sizeof(derived_key));
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_ERR("AES key import failed %d", psa_ret);
@@ -279,14 +278,14 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
     len = 0;
     psa_ret = psa_cipher_decrypt(kid, PSA_ALG_CTR, iv_and_key, sizeof(iv_and_key),
-                                 enckey, BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE, &len);
+                                 enckey, BOOT_ENC_KEY_SIZE, &len);
     memset(iv_and_key, 0, sizeof(iv_and_key));
     psa_cleanup_ret = psa_destroy_key(kid);
     if (psa_cleanup_ret != PSA_SUCCESS) {
 	BOOT_LOG_WRN("AES key destruction failed %d", psa_cleanup_ret);
     }
-    if (psa_ret != PSA_SUCCESS || len != BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE) {
-        memset(enckey, 0, BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE);
+    if (psa_ret != PSA_SUCCESS || len != BOOT_ENC_KEY_SIZE) {
+        memset(enckey, 0, BOOT_ENC_KEY_SIZE);
         BOOT_LOG_ERR("Random key decryption failed %d", psa_ret);
         return -1;
     }

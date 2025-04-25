@@ -11,7 +11,6 @@
 #include "bootutil/bootutil_log.h"
 #include "bootutil/bootutil_public.h"
 #include "bootutil/fault_injection_hardening.h"
-#include "bootutil/enc_key.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 
