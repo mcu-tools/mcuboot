@@ -422,11 +422,11 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     bootutil_aes_ctr_context aes_ctr;
     uint8_t tag[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t shared[SHARED_KEY_LEN];
-    uint8_t derived_key[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+    uint8_t derived_key[BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t *cp;
     uint8_t *cpend;
     uint8_t private_key[PRIV_KEY_LEN];
-    uint8_t counter[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE];
+    uint8_t counter[BOOT_ENC_BLOCK_SIZE];
     uint16_t len;
 #endif
     struct bootutil_key *bootutil_enc_key = NULL;
@@ -530,10 +530,10 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      * Expand shared secret to create keys for AES-128-CTR + HMAC-SHA256
      */
 
-    len = BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
+    len = BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
     rc = hkdf(shared, SHARED_KEY_LEN, (uint8_t *)"MCUBoot_ECIES_v1", 16,
             derived_key, &len);
-    if (rc != 0 || len != (BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE)) {
+    if (rc != 0 || len != (BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE)) {
         return -1;
     }
 
@@ -585,8 +585,8 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    memset(counter, 0, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
-    rc = bootutil_aes_ctr_decrypt(&aes_ctr, counter, &buf[EC_CIPHERKEY_INDEX], BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE, 0, enckey);
+    memset(counter, 0, BOOT_ENC_BLOCK_SIZE);
+    rc = bootutil_aes_ctr_decrypt(&aes_ctr, counter, &buf[EC_CIPHERKEY_INDEX], BOOT_ENC_KEY_SIZE, 0, enckey);
     if (rc != 0) {
         bootutil_aes_ctr_drop(&aes_ctr);
         return -1;
