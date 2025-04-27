@@ -1747,6 +1747,7 @@ fn show_flash(flash: &dyn Flash) {
 #[derive(Debug)]
 enum ImageSize {
     /// Make the image the specified given size.
+    #[allow(dead_code)]
     Given(usize),
     /// Make the image as large as it can be for the partition/device.
     Largest,
@@ -2410,15 +2411,8 @@ trait AsRaw : Sized {
 
 /// Determine whether it makes sense to test this configuration with a maximally-sized image.
 /// Returns an ImageSize representing the best size to test, possibly just with the given size.
-fn maximal(size: usize) -> ImageSize {
-    if Caps::OverwriteUpgrade.present() ||
-        Caps::SwapUsingOffset.present() ||
-        Caps::SwapUsingMove.present()
-    {
-        ImageSize::Given(size)
-    } else {
-        ImageSize::Largest
-    }
+fn maximal(_size: usize) -> ImageSize {
+    ImageSize::Largest
 }
 
 pub fn show_sizes() {
