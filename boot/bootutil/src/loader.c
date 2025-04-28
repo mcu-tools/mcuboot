@@ -1230,26 +1230,6 @@ boot_validated_swap_type(struct boot_loader_state *state,
 #endif
 
 /**
- * Erases a region of device that requires erase prior to write; does
- * nothing on devices without erase.
- *
- * @param fap                   The flash_area containing the region to erase.
- * @param off                   The offset within the flash area to start the
- *                              erase.
- * @param sz                    The number of bytes to erase.
- *
- * @return                      0 on success; nonzero on failure.
- */
-int
-boot_erase_region(const struct flash_area *fap, uint32_t off, uint32_t sz)
-{
-    if (device_requires_erase(fap)) {
-        return flash_area_erase(fap, off, sz);
-    }
-    return 0;
-}
-
-/**
  * Removes data from specified region either by writing erase value in place of
  * data or by doing erase, if device has such hardware requirement.
  * Note that function will fail if off or size are not aligned to device
