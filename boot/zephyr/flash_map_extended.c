@@ -25,7 +25,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define FLASH_DEVICE_ID SPI_FLASH_0_ID
 #if DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_xspi_nor), okay)
 #define FLASH_DEVICE_NODE DT_INST(0, st_stm32_xspi_nor)
-#define FLASH_DEVICE_BASE DT_REG_ADDR(DT_INST(0, st_stm32_xspi_nor))
+#define FLASH_DEVICE_BASE DT_REG_ADDR_BY_IDX(DT_INST(0, st_stm32_xspi),1)
 #elif DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_ospi_nor), okay)
 #define FLASH_DEVICE_NODE DT_INST(0, st_stm32_ospi_nor)
 #define FLASH_DEVICE_BASE DT_REG_ADDR(DT_INST(0, st_stm32_ospi_nor))
