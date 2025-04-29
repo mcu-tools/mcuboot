@@ -446,7 +446,7 @@ config BOOT_SWAP_USING_OFFSET
 	  the second sector in the second slot instead of the first.
 
 config BOOT_SWAP_USING_MOVE
-	bool "Swap using mode mode without scratch partition"
+	bool "Swap using move mode without scratch partition"
 	help
 	  If y, the swap upgrade is done in two steps, where first every
 	  sector of the primary slot is moved up one sector, then for
