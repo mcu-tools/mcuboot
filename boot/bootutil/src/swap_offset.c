@@ -752,6 +752,9 @@ int boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *si
 
     fap = BOOT_IMG_AREA(state, slot);
     assert(fap != NULL);
+    assert(size != NULL);
+
+    *size = 0;
 
     off = BOOT_TLV_OFF(boot_img_hdr(state, slot));
 
