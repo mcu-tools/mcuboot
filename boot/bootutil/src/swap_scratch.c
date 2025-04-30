@@ -778,7 +778,12 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
         BOOT_STATUS_ASSERT(rc == 0);
 
         if (erase_scratch) {
-            rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch), false);
+           /* Scratch trailers MUST be erased backwards, this is to avoid an issue whereby a
+            * device reboots in the process of erasing the scratch if it erased forwards, if that
+            * happens then the scratch which is partially erased would be wrote back to the
+            * primary slot, causing a corrupt unbootable image
+            */
+            rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch), true);
             assert(rc == 0);
         }
     }
