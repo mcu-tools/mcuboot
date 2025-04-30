@@ -66,6 +66,16 @@
   MCUboot is compiled without support for them
 - Added support for devices that do not require erase prior to write operation.
 - Add corrections to the max app size calculations.
+- Fixed issue with swap using scratch mode that would cause the
+  primary image to be corrupt and unbootable after an update if the
+  device was rebooted whilst the scratch area was being erased.
+- Fixed issue with serial recovery if canonical CBOR mode was
+  enabled.
+- Fixed issue with serial recovery set image state not checking
+  primary slot images.
+- Fixed issue with watchdog not being fed during flash erase
+  operations, which could cause the watchdog to time out on long
+  erase operations and prevent firmware updates from being possible.
 
 ## Version 2.1.0
 
