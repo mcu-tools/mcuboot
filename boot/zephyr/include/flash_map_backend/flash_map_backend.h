@@ -9,6 +9,7 @@
 #define __FLASH_MAP_BACKEND_H__
 
 #include <zephyr/storage/flash_map.h> // the zephyr flash_map
+#include <zephyr/drivers/flash.h>
 
 #ifdef __cplusplus
 extern "C" {
