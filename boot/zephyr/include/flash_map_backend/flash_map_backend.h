@@ -112,13 +112,15 @@ int flash_area_get_sector(const struct flash_area *fa, off_t off,
 static inline bool flash_area_erase_required(const struct flash_area *fa)
 {
 #if defined(CONFIG_FLASH_HAS_EXPLICIT_ERASE) && defined(CONFIG_FLASH_HAS_NO_EXPLICIT_ERASE)
-    const struct flash_parameters *fp = flash_get_parameters(flash_area_get_device(fa));
-
     return flash_params_get_erase_cap(flash_get_parameters(flash_area_get_device(fa))) &
             FLASH_ERASE_C_EXPLICIT;
 #elif defined(CONFIG_FLASH_HAS_EXPLICIT_ERASE)
+    (void)fa;
+
     return true;
 #else
+    (void)fa;
+
     return false;
 #endif
 }
