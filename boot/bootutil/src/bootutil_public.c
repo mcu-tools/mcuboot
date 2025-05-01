@@ -302,13 +302,22 @@ boot_read_swap_state_by_id(int flash_area_id, struct boot_swap_state *state)
 int
 boot_write_magic(const struct flash_area *fap)
 {
+    int rc = 0;
     uint32_t off;
+
+    off = boot_magic_off(fap);
+    rc = boot_write_magic_at_off(fap, off);
+
+    return rc;
+}
+
+int
+boot_write_magic_at_off(const struct flash_area *fap, uint32_t off)
+{
     uint32_t pad_off;
     int rc;
     uint8_t magic[BOOT_MAGIC_ALIGN_SIZE];
     uint8_t erased_val;
-
-    off = boot_magic_off(fap);
 
     /* image_trailer structure was modified with additional padding such that
      * the pad+magic ends up in a flash minimum write region. The address

@@ -296,7 +296,6 @@ This algorithm is designed so that the higher sector of the primary slot is
 used only for allowing sectors to move up. Therefore the most
 memory-size-effective slot layout is when the primary slot is larger than
 the secondary slot by exactly one sector plus the size of the swap status area,
-rounded up to the total size of the sectors it occupies,
 although same-sized slots are allowed as well.
 The algorithm is limited to support sectors of the same
 sector layout. All slot's sectors should be of the same size.
@@ -304,15 +303,16 @@ sector layout. All slot's sectors should be of the same size.
 When using this algorithm the maximum image size available for the application
 will be:
 ```
-maximum-image-size = (N-1) * slot-sector-size - image-trailer-sectors-size
+maximum-image-size = (N-1) * slot-sector-size - image-trailer-size - fallback-trailer-padding
 ```
 
 Where:
   `N` is the number of sectors in the primary slot.
-  `image-trailer-sectors-size` is the size of the image trailer rounded up to
-  the total size of sectors its occupied. For instance if the image-trailer-size
-  is equal to 1056 B and the sector size is equal to 1024 B, then
-  `image-trailer-sectors-size` will be equal to 2048 B.
+  `image-trailer-size` is the size of the image trailer.
+  `fallback-trailer-padding` is the padding required for the fallback trailer and is equal to
+  `magic-aligned-size - (image-trailer-size mod slot-sector-size)` if that value is strictly greater
+  than zero, to zero otherwise.
+  `magic-aligned-size` is the size of the trailer magic field, rounded up to `BOOT_MAX_ALIGN`.
 
 This does imply, if there is any doubt, that the primary slot will be exactly
 one sector larger than the secondary slot due to the swap sector alone. It is
