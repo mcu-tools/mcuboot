@@ -289,12 +289,11 @@ bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
         bootutil_sha_init(&sha_ctx);
         bootutil_sha_update(&sha_ctx, key->key, *key->len);
         bootutil_sha_finish(&sha_ctx, hash);
+        bootutil_sha_drop(&sha_ctx);
         if (!memcmp(hash, keyhash, keyhash_len)) {
-            bootutil_sha_drop(&sha_ctx);
             return i;
         }
     }
-    bootutil_sha_drop(&sha_ctx);
     return -1;
 }
 #else /* !MCUBOOT_HW_KEY */

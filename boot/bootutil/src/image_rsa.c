@@ -97,6 +97,7 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
         bootutil_sha_update(&ctx, hash, PSS_HLEN);
         bootutil_sha_update(&ctx, counter, 4);
         bootutil_sha_finish(&ctx, htmp);
+        bootutil_sha_drop(&ctx);
 
         counter[3]++;
 
@@ -108,8 +109,6 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
         mask += bytes;
         count -= bytes;
     }
-
-    bootutil_sha_drop(&ctx);
 }
 
 /*
