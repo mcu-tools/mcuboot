@@ -70,10 +70,19 @@ extern "C" {
 #   define BOOT_ENC_KEY_SIZE   16
 #endif
 
+#ifdef MCUBOOT_HMAC_SHA512
+#   define BOOT_HMAC_SIZE      64
+#else
+#   define BOOT_HMAC_SIZE      32
+#endif
+
 #if defined(MCUBOOT_ENCRYPT_RSA)
 #   define BOOT_ENC_TLV_SIZE   (256)
 #   define BOOT_ENC_TLV        IMAGE_TLV_ENC_RSA2048
 #elif defined(MCUBOOT_ENCRYPT_EC256)
+#   if defined(MCUBOOT_HMAC_SHA512)
+#       error "ECIES-P256 does not support HMAC-SHA512"
+#   endif
 #   define EC_PUBK_LEN         (65)
 #   define EC_PRIVK_LEN        (32)
 #   define EC_SHARED_LEN       (32)
@@ -82,7 +91,11 @@ extern "C" {
 #   define EC_PUBK_LEN         (32)
 #   define EC_PRIVK_LEN        (32)
 #   define EC_SHARED_LEN       (32)
-#   define BOOT_ENC_TLV        IMAGE_TLV_ENC_X25519
+#   if !defined(MCUBOOT_HMAC_SHA512)
+#       define BOOT_ENC_TLV     IMAGE_TLV_ENC_X25519
+#   else
+#       define BOOT_ENC_TLV     IMAGE_TLV_ENC_X25519_SHA512
+#   endif
 #elif defined(MCUBOOT_ENCRYPT_KW)
 #   define BOOT_ENC_TLV_SIZE   (BOOT_ENC_KEY_SIZE + 8)
 #   define BOOT_ENC_TLV        IMAGE_TLV_ENC_KW
@@ -91,7 +104,7 @@ extern "C" {
 /* Common ECIES definitions */
 #if defined(EC_PUBK_LEN)
 #   define EC_PUBK_INDEX       (0)
-#   define EC_TAG_LEN          (32)
+#   define EC_TAG_LEN          (BOOT_HMAC_SIZE)
 #   define EC_TAG_INDEX        (EC_PUBK_INDEX + EC_PUBK_LEN)
 #   define EC_CIPHERKEY_INDEX  (EC_TAG_INDEX + EC_TAG_LEN)
 #   define EC_CIPHERKEY_LEN    BOOT_ENC_KEY_SIZE
