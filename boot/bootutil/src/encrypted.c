@@ -60,10 +60,16 @@
 _Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
         "Please fix ECIES-P256 component indexes");
 #elif defined(MCUBOOT_ENCRYPT_X25519)
+#if !defined(MCUBOOT_HMAC_SHA512)
 #    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_X25519
+#elif !defined(MCUBOOT_USE_PSA_CRYPTO)
+#error "Non-PSA code does not support ECIES-X25519 with HMAC-SHA512 at this moment"
+#else
+#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_X25519_SHA512
+#endif /* !defined(MCUBOOT_HMAC_SHA512) */
 #    define EC_PUBK_INDEX       (0)
 #    define EC_TAG_INDEX        (32)
-#    define EC_CIPHERKEY_INDEX  (32 + 32)
+#    define EC_CIPHERKEY_INDEX  (EC_TAG_INDEX + BOOT_HMAC_SIZE)
 _Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
         "Please fix ECIES-X25519 component indexes");
 #endif
