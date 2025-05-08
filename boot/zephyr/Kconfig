@@ -609,6 +609,15 @@ config BOOT_ENCRYPT_X25519
 	help
 	  Hidden option selecting x25519 encryption.
 
+config BOOT_HMAC_SHA512
+	bool "Use SHA512 for HMAC/HKDF"
+	depends on BOOT_ENCRYPT_X25519
+	depends on BOOT_USE_PSA_CRYPTO
+	help
+	  By default SHA256 is used for HKDF/HMAC in key exchange expansion
+	  and verification. This options switches to SHA512. The option is
+	  mainly useful to reduce numer of compiled in SHA algorithms.
+
 config BOOT_ENCRYPTION_KEY_FILE
 	string "Encryption key file"
 	depends on BOOT_ENCRYPT_IMAGE
