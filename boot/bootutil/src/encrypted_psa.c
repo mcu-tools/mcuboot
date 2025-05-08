@@ -27,6 +27,12 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot_psa_enc);
 
+#if defined(MCUBOOT_HMAC_SHA512)
+#define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_512
+#else
+#define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_256
+#endif
+
 #define X25519_OID "\x6e"
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
                                        MBEDTLS_OID_ORG_GOV X25519_OID;
@@ -162,7 +168,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    key_do_alg = PSA_ALG_KEY_AGREEMENT(PSA_ALG_ECDH, PSA_ALG_HKDF(PSA_ALG_SHA_256));
+    key_do_alg = PSA_ALG_KEY_AGREEMENT(PSA_ALG_ECDH, PSA_ALG_HKDF(PSA_HMAC_HKDF_SHA));
 
     psa_ret = psa_key_derivation_setup(&key_do, key_do_alg);
     if (psa_ret != PSA_SUCCESS) {
@@ -225,7 +231,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      */
     psa_set_key_type(&kattr, PSA_KEY_TYPE_HMAC);
     psa_set_key_usage_flags(&kattr, PSA_KEY_USAGE_VERIFY_MESSAGE);
-    psa_set_key_algorithm(&kattr, PSA_ALG_HMAC(PSA_ALG_SHA_256));
+    psa_set_key_algorithm(&kattr, PSA_ALG_HMAC(PSA_HMAC_HKDF_SHA));
 
     /* Import the MAC tag key part of derived key */
     psa_ret = psa_import_key(&kattr,
@@ -239,7 +245,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     }
 
     /* Verify the MAC tag of the random encryption key */
-    psa_ret = psa_mac_verify(kid, PSA_ALG_HMAC(PSA_ALG_SHA_256),
+    psa_ret = psa_mac_verify(kid, PSA_ALG_HMAC(PSA_HMAC_HKDF_SHA),
                              &buf[EC_CIPHERKEY_INDEX], EC_CIPHERKEY_LEN,
                              &buf[EC_TAG_INDEX],
                              EC_TAG_LEN);

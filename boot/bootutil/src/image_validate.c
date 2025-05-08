@@ -474,7 +474,11 @@ static const uint16_t allowed_unprot_tlvs[] = {
      IMAGE_TLV_ENC_RSA2048,
      IMAGE_TLV_ENC_KW,
      IMAGE_TLV_ENC_EC256,
+#if !defined(MCUBOOT_HMAC_SHA512)
      IMAGE_TLV_ENC_X25519,
+#else
+     IMAGE_TLV_ENC_X25519_SHA512,
+#endif
      /* Mark end with ANY. */
      IMAGE_TLV_ANY,
 };
