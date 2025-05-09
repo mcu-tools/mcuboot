@@ -84,6 +84,7 @@ keygens = {
 }
 valid_formats = ['openssl', 'pkcs8']
 valid_sha = [ 'auto', '256', '384', '512' ]
+valid_hmac_sha = [ 'auto', '256', '512' ]
 
 
 def load_signature(sigfile):
@@ -437,6 +438,8 @@ class BasedIntParamType(click.ParamType):
 @click.option('--sha', 'user_sha', type=click.Choice(valid_sha), default='auto',
               help='selected sha algorithm to use; defaults to "auto" which is 256 if '
               'no cryptographic signature is used, or default for signature type')
+@click.option('--hmac-sha', 'hmac_sha', type=click.Choice(valid_hmac_sha), default='auto',
+              help='sha algorithm used in HKDF/HMAC in ECIES key exchange TLV')
 @click.option('--vector-to-sign', type=click.Choice(['payload', 'digest']),
               help='send to OUTFILE the payload or payload''s digest instead '
               'of complied image. These data can be used for external image '
@@ -449,7 +452,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          endian, encrypt_keylen, encrypt, compression, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, rom_fixed, max_align,
-         clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, is_pure,
+         clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, hmac_sha, is_pure,
          vector_to_sign, non_bootable):
 
     if confirm:
@@ -526,7 +529,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
         img.create(key, public_key_format, enckey, dependencies, boot_record,
                custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
-               is_pure=is_pure, keep_comp_size=False, dont_encrypt=True)
+               hmac_sha=hmac_sha, is_pure=is_pure, keep_comp_size=False, dont_encrypt=True)
         compressed_img = image.Image(version=decode_version(version),
                   header_size=header_size, pad_header=pad_header,
                   pad=pad, confirm=confirm, align=int(align),
@@ -570,14 +573,14 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             compressed_img.create(key, public_key_format, enckey,
                dependencies, boot_record, custom_tlvs, compression_tlvs,
                compression, int(encrypt_keylen), clear, baked_signature,
-               pub_key, vector_to_sign, user_sha=user_sha,
+               pub_key, vector_to_sign, user_sha=user_sha, hmac_sha=hmac_sha,
                is_pure=is_pure, keep_comp_size=keep_comp_size)
             img = compressed_img
     else:
         img.create(key, public_key_format, enckey, dependencies, boot_record,
                custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
-               is_pure=is_pure)
+               hmac_sha=hmac_sha, is_pure=is_pure)
     img.save(outfile, hex_addr)
     if sig_out is not None:
         new_signature = img.get_signature()
