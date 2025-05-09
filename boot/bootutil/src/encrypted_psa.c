@@ -27,11 +27,19 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot_psa_enc);
 
+#if defined(MCUBOOT_HMAC_SHA512)
+#define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_512
+#else
+#define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_256
+#endif
+
+#define PSA_HMAC_SIZE       BOOT_HMAC_SIZE
+
 #define EXPECTED_ENC_LEN    BOOT_ENC_TLV_SIZE
 #define EC_PUBK_INDEX       (0)
 #define EC_PUBK_LEN         (32)
 #define EC_TAG_INDEX        (EC_PUBK_INDEX + EC_PUBK_LEN)
-#define EC_TAG_LEN          (32)
+#define EC_TAG_LEN          (BOOT_HMAC_SIZE)
 #define EC_CIPHERKEY_INDEX  (EC_TAG_INDEX + EC_TAG_LEN)
 #define EC_CIPHERKEY_LEN    BOOT_ENC_KEY_SIZE
 _Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
@@ -42,6 +50,16 @@ static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
                                        MBEDTLS_OID_ORG_GOV X25519_OID;
 
 #define PRIV_KEY_LEN   32
+
+/* Partitioning of HKDF derived material, from the exchange derived key */
+/* AES key encryption key */
+#define HKDF_AES_KEY_INDEX  0
+#define HKDF_ASE_KEY_SIZE   (BOOT_ENC_KEY_SIZE)
+/* MAC feed */
+#define HKDF_MAC_FEED_INDEX (HKDF_AES_KEY_INDEX + HKDF_ASE_KEY_SIZE)
+#define HKDF_MAC_FEED_SIZE  (32)    /* This is SHA independent */
+/* Total size */
+#define HKDF_SIZE           (HKDF_ASE_KEY_SIZE + HKDF_MAC_FEED_SIZE)
 
 /* Fixme: This duplicates code from encrypted.c and depends on mbedtls */
 static int
@@ -114,7 +132,7 @@ extern const struct bootutil_key bootutil_enc_key;
 int
 boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 {
-    uint8_t derived_key[BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+    uint8_t derived_key[HKDF_SIZE];
     uint8_t *cp;
     uint8_t *cpend;
     uint8_t private_key[PRIV_KEY_LEN];
@@ -162,7 +180,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    key_do_alg = PSA_ALG_KEY_AGREEMENT(PSA_ALG_ECDH, PSA_ALG_HKDF(PSA_ALG_SHA_256));
+    key_do_alg = PSA_ALG_KEY_AGREEMENT(PSA_ALG_ECDH, PSA_ALG_HKDF(PSA_HMAC_HKDF_SHA));
 
     psa_ret = psa_key_derivation_setup(&key_do, key_do_alg);
     if (psa_ret != PSA_SUCCESS) {
@@ -208,7 +226,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    len = BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
+    len = HKDF_SIZE;
     psa_ret = psa_key_derivation_output_bytes(&key_do, derived_key, len);
     psa_cleanup_ret = psa_key_derivation_abort(&key_do);
     if (psa_cleanup_ret != PSA_SUCCESS) {
@@ -225,15 +243,12 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      */
     psa_set_key_type(&kattr, PSA_KEY_TYPE_HMAC);
     psa_set_key_usage_flags(&kattr, PSA_KEY_USAGE_VERIFY_MESSAGE);
-    psa_set_key_algorithm(&kattr, PSA_ALG_HMAC(PSA_ALG_SHA_256));
+    psa_set_key_algorithm(&kattr, PSA_ALG_HMAC(PSA_HMAC_HKDF_SHA));
 
-    /* Import the MAC tag key part of derived key, that is the part that starts
-     * after BOOT_ENC_KEY_SIZE and has length of
-     * BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE bytes.
-     */
+    /* Import the MAC tag key part of derived key */
     psa_ret = psa_import_key(&kattr,
-                             &derived_key[BOOT_ENC_KEY_SIZE],
-                             BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE, &kid);
+                             &derived_key[HKDF_MAC_FEED_INDEX],
+                             HKDF_MAC_FEED_SIZE, &kid);
     psa_reset_key_attributes(&kattr);
     if (psa_ret != PSA_SUCCESS) {
         memset(derived_key, 0, sizeof(derived_key));
@@ -242,7 +257,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     }
 
     /* Verify the MAC tag of the random encryption key */
-    psa_ret = psa_mac_verify(kid, PSA_ALG_HMAC(PSA_ALG_SHA_256),
+    psa_ret = psa_mac_verify(kid, PSA_ALG_HMAC(PSA_HMAC_HKDF_SHA),
                              &buf[EC_CIPHERKEY_INDEX], EC_CIPHERKEY_LEN,
                              &buf[EC_TAG_INDEX],
                              EC_TAG_LEN);
@@ -262,7 +277,8 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     psa_set_key_algorithm(&kattr, PSA_ALG_CTR);
 
     /* Import the AES partition of derived key, the first 16 bytes */
-    psa_ret = psa_import_key(&kattr, &derived_key[0], BOOT_ENC_KEY_SIZE, &kid);
+    psa_ret = psa_import_key(&kattr, &derived_key[HKDF_AES_KEY_INDEX],
+                             HKDF_ASE_KEY_SIZE, &kid);
     memset(derived_key, 0, sizeof(derived_key));
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_ERR("AES key import failed %d", psa_ret);
