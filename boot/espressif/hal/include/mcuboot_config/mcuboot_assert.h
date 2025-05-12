@@ -17,3 +17,5 @@ extern void mcuboot_assert_handler(const char *file, int line, const char *func)
             mcuboot_assert_handler(__FILE__, __LINE__, __func__);   \
         }                                                           \
     } while(0)
+
+#define ASSERT(arg) assert(arg)
