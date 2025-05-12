@@ -1,5 +1,5 @@
 #------------------------------------------------------------------------------
-# Copyright (c) 2020-2023, Arm Limited. All rights reserved.
+# Copyright (c) 2020-2025, Arm Limited. All rights reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -19,7 +19,6 @@ target_sources(bootutil
         src/boot_record.c
         src/bootutil_find_key.c
         src/bootutil_img_hash.c
-        src/bootutil_img_security_cnt.c
         src/bootutil_misc.c
         src/bootutil_area.c
         src/bootutil_loader.c
@@ -38,9 +37,23 @@ target_sources(bootutil
         src/swap_scratch.c
         src/tlv.c
 )
+
+if(MCUBOOT_HW_ROLLBACK_PROT)
+    target_sources(bootutil
+        PRIVATE
+            src/bootutil_img_security_cnt.c
+    )
+endif()
+
 if(CONFIG_BOOT_RAM_LOAD)
     target_sources(bootutil
         PRIVATE
             src/ram_load.c
     )
 endif()
+
+target_compile_definitions(bootutil
+    PRIVATE
+        $<$<BOOL:${MCUBOOT_IMAGE_MULTI_SIG_SUPPORT}>:MCUBOOT_IMAGE_MULTI_SIG_SUPPORT>
+        $<$<BOOL:${MCUBOOT_IMAGE_MULTI_SIG_SUPPORT}>:MCUBOOT_ROTPK_MAX_KEYS_PER_IMAGE=${MCUBOOT_ROTPK_MAX_KEYS_PER_IMAGE}>
+)

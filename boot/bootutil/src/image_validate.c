@@ -98,25 +98,24 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #endif
 
 #ifdef EXPECTED_SIG_TLV
+#ifdef MCUBOOT_BUILTIN_KEY
+/* For MCUBOOT_BUILTIN_KEY, key id is passed */
+#define EXPECTED_KEY_TLV     IMAGE_TLV_KEYID
+#define KEY_BUF_SIZE         sizeof(uint32_t)
 
-#if !defined(MCUBOOT_BUILTIN_KEY)
-#if !defined(MCUBOOT_HW_KEY)
-/* The key TLV contains the hash of the public key. */
-#   define EXPECTED_KEY_TLV     IMAGE_TLV_KEYHASH
-#   define KEY_BUF_SIZE         IMAGE_HASH_SIZE
-#else
+#elif defined(MCUBOOT_HW_KEY)
 /* The key TLV contains the whole public key.
  * Add a few extra bytes to the key buffer size for encoding and
  * for public exponent.
  */
-#   define EXPECTED_KEY_TLV     IMAGE_TLV_PUBKEY
-#   define KEY_BUF_SIZE         (SIG_BUF_SIZE + 24)
-#endif /* !MCUBOOT_HW_KEY */
-#else  /* !MCUBOOT_BUILTIN_KEY */
-/* For MCUBOOT_BUILTIN_KEY, key id is passed */
-#define EXPECTED_KEY_TLV     IMAGE_TLV_KEYID
-#define KEY_BUF_SIZE         sizeof(int32_t)
-#endif /* !MCUBOOT_BUILTIN_KEY */
+#define EXPECTED_KEY_TLV     IMAGE_TLV_PUBKEY
+#define KEY_BUF_SIZE         (SIG_BUF_SIZE + 24)
+
+#else
+/* The key TLV contains the hash of the public key. */
+#define EXPECTED_KEY_TLV     IMAGE_TLV_KEYHASH
+#define KEY_BUF_SIZE         IMAGE_HASH_SIZE
+#endif
 #endif /* EXPECTED_SIG_TLV */
 
 #if defined(MCUBOOT_SIGN_PURE)
@@ -242,6 +241,13 @@ bootutil_img_validate(struct boot_loader_state *state,
     uint32_t img_security_cnt = 0;
     FIH_DECLARE(security_counter_valid, FIH_FAILURE);
 #endif
+
+#ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
+    bool key_must_sign = true;
+    bool key_might_sign = false;
+    uint8_t key_must_sign_count = 0;
+#endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
+
 #ifdef MCUBOOT_UUID_VID
     struct image_uuid img_uuid_vid = {0x00};
     FIH_DECLARE(uuid_vid_valid, FIH_FAILURE);
@@ -410,6 +416,15 @@ bootutil_img_validate(struct boot_loader_state *state,
 #ifndef MCUBOOT_SIGN_PURE
             FIH_CALL(bootutil_verify_sig, valid_signature, hash, sizeof(hash),
                                                            buf, len, key_id);
+#ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
+            rc = boot_plat_check_key_policy((valid_signature == 0), key_id,
+                                            &key_might_sign, &key_must_sign,
+                                            &key_must_sign_count);
+            if (rc) {
+                goto out;
+            }
+#endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
+
 #else
             rc = flash_device_base(flash_area_get_device_id(fap), &base);
             if (rc != 0) {
@@ -554,7 +569,15 @@ bootutil_img_validate(struct boot_loader_state *state,
     rc = FIH_NOT_EQ(valid_signature, FIH_SUCCESS);
 #endif
 #ifdef EXPECTED_SIG_TLV
+#ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
+    if (FIH_NOT_EQ(key_must_sign, true) || FIH_NOT_EQ(key_might_sign, true)) {
+        FIH_RET(FIH_FAILURE);
+    } else {
+        FIH_RET(FIH_SUCCESS);
+    }
+#else
     FIH_SET(fih_rc, valid_signature);
+#endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
 #endif
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     if (FIH_NOT_EQ(security_counter_valid, FIH_SUCCESS)) {

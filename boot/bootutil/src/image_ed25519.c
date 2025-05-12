@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2019 JUUL Labs
- * Copyright (c) 2021-2023 Arm Limited
+ * Copyright (c) 2021-2025 Arm Limited
  * Copyright (c) 2025 Nordic Semiconductor ASA
  */
 
@@ -86,7 +86,7 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
 static fih_ret
 bootutil_verify(uint8_t *buf, uint32_t blen,
                 uint8_t *sig, size_t slen,
-                uint8_t key_id)
+                uint32_t key_id)
 {
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
@@ -149,7 +149,7 @@ out:
 fih_ret
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen,
                     uint8_t *sig, size_t slen,
-                    uint8_t key_id)
+                    uint32_t key_id)
 {
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
