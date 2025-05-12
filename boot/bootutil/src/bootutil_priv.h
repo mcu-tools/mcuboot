@@ -305,7 +305,7 @@ struct boot_sector_buffer {
  * provided signature.
  */
 fih_ret bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
-                            size_t slen, uint8_t key_id);
+                            size_t slen, uint32_t key_id);
 
 /* The function is intended for direct verification of image
  * against provided signature.
