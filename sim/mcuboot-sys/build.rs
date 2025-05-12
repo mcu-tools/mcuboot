@@ -448,6 +448,8 @@ fn main() {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ec-psa.h>"));
     }
 
+    conf.file("../../boot/bootutil/src/bootutil_find_key.c");
+    conf.file("../../boot/bootutil/src/bootutil_image_hash.c");
     conf.file("../../boot/bootutil/src/image_validate.c");
     if sig_rsa || sig_rsa3072 {
         conf.file("../../boot/bootutil/src/image_rsa.c");
