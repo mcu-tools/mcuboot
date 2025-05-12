@@ -27,6 +27,9 @@
 
 /* mcuboot_config.h is needed for MCUBOOT_HW_KEY to work */
 #include "mcuboot_config/mcuboot_config.h"
+#ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
+#include <stdbool.h>
+#endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,6 +65,7 @@ extern struct bootutil_key bootutil_keys[];
  * Retrieve the hash of the corresponding public key for image authentication.
  *
  * @param[in]      image_index      Index of the image to be authenticated.
+ * @param[in]      key_index        Index of the key to be used.
  * @param[out]     public_key_hash  Buffer to store the key-hash in.
  * @param[in,out]  key_hash_size    As input the size of the buffer. As output
  *                                  the actual key-hash length.
@@ -69,9 +73,32 @@ extern struct bootutil_key bootutil_keys[];
  * @return                          0 on success; nonzero on failure.
  */
 int boot_retrieve_public_key_hash(uint8_t image_index,
+                                  uint8_t key_index,
                                   uint8_t *public_key_hash,
                                   size_t *key_hash_size);
+
 #endif /* !MCUBOOT_HW_KEY */
+
+#ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
+/**
+ * @brief Checks the key policy for signature verification.
+ *
+ * Determines whether a given key might or must be used to sign an image,
+ * based on the validity of the signature and the key index. Updates the
+ * provided output parameters to reflect the policy.
+ *
+ * @param valid_sig            Indicates if the signature is valid.
+ * @param key                  The key index to check.
+ * @param[out] key_might_sign  Set to true if the key might be used to sign.
+ * @param[out] key_must_sign   Set to true if the key must be used to sign.
+ * @param[out] key_must_sign_count  Set to the number of keys that must sign.
+ *
+ * @return 0 on success, or a negative error code on failure.
+ */
+int boot_plat_check_key_policy(bool valid_sig, uint32_t key,
+                               bool *key_might_sign, bool *key_must_sign,
+                               uint8_t *key_must_sign_count);
+#endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
 
 extern const int bootutil_key_cnt;
 
