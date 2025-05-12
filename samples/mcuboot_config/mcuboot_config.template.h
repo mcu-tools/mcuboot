@@ -34,6 +34,20 @@
 /* #define MCUBOOT_SIGN_EC256 */
 
 /*
+ * Multi-signature support
+ *
+ * Currently, only ECDSA signatures using curve P-256 and P-384
+ * are supported for multi-signature images.
+ */
+
+/* Uncomment to enable verification of images with multiple signatures */
+/* #define MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
+#ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
+/*— How many RoTPK keys per image —*/
+#define MCUBOOT_ROTPK_MAX_KEYS_PER_IMAGE 2
+#endif
+
+/*
  * Public key handling
  *
  * Choose one or none from the different public key handling options.

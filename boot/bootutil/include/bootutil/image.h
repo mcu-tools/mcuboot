@@ -236,6 +236,23 @@ int32_t bootutil_get_img_security_cnt(struct boot_loader_state *state, int slot,
                                       const struct flash_area *fap,
                                       uint32_t *img_security_cnt);
 
+#if defined(MCUBOOT_BUILTIN_KEY)
+int bootutil_find_key(uint8_t image_index, uint8_t *key_id_buf, uint8_t key_id_buf_len);
+#elif defined(MCUBOOT_HW_KEY)
+int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len);
+#else
+int bootutil_find_key(uint8_t image_index, uint8_t *keyhash, uint8_t keyhash_len);
+#endif
+
+int bootutil_img_hash(struct boot_loader_state *state,
+                     struct image_header *hdr, const struct flash_area *fap,
+                     uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *hash_result,
+                     uint8_t *seed, int seed_len
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
+                     , uint32_t start_offset
+#endif
+);
+
 #ifdef __cplusplus
 }
 #endif
