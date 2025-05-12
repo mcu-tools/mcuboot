@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2020 Linaro LTD
  * Copyright (c) 2017-2019 JUUL Labs
- * Copyright (c) 2019-2021 Arm Limited
+ * Copyright (c) 2019-2025 Arm Limited
  *
  * Original license:
  *
@@ -287,8 +287,8 @@ struct boot_sector_buffer {
  * is image size; otherwise msg is expected  to be pointer to hash of
  * an image and mlen to length of the hash.
  */
-fih_ret bootutil_verify_sig(uint8_t *msg, uint32_t mlen, uint8_t *sig,
-                            size_t slen, uint8_t key_id);
+fih_ret bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
+                            size_t slen, uint32_t key_id);
 
 fih_ret boot_fih_memequal(const void *s1, const void *s2, size_t n);
 

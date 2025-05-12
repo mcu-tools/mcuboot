@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2018 Linaro LTD
  * Copyright (c) 2017-2019 JUUL Labs
- * Copyright (c) 2020-2023 Arm Limited
+ * Copyright (c) 2020-2025 Arm Limited
  *
  * Original license:
  *
@@ -262,7 +262,7 @@ bootutil_cmp_rsasig(bootutil_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
 
 fih_ret
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
-  uint8_t key_id)
+  uint32_t key_id)
 {
     bootutil_rsa_context ctx;
     int rc;
