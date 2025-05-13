@@ -2246,18 +2246,26 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state)
 {
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     int rc;
+    uint8_t image_index;
+    struct boot_swap_state swap_state;
+
+    image_index = BOOT_CURR_IMG(state);
+
+    rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index), &swap_state);
+    if (rc != 0) {
+        return rc;
+    }
 
     /* Update the stored security counter with the active image's security
-    * counter value. It will only be updated if the new security counter is
-    * greater than the stored value.
-    *
-    * In case of a successful image swapping when the swap type is TEST the
-    * security counter can be increased only after a reset, when the swap
-    * type is NONE and the image has marked itself "OK" (the image_ok flag
-    * has been set). This way a "revert" can be performed when it's
-    * necessary.
-    */
-    if (BOOT_SWAP_TYPE(state) == BOOT_SWAP_TYPE_NONE) {
+     * counter value. It will only be updated if the new security counter is
+     * greater than the stored value.
+     *
+     * In case of a successful image swapping when the swap type is TEST the
+     * security counter can be increased only after a reset, when the image has
+     * marked itself "OK" (the image_ok flag has been set). This way a "revert"
+     * can be performed when it's necessary.
+     */
+    if (swap_state.magic != BOOT_MAGIC_GOOD || swap_state.image_ok == BOOT_FLAG_SET) {
         rc = boot_update_security_counter(state, BOOT_PRIMARY_SLOT, BOOT_PRIMARY_SLOT);
         if (rc != 0) {
             BOOT_LOG_ERR("Security counter update failed after image "
