@@ -490,6 +490,7 @@ bootutil_img_validate(struct boot_loader_state *state,
     uint32_t off;
     uint16_t len;
     uint16_t type;
+    uint32_t img_sz;
 #ifdef EXPECTED_SIG_TLV
     FIH_DECLARE(valid_signature, FIH_FAILURE);
 #ifndef MCUBOOT_BUILTIN_KEY
@@ -555,7 +556,13 @@ bootutil_img_validate(struct boot_loader_state *state,
         goto out;
     }
 
-    if (it.tlv_end > bootutil_max_image_size(state, fap)) {
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+    img_sz = it.tlv_end - it.start_off;
+#else
+    img_sz = it.tlv_end;
+#endif
+
+    if (img_sz > bootutil_max_image_size(state, fap)) {
         rc = -1;
         goto out;
     }
