@@ -843,7 +843,7 @@ class Image:
             tlv_off += TLV_SIZE + tlv_len
 
         digest = None
-        tlv_off = header_size + img_size
+        tlv_off = prot_tlv_size
         tlv_end = tlv_off + tlv_tot
         tlv_off += TLV_INFO_SIZE  # skip tlv info
         while tlv_off < tlv_end:
