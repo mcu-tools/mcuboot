@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2024 Arm Limited
+ * Copyright (c) 2019-2025 Arm Limited
  * Copyright (c) 2025 Nordic Semiconductor ASA
  *
  * Original license:
@@ -112,6 +112,10 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #   define EXPECTED_KEY_TLV     IMAGE_TLV_PUBKEY
 #   define KEY_BUF_SIZE         (SIG_BUF_SIZE + 24)
 #endif /* !MCUBOOT_HW_KEY */
+#else  /* !MCUBOOT_BUILTIN_KEY */
+/* For MCUBOOT_BUILTIN_KEY, key id is passed */
+#define EXPECTED_KEY_TLV     IMAGE_TLV_KEYID
+#define KEY_BUF_SIZE         sizeof(int32_t)
 #endif /* !MCUBOOT_BUILTIN_KEY */
 #endif /* EXPECTED_SIG_TLV */
 
@@ -169,6 +173,7 @@ static int bootutil_check_for_pure(const struct image_header *hdr, const struct 
 static const uint16_t allowed_unprot_tlvs[] = {
      IMAGE_TLV_KEYHASH,
      IMAGE_TLV_PUBKEY,
+     IMAGE_TLV_KEYID,
      IMAGE_TLV_SHA256,
      IMAGE_TLV_SHA384,
      IMAGE_TLV_SHA512,
@@ -216,14 +221,7 @@ bootutil_img_validate(struct boot_loader_state *state,
     uint32_t img_sz;
 #ifdef EXPECTED_SIG_TLV
     FIH_DECLARE(valid_signature, FIH_FAILURE);
-#ifndef MCUBOOT_BUILTIN_KEY
     int key_id = -1;
-#else
-    /* Pass a key ID equal to the image index, the underlying crypto library
-     * is responsible for mapping the image index to a builtin key ID.
-     */
-    int key_id = image_index;
-#endif /* !MCUBOOT_BUILTIN_KEY */
 #ifdef MCUBOOT_HW_KEY
     uint8_t key_buf[KEY_BUF_SIZE];
 #endif
@@ -377,7 +375,7 @@ bootutil_img_validate(struct boot_loader_state *state,
             if (rc) {
                 goto out;
             }
-            key_id = bootutil_find_key(buf, len);
+            key_id = bootutil_find_key(image_index, buf, len);
 #else
             rc = LOAD_IMAGE_DATA(hdr, fap, off, key_buf, len);
             if (rc) {
