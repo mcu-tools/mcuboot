@@ -98,6 +98,7 @@ extern "C" {
  */
 #define IMAGE_TLV_KEYHASH           0x01    /* hash of the public key */
 #define IMAGE_TLV_PUBKEY            0x02    /* public key */
+#define IMAGE_TLV_KEYID             0x03    /* Key ID */
 #define IMAGE_TLV_SHA256            0x10    /* SHA256 of image hdr and body */
 #define IMAGE_TLV_SHA384            0x11    /* SHA384 of image hdr and body */
 #define IMAGE_TLV_SHA512            0x12    /* SHA512 of image hdr and body */

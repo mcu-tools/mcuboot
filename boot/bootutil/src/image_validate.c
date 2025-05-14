@@ -282,12 +282,12 @@ bootutil_img_hash(struct boot_loader_state *state,
 
 #if !defined(MCUBOOT_HW_KEY)
 static int
-bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
+bootutil_find_key(uint8_t image_index, uint8_t *keyhash, uint8_t keyhash_len)
 {
     bootutil_sha_context sha_ctx;
     int i;
     const struct bootutil_key *key;
-    uint8_t hash[IMAGE_HASH_SIZE];
+    (void)image_index;
 
     BOOT_LOG_DBG("bootutil_find_key");
 
@@ -347,6 +347,32 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
     return -1;
 }
 #endif /* !MCUBOOT_HW_KEY */
+
+#else
+/* For MCUBOOT_BUILTIN_KEY, key id is passed */
+#define EXPECTED_KEY_TLV     IMAGE_TLV_KEYID
+#define KEY_BUF_SIZE         sizeof(int32_t)
+
+static int bootutil_find_key(uint8_t image_index, uint8_t *key_id_buf, uint8_t key_id_buf_len)
+{
+    int rc;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    /* Key id is passed */
+    assert(key_id_buf_len == sizeof(int32_t));
+    int32_t key_id = (((int32_t)key_id_buf[0] << 24) |
+                      ((int32_t)key_id_buf[1] << 16) |
+                      ((int32_t)key_id_buf[2] << 8)  |
+                      ((int32_t)key_id_buf[3]));
+
+    /* Check if key id is associated with the image */
+    FIH_CALL(boot_verify_key_id_for_image, fih_rc, image_index, key_id);
+    if (FIH_EQ(fih_rc, FIH_SUCCESS)) {
+        return key_id;
+    }
+
+    return -1;
+}
 #endif /* !MCUBOOT_BUILTIN_KEY */
 #endif /* EXPECTED_SIG_TLV */
 
@@ -462,6 +488,7 @@ static int bootutil_check_for_pure(const struct image_header *hdr,
 static const uint16_t allowed_unprot_tlvs[] = {
      IMAGE_TLV_KEYHASH,
      IMAGE_TLV_PUBKEY,
+     IMAGE_TLV_KEYID,
      IMAGE_TLV_SHA256,
      IMAGE_TLV_SHA384,
      IMAGE_TLV_SHA512,
@@ -506,14 +533,7 @@ bootutil_img_validate(struct boot_loader_state *state,
     uint32_t img_sz;
 #ifdef EXPECTED_SIG_TLV
     FIH_DECLARE(valid_signature, FIH_FAILURE);
-#ifndef MCUBOOT_BUILTIN_KEY
     int key_id = -1;
-#else
-    /* Pass a key ID equal to the image index, the underlying crypto library
-     * is responsible for mapping the image index to a builtin key ID.
-     */
-    int key_id = image_index;
-#endif /* !MCUBOOT_BUILTIN_KEY */
 #ifdef MCUBOOT_HW_KEY
     uint8_t key_buf[KEY_BUF_SIZE];
 #endif
@@ -651,7 +671,7 @@ bootutil_img_validate(struct boot_loader_state *state,
             if (rc) {
                 goto out;
             }
-            key_id = bootutil_find_key(buf, len);
+            key_id = bootutil_find_key(image_index, buf, len);
 #else
             rc = LOAD_IMAGE_DATA(hdr, fap, off, key_buf, len);
             if (rc) {

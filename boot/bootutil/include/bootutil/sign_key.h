@@ -39,6 +39,17 @@ struct bootutil_key {
 };
 
 extern const struct bootutil_key bootutil_keys[];
+#ifdef MCUBOOT_BUILTIN_KEY
+/**
+ * Verify that the specified key ID is valid for authenticating the given image.
+ *
+ * @param[in]  image_index   Index of the image to be verified.
+ * @param[in]  key_id        Identifier of the key to be verified against the image.
+ *
+ * @return                   0 if the key ID is valid for the image; nonzero on failure.
+ */
+int boot_verify_key_id_for_image(uint8_t image_index, uint32_t key_id);
+#endif /* MCUBOOT_BUILTIN_KEY */
 #else
 struct bootutil_key {
     uint8_t *key;
