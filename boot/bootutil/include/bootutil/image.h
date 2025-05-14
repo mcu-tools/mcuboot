@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2016-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2023 Arm Limited
+ * Copyright (c) 2019-2025 Arm Limited
  *
  * Original license:
  *
@@ -100,6 +100,7 @@ struct flash_area;
  */
 #define IMAGE_TLV_KEYHASH           0x01   /* hash of the public key */
 #define IMAGE_TLV_PUBKEY            0x02   /* public key */
+#define IMAGE_TLV_KEYID             0x03   /* Key ID */
 #define IMAGE_TLV_SHA256            0x10   /* SHA256 of image hdr and body */
 #define IMAGE_TLV_SHA384            0x11   /* SHA384 of image hdr and body */
 #define IMAGE_TLV_SHA512            0x12   /* SHA512 of image hdr and body */

@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
  *
- * Copyright (c) 2023-2024 Arm Limited
+ * Copyright (c) 2023-2025 Arm Limited
  */
 
 /*
@@ -392,11 +392,6 @@ static inline void bootutil_ecdsa_init(bootutil_ecdsa_context *ctx)
     ctx->required_algorithm = 0;
 
 #else /* !MCUBOOT_BUILTIN_KEY */
-    /* The incoming key ID is equal to the image index. The key ID value must be
-     * shifted (by one in this case) because zero is reserved (PSA_KEY_ID_NULL)
-     * and considered invalid.
-     */
-    ctx->key_id++; /* Make sure it is not equal to 0. */
 #if defined(MCUBOOT_SIGN_EC256)
     ctx->curve_byte_count = 32;
     ctx->required_algorithm = PSA_ALG_SHA_256;
