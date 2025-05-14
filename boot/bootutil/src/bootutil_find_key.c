@@ -53,12 +53,13 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 /* Find functions are only needed when key is checked first */
 #if !defined(MCUBOOT_BUILTIN_KEY)
 #if !defined(MCUBOOT_HW_KEY)
-int bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
+int bootutil_find_key(uint8_t image_index, uint8_t *keyhash, uint8_t keyhash_len)
 {
     bootutil_sha_context sha_ctx;
     int i;
     const struct bootutil_key *key;
     uint8_t hash[IMAGE_HASH_SIZE];
+    (void)image_index;
 
     BOOT_LOG_DBG("bootutil_find_key");
 
@@ -117,6 +118,28 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
     return -1;
 }
 #endif /* !MCUBOOT_HW_KEY */
+
+#else /* !MCUBOOT_BUILTIN_KEY */
+int bootutil_find_key(uint8_t image_index, uint8_t *key_id_buf, uint8_t key_id_buf_len)
+{
+    int rc;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    /* Key id is passed */
+    assert(key_id_buf_len == sizeof(int32_t));
+    int32_t key_id = (((int32_t)key_id_buf[0] << 24) |
+                      ((int32_t)key_id_buf[1] << 16) |
+                      ((int32_t)key_id_buf[2] << 8)  |
+                      ((int32_t)key_id_buf[3]));
+
+    /* Check if key id is associated with the image */
+    FIH_CALL(boot_verify_key_id_for_image, fih_rc, image_index, key_id);
+    if (FIH_EQ(fih_rc, FIH_SUCCESS)) {
+        return key_id;
+    }
+
+    return -1;
+}
 #endif /* !MCUBOOT_BUILTIN_KEY */
 
 #else /* !MCUBOOT_BYPASS_KEY_MATCH */
