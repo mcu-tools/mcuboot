@@ -313,6 +313,19 @@ config BOOT_ED25519_PSA
 
 endchoice
 
+config BOOT_BYPASS_KEY_MATCH
+	bool "Do not match TLV key hash against built in key"
+	depends on !BOOT_SIGNATURE_TYPE_NONE
+	help
+	  MCUboot reads, from TLV, hash of key thath should be used to verify
+	  signature and tries to match it against list of keys, to select the
+	  key from known keys. This pointless when there is only single key
+	  compiled in, as the key can be used whether it is the right one
+	  or not, the signature verification process will verify the key.
+	  Enabling this option turns off key matching, slightly reducing
+	  MCUboot code and boot time.
+
+
 config BOOT_KEY_IMPORT_BYPASS_ASN
 	bool "Directly access key value without ASN.1 parsing"
 	help
