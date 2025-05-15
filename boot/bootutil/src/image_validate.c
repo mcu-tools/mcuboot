@@ -448,16 +448,15 @@ static int bootutil_check_for_pure(const struct image_header *hdr,
  * TLV section.  All other TLV entries must be in the protected section.
  */
 static const uint16_t allowed_unprot_tlvs[] = {
-     IMAGE_TLV_KEYHASH,
-     IMAGE_TLV_PUBKEY,
-     IMAGE_TLV_SHA256,
-     IMAGE_TLV_SHA384,
-     IMAGE_TLV_SHA512,
-     IMAGE_TLV_RSA2048_PSS,
-     IMAGE_TLV_ECDSA224,
-     IMAGE_TLV_ECDSA_SIG,
-     IMAGE_TLV_RSA3072_PSS,
-     IMAGE_TLV_ED25519,
+#if defined(EXPECTED_KEY_TLV)
+     EXPECTED_KEY_TLV,
+#endif
+#if defined(EXPECTED_HASH_TLV)
+     EXPECTED_HASH_TLV,
+#endif
+#if defined(EXPECTED_SIG_TLV)
+     EXPECTED_SIG_TLV,
+#endif
 #if defined(MCUBOOT_SIGN_PURE)
      IMAGE_TLV_SIG_PURE,
 #endif
