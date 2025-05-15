@@ -69,7 +69,7 @@ jobs:
       - name: Setup Zephyr
         working-directory: repos/zephyr
         run: |
-          west config --system manifest.project-filter -- -.*,+cmsis,+hal_nordic,+hal_nxp,+hal_stm32,+libmetal,+littlefs,+mbedtls,+mcuboot,+open-amp,+picolibc,+segger,+tinycrypt,+trusted-firmware-m,+zcbor
+          west config --system manifest.project-filter -- -.*,+cmsis,+cmsis_6,+hal_nordic,+hal_nxp,+hal_stm32,+libmetal,+littlefs,+mbedtls,+mcuboot,+open-amp,+picolibc,+segger,+tinycrypt,+trusted-firmware-m,+zcbor
           west init -l .
           west update
 
