@@ -155,6 +155,9 @@ int boot_trailer_scramble_offset(const struct flash_area *fa, size_t alignment,
 {
     int ret = 0;
 
+    BOOT_LOG_DBG("boot_trailer_scramble_offset: flash_area %p, alignment %u",
+                 fa, (unsigned int)alignment);
+
     /* Not allowed to enforce alignment smaller than device allows */
     if (alignment < flash_area_align(fa)) {
         alignment = flash_area_align(fa);
@@ -176,6 +179,9 @@ int boot_trailer_scramble_offset(const struct flash_area *fa, size_t alignment,
         *off = flash_area_get_size(fa) - ALIGN_DOWN(boot_trailer_sz(alignment), alignment);
     }
 
+    BOOT_LOG_DBG("boot_trailer_scramble_offset: final alignment %u, offset %u",
+                 (unsigned int)alignment, (unsigned int)*off);
+
     return ret;
 }
 
@@ -186,6 +192,8 @@ int boot_header_scramble_off_sz(const struct flash_area *fa, int slot, size_t *o
     const size_t write_block = flash_area_align(fa);
     size_t loff = 0;
     struct flash_sector sector;
+
+    BOOT_LOG_DBG("boot_header_scramble_off_sz: slot %d", slot);
 
     (void)slot;
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
@@ -214,6 +222,8 @@ int boot_header_scramble_off_sz(const struct flash_area *fa, int slot, size_t *o
         *size = ALIGN_UP(sizeof(((struct image_header *)0)->ih_magic), write_block);
     }
     *off = loff;
+
+    BOOT_LOG_DBG("boot_header_scramble_off_sz: size %u", (unsigned int)*size);
 
     return ret;
 }
@@ -601,12 +611,17 @@ boot_erase_region(const struct flash_area *fa, uint32_t off, uint32_t size, bool
 {
     int rc = 0;
 
+    BOOT_LOG_DBG("boot_erase_region: flash_area %p, offset %d, size %d, backwards == %d",
+                 fa, off, size, (int)backwards);
+
     if (off >= flash_area_get_size(fa) || (flash_area_get_size(fa) - off) < size) {
         rc = -1;
         goto end;
     } else if (device_requires_erase(fa)) {
         uint32_t end_offset = 0;
         struct flash_sector sector;
+
+        BOOT_LOG_DBG("boot_erase_region: device with erase");
 
         if (backwards) {
             /* Get the lowest page offset first */
@@ -681,6 +696,8 @@ boot_erase_region(const struct flash_area *fa, uint32_t off, uint32_t size, bool
                 off += 1;
             }
         }
+    } else {
+        BOOT_LOG_DBG("boot_erase_region: device without erase");
     }
 
 end:
