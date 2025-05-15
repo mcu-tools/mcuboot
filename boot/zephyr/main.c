@@ -463,6 +463,7 @@ int main(void)
     mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
 
 #ifdef CONFIG_BOOT_SERIAL_ENTRANCE_GPIO
+    BOOT_LOG_DBG("Checking GPIO for serial recovery");
     if (io_detect_pin() &&
             !io_boot_skip_serial_recovery()) {
         boot_serial_enter();
@@ -470,13 +471,17 @@ int main(void)
 #endif
 
 #ifdef CONFIG_BOOT_SERIAL_PIN_RESET
+    BOOT_LOG_DBG("Checking RESET pin for serial recovery");
     if (io_detect_pin_reset()) {
         boot_serial_enter();
     }
 #endif
 
 #if defined(CONFIG_BOOT_USB_DFU_GPIO)
+    BOOT_LOG_DBG("Checking GPIO for USB DFU request");
     if (io_detect_pin()) {
+        BOOT_LOG_DBG("Entering USB DFU");
+
         usb_dfu_requested = true;
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
@@ -498,6 +503,7 @@ int main(void)
             BOOT_LOG_INF("Waiting for USB DFU");
 
 #if defined(CONFIG_BOOT_USB_DFU_WAIT)
+            BOOT_LOG_DBG("Waiting for USB DFU for %dms", CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS);
             mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_WAITING);
             wait_for_usb_dfu(K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS));
             BOOT_LOG_INF("USB DFU wait time elapsed");
@@ -529,12 +535,14 @@ int main(void)
     if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR)) {
         FIH_CALL(boot_go, fih_rc, &rsp);
     }
+    BOOT_LOG_DBG("Left boot_go with success == %d", FIH_EQ(fih_rc, FIH_SUCCESS) ? 1 : 0);
 
 #ifdef CONFIG_BOOT_SERIAL_BOOT_MODE
     if (io_detect_boot_mode()) {
         /* Boot mode to stay in bootloader, clear status and enter serial
          * recovery mode
          */
+        BOOT_LOG_DBG("Staying in serial recovery");
         boot_serial_enter();
     }
 #endif
