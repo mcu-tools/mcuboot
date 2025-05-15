@@ -324,7 +324,7 @@ boot_write_magic(const struct flash_area *fap)
     memset(&magic[0], erased_val, sizeof(magic));
     memcpy(&magic[BOOT_MAGIC_ALIGN_SIZE - BOOT_MAGIC_SZ], BOOT_IMG_MAGIC, BOOT_MAGIC_SZ);
 
-    BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%lx (0x%lx)",
+    BOOT_LOG_DBG("boot_write_magic: fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off));
     rc = flash_area_write(fap, pad_off, &magic[0], BOOT_MAGIC_ALIGN_SIZE);
@@ -350,9 +350,14 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
     uint32_t align;
     int rc;
 
+    BOOT_LOG_DBG("boot_write_trailer: for %p at %d, size = %d",
+                 fap, off, inlen);
+
     align = flash_area_align(fap);
     align = ALIGN_UP(inlen, align);
     if (align > BOOT_MAX_ALIGN) {
+        /* This should never happen */
+        assert(0);
         return -1;
     }
     erased_val = flash_area_erased_val(fap);
@@ -593,6 +598,9 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
     struct boot_swap_state slot_state;
     int rc;
 
+    BOOT_LOG_DBG("boot_set_next: fa %p active == %d, confirm == %d",
+                 fa, (int)active, (int)confirm);
+
     if (active) {
         /* The only way to set active slot for next boot is to confirm it,
          * as DirectXIP will conclude that, since slot has not been confirmed
@@ -603,6 +611,7 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
 
     rc = boot_read_swap_state(fa, &slot_state);
     if (rc != 0) {
+        BOOT_LOG_DBG("boot_set_next: error %d reading state", rc);
         return rc;
     }
 
@@ -730,6 +739,8 @@ boot_set_confirmed_multi(int image_index)
 
     rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index), &fap);
     if (rc != 0) {
+        BOOT_LOG_DBG("boot_set_confirmed_multi: error %d opening image %d",
+                     rc, image_index);
         return BOOT_EFLASH;
     }
 
@@ -757,13 +768,14 @@ int
 boot_image_load_header(const struct flash_area *fa_p,
                        struct image_header *hdr)
 {
-    uint32_t size;
+    uint32_t size = 0;
     int rc = flash_area_read(fa_p, 0, hdr, sizeof *hdr);
 
+    BOOT_LOG_DBG("boot_image_load_header: from %p, result %d", fa_p, rc);
+
     if (rc != 0) {
-        rc = BOOT_EFLASH;
         BOOT_LOG_ERR("Failed reading image header");
-	return BOOT_EFLASH;
+        return BOOT_EFLASH;
     }
 
     if (hdr->ih_magic != IMAGE_MAGIC) {
@@ -780,6 +792,8 @@ boot_image_load_header(const struct flash_area *fa_p,
 
     if (!boot_u32_safe_add(&size, hdr->ih_img_size, hdr->ih_hdr_size) ||
         size >= flash_area_get_size(fa_p)) {
+        BOOT_LOG_ERR("Image size bigger than designated area: %lu > %lu",
+                     (unsigned long)size, (unsigned long)flash_area_get_size(fa_p));
         return BOOT_EBADIMAGE;
     }
 
