@@ -375,6 +375,19 @@ endif
 
 endchoice
 
+config BOOT_BYPASS_KEY_MATCH
+	bool "Do not match TLV key hash against built in key"
+	depends on !BOOT_SIGNATURE_TYPE_NONE
+	depends on !BOOT_HW_KEY
+	help
+	  MCUboot reads, from TLV, hash of a key that should be used to verify
+	  a signature and uses it to find a builtin key.
+	  This action is pointless when there is single key compiled in,
+	  as the signature verification process will just fail if that is not
+	  the right key.
+	  Enabling this option turns off key matching, slightly reducing
+	  MCUboot code and boot time.
+
 config BOOT_SIGNATURE_KEY_FILE
 	string "PEM key file"
 	default "root-ec-p256.pem" if BOOT_SIGNATURE_TYPE_ECDSA_P256
