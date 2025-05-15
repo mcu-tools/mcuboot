@@ -134,9 +134,11 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     uint8_t iv_and_key[PSA_CIPHER_IV_LENGTH(PSA_KEY_TYPE_AES, PSA_ALG_CTR) +
                        BOOT_ENC_KEY_SIZE];
 
+    BOOT_LOG_DBG("boot_decrypt_key: PSA ED25519");
+
     psa_ret = psa_crypto_init();
     if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_ERR("AES crypto init failed %d", psa_ret);
+        BOOT_LOG_ERR("PSA crypto init failed %d", psa_ret);
         return -1;
     }
 

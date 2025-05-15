@@ -28,6 +28,9 @@
 #include <string.h>
 
 #include "mcuboot_config/mcuboot_config.h"
+#include "bootutil/bootutil_log.h"
+
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #ifdef MCUBOOT_SIGN_RSA
 #include "bootutil_priv.h"
@@ -266,6 +269,8 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     FIH_DECLARE(fih_rc, FIH_FAILURE);
     uint8_t *cp;
     uint8_t *end;
+
+    BOOT_LOG_DBG("bootutil_verify_sig: RSA key_id %d", key_id);
 
     bootutil_rsa_init(&ctx);
 

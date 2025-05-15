@@ -80,7 +80,7 @@ swap_scramble_trailer_sectors(const struct boot_loader_state *state,
     size_t off;
     int rc;
 
-    BOOT_LOG_DBG("Scrambling trailer; fa_id=%d", flash_area_get_id(fap));
+    BOOT_LOG_DBG("swap_scramble_trailer_sectors: fa_id=%d", flash_area_get_id(fap));
 
     /* Delete starting from last sector and moving to beginning */
     rc = boot_trailer_scramble_offset(fap, BOOT_WRITE_SZ(state), &off);

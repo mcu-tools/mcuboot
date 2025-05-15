@@ -28,6 +28,9 @@
 #include <string.h>
 
 #include "mcuboot_config/mcuboot_config.h"
+#include "bootutil/bootutil_log.h"
+
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #if defined(MCUBOOT_SIGN_EC256) || defined(MCUBOOT_SIGN_EC384)
 
@@ -45,6 +48,8 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     FIH_DECLARE(fih_rc, FIH_FAILURE);
     uint8_t *pubkey;
     uint8_t *end;
+
+    BOOT_LOG_DBG("bootutil_verify_sig: ECDSA builtin key %d", key_id);
 
     pubkey = (uint8_t *)bootutil_keys[key_id].key;
     end = pubkey + *bootutil_keys[key_id].len;
@@ -74,6 +79,8 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     int rc;
     bootutil_ecdsa_context ctx;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    BOOT_LOG_DBG("bootutil_verify_sig: ECDSA embedded key %hhd", key_id);
 
     /* Use builtin key for image verification, no key parsing is required. */
     ctx.key_id = key_id;

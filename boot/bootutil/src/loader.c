@@ -283,6 +283,19 @@ static int
 boot_version_cmp(const struct image_version *ver1,
                  const struct image_version *ver2)
 {
+#if !defined(MCUBOOT_VERSION_CMP_USE_BUILD_NUMBER)
+    BOOT_LOG_DBG("boot_version_cmp: ver1 %u.%u.%u vs ver2 %u.%u.%u",
+                 (unsigned)ver1->iv_major, (unsigned)ver1->iv_minor,
+                 (unsigned)ver1->iv_revision, (unsigned)ver2->iv_major,
+                 (unsigned)ver2->iv_minor, (unsigned)ver2->iv_revision);
+#else
+    BOOT_LOG_DBG("boot_version_cmp: ver1 %u.%u.%u.%u vs ver2 %u.%u.%u.%u",
+                 (unsigned)ver1->iv_major, (unsigned)ver1->iv_minor,
+                 (unsigned)ver1->iv_revision, (unsigned)ver1->iv_build_num,
+                 (unsigned)ver2->iv_major, (unsigned)ver2->iv_minor,
+                 (unsigned)ver2->iv_revision, (unsigned)ver2->iv_build_num);
+#endif
+
     if (ver1->iv_major > ver2->iv_major) {
         return 1;
     }
@@ -554,6 +567,7 @@ boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
     fap = BOOT_IMG_AREA(state, slot);
     assert(fap != NULL);
 
+    BOOT_LOG_DBG("boot_verify_slot_dependencies");
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
     it.start_off = boot_get_state_secondary_offset(state, fap);
 #endif
@@ -581,6 +595,8 @@ boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
         rc = LOAD_IMAGE_DATA(boot_img_hdr(state, slot),
                              fap, off, &dep, len);
         if (rc != 0) {
+            BOOT_LOG_DBG("boot_verify_slot_dependencies: error %d reading dependency %p %d %d",
+                         rc, fap, off, len);
             rc = BOOT_EFLASH;
             goto done;
         }
@@ -593,6 +609,7 @@ boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
         /* Verify dependency and modify the swap type if not satisfied. */
         rc = boot_verify_slot_dependency(state, &dep);
         if (rc != 0) {
+            BOOT_LOG_DBG("boot_verify_slot_dependencies: not satisfied");
             /* Dependency not satisfied */
             goto done;
         }
@@ -1005,6 +1022,9 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
     struct image_header *hdr;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
+    BOOT_LOG_DBG("boot_validate_slot: slot %d, expected_swap_type %d",
+                 slot, expected_swap_type);
+
 #if !defined(MCUBOOT_SWAP_USING_OFFSET)
     (void)expected_swap_type;
 #endif
@@ -1250,6 +1270,8 @@ boot_scramble_region(const struct flash_area *fa, uint32_t off, uint32_t size, b
 {
     int rc = 0;
 
+    BOOT_LOG_DBG("boot_scramble_region: %p %d %d %d", fa, off, size, (int)backwards);
+
     if (size == 0) {
         goto done;
     }
@@ -1264,6 +1286,7 @@ boot_scramble_region(const struct flash_area *fa, uint32_t off, uint32_t size, b
         const size_t write_block = flash_area_align(fa);
         uint32_t end_offset;
 
+        BOOT_LOG_DBG("boot_scramble_region: device without erase, overwriting");
         memset(buf, flash_area_erased_val(fa), sizeof(buf));
 
         if (backwards) {
@@ -1273,11 +1296,14 @@ boot_scramble_region(const struct flash_area *fa, uint32_t off, uint32_t size, b
         } else {
             end_offset = ALIGN_DOWN((off + size), write_block);
         }
+        BOOT_LOG_DBG("boot_scramble_region: start offset %u, end offset %u", off, end_offset);
 
         while (off != end_offset) {
             /* Write over the area to scramble data that is there */
             rc = flash_area_write(fa, off, buf, write_block);
             if (rc != 0) {
+                BOOT_LOG_DBG("boot_scramble_region: error %d for %p %d %u",
+                             rc, fa, off, (unsigned int)write_block);
                 break;
             }
 
@@ -2348,6 +2374,8 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     bool has_upgrade;
     volatile int fih_cnt;
 
+    BOOT_LOG_DBG("context_boot_go");
+
 #if defined(__BOOTSIM__)
     /* The array of slot sectors are defined here (as opposed to file scope) so
      * that they don't get allocated for non-boot-loader apps.  This is
@@ -3216,6 +3244,8 @@ static void boot_fetch_slot_state_sizes(void)
             assert(rc == 0);
 
             if (rc != 0) {
+                BOOT_LOG_DBG("boot_fetch_slot_state_sizes: error %d for %d",
+                             rc, fa_id);
                 goto finish;
             }
         }
