@@ -1,4 +1,5 @@
 # Copyright (c) 2022-2023 Nordic Semiconductor ASA
+# Copyright (c) 2024, Arm Limited
 # SPDX-License-Identifier: Apache-2.0
 
 name: Build Zephyr samples with Twister
@@ -93,6 +94,7 @@ jobs:
           export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
           echo "Using Zephyr version: ${{ env.ZEPHYR_VERSION }}"
           echo "Using Mcuboot version: ${{ env.MCUBOOT_VERSION }}"
+          pip install -r ../bootloader/mcuboot/scripts/requirements.txt
           ./scripts/twister --inline-logs -v -N -M --integration --overflow-as-errors --retry-failed 2 ${test_paths}
 
       - name: Upload Tests Results
