@@ -21,8 +21,11 @@
 #include "bootutil/crypto/common.h"
 #endif
 
-#include "bootutil_priv.h"
+#include "bootutil/bootutil_log.h"
 #include "bootutil/crypto/sha.h"
+#include "bootutil_priv.h"
+
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #define EDDSA_SIGNATURE_LENGTH 64
 #define NUM_ED25519_BYTES 32
@@ -90,7 +93,11 @@ bootutil_verify(uint8_t *buf, uint32_t blen,
     uint8_t *pubkey;
     uint8_t *end;
 
+    BOOT_LOG_DBG("bootutil_verify: ED25519 key_id %d", (int)key_id);
+
     if (slen != EDDSA_SIGNATURE_LENGTH) {
+        BOOT_LOG_DBG("bootutil_verify: expected slen %d, got %u",
+                     EDDSA_SIGNATURE_LENGTH, (unsigned int)slen);
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
     }
@@ -101,6 +108,7 @@ bootutil_verify(uint8_t *buf, uint32_t blen,
 #if !defined(MCUBOOT_KEY_IMPORT_BYPASS_ASN)
     rc = bootutil_import_key(&pubkey, end);
     if (rc) {
+        BOOT_LOG_DBG("bootutil_verify: import key failed %d", rc);
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
     }
@@ -110,6 +118,7 @@ bootutil_verify(uint8_t *buf, uint32_t blen,
      * There is no check whether this is the correct key,
      * here, by the algorithm selected.
      */
+    BOOT_LOG_DBG("bootutil_verify: bypass ASN1");
     if (*bootutil_keys[key_id].len < NUM_ED25519_BYTES) {
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
@@ -144,7 +153,11 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen,
 {
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
+    BOOT_LOG_DBG("bootutil_verify_sig: ED25519 key_id %d", (int)key_id);
+
     if (hlen != IMAGE_HASH_SIZE) {
+        BOOT_LOG_DBG("bootutil_verify_sig: expected hlen %d, got %d",
+                     IMAGE_HASH_SIZE, hlen);
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
     }
@@ -166,6 +179,8 @@ bootutil_verify_img(uint8_t *img, uint32_t size,
                     uint8_t key_id)
 {
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    BOOT_LOG_DBG("bootutil_verify_img: ED25519 key_id %d", (int)key_id);
 
     FIH_CALL(bootutil_verify, fih_rc, img, size, sig,
              slen, key_id);
