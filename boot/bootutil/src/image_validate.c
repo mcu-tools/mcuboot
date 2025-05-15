@@ -271,6 +271,10 @@ bootutil_img_hash(struct boot_loader_state *state,
 #   define KEY_BUF_SIZE         (SIG_BUF_SIZE + 24)
 #endif /* !MCUBOOT_HW_KEY */
 
+#if defined(MCUBOOT_BYPASS_KEY_MATCH)
+#   undef EXPECTED_KEY_TLV
+#endif
+
 #if !defined(MCUBOOT_HW_KEY)
 static int
 bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
