@@ -277,7 +277,7 @@ class Image:
 
         self.image_hash = None
         self.image_size = None
-        self.signature = None
+        self.signatures = None
         self.version = version or versmod.decode_version("0")
         self.header_size = header_size
         self.pad_header = pad_header
@@ -299,7 +299,7 @@ class Image:
         self.enctlv_len = 0
         self.max_align = max(DEFAULT_MAX_ALIGN, align) if max_align is None else int(max_align)
         self.non_bootable = non_bootable
-        self.key_ids = None
+        self.psa_key_ids = None
 
         if self.max_align == DEFAULT_MAX_ALIGN:
             self.boot_magic = bytes([
@@ -672,9 +672,9 @@ class Image:
             self.signatures = []
             for i, key in enumerate(keys):
                 # If key IDs are provided, and we have enough for this key, add it first.
-                if self.key_ids is not None and len(self.key_ids) > i:
+                if self.psa_key_ids is not None and len(self.psa_key_ids) > i:
                     # Convert key id (an integer) to 4-byte defined endian bytes.
-                    kid_bytes = self.key_ids[i].to_bytes(4, self.endian)
+                    kid_bytes = self.psa_key_ids[i].to_bytes(4, self.endian)
                     tlv.add('KEYID', kid_bytes)  # Using the TLV tag that corresponds to key IDs.
 
                 if public_key_format == 'hash':
@@ -961,9 +961,9 @@ class Image:
             return VerifyResult.INVALID_SIGNATURE, None, None, None
 
 
-    def set_key_ids(self, key_ids):
+    def set_key_ids(self, psa_key_ids):
         """Set list of key IDs (integers) to be inserted before each signature."""
-        self.key_ids = key_ids
+        self.psa_key_ids = psa_key_ids
 
     def _add_key_id_tlv_to_unprotected(self, tlv, key_id: int):
         """Add a key ID TLV into the *unprotected* TLV area."""
