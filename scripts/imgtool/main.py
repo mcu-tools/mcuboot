@@ -453,7 +453,7 @@ class BasedIntParamType(click.ParamType):
               help='send to OUTFILE the payload or payload''s digest instead '
               'of complied image. These data can be used for external image '
               'signing')
-@click.option('--key-ids', multiple=True, type=int, required=False,
+@click.option('--psa-key-ids', multiple=True, type=int, required=False,
               help='List of integer key IDs for each signature.')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
@@ -464,7 +464,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, rom_fixed, max_align,
          clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, is_pure,
-         vector_to_sign, non_bootable, key_ids):
+         vector_to_sign, non_bootable, psa_key_ids):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
