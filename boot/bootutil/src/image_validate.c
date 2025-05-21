@@ -140,7 +140,11 @@ bootutil_img_hash(struct boot_loader_state *state,
     /* in some cases (split image) the hash is seeded with data from
      * the loader image */
     if (seed && (seed_len > 0)) {
-        bootutil_sha_update(&sha_ctx, seed, seed_len);
+        rc = bootutil_sha_update(&sha_ctx, seed, seed_len);
+        if (rc){
+            bootutil_sha_drop(&sha_ctx);
+            return rc;
+        }
     }
 
     /* Hash is computed over image header and image itself. */
@@ -155,12 +159,21 @@ bootutil_img_hash(struct boot_loader_state *state,
     /* No chunk loading, storage is mapped to address space and can
      * be directly given to hashing function.
      */
-    bootutil_sha_update(&sha_ctx, (void *)flash_area_get_off(fap), size);
+    rc = bootutil_sha_update(&sha_ctx, (void *)flash_area_get_off(fap), size);
+    if (rc){
+        bootutil_sha_drop(&sha_ctx);
+        return rc;
+    }
 #else /* MCUBOOT_HASH_STORAGE_DIRECTLY */
 #ifdef MCUBOOT_RAM_LOAD
-    bootutil_sha_update(&sha_ctx,
+    rc = bootutil_sha_update(&sha_ctx,
                         (void*)(IMAGE_RAM_BASE + hdr->ih_load_addr),
                         size);
+    if (rc){
+        bootutil_sha_drop(&sha_ctx);
+        return rc;
+    }
+    
 #else
     for (off = 0; off < size; off += blk_sz) {
         blk_sz = size - off;
@@ -202,14 +215,18 @@ bootutil_img_hash(struct boot_loader_state *state,
             }
         }
 #endif
-        bootutil_sha_update(&sha_ctx, tmp_buf, blk_sz);
+        rc = bootutil_sha_update(&sha_ctx, tmp_buf, blk_sz);
+        if (rc){
+            bootutil_sha_drop(&sha_ctx);
+            return rc;
+        }
     }
 #endif /* MCUBOOT_RAM_LOAD */
 #endif /* MCUBOOT_HASH_STORAGE_DIRECTLY */
-    bootutil_sha_finish(&sha_ctx, hash_result);
+    rc = bootutil_sha_finish(&sha_ctx, hash_result);
     bootutil_sha_drop(&sha_ctx);
 
-    return 0;
+    return rc;
 }
 #endif
 
@@ -287,8 +304,12 @@ bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
     for (i = 0; i < bootutil_key_cnt; i++) {
         key = &bootutil_keys[i];
         bootutil_sha_init(&sha_ctx);
-        bootutil_sha_update(&sha_ctx, key->key, *key->len);
-        bootutil_sha_finish(&sha_ctx, hash);
+        if (bootutil_sha_update(&sha_ctx, key->key, *key->len)){
+            break;
+        }
+        if (bootutil_sha_finish(&sha_ctx, hash)){
+            break;
+        }
         if (!memcmp(hash, keyhash, keyhash_len)) {
             bootutil_sha_drop(&sha_ctx);
             return i;
@@ -310,9 +331,16 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     bootutil_sha_init(&sha_ctx);
-    bootutil_sha_update(&sha_ctx, key, key_len);
-    bootutil_sha_finish(&sha_ctx, hash);
+    rc = bootutil_sha_update(&sha_ctx, key, key_len);
+    if (rc){
+        bootutil_sha_drop(&sha_ctx);
+        return rc;
+    }
+    rc = bootutil_sha_finish(&sha_ctx, hash);
     bootutil_sha_drop(&sha_ctx);
+    if (rc){   
+        return rc;
+    }
 
     rc = boot_retrieve_public_key_hash(image_index, key_hash, &key_hash_size);
     if (rc) {
