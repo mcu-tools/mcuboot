@@ -46,12 +46,12 @@ static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
 /* Partitioning of HKDF derived material, from the exchange derived key */
 /* AES key encryption key */
 #define HKDF_AES_KEY_INDEX  0
-#define HKDF_ASE_KEY_SIZE   (BOOT_ENC_KEY_SIZE)
+#define HKDF_AES_KEY_SIZE   (BOOT_ENC_KEY_SIZE)
 /* MAC feed */
-#define HKDF_MAC_FEED_INDEX (HKDF_AES_KEY_INDEX + HKDF_ASE_KEY_SIZE)
+#define HKDF_MAC_FEED_INDEX (HKDF_AES_KEY_INDEX + HKDF_AES_KEY_SIZE)
 #define HKDF_MAC_FEED_SIZE  (32)    /* This is SHA independent */
 /* Total size */
-#define HKDF_SIZE           (HKDF_ASE_KEY_SIZE + HKDF_MAC_FEED_SIZE)
+#define HKDF_SIZE           (HKDF_AES_KEY_SIZE + HKDF_MAC_FEED_SIZE)
 
 /* Fixme: This duplicates code from encrypted.c and depends on mbedtls */
 static int
@@ -270,7 +270,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
     /* Import the AES partition of derived key, the first 16 bytes */
     psa_ret = psa_import_key(&kattr, &derived_key[HKDF_AES_KEY_INDEX],
-                             HKDF_ASE_KEY_SIZE, &kid);
+                             HKDF_AES_KEY_SIZE, &kid);
     memset(derived_key, 0, sizeof(derived_key));
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_ERR("AES key import failed %d", psa_ret);
