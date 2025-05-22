@@ -76,6 +76,16 @@
 - Fixed issue with watchdog not being fed during flash erase
   operations, which could cause the watchdog to time out on long
   erase operations and prevent firmware updates from being possible.
+- Fix issues related to calculating the maximum image size for a given
+  configuration.
+- Fix an issue with sha hash calculations in a loop.
+- Fix an issue with the security counter being updated before an image is
+  confirmed.
+- Added a contributing guideline.
+- Fixed an issue related to referencing the arm-vector table of the
+  application, which caused a jump to the incorrect address instead of the
+  application reset vector for some Zephyr builds when LTO (link time
+  optimization) was enabled.
 
 ## Version 2.1.0
 
