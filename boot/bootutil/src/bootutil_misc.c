@@ -479,25 +479,28 @@ uint32_t bootutil_max_image_size(struct boot_loader_state *state, const struct f
 #elif defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
     (void) fap;
 
-    /* The slot whose size is used to compute the maximum image size must be the one containing the
-     * padding required for the swap. */
-#ifdef MCUBOOT_SWAP_USING_MOVE
-    size_t slot = BOOT_PRIMARY_SLOT;
-#else
-    size_t slot = BOOT_SECONDARY_SLOT;
-#endif
-
-    const struct flash_area *fap_padded_slot = BOOT_IMG_AREA(state, slot);
-    assert(fap_padded_slot != NULL);
+    uint32_t available_pri_sz;
+    uint32_t available_sec_sz;
 
     size_t trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
-    size_t sector_sz = boot_img_sector_size(state, slot, 0);
+    size_t sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
     size_t padding_sz = sector_sz;
 
     /* The trailer size needs to be sector-aligned */
     trailer_sz = ALIGN_UP(trailer_sz, sector_sz);
 
-    return flash_area_get_size(fap_padded_slot) - trailer_sz - padding_sz;
+    available_pri_sz = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) * sector_sz - trailer_sz;
+    available_sec_sz = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT) * sector_sz - trailer_sz;
+
+    /* The slot whose size is used to compute the maximum image size must be the one containing the
+     * padding required for the swap. */
+#ifdef MCUBOOT_SWAP_USING_MOVE
+    available_pri_sz -= padding_sz;
+#else
+    available_sec_sz -= padding_sz;
+#endif
+
+    return (available_pri_sz < available_sec_sz ? available_pri_sz : available_sec_sz);
 #elif defined(MCUBOOT_OVERWRITE_ONLY)
     (void) state;
     return boot_swap_info_off(fap);
