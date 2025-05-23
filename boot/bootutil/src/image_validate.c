@@ -271,6 +271,8 @@ bootutil_img_hash(struct boot_loader_state *state,
 #   define KEY_BUF_SIZE         (SIG_BUF_SIZE + 24)
 #endif /* !MCUBOOT_HW_KEY */
 
+#if !defined(MCUBOOT_BYPASS_KEY_MATCH)
+/* Find functions are only needed when key is checked first */
 #if !defined(MCUBOOT_HW_KEY)
 static int
 bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
@@ -336,6 +338,7 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 #endif /* !MCUBOOT_HW_KEY */
 #endif /* !MCUBOOT_BUILTIN_KEY */
 #endif /* EXPECTED_SIG_TLV */
+#endif /* !MCUBOOT_BYPASS_KEY_MATCH */
 
 /**
  * Reads the value of an image's security counter.
@@ -637,7 +640,12 @@ bootutil_img_validate(struct boot_loader_state *state,
             if (rc) {
                 goto out;
             }
+#if !defined(MCUBOOT_BYPASS_KEY_MATCH)
             key_id = bootutil_find_key(buf, len);
+#else
+            /* There is only one key */
+            key_id = 0;
+#endif
 #else
             rc = LOAD_IMAGE_DATA(hdr, fap, off, key_buf, len);
             if (rc) {
