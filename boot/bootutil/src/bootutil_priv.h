@@ -544,8 +544,6 @@ int boot_load_image_to_sram(struct boot_loader_state *state);
 
 #endif /* MCUBOOT_RAM_LOAD */
 
-uint32_t bootutil_max_image_size(struct boot_loader_state *state, const struct flash_area *fap);
-
 int boot_read_image_size(struct boot_loader_state *state, int slot,
                          uint32_t *size);
 
