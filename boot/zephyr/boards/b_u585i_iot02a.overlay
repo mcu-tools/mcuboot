@@ -1,0 +1,40 @@
+/*
+ * Copyright (c) 2025 STMicroelectronics
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Define the device, controller and partition to be the external memory
+ * for running the application in external NOR from MCUboot
+ */
+
+/delete-node/ &slot0_partition;
+/delete-node/ &slot1_partition;
+/delete-node/ &scratch_partition;
+/delete-node/ &storage_partition;
+
+&mx25lm51245 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		slot0_partition: partition@0 {
+			label = "image-0";
+			reg = <0x00000000 DT_SIZE_K(416)>;
+		};
+		slot1_partition: partition@68000 {
+			label = "image-1";
+			reg = <0x00068000 DT_SIZE_K(416)>;
+		};
+		scratch_partition: partition@d0000 {
+			label = "image-scratch";
+			reg = <0x000d00000 DT_SIZE_K(64)>;
+		};
+		storage_partition: partition@e0000 {
+			label = "storage";
+			reg = <0x000e0000 DT_SIZE_K(64)>;
+		};	};
+};
+
