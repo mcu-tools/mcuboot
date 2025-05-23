@@ -227,29 +227,6 @@ boot_status_internal_off(const struct boot_status *bs, int elem_sz)
     return off;
 }
 
-static int app_max_sectors(struct boot_loader_state *state)
-{
-    uint32_t sz = 0;
-    uint32_t sector_sz;
-    uint32_t trailer_sz;
-    uint32_t first_trailer_idx;
-
-    sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
-    trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
-    /* subtract 1 for swap and at least 1 for trailer */
-    first_trailer_idx = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 2;
-
-    while (1) {
-        sz += sector_sz;
-        if  (sz >= trailer_sz) {
-            break;
-        }
-        first_trailer_idx--;
-    }
-
-    return first_trailer_idx;
-}
-
 int
 boot_slots_compatible(struct boot_loader_state *state)
 {
@@ -258,19 +235,16 @@ boot_slots_compatible(struct boot_loader_state *state)
     size_t sector_sz_pri = 0;
     size_t sector_sz_sec = 0;
     size_t i;
-    size_t num_usable_sectors_pri;
 
     num_sectors_pri = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
     num_sectors_sec = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT);
-    num_usable_sectors_pri = app_max_sectors(state);
 
     if ((num_sectors_pri != num_sectors_sec) &&
-            (num_sectors_pri != (num_sectors_sec + 1)) &&
-            (num_usable_sectors_pri != (num_sectors_sec + 1))) {
+            (num_sectors_pri != (num_sectors_sec + 1))) {
         BOOT_LOG_WRN("Cannot upgrade: not a compatible amount of sectors");
         BOOT_LOG_DBG("slot0 sectors: %d, slot1 sectors: %d, usable slot0 sectors: %d",
                      (int)num_sectors_pri, (int)num_sectors_sec,
-                     (int)(num_usable_sectors_pri - 1));
+                     (int)(num_sectors_pri - 1));
         return 0;
     } else if (num_sectors_pri > BOOT_MAX_IMG_SECTORS) {
         BOOT_LOG_WRN("Cannot upgrade: more sectors than allowed");
@@ -280,7 +254,7 @@ boot_slots_compatible(struct boot_loader_state *state)
     /* Optimal says primary has one more than secondary. Always. Both have trailers. */
     if (num_sectors_pri != (num_sectors_sec + 1)) {
         BOOT_LOG_DBG("Non-optimal sector distribution, slot0 has %d usable sectors (%d assigned) "
-                     "but slot1 has %d assigned", (int)num_usable_sectors_pri,
+                     "but slot1 has %d assigned", (int)(num_sectors_pri - 1),
                      (int)num_sectors_pri, (int)num_sectors_sec);
     }
 
@@ -340,7 +314,6 @@ swap_status_source(struct boot_loader_state *state)
     struct boot_swap_state state_primary_slot;
     struct boot_swap_state state_secondary_slot;
     int rc;
-    uint8_t source;
     uint8_t image_index;
 
 #if (BOOT_IMAGE_NUMBER == 1)
@@ -365,10 +338,8 @@ swap_status_source(struct boot_loader_state *state)
             state_primary_slot.copy_done == BOOT_FLAG_UNSET &&
             state_secondary_slot.magic != BOOT_MAGIC_GOOD) {
 
-        source = BOOT_STATUS_SOURCE_PRIMARY_SLOT;
-
         BOOT_LOG_INF("Boot source: primary slot");
-        return source;
+        return BOOT_STATUS_SOURCE_PRIMARY_SLOT;
     }
 
     BOOT_LOG_INF("Boot source: none");
@@ -590,11 +561,23 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
 int app_max_size(struct boot_loader_state *state)
 {
-    uint32_t sector_sz_primary;
+    uint32_t available_pri_sz;
+    uint32_t available_sec_sz;
 
-    sector_sz_primary = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    size_t trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
+    size_t sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    size_t padding_sz = sector_sz;
 
-    return app_max_sectors(state) * sector_sz_primary;
+    /* The trailer size needs to be sector-aligned */
+    trailer_sz = ALIGN_UP(trailer_sz, sector_sz);
+
+    /* The slot whose size is used to compute the maximum image size must be the one containing the
+     * padding required for the swap.
+     */
+    available_pri_sz = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) * sector_sz - trailer_sz - padding_sz;
+    available_sec_sz = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT) * sector_sz - trailer_sz;
+
+    return (available_pri_sz < available_sec_sz ? available_pri_sz : available_sec_sz);
 }
 
 #endif
