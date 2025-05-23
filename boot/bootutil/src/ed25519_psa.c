@@ -29,6 +29,8 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
     psa_key_id_t kid;
     int ret = 0;        /* Fail by default */
 
+    BOOT_LOG_DBG("ED25519_verify: PSA implementation");
+
     /* Initialize PSA Crypto */
     status = psa_crypto_init();
     if (status != PSA_SUCCESS) {
