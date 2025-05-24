@@ -120,6 +120,22 @@ Additional configuration related to MCUboot features and slot partitioning may b
 
 2. Flash MCUboot in your device:
 
+    ---
+    ***Note***
+
+    *Prior to flashing the bootloader and/or application and booting for the first time, ensure
+    that the secondary slot and scratch area are erased. This is important because flash erased
+    value (`0xFF` in case of this port) read from the trailer registers are part of MCUboot's
+    update-state checking mechanism, thus unknown data or garbage could be potentially
+    interpreted as a valid state and lead to an unexpected behavior. Flash can be erased
+    entirely using:*
+
+    ```bash
+    esptool.py -p <PORT> erase_flash
+    ```
+
+    ---
+
     ```bash
     ninja -C build/ flash
     ```
@@ -532,10 +548,26 @@ CONFIG_SECURE_ENABLE_SECURE_ROM_DL_MODE=1
 
 ---
 
+---
+***Note***
+
+As recommended, ensure that the secondary slot and scratch area are **erased** prior to
+the first time boot. Hardware flash encryption is transparent to MCUboot and the first boot
+encryption process will encrypt the whole slots and scratch including their trailer regions,
+and as said before, erased value read from trailer registers is also an expected state of
+MCUboot update checking process. Erase flash command:
+
+```bash
+esptool.py -p <PORT> erase_flash
+```
+
+---
+
 ### [Signing the image when working with Flash Encryption](#signing-the-image-when-working-with-flash-encryption)
 
-When enabling flash encryption, it is required to signed the image using 32-byte alignment:
-`--align 32 --max-align 32`.
+When enabling flash encryption, it is required to sign the image using 32-byte alignment and also
+add the padding to fill the image up to the slot size:
+`--pad --align 32 --max-align 32`.
 
 Command example:
 
@@ -546,7 +578,9 @@ imgtool.py sign -k <YOUR_SIGNING_KEY.pem> --pad --pad-sig --align 32 --max-align
 ### [Device generated key](#device-generated-key)
 
 First ensure that the application image is able to perform encrypted read and write operations to
-the SPI Flash. Flash the bootloader and application normally:
+the SPI Flash.
+
+Flash the bootloader and application normally:
 
 ```bash
 esptool.py -p <PORT> -b 2000000 --after no_reset --chip <ESP_CHIP> write_flash --flash_mode dio --flash_size <FLASH_SIZE> --flash_freq 40m <BOOTLOADER_FLASH_OFFSET> <BOOTLOADER_BIN>
