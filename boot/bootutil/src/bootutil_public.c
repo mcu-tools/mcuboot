@@ -51,6 +51,11 @@
 #include "bootutil_priv.h"
 #include "bootutil_misc.h"
 
+// TEMP FOR DEBUG - REMOVE
+// #include "bootloader_flash_priv.h"
+
+bool aligned_flash_read_(uintptr_t addr, void *dest, size_t size, bool read_encrypted);
+
 #ifdef CONFIG_MCUBOOT
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 #else
@@ -223,6 +228,13 @@ boot_read_flag(const struct flash_area *fap, uint8_t *flag, uint32_t off)
     if (rc < 0) {
         return BOOT_EFLASH;
     }
+    // TEMP FOR DEBUG - REMOVE
+    uint8_t read_buf;
+    BOOT_LOG_INF("boot_read_flag whats read  rc=0x%x  addr=0x%lx 0x%x", rc, fap->fa_off+off, *flag);
+    rc = aligned_flash_read_(fap->fa_off + off, &read_buf, sizeof(read_buf), false);
+    BOOT_LOG_INF("boot_read_flag whats read - RAW rc=0x%x  0x%x", rc, read_buf);
+    // TEMP FOR DEBUG - REMOVE
+
     if (bootutil_buffer_is_erased(fap, flag, sizeof *flag)) {
         *flag = BOOT_FLAG_UNSET;
     } else {
@@ -235,6 +247,8 @@ boot_read_flag(const struct flash_area *fap, uint8_t *flag, uint32_t off)
 static inline int
 boot_read_copy_done(const struct flash_area *fap, uint8_t *copy_done)
 {
+    BOOT_LOG_INF("boot_read_copy_done");
+
     return boot_read_flag(fap, copy_done, boot_copy_done_off(fap));
 }
 
@@ -248,11 +262,29 @@ boot_read_swap_state(const struct flash_area *fap,
     uint8_t swap_info;
     int rc;
 
+
     off = boot_magic_off(fap);
+    BOOT_LOG_INF("boot_read_swap_state MAGIC addr 0x%lx", fap->fa_off+off);
     rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
     if (rc < 0) {
         return BOOT_EFLASH;
     }
+
+    // TEMP FOR DEBUG - REMOVE
+    uint8_t read_buf[BOOT_MAGIC_SZ];
+    BOOT_LOG_INF("boot_read_swap_state whats read  rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAGIC_SZ; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            magic[i], magic[i+1], magic[i+2], magic[i+3]);
+    }
+    rc = aligned_flash_read_(fap->fa_off + off, read_buf, BOOT_MAGIC_SZ, false);
+    BOOT_LOG_INF("boot_read_swap_state whats read - RAW rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAGIC_SZ; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    // TEMP FOR DEBUG - REMOVE
+
     if (bootutil_buffer_is_erased(fap, magic, BOOT_MAGIC_SZ)) {
         state->magic = BOOT_MAGIC_UNSET;
     } else {
@@ -260,10 +292,18 @@ boot_read_swap_state(const struct flash_area *fap,
     }
 
     off = boot_swap_info_off(fap);
+    BOOT_LOG_INF("boot_read_swap_state SWAP_INFO addr 0x%lx", fap->fa_off+off);
     rc = flash_area_read(fap, off, &swap_info, sizeof swap_info);
     if (rc < 0) {
         return BOOT_EFLASH;
     }
+
+    // TEMP FOR DEBUG - REMOVE
+    uint8_t read_buf_swap;
+    BOOT_LOG_INF("boot_read_swap_state whats read  rc=0x%x  0x%x", rc, swap_info);
+    rc = aligned_flash_read_(fap->fa_off + off, &read_buf_swap, sizeof(swap_info), false);
+    BOOT_LOG_INF("boot_read_swap_state whats read - RAW rc=0x%x  0x%x", rc, read_buf_swap);
+    // TEMP FOR DEBUG - REMOVE
 
     /* Extract the swap type and image number */
     state->swap_type = BOOT_GET_SWAP_TYPE(swap_info);
@@ -327,11 +367,47 @@ boot_write_magic(const struct flash_area *fap)
     BOOT_LOG_DBG("writing magic; fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off));
+
+    // TEMP FOR DEBUG - REMOVE
+    BOOT_LOG_INF("boot_write_magic writing MAGIC; fa_id=%d off=0x%lx (0x%lx) size=0%0x",
+        flash_area_get_id(fap), (unsigned long)pad_off,
+        (unsigned long)(flash_area_get_off(fap) + pad_off), BOOT_MAGIC_ALIGN_SIZE);
+
+    uint8_t read_buf[BOOT_MAGIC_ALIGN_SIZE];
+    rc = flash_area_read(fap, pad_off, read_buf, BOOT_MAGIC_ALIGN_SIZE);
+    BOOT_LOG_INF("boot_write_magic whats read BEFORE writing rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAGIC_ALIGN_SIZE; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    rc = aligned_flash_read_(fap->fa_off + pad_off, read_buf, BOOT_MAGIC_ALIGN_SIZE, false);
+    BOOT_LOG_INF("boot_write_magic whats read BEFORE writing - RAW rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAGIC_ALIGN_SIZE; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    // TEMP FOR DEBUG - REMOVE
+
     rc = flash_area_write(fap, pad_off, &magic[0], BOOT_MAGIC_ALIGN_SIZE);
 
     if (rc != 0) {
         return BOOT_EFLASH;
     }
+
+    // TEMP FOR DEBUG - REMOVE
+    rc = flash_area_read(fap, pad_off, read_buf, BOOT_MAGIC_ALIGN_SIZE);
+    BOOT_LOG_INF("boot_write_magic whats read AFTER writing rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAGIC_ALIGN_SIZE; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    rc = aligned_flash_read_(fap->fa_off + pad_off, read_buf, BOOT_MAGIC_ALIGN_SIZE, false);
+    BOOT_LOG_INF("boot_write_magic whats read AFTER writing - RAW rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAGIC_ALIGN_SIZE; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    // TEMP FOR DEBUG - REMOVE
 
     return 0;
 }
@@ -360,10 +436,66 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
     memcpy(buf, inbuf, inlen);
     memset(&buf[inlen], erased_val, align - inlen);
 
+
+    // TEMP FOR DEBUG - REMOVE
+    BOOT_LOG_INF("boot_write_trailer writing TRAILER; fa_id=%d off=0x%lx (0x%lx) size=0x%x",
+        flash_area_get_id(fap), (unsigned long)off,
+        (unsigned long)(flash_area_get_off(fap) + off), align);
+
+    uint8_t read_buf[BOOT_MAX_ALIGN];
+
+    if ((unsigned long)(flash_area_get_off(fap) + off) == 0x16FFA0) {
+        BOOT_LOG_INF("boot_write_trailer 0x16FFA0 CASE");
+
+        rc = flash_area_read(fap, off + BOOT_MAX_ALIGN, read_buf, BOOT_MAX_ALIGN);
+        BOOT_LOG_INF("boot_write_trailer whats read in addr 0x%lx AFTER ERASE rc=0x%x",
+                    (unsigned long)(flash_area_get_off(fap) + off + BOOT_MAX_ALIGN), rc);
+        for (uint8_t i=0; i<BOOT_MAX_ALIGN; i=i+4) {
+            BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+                read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+        }
+        rc = aligned_flash_read_(fap->fa_off + off + BOOT_MAX_ALIGN, read_buf, BOOT_MAX_ALIGN, false);
+        BOOT_LOG_INF("boot_write_trailer whats read in addr 0x%lx AFTER ERASE - RAW rc=0x%x",
+                    (unsigned long)(flash_area_get_off(fap) + off + BOOT_MAX_ALIGN), rc);
+        for (uint8_t i=0; i<BOOT_MAX_ALIGN; i=i+4) {
+            BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+                read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+        }
+    }
+
+    rc = flash_area_read(fap, off, read_buf, BOOT_MAX_ALIGN);
+    BOOT_LOG_INF("boot_write_trailer whats read BEFORE writing rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAX_ALIGN; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    rc = aligned_flash_read_(fap->fa_off + off, read_buf, BOOT_MAX_ALIGN, false);
+    BOOT_LOG_INF("boot_write_trailer whats read BEFORE writing - RAW rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAX_ALIGN; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    // TEMP FOR DEBUG - REMOVE
+
     rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
         return BOOT_EFLASH;
     }
+
+    // TEMP FOR DEBUG - REMOVE
+    rc = flash_area_read(fap, off, read_buf, BOOT_MAX_ALIGN);
+    BOOT_LOG_INF("boot_write_trailer whats read AFTER writing rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAX_ALIGN; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    rc = aligned_flash_read_(fap->fa_off + off, read_buf, BOOT_MAX_ALIGN, false);
+    BOOT_LOG_INF("boot_write_trailer whats read AFTER writing - RAW rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAX_ALIGN; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    // TEMP FOR DEBUG - REMOVE
 
     return 0;
 }
@@ -382,7 +514,7 @@ boot_write_image_ok(const struct flash_area *fap)
     uint32_t off;
 
     off = boot_image_ok_off(fap);
-    BOOT_LOG_DBG("writing image_ok; fa_id=%d off=0x%lx (0x%lx)",
+    BOOT_LOG_INF("boot_write_image_ok writing IMAGE_OK; fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off));
     return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
@@ -391,6 +523,7 @@ boot_write_image_ok(const struct flash_area *fap)
 int
 boot_read_image_ok(const struct flash_area *fap, uint8_t *image_ok)
 {
+    BOOT_LOG_INF("boot_read_image_ok");
     return boot_read_flag(fap, image_ok, boot_image_ok_off(fap));
 }
 
@@ -408,7 +541,7 @@ boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
 
     BOOT_SET_SWAP_INFO(swap_info, image_num, swap_type);
     off = boot_swap_info_off(fap);
-    BOOT_LOG_DBG("writing swap_info; fa_id=%d off=0x%lx (0x%lx), swap_type=0x%x"
+    BOOT_LOG_INF("boot_write_swap_info writing SWAP_INFO; fa_id=%d off=0x%lx (0x%lx), swap_type=0x%x"
                  " image_num=0x%x",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off),
@@ -492,7 +625,7 @@ boot_write_copy_done(const struct flash_area *fap)
     uint32_t off;
 
     off = boot_copy_done_off(fap);
-    BOOT_LOG_DBG("writing copy_done; fa_id=%d off=0x%lx (0x%lx)",
+    BOOT_LOG_INF("boot_write_copy_done writing COPY_DONE; fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off));
     return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
@@ -534,11 +667,17 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
         return rc;
     }
 
+    BOOT_LOG_INF("boot_set_next; fa_id=%d slot_state.magic=0x%lx slot_state.image_ok=0x%lx slot_state.swap_type=0x%lx",
+        flash_area_get_id(fa), slot_state.magic, slot_state.image_ok, slot_state.swap_type);
+
     switch (slot_state.magic) {
     case BOOT_MAGIC_GOOD:
         /* If non-active then swap already scheduled, else confirm needed.*/
-
+        BOOT_LOG_INF("boot_set_next; fa_id=%d slot_state.magic=0x%lx (BOOT_MAGIC_GOOD)",
+                    flash_area_get_id(fa), slot_state.magic);
         if (active && slot_state.image_ok == BOOT_FLAG_UNSET) {
+            BOOT_LOG_INF("boot_set_next; fa_id=%d slot_state.magic=0x%lx slot_state.image_ok=0x%lx (BOOT_FLAG_UNSET)",
+                    flash_area_get_id(fa), slot_state.magic, slot_state.image_ok);
             /* Intentionally do not check copy_done flag to be able to
              * confirm a padded image which has been programmed using
              * a programming interface.
@@ -549,6 +688,8 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
         break;
 
     case BOOT_MAGIC_UNSET:
+        BOOT_LOG_INF("boot_set_next; fa_id=%d slot_state.magic=0x%lx (BOOT_MAGIC_UNSET)",
+                    flash_area_get_id(fa), slot_state.magic);
         if (!active) {
             rc = boot_write_magic(fa);
 
@@ -570,6 +711,8 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
         break;
 
     case BOOT_MAGIC_BAD:
+        BOOT_LOG_INF("boot_set_next; fa_id=%d slot_state.magic=0x%lx (BOOT_MAGIC_BAD)",
+                flash_area_get_id(fa), slot_state.magic);
         if (active) {
             rc = BOOT_EBADVECT;
         } else {
@@ -582,6 +725,8 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
         break;
 
     default:
+        BOOT_LOG_INF("boot_set_next; fa_id=%d slot_state.magic=0x%lx (SHOULD NEVER HAPPEN)",
+                flash_area_get_id(fa), slot_state.magic);
         /* Something is not OK, this should never happen */
         assert(0);
         rc = BOOT_EBADIMAGE;
@@ -761,6 +906,10 @@ boot_image_load_header(const struct flash_area *fa_p,
                        struct image_header *hdr)
 {
     uint32_t size;
+
+    BOOT_LOG_INF("boot_image_load_header; fa_id=%d addr=0x%lx",
+                 flash_area_get_id(fa_p), (unsigned long)(flash_area_get_off(fa_p)));
+
     int rc = flash_area_read(fa_p, 0, hdr, sizeof *hdr);
 
     if (rc != 0) {
@@ -785,6 +934,9 @@ boot_image_load_header(const struct flash_area *fa_p,
         size >= flash_area_get_size(fa_p)) {
         return BOOT_EBADIMAGE;
     }
+
+    BOOT_LOG_INF("boot_image_load_header; ih_magic=0%lx ih_flags=0x%lx ih_hdr_size=0x%lx ih_img_size=0x%lx",
+                hdr->ih_magic, hdr->ih_flags, hdr->ih_hdr_size, hdr->ih_img_size);
 
     return 0;
 }

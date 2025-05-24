@@ -50,6 +50,9 @@
 #include "bootutil/boot_hooks.h"
 #include "bootutil/mcuboot_status.h"
 
+// TEMP FOR DEBUG - REMOVE
+#include "bootloader_flash_priv.h"
+
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
 #endif
@@ -751,10 +754,45 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)flash_area_get_off(fap) + off);
 
+    // TEMP FOR DEBUG - REMOVE
+    BOOT_LOG_INF("loader.c writing SWAP STATUS; fa_id=%d off=0x%lx (0x%lx)",
+        flash_area_get_id(fap), (unsigned long)off,
+        (unsigned long)(flash_area_get_off(fap) + off));
+
+    uint8_t read_buf[BOOT_MAX_ALIGN];
+    rc = flash_area_read(fap, off, read_buf, BOOT_MAX_ALIGN);
+    BOOT_LOG_INF("whats read BEFORE writing rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAX_ALIGN; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    rc = bootloader_flash_read(fap->fa_off + off, read_buf, BOOT_MAX_ALIGN, false);
+    BOOT_LOG_INF("whats read BEFORE writing - RAW rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAX_ALIGN; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    // TEMP FOR DEBUG - REMOVE
+
     rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
         rc = BOOT_EFLASH;
     }
+
+    // TEMP FOR DEBUG - REMOVE
+    rc = flash_area_read(fap, off, read_buf, BOOT_MAX_ALIGN);
+    BOOT_LOG_INF("whats read AFTER writing rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAX_ALIGN; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    rc = bootloader_flash_read(fap->fa_off + off, read_buf, BOOT_MAX_ALIGN, false);
+    BOOT_LOG_INF("whats read AFTER writing - RAW rc=0x%x", rc);
+    for (uint8_t i=0; i<BOOT_MAX_ALIGN; i=i+4) {
+        BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+            read_buf[i], read_buf[i+1], read_buf[i+2], read_buf[i+3]);
+    }
+    // TEMP FOR DEBUG - REMOVE
 
     return rc;
 }
