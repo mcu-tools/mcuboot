@@ -423,7 +423,7 @@ static esp_err_t encrypt_primary_slot(void)
      * MCUboot header
      */
     err = bootloader_flash_read(CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS + 0x20,
-                                &img_header, sizeof(esp_image_load_header_t), true);
+                                &img_header, sizeof(esp_image_load_header_t), false);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read slot img header");
         return err;
@@ -464,7 +464,7 @@ esp_err_t esp_flash_encrypt_region(uint32_t src_addr, size_t data_length)
         wdt_hal_feed(&rtc_wdt_ctx);
         wdt_hal_write_protect_enable(&rtc_wdt_ctx);
         uint32_t sec_start = i + src_addr;
-        err = bootloader_flash_read(sec_start, buf, FLASH_SECTOR_SIZE, true);
+        err = bootloader_flash_read(sec_start, buf, FLASH_SECTOR_SIZE, false);
         if (err != ESP_OK) {
             goto flash_failed;
         }
