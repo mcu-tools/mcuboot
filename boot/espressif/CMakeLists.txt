@@ -13,8 +13,9 @@ endif()
 
 add_definitions(-DMCUBOOT_TARGET=${MCUBOOT_TARGET})
 add_definitions(-D__ESPRESSIF__=1)
+add_definitions(-DCONFIG_MCUBOOT_ESPRESSIF=1)
 
-set(EXPECTED_IDF_HAL_VERSION "5.1.4")
+set(EXPECTED_IDF_HAL_VERSION "5.1.6")
 
 if ("${MCUBOOT_TARGET}" STREQUAL "esp32" OR
     "${MCUBOOT_TARGET}" STREQUAL "esp32s2" OR
