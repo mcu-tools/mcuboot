@@ -360,6 +360,17 @@ int flash_area_write(const struct flash_area *fa, uint32_t off, const void *src,
     const uint32_t start_addr = fa->fa_off + off;
     BOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
 
+#ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
+    if (esp_flash_encryption_enabled()) {
+        /* Ensuring flash region has been erased before writing in order to
+         * avoid inconsistences when hardware flash encryption is enabled.
+         */
+        if (!aligned_flash_erase(start_addr, len)) {
+            BOOT_LOG_ERR("%s: Flash erase before write failed", __func__);
+            return -1;
+        }
+    }
+#endif
 
     if (!aligned_flash_write(start_addr, src, len)) {
         BOOT_LOG_ERR("%s: Flash write failed", __func__);
@@ -393,7 +404,36 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
         }
     }
 
-#if VALIDATE_PROGRAM_OP
+#ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
+    uint8_t write_data[FLASH_BUFFER_SIZE];
+    memset(write_data, flash_area_erased_val(fa), sizeof(write_data));
+    uint32_t bytes_remaining = len;
+    uint32_t offset = start_addr;
+
+    uint32_t bytes_written = MIN(sizeof(write_data), len);
+    if (esp_flash_encryption_enabled()) {
+        /* When hardware flash encryption is enabled, force expected erased
+         * value (0xFF) into flash when erasing a region.
+         *
+         * This is handled on this implementation because MCUboot's state
+         * machine relies on erased valued data (0xFF) readed from a
+         * previously erased region that was not written yet, however when
+         * hardware flash encryption is enabled, the flash read always
+         * decrypts whats being read from flash, thus a region that was
+         * erased would not be read as what MCUboot expected (0xFF).
+         */
+        while (bytes_remaining != 0) {
+            if (!aligned_flash_write(offset, write_data, bytes_written)) {
+                BOOT_LOG_ERR("%s: Flash erase before write failed", __func__);
+                return -1;
+            }
+            offset += bytes_written;
+            bytes_remaining -= bytes_written;
+        }
+    }
+#endif
+
+#if VALIDATE_PROGRAM_OP && !defined(CONFIG_SECURE_FLASH_ENC_ENABLED)
     for (size_t i = 0; i < len; i++) {
         uint8_t *val = (void *)(start_addr + i);
         if (*val != 0xff) {
