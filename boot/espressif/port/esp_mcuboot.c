@@ -148,6 +148,53 @@ void flash_area_close(const struct flash_area *area)
 
 }
 
+bool aligned_flash_read_(uintptr_t addr, void *dest, size_t size, bool read_encrypted)
+{
+    if (IS_ALIGNED(addr, 4) && IS_ALIGNED((uintptr_t)dest, 4) && IS_ALIGNED(size, 4)) {
+        /* A single read operation is enough when when all parameters are aligned */
+
+        return bootloader_flash_read(addr, dest, size, read_encrypted) == ESP_OK;
+    }
+
+    const uint32_t aligned_addr = ALIGN_DOWN(addr, 4);
+    const uint32_t addr_offset = ALIGN_OFFSET(addr, 4);
+    uint32_t bytes_remaining = size;
+    uint8_t read_data[FLASH_BUFFER_SIZE] = {0};
+
+    /* Align the read address to 4-byte boundary and ensure read size is a multiple of 4 bytes */
+
+    uint32_t bytes = MIN(bytes_remaining + addr_offset, sizeof(read_data));
+    if (bootloader_flash_read(aligned_addr, read_data, ALIGN_UP(bytes, 4), read_encrypted) != ESP_OK) {
+        return false;
+    }
+
+    /* Skip non-useful data which may have been read for adjusting the alignment */
+
+    uint32_t bytes_read = bytes - addr_offset;
+    memcpy(dest, &read_data[addr_offset], bytes_read);
+
+    bytes_remaining -= bytes_read;
+
+    /* Read remaining data from Flash in case requested size is greater than buffer size */
+
+    uint32_t offset = bytes;
+
+    while (bytes_remaining != 0) {
+        bytes = MIN(bytes_remaining, sizeof(read_data));
+        if (bootloader_flash_read(aligned_addr + offset, read_data, ALIGN_UP(bytes, 4), read_encrypted) != ESP_OK) {
+            return false;
+        }
+
+        memcpy(&((uint8_t *)dest)[bytes_read], read_data, bytes);
+
+        offset += bytes;
+        bytes_read += bytes;
+        bytes_remaining -= bytes;
+    }
+
+    return true;
+}
+
 static bool aligned_flash_read(uintptr_t addr, void *dest, size_t size)
 {
     if (IS_ALIGNED(addr, 4) && IS_ALIGNED((uintptr_t)dest, 4) && IS_ALIGNED(size, 4)) {
@@ -294,10 +341,30 @@ static bool aligned_flash_erase(size_t addr, size_t size)
 
     uint32_t bytes = MIN(bytes_remaining + addr_offset, sizeof(write_data));
 
+    // TEMP FOR DEBUG - REMOVE
+    if (addr == 0x16ffa0) {
+        BOOT_LOG_INF("%s: addr unaligned 0x16ffa0 whats read on 0x%lx sector BEFORE erasing - RAW", __func__, aligned_addr);
+        bootloader_flash_read(aligned_addr, write_data, FLASH_SECTOR_SIZE, false);
+        for (uint32_t i=0; i<FLASH_SECTOR_SIZE; i=i+4) {
+            BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+                write_data[i], write_data[i+1], write_data[i+2], write_data[i+3]);
+        }
+    }
+    // TEMP FOR DEBUG - REMOVE
+
     if (bootloader_flash_read(aligned_addr, write_data, ALIGN_UP(bytes, FLASH_SECTOR_SIZE), true) != ESP_OK) {
         return false;
     }
 
+    // TEMP FOR DEBUG - REMOVE
+    if (addr == 0x16ffa0) {
+        BOOT_LOG_INF("%s: addr unaligned 0x16ffa0 whats read on 0x%lx sector BEFORE erasing", __func__, aligned_addr);
+        for (uint32_t i=0; i<FLASH_SECTOR_SIZE; i=i+4) {
+            BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+                write_data[i], write_data[i+1], write_data[i+2], write_data[i+3]);
+        }
+    }
+    // TEMP FOR DEBUG - REMOVE
 
     if (bootloader_flash_erase_range(aligned_addr, ALIGN_UP(bytes, FLASH_SECTOR_SIZE)) != ESP_OK) {
         BOOT_LOG_ERR("%s: Flash erase failed", __func__);
@@ -340,6 +407,24 @@ static bool aligned_flash_erase(size_t addr, size_t size)
         bytes_written += bytes;
         bytes_remaining -= bytes;
     }
+
+    // TEMP FOR DEBUG - REMOVE
+    if (addr == 0x16ffa0) {
+        bootloader_flash_read(aligned_addr, write_data, FLASH_SECTOR_SIZE, false);
+        BOOT_LOG_INF("%s: addr unaligned 0x16ffa0 whats read on 0x%lx sector AFTER erasing - RAW", __func__, aligned_addr);
+        for (uint32_t i=0; i<FLASH_SECTOR_SIZE; i=i+4) {
+            BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+                write_data[i], write_data[i+1], write_data[i+2], write_data[i+3]);
+        }
+
+        bootloader_flash_read(aligned_addr, write_data, FLASH_SECTOR_SIZE, true);
+        BOOT_LOG_INF("%s: addr unaligned 0x16ffa0 whats read on 0x%lx sector AFTER erasing", __func__, aligned_addr);
+        for (uint32_t i=0; i<FLASH_SECTOR_SIZE; i=i+4) {
+            BOOT_LOG_INF("0x%x 0x%x 0x%x 0x%x",
+                write_data[i], write_data[i+1], write_data[i+2], write_data[i+3]);
+        }
+    }
+    // TEMP FOR DEBUG - REMOVE
 
     return true;
 }
