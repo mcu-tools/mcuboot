@@ -907,7 +907,7 @@ int app_max_size(struct boot_loader_state *state)
 
     fap = BOOT_IMG_AREA(state, active_slot);
     assert(fap != NULL);
-    primary_sz = flash_area_get_size(fap);
+    primary_sz = bootutil_max_image_size(state, fap);
 
     if (active_slot == BOOT_PRIMARY_SLOT) {
         active_slot = BOOT_SECONDARY_SLOT;
@@ -917,7 +917,7 @@ int app_max_size(struct boot_loader_state *state)
 
     fap = BOOT_IMG_AREA(state, active_slot);
     assert(fap != NULL);
-    secondary_sz = flash_area_get_size(fap);
+    secondary_sz = bootutil_max_image_size(state, fap);
 
     return (secondary_sz < primary_sz ? secondary_sz : primary_sz);
 }
