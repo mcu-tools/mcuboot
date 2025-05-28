@@ -46,8 +46,6 @@ extern "C" {
 #define STRUCT_PACKED struct __attribute__((__packed__))
 #endif
 
-struct flash_area;
-
 #define IMAGE_MAGIC                 0x96f3b83d
 #define IMAGE_MAGIC_V1              0x96f3b83c
 #define IMAGE_MAGIC_NONE            0xffffffff
@@ -98,50 +96,50 @@ struct flash_area;
  *   1st on identifies the public key which should be used to verify it.
  *   2nd one is the actual signature.
  */
-#define IMAGE_TLV_KEYHASH           0x01   /* hash of the public key */
-#define IMAGE_TLV_PUBKEY            0x02   /* public key */
-#define IMAGE_TLV_SHA256            0x10   /* SHA256 of image hdr and body */
-#define IMAGE_TLV_SHA384            0x11   /* SHA384 of image hdr and body */
-#define IMAGE_TLV_SHA512            0x12   /* SHA512 of image hdr and body */
-#define IMAGE_TLV_RSA2048_PSS       0x20   /* RSA2048 of hash output */
-#define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output - Not supported anymore */
-#define IMAGE_TLV_ECDSA_SIG         0x22   /* ECDSA of hash output */
-#define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
-#define IMAGE_TLV_ED25519           0x24   /* ed25519 of hash output */
-#define IMAGE_TLV_SIG_PURE          0x25   /* Indicator that attached signature has been prepared
-                                            * over image rather than its digest.
-                                            */
-#define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
-#define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW 128 or 256*/
-#define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-EC256 */
-#define IMAGE_TLV_ENC_X25519        0x33   /* Key encrypted with ECIES-X25519 */
-#define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
-#define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
-#define IMAGE_TLV_BOOT_RECORD       0x60   /* measured boot record */
+#define IMAGE_TLV_KEYHASH           0x01    /* hash of the public key */
+#define IMAGE_TLV_PUBKEY            0x02    /* public key */
+#define IMAGE_TLV_SHA256            0x10    /* SHA256 of image hdr and body */
+#define IMAGE_TLV_SHA384            0x11    /* SHA384 of image hdr and body */
+#define IMAGE_TLV_SHA512            0x12    /* SHA512 of image hdr and body */
+#define IMAGE_TLV_RSA2048_PSS       0x20    /* RSA2048 of hash output */
+#define IMAGE_TLV_ECDSA224          0x21    /* ECDSA of hash output - Not supported anymore */
+#define IMAGE_TLV_ECDSA_SIG         0x22    /* ECDSA of hash output */
+#define IMAGE_TLV_RSA3072_PSS       0x23    /* RSA3072 of hash output */
+#define IMAGE_TLV_ED25519           0x24    /* ed25519 of hash output */
+#define IMAGE_TLV_SIG_PURE          0x25    /* Indicator that attached signature has been prepared
+                                             * over image rather than its digest.
+                                             */
+#define IMAGE_TLV_ENC_RSA2048       0x30    /* Key encrypted with RSA-OAEP-2048 */
+#define IMAGE_TLV_ENC_KW            0x31    /* Key encrypted with AES-KW 128 or 256*/
+#define IMAGE_TLV_ENC_EC256         0x32    /* Key encrypted with ECIES-EC256 */
+#define IMAGE_TLV_ENC_X25519        0x33    /* Key encrypted with ECIES-X25519 */
+#define IMAGE_TLV_DEPENDENCY        0x40    /* Image depends on other image */
+#define IMAGE_TLV_SEC_CNT           0x50    /* security counter */
+#define IMAGE_TLV_BOOT_RECORD       0x60    /* measured boot record */
 /* The following flags relate to compressed images and are for the decompressed image data */
-#define IMAGE_TLV_DECOMP_SIZE       0x70   /* Decompressed image size excluding header/TLVs */
-#define IMAGE_TLV_DECOMP_SHA        0x71   /*
-                                            * Decompressed image shaX hash, this field must match
-                                            * the format and size of the raw slot (compressed)
-                                            * shaX hash
-                                            */
-#define IMAGE_TLV_DECOMP_SIGNATURE  0x72   /*
-                                            * Decompressed image signature, this field must match
-                                            * the format and size of the raw slot (compressed)
-                                            * signature
-                                            */
-#define IMAGE_TLV_COMP_DEC_SIZE     0x73   /* Compressed decrypted image size */
-					   /*
-					    * vendor reserved TLVs at xxA0-xxFF,
-					    * where xx denotes the upper byte
-					    * range.  Examples:
-					    * 0x00a0 - 0x00ff
-					    * 0x01a0 - 0x01ff
-					    * 0x02a0 - 0x02ff
-					    * ...
-					    * 0xffa0 - 0xfffe
-					    */
-#define IMAGE_TLV_ANY               0xffff /* Used to iterate over all TLV */
+#define IMAGE_TLV_DECOMP_SIZE       0x70    /* Decompressed image size excluding header/TLVs */
+#define IMAGE_TLV_DECOMP_SHA        0x71    /*
+                                             * Decompressed image shaX hash, this field must match
+                                             * the format and size of the raw slot (compressed)
+                                             * shaX hash
+                                             */
+#define IMAGE_TLV_DECOMP_SIGNATURE  0x72    /*
+                                             * Decompressed image signature, this field must match
+                                             * the format and size of the raw slot (compressed)
+                                             * signature
+                                             */
+#define IMAGE_TLV_COMP_DEC_SIZE     0x73    /* Compressed decrypted image size */
+                                            /*
+                                             * vendor reserved TLVs at xxA0-xxFF,
+                                             * where xx denotes the upper byte
+                                             * range.  Examples:
+                                             * 0x00a0 - 0x00ff
+                                             * 0x01a0 - 0x01ff
+                                             * 0x02a0 - 0x02ff
+                                             * ...
+                                             * 0xffa0 - 0xfffe
+                                             */
+#define IMAGE_TLV_ANY               0xffff  /* Used to iterate over all TLV */
 
 STRUCT_PACKED image_version {
     uint8_t iv_major;
@@ -164,10 +162,10 @@ struct image_dependency {
 STRUCT_PACKED image_header {
     uint32_t ih_magic;
     uint32_t ih_load_addr;
-    uint16_t ih_hdr_size;           /* Size of image header (bytes). */
-    uint16_t ih_protect_tlv_size;   /* Size of protected TLV area (bytes). */
-    uint32_t ih_img_size;           /* Does not include header. */
-    uint32_t ih_flags;              /* IMAGE_F_[...]. */
+    uint16_t ih_hdr_size;               /* Size of image header (bytes). */
+    uint16_t ih_protect_tlv_size;       /* Size of protected TLV area (bytes). */
+    uint32_t ih_img_size;               /* Does not include header. */
+    uint32_t ih_flags;                  /* IMAGE_F_[...]. */
     struct image_version ih_ver;
     uint32_t _pad1;
 };
@@ -175,13 +173,13 @@ STRUCT_PACKED image_header {
 /** Image TLV header.  All fields in little endian. */
 STRUCT_PACKED image_tlv_info {
     uint16_t it_magic;
-    uint16_t it_tlv_tot;  /* size of TLV area (including tlv_info header) */
+    uint16_t it_tlv_tot;                /* size of TLV area (including tlv_info header) */
 };
 
 /** Image trailer TLV format. All fields in little endian. */
 STRUCT_PACKED image_tlv {
-    uint16_t it_type;   /* IMAGE_TLV_[...]. */
-    uint16_t it_len;    /* Data length (not including TLV header). */
+    uint16_t it_type;                   /* IMAGE_TLV_[...]. */
+    uint16_t it_len;                    /* Data length (not including TLV header). */
 };
 
 #define ENCRYPTIONFLAGS (IMAGE_F_ENCRYPTED_AES128 | IMAGE_F_ENCRYPTED_AES256)
@@ -199,8 +197,9 @@ STRUCT_PACKED image_tlv {
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");
 
-struct enc_key_data;
 struct boot_loader_state;
+struct flash_area;
+
 fih_ret bootutil_img_validate(struct boot_loader_state *state,
                               struct image_header *hdr,
                               const struct flash_area *fap,
