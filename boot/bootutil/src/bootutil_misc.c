@@ -99,6 +99,12 @@ out:
 static inline uint32_t
 boot_trailer_info_sz(void)
 {
+#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) ||      \
+    defined(MCUBOOT_FIRMWARE_LOADER) ||              \
+    defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+    /* Single image MCUboot modes do not have a trailer */
+    return 0;
+#else
     return (
 #ifdef MCUBOOT_ENC_IMAGES
            /* encryption keys */
@@ -112,6 +118,7 @@ boot_trailer_info_sz(void)
            BOOT_MAX_ALIGN * 4                     +
            BOOT_MAGIC_ALIGN_SIZE
            );
+#endif
 }
 
 /*
@@ -121,7 +128,14 @@ boot_trailer_info_sz(void)
 static inline uint32_t
 boot_status_entry_sz(uint32_t min_write_sz)
 {
+#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) ||      \
+    defined(MCUBOOT_FIRMWARE_LOADER) ||              \
+    defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+    /* Single image MCUboot modes do not have a swap status fields */
+    return 0;
+#else
     return BOOT_STATUS_STATE_COUNT * min_write_sz;
+#endif
 }
 
 uint32_t
