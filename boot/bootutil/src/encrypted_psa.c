@@ -27,16 +27,6 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot_psa_enc);
 
-#define EXPECTED_ENC_LEN    BOOT_ENC_TLV_SIZE
-#define EC_PUBK_INDEX       (0)
-#define EC_PUBK_LEN         (32)
-#define EC_TAG_INDEX        (EC_PUBK_INDEX + EC_PUBK_LEN)
-#define EC_TAG_LEN          (32)
-#define EC_CIPHERKEY_INDEX  (EC_TAG_INDEX + EC_TAG_LEN)
-#define EC_CIPHERKEY_LEN    BOOT_ENC_KEY_SIZE
-_Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
-        "Please fix ECIES-X25519 component indexes");
-
 #define X25519_OID "\x6e"
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
                                        MBEDTLS_OID_ORG_GOV X25519_OID;
