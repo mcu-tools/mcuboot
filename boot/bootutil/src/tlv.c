@@ -21,8 +21,11 @@
 #include <stddef.h>
 
 #include "bootutil/bootutil.h"
+#include "bootutil/bootutil_log.h"
 #include "bootutil/image.h"
 #include "bootutil_priv.h"
+
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /*
  * Initialize a TLV iterator.
@@ -42,6 +45,8 @@ bootutil_tlv_iter_begin(struct image_tlv_iter *it, const struct image_header *hd
 {
     uint32_t off_;
     struct image_tlv_info info;
+
+    BOOT_LOG_DBG("bootutil_tlv_iter_begin: type %d, prot == %d", type, (int)prot);
 
     if (it == NULL || hdr == NULL || fap == NULL) {
         return -1;
@@ -108,6 +113,9 @@ bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off, uint16_t *len,
         return -1;
     }
 
+    BOOT_LOG_DBG("bootutil_tlv_iter_next: searching for %d (%d is any) starting at %d ending at %d",
+                 it->type, IMAGE_TLV_ANY, it->tlv_off, it->tlv_end);
+
     while (it->tlv_off < it->tlv_end) {
         if (it->hdr->ih_protect_tlv_size > 0 && it->tlv_off == it->prot_end) {
             it->tlv_off += sizeof(struct image_tlv_info);
@@ -115,11 +123,14 @@ bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off, uint16_t *len,
 
         rc = LOAD_IMAGE_DATA(it->hdr, it->fap, it->tlv_off, &tlv, sizeof tlv);
         if (rc) {
+            BOOT_LOG_DBG("bootutil_tlv_iter_next: load failed with %d for %p %d",
+                         rc, it->fap, it->tlv_off);
             return -1;
         }
 
         /* No more TLVs in the protected area */
         if (it->prot && it->tlv_off >= it->prot_end) {
+            BOOT_LOG_DBG("bootutil_tlv_iter_next: protected TLV %d not found", it->type);
             return 1;
         }
 
@@ -130,12 +141,15 @@ bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off, uint16_t *len,
             *off = it->tlv_off + sizeof(tlv);
             *len = tlv.it_len;
             it->tlv_off += sizeof(tlv) + tlv.it_len;
+            BOOT_LOG_DBG("bootutil_tlv_iter_next: TLV %d found at %d (size %d)",
+                         *type, *off, *len);
             return 0;
         }
 
         it->tlv_off += sizeof(tlv) + tlv.it_len;
     }
 
+    BOOT_LOG_DBG("bootutil_tlv_iter_next: TLV %d not found", it->type);
     return 1;
 }
 

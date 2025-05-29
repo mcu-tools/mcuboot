@@ -43,8 +43,11 @@
 #include "bootutil/enc_key.h"
 #include "bootutil/sign_key.h"
 #include "bootutil/crypto/common.h"
+#include "bootutil/bootutil_log.h"
 
 #include "bootutil_priv.h"
+
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #define EXPECTED_ENC_LEN        BOOT_ENC_TLV_SIZE
 
@@ -411,6 +414,8 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     uint8_t *cpend;
     size_t olen;
 #endif
+
+    BOOT_LOG_DBG("boot_decrypt_key");
 #if defined(MCUBOOT_ENCRYPT_EC256)
     bootutil_ecdh_p256_context ecdh_p256;
 #endif
@@ -625,8 +630,11 @@ boot_enc_load(struct boot_loader_state *state, int slot,
 #endif
     int rc;
 
+    BOOT_LOG_DBG("boot_enc_load: slot %d", slot);
+
     /* Already loaded... */
     if (enc_state[slot].valid) {
+        BOOT_LOG_DBG("boot_enc_load: already loaded");
         return 1;
     }
 
