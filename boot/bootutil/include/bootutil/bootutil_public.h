@@ -43,18 +43,11 @@
 #include <string.h>
 #include <flash_map_backend/flash_map_backend.h>
 #include <mcuboot_config/mcuboot_config.h>
+#include <bootutil/bootutil_macros.h>
 #include <bootutil/image.h>
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#ifndef ALIGN_UP
-#define ALIGN_UP(num, align)    (((num) + ((align) - 1)) & ~((align) - 1))
-#endif
-
-#ifndef ALIGN_DOWN
-#define ALIGN_DOWN(num, align)  ((num) & ~((align) - 1))
 #endif
 
 /** Attempt to boot the contents of the primary slot. */
