@@ -46,28 +46,6 @@
 
 #include "bootutil_priv.h"
 
-#define EXPECTED_ENC_LEN        BOOT_ENC_TLV_SIZE
-
-#if defined(MCUBOOT_ENCRYPT_RSA)
-#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_RSA2048
-#elif defined(MCUBOOT_ENCRYPT_KW)
-#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_KW
-#elif defined(MCUBOOT_ENCRYPT_EC256)
-#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_EC256
-#    define EC_PUBK_INDEX       (0)
-#    define EC_TAG_INDEX        (65)
-#    define EC_CIPHERKEY_INDEX  (65 + 32)
-_Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
-        "Please fix ECIES-P256 component indexes");
-#elif defined(MCUBOOT_ENCRYPT_X25519)
-#    define EXPECTED_ENC_TLV    IMAGE_TLV_ENC_X25519
-#    define EC_PUBK_INDEX       (0)
-#    define EC_TAG_INDEX        (32)
-#    define EC_CIPHERKEY_INDEX  (32 + 32)
-_Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
-        "Please fix ECIES-X25519 component indexes");
-#endif
-
 /* NOUP Fixme:  */
 #if !defined(CONFIG_BOOT_ED25519_PSA)
 #if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
@@ -104,7 +82,7 @@ key_unwrap(const uint8_t *wrapped, uint8_t *enckey, struct bootutil_key *bootuti
     if (rc != 0) {
         goto done;
     }
-    rc = bootutil_aes_kw_unwrap(&aes_kw, wrapped, TLV_ENC_KW_SZ, enckey, BOOT_ENC_KEY_SIZE);
+    rc = bootutil_aes_kw_unwrap(&aes_kw, wrapped, BOOT_ENC_TLV_SIZE, enckey, BOOT_ENC_KEY_SIZE);
     if (rc != 0) {
         goto done;
     }
@@ -618,7 +596,7 @@ boot_enc_load(struct boot_loader_state *state, int slot,
 #if MCUBOOT_SWAP_SAVE_ENCTLV
     uint8_t *buf;
 #else
-    uint8_t buf[EXPECTED_ENC_LEN];
+    uint8_t buf[BOOT_ENC_TLV_SIZE];
 #endif
     int rc;
 
@@ -638,7 +616,7 @@ boot_enc_load(struct boot_loader_state *state, int slot,
 #endif
 #endif
 
-    rc = bootutil_tlv_iter_begin(&it, hdr, fap, EXPECTED_ENC_TLV, false);
+    rc = bootutil_tlv_iter_begin(&it, hdr, fap, BOOT_ENC_TLV, false);
     if (rc) {
         return -1;
     }
@@ -648,7 +626,7 @@ boot_enc_load(struct boot_loader_state *state, int slot,
         return rc;
     }
 
-    if (len != EXPECTED_ENC_LEN) {
+    if (len != BOOT_ENC_TLV_SIZE) {
         return -1;
     }
 
@@ -657,7 +635,7 @@ boot_enc_load(struct boot_loader_state *state, int slot,
     memset(buf, 0xff, BOOT_ENC_TLV_ALIGN_SIZE);
 #endif
 
-    rc = flash_area_read(fap, off, buf, EXPECTED_ENC_LEN);
+    rc = flash_area_read(fap, off, buf, BOOT_ENC_TLV_SIZE);
     if (rc) {
         return -1;
     }
