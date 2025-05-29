@@ -86,6 +86,9 @@
   application, which caused a jump to the incorrect address instead of the
   application reset vector for some Zephyr builds when LTO (link time
   optimization) was enabled.
+- Fixed issue with trailer and swap status sizes wrongly being
+  included in single slot/firmware loaded modes which wrongly
+  reduced the maximum allowable firmware sizes.
 
 ## Version 2.1.0
 
