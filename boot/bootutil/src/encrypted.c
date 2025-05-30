@@ -264,15 +264,15 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
  * @param okm_len   On input the requested length; on output the generated length
  */
 static int
-hkdf(uint8_t *ikm, uint16_t ikm_len, uint8_t *info, uint16_t info_len,
-        uint8_t *okm, uint16_t *okm_len)
+hkdf(const uint8_t *ikm, size_t ikm_len, const uint8_t *info, size_t info_len,
+        uint8_t *okm, size_t *okm_len)
 {
     bootutil_hmac_sha256_context hmac;
     uint8_t salt[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t prk[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t T[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
-    uint16_t off;
-    uint16_t len;
+    size_t off;
+    size_t len;
     uint8_t counter;
     bool first;
     int rc;
@@ -396,6 +396,80 @@ static int fake_rng(void *p_rng, unsigned char *output, size_t len)
 #endif /* (MCUBOOT_ENCRYPT_RSA && MCUBOOT_USE_MBED_TLS && !MCUBOOT_USE_PSA_CRYPTO) ||
           (MCUBOOT_ENCRYPT_EC256 && MCUBOOT_USE_MBED_TLS) */
 
+#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
+static int extract_aes(const uint8_t *encrypted, const uint8_t *mac, const uint8_t *key, uint8_t *decrypted)
+{
+    bootutil_hmac_sha256_context hmac;
+    bootutil_aes_ctr_context aes_ctr;
+    uint8_t tag[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+    uint8_t derived_key[BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+    uint8_t counter[BOOT_ENC_BLOCK_SIZE];
+    int rc;
+    size_t len;
+
+    len = BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
+    rc = hkdf(key, SHARED_KEY_LEN, (uint8_t *)"MCUBoot_ECIES_v1", 16,
+            derived_key, &len);
+    if (rc != 0 || len != (BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE)) {
+        return -1;
+    }
+
+    /*
+     * HMAC the key and check that our received MAC matches the generated tag
+     */
+    bootutil_hmac_sha256_init(&hmac);
+
+    rc = bootutil_hmac_sha256_set_key(&hmac, &derived_key[BOOT_ENC_KEY_SIZE], 32);
+    if (rc != 0) {
+        (void)bootutil_hmac_sha256_drop(&hmac);
+        return -1;
+    }
+
+    rc = bootutil_hmac_sha256_update(&hmac, encrypted, BOOT_ENC_KEY_SIZE);
+    if (rc != 0) {
+        (void)bootutil_hmac_sha256_drop(&hmac);
+        return -1;
+    }
+
+    /* Assumes the tag buffer is at least sizeof(hmac_tag_size(state)) bytes */
+    rc = bootutil_hmac_sha256_finish(&hmac, tag, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
+    (void)bootutil_hmac_sha256_drop(&hmac);
+    if (rc != 0) {
+        return -1;
+    }
+
+    if (bootutil_constant_time_compare(tag, mac, 32) != 0) {
+        return -1;
+    }
+
+
+    /*
+     * Finally decrypt the received ciphered key
+     */
+    bootutil_aes_ctr_init(&aes_ctr);
+    if (rc != 0) {
+        bootutil_aes_ctr_drop(&aes_ctr);
+        return -1;
+    }
+
+    rc = bootutil_aes_ctr_set_key(&aes_ctr, key);
+    if (rc != 0) {
+        bootutil_aes_ctr_drop(&aes_ctr);
+        return -1;
+    }
+
+    memset(counter, 0, BOOT_ENC_BLOCK_SIZE);
+    rc = bootutil_aes_ctr_decrypt(&aes_ctr, counter, encrypted, BOOT_ENC_KEY_SIZE, 0, decrypted);
+    if (rc != 0) {
+        bootutil_aes_ctr_drop(&aes_ctr);
+        return -1;
+    }
+
+    bootutil_aes_ctr_drop(&aes_ctr);
+
+    return rc;
+}
+#endif /* MCUBOOT_ENCRYPT_EC256 || MCUBOOT_ENCRYPT_X25519 */
 /*
  * Decrypt an encryption key TLV.
  *
@@ -406,28 +480,23 @@ int
 boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 {
 #if defined(MCUBOOT_ENCRYPT_RSA)
-    bootutil_rsa_context rsa;
-    uint8_t *cp;
-    uint8_t *cpend;
-    size_t olen;
+    bootutil_rsa_context            pk_ctx;
+    size_t len;
 #endif
 #if defined(MCUBOOT_ENCRYPT_EC256)
-    bootutil_ecdh_p256_context ecdh_p256;
+    bootutil_ecdh_p256_context      pk_ctx;
 #endif
 #if defined(MCUBOOT_ENCRYPT_X25519)
-    bootutil_ecdh_x25519_context ecdh_x25519;
+    bootutil_ecdh_x25519_context    pk_ctx;
+    size_t len;
 #endif
 #if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
-    bootutil_hmac_sha256_context hmac;
-    bootutil_aes_ctr_context aes_ctr;
-    uint8_t tag[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+    uint8_t private_key[PRIV_KEY_LEN];
     uint8_t shared[SHARED_KEY_LEN];
-    uint8_t derived_key[BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+#endif
+#if !defined(MCUBOOT_ENCRYPT_KW)
     uint8_t *cp;
     uint8_t *cpend;
-    uint8_t private_key[PRIV_KEY_LEN];
-    uint8_t counter[BOOT_ENC_BLOCK_SIZE];
-    uint16_t len;
 #endif
     struct bootutil_key *bootutil_enc_key = NULL;
     int rc = -1;
@@ -441,21 +510,23 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         return rc;
     }
 
-#if defined(MCUBOOT_ENCRYPT_RSA)
-
-    bootutil_rsa_init(&rsa);
+#if !defined(MCUBOOT_ENCRYPT_KW)
     cp = (uint8_t *)bootutil_enc_key->key;
     cpend = cp + *bootutil_enc_key->len;
+#endif
+
+#if defined(MCUBOOT_ENCRYPT_RSA)
+    bootutil_rsa_init(&pk_ctx);
 
     /* The enckey is encrypted through RSA so for decryption we need the private key */
-    rc = bootutil_rsa_parse_private_key(&rsa, &cp, cpend);
+    rc = bootutil_rsa_parse_private_key(&pk_ctx, &cp, cpend);
     if (rc) {
-        bootutil_rsa_drop(&rsa);
+        bootutil_rsa_drop(&pk_ctx);
         return rc;
     }
 
-    rc = bootutil_rsa_oaep_decrypt(&rsa, &olen, buf, enckey, BOOT_ENC_KEY_SIZE);
-    bootutil_rsa_drop(&rsa);
+    rc = bootutil_rsa_oaep_decrypt(&pk_ctx, &len, buf, enckey, BOOT_ENC_KEY_SIZE);
+    bootutil_rsa_drop(&pk_ctx);
     if (rc) {
         return rc;
     }
@@ -470,10 +541,6 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 #endif /* defined(MCUBOOT_ENCRYPT_KW) */
 
 #if defined(MCUBOOT_ENCRYPT_EC256)
-
-    cp = (uint8_t *)bootutil_enc_key->key;
-    cpend = cp + *bootutil_enc_key->len;
-
     /*
      * Load the stored EC256 decryption private key
      */
@@ -486,10 +553,10 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     /*
      * First "element" in the TLV is the curve point (public key)
      */
-    bootutil_ecdh_p256_init(&ecdh_p256);
+    bootutil_ecdh_p256_init(&pk_ctx);
 
-    rc = bootutil_ecdh_p256_shared_secret(&ecdh_p256, &buf[EC_PUBK_INDEX], private_key, shared);
-    bootutil_ecdh_p256_drop(&ecdh_p256);
+    rc = bootutil_ecdh_p256_shared_secret(&pk_ctx, &buf[EC_PUBK_INDEX], private_key, shared);
+    bootutil_ecdh_p256_drop(&pk_ctx);
     if (rc != 0) {
         return -1;
     }
@@ -497,10 +564,6 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 #endif /* defined(MCUBOOT_ENCRYPT_EC256) */
 
 #if defined(MCUBOOT_ENCRYPT_X25519)
-
-    cp = (uint8_t *)bootutil_enc_key->key;
-    cpend = cp + *bootutil_enc_key->len;
-
     /*
      * Load the stored X25519 decryption private key
      */
@@ -514,10 +577,10 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      * First "element" in the TLV is the curve point (public key)
      */
 
-    bootutil_ecdh_x25519_init(&ecdh_x25519);
+    bootutil_ecdh_x25519_init(&pk_ctx);
 
-    rc = bootutil_ecdh_x25519_shared_secret(&ecdh_x25519, &buf[EC_PUBK_INDEX], private_key, shared);
-    bootutil_ecdh_x25519_drop(&ecdh_x25519);
+    rc = bootutil_ecdh_x25519_shared_secret(&pk_ctx, &buf[EC_PUBK_INDEX], private_key, shared);
+    bootutil_ecdh_x25519_drop(&pk_ctx);
     if (!rc) {
         return -1;
     }
@@ -526,75 +589,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
 #if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
 
-    /*
-     * Expand shared secret to create keys for AES-128-CTR + HMAC-SHA256
-     */
-
-    len = BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
-    rc = hkdf(shared, SHARED_KEY_LEN, (uint8_t *)"MCUBoot_ECIES_v1", 16,
-            derived_key, &len);
-    if (rc != 0 || len != (BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE)) {
-        return -1;
-    }
-
-    /*
-     * HMAC the key and check that our received MAC matches the generated tag
-     */
-
-    bootutil_hmac_sha256_init(&hmac);
-
-    rc = bootutil_hmac_sha256_set_key(&hmac, &derived_key[BOOT_ENC_KEY_SIZE], 32);
-    if (rc != 0) {
-        (void)bootutil_hmac_sha256_drop(&hmac);
-        return -1;
-    }
-
-    rc = bootutil_hmac_sha256_update(&hmac, &buf[EC_CIPHERKEY_INDEX], BOOT_ENC_KEY_SIZE);
-    if (rc != 0) {
-        (void)bootutil_hmac_sha256_drop(&hmac);
-        return -1;
-    }
-
-    /* Assumes the tag buffer is at least sizeof(hmac_tag_size(state)) bytes */
-    rc = bootutil_hmac_sha256_finish(&hmac, tag, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
-    if (rc != 0) {
-        (void)bootutil_hmac_sha256_drop(&hmac);
-        return -1;
-    }
-
-    if (bootutil_constant_time_compare(tag, &buf[EC_TAG_INDEX], 32) != 0) {
-        (void)bootutil_hmac_sha256_drop(&hmac);
-        return -1;
-    }
-
-    bootutil_hmac_sha256_drop(&hmac);
-
-    /*
-     * Finally decrypt the received ciphered key
-     */
-
-    bootutil_aes_ctr_init(&aes_ctr);
-    if (rc != 0) {
-        bootutil_aes_ctr_drop(&aes_ctr);
-        return -1;
-    }
-
-    rc = bootutil_aes_ctr_set_key(&aes_ctr, derived_key);
-    if (rc != 0) {
-        bootutil_aes_ctr_drop(&aes_ctr);
-        return -1;
-    }
-
-    memset(counter, 0, BOOT_ENC_BLOCK_SIZE);
-    rc = bootutil_aes_ctr_decrypt(&aes_ctr, counter, &buf[EC_CIPHERKEY_INDEX], BOOT_ENC_KEY_SIZE, 0, enckey);
-    if (rc != 0) {
-        bootutil_aes_ctr_drop(&aes_ctr);
-        return -1;
-    }
-
-    bootutil_aes_ctr_drop(&aes_ctr);
-
-    rc = 0;
+    rc = extract_aes(&buf[EC_CIPHERKEY_INDEX], &buf[EC_TAG_INDEX], shared, enckey);
 
 #endif /* defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519) */
 
