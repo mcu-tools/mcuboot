@@ -264,15 +264,15 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
  * @param okm_len   On input the requested length; on output the generated length
  */
 static int
-hkdf(uint8_t *ikm, uint16_t ikm_len, uint8_t *info, uint16_t info_len,
-        uint8_t *okm, uint16_t *okm_len)
+hkdf(const uint8_t *ikm, size_t ikm_len, const uint8_t *info, size_t info_len,
+        uint8_t *okm, size_t *okm_len)
 {
     bootutil_hmac_sha256_context hmac;
     uint8_t salt[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t prk[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t T[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
-    uint16_t off;
-    uint16_t len;
+    size_t off;
+    size_t len;
     uint8_t counter;
     bool first;
     int rc;
@@ -407,7 +407,6 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 {
 #if defined(MCUBOOT_ENCRYPT_RSA)
     bootutil_rsa_context            pk_ctx;
-    size_t olen;
 #endif
 #if defined(MCUBOOT_ENCRYPT_EC256)
     bootutil_ecdh_p256_context      pk_ctx;
@@ -423,11 +422,11 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     uint8_t derived_key[BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t private_key[PRIV_KEY_LEN];
     uint8_t counter[BOOT_ENC_BLOCK_SIZE];
-    uint16_t len;
 #endif
 #if !defined(MCUBOOT_ENCRYPT_KW)
     uint8_t *cp;
     uint8_t *cpend;
+    size_t len;
 #endif
     struct bootutil_key *bootutil_enc_key = NULL;
     int rc = -1;
@@ -456,7 +455,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         return rc;
     }
 
-    rc = bootutil_rsa_oaep_decrypt(&pk_ctx, &olen, buf, enckey, BOOT_ENC_KEY_SIZE);
+    rc = bootutil_rsa_oaep_decrypt(&pk_ctx, &len, buf, enckey, BOOT_ENC_KEY_SIZE);
     bootutil_rsa_drop(&pk_ctx);
     if (rc) {
         return rc;
