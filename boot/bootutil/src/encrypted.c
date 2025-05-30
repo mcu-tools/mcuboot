@@ -239,12 +239,8 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         return -6;
     }
 
-    if (mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING) != 0) {
-        return -7;
-    }
-
     if (len != PRIV_KEY_LEN) {
-        return -8;
+        return -7;
     }
 
     memcpy(private_key, *p, PRIV_KEY_LEN);
