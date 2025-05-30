@@ -557,17 +557,14 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
     /* Assumes the tag buffer is at least sizeof(hmac_tag_size(state)) bytes */
     rc = bootutil_hmac_sha256_finish(&hmac, tag, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
+    (void)bootutil_hmac_sha256_drop(&hmac);
     if (rc != 0) {
-        (void)bootutil_hmac_sha256_drop(&hmac);
         return -1;
     }
 
     if (bootutil_constant_time_compare(tag, &buf[EC_TAG_INDEX], 32) != 0) {
-        (void)bootutil_hmac_sha256_drop(&hmac);
         return -1;
     }
-
-    bootutil_hmac_sha256_drop(&hmac);
 
     /*
      * Finally decrypt the received ciphered key
