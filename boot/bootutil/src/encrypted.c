@@ -380,34 +380,25 @@ static int fake_rng(void *p_rng, unsigned char *output, size_t len)
 int
 boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 {
-#if defined(MCUBOOT_ENCRYPT_RSA)
-    bootutil_rsa_context rsa;
-    uint8_t *cp;
-    uint8_t *cpend;
-    size_t olen;
-#endif
-
-    BOOT_LOG_DBG("boot_decrypt_key");
-#if defined(MCUBOOT_ENCRYPT_EC256)
-    bootutil_ecdh_p256_context ecdh_p256;
-#endif
-#if defined(MCUBOOT_ENCRYPT_X25519)
-    bootutil_ecdh_x25519_context ecdh_x25519;
-#endif
 #if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
     bootutil_hmac_sha256_context hmac;
     bootutil_aes_ctr_context aes_ctr;
     uint8_t tag[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t shared[EC_SHARED_LEN];
     uint8_t derived_key[BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
-    uint8_t *cp;
-    uint8_t *cpend;
     uint8_t private_key[EC_PRIVK_LEN];
     uint8_t counter[BOOT_ENC_BLOCK_SIZE];
+#endif
+#if !defined(MCUBOOT_ENCRYPT_KW)
+    bootutil_key_exchange_ctx pk_ctx;
+    uint8_t *cp;
+    uint8_t *cpend;
     uint16_t len;
 #endif
     struct bootutil_key *bootutil_enc_key = NULL;
     int rc = -1;
+
+    BOOT_LOG_DBG("boot_decrypt_key");
 
     rc = boot_enc_retrieve_private_key(&bootutil_enc_key);
     if (rc) {
@@ -418,21 +409,23 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         return rc;
     }
 
-#if defined(MCUBOOT_ENCRYPT_RSA)
-
-    bootutil_rsa_init(&rsa);
+#if !defined(MCUBOOT_ENCRYPT_KW)
     cp = (uint8_t *)bootutil_enc_key->key;
     cpend = cp + *bootutil_enc_key->len;
+#endif
+
+#if defined(MCUBOOT_ENCRYPT_RSA)
+    bootutil_rsa_init(&pk_ctx);
 
     /* The enckey is encrypted through RSA so for decryption we need the private key */
-    rc = bootutil_rsa_parse_private_key(&rsa, &cp, cpend);
+    rc = bootutil_rsa_parse_private_key(&pk_ctx, &cp, cpend);
     if (rc) {
-        bootutil_rsa_drop(&rsa);
+        bootutil_rsa_drop(&pk_ctx);
         return rc;
     }
 
-    rc = bootutil_rsa_oaep_decrypt(&rsa, &olen, buf, enckey, BOOT_ENC_KEY_SIZE);
-    bootutil_rsa_drop(&rsa);
+    rc = bootutil_rsa_oaep_decrypt(&pk_ctx, &len, buf, enckey, BOOT_ENC_KEY_SIZE);
+    bootutil_rsa_drop(&pk_ctx);
     if (rc) {
         return rc;
     }
@@ -447,10 +440,6 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 #endif /* defined(MCUBOOT_ENCRYPT_KW) */
 
 #if defined(MCUBOOT_ENCRYPT_EC256)
-
-    cp = (uint8_t *)bootutil_enc_key->key;
-    cpend = cp + *bootutil_enc_key->len;
-
     /*
      * Load the stored EC256 decryption private key
      */
@@ -463,10 +452,10 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     /*
      * First "element" in the TLV is the curve point (public key)
      */
-    bootutil_ecdh_p256_init(&ecdh_p256);
+    bootutil_ecdh_p256_init(&pk_ctx);
 
-    rc = bootutil_ecdh_p256_shared_secret(&ecdh_p256, &buf[EC_PUBK_INDEX], private_key, shared);
-    bootutil_ecdh_p256_drop(&ecdh_p256);
+    rc = bootutil_ecdh_p256_shared_secret(&pk_ctx, &buf[EC_PUBK_INDEX], private_key, shared);
+    bootutil_ecdh_p256_drop(&pk_ctx);
     if (rc != 0) {
         return -1;
     }
@@ -474,10 +463,6 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 #endif /* defined(MCUBOOT_ENCRYPT_EC256) */
 
 #if defined(MCUBOOT_ENCRYPT_X25519)
-
-    cp = (uint8_t *)bootutil_enc_key->key;
-    cpend = cp + *bootutil_enc_key->len;
-
     /*
      * Load the stored X25519 decryption private key
      */
@@ -491,10 +476,10 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      * First "element" in the TLV is the curve point (public key)
      */
 
-    bootutil_ecdh_x25519_init(&ecdh_x25519);
+    bootutil_ecdh_x25519_init(&pk_ctx);
 
-    rc = bootutil_ecdh_x25519_shared_secret(&ecdh_x25519, &buf[EC_PUBK_INDEX], private_key, shared);
-    bootutil_ecdh_x25519_drop(&ecdh_x25519);
+    rc = bootutil_ecdh_x25519_shared_secret(&pk_ctx, &buf[EC_PUBK_INDEX], private_key, shared);
+    bootutil_ecdh_x25519_drop(&pk_ctx);
     if (!rc) {
         return -1;
     }
