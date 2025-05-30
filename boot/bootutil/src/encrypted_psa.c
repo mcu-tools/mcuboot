@@ -27,21 +27,9 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot_psa_enc);
 
-#define EXPECTED_ENC_LEN    BOOT_ENC_TLV_SIZE
-#define EC_PUBK_INDEX       (0)
-#define EC_PUBK_LEN         (32)
-#define EC_TAG_INDEX        (EC_PUBK_INDEX + EC_PUBK_LEN)
-#define EC_TAG_LEN          (32)
-#define EC_CIPHERKEY_INDEX  (EC_TAG_INDEX + EC_TAG_LEN)
-#define EC_CIPHERKEY_LEN    BOOT_ENC_KEY_SIZE
-_Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
-        "Please fix ECIES-X25519 component indexes");
-
 #define X25519_OID "\x6e"
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
                                        MBEDTLS_OID_ORG_GOV X25519_OID;
-
-#define PRIV_KEY_LEN   32
 
 /* Partitioning of HKDF derived material, from the exchange derived key */
 /* AES key encryption key */
@@ -93,11 +81,11 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         return -7;
     }
 
-    if (len != PRIV_KEY_LEN) {
+    if (len != EC_PRIVK_LEN) {
         return -8;
     }
 
-    memcpy(private_key, *p, PRIV_KEY_LEN);
+    memcpy(private_key, *p, EC_PRIVK_LEN);
     return 0;
 }
 
@@ -127,7 +115,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     uint8_t derived_key[HKDF_SIZE];
     uint8_t *cp;
     uint8_t *cpend;
-    uint8_t private_key[PRIV_KEY_LEN];
+    uint8_t private_key[EC_PRIVK_LEN];
     size_t len;
     psa_status_t psa_ret = PSA_ERROR_BAD_STATE;
     psa_status_t psa_cleanup_ret = PSA_ERROR_BAD_STATE;
