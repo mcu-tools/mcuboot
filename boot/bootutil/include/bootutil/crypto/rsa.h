@@ -68,6 +68,7 @@ extern "C" {
 typedef struct {
     psa_key_id_t key_id;
 } bootutil_rsa_context;
+typedef bootutil_rsa_context bootutil_key_exchange_ctx;
 
 static inline void bootutil_rsa_init(bootutil_rsa_context *ctx)
 {
@@ -176,6 +177,7 @@ static inline int bootutil_rsassa_pss_verify(const bootutil_rsa_context *ctx,
 #elif defined(MCUBOOT_USE_MBED_TLS)
 
 typedef mbedtls_rsa_context bootutil_rsa_context;
+typedef bootutil_rsa_context bootutil_key_exchange_ctx;
 
 static inline void bootutil_rsa_init(bootutil_rsa_context *ctx)
 {
