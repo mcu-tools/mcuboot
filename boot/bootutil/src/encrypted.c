@@ -97,9 +97,6 @@ done:
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_EC_ALG_UNRESTRICTED;
 static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
 
-#define SHARED_KEY_LEN NUM_ECC_BYTES
-#define PRIV_KEY_LEN   NUM_ECC_BYTES
-
 /*
  * Parses the output of `imgtool keygen`, which produces a PKCS#8 elliptic
  * curve keypair. See RFC5208 and RFC5915.
@@ -179,9 +176,6 @@ parse_ec256_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
                                        MBEDTLS_OID_ORG_GOV X25519_OID;
 
-#define SHARED_KEY_LEN 32
-#define PRIV_KEY_LEN   32
-
 static int
 parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
 {
@@ -221,11 +215,11 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         return -7;
     }
 
-    if (len != PRIV_KEY_LEN) {
+    if (len != EC_PRIVK_LEN) {
         return -8;
     }
 
-    memcpy(private_key, *p, PRIV_KEY_LEN);
+    memcpy(private_key, *p, EC_PRIVK_LEN);
     return 0;
 }
 #endif /* defined(MCUBOOT_ENCRYPT_X25519) */
@@ -399,11 +393,11 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     bootutil_hmac_sha256_context hmac;
     bootutil_aes_ctr_context aes_ctr;
     uint8_t tag[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
-    uint8_t shared[SHARED_KEY_LEN];
+    uint8_t shared[EC_SHARED_LEN];
     uint8_t derived_key[BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t *cp;
     uint8_t *cpend;
-    uint8_t private_key[PRIV_KEY_LEN];
+    uint8_t private_key[EC_PRIVK_LEN];
     uint8_t counter[BOOT_ENC_BLOCK_SIZE];
     uint16_t len;
 #endif
@@ -509,7 +503,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      */
 
     len = BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
-    rc = hkdf(shared, SHARED_KEY_LEN, (uint8_t *)"MCUBoot_ECIES_v1", 16,
+    rc = hkdf(shared, EC_SHARED_LEN, (uint8_t *)"MCUBoot_ECIES_v1", 16,
             derived_key, &len);
     if (rc != 0 || len != (BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE)) {
         return -1;
@@ -521,6 +515,9 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
     bootutil_hmac_sha256_init(&hmac);
 
+    /* First BOOT_ENC_KEY_SIZE are used for decryption, remaining 32 bytes are used
+     * for MAC tag key
+     */
     rc = bootutil_hmac_sha256_set_key(&hmac, &derived_key[BOOT_ENC_KEY_SIZE], 32);
     if (rc != 0) {
         (void)bootutil_hmac_sha256_drop(&hmac);
@@ -540,7 +537,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    if (bootutil_constant_time_compare(tag, &buf[EC_TAG_INDEX], 32) != 0) {
+    if (bootutil_constant_time_compare(tag, &buf[EC_TAG_INDEX], EC_TAG_LEN) != 0) {
         return -1;
     }
 
