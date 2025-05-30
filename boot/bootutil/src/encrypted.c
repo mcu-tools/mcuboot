@@ -239,15 +239,15 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
  * @param okm_len   On input the requested length; on output the generated length
  */
 static int
-hkdf(uint8_t *ikm, uint16_t ikm_len, uint8_t *info, uint16_t info_len,
-        uint8_t *okm, uint16_t *okm_len)
+hkdf(const uint8_t *ikm, size_t ikm_len, const uint8_t *info, size_t info_len,
+        uint8_t *okm, size_t *okm_len)
 {
     bootutil_hmac_sha256_context hmac;
     uint8_t salt[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t prk[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t T[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
-    uint16_t off;
-    uint16_t len;
+    size_t off;
+    size_t len;
     uint8_t counter;
     bool first;
     int rc;
@@ -393,7 +393,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     bootutil_key_exchange_ctx pk_ctx;
     uint8_t *cp;
     uint8_t *cpend;
-    uint16_t len;
+    size_t len;
 #endif
     struct bootutil_key *bootutil_enc_key = NULL;
     int rc = -1;
