@@ -302,6 +302,12 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm);
 /**
  * Attempts to load image header from flash; verifies flash header fields.
  *
+ * The selected update method (i.e. swap move) may impose additional restrictions
+ * on the image size (i.e. due to the presence of the image trailer).
+ * Such restrictions are not verified by this function.
+ * These checks are implemented as part of the boot_image_validate(..) that uses
+ * sizes from the bootutil_max_image_size(..).
+ *
  * @param[in]   fa_p    flash area pointer
  * @param[out]  hdr     buffer for image header
  *
