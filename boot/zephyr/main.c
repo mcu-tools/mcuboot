@@ -192,7 +192,7 @@ static void do_boot(struct boot_rsp *rsp)
     sys_cache_data_disable();
 #endif
 
-#if CONFIG_CPU_HAS_ARM_MPU || CONFIG_CPU_HAS_NXP_MPU
+#if CONFIG_CPU_HAS_ARM_MPU || CONFIG_CPU_HAS_NXP_SYSMPU
     z_arm_clear_arm_mpu_config();
 #endif
 

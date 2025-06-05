@@ -7,7 +7,7 @@
 #include <zephyr/toolchain.h>
 
 #include <cmsis_core.h>
-#if CONFIG_CPU_HAS_NXP_MPU
+#if CONFIG_CPU_HAS_NXP_SYSMPU
 #include <fsl_sysmpu.h>
 #endif
 
@@ -38,7 +38,7 @@ __weak void z_arm_clear_arm_mpu_config(void)
 		ARM_MPU_ClrRegion(i);
 	}
 }
-#elif CONFIG_CPU_HAS_NXP_MPU
+#elif CONFIG_CPU_HAS_NXP_SYSMPU
 __weak void z_arm_clear_arm_mpu_config(void)
 {
 	int i;
