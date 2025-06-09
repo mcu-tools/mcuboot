@@ -89,6 +89,8 @@
 - Fixed issue with trailer and swap status sizes wrongly being
   included in single slot/firmware loaded modes which wrongly
   reduced the maximum allowable firmware sizes.
+- Fixes for Zephyr 4.1 and MPU/SYSMPU renaming
+- Fix support for MCX-N9XX with Zephyr.
 
 ## Version 2.1.0
 
