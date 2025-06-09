@@ -348,7 +348,6 @@ class Image:
                     self.payload = copy.copy(self.infile_data)
         except FileNotFoundError:
             raise click.UsageError("Input file not found")
-        self.image_size = len(self.payload)
 
         # Add the image header if needed.
         if self.pad_header and self.header_size > 0:
@@ -357,6 +356,8 @@ class Image:
                 self.base_addr -= self.header_size
             self.payload = bytes([self.erased_val] * self.header_size) + \
                 self.payload
+
+        self.image_size = len(self.payload) - self.header_size
 
         self.check_header()
 
@@ -366,14 +367,19 @@ class Image:
         self.image_size = len(self.payload)
 
         # Add the image header if needed.
-        if self.pad_header and self.header_size > 0:
-            if self.base_addr:
-                # Adjust base_addr for new header
-                self.base_addr -= self.header_size
-            self.payload = bytes([self.erased_val] * self.header_size) + \
-                self.payload
-
-        self.check_header()
+        if self.header_size > 0:
+            if self.pad_header:
+                if self.base_addr:
+                    # Adjust base_addr for new header
+                    self.base_addr -= self.header_size
+                self.payload = bytes([self.erased_val] * self.header_size) + \
+                    self.payload
+            else:
+                # Fill header padding with zeros to align with what is expected
+                # for uncompressed images when no pad_header is requested
+                # (see self.check_header())
+                self.payload = bytes([0] * self.header_size) + \
+                    self.payload
 
     def save(self, path, hex_addr=None):
         """Save an image from a given file"""
