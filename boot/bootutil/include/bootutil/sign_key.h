@@ -39,6 +39,17 @@ struct bootutil_key {
 };
 
 extern const struct bootutil_key bootutil_keys[];
+#ifdef MCUBOOT_BUILTIN_KEY
+/**
+ * Verify that the specified key ID is valid for authenticating the given image.
+ *
+ * @param[in]  image_index   Index of the image to be verified.
+ * @param[in]  key_id        Identifier of the key to be verified against the image.
+ *
+ * @return                   0 if the key ID is valid for the image; nonzero on failure.
+ */
+int boot_verify_key_id_for_image(uint8_t image_index, uint32_t key_id);
+#endif /* MCUBOOT_BUILTIN_KEY */
 #else
 struct bootutil_key {
     uint8_t *key;
@@ -51,6 +62,7 @@ extern struct bootutil_key bootutil_keys[];
  * Retrieve the hash of the corresponding public key for image authentication.
  *
  * @param[in]      image_index      Index of the image to be authenticated.
+ * @param[in]      key_index        Index of the key to be used.
  * @param[out]     public_key_hash  Buffer to store the key-hash in.
  * @param[in,out]  key_hash_size    As input the size of the buffer. As output
  *                                  the actual key-hash length.
@@ -58,8 +70,10 @@ extern struct bootutil_key bootutil_keys[];
  * @return                          0 on success; nonzero on failure.
  */
 int boot_retrieve_public_key_hash(uint8_t image_index,
+                                  uint8_t key_index,
                                   uint8_t *public_key_hash,
                                   size_t *key_hash_size);
+
 #endif /* !MCUBOOT_HW_KEY */
 
 extern const int bootutil_key_cnt;
