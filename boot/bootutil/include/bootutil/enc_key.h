@@ -39,8 +39,6 @@
 extern "C" {
 #endif
 
-#define BOOT_ENC_TLV_ALIGN_SIZE ALIGN_UP(BOOT_ENC_TLV_SIZE, BOOT_MAX_ALIGN)
-
 struct enc_key_data {
     uint8_t valid;
     bootutil_aes_ctr_context aes_ctr;
