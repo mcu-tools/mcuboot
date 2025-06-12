@@ -115,6 +115,28 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
     }
 }
 
+pub fn boot_load_image_from_flash_to_sram(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc) -> bool {
+    init_crypto();
+
+    for (&dev_id, flash) in multiflash.iter_mut() {
+        api::set_flash(dev_id, flash);
+    }
+    let mut sim_ctx = api::CSimContext {
+        flash_counter: 0,
+        c_catch_asserts: 0,
+        .. Default::default()
+    };
+    let result: i32 = unsafe {
+        let adesc = areadesc.get_c();
+        raw::invoke_boot_load_image_from_flash_to_sram(&mut sim_ctx as *mut _,
+                            adesc.borrow() as *const _) as i32
+    };
+    for &dev_id in multiflash.keys() {
+        api::clear_flash(dev_id);
+    }
+    result == 0
+}
+
 pub fn boot_trailer_sz(align: u32) -> u32 {
     unsafe { raw::boot_trailer_sz(align) }
 }
@@ -180,6 +202,9 @@ mod raw {
         // for information and tracking.
         pub fn invoke_boot_go(sim_ctx: *mut CSimContext, areadesc: *const CAreaDesc,
             rsp: *mut BootRsp, image_index: libc::c_int) -> libc::c_int;
+
+        pub fn invoke_boot_load_image_from_flash_to_sram(sim_ctx: *mut CSimContext,
+            areadesc: *const CAreaDesc) -> libc::c_int;
 
         pub fn boot_trailer_sz(min_write_sz: u32) -> u32;
         pub fn boot_status_sz(min_write_sz: u32) -> u32;

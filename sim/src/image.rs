@@ -1413,6 +1413,40 @@ impl Images {
         false
     }
 
+    pub fn run_ram_load_from_flash(&self) -> bool {
+        if !Caps::RamLoad.present() {
+            return false;
+        }
+
+        // Clone the flash so we can tell if unchanged.
+        let mut flash = self.flash.clone();
+
+        // Create RAM config.
+        let ram = RamBlock::new(self.ram.total - RAM_LOAD_ADDR, RAM_LOAD_ADDR);
+
+        // Run boot_load_image_from_flash_to_sram directly
+        let result = ram.invoke(|| c::boot_load_image_from_flash_to_sram(&mut flash, &self.areadesc));
+
+        if !result {
+            error!("RAM load from flash failed!");
+            return true;
+        }
+
+        // Compare loaded image with the first image in the flash.
+        let image = &self.images[0].primaries;
+        let ram_image = ram.borrow();
+        let src_sz = image.plain.len();
+        let src_image = &image.plain[0..src_sz];
+        let ram_image = &ram_image[0..src_sz];
+
+        if ram_image != src_image {
+            error!("Image not loaded correctly");
+            return true;
+        }
+
+        false
+    }
+
     /// Adds a new flash area that fails statistically
     fn mark_bad_status_with_rate(&self, flash: &mut SimMultiFlash, slot: usize,
                                  rate: f32) {
