@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from importlib import metadata
+
 import pytest
 
 from click.testing import CliRunner
 from imgtool.main import imgtool
 from imgtool import imgtool_version
+from packaging.version import Version
 
 # all available imgtool commands
 COMMANDS = [
@@ -53,7 +56,10 @@ def test_help():
 
     # by default help should be also produced
     result_empty = runner.invoke(imgtool)
-    assert result_empty.exit_code == 0
+
+    # return value without arguments differs based on click version
+    expected_exit_code = 2 if Version(metadata.version("click")) >= Version("8.2.0") else 0
+    assert result_empty.exit_code == expected_exit_code
     assert result_empty.output == result_short.output
 
 
