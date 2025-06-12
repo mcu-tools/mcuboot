@@ -1508,7 +1508,7 @@ boot_copy_region(struct boot_loader_state *state,
                     if (abs_off >= tlv_off) {
                         blk_sz = 0;
                     } else {
-                        blk_sz = tlv_off - abs_off;
+                        blk_sz = tlv_off - abs_off - idx;
                     }
                 }
                 if (source_slot == 0) {
