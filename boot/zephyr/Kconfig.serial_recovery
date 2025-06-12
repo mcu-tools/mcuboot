@@ -37,7 +37,8 @@ config BOOT_SERIAL_UART
 
 config BOOT_SERIAL_CDC_ACM
 	bool "CDC ACM"
-	select USB_DEVICE_STACK
+	select USB_DEVICE_STACK_NEXT
+	select CDC_ACM_SERIAL_INITIALIZE_AT_BOOT
 	help
 	  This setting will choose CDC ACM for serial recovery unless chosen
 	  "zephyr,uart-mcumgr" is present, in which case the chosen takes
