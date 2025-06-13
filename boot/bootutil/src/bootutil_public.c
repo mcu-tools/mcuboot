@@ -573,10 +573,7 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
         if (active) {
             rc = BOOT_EBADVECT;
         } else {
-            /* The image slot is corrupt.  There is no way to recover, so erase the
-             * slot to allow future upgrades.
-             */
-            flash_area_erase(fa, 0, flash_area_get_size(fa));
+            /* This image will not be boot next time anyway */
             rc = BOOT_EBADIMAGE;
         }
         break;
