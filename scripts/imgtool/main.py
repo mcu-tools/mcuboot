@@ -427,6 +427,8 @@ class BasedIntParamType(click.ParamType):
               'the signature calculated using the public key')
 @click.option('--fix-sig-pubkey', metavar='filename',
               help='public key relevant to fixed signature')
+@click.option('--fix-sig-script', metavar='filename',
+              help='script to generate fixed signature')
 @click.option('--pure', 'is_pure', is_flag=True, default=False, show_default=True,
               help='Expected Pure variant of signature; the Pure variant is '
               'expected to be signature done over an image rather than hash of '
@@ -449,8 +451,8 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          endian, encrypt_keylen, encrypt, compression, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, rom_fixed, max_align,
-         clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, is_pure,
-         vector_to_sign, non_bootable):
+         clear, fix_sig, fix_sig_pubkey, fix_sig_script, sig_out, user_sha,
+         is_pure, vector_to_sign, non_bootable):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -506,16 +508,17 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     baked_signature = None
     pub_key = None
 
-    if raw_signature is not None:
+    if raw_signature is not None or fix_sig_script is not None:
         if fix_sig_pubkey is None:
             raise click.UsageError(
                 'public key of the fixed signature is not specified')
 
         pub_key = load_key(fix_sig_pubkey)
 
-        baked_signature = {
-            'value': raw_signature
-        }
+        if raw_signature is not None:
+            baked_signature = {
+                'value': raw_signature
+            }
 
     if is_pure and user_sha != 'auto':
         raise click.UsageError(
