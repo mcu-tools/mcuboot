@@ -11,7 +11,9 @@
 #include <fsl_sysmpu.h>
 #endif
 
-void cleanup_arm_nvic(void) {
+
+void cleanup_arm_interrupts(void)
+{
 	/* Allow any pending interrupts to be recognized */
 	__ISB();
 	__disable_irq();

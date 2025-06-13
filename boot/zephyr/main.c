@@ -195,7 +195,7 @@ static void do_boot(struct boot_rsp *rsp)
     usb_disable();
 #endif
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
-    cleanup_arm_nvic(); /* cleanup NVIC registers */
+    cleanup_arm_interrupts(); /* Disable and acknowledge all interrupts */
 
 #if defined(CONFIG_BOOT_DISABLE_CACHES)
     /* Flush and disable instruction/data caches before chain-loading the application */
@@ -243,8 +243,26 @@ static void do_boot(struct boot_rsp *rsp)
 #endif
 
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
+#ifdef CONFIG_CPU_CORTEX_M
     __set_CONTROL(0x00); /* application will configures core on its own */
     __ISB();
+#else
+    /* Set mode to supervisor and A, I and F bit as described in the
+     * Cortex R5 TRM */
+    __asm__ volatile(
+        "   mrs r0, CPSR\n"
+        /* change mode bits to supervisor */
+        "   bic r0, #0x1f\n"
+        "   orr r0, #0x13\n"
+        /* set the A, I and F bit */
+        "   mov r1, #0b111\n"
+        "   lsl r1, #0x6\n"
+        "   orr r0, r1\n"
+
+        "   msr CPSR, r0\n"
+        ::: "r0", "r1");
+#endif /* CONFIG_CPU_CORTEX_M */
+
 #endif
 #if CONFIG_MCUBOOT_CLEANUP_RAM
     __asm__ volatile (
