@@ -181,7 +181,7 @@ bool io_detect_pin_reset(void)
 
     rc = hwinfo_get_reset_cause(&reset_cause);
 
-    if (rc == 0 && reset_cause == RESET_PIN) {
+    if (rc == 0 && (reset_cause & RESET_PIN)) {
         (void)hwinfo_clear_reset_cause();
         return true;
     }
