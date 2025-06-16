@@ -898,6 +898,23 @@ process is presented below.
 + Boot into image in the primary slot of the 0th image position\
   (other image in the boot chain is started by another image).
 
+By enabling the `MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER` configuration option,
+the dependency check may be extended to match for a specified slot of a specific
+image. This functionality is useful in a multi-core system when Direct XIP mode
+is used.
+In this case, the main image can be started from one of the two (primary or
+secondary) slots.
+If there is a fixed connection between the slots of two different images,
+e.g. if the main image always chainloads a companion image from the same slot,
+the check must take this into account and only consider a matching slot when
+resolving dependencies.
+
+There are three values that can be passed when specifying dependencies:
+
+1. ``active``: the dependency should be checked against either primary or secondary slot.
+2. ``primary``: the dependency should be checked only against primary slot.
+3. ``secondary``: the dependency should be checked only against secondary slot.
+
 ### [Multiple image boot for RAM loading and direct-xip](#multiple-image-boot-for-ram-loading-and-direct-xip)
 
 The operation of the bootloader is different when the ram-load or the
