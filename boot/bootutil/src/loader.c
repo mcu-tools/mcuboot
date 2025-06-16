@@ -1687,19 +1687,19 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
      * trailer that was left might trigger a new upgrade.
      */
     BOOT_LOG_DBG("erasing secondary header");
-    rc = boot_erase_region(fap_secondary_slot,
-                           boot_img_sector_off(state, BOOT_SECONDARY_SLOT, 0),
-                           boot_img_sector_size(state, BOOT_SECONDARY_SLOT, 0), false);
+    rc = boot_scramble_region(fap_secondary_slot,
+                              boot_img_sector_off(state, BOOT_SECONDARY_SLOT, 0),
+                              boot_img_sector_size(state, BOOT_SECONDARY_SLOT, 0), false);
     assert(rc == 0);
 #endif
 
     last_sector = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT) - 1;
     BOOT_LOG_DBG("erasing secondary trailer");
-    rc = boot_erase_region(fap_secondary_slot,
-                           boot_img_sector_off(state, BOOT_SECONDARY_SLOT,
-                               last_sector),
-                           boot_img_sector_size(state, BOOT_SECONDARY_SLOT,
-                               last_sector), false);
+    rc = boot_scramble_region(fap_secondary_slot,
+                              boot_img_sector_off(state, BOOT_SECONDARY_SLOT,
+                                    last_sector),
+                              boot_img_sector_size(state, BOOT_SECONDARY_SLOT,
+                                    last_sector), false);
     assert(rc == 0);
 
     /* TODO: Perhaps verify the primary slot's signature again? */
