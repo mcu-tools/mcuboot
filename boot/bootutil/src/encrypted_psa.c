@@ -27,21 +27,15 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot_psa_enc);
 
-#define EXPECTED_ENC_LEN    BOOT_ENC_TLV_SIZE
-#define EC_PUBK_INDEX       (0)
-#define EC_PUBK_LEN         (32)
-#define EC_TAG_INDEX        (EC_PUBK_INDEX + EC_PUBK_LEN)
-#define EC_TAG_LEN          (32)
-#define EC_CIPHERKEY_INDEX  (EC_TAG_INDEX + EC_TAG_LEN)
-#define EC_CIPHERKEY_LEN    BOOT_ENC_KEY_SIZE
-_Static_assert(EC_CIPHERKEY_INDEX + BOOT_ENC_KEY_SIZE == EXPECTED_ENC_LEN,
-        "Please fix ECIES-X25519 component indexes");
+#if defined(MCUBOOT_HMAC_SHA512)
+#define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_512
+#else
+#define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_256
+#endif
 
 #define X25519_OID "\x6e"
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
                                        MBEDTLS_OID_ORG_GOV X25519_OID;
-
-#define PRIV_KEY_LEN   32
 
 /* Partitioning of HKDF derived material, from the exchange derived key */
 /* AES key encryption key */
@@ -93,11 +87,11 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         return -7;
     }
 
-    if (len != PRIV_KEY_LEN) {
+    if (len != EC_PRIVK_LEN) {
         return -8;
     }
 
-    memcpy(private_key, *p, PRIV_KEY_LEN);
+    memcpy(private_key, *p, EC_PRIVK_LEN);
     return 0;
 }
 
@@ -127,7 +121,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     uint8_t derived_key[HKDF_SIZE];
     uint8_t *cp;
     uint8_t *cpend;
-    uint8_t private_key[PRIV_KEY_LEN];
+    uint8_t private_key[EC_PRIVK_LEN];
     size_t len;
     psa_status_t psa_ret = PSA_ERROR_BAD_STATE;
     psa_status_t psa_cleanup_ret = PSA_ERROR_BAD_STATE;
@@ -172,7 +166,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         return -1;
     }
 
-    key_do_alg = PSA_ALG_KEY_AGREEMENT(PSA_ALG_ECDH, PSA_ALG_HKDF(PSA_ALG_SHA_256));
+    key_do_alg = PSA_ALG_KEY_AGREEMENT(PSA_ALG_ECDH, PSA_ALG_HKDF(PSA_HMAC_HKDF_SHA));
 
     psa_ret = psa_key_derivation_setup(&key_do, key_do_alg);
     if (psa_ret != PSA_SUCCESS) {
@@ -235,7 +229,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      */
     psa_set_key_type(&kattr, PSA_KEY_TYPE_HMAC);
     psa_set_key_usage_flags(&kattr, PSA_KEY_USAGE_VERIFY_MESSAGE);
-    psa_set_key_algorithm(&kattr, PSA_ALG_HMAC(PSA_ALG_SHA_256));
+    psa_set_key_algorithm(&kattr, PSA_ALG_HMAC(PSA_HMAC_HKDF_SHA));
 
     /* Import the MAC tag key part of derived key */
     psa_ret = psa_import_key(&kattr,
@@ -249,7 +243,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     }
 
     /* Verify the MAC tag of the random encryption key */
-    psa_ret = psa_mac_verify(kid, PSA_ALG_HMAC(PSA_ALG_SHA_256),
+    psa_ret = psa_mac_verify(kid, PSA_ALG_HMAC(PSA_HMAC_HKDF_SHA),
                              &buf[EC_CIPHERKEY_INDEX], EC_CIPHERKEY_LEN,
                              &buf[EC_TAG_INDEX],
                              EC_TAG_LEN);

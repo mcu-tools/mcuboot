@@ -100,12 +100,12 @@ static int bootutil_rsa_oaep_decrypt(
         return -1;
     }
     size_t input_size = PSA_BITS_TO_BYTES(psa_get_key_bits(&key_attr));
-    if (input_size != TLV_ENC_RSA_SZ) {
+    if (input_size != BOOT_ENC_TLV_SIZE) {
         return -1;
     }
 
     status = psa_asymmetric_decrypt(ctx->key_id, PSA_ALG_RSA_OAEP(PSA_ALG_SHA_256),
-                                    input, TLV_ENC_RSA_SZ, NULL, 0,
+                                    input, BOOT_ENC_TLV_SIZE, NULL, 0,
                                     output, output_max_len, olen);
     return (int)status;
 }
