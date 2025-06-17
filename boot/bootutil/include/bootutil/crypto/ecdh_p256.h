@@ -35,6 +35,7 @@ extern "C" {
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
 typedef uintptr_t bootutil_ecdh_p256_context;
+typedef bootutil_ecdh_p256_context bootutil_key_xchange_ctx;
 static inline void bootutil_ecdh_p256_init(bootutil_ecdh_p256_context *ctx)
 {
     (void)ctx;

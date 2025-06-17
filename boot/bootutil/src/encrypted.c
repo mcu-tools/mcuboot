@@ -405,15 +405,7 @@ static int fake_rng(void *p_rng, unsigned char *output, size_t len)
 int
 boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 {
-#if defined(MCUBOOT_ENCRYPT_RSA)
-    bootutil_rsa_context            pk_ctx;
-#endif
-#if defined(MCUBOOT_ENCRYPT_EC256)
-    bootutil_ecdh_p256_context      pk_ctx;
-#endif
-#if defined(MCUBOOT_ENCRYPT_X25519)
-    bootutil_ecdh_x25519_context    pk_ctx;
-#endif
+    bootutil_key_xchange_ctx        pk_ctx;
 #if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
     bootutil_hmac_sha256_context hmac;
     bootutil_aes_ctr_context aes_ctr;
