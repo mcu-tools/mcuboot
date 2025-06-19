@@ -68,6 +68,7 @@ sim_test!(downgrade_prevention, make_image(&REV_DEPS, true), run_nodowngrade());
 sim_test!(direct_xip_first, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_direct_xip());
 sim_test!(ram_load_first, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_ram_load());
 sim_test!(ram_load_split, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_split_ram_load());
+sim_test!(ram_load_from_flash, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_ram_load_from_flash());
 sim_test!(hw_prot_failed_security_cnt_check, make_image_with_security_counter(Some(0)), run_hw_rollback_prot());
 sim_test!(hw_prot_missing_security_cnt, make_image_with_security_counter(None), run_hw_rollback_prot());
 sim_test!(ram_load_out_of_bounds, make_no_upgrade_image(&NO_DEPS, ImageManipulation::WrongOffset), run_ram_load_boot_with_result(false));
