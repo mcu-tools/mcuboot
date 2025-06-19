@@ -20,7 +20,7 @@
 #include <string.h>
 #include <zephyr/kernel.h>
 #include "bootutil/bootutil_log.h"
-#include <zephyr/usb/usb_device.h>
+#include <zephyr/usb/usbd.h>
 
 #if defined(CONFIG_BOOT_SERIAL_UART) && defined(CONFIG_UART_CONSOLE) && \
     (!DT_HAS_CHOSEN(zephyr_uart_mcumgr) ||                              \
@@ -225,7 +225,11 @@ boot_uart_fifo_init(void)
 	}
 
 #if CONFIG_BOOT_SERIAL_CDC_ACM
-	int rc = usb_enable(NULL);
+	struct usbd_context *uds_ctx;
+	int rc;
+
+	STRUCT_SECTION_GET(usbd_context, 0, &uds_ctx);
+	rc = usbd_enable(uds_ctx);
 	if (rc) {
 		return (-1);
 	}
