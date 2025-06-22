@@ -326,17 +326,7 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 
 #ifdef MCUBOOT_SWAP_USING_OFFSET
             if (slot == BOOT_SECONDARY_SLOT && swap_status != BOOT_SWAP_TYPE_REVERT) {
-                uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
-                struct flash_sector sector_data;
-
-                rc = flash_area_sectors(fap, &num_sectors, &sector_data);
-
-                if ((rc != 0 && rc != -ENOMEM) ||
-                    num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
-                    continue;
-                }
-
-                start_off = sector_data.fs_size;
+                start_off = boot_img_sector_size(state, slot, 0);
             }
 #endif
 
@@ -556,8 +546,6 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                 uint8_t tmpbuf[64];
 
 #ifdef MCUBOOT_SWAP_USING_OFFSET
-                uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
-                struct flash_sector sector_data;
                 uint32_t start_off = 0;
 #endif
 
@@ -568,14 +556,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 
 #ifdef MCUBOOT_SWAP_USING_OFFSET
                 if (slot == BOOT_SECONDARY_SLOT && swap_status != BOOT_SWAP_TYPE_REVERT) {
-                    rc = flash_area_sectors(fap, &num_sectors, &sector_data);
-
-                    if ((rc != 0 && rc != -ENOMEM) ||
-                        num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
-                        continue;
-                    }
-
-                    start_off = sector_data.fs_size;
+                    start_off = boot_img_sector_size(state, slot, 0);
                 }
 #endif
 
