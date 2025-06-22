@@ -282,7 +282,7 @@ bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
  * List images.
  */
 static void
-bs_list(char *buf, int len)
+bs_list(struct boot_loader_state *state, char *buf, int len)
 {
     struct image_header hdr;
     uint32_t slot, area_id;
@@ -295,11 +295,13 @@ bs_list(char *buf, int len)
     zcbor_map_start_encode(cbor_state, 1);
     zcbor_tstr_put_lit_cast(cbor_state, "images");
     zcbor_list_start_encode(cbor_state, 5);
-    image_index = 0;
-    IMAGES_ITER(image_index) {
+
+    IMAGES_ITER(BOOT_CURR_IMG(state)) {
 #if defined(MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE) || defined(MCUBOOT_SWAP_USING_OFFSET)
-        int swap_status = boot_swap_type_multi(image_index);
+        int swap_status = boot_swap_type_multi(BOOT_CURR_IMG(state));
 #endif
+        image_index = BOOT_CURR_IMG(state);
+        (void) image_index; /* Might be unused depending on the configuration */
 
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             FIH_DECLARE(fih_rc, FIH_FAILURE);
@@ -380,10 +382,10 @@ bs_list(char *buf, int len)
 #endif
 
 #ifdef MCUBOOT_SWAP_USING_OFFSET
-                        FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
+                        FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
                                  fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL, start_off);
 #else
-                        FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
+                        FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
                                  fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
 #endif
 #if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
@@ -495,7 +497,7 @@ bs_list(char *buf, int len)
  * Set image state.
  */
 static void
-bs_set(char *buf, int len)
+bs_set(struct boot_loader_state *state, char *buf, int len)
 {
     /*
      * Expected data format.
@@ -544,10 +546,12 @@ bs_set(char *buf, int len)
     }
 
     if (img_hash.len != 0) {
-        IMAGES_ITER(image_index) {
+        IMAGES_ITER(BOOT_CURR_IMG(state)) {
 #ifdef MCUBOOT_SWAP_USING_OFFSET
-            int swap_status = boot_swap_type_multi(image_index);
+            int swap_status = boot_swap_type_multi(BOOT_CURR_IMG(state));
 #endif
+            image_index = BOOT_CURR_IMG(state);
+            (void) image_index; /* Might be unused depending on the configuration */
 
             for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
                 struct image_header hdr;
@@ -613,10 +617,10 @@ bs_set(char *buf, int len)
                         } else {
 #endif
 #ifdef MCUBOOT_SWAP_USING_OFFSET
-                            FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
+                            FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
                                      fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL, start_off);
 #else
-                            FIH_CALL(bootutil_img_validate, fih_rc, NULL, &hdr,
+                            FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
                                      fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
 #endif
 #ifdef MCUBOOT_ENC_IMAGES
@@ -662,7 +666,7 @@ set_image_state:
 out:
     if (rc == 0) {
         /* Success - return updated list of images */
-        bs_list(buf, len);
+        bs_list(state, buf, len);
     } else {
         /* Error code, only return the error */
         zcbor_map_start_encode(cbor_state, 10);
@@ -691,14 +695,50 @@ bs_rc_rsp(int rc_code)
 static void
 bs_list_set(uint8_t op, char *buf, int len)
 {
+    int rc;
+    struct boot_loader_state *state;
+    bool area_opened = false;
+
+    state = boot_get_loader_state();
+    boot_state_clear(state);
+
+    rc = boot_open_all_flash_areas(state);
+    if (rc != 0) {
+        BOOT_LOG_ERR("Failed to open flash areas: %d", rc);
+        rc = MGMT_ERR_EUNKNOWN;
+        goto out;
+    }
+
+    area_opened = true;
+
+#if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+    IMAGES_ITER(BOOT_CURR_IMG(state)) {
+        rc = boot_read_sectors(state, NULL);
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed to read sectors: %d", rc);
+            rc = MGMT_ERR_EUNKNOWN;
+            goto out;
+        }
+    }
+#endif
+
     if (op == NMGR_OP_READ) {
-        bs_list(buf, len);
+        bs_list(state, buf, len);
     } else {
 #ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
-        bs_set(buf, len);
+        bs_set(state, buf, len);
 #else
-        bs_rc_rsp(MGMT_ERR_ENOTSUP);
+        rc = MGMT_ERR_ENOTSUP;
 #endif
+    }
+
+out:
+    if (area_opened) {
+        boot_close_all_flash_areas(state);
+    }
+
+    if (rc != 0) {
+        bs_rc_rsp(rc);
     }
 
     reset_cbor_state();
