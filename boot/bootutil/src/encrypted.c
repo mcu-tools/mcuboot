@@ -585,11 +585,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 int
 boot_enc_load(struct boot_loader_state *state, int slot,
               const struct image_header *hdr, const struct flash_area *fap,
-              struct boot_status *bs
-#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_RECOVERY)
-              , uint32_t start_off
-#endif
-             )
+              struct boot_status *bs)
 {
     struct enc_key_data *enc_state = BOOT_CURR_ENC(state);
     uint32_t off;
@@ -614,11 +610,7 @@ boot_enc_load(struct boot_loader_state *state, int slot,
     boot_enc_init(enc_state, slot);
 
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
-#if defined(MCUBOOT_SERIAL_RECOVERY)
-    it.start_off = boot_get_state_secondary_offset(state, fap) + start_off;
-#else
     it.start_off = boot_get_state_secondary_offset(state, fap);
-#endif
 #endif
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, BOOT_ENC_TLV, false);
