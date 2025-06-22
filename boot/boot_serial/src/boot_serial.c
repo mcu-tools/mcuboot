@@ -285,7 +285,7 @@ static void
 bs_list(struct boot_loader_state *state, char *buf, int len)
 {
     struct image_header hdr;
-    uint32_t slot, area_id;
+    uint32_t slot;
     const struct flash_area *fap;
     uint8_t image_index;
 #ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
@@ -319,8 +319,8 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
             uint32_t start_off = 0;
 #endif
 
-            area_id = flash_area_id_from_multi_image_slot(image_index, slot);
-            if (flash_area_open(area_id, &fap)) {
+            fap = BOOT_IMG_AREA(state, slot);
+            if (fap == NULL) {
                 continue;
             }
 
@@ -333,7 +333,6 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 
                 if ((rc != 0 && rc != -ENOMEM) ||
                     num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
-                    flash_area_close(fap);
                     continue;
                 }
 
@@ -395,7 +394,6 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
             }
 
             if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
-                flash_area_close(fap);
                 continue;
             }
 
@@ -408,7 +406,6 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 #endif
 #endif
 
-            flash_area_close(fap);
             zcbor_map_start_encode(cbor_state, 20);
 
 #if (BOOT_IMAGE_NUMBER > 1)
@@ -555,7 +552,6 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 
             for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
                 struct image_header hdr;
-                uint32_t area_id;
                 const struct flash_area *fap;
                 uint8_t tmpbuf[64];
 
@@ -565,9 +561,8 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                 uint32_t start_off = 0;
 #endif
 
-                area_id = flash_area_id_from_multi_image_slot(image_index, slot);
-                if (flash_area_open(area_id, &fap)) {
-                    BOOT_LOG_ERR("Failed to open flash area ID %d", area_id);
+                fap = BOOT_IMG_AREA(state, slot);
+                if (fap == NULL) {
                     continue;
                 }
 
@@ -577,7 +572,6 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 
                     if ((rc != 0 && rc != -ENOMEM) ||
                         num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
-                        flash_area_close(fap);
                         continue;
                     }
 
@@ -641,8 +635,6 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                 rc = boot_serial_get_hash(&hdr, fap, hash);
 #endif
 #endif
-                flash_area_close(fap);
-
                 if (rc == 0 && memcmp(hash, img_hash.value, sizeof(hash)) == 0) {
                     /* Hash matches, set this slot for test or confirmation */
                     found = true;
