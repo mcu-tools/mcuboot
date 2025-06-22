@@ -352,7 +352,7 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 #if defined(MCUBOOT_ENC_IMAGES)
 #if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     if (IS_ENCRYPTED(&hdr) && MUST_DECRYPT(fap, image_index, &hdr)) {
-                        FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
+                        FIH_CALL(boot_image_validate_encrypted, fih_rc, state, fap,
                                  &hdr, tmpbuf, sizeof(tmpbuf));
                     } else {
 #endif
@@ -573,7 +573,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                     {
 #ifdef MCUBOOT_ENC_IMAGES
                         if (IS_ENCRYPTED(&hdr)) {
-                            FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
+                            FIH_CALL(boot_image_validate_encrypted, fih_rc, state, fap,
                                      &hdr, tmpbuf, sizeof(tmpbuf));
                         } else {
 #endif
