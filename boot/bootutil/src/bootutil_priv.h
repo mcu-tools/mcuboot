@@ -388,6 +388,22 @@ bool bootutil_buffer_is_erased(const struct flash_area *area,
                                const void *buffer, size_t len);
 
 /**
+ * Opens the flash areas of all images.
+ *
+ * @param state Bootloader state.
+ *
+ * @return 0 on success, another value otherwise.
+ */
+int boot_open_all_flash_areas(struct boot_loader_state *state);
+
+/**
+ * Closes the flash areas of all images.
+ *
+ * @param state Bootloader state.
+ */
+void boot_close_all_flash_areas(struct boot_loader_state *state);
+
+/**
  * Safe (non-overflowing) uint32_t addition.  Returns true, and stores
  * the result in *dest if it can be done without overflow.  Otherwise,
  * returns false.
