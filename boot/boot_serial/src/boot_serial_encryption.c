@@ -21,11 +21,7 @@ BOOT_LOG_MODULE_DECLARE(serial_encryption);
 fih_ret
 boot_image_validate_encrypted(const struct flash_area *fa_p,
                               struct image_header *hdr, uint8_t *buf,
-                              uint16_t buf_size
-#ifdef MCUBOOT_SWAP_USING_OFFSET
-                              , uint32_t start_off
-#endif
-                             )
+                              uint16_t buf_size)
 {
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
@@ -37,11 +33,7 @@ boot_image_validate_encrypted(const struct flash_area *fa_p,
 
     memset(&boot_data, 0, sizeof(struct boot_loader_state));
     if(IS_ENCRYPTED(hdr)) {
-#ifdef MCUBOOT_SWAP_USING_OFFSET
-        rc = boot_enc_load(state, 1, hdr, fa_p, bs, start_off);
-#else
         rc = boot_enc_load(state, 1, hdr, fa_p, bs);
-#endif
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
@@ -51,13 +43,8 @@ boot_image_validate_encrypted(const struct flash_area *fa_p,
         }
     }
 
-#ifdef MCUBOOT_SWAP_USING_OFFSET
-    FIH_CALL(bootutil_img_validate, fih_rc, state,
-             hdr, fa_p, buf, buf_size, NULL, 0, NULL, start_off);
-#else
     FIH_CALL(bootutil_img_validate, fih_rc, state,
              hdr, fa_p, buf, buf_size, NULL, 0, NULL);
-#endif
 
     FIH_RET(fih_rc);
 }
@@ -248,11 +235,7 @@ decrypt_image_inplace(const struct flash_area *fa_p,
 #endif
         memset(&boot_data, 0, sizeof(struct boot_loader_state));
         /* Load the encryption keys into cache */
-#ifdef MCUBOOT_SWAP_USING_OFFSET
-        rc = boot_enc_load(state, 0, hdr, fa_p, bs, 0);
-#else
         rc = boot_enc_load(state, 0, hdr, fa_p, bs);
-#endif
         if (rc < 0) {
             FIH_RET(fih_rc);
         }

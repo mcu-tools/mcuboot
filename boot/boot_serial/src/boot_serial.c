@@ -327,6 +327,7 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 #ifdef MCUBOOT_SWAP_USING_OFFSET
             if (slot == BOOT_SECONDARY_SLOT && swap_status != BOOT_SWAP_TYPE_REVERT) {
                 start_off = boot_img_sector_size(state, slot, 0);
+                state->secondary_offset[image_index] = start_off;
             }
 #endif
 
@@ -351,13 +352,8 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 #if defined(MCUBOOT_ENC_IMAGES)
 #if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     if (IS_ENCRYPTED(&hdr) && MUST_DECRYPT(fap, image_index, &hdr)) {
-#ifdef MCUBOOT_SWAP_USING_OFFSET
-                        FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
-                                 &hdr, tmpbuf, sizeof(tmpbuf), start_off);
-#else
                         FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
                                  &hdr, tmpbuf, sizeof(tmpbuf));
-#endif
                     } else {
 #endif
                         if (IS_ENCRYPTED(&hdr)) {
@@ -369,14 +365,8 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
                             hdr.ih_flags &= ~ENCRYPTIONFLAGS;
                         }
 #endif
-
-#ifdef MCUBOOT_SWAP_USING_OFFSET
-                        FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
-                                 fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL, start_off);
-#else
                         FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
                                  fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
-#endif
 #if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     }
 #endif
@@ -557,6 +547,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 #ifdef MCUBOOT_SWAP_USING_OFFSET
                 if (slot == BOOT_SECONDARY_SLOT && swap_status != BOOT_SWAP_TYPE_REVERT) {
                     start_off = boot_img_sector_size(state, slot, 0);
+                    state->secondary_offset[image_index] = start_off;
                 }
 #endif
 
@@ -582,22 +573,12 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                     {
 #ifdef MCUBOOT_ENC_IMAGES
                         if (IS_ENCRYPTED(&hdr)) {
-#ifdef MCUBOOT_SWAP_USING_OFFSET
-                            FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
-                                     &hdr, tmpbuf, sizeof(tmpbuf), start_off);
-#else
                             FIH_CALL(boot_image_validate_encrypted, fih_rc, fap,
                                      &hdr, tmpbuf, sizeof(tmpbuf));
-#endif
                         } else {
 #endif
-#ifdef MCUBOOT_SWAP_USING_OFFSET
-                            FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
-                                     fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL, start_off);
-#else
                             FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
                                      fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
-#endif
 #ifdef MCUBOOT_ENC_IMAGES
                         }
 #endif

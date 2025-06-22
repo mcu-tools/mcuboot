@@ -23,9 +23,6 @@ fih_ret
 boot_image_validate_encrypted(const struct flash_area *fa_p,
                               struct image_header *hdr, uint8_t *buf,
                               uint16_t buf_size
-#ifdef MCUBOOT_SWAP_USING_OFFSET
-                              , uint32_t start_off
-#endif
 );
 
 /**
