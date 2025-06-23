@@ -1460,6 +1460,28 @@ config MCUBOOT_VERIFY_IMG_ADDRESS
 	  also be useful when BOOT_DIRECT_XIP is enabled, to ensure that the image
 	  linked at the correct address is loaded.
 
+config MCUBOOT_LOGICAL_SECTOR_SIZE
+	hex "Size of a logical sector [EXPERIMENTAL]"
+	default 0x0
+	help
+	  Set to 0x0 to use hardware sectors. Any other value here should be aligned to hardware
+	  sectors in size and alignment.
+
+config MCUBOOT_VERIFY_LOGICAL_SECTORS
+	bool "Validate logical sector layout"
+	depends on MCUBOOT_LOGICAL_SECTOR_SIZE != 0x0
+	help
+	  Validation of logical sector size against hardware constraints. Should be used to
+	  validate compile-time configuration against run-time system.
+
+config MCUBOOT_LOGICAL_SECTOR_SIZE_EXPERIMENTAL
+	bool
+	default y if MCUBOOT_LOGICAL_SECTOR_SIZE != 0x0
+	select EXPERIMENTAL
+	help
+	  Indicates that MCUboot's logical sector size feature has been enabled, this feature
+	  is currently experimental.
+
 config MCUBOOT_DEVICE_SETTINGS
 	# Hidden selector for device-specific settings
 	bool
@@ -1467,7 +1489,7 @@ config MCUBOOT_DEVICE_SETTINGS
 	# CPU options
 	select MCUBOOT_DEVICE_CPU_CORTEX_M0 if CPU_CORTEX_M0
 	# Enable flash page layout if available
-	select FLASH_PAGE_LAYOUT if FLASH_HAS_PAGE_LAYOUT
+	select FLASH_PAGE_LAYOUT if FLASH_HAS_PAGE_LAYOUT && (MCUBOOT_LOGICAL_SECTOR_SIZE = 0x0 || MCUBOOT_VERIFY_LOGICAL_SECTORS)
 	# Enable flash_map module as flash I/O back-end
 	select FLASH_MAP
 
