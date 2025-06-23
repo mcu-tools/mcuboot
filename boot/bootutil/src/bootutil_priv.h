@@ -240,14 +240,18 @@ struct boot_loader_state {
     struct {
         struct image_header hdr;
         const struct flash_area *area;
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
         boot_sector_t *sectors;
+#endif
         uint32_t num_sectors;
     } imgs[BOOT_IMAGE_NUMBER][BOOT_NUM_SLOTS];
 
 #if MCUBOOT_SWAP_USING_SCRATCH
     struct {
         const struct flash_area *area;
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
         boot_sector_t *sectors;
+#endif
         uint32_t num_sectors;
     } scratch;
 #endif
@@ -510,6 +514,7 @@ boot_img_slot_off(struct boot_loader_state *state, size_t slot)
     return flash_area_get_off(BOOT_IMG_AREA(state, slot));
 }
 
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
 #ifndef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
 
 static inline size_t
@@ -549,6 +554,25 @@ boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
 }
 
 #endif  /* !defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
+#else
+static inline size_t
+boot_img_sector_size(const struct boot_loader_state *state,
+                     size_t slot, size_t sector)
+{
+    return MCUBOOT_LOGICAL_SECTOR_SIZE;
+}
+
+/*
+ * Offset of the sector from the beginning of the image, NOT the flash
+ * device.
+ */
+static inline uint32_t
+boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
+                    size_t sector)
+{
+    return MCUBOOT_LOGICAL_SECTOR_SIZE * sector;
+}
+#endif
 
 #ifdef MCUBOOT_RAM_LOAD
 #   ifdef __BOOTSIM__
