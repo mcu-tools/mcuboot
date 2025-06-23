@@ -288,13 +288,14 @@ __weak uint8_t flash_area_erased_val(const struct flash_area *fap)
     return ERASED_VAL;
 }
 
+#if (CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE == 0 || defined(CONFIG_MCUBOOT_VERIFY_LOGICAL_SECTORS))
 int flash_area_get_sector(const struct flash_area *fap, off_t off,
                           struct flash_sector *fsp)
 {
     struct flash_pages_info fpi;
     int rc;
 
-    if (off < 0 || (size_t) off >= fap->fa_size) {
+    if (off < 0 || (size_t)off >= fap->fa_size) {
         return -ERANGE;
     }
 
@@ -308,3 +309,19 @@ int flash_area_get_sector(const struct flash_area *fap, off_t off,
 
     return rc;
 }
+#else
+int flash_area_get_sector(const struct flash_area *fap, off_t off,
+                          struct flash_sector *fsp)
+{
+    if (off < 0 || (size_t)off >= flash_area_get_size(fap)) {
+	BOOT_LOG_ERR("flash_area_get_sector: off %ld out of area %p",
+                     (long)off, fap);
+        return -ERANGE;
+    }
+
+    fsp->fs_off = off & ~(CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE - 1);
+    fsp->fs_size = CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE;
+
+    return 0;
+}
+#endif
