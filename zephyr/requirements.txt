@@ -1,2 +1,2 @@
 cbor>=1.0.0
-imgtool>=2.1.0
+imgtool>=2.2.0
