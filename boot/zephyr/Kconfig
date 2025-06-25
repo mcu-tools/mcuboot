@@ -547,6 +547,14 @@ config BOOT_IMAGE_EXECUTABLE_RAM_SIZE
 	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM),0)
 endif
 
+config MULTIPLE_EXECUTABLE_RAM_REGIONS
+	bool "Platform RAM is split over multiple areas"
+	depends on BOOT_RAM_LOAD
+	help
+	  To be selected if MCUBoot should be aware of several executable RAM areas.
+	  When selected, boot_get_image_exec_ram_info() should be updated to provide
+	  the information about the areas.
+
 config FLASH_RUNTIME_SOURCES
 	bool "Images are read from flash partitions defined at runtime"
 	depends on SINGLE_APPLICATION_SLOT
