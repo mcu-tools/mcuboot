@@ -42,6 +42,9 @@
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
 #endif
+#if defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
+#include "swap_priv.h"
+#endif
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
@@ -502,26 +505,7 @@ uint32_t bootutil_max_image_size(struct boot_loader_state *state, const struct f
     return slot_trailer_off - trailer_padding;
 #elif defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
     (void) fap;
-
-    /* The slot whose size is used to compute the maximum image size must be the one containing the
-     * padding required for the swap. */
-#ifdef MCUBOOT_SWAP_USING_MOVE
-    size_t slot = BOOT_PRIMARY_SLOT;
-#else
-    size_t slot = BOOT_SECONDARY_SLOT;
-#endif
-
-    const struct flash_area *fap_padded_slot = BOOT_IMG_AREA(state, slot);
-    assert(fap_padded_slot != NULL);
-
-    size_t trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
-    size_t sector_sz = boot_img_sector_size(state, slot, 0);
-    size_t padding_sz = sector_sz;
-
-    /* The trailer size needs to be sector-aligned */
-    trailer_sz = ALIGN_UP(trailer_sz, sector_sz);
-
-    return flash_area_get_size(fap_padded_slot) - trailer_sz - padding_sz;
+    return app_max_size(state);
 #elif defined(MCUBOOT_OVERWRITE_ONLY)
     (void) state;
     return boot_swap_info_off(fap);
