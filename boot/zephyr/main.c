@@ -321,6 +321,37 @@ static void do_boot(struct boot_rsp *rsp)
 #endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 }
 
+#elif defined(CONFIG_ARC)
+
+/*
+ * ARC vector table has a pointer to the reset function as the first entry
+ * in the vector table. Assume the vector table is at the start of the image,
+ * and jump to reset
+ */
+static void do_boot(struct boot_rsp *rsp)
+{
+    struct arc_vector_table {
+        void (*reset)(void); /* Reset vector */
+    } *vt;
+
+#if defined(MCUBOOT_RAM_LOAD)
+    vt = (struct arc_vector_table *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
+#else
+    uintptr_t flash_base;
+    int rc;
+
+    rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
+    assert(rc == 0);
+
+    vt = (struct arc_vector_table *)(flash_base + rsp->br_image_off +
+                     rsp->br_hdr->ih_hdr_size);
+#endif
+
+    /* Lock interrupts and dive into the entry point */
+    irq_lock();
+    vt->reset();
+}
+
 #else
 /* Default: Assume entry point is at the very beginning of the image. Simply
  * lock interrupts and jump there. This is the right thing to do for X86 and
