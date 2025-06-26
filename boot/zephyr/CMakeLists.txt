@@ -83,7 +83,7 @@ if(DEFINED CONFIG_ENABLE_MGMT_PERUSER)
     SECTIONS include/boot_serial/boot_serial.ld
   )
 
-  if(DEFINED CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE OR DEFINED CONFIG_BOOT_MGMT_CUSTOM_IMG_LIST)
+  if(DEFINED CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE)
     zephyr_library_sources(
       boot_serial_extension_zephyr_basic.c
       )

@@ -249,7 +249,6 @@ The mapping of image number to partition is as follows:
 
 Use the ``CONFIG_ENABLE_MGMT_PERUSER=y`` Kconfig option to enable the following additional commands:
 * Storage erase - This command allows erasing the storage partition (enable with ``CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE=y``).
-* Custom image list - This command allows fetching version and installation status (custom properties) for all images (enable with ``CONFIG_BOOT_MGMT_CUSTOM_IMG_LIST=y``).
 
 ### More configuration
 
