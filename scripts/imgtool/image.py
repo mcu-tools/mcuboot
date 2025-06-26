@@ -27,6 +27,8 @@ import copy
 from enum import Enum
 import array
 from intelhex import IntelHex
+import subprocess
+import base64
 import hashlib
 import array
 import os.path
@@ -468,7 +470,8 @@ class Image:
                sw_type=None, custom_tlvs=None, compression_tlvs=None,
                compression_type=None, encrypt_keylen=128, clear=False,
                fixed_sig=None, pub_key=None, vector_to_sign=None,
-               user_sha='auto', is_pure=False, keep_comp_size=False, dont_encrypt=False):
+               user_sha='auto', is_pure=False, keep_comp_size=False, dont_encrypt=False,
+               fixed_sig_script=None):
         self.enckey = enckey
 
         # key decides on sha, then pub_key; of both are none default is used
@@ -645,7 +648,16 @@ class Image:
             else:
                 tlv.add('PUBKEY', pub)
 
-            if key is not None and fixed_sig is None:
+            if fixed_sig_script is not None:
+                # Call fixed signature script with payload and digest to get signature
+                # The script should return the signature in binary format
+                digest_base64 = base64.b64encode(digest).decode('ascii')
+                print(os.path.basename(__file__) + ": call fixed signature script with digest and input file")
+                result = subprocess.run([fixed_sig_script, digest_base64], stdout=subprocess.PIPE, check=True, input=self.payload)
+                stdout = result.stdout
+                self.signature = base64.b64decode(stdout.decode('ascii'))
+                tlv.add(pub_key.sig_tlv(), self.signature)
+            elif key is not None and fixed_sig is None:
                 # `sign` expects the full image payload (hashing done
                 # internally), while `sign_digest` expects only the digest
                 # of the payload
