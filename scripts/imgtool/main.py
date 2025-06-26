@@ -576,9 +576,12 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
         compression_tlvs["DECOMP_SHA"] = img.image_hash
         compression_tlvs_size = len(compression_tlvs["DECOMP_SIZE"])
         compression_tlvs_size += len(compression_tlvs["DECOMP_SHA"])
-        if img.get_signature():
-            compression_tlvs["DECOMP_SIGNATURE"] = img.get_signature()
-            compression_tlvs_size += len(compression_tlvs["DECOMP_SIGNATURE"])
+        sigs = img.get_signature()
+        if sigs:
+            sig = sigs[0] if isinstance(sigs, list) else sigs
+            compression_tlvs["DECOMP_SIGNATURE"] = sig
+            compression_tlvs_size += len(sig)
+
         if (compressed_size + compression_tlvs_size) < uncompressed_size:
             compression_header = create_lzma2_header(
                 dictsize = comp_default_dictsize, pb = comp_default_pb,
@@ -588,7 +591,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             keep_comp_size = False;
             if enckey:
                 keep_comp_size = True
-            compressed_img.create(key, public_key_format, enckey,
+            compressed_img.create(loaded_keys, public_key_format, enckey,
                dependencies, boot_record, custom_tlvs, compression_tlvs,
                compression, int(encrypt_keylen), clear, baked_signature,
                pub_key, vector_to_sign, user_sha=user_sha, hmac_sha=hmac_sha,
