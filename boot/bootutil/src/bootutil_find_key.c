@@ -28,14 +28,27 @@
 
 #include <stdint.h>
 
-#include "bootutil/bootutil_log.h"
 #include "bootutil/crypto/sha.h"
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/image.h"
 #include "bootutil/sign_key.h"
 #include "bootutil_priv.h"
 #include "mcuboot_config/mcuboot_config.h"
+#include "bootutil/bootutil_log.h"
 
+BOOT_LOG_MODULE_DECLARE(mcuboot);
+
+#if defined(MCUBOOT_SIGN_RSA)       || \
+    defined(MCUBOOT_SIGN_EC256)     || \
+    defined(MCUBOOT_SIGN_EC384)     || \
+    defined(MCUBOOT_SIGN_EC)        || \
+    defined(MCUBOOT_SIGN_ED25519)
+#define IMAGE_VALIDATION_EXPECTS_KEY
+#else
+    /* no signing, sha256 digest only */
+#endif
+
+#ifdef IMAGE_VALIDATION_EXPECTS_KEY
 #ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
 #define NUM_OF_KEYS MCUBOOT_ROTPK_MAX_KEYS_PER_IMAGE
 #else
@@ -135,3 +148,4 @@ int bootutil_find_key(uint8_t image_index, uint8_t *keyhash, uint8_t keyhash_len
     return -1;
 }
 #endif
+#endif /* IMAGE_VALIDATION_EXPECTS_KEY */

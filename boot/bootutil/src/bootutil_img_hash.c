@@ -29,12 +29,14 @@
 #include <stdint.h>
 #include <flash_map_backend/flash_map_backend.h>
 
-#include "bootutil/bootutil_log.h"
 #include "bootutil/crypto/sha.h"
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/image.h"
 #include "bootutil_priv.h"
 #include "mcuboot_config/mcuboot_config.h"
+#include "bootutil/bootutil_log.h"
+
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #ifndef MCUBOOT_SIGN_PURE
 /*
