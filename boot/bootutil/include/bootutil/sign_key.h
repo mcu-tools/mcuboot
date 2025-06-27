@@ -28,6 +28,10 @@
 /* mcuboot_config.h is needed for MCUBOOT_HW_KEY to work */
 #include "mcuboot_config/mcuboot_config.h"
 
+#ifdef MCUBOOT_BUILTIN_KEY
+#include "bootutil/fault_injection_hardening.h"
+#endif /* MCUBOOT_BUILTIN_KEY */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -48,7 +52,7 @@ extern const struct bootutil_key bootutil_keys[];
  *
  * @return                   0 if the key ID is valid for the image; nonzero on failure.
  */
-int boot_verify_key_id_for_image(uint8_t image_index, uint32_t key_id);
+fih_ret boot_verify_key_id_for_image(uint8_t image_index, uint32_t key_id);
 #endif /* MCUBOOT_BUILTIN_KEY */
 #else
 struct bootutil_key {
