@@ -1,0 +1,354 @@
+mainmenu "MCUboot Espressif Port configuration"
+
+config MCUBOOT_ESPRESSIF
+	bool
+	default y
+	help
+	  Hidden option used to indicate that the current image is MCUBoot
+	  Espressif Port
+
+config BUILD_FROM_ZEPHYR
+	bool
+	default y if ZEPHYR_HAL_ESPRESSIF_MODULE
+	help
+	  Hidden option used to indicate that the MCUBoot Espressif Port
+	  is being built from Zephyr
+
+config ESP_USE_MBEDTLS
+	bool
+	# Hidden option
+	help
+	  Use mbedTLS for crypto primitives.
+
+config ESP_USE_TINYCRYPT
+	bool
+	# Hidden option
+	help
+	  Use TinyCrypt for crypto primitives.
+
+menu "MCUBoot settings"
+
+config ESP_SINGLE_APPLICATION_SLOT
+	bool "Single slot bootloader"
+	help
+	  Single image area is used for application which means that
+	  uploading a new application overwrites the one that previously
+	  occupied the area.
+
+choice ESP_SIGN_TYPE
+	prompt "Signature type"
+	default ESP_SIGN_NONE
+
+config ESP_SIGN_NONE
+	bool "No signature; use only hash check"
+
+config ESP_SIGN_RSA
+	bool "RSA signatures"
+	select ESP_USE_MBEDTLS
+
+if ESP_SIGN_RSA
+config ESP_SIGN_RSA_LEN
+	int "RSA signature length"
+	range 2048 3072
+	default 2048
+endif
+
+config ESP_SIGN_EC256
+	bool "Elliptic curve digital signatures with curve P-256"
+	select ESP_USE_TINYCRYPT
+
+config ESP_SIGN_ED25519
+	bool "Edwards curve digital signatures using ed25519"
+	select ESP_USE_TINYCRYPT
+	help
+	  This is ed25519 signature calculated over SHA512 of SHA256 of application
+	  image.
+
+endchoice # ESP_SIGN_TYPE
+
+config ESP_SIGN_KEY_FILE
+	string "PEM key file"
+	depends on !ESP_SIGN_NONE
+	default "root-ec-p256.pem" if ESP_SIGN_EC256
+	default "root-ed25519.pem" if ESP_SIGN_ED25519
+	default "root-rsa-3072.pem" if ESP_SIGN_RSA && ESP_SIGN_RSA_LEN=3072
+	default "root-rsa-2048.pem" if ESP_SIGN_RSA && ESP_SIGN_RSA_LEN=2048
+	default ""
+	help
+	  You can use either absolute or relative path.
+	  In case relative path is used, the build system assumes that it starts
+	  from the directory where the MCUBoot KConfig configuration file is
+	  located. If the key file is not there, the build system uses relative
+	  path that starts from the MCUBoot repository root directory.
+	  The key file will be parsed by imgtools getpub command and a .c source
+	  with the public key information will be written in a format expected by
+	  MCUboot.
+
+if !ESP_SINGLE_APPLICATION_SLOT
+choice ESP_BOOT_IMAGE_UPGRADE_MODE
+	prompt "Image upgrade modes"
+	default ESP_BOOT_SWAP_USING_SCRATCH
+
+config ESP_BOOT_SWAP_USING_SCRATCH
+	bool "Swap mode that run with the scratch partition"
+	help
+	  This is the most conservative swap mode but it can work even on
+	  devices with heterogeneous flash page layout.
+
+config ESP_BOOT_UPGRADE_ONLY
+	bool "Overwrite image updates instead of swapping"
+	help
+	  If y, overwrite the primary slot with the upgrade image instead
+	  of swapping them. This prevents the fallback recovery, but
+	  uses a much simpler code path.
+
+config ESP_BOOT_SWAP_USING_OFFSET
+	bool "Swap using offset mode without scratch partition"
+	help
+	  If y, the swap upgrade is done by each sector X+1 in the secondary slot moved index X in
+	  the primary slot, then the sector at X+1 in the primary is moved to index X in the
+	  secondary.
+	  This allows a swap upgrade without using a scratch partition, but is currently limited
+	  to all sectors in both slots being of the same size. This mode offers faster swap times
+	  with less flash endurance usage than swap using move, firmware updates must be placed at
+	  the second sector in the second slot instead of the first.
+
+config ESP_BOOT_SWAP_USING_MOVE
+	bool "Swap using move mode without scratch partition"
+	help
+	  If y, the swap upgrade is done in two steps, where first every
+	  sector of the primary slot is moved up one sector, then for
+	  each sector X in the secondary slot, it is moved to index X in
+	  the primary slot, then the sector at X+1 in the primary is
+	  moved to index X in the secondary.
+	  This allows a swap upgrade without using a scratch partition,
+	  but is currently limited to all sectors in both slots being of
+	  the same size.
+
+endchoice # ESP_BOOT_IMAGE_UPGRADE_MODE
+
+endif # !ESP_SINGLE_APPLICATION_SLOT
+
+config ESP_IMAGE_NUMBER
+	int "Number of updateable images"
+	default 1
+	range 1 1 if ESP_SINGLE_APPLICATION_SLOT
+	range 1 2 if !ESP_SINGLE_APPLICATION_SLOT
+	help
+		Enables support of multi image update.
+
+config ESP_DOWNGRADE_PREVENTION
+	bool "Downgrade prevention"
+	help
+	  Prevent downgrades by enforcing incrementing version numbers.
+	  When this option is set, any upgrade must have greater major version
+	  or greater minor version with equal major version. This mechanism
+	  only protects against some attacks against version downgrades (for
+	  example, a JTAG could be used to write an older version).
+
+config ESP_DOWNGRADE_PREVENTION_SECURITY_COUNTER
+	bool "Use image security counter instead of version number"
+	depends on ESP_DOWNGRADE_PREVENTION
+	depends on (ESP_BOOT_SWAP_USING_MOVE || ESP_BOOT_SWAP_USING_SCRATCH || ESP_BOOT_SWAP_USING_OFFSET)
+	help
+	  Security counter is used for version eligibility check instead of pure
+	  version.  When this option is set, any upgrade must have greater or
+	  equal security counter value.
+	  Because of the acceptance of equal values it allows for software
+	  downgrades to some extent.
+
+endmenu # MCUboot Settings
+
+menu "Flash map organization settings"
+
+if BUILD_FROM_ZEPHYR
+DT_BOOT_PARTITION_PATH := $(dt_nodelabel_path,boot_partition)
+DT_IMG0_SLOT0_PARTITION_PATH := $(dt_nodelabel_path,slot0_partition)
+DT_IMG0_SLOT1_PARTITION_PATH := $(dt_nodelabel_path,slot1_partition)
+DT_SCRATCH_PARTITION_PATH := $(dt_nodelabel_path,scratch_partition)
+DT_FLASH_SIZE := $(div, $(dt_node_reg_size_int,$(dt_nodelabel_path,flash0)),1048576)
+endif # BUILD_FROM_ZEPHYR
+
+choice ESP_FLASHSIZE
+	prompt "Flash size"
+	default ESP_FLASHSIZE_4MB
+	depends on !BUILD_FROM_ZEPHYR
+	help
+	  SPI flash size, in megabytes
+
+config ESP_FLASHSIZE_1MB
+	bool "1 MB"
+config ESP_FLASHSIZE_2MB
+	bool "2 MB"
+config ESP_FLASHSIZE_4MB
+	bool "4 MB"
+config ESP_FLASHSIZE_8MB
+	bool "8 MB"
+config ESP_FLASHSIZE_16MB
+	bool "16 MB"
+config ESP_FLASHSIZE_32MB
+	bool "32 MB"
+config ESP_FLASHSIZE_64MB
+	bool "64 MB"
+config ESP_FLASHSIZE_128MB
+	bool "128 MB"
+endchoice # ESP_FLASHSIZE
+
+config ESP_FLASH_SIZE
+	string
+	default "$(DT_FLASH_SIZE)MB" if BUILD_FROM_ZEPHYR
+	default "1MB" if ESP_FLASHSIZE_1MB
+	default "2MB" if ESP_FLASHSIZE_2MB
+	default "4MB" if ESP_FLASHSIZE_4MB
+	default "8MB" if ESP_FLASHSIZE_8MB
+	default "16MB" if ESP_FLASHSIZE_16MB
+	default "32MB" if ESP_FLASHSIZE_32MB
+	default "64MB" if ESP_FLASHSIZE_64MB
+	default "128MB" if ESP_FLASHSIZE_128MB
+
+config ESP_BOOTLOADER_OFFSET
+	hex
+	default $(dt_node_reg_addr_hex,$(DT_BOOT_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x1000 if SOC_ESP32 || SOC_ESP32S2
+	default 0x0
+	help
+	  Offset address that 2nd bootloader will be flashed to.
+	  The value is determined by the ROM bootloader.
+
+config ESP_BOOTLOADER_SIZE
+	hex "Bootloader size"
+	default $(dt_node_reg_size_hex,$(DT_BOOT_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0xF000
+	help
+	  Bootloader size
+
+config ESP_IMAGE0_PRIMARY_START_ADDRESS
+	hex "Image 0 primary slot offset"
+	default $(dt_node_reg_addr_hex,$(DT_IMG0_SLOT0_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x10000
+	help
+	  Primary slot flash offset for Image 0
+
+config ESP_APPLICATION_SIZE
+	hex "Applicaton image size"
+	default $(dt_node_reg_size_hex,$(DT_IMG0_SLOT0_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x100000
+	help
+	  Application image size
+
+if !ESP_SINGLE_APPLICATION_SLOT
+config ESP_IMAGE0_SECONDARY_START_ADDRESS
+	hex "Image 0 secondary slot offset"
+	default $(dt_node_reg_addr_hex,$(DT_IMG0_SLOT1_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x110000
+	help
+		Secondary slot flash offset for Image 0
+
+if ESP_BOOT_SWAP_USING_SCRATCH
+config ESP_SCRATCH_OFFSET
+	hex "Scratch area offset"
+	default $(dt_node_reg_addr_hex,$(DT_SCRATCH_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x210000
+	help
+		Scratch area offset
+
+config ESP_SCRATCH_SIZE
+	hex "Scratch area size"
+	default $(dt_node_reg_size_hex,$(DT_SCRATCH_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x40000
+	help
+		Scratch area size
+endif # ESP_BOOT_SWAP_USING_SCRATCH
+endif # !ESP_SINGLE_APPLICATION_SLOT
+
+endmenu # Flash map organization settings
+
+menu "Console output settings"
+
+if BUILD_FROM_ZEPHYR
+DT_CHOSEN_Z_CONSOLE := zephyr,console
+endif # BUILD_FROM_ZEPHYR
+
+choice ESP_CONSOLE_CHANNEL
+	prompt "Channel for console output from bootloader"
+	default ESP_CONSOLE_CHANNEL_USB_SERIAL_JTAG if BUILD_FROM_ZEPHYR && \
+													$(dt_nodelabel_enabled,usb_serial) && $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_CONSOLE)) = $(dt_nodelabel_reg_addr_hex,usb_serial)
+	default ESP_CONSOLE_CHANNEL_UART_CUSTOM if BUILD_FROM_ZEPHYR && \
+												$(dt_nodelabel_enabled,uart1) && $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_CONSOLE)) = $(dt_nodelabel_reg_addr_hex,uart1)
+	default ESP_CONSOLE_CHANNEL_UART_DEFAULT
+	help
+	  Select where to send console output
+config ESP_CONSOLE_CHANNEL_UART_DEFAULT
+	bool "Default UART0"
+config ESP_CONSOLE_CHANNEL_USB_SERIAL_JTAG
+	bool "USB Serial/JTAG Controller"
+	depends on SOC_ESP32C3 || SOC_ESP32C6 || SOC_ESP32S3
+config ESP_CONSOLE_CHANNEL_UART_CUSTOM
+	bool "Custom UART"
+endchoice
+
+config ESP_CONSOLE_UART
+	bool
+	default y if ESP_CONSOLE_CHANNEL_UART_DEFAULT || ESP_CONSOLE_CHANNEL_UART_CUSTOM
+
+config ESP_CONSOLE_UART_CUSTOM
+	bool
+	default y if ESP_CONSOLE_CHANNEL_UART_CUSTOM
+
+config ESP_CONSOLE_USB_SERIAL_JTAG
+	bool
+	default y if ESP_CONSOLE_CHANNEL_USB_SERIAL_JTAG
+
+config ESP_CONSOLE_MULTIPLE_UART
+	bool
+	default y if !SOC_ESP32C3 && !SOC_ESP32H2 && !SOC_ESP32C2 && !SOC_ESP32C6
+
+choice ESP_CONSOLE_UART_CUSTOM_NUM
+	prompt "UART port to use for console output (0-1)"
+	depends on ESP_CONSOLE_UART_CUSTOM && ESP_CONSOLE_MULTIPLE_UART
+	default ESP_CONSOLE_UART_CUSTOM_NUM_0 if BUILD_FROM_ZEPHYR && \
+												$(dt_nodelabel_enabled,uart0) && $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_CONSOLE)) = $(dt_nodelabel_reg_addr_hex,uart0)
+	default ESP_CONSOLE_UART_CUSTOM_NUM_1 if BUILD_FROM_ZEPHYR && \
+												$(dt_nodelabel_enabled,uart1) && $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_CONSOLE)) = $(dt_nodelabel_reg_addr_hex,uart1)
+	help
+	  This UART peripheral is used for console output from bootloader.
+
+config ESP_CONSOLE_UART_CUSTOM_NUM_0
+	bool "UART0"
+config ESP_CONSOLE_UART_CUSTOM_NUM_1
+	bool "UART1"
+endchoice
+
+config ESP_CONSOLE_UART_NUM
+	int
+	default 0 if ESP_CONSOLE_CHANNEL_UART_DEFAULT
+	default 0 if !ESP_CONSOLE_MULTIPLE_UART
+	default 0 if ESP_CONSOLE_UART_CUSTOM_NUM_0
+	default 1 if ESP_CONSOLE_UART_CUSTOM_NUM_1
+	depends on ESP_CONSOLE_UART
+
+config ESP_CONSOLE_UART_TX_GPIO
+	int "UART TX GPIO pin"
+	depends on ESP_CONSOLE_UART_CUSTOM
+	range 0 46
+	default 1 if SOC_ESP32
+	default 20 if SOC_ESP32C2
+	default 21 if SOC_ESP32C3
+	default 9 if SOC_ESP32C6
+	default 24 if SOC_ESP32H2
+	default 43
+
+config ESP_CONSOLE_UART_RX_GPIO
+	int "UART RX GPIO pin"
+	depends on ESP_CONSOLE_UART_CUSTOM
+	range 0 46
+	default 3 if SOC_ESP32
+	default 19 if SOC_ESP32C2
+	default 20 if SOC_ESP32C3
+	default 8 if SOC_ESP32C6
+	default 23 if SOC_ESP32H2
+	default 44
+
+endmenu # Console output settings
+
+source "Kconfig.zephyr"
