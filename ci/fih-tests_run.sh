@@ -18,13 +18,15 @@ set -e
 
 source $(dirname "$0")/fih-tests_version.sh
 
+# Note that we are pulling from a github mirror of these repos, not direct upstream.  If the sha
+# checked out below changes, the mirrors might need to be updated.
 pushd .. &&\
-   git clone https://git.trustedfirmware.org/TF-M/trusted-firmware-m.git &&\
+   git clone https://github.com/mcu-tools/trusted-firmware-m &&\
    pushd trusted-firmware-m &&\
    git checkout eb8ff0db7d657b77abcd0262d5bf7f38eb1e1cdc &&\
    source lib/ext/tf-m-tests/version.txt &&\
    popd &&\
-   git clone https://git.trustedfirmware.org/TF-M/tf-m-tests.git &&\
+   git clone https://github.com/mcu-tools/tf-m-tests.git &&\
    pushd tf-m-tests &&\
    git checkout $version &&\
    popd
