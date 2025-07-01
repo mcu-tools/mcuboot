@@ -84,6 +84,10 @@ bootutil_img_hash(struct boot_loader_state *state,
     uint32_t off;
     uint32_t blk_sz;
 #endif
+#ifdef MCUBOOT_HASH_STORAGE_DIRECTLY
+    uintptr_t base = 0;
+    int fa_ret;
+#endif
 #if defined(MCUBOOT_ENC_IMAGES)
     struct enc_key_data *enc_state;
     int image_index;
@@ -153,7 +157,12 @@ bootutil_img_hash(struct boot_loader_state *state,
     /* No chunk loading, storage is mapped to address space and can
      * be directly given to hashing function.
      */
-    bootutil_sha_update(&sha_ctx, (void *)flash_area_get_off(fap), size);
+    fa_ret = flash_device_base(flash_area_get_device_id(fap), &base);
+    if (fa_ret != 0) {
+        base = 0;
+    }
+
+    bootutil_sha_update(&sha_ctx, (void *)(base + flash_area_get_off(fap)), size);
 #else /* MCUBOOT_HASH_STORAGE_DIRECTLY */
 #ifdef MCUBOOT_RAM_LOAD
     bootutil_sha_update(&sha_ctx,
