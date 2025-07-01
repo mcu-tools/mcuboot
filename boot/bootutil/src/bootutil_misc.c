@@ -45,6 +45,9 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
+static struct boot_loader_state boot_data;
+
+
 /* Currently only used by imgmgr */
 int boot_current_slot;
 
@@ -703,3 +706,244 @@ boot_erase_region(const struct flash_area *fa, uint32_t off, uint32_t size, bool
 end:
     return rc;
 }
+
+#if (BOOT_IMAGE_NUMBER > 1)
+#define IMAGES_ITER(x) for ((x) = 0; (x) < BOOT_IMAGE_NUMBER; ++(x))
+#else
+#define IMAGES_ITER(x)
+#endif
+
+#if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
+static int
+boot_read_sectors_recovery(struct boot_loader_state *state)
+{
+    uint8_t image_index;
+    int rc;
+
+    image_index = BOOT_CURR_IMG(state);
+
+    rc = boot_initialize_area(state, FLASH_AREA_IMAGE_PRIMARY(image_index));
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    rc = boot_initialize_area(state, FLASH_AREA_IMAGE_SECONDARY(image_index));
+    if (rc != 0) {
+        /* We need to differentiate from the primary image issue */
+        return BOOT_EFLASH_SEC;
+    }
+
+    return 0;
+}
+#endif
+
+#if (!defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)) || \
+defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
+/* Used for holding static buffers in multiple functions to work around issues
+ * in older versions of gcc (e.g. 4.8.4)
+ */
+static struct boot_sector_buffer sector_buffers;
+#endif
+
+
+#if !defined(MCUBOOT_DIRECT_XIP)
+#if !defined(MCUBOOT_RAM_LOAD)
+
+static uint32_t
+boot_write_sz(struct boot_loader_state *state)
+{
+    uint32_t elem_sz;
+#if MCUBOOT_SWAP_USING_SCRATCH
+    uint32_t align;
+#endif
+
+    /* Figure out what size to write update status update as.  The size depends
+     * on what the minimum write size is for scratch area, active image slot.
+     * We need to use the bigger of those 2 values.
+     */
+    elem_sz = flash_area_align(BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT));
+#if MCUBOOT_SWAP_USING_SCRATCH
+    align = flash_area_align(BOOT_SCRATCH_AREA(state));
+    if (align > elem_sz) {
+        elem_sz = align;
+    }
+#endif
+
+    return elem_sz;
+}
+
+static int
+boot_initialize_area(struct boot_loader_state *state, int flash_area)
+{
+    uint32_t num_sectors = BOOT_MAX_IMG_SECTORS;
+    boot_sector_t *out_sectors;
+    uint32_t *out_num_sectors;
+    int rc;
+
+    num_sectors = BOOT_MAX_IMG_SECTORS;
+
+    if (flash_area == FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state))) {
+        out_sectors = BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors;
+        out_num_sectors = &BOOT_IMG(state, BOOT_PRIMARY_SLOT).num_sectors;
+    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
+        out_sectors = BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors;
+        out_num_sectors = &BOOT_IMG(state, BOOT_SECONDARY_SLOT).num_sectors;
+#if MCUBOOT_SWAP_USING_SCRATCH
+    } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
+        out_sectors = state->scratch.sectors;
+        out_num_sectors = &state->scratch.num_sectors;
+#endif
+    } else {
+        return BOOT_EFLASH;
+    }
+
+#ifdef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
+    rc = flash_area_get_sectors(flash_area, &num_sectors, out_sectors);
+#else
+    _Static_assert(sizeof(int) <= sizeof(uint32_t), "Fix needed");
+    rc = flash_area_to_sectors(flash_area, (int *)&num_sectors, out_sectors);
+#endif /* defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
+    if (rc != 0) {
+        return rc;
+    }
+    *out_num_sectors = num_sectors;
+    return 0;
+}
+
+int
+boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *sectors)
+{
+    uint8_t image_index;
+    int rc;
+
+    if (sectors == NULL) {
+        sectors = &sector_buffers;
+    }
+
+    image_index = BOOT_CURR_IMG(state);
+
+    BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors =
+        sectors->primary[image_index];
+    BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors =
+        sectors->secondary[image_index];
+#if MCUBOOT_SWAP_USING_SCRATCH
+    state->scratch.sectors = sectors->scratch;
+#endif
+
+    rc = boot_initialize_area(state, FLASH_AREA_IMAGE_PRIMARY(image_index));
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    rc = boot_initialize_area(state, FLASH_AREA_IMAGE_SECONDARY(image_index));
+    if (rc != 0) {
+        /* We need to differentiate from the primary image issue */
+        return BOOT_EFLASH_SEC;
+    }
+
+#if MCUBOOT_SWAP_USING_SCRATCH
+    rc = boot_initialize_area(state, FLASH_AREA_IMAGE_SCRATCH);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+#endif
+
+    BOOT_WRITE_SZ(state) = boot_write_sz(state);
+
+    return 0;
+}
+
+#endif /* !MCUBOOT_RAM_LOAD */
+#endif /* !MCUBOOT_DIRECT_XIP */
+
+/**
+ * Clears the boot state, so that previous operations have no effect on new
+ * ones.
+ *
+ * @param state                 The state that should be cleared. If the value
+ *                              is NULL, the default bootloader state will be
+ *                              cleared.
+ */
+void boot_state_clear(struct boot_loader_state *state)
+{
+    if (state != NULL) {
+        memset(state, 0, sizeof(struct boot_loader_state));
+    } else {
+        memset(&boot_data, 0, sizeof(struct boot_loader_state));
+    }
+}
+
+
+int
+boot_open_all_flash_areas(struct boot_loader_state *state)
+{
+    size_t slot;
+    int rc = 0;
+    int fa_id;
+    int image_index;
+
+    IMAGES_ITER(BOOT_CURR_IMG(state)) {
+#if BOOT_IMAGE_NUMBER > 1
+        if (state->img_mask[BOOT_CURR_IMG(state)]) {
+            continue;
+        }
+#endif
+        image_index = BOOT_CURR_IMG(state);
+
+        for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+            fa_id = flash_area_id_from_multi_image_slot(image_index, slot);
+            rc = flash_area_open(fa_id, &BOOT_IMG_AREA(state, slot));
+            assert(rc == 0);
+
+            if (rc != 0) {
+                BOOT_LOG_ERR("Failed to open flash area ID %d (image %d slot %zu): %d",
+                             fa_id, image_index, slot, rc);
+                goto out;
+            }
+        }
+    }
+
+#if MCUBOOT_SWAP_USING_SCRATCH
+    rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &BOOT_SCRATCH_AREA(state));
+    assert(rc == 0);
+
+    if (rc != 0) {
+        BOOT_LOG_ERR("Failed to open scratch flash area: %d", rc);
+        goto out;
+    }
+#endif
+
+out:
+    if (rc != 0) {
+        boot_close_all_flash_areas(state);
+    }
+
+    return rc;
+}
+
+
+void
+boot_close_all_flash_areas(struct boot_loader_state *state)
+{
+    uint32_t slot;
+
+#if MCUBOOT_SWAP_USING_SCRATCH
+    if (BOOT_SCRATCH_AREA(state) != NULL) {
+        flash_area_close(BOOT_SCRATCH_AREA(state));
+    }
+#endif
+
+    IMAGES_ITER(BOOT_CURR_IMG(state)) {
+#if BOOT_IMAGE_NUMBER > 1
+        if (state->img_mask[BOOT_CURR_IMG(state)]) {
+            continue;
+        }
+#endif
+        for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+            if (BOOT_IMG_AREA(state, BOOT_NUM_SLOTS - 1 - slot) != NULL) {
+                flash_area_close(BOOT_IMG_AREA(state, BOOT_NUM_SLOTS - 1 - slot));
+            }
+        }
+    }
+}
+
