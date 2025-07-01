@@ -552,7 +552,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 #endif
 
                 rc = BOOT_HOOK_CALL(boot_read_image_header_hook,
-                                    BOOT_HOOK_REGULAR, image_index, 1, &hdr);
+                                    BOOT_HOOK_REGULAR, image_index, slot, &hdr);
                 if (rc == BOOT_HOOK_REGULAR)
                 {
 #ifdef MCUBOOT_SWAP_USING_OFFSET
@@ -568,7 +568,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 
                     BOOT_HOOK_CALL_FIH(boot_image_check_hook,
                                        FIH_BOOT_HOOK_REGULAR,
-                                       fih_rc, image_index, 1);
+                                       fih_rc, image_index, slot);
                     if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
                     {
 #ifdef MCUBOOT_ENC_IMAGES
