@@ -1,10 +1,6 @@
 /*
  * This module provides a thin abstraction over some of the crypto
  * primitives to make it easier to swap out the used crypto library.
- *
- * At this point, there are two choices: MCUBOOT_USE_MBED_TLS, or
- * MCUBOOT_USE_TINYCRYPT.  It is a compile error there is not exactly
- * one of these defined.
  */
 
 #ifndef __BOOTUTIL_CRYPTO_AES_CTR_PSA_H_
@@ -21,7 +17,9 @@ extern "C" {
 #endif
 
 typedef struct {
-    psa_key_id_t key;
+    psa_cipher_operation_t op;
+    psa_key_id_t key_id;
+    uint8_t key[BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE];
 } bootutil_aes_ctr_context;
 
 void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx);
