@@ -722,109 +722,109 @@ bs_slot_info(uint8_t op, char *buf, int len)
     IMAGES_ITER(image_index) {
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             if (slot == 0) {
-                    ok = zcbor_map_start_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP) &&
-                         zcbor_tstr_put_lit(cbor_state, "image") &&
-                         zcbor_uint32_put(cbor_state, (uint32_t)image_index) &&
-                         zcbor_tstr_put_lit(cbor_state, "slots") &&
-                         zcbor_list_start_encode(cbor_state, BOOT_NUM_SLOTS);
+                ok = zcbor_map_start_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP) &&
+                     zcbor_tstr_put_lit(cbor_state, "image") &&
+                     zcbor_uint32_put(cbor_state, (uint32_t)image_index) &&
+                     zcbor_tstr_put_lit(cbor_state, "slots") &&
+                     zcbor_list_start_encode(cbor_state, BOOT_NUM_SLOTS);
 
-                    if (!ok) {
-                            goto finish;
-                    }
+                if (!ok) {
+                        goto finish;
+                }
+            }
+
+            ok = zcbor_map_start_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_SLOTS_MAP) &&
+                 zcbor_tstr_put_lit(cbor_state, "slot") &&
+                 zcbor_uint32_put(cbor_state, slot);
+
+            if (!ok) {
+                goto finish;
+            }
+
+            area_id = flash_area_id_from_multi_image_slot(image_index, slot);
+            rc = flash_area_open(area_id, &fap);
+
+            if (rc) {
+                ok = zcbor_tstr_put_lit(cbor_state, "rc") &&
+                     zcbor_int32_put(cbor_state, rc) &&
+                     zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_SLOTS_MAP);
+
+                if (ok && slot == (BOOT_NUM_SLOTS - 1)) {
+                    ok = zcbor_list_end_encode(cbor_state, BOOT_NUM_SLOTS) &&
+                         zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP);
+                }
+            } else {
+                if (sizeof(fap->fa_size) == sizeof(uint64_t)) {
+                    ok = zcbor_tstr_put_lit(cbor_state, "size") &&
+                         zcbor_uint64_put(cbor_state, fap->fa_size);
+                } else {
+                    ok = zcbor_tstr_put_lit(cbor_state, "size") &&
+                         zcbor_uint32_put(cbor_state, fap->fa_size);
                 }
 
-                ok = zcbor_map_start_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_SLOTS_MAP) &&
-                     zcbor_tstr_put_lit(cbor_state, "slot") &&
-                     zcbor_uint32_put(cbor_state, slot);
+                if (!ok) {
+                    flash_area_close(fap);
+                    goto finish;
+                }
+
+                /*
+                 * Check if we support uploading to this slot and if so, return the
+                 * image ID
+                 */
+#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
+                ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
+                     zcbor_uint32_put(cbor_state, (image_index + 1));
+#elif defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
+                ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
+                     zcbor_uint32_put(cbor_state, (image_index * 2 + slot + 1));
+#else
+                if (slot == 1) {
+                    ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
+                         zcbor_uint32_put(cbor_state, (image_index * 2 + 1));
+                }
+#endif
+
+                flash_area_close(fap);
 
                 if (!ok) {
                     goto finish;
                 }
 
-                area_id = flash_area_id_from_multi_image_slot(image_index, slot);
-                rc = flash_area_open(area_id, &fap);
+                ok = zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_SLOTS_MAP);
 
-                if (rc) {
-                    ok = zcbor_tstr_put_lit(cbor_state, "rc") &&
-                         zcbor_int32_put(cbor_state, rc) &&
-                         zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_SLOTS_MAP);
-
-                    if (ok && slot == (BOOT_NUM_SLOTS - 1)) {
-                        ok = zcbor_list_end_encode(cbor_state, BOOT_NUM_SLOTS) &&
-                             zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP);
-                    }
-                } else {
-                    if (sizeof(fap->fa_size) == sizeof(uint64_t)) {
-                        ok = zcbor_tstr_put_lit(cbor_state, "size") &&
-                             zcbor_uint64_put(cbor_state, fap->fa_size);
-                    } else {
-                        ok = zcbor_tstr_put_lit(cbor_state, "size") &&
-                             zcbor_uint32_put(cbor_state, fap->fa_size);
-                    }
-
-                    if (!ok) {
-                        flash_area_close(fap);
+                if (!ok) {
                         goto finish;
-                    }
+                }
 
-                    /*
-                     * Check if we support uploading to this slot and if so, return the
-                     * image ID
-                     */
-#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
-                    ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
-                         zcbor_uint32_put(cbor_state, (image_index + 1));
-#elif defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
-                    ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
-                         zcbor_uint32_put(cbor_state, (image_index * 2 + slot + 1));
-#else
-                    if (slot == 1) {
-                        ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
-                             zcbor_uint32_put(cbor_state, (image_index * 2 + 1));
-                    }
-#endif
-
-                    flash_area_close(fap);
+                if (slot == (BOOT_NUM_SLOTS - 1)) {
+                    ok = zcbor_list_end_encode(cbor_state, BOOT_NUM_SLOTS);
 
                     if (!ok) {
                         goto finish;
                     }
 
-                    ok = zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_SLOTS_MAP);
-
-                    if (!ok) {
-                            goto finish;
-                    }
-
-                    if (slot == (BOOT_NUM_SLOTS - 1)) {
-                        ok = zcbor_list_end_encode(cbor_state, BOOT_NUM_SLOTS);
+                    if (image_max_sizes[image_index].calculated == true) {
+                        ok = zcbor_tstr_put_lit(cbor_state, "max_image_size") &&
+                             zcbor_uint32_put(cbor_state,
+                                              image_max_sizes[image_index].max_size);
 
                         if (!ok) {
                             goto finish;
                         }
-
-                        if (image_max_sizes[image_index].calculated == true) {
-                            ok = zcbor_tstr_put_lit(cbor_state, "max_image_size") &&
-                                 zcbor_uint32_put(cbor_state,
-                                                  image_max_sizes[image_index].max_size);
-
-                            if (!ok) {
-                                goto finish;
-                            }
-                        }
-
-                        ok = zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP);
                     }
-                }
 
-                if (!ok) {
-                    goto finish;
+                    ok = zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP);
                 }
             }
-        }
 
-        ok = zcbor_list_end_encode(cbor_state, MCUBOOT_IMAGE_NUMBER) &&
-             zcbor_map_end_encode(cbor_state, 1);
+            if (!ok) {
+                goto finish;
+            }
+        }
+    }
+
+    ok = zcbor_list_end_encode(cbor_state, MCUBOOT_IMAGE_NUMBER) &&
+         zcbor_map_end_encode(cbor_state, 1);
 
 finish:
     if (!ok) {
