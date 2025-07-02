@@ -1,0 +1,36 @@
+#
+# Copyright (C) 2025 Analog Devices, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+img0_pack:
+    outfile: combined_signed.bin
+    params: "--key ../root-rsa-2048.pem --header-size 0x20 --align 4 --load-addr 0x20080000 --pad-header --version 1.0.0 --slot-size 0x100000"
+
+    img1_pack:
+        infile: img1.bin
+        outfile: img1_signed.bin
+        params: "--key ../root-rsa-2048.pem --header-size 0x20 --align 4 --load-addr 0x20010000 --pad-header --version 1.0.0 --slot-size 0x10000"
+
+    img2_pack:
+        infile: img2.bin
+        outfile: img2_signed.bin
+        params: "--key ../root-rsa-2048.pem --header-size 0x20 --align 4 --load-addr 0x20020000 --pad-header --version 1.0.0 --slot-size 0x10000"
+
+    img3_pack:
+        infile: img3.bin
+        outfile: img3_signed.bin
+        params: "--key ../root-rsa-2048.pem --header-size 0x20 --align 4 --load-addr 0x20030000 --pad-header --version 1.0.0 --slot-size 0x10000" 

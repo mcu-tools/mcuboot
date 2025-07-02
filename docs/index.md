@@ -40,6 +40,7 @@ The MCUboot documentation is composed of the following pages:
 - [Bootloader design](design.md)
 - [Encrypted images](encrypted_images.md)
 - [imgtool](imgtool.md) - image signing and key management
+- [Combine Images](combine_images.md) - Combine images feature
 - [ECDSA](ecdsa.md) - information about ECDSA signature formats
 - [Serial Recovery](serial_recovery.md) - MCUmgr as the serial recovery protocol
 - Usage instructions:
