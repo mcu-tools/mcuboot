@@ -364,6 +364,13 @@ config MCUBOOT_CLEANUP_RAM
 	help
 	  Sets contents of memory to 0 before jumping to application.
 
+config MCUBOOT_INFINITE_LOOP_AFTER_RAM_CLEANUP
+	bool "Infinite loop after RAM cleanup"
+	depends on MCUBOOT_CLEANUP_RAM
+	help
+	  Verification option that keeps execution in infinite loop after
+	  RAM cleanup has been performed.
+
 config MBEDTLS_CFG_FILE
 	# It might be awkward to define an Mbed TLS header file when TinyCrypt
 	# is used, but the fact is that Mbed TLS' ASN1 parse module is used

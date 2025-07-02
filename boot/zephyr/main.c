@@ -249,6 +249,9 @@ static void do_boot(struct boot_rsp *rsp)
         "   b       clear\n"
         "out:\n"
         "   dsb\n"
+#if CONFIG_MCUBOOT_INFINITE_LOOP_AFTER_RAM_CLEANUP
+        "   b       out\n"
+#endif /*CONFIG_MCUBOOT_INFINITE_LOOP_AFTER_RAM_CLEANUP */
         /* jump to reset vector of an app */
         "   bx      r0\n"
         :
