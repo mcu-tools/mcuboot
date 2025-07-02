@@ -43,10 +43,22 @@
 #include "bootutil/enc_key.h"
 #endif
 
+#if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO) || defined(MCUBOOT_SWAP_USING_SCRATCH)
+#include "swap_priv.h"
+#endif
+
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /* Currently only used by imgmgr */
 int boot_current_slot;
+
+#if (!defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)) || \
+defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
+/* Used for holding static buffers in multiple functions to work around issues
+ * in older versions of gcc (e.g. 4.8.4)
+ */
+static struct boot_sector_buffer sector_buffers;
+#endif
 
 /**
  * @brief Determine if the data at two memory addresses is equal
@@ -695,4 +707,207 @@ boot_erase_region(const struct flash_area *fa, uint32_t off, uint32_t size, bool
 
 end:
     return rc;
+}
+
+#if (!defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)) || \
+defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
+int
+boot_initialize_area(struct boot_loader_state *state, int flash_area)
+{
+    uint32_t num_sectors = BOOT_MAX_IMG_SECTORS;
+    boot_sector_t *out_sectors;
+    uint32_t *out_num_sectors;
+    int rc;
+
+    num_sectors = BOOT_MAX_IMG_SECTORS;
+
+    if (flash_area == FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state))) {
+        out_sectors = BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors;
+        out_num_sectors = &BOOT_IMG(state, BOOT_PRIMARY_SLOT).num_sectors;
+#if BOOT_NUM_SLOTS > 1
+    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
+        out_sectors = BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors;
+        out_num_sectors = &BOOT_IMG(state, BOOT_SECONDARY_SLOT).num_sectors;
+#if MCUBOOT_SWAP_USING_SCRATCH
+    } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
+        out_sectors = state->scratch.sectors;
+        out_num_sectors = &state->scratch.num_sectors;
+#endif
+#endif
+    } else {
+        return BOOT_EFLASH;
+    }
+
+#ifdef MCUBOOT_USE_FLASH_AREA_GET_SECTORS
+    rc = flash_area_get_sectors(flash_area, &num_sectors, out_sectors);
+#else
+    _Static_assert(sizeof(int) <= sizeof(uint32_t), "Fix needed");
+    rc = flash_area_to_sectors(flash_area, (int *)&num_sectors, out_sectors);
+#endif /* defined(MCUBOOT_USE_FLASH_AREA_GET_SECTORS) */
+    if (rc != 0) {
+        return rc;
+    }
+    *out_num_sectors = num_sectors;
+    return 0;
+}
+
+static uint32_t
+boot_write_sz(struct boot_loader_state *state)
+{
+    uint32_t elem_sz;
+#if MCUBOOT_SWAP_USING_SCRATCH
+    uint32_t align;
+#endif
+
+    /* Figure out what size to write update status update as.  The size depends
+     * on what the minimum write size is for scratch area, active image slot.
+     * We need to use the bigger of those 2 values.
+     */
+    elem_sz = flash_area_align(BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT));
+#if MCUBOOT_SWAP_USING_SCRATCH
+    align = flash_area_align(BOOT_SCRATCH_AREA(state));
+    if (align > elem_sz) {
+        elem_sz = align;
+    }
+#endif
+
+    return elem_sz;
+}
+
+int
+boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *sectors)
+{
+    uint8_t image_index;
+    int rc;
+
+    if (sectors == NULL) {
+        sectors = &sector_buffers;
+    }
+
+    image_index = BOOT_CURR_IMG(state);
+
+    BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors =
+        sectors->primary[image_index];
+#if BOOT_NUM_SLOTS > 1
+    BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors =
+        sectors->secondary[image_index];
+#if MCUBOOT_SWAP_USING_SCRATCH
+    state->scratch.sectors = sectors->scratch;
+#endif
+#endif
+
+    rc = boot_initialize_area(state, FLASH_AREA_IMAGE_PRIMARY(image_index));
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+#if BOOT_NUM_SLOTS > 1
+    rc = boot_initialize_area(state, FLASH_AREA_IMAGE_SECONDARY(image_index));
+    if (rc != 0) {
+        /* We need to differentiate from the primary image issue */
+        return BOOT_EFLASH_SEC;
+    }
+
+#if MCUBOOT_SWAP_USING_SCRATCH
+    rc = boot_initialize_area(state, FLASH_AREA_IMAGE_SCRATCH);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+#endif
+#endif
+
+    BOOT_WRITE_SZ(state) = boot_write_sz(state);
+
+    return 0;
+}
+#endif
+
+#if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
+static int
+boot_read_sectors_recovery(struct boot_loader_state *state)
+{
+    uint8_t image_index;
+    int rc;
+
+    image_index = BOOT_CURR_IMG(state);
+
+    rc = boot_initialize_area(state, FLASH_AREA_IMAGE_PRIMARY(image_index));
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+
+    rc = boot_initialize_area(state, FLASH_AREA_IMAGE_SECONDARY(image_index));
+    if (rc != 0) {
+        /* We need to differentiate from the primary image issue */
+        return BOOT_EFLASH_SEC;
+    }
+
+    return 0;
+}
+
+/**
+ * Reads image data to find out the maximum application sizes. Only needs to
+ * be called in serial recovery mode, as the state information is unpopulated
+ * at that time
+ */
+void boot_fetch_slot_state_sizes(void)
+{
+    int rc = -1;
+    int image_index;
+
+    rc = boot_open_all_flash_areas(boot_get_loader_state());
+    if (rc != 0) {
+        BOOT_LOG_DBG("boot_fetch_slot_state_sizes: error %d while opening flash areas", rc);
+        goto finish;
+    }
+
+    IMAGES_ITER(BOOT_CURR_IMG(boot_get_loader_state())) {
+        int max_size = 0;
+
+        image_index = BOOT_CURR_IMG(boot_get_loader_state());
+
+        BOOT_IMG(boot_get_loader_state(), BOOT_PRIMARY_SLOT).sectors =
+            sector_buffers.primary[image_index];
+#if BOOT_NUM_SLOTS > 1
+        BOOT_IMG(boot_get_loader_state(), BOOT_SECONDARY_SLOT).sectors =
+            sector_buffers.secondary[image_index];
+#if MCUBOOT_SWAP_USING_SCRATCH
+        boot_get_loader_state()->scratch.sectors = sector_buffers.scratch;
+#endif
+#endif
+
+        /* Determine the sector layout of the image slots and scratch area. */
+        rc = boot_read_sectors_recovery(boot_get_loader_state());
+
+        if (rc == 0) {
+            max_size = app_max_size(boot_get_loader_state());
+
+            if (max_size > 0) {
+                boot_get_image_max_sizes()[image_index].calculated = true;
+                boot_get_image_max_sizes()[image_index].max_size = max_size;
+            }
+        }
+    }
+
+finish:
+    boot_close_all_flash_areas(boot_get_loader_state());
+    memset(boot_get_loader_state(), 0, sizeof(struct boot_loader_state));
+}
+#endif
+
+/**
+ * Clears the boot state, so that previous operations have no effect on new
+ * ones.
+ *
+ * @param state                 The state that should be cleared. If the value
+ *                              is NULL, the default bootloader state will be
+ *                              cleared.
+ */
+void boot_state_clear(struct boot_loader_state *state)
+{
+    if (state != NULL) {
+        memset(state, 0, sizeof(struct boot_loader_state));
+    } else {
+        memset(boot_get_loader_state(), 0, sizeof(struct boot_loader_state));
+    }
 }
