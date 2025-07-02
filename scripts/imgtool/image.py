@@ -36,7 +36,7 @@ from enum import Enum
 import click
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.primitives import hashes, hmac,keywrap
 from cryptography.hazmat.primitives.asymmetric import ec, padding
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -46,7 +46,7 @@ from intelhex import IntelHex
 
 from . import version as versmod, keys
 from .boot_record import create_sw_component_data
-from .keys import rsa, ecdsa, x25519
+from .keys import rsa, ecdsa, x25519, aeskw
 
 from collections import namedtuple
 
@@ -714,6 +714,10 @@ class Image:
                     tlv.add('ENCEC256', enctlv)
                 else:
                     tlv.add('ENCX25519', enctlv)
+            elif isinstance(enckey, aeskw.AESKW):
+                cipherkey = keywrap.aes_key_wrap(enckey.get_key(), plainkey)
+                self.enctlv_len = len(cipherkey)
+                tlv.add('ENCKW', cipherkey)
 
             if not clear:
                 nonce = bytes([0] * 16)

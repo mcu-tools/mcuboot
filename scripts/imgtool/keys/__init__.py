@@ -35,6 +35,9 @@ from .ecdsa import (ECDSA256P1, ECDSA256P1Public,
                     ECDSA384P1, ECDSA384P1Public, ECDSAUsageError)
 from .ed25519 import Ed25519, Ed25519Public, Ed25519UsageError
 from .x25519 import X25519, X25519Public, X25519UsageError
+from .aeskw import AESKW
+import base64
+
 
 
 class PasswordRequired(Exception):
@@ -49,6 +52,13 @@ def load(path, passwd=None):
     with open(path, 'rb') as f:
         raw_pem = f.read()
     try:
+        s = raw_pem.decode('utf-8')
+        if "AES-KW" in s:
+            parts = s.strip().split(":", 1)
+            if len(parts) != 2:
+                raise ValueError("Invalid AES-KW key format: missing colon separator.")
+            key = base64.b64decode(parts[1])
+            return AESKW(key)
         pk = serialization.load_pem_private_key(
                 raw_pem,
                 password=passwd,
@@ -61,11 +71,15 @@ def load(path, passwd=None):
             return None
         raise e
     except ValueError:
+        if "AES-KW" in s:
+            raise ValueError(f"Failed to load AES-KW key: {e}")
         # This seems to happen if the key is a public key, let's try
         # loading it as a public key.
         pk = serialization.load_pem_public_key(
                 raw_pem,
                 backend=default_backend())
+    except (UnicodeDecodeError, base64.binascii.Error) as e:
+        raise ValueError(f"Failed to load AES-KW key: {e}")
 
     if isinstance(pk, RSAPrivateKey):
         if pk.key_size not in RSA_KEY_SIZES:
