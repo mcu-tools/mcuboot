@@ -54,7 +54,11 @@ struct flash_area;
 #define NO_ACTIVE_SLOT UINT32_MAX
 
 /** Number of image slots in flash; currently limited to two. */
+#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) || defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+#define BOOT_NUM_SLOTS                  1
+#else
 #define BOOT_NUM_SLOTS                  2
+#endif
 
 #if (defined(MCUBOOT_OVERWRITE_ONLY) + \
      defined(MCUBOOT_SWAP_USING_MOVE) + \
