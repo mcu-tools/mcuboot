@@ -981,7 +981,7 @@ bs_upload(char *buf, int len)
          */
         const size_t area_size = flash_area_get_size(fap);
 
-#ifdef MCUBOOT_SWAP_USING_OFFSET
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
         uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
         struct flash_sector sector_data;
 #endif
@@ -1028,8 +1028,7 @@ bs_upload(char *buf, int len)
 
         img_size = img_size_tmp;
 
-#ifdef MCUBOOT_SWAP_USING_OFFSET
-#ifdef MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
+#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
         if (img_num > 0 &&
             (img_num % BOOT_NUM_SLOTS) == BOOT_DIRECT_UPLOAD_SECONDARY_SLOT_ID_REMAINDER) {
             rc = flash_area_sectors(fap, &num_sectors, &sector_data);
@@ -1044,17 +1043,6 @@ bs_upload(char *buf, int len)
         } else {
             start_off = 0;
         }
-#else
-        rc = flash_area_sectors(fap, &num_sectors, &sector_data);
-
-        if ((rc != 0 && rc != -ENOMEM) ||
-            num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
-            rc = MGMT_ERR_ENOENT;
-            goto out;
-        }
-
-        start_off = sector_data.fs_size;
-#endif
 #endif
     } else if (img_chunk_off != curr_off) {
         /* If received chunk offset does not match expected one jump, pretend
