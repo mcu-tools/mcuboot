@@ -194,13 +194,17 @@ void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx)
         BOOT_LOG_ERR("AES init PSA crypto init failed %d", psa_ret);
         assert(0);
     }
-
-    ctx->key = PSA_KEY_ID_NULL;
+    ctx->op = psa_cipher_operation_init();
+    ctx->key_id = PSA_KEY_ID_NULL;
+    memset(ctx->key, 0, sizeof(ctx->key));
 }
 
 void bootutil_aes_ctr_drop(bootutil_aes_ctr_context *ctx)
 {
-    psa_status_t psa_ret = psa_destroy_key(ctx->key);
+    psa_status_t psa_ret;
+
+    (void)psa_cipher_abort(&(ctx->op));
+    psa_ret = psa_destroy_key(ctx->key_id);
 
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_WRN("aes_ctr_drop: destruction failed %d", psa_ret);
@@ -211,19 +215,23 @@ void bootutil_aes_ctr_drop(bootutil_aes_ctr_context *ctx)
         assert(0);
     }
 
-    ctx->key = PSA_KEY_ID_NULL;
+    ctx->key_id = PSA_KEY_ID_NULL;
+    memset(ctx->key, 0, sizeof(ctx->key));
 }
 
 int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k)
 {
-    psa_status_t psa_ret = PSA_ERROR_BAD_STATE;
-    psa_key_attributes_t kattr = PSA_KEY_ATTRIBUTES_INIT;
+    psa_status_t psa_ret = PSA_ERROR_INVALID_ARGUMENT;
+    psa_key_attributes_t key_attributes = psa_key_attributes_init();
 
-    psa_set_key_type(&kattr, PSA_KEY_TYPE_AES);
-    psa_set_key_usage_flags(&kattr, PSA_KEY_USAGE_DECRYPT | PSA_KEY_USAGE_ENCRYPT);
-    psa_set_key_algorithm(&kattr, PSA_ALG_CTR);
+    /* Setup the key policy */
+    psa_set_key_type(&key_attributes, PSA_KEY_TYPE_AES);
+    psa_set_key_usage_flags(&key_attributes, PSA_KEY_USAGE_DECRYPT | PSA_KEY_USAGE_ENCRYPT);
+    psa_set_key_algorithm(&key_attributes, PSA_ALG_CTR);
 
-    psa_ret = psa_import_key(&kattr, k, HKDF_AES_KEY_SIZE, &ctx->key);
+    memcpy(ctx->key, k, HKDF_AES_KEY_SIZE);
+
+    psa_ret = psa_import_key(&key_attributes, ctx->key, HKDF_AES_KEY_SIZE, &(ctx->key_id));
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_ERR("aes_ctr_set_key; import failed %d", psa_ret);
         return -1;
@@ -232,6 +240,7 @@ int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k)
 }
 
 #if defined(MCUBOOT_ENC_IMAGES)
+#define BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE (16)
 extern const struct bootutil_key bootutil_enc_key;
 /*
  * Decrypt an encryption key TLV.
@@ -425,56 +434,77 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
         const uint8_t *m, uint32_t mlen, size_t blk_off, uint8_t *c)
 {
-    int ret = 0;
-    psa_status_t psa_ret = PSA_ERROR_BAD_STATE;
-    const psa_key_id_t kid = ctx->key;
-    psa_cipher_operation_t psa_op;
-    size_t elen = 0;	/* Decrypted length */
+    int ret = -1;
+    psa_status_t status = PSA_ERROR_INVALID_ARGUMENT;
+    (void)blk_off; /* These are handled by the API */
+    size_t output_length = 0;
+    size_t clen = mlen;
 
-    /* Fixme: calling psa_crypto_init multiple times is not a problem,
-     * yet the code here is only present because there is not general
-     * crypto init. */
-    psa_ret = psa_crypto_init();
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_ERR("PSA crypto init failed %d", psa_ret);
-        ret = -1;
-        goto gone;
-    }
-
-    psa_op = psa_cipher_operation_init();
+    /* Key has already been imported as part of bootutil_aes_ctr_set_key() */
 
     /* This could be done with psa_cipher_decrypt one-shot operation, but
      * multi-part operation is used to avoid re-allocating input buffer
      * to account for IV in front of data.
      */
-    psa_ret = psa_cipher_encrypt_setup(&psa_op, kid, PSA_ALG_CTR);
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_ERR("AES enc setup failed %d", psa_ret);
+    /* Setup the object always as encryption for CTR*/
+    status = psa_cipher_encrypt_setup(&(ctx->op), ctx->key_id, PSA_ALG_CTR);
+    if (status != PSA_SUCCESS) {
+        BOOT_LOG_ERR("AES enc/dec setup failed %d", status);
         ret = -1;
         goto gone;
     }
 
     /* Fixme: hardcoded counter  size, but it is hardcoded everywhere */
-    psa_ret = psa_cipher_set_iv(&psa_op, counter, 16);
-    if (psa_ret != PSA_SUCCESS) {
-	BOOT_LOG_ERR("AES enc IV set failed %d", psa_ret);
+    status = psa_cipher_set_iv(&(ctx->op), counter, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
+    if (status != PSA_SUCCESS) {
+        BOOT_LOG_ERR("AES enc/dec IV set failed %d", status);
         ret = -1;
         goto gone_after_setup;
     }
 
-    psa_ret = psa_cipher_update(&psa_op, m, mlen, c, mlen, &elen);
-    if (psa_ret != PSA_SUCCESS) {
-	BOOT_LOG_ERR("AES enc encryption failed %d", psa_ret);
-        ret = -1;
-        goto gone_after_setup;
+    if (!(mlen % BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE)) {
+        status = psa_cipher_update(&(ctx->op), m, mlen, c, clen, &output_length);
+    } else {
+        /* Partial blocks and overlapping input/outputs might lead to unexpected
+         * failures in mbed TLS, so treat them separately. Details available at
+         * https://github.com/Mbed-TLS/mbedtls/issues/3266
+         */
+        size_t len_aligned = ((mlen/BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE)
+                              * BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
+        status = psa_cipher_update(&(ctx->op), m, len_aligned, c, clen, &output_length);
+        if (status != PSA_SUCCESS) {
+            BOOT_LOG_ERR("AES enc/dec failed %d", status);
+            ret = -1;
+            goto gone_after_setup;
+        }
+
+        size_t remaining_items = mlen % 16;
+        uint8_t last_output[BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE];
+        size_t last_output_length = 0;
+        status = psa_cipher_update(&(ctx->op), &m[len_aligned], remaining_items,
+                                   last_output, sizeof(last_output), &last_output_length);
+        if (status != PSA_SUCCESS) {
+            BOOT_LOG_ERR("AES enc/dec failed %d", status);
+            ret = -1;
+            goto gone_after_setup;
+        }
+        memcpy(&c[len_aligned], last_output, remaining_items);
+        output_length += last_output_length;
     }
 
 gone_after_setup:
-    psa_ret = psa_cipher_abort(&psa_op);
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_WRN("AES enc cipher abort failed %d", psa_ret);
+    /* Note that counter is not updated in this API while it's updated in the
+     * mbed TLS API. This means that the caller can't rely on the value of it
+     * if compatibility with different API implementations wants to be kept
+     */
+    status = psa_cipher_abort(&(ctx->op));
+    if (status != PSA_SUCCESS) {
+        BOOT_LOG_WRN("AES enc/dec cipher abort failed %d", status);
         /* Intentionally not changing the ret */
     }
+    psa_destroy_key(ctx->key_id);
+    ctx->key_id = PSA_KEY_ID_NULL;
+
 gone:
     return ret;
 }
@@ -482,57 +512,7 @@ gone:
 int bootutil_aes_ctr_decrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
         const uint8_t *c, uint32_t clen, size_t blk_off, uint8_t *m)
 {
-    int ret = 0;
-    psa_status_t psa_ret = PSA_ERROR_BAD_STATE;
-    const psa_key_id_t kid = ctx->key;
-    psa_cipher_operation_t psa_op;
-    size_t dlen = 0;	/* Decrypted length */
-
-    /* Fixme: the init should already happen before calling the function, but
-     * somehow it does not, for example when recovering in swap.
-     */
-    psa_ret = psa_crypto_init();
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_ERR("PSA crypto init failed %d", psa_ret);
-        ret = -1;
-        goto gone;
-    }
-
-    psa_op = psa_cipher_operation_init();
-
-    /* This could be done with psa_cipher_decrypt one-shot operation, but
-     * multi-part operation is used to avoid re-allocating input buffer
-     * to account for IV in front of data.
-     */
-    psa_ret = psa_cipher_decrypt_setup(&psa_op, kid, PSA_ALG_CTR);
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_ERR("AES dec setup failed %d", psa_ret);
-        ret = -1;
-        goto gone;
-    }
-
-    /* Fixme: hardcoded counter  size, but it is hardcoded everywhere */
-    psa_ret = psa_cipher_set_iv(&psa_op, counter, 16);
-    if (psa_ret != PSA_SUCCESS) {
-	BOOT_LOG_ERR("AES dec IV set failed %d", psa_ret);
-        ret = -1;
-        goto gone_after_setup;
-    }
-
-    psa_ret = psa_cipher_update(&psa_op, c, clen, m, clen, &dlen);
-    if (psa_ret != PSA_SUCCESS) {
-	BOOT_LOG_ERR("AES dec decryption failed %d", psa_ret);
-        ret = -1;
-        goto gone_after_setup;
-    }
-
-gone_after_setup:
-    psa_ret = psa_cipher_abort(&psa_op);
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_WRN("PSA dec abort failed %d", psa_ret);
-        /* Intentionally not changing the ret */
-    }
-gone:
-    return ret;
+    return bootutil_aes_ctr_encrypt(ctx, counter, c, clen, blk_off, m);
 }
+
 #endif /* defined(MCUBOOT_ENC_IMAGES) */
