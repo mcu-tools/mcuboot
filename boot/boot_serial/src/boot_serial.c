@@ -746,7 +746,13 @@ bs_slot_info(uint8_t op, char *buf, int len)
 
                 if (rc) {
                     ok = zcbor_tstr_put_lit(cbor_state, "rc") &&
-                         zcbor_int32_put(cbor_state, rc);
+                         zcbor_int32_put(cbor_state, rc) &&
+                         zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_SLOTS_MAP);
+
+                    if (ok && slot == (BOOT_NUM_SLOTS - 1)) {
+                        ok = zcbor_list_end_encode(cbor_state, BOOT_NUM_SLOTS) &&
+                             zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP);
+                    }
                 } else {
                     if (sizeof(fap->fa_size) == sizeof(uint64_t)) {
                         ok = zcbor_tstr_put_lit(cbor_state, "size") &&
@@ -808,7 +814,6 @@ bs_slot_info(uint8_t op, char *buf, int len)
                         }
 
                         ok = zcbor_map_end_encode(cbor_state, CBOR_ENTRIES_SLOT_INFO_IMAGE_MAP);
-
                     }
                 }
 
