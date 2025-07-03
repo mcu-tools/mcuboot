@@ -90,12 +90,6 @@ if(DEFINED CONFIG_ENABLE_MGMT_PERUSER)
   endif()
 endif()
 
-if(NOT DEFINED CONFIG_FLASH_PAGE_LAYOUT)
-  zephyr_library_sources(
-    flash_map_legacy.c
-    )
-endif()
-
 if(DEFINED CONFIG_BOOT_SHARE_BACKEND_RETENTION)
   zephyr_library_sources(
     shared_data.c
