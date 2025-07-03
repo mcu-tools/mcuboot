@@ -137,7 +137,7 @@ extern fih_ret FIH_BOOT_HOOK_REGULAR;
 /* Global failure handler - more resistant to unlooping. noinline and used are
  * used to prevent optimization
  */
-__attribute__((noinline)) __attribute__((used))
+__attribute__((noinline)) __attribute__((used)) __attribute__((noreturn))
 void fih_panic_loop(void);
 #define FIH_PANIC fih_panic_loop()
 #else
