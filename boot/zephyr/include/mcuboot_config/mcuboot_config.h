@@ -355,7 +355,7 @@
 
 /* If set to non-0 it will use logical sectors rather than querying
  * device for sector sizes. This slightly reduces code and RAM usage.
- * Note that the logical sector size has to be multiply of erase
+ * Note that the logical sector size has to be multiple of erase
  * sector size that is biggest for of all devices in the system.
  */
 #if defined(CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE)
