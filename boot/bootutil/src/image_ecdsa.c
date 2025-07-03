@@ -41,7 +41,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #if !defined(MCUBOOT_BUILTIN_KEY)
 fih_ret
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
-                    uint8_t key_id)
+                    uint32_t key_id)
 {
     int rc;
     bootutil_ecdsa_context ctx;
@@ -74,7 +74,7 @@ out:
 #else /* !MCUBOOT_BUILTIN_KEY */
 fih_ret
 bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
-                    uint8_t key_id)
+                    uint32_t key_id)
 {
     int rc;
     bootutil_ecdsa_context ctx;
