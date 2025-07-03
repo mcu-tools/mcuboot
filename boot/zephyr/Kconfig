@@ -146,6 +146,7 @@ config BOOT_IMG_HASH_ALG_SHA512_ALLOW
 
 config BOOT_IMG_HASH_DIRECTLY_ON_STORAGE
 	bool "Hash calculation functions access storage through address space"
+	default y if NRF_SECURITY && SOC_NRF54H20
 	depends on !BOOT_ENCRYPT_IMAGE
 	help
 	  When possible to map storage device, at least for read operations,
@@ -200,7 +201,7 @@ config BOOT_SIGNATURE_TYPE_PURE_ALLOW
 
 choice BOOT_SIGNATURE_TYPE
 	prompt "Signature type"
-	default BOOT_SIGNATURE_TYPE_ED25519 if SOC_NRF54L15_CPUAPP
+	default BOOT_SIGNATURE_TYPE_ED25519 if SOC_NRF54L15_CPUAPP || SOC_NRF54H20_CPUAPP
 	default BOOT_SIGNATURE_TYPE_RSA
 
 config BOOT_SIGNATURE_TYPE_NONE
