@@ -47,6 +47,73 @@ int boot_status_fails = 0;
 #define BOOT_STATUS_ASSERT(x) ASSERT(x)
 #endif
 
+#if MCUBOOT_SWAP_USING_SCRATCH
+size_t
+boot_get_first_trailer_sector(struct boot_loader_state *state, size_t slot, size_t trailer_sz)
+{
+    size_t first_trailer_sector = boot_img_num_sectors(state, slot) - 1;
+    size_t sector_sz = boot_img_sector_size(state, slot, first_trailer_sector);
+    size_t trailer_sector_sz = sector_sz;
+
+    while (trailer_sector_sz < trailer_sz) {
+        /* Consider that the image trailer may span across sectors of different sizes */
+        --first_trailer_sector;
+        sector_sz = boot_img_sector_size(state, slot, first_trailer_sector);
+
+        trailer_sector_sz += sector_sz;
+    }
+
+    return first_trailer_sector;
+}
+
+/**
+ * Returns the offset to the end of the first sector of a given slot that holds image trailer data.
+ *
+ * @param state      Current bootloader's state.
+ * @param slot       The index of the slot to consider.
+ * @param trailer_sz The size of the trailer, in bytes.
+ *
+ * @return The offset to the end of the first sector of the slot that holds image trailer data.
+ */
+static uint32_t
+get_first_trailer_sector_end_off(struct boot_loader_state *state, size_t slot, size_t trailer_sz)
+{
+    size_t first_trailer_sector = boot_get_first_trailer_sector(state, slot, trailer_sz);
+
+    return boot_img_sector_off(state, slot, first_trailer_sector) +
+           boot_img_sector_size(state, slot, first_trailer_sector);
+}
+
+static size_t app_max_size_adjust_to_trailer(struct boot_loader_state *state, uint32_t slot,
+                                             size_t slot_size)
+{
+    size_t slot_trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
+    size_t slot_trailer_off = slot_size - slot_trailer_sz;
+
+    /* If the trailer doesn't fit in the last sector of the primary or secondary slot, some padding
+     * might have to be inserted between the end of the firmware image and the beginning of the
+     * trailer to ensure there is enough space for the trailer in the scratch area when the last
+     * sector of the secondary will be copied to the scratch area.
+     *
+     * The value of the padding depends on the amount of trailer data that is contained in the first
+     * trailer containing part of the trailer in the primary and secondary slot.
+     */
+    size_t trailer_sector_end_off =
+        get_first_trailer_sector_end_off(state, slot, slot_trailer_sz);
+
+    size_t trailer_sz_in_first_sector = trailer_sector_end_off - slot_trailer_off;
+
+    size_t trailer_padding = 0;
+    size_t scratch_trailer_sz = boot_scratch_trailer_sz(BOOT_WRITE_SZ(state));
+
+    if (scratch_trailer_sz > trailer_sz_in_first_sector) {
+        trailer_padding = scratch_trailer_sz - trailer_sz_in_first_sector;
+    }
+
+    return slot_trailer_off - trailer_padding;
+}
+#endif /* MCUBOOT_SWAP_USING_SCRATCH */
+
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 /**
  * Reads the status of a partially-completed swap, if any.  This is necessary
@@ -892,6 +959,15 @@ int app_max_size(struct boot_loader_state *state)
 
 #ifdef MCUBOOT_OVERWRITE_ONLY
     return (sz1 < sz0 ? sz1 : sz0);
+#elif MCUBOOT_SWAP_USING_SCRATCH
+    size_t primary_max_app_sz = app_max_size_adjust_to_trailer(state,
+                                                               BOOT_PRIMARY_SLOT,
+                                                               primary_slot_sz);
+    size_t secondary_max_app_sz = app_max_size_adjust_to_trailer(state,
+                                                                 BOOT_SECONDARY_SLOT,
+                                                                 secondary_slot_sz);
+    return (primary_max_app_sz < secondary_max_app_sz ?
+            primary_max_app_sz : secondary_max_app_sz);
 #else
     return (secondary_slot_sz < primary_slot_sz ? secondary_slot_sz : primary_slot_sz);
 #endif
@@ -899,10 +975,22 @@ int app_max_size(struct boot_loader_state *state)
 #else
 int app_max_size(struct boot_loader_state *state)
 {
+    int primary_sz, secondary_sz;
+#if !MCUBOOT_SWAP_USING_SCRATCH
     const struct flash_area *fap = NULL;
     uint32_t active_slot;
-    int primary_sz, secondary_sz;
+#endif /* !MCUBOOT_SWAP_USING_SCRATCH */
 
+#if MCUBOOT_SWAP_USING_SCRATCH
+    size_t primary_max_app_sz = app_max_size_adjust_to_trailer(state,
+                                                               BOOT_PRIMARY_SLOT,
+                                                               primary_sz);
+    size_t secondary_max_app_sz = app_max_size_adjust_to_trailer(state,
+                                                                BOOT_SECONDARY_SLOT,
+                                                                secondary_sz);
+    return (primary_max_app_sz < secondary_max_app_sz ?
+            primary_max_app_sz : secondary_max_app_sz);
+#else /* MCUBOOT_SWAP_USING_SCRATCH */
     active_slot = state->slot_usage[BOOT_CURR_IMG(state)].active_slot;
 
     fap = BOOT_IMG_AREA(state, active_slot);
@@ -920,6 +1008,7 @@ int app_max_size(struct boot_loader_state *state)
     secondary_sz = flash_area_get_size(fap);
 
     return (secondary_sz < primary_sz ? secondary_sz : primary_sz);
+#endif /* MCUBOOT_SWAP_USING_SCRATCH */
 }
 
 #endif /* !MCUBOOT_DIRECT_XIP && !MCUBOOT_RAM_LOAD */
