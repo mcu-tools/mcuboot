@@ -108,6 +108,7 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/image_validate.c
   ${BOOT_DIR}/bootutil/src/tlv.c
   ${BOOT_DIR}/bootutil/src/encrypted.c
+  ${BOOT_DIR}/bootutil/src/crypto_common.c
   ${BOOT_DIR}/bootutil/src/image_rsa.c
   ${BOOT_DIR}/bootutil/src/image_ecdsa.c
   ${BOOT_DIR}/bootutil/src/image_ed25519.c

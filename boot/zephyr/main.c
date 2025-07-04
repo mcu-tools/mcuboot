@@ -635,6 +635,8 @@ int main(void)
 
     mcuboot_status_change(MCUBOOT_STATUS_BOOTABLE_IMAGE_FOUND);
 
+    bootutil_crypto_key_housekeeping();
+
     ZEPHYR_BOOT_LOG_STOP();
     do_boot(&rsp);
 
