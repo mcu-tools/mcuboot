@@ -439,9 +439,17 @@ if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQ
 endif()
 
 if(CONFIG_MCUBOOT_CLEANUP_ARM_CORE)
-zephyr_library_sources(
-  ${BOOT_DIR}/zephyr/arm_cleanup.c
-)
+  # ARM Cortex-M
+  zephyr_library_sources_ifdef(
+    CONFIG_CPU_CORTEX_M
+    ${BOOT_DIR}/zephyr/cleanup/arm_cortex_m.c
+  )
+
+  # ARM Cortex-R
+  zephyr_library_sources_ifdef(
+    CONFIG_ARMV7_R
+    ${BOOT_DIR}/zephyr/cleanup/arm_cortex_r.c
+  )
 endif()
 
 if(CONFIG_MCUBOOT_BOOT_BANNER)
