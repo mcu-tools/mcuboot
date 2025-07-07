@@ -7,3 +7,5 @@ package-managers:
   pip:
     requirement-files:
       - zephyr/requirements.txt
+samples:
+  - boot/zephyr
