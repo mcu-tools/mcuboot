@@ -164,6 +164,15 @@
 #define MCUBOOT_HMAC_SHA512
 #endif
 
+/* Turn off check of public key hash against compiled in key
+ * before attempting signature verification. When there is only
+ * one key, matching is pointless, the signature may just be
+ * verified with the only key that there is.
+ */
+#ifdef CONFIG_BOOT_BYPASS_KEY_MATCH
+#define MCUBOOT_BYPASS_KEY_MATCH
+#endif
+
 #ifdef CONFIG_BOOT_DECOMPRESSION
 #define MCUBOOT_DECOMPRESS_IMAGES
 #endif
