@@ -1,5 +1,5 @@
 #------------------------------------------------------------------------------
-# Copyright (c) 2020-2023, Arm Limited. All rights reserved.
+# Copyright (c) 2020-2025, Arm Limited. All rights reserved.
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -17,6 +17,9 @@ target_include_directories(bootutil
 target_sources(bootutil
     PRIVATE
         src/boot_record.c
+        src/bootutil_find_key.c
+        src/bootutil_img_hash.c
+        src/bootutil_img_security_cnt.c
         src/bootutil_misc.c
         src/bootutil_public.c
         src/caps.c
@@ -33,6 +36,7 @@ target_sources(bootutil
         src/swap_scratch.c
         src/tlv.c
 )
+
 if(CONFIG_BOOT_RAM_LOAD)
     target_sources(bootutil
         PRIVATE
