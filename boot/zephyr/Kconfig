@@ -344,7 +344,7 @@ config BOOT_SIGNATURE_KEY_FILE
 
 config MCUBOOT_CLEANUP_ARM_CORE
 	bool "Perform core cleanup before chain-load the application"
-	depends on CPU_CORTEX_M
+	depends on CPU_CORTEX_M || ARMV7_R
 	default y
 	help
 	  This option instructs MCUboot to perform a clean-up of a set of

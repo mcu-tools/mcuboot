@@ -3,6 +3,7 @@
  * Copyright (c) 2020 Arm Limited
  * Copyright (c) 2021-2023 Nordic Semiconductor ASA
  * Copyright (c) 2025 Aerlync Labs Inc.
+ * Copyright (c) 2025 Siemens Mobility GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,7 +33,7 @@
 #include <zephyr/cache.h>
 #endif
 
-#if defined(CONFIG_ARM)
+#if defined(CONFIG_CPU_CORTEX_M)
 #include <cmsis_core.h>
 #endif
 
@@ -142,8 +143,19 @@ extern void *_vector_table_pointer;
 #endif
 
 struct arm_vector_table {
+#ifdef CONFIG_CPU_CORTEX_M
     uint32_t msp;
     uint32_t reset;
+#else
+    uint32_t reset;
+    uint32_t undef_instruction;
+    uint32_t svc;
+    uint32_t abort_prefetch;
+    uint32_t abort_data;
+    uint32_t reserved;
+    uint32_t irq;
+    uint32_t fiq;
+#endif
 };
 
 static void do_boot(struct boot_rsp *rsp)
@@ -183,7 +195,7 @@ static void do_boot(struct boot_rsp *rsp)
     usb_disable();
 #endif
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
-    cleanup_arm_nvic(); /* cleanup NVIC registers */
+    cleanup_arm_interrupts(); /* Disable and acknowledge all interrupts */
 
 #if defined(CONFIG_BOOT_DISABLE_CACHES)
     /* Flush and disable instruction/data caches before chain-loading the application */
@@ -226,10 +238,31 @@ static void do_boot(struct boot_rsp *rsp)
 #endif
 #endif /* CONFIG_BOOT_INTR_VEC_RELOC */
 
+#ifdef CONFIG_CPU_CORTEX_M
     __set_MSP(vt->msp);
+#endif
+
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
+#ifdef CONFIG_CPU_CORTEX_M
     __set_CONTROL(0x00); /* application will configures core on its own */
     __ISB();
+#else
+    /* Set mode to supervisor and A, I and F bit as described in the
+     * Cortex R5 TRM */
+    __asm__ volatile(
+        "   mrs r0, CPSR\n"
+        /* change mode bits to supervisor */
+        "   bic r0, #0x1f\n"
+        "   orr r0, #0x13\n"
+        /* set the A, I and F bit */
+        "   mov r1, #0b111\n"
+        "   lsl r1, #0x6\n"
+        "   orr r0, r1\n"
+
+        "   msr CPSR, r0\n"
+        ::: "r0", "r1");
+#endif /* CONFIG_CPU_CORTEX_M */
+
 #endif
 #if CONFIG_MCUBOOT_CLEANUP_RAM
     __asm__ volatile (
@@ -257,7 +290,18 @@ static void do_boot(struct boot_rsp *rsp)
         : "r0", "r1", "r2", "r3", "memory"
     );
 #else
+
+#ifdef CONFIG_CPU_CORTEX_M
     ((void (*)(void))vt->reset)();
+#else
+    /* Some ARM CPUs like the Cortex-R5 can run in thumb mode but reset into ARM
+     * mode (depending on a CPU signal configurations). To do the switch into ARM
+     * mode, if needed, an explicit branch with exchange instruction set
+     * instruction is needed
+     */
+    __asm__("bx %0\n" : : "r" (&vt->reset));
+#endif
+
 #endif
 }
 
