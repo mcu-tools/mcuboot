@@ -332,8 +332,8 @@ bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
     }
 
     /* Adding hardening to avoid this potential attack:
-     *  - Image is signed with an arbitrary key and the corresponding public
-     *    key is added as a TLV field.
+     * - Image is signed with an arbitrary key and the corresponding public
+     *   key is added as a TLV field.
      * - During public key validation (comparing against key-hash read from
      *   HW) a fault is injected to accept the public key as valid one.
      */
