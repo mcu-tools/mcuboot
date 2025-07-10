@@ -17,6 +17,9 @@ target_include_directories(bootutil
 target_sources(bootutil
     PRIVATE
         src/boot_record.c
+        src/bootutil_find_key.c
+        src/bootutil_img_hash.c
+        src/bootutil_img_security_cnt.c
         src/bootutil_misc.c
         src/bootutil_public.c
         src/caps.c
