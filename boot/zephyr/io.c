@@ -67,9 +67,6 @@
  */
 #if DT_NODE_EXISTS(DT_ALIAS(mcuboot_led0))
 #define LED0_NODE DT_ALIAS(mcuboot_led0)
-#elif DT_NODE_EXISTS(DT_ALIAS(bootloader_led0))
-#warning "bootloader-led0 alias is deprecated; use mcuboot-led0 instead"
-#define LED0_NODE DT_ALIAS(bootloader_led0)
 #endif
 
 #if DT_NODE_HAS_STATUS(LED0_NODE, okay) && DT_NODE_HAS_PROP(LED0_NODE, gpios)
