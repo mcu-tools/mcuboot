@@ -58,6 +58,12 @@
 #include <os/os_malloc.h>
 #endif
 
+#ifdef __ZEPHYR__
+#if defined(CONFIG_MCUBOOT_IMG_VALIDATE_ATTEMPT_WAIT_MS)
+#include <zephyr/kernel.h>
+#endif
+#endif
+
 #include "mcuboot_config/mcuboot_config.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
@@ -644,8 +650,30 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
     }
 #endif
 
-    FIH_CALL(bootutil_img_validate, fih_rc, state, hdr, fap, tmpbuf, BOOT_TMPBUF_SZ,
-             NULL, 0, NULL);
+    /* To prevent skipping the validation by setting illegal attempt count */
+    assert(CONFIG_MCUBOOT_IMG_VALIDATE_ATTEMPT_COUNT >= 1);
+
+    for (int i = 1; i <= CONFIG_MCUBOOT_IMG_VALIDATE_ATTEMPT_COUNT; i++ ) {
+      BOOT_LOG_DBG("Image validation attempt %d/%d", i, CONFIG_MCUBOOT_IMG_VALIDATE_ATTEMPT_COUNT);
+
+      FIH_CALL(bootutil_img_validate, fih_rc, state, hdr, fap, tmpbuf, BOOT_TMPBUF_SZ,
+              NULL, 0, NULL);
+
+      if (FIH_EQ(fih_rc, FIH_SUCCESS)) {
+        BOOT_LOG_DBG("Image validation attempt %d/%d success", i, CONFIG_MCUBOOT_IMG_VALIDATE_ATTEMPT_COUNT);
+        break;
+      } else {
+        BOOT_LOG_WRN("Image validation attempt %d/%d failure: %d", i, CONFIG_MCUBOOT_IMG_VALIDATE_ATTEMPT_COUNT, fih_rc);
+
+        if (i < CONFIG_MCUBOOT_IMG_VALIDATE_ATTEMPT_COUNT) {
+#if defined(CONFIG_MCUBOOT_IMG_VALIDATE_ATTEMPT_WAIT_MS)
+          BOOT_LOG_DBG("Waiting %d ms before next attempt",
+                        CONFIG_MCUBOOT_IMG_VALIDATE_ATTEMPT_WAIT_MS);
+          k_busy_wait(CONFIG_MCUBOOT_IMG_VALIDATE_ATTEMPT_WAIT_MS * 1000);
+#endif /* CONFIG_MCUBOOT_IMG_VALIDATE_ATTEMPT_WAIT_MS */
+        }
+      }
+    }
 
     FIH_RET(fih_rc);
 }

@@ -1168,4 +1168,21 @@ config MCUBOOT_VERIFY_IMG_ADDRESS
 	  also be useful when BOOT_DIRECT_XIP is enabled, to ensure that the image
 	  linked at the correct address is loaded.
 
+config MCUBOOT_IMG_VALIDATE_ATTEMPT_COUNT
+  int "Number of image validation attempts"
+  default 1
+  help
+    Number of image validation attempts performed before an image is considered invalid.
+    A wait is done between each attempt to allow for recovery from a temporary disruption.
+    This can prevent erasing an image when initial validation fails.
+    Wait time is controlled by MCUBOOT_IMG_VALIDATE_ATTEMPT_WAIT_MS.
+
+config MCUBOOT_IMG_VALIDATE_ATTEMPT_WAIT_MS
+  int "Time between image validation attempts"
+  depends on MCUBOOT_IMG_VALIDATE_ATTEMPT_COUNT  > 1
+  default 5000
+  help
+    Time between image validation attempts, in milliseconds.
+    Allows for recovery from transient bit flips or similar situations.
+
 source "Kconfig.zephyr"
