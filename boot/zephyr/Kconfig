@@ -70,15 +70,20 @@ if BOOT_USE_PSA_CRYPTO
 
 config BOOT_PSA_IMG_HASH_ALG_SHA256_DEPENDENCIES
 	bool
-	default y if BOOT_IMG_HASH_ALG_SHA256
+	default y if BOOT_SOMETHING_USES_SHA256
 	select PSA_WANT_ALG_SHA_256
 	help
 	  Dependencies for hashing with SHA256
 
+config BOOT_PSA_IMG_HASH_ALG_SHA512_DEPENDENCIES
+	bool
+	default y if BOOT_SOMETHING_USES_SHA512
+	select PSA_WANT_ALG_SHA_512
+	help
+	  Dependencies for hashing with SHA512
+
 config BOOT_ED25519_PSA_DEPENDENCIES
 	bool
-	select PSA_WANT_ALG_SHA_256
-	select PSA_WANT_ALG_SHA_512
 	select PSA_WANT_ALG_PURE_EDDSA
 	# Seems that upstream mbedTLS does not have TE
 	#select PSA_WANT_ECC_TWISTED_EDWARDS_255
@@ -129,6 +134,30 @@ config SINGLE_APPLICATION_SLOT
 	  uploading a new application overwrites the one that previously
 	  occupied the area.
 
+config BOOT_SOMETHING_USES_SHA256
+	bool
+	help
+	  Hidden option that should be selected when something requires
+	  SHA256 implementation in any form. It should be used by crypto
+	  backends to enable support for SHA256 in code and/or hardware
+	  drivers.
+
+config BOOT_SOMETHING_USES_SHA384
+	bool
+	help
+	  Hidden option that should be selected when something requires
+	  SHA384 implementation in any form. It should be used by crypto
+	  backends to enable support for SHA384 in code and/or hardware
+	  drivers.
+
+config BOOT_SOMETHING_USES_SHA512
+	bool
+	help
+	  Hidden option that should be selected when something requires
+	  SHA512 implementation in any form. It should be used by crypto
+	  backends to enable support for SHA512 in code and/or hardware
+	  drivers.
+
 config BOOT_IMG_HASH_ALG_SHA256_ALLOW
 	bool
 	help
@@ -173,18 +202,21 @@ choice BOOT_IMG_HASH_ALG
 config BOOT_IMG_HASH_ALG_SHA256
 	bool "SHA256"
 	depends on BOOT_IMG_HASH_ALG_SHA256_ALLOW
+	select BOOT_SOMETHING_USES_SHA256
 	help
 	  SHA256 algorithm
 
 config BOOT_IMG_HASH_ALG_SHA384
 	bool "SHA384"
 	depends on BOOT_IMG_HASH_ALG_SHA384_ALLOW
+	select BOOT_SOMETHING_USES_SHA384
 	help
 	  SHA384 algorithm
 
 config BOOT_IMG_HASH_ALG_SHA512
 	bool "SHA512"
 	depends on BOOT_IMG_HASH_ALG_SHA512_ALLOW
+	select BOOT_SOMETHING_USES_SHA512
 	help
 	  SHA512 algorithm
 
@@ -628,14 +660,34 @@ config BOOT_ENCRYPT_X25519
 	help
 	  Hidden option selecting x25519 encryption.
 
+if BOOT_ENCRYPT_X25519 && BOOT_USE_PSA_CRYPTO
+
+choice BOOT_HMAC_SHA
+	prompt "SHA used for HMAC and HKDF in encryption key exchange"
+	default BOOT_HMAC_SHA256
+	help
+	  HMAC/HKDF sha algorithm may be selected to synchronize sha
+	  usage with other places in code and reduce compiled in
+	  implementations.
+
+config BOOT_HMAC_SHA256
+	bool "Use SHA256 for HMAC/HKDF"
+	select BOOT_SOMETHING_USES_SHA256
+	help
+	  This is default for ED25519.
+
 config BOOT_HMAC_SHA512
 	bool "Use SHA512 for HMAC/HKDF"
 	depends on BOOT_ENCRYPT_X25519
 	depends on BOOT_USE_PSA_CRYPTO
+	select BOOT_SOMETHING_USES_SHA512
 	help
-	  By default SHA256 is used for HKDF/HMAC in key exchange expansion
-	  and verification. This options switches to SHA512. The option is
-	  mainly useful to reduce numer of compiled in SHA algorithms.
+	  With ED25519, this option is worth selecting when SHA512 is used
+	  for hashing of an image to reduce number of compiled sha algorithms.
+
+endchoice # BOOT_HMAC_SHA
+
+endif # BOOT_ENCRYPT_X25519 && BOOT_USE_PSA_CRYPTO
 
 config BOOT_ENCRYPTION_KEY_FILE
 	string "Encryption key file"
