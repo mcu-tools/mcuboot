@@ -54,10 +54,6 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #if defined(MCUBOOT_SIGN_EC256)
 #include "mbedtls/ecdsa.h"
 #endif
-#if defined(MCUBOOT_ENC_IMAGES) || defined(MCUBOOT_SIGN_RSA) || \
-    defined(MCUBOOT_SIGN_EC256)
-#include "mbedtls/asn1.h"
-#endif
 
 #include "bootutil_priv.h"
 
