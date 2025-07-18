@@ -16,6 +16,11 @@ zephyr_library_named(mcuboot_util)
 zephyr_library_sources(
   ../src/bootutil_public.c
     )
+if(CONFIG_MCUBOOT_BOOT_REQUEST)
+  zephyr_library_sources_ifdef(CONFIG_MCUBOOT_BOOT_REQUEST_IMPL_RETENTION
+    src/boot_request_retention.c
+  )
+endif()
 
 # Sensitivity to the TEST_BOOT_IMAGE_ACCESS_HOOKS define is implemented for
 # allowing the test-build with the hooks feature enabled.

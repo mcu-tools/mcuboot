@@ -454,6 +454,10 @@ if(CONFIG_MCUBOOT_BOOT_BANNER)
   zephyr_sources(kernel/banner.c)
 endif()
 
+if(CONFIG_FIND_NEXT_SLOT_HOOKS)
+  zephyr_sources(hooks_find_next_slot.c)
+endif()
+
 function(align_up num align result)
   math(EXPR out "(((${num}) + ((${align}) - 1)) & ~((${align}) - 1))")
   set(${result} "${out}" PARENT_SCOPE)

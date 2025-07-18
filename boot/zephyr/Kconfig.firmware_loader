@@ -42,6 +42,12 @@ config BOOT_FIRMWARE_LOADER_PIN_RESET
 	  Checks if the module reset was caused by the reset pin and will
 	  remain in bootloader firmware loader mode if it was.
 
+config BOOT_FIRMWARE_LOADER_BOOT_REQ
+	bool "Check boot mode via bootloader request"
+	depends on MCUBOOT_BOOT_REQUEST
+	help
+	  Allows for entering firmware loader mode by using bootloader rquests.
+
 endmenu
 
 endif
