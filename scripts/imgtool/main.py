@@ -98,15 +98,26 @@ def save_signature(sigfile, sig):
         signature = base64.b64encode(sig)
         f.write(signature)
 
+def load_key(keyfile, passwd=None, max_retries=2):
+    if passwd is not None and isinstance(passwd, str):
+        passwd = passwd.encode('utf-8')
 
-def load_key(keyfile):
-    # TODO: better handling of invalid pass-phrase
-    key = keys.load(keyfile)
+    key = keys.load(keyfile, passwd)
     if key is not None:
         return key
-    passwd = getpass.getpass("Enter key passphrase: ").encode('utf-8')
-    return keys.load(keyfile, passwd)
 
+    # If no passphrase provided, prompt user with retries
+    retries = 0
+    while retries < max_retries:
+        passwd = getpass.getpass("Enter key passphrase: ").encode('utf-8')
+        key = keys.load(keyfile, passwd)
+        if key is not None:
+            return key
+        print("Invalid passphrase, please try again.")
+        retries += 1
+
+    print("Failed to load key after {} attempts.".format(max_retries))
+    return None
 
 def get_password():
     while True:
@@ -423,6 +434,7 @@ class BasedIntParamType(click.ParamType):
               default='hash', help='In what format to add the public key to '
               'the image manifest: full key or hash of the key.')
 @click.option('-k', '--key', metavar='filename')
+@click.option('--key-pswd', required=False, help='Password for the key file')
 @click.option('--fix-sig', metavar='filename',
               help='fixed signature for the image. It will be used instead of '
               'the signature calculated using the public key')
@@ -447,7 +459,7 @@ class BasedIntParamType(click.ParamType):
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
-def sign(key, public_key_format, align, version, pad_sig, header_size,
+def sign(key, key_pswd, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt_keylen, encrypt, compression, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
@@ -469,7 +481,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                       non_bootable=non_bootable)
     compression_tlvs = {}
     img.load(infile)
-    key = load_key(key) if key else None
+    key = load_key(key, passwd=key_pswd) if key else None
     enckey = load_key(encrypt) if encrypt else None
     if enckey and key:
         if ((isinstance(key, keys.ECDSA256P1) and
