@@ -27,6 +27,7 @@ import os
 import lzma
 import hashlib
 import base64
+from collections import namedtuple
 from imgtool import image, imgtool_version
 from imgtool.version import decode_version
 from imgtool.dumpinfo import dump_imginfo
@@ -45,6 +46,14 @@ if sys.version_info < MIN_PYTHON_VERSION:
     sys.exit("Python %s.%s or newer is required by imgtool."
              % MIN_PYTHON_VERSION)
 
+SlottedSemiSemVersion = namedtuple('SemiSemVersion', ['major', 'minor', 'revision',
+                                               'build', 'slot'])
+
+DEPENDENCY_SLOT_VALUES = {
+    'active': 0x00,
+    'primary': 0x01,
+    'secondary': 0x02
+}
 
 def gen_rsa2048(keyfile, passwd):
     keys.RSA.generate().export_private(path=keyfile, passwd=passwd)
@@ -301,16 +310,33 @@ def get_dependencies(ctx, param, value):
         if len(images) == 0:
             raise click.BadParameter(
                 "Image dependency format is invalid: {}".format(value))
-        raw_versions = re.findall(r",\s*([0-9.+]+)\)", value)
+        raw_versions = re.findall(r",\s*((active|primary|secondary)\s*,)?\s*([0-9.+]+)\)", value)
         if len(images) != len(raw_versions):
             raise click.BadParameter(
                 '''There's a mismatch between the number of dependency images
                 and versions in: {}'''.format(value))
         for raw_version in raw_versions:
             try:
-                versions.append(decode_version(raw_version))
+                decoded_version = decode_version(raw_version[2])
+                if len(raw_version[1]) > 0:
+                    slotted_version = SlottedSemiSemVersion(
+                        decoded_version.major,
+                        decoded_version.minor,
+                        decoded_version.revision,
+                        decoded_version.build,
+                        DEPENDENCY_SLOT_VALUES[raw_version[1]]
+                    )
+                else:
+                    slotted_version = SlottedSemiSemVersion(
+                        decoded_version.major,
+                        decoded_version.minor,
+                        decoded_version.revision,
+                        decoded_version.build,
+                        0
+                    )
             except ValueError as e:
                 raise click.BadParameter("{}".format(e))
+            versions.append(slotted_version)
         dependencies = dict()
         dependencies[image.DEP_IMAGES_KEY] = images
         dependencies[image.DEP_VERSIONS_KEY] = versions
@@ -405,7 +431,7 @@ class BasedIntParamType(click.ParamType):
                    '(for mcuboot <1.5)')
 @click.option('-d', '--dependencies', callback=get_dependencies,
               required=False, help='''Add dependence on another image, format:
-              "(<image_ID>,<image_version>), ... "''')
+              "(<image_ID>,[<slot:active|primary|secondary>,]<image_version>), ... "''')
 @click.option('-s', '--security-counter', callback=validate_security_counter,
               help='Specify the value of security counter. Use the `auto` '
               'keyword to automatically generate it from the image version.')

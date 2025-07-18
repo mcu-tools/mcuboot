@@ -91,7 +91,8 @@ primary slot and adds a header and trailer that the bootloader is expecting:
                                       the `auto` keyword to automatically generate
                                       it from the image version.
       -d, --dependencies TEXT         Add dependence on another image, format:
-                                      "(<image_ID>,<image_version>), ... "
+                                      "(<image_ID>,[<slot:active|primary|secondary>,]
+                                      <image_version>), ... "
       --pad-sig                       Add 0-2 bytes of padding to ECDSA signature
                                       (for mcuboot <1.5)
       -H, --header-size INTEGER       [required]
@@ -181,6 +182,16 @@ A dependency can be specified in the following way:
 which the current image depends on. The `image_version` is the minimum version
 of that image to satisfy compliance. For example `-d "(1, 1.2.3+0)"` means this
 image depends on Image 1 which version has to be at least 1.2.3+0.
+
+In addition, a dependency can specify the slot as follows:
+`-d "(image_id, slot, image_version)"`. The `image_id` is the number of the
+image on which the current image depends.
+The slot specifies which slots of the image are to be taken into account
+(`active`: primary or secondary, `primary`: only primary `secondary`: only
+secondary slot). The `image_version` is the minimum version of that image to
+fulfill the requirements.
+For example `-d "(1, primary, 1.2.3+0)"` means that this image depends on the
+primary slot of the Image 1, whose version must be at least 1.2.3+0.
 
 The `--public-key-format` argument can be used to distinguish where the public
 key is stored for image authentication. The `hash` option is used by default, in
