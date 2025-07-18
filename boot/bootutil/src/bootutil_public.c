@@ -143,7 +143,7 @@ boot_magic_decode(const uint8_t *magic)
 }
 #endif /* !MCUBOOT_SWAP_USING_STATUS */
 
-static int
+int
 boot_flag_decode(uint8_t flag)
 {
     if (flag != BOOT_FLAG_SET) {
@@ -160,7 +160,7 @@ boot_image_ok_off(const struct flash_area *fap)
     return ALIGN_DOWN(boot_magic_off(fap) - BOOT_MAX_ALIGN, BOOT_MAX_ALIGN);
 }
 
-static inline uint32_t
+uint32_t
 boot_copy_done_off(const struct flash_area *fap)
 {
     return boot_image_ok_off(fap) - BOOT_MAX_ALIGN;
@@ -171,6 +171,13 @@ boot_swap_info_off(const struct flash_area *fap)
 {
     return boot_copy_done_off(fap) - BOOT_MAX_ALIGN;
 }
+
+uint32_t
+boot_image_inactive_off(const struct flash_area *fap)
+{
+    return boot_swap_info_off(fap) - BOOT_MAX_ALIGN;
+}
+
 #endif /* !MCUBOOT_SWAP_USING_STATUS */
 
 /**
@@ -232,16 +239,35 @@ bool bootutil_buffer_is_erased(const struct flash_area *area,
 static int
 boot_read_flag(const struct flash_area *fap, uint8_t *flag, uint32_t off)
 {
+    uint8_t buf[BOOT_MAX_ALIGN];
     int rc;
 
-    rc = flash_area_read(fap, off, flag, sizeof *flag);
+    rc = flash_area_read(fap, off, buf, BOOT_MAX_ALIGN);
+
     if (rc != 0) {
         return BOOT_EFLASH;
     }
-    if (*flag == flash_area_erased_val(fap)) {
+
+    if (bootutil_buffer_is_erased(fap, buf, BOOT_MAX_ALIGN))
+    {
         *flag = BOOT_FLAG_UNSET;
-    } else {
-        *flag = boot_flag_decode(*flag);
+    }
+    else
+    {
+        bool erased = bootutil_buffer_is_erased(fap, buf+1U, BOOT_MAX_ALIGN-1U);
+
+        if ((*buf == BOOT_FLAG_SET) && erased)
+        {
+            *flag = BOOT_FLAG_SET;
+        }
+        else if ((*buf != BOOT_FLAG_SET) && erased)
+        {
+            *flag = BOOT_FLAG_BAD;
+        }
+        else
+        {
+            *flag = BOOT_FLAG_UNSET;
+        }
     }
 
     return 0;
@@ -249,12 +275,27 @@ boot_read_flag(const struct flash_area *fap, uint8_t *flag, uint32_t off)
 
 #ifndef MCUBOOT_SWAP_USING_STATUS
 
-static inline int
+int
 boot_read_copy_done(const struct flash_area *fap, uint8_t *copy_done)
 {
     return boot_read_flag(fap, copy_done, boot_copy_done_off(fap));
 }
 
+int
+boot_read_image_inactive(const struct flash_area *fap, uint8_t *image_inactive)
+{
+    return boot_read_flag(fap, image_inactive, boot_image_inactive_off(fap));
+}
+
+int
+boot_write_image_inv(const struct flash_area *fap)
+{
+    uint32_t off;
+
+    off = boot_image_inactive_off(fap);
+
+    return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
+}
 
 int
 boot_read_swap_state(const struct flash_area *fap,
@@ -296,6 +337,13 @@ boot_read_swap_state(const struct flash_area *fap,
     if (rc != 0) {
         return BOOT_EFLASH;
     }
+
+#if defined(MCUBOOT_DIRECT_XIP)
+    rc = boot_read_image_inactive(fap, &state->image_inactive);
+    if (rc != 0) {
+        return BOOT_EFLASH;
+    }
+#endif
 
     return boot_read_image_ok(fap, &state->image_ok);
 }
@@ -406,14 +454,8 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
     uint8_t erased_val;
     uint32_t align;
     int rc;
-
-    align = flash_area_align(fap);
-
-    if (align == 0u) {
-        return BOOT_EFLASH;
-    }
     
-    align = ALIGN_UP(inlen, align);
+    align = ALIGN_UP(inlen, BOOT_MAX_ALIGN);
     if (align > BOOT_MAX_ALIGN) {
         return -1;
     }

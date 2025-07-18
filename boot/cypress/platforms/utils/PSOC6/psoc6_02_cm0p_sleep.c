@@ -6,7 +6,7 @@
 *
 ********************************************************************************
 * \copyright
-* Copyright (c) 2018-2021 Cypress Semiconductor Corporation (an Infineon
+* Copyright (c) 2018-2025 Cypress Semiconductor Corporation (an Infineon
 * company) or an affiliate of Cypress Semiconductor Corporation
 * SPDX-License-Identifier: LicenseRef-PBL
 *

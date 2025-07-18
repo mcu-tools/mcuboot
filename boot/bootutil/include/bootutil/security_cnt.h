@@ -1,6 +1,6 @@
 /*
  *  Copyright (c) 2019-2020, Arm Limited. All rights reserved.
- *  Copyright (c) 2021 Infineon Technologies AG
+ *  Copyright (c) 2025 Infineon Technologies AG
  *
  *  SPDX-License-Identifier: Apache-2.0
  */

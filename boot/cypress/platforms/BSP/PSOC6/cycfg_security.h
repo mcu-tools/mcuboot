@@ -1,9 +1,8 @@
 /*******************************************************************************
- * File Name: cycfg.c
+ * File Name: cycfg_security.h
  *
  * Description:
- * Simple wrapper containing all generated files and function to initialize
- * all generated code.
+ * Memory configuration
  * This file was automatically generated and should not be modified.
  * Configurator Backend 3.30.0
  * device-db 4.5.20.7163
@@ -27,21 +26,17 @@
  * limitations under the License.
  ******************************************************************************/
 
-#include "cycfg.h"
+#if !defined(CYCFG_SECURITY_H)
+#define CYCFG_SECURITY_H
 
-/* This function is provided for compatibility with older 2.X style projects. */
-void init_cycfg_all(void)
-{
-    cycfg_config_init();
-    cycfg_config_reservations();
+#include "cycfg_notices.h"
+
+#if defined(__cplusplus)
+extern "C" {
+#endif /* defined(__cplusplus) */
+
+#if defined(__cplusplus)
 }
-void cycfg_config_init(void)
-{
-    init_cycfg_system();
-    init_cycfg_routing();
-    init_cycfg_pins();
-}
-void cycfg_config_reservations(void)
-{
-    reserve_cycfg_pins();
-}
+#endif /* defined(__cplusplus) */
+
+#endif /* CYCFG_SECURITY_H */

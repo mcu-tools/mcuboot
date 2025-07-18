@@ -147,6 +147,9 @@ struct boot_swap_state {
     uint8_t copy_done;  /* One of the BOOT_FLAG_[...] values. */
     uint8_t image_ok;   /* One of the BOOT_FLAG_[...] values. */
     uint8_t image_num;  /* Boot status belongs to this image */
+#if defined(MCUBOOT_DIRECT_XIP)
+    uint8_t image_inactive;    /* One of the BOOT_FLAG_[...] values. */
+#endif
 };
 
 /**
@@ -229,6 +232,18 @@ int boot_set_confirmed(void);
  * @retval offset of the swap info field.
  */
 uint32_t boot_swap_info_off(const struct flash_area *fap);
+
+#if defined(MCUBOOT_DIRECT_XIP)
+/**
+ * @brief Get offset of the image invalidation field in the image trailer.
+ *
+ * @param fap Flash are for which offset is determined.
+ *
+ * @retval offset of the image invalidation field.
+ */
+uint32_t
+boot_image_inactive_off(const struct flash_area *fap);
+#endif
 
 /**
  * @brief Get value of image-ok flag of the image.

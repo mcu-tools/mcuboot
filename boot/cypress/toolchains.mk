@@ -7,7 +7,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2019 Cypress Semiconductor Corporation
+# Copyright 2018-2025 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,7 @@ endif
 # NOTE: Absolute pathes for now for the sake of development
 ifeq ($(HOST_OS), win)
     ifeq ($(COMPILER), GCC_ARM)
-        TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/ModusToolbox/tools_3.2/gcc
+        TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/Infineon/Tools/mtb-gcc-arm-eabi/11.3.1/gcc
         MY_TOOLCHAIN_PATH := $(call get_os_path, $(TOOLCHAIN_PATH))
         TOOLCHAIN_PATH := $(MY_TOOLCHAIN_PATH)
         GCC_PATH := $(TOOLCHAIN_PATH)
@@ -49,14 +49,14 @@ ifeq ($(HOST_OS), win)
     endif
 
 else ifeq ($(HOST_OS), osx)
-    TOOLCHAIN_PATH ?= /opt/gcc-arm-none-eabi
+    TOOLCHAIN_PATH ?= /Applications/mtb-gcc-arm-eabi/11.3.1/gcc
     GCC_PATH := $(TOOLCHAIN_PATH)
-
+    # executables
     CC := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
     LD := $(CC)
 
 else ifeq ($(HOST_OS), linux)
-    TOOLCHAIN_PATH ?= /opt/gcc-arm-none-eabi
+    TOOLCHAIN_PATH ?= /opt/Tools/mtb-gcc-arm-eabi/11.3.1/gcc
     GCC_PATH := $(TOOLCHAIN_PATH)
     # executables
     CC := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
@@ -90,11 +90,11 @@ ifeq ($(COMPILER), GCC_ARM)
     $(error BUILDCFG : '$(BUILDCFG)' is not supported)
     endif
 
-    CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_PLATFORM) $(INCLUDES)
+    CFLAGS := $(CFLAGS_COMMON) $(CFLAGS_PLATFORM) $(INCLUDES)  -ffreestanding -fno-builtin-memset -fno-builtin-memcpy
 
     CC_DEPEND = -MD -MP -MF
 
-    LDFLAGS_COMMON := -mcpu=cortex-$(CORE_SUFFIX) -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -ffat-lto-objects -g --enable-objc-gc
+    LDFLAGS_COMMON := -mcpu=cortex-$(CORE_SUFFIX) -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -ffat-lto-objects -g --enable-objc-gc  -ffreestanding -fno-builtin-memset -fno-builtin-memcpy
 
     ifeq ($(WARN_AS_ERR), 1)
         LDFLAGS_COMMON += -Wl,--fatal-warnings

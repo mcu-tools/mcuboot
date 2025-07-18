@@ -13,8 +13,10 @@ rusty-tags.*
 **/build/**/*
 
 #Eclipse project files
-.cproject
-.project
+*.project
+*.cproject
+.pydevproject
+.settings/
 
 # Compiled python modules.
 *.pyc
@@ -30,3 +32,6 @@ rusty-tags.*
 /target/
 boot/cypress/platforms/memory/memorymap.c
 boot/cypress/platforms/memory/memorymap.h
+
+# Visual Studio Code
+.vscode/

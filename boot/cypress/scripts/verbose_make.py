@@ -1,5 +1,5 @@
 """VERBOSE Makefile Generator
-Copyright (c) 2022 Infineon Technologies AG
+Copyright (c) 2025 Infineon Technologies AG
 """
 
 import os

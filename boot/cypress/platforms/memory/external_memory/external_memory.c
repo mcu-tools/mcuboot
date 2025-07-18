@@ -9,7 +9,7 @@
  ********************************************************************************
  * \copyright
  *
- * (c) 2020, Cypress Semiconductor Corporation
+ * (c) 2025, Cypress Semiconductor Corporation
  * or a subsidiary of Cypress Semiconductor Corporation. All rights
  * reserved.
  *
@@ -160,7 +160,7 @@ CY_RAMFUNC_END
 
 #if defined(MCUBOOT_ENC_IMAGES_SMIF)
 CY_RAMFUNC_BEGIN
-static cy_en_smif_status_t smif_encrypt(const void *data, uint32_t len, uintptr_t addr)
+static cy_en_smif_status_t smif_encrypt(void *data, uint32_t len, uintptr_t addr)
 {
     cy_en_smif_status_t status = CY_SMIF_SUCCESS;
     SMIF_Type *device = qspi_get_device();

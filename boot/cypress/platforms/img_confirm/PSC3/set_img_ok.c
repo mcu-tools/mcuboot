@@ -1,5 +1,5 @@
 /********************************************************************************
-* Copyright 2021 Infineon Technologies AG
+* Copyright 2025 Infineon Technologies AG
 * SPDX-License-Identifier: Apache-2.0
 *
 * Licensed under the Apache License, Version 2.0 (the "License");

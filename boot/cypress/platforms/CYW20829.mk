@@ -7,7 +7,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2019 Cypress Semiconductor Corporation
+# Copyright 2018-2025 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,11 +42,6 @@ else ifeq ($(PLATFORM), CYW89829)
 DEVICE ?= CYW89829B0232
 endif
 
-# If PSVP build is required
-ifeq ($(CYW20829_PSVP), 1)
-SERVICE_APP_PLATFORM_SUFFIX := _psvp
-endif
-
 #Led pin default config
 LED_PORT_DEFAULT ?= GPIO_PRT0
 LED_PIN_DEFAULT ?= 0U
@@ -60,7 +55,12 @@ PLATFORM_SUFFIX ?= cyw20829
 # Add device name to defines
 DEFINES += -D$(DEVICE)
 
-USE_SWAP_STATUS ?= 1
+USE_SWAP_STATUS ?= 0
+
+ifeq ($(USE_DIRECT_XIP), 1)
+DEFINES += -DMCUBOOT_DIRECT_XIP=1
+DEFINES += -DMCUBOOT_DIRECT_XIP_REVERT=1
+endif
 
 ifeq ($(USE_SWAP_STATUS), 1)
 DEFINES += -DUSE_SWAP_STATUS=1
@@ -89,6 +89,8 @@ endif
 THIS_APP_PATH = $(PRJ_DIR)/libs
 
 ifeq ($(APP_NAME), MCUBootApp)
+
+DEFINES += -DBSP_DISABLE_WDT
 
 SMIF_ENC ?= 0
 
@@ -145,6 +147,10 @@ PLATFORM_CHUNK_SIZE := 4096U
 
 SIGN_ENC := 0
 
+ifeq ($(SMIF_ENC), 1)
+    SIGN_ENC := 1
+endif
+
 ###############################################################################
 # MCUBootApp service app definitions
 ###############################################################################
@@ -153,10 +159,6 @@ ifeq ($(LCS), SECURE)
 # Service app path and file name
 SERVICE_APP_PATH := $(PRJ_DIR)/packets/apps/reprovisioning$(SERVICE_APP_PLATFORM_SUFFIX)
 SERVICE_APP_NAME := cyapp_reprovisioning_signed_icv0
-
-ifeq ($(SMIF_ENC), 1)
-    SIGN_ENC := 1
-endif
 
 ifeq ($(ENC_IMG), 1)
     SIGN_ENC := 1
@@ -196,11 +198,18 @@ endif ## MCUBootApp
 ###############################################################################
 ifeq ($(APP_NAME), BlinkyApp)
 
+APP_SLOT ?= 1
+
+ifeq ($(shell [ $(APP_SLOT) -gt 2 ] && echo true), true)
+    $(error APP_SLOT must be 1 or 2)
+endif
+
 # Basic settings
 LCS ?= NORMAL_NO_SECURE
 APPTYPE ?= flash
 SIGN_TYPE ?= mcuboot_user_app
 SMIF_CRYPTO_CONFIG ?= NONE
+USE_IMG_TRAILER ?= 1
 
 ifeq ($(LCS), NORMAL_NO_SECURE)
 APP_DEFAULT_POLICY ?= $(PRJ_DIR)/policy/policy_no_secure.json
@@ -211,12 +220,26 @@ endif
 PLATFORM_DEFAULT_ERASED_VALUE := 0xff
 
 # Define start of application
-PLATFORM_USER_APP_START ?= $(shell echo $$(($(PRIMARY_IMG_START)-$(FLASH_START)+$(FLASH_XIP_START))))
+PLATFORM_USER_APP_START ?= $(shell printf "0x%X" $$(($(PRIMARY_IMG_START)-$(FLASH_START)+$(FLASH_XIP_START))))
+PLATFORM_USER_APP_LOCATION ?= $(shell printf "0x%X" $$(($(PRIMARY_IMG_START)-$(FLASH_START)+$(FLASH_XIP_START))))
+
+ifeq ($(IMG_TYPE), UPGRADE)
+    PLATFORM_USER_APP_LOCATION := $(shell printf "0x%X" $$(($(SECONDARY_IMG_START)-$(FLASH_START)+$(FLASH_XIP_START))))
+endif
+
+ifeq ($(APP_SLOT), 2)
+    PLATFORM_USER_APP_LOCATION := $(shell printf "0x%X" $$(($(SECONDARY_IMG_START)-$(FLASH_START)+$(FLASH_XIP_START))))
+endif
+
 # Define RAM start and size, slot size
 PLATFORM_DEFAULT_RAM_START ?= 0x2000C000
 PLATFORM_DEFAULT_RAM_SIZE  ?= 0x10000
 
-DEFINES += -DUSER_APP_START_OFF=0x20000
+ifeq ($(APP_SLOT), 1)
+DEFINES += -DUSER_APP_START_OFF=$(shell echo $$(($(PRIMARY_IMG_START)-$(FLASH_START))))
+else
+DEFINES += -DUSER_APP_START_OFF=$(shell echo $$(($(SECONDARY_IMG_START)-$(FLASH_START))))
+endif
 
 PLATFORM_DEFAULT_IMG_VER_ARG ?= 1.0.0
 
@@ -227,6 +250,10 @@ PLATFORM_SIGN_ARGS := --image-format $(SIGN_TYPE) -i $(OUT_CFG)/$(APP_NAME).fina
 ifeq ($(ENC_IMG), 1)
 	PLATFORM_SIGN_ARGS += --encrypt --enckey ../../$(ENC_KEY_FILE).pem
 	PLATFORM_SIGN_ARGS += --app-addr=$(PLATFORM_USER_APP_START)
+endif
+
+ifeq ($(USE_IMG_TRAILER), 1)
+	PLATFORM_SIGN_ARGS += --pad
 endif
 
 pre_build:
@@ -240,7 +267,13 @@ ifeq ($(POST_BUILD_ENABLE), 1)
 	$(shell $(PRJ_DIR)/run_toc2_generator.sh $(LCS) $(OUT_CFG) $(APP_NAME) $(APPTYPE) $(PRJ_DIR) $(SMIF_CRYPTO_CONFIG) $(TOOLCHAIN_PATH))
 
 	$(info SIGN_ARGS <-> $(SIGN_ARGS))
+	$(info cysecuretools -q -t cyw20829 -p $(APP_DEFAULT_POLICY) sign-image $(SIGN_ARGS))
 	$(shell cysecuretools -q -t cyw20829 -p $(APP_DEFAULT_POLICY) sign-image $(SIGN_ARGS))
+
+ifeq ($(SMIF_ENC), 1)
+	$(info edgeprotecttools -t cyw20829 encrypt --input $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).bin --output $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).bin --iv $(PLATFORM_USER_APP_LOCATION) --enckey keys/encrypt_key.bin --nonce ./MCUBootApp/out/CYW20829/$(BUILDCFG)/MCUBootApp.signed_nonce.bin)
+	$(shell edgeprotecttools -t cyw20829 encrypt --input $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).bin --output $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).bin --iv $(PLATFORM_USER_APP_LOCATION) --enckey keys/encrypt_key.bin --nonce ./MCUBootApp/out/CYW20829/$(BUILDCFG)/MCUBootApp.signed_nonce.bin)
+endif
 
 	$(GCC_PATH)/bin/arm-none-eabi-objcopy --change-address=$(HEADER_OFFSET) -I binary -O ihex $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).bin $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).hex
 	$(GCC_PATH)/bin/arm-none-eabi-objdump -s $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).hex > $(OUT_CFG)/$(APP_NAME)$(UPGRADE_SUFFIX).objdump

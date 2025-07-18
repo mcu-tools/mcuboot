@@ -27,7 +27,7 @@
 ********************************************************************************
 * \copyright
 *
-* (c) 2020, Cypress Semiconductor Corporation
+* (c) 2025, Cypress Semiconductor Corporation
 * or a subsidiary of Cypress Semiconductor Corporation. All rights
 * reserved.
 *

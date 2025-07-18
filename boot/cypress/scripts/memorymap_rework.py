@@ -1,5 +1,5 @@
 """
-Copyright 2024 Cypress Semiconductor Corporation (an Infineon company)
+Copyright 2025 Cypress Semiconductor Corporation (an Infineon company)
 or an affiliate of Cypress Semiconductor Corporation. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,6 +57,8 @@ settings_dict = {
     ,   'secondary_image_start'     :   'SECONDARY_IMG_START'
     ,   'secondary_image_area'      :   'SECONDARY_IMG_AREA'
     ,   'image_size'                :   'SLOT_SIZE'
+    ,   'erase_size'                :   'MIN_ERASE_SIZE'
+    ,   'erase_value'               :   'ERASE_VALUE'
 }
 
 def header_guard_generate(file):
@@ -316,8 +318,7 @@ class MemoryMap:
 
         if region_name_alt:
             if "boot" in key:
-                if region_name_alt not in self.region_types_alt:
-                    self.region_types_alt.append(region_name_alt)
+                self.region_types_alt.append(region_name_alt)
 
         offset = area.addr - region.addr
         size = area.sz
@@ -409,14 +410,13 @@ class MemoryMap:
             f_out.write('struct flash_device flash_devices[] =\n')
             f_out.write('{\n')
             for region in self.regions:
-                if region.mem_type[0] in self.region_types:
-                    f_out.write('\t{\n')
-                    f_out.write(f'\t\t.address      = {hex(region.addr)}U,\n')
-                    f_out.write(f'\t\t.size         = {hex(region.sz)}U,\n')
-                    f_out.write(f'\t\t.erase_size   = {hex(region.erase_sz)}U,\n')
-                    f_out.write(f'\t\t.erase_val    = {hex(region.erase_val)}U,\n')
-                    f_out.write(f'\t\t.device_id    = {str(region.mem_type[0])},\n')
-                    f_out.write('\t},\n')
+                f_out.write(f'\t[{region.mem_type[0]}] = ' + '{\n')
+                f_out.write(f'\t\t.address      = {hex(region.addr)}U,\n')
+                f_out.write(f'\t\t.size         = {hex(region.sz)}U,\n')
+                f_out.write(f'\t\t.erase_size   = {hex(region.erase_sz)}U,\n')
+                f_out.write(f'\t\t.erase_val    = {hex(region.erase_val)}U,\n')
+                f_out.write(f'\t\t.device_id    = {str(region.mem_type[0])},\n')
+                f_out.write('\t},\n')
             f_out.write('};\n\n')
 
             f_out.write(f'struct flash_area flash_areas[] =\n')
@@ -450,7 +450,7 @@ class MemoryMap:
             f_out.write('\n};\n\n')
 
             f_out.write('image_boot_config_t image_boot_config[BOOT_IMAGE_NUMBER] = {\n')
-            
+
             for app in self.apps:
                 f_out.writelines('\n'.join([
                     '\t{\n'
@@ -484,8 +484,7 @@ class MemoryMap:
             # because it fixes the bug when enum {INTERNAL_RRAM, EXTERNAL_FLASH,}
             # is generated in incorrect sequence.
             for region in self.regions:
-                if region.mem_type[0] in self.region_types:
-                    f_out.write(f'\t{str(region.mem_type[0])},\n')
+                f_out.write(f'\t{str(region.mem_type[0])},\n')
             f_out.write('};\n\n')
 
             f_out.write('enum \n{\n')
@@ -539,6 +538,11 @@ class MemoryMap:
             print(f'{settings_dict["shared_data_size"]} :=', hex(shared_data.sz))
             print(f'{settings_dict["shared_data_record_size"]} :=', hex(shared_data.sz))
 
+        print('# Bootloader erase area')
+        for region in self.regions:
+            print(f'{region.mem_type[0]}_{settings_dict["erase_size"]} :=', hex(region.erase_sz))
+            print(f'{region.mem_type[0]}_{settings_dict["erase_value"]} :=', hex(region.erase_val))
+
         print('# Bootloader app area')
         for region in self.regions:
             if boot.bootloader_area.fits_with(region):
@@ -552,7 +556,7 @@ class MemoryMap:
             print('# Bootloader ram area')
             print(f'{settings_dict["bootloader_ram_address"]} :=', hex(boot.ram.addr))
             print(f'{settings_dict["bootloader_ram_size"]} :=', hex(boot.ram.sz))
-        
+
         if boot.ram_boot:
             print(f'{settings_dict["bootloader_ram_load"]} := 1')
             print(f'{settings_dict["bootloader_ram_address"]} :=',  hex(boot.ram_boot.addr))
@@ -628,6 +632,12 @@ class MemoryMap:
             print(settings_dict['scratch'], f':= {0 if boot.scratch_area is None else 1}')
             print(settings_dict['status'], f':= {0 if boot.status_area is None else 1}')
 
+        print('# Application erase area')
+        for region in self.regions:
+            print(f'{region.mem_type[0]}_{settings_dict["erase_size"]} :=', hex(region.erase_sz))
+            print(f'{region.mem_type[0]}_{settings_dict["erase_value"]} :=', hex(region.erase_val))
+
+        print('# Application area')
         print(settings_dict['application_count'], f'= {len(self.apps)}')
         print(settings_dict['boot_image'], ':=', self.app_id)
         print(settings_dict['primary_image_start'], ':=', hex(app.boot_area.addr))

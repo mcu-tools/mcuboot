@@ -33,7 +33,7 @@ The MCUboot terminology names a slot from which **boot** occurs as **primary** a
 
 The flash map of the bootloader is defined at compile-time and cannot be changed dynamically. Flash map is prepared in the industry-accepted JSON (JavaScript Object Notation) format. It should follow the rules described in section **How to modify the flash map**.
 
-`MCUBootApp` contains JSON templates for flash maps with commonly used configurations. They can be found in `platforms/memory/flash_%platform_name%/flashmap` The slots' sizes are defined per platform to be compatible with all supported device families.
+`MCUBootApp` contains JSON templates for flash maps with commonly used configurations. They can be found in `platforms/memory/<PLATFORM_NAME>/flashmap` The slots' sizes are defined per platform to be compatible with all supported device families.
 
 The actual addresses are provided in corresponding platform doc files:
 
@@ -641,9 +641,9 @@ The rollback protection feature is currently supported on CYW20829/CYW89829 devi
 
 Folder `boot/cypress` contains make-files infrastructure for building MCUBootApp bootloader applications. Example build commands are provided later in this document for different build configurations.
 
-Toolchain is set by default in `toolchains.mk` file, depending on `COMPILER` makefile variable. MCUBoot is currently support only `GCC_ARM` as compiler. Toolchain path can be redefined, by setting `TOOLCHAIN_PATH` build flag to desired toolchain path. Below is an example on how to set toolchain path from **ModusToolbox™ IDE**:
+Toolchain is set by default in `toolchains.mk` file, depending on `COMPILER` makefile variable. MCUBoot is currently support only `GCC_ARM` as compiler. Toolchain path can be redefined, by setting `TOOLCHAIN_PATH` build flag to desired toolchain path. Below is an example on how to set toolchain path from **ModusToolbox™ Programming Tools**:
 
-    make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/${USERNAME}/ModusToolbox/tools_3.2/gcc
+    make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/${USERNAME}/Infineon/Tools/mtb-gcc-arm-eabi/11.3.1/gcc
 
 * Build MCUBootApp in the `Debug` configuration for Single-image mode with swap upgrade.
 
@@ -741,9 +741,7 @@ The MCUBootApp firmware can be programmed in different ways.
 
 1. The direct usage of OpenOCD.
 
-The OpenOCD package is supplied with ModusToolbox™ IDE and can be found in the installation folder `ModusToolbox/tools_3.2/openocd`.
-
-Set environment variable `OPENOCD` to the path to the openocd folder in ModusToolbox™. Exact commands for programming images are provided in the corresponding platform readme files.
+The OpenOCD package is supplied with `ModusToolbox™ Programming Tools` and can be found in the `C:\Infineon\Tools\ModusToolboxProgtools-1.4\openocd` folder. Commands for programming images are provided in the corresponding platform readme files.
 
 2. Using the GUI tool `Cypress Programmer`
 
@@ -773,4 +771,4 @@ Also, an IDE can be used:
 
 *Python/Python3* - ensure that you have the correct path referenced in `PATH`.
 
-*Msys2* - To use the systems path, navigate to the msys2 folder, open `msys2_shell.cmd`, uncomment set `MSYS2_PATH_TYPE=inherit`, and restart the MSYS2 shell. This will inherit the system's path and find `python` installed in the regular way as well as `imgtool` and its dependencies.
+*Msys2* - To use the systems path, navigate to the msys2 folder, open `msys2_shell.cmd`, uncomment set `MSYS2_PATH_TYPE=inherit`, and restart the MSYS2 shell. This will inherit the system's path and find `Python` installed in the regular way as well as `imgtool` and its dependencies.

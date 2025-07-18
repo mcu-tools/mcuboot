@@ -1,14 +1,21 @@
 """MCUBoot Flash Map Converter (JSON to .h)
-Copyright (c) 2022 Infineon Technologies AG
+Copyright (c) 2025 Infineon Technologies AG
 """
 
 import sys
 import getopt
 import json
+import os
 from enum import Enum
-import os.path
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 MAX_IMAGE_NUMBERS = 16
+NONCE_GEN_RETRIES = 10
+NONCE_RAND_SIZE = 12
+AES_BLOCK_SIZE = 16
+IMG_OK_OFFSET = 8 + 16  # flag_size + magic_size
+IMG_OK_VALUE = 0x01
+SHAB_ADDR = 0x08000000
 
 class Error(Enum):
     ''' Application error codes '''
@@ -230,31 +237,36 @@ class CmdLineParams:
         self.plat_id = ''
         self.in_file = ''
         self.out_file = ''
+        self.mk_file = ''
         self.fa_file = ''
+        self.nonce_file = None
         self.img_id = None
         self.policy = None
         self.set_core = False
         self.image_boot_config = False
 
         usage = 'USAGE:\n' + sys.argv[0] + \
-                ''' -p <platform> -i <flash_map.json> -o <memorymap.c> -a <memorymap.h> -d <img_id> -c <policy.json>
+                ''' -p <platform> -i <flash_map.json> -o <memorymap.c> -k <memorymap.mk> -a <memorymap.h> -d <img_id> -c <policy.json>
 
 OPTIONS:
--h  --help       Display the usage information
--p  --platform=  Target (e.g., PSOC_062_512K)
--i  --ifile=     JSON flash map file
--o  --ofile=     C file to be generated
--a  --fa_file=   path where to create 'memorymap.h'
--d  --img_id     ID of application to build
--c  --policy     Policy file in JSON format
--m  --core       Detect and set Cortex-M CORE
+-h  --help              Display the usage information
+-p  --platform          Target (e.g., PSOC_062_512K)
+-i  --ifile             JSON flash map file
+-o  --ofile             C file to be generated
+-k  --mk_file           Path where to create 'memorymap.mk'
+-a  --fa_file           Path where to create 'memorymap.h'
+-n  --nonce_file        Path where to create file with NONCE
+-d  --img_id            ID of application to build
+-c  --policy            Policy file in JSON format
+-m  --core              Detect and set Cortex-M CORE
 -x  --image_boot_config Generate image boot config structure
 '''
 
         try:
             opts, unused = getopt.getopt(
-                sys.argv[1:], 'hi:o:a:p:d:c:x:m',
-                ['help', 'platform=', 'ifile=', 'ofile=', "fa_file=", 'img_id=', 'policy=', 'core', 'image_boot_config'])
+                sys.argv[1:], 'h:i:o:k:a:n:p:d:c:x:m',
+                ['help', 'platform=', 'ifile=', 'ofile=', 'mk_file=', 'fa_file=',
+                 'nonce_file=', 'img_id=', 'policy=', 'core', 'image_boot_config'])
         except getopt.GetoptError:
             print(usage, file=sys.stderr)
             sys.exit(Error.ARG)
@@ -269,8 +281,12 @@ OPTIONS:
                 self.in_file = arg
             elif opt in ('-o', '--ofile'):
                 self.out_file = arg
+            elif opt in ('-k', '--mk_file'):
+                self.mk_file = arg
             elif opt in ('-a', '--fa_file'):
                 self.fa_file = arg
+            elif opt in ('-n', '--nonce_file'):
+                self.nonce_file = arg
             elif opt in ('-d', '--img_id'):
                 self.img_id = arg
             elif opt in ('-c', '--policy'):
@@ -280,7 +296,7 @@ OPTIONS:
             elif opt in ('x', '--image_boot_config'):
                 self.image_boot_config = True
 
-        if len(self.in_file) == 0 or len(self.out_file) == 0 or len(self.fa_file) == 0:
+        if any(len(x) == 0 for x in (self.in_file, self.out_file, self.mk_file, self.fa_file)):
             print(usage, file=sys.stderr)
             sys.exit(Error.ARG)
 
@@ -351,6 +367,7 @@ class AreaList:
         self.plat = plat
         self.flash = flash
         self.use_overwrite = use_overwrite
+        self.use_direct_xip = False
         self.areas = []
         self.peers = {}
         self.trailers = {}
@@ -655,7 +672,7 @@ class AreaList:
                 out_f.write(f'#include "{params.fa_file}"\n')
                 out_f.write(f'#include "flash_map_backend.h"\n\n')
                 out_f.write(f'#include "flash_map_backend_platform.h"\n\n')
-                out_f.write(f'struct flash_area {c_array}[] = {{\n')
+                out_f.write(f'const struct flash_area {c_array}[] = {{\n')
                 comma = len(self.areas)
                 area_count = 0
                 for area in self.areas:
@@ -672,7 +689,7 @@ class AreaList:
                             '    },' if comma else '    }', '']))
                         area_count += 1
                 out_f.write('};\n\n'
-                            'struct flash_area *boot_area_descs[] = {\n')
+                            'const struct flash_area * const boot_area_descs[] = {\n')
                 for area_index in range(area_count):
                     out_f.write(f'    &{c_array}[{area_index}U],\n')
                 out_f.write('    NULL\n};\n')
@@ -721,8 +738,8 @@ class AreaList:
                 fa_f.write(f'#include "flash_map_backend.h"\n\n')
                 fa_f.write('#include "bootutil/bootutil.h"\n')
 
-                fa_f.write(f'extern struct flash_area {c_array}[];\n')
-                fa_f.write(f'extern struct flash_area *boot_area_descs[];\n')
+                fa_f.write(f'extern const struct flash_area {c_array}[];\n')
+                fa_f.write(f'extern const struct flash_area * const boot_area_descs[];\n')
 
                 #we always have BOOTLOADER and IMG_1_
                 fa_f.write("#define FLASH_AREA_BOOTLOADER          ( 0u)\n\n")
@@ -991,10 +1008,19 @@ def process_images(area_list, boot_and_upgrade):
                         ram = None
 
                 try:
-                    primary_addr = get_val(flash, 'address')
-                    primary_size = get_val(flash, 'size')
-                    secondary_addr = get_val(flash, 'upgrade_address')
-                    secondary_size = get_val(flash, 'upgrade_size')
+                    try:
+                        primary_addr = get_val(flash, 'primary_slot')
+                        secondary_addr = get_val(flash, 'secondary_slot')
+                        primary_size = get_val(flash, 'primary_slot_size')
+                        secondary_size = get_val(flash, 'secondary_slot_size')
+
+                        area_list.use_direct_xip = True
+
+                    except KeyError:
+                        primary_addr = get_val(flash, 'address')
+                        secondary_addr = get_val(flash, 'upgrade_address')
+                        primary_size = get_val(flash, 'size')
+                        secondary_size = get_val(flash, 'upgrade_size')
 
                     if ram is not None:
                         app_ram_addr = get_val(ram, 'address')
@@ -1235,8 +1261,7 @@ def main():
     app_desc = None
     if service_app is not None:
         if plat['flashSize'] > 0:
-            print('service_app is unsupported on this platform',
-                  file=sys.stderr)
+            print('service_app is unsupported on this platform', file=sys.stderr)
             sys.exit(Error.CONFIG_MISMATCH)
         try:
             app_binary = AddrSize(service_app, 'address', 'size')
@@ -1250,8 +1275,7 @@ def main():
             area_list.add_area('service_app', None, app_binary.addr,
                                app_binary.size + input_params.size + app_desc.size)
         except KeyError as key:
-            print('Malformed JSON:', key, 'is missing',
-                  file=sys.stderr)
+            print('Malformed JSON:', key, 'is missing', file=sys.stderr)
             sys.exit(Error.JSON)
 
     # Fill flash areas
@@ -1263,8 +1287,7 @@ def main():
 
     if app_start % plat['VTAlign'] != 0:
         print('Starting address', apps_flash_map[1].get("primary").get("address"),
-              '+', hex(cy_img_hdr_size),
-              'must be aligned to', hex(plat['VTAlign']),
+              '+', hex(cy_img_hdr_size), 'must be aligned to', hex(plat['VTAlign']),
               file=sys.stderr)
         sys.exit(Error.CONFIG_MISMATCH)
 
@@ -1308,39 +1331,45 @@ def main():
 
     area_list.create_flash_area_id(app_count, params)
 
-    # Report necessary values back to make
-    print('# AUTO-GENERATED FILE, DO NOT EDIT. ALL CHANGES WILL BE LOST!')
+    # Write necessary values to makefile
+    try:
+        mk_file = open(params.mk_file, "w")
+    except (FileNotFoundError, OSError):
+        print('\nERROR: Cannot create ', params.mk_file, file=sys.stderr)
+        sys.exit(Error.IO)
+
+    print('# AUTO-GENERATED FILE, DO NOT EDIT. ALL CHANGES WILL BE LOST!', file=mk_file)
     if params.set_core:
-        print('CORE :=', plat['allCores'][plat['bootCore'].lower()])
+        print('CORE :=', plat['allCores'][plat['bootCore'].lower()], file=mk_file)
 
     if ram_app_staging is not None:
-        print('USE_STAGE_RAM_APPS := 1')
-        print('RAM_APP_STAGING_EXT_MEM_ADDR := ', hex(ram_app_staging_ext_mem_addr))
-        print('RAM_APP_STAGING_SRAM_MEM_ADDR :=', hex(ram_app_staging_sram_stage_addr))
-        print('RAM_APP_STAGING_SIZE := ', hex(ram_app_staging_size))
+        print('USE_STAGE_RAM_APPS := 1', file=mk_file)
+        print('RAM_APP_STAGING_EXT_MEM_ADDR := ', hex(ram_app_staging_ext_mem_addr), file=mk_file)
+        print('RAM_APP_STAGING_SRAM_MEM_ADDR :=', hex(ram_app_staging_sram_stage_addr), file=mk_file)
+        print('RAM_APP_STAGING_SIZE := ', hex(ram_app_staging_size), file=mk_file)
         if ram_app_staging_reset_trigger is True:
-            print('RAM_APP_RESET_TRIGGER := 1')
+            print('RAM_APP_RESET_TRIGGER := 1', file=mk_file)
 
     if bootloader_startup is True:
-        print('BOOTLOADER_STARTUP := 1')
+        print('BOOTLOADER_STARTUP := 1', file=mk_file)
 
     if ram_app_area is not None:
-        print('USE_MCUBOOT_RAM_LOAD := 1')
-        print('IMAGE_EXECUTABLE_RAM_START :=', hex(ram_app_area.addr))
-        print('IMAGE_EXECUTABLE_RAM_SIZE :=', hex(ram_app_area.size))
+        print('USE_MCUBOOT_RAM_LOAD := 1', file=mk_file)
+        print('IMAGE_EXECUTABLE_RAM_START :=', hex(ram_app_area.addr), file=mk_file)
+        print('IMAGE_EXECUTABLE_RAM_SIZE :=', hex(ram_app_area.size), file=mk_file)
 
     if boot_shared_data_area is not None:
-        print('USE_MEASURED_BOOT := 1')
-        print('USE_DATA_SHARING := 1')
-        print('BOOT_SHARED_DATA_ADDRESS :=', hex(boot_shared_data_area.addr)+'U')
-        print('BOOT_SHARED_DATA_SIZE :=', hex(boot_shared_data_area.size)+'U')
-        print('BOOT_SHARED_DATA_RECORD_SIZE :=', hex(boot_shared_data_area.size)+'U')
+        print('USE_MEASURED_BOOT := 1', file=mk_file)
+        print('USE_DATA_SHARING := 1', file=mk_file)
+        print('BOOT_SHARED_DATA_ADDRESS :=', hex(boot_shared_data_area.addr)+'U', file=mk_file)
+        print('BOOT_SHARED_DATA_SIZE :=', hex(boot_shared_data_area.size)+'U', file=mk_file)
+        print('BOOT_SHARED_DATA_RECORD_SIZE :=', hex(boot_shared_data_area.size)+'U', file=mk_file)
 
-    print('BOOTLOADER_ORIGIN :=', hex(boot_flash_area.addr))
-    print('BOOTLOADER_SIZE :=', hex(boot_flash_area.size))
-    print('BOOTLOADER_RAM_ORIGIN :=', hex(boot_ram_area.addr))
-    print('BOOTLOADER_RAM_SIZE :=', hex(boot_ram_area.size))
-    print('APP_CORE :=', app_core)
+    print('BOOTLOADER_ORIGIN :=', hex(boot_flash_area.addr), file=mk_file)
+    print('BOOTLOADER_SIZE :=', hex(boot_flash_area.size), file=mk_file)
+    print('BOOTLOADER_RAM_ORIGIN :=', hex(boot_ram_area.addr), file=mk_file)
+    print('BOOTLOADER_RAM_SIZE :=', hex(boot_ram_area.size), file=mk_file)
+    print('APP_CORE :=', app_core, file=mk_file)
 
     # for blinky
     if params.img_id is not None:
@@ -1353,14 +1382,14 @@ def main():
             image_ram_size = apps_ram_map[int(params.img_id)].get("size")
             image_ram_boot = apps_ram_map[int(params.img_id)].get("ram_boot")
             if image_ram_address and image_ram_size:
-                print('IMG_RAM_ORIGIN := ' + hex(image_ram_address))
-                print('IMG_RAM_SIZE := ' + hex(image_ram_size))
+                print('IMG_RAM_ORIGIN := ' + hex(image_ram_address), file=mk_file)
+                print('IMG_RAM_SIZE := ' + hex(image_ram_size), file=mk_file)
                 if image_ram_boot is True:
-                    print('USE_MCUBOOT_RAM_LOAD := 1')
+                    print('USE_MCUBOOT_RAM_LOAD := 1', file=mk_file)
 
-        print('PRIMARY_IMG_START := ' + primary_img_start)
-        print('SECONDARY_IMG_START := ' + secondary_img_start)
-        print('SLOT_SIZE := ' + slot_size)
+        print('PRIMARY_IMG_START := ' + primary_img_start, file=mk_file)
+        print('SECONDARY_IMG_START := ' + secondary_img_start, file=mk_file)
+        print('SLOT_SIZE := ' + slot_size, file=mk_file)
     # for bootloader
     else:
         if apps_ram_map:
@@ -1370,34 +1399,96 @@ def main():
                     ram_load_counter += 1
 
             if ram_load_counter != 0:
-                print('USE_MCUBOOT_RAM_LOAD := 1')
+                print('USE_MCUBOOT_RAM_LOAD := 1', file=mk_file)
                 if ram_load_counter == 1:
-                    print(f'IMAGE_EXECUTABLE_RAM_START := {hex(apps_ram_map[1].get("address"))}')
-                    print(f'IMAGE_EXECUTABLE_RAM_SIZE := {hex(apps_ram_map[1].get("size"))}')
+                    print(f'IMAGE_EXECUTABLE_RAM_START := {hex(apps_ram_map[1].get("address"))}', file=mk_file)
+                    print(f'IMAGE_EXECUTABLE_RAM_SIZE := {hex(apps_ram_map[1].get("size"))}', file=mk_file)
                 else:
-                    print('USE_MCUBOOT_MULTI_MEMORY_LOAD := 1')
+                    print('USE_MCUBOOT_MULTI_MEMORY_LOAD := 1', file=mk_file)
 
-        print('MAX_IMG_SECTORS :=', slot_sectors_max)
+        print('MAX_IMG_SECTORS :=', slot_sectors_max, file=mk_file)
 
-    print('MCUBOOT_IMAGE_NUMBER :=', app_count)
+    print('MCUBOOT_IMAGE_NUMBER :=', app_count, file=mk_file)
     if area_list.external_flash:
-        print('USE_EXTERNAL_FLASH := 1')
+        print('USE_EXTERNAL_FLASH := 1', file=mk_file)
     if area_list.external_flash_xip:
-        print('USE_XIP := 1')
+        print('USE_XIP := 1', file=mk_file)
 
-    if area_list.use_overwrite:
-        print('USE_OVERWRITE := 1')
+    if area_list.use_direct_xip:
+        print('USE_DIRECT_XIP := 1', file=mk_file)
+    elif area_list.use_overwrite:
+        print('USE_OVERWRITE := 1', file=mk_file)
+
     if shared_slot:
-        print('USE_SHARED_SLOT := 1')
+        print('USE_SHARED_SLOT := 1', file=mk_file)
     if service_app is not None:
         print('PLATFORM_SERVICE_APP_OFFSET :=',
-              hex(app_binary.addr - plat['smifAddr']))
+              hex(app_binary.addr - plat['smifAddr']), file=mk_file)
         print('PLATFORM_SERVICE_APP_INPUT_PARAMS_OFFSET :=',
-              hex(input_params.addr - plat['smifAddr']))
+              hex(input_params.addr - plat['smifAddr']), file=mk_file)
         print('PLATFORM_SERVICE_APP_DESC_OFFSET :=',
-              hex(app_desc.addr - plat['smifAddr']))
-        print('USE_HW_ROLLBACK_PROT := 1')
+              hex(app_desc.addr - plat['smifAddr']), file=mk_file)
+        print('USE_HW_ROLLBACK_PROT := 1', file=mk_file)
+    mk_file.close()
 
+    if params.nonce_file and not os.path.isfile(params.nonce_file):
+        try:
+            with open(params.policy, encoding='UTF-8') as in_f:
+                try:
+                    policy = json.load(in_f)
+                except ValueError:
+                    print('\nERROR: Cannot parse', params.policy, '\n', file=sys.stderr)
+                    sys.exit(Error.IO)
+        except (FileNotFoundError, OSError):
+            print('\nERROR: Cannot open', params.policy, file=sys.stderr)
+            sys.exit(Error.IO)
+
+        policy_key_path = policy.get('pre_build', {}).get('keys', {}).get('encrypt_key', {}).get('value', {})
+        if policy_key_path:
+            full_key_path = os.path.join(os.path.dirname(params.policy), policy_key_path)
+            try:
+                with open(full_key_path, "rb") as aes_key_file:
+                    aes_key = aes_key_file.read()
+            except (FileNotFoundError, OSError):
+                print('Missing encryption key', full_key_path, '\nNonce file generation skipped')
+                sys.exit(0)
+
+            if len(aes_key) != AES_BLOCK_SIZE:
+                print('\nERROR: Wrong AES key size in ', full_key_path, file=sys.stderr)
+                sys.exit(Error.CONFIG_MISMATCH)
+
+            for i in range(NONCE_GEN_RETRIES):
+                random_bytes = os.urandom(NONCE_RAND_SIZE)
+                fa_ids = [entry['fa_off'] + entry['fa_size'] for entry in area_list.areas
+                          if entry['fa_id'].startswith('FLASH_AREA_IMG_')]
+                for fa_end_addr in fa_ids:
+                    img_ok_addr = SHAB_ADDR + fa_end_addr - IMG_OK_OFFSET
+                    img_ok_block_addr = img_ok_addr & ~(AES_BLOCK_SIZE - 1)
+                    nonce = img_ok_block_addr.to_bytes(AES_BLOCK_SIZE - NONCE_RAND_SIZE,
+                                                         byteorder='little') + random_bytes
+                    cipher = Cipher(algorithms.AES(aes_key), modes.CTR(nonce))
+                    encryptor_0 = cipher.encryptor()
+                    encryptor_1 = cipher.encryptor()
+                    encrypted_block_0 = encryptor_0.update(b'\x00' * AES_BLOCK_SIZE)
+                    encrypted_block_1 = encryptor_1.update(b'\xFF' * AES_BLOCK_SIZE)
+
+                    if encrypted_block_0[img_ok_addr - img_ok_block_addr] == IMG_OK_VALUE or \
+                       encrypted_block_1[img_ok_addr - img_ok_block_addr] == IMG_OK_VALUE:
+                        break
+                else:
+                    break
+            else:
+                print("\nERROR: Can't generate valid NONCE sequence", file=sys.stderr)
+                sys.exit(Error.VALUE)
+
+            try:
+                if '/' in params.nonce_file or '\\' in params.nonce_file:
+                    os.makedirs(os.path.dirname(params.nonce_file), exist_ok=True)
+                with open(params.nonce_file, "wb") as nonce_f:
+                    nonce_f.write(random_bytes)
+            except (FileNotFoundError, OSError):
+                print('\nERROR: Cannot create ', params.nonce_file, file=sys.stderr)
+                sys.exit(Error.IO)
 
 if __name__ == '__main__':
     main()

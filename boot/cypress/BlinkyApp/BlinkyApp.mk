@@ -7,7 +7,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2019 Cypress Semiconductor Corporation
+# Copyright 2018-2025 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,10 +57,19 @@ OUT_TARGET := $(OUT)/$(PLATFORM)
 OUT_CFG := $(OUT_TARGET)/$(BUILDCFG)
 
 # Set build directory for BOOT and UPGRADE images
-ifeq ($(IMG_TYPE), UPGRADE)
-    OUT_CFG := $(OUT_CFG)/upgrade
+
+ifeq ($(USE_DIRECT_XIP), 1)
+    ifeq ($(APP_SLOT), 1)
+        OUT_CFG := $(OUT_CFG)/primary
+    else ifeq ($(APP_SLOT), 2)
+        OUT_CFG := $(OUT_CFG)/secondary
+    endif
 else
-    OUT_CFG := $(OUT_CFG)/boot
+    ifeq ($(IMG_TYPE), UPGRADE)
+        OUT_CFG := $(OUT_CFG)/upgrade
+    else
+        OUT_CFG := $(OUT_CFG)/boot
+    endif
 endif
 
 # Set parameters needed for signing
@@ -73,10 +82,10 @@ include $(PRJ_DIR)/platforms.mk
 ifneq ($(FLASH_MAP), )
 ifeq ($(FAMILY), CYW20829)
 $(CUR_APP_PATH)/memorymap.mk:
-	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h -c $(PRJ_DIR)/policy/policy_secure.json -d $(IMG_ID) -c $(PRJ_DIR)/policy/policy_reprovisioning_secure.json > $(CUR_APP_PATH)/memorymap.mk
+	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h -d $(IMG_ID) -k $(CUR_APP_PATH)/memorymap.mk -c $(PRJ_DIR)/policy/policy_reprovisioning_secure.json
 else ifeq ($(FAMILY), PSOC6)
 $(CUR_APP_PATH)/memorymap.mk:
-	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h -d $(IMG_ID) > $(CUR_APP_PATH)/memorymap.mk
+	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h -d $(IMG_ID) -k $(CUR_APP_PATH)/memorymap.mk -m
 else
 $(CUR_APP_PATH)/memorymap.mk:
 	$(PYTHON_PATH) scripts/memorymap_rework.py run -p $(PLATFORM_CONFIG) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory -n memorymap -d $(IMG_ID) > $(CUR_APP_PATH)/memorymap.mk
@@ -138,7 +147,9 @@ DEFINES += -DUSER_APP_RAM_START=$(USER_APP_RAM_START)
 DEFINES += -DUSER_APP_RAM_SIZE=$(USER_APP_RAM_SIZE)
 DEFINES += -DUSER_APP_START=$(USER_APP_START)
 DEFINES += -DPRIMARY_IMG_START=$(PRIMARY_IMG_START)
+DEFINES += -DSECONDARY_IMG_START=$(SECONDARY_IMG_START)
 DEFINES += -DUSER_APP_SIZE=$(SLOT_SIZE)
+DEFINES += -DAPP_SLOT=$(APP_SLOT)
 DEFINES += -DAPP_$(APP_CORE)
 DEFINES += -DBOOT_$(APP_CORE)
 
@@ -203,11 +214,21 @@ endif
 # Collect Test Application sources
 C_FILES += $(wildcard $(CUR_APP_PATH)/*.c)
 
-# Set offset for secondary image
-ifeq ($(IMG_TYPE), UPGRADE)
-    HEADER_OFFSET := $(SECONDARY_IMG_START)
+
+ifeq ($(USE_DIRECT_XIP), 1)
+    # Set offset for secondary image
+    ifeq ($(APP_SLOT), 2)
+        HEADER_OFFSET := $(SECONDARY_IMG_START)
+    else
+        HEADER_OFFSET := $(PRIMARY_IMG_START)
+    endif
 else
-    HEADER_OFFSET := $(PRIMARY_IMG_START)
+    # Set offset for secondary image
+    ifeq ($(IMG_TYPE), UPGRADE)
+        HEADER_OFFSET := $(SECONDARY_IMG_START)
+    else
+        HEADER_OFFSET := $(PRIMARY_IMG_START)
+    endif
 endif
 
 # Collect all the sources
@@ -231,6 +252,11 @@ ifeq ($(IMG_TYPE), UPGRADE)
         C_FILES += $(PRJ_DIR)/platforms/img_confirm/$(FAMILY)/set_img_ok.c
         INCLUDE_DIRS += $(PRJ_DIR)/platforms/img_confirm
     endif
+endif
+
+ifeq ($(USE_DIRECT_XIP), 1)
+    C_FILES += $(PRJ_DIR)/platforms/img_confirm/$(FAMILY)/set_img_ok.c
+    INCLUDE_DIRS += $(PRJ_DIR)/platforms/img_confirm
 endif
 
 # Overwite path to linker script if custom is required, otherwise default from BSP is used

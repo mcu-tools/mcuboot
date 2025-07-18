@@ -7,7 +7,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2019 Cypress Semiconductor Corporation
+# Copyright 2018-2025 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,14 +106,6 @@ DEFINES += -DCY_DEBUG_UART_RX=$(UART_RX_DEFAULT)
 DEFINES += -DCYBSP_DEBUG_UART_TX=$(UART_TX_DEFAULT)
 DEFINES += -DCYBSP_DEBUG_UART_RX=$(UART_RX_DEFAULT)
 
-# Add device name to defines
-DEFINES += -D$(DEVICE)
-DEFINES += -DCY_USING_HAL
-DEFINES += -DCORE_NAME_$(CORE)_0=1
-DEFINES += -DCOMPONENT_CAT1 
-DEFINES += -DCOMPONENT_CAT1A
-DEFINES += -DCOMPONENT_$(CORE)
-
 # Minimum erase size of underlying memory hardware
 PLATFORM_MEMORY_ALIGN := 0x200
 PLATFORM_MAX_TRAILER_PAGE_SIZE := 0x200
@@ -132,6 +124,8 @@ PLATFORM_CHUNK_SIZE := 512U
 THIS_APP_PATH = $(PRJ_DIR)/libs
 
 ifeq ($(APP_NAME), MCUBootApp)
+
+CFLAGS_OPTIMIZATION := -Os -g3
 
 CORE ?= CM0P
 ifeq ($(CORE), CM0P)
@@ -276,3 +270,11 @@ PLATFORM_SYSTEM_FILE_NAME := system_psoc6_c$(CORE_SUFFIX).c
 PLATFORM_STARTUP_FILE := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/COMPONENT_$(CORE)/TOOLCHAIN_$(COMPILER)/startup_psoc6_$(PLATFORM_SUFFIX)_c$(CORE_SUFFIX).S
 
 INCLUDE_DIRS += $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system
+
+# Add device name to defines
+DEFINES += -D$(DEVICE)
+DEFINES += -DCY_USING_HAL
+DEFINES += -DCORE_NAME_$(CORE)_0=1
+DEFINES += -DCOMPONENT_CAT1 
+DEFINES += -DCOMPONENT_CAT1A
+DEFINES += -DCOMPONENT_$(CORE)

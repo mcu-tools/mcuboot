@@ -1,12 +1,12 @@
 /***************************************************************************//**
 * \file system_psoc6.h
-* \version 2.95.1
+* \version 2.100
 *
 * \brief Device system header file.
 *
 ********************************************************************************
 * \copyright
-* Copyright 2016-2021 Cypress Semiconductor Corporation
+* Copyright 2016-2025 Cypress Semiconductor Corporation
 * SPDX-License-Identifier: Apache-2.0
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,7 +69,7 @@
 * Cy_SysEnableCM4() function call.
 * By default, the COMPONENT_CM0P_SLEEP prebuilt image is used for the CM0p core.
 * More about CM0+ prebuilt images, see here:
-* https://github.com/cypresssemiconductorco/psoc6cm0p
+* https://github.com/Infineon/psoc6cm0p
 *
 * Change the flash and RAM sizes by editing the macros value in the
 * linker files for both CPUs:
@@ -106,7 +106,7 @@
 * Cy_SysEnableCM4() function call.
 * By default, the COMPONENT_CM0P_SLEEP prebuilt image is used for the CM0p core.
 * More about CM0+ prebuilt images, see here:
-* https://github.com/cypresssemiconductorco/psoc6cm0p
+* https://github.com/Infineon/psoc6cm0p
 *
 * \note The linker files provided with the PDL are generic and handle all common
 * use cases. Your project may not use every section defined in the linker files.
@@ -156,7 +156,7 @@
 * Cy_SysEnableCM4() function call.
 * By default, the COMPONENT_CM0P_SLEEP prebuilt image is used for the CM0p core.
 * More about CM0+ prebuilt images, see here:
-* https://github.com/cypresssemiconductorco/psoc6cm0p
+* https://github.com/Infineon/psoc6cm0p
 *
 * Change the flash and RAM sizes by editing the macros value in the
 * linker files for both CPUs:
@@ -240,7 +240,7 @@
 * clib-support library that provides newlib-compatible implementations of
 * 'sbrk', '__malloc_lock' and '__malloc_unlock':
 * <br>
-* https://github.com/cypresssemiconductorco/clib-support.
+* https://github.com/Infineon/clib-support.
 *
 * \subsubsection group_system_config_heap_stack_config_mdk ARM Compiler
 * - <b>Editing source code files</b>\n
@@ -334,6 +334,11 @@
 *       <th>Reason for Change</th>
 *   </tr>
 *   <tr>
+*       <td rowspan="1">2.100</td>
+*       <td>Added support for TRAVEO&trade; II Body Entry devices.</td>
+*       <td>Code enhancement and support for new devices.</td>
+*   </tr> 
+*   <tr>
 *       <td rowspan="1">2.95.1</td>
 *       <td>Restructured documentation.</td>
 *       <td>Documentation update.</td>
@@ -341,7 +346,7 @@
 *   <tr>
 *       <td rowspan="1">2.95</td>
 *       <td>Update FPU enable function with CMSIS macros to disable/enable interrupts</td>
-*       <td>Move to stadnard inline CMSIS ARM macros</td>
+*       <td>Move to standard inline CMSIS ARM macros</td>
 *   </tr>
 *   <tr>
 *       <td rowspan="2">2.91</td>
@@ -552,7 +557,13 @@ extern "C" {
 *        <i>(USER SETTING)</i>
 *******************************************************************************/
 #if !defined (CY_CORTEX_M4_APPL_ADDR)
-    #define CY_CORTEX_M4_APPL_ADDR          (CY_FLASH_BASE + 0x2000U)   /* <<< 8 kB of flash is reserved for the Cortex-M0+ application */
+    // Include a partition file for Traveo II BE devices
+    #if (defined (CY_DEVICE_SERIES_CYT2B6) || defined (CY_DEVICE_SERIES_CYT2B7) || defined (CY_DEVICE_SERIES_CYT2B9) || defined (CY_DEVICE_SERIES_CYT2BL))
+        #include "tviibe_partition.h"
+        #define CY_CORTEX_M4_APPL_ADDR          BASE_CODE_FLASH_CM4_0
+    #else
+        #define CY_CORTEX_M4_APPL_ADDR          (CY_FLASH_BASE + 0x2000U)   /* <<< 8 kB of flash is reserved for the Cortex-M0+ application */
+    #endif
 #endif /* (CY_CORTEX_M4_APPL_ADDR) */
 
 

@@ -1,4 +1,4 @@
-/* Copyright 2022, Infineon Technologies AG.  All rights reserved.
+/* Copyright 2025, Infineon Technologies AG.  All rights reserved.
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file

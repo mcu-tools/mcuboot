@@ -70,33 +70,35 @@ bootutil_parse_eckey(mbedtls_ecdsa_context *ctx, uint8_t **p, uint8_t *end)
     if (mbedtls_asn1_get_alg(p, end, &alg, &param)) {
         return -2;
     }
-    if (alg.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
-      memcmp(alg.MBEDTLS_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
+
+    else if (alg.len != sizeof(ec_pubkey_oid) - 1 ||
+      memcmp(alg.p, ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -3;
     }
-    if (param.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_secp256r1_oid) - 1 ||
-      memcmp(param.MBEDTLS_CONTEXT_MEMBER(p), ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
+
+    else if (param.len != sizeof(ec_secp256r1_oid) - 1 ||
+      memcmp(param.p, ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
         return -4;
     }
 
-    if (mbedtls_ecp_group_load(&ctx->MBEDTLS_CONTEXT_MEMBER(grp), MBEDTLS_ECP_DP_SECP256R1)) {
+    else if (mbedtls_ecp_group_load(&ctx->MBEDTLS_CONTEXT_MEMBER(grp), MBEDTLS_ECP_DP_SECP256R1)) {
         return -5;
     }
 
-    if (mbedtls_asn1_get_bitstring_null(p, end, &len)) {
+    else if (mbedtls_asn1_get_bitstring_null(p, end, &len)) {
         return -6;
     }
-    if (*p + len != end) {
+    else if (*p + len != end) {
         return -7;
     }
 
-    if (mbedtls_ecp_point_read_binary(&ctx->MBEDTLS_CONTEXT_MEMBER(grp),
+    else if (mbedtls_ecp_point_read_binary(&ctx->MBEDTLS_CONTEXT_MEMBER(grp),
                                       &ctx->MBEDTLS_CONTEXT_MEMBER(Q),
                                       *p, end - *p)) {
         return -8;
     }
 
-    if (mbedtls_ecp_check_pubkey(&ctx->MBEDTLS_CONTEXT_MEMBER(grp),
+    else if (mbedtls_ecp_check_pubkey(&ctx->MBEDTLS_CONTEXT_MEMBER(grp),
                                  &ctx->MBEDTLS_CONTEXT_MEMBER(Q))) {
         return -9;
     }
@@ -120,17 +122,28 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
     if (mbedtls_asn1_get_alg(cp, end, &alg, &param)) {
         return -2;
     }
-
-    if (alg.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
-        memcmp(alg.MBEDTLS_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
+#ifdef PSE84
+    /* id-ecPublicKey (RFC5480) */
+    if (alg.len != sizeof(ec_pubkey_oid) - 1 ||
+        memcmp(alg.p, ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -3;
     }
     /* namedCurve (RFC5480) */
-    if (param.MBEDTLS_CONTEXT_MEMBER(len) != sizeof(ec_secp256r1_oid) - 1 ||
-        memcmp(param.MBEDTLS_CONTEXT_MEMBER(p), ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
+    if (param.len != sizeof(ec_secp256r1_oid) - 1 ||
+        memcmp(param.p, ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
         return -4;
     }
-
+#else
+    if (alg.len != sizeof(ec_pubkey_oid) - 1 ||
+        memcmp(alg.p, ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
+        return -3;
+    }
+    /* namedCurve (RFC5480) */
+    if (param.len != sizeof(ec_secp256r1_oid) - 1 ||
+        memcmp(param.p, ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
+        return -4;
+    }
+#endif
     /* ECPoint (RFC5480) */
     if (mbedtls_asn1_get_bitstring_null(cp, end, &len)) {
         return -6;

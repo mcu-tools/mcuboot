@@ -74,7 +74,7 @@ This is optional for PSoC™ 6 devices. The JSON flash map should contain `"mode
 
 When XIP mode is used primary slot of an image can be placed in external memory.
 
-This repository provides default flash map files with suffix _xip_ to be used for XIP mode in `platforms/memory/flash_%platform_name%/flashmap`.
+This repository provides default flash map files with suffix _xip_ to be used for XIP mode in `platforms/memory/<PLATFORM_NAME>/flashmap`.
 
 #### How to enable external memory support
 
@@ -100,11 +100,11 @@ At SFlash address `0x16007c00` updated content of TOC2 structure is placed.
 
 The MCUBootApp can be programmed similarly to described in the [MCUBootApp.md](MCUBootApp.md) file:
 
-        export OPENOCD=/Applications/ModusToolbox/tools_3.2/openocd
+        export OPENOCD_PATH=C:/Infineon/Tools/ModusToolboxProgtools-1.4/openocd
 
-        ${OPENOCD}/bin/openocd -s ${OPENOCD}/scripts \
-                            -f ${OPENOCD}/scripts/interface/kitprog3.cfg \
-                            -f ${OPENOCD}/scripts/target/psoc6_2m.cfg \
+        ${OPENOCD_PATH}/bin/openocd -s ${OPENOCD_PATH}/scripts \
+                            -f ${OPENOCD_PATH}/scripts/interface/kitprog3.cfg \
+                            -f ${OPENOCD_PATH}/scripts/target/psoc6_2m.cfg \
                             -c "init; psoc6 sflash_restrictions 1" \
                             -c "init; reset init; program PATH_TO_APPLICATION.hex" \
                             -c "resume; reset; exit" 

@@ -19,8 +19,7 @@
 *
 ********************************************************************************
 * \copyright
-* Copyright 2016-2021 Cypress Semiconductor Corporation
-* Copyright 2022 Infineon Technologies AG
+* Copyright 2025 Infineon Technologies AG
 * SPDX-License-Identifier: Apache-2.0
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +42,7 @@ GROUP(-lgcc -lc -lnosys)
 ENTRY(Reset_Handler)
 
 /* Size of the stack section at the end of CM4 SRAM */
-STACK_SIZE = 0x1000;
+STACK_SIZE = 0x2000;
 /* The size of the MCU boot header area at the start of FLASH */
 BOOT_HEADER_SIZE = 0x400;
 
@@ -132,7 +131,7 @@ SECTIONS
 
         EXCLUDE_FILE(*cy_smif.o *cy_smif_memslot.o *cy_smif_sfdp.o
                 *cy_sysclk.o *cy_smif_hybrid_sect.o *flash_qspi.o
-                *cy_syslib.o *cy_syslib_ext.o *system_psoc6_cm4.o *libgcc.a) *(.text)
+                *cy_syslib.o *cy_syslib_ext.o *system_psoc6_cm4.o *libgcc.a, *libc.a, *libc_a-memset.o, *libc_a-memcpy-stub.o, *libc.a:memcpy.o, *cyhal_system.o) *(.text)
 
         KEEP(*(.init))
         KEEP(*(.fini))
@@ -251,6 +250,10 @@ SECTIONS
         KEEP(*(.cy_ramfunc*))
         . = ALIGN(4);
 
+        *libc.a(.text*)
+        *libc_a-memset.o(.text*)
+        *libc_a-memcpy-stub.o(.text*)
+        *cyhal_system.o(.text*)
         *libgcc.a(.text*)
         *cy_smif.o(.text*)
         *cy_smif_memslot.o(.text*)
@@ -260,6 +263,9 @@ SECTIONS
         *flash_qspi.o(.text*)
         *cy_syslib.o(.text*)
         *cy_syslib_ext.o(.text*)
+
+        KEEP(*libc.a:memset.o(.text*))
+        KEEP(*libc.a:memcpy.o(.text*))
 
         __data_end__ = .;
 

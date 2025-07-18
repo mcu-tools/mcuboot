@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020 Cypress Semiconductor Corporation
- * Copyright (c) 2021 Infineon Technologies AG
+ * Copyright (c) 2025 Infineon Technologies AG
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -25,7 +24,7 @@
 
 #include "platform.h"
 
-#if !(SWAP_DISABLED) && defined(UPGRADE_IMAGE)
+#if !(SWAP_DISABLED) && defined(UPGRADE_IMAGE) || defined(MCUBOOT_DIRECT_XIP)
 #include "set_img_ok.h"
 #endif
 
@@ -35,10 +34,10 @@ int main(void)
 
     printf(GREETING_MESSAGE_INFO);
 
-#if !(SWAP_DISABLED) && defined(UPGRADE_IMAGE)
+#if !(SWAP_DISABLED) && defined(UPGRADE_IMAGE) || defined(MCUBOOT_DIRECT_XIP)
     int rc = -1;
 
-    printf("[BlinkyApp] Try to set img_ok to confirm upgrade image\r\n");
+    printf("[BlinkyApp] Try to set img_ok to confirm that the image is valid\r\n");
 
     /* Write Image OK flag to the slot trailer, so MCUBoot-loader
      * will not revert new image
@@ -51,6 +50,7 @@ int main(void)
         printf("[BlinkyApp] SWAP Status : Image OK was set at 0x%08x.\r\n", IMG_OK_ADDR);
     } else {
         printf("[BlinkyApp] SWAP Status : Failed to set Image OK.\r\n");
+        for (;;);
     }
 
 #endif /* !(SWAP_DISABLED) && defined(UPGRADE_IMAGE) */

@@ -7,7 +7,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2018-2019 Cypress Semiconductor Corporation
+# Copyright 2018-2025 Cypress Semiconductor Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +43,7 @@ USE_SHARED_SLOT ?= 0
 FIH_PROFILE_LEVEL_LIST := OFF LOW MEDIUM HIGH
 FIH_PROFILE_LEVEL ?= MEDIUM
 MCUBOOT_SWAP_STATUS_FAST_BOOT ?= 0
+USE_LOG_TIMESTAMP ?= 1
 
 ifeq ($(BUILDCFG), Release)
     MCUBOOT_LOG_LEVEL ?= MCUBOOT_LOG_LEVEL_INFO
@@ -77,10 +78,10 @@ ifneq ($(FLASH_MAP), )
 
 ifeq ($(FAMILY), CYW20829)
 $(CUR_APP_PATH)/memorymap.mk:
-	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h -c $(PRJ_DIR)/policy/policy_secure.json > $(CUR_APP_PATH)/memorymap.mk
+	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h -c $(APP_DEFAULT_POLICY) -k $(CUR_APP_PATH)/memorymap.mk -n $(OUT_CFG)/$(APP_NAME).signed_nonce.bin
 else ifeq ($(FAMILY), PSOC6)
 $(CUR_APP_PATH)/memorymap.mk:
-	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h > $(CUR_APP_PATH)/memorymap.mk
+	$(PYTHON_PATH) scripts/memorymap.py -p $(PLATFORM) -m -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory/memorymap.c -a $(PRJ_DIR)/platforms/memory/memorymap.h -k $(CUR_APP_PATH)/memorymap.mk
 else
 $(CUR_APP_PATH)/memorymap.mk:
 	$(PYTHON_PATH) scripts/memorymap_rework.py run -p $(PLATFORM_CONFIG) -i $(FLASH_MAP) -o $(PRJ_DIR)/platforms/memory -n memorymap > $(CUR_APP_PATH)/memorymap.mk
@@ -170,6 +171,15 @@ ifeq ($(USE_CRYPTO_HW), 1)
 
 endif
 
+ifeq ($(MCUBOOT_SKIP_VALIDATE_PRIMARY_SLOT), 1)
+    DEFINES += -DMCUBOOT_SKIP_VALIDATE_PRIMARY_SLOT
+endif
+
+ifeq ($(MCUBOOT_SKIP_VALIDATE), 1)
+    DEFINES += -DMCUBOOT_SKIP_VALIDATE_PRIMARY_SLOT
+    DEFINES += -DMCUBOOT_SKIP_VALIDATE_SECONDARY_SLOT
+endif
+
 ifneq ($(MCUBOOT_IMAGE_NUMBER), 1)
     ifeq ($(MCUBOOT_DEPENDENCY_CHECK), 1)
         DEFINES += -DMCUBOOT_DEPENDENCY_CHECK
@@ -196,15 +206,6 @@ ifeq ($(ENC_IMG), 1)
     DEFINES += -DENC_IMG=1
     ifeq ($(FAMILY), CYW20829)
         DEFINES += -DMCUBOOT_ENC_IMAGES_XIP
-    endif
-# Use maximum optimization level for PSOC6 encrypted image with
-# external flash so it would fit into 0x18000 size of MCUBootApp
-    ifneq ($(FAMILY), CYW20829)
-        ifeq ($(BUILDCFG), Debug)
-            ifeq ($(USE_EXTERNAL_FLASH), 1)
-                CFLAGS_OPTIMIZATION := -Os -g3
-            endif
-        endif
     endif
 endif
 

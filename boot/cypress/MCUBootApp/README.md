@@ -172,16 +172,18 @@ Example command:
 There are couple ways of programming hex of MCUBootApp and BlinkyApp. Following instructions assume one of Cypress development kits, for example `CY8CPROTO_062_4343W`.
 
 1. Direct usage of OpenOCD.
-OpenOCD package is supplied with ModuToolbox IDE and can be found in installation folder under `./tools_3.2/openocd`.
-Open terminal application -  and execute following command after substitution `PATH_TO_APPLICATION.hex` and `OPENOCD` paths.
 
 Connect a board to your computer. Switch Kitprog3 to DAP-BULK mode by pressing `SW3 MODE` button until `LED2 STATUS` constantly shines.
 
-        export OPENOCD=/Applications/ModusToolbox/tools_3.2/openocd 
+The OpenOCD package is supplied with `ModusToolbox™ Programming Tools` and can be found in the `C:\Infineon\Tools\ModusToolboxProgtools-1.4\openocd` folder.
 
-        ${OPENOCD}/bin/openocd -s ${OPENOCD}/scripts \
-                            -f ${OPENOCD}/scripts/interface/kitprog3.cfg \
-                            -f ${OPENOCD}/scripts/target/psoc6_2m.cfg \
+Open the terminal application and execute the following commands:
+
+        export OPENOCD_PATH=C:/Infineon/Tools/ModusToolboxProgtools-1.4/openocd
+
+        ${OPENOCD_PATH}/bin/openocd -s ${OPENOCD_PATH}/scripts \
+                            -f ${OPENOCD_PATH}/scripts/interface/kitprog3.cfg \
+                            -f ${OPENOCD_PATH}/scripts/target/psoc6_2m.cfg \
                             -c "init; reset init; program PATH_TO_APPLICATION.hex" \
                             -c "resume; reset; exit" 
 
@@ -209,7 +211,7 @@ On Windows:
 * Msys2
 
 Also IDE may be used:
-* Eclipse / ModusToolbox ("makefile project from existing source")
+* Eclipse / ModusToolbox™ ("makefile project from existing source")
 
 *Make* - make sure it is added to system's `PATH` variable and correct path is first in the list;
 
@@ -217,5 +219,5 @@ Also IDE may be used:
 
 *Msys2* - to use systems PATH navigate to msys2 folder, open `msys2_shell.cmd`, uncomment set `MSYS2_PATH_TYPE=inherit`, restart MSYS2 shell.
 
-This will inherit system's PATH so should find `python3.7` installed in regular way as well as imgtool and its dependencies.
+This will inherit system's PATH so should find `Python` installed in regular way as well as imgtool and its dependencies.
 

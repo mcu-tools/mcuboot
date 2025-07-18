@@ -6,7 +6,7 @@
 *
 ********************************************************************************
 * \copyright
-* Copyright (c) (2020-2022), Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright (c) (2020-2025), Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.
 * SPDX-License-Identifier: Apache-2.0
 *
@@ -128,7 +128,7 @@ void SystemInit_CAT1B_CM33(void)
     (void)Cy_SystemInit(); /* typecast void to suppress a compiler warning about unused return value */
 
     /* Unlock and disable WDT */
-#if !defined(DISABLE_WDT_FREE)
+#if defined(BSP_DISABLE_WDT)
     Cy_WDT_Unlock();
     Cy_WDT_Disable();
 #endif

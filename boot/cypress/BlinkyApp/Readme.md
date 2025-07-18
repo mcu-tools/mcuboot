@@ -44,7 +44,7 @@ Root directory for build is **boot/cypress.**
 
 The following command will build regular HEX file of a BlinkyApp for BOOT slot. Substitute `PLATFORM=` to a platform name you use in all following commands.
 
-    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=BOOT
+    make clean_boot app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M BUILDCFG=Debug IMG_TYPE=BOOT FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_single.json
 
 This have following defaults suggested:
 
@@ -53,59 +53,23 @@ This have following defaults suggested:
 
 To build UPGRADE image use following command:
 
-    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x10000
-
-    Note: HEADER_OFFSET=%SLOT_SIZE%
-
-Example command-line for single-image:
-
-    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=BOOT
-
-**Building Multi-Image**
-
-`BlinkyApp` can be built to use in multi-image bootloader configuration.
-
-To get appropriate artifacts to use with multi image MCUBootApp, makefile flag `HEADER_OFFSET=` can be used.
-
-Example usage:
-
-Considering default config:
-
-* first image BOOT (PRIMARY) slot start `0x10018000`
-* slot size `0x10000`
-* second image BOOT (PRIMARY) slot start `0x10038000`
-
-To get appropriate artifact for second image PRIMARY slot run this command:
-
-    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=BOOT HEADER_OFFSET=0x20000
-
-*Note:* only 2 images are supported at the moment.
+    make clean_upgrade app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_single.json
 
 **How to build upgrade image for external memory:**
 
 To prepare MCUBootApp for work with external memory please refer to `MCUBootApp/ExternalMemory.md`.
 
-For build BlinkyApp upgrade image for external memory use command:
+For build BlinkyApp upgrade image for external memory use flashmap with `_smif.json` configuration :
 
-    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x7FE8000 ERASED_VALUE=0xff
-
-`HEADER_OFFSET` defines the offset from original boot image address. This one in line above suggests secondary slot will start from `0x18000000`.
+    make clean_boot app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M BUILDCFG=Debug IMG_TYPE=BOOT FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_overwrite_multi_smif.json
 
 `ERASED_VALUE` defines the memory cell contents in erased state. It is `0x00` for PSoC6's internal Flash and `0xff` for S25FL512S.
 
-In case of using muti-image configuration, upgrade image for second application can be built using next command:
-
-    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x8028000 ERASED_VALUE=0xff
-
-    Note: for S25FL512S block address should be multiple by 0x40000
-
 **How to build encrypted upgrade image :**
 
-To prepare MCUBootApp for work with encrypted upgrade image please refer to `MCUBootApp/Readme.md`.
+To prepare MCUBootApp for work with encrypted upgrade image please refer to `MCUBootApp/README.md`.
 
-To obtain encrypted upgrade image of BlinkyApp extra flag `ENC_IMG=1` should be passed in command line, for example:
-
-    make app APP_NAME=BlinkyApp PLATFORM=PSOC_062_2M IMG_TYPE=UPGRADE HEADER_OFFSET=0x20000 ENC_IMG=1
+To obtain encrypted upgrade image of BlinkyApp extra flag `ENC_IMG=1` should be passed in command line.
 
 This also suggests user already placed corresponding `*.pem` key in `\keys` folder. The key variables are defined in root `Makefile` as `SIGN_KEY_FILE` and `ENC_KEY_FILE`
 
@@ -146,20 +110,25 @@ Files to use for programming are:
 When user application programmed in BOOT slot:
 
     ===========================
-    [BlinkyApp] BlinkyApp v1.0 [CM4]
+    [BlinkyApp] Version: 1.0.0
     ===========================
-    [BlinkyApp] GPIO initialized
-    [BlinkyApp] UART initialized
-    [BlinkyApp] Retarget I/O set to 115200 baudrate
+    [BlinkyApp] GPIO initialized 
+    [BlinkyApp] UART initialized 
+    [BlinkyApp] Retarget I/O set to 115200 baudrate 
     [BlinkyApp] Red led blinks with 1 sec period
+    [BlinkyApp] Image type: BOOT on CM4 core
+    [BlinkyApp] Turn off watchdog timer
 
 When user application programmed in UPRADE slot and upgrade procedure was successful:
 
     ===========================
-    [BlinkyApp] BlinkyApp v2.0 [+]
+    [BlinkyApp] Version: 1.0.0
     ===========================
-
-    [BlinkyApp] GPIO initialized
-    [BlinkyApp] UART initialized
-    [BlinkyApp] Retarget I/O set to 115200 baudrate
+    [BlinkyApp] GPIO initialized 
+    [BlinkyApp] UART initialized 
+    [BlinkyApp] Retarget I/O set to 115200 baudrate 
     [BlinkyApp] Red led blinks with 0.25 sec period
+    [BlinkyApp] Try to set img_ok to confirm upgrade image
+    [BlinkyApp] SWAP Status : Image OK was set at 0x10027fe8.
+    [BlinkyApp] Image type: UPGRADE on CM4 core
+    [BlinkyApp] Turn off watchdog timer

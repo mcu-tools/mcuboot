@@ -1,5 +1,5 @@
 /********************************************************************************
-* Copyright 2021 Infineon Technologies AG
+* Copyright 2025 Infineon Technologies AG
 * SPDX-License-Identifier: Apache-2.0
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,16 @@
 
 #define USER_SWAP_IMAGE_OK_OFFS (24)
 #define USER_SWAP_IMAGE_OK      (1)
-#define IMG_OK_ADDR             (PRIMARY_IMG_START + USER_APP_SIZE - USER_SWAP_IMAGE_OK_OFFS)
+
+#if defined(MCUBOOT_DIRECT_XIP)
+  #if APP_SLOT == 1
+    #define IMG_OK_ADDR             (PRIMARY_IMG_START + USER_APP_SIZE - USER_SWAP_IMAGE_OK_OFFS)
+  #else
+    #define IMG_OK_ADDR             (SECONDARY_IMG_START + USER_APP_SIZE - USER_SWAP_IMAGE_OK_OFFS)
+  #endif
+#else
+    #define IMG_OK_ADDR             (PRIMARY_IMG_START + USER_APP_SIZE - USER_SWAP_IMAGE_OK_OFFS)
+#endif
 
 
 #define IMG_OK_SET_UNDEFINED    0x55

@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
  *
- * Copyright (c) 2020 Cypress Semiconductors
+ * Copyright (c) 2025 Cypress Semiconductors
  *
  * Original license:
  *

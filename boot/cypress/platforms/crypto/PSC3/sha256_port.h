@@ -4,7 +4,7 @@
  * Provides port layer for SHA256 MCUBoot functions
  ********************************************************************************
  * \copyright
- * (c) 2023, Cypress Semiconductor Corporation (an Infineon company) or an
+ * (c) 2025, Cypress Semiconductor Corporation (an Infineon company) or an
  * affiliate of Cypress Semiconductor Corporation.  All rights reserved.
  * This software, associated documentation and materials ("Software") is owned
  * by Cypress Semiconductor Corporation or one of its affiliates ("Cypress") and

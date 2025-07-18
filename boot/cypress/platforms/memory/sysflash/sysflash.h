@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020 Cypress Semiconductor Corporation
- * Copyright (c) 2022 Infineon Technologies AG
+ * Copyright (c) 2025 Infineon Technologies AG
  *
  * SPDX-License-Identifier: Apache-2.0
  */

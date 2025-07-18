@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Infineon Technologies AG
+ * Copyright (c) 2025 Infineon Technologies AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,22 +26,7 @@
 #include "bootutil/enc_key.h"
 #include "bootutil/fault_injection_hardening.h"
 
-#ifdef CYW20829
-
-extern const volatile uint32_t __data_start__[];
-extern const volatile uint32_t __data_end__[];
-
-extern const volatile uint32_t __bss_start__[];
-extern const volatile uint32_t __bss_end__[];
-
-extern const volatile uint32_t __HeapBase[];
-extern const volatile uint32_t __HeapLimit[];
-
-extern const volatile uint32_t __StackLimit[];
-extern const volatile uint32_t __StackTop[];
-
 __NO_RETURN void platform_RunNextApp(fih_uint toc2_addr, uint32_t *key, uint32_t *iv);
-#endif
 
 #endif /* CYW_PLATFORMS_UTILS_H */
 

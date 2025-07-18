@@ -7,7 +7,7 @@
 *
 ********************************************************************************
 * \copyright
-* Copyright 2018-2022 Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2018-2025 Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation
 *
 * SPDX-License-Identifier: Apache-2.0
@@ -117,11 +117,11 @@ cy_rslt_t cybsp_init(void)
     // the CM4 if necessary.
     #if defined(CORE_NAME_CM0P_0) || !(__CM0P_PRESENT) || (defined(CORE_NAME_CM4_0) && \
     defined(CY_USING_PREBUILT_CM0P_IMAGE))
-    //cycfg_config_init();
+    cycfg_config_init();
     #endif
 
     // Do any additional configuration reservations that are needed on all cores.
-    //cycfg_config_reservations();
+    cycfg_config_reservations();
 
     if (CY_RSLT_SUCCESS == result)
     {

@@ -1,9 +1,9 @@
 /*******************************************************************************
- * File Name: cycfg.c
+ * File Name: cycfg_notices.h
  *
  * Description:
- * Simple wrapper containing all generated files and function to initialize
- * all generated code.
+ * Contains warnings and errors that occurred while generating code for the
+ * design.
  * This file was automatically generated and should not be modified.
  * Configurator Backend 3.30.0
  * device-db 4.5.20.7163
@@ -27,21 +27,27 @@
  * limitations under the License.
  ******************************************************************************/
 
-#include "cycfg.h"
+#if !defined(CYCFG_NOTICES_H)
+#define CYCFG_NOTICES_H
 
-/* This function is provided for compatibility with older 2.X style projects. */
-void init_cycfg_all(void)
-{
-    cycfg_config_init();
-    cycfg_config_reservations();
+#if defined(__cplusplus)
+extern "C" {
+#endif /* defined(__cplusplus) */
+
+#if defined(CY_SUPPORTS_DEVICE_VALIDATION)
+#if !defined(CYBLE_416045_02_device)
+#error "Unexpected MPN; expected DEVICE:=CYBLE-416045-02-device. There may be an inconsistency between the *.modus file and the makefile target configuration device sets."
+#endif /* !defined(CYBLE_416045_02_device) */
+#endif /* defined(CY_SUPPORTS_DEVICE_VALIDATION) */
+
+#if defined(CY_SUPPORTS_COMPLETE_DEVICE_VALIDATION)
+#if !defined(CYBLE_416045_02_device)
+#error "Unexpected MPN; expected DEVICE:=CYBLE-416045-02-device. There may be an inconsistency between the *.modus file and the makefile target configuration device sets."
+#endif /* !defined(CYBLE_416045_02_device) */
+#endif /* defined(CY_SUPPORTS_COMPLETE_DEVICE_VALIDATION) */
+
+#if defined(__cplusplus)
 }
-void cycfg_config_init(void)
-{
-    init_cycfg_system();
-    init_cycfg_routing();
-    init_cycfg_pins();
-}
-void cycfg_config_reservations(void)
-{
-    reserve_cycfg_pins();
-}
+#endif /* defined(__cplusplus) */
+
+#endif /* CYCFG_NOTICES_H */

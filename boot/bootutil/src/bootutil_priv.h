@@ -266,6 +266,7 @@ struct boot_loader_state {
 #elif defined(MCUBOOT_DIRECT_XIP_REVERT)
         /* Swap status for the active slot */
         struct boot_swap_state swap_state;
+        bool slot_validated[BOOT_NUM_SLOTS];
 #endif
     } slot_usage[BOOT_IMAGE_NUMBER];
 #endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
@@ -290,6 +291,9 @@ int boot_write_image_ok(const struct flash_area *fap);
 int boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
                          uint8_t image_num);
 int boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size);
+int boot_write_image_inv(const struct flash_area *fap);
+int boot_read_copy_done(const struct flash_area *fap, uint8_t *copy_done);
+int boot_read_image_inactive(const struct flash_area *fap, uint8_t *image_inactive);
 int boot_write_trailer(const struct flash_area *fap, uint32_t off,
                        const uint8_t *inbuf, uint8_t inlen);
 int boot_write_trailer_flag(const struct flash_area *fap, uint32_t off,

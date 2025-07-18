@@ -1,5 +1,5 @@
 /********************************************************************************
- * Copyright 2018-2024 Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2018-2025 Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -17,10 +17,12 @@
  * limitations under the License.
  ********************************************************************************/
 
-#if !(SWAP_DISABLED) && defined(UPGRADE_IMAGE)
+#if !(SWAP_DISABLED) && defined(UPGRADE_IMAGE) || defined(MCUBOOT_DIRECT_XIP)
 
 #include "set_img_ok.h"
 #include <flash_map_backend/flash_map_backend.h>
+
+#include <string.h>
 
 #define EXT_MEM_INTERFACE_ID 0
 
@@ -59,11 +61,15 @@ static int write_img_ok_value(uint32_t address, uint8_t src)
     int rc = 0;
     /* Accepting an arbitrary address */
     uint32_t row_mask = external_mem_interface.get_erase_size(0) - 1U;
+    uint32_t erase_val = external_mem_interface.get_erase_val(0);
+    uint32_t index = address & row_mask;
 
     rc |= external_mem_interface.read(EXT_MEM_INTERFACE_ID, address & ~row_mask, row_buff, FLASH_ROW_BUF_SZ);
 
     /* Modifying the target byte */
-    row_buff[address & row_mask] = src;
+    memset(&row_buff[index], erase_val, sizeof(uint64_t));
+    row_buff[index] = src;
+    
 
     rc |= external_mem_interface.erase(EXT_MEM_INTERFACE_ID, address & ~row_mask, FLASH_ROW_BUF_SZ);
 

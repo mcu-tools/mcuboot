@@ -4,7 +4,7 @@
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2020 Arm Limited
- * Copyright (c) 2021 Infineon Technologies AG
+ * Copyright (c) 2025 Infineon Technologies AG
  *
  * Original license:
  *

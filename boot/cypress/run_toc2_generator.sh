@@ -1,4 +1,21 @@
 #!/bin/bash
+################################################################################
+# \copyright
+# Copyright 2025 Cypress Semiconductor Corporation
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+################################################################################
 (set -o igncr) 2>/dev/null && set -o igncr; #keep this comment
 
 echo_run() { echo "\$ ${@/eval/}" ; "$@" ; }
@@ -36,6 +53,12 @@ fi
 
 L1_USER_APP_ELF="$2/$3.elf"
 : ${L1_USER_APP_ELF:="blinky.elf"}
+
+PLAIN_APP_BIN="$2/$3.plain_app.bin"
+: ${PLAIN_APP_BIN:="blinky.plain_app.bin"}
+
+PLAIN_APP_ENCRYPTED_BIN="$2/$3.plain_app_enc.bin"
+: ${PLAIN_APP_ENCRYPTED_BIN:="blinky.plain_app_enc.bin"}
 
 FINAL_BIN_FILE="$2/$3.final.bin"
 : ${FINAL_BIN_FILE:="blinky.final.bin"}
@@ -333,7 +356,20 @@ if [ "$LCS" == "NORMAL_NO_SECURE" ]; then
 	fi
 
 	# Combining all images (toc2+l1_app_desc+l1_user_app_header+l1_user_app) to Final binary file
-	`cat $TOC2_FILE $L1_DESC_FILE $L1_USER_APP_HEADER_FILE $L1_USER_APP_BIN > $FINAL_BIN_FILE`
+    if [ "$ENC_OPTION" != "" ]; then
+		dd seek=16 bs=1 count=12 conv=notrunc if=$AES_CTR_NONCE_FILE of=$L1_DESC_FILE >& /dev/null
+
+		cat $L1_USER_APP_HEADER_FILE $L1_USER_APP_BIN > $PLAIN_APP_BIN
+
+		cysecuretools -t cyw20829 encrypt --input $PLAIN_APP_BIN --output $PLAIN_APP_ENCRYPTED_BIN --iv 0x08000030 --enckey ./keys/encrypt_key.bin --nonce $AES_CTR_NONCE_FILE
+
+		`cat $TOC2_FILE $L1_DESC_FILE $PLAIN_APP_ENCRYPTED_BIN > $FINAL_BIN_FILE`
+
+	else
+
+		`cat $TOC2_FILE $L1_DESC_FILE $L1_USER_APP_HEADER_FILE $L1_USER_APP_BIN > $FINAL_BIN_FILE`
+
+	fi
 elif [ "$LCS" == "SECURE" ]; then
 	if [ ! -f "$L1_USER_APP_BIN" ]; then
 		echo "Error: $L1_USER_APP_BIN does not exist." > /dev/tty

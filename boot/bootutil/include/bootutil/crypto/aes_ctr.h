@@ -137,7 +137,7 @@ static inline int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_
     }
 
     if (status == PSA_SUCCESS) {
-        status = psa_cipher_finish(&ctx->operation, c + out_sz, sizeof(mlen) - out_sz, &f_sz);
+        status = psa_cipher_finish(&ctx->operation, c + out_sz, mlen - out_sz, &f_sz);
     }
 
     if ((status != PSA_SUCCESS) || ((out_sz + f_sz) != mlen)) {
@@ -168,7 +168,7 @@ static inline int bootutil_aes_ctr_decrypt(bootutil_aes_ctr_context *ctx, uint8_
     }
 
     if (status == PSA_SUCCESS) {
-        status = psa_cipher_finish(&ctx->operation, m + out_sz, sizeof(clen) - out_sz, &f_sz);
+        status = psa_cipher_finish(&ctx->operation, m + out_sz, clen - out_sz, &f_sz);
     }
 
     if ((status != PSA_SUCCESS) || ((out_sz + f_sz) != clen)) {

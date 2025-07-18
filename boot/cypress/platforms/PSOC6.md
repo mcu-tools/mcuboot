@@ -71,7 +71,7 @@ To protect the user's image from unwanted read, Upgrade Image Encryption can be 
 
 To enable the image encryption support, use the `ENC_IMG=1` build flag (BlinkyApp should also be built with this flash set 1).
 
-The user is also responsible for providing corresponding binary key data in `enc_priv_key[]` (file `\MCUBootApp\keys.c`). The public part will be used by `imgtool` when signing and encrypting upgrade image. Signing image with encryption is described in [BlinkyApp.md](../../BlinkyApp/BlinkyApp.md).
+The user is also responsible for providing corresponding binary key data in `enc_priv_key[]` (file `\MCUBootApp\keys.c`). The public part will be used by `imgtool` when signing and encrypting upgrade image. Signing image with encryption is described in [BlinkyApp.md](../BlinkyApp/BlinkyApp.md).
 
 After MCUBootApp is built with these settings, unencrypted and encrypted images will be accepted in the secondary (upgrade) slot.
 
@@ -89,12 +89,14 @@ The following instructions assume the usage of one of Cypress development kits `
 
 Connect the board to your computer. Switch Kitprog3 to DAP-BULK mode by clicking the `SW3 MODE` button until `LED2 STATUS` constantly shines.
 
-Open the terminal application and execute the following command after substitution of the `PATH_TO_APPLICATION.hex` and `OPENOCD` paths:
+The OpenOCD package is supplied with `ModusToolbox™ Programming Tools` and can be found in the `C:\Infineon\Tools\ModusToolboxProgtools-1.4\openocd` folder.
 
-        export OPENOCD=/Applications/ModusToolbox/tools_3.2/openocd
+Open the terminal application and execute the following commands:
 
-        ${OPENOCD}/bin/openocd -s ${OPENOCD}/scripts \
-                            -f ${OPENOCD}/scripts/interface/kitprog3.cfg \
-                            -f ${OPENOCD}/scripts/target/psoc6_2m.cfg \
+        export OPENOCD_PATH=C:/Infineon/Tools/ModusToolboxProgtools-1.4/openocd
+
+        ${OPENOCD_PATH}/bin/openocd -s ${OPENOCD_PATH}/scripts \
+                            -f ${OPENOCD_PATH}/scripts/interface/kitprog3.cfg \
+                            -f ${OPENOCD_PATH}/scripts/target/psoc6_2m.cfg \
                             -c "init; reset init; program PATH_TO_APPLICATION.hex" \
                             -c "resume; reset; exit"

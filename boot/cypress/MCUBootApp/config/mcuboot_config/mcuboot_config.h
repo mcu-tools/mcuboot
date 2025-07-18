@@ -1,4 +1,4 @@
-/* Copyright 2019 Cypress Semiconductor Corporation
+/* Copyright 2025 Cypress Semiconductor Corporation
  *
  * Copyright (c) 2018 Open Source Foundries Limited
  *
@@ -48,18 +48,20 @@
  * simpler code path, which only supports overwriting the
  * existing image with the update image, is also available.
  */
-#ifdef MCUBOOT_OVERWRITE_ONLY
+#if !defined (MCUBOOT_DIRECT_XIP)
+# ifdef MCUBOOT_OVERWRITE_ONLY
 /* Uncomment to only erase and overwrite those slot 0 sectors needed
  * to install the new image, rather than the entire image slot. */
 /* #define MCUBOOT_OVERWRITE_ONLY_FAST */
-#else
+# else
 /* Using SWAP w Scratch by default.
  * Uncomment which is needed. */
-#define MCUBOOT_SWAP_USING_SCRATCH  1
+#  define MCUBOOT_SWAP_USING_SCRATCH  1
 /* #define MCUBOOT_SWAP_USING_MOVE     1 */
-#ifdef USE_SWAP_STATUS
-#define MCUBOOT_SWAP_USING_STATUS   1
-#endif
+#  ifdef USE_SWAP_STATUS
+#   define MCUBOOT_SWAP_USING_STATUS   1
+#  endif
+# endif
 #endif
 
 /* This definition is used in boot_copy_region function to define 
