@@ -99,14 +99,16 @@ def save_signature(sigfile, sig):
         f.write(signature)
 
 
-def load_key(keyfile):
+def load_key(keyfile, passwd=None):
     # TODO: better handling of invalid pass-phrase
     key = keys.load(keyfile)
     if key is not None:
         return key
-    passwd = getpass.getpass("Enter key passphrase: ").encode('utf-8')
-    return keys.load(keyfile, passwd)
 
+    if passwd is None:
+        passwd = getpass.getpass("Enter key passphrase: ")
+
+    return keys.load(keyfile, passwd.encode('utf-8'))
 
 def get_password():
     while True:
