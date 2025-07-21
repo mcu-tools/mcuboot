@@ -113,6 +113,14 @@ config BOOT_X25519_PSA_DEPENDENCIES
 
 endif # BOOT_ENCRYPT_IMAGE
 
+config BOOT_ECDSA_PSA_DEPENDENCIES
+	bool
+	select PSA_WANT_ALG_ECDSA
+	select PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_IMPORT
+	select PSA_WANT_ECC_SECP_R1_256
+	help
+	  Dependencies for ECDSA signature
+
 if MBEDTLS_ENABLE_HEAP
 
 config MBEDTLS_HEAP_SIZE
@@ -282,6 +290,16 @@ config BOOT_ECDSA_CC310
 	select NRF_CC310_BL
 	select NRFXLIB_CRYPTO
 	select BOOT_USE_CC310
+
+config BOOT_ECDSA_PSA
+	bool "Use psa cryptoo"
+	select BOOT_USE_PSA_CRYPTO
+	select PSA_CRYPTO_CLIENT
+	select PSA_CRYPTO_C
+	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
+	select BOOT_IMG_HASH_ALG_SHA512_ALLOW
+	select BOOT_ECDSA_PSA_DEPENDENCIES
+
 endchoice # Ecdsa implementation
 endif
 
