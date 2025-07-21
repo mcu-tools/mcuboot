@@ -180,7 +180,10 @@ else()
 endif()
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
-  if(MBEDTLS_ASN1_DIR)
+  # When ECDSA PSA is used, do not pull in additional ASN.1 include
+  # directories or sources, as it would cause incorrect header files
+  # to be included.
+  if(MBEDTLS_ASN1_DIR AND NOT CONFIG_BOOT_ECDSA_PSA)
     zephyr_library_include_directories(
       ${MBEDTLS_ASN1_DIR}/include
     )
