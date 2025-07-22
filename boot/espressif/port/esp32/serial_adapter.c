@@ -68,12 +68,18 @@ static uart_dev_t *serial_boot_uart_dev = (SERIAL_BOOT_UART_NUM == 0) ?
 void console_write(const char *str, int cnt)
 {
     uint32_t tx_len;
+    uint32_t write_len;
 
     do {
         tx_len = uart_ll_get_txfifo_len(serial_boot_uart_dev);
-    } while (tx_len < cnt);
-
-    uart_ll_write_txfifo(serial_boot_uart_dev, (const uint8_t *)str, cnt);
+        if (tx_len > 0) {
+            write_len = tx_len < cnt ? tx_len : cnt;
+            uart_ll_write_txfifo(serial_boot_uart_dev, (const uint8_t *)str, write_len);
+            cnt -= write_len;
+        }
+        MCUBOOT_WATCHDOG_FEED();
+        esp_rom_delay_us(1000);
+    } while (cnt > 0);
 }
 
 int console_read(char *str, int cnt, int *newline)
