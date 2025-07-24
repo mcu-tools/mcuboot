@@ -65,8 +65,6 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #error "FLASH_DEVICE_ID could not be determined"
 #endif
 
-static const struct device *flash_dev = DEVICE_DT_GET(FLASH_DEVICE_NODE);
-
 int flash_device_base(uint8_t fd_id, uintptr_t *ret)
 {
     if (fd_id != FLASH_DEVICE_ID) {
@@ -156,22 +154,6 @@ int flash_area_id_from_direct_image(int image_id)
 }
 #endif
 
-int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
-{
-    int rc;
-    struct flash_pages_info page;
-
-    rc = flash_get_page_info_by_offs(flash_dev, off, &page);
-    if (rc) {
-        return rc;
-    }
-
-    sector->fs_off = page.start_offset;
-    sector->fs_size = page.size;
-
-    return rc;
-}
-
 uint8_t flash_area_get_device_id(const struct flash_area *fa)
 {
     (void)fa;
@@ -183,6 +165,25 @@ __weak uint8_t flash_area_erased_val(const struct flash_area *fap)
 {
     (void)fap;
     return ERASED_VAL;
+}
+
+#if (defined(CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE) && CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE == 0) || \
+    defined(CONFIG_MCUBOOT_LOGICAL_SECTOR_VALIDATION)
+int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
+{
+    int rc;
+    struct flash_pages_info page;
+    static const struct device *flash_dev = DEVICE_DT_GET(FLASH_DEVICE_NODE);
+
+    rc = flash_get_page_info_by_offs(flash_dev, off, &page);
+    if (rc) {
+        return rc;
+    }
+
+    sector->fs_off = page.start_offset;
+    sector->fs_size = page.size;
+
+    return rc;
 }
 
 int flash_area_get_sector(const struct flash_area *fap, off_t off,
@@ -205,3 +206,27 @@ int flash_area_get_sector(const struct flash_area *fap, off_t off,
 
     return rc;
 }
+#else
+int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
+{
+    sector->fs_off =  off & ~(CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE - 1);
+    sector->fs_size = CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE;
+
+    return 0;
+}
+
+int flash_area_get_sector(const struct flash_area *fap, off_t off,
+                          struct flash_sector *fsp)
+{
+    if (off < 0 || (size_t) off >= flash_area_get_size(fap)) {
+	BOOT_LOG_ERR("flash_area_get_sector: off %ld out of area %p",
+                     (long)off, fap);
+        return -ERANGE;
+    }
+
+    fsp->fs_off = off & ~(CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE - 1);
+    fsp->fs_size = CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE;
+
+    return 0;
+}
+#endif
