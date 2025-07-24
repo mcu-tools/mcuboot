@@ -740,6 +740,8 @@ bootutil_img_validate(struct boot_loader_state *state,
             fih_rc = fih_ret_encode_zero_equality(img_security_cnt <
                                    (uint32_t)fih_int_decode(security_cnt));
             if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                BOOT_LOG_ERR("Image security counter value %u lower than monotonic value %u",
+                             img_security_cnt, (uint32_t)fih_int_decode(security_cnt));
                 FIH_SET(fih_rc, FIH_FAILURE);
                 goto out;
             }
