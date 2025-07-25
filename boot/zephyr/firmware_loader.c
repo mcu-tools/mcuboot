@@ -17,6 +17,9 @@
 
 #include "io/io.h"
 #include "mcuboot_config/mcuboot_config.h"
+#ifdef MCUBOOT_BOOT_REQUEST
+#include <bootutil/boot_request.h>
+#endif /* MCUBOOT_BOOT_REQUEST */
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
@@ -179,6 +182,12 @@ boot_go(struct boot_rsp *rsp)
 
 #ifdef CONFIG_BOOT_FIRMWARE_LOADER_BOOT_MODE
     if (io_detect_boot_mode()) {
+        boot_firmware_loader = true;
+    }
+#endif
+
+#ifdef CONFIG_BOOT_FIRMWARE_LOADER_BOOT_REQ
+    if (boot_request_detect_firmware_loader()) {
         boot_firmware_loader = true;
     }
 #endif

@@ -51,6 +51,11 @@
 #include "bootutil_priv.h"
 #include "bootutil_misc.h"
 
+#if defined(MCUBOOT_BOOT_REQUEST) && !defined(CONFIG_MCUBOOT)
+#include <bootutil/boot_request.h>
+#define SEND_BOOT_REQUEST
+#endif /* MCUBOOT_BOOT_REQUEST && !CONFIG_MCUBOOT */
+
 #ifdef CONFIG_MCUBOOT
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 #else
@@ -503,16 +508,61 @@ boot_write_copy_done(const struct flash_area *fap)
     return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
 }
 
-#ifndef MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP
-
-static int flash_area_to_image(const struct flash_area *fa)
+#ifdef SEND_BOOT_REQUEST
+bool
+boot_send_requests(uint8_t magic, bool active, bool confirm, int image_id, uint32_t slot_id)
 {
+    int rc;
+
+    /* Handle write-protected active image. */
+    switch (magic) {
+    case BOOT_MAGIC_GOOD:
+        /* fall-through */
+
+    case BOOT_MAGIC_UNSET:
+        if (confirm) {
+            BOOT_LOG_DBG("Confirm image: %d, %d", image_id, slot_id);
+            rc = boot_request_confirm_slot(image_id, slot_id);
+        } else {
+            BOOT_LOG_DBG("Set image preference: %d, %d", image_id, slot_id);
+            rc = boot_request_set_preferred_slot(image_id, slot_id);
+        }
+        if (rc != 0) {
+            rc = BOOT_EBADIMAGE;
+        }
+        break;
+
+    case BOOT_MAGIC_BAD:
+    default:
+        rc = BOOT_EBADIMAGE;
+        break;
+    }
+
+    if (active && (rc ==0)) {
+        return true;
+    }
+
+    return false;
+}
+#endif /* SEND_BOOT_REQUEST */
+
+#if defined(SEND_BOOT_REQUEST) || (!defined(MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP))
+static int flash_area_to_image_slot(const struct flash_area *fa, uint32_t *slot)
+{
+    int id = flash_area_get_id(fa);
 #if BOOT_IMAGE_NUMBER > 1
     uint8_t i = 0;
-    int id = flash_area_get_id(fa);
 
     while (i < BOOT_IMAGE_NUMBER) {
-        if (FLASH_AREA_IMAGE_PRIMARY(i) == id || (FLASH_AREA_IMAGE_SECONDARY(i) == id)) {
+        if (FLASH_AREA_IMAGE_PRIMARY(i) == id) {
+            if (slot != NULL) {
+                *slot = 0;
+            }
+            return i;
+        } else if (FLASH_AREA_IMAGE_SECONDARY(i) == id) {
+            if (slot != NULL) {
+                *slot = 1;
+            }
             return i;
         }
 
@@ -520,15 +570,31 @@ static int flash_area_to_image(const struct flash_area *fa)
     }
 #else
     (void)fa;
+    if (slot != NULL) {
+        if (FLASH_AREA_IMAGE_PRIMARY(0) == id) {
+            *slot = 0;
+        } else if (FLASH_AREA_IMAGE_SECONDARY(0) == id) {
+            *slot = 1;
+        } else {
+            *slot = UINT32_MAX;
+        }
+    }
 #endif
     return 0;
 }
+#endif /* defined(SEND_BOOT_REQUEST) || (!defined(MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP)) */
 
+#ifndef MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP
 int
 boot_set_next(const struct flash_area *fa, bool active, bool confirm)
 {
     struct boot_swap_state slot_state;
     int rc;
+    int image_id;
+    uint32_t slot_id;
+
+    BOOT_LOG_DBG("boot_set_next: fa %p active == %d, confirm == %d",
+                 fa, (int)active, (int)confirm);
 
     if (active) {
         confirm = true;
@@ -538,6 +604,14 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
     if (rc != 0) {
         return rc;
     }
+
+    image_id = flash_area_to_image_slot(fa, &slot_id);
+
+#ifdef SEND_BOOT_REQUEST
+    if (boot_send_requests(slot_state.magic, active, confirm, image_id, slot_id)) {
+        return rc;
+    }
+#endif
 
     switch (slot_state.magic) {
     case BOOT_MAGIC_GOOD:
@@ -569,7 +643,7 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
                 } else {
                     swap_type = BOOT_SWAP_TYPE_TEST;
                 }
-                rc = boot_write_swap_info(fa, swap_type, flash_area_to_image(fa));
+                rc = boot_write_swap_info(fa, swap_type, image_id);
             }
         }
         break;
@@ -597,6 +671,10 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
 {
     struct boot_swap_state slot_state;
     int rc;
+#ifdef SEND_BOOT_REQUEST
+    int image_id;
+    uint32_t slot_id;
+#endif
 
     BOOT_LOG_DBG("boot_set_next: fa %p active == %d, confirm == %d",
                  fa, (int)active, (int)confirm);
@@ -614,6 +692,14 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
         BOOT_LOG_DBG("boot_set_next: error %d reading state", rc);
         return rc;
     }
+
+#ifdef SEND_BOOT_REQUEST
+    image_id = flash_area_to_image_slot(fa, &slot_id);
+
+    if (boot_send_requests(slot_state.magic, active, confirm, image_id, slot_id)) {
+        return rc;
+    }
+#endif
 
     switch (slot_state.magic) {
     case BOOT_MAGIC_UNSET:

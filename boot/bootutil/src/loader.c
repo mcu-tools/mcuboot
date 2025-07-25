@@ -2818,7 +2818,12 @@ boot_load_and_validate_images(struct boot_loader_state *state)
                 break;
             }
 
-            active_slot = find_slot_with_highest_version(state);
+            rc = BOOT_HOOK_FIND_SLOT_CALL(boot_find_next_slot_hook, BOOT_HOOK_REGULAR,
+                                          state, BOOT_CURR_IMG(state), &active_slot);
+            if (rc == BOOT_HOOK_REGULAR) {
+                active_slot = find_slot_with_highest_version(state);
+            }
+
             if (active_slot == NO_ACTIVE_SLOT) {
                 BOOT_LOG_INF("No slot to load for image %d",
                              BOOT_CURR_IMG(state));
@@ -2865,7 +2870,12 @@ boot_load_and_validate_images(struct boot_loader_state *state)
                 break;
             }
 
-            active_slot = find_slot_with_highest_version(state);
+            rc = BOOT_HOOK_FIND_SLOT_CALL(boot_find_next_slot_hook, BOOT_HOOK_REGULAR,
+                                          state, BOOT_CURR_IMG(state), &active_slot);
+            if (rc == BOOT_HOOK_REGULAR) {
+                active_slot = find_slot_with_highest_version(state);
+            }
+
             if (active_slot == NO_ACTIVE_SLOT) {
                 BOOT_LOG_INF("No slot to load for image %d",
                              BOOT_CURR_IMG(state));

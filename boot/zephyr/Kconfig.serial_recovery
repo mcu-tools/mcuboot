@@ -186,6 +186,12 @@ config BOOT_SERIAL_PIN_RESET
 	  Checks if the module reset was caused by the reset pin and will
 	  remain in bootloader serial recovery mode if it was.
 
+config BOOT_SERIAL_BOOT_REQ
+	bool "Check boot mode via bootloader request subsystem"
+	depends on MCUBOOT_BOOT_REQUEST
+	help
+	  Allows for entering serial recovery mode by using bootloader requests.
+
 endmenu
 
 config BOOT_SERIAL_IMG_GRP_HASH

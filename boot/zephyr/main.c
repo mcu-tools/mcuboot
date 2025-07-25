@@ -47,6 +47,12 @@
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/mcuboot_status.h"
 #include "flash_map_backend/flash_map_backend.h"
+#ifdef MCUBOOT_BOOT_REQUEST
+#include <bootutil/boot_request.h>
+
+/** Number of image slots. */
+#define BOOT_REQUEST_NUM_SLOTS 2
+#endif /* MCUBOOT_BOOT_REQUEST */
 
 /* Check if Espressif target is supported */
 #ifdef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
@@ -509,6 +515,37 @@ static void boot_serial_enter()
 }
 #endif
 
+static int boot_prevalidate(void)
+{
+#ifdef MCUBOOT_BOOT_REQUEST
+    uint8_t image_index;
+    uint32_t slot;
+    uint32_t area_id;
+    const struct flash_area *fap;
+    int rc = boot_request_init();
+
+    if (rc != 0) {
+        return rc;
+    }
+
+    for (image_index = 0; image_index < BOOT_IMAGE_NUMBER; ++image_index) {
+        for (slot = 0; slot < BOOT_REQUEST_NUM_SLOTS; slot++) {
+            if (boot_request_check_confirmed_slot(image_index, slot)) {
+                BOOT_LOG_DBG("Confirm image: %d slot: %d due to bootloader request.",
+                    image_index, slot);
+
+                area_id = flash_area_id_from_multi_image_slot(image_index, slot);
+                rc = flash_area_open(area_id, &fap);
+                if (rc == 0) {
+                    rc = boot_set_next(fap, true, true);
+                }
+            }
+        }
+    }
+#endif
+    return 0;
+}
+
 int main(void)
 {
     struct boot_rsp rsp;
@@ -540,6 +577,11 @@ int main(void)
 
     mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
 
+    rc = boot_prevalidate();
+    if (rc) {
+        BOOT_LOG_ERR("Failed to prevalidate the state: %d", rc);
+    }
+
 #ifdef CONFIG_BOOT_SERIAL_ENTRANCE_GPIO
     BOOT_LOG_DBG("Checking GPIO for serial recovery");
     if (io_detect_pin() &&
@@ -551,6 +593,13 @@ int main(void)
 #ifdef CONFIG_BOOT_SERIAL_PIN_RESET
     BOOT_LOG_DBG("Checking RESET pin for serial recovery");
     if (io_detect_pin_reset()) {
+        boot_serial_enter();
+    }
+#endif
+
+#ifdef CONFIG_BOOT_SERIAL_BOOT_REQ
+    if (boot_request_detect_recovery()) {
+        BOOT_LOG_DBG("Staying in serial recovery");
         boot_serial_enter();
     }
 #endif
@@ -614,6 +663,10 @@ int main(void)
         FIH_CALL(boot_go, fih_rc, &rsp);
     }
     BOOT_LOG_DBG("Left boot_go with success == %d", FIH_EQ(fih_rc, FIH_SUCCESS) ? 1 : 0);
+
+#ifdef MCUBOOT_BOOT_REQUEST
+    (void)boot_request_clear();
+#endif
 
 #ifdef CONFIG_BOOT_SERIAL_BOOT_MODE
     if (io_detect_boot_mode()) {
