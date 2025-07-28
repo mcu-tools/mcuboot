@@ -473,13 +473,17 @@ class BasedIntParamType(click.ParamType):
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
+@click.option('--vid', default=None, required=False,
+              help='Unique vendor identifier, format: (<raw_uuid>|<domain_name)>')
+@click.option('--cid', default=None, required=False,
+              help='Unique image class identifier, format: (<raw_uuid>|<image_class_name>)')
 def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
          endian, encrypt_keylen, encrypt, compression, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, rom_fixed, max_align,
          clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, hmac_sha, is_pure,
-         vector_to_sign, non_bootable):
+         vector_to_sign, non_bootable, vid, cid):
 
     if confirm:
         # Confirmed but non-padded images don't make much sense, because
@@ -492,7 +496,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                       endian=endian, load_addr=load_addr, rom_fixed=rom_fixed,
                       erased_val=erased_val, save_enctlv=save_enctlv,
                       security_counter=security_counter, max_align=max_align,
-                      non_bootable=non_bootable)
+                      non_bootable=non_bootable, vid=vid, cid=cid)
     compression_tlvs = {}
     img.load(infile)
     key = load_key(key) if key else None
@@ -563,7 +567,8 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                   overwrite_only=overwrite_only, endian=endian,
                   load_addr=load_addr, rom_fixed=rom_fixed,
                   erased_val=erased_val, save_enctlv=save_enctlv,
-                  security_counter=security_counter, max_align=max_align)
+                  security_counter=security_counter, max_align=max_align,
+                  vid=vid, cid=cid)
         compression_filters = [
             {"id": lzma.FILTER_LZMA2, "preset": comp_default_preset,
                 "dict_size": comp_default_dictsize, "lp": comp_default_lp,
