@@ -3,3 +3,15 @@
 		zephyr,code-partition = &boot_partition;
 	};
 };
+
+&boot_partition {
+	reg = <0x00000000 0x10000>;
+	read-only;
+};
+
+&lpuart1 {
+	pinctrl-0 = <&lpuart1_tx_pa2 &lpuart1_rx_pa3>;
+	pinctrl-names = "default";
+	current-speed = <9600>;
+	status = "okay";
+};
