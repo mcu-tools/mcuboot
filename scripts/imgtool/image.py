@@ -30,7 +30,9 @@ from intelhex import IntelHex
 import hashlib
 import array
 import os.path
+import re
 import struct
+import uuid
 from enum import Enum
 
 import click
@@ -96,6 +98,8 @@ TLV_VALUES = {
         'DECOMP_SHA': 0x71,
         'DECOMP_SIGNATURE': 0x72,
         'COMP_DEC_SIZE' : 0x73,
+        'UUID_VID': 0x74,
+        'UUID_CID': 0x75,
 }
 
 TLV_SIZE = 4
@@ -254,6 +258,27 @@ def tlv_matches_key_type(tlv_type, key):
 
     return False
 
+def parse_uuid(namespace, value):
+    # Check if UUID is in the RAW format (12345678-1234-5678-1234-567812345678)
+    uuid_re = r'[0-9A-f]{8}-[0-9A-f]{4}-[0-9A-f]{4}-[0-9A-f]{4}-[0-9A-f]{12}'
+    if re.match(uuid_re, value):
+        uuid_bytes = bytes.fromhex(value.replace('-', ''))
+
+    # Check if UUID is in the RAW HEX format (12345678123456781234567812345678)
+    elif re.match(r'[0-9A-f]{32}', value):
+        uuid_bytes = bytes.fromhex(value)
+
+    # Check if UUID is in the string format
+    elif value.isprintable():
+        if namespace is not None:
+            uuid_bytes = uuid.uuid5(namespace, value).bytes
+        else:
+            raise ValueError(f"Unknown namespace for UUID: {value}")
+    else:
+        raise ValueError(f"Unknown UUID format: {value}")
+
+    return uuid_bytes
+
 
 class Image:
 
@@ -263,7 +288,7 @@ class Image:
                  overwrite_only=False, endian="little", load_addr=0,
                  rom_fixed=None, erased_val=None, save_enctlv=False,
                  security_counter=None, max_align=None,
-                 non_bootable=False):
+                 non_bootable=False, vid=None, cid=None):
 
         if load_addr and rom_fixed:
             raise click.UsageError("Can not set rom_fixed and load_addr at the same time")
@@ -292,6 +317,8 @@ class Image:
         self.enctlv_len = 0
         self.max_align = max(DEFAULT_MAX_ALIGN, align) if max_align is None else int(max_align)
         self.non_bootable = non_bootable
+        self.vid = vid
+        self.cid = cid
 
         if self.max_align == DEFAULT_MAX_ALIGN:
             self.boot_magic = bytes([
@@ -321,7 +348,7 @@ class Image:
         return "<Image version={}, header_size={}, security_counter={}, \
                 base_addr={}, load_addr={}, align={}, slot_size={}, \
                 max_sectors={}, overwrite_only={}, endian={} format={}, \
-                payloadlen=0x{:x}>".format(
+                payloadlen=0x{:x}, vid={}, cid={}>".format(
                     self.version,
                     self.header_size,
                     self.security_counter,
@@ -333,7 +360,9 @@ class Image:
                     self.overwrite_only,
                     self.endian,
                     self.__class__.__name__,
-                    len(self.payload))
+                    len(self.payload),
+                    self.vid,
+                    self.cid)
 
     def load(self, path):
         """Load an image from a given file"""
@@ -509,6 +538,16 @@ class Image:
             #                                   = 4 + 4 = 8 Bytes
             protected_tlv_size += TLV_SIZE + 4
 
+        if self.vid is not None:
+            # Size of the VID TLV: header ('HH') + payload ('16s')
+            #                                   = 4 + 16 = 20 Bytes
+            protected_tlv_size += TLV_SIZE + 16
+
+        if self.cid is not None:
+            # Size of the CID TLV: header ('HH') + payload ('16s')
+            #                                   = 4 + 16 = 20 Bytes
+            protected_tlv_size += TLV_SIZE + 16
+
         if sw_type is not None:
             if len(sw_type) > MAX_SW_TYPE_LENGTH:
                 msg = "'{}' is too long ({} characters) for sw_type. Its " \
@@ -612,6 +651,21 @@ class Image:
             if compression_tlvs is not None:
                 for tag, value in compression_tlvs.items():
                     prot_tlv.add(tag, value)
+
+            if self.vid is not None:
+                vid = parse_uuid(uuid.NAMESPACE_DNS, self.vid)
+                payload = struct.pack(e + '16s', vid)
+                prot_tlv.add('UUID_VID', payload)
+
+            if self.cid is not None:
+                if self.vid is not None:
+                    namespace = uuid.UUID(bytes=vid)
+                else:
+                    namespace = None
+                cid = parse_uuid(namespace, self.cid)
+                payload = struct.pack(e + '16s', cid)
+                prot_tlv.add('UUID_CID', payload)
+
             if custom_tlvs is not None:
                 for tag, value in custom_tlvs.items():
                     prot_tlv.add(tag, value)
