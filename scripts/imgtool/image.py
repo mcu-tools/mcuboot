@@ -444,14 +444,23 @@ class Image:
         else:
             newpk = X25519PrivateKey.generate()
             shared = newpk.exchange(enckey._get_public())
+
+        # Detect AES key length from plainkey size
+        key_len = len(plainkey)  # 16 for AES-128, 32 for AES-256
+
+        # Generate derived key with appropriate length (key_len + 32 bytes for HMAC)
         derived_key = HKDF(
-            algorithm=hmac_sha_alg, length=16 + hmac_sha_alg.digest_size, salt=None,
+            algorithm=hmac_sha_alg, length=key_len + hmac_sha_alg.digest_size, salt=None,
             info=b'MCUBoot_ECIES_v1', backend=default_backend()).derive(shared)
-        encryptor = Cipher(algorithms.AES(derived_key[:16]),
+
+        # Use appropriate key length for AES encryption
+        encryptor = Cipher(algorithms.AES(derived_key[:key_len]),
                            modes.CTR(bytes([0] * 16)),
                            backend=default_backend()).encryptor()
         cipherkey = encryptor.update(plainkey) + encryptor.finalize()
-        mac = hmac.HMAC(derived_key[16:], hmac_sha_alg,
+
+        # Use remaining bytes for HMAC (after the AES key)
+        mac = hmac.HMAC(derived_key[key_len:], hmac_sha_alg,
                         backend=default_backend())
         mac.update(cipherkey)
         ciphermac = mac.finalize()
