@@ -445,7 +445,7 @@ class Image:
             newpk = X25519PrivateKey.generate()
             shared = newpk.exchange(enckey._get_public())
         derived_key = HKDF(
-            algorithm=hmac_sha_alg, length=48, salt=None,
+            algorithm=hmac_sha_alg, length=16 + hmac_sha_alg.digest_size, salt=None,
             info=b'MCUBoot_ECIES_v1', backend=default_backend()).derive(shared)
         encryptor = Cipher(algorithms.AES(derived_key[:16]),
                            modes.CTR(bytes([0] * 16)),
