@@ -43,7 +43,11 @@ static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
 #define HKDF_AES_KEY_SIZE   (BOOT_ENC_KEY_SIZE)
 /* MAC feed */
 #define HKDF_MAC_FEED_INDEX (HKDF_AES_KEY_INDEX + HKDF_AES_KEY_SIZE)
-#define HKDF_MAC_FEED_SIZE  (32)    /* This is SHA independent */
+#if !defined(MCUBOOT_HMAC_SHA512)
+#define HKDF_MAC_FEED_SIZE  (32)
+#else
+#define HKDF_MAC_FEED_SIZE  (64)
+#endif
 /* Total size */
 #define HKDF_SIZE           (HKDF_AES_KEY_SIZE + HKDF_MAC_FEED_SIZE)
 
