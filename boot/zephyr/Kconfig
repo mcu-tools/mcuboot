@@ -691,6 +691,22 @@ config BOOT_ENCRYPT_X25519
 	help
 	  Hidden option selecting x25519 encryption.
 
+if BOOT_ENCRYPT_IMAGE
+
+choice BOOT_ENCRYPT_ALG
+	prompt "Algorithm used for image encryption"
+	default BOOT_ENCRYPT_ALG_AES_128
+
+config BOOT_ENCRYPT_ALG_AES_128
+	bool "Use AES-128 for image encryption"
+
+config BOOT_ENCRYPT_ALG_AES_256
+	bool "Use AES-256 for image encryption"
+
+endchoice # BOOT_ENCRYPT_ALG
+
+endif # BOOT_ENCRYPT_IMAGE
+
 if BOOT_ENCRYPT_X25519 && BOOT_USE_PSA_CRYPTO
 
 choice BOOT_HMAC_SHA

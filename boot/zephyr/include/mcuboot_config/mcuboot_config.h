@@ -165,6 +165,14 @@
 #define MCUBOOT_ENCRYPT_X25519
 #endif
 
+#ifdef CONFIG_BOOT_ENCRYPT_ALG_AES_128
+#define MCUBOOT_AES_128
+#endif
+
+#ifdef CONFIG_BOOT_ENCRYPT_ALG_AES_256
+#define MCUBOOT_AES_256
+#endif
+
 /* Support for HMAC/HKDF using SHA512; this is used in key exchange where
  * HKDF is used for key expansion and HMAC is used for key verification.
  */
