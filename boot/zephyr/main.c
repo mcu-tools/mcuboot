@@ -90,22 +90,8 @@ const struct boot_uart_funcs boot_funcs = {
 #include <arm_cleanup.h>
 #endif
 
-/* CONFIG_LOG_MINIMAL is the legacy Kconfig property,
- * replaced by CONFIG_LOG_MODE_MINIMAL.
- */
-#if (defined(CONFIG_LOG_MODE_MINIMAL) || defined(CONFIG_LOG_MINIMAL))
-#define ZEPHYR_LOG_MODE_MINIMAL 1
-#endif
-
-/* CONFIG_LOG_IMMEDIATE is the legacy Kconfig property,
- * replaced by CONFIG_LOG_MODE_IMMEDIATE.
- */
-#if (defined(CONFIG_LOG_MODE_IMMEDIATE) || defined(CONFIG_LOG_IMMEDIATE))
-#define ZEPHYR_LOG_MODE_IMMEDIATE 1
-#endif
-
-#if defined(CONFIG_LOG) && !defined(ZEPHYR_LOG_MODE_IMMEDIATE) && \
-    !defined(ZEPHYR_LOG_MODE_MINIMAL)
+#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
+    !defined(CONFIG_LOG_MODE_MINIMAL)
 #ifdef CONFIG_LOG_PROCESS_THREAD
 #warning "The log internal thread for log processing can't transfer the log"\
          "well for MCUBoot."
@@ -128,8 +114,8 @@ K_SEM_DEFINE(boot_log_sem, 1, 1);
 /* synchronous log mode doesn't need to be initalized by the application */
 #define ZEPHYR_BOOT_LOG_START() do { } while (false)
 #define ZEPHYR_BOOT_LOG_STOP() do { } while (false)
-#endif /* defined(CONFIG_LOG) && !defined(ZEPHYR_LOG_MODE_IMMEDIATE) && \
-        * !defined(ZEPHYR_LOG_MODE_MINIMAL)
+#endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
+        * !defined(CONFIG_LOG_MODE_MINIMAL)
 	*/
 
 BOOT_LOG_MODULE_REGISTER(mcuboot);
@@ -427,8 +413,8 @@ static void do_boot(struct boot_rsp *rsp)
 }
 #endif
 
-#if defined(CONFIG_LOG) && !defined(ZEPHYR_LOG_MODE_IMMEDIATE) && \
-    !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(ZEPHYR_LOG_MODE_MINIMAL)
+#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
+    !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(CONFIG_LOG_MODE_MINIMAL)
 /* The log internal thread for log processing can't transfer log well as has too
  * low priority.
  * Dedicated thread for log processing below uses highest application
@@ -446,12 +432,7 @@ void boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
     log_init();
 
     while (1) {
-#if defined(CONFIG_LOG1) || defined(CONFIG_LOG2)
-        /* support Zephyr legacy logging implementation before commit c5f2cde */
-        if (log_process(false) == false) {
-#else
         if (log_process() == false) {
-#endif
             if (boot_log_stop) {
                 break;
             }
@@ -485,8 +466,8 @@ void zephyr_boot_log_stop(void)
      */
     (void)k_sem_take(&boot_log_sem, K_FOREVER);
 }
-#endif /* defined(CONFIG_LOG) && !defined(ZEPHYR_LOG_MODE_IMMEDIATE) && \
-        * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(ZEPHYR_LOG_MODE_MINIMAL)
+#endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
+        * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(CONFIG_LOG_MODE_MINIMAL)
         */
 
 #if defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) || defined(CONFIG_BOOT_SERIAL_PIN_RESET) \
