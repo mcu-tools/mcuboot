@@ -25,6 +25,9 @@
 #define MCUBOOT_MAX_IMG_SECTORS 2560
 #endif
 
+/* Enable non-protected TLV check against allow list */
+#define MCUBOOT_USE_TLV_ALLOW_LIST 1
+
 /*
  * Signature types
  *
