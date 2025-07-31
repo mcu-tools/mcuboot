@@ -150,6 +150,11 @@
 #define MCUBOOT_HAVE_LOGGING 1
 #endif
 
+/* Enable/disable non-protected TLV check against allow list */
+#ifdef CONFIG_MCUBOOT_USE_TLV_ALLOW_LIST
+#define MCUBOOT_USE_TLV_ALLOW_LIST 1
+#endif
+
 #ifdef CONFIG_BOOT_ENCRYPT_RSA
 #define MCUBOOT_ENC_IMAGES
 #define MCUBOOT_ENCRYPT_RSA
