@@ -64,6 +64,40 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
             rc = boot_erase_region(fap, off, sz, false);
             assert(rc == 0);
 
+#ifdef MCUBOOT_FLASH_HAS_HW_ENCRYPTION
+        /* MCUboot's state machine relies on erased valued data
+         * (e.g. 0xFF) readed from this erased region that could
+         * be not written before, however if the flash device has
+         * hardware flash encryption and its flash read operation
+         * always decrypts what is being read from flash, thus a
+         * region that was erased would not be read as what
+         * MCUboot expected (after erasing, the region
+         * physically contains 0xFF, but once reading it, flash
+         * controller decrypts 0xFF to something else).
+         * So this configuration force the erased value into the
+         * region after the erasing.
+         */
+#ifndef MIN
+#  define MIN(a, b)                 (((a) < (b)) ? (a) : (b))
+#endif
+
+        uint8_t write_data[FLASH_AUX_WRITE_BUFFER_SIZE];
+        memset(write_data, flash_area_erased_val(fap), sizeof(write_data));
+        uint32_t bytes_remaining = sz;
+        uint32_t offset = off;
+
+        uint32_t bytes_written = MIN(sizeof(write_data), sz);
+        while (bytes_remaining != 0) {
+            if (flash_area_write(fap, offset, write_data, bytes_written)) {
+                BOOT_LOG_ERR("%s: Force write erased value after erasing a trailer region failed", __func__);
+                rc = -1;
+                break;
+            }
+            offset += bytes_written;
+            bytes_remaining -= bytes_written;
+        }
+#endif // MCUBOOT_FLASH_HAS_HW_ENCRYPTION
+
             sector--;
             total_sz += sz;
         } while (total_sz < trailer_sz);
@@ -91,6 +125,40 @@ swap_scramble_trailer_sectors(const struct boot_loader_state *state,
     if (rc < 0) {
         return BOOT_EFLASH;
     }
+
+#ifdef MCUBOOT_FLASH_HAS_HW_ENCRYPTION
+        /* MCUboot's state machine relies on erased valued data
+         * (e.g. 0xFF) readed from this erased region that could
+         * be not written before, however if the flash device has
+         * hardware flash encryption and its flash read operation
+         * always decrypts what is being read from flash, thus a
+         * region that was erased would not be read as what
+         * MCUboot expected (after erasing, the region
+         * physically contains 0xFF, but once reading it, flash
+         * controller decrypts 0xFF to something else).
+         * So this configuration force the erased value into the
+         * region after the erasing.
+         */
+#ifndef MIN
+#  define MIN(a, b)                 (((a) < (b)) ? (a) : (b))
+#endif
+
+        uint8_t write_data[FLASH_AUX_WRITE_BUFFER_SIZE];
+        memset(write_data, flash_area_erased_val(fap), sizeof(write_data));
+        uint32_t bytes_remaining = (flash_area_get_size(fap) - off);
+        uint32_t offset = off;
+
+        uint32_t bytes_written = MIN(sizeof(write_data), (flash_area_get_size(fap) - off));
+        while (bytes_remaining != 0) {
+            if (flash_area_write(fap, offset, write_data, bytes_written)) {
+                BOOT_LOG_ERR("%s: Force write erased value after erasing a trailer region failed", __func__);
+                rc = -1;
+                break;
+            }
+            offset += bytes_written;
+            bytes_remaining -= bytes_written;
+        }
+#endif // MCUBOOT_FLASH_HAS_HW_ENCRYPTION
 
     return 0;
 }

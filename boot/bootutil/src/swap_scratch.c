@@ -943,6 +943,15 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
         swap_idx++;
     }
 
+#ifdef MCUBOOT_FLASH_HAS_HW_ENCRYPTION
+    int rc;
+    /* Ensure that the trailer from scratch area will have
+     * unset state after the swap process finishes.
+     */
+    rc = swap_scramble_trailer_sectors(state, state->scratch.area);
+    assert(rc == 0);
+#endif // MCUBOOT_FLASH_HAS_HW_ENCRYPTION
+
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
 

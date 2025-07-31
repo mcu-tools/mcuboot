@@ -327,6 +327,11 @@ boot_write_magic(const struct flash_area *fap)
     BOOT_LOG_DBG("boot_write_magic: fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
                  (unsigned long)(flash_area_get_off(fap) + off));
+
+#ifdef MCUBOOT_FLASH_HAS_HW_ENCRYPTION
+    rc = flash_area_erase(fap, pad_off, BOOT_MAGIC_ALIGN_SIZE);
+#endif
+
     rc = flash_area_write(fap, pad_off, &magic[0], BOOT_MAGIC_ALIGN_SIZE);
 
     if (rc != 0) {
@@ -364,6 +369,10 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
 
     memcpy(buf, inbuf, inlen);
     memset(&buf[inlen], erased_val, align - inlen);
+
+#ifdef MCUBOOT_FLASH_HAS_HW_ENCRYPTION
+    rc = flash_area_erase(fap, off, align);
+#endif
 
     rc = flash_area_write(fap, off, buf, align);
     if (rc != 0) {
