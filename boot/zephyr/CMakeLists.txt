@@ -126,6 +126,59 @@ if(DEFINED CONFIG_MEASURED_BOOT OR DEFINED CONFIG_BOOT_SHARE_DATA)
     )
 endif()
 
+# Include the sample implementation.
+if(CONFIG_MCUBOOT_UUID_VID OR CONFIG_MCUBOOT_UUID_CID)
+  zephyr_library_sources(
+    mcuboot_uuid.c
+    )
+endif()
+
+# Generate VID value and raw value definition
+if(CONFIG_MCUBOOT_UUID_VID OR CONFIG_MCUBOOT_UUID_CID)
+  string(REGEX MATCHALL "^([0-9A-F][0-9A-F]|\-)+$" match_parts ${CONFIG_MCUBOOT_UUID_VID_VALUE})
+  if ("${match_parts}" STREQUAL "${CONFIG_MCUBOOT_UUID_VID_VALUE}")
+    set(UUID_VID ${match_parts})
+  else()
+    set(UUID_DNS_NAMESPACE 6ba7b810-9dad-11d1-80b4-00c04fd430c8)
+    string(
+        UUID UUID_VID
+        NAMESPACE ${UUID_DNS_NAMESPACE}
+        NAME ${CONFIG_MCUBOOT_UUID_VID_VALUE}
+        TYPE SHA1 UPPER
+    )
+  endif()
+
+  # Convert UUID into C array.
+  string(REGEX REPLACE "([0-9A-F][0-9A-F])\-?" "0x\\1, " UUID_VID_RAW ${UUID_VID})
+  add_compile_definitions(MCUBOOT_UUID_VID_VALUE=${UUID_VID_RAW})
+endif()
+
+# Generate VID value(s) and raw value definition(s)
+if(CONFIG_MCUBOOT_UUID_CID)
+  set(MCUBOOT_IMAGES_COUNT 4)
+  foreach(image_id RANGE ${MCUBOOT_IMAGES_COUNT})
+    if(CONFIG_MCUBOOT_UUID_CID_IMAGE_${image_id})
+      # Check if RAW UUID format is used
+      string(REGEX MATCHALL "^([0-9A-F][0-9A-F]|\-)+$" match_parts ${CONFIG_MCUBOOT_UUID_CID_IMAGE_${image_id}_VALUE})
+      if ("${match_parts}" STREQUAL "${CONFIG_MCUBOOT_UUID_CID_IMAGE_${image_id}_VALUE}")
+        set(UUID_CID_IMAGE_${image_id} ${match_parts})
+      else()
+        # If not - generate UUID based on VID and CID values
+        string(
+            UUID UUID_CID_IMAGE_${image_id}
+            NAMESPACE ${UUID_VID}
+            NAME ${CONFIG_MCUBOOT_UUID_CID_IMAGE_${image_id}_VALUE}
+            TYPE SHA1 UPPER
+        )
+      endif()
+
+      # Convert UUID into C array.
+      string(REGEX REPLACE "([0-9A-F][0-9A-F])\-?" "0x\\1, " UUID_CID_IMAGE_${image_id}_RAW ${UUID_CID_IMAGE_${image_id}})
+      add_compile_definitions(MCUBOOT_UUIC_CID_IMAGE_${image_id}_VALUE=${UUID_CID_IMAGE_${image_id}_RAW})
+    endif()
+  endforeach()
+endif()
+
 # library which might be common source code for MCUBoot and an application
 zephyr_link_libraries(MCUBOOT_BOOTUTIL)
 
