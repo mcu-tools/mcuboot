@@ -183,6 +183,9 @@ one of these two strategies.
 
 ### [Swap using scratch](#image-swap-using-scratch)
 
+Please note that the swap-using-scratch algorithm may be removed in the coming
+future.
+
 When swap-using-scratch algorithm is used, in addition to the slots of
 image areas, the bootloader requires a scratch area to allow for reliable
 image swapping. The scratch area must have a size
@@ -279,6 +282,9 @@ during each swap.
 The algorithm is enabled using the `MCUBOOT_SWAP_USING_OFFSET` option.
 
 ### [Swap using move (without using scratch)](#image-swap-no-scratch)
+
+Please note that the swap-using-offset algorithm is preferred over swap-using-move
+except when building for existing products already using the latter.
 
 This algorithm is an alternative to the swap-using-scratch algorithm.
 It uses an additional sector in the primary slot to make swap possible.
