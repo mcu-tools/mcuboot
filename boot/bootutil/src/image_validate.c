@@ -227,6 +227,9 @@ bootutil_img_validate(struct boot_loader_state *state,
 #endif
     int rc = 0;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+#if defined(MCUBOOT_SIGN_PURE)
+    uintptr_t base = 0;
+#endif
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     fih_int security_cnt = fih_int_encode(INT_MAX);
     uint32_t img_security_cnt = 0;
@@ -388,11 +391,16 @@ bootutil_img_validate(struct boot_loader_state *state,
             FIH_CALL(bootutil_verify_sig, valid_signature, hash, sizeof(hash),
                                                            buf, len, key_id);
 #else
+            rc = flash_device_base(flash_area_get_device_id(fap), &base);
+            if (rc != 0) {
+                goto out;
+            }
+
             /* Directly check signature on the image, by using the mapping of
              * a device to memory. The pointer is beginning of image in flash,
              * so offset of area, the range is header + image + protected tlvs.
              */
-            FIH_CALL(bootutil_verify_img, valid_signature, (void *)flash_area_get_off(fap),
+            FIH_CALL(bootutil_verify_img, valid_signature, (void *)(base + flash_area_get_off(fap)),
                      hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_protect_tlv_size,
                      buf, len, key_id);
 #endif
