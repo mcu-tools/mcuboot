@@ -445,6 +445,19 @@ bootutil_img_validate(struct boot_loader_state *state,
                 goto out;
             }
 
+#ifdef MCUBOOT_HW_ROLLBACK_PROT_COUNTER_LIMITED
+            if (img_security_cnt > (uint32_t)fih_int_decode(security_cnt)) {
+                FIH_CALL(boot_nv_security_counter_is_update_possible, fih_rc, image_index,
+                         img_security_cnt);
+                if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                    FIH_SET(fih_rc, FIH_FAILURE);
+                    BOOT_LOG_ERR("Security counter update is not possible, possibly the maximum "
+                                 "number of security updates has been reached.");
+                    goto out;
+                }
+            }
+#endif
+
             /* The image's security counter has been successfully verified. */
             security_counter_valid = fih_rc;
             break;
