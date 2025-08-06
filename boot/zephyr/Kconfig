@@ -1058,6 +1058,17 @@ config MCUBOOT_HW_DOWNGRADE_PREVENTION
 	  Because of the acceptance of equal values it allows for software
 	  downgrade to some extent.
 
+config MCUBOOT_HW_DOWNGRADE_PREVENTION_COUNTER_LIMITED
+	bool "HW based downgrade prevention counter has limited number of updates"
+	depends on MCUBOOT_HW_DOWNGRADE_PREVENTION
+	help
+	  When this option is set, the hardware downgrade prevention counter
+	  has limited number of updates. This option will enable checking
+	  if it is possible to update the counter before performing
+	  the upgrade. If an update package contains a security counter
+	  value as a TLV but it is not possible to update the counter,
+	  the update will be rejected.
+
 endchoice
 
 config BOOT_WATCHDOG_FEED

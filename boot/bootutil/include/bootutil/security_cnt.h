@@ -63,6 +63,19 @@ fih_ret boot_nv_security_counter_get(uint32_t image_id, fih_int *security_cnt);
 int32_t boot_nv_security_counter_update(uint32_t image_id,
                                         uint32_t img_security_cnt);
 
+/**
+ * This function verifies whether the security counter update to a given value is possible.
+ * The update might not be possible if the maximum amount of security counter updates
+ * was reached.
+ *
+ * @param image_id          Index of the image (from 0).
+ * @param img_security_cnt  New security counter value.
+ *
+ * @return                  FIH_SUCCESS if update is possible; FIH_FAILURE otherwise
+ */
+fih_ret boot_nv_security_counter_is_update_possible(uint32_t image_id,
+                                                    uint32_t img_security_cnt);
+
 #ifdef __cplusplus
 }
 #endif
