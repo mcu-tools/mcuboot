@@ -913,7 +913,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
             * happens then the scratch which is partially erased would be wrote back to the
             * primary slot, causing a corrupt unbootable image
             */
-            rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch), true);
+            rc = boot_scramble_region(fap_scratch, 0, flash_area_get_size(fap_scratch), true);
             assert(rc == 0);
         }
     }
