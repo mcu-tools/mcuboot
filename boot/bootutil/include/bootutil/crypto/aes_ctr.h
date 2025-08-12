@@ -58,7 +58,7 @@ void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx);
 
 static inline void bootutil_aes_ctr_drop(bootutil_aes_ctr_context *ctx)
 {
-    memset(ctx, 0, sizeof(ctx));
+    memset(ctx, 0, sizeof(*ctx));
 }
 
 static inline int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k)
