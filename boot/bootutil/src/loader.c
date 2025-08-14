@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2016-2020 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2023 Arm Limited
+ * Copyright (c) 2019-2025 Arm Limited
  * Copyright (c) 2024-2025 Nordic Semiconductor ASA
  *
  * Original license:
@@ -1820,7 +1820,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 
 #ifdef MCUBOOT_ENC_IMAGES
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
-            rc = boot_read_enc_key(fap, slot, bs);
+            rc = boot_read_enc_key(fap, slot, bs, state->curr_img_idx);
             assert(rc == 0);
 
             for (i = 0; i < BOOT_ENC_KEY_SIZE; i++) {

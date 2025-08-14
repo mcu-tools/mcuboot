@@ -360,7 +360,7 @@ bool boot_status_is_reset(const struct boot_status *bs);
 int boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
                        const struct boot_status *bs);
 int boot_read_enc_key(const struct flash_area *fap, uint8_t slot,
-                      struct boot_status *bs);
+                      struct boot_status *bs, uint32_t image_id);
 #endif
 
 #ifdef MCUBOOT_SWAP_USING_SCRATCH

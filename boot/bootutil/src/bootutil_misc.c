@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2017-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2020 Arm Limited
+ * Copyright (c) 2019-2025 Arm Limited
  * Copyright (c) 2025 Nordic Semiconductor ASA
  *
  * Original license:
@@ -345,7 +345,7 @@ boot_read_swap_size(const struct flash_area *fap, uint32_t *swap_size)
 
 #ifdef MCUBOOT_ENC_IMAGES
 int
-boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status *bs)
+boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status *bs, uint32_t image_id)
 {
     uint32_t off;
 #if MCUBOOT_SWAP_SAVE_ENCTLV
@@ -364,7 +364,7 @@ boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status
         }
         /* Only try to decrypt non-erased TLV metadata */
         if (i != BOOT_ENC_TLV_ALIGN_SIZE) {
-            rc = boot_decrypt_key(bs->enctlv[slot], bs->enckey[slot]);
+            rc = boot_decrypt_key(bs->enctlv[slot], bs->enckey[slot], image_id);
         }
     }
 #else

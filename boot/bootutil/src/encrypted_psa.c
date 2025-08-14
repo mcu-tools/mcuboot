@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2025 Nordic Semiconductor ASA
+ * Copyright (c) 2025 Arm Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -122,7 +123,7 @@ extern const struct bootutil_key bootutil_enc_key;
  * @param enckey An AES-128 or AES-256 key sized buffer to store to plain key.
  */
 int
-boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
+boot_decrypt_key(const uint8_t *buf, uint8_t *enckey, uint32_t image_id)
 {
     uint8_t derived_key[HKDF_SIZE];
     uint8_t *cp;
