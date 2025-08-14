@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2018-2019 JUUL Labs
- * Copyright (c) 2019 Arm Limited
+ * Copyright (c) 2019-2025 Arm Limited
  *
  * Original license:
  *
@@ -51,15 +51,22 @@ struct enc_key_data {
  *                           its length.
  *
  * @return                   0 on success; nonzero on failure.
+ *                           In case of using PSA Crypto key ID to private key.
  *
  */
+#if defined(MCUBOOT_ENCRYPT_KW) && (defined(MCUBOOT_USE_PSA_CRYPTO) || defined(MCUBOOT_USE_MBED_TLS))
+uint32_t boot_enc_retrieve_private_key(uint32_t image_id);
+#else
 int boot_enc_retrieve_private_key(struct bootutil_key **private_key);
+#endif
 
 struct boot_status;
 struct boot_loader_state;
 
 /* Decrypt random, symmetric encryption key */
-int boot_decrypt_key(const uint8_t *buf, uint8_t *enckey);
+int boot_decrypt_key(const uint8_t *buf, uint8_t *enckey, uint32_t image_id);
+
+uint32_t get_enc_key_id_for_image(uint32_t image_id);
 
 int boot_enc_init(struct enc_key_data *enc_state);
 int boot_enc_drop(struct enc_key_data *enc_state);
