@@ -142,6 +142,8 @@ extern "C" {
                                              * ...
                                              * 0xffa0 - 0xfffe
                                              */
+#define IMAGE_TLV_UUID_VID          0x80    /* Vendor unique identifier */
+#define IMAGE_TLV_UUID_CID          0x81    /* Device class unique identifier */
 #define IMAGE_TLV_ANY               0xffff  /* Used to iterate over all TLV */
 
 #define VERSION_DEP_SLOT_ACTIVE     0x00   /* Check dependency against active slot. */
