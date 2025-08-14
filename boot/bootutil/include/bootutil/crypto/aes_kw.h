@@ -48,63 +48,25 @@ extern "C" {
 typedef struct {
     psa_cipher_operation_t op;
     psa_key_id_t key_id;
-    uint8_t key[BOOTUTIL_CRYPTO_AES_KW_KEY_SIZE];
     psa_key_attributes_t key_attributes;
 } bootutil_aes_kw_context;
-
-static int import_key_for_kw(bootutil_aes_kw_context *ctx)
-{
-    psa_status_t status = PSA_ERROR_INVALID_ARGUMENT;
-    psa_key_usage_t usage = (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT);
-    size_t key_len;
-
-    key_len = PSA_BITS_TO_BYTES(psa_get_key_bits(&ctx->key_attributes));
-    if (key_len == 0) {
-        /* Key has not been set using bootutil_aes_kw_set_unwrap_key(). */
-        return PSA_ERROR_INVALID_ARGUMENT;
-    }
-
-    /* Setup the key policy */
-    psa_set_key_usage_flags(&ctx->key_attributes, usage);
-    psa_set_key_algorithm(&ctx->key_attributes, PSA_ALG_ECB_NO_PADDING);
-    psa_set_key_type(&ctx->key_attributes, PSA_KEY_TYPE_AES);
-    psa_set_key_lifetime(&ctx->key_attributes, PSA_KEY_LIFETIME_FROM_PERSISTENCE_AND_LOCATION(
-        PSA_KEY_PERSISTENCE_DEFAULT, PSA_KEY_LOCATION_LOCAL_STORAGE));
-
-    /* Import a key */
-    status = psa_import_key(&ctx->key_attributes, ctx->key, key_len, &(ctx->key_id));
-    return (int)status;
-}
-
 
 static inline void bootutil_aes_kw_init(bootutil_aes_kw_context *ctx)
 {
     ctx->op = psa_cipher_operation_init();
     ctx->key_id = PSA_KEY_ID_NULL;
     ctx->key_attributes = psa_key_attributes_init();
-    memset(ctx->key, 0, sizeof(ctx->key));
     return;
 }
 
 static inline void bootutil_aes_kw_drop(bootutil_aes_kw_context *ctx)
 {
-    memset(ctx->key, 0, sizeof(ctx->key));
-    psa_set_key_bits(&ctx->key_attributes, 0);
-
-    if (ctx->key_id != PSA_KEY_ID_NULL) {
-        (void)psa_destroy_key(ctx->key_id);
-        ctx->key_id = PSA_KEY_ID_NULL;
-    }
+    memset(ctx, 0, sizeof(bootutil_aes_kw_context));
 }
 
-static inline int bootutil_aes_kw_set_unwrap_key(bootutil_aes_kw_context *ctx, const uint8_t *k, uint32_t klen)
+static inline int bootutil_aes_kw_set_unwrap_key(bootutil_aes_kw_context *ctx, psa_key_id_t key_id)
 {
-    if (klen != 16 && klen != 24 && klen != 32) {
-        return PSA_ERROR_INVALID_ARGUMENT;
-    }
-
-    psa_set_key_bits(&ctx->key_attributes, PSA_BYTES_TO_BITS(klen));
-    memcpy(ctx->key, k, klen);
+    ctx->key_id = key_id;
     return 0;
 }
 
@@ -113,13 +75,13 @@ static inline int bootutil_aes_kw_unwrap(bootutil_aes_kw_context *ctx, const uin
     psa_status_t status = PSA_ERROR_INVALID_ARGUMENT;
     psa_key_id_t output_key_id = PSA_KEY_ID_NULL;
     size_t output_key_len = 0;
+    psa_key_attributes_t key_attributes;
 
-    status = import_key_for_kw(ctx);
-    if (status != PSA_SUCCESS) {
-        return status;
-    }
+    psa_set_key_algorithm(&key_attributes, PSA_ALG_CTR);
+    psa_set_key_type(&key_attributes, PSA_KEY_TYPE_AES);
+    psa_set_key_usage_flags(&key_attributes, (PSA_KEY_USAGE_ENCRYPT | PSA_KEY_USAGE_DECRYPT));
 
-    status = psa_unwrap_key(&ctx->key_attributes, ctx->key_id, PSA_ALG_ECB_NO_PADDING,
+    status = psa_unwrap_key(&key_attributes, ctx->key_id, PSA_ALG_ECB_NO_PADDING,
                              wrapped_key, wrapped_key_len, &output_key_id);
     if (status != PSA_SUCCESS) {
         return status;
@@ -129,11 +91,6 @@ static inline int bootutil_aes_kw_unwrap(bootutil_aes_kw_context *ctx, const uin
     if (status != PSA_SUCCESS) {
         return status;
     }
-
-    /* TFM bl2 PSA keystore implementation  has only 1 slot so we reimport
-       the key because otherwise destroying it later would fail when mcuboot
-       calls bootutil_aes_kw_drop(). */
-    status = import_key_for_kw(ctx);
 
     return status;
 }

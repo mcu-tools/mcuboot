@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2018-2019 JUUL Labs
- * Copyright (c) 2019-2024 Arm Limited
+ * Copyright (c) 2019-2025 Arm Limited
  * Copyright (c) 2025 Nordic Semiconductor ASA
  */
 
@@ -74,6 +74,29 @@ static int bootutil_constant_time_compare(const uint8_t *a, const uint8_t *b, si
 #endif
 
 #if defined(MCUBOOT_ENCRYPT_KW)
+#if defined(MCUBOOT_USE_PSA_CRYPTO) || defined(MCUBOOT_USE_MBED_TLS)
+static int
+key_unwrap(const uint8_t *wrapped, uint8_t *enckey, psa_key_id_t key_id)
+{
+    bootutil_aes_kw_context aes_kw;
+    int rc;
+
+    bootutil_aes_kw_init(&aes_kw);
+    rc = bootutil_aes_kw_set_unwrap_key(&aes_kw, key_id);
+    if (rc != 0) {
+        goto done;
+    }
+
+    rc = bootutil_aes_kw_unwrap(&aes_kw, wrapped, BOOT_ENC_TLV_SIZE, enckey, BOOT_ENC_KEY_SIZE);
+    if (rc != 0) {
+        goto done;
+    }
+
+done:
+    bootutil_aes_kw_drop(&aes_kw);
+    return rc;
+}
+#else
 static int
 key_unwrap(const uint8_t *wrapped, uint8_t *enckey, struct bootutil_key *bootutil_enc_key)
 {
@@ -94,6 +117,7 @@ done:
     bootutil_aes_kw_drop(&aes_kw);
     return rc;
 }
+#endif /* MCUBOOT_USE_PSA_CRYPTO || MCUBOOT_USE_MBED_TLS */
 #endif /* MCUBOOT_ENCRYPT_KW */
 
 #if defined(MCUBOOT_ENCRYPT_EC256)
@@ -344,12 +368,19 @@ extern const struct bootutil_key bootutil_enc_key;
  * Default implementation to retrieve the private encryption key which is
  * embedded in the bootloader code (when MCUBOOT_ENC_BUILTIN_KEY is not defined).
  */
+#if defined(MCUBOOT_ENCRYPT_KW) && (defined(MCUBOOT_USE_PSA_CRYPTO) || defined(MCUBOOT_USE_MBED_TLS))
+uint32_t boot_enc_retrieve_private_key(uint32_t image_id)
+{
+    return get_enc_key_id_for_image(image_id);
+}
+#else
 int boot_enc_retrieve_private_key(struct bootutil_key **private_key)
 {
     *private_key = (struct bootutil_key *)&bootutil_enc_key;
 
     return 0;
 }
+#endif /* MCUBOOT_USE_PSA_CRYPTO || MCUBOOT_USE_MBED_TLS */
 #endif /* !MCUBOOT_ENC_BUILTIN_KEY */
 
 #if ( (defined(MCUBOOT_ENCRYPT_RSA) && defined(MCUBOOT_USE_MBED_TLS) && !defined(MCUBOOT_USE_PSA_CRYPTO)) || \
@@ -377,7 +408,7 @@ static int fake_rng(void *p_rng, unsigned char *output, size_t len)
  * @param enckey An AES-128 or AES-256 key sized buffer to store to plain key.
  */
 int
-boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
+boot_decrypt_key(const uint8_t *buf, uint8_t *enckey, uint32_t image_id)
 {
 #if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
     bootutil_hmac_sha256_context hmac;
@@ -394,8 +425,13 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     uint8_t *cpend;
     size_t len;
 #endif
-    struct bootutil_key *bootutil_enc_key = NULL;
     int rc = -1;
+#if defined(MCUBOOT_ENCRYPT_KW) && (defined(MCUBOOT_USE_PSA_CRYPTO) || defined(MCUBOOT_USE_MBED_TLS))
+    int key_id;
+
+    key_id = boot_enc_retrieve_private_key(image_id);
+#else
+    struct bootutil_key *bootutil_enc_key = NULL;
 
     BOOT_LOG_DBG("boot_decrypt_key");
 
@@ -407,6 +443,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     if (bootutil_enc_key == NULL) {
         return rc;
     }
+#endif /* MCUBOOT_ENCRYPT_KW && (MCUBOOT_USE_PSA_CRYPTO || MCUBOOT_USE_MBED_TLS) */
 
 #if !defined(MCUBOOT_ENCRYPT_KW)
     cp = (uint8_t *)bootutil_enc_key->key;
@@ -432,10 +469,12 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 #endif /* defined(MCUBOOT_ENCRYPT_RSA) */
 
 #if defined(MCUBOOT_ENCRYPT_KW)
-
+#if defined(MCUBOOT_USE_PSA_CRYPTO) || defined(MCUBOOT_USE_MBED_TLS)
+    rc = key_unwrap(buf, enckey, key_id);
+#else
     assert(*bootutil_enc_key->len == BOOT_ENC_KEY_SIZE);
     rc = key_unwrap(buf, enckey, bootutil_enc_key);
-
+#endif /* MCUBOOT_USE_PSA_CRYPTO || MCUBOOT_USE_MBED_TLS */
 #endif /* defined(MCUBOOT_ENCRYPT_KW) */
 
 #if defined(MCUBOOT_ENCRYPT_EC256)
@@ -623,7 +662,7 @@ boot_enc_load(struct boot_loader_state *state, int slot,
         return -1;
     }
 
-    return boot_decrypt_key(buf, bs->enckey[slot]);
+    return boot_decrypt_key(buf, bs->enckey[slot], state->curr_img_idx);
 }
 
 int
