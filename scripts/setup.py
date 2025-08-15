@@ -20,6 +20,7 @@ setuptools.setup(
         'click',
         'cbor2',
         'pyyaml',
+        'python-pkcs11',
     ],
     entry_points={
         "console_scripts": ["imgtool=imgtool.main:imgtool"]

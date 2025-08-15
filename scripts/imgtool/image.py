@@ -190,6 +190,7 @@ def tlv_sha_to_sha(tlv):
 ALLOWED_KEY_SHA = {
     keys.ECDSA384P1         : ['384'],
     keys.ECDSA384P1Public   : ['384'],
+    keys.PKCS11             : ['384'],
     keys.ECDSA256P1         : ['256'],
     keys.RSA                : ['256'],
     keys.RSAPublic          : ['256'],
@@ -225,7 +226,7 @@ def key_and_user_sha_to_alg_and_tlv(key, user_sha, is_pure = False):
         allowed = allowed_key_ssh[type(key)]
 
     except KeyError:
-        raise click.UsageError("Colud not find allowed hash algorithms for {}"
+        raise click.UsageError("Could not find allowed hash algorithms for {}"
                                .format(type(key)))
 
     # Pure enforces auto, and user selection is ignored
