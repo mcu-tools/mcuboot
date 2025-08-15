@@ -195,6 +195,7 @@ def tlv_sha_to_sha(tlv):
 ALLOWED_KEY_SHA = {
     keys.ECDSA384P1         : ['384'],
     keys.ECDSA384P1Public   : ['384'],
+    keys.PKCS11             : ['384'],
     keys.ECDSA256P1         : ['256'],
     keys.ECDSA256P1Public   : ['256', '512'],
     keys.RSA                : ['256'],
