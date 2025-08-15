@@ -5,3 +5,4 @@ cbor2
 setuptools
 pyyaml
 pytest
+python-pkcs11

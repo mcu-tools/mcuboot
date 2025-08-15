@@ -22,6 +22,7 @@ let
       python37.pkgs.setuptools
       python37.pkgs.cbor2
       python37.pkgs.pyyaml
+      python37.pkgs.python-pkcs11
     ]
   );
 in
