@@ -1,6 +1,6 @@
 # Copyright 2018 Nordic Semiconductor ASA
 # Copyright 2017-2020 Linaro Limited
-# Copyright 2019-2024 Arm Limited
+# Copyright 2019-2025 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -180,6 +180,7 @@ def tlv_sha_to_sha(tlv):
 ALLOWED_KEY_SHA = {
     keys.ECDSA384P1         : ['384'],
     keys.ECDSA384P1Public   : ['384'],
+    keys.PKCS11             : ['384'],
     keys.ECDSA256P1         : ['256'],
     keys.ECDSA256P1Public   : ['256', '512'],
     keys.RSA                : ['256'],
@@ -216,7 +217,7 @@ def key_and_user_sha_to_alg_and_tlv(key, user_sha, is_pure = False):
         allowed = allowed_key_ssh[type(key)]
 
     except KeyError:
-        raise click.UsageError(f"Colud not find allowed hash algorithms for {type(key)}"
+        raise click.UsageError(f"Could not find allowed hash algorithms for {type(key)}"
                                )
 
     # Pure enforces auto, and user selection is ignored

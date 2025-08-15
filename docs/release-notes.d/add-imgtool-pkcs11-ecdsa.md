@@ -1,0 +1,1 @@
+- Added support for PKCS#11 URIs and ECDSA-P384 keys.
