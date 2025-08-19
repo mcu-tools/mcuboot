@@ -41,8 +41,10 @@ mcuboot_generate_signing_keys_file(${CMAKE_CURRENT_BINARY_DIR}/signing_keys.c)
 target_sources(${LIB_TARGET} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/signing_keys.c)
 
 if("MCUBOOT_ENCRYPT_RSA=1" IN_LIST MBED_CONFIG_DEFINITIONS)
-  mcuboot_generate_encryption_key_file(${CMAKE_CURRENT_BINARY_DIR}/enc_keys.c)
-  target_sources(${LIB_TARGET} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/enc_keys.c)
+  set(MCUBOOT_ENCRYPTION_PUBLIC_KEY_PATH ${CMAKE_CURRENT_BINARY_DIR}/enc_key_public.pem CACHE INTERNAL "Path to mcuboot encryption public key" FORCE)
+  mcuboot_generate_encryption_public_key_file(${MCUBOOT_ENCRYPTION_PUBLIC_KEY_PATH})
+  mcuboot_generate_encryption_private_key_file(${CMAKE_CURRENT_BINARY_DIR}/enc_key_private.c)
+  target_sources(${LIB_TARGET} PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/enc_key_private.c)
 endif()
 
 # The cross-dependency requires that bootutil have access to the mbed port's
