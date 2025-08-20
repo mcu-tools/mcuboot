@@ -125,13 +125,21 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
  *
  * Value of TLV does not matter, presence decides.
  */
-static int bootutil_check_for_pure(const struct image_header *hdr,
-                                   const struct flash_area *fap)
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+static int bootutil_check_for_pure(const struct image_header *hdr, const struct flash_area *fap,
+                                   uint32_t start_off)
+#else
+static int bootutil_check_for_pure(const struct image_header *hdr, const struct flash_area *fap)
+#endif
 {
     struct image_tlv_iter it;
     uint32_t off;
     uint16_t len;
     int32_t rc;
+
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    it.start_off = start_off;
+#endif
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_SIG_PURE, false);
     if (rc) {
@@ -249,17 +257,21 @@ bootutil_img_validate(struct boot_loader_state *state,
     }
 #endif
 
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    it.start_off = boot_get_state_secondary_offset(state, fap);
+#endif
+
 #if defined(MCUBOOT_SIGN_PURE)
     /* If Pure type signature is expected then it has to be there */
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    rc = bootutil_check_for_pure(hdr, fap, it.start_off);
+#else
     rc = bootutil_check_for_pure(hdr, fap);
+#endif
     if (rc != 0) {
         BOOT_LOG_DBG("bootutil_img_validate: pure expected");
         goto out;
     }
-#endif
-
-#if defined(MCUBOOT_SWAP_USING_OFFSET)
-    it.start_off = boot_get_state_secondary_offset(state, fap);
 #endif
 
     rc = bootutil_tlv_iter_begin(&it, hdr, fap, IMAGE_TLV_ANY, false);
