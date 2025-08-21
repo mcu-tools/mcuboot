@@ -32,6 +32,14 @@ build_mcuboot() {
     build_dir=".build-${target}-${feature}"
   fi
 
+  IFS='-'
+  read -a feat_prefix <<< "${feature}"
+
+  # Add chip-specific conf if any
+  if [ -e "${ESPRESSIF_ROOT}/ci_configs/${target}-${feat_prefix}.conf" ]; then
+    mcuboot_config="${mcuboot_config};${ESPRESSIF_ROOT}/ci_configs/${target}-${feat_prefix}.conf"
+  fi
+
   # Build MCUboot for selected target
 
   cd "${MCUBOOT_ROOTDIR}" &>/dev/null

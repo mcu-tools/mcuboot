@@ -18,7 +18,7 @@ jobs:
   environment:
     strategy:
       matrix:
-        targets: [esp32, esp32s2, esp32s3, esp32c3]
+        targets: [esp32, esp32s2, esp32s3, esp32c2, esp32c3, esp32c6, esp32h2]
         features:
         - "secureboot-sign-rsa2048,secureboot-sign-rsa3072,secureboot-sign-ec256,secureboot-sign-ed25519"
         - "serialrecovery"
