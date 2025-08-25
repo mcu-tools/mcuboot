@@ -51,7 +51,7 @@ struct flash_area;
 
 #define BOOT_TMPBUF_SZ  256
 
-#define NO_ACTIVE_SLOT UINT32_MAX
+#define NO_ACTIVE_SLOT BOOT_SLOT_NONE
 
 /** Number of image slots in flash; currently limited to two. */
 #if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) || defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
@@ -222,8 +222,8 @@ _Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image 
 /** Maximum number of image sectors supported by the bootloader. */
 #define BOOT_STATUS_MAX_ENTRIES         BOOT_MAX_IMG_SECTORS
 
-#define BOOT_PRIMARY_SLOT               0
-#define BOOT_SECONDARY_SLOT             1
+#define BOOT_PRIMARY_SLOT               BOOT_SLOT_PRIMARY
+#define BOOT_SECONDARY_SLOT             BOOT_SLOT_SECONDARY
 
 #define BOOT_STATUS_SOURCE_NONE         0
 #define BOOT_STATUS_SOURCE_SCRATCH      1

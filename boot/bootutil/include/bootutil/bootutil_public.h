@@ -129,6 +129,14 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 32,
                                                     (swap_info) = (image) << 4 \
                                                                 | (type);      \
                                                     }
+
+enum boot_slot {
+    BOOT_SLOT_PRIMARY = 0,      /* Primary slot */
+    BOOT_SLOT_SECONDARY = 1,    /* Secondary slot */
+    BOOT_SLOT_COUNT = 2,        /* Number of slots */
+    BOOT_SLOT_NONE = UINT32_MAX /* special value representing no active slot */
+};
+
 #ifdef MCUBOOT_HAVE_ASSERT_H
 #include "mcuboot_config/mcuboot_assert.h"
 #else
