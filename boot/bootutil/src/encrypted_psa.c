@@ -33,9 +33,18 @@ BOOT_LOG_MODULE_DECLARE(mcuboot_psa_enc);
 #define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_256
 #endif
 
+#if defined(MCUBOOT_ENCRYPT_EC256)
+#define NUM_ECC_BYTES (256 / 8)
+static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_EC_ALG_UNRESTRICTED;
+static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
+#define ECC_FAMILY PSA_ECC_FAMILY_SECP_R1
+#endif /* defined(MCUBOOT_ENCRYPT_EC256) */
+#if defined(MCUBOOT_ENCRYPT_X25519)
 #define X25519_OID "\x6e"
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
                                        MBEDTLS_OID_ORG_GOV X25519_OID;
+#define ECC_FAMILY PSA_ECC_FAMILY_MONTGOMERY
+#endif /* defined(MCUBOOT_ENCRYPT_X25519) */
 
 /* Partitioning of HKDF derived material, from the exchange derived key */
 /* AES key encryption key */
@@ -51,9 +60,86 @@ static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
 /* Total size */
 #define HKDF_SIZE           (HKDF_AES_KEY_SIZE + HKDF_MAC_FEED_SIZE)
 
+#if defined(MCUBOOT_ENCRYPT_EC256)
+/* Fixme: This duplicates code from encrypted.c and depends on mbedtls */
+
+/*
+ * Parses the output of `imgtool keygen`, which produces a PKCS#8 elliptic
+ * curve keypair. See RFC5208 and RFC5915.
+ */
+static int
+parse_priv_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
+{
+    size_t len;
+    int version;
+    mbedtls_asn1_buf alg;
+    mbedtls_asn1_buf param;
+
+    if (mbedtls_asn1_get_tag(p, end, &len,
+                             MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE) != 0) {
+        return -1;
+    }
+
+    if (*p + len != end) {
+        return -1;
+    }
+
+    version = 0;
+    if (mbedtls_asn1_get_int(p, end, &version) || version != 0) {
+        return -1;
+    }
+
+    if (mbedtls_asn1_get_alg(p, end, &alg, &param) != 0) {
+        return -1;
+    }
+
+    if (alg.ASN1_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
+        memcmp(alg.ASN1_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
+        return -1;
+    }
+    if (param.ASN1_CONTEXT_MEMBER(len) != sizeof(ec_secp256r1_oid) - 1 ||
+        memcmp(param.ASN1_CONTEXT_MEMBER(p), ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
+        return -1;
+    }
+
+    if (mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING) != 0) {
+        return -1;
+    }
+
+    /* RFC5915 - ECPrivateKey */
+
+    if (mbedtls_asn1_get_tag(p, end, &len,
+                             MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE) != 0) {
+        return -1;
+    }
+
+    version = 0;
+    if (mbedtls_asn1_get_int(p, end, &version) || version != 1) {
+        return -1;
+    }
+
+    /* privateKey */
+
+    if (mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING) != 0) {
+        return -1;
+    }
+
+    if (len != NUM_ECC_BYTES) {
+        return -1;
+    }
+
+    memcpy(private_key, *p, len);
+
+    /* publicKey usually follows but is not parsed here */
+
+    return 0;
+}
+#endif /* defined(MCUBOOT_ENCRYPT_EC256) */
+
+#if defined(MCUBOOT_ENCRYPT_X25519)
 /* Fixme: This duplicates code from encrypted.c and depends on mbedtls */
 static int
-parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
+parse_priv_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
 {
     size_t len;
     int version;
@@ -98,6 +184,7 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
     memcpy(private_key, *p, EC_PRIVK_LEN);
     return 0;
 }
+#endif /* defined(MCUBOOT_ENCRYPT_X25519) */
 
 void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx)
 {
@@ -153,14 +240,15 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     }
 
     /*
-     * Load the stored X25519 decryption private key
+     * * Load the stored decryption private key
      */
-    rc = parse_x25519_enckey(&cp, cpend, private_key);
+    rc = parse_priv_enckey(&cp, cpend, private_key);
     if (rc) {
+        BOOT_LOG_ERR("Failed to parse ASN1 private key");
         return rc;
     }
 
-    psa_set_key_type(&kattr, PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_MONTGOMERY));
+    psa_set_key_type(&kattr, PSA_KEY_TYPE_ECC_KEY_PAIR(ECC_FAMILY));
     psa_set_key_usage_flags(&kattr, PSA_KEY_USAGE_DERIVE);
     psa_set_key_algorithm(&kattr, PSA_ALG_ECDH);
 

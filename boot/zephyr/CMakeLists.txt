@@ -112,11 +112,12 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/fault_injection_hardening.c
   )
 
-if(DEFINED CONFIG_BOOT_ENCRYPT_X25519 AND DEFINED CONFIG_BOOT_ED25519_PSA)
+if((CONFIG_BOOT_ENCRYPT_X25519 AND CONFIG_BOOT_ED25519_PSA)
+   OR (CONFIG_BOOT_ENCRYPT_EC256 AND CONFIG_BOOT_ECDSA_PSA))
   zephyr_library_sources(${BOOT_DIR}/bootutil/src/encrypted_psa.c)
 endif()
 
-if(DEFINED CONFIG_MEASURED_BOOT OR DEFINED CONFIG_BOOT_SHARE_DATA)
+if(CONFIG_MEASURED_BOOT OR CONFIG_BOOT_SHARE_DATA)
   zephyr_library_sources(
     ${BOOT_DIR}/bootutil/src/boot_record.c
     )
@@ -296,7 +297,7 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
   endif()
 endif()
 
-if(NOT CONFIG_BOOT_ED25519_PSA)
+if(NOT CONFIG_BOOT_ED25519_PSA AND NOT CONFIG_BOOT_ECDSA_PSA)
   if(CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519)
     zephyr_library_sources(
       ${TINYCRYPT_DIR}/source/aes_encrypt.c
@@ -308,7 +309,7 @@ if(NOT CONFIG_BOOT_ED25519_PSA)
   endif()
 endif()
 
-if(CONFIG_BOOT_ENCRYPT_EC256)
+if(CONFIG_BOOT_ENCRYPT_EC256 AND NOT CONFIG_BOOT_ECDSA_PSA)
   zephyr_library_sources(
     ${TINYCRYPT_DIR}/source/ecc_dh.c
     )
