@@ -22,11 +22,11 @@
 #include "bootutil/crypto/aes_kw.h"
 #endif
 
+#if !defined(MCUBOOT_USE_PSA_CRYPTO)
 #if defined(MCUBOOT_ENCRYPT_EC256)
 #include "bootutil/crypto/ecdh_p256.h"
 #endif
 
-#if !defined(MCUBOOT_USE_PSA_CRYPTO)
 #if defined(MCUBOOT_ENCRYPT_X25519)
 #include "bootutil/crypto/ecdh_x25519.h"
 #endif
@@ -50,7 +50,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #include "bootutil_priv.h"
 
 /* NOUP Fixme:  */
-#if !defined(CONFIG_BOOT_ED25519_PSA)
+#if !defined(CONFIG_BOOT_ED25519_PSA) && !defined(CONFIG_BOOT_ECDSA_PSA)
 #if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
 #if defined(_compare)
 static inline int bootutil_constant_time_compare(const uint8_t *a, const uint8_t *b, size_t size)
@@ -105,65 +105,64 @@ static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
  * curve keypair. See RFC5208 and RFC5915.
  */
 static int
-parse_ec256_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
+parse_priv_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
 {
-    int rc;
     size_t len;
     int version;
     mbedtls_asn1_buf alg;
     mbedtls_asn1_buf param;
 
-    if ((rc = mbedtls_asn1_get_tag(p, end, &len,
-                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
+    if (mbedtls_asn1_get_tag(p, end, &len,
+                             MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE) != 0) {
         return -1;
     }
 
     if (*p + len != end) {
-        return -2;
+        return -1;
     }
 
     version = 0;
     if (mbedtls_asn1_get_int(p, end, &version) || version != 0) {
-        return -3;
+        return -1;
     }
 
-    if ((rc = mbedtls_asn1_get_alg(p, end, &alg, &param)) != 0) {
-        return -5;
+    if (mbedtls_asn1_get_alg(p, end, &alg, &param) != 0) {
+        return -1;
     }
 
     if (alg.ASN1_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
         memcmp(alg.ASN1_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
-        return -6;
+        return -1;
     }
     if (param.ASN1_CONTEXT_MEMBER(len) != sizeof(ec_secp256r1_oid) - 1 ||
         memcmp(param.ASN1_CONTEXT_MEMBER(p), ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
-        return -7;
+        return -1;
     }
 
-    if ((rc = mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING)) != 0) {
-        return -8;
+    if (mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING) != 0) {
+        return -1;
     }
 
     /* RFC5915 - ECPrivateKey */
 
-    if ((rc = mbedtls_asn1_get_tag(p, end, &len,
-                    MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE)) != 0) {
-        return -9;
+    if (mbedtls_asn1_get_tag(p, end, &len,
+                             MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE) != 0) {
+        return -1;
     }
 
     version = 0;
     if (mbedtls_asn1_get_int(p, end, &version) || version != 1) {
-        return -10;
+        return -1;
     }
 
     /* privateKey */
 
-    if ((rc = mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING)) != 0) {
-        return -11;
+    if (mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING) != 0) {
+        return -1;
     }
 
     if (len != NUM_ECC_BYTES) {
-        return -12;
+        return -1;
     }
 
     memcpy(private_key, *p, len);
@@ -180,7 +179,7 @@ static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
                                        MBEDTLS_OID_ORG_GOV X25519_OID;
 
 static int
-parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
+parse_priv_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
 {
     size_t len;
     int version;
@@ -193,33 +192,33 @@ parse_x25519_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
     }
 
     if (*p + len != end) {
-        return -2;
+        return -1;
     }
 
     version = 0;
     if (mbedtls_asn1_get_int(p, end, &version) || version != 0) {
-        return -3;
+        return -1;
     }
 
     if (mbedtls_asn1_get_alg(p, end, &alg, &param) != 0) {
-        return -4;
+        return -1;
     }
 
     if (alg.ASN1_CONTEXT_MEMBER(len) != sizeof(ec_pubkey_oid) - 1 ||
         memcmp(alg.ASN1_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
-        return -5;
+        return -1;
     }
 
     if (mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING) != 0) {
-        return -6;
+        return -1;
     }
 
     if (mbedtls_asn1_get_tag(p, end, &len, MBEDTLS_ASN1_OCTET_STRING) != 0) {
-        return -7;
+        return -1;
     }
 
     if (len != EC_PRIVK_LEN) {
-        return -8;
+        return -1;
     }
 
     memcpy(private_key, *p, EC_PRIVK_LEN);
@@ -444,8 +443,9 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      * Load the stored EC256 decryption private key
      */
 
-    rc = parse_ec256_enckey(&cp, cpend, private_key);
+    rc = parse_priv_enckey(&cp, cpend, private_key);
     if (rc) {
+        BOOT_LOG_ERR("Failed to parse ASN1 private key");
         return rc;
     }
 
@@ -467,8 +467,9 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      * Load the stored X25519 decryption private key
      */
 
-    rc = parse_x25519_enckey(&cp, cpend, private_key);
+    rc = parse_priv_enckey(&cp, cpend, private_key);
     if (rc) {
+        BOOT_LOG_ERR("Failed to parse ASN1 private key");
         return rc;
     }
 
@@ -562,7 +563,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
     return rc;
 }
-#endif /* CONFIG_BOOT_ED25519_PSA */
+#endif /* CONFIG_BOOT_ED25519_PSA  && CONFIG_BOOT_ECDSA_PSA */
 
 /*
  * Load encryption key.
