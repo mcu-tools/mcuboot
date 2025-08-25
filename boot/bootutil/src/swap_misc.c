@@ -41,7 +41,7 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
      * erase, there is nothing to do here.
      */
     if (device_requires_erase(fap)) {
-        uint8_t slot = BOOT_PRIMARY_SLOT;
+        uint8_t slot = BOOT_SLOT_PRIMARY;
         uint32_t sector;
         uint32_t trailer_sz;
         uint32_t total_sz;
@@ -49,8 +49,8 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
         BOOT_LOG_DBG("Erasing trailer; fa_id=%d", flash_area_get_id(fap));
 
         /* By default it is assumed that slot is primary */
-        if (fap == BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT)) {
-            slot = BOOT_SECONDARY_SLOT;
+        if (fap == BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY)) {
+            slot = BOOT_SLOT_SECONDARY;
         }
 
         /* Delete starting from last sector and moving to beginning */
@@ -119,7 +119,7 @@ swap_status_init(const struct boot_loader_state *state,
 
     BOOT_LOG_DBG("initializing status; fa_id=%d", flash_area_get_id(fap));
 
-    rc = boot_read_swap_state(state->imgs[image_index][BOOT_SECONDARY_SLOT].area,
+    rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_SECONDARY].area,
                               &swap_state);
     assert(rc == 0);
 
@@ -170,7 +170,7 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
 #endif
 
     case BOOT_STATUS_SOURCE_PRIMARY_SLOT:
-        fap = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+        fap = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
         break;
 
     default:

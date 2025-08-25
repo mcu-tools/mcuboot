@@ -331,7 +331,7 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
             }
 
 #ifdef MCUBOOT_SWAP_USING_OFFSET
-            if (slot == BOOT_SECONDARY_SLOT && swap_status != BOOT_SWAP_TYPE_REVERT) {
+            if (slot == BOOT_SLOT_SECONDARY && swap_status != BOOT_SWAP_TYPE_REVERT) {
                 start_off = boot_img_sector_size(state, slot, 0);
                 state->secondary_offset[image_index] = start_off;
             }
@@ -401,25 +401,25 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
             if (swap_status == BOOT_SWAP_TYPE_NONE) {
-                if (slot == BOOT_PRIMARY_SLOT) {
+                if (slot == BOOT_SLOT_PRIMARY) {
                     confirmed = true;
                     active = true;
                 }
             } else if (swap_status == BOOT_SWAP_TYPE_TEST) {
-                if (slot == BOOT_PRIMARY_SLOT) {
+                if (slot == BOOT_SLOT_PRIMARY) {
                     confirmed = true;
                 } else {
                     pending = true;
                 }
             } else if (swap_status == BOOT_SWAP_TYPE_PERM) {
-                if (slot == BOOT_PRIMARY_SLOT) {
+                if (slot == BOOT_SLOT_PRIMARY) {
                     confirmed = true;
                 } else {
                     pending = true;
                     permanent = true;
                 }
             } else if (swap_status == BOOT_SWAP_TYPE_REVERT) {
-                if (slot == BOOT_PRIMARY_SLOT) {
+                if (slot == BOOT_SLOT_PRIMARY) {
                     active = true;
                 } else {
                     confirmed = true;
@@ -551,7 +551,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                 }
 
 #ifdef MCUBOOT_SWAP_USING_OFFSET
-                if (slot == BOOT_SECONDARY_SLOT && swap_status != BOOT_SWAP_TYPE_REVERT) {
+                if (slot == BOOT_SLOT_SECONDARY && swap_status != BOOT_SWAP_TYPE_REVERT) {
                     start_off = boot_img_sector_size(state, slot, 0);
                     state->secondary_offset[image_index] = start_off;
                 }

@@ -274,7 +274,7 @@ boot_check_ram_load_overlapping(struct boot_loader_state *state)
     end_a = start_a + state->slot_usage[image_id_to_check].img_sz;
 
     for (i = 0; i < BOOT_IMAGE_NUMBER; i++) {
-        if (state->slot_usage[i].active_slot == NO_ACTIVE_SLOT
+        if (state->slot_usage[i].active_slot == BOOT_SLOT_NONE
             || i == image_id_to_check) {
             continue;
         }
