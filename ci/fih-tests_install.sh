@@ -1,6 +1,6 @@
 #!/bin/bash -x
 
-# Copyright (c) 2020 Arm Limited
+# Copyright (c) 2020-2025 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,19 +16,17 @@
 
 set -e
 
-source $(dirname "$0")/fih-tests_version.sh
+source $(dirname "$0")/fih-tests_config.sh
 
 DOCKER_DIR=docker
 
-IMAGE=fih-test:$FIH_IMAGE_VERSION
-
-CACHED_IMAGE=$DOCKER_DIR/$IMAGE
+CACHED_IMAGE=$DOCKER_DIR/$FIH_IMAGE
 
 [[ -f $CACHED_IMAGE ]] && (gzip -dc $CACHED_IMAGE | docker load)
 
 if [[ $? -ne 0 ]]; then
-    docker pull mcuboot/$IMAGE
+    docker pull $CONTAINER_REGISTRY/$FIH_IMAGE
     if [[ $GITHUB_ACTIONS != true ]]; then
-        docker save mcuboot/$IMAGE | gzip > $CACHED_IMAGE
+        docker save $CONTAINER_REGISTRY/$FIH_IMAGE | gzip > $CACHED_IMAGE
     fi
 fi
