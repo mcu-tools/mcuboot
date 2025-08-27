@@ -69,17 +69,17 @@ def load(path, passwd=None):
 
     if isinstance(pk, RSAPrivateKey):
         if pk.key_size not in RSA_KEY_SIZES:
-            raise Exception("Unsupported RSA key size: " + pk.key_size)
+            raise Exception("Unsupported RSA key size: " + str(pk.key_size))
         return RSA(pk)
     elif isinstance(pk, RSAPublicKey):
         if pk.key_size not in RSA_KEY_SIZES:
-            raise Exception("Unsupported RSA key size: " + pk.key_size)
+            raise Exception("Unsupported RSA key size: " + str(pk.key_size))
         return RSAPublic(pk)
     elif isinstance(pk, EllipticCurvePrivateKey):
         if pk.curve.name not in ('secp256r1', 'secp384r1'):
             raise Exception("Unsupported EC curve: " + pk.curve.name)
         if pk.key_size not in (256, 384):
-            raise Exception("Unsupported EC size: " + pk.key_size)
+            raise Exception("Unsupported EC size: " + str(pk.key_size))
         if pk.curve.name == 'secp256r1':
             return ECDSA256P1(pk)
         elif pk.curve.name == 'secp384r1':
@@ -88,7 +88,7 @@ def load(path, passwd=None):
         if pk.curve.name not in ('secp256r1', 'secp384r1'):
             raise Exception("Unsupported EC curve: " + pk.curve.name)
         if pk.key_size not in (256, 384):
-            raise Exception("Unsupported EC size: " + pk.key_size)
+            raise Exception("Unsupported EC size: " + str(pk.key_size))
         if pk.curve.name == 'secp256r1':
             return ECDSA256P1Public(pk)
         elif pk.curve.name == 'secp384r1':
