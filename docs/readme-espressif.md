@@ -345,9 +345,14 @@ enabled and also to avoid any unrecoverable/permanent state change:*
 CONFIG_SECURE_BOOT_ALLOW_JTAG=1
 CONFIG_SECURE_FLASH_UART_BOOTLOADER_ALLOW_CACHE=1
 
-# Options for enabling eFuse emulation in Flash
+# Options for enabling eFuse emulation in Flash (adjust
+# CONFIG_EFUSE_VIRTUAL_OFFSET accordingly in order
+# to not overlap with other flash regions)
 CONFIG_EFUSE_VIRTUAL=1
 CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH=1
+CONFIG_EFUSE_VIRTUAL_OFFSET=0x250000
+CONFIG_EFUSE_VIRTUAL_SIZE=0x2000
+
 ```
 ---
 
@@ -484,9 +489,14 @@ CONFIG_SECURE_FLASH_UART_BOOTLOADER_ALLOW_DEC=1
 CONFIG_SECURE_FLASH_UART_BOOTLOADER_ALLOW_CACHE=1
 CONFIG_SECURE_BOOT_ALLOW_JTAG=1
 
-# Options for enabling eFuse emulation in Flash
+# Options for enabling eFuse emulation in Flash (adjust
+# CONFIG_EFUSE_VIRTUAL_OFFSET accordingly in order
+# to not overlap with other flash regions)
 CONFIG_EFUSE_VIRTUAL=1
 CONFIG_EFUSE_VIRTUAL_KEEP_IN_FLASH=1
+CONFIG_EFUSE_VIRTUAL_OFFSET=0x250000
+CONFIG_EFUSE_VIRTUAL_SIZE=0x2000
+
 ```
 ---
 
