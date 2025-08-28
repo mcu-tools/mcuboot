@@ -22,11 +22,11 @@
 #include "bootutil/crypto/aes_kw.h"
 #endif
 
+#if !defined(MCUBOOT_USE_PSA_CRYPTO)
 #if defined(MCUBOOT_ENCRYPT_EC256)
 #include "bootutil/crypto/ecdh_p256.h"
 #endif
 
-#if !defined(MCUBOOT_USE_PSA_CRYPTO)
 #if defined(MCUBOOT_ENCRYPT_X25519)
 #include "bootutil/crypto/ecdh_x25519.h"
 #endif
@@ -50,7 +50,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #include "bootutil_priv.h"
 
 /* NOUP Fixme:  */
-#if !defined(CONFIG_BOOT_ED25519_PSA)
+#if !defined(CONFIG_BOOT_ED25519_PSA) && !defined(CONFIG_BOOT_ECDSA_PSA)
 #if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
 #if defined(_compare)
 static inline int bootutil_constant_time_compare(const uint8_t *a, const uint8_t *b, size_t size)
@@ -562,7 +562,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
     return rc;
 }
-#endif /* CONFIG_BOOT_ED25519_PSA */
+#endif /* CONFIG_BOOT_ED25519_PSA  && CONFIG_BOOT_ECDSA_PSA */
 
 /*
  * Load encryption key.
