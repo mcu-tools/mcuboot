@@ -349,7 +349,7 @@ class Image:
                     self.infile_data = f.read()
                     self.payload = copy.copy(self.infile_data)
         except FileNotFoundError:
-            raise click.UsageError("Input file not found")
+            raise click.UsageError(f"Image file not found: {path}")
 
         # Add the image header if needed.
         if self.pad_header and self.header_size > 0:
@@ -840,7 +840,7 @@ class Image:
                 with open(imgfile, 'rb') as f:
                     b = f.read()
         except FileNotFoundError:
-            raise click.UsageError(f"Image file {imgfile} not found")
+            raise click.UsageError(f"Image file not found: {imgfile}")
 
         magic, _, header_size, _, img_size = struct.unpack('IIHHI', b[:16])
         version = struct.unpack('BBHI', b[20:28])
