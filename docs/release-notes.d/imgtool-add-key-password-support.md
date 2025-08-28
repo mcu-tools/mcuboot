@@ -1,0 +1,1 @@
+- Added support of password in Imgtool load function
