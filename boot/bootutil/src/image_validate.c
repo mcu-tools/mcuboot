@@ -32,6 +32,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include <limits.h>
+
 #include <flash_map_backend/flash_map_backend.h>
 
 #include "bootutil/image.h"
@@ -48,13 +50,6 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
 #endif
-#if defined(MCUBOOT_SIGN_RSA)
-#include "mbedtls/rsa.h"
-#endif
-#if defined(MCUBOOT_SIGN_EC256)
-#include "mbedtls/ecdsa.h"
-#endif
-
 #include "bootutil_priv.h"
 
 /*
