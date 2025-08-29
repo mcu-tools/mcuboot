@@ -132,6 +132,8 @@ extern "C" {
                                              * signature
                                              */
 #define IMAGE_TLV_COMP_DEC_SIZE     0x73    /* Compressed decrypted image size */
+#define IMAGE_TLV_UUID_VID          0x80    /* Vendor unique identifier */
+#define IMAGE_TLV_UUID_CID          0x81    /* Device class unique identifier */
                                             /*
                                              * vendor reserved TLVs at xxA0-xxFF,
                                              * where xx denotes the upper byte

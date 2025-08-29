@@ -104,22 +104,54 @@ struct image_tlv {
 /*
  * Image trailer TLV types.
  */
-#define IMAGE_TLV_KEYHASH           0x01   /* hash of the public key */
-#define IMAGE_TLV_SHA256            0x10   /* SHA256 of image hdr and body */
-#define IMAGE_TLV_RSA2048_PSS       0x20   /* RSA2048 of hash output */
-#define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output - Not supported anymore */
-#define IMAGE_TLV_ECDSA_SIG         0x22   /* ECDSA of hash output */
-#define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
-#define IMAGE_TLV_ED25519           0x24   /* ED25519 of hash output */
-#define IMAGE_TLV_SIG_PURE          0x25   /* If true then any signature found has been
-                                              calculated over image directly. */
-#define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
-#define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW-128 or
-                                              256 */
-#define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-P256 */
-#define IMAGE_TLV_ENC_X25519        0x33   /* Key encrypted with ECIES-X25519 */
-#define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
-#define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
+#define IMAGE_TLV_KEYHASH           0x01    /* hash of the public key */
+#define IMAGE_TLV_PUBKEY            0x02    /* public key */
+#define IMAGE_TLV_SHA256            0x10    /* SHA256 of image hdr and body */
+#define IMAGE_TLV_SHA384            0x11    /* SHA384 of image hdr and body */
+#define IMAGE_TLV_SHA512            0x12    /* SHA512 of image hdr and body */
+#define IMAGE_TLV_RSA2048_PSS       0x20    /* RSA2048 of hash output */
+#define IMAGE_TLV_ECDSA224          0x21    /* ECDSA of hash output - Not supported anymore */
+#define IMAGE_TLV_ECDSA_SIG         0x22    /* ECDSA of hash output */
+#define IMAGE_TLV_RSA3072_PSS       0x23    /* RSA3072 of hash output */
+#define IMAGE_TLV_ED25519           0x24    /* ed25519 of hash output */
+#define IMAGE_TLV_SIG_PURE          0x25    /* Indicator that attached signature has been prepared
+                                             * over image rather than its digest.
+                                             */
+#define IMAGE_TLV_ENC_RSA2048       0x30    /* Key encrypted with RSA-OAEP-2048 */
+#define IMAGE_TLV_ENC_KW            0x31    /* Key encrypted with AES-KW 128 or 256*/
+#define IMAGE_TLV_ENC_EC256         0x32    /* Key encrypted with ECIES-EC256 */
+#define IMAGE_TLV_ENC_X25519        0x33    /* Key encrypted with ECIES-X25519 */
+#define IMAGE_TLV_ENC_X25519_SHA512 0x34    /* Key exchange using ECIES-X25519 and SHA512 for MAC
+                                             * tag and HKDF in key derivation process
+                                             */
+#define IMAGE_TLV_DEPENDENCY        0x40    /* Image depends on other image */
+#define IMAGE_TLV_SEC_CNT           0x50    /* security counter */
+#define IMAGE_TLV_BOOT_RECORD       0x60    /* measured boot record */
+/* The following flags relate to compressed images and are for the decompressed image data */
+#define IMAGE_TLV_DECOMP_SIZE       0x70    /* Decompressed image size excluding header/TLVs */
+#define IMAGE_TLV_DECOMP_SHA        0x71    /*
+                                             * Decompressed image shaX hash, this field must match
+                                             * the format and size of the raw slot (compressed)
+                                             * shaX hash
+                                             */
+#define IMAGE_TLV_DECOMP_SIGNATURE  0x72    /*
+                                             * Decompressed image signature, this field must match
+                                             * the format and size of the raw slot (compressed)
+                                             * signature
+                                             */
+#define IMAGE_TLV_COMP_DEC_SIZE     0x73    /* Compressed decrypted image size */
+                                            /*
+                                             * vendor reserved TLVs at xxA0-xxFF,
+                                             * where xx denotes the upper byte
+                                             * range.  Examples:
+                                             * 0x00a0 - 0x00ff
+                                             * 0x01a0 - 0x01ff
+                                             * 0x02a0 - 0x02ff
+                                             * ...
+                                             * 0xffa0 - 0xfffe
+                                             */
+#define IMAGE_TLV_UUID_VID          0x80    /* Vendor unique identifier */
+#define IMAGE_TLV_UUID_CID          0x81    /* Device class unique identifier */
 ```
 
 Optional type-length-value records (TLVs) containing image metadata are placed
