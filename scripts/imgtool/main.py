@@ -436,11 +436,11 @@ class BasedIntParamType(click.ParamType):
               help='Specify the value of security counter. Use the `auto` '
               'keyword to automatically generate it from the image version.')
 @click.option('-v', '--version', callback=validate_version,  required=True)
-@click.option('--align', type=click.Choice(['1', '2', '4', '8', '16', '32']),
+@click.option('--align', type=click.Choice(['1', '2', '4', '8', '16', '32', '128']),
               default='1',
               required=False,
               help='Alignment used by swap update modes.')
-@click.option('--max-align', type=click.Choice(['8', '16', '32']),
+@click.option('--max-align', type=click.Choice(['8', '16', '32', '128']),
               required=False,
               help='Maximum flash alignment. Set if flash alignment of the '
               'primary and secondary slot differ and any of them is larger '
