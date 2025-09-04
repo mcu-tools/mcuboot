@@ -5,7 +5,10 @@
 #include "mbedtls/ecp.h"
 #include "stm32wlxx_hal.h"
 #include "generate_key_pair/generate_key_pair.h"
+#include "key/key.h"
 
+extern unsigned char enc_priv_key[];
+extern unsigned int enc_priv_key_len;
 //RNG_HandleTypeDef hrng;
 
 //void MX_RNG_Init(void)
@@ -101,11 +104,55 @@ int gen_p256_keypair(mbedtls_pk_context *pk)
     }
 
 
+        ret = extract_private_key_to_enc_buffer(pk);
+        if (ret != 0) {
+            boot_log_info("PRIV_KEY_EXTRACT FAIL ret=%d", ret);
+            goto cleanup;
+        }
+
 cleanup:
     mbedtls_ctr_drbg_free(&ctr_drbg);
     mbedtls_entropy_free(&entropy);
     return ret;
 }
+
+int extract_private_key_to_enc_buffer(const mbedtls_pk_context *pk)
+{
+    mbedtls_ecp_keypair *ec_key;
+    unsigned char priv_key_raw[32];
+    int ret;
+
+
+    ec_key = mbedtls_pk_ec(*pk);
+    if (ec_key == NULL) {
+        return MBEDTLS_ERR_PK_TYPE_MISMATCH;
+    }
+
+
+    ret = mbedtls_mpi_write_binary(&(ec_key->private_d), priv_key_raw, 32);
+    if (ret != 0) {
+        boot_log_info("MPI write binary failed ret=%d", ret);
+        return ret;
+    }
+
+
+    if (enc_priv_key_len < 32) {
+        boot_log_info("enc_priv_key buffer too small: %d < 32", enc_priv_key_len);
+        return MBEDTLS_ERR_PK_BUFFER_TOO_SMALL;
+    }
+
+
+    memset(enc_priv_key, 0, enc_priv_key_len);
+    memcpy(enc_priv_key, priv_key_raw, 32);
+
+    boot_log_info("Private key stored in enc_priv_key (32 bytes)");
+
+
+    mbedtls_platform_zeroize(priv_key_raw, sizeof(priv_key_raw));
+
+    return 0;
+}
+
 
 void dump_p256(const mbedtls_pk_context *pk)
 {
