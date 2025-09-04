@@ -55,7 +55,7 @@
 #endif
 
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
-#include <os/os_malloc.h>
+//#include <os/os_malloc.h>
 #endif
 
 #include "mcuboot_config/mcuboot_config.h"

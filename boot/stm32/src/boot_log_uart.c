@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-extern UART_HandleTypeDef hlpuart1;
+extern UART_HandleTypeDef huart1;
 
 static void boot_log_uart_send(const char *prefix, const char *msg, va_list args) {
     char buffer[128];
@@ -12,8 +12,8 @@ static void boot_log_uart_send(const char *prefix, const char *msg, va_list args
     vsnprintf(buffer + len, sizeof(buffer) - len, msg, args);
 
 
-    if (HAL_UART_GetState(&hlpuart1) == HAL_UART_STATE_READY) {
-        HAL_UART_Transmit(&hlpuart1, (uint8_t *)buffer, strlen(buffer), 10);
+    if (HAL_UART_GetState(&huart1) == HAL_UART_STATE_READY) {
+        HAL_UART_Transmit(&huart1, (uint8_t *)buffer, strlen(buffer), 10);
     }
 }
 

@@ -570,6 +570,8 @@ bootutil_img_validate(struct boot_loader_state *state,
     img_sz = it.tlv_end;
 #endif
     BOOT_LOG_DBG("bootutil_img_validate: TLV off %u, end %u", it.tlv_off, it.tlv_end);
+    BOOT_LOG_DBG("bootutil_max_image_size = 0x%X, img_sz = 0x%X",
+                 bootutil_max_image_size(state, fap), img_sz);
 
     if (img_sz > bootutil_max_image_size(state, fap)) {
         rc = -1;
