@@ -1,0 +1,55 @@
+#
+# Copyright (c) 2025 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+if MCUBOOT_UUID_VID || MCUBOOT_UUID_CID
+
+menu "Vendor and image Class UUIDs"
+
+choice MCUBOOT_UUID_IMPLEMENTATION
+	prompt "UUID checks implementation"
+	default MCUBOOT_UUID_SINGLE_VID
+
+config MCUBOOT_UUID_SINGLE_VID
+	bool "Single VID and one CID per image"
+	help
+	  This implementation allows to specify a single, common Vendor UUID
+	  (VID) for all images and a unique Class UUID (CID) for each image.
+
+endchoice # MCUBOOT_UUID_IMPLEMENTATION
+
+if MCUBOOT_UUID_SINGLE_VID
+
+config MCUBOOT_UUID_VID_VALUE
+	string "Vendor name"
+	default ""
+	help
+	  The vendor unique identifier.
+	  The following formats are supported:
+	   - Domain name (i.e. amce.corp) used to generate RFC 9562 UUID5
+	     identifier.
+	   - Raw UUID (i.e. 12345678-1234-5678-1234-567812345678)
+	   - Raw HEX UUID (i.e. 12345678123456781234567812345678)
+
+if MCUBOOT_UUID_CID
+
+image=0
+rsource "Kconfig.uuid.template"
+image=1
+rsource "Kconfig.uuid.template"
+image=2
+rsource "Kconfig.uuid.template"
+image=3
+rsource "Kconfig.uuid.template"
+image=4
+rsource "Kconfig.uuid.template"
+
+endif # MCUBOOT_UUID_CID
+
+endif # MCUBOOT_UUID_SINGLE_VID
+
+endmenu
+
+endif # MCUBOOT_UUID_VID || MCUBOOT_UUID_CID

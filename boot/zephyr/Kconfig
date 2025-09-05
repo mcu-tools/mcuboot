@@ -1083,6 +1083,8 @@ config MCUBOOT_UUID_CID
 	  Provide an image class identification scheme to prevent processing
 	  images for a different CPU or device produced by the same vendor.
 
+rsource "uuid/Kconfig"
+
 config BOOT_WATCHDOG_FEED
 	bool "Feed the watchdog while doing swap"
 	default y if WATCHDOG

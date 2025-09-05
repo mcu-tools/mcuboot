@@ -54,6 +54,9 @@ endif()
  add_subdirectory(${NRFXLIB_DIR} ${PROJECT_BINARY_DIR}/nrfxlib)
 endif()
 
+# Include the UUID generation code
+add_subdirectory(uuid)
+
 zephyr_library_include_directories(
   include
   )

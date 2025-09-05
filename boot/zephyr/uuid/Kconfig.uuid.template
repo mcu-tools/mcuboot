@@ -1,0 +1,29 @@
+#
+# Copyright (c) 2025 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+if UPDATEABLE_IMAGE_NUMBER > $(image)
+
+config MCUBOOT_UUID_CID_IMAGE_$(image)_VALUE
+	string "Image class name (image $(image))"
+	default ""
+	help
+	  The image class unique identifier.
+	  The following formats are supported:
+	   - Image class name (i.e. nRF5340_door_lock_btperipheral).
+	     This format requires MCUBOOT_UUID_VID_VALUE to be defined
+	     as the VID UUID is used as the namespace for generating RFC 9562
+	     UUID5 identifier.
+	   - Raw UUID (i.e. 12345678-1234-5678-1234-567812345678)
+	   - Raw HEX UUID (i.e. 12345678123456781234567812345678)
+
+config MCUBOOT_UUID_CID_IMAGE_$(image)
+	bool
+	default y
+	depends on MCUBOOT_UUID_CID_IMAGE_$(image)_VALUE != ""
+	help
+	  Helper symbol to simplify the active CId list generation.
+
+endif # UPDATEABLE_IMAGE_NUMBER > $(image)
