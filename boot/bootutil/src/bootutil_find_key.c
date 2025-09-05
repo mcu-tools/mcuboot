@@ -120,8 +120,7 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 #endif /* !MCUBOOT_BUILTIN_KEY */
 
 #else /* !MCUBOOT_BYPASS_KEY_MATCH */
-static inline int
-bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
+int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 {
     (void)image_index;
     (void)key;
