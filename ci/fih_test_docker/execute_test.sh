@@ -16,12 +16,62 @@
 
 set -e
 
+# Function to update/install native GCC inside the Docker container
+update_native_gcc() {
+    REQUIRED_MAJOR=12
+    INSTALLED_MAJOR=$(gcc -dumpversion | cut -d. -f1 || echo 0)
+
+    if [[ "$INSTALLED_MAJOR" -lt "$REQUIRED_MAJOR" ]]; then
+        echo "Installing native GCC $REQUIRED_MAJOR..."
+        apt-get update
+        apt-get install -y --no-install-recommends gcc-$REQUIRED_MAJOR g++-$REQUIRED_MAJOR \
+            cpp-$REQUIRED_MAJOR libgcc-$REQUIRED_MAJOR-dev libstdc++-$REQUIRED_MAJOR-dev
+        update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-$REQUIRED_MAJOR 60
+        update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-$REQUIRED_MAJOR 60
+        rm -rf /var/lib/apt/lists/*
+    else
+        echo "Native GCC is already version $INSTALLED_MAJOR; skipping installation."
+    fi
+}
+
+# Function to update/install ARM Embedded GCC inside the Docker container
+update_cross_gcc() {
+    ARM_GCC_URL="https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz"
+    TOOLCHAIN_DIR="/opt/arm-gcc"
+
+    # Install prerequisites
+    echo "Installing prerequisites for ARM toolchain..."
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        curl libncurses5 xz-utils file
+    rm -rf /var/lib/apt/lists/*
+
+    # Download and extract
+    echo "Downloading and extracting ARM Embedded GCC..."
+    mkdir -p "$TOOLCHAIN_DIR"
+    curl -SLf "$ARM_GCC_URL" -o /tmp/arm-gcc.tar.xz
+    tar -xJf /tmp/arm-gcc.tar.xz -C "$TOOLCHAIN_DIR" --strip-components=1
+    rm -f /tmp/arm-gcc.tar.xz
+
+    # Symlink into PATH
+    echo "Symlinking ARM toolchain into /usr/local/bin..."
+    ln -sf "$TOOLCHAIN_DIR/bin/"* /usr/local/bin/
+}
+
+# Ensure we have the proper compiler before running tests
+update_native_gcc
+update_cross_gcc
+
 source $(dirname "$0")/paths.sh
 
 SKIP_SIZE=$1
 BUILD_TYPE=$2
 DAMAGE_TYPE=$3
 FIH_LEVEL=$4
+
+# Required for git am to apply patches under TF-M
+git config --global user.email "docker@fih-test.com"
+git config --global user.name "fih-test docker"
 
 if test -z "$FIH_LEVEL"; then
     # Use the default level
