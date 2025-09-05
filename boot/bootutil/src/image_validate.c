@@ -161,7 +161,7 @@ static int bootutil_check_for_pure(const struct image_header *hdr, const struct 
 }
 #endif
 
-#ifndef ALLOW_ROGUE_TLVS
+#ifdef MCUBOOT_USE_TLV_ALLOW_LIST
 /*
  * The following list of TLVs are the only entries allowed in the unprotected
  * TLV section.  All other TLV entries must be in the protected section.
@@ -312,7 +312,7 @@ bootutil_img_validate(struct boot_loader_state *state,
             break;
         }
 
-#ifndef ALLOW_ROGUE_TLVS
+#ifdef MCUBOOT_USE_TLV_ALLOW_LIST
         /*
          * Ensure that the non-protected TLV only has entries necessary to hold
          * the signature.  We also allow encryption related keys to be in the

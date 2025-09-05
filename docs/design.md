@@ -168,6 +168,14 @@ The `ih_hdr_size` field indicates the length of the header, and therefore the
 offset of the image itself.  This field provides for backwards compatibility in
 case of changes to the format of the image header.
 
+## [TLV allow list](#tlv-allow)
+
+While reading unprotected TLVs from an image, MCUboot will try to match TLVs
+against list it has compiled in support for; each new defined TLV has to be added
+to that list, which is named `allowed_unprot_tlvs` and defined in
+image_validate.c. The usage of the list is optional and can be controlled
+during compilation with `MCUBOOT_USE_TLV_ALLOW_LIST` config identifier.
+
 ## [Flash map](#flash-map)
 
 A device's flash is partitioned according to its _flash map_.  At a high
