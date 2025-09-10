@@ -17,13 +17,14 @@
 set -e
 
 source $(dirname "$0")/fih-tests_version.sh
+TFM_TAG="1329d18c7f90329452c79393c0a5bc045fb2c1d2"
 
 # Note that we are pulling from a github mirror of these repos, not direct upstream.  If the sha
 # checked out below changes, the mirrors might need to be updated.
 pushd ..
 git clone https://github.com/mcu-tools/trusted-firmware-m
 pushd trusted-firmware-m
-git checkout eb8ff0db7d657b77abcd0262d5bf7f38eb1e1cdc
+git checkout $TFM_TAG
 source lib/ext/tf-m-tests/version.txt
 popd
 git clone https://github.com/mcu-tools/tf-m-tests.git
