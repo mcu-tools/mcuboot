@@ -132,6 +132,8 @@ extern "C" {
                                              * signature
                                              */
 #define IMAGE_TLV_COMP_DEC_SIZE     0x73    /* Compressed decrypted image size */
+#define IMAGE_TLV_UUID_VID          0x74    /* Vendor unique identifier */
+#define IMAGE_TLV_UUID_CID          0x75    /* Device class unique identifier */
                                             /*
                                              * vendor reserved TLVs at xxA0-xxFF,
                                              * where xx denotes the upper byte
@@ -144,6 +146,10 @@ extern "C" {
                                              */
 #define IMAGE_TLV_ANY               0xffff  /* Used to iterate over all TLV */
 
+#define VERSION_DEP_SLOT_ACTIVE     0x00   /* Check dependency against active slot. */
+#define VERSION_DEP_SLOT_PRIMARY    0x01   /* Check dependency against primary slot. */
+#define VERSION_DEP_SLOT_SECONDARY  0x02   /* Check dependency against secondary slot. */
+
 STRUCT_PACKED image_version {
     uint8_t iv_major;
     uint8_t iv_minor;
@@ -153,7 +159,11 @@ STRUCT_PACKED image_version {
 
 struct image_dependency {
     uint8_t image_id;                       /* Image index (from 0) */
+#ifdef MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER
+    uint8_t slot;                           /* Image slot */
+#else
     uint8_t _pad1;
+#endif /* MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER */
     uint16_t _pad2;
     struct image_version image_min_version; /* Indicates at minimum which
                                              * version of firmware must be
@@ -234,6 +244,19 @@ int bootutil_tlv_iter_is_prot(struct image_tlv_iter *it, uint32_t off);
 int32_t bootutil_get_img_security_cnt(struct boot_loader_state *state, int slot,
                                       const struct flash_area *fap,
                                       uint32_t *img_security_cnt);
+
+#if !defined(MCUBOOT_HW_KEY)
+int bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len);
+#else
+int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len);
+#endif
+
+int
+bootutil_img_hash(struct boot_loader_state *state,
+                  struct image_header *hdr, const struct flash_area *fap,
+                  uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *hash_result,
+                  uint8_t *seed, int seed_len
+                 );
 
 #ifdef __cplusplus
 }

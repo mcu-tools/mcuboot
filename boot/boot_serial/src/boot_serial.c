@@ -77,6 +77,12 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
+#if !(defined(MCUBOOT_SINGLE_APPLICATION_SLOT) || \
+    defined(MCUBOOT_FIRMWARE_LOADER) ||           \
+    defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD))
+#define BOOT_IMAGE_HAS_STATUS_FIELDS
+#endif
+
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE ZCBOR_ARRAY_SIZE
 #endif
@@ -325,7 +331,7 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
             }
 
 #ifdef MCUBOOT_SWAP_USING_OFFSET
-            if (slot == BOOT_SECONDARY_SLOT && swap_status != BOOT_SWAP_TYPE_REVERT) {
+            if (slot == BOOT_SLOT_SECONDARY && swap_status != BOOT_SWAP_TYPE_REVERT) {
                 start_off = boot_img_sector_size(state, slot, 0);
                 state->secondary_offset[image_index] = start_off;
             }
@@ -395,25 +401,25 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
             if (swap_status == BOOT_SWAP_TYPE_NONE) {
-                if (slot == BOOT_PRIMARY_SLOT) {
+                if (slot == BOOT_SLOT_PRIMARY) {
                     confirmed = true;
                     active = true;
                 }
             } else if (swap_status == BOOT_SWAP_TYPE_TEST) {
-                if (slot == BOOT_PRIMARY_SLOT) {
+                if (slot == BOOT_SLOT_PRIMARY) {
                     confirmed = true;
                 } else {
                     pending = true;
                 }
             } else if (swap_status == BOOT_SWAP_TYPE_PERM) {
-                if (slot == BOOT_PRIMARY_SLOT) {
+                if (slot == BOOT_SLOT_PRIMARY) {
                     confirmed = true;
                 } else {
                     pending = true;
                     permanent = true;
                 }
             } else if (swap_status == BOOT_SWAP_TYPE_REVERT) {
-                if (slot == BOOT_PRIMARY_SLOT) {
+                if (slot == BOOT_SLOT_PRIMARY) {
                     active = true;
                 } else {
                     confirmed = true;
@@ -545,7 +551,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                 }
 
 #ifdef MCUBOOT_SWAP_USING_OFFSET
-                if (slot == BOOT_SECONDARY_SLOT && swap_status != BOOT_SWAP_TYPE_REVERT) {
+                if (slot == BOOT_SLOT_SECONDARY && swap_status != BOOT_SWAP_TYPE_REVERT) {
                     start_off = boot_img_sector_size(state, slot, 0);
                     state->secondary_offset[image_index] = start_off;
                 }
@@ -913,8 +919,10 @@ bs_upload(char *buf, int len)
                                          * erase has stopped to let us know whether erase
                                          * is needed to be able to write current chunk.
                                          */
+#ifdef BOOT_IMAGE_HAS_STATUS_FIELDS
     static struct flash_sector status_sector;
 #endif
+#endif /* MCUBOOT_ERASE_PROGRESSIVELY */
 #ifdef MCUBOOT_SWAP_USING_OFFSET
     static uint32_t start_off = 0;
 #endif
@@ -987,7 +995,7 @@ bs_upload(char *buf, int len)
 #endif
 
         curr_off = 0;
-#ifdef MCUBOOT_ERASE_PROGRESSIVELY
+#if defined(MCUBOOT_ERASE_PROGRESSIVELY) && defined(BOOT_IMAGE_HAS_STATUS_FIELDS)
         /* Get trailer sector information; this is done early because inability to get
          * that sector information means that upload will not work anyway.
          * TODO: This is single occurrence issue, it should get detected during tests
@@ -1154,7 +1162,7 @@ bs_upload(char *buf, int len)
     if (rc == 0) {
         curr_off += img_chunk_len + rem_bytes;
         if (curr_off == img_size) {
-#ifdef MCUBOOT_ERASE_PROGRESSIVELY
+#if defined(MCUBOOT_ERASE_PROGRESSIVELY) && defined(BOOT_IMAGE_HAS_STATUS_FIELDS)
             /* Assure that sector for image trailer was erased. */
             /* Check whether it was erased during previous upload. */
             off_t start = flash_sector_get_off(&status_sector);

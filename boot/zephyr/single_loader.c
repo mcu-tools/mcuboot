@@ -85,7 +85,7 @@ boot_image_validate_once(const struct flash_area *fa_p,
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
-    BOOT_LOG_DBG("boot_image_validate_once: flash area %p", fap_p);
+    BOOT_LOG_DBG("boot_image_validate_once: flash area %p", fa_p);
 
     memset(&state, 0, sizeof(struct boot_swap_state));
     rc = boot_read_swap_state(fa_p, &state);
@@ -116,7 +116,7 @@ boot_open_all_flash_areas(struct boot_loader_state *state)
 {
     int rc;
 
-    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT));
+    rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
     assert(rc == 0);
 
     return rc;
@@ -125,7 +125,7 @@ boot_open_all_flash_areas(struct boot_loader_state *state)
 void
 boot_close_all_flash_areas(struct boot_loader_state *state)
 {
-    flash_area_close(BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT));
+    flash_area_close(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
 }
 
 #if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
@@ -136,7 +136,7 @@ static int app_max_sectors(struct boot_loader_state *state)
     uint32_t trailer_sz;
     uint32_t trailer_sectors = 0;
 
-    sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    sector_sz = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, 0);
     trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
 
     while (1) {
@@ -148,14 +148,14 @@ static int app_max_sectors(struct boot_loader_state *state)
         }
     }
 
-    return boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - trailer_sectors;
+    return boot_img_num_sectors(state, BOOT_SLOT_PRIMARY) - trailer_sectors;
 }
 
 int app_max_size(struct boot_loader_state *state)
 {
     uint32_t sector_sz;
 
-    sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    sector_sz = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, 0);
 
     return app_max_sectors(state) * sector_sz;
 }
@@ -191,7 +191,7 @@ boot_go(struct boot_rsp *rsp)
 
     rc = boot_open_all_flash_areas(&state);
 
-    rc = boot_image_load_header(BOOT_IMG_AREA(&state, BOOT_PRIMARY_SLOT), &_hdr);
+    rc = boot_image_load_header(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), &_hdr);
     if (rc != 0)
         goto out;
 
@@ -204,7 +204,7 @@ boot_go(struct boot_rsp *rsp)
 #endif
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
-    FIH_CALL(boot_image_validate, fih_rc, BOOT_IMG_AREA(&state, BOOT_PRIMARY_SLOT), &_hdr);
+    FIH_CALL(boot_image_validate, fih_rc, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), &_hdr);
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
 #ifdef MCUBOOT_RAM_LOAD
         boot_remove_image_from_sram(&state);
@@ -212,7 +212,7 @@ boot_go(struct boot_rsp *rsp)
         goto out;
     }
 #elif defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
-    FIH_CALL(boot_image_validate_once, fih_rc, BOOT_IMG_AREA(&state, BOOT_PRIMARY_SLOT), &_hdr);
+    FIH_CALL(boot_image_validate_once, fih_rc, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), &_hdr);
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
 #ifdef MCUBOOT_RAM_LOAD
         boot_remove_image_from_sram(&state);
@@ -224,7 +224,7 @@ boot_go(struct boot_rsp *rsp)
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT */
 
 #ifdef MCUBOOT_MEASURED_BOOT
-    rc = boot_save_boot_status(0, &_hdr, BOOT_IMG_AREA(&state, BOOT_PRIMARY_SLOT));
+    rc = boot_save_boot_status(0, &_hdr, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY));
     if (rc != 0) {
         BOOT_LOG_ERR("Failed to add image data to shared area");
         return rc;
@@ -232,15 +232,15 @@ boot_go(struct boot_rsp *rsp)
 #endif /* MCUBOOT_MEASURED_BOOT */
 
 #ifdef MCUBOOT_DATA_SHARING
-    rc = boot_save_shared_data(&_hdr, BOOT_IMG_AREA(&state, BOOT_PRIMARY_SLOT), 0, NULL);
+    rc = boot_save_shared_data(&_hdr, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), 0, NULL);
     if (rc != 0) {
         BOOT_LOG_ERR("Failed to add data to shared memory area.");
         return rc;
     }
 #endif /* MCUBOOT_DATA_SHARING */
 
-    rsp->br_flash_dev_id = flash_area_get_device_id(BOOT_IMG_AREA(&state, BOOT_PRIMARY_SLOT));
-    rsp->br_image_off = flash_area_get_off(BOOT_IMG_AREA(&state, BOOT_PRIMARY_SLOT));
+    rsp->br_flash_dev_id = flash_area_get_device_id(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY));
+    rsp->br_image_off = flash_area_get_off(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY));
     rsp->br_hdr = &_hdr;
 
 out:

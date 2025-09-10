@@ -466,6 +466,9 @@ fn main() {
     }
 
     conf.file("../../boot/bootutil/src/image_validate.c");
+    conf.file("../../boot/bootutil/src/bootutil_find_key.c");
+    conf.file("../../boot/bootutil/src/bootutil_img_hash.c");
+    conf.file("../../boot/bootutil/src/bootutil_img_security_cnt.c");
     if sig_rsa || sig_rsa3072 {
         conf.file("../../boot/bootutil/src/image_rsa.c");
     } else if sig_ecdsa || sig_ecdsa_mbedtls || sig_ecdsa_psa {

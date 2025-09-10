@@ -26,6 +26,7 @@ extern int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
                   const uint8_t peer_public_value[32]);
 
 typedef uintptr_t bootutil_ecdh_x25519_context;
+typedef bootutil_ecdh_x25519_context bootutil_key_exchange_ctx;
 static inline void bootutil_ecdh_x25519_init(bootutil_ecdh_x25519_context *ctx)
 {
     (void)ctx;

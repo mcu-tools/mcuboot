@@ -209,7 +209,7 @@ int boot_header_scramble_off_sz(const struct flash_area *fa, int slot, size_t *o
     /* In case of swap offset, header of secondary slot image is positioned
      * in second sector of slot.
      */
-    if (slot == BOOT_SECONDARY_SLOT) {
+    if (slot == BOOT_SLOT_SECONDARY) {
         ret = flash_area_get_sector(fa, 0, &sector);
         if (ret < 0) {
             return ret;
@@ -316,7 +316,7 @@ boot_find_status(const struct boot_loader_state *state, int image_index)
 #if MCUBOOT_SWAP_USING_SCRATCH
         state->scratch.area,
 #endif
-        state->imgs[image_index][BOOT_PRIMARY_SLOT].area,
+        state->imgs[image_index][BOOT_SLOT_PRIMARY].area,
     };
     unsigned int i;
 
@@ -470,7 +470,7 @@ boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
     uint32_t protect_tlv_size;
     int rc;
 
-    assert(slot == BOOT_PRIMARY_SLOT || slot == BOOT_SECONDARY_SLOT);
+    assert(slot == BOOT_SLOT_PRIMARY || slot == BOOT_SLOT_SECONDARY);
 
     fap = BOOT_IMG_AREA(state, slot);
     assert(fap != NULL);
@@ -636,12 +636,12 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     num_sectors = BOOT_MAX_IMG_SECTORS;
 
     if (flash_area == FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state))) {
-        out_sectors = BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors;
-        out_num_sectors = &BOOT_IMG(state, BOOT_PRIMARY_SLOT).num_sectors;
+        out_sectors = BOOT_IMG(state, BOOT_SLOT_PRIMARY).sectors;
+        out_num_sectors = &BOOT_IMG(state, BOOT_SLOT_PRIMARY).num_sectors;
 #if BOOT_NUM_SLOTS > 1
     } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
-        out_sectors = BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors;
-        out_num_sectors = &BOOT_IMG(state, BOOT_SECONDARY_SLOT).num_sectors;
+        out_sectors = BOOT_IMG(state, BOOT_SLOT_SECONDARY).sectors;
+        out_num_sectors = &BOOT_IMG(state, BOOT_SLOT_SECONDARY).num_sectors;
 #if MCUBOOT_SWAP_USING_SCRATCH
     } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
         out_sectors = state->scratch.sectors;
@@ -677,7 +677,7 @@ boot_write_sz(struct boot_loader_state *state)
      * on what the minimum write size is for scratch area, active image slot.
      * We need to use the bigger of those 2 values.
      */
-    elem_sz = flash_area_align(BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT));
+    elem_sz = flash_area_align(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
 #if MCUBOOT_SWAP_USING_SCRATCH
     align = flash_area_align(BOOT_SCRATCH_AREA(state));
     if (align > elem_sz) {
@@ -700,10 +700,10 @@ boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *se
 
     image_index = BOOT_CURR_IMG(state);
 
-    BOOT_IMG(state, BOOT_PRIMARY_SLOT).sectors =
+    BOOT_IMG(state, BOOT_SLOT_PRIMARY).sectors =
         sectors->primary[image_index];
 #if BOOT_NUM_SLOTS > 1
-    BOOT_IMG(state, BOOT_SECONDARY_SLOT).sectors =
+    BOOT_IMG(state, BOOT_SLOT_SECONDARY).sectors =
         sectors->secondary[image_index];
 #if MCUBOOT_SWAP_USING_SCRATCH
     state->scratch.sectors = sectors->scratch;
@@ -780,10 +780,10 @@ void boot_fetch_slot_state_sizes(void)
 
         image_index = BOOT_CURR_IMG(boot_get_loader_state());
 
-        BOOT_IMG(boot_get_loader_state(), BOOT_PRIMARY_SLOT).sectors =
+        BOOT_IMG(boot_get_loader_state(), BOOT_SLOT_PRIMARY).sectors =
             sector_buffers.primary[image_index];
 #if BOOT_NUM_SLOTS > 1
-        BOOT_IMG(boot_get_loader_state(), BOOT_SECONDARY_SLOT).sectors =
+        BOOT_IMG(boot_get_loader_state(), BOOT_SLOT_SECONDARY).sectors =
             sector_buffers.secondary[image_index];
 #if MCUBOOT_SWAP_USING_SCRATCH
         boot_get_loader_state()->scratch.sectors = sector_buffers.scratch;

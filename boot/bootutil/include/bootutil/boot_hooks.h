@@ -82,6 +82,18 @@
 
 #endif /* MCUBOOT_BOOT_GO_HOOKS  */
 
+#ifdef MCUBOOT_FIND_NEXT_SLOT_HOOKS
+
+#define BOOT_HOOK_FIND_SLOT_CALL(f, ret_default, ...) \
+    DO_HOOK_CALL(f, ret_default, __VA_ARGS__)
+
+#else
+
+#define BOOT_HOOK_FIND_SLOT_CALL(f, ret_default, ...) \
+    HOOK_CALL_NOP(f, ret_default, __VA_ARGS__)
+
+#endif /* MCUBOOT_FIND_NEXT_SLOT_HOOKS */
+
 #ifdef MCUBOOT_FLASH_AREA_HOOKS
 
 #define BOOT_HOOK_FLASH_AREA_CALL(f, ret_default, ...) \
@@ -259,5 +271,17 @@ int flash_area_get_device_id_hook(const struct flash_area *fa,
 #define BOOT_RESET_REQUEST_HOOK_TIMEOUT		2
 #define BOOT_RESET_REQUEST_HOOK_CHECK_FAILED	3
 #define BOOT_RESET_REQUEST_HOOK_INTERNAL_ERROR	4
+
+/**
+ * Finds the preferred slot containing the image.
+ *
+ * @param[in]   state        Boot loader status information.
+ * @param[in]   image        Image, for which the slot should be found.
+ * @param[out]  active_slot  Number of the preferred slot.
+ *
+ * @return 0 if a slot was requested;
+ *         BOOT_HOOK_REGULAR follow the normal execution path.
+ */
+int boot_find_next_slot_hook(struct boot_loader_state *state, uint8_t image, uint32_t *active_slot);
 
 #endif /*H_BOOTUTIL_HOOKS*/

@@ -104,22 +104,54 @@ struct image_tlv {
 /*
  * Image trailer TLV types.
  */
-#define IMAGE_TLV_KEYHASH           0x01   /* hash of the public key */
-#define IMAGE_TLV_SHA256            0x10   /* SHA256 of image hdr and body */
-#define IMAGE_TLV_RSA2048_PSS       0x20   /* RSA2048 of hash output */
-#define IMAGE_TLV_ECDSA224          0x21   /* ECDSA of hash output - Not supported anymore */
-#define IMAGE_TLV_ECDSA_SIG         0x22   /* ECDSA of hash output */
-#define IMAGE_TLV_RSA3072_PSS       0x23   /* RSA3072 of hash output */
-#define IMAGE_TLV_ED25519           0x24   /* ED25519 of hash output */
-#define IMAGE_TLV_SIG_PURE          0x25   /* If true then any signature found has been
-                                              calculated over image directly. */
-#define IMAGE_TLV_ENC_RSA2048       0x30   /* Key encrypted with RSA-OAEP-2048 */
-#define IMAGE_TLV_ENC_KW            0x31   /* Key encrypted with AES-KW-128 or
-                                              256 */
-#define IMAGE_TLV_ENC_EC256         0x32   /* Key encrypted with ECIES-P256 */
-#define IMAGE_TLV_ENC_X25519        0x33   /* Key encrypted with ECIES-X25519 */
-#define IMAGE_TLV_DEPENDENCY        0x40   /* Image depends on other image */
-#define IMAGE_TLV_SEC_CNT           0x50   /* security counter */
+#define IMAGE_TLV_KEYHASH           0x01    /* hash of the public key */
+#define IMAGE_TLV_PUBKEY            0x02    /* public key */
+#define IMAGE_TLV_SHA256            0x10    /* SHA256 of image hdr and body */
+#define IMAGE_TLV_SHA384            0x11    /* SHA384 of image hdr and body */
+#define IMAGE_TLV_SHA512            0x12    /* SHA512 of image hdr and body */
+#define IMAGE_TLV_RSA2048_PSS       0x20    /* RSA2048 of hash output */
+#define IMAGE_TLV_ECDSA224          0x21    /* ECDSA of hash output - Not supported anymore */
+#define IMAGE_TLV_ECDSA_SIG         0x22    /* ECDSA of hash output */
+#define IMAGE_TLV_RSA3072_PSS       0x23    /* RSA3072 of hash output */
+#define IMAGE_TLV_ED25519           0x24    /* ed25519 of hash output */
+#define IMAGE_TLV_SIG_PURE          0x25    /* Indicator that attached signature has been prepared
+                                             * over image rather than its digest.
+                                             */
+#define IMAGE_TLV_ENC_RSA2048       0x30    /* Key encrypted with RSA-OAEP-2048 */
+#define IMAGE_TLV_ENC_KW            0x31    /* Key encrypted with AES-KW 128 or 256*/
+#define IMAGE_TLV_ENC_EC256         0x32    /* Key encrypted with ECIES-EC256 */
+#define IMAGE_TLV_ENC_X25519        0x33    /* Key encrypted with ECIES-X25519 */
+#define IMAGE_TLV_ENC_X25519_SHA512 0x34    /* Key exchange using ECIES-X25519 and SHA512 for MAC
+                                             * tag and HKDF in key derivation process
+                                             */
+#define IMAGE_TLV_DEPENDENCY        0x40    /* Image depends on other image */
+#define IMAGE_TLV_SEC_CNT           0x50    /* security counter */
+#define IMAGE_TLV_BOOT_RECORD       0x60    /* measured boot record */
+/* The following flags relate to compressed images and are for the decompressed image data */
+#define IMAGE_TLV_DECOMP_SIZE       0x70    /* Decompressed image size excluding header/TLVs */
+#define IMAGE_TLV_DECOMP_SHA        0x71    /*
+                                             * Decompressed image shaX hash, this field must match
+                                             * the format and size of the raw slot (compressed)
+                                             * shaX hash
+                                             */
+#define IMAGE_TLV_DECOMP_SIGNATURE  0x72    /*
+                                             * Decompressed image signature, this field must match
+                                             * the format and size of the raw slot (compressed)
+                                             * signature
+                                             */
+#define IMAGE_TLV_COMP_DEC_SIZE     0x73    /* Compressed decrypted image size */
+                                            /*
+                                             * vendor reserved TLVs at xxA0-xxFF,
+                                             * where xx denotes the upper byte
+                                             * range.  Examples:
+                                             * 0x00a0 - 0x00ff
+                                             * 0x01a0 - 0x01ff
+                                             * 0x02a0 - 0x02ff
+                                             * ...
+                                             * 0xffa0 - 0xfffe
+                                             */
+#define IMAGE_TLV_UUID_VID          0x80    /* Vendor unique identifier */
+#define IMAGE_TLV_UUID_CID          0x81    /* Device class unique identifier */
 ```
 
 Optional type-length-value records (TLVs) containing image metadata are placed
@@ -135,6 +167,14 @@ case the value of the `ih_protect_tlv_size` field is 0.
 The `ih_hdr_size` field indicates the length of the header, and therefore the
 offset of the image itself.  This field provides for backwards compatibility in
 case of changes to the format of the image header.
+
+## [TLV allow list](#tlv-allow)
+
+While reading unprotected TLVs from an image, MCUboot will try to match TLVs
+against list it has compiled in support for; each new defined TLV has to be added
+to that list, which is named `allowed_unprot_tlvs` and defined in
+image_validate.c. The usage of the list is optional and can be controlled
+during compilation with `MCUBOOT_USE_TLV_ALLOW_LIST` config identifier.
 
 ## [Flash map](#flash-map)
 
@@ -182,6 +222,9 @@ overwrite-based image upgrades, but must be configured at build time to choose
 one of these two strategies.
 
 ### [Swap using scratch](#image-swap-using-scratch)
+
+Please note that the swap-using-scratch algorithm may be removed in the coming
+future.
 
 When swap-using-scratch algorithm is used, in addition to the slots of
 image areas, the bootloader requires a scratch area to allow for reliable
@@ -279,6 +322,9 @@ during each swap.
 The algorithm is enabled using the `MCUBOOT_SWAP_USING_OFFSET` option.
 
 ### [Swap using move (without using scratch)](#image-swap-no-scratch)
+
+Please note that the swap-using-offset algorithm is preferred over swap-using-move
+except when building for existing products already using the latter.
 
 This algorithm is an alternative to the swap-using-scratch algorithm.
 It uses an additional sector in the primary slot to make swap possible.
@@ -897,6 +943,23 @@ process is presented below.
 
 + Boot into image in the primary slot of the 0th image position\
   (other image in the boot chain is started by another image).
+
+By enabling the `MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER` configuration option,
+the dependency check may be extended to match for a specified slot of a specific
+image. This functionality is useful in a multi-core system when Direct XIP mode
+is used.
+In this case, the main image can be started from one of the two (primary or
+secondary) slots.
+If there is a fixed connection between the slots of two different images,
+e.g. if the main image always chainloads a companion image from the same slot,
+the check must take this into account and only consider a matching slot when
+resolving dependencies.
+
+There are three values that can be passed when specifying dependencies:
+
+1. ``active``: the dependency should be checked against either primary or secondary slot.
+2. ``primary``: the dependency should be checked only against primary slot.
+3. ``secondary``: the dependency should be checked only against secondary slot.
 
 ### [Multiple image boot for RAM loading and direct-xip](#multiple-image-boot-for-ram-loading-and-direct-xip)
 
