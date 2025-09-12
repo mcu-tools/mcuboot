@@ -399,6 +399,27 @@
 #  endif
 #endif
 
+/* If set to non-0 it will use logical sectors rather than querying
+ * device for sector sizes. This slightly reduces code and RAM usage.
+ * Note that the logical sector size has to be multiple of erase
+ * sector size that is biggest for of all devices in the system.
+ */
+#if defined(CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE)
+#define MCUBOOT_LOGICAL_SECTOR_SIZE		CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE
+#endif
+
+/* Enable to validate compile time logical sector setup vs the real device layout.
+ * This increases the size of bootloader, but is useful to check whether
+ * selected logical sector size can be used with provided partitions
+ * and devices they are placed on.
+ * Once layout is tested, this option should be disabled for production
+ * devices, as it is pointless to re-validate non-changing setup on
+ * every MCUboot run.
+ */
+#if defined(CONFIG_MCUBOOT_VERIFY_LOGICAL_SECTORS)
+#define MCUBOOT_VERIFY_LOGICAL_SECTORS	1
+#endif
+
 #if defined(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO) && defined(MIN_SECTOR_COUNT)
 
 #define MCUBOOT_MAX_IMG_SECTORS       MIN_SECTOR_COUNT
