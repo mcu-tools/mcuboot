@@ -768,33 +768,32 @@ void boot_fetch_slot_state_sizes(void)
 {
     int rc = -1;
     int image_index;
+    struct boot_loader_state *state = boot_get_loader_state();
 
-    rc = boot_open_all_flash_areas(boot_get_loader_state());
+    rc = boot_open_all_flash_areas(state);
     if (rc != 0) {
         BOOT_LOG_DBG("boot_fetch_slot_state_sizes: error %d while opening flash areas", rc);
         goto finish;
     }
 
-    IMAGES_ITER(BOOT_CURR_IMG(boot_get_loader_state())) {
+    IMAGES_ITER(BOOT_CURR_IMG(state)) {
         int max_size = 0;
 
-        image_index = BOOT_CURR_IMG(boot_get_loader_state());
+        image_index = BOOT_CURR_IMG(state);
 
-        BOOT_IMG(boot_get_loader_state(), BOOT_SLOT_PRIMARY).sectors =
-            sector_buffers.primary[image_index];
+        BOOT_IMG(state, BOOT_SLOT_PRIMARY).sectors = sector_buffers.primary[image_index];
 #if BOOT_NUM_SLOTS > 1
-        BOOT_IMG(boot_get_loader_state(), BOOT_SLOT_SECONDARY).sectors =
-            sector_buffers.secondary[image_index];
+        BOOT_IMG(state, BOOT_SLOT_SECONDARY).sectors = sector_buffers.secondary[image_index];
 #if MCUBOOT_SWAP_USING_SCRATCH
-        boot_get_loader_state()->scratch.sectors = sector_buffers.scratch;
+        state->scratch.sectors = sector_buffers.scratch;
 #endif
 #endif
 
         /* Determine the sector layout of the image slots and scratch area. */
-        rc = boot_read_sectors_recovery(boot_get_loader_state());
+        rc = boot_read_sectors_recovery(state);
 
         if (rc == 0) {
-            max_size = app_max_size(boot_get_loader_state());
+            max_size = bootutil_max_image_size(state, BOOT_IMG_AREA(state, 0));
 
             if (max_size > 0) {
                 boot_get_image_max_sizes()[image_index].calculated = true;
@@ -804,8 +803,8 @@ void boot_fetch_slot_state_sizes(void)
     }
 
 finish:
-    boot_close_all_flash_areas(boot_get_loader_state());
-    memset(boot_get_loader_state(), 0, sizeof(struct boot_loader_state));
+    boot_close_all_flash_areas(state);
+    memset(state, 0, sizeof(struct boot_loader_state));
 }
 #endif
 
