@@ -1,12 +1,12 @@
 /***************************************************************************//**
 * \file system_cm0plus.c
-* \version 1.0
+* \version 1.2
 *
 * The device system-source file.
 *
 ********************************************************************************
 * \copyright
-* Copyright 2025 Cypress Semiconductor Corporation
+* Copyright 2021-2025 Cypress Semiconductor Corporation
 * SPDX-License-Identifier: Apache-2.0
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -199,14 +199,14 @@ void SystemInit(void)
     PrepareSystemCallInfrastructure();
     /* startup Init done */
 
-    SystemIrqInit();
-
+    Cy_PDL_Init(CY_DEVICE_CFG);
     Cy_WDT_Unlock();
     Cy_WDT_Disable();
 
     Cy_SystemInit();
     SystemCoreClockUpdate();
 
+    SystemIrqInit();
 }
 
 
@@ -282,17 +282,18 @@ static void InitMemoryEccClearArea(uint32_t u32StartAddr, uint32_t u32EndAddr)
  *****************************************************************************/
 static void CopyVectorTable(void)
 {
-    const uint8_t    u8NrOfVectors = (uint8_t) ((uint32_t) &__Vectors_Size / 4);
-    uint32_t * const pu32RamTable  = (uint32_t *) __ramVectors;
-    uint32_t * const pu32RomTable  = (uint32_t *) (&__Vectors);
+    const uint8_t numVectors = (uint8_t)((uint32_t)&__Vectors_Size / 4);
+    uint32_t * const ramTable  = (uint32_t *)__ramVectors;
+    uint32_t * const romTable  = (uint32_t *)(&__Vectors);
 
-
-    for(uint8_t u8Index = 0; u8Index < u8NrOfVectors; u8Index++)
+    // Copy the vector table from ROM into RAM
+    for(uint8_t index = 0; index < numVectors; index++)
     {
-        pu32RamTable[u8Index] = pu32RomTable[u8Index];
+        ramTable[index] = romTable[index];
     }
 
-    SCB->VTOR = (uint32_t) pu32RamTable;
+    // Update the ARM System Control Block vector table base address.
+    SCB->VTOR = (uint32_t)ramTable;
 }
 
 /**
@@ -305,12 +306,13 @@ static void PrepareSystemCallInfrastructure(void)
 {
     const uint8_t u8Irq0Index = (uint8_t) (VECTOR_TABLE_OFFSET_IRQ0 / 4);
     const uint8_t u8Irq1Index = (uint8_t) (VECTOR_TABLE_OFFSET_IRQ1 / 4);
-    uint32_t * const pu32RamTable   = (uint32_t *) __ramVectors;
-    uint32_t * const pu32SromTable  = (uint32_t *) SROM_VECTOR_TABLE_BASE_ADDRESS;
+    volatile uint32_t * const volatile ramTable = (uint32_t *)__ramVectors;
+    /* The array syntax is necessary to avoid out-of-bounds warnings in some compilers. */
+    volatile uint32_t (* const volatile sromTable)[VECTORTABLE_SIZE] = (uint32_t (*)[VECTORTABLE_SIZE])SROM_VECTOR_TABLE_BASE_ADDRESS;
 
     // Use IRQ0 and IRQ1 handlers from SROM vector table
-    pu32RamTable[u8Irq0Index] = pu32SromTable[u8Irq0Index];
-    pu32RamTable[u8Irq1Index] = pu32SromTable[u8Irq1Index];
+    ramTable[u8Irq0Index] = (*sromTable)[u8Irq0Index];
+    ramTable[u8Irq1Index] = (*sromTable)[u8Irq1Index];
 
     NVIC_SetPriority(NvicMux0_IRQn, 1);
     NVIC_SetPriority(NvicMux1_IRQn, 0);
@@ -364,24 +366,14 @@ __WEAK void Cy_SystemInit(void)
 *******************************************************************************/
 void SystemCoreClockUpdate (void)
 {
-    uint32_t pathFreqHz;
-    uint32_t clkHfPath;
-
     /* Get frequency for the high-frequency clock*/
-    clkHfPath = CY_SYSCLK_CLK_CORE_HF_PATH_NUM;
+    cy_Hfclk0FreqHz = Cy_SysClk_ClkHfGetFrequency(CY_SYSCLK_CLK_CORE_HF_PATH_NUM);
 
-    pathFreqHz = Cy_SysClk_ClkHfGetFrequency(clkHfPath);
-
-    SystemCoreClock = pathFreqHz;
-
-    cy_Hfclk0FreqHz = SystemCoreClock;
+    /* The CM0P core's clock source is the slow clock. */
+    SystemCoreClock = Cy_SysClk_ClkSlowGetFrequency();
 
     /* Get Peripheral clock Frequency*/
-    clkHfPath = CY_SYSCLK_CLK_PERI_HF_PATH_NUM;
-
-    pathFreqHz = Cy_SysClk_ClkHfGetFrequency(clkHfPath);
-
-    cy_PeriClkFreqHz = pathFreqHz;
+    cy_PeriClkFreqHz = Cy_SysClk_ClkHfGetFrequency(CY_SYSCLK_CLK_PERI_HF_PATH_NUM);
 
     /* Sets clock frequency for Delay API */
     cy_delayFreqHz = SystemCoreClock;

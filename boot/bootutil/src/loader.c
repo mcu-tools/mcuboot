@@ -4351,7 +4351,33 @@ int
 boot_get_slot_state(uint32_t image_id, uint32_t slot_id, boot_slot_state_t* state)
 {
     int rc = 0;
+    const struct flash_area *fap = NULL;
+    struct image_header hdr;
+    int area_id = flash_area_id_from_multi_image_slot(image_id, slot_id);
 
+    /* Read the image header */
+    rc = flash_area_open(area_id, &fap);
+    if (rc != 0) {
+        rc = -1;
+        *state = MCUBOOT_SLOT_STATE_NO_IMAGE;
+        goto out;
+    }
+
+    rc = flash_area_read(fap, 0, &hdr, sizeof(hdr));
+    if (rc != 0) {
+        rc = -1;
+        *state = MCUBOOT_SLOT_STATE_NO_IMAGE;
+        goto out;
+    }
+
+    /* Verify ih_magic */
+    if (!boot_is_header_valid(&hdr, fap)) {
+        rc = -1;
+        *state = MCUBOOT_SLOT_STATE_NO_IMAGE;
+        goto out;
+    }
+
+    /* Header is valid, proceed with normal state checking */
     if (boot_is_slot_inactive(image_id, slot_id) == 1)
     {
         *state = MCUBOOT_SLOT_STATE_INACTIVE;
@@ -4369,6 +4395,12 @@ boot_get_slot_state(uint32_t image_id, uint32_t slot_id, boot_slot_state_t* stat
         *state = MCUBOOT_SLOT_STATE_ACTIVE;
     }
 
+    rc = 0;
+
+out:
+    if (fap != NULL) {
+        flash_area_close(fap);
+    }
     return rc;
 }
 

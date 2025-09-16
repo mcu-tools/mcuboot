@@ -33,6 +33,7 @@ CY_LIBS_PATH = $(PRJ_DIR)/libs
 # Collect common source files for PDL
 C_FILES += $(wildcard $(CY_LIBS_PATH)/mtb-pdl-cat1/drivers/source/*.c)
 C_FILES += $(wildcard $(CY_LIBS_PATH)/mtb-pdl-cat1/devices/COMPONENT_CAT$(PDL_CAT_SUFFIX)/source/*.c)
+C_FILES += $(wildcard $(CY_LIBS_PATH)/mtb-pdl-cat1/utils/TOOLCHAIN_GCC_ARM/*.c)
 
 COMPONENT_CORE_PATH := $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/COMPONENT_$(CORE)
 
@@ -42,7 +43,7 @@ C_FILES += $(wildcard $(COMPONENT_CORE_PATH)/$(SYSTEM_FILE_NAME))
 C_FILES += $(wildcard (COMPONENT_CORE_PATH)/$(PLATFORM_SOURCES_PDL_STARTUP))
 
 # Collect source files for Retarget-io
-C_FILES += $(wildcard $(PRJ_DIR)/libs/retarget-io/*.c)
+C_FILES += $(wildcard $(PRJ_DIR)/libs/retarget-io/source/*.c)
 
 # HAL source files
 C_FILES += $(wildcard $(CY_LIBS_PATH)/mtb-hal-cat1/source/*.c)
@@ -92,7 +93,7 @@ INCLUDE_DIRS += $(CY_LIBS_PATH)/core-lib/include
 INCLUDE_DIRS += $(COMPONENT_CORE_PATH)/HEADER_FILES
 
 # Retarget-io related include directories
-INCLUDE_DIRS += $(THIS_APP_PATH)/retarget-io
+INCLUDE_DIRS += $(THIS_APP_PATH)/retarget-io/include
 
 # Include platforms folder
 INCLUDE_DIRS += $(PRJ_DIR)/platforms/BSP/$(FAMILY)
@@ -117,3 +118,6 @@ ASM_FILES += $(CY_LIBS_PATH)/mtb-pdl-cat1/drivers/source/TOOLCHAIN_GCC_ARM/cy_sy
 DEFINES += -DCOMPONENT_CAT1
 DEFINES += -DCOMPONENT_CAT$(PDL_CAT_SUFFIX)
 
+# Disable floating-point support in the retarget-io submodule to decrease MCUBootApp size
+DEFINES += -DCY_RETARGET_IO_NO_FLOAT
+DEFINES += -Dcy_char8_t=char_t

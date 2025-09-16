@@ -26,10 +26,10 @@
 include host.mk
 
 # Compilers
-GCC_ARM	:= 1
-IAR		:= 2
-ARM		:= 3
-OTHER 	:= 4
+GCC_ARM := 1
+IAR := 2
+ARM := 3
+OTHER := 4
 
 ifeq ($(VERBOSE), 1)
     $(info $(COMPILER))
@@ -39,7 +39,7 @@ endif
 # NOTE: Absolute pathes for now for the sake of development
 ifeq ($(HOST_OS), win)
     ifeq ($(COMPILER), GCC_ARM)
-        TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/Infineon/Tools/mtb-gcc-arm-eabi/11.3.1/gcc
+        TOOLCHAIN_PATH ?= c:/Users/$(USERNAME)/Infineon/Tools/mtb-gcc-arm-eabi/14.2.1/gcc
         MY_TOOLCHAIN_PATH := $(call get_os_path, $(TOOLCHAIN_PATH))
         TOOLCHAIN_PATH := $(MY_TOOLCHAIN_PATH)
         GCC_PATH := $(TOOLCHAIN_PATH)
@@ -49,14 +49,14 @@ ifeq ($(HOST_OS), win)
     endif
 
 else ifeq ($(HOST_OS), osx)
-    TOOLCHAIN_PATH ?= /Applications/mtb-gcc-arm-eabi/11.3.1/gcc
+    TOOLCHAIN_PATH ?= /Applications/mtb-gcc-arm-eabi/14.2.1/gcc
     GCC_PATH := $(TOOLCHAIN_PATH)
     # executables
     CC := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
     LD := $(CC)
 
 else ifeq ($(HOST_OS), linux)
-    TOOLCHAIN_PATH ?= /opt/Tools/mtb-gcc-arm-eabi/11.3.1/gcc
+    TOOLCHAIN_PATH ?= /opt/Tools/mtb-gcc-arm-eabi/14.2.1/gcc
     GCC_PATH := $(TOOLCHAIN_PATH)
     # executables
     CC := "$(GCC_PATH)/bin/arm-none-eabi-gcc"
@@ -71,7 +71,7 @@ OBJCOPY  := "$(GCC_PATH)/bin/arm-none-eabi-objcopy"
 # Set flags for toolchain executables
 ifeq ($(COMPILER), GCC_ARM)
     # set build-in compiler flags
-    CFLAGS_COMMON :=  -mthumb -ffunction-sections -fdata-sections  -g -Wall -Wextra
+    CFLAGS_COMMON := -mthumb -ffunction-sections -fdata-sections  -g -Wall -Wextra
     CFLAGS_COMMON += -Wno-discarded-qualifiers -Wno-ignored-qualifiers # KILLME
 
     ifeq ($(WARN_AS_ERR), 1)
@@ -82,7 +82,10 @@ ifeq ($(COMPILER), GCC_ARM)
         CFLAGS_SPECIAL ?= -Og -g3 -ffile-prefix-map=$(CURDIR)=.
         CFLAGS_COMMON += $(CFLAGS_SPECIAL)
     else ifeq ($(BUILDCFG), Release)
-        ifeq ($(CFLAGS_OPTIMIZATION), )
+        ifeq ($(FAMILY), XMC7000)
+            # XMC7000 Release mode size optimization workaround
+            CFLAGS_COMMON += -O1 -g -DNDEBUG
+        else ifeq ($(CFLAGS_OPTIMIZATION), )
             # Blinky upgrade releas XIP WORKAROUND
             CFLAGS_COMMON += -Os -g -DNDEBUG
         endif
@@ -94,7 +97,12 @@ ifeq ($(COMPILER), GCC_ARM)
 
     CC_DEPEND = -MD -MP -MF
 
-    LDFLAGS_COMMON := -mcpu=cortex-$(CORE_SUFFIX) -mthumb -specs=nano.specs -ffunction-sections -fdata-sections  -Wl,--gc-sections -ffat-lto-objects -g --enable-objc-gc  -ffreestanding -fno-builtin-memset -fno-builtin-memcpy
+    LDFLAGS_COMMON := -mcpu=cortex-$(CORE_SUFFIX) -mthumb -specs=nano.specs -ffunction-sections -fdata-sections -Wl,--gc-sections -ffat-lto-objects -g --enable-objc-gc  -ffreestanding -fno-builtin-memset -fno-builtin-memcpy
+
+    GCC_VERSION := $(shell $(CC) -dumpversion | cut -d. -f1)
+    ifeq ($(shell expr $(GCC_VERSION) \> 11), 1)
+        LDFLAGS += -Wl,--no-warn-rwx-segments
+    endif
 
     ifeq ($(WARN_AS_ERR), 1)
         LDFLAGS_COMMON += -Wl,--fatal-warnings

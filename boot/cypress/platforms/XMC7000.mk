@@ -233,6 +233,8 @@ endif
 INCLUDE_DIRS += $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system
 INCLUDE_DIRS += $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/COMPONENT_$(CORE)
 
+C_FILES += $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system/cybsp.c
+
 DEFINES += -DCY_USING_HAL
 DEFINES += -DCOMPONENT_$(CORE)
 DEFINES += -DCOMPONENT_$(CORE)_$(CORE_ID)

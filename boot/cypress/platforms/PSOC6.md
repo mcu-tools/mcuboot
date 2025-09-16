@@ -89,11 +89,11 @@ The following instructions assume the usage of one of Cypress development kits `
 
 Connect the board to your computer. Switch Kitprog3 to DAP-BULK mode by clicking the `SW3 MODE` button until `LED2 STATUS` constantly shines.
 
-The OpenOCD package is supplied with `ModusToolbox™ Programming Tools` and can be found in the `C:\Infineon\Tools\ModusToolboxProgtools-1.4\openocd` folder.
+The OpenOCD package is supplied with `ModusToolbox™ Programming Tools` and can be found in the `C:\Infineon\Tools\ModusToolboxProgtools-1.5\openocd` folder.
 
 Open the terminal application and execute the following commands:
 
-        export OPENOCD_PATH=C:/Infineon/Tools/ModusToolboxProgtools-1.4/openocd
+        export OPENOCD_PATH=C:/Infineon/Tools/ModusToolboxProgtools-1.5/openocd
 
         ${OPENOCD_PATH}/bin/openocd -s ${OPENOCD_PATH}/scripts \
                             -f ${OPENOCD_PATH}/scripts/interface/kitprog3.cfg \

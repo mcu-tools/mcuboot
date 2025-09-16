@@ -4,9 +4,9 @@
  * Description:
  * System configuration
  * This file was automatically generated and should not be modified.
- * Configurator Backend 3.20.0
- * device-db 4.12.0.5709
- * mtb-pdl-cat1 3.600.0.33254
+ * Configurator Backend 3.50.0
+ * device-db 4.100.0.8863
+ * mtb-pdl-cat1 3.10.0.32115
  *
  *******************************************************************************
  * Copyright 2025 Cypress Semiconductor Corporation (an Infineon company) or
@@ -282,6 +282,76 @@ static const cy_stc_pll_manual_config_t srss_0_clock_0_pll_1_pllConfig =
     .outputMode = CY_SYSCLK_FLLPLL_OUTPUT_AUTO,
 };
 #endif /* (!defined(CY_DEVICE_SECURE)) */
+
+__WEAK void cycfg_ClockStartupError(uint32_t error);
+
+#if !defined (CY_CFG_SYSCLK_ILO0_ENABLED)
+__STATIC_INLINE void Cy_SysClk_Ilo0DeInit();
+#endif /* !defined (CY_CFG_SYSCLK_ILO0_ENABLED) */
+
+#if !defined (CY_CFG_SYSCLK_ILO1_ENABLED)
+__STATIC_INLINE void Cy_SysClk_Ilo1DeInit();
+#endif /* !defined (CY_CFG_SYSCLK_ILO1_ENABLED) */
+
+#if ((!defined(CY_DEVICE_SECURE)))
+__STATIC_INLINE void Cy_SysClk_FllDeInit();
+#endif /* ((!defined(CY_DEVICE_SECURE))) */
+
+#if  (CY_CPU_CORTEX_M7)
+__STATIC_INLINE void Cy_SysClk_ClkAltSysTickInit();
+#endif /*  (CY_CPU_CORTEX_M7) */
+
+#if (!defined(CY_DEVICE_SECURE))
+__STATIC_INLINE void Cy_SysClk_ClkBakInit();
+__STATIC_INLINE void Cy_SysClk_EcoInit();
+#endif /* (!defined(CY_DEVICE_SECURE)) */
+
+__STATIC_INLINE void Cy_SysClk_ClkFast_0_Init();
+__STATIC_INLINE void Cy_SysClk_ClkFast_1_Init();
+
+#if (!defined(CY_DEVICE_SECURE))
+__STATIC_INLINE void Cy_SysClk_FllInit();
+#endif /* (!defined(CY_DEVICE_SECURE)) */
+
+__STATIC_INLINE void Cy_SysClk_ClkHf0Init();
+__STATIC_INLINE void Cy_SysClk_ClkHf1Init();
+__STATIC_INLINE void Cy_SysClk_ClkHf2Init();
+__STATIC_INLINE void Cy_SysClk_ClkHf3Init();
+__STATIC_INLINE void Cy_SysClk_ClkHf4Init();
+__STATIC_INLINE void Cy_SysClk_ClkHf5Init();
+__STATIC_INLINE void Cy_SysClk_ClkHf6Init();
+__STATIC_INLINE void Cy_SysClk_ClkHf7Init();
+
+#if (!defined(CY_DEVICE_SECURE))
+__STATIC_INLINE void Cy_SysClk_Ilo0Init();
+__STATIC_INLINE void Cy_SysClk_Ilo1Init();
+#endif /* (!defined(CY_DEVICE_SECURE)) */
+
+__STATIC_INLINE void Cy_SysClk_ClkLfInit();
+__STATIC_INLINE void Cy_SysClk_ClkMemInit();
+
+#if (!defined(CY_DEVICE_SECURE))
+__STATIC_INLINE void Cy_SysClk_ClkPath0Init();
+__STATIC_INLINE void Cy_SysClk_ClkPath1Init();
+__STATIC_INLINE void Cy_SysClk_ClkPath2Init();
+__STATIC_INLINE void Cy_SysClk_ClkPath3Init();
+__STATIC_INLINE void Cy_SysClk_ClkPath4Init();
+__STATIC_INLINE void Cy_SysClk_ClkPath5Init();
+__STATIC_INLINE void Cy_SysClk_ClkPath6Init();
+__STATIC_INLINE void Cy_SysClk_ClkPeriInit();
+#endif /* (!defined(CY_DEVICE_SECURE)) */
+
+__STATIC_INLINE void Cy_SysClk_Pll0Init();
+__STATIC_INLINE void Cy_SysClk_Pll1Init();
+__STATIC_INLINE void Cy_SysClk_Pll2Init();
+__STATIC_INLINE void Cy_SysClk_Pll3Init();
+
+#if (!defined(CY_DEVICE_SECURE))
+__STATIC_INLINE void Cy_SysClk_ClkSlowInit();
+__STATIC_INLINE void Cy_SysClk_WcoInit();
+#endif /* (!defined(CY_DEVICE_SECURE)) */
+
+__STATIC_INLINE void init_cycfg_power(void);
 
 __WEAK void cycfg_ClockStartupError(uint32_t error)
 {

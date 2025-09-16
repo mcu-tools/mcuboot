@@ -5,9 +5,9 @@
  * Simple wrapper containing all generated files and function to initialize
  * all generated code.
  * This file was automatically generated and should not be modified.
- * Configurator Backend 3.20.0
- * device-db 4.12.0.5709
- * mtb-pdl-cat1 3.600.0.33254
+ * Configurator Backend 3.50.0
+ * device-db 4.100.0.8863
+ * mtb-pdl-cat1 3.10.0.32115
  *
  *******************************************************************************
  * Copyright 2025 Cypress Semiconductor Corporation (an Infineon company) or

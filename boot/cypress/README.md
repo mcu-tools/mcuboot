@@ -64,9 +64,13 @@ Instructions on how to build and upload MCUBootApp bootloader application and sa
 
 The default installation folder is expected by the makefile build system.To use another installation folder, version of **ModusToolbox™ Programming Tools** or another GCC Compiler, specify the path to a toolchain using the **TOOLCHAIN_PATH** parameter.
 
-Below is an example on how to set toolchain path:
+Below is an example on how to set toolchain path using GCC 11 on Windows:
 
     make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/${USERNAME}/Infineon/Tools/mtb-gcc-arm-eabi/11.3.1/gcc
+
+or GCC 14 on Ubuntu Linux:
+
+    make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=/opt/Tools/mtb-gcc-arm-eabi/14.2.1/gcc
 
 ### Build environment troubleshooting
 

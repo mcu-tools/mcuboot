@@ -297,7 +297,7 @@ C_FILES += ns_start_$(PLATFORM_SUFFIX).c
 
 INCLUDE_DIRS += $(PRJ_DIR)/platforms/BSP/$(FAMILY)/system
 
-INCLUDE_DIRS += $(PRJ_DIR)/libs/retarget-io
+INCLUDE_DIRS += $(PRJ_DIR)/libs/retarget-io/include
 
 INCLUDE_DIRS += $(PRJ_DIR)/libs/mtb-hal-cat1/include
 INCLUDE_DIRS += $(PRJ_DIR)/libs/mtb-hal-cat1/include_pvt
@@ -307,7 +307,6 @@ INCLUDE_DIRS += $(PRJ_DIR)/libs/mtb-hal-cat1/COMPONENT_CAT$(PDL_CAT_SUFFIX)/incl
 DEFINES += -DCY_USING_HAL
 DEFINES += -DCOMPONENT_CM33
 DEFINES += -DCOMPONENT_PSOC6HAL
-DEFINES += -DCOMPONENT_PSVP_CYW20829
 DEFINES += -DCOMPONENT_SOFTFP
 DEFINES += -DFLASH_BOOT
 

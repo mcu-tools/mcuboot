@@ -1,6 +1,6 @@
 /***********************************************************************************************//**
  * \copyright
- * Copyright 2018-2025 Cypress Semiconductor Corporation (an Infineon company) or
+ * Copyright 2018-2022 Cypress Semiconductor Corporation (an Infineon company) or
  * an affiliate of Cypress Semiconductor Corporation
  *
  * SPDX-License-Identifier: Apache-2.0
@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "cybsp_hw_config.h"
 #include "cybsp_doc.h"
 
 #if defined(__cplusplus)
@@ -52,11 +53,19 @@ extern "C" {
  */
 /** Pin state for the LED on. */
 #ifndef CYBSP_LED_STATE_ON
+#if defined(COMPONENT_CAT1D)
+#define CYBSP_LED_STATE_ON          (1U)
+#else
 #define CYBSP_LED_STATE_ON          (0U)
+#endif /* defined(COMPONENT_CAT1D) */
 #endif
 /** Pin state for the LED off. */
 #ifndef CYBSP_LED_STATE_OFF
+#if defined(COMPONENT_CAT1D)
+#define CYBSP_LED_STATE_OFF         (0U)
+#else
 #define CYBSP_LED_STATE_OFF         (1U)
+#endif /* defined(COMPONENT_CAT1D) */
 #endif
 /** Pin state for when a button is pressed. */
 #ifndef CYBSP_BTN_PRESSED

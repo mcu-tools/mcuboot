@@ -6,7 +6,7 @@
 *
 ********************************************************************************
 * \copyright
-* Copyright 2025 Cypress Semiconductor Corporation
+* Copyright 2021 Cypress Semiconductor Corporation
 * SPDX-License-Identifier: Apache-2.0
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -129,10 +129,12 @@ void Default_Handler(void)
 * The Handler is called when the CPU interrupt0 occurs.
 *
 *******************************************************************************/
+CY_SECTION_ITCM_BEGIN
 void Default_CpuIntr0_Handler(void)
 {
     CM7_CpuIntr_Handler(0);
 }
+CY_SECTION_ITCM_END
 
 
 /*******************************************************************************
@@ -142,10 +144,12 @@ void Default_CpuIntr0_Handler(void)
 * The Handler is called when the CPU interrupt1 occurs.
 *
 *******************************************************************************/
+CY_SECTION_ITCM_BEGIN
 void Default_CpuIntr1_Handler(void)
 {
     CM7_CpuIntr_Handler(1);
 }
+CY_SECTION_ITCM_END
 
 
 /*******************************************************************************
@@ -155,10 +159,12 @@ void Default_CpuIntr1_Handler(void)
 * The Handler is called when the CPU interrupt2 occurs.
 *
 *******************************************************************************/
+CY_SECTION_ITCM_BEGIN
 void Default_CpuIntr2_Handler(void)
 {
     CM7_CpuIntr_Handler(2);
 }
+CY_SECTION_ITCM_END
 
 
 /*******************************************************************************
@@ -168,10 +174,12 @@ void Default_CpuIntr2_Handler(void)
 * The Handler is called when the CPU interrupt3 occurs.
 *
 *******************************************************************************/
+CY_SECTION_ITCM_BEGIN
 void Default_CpuIntr3_Handler(void)
 {
     CM7_CpuIntr_Handler(3);
 }
+CY_SECTION_ITCM_END
 
 
 /*******************************************************************************
@@ -181,10 +189,13 @@ void Default_CpuIntr3_Handler(void)
 * The Handler is called when the CPU interrupt4 occurs.
 *
 *******************************************************************************/
+CY_SECTION_ITCM_BEGIN
 void Default_CpuIntr4_Handler(void)
 {
     CM7_CpuIntr_Handler(4);
 }
+CY_SECTION_ITCM_END
+
 
 /*******************************************************************************
 * Function Name: Default_CM7_CpuIntr5_Handler
@@ -193,10 +204,12 @@ void Default_CpuIntr4_Handler(void)
 * The Handler is called when the CPU interrupt5 occurs.
 *
 *******************************************************************************/
+CY_SECTION_ITCM_BEGIN
 void Default_CpuIntr5_Handler(void)
 {
     CM7_CpuIntr_Handler(5);
 }
+CY_SECTION_ITCM_END
 
 
 /*******************************************************************************
@@ -206,10 +219,12 @@ void Default_CpuIntr5_Handler(void)
 * The Handler is called when the CPU interrupt6 occurs.
 *
 *******************************************************************************/
+CY_SECTION_ITCM_BEGIN
 void Default_CpuIntr6_Handler(void)
 {
     CM7_CpuIntr_Handler(6);
 }
+CY_SECTION_ITCM_END
 
 
 /*******************************************************************************
@@ -219,10 +234,12 @@ void Default_CpuIntr6_Handler(void)
 * The Handler is called when the CPU interrupt7 occurs.
 *
 *******************************************************************************/
+CY_SECTION_ITCM_BEGIN
 void Default_CpuIntr7_Handler(void)
 {
     CM7_CpuIntr_Handler(7);
 }
+CY_SECTION_ITCM_END
 
 
 void NMIException_Handler   (void) __attribute__ ((weak, alias("Default_NMIException_Handler")));
@@ -288,6 +305,14 @@ const cy_israddress __Vectors[VECTORTABLE_SIZE] __VECTOR_TABLE_ATTRIBUTE = {
 _Pragma("GCC diagnostic pop")
 #endif /* __GNUC__ */
 
+#ifdef ENABLE_CM7_DATA_CACHE
+static void cy_cache_update(void)
+{
+    SCB_CleanDCache();
+    SCB_InvalidateICache();
+}
+#endif /* ENABLE_CM7_DATA_CACHE */
+
 /* Provide empty __WEAK implementation for the low-level initialization
    routine required by the RTOS-enabled applications.
    clib-support library provides FreeRTOS-specific implementation:
@@ -304,8 +329,25 @@ __WEAK void cy_toolchain_init(void)
 void software_init_hook();
 void software_init_hook()
 {
+#ifdef ENABLE_CM7_DATA_CACHE
+    cy_cache_update();
+#endif /* ENABLE_CM7_DATA_CACHE */
     cy_toolchain_init();
 }
+
+#elif defined(__ARMCC_VERSION)
+/*
+ * ARMClang constructor attribute, function will be
+ * automatically executed before main when the program starts
+ * */
+void __attribute__((constructor)) software_init_hook(void)
+{
+#ifdef ENABLE_CM7_DATA_CACHE
+    cy_cache_update();
+#endif /* ENABLE_CM7_DATA_CACHE */
+    cy_toolchain_init();
+}
+
 #elif defined(__ICCARM__)
 /* Initialize data section */
 void __iar_data_init3(void);
@@ -324,12 +366,34 @@ int __low_level_init(void)
 /**/
 #endif /* defined(__GNUC__) && !defined(__ARMCC_VERSION) */
 
+#if !defined(CY_DEVICE_TVIIC2D6M)
+#ifdef ENABLE_CM7_DATA_CACHE
+static void config_noncacheable_region(void)
+{
+
+    ARM_MPU_Disable();
+    /* Configure 128KB of SRAM as a non-cache region starting from BASE_SRAM_NON_CACHE
+       Always make sure that the starting address of the non-cacheable region is aligned to the non-cacheable region size boundary.
+    */
+    ARM_MPU_SetRegionEx(0, (uint32_t)BASE_SRAM_NON_CACHE, \
+                         ARM_MPU_RASR(1, ARM_MPU_AP_FULL, 0x1, 0, 0, 0, 0, \
+                         ARM_MPU_REGION_SIZE_128KB));
+    ARM_MPU_Enable(0x4);
+
+}
+#endif /* ENABLE_CM7_DATA_CACHE */
+#endif
 
 // Reset Handler
 void Reset_Handler(void)
 {
     /* disable global interrupt */
     __disable_irq();
+#if !defined(CY_DEVICE_TVIIC2D6M)
+#ifdef ENABLE_CM7_DATA_CACHE
+    config_noncacheable_region();
+#endif /* ENABLE_CM7_DATA_CACHE */
+#endif
 
     /* Allow write access to Vector Table Offset Register and ITCM/DTCM configuration register
      * (CPUSS_CM7_X_CTL.PPB_LOCK[3] and CPUSS_CM7_X_CTL.PPB_LOCK[1:0]) */
@@ -397,6 +461,10 @@ void Reset_Handler(void)
 #if defined(__ICCARM__)
     /* Initialize data section */
     __iar_data_init3();
+
+#ifdef ENABLE_CM7_DATA_CACHE
+    cy_cache_update();
+#endif /* ENABLE_CM7_DATA_CACHE */
 
     /* Initialization hook for RTOS environment  */
     cy_toolchain_init();

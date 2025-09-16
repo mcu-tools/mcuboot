@@ -2,7 +2,7 @@
 
 ### Solution description
 
-This solution demonstrates the operation of MCUboot on Cypress PSoC™ 6 and CYWxx829 devices.
+This solution demonstrates the operation of MCUboot on PSOC™ 6, CYW20829/CYW89829 and XMC7100/XMC7200 devices.
 
 * Single-/Multi-image operation modes
 * Overwrite/Swap upgrade modes
@@ -399,7 +399,7 @@ Do not edit either `sysflash/memory.h` or `memorymap.mk`, as both files are over
 
 #### External flash
 
-Some Cypress devices, for example, `CYW20829`, only have an external flash, so all memory areas are located in an external flash.
+Some devices, such as CYW20829/CYW89829, only have an external flash, so all memory areas are located in an external flash.
 
 However, PSoC™ 6 chips have internal flash and, additionally, support the external memory connection. Thus, it is possible to place secondary (upgrade) slots in the external memory module and use most of the internal flash for the primary image.
 For more details on External Memory usage, refer to the [ExternalMemory.md](ExternalMemory.md) file.
@@ -643,7 +643,7 @@ Folder `boot/cypress` contains make-files infrastructure for building MCUBootApp
 
 Toolchain is set by default in `toolchains.mk` file, depending on `COMPILER` makefile variable. MCUBoot is currently support only `GCC_ARM` as compiler. Toolchain path can be redefined, by setting `TOOLCHAIN_PATH` build flag to desired toolchain path. Below is an example on how to set toolchain path from **ModusToolbox™ Programming Tools**:
 
-    make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json TOOLCHAIN_PATH=c:/Users/${USERNAME}/Infineon/Tools/mtb-gcc-arm-eabi/11.3.1/gcc
+    make clean app APP_NAME=MCUBootApp PLATFORM=PSOC_062_2M BUILDCFG=Debug FLASH_MAP=platforms/memory/PSOC6/flashmap/psoc6_swap_single.json
 
 * Build MCUBootApp in the `Debug` configuration for Single-image mode with swap upgrade.
 
@@ -720,7 +720,7 @@ Can be passed to `make` or set in makefiles.
 
 `MCUBOOT_LOG_LEVEL` - Can be set at `MCUBOOT_LOG_LEVEL_DEBUG` to enable the verbose output of MCUBootApp.   
 `ENC_IMG` - When set to `1`, it enables the encrypted image support in MCUBootApp.   
-`APP_DEFAULT_POLICY` - The path to a policy file to use for signing MCUBootApp and user application (BlinkyApp) on the CYWxx829 platforms.   
+`APP_DEFAULT_POLICY` - The path to a policy file to use for signing MCUBootApp and user application (BlinkyApp) on the CYW20829/CYW89829 platforms.   
 `USE_BOOTSTRAP` - When set to `1` and Swap mode is enabled, the application in the secondary slot will overwrite the primary slot if the primary slot application is invalid.   
 `USE_CRYPTO_HW` - When set to `1`, uses the hardware-accelerated cryptography on the PSoC™ 6 platform, and SHA-256 HW acceleration for the CYW20829/CYW89829 platforms.   
 `LSC` - The lifecycle state of the chip. Possible options are `SECURE` and `NORMAL_NO_SECURE` (effective on CYW20829/CYW89829 chips only).   
@@ -741,7 +741,7 @@ The MCUBootApp firmware can be programmed in different ways.
 
 1. The direct usage of OpenOCD.
 
-The OpenOCD package is supplied with `ModusToolbox™ Programming Tools` and can be found in the `C:\Infineon\Tools\ModusToolboxProgtools-1.4\openocd` folder. Commands for programming images are provided in the corresponding platform readme files.
+The OpenOCD package is supplied with `ModusToolbox™ Programming Tools` and can be found in the `C:\Infineon\Tools\ModusToolboxProgtools-1.5\openocd` folder. Commands for programming images are provided in the corresponding platform readme files.
 
 2. Using the GUI tool `Cypress Programmer`
 

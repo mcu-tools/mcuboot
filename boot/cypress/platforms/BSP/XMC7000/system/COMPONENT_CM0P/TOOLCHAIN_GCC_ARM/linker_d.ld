@@ -19,7 +19,7 @@
 *
 ********************************************************************************
 * \copyright
-* Copyright 2025 Cypress Semiconductor Corporation
+* Copyright 2021 Cypress Semiconductor Corporation
 * SPDX-License-Identifier: Apache-2.0
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,20 +41,18 @@ SEARCH_DIR(.)
 GROUP(libgcc.a libc.a libm.a libnosys.a)
 ENTRY(Reset_Handler)
 
-/* The size of the stack section at the end of CM0+ SRAM */
+/* The size of the stack section at the end of CM7_1 SRAM */
 STACK_SIZE = 0x1000;
 RAMVECTORS_ALIGNMENT                = 128;
 
 sram_start_reserve                  = 0;
 sram_private_for_srom               = 0x00000800; /* Private SRAM for SROM (e.g. API processing). Reserved at the beginning */
 
-cm0plus_sram_reserve                = 0x00020000; /* cm0 sram size */
-cm0plus_code_flash_reserve          = 0x00080000; /* cm7_0 sram size */
-cm7_0_code_flash_reserve            = 0x00200000;
+cm0plus_sram_reserve                = 0x00004000; /* 16K : cm0 sram size */
+cm0plus_code_flash_reserve          = 0x00080000; /* 512K: cm0 flash size */
 
 sram_base_address                   = 0x28000000;
 code_flash_base_address             = 0x10000000;
-code_flash_total_size               = 0x00080000;
 
 _base_SRAM_CM0P                     = sram_base_address + sram_start_reserve + sram_private_for_srom;
 _size_SRAM_CM0P                     = cm0plus_sram_reserve - sram_start_reserve - sram_private_for_srom;
@@ -118,17 +116,11 @@ GROUP(libgcc.a libc.a libm.a libnosys.a)
 
 SECTIONS
 {
-    .cy_app_header :
+    /* Cortex-M4 application flash area */
+    .text ORIGIN(cm0_flash) :
     {
-        __app_header_start = .;
-        KEEP(*(.cy_app_header))
-    } > cm0_flash
-    
-    /* Cortex-M0+ application flash area */
-    .text :
-    {
-        /* Cortex-M0+ flash vector table must be aligned to 1024 bytes */
-        . = ALIGN(1024);
+        /* Cortex-M4 flash vector table */
+        . = ALIGN(4);
         __Vectors = . ;
         KEEP(*(.vectors))
         . = ALIGN(4);
@@ -312,20 +304,12 @@ SECTIONS
     /* Set stack top to end of RAM, and stack limit move down by
      * size of stack_dummy section */
     __StackTop = ORIGIN(cm0_ram) + LENGTH(cm0_ram);
-    __StackLimit = __StackTop - SIZEOF(.stack_dummy);
+    __StackLimit = __StackTop - STACK_SIZE;
     PROVIDE(__stack = __StackTop);
 
     /* Check if data + heap + stack exceeds RAM limit */
     ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed with stack")
 
-    /* Used for the digital signature of the secure application.
-    * The size of the section depends on the required data size. */
-    .cy_app_signature :
-    {
-        . = ALIGN(4);
-        __app_image_end = .;
-        KEEP(*(.cy_app_signature))
-    } > cm0_flash
 
     /* Emulated EEPROM Flash area */
     .cy_em_eeprom :
@@ -379,25 +363,5 @@ SECTIONS
     } > efuse
 }
 
-/*============================================================
- * Symbols for use by secure config
- *============================================================
- */
-EXTERN (__secure_object_size)
-PROVIDE(__secure_object_size = __app_image_end - __app_header_start);
-EXTERN (__app_header_vtable_offset)
-PROVIDE(__app_header_vtable_offset = __Vectors - __app_header_start);
-
-/*============================================================
- * Symbols for use by cymcuelftool
- *============================================================
- */
-EXTERN (__cy_app_verify_start)
-PROVIDE(__cy_app_verify_start = ORIGIN(cm0_flash));
-EXTERN (__cy_app_verify_length)
-PROVIDE(__cy_app_verify_length = __secure_object_size);
-
-/* Check application header placement */
-ASSERT(__app_header_start == ORIGIN(cm0_flash), "Incorrect app header placement")
 
 /* EOF */

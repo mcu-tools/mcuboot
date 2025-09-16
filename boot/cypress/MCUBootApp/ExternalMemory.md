@@ -100,7 +100,7 @@ At SFlash address `0x16007c00` updated content of TOC2 structure is placed.
 
 The MCUBootApp can be programmed similarly to described in the [MCUBootApp.md](MCUBootApp.md) file:
 
-        export OPENOCD_PATH=C:/Infineon/Tools/ModusToolboxProgtools-1.4/openocd
+        export OPENOCD_PATH=C:/Infineon/Tools/ModusToolboxProgtools-1.5/openocd
 
         ${OPENOCD_PATH}/bin/openocd -s ${OPENOCD_PATH}/scripts \
                             -f ${OPENOCD_PATH}/scripts/interface/kitprog3.cfg \

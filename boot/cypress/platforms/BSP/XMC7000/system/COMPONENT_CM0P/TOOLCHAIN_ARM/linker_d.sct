@@ -3,7 +3,7 @@
 ; to pass a scatter file through a C preprocessor.
 
 ;*******************************************************************************
-;* \file xmc7200_x8384_cm0plus.sct
+;* \file xmc7200d_x8384_cm0plus.sct
 ;* \version 1.0
 ;*
 ;* Linker file for the ARMCC.

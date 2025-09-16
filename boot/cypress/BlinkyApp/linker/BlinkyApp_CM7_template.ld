@@ -1,5 +1,5 @@
 /***************************************************************************//**
-* \file xmc7200d_x8384_cm7.ld
+* \file xmc7100d_x4160_cm7.ld
 * \version 1.0.0
 *
 * Linker file for the GNU C compiler.
@@ -50,16 +50,18 @@ RAMVECTORS_ALIGNMENT                = 128;
 
 sram_start_reserve                  = 0;
 
-sram_total_size                     = 0x00100000; /* SRAM0 + SRAM1 */
+sram_total_size                     = 0x000C0000; /* 768K: SRAM0 + SRAM1 */
 sram_private_for_srom               = 0x00000800; /* Private SRAM for SROM (e.g. API processing) */
 sram_used_by_boot                   = 0x0; /* Used during boot by Cypress firmware (content will be overwritten on reset, so it should not be used for loadable sections in case of RAM build configurations) */
 
-cm0plus_sram_reserve                = 0x00020000; /* cm0 sram size */
-cm7_0_sram_reserve                  = 0x00060000; /* cm7_0 sram size */
+cm0plus_sram_reserve                = 0x00004000; /* 16K  : cm0 sram size */
+cm7_1_sram_reserve                  = 0x00010000; /* 64K : cm7_1 sram size */
+cm7_sram_non_cache_reserve          = 0x00020000; /* 128K  : non-cacheable sram size */
+cm7_0_sram_reserve                  = sram_total_size - cm0plus_sram_reserve - cm7_1_sram_reserve - cm7_sram_non_cache_reserve; /* 560k : cm7_0 sram size */
 
-code_flash_total_size               = 0x00830000;
-cm0plus_code_flash_reserve          = 0x00080000;
-cm7_0_code_flash_reserve            = 0x00200000;
+code_flash_total_size               = 0x00410000; /* 4160K: total flash size */
+cm0plus_code_flash_reserve          = 0x00020000; /* 128K : cm0 flash size */
+cm7_0_code_flash_reserve            = 0x00200000; /* 2048K: cm7_0 flash size */
 
 code_flash_base_address             = 0x10000000;
 sram_base_address                   = 0x28000000;
@@ -69,7 +71,10 @@ _base_SRAM_CM7_0                    = sram_base_address + cm0plus_sram_reserve;
 _size_SRAM_CM7_0                    = cm7_0_sram_reserve;
 /* In case of single CM7 device CM7_1 values should not be used */
 _base_SRAM_CM7_1                    = sram_base_address + cm0plus_sram_reserve + cm7_0_sram_reserve;
-_size_SRAM_CM7_1                    = sram_total_size - cm0plus_sram_reserve - cm7_0_sram_reserve;
+_size_SRAM_CM7_1                    = sram_total_size - cm0plus_sram_reserve - cm7_0_sram_reserve - cm7_sram_non_cache_reserve; /* 64K: cm7_1 sram size */
+
+_base_SRAM_NON_CACHE                = _base_SRAM_CM7_1 + _size_SRAM_CM7_1;
+_size_SRAM_NON_CACHE                = cm7_sram_non_cache_reserve;
 
 /* Code flash reservations */
 _base_CODE_FLASH_CM0P               = code_flash_base_address;
@@ -82,13 +87,13 @@ _size_CODE_FLASH_CM7_1              = code_flash_total_size - cm0plus_code_flash
 /* Fixed Addresses */
 _base_WORK_FLASH                    = 0x14000000;
 _size_WORK_FLASH                    = 0x00040000;   /* 256K Work flash */
-_base_CM7_0_ITCM                    = 0xA0000000;
+_base_CM7_0_ITCM                    = 0x00000000;
 _size_CM7_0_ITCM                    = 0x00004000;
-_base_CM7_0_DTCM                    = 0xA0010000;
+_base_CM7_0_DTCM                    = 0x20000000;
 _size_CM7_0_DTCM                    = 0x00004000;
-_base_CM7_1_ITCM                    = 0xA0100000;
+_base_CM7_1_ITCM                    = 0x00000000;
 _size_CM7_1_ITCM                    = 0x00004000;
-_base_CM7_1_DTCM                    = 0xA0110000;
+_base_CM7_1_DTCM                    = 0x20000000;
 _size_CM7_1_DTCM                    = 0x00004000;
 
 /* For the non-dual cm7 device, _CORE_CM7_0_ should be defined and _CORE_CM7_1_ should not be defined */
@@ -130,9 +135,10 @@ EXTERN(Reset_Handler)
 MEMORY
 {
     /* The ram and flash regions control RAM and flash memory allocation for the CM7_0/CM7_1 core. */
-    ram                 (rxw)       : ORIGIN = USER_APP_RAM_START,                  LENGTH = USER_APP_RAM_SIZE         /* SRAM */
-    flash_cm0p          (rx)        : ORIGIN = _base_CODE_FLASH_CM0P,               LENGTH = _size_CODE_FLASH_CM0P      /* CODE flash CM0+ */
-    flash               (rx)        : ORIGIN = USER_APP_START,                      LENGTH = USER_APP_SIZE              /* CODE flash CM7_0/1 */
+    ram                 (rxw)       : ORIGIN = USER_APP_RAM_START,                                        LENGTH = USER_APP_RAM_SIZE                                        /* SRAM values will be set by a pre-build script */
+    ram_noncache        (rxw)       : ORIGIN = _base_SRAM_NON_CACHE,                                      LENGTH = _size_SRAM_NON_CACHE                                     /* Non-Cacheable SRAM */
+    flash_cm0p          (rx)        : ORIGIN = _base_CODE_FLASH_CM0P,                                     LENGTH = _size_CODE_FLASH_CM0P                                    /* CODE flash CM0+ */
+    flash               (rx)        : ORIGIN = USER_APP_START,                                            LENGTH = USER_APP_SIZE                                            /* CODE flash CM7_0/1 values will be set by a pre-build script */
 
     /* This is a 256K flash region used for EEPROM emulation. This region can also be used as the general purpose flash.
      * You can assign sections to this memory region for only one of the cores.
@@ -230,6 +236,21 @@ SECTIONS
         LONG (__data_start__)                               /* To   */
         LONG ((__data_end__ - __data_start__)/4)            /* Size */
 
+        /* Copy data section to noncache RAM */
+        LONG (__noncache_ramdata_lma_start__)               /* From */
+        LONG (__noncacheable_ram_start__)                   /* To   */
+        LONG ((__noncacheable_ram_end__ - __noncacheable_ram_start__)/4)                 /* Size */
+
+        /* Copy code to ITCM */
+        LONG (__zero_table_end__)                           /* From */
+        LONG (__itcm_start__)                               /* To   */
+        LONG ((__itcm_end__ - __itcm_start__)/4)            /* Size */
+
+        /* Copy data to DTCM */
+        LONG (__itcm_flash_end__)                           /* From */
+        LONG (__dtcm_start__)                               /* To   */
+        LONG ((__dtcm_end__ - __dtcm_start__)/4)            /* Size */
+
         __copy_table_end__ = .;
     } > flash
 
@@ -243,7 +264,25 @@ SECTIONS
         __zero_table_end__ = .;
     } > flash
 
-    __etext =  . ;
+    /* itcm */
+    .cy_itcm ORIGIN(itcm):
+    {
+        __itcm_start__ = .;
+        KEEP(*(.cy_itcm))
+        __itcm_end__ = .;
+    } > itcm AT>flash
+
+    __itcm_flash_end__ = __zero_table_end__ + (__itcm_end__ - __itcm_start__);
+
+    /* dtcm */
+    .cy_dtcm ORIGIN(dtcm):
+    {
+        __dtcm_start__ = .;
+        KEEP(*(.cy_dtcm))
+        __dtcm_end__ = .;
+    } > dtcm AT>flash
+
+    __etext =  __itcm_flash_end__ + (__dtcm_end__ - __dtcm_start__) ;
 
 
     .ramVectors (NOLOAD) :
@@ -289,12 +328,20 @@ SECTIONS
         KEEP(*(.cy_ramfunc*))
         . = ALIGN(32);
 
-        KEEP(*(cy_sharedmem*))
-        . = ALIGN(4);
-
         __data_end__ = .;
 
     } > ram AT>flash
+
+    __noncache_ramdata_lma_start__ = __etext + __data_end__ - __data_start__;
+
+    .ram_noncache :
+    {
+        . = ALIGN(32);
+        __noncacheable_ram_start__ = .;
+        *(.cy_sharedmem)
+        . = ALIGN(4);
+        __noncacheable_ram_end__ = .;
+    } > ram_noncache AT>flash
 
 
     /* Place variables in the section that should not be initialized during the
@@ -352,7 +399,7 @@ SECTIONS
     /* Set stack top to end of RAM, and stack limit move down by
      * size of stack_dummy section */
     __StackTop = ORIGIN(ram) + LENGTH(ram);
-    __StackLimit = __StackTop - SIZEOF(.stack_dummy);
+    __StackLimit = __StackTop - STACK_SIZE;
     PROVIDE(__stack = __StackTop);
 
     /* Check if data + heap + stack exceeds RAM limit */
@@ -409,18 +456,6 @@ SECTIONS
     {
         KEEP(*(.cy_efuse))
     } > efuse
-
-    /* itcm */
-    .cy_itcm :
-    {
-        KEEP(*(.cy_itcm))
-    } > itcm
-
-    /* dtcm */
-    .cy_dtcm :
-    {
-        KEEP(*(.cy_dtcm))
-    } > dtcm
 }
 
 

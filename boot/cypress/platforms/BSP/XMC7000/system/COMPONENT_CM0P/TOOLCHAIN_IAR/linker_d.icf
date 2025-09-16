@@ -1,5 +1,5 @@
 /*******************************************************************************
-* \file xmc7200_x8384_cm0plus.icf
+* \file xmc7200d_x8384_cm0plus.icf
 * \version 1.0.0
 *
 * Linker file for the IAR compiler.

@@ -309,6 +309,8 @@ __NO_RETURN void platform_RunNextApp(fih_uint toc2_addr, uint32_t *key, uint32_t
     uint32_t reset_handler = (uint32_t)&hang;
 
 #ifdef MCUBOOT_ENC_IMAGES_XIP
+    uint32_t dword_counter = 0u;
+
     if (key != NULL && iv != NULL) {
         SMIF_Type *smif_device = qspi_get_device();
 
@@ -323,8 +325,10 @@ __NO_RETURN void platform_RunNextApp(fih_uint toc2_addr, uint32_t *key, uint32_t
         Cy_SMIF_SetMode(smif_device, CY_SMIF_MEMORY);
 
         /* Clean up key and IV */
-        (void)memset(key, 0, BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE);
-        (void)memset(iv, 0, BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE);
+        for(dword_counter = 0; dword_counter < BOOTUTIL_CRYPTO_AES_CTR_KEY_SIZE / 4; dword_counter++)
+            ((volatile uint32_t *)key)[dword_counter] = 0u; // avoid memset compilator optimization
+        for(dword_counter = 0; dword_counter < BOOTUTIL_CRYPTO_AES_CTR_BLOCK_SIZE / 4; dword_counter++)
+            ((volatile uint32_t *)iv)[dword_counter] = 0u; // avoid memset compilator optimization
     }
 #else
     (void)key;
