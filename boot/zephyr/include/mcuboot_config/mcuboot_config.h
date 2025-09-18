@@ -430,7 +430,9 @@
 #endif
 
 /* Support 32-byte aligned flash sizes */
-#if DT_HAS_CHOSEN(zephyr_flash)
+#if defined(CONFIG_MCUBOOT_BOOT_MAX_ALIGN) && CONFIG_MCUBOOT_BOOT_MAX_ALIGN > 0
+#define MCUBOOT_BOOT_MAX_ALIGN CONFIG_MCUBOOT_BOOT_MAX_ALIGN
+#elif DT_HAS_CHOSEN(zephyr_flash)
     #if DT_PROP_OR(DT_CHOSEN(zephyr_flash), write_block_size, 0) > 8
         #define MCUBOOT_BOOT_MAX_ALIGN \
             DT_PROP(DT_CHOSEN(zephyr_flash), write_block_size)
