@@ -5,6 +5,7 @@
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2023 Arm Limited
  * Copyright (c) 2024-2025 Nordic Semiconductor ASA
+ * Portions Copyright (c) 2025 Analog Devices Inc.
  *
  * Original license:
  *
@@ -2990,6 +2991,138 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state)
 #endif
 }
 
+
+#if (BOOT_IMAGE_NUMBER == 1) && defined(MCUBOOT_RAM_LOAD)
+
+static int
+read_image_info(uint32_t addr, struct image_header *hdr,
+                uint32_t *total_size, uint32_t *footer_size)
+{
+    struct image_tlv_info info;
+    uint32_t off;
+    uint32_t protect_tlv_size;
+
+    memcpy(hdr, (unsigned char *)addr, sizeof(struct image_header));
+    if (hdr->ih_magic != IMAGE_MAGIC) {
+        return BOOT_EBADIMAGE;
+    }
+
+    off = BOOT_TLV_OFF(hdr);
+
+    memcpy(&info, (unsigned char *)(addr + off), sizeof(info));
+
+    protect_tlv_size = hdr->ih_protect_tlv_size;
+    if (info.it_magic == IMAGE_TLV_PROT_INFO_MAGIC) {
+        if (protect_tlv_size != info.it_tlv_tot) {
+            return BOOT_EBADIMAGE;
+        }
+
+        memcpy(&info, (unsigned char *)(addr + off + info.it_tlv_tot), sizeof(info));
+    } else if (protect_tlv_size != 0) {
+        return BOOT_EBADIMAGE;
+    }
+
+    if (info.it_magic != IMAGE_TLV_INFO_MAGIC) {
+        return BOOT_EBADIMAGE;
+    }
+
+    *footer_size = protect_tlv_size + info.it_tlv_tot;
+    *total_size = off + *footer_size;
+
+    return 0;
+}
+
+/**
+ * Check the main image and find sub images, then copy them to the target addr.
+ * Set boot image address with the first image that found in the list.
+ *
+ *      -------------------------
+ *      |         Header        |
+ *      -------------------------
+ *      |  SubImage (optional)  |
+ *      |  (Header+Data+Footer) |
+ *      -------------------------
+ *      |  SubImage (optional)  |
+ *      |  (Header+Data+Footer) |
+ *      -------------------------
+ *      |        .....          |
+ *      -------------------------
+ *      |         Footer        |
+ *      -------------------------
+ *
+ * @param addr    Image start address
+ * @param rsp     On success, indicates how booting should occur.
+ *
+ * @return        0 on success; nonzero on failure.
+ */
+static int
+process_sub_images(uint32_t addr, struct boot_rsp *rsp)
+{
+    int rc = 0;
+    bool first_subimage = true;
+    uint32_t main_image_size;
+    struct image_header hdr;
+    uint32_t img_total_size;
+    uint32_t img_footer_size;
+    uint32_t subimg_count = 0;
+
+    /* read main image info */
+    rc = read_image_info(addr, &hdr, &img_total_size, &img_footer_size);
+    if (rc != 0) {
+        /* No valid image header, main image format not correct. */
+        BOOT_LOG_INF("Image header read failed.");
+        return rc;
+    }
+
+    /* Set main image size */
+    main_image_size  = img_total_size;
+    /* Decrease image header size and footer size */
+    main_image_size -= (hdr.ih_hdr_size + img_footer_size);
+
+    /* Pass image header */
+    addr += hdr.ih_hdr_size;
+
+    while (main_image_size) {
+        /* read sub image info */
+        rc = read_image_info(addr, &hdr, &img_total_size, &img_footer_size);
+        if (rc != 0) {
+            /* No valid sub-image header */
+            if (subimg_count == 0) {
+                /* it is single image return 0 */
+                rc = 0;
+            } else {
+                BOOT_LOG_INF("Sub image header read failed.");
+            }
+            break;
+        }
+
+        /* copy image to target addr */
+        if (hdr.ih_flags & IMAGE_F_RAM_LOAD) {
+            /* 
+             *  For heterogenous system that have multi core on same IC.
+             *  Assuming main core that execute MCUBoot able to access other cores ITCM/DTCM
+             */
+            memcpy((unsigned char *)(hdr.ih_load_addr), (unsigned char *)addr, img_total_size);
+            BOOT_LOG_INF("Copying image from 0x%x to 0x%x is succeeded.", addr, hdr.ih_load_addr);
+        }
+
+        /* Execute first sub image */
+        if ((first_subimage) && !(hdr.ih_flags & IMAGE_F_NON_BOOTABLE)) {
+            first_subimage = false;
+            rsp->br_hdr = (struct image_header *)hdr.ih_load_addr;
+        }
+
+        /* go next image */
+        main_image_size -= img_total_size;
+        addr += img_total_size;
+
+        ++subimg_count; /* Increase number of sub image */
+    }
+
+    return rc;
+}
+#endif // #if (BOOT_IMAGE_NUMBER == 1) && defined(MCUBOOT_RAM_LOAD)
+
 fih_ret
 context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
@@ -3054,6 +3187,10 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 #endif
 
     fill_rsp(state, rsp);
+
+#if (BOOT_IMAGE_NUMBER == 1) && defined(MCUBOOT_RAM_LOAD)
+    rc = process_sub_images(rsp->br_hdr->ih_load_addr, rsp);
+#endif
 
 close:
     boot_close_all_flash_areas(state);
