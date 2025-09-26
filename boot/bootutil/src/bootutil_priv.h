@@ -253,7 +253,7 @@ struct boot_loader_state {
 #endif
 
     uint8_t swap_type[BOOT_IMAGE_NUMBER];
-    uint32_t write_sz;
+    uint32_t write_sz[BOOT_IMAGE_NUMBER];
 
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
     uint32_t secondary_offset[BOOT_IMAGE_NUMBER];
@@ -480,7 +480,7 @@ static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
 #endif
 #define BOOT_IMG(state, slot) ((state)->imgs[BOOT_CURR_IMG(state)][(slot)])
 #define BOOT_IMG_AREA(state, slot) (BOOT_IMG(state, slot).area)
-#define BOOT_WRITE_SZ(state) ((state)->write_sz)
+#define BOOT_WRITE_SZ(state) ((state)->write_sz[BOOT_CURR_IMG(state)])
 #define BOOT_SWAP_TYPE(state) ((state)->swap_type[BOOT_CURR_IMG(state)])
 #define BOOT_TLV_OFF(hdr) ((hdr)->ih_hdr_size + (hdr)->ih_img_size)
 
