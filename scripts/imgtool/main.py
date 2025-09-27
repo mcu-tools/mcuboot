@@ -416,6 +416,9 @@ class BasedIntParamType(click.ParamType):
 @click.option('--confirm', default=False, is_flag=True,
               help='When padding the image, mark it as confirmed (implies '
                    '--pad)')
+@click.option('--test', default=False, is_flag=True,
+              help='When padding the image, mark it for a test swap (implies '
+                   '--pad)')
 @click.option('--pad', default=False, is_flag=True,
               help='Pad image to --slot-size bytes, adding trailer magic')
 @click.option('-S', '--slot-size', type=BasedIntParamType(), required=True,
@@ -478,20 +481,20 @@ class BasedIntParamType(click.ParamType):
 @click.option('--cid', default=None, required=False,
               help='Unique image class identifier, format: (<raw_uuid>|<image_class_name>)')
 def sign(key, public_key_format, align, version, pad_sig, header_size,
-         pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
+         pad_header, slot_size, pad, confirm, test, max_sectors, overwrite_only,
          endian, encrypt_keylen, encrypt, compression, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, rom_fixed, max_align,
          clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, hmac_sha, is_pure,
          vector_to_sign, non_bootable, vid, cid):
 
-    if confirm:
+    if confirm or test:
         # Confirmed but non-padded images don't make much sense, because
         # otherwise there's no trailer area for writing the confirmed status.
         pad = True
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, confirm=confirm,
-                      align=int(align), slot_size=slot_size,
+                      test=test, align=int(align), slot_size=slot_size,
                       max_sectors=max_sectors, overwrite_only=overwrite_only,
                       endian=endian, load_addr=load_addr, rom_fixed=rom_fixed,
                       erased_val=erased_val, save_enctlv=save_enctlv,
