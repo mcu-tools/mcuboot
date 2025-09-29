@@ -282,6 +282,6 @@ int flash_area_get_device_id_hook(const struct flash_area *fa,
  * @return 0 if a slot was requested;
  *         BOOT_HOOK_REGULAR follow the normal execution path.
  */
-int boot_find_next_slot_hook(struct boot_loader_state *state, uint8_t image, uint32_t *active_slot);
+int boot_find_next_slot_hook(struct boot_loader_state *state, uint8_t image, enum boot_slot *active_slot);
 
 #endif /*H_BOOTUTIL_HOOKS*/
