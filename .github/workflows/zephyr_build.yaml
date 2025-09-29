@@ -1,4 +1,4 @@
-# Copyright (c) 2022-2023 Nordic Semiconductor ASA
+# Copyright (c) 2022-2025 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
 name: Build Zephyr samples with Twister
@@ -37,15 +37,13 @@ concurrency:
 
 jobs:
   build_zephyr_with_twister:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Docker image from the zephyr upstream. Includes SDK and other required tools
     container:
-      image: zephyrprojectrtos/ci:v0.27.6
+      image: zephyrprojectrtos/ci-base:v0.28.4
       options: '--entrypoint /bin/bash'
       volumes:
         - /home/runners/zephyrproject:/github/cache/zephyrproject
-    env:
-      ZEPHYR_SDK_INSTALL_DIR: /opt/toolchains/zephyr-sdk-0.17.1-rc2
 
     steps:
       - name: Set versions when workflow_dispatch
@@ -66,12 +64,19 @@ jobs:
           ref: ${{ env.ZEPHYR_VERSION }}
           path: 'repos/zephyr'
 
-      - name: Setup Zephyr
+      - name: Setup python requirements
         working-directory: repos/zephyr
         run: |
-          west config --system manifest.project-filter -- -.*,+cmsis,+cmsis_6,+hal_nordic,+hal_nxp,+hal_stm32,+libmetal,+littlefs,+mbedtls,+mcuboot,+open-amp,+picolibc,+segger,+tinycrypt,+trusted-firmware-m,+zcbor
-          west init -l .
-          west update
+          pip install -r scripts/requirements-actions.txt --require-hashes
+
+      - name: Setup toolchains
+        uses: zephyrproject-rtos/action-zephyr-setup@c125c5ebeeadbd727fa740b407f862734af1e52a # v1.0.9
+        with:
+          base-path: repos/zephyr
+          toolchains: arm-zephyr-eabi
+          sdk-version: 0.17.4
+          west-project-filter: -.*,+cmsis,+cmsis_6,+hal_nordic,+hal_nxp,+hal_stm32,+libmetal,+littlefs,+mbedtls,+mcuboot,+open-amp,+tinycrypt,+trusted-firmware-m,+zcbor
+          ccache-max-size: 768MB
 
       - name: Checkout MCUBoot
         uses: actions/checkout@v2
@@ -93,7 +98,7 @@ jobs:
           export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
           echo "Using Zephyr version: ${{ env.ZEPHYR_VERSION }}"
           echo "Using Mcuboot version: ${{ env.MCUBOOT_VERSION }}"
-          ./scripts/twister --inline-logs -v -N -M --integration --overflow-as-errors --retry-failed 2 ${test_paths}
+          ./scripts/twister --inline-logs -v -N -M --integration --overflow-as-errors ${test_paths}
 
       - name: Upload Tests Results
         uses: actions/upload-artifact@v4
