@@ -1009,17 +1009,24 @@ check_validity:
      * This feature is only supported by ARM platforms.
      */
     if (fap == BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY)) {
-        const struct flash_area *pri_fa = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
         struct image_header *secondary_hdr = boot_img_hdr(state, slot);
-        uint32_t reset_value = 0;
-        uint32_t reset_addr = secondary_hdr->ih_hdr_size + sizeof(reset_value);
+        uint32_t internal_img_addr = 0;
+        uint32_t min_addr;
+        uint32_t max_addr;
+        const uint32_t offset = secondary_hdr->ih_hdr_size + sizeof(internal_img_addr);
 
-        if (flash_area_read(fap, reset_addr, &reset_value, sizeof(reset_value)) != 0) {
+        min_addr = flash_area_get_off(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
+        max_addr = flash_area_get_size(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY)) + min_addr;
+
+        if (flash_area_read(fap, offset, &internal_img_addr, sizeof(internal_img_addr)) != 0) {
             fih_rc = FIH_NO_BOOTABLE_IMAGE;
             goto out;
         }
 
-        if (reset_value < pri_fa->fa_off || reset_value> (pri_fa->fa_off + pri_fa->fa_size)) {
+        BOOT_LOG_DBG("Image %d expected load address 0x%x", BOOT_CURR_IMG(state), internal_img_addr);
+        BOOT_LOG_DBG("Check 0x%x is within [min_addr, max_addr] = [0x%x, 0x%x)",
+                     internal_img_addr, min_addr, max_addr);
+        if (internal_img_addr < min_addr || internal_img_addr >= max_addr) {
             BOOT_LOG_ERR("Reset address of image in secondary slot is not in the primary slot");
             BOOT_LOG_ERR("Erasing image from secondary slot");
 
