@@ -25,7 +25,7 @@
 #include "bootutil_priv.h"
 #include "bootutil/bootutil_log.h"
 
-BOOT_LOG_MODULE_DECLARE(mcuboot_psa_enc);
+BOOT_LOG_MODULE_REGISTER(mcuboot_psa_enc);
 
 #if defined(MCUBOOT_HMAC_SHA512)
 #define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_512
