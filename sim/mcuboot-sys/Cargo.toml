@@ -93,6 +93,9 @@ downgrade-prevention = []
 # Support images with 32-byte maximum write alignment value.
 max-align-32 = []
 
+# Use logical sectors
+logical-sectors-4k = []
+
 # Enable hardware rollback protection
 hw-rollback-protection = []
 
