@@ -67,6 +67,45 @@ static inline bool io_boot_skip_serial_recovery()
 {
     uint32_t rr = nrfx_reset_reason_get();
 
+#ifdef NRF_RESETINFO
+    /* The following reset reasons should allow to enter firmware recovery or
+     * loader through an IO state.
+     */
+    const uint32_t allowed_reset_reasons = (
+        /* Reset from power on reset (reset reason POR or BOR). */
+        NRFX_RESET_REASON_POR_MASK
+#ifdef RESETINFO_RESETREAS_GLOBAL_RESETPOR_Msk
+        /* Reset from power on reset (reset reason other than POR or BOR). */
+        | RESETINFO_RESETREAS_GLOBAL_RESETPOR_Msk
+#endif
+        /* Reset from pin reset is not masked: it always enables the io-based recovery. */
+        /* Reset from the watchdog timer. */
+        | NRFX_RESET_REASON_DOG_MASK
+        /* Reset from CTRL-AP. */
+        | NRFX_RESET_REASON_CTRLAP_MASK
+        /* Reset due to secure domain system reset request. */
+        | NRFX_RESET_REASON_SREQ_MASK
+        /* Reset due to secure domain watchdog 0 timer. */
+        | NRFX_RESET_REASON_SECWDT0_MASK
+        /* Reset due to secure domain watchdog 1 timer. */
+        | NRFX_RESET_REASON_SECWDT1_MASK
+        /* Reset due to secure domain lockup. */
+        | NRFX_RESET_REASON_LOCKUP_MASK
+#if NRF_RESETINFO_HAS_LOCAL_WDT
+        /* Reset from the local watchdog timer 0. */
+        | NRFX_RESET_REASON_LOCAL_DOG0_MASK
+        /* Reset from the local watchdog timer 1. */
+        | NRFX_RESET_REASON_LOCAL_DOG1_MASK
+#endif
+        /* Reset from the local soft reset request. */
+        | NRFX_RESET_REASON_LOCAL_SREQ_MASK
+        /* Reset from local CPU lockup. */
+        | NRFX_RESET_REASON_LOCAL_LOCKUP_MASK
+    );
+
+    rr &= ~allowed_reset_reasons;
+#endif /* NRF_RESETINFO */
+
     return !(rr == 0 || (rr & NRFX_RESET_REASON_RESETPIN_MASK));
 }
 #else
