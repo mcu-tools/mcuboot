@@ -35,6 +35,7 @@ downgrade-prevention = ["mcuboot-sys/downgrade-prevention"]
 max-align-32 = ["mcuboot-sys/max-align-32"]
 hw-rollback-protection = ["mcuboot-sys/hw-rollback-protection"]
 check-load-addr = ["mcuboot-sys/check-load-addr"]
+logical-sectors-4k= ["mcuboot-sys/logical-sectors-4k"]
 
 [dependencies]
 byteorder = "1.4"
