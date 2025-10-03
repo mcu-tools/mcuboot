@@ -46,6 +46,7 @@ fn main() {
     let custom_crypto = env::var("CARGO_FEATURE_CUSTOM_CRYPTO").is_ok();
     let custom_enc_crypto = env::var("CARGO_FEATURE_CUSTOM_ENC_CRYPTO").is_ok();
     let mbedtls_v4 = env::var("CARGO_FEATURE_MBEDTLS_V4").is_ok();
+    let logical_sectors_4k = env::var("CARGO_FEATURE_LOGICAL_SECTORS_4K").is_ok();
 
     let mut conf = CachedBuild::new();
     conf.conf.define("__BOOTSIM__", None);
@@ -60,6 +61,10 @@ fn main() {
         conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("16"));
     } else {
         conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("8"));
+    }
+
+    if logical_sectors_4k {
+        conf.conf.define("MCUBOOT_LOGICAL_SECTOR_SIZE", Some("4096"));
     }
 
     conf.conf.define("MCUBOOT_IMAGE_NUMBER", Some(if multiimage { "2" } else { "1" }));

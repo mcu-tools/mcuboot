@@ -40,6 +40,7 @@ hw-rollback-protection = ["mcuboot-sys/hw-rollback-protection"]
 check-load-addr = ["mcuboot-sys/check-load-addr"]
 custom-crypto = ["mcuboot-sys/custom-crypto"]
 custom-enc-crypto = ["mcuboot-sys/custom-enc-crypto"]
+logical-sectors-4k= ["mcuboot-sys/logical-sectors-4k"]
 
 [dependencies]
 byteorder = "1.4"
