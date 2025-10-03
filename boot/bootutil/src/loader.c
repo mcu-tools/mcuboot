@@ -539,7 +539,7 @@ boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
 
 #ifdef MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER
         /* Validate against possible dependency slot values. */
-        switch(dep->slot) {
+        switch(dep.slot) {
             case VERSION_DEP_SLOT_ACTIVE:
             case VERSION_DEP_SLOT_PRIMARY:
             case VERSION_DEP_SLOT_SECONDARY:
