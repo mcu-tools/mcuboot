@@ -43,7 +43,7 @@ int flash_area_to_sectors(int idx, int *cnt, struct flash_area *fa);
 
 int flash_area_id_from_multi_image_slot(int image_index, int slot);
 int flash_area_id_from_image_slot(int slot);
-
+int flash_area_id_to_multi_image_slot(int image_index, int area_id);
 static inline uint8_t flash_area_get_id(const struct flash_area *fa)
 {
     return fa->fa_id;

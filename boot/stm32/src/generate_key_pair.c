@@ -7,6 +7,7 @@
 #include "generate_key_pair/generate_key_pair.h"
 #include "key/key.h"
 #include "bootutil_log.h"
+#include "mcuboot_rng.h"
 
 extern unsigned char enc_priv_key[];
 extern unsigned int enc_priv_key_len;
@@ -20,7 +21,8 @@ int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t 
     size_t produced = 0;
     // Warm-up
     for (int i = 0; i < 8; i++) {
-        HAL_RNG_GenerateRandomNumber(&hrng, &val);
+//        HAL_RNG_GenerateRandomNumber(&hrng, &val);
+    	MCUBOOT_RNG(&val);
     }
 
     boot_log_info("mbedtls_hardware_poll: ask %lu bytes", (unsigned long)len);
