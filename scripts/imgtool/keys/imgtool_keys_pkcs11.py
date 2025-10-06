@@ -64,7 +64,7 @@ class PKCS11(KeyClass):
         if 'PKCS11_PIN' not in env:
             raise RuntimeError("Environment variable PKCS11_PIN not set. Set it to the user PIN.")
         params = get_pkcs11_uri_params(uri)
-        assert b'serial' in params
+        assert b'serial' in params or b'token' in params
         assert b'id' in params or b'label' in params
         self.user_pin = env['PKCS11_PIN']
 
@@ -76,7 +76,10 @@ class PKCS11(KeyClass):
         except RuntimeError:
             raise RuntimeError(f"PKCS11 module {pkcs11_module_path} not loaded.")
 
-        self.token = lib.get_token(token_serial=params[b'serial'])
+        if 'serial' in params:
+            self.token = lib.get_token(token_serial=params[b'serial'])
+        else:
+            self.token = lib.get_token(token_label=params[b'token'].decode('utf-8'))
         # try to open a session to see if the PIN is valid
         with self.token.open(user_pin=self.user_pin) as _:
             pass
