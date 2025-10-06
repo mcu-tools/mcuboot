@@ -18,11 +18,14 @@
 extern unsigned char enc_priv_key[];
 extern unsigned int enc_priv_key_len;
 
-/*
- * Generate random data using the hardware random number generator.
- *
- * @param data (short description)
- *
+/**
+ * @brief Generate random data using the hardware random number generator.
+ * 
+ * @param data Not used.
+ * @param output Buffer to fill with random data.
+ * @param len Number of random bytes to generate.
+ * @param olen Number of random bytes actually generated.
+ * 
  * @return 0 on success or MBEDTLS_ERR_ENTROPY_SOURCE_FAILED on RNG failure.
  */
 int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t *olen)
