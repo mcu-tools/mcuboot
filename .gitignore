@@ -4,6 +4,7 @@ target.sh
 *.pyc
 tags
 rusty-tags.*
+.vscode
 
 # mynewt
 /repos/
