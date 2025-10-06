@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2025 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include <string.h>
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
@@ -12,7 +18,13 @@
 extern unsigned char enc_priv_key[];
 extern unsigned int enc_priv_key_len;
 
-
+/*
+ * Generate random data using the hardware random number generator.
+ *
+ * @param data (short description)
+ *
+ * @return 0 on success or MBEDTLS_ERR_ENTROPY_SOURCE_FAILED on RNG failure.
+ */
 int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t *olen)
 {
 
@@ -48,6 +60,11 @@ int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t 
     return 0;
 }
 
+/*
+ * Generate an EC-P256 key pair using the mbedTLS library
+ *
+ * @return 0 on success, or a negative mbedTLS error code on failure.
+ */
 int gen_p256_keypair(mbedtls_pk_context *pk)
 {
     int ret;
@@ -59,18 +76,28 @@ int gen_p256_keypair(mbedtls_pk_context *pk)
     mbedtls_entropy_init(&entropy);
     mbedtls_ctr_drbg_init(&ctr_drbg);
 
+
+    /*
+     * Seeds the random number generator using a hardware entropy source
+     */
     ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_hardware_poll, NULL,pers, sizeof(pers)-1);
     if (ret != 0) {
         BOOT_LOG_ERR("SEED FAIL ret=%d", ret);
         goto cleanup;
     }
 
+    /*
+     * Sets up the public key context for key generation
+     */
     ret = mbedtls_pk_setup(pk, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
     if (ret != 0) {
     	BOOT_LOG_ERR("PK_SETUP FAIL ret=%d", ret);
         goto cleanup;
     }
 
+    /*
+     *
+     */
     ret = mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_SECP256R1, mbedtls_pk_ec(*pk),mbedtls_ctr_drbg_random, &ctr_drbg);
     if (ret != 0) {
     	BOOT_LOG_ERR("GEN_KEY FAIL ret=%d", ret);
