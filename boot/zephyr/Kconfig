@@ -1308,6 +1308,14 @@ config USB_DEVICE_PRODUCT
 config MCUBOOT_BOOTUTIL_LIB_OWN_LOG
 	bool
 
+config MCUBOOT_CHECK_HEADER_LOAD_ADDRESS
+        bool "Use load address to verify application is in proper slot"
+        help
+          The bootloader will use the load address, from the image header,
+          to verify that binary is in slot designated for its execution.
+          When not selected reset vector, read from image, is used for
+          the same purpose.
+
 config MCUBOOT_VERIFY_IMG_ADDRESS
 	bool "Verify reset address of image in secondary slot"
 	depends on UPDATEABLE_IMAGE_NUMBER > 1
