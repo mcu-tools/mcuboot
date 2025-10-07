@@ -93,3 +93,9 @@ int boot_img_install_stat_hook(int image_index, int slot, int *img_install_stat)
 {
     return BOOT_HOOK_REGULAR;
 }
+
+int boot_find_next_slot_hook(struct boot_loader_state *state, uint8_t image,
+                             enum boot_slot *active_slot)
+{
+    return BOOT_HOOK_REGULAR;
+}

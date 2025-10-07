@@ -70,7 +70,7 @@ int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
         if (start < fa->fa_off) {
             continue;
         }
-        if (off >= start - fa->fa_off && off <= (start - fa->fa_off) + size) {
+        if (off >= start - fa->fa_off && off < (start - fa->fa_off) + size) {
             sector->fs_off = start - fa->fa_off;
             sector->fs_size = size;
             rc = 0;

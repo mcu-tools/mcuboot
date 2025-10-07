@@ -73,7 +73,7 @@ boot_image_validate_once(const struct flash_area *fa_p,
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
-    BOOT_LOG_DBG("boot_image_validate_once: flash area %p", fap_p);
+    BOOT_LOG_DBG("boot_image_validate_once: flash area %p", fa_p);
 
     memset(&state, 0, sizeof(struct boot_swap_state));
     rc = boot_read_swap_state(fa_p, &state);

@@ -128,6 +128,9 @@
 
 #define MCUBOOT_DEV_WITH_ERASE
 
+/* Enable non-protected TLV check against allow list */
+#define MCUBOOT_USE_TLV_ALLOW_LIST 1
+
 /* Default maximum number of flash sectors per image slot; change
  * as desirable. */
 #define MCUBOOT_MAX_IMG_SECTORS 512

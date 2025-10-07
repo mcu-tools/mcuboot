@@ -51,8 +51,6 @@ struct flash_area;
 
 #define BOOT_TMPBUF_SZ  256
 
-#define NO_ACTIVE_SLOT UINT32_MAX
-
 /** Number of image slots in flash; currently limited to two. */
 #if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) || defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
 #define BOOT_NUM_SLOTS                  1
@@ -202,7 +200,7 @@ _Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image 
 
 #define BOOT_LOG_IMAGE_INFO(slot, hdr)                                    \
     BOOT_LOG_INF("%-9s slot: version=%u.%u.%u+%u",                        \
-                 ((slot) == BOOT_PRIMARY_SLOT) ? "Primary" : "Secondary", \
+                 ((slot) == BOOT_SLOT_PRIMARY) ? "Primary" : "Secondary", \
                  (hdr)->ih_ver.iv_major,                                  \
                  (hdr)->ih_ver.iv_minor,                                  \
                  (hdr)->ih_ver.iv_revision,                               \
@@ -221,9 +219,6 @@ _Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image 
 
 /** Maximum number of image sectors supported by the bootloader. */
 #define BOOT_STATUS_MAX_ENTRIES         BOOT_MAX_IMG_SECTORS
-
-#define BOOT_PRIMARY_SLOT               0
-#define BOOT_SECONDARY_SLOT             1
 
 #define BOOT_STATUS_SOURCE_NONE         0
 #define BOOT_STATUS_SOURCE_SCRATCH      1
@@ -258,7 +253,7 @@ struct boot_loader_state {
 #endif
 
     uint8_t swap_type[BOOT_IMAGE_NUMBER];
-    uint32_t write_sz;
+    uint32_t write_sz[BOOT_IMAGE_NUMBER];
 
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
     uint32_t secondary_offset[BOOT_IMAGE_NUMBER];
@@ -485,7 +480,7 @@ static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
 #endif
 #define BOOT_IMG(state, slot) ((state)->imgs[BOOT_CURR_IMG(state)][(slot)])
 #define BOOT_IMG_AREA(state, slot) (BOOT_IMG(state, slot).area)
-#define BOOT_WRITE_SZ(state) ((state)->write_sz)
+#define BOOT_WRITE_SZ(state) ((state)->write_sz[BOOT_CURR_IMG(state)])
 #define BOOT_SWAP_TYPE(state) ((state)->swap_type[BOOT_CURR_IMG(state)])
 #define BOOT_TLV_OFF(hdr) ((hdr)->ih_hdr_size + (hdr)->ih_img_size)
 

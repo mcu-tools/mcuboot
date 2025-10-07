@@ -100,6 +100,9 @@ endif()
 zephyr_library_include_directories(${BOOT_DIR}/bootutil/include)
 zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/image_validate.c
+  ${BOOT_DIR}/bootutil/src/bootutil_find_key.c
+  ${BOOT_DIR}/bootutil/src/bootutil_img_hash.c
+  ${BOOT_DIR}/bootutil/src/bootutil_img_security_cnt.c
   ${BOOT_DIR}/bootutil/src/tlv.c
   ${BOOT_DIR}/bootutil/src/encrypted.c
   ${BOOT_DIR}/bootutil/src/image_rsa.c
@@ -109,11 +112,12 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/fault_injection_hardening.c
   )
 
-if(DEFINED CONFIG_BOOT_ENCRYPT_X25519 AND DEFINED CONFIG_BOOT_ED25519_PSA)
+if((CONFIG_BOOT_ENCRYPT_X25519 AND CONFIG_BOOT_ED25519_PSA)
+   OR (CONFIG_BOOT_ENCRYPT_EC256 AND CONFIG_BOOT_ECDSA_PSA))
   zephyr_library_sources(${BOOT_DIR}/bootutil/src/encrypted_psa.c)
 endif()
 
-if(DEFINED CONFIG_MEASURED_BOOT OR DEFINED CONFIG_BOOT_SHARE_DATA)
+if(CONFIG_MEASURED_BOOT OR CONFIG_BOOT_SHARE_DATA)
   zephyr_library_sources(
     ${BOOT_DIR}/bootutil/src/boot_record.c
     )
@@ -180,7 +184,10 @@ else()
 endif()
 
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
-  if(MBEDTLS_ASN1_DIR)
+  # When ECDSA PSA is used, do not pull in additional ASN.1 include
+  # directories or sources, as it would cause incorrect header files
+  # to be included.
+  if(MBEDTLS_ASN1_DIR AND NOT CONFIG_BOOT_ECDSA_PSA)
     zephyr_library_include_directories(
       ${MBEDTLS_ASN1_DIR}/include
     )
@@ -278,14 +285,19 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
       ${FIAT_DIR}/src/curve25519.c
     )
   else()
+    if(MBEDTLS_ASN1_DIR)
+      zephyr_library_sources(
+        ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
+      )
+    endif()
+
     zephyr_library_sources(
-      ${MBEDTLS_ASN1_DIR}/src/asn1parse.c
       ${BOOT_DIR}/bootutil/src/ed25519_psa.c
     )
   endif()
 endif()
 
-if(NOT CONFIG_BOOT_ED25519_PSA)
+if(NOT CONFIG_BOOT_ED25519_PSA AND NOT CONFIG_BOOT_ECDSA_PSA)
   if(CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519)
     zephyr_library_sources(
       ${TINYCRYPT_DIR}/source/aes_encrypt.c
@@ -297,7 +309,7 @@ if(NOT CONFIG_BOOT_ED25519_PSA)
   endif()
 endif()
 
-if(CONFIG_BOOT_ENCRYPT_EC256)
+if(CONFIG_BOOT_ENCRYPT_EC256 AND NOT CONFIG_BOOT_ECDSA_PSA)
   zephyr_library_sources(
     ${TINYCRYPT_DIR}/source/ecc_dh.c
     )
@@ -467,7 +479,7 @@ function(dt_get_parent node)
   set(${node} "${${node}}" PARENT_SCOPE)
 endfunction()
 
-dt_nodelabel(slot0_flash NODELABEL "slot0_partition")
+dt_nodelabel(slot0_flash NODELABEL "slot0_partition" REQUIRED)
 dt_prop(slot0_size PATH "${slot0_flash}" PROPERTY "reg" INDEX 1)
 dt_get_parent(slot0_flash)
 dt_get_parent(slot0_flash)
@@ -485,7 +497,7 @@ if(CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET)
 endif()
 
 if(NOT CONFIG_SINGLE_APPLICATION_SLOT AND NOT CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
-  dt_nodelabel(slot1_flash NODELABEL "slot1_partition")
+  dt_nodelabel(slot1_flash NODELABEL "slot1_partition" REQUIRED)
   dt_prop(slot1_size PATH "${slot1_flash}" PROPERTY "reg" INDEX 1)
   dt_get_parent(slot1_flash)
   dt_get_parent(slot1_flash)
@@ -545,12 +557,12 @@ endif()
 if(SYSBUILD)
   if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_BOOT_FIRMWARE_LOADER OR CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET OR CONFIG_BOOT_UPGRADE_ONLY OR CONFIG_BOOT_DIRECT_XIP OR CONFIG_BOOT_RAM_LOAD)
     # TODO: RAM LOAD support
-    dt_nodelabel(slot0_flash NODELABEL "slot0_partition")
+    dt_nodelabel(slot0_flash NODELABEL "slot0_partition" REQUIRED)
     dt_get_parent(slot0_flash)
     dt_get_parent(slot0_flash)
 
     if(NOT CONFIG_SINGLE_APPLICATION_SLOT)
-      dt_nodelabel(slot1_flash NODELABEL "slot1_partition")
+      dt_nodelabel(slot1_flash NODELABEL "slot1_partition" REQUIRED)
       dt_get_parent(slot1_flash)
       dt_get_parent(slot1_flash)
 

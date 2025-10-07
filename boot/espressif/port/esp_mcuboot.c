@@ -13,6 +13,9 @@
 
 #include "sdkconfig.h"
 #include "esp_err.h"
+#include "rom/cache.h"
+#include "hal/cache_hal.h"
+#include "hal/mmu_hal.h"
 #include "bootloader_flash_priv.h"
 #include "esp_flash_encrypt.h"
 #include "mcuboot_config/mcuboot_config.h"
@@ -148,6 +151,22 @@ void flash_area_close(const struct flash_area *area)
 
 }
 
+static void flush_cache(size_t start_addr, size_t length)
+{
+#if CONFIG_IDF_TARGET_ESP32
+    Cache_Read_Disable(0);
+    Cache_Flush(0);
+    Cache_Read_Enable(0);
+#else
+    uint32_t vaddr = 0;
+
+    mmu_hal_paddr_to_vaddr(0, start_addr, MMU_TARGET_FLASH0, MMU_VADDR_DATA, &vaddr);
+    if ((void *)vaddr != NULL) {
+        cache_hal_invalidate_addr(vaddr, length);
+    }
+#endif
+}
+
 static bool aligned_flash_read(uintptr_t addr, void *dest, size_t size)
 {
     if (IS_ALIGNED(addr, 4) && IS_ALIGNED((uintptr_t)dest, 4) && IS_ALIGNED(size, 4)) {
@@ -218,7 +237,7 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
     return 0;
 }
 
-static bool aligned_flash_write(size_t dest_addr, const void *src, size_t size)
+static bool aligned_flash_write(size_t dest_addr, const void *src, size_t size, bool erase)
 {
 #ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
         bool flash_encryption_enabled = esp_flash_encryption_enabled();
@@ -226,52 +245,164 @@ static bool aligned_flash_write(size_t dest_addr, const void *src, size_t size)
         bool flash_encryption_enabled = false;
 #endif
 
-    if (IS_ALIGNED(dest_addr, 4) && IS_ALIGNED((uintptr_t)src, 4) && IS_ALIGNED(size, 4)) {
+    /* When flash encryption is enabled, write alignment is 32 bytes, however to avoid
+     * inconsistences the region may be erased right before writting, thus the alignment
+     * is set to the erase required alignment (FLASH_SECTOR_SIZE).
+     * When flash encryption is not enabled, regular write alignment is 4 bytes.
+     */
+    size_t alignment = flash_encryption_enabled ? (erase ? FLASH_SECTOR_SIZE : 32) : 4;
+
+    if (IS_ALIGNED(dest_addr, alignment) && IS_ALIGNED((uintptr_t)src, 4) && IS_ALIGNED(size, alignment)) {
         /* A single write operation is enough when all parameters are aligned */
 
-        return bootloader_flash_write(dest_addr, (void *)src, size, flash_encryption_enabled) == ESP_OK;
+        if (flash_encryption_enabled && erase) {
+            if (bootloader_flash_erase_range(dest_addr, size) != ESP_OK) {
+                BOOT_LOG_ERR("%s: Flash erase failed at 0x%08x", __func__, (uint32_t)dest_addr);
+                return false;
+            }
+            flush_cache(dest_addr, size);
+        }
+
+        if (bootloader_flash_write(dest_addr, (void *)src, size, flash_encryption_enabled) == ESP_OK) {
+            flush_cache(dest_addr, size);
+            return true;
+        } else {
+            BOOT_LOG_ERR("%s: Flash write failed at 0x%08x", __func__, (uint32_t)dest_addr);
+            return false;
+        }
     }
+    BOOT_LOG_DBG("%s: forcing unaligned write dest_addr: 0x%08x src: 0x%08x size: 0x%x erase: %c",
+                 __func__, (uint32_t)dest_addr, (uint32_t)src, size, erase ? 't' : 'f');
 
-    const uint32_t aligned_addr = ALIGN_DOWN(dest_addr, 4);
-    const uint32_t addr_offset = ALIGN_OFFSET(dest_addr, 4);
-    uint32_t bytes_remaining = size;
-    uint8_t write_data[FLASH_BUFFER_SIZE] = {0};
+    uint8_t write_aux_buf[FLASH_SECTOR_SIZE] __attribute__((aligned(32))) = {0};
 
-    /* Perform a read operation considering an offset not aligned to 4-byte boundary */
+    size_t write_addr = dest_addr;
+    size_t bytes_remaining = size;
+    size_t src_offset = 0;
 
-    uint32_t bytes = MIN(bytes_remaining + addr_offset, sizeof(write_data));
-    if (bootloader_flash_read(aligned_addr, write_data, ALIGN_UP(bytes, 4), true) != ESP_OK) {
-        return false;
-    }
+    while (bytes_remaining > 0) {
+        size_t aligned_curr_addr = ALIGN_DOWN(write_addr, alignment);
+        size_t curr_buf_off = write_addr - aligned_curr_addr;
+        size_t chunk_len = MIN(bytes_remaining, FLASH_SECTOR_SIZE - curr_buf_off);
 
-    uint32_t bytes_written = bytes - addr_offset;
-    memcpy(&write_data[addr_offset], src, bytes_written);
-
-    if (bootloader_flash_write(aligned_addr, write_data, ALIGN_UP(bytes, 4), flash_encryption_enabled) != ESP_OK) {
-        return false;
-    }
-
-    bytes_remaining -= bytes_written;
-
-    /* Write remaining data to Flash if any */
-
-    uint32_t offset = bytes;
-
-    while (bytes_remaining != 0) {
-        bytes = MIN(bytes_remaining, sizeof(write_data));
-        if (bootloader_flash_read(aligned_addr + offset, write_data, ALIGN_UP(bytes, 4), true) != ESP_OK) {
+        /* Read data before modifying */
+        if (bootloader_flash_read(aligned_curr_addr, write_aux_buf,
+                                  ALIGN_UP(chunk_len, alignment), true) != ESP_OK) {
+            BOOT_LOG_ERR("%s: Flash read failed at 0x%08x", __func__, (uint32_t)aligned_curr_addr);
             return false;
         }
 
-        memcpy(write_data, &((uint8_t *)src)[bytes_written], bytes);
-
-        if (bootloader_flash_write(aligned_addr + offset, write_data, ALIGN_UP(bytes, 4), flash_encryption_enabled) != ESP_OK) {
-            return false;
+        /* Erase if needed */
+        if (flash_encryption_enabled && erase) {
+            if (bootloader_flash_erase_range(aligned_curr_addr,
+                                             ALIGN_UP(chunk_len, FLASH_SECTOR_SIZE)) != ESP_OK) {
+                BOOT_LOG_ERR("%s: Flash erase failed at 0x%08x", __func__, (uint32_t)aligned_curr_addr);
+                return false;
+            }
+            flush_cache(aligned_curr_addr, ALIGN_UP(chunk_len, FLASH_SECTOR_SIZE));
         }
 
-        offset += bytes;
-        bytes_written += bytes;
-        bytes_remaining -= bytes;
+        /* Merge data into buffer */
+        memcpy(&write_aux_buf[curr_buf_off], &((uint8_t *)src)[src_offset], chunk_len);
+
+        /* Write back aligned chunk */
+        if (bootloader_flash_write(aligned_curr_addr, write_aux_buf,
+                                   ALIGN_UP(chunk_len, alignment),
+                                   flash_encryption_enabled) != ESP_OK) {
+            BOOT_LOG_ERR("%s: Flash write failed at 0x%08x", __func__, (uint32_t)aligned_curr_addr);
+            return false;
+        }
+        flush_cache(aligned_curr_addr, ALIGN_UP(chunk_len, alignment));
+
+        write_addr     += chunk_len;
+        src_offset     += chunk_len;
+        bytes_remaining -= chunk_len;
+    }
+
+    return true;
+}
+
+static bool aligned_flash_erase(size_t addr, size_t size)
+{
+    if (IS_ALIGNED(addr, FLASH_SECTOR_SIZE) && IS_ALIGNED(size, FLASH_SECTOR_SIZE)) {
+        /* A single erase operation is enough when all parameters are aligned */
+
+        if (bootloader_flash_erase_range(addr, size) == ESP_OK) {
+            flush_cache(addr, size);
+            return true;
+        } else {
+            BOOT_LOG_ERR("%s: Flash erase failed at 0x%08x", __func__, (uint32_t)addr);
+            return false;
+        }
+    }
+
+    const size_t sector_size = FLASH_SECTOR_SIZE;
+    const size_t start_addr = ALIGN_DOWN(addr, sector_size);
+    const size_t end_addr = ALIGN_UP(addr + size, sector_size);
+    const size_t total_len = end_addr - start_addr;
+
+    BOOT_LOG_DBG("%s: forcing unaligned erase on sector Offset: 0x%08x Length: 0x%x total_len: 0x%x",
+                __func__, (uint32_t)addr, (int)size, total_len);
+
+    uint8_t erase_aux_buf[FLASH_SECTOR_SIZE] __attribute__((aligned(32))) = {0};
+    size_t current_addr = start_addr;
+    while (current_addr < end_addr) {
+        bool preserve_head = (addr > current_addr);
+        bool preserve_tail = ((addr + size) < (current_addr + sector_size));
+
+        if (preserve_head || preserve_tail) {
+            /* Read full sector before erasing */
+            if (bootloader_flash_read(current_addr, erase_aux_buf, sector_size, true) != ESP_OK) {
+                BOOT_LOG_ERR("%s: Flash read failed at 0x%08x", __func__, (uint32_t)current_addr);
+                return false;
+            }
+
+            /* Calculate the range of the erase: data between erase_start and erase_end
+             * will not be written back
+             */
+            size_t erase_start = (addr > current_addr) ? (addr - current_addr) : 0;
+            size_t erase_end = MIN(current_addr + sector_size, addr + size) - current_addr;
+
+            BOOT_LOG_INF("%s: partial sector erase from: 0x%08x to: 0x%08x Length: 0x%x",
+                        __func__, (uint32_t)(current_addr + erase_start),
+                        (uint32_t)(current_addr + erase_end), erase_end - erase_start);
+
+            /* Erase full sector */
+            if (bootloader_flash_erase_range(current_addr, sector_size) != ESP_OK) {
+                BOOT_LOG_ERR("%s: Flash erase failed at 0x%08x", __func__, (uint32_t)current_addr);
+                return false;
+            }
+            flush_cache(current_addr, sector_size);
+
+            if (preserve_head) {
+                /* Write back preserved head data up to erase_start */
+                if (!aligned_flash_write(current_addr, erase_aux_buf, erase_start, false)) {
+                    BOOT_LOG_ERR("%s: Flash write failed at 0x%08x", __func__, (uint32_t)current_addr);
+                    return false;
+                }
+            }
+
+            if (preserve_tail) {
+                /* Write back preserved tail data from erase_end up to sector end */
+                if (!aligned_flash_write(current_addr + erase_end, &erase_aux_buf[erase_end], sector_size - erase_end, false)) {
+                    BOOT_LOG_ERR("%s: Flash write failed at 0x%08x", __func__, (uint32_t)current_addr + erase_end);
+                    return false;
+                }
+            }
+            current_addr += sector_size;
+        } else {
+            /* Full sector erase is safe, erase the next consecutive full sectors */
+            size_t contiguous_size = ALIGN_DOWN(addr + size, sector_size) - current_addr;
+            BOOT_LOG_DBG("%s: sectors erased from: 0x%08x length: 0x%x",
+                         __func__, (uint32_t)current_addr, contiguous_size);
+            if (bootloader_flash_erase_range(current_addr, contiguous_size) != ESP_OK) {
+                BOOT_LOG_ERR("%s: Flash erase failed at 0x%08x", __func__, (uint32_t)current_addr);
+                return false;
+            }
+            flush_cache(current_addr, contiguous_size);
+
+            current_addr += contiguous_size;
+        }
     }
 
     return true;
@@ -291,10 +422,19 @@ int flash_area_write(const struct flash_area *fa, uint32_t off, const void *src,
     }
 
     const uint32_t start_addr = fa->fa_off + off;
-    BOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
+    bool erase = false;
+    BOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d (0x%x)", __func__, (int)start_addr, (int)len, (int)len);
 
-    bool success = aligned_flash_write(start_addr, src, len);
-    if (!success) {
+#ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
+    if (esp_flash_encryption_enabled()) {
+        /* Ensuring flash region has been erased before writing in order to
+         * avoid inconsistences when hardware flash encryption is enabled.
+         */
+        erase = true;
+    }
+#endif
+
+    if (!aligned_flash_write(start_addr, src, len, erase)) {
         BOOT_LOG_ERR("%s: Flash write failed", __func__);
         return -1;
     }
@@ -308,20 +448,44 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
         return -1;
     }
 
-    if ((len % FLASH_SECTOR_SIZE) != 0 || (off % FLASH_SECTOR_SIZE) != 0) {
-        BOOT_LOG_ERR("%s: Not aligned on sector Offset: 0x%x Length: 0x%x",
-                     __func__, (int)off, (int)len);
-        return -1;
-    }
-
     const uint32_t start_addr = fa->fa_off + off;
-    BOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d", __func__, (int)start_addr, (int)len);
+    BOOT_LOG_DBG("%s: Addr: 0x%08x Length: %d (0x%x)", __func__, (int)start_addr, (int)len, (int)len);
 
-    if (bootloader_flash_erase_range(start_addr, len) != ESP_OK) {
+    if (!aligned_flash_erase(start_addr, len)) {
         BOOT_LOG_ERR("%s: Flash erase failed", __func__);
         return -1;
     }
-#if VALIDATE_PROGRAM_OP
+
+#ifdef CONFIG_SECURE_FLASH_ENC_ENABLED
+    uint8_t write_data[FLASH_BUFFER_SIZE];
+    memset(write_data, flash_area_erased_val(fa), sizeof(write_data));
+    uint32_t bytes_remaining = len;
+    uint32_t offset = start_addr;
+
+    uint32_t bytes_written = MIN(sizeof(write_data), len);
+    if (esp_flash_encryption_enabled()) {
+        /* When hardware flash encryption is enabled, force expected erased
+         * value (0xFF) into flash when erasing a region.
+         *
+         * This is handled on this implementation because MCUboot's state
+         * machine relies on erased valued data (0xFF) read from a
+         * previously erased region that was not written yet, however when
+         * hardware flash encryption is enabled, the flash read always
+         * decrypts what's being read from flash, thus a region that was
+         * erased would not be read as what MCUboot expected (0xFF).
+         */
+        while (bytes_remaining != 0) {
+            if (!aligned_flash_write(offset, write_data, bytes_written, false)) {
+                BOOT_LOG_ERR("%s: Flash erase failed", __func__);
+                return -1;
+            }
+            offset += bytes_written;
+            bytes_remaining -= bytes_written;
+        }
+    }
+#endif
+
+#if VALIDATE_PROGRAM_OP && !defined(CONFIG_SECURE_FLASH_ENC_ENABLED)
     for (size_t i = 0; i < len; i++) {
         uint8_t *val = (void *)(start_addr + i);
         if (*val != 0xff) {

@@ -54,7 +54,7 @@ find_last_idx(struct boot_loader_state *state, uint32_t swap_size)
     uint32_t sz;
     uint32_t last_idx;
 
-    sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    sector_sz = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, 0);
     sz = 0;
     last_idx = 0;
     while (1) {
@@ -92,7 +92,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
         }
 
         last_idx = find_last_idx(state, swap_size);
-        sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+        sz = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, 0);
 
         /*
          * Find the correct offset or slot where the image header is expected to
@@ -236,8 +236,8 @@ boot_slots_compatible(struct boot_loader_state *state)
     size_t sector_sz_sec = 0;
     size_t i;
 
-    num_sectors_pri = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT);
-    num_sectors_sec = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT);
+    num_sectors_pri = boot_img_num_sectors(state, BOOT_SLOT_PRIMARY);
+    num_sectors_sec = boot_img_num_sectors(state, BOOT_SLOT_SECONDARY);
 
     if ((num_sectors_pri != num_sectors_sec) &&
             (num_sectors_pri != (num_sectors_sec + 1))) {
@@ -259,8 +259,8 @@ boot_slots_compatible(struct boot_loader_state *state)
     }
 
     for (i = 0; i < num_sectors_sec; i++) {
-        sector_sz_pri = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, i);
-        sector_sz_sec = boot_img_sector_size(state, BOOT_SECONDARY_SLOT, i);
+        sector_sz_pri = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, i);
+        sector_sz_sec = boot_img_sector_size(state, BOOT_SLOT_SECONDARY, i);
         if (sector_sz_pri != sector_sz_sec) {
             BOOT_LOG_WRN("Cannot upgrade: not same sector layout");
             return 0;
@@ -288,7 +288,7 @@ boot_slots_compatible(struct boot_loader_state *state)
 #endif
 
     if (num_sectors_pri > num_sectors_sec) {
-        if (sector_sz_pri != boot_img_sector_size(state, BOOT_PRIMARY_SLOT, i)) {
+        if (sector_sz_pri != boot_img_sector_size(state, BOOT_SLOT_PRIMARY, i)) {
             BOOT_LOG_WRN("Cannot upgrade: not same sector layout");
             return 0;
         }
@@ -322,13 +322,13 @@ swap_status_source(struct boot_loader_state *state)
 
     image_index = BOOT_CURR_IMG(state);
 
-    rc = boot_read_swap_state(state->imgs[image_index][BOOT_PRIMARY_SLOT].area,
+    rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_PRIMARY].area,
                               &state_primary_slot);
     assert(rc == 0);
 
     BOOT_LOG_SWAP_STATE("Primary image", &state_primary_slot);
 
-    rc = boot_read_swap_state(state->imgs[image_index][BOOT_SECONDARY_SLOT].area,
+    rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_SECONDARY].area,
                               &state_secondary_slot);
     assert(rc == 0);
 
@@ -364,8 +364,8 @@ boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
      */
 
     /* Calculate offset from start of image area. */
-    new_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx);
-    old_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx - 1);
+    new_off = boot_img_sector_off(state, BOOT_SLOT_PRIMARY, idx);
+    old_off = boot_img_sector_off(state, BOOT_SLOT_PRIMARY, idx - 1);
 
     if (bs->idx == BOOT_STATUS_IDX_0) {
         if (bs->source != BOOT_STATUS_SOURCE_PRIMARY_SLOT) {
@@ -406,9 +406,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     uint32_t sec_off;
     int rc;
 
-    pri_up_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx);
-    pri_off = boot_img_sector_off(state, BOOT_PRIMARY_SLOT, idx - 1);
-    sec_off = boot_img_sector_off(state, BOOT_SECONDARY_SLOT, idx - 1);
+    pri_up_off = boot_img_sector_off(state, BOOT_SLOT_PRIMARY, idx);
+    pri_off = boot_img_sector_off(state, BOOT_SLOT_PRIMARY, idx - 1);
+    sec_off = boot_img_sector_off(state, BOOT_SLOT_SECONDARY, idx - 1);
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         rc = boot_erase_region(fap_pri, pri_off, sz, false);
@@ -501,7 +501,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     BOOT_LOG_INF("Starting swap using move algorithm.");
 
     last_idx = find_last_idx(state, copy_size);
-    sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    sector_sz = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, 0);
 
     /*
      * When starting a new swap upgrade, check that there is enough space.
@@ -509,7 +509,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     if (boot_status_is_reset(bs)) {
         sz = 0;
         trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
-        first_trailer_idx = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) - 1;
+        first_trailer_idx = boot_img_num_sectors(state, BOOT_SLOT_PRIMARY) - 1;
 
         while (1) {
             sz += sector_sz;
@@ -529,10 +529,10 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
         }
     }
 
-    fap_pri = BOOT_IMG_AREA(state, BOOT_PRIMARY_SLOT);
+    fap_pri = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
     assert(fap_pri != NULL);
 
-    fap_sec = BOOT_IMG_AREA(state, BOOT_SECONDARY_SLOT);
+    fap_sec = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
     assert(fap_sec != NULL);
 
     fixup_revert(state, bs, fap_sec);
@@ -565,7 +565,7 @@ int app_max_size(struct boot_loader_state *state)
     uint32_t available_sec_sz;
 
     size_t trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
-    size_t sector_sz = boot_img_sector_size(state, BOOT_PRIMARY_SLOT, 0);
+    size_t sector_sz = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, 0);
     size_t padding_sz = sector_sz;
 
     /* The trailer size needs to be sector-aligned */
@@ -574,8 +574,8 @@ int app_max_size(struct boot_loader_state *state)
     /* The slot whose size is used to compute the maximum image size must be the one containing the
      * padding required for the swap.
      */
-    available_pri_sz = boot_img_num_sectors(state, BOOT_PRIMARY_SLOT) * sector_sz - trailer_sz - padding_sz;
-    available_sec_sz = boot_img_num_sectors(state, BOOT_SECONDARY_SLOT) * sector_sz - trailer_sz;
+    available_pri_sz = boot_img_num_sectors(state, BOOT_SLOT_PRIMARY) * sector_sz - trailer_sz - padding_sz;
+    available_sec_sz = boot_img_num_sectors(state, BOOT_SLOT_SECONDARY) * sector_sz - trailer_sz;
 
     return (available_pri_sz < available_sec_sz ? available_pri_sz : available_sec_sz);
 }

@@ -47,6 +47,12 @@ jobs:
       if: ${{ github.event_name == 'pull_request' }}
       run: |
         ./ci/check-signed-off-by.sh
+    - name: Authenticate to GH Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: FIH hardening test install
       run: |
         ./ci/fih-tests_install.sh

@@ -7,6 +7,7 @@ list(APPEND include_dirs
 )
 
 list(APPEND hal_srcs
+    ${esp_hal_dir}/components/bootloader_support/src/${MCUBOOT_TARGET}/bootloader_ecdsa.c
     ${esp_hal_dir}/components/hal/cache_hal.c
     ${esp_hal_dir}/components/hal/lp_timer_hal.c
     ${esp_hal_dir}/components/efuse/src/efuse_controller/keys/with_key_purposes/esp_efuse_api_key.c
@@ -22,6 +23,7 @@ endif()
 
 list(APPEND LINKER_SCRIPTS
     -T${esp_hal_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.newlib.ld
+    -T${esp_hal_dir}/components/esp_rom/${MCUBOOT_TARGET}/ld/${MCUBOOT_TARGET}.rom.version.ld
 )
 
 set_source_files_properties(
