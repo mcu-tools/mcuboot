@@ -13,6 +13,12 @@ if(TEST_RUNTIME_SOURCE_HOOKS)
   set(EXTRA_ZEPHYR_MODULES "${CMAKE_SOURCE_DIR}/../../samples/runtime-source/zephyr/hooks")
 endif()
 
+# Parse prj.conf for Silicon Labs configuration before Zephyr processing
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/prj.conf")
+  file(READ "${CMAKE_CURRENT_SOURCE_DIR}/prj.conf" PRJ_CONF_CONTENT)
+  string(REGEX MATCH "(^|\n)# SILABS_APP_PROPERTIES_ENABLED" SILABS_APP_PROPERTIES_ENABLED "${PRJ_CONF_CONTENT}")
+endif()
+
 # find_package(Zephyr) in order to load application boilerplate:
 # http://docs.zephyrproject.org/application/application.html
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
@@ -727,4 +733,11 @@ if(SYSBUILD)
 
   set(mcuboot_image_footer_size ${required_size} CACHE INTERNAL "Estimated MCUboot image trailer size" FORCE)
   set(mcuboot_image_upgrade_footer_size ${required_upgrade_size} CACHE INTERNAL "Estimated MCUboot update image trailer size" FORCE)
+endif()
+
+# Include Silicon Labs application properties
+if(CONFIG_SOC_FAMILY_SILABS_S2 AND SILABS_APP_PROPERTIES_ENABLED)
+  target_sources(app PRIVATE silabs/application_properties.c)
+  target_include_directories(app PRIVATE silabs)
+  target_link_libraries(app PRIVATE "-Wl,--undefined=sl_app_properties")  
 endif()

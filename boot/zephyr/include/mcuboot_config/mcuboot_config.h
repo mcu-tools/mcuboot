@@ -513,4 +513,15 @@
     k_cpu_idle(); \
   }
 
+/*
+ * ================================================================
+ * SE Manager-Based Hardware Crypto + PSA SE Key Configuration
+ * ================================================================
+ */
+/* Enable PSA built-in key support for SE-stored keys */
+#if defined(CONFIG_PSA_CRYPTO_DRIVER_SILABS_HSE) && defined(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256)
+#define MCUBOOT_BUILTIN_KEY
+#define MCUBOOT_BUILTIN_KEY_ID_OVERRIDE 0x7fff0001U  // SL_SE_BUILTIN_KEY_SECUREBOOT_ID
+#endif
+
 #endif /* __MCUBOOT_CONFIG_H__ */
