@@ -28,3 +28,10 @@ rusty-tags.*
 
 # The target directory from Rust development
 /target/
+my-root-2048.pem
+# keep private stuff out of git
+my-root-2048.pem
+*.signed.bin
+imageslot*.bin
+sim.log
+single.log
