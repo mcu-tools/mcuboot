@@ -49,7 +49,7 @@ macro_rules! sim_test {
     };
 }
 
-sim_test!(bad_secondary_slot, make_bad_secondary_slot_image(), run_signfail_upgrade());
+sim_test!(bad_secondary_slot, make_bad_secondary_slot_image(ImageManipulation::BadSignature), run_signfail_upgrade());
 sim_test!(secondary_trailer_leftover, make_erased_secondary_image(), run_secondary_leftover_trailer());
 sim_test!(bootstrap, make_bootstrap_image(), run_bootstrap());
 sim_test!(oversized_bootstrap, make_oversized_bootstrap_image(), run_oversized_bootstrap());

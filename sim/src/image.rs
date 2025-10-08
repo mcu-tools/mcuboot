@@ -297,7 +297,7 @@ impl ImagesBuilder {
         images
     }
 
-    pub fn make_bad_secondary_slot_image(self) -> Images {
+    pub fn make_bad_secondary_slot_image(self, img_manipulation : ImageManipulation) -> Images {
         let mut bad_flash = self.flash;
         let ram = self.ram.clone(); // TODO: Avoid this clone.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
@@ -305,7 +305,7 @@ impl ImagesBuilder {
             let primaries = install_image(&mut bad_flash, &self.areadesc, &slots, 0,
                 maximal(32784), &ram, &dep, ImageManipulation::None, Some(0));
             let upgrades = install_image(&mut bad_flash, &self.areadesc, &slots, 1,
-                maximal(41928), &ram, &dep, ImageManipulation::BadSignature, Some(0));
+                maximal(41928), &ram, &dep, img_manipulation, Some(0));
             OneImage {
                 slots,
                 primaries,
