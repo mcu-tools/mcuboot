@@ -262,7 +262,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
                 flag_string = hex(value)
             else:
                 flag_string = ""
-                for flag in image.IMAGE_F.keys():
+                for flag in image.IMAGE_F:
                     if value & image.IMAGE_F[flag]:
                         if flag_string:
                             flag_string += ("\n" + (" " * 20))

@@ -598,11 +598,10 @@ class Image:
                     self.payload.extend(pad)
 
         compression_flags = 0x0
-        if compression_tlvs is not None:
-            if compression_type in ["lzma2", "lzma2armthumb"]:
-                compression_flags = IMAGE_F['COMPRESSED_LZMA2']
-                if compression_type == "lzma2armthumb":
-                    compression_flags |= IMAGE_F['COMPRESSED_ARM_THUMB']
+        if compression_tlvs is not None and compression_type in ["lzma2", "lzma2armthumb"]:
+            compression_flags = IMAGE_F['COMPRESSED_LZMA2']
+            if compression_type == "lzma2armthumb":
+                compression_flags |= IMAGE_F['COMPRESSED_ARM_THUMB']
         # This adds the header to the payload as well
         if encrypt_keylen == 256:
             self.add_header(enckey, protected_tlv_size, compression_flags, 256)
