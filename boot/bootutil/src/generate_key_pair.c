@@ -3,17 +3,19 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include "mcuboot_config/mcuboot_config.h"
 
+#if defined(MCUBOOT_GEN_KEY)
 #include <string.h>
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/pk.h"
 #include "mbedtls/ecp.h"
 #include "stm32wlxx_hal.h"
-#include "generate_key_pair/generate_key_pair.h"
+#include "generate_key_pair.h"
 #include "key/key.h"
 #include "bootutil_log.h"
-#include "mcuboot_rng.h"
+#include "bootutil_hwrng.h"
 
 extern unsigned char enc_priv_key[];
 extern unsigned int enc_priv_key_len;
@@ -37,7 +39,7 @@ int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t 
     // Warm-up
     for (int i = 0; i < 8; i++) {
 //        HAL_RNG_GenerateRandomNumber(&hrng, &val);
-    	MCUBOOT_RNG(&val);
+    	BOOT_RNG(&val);
     }
 
     boot_log_info("mbedtls_hardware_poll: ask %lu bytes", (unsigned long)len);
@@ -190,3 +192,5 @@ int export_pub_pem(mbedtls_pk_context *pk) {
 
     return 0;
 }
+
+#endif /* MCUBOOT_GEN_KEY */
