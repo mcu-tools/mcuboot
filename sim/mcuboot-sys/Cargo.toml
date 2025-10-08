@@ -99,6 +99,9 @@ hw-rollback-protection = []
 # Enable the PSA Crypto APIs where supported for cryptography related operations.
 psa-crypto-api = []
 
+# Test for ih_load_addr in upgrade/next boot slot
+check-load-addr = []
+
 [build-dependencies]
 cc = "1.0.25"
 
