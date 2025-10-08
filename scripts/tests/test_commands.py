@@ -15,10 +15,9 @@
 from importlib import metadata
 
 import pytest
-
 from click.testing import CliRunner
-from imgtool.main import imgtool
 from imgtool import imgtool_version
+from imgtool.main import imgtool
 from packaging.version import Version
 
 # all available imgtool commands

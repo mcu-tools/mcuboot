@@ -11,14 +11,14 @@ import tempfile
 import unittest
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.padding import PSS, MGF1
+from cryptography.hazmat.primitives.asymmetric.padding import MGF1, PSS
 from cryptography.hazmat.primitives.hashes import SHA256
 
 # Setup sys path so 'imgtool' is in it.
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),
                                                 '../..')))
 
-from imgtool.keys import load, RSA, RSAUsageError
+from imgtool.keys import RSA, RSAUsageError, load
 from imgtool.keys.rsa import RSA_KEY_SIZES
 
 

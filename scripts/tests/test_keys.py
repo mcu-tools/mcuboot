@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
-
 import subprocess
+
+import pytest
 from click.testing import CliRunner
 from imgtool import main as imgtool_main
 from imgtool.main import imgtool

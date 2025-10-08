@@ -19,7 +19,6 @@ Parse and print header, TLV area and trailer information of a signed image.
 """
 import os.path
 import struct
-import sys
 
 import click
 import yaml
@@ -51,7 +50,7 @@ STATUS = {
 
 def parse_enc(key_field_len):
     if key_field_len is not None:
-        return "(len: {}, if BOOT_SWAP_SAVE_ENCTLV is unset)".format(hex(key_field_len))
+        return f"(len: {hex(key_field_len)}, if BOOT_SWAP_SAVE_ENCTLV is unset)"
     else:
         return "Image not encrypted"
 
@@ -69,7 +68,7 @@ def parse_status(status_hex):
 def parse_boot_magic(trailer_magic):
     magic = ""
     for i in range(BOOT_MAGIC_SIZE):
-        magic += "{0:#04x} ".format(trailer_magic[i])
+        magic += f"{trailer_magic[i]:#04x} "
         if i == (BOOT_MAGIC_SIZE / 2 - 1):
             magic += ("\n" + "             ")
     return magic
@@ -103,16 +102,15 @@ def print_tlv_records(tlv_list):
         tlv_type, tlv_length, tlv_data = tlv.keys()
 
         if tlv[tlv_type] in TLV_TYPES:
-            print(" " * indent, "{}: {} ({})".format(
-                tlv_type, TLV_TYPES[tlv[tlv_type]], hex(tlv[tlv_type])))
+            print(" " * indent, f"{tlv_type}: {TLV_TYPES[tlv[tlv_type]]} ({hex(tlv[tlv_type])})")
         else:
             print(" " * indent, "{}: {} ({})".format(
                 tlv_type, "UNKNOWN", hex(tlv[tlv_type])))
-        print(" " * indent, "{}: ".format(tlv_length), hex(tlv[tlv_length]))
-        print(" " * indent, "{}: ".format(tlv_data), end="")
+        print(" " * indent, f"{tlv_length}: ", hex(tlv[tlv_length]))
+        print(" " * indent, f"{tlv_data}: ", end="")
 
         for j, data in enumerate(tlv[tlv_data]):
-            print("{0:#04x}".format(data), end=" ")
+            print(f"{data:#04x}", end=" ")
             if ((j + 1) % 8 == 0) and ((j + 1) != len(tlv[tlv_data])):
                 print("\n", end=" " * (indent + 7))
         print()
@@ -133,7 +131,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
         with open(imgfile, "rb") as f:
             b = f.read()
     except FileNotFoundError:
-        raise click.UsageError("Image file not found ({})".format(imgfile))
+        raise click.UsageError(f"Image file not found ({imgfile})")
 
     # Parsing the image header
     _header = struct.unpack('IIHHIIBBHI', b[:28])
@@ -268,8 +266,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
                     if value & image.IMAGE_F[flag]:
                         if flag_string:
                             flag_string += ("\n" + (" " * 20))
-                        flag_string += "{} ({})".format(
-                            flag, hex(image.IMAGE_F[flag]))
+                        flag_string += f"{flag} ({hex(image.IMAGE_F[flag])})"
             value = flag_string
 
         if not isinstance(value, str):
@@ -279,7 +276,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
 
     # Image payload
     _sectionoff = header["hdr_size"]
-    frame_header_text = "Payload (offset: {})".format(hex(_sectionoff))
+    frame_header_text = f"Payload (offset: {hex(_sectionoff)})"
     frame_content = "FW image (size: {} Bytes)".format(hex(header["img_size"]))
     print_in_frame(frame_header_text, frame_content)
 
@@ -287,7 +284,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
     _sectionoff += header["img_size"]
     if protected_tlv_size != 0:
         # Protected TLV area
-        section_name = "Protected TLV area (offset: {})".format(hex(_sectionoff))
+        section_name = f"Protected TLV area (offset: {hex(_sectionoff)})"
         print_in_row(section_name)
         print("magic:    ", hex(tlv_area["tlv_hdr_prot"]["magic"]))
         print("area size:", hex(tlv_area["tlv_hdr_prot"]["tlv_tot"]))
@@ -295,7 +292,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
         print("#" * _LINE_LENGTH)
 
     _sectionoff += protected_tlv_size
-    section_name = "TLV area (offset: {})".format(hex(_sectionoff))
+    section_name = f"TLV area (offset: {hex(_sectionoff)})"
     print_in_row(section_name)
     print("magic:    ", hex(tlv_area["tlv_hdr"]["magic"]))
     print("area size:", hex(tlv_area["tlv_hdr"]["tlv_tot"]))
@@ -305,8 +302,8 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
     if _img_pad_size:
         _sectionoff += tlv_area["tlv_hdr"]["tlv_tot"]
         _erased_val = b[_sectionoff]
-        frame_header_text = "Image padding (offset: {})".format(hex(_sectionoff))
-        frame_content = "padding ({})".format(hex(_erased_val))
+        frame_header_text = f"Image padding (offset: {hex(_sectionoff)})"
+        frame_content = f"padding ({hex(_erased_val)})"
         print_in_frame(frame_header_text, frame_content)
 
         # Image trailer

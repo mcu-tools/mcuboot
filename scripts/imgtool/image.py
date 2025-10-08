@@ -20,19 +20,13 @@
 Image signing and management.
 """
 
-from . import version as versmod
-from .boot_record import create_sw_component_data
-import click
 import copy
-from enum import Enum
-import array
-from intelhex import IntelHex
 import hashlib
-import array
 import os.path
 import re
 import struct
 import uuid
+from collections import namedtuple
 from enum import Enum
 
 import click
@@ -46,11 +40,10 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from intelhex import IntelHex
 
-from . import version as versmod, keys
+from . import keys
+from . import version as versmod
 from .boot_record import create_sw_component_data
-from .keys import rsa, ecdsa, x25519
-
-from collections import namedtuple
+from .keys import ecdsa, rsa, x25519
 
 IMAGE_MAGIC = 0x96f3b83d
 IMAGE_HEADER_SIZE = 32
@@ -125,7 +118,7 @@ def align_up(num, align):
     return (num + (align - 1)) & ~(align - 1)
 
 
-class TLV():
+class TLV:
     def __init__(self, endian, magic=TLV_INFO_MAGIC):
         self.magic = magic
         self.buf = bytearray()
@@ -141,9 +134,8 @@ class TLV():
         e = STRUCT_ENDIAN_DICT[self.endian]
         if isinstance(kind, int):
             if not TLV_VENDOR_RES_MIN <= kind <= TLV_VENDOR_RES_MAX:
-                msg = "Invalid custom TLV type value '0x{:04x}', allowed " \
-                      "value should be between 0x{:04x} and 0x{:04x}".format(
-                        kind, TLV_VENDOR_RES_MIN, TLV_VENDOR_RES_MAX)
+                msg = f"Invalid custom TLV type value '0x{kind:04x}', allowed " \
+                      f"value should be between 0x{TLV_VENDOR_RES_MIN:04x} and 0x{TLV_VENDOR_RES_MAX:04x}"
                 raise click.UsageError(msg)
             buf = struct.pack(e + 'HH', kind, len(payload))
         else:
@@ -153,7 +145,7 @@ class TLV():
 
     def get(self):
         if len(self.buf) == 0:
-            return bytes()
+            return b""
         e = STRUCT_ENDIAN_DICT[self.endian]
         header = struct.pack(e + 'HH', self.magic, len(self))
         return header + bytes(self.buf)
@@ -177,7 +169,7 @@ USER_SHA_TO_ALG_AND_TLV = {
 
 
 def is_sha_tlv(tlv):
-    return tlv in TLV_SHA_TO_SHA_AND_ALG.keys()
+    return tlv in TLV_SHA_TO_SHA_AND_ALG
 
 
 def tlv_sha_to_sha(tlv):
@@ -224,8 +216,8 @@ def key_and_user_sha_to_alg_and_tlv(key, user_sha, is_pure = False):
         allowed = allowed_key_ssh[type(key)]
 
     except KeyError:
-        raise click.UsageError("Colud not find allowed hash algorithms for {}"
-                               .format(type(key)))
+        raise click.UsageError(f"Colud not find allowed hash algorithms for {type(key)}"
+                               )
 
     # Pure enforces auto, and user selection is ignored
     if user_sha == 'auto' or is_pure:
@@ -234,8 +226,8 @@ def key_and_user_sha_to_alg_and_tlv(key, user_sha, is_pure = False):
     if user_sha in allowed:
         return USER_SHA_TO_ALG_AND_TLV[user_sha]
 
-    raise click.UsageError("Key {} can not be used with --sha {}; allowed sha are one of {}"
-                           .format(key.sig_type(), user_sha, allowed))
+    raise click.UsageError(f"Key {key.sig_type()} can not be used with --sha {user_sha}; allowed sha are one of {allowed}"
+                           )
 
 
 def get_digest(tlv_type, hash_region):
@@ -461,9 +453,8 @@ class Image:
                                        self.save_enctlv, self.enctlv_len)
             padding = self.slot_size - (len(self.payload) + tsize)
             if padding < 0:
-                msg = "Image size (0x{:x}) + trailer (0x{:x}) exceeds " \
-                      "requested size 0x{:x}".format(
-                          len(self.payload), tsize, self.slot_size)
+                msg = f"Image size (0x{len(self.payload):x}) + trailer (0x{tsize:x}) exceeds " \
+                      f"requested size 0x{self.slot_size:x}"
                 raise click.UsageError(msg)
 
     def ecies_hkdf(self, enckey, plainkey, hmac_sha_alg):
@@ -550,9 +541,8 @@ class Image:
 
         if sw_type is not None:
             if len(sw_type) > MAX_SW_TYPE_LENGTH:
-                msg = "'{}' is too long ({} characters) for sw_type. Its " \
-                      "maximum allowed length is 12 characters.".format(
-                       sw_type, len(sw_type))
+                msg = f"'{sw_type}' is too long ({len(sw_type)} characters) for sw_type. Its " \
+                      "maximum allowed length is 12 characters."
                 raise click.UsageError(msg)
 
             image_version = (str(self.version.major) + '.'
@@ -853,8 +843,7 @@ class Image:
             return self.max_align * 2 + magic_align_size
         else:
             if write_size not in set([1, 2, 4, 8, 16, 32]):
-                raise click.BadParameter("Invalid alignment: {}".format(
-                    write_size))
+                raise click.BadParameter(f"Invalid alignment: {write_size}")
             m = DEFAULT_MAX_SECTORS if max_sectors is None else max_sectors
             trailer = m * 3 * write_size  # status area
             if enckey is not None:

@@ -16,14 +16,13 @@ from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
-
 from imgtool.image import Image
 from imgtool.main import (
-    comp_default_lp,
     comp_default_dictsize,
     comp_default_lc,
-    create_lzma2_header,
+    comp_default_lp,
     comp_default_pb,
+    create_lzma2_header,
     imgtool,
 )
 
