@@ -22,12 +22,12 @@ Assemble multiple images into a single image that can be flashed on the device.
 
 import argparse
 import errno
-import io
-import re
 import os
 import os.path
 import pickle
+import re
 import sys
+
 
 def same_keys(a, b):
     """Determine if the dicts a and b have the same keys in them"""
@@ -42,7 +42,7 @@ def same_keys(a, b):
 offset_re = re.compile(r"^#define DT_FLASH_AREA_([0-9A-Z_]+)_OFFSET(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
 size_re   = re.compile(r"^#define DT_FLASH_AREA_([0-9A-Z_]+)_SIZE(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
 
-class Assembly():
+class Assembly:
     def __init__(self, output, bootdir, edt):
         self.find_slots(edt)
         try:
@@ -83,7 +83,7 @@ class Assembly():
     def add_image(self, source, partition):
         with open(self.output, 'ab') as ofd:
             pos = ofd.tell()
-            print("partition {}, pos={}, offset={}".format(partition, pos, self.offsets[partition]))
+            print(f"partition {partition}, pos={pos}, offset={self.offsets[partition]}")
             if pos > self.offsets[partition]:
                 raise Exception("Partitions not in order, unsupported")
             if pos < self.offsets[partition]:
@@ -92,16 +92,16 @@ class Assembly():
             with open(source, 'rb') as rfd:
                 ibuf = rfd.read()
                 if len(ibuf) > self.sizes[partition]:
-                    raise Exception("Image {} is too large for partition".format(source))
+                    raise Exception(f"Image {source} is too large for partition")
             ofd.write(ibuf)
 
 def find_board_name(bootdir):
     dot_config = os.path.join(bootdir, "zephyr", ".config")
-    with open(dot_config, "r") as f:
+    with open(dot_config) as f:
         for line in f:
             if line.startswith("CONFIG_BOARD="):
                 return line.split("=", 1)[1].strip('"')
-    raise Exception("Expected CONFIG_BOARD line in {}".format(dot_config))
+    raise Exception(f"Expected CONFIG_BOARD line in {dot_config}")
 
 def main():
     parser = argparse.ArgumentParser()

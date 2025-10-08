@@ -17,22 +17,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-import click
-import getpass
-import imgtool.keys as keys
-import sys
-import struct
-import os
-import lzma
-import hashlib
 import base64
+import getpass
+import lzma
+import re
+import struct
+import sys
 from collections import namedtuple
+
+import click
+
+import imgtool.keys as keys
 from imgtool import image, imgtool_version
-from imgtool.version import decode_version
 from imgtool.dumpinfo import dump_imginfo
-from .keys import (
-    RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError)
+from imgtool.version import decode_version
+
+from .keys import ECDSAUsageError, Ed25519UsageError, RSAUsageError, X25519UsageError
 
 comp_default_dictsize=131072
 comp_default_pb=2
@@ -241,9 +241,9 @@ def verify(key, imgfile):
         print("Image was correctly validated")
         print("Image version: {}.{}.{}+{}".format(*version))
         if digest:
-            print("Image digest: {}".format(digest.hex()))
+            print(f"Image digest: {digest.hex()}")
         if signature and digest is None:
-            print("Image signature over image: {}".format(signature.hex()))
+            print(f"Image signature over image: {signature.hex()}")
         return
     elif ret == image.VerifyResult.INVALID_MAGIC:
         print("Invalid image magic; is this an MCUboot image?")
@@ -256,7 +256,7 @@ def verify(key, imgfile):
     elif ret == image.VerifyResult.KEY_MISMATCH:
         print("Key type does not match TLV record")
     else:
-        print("Unknown return code: {}".format(ret))
+        print(f"Unknown return code: {ret}")
     sys.exit(1)
 
 
@@ -278,7 +278,7 @@ def validate_version(ctx, param, value):
         decode_version(value)
         return value
     except ValueError as e:
-        raise click.BadParameter("{}".format(e))
+        raise click.BadParameter(f"{e}")
 
 
 def validate_security_counter(ctx, param, value):
@@ -290,16 +290,16 @@ def validate_security_counter(ctx, param, value):
                 return int(value, 0)
             except ValueError:
                 raise click.BadParameter(
-                    "{} is not a valid integer. Please use code literals "
+                    f"{value} is not a valid integer. Please use code literals "
                     "prefixed with 0b/0B, 0o/0O, or 0x/0X as necessary."
-                    .format(value))
+                    )
 
 
 def validate_header_size(ctx, param, value):
     min_hdr_size = image.IMAGE_HEADER_SIZE
     if value < min_hdr_size:
         raise click.BadParameter(
-            "Minimum value for -H/--header-size is {}".format(min_hdr_size))
+            f"Minimum value for -H/--header-size is {min_hdr_size}")
     return value
 
 
@@ -309,12 +309,12 @@ def get_dependencies(ctx, param, value):
         images = re.findall(r"\((\d+)", value)
         if len(images) == 0:
             raise click.BadParameter(
-                "Image dependency format is invalid: {}".format(value))
+                f"Image dependency format is invalid: {value}")
         raw_versions = re.findall(r",\s*((active|primary|secondary)\s*,)?\s*([0-9.+]+)\)", value)
         if len(images) != len(raw_versions):
             raise click.BadParameter(
-                '''There's a mismatch between the number of dependency images
-                and versions in: {}'''.format(value))
+                f'''There's a mismatch between the number of dependency images
+                and versions in: {value}''')
         for raw_version in raw_versions:
             try:
                 decoded_version = decode_version(raw_version[2])
@@ -335,7 +335,7 @@ def get_dependencies(ctx, param, value):
                         0
                     )
             except ValueError as e:
-                raise click.BadParameter("{}".format(e))
+                raise click.BadParameter(f"{e}")
             versions.append(slotted_version)
         dependencies = dict()
         dependencies[image.DEP_IMAGES_KEY] = images
@@ -598,7 +598,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                 lc = comp_default_lc, lp = comp_default_lp)
             compressed_img.load_compressed(compressed_data, compression_header)
             compressed_img.base_addr = img.base_addr
-            keep_comp_size = False;
+            keep_comp_size = False
             if enckey:
                 keep_comp_size = True
             compressed_img.create(key, public_key_format, enckey,

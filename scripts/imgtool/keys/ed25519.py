@@ -22,7 +22,7 @@ class Ed25519Public(KeyClass):
         return "ed25519"
 
     def _unsupported(self, name):
-        raise Ed25519UsageError("Operation {} requires private key".format(name))
+        raise Ed25519UsageError(f"Operation {name} requires private key")
 
     def _get_public(self):
         return self.key
@@ -87,8 +87,7 @@ class Ed25519(Ed25519Public):
         return self.key.public_key()
 
     def get_private_bytes(self, minimal, format):
-        raise Ed25519UsageError("Operation not supported with {} keys".format(
-            self.shortname()))
+        raise Ed25519UsageError(f"Operation not supported with {self.shortname()} keys")
 
     def export_private(self, path, passwd=None):
         """

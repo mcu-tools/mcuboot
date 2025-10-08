@@ -4,7 +4,6 @@ ECDSA key management
 
 # SPDX-License-Identifier: Apache-2.0
 import os.path
-import hashlib
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -27,7 +26,7 @@ class ECDSAPublicKey(KeyClass):
         self.key = key
 
     def _unsupported(self, name):
-        raise ECDSAUsageError("Operation {} requires private key".format(name))
+        raise ECDSAUsageError(f"Operation {name} requires private key")
 
     def _get_public(self):
         return self.key
