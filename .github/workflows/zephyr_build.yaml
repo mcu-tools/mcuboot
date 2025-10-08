@@ -75,7 +75,7 @@ jobs:
           base-path: repos/zephyr
           toolchains: arm-zephyr-eabi
           sdk-version: 0.17.4
-          west-project-filter: -.*,+cmsis,+cmsis_6,+hal_nordic,+hal_nxp,+hal_stm32,+libmetal,+littlefs,+mbedtls,+mcuboot,+open-amp,+tinycrypt,+trusted-firmware-m,+zcbor
+          west-project-filter: -.*,+cmsis,+cmsis_6,+hal_nordic,+hal_nxp,+hal_stm32,+hal_ti,+libmetal,+littlefs,+mbedtls,+mcuboot,+open-amp,+tinycrypt,+trusted-firmware-m,+zcbor
           ccache-max-size: 768MB
 
       - name: Checkout MCUBoot
