@@ -656,5 +656,41 @@ imgtool.add_command(version)
 imgtool.add_command(dumpinfo)
 
 
+@click.command('sign-list', help="List all signatures in an imgtool signed image")
+@click.argument('img-file')
+def sign_list(img_file):
+    signatures = image.Image.sign_list(img_file)
+    if not signatures:
+        click.echo("No signatures found.")
+        return
+    for sign in signatures:
+        click.echo(f"[{sign['idx']}] type={sign['type']}, len={sign['len']}, "
+                   f"key_id={sign['key_id']}, pub_key={sign['pub_key'][:10]}..., "
+                   f"signature={sign['signature'][:20]}...")
+
+
+@click.command('sign-append', help="Append a signature to an imgtool signed image")
+@click.argument('img-file')
+@click.argument('out-file')
+@click.option('-k', '--key', required=True, metavar='filename', help='Private key file to sign with')
+@click.option('--key-id', type=int, required=True, help='Key ID to store alongside this signature')
+def sign_append(img_file, out_file, key, key_id):
+    k = load_key(key)
+    image.Image.sign_append(img_file, out_file, k, key_id)
+    click.echo("Signature Appended.")
+
+
+@click.command('sign-remove', help="Remove a signature to an imgtool signed image by KEYID")
+@click.argument('img-file')
+@click.argument('out-file')
+@click.option('--key-id', type=int, required=True, help='Key ID of the signature to remove')
+def sign_remove(img_file, out_file, key_id):
+    image.Image.sign_remove(img_file, out_file, key_id)
+    click.echo("Signature Removed.")
+
+imgtool.add_command(sign_list)
+imgtool.add_command(sign_append)
+imgtool.add_command(sign_remove)
+
 if __name__ == '__main__':
     imgtool()

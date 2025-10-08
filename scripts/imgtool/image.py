@@ -96,6 +96,8 @@ TLV_VALUES = {
         'UUID_CID': 0x75,
 }
 
+TLV_NAMES = {v: k for k, v in TLV_VALUES.items()}
+
 TLV_SIZE = 4
 TLV_INFO_SIZE = 4
 TLV_INFO_MAGIC = 0x6907
@@ -189,6 +191,17 @@ def is_sha_tlv(tlv):
 
 def tlv_sha_to_sha(tlv):
     return TLV_SHA_TO_SHA_AND_ALG[tlv].sha
+
+SIGNATURE_TLVS = {
+    TLV_VALUES['ECDSASIG'],
+    TLV_VALUES['RSA2048'],
+    TLV_VALUES['RSA3072'],
+    TLV_VALUES['ED25519'],
+}
+
+
+def is_signature_tlv(tlv):
+    return tlv in SIGNATURE_TLVS
 
 
 # Auto selecting hash algorithm for type(key)
@@ -1060,3 +1073,287 @@ class Image:
         tag = TLV_VALUES['KEYID']
         value = key_id.to_bytes(4, self.endian)
         tlv.add(tag, value)
+
+    class TLVEntry:
+        def __init__(self, tlv_type, tlv_len, tlv_value):
+            self.type = tlv_type
+            self.len = tlv_len
+            self.value = tlv_value
+
+    class TLVIterator:
+        def __init__(self, img, endianness, start, end):
+            self.img = img
+            self.e = endianness
+            self.off = start
+            self.last = end
+
+        def is_empty(self):
+            return self.off >= self.last
+
+        def _tlv_bounds_check(self, threshold):
+            if self.off + threshold > len(self.img) or self.off + threshold > self.last:
+                raise click.UsageError("Invalid image: corrupted TLV")
+
+        def peek(self):
+            if self.is_empty():
+                return None
+            self._tlv_bounds_check(TLV_SIZE)
+            tlv_type, _, tlv_len = struct.unpack_from(self.e + "BBH", self.img, self.off)
+            value_off = self.off + TLV_SIZE
+            self._tlv_bounds_check(TLV_SIZE + tlv_len)
+            tlv_val = self.img[value_off:value_off + tlv_len]
+            return Image.TLVEntry(tlv_type, tlv_len, tlv_val)
+
+        def next(self):
+            tlv = self.peek()
+            if tlv:
+                self.off += TLV_SIZE + tlv.len
+            return tlv
+
+        def reset(self, off):
+            self.off = off
+
+        @staticmethod
+        def create_unprot_tlv_iter(img):
+            e = STRUCT_ENDIAN_DICT[Image._detect_endian(img)]
+
+            hdr_size = struct.unpack_from(e + "H", img, 8)[0]
+            img_size = struct.unpack_from(e + "I", img, 12)[0]
+
+            # Read first TLV
+            tlv_off = hdr_size + img_size
+            tlv_magic, tlv_tot = struct.unpack_from(e + "HH", img, tlv_off)
+
+            if tlv_magic == TLV_PROT_INFO_MAGIC:
+                tlv_off += tlv_tot
+                tlv_magic, tlv_tot = struct.unpack_from(e + "HH", img, tlv_off)
+
+            if tlv_magic != TLV_INFO_MAGIC:
+                raise click.UsageError("Invalid image: unprotected TLV missing")
+
+            unprot_start = tlv_off + TLV_INFO_SIZE
+            unprot_end = tlv_off + tlv_tot
+
+            return Image.TLVIterator(img, e, unprot_start, unprot_end)
+
+    @staticmethod
+    def _detect_endian(b: bytes) -> str:
+        if struct.unpack_from("<I", b, 0)[0] == IMAGE_MAGIC:
+            return "little"
+        if struct.unpack_from(">I", b, 0)[0] == IMAGE_MAGIC:
+            return "big"
+        raise click.UsageError("Invalid image: magic mismatch")
+
+    @staticmethod
+    def _resize_image_padding(img, endianness, new_tot_tlv_len, orig_tot_tlv_len):
+        end_16b = img[-16:]
+
+        # delta > 0 when appending and < 0 when removing
+        delta = new_tot_tlv_len - orig_tot_tlv_len
+        if delta == 0:
+            return img
+
+        img_end_16b = img[-16:]
+
+        expected_boot_magic = None
+        if img_end_16b == bytes([0x77, 0xc2, 0x95, 0xf3,
+                                 0x60, 0xd2, 0xef, 0x7f,
+                                 0x35, 0x52, 0x50, 0x0f,
+                                 0x2c, 0xb6, 0x79, 0x80, ]):
+            expected_boot_magic = img_end_16b
+        else:
+            msb = img_end_16b[0] if endianness == "big" else img_end_16b[1]
+            lsb = img_end_16b[1] if endianness == "big" else img_end_16b[0]
+            align = bytes([msb, lsb]) if endianness == "big" else bytes([lsb, msb])
+            expected_boot_magic = align + bytes([0x2d, 0xe1,
+                                                 0x5d, 0x29, 0x41, 0x0b,
+                                                 0x8d, 0x77, 0x67, 0x9c,
+                                                 0x11, 0x0f, 0x1f, 0x8a, ])
+
+        if expected_boot_magic != img_end_16b:
+            raise click.UsageError("Incompatible image: No boot magic value found at the end")
+
+        boot_off = len(img) - len(expected_boot_magic)
+
+        pad_byte = img[boot_off - 1] # usually 0xFF if padding is there
+        pad_start = boot_off
+        while pad_start > 0 and img[pad_start - 1] == pad_byte:
+            pad_start -= 1
+        old_pad_len = boot_off - pad_start
+
+        if delta > 0:
+            if delta > old_pad_len:
+                raise click.UsageError("Incompatible image: Not enough padding to grow")
+            padding = (old_pad_len - delta)
+            return img[:pad_start] + bytes([0xff]) * padding + img[boot_off:]
+        else:
+            extra_padding = -delta
+            return img[:boot_off] + bytes([0xff]) * extra_padding + img[boot_off:]
+
+    class SignatureUnit:
+        """ Signature unit includes Key ID, pubkey and signature"""
+        def __init__(self, key_id, pub_key, sign, start, end):
+            self.key_id = key_id
+            self.pub_key = pub_key
+            self.signature = sign
+            self.offset = start
+            self.end = end
+
+        @staticmethod
+        def parse(tlv_iter):
+            cached_offset = tlv_iter.off
+            if tlv_iter.is_empty():
+                return None
+
+            key_id = pub_key = signature = None
+
+            # Parse KEYID
+            tlv = tlv_iter.peek()
+            if tlv is None or tlv.type == 0xFF:
+                return None
+            if tlv.type == TLV_VALUES.get("KEYID"):
+                key_id = tlv_iter.next()
+
+            # Parse PUBKEY or KEYHASH(Unsupported)
+            tlv = tlv_iter.next()
+            if tlv is None:
+                tlv_iter.reset(cached_offset)
+                return None
+            if tlv.type == TLV_VALUES.get("PUBKEY"):
+                pub_key = tlv
+            elif tlv.type == TLV_VALUES.get("KEYHASH"):
+                # FIXME: Support this in future
+                raise click.UsageError("Invalid image: unsupported TLV")
+            else:
+                tlv_iter.reset(cached_offset)
+                return None
+
+            tlv = tlv_iter.next()
+            if tlv is None:
+                tlv_iter.reset(cached_offset)
+                return None
+            if not is_signature_tlv(tlv.type):
+                tlv_iter.reset(cached_offset)
+                return None
+            signature = tlv
+
+            return Image.SignatureUnit(key_id, pub_key, signature, cached_offset, tlv_iter.off)
+
+    @staticmethod
+    def _find_sha_tlv_first(tlv_iter):
+        tlv = tlv_iter.next()
+        if not is_sha_tlv(tlv.type):
+            raise click.UsageError("Invalid image: SHA TLV not found")
+        return tlv
+
+    @staticmethod
+    def _populate_signatures(img):
+        tlv_iter = Image.TLVIterator.create_unprot_tlv_iter(img)
+        Image._find_sha_tlv_first(tlv_iter)
+
+        signatures = []
+        while (signature := Image.SignatureUnit.parse(tlv_iter)):
+            signatures.append(signature)
+
+        return signatures
+
+    @staticmethod
+    def sign_list(img_file):
+        with open(img_file, 'rb') as f:
+            img = f.read()
+
+        endianness = Image._detect_endian(img)
+
+        return [
+            {
+                'idx': i,
+                'type': TLV_NAMES[unit.signature.type],
+                'len': unit.signature.len,
+                'key_id': int.from_bytes(unit.key_id.value, endianness) if unit.key_id else None,
+                'pub_key': unit.pub_key.value.hex(),
+                'signature': unit.signature.value.hex(),
+            } for i, unit in enumerate(Image._populate_signatures(img))
+        ]
+
+    @staticmethod
+    def _build_tlv(e, tlv_type, tlv_value):
+        return struct.pack(e + "BBH", tlv_type, 0, len(tlv_value)) + tlv_value
+
+    @staticmethod
+    def _read_unprot_tlv_tot_len(e, img, tlv_info_off):
+        tlv_info_magic, tlv_tot_len = struct.unpack_from(e + "HH", img, tlv_info_off)
+        if tlv_info_magic != TLV_INFO_MAGIC:
+            raise click.UsageError("Invalid image: unprotected TLV not found")
+        return tlv_tot_len
+
+    @staticmethod
+    def sign_append(img_file, out_img_file, key, key_id):
+        with open(img_file, 'rb') as f:
+            img = f.read()
+
+        endianness = Image._detect_endian(img)
+        e = STRUCT_ENDIAN_DICT[endianness]
+
+        tlv_iter = Image.TLVIterator.create_unprot_tlv_iter(img)
+        unprot_tlv_off = tlv_iter.off
+        unprot_tlv_info_off = unprot_tlv_off - TLV_INFO_SIZE
+        tlv_tot_len = Image._read_unprot_tlv_tot_len(e, img, unprot_tlv_info_off)
+
+        sha_tlv = Image._find_sha_tlv_first(tlv_iter)
+
+        payload = img[:unprot_tlv_info_off]
+        signature = key.sign(payload) if hasattr(key, 'sign') else key.sign_digest(get_digest(sha_tlv.type, payload))
+
+        signature_unit = Image._build_tlv(e, TLV_VALUES["KEYID"], int(key_id).to_bytes(4, endianness))
+        signature_unit += Image._build_tlv(e, TLV_VALUES["PUBKEY"], key.get_public_bytes())
+        signature_unit += Image._build_tlv(e, TLV_VALUES[key.sig_tlv()], signature)
+
+        signatures = Image._populate_signatures(img)
+        signature_end = signatures[-1].end if signatures else tlv_iter.off
+
+        new_tlv_tot_len = tlv_tot_len + len(signature_unit)
+        new_tlv_info_header = struct.pack(e + "HH", TLV_INFO_MAGIC, new_tlv_tot_len)
+
+        img = Image._resize_image_padding(img, endianness, new_tlv_tot_len, tlv_tot_len)
+
+        out_img = img[:unprot_tlv_info_off] + new_tlv_info_header
+        out_img += img[unprot_tlv_off:signature_end] + signature_unit
+        out_img += img[signature_end:]
+
+        with open(out_img_file, 'wb') as f:
+            f.write(out_img)
+
+    @staticmethod
+    def sign_remove(img_file, out_img_file, key_id):
+        with open(img_file, 'rb') as f:
+            img = f.read()
+
+        endianness = Image._detect_endian(img)
+        e = STRUCT_ENDIAN_DICT[endianness]
+
+        tlv_iter = Image.TLVIterator.create_unprot_tlv_iter(img)
+        unprot_tlv_off = tlv_iter.off
+        unprot_tlv_info_off = unprot_tlv_off - TLV_INFO_SIZE
+        tlv_tot_len = Image._read_unprot_tlv_tot_len(e, img, unprot_tlv_info_off)
+
+        Image._find_sha_tlv_first(tlv_iter)
+
+        out_img = img
+        signatures = Image._populate_signatures(img)
+        for signature in signatures:
+            if not signature.key_id:
+                continue
+            if int.from_bytes(signature.key_id.value, endianness) == int(key_id):
+                new_tlv_tot_len = tlv_tot_len - (signature.end - signature.offset)
+                new_tlv_info_header = struct.pack(e + "HH", TLV_INFO_MAGIC, new_tlv_tot_len)
+
+                img = Image._resize_image_padding(img, endianness, new_tlv_tot_len, tlv_tot_len)
+
+                out_img = img[:unprot_tlv_info_off] + new_tlv_info_header
+                out_img += img[unprot_tlv_off:signature.offset] + img[signature.end:]
+
+                with open(out_img_file, 'wb') as f:
+                    f.write(out_img)
+                return
+
+        raise click.UsageError(f"Invalid argument: signature with Key ID: {key_id} not found")
