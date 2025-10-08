@@ -5,7 +5,7 @@
  */
 #include "mcuboot_config/mcuboot_config.h"
 
-#if defined(MCUBOOT_GEN_KEY)
+#if defined(MCUBOOT_ENC_GEN_KEY)
 #include <string.h>
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
