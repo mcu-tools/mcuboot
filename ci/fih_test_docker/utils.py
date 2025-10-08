@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+
 import yaml
 
 CATEGORIES = {
