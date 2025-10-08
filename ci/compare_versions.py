@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from packaging.version import parse, InvalidVersion
 import argparse
 import sys
+
+from packaging.version import InvalidVersion, parse
 
 try:
     from packaging.version import LegacyVersion
@@ -45,21 +46,21 @@ for version in [args.old, args.new]:
     try:
         versions.append(parse(version))
     except InvalidVersion:
-        print("Invalid version parsed: {}".format(version))
+        print(f"Invalid version parsed: {version}")
         sys.exit(1)
 
 old, new = versions[0], versions[1]
 for version in [old, new]:
     if isinstance(version, LegacyVersion):
-        print("Invalid version parsed: {}".format(version))
+        print(f"Invalid version parsed: {version}")
         sys.exit(1)
 
 if new == old:
     print("No version change")
     sys.exit(0)
 elif new > old:
-    print("Upgrade detected ({} > {})".format(new, old))
+    print(f"Upgrade detected ({new} > {old})")
     sys.exit(2)
 
-print("Downgrade detected ({} < {})".format(new, old))
+print(f"Downgrade detected ({new} < {old})")
 sys.exit(3)

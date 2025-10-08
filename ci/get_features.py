@@ -16,6 +16,7 @@
 
 import argparse
 import os.path
+
 try:
     import tomllib
 except ModuleNotFoundError:
@@ -32,7 +33,7 @@ if not os.path.isfile(args.infile):
 try:
     cargo_toml = open(args.infile).read()
 except Exception:
-    print("Error reading \"{}\"".format(args.infile))
+    print(f"Error reading \"{args.infile}\"")
     exit(1)
 
 config = tomllib.loads(cargo_toml)

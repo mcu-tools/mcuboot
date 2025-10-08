@@ -16,15 +16,20 @@ import argparse
 import logging
 import struct
 import sys
-
-from imgtool.image import (IMAGE_HEADER_SIZE, IMAGE_MAGIC,
-                           TLV_INFO_MAGIC, TLV_PROT_INFO_MAGIC, TLV_VALUES)
 from shutil import copyfile
+
+from imgtool.image import (
+    IMAGE_HEADER_SIZE,
+    IMAGE_MAGIC,
+    TLV_INFO_MAGIC,
+    TLV_PROT_INFO_MAGIC,
+    TLV_VALUES,
+)
 
 
 def get_tlv_type_string(tlv_type):
     tlvs = {v: f"IMAGE_TLV_{k}" for k, v in TLV_VALUES.items()}
-    return tlvs.get(tlv_type, "UNKNOWN({:d})".format(tlv_type))
+    return tlvs.get(tlv_type, f"UNKNOWN({tlv_type:d})")
 
 
 class ImageHeader:
@@ -53,7 +58,7 @@ class ImageHeader:
 
     def __repr__(self):
         return "\n".join([
-            "    ih_magic = 0x{:X}".format(self.ih_magic),
+            f"    ih_magic = 0x{self.ih_magic:X}",
             "    ih_load_addr = " + str(self.ih_load_addr),
             "    ih_hdr_size = " + str(self.ih_hdr_size),
             "    ih_protect_tlv_size = " + str(self.ih_protect_tlv_size),
@@ -82,7 +87,7 @@ class ImageTLVInfo:
 
     def __repr__(self):
         return "\n".join([
-            "    it_magic = 0x{:X}".format(self.it_magic),
+            f"    it_magic = 0x{self.it_magic:X}",
             "    it_tlv_tot = " + str(self.it_tlv_tot)])
 
     def __len__(self):
@@ -99,7 +104,7 @@ class ImageTLV:
     def read_from_binary(in_file):
         tlv = ImageTLV()
         (tlv.it_type, _, tlv.it_len) = struct.unpack('<BBH', in_file.read(4))
-        (tlv.it_value) = struct.unpack('<{:d}s'.format(tlv.it_len), in_file.read(tlv.it_len))
+        (tlv.it_value) = struct.unpack(f'<{tlv.it_len:d}s', in_file.read(tlv.it_len))
         return tlv
 
     def __len__(self):
@@ -126,7 +131,7 @@ def get_arguments():
 
 def damage_tlv(image_offset, tlv_off, tlv, out_file_content):
     damage_offset = image_offset + tlv_off + 4
-    logging.info("        Damaging TLV at offset 0x{:X}...".format(damage_offset))
+    logging.info(f"        Damaging TLV at offset 0x{damage_offset:X}...")
     value = bytearray(tlv.it_value[0])
     value[0] = (value[0] + 1) % 256
     out_file_content[damage_offset] = value[0]
@@ -142,7 +147,7 @@ def damage_image(args, in_file, out_file_content, image_offset):
     # Find the Image header
     image_header = ImageHeader.read_from_binary(in_file)
     if image_header.ih_magic != IMAGE_MAGIC:
-        raise Exception("Invalid magic in image_header: 0x{:X} instead of 0x{:X}".format(image_header.ih_magic, IMAGE_MAGIC))
+        raise Exception(f"Invalid magic in image_header: 0x{image_header.ih_magic:X} instead of 0x{IMAGE_MAGIC:X}")
 
     # Find the TLV header
     tlv_info_offset = image_header.ih_hdr_size + image_header.ih_img_size
@@ -150,9 +155,9 @@ def damage_image(args, in_file, out_file_content, image_offset):
 
     tlv_info = ImageTLVInfo.read_from_binary(in_file)
     if tlv_info.it_magic == TLV_PROT_INFO_MAGIC:
-        logging.debug("Protected TLV found at offset 0x{:X}".format(tlv_info_offset))
+        logging.debug(f"Protected TLV found at offset 0x{tlv_info_offset:X}")
         if image_header.ih_protect_tlv_size != tlv_info.it_tlv_tot:
-            raise Exception("Invalid prot TLV len ({:d} vs. {:d})".format(image_header.ih_protect_tlv_size, tlv_info.it_tlv_tot))
+            raise Exception(f"Invalid prot TLV len ({image_header.ih_protect_tlv_size:d} vs. {tlv_info.it_tlv_tot:d})")
 
         # seek to unprotected TLV
         tlv_info_offset += tlv_info.it_tlv_tot
@@ -163,9 +168,9 @@ def damage_image(args, in_file, out_file_content, image_offset):
         if image_header.ih_protect_tlv_size != 0:
             raise Exception("No prot TLV was found.")
 
-    logging.debug("Unprotected TLV found at offset 0x{:X}".format(tlv_info_offset))
+    logging.debug(f"Unprotected TLV found at offset 0x{tlv_info_offset:X}")
     if tlv_info.it_magic != TLV_INFO_MAGIC:
-        raise Exception("Invalid magic in tlv info: 0x{:X} instead of 0x{:X}".format(tlv_info.it_magic, TLV_INFO_MAGIC))
+        raise Exception(f"Invalid magic in tlv info: 0x{tlv_info.it_magic:X} instead of 0x{TLV_INFO_MAGIC:X}")
 
     tlv_off = tlv_info_offset + len(ImageTLVInfo())
     tlv_end = tlv_info_offset + tlv_info.it_tlv_tot
@@ -175,11 +180,9 @@ def damage_image(args, in_file, out_file_content, image_offset):
         in_file.seek(image_offset + tlv_off, 0)
         tlv = ImageTLV.read_from_binary(in_file)
 
-        logging.debug("    tlv {:24s} len = {:4d}, len = {:4d}".format(get_tlv_type_string(tlv.it_type), tlv.it_len, len(tlv)))
+        logging.debug(f"    tlv {get_tlv_type_string(tlv.it_type):24s} len = {tlv.it_len:4d}, len = {len(tlv):4d}")
 
-        if is_valid_signature(tlv) and args.signature:
-            damage_tlv(image_offset, tlv_off, tlv, out_file_content)
-        elif tlv.it_type == TLV_VALUES['SHA256'] and args.image_hash:
+        if is_valid_signature(tlv) and args.signature or tlv.it_type == TLV_VALUES['SHA256'] and args.image_hash:
             damage_tlv(image_offset, tlv_off, tlv, out_file_content)
 
         tlv_off += len(tlv)
