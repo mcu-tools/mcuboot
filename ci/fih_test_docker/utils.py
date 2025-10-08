@@ -48,7 +48,7 @@ def parse_yaml_file(filepath):
         if test["test_exec_ok"]:
             test_stats.update([CATEGORIES['SUCCESS']])
 
-            if "skipped" in test.keys() and not test["skipped"]:
+            if "skipped" in test and not test["skipped"]:
                 # The debugger didn't stop at this address
                 test_stats.update([CATEGORIES['ADDRES_NOEXEC']])
                 continue
