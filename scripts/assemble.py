@@ -31,13 +31,10 @@ import sys
 
 def same_keys(a, b):
     """Determine if the dicts a and b have the same keys in them"""
-    for ak in a.keys():
+    for ak in a:
         if ak not in b:
             return False
-    for bk in b.keys():
-        if bk not in a:
-            return False
-    return True
+    return all(bk in a for bk in b)
 
 offset_re = re.compile(r"^#define DT_FLASH_AREA_([0-9A-Z_]+)_OFFSET(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
 size_re   = re.compile(r"^#define DT_FLASH_AREA_([0-9A-Z_]+)_SIZE(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
@@ -130,7 +127,7 @@ def main():
     sys.path.insert(0, os.path.join(zephyr_base, "scripts", "dts", "python-devicetree", "src"))
     import devicetree.edtlib
 
-    board = find_board_name(args.bootdir)
+    find_board_name(args.bootdir)
 
     edt_pickle = os.path.join(args.bootdir, "zephyr", "edt.pickle")
     with open(edt_pickle, 'rb') as f:

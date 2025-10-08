@@ -17,7 +17,7 @@ class FileHandler:
         self.kwargs = kwargs
 
     def __enter__(self):
-        if isinstance(self.file_in, (str, bytes, os.PathLike)):
+        if isinstance(self.file_in, str | bytes | os.PathLike):
             self.file = open(self.file_in, *self.args, **self.kwargs)
         else:
             self.file = self.file_in

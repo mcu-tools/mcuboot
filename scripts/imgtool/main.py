@@ -43,8 +43,7 @@ comp_default_preset=9
 
 MIN_PYTHON_VERSION = (3, 6)
 if sys.version_info < MIN_PYTHON_VERSION:
-    sys.exit("Python %s.%s or newer is required by imgtool."
-             % MIN_PYTHON_VERSION)
+    sys.exit("Python {}.{} or newer is required by imgtool.".format(*MIN_PYTHON_VERSION))
 
 SlottedSemiSemVersion = namedtuple('SemiSemVersion', ['major', 'minor', 'revision',
                                                'build', 'slot'])
@@ -358,9 +357,8 @@ class BasedIntParamType(click.ParamType):
         try:
             return int(value, 0)
         except ValueError:
-            self.fail('%s is not a valid integer. Please use code literals '
-                      'prefixed with 0b/0B, 0o/0O, or 0x/0X as necessary.'
-                      % value, param, ctx)
+            self.fail(f'{value} is not a valid integer. Please use code literals '
+                      'prefixed with 0b/0B, 0o/0O, or 0x/0X as necessary.', param, ctx)
 
 
 @click.argument('outfile')
@@ -501,16 +499,15 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
-    if enckey and key:
-        if ((isinstance(key, keys.ECDSA256P1) and
-             not isinstance(enckey, keys.ECDSA256P1Public))
-           or (isinstance(key, keys.ECDSA384P1) and
-               not isinstance(enckey, keys.ECDSA384P1Public))
-                or (isinstance(key, keys.RSA) and
-                    not isinstance(enckey, keys.RSAPublic))):
-            # FIXME
-            raise click.UsageError("Signing and encryption must use the same "
-                                   "type of key")
+    if enckey and key and ((isinstance(key, keys.ECDSA256P1) and
+         not isinstance(enckey, keys.ECDSA256P1Public))
+       or (isinstance(key, keys.ECDSA384P1) and
+           not isinstance(enckey, keys.ECDSA384P1Public))
+            or (isinstance(key, keys.RSA) and
+                not isinstance(enckey, keys.RSAPublic))):
+        # FIXME
+        raise click.UsageError("Signing and encryption must use the same "
+                               "type of key")
 
     if pad_sig and hasattr(key, 'pad_sig'):
         key.pad_sig = True
@@ -520,10 +517,10 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     for tlv in custom_tlv:
         tag = int(tlv[0], 0)
         if tag in custom_tlvs:
-            raise click.UsageError('Custom TLV %s already exists.' % hex(tag))
+            raise click.UsageError(f'Custom TLV {hex(tag)} already exists.')
         if tag in image.TLV_VALUES.values():
             raise click.UsageError(
-                'Custom TLV %s conflicts with predefined TLV.' % hex(tag))
+                f'Custom TLV {hex(tag)} conflicts with predefined TLV.')
 
         value = tlv[1]
         if value.startswith('0x'):
