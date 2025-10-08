@@ -1317,12 +1317,15 @@ config MCUBOOT_CHECK_HEADER_LOAD_ADDRESS
           the same purpose.
 
 config MCUBOOT_VERIFY_IMG_ADDRESS
-	bool "Verify reset address of image in secondary slot"
+	bool "Verify reset address of image in secondary slot [DEPRECATED]"
+        select DEPRECATED
 	depends on UPDATEABLE_IMAGE_NUMBER > 1
 	depends on !BOOT_ENCRYPT_IMAGE
 	depends on ARM
 	default y if BOOT_UPGRADE_ONLY
 	help
+          This option is deprecated, please use MCUBOOT_CHECK_HEADER_LOAD_ADDRESS
+          instead.
 	  Verify that the reset address in the image located in the secondary slot
 	  is contained within the corresponding primary slot. This is recommended
 	  if swapping is not used (that is, BOOT_UPGRADE_ONLY is set). If a user
