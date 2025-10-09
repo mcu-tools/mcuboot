@@ -365,7 +365,7 @@ boot_verify_slot_dependency(struct boot_loader_state *state,
         /* Dependency satisfied. */
         rc = 0;
     }
-#else
+#elif !defined(MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER)
   if (rc >= 0) {
         /* Dependency satisfied. */
         rc = 0;
