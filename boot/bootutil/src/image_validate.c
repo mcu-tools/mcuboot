@@ -50,6 +50,10 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #include "bootutil/mcuboot_uuid.h"
 #endif /* MCUBOOT_UUID_VID || MCUBOOT_UUID_CID */
 
+#ifdef MCUBOOT_MANIFEST_UPDATES
+#include "bootutil/mcuboot_manifest.h"
+#endif /* MCUBOOT_MANIFEST_UPDATES */
+
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
 #endif
@@ -207,7 +211,8 @@ bootutil_img_validate(struct boot_loader_state *state,
 #if (defined(EXPECTED_KEY_TLV) && defined(MCUBOOT_HW_KEY)) || \
     (defined(EXPECTED_SIG_TLV) && defined(MCUBOOT_BUILTIN_KEY)) || \
     defined(MCUBOOT_HW_ROLLBACK_PROT) || \
-    defined(MCUBOOT_UUID_VID) || defined(MCUBOOT_UUID_CID)
+    defined(MCUBOOT_UUID_VID) || defined(MCUBOOT_UUID_CID) || \
+    defined(MCUBOOT_MANIFEST_UPDATES)
     int image_index = (state == NULL ? 0 : BOOT_CURR_IMG(state));
 #endif
     uint32_t off;
@@ -243,6 +248,12 @@ bootutil_img_validate(struct boot_loader_state *state,
     fih_int security_cnt = fih_int_encode(INT_MAX);
     uint32_t img_security_cnt = 0;
     FIH_DECLARE(security_counter_valid, FIH_FAILURE);
+#endif
+#ifdef MCUBOOT_MANIFEST_UPDATES
+    bool manifest_found = false;
+    bool manifest_valid = false;
+    uint8_t slot = (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SECONDARY(image_index) ? 1 : 0);
+    const uint8_t *image_hash = NULL;
 #endif
 #ifdef MCUBOOT_UUID_VID
     struct image_uuid img_uuid_vid = {0x00};
@@ -356,6 +367,41 @@ bootutil_img_validate(struct boot_loader_state *state,
                 goto out;
             }
 
+#ifdef MCUBOOT_MANIFEST_UPDATES
+            /* If manifest is present, verify that the image hash matches the
+             * one in the manifest.
+             */
+            if (!state->manifest_valid[slot]) {
+                /* Manifest TLV must be processed before any of the image's hash TLV. */
+                BOOT_LOG_INF("bootutil_img_validate: image rejected, no valid manifest for slot %d",
+                             slot);
+                rc = -1;
+                goto out;
+            }
+
+            if (image_index == MCUBOOT_MANIFEST_IMAGE_NUMBER) {
+                /* Manifest image does not have hash in the manifest. */
+                image_hash_valid = 1;
+                break;
+            }
+
+            /* Any image, not described by the manifest is considered as invalid. */
+            image_hash = bootutil_get_image_hash(&state->manifest[slot], image_index);
+            if (image_hash == NULL) {
+                /* Manifest TLV must be processed before any of the image's hash TLV. */
+                BOOT_LOG_INF("bootutil_img_validate: image rejected, no valid manifest for image %d slot %d",
+                             image_index, slot);
+                rc = -1;
+                goto out;
+            }
+
+            FIH_CALL(boot_fih_memequal, fih_rc, hash, image_hash, sizeof(hash));
+            if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                BOOT_LOG_INF("bootutil_img_validate: image rejected, hash does not match manifest contents");
+                FIH_SET(fih_rc, FIH_FAILURE);
+                goto out;
+            }
+#endif
             image_hash_valid = 1;
             break;
         }
@@ -484,6 +530,39 @@ bootutil_img_validate(struct boot_loader_state *state,
             break;
         }
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
+#ifdef MCUBOOT_MANIFEST_UPDATES
+        case IMAGE_TLV_MANIFEST:
+        {
+            /* There can be only one manifest and must be a part of image with specific index. */
+            if (manifest_found || image_index != MCUBOOT_MANIFEST_IMAGE_NUMBER ||
+                len != sizeof(struct mcuboot_manifest) || state->manifest_valid[slot]) {
+                BOOT_LOG_INF("bootutil_img_validate: image %d slot %d rejected, unexpected manifest TLV",
+                              image_index, slot);
+                rc = -1;
+                goto out;
+            }
+
+            manifest_found = true;
+
+            rc = LOAD_IMAGE_DATA(hdr, fap, off, &state->manifest[slot], sizeof(struct mcuboot_manifest));
+            if (rc) {
+                BOOT_LOG_INF("bootutil_img_validate: slot %d rejected, unable to load manifest", slot);
+                goto out;
+            }
+
+            manifest_valid = bootutil_verify_manifest(&state->manifest[slot]);
+            if (!manifest_valid) {
+                BOOT_LOG_INF("bootutil_img_validate: slot %d rejected, invalid manifest contents", slot);
+                rc = -1;
+                goto out;
+            }
+
+            /* The image's manifest has been successfully verified. */
+            state->manifest_valid[slot] = true;
+            BOOT_LOG_INF("bootutil_img_validate: slot %d manifest verified", slot);
+            break;
+        }
+#endif
 #ifdef MCUBOOT_UUID_VID
         case IMAGE_TLV_UUID_VID:
         {
@@ -564,6 +643,13 @@ bootutil_img_validate(struct boot_loader_state *state,
     }
 #endif
 
+#ifdef MCUBOOT_MANIFEST_UPDATES
+    if (image_index == MCUBOOT_MANIFEST_IMAGE_NUMBER && (!manifest_found || !manifest_valid)) {
+        BOOT_LOG_INF("bootutil_img_validate: slot %d rejected, manifest missing or invalid", slot);
+        rc = -1;
+        goto out;
+    }
+#endif
 #ifdef MCUBOOT_UUID_VID
     if (FIH_NOT_EQ(uuid_vid_valid, FIH_SUCCESS)) {
         rc = -1;

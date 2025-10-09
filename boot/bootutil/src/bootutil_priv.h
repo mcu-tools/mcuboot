@@ -43,6 +43,10 @@
 #include "bootutil/enc_key.h"
 #endif
 
+#ifdef MCUBOOT_MANIFEST_UPDATES
+#include "bootutil/mcuboot_manifest.h"
+#endif /* MCUBOOT_MANIFEST_UPDATES */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -287,6 +291,11 @@ struct boot_loader_state {
 #endif
     } slot_usage[BOOT_IMAGE_NUMBER];
 #endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
+
+#if defined(MCUBOOT_MANIFEST_UPDATES)
+    struct mcuboot_manifest manifest[BOOT_NUM_SLOTS];
+    bool manifest_valid[BOOT_NUM_SLOTS];
+#endif
 };
 
 struct boot_sector_buffer {

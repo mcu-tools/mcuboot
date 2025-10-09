@@ -1071,6 +1071,34 @@ config MCUBOOT_HW_DOWNGRADE_PREVENTION_COUNTER_LIMITED
 
 endchoice
 
+config MCUBOOT_MANIFEST_UPDATES
+	bool "Enable transactional updates"
+	imply LOAD_AND_VALIDATE_IMAGES_HOOKS
+	help
+	  If y, enables support for transactional updates using manifests.
+	  This allows multiple images to be updated atomically. The manifest
+	  is a separate TLV which contains a list of images to update and
+	  their expected hash values. The manifest TLV is a part of an image
+	  that is signed to prevent tampering.
+	  The manifest must be transferred as part of the image with index 0.
+	  It can be a dedicated image, or part of an existing image.
+	  If the second option is selected, all updates must contain an update
+	  for image 0.
+
+if MCUBOOT_MANIFEST_UPDATES
+
+config MCUBOOT_MANIFEST_IMAGE_NUMBER
+	int "Number of image that must include manifest"
+	default 0
+	range 0 UPDATEABLE_IMAGE_NUMBER
+	help
+	  Specifies the index of the image that must include the manifest.
+	  If MCUBOOT_MANIFEST_USE_DEDICATED_IMAGE is selected, this index
+	  specifies the index of the dedicated image that contains only
+	  the manifest.
+
+endif # MCUBOOT_MANIFEST_UPDATES
+
 config MCUBOOT_UUID_VID
 	bool "Expect vendor unique identifier in image's TLV"
 	help
