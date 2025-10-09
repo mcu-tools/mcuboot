@@ -1723,6 +1723,9 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 
 #ifdef MCUBOOT_ENC_IMAGES
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
+
+            boot_enc_init(BOOT_CURR_ENC(state), slot);
+
             rc = boot_read_enc_key(fap, slot, bs);
             assert(rc == 0);
 
@@ -1731,8 +1734,6 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
                     break;
                 }
             }
-
-            boot_enc_init(BOOT_CURR_ENC(state), slot);
 
             if (i != BOOT_ENC_KEY_SIZE) {
                 boot_enc_set_key(BOOT_CURR_ENC(state), slot, bs);
