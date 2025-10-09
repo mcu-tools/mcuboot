@@ -27,6 +27,7 @@ import re
 import struct
 import uuid
 from collections import namedtuple
+import yaml
 from enum import Enum
 
 import click
@@ -93,6 +94,7 @@ TLV_VALUES = {
         'COMP_DEC_SIZE' : 0x73,
         'UUID_VID': 0x74,
         'UUID_CID': 0x75,
+        'MANIFEST': 0x76,
 }
 
 TLV_SIZE = 4
@@ -271,6 +273,73 @@ def parse_uuid(namespace, value):
 
     return uuid_bytes
 
+class Manifest:
+    def __init__(self, endian, path):
+        self.path = path
+        self.format = 1
+        self.data = None
+        self.config = None
+        self.endian = endian
+        self.load()
+
+    def load(self):
+        try:
+            with open(self.path, 'r') as f:
+                self.config = yaml.safe_load(f)
+            format = self.config.get('format', 0)
+            if isinstance(format, str) and format.isdigit():
+                format = int(format)
+            if format != self.format:
+                raise click.UsageError("Unsupported manifest format: {}".format(format))
+
+            # Encode manifest format
+            e = STRUCT_ENDIAN_DICT[self.endian]
+            self.data = struct.pack(e + 'I', format)
+
+            # Encode number of images/hashes
+            n_images = len(self.config.get('images', []))
+            self.data += struct.pack(e + 'I', n_images)
+
+            # Encode each image hash
+            exp_hash_len = None
+            for image in self.config.get('images', []):
+                if 'path' not in image and 'hash' not in image:
+                    raise click.UsageError("Manifest image entry must contain either 'path' or 'hash'")
+
+                # Encode hash, based on the signed image path
+                if 'path' in image:
+                    (result, version, digest, _) = Image.verify(image['path'], None)
+                    if result != VerifyResult.OK:
+                        raise click.UsageError("Failed to verify image: {}".format(image['path']))
+
+                    if exp_hash_len is None:
+                        exp_hash_len = len(digest)
+                    elif exp_hash_len != len(digest):
+                        raise click.UsageError("All image hashes in manifest must have the same length")
+                    self.data += struct.pack(e + f'{exp_hash_len}s', digest)
+
+                # Encode RAW image hash
+                if 'hash' in image:
+                    if exp_hash_len is None:
+                        exp_hash_len = len(bytes.fromhex(image['hash']))
+                    elif exp_hash_len != len(bytes.fromhex(image['hash'])):
+                        raise click.UsageError("All image hashes in manifest must have the same length")
+                    self.data += struct.pack(e + f'{exp_hash_len}s', bytes.fromhex(image['hash']))
+
+        except FileNotFoundError:
+            raise click.UsageError(f"Manifest file {self.path} not found")
+
+    def encode(self):
+        if self.data is None:
+            raise click.UsageError("Manifest data is empty")
+        return self.data
+
+    def __len__(self):
+        return len(self.data) if self.data is not None else 0
+
+    def __repr__(self):
+        return "<Manifest path={}, format={}, len={}>".format(
+            self.path, self.format, len(self))
 
 class Image:
 
@@ -280,7 +349,7 @@ class Image:
                  overwrite_only=False, endian="little", load_addr=0,
                  rom_fixed=None, erased_val=None, save_enctlv=False,
                  security_counter=None, max_align=None,
-                 non_bootable=False, vid=None, cid=None):
+                 non_bootable=False, vid=None, cid=None, manifest=None):
 
         if load_addr and rom_fixed:
             raise click.UsageError("Can not set rom_fixed and load_addr at the same time")
@@ -312,6 +381,7 @@ class Image:
         self.non_bootable = non_bootable
         self.vid = vid
         self.cid = cid
+        self.manifest = Manifest(endian=endian, path=manifest) if manifest is not None else None
 
         if self.max_align == DEFAULT_MAX_ALIGN:
             self.boot_magic = bytes([
@@ -341,7 +411,7 @@ class Image:
         return "<Image version={}, header_size={}, security_counter={}, \
                 base_addr={}, load_addr={}, align={}, slot_size={}, \
                 max_sectors={}, overwrite_only={}, endian={} format={}, \
-                payloadlen=0x{:x}, vid={}, cid={}>".format(
+                payloadlen=0x{:x}, vid={}, cid={}, manifest={}>".format(
                     self.version,
                     self.header_size,
                     self.security_counter,
@@ -355,7 +425,8 @@ class Image:
                     self.__class__.__name__,
                     len(self.payload),
                     self.vid,
-                    self.cid)
+                    self.cid,
+                    self.manifest)
 
     def load(self, path):
         """Load an image from a given file"""
@@ -542,6 +613,11 @@ class Image:
             #                                   = 4 + 16 = 20 Bytes
             protected_tlv_size += TLV_SIZE + 16
 
+        if self.manifest is not None:
+            # Size of the MANIFEST TLV: header ('HH') + payload (len(manifest))
+            #                                   = 4 + len(manifest) Bytes
+            protected_tlv_size += TLV_SIZE + len(self.manifest.encode())
+
         if sw_type is not None:
             if len(sw_type) > MAX_SW_TYPE_LENGTH:
                 msg = f"'{sw_type}' is too long ({len(sw_type)} characters) for sw_type. Its " \
@@ -657,6 +733,10 @@ class Image:
                 cid = parse_uuid(namespace, self.cid)
                 payload = struct.pack(e + '16s', cid)
                 prot_tlv.add('UUID_CID', payload)
+
+            if self.manifest is not None:
+                payload = self.manifest.encode()
+                prot_tlv.add('MANIFEST', payload)
 
             if custom_tlvs is not None:
                 for tag, value in custom_tlvs.items():
