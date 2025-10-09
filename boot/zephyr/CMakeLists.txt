@@ -103,6 +103,7 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/bootutil_find_key.c
   ${BOOT_DIR}/bootutil/src/bootutil_img_hash.c
   ${BOOT_DIR}/bootutil/src/bootutil_img_security_cnt.c
+  ${BOOT_DIR}/bootutil/src/mcuboot_manifest.c
   ${BOOT_DIR}/bootutil/src/tlv.c
   ${BOOT_DIR}/bootutil/src/encrypted.c
   ${BOOT_DIR}/bootutil/src/image_rsa.c
