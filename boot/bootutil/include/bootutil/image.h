@@ -159,11 +159,7 @@ STRUCT_PACKED image_version {
 
 struct image_dependency {
     uint8_t image_id;                       /* Image index (from 0) */
-#ifdef MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER
-    uint8_t slot;                           /* Image slot */
-#else
     uint8_t _pad1;
-#endif /* MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER */
     uint16_t _pad2;
     struct image_version image_min_version; /* Indicates at minimum which
                                              * version of firmware must be
