@@ -665,8 +665,8 @@ class Image:
             for i, key in enumerate(keys):
                 # If key IDs are provided, and we have enough for this key, add it first.
                 if self.psa_key_ids is not None and len(self.psa_key_ids) > i:
-                    # Convert key id (an integer) to 4-byte big-endian bytes.
-                    kid_bytes = self.psa_key_ids[i].to_bytes(4, 'big')
+                    # Convert key id (an integer) to 4-byte defined endian bytes.
+                    kid_bytes = self.psa_key_ids[i].to_bytes(4, self.endian)
                     tlv.add('KEYID', kid_bytes)  # Using the TLV tag that corresponds to key IDs.
 
                 if public_key_format == 'hash':
@@ -851,7 +851,12 @@ class Image:
         # Locate the first TLV info header
         tlv_off = header_size + img_size
         tlv_info = b[tlv_off:tlv_off + TLV_INFO_SIZE]
-        magic, tlv_tot = struct.unpack('HH', tlv_info)
+        if len(tlv_info) < TLV_INFO_SIZE:
+            # no protected block present, jump straight to unprotected
+            magic = TLV_INFO_MAGIC
+            tlv_tot = len(b) - tlv_off
+        else:
+            magic, tlv_tot = struct.unpack('HH', tlv_info)
 
         # If it's the protected-TLV block, skip it
         if magic == TLV_PROT_INFO_MAGIC:
@@ -874,8 +879,12 @@ class Image:
         is_pure = False
         scan_off = unprot_off
         while scan_off < unprot_end:
-            tlv = b[scan_off:scan_off + TLV_SIZE]
-            tlv_type, _, tlv_len = struct.unpack('BBH', tlv)
+            # if fewer than TLV_SIZE bytes remain, break
+            if scan_off + TLV_SIZE > len(b):
+                break
+            tlv_hdr = b[scan_off:scan_off + TLV_SIZE]
+            tlv_type, _, tlv_len = struct.unpack('BBH', tlv_hdr)
+
             if tlv_type == TLV_VALUES['SIG_PURE']:
                 is_pure = True
                 break
@@ -891,8 +900,11 @@ class Image:
 
         # Verify hash and signatures
         while scan_off < unprot_end:
-            tlv = b[scan_off:scan_off + TLV_SIZE]
-            tlv_type, _, tlv_len = struct.unpack('BBH', tlv)
+            # stop if not enough bytes for another TLV header
+            if scan_off + TLV_SIZE > len(b):
+                break
+            tlv_hdr = b[scan_off:scan_off + TLV_SIZE]
+            tlv_type, _, tlv_len = struct.unpack('BBH', tlv_hdr)
             if is_sha_tlv(tlv_type):
                 if not tlv_matches_key_type(tlv_type, key[0]):
                     return VerifyResult.KEY_MISMATCH, None, None, None
@@ -940,7 +952,6 @@ class Image:
             return VerifyResult.OK, version, digest, None
         else:
             return VerifyResult.INVALID_SIGNATURE, None, None, None
-
 
     def set_key_ids(self, psa_key_ids):
         """Set list of key IDs (integers) to be inserted before each signature."""

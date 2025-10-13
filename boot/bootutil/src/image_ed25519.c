@@ -163,7 +163,7 @@ out:
 fih_ret
 bootutil_verify_img(uint8_t *img, uint32_t size,
                     uint8_t *sig, size_t slen,
-                    uint8_t key_id)
+                    uint32_t key_id)
 {
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 

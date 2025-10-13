@@ -466,9 +466,8 @@ bootutil_img_validate(struct boot_loader_state *state,
 #ifdef EXPECTED_SIG_TLV
 #ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
     if (FIH_NOT_EQ(key_must_sign, true) || FIH_NOT_EQ(key_might_sign, true)) {
-        FIH_RET(FIH_FAILURE);
-    } else {
-        FIH_RET(FIH_SUCCESS);
+        rc = -1;
+        goto out;
     }
 #else
     FIH_SET(fih_rc, valid_signature);

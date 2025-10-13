@@ -254,12 +254,6 @@ int bootutil_img_hash(struct boot_loader_state *state,
 #endif
 );
 
-#ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
-int boot_plat_check_key_policy(bool valid_sig, uint32_t key,
-                               bool *key_might_sign, bool *key_must_sign,
-                               uint8_t *key_must_sign_count);
-#endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
-
 #ifdef __cplusplus
 }
 #endif

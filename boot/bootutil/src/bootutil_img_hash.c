@@ -29,13 +29,12 @@
 #include <stdint.h>
 #include <flash_map_backend/flash_map_backend.h>
 
-#include "bootutil/bootutil_log.h"
 #include "bootutil/crypto/sha.h"
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/image.h"
-#include "bootutil/sign_key.h"
 #include "bootutil_priv.h"
 #include "mcuboot_config/mcuboot_config.h"
+#include "bootutil/bootutil_log.h"
 
 #ifndef MCUBOOT_SIGN_PURE
 /*
@@ -87,6 +86,7 @@ bootutil_img_hash(struct boot_loader_state *state,
 #endif
 #endif
 
+    BOOT_LOG_DBG("bootutil_img_hash");
 #ifdef MCUBOOT_ENC_IMAGES
     if (state == NULL) {
         enc_state = NULL;
@@ -99,6 +99,7 @@ bootutil_img_hash(struct boot_loader_state *state,
     /* Encrypted images only exist in the secondary slot */
     if (MUST_DECRYPT(fap, image_index, hdr) &&
             !boot_enc_valid(enc_state, 1)) {
+        BOOT_LOG_DBG("bootutil_img_hash: error encrypted image found in primary slot");
         return -1;
     }
 #endif
@@ -166,6 +167,8 @@ bootutil_img_hash(struct boot_loader_state *state,
 #endif
         if (rc) {
             bootutil_sha_drop(&sha_ctx);
+            BOOT_LOG_DBG("bootutil_img_validate Error %d reading data chunk %p %u %u",
+                         rc, fap, off, blk_sz);
             return rc;
         }
 #ifdef MCUBOOT_ENC_IMAGES
