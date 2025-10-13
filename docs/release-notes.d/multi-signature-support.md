@@ -1,0 +1,2 @@
+- imgtool: added support for multi-signature image generation, enabling firmware images to be signed with multiple keys (e.g. for multi-party signing).
+- bootutil: added support for verifying multi-signature TLV entries, allowing the bootloader to validate all signatures on an image during startup.

@@ -64,12 +64,10 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key_id_buf, uint8_t key_id_b
     uint32_t key_id;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
+    BOOT_LOG_DBG("bootutil_find_key: image_index %d", image_index);
     /* Key id is passed */
     assert(key_id_buf_len == sizeof(uint32_t));
-    key_id = (((uint32_t)key_id_buf[0] << 24) |
-              ((uint32_t)key_id_buf[1] << 16) |
-              ((uint32_t)key_id_buf[2] << 8)  |
-              ((uint32_t)key_id_buf[3]));
+    memcpy(&key_id, key_id_buf, sizeof(key_id));
 
     /* Check if key id is associated with the image */
     FIH_CALL(boot_verify_key_id_for_image, fih_rc, image_index, key_id);
@@ -99,6 +97,7 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
     bootutil_sha_finish(&sha_ctx, hash);
     bootutil_sha_drop(&sha_ctx);
 
+    BOOT_LOG_DBG("bootutil_find_key: image_index %d", image_index);
     for (key_index = 0; key_index < NUM_OF_KEYS; key_index++) {
         rc = boot_retrieve_public_key_hash(image_index, key_index, key_hash, &key_hash_size);
         if (rc) {
@@ -134,7 +133,6 @@ int bootutil_find_key(uint8_t image_index, uint8_t *keyhash, uint8_t keyhash_len
     (void)image_index;
 
     BOOT_LOG_DBG("bootutil_find_key");
-
     if (keyhash_len > IMAGE_HASH_SIZE) {
         return -1;
     }

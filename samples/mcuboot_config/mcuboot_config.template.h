@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2018 Open Source Foundries Limited
- * Copyright (c) 2019-2024 Arm Limited
+ * Copyright (c) 2019-2025 Arm Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -32,6 +32,20 @@
 
 /* Uncomment for ECDSA signatures using curve P-256. */
 /* #define MCUBOOT_SIGN_EC256 */
+
+/*
+ * Multi-signature support
+ *
+ * Currently, only ECDSA signatures using curve P-256 and P-384
+ * are supported for multi-signature images.
+ */
+
+/* Uncomment to enable verification of images with multiple signatures */
+/* #define MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
+#ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
+/*— How many RoTPK keys per image —*/
+#define MCUBOOT_ROTPK_MAX_KEYS_PER_IMAGE 2
+#endif
 
 /*
  * Public key handling
