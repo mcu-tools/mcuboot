@@ -246,12 +246,6 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len);
 int bootutil_find_key(uint8_t image_index, uint8_t *keyhash, uint8_t keyhash_len);
 #endif /* MCUBOOT_BUILTIN_KEY */
 
-#ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
-int boot_plat_check_key_policy(bool valid_sig, uint32_t key,
-                               bool *key_might_sign, bool *key_must_sign,
-                               uint8_t *key_must_sign_count);
-#endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
-
 int bootutil_img_hash(struct boot_loader_state *state,
                       struct image_header *hdr, const struct flash_area *fap,
                       uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *hash_result,

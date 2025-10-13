@@ -89,6 +89,7 @@ bootutil_img_hash(struct boot_loader_state *state,
 #endif
     BOOT_LOG_DBG("bootutil_img_hash");
 
+    BOOT_LOG_DBG("bootutil_img_hash");
 #ifdef MCUBOOT_ENC_IMAGES
     if (state == NULL) {
         image_index = 0;
