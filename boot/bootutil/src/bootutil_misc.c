@@ -407,23 +407,25 @@ boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
 
 #ifdef MCUBOOT_ENC_IMAGES
 int
-boot_write_enc_key(const struct flash_area *fap, uint8_t slot,
-        const struct boot_status *bs)
+boot_write_enc_keys(const struct flash_area *fap, const struct boot_status *bs)
 {
-    uint32_t off;
-    int rc;
+    int slot;
 
-    off = boot_enc_key_off(fap, slot);
-    BOOT_LOG_DBG("writing enc_key; fa_id=%d off=0x%lx (0x%lx)",
-                 flash_area_get_id(fap), (unsigned long)off,
-                 (unsigned long)flash_area_get_off(fap) + off);
+    for (slot = 0; slot < BOOT_NUM_SLOTS; ++slot) {
+        uint32_t off = boot_enc_key_off(fap, slot);
+        int rc;
+
+        BOOT_LOG_DBG("writing enc_key; fa_id=%d off=0x%lx (0x%lx)",
+                     flash_area_get_id(fap), (unsigned long)off,
+                     (unsigned long)flash_area_get_off(fap) + off);
 #if MCUBOOT_SWAP_SAVE_ENCTLV
-    rc = flash_area_write(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
+        rc = flash_area_write(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
 #else
-    rc = flash_area_write(fap, off, bs->enckey[slot], BOOT_ENC_KEY_ALIGN_SIZE);
+        rc = flash_area_write(fap, off, bs->enckey[slot], BOOT_ENC_KEY_ALIGN_SIZE);
 #endif
-    if (rc != 0) {
-        return BOOT_EFLASH;
+        if (rc != 0) {
+            return BOOT_EFLASH;
+        }
     }
 
     return 0;

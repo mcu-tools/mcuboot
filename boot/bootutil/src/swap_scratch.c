@@ -884,11 +884,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
             assert(rc == 0);
 
 #ifdef MCUBOOT_ENC_IMAGES
-            rc = boot_write_enc_key(fap_primary_slot, 0, bs);
-            assert(rc == 0);
-
-            rc = boot_write_enc_key(fap_primary_slot, 1, bs);
-            assert(rc == 0);
+            rc = boot_write_enc_keys(fap_primary_slot, bs);
 #endif
             rc = boot_write_magic(fap_primary_slot);
             assert(rc == 0);
