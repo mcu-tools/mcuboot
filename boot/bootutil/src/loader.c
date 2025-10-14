@@ -692,11 +692,11 @@ boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
      */
 #if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_RAM_LOAD)
     if (MUST_DECRYPT(fap, BOOT_CURR_IMG(state), hdr)) {
-        rc = boot_enc_load(state, 1, hdr, fap, bs);
+        rc = boot_enc_load(state, BOOT_SLOT_SECONDARY, hdr, fap, bs);
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
-        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs)) {
+        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), BOOT_SLOT_SECONDARY, bs)) {
             FIH_RET(fih_rc);
         }
     }
@@ -1547,7 +1547,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
         if (rc < 0) {
             return BOOT_EBADIMAGE;
         }
-        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs)) {
+        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), BOOT_SLOT_SECONDARY, bs)) {
             return BOOT_EBADIMAGE;
         }
     }
@@ -1665,17 +1665,17 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 #ifdef MCUBOOT_ENC_IMAGES
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
-            rc = boot_enc_load(state, 0, hdr, fap, bs);
+            rc = boot_enc_load(state, BOOT_SLOT_PRIMARY, hdr, fap, bs);
             assert(rc >= 0);
 
             if (rc == 0) {
-                rc = boot_enc_set_key(BOOT_CURR_ENC(state), 0, bs);
+                rc = boot_enc_set_key(BOOT_CURR_ENC(state), BOOT_SLOT_PRIMARY, bs);
                 assert(rc == 0);
             } else {
                 rc = 0;
             }
         } else {
-            memset(bs->enckey[0], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
+            memset(bs->enckey[BOOT_SLOT_PRIMARY], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
         }
 #endif
 
@@ -1689,17 +1689,17 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         hdr = boot_img_hdr(state, BOOT_SLOT_SECONDARY);
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
-            rc = boot_enc_load(state, 1, hdr, fap, bs);
+            rc = boot_enc_load(state, BOOT_SLOT_SECONDARY, hdr, fap, bs);
             assert(rc >= 0);
 
             if (rc == 0) {
-                rc = boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs);
+                rc = boot_enc_set_key(BOOT_CURR_ENC(state), BOOT_SLOT_SECONDARY, bs);
                 assert(rc == 0);
             } else {
                 rc = 0;
             }
         } else {
-            memset(bs->enckey[1], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
+            memset(bs->enckey[BOOT_SLOT_SECONDARY], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
         }
 #endif
 
