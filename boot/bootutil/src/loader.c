@@ -3035,7 +3035,12 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 #if (BOOT_IMAGE_NUMBER > 1)
     while (true) {
 #endif
-        FIH_CALL(boot_load_and_validate_images, fih_rc, state);
+        BOOT_HOOK_LOAD_AND_VALIDATE_IMAGES_CALL_FIH(
+            boot_load_and_validate_images_hook, FIH_BOOT_HOOK_REGULAR, fih_rc,
+            state);
+        if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR)) {
+            FIH_CALL(boot_load_and_validate_images, fih_rc, state);
+        }
         if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
             FIH_SET(fih_rc, FIH_FAILURE);
             goto close;

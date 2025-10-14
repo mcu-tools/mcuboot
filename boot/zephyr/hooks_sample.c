@@ -99,3 +99,8 @@ int boot_find_next_slot_hook(struct boot_loader_state *state, uint8_t image,
 {
     return BOOT_HOOK_REGULAR;
 }
+
+int boot_load_and_validate_images_hook(struct boot_loader_state *state)
+{
+    return BOOT_HOOK_REGULAR;
+}
