@@ -239,7 +239,8 @@ decrypt_image_inplace(const struct flash_area *fa_p,
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
-        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), BOOT_SLOT_PRIMARY, bs)) {
+        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), BOOT_SLOT_PRIMARY,
+                                        bs->enckey[BOOT_SLOT_PRIMARY])) {
             FIH_RET(fih_rc);
         }
     }

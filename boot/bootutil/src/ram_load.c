@@ -155,7 +155,7 @@ boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
     }
 
     /* if rc > 0 then the key has already been loaded */
-    if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), slot, &bs)) {
+    if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), slot, bs->enckey[slot])) {
         goto done;
     }
 
