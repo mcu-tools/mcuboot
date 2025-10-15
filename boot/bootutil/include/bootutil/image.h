@@ -146,10 +146,6 @@ extern "C" {
                                              */
 #define IMAGE_TLV_ANY               0xffff  /* Used to iterate over all TLV */
 
-#define VERSION_DEP_SLOT_ACTIVE     0x00   /* Check dependency against active slot. */
-#define VERSION_DEP_SLOT_PRIMARY    0x01   /* Check dependency against primary slot. */
-#define VERSION_DEP_SLOT_SECONDARY  0x02   /* Check dependency against secondary slot. */
-
 STRUCT_PACKED image_version {
     uint8_t iv_major;
     uint8_t iv_minor;
@@ -159,11 +155,7 @@ STRUCT_PACKED image_version {
 
 struct image_dependency {
     uint8_t image_id;                       /* Image index (from 0) */
-#ifdef MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER
-    uint8_t slot;                           /* Image slot */
-#else
     uint8_t _pad1;
-#endif /* MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER */
     uint16_t _pad2;
     struct image_version image_min_version; /* Indicates at minimum which
                                              * version of firmware must be

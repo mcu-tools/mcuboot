@@ -630,9 +630,8 @@ class Image:
             if dependencies is not None:
                 for i in range(dependencies_num):
                     payload = struct.pack(
-                        e + 'BB2x' + 'BBHI',
+                        e + 'B3x' + 'BBHI',
                         int(dependencies[DEP_IMAGES_KEY][i]),
-                        dependencies[DEP_VERSIONS_KEY][i].slot,
                         dependencies[DEP_VERSIONS_KEY][i].major,
                         dependencies[DEP_VERSIONS_KEY][i].minor,
                         dependencies[DEP_VERSIONS_KEY][i].revision,

@@ -1016,15 +1016,6 @@ config BOOT_VERSION_CMP_USE_BUILD_NUMBER
 	  minor and revision. Enable this option to take into account the build
 	  number as well.
 
-config BOOT_VERSION_CMP_USE_SLOT_NUMBER
-	bool "Use slot number while comparing image version"
-	depends on (UPDATEABLE_IMAGE_NUMBER > 1) || BOOT_DIRECT_XIP || \
-		   BOOT_RAM_LOAD || MCUBOOT_DOWNGRADE_PREVENTION
-	help
-	  By default, the image slot comparison relies only on active slot.
-	  Enable this option to take into account the specified slot number
-	  instead.
-
 choice BOOT_DOWNGRADE_PREVENTION_CHOICE
 	prompt "Downgrade prevention"
 	optional
