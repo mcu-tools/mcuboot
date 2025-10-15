@@ -588,6 +588,8 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
     uint32_t trailer_sz;
     uint32_t first_trailer_idx;
     uint32_t last_idx;
+    uint32_t used_size_pri;
+    uint32_t used_size_sec;
     uint32_t used_sectors_pri;
     uint32_t used_sectors_sec;
     const struct flash_area *fap_pri = NULL;
@@ -649,14 +651,15 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
     bs->op = BOOT_STATUS_OP_SWAP;
     idx = 0;
-    used_sectors_pri = ((state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_PRIMARY].hdr.ih_hdr_size +
-        state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_PRIMARY].hdr.ih_protect_tlv_size +
-        state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_PRIMARY].hdr.ih_img_size) + sector_sz - 1) /
-        sector_sz;
-    used_sectors_sec = ((state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_SECONDARY].hdr.ih_hdr_size +
-        state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_SECONDARY].hdr.ih_protect_tlv_size +
-        state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_SECONDARY].hdr.ih_img_size) + sector_sz - 1) /
-        sector_sz;
+
+    rc = boot_read_image_size(state, BOOT_SLOT_PRIMARY, &used_size_pri);
+    assert(rc == 0);
+
+    rc = boot_read_image_size(state, BOOT_SLOT_SECONDARY, &used_size_sec);
+    assert(rc == 0);
+
+    used_sectors_pri = (used_size_pri + sector_sz - 1) / sector_sz;
+    used_sectors_sec = (used_size_sec + sector_sz - 1) / sector_sz;
 
     if (bs->swap_type == BOOT_SWAP_TYPE_REVERT ||
         boot_swap_type_multi(BOOT_CURR_IMG(state)) == BOOT_SWAP_TYPE_REVERT) {
