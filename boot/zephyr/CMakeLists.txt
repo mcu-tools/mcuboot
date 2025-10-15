@@ -552,7 +552,7 @@ if((CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT
   zephyr_library_sources(flash_check.c)
 endif()
 
-if(CONFIG_BOOT_RAM_LOAD)
+if(CONFIG_MULTIPLE_EXECUTABLE_RAM_REGIONS_DEFAULT_FILE)
   zephyr_library_sources(ram_load.c)
 endif()
 
