@@ -571,6 +571,12 @@ image trailer. An image trailer has the following structure:
     |                    0xff padding as needed                     |
     |        (BOOT_MAX_ALIGN minus 4 octets from Swap size)         |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |   Unprotected TLV size [*2]   |   Unprotected TLV size [*2]   |
+    |   Secondary slot (2 octets)   |    Primary slot (2 octets)    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                  0xff padding as needed [*2]                  |
+    |  (BOOT_MAX_ALIGN minus 4 octets from unprotected TLV sizes)   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |   Swap info   |  0xff padding (BOOT_MAX_ALIGN minus 1 octet)  |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |   Copy done   |  0xff padding (BOOT_MAX_ALIGN minus 1 octet)  |
@@ -586,6 +592,7 @@ image trailer. An image trailer has the following structure:
 ```
 
 [*]: Only present if the encryption option is enabled (`MCUBOOT_ENC_IMAGES`).
+[*2]: Only present if swap using offset mode is used (`MCUBOOT_SWAP_USING_OFFSET`).
 
 The offset immediately following such a record represents the start of the next
 flash area.
