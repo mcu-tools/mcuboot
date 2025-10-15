@@ -51,6 +51,8 @@
 #include "bootutil/mcuboot_status.h"
 #include "bootutil_loader.h"
 
+#ifndef MCUBOOT_MANIFEST_UPDATES
+
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
 #endif
@@ -2514,3 +2516,5 @@ uint32_t boot_get_state_secondary_offset(struct boot_loader_state *state,
     return 0;
 }
 #endif
+
+#endif /* !MCUBOOT_MANIFEST_UPDATES */
