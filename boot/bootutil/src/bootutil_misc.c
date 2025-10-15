@@ -126,6 +126,10 @@ boot_trailer_info_sz(void)
 #endif
            /* swap_type + copy_done + image_ok + swap_size */
            BOOT_MAX_ALIGN * 4                     +
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+           /* TLV size for both slots */
+           BOOT_MAX_ALIGN                         +
+#endif
            BOOT_MAGIC_ALIGN_SIZE
            );
 }
@@ -361,6 +365,27 @@ boot_read_swap_size(const struct flash_area *fap, uint32_t *swap_size)
     return rc;
 }
 
+#ifdef MCUBOOT_SWAP_USING_OFFSET
+int
+boot_read_unprotected_tlv_sizes(const struct flash_area *fap, uint16_t *tlv_size_primary,
+                                uint16_t *tlv_size_secondary)
+{
+    uint32_t off;
+    uint32_t combined_tlv_sizes = 0;
+    int rc;
+
+    off = boot_unprotected_tlv_sizes_off(fap);
+    rc = flash_area_read(fap, off, &combined_tlv_sizes, sizeof(combined_tlv_sizes));
+
+    if (rc == 0) {
+        *tlv_size_primary = (uint16_t)(combined_tlv_sizes & 0xffff);
+        *tlv_size_secondary = (uint16_t)((combined_tlv_sizes & 0xffff0000) >> 16);
+    }
+
+    return rc;
+}
+#endif
+
 #ifdef MCUBOOT_ENC_IMAGES
 int
 boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status *bs)
@@ -404,6 +429,25 @@ boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
                  (unsigned long)flash_area_get_off(fap) + off);
     return boot_write_trailer(fap, off, (const uint8_t *) &swap_size, 4);
 }
+
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+int
+boot_write_unprotected_tlv_sizes(const struct flash_area *fap, uint16_t tlv_size_primary,
+                                 uint16_t tlv_size_secondary)
+{
+    uint32_t off;
+    uint32_t tlv_sizes_combined;
+
+    off = boot_unprotected_tlv_sizes_off(fap);
+    tlv_sizes_combined = ((uint32_t)tlv_size_secondary << 16) | (uint32_t)tlv_size_primary;
+    BOOT_LOG_DBG("writing unprotected_tlv_sizes; fa_id=%d off=0x%lx (0x%lx) vals=0x%x,0x%x (0x%lx)",
+                 flash_area_get_id(fap), (unsigned long)off,
+                 ((unsigned long)flash_area_get_off(fap) + off), tlv_size_primary,
+                 tlv_size_secondary, (unsigned long)tlv_sizes_combined);
+    return boot_write_trailer(fap, off, (const uint8_t *)&tlv_sizes_combined,
+                              sizeof(tlv_sizes_combined));
+}
+#endif
 
 #ifdef MCUBOOT_ENC_IMAGES
 int
