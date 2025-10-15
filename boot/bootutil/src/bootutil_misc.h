@@ -43,10 +43,24 @@ boot_copy_done_off(const struct flash_area *fap)
     return boot_image_ok_off(fap) - BOOT_MAX_ALIGN;
 }
 
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+static inline uint32_t
+boot_unprotected_tlv_sizes_off(const struct flash_area *fap)
+{
+    return boot_swap_info_off(fap) - BOOT_MAX_ALIGN;
+}
+
+static inline uint32_t
+boot_swap_size_off(const struct flash_area *fap)
+{
+    return boot_unprotected_tlv_sizes_off(fap) - BOOT_MAX_ALIGN;
+}
+#else
 static inline uint32_t
 boot_swap_size_off(const struct flash_area *fap)
 {
     return boot_swap_info_off(fap) - BOOT_MAX_ALIGN;
 }
+#endif
 
 #endif /* H_BOOTUTIL_MISC_ */

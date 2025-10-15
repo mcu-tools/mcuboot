@@ -593,11 +593,19 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
     const struct flash_area *fap_pri = NULL;
     const struct flash_area *fap_sec = NULL;
     int rc;
+    uint16_t unprotected_tlv_size_pri;
+    uint16_t unprotected_tlv_size_sec;
 
     BOOT_LOG_INF("Starting swap using offset algorithm.");
 
     last_idx = find_last_idx(state, copy_size);
     sector_sz = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, 0);
+
+    fap_pri = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
+    assert(fap_pri != NULL);
+
+    fap_sec = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
+    assert(fap_sec != NULL);
 
     /* When starting a new swap upgrade, check that there is enough space */
     if (boot_status_is_reset(bs)) {
@@ -623,12 +631,6 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
         }
     }
 
-    fap_pri = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
-    assert(fap_pri != NULL);
-
-    fap_sec = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
-    assert(fap_sec != NULL);
-
     fixup_revert(state, bs, fap_sec);
 
     /* Init areas for storing swap status */
@@ -647,14 +649,24 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
         assert(rc == 0);
     }
 
+    /* Read the unprotected TLV sizes from the boot swap status area, this information might get
+     * jangled if rebooted during an update so it needs to be stored in this area for safe
+     * retrieval
+     */
+    boot_read_unprotected_tlv_sizes(fap_pri, &unprotected_tlv_size_pri, &unprotected_tlv_size_sec);
+    BOOT_LOG_DBG("Unprotected TLV sizes image=%d: pri=%d, sec=%d", BOOT_CURR_IMG(state),
+                 unprotected_tlv_size_pri, unprotected_tlv_size_sec);
+
     bs->op = BOOT_STATUS_OP_SWAP;
     idx = 0;
     used_sectors_pri = ((state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_PRIMARY].hdr.ih_hdr_size +
+        unprotected_tlv_size_pri +
         state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_PRIMARY].hdr.ih_protect_tlv_size +
         state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_PRIMARY].hdr.ih_img_size) + sector_sz - 1) /
         sector_sz;
     used_sectors_sec = ((state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_SECONDARY].hdr.ih_hdr_size +
         state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_SECONDARY].hdr.ih_protect_tlv_size +
+        unprotected_tlv_size_sec +
         state->imgs[BOOT_CURR_IMG(state)][BOOT_SLOT_SECONDARY].hdr.ih_img_size) + sector_sz - 1) /
         sector_sz;
 
@@ -769,6 +781,11 @@ int boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *si
         rc = BOOT_EBADIMAGE;
         goto done;
     }
+
+    /* This is needed as unprotected TLV size cannot be calculated once a swap has been started,
+     * it is only able to be properly calculated when images are in pristine states
+     */
+    BOOT_IMG_UNPROTECTED_TLV_SIZE(state, slot) = info.it_tlv_tot;
 
     *size = off + protect_tlv_size + info.it_tlv_tot;
     rc = 0;
