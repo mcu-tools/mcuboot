@@ -637,6 +637,16 @@ config MULTIPLE_EXECUTABLE_RAM_REGIONS
 	  When selected, boot_get_image_exec_ram_info() should be updated to provide
 	  the information about the areas.
 
+config MULTIPLE_EXECUTABLE_RAM_REGIONS_DEFAULT_FILE
+	bool "Default MCUboot multiple executable RAM region source file"
+	default y
+	depends on MULTIPLE_EXECUTABLE_RAM_REGIONS
+	help
+	  When enabled, will include the default MCUboot file that has the
+	  boot_get_image_exec_ram_info() implementation in it, for users with out-of-tree or
+	  custom configuration then this option can be disabled and a custom file can be added
+	  by a CMake module which defines the configuration for the intended board.
+
 config FLASH_RUNTIME_SOURCES
 	bool "Images are read from flash partitions defined at runtime"
 	depends on SINGLE_APPLICATION_SLOT
