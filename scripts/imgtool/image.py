@@ -513,11 +513,12 @@ class Image:
 
     def create(self, key, public_key_format, enckey, dependencies=None,
                sw_type=None, custom_tlvs=None, compression_tlvs=None,
-               compression_type=None, encrypt_keylen=128, clear=False,
+               compression_type=None, aes_raw=None, clear=False,
                fixed_sig=None, pub_key=None, vector_to_sign=None,
                user_sha='auto', hmac_sha='auto', is_pure=False, keep_comp_size=False,
                dont_encrypt=False):
         self.enckey = enckey
+        encrypt_keylen = len(aes_raw) * 8 if aes_raw else 0
 
         # key decides on sha, then pub_key; of both are none default is used
         check_key = key if key is not None else pub_key
@@ -620,10 +621,7 @@ class Image:
             if compression_type == "lzma2armthumb":
                 compression_flags |= IMAGE_F['COMPRESSED_ARM_THUMB']
         # This adds the header to the payload as well
-        if encrypt_keylen == 256:
-            self.add_header(enckey, protected_tlv_size, compression_flags, 256)
-        else:
-            self.add_header(enckey, protected_tlv_size, compression_flags)
+        self.add_header(enckey, protected_tlv_size, compression_flags, encrypt_keylen)
 
         prot_tlv = TLV(self.endian, TLV_PROT_INFO_MAGIC)
 
@@ -743,11 +741,6 @@ class Image:
             self.payload = self.payload[:protected_tlv_off]
 
         if enckey is not None and dont_encrypt is False:
-            if encrypt_keylen == 256:
-                plainkey = os.urandom(32)
-            else:
-                plainkey = os.urandom(16)
-
             if not isinstance(enckey, rsa.RSAPublic):
                 if hmac_sha == 'auto' or hmac_sha == '256':
                     hmac_sha = '256'
@@ -762,19 +755,19 @@ class Image:
 
             if isinstance(enckey, rsa.RSAPublic):
                 cipherkey = enckey._get_public().encrypt(
-                    plainkey, padding.OAEP(
+                    aes_raw, padding.OAEP(
                         mgf=padding.MGF1(algorithm=hashes.SHA256()),
                         algorithm=hashes.SHA256(),
                         label=None))
                 self.enctlv_len = len(cipherkey)
                 tlv.add('ENCRSA2048', cipherkey)
             elif isinstance(enckey, ecdsa.ECDSA256P1Public):
-                cipherkey, mac, pubk = self.ecies_hkdf(enckey, plainkey, hmac_sha_alg)
+                cipherkey, mac, pubk = self.ecies_hkdf(enckey, aes_raw, hmac_sha_alg)
                 enctlv = pubk + mac + cipherkey
                 self.enctlv_len = len(enctlv)
                 tlv.add('ENCEC256', enctlv)
             elif isinstance(enckey, x25519.X25519Public):
-                cipherkey, mac, pubk = self.ecies_hkdf(enckey, plainkey, hmac_sha_alg)
+                cipherkey, mac, pubk = self.ecies_hkdf(enckey, aes_raw, hmac_sha_alg)
                 enctlv = pubk + mac + cipherkey
                 self.enctlv_len = len(enctlv)
                 if (hmac_sha == '256'):
@@ -784,7 +777,7 @@ class Image:
 
             if not clear:
                 nonce = bytes([0] * 16)
-                cipher = Cipher(algorithms.AES(plainkey), modes.CTR(nonce),
+                cipher = Cipher(algorithms.AES(aes_raw), modes.CTR(nonce),
                                 backend=default_backend())
                 encryptor = cipher.encryptor()
                 img = bytes(self.payload[self.header_size:])
@@ -805,15 +798,15 @@ class Image:
     def get_infile_data(self):
         return self.infile_data
 
-    def add_header(self, enckey, protected_tlv_size, compression_flags, aes_length=128):
+    def add_header(self, enckey, protected_tlv_size, compression_flags, aes_length=0):
         """Install the image header."""
 
         flags = 0
-        if enckey is not None:
-            if aes_length == 128:
-                flags |= IMAGE_F['ENCRYPTED_AES128']
-            else:
-                flags |= IMAGE_F['ENCRYPTED_AES256']
+        if aes_length == 128:
+            flags |= IMAGE_F['ENCRYPTED_AES128']
+        elif aes_length == 256:
+            flags |= IMAGE_F['ENCRYPTED_AES256']
+
         if self.load_addr != 0:
             # Indicates that this image should be loaded into RAM
             # instead of run directly from flash.
