@@ -179,7 +179,11 @@ boot_check_image(struct boot_loader_state *state, struct boot_status *bs, int sl
      */
 #if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_RAM_LOAD)
     if (MUST_DECRYPT(fap, BOOT_CURR_IMG(state), hdr)) {
+#ifdef MCUBOOT_EMBEDDED_ENC_KEY
+        rc = boot_take_enc_key(bs->enckey[BOOT_SLOT_SECONDARY], BOOT_CURR_IMG(state), BOOT_SLOT_SECONDARY);
+#else
         rc = boot_enc_load(state, BOOT_SLOT_SECONDARY, hdr, fap, bs);
+#endif
         if (rc < 0) {
             FIH_RET(fih_rc);
         }

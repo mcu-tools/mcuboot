@@ -31,7 +31,11 @@ boot_image_validate_encrypted(struct boot_loader_state *state,
     int rc;
 
     if (MUST_DECRYPT(fa_p, BOOT_CURR_IMG(state), hdr)) {
+#ifdef MCUBOOT_EMBEDDED_ENC_KEY
+        rc = boot_en_take_key(bs->enckey[BOOT_SLOT_SECONDARY], BOOT_CUR_IMG(state), BOOT_SLOT_SECONDARY);
+#else
         rc = boot_enc_load(state, BOOT_SLOT_SECONDARY, hdr, fa_p, bs);
+#endif
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
@@ -232,7 +236,11 @@ decrypt_image_inplace(const struct flash_area *fa_p,
         }
 #endif
         /* Load the encryption keys into cache */
+#ifdef MCUBOOT_EMBEDDED_ENC_KEY
+        rc = boot_take_enc_key(bs->enckey[BOOT_SLOT_PRIMARY], BOOT_CURR_IMG(state), BOOT_SLOT_PRIMARY);
+#else
         rc = boot_enc_load(state, BOOT_SLOT_PRIMARY, hdr, fa_p, bs);
+#endif
         if (rc < 0) {
             goto total_out;
         }
