@@ -75,6 +75,9 @@ void boot_enc_decrypt(struct enc_key_data *enc_state,
 /* Note that boot_enc_zeorize takes BOOT_CURR_ENC, not BOOT_CURR_ENC_SLOT */
 void boot_enc_zeroize(struct enc_key_data *enc_state);
 
+/* Retrieve key for a slot */
+int boot_take_enc_key(uint8_t *key, int image, int slot);
+
 #ifdef __cplusplus
 }
 #endif

@@ -235,7 +235,11 @@ decrypt_image_inplace(const struct flash_area *fa_p,
 #endif
         memset(&boot_data, 0, sizeof(struct boot_loader_state));
         /* Load the encryption keys into cache */
+#if !defined(MCUBOOT_BUILTIN_ENC_KEY)
         rc = boot_enc_load(state, BOOT_SLOT_PRIMARY, hdr, fa_p, bs);
+#else
+        rc = boot_take_enc_key(bs->enckey[BOOT_SLOT_PRIMARY], BOOT_CURR_IMG(state), BOOT_SLOT_PRIMARY);
+#endif
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
