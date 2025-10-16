@@ -245,7 +245,7 @@ fill_rsp(struct boot_loader_state *state, struct boot_rsp *rsp)
  * @retval 0            If the image version numbers are equal.
  * @retval 1            If ver1 is greater than ver2.
  */
-static int
+int
 boot_version_cmp(const struct image_version *ver1,
                  const struct image_version *ver2)
 {
@@ -836,7 +836,7 @@ boot_rom_address_check(struct boot_loader_state *state)
  *         FIH_NO_BOOTABLE_IMAGE            if no bootloable image was found
  *         FIH_FAILURE                      on any errors
  */
-static fih_ret
+fih_ret
 boot_validate_slot(struct boot_loader_state *state, int slot,
                    struct boot_status *bs, int expected_swap_type)
 {
@@ -2865,7 +2865,12 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 #if (BOOT_IMAGE_NUMBER > 1)
     while (true) {
 #endif
-        FIH_CALL(boot_load_and_validate_images, fih_rc, state);
+        BOOT_HOOK_LOAD_AND_VALIDATE_IMAGES_CALL_FIH(
+            boot_load_and_validate_images_hook, FIH_BOOT_HOOK_REGULAR, fih_rc,
+            state);
+        if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR)) {
+            FIH_CALL(boot_load_and_validate_images, fih_rc, state);
+        }
         if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
             FIH_SET(fih_rc, FIH_FAILURE);
             goto close;

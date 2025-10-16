@@ -94,6 +94,18 @@
 
 #endif /* MCUBOOT_FIND_NEXT_SLOT_HOOKS */
 
+#ifdef MCUBOOT_LOAD_AND_VALIDATE_IMAGES_HOOKS
+
+#define BOOT_HOOK_LOAD_AND_VALIDATE_IMAGES_CALL_FIH(f, fih_ret_default, fih_rc, ...) \
+    DO_HOOK_CALL_FIH(f, fih_ret_default, fih_rc, __VA_ARGS__);
+
+#else
+
+#define BOOT_HOOK_LOAD_AND_VALIDATE_IMAGES_CALL_FIH(f, fih_ret_default, fih_rc, ...) \
+    HOOK_CALL_FIH_NOP(f, fih_ret_default, fih_rc, __VA_ARGS__)
+
+#endif /* MCUBOOT_LOAD_AND_VALIDATE_IMAGES_HOOKS */
+
 #ifdef MCUBOOT_FLASH_AREA_HOOKS
 
 #define BOOT_HOOK_FLASH_AREA_CALL(f, ret_default, ...) \
@@ -283,5 +295,14 @@ int flash_area_get_device_id_hook(const struct flash_area *fa,
  *         BOOT_HOOK_REGULAR follow the normal execution path.
  */
 int boot_find_next_slot_hook(struct boot_loader_state *state, uint8_t image, enum boot_slot *active_slot);
+
+/**
+ * Tries to load a slot for all the images with validation.
+ *
+ * @param  state        Boot loader status information.
+ *
+ * @return              0 on success; nonzero on failure.
+ */
+fih_ret boot_load_and_validate_images_hook(struct boot_loader_state *state);
 
 #endif /*H_BOOTUTIL_HOOKS*/

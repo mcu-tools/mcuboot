@@ -43,6 +43,10 @@
 #include "bootutil/enc_key.h"
 #endif
 
+#ifdef MCUBOOT_MANIFEST_UPDATES
+#include "bootutil/mcuboot_manifest.h"
+#endif /* MCUBOOT_MANIFEST_UPDATES */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -290,6 +294,11 @@ struct boot_loader_state {
 #endif
     } slot_usage[BOOT_IMAGE_NUMBER];
 #endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
+
+#if defined(MCUBOOT_MANIFEST_UPDATES)
+    struct mcuboot_manifest manifest[BOOT_NUM_SLOTS];
+    bool manifest_valid[BOOT_NUM_SLOTS];
+#endif
 };
 
 struct boot_sector_buffer {
@@ -404,6 +413,32 @@ uint32_t boot_scratch_trailer_sz(uint32_t min_write_sz);
  */
 bool bootutil_buffer_is_erased(const struct flash_area *area,
                                const void *buffer, size_t len);
+
+/*
+ * Check that there is a valid image in a slot
+ *
+ * @returns
+ *         FIH_SUCCESS                      if image was successfully validated
+ *         FIH_NO_BOOTABLE_IMAGE            if no bootloable image was found
+ *         FIH_FAILURE                      on any errors
+ */
+fih_ret boot_validate_slot(struct boot_loader_state *state, int slot,
+                           struct boot_status *bs, int expected_swap_type);
+/**
+ * Compare image version numbers
+ *
+ * By default, the comparison does not take build number into account.
+ * Enable MCUBOOT_VERSION_CMP_USE_BUILD_NUMBER to take the build number into account.
+ *
+ * @param ver1           Pointer to the first image version to compare.
+ * @param ver2           Pointer to the second image version to compare.
+ *
+ * @retval -1           If ver1 is less than ver2.
+ * @retval 0            If the image version numbers are equal.
+ * @retval 1            If ver1 is greater than ver2.
+ */
+int boot_version_cmp(const struct image_version *ver1,
+                     const struct image_version *ver2);
 
 /**
  * Opens the flash areas of all images.
