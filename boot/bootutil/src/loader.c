@@ -2565,9 +2565,89 @@ boot_get_slot_usage(struct boot_loader_state *state)
     return 0;
 }
 
+#if (defined(MCUBOOT_RAM_LOAD) && defined(MCUBOOT_RAM_LOAD_USE_UPDATE_COUNTER)) || (defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_DIRECT_XIP_USE_UPDATE_COUNTER))
 /**
- * Finds the slot containing the image with the highest version number for the
+ * Compares the priority of two image slots according to the update counter in the image trailer.
+ *
+ * The update counter is stored in the (reused) field for swap size. When updating, the application
+ * should set the counter value for the new image to the value from the previous image plus one.
+ *
+ * @param lhs           Slot number to compare
+ * @param rhs           Slot number to compare
+ *
+ * @retval -1           If lhs has lower priority than rhs  (prioritize RHS)
+ * @retval 0            If lhs and rhs have equal priority
+ * @retval 1            If lhs has higher priority than rhs (prioritize LHS)
+ */
+int boot_update_counter_cmp(struct boot_loader_state *state, uint32_t lhs, uint32_t rhs) {
+
+	const struct flash_area *fap;
+	int rc;
+	struct boot_swap_state lhs_swap_state = {0};
+	struct boot_swap_state rhs_swap_state = {0};
+	uint32_t lhs_counter = 0xffffffff;
+	uint32_t rhs_counter = 0xffffffff;
+
+	// Read trailer from LHS slot
+	rc = flash_area_open(flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), lhs), &fap);
+	assert(rc == 0);
+	rc = boot_read_swap_state(fap, &lhs_swap_state);
+	assert(rc == 0);
+	rc = boot_read_swap_size(fap, &lhs_counter);
+	assert(rc == 0);
+	flash_area_close(fap);
+
+	// Read trailer from RHS slot
+	rc = flash_area_open(flash_area_id_from_multi_image_slot(BOOT_CURR_IMG(state), rhs), &fap);
+	assert(rc == 0);
+	rc = boot_read_swap_state(fap, &rhs_swap_state);
+	assert(rc == 0);
+	rc = boot_read_swap_size(fap, &rhs_counter);
+	assert(rc == 0);
+	flash_area_close(fap);
+
+	// Check trailer validity
+	bool lhs_trailer_valid = (lhs_swap_state.magic == BOOT_MAGIC_GOOD);
+	bool rhs_trailer_valid = (rhs_swap_state.magic == BOOT_MAGIC_GOOD);
+	if (lhs_trailer_valid && !rhs_trailer_valid) {
+		return 1; // prioritize LHS
+	}
+	if (!lhs_trailer_valid && rhs_trailer_valid) {
+		return -1; // prioritize RHS
+	}
+	if (!lhs_trailer_valid && !rhs_trailer_valid) {
+		return 0; // Equal priority
+	}
+
+	// Handle the counter rollover cases
+	if (lhs_counter == 0 && rhs_counter == 0xffffffff) {
+		return 1; // prioritize LHS
+	}
+	if (lhs_counter == 0xffffffff && rhs_counter == 0) {
+		return -1; // prioritize RHS
+	}
+
+	// Compare the counter values
+	if (lhs_counter < rhs_counter) {
+		return -1; // prioritize RHS
+	}
+	if (lhs_counter > rhs_counter) {
+		return 1; // prioritize LHS
+	}
+
+	return 0; // Equal priority.
+}
+#endif
+
+/**
+ * Finds the slot containing the image with the highest priority for the
  * current image.
+ *
+ * Normally, the highest priority slot is the one with the highest version number.
+ *
+ * However, when MCUBOOT_RAM_LOAD_USE_UPDATE_COUNTER or MCUBOOT_DIRECT_XIP_USE_UPDATE_COUNTER
+ * is active, we will prioritize the slot according to the update counter first.
+ * This will make it possible to downgrade the firmware.
  *
  * @param  state        Boot loader status information.
  *
@@ -2586,7 +2666,21 @@ find_slot_with_highest_version(struct boot_loader_state *state)
             if (candidate_slot == BOOT_SLOT_NONE) {
                 candidate_slot = slot;
             } else {
-                rc = boot_version_cmp(
+
+#if (defined(MCUBOOT_RAM_LOAD) && defined(MCUBOOT_RAM_LOAD_USE_UPDATE_COUNTER)) || (defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_DIRECT_XIP_USE_UPDATE_COUNTER))
+            	// Check the image trailers for slot priority from the update counter (reused swap size field)
+            	rc = boot_update_counter_cmp(state, slot, candidate_slot); // FIXME ARGS
+            	if (rc < 0) {
+            		// According to update counter, slot has lower priority than candidate_slot
+            		continue;
+            	} else if (rc > 0) {
+            		// According to update counter, slot has higher priority than candidate_slot
+            		candidate_slot = slot;
+            		continue;
+            	} // else: fall back to comparing the version.
+#endif
+
+            	rc = boot_version_cmp(
                             &boot_img_hdr(state, slot)->ih_ver,
                             &boot_img_hdr(state, candidate_slot)->ih_ver);
                 if (rc == 1) {
