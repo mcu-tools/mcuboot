@@ -643,11 +643,11 @@ boot_enc_drop(struct enc_key_data *enc_state, uint8_t slot)
 
 int
 boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
-        const struct boot_status *bs)
+        const uint8_t *key)
 {
     int rc;
 
-    rc = bootutil_aes_ctr_set_key(&enc_state[slot].aes_ctr, bs->enckey[slot]);
+    rc = bootutil_aes_ctr_set_key(&enc_state[slot].aes_ctr, key);
     if (rc != 0) {
         boot_enc_drop(enc_state, slot);
         return -1;
