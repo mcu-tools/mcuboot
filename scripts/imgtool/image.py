@@ -514,7 +514,7 @@ class Image:
 
     def create(self, key, public_key_format, enckey, dependencies=None,
                sw_type=None, custom_tlvs=None, compression_tlvs=None,
-               compression_type=None, encrypt_keylen=128, clear=False,
+               compression_type=None, aes_key=None, clear=False,
                fixed_sig=None, pub_key=None, vector_to_sign=None,
                user_sha='auto', hmac_sha='auto', is_pure=False, keep_comp_size=False,
                dont_encrypt=False):
@@ -606,7 +606,7 @@ class Image:
         #
         # This adds the padding if image is not aligned to the 16 Bytes
         # in encrypted mode
-        if self.enckey is not None and dont_encrypt is False:
+        if aes_key is not None and dont_encrypt is False:
             pad_len = len(self.payload) % 16
             if pad_len > 0:
                 pad = bytes(16 - pad_len)
@@ -621,10 +621,8 @@ class Image:
             if compression_type == "lzma2armthumb":
                 compression_flags |= IMAGE_F['COMPRESSED_ARM_THUMB']
         # This adds the header to the payload as well
-        if encrypt_keylen == 256:
-            self.add_header(enckey, protected_tlv_size, compression_flags, 256)
-        else:
-            self.add_header(enckey, protected_tlv_size, compression_flags)
+        aes_key_bits = 0 if aes_key is None else len(aes_key) * 8
+        self.add_header(protected_tlv_size, compression_flags, aes_key_bits)
 
         prot_tlv = TLV(self.endian, TLV_PROT_INFO_MAGIC)
 
@@ -743,12 +741,18 @@ class Image:
         if protected_tlv_off is not None:
             self.payload = self.payload[:protected_tlv_off]
 
-        if enckey is not None and dont_encrypt is False:
-            if encrypt_keylen == 256:
-                plainkey = os.urandom(32)
-            else:
-                plainkey = os.urandom(16)
+        # When passed AES key and clear flag, then do not encrypt, because the key
+        # is only passed to be stored in encryption key TLV, the payload stays clear text.
+        if aes_key and not clear:
+            nonce = bytes([0] * 16)
+            cipher = Cipher(algorithms.AES(aes_key), modes.CTR(nonce),
+                            backend=default_backend())
+            encryptor = cipher.encryptor()
+            img = bytes(self.payload[self.header_size:])
+            self.payload[self.header_size:] = \
+                encryptor.update(img) + encryptor.finalize()
 
+        if enckey is not None and dont_encrypt is False:
             if not isinstance(enckey, rsa.RSAPublic):
                 if hmac_sha == 'auto' or hmac_sha == '256':
                     hmac_sha = '256'
@@ -763,34 +767,25 @@ class Image:
 
             if isinstance(enckey, rsa.RSAPublic):
                 cipherkey = enckey._get_public().encrypt(
-                    plainkey, padding.OAEP(
+                    aes_key, padding.OAEP(
                         mgf=padding.MGF1(algorithm=hashes.SHA256()),
                         algorithm=hashes.SHA256(),
                         label=None))
                 self.enctlv_len = len(cipherkey)
                 tlv.add('ENCRSA2048', cipherkey)
             elif isinstance(enckey, ecdsa.ECDSA256P1Public):
-                cipherkey, mac, pubk = self.ecies_hkdf(enckey, plainkey, hmac_sha_alg)
+                cipherkey, mac, pubk = self.ecies_hkdf(enckey, aes_key, hmac_sha_alg)
                 enctlv = pubk + mac + cipherkey
                 self.enctlv_len = len(enctlv)
                 tlv.add('ENCEC256', enctlv)
             elif isinstance(enckey, x25519.X25519Public):
-                cipherkey, mac, pubk = self.ecies_hkdf(enckey, plainkey, hmac_sha_alg)
+                cipherkey, mac, pubk = self.ecies_hkdf(enckey, aes_key, hmac_sha_alg)
                 enctlv = pubk + mac + cipherkey
                 self.enctlv_len = len(enctlv)
                 if (hmac_sha == '256'):
                     tlv.add('ENCX25519', enctlv)
                 else:
                     tlv.add('ENCX25519_SHA512', enctlv)
-
-            if not clear:
-                nonce = bytes([0] * 16)
-                cipher = Cipher(algorithms.AES(plainkey), modes.CTR(nonce),
-                                backend=default_backend())
-                encryptor = cipher.encryptor()
-                img = bytes(self.payload[self.header_size:])
-                self.payload[self.header_size:] = \
-                    encryptor.update(img) + encryptor.finalize()
 
         self.payload += prot_tlv.get()
         self.payload += tlv.get()
@@ -806,11 +801,11 @@ class Image:
     def get_infile_data(self):
         return self.infile_data
 
-    def add_header(self, enckey, protected_tlv_size, compression_flags, aes_length=128):
+    def add_header(self, protected_tlv_size, compression_flags, aes_length=0):
         """Install the image header."""
 
         flags = 0
-        if enckey is not None:
+        if aes_length != 0:
             if aes_length == 128:
                 flags |= IMAGE_F['ENCRYPTED_AES128']
             else:
