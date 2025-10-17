@@ -573,7 +573,7 @@ boot_enc_load(struct boot_loader_state *state, int slot,
               const struct image_header *hdr, const struct flash_area *fap,
               struct boot_status *bs)
 {
-    struct enc_key_data *enc_state = BOOT_CURR_ENC(state);
+    struct enc_key_data *enc_state = BOOT_CURR_ENC_SLOT(state, slot);
     uint32_t off;
     uint16_t len;
     struct image_tlv_iter it;
@@ -587,13 +587,13 @@ boot_enc_load(struct boot_loader_state *state, int slot,
     BOOT_LOG_DBG("boot_enc_load: slot %d", slot);
 
     /* Already loaded... */
-    if (enc_state[slot].valid) {
+    if (boot_enc_valid(enc_state)) {
         BOOT_LOG_DBG("boot_enc_load: already loaded");
         return 1;
     }
 
     /* Initialize the AES context */
-    boot_enc_init(enc_state, slot);
+    boot_enc_init(enc_state);
 
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
     it.start_off = boot_get_state_secondary_offset(state, fap);
@@ -627,48 +627,46 @@ boot_enc_load(struct boot_loader_state *state, int slot,
 }
 
 int
-boot_enc_init(struct enc_key_data *enc_state, uint8_t slot)
+boot_enc_init(struct enc_key_data *enc_state)
 {
-    bootutil_aes_ctr_init(&enc_state[slot].aes_ctr);
+    bootutil_aes_ctr_init(&enc_state->aes_ctr);
     return 0;
 }
 
 int
-boot_enc_drop(struct enc_key_data *enc_state, uint8_t slot)
+boot_enc_drop(struct enc_key_data *enc_state)
 {
-    bootutil_aes_ctr_drop(&enc_state[slot].aes_ctr);
-    enc_state[slot].valid = 0;
+    bootutil_aes_ctr_drop(&enc_state->aes_ctr);
+    enc_state->valid = 0;
     return 0;
 }
 
 int
-boot_enc_set_key(struct enc_key_data *enc_state, uint8_t slot,
-        const struct boot_status *bs)
+boot_enc_set_key(struct enc_key_data *enc_state, const uint8_t *key)
 {
     int rc;
 
-    rc = bootutil_aes_ctr_set_key(&enc_state[slot].aes_ctr, bs->enckey[slot]);
+    rc = bootutil_aes_ctr_set_key(&enc_state->aes_ctr, key);
     if (rc != 0) {
-        boot_enc_drop(enc_state, slot);
+        boot_enc_drop(enc_state);
         return -1;
     }
 
-    enc_state[slot].valid = 1;
+    enc_state->valid = 1;
 
     return 0;
 }
 
 bool
-boot_enc_valid(struct enc_key_data *enc_state, int slot)
+boot_enc_valid(const struct enc_key_data *enc_state)
 {
-    return enc_state[slot].valid;
+    return enc_state->valid;
 }
 
 void
-boot_enc_encrypt(struct enc_key_data *enc_state, int slot, uint32_t off,
+boot_enc_encrypt(struct enc_key_data *enc, uint32_t off,
              uint32_t sz, uint32_t blk_off, uint8_t *buf)
 {
-    struct enc_key_data *enc = &enc_state[slot];
     uint8_t nonce[16];
 
     /* Nothing to do with size == 0 */
@@ -688,10 +686,9 @@ boot_enc_encrypt(struct enc_key_data *enc_state, int slot, uint32_t off,
 }
 
 void
-boot_enc_decrypt(struct enc_key_data *enc_state, int slot, uint32_t off,
+boot_enc_decrypt(struct enc_key_data *enc, uint32_t off,
              uint32_t sz, uint32_t blk_off, uint8_t *buf)
 {
-    struct enc_key_data *enc = &enc_state[slot];
     uint8_t nonce[16];
 
     /* Nothing to do with size == 0 */
@@ -718,7 +715,7 @@ boot_enc_zeroize(struct enc_key_data *enc_state)
 {
     uint8_t slot;
     for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
-        (void)boot_enc_drop(enc_state, slot);
+        (void)boot_enc_drop(&enc_state[slot]);
     }
     memset(enc_state, 0, sizeof(struct enc_key_data) * BOOT_NUM_SLOTS);
 }

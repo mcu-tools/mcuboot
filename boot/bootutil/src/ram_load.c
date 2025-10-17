@@ -155,7 +155,7 @@ boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
     }
 
     /* if rc > 0 then the key has already been loaded */
-    if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), slot, &bs)) {
+    if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, slot), bs.enckey[slot])) {
         goto done;
     }
 
@@ -176,7 +176,7 @@ boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
              * Part of the chunk is encrypted payload */
             blk_sz = tlv_off - (bytes_copied);
         }
-        boot_enc_decrypt(BOOT_CURR_ENC(state), slot,
+        boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, slot),
                 (bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
                 blk_off, cur_dst);
         bytes_copied += chunk_sz;
