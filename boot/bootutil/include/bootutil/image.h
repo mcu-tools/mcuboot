@@ -246,6 +246,8 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len);
 int bootutil_find_key(uint8_t image_index, uint8_t *keyhash, uint8_t keyhash_len);
 #endif /* MCUBOOT_BUILTIN_KEY */
 
+int bootutil_get_last_hw_key_index(void);
+
 int bootutil_img_hash(struct boot_loader_state *state,
                       struct image_header *hdr, const struct flash_area *fap,
                       uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *hash_result,
