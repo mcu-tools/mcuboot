@@ -31,9 +31,10 @@
 #ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
 #include <stdbool.h>
 #endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
-#ifdef MCUBOOT_BUILTIN_KEY
+
+#if defined (MCUBOOT_BUILTIN_KEY) || defined (MCUBOOT_IMAGE_MULTI_SIG_SUPPORT)
 #include "bootutil/fault_injection_hardening.h"
-#endif /* MCUBOOT_BUILTIN_KEY */
+#endif /* MCUBOOT_BUILTIN_KEY || MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
 
 #ifdef __cplusplus
 extern "C" {
@@ -84,23 +85,21 @@ int boot_retrieve_public_key_hash(uint8_t image_index,
 
 #ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
 /**
- * @brief Checks the key policy for signature verification.
+ * @brief Finalizes the key policy for a given image index after key verification.
  *
- * Determines whether a given key might or must be used to sign an image,
- * based on the validity of the signature and the key index. Updates the
- * provided output parameters to reflect the policy.
+ * This function is called after the verification of all signatures for a
+ * specific image index. It applies the final key policy based on the
+ * verified keys and their count.
  *
- * @param valid_sig            Indicates if the signature is valid.
- * @param key                  The key index to check.
- * @param[out] key_might_sign  Set to true if the key might be used to sign.
- * @param[out] key_must_sign   Set to true if the key must be used to sign.
- * @param[out] key_must_sign_count  Set to the number of keys that must sign.
+ * @param image_index      Index of the image being processed.
+ * @param verified_keys    Pointer to an array of verified key indices.
+ * @param verified_cnt     Number of verified keys in the array.
  *
- * @return 0 on success, or a negative error code on failure.
+ * @return FIH_SUCCESS on success, non-zero on error.
  */
-int boot_plat_check_key_policy(bool valid_sig, uint32_t key,
-                               bool *key_might_sign, bool *key_must_sign,
-                               uint8_t *key_must_sign_count);
+fih_ret boot_plat_check_key_policy(uint8_t image_index,
+                                   const int *verified_keys,
+                                   uint8_t verified_cnt);
 #endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
 
 extern const int bootutil_key_cnt;
