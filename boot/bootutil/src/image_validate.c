@@ -197,6 +197,38 @@ static const uint16_t allowed_unprot_tlvs[] = {
 };
 #endif
 
+static inline int get_boot_verified_key_id(int key_id)
+{
+#if defined(MCUBOOT_HW_KEY)
+    int id = bootutil_get_last_hw_key_index();
+    if (id >= 0) {
+        return id;
+    }
+#endif
+    return key_id;
+}
+
+static inline void boot_collect_verified_key(int key_id,
+                                             int *keys,
+                                             uint8_t *count)
+{
+    uint8_t i, n;
+    if (key_id < 0) {
+        return;
+    }
+    n = *count;
+    for (i = 0; i < n; i++) {
+        if (keys[i] == key_id) {
+            /* already recorded */
+            return;
+        }
+    }
+    if (n < MCUBOOT_ROTPK_MAX_KEYS_PER_IMAGE) {
+        keys[n] = key_id;
+        *count = n + 1;
+    }
+}
+
 /*
  * Verify the integrity of the image.
  * Return non-zero if image could not be validated/does not validate.
@@ -243,9 +275,9 @@ bootutil_img_validate(struct boot_loader_state *state,
 #endif
 
 #ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
-    bool key_must_sign = true;
-    bool key_might_sign = false;
-    uint8_t key_must_sign_count = 0;
+    int report_id;
+    int verified_keys[MCUBOOT_ROTPK_MAX_KEYS_PER_IMAGE];
+    uint8_t verified_keys_count = 0;
 #endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
 
 #ifdef MCUBOOT_UUID_VID
@@ -417,11 +449,11 @@ bootutil_img_validate(struct boot_loader_state *state,
             FIH_CALL(bootutil_verify_sig, valid_signature, hash, sizeof(hash),
                                                            buf, len, key_id);
 #ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
-            rc = boot_plat_check_key_policy((valid_signature == 0), key_id,
-                                            &key_might_sign, &key_must_sign,
-                                            &key_must_sign_count);
-            if (rc) {
-                goto out;
+            if (FIH_EQ(valid_signature, FIH_SUCCESS)) {
+                report_id = get_boot_verified_key_id(key_id);
+                boot_collect_verified_key(report_id,
+                                          verified_keys,
+                                          &verified_keys_count);
             }
 #endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
 
@@ -568,15 +600,18 @@ bootutil_img_validate(struct boot_loader_state *state,
     /* This returns true on EQ, rc is err on non-0 */
     rc = FIH_NOT_EQ(valid_signature, FIH_SUCCESS);
 #endif
-#ifdef EXPECTED_SIG_TLV
+
 #ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
-    if (FIH_NOT_EQ(key_must_sign, true) || FIH_NOT_EQ(key_might_sign, true)) {
-        rc = -1;
+    FIH_CALL(boot_plat_check_key_policy, fih_rc, image_index, verified_keys,
+             verified_keys_count);
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+        FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
     }
-#else
+#endif
+
+#if defined EXPECTED_SIG_TLV && !defined(MCUBOOT_IMAGE_MULTI_SIG_SUPPORT)
     FIH_SET(fih_rc, valid_signature);
-#endif /* MCUBOOT_IMAGE_MULTI_SIG_SUPPORT */
 #endif
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     if (FIH_NOT_EQ(security_counter_valid, FIH_SUCCESS)) {

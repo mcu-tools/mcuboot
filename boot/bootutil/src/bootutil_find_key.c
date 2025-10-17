@@ -80,6 +80,11 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key_id_buf, uint8_t key_id_b
 
 #elif defined(MCUBOOT_HW_KEY)
 extern unsigned int pub_key_len;
+static int last_hw_key_index = -1;
+int bootutil_get_last_hw_key_index(void)
+{
+    return last_hw_key_index;
+}
 int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 {
     bootutil_sha_context sha_ctx;
@@ -99,6 +104,7 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 
     BOOT_LOG_DBG("bootutil_find_key: image_index %d", image_index);
     for (key_index = 0; key_index < NUM_OF_KEYS; key_index++) {
+        last_hw_key_index = -1;
         rc = boot_retrieve_public_key_hash(image_index, key_index, key_hash, &key_hash_size);
         if (rc) {
             return -1;
@@ -112,13 +118,15 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
         */
         FIH_CALL(boot_fih_memequal, fih_rc, hash, key_hash, key_hash_size);
         if (FIH_EQ(fih_rc, FIH_SUCCESS)) {
-            BOOT_LOG_INF("Key %d hash found for image %d", key_index, image_index);
+            BOOT_LOG_INF("Key hash matched for image %u at slot %u", image_index, key_index);
             bootutil_keys[0].key = key;
             pub_key_len = key_len;
+            last_hw_key_index = key_index;
             return 0;
         }
     }
     BOOT_LOG_ERR("Key hash NOT found for image %d!", image_index);
+    last_hw_key_index = -1;
 
     return -1;
 }
