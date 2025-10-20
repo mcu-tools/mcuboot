@@ -1,0 +1,23 @@
+name: Python ruff compliance check
+
+# Workflow triggers on PRs, pushes to main, once per day at midnight and can be started manually.
+on:
+  # By default, pull_request includes: opened, synchronize, or reopened
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+# Only cancel ongoing runs for PRs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  ruff_python_check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v3
