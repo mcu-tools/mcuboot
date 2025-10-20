@@ -1,0 +1,24 @@
+# Copyright (c) 2024 Basalte bv
+# SPDX-License-Identifier: Apache-2.0
+
+line-length = 100
+target-version = "py310"
+
+[lint]
+select = [
+    "B",      # flake8-bugbear
+    "E",      # pycodestyle
+    "F",      # pyflakes
+    "I",      # isort
+    "SIM",    # flake8-simplify
+    "UP",     # pyupgrade
+    "W",      # pycodestyle warnings
+]
+
+ignore = [
+    "SIM108", # Allow if-else blocks instead of forcing ternary operator
+]
+
+[format]
+quote-style = "preserve"
+line-ending = "lf"
