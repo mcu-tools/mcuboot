@@ -698,13 +698,16 @@ out:
  * are present but these features are not enabled.
  */
 static bool
-boot_is_header_valid(const struct image_header *hdr, const struct flash_area *fap,
-                     struct boot_loader_state *state)
+boot_check_header_valid(struct boot_loader_state *state, int slot)
 {
+    const struct flash_area *fap = NULL;
+    struct image_header *hdr;
     uint32_t size;
 
-    (void)state;
+    fap = BOOT_IMG_AREA(state, slot);
+    assert(fap != NULL);
 
+    hdr = boot_img_hdr(state, slot);
     if (hdr->ih_magic != IMAGE_MAGIC) {
         return false;
     }
@@ -910,7 +913,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         }
     }
 #endif
-    if (!boot_is_header_valid(hdr, fap, state)) {
+    if (!boot_check_header_valid(state, slot)) {
         fih_rc = FIH_FAILURE;
     } else {
         BOOT_HOOK_CALL_FIH(boot_image_check_hook, FIH_BOOT_HOOK_REGULAR,
@@ -2525,7 +2528,7 @@ boot_get_slot_usage(struct boot_loader_state *state)
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             hdr = boot_img_hdr(state, slot);
 
-            if (boot_is_header_valid(hdr, BOOT_IMG_AREA(state, slot), state)) {
+            if (boot_check_header_valid(state, slot)) {
                 state->slot_usage[BOOT_CURR_IMG(state)].slot_available[slot] = true;
                 BOOT_LOG_IMAGE_INFO(slot, hdr);
             } else {
