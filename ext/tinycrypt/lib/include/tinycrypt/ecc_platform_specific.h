@@ -76,7 +76,6 @@
 */
 #define default_RNG_defined 1
 
-
 int default_CSPRNG(uint8_t *dest, unsigned int size);
 
 #endif /* __UECC_PLATFORM_SPECIFIC_H_ */
