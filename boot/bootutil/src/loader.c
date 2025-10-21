@@ -246,8 +246,7 @@ fill_rsp(struct boot_loader_state *state, struct boot_rsp *rsp)
  * @retval 1            If ver1 is greater than ver2.
  */
 static int
-boot_version_cmp(const struct image_version *ver1,
-                 const struct image_version *ver2)
+boot_compare_version(const struct image_version *ver1, const struct image_version *ver2)
 {
 #if !defined(MCUBOOT_VERSION_CMP_USE_BUILD_NUMBER)
     BOOT_LOG_DBG("boot_version_cmp: ver1 %u.%u.%u vs ver2 %u.%u.%u",
@@ -330,7 +329,7 @@ boot_verify_slot_dependency(struct boot_loader_state *state,
 
     dep_version = &state->imgs[dep->image_id][dep_slot].hdr.ih_ver;
 
-    rc = boot_version_cmp(dep_version, &dep->image_min_version);
+    rc = boot_compare_version(dep_version, &dep->image_min_version);
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
     if (rc < 0) {
         /* Dependency not satisfied.
@@ -917,7 +916,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         int rc;
 
         /* Check if version of secondary slot is sufficient */
-        rc = boot_version_cmp(
+        rc = boot_compare_version(
                 &boot_img_hdr(state, BOOT_SLOT_SECONDARY)->ih_ver,
                 &boot_img_hdr(state, BOOT_SLOT_PRIMARY)->ih_ver);
         if (rc < 0 && boot_check_header_erased(state, BOOT_SLOT_PRIMARY)) {
@@ -2156,8 +2155,9 @@ check_downgrade_prevention(struct boot_loader_state *state)
         }
     }
     else {
-        rc = boot_version_cmp(&boot_img_hdr(state, BOOT_SLOT_SECONDARY)->ih_ver,
-                              &boot_img_hdr(state, BOOT_SLOT_PRIMARY)->ih_ver);
+        rc = boot_compare_version(
+            &boot_img_hdr(state, BOOT_SLOT_SECONDARY)->ih_ver,
+            &boot_img_hdr(state, BOOT_SLOT_PRIMARY)->ih_ver);
     }
     if (rc < 0) {
         /* Image in slot 0 prevents downgrade, delete image in slot 1 */
@@ -2586,7 +2586,7 @@ find_slot_with_highest_version(struct boot_loader_state *state)
             if (candidate_slot == BOOT_SLOT_NONE) {
                 candidate_slot = slot;
             } else {
-                rc = boot_version_cmp(
+                rc = boot_compare_version(
                             &boot_img_hdr(state, slot)->ih_ver,
                             &boot_img_hdr(state, candidate_slot)->ih_ver);
                 if (rc == 1) {
