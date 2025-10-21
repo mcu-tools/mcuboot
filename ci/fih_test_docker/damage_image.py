@@ -114,7 +114,9 @@ class ImageTLV:
 
 def get_arguments():
     parser = argparse.ArgumentParser(description='Corrupt an MCUBoot image')
-    parser.add_argument("-i", "--in-file", required=True, help='The input image to be corrupted (read only)')
+    parser.add_argument(
+        "-i", "--in-file", required=True, help='The input image to be corrupted (read only)'
+    )
     parser.add_argument("-o", "--out-file", required=True, help='the corrupted image')
     parser.add_argument('-a', '--image-hash',
                         default=False,
@@ -147,7 +149,10 @@ def damage_image(args, in_file, out_file_content, image_offset):
     # Find the Image header
     image_header = ImageHeader.read_from_binary(in_file)
     if image_header.ih_magic != IMAGE_MAGIC:
-        raise Exception(f"Invalid magic in image_header: 0x{image_header.ih_magic:X} instead of 0x{IMAGE_MAGIC:X}")
+        raise Exception(
+            f"Invalid magic in image_header: 0x{image_header.ih_magic:X} "
+            "instead of 0x{IMAGE_MAGIC:X}"
+        )
 
     # Find the TLV header
     tlv_info_offset = image_header.ih_hdr_size + image_header.ih_img_size
@@ -157,7 +162,10 @@ def damage_image(args, in_file, out_file_content, image_offset):
     if tlv_info.it_magic == TLV_PROT_INFO_MAGIC:
         logging.debug(f"Protected TLV found at offset 0x{tlv_info_offset:X}")
         if image_header.ih_protect_tlv_size != tlv_info.it_tlv_tot:
-            raise Exception(f"Invalid prot TLV len ({image_header.ih_protect_tlv_size:d} vs. {tlv_info.it_tlv_tot:d})")
+            raise Exception(
+                f"Invalid prot TLV len ({image_header.ih_protect_tlv_size:d} "
+                "vs. {tlv_info.it_tlv_tot:d})"
+            )
 
         # seek to unprotected TLV
         tlv_info_offset += tlv_info.it_tlv_tot
@@ -170,7 +178,9 @@ def damage_image(args, in_file, out_file_content, image_offset):
 
     logging.debug(f"Unprotected TLV found at offset 0x{tlv_info_offset:X}")
     if tlv_info.it_magic != TLV_INFO_MAGIC:
-        raise Exception(f"Invalid magic in tlv info: 0x{tlv_info.it_magic:X} instead of 0x{TLV_INFO_MAGIC:X}")
+        raise Exception(
+            f"Invalid magic in tlv info: 0x{tlv_info.it_magic:X} instead of 0x{TLV_INFO_MAGIC:X}"
+        )
 
     tlv_off = tlv_info_offset + len(ImageTLVInfo())
     tlv_end = tlv_info_offset + tlv_info.it_tlv_tot
@@ -180,9 +190,15 @@ def damage_image(args, in_file, out_file_content, image_offset):
         in_file.seek(image_offset + tlv_off, 0)
         tlv = ImageTLV.read_from_binary(in_file)
 
-        logging.debug(f"    tlv {get_tlv_type_string(tlv.it_type):24s} len = {tlv.it_len:4d}, len = {len(tlv):4d}")
+        logging.debug(
+            f"    tlv {get_tlv_type_string(tlv.it_type):24s} "
+            "len = {tlv.it_len:4d}, len = {len(tlv):4d}"
+        )
 
-        if is_valid_signature(tlv) and args.signature or tlv.it_type == TLV_VALUES['SHA256'] and args.image_hash:
+        if (
+            is_valid_signature(tlv) and args.signature
+            or tlv.it_type == TLV_VALUES['SHA256'] and args.image_hash
+        ):
             damage_tlv(image_offset, tlv_off, tlv, out_file_content)
 
         tlv_off += len(tlv)
@@ -194,17 +210,13 @@ def main():
     logging.debug("The script was started")
 
     copyfile(args.in_file, args.out_file)
-    in_file = open(args.in_file, 'rb')
+    with open(args.in_file, 'rb') as in_file:
+        out_file_content = bytearray(in_file.read())
 
-    out_file_content = bytearray(in_file.read())
+        damage_image(args, in_file, out_file_content, 0)
 
-    damage_image(args, in_file, out_file_content, 0)
-
-    in_file.close()
-
-    file_to_damage = open(args.out_file, 'wb')
-    file_to_damage.write(out_file_content)
-    file_to_damage.close()
+    with open(args.out_file, 'wb') as file_to_damage:
+        file_to_damage.write(out_file_content)
 
 
 if __name__ == "__main__":

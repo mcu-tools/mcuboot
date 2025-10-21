@@ -62,7 +62,11 @@ def parse_size(size_hex):
 
 
 def parse_status(status_hex):
-    return f"{STATUS[status_hex]} ({status_hex})" if status_hex in STATUS else f"INVALID ({status_hex})"
+    return (
+        f"{STATUS[status_hex]} ({status_hex})"
+        if status_hex in STATUS
+        else f"INVALID ({status_hex})"
+    )
 
 
 def parse_boot_magic(trailer_magic):
@@ -131,7 +135,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
         with open(imgfile, "rb") as f:
             b = f.read()
     except FileNotFoundError:
-        raise click.UsageError(f"Image file not found ({imgfile})")
+        raise click.UsageError(f"Image file not found ({imgfile})") from None
 
     # Parsing the image header
     _header = struct.unpack('IIHHIIBBHI', b[:28])
