@@ -147,8 +147,7 @@ def keygen(type, key, password):
 @click.command(help='Dump public key from keypair')
 def getpub(key, encoding, lang, output):
     if encoding and lang:
-        raise click.UsageError('Please use only one of `--encoding/-e` '
-                               'or `--lang/-l`')
+        raise click.UsageError('Please use only one of `--encoding/-e` or `--lang/-l`')
     elif not encoding and not lang:
         # Preserve old behavior defaulting to `c`. If `lang` is removed,
         # `default=valid_encodings[0]` should be added to `-e` param.
@@ -216,9 +215,8 @@ def getpriv(key, minimal, format):
         print("Invalid passphrase")
     try:
         key.emit_private(minimal, format)
-    except (RSAUsageError, ECDSAUsageError, Ed25519UsageError,
-            X25519UsageError) as e:
-        raise click.UsageError(e)
+    except (RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError) as e:
+        raise click.UsageError(e) from e
 
 
 @click.argument('imgfile')
@@ -268,7 +266,7 @@ def validate_version(ctx, param, value):
         decode_version(value)
         return value
     except ValueError as e:
-        raise click.BadParameter(f"{e}")
+        raise click.BadParameter(f"{e}") from None
 
 
 def validate_security_counter(ctx, param, value):
@@ -282,7 +280,7 @@ def validate_security_counter(ctx, param, value):
                 raise click.BadParameter(
                     f"{value} is not a valid integer. Please use code literals "
                     "prefixed with 0b/0B, 0o/0O, or 0x/0X as necessary."
-                    )
+                ) from None
 
 
 def validate_header_size(ctx, param, value):
@@ -309,7 +307,7 @@ def get_dependencies(ctx, param, value):
             try:
                 versions.append(decode_version(raw_version))
             except ValueError as e:
-                raise click.BadParameter(f"{e}")
+                raise click.BadParameter(f"{e}") from None
         dependencies = dict()
         dependencies[image.DEP_IMAGES_KEY] = images
         dependencies[image.DEP_VERSIONS_KEY] = versions
