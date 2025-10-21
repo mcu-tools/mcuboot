@@ -2883,33 +2883,6 @@ boot_close_all_flash_areas(struct boot_loader_state *state)
     }
 }
 
-#if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO) || defined(MCUBOOT_DATA_SHARING)
-/**
- * Fetches the maximum allowed size of the image
- */
-const struct image_max_size *boot_get_max_app_size(void)
-{
-#if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
-    uint8_t i = 0;
-
-    while (i < BOOT_IMAGE_NUMBER) {
-        if (image_max_sizes[i].calculated == true) {
-            break;
-        }
-
-        ++i;
-    }
-
-    if (i == BOOT_IMAGE_NUMBER) {
-        /* Information not available, need to fetch it */
-        boot_fetch_slot_state_sizes();
-    }
-#endif
-
-    return image_max_sizes;
-}
-#endif
-
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
 uint32_t boot_get_state_secondary_offset(struct boot_loader_state *state,
                                          const struct flash_area *fap)
