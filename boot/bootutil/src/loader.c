@@ -1105,7 +1105,6 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
     const struct flash_area *fap;
 #ifdef MCUBOOT_ENC_IMAGES
     uint8_t slot;
-    uint8_t i;
 #endif
     uint32_t size;
     uint32_t copy_size;
@@ -1193,15 +1192,10 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             boot_enc_init(BOOT_CURR_ENC_SLOT(state, slot));
 
             rc = boot_read_enc_key(fap, slot, bs);
-            assert(rc == 0);
-
-            for (i = 0; i < BOOT_ENC_KEY_SIZE; i++) {
-                if (bs->enckey[slot][i] != 0xff) {
-                    break;
-                }
-            }
-
-            if (i != BOOT_ENC_KEY_SIZE) {
+            if (rc) {
+                BOOT_LOG_DBG("boot_swap_image: Failed loading key (%d, %d)",
+                              image_index, slot);
+            } else {
                 boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, slot), bs->enckey[slot]);
             }
         }
