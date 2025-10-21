@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Nordic Semiconductor ASA
+ * Copyright (c) 2025 WIKA Alexander Wiegand SE & Co. KG
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,7 +11,6 @@
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/pk.h"
 #include "mbedtls/ecp.h"
-#include "stm32wlxx_hal.h"
 #include "bootutil/generate_key_pair.h"
 // #include "key/key.h"
 #include "bootutil/bootutil_log.h"

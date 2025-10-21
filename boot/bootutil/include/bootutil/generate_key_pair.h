@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2025 WIKA Alexander Wiegand SE & Co. KG
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #ifndef __GENERATE_KEY_PAIR_H__
 #define __GENERATE_KEY_PAIR_H__
 
