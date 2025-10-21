@@ -754,40 +754,21 @@ boot_is_header_valid(const struct image_header *hdr, const struct flash_area *fa
     return true;
 }
 
-/*
- * Check that a memory area consists of a given value.
- */
-static inline bool
-boot_data_is_set_to(uint8_t val, void *data, size_t len)
-{
-    uint8_t i;
-    uint8_t *p = (uint8_t *)data;
-    for (i = 0; i < len; i++) {
-        if (val != p[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-static int
+static bool
 boot_check_header_erased(struct boot_loader_state *state, int slot)
 {
     const struct flash_area *fap = NULL;
     struct image_header *hdr;
-    uint8_t erased_val;
 
     fap = BOOT_IMG_AREA(state, slot);
     assert(fap != NULL);
 
-    erased_val = flash_area_erased_val(fap);
-
     hdr = boot_img_hdr(state, slot);
-    if (!boot_data_is_set_to(erased_val, &hdr->ih_magic, sizeof(hdr->ih_magic))) {
-        return -1;
+    if (bootutil_buffer_is_erased(fap, &hdr->ih_magic, sizeof(hdr->ih_magic))) {
+        return true;
     }
 
-    return 0;
+    return false;
 }
 
 #if defined(MCUBOOT_DIRECT_XIP)
@@ -854,8 +835,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
     assert(fap != NULL);
 
     hdr = boot_img_hdr(state, slot);
-    if (boot_check_header_erased(state, slot) == 0 ||
-        (hdr->ih_flags & IMAGE_F_NON_BOOTABLE)) {
+    if (boot_check_header_erased(state, slot) || (hdr->ih_flags & IMAGE_F_NON_BOOTABLE)) {
 #if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
         /*
          * This fixes an issue where an image might be erased, but a trailer
@@ -919,7 +899,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         rc = boot_compare_version(
                 &boot_img_hdr(state, BOOT_SLOT_SECONDARY)->ih_ver,
                 &boot_img_hdr(state, BOOT_SLOT_PRIMARY)->ih_ver);
-        if (rc < 0 && boot_check_header_erased(state, BOOT_SLOT_PRIMARY)) {
+        if (rc < 0 && !boot_check_header_erased(state, BOOT_SLOT_PRIMARY)) {
             BOOT_LOG_ERR("insufficient version in secondary slot");
             boot_scramble_slot(fap, slot);
             /* Image in the secondary slot does not satisfy version requirement.
@@ -1731,9 +1711,8 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
      * already been checked).
      */
     FIH_DECLARE(fih_rc, FIH_FAILURE);
-    rc = boot_check_header_erased(state, BOOT_SLOT_PRIMARY);
     FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SLOT_PRIMARY, bs, 0);
-    if (rc == 0 || FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+    if (boot_check_header_erased(state, BOOT_SLOT_PRIMARY) || FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         rc = boot_copy_image(state, bs);
     } else {
         rc = boot_swap_image(state, bs);
@@ -1963,7 +1942,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
         rc = boot_read_image_headers(state, !boot_status_is_reset(bs), bs);
 #ifdef MCUBOOT_BOOTSTRAP
         /* When bootstrapping it's OK to not have image magic in the primary slot */
-        if (rc != 0 && boot_check_header_erased(state, BOOT_SLOT_PRIMARY) != 0) {
+        if (rc != 0 && !boot_check_header_erased(state, BOOT_SLOT_PRIMARY)) {
 #else
         if (rc != 0) {
 #endif
@@ -2042,11 +2021,10 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
                  * magic, so also run validation on the primary slot to be
                  * sure it's not OK.
                  */
-                rc = boot_check_header_erased(state, BOOT_SLOT_PRIMARY);
                 FIH_CALL(boot_validate_slot, fih_rc,
                          state, BOOT_SLOT_PRIMARY, bs, 0);
-
-                if (rc == 0 || FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                if (boot_check_header_erased(state, BOOT_SLOT_PRIMARY) ||
+                    FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
 
                     rc = (boot_img_hdr(state, BOOT_SLOT_SECONDARY)->ih_magic == IMAGE_MAGIC) ? 1: 0;
                     FIH_CALL(boot_validate_slot, fih_rc,
