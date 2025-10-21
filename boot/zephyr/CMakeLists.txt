@@ -383,45 +383,48 @@ if(NOT CONFIG_BOOT_SIGNATURE_TYPE_NONE AND NOT CONFIG_BOOT_SIGNATURE_KEY_FILE ST
 endif()
 
 if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQUAL "")
-  set(key_file "${CONFIG_BOOT_ENCRYPTION_KEY_FILE}")
-  string(CONFIGURE "${key_file}" key_file)
+  if(CONFIG_BOOT_ENCRYPT_IMAGE_WITH_SHARED_KEY)
+    set(key_file "${CONFIG_BOOT_ENCRYPTION_KEY_FILE}")
+    string(CONFIGURE "${key_file}" key_file)
 
-  if(IS_ABSOLUTE ${key_file})
-    set(encryption_key_file ${key_file})
-  elseif(EXISTS ${APPLICATION_CONFIG_DIR}/${key_file})
-    set(encryption_key_file ${APPLICATION_CONFIG_DIR}/${key_file})
-  else()
-    set(encryption_key_file ${MCUBOOT_DIR}/${key_file})
-  endif()
-  message("MCUBoot bootloader encryption key file: ${encryption_key_file}")
+    if(IS_ABSOLUTE ${key_file})
+      set(encryption_key_file ${key_file})
+    elseif(EXISTS ${APPLICATION_CONFIG_DIR}/${key_file})
+      set(encryption_key_file ${APPLICATION_CONFIG_DIR}/${key_file})
+    else()
+      set(encryption_key_file ${MCUBOOT_DIR}/${key_file})
+    endif()
+    message("MCUBoot bootloader encryption key file: ${encryption_key_file}")
 
-  # Emit a warning if using one of the default MCUboot key files
-  set(mcuboot_default_encryption_files
-      ${MCUBOOT_DIR}/enc-ec256-priv.pem
-      ${MCUBOOT_DIR}/enc-ec256-pub.pem
-      ${MCUBOOT_DIR}/enc-rsa2048-priv.pem
-      ${MCUBOOT_DIR}/enc-rsa2048-pub.pem
-      ${MCUBOOT_DIR}/enc-x25519-priv.pem
-      ${MCUBOOT_DIR}/enc-x25519-pub.pem
-  )
-
-  if(${encryption_key_file} IN_LIST mcuboot_default_encryption_files)
-    message(WARNING "WARNING: Using default MCUboot encryption key file, this file is for debug use only and is not secure!")
-  endif()
-
-  set(GENERATED_ENCKEY ${ZEPHYR_BINARY_DIR}/autogen-enckey.c)
-  add_custom_command(
-    OUTPUT ${GENERATED_ENCKEY}
-    COMMAND
-    ${PYTHON_EXECUTABLE}
-    ${MCUBOOT_DIR}/scripts/imgtool.py
-    getpriv
-    -k
-    ${encryption_key_file}
-    > ${GENERATED_ENCKEY}
-    DEPENDS ${encryption_key_file}
+    # Emit a warning if using one of the default MCUboot key files
+    set(mcuboot_default_encryption_files
+        ${MCUBOOT_DIR}/enc-ec256-priv.pem
+        ${MCUBOOT_DIR}/enc-ec256-pub.pem
+        ${MCUBOOT_DIR}/enc-rsa2048-priv.pem
+        ${MCUBOOT_DIR}/enc-rsa2048-pub.pem
+        ${MCUBOOT_DIR}/enc-x25519-priv.pem
+        ${MCUBOOT_DIR}/enc-x25519-pub.pem
     )
-  zephyr_library_sources(${GENERATED_ENCKEY})
+
+    if(${encryption_key_file} IN_LIST mcuboot_default_encryption_files)
+      message(WARNING "WARNING: Using default MCUboot encryption key file, this file is for debug use only and is not secure!")
+    endif()
+
+    set(GENERATED_ENCKEY ${ZEPHYR_BINARY_DIR}/autogen-enckey.c)
+    add_custom_command(
+      OUTPUT ${GENERATED_ENCKEY}
+      COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${MCUBOOT_DIR}/scripts/imgtool.py
+      getpriv
+      -k
+      ${encryption_key_file}
+      > ${GENERATED_ENCKEY}
+      DEPENDS ${encryption_key_file}
+    )
+
+    zephyr_library_sources(${GENERATED_ENCKEY})
+  endif()
 endif()
 
 if(CONFIG_MCUBOOT_CLEANUP_ARM_CORE)
@@ -708,4 +711,19 @@ if(SYSBUILD)
 
   set(mcuboot_image_footer_size ${required_size} CACHE INTERNAL "Estimated MCUboot image trailer size" FORCE)
   set(mcuboot_image_upgrade_footer_size ${required_upgrade_size} CACHE INTERNAL "Estimated MCUboot update image trailer size" FORCE)
+endif()
+
+if(${CONFIG_BOOT_ENCRYPT_IMAGE_GENERATE_BASIC_KEY_PROVIDER})
+    # Need to generate single key provider source, from template.
+    # Take provided key, in form of a string and make it into C array, BOOT_AES_RAW_KEY_HEX_ARRAY,
+    # of byte size hex values.
+    set(BOOT_AES_RAW_KEY_HEX_STRING ${CONFIG_BOOT_ENCRYPT_IMAGE_EMBEDDED_RAW_KEY})
+    string(REGEX REPLACE "(..)" "0x\\1, " BOOT_AES_RAW_KEY_HEX_ARRAY "${BOOT_AES_RAW_KEY_HEX_STRING}")
+
+    # The tamplate references BOOT_AES_RAW_KEY_HEX_ARRAY where it expects the array to be substituted.
+    set(OUTPUT_BOOT_AES_RAW_KEY_SRC ${ZEPHYR_BINARY_DIR}/mcuboot_generated/builtin_aes_key_provider.c)
+    configure_file(templates/single_builtin_aes_key_provider.c.template ${OUTPUT_BOOT_AES_RAW_KEY_SRC} @ONLY)
+
+    # Add generated source file to build
+    zephyr_library_sources(${OUTPUT_BOOT_AES_RAW_KEY_SRC})
 endif()
