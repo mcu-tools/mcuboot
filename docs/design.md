@@ -571,6 +571,12 @@ image trailer. An image trailer has the following structure:
     |                    0xff padding as needed                     |
     |        (BOOT_MAX_ALIGN minus 4 octets from Swap size)         |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |   Unprotected TLV size [*2]   |   Unprotected TLV size [*2]   |
+    |   Secondary slot (2 octets)   |    Primary slot (2 octets)    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                  0xff padding as needed [*2]                  |
+    |  (BOOT_MAX_ALIGN minus 4 octets from unprotected TLV sizes)   |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |   Swap info   |  0xff padding (BOOT_MAX_ALIGN minus 1 octet)  |
     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
     |   Copy done   |  0xff padding (BOOT_MAX_ALIGN minus 1 octet)  |
@@ -586,6 +592,7 @@ image trailer. An image trailer has the following structure:
 ```
 
 [*]: Only present if the encryption option is enabled (`MCUBOOT_ENC_IMAGES`).
+[*2]: Only present if swap using offset mode is used (`MCUBOOT_SWAP_USING_OFFSET`).
 
 The offset immediately following such a record represents the start of the next
 flash area.
@@ -943,23 +950,6 @@ process is presented below.
 
 + Boot into image in the primary slot of the 0th image position\
   (other image in the boot chain is started by another image).
-
-By enabling the `MCUBOOT_VERSION_CMP_USE_SLOT_NUMBER` configuration option,
-the dependency check may be extended to match for a specified slot of a specific
-image. This functionality is useful in a multi-core system when Direct XIP mode
-is used.
-In this case, the main image can be started from one of the two (primary or
-secondary) slots.
-If there is a fixed connection between the slots of two different images,
-e.g. if the main image always chainloads a companion image from the same slot,
-the check must take this into account and only consider a matching slot when
-resolving dependencies.
-
-There are three values that can be passed when specifying dependencies:
-
-1. ``active``: the dependency should be checked against either primary or secondary slot.
-2. ``primary``: the dependency should be checked only against primary slot.
-3. ``secondary``: the dependency should be checked only against secondary slot.
 
 ### [Multiple image boot for RAM loading and direct-xip](#multiple-image-boot-for-ram-loading-and-direct-xip)
 

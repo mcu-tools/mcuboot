@@ -31,11 +31,11 @@ boot_image_validate_encrypted(struct boot_loader_state *state,
     int rc;
 
     if (MUST_DECRYPT(fa_p, BOOT_CURR_IMG(state), hdr)) {
-        rc = boot_enc_load(state, 1, hdr, fa_p, bs);
+        rc = boot_enc_load(state, BOOT_SLOT_SECONDARY, hdr, fa_p, bs);
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
-        rc = boot_enc_set_key(BOOT_CURR_ENC(state), 1, bs);
+        rc = boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, BOOT_SLOT_SECONDARY), bs->enckey[BOOT_SLOT_SECONDARY]);
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
@@ -169,7 +169,7 @@ decrypt_region_inplace(struct boot_loader_state *state,
                     blk_sz = tlv_off - (off + bytes_copied);
                 }
             }
-            boot_enc_decrypt(BOOT_CURR_ENC(state), slot,
+            boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, slot),
                     (off + bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
                     blk_off, &buf[idx]);
         }
@@ -235,11 +235,11 @@ decrypt_image_inplace(const struct flash_area *fa_p,
 #endif
         memset(&boot_data, 0, sizeof(struct boot_loader_state));
         /* Load the encryption keys into cache */
-        rc = boot_enc_load(state, 0, hdr, fa_p, bs);
+        rc = boot_enc_load(state, BOOT_SLOT_PRIMARY, hdr, fa_p, bs);
         if (rc < 0) {
             FIH_RET(fih_rc);
         }
-        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC(state), 0, bs)) {
+        if (rc == 0 && boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, BOOT_SLOT_PRIMARY), bs->enckey[BOOT_SLOT_PRIMARY])) {
             FIH_RET(fih_rc);
         }
     }

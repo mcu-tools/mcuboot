@@ -202,7 +202,7 @@ impl RunStatus {
 
         // Creates a badly signed image in the secondary slot to check that
         // it is not upgraded to
-        let bad_secondary_slot_image = run.clone().make_bad_secondary_slot_image();
+        let bad_secondary_slot_image = run.clone().make_bad_secondary_slot_image(ImageManipulation::BadSignature);
 
         failed |= bad_secondary_slot_image.run_signfail_upgrade();
 

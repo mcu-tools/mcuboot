@@ -297,7 +297,7 @@ impl ImagesBuilder {
         images
     }
 
-    pub fn make_bad_secondary_slot_image(self) -> Images {
+    pub fn make_bad_secondary_slot_image(self, img_manipulation : ImageManipulation) -> Images {
         let mut bad_flash = self.flash;
         let ram = self.ram.clone(); // TODO: Avoid this clone.
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
@@ -305,7 +305,7 @@ impl ImagesBuilder {
             let primaries = install_image(&mut bad_flash, &self.areadesc, &slots, 0,
                 maximal(32784), &ram, &dep, ImageManipulation::None, Some(0));
             let upgrades = install_image(&mut bad_flash, &self.areadesc, &slots, 1,
-                maximal(41928), &ram, &dep, ImageManipulation::BadSignature, Some(0));
+                maximal(41928), &ram, &dep, img_manipulation, Some(0));
             OneImage {
                 slots,
                 primaries,
@@ -899,8 +899,8 @@ impl Images {
         fails > 0
     }
 
-    // Test taht too big upgrade image will be rejected
-    pub fn run_oversizefail_upgrade(&self) -> bool {
+    // Test expecting failed upgrade and primary slot left untouched
+    pub fn run_fail_upgrade_primary_intact(&self) -> bool {
         let mut flash = self.flash.clone();
         let mut fails = 0;
 
@@ -940,7 +940,7 @@ impl Images {
         }
 
         if fails > 0 {
-            error!("Expected an upgrade failure when image has to big size");
+            error!("Expected an upgrade failure and primary slot left untouched");
         }
 
         fails > 0
@@ -1930,7 +1930,21 @@ fn install_image(flash: &mut SimMultiFlash, areadesc: &AreaDesc, slots: &[SlotIn
             _ => place.offset
         }
     } else {
-        0
+        if cfg!(feature = "check-load-addr") {
+            let wrong_off = match img_manipulation {
+                ImageManipulation::WrongOffset => true,
+                _ => false
+            };
+            if wrong_off {
+                u32::MAX
+            } else if cfg!(feature = "direct-xip") {
+                slots[slot_ind].base_off  as u32
+            } else {
+                slots[0].base_off as u32
+            }
+        } else {
+            0
+        }
     };
 
     let len = match len {

@@ -3,13 +3,12 @@
 from cryptography.hazmat.primitives import serialization
 
 
-class PrivateBytesMixin():
+class PrivateBytesMixin:
     def _get_private_bytes(self, minimal, format, exclass):
         if format is None:
             format = self._DEFAULT_FORMAT
         if format not in self._VALID_FORMATS:
-            raise exclass("{} does not support {}".format(
-                self.shortname(), format))
+            raise exclass(f"{self.shortname()} does not support {format}")
         return format, self.key.private_bytes(
                 encoding=serialization.Encoding.DER,
                 format=self._VALID_FORMATS[format],

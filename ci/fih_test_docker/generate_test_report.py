@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+
 from utils import CATEGORIES, parse_yaml_file
 
 
@@ -22,20 +23,28 @@ def print_results(results):
 
     print("{:s}: {:d}.".format(CATEGORIES['TOTAL'], test_stats[CATEGORIES['TOTAL']]))
     print("{:s} ({:d}):".format(CATEGORIES['SUCCESS'], test_stats[CATEGORIES['SUCCESS']]))
-    print("    {:s}: ({:d}):".format(CATEGORIES['ADDRES_NOEXEC'], test_stats[CATEGORIES['ADDRES_NOEXEC']]))
+    print("    {:s}: ({:d}):".format(
+        CATEGORIES['ADDRES_NOEXEC'], test_stats[CATEGORIES['ADDRES_NOEXEC']])
+    )
     test_with_skip = test_stats[CATEGORIES['SUCCESS']] - test_stats[CATEGORIES['ADDRES_NOEXEC']]
     print("    {:s}: ({:d}):".format(CATEGORIES['SKIPPED'], test_with_skip))
-    print("    {:s} ({:d}):".format(CATEGORIES['NO_BOOT'], test_with_skip - test_stats[CATEGORIES['BOOT']]))
-    for last_line in failed_boot_last_lines.keys():
-        print("        last line: {:s} ({:d})".format(last_line, failed_boot_last_lines[last_line]))
+    print("    {:s} ({:d}):".format(
+        CATEGORIES['NO_BOOT'], test_with_skip - test_stats[CATEGORIES['BOOT']])
+    )
+    for last_line in failed_boot_last_lines:
+        print(f"        last line: {last_line:s} ({failed_boot_last_lines[last_line]:d})")
     print("    {:s} ({:d})".format(CATEGORIES['BOOT'], test_stats[CATEGORIES['BOOT']]))
-    print("{:s} ({:d}):".format(CATEGORIES['FAILED'], test_stats[CATEGORIES['TOTAL']] - test_stats[CATEGORIES['SUCCESS']]))
-    for reason in exec_fail_reasons.keys():
-        print("    {:s} ({:d})".format(reason, exec_fail_reasons[reason]))
+    print("{:s} ({:d}):".format(
+        CATEGORIES['FAILED'], test_stats[CATEGORIES['TOTAL']] - test_stats[CATEGORIES['SUCCESS']])
+    )
+    for reason in exec_fail_reasons:
+        print(f"    {reason:s} ({exec_fail_reasons[reason]:d})")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='''Process a FIH test output yaml file, and output a human readable report''')
+    parser = argparse.ArgumentParser(
+        description='''Process a FIH test output yaml file, and output a human readable report'''
+    )
     parser.add_argument('filename', help='yaml file to process')
 
     args = parser.parse_args()

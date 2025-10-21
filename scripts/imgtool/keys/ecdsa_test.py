@@ -16,7 +16,8 @@ from cryptography.hazmat.primitives.hashes import SHA256
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from imgtool.keys import load, ECDSA256P1, ECDSAUsageError
+from imgtool.keys import ECDSA256P1, ECDSAUsageError, load
+
 
 class EcKeyGeneration(unittest.TestCase):
 

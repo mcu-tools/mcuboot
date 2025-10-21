@@ -20,19 +20,13 @@
 Image signing and management.
 """
 
-from . import version as versmod
-from .boot_record import create_sw_component_data
-import click
 import copy
-from enum import Enum
-import array
-from intelhex import IntelHex
 import hashlib
-import array
 import os.path
 import re
 import struct
 import uuid
+from collections import namedtuple
 from enum import Enum
 
 import click
@@ -46,11 +40,10 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from intelhex import IntelHex
 
-from . import version as versmod, keys
+from . import keys
+from . import version as versmod
 from .boot_record import create_sw_component_data
-from .keys import rsa, ecdsa, x25519
-
-from collections import namedtuple
+from .keys import ecdsa, rsa, x25519
 
 IMAGE_MAGIC = 0x96f3b83d
 IMAGE_HEADER_SIZE = 32
@@ -110,14 +103,19 @@ TLV_PROT_INFO_MAGIC = 0x6908
 TLV_VENDOR_RES_MIN = 0x00a0
 TLV_VENDOR_RES_MAX = 0xfffe
 
-STRUCT_ENDIAN_DICT = {
-        'little': '<',
-        'big':    '>'
-}
+STRUCT_ENDIAN_DICT = {'little': '<', 'big': '>'}
 
-VerifyResult = Enum('VerifyResult',
-                    ['OK', 'INVALID_MAGIC', 'INVALID_TLV_INFO_MAGIC', 'INVALID_HASH', 'INVALID_SIGNATURE',
-                     'KEY_MISMATCH'])
+VerifyResult = Enum(
+    'VerifyResult',
+    [
+        'OK',
+        'INVALID_MAGIC',
+        'INVALID_TLV_INFO_MAGIC',
+        'INVALID_HASH',
+        'INVALID_SIGNATURE',
+        'KEY_MISMATCH',
+    ],
+)
 
 
 def align_up(num, align):
@@ -125,7 +123,7 @@ def align_up(num, align):
     return (num + (align - 1)) & ~(align - 1)
 
 
-class TLV():
+class TLV:
     def __init__(self, endian, magic=TLV_INFO_MAGIC):
         self.magic = magic
         self.buf = bytearray()
@@ -141,9 +139,11 @@ class TLV():
         e = STRUCT_ENDIAN_DICT[self.endian]
         if isinstance(kind, int):
             if not TLV_VENDOR_RES_MIN <= kind <= TLV_VENDOR_RES_MAX:
-                msg = "Invalid custom TLV type value '0x{:04x}', allowed " \
-                      "value should be between 0x{:04x} and 0x{:04x}".format(
-                        kind, TLV_VENDOR_RES_MIN, TLV_VENDOR_RES_MAX)
+                msg = (
+                    f"Invalid custom TLV type value '0x{kind:04x}', allowed "
+                    f"value should be between 0x{TLV_VENDOR_RES_MIN:04x} and "
+                    "0x{TLV_VENDOR_RES_MAX:04x}"
+                )
                 raise click.UsageError(msg)
             buf = struct.pack(e + 'HH', kind, len(payload))
         else:
@@ -153,7 +153,7 @@ class TLV():
 
     def get(self):
         if len(self.buf) == 0:
-            return bytes()
+            return b""
         e = STRUCT_ENDIAN_DICT[self.endian]
         header = struct.pack(e + 'HH', self.magic, len(self))
         return header + bytes(self.buf)
@@ -177,7 +177,7 @@ USER_SHA_TO_ALG_AND_TLV = {
 
 
 def is_sha_tlv(tlv):
-    return tlv in TLV_SHA_TO_SHA_AND_ALG.keys()
+    return tlv in TLV_SHA_TO_SHA_AND_ALG
 
 
 def tlv_sha_to_sha(tlv):
@@ -224,8 +224,8 @@ def key_and_user_sha_to_alg_and_tlv(key, user_sha, is_pure = False):
         allowed = allowed_key_ssh[type(key)]
 
     except KeyError:
-        raise click.UsageError("Colud not find allowed hash algorithms for {}"
-                               .format(type(key)))
+        raise click.UsageError(
+            f"Could not find allowed hash algorithms for {type(key)}") from None
 
     # Pure enforces auto, and user selection is ignored
     if user_sha == 'auto' or is_pure:
@@ -234,8 +234,10 @@ def key_and_user_sha_to_alg_and_tlv(key, user_sha, is_pure = False):
     if user_sha in allowed:
         return USER_SHA_TO_ALG_AND_TLV[user_sha]
 
-    raise click.UsageError("Key {} can not be used with --sha {}; allowed sha are one of {}"
-                           .format(key.sig_type(), user_sha, allowed))
+    raise click.UsageError(
+        f"Key {key.sig_type()} can not be used with --sha {user_sha}; "
+        "allowed sha are one of {allowed}"
+    ) from None
 
 
 def get_digest(tlv_type, hash_region):
@@ -253,10 +255,11 @@ def tlv_matches_key_type(tlv_type, key):
         # return True, on exception we return False.
         _, _ = key_and_user_sha_to_alg_and_tlv(key, tlv_sha_to_sha(tlv_type))
         return True
-    except:
+    except Exception:
         pass
 
     return False
+
 
 def parse_uuid(namespace, value):
     # Check if UUID is in the RAW format (12345678-1234-5678-1234-567812345678)
@@ -283,8 +286,8 @@ def parse_uuid(namespace, value):
 class Image:
 
     def __init__(self, version=None, header_size=IMAGE_HEADER_SIZE,
-                 pad_header=False, pad=False, confirm=False, align=1,
-                 slot_size=0, max_sectors=DEFAULT_MAX_SECTORS,
+                 pad_header=False, pad=False, confirm=False, test=False,
+                 align=1, slot_size=0, max_sectors=DEFAULT_MAX_SECTORS,
                  overwrite_only=False, endian="little", load_addr=0,
                  rom_fixed=None, erased_val=None, save_enctlv=False,
                  security_counter=None, max_align=None,
@@ -301,6 +304,7 @@ class Image:
         self.pad_header = pad_header
         self.pad = pad
         self.confirm = confirm
+        self.test = test
         self.align = align
         self.slot_size = slot_size
         self.max_sectors = max_sectors
@@ -378,7 +382,7 @@ class Image:
                     self.infile_data = f.read()
                     self.payload = copy.copy(self.infile_data)
         except FileNotFoundError:
-            raise click.UsageError("Input file not found")
+            raise click.UsageError("Input file not found") from None
 
         # Add the image header if needed.
         if self.pad_header and self.header_size > 0:
@@ -431,12 +435,14 @@ class Image:
                                                   self.save_enctlv,
                                                   self.enctlv_len)
                 trailer_addr = (self.base_addr + self.slot_size) - trailer_size
-                if self.confirm and not self.overwrite_only:
+                if (self.test or self.confirm) and not self.overwrite_only:
                     magic_align_size = align_up(len(self.boot_magic),
                                                 self.max_align)
                     image_ok_idx = -(magic_align_size + self.max_align)
+                    # If test is set, we leave image_ok at the erased value
                     flag = bytearray([self.erased_val] * self.max_align)
-                    flag[0] = 0x01  # image_ok = 0x01
+                    if self.confirm:
+                        flag[0] = 0x01  # image_ok = 0x01
                     h.puts(trailer_addr + trailer_size + image_ok_idx,
                            bytes(flag))
                 h.puts(trailer_addr + (trailer_size - len(self.boot_magic)),
@@ -449,10 +455,13 @@ class Image:
                 f.write(self.payload)
 
     def check_header(self):
-        if self.header_size > 0 and not self.pad_header:
-            if any(v != 0 for v in self.payload[0:self.header_size]):
-                raise click.UsageError("Header padding was not requested and "
-                                       "image does not start with zeros")
+        if (
+            self.header_size > 0 and not self.pad_header
+            and any(v != 0 for v in self.payload[0: self.header_size])
+        ):
+            raise click.UsageError(
+                "Header padding was not requested and image does not start with zeros"
+            )
 
     def check_trailer(self):
         if self.slot_size > 0:
@@ -461,9 +470,8 @@ class Image:
                                        self.save_enctlv, self.enctlv_len)
             padding = self.slot_size - (len(self.payload) + tsize)
             if padding < 0:
-                msg = "Image size (0x{:x}) + trailer (0x{:x}) exceeds " \
-                      "requested size 0x{:x}".format(
-                          len(self.payload), tsize, self.slot_size)
+                msg = f"Image size (0x{len(self.payload):x}) + trailer (0x{tsize:x}) exceeds " \
+                      f"requested size 0x{self.slot_size:x}"
                 raise click.UsageError(msg)
 
     def ecies_hkdf(self, enckey, plainkey, hmac_sha_alg):
@@ -550,9 +558,8 @@ class Image:
 
         if sw_type is not None:
             if len(sw_type) > MAX_SW_TYPE_LENGTH:
-                msg = "'{}' is too long ({} characters) for sw_type. Its " \
-                      "maximum allowed length is 12 characters.".format(
-                       sw_type, len(sw_type))
+                msg = f"'{sw_type}' is too long ({len(sw_type)} characters) for sw_type. Its " \
+                      "maximum allowed length is 12 characters."
                 raise click.UsageError(msg)
 
             image_version = (str(self.version.major) + '.'
@@ -608,11 +615,10 @@ class Image:
                     self.payload.extend(pad)
 
         compression_flags = 0x0
-        if compression_tlvs is not None:
-            if compression_type in ["lzma2", "lzma2armthumb"]:
-                compression_flags = IMAGE_F['COMPRESSED_LZMA2']
-                if compression_type == "lzma2armthumb":
-                    compression_flags |= IMAGE_F['COMPRESSED_ARM_THUMB']
+        if compression_tlvs is not None and compression_type in ["lzma2", "lzma2armthumb"]:
+            compression_flags = IMAGE_F['COMPRESSED_LZMA2']
+            if compression_type == "lzma2armthumb":
+                compression_flags |= IMAGE_F['COMPRESSED_ARM_THUMB']
         # This adds the header to the payload as well
         if encrypt_keylen == 256:
             self.add_header(enckey, protected_tlv_size, compression_flags, 256)
@@ -638,9 +644,8 @@ class Image:
             if dependencies is not None:
                 for i in range(dependencies_num):
                     payload = struct.pack(
-                        e + 'BB2x' + 'BBHI',
+                        e + 'B3x' + 'BBHI',
                         int(dependencies[DEP_IMAGES_KEY][i]),
-                        dependencies[DEP_VERSIONS_KEY][i].slot,
                         dependencies[DEP_VERSIONS_KEY][i].major,
                         dependencies[DEP_VERSIONS_KEY][i].minor,
                         dependencies[DEP_VERSIONS_KEY][i].revision,
@@ -728,7 +733,9 @@ class Image:
                 tlv.add(pub_key.sig_tlv(), fixed_sig['value'])
                 self.signature = fixed_sig['value']
             else:
-                raise click.UsageError("Can not sign using key and provide fixed-signature at the same time")
+                raise click.UsageError(
+                    "Can not sign using key and provide fixed-signature at the same time"
+                )
 
         # At this point the image was hashed + signed, we can remove the
         # protected TLVs from the payload (will be re-added later)
@@ -747,7 +754,8 @@ class Image:
                     hmac_sha_alg = hashes.SHA256()
                 elif hmac_sha == '512':
                     if not isinstance(enckey, x25519.X25519Public):
-                        raise click.UsageError("Currently only ECIES-X25519 supports HMAC-SHA512")
+                        raise click.UsageError(
+                            "Currently only ECIES-X25519 supports HMAC-SHA512")
                     hmac_sha_alg = hashes.SHA512()
                 else:
                     raise click.UsageError("Unsupported HMAC-SHA")
@@ -853,8 +861,7 @@ class Image:
             return self.max_align * 2 + magic_align_size
         else:
             if write_size not in set([1, 2, 4, 8, 16, 32]):
-                raise click.BadParameter("Invalid alignment: {}".format(
-                    write_size))
+                raise click.BadParameter(f"Invalid alignment: {write_size}")
             m = DEFAULT_MAX_SECTORS if max_sectors is None else max_sectors
             trailer = m * 3 * write_size  # status area
             if enckey is not None:
@@ -877,11 +884,13 @@ class Image:
         pbytes = bytearray([self.erased_val] * padding)
         pbytes += bytearray([self.erased_val] * (tsize - len(self.boot_magic)))
         pbytes += self.boot_magic
-        if self.confirm and not self.overwrite_only:
+        if (self.test or self.confirm) and not self.overwrite_only:
             magic_size = 16
             magic_align_size = align_up(magic_size, self.max_align)
             image_ok_idx = -(magic_align_size + self.max_align)
-            pbytes[image_ok_idx] = 0x01  # image_ok = 0x01
+            # If test is set, set leave image_ok at the erased value
+            if self.confirm:
+                pbytes[image_ok_idx] = 0x01  # image_ok = 0x01
         self.payload += pbytes
 
     @staticmethod
@@ -894,7 +903,7 @@ class Image:
                 with open(imgfile, 'rb') as f:
                     b = f.read()
         except FileNotFoundError:
-            raise click.UsageError(f"Image file {imgfile} not found")
+            raise click.UsageError(f"Image file {imgfile} not found") from None
 
         magic, _, header_size, _, img_size = struct.unpack('IIHHI', b[:16])
         version = struct.unpack('BBHI', b[20:28])

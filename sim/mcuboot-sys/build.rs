@@ -39,6 +39,7 @@ fn main() {
     let direct_xip = env::var("CARGO_FEATURE_DIRECT_XIP").is_ok();
     let max_align_32 = env::var("CARGO_FEATURE_MAX_ALIGN_32").is_ok();
     let hw_rollback_protection = env::var("CARGO_FEATURE_HW_ROLLBACK_PROTECTION").is_ok();
+    let check_load_addr = env::var("CARGO_FEATURE_CHECK_LOAD_ADDR").is_ok();
 
     let mut conf = CachedBuild::new();
     conf.conf.define("__BOOTSIM__", None);
@@ -62,6 +63,10 @@ fn main() {
     if bootstrap {
         conf.conf.define("MCUBOOT_BOOTSTRAP", None);
         conf.conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
+    }
+
+    if check_load_addr {
+        conf.conf.define("MCUBOOT_CHECK_HEADER_LOAD_ADDRESS", None);
     }
 
     if validate_primary_slot {

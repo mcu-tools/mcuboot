@@ -4,7 +4,6 @@ X25519 key management
 
 # SPDX-License-Identifier: Apache-2.0
 
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import x25519
 
@@ -24,7 +23,7 @@ class X25519Public(KeyClass):
         return "x25519"
 
     def _unsupported(self, name):
-        raise X25519UsageError("Operation {} requires private key".format(name))
+        raise X25519UsageError(f"Operation {name} requires private key")
 
     def _get_public(self):
         return self.key

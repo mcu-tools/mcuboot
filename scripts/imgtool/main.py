@@ -17,22 +17,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-import click
-import getpass
-import imgtool.keys as keys
-import sys
-import struct
-import os
-import lzma
-import hashlib
 import base64
-from collections import namedtuple
+import getpass
+import lzma
+import re
+import struct
+import sys
+
+import click
+
+import imgtool.keys as keys
 from imgtool import image, imgtool_version
-from imgtool.version import decode_version
 from imgtool.dumpinfo import dump_imginfo
-from .keys import (
-    RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError)
+from imgtool.version import decode_version
+
+from .keys import ECDSAUsageError, Ed25519UsageError, RSAUsageError, X25519UsageError
 
 comp_default_dictsize=131072
 comp_default_pb=2
@@ -43,17 +42,8 @@ comp_default_preset=9
 
 MIN_PYTHON_VERSION = (3, 6)
 if sys.version_info < MIN_PYTHON_VERSION:
-    sys.exit("Python %s.%s or newer is required by imgtool."
-             % MIN_PYTHON_VERSION)
+    sys.exit("Python {}.{} or newer is required by imgtool.".format(*MIN_PYTHON_VERSION))
 
-SlottedSemiSemVersion = namedtuple('SemiSemVersion', ['major', 'minor', 'revision',
-                                               'build', 'slot'])
-
-DEPENDENCY_SLOT_VALUES = {
-    'active': 0x00,
-    'primary': 0x01,
-    'secondary': 0x02
-}
 
 def gen_rsa2048(keyfile, passwd):
     keys.RSA.generate().export_private(path=keyfile, passwd=passwd)
@@ -157,8 +147,7 @@ def keygen(type, key, password):
 @click.command(help='Dump public key from keypair')
 def getpub(key, encoding, lang, output):
     if encoding and lang:
-        raise click.UsageError('Please use only one of `--encoding/-e` '
-                               'or `--lang/-l`')
+        raise click.UsageError('Please use only one of `--encoding/-e` or `--lang/-l`')
     elif not encoding and not lang:
         # Preserve old behavior defaulting to `c`. If `lang` is removed,
         # `default=valid_encodings[0]` should be added to `-e` param.
@@ -226,9 +215,8 @@ def getpriv(key, minimal, format):
         print("Invalid passphrase")
     try:
         key.emit_private(minimal, format)
-    except (RSAUsageError, ECDSAUsageError, Ed25519UsageError,
-            X25519UsageError) as e:
-        raise click.UsageError(e)
+    except (RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError) as e:
+        raise click.UsageError(e) from e
 
 
 @click.argument('imgfile')
@@ -241,9 +229,9 @@ def verify(key, imgfile):
         print("Image was correctly validated")
         print("Image version: {}.{}.{}+{}".format(*version))
         if digest:
-            print("Image digest: {}".format(digest.hex()))
+            print(f"Image digest: {digest.hex()}")
         if signature and digest is None:
-            print("Image signature over image: {}".format(signature.hex()))
+            print(f"Image signature over image: {signature.hex()}")
         return
     elif ret == image.VerifyResult.INVALID_MAGIC:
         print("Invalid image magic; is this an MCUboot image?")
@@ -256,7 +244,7 @@ def verify(key, imgfile):
     elif ret == image.VerifyResult.KEY_MISMATCH:
         print("Key type does not match TLV record")
     else:
-        print("Unknown return code: {}".format(ret))
+        print(f"Unknown return code: {ret}")
     sys.exit(1)
 
 
@@ -278,7 +266,7 @@ def validate_version(ctx, param, value):
         decode_version(value)
         return value
     except ValueError as e:
-        raise click.BadParameter("{}".format(e))
+        raise click.BadParameter(f"{e}") from None
 
 
 def validate_security_counter(ctx, param, value):
@@ -290,16 +278,16 @@ def validate_security_counter(ctx, param, value):
                 return int(value, 0)
             except ValueError:
                 raise click.BadParameter(
-                    "{} is not a valid integer. Please use code literals "
+                    f"{value} is not a valid integer. Please use code literals "
                     "prefixed with 0b/0B, 0o/0O, or 0x/0X as necessary."
-                    .format(value))
+                ) from None
 
 
 def validate_header_size(ctx, param, value):
     min_hdr_size = image.IMAGE_HEADER_SIZE
     if value < min_hdr_size:
         raise click.BadParameter(
-            "Minimum value for -H/--header-size is {}".format(min_hdr_size))
+            f"Minimum value for -H/--header-size is {min_hdr_size}")
     return value
 
 
@@ -309,34 +297,17 @@ def get_dependencies(ctx, param, value):
         images = re.findall(r"\((\d+)", value)
         if len(images) == 0:
             raise click.BadParameter(
-                "Image dependency format is invalid: {}".format(value))
-        raw_versions = re.findall(r",\s*((active|primary|secondary)\s*,)?\s*([0-9.+]+)\)", value)
+                f"Image dependency format is invalid: {value}")
+        raw_versions = re.findall(r",\s*([0-9.+]+)\)", value)
         if len(images) != len(raw_versions):
             raise click.BadParameter(
-                '''There's a mismatch between the number of dependency images
-                and versions in: {}'''.format(value))
+                f'''There's a mismatch between the number of dependency images
+                and versions in: {value}''')
         for raw_version in raw_versions:
             try:
-                decoded_version = decode_version(raw_version[2])
-                if len(raw_version[1]) > 0:
-                    slotted_version = SlottedSemiSemVersion(
-                        decoded_version.major,
-                        decoded_version.minor,
-                        decoded_version.revision,
-                        decoded_version.build,
-                        DEPENDENCY_SLOT_VALUES[raw_version[1]]
-                    )
-                else:
-                    slotted_version = SlottedSemiSemVersion(
-                        decoded_version.major,
-                        decoded_version.minor,
-                        decoded_version.revision,
-                        decoded_version.build,
-                        0
-                    )
+                versions.append(decode_version(raw_version))
             except ValueError as e:
-                raise click.BadParameter("{}".format(e))
-            versions.append(slotted_version)
+                raise click.BadParameter(f"{e}") from None
         dependencies = dict()
         dependencies[image.DEP_IMAGES_KEY] = images
         dependencies[image.DEP_VERSIONS_KEY] = versions
@@ -358,9 +329,8 @@ class BasedIntParamType(click.ParamType):
         try:
             return int(value, 0)
         except ValueError:
-            self.fail('%s is not a valid integer. Please use code literals '
-                      'prefixed with 0b/0B, 0o/0O, or 0x/0X as necessary.'
-                      % value, param, ctx)
+            self.fail(f'{value} is not a valid integer. Please use code literals '
+                      'prefixed with 0b/0B, 0o/0O, or 0x/0X as necessary.', param, ctx)
 
 
 @click.argument('outfile')
@@ -416,6 +386,9 @@ class BasedIntParamType(click.ParamType):
 @click.option('--confirm', default=False, is_flag=True,
               help='When padding the image, mark it as confirmed (implies '
                    '--pad)')
+@click.option('--test', default=False, is_flag=True,
+              help='When padding the image, mark it for a test swap (implies '
+                   '--pad)')
 @click.option('--pad', default=False, is_flag=True,
               help='Pad image to --slot-size bytes, adding trailer magic')
 @click.option('-S', '--slot-size', type=BasedIntParamType(), required=True,
@@ -431,7 +404,7 @@ class BasedIntParamType(click.ParamType):
                    '(for mcuboot <1.5)')
 @click.option('-d', '--dependencies', callback=get_dependencies,
               required=False, help='''Add dependence on another image, format:
-              "(<image_ID>,[<slot:active|primary|secondary>,]<image_version>), ... "''')
+              "(<image_ID>,<image_version>), ... "''')
 @click.option('-s', '--security-counter', callback=validate_security_counter,
               help='Specify the value of security counter. Use the `auto` '
               'keyword to automatically generate it from the image version.')
@@ -478,20 +451,20 @@ class BasedIntParamType(click.ParamType):
 @click.option('--cid', default=None, required=False,
               help='Unique image class identifier, format: (<raw_uuid>|<image_class_name>)')
 def sign(key, public_key_format, align, version, pad_sig, header_size,
-         pad_header, slot_size, pad, confirm, max_sectors, overwrite_only,
+         pad_header, slot_size, pad, confirm, test, max_sectors, overwrite_only,
          endian, encrypt_keylen, encrypt, compression, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, rom_fixed, max_align,
          clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, hmac_sha, is_pure,
          vector_to_sign, non_bootable, vid, cid):
 
-    if confirm:
+    if confirm or test:
         # Confirmed but non-padded images don't make much sense, because
         # otherwise there's no trailer area for writing the confirmed status.
         pad = True
     img = image.Image(version=decode_version(version), header_size=header_size,
                       pad_header=pad_header, pad=pad, confirm=confirm,
-                      align=int(align), slot_size=slot_size,
+                      test=test, align=int(align), slot_size=slot_size,
                       max_sectors=max_sectors, overwrite_only=overwrite_only,
                       endian=endian, load_addr=load_addr, rom_fixed=rom_fixed,
                       erased_val=erased_val, save_enctlv=save_enctlv,
@@ -501,16 +474,15 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     img.load(infile)
     key = load_key(key) if key else None
     enckey = load_key(encrypt) if encrypt else None
-    if enckey and key:
-        if ((isinstance(key, keys.ECDSA256P1) and
-             not isinstance(enckey, keys.ECDSA256P1Public))
-           or (isinstance(key, keys.ECDSA384P1) and
-               not isinstance(enckey, keys.ECDSA384P1Public))
-                or (isinstance(key, keys.RSA) and
-                    not isinstance(enckey, keys.RSAPublic))):
-            # FIXME
-            raise click.UsageError("Signing and encryption must use the same "
-                                   "type of key")
+    if enckey and key and ((isinstance(key, keys.ECDSA256P1) and
+         not isinstance(enckey, keys.ECDSA256P1Public))
+       or (isinstance(key, keys.ECDSA384P1) and
+           not isinstance(enckey, keys.ECDSA384P1Public))
+            or (isinstance(key, keys.RSA) and
+                not isinstance(enckey, keys.RSAPublic))):
+        # FIXME
+        raise click.UsageError("Signing and encryption must use the same "
+                               "type of key")
 
     if pad_sig and hasattr(key, 'pad_sig'):
         key.pad_sig = True
@@ -520,10 +492,10 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     for tlv in custom_tlv:
         tag = int(tlv[0], 0)
         if tag in custom_tlvs:
-            raise click.UsageError('Custom TLV %s already exists.' % hex(tag))
+            raise click.UsageError(f'Custom TLV {hex(tag)} already exists.')
         if tag in image.TLV_VALUES.values():
             raise click.UsageError(
-                'Custom TLV %s conflicts with predefined TLV.' % hex(tag))
+                f'Custom TLV {hex(tag)} conflicts with predefined TLV.')
 
         value = tlv[1]
         if value.startswith('0x'):
@@ -598,7 +570,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                 lc = comp_default_lc, lp = comp_default_lp)
             compressed_img.load_compressed(compressed_data, compression_header)
             compressed_img.base_addr = img.base_addr
-            keep_comp_size = False;
+            keep_comp_size = False
             if enckey:
                 keep_comp_size = True
             compressed_img.create(key, public_key_format, enckey,

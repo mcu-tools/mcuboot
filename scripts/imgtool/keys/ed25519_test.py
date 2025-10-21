@@ -12,11 +12,10 @@ import tempfile
 import unittest
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric import ed25519
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
-from imgtool.keys import load, Ed25519, Ed25519UsageError
+from imgtool.keys import Ed25519, Ed25519UsageError, load
 
 
 class Ed25519KeyGeneration(unittest.TestCase):
