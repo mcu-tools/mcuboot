@@ -446,39 +446,38 @@
 #if CONFIG_BOOT_WATCHDOG_FEED_NRFX_WDT
 #include <nrfx_wdt.h>
 
-#define FEED_WDT_INST(id)                                    \
+#define FEED_WDT_INST(inst)                                  \
     do {                                                     \
-        nrfx_wdt_t wdt_inst_##id = NRFX_WDT_INSTANCE(id);    \
         for (uint8_t i = 0; i < NRF_WDT_CHANNEL_NUMBER; i++) \
         {                                                    \
-            nrf_wdt_reload_request_set(wdt_inst_##id.p_reg,  \
+            nrf_wdt_reload_request_set(inst,                 \
                 (nrf_wdt_rr_register_t)(NRF_WDT_RR0 + i));   \
         }                                                    \
     } while (0)
-#if defined(CONFIG_NRFX_WDT0) && defined(CONFIG_NRFX_WDT1)
-#define MCUBOOT_WATCHDOG_FEED() \
-    do {                        \
-        FEED_WDT_INST(0);       \
-        FEED_WDT_INST(1);       \
+#if defined(NRF_WDT0) && defined(NRF_WDT1)
+#define MCUBOOT_WATCHDOG_FEED()  \
+    do {                         \
+        FEED_WDT_INST(NRF_WDT0); \
+        FEED_WDT_INST(NRF_WDT1); \
     } while (0)
-#elif defined(CONFIG_NRFX_WDT0)
+#elif defined(NRF_WDT0)
 #define MCUBOOT_WATCHDOG_FEED() \
-    FEED_WDT_INST(0);
-#elif defined(CONFIG_NRFX_WDT30) && defined(CONFIG_NRFX_WDT31)
-#define MCUBOOT_WATCHDOG_FEED() \
-    do {                        \
-        FEED_WDT_INST(30);      \
-        FEED_WDT_INST(31);      \
+    FEED_WDT_INST(NRF_WDT0);
+#elif defined(NRF_WDT30) && defined(NRF_WDT31)
+#define MCUBOOT_WATCHDOG_FEED()   \
+    do {                          \
+        FEED_WDT_INST(NRF_WDT30); \
+        FEED_WDT_INST(NRF_WDT31); \
     } while (0)
-#elif defined(CONFIG_NRFX_WDT30)
+#elif defined(NRF_WDT30)
 #define MCUBOOT_WATCHDOG_FEED() \
-    FEED_WDT_INST(30);
-#elif defined(CONFIG_NRFX_WDT31)
+    FEED_WDT_INST(NRF_WDT30);
+#elif defined(NRF_WDT31)
 #define MCUBOOT_WATCHDOG_FEED() \
-    FEED_WDT_INST(31);
-#elif defined(CONFIG_NRFX_WDT010)
+    FEED_WDT_INST(NRF_WDT31);
+#elif defined(NRF_WDT010)
 #define MCUBOOT_WATCHDOG_FEED() \
-    FEED_WDT_INST(010);
+    FEED_WDT_INST(NRF_WDT010);
 #else
 #error "No NRFX WDT instances enabled"
 #endif
