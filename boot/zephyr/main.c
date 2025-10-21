@@ -645,7 +645,7 @@ int main(void)
         #if defined(MCUBOOT_GEN_ENC_KEY) && defined(MCUBOOT_HAVE_HWRNG)
             mbedtls_pk_context pk;
             // uint32_t val;
-            //     if (HAL_RNG_GenerateRandomNumber(&hrng, &val) != HAL_OK) {
+            //     if (HAL_RNG_GenerateRandomuNmber(&hrng, &val) != HAL_OK) {
             //         BOOT_LOG_ERR("RNG lecture fails");
 
             //     }
