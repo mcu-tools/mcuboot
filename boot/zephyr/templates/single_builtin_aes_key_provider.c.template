@@ -1,0 +1,26 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Copyright (c) 2025 Nordic Semiconductor ASA
+ *
+ */
+
+#include <stddef.h>
+#include <stdbool.h>
+#include <inttypes.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "mcuboot_config/mcuboot_config.h"
+#include "bootutil/enc_key.h"
+
+int boot_take_enc_key(uint8_t *key, int image, int slot)
+{
+    const unsigned char array[] = {
+        @BOOT_AES_RAW_KEY_HEX_ARRAY@
+    };
+
+    memcpy(key, array, sizeof(array));
+
+    return 0;
+}
