@@ -594,6 +594,31 @@ finish:
     memset(state, 0, sizeof(struct boot_loader_state));
 }
 #endif
+#if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO) || defined(MCUBOOT_DATA_SHARING)
+const struct image_max_size *boot_get_max_app_size(void)
+{
+    const struct image_max_size *image_max_sizes = boot_get_image_max_sizes();
+
+#if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
+    uint8_t i = 0;
+
+    while (i < BOOT_IMAGE_NUMBER) {
+        if (image_max_sizes[i].calculated == true) {
+            break;
+        }
+
+        ++i;
+    }
+
+    if (i == BOOT_IMAGE_NUMBER) {
+        /* Information not available, need to fetch it */
+        boot_fetch_slot_state_sizes();
+    }
+#endif
+
+    return image_max_sizes;
+}
+#endif
 
 /**
  * Clears the boot state, so that previous operations have no effect on new
