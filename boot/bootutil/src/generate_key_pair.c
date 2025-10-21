@@ -5,18 +5,18 @@
  */
 #include "mcuboot_config/mcuboot_config.h"
 
-#if defined(MCUBOOT_ENC_GEN_KEY)
+// #if defined(MCUBOOT_GEN_ENC_KEY)
 #include <string.h>
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/pk.h"
 #include "mbedtls/ecp.h"
 #include "stm32wlxx_hal.h"
-#include "generate_key_pair.h"
-#include "key/key.h"
-#include "bootutil_log.h"
-#include "bootutil_hwrng.h"
-
+#include "bootutil/generate_key_pair.h"
+// #include "key/key.h"
+#include "bootutil/bootutil_log.h"
+#include "bootutil/bootutil_hwrng.h"
+BOOT_LOG_MODULE_DECLARE(mcuboot);
 extern unsigned char enc_priv_key[];
 extern unsigned int enc_priv_key_len;
 
@@ -30,7 +30,7 @@ extern unsigned int enc_priv_key_len;
  * 
  * @return 0 on success or MBEDTLS_ERR_ENTROPY_SOURCE_FAILED on RNG failure.
  */
-int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t *olen)
+int mbedtls_hardware_polll(void *data, unsigned char *output, size_t len, size_t *olen)
 {
 
     (void)data;
@@ -42,11 +42,11 @@ int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t 
     	BOOT_RNG(&val);
     }
 
-    boot_log_info("mbedtls_hardware_poll: ask %lu bytes", (unsigned long)len);
-
+    BOOT_LOG_DBG("mbedtls_hardware_poll: ask %lu bytes", (unsigned long)len);
+// if (HAL_RNG_GenerateRandomNumber(&hrng, &val) != HAL_OK) {
 
     while (produced < len) {
-        if (HAL_RNG_GenerateRandomNumber(&hrng, &val) != HAL_OK) {
+        if (BOOT_RNG(&val) != HAL_OK) {
         	BOOT_LOG_ERR("RNG reads fails at %lu/%lu bytes", (unsigned long)produced, (unsigned long)len);
             *olen = produced;
             return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
@@ -56,12 +56,12 @@ int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t 
         memcpy(output + produced, &val, copy_len);
         produced += copy_len;
 
-        boot_log_info("%08lX",(unsigned long)val,(unsigned long)produced,(unsigned long)len);
+        BOOT_LOG_DBG("%08lX",(unsigned long)val,(unsigned long)produced,(unsigned long)len);
 
     }
 
     *olen = produced;
-    boot_log_info("mbedtls_hardware_poll: total generated = %lu bytes", (unsigned long)*olen);
+    BOOT_LOG_INF("mbedtls_hardware_poll: total generated = %lu bytes", (unsigned long)*olen);
     return 0;
 }
 
@@ -85,7 +85,7 @@ int gen_p256_keypair(mbedtls_pk_context *pk)
     /*
      * Seeds the random number generator using a hardware entropy source
      */
-    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_hardware_poll, NULL,pers, sizeof(pers)-1);
+    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_hardware_polll, NULL,pers, sizeof(pers)-1);
     if (ret != 0) {
         BOOT_LOG_ERR("SEED FAIL ret=%d", ret);
         goto cleanup;
@@ -145,19 +145,19 @@ void dump_p256(const mbedtls_pk_context *pk)
     unsigned char buf[32];
     memset(buf,0, sizeof buf);
     mbedtls_mpi_write_binary(&eckey->private_d, buf, 32);
-    BOOT_LOG_DBG("Private key d = ");
-    for (int i = 0; i < 32; i++) BOOT_LOG_DBG("%02X", buf[i]);
-    BOOT_LOG_DBG("\n");
+    BOOT_LOG_INF("Private key d = ");
+    for (int i = 0; i < 32; i++) BOOT_LOG_INF("%02X", buf[i]);
+    BOOT_LOG_INF("\n");
 
     mbedtls_mpi_write_binary(&eckey->private_Q.private_X, buf, 32);
-    BOOT_LOG_DBG("Public key Q.X = ");
-    for (int i = 0; i < 32; i++) BOOT_LOG_DBG("%02X", buf[i]);
-    BOOT_LOG_DBG("\n");
+    BOOT_LOG_INF("Public key Q.X = ");
+    for (int i = 0; i < 32; i++) BOOT_LOG_INF("%02X", buf[i]);
+    BOOT_LOG_INF("\n");
 
     mbedtls_mpi_write_binary(&eckey->private_Q.private_Y, buf, 32);
-    BOOT_LOG_DBG("Public key Q.Y = ");
-    for (int i = 0; i < 32; i++) BOOT_LOG_DBG("%02X", buf[i]);
-    BOOT_LOG_DBG("\n");
+    BOOT_LOG_INF("Public key Q.Y = ");
+    for (int i = 0; i < 32; i++) BOOT_LOG_INF("%02X", buf[i]);
+    BOOT_LOG_INF("\n");
 
 }
 
@@ -180,17 +180,17 @@ int export_pub_pem(mbedtls_pk_context *pk) {
 
     char *line = strtok((char *)buf,"\n");
     while(line != NULL){
-    	BOOT_LOG_DBG("%s", line);
+    	BOOT_LOG_INF("%s", line);
     	line = strtok(NULL,"\n");
     }
 
     char *line1 = strtok((char *)buf1,"\n");
     while(line1 != NULL){
-    	BOOT_LOG_DBG("%s", line1);
+    	BOOT_LOG_INF("%s", line1);
     	line1 = strtok(NULL,"\n");
     }
 
     return 0;
 }
 
-#endif /* MCUBOOT_GEN_KEY */
+// #endif /* MCUBOOT_GEN_ENC_KEY */

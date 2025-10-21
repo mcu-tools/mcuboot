@@ -15,3 +15,9 @@
 	current-speed = <9600>;
 	status = "okay";
 };
+
+&rng {
+    status = "okay";
+    // clocks = <&rcc STM32_CLOCK_BUS_AHB2 0x00040000>,
+    //          <&rcc STM32_SRC_MSI 3>;
+};

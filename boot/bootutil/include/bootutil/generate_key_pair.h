@@ -18,8 +18,8 @@ void show_public_key_formatted(const mbedtls_pk_context *pk);
 int export_privkey_der(mbedtls_pk_context *pk,
                        unsigned char **der_ptr,
                        size_t *der_len);
-export_pub_pem(mbedtls_pk_context *pk);
-dump_pkcs8_der_as_c_array(const mbedtls_pk_context *pk);
+int export_pub_pem(mbedtls_pk_context *pk);
+int dump_pkcs8_der_as_c_array(const mbedtls_pk_context *pk);
 
 #ifdef __cplusplus
 }

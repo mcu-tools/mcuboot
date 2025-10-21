@@ -1,0 +1,25 @@
+/ {
+	chosen {
+		zephyr,code-partition = &boot_partition;
+	};
+};
+
+&boot_partition {
+	reg = <0x00000000 0x10000>;
+	// read-only;
+};
+
+&lpuart1 {
+	pinctrl-0 = <&lpuart1_tx_pc1 &lpuart1_rx_pc0>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+};
+
+&rng {
+    status = "okay";
+    // clocks = <&rcc STM32_CLOCK_BUS_AHB3 0x00040000>,
+    //          <&rcc STM32_SRC_MSI 3>;
+	// clocks = <&rcc STM32_CLOCK(AHB3, 18)>,
+    //          <&rcc STM32_SRC_MSI 3>;
+};
