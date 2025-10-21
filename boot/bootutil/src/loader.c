@@ -621,16 +621,18 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
  * Validate image hash/signature and optionally the security counter in a slot.
  */
 static fih_ret
-boot_image_check(struct boot_loader_state *state, struct image_header *hdr,
-                 const struct flash_area *fap, struct boot_status *bs)
+boot_check_image(struct boot_loader_state *state, struct boot_status *bs, int slot)
 {
     TARGET_STATIC uint8_t tmpbuf[BOOT_TMPBUF_SZ];
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+    const struct flash_area *fap = NULL;
+    struct image_header *hdr;
 
-#if (BOOT_IMAGE_NUMBER == 1)
-    (void)state;
-#endif
+    fap = BOOT_IMG_AREA(state, slot);
+    assert(fap != NULL);
+
+    hdr = boot_img_hdr(state, slot);
 
     (void)bs;
     (void)rc;
@@ -919,7 +921,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         BOOT_HOOK_CALL_FIH(boot_image_check_hook, FIH_BOOT_HOOK_REGULAR,
                            fih_rc, BOOT_CURR_IMG(state), slot);
         if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR)) {
-            FIH_CALL(boot_image_check, fih_rc, state, hdr, fap, bs);
+            FIH_CALL(boot_check_image, fih_rc, state, bs, slot);
         }
     }
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
