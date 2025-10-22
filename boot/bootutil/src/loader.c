@@ -86,7 +86,7 @@ static struct image_max_size image_max_sizes[BOOT_IMAGE_NUMBER] = {0};
 #endif
 
 /* Valid only for ARM Cortext M */
-#define RESET_OFFSET    (2 * sizeof(uin32_t))
+#define RESET_OFFSET    (2 * sizeof(uint32_t))
 
 #if BOOT_MAX_ALIGN > 1024
 #define BUF_SZ BOOT_MAX_ALIGN
@@ -982,7 +982,7 @@ check_validity:
         const uint32_t offset = secondary_hdr->ih_hdr_size + RESET_OFFSET;
         BOOT_LOG_DBG("Getting image %d internal addr from offset %u",
                      BOOT_CURR_IMG(state), offset);
-        if (flash_area_read(fap, offset, &internal_img_addr, sizeof(internal_img_addr)) != 0)
+        if (flash_area_read(fap, offset, &internal_img_addr, sizeof(internal_img_addr)) != 0) {
             BOOT_LOG_ERR("Failed to read image %d load address", BOOT_CURR_IMG(state));
             fih_rc = FIH_NO_BOOTABLE_IMAGE;
             goto out;
