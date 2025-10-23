@@ -13,9 +13,9 @@ extern "C" {
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/pk.h"
 #include "mbedtls/ecp.h"
-#include "stm32wlxx_hal.h"
 
-extern RNG_HandleTypeDef hrng;
+
+
 int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t *olen);
 int gen_p256_keypair(mbedtls_pk_context *pk);
 void dump_p256(const mbedtls_pk_context *pk);

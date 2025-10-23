@@ -29,6 +29,7 @@ extern unsigned int enc_priv_key_len;
  * 
  * @return 0 on success or MBEDTLS_ERR_ENTROPY_SOURCE_FAILED on RNG failure.
  */
+// #if defined(CONFIG_MBEDTLS_ENTROPY_POLL_ZEPHYR)
 int mbedtls_hardware_polll(void *data, unsigned char *output, size_t len, size_t *olen)
 {
 
@@ -45,11 +46,11 @@ int mbedtls_hardware_polll(void *data, unsigned char *output, size_t len, size_t
 // if (HAL_RNG_GenerateRandomNumber(&hrng, &val) != HAL_OK) {
 
     while (produced < len) {
-        if (BOOT_RNG(&val) != HAL_OK) {
-        	BOOT_LOG_ERR("RNG reads fails at %lu/%lu bytes", (unsigned long)produced, (unsigned long)len);
-            *olen = produced;
-            return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
-        }
+        // if (BOOT_RNG(&val) != HAL_OK) {
+        // 	BOOT_LOG_ERR("RNG reads fails at %lu/%lu bytes", (unsigned long)produced, (unsigned long)len);
+        //     *olen = produced;
+        //     return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
+        // }
 
         size_t copy_len = (len - produced >= 4) ? 4 : (len - produced);
         memcpy(output + produced, &val, copy_len);
