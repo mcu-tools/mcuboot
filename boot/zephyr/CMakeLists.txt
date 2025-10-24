@@ -393,57 +393,59 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
 endif()
 
 if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQUAL "")
-  # CONF_FILE points to the KConfig configuration files of the bootloader.
-  unset(CONF_DIR)
-  foreach(filepath ${CONF_FILE})
-    file(READ ${filepath} temp_text)
-    string(FIND "${temp_text}" ${CONFIG_BOOT_ENCRYPTION_KEY_FILE} match)
-    if(${match} GREATER_EQUAL 0)
-      if(NOT DEFINED CONF_DIR)
-        get_filename_component(CONF_DIR ${filepath} DIRECTORY)
-      else()
-        message(FATAL_ERROR "Encryption key file defined in multiple conf files")
+  if(NOT CONFIG_BOOT_ENCRYPT_IMAGE_WITH_EMBEDDED_KEY)
+    # CONF_FILE points to the KConfig configuration files of the bootloader.
+    unset(CONF_DIR)
+    foreach(filepath ${CONF_FILE})
+      file(READ ${filepath} temp_text)
+      string(FIND "${temp_text}" ${CONFIG_BOOT_ENCRYPTION_KEY_FILE} match)
+      if(${match} GREATER_EQUAL 0)
+        if(NOT DEFINED CONF_DIR)
+          get_filename_component(CONF_DIR ${filepath} DIRECTORY)
+        else()
+          message(FATAL_ERROR "Encryption key file defined in multiple conf files")
+        endif()
       endif()
+    endforeach()
+
+    if(IS_ABSOLUTE ${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+      set(KEY_FILE ${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+    elseif((DEFINED CONF_DIR) AND
+           (EXISTS ${CONF_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE}))
+      set(KEY_FILE ${CONF_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+    else()
+      set(KEY_FILE ${MCUBOOT_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
     endif()
-  endforeach()
+    message("MCUBoot bootloader encryption key file: ${KEY_FILE}")
 
-  if(IS_ABSOLUTE ${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
-    set(KEY_FILE ${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
-  elseif((DEFINED CONF_DIR) AND
-	 (EXISTS ${CONF_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE}))
-    set(KEY_FILE ${CONF_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
-  else()
-    set(KEY_FILE ${MCUBOOT_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
-  endif()
-  message("MCUBoot bootloader encryption key file: ${KEY_FILE}")
-
-  # Emit a warning if using one of the default MCUboot key files
-  set(mcuboot_default_encryption_files
-      ${MCUBOOT_DIR}/enc-ec256-priv.pem
-      ${MCUBOOT_DIR}/enc-ec256-pub.pem
-      ${MCUBOOT_DIR}/enc-rsa2048-priv.pem
-      ${MCUBOOT_DIR}/enc-rsa2048-pub.pem
-      ${MCUBOOT_DIR}/enc-x25519-priv.pem
-      ${MCUBOOT_DIR}/enc-x25519-pub.pem
-  )
-
-  if(${KEY_FILE} IN_LIST mcuboot_default_encryption_files)
-    message(WARNING "WARNING: Using default MCUboot encryption key file, this file is for debug use only and is not secure!")
-  endif()
-
-  set(GENERATED_ENCKEY ${ZEPHYR_BINARY_DIR}/autogen-enckey.c)
-  add_custom_command(
-    OUTPUT ${GENERATED_ENCKEY}
-    COMMAND
-    ${PYTHON_EXECUTABLE}
-    ${MCUBOOT_DIR}/scripts/imgtool.py
-    getpriv
-    -k
-    ${KEY_FILE}
-    > ${GENERATED_ENCKEY}
-    DEPENDS ${KEY_FILE}
+    # Emit a warning if using one of the default MCUboot key files
+    set(mcuboot_default_encryption_files
+        ${MCUBOOT_DIR}/enc-ec256-priv.pem
+        ${MCUBOOT_DIR}/enc-ec256-pub.pem
+        ${MCUBOOT_DIR}/enc-rsa2048-priv.pem
+        ${MCUBOOT_DIR}/enc-rsa2048-pub.pem
+        ${MCUBOOT_DIR}/enc-x25519-priv.pem
+        ${MCUBOOT_DIR}/enc-x25519-pub.pem
     )
-  zephyr_library_sources(${GENERATED_ENCKEY})
+
+    if(${KEY_FILE} IN_LIST mcuboot_default_encryption_files)
+      message(WARNING "WARNING: Using default MCUboot encryption key file, this file is for debug use only and is not secure!")
+    endif()
+
+    set(GENERATED_ENCKEY ${ZEPHYR_BINARY_DIR}/autogen-enckey.c)
+    add_custom_command(
+      OUTPUT ${GENERATED_ENCKEY}
+      COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${MCUBOOT_DIR}/scripts/imgtool.py
+      getpriv
+      -k
+      ${KEY_FILE}
+      > ${GENERATED_ENCKEY}
+      DEPENDS ${KEY_FILE}
+      )
+    zephyr_library_sources(${GENERATED_ENCKEY})
+  endif()
 endif()
 
 if(CONFIG_MCUBOOT_CLEANUP_ARM_CORE)
@@ -730,4 +732,31 @@ if(SYSBUILD)
 
   set(mcuboot_image_footer_size ${required_size} CACHE INTERNAL "Estimated MCUboot image trailer size" FORCE)
   set(mcuboot_image_upgrade_footer_size ${required_upgrade_size} CACHE INTERNAL "Estimated MCUboot update image trailer size" FORCE)
+endif()
+
+if(${CONFIG_BOOT_ENCRYPT_IMAGE_WITH_EMBEDDED_KEY})
+  if(${CONFIG_BOOT_ENCRYPT_IMAGE_USE_CUSTOM_KEY_PROVIDER})
+    # User provides own code for key source
+    set(CUSTOM_AES_KEY_PROVIDER_DIR ${PROJECT_BINARY_DIR}/custom_aes_provider)
+
+    message(STATUS "Building AES Custom key provider from " ${CONFIG_BOOT_ENCRYPT_IMAGE_EMBEDDED_CUSTOM_KEY_PROVIDER_DIR})
+    message(STATUS "AES Custom key provider bin dir is " ${CUSTOM_AES_KEY_PROVIDER_DIR})
+
+    add_subdirectory(${CONFIG_BOOT_ENCRYPT_IMAGE_EMBEDDED_CUSTOM_KEY_PROVIDER_DIR} ${CUSTOM_AES_KEY_PROVIDER_DIR})
+  elseif(${CONFIG_BOOT_ENCRYPT_IMAGE_GENERATE_BASIC_KEY_PROVIDER})
+    # Need to generate single key provider source, from template.
+    # Take provided key, in form of a string and make it into C array, BOOT_AES_RAW_KEY_HEX_ARRAY,
+    # of byte size hex values.
+    set(BOOT_AES_RAW_KEY_HEX_STRING ${BOOT_ENCRYPT_IMAGE_EMBEDDED_RAW_KEY})
+    string(REGEX REPLACE "(..)" "0x\\1, " BOOT_AES_RAW_KEY_HEX_ARRAY "${BOOT_AES_RAW_KEY_HEX_STRING}")
+
+    # The tamplate references BOOT_AES_RAW_KEY_HEX_ARRAY where it expects the array to be substituted.
+    set(OUTPUT_BOOT_AES_RAW_KEY_SRC ${ZEPHYR_BINARY_DIR}/mcuboot_generated/builtin_aes_key_provider.c)
+    configure_file(templates/single_builtin_aes_key_provider.c.template ${OUTPUT_BOOT_AES_RAW_KEY_SRC} @ONLY)
+
+    # Add generated source file to build
+    zephyr_library_sources(${OUTPUT_BOOT_AES_RAW_KEY_SRC})
+  else()
+    message(FATAL_ERROR "Unsupported embedded key configuration")
+  endif()
 endif()
