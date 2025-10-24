@@ -88,9 +88,36 @@ fih_ret boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id);
 
 void boot_state_clear(struct boot_loader_state *state);
 fih_ret context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp);
+
+/**
+ * Returns a pointer to the boot loader state structure.
+ *
+ * @return Pointer to the boot loader state structure.
+ */
 struct boot_loader_state *boot_get_loader_state(void);
+
+#if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO) || defined(MCUBOOT_DATA_SHARING)
+/**
+ * Returns pointer to array of image maximum sizes.
+ *
+ * @note This function provides a RAW access to the structure. The sizes may not be
+ *       calculated yet. Use boot_get_max_app_size() to ensure the sizes are calculated.
+ *
+ * @return Pointer to array of image maximum sizes.
+ */
 struct image_max_size *boot_get_image_max_sizes(void);
+
+/**
+ * Fetches the maximum allowed size of all application images.
+ *
+ * @note In contrast to boot_get_image_max_sizes(), this function will fetch the sizes
+ *       if they are not yet calculated.
+ *
+ * @return A pointer to the structure containing the maximum sizes of images.
+ */
 const struct image_max_size *boot_get_max_app_size(void);
+#endif /* MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO || MCUBOOT_DATA_SHARING */
+
 void boot_fetch_slot_state_sizes(void);
 uint32_t boot_get_state_secondary_offset(struct boot_loader_state *state,
                                          const struct flash_area *fap);

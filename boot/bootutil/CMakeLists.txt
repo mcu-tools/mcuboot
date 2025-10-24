@@ -21,6 +21,8 @@ target_sources(bootutil
         src/bootutil_img_hash.c
         src/bootutil_img_security_cnt.c
         src/bootutil_misc.c
+        src/bootutil_area.c
+        src/bootutil_loader.c
         src/bootutil_public.c
         src/caps.c
         src/encrypted.c

@@ -114,6 +114,8 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/image_ecdsa.c
   ${BOOT_DIR}/bootutil/src/image_ed25519.c
   ${BOOT_DIR}/bootutil/src/bootutil_misc.c
+  ${BOOT_DIR}/bootutil/src/bootutil_area.c
+  ${BOOT_DIR}/bootutil/src/bootutil_loader.c
   ${BOOT_DIR}/bootutil/src/fault_injection_hardening.c
   ${BOOT_DIR}/bootutil/src/generate_key_pair.c
   ${MCUBOOT_DIR}/ext/mbedtls-pkcs8/pkcs8secp256write.c
