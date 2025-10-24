@@ -16,6 +16,12 @@ rusty-tags.*
 .cproject
 .project
 
+# Clangd creates this to cache its results
+.cache/
+
+# The code cache is a transient file.
+compile_commands.json
+
 # Compiled python modules.
 *.pyc
 
