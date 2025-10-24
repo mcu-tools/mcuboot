@@ -8,7 +8,7 @@
  * This module provides a thin abstraction over some of the crypto
  * primitives to make it easier to swap out the used crypto library.
  *
- * At this point, the choices are: MCUBOOT_USE_TINYCRYPT, MCUBOOT_USE_CC310,
+ * At this point, the choices are: MCUBOOT_USE_CC310,
  * MCUBOOT_USE_MBED_TLS, MCUBOOT_USE_PSA_CRYPTO. Note that support for
  * MCUBOOT_USE_PSA_CRYPTO is still experimental and it might not support all
  * the crypto abstractions that MCUBOOT_USE_MBED_TLS supports. For this
@@ -32,16 +32,10 @@
     #error "P384 requires PSA_CRYPTO to be defined"
 #endif
 
-#if (defined(MCUBOOT_USE_TINYCRYPT) + \
-     defined(MCUBOOT_USE_CC310) + \
+#if defined(MCUBOOT_USE_CC310) + \
      defined(MCUBOOT_USE_PSA_OR_MBED_TLS)) != 1
-    #error "One crypto backend must be defined: either CC310/TINYCRYPT/MBED_TLS/PSA_CRYPTO"
+    #error "One crypto backend must be defined: either CC310/MBED_TLS/PSA_CRYPTO"
 #endif
-
-#if defined(MCUBOOT_USE_TINYCRYPT)
-    #include <tinycrypt/ecc_dsa.h>
-    #include <tinycrypt/constants.h>
-#endif /* MCUBOOT_USE_TINYCRYPT */
 
 #if defined(MCUBOOT_USE_CC310)
     #include <cc310_glue.h>
@@ -76,7 +70,7 @@
 extern "C" {
 #endif
 
-#if (defined(MCUBOOT_USE_TINYCRYPT) || defined(MCUBOOT_USE_MBED_TLS) || \
+#if (defined(MCUBOOT_USE_MBED_TLS) || \
      defined(MCUBOOT_USE_CC310)) && !defined(MCUBOOT_USE_PSA_CRYPTO)
 /*
  * Declaring these like this adds NULL termination.
@@ -127,109 +121,7 @@ static int bootutil_import_key(uint8_t **cp, uint8_t *end)
 
     return 0;
 }
-#endif /* (MCUBOOT_USE_TINYCRYPT || MCUBOOT_USE_MBED_TLS || MCUBOOT_USE_CC310) && !MCUBOOT_USE_PSA_CRYPTO */
-
-#if defined(MCUBOOT_USE_TINYCRYPT)
-#ifndef MCUBOOT_ECDSA_NEED_ASN1_SIG
-/*
- * cp points to ASN1 string containing an integer.
- * Verify the tag, and that the length is 32 bytes. Helper function.
- */
-static int bootutil_read_bigint(uint8_t i[NUM_ECC_BYTES], uint8_t **cp, uint8_t *end)
-{
-    size_t len;
-
-    if (mbedtls_asn1_get_tag(cp, end, &len, MBEDTLS_ASN1_INTEGER)) {
-        return -3;
-    }
-
-    if (len >= NUM_ECC_BYTES) {
-        memcpy(i, *cp + len - NUM_ECC_BYTES, NUM_ECC_BYTES);
-    } else {
-        memset(i, 0, NUM_ECC_BYTES - len);
-        memcpy(i + NUM_ECC_BYTES - len, *cp, len);
-    }
-    *cp += len;
-    return 0;
-}
-
-/*
- * Read in signature. Signature has r and s encoded as integers. Helper function.
- */
-static int bootutil_decode_sig(uint8_t signature[NUM_ECC_BYTES * 2], uint8_t *cp, uint8_t *end)
-{
-    int rc;
-    size_t len;
-
-    rc = mbedtls_asn1_get_tag(&cp, end, &len,
-                              MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE);
-    if (rc) {
-        return -1;
-    }
-    if (cp + len > end) {
-        return -2;
-    }
-
-    rc = bootutil_read_bigint(signature, &cp, end);
-    if (rc) {
-        return -3;
-    }
-    rc = bootutil_read_bigint(signature + NUM_ECC_BYTES, &cp, end);
-    if (rc) {
-        return -4;
-    }
-    return 0;
-}
-#endif /* not MCUBOOT_ECDSA_NEED_ASN1_SIG */
-
-typedef uintptr_t bootutil_ecdsa_context;
-static inline void bootutil_ecdsa_init(bootutil_ecdsa_context *ctx)
-{
-    (void)ctx;
-}
-
-static inline void bootutil_ecdsa_drop(bootutil_ecdsa_context *ctx)
-{
-    (void)ctx;
-}
-
-static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
-                                        uint8_t *pk, size_t pk_len,
-                                        uint8_t *hash, size_t hash_len,
-                                        uint8_t *sig, size_t sig_len)
-{
-    int rc;
-    (void)ctx;
-    (void)pk_len;
-    (void)sig_len;
-    (void)hash_len;
-
-    uint8_t signature[2 * NUM_ECC_BYTES];
-    rc = bootutil_decode_sig(signature, sig, sig + sig_len);
-    if (rc) {
-        return -1;
-    }
-
-    /* Only support uncompressed keys. */
-    if (pk[0] != 0x04) {
-        return -1;
-    }
-    pk++;
-
-    rc = uECC_verify(pk, hash, BOOTUTIL_CRYPTO_ECDSA_P256_HASH_SIZE, signature, uECC_secp256r1());
-    if (rc != TC_CRYPTO_SUCCESS) {
-        return -1;
-    }
-    return 0;
-}
-
-static inline int bootutil_ecdsa_parse_public_key(bootutil_ecdsa_context *ctx,
-                                                  uint8_t **cp,uint8_t *end)
-{
-    (void)ctx;
-    return bootutil_import_key(cp, end);
-}
-#endif /* MCUBOOT_USE_TINYCRYPT */
+#endif /* (MCUBOOT_USE_MBED_TLS || MCUBOOT_USE_CC310) && !MCUBOOT_USE_PSA_CRYPTO */
 
 #if defined(MCUBOOT_USE_CC310)
 typedef uintptr_t bootutil_ecdsa_context;
