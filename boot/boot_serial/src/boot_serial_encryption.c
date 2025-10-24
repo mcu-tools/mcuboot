@@ -218,7 +218,7 @@ decrypt_image_inplace(const struct flash_area *fa_p,
     size_t sect;
     struct flash_sector sector;
 
-    memset(&boot_data, 0, sizeof(struct boot_loader_state));
+    boot_state_clear(state);
     memset(&_bs, 0, sizeof(struct boot_status));
 
     /* Get size from last sector to know page/sector erase size */
@@ -233,7 +233,6 @@ decrypt_image_inplace(const struct flash_area *fa_p,
              FIH_RET(fih_rc);
         }
 #endif
-        memset(&boot_data, 0, sizeof(struct boot_loader_state));
         /* Load the encryption keys into cache */
         rc = boot_enc_load(state, BOOT_SLOT_PRIMARY, hdr, fa_p, bs);
         if (rc < 0) {
