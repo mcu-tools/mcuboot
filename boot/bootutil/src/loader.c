@@ -2446,9 +2446,12 @@ boot_go(struct boot_rsp *rsp)
 {
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
-    boot_state_clear(NULL);
+    boot_state_init(&boot_data);
 
     FIH_CALL(context_boot_go, fih_rc, &boot_data, rsp);
+
+    boot_state_clear(&boot_data);
+
     FIH_RET(fih_rc);
 }
 
