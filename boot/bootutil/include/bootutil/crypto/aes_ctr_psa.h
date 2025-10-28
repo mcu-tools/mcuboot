@@ -16,30 +16,18 @@
 #include "bootutil/enc_key_public.h"
 #include <psa/crypto.h>
 
-#define BOOT_ENC_BLOCK_SIZE (16)
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct {
-	/* Fixme: This should not be, here, psa_key_id should be passed */
-	uint8_t key[BOOT_ENC_KEY_SIZE];
+    psa_key_id_t key;
 } bootutil_aes_ctr_context;
 
 void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx);
 
-static inline void bootutil_aes_ctr_drop(bootutil_aes_ctr_context *ctx)
-{
-    memset(ctx, 0, sizeof(*ctx));
-}
-
-static inline int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k)
-{
-    memcpy(ctx->key, k, sizeof(ctx->key));
-
-    return 0;
-}
+void bootutil_aes_ctr_drop(bootutil_aes_ctr_context *ctx);
+int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k);
 
 int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
                              const uint8_t *m, uint32_t mlen, size_t blk_off, uint8_t *c);
