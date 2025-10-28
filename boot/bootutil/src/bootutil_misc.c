@@ -643,15 +643,9 @@ const struct image_max_size *boot_get_max_app_size(void)
  * Clears the boot state, so that previous operations have no effect on new
  * ones.
  *
- * @param state                 The state that should be cleared. If the value
- *                              is NULL, the default bootloader state will be
- *                              cleared.
+ * @param state                 The state that should be cleared.
  */
 void boot_state_clear(struct boot_loader_state *state)
 {
-    if (state != NULL) {
-        memset(state, 0, sizeof(struct boot_loader_state));
-    } else {
-        memset(boot_get_loader_state(), 0, sizeof(struct boot_loader_state));
-    }
+    memset(state, 0, sizeof(struct boot_loader_state));
 }
