@@ -1,6 +1,9 @@
 # Changelog
 This document provides a record of the most recent principal changes to the Infineon MCUBoot project.
 
+## 1.9.8
+- Improve image upgrade time for CYW20829/CYW89829 devices.
+
 ## 1.9.7
 - Added support for CYW89829 B1 silicon.
 - Added support for the GCC 14 compiler.

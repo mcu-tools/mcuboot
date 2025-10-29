@@ -58,6 +58,7 @@
 #include "flash_qspi.h"
 
 #define SMIF_OFFSET(addr) ((uint32_t)(addr) - SMIF_MEM_START_PLATFORM)
+#define MCUBOOT_SMIF_ENC_BUF_SZ (256U)
 
 #if defined(MCUBOOT_ENC_IMAGES_SMIF)
 #define CY_GET_XIP_REMAP_ADDR(addr) ((addr) - CY_XIP_BASE + CY_XIP_CBUS_BASE)
@@ -181,18 +182,18 @@ smif_write_encrypt_block(const void **data, uint32_t *len, uintptr_t *addr)
     cy_en_smif_status_t status = CY_SMIF_SUCCESS;
     uintptr_t write_address = *addr;
     uintptr_t prev_align = write_address & CY_SMIF_CRYPTO_ADDR_MASK;
-    uintptr_t next_align = prev_align + CY_SMIF_AES128_BYTES;
+    uintptr_t next_align = prev_align + MCUBOOT_SMIF_ENC_BUF_SZ;
     size_t align_offset = write_address - prev_align;
-    uint8_t tmp[CY_SMIF_AES128_BYTES] = {0U};
+    uint8_t tmp[MCUBOOT_SMIF_ENC_BUF_SZ] = {0U};
     size_t bytes_to_cpy = *len;
 
-    if ((*len) > CY_SMIF_AES128_BYTES) {
-        bytes_to_cpy = CY_SMIF_AES128_BYTES - ((*len) % CY_SMIF_AES128_BYTES);
+    if ((*len) > MCUBOOT_SMIF_ENC_BUF_SZ) {
+        bytes_to_cpy = MCUBOOT_SMIF_ENC_BUF_SZ;
     }
 
     (void)memcpy((void *)&tmp[align_offset], *data, bytes_to_cpy);
 
-    status = smif_encrypt(tmp, CY_SMIF_AES128_BYTES, prev_align);
+    status = smif_encrypt(tmp, MCUBOOT_SMIF_ENC_BUF_SZ, prev_align);
 
     if (status == CY_SMIF_SUCCESS) {
         status = smif_write(SMIF_OFFSET(write_address), &tmp[align_offset], bytes_to_cpy);
