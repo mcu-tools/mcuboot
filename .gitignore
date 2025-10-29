@@ -29,3 +29,9 @@ rusty-tags.*
 
 # The target directory from Rust development
 /target/
+
+build*
+_build*
+
+west.yml
+module.yml

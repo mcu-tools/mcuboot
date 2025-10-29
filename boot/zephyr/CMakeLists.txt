@@ -193,7 +193,7 @@ else()
 endif()
 if(CONFIG_BOOT_HAVE_HWRNG)
   zephyr_library_sources(
-    rng_stm32.c
+    boot_rng.c
   )
 endif()
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)

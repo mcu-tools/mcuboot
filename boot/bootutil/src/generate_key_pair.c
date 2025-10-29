@@ -7,6 +7,7 @@
 
 // #if defined(MCUBOOT_GEN_ENC_KEY)
 #include <string.h>
+#include <stddef.h>
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/pk.h"
@@ -41,11 +42,12 @@ int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t 
     for (int i = 0; i < NBR_WARM_UP ; i++) {
     	BOOT_RNG(&val);
     }
+    BOOT_LOG_INF("RNG value: %u\r\n",val);
 
-    BOOT_LOG_DBG("mbedtls_hardware_poll: ask %lu bytes", (unsigned long)len);
-
+    BOOT_LOG_INF("mbedtls_hardware_poll: ask %lu bytes", (unsigned long)len);
+    
     while (produced < len) {
-        if (BOOT_RNG(&val) != HAL_OK) {
+        if (BOOT_RNG(&val) != 0) {
         	BOOT_LOG_ERR("RNG reads fails at %lu/%lu bytes", (unsigned long)produced, (unsigned long)len);
             *olen = produced;
             return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
@@ -54,16 +56,21 @@ int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t 
         size_t copy_len = (len - produced >= 4) ? 4 : (len - produced);
         memcpy(output + produced, &val, copy_len);
         produced += copy_len;
-
-        BOOT_LOG_DBG("%08lX",(unsigned long)val,(unsigned long)produced,(unsigned long)len);
+        BOOT_LOG_INF("%08lX",(unsigned long)val,(unsigned long)produced,(unsigned long)len);
 
     }
-
     *olen = produced;
     BOOT_LOG_INF("mbedtls_hardware_poll: total generated = %lu bytes", (unsigned long)*olen);
     return 0;
 }
 #endif
+
+int mbedtls_hardware_polll_full(void *data, unsigned char *output, size_t len){
+
+    size_t dummy;
+    return mbedtls_hardware_poll(data, output, len, &dummy);
+
+}
 /*
  * Generate an EC-P256 key pair using the mbedTLS library
  *
@@ -84,7 +91,7 @@ int gen_p256_keypair(mbedtls_pk_context *pk)
     /*
      * Seeds the random number generator using a hardware entropy source
      */
-    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_hardware_polll, NULL,pers, sizeof(pers)-1);
+    ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_hardware_polll_full, NULL,pers, sizeof(pers)-1);
     if (ret != 0) {
         BOOT_LOG_ERR("SEED FAIL ret=%d", ret);
         goto cleanup;
@@ -161,34 +168,24 @@ void dump_p256(const mbedtls_pk_context *pk)
 }
 
 int export_pub_pem(mbedtls_pk_context *pk) {
-    unsigned char buf[800];
-    unsigned char buf1[800];
+    unsigned char buf_pub[800];
+    unsigned char buf_priv[800];
     int ret;
 
-    ret = mbedtls_pk_write_pubkey_pem(pk, buf, sizeof(buf));
+    ret = mbedtls_pk_write_pubkey_pem(pk, buf_pub, sizeof(buf_pub));
     if (ret != 0) {
 
         return ret;
     }
 
-    ret = mbedtls_pk_write_key_pem(pk, buf1, sizeof(buf1));
+    ret = mbedtls_pk_write_key_pem(pk, buf_priv, sizeof(buf_priv));
     if (ret != 0) {
 
         return ret;
     }
 
-    char *line = strtok((char *)buf,"\n");
-    while(line != NULL){
-    	BOOT_LOG_INF("%s", line);
-    	line = strtok(NULL,"\n");
-    }
-
-    char *line1 = strtok((char *)buf1,"\n");
-    while(line1 != NULL){
-    	BOOT_LOG_INF("%s", line1);
-    	line1 = strtok(NULL,"\n");
-    }
-
+    BOOT_LOG_INF("\n%s", buf_pub);
+    BOOT_LOG_INF("\n%s", buf_priv);
     return 0;
 }
 

@@ -642,13 +642,13 @@ int main(void)
         k_sleep(K_MSEC(10));
         BOOT_RNG(&val);
         BOOT_LOG_INF("RNG value: %u\r\n",val);
-        #if defined(MCUBOOT_GEN_ENC_KEY) && defined(MCUBOOT_HAVE_HWRNG)
+        // #if defined(MCUBOOT_GEN_ENC_KEY) && defined(MCUBOOT_HAVE_HWRNG)
             mbedtls_pk_context pk;
-            // uint32_t val;
-            //     if (HAL_RNG_GenerateRandomuNmber(&hrng, &val) != HAL_OK) {
-            //         BOOT_LOG_ERR("RNG lecture fails");
+        //     // uint32_t val;
+        //     //     if (HAL_RNG_GenerateRandomuNmber(&hrng, &val) != HAL_OK) {
+        //     //         BOOT_LOG_ERR("RNG lecture fails");
 
-            //     }
+        //     //     }
             if (gen_p256_keypair(&pk)==0){
                 BOOT_LOG_INF("Start generatation\r\n");
                     unsigned char *der_priv;
@@ -668,7 +668,7 @@ int main(void)
             else {
                 BOOT_LOG_ERR("error generation");
             }
-        #endif
+        // #endif
         
 
         mcuboot_status_change(MCUBOOT_STATUS_NO_BOOTABLE_IMAGE_FOUND);
