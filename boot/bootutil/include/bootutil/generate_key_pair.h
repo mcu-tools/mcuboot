@@ -14,7 +14,6 @@ extern "C" {
 #include "mbedtls/pk.h"
 #include "mbedtls/ecp.h"
 
-
 void generate_enc_key_pair();
 int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t *olen);
 int gen_p256_keypair(mbedtls_pk_context *pk);
