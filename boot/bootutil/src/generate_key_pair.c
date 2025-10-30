@@ -81,7 +81,7 @@ int gen_p256_keypair(mbedtls_pk_context *pk)
     int ret;
     mbedtls_entropy_context entropy;
     mbedtls_ctr_drbg_context ctr_drbg;
-    const unsigned char pers[] = "stm32-p256-keygenstm32-p256-keygen";
+    const unsigned char pers[] = "keyge-p256-keygenkeyge-p256-keygen";
 
     mbedtls_pk_init(pk);
     mbedtls_entropy_init(&entropy);
