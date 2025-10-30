@@ -26,6 +26,11 @@
 #define FLASH_AREA_IMAGE_0_SLOTS    slot0_partition, slot1_partition
 #define FLASH_AREA_IMAGE_1_SLOTS    slot2_partition, slot3_partition
 #define FLASH_AREA_IMAGE_2_SLOTS    slot4_partition, slot5_partition
+#define FLASH_AREA_IMAGE_3_SLOTS    slot6_partition, slot7_partition
+#define FLASH_AREA_IMAGE_4_SLOTS    slot8_partition, slot9_partition
+#define FLASH_AREA_IMAGE_5_SLOTS    slot10_partition, slot11_partition
+#define FLASH_AREA_IMAGE_6_SLOTS    slot12_partition, slot13_partition
+#define FLASH_AREA_IMAGE_7_SLOTS    slot14_partition, slot15_partition
 
 #if (MCUBOOT_IMAGE_NUMBER == 1)
 #define ALL_AVAILABLE_SLOTS FLASH_AREA_IMAGE_0_SLOTS
@@ -36,6 +41,41 @@
 #define ALL_AVAILABLE_SLOTS FLASH_AREA_IMAGE_0_SLOTS, \
                             FLASH_AREA_IMAGE_1_SLOTS, \
                             FLASH_AREA_IMAGE_2_SLOTS
+#elif (MCUBOOT_IMAGE_NUMBER == 4)
+#define ALL_AVAILABLE_SLOTS FLASH_AREA_IMAGE_0_SLOTS, \
+                            FLASH_AREA_IMAGE_1_SLOTS, \
+                            FLASH_AREA_IMAGE_2_SLOTS, \
+                            FLASH_AREA_IMAGE_3_SLOTS
+#elif (MCUBOOT_IMAGE_NUMBER == 5)
+#define ALL_AVAILABLE_SLOTS FLASH_AREA_IMAGE_0_SLOTS, \
+                            FLASH_AREA_IMAGE_1_SLOTS, \
+                            FLASH_AREA_IMAGE_2_SLOTS, \
+                            FLASH_AREA_IMAGE_3_SLOTS, \
+                            FLASH_AREA_IMAGE_4_SLOTS
+#elif (MCUBOOT_IMAGE_NUMBER == 6)
+#define ALL_AVAILABLE_SLOTS FLASH_AREA_IMAGE_0_SLOTS, \
+                            FLASH_AREA_IMAGE_1_SLOTS, \
+                            FLASH_AREA_IMAGE_2_SLOTS, \
+                            FLASH_AREA_IMAGE_3_SLOTS, \
+                            FLASH_AREA_IMAGE_4_SLOTS, \
+                            FLASH_AREA_IMAGE_5_SLOTS
+#elif (MCUBOOT_IMAGE_NUMBER == 7)
+#define ALL_AVAILABLE_SLOTS FLASH_AREA_IMAGE_0_SLOTS, \
+                            FLASH_AREA_IMAGE_1_SLOTS, \
+                            FLASH_AREA_IMAGE_2_SLOTS, \
+                            FLASH_AREA_IMAGE_3_SLOTS, \
+                            FLASH_AREA_IMAGE_4_SLOTS, \
+                            FLASH_AREA_IMAGE_5_SLOTS, \
+                            FLASH_AREA_IMAGE_6_SLOTS
+#elif (MCUBOOT_IMAGE_NUMBER == 8)
+#define ALL_AVAILABLE_SLOTS FLASH_AREA_IMAGE_0_SLOTS, \
+                            FLASH_AREA_IMAGE_1_SLOTS, \
+                            FLASH_AREA_IMAGE_2_SLOTS, \
+                            FLASH_AREA_IMAGE_3_SLOTS, \
+                            FLASH_AREA_IMAGE_4_SLOTS, \
+                            FLASH_AREA_IMAGE_5_SLOTS, \
+                            FLASH_AREA_IMAGE_6_SLOTS, \
+                            FLASH_AREA_IMAGE_7_SLOTS
 #endif
 
 static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
@@ -49,6 +89,11 @@ static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
 #undef FLASH_AREA_IMAGE_0_SLOTS
 #undef FLASH_AREA_IMAGE_1_SLOTS
 #undef FLASH_AREA_IMAGE_2_SLOTS
+#undef FLASH_AREA_IMAGE_3_SLOTS
+#undef FLASH_AREA_IMAGE_4_SLOTS
+#undef FLASH_AREA_IMAGE_5_SLOTS
+#undef FLASH_AREA_IMAGE_6_SLOTS
+#undef FLASH_AREA_IMAGE_7_SLOTS
 #undef ALL_AVAILABLE_SLOTS
 
 #define FLASH_AREA_IMAGE_PRIMARY(x) __flash_area_ids_for_slot(x, 0)
