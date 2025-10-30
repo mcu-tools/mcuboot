@@ -117,8 +117,6 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/bootutil_area.c
   ${BOOT_DIR}/bootutil/src/bootutil_loader.c
   ${BOOT_DIR}/bootutil/src/fault_injection_hardening.c
-  ${BOOT_DIR}/bootutil/src/generate_key_pair.c
-  ${MCUBOOT_DIR}/ext/mbedtls-pkcs8/pkcs8secp256write.c
   )
 
 if((CONFIG_BOOT_ENCRYPT_X25519 AND CONFIG_BOOT_ED25519_PSA)
@@ -191,10 +189,17 @@ else()
     endif()
   endif()
 endif()
+
 if(CONFIG_BOOT_HAVE_HWRNG)
   zephyr_library_sources(
     boot_rng.c
   )
+endif()
+if(CONFIG_BOOT_GEN_ENC_KEY)
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/generate_key_pair.c
+    ${MCUBOOT_DIR}/ext/mbedtls-pkcs8/pkcs8secp256write.c
+    )
 endif()
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   # When ECDSA PSA is used, do not pull in additional ASN.1 include

@@ -15,16 +15,12 @@ extern "C" {
 #include "mbedtls/ecp.h"
 
 
-
+void generate_enc_key_pair();
 int mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t *olen);
 int gen_p256_keypair(mbedtls_pk_context *pk);
 void dump_p256(const mbedtls_pk_context *pk);
-void show_public_key_formatted(const mbedtls_pk_context *pk);
-int export_privkey_der(mbedtls_pk_context *pk,
-                       unsigned char **der_ptr,
-                       size_t *der_len);
+int export_privkey_der(mbedtls_pk_context *pk);
 int export_pub_pem(mbedtls_pk_context *pk);
-int dump_pkcs8_der_as_c_array(const mbedtls_pk_context *pk);
 
 #ifdef __cplusplus
 }

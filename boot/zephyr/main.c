@@ -633,43 +633,10 @@ int main(void)
 #endif
 
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
-        BOOT_LOG_ERR("Unable to find bootable image");
-        const struct device *entropy_dev;
-        uint32_t val;
-        int ret;
-        
-        BOOT_LOG_INF("MCUboot starting...");
-        k_sleep(K_MSEC(10));
-        BOOT_RNG(&val);
-        BOOT_LOG_INF("RNG value: %u\r\n",val);
-        // #if defined(MCUBOOT_GEN_ENC_KEY) && defined(MCUBOOT_HAVE_HWRNG)
-            mbedtls_pk_context pk;
-        //     // uint32_t val;
-        //     //     if (HAL_RNG_GenerateRandomuNmber(&hrng, &val) != HAL_OK) {
-        //     //         BOOT_LOG_ERR("RNG lecture fails");
-
-        //     //     }
-            if (gen_p256_keypair(&pk)==0){
-                BOOT_LOG_INF("Start generatation\r\n");
-                    unsigned char *der_priv;
-                    size_t der_len;
-                    if (export_privkey_der(&pk, &der_priv, &der_len) == 0) {
-                        BOOT_LOG_INF("Private key DER length = %u\n", (unsigned)der_len);
-                        for (size_t i = 0; i < der_len; i++) {
-                            BOOT_LOG_INF("0x%02X,", der_priv[i]);
-                        }
-                        BOOT_LOG_INF("\n");
-                    }
-                    export_pub_pem(&pk);
-                        dump_p256(&pk);
-            //			  show_public_key_formatted(&pk);
-
-            }
-            else {
-                BOOT_LOG_ERR("error generation");
-            }
-        // #endif
-        
+        BOOT_LOG_ERR("Unable to find bootable image");        
+        #if defined(MCUBOOT_GEN_ENC_KEY) && defined(MCUBOOT_HAVE_HWRNG)
+        generate_enc_key_pair();
+        #endif
 
         mcuboot_status_change(MCUBOOT_STATUS_NO_BOOTABLE_IMAGE_FOUND);
 

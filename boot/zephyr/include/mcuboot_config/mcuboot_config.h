@@ -165,9 +165,9 @@
 #define MCUBOOT_HAVE_HWRNG
 #endif
 
-// #ifdef CONFIG_BOOT_GEN_ENC_KEY
+#ifdef CONFIG_BOOT_GEN_ENC_KEY
 #define MCUBOOT_GEN_ENC_KEY
-// #endif
+#endif
 
 #ifdef CONFIG_BOOT_ENCRYPT_X25519
 #define MCUBOOT_ENC_IMAGES
