@@ -113,7 +113,6 @@ config BOOT_X25519_PSA_DEPENDENCIES
 
 endif # BOOT_ENCRYPT_IMAGE
 
-
 config BOOT_ECDSA_PSA_DEPENDENCIES
 	bool
 	select PSA_WANT_ALG_ECDSA
@@ -143,9 +142,6 @@ config BOOT_HAVE_HWRNG
 
 config BOOT_GEN_ENC_KEY
 	bool "generate encryption key"
-
-
-
 
 config SINGLE_APPLICATION_SLOT
 	bool "Single slot bootloader"
