@@ -17,8 +17,6 @@
 #include "bootutil/bootutil_hwrng.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
-extern unsigned char enc_priv_key[];
-extern unsigned int enc_priv_key_len;
 
 /**
  * @brief Generate random data using the hardware random number generator.
@@ -38,7 +36,7 @@ mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t *ole
     (void)data;
     uint32_t val;
     size_t produced = 0;
-    // Warm-up
+
     for (int i = 0; i < NBR_WARM_UP; i++) {
         BOOT_RNG(&val);
     }
@@ -57,8 +55,8 @@ mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t *ole
         size_t copy_len = (len - produced >= 4) ? 4 : (len - produced);
         memcpy(output + produced, &val, copy_len);
         produced += copy_len;
-        BOOT_LOG_INF("%08lX", (unsigned long)val, (unsigned long)produced,
-                     (unsigned long)len);
+        BOOT_LOG_INF("val=0x%lX producted=%lu len=%lu", (unsigned long)val,
+                     (unsigned long)produced, (unsigned long)len);
     }
     *olen = produced;
     BOOT_LOG_INF("mbedtls_hardware_poll: total generated = %lu bytes",
@@ -67,6 +65,11 @@ mbedtls_hardware_poll(void *data, unsigned char *output, size_t len, size_t *ole
 }
 #endif
 
+/**
+ * @brief Wrap mbedtls_hardware_poll
+ *
+ * @return Function to generate random data using the hardware random number generator
+ */
 int
 mbedtls_hardware_polll_full(void *data, unsigned char *output, size_t len)
 {
@@ -74,10 +77,14 @@ mbedtls_hardware_polll_full(void *data, unsigned char *output, size_t len)
     size_t dummy;
     return mbedtls_hardware_poll(data, output, len, &dummy);
 }
-/*
- * Generate an EC-P256 key pair using the mbedTLS library
+
+/**
+ * @brief Generate public and private key and contain in mbedtls_pk_context.
  *
- * @return 0 on success, or a negative mbedTLS error code on failure.
+ * @param pk Initialize mbedtls_pk_context and contains the generate key pair.
+ *
+ * @return 0 for Success.
+ * @return Not equal to zero, therefore failure.
  */
 int
 gen_p256_keypair(mbedtls_pk_context *pk)
@@ -91,9 +98,6 @@ gen_p256_keypair(mbedtls_pk_context *pk)
     mbedtls_entropy_init(&entropy);
     mbedtls_ctr_drbg_init(&ctr_drbg);
 
-    /*
-     * Seeds the random number generator using a hardware entropy source
-     */
     ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_hardware_polll_full, NULL,
                                 pers, sizeof(pers) - 1);
     if (ret != 0) {
@@ -101,18 +105,12 @@ gen_p256_keypair(mbedtls_pk_context *pk)
         goto cleanup;
     }
 
-    /*
-     * Sets up the public key context for key generation
-     */
     ret = mbedtls_pk_setup(pk, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
     if (ret != 0) {
         BOOT_LOG_ERR("PK_SETUP FAIL ret=%d", ret);
         goto cleanup;
     }
 
-    /*
-     *
-     */
     ret = mbedtls_ecp_gen_key(MBEDTLS_ECP_DP_SECP256R1, mbedtls_pk_ec(*pk),
                               mbedtls_ctr_drbg_random, &ctr_drbg);
     if (ret != 0) {
@@ -126,6 +124,14 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Export private key in PKCS8 format.
+ *
+ * @param pk Initialize mbedtls_pk_context and contains the generate key pair.
+ *
+ * @return 0 for Success.
+ * @return Not equal to zero, therefore failure.
+ */
 int
 export_privkey_der(mbedtls_pk_context *pk)
 {
@@ -167,6 +173,14 @@ export_privkey_der(mbedtls_pk_context *pk)
     return 0;
 }
 
+/**
+ * @brief Export private and public key in PEM format.
+ *
+ * @param pk Initialize mbedtls_pk_context and contains the generate key pair.
+ *
+ * @return 0 for Success.
+ * @return Not equal to zero, therefore failure.
+ */
 int
 export_pub_pem(mbedtls_pk_context *pk)
 {
@@ -191,6 +205,12 @@ export_pub_pem(mbedtls_pk_context *pk)
     return 0;
 }
 
+/**
+ * @brief Print private and public key
+ *
+ * @param pk Initialize mbedtls_pk_context and contains the generate key pair.
+ *
+ */
 void
 dump_p256(const mbedtls_pk_context *pk)
 {
@@ -219,6 +239,14 @@ dump_p256(const mbedtls_pk_context *pk)
     BOOT_LOG_INF("\n");
 }
 
+/**
+ * @brief Generate public and private key for encryption in (PKCS8 and PEM format).
+ *
+ * @param pk Initialize mbedtls_pk_context and contains the generate key pair.
+ *
+ * @note On failure, print error message.
+ * @note On success, print success message.
+ */
 void
 generate_enc_key_pair()
 {
