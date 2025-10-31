@@ -632,6 +632,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
     }
 #endif
     if (!boot_check_header_valid(state, slot)) {
+        BOOT_LOG_DBG("boot_validate_slot: header validation failed %d", slot);
         fih_rc = FIH_FAILURE;
     } else {
         BOOT_HOOK_CALL_FIH(boot_image_check_hook, FIH_BOOT_HOOK_REGULAR,
@@ -644,16 +645,16 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
 check_validity:
 #endif
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+#if !defined(__BOOTSIM__)
+        BOOT_LOG_ERR("Image in the %s slot is not valid!",
+                     (slot == BOOT_SLOT_PRIMARY) ? "primary" : "secondary");
+#endif
         if ((slot != BOOT_SLOT_PRIMARY) || ARE_SLOTS_EQUIVALENT()) {
             boot_scramble_slot(fap, slot);
             /* Image is invalid, erase it to prevent further unnecessary
              * attempts to validate and boot it.
              */
         }
-#if !defined(__BOOTSIM__)
-        BOOT_LOG_ERR("Image in the %s slot is not valid!",
-                     (slot == BOOT_SLOT_PRIMARY) ? "primary" : "secondary");
-#endif
         fih_rc = FIH_NO_BOOTABLE_IMAGE;
         goto out;
     }
@@ -1006,9 +1007,13 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 
 #ifdef MCUBOOT_ENC_IMAGES
     if (IS_ENCRYPTED(boot_img_hdr(state, BOOT_SLOT_SECONDARY))) {
+#ifdef MCUBOOT_EMBEDDED_ENC_KEY
+        rc = boot_take_enc_key(bs->enckey[BOOT_SLOT_SECONDARY], BOOT_CURR_IMG(state), BOOT_SLOT_SECONDARY);
+#else
         rc = boot_enc_load(state, BOOT_SLOT_SECONDARY,
                 boot_img_hdr(state, BOOT_SLOT_SECONDARY),
                 fap_secondary_slot, bs);
+#endif /* MCUBOOT_EMBEDDED_ENC_KEY */
 
         if (rc < 0) {
             return BOOT_EBADIMAGE;
@@ -1130,7 +1135,11 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 #ifdef MCUBOOT_ENC_IMAGES
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
+#ifdef MCUBOOT_EMBEDDED_ENC_KEY
+            rc = boot_take_enc_key(bs->enckey[BOOT_SLOT_PRIMARY], BOOT_CURR_IMG(state), BOOT_SLOT_PRIMARY);
+#else
             rc = boot_enc_load(state, BOOT_SLOT_PRIMARY, hdr, fap, bs);
+#endif /* MCUBOOT_EMBEDDED_ENC_KEY */
             assert(rc >= 0);
 
             if (rc == 0) {
@@ -1154,7 +1163,11 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         hdr = boot_img_hdr(state, BOOT_SLOT_SECONDARY);
         if (IS_ENCRYPTED(hdr)) {
             fap = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
+#ifdef MCUBOOT_EMBEDDED_ENC_KEY
+            rc = boot_take_enc_key(bs->enckey[BOOT_SLOT_SECONDARY], BOOT_CURR_IMG(state), BOOT_SLOT_SECONDARY);
+#else
             rc = boot_enc_load(state, BOOT_SLOT_SECONDARY, hdr, fap, bs);
+#endif /* MCUBOOT_EMBEDDED_ENC_KEY */
             assert(rc >= 0);
 
             if (rc == 0) {
@@ -1191,7 +1204,11 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 
             boot_enc_init(BOOT_CURR_ENC_SLOT(state, slot));
 
+#ifdef MCUBOOT_EMBEDDED_ENC_KEY
+            rc = boot_take_enc_key(bs->enckey[slot], image_index, slot);
+#else
             rc = boot_read_enc_key(fap, slot, bs);
+#endif /* MCUBOOT_EMBEDDED_ENC_KEY */
             if (rc) {
                 BOOT_LOG_DBG("boot_swap_image: Failed loading key (%d, %d)",
                               image_index, slot);
@@ -1199,7 +1216,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
                 boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, slot), bs->enckey[slot]);
             }
         }
-#endif
+#endif /* MCUBOOT_ENC_IMAGES */
         flash_area_close(fap);
     }
 
