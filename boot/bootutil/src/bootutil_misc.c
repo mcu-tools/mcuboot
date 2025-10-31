@@ -56,6 +56,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 /* Currently only used by imgmgr */
 int boot_current_slot;
 
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
 #if (!defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)) || \
 defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
 /* Used for holding static buffers in multiple functions to work around issues
@@ -63,6 +64,7 @@ defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
  */
 static struct boot_sector_buffer sector_buffers;
 #endif
+#endif /* !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0 */
 
 /**
  * @brief Determine if the data at two memory addresses is equal
@@ -431,6 +433,7 @@ done:
 
 #if (!defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)) || \
 defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
 int
 boot_initialize_area(struct boot_loader_state *state, int flash_area)
 {
@@ -471,6 +474,139 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     return 0;
 }
 
+#else /* defined(MCUBOOT_LOGICAL_SECTOR_SIZE) && MCUBOOT_LOGICAL_SECTOR_SIZE != 0 */
+#if defined(MCUBOOT_VERIFY_LOGICAL_SECTORS)
+/* Validation can only run once all flash areas are open and pointers to
+ * flash area objects are stored in state.
+ */
+static int
+boot_verify_logical_sectors(int faid, const struct flash_area *fa)
+{
+    uint32_t slot_size;
+    uint32_t slot_off;
+    uint32_t sect_off = 0;
+    int rc;
+    int final_rc = 0;
+    bool device_with_erase;
+    uint32_t wbs;
+
+    assert(fa != NULL);
+    assert(faid != 0);
+
+    slot_off = (uint32_t)flash_area_get_off(fa);
+    slot_size = (uint32_t)flash_area_get_size(fa);
+
+    wbs = flash_area_align(fa);
+
+    device_with_erase = device_requires_erase(fa);
+    /* Go till all verifications are complete or we face issue that does not allow
+     * to precede with further tests.
+     */
+    BOOT_LOG_INF("boot_verify_logical_sectors: verify flash area %p", fa);
+    BOOT_LOG_INF("boot_verify_logical_sectors: MCUBOOT_LOGICAL_SECTOR_SIZE == 0x%x",
+                 MCUBOOT_LOGICAL_SECTOR_SIZE);
+    BOOT_LOG_INF("boot_verify_logical_sectors: slot offset == 0x%x", slot_off);
+    if (slot_size != 0) {
+        BOOT_LOG_INF("boot_verify_logical_sectors: slot size == 0x%x", slot_size);
+    } else {
+        BOOT_LOG_ERR("boot_verify_logical_sectors: 0 size slot");
+        return BOOT_EFLASH;
+    }
+    BOOT_LOG_INF("boot_verify_logical_sectors: write block size %u", wbs);
+    BOOT_LOG_INF("boot_verify_logical_sectors: device with%s erase",
+                 device_with_erase ? "" : "out");
+
+    /* We are expecting slot size to be multiple of logical sector size.
+     * Note though that we do not check alignment of the slot to logical sector.
+     * as it does not matter, only alignment of slot to a real erase page
+     * matters.
+     */
+    if (slot_size % MCUBOOT_LOGICAL_SECTOR_SIZE) {
+        BOOT_LOG_ERR("boot_verify_logical_sectors: area size not aligned");
+        final_rc = BOOT_EFLASH;
+    }
+
+    BOOT_LOG_INF("boot_verify_logical_sectors: max %d logical sectors",
+                 slot_size / MCUBOOT_LOGICAL_SECTOR_SIZE);
+
+    if (device_with_erase) {
+        size_t total_scanned = 0;
+
+        /* Check all logical sectors pages against erase pages of a device */
+        while (total_scanned < slot_size) {
+            struct flash_sector fas;
+
+            MCUBOOT_WATCHDOG_FEED();
+
+            BOOT_LOG_INF("boot_verify_logical_sectors: page 0x%x:0x%x ", slot_off, sect_off);
+            rc = flash_area_get_sector(fa, sect_off, &fas);
+            if (rc < 0) {
+                BOOT_LOG_ERR("boot_verify_logical_sectors: query err %d", rc);
+                final_rc = BOOT_EFLASH;
+                continue;
+            }
+
+            /* Jumping by logical sector size should align us with real erase page
+             * each time.
+             */
+            if (sect_off != flash_sector_get_off(&fas)) {
+                BOOT_LOG_ERR("boot_verify_logical_sectors: misaligned offset (0x%x)",
+                             (uint32_t)flash_sector_get_off(&fas));
+                final_rc = BOOT_EFLASH;
+            }
+
+            /* Jumping by logical sector size */
+            sect_off += MCUBOOT_LOGICAL_SECTOR_SIZE;
+            total_scanned += MCUBOOT_LOGICAL_SECTOR_SIZE;
+        }
+    } else {
+        /* Devices with no-explicit erase require alignment to write block size */
+
+        if (MCUBOOT_LOGICAL_SECTOR_SIZE % wbs) {
+            BOOT_LOG_ERR("boot_verify_logical_sectors: sector size not aligned to write block");
+            final_rc = BOOT_EFLASH;
+        }
+
+        if (slot_off % wbs) {
+            BOOT_LOG_ERR("boot_verify_logical_sectors: slot not aligned to write block");
+            final_rc = BOOT_EFLASH;
+        }
+    }
+
+    BOOT_LOG_INF("boot_verify_logical_sectors: completed (%d)", final_rc);
+
+    return final_rc;
+}
+#endif /* MCUBOOT_LOGICAL_SECTOR_VALIDATION */
+
+static int
+boot_initialize_area(struct boot_loader_state *state, int flash_area)
+{
+    size_t area_size;
+    uint32_t *out_num_sectors;
+
+    if (flash_area == FLASH_AREA_IMAGE_PRIMARY(BOOT_CURR_IMG(state))) {
+        area_size = flash_area_get_size(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
+        out_num_sectors = &BOOT_IMG(state, BOOT_SLOT_PRIMARY).num_sectors;
+    } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
+        area_size = flash_area_get_size(BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY));
+        out_num_sectors = &BOOT_IMG(state, BOOT_SLOT_SECONDARY).num_sectors;
+#if MCUBOOT_SWAP_USING_SCRATCH
+    } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
+        area_size = flash_area_get_size(state->scratch.area);
+        out_num_sectors = &state->scratch.num_sectors;
+#endif
+    } else {
+        return BOOT_EFLASH;
+    }
+
+    *out_num_sectors = area_size / MCUBOOT_LOGICAL_SECTOR_SIZE;
+
+    return 0;
+}
+
+#endif /* defined(MCUBOOT_LOGICAL_SECTOR_SIZE) && MCUBOOT_LOGICAL_SECTOR_SIZE != 0 */
+
 static uint32_t
 boot_write_sz(struct boot_loader_state *state)
 {
@@ -500,11 +636,12 @@ boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *se
     uint8_t image_index;
     int rc;
 
+    image_index = BOOT_CURR_IMG(state);
+
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
     if (sectors == NULL) {
         sectors = &sector_buffers;
     }
-
-    image_index = BOOT_CURR_IMG(state);
 
     BOOT_IMG(state, BOOT_SLOT_PRIMARY).sectors =
         sectors->primary[image_index];
@@ -515,6 +652,9 @@ boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *se
     state->scratch.sectors = sectors->scratch;
 #endif
 #endif
+#else
+    (void)sectors;
+#endif /* !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0 */
 
     rc = boot_initialize_area(state, FLASH_AREA_IMAGE_PRIMARY(image_index));
     if (rc != 0) {
@@ -537,6 +677,28 @@ boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *se
 #endif
 
     BOOT_WRITE_SZ(state) = boot_write_sz(state);
+
+#if defined(MCUBOOT_VERIFY_LOGICAL_SECTORS)
+    BOOT_LOG_INF("boot_read_sectors: verify image %d slots", image_index);
+    BOOT_LOG_INF("boot_read_sectors: BOOT_SLOT_PRIMARY");
+    if (boot_verify_logical_sectors(FLASH_AREA_IMAGE_PRIMARY(image_index),
+        BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY)) != 0) {
+        rc = BOOT_EFLASH;
+    }
+
+    BOOT_LOG_INF("boot_read_sectors: BOOT_SLOT_SECONDARY");
+    if (boot_verify_logical_sectors(FLASH_AREA_IMAGE_SECONDARY(image_index),
+        BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY)) != 0) {
+        rc = BOOT_EFLASH_SEC;
+    }
+
+#if MCUBOOT_SWAP_USING_SCRATCH
+    BOOT_LOG_INF("boot_read_sectors: SCRATCH");
+    if (boot_verify_logical_sectors(FLASH_AREA_IMAGE_SCRATCH, state->scratch.area) != 0) {
+        rc = BOOT_EFLASH;
+    }
+#endif /* MCUBOOT_SWAP_USING_SCRATCH */
+#endif /* defined(MCUBOOT_LOGICAL_SECTOR_VALIDATION) */
 
     return 0;
 }
