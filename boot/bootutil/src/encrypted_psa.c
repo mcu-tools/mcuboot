@@ -190,12 +190,45 @@ void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx)
 {
     psa_status_t psa_ret = psa_crypto_init();
 
-    (void)ctx;
-
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_ERR("AES init PSA crypto init failed %d", psa_ret);
         assert(0);
     }
+
+    ctx->key = PSA_KEY_ID_NULL;
+}
+
+void bootutil_aes_ctr_drop(bootutil_aes_ctr_context *ctx)
+{
+    psa_status_t psa_ret = psa_destroy_key(ctx->key);
+
+    if (psa_ret != PSA_SUCCESS) {
+        BOOT_LOG_WRN("aes_ctr_drop: destruction failed %d", psa_ret);
+        /* This should never happen. If we fail to destroy key this happens
+         * either because it is invalid key number or something is really
+         * wrong; either way we have no way to recover.
+         */
+        assert(0);
+    }
+
+    ctx->key = PSA_KEY_ID_NULL;
+}
+
+int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k)
+{
+    psa_status_t psa_ret = PSA_ERROR_BAD_STATE;
+    psa_key_attributes_t kattr = PSA_KEY_ATTRIBUTES_INIT;
+
+    psa_set_key_type(&kattr, PSA_KEY_TYPE_AES);
+    psa_set_key_usage_flags(&kattr, PSA_KEY_USAGE_DECRYPT | PSA_KEY_USAGE_ENCRYPT);
+    psa_set_key_algorithm(&kattr, PSA_ALG_CTR);
+
+    psa_ret = psa_import_key(&kattr, k, HKDF_AES_KEY_SIZE, &ctx->key);
+    if (psa_ret != PSA_SUCCESS) {
+        BOOT_LOG_ERR("aes_ctr_set_key; import failed %d", psa_ret);
+        return -1;
+    }
+    return 0;
 }
 
 #if defined(MCUBOOT_ENC_IMAGES)
@@ -394,8 +427,7 @@ int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
 {
     int ret = 0;
     psa_status_t psa_ret = PSA_ERROR_BAD_STATE;
-    psa_key_attributes_t kattr = PSA_KEY_ATTRIBUTES_INIT;
-    psa_key_id_t kid;
+    const psa_key_id_t kid = ctx->key;
     psa_cipher_operation_t psa_op;
     size_t elen = 0;	/* Decrypted length */
 
@@ -411,21 +443,6 @@ int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
 
     psa_op = psa_cipher_operation_init();
 
-    /* Fixme: Import should happen when key is decrypted, but due to lack
-     * of key destruction there is no way to destroy key stored by
-     * psa other way than here. */
-    psa_set_key_type(&kattr, PSA_KEY_TYPE_AES);
-    psa_set_key_usage_flags(&kattr, PSA_KEY_USAGE_ENCRYPT);
-    psa_set_key_algorithm(&kattr, PSA_ALG_CTR);
-
-    psa_ret = psa_import_key(&kattr, ctx->key, BOOT_ENC_KEY_SIZE, &kid);
-    psa_reset_key_attributes(&kattr);
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_ERR("AES enc import key failed %d", psa_ret);
-        ret = -1;
-        goto gone;
-    }
-
     /* This could be done with psa_cipher_decrypt one-shot operation, but
      * multi-part operation is used to avoid re-allocating input buffer
      * to account for IV in front of data.
@@ -434,7 +451,7 @@ int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_ERR("AES enc setup failed %d", psa_ret);
         ret = -1;
-        goto gone_with_key;
+        goto gone;
     }
 
     /* Fixme: hardcoded counter  size, but it is hardcoded everywhere */
@@ -458,13 +475,6 @@ gone_after_setup:
         BOOT_LOG_WRN("AES enc cipher abort failed %d", psa_ret);
         /* Intentionally not changing the ret */
     }
-gone_with_key:
-    /* Fixme: Should be removed once key is shared by id */
-    psa_ret = psa_destroy_key(kid);
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_WRN("AES enc destroy key failed %d", psa_ret);
-        /* Intentionally not changing the ret */
-    }
 gone:
     return ret;
 }
@@ -474,8 +484,7 @@ int bootutil_aes_ctr_decrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
 {
     int ret = 0;
     psa_status_t psa_ret = PSA_ERROR_BAD_STATE;
-    psa_key_attributes_t kattr = PSA_KEY_ATTRIBUTES_INIT;
-    psa_key_id_t kid;
+    const psa_key_id_t kid = ctx->key;
     psa_cipher_operation_t psa_op;
     size_t dlen = 0;	/* Decrypted length */
 
@@ -491,21 +500,6 @@ int bootutil_aes_ctr_decrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
 
     psa_op = psa_cipher_operation_init();
 
-    /* Fixme: Import should happen when key is decrypted, but due to lack
-     * of key destruction there is no way to destroy key stored by
-     * psa other way than here. */
-    psa_set_key_type(&kattr, PSA_KEY_TYPE_AES);
-    psa_set_key_usage_flags(&kattr, PSA_KEY_USAGE_DECRYPT);
-    psa_set_key_algorithm(&kattr, PSA_ALG_CTR);
-
-    psa_ret = psa_import_key(&kattr, ctx->key, BOOT_ENC_KEY_SIZE, &kid);
-    psa_reset_key_attributes(&kattr);
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_ERR("AES dec import key failed %d", psa_ret);
-        ret = -1;
-        goto gone;
-    }
-
     /* This could be done with psa_cipher_decrypt one-shot operation, but
      * multi-part operation is used to avoid re-allocating input buffer
      * to account for IV in front of data.
@@ -514,7 +508,7 @@ int bootutil_aes_ctr_decrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_ERR("AES dec setup failed %d", psa_ret);
         ret = -1;
-        goto gone_with_key;
+        goto gone;
     }
 
     /* Fixme: hardcoded counter  size, but it is hardcoded everywhere */
@@ -536,12 +530,6 @@ gone_after_setup:
     psa_ret = psa_cipher_abort(&psa_op);
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_WRN("PSA dec abort failed %d", psa_ret);
-        /* Intentionally not changing the ret */
-    }
-gone_with_key:
-    psa_ret = psa_destroy_key(kid);
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_WRN("PSA dec key failed %d", psa_ret);
         /* Intentionally not changing the ret */
     }
 gone:
