@@ -96,6 +96,13 @@ fih_ret context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp);
  */
 struct boot_loader_state *boot_get_loader_state(void);
 
+/**
+ * Initialize boot_loader_state object
+ *
+ * @param state Bootloader state.
+ */
+void boot_state_init(struct boot_loader_state *state);
+
 #if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO) || defined(MCUBOOT_DATA_SHARING)
 /**
  * Returns pointer to array of image maximum sizes.

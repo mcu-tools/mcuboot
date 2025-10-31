@@ -660,7 +660,7 @@ bs_list_set(uint8_t op, char *buf, int len)
     bool area_opened = false;
 
     state = boot_get_loader_state();
-    boot_state_clear(state);
+    boot_state_init(state);
 
     rc = boot_open_all_flash_areas(state);
     if (rc != 0) {
@@ -696,6 +696,7 @@ out:
     if (area_opened) {
         boot_close_all_flash_areas(state);
     }
+    boot_state_clear(state);
 
     if (rc != 0) {
         bs_rc_rsp(rc);

@@ -643,15 +643,22 @@ const struct image_max_size *boot_get_max_app_size(void)
  * Clears the boot state, so that previous operations have no effect on new
  * ones.
  *
- * @param state                 The state that should be cleared. If the value
- *                              is NULL, the default bootloader state will be
- *                              cleared.
+ * @param state                 The state that should be cleared.
  */
 void boot_state_clear(struct boot_loader_state *state)
 {
-    if (state != NULL) {
-        memset(state, 0, sizeof(struct boot_loader_state));
-    } else {
-        memset(boot_get_loader_state(), 0, sizeof(struct boot_loader_state));
+#if defined(MCUBOOT_ENC_IMAGES)
+    int image;
+    int slot;
+
+    for (image = 0; image < BOOT_IMAGE_NUMBER; ++image) {
+        for (slot = 0; slot < BOOT_NUM_SLOTS; ++slot) {
+            /* Not using boot_enc_zeorize here, as it is redundant
+             * to the memset below that clears entire boot_loader_state.
+             */
+            boot_enc_drop(&state->enc[image][slot]);
+        }
     }
+#endif
+    memset(state, 0, sizeof(struct boot_loader_state));
 }
