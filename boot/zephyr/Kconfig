@@ -1,6 +1,7 @@
 # Copyright (c) 2017-2020 Linaro Limited
 # Copyright (c) 2020 Arm Limited
 # Copyright (c) 2023 Nordic Semiconductor ASA
+# Copyright (c) 2025 Siemens AG
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -174,6 +175,13 @@ config BOOT_IMG_HASH_ALG_SHA512_ALLOW
 	bool
 	help
 	  Hidden option set by configurations that allow SHA512
+
+config BOOT_SOMETHING_USES_HKDF
+	bool
+	select MBEDTLS_HKDF_C if BOOT_USE_MBEDTLS
+	select MBEDTLS_MD_C if BOOT_USE_MBEDTLS
+	help
+	  Hidden option that should be selected when something requires HKDF.
 
 config BOOT_IMG_HASH_DIRECTLY_ON_STORAGE
 	bool "Hash calculation functions access storage through address space"
@@ -699,11 +707,13 @@ config BOOT_ENCRYPT_RSA
 
 config BOOT_ENCRYPT_EC256
 	bool
+	select SOMETHING_USES_HKDF
 	help
 	  Hidden option selecting EC256 encryption.
 
 config BOOT_ENCRYPT_X25519
 	bool
+	select SOMETHING_USES_HKDF
 	help
 	  Hidden option selecting x25519 encryption.
 

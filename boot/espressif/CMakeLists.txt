@@ -253,6 +253,7 @@ set(bootutil_srcs
     ${BOOTUTIL_DIR}/src/image_rsa.c
     ${BOOTUTIL_DIR}/src/image_validate.c
     ${BOOTUTIL_DIR}/src/loader.c
+    ${BOOTUTIL_DIR}/src/sha.c
     ${BOOTUTIL_DIR}/src/swap_misc.c
     ${BOOTUTIL_DIR}/src/swap_move.c
     ${BOOTUTIL_DIR}/src/swap_scratch.c

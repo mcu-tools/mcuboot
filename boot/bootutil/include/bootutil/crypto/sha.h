@@ -82,6 +82,7 @@
     #include <cc310_glue.h>
 #endif /* MCUBOOT_USE_CC310 */
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -272,6 +273,71 @@ static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
     return 0;
 }
 #endif /* MCUBOOT_USE_CC310 */
+
+/**
+ * Computes an HMAC as per RFC 2104.
+ *
+ * @param key      The key to authenticate with.
+ * @param key_len  Length of @c key in bytes.
+ * @param data     The data to authenticate.
+ * @param data_len Length of @c data in bytes.
+ * @param hmac     Pointer to where the resulting HMAC shall be stored.
+ *
+ * @return         @c 0 on success and nonzero otherwise.
+ */
+int bootutil_sha_hmac(const uint8_t *key, size_t key_len,
+                      const uint8_t *data, size_t data_len,
+                      uint8_t hmac[static IMAGE_HASH_SIZE]);
+
+/**
+ * Extracts a key as per RFC 5869.
+ *
+ * @param salt     Optional salt value.
+ * @param salt_len Length of @c salt in bytes.
+ * @param ikm      Input keying material.
+ * @param ikm_len  Length of @c ikm in bytes.
+ * @param prk      Pointer to where the extracted key shall be stored.
+ *
+ * @return         @c 0 on success and nonzero otherwise.
+ */
+int bootutil_sha_hkdf_extract(const uint8_t *salt, size_t salt_len,
+                              const uint8_t *ikm, size_t ikm_len,
+                              uint8_t prk[static IMAGE_HASH_SIZE]);
+
+/**
+ * Expands a key as per RFC 5869.
+ *
+ * @param prk      A pseudorandom key of at least @c IMAGE_HASH_SIZE bytes.
+ * @param prk_len  Length of @c prk in bytes.
+ * @param info     Optional context and application specific information.
+ * @param info_len Length of @c info in bytes.
+ * @param okm      Output keying material.
+ * @param okm_len  Length of @c okm in bytes (<= 255 * @c IMAGE_HASH_SIZE).
+ *
+ * @return         @c 0 on success and nonzero otherwise.
+ */
+int bootutil_sha_hkdf_expand(const uint8_t *prk, size_t prk_len,
+                             const uint8_t *info, size_t info_len,
+                             uint8_t *okm, uint_fast16_t okm_len);
+
+/**
+ * Performs both extraction and expansion as per RFC 5869.
+ *
+ * @param salt     Optional salt value.
+ * @param salt_len Length of @c salt in bytes.
+ * @param ikm      Input keying material.
+ * @param ikm_len  Length of @c ikm in bytes.
+ * @param info     Optional context and application specific information.
+ * @param info_len Length of @c info in bytes.
+ * @param okm      Output keying material.
+ * @param okm_len  Length of @c okm in bytes (<= 255 * @c IMAGE_HASH_SIZE).
+ *
+ * @return         @c 0 on success and nonzero otherwise.
+ */
+int bootutil_sha_hkdf(const uint8_t *salt, size_t salt_len,
+                      const uint8_t *ikm, size_t ikm_len,
+                      const uint8_t *info, size_t info_len,
+                      uint8_t *okm, uint_fast16_t okm_len);
 
 #ifdef __cplusplus
 }
