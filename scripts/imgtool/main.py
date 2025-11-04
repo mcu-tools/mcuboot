@@ -564,7 +564,7 @@ def sign(ctx, key, public_key_format, align, version, pad_sig, header_size,
         plainkey = os.urandom(encrypt_keylen_bytes)
 
     if compression in ["lzma2", "lzma2armthumb"]:
-        img.create(key, public_key_format, enckey, dependencies, boot_record,
+        img.create2(key, public_key_format, enckey, dependencies, boot_record,
                custom_tlvs, compression_tlvs, None, None, clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
                hmac_sha=hmac_sha, is_pure=is_pure, keep_comp_size=False, dont_encrypt=True)
@@ -609,14 +609,14 @@ def sign(ctx, key, public_key_format, align, version, pad_sig, header_size,
             keep_comp_size = False
             if enckey:
                 keep_comp_size = True
-            compressed_img.create(key, public_key_format, enckey,
+            compressed_img.create2(key, public_key_format, enckey,
                dependencies, boot_record, custom_tlvs, compression_tlvs,
                compression, plainkey, clear, baked_signature,
                pub_key, vector_to_sign, user_sha=user_sha, hmac_sha=hmac_sha,
                is_pure=is_pure, keep_comp_size=keep_comp_size)
             img = compressed_img
     else:
-        img.create(key, public_key_format, enckey, dependencies, boot_record,
+        img.create2(key, public_key_format, enckey, dependencies, boot_record,
                custom_tlvs, compression_tlvs, None, plainkey, clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
                hmac_sha=hmac_sha, is_pure=is_pure)
