@@ -513,6 +513,34 @@ class Image:
 
     def create(self, key, public_key_format, enckey, dependencies=None,
                sw_type=None, custom_tlvs=None, compression_tlvs=None,
+               compression_type=None, encrypt_keylen=128, clear=False,
+               fixed_sig=None, pub_key=None, vector_to_sign=None,
+               user_sha='auto', hmac_sha='auto', is_pure=False, keep_comp_size=False,
+               dont_encrypt=False):
+
+        # This is old logic of image creation where lack of enckey indicated
+        # lack of encryption.
+        # New create requires a key to be provided from outside.
+        if enckey:
+            if encrypt_keylen == 256:
+                encrypt_keylen_bytes = 32
+            else:
+                encrypt_keylen_bytes = 16
+
+            # No AES plain key and there is request to encrypt, generate random AES key
+            raw_key = os.urandom(encrypt_keylen_bytes)
+        else:
+            raw_key = None
+
+        self.create2(key, public_key_format, enckey, dependencies,
+                     sw_type, custom_tlvs, compression_tlvs,
+                     compression_type, raw_key, clear,
+                     fixed_sig, pub_key, vector_to_sign,
+                     user_sha, hmac_sha, is_pure, keep_comp_size,
+                     dont_encrypt)
+
+    def create2(self, key, public_key_format, enckey, dependencies=None,
+               sw_type=None, custom_tlvs=None, compression_tlvs=None,
                compression_type=None, aes_raw=None, clear=False,
                fixed_sig=None, pub_key=None, vector_to_sign=None,
                user_sha='auto', hmac_sha='auto', is_pure=False, keep_comp_size=False,
