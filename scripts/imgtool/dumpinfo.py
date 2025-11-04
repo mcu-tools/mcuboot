@@ -17,6 +17,7 @@
 """
 Parse and print header, TLV area and trailer information of a signed image.
 """
+
 import os.path
 import struct
 
@@ -25,19 +26,54 @@ import yaml
 
 from imgtool import image
 
-HEADER_ITEMS = ("magic", "load_addr", "hdr_size", "protected_tlv_size",
-                "img_size", "flags", "version")
+HEADER_ITEMS = (
+    "magic",
+    "load_addr",
+    "hdr_size",
+    "protected_tlv_size",
+    "img_size",
+    "flags",
+    "version",
+)
 TLV_TYPES = dict((value, key) for key, value in image.TLV_VALUES.items())
-BOOT_MAGIC = bytes([
-    0x77, 0xc2, 0x95, 0xf3,
-    0x60, 0xd2, 0xef, 0x7f,
-    0x35, 0x52, 0x50, 0x0f,
-    0x2c, 0xb6, 0x79, 0x80, ])
-BOOT_MAGIC_2 = bytes([
-    0x2d, 0xe1, 0x5d, 0x29,
-    0x41, 0x0b, 0x8d, 0x77,
-    0x67, 0x9c, 0x11, 0x0f,
-    0x1f, 0x8a, ])
+BOOT_MAGIC = bytes(
+    [
+        0x77,
+        0xC2,
+        0x95,
+        0xF3,
+        0x60,
+        0xD2,
+        0xEF,
+        0x7F,
+        0x35,
+        0x52,
+        0x50,
+        0x0F,
+        0x2C,
+        0xB6,
+        0x79,
+        0x80,
+    ]
+)
+BOOT_MAGIC_2 = bytes(
+    [
+        0x2D,
+        0xE1,
+        0x5D,
+        0x29,
+        0x41,
+        0x0B,
+        0x8D,
+        0x77,
+        0x67,
+        0x9C,
+        0x11,
+        0x0F,
+        0x1F,
+        0x8A,
+    ]
+)
 BOOT_MAGIC_SIZE = len(BOOT_MAGIC)
 _LINE_LENGTH = 60
 STATUS = {
@@ -74,7 +110,7 @@ def parse_boot_magic(trailer_magic):
     for i in range(BOOT_MAGIC_SIZE):
         magic += f"{trailer_magic[i]:#04x} "
         if i == (BOOT_MAGIC_SIZE / 2 - 1):
-            magic += ("\n" + "             ")
+            magic += "\n" + "             "
     return magic
 
 
@@ -108,8 +144,7 @@ def print_tlv_records(tlv_list):
         if tlv[tlv_type] in TLV_TYPES:
             print(" " * indent, f"{tlv_type}: {TLV_TYPES[tlv[tlv_type]]} ({hex(tlv[tlv_type])})")
         else:
-            print(" " * indent, "{}: {} ({})".format(
-                tlv_type, "UNKNOWN", hex(tlv[tlv_type])))
+            print(" " * indent, "{}: {} ({})".format(tlv_type, "UNKNOWN", hex(tlv[tlv_type])))
         print(" " * indent, f"{tlv_length}: ", hex(tlv[tlv_length]))
         print(" " * indent, f"{tlv_data}: ", end="")
 
@@ -149,17 +184,12 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
             header[key] = _header[i]
 
     # Parsing the TLV area
-    tlv_area = {"tlv_hdr_prot": {},
-                "tlvs_prot": [],
-                "tlv_hdr": {},
-                "tlvs": []}
+    tlv_area = {"tlv_hdr_prot": {}, "tlvs_prot": [], "tlv_hdr": {}, "tlvs": []}
     tlv_off = header["hdr_size"] + header["img_size"]
     protected_tlv_size = header["protected_tlv_size"]
 
     if protected_tlv_size != 0:
-        _tlv_prot_head = struct.unpack(
-            'HH',
-            b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
+        _tlv_prot_head = struct.unpack('HH', b[tlv_off : (tlv_off + image.TLV_INFO_SIZE)])
         tlv_area["tlv_hdr_prot"]["magic"] = _tlv_prot_head[0]
         tlv_area["tlv_hdr_prot"]["tlv_tot"] = _tlv_prot_head[1]
         tlv_end = tlv_off + tlv_area["tlv_hdr_prot"]["tlv_tot"]
@@ -167,16 +197,13 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
 
         # Iterating through the protected TLV area
         while tlv_off < tlv_end:
-            tlv_type, tlv_len = struct.unpack(
-                'HH',
-                b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
+            tlv_type, tlv_len = struct.unpack('HH', b[tlv_off : (tlv_off + image.TLV_INFO_SIZE)])
             tlv_off += image.TLV_INFO_SIZE
-            tlv_data = b[tlv_off:(tlv_off + tlv_len)]
-            tlv_area["tlvs_prot"].append(
-                {"type": tlv_type, "len": tlv_len, "data": tlv_data})
+            tlv_data = b[tlv_off : (tlv_off + tlv_len)]
+            tlv_area["tlvs_prot"].append({"type": tlv_type, "len": tlv_len, "data": tlv_data})
             tlv_off += tlv_len
 
-    _tlv_head = struct.unpack('HH', b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
+    _tlv_head = struct.unpack('HH', b[tlv_off : (tlv_off + image.TLV_INFO_SIZE)])
     tlv_area["tlv_hdr"]["magic"] = _tlv_head[0]
     tlv_area["tlv_hdr"]["tlv_tot"] = _tlv_head[1]
 
@@ -185,13 +212,10 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
 
     # Iterating through the TLV area
     while tlv_off < tlv_end:
-        tlv_type, tlv_len = struct.unpack(
-            'HH',
-            b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
+        tlv_type, tlv_len = struct.unpack('HH', b[tlv_off : (tlv_off + image.TLV_INFO_SIZE)])
         tlv_off += image.TLV_INFO_SIZE
-        tlv_data = b[tlv_off:(tlv_off + tlv_len)]
-        tlv_area["tlvs"].append(
-            {"type": tlv_type, "len": tlv_len, "data": tlv_data})
+        tlv_data = b[tlv_off : (tlv_off + tlv_len)]
+        tlv_area["tlvs"].append({"type": tlv_type, "len": tlv_len, "data": tlv_data})
         tlv_off += tlv_len
 
     _img_pad_size = len(b) - tlv_end
@@ -205,7 +229,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
         if trailer_magic == BOOT_MAGIC:
             # The maximum supported write alignment is the default 8 Bytes
             max_align = 8
-        elif trailer_magic[-len(BOOT_MAGIC_2):] == BOOT_MAGIC_2:
+        elif trailer_magic[-len(BOOT_MAGIC_2) :] == BOOT_MAGIC_2:
             # The alignment value is encoded in the magic field
             max_align = int.from_bytes(trailer_magic[:2], "little")
         else:
@@ -229,13 +253,13 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
             trailer["swap_info"] = swap_info
 
             trailer_off -= max_align
-            swap_size = int.from_bytes(b[trailer_off:(trailer_off + 4)],
-                                       "little")
+            swap_size = int.from_bytes(b[trailer_off : (trailer_off + 4)], "little")
             trailer["swap_size"] = swap_size
 
             # Encryption key 0/1
-            if ((header["flags"] & image.IMAGE_F["ENCRYPTED_AES128"]) or
-                    (header["flags"] & image.IMAGE_F["ENCRYPTED_AES256"])):
+            if (header["flags"] & image.IMAGE_F["ENCRYPTED_AES128"]) or (
+                header["flags"] & image.IMAGE_F["ENCRYPTED_AES256"]
+            ):
                 # The image is encrypted
                 #    Estimated value of key_field_len is correct if
                 #    BOOT_SWAP_SAVE_ENCTLV is unset
@@ -243,9 +267,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
 
     # Generating output yaml file
     if outfile is not None:
-        imgdata = {"header": header,
-                   "tlv_area": tlv_area,
-                   "trailer": trailer}
+        imgdata = {"header": header, "tlv_area": tlv_area, "trailer": trailer}
         with open(outfile, "w") as outf:
             # sort_keys - from pyyaml 5.1
             yaml.dump(imgdata, outf, sort_keys=False)
@@ -269,7 +291,7 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
                 for flag in image.IMAGE_F:
                     if value & image.IMAGE_F[flag]:
                         if flag_string:
-                            flag_string += ("\n" + (" " * 20))
+                            flag_string += "\n" + (" " * 20)
                         flag_string += f"{flag} ({hex(image.IMAGE_F[flag])})"
             value = flag_string
 
@@ -314,7 +336,9 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
         section_name = "Image trailer (offset: unknown)"
         print_in_row(section_name)
         notice = "(Note: some fields may not be used, depending on the update strategy)\n"
-        notice = '\n'.join(notice[i:i + _LINE_LENGTH] for i in range(0, len(notice), _LINE_LENGTH))
+        notice = '\n'.join(
+            notice[i : i + _LINE_LENGTH] for i in range(0, len(notice), _LINE_LENGTH)
+        )
         print(notice)
         print("swap status: (len: unknown)")
         print("enc. keys:  ", parse_enc(key_field_len))

@@ -29,14 +29,11 @@ class FileHandler:
 
 
 class KeyClass:
-    def _emit(self, header, trailer, encoded_bytes, indent, file=sys.stdout,
-              len_format=None):
+    def _emit(self, header, trailer, encoded_bytes, indent, file=sys.stdout, len_format=None):
         with FileHandler(file, 'w') as file:
-            self._emit_to_output(header, trailer, encoded_bytes, indent,
-                                     file, len_format)
+            self._emit_to_output(header, trailer, encoded_bytes, indent, file, len_format)
 
-    def _emit_to_output(self, header, trailer, encoded_bytes, indent, file,
-                        len_format):
+    def _emit_to_output(self, header, trailer, encoded_bytes, indent, file, len_format):
         print(AUTOGEN_MESSAGE, file=file)
         print(header, end='', file=file)
         for count, b in enumerate(encoded_bytes):
@@ -61,27 +58,25 @@ class KeyClass:
 
     def emit_c_public(self, file=sys.stdout):
         self._emit(
-                header=f"const unsigned char {self.shortname()}_pub_key[] = {{"
-                       ,
-                trailer="};",
-                encoded_bytes=self.get_public_bytes(),
-                indent="    ",
-                len_format=f"const unsigned int {self.shortname()}_pub_key_len = {{}};"
-                           ,
-                file=file)
+            header=f"const unsigned char {self.shortname()}_pub_key[] = {{",
+            trailer="};",
+            encoded_bytes=self.get_public_bytes(),
+            indent="    ",
+            len_format=f"const unsigned int {self.shortname()}_pub_key_len = {{}};",
+            file=file,
+        )
 
     def emit_c_public_hash(self, file=sys.stdout):
         digest = Hash(SHA256())
         digest.update(self.get_public_bytes())
         self._emit(
-                header=f"const unsigned char {self.shortname()}_pub_key_hash[] = {{"
-                       ,
-                trailer="};",
-                encoded_bytes=digest.finalize(),
-                indent="    ",
-                len_format=f"const unsigned int {self.shortname()}_pub_key_hash_len = {{}};"
-                           ,
-                file=file)
+            header=f"const unsigned char {self.shortname()}_pub_key_hash[] = {{",
+            trailer="};",
+            encoded_bytes=digest.finalize(),
+            indent="    ",
+            len_format=f"const unsigned int {self.shortname()}_pub_key_hash_len = {{}};",
+            file=file,
+        )
 
     def emit_raw_public(self, file=sys.stdout):
         self._emit_raw(self.get_public_bytes(), file=file)
@@ -93,12 +88,12 @@ class KeyClass:
 
     def emit_rust_public(self, file=sys.stdout):
         self._emit(
-                header=f"static {self.shortname().upper()}_PUB_KEY: &[u8] = &["
-                       ,
-                trailer="];",
-                encoded_bytes=self.get_public_bytes(),
-                indent="    ",
-                file=file)
+            header=f"static {self.shortname().upper()}_PUB_KEY: &[u8] = &[",
+            trailer="];",
+            encoded_bytes=self.get_public_bytes(),
+            indent="    ",
+            file=file,
+        )
 
     def emit_public_pem(self, file=sys.stdout):
         with FileHandler(file, 'w') as file:
@@ -106,9 +101,10 @@ class KeyClass:
 
     def emit_private(self, minimal, format, file=sys.stdout):
         self._emit(
-                header="const unsigned char enc_priv_key[] = {",
-                trailer="};",
-                encoded_bytes=self.get_private_bytes(minimal, format),
-                indent="    ",
-                len_format="const unsigned int enc_priv_key_len = {};",
-                file=file)
+            header="const unsigned char enc_priv_key[] = {",
+            trailer="};",
+            encoded_bytes=self.get_private_bytes(minimal, format),
+            indent="    ",
+            len_format="const unsigned int enc_priv_key_len = {};",
+            file=file,
+        )

@@ -17,15 +17,15 @@ import collections
 import yaml
 
 CATEGORIES = {
-        'TOTAL': 'Total tests run',
-        'SUCCESS': 'Tests executed successfully',
-        'FAILED': 'Tests failed to execute successfully',
-        # the execution never reached the address
-        'ADDRES_NOEXEC': 'Address was not executed',
-        # The address was successfully skipped by the debugger
-        'SKIPPED': 'Address was skipped',
-        'NO_BOOT': 'System not booted (desired behaviour)',
-        'BOOT': 'System booted (undesired behaviour)'
+    'TOTAL': 'Total tests run',
+    'SUCCESS': 'Tests executed successfully',
+    'FAILED': 'Tests failed to execute successfully',
+    # the execution never reached the address
+    'ADDRES_NOEXEC': 'Address was not executed',
+    # The address was successfully skipped by the debugger
+    'SKIPPED': 'Address was skipped',
+    'NO_BOOT': 'System not booted (desired behaviour)',
+    'BOOT': 'System booted (undesired behaviour)',
 }
 
 

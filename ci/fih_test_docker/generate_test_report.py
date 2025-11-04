@@ -18,24 +18,30 @@ from utils import CATEGORIES, parse_yaml_file
 
 
 def print_results(results):
-
     test_stats, failed_boot_last_lines, exec_fail_reasons = results
 
     print("{:s}: {:d}.".format(CATEGORIES['TOTAL'], test_stats[CATEGORIES['TOTAL']]))
     print("{:s} ({:d}):".format(CATEGORIES['SUCCESS'], test_stats[CATEGORIES['SUCCESS']]))
-    print("    {:s}: ({:d}):".format(
-        CATEGORIES['ADDRES_NOEXEC'], test_stats[CATEGORIES['ADDRES_NOEXEC']])
+    print(
+        "    {:s}: ({:d}):".format(
+            CATEGORIES['ADDRES_NOEXEC'], test_stats[CATEGORIES['ADDRES_NOEXEC']]
+        )
     )
     test_with_skip = test_stats[CATEGORIES['SUCCESS']] - test_stats[CATEGORIES['ADDRES_NOEXEC']]
     print("    {:s}: ({:d}):".format(CATEGORIES['SKIPPED'], test_with_skip))
-    print("    {:s} ({:d}):".format(
-        CATEGORIES['NO_BOOT'], test_with_skip - test_stats[CATEGORIES['BOOT']])
+    print(
+        "    {:s} ({:d}):".format(
+            CATEGORIES['NO_BOOT'], test_with_skip - test_stats[CATEGORIES['BOOT']]
+        )
     )
     for last_line in failed_boot_last_lines:
         print(f"        last line: {last_line:s} ({failed_boot_last_lines[last_line]:d})")
     print("    {:s} ({:d})".format(CATEGORIES['BOOT'], test_stats[CATEGORIES['BOOT']]))
-    print("{:s} ({:d}):".format(
-        CATEGORIES['FAILED'], test_stats[CATEGORIES['TOTAL']] - test_stats[CATEGORIES['SUCCESS']])
+    print(
+        "{:s} ({:d}):".format(
+            CATEGORIES['FAILED'],
+            test_stats[CATEGORIES['TOTAL']] - test_stats[CATEGORIES['SUCCESS']],
+        )
     )
     for reason in exec_fail_reasons:
         print(f"    {reason:s} ({exec_fail_reasons[reason]:d})")

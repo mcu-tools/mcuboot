@@ -31,13 +31,15 @@ class X25519Public(KeyClass):
     def get_public_bytes(self):
         # The key is embedded into MBUboot in "SubjectPublicKeyInfo" format
         return self._get_public().public_bytes(
-                encoding=serialization.Encoding.DER,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            encoding=serialization.Encoding.DER,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
 
     def get_public_pem(self):
         return self._get_public().public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
 
     def get_private_bytes(self, minimal, format):
         self._unsupported('get_private_bytes')
@@ -48,8 +50,9 @@ class X25519Public(KeyClass):
     def export_public(self, path):
         """Write the public key to the given file."""
         pem = self._get_public().public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
         with open(path, 'wb') as f:
             f.write(pem)
 
@@ -80,14 +83,11 @@ class X25519(X25519Public, PrivateBytesMixin):
     def _get_public(self):
         return self.key.public_key()
 
-    _VALID_FORMATS = {
-        'pkcs8': serialization.PrivateFormat.PKCS8
-    }
+    _VALID_FORMATS = {'pkcs8': serialization.PrivateFormat.PKCS8}
     _DEFAULT_FORMAT = 'pkcs8'
 
     def get_private_bytes(self, minimal, format):
-        _, priv = self._get_private_bytes(minimal, format,
-                                          X25519UsageError)
+        _, priv = self._get_private_bytes(minimal, format, X25519UsageError)
         return priv
 
     def export_private(self, path, passwd=None):
@@ -100,9 +100,10 @@ class X25519(X25519Public, PrivateBytesMixin):
         else:
             enc = serialization.BestAvailableEncryption(passwd)
         pem = self.key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=enc)
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=enc,
+        )
         with open(path, 'wb') as f:
             f.write(pem)
 

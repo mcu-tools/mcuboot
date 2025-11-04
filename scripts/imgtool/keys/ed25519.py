@@ -30,13 +30,15 @@ class Ed25519Public(KeyClass):
     def get_public_bytes(self):
         # The key is embedded into MBUboot in "SubjectPublicKeyInfo" format
         return self._get_public().public_bytes(
-                encoding=serialization.Encoding.DER,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            encoding=serialization.Encoding.DER,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
 
     def get_public_pem(self):
         return self._get_public().public_bytes(
             encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
 
     def get_private_bytes(self, minimal, format):
         self._unsupported('get_private_bytes')
@@ -47,8 +49,9 @@ class Ed25519Public(KeyClass):
     def export_public(self, path):
         """Write the public key to the given file."""
         pem = self._get_public().public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
         with open(path, 'wb') as f:
             f.write(pem)
 
@@ -99,9 +102,10 @@ class Ed25519(Ed25519Public):
         else:
             enc = serialization.BestAvailableEncryption(passwd)
         pem = self.key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=enc)
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=enc,
+        )
         with open(path, 'wb') as f:
             f.write(pem)
 

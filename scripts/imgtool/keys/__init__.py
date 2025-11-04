@@ -60,14 +60,11 @@ class PasswordRequired(Exception):
 
 def load(path, passwd=None):
     """Try loading a key from the given path.
-      Returns None if the password wasn't specified."""
+    Returns None if the password wasn't specified."""
     with open(path, 'rb') as f:
         raw_pem = f.read()
     try:
-        pk = serialization.load_pem_private_key(
-                raw_pem,
-                password=passwd,
-                backend=default_backend())
+        pk = serialization.load_pem_private_key(raw_pem, password=passwd, backend=default_backend())
     # Unfortunately, the crypto library raises unhelpful exceptions,
     # so we have to look at the text.
     except TypeError as e:
@@ -78,9 +75,7 @@ def load(path, passwd=None):
     except ValueError:
         # This seems to happen if the key is a public key, let's try
         # loading it as a public key.
-        pk = serialization.load_pem_public_key(
-                raw_pem,
-                backend=default_backend())
+        pk = serialization.load_pem_public_key(raw_pem, backend=default_backend())
 
     if isinstance(pk, RSAPrivateKey):
         if pk.key_size not in RSA_KEY_SIZES:

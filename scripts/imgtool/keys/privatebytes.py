@@ -10,6 +10,7 @@ class PrivateBytesMixin:
         if format not in self._VALID_FORMATS:
             raise exclass(f"{self.shortname()} does not support {format}")
         return format, self.key.private_bytes(
-                encoding=serialization.Encoding.DER,
-                format=self._VALID_FORMATS[format],
-                encryption_algorithm=serialization.NoEncryption())
+            encoding=serialization.Encoding.DER,
+            format=self._VALID_FORMATS[format],
+            encryption_algorithm=serialization.NoEncryption(),
+        )

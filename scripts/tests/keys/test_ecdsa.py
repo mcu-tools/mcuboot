@@ -20,7 +20,6 @@ from imgtool.keys import ECDSA256P1, ECDSAUsageError, load
 
 
 class EcKeyGeneration(unittest.TestCase):
-
     def setUp(self):
         self.test_dir = tempfile.TemporaryDirectory()
 
@@ -46,8 +45,7 @@ class EcKeyGeneration(unittest.TestCase):
         # We should be able to export the public key from the loaded
         # public key, but not the private key.
         pk2.export_public(self.tname('keygen-pub2.pem'))
-        self.assertRaises(ECDSAUsageError,
-                pk2.export_private, self.tname('keygen-priv2.pem'))
+        self.assertRaises(ECDSAUsageError, pk2.export_private, self.tname('keygen-priv2.pem'))
 
     def test_emit(self):
         """Basic sanity check on the code emitters."""
@@ -105,17 +103,17 @@ class EcKeyGeneration(unittest.TestCase):
 
         # The code doesn't have any verification, so verify this
         # manually.
-        k.key.public_key().verify(
-                signature=sig,
-                data=buf,
-                signature_algorithm=ec.ECDSA(SHA256()))
+        k.key.public_key().verify(signature=sig, data=buf, signature_algorithm=ec.ECDSA(SHA256()))
 
         # Modify the message to make sure the signature fails.
-        self.assertRaises(InvalidSignature,
-                k.key.public_key().verify,
-                signature=sig,
-                data=b'This is thE message',
-                signature_algorithm=ec.ECDSA(SHA256()))
+        self.assertRaises(
+            InvalidSignature,
+            k.key.public_key().verify,
+            signature=sig,
+            data=b'This is thE message',
+            signature_algorithm=ec.ECDSA(SHA256()),
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

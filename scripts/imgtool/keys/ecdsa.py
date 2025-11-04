@@ -22,6 +22,7 @@ class ECDSAPublicKey(KeyClass):
     """
     Wrapper around an ECDSA public key.
     """
+
     def __init__(self, key):
         self.key = key
 
@@ -34,13 +35,15 @@ class ECDSAPublicKey(KeyClass):
     def get_public_bytes(self):
         # The key is embedded into MBUboot in "SubjectPublicKeyInfo" format
         return self._get_public().public_bytes(
-                encoding=serialization.Encoding.DER,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            encoding=serialization.Encoding.DER,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
 
     def get_public_pem(self):
         return self._get_public().public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
 
     def get_private_bytes(self, minimal, format):
         self._unsupported('get_private_bytes')
@@ -51,8 +54,9 @@ class ECDSAPublicKey(KeyClass):
     def export_public(self, path):
         """Write the public key to the given file."""
         pem = self._get_public().public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo)
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
         with open(path, 'wb') as f:
             f.write(pem)
 
@@ -61,6 +65,7 @@ class ECDSAPrivateKey(PrivateBytesMixin):
     """
     Wrapper around an ECDSA private key.
     """
+
     def __init__(self, key):
         self.key = key
 
@@ -74,15 +79,16 @@ class ECDSAPrivateKey(PrivateBytesMixin):
         '''
 
         if format == serialization.PrivateFormat.OpenSSH:
-            print(os.path.basename(__file__) +
-                  ': Warning: --minimal is supported only for PKCS8 '
-                  'or TraditionalOpenSSL formats')
+            print(
+                os.path.basename(__file__) + ': Warning: --minimal is supported only for PKCS8 '
+                'or TraditionalOpenSSL formats'
+            )
             return bytearray(der)
 
         EXCEPTION_TEXT = "Error parsing ecdsa key. Please submit an issue!"
         if format == serialization.PrivateFormat.PKCS8:
             offset_PUB = 68  # where the context specific TLV starts (tag 0xA1)
-            if der[offset_PUB] != 0xa1:
+            if der[offset_PUB] != 0xA1:
                 raise ECDSAUsageError(EXCEPTION_TEXT)
             len_PUB = der[offset_PUB + 1] + 2  # + 2 for 0xA1 0x44 bytes
             b = bytearray(der[:offset_PUB])  # remove the TLV with the PUB key
@@ -99,7 +105,7 @@ class ECDSAPrivateKey(PrivateBytesMixin):
             # as b[1] has bit7 set, the length is on b[2]
             b[2] -= len_PUB
             if b[2] < 0x80:
-                del(b[1])
+                del b[1]
 
         elif format == serialization.PrivateFormat.TraditionalOpenSSL:
             offset_PUB = 51
@@ -113,29 +119,28 @@ class ECDSAPrivateKey(PrivateBytesMixin):
 
     _VALID_FORMATS = {
         'pkcs8': serialization.PrivateFormat.PKCS8,
-        'openssl': serialization.PrivateFormat.TraditionalOpenSSL
+        'openssl': serialization.PrivateFormat.TraditionalOpenSSL,
     }
     _DEFAULT_FORMAT = 'pkcs8'
 
     def get_private_bytes(self, minimal, format):
-        format, priv = self._get_private_bytes(minimal,
-                                               format, ECDSAUsageError)
+        format, priv = self._get_private_bytes(minimal, format, ECDSAUsageError)
         if minimal:
-            priv = self._build_minimal_ecdsa_privkey(
-                priv, self._VALID_FORMATS[format])
+            priv = self._build_minimal_ecdsa_privkey(priv, self._VALID_FORMATS[format])
         return priv
 
     def export_private(self, path, passwd=None):
         """Write the private key to the given file, protecting it with '
-          'the optional password."""
+        'the optional password."""
         if passwd is None:
             enc = serialization.NoEncryption()
         else:
             enc = serialization.BestAvailableEncryption(passwd)
         pem = self.key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=enc)
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=enc,
+        )
         with open(path, 'wb') as f:
             f.write(pem)
 
@@ -144,6 +149,7 @@ class ECDSA256P1Public(ECDSAPublicKey):
     """
     Wrapper around an ECDSA (p256) public key.
     """
+
     def __init__(self, key):
         super().__init__(key)
         self.key = key
@@ -173,18 +179,18 @@ class ECDSA256P1Public(ECDSAPublicKey):
 
     def verify(self, signature, payload):
         # strip possible paddings added during sign
-        signature = signature[:signature[1] + 2]
+        signature = signature[: signature[1] + 2]
         k = self.key
         if isinstance(self.key, ec.EllipticCurvePrivateKey):
             k = self.key.public_key()
-        return k.verify(signature=signature, data=payload,
-                        signature_algorithm=ec.ECDSA(SHA256()))
+        return k.verify(signature=signature, data=payload, signature_algorithm=ec.ECDSA(SHA256()))
 
 
 class ECDSA256P1(ECDSAPrivateKey, ECDSA256P1Public):
     """
     Wrapper around an ECDSA (p256) private key.
     """
+
     def __init__(self, key):
         super().__init__(key)
         self.key = key
@@ -192,16 +198,12 @@ class ECDSA256P1(ECDSAPrivateKey, ECDSA256P1Public):
 
     @staticmethod
     def generate():
-        pk = ec.generate_private_key(
-                ec.SECP256R1(),
-                backend=default_backend())
+        pk = ec.generate_private_key(ec.SECP256R1(), backend=default_backend())
         return ECDSA256P1(pk)
 
     def raw_sign(self, payload):
         """Return the actual signature"""
-        return self.key.sign(
-                data=payload,
-                signature_algorithm=ec.ECDSA(SHA256()))
+        return self.key.sign(data=payload, signature_algorithm=ec.ECDSA(SHA256()))
 
     def sign(self, payload):
         sig = self.raw_sign(payload)
@@ -217,6 +219,7 @@ class ECDSA384P1Public(ECDSAPublicKey):
     """
     Wrapper around an ECDSA (p384) public key.
     """
+
     def __init__(self, key):
         super().__init__(key)
         self.key = key
@@ -246,12 +249,11 @@ class ECDSA384P1Public(ECDSAPublicKey):
 
     def verify(self, signature, payload):
         # strip possible paddings added during sign
-        signature = signature[:signature[1] + 2]
+        signature = signature[: signature[1] + 2]
         k = self.key
         if isinstance(self.key, ec.EllipticCurvePrivateKey):
             k = self.key.public_key()
-        return k.verify(signature=signature, data=payload,
-                        signature_algorithm=ec.ECDSA(SHA384()))
+        return k.verify(signature=signature, data=payload, signature_algorithm=ec.ECDSA(SHA384()))
 
 
 class ECDSA384P1(ECDSAPrivateKey, ECDSA384P1Public):
@@ -267,16 +269,12 @@ class ECDSA384P1(ECDSAPrivateKey, ECDSA384P1Public):
 
     @staticmethod
     def generate():
-        pk = ec.generate_private_key(
-                ec.SECP384R1(),
-                backend=default_backend())
+        pk = ec.generate_private_key(ec.SECP384R1(), backend=default_backend())
         return ECDSA384P1(pk)
 
     def raw_sign(self, payload):
         """Return the actual signature"""
-        return self.key.sign(
-                data=payload,
-                signature_algorithm=ec.ECDSA(SHA384()))
+        return self.key.sign(data=payload, signature_algorithm=ec.ECDSA(SHA384()))
 
     def sign(self, payload):
         sig = self.raw_sign(payload)

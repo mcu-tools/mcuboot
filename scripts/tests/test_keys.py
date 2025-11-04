@@ -58,9 +58,7 @@ def test_keygen(key_type, tmp_path_persistent):
     gen_key = tmp_name(tmp_path_persistent, key_type, GEN_KEY_EXT)
 
     assert not gen_key.exists()
-    result = runner.invoke(
-        imgtool, ["keygen", "--key", str(gen_key), "--type", key_type]
-    )
+    result = runner.invoke(imgtool, ["keygen", "--key", str(gen_key), "--type", key_type])
     assert result.exit_code == 0
     assert gen_key.exists()
     assert gen_key.stat().st_size > 0
@@ -71,9 +69,7 @@ def test_keygen(key_type, tmp_path_persistent):
     assert str(gen_key2) != str(gen_key)
 
     assert not gen_key2.exists()
-    result = runner.invoke(
-        imgtool, ["keygen", "--key", str(gen_key2), "--type", key_type]
-    )
+    result = runner.invoke(imgtool, ["keygen", "--key", str(gen_key2), "--type", key_type])
     assert result.exit_code == 0
     assert gen_key2.exists()
     assert gen_key2.stat().st_size > 0
@@ -127,8 +123,7 @@ def test_getpub(key_type, encoding, tmp_path_persistent):
     runner = CliRunner()
 
     gen_key = tmp_name(tmp_path_persistent, key_type, GEN_KEY_EXT)
-    pub_key = tmp_name(tmp_path_persistent, key_type, PUB_KEY_EXT
-                       + "." + encoding)
+    pub_key = tmp_name(tmp_path_persistent, key_type, PUB_KEY_EXT + "." + encoding)
 
     assert not pub_key.exists()
     result = runner.invoke(
@@ -155,9 +150,7 @@ def test_getpubhash(key_type, encoding, tmp_path_persistent):
     runner = CliRunner()
 
     gen_key = tmp_name(tmp_path_persistent, key_type, GEN_KEY_EXT)
-    pub_key_hash = tmp_name(
-        tmp_path_persistent, key_type, PUB_KEY_HASH_EXT + "." + encoding
-    )
+    pub_key_hash = tmp_name(tmp_path_persistent, key_type, PUB_KEY_HASH_EXT + "." + encoding)
 
     assert not pub_key_hash.exists()
     result = runner.invoke(

@@ -20,9 +20,7 @@ setuptools.setup(
         'cbor2',
         'pyyaml',
     ],
-    entry_points={
-        "console_scripts": ["imgtool=imgtool.main:imgtool"]
-    },
+    entry_points={"console_scripts": ["imgtool=imgtool.main:imgtool"]},
     classifiers=[
         "Programming Language :: Python :: 3",
         "Development Status :: 4 - Beta",

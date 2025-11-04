@@ -28,6 +28,7 @@ class SwComponent(int, Enum):
     Software component property IDs specified by
     Arm's PSA Attestation API 1.0 document.
     """
+
     TYPE = 1
     MEASUREMENT_VALUE = 2
     VERSION = 4
@@ -35,19 +36,22 @@ class SwComponent(int, Enum):
     MEASUREMENT_DESCRIPTION = 6
 
 
-def create_sw_component_data(sw_type, sw_version, sw_measurement_description,
-                             sw_measurement_value, sw_signer_id):
+def create_sw_component_data(
+    sw_type, sw_version, sw_measurement_description, sw_measurement_value, sw_signer_id
+):
     # List of software component properties (Key ID + value)
-    properties = {SwComponent.TYPE: sw_type,
-                  SwComponent.VERSION: sw_version,
-                  SwComponent.SIGNER_ID: sw_signer_id,
-                  SwComponent.MEASUREMENT_DESCRIPTION: sw_measurement_description,
-                  SwComponent.MEASUREMENT_VALUE: sw_measurement_value,
-                  }
+    properties = {
+        SwComponent.TYPE: sw_type,
+        SwComponent.VERSION: sw_version,
+        SwComponent.SIGNER_ID: sw_signer_id,
+        SwComponent.MEASUREMENT_DESCRIPTION: sw_measurement_description,
+        SwComponent.MEASUREMENT_VALUE: sw_measurement_value,
+    }
 
     # Note: The measurement value must be the last item of the property
     #       list because later it will be modified by the bootloader.
     last_key = list(properties.keys())[-1]
-    assert last_key == SwComponent.MEASUREMENT_VALUE, \
+    assert last_key == SwComponent.MEASUREMENT_VALUE, (
         'Measurement value is not the last item of the property list'
+    )
     return dumps(properties)

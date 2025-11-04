@@ -19,7 +19,6 @@ from imgtool.keys import Ed25519, Ed25519UsageError, load
 
 
 class Ed25519KeyGeneration(unittest.TestCase):
-
     def setUp(self):
         self.test_dir = tempfile.TemporaryDirectory()
 
@@ -45,8 +44,7 @@ class Ed25519KeyGeneration(unittest.TestCase):
         # We should be able to export the public key from the loaded
         # public key, but not the private key.
         pk2.export_public(self.tname('keygen-pub2.pem'))
-        self.assertRaises(Ed25519UsageError,
-                          pk2.export_private, self.tname('keygen-priv2.pem'))
+        self.assertRaises(Ed25519UsageError, pk2.export_private, self.tname('keygen-priv2.pem'))
 
     def test_emit(self):
         """Basic sanity check on the code emitters."""
@@ -113,10 +111,9 @@ class Ed25519KeyGeneration(unittest.TestCase):
         sha = hashlib.sha256()
         sha.update(b'This is thE message')
         new_digest = sha.digest()
-        self.assertRaises(InvalidSignature,
-                          k.key.public_key().verify,
-                          signature=sig,
-                          data=new_digest)
+        self.assertRaises(
+            InvalidSignature, k.key.public_key().verify, signature=sig, data=new_digest
+        )
 
 
 if __name__ == '__main__':

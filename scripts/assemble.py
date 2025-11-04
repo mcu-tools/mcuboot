@@ -36,10 +36,12 @@ def same_keys(a, b):
             return False
     return all(bk in a for bk in b)
 
+
 offset_re = re.compile(
     r"^#define DT_FLASH_AREA_([0-9A-Z_]+)_OFFSET(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$"
 )
-size_re   = re.compile(r"^#define DT_FLASH_AREA_([0-9A-Z_]+)_SIZE(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
+size_re = re.compile(r"^#define DT_FLASH_AREA_([0-9A-Z_]+)_SIZE(_0)?\s+(0x[0-9a-fA-F]+|[0-9]+)$")
+
 
 class Assembly:
     def __init__(self, output, bootdir, edt):
@@ -86,13 +88,14 @@ class Assembly:
             if pos > self.offsets[partition]:
                 raise Exception("Partitions not in order, unsupported")
             if pos < self.offsets[partition]:
-                buf = b'\xFF' * (self.offsets[partition] - pos)
+                buf = b'\xff' * (self.offsets[partition] - pos)
                 ofd.write(buf)
             with open(source, 'rb') as rfd:
                 ibuf = rfd.read()
                 if len(ibuf) > self.sizes[partition]:
                     raise Exception(f"Image {source} is too large for partition")
             ofd.write(ibuf)
+
 
 def find_board_name(bootdir):
     dot_config = os.path.join(bootdir, "zephyr", ".config")
@@ -102,19 +105,17 @@ def find_board_name(bootdir):
                 return line.split("=", 1)[1].strip('"')
     raise Exception(f"Expected CONFIG_BOARD line in {dot_config}")
 
+
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-b', '--bootdir', required=True,
-            help='Directory of built bootloader')
-    parser.add_argument('-p', '--primary', required=True,
-            help='Signed image file for primary image')
-    parser.add_argument('-s', '--secondary',
-            help='Signed image file for secondary image')
-    parser.add_argument('-o', '--output', required=True,
-            help='Filename to write full image to')
-    parser.add_argument('-z', '--zephyr-base',
-            help='Zephyr base containing the Zephyr repository')
+    parser.add_argument('-b', '--bootdir', required=True, help='Directory of built bootloader')
+    parser.add_argument(
+        '-p', '--primary', required=True, help='Signed image file for primary image'
+    )
+    parser.add_argument('-s', '--secondary', help='Signed image file for secondary image')
+    parser.add_argument('-o', '--output', required=True, help='Filename to write full image to')
+    parser.add_argument('-z', '--zephyr-base', help='Zephyr base containing the Zephyr repository')
 
     args = parser.parse_args()
 
@@ -142,6 +143,7 @@ def main():
     output.add_image(args.primary, "image-0")
     if args.secondary is not None:
         output.add_image(args.secondary, "image-1")
+
 
 if __name__ == '__main__':
     main()

@@ -33,7 +33,6 @@ def get_tlv_type_string(tlv_type):
 
 
 class ImageHeader:
-
     def __init__(self):
         self.ih_magic = 0
         self.ih_load_addr = 0
@@ -51,24 +50,37 @@ class ImageHeader:
     def read_from_binary(in_file):
         h = ImageHeader()
 
-        (h.ih_magic, h.ih_load_addr, h.ih_hdr_size, h.ih_protect_tlv_size, h.ih_img_size,
-            h.ih_flags, h.iv_major, h.iv_minor, h.iv_revision, h.iv_build_num, h._pad1
-         ) = struct.unpack('<IIHHIIBBHII', in_file.read(IMAGE_HEADER_SIZE))
+        (
+            h.ih_magic,
+            h.ih_load_addr,
+            h.ih_hdr_size,
+            h.ih_protect_tlv_size,
+            h.ih_img_size,
+            h.ih_flags,
+            h.iv_major,
+            h.iv_minor,
+            h.iv_revision,
+            h.iv_build_num,
+            h._pad1,
+        ) = struct.unpack('<IIHHIIBBHII', in_file.read(IMAGE_HEADER_SIZE))
         return h
 
     def __repr__(self):
-        return "\n".join([
-            f"    ih_magic = 0x{self.ih_magic:X}",
-            "    ih_load_addr = " + str(self.ih_load_addr),
-            "    ih_hdr_size = " + str(self.ih_hdr_size),
-            "    ih_protect_tlv_size = " + str(self.ih_protect_tlv_size),
-            "    ih_img_size = " + str(self.ih_img_size),
-            "    ih_flags = " + str(self.ih_flags),
-            "    iv_major = " + str(self.iv_major),
-            "    iv_minor = " + str(self.iv_minor),
-            "    iv_revision = " + str(self.iv_revision),
-            "    iv_build_num = " + str(self.iv_build_num),
-            "    _pad1 = " + str(self._pad1)])
+        return "\n".join(
+            [
+                f"    ih_magic = 0x{self.ih_magic:X}",
+                "    ih_load_addr = " + str(self.ih_load_addr),
+                "    ih_hdr_size = " + str(self.ih_hdr_size),
+                "    ih_protect_tlv_size = " + str(self.ih_protect_tlv_size),
+                "    ih_img_size = " + str(self.ih_img_size),
+                "    ih_flags = " + str(self.ih_flags),
+                "    iv_major = " + str(self.iv_major),
+                "    iv_minor = " + str(self.iv_minor),
+                "    iv_revision = " + str(self.iv_revision),
+                "    iv_build_num = " + str(self.iv_build_num),
+                "    _pad1 = " + str(self._pad1),
+            ]
+        )
 
 
 class ImageTLVInfo:
@@ -86,9 +98,9 @@ class ImageTLVInfo:
         return i
 
     def __repr__(self):
-        return "\n".join([
-            f"    it_magic = 0x{self.it_magic:X}",
-            "    it_tlv_tot = " + str(self.it_tlv_tot)])
+        return "\n".join(
+            [f"    it_magic = 0x{self.it_magic:X}", "    it_tlv_tot = " + str(self.it_tlv_tot)]
+        )
 
     def __len__(self):
         return struct.calcsize(self.format_string)
@@ -118,16 +130,22 @@ def get_arguments():
         "-i", "--in-file", required=True, help='The input image to be corrupted (read only)'
     )
     parser.add_argument("-o", "--out-file", required=True, help='the corrupted image')
-    parser.add_argument('-a', '--image-hash',
-                        default=False,
-                        action="store_true",
-                        required=False,
-                        help='Corrupt the image hash')
-    parser.add_argument('-s', '--signature',
-                        default=False,
-                        action="store_true",
-                        required=False,
-                        help='Corrupt the signature of the image')
+    parser.add_argument(
+        '-a',
+        '--image-hash',
+        default=False,
+        action="store_true",
+        required=False,
+        help='Corrupt the image hash',
+    )
+    parser.add_argument(
+        '-s',
+        '--signature',
+        default=False,
+        action="store_true",
+        required=False,
+        help='Corrupt the signature of the image',
+    )
     return parser.parse_args()
 
 
@@ -196,8 +214,10 @@ def damage_image(args, in_file, out_file_content, image_offset):
         )
 
         if (
-            is_valid_signature(tlv) and args.signature
-            or tlv.it_type == TLV_VALUES['SHA256'] and args.image_hash
+            is_valid_signature(tlv)
+            and args.signature
+            or tlv.it_type == TLV_VALUES['SHA256']
+            and args.image_hash
         ):
             damage_tlv(image_offset, tlv_off, tlv, out_file_content)
 
@@ -220,7 +240,8 @@ def main():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format='%(levelname)5s: %(message)s',
-                        level=logging.DEBUG, stream=sys.stdout)
+    logging.basicConfig(
+        format='%(levelname)5s: %(message)s', level=logging.DEBUG, stream=sys.stdout
+    )
 
     main()

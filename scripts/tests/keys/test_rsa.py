@@ -15,15 +15,13 @@ from cryptography.hazmat.primitives.asymmetric.padding import MGF1, PSS
 from cryptography.hazmat.primitives.hashes import SHA256
 
 # Setup sys path so 'imgtool' is in it.
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                '../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from imgtool.keys import RSA, RSAUsageError, load
 from imgtool.keys.rsa import RSA_KEY_SIZES
 
 
 class KeyGeneration(unittest.TestCase):
-
     def setUp(self):
         self.test_dir = tempfile.TemporaryDirectory()
 
@@ -55,8 +53,7 @@ class KeyGeneration(unittest.TestCase):
             # We should be able to export the public key from the loaded
             # public key, but not the private key.
             pk2.export_public(self.tname('keygen-pub2.pem'))
-            self.assertRaises(RSAUsageError, pk2.export_private,
-                              self.tname('keygen-priv2.pem'))
+            self.assertRaises(RSAUsageError, pk2.export_private, self.tname('keygen-priv2.pem'))
 
     def test_emit(self):
         """Basic sanity check on the code emitters."""
@@ -121,15 +118,18 @@ class KeyGeneration(unittest.TestCase):
                 signature=sig,
                 data=buf,
                 padding=PSS(mgf=MGF1(SHA256()), salt_length=32),
-                algorithm=SHA256())
+                algorithm=SHA256(),
+            )
 
             # Modify the message to make sure the signature fails.
-            self.assertRaises(InvalidSignature,
-                              k.key.public_key().verify,
-                              signature=sig,
-                              data=b'This is thE message',
-                              padding=PSS(mgf=MGF1(SHA256()), salt_length=32),
-                              algorithm=SHA256())
+            self.assertRaises(
+                InvalidSignature,
+                k.key.public_key().verify,
+                signature=sig,
+                data=b'This is thE message',
+                padding=PSS(mgf=MGF1(SHA256()), salt_length=32),
+                algorithm=SHA256(),
+            )
 
 
 if __name__ == '__main__':

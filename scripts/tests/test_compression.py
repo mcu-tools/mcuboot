@@ -28,7 +28,7 @@ from imgtool.main import (
 
 VERSION = '2.0.0'
 HEADER_SIZE = 0x200
-SLOT_SIZE = 0x7a000
+SLOT_SIZE = 0x7A000
 
 
 @pytest.fixture
@@ -44,19 +44,12 @@ def check_if_compressed(out_file: Path) -> bool:
     img = Image(version=VERSION, header_size=HEADER_SIZE, slot_size=SLOT_SIZE, pad_header=True)
     img.load(out_file)
     compression_header = create_lzma2_header(
-        dictsize=comp_default_dictsize, pb=comp_default_pb,
-        lc=comp_default_lc, lp=comp_default_lp
+        dictsize=comp_default_dictsize, pb=comp_default_pb, lc=comp_default_lc, lp=comp_default_lp
     )
     return compression_header in img.payload
 
 
-@pytest.mark.parametrize(
-    'compression, compressed',
-    [
-        ('lzma2', True),
-        ('disabled', False)
-    ]
-)
+@pytest.mark.parametrize('compression, compressed', [('lzma2', True), ('disabled', False)])
 def test_lzma2_compression(tmpdir: Path, key_file: Path, compression: str, compressed: bool):
     """
     Test if lzma2 compression works by running ``imgtool sign``
@@ -79,7 +72,7 @@ def test_lzma2_compression(tmpdir: Path, key_file: Path, compression: str, compr
             f'--version={VERSION}',
             '--pad-header',
             f'--compression={compression}',
-            f'--key={key_file}'
+            f'--key={key_file}',
         ],
     )
     assert result.exit_code == 0
