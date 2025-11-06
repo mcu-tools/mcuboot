@@ -59,10 +59,16 @@ primary slot and adds a header and trailer that the bootloader is expecting:
       extension, otherwise binary format is used
 
     Options:
+      --vid TEXT                      Unique vendor identifier, format:
+                                      (<raw_uuid>|<domain_name)>
+      --cid TEXT                      Unique image class identifier, format:
+                                      (<raw_uuid>|<image_class_name>)
       --vector-to-sign [payload|digest]
                                       send to OUTFILE the payload or payloads
                                       digest instead of complied image. These data
                                       can be used for external image signing
+      --hmac-sha [auto|256|512]       sha algorithm used in HKDF/HMAC in ECIES key
+                                      exchange TLV
       --sha [auto|256|384|512]        selected sha algorithm to use; defaults to
                                       "auto" which is 256 if no cryptographic
                                       signature is used, or default for signature
@@ -102,6 +108,8 @@ primary slot and adds a header and trailer that the bootloader is expecting:
                                       secondary slot.  [required]
       --pad                           Pad image to --slot-size bytes, adding
                                       trailer magic
+      --test                          When padding the image, mark it for a test
+                                      swap (implies --pad)
       --confirm                       When padding the image, mark it as confirmed
                                       (implies --pad)
       -M, --max-sectors INTEGER       When padding allow for this amount of
@@ -116,8 +124,6 @@ primary slot and adds a header and trailer that the bootloader is expecting:
                                       capabilities,so it can be installed in the
                                       primary slot, and encrypted when swapped to
                                       the secondary.
-      --skip-encryption               Set encryption flags and TLV's without
-                                      applying encryption.
       --compression [disabled|lzma2|lzma2armthumb]
                                       Enable image compression using specified
                                       type. Will fall back without image
