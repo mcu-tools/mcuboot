@@ -350,7 +350,7 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
     uint32_t align;
     int rc;
 
-    BOOT_LOG_DBG("boot_write_trailer: for %p at %d, size = %d",
+    BOOT_LOG_DBG("boot_write_trailer: for %p at %" PRIu32 ", size = %d",
                  fap, off, inlen);
 
     align = flash_area_align(fap);
