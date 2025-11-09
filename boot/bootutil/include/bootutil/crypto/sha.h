@@ -275,6 +275,18 @@ static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
 #endif /* MCUBOOT_USE_CC310 */
 
 /**
+ * Does bootutil_sha_init, bootutil_sha_update, and bootutil_sha_finish at once.
+ *
+ * @param data     Pointer to the data to hash.
+ * @param data_len Length of @c data in bytes.
+ * @param digest   Pointer to where the resulting digest shall be stored.
+ *
+ * @return         @c 0 on success and nonzero otherwise.
+ */
+int bootutil_sha(const uint8_t *data, size_t data_len,
+                 uint8_t digest[static IMAGE_HASH_SIZE]);
+
+/**
  * Computes an HMAC as per RFC 2104.
  *
  * @param key      The key to authenticate with.
