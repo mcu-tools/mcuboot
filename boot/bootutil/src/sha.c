@@ -16,6 +16,20 @@
 #include "mbedtls/md.h"
 #endif
 
+int
+bootutil_sha(const uint8_t *const data, size_t data_len,
+             uint8_t digest[static IMAGE_HASH_SIZE])
+{
+    bootutil_sha_context ctx;
+    int rc;
+
+    bootutil_sha_init(&ctx);
+    bootutil_sha_update(&ctx, data, data_len);
+    rc = bootutil_sha_finish(&ctx, digest);
+    bootutil_sha_drop(&ctx);
+    return rc;
+}
+
 #if defined(MCUBOOT_USE_MBED_TLS)
 
 static const mbedtls_md_type_t md_type =
