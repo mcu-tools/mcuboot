@@ -301,21 +301,25 @@ elseif(CONFIG_BOOT_SIGNATURE_TYPE_ED25519 OR CONFIG_BOOT_ENCRYPT_X25519)
 endif()
 
 if(NOT CONFIG_BOOT_ED25519_PSA AND NOT CONFIG_BOOT_ECDSA_PSA)
-  if(CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519)
-    zephyr_library_sources(
-      ${TINYCRYPT_DIR}/source/aes_encrypt.c
-      ${TINYCRYPT_DIR}/source/aes_decrypt.c
-      ${TINYCRYPT_DIR}/source/ctr_mode.c
-      ${TINYCRYPT_DIR}/source/hmac.c
-      ${TINYCRYPT_DIR}/source/ecc_dh.c
-    )
+  if(CONFIG_BOOT_USE_TINYCRYPT)
+    if(CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519)
+      zephyr_library_sources(
+        ${TINYCRYPT_DIR}/source/aes_encrypt.c
+        ${TINYCRYPT_DIR}/source/aes_decrypt.c
+        ${TINYCRYPT_DIR}/source/ctr_mode.c
+        ${TINYCRYPT_DIR}/source/hmac.c
+        ${TINYCRYPT_DIR}/source/ecc_dh.c
+      )
+    endif()
   endif()
 endif()
 
-if(CONFIG_BOOT_ENCRYPT_EC256 AND NOT CONFIG_BOOT_ECDSA_PSA)
-  zephyr_library_sources(
-    ${TINYCRYPT_DIR}/source/ecc_dh.c
-    )
+if(CONFIG_BOOT_USE_TINYCRYPT)
+  if(CONFIG_BOOT_ENCRYPT_EC256 AND NOT CONFIG_BOOT_ECDSA_PSA)
+    zephyr_library_sources(
+      ${TINYCRYPT_DIR}/source/ecc_dh.c
+      )
+  endif()
 endif()
 
 if(CONFIG_MCUBOOT_SERIAL)
