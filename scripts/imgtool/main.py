@@ -486,6 +486,7 @@ def sign(ctx, key, public_key_format, align, version, pad_sig, header_size,
     compression_tlvs = {}
     img.load(infile)
     key = load_key(key) if key else None
+    enckey = None
     if not aes_key:
         enckey = load_key(encrypt) if encrypt else None
         if enckey and not match_sig_enc_key(key, enckey):
@@ -546,6 +547,7 @@ def sign(ctx, key, public_key_format, align, version, pad_sig, header_size,
             'Pure signatures, currently, enforces preferred hash algorithm, '
             'and forbids sha selection by user.')
 
+    aes_raw_key = None
     if aes_key:
         # Converting the command line provided raw AES key to byte array;
         # this aray will be truncated to desired len.
@@ -554,7 +556,7 @@ def sign(ctx, key, public_key_format, align, version, pad_sig, header_size,
         if aes_raw_key_len not in (16, 32):
             raise click.UsageError("Provided keylen, {int(aes_raw_key_len)} in bytes, "
                                    "not supported")
-    else:
+    elif enckey:
         aes_raw_key = os.urandom(int(int(encrypt_keylen) / 8))
 
     if compression in ["lzma2", "lzma2armthumb"]:

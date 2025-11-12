@@ -518,13 +518,19 @@ class Image:
                user_sha='auto', hmac_sha='auto', is_pure=False, keep_comp_size=False,
                dont_encrypt=False):
 
-        if encrypt_keylen == 256:
-            encrypt_keylen_bytes = 32
-        else:
-            encrypt_keylen_bytes = 16
+        # This is old logic of image creation where lack of enckey indicated
+        # lack of encryption.
+        # New create requires a key to be provided from outside.
+        if enckey:
+            if encrypt_keylen == 256:
+                encrypt_keylen_bytes = 32
+            else:
+                encrypt_keylen_bytes = 16
 
-        # No AES plain key and there is request to encrypt, generate random AES key
-        raw_key = os.urandom(encrypt_keylen_bytes)
+            # No AES plain key and there is request to encrypt, generate random AES key
+            raw_key = os.urandom(encrypt_keylen_bytes)
+        else:
+            raw_key = None
 
         self.create2(key, public_key_format, enckey, dependencies,
                      sw_type, custom_tlvs, compression_tlvs,
@@ -540,7 +546,7 @@ class Image:
                user_sha='auto', hmac_sha='auto', is_pure=False, keep_comp_size=False,
                dont_encrypt=False):
         self.enckey = enckey
-        encrypt_keylen = len(aes_raw) * 8
+        encrypt_keylen = len(aes_raw) * 8 if aes_raw else 0
 
         # key decides on sha, then pub_key; of both are none default is used
         check_key = key if key is not None else pub_key
@@ -824,11 +830,11 @@ class Image:
         """Install the image header."""
 
         flags = 0
-        if enckey is not None:
-            if aes_length == 128:
-                flags |= IMAGE_F['ENCRYPTED_AES128']
-            else:
-                flags |= IMAGE_F['ENCRYPTED_AES256']
+        if aes_length == 128:
+            flags |= IMAGE_F['ENCRYPTED_AES128']
+        elif aes_length == 256:
+            flags |= IMAGE_F['ENCRYPTED_AES256']
+
         if self.load_addr != 0:
             # Indicates that this image should be loaded into RAM
             # instead of run directly from flash.
