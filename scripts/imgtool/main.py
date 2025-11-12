@@ -20,6 +20,7 @@
 import base64
 import getpass
 import lzma
+import os
 import re
 import struct
 import sys
@@ -527,9 +528,11 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             'Pure signatures, currently, enforces preferred hash algorithm, '
             'and forbids sha selection by user.')
 
+    aes_raw_key = os.urandom(int(int(encrypt_keylen) / 8))
+
     if compression in ["lzma2", "lzma2armthumb"]:
-        img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
+        img.create2(key, public_key_format, enckey, dependencies, boot_record,
+               custom_tlvs, compression_tlvs, None, aes_raw_key, clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
                hmac_sha=hmac_sha, is_pure=is_pure, keep_comp_size=False, dont_encrypt=True)
         compressed_img = image.Image(version=decode_version(version),
@@ -573,15 +576,15 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             keep_comp_size = False
             if enckey:
                 keep_comp_size = True
-            compressed_img.create(key, public_key_format, enckey,
+            compressed_img.create2(key, public_key_format, enckey,
                dependencies, boot_record, custom_tlvs, compression_tlvs,
-               compression, int(encrypt_keylen), clear, baked_signature,
+               compression, aes_raw_key, clear, baked_signature,
                pub_key, vector_to_sign, user_sha=user_sha, hmac_sha=hmac_sha,
                is_pure=is_pure, keep_comp_size=keep_comp_size)
             img = compressed_img
     else:
-        img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
+        img.create2(key, public_key_format, enckey, dependencies, boot_record,
+               custom_tlvs, compression_tlvs, None, aes_raw_key, clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
                hmac_sha=hmac_sha, is_pure=is_pure)
     img.save(outfile, hex_addr)

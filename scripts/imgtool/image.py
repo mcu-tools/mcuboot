@@ -517,7 +517,30 @@ class Image:
                fixed_sig=None, pub_key=None, vector_to_sign=None,
                user_sha='auto', hmac_sha='auto', is_pure=False, keep_comp_size=False,
                dont_encrypt=False):
+
+        if encrypt_keylen == 256:
+            encrypt_keylen_bytes = 32
+        else:
+            encrypt_keylen_bytes = 16
+
+        # No AES plain key and there is request to encrypt, generate random AES key
+        raw_key = os.urandom(encrypt_keylen_bytes)
+
+        self.create2(key, public_key_format, enckey, dependencies,
+                     sw_type, custom_tlvs, compression_tlvs,
+                     compression_type, raw_key, clear,
+                     fixed_sig, pub_key, vector_to_sign,
+                     user_sha, hmac_sha, is_pure, keep_comp_size,
+                     dont_encrypt)
+
+    def create2(self, key, public_key_format, enckey, dependencies=None,
+               sw_type=None, custom_tlvs=None, compression_tlvs=None,
+               compression_type=None, aes_raw=None, clear=False,
+               fixed_sig=None, pub_key=None, vector_to_sign=None,
+               user_sha='auto', hmac_sha='auto', is_pure=False, keep_comp_size=False,
+               dont_encrypt=False):
         self.enckey = enckey
+        encrypt_keylen = len(aes_raw) * 8
 
         # key decides on sha, then pub_key; of both are none default is used
         check_key = key if key is not None else pub_key
@@ -620,10 +643,7 @@ class Image:
             if compression_type == "lzma2armthumb":
                 compression_flags |= IMAGE_F['COMPRESSED_ARM_THUMB']
         # This adds the header to the payload as well
-        if encrypt_keylen == 256:
-            self.add_header(enckey, protected_tlv_size, compression_flags, 256)
-        else:
-            self.add_header(enckey, protected_tlv_size, compression_flags)
+        self.add_header(enckey, protected_tlv_size, compression_flags, encrypt_keylen)
 
         prot_tlv = TLV(self.endian, TLV_PROT_INFO_MAGIC)
 
@@ -743,11 +763,6 @@ class Image:
             self.payload = self.payload[:protected_tlv_off]
 
         if enckey is not None and dont_encrypt is False:
-            if encrypt_keylen == 256:
-                plainkey = os.urandom(32)
-            else:
-                plainkey = os.urandom(16)
-
             if not isinstance(enckey, rsa.RSAPublic):
                 if hmac_sha == 'auto' or hmac_sha == '256':
                     hmac_sha = '256'
@@ -762,19 +777,19 @@ class Image:
 
             if isinstance(enckey, rsa.RSAPublic):
                 cipherkey = enckey._get_public().encrypt(
-                    plainkey, padding.OAEP(
+                    aes_raw, padding.OAEP(
                         mgf=padding.MGF1(algorithm=hashes.SHA256()),
                         algorithm=hashes.SHA256(),
                         label=None))
                 self.enctlv_len = len(cipherkey)
                 tlv.add('ENCRSA2048', cipherkey)
             elif isinstance(enckey, ecdsa.ECDSA256P1Public):
-                cipherkey, mac, pubk = self.ecies_hkdf(enckey, plainkey, hmac_sha_alg)
+                cipherkey, mac, pubk = self.ecies_hkdf(enckey, aes_raw, hmac_sha_alg)
                 enctlv = pubk + mac + cipherkey
                 self.enctlv_len = len(enctlv)
                 tlv.add('ENCEC256', enctlv)
             elif isinstance(enckey, x25519.X25519Public):
-                cipherkey, mac, pubk = self.ecies_hkdf(enckey, plainkey, hmac_sha_alg)
+                cipherkey, mac, pubk = self.ecies_hkdf(enckey, aes_raw, hmac_sha_alg)
                 enctlv = pubk + mac + cipherkey
                 self.enctlv_len = len(enctlv)
                 if (hmac_sha == '256'):
@@ -784,7 +799,7 @@ class Image:
 
             if not clear:
                 nonce = bytes([0] * 16)
-                cipher = Cipher(algorithms.AES(plainkey), modes.CTR(nonce),
+                cipher = Cipher(algorithms.AES(aes_raw), modes.CTR(nonce),
                                 backend=default_backend())
                 encryptor = cipher.encryptor()
                 img = bytes(self.payload[self.header_size:])
