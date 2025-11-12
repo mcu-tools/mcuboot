@@ -659,6 +659,7 @@ void boot_state_clear(struct boot_loader_state *state)
             boot_enc_drop(&state->enc[image][slot]);
         }
     }
+#else
+    (void)state;
 #endif
-    memset(state, 0, sizeof(struct boot_loader_state));
 }
