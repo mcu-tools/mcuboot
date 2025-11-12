@@ -216,7 +216,7 @@ decrypt_image_inplace(const struct flash_area *fa_p,
     struct flash_sector sector;
     struct enc_key_data enc_data;
 
-    boot_state_clear(state);
+    boot_state_init(state);
     memset(&_bs, 0, sizeof(struct boot_status));
 
     /* Get size from last sector to know page/sector erase size */
