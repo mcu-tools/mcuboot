@@ -1070,6 +1070,17 @@ config MCUBOOT_HW_DOWNGRADE_PREVENTION_COUNTER_LIMITED
 	  value as a TLV but it is not possible to update the counter,
 	  the update will be rejected.
 
+config MCUBOOT_HW_DOWNGRADE_PREVENTION_LOCK
+	bool "Lock updates of HW based downgrade prevention counter before boot"
+	depends on MCUBOOT_HW_DOWNGRADE_PREVENTION
+	help
+	  When this option is set, the hardware downgrade prevention counter
+	  updates are locked before booting the application.
+	  This means that after booting the application it is not possible to
+	  update the counter until a reboot.
+	  This prevents the application from accidental updates of the counter,
+	  that may invalidate the currently running image.
+
 endchoice
 
 config MCUBOOT_UUID_VID
