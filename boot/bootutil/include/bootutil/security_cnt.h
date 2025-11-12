@@ -76,6 +76,17 @@ int32_t boot_nv_security_counter_update(uint32_t image_id,
 fih_ret boot_nv_security_counter_is_update_possible(uint32_t image_id,
                                                     uint32_t img_security_cnt);
 
+#ifdef MCUBOOT_HW_ROLLBACK_PROT_LOCK
+/**
+ * Lock updates of the stored value of a given image's security counter.
+ *
+ * @param image_id          Index of the image (from 0).
+ *
+ * @return                  0 on success; nonzero on failure.
+ */
+int32_t boot_nv_security_counter_lock(uint32_t image_id);
+#endif /* MCUBOOT_HW_ROLLBACK_PROT_LOCK */
+
 #ifdef __cplusplus
 }
 #endif
