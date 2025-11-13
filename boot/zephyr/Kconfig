@@ -1040,6 +1040,16 @@ config MCUBOOT_DOWNGRADE_PREVENTION
 	  only protects against some attacks against version downgrades (for
 	  example, a JTAG could be used to write an older version).
 
+config MCUBOOT_HW_DOWNGRADE_PREVENTION
+	bool "HW based downgrade prevention"
+	help
+	  Prevent undesirable/malicious software downgrades. When this option is
+	  set, any upgrade must have greater or equal security counter value.
+	  Because of the acceptance of equal values it allows for software
+	  downgrade to some extent.
+
+endchoice
+
 config MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER
 	bool "Use image security counter instead of version number"
 	depends on MCUBOOT_DOWNGRADE_PREVENTION
@@ -1050,14 +1060,6 @@ config MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER
        equal security counter value.
        Because of the acceptance of equal values it allows for software
        downgrades to some extent.
-
-config MCUBOOT_HW_DOWNGRADE_PREVENTION
-	bool "HW based downgrade prevention"
-	help
-	  Prevent undesirable/malicious software downgrades. When this option is
-	  set, any upgrade must have greater or equal security counter value.
-	  Because of the acceptance of equal values it allows for software
-	  downgrade to some extent.
 
 config MCUBOOT_HW_DOWNGRADE_PREVENTION_COUNTER_LIMITED
 	bool "HW based downgrade prevention counter has limited number of updates"
@@ -1080,8 +1082,6 @@ config MCUBOOT_HW_DOWNGRADE_PREVENTION_LOCK
 	  update the counter until a reboot.
 	  This prevents the application from accidental updates of the counter,
 	  that may invalidate the currently running image.
-
-endchoice
 
 config MCUBOOT_UUID_VID
 	bool "Expect vendor unique identifier in image's TLV"
