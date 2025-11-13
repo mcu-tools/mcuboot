@@ -141,7 +141,7 @@ boot_header_scramble_off_sz(const struct flash_area *fa, int slot, size_t *off, 
         if (ret < 0) {
             return ret;
         }
-        loff = flash_sector_get_off(&sector);
+        loff = flash_sector_get_size(&sector);
     }
 #endif
 
