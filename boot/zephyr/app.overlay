@@ -4,24 +4,6 @@
 	};
 };
 
-&boot_partition {
-	reg = <0x00000000 0x10000>;
-	read-only;
-};
-
-&uart20 {
-	current-speed = <115200>;
-	pinctrl-0 = <&uart20_default>;
-	pinctrl-1 = <&uart20_sleep>;
-	pinctrl-names = "default", "sleep";
-};
-
-&uart30 {
-	current-speed = <115200>;
-	pinctrl-0 = <&uart30_default>;
-	pinctrl-1 = <&uart30_sleep>;
-	pinctrl-names = "default", "sleep";
-};
 
 
 
