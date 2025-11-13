@@ -142,6 +142,7 @@ boot_header_scramble_off_sz(const struct flash_area *fa, int slot, size_t *off, 
             return ret;
         }
         loff = flash_sector_get_size(&sector);
+        BOOT_LOG_DBG("boot_header_scramble_off_sz: adjusted loff %d", loff);
     }
 #endif
 
