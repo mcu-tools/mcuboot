@@ -1,1 +1,0 @@
-- Move the Virtual eFuse offset in flash configuration from hardcoded value to .conf file.

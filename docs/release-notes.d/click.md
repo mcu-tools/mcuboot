@@ -1,1 +1,0 @@
- - Fixed imgtool dependency on click package version.

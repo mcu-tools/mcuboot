@@ -1,1 +1,0 @@
- - Switched to picolibc as the default C library in Zephyr.

@@ -1,6 +1,0 @@
-- Add cache flush after write/erase operations to avoid getting invalid
-  data when these are followed by read operation.
-- Fix image wrong state after swap-scratch when hardware flash encryption
-  is enabled. When hardware flash encryption is enabled, force expected
-  erased value (0xFF) into flash when erasing a region, and also always
-  do a real erase before writing data into flash.
