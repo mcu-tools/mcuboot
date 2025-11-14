@@ -239,7 +239,7 @@ boot_read_unprotected_tlv_sizes(const struct flash_area *fap, uint16_t *tlv_size
 }
 #endif
 
-#ifdef MCUBOOT_ENC_IMAGES
+#if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_EMBEDDED_ENC_KEY)
 int
 boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status *bs)
 {
