@@ -23,50 +23,9 @@
     #define EC256_PUBK_LEN (65)
 #endif /* MCUBOOT_USE_MBED_TLS */
 
-#if defined(MCUBOOT_USE_TINYCRYPT)
-    #include <tinycrypt/ecc_dh.h>
-    #include <tinycrypt/constants.h>
-    #define BOOTUTIL_CRYPTO_ECDH_P256_HASH_SIZE (4 * 8)
-#endif /* MCUBOOT_USE_TINYCRYPT */
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#if defined(MCUBOOT_USE_TINYCRYPT)
-typedef uintptr_t bootutil_ecdh_p256_context;
-typedef bootutil_ecdh_p256_context bootutil_key_exchange_ctx;
-static inline void bootutil_ecdh_p256_init(bootutil_ecdh_p256_context *ctx)
-{
-    (void)ctx;
-}
-
-static inline void bootutil_ecdh_p256_drop(bootutil_ecdh_p256_context *ctx)
-{
-    (void)ctx;
-}
-
-static inline int bootutil_ecdh_p256_shared_secret(bootutil_ecdh_p256_context *ctx, const uint8_t *pk, const uint8_t *sk, uint8_t *z)
-{
-    int rc;
-    (void)ctx;
-
-    if (pk[0] != 0x04) {
-        return -1;
-    }
-
-    rc = uECC_valid_public_key(&pk[1], uECC_secp256r1());
-    if (rc != 0) {
-        return -1;
-    }
-
-    rc = uECC_shared_secret(&pk[1], sk, z, uECC_secp256r1());
-    if (rc != TC_CRYPTO_SUCCESS) {
-        return -1;
-    }
-    return 0;
-}
-#endif /* MCUBOOT_USE_TINYCRYPT */
 
 #if defined(MCUBOOT_USE_MBED_TLS)
 #define NUM_ECC_BYTES 32
