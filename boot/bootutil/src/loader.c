@@ -460,6 +460,7 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
 #endif /* !MCUBOOT_DIRECT_XIP */
 
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
 static fih_ret
 split_image_check(struct image_header *app_hdr,
                   const struct flash_area *app_fap,
@@ -490,6 +491,7 @@ split_image_check(struct image_header *app_hdr,
 out:
     FIH_RET(fih_rc);
 }
+#endif /* !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0 */
 #endif /* !MCUBOOT_DIRECT_XIP && !MCUBOOT_RAM_LOAD */
 
 #if defined(MCUBOOT_DIRECT_XIP)
@@ -1704,10 +1706,12 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 
     BOOT_LOG_DBG("context_boot_go");
 
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
 #if defined(__BOOTSIM__)
     struct boot_sector_buffer sector_buf;
     sectors = &sector_buf;
 #endif
+#endif /* !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0 */
 
     has_upgrade = false;
 
@@ -1967,6 +1971,7 @@ out:
     FIH_RET(fih_rc);
 }
 
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
 fih_ret
 split_go(int loader_slot, int split_slot, void **entry)
 {
@@ -2032,6 +2037,7 @@ done:
 
     FIH_RET(fih_rc);
 }
+#endif /* !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0 */
 
 #else /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 

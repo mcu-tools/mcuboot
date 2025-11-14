@@ -40,6 +40,7 @@ fn main() {
     let max_align_32 = env::var("CARGO_FEATURE_MAX_ALIGN_32").is_ok();
     let hw_rollback_protection = env::var("CARGO_FEATURE_HW_ROLLBACK_PROTECTION").is_ok();
     let check_load_addr = env::var("CARGO_FEATURE_CHECK_LOAD_ADDR").is_ok();
+    let logical_sectors_4k = env::var("CARGO_FEATURE_LOGICAL_SECTORS_4K").is_ok();
 
     let mut conf = CachedBuild::new();
     conf.conf.define("__BOOTSIM__", None);
@@ -52,6 +53,10 @@ fn main() {
         conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("32"));
     } else {
         conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("8"));
+    }
+
+    if logical_sectors_4k {
+        conf.conf.define("MCUBOOT_LOGICAL_SECTOR_SIZE", Some("4096"));
     }
 
     conf.conf.define("MCUBOOT_IMAGE_NUMBER", Some(if multiimage { "2" } else { "1" }));
