@@ -47,6 +47,9 @@
 #define MCUBOOT_ROTPK_MAX_KEYS_PER_IMAGE 2
 #endif
 
+/* Uncomment to enable image binding support */
+/* #define MCUBOOT_IMAGE_BINDING */
+
 /*
  * Public key handling
  *

@@ -192,6 +192,11 @@ static const uint16_t allowed_unprot_tlvs[] = {
 #else
      IMAGE_TLV_ENC_X25519_SHA512,
 #endif
+#if defined(MCUBOOT_IMAGE_BINDING)
+     IMAGE_TLV_BIND_METADATA,
+     IMAGE_TLV_BIND_TAG,
+#endif /* MCUBOOT_IMAGE_BINDING */
+
      /* Mark end with ANY. */
      IMAGE_TLV_ANY,
 };
