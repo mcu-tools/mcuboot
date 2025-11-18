@@ -352,6 +352,13 @@ class BasedIntParamType(click.ParamType):
                    'Add "0x" prefix if the value should be interpreted as an '
                    'integer, otherwise it will be interpreted as a string. '
                    'Specify the option multiple times to add multiple TLVs.')
+@click.option('--extra-tlv', required=False, nargs=2, default=[], multiple=True,
+              metavar='[tag] [value]',
+              help='Unprotected TLV to append in vendor-reserved range. '
+                   'tag is an integer (e.g. 0x00A4). '
+                   'value is bytes as hex with 0x prefix (e.g. '
+                   '0xffffffffffffffffffffffffffffffff) or a UTF-8 string. '
+                   'These are NOT covered by the image signature.')
 @click.option('-R', '--erased-val', type=click.Choice(['0', '0xff']),
               required=False,
               help='The value that is read back from erased flash.')
@@ -468,7 +475,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, rom_fixed, max_align,
          clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, hmac_sha, is_pure,
-         vector_to_sign, non_bootable, vid, cid, psa_key_ids):
+         vector_to_sign, non_bootable, vid, cid, psa_key_ids, extra_tlv):
 
     if confirm or test:
         # Confirmed but non-padded images don't make much sense, because
@@ -511,6 +518,22 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
         for k in loaded_keys:
             if hasattr(k, 'pad_sig'):
                 k.pad_sig = True
+
+    # Get list of extra unprotected TLVs from the command-line
+    extra_tlvs = {}
+    for tlv in extra_tlv:
+        tag = int(tlv[0], 0)  # supports decimal or 0x.. hex
+        if tag in extra_tlvs:
+            raise click.UsageError(f'Extra TLV {hex(tag)} already exists.')
+        value = tlv[1]
+        if value.startswith('0x'):
+            hexstr = value[2:]
+            if len(hexstr) % 2:
+                raise click.UsageError('Extra TLV length is odd.')
+            extra_tlvs[tag] = bytes.fromhex(hexstr)
+        else:
+            # allow simple string values (encoded to bytes)
+            extra_tlvs[tag] = value.encode('utf-8')
 
     # Get list of custom protected TLVs from the command-line
     custom_tlvs = {}
@@ -556,7 +579,8 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
         img.create(loaded_keys, public_key_format, enckey, dependencies, boot_record,
                custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
-               hmac_sha=hmac_sha, is_pure=is_pure, keep_comp_size=False, dont_encrypt=True)
+               hmac_sha=hmac_sha, is_pure=is_pure, keep_comp_size=False, dont_encrypt=True,
+               extra_tlvs=extra_tlvs)
         compressed_img = image.Image(version=decode_version(version),
                   header_size=header_size, pad_header=pad_header,
                   pad=pad, confirm=confirm, align=int(align),
@@ -602,13 +626,14 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                dependencies, boot_record, custom_tlvs, compression_tlvs,
                compression, int(encrypt_keylen), clear, baked_signature,
                pub_key, vector_to_sign, user_sha=user_sha, hmac_sha=hmac_sha,
-               is_pure=is_pure, keep_comp_size=keep_comp_size)
+               is_pure=is_pure, keep_comp_size=keep_comp_size,
+               extra_tlvs=extra_tlvs)
             img = compressed_img
     else:
         img.create(loaded_keys, public_key_format, enckey, dependencies, boot_record,
                custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
-               hmac_sha=hmac_sha, is_pure=is_pure)
+               hmac_sha=hmac_sha, is_pure=is_pure, extra_tlvs=extra_tlvs)
     img.save(outfile, hex_addr)
     if sig_out is not None:
         new_signature = img.get_signature()

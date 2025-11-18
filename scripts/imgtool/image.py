@@ -94,6 +94,9 @@ TLV_VALUES = {
         'COMP_DEC_SIZE' : 0x73,
         'UUID_VID': 0x74,
         'UUID_CID': 0x75,
+        # Vendor-reserved TLVs for image binding
+        'BIND_METADATA': 0xA4,
+        'BIND_TAG': 0xA5,
 }
 
 TLV_NAMES = {v: k for k, v in TLV_VALUES.items()}
@@ -539,7 +542,7 @@ class Image:
                compression_type=None, encrypt_keylen=128, clear=False,
                fixed_sig=None, pub_key=None, vector_to_sign=None,
                user_sha='auto', hmac_sha='auto', is_pure=False, keep_comp_size=False,
-               dont_encrypt=False):
+               dont_encrypt=False, extra_tlvs=None):
         self.enckey = enckey
 
         # key decides on sha, then pub_key; if both are none default is used
@@ -837,6 +840,12 @@ class Image:
                 img = bytes(self.payload[self.header_size:])
                 self.payload[self.header_size:] = \
                     encryptor.update(img) + encryptor.finalize()
+
+        # Append any caller-provided unprotected TLVs (vendor-reserved tags)
+        if extra_tlvs is not None:
+            for tag, value in extra_tlvs.items():
+                # Ensure integer tag; value must be bytes
+                tlv.add(int(tag), value)
 
         self.payload += prot_tlv.get()
         self.payload += tlv.get()
