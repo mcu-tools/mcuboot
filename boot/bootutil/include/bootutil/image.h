@@ -145,6 +145,10 @@ extern "C" {
                                              * ...
                                              * 0xffa0 - 0xfffe
                                              */
+
+#define IMAGE_TLV_BIND_METADATA  0xA4   /* Image binding metadata placeholder TLV */
+#define IMAGE_TLV_BIND_TAG       0xA5   /* Image binding TAG placeholder TLV */
+
 #define IMAGE_TLV_ANY               0xffff  /* Used to iterate over all TLV */
 
 STRUCT_PACKED image_version {
