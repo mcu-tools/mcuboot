@@ -141,13 +141,13 @@ out:
     FIH_RET(fih_rc);
 }
 
-/* Hash signature verification function.
- * Verifies hash against provided signature.
- * The function verifies that hash is of expected size and then
- * calls bootutil_verify to do the signature verification.
+/* Signature verification function.
+ * Verifies message with provided signature.
+ * When compiled without  MCUBOOT_SIGN_PURE, the function expects
+ * msg to be hash of expected size.
  */
 fih_ret
-bootutil_verify_sig(uint8_t *hash, uint32_t hlen,
+bootutil_verify_sig(uint8_t *msg, uint32_t mlen,
                     uint8_t *sig, size_t slen,
                     uint8_t key_id)
 {
@@ -155,14 +155,16 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen,
 
     BOOT_LOG_DBG("bootutil_verify_sig: ED25519 key_id %d", (int)key_id);
 
-    if (hlen != IMAGE_HASH_SIZE) {
-        BOOT_LOG_DBG("bootutil_verify_sig: expected hlen %d, got %d",
-                     IMAGE_HASH_SIZE, hlen);
+#if !defined(MCUBOOT_SIGN_PURE)
+    if (mlen != IMAGE_HASH_SIZE) {
+        BOOT_LOG_DBG("bootutil_verify_sig: expected hash len %d, got %d",
+                     IMAGE_HASH_SIZE, mlen);
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
     }
+#endif
 
-    FIH_CALL(bootutil_verify, fih_rc, hash, IMAGE_HASH_SIZE, sig,
+    FIH_CALL(bootutil_verify, fih_rc, msg, mlen, sig,
              slen, key_id);
 
 out:
