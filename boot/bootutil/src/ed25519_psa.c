@@ -19,6 +19,16 @@ BOOT_LOG_MODULE_REGISTER(ed25519_psa);
 #define EDDSA_KEY_LENGTH        32
 #define EDDSA_SIGNAGURE_LENGTH  64
 
+int bootutil_crypto_backend_init(void)
+{
+    psa_status_t status = psa_crypto_init();
+    if (status != PSA_SUCCESS) {
+        BOOT_LOG_ERR("PSA crypto init failed %d\n", status);
+        return false;
+    }
+    return true;
+}
+
 int ED25519_verify(const uint8_t *message, size_t message_len,
                    const uint8_t signature[EDDSA_SIGNAGURE_LENGTH],
                    const uint8_t public_key[EDDSA_KEY_LENGTH])
