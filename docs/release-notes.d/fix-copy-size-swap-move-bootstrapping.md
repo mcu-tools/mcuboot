@@ -1,0 +1,2 @@
+- Fix: Corrected the copy size calculation when bootstrapping and swapping using MCUBOOT_SWAP_USING_MOVE.
+  Previously, the primary region size was used, which could be larger than the secondary region, when using the optimal region sizes. Now, the size of the secondary region (excluding the swap sector and sectors needed for swapping) is used, ensuring only the valid image area is copied. This prevents potential over-copying and related issues during image upgrade or bootstrap operations.
