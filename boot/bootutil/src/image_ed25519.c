@@ -171,23 +171,4 @@ out:
     FIH_RET(fih_rc);
 }
 
-/* Image verification function.
- * The function directly calls bootutil_verify to verify signature
- * of image.
- */
-fih_ret
-bootutil_verify_img(uint8_t *img, uint32_t size,
-                    uint8_t *sig, size_t slen,
-                    uint8_t key_id)
-{
-    FIH_DECLARE(fih_rc, FIH_FAILURE);
-
-    BOOT_LOG_DBG("bootutil_verify_img: ED25519 key_id %d", (int)key_id);
-
-    FIH_CALL(bootutil_verify, fih_rc, img, size, sig,
-             slen, key_id);
-
-    FIH_RET(fih_rc);
-}
-
 #endif /* MCUBOOT_SIGN_ED25519 */

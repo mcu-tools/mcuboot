@@ -290,12 +290,6 @@ struct boot_sector_buffer {
 fih_ret bootutil_verify_sig(uint8_t *msg, uint32_t mlen, uint8_t *sig,
                             size_t slen, uint8_t key_id);
 
-/* The function is intended for direct verification of image
- * against provided signature.
- */
-fih_ret bootutil_verify_img(uint8_t *img, uint32_t size,
-                            uint8_t *sig, size_t slen, uint8_t key_id);
-
 fih_ret boot_fih_memequal(const void *s1, const void *s2, size_t n);
 
 const struct flash_area *boot_find_status(const struct boot_loader_state *state,
