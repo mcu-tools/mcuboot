@@ -990,6 +990,19 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
         size += this_size;
     }
 
+#if defined(MCUBOOT_SWAP_USING_MOVE)
+    /* When using MCUBOOT_SWAP_USING_MOVE, primary region is larger then the secondary region
+     * Optimal region configuration: # useful regions in primary region = # regions in secondary region + 1
+     * This means that we have to use the size of the secondary region (so without the swap sector)
+     */
+    size = 0;
+    sect_count = boot_img_num_sectors(state, BOOT_SLOT_SECONDARY);
+    for (sect = 0, size = 0; sect < sect_count; sect++) {
+        this_size = boot_img_sector_size(state, BOOT_SLOT_SECONDARY, sect);
+        size += this_size;
+    }
+#endif
+
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST)
     trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
     sector = boot_img_num_sectors(state, BOOT_SLOT_PRIMARY) - 1;
