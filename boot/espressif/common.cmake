@@ -197,6 +197,7 @@ if(CONFIG_ESP_MCUBOOT_SERIAL)
   list(APPEND port_srcs
       ${ESPRESSIF_PORT_DIR}/port/serial_adapter.c
       ${MBEDTLS_DIR}/library/base64.c
+      ${MBEDTLS_DIR}/library/constant_time.c
       )
   list(APPEND CRYPTO_INC
       ${MBEDTLS_DIR}/include
