@@ -41,13 +41,6 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 
     BOOT_LOG_DBG("ED25519_verify: PSA implementation");
 
-    /* Initialize PSA Crypto */
-    status = psa_crypto_init();
-    if (status != PSA_SUCCESS) {
-        BOOT_LOG_ERR("PSA crypto init failed %d\n", status);
-        return 0;
-    }
-
     status = PSA_ERROR_BAD_STATE;
 
     psa_set_key_type(&key_attr,
