@@ -1109,11 +1109,6 @@ config BOOT_WATCHDOG_FEED_NRFX_WDT
 	depends on SOC_FAMILY_NORDIC_NRF
 	# for nRF nrfx based implementation is available
 	imply NRFX_WDT
-	imply NRFX_WDT0
-	imply NRFX_WDT1
-	imply NRFX_WDT30
-	imply NRFX_WDT31
-	imply NRFX_WDT010
 
 config BOOT_IMAGE_ACCESS_HOOKS
 	bool "Hooks for overriding MCUboot's native routines"
