@@ -3,6 +3,62 @@
 - Table of Contents
 {:toc}
 
+## Version 2.3.0
+
+- Added support for booting Cortex-R5 images
+- Add support for cleaning up the Cortex-R core before final jumping
+- Aligned the project security policy with the [TrustedFirmware.org security
+  policy](https://www.trustedfirmware.org/.well-known/security.txt).
+- Fixed imgtool dependency on click package version.
+- Enabled support for ram-load revert mode, which functions using the same
+  logic as direct-xip revert mode but loads the executable image to ram.
+- Add cache flush after write/erase operations to avoid getting invalid
+  data when these are followed by read operation.
+- Fix image wrong state after swap-scratch when hardware flash encryption
+  is enabled. When hardware flash encryption is enabled, force expected
+  erased value (0xFF) into flash when erasing a region, and also always
+  do a real erase before writing data into flash.
+- Move the Virtual eFuse offset in flash configuration from hardcoded value to .conf file.
+- Fixed issue in boot_scramble_regions, where incorrect boundary
+  check would cause function to attempt to write pass a designated
+  flash area.
+- Fixed issue in image_validate when `MCUBOOT_HASH_STORAGE_DIRECTLY` is enabled
+  for platforms with NVM memory that does not start at 0x00.
+- Fixed issue in image_validate when `BOOT_SIGNATURE_TYPE_PURE` is enabled
+  for platforms with NVM memory that does not start at 0x00.
+- Fixed serial recovery with progressive erase for MCUboot modes of single
+  updatable slot (`MCUBOOT_SINGLE_APPLICATION_SLOT`, `MCUBOOT_FIRMWARE_LOADER`,
+  `MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD`) which was previously failing due
+  to attempting to access non-existent image status fields.
+- Fixed issue with imgtool when trying to compress images with
+  no header padding requested.
+- Fixed issue with swap using offset when mininmal erase was
+  enabled that did not offset the erase to the second sector and
+  wrongly used the (empty) first sector of the secondary slot.
+- Switched to picolibc as the default C library in Zephyr.
+- Fixed wrong define specifying 2 slots in single loader mode
+  instead of just 1
+- Fixed wrong slot ID in hook calls from serial recovery.
+- Fixed issues with serial recovery not building/not
+  working/faulting.
+- Swap using offset now includes the size of the unprotected TLV
+  area which was wrongly missing before, this requires extra space
+  in the swap status as the data is not part of the image header
+- Control over compilation of unprotected TLV allow list has been exposed
+  using MCUBOOT_USE_TLV_ALLOW_LIST mcuboot configuration identifier.
+- Fixed issue with platforms that have
+  MCUBOOT_SUPPORT_DEV_WITHOUT_ERASE set that did not scramble
+  (delete) data sections from the trailer that should have been
+  deleted.
+- Fixed issue with boot_scramble_region escaping flash area due
+  to error in the range check.
+- A few changes to make vscode nicer, including a default package to build at
+  the top level, and ignoring some of the cache files from vscode.
+- Zephyr builds are now using Kconfig CONFIG_MCUBOOT_BOOT_MAX_ALIGN
+  to set the MCUBOOT_BOOT_MAX_ALIGN.
+- Fixed issue with checking pin reset not checking for single
+  flag in Zephyr.
+
 ## Version 2.2.0
 
 - Added support for retrieving HW embedded private keys for image encryption
@@ -157,7 +213,7 @@ function `boot_save_shared_data`.
     commit 3016d00cd765e7c09a14af55fb4dcad945e4b982
     Author: Jamie McCrae <jamie.mccrae@nordicsemi.no>
     Date:   Tue Mar 14 12:35:51 2023 +0000
-    
+
         bootutil: Add active slot number and max app size to shared data
 
 ### About this release

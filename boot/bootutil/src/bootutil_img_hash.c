@@ -27,6 +27,7 @@
  */
 
 #include <stdint.h>
+#include <inttypes.h>
 #include <flash_map_backend/flash_map_backend.h>
 
 #include "bootutil/crypto/sha.h"
@@ -167,7 +168,8 @@ bootutil_img_hash(struct boot_loader_state *state,
 #endif
         if (rc) {
             bootutil_sha_drop(&sha_ctx);
-            BOOT_LOG_DBG("bootutil_img_validate Error %d reading data chunk %p %u %u",
+            BOOT_LOG_DBG("bootutil_img_validate Error %d reading data chunk "
+                         "%p %" PRIu32 " %" PRIu32,
                          rc, fap, off, blk_sz);
             return rc;
         }

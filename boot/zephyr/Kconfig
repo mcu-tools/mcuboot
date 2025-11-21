@@ -261,7 +261,7 @@ config BOOT_SIGNATURE_TYPE_RSA
 	select BOOT_USE_MBEDTLS
 	select MBEDTLS
 	select MBEDTLS_ASN1_PARSE_C if MBEDTLS_BUILTIN
-	select MBEDTLS_MD if MBEDTLS_BUILTIN
+	select MBEDTLS_MD_C if MBEDTLS_BUILTIN
 	select MBEDTLS_RSA_C if MBEDTLS_BUILTIN
 	select MBEDTLS_PKCS1_V15 if MBEDTLS_BUILTIN
 	select MBEDTLS_PKCS1_V21 if MBEDTLS_BUILTIN
@@ -584,7 +584,7 @@ config BOOT_FIRMWARE_LOADER
 endchoice
 
 config BOOT_DIRECT_XIP_REVERT
-	bool "Enable the revert mechanism in direct-xip mode"
+	bool "Revert mechanism in direct-xip mode"
 	depends on BOOT_DIRECT_XIP
 	help
 	  If y, enables the revert mechanism in direct-xip similar to the one in
@@ -595,7 +595,7 @@ config BOOT_DIRECT_XIP_REVERT
 	  (marked as confirmed in advance) just like in swap mode.
 
 config BOOT_RAM_LOAD_REVERT
-	bool "Enable the revert mechanism in ram-load mode"
+	bool "Revert mechanism in ram-load mode"
 	depends on BOOT_RAM_LOAD
 	help
 	  If y, enables the revert mechanism in ram-load similar to the one in
@@ -655,6 +655,16 @@ config MULTIPLE_EXECUTABLE_RAM_REGIONS
 	  To be selected if MCUBoot should be aware of several executable RAM areas.
 	  When selected, boot_get_image_exec_ram_info() should be updated to provide
 	  the information about the areas.
+
+config MULTIPLE_EXECUTABLE_RAM_REGIONS_DEFAULT_FILE
+	bool "Default MCUboot multiple executable RAM region source file"
+	default y
+	depends on MULTIPLE_EXECUTABLE_RAM_REGIONS
+	help
+	  When enabled, will include the default MCUboot file that has the
+	  boot_get_image_exec_ram_info() implementation in it, for users with out-of-tree or
+	  custom configuration then this option can be disabled and a custom file can be added
+	  by a CMake module which defines the configuration for the intended board.
 
 config FLASH_RUNTIME_SOURCES
 	bool "Images are read from flash partitions defined at runtime"
@@ -914,7 +924,7 @@ config BOOT_FIH_PROFILE_HIGH
 endchoice
 
 config BOOT_USE_BENCH
-        bool "Enable benchmark code"
+        bool "Benchmark code"
         help
           If y, adds support for simple benchmarking that can record
           time intervals between two calls.  The time printed depends
@@ -1049,6 +1059,16 @@ config MCUBOOT_DOWNGRADE_PREVENTION
 	  only protects against some attacks against version downgrades (for
 	  example, a JTAG could be used to write an older version).
 
+config MCUBOOT_HW_DOWNGRADE_PREVENTION
+	bool "HW based downgrade prevention"
+	help
+	  Prevent undesirable/malicious software downgrades. When this option is
+	  set, any upgrade must have greater or equal security counter value.
+	  Because of the acceptance of equal values it allows for software
+	  downgrade to some extent.
+
+endchoice
+
 config MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER
 	bool "Use image security counter instead of version number"
 	depends on MCUBOOT_DOWNGRADE_PREVENTION
@@ -1059,14 +1079,6 @@ config MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER
        equal security counter value.
        Because of the acceptance of equal values it allows for software
        downgrades to some extent.
-
-config MCUBOOT_HW_DOWNGRADE_PREVENTION
-	bool "HW based downgrade prevention"
-	help
-	  Prevent undesirable/malicious software downgrades. When this option is
-	  set, any upgrade must have greater or equal security counter value.
-	  Because of the acceptance of equal values it allows for software
-	  downgrade to some extent.
 
 config MCUBOOT_HW_DOWNGRADE_PREVENTION_COUNTER_LIMITED
 	bool "HW based downgrade prevention counter has limited number of updates"
@@ -1079,7 +1091,16 @@ config MCUBOOT_HW_DOWNGRADE_PREVENTION_COUNTER_LIMITED
 	  value as a TLV but it is not possible to update the counter,
 	  the update will be rejected.
 
-endchoice
+config MCUBOOT_HW_DOWNGRADE_PREVENTION_LOCK
+	bool "Lock updates of HW based downgrade prevention counter before boot"
+	depends on MCUBOOT_HW_DOWNGRADE_PREVENTION
+	help
+	  When this option is set, the hardware downgrade prevention counter
+	  updates are locked before booting the application.
+	  This means that after booting the application it is not possible to
+	  update the counter until a reboot.
+	  This prevents the application from accidental updates of the counter,
+	  that may invalidate the currently running image.
 
 config MCUBOOT_UUID_VID
 	bool "Expect vendor unique identifier in image's TLV"
@@ -1114,7 +1135,7 @@ config BOOT_WATCHDOG_FEED_NRFX_WDT
 	imply NRFX_WDT010
 
 config BOOT_IMAGE_ACCESS_HOOKS
-	bool "Enable hooks for overriding MCUboot's native routines"
+	bool "Hooks for overriding MCUboot's native routines"
 	help
 	  Allow to provide procedures for override or extend native
 	  MCUboot's routines required for access the image data and the image
@@ -1122,21 +1143,21 @@ config BOOT_IMAGE_ACCESS_HOOKS
 	  files to the build.
 
 config BOOT_GO_HOOKS
-	bool "Enable hooks for overriding MCUBOOT's boot_go routine"
+	bool "Hooks for overriding MCUBOOT's boot_go routine"
 	help
 	  Allow to provide procedures for override or extend native
 	  MCUboot's boot_go routine. It is up to the project customization to
 	  add required source files to the build.
 
 config BOOT_FLASH_AREA_HOOKS
-	bool "Enable hooks for overriding MCUboot's flash area routines"
+	bool "Hooks for overriding MCUboot's flash area routines"
 	help
 	  Allow to provide procedures for override or extend native
 	  MCUboot's flash area routines. It is up to the project customization to
 	  add required source files to the build.
 
 config MCUBOOT_ACTION_HOOKS
-	bool "Enable hooks for responding to MCUboot status changes"
+	bool "Hooks for responding to MCUboot status changes"
 	help
 	  This will call a handler when the MCUboot status changes which allows
 	  for some level of user feedback, for instance to change LED status to
@@ -1146,7 +1167,7 @@ config MCUBOOT_ACTION_HOOKS
 	  boot/bootutil/include/bootutil/mcuboot_status.h
 
 config FIND_NEXT_SLOT_HOOKS
-	bool "Enable hooks for finding the next active slot"
+	bool "Hooks for finding the next active slot"
 	help
 	  Allow to provide procedures for override or extend the search policy
 	  for the best slot to boot in the Direct XIP mode.

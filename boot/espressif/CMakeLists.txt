@@ -349,7 +349,7 @@ if(CONFIG_ESP_MCUBOOT_SERIAL)
         ${ZCBOR_DIR}/include
         )
     list(APPEND port_srcs
-        ${CMAKE_CURRENT_LIST_DIR}/port/${MCUBOOT_TARGET}/serial_adapter.c
+        ${CMAKE_CURRENT_LIST_DIR}/port/serial_adapter.c
         ${MBEDTLS_DIR}/library/base64.c
         )
     list(APPEND CRYPTO_INC

@@ -107,12 +107,12 @@ config BOOT_ERASE_PROGRESSIVELY
 	 times at the beginning of the DFU process.
 
 config BOOT_MGMT_ECHO
-	bool "Enable echo command"
+	bool "Echo command"
 	help
 	  if enabled, support for the mcumgr echo command is being added.
 
 menuconfig ENABLE_MGMT_PERUSER
-	bool "Enable system specific mcumgr commands"
+	bool "System specific mcumgr commands"
 	help
 	  The option enables processing of system specific mcumgr commands;
 	  system specific commands are within group MGMT_GROUP_ID_PERUSER (64)
@@ -123,7 +123,7 @@ menuconfig ENABLE_MGMT_PERUSER
 if ENABLE_MGMT_PERUSER
 
 config BOOT_MGMT_CUSTOM_STORAGE_ERASE
-	bool "Enable storage erase command"
+	bool "Storage erase command"
 	help
 	  The option enables mcumgr command that allows to erase storage
 	  partition.

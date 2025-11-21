@@ -244,28 +244,47 @@ int
 boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status *bs)
 {
     uint32_t off;
-#if MCUBOOT_SWAP_SAVE_ENCTLV
     uint32_t i;
-#endif
     int rc;
+    uint8_t *read_dst;
+    uint32_t read_size;
+
+#if MCUBOOT_SWAP_SAVE_ENCTLV
+    /* In this case we have stored entire encryted TLV in swap-state and bs->enckey
+     * will be decrypted from the TLV.
+     */
+    BOOT_LOG_DBG("boot_read_enc_key: TLV");
+    read_dst = bs->enctlv[slot];
+    read_size = BOOT_ENC_TLV_ALIGN_SIZE;
+#else
+    BOOT_LOG_DBG("boot_read_enc_key: RAW key");
+    read_dst = bs->enckey[slot];
+    read_size = BOOT_ENC_KEY_ALIGN_SIZE;
+#endif
 
     off = boot_enc_key_off(fap, slot);
-#if MCUBOOT_SWAP_SAVE_ENCTLV
-    rc = flash_area_read(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
+
+    rc = flash_area_read(fap, off, read_dst, read_size);
     if (rc == 0) {
-        for (i = 0; i < BOOT_ENC_TLV_ALIGN_SIZE; i++) {
-            if (bs->enctlv[slot][i] != 0xff) {
+        for (i = 0; i < read_size; i++) {
+            if (read_dst[i] != 0xff) {
                 break;
             }
         }
-        /* Only try to decrypt non-erased TLV metadata */
-        if (i != BOOT_ENC_TLV_ALIGN_SIZE) {
+
+        if (i == read_size) {
+            BOOT_LOG_ERR("boot_read_enc_key: No key, read all 0xFF");
+            rc = 1;
+        }
+#if MCUBOOT_SWAP_SAVE_ENCTLV
+        else {
+            /* read_dst is the same as bs->enctlv[slot], and serves as a source
+             * of the encrypted key.
+             */
             rc = boot_decrypt_key(bs->enctlv[slot], bs->enckey[slot]);
         }
-    }
-#else
-    rc = flash_area_read(fap, off, bs->enckey[slot], BOOT_ENC_KEY_ALIGN_SIZE);
 #endif
+    }
 
     return rc;
 }
@@ -624,15 +643,23 @@ const struct image_max_size *boot_get_max_app_size(void)
  * Clears the boot state, so that previous operations have no effect on new
  * ones.
  *
- * @param state                 The state that should be cleared. If the value
- *                              is NULL, the default bootloader state will be
- *                              cleared.
+ * @param state                 The state that should be cleared.
  */
 void boot_state_clear(struct boot_loader_state *state)
 {
-    if (state != NULL) {
-        memset(state, 0, sizeof(struct boot_loader_state));
-    } else {
-        memset(boot_get_loader_state(), 0, sizeof(struct boot_loader_state));
+#if defined(MCUBOOT_ENC_IMAGES)
+    int image;
+    int slot;
+
+    for (image = 0; image < BOOT_IMAGE_NUMBER; ++image) {
+        for (slot = 0; slot < BOOT_NUM_SLOTS; ++slot) {
+            /* Not using boot_enc_zeorize here, as it is redundant
+             * to the memset below that clears entire boot_loader_state.
+             */
+            boot_enc_drop(&state->enc[image][slot]);
+        }
     }
+#else
+    (void)state;
+#endif
 }
