@@ -90,6 +90,9 @@ direct-xip = []
 # Check (in software) against version downgrades.
 downgrade-prevention = []
 
+# Support images with 16-byte maximum write alignment value.
+max-align-16 = []
+
 # Support images with 32-byte maximum write alignment value.
 max-align-32 = []
 

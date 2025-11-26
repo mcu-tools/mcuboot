@@ -37,6 +37,7 @@ fn main() {
     let downgrade_prevention = env::var("CARGO_FEATURE_DOWNGRADE_PREVENTION").is_ok();
     let ram_load = env::var("CARGO_FEATURE_RAM_LOAD").is_ok();
     let direct_xip = env::var("CARGO_FEATURE_DIRECT_XIP").is_ok();
+    let max_align_16 = env::var("CARGO_FEATURE_MAX_ALIGN_16").is_ok();
     let max_align_32 = env::var("CARGO_FEATURE_MAX_ALIGN_32").is_ok();
     let hw_rollback_protection = env::var("CARGO_FEATURE_HW_ROLLBACK_PROTECTION").is_ok();
     let check_load_addr = env::var("CARGO_FEATURE_CHECK_LOAD_ADDR").is_ok();
@@ -50,6 +51,8 @@ fn main() {
 
     if max_align_32 {
         conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("32"));
+    } else if max_align_16 {
+        conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("16"));
     } else {
         conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("8"));
     }

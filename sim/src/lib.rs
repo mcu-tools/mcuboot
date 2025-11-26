@@ -64,7 +64,7 @@ struct Args {
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum DeviceName {
     Stm32f4, Stm32f4SpiFlash, K64f, K64fBig, K64fMulti, Nrf52840, Nrf52840SpiFlash,
-    Nrf52840UnequalSlots, Nrf52840UnequalSlotsLargerSlot1,
+    Nrf52840UnequalSlots, Nrf52840UnequalSlotsLargerSlot1,PSOCEdgeE8x,
 }
 
 pub static ALL_DEVICES: &[DeviceName] = &[
@@ -77,6 +77,7 @@ pub static ALL_DEVICES: &[DeviceName] = &[
     DeviceName::Nrf52840SpiFlash,
     DeviceName::Nrf52840UnequalSlots,
     DeviceName::Nrf52840UnequalSlotsLargerSlot1,
+    DeviceName::PSOCEdgeE8x,
 ];
 
 impl fmt::Display for DeviceName {
@@ -91,6 +92,7 @@ impl fmt::Display for DeviceName {
             DeviceName::Nrf52840SpiFlash => "Nrf52840SpiFlash",
             DeviceName::Nrf52840UnequalSlots => "Nrf52840UnequalSlots",
             DeviceName::Nrf52840UnequalSlotsLargerSlot1 => "Nrf52840UnequalSlotsLargerSlot1",
+            DeviceName::PSOCEdgeE8x => "PSOCEdgeE8x",
         };
         f.write_str(name)
     }
