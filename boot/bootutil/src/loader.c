@@ -2338,10 +2338,12 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state)
     /* Update the stored security counter with the newer (active) image's
      * security counter value.
      */
-#if defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_DIRECT_XIP_REVERT)
-    /* When the 'revert' mechanism is enabled in direct-xip mode, the
-     * security counter can be increased only after reboot, if the image
-     * has been confirmed at runtime (the image_ok flag has been set).
+#if defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_DIRECT_XIP_REVERT) || \
+    (defined(MCUBOOT_RAM_LOAD) && defined(MCUBOOT_RAM_LOAD_REVERT))
+    /* When the 'revert' mechanism is enabled in direct-xip or ram-load
+     * mode, the security counter can be increased only after reboot, if
+     * the image has been confirmed at runtime (the image_ok flag has
+     * been set).
      * This way a 'revert' can be performed when it's necessary.
      */
     if (state->slot_usage[BOOT_CURR_IMG(state)].swap_state.image_ok == BOOT_FLAG_SET) {
