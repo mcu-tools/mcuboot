@@ -316,13 +316,13 @@ static void copy_img_to_SRAM(int slot, unsigned int hdr_offset)
     area_id = flash_area_id_from_image_slot(slot);
     rc = flash_area_open(area_id, &fap);
     if (rc != 0) {
-        BOOT_LOG_ERR("flash_area_open failed with %d\n", rc);
+        BOOT_LOG_ERR("flash_area_open failed with %d", rc);
         goto done;
     }
 
     rc = flash_area_read(fap, hdr_offset, dst, fap->fa_size - hdr_offset);
     if (rc != 0) {
-        BOOT_LOG_ERR("flash_area_read failed with %d\n", rc);
+        BOOT_LOG_ERR("flash_area_read failed with %d", rc);
         goto done;
     }
 
@@ -340,8 +340,8 @@ static void do_boot(struct boot_rsp *rsp)
     void *start;
 #endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 
-    BOOT_LOG_INF("br_image_off = 0x%x\n", rsp->br_image_off);
-    BOOT_LOG_INF("ih_hdr_size = 0x%x\n", rsp->br_hdr->ih_hdr_size);
+    BOOT_LOG_INF("br_image_off = 0x%x", rsp->br_image_off);
+    BOOT_LOG_INF("ih_hdr_size = 0x%x", rsp->br_hdr->ih_hdr_size);
 
 #ifdef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
     int slot = (rsp->br_image_off == IMAGE0_PRIMARY_START_ADDRESS) ?
