@@ -11,6 +11,7 @@
 #define __MCUBOOT_CONFIG_H__
 
 #include <zephyr/devicetree.h>
+#include <watchdog.h>
 
 #ifdef CONFIG_BOOT_SIGNATURE_TYPE_RSA
 #define MCUBOOT_SIGN_RSA
@@ -440,85 +441,6 @@
 
 #ifdef CONFIG_MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP
 #define MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP 1
-#endif
-
-#if CONFIG_BOOT_WATCHDOG_FEED
-#if CONFIG_BOOT_WATCHDOG_FEED_NRFX_WDT
-#include <nrfx_wdt.h>
-
-#define FEED_WDT_INST(inst)                                  \
-    do {                                                     \
-        for (uint8_t i = 0; i < NRF_WDT_CHANNEL_NUMBER; i++) \
-        {                                                    \
-            nrf_wdt_reload_request_set(inst,                 \
-                (nrf_wdt_rr_register_t)(NRF_WDT_RR0 + i));   \
-        }                                                    \
-    } while (0)
-#if defined(NRF_WDT0) && defined(NRF_WDT1)
-#define MCUBOOT_WATCHDOG_FEED()  \
-    do {                         \
-        FEED_WDT_INST(NRF_WDT0); \
-        FEED_WDT_INST(NRF_WDT1); \
-    } while (0)
-#elif defined(NRF_WDT0)
-#define MCUBOOT_WATCHDOG_FEED() \
-    FEED_WDT_INST(NRF_WDT0);
-#elif defined(NRF_WDT30) && defined(NRF_WDT31)
-#define MCUBOOT_WATCHDOG_FEED()   \
-    do {                          \
-        FEED_WDT_INST(NRF_WDT30); \
-        FEED_WDT_INST(NRF_WDT31); \
-    } while (0)
-#elif defined(NRF_WDT30)
-#define MCUBOOT_WATCHDOG_FEED() \
-    FEED_WDT_INST(NRF_WDT30);
-#elif defined(NRF_WDT31)
-#define MCUBOOT_WATCHDOG_FEED() \
-    FEED_WDT_INST(NRF_WDT31);
-#elif defined(NRF_WDT010)
-#define MCUBOOT_WATCHDOG_FEED() \
-    FEED_WDT_INST(NRF_WDT010);
-#else
-#error "No NRFX WDT instances enabled"
-#endif
-
-#elif DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) /* CONFIG_BOOT_WATCHDOG_FEED_NRFX_WDT */
-#include <zephyr/device.h>
-#include <zephyr/drivers/watchdog.h>
-
-#define MCUBOOT_WATCHDOG_SETUP()                              \
-    do {                                                      \
-        const struct device* wdt =                            \
-            DEVICE_DT_GET(DT_ALIAS(watchdog0));               \
-        if (device_is_ready(wdt)) {                           \
-            wdt_setup(wdt, 0);                                \
-        }                                                     \
-    } while (0)
-
-#define MCUBOOT_WATCHDOG_FEED()                               \
-    do {                                                      \
-        const struct device* wdt =                            \
-            DEVICE_DT_GET(DT_ALIAS(watchdog0));               \
-        if (device_is_ready(wdt)) {                           \
-            wdt_feed(wdt, 0);                                 \
-        }                                                     \
-    } while (0)
-#else /* DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay) */
-/* No vendor implementation, no-op for historical reasons */
-#define MCUBOOT_WATCHDOG_FEED()         \
-    do {                                \
-    } while (0)
-#endif
-#else  /* CONFIG_BOOT_WATCHDOG_FEED */
-/* Not enabled, no feed activity */
-#define MCUBOOT_WATCHDOG_FEED()         \
-    do {                                \
-    } while (0)
-
-#endif /* CONFIG_BOOT_WATCHDOG_FEED */
-
-#ifndef MCUBOOT_WATCHDOG_SETUP
-#define MCUBOOT_WATCHDOG_SETUP()
 #endif
 
 #define MCUBOOT_CPU_IDLE() \
