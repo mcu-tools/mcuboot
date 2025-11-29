@@ -135,13 +135,6 @@ endif # BOOT_USE_PSA_CRYPTO
 
 menu "MCUBoot settings"
 
-config SINGLE_APPLICATION_SLOT
-	bool "Single slot bootloader"
-	help
-	  Single image area is used for application which means that
-	  uploading a new application overwrites the one that previously
-	  occupied the area.
-
 config BOOT_SOMETHING_USES_SHA256
 	bool
 	help
@@ -390,6 +383,7 @@ config BOOT_BYPASS_KEY_MATCH
 
 config BOOT_SIGNATURE_KEY_FILE
 	string "PEM key file"
+	depends on !BOOT_SIGNATURE_TYPE_NONE
 	default "root-ec-p256.pem" if BOOT_SIGNATURE_TYPE_ECDSA_P256
 	default "root-ed25519.pem" if BOOT_SIGNATURE_TYPE_ED25519
 	default "root-rsa-3072.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=3072
@@ -398,12 +392,15 @@ config BOOT_SIGNATURE_KEY_FILE
 	help
 	  You can use either absolute or relative path.
 	  In case relative path is used, the build system assumes that it starts
-	  from the directory where the MCUBoot KConfig configuration file is
-	  located. If the key file is not there, the build system uses relative
-	  path that starts from the MCUBoot repository root directory.
+	  from the APPLICATION_CONFIG_DIR directory. If the key file is not there, the build
+	  system uses relative path that starts from the MCUBoot repository root directory.
 	  The key file will be parsed by imgtool's getpub command and a .c source
 	  with the public key information will be written in a format expected by
 	  MCUboot.
+
+	  Note: In configuration files, escaped CMake variables can be used to refer to paths
+	  e.g. \${CMAKE_CURRENT_LIST_DIR} will allow referencing a file in that directory, these
+	  will be automatically configured by the build system.
 
 config MCUBOOT_CLEANUP_ARM_CORE
 	bool "Perform core cleanup before chain-load the application"
@@ -489,12 +486,26 @@ config BOOT_PREFER_SWAP_MOVE
 	  by swap using offset, but is kept to allow existing projects
 	  to make use of it.
 
-if !SINGLE_APPLICATION_SLOT
 choice BOOT_IMAGE_UPGRADE_MODE
 	prompt "Image upgrade modes"
 	default BOOT_SWAP_USING_OFFSET if BOOT_PREFER_SWAP_OFFSET
 	default BOOT_SWAP_USING_MOVE if BOOT_PREFER_SWAP_MOVE
 	default BOOT_SWAP_USING_SCRATCH
+
+config SINGLE_APPLICATION_SLOT
+	bool "Single slot bootloader"
+	help
+	  Single image area is used for application which means that
+	  uploading a new application overwrites the one that previously
+	  occupied the area.
+
+config SINGLE_APPLICATION_SLOT_RAM_LOAD
+	bool "RAM load for single application slot"
+	help
+	  If y, the image is loaded to RAM and executed from there. For this reason,
+	  the image has to be linked to be executed from RAM. The address that the
+	  image is copied to is specified using the load-addr argument to the
+	  imgtool.py script which writes it to the image header.
 
 config BOOT_SWAP_USING_SCRATCH
 	bool "Swap mode that run with the scratch partition"
@@ -564,6 +575,8 @@ config BOOT_FIRMWARE_LOADER
 
 endchoice
 
+if !SINGLE_APPLICATION_SLOT
+
 config BOOT_DIRECT_XIP_REVERT
 	bool "Revert mechanism in direct-xip mode"
 	depends on BOOT_DIRECT_XIP
@@ -607,14 +620,6 @@ config BOOT_SWAP_SAVE_ENCTLV
 	  If unsure, leave at the default value.
 
 endif # !SINGLE_APPLICATION_SLOT
-
-config SINGLE_APPLICATION_SLOT_RAM_LOAD
-	bool "RAM load for single application slot"
-	help
-	  If y, the image is loaded to RAM and executed from there. For this reason,
-	  the image has to be linked to be executed from RAM. The address that the
-	  image is copied to is specified using the load-addr argument to the
-	  imgtool.py script which writes it to the image header.
 
 # Workaround for not being able to have commas in macro arguments
 DT_CHOSEN_Z_SRAM := zephyr,sram
@@ -756,12 +761,15 @@ config BOOT_ENCRYPTION_KEY_FILE
 	help
 	  You can use either absolute or relative path.
 	  In case relative path is used, the build system assumes that it starts
-	  from the directory where the MCUBoot KConfig configuration file is
-	  located. If the key file is not there, the build system uses relative
-	  path that starts from the MCUBoot repository root directory.
+	  from the APPLICATION_CONFIG_DIR directory. If the key file is not there, the build
+	  system uses relative path that starts from the MCUBoot repository root directory.
 	  The key file will be parsed by imgtool's getpriv command and a .c source
 	  with the public key information will be written in a format expected by
 	  MCUboot.
+
+	  Note: In configuration files, escaped CMake variables can be used to refer to paths
+	  e.g. \${CMAKE_CURRENT_LIST_DIR} will allow referencing a file in that directory, these
+	  will be automatically configured by the build system.
 
 config BOOT_MAX_IMG_SECTORS_AUTO
 	bool "Calculate maximum sectors automatically"
