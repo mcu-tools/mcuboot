@@ -136,13 +136,6 @@ endif # BOOT_USE_PSA_CRYPTO
 
 menu "MCUBoot settings"
 
-config SINGLE_APPLICATION_SLOT
-	bool "Single slot bootloader"
-	help
-	  Single image area is used for application which means that
-	  uploading a new application overwrites the one that previously
-	  occupied the area.
-
 config BOOT_SOMETHING_USES_SHA256
 	bool
 	help
@@ -494,12 +487,26 @@ config BOOT_PREFER_SWAP_MOVE
 	  by swap using offset, but is kept to allow existing projects
 	  to make use of it.
 
-if !SINGLE_APPLICATION_SLOT
 choice BOOT_IMAGE_UPGRADE_MODE
 	prompt "Image upgrade modes"
 	default BOOT_SWAP_USING_OFFSET if BOOT_PREFER_SWAP_OFFSET
 	default BOOT_SWAP_USING_MOVE if BOOT_PREFER_SWAP_MOVE
 	default BOOT_SWAP_USING_SCRATCH
+
+config SINGLE_APPLICATION_SLOT
+	bool "Single slot bootloader"
+	help
+	  Single image area is used for application which means that
+	  uploading a new application overwrites the one that previously
+	  occupied the area.
+
+config SINGLE_APPLICATION_SLOT_RAM_LOAD
+	bool "RAM load for single application slot"
+	help
+	  If y, the image is loaded to RAM and executed from there. For this reason,
+	  the image has to be linked to be executed from RAM. The address that the
+	  image is copied to is specified using the load-addr argument to the
+	  imgtool.py script which writes it to the image header.
 
 config BOOT_SWAP_USING_SCRATCH
 	bool "Swap mode that run with the scratch partition"
@@ -569,6 +576,8 @@ config BOOT_FIRMWARE_LOADER
 
 endchoice
 
+if !SINGLE_APPLICATION_SLOT
+
 config BOOT_DIRECT_XIP_REVERT
 	bool "Revert mechanism in direct-xip mode"
 	depends on BOOT_DIRECT_XIP
@@ -612,14 +621,6 @@ config BOOT_SWAP_SAVE_ENCTLV
 	  If unsure, leave at the default value.
 
 endif # !SINGLE_APPLICATION_SLOT
-
-config SINGLE_APPLICATION_SLOT_RAM_LOAD
-	bool "RAM load for single application slot"
-	help
-	  If y, the image is loaded to RAM and executed from there. For this reason,
-	  the image has to be linked to be executed from RAM. The address that the
-	  image is copied to is specified using the load-addr argument to the
-	  imgtool.py script which writes it to the image header.
 
 # Workaround for not being able to have commas in macro arguments
 DT_CHOSEN_Z_SRAM := zephyr,sram
