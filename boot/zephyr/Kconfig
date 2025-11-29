@@ -391,6 +391,7 @@ config BOOT_BYPASS_KEY_MATCH
 
 config BOOT_SIGNATURE_KEY_FILE
 	string "PEM key file"
+	depends on !BOOT_SIGNATURE_TYPE_NONE
 	default "root-ec-p256.pem" if BOOT_SIGNATURE_TYPE_ECDSA_P256
 	default "root-ed25519.pem" if BOOT_SIGNATURE_TYPE_ED25519
 	default "root-rsa-3072.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=3072
