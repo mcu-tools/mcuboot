@@ -339,28 +339,17 @@ if(CONFIG_MCUBOOT_SERIAL)
 endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
-  # CONF_FILE points to the KConfig configuration files of the bootloader.
-  foreach (filepath ${CONF_FILE})
-    file(READ ${filepath} temp_text)
-    string(FIND "${temp_text}" ${CONFIG_BOOT_SIGNATURE_KEY_FILE} match)
-    if (${match} GREATER_EQUAL 0)
-      if (NOT DEFINED CONF_DIR)
-        get_filename_component(CONF_DIR ${filepath} DIRECTORY)
-      else()
-        message(FATAL_ERROR "Signature key file defined in multiple conf files")
-      endif()
-    endif()
-  endforeach()
+  set(key_file "${CONFIG_BOOT_SIGNATURE_KEY_FILE}")
+  string(CONFIGURE "${key_file}" key_file)
 
-  if(IS_ABSOLUTE ${CONFIG_BOOT_SIGNATURE_KEY_FILE})
-    set(KEY_FILE ${CONFIG_BOOT_SIGNATURE_KEY_FILE})
-  elseif((DEFINED CONF_DIR) AND
-	 (EXISTS ${CONF_DIR}/${CONFIG_BOOT_SIGNATURE_KEY_FILE}))
-    set(KEY_FILE ${CONF_DIR}/${CONFIG_BOOT_SIGNATURE_KEY_FILE})
+  if(IS_ABSOLUTE ${key_file})
+    set(signing_key_file ${key_file})
+  elseif(EXISTS ${APPLICATION_CONFIG_DIR}/${key_file})
+    set(signing_key_file ${APPLICATION_CONFIG_DIR}/${key_file})
   else()
-    set(KEY_FILE ${MCUBOOT_DIR}/${CONFIG_BOOT_SIGNATURE_KEY_FILE})
+    set(signing_key_file ${MCUBOOT_DIR}/${key_file})
   endif()
-  message("MCUBoot bootloader key file: ${KEY_FILE}")
+  message("MCUBoot bootloader key file: ${signing_key_file}")
 
   set(mcuboot_default_signature_files
       ${MCUBOOT_DIR}/root-ec-p256-pkcs8.pem
@@ -373,7 +362,7 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
   )
 
   # Emit a warning if using one of the default MCUboot key files
-  if(${KEY_FILE} IN_LIST mcuboot_default_signature_files)
+  if(${signing_key_file} IN_LIST mcuboot_default_signature_files)
     message(WARNING "WARNING: Using default MCUboot signing key file, this file is for debug use only and is not secure!")
   endif()
 
@@ -385,37 +374,25 @@ if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
     ${MCUBOOT_DIR}/scripts/imgtool.py
     getpub
     -k
-    ${KEY_FILE}
+    ${signing_key_file}
     > ${GENERATED_PUBKEY}
-    DEPENDS ${KEY_FILE}
+    DEPENDS ${signing_key_file}
     )
   zephyr_library_sources(${GENERATED_PUBKEY})
 endif()
 
 if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQUAL "")
-  # CONF_FILE points to the KConfig configuration files of the bootloader.
-  unset(CONF_DIR)
-  foreach(filepath ${CONF_FILE})
-    file(READ ${filepath} temp_text)
-    string(FIND "${temp_text}" ${CONFIG_BOOT_ENCRYPTION_KEY_FILE} match)
-    if(${match} GREATER_EQUAL 0)
-      if(NOT DEFINED CONF_DIR)
-        get_filename_component(CONF_DIR ${filepath} DIRECTORY)
-      else()
-        message(FATAL_ERROR "Encryption key file defined in multiple conf files")
-      endif()
-    endif()
-  endforeach()
+  set(key_file "${CONFIG_BOOT_ENCRYPTION_KEY_FILE}")
+  string(CONFIGURE "${key_file}" key_file)
 
-  if(IS_ABSOLUTE ${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
-    set(KEY_FILE ${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
-  elseif((DEFINED CONF_DIR) AND
-	 (EXISTS ${CONF_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE}))
-    set(KEY_FILE ${CONF_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+  if(IS_ABSOLUTE ${key_file})
+    set(encryption_key_file ${key_file})
+  elseif(EXISTS ${APPLICATION_CONFIG_DIR}/${key_file})
+    set(encryption_key_file ${APPLICATION_CONFIG_DIR}/${key_file})
   else()
-    set(KEY_FILE ${MCUBOOT_DIR}/${CONFIG_BOOT_ENCRYPTION_KEY_FILE})
+    set(encryption_key_file ${MCUBOOT_DIR}/${key_file})
   endif()
-  message("MCUBoot bootloader encryption key file: ${KEY_FILE}")
+  message("MCUBoot bootloader encryption key file: ${encryption_key_file}")
 
   # Emit a warning if using one of the default MCUboot key files
   set(mcuboot_default_encryption_files
@@ -427,7 +404,7 @@ if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQ
       ${MCUBOOT_DIR}/enc-x25519-pub.pem
   )
 
-  if(${KEY_FILE} IN_LIST mcuboot_default_encryption_files)
+  if(${encryption_key_file} IN_LIST mcuboot_default_encryption_files)
     message(WARNING "WARNING: Using default MCUboot encryption key file, this file is for debug use only and is not secure!")
   endif()
 
@@ -439,9 +416,9 @@ if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQ
     ${MCUBOOT_DIR}/scripts/imgtool.py
     getpriv
     -k
-    ${KEY_FILE}
+    ${encryption_key_file}
     > ${GENERATED_ENCKEY}
-    DEPENDS ${KEY_FILE}
+    DEPENDS ${encryption_key_file}
     )
   zephyr_library_sources(${GENERATED_ENCKEY})
 endif()
