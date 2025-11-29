@@ -1095,21 +1095,6 @@ config MCUBOOT_UUID_CID
 	  Provide an image class identification scheme to prevent processing
 	  images for a different CPU or device produced by the same vendor.
 
-config BOOT_WATCHDOG_FEED
-	bool "Feed the watchdog while doing swap"
-	default y if WATCHDOG
-	default y if SOC_FAMILY_NORDIC_NRF
-	imply BOOT_WATCHDOG_FEED_NRFX_WDT if SOC_FAMILY_NORDIC_NRF
-	help
-	  Enables implementation of MCUBOOT_WATCHDOG_FEED() macro which is
-	  used to feed watchdog while doing time consuming operations.
-
-config BOOT_WATCHDOG_FEED_NRFX_WDT
-	bool "Feed the watchdog using NRFX WDT directly"
-	depends on SOC_FAMILY_NORDIC_NRF
-	# for nRF nrfx based implementation is available
-	imply NRFX_WDT
-
 config BOOT_IMAGE_ACCESS_HOOKS
 	bool "Hooks for overriding MCUboot's native routines"
 	help
@@ -1253,6 +1238,60 @@ config MCUBOOT_STORAGE_MINIMAL_SCRAMBLE
 	  data from slot to not recognize it as image anymore.
 	  Depending on type of device this may be done by erase of minimal
 	  number of pages or overwrite of part of image.
+
+menu "Watchdog configuration"
+
+config BOOT_WATCHDOG_SETUP_AT_BOOT
+	bool "Setup watchdog on boot"
+	depends on WATCHDOG
+	default y
+	help
+	  Will set the watchdog up at boot, if this option is enabled and
+	  CONFIG_BOOT_WATCHDOG_INSTALL_TIMEOUT_AT_BOOT is disabled then this is non-compliant
+	  with the Zephyr watchdog driver interface as no timeouts will be installed but is
+	  left as an option as MCUboot has seemingly done this for 6 years prior and it might be
+	  used in configurations where the watchdog is enabled by other images or directly in
+	  hardware.
+
+	  Note that the in-built watchdog functionality in MCUboot can be replaced with custom
+	  logic by overriding the weak symbol functions `mcuboot_watchdog_setup` and
+	  `mcuboot_watchdog_feed`.
+
+config BOOT_WATCHDOG_INSTALL_TIMEOUT_AT_BOOT
+	bool "Install watchdog timeout on boot"
+	depends on BOOT_WATCHDOG_SETUP_AT_BOOT
+	default y
+	help
+	  Will set the watchdog up at boot and install a timeout, note that this watchdog will
+	  then need to be continuously fed from the application once it is booted. The Zephyr
+	  watchdog driver might need special configuration or re-init in the application to
+	  allow the application to feed it.
+
+config BOOT_WATCHDOG_TIMEOUT_MS
+	int "Watchdog timeout (ms)"
+	depends on BOOT_WATCHDOG_INSTALL_TIMEOUT_AT_BOOT
+	default 300000
+	help
+	  Will setup a timeout for this duration when MCUboot starts. This defaults to a 5 minute
+	  timeout, which is sufficient for most devices to be able to swap an image an boot the
+	  new application which can initialise itself and feed the watchdog before it times out.
+
+config BOOT_WATCHDOG_FEED
+	bool "Feed the watchdog while doing swap"
+	default y if WATCHDOG
+	default y if SOC_FAMILY_NORDIC_NRF
+	imply BOOT_WATCHDOG_FEED_NRFX_WDT if SOC_FAMILY_NORDIC_NRF
+	help
+	  Enables implementation of MCUBOOT_WATCHDOG_FEED() macro which is
+	  used to feed watchdog while doing time consuming operations.
+
+config BOOT_WATCHDOG_FEED_NRFX_WDT
+	bool "Feed the watchdog using NRFX WDT directly"
+	depends on SOC_FAMILY_NORDIC_NRF
+	# for nRF nrfx based implementation is available
+	imply NRFX_WDT
+
+endmenu # "Watchdog configuration"
 
 menu "Defaults"
 	# Items in this menu should not be manually set. These options are for modules/sysbuild to

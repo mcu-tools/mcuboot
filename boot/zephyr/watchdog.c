@@ -17,19 +17,46 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
+/*
+ * Channel of watchdog that is setup and fed, if CONFIG_BOOT_WATCHDOG_INSTALL_TIMEOUT_AT_BOOT is
+ * not set then this will remain at the default of 0 but the driver will not have been set up
+ * which is non-compliant with the Zephyr watchdog driver interface but is left as some drivers
+ * may have a hardware (or previously started watchdog) which the driver will automatically read
+ * the configuration of upon driver init.
+ */
+#if defined(CONFIG_BOOT_WATCHDOG_INSTALL_TIMEOUT_AT_BOOT) && DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay)
+static int watchdog_channel = 0;
+#endif
+
 __weak void mcuboot_watchdog_setup(void)
 {
-#if defined(CONFIG_WATCHDOG) && DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay)
+#if defined(CONFIG_BOOT_WATCHDOG_SETUP_AT_BOOT) && DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay)
     const struct device *watchdog_device = DEVICE_DT_GET(DT_ALIAS(watchdog0));
 
     if (device_is_ready(watchdog_device)) {
         int rc;
+#if defined(CONFIG_BOOT_WATCHDOG_INSTALL_TIMEOUT_AT_BOOT)
+        struct wdt_timeout_cfg wdt_config = {
+                .flags = WDT_FLAG_RESET_SOC,
+                .window.min = 0U,
+                .window.max = CONFIG_BOOT_WATCHDOG_TIMEOUT_MS,
+        };
 
-        rc = wdt_setup(watchdog_device, 0);
+        rc = wdt_install_timeout(watchdog_device, &wdt_config);
 
-        if (rc != 0) {
-            BOOT_LOG_ERR("Watchdog setup failed: %d", rc);
+        if (rc >= 0) {
+            watchdog_channel = rc;
+#endif
+            rc = wdt_setup(watchdog_device, 0);
+
+            if (rc != 0) {
+                BOOT_LOG_ERR("Watchdog setup failed: %d", rc);
+            }
+#if defined(CONFIG_BOOT_WATCHDOG_INSTALL_TIMEOUT_AT_BOOT)
+        } else {
+            BOOT_LOG_ERR("Watchdog install timeout failed: %d", rc);
         }
+#endif
     }
 #endif
 }
@@ -66,7 +93,7 @@ __weak void mcuboot_watchdog_feed(void)
     const struct device *watchdog_device = DEVICE_DT_GET(DT_ALIAS(watchdog0));
 
     if (device_is_ready(watchdog_device)) {
-        wdt_feed(watchdog_device, 0);
+        wdt_feed(watchdog_device, watchdog_channel);
     }
 #endif
 }
