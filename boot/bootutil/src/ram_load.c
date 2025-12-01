@@ -39,6 +39,10 @@
 #include "bootutil/enc_key.h"
 #endif
 
+#ifdef MCUBOOT_IMAGE_BINDING
+#include "bootutil/boot_hooks.h"
+#endif
+
 #include "mcuboot_config/mcuboot_config.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
@@ -148,6 +152,21 @@ boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
     if (rc != 0) {
         goto done;
     }
+
+#ifdef MCUBOOT_IMAGE_BINDING
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+    FIH_CALL(boot_platform_after_ramload, fih_rc, BOOT_CURR_IMG(state), hdr);
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+        BOOT_LOG_INF("Image %d RAM loading post-processing failed.", BOOT_CURR_IMG(state));
+        return -1;
+    }
+
+    BOOT_HOOK_CALL_FIH(boot_image_check_hook, FIH_BOOT_HOOK_REGULAR,
+                       fih_rc, BOOT_CURR_IMG(state), slot);
+    if (FIH_EQ(fih_rc, FIH_SUCCESS)) {
+        return 0;
+    }
+#endif /* MCUBOOT_IMAGE_BINDING */
 
     rc = boot_enc_load(state, slot, hdr, fap_src, &bs);
     if (rc < 0) {
@@ -351,6 +370,14 @@ boot_load_image_to_sram(struct boot_loader_state *state)
          * flash.
          */
         rc = boot_copy_image_to_sram(state, active_slot, img_dst, img_sz);
+#ifdef MCUBOOT_IMAGE_BINDING
+        FIH_DECLARE(fih_rc, FIH_FAILURE);
+        FIH_CALL(boot_platform_after_ramload, fih_rc, BOOT_CURR_IMG(state), hdr);
+        if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+            BOOT_LOG_INF("Image %d RAM loading post-processing failed.", BOOT_CURR_IMG(state));
+            return -1;
+        }
+#endif /* MCUBOOT_IMAGE_BINDING */
 #endif
         if (rc != 0) {
             BOOT_LOG_INF("Image %d RAM loading to 0x%x is failed.", BOOT_CURR_IMG(state), img_dst);
