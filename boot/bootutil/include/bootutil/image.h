@@ -257,6 +257,9 @@ int bootutil_img_hash(struct boot_loader_state *state,
                       uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *hash_result,
                       uint8_t *seed, int seed_len);
 
+fih_ret boot_platform_after_ramload(uint8_t image_id,
+                                    const struct image_header *hdr);
+
 #ifdef __cplusplus
 }
 #endif
