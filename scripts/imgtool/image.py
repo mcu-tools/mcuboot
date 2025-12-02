@@ -543,7 +543,7 @@ class Image:
         self.enckey = enckey
 
         # key decides on sha, then pub_key; if both are none default is used
-        check_key = keys[0] if keys[0] is not None else pub_key
+        check_key = keys[0] if keys is not None and keys[0] is not None else pub_key
         hash_algorithm, hash_tlv = key_and_user_sha_to_alg_and_tlv(check_key, user_sha, is_pure)
 
         # Calculate the hash of the public key
@@ -754,6 +754,7 @@ class Image:
         else:
             # Multi-signature handling: iterate through each provided key and sign.
             self.signatures = []
+            keys = keys or []
             for i, key in enumerate(keys):
                 # If key IDs are provided, and we have enough for this key, add it first.
                 if self.psa_key_ids is not None and len(self.psa_key_ids) > i:
