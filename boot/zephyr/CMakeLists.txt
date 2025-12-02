@@ -61,6 +61,11 @@ zephyr_library_include_directories(
 if(DEFINED CONFIG_MBEDTLS)
   zephyr_library_include_directories(
     ${ZEPHYR_MBEDTLS_MODULE_DIR}/include
+    ${ZEPHYR_MBEDTLS_MODULE_DIR}/library
+  )
+  zephyr_library_sources(
+    ${ZEPHYR_MBEDTLS_MODULE_DIR}/library
+    
   )
 endif()
 
@@ -185,6 +190,17 @@ else()
   endif()
 endif()
 
+if(CONFIG_BOOT_HAVE_HWRNG)
+  zephyr_library_sources(
+    boot_rng.c
+  )
+endif()
+if(CONFIG_BOOT_GEN_ENC_KEY)
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/generate_key_pair.c
+    ${MCUBOOT_DIR}/ext/mbedtls-pkcs8/pkcs8secp256write.c
+    )
+endif()
 if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
   # When ECDSA PSA is used, do not pull in additional ASN.1 include
   # directories or sources, as it would cause incorrect header files

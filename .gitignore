@@ -4,6 +4,7 @@ target.sh
 *.pyc
 tags
 rusty-tags.*
+.vscode
 
 # mynewt
 /repos/
@@ -34,3 +35,9 @@ compile_commands.json
 
 # The target directory from Rust development
 /target/
+
+build*
+_build*
+
+west.yml
+module.yml

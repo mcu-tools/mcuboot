@@ -17,7 +17,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include "bootutil/bootutil_hwrng.h"
 #include <assert.h>
 #include <zephyr/kernel.h>
 #include <zephyr/devicetree.h>
@@ -28,6 +28,7 @@
 #include <zephyr/usb/usb_device.h>
 #include <soc.h>
 #include <zephyr/linker/linker-defs.h>
+#include "bootutil/generate_key_pair.h"
 
 #if defined(CONFIG_BOOT_DISABLE_CACHES)
 #include <zephyr/cache.h>
@@ -58,21 +59,21 @@
 #include <bootloader_init.h>
 #include <esp_image_loader.h>
 
-#define IMAGE_INDEX_0   0
-#define IMAGE_INDEX_1   1
+#define IMAGE_INDEX_0 0
+#define IMAGE_INDEX_1 1
 
-#define PRIMARY_SLOT    0
-#define SECONDARY_SLOT  1
+#define PRIMARY_SLOT   0
+#define SECONDARY_SLOT 1
 
-#define IMAGE0_PRIMARY_START_ADDRESS \
-          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_0), reg, 0)
-#define IMAGE0_PRIMARY_SIZE \
-          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_0), reg, 1)
+#define IMAGE0_PRIMARY_START_ADDRESS                                          \
+    DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_0), reg, 0)
+#define IMAGE0_PRIMARY_SIZE                                                   \
+    DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_0), reg, 1)
 
-#define IMAGE1_PRIMARY_START_ADDRESS \
-          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_1), reg, 0)
-#define IMAGE1_PRIMARY_SIZE \
-          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_1), reg, 1)
+#define IMAGE1_PRIMARY_START_ADDRESS                                          \
+    DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_1), reg, 0)
+#define IMAGE1_PRIMARY_SIZE                                                   \
+    DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_1), reg, 1)
 
 #endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 
@@ -80,10 +81,8 @@
 #include "boot_serial/boot_serial.h"
 #include "serial_adapter/serial_adapter.h"
 
-const struct boot_uart_funcs boot_funcs = {
-    .read = console_read,
-    .write = console_write
-};
+const struct boot_uart_funcs boot_funcs = { .read = console_read,
+                                            .write = console_write };
 #endif
 
 #if defined(CONFIG_BOOT_USB_DFU_WAIT) || defined(CONFIG_BOOT_USB_DFU_GPIO)
@@ -94,7 +93,7 @@ const struct boot_uart_funcs boot_funcs = {
 #include <arm_cleanup.h>
 #endif
 
-#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
+#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) &&             \
     !defined(CONFIG_LOG_MODE_MINIMAL)
 #ifdef CONFIG_LOG_PROCESS_THREAD
 #warning "The log internal thread for log processing can't transfer the log"\
@@ -111,16 +110,20 @@ volatile bool boot_log_stop = false;
 K_SEM_DEFINE(boot_log_sem, 1, 1);
 
 /* log processing need to be initalized by the application */
-#define ZEPHYR_BOOT_LOG_START() zephyr_boot_log_start()
-#define ZEPHYR_BOOT_LOG_STOP() zephyr_boot_log_stop()
+#define ZEPHYR_BOOT_LOG_START()      zephyr_boot_log_start()
+#define ZEPHYR_BOOT_LOG_STOP()       zephyr_boot_log_stop()
 #endif /* CONFIG_LOG_PROCESS_THREAD */
 #else
 /* synchronous log mode doesn't need to be initalized by the application */
-#define ZEPHYR_BOOT_LOG_START() do { } while (false)
-#define ZEPHYR_BOOT_LOG_STOP() do { } while (false)
-#endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
-        * !defined(CONFIG_LOG_MODE_MINIMAL)
-	*/
+#define ZEPHYR_BOOT_LOG_START()                                               \
+    do {                                                                      \
+    } while (false)
+#define ZEPHYR_BOOT_LOG_STOP()                                                \
+    do {                                                                      \
+    } while (false)
+#endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) &&       \
+        * !defined(CONFIG_LOG_MODE_MINIMAL)                                   \
+        */
 
 BOOT_LOG_MODULE_REGISTER(mcuboot);
 
@@ -148,7 +151,8 @@ struct arm_vector_table {
 #endif
 };
 
-static void do_boot(struct boot_rsp *rsp)
+static void
+do_boot(struct boot_rsp *rsp)
 {
     /* vt is static as it shall not land on the stack,
      * as this procedure modifies stack pointer before usage of *vt
@@ -171,8 +175,7 @@ static void do_boot(struct boot_rsp *rsp)
     rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
     assert(rc == 0);
 
-    vt = (struct arm_vector_table *)(flash_base +
-                                     rsp->br_image_off +
+    vt = (struct arm_vector_table *)(flash_base + rsp->br_image_off +
                                      rsp->br_hdr->ih_hdr_size);
 #endif
 
@@ -199,8 +202,7 @@ static void do_boot(struct boot_rsp *rsp)
     z_arm_clear_arm_mpu_config();
 #endif
 
-#if defined(CONFIG_BUILTIN_STACK_GUARD) && \
-    defined(CONFIG_CPU_CORTEX_M_HAS_SPLIM)
+#if defined(CONFIG_BUILTIN_STACK_GUARD) && defined(CONFIG_CPU_CORTEX_M_HAS_SPLIM)
     /* Reset limit registers to avoid inflicting stack overflow on image
      * being booted.
      */
@@ -221,7 +223,7 @@ static void do_boot(struct boot_rsp *rsp)
 #elif defined(CONFIG_CPU_CORTEX_M_HAS_VTOR)
     SCB->VTOR = (uint32_t)vt;
 #endif /* CONFIG_SW_VECTOR_RELAY */
-#else /* CONFIG_BOOT_INTR_VEC_RELOC */
+#else  /* CONFIG_BOOT_INTR_VEC_RELOC */
 #if defined(CONFIG_CPU_CORTEX_M_HAS_VTOR) && defined(CONFIG_SW_VECTOR_RELAY)
     _vector_table_pointer = _vector_start;
     SCB->VTOR = (uint32_t)__vector_relay_table;
@@ -239,23 +241,22 @@ static void do_boot(struct boot_rsp *rsp)
 #else
     /* Set mode to supervisor and A, I and F bit as described in the
      * Cortex R5 TRM */
-    __asm__ volatile(
-        "   mrs r0, CPSR\n"
-        /* change mode bits to supervisor */
-        "   bic r0, #0x1f\n"
-        "   orr r0, #0x13\n"
-        /* set the A, I and F bit */
-        "   mov r1, #0b111\n"
-        "   lsl r1, #0x6\n"
-        "   orr r0, r1\n"
+    __asm__ volatile("   mrs r0, CPSR\n"
+                     /* change mode bits to supervisor */
+                     "   bic r0, #0x1f\n"
+                     "   orr r0, #0x13\n"
+                     /* set the A, I and F bit */
+                     "   mov r1, #0b111\n"
+                     "   lsl r1, #0x6\n"
+                     "   orr r0, r1\n"
 
-        "   msr CPSR, r0\n"
-        ::: "r0", "r1");
+                     "   msr CPSR, r0\n" ::
+                         : "r0", "r1");
 #endif /* CONFIG_CPU_CORTEX_M */
 
 #endif
 #if CONFIG_MCUBOOT_CLEANUP_RAM
-    __asm__ volatile (
+    __asm__ volatile(
         /* vt->reset -> r0 */
         "   mov     r0, %0\n"
         /* base to write -> r1 */
@@ -278,21 +279,20 @@ static void do_boot(struct boot_rsp *rsp)
         /* jump to reset vector of an app */
         "   bx      r0\n"
         :
-        : "r" (vt->reset), "i" (CONFIG_SRAM_BASE_ADDRESS),
-          "i" (CONFIG_SRAM_SIZE * 1024), "i" (0)
-        : "r0", "r1", "r2", "r3", "memory"
-    );
+        : "r"(vt->reset), "i"(CONFIG_SRAM_BASE_ADDRESS),
+          "i"(CONFIG_SRAM_SIZE * 1024), "i"(0)
+        : "r0", "r1", "r2", "r3", "memory");
 #else
 
 #ifdef CONFIG_CPU_CORTEX_M
     ((void (*)(void))vt->reset)();
 #else
-    /* Some ARM CPUs like the Cortex-R5 can run in thumb mode but reset into ARM
-     * mode (depending on a CPU signal configurations). To do the switch into ARM
-     * mode, if needed, an explicit branch with exchange instruction set
-     * instruction is needed
+    /* Some ARM CPUs like the Cortex-R5 can run in thumb mode but reset into
+     * ARM mode (depending on a CPU signal configurations). To do the switch
+     * into ARM mode, if needed, an explicit branch with exchange instruction
+     * set instruction is needed
      */
-    __asm__("bx %0\n" : : "r" (&vt->reset));
+    __asm__("bx %0\n" : : "r"(&vt->reset));
 #endif
 
 #endif
@@ -302,9 +302,10 @@ static void do_boot(struct boot_rsp *rsp)
 
 #ifndef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
 
-#define SRAM_BASE_ADDRESS	0xBE030000
+#define SRAM_BASE_ADDRESS 0xBE030000
 
-static void copy_img_to_SRAM(int slot, unsigned int hdr_offset)
+static void
+copy_img_to_SRAM(int slot, unsigned int hdr_offset)
 {
     const struct flash_area *fap;
     int area_id;
@@ -334,7 +335,8 @@ done:
 /* Entry point (.ResetVector) is at the very beginning of the image.
  * Simply copy the image to a suitable location and jump there.
  */
-static void do_boot(struct boot_rsp *rsp)
+static void
+do_boot(struct boot_rsp *rsp)
 {
 #ifndef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
     void *start;
@@ -344,8 +346,8 @@ static void do_boot(struct boot_rsp *rsp)
     BOOT_LOG_INF("ih_hdr_size = 0x%x\n", rsp->br_hdr->ih_hdr_size);
 
 #ifdef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
-    int slot = (rsp->br_image_off == IMAGE0_PRIMARY_START_ADDRESS) ?
-                PRIMARY_SLOT : SECONDARY_SLOT;
+    int slot = (rsp->br_image_off == IMAGE0_PRIMARY_START_ADDRESS) ? PRIMARY_SLOT
+                                                                   : SECONDARY_SLOT;
     /* Load memory segments and start from entry point */
     start_cpu0_image(IMAGE_INDEX_0, slot, rsp->br_hdr->ih_hdr_size);
 #else
@@ -365,7 +367,8 @@ static void do_boot(struct boot_rsp *rsp)
  * in the vector table. Assume the vector table is at the start of the image,
  * and jump to reset
  */
-static void do_boot(struct boot_rsp *rsp)
+static void
+do_boot(struct boot_rsp *rsp)
 {
     struct arc_vector_table {
         void (*reset)(void); /* Reset vector */
@@ -381,7 +384,7 @@ static void do_boot(struct boot_rsp *rsp)
     assert(rc == 0);
 
     vt = (struct arc_vector_table *)(flash_base + rsp->br_image_off +
-                     rsp->br_hdr->ih_hdr_size);
+                                     rsp->br_hdr->ih_hdr_size);
 #endif
 
     /* Lock interrupts and dive into the entry point */
@@ -394,7 +397,8 @@ static void do_boot(struct boot_rsp *rsp)
  * lock interrupts and jump there. This is the right thing to do for X86 and
  * possibly other platforms.
  */
-static void do_boot(struct boot_rsp *rsp)
+static void
+do_boot(struct boot_rsp *rsp)
 {
     void *start;
 
@@ -407,8 +411,7 @@ static void do_boot(struct boot_rsp *rsp)
     rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
     assert(rc == 0);
 
-    start = (void *)(flash_base + rsp->br_image_off +
-                     rsp->br_hdr->ih_hdr_size);
+    start = (void *)(flash_base + rsp->br_image_off + rsp->br_hdr->ih_hdr_size);
 #endif
 
     /* Lock interrupts and dive into the entry point */
@@ -417,17 +420,17 @@ static void do_boot(struct boot_rsp *rsp)
 }
 #endif
 
-#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
+#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) &&             \
     !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(CONFIG_LOG_MODE_MINIMAL)
-/* The log internal thread for log processing can't transfer log well as has too
- * low priority.
- * Dedicated thread for log processing below uses highest application
- * priority. This allows to transmit all logs without adding k_sleep/k_yield
- * anywhere else int the code.
+/* The log internal thread for log processing can't transfer log well as has
+ * too low priority. Dedicated thread for log processing below uses highest
+ * application priority. This allows to transmit all logs without adding
+ * k_sleep/k_yield anywhere else int the code.
  */
 
 /* most simple log processing theread */
-void boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
+void
+boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
 {
     (void)dummy1;
     (void)dummy2;
@@ -447,19 +450,20 @@ void boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
     k_sem_give(&boot_log_sem);
 }
 
-void zephyr_boot_log_start(void)
+void
+zephyr_boot_log_start(void)
 {
     /* start logging thread */
     k_thread_create(&boot_log_thread, boot_log_stack,
-                    K_THREAD_STACK_SIZEOF(boot_log_stack),
-                    boot_log_thread_func, NULL, NULL, NULL,
-                    K_HIGHEST_APPLICATION_THREAD_PRIO, 0,
+                    K_THREAD_STACK_SIZEOF(boot_log_stack), boot_log_thread_func,
+                    NULL, NULL, NULL, K_HIGHEST_APPLICATION_THREAD_PRIO, 0,
                     BOOT_LOG_PROCESSING_INTERVAL);
 
     k_thread_name_set(&boot_log_thread, "logging");
 }
 
-void zephyr_boot_log_stop(void)
+void
+zephyr_boot_log_stop(void)
 {
     boot_log_stop = true;
 
@@ -470,13 +474,16 @@ void zephyr_boot_log_stop(void)
      */
     (void)k_sem_take(&boot_log_sem, K_FOREVER);
 }
-#endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
-        * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(CONFIG_LOG_MODE_MINIMAL)
+#endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) &&       \
+        * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(CONFIG_LOG_MODE_MINIMAL)                                            \
         */
 
-#if defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) || defined(CONFIG_BOOT_SERIAL_PIN_RESET) \
-    || defined(CONFIG_BOOT_SERIAL_BOOT_MODE) || defined(CONFIG_BOOT_SERIAL_NO_APPLICATION)
-static void boot_serial_enter()
+#if defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) ||                              \
+    defined(CONFIG_BOOT_SERIAL_PIN_RESET) ||                                  \
+    defined(CONFIG_BOOT_SERIAL_BOOT_MODE) ||                                  \
+    defined(CONFIG_BOOT_SERIAL_NO_APPLICATION)
+static void
+boot_serial_enter()
 {
     int rc;
 
@@ -494,7 +501,8 @@ static void boot_serial_enter()
 }
 #endif
 
-int main(void)
+int
+main(void)
 {
     struct boot_rsp rsp;
     int rc;
@@ -535,8 +543,7 @@ int main(void)
 
 #ifdef CONFIG_BOOT_SERIAL_ENTRANCE_GPIO
     BOOT_LOG_DBG("Checking GPIO for serial recovery");
-    if (io_detect_pin() &&
-            !io_boot_skip_serial_recovery()) {
+    if (io_detect_pin() && !io_boot_skip_serial_recovery()) {
         boot_serial_enter();
     }
 #endif
@@ -574,7 +581,8 @@ int main(void)
             BOOT_LOG_INF("Waiting for USB DFU");
 
 #if defined(CONFIG_BOOT_USB_DFU_WAIT)
-            BOOT_LOG_DBG("Waiting for USB DFU for %dms", CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS);
+            BOOT_LOG_DBG("Waiting for USB DFU for %dms",
+                         CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS);
             mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_WAITING);
             wait_for_usb_dfu(K_MSEC(CONFIG_BOOT_USB_DFU_WAIT_DELAY_MS));
             BOOT_LOG_INF("USB DFU wait time elapsed");
@@ -594,6 +602,7 @@ int main(void)
      * initial mcumgr command(s) into our buffers
      */
     rc = boot_console_init();
+
     int timeout_in_ms = CONFIG_BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT;
     uint32_t start = k_uptime_get_32();
 
@@ -606,7 +615,8 @@ int main(void)
     if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR)) {
         FIH_CALL(boot_go, fih_rc, &rsp);
     }
-    BOOT_LOG_DBG("Left boot_go with success == %d", FIH_EQ(fih_rc, FIH_SUCCESS) ? 1 : 0);
+    BOOT_LOG_DBG("Left boot_go with success == %d",
+                 FIH_EQ(fih_rc, FIH_SUCCESS) ? 1 : 0);
 
 #ifdef CONFIG_BOOT_SERIAL_BOOT_MODE
     if (io_detect_boot_mode()) {
@@ -620,11 +630,11 @@ int main(void)
 
 #ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
     timeout_in_ms -= (k_uptime_get_32() - start);
-    if( timeout_in_ms <= 0 ) {
+    if (timeout_in_ms <= 0) {
         /* at least one check if time was expired */
         timeout_in_ms = 1;
     }
-    boot_serial_check_start(&boot_funcs,timeout_in_ms);
+    boot_serial_check_start(&boot_funcs, timeout_in_ms);
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
     io_led_set(0);
@@ -633,6 +643,9 @@ int main(void)
 
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         BOOT_LOG_ERR("Unable to find bootable image");
+#if defined(MCUBOOT_GEN_ENC_KEY) && defined(MCUBOOT_HAVE_HWRNG)
+        generate_enc_key_pair();
+#endif
 
         mcuboot_status_change(MCUBOOT_STATUS_NO_BOOTABLE_IMAGE_FOUND);
 
@@ -655,21 +668,19 @@ int main(void)
     }
 
 #ifdef MCUBOOT_RAM_LOAD
-    BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
-                 rsp.br_hdr->ih_load_addr);
+    BOOT_LOG_INF("Bootloader chainload address offset: 0x%x", rsp.br_hdr->ih_load_addr);
 #else
-    BOOT_LOG_INF("Bootloader chainload address offset: 0x%x",
-                 rsp.br_image_off);
+    BOOT_LOG_INF("Bootloader chainload address offset: 0x%x", rsp.br_image_off);
 #endif
 
     BOOT_LOG_INF("Image version: v%d.%d.%d", rsp.br_hdr->ih_ver.iv_major,
-                                                    rsp.br_hdr->ih_ver.iv_minor,
-                                                    rsp.br_hdr->ih_ver.iv_revision);
+                 rsp.br_hdr->ih_ver.iv_minor, rsp.br_hdr->ih_ver.iv_revision);
 
 #if defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Jumping to the image slot");
 #else
     BOOT_LOG_INF("Jumping to the first image slot");
+
 #endif
 
     mcuboot_status_change(MCUBOOT_STATUS_BOOTABLE_IMAGE_FOUND);
