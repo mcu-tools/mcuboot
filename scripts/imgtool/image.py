@@ -194,6 +194,7 @@ ALLOWED_KEY_SHA = {
     keys.RSAPublic          : ['256'],
     # This two are set to 256 for compatibility, the right would be 512
     keys.Ed25519            : ['256', '512'],
+    keys.Ed25519Public      : ['256', '512'],
     keys.X25519             : ['256', '512']
 }
 
