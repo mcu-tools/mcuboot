@@ -469,7 +469,7 @@ config BOOT_VALIDATE_SLOT0_ONCE
 
 config BOOT_PREFER_SWAP_OFFSET
 	bool "Prefer the newer swap offset algorithm"
-	default y if !$(dt_nodelabel_enabled,scratch_partition) && !SOC_FAMILY_STM32
+	default y if !$(dt_nodelabel_enabled,scratch_partition) && !SOC_FAMILY_ESPRESSIF_ESP32
 	help
 	  If y, the BOOT_IMAGE_UPGRADE_MODE will default to using "offset" instead of "scratch".
 	  This is a separate bool config option, because Kconfig doesn't allow defaults to be
