@@ -281,17 +281,14 @@ struct boot_sector_buffer {
 #endif
 };
 
-/* The function is intended for verification of image hash against
- * provided signature.
+/* The function is intended for verification of message hash against
+ * provided signature. If MCUBOOT_SIGN_PURE is enabled the function
+ * expects msg to point to image to verify signature over, and mlen
+ * is image size; otherwise msg is expected  to be pointer to hash of
+ * an image and mlen to length of the hash.
  */
-fih_ret bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig,
+fih_ret bootutil_verify_sig(uint8_t *msg, uint32_t mlen, uint8_t *sig,
                             size_t slen, uint8_t key_id);
-
-/* The function is intended for direct verification of image
- * against provided signature.
- */
-fih_ret bootutil_verify_img(uint8_t *img, uint32_t size,
-                            uint8_t *sig, size_t slen, uint8_t key_id);
 
 fih_ret boot_fih_memequal(const void *s1, const void *s2, size_t n);
 

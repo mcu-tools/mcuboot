@@ -83,20 +83,27 @@ bootutil_import_key(uint8_t **cp, uint8_t *end)
  * The function does key import and checks whether signature is
  * of expected length.
  */
-static fih_ret
-bootutil_verify(uint8_t *buf, uint32_t blen,
-                uint8_t *sig, size_t slen,
-                uint8_t key_id)
+fih_ret
+bootutil_verify_sig(uint8_t *msg, uint32_t mlen, uint8_t *sig, size_t slen,
+                    uint8_t key_id)
 {
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
     uint8_t *pubkey;
     uint8_t *end;
 
-    BOOT_LOG_DBG("bootutil_verify: ED25519 key_id %d", (int)key_id);
+    BOOT_LOG_DBG("bootutil_verify_sig: ED25519 key_id %d", (int)key_id);
+
+#if !defined(MCUBOOT_SIGN_PURE)
+    if (mlen != IMAGE_HASH_SIZE) {
+        BOOT_LOG_DBG("bootutil_verify_sig: expected hash len %d, got %d",
+                     IMAGE_HASH_SIZE, mlen);
+        goto out;
+    }
+#endif
 
     if (slen != EDDSA_SIGNATURE_LENGTH) {
-        BOOT_LOG_DBG("bootutil_verify: expected slen %d, got %u",
+        BOOT_LOG_DBG("bootutil_verify_sig: expected slen %d, got %u",
                      EDDSA_SIGNATURE_LENGTH, (unsigned int)slen);
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
@@ -108,7 +115,7 @@ bootutil_verify(uint8_t *buf, uint32_t blen,
 #if !defined(MCUBOOT_KEY_IMPORT_BYPASS_ASN)
     rc = bootutil_import_key(&pubkey, end);
     if (rc) {
-        BOOT_LOG_DBG("bootutil_verify: import key failed %d", rc);
+        BOOT_LOG_DBG("bootutil_verify_sig: import key failed %d", rc);
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
     }
@@ -118,7 +125,7 @@ bootutil_verify(uint8_t *buf, uint32_t blen,
      * There is no check whether this is the correct key,
      * here, by the algorithm selected.
      */
-    BOOT_LOG_DBG("bootutil_verify: bypass ASN1");
+    BOOT_LOG_DBG("bootutil_verify_sig: bypass ASN1");
     if (*bootutil_keys[key_id].len < NUM_ED25519_BYTES) {
         FIH_SET(fih_rc, FIH_FAILURE);
         goto out;
@@ -127,7 +134,7 @@ bootutil_verify(uint8_t *buf, uint32_t blen,
     pubkey = end - NUM_ED25519_BYTES;
 #endif
 
-    rc = ED25519_verify(buf, blen, sig, pubkey);
+    rc = ED25519_verify(msg, mlen, sig, pubkey);
 
     if (rc == 0) {
         /* if verify returns 0, there was an error. */
@@ -137,53 +144,6 @@ bootutil_verify(uint8_t *buf, uint32_t blen,
 
     FIH_SET(fih_rc, FIH_SUCCESS);
 out:
-
-    FIH_RET(fih_rc);
-}
-
-/* Hash signature verification function.
- * Verifies hash against provided signature.
- * The function verifies that hash is of expected size and then
- * calls bootutil_verify to do the signature verification.
- */
-fih_ret
-bootutil_verify_sig(uint8_t *hash, uint32_t hlen,
-                    uint8_t *sig, size_t slen,
-                    uint8_t key_id)
-{
-    FIH_DECLARE(fih_rc, FIH_FAILURE);
-
-    BOOT_LOG_DBG("bootutil_verify_sig: ED25519 key_id %d", (int)key_id);
-
-    if (hlen != IMAGE_HASH_SIZE) {
-        BOOT_LOG_DBG("bootutil_verify_sig: expected hlen %d, got %d",
-                     IMAGE_HASH_SIZE, hlen);
-        FIH_SET(fih_rc, FIH_FAILURE);
-        goto out;
-    }
-
-    FIH_CALL(bootutil_verify, fih_rc, hash, IMAGE_HASH_SIZE, sig,
-             slen, key_id);
-
-out:
-    FIH_RET(fih_rc);
-}
-
-/* Image verification function.
- * The function directly calls bootutil_verify to verify signature
- * of image.
- */
-fih_ret
-bootutil_verify_img(uint8_t *img, uint32_t size,
-                    uint8_t *sig, size_t slen,
-                    uint8_t key_id)
-{
-    FIH_DECLARE(fih_rc, FIH_FAILURE);
-
-    BOOT_LOG_DBG("bootutil_verify_img: ED25519 key_id %d", (int)key_id);
-
-    FIH_CALL(bootutil_verify, fih_rc, img, size, sig,
-             slen, key_id);
 
     FIH_RET(fih_rc);
 }
