@@ -58,6 +58,38 @@
   to set the MCUBOOT_BOOT_MAX_ALIGN.
 - Fixed issue with checking pin reset not checking for single
   flag in Zephyr.
+- imgtool verify when using a public ed25519 key has been fixed
+  to work rather than show an invalid key type not matching the
+  TLV record error.
+- Zephyr signature and encryption key file path handling has now
+  been aligned with Zephyr, this means values can be specified in
+  multiple .conf file and the one that last set it will be the set
+  value. This also means that key files will no longer be found
+  relative to the .conf file and will instead be found relative
+  to the build system ``APPLICATION_CONFIG_DIR`` variable, though
+  the key file strings are now configured which allows for using
+  escaped CMake variables to locate the files, for example with
+  ``\${CMAKE_CURRENT_LIST_DIR}`` to specify a file relative to
+  the folder that the file is in.
+- Watchdog support in Zephyr has been reworked and fixed to allow
+  installing a timeout (with a configurable value) before starting
+  it. The default timeout is set to 1 minute and this feature has
+  been enabled by default. 3 Kconfig options have been added which
+  control how the watchdog is used in MCUboot:
+
+    * ``CONFIG_BOOT_WATCHDOG_SETUP_AT_BOOT`` controls setting up
+      the watchdog in MCUboot (if not set up, it can still be set,
+      if the driver supports this non-compliant behaviour).
+    * ``CONFIG_BOOT_WATCHDOG_INSTALL_TIMEOUT_AT_BOOT`` controls if
+      a timeout is installed at bootup or not.
+    * ``CONFIG_BOOT_WATCHDOG_TIMEOUT_MS`` sets the value of the
+      timeout in ms.
+
+- In addition, Zephyr modules can now over-ride the default
+  watchdog functionality by replacing the weakly defined functions
+  ``mcuboot_watchdog_setup`` and/or ``mcuboot_watchdog_feed``,
+  these functions take no arguments.
+- correct esp32c6 overlay
 
 ## Version 2.2.0
 
