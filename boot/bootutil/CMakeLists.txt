@@ -32,7 +32,9 @@ target_sources(bootutil
         src/image_ed25519.c
         src/image_rsa.c
         src/image_validate.c
+        src/mcuboot_manifest.c
         src/loader.c
+        src/loader_manifest_xip.c
         src/swap_misc.c
         src/swap_move.c
         src/swap_scratch.c

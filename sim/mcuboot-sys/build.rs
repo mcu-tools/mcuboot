@@ -471,6 +471,7 @@ fn main() {
     }
 
     conf.file("../../boot/bootutil/src/image_validate.c");
+    conf.file("../../boot/bootutil/src/mcuboot_manifest.c");
     conf.file("../../boot/bootutil/src/bootutil_find_key.c");
     conf.file("../../boot/bootutil/src/bootutil_img_hash.c");
     conf.file("../../boot/bootutil/src/bootutil_img_security_cnt.c");
