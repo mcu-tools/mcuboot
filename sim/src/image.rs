@@ -589,6 +589,20 @@ impl ImagesBuilder {
                 flash.insert(dev_id, dev);
                 (flash, Rc::new(areadesc), &[])
             }
+            DeviceName::PSOCEdgeE8x => {
+                let dev = SimFlash::new(vec![4096; 96], align as usize, erased_val);
+
+                let dev_id = 0;
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(dev_id, &dev);
+                areadesc.add_image(0x020000, 0x010000, FlashId::Image0, dev_id);
+                areadesc.add_image(0x030000, 0x010000, FlashId::Image1, dev_id);
+                areadesc.add_image(0x040000, 0x002000, FlashId::ImageScratch, dev_id);
+
+                let mut flash = SimMultiFlash::new();
+                flash.insert(dev_id, dev);
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade, Caps::SwapUsingMove, Caps::RamLoad, Caps::DirectXip])
+            }
         }
     }
 
@@ -2386,11 +2400,17 @@ pub struct SlotInfo {
     pub dev_id: u8,
 }
 
-#[cfg(not(feature = "max-align-32"))]
+#[cfg(all(not(feature = "max-align-16"), not(feature = "max-align-32")))]
 const MAGIC: &[u8] = &[0x77, 0xc2, 0x95, 0xf3,
                        0x60, 0xd2, 0xef, 0x7f,
                        0x35, 0x52, 0x50, 0x0f,
                        0x2c, 0xb6, 0x79, 0x80];
+
+#[cfg(feature = "max-align-16")]
+const MAGIC: &[u8] = &[0x10, 0x00, 0x2d, 0xe1,
+                       0x5d, 0x29, 0x41, 0x0b,
+                       0x8d, 0x77, 0x67, 0x9c,
+                       0x11, 0x0f, 0x1f, 0x8a];
 
 #[cfg(feature = "max-align-32")]
 const MAGIC: &[u8] = &[0x20, 0x00, 0x2d, 0xe1,
@@ -2475,9 +2495,14 @@ pub fn show_sizes() {
     }
 }
 
-#[cfg(not(feature = "max-align-32"))]
+#[cfg(all(not(feature = "max-align-16"), not(feature = "max-align-32")))]
 fn test_alignments() -> &'static [usize] {
     &[1, 2, 4, 8]
+}
+
+#[cfg(feature = "max-align-16")]
+fn test_alignments() -> &'static [usize] {
+    &[16]
 }
 
 #[cfg(feature = "max-align-32")]
