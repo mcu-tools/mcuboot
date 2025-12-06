@@ -43,4 +43,4 @@ void boot_banner(void)
 	printk("*** Booting MCUboot " APPLICATION_BANNER_VERSION " ***\n");
 	printk("*** " CONFIG_BOOT_BANNER_STRING " " BANNER_VERSION BANNER_POSTFIX " ***\n");
 }
-#endif /* APP_BUILD_VERSION */
+#endif /* APPLICATION_BANNER_VERSION */
