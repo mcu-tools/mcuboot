@@ -27,6 +27,7 @@
  */
 
 #include "bootutil_area.h"
+#include "bootutil_priv.h"
 #include "bootutil/image.h"
 #include "bootutil/bootutil_public.h"
 #ifdef MCUBOOT_ENC_IMAGES
@@ -35,16 +36,6 @@
 #include "bootutil/bootutil_log.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
-
-#if !defined(MCUBOOT_OVERWRITE_ONLY) && \
-    !defined(MCUBOOT_SWAP_USING_MOVE) && \
-    !defined(MCUBOOT_SWAP_USING_OFFSET) && \
-    !defined(MCUBOOT_DIRECT_XIP) && \
-    !defined(MCUBOOT_RAM_LOAD) && \
-    !defined(MCUBOOT_SINGLE_APPLICATION_SLOT) && \
-    !defined(MCUBOOT_FIRMWARE_LOADER)
-#define MCUBOOT_SWAP_USING_SCRATCH 1
-#endif
 
 /**
  * Amount of space used to save information required when doing a swap,
