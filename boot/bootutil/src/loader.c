@@ -1052,7 +1052,10 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
      */
     rc = boot_update_security_counter(state, BOOT_SLOT_PRIMARY, BOOT_SLOT_SECONDARY);
     if (rc != 0) {
-        BOOT_LOG_ERR("Security counter update failed after image upgrade.");
+        BOOT_LOG_ERR(
+            "Security counter update failed after image upgrade (rc = 0x%x).",
+            rc);
+
         return rc;
     }
 #endif /* MCUBOOT_HW_ROLLBACK_PROT */
@@ -1281,7 +1284,7 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
         rc = boot_update_security_counter(state, BOOT_SLOT_PRIMARY, BOOT_SLOT_SECONDARY);
         if (rc != 0) {
             BOOT_LOG_ERR("Security counter update failed after "
-                         "image upgrade.");
+                         "image upgrade (rc = 0x%x).", rc);
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_PANIC;
         }
     }
@@ -1614,16 +1617,18 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state)
     if (swap_state.magic != BOOT_MAGIC_GOOD || swap_state.image_ok == BOOT_FLAG_SET) {
         rc = boot_update_security_counter(state, BOOT_SLOT_PRIMARY, BOOT_SLOT_PRIMARY);
         if (rc != 0) {
-            BOOT_LOG_ERR("Security counter update failed after image %d validation.",
-                         BOOT_CURR_IMG(state));
+            BOOT_LOG_ERR("Security counter update failed after image %d "
+                         "validation (rc = 0x%x).",
+                         BOOT_CURR_IMG(state), rc);
             return rc;
         }
 
 #ifdef MCUBOOT_HW_ROLLBACK_PROT_LOCK
         rc = boot_nv_security_counter_lock(BOOT_CURR_IMG(state));
         if (rc != 0) {
-            BOOT_LOG_ERR("Security counter lock failed after image %d validation.",
-                         BOOT_CURR_IMG(state));
+            BOOT_LOG_ERR("Security counter lock failed after image %d "
+                         "validation (rc = 0x%x).",
+                         BOOT_CURR_IMG(state), rc);
             return rc;
         }
 #endif /* MCUBOOT_HW_ROLLBACK_PROT_LOCK */
@@ -2350,16 +2355,18 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state)
                                           state->slot_usage[BOOT_CURR_IMG(state)].active_slot,
                                           state->slot_usage[BOOT_CURR_IMG(state)].active_slot);
         if (rc != 0) {
-            BOOT_LOG_ERR("Security counter update failed after image %d validation.",
-                         BOOT_CURR_IMG(state));
+            BOOT_LOG_ERR("Security counter update failed after image %d "
+                         "validation (rc = 0x%x).",
+                         BOOT_CURR_IMG(state), rc);
             return rc;
         }
 
 #ifdef MCUBOOT_HW_ROLLBACK_PROT_LOCK
         rc = boot_nv_security_counter_lock(BOOT_CURR_IMG(state));
         if (rc != 0) {
-            BOOT_LOG_ERR("Security counter lock failed after image %d validation.",
-                         BOOT_CURR_IMG(state));
+            BOOT_LOG_ERR("Security counter lock failed after image %d "
+                         "validation (rc = 0x%x).",
+                         BOOT_CURR_IMG(state), rc);
             return rc;
         }
 #endif /* MCUBOOT_HW_ROLLBACK_PROT_LOCK */
