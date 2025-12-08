@@ -20,7 +20,7 @@ jobs:
         - "sig-rsa,sig-rsa3072,overwrite-only,validate-primary-slot,swap-move,swap-offset"
         - "enc-rsa,enc-rsa max-align-32"
         - "enc-aes256-rsa,enc-aes256-rsa max-align-32"
-        - "enc-ec256,enc-ec256 max-align-32"
+        - "enc-ec256,enc-ec256 overwrite-only validate-primary-slot max-align-16,enc-ec256 max-align-32"
         - "enc-aes256-ec256,enc-aes256-ec256 max-align-32"
         - "enc-x25519,enc-x25519 max-align-32"
         - "enc-aes256-x25519,enc-aes256-x25519 max-align-32"
@@ -44,7 +44,8 @@ jobs:
         - "sig-rsa validate-primary-slot ram-load multiimage"
         - "sig-rsa validate-primary-slot direct-xip multiimage"
         - "sig-ecdsa hw-rollback-protection multiimage"
-        - "sig-ecdsa-psa,sig-ecdsa-psa sig-p384"
+        - "sig-ecdsa-psa,sig-ecdsa-psa sig-p384,sig-ecdsa-psa swap-move bootstrap max-align-16"
+        - "sig-ecdsa-psa enc-ec256 max-align-16, sig-ecdsa-psa enc-ec256 swap-offset validate-primary-slot max-align-16"
         - "ram-load enc-aes256-kw multiimage"
         - "ram-load enc-aes256-kw sig-ecdsa-mbedtls multiimage"
     runs-on: ubuntu-latest
