@@ -662,7 +662,7 @@ boot_enc_load(struct boot_loader_state *state, int slot,
         return -1;
     }
 
-    return boot_decrypt_key(buf, bs->enckey[slot], state->curr_img_idx);
+    return boot_decrypt_key(buf, bs->enckey[slot], BOOT_CURR_IMG(state));
 }
 
 int
