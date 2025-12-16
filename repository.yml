@@ -42,7 +42,7 @@ repo.versions:
     "2.3.0": "v2.3.0"
 
     "0-dev": "0.0.0"        # main
-    "0-latest": "2.2.0"     # latest stable release
+    "0-latest": "2.3.0"     # latest stable release
     "1-latest": "1.11.0"
     "2-latest": "2.3.0"
 
