@@ -187,6 +187,7 @@ static const uint16_t allowed_unprot_tlvs[] = {
 };
 #endif
 
+#ifdef MCUBOOT_IMAGE_MULTI_SIG_SUPPORT
 static inline int get_boot_verified_key_id(int key_id)
 {
 #if defined(MCUBOOT_HW_KEY)
@@ -218,6 +219,7 @@ static inline void boot_collect_verified_key(int key_id,
         *count = n + 1;
     }
 }
+#endif
 
 /*
  * Verify the integrity of the image.
