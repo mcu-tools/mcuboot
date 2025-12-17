@@ -632,6 +632,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
     }
 #endif
     if (!boot_check_header_valid(state, slot)) {
+        BOOT_LOG_DBG("boot_validate_slot: header validation failed %d", slot);
         fih_rc = FIH_FAILURE;
     } else {
         BOOT_HOOK_CALL_FIH(boot_image_check_hook, FIH_BOOT_HOOK_REGULAR,
@@ -644,16 +645,16 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
 check_validity:
 #endif
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+#if !defined(__BOOTSIM__)
+        BOOT_LOG_ERR("Image in the %s slot is not valid!",
+                     (slot == BOOT_SLOT_PRIMARY) ? "primary" : "secondary");
+#endif
         if ((slot != BOOT_SLOT_PRIMARY) || ARE_SLOTS_EQUIVALENT()) {
             boot_scramble_slot(fap, slot);
             /* Image is invalid, erase it to prevent further unnecessary
              * attempts to validate and boot it.
              */
         }
-#if !defined(__BOOTSIM__)
-        BOOT_LOG_ERR("Image in the %s slot is not valid!",
-                     (slot == BOOT_SLOT_PRIMARY) ? "primary" : "secondary");
-#endif
         fih_rc = FIH_NO_BOOTABLE_IMAGE;
         goto out;
     }
