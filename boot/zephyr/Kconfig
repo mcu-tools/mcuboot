@@ -914,12 +914,12 @@ config BOOT_FIH_PROFILE_HIGH
 endchoice
 
 config BOOT_USE_BENCH
-        bool "Benchmark code"
-        help
-          If y, adds support for simple benchmarking that can record
-          time intervals between two calls.  The time printed depends
-          on the particular Zephyr target, and is generally ticks of a
-          specific board-specific timer.
+	bool "Benchmark code"
+	help
+	  If y, adds support for simple benchmarking that can record
+	  time intervals between two calls.  The time printed depends
+	  on the particular Zephyr target, and is generally ticks of a
+	  specific board-specific timer.
 
 module = MCUBOOT
 module-str = MCUBoot bootloader
@@ -1029,7 +1029,7 @@ config UPDATEABLE_IMAGE_NUMBER
 config BOOT_VERSION_CMP_USE_BUILD_NUMBER
 	bool "Use build number while comparing image version"
 	depends on (UPDATEABLE_IMAGE_NUMBER > 1) || BOOT_DIRECT_XIP || \
-		   BOOT_RAM_LOAD || MCUBOOT_DOWNGRADE_PREVENTION
+			   BOOT_RAM_LOAD || MCUBOOT_DOWNGRADE_PREVENTION
 	help
 	  By default, the image version comparison relies only on version major,
 	  minor and revision. Enable this option to take into account the build
@@ -1064,11 +1064,11 @@ config MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER
 	depends on MCUBOOT_DOWNGRADE_PREVENTION
 	depends on (BOOT_SWAP_USING_MOVE || BOOT_SWAP_USING_SCRATCH || BOOT_SWAP_USING_OFFSET)
 	help
-       Security counter is used for version eligibility check instead of pure
-       version.  When this option is set, any upgrade must have greater or
-       equal security counter value.
-       Because of the acceptance of equal values it allows for software
-       downgrades to some extent.
+	  Security counter is used for version eligibility check instead of pure
+	  version.  When this option is set, any upgrade must have greater or
+	  equal security counter value.
+	  Because of the acceptance of equal values it allows for software
+	  downgrades to some extent.
 
 config MCUBOOT_HW_DOWNGRADE_PREVENTION_COUNTER_LIMITED
 	bool "HW based downgrade prevention counter has limited number of updates"
@@ -1168,7 +1168,7 @@ config MCUBOOT_BOOT_BANNER
 	    *** Using Zephyr OS build v3.6.0-2607-gd0be2010c31f ***
 
 config BOOT_BANNER_STRING
-        default "Using Zephyr OS build" if MCUBOOT_BOOT_BANNER
+	default "Using Zephyr OS build" if MCUBOOT_BOOT_BANNER
 
 config MCUBOOT_USE_TLV_ALLOW_LIST
 	bool "Check unprotected TLVs against allow list"
@@ -1322,9 +1322,9 @@ config MCUBOOT_DEVICE_SETTINGS
 	# Hidden selector for device-specific settings
 	bool
 	default y
-        # CPU options
+	# CPU options
 	select MCUBOOT_DEVICE_CPU_CORTEX_M0 if CPU_CORTEX_M0
-        # Enable flash page layout if available
+	# Enable flash page layout if available
 	select FLASH_PAGE_LAYOUT if FLASH_HAS_PAGE_LAYOUT
 	# Enable flash_map module as flash I/O back-end
 	select FLASH_MAP
@@ -1364,23 +1364,23 @@ config MCUBOOT_BOOTUTIL_LIB_OWN_LOG
 	bool
 
 config MCUBOOT_CHECK_HEADER_LOAD_ADDRESS
-        bool "Use load address to verify application is in proper slot"
-        help
-          The bootloader will use the load address, from the image header,
-          to verify that binary is in slot designated for its execution.
-          When not selected reset vector, read from image, is used for
-          the same purpose.
+	bool "Use load address to verify application is in proper slot"
+	help
+	  The bootloader will use the load address, from the image header,
+	  to verify that binary is in slot designated for its execution.
+	  When not selected reset vector, read from image, is used for
+	  the same purpose.
 
 config MCUBOOT_VERIFY_IMG_ADDRESS
 	bool "Verify reset address of image in secondary slot [DEPRECATED]"
-        select DEPRECATED
+	select DEPRECATED
 	depends on UPDATEABLE_IMAGE_NUMBER > 1
 	depends on !BOOT_ENCRYPT_IMAGE
 	depends on ARM
 	default y if BOOT_UPGRADE_ONLY
 	help
-          This option is deprecated, please use MCUBOOT_CHECK_HEADER_LOAD_ADDRESS
-          instead.
+	  This option is deprecated, please use MCUBOOT_CHECK_HEADER_LOAD_ADDRESS
+	  instead.
 	  Verify that the reset address in the image located in the secondary slot
 	  is contained within the corresponding primary slot. This is recommended
 	  if swapping is not used (that is, BOOT_UPGRADE_ONLY is set). If a user
