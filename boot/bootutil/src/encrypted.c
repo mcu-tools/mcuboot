@@ -370,6 +370,7 @@ static int fake_rng(void *p_rng, unsigned char *output, size_t len)
 #endif /* (MCUBOOT_ENCRYPT_RSA && MCUBOOT_USE_MBED_TLS && !MCUBOOT_USE_PSA_CRYPTO) ||
           (MCUBOOT_ENCRYPT_EC256 && MCUBOOT_USE_MBED_TLS) */
 
+#if !defined(MCUBOOT_EMBEDDED_ENC_KEY)
 /*
  * Decrypt an encryption key TLV.
  *
@@ -564,7 +565,9 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     return rc;
 }
 #endif /* CONFIG_BOOT_ED25519_PSA  && CONFIG_BOOT_ECDSA_PSA */
+#endif /* defined(MCUBOOT_EMBEDDED_ENC_KEY) */
 
+#if !defined(MCUBOOT_EMBEDDED_ENC_KEY)
 /*
  * Load encryption key.
  */
@@ -625,6 +628,7 @@ boot_enc_load(struct boot_loader_state *state, int slot,
 
     return boot_decrypt_key(buf, bs->enckey[slot]);
 }
+#endif /* defined(MCUBOOT_EMBEDDED_ENC_KEY */
 
 int
 boot_enc_init(struct enc_key_data *enc_state)

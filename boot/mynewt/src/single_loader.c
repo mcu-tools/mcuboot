@@ -49,6 +49,7 @@ boot_image_validate(const struct flash_area *fa_p,
          * was performed. We will try to validate the image, and if still
          * encrypted the validation will fail, and go in panic mode
          */
+        BOOT_LOG_DBG("boot_image_validate: clearing encryption flags");
         hdr->ih_flags &= ~(ENCRYPTIONFLAGS);
     }
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, hdr, fa_p, tmpbuf,
