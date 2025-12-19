@@ -47,6 +47,9 @@ pkg.ign_files:
     - "ed25519_psa.c"       # Currently no PSA for mynewet
     - "encrypted_psa.c"
 
+pkg.source_files.!BOOT_LOADER:
+    - "src/bootutil_public.c"
+
 pkg.deps.BOOTUTIL_USE_MBED_TLS:
     - "@apache-mynewt-core/crypto/mbedtls"
 
