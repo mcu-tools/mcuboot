@@ -1191,8 +1191,7 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 
             boot_enc_init(BOOT_CURR_ENC_SLOT(state, slot));
 
-            rc = boot_read_enc_key(fap, slot, bs);
-            if (rc) {
+            if (!boot_read_enc_key(fap, slot, bs)) {
                 BOOT_LOG_DBG("boot_swap_image: Failed loading key (%d, %d)",
                               image_index, slot);
             } else {
