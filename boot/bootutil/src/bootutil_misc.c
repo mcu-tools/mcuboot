@@ -53,9 +53,6 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
-/* Currently only used by imgmgr */
-int boot_current_slot;
-
 #if (!defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)) || \
 defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
 /* Used for holding static buffers in multiple functions to work around issues
