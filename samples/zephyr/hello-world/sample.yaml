@@ -6,5 +6,7 @@ common:
 tests:
   mcuboot.samples.zephyr.hello_world.sysbuild:
     build_only: true
-    tags: samples tests
+    tags:
+      - samples
+      - tests
     min_ram: 16
