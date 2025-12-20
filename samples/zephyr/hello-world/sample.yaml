@@ -1,7 +1,6 @@
 sample:
   name: Application Skeleton
   description: Basic "hello world" application, but loadable by mcuboot
-  platforms: all
 common:
   sysbuild: true
 tests:
