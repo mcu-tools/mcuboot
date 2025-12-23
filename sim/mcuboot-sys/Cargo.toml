@@ -18,9 +18,6 @@ sig-rsa = []
 # Verify RSA-3072 signatures.
 sig-rsa3072 = []
 
-# Verify ECDSA (secp256r1) signatures.
-sig-ecdsa = []
-
 # Verify ECDSA (secp256r1) signatures using mbed TLS
 sig-ecdsa-mbedtls = []
 
@@ -56,9 +53,6 @@ enc-kw = []
 
 # Encrypt image in the secondary slot using AES-256-CTR and AES-KW-256
 enc-aes256-kw = []
-
-# Encrypt image in the secondary slot using ECIES-P256
-enc-ec256 = []
 
 # Encrypt image in the secondary slot using AES-256-CTR and ECIES-P256
 enc-aes256-ec256 = []
