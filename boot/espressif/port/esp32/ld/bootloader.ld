@@ -10,16 +10,17 @@
  * without overwriting itself.
  */
 
+#include "memory.h"
+
 MEMORY
 {
 #ifdef CONFIG_ESP_MULTI_PROCESSOR_BOOT
-  iram_loader_seg (RWX) :           org = 0x400AB900, len = 0x6500
+  iram_loader_seg (RWX) :           org = BOOTLOADER_IRAM_LOADER_SEG_START_MP, len = BOOTLOADER_IRAM_LOADER_SEG_LEN
 #else
-  /* iram_loader_seg is currently placed on APP_CPU cache IRAM address range */
-  iram_loader_seg (RWX) :           org = 0x40078000, len = 0x6500
+  iram_loader_seg (RWX) :           org = BOOTLOADER_IRAM_LOADER_SEG_START, len = BOOTLOADER_IRAM_LOADER_SEG_LEN
 #endif
-  iram_seg (RWX) :                  org = 0x40090000, len = 0x9000
-  dram_seg (RW) :                   org = 0x3FFF4700, len = 0xB900
+  iram_seg (RWX) :                  org = BOOTLOADER_IRAM_SEG_START, len = BOOTLOADER_IRAM_SEG_LEN
+  dram_seg (RW) :                   org = BOOTLOADER_DRAM_SEG_START, len = BOOTLOADER_DRAM_SEG_LEN
 }
 
 /*  Default entry point:  */
