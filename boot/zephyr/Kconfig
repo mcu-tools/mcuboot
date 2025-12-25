@@ -393,11 +393,11 @@ config BOOT_SIGNATURE_KEY_FILE
 	help
 	  You can use either absolute or relative path.
 	  In case relative path is used, the build system assumes that it starts
-	  from the APPLICATION_CONFIG_DIR directory. If the key file is not there, the build
-	  system uses relative path that starts from the MCUBoot repository root directory.
-	  The key file will be parsed by imgtool's getpub command and a .c source
-	  with the public key information will be written in a format expected by
-	  MCUboot.
+	  from the APPLICATION_CONFIG_DIR or WEST_TOPDIR directory. If the key file
+	  is not there, the build system uses relative path that starts from the
+	  MCUBoot repository root directory. The key file will be parsed by imgtool's
+	  getpub command and a .c source with the public key information will be written in
+	  a format expected by MCUboot.
 
 	  Note: In configuration files, escaped CMake variables can be used to refer to paths
 	  e.g. \${CMAKE_CURRENT_LIST_DIR} will allow referencing a file in that directory, these
@@ -762,11 +762,11 @@ config BOOT_ENCRYPTION_KEY_FILE
 	help
 	  You can use either absolute or relative path.
 	  In case relative path is used, the build system assumes that it starts
-	  from the APPLICATION_CONFIG_DIR directory. If the key file is not there, the build
-	  system uses relative path that starts from the MCUBoot repository root directory.
-	  The key file will be parsed by imgtool's getpriv command and a .c source
-	  with the public key information will be written in a format expected by
-	  MCUboot.
+	  from the APPLICATION_CONFIG_DIR or WEST_TOPDIR directory. If the key file
+	  is not there, the build system uses relative path that starts from the
+	  MCUBoot repository root directory. The key file will be parsed by imgtool's
+	  getpriv command and a .c source with the private key information will be written in
+	  a format expected by MCUboot.
 
 	  Note: In configuration files, escaped CMake variables can be used to refer to paths
 	  e.g. \${CMAKE_CURRENT_LIST_DIR} will allow referencing a file in that directory, these
