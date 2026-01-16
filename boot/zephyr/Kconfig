@@ -28,7 +28,7 @@ config BOOT_USE_PSA_CRYPTO
 	bool
 	# Hidden option
 	help
-	  Hidden option set if using PSA crypt for cryptography functionality
+	  Hidden option set if using PSA crypto for cryptography functionality
 
 config BOOT_USE_TINYCRYPT
 	bool
@@ -268,6 +268,7 @@ config BOOT_SIGNATURE_TYPE_ECDSA_P256
 	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 
 if BOOT_SIGNATURE_TYPE_ECDSA_P256
+
 choice BOOT_ECDSA_IMPLEMENTATION
 	prompt "Ecdsa implementation"
 	default BOOT_ECDSA_TINYCRYPT
@@ -299,7 +300,7 @@ config BOOT_ECDSA_CC310
 	select BOOT_USE_CC310
 
 config BOOT_ECDSA_PSA
-	bool "Use psa cryptoo"
+	bool "Use PSA crypto"
 	select BOOT_USE_PSA_CRYPTO
 	select PSA_CRYPTO_CLIENT
 	select PSA_CRYPTO_C
@@ -308,6 +309,7 @@ config BOOT_ECDSA_PSA
 	select BOOT_ECDSA_PSA_DEPENDENCIES
 
 endchoice # Ecdsa implementation
+
 endif
 
 config BOOT_SIGNATURE_TYPE_ED25519
@@ -639,6 +641,7 @@ endif # !SINGLE_APPLICATION_SLOT
 DT_CHOSEN_Z_SRAM := zephyr,sram
 
 if BOOT_RAM_LOAD || SINGLE_APPLICATION_SLOT_RAM_LOAD
+
 config BOOT_IMAGE_EXECUTABLE_RAM_START
 	hex "Boot image executable ram start"
 	default $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_SRAM))
@@ -646,6 +649,7 @@ config BOOT_IMAGE_EXECUTABLE_RAM_START
 config BOOT_IMAGE_EXECUTABLE_RAM_SIZE
 	int "Boot image executable base size"
 	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM),0)
+
 endif
 
 config MULTIPLE_EXECUTABLE_RAM_REGIONS
