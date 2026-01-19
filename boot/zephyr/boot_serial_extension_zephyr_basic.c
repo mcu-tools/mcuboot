@@ -9,7 +9,6 @@
 #include <zephyr/drivers/flash.h>
 #include <zephyr/mgmt/mcumgr/mgmt/mgmt_defines.h>
 #include <zephyr/mgmt/mcumgr/grp/zephyr/zephyr_basic.h>
-#include <../subsys/mgmt/mcumgr/transport/include/mgmt/mcumgr/transport/smp_internal.h>
 
 #include <flash_map_backend/flash_map_backend.h>
 #include <sysflash/sysflash.h>
