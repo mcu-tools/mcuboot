@@ -104,6 +104,7 @@ zephyr_library_sources(
   ${BOOT_DIR}/bootutil/src/bootutil_find_key.c
   ${BOOT_DIR}/bootutil/src/bootutil_img_hash.c
   ${BOOT_DIR}/bootutil/src/bootutil_img_security_cnt.c
+  ${BOOT_DIR}/bootutil/src/mcuboot_manifest.c
   ${BOOT_DIR}/bootutil/src/tlv.c
   ${BOOT_DIR}/bootutil/src/encrypted.c
   ${BOOT_DIR}/bootutil/src/image_rsa.c
@@ -158,6 +159,29 @@ elseif(CONFIG_BOOT_FIRMWARE_LOADER)
     ${BOOT_DIR}/zephyr/firmware_loader.c
     )
   zephyr_library_include_directories(${BOOT_DIR}/bootutil/src)
+elseif(CONFIG_MCUBOOT_MANIFEST_UPDATES)
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/swap_misc.c
+    ${BOOT_DIR}/bootutil/src/caps.c
+    )
+
+  if(CONFIG_BOOT_SWAP_USING_MOVE)
+    zephyr_library_sources(
+      ${BOOT_DIR}/bootutil/src/swap_move.c
+      )
+  elseif(CONFIG_BOOT_SWAP_USING_OFFSET)
+    zephyr_library_sources(
+      ${BOOT_DIR}/bootutil/src/swap_offset.c
+      )
+  elseif(CONFIG_BOOT_DIRECT_XIP)
+    zephyr_library_sources(
+      ${BOOT_DIR}/bootutil/src/loader_manifest_xip.c
+      )
+  else()
+    zephyr_library_sources(
+      ${BOOT_DIR}/bootutil/src/swap_scratch.c
+      )
+  endif()
 else()
   zephyr_library_sources(
     ${BOOT_DIR}/bootutil/src/loader.c

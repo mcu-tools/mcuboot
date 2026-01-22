@@ -4,6 +4,7 @@
   - Copyright (c) 2017-2020 Linaro LTD
   - Copyright (c) 2017-2019 JUUL Labs
   - Copyright (c) 2019-2024 Arm Limited
+  - Copyright (c) 2025 Nordic Semiconductor ASA
 
   - Original license:
 
@@ -150,8 +151,9 @@ struct image_tlv {
                                              * ...
                                              * 0xffa0 - 0xfffe
                                              */
-#define IMAGE_TLV_UUID_VID          0x80    /* Vendor unique identifier */
-#define IMAGE_TLV_UUID_CID          0x81    /* Device class unique identifier */
+#define IMAGE_TLV_UUID_VID          0x74    /* Vendor unique identifier */
+#define IMAGE_TLV_UUID_CID          0x75    /* Device class unique identifier */
+#define IMAGE_TLV_MANIFEST          0x76    /* Transaction manifest */
 ```
 
 Optional type-length-value records (TLVs) containing image metadata are placed
@@ -985,6 +987,147 @@ strategy but there is no need for Scratch area.
     + Do the measured boot and the data sharing if needed.
 
 + Boot the loaded slot of image 0.
+
+### [Multiple image boot using manifest](#multiple-image-boot-using-manifest)
+
+
+Deployments that use multiple images typically require strict control over
+versions of firmware components.
+There is a dependency TLV that can be used to specify dependencies between
+semantic versions of multiple components; however, since these only describe
+a minimally compatible version of a counterpart component, there is no mechanism
+to enforce a specific revision of the other image;
+therefore, the publisher must ensure that all combinations that satisfy the
+dependencies are compatible with each other and are tested before deploying
+a new version of the firmware bundle.
+One way to simplify the process is to add dependencies to all parts that
+enforce the latest revision of all other parts of the bundle.
+This effectively enforces equality between the revisions of all parts.
+This solution becomes even more problematic when using Direct-XIP mode, since
+the bootloader typically only chain-loads the next stage, the next stage must
+select and boot the correct slot of the next part of the firmware.
+Although the dependencies ensure that the next part with a specific
+version is present on the device, there is no guarantee in which slot it
+was validated.
+The publisher may use different version numbers for the same firmware
+created for different slots, but this raises the question of whether there is
+a better way to manage dependencies between images.
+
+The bootloader manifest is a protected TLV that serves as the sole
+source of information about the compatibility and bootability of the multipart
+firmware. The basic rules for all types of manifests are:
+
+  * A manifest must be protected (directly or indirectly) by a cryptographic
+    signature.
+  * There must be exactly one selected image that can provide the manifest TLV.
+  * There must be only one manifest per slot.
+  * Processing of the manifest must validate the full functional set of firmware
+    components.
+  * If a manifest does not describe a part of the firmware, it must be
+    considered invalid.
+  * Each update candidate must provide a new manifest.
+
+
+```
+                                           +-------------------+
+                        +----------------->|     Mainfest      |
+                        |                  +===================+
+                        |                  |+-----------------+|
+                        |                  || format          ||
+                        |                  |+-----------------+|
+                        |                  || image count     ||
+                        |                  |+-----------------+|
+                        |     +------------|| digest(Image 1) ||
+                        |     |            |+-----------------+|
+                        |     |            || digest(Image 2) ||-------------+
+                        |     |            |+-----------------+|             |
+                        |     |            +-------------------+             |
+                        |     |                                              |
+    +-----------------+ |     |  +-----------------+    +-----------------+  |
+    | Manifest image  | |     |  |     Image 1     |    |     Image 2     |  |
+    +=================+ |     |  +=================+    +=================+  |
+    |+---------------+| |     |  |+---------------+|    |+---------------+|  |
+    || header        || |     |  || header        ||    || header        ||  |
+    |+---------------+| |     |  |+---------------+|    |+---------------+|  |
+    || manifest TLV  ||-+     |  || firmware      ||    || firmware      ||  |
+    |+---------------+|       |  |+---------------+|    |+---------------+|  |
+    || digest TLV    ||       +->|| digest TLV    ||    || digest TLV    ||<-+
+    |+---------------+|          |+---------------+|    |+---------------+|
+    || signature TLV ||          || signature TLV ||    || signature TLV ||
+    |+---------------+|          |+---------------+|    |+---------------+|
+    +-----------------+          +-----------------+    +-----------------+
+```
+
+The manifest TLV has a format field that allows for the development of complex
+boot logic in the future. The default manifest is structured as a list of
+digests of firmware parts.
+
+A manifest is transferred as a protected TLV in a dedicated "Manifest image."
+This image is updated using the same mechanisms as regular images.
+
+A manifest image may contain firmware - if so, this implies that this part of
+the firmware must be updated with any firmware update.
+
+The bootloader's behavior changes once manifest-based updates
+and booting are enabled.
+
+Boot process for Direct-XIP modes:
+
++  Loop 1. Until all images are loaded and validated against the active manifest
+    1. Subloop 1. Iterate over the manifest image slots
+        + Does any of the slots contain a manifest?
+            + Yes:
+                + Select the newer manifest.
+                + Copy it to the bootloader state.
+                + Validate the manifest image (integrity and security check).
+                + If validation fails mark the active manifest slot as
+                  unavailable and try the other slot.
+            + No: Return with an error.
+
+    2. Subloop 2. Iterate over all images except manifest image
+        + Does the current image contain a valid header in the same slot
+          as the selected (active) manifest?
+            + Yes: Is the image valid (integrity and security check) and its
+              digest matches the manifest?
+                + Yes: Skip to the next image.
+                + No:
+                    + Mark the active manifest slot as unavailable.
+                    + Restart main loop.
+            + No:
+                + Mark the active manifest slot as unavailable.
+                + Restart main loop.
+
++  Loop 2. Iterate over all images
+    + Increase the security counter if needed.
+    + Do the measured boot and the data sharing if needed.
+
++ Boot the loaded slot of image 0.
+
+```
+  Slot 0:
+                         +----------------------- +
+                         |                        |
+    +-----------------+  |   +-----------------+  |   +-----------------+
+    | Manifest image  |  |   |     Image 1     |  |   |     Image 2     |
+    +=================+  |   +=================+  |   +=================+
+    |+---------------+|  |   |+---------------+|  |   |+---------------+|
+    || manifest TLV  ||--+-->|| digest TLV    ||  +-->|| digest TLV    ||
+    |+---------------+|      |+---------------+|      |+---------------+|
+    +-----------------+      +-----------------+      +-----------------+
+
+  Slot 1:
+                         +----------------------- +
+                         |                        |
+    +-----------------+  |   +-----------------+  |   +-----------------+
+    | Manifest image  |  |   |     Image 1     |  |   |     Image 2     |
+    +=================+  |   +=================+  |   +=================+
+    |+---------------+|  |   |+---------------+|  |   |+---------------+|
+    || manifest TLV  ||--+-->|| digest TLV    ||  +-->|| digest TLV    ||
+    |+---------------+|      |+---------------+|      |+---------------+|
+    +-----------------+      +-----------------+      +-----------------+
+```
+
+Manifest-based updates and booting for other modes are not yet implemented.
 
 ## [Image swapping](#image-swapping)
 
