@@ -33,6 +33,7 @@ target_sources(bootutil
         src/image_rsa.c
         src/image_validate.c
         src/loader.c
+        src/sha.c
         src/swap_misc.c
         src/swap_move.c
         src/swap_scratch.c
