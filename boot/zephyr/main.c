@@ -487,6 +487,7 @@ static void boot_serial_enter()
     mcuboot_status_change(MCUBOOT_STATUS_SERIAL_DFU_ENTERED);
 
     BOOT_LOG_INF("Enter the serial recovery mode");
+    ZEPHYR_BOOT_LOG_STOP();
     rc = boot_console_init();
     __ASSERT(rc == 0, "Error initializing boot console.\n");
     boot_serial_start(&boot_funcs);
