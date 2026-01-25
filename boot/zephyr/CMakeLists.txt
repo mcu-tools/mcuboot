@@ -652,11 +652,18 @@ if(SYSBUILD)
 
     math(EXPR trailer_size "${key_size} + ${boot_magic_size} + ${boot_swap_data_size} + ${boot_status_data_size}")
 
-    if(CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET)
+    if(CONFIG_BOOT_SWAP_USING_MOVE)
+      # For swap-using-move, align trailer to erase size for both slots
       align_up(${trailer_size} ${erase_size} trailer_size)
     endif()
 
     math(EXPR required_size "${trailer_size} + ${boot_tlv_estimate}")
+
+    if(CONFIG_BOOT_SWAP_USING_OFFSET)
+      # For swap-using-offset, slot0 only needs write-aligned trailer.
+      # The extra offset sector is in slot1, not slot0.
+      align_up(${required_size} ${write_size} required_size)
+    endif()
 
     if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_BOOT_FIRMWARE_LOADER)
       set(required_upgrade_size "0")
