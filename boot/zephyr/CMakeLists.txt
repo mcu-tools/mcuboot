@@ -108,6 +108,7 @@ if(CONFIG_MEASURED_BOOT OR CONFIG_BOOT_SHARE_DATA)
   # include file
   set_source_files_properties(
     ${BOOT_DIR}/bootutil/src/boot_record.c
+    TARGET_DIRECTORY zephyr
     PROPERTIES COMPILE_FLAGS -DZEPHYR_VER_INCLUDE=1
   )
 endif()
