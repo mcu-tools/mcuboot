@@ -160,7 +160,10 @@ primary slot and adds a header and trailer that the bootloader is expecting:
                                       increases the image size.
       --encrypt-keylen [128|256]      When encrypting the image using AES, select
                                       a 128 bit or 256 bit key len.
-      -E, --encrypt filename          Encrypt image using the provided public key.
+      -E, --encrypt filename          Encrypt image using a public key or a
+                                      base64-encoded AES-KW secret KEK. Use a
+                                      16-byte KEK for the default 128-bit mode,
+                                      or a 32-byte KEK with --encrypt-keylen 256.
                                       (Not supported in direct-xip or ram-load
                                       mode.)
       --save-enctlv                   When upgrading, save encrypted key TLVs
