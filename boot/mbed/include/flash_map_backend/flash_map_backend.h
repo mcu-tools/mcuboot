@@ -175,6 +175,13 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot);
  */
 int flash_area_id_to_multi_image_slot(int image_index, int area_id);
 
+/*
+ * Given flash area ID, return info about the sector a given offset
+ * belongs to.
+ */
+int flash_area_get_sector(const struct flash_area *fap, uint32_t off,
+  struct flash_sector *fs);
+
 #ifdef __cplusplus
 }
 #endif

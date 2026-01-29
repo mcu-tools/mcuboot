@@ -249,3 +249,15 @@ int flash_area_id_to_multi_image_slot(int image_index, int area_id)
     assert(image_index == 0);
     return area_id;
 }
+
+int flash_area_get_sector(const struct flash_area *fap, uint32_t off,
+  struct flash_sector *fs)
+{
+    mbed::BlockDevice* bd = flash_map_bd[fap->fa_id];
+    bd_size_t erase_size = bd->get_erase_size(off);
+
+    fs->fs_off = (off / erase_size) * erase_size;
+    fs->fs_size = erase_size;
+
+    return 0;
+}
