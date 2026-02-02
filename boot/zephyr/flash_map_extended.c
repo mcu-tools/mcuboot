@@ -61,7 +61,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define FLASH_DEVICE_BASE 0
 #define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash_controller)
 
-#elif (defined(CONFIG_SOC_SERIES_NRF54HX) && DT_HAS_CHOSEN(zephyr_flash))
+#elif (defined(CONFIG_SOC_SERIES_NRF54H) && DT_HAS_CHOSEN(zephyr_flash))
 
 #define FLASH_DEVICE_ID SOC_FLASH_0_ID
 #define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
