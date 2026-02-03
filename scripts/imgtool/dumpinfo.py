@@ -22,6 +22,7 @@ import struct
 
 import click
 import yaml
+from intelhex import IntelHex
 
 from imgtool import image
 
@@ -131,9 +132,13 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
     trailer = {}
     key_field_len = None
 
+    ext = os.path.splitext(imgfile)[1][1:].lower()
     try:
-        with open(imgfile, "rb") as f:
-            b = f.read()
+        if ext == image.INTEL_HEX_EXT:
+            b = IntelHex(imgfile).tobinstr()
+        else:
+            with open(imgfile, "rb") as f:
+                b = f.read()
     except FileNotFoundError:
         raise click.UsageError(f"Image file not found ({imgfile})") from None
 
