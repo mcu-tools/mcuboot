@@ -19,6 +19,8 @@
 Cryptographic key management for imgtool.
 """
 
+import base64
+
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ec import (
@@ -50,6 +52,7 @@ __all__ = [
     "X25519",
     "X25519Public",
     "X25519UsageError",
+    "AESKWKey",
 ]
 
 
@@ -58,11 +61,17 @@ class PasswordRequired(Exception):
     password was not specified."""
 
 
-def load(path, passwd=None):
+class AESKWKey:
+    def __init__(self, kek):
+        self.kek = kek
+
+
+def load(path, passwd=None, allow_aes=False):
     """Try loading a key from the given path.
       Returns None if the password wasn't specified."""
     with open(path, 'rb') as f:
         raw_pem = f.read()
+    load_error = None
     try:
         pk = serialization.load_pem_private_key(
                 raw_pem,
@@ -70,17 +79,45 @@ def load(path, passwd=None):
                 backend=default_backend())
     # Unfortunately, the crypto library raises unhelpful exceptions,
     # so we have to look at the text.
-    except TypeError as e:
-        msg = str(e)
-        if "private key is encrypted" in msg:
+    except Exception as e:
+        load_error = e
+        pk = None
+
+    if isinstance(load_error, TypeError):
+        msg = str(load_error)
+        if "private key is encrypted" in msg and passwd is None:
             return None
-        raise e
-    except ValueError:
-        # This seems to happen if the key is a public key, let's try
-        # loading it as a public key.
-        pk = serialization.load_pem_public_key(
-                raw_pem,
-                backend=default_backend())
+
+    # This seems to happen if the key is a public key, let's try
+    # loading it as a public key.
+    if isinstance(load_error, ValueError):
+        try:
+            pk = serialization.load_pem_public_key(
+                    raw_pem,
+                    backend=default_backend())
+        except Exception as e:
+            load_error = e
+            pk = None
+        else:
+            load_error = None
+
+    # Try base64 on malformed PEM
+    kek = None
+    if isinstance(load_error, ValueError) and allow_aes:
+        try:
+            kek = base64.b64decode(raw_pem.strip(), validate=True)
+        except Exception:
+            raise load_error
+
+    if kek is not None:
+        if len(kek) not in (16, 32):
+            raise Exception(
+                f"Invalid AES key length: {len(kek)} bytes. Expected 16 or 32 bytes after base64 decode."
+            )
+        return AESKWKey(kek)
+
+    if load_error is not None:
+        raise load_error
 
     if isinstance(pk, RSAPrivateKey):
         if pk.key_size not in RSA_KEY_SIZES:
