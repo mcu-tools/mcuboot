@@ -6,12 +6,31 @@
 
 #pragma once
 
-/* Default memory layout for ESP32-C2 bootloader (matches current bootloader.ld resolve) */
-#define BOOTLOADER_IRAM_SEG_START           0x403A1370
-#define BOOTLOADER_IRAM_SEG_LEN             0x8800
+/* Default memory layout for ESP32-C2 bootloader */
 
-#define BOOTLOADER_IRAM_LOADER_SEG_START    0x403A9B70
-#define BOOTLOADER_IRAM_LOADER_SEG_LEN      0x7000
+/* The offset between Dbus and Ibus.
+ * Used to convert between 0x403xxxxx and 0x3fcxxxxx addresses.
+ */
+#define IRAM_DRAM_OFFSET         0x6e0000
 
-#define BOOTLOADER_DRAM_SEG_START           0x3FCD0B70
-#define BOOTLOADER_DRAM_SEG_LEN             0xA000
+/* Note: this and subsequent addresses calculations keep retrocompatibility
+ * for standalone builds of Espressif Port.
+ * For builds integrated with the RTOS (e.g. Zephyr), they must provide their
+ * `memory.h` which must set the proper bootloader and application boundaries. */
+#define BOOTLOADER_RAM_END                  0x3FCDAB70 // Ibus: 0x403BAB70
+
+#define BOOTLOADER_IRAM_LOADER_SEG_LEN      0x2000
+#define BOOTLOADER_IRAM_LOADER_SEG_START \
+        (BOOTLOADER_RAM_END + IRAM_DRAM_OFFSET - BOOTLOADER_IRAM_LOADER_SEG_LEN)
+
+#define BOOTLOADER_DRAM_LOADER_SEG_LEN      0x1800
+#define BOOTLOADER_DRAM_LOADER_SEG_START \
+        (BOOTLOADER_IRAM_LOADER_SEG_START - IRAM_DRAM_OFFSET) - BOOTLOADER_DRAM_LOADER_SEG_LEN
+
+#define BOOTLOADER_IRAM_SEG_LEN             0xE000
+#define BOOTLOADER_IRAM_SEG_START \
+        (BOOTLOADER_DRAM_LOADER_SEG_START + IRAM_DRAM_OFFSET) - BOOTLOADER_IRAM_SEG_LEN
+
+#define BOOTLOADER_DRAM_SEG_LEN             0xB000
+#define BOOTLOADER_DRAM_SEG_START \
+        (BOOTLOADER_IRAM_SEG_START - IRAM_DRAM_OFFSET) - BOOTLOADER_DRAM_SEG_LEN
