@@ -17,8 +17,10 @@
 """
 Parse and print header, TLV area and trailer information of a signed image.
 """
+import json
 import os.path
 import struct
+import sys
 
 import click
 import yaml
@@ -78,6 +80,60 @@ def parse_boot_magic(trailer_magic):
     return magic
 
 
+def prepare_structured_data(header, tlv_area, trailer):
+    """Convert image data to JSON-serializable format with TLV type names."""
+
+    # Convert header (handle bytes if any)
+    header_data = {}
+    for key, value in header.items():
+        if isinstance(value, bytes):
+            header_data[key] = value.hex()
+        else:
+            header_data[key] = value
+
+    # Convert TLV area with type names
+    tlv_area_data = {
+        "tlv_hdr_prot": tlv_area["tlv_hdr_prot"].copy(),
+        "tlvs_prot": [],
+        "tlv_hdr": tlv_area["tlv_hdr"].copy(),
+        "tlvs": []
+    }
+
+    for tlv in tlv_area["tlvs_prot"]:
+        tlv_type = tlv["type"]
+        tlv_data = {
+            "type": tlv_type,
+            "type_name": TLV_TYPES.get(tlv_type, "UNKNOWN"),
+            "len": tlv["len"],
+            "data": tlv["data"].hex()
+        }
+        tlv_area_data["tlvs_prot"].append(tlv_data)
+
+    for tlv in tlv_area["tlvs"]:
+        tlv_type = tlv["type"]
+        tlv_data = {
+            "type": tlv_type,
+            "type_name": TLV_TYPES.get(tlv_type, "UNKNOWN"),
+            "len": tlv["len"],
+            "data": tlv["data"].hex()
+        }
+        tlv_area_data["tlvs"].append(tlv_data)
+
+    # Convert trailer (handle bytes)
+    trailer_data = {}
+    for key, value in trailer.items():
+        if isinstance(value, bytes):
+            trailer_data[key] = value.hex()
+        else:
+            trailer_data[key] = value
+
+    return {
+        "header": header_data,
+        "tlv_area": tlv_area_data,
+        "trailer": trailer_data
+    }
+
+
 def print_in_frame(header_text, content):
     sepc = " "
     header = "#### " + header_text + sepc
@@ -120,7 +176,7 @@ def print_tlv_records(tlv_list):
         print()
 
 
-def dump_imginfo(imgfile, outfile=None, silent=False):
+def dump_imginfo(imgfile, outfile=None, output_format=None, silent=False):
     """Parse a signed image binary and print/save the available information."""
     trailer_magic = None
     #   set to INVALID by default
@@ -130,6 +186,13 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
     image_ok = 0x99
     trailer = {}
     key_field_len = None
+
+    # Determine output format based on backward compatibility rules
+    if output_format is None:
+        if outfile is not None:
+            output_format = 'yaml'  # --outfile without --format defaults to yaml
+        else:
+            output_format = 'human'  # no --outfile defaults to human-friendly
 
     try:
         with open(imgfile, "rb") as f:
@@ -241,14 +304,26 @@ def dump_imginfo(imgfile, outfile=None, silent=False):
                 #    BOOT_SWAP_SAVE_ENCTLV is unset
                 key_field_len = image.align_up(16, max_align) * 2
 
-    # Generating output yaml file
-    if outfile is not None:
-        imgdata = {"header": header,
-                   "tlv_area": tlv_area,
-                   "trailer": trailer}
-        with open(outfile, "w") as outf:
-            # sort_keys - from pyyaml 5.1
-            yaml.dump(imgdata, outf, sort_keys=False)
+    # Prepare data for structured output (YAML/JSON)
+    imgdata = prepare_structured_data(header, tlv_area, trailer)
+
+    # Handle output based on format
+    if output_format in ['yaml', 'json']:
+        output_dest = outfile if outfile else sys.stdout
+        if output_format == 'yaml':
+            if outfile:
+                with open(outfile, "w") as outf:
+                    yaml.dump(imgdata, outf, sort_keys=False)
+            else:
+                yaml.dump(imgdata, sys.stdout, sort_keys=False)
+        elif output_format == 'json':
+            if outfile:
+                with open(outfile, "w") as outf:
+                    json.dump(imgdata, outf, indent=2)
+            else:
+                json.dump(imgdata, sys.stdout, indent=2)
+                print()  # Add newline after JSON output
+        return
 
     ###############################################################################
 
