@@ -10,11 +10,13 @@
  * without overwriting itself.
  */
 
+#include "memory.h"
+
 MEMORY
 {
-  iram_seg (RWX) :                  org = 0x40047000, len = 0x9000
-  iram_loader_seg (RWX) :           org = 0x40050000, len = 0x6000
-  dram_seg (RW) :                   org = 0x3FFE6000, len = 0x9A00
+  iram_seg (RWX) :                  org = BOOTLOADER_IRAM_SEG_START, len = BOOTLOADER_IRAM_SEG_LEN
+  iram_loader_seg (RWX) :           org = BOOTLOADER_IRAM_LOADER_SEG_START, len = BOOTLOADER_IRAM_LOADER_SEG_LEN
+  dram_seg (RW) :                   org = BOOTLOADER_DRAM_SEG_START, len = BOOTLOADER_DRAM_SEG_LEN
 }
 
 /*  Default entry point:  */
