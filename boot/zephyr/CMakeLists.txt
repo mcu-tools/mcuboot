@@ -424,11 +424,11 @@ function(align_up num align result)
   set(${result} "${out}" PARENT_SCOPE)
 endfunction()
 
-function(dt_get_parent node)
-  string(FIND "${${node}}" "/" pos REVERSE)
+function(dt_get_flash_device node)
+  string(FIND "${${node}}" "/partitions" pos)
 
   if(pos EQUAL -1)
-    message(FATAL_ERROR "Unable to get parent of node: ${${node}}")
+    message(FATAL_ERROR "Cannot find partitions node in node: ${${node}}")
   endif()
 
   string(SUBSTRING "${${node}}" 0 ${pos} ${node})
@@ -437,8 +437,7 @@ endfunction()
 
 dt_nodelabel(slot0_flash NODELABEL "slot0_partition" REQUIRED)
 dt_prop(slot0_size PATH "${slot0_flash}" PROPERTY "reg" INDEX 1)
-dt_get_parent(slot0_flash)
-dt_get_parent(slot0_flash)
+dt_get_flash_device(slot0_flash)
 dt_prop(erase_size_slot0 PATH "${slot0_flash}" PROPERTY "erase-block-size")
 dt_prop(write_size_slot0 PATH "${slot0_flash}" PROPERTY "write-block-size")
 
@@ -455,8 +454,7 @@ endif()
 if(NOT CONFIG_SINGLE_APPLICATION_SLOT AND NOT CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
   dt_nodelabel(slot1_flash NODELABEL "slot1_partition" REQUIRED)
   dt_prop(slot1_size PATH "${slot1_flash}" PROPERTY "reg" INDEX 1)
-  dt_get_parent(slot1_flash)
-  dt_get_parent(slot1_flash)
+  dt_get_flash_device(slot1_flash)
   dt_prop(erase_size_slot1 PATH "${slot1_flash}" PROPERTY "erase-block-size")
   dt_prop(write_size_slot1 PATH "${slot1_flash}" PROPERTY "write-block-size")
 
@@ -514,13 +512,11 @@ if(SYSBUILD)
   if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_BOOT_FIRMWARE_LOADER OR CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET OR CONFIG_BOOT_UPGRADE_ONLY OR CONFIG_BOOT_DIRECT_XIP OR CONFIG_BOOT_RAM_LOAD)
     # TODO: RAM LOAD support
     dt_nodelabel(slot0_flash NODELABEL "slot0_partition" REQUIRED)
-    dt_get_parent(slot0_flash)
-    dt_get_parent(slot0_flash)
+    dt_get_flash_device(slot0_flash)
 
     if(NOT CONFIG_SINGLE_APPLICATION_SLOT)
       dt_nodelabel(slot1_flash NODELABEL "slot1_partition" REQUIRED)
-      dt_get_parent(slot1_flash)
-      dt_get_parent(slot1_flash)
+      dt_get_flash_device(slot1_flash)
 
       if(NOT "${slot0_flash}" STREQUAL "${slot1_flash}")
         # Check both slots for the one with the largest write/erase block size
