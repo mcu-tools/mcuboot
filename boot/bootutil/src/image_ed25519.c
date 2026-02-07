@@ -13,7 +13,7 @@
 #ifdef MCUBOOT_SIGN_ED25519
 #include "bootutil/sign_key.h"
 
-#if !defined(MCUBOOT_KEY_IMPORT_BYPASS_ASN)
+#if !defined(MCUBOOT_BUILTIN_KEY) && !defined(MCUBOOT_KEY_IMPORT_BYPASS_ASN)
 /* We are not really using the MBEDTLS but need the ASN.1 parsing functions */
 #define MBEDTLS_ASN1_PARSE_C
 #include "mbedtls/oid.h"
@@ -34,7 +34,7 @@ extern int ED25519_verify(const uint8_t *message, size_t message_len,
                           const uint8_t signature[EDDSA_SIGNATURE_LENGTH],
                           const uint8_t public_key[NUM_ED25519_BYTES]);
 
-#if !defined(MCUBOOT_KEY_IMPORT_BYPASS_ASN)
+#if !defined(MCUBOOT_BUILTIN_KEY) && !defined(MCUBOOT_KEY_IMPORT_BYPASS_ASN)
 /*
  * Parse the public key used for signing.
  */
@@ -90,7 +90,10 @@ bootutil_verify_sig(uint8_t *msg, uint32_t mlen, uint8_t *sig, size_t slen,
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
     uint8_t *pubkey;
+
+#if !defined(MCUBOOT_BUILTIN_KEY)
     uint8_t *end;
+#endif
 
     BOOT_LOG_DBG("bootutil_verify_sig: ED25519 key_id %d", (int)key_id);
 
@@ -109,6 +112,7 @@ bootutil_verify_sig(uint8_t *msg, uint32_t mlen, uint8_t *sig, size_t slen,
         goto out;
     }
 
+#if !defined(MCUBOOT_BUILTIN_KEY)
     pubkey = (uint8_t *)bootutil_keys[key_id].key;
     end = pubkey + *bootutil_keys[key_id].len;
 
@@ -132,6 +136,7 @@ bootutil_verify_sig(uint8_t *msg, uint32_t mlen, uint8_t *sig, size_t slen,
     }
 
     pubkey = end - NUM_ED25519_BYTES;
+#endif
 #endif
 
     rc = ED25519_verify(msg, mlen, sig, pubkey);
