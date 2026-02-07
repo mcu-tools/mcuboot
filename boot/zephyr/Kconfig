@@ -405,6 +405,7 @@ config BOOT_SIGNATURE_KEY_FILE
 	default "root-rsa-3072.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=3072
 	default "root-rsa-2048.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=2048
 	default ""
+	depends on !BOOT_BUILTIN_KEY
 	help
 	  You can use either absolute or relative path.
 	  In case relative path is used, the build system assumes that it starts
@@ -461,6 +462,11 @@ config BOOT_HW_KEY
 	  in MCUBoot. If enabled the public key is appended to the signed image
 	  and requires the hash of the public key to be provisioned to the device
 	  beforehand.
+
+config BOOT_BUILTIN_KEY
+	bool "Use built-in key for image verification"
+	help
+	  Use built-in key for image verification, otherwise the public key is embedded in MCUBoot.
 
 config BOOT_VALIDATE_SLOT0
 	bool "Validate image in the primary slot on every boot"
