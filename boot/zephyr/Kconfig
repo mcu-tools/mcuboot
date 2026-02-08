@@ -358,7 +358,6 @@ config BOOT_ED25519_MBEDTLS
 
 config BOOT_ED25519_PSA
 	bool "Use PSA crypto"
-	select MBEDTLS
 	select BOOT_USE_PSA_CRYPTO
 	select PSA_CRYPTO_CLIENT
 	select PSA_CRYPTO_C
@@ -384,6 +383,32 @@ endif
 
 endchoice
 
+if BOOT_USE_PSA_CRYPTO
+
+config BOOT_HAS_PSA_CRYPTO_BACKEND_EXTERNAL
+	bool
+	help
+	  Hidden option which can be set by external modules if an external PSA crypto backend is
+	  supported which does not require mbedTLS.
+
+choice BOOT_PSA_CRYPTO_BACKEND
+	prompt "PSA crypto backend"
+	default BOOT_PSA_CRYPTO_BACKEND_MBEDTLS if !BOOT_HAS_PSA_CRYPTO_BACKEND_EXTERNAL
+	help
+	  Selects which backend should be used for the PSA crypto implementation. Defaults to
+	  mbedTLS if no external library is enabled.
+
+config BOOT_PSA_CRYPTO_BACKEND_EXTERNAL
+	bool "External"
+	depends on BOOT_HAS_PSA_CRYPTO_BACKEND_EXTERNAL
+
+config BOOT_PSA_CRYPTO_BACKEND_MBEDTLS
+	bool "mbedTLS"
+
+endchoice
+
+endif # BOOT_USE_PSA_CRYPTO
+
 config BOOT_BYPASS_KEY_MATCH
 	bool "Do not match TLV key hash against built in key"
 	depends on !BOOT_SIGNATURE_TYPE_NONE
@@ -405,6 +430,7 @@ config BOOT_SIGNATURE_KEY_FILE
 	default "root-rsa-3072.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=3072
 	default "root-rsa-2048.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=2048
 	default ""
+	depends on !BOOT_BUILTIN_KEY
 	help
 	  You can use either absolute or relative path.
 	  In case relative path is used, the build system assumes that it starts
@@ -461,6 +487,11 @@ config BOOT_HW_KEY
 	  in MCUBoot. If enabled the public key is appended to the signed image
 	  and requires the hash of the public key to be provisioned to the device
 	  beforehand.
+
+config BOOT_BUILTIN_KEY
+	bool "Use built-in key for image verification"
+	help
+	  Use built-in key for image verification, otherwise the public key is embedded in MCUBoot.
 
 config BOOT_VALIDATE_SLOT0
 	bool "Validate image in the primary slot on every boot"
