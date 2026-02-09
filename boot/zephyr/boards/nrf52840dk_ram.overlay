@@ -27,7 +27,6 @@
 		flash_controller2: flash-controller@2 {
 			compatible = "zephyr,sim-flash";
 			reg = <0x00000000 DT_SIZE_K(40)>;
-
 			#address-cells = <1>;
 			#size-cells = <1>;
 			erase-value = <0xff>;
@@ -38,11 +37,15 @@
 				erase-block-size = <4096>;
 				write-block-size = <1>;
 				reg = <0x00000000 DT_SIZE_K(40)>;
+				ranges = <0x0 0x00000000 DT_SIZE_K(40)>;
+				#address-cells = <1>;
+				#size-cells = <1>;
 
 				partitions {
 					compatible = "fixed-partitions";
 					#address-cells = <1>;
 					#size-cells = <1>;
+					ranges;
 
 					slot1_partition: partition@0 {
 						label = "image-1";
