@@ -1,4 +1,4 @@
-# Copyright (c) 2020 Arm Limited
+# Copyright (c) 2020-2025 Arm Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:jammy
+FROM ubuntu:plucky
 
 # Get dependencies for retrieving and building TF-M with MCUBoot, and QEMU.
 RUN apt-get update && \
@@ -23,23 +23,29 @@ RUN apt-get update && \
     gcc-arm-none-eabi \
     gdb-multiarch \
     git \
-    libncurses5 \
+    libncurses6 \
     python3 \
     python3-pip \
+    python3-venv \
     qemu-system-arm \
     file &&\
     apt-get clean all
 
-# Installing python packages
-RUN python3 -m pip install \
+# Add tfm work directory
+WORKDIR /root/work
+
+# Get rid of spurious git ownership errors
+RUN git config --global --add safe.directory '*'
+
+# Create Python virtual environment since PEP 668 protection is present
+RUN python3 -m venv .venv
+
+# Activate Python environment and install Python packages
+RUN . .venv/bin/activate && python3 -m pip install \
     imgtool>=1.9.0 \
     Jinja2>=2.10.3 \
     PyYAML \
     pyasn1
-
-# Add tfm work directory && get rid of spurious git ownership errors
-RUN mkdir -p /root/work/tfm &&\
-    git config --global --add safe.directory '*'
 
 # run the command
 CMD ["bash"]
