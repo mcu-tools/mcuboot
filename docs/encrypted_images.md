@@ -176,7 +176,8 @@ To extract the public key in source file form, use
 format, use `imgtool getpub -k <input.pem> -e pem`.
 
 If using AES-KW, follow the steps in the next section to generate the
-required keys.
+required keys. The base64-encoded KEK can be passed to `imgtool sign`
+via the `--encrypt` option.
 
 ## [Creating your keys with Unix tooling](#creating-your-keys-with-unix-tooling)
 
@@ -187,6 +188,6 @@ required keys.
 * If using ECIES-X25519, generate a private key passing the option `-t x25519`
   to `imgtool keygen` command. To generate public key PEM file the following
   command can be used: `openssl pkey -in <generated-private-key.pem> -pubout`
-* If using AES-KW (`newt` only), the `kek` can be generated with a
+* If using AES-KW, the `kek` can be generated with a
   command like (change count to 32 for a 256 bit key)
   `dd if=/dev/urandom bs=1 count=16 | base64 > my_kek.b64`
