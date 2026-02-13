@@ -59,6 +59,7 @@ zephyr_include_directories(include)
 if(DEFINED CONFIG_MBEDTLS)
   zephyr_include_directories(
     ${ZEPHYR_MBEDTLS_MODULE_DIR}/include
+    ${ZEPHYR_MBEDTLS_MODULE_DIR}/library
   )
 endif()
 
