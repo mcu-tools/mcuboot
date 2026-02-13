@@ -250,15 +250,16 @@ def verify(key, imgfile):
 
 @click.argument('imgfile')
 @click.option('-o', '--outfile', metavar='filename', required=False,
-              help='Save image information to outfile in YAML format')
+              help='Save image information to outfile')
+@click.option('-f', '--format', 'output_format',
+              type=click.Choice(['human', 'yaml', 'json']),
+              help='Output format (human, yaml, json). Default: human for stdout, yaml for file')
 @click.option('-s', '--silent', default=False, is_flag=True,
               help='Do not print image information to output')
 @click.command(help='Print header, TLV area and trailer information '
                     'of a signed image')
-def dumpinfo(imgfile, outfile, silent):
-    dump_imginfo(imgfile, outfile, silent)
-    if not silent:
-        print("dumpinfo has run successfully")
+def dumpinfo(imgfile, outfile, output_format, silent):
+    dump_imginfo(imgfile, outfile, output_format, silent)
 
 
 def validate_version(ctx, param, value):
