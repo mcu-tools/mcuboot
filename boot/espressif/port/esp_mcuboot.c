@@ -339,8 +339,10 @@ static bool aligned_flash_erase(size_t addr, size_t size)
     const size_t sector_size = FLASH_SECTOR_SIZE;
     const size_t start_addr = ALIGN_DOWN(addr, sector_size);
     const size_t end_addr = ALIGN_UP(addr + size, sector_size);
-    const size_t total_len = end_addr - start_addr;
 
+#if MCUBOOT_LOG_LEVEL >= MCUBOOT_LOG_LEVEL_DEBUG
+    const size_t total_len = end_addr - start_addr;
+#endif
     BOOT_LOG_DBG("%s: forcing unaligned erase on sector Offset: 0x%08x Length: 0x%x total_len: 0x%x",
                 __func__, (uint32_t)addr, (int)size, total_len);
 
