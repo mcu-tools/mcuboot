@@ -179,7 +179,10 @@ def _read_imginfo(imgfile):
             tlv_off += image.TLV_INFO_SIZE
             tlv_data = b[tlv_off:(tlv_off + tlv_len)]
             tlv_area["tlvs_prot"].append(
-                {"type": tlv_type, "len": tlv_len, "data": tlv_data})
+                {"type": tlv_type,
+                 "type_name": TLV_TYPES.get(tlv_type, "UNKNOWN"),
+                 "len": tlv_len,
+                 "data": tlv_data})
             tlv_off += tlv_len
 
     _tlv_head = struct.unpack('HH', b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
@@ -197,7 +200,8 @@ def _read_imginfo(imgfile):
         tlv_off += image.TLV_INFO_SIZE
         tlv_data = b[tlv_off:(tlv_off + tlv_len)]
         tlv_area["tlvs"].append(
-            {"type": tlv_type, "len": tlv_len, "data": tlv_data})
+            {"type": tlv_type, "type_name": TLV_TYPES.get(tlv_type, "UNKNOWN"),
+             "len": tlv_len, "data": tlv_data})
         tlv_off += tlv_len
 
     _img_pad_size = len(b) - tlv_end
