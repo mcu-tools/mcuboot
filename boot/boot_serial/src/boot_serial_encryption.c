@@ -111,7 +111,7 @@ done:
  * @return                      0 on success; nonzero on failure.
  */
 static int
-decrypt_region_inplace(struct enc_data *enc_data,
+decrypt_region_inplace(struct enc_key_data *enc_data,
                        const struct flash_area *fap,
                        struct image_header *hdr,
                        uint32_t off, uint32_t sz)
@@ -262,7 +262,7 @@ decrypt_image_inplace(const struct flash_area *fa_p,
     sect_size = sector.fs_size;
     sect_count = fa_p->fa_size / sect_size;
     for (sect = 0, size = 0; size < src_size && sect < sect_count; sect++) {
-        rc = decrypt_region_inplace(enc_data, fa_p, hdr, size, sect_size);
+        rc = decrypt_region_inplace(&enc_data, fa_p, hdr, size, sect_size);
         if (rc != 0) {
             FIH_RET(fih_rc);
         }
@@ -271,8 +271,8 @@ decrypt_image_inplace(const struct flash_area *fa_p,
 
     fih_rc = FIH_SUCCESS;
 total_out:
-    boot_enc_zeorize(&enc_data);
-    boot_state_clear(&state);
+    boot_enc_zeroize(&enc_data);
+    boot_state_clear(state);
     FIH_RET(fih_rc);
 }
 
