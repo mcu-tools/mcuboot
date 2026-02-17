@@ -98,13 +98,13 @@ def save_signature(sigfile, sig):
         f.write(signature)
 
 
-def load_key(keyfile):
+def load_key(keyfile, allow_aes=False):
     # TODO: better handling of invalid pass-phrase
-    key = keys.load(keyfile)
+    key = keys.load(keyfile, allow_aes=allow_aes)
     if key is not None:
         return key
     passwd = getpass.getpass("Enter key passphrase: ").encode('utf-8')
-    return keys.load(keyfile, passwd)
+    return keys.load(keyfile, passwd, allow_aes=allow_aes)
 
 
 def get_password():
@@ -473,16 +473,18 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     compression_tlvs = {}
     img.load(infile)
     key = load_key(key) if key else None
-    enckey = load_key(encrypt) if encrypt else None
-    if enckey and key and ((isinstance(key, keys.ECDSA256P1) and
-         not isinstance(enckey, keys.ECDSA256P1Public))
-       or (isinstance(key, keys.ECDSA384P1) and
-           not isinstance(enckey, keys.ECDSA384P1Public))
+    enckey = load_key(encrypt, allow_aes=True) if encrypt else None
+    if enckey and key and not isinstance(enckey, keys.AESKWKey):
+        if ((isinstance(key, keys.ECDSA256P1) and
+             not isinstance(enckey, keys.ECDSA256P1Public))
+            or (isinstance(key, keys.ECDSA384P1) and
+                not isinstance(enckey, keys.ECDSA384P1Public))
             or (isinstance(key, keys.RSA) and
-                not isinstance(enckey, keys.RSAPublic))):
-        # FIXME
-        raise click.UsageError("Signing and encryption must use the same "
-                               "type of key")
+                not isinstance(enckey, keys.RSAPublic))
+        ):
+            # FIXME
+            raise click.UsageError("Signing and encryption must use the same "
+                                   "type of key")
 
     if pad_sig and hasattr(key, 'pad_sig'):
         key.pad_sig = True
