@@ -646,6 +646,13 @@ boot_enc_set_key(struct enc_key_data *enc_state, const uint8_t *key)
 {
     int rc;
 
+    /* This should not be in production code; there should be no path
+     * where we set the key twice, without dropping the context first.
+     */
+    if (enc_state->valid == 1) {
+        BOOT_LOG_DBG("boot_enc_set_key: key allready set (%p)", enc_state);
+        return -2;
+    }
     rc = bootutil_aes_ctr_set_key(&enc_state->aes_ctr, key);
     if (rc != 0) {
         boot_enc_drop(enc_state);
