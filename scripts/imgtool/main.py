@@ -20,6 +20,7 @@
 import base64
 import getpass
 import lzma
+import os
 import re
 import struct
 import sys
@@ -322,6 +323,14 @@ def create_lzma2_header(dictsize, pb, lc, lp):
     header.append( ( pb * 5 + lp) * 9 + lc)
     return header
 
+def match_sig_enc_key(skey, ekey):
+    ok = ((isinstance(skey, keys.ECDSA256P1) and isinstance(ekey, keys.ECDSA256P1Public)) or
+          (isinstance(skey, keys.ECDSA384P1) and isinstance(ekey, keys.ECDSA384P1Public)) or
+          (isinstance(skey, keys.RSA) and isinstance(ekey, keys.RSAPublic))
+    )
+
+    return ok
+
 class BasedIntParamType(click.ParamType):
     name = 'integer'
 
@@ -450,13 +459,17 @@ class BasedIntParamType(click.ParamType):
               help='Unique vendor identifier, format: (<raw_uuid>|<domain_name)>')
 @click.option('--cid', default=None, required=False,
               help='Unique image class identifier, format: (<raw_uuid>|<image_class_name>)')
-def sign(key, public_key_format, align, version, pad_sig, header_size,
+@click.option('--aes-key', default=None, required=False,
+              help='String representing raw AES key, format: hex byte string of 32 or 64'
+                   'hexadecimal characters')
+@click.pass_context
+def sign(ctx, key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, test, max_sectors, overwrite_only,
          endian, encrypt_keylen, encrypt, compression, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, rom_fixed, max_align,
          clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, hmac_sha, is_pure,
-         vector_to_sign, non_bootable, vid, cid):
+         vector_to_sign, non_bootable, vid, cid, aes_key):
 
     if confirm or test:
         # Confirmed but non-padded images don't make much sense, because
@@ -473,16 +486,23 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     compression_tlvs = {}
     img.load(infile)
     key = load_key(key) if key else None
-    enckey = load_key(encrypt) if encrypt else None
-    if enckey and key and ((isinstance(key, keys.ECDSA256P1) and
-         not isinstance(enckey, keys.ECDSA256P1Public))
-       or (isinstance(key, keys.ECDSA384P1) and
-           not isinstance(enckey, keys.ECDSA384P1Public))
-            or (isinstance(key, keys.RSA) and
-                not isinstance(enckey, keys.RSAPublic))):
-        # FIXME
-        raise click.UsageError("Signing and encryption must use the same "
-                               "type of key")
+    enckey = None
+    if not aes_key:
+        enckey = load_key(encrypt) if encrypt else None
+        if enckey and not match_sig_enc_key(key, enckey):
+            # FIXME
+            raise click.UsageError("Signing and encryption must use the same "
+                                   "type of key")
+    else:
+       if encrypt:
+           encrypt = None
+           print('Raw AES key overrides --key, there will be no encrypted key added to the image')
+       if clear:
+           clear = False
+           print('Raw AES key overrides --clear, image will be encrypted')
+       if ctx.get_parameter_source('encrypt_keylen') != click.core.ParameterSource.DEFAULT:
+           print('Raw AES key len overrides --encrypt-keylen')
+
 
     if pad_sig and hasattr(key, 'pad_sig'):
         key.pad_sig = True
@@ -527,9 +547,20 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             'Pure signatures, currently, enforces preferred hash algorithm, '
             'and forbids sha selection by user.')
 
+    aes_raw_key = None
+    if aes_key:
+        # Converting the command line provided raw AES key to byte array.
+        aes_raw_key = bytes.fromhex(aes_key)
+        aes_raw_key_len = len(aes_raw_key)
+        if aes_raw_key_len not in (16, 32):
+            raise click.UsageError("Provided keylen, {int(aes_raw_key_len)} in bytes, "
+                                   "not supported")
+    elif enckey:
+        aes_raw_key = os.urandom(int(int(encrypt_keylen) / 8))
+
     if compression in ["lzma2", "lzma2armthumb"]:
-        img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
+        img.create2(key, public_key_format, enckey, dependencies, boot_record,
+               custom_tlvs, compression_tlvs, None, aes_raw_key, clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
                hmac_sha=hmac_sha, is_pure=is_pure, keep_comp_size=False, dont_encrypt=True)
         compressed_img = image.Image(version=decode_version(version),
@@ -573,15 +604,15 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             keep_comp_size = False
             if enckey:
                 keep_comp_size = True
-            compressed_img.create(key, public_key_format, enckey,
+            compressed_img.create2(key, public_key_format, enckey,
                dependencies, boot_record, custom_tlvs, compression_tlvs,
-               compression, int(encrypt_keylen), clear, baked_signature,
+               compression, aes_raw_key, clear, baked_signature,
                pub_key, vector_to_sign, user_sha=user_sha, hmac_sha=hmac_sha,
                is_pure=is_pure, keep_comp_size=keep_comp_size)
             img = compressed_img
     else:
-        img.create(key, public_key_format, enckey, dependencies, boot_record,
-               custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
+        img.create2(key, public_key_format, enckey, dependencies, boot_record,
+               custom_tlvs, compression_tlvs, None, aes_raw_key, clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
                hmac_sha=hmac_sha, is_pure=is_pure)
     img.save(outfile, hex_addr)
