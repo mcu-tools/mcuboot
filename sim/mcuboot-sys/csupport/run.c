@@ -254,7 +254,8 @@ int invoke_boot_go(struct sim_context *ctx, struct area_desc *adesc,
 #if defined(MCUBOOT_SIGN_RSA) || \
     (defined(MCUBOOT_SIGN_EC256) && defined(MCUBOOT_USE_MBED_TLS)) ||\
     (defined(MCUBOOT_ENCRYPT_EC256) && defined(MCUBOOT_USE_MBED_TLS)) ||\
-    (defined(MCUBOOT_ENCRYPT_X25519) && defined(MCUBOOT_USE_MBED_TLS))
+    (defined(MCUBOOT_ENCRYPT_X25519) && defined(MCUBOOT_USE_MBED_TLS)) ||\
+    (defined(MCUBOOT_ENCRYPT_KW) && defined(MCUBOOT_USE_MBED_TLS))
     mbedtls_platform_set_calloc_free(calloc, free);
 #endif
 
@@ -302,7 +303,8 @@ int invoke_boot_load_image_from_flash_to_sram(struct sim_context *ctx, struct ar
 #if defined(MCUBOOT_SIGN_RSA) || \
     (defined(MCUBOOT_SIGN_EC256) && defined(MCUBOOT_USE_MBED_TLS)) ||\
     (defined(MCUBOOT_ENCRYPT_EC256) && defined(MCUBOOT_USE_MBED_TLS)) ||\
-    (defined(MCUBOOT_ENCRYPT_X25519) && defined(MCUBOOT_USE_MBED_TLS))
+    (defined(MCUBOOT_ENCRYPT_X25519) && defined(MCUBOOT_USE_MBED_TLS)) ||\
+    (defined(MCUBOOT_ENCRYPT_KW) && defined(MCUBOOT_USE_MBED_TLS))
     mbedtls_platform_set_calloc_free(calloc, free);
 #endif
 
