@@ -40,6 +40,10 @@
        (0 or above)
 #endif
 
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+#include "usbd_cdc_serial.h"
+#endif
+
 BOOT_LOG_MODULE_REGISTER(serial_adapter);
 
 /** @brief Console input representation
@@ -213,27 +217,9 @@ boot_uart_fifo_init(void)
 	uart_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
 #endif
 
-#elif defined(CONFIG_BOOT_SERIAL_CDC_ACM)
-        uart_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
-#else
-#error No serial recovery device selected
-#endif
-
-
 	if (!device_is_ready(uart_dev)) {
 		return (-1);
 	}
-
-#if CONFIG_BOOT_SERIAL_CDC_ACM
-	struct usbd_context *uds_ctx;
-	int rc;
-
-	STRUCT_SECTION_GET(usbd_context, 0, &uds_ctx);
-	rc = usbd_enable(uds_ctx);
-	if (rc) {
-		return (-1);
-	}
-#endif
 
 	uart_irq_callback_set(uart_dev, boot_uart_fifo_callback);
 
@@ -249,6 +235,37 @@ boot_uart_fifo_init(void)
 	cur = 0;
 
 	uart_irq_rx_enable(uart_dev);
+
+#elif defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+
+	struct usbd_context *uds_ctx;
+	int rc;
+
+	rc = boot_usb_cdc_serial_init();
+	if (rc) {
+		return (-1);
+	}
+
+	STRUCT_SECTION_GET(usbd_context, 0, &uds_ctx);
+	rc = usbd_enable(uds_ctx);
+	if (rc) {
+		return (-1);
+	}
+
+	k_sem_take(&boot_cdc_acm_ready, K_FOREVER);
+
+	uart_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
+	if (!device_is_ready(uart_dev)) {
+		return (-1);
+	}
+
+	uart_irq_callback_set(uart_dev, boot_uart_fifo_callback);
+	cur = 0;
+	uart_irq_rx_enable(uart_dev);
+
+#else
+#error No serial recovery device selected
+#endif
 
 	return 0;
 }

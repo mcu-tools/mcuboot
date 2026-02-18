@@ -90,6 +90,10 @@ const struct boot_uart_funcs boot_funcs = {
 #include <zephyr/usb/class/usb_dfu.h>
 #endif
 
+#ifdef CONFIG_BOOT_SERIAL_CDC_ACM
+#include <zephyr/usb/usbd.h>
+#endif /* CONFIG_BOOT_SERIAL_CDC_ACM */
+
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
 #include <arm_cleanup.h>
 #endif
@@ -183,6 +187,23 @@ static void do_boot(struct boot_rsp *rsp)
 #ifdef CONFIG_USB_DEVICE_STACK
     /* Disable the USB to prevent it from firing interrupts */
     usb_disable();
+#endif
+#ifdef CONFIG_USB_DEVICE_STACK_NEXT
+	{
+		struct usbd_context *uds_ctx;
+		int usbd_rc;
+
+		STRUCT_SECTION_GET(usbd_context, 0, &uds_ctx);
+		usbd_rc = usbd_disable(uds_ctx);
+
+		/* -EALREADY is expected on normal boot: USB was never enabled
+		 * (lazy init -- only initialized when recovery is triggered).
+		 * Any other error indicates a real problem.
+		 */
+		if (usbd_rc != 0 && usbd_rc != -EALREADY) {
+			BOOT_LOG_WRN("USB disable failed: %d", usbd_rc);
+		}
+	}
 #endif
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     cleanup_arm_interrupts(); /* Disable and acknowledge all interrupts */

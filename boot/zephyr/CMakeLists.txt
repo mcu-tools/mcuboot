@@ -336,6 +336,10 @@ if(CONFIG_MCUBOOT_SERIAL)
       ${BOOT_DIR}/boot_serial/src/boot_serial_encryption.c
     )
   endif()
+
+  if(CONFIG_BOOT_SERIAL_CDC_ACM)
+    zephyr_sources(usbd_cdc_serial.c)
+  endif()
 endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
