@@ -470,12 +470,15 @@ void boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
 
 void zephyr_boot_log_start(void)
 {
-    /* start logging thread */
+    /* start logging thread immediately — the 30ms polling interval is only
+     * used between processing rounds, not as a startup delay. On fast boots
+     * (no swap), a 30ms delay costs most of the available SWO output window.
+     */
     k_thread_create(&boot_log_thread, boot_log_stack,
                     K_THREAD_STACK_SIZEOF(boot_log_stack),
                     boot_log_thread_func, NULL, NULL, NULL,
                     K_HIGHEST_APPLICATION_THREAD_PRIO, 0,
-                    BOOT_LOG_PROCESSING_INTERVAL);
+                    K_NO_WAIT);
 
     k_thread_name_set(&boot_log_thread, "logging");
 }
@@ -483,6 +486,12 @@ void zephyr_boot_log_start(void)
 void zephyr_boot_log_stop(void)
 {
     boot_log_stop = true;
+
+    /* Wake the logging thread immediately if it's in k_sleep().
+     * Without this, the thread may sit idle for up to 30ms before
+     * it notices boot_log_stop and drains the final messages.
+     */
+    k_wakeup(&boot_log_thread);
 
     /* wait until log procesing thread expired
      * This can be reworked using a thread_join() API once a such will be
@@ -697,6 +706,22 @@ int main(void)
     mcuboot_status_change(MCUBOOT_STATUS_BOOTABLE_IMAGE_FOUND);
 
     ZEPHYR_BOOT_LOG_STOP();
+
+#if defined(CONFIG_LOG_BACKEND_SWO)
+    /* Wait for ITM to finish transmitting before jumping to app.
+     * ZEPHYR_BOOT_LOG_STOP drains the log buffer to the ITM FIFO,
+     * but the TPIU may still be clocking out bytes on the SWO pin.
+     * Without this, the app reinitializes ITM and discards in-flight data.
+     */
+    while (ITM->TCR & ITM_TCR_BUSY_Msk) {
+    }
+    /* ITM BUSY only means the formatter is done — the TPIU output buffer
+     * still needs time to clock bytes out at the SWO baud rate.
+     * At 4 MHz NRZ, ~200 bytes (a few log lines) takes ~500 µs.
+     */
+    k_busy_wait(1000);
+#endif
+
     do_boot(&rsp);
 
     mcuboot_status_change(MCUBOOT_STATUS_BOOT_FAILED);
