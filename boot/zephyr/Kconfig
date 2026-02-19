@@ -463,6 +463,7 @@ config MCUBOOT_CLEANUP_ARM_CORE
 config MCUBOOT_CLEANUP_RAM
 	bool "Perform RAM cleanup"
 	depends on CPU_CORTEX_M4 || CPU_CORTEX_M33
+	default y
 	help
 	  Sets contents of memory to 0 before jumping to application.
 
