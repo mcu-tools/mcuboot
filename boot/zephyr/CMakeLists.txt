@@ -311,6 +311,10 @@ if(CONFIG_MCUBOOT_SERIAL)
       zephyr_sources(boot_serial_extension_zephyr_basic.c)
     endif()
   endif()
+
+  if(CONFIG_BOOT_SERIAL_CDC_ACM)
+    zephyr_sources(usbd_cdc_serial.c)
+  endif()
 endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_TYPE_NONE AND NOT CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Nordic Semiconductor ASA
+ * Copyright (c) 2026 Tolt Technologies
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -14,25 +14,19 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
-		boot_partition: partition@0 {
+		boot_partition: partition@1000 {
 			label = "mcuboot";
-			reg = <0x000000000 0x00012000>;
+			reg = <0x00001000 0x00010000>;
 		};
 
-		slot0_partition: partition@12000 {
+		slot0_partition: partition@11000 {
 			label = "image-0";
-			reg = <0x000012000 0x000073000>;
+			reg = <0x00011000 0x00065000>;
 		};
 
-		slot1_partition: partition@85000 {
+		slot1_partition: partition@76000 {
 			label = "image-1";
-			reg = <0x00085000 0x000073000>;
+			reg = <0x00076000 0x00065000>;
 		};
-	};
-};
-
-&zephyr_udc0 {
-	cdc_acm_uart0 {
-		compatible = "zephyr,cdc-acm-uart";
 	};
 };
