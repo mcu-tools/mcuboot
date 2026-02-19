@@ -54,6 +54,48 @@ As a result, a device can receive images smoothly, and can erase required part o
 How to enable and configure the serial recovery feature depends on the given mcuboot-port implementation.
 Refer to the respective documentation and source code for more details.
 
+## Throughput tuning
+
+Upload throughput is determined by how much image data fits in each SMP
+round-trip. Three Kconfig options control the receive-side buffer on the device
+(Zephyr port):
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| ``CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE`` | 1024 | Maximum reassembled SMP frame size (bytes) |
+| ``CONFIG_BOOT_MAX_LINE_INPUT_LEN`` | 128 | SMP serial line fragment size (bytes) |
+| ``CONFIG_BOOT_LINE_BUFS`` | 8 | Number of fragment reassembly buffers |
+
+The product ``CONFIG_BOOT_MAX_LINE_INPUT_LEN × CONFIG_BOOT_LINE_BUFS`` should be at least
+``CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE``. With the defaults, each upload request carries
+roughly 228 bytes of image data after base64 and CBOR overhead.
+
+Increasing the receive buffer allows the host to send larger chunks per
+round-trip. For example, setting ``CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE=4096``
+and ``CONFIG_BOOT_MAX_LINE_INPUT_LEN=512`` allows approximately 3 KB of image
+data per round-trip at the cost of roughly 6 KB additional RAM (the ``in_buf``
+and ``dec_buf`` static arrays in ``boot_serial.c``).
+
+On the host side, pass a matching MTU in the ``mcumgr`` connstring:
+
+``` console
+mcumgr --conntype serial --connstring "dev=/dev/ttyACM0,baud=115200,mtu=4096" image upload <image>
+```
+
+The following table shows approximate upload times for a 374 KB image
+over USB CDC-ACM (tested on nRF52840 with
+[apache/mynewt-mcumgr-cli@5c56bd2](https://github.com/apache/mynewt-mcumgr-cli/commit/5c56bd24066c)):
+
+| Configuration | Throughput | Approximate time |
+|---------------|-----------|------------------|
+| Default (no MTU) | ~1 KB/s | ~6 minutes |
+| mtu=4096 | ~4 KB/s | ~1.5 minutes |
+
+**Note:** When using USB CDC-ACM as the serial transport, the baud rate
+parameter is ignored because USB bulk transfers are not rate-limited by a
+physical UART clock. The baud rate setting only affects physical UART
+transports.
+
 ## Entering serial recovery mode
 
 Entering the serial recovery mode is usually possible right after a device reset, for instance as a reaction on a GPIO pin state.
