@@ -20,7 +20,8 @@
 #include <string.h>
 #include <zephyr/kernel.h>
 #include "bootutil/bootutil_log.h"
-#include <zephyr/usb/usb_device.h>
+#include "mcuboot_config/mcuboot_config.h"
+#include <zephyr/usb/usbd.h>
 
 #if defined(CONFIG_BOOT_SERIAL_UART) && defined(CONFIG_UART_CONSOLE) && \
     (!DT_HAS_CHOSEN(zephyr_uart_mcumgr) ||                              \
@@ -38,6 +39,10 @@
 #if defined(CONFIG_BOOT_SERIAL_CDC_ACM) && CONFIG_MAIN_THREAD_PRIORITY < 0
 #error CONFIG_MAIN_THREAD_PRIORITY must be preemptible to support USB CDC ACM \
        (0 or above)
+#endif
+
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+#include "usbd_cdc_serial.h"
 #endif
 
 BOOT_LOG_MODULE_REGISTER(serial_adapter);
@@ -213,23 +218,9 @@ boot_uart_fifo_init(void)
 	uart_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
 #endif
 
-#elif defined(CONFIG_BOOT_SERIAL_CDC_ACM)
-        uart_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
-#else
-#error No serial recovery device selected
-#endif
-
-
 	if (!device_is_ready(uart_dev)) {
 		return (-1);
 	}
-
-#if CONFIG_BOOT_SERIAL_CDC_ACM
-	int rc = usb_enable(NULL);
-	if (rc) {
-		return (-1);
-	}
-#endif
 
 	uart_irq_callback_set(uart_dev, boot_uart_fifo_callback);
 
@@ -245,6 +236,42 @@ boot_uart_fifo_init(void)
 	cur = 0;
 
 	uart_irq_rx_enable(uart_dev);
+
+#elif defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+
+	int rc;
+
+	rc = boot_usb_cdc_serial_init();
+	if (rc) {
+		return (-1);
+	}
+
+	rc = usbd_enable(boot_usb_cdc_serial_get_context());
+	if (rc) {
+		return (-1);
+	}
+
+	/* Feed WDT while waiting for USB host to open the serial port.
+	 * Without this, the hardware watchdog fires before the serial
+	 * recovery loop (which feeds the WDT) is reached. */
+	while (k_sem_take(&boot_cdc_acm_ready, K_MSEC(5000)) != 0) {
+#if CONFIG_BOOT_WATCHDOG_FEED
+		MCUBOOT_WATCHDOG_FEED();
+#endif
+	}
+
+	uart_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
+	if (!device_is_ready(uart_dev)) {
+		return (-1);
+	}
+
+	uart_irq_callback_set(uart_dev, boot_uart_fifo_callback);
+	cur = 0;
+	uart_irq_rx_enable(uart_dev);
+
+#else
+#error No serial recovery device selected
+#endif
 
 	return 0;
 }

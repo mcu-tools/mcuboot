@@ -220,6 +220,20 @@ Which interface belongs to the protocol shall be set by the devicetree-chosen no
 - `zephyr,console` - If a hardware serial port is used.
 - `zephyr,cdc-acm-uart` - If a virtual serial port is used.
 
+When ``CONFIG_BOOT_SERIAL_CDC_ACM=y`` is selected, MCUboot manages the USB device stack
+internally and only initializes it when serial recovery is actually triggered — not on every boot.
+This avoids consuming hardware USB events that the application would otherwise receive.
+The USB device descriptors can be configured with the following Kconfig options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| ``CONFIG_BOOT_SERIAL_CDC_ACM_VID`` | ``0x2fe3`` | USB Vendor ID |
+| ``CONFIG_BOOT_SERIAL_CDC_ACM_PID`` | ``0x0004`` | USB Product ID |
+| ``CONFIG_BOOT_SERIAL_CDC_ACM_MANUFACTURER_STRING`` | ``"Zephyr Project"`` | Manufacturer string descriptor |
+| ``CONFIG_BOOT_SERIAL_CDC_ACM_PRODUCT_STRING`` | ``"CDC ACM serial recovery"`` | Product string descriptor |
+| ``CONFIG_BOOT_SERIAL_CDC_ACM_SELF_POWERED`` | ``n`` | Set the self-powered attribute in the USB configuration descriptor |
+| ``CONFIG_BOOT_SERIAL_CDC_ACM_MAX_POWER`` | ``125`` | ``bMaxPower`` value in the USB configuration descriptor, in 2 mA units (default: 250 mA) |
+
 ### Entering the serial recovery mode
 
 To enter the serial recovery mode, the device has to initiate rebooting, and a triggering event has to occur (for example, pressing a button).
