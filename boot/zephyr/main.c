@@ -90,6 +90,18 @@ const struct boot_uart_funcs boot_funcs = {
 #include <zephyr/usb/class/usb_dfu.h>
 #endif
 
+#ifdef CONFIG_USB_DEVICE_STACK_NEXT
+#include <zephyr/usb/usbd.h>
+#endif /* CONFIG_USB_DEVICE_STACK_NEXT */
+
+#ifdef CONFIG_BOOT_SERIAL_CDC_ACM
+#include "usbd_cdc_serial.h"
+#endif /* CONFIG_BOOT_SERIAL_CDC_ACM */
+
+#if defined(CONFIG_BOOT_SERIAL_UART) && defined(CONFIG_LOG_BACKEND_UART)
+#error "UART serial recovery and UART log backend cannot both be enabled"
+#endif
+
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
 #include <arm_cleanup.h>
 #endif
@@ -183,6 +195,21 @@ static void do_boot(struct boot_rsp *rsp)
 #ifdef CONFIG_USB_DEVICE_STACK
     /* Disable the USB to prevent it from firing interrupts */
     usb_disable();
+#endif
+#ifdef CONFIG_USB_DEVICE_STACK_NEXT
+    {
+        int usbd_rc;
+
+        usbd_rc = usbd_disable(boot_usb_cdc_serial_get_context());
+
+        /* -EALREADY is expected on normal boot: USB was never enabled
+         * (lazy init -- only initialized when recovery is triggered).
+         * Any other error indicates a real problem.
+         */
+        if (usbd_rc != 0 && usbd_rc != -EALREADY) {
+            BOOT_LOG_WRN("USB disable failed: %d", usbd_rc);
+        }
+    }
 #endif
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
     cleanup_arm_interrupts(); /* Disable and acknowledge all interrupts */
