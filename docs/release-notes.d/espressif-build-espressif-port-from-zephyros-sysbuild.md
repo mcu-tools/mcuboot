@@ -1,0 +1,1 @@
+- Enable building MCUboot Espressif Port from Zephyr's build system for Espressif chips.

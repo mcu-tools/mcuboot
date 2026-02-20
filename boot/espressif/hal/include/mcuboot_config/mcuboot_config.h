@@ -50,12 +50,23 @@
 #define MCUBOOT_SWAP_USING_MOVE 1
 #endif
 
+/* Define to enable the swap-using-offset code path. */
+#if defined(CONFIG_ESP_BOOT_SWAP_USING_OFFSET)
+#define MCUBOOT_SWAP_USING_OFFSET 1
+#endif
+
 /* Define to enable the overwrite-only code path. */
 #if defined(CONFIG_ESP_BOOT_UPGRADE_ONLY)
 #define MCUBOOT_OVERWRITE_ONLY
 /* Uncomment to only erase and overwrite those primary slot sectors needed
  * to install the new image, rather than the entire image slot. */
 /* #define MCUBOOT_OVERWRITE_ONLY_FAST */
+#endif
+
+/* Define to enable the single-application-slot code path. (CURRENTLY UNSUPPORTED!).*/
+#if defined(CONFIG_ESP_SINGLE_APPLICATION_SLOT)
+#define MCUBOOT_SINGLE_APPLICATION_SLOT 1
+#define CONFIG_ESP_IMAGE_NUMBER    1
 #endif
 
 /* Define to enable the direct-xip code path (CURRENTLY UNSUPPORTED!). */
@@ -75,7 +86,9 @@
  */
 #if !defined(CONFIG_ESP_BOOT_SWAP_USING_SCRATCH) && \
     !defined(CONFIG_ESP_BOOT_SWAP_USING_MOVE) && \
+    !defined(CONFIG_ESP_BOOT_SWAP_USING_OFFSET) && \
     !defined(CONFIG_ESP_BOOT_UPGRADE_ONLY) && \
+    !defined(CONFIG_ESP_SINGLE_APPLICATION_SLOT) && \
     !defined(CONFIG_ESP_BOOT_DIRECT_XIP) && \
     !defined(CONFIG_ESP_BOOT_RAM_LOAD)
 #define CONFIG_ESP_BOOT_SWAP_USING_SCRATCH

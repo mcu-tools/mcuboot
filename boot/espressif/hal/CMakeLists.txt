@@ -4,6 +4,21 @@
 
 cmake_minimum_required(VERSION 3.13)
 
+if(CONFIG_BUILD_FROM_ZEPHYR)
+    message(STATUS "Building HAL for MCUboot Espressif Port")
+
+    get_cmake_property(vars_from_zephyr VARIABLES)
+    foreach(v ${vars_from_zephyr})
+        if(v MATCHES "^CONFIG_")
+            if (("${${v}}" STREQUAL "y") OR ("${${v}}" STREQUAL "Y"))
+                set(${v} 1)
+            endif()
+            add_compile_definitions(${v}=${${v}})
+        endif()
+    endforeach()
+    add_compile_definitions(CONFIG_MCUBOOT_ESPRESSIF=1)
+endif()
+
 project(hal)
 
 set(esp_hal_dir ${ESP_HAL_PATH})
@@ -83,6 +98,7 @@ set(hal_srcs
     ${esp_hal_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_time.c
     ${esp_hal_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_clk.c
     ${esp_hal_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/rtc_clk_init.c
+    ${esp_hal_dir}/components/esp_hw_support/port/${MCUBOOT_TARGET}/cpu_region_protect.c
     ${esp_hal_dir}/components/esp_rom/patches/esp_rom_uart.c
     ${esp_hal_dir}/components/esp_rom/patches/esp_rom_sys.c
     ${esp_hal_dir}/components/esp_rom/patches/esp_rom_spiflash.c
@@ -138,6 +154,7 @@ set(CFLAGS
     "-ffunction-sections"
     "-fdata-sections"
     "-fstrict-volatile-bitfields"
+    "-fdump-rtl-expand"
     "-Werror=all"
     "-Wno-error=unused-function"
     "-Wno-error=unused-but-set-variable"
@@ -156,7 +173,6 @@ set(CFLAGS
 set(LDFLAGS
     "-Wno-frame-address"
     "-Wl,--cref"
-    "-Wl,--Map=${APP_NAME}.map"
     "-fno-rtti"
     "-fno-lto"
     "-Wl,--gc-sections"
@@ -165,6 +181,16 @@ set(LDFLAGS
     "-lgcc"
     "-lgcov"
     )
+
+if(CONFIG_BUILD_FROM_ZEPHYR)
+    list(APPEND include_dirs
+        ${ESPRESSIF_PORT_DIR}/zephyr/include
+        )
+else()
+    list(APPEND LDFLAGS
+        "-Wl,--Map=${APP_NAME}.map"
+        )
+endif()
 
 if("${MCUBOOT_ARCH}" STREQUAL "xtensa")
     list(APPEND CFLAGS
