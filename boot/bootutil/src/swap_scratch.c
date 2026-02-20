@@ -935,6 +935,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
             boot_swap_sectors(first_sector_idx, sz, state, bs);
         }
 
+        MCUBOOT_WATCHDOG_FEED();
         last_sector_idx = first_sector_idx - 1;
         swap_idx++;
     }
