@@ -682,6 +682,7 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
                                          (mirror_idx > used_sectors_sec ? true : false));
             }
 
+            MCUBOOT_WATCHDOG_FEED();
             idx++;
         }
 
@@ -702,6 +703,7 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
                                   (idx > used_sectors_sec ? true : false));
             }
 
+            MCUBOOT_WATCHDOG_FEED();
             idx++;
         }
     }
