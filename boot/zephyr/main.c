@@ -675,6 +675,33 @@ int main(void)
     mcuboot_status_change(MCUBOOT_STATUS_BOOTABLE_IMAGE_FOUND);
 
     ZEPHYR_BOOT_LOG_STOP();
+
+#if defined(CONFIG_LOG_BACKEND_SWO) && defined(CONFIG_CPU_CORTEX_M)
+    /*
+     * Estimate TPIU drain time from the configured SWO baud rate.
+     * ~200 bytes * 10 bits/byte with 50 % margin, converted to us.
+     * When frequency is 0 (default = max supported), fall back to 2 ms.
+     */
+#if CONFIG_LOG_BACKEND_SWO_FREQ_HZ > 0
+#define SWO_DRAIN_WAIT_US ((200UL * 10 * 1500000) / CONFIG_LOG_BACKEND_SWO_FREQ_HZ)
+#else
+#define SWO_DRAIN_WAIT_US 2000
+#endif
+
+    /* Wait for ITM to finish transmitting before jumping to app.
+     * ZEPHYR_BOOT_LOG_STOP drains the log buffer to the ITM FIFO,
+     * but the TPIU may still be clocking out bytes on the SWO pin.
+     * Without this, the app reinitializes ITM and discards in-flight data.
+     */
+    uint32_t itm_timeout = 100000;
+    while ((ITM->TCR & ITM_TCR_BUSY_Msk) && --itm_timeout) {
+    }
+    /* ITM BUSY only means the formatter is done — the TPIU output buffer
+     * still needs time to clock bytes out at the SWO baud rate.
+     */
+    k_busy_wait(SWO_DRAIN_WAIT_US);
+#endif
+
     do_boot(&rsp);
 
     mcuboot_status_change(MCUBOOT_STATUS_BOOT_FAILED);
