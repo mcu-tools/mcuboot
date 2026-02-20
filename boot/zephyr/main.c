@@ -108,7 +108,7 @@ const struct boot_uart_funcs boot_funcs = {
 K_THREAD_STACK_DEFINE(boot_log_stack, CONFIG_MCUBOOT_LOG_THREAD_STACK_SIZE);
 struct k_thread boot_log_thread;
 volatile bool boot_log_stop = false;
-K_SEM_DEFINE(boot_log_sem, 1, 1);
+K_SEM_DEFINE(boot_log_sem, 0, 1);
 
 /* log processing need to be initalized by the application */
 #define ZEPHYR_BOOT_LOG_START() zephyr_boot_log_start()
@@ -116,8 +116,8 @@ K_SEM_DEFINE(boot_log_sem, 1, 1);
 #endif /* CONFIG_LOG_PROCESS_THREAD */
 #else
 /* synchronous log mode doesn't need to be initalized by the application */
-#define ZEPHYR_BOOT_LOG_START() do { } while (false)
-#define ZEPHYR_BOOT_LOG_STOP() do { } while (false)
+#define ZEPHYR_BOOT_LOG_START() ((void)0)
+#define ZEPHYR_BOOT_LOG_STOP() ((void)0)
 #endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
         * !defined(CONFIG_LOG_MODE_MINIMAL)
 	*/
@@ -449,12 +449,14 @@ void boot_log_thread_func(void *dummy1, void *dummy2, void *dummy3)
 
 void zephyr_boot_log_start(void)
 {
-    /* start logging thread */
+    /* Start logging thread immediately — the polling interval is only
+     * used between processing rounds, not as a startup delay.
+     */
     k_thread_create(&boot_log_thread, boot_log_stack,
                     K_THREAD_STACK_SIZEOF(boot_log_stack),
                     boot_log_thread_func, NULL, NULL, NULL,
                     K_HIGHEST_APPLICATION_THREAD_PRIO, 0,
-                    BOOT_LOG_PROCESSING_INTERVAL);
+                    K_NO_WAIT);
 
     k_thread_name_set(&boot_log_thread, "logging");
 }
@@ -462,6 +464,13 @@ void zephyr_boot_log_start(void)
 void zephyr_boot_log_stop(void)
 {
     boot_log_stop = true;
+
+    /* Wake the logging thread immediately if it's in k_sleep().
+     * Without this, the thread may sit idle for up to one polling
+     * interval before it notices boot_log_stop and drains the
+     * final messages.
+     */
+    k_wakeup(&boot_log_thread);
 
     /* wait until log procesing thread expired
      * This can be reworked using a thread_join() API once a such will be
