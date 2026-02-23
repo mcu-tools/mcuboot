@@ -94,13 +94,14 @@ const struct boot_uart_funcs boot_funcs = {
 #include <arm_cleanup.h>
 #endif
 
-#if defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
-    !defined(CONFIG_LOG_MODE_MINIMAL)
+#if defined(CONFIG_LOG)
+#include <zephyr/logging/log_ctrl.h>
+
+#if !defined(CONFIG_LOG_MODE_IMMEDIATE) && !defined(CONFIG_LOG_MODE_MINIMAL)
 #ifdef CONFIG_LOG_PROCESS_THREAD
 #warning "The log internal thread for log processing can't transfer the log"\
          "well for MCUBoot."
 #else
-#include <zephyr/logging/log_ctrl.h>
 
 #define BOOT_LOG_PROCESSING_INTERVAL K_MSEC(30) /* [ms] */
 
@@ -114,13 +115,13 @@ K_SEM_DEFINE(boot_log_sem, 0, 1);
 #define ZEPHYR_BOOT_LOG_START() zephyr_boot_log_start()
 #define ZEPHYR_BOOT_LOG_STOP() zephyr_boot_log_stop()
 #endif /* CONFIG_LOG_PROCESS_THREAD */
-#else
-/* synchronous log mode doesn't need to be initalized by the application */
+#endif /* !IMMEDIATE && !MINIMAL */
+#endif /* CONFIG_LOG */
+
+#if !defined(ZEPHYR_BOOT_LOG_START)
 #define ZEPHYR_BOOT_LOG_START() ((void)0)
 #define ZEPHYR_BOOT_LOG_STOP() ((void)0)
-#endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
-        * !defined(CONFIG_LOG_MODE_MINIMAL)
-	*/
+#endif
 
 BOOT_LOG_MODULE_REGISTER(mcuboot);
 
@@ -478,6 +479,9 @@ void zephyr_boot_log_stop(void)
      * see https://github.com/zephyrproject-rtos/zephyr/issues/21500
      */
     (void)k_sem_take(&boot_log_sem, K_FOREVER);
+
+    /* Entice the log backends to flush their contents */
+    LOG_PANIC();
 }
 #endif /* defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
         * !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(CONFIG_LOG_MODE_MINIMAL)
