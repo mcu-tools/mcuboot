@@ -125,7 +125,8 @@ config BOOT_ECDSA_PSA_DEPENDENCIES
 if MBEDTLS_ENABLE_HEAP
 
 config MBEDTLS_HEAP_SIZE
-	default 2048 if BOOT_USE_PSA_CRYPTO
+	default 8192 if BOOT_RSA_PSA
+	default 2048 if BOOT_ED25519_PSA
 	help
 	  The PSA internals need to be able to allocate memory for operation
 	  and it uses mbedTLS heap for that.
@@ -244,13 +245,8 @@ config BOOT_SIGNATURE_TYPE_NONE
 
 config BOOT_SIGNATURE_TYPE_RSA
 	bool "RSA signatures"
-	select BOOT_USE_MBEDTLS
-	select MBEDTLS
 	select MBEDTLS_ASN1_PARSE_C if MBEDTLS_BUILTIN
 	select MBEDTLS_MD_C if MBEDTLS_BUILTIN
-	select MBEDTLS_RSA_C if MBEDTLS_BUILTIN
-	select MBEDTLS_PKCS1_V15 if MBEDTLS_BUILTIN
-	select MBEDTLS_PKCS1_V21 if MBEDTLS_BUILTIN
 	select BOOT_ENCRYPTION_SUPPORT
 	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 	select BOOT_AES_MBEDTLS_DEPENDENCIES if MBEDTLS_BUILTIN && BOOT_ENCRYPT_IMAGE
@@ -260,7 +256,50 @@ config BOOT_SIGNATURE_TYPE_RSA_LEN
 	int "RSA signature length"
 	range 2048 3072
 	default 2048
-endif
+
+choice BOOT_RSA_IMPLEMENTATION
+	prompt "RSA implementation"
+	# In TF-PSA-Crypto legacy crypto modules are internal and not meant
+	# to be used by the app. PSA API should be used instead. However this
+	# is not always possible in MCUboot due to the constrained partition
+	# size, so we default to using legacy crypto.
+	default BOOT_RSA_TF_PSA_CRYPTO_LEGACY if MBEDTLS_VERSION_MAJOR >= 4
+	default BOOT_RSA_MBEDTLS_LEGACY
+
+config BOOT_RSA_MBEDTLS_LEGACY
+	bool "Use legacy crypto from Mbed TLS 3.x"
+	select BOOT_USE_MBEDTLS
+	select MBEDTLS
+	select MBEDTLS_RSA_C if MBEDTLS_BUILTIN
+	select MBEDTLS_PKCS1_V15 if MBEDTLS_BUILTIN
+	select MBEDTLS_PKCS1_V21 if MBEDTLS_BUILTIN
+
+	# This is a mix between BOOT_RSA_MBEDTLS_LEGACY and BOOT_RSA_PSA in the
+	# sense that we select PSA_WANT but still use legacy crypto under the
+	# hood to minimize footprint.
+config BOOT_RSA_TF_PSA_CRYPTO_LEGACY
+	bool "Use legacy crypto from TF-PSA-Crypto (i.e. Mbed TLS 4.x)"
+	select BOOT_USE_MBEDTLS
+	select PSA_CRYPTO
+	select PSA_WANT_KEY_TYPE_RSA_PUBLIC_KEY
+	select PSA_WANT_ALG_RSA_PKCKS1_V15
+	select PSA_WANT_ALG_RSA_PSS
+	select PSA_WANT_ALG_SHA_256
+	select MBEDTLS_DECLARE_PRIVATE_IDENTIFIERS
+
+config BOOT_RSA_PSA
+	bool "Use PSA API crypto"
+	select BOOT_USE_PSA_CRYPTO
+	select PSA_CRYPTO
+	select MBEDTLS_ENABLE_HEAP if MBEDTLS_BUILTIN
+	select PSA_WANT_KEY_TYPE_RSA_PUBLIC_KEY
+	select PSA_WANT_ALG_RSA_PKCKS1_V15
+	select PSA_WANT_ALG_RSA_PSS
+	select PSA_WANT_ALG_SHA_256
+
+endchoice
+
+endif # BOOT_SIGNATURE_TYPE_RSA
 
 config BOOT_SIGNATURE_TYPE_ECDSA_P256
 	bool "Elliptic curve digital signatures with curve P-256"
