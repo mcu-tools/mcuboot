@@ -11,11 +11,13 @@
 &flash0 {
 	partitions {
 		boot_partition: partition@0 {
+			compatible = "zephyr,mapped-partition";
 			label = "mcuboot";
 			reg = <0x000000000 0x00010000>;
 		};
 
 		slot0_partition: partition@10000 {
+			compatible = "zephyr,mapped-partition";
 			label = "image-0";
 			reg = <0x000010000 0x0000e8000>;
 		};
@@ -27,7 +29,6 @@
 		compatible = "fixed-partitions";
 		#address-cells = <1>;
 		#size-cells = <1>;
-		ranges;
 
 		slot1_partition: partition@0 {
 			label = "image-1";
