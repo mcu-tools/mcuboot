@@ -62,9 +62,6 @@
 #endif
 
 #include <mbedtls/version.h>
-#if MBEDTLS_VERSION_NUMBER >= 0x03000000
-#include <mbedtls/compat-2.x.h>
-#endif
 
 #endif /* MCUBOOT_USE_MBED_TLS */
 
@@ -144,10 +141,10 @@ static inline int bootutil_sha_init(bootutil_sha_context *ctx)
 
 #ifdef MCUBOOT_SHA512
     mbedtls_sha512_init(ctx);
-    ret = mbedtls_sha512_starts_ret(ctx, 0);
+    ret = mbedtls_sha512_starts(ctx, 0);
 #else
     mbedtls_sha256_init(ctx);
-    ret = mbedtls_sha256_starts_ret(ctx, 0);
+    ret = mbedtls_sha256_starts(ctx, 0);
 #endif
 
     return ret;
@@ -171,9 +168,9 @@ static inline int bootutil_sha_update(bootutil_sha_context *ctx,
     int ret;
 
 #ifdef MCUBOOT_SHA512
-    ret = mbedtls_sha512_update_ret(ctx, data, data_len);
+    ret = mbedtls_sha512_update(ctx, data, data_len);
 #else
-    ret = mbedtls_sha256_update_ret(ctx, data, data_len);
+    ret = mbedtls_sha256_update(ctx, data, data_len);
 #endif
 
     return ret;
@@ -185,9 +182,9 @@ static inline int bootutil_sha_finish(bootutil_sha_context *ctx,
     int ret;
 
 #ifdef MCUBOOT_SHA512
-    ret = mbedtls_sha512_finish_ret(ctx, output);
+    ret = mbedtls_sha512_finish(ctx, output);
 #else
-    ret = mbedtls_sha256_finish_ret(ctx, output);
+    ret = mbedtls_sha256_finish(ctx, output);
 #endif
 
     return ret;
