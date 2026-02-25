@@ -418,6 +418,10 @@ bootutil_img_validate(struct boot_loader_state *state,
                 goto out;
             }
 
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+            base += boot_get_state_secondary_offset(state, fap);
+#endif
+
             /* Directly check signature on the image, by using the mapping of
              * a device to memory. The pointer is beginning of image in flash,
              * so offset of area, the range is header + image + protected tlvs.
