@@ -317,15 +317,6 @@ bootutil_rsa_parse_public_key(bootutil_rsa_context *ctx, uint8_t **p, uint8_t *e
         return -4;
     }
 
-    /* The Mbed TLS version is more than 2.6.1 */
-#if MBEDTLS_VERSION_NUMBER > 0x02060100
-    rc = mbedtls_rsa_import(ctx, &ctx->MBEDTLS_CONTEXT_MEMBER(N), NULL,
-                            NULL, NULL, &ctx->MBEDTLS_CONTEXT_MEMBER(E));
-    if (rc != 0) {
-        return -5;
-    }
-#endif
-
     rc = mbedtls_rsa_check_pubkey(ctx);
     if (rc != 0) {
         return -6;
