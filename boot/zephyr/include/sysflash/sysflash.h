@@ -10,6 +10,7 @@
 #include <mcuboot_config/mcuboot_config.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/storage/flash_map.h>
+#include <zephyr/devicetree/partitions.h>
 #include <zephyr/sys/util_macro.h>
 
 #ifndef SOC_FLASH_0_ID
@@ -81,7 +82,7 @@
 static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
 {
     static const int all_slots[] = {
-        FOR_EACH_NONEMPTY_TERM(FIXED_PARTITION_ID, (,), ALL_AVAILABLE_SLOTS)
+        FOR_EACH_NONEMPTY_TERM(PARTITION_ID, (,), ALL_AVAILABLE_SLOTS)
     };
     return all_slots[img * 2 + slot];
 };
@@ -100,13 +101,13 @@ static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
 #define FLASH_AREA_IMAGE_SECONDARY(x) __flash_area_ids_for_slot(x, 1)
 
 #if !defined(CONFIG_BOOT_SWAP_USING_MOVE) && !defined(CONFIG_BOOT_SWAP_USING_OFFSET)
-#define FLASH_AREA_IMAGE_SCRATCH    FIXED_PARTITION_ID(scratch_partition)
+#define FLASH_AREA_IMAGE_SCRATCH    PARTITION_ID(scratch_partition)
 #endif
 
 #else /* !CONFIG_SINGLE_APPLICATION_SLOT && !CONFIG_MCUBOOT_BOOTLOADER_MODE_SINGLE_APP */
 
-#define FLASH_AREA_IMAGE_PRIMARY(x)	FIXED_PARTITION_ID(slot0_partition)
-#define FLASH_AREA_IMAGE_SECONDARY(x)	FIXED_PARTITION_ID(slot0_partition)
+#define FLASH_AREA_IMAGE_PRIMARY(x)	PARTITION_ID(slot0_partition)
+#define FLASH_AREA_IMAGE_SECONDARY(x)	PARTITION_ID(slot0_partition)
 
 #endif /* CONFIG_SINGLE_APPLICATION_SLOT */
 
