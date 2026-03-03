@@ -1,0 +1,154 @@
+name: tardigrade
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  swap-move:
+    runs-on: ubuntu-24.04
+    container:
+      image: zephyrprojectrtos/ci-base:v0.28.4
+      options: '--entrypoint /bin/bash'
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout Zephyr
+        uses: actions/checkout@v4
+        with:
+          repository: zephyrproject-rtos/zephyr
+          ref: main
+          path: repos/zephyr
+
+      - name: Install Zephyr Python requirements
+        working-directory: repos/zephyr
+        run: pip install -r scripts/requirements-actions.txt --require-hashes
+
+      - name: Setup Zephyr SDK and workspace
+        uses: zephyrproject-rtos/action-zephyr-setup@c125c5ebeeadbd727fa740b407f862734af1e52a
+        with:
+          base-path: repos/zephyr
+          toolchains: arm-zephyr-eabi
+          sdk-version: 0.17.4
+          west-project-filter: -.*,+cmsis,+cmsis_6,+hal_nordic,+mbedtls,+mcuboot,+tinycrypt,+zcbor
+          ccache-max-size: 256MB
+
+      - name: Checkout MCUboot (PR HEAD)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: repos/bootloader/mcuboot
+
+      - name: Build MCUboot bootloader (swap-move, unsigned)
+        working-directory: repos
+        run: |
+          export ZEPHYR_BASE=$(pwd)/zephyr
+          export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
+          west build -b nrf52840dk/nrf52840 bootloader/mcuboot/boot/zephyr \
+            -d build_boot \
+            -DCONFIG_BOOT_SWAP_USING_MOVE=y \
+            -DCONFIG_BOOT_SIGNATURE_TYPE_NONE=y \
+            -DCONFIG_BOOT_VALIDATE_SLOT0=n
+
+      - name: Build test application images
+        working-directory: repos
+        run: |
+          set -euo pipefail
+          export ZEPHYR_BASE=$(pwd)/zephyr
+          export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
+          pip3 install --quiet intelhex cbor2 cryptography
+
+          # Build hello_world as the test application.
+          west build -b nrf52840dk/nrf52840 zephyr/samples/hello_world \
+            -d build_app \
+            -DCONFIG_BOOTLOADER_MCUBOOT=y
+
+          IMGTOOL="python3 bootloader/mcuboot/scripts/imgtool.py"
+          KEY="bootloader/mcuboot/root-rsa-2048.pem"
+
+          # Sign as v1 (exec slot) — confirmed so MCUboot boots it directly.
+          # MCUboot with SIGNATURE_TYPE_NONE ignores the RSA signature but
+          # still needs the proper image header + SHA-256 hash TLV.
+          ${IMGTOOL} sign --key ${KEY} \
+            --header-size 0x200 --align 4 --slot-size 0x76000 \
+            --version 1.0.0 --pad --confirm \
+            build_app/zephyr/zephyr.bin slot0.bin
+
+          # Sign as v2 (staging slot) — pending upgrade, not confirmed.
+          ${IMGTOOL} sign --key ${KEY} \
+            --header-size 0x200 --align 4 --slot-size 0x76000 \
+            --version 2.0.0 --pad \
+            build_app/zephyr/zephyr.bin slot1.bin
+
+          ls -la slot0.bin slot1.bin
+
+      - name: Write tardigrade profile
+        working-directory: repos
+        run: |
+          BOOT_ELF="$(realpath build_boot/zephyr/zephyr.elf)"
+          SLOT0="$(realpath slot0.bin)"
+          SLOT1="$(realpath slot1.bin)"
+
+          cat > tardigrade_profile.yaml << YAML
+          schema_version: 1
+          name: mcuboot_swap_move_ci
+          description: >
+            MCUboot swap-using-move on nrf52840dk, built from PR HEAD.
+            Upgrade scenario: slot0 has confirmed v1, slot1 has pending v2.
+            After swap, exec slot should contain the v2 image.
+
+          platform: platforms/cortex_m4_flash_fast.repl
+          bootloader:
+            elf: ${BOOT_ELF}
+            entry: 0x00000000
+          memory:
+            sram: { start: 0x20000000, end: 0x20040000 }
+            write_granularity: 4
+            slots:
+              exec: { base: 0x0000C000, size: 0x76000 }
+              staging: { base: 0x00082000, size: 0x76000 }
+          images:
+            exec: ${SLOT0}
+            staging: ${SLOT1}
+          success_criteria:
+            vtor_in_slot: exec
+            image_hash: true
+            expected_image: staging
+          fault_sweep:
+            mode: runtime
+            evaluation_mode: execute
+            max_writes: auto
+            max_writes_cap: 200000
+            run_duration: "5.0"
+            max_step_limit: 50000000
+          expect:
+            should_find_issues: false
+          YAML
+
+          # Strip leading whitespace from heredoc indentation.
+          sed -i 's/^          //' tardigrade_profile.yaml
+          cat tardigrade_profile.yaml
+
+      - name: Run tardigrade fault injection
+        uses: neilberkman/tardigrade@v1
+        with:
+          profile: repos/tardigrade_profile.yaml
+          quick: "false"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tardigrade-swap-move
+          path: |
+            repos/tardigrade_profile.yaml
+            ${{ runner.temp }}/tardigrade_report.json
