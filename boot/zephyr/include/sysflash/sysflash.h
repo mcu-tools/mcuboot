@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2023-2024 Nordic Semiconductor ASA
- *
+ * Copyright (c) 2026 WIKA Alexander Wiegand SE & Co. KG
+ * 
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -109,5 +110,11 @@ static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
 #define FLASH_AREA_IMAGE_SECONDARY(x)	FIXED_PARTITION_ID(slot0_partition)
 
 #endif /* CONFIG_SINGLE_APPLICATION_SLOT */
+
+#if defined(CONFIG_BOOT_GEN_ENC_KEY)
+#define KEY_STORAGE_NODE DT_CHOSEN(zephyr_key_storage)
+#define KEY_STORAGE_ID DT_FIXED_PARTITION_ID(KEY_STORAGE_NODE)
+#define KEY_STORAGE_BASE DT_REG_ADDR(KEY_STORAGE_NODE)
+#endif
 
 #endif /* __SYSFLASH_H__ */

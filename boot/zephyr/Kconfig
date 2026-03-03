@@ -1,6 +1,7 @@
 # Copyright (c) 2017-2020 Linaro Limited
 # Copyright (c) 2020 Arm Limited
 # Copyright (c) 2023 Nordic Semiconductor ASA
+# Copyright (c) 2026 WIKA Alexander Wiegand SE & Co. KG
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -135,6 +136,16 @@ endif # MBEDTLS_ENABLE_HEAP
 endif # BOOT_USE_PSA_CRYPTO
 
 menu "MCUBoot settings"
+
+config BOOT_GEN_ENC_KEY
+	bool "Device generate encryption key"
+	select BOOT_ENCRYPT_IMAGE
+
+if BOOT_GEN_ENC_KEY
+config BOOT_PRIV_ENC_KEY_LEN
+	int "Private encryption key length"
+	default 138
+endif
 
 config BOOT_SOMETHING_USES_SHA256
 	bool
@@ -271,6 +282,7 @@ if BOOT_SIGNATURE_TYPE_ECDSA_P256
 
 choice BOOT_ECDSA_IMPLEMENTATION
 	prompt "Ecdsa implementation"
+	default BOOT_ECDSA_MBEDTLS if BOOT_GEN_ENC_KEY
 	default BOOT_ECDSA_TINYCRYPT
 
 config BOOT_ECDSA_TINYCRYPT
@@ -290,6 +302,11 @@ config BOOT_ECDSA_MBEDTLS
 	select MBEDTLS_MD if MBEDTLS_BUILTIN
 	select MBEDTLS_ECDH_C if MBEDTLS_BUILTIN && BOOT_ENCRYPT_IMAGE
 	select BOOT_AES_MBEDTLS_DEPENDENCIES if MBEDTLS_BUILTIN && BOOT_ENCRYPT_IMAGE
+	select MBEDTLS_KEY_EXCHANGE_ECDH_ECDSA_ENABLED if MBEDTLS_BUILTIN && BOOT_GEN_ENC_KEY
+	select MBEDTLS_PK_WRITE_C if MBEDTLS_BUILTIN && BOOT_GEN_ENC_KEY
+	select MBEDTLS_ENTROPY_C if MBEDTLS_BUILTIN && BOOT_GEN_ENC_KEY
+	select MBEDTLS_PEM_CERTIFICATE_FORMAT if MBEDTLS_BUILTIN && BOOT_GEN_ENC_KEY
+
 
 config BOOT_ECDSA_CC310
 	bool "Use CC310"
@@ -803,6 +820,7 @@ endif # BOOT_ENCRYPT_X25519 && BOOT_USE_PSA_CRYPTO
 config BOOT_ENCRYPTION_KEY_FILE
 	string "Encryption key file"
 	depends on BOOT_ENCRYPT_IMAGE
+	default "" if BOOT_GEN_ENC_KEY
 	default "enc-rsa2048-priv.pem" if BOOT_ENCRYPT_RSA
 	default "enc-ec256-priv.pem" if BOOT_ENCRYPT_EC256
 	default "enc-x25519-priv.pem" if BOOT_ENCRYPT_X25519

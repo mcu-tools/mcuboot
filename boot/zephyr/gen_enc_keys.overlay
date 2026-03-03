@@ -1,0 +1,6 @@
+/ {
+	chosen {
+		zephyr,code-partition = &boot_partition;
+        zephyr,key-storage = &storage_partition;
+	};
+};
