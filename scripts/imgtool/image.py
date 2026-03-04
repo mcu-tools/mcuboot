@@ -979,7 +979,7 @@ class Image:
 
         # If it's the protected-TLV block, skip it
         if magic == TLV_PROT_INFO_MAGIC:
-            tlv_off += TLV_INFO_SIZE + tlv_tot
+            tlv_off += tlv_tot
             tlv_info = b[tlv_off:tlv_off + TLV_INFO_SIZE]
             magic, tlv_tot = struct.unpack('HH', tlv_info)
 
