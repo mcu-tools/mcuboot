@@ -105,6 +105,20 @@ psa-crypto-api = []
 # Test for ih_load_addr in upgrade/next boot slot
 check-load-addr = []
 
+# Verify ECDSA-P256 signatures via MCUBOOT_USE_CUSTOM_CRYPTO using portable
+# mbedTLS-backed stubs contained entirely in csupport/custom_crypto/.
+# No hardware-specific code is compiled or linked.
+# Supports encryption when combined with enc-ec256-mbedtls, enc-aes256-ec256,
+# or the convenience feature custom-enc-crypto.
+custom-crypto = []
+
+# ECIES-P256 image encryption via the MCUBOOT_USE_CUSTOM_CRYPTO path.
+# Implies custom-crypto.  Activates sim_custom_encrypted.c for boot_enc_*
+# symbols backed by the portable mbedTLS stubs in csupport/custom_crypto/.
+# Use instead of the enc-ec256-mbedtls + custom-crypto combination when
+# the intent is clearly a fully-custom-crypto build.
+custom-enc-crypto = ["custom-crypto"]
+
 [build-dependencies]
 cc = "1.0.25"
 

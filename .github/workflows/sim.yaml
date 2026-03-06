@@ -48,6 +48,8 @@ jobs:
         - "sig-ecdsa-psa enc-ec256 max-align-16, sig-ecdsa-psa enc-ec256 swap-offset validate-primary-slot max-align-16"
         - "ram-load enc-aes256-kw multiimage"
         - "ram-load enc-aes256-kw sig-ecdsa-mbedtls multiimage"
+        - "custom-crypto,custom-crypto overwrite-only,custom-crypto validate-primary-slot,custom-crypto swap-offset"
+        - "custom-enc-crypto,custom-enc-crypto validate-primary-slot,custom-enc-crypto swap-offset validate-primary-slot max-align-32"
     runs-on: ubuntu-latest
     env:
       MULTI_FEATURES: ${{ matrix.features }}

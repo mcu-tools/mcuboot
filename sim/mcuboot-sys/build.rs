@@ -41,6 +41,8 @@ fn main() {
     let max_align_32 = env::var("CARGO_FEATURE_MAX_ALIGN_32").is_ok();
     let hw_rollback_protection = env::var("CARGO_FEATURE_HW_ROLLBACK_PROTECTION").is_ok();
     let check_load_addr = env::var("CARGO_FEATURE_CHECK_LOAD_ADDR").is_ok();
+    let custom_crypto = env::var("CARGO_FEATURE_CUSTOM_CRYPTO").is_ok();
+    let custom_enc_crypto = env::var("CARGO_FEATURE_CUSTOM_ENC_CRYPTO").is_ok();
 
     let mut conf = CachedBuild::new();
     conf.conf.define("__BOOTSIM__", None);
@@ -97,6 +99,20 @@ fn main() {
     if vec![sig_rsa, sig_rsa3072, sig_ecdsa, sig_ed25519].iter()
         .fold(0, |sum, &v| sum + v as i32) > 1 {
         panic!("mcuboot does not support more than one sig type at the same time");
+    }
+
+    // custom-crypto selects MCUBOOT_USE_CUSTOM_CRYPTO and therefore
+    // conflicts with features that also set a backend macro.
+    if custom_crypto && (sig_rsa || sig_rsa3072 || sig_ecdsa ||
+                         sig_ecdsa_mbedtls || sig_ecdsa_psa || sig_ed25519) {
+        panic!("custom-crypto cannot be combined with sig-* features");
+    }
+
+    // custom-crypto encryption currently supports only ECIES-P256 via the
+    // mbedTLS-backed stubs (enc-ec256-mbedtls / enc-aes256-ec256 / custom-enc-crypto).
+    if custom_crypto && (enc_rsa || enc_aes256_rsa || enc_kw || enc_aes256_kw ||
+                         enc_ec256 || enc_x25519 || enc_aes256_x25519) {
+        panic!("custom-crypto encryption only supports enc-ec256-mbedtls, enc-aes256-ec256, and custom-enc-crypto");
     }
 
     if psa_crypto_api {
@@ -258,6 +274,43 @@ fn main() {
         conf.file("../../ext/fiat/src/curve25519.c");
         conf.file("../../ext/mbedtls/library/platform_util.c");
         conf.file("../../ext/mbedtls/library/asn1parse.c");
+    } else if custom_crypto {
+        // MCUBOOT_USE_CUSTOM_CRYPTO with mbedTLS stubs from csupport/custom_crypto/.
+        // mcuboot_config.h includes mcuboot_custom_crypto.h when MCUBOOT_USE_CUSTOM_CRYPTO
+        // is defined, ensuring types are available before bootutil/crypto headers.
+        conf.conf.define("MCUBOOT_USE_CUSTOM_CRYPTO", None);
+        conf.conf.define("MCUBOOT_SIGN_EC256", None);
+        conf.conf.include("csupport/custom_crypto");
+        conf.conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls/library");
+        conf.file("csupport/keys.c");
+        conf.file("../../ext/mbedtls/library/aes.c");
+        conf.file("../../ext/mbedtls/library/sha256.c");
+        conf.file("../../ext/mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls/library/bignum.c");
+        conf.file("../../ext/mbedtls/library/bignum_core.c");
+        conf.file("../../ext/mbedtls/library/constant_time.c");
+        conf.file("../../ext/mbedtls/library/ecdsa.c");
+        conf.file("../../ext/mbedtls/library/ecp.c");
+        conf.file("../../ext/mbedtls/library/ecp_curves.c");
+        conf.file("../../ext/mbedtls/library/ecdh.c");
+        conf.file("../../ext/mbedtls/library/md.c");
+        conf.file("../../ext/mbedtls/library/platform.c");
+        conf.file("../../ext/mbedtls/library/platform_util.c");
+
+        // Encryption support: ECIES-P256 via sim_custom_encrypted.c which
+        // provides all boot_enc_* symbols using the custom crypto stubs.
+        // custom-enc-crypto is a convenience alias for this path.
+        if enc_ec256_mbedtls || enc_aes256_ec256 || custom_enc_crypto {
+            if enc_aes256_ec256 {
+                conf.conf.define("MCUBOOT_AES_256", None);
+            }
+            conf.conf.define("MCUBOOT_ENCRYPT_EC256", None);
+            conf.conf.define("MCUBOOT_ENC_IMAGES", None);
+            conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
+            conf.conf.include("../../boot/bootutil/src");
+            conf.file("csupport/custom_crypto/sim_custom_encrypted.c");
+        }
     } else if !enc_ec256 && !enc_x25519 {
         // No signature type, only sha256 validation. The default
         // configuration file bundled with mbedTLS is sufficient.
@@ -379,7 +432,7 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/ctr_mode.c");
         conf.file("../../ext/tinycrypt/lib/source/hmac.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_dh.c");
-    } else if enc_ec256_mbedtls || enc_aes256_ec256 {
+    } else if (enc_ec256_mbedtls || enc_aes256_ec256) && !custom_crypto {
         if enc_aes256_ec256 {
             conf.conf.define("MCUBOOT_AES_256", None);
         }
@@ -459,7 +512,7 @@ fn main() {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
     } else if sig_rsa || sig_rsa3072 || enc_rsa || enc_aes256_rsa {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
-    } else if sig_ecdsa_mbedtls || enc_ec256_mbedtls || enc_aes256_ec256 {
+    } else if sig_ecdsa_mbedtls || enc_ec256_mbedtls || enc_aes256_ec256 || custom_crypto {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ec.h>"));
     } else if (sig_ecdsa || enc_ec256) && !enc_kw {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
@@ -479,7 +532,7 @@ fn main() {
     conf.file("../../boot/bootutil/src/bootutil_img_security_cnt.c");
     if sig_rsa || sig_rsa3072 {
         conf.file("../../boot/bootutil/src/image_rsa.c");
-    } else if sig_ecdsa || sig_ecdsa_mbedtls || sig_ecdsa_psa {
+    } else if sig_ecdsa || sig_ecdsa_mbedtls || sig_ecdsa_psa || custom_crypto {
         conf.file("../../boot/bootutil/src/image_ecdsa.c");
     } else if sig_ed25519 {
         conf.file("../../boot/bootutil/src/image_ed25519.c");
