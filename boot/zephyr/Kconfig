@@ -257,13 +257,22 @@ config BOOT_SIGNATURE_TYPE_RSA_LEN
 	range 2048 3072
 	default 2048
 
+config BOOT_TF_PSA_CRYPTO_EXISTS
+	bool
+	depends on MBEDTLS_VERSION_MAJOR
+	depends on MBEDTLS_VERSION_MAJOR >= 4
+	help
+	  Hidden option to check that MBEDTLS_VERSION_MAJOR and also that it's
+	  bigger/equal to 4. This is required to know if crypto support is
+	  provided by TF-PSA-Crypto.
+
 choice BOOT_RSA_IMPLEMENTATION
 	prompt "RSA implementation"
 	# In TF-PSA-Crypto legacy crypto modules are internal and not meant
 	# to be used by the app. PSA API should be used instead. However this
 	# is not always possible in MCUboot due to the constrained partition
 	# size, so we default to using legacy crypto.
-	default BOOT_RSA_TF_PSA_CRYPTO_LEGACY if MBEDTLS_VERSION_MAJOR >= 4
+	default BOOT_RSA_TF_PSA_CRYPTO_LEGACY if BOOT_TF_PSA_CRYPTO_EXISTS
 	default BOOT_RSA_MBEDTLS_LEGACY
 
 config BOOT_RSA_MBEDTLS_LEGACY
