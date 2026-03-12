@@ -37,7 +37,8 @@ config BOOT_SERIAL_UART
 
 config BOOT_SERIAL_CDC_ACM
 	bool "CDC ACM"
-	select USB_DEVICE_STACK
+	select USB_DEVICE_STACK_NEXT
+	select USBD_CDC_ACM_CLASS
 	help
 	  This setting will choose CDC ACM for serial recovery unless chosen
 	  "zephyr,uart-mcumgr" is present, in which case the chosen takes
@@ -45,6 +46,51 @@ config BOOT_SERIAL_CDC_ACM
 	  the chosen, leaving console on CDC ACM.
 
 endchoice
+
+if BOOT_SERIAL_CDC_ACM
+
+config BOOT_SERIAL_CDC_ACM_VID
+	hex "USB Vendor ID for CDC ACM serial recovery"
+	default 0x2fe3
+	help
+	  USB Vendor ID presented during serial recovery mode.
+		You must use your own VID for samples and applications outside of Zephyr Project.
+
+config BOOT_SERIAL_CDC_ACM_PID
+	hex "USB Product ID for CDC ACM serial recovery"
+	default 0x0004
+	help
+	  USB Product ID presented during serial recovery mode.
+		You must use your own PID for samples and applications outside of Zephyr Project.
+
+config BOOT_SERIAL_CDC_ACM_MANUFACTURER_STRING
+	string "USB manufacturer string for CDC ACM serial recovery"
+	default "MCUBoot"
+	help
+	  USB manufacturer string descriptor for serial recovery mode.
+
+config BOOT_SERIAL_CDC_ACM_PRODUCT_STRING
+	string "USB product string for CDC ACM serial recovery"
+	default "CDC ACM serial recovery"
+	help
+	  USB product string descriptor for serial recovery mode.
+
+config BOOT_SERIAL_CDC_ACM_SELF_POWERED
+	bool "USB self-powered attribute for CDC ACM serial recovery"
+	help
+	  Set the Self-powered attribute in the USB configuration descriptor.
+	  When enabled, the device reports that it does not draw power from
+	  the USB bus. Only enable this if the device is powered by an
+	  independent supply during serial recovery mode.
+
+config BOOT_SERIAL_CDC_ACM_MAX_POWER
+	int "USB bMaxPower value for CDC ACM serial recovery"
+	default 125
+	range 0 250
+	help
+	  bMaxPower value in the configuration in 2 mA units.
+
+endif # BOOT_SERIAL_CDC_ACM
 
 config MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
 	bool "Allow to select image number for DFU"
