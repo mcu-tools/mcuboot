@@ -300,7 +300,7 @@ static void do_boot(struct boot_rsp *rsp)
 #endif
 }
 
-#elif defined(CONFIG_XTENSA) || defined(CONFIG_RISCV)
+#elif defined(CONFIG_XTENSA)
 
 #ifndef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
 
