@@ -541,6 +541,13 @@ config BOOT_BUILTIN_KEY
 	help
 	  Use built-in key for image verification, otherwise the public key is embedded in MCUBoot.
 
+config BOOT_HW_KEY_MULTI
+	bool "Allow multiple HW key hashes"
+	depends on BOOT_HW_KEY
+	help
+	  Enable the multi-key HW key interface so MCUboot can iterate over
+	  multiple provisioned key hashes when matching a public key.
+
 config BOOT_VALIDATE_SLOT0
 	bool "Validate image in the primary slot on every boot"
 	default y

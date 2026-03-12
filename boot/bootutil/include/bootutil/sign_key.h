@@ -57,9 +57,36 @@ extern struct bootutil_key bootutil_keys[];
  *
  * @return                          0 on success; nonzero on failure.
  */
+#if defined(MCUBOOT_HW_KEY_MULTI)
+/**
+ * Special return code for boot_retrieve_public_key_hash().
+ *
+ * Returned when the requested key index is out of range (no more keys).
+ */
+#define BOOTUTIL_HW_KEY_NO_MORE 1
+
+/**
+ * Retrieve a HW key hash by index (multi-key support).
+ *
+ * @param[in]      image_index      Index of the image to be authenticated.
+ * @param[in]      key_index        Index of the HW key hash to retrieve.
+ * @param[out]     public_key_hash  Buffer to store the key-hash in.
+ * @param[in,out]  key_hash_size    As input the size of the buffer. As output
+ *                                  the actual key-hash length.
+ *
+ * @return                          0 on success; BOOTUTIL_HW_KEY_NO_MORE when
+ *                                  key_index is out of range; other nonzero on
+ *                                  failure.
+ */
+int boot_retrieve_public_key_hash(uint8_t image_index,
+                                  uint8_t key_index,
+                                  uint8_t *public_key_hash,
+                                  size_t *key_hash_size);
+#else
 int boot_retrieve_public_key_hash(uint8_t image_index,
                                   uint8_t *public_key_hash,
                                   size_t *key_hash_size);
+#endif /* MCUBOOT_HW_KEY_MULTI */
 #endif /* !MCUBOOT_HW_KEY */
 
 extern const int bootutil_key_cnt;
