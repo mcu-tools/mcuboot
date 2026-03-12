@@ -26,6 +26,7 @@
 #include <zephyr/drivers/flash.h>
 #include <zephyr/drivers/timer/system_timer.h>
 #include <zephyr/usb/usb_device.h>
+#include <zephyr/devicetree/partitions.h>
 #include <soc.h>
 #include <zephyr/linker/linker-defs.h>
 
@@ -65,14 +66,14 @@
 #define SECONDARY_SLOT  1
 
 #define IMAGE0_PRIMARY_START_ADDRESS \
-          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_0), reg, 0)
+          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_0), reg, 0)
 #define IMAGE0_PRIMARY_SIZE \
-          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_0), reg, 1)
+          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_0), reg, 1)
 
 #define IMAGE1_PRIMARY_START_ADDRESS \
-          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_1), reg, 0)
+          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_1), reg, 0)
 #define IMAGE1_PRIMARY_SIZE \
-          DT_PROP_BY_IDX(DT_NODE_BY_FIXED_PARTITION_LABEL(image_1), reg, 1)
+          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_1), reg, 1)
 
 #endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 

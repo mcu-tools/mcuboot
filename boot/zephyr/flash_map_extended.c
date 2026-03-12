@@ -12,6 +12,7 @@
 #include "target.h"
 
 #include <flash_map_backend/flash_map_backend.h>
+#include <zephyr/devicetree/partitions.h>
 #include <sysflash/sysflash.h>
 
 #include "bootutil/boot_hooks.h"
@@ -136,26 +137,26 @@ int flash_area_id_from_direct_image(int image_id)
     switch (image_id) {
     case 0:
     case 1:
-        return FIXED_PARTITION_ID(slot0_partition);
-#if FIXED_PARTITION_EXISTS(slot1_partition)
+        return PARTITION_ID(slot0_partition);
+#if PARTITION_EXISTS(slot1_partition)
     case 2:
-        return FIXED_PARTITION_ID(slot1_partition);
+        return PARTITION_ID(slot1_partition);
 #endif
-#if FIXED_PARTITION_EXISTS(slot2_partition)
+#if PARTITION_EXISTS(slot2_partition)
     case 3:
-        return FIXED_PARTITION_ID(slot2_partition);
+        return PARTITION_ID(slot2_partition);
 #endif
-#if FIXED_PARTITION_EXISTS(slot3_partition)
+#if PARTITION_EXISTS(slot3_partition)
     case 4:
-        return FIXED_PARTITION_ID(slot3_partition);
+        return PARTITION_ID(slot3_partition);
 #endif
-#if FIXED_PARTITION_EXISTS(slot4_partition)
+#if PARTITION_EXISTS(slot4_partition)
     case 5:
-        return FIXED_PARTITION_ID(slot4_partition);
+        return PARTITION_ID(slot4_partition);
 #endif
-#if FIXED_PARTITION_EXISTS(slot5_partition)
+#if PARTITION_EXISTS(slot5_partition)
     case 6:
-        return FIXED_PARTITION_ID(slot5_partition);
+        return PARTITION_ID(slot5_partition);
 #endif
     }
     return -EINVAL;
