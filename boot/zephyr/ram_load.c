@@ -24,8 +24,8 @@ int boot_get_image_exec_ram_info(uint32_t image_id,
                                  uint32_t *exec_ram_size)
 {
 #ifdef CONFIG_SOC_SERIES_STM32N6X
-    *exec_ram_start = DT_PROP_BY_IDX(DT_NODELABEL(axisram1), reg, 0);
-    *exec_ram_size = DT_PROP_BY_IDX(DT_NODELABEL(axisram1), reg, 1);
+    *exec_ram_start = DT_REG_ADDR(DT_NODELABEL(axisram1));
+    *exec_ram_size = DT_REG_SIZE(DT_NODELABEL(axisram1));
 #endif
 
     return 0;
