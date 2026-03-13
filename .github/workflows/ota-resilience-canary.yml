@@ -1,0 +1,253 @@
+name: OTA resilience canary
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/ota-resilience-canary.yml
+      - boot/**
+      - scripts/**
+      - zephyr/**
+      - root-rsa-2048.pem
+  schedule:
+    - cron: '0 8 * * 1'
+  workflow_dispatch:
+    inputs:
+      zephyr_ref:
+        description: 'Which Zephyr ref should be used?'
+        required: true
+        default: 'main'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ZEPHYR_VERSION: main
+  # Same Renode source the pinned tardigrade revision's own CI runs with.
+  # Versioned 1.16.x mono-portable archives fail to compile the flash
+  # controller peripheral under their bundled mono; the current portable
+  # build is the combination validated by that revision's profile sweeps.
+  RENODE_URL: https://builds.renode.io/renode-latest.linux-portable.tar.gz
+
+jobs:
+  swap-move-canary:
+    runs-on: ubuntu-24.04
+    container:
+      image: zephyrprojectrtos/ci-base:v0.29.0
+      options: '--entrypoint /bin/bash'
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Set Zephyr version for manual runs
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "ZEPHYR_VERSION=${{ github.event.inputs.zephyr_ref }}" >> $GITHUB_ENV
+
+      - name: Checkout Zephyr
+        uses: actions/checkout@v4
+        with:
+          repository: zephyrproject-rtos/zephyr
+          ref: ${{ env.ZEPHYR_VERSION }}
+          path: repos/zephyr
+
+      - name: Install Zephyr Python requirements
+        working-directory: repos/zephyr
+        run: pip install -r scripts/requirements-actions.txt --require-hashes
+
+      - name: Setup Zephyr SDK and workspace
+        uses: zephyrproject-rtos/action-zephyr-setup@360ff9b36e58499d9eb28015cdcde7ca03a5b04d
+        with:
+          base-path: repos/zephyr
+          toolchains: arm-zephyr-eabi
+          sdk-version: 1.0.0
+          west-project-filter: -.*,+cmsis,+cmsis_6,+hal_nordic,+mbedtls,+mcuboot,+tinycrypt,+zcbor,+tf-psa-crypto
+          ccache-max-size: 256MB
+
+      - name: Checkout MCUboot
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: repos/bootloader/mcuboot
+
+      - name: Build MCUboot bootloader (swap-move, RSA-2048)
+        working-directory: repos
+        run: |
+          export ZEPHYR_BASE=$(pwd)/zephyr
+          export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
+          west build -b nrf52840dk/nrf52840 bootloader/mcuboot/boot/zephyr \
+            -d build_boot \
+            -p always \
+            -- \
+            -DCONFIG_BOOT_SWAP_USING_MOVE=y \
+            -DCONFIG_BOOT_SIGNATURE_TYPE_RSA=y \
+            -DCONFIG_BOOT_SIGNATURE_TYPE_RSA_LEN=2048 \
+            -DCONFIG_BOOT_VALIDATE_SLOT0=n
+
+      - name: Build test application images
+        working-directory: repos
+        run: |
+          set -euo pipefail
+          export ZEPHYR_BASE=$(pwd)/zephyr
+          export ZEPHYR_TOOLCHAIN_VARIANT=zephyr
+          pip3 install --quiet click intelhex cbor2 cryptography
+
+          # Build hello_world as the test application.
+          west build -b nrf52840dk/nrf52840 zephyr/samples/hello_world \
+            -d build_app \
+            -p always \
+            -- \
+            -DCONFIG_BOOTLOADER_MCUBOOT=y
+
+          IMGTOOL="python3 bootloader/mcuboot/scripts/imgtool.py"
+          KEY="bootloader/mcuboot/root-rsa-2048.pem"
+
+          # Signed, unpadded images: slot trailer state is written by the
+          # profiles' update triggers, not baked into the image files.
+          ${IMGTOOL} sign --key ${KEY} \
+            --header-size 0x200 --align 4 --slot-size 0x76000 \
+            --version 1.0.0 \
+            build_app/zephyr/zephyr.bin slot0.bin
+          ${IMGTOOL} sign --key ${KEY} \
+            --header-size 0x200 --align 4 --slot-size 0x76000 \
+            --version 2.0.0 \
+            build_app/zephyr/zephyr.bin slot1.bin
+
+          ls -la slot0.bin slot1.bin
+
+      - name: Write canary profiles
+        working-directory: repos
+        run: |
+          BOOT_ELF="$(realpath build_boot/zephyr/zephyr.elf)"
+          SLOT0="$(realpath slot0.bin)"
+          SLOT1="$(realpath slot1.bin)"
+
+          cat > ota_upgrade_profile.yaml << YAML
+          schema_version: 1
+          name: mcuboot_swap_move_upgrade_canary
+          description: >
+            Post-merge OTA resilience canary for MCUboot swap-using-move on
+            nrf52840dk. Upgrade scenario: exec has v1, staging has v2 with
+            a pending-upgrade trailer. After the swap, exec should contain
+            the v2 image at every power-loss fault point.
+
+          platform: platforms/cortex_m4_flash_fast.repl
+          flash_backend: faultFlash
+          bootloader:
+            elf: ${BOOT_ELF}
+            entry: 0x00000000
+          memory:
+            sram: { start: 0x20000000, end: 0x20040000 }
+            write_granularity: 4
+            slots:
+              exec: { base: 0x0000C000, size: 0x76000 }
+              staging: { base: 0x00082000, size: 0x76000 }
+          images:
+            exec: ${SLOT0}
+            staging: ${SLOT1}
+          update_trigger:
+            type: mcuboot_trailer_magic
+            slot: staging
+          success_criteria:
+            vtor_in_slot: exec
+            image_hash: true
+            expected_image: staging
+          fault_sweep:
+            mode: runtime
+            evaluation_mode: execute
+            max_writes: auto
+            max_writes_cap: 200000
+            run_duration: "20.0"
+            phase1_time_slice: "0.10"
+            max_step_limit: 20000000
+            sweep_hash_bypass_symbols: ["bootutil_img_validate"]
+          expect:
+            should_find_issues: false
+          YAML
+
+          cat > ota_revert_profile.yaml << YAML
+          schema_version: 1
+          name: mcuboot_swap_move_revert_canary
+          description: >
+            Post-merge OTA resilience canary for MCUboot swap-using-move on
+            nrf52840dk. Revert scenario: an upgrade to v2 completed but was
+            never confirmed, so the next boot reverts to v1. Power loss at
+            any point of the revert, including inside the trailer fixup,
+            must still end with v1 restored in exec. Covers the failure
+            class of issue #1966 (PR #2100).
+
+          platform: platforms/cortex_m4_flash_fast.repl
+          flash_backend: faultFlash
+          bootloader:
+            elf: ${BOOT_ELF}
+            entry: 0x00000000
+          memory:
+            sram: { start: 0x20000000, end: 0x20040000 }
+            write_granularity: 4
+            slots:
+              exec: { base: 0x0000C000, size: 0x76000 }
+              staging: { base: 0x00082000, size: 0x76000 }
+          images:
+            exec: ${SLOT1}
+            staging: ${SLOT0}
+          update_trigger:
+            type: mcuboot_trailer_magic
+            slot: exec
+            copy_done: 1
+          success_criteria:
+            vtor_in_slot: exec
+            image_hash: true
+            expected_image: staging
+          fault_sweep:
+            mode: runtime
+            evaluation_mode: execute
+            max_writes: auto
+            max_writes_cap: 200000
+            run_duration: "20.0"
+            phase1_time_slice: "0.10"
+            max_step_limit: 20000000
+            sweep_hash_bypass_symbols: ["bootutil_img_validate"]
+          expect:
+            should_find_issues: false
+          YAML
+
+          sed -i 's/^          //' ota_upgrade_profile.yaml ota_revert_profile.yaml
+          cat ota_upgrade_profile.yaml ota_revert_profile.yaml
+
+      - name: Run upgrade resilience sweep
+        id: ota_upgrade
+        uses: neilberkman/tardigrade@2dd6e87419052e841c320a0637239d47bedf3480
+        with:
+          profile: repos/ota_upgrade_profile.yaml
+          renode-url: ${{ env.RENODE_URL }}
+          quick: "false"
+          workers: "2"
+
+      - name: Run revert resilience sweep
+        id: ota_revert
+        if: always() && contains(fromJSON('["success", "failure"]'), steps.ota_upgrade.conclusion)
+        uses: neilberkman/tardigrade@2dd6e87419052e841c320a0637239d47bedf3480
+        with:
+          profile: repos/ota_revert_profile.yaml
+          renode-url: ${{ env.RENODE_URL }}
+          quick: "false"
+          workers: "2"
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ota-resilience-swap-move
+          if-no-files-found: ignore
+          path: |
+            repos/ota_upgrade_profile.yaml
+            repos/ota_revert_profile.yaml
+            ${{ steps.ota_upgrade.outputs.report-path }}
+            ${{ steps.ota_revert.outputs.report-path }}
