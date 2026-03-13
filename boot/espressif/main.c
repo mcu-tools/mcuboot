@@ -49,13 +49,8 @@ const struct boot_uart_funcs boot_funcs = {
 extern esp_err_t check_and_generate_secure_boot_keys(void);
 #endif
 
-void do_boot(struct boot_rsp *rsp)
-{
-    BOOT_LOG_INF("br_image_off = 0x%x", rsp->br_image_off);
-    BOOT_LOG_INF("ih_hdr_size = 0x%x", rsp->br_hdr->ih_hdr_size);
-    int slot = (rsp->br_image_off == CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS) ? PRIMARY_SLOT : SECONDARY_SLOT;
-    start_cpu0_image(IMAGE_INDEX_0, slot, rsp->br_hdr->ih_hdr_size);
-}
+extern int _loader_bss_start[];
+extern int _loader_bss_end[];
 
 #ifdef CONFIG_ESP_MULTI_PROCESSOR_BOOT
 int read_image_header(uint32_t img_index, uint32_t slot, struct image_header *img_header)
@@ -96,8 +91,24 @@ void do_boot_appcpu(uint32_t img_index, uint32_t slot)
 }
 #endif
 
+void do_boot(struct boot_rsp *rsp)
+{
+#ifdef CONFIG_ESP_MULTI_PROCESSOR_BOOT
+    /* Multi image independent boot
+     * Boot on the second processor happens before the image0 boot
+     */
+    do_boot_appcpu(IMAGE_INDEX_1, PRIMARY_SLOT);
+#endif
+
+    BOOT_LOG_INF("br_image_off = 0x%x", rsp->br_image_off);
+    BOOT_LOG_INF("ih_hdr_size = 0x%x", rsp->br_hdr->ih_hdr_size);
+    int slot = (rsp->br_image_off == CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS) ? PRIMARY_SLOT : SECONDARY_SLOT;
+    start_cpu0_image(IMAGE_INDEX_0, slot, rsp->br_hdr->ih_hdr_size);
+}
+
 int main()
 {
+    memset(&_loader_bss_start, 0, ((unsigned*)&_loader_bss_end - (unsigned*)&_loader_bss_start) * sizeof(&_loader_bss_start));
     if (bootloader_init() != ESP_OK) {
         FIH_PANIC;
     }
@@ -284,13 +295,6 @@ int main()
      * and to avoid such false alarms, disable it.
      */
     bootloader_ana_clock_glitch_reset_config(false);
-
-#ifdef CONFIG_ESP_MULTI_PROCESSOR_BOOT
-    /* Multi image independent boot
-     * Boot on the second processor happens before the image0 boot
-     */
-    do_boot_appcpu(IMAGE_INDEX_1, PRIMARY_SLOT);
-#endif
 
     do_boot(&rsp);
 

@@ -1,0 +1,660 @@
+mainmenu "MCUboot Espressif Port configuration"
+
+config MCUBOOT_ESPRESSIF
+	bool
+	default y
+	help
+	  Hidden option used to indicate that the current image is MCUBoot
+	  Espressif Port
+
+config BUILD_FROM_ZEPHYR
+	bool
+	default y if ZEPHYR_HAL_ESPRESSIF_MODULE
+	help
+	  Hidden option used to indicate that the MCUBoot Espressif Port
+	  is being built from Zephyr
+
+config ESP_USE_MBEDTLS
+	bool
+	# Hidden option
+	help
+	  Use mbedTLS for crypto primitives.
+
+config ESP_USE_TINYCRYPT
+	bool
+	# Hidden option
+	help
+	  Use TinyCrypt for crypto primitives.
+
+menu "MCUBoot settings"
+
+choice ESP_SIGN_TYPE
+	prompt "Signature type"
+	default ESP_SIGN_NONE
+
+config ESP_SIGN_NONE
+	bool "No signature; use only hash check"
+
+config ESP_SIGN_RSA
+	bool "RSA signatures"
+	select ESP_USE_MBEDTLS
+
+if ESP_SIGN_RSA
+choice ESP_SIGN_RSA_LEN_CHOICE
+	prompt "RSA signature length"
+	default ESP_SIGN_RSA_LEN_2048
+config ESP_SIGN_RSA_LEN_2048
+	bool "2048 bits"
+config ESP_SIGN_RSA_LEN_3072
+	bool "3072 bits"
+endchoice
+config ESP_SIGN_RSA_LEN
+	int
+	default 2048 if ESP_SIGN_RSA_LEN_2048
+	default 3072 if ESP_SIGN_RSA_LEN_3072
+endif
+
+config ESP_SIGN_EC256
+	bool "Elliptic curve digital signatures with curve P-256"
+	select ESP_USE_TINYCRYPT
+
+config ESP_SIGN_ED25519
+	bool "Edwards curve digital signatures using ed25519"
+	select ESP_USE_TINYCRYPT
+	help
+	  This is ed25519 signature calculated over SHA512 of SHA256 of application
+	  image.
+
+endchoice # ESP_SIGN_TYPE
+
+config ESP_SIGN_KEY_FILE
+	string "PEM key file"
+	depends on !ESP_SIGN_NONE
+	default "root-ec-p256.pem" if ESP_SIGN_EC256
+	default "root-ed25519.pem" if ESP_SIGN_ED25519
+	default "root-rsa-3072.pem" if ESP_SIGN_RSA && ESP_SIGN_RSA_LEN=3072
+	default "root-rsa-2048.pem" if ESP_SIGN_RSA && ESP_SIGN_RSA_LEN=2048
+	default ""
+	help
+	  You can use either absolute or relative path.
+	  In case relative path is used, the build system assumes that it starts
+	  from the directory where the MCUBoot KConfig configuration file is
+	  located. If the key file is not there, the build system uses relative
+	  path that starts from the MCUBoot repository root directory.
+	  The key file will be parsed by imgtools getpub command and a .c source
+	  with the public key information will be written in a format expected by
+	  MCUboot.
+
+choice ESP_BOOT_IMAGE_UPGRADE_MODE
+	prompt "Image upgrade modes"
+	default ESP_BOOT_SWAP_USING_SCRATCH
+
+config ESP_BOOT_SWAP_USING_SCRATCH
+	bool "Swap mode that run with the scratch partition"
+	help
+	  This is the most conservative swap mode but it can work even on
+	  devices with heterogeneous flash page layout.
+
+config ESP_BOOT_UPGRADE_ONLY
+	bool "Overwrite image updates instead of swapping"
+	help
+	  If y, overwrite the primary slot with the upgrade image instead
+	  of swapping them. This prevents the fallback recovery, but
+	  uses a much simpler code path.
+
+config ESP_BOOT_SWAP_USING_MOVE
+	bool "Swap using move mode without scratch partition"
+	help
+	  If y, the swap upgrade is done in two steps, where first every
+	  sector of the primary slot is moved up one sector, then for
+	  each sector X in the secondary slot, it is moved to index X in
+	  the primary slot, then the sector at X+1 in the primary is
+	  moved to index X in the secondary.
+	  This allows a swap upgrade without using a scratch partition,
+	  but is currently limited to all sectors in both slots being of
+	  the same size.
+
+endchoice # ESP_BOOT_IMAGE_UPGRADE_MODE
+
+config ESP_IMAGE_NUMBER
+	int "Number of updateable images"
+	default 1
+	range 1 2
+	help
+		Enables support of multi image update.
+
+config ESP_DOWNGRADE_PREVENTION
+	bool "Downgrade prevention"
+	help
+	  Prevent downgrades by enforcing incrementing version numbers.
+	  When this option is set, any upgrade must have greater major version
+	  or greater minor version with equal major version. This mechanism
+	  only protects against some attacks against version downgrades (for
+	  example, a JTAG could be used to write an older version).
+
+config ESP_DOWNGRADE_PREVENTION_SECURITY_COUNTER
+	bool "Use image security counter instead of version number"
+	depends on ESP_DOWNGRADE_PREVENTION
+	depends on (ESP_BOOT_SWAP_USING_MOVE || ESP_BOOT_SWAP_USING_SCRATCH)
+	help
+	  Security counter is used for version eligibility check instead of pure
+	  version.  When this option is set, any upgrade must have greater or
+	  equal security counter value.
+	  Because of the acceptance of equal values it allows for software
+	  downgrades to some extent.
+
+endmenu # MCUboot Settings
+
+menu "Flash map organization settings"
+
+if BUILD_FROM_ZEPHYR
+DT_BOOT_PARTITION_PATH := $(dt_nodelabel_path,boot_partition)
+DT_IMG0_SLOT0_PARTITION_PATH := $(dt_nodelabel_path,slot0_partition)
+DT_IMG0_SLOT1_PARTITION_PATH := $(dt_nodelabel_path,slot1_partition)
+
+if ESP_IMAGE_NUMBER > 1
+DT_IMG1_SLOT0_PARTITION_PATH := $(dt_nodelabel_path,slot0_appcpu_partition)
+DT_IMG1_SLOT1_PARTITION_PATH := $(dt_nodelabel_path,slot1_appcpu_partition)
+endif
+
+DT_SCRATCH_PARTITION_PATH := $(dt_nodelabel_path,scratch_partition)
+DT_FLASH_SIZE := $(div, $(dt_node_reg_size_int,$(dt_nodelabel_path,flash0)),1048576)
+endif # BUILD_FROM_ZEPHYR
+
+choice ESP_FLASHSIZE
+	prompt "Flash size"
+	default ESP_FLASHSIZE_4MB
+	depends on !BUILD_FROM_ZEPHYR
+	help
+	  SPI flash size, in megabytes
+
+config ESP_FLASHSIZE_1MB
+	bool "1 MB"
+config ESP_FLASHSIZE_2MB
+	bool "2 MB"
+config ESP_FLASHSIZE_4MB
+	bool "4 MB"
+config ESP_FLASHSIZE_8MB
+	bool "8 MB"
+config ESP_FLASHSIZE_16MB
+	bool "16 MB"
+config ESP_FLASHSIZE_32MB
+	bool "32 MB"
+config ESP_FLASHSIZE_64MB
+	bool "64 MB"
+config ESP_FLASHSIZE_128MB
+	bool "128 MB"
+endchoice # ESP_FLASHSIZE
+
+config ESP_FLASH_SIZE
+	string
+	default "$(DT_FLASH_SIZE)MB" if BUILD_FROM_ZEPHYR
+	default "1MB" if ESP_FLASHSIZE_1MB
+	default "2MB" if ESP_FLASHSIZE_2MB
+	default "4MB" if ESP_FLASHSIZE_4MB
+	default "8MB" if ESP_FLASHSIZE_8MB
+	default "16MB" if ESP_FLASHSIZE_16MB
+	default "32MB" if ESP_FLASHSIZE_32MB
+	default "64MB" if ESP_FLASHSIZE_64MB
+	default "128MB" if ESP_FLASHSIZE_128MB
+
+config ESP_BOOTLOADER_OFFSET
+	hex
+	default $(dt_node_reg_addr_hex,$(DT_BOOT_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x1000 if SOC_ESP32 || SOC_ESP32S2
+	default 0x0
+	help
+	  Offset address that 2nd bootloader will be flashed to.
+	  The value is determined by the ROM bootloader.
+
+config ESP_BOOTLOADER_SIZE
+	hex "Bootloader size"
+	default $(dt_node_reg_size_hex,$(DT_BOOT_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0xF000
+	help
+	  Bootloader size
+
+config ESP_APPLICATION_SIZE
+	hex "Applicaton image size"
+	default $(dt_node_reg_size_hex,$(DT_IMG0_SLOT0_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x80000 if ESP_IMAGE_NUMBER > 1 && !BUILD_FROM_ZEPHYR
+	default 0x100000
+	help
+	  Application image size
+
+config ESP_IMAGE0_PRIMARY_START_ADDRESS
+	hex "Image 0 primary slot offset"
+	default $(dt_node_reg_addr_hex,$(DT_IMG0_SLOT0_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x10000
+	help
+	  Primary slot flash offset for Image 0
+
+config ESP_IMAGE0_SECONDARY_START_ADDRESS
+	hex "Image 0 secondary slot offset"
+	default $(dt_node_reg_addr_hex,$(DT_IMG0_SLOT1_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x110000
+	help
+		Secondary slot flash offset for Image 0
+
+if ESP_IMAGE_NUMBER > 1
+config ESP_IMAGE1_PRIMARY_START_ADDRESS
+	hex "Image 1 primary slot offset"
+	default $(dt_node_reg_addr_hex,$(DT_IMG1_SLOT0_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x110000
+	help
+	  Primary slot flash offset for Image 1
+
+config ESP_IMAGE1_SECONDARY_START_ADDRESS
+	hex "Image 1 secondary slot offset"
+	default $(dt_node_reg_addr_hex,$(DT_IMG1_SLOT1_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x190000
+	help
+		Secondary slot flash offset for Image 1
+endif # ESP_IMAGE_NUMBER > 1
+
+if ESP_BOOT_SWAP_USING_SCRATCH
+config ESP_SCRATCH_OFFSET
+	hex "Scratch area offset"
+	default $(dt_node_reg_addr_hex,$(DT_SCRATCH_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x210000
+	help
+		Scratch area offset
+
+config ESP_SCRATCH_SIZE
+	hex "Scratch area size"
+	default $(dt_node_reg_size_hex,$(DT_SCRATCH_PARTITION_PATH)) if BUILD_FROM_ZEPHYR
+	default 0x40000
+	help
+		Scratch area size
+endif # ESP_BOOT_SWAP_USING_SCRATCH
+
+endmenu # Flash map organization settings
+
+menu "Console output settings"
+
+if BUILD_FROM_ZEPHYR
+DT_CHOSEN_Z_CONSOLE := zephyr,console
+endif # BUILD_FROM_ZEPHYR
+
+choice ESP_CONSOLE_CHANNEL
+	prompt "Channel for console output from bootloader"
+	default ESP_CONSOLE_CHANNEL_USB_SERIAL_JTAG if BUILD_FROM_ZEPHYR && \
+													$(dt_nodelabel_enabled,usb_serial) && $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_CONSOLE)) = $(dt_nodelabel_reg_addr_hex,usb_serial)
+	default ESP_CONSOLE_CHANNEL_UART_CUSTOM if BUILD_FROM_ZEPHYR && \
+												$(dt_nodelabel_enabled,uart1) && $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_CONSOLE)) = $(dt_nodelabel_reg_addr_hex,uart1)
+	default ESP_CONSOLE_CHANNEL_UART_DEFAULT
+	help
+	  Select where to send console output
+config ESP_CONSOLE_CHANNEL_UART_DEFAULT
+	bool "Default UART0"
+config ESP_CONSOLE_CHANNEL_USB_SERIAL_JTAG
+	bool "USB Serial/JTAG Controller"
+	depends on SOC_ESP32C3 || SOC_ESP32C6 || SOC_ESP32S3
+config ESP_CONSOLE_CHANNEL_UART_CUSTOM
+	bool "Custom UART"
+endchoice
+
+config ESP_CONSOLE_UART
+	bool
+	default y if ESP_CONSOLE_CHANNEL_UART_DEFAULT || ESP_CONSOLE_CHANNEL_UART_CUSTOM
+
+config ESP_CONSOLE_UART_CUSTOM
+	bool
+	default y if ESP_CONSOLE_CHANNEL_UART_CUSTOM
+
+config ESP_CONSOLE_USB_SERIAL_JTAG
+	bool
+	default y if ESP_CONSOLE_CHANNEL_USB_SERIAL_JTAG
+
+config ESP_CONSOLE_MULTIPLE_UART
+	bool
+	default y if !SOC_ESP32C3 && !SOC_ESP32H2 && !SOC_ESP32C2 && !SOC_ESP32C6
+
+choice ESP_CONSOLE_UART_CUSTOM_NUM
+	prompt "UART port to use for console output (0-1)"
+	depends on ESP_CONSOLE_UART_CUSTOM && ESP_CONSOLE_MULTIPLE_UART
+	default ESP_CONSOLE_UART_CUSTOM_NUM_0 if BUILD_FROM_ZEPHYR && \
+												$(dt_nodelabel_enabled,uart0) && $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_CONSOLE)) = $(dt_nodelabel_reg_addr_hex,uart0)
+	default ESP_CONSOLE_UART_CUSTOM_NUM_1 if BUILD_FROM_ZEPHYR && \
+												$(dt_nodelabel_enabled,uart1) && $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_CONSOLE)) = $(dt_nodelabel_reg_addr_hex,uart1)
+	help
+	  This UART peripheral is used for console output from bootloader.
+
+config ESP_CONSOLE_UART_CUSTOM_NUM_0
+	bool "UART0"
+config ESP_CONSOLE_UART_CUSTOM_NUM_1
+	bool "UART1"
+endchoice
+
+config ESP_CONSOLE_UART_NUM
+	int
+	default 0 if ESP_CONSOLE_CHANNEL_UART_DEFAULT
+	default 0 if !ESP_CONSOLE_MULTIPLE_UART
+	default 0 if ESP_CONSOLE_UART_CUSTOM_NUM_0
+	default 1 if ESP_CONSOLE_UART_CUSTOM_NUM_1
+	depends on ESP_CONSOLE_UART
+
+config ESP_CONSOLE_UART_TX_GPIO
+	int "UART TX GPIO pin"
+	depends on ESP_CONSOLE_UART_CUSTOM
+	range 0 46
+	default 1 if SOC_ESP32
+	default 20 if SOC_ESP32C2
+	default 21 if SOC_ESP32C3
+	default 9 if SOC_ESP32C6
+	default 24 if SOC_ESP32H2
+	default 43
+
+config ESP_CONSOLE_UART_RX_GPIO
+	int "UART RX GPIO pin"
+	depends on ESP_CONSOLE_UART_CUSTOM
+	range 0 46
+	default 3 if SOC_ESP32
+	default 19 if SOC_ESP32C2
+	default 20 if SOC_ESP32C3
+	default 8 if SOC_ESP32C6
+	default 23 if SOC_ESP32H2
+	default 44
+
+endmenu # Console output settings
+
+menu "Security features"
+
+config SECURE_BOOT
+	bool "Hardware Secure Boot bootloader verification (READ DOCS FIRST)"
+	select SECURE_BOOT_V2_ENABLED
+	select SECURE_SIGNED_ON_BOOT
+	help
+	  Hardware Secure Boot features in the bootloader. When enabled, the
+	  ROM bootloader verifies the bootloader image signature.
+	  The bootloader security enabling procedure permanently enables this
+	  and other security features by burning eFuses on the first boot and
+	  it cannot be reversed.
+	  Read the documentation prior to use.
+
+config SECURE_SIGNED_ON_BOOT
+	bool
+	depends on SECURE_BOOT
+
+config SECURE_BOOT_V2_ENABLED
+	bool
+	depends on SECURE_BOOT
+
+config SECURE_SIGNED_APPS_RSA_SCHEME
+	bool
+	default y if SECURE_SIGNED_ON_BOOT && \
+		(SOC_ESP32 || SOC_ESP32S2 || SOC_ESP32S3 || \
+		SOC_ESP32C3 || SOC_ESP32C6 || SOC_ESP32H2)
+	depends on SECURE_SIGNED_ON_BOOT && \
+		(SOC_ESP32 || SOC_ESP32S2 || SOC_ESP32S3 || \
+		SOC_ESP32C3 || SOC_ESP32C6 || SOC_ESP32H2)
+
+config SECURE_SIGNED_APPS_ECDSA_V2_SCHEME
+	bool
+	default y if SECURE_SIGNED_ON_BOOT && SOC_ESP32C2
+	depends on SECURE_SIGNED_ON_BOOT
+
+config SECURE_BOOT_INSECURE
+	bool "Development and testing options (READ DOCS FIRST)"
+	depends on SECURE_BOOT
+	default y
+	help
+	  You can disable some of the default protections offered by secure boot,
+	  in order to enable testing or a custom combination of security features.
+
+	  Only enable these options if you are very sure.
+
+config SECURE_FLASH_ENC_ENABLED
+	bool "Hardware Flash Encryption (READ DOCS FIRST)"
+	help
+	  Hardware Flash Encryption features in the bootloader. When enabled,
+	  flash operations are encrypted/decrypted on the fly.
+	  The bootloader security enabling procedure permanently enables this
+	  and other security features by burning eFuses on the first boot and
+	  it cannot be reversed.
+	  Read the documentation prior to use.
+
+config SECURE_FLASH_HAS_WRITE_PROTECTION_CACHE
+	bool
+	default y if SECURE_FLASH_ENC_ENABLED && \
+		(SOC_ESP32 || SOC_ESP32C3 || SOC_ESP32C6 || \
+		SOC_ESP32H2 || SOC_ESP32S2 || SOC_ESP32S3)
+
+choice SECURE_FLASH_ENCRYPTION_MODE
+	prompt "Flash encryption mode"
+	depends on SECURE_FLASH_ENC_ENABLED
+	default SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
+	help
+	  By default Development mode is enabled which allows ROM download mode to
+	  perform flash encryption operations (plaintext is sent to the device, and
+	  it encrypts it internally and writes ciphertext to flash).
+	  This mode is not secure, it is possible for an attacker to write their
+	  own chosen plaintext to flash.
+
+	  Release mode should always be selected for production or manufacturing.
+	  Once enabled it is no longer possible for the device in ROM Download Mode
+	  to use the flash encryption hardware.
+
+	  When EFUSE_VIRTUAL is enabled, SECURE_FLASH_ENCRYPTION_MODE_RELEASE is
+	  not available.
+
+config SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
+	bool "Development (NOT SECURE)"
+
+config SECURE_FLASH_ENCRYPTION_MODE_RELEASE
+	bool "Release"
+	depends on !EFUSE_VIRTUAL
+
+endchoice
+
+config SECURE_FLASH_PSEUDO_ROUND_FUNC
+	bool "Permanently enable XTS-AES's pseudo rounds function"
+	default y
+	depends on SECURE_FLASH_ENCRYPTION_MODE_RELEASE && SOC_ESP32H2
+	help
+	  The bootloader permanently enables the XTS-AES peripheral's pseudo
+	  rounds function.
+
+choice SECURE_FLASH_PSEUDO_ROUND_FUNC_STRENGTH
+	prompt "Strength of the pseudo rounds function"
+	depends on SECURE_FLASH_PSEUDO_ROUND_FUNC
+	default SECURE_FLASH_PSEUDO_ROUND_FUNC_STRENGTH_LOW
+	help
+	  The strength of the pseudo rounds functions can be configured to low,
+	  medium and high, each denoting the values that would be stored in the
+	  efuses field.
+	  Increasing the strength would provide higher security but would slow
+	  down the flash encryption/decryption operations.
+
+config SECURE_FLASH_PSEUDO_ROUND_FUNC_STRENGTH_LOW
+	bool "Low"
+
+config SECURE_FLASH_PSEUDO_ROUND_FUNC_STRENGTH_MEDIUM
+	bool "Medium"
+
+config SECURE_FLASH_PSEUDO_ROUND_FUNC_STRENGTH_HIGH
+	bool "High"
+endchoice
+
+config SECURE_FLASH_PSEUDO_ROUND_FUNC_STRENGTH
+	int
+	default 1 if SECURE_FLASH_PSEUDO_ROUND_FUNC_STRENGTH_LOW
+	default 2 if SECURE_FLASH_PSEUDO_ROUND_FUNC_STRENGTH_MEDIUM
+	default 3 if SECURE_FLASH_PSEUDO_ROUND_FUNC_STRENGTH_HIGH
+
+config SECURE_ROM_DL_MODE_ENABLED
+	bool
+	default y if !SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT && \
+		(SOC_ESP32C2 || SOC_ESP32C3 || SOC_ESP32C6 || \
+		SOC_ESP32H2 || SOC_ESP32S2 || SOC_ESP32S3)
+	depends on SECURE_BOOT || SECURE_FLASH_ENC_ENABLED
+
+choice SECURE_UART_ROM_DL_MODE
+	bool "UART ROM download mode"
+	default SECURE_ENABLE_SECURE_ROM_DL_MODE if SECURE_ROM_DL_MODE_ENABLED
+	default SECURE_INSECURE_ALLOW_DL_MODE
+	depends on SECURE_BOOT_V2_ENABLED || SECURE_FLASH_ENC_ENABLED
+	depends on !(SOC_ESP32 && ESP32_REV_MIN_FULL < 300)
+
+config SECURE_DISABLE_ROM_DL_MODE
+	bool "Permanently disabled (recommended)"
+	help
+	  The bootloader security enabling procedure on first boot disables
+	  the UART ROM Download Mode permanently.
+	  This prevents any future use of esptool, espefuse and similar tools.
+
+	  It is recommended to select this option in any production application
+	  where Flash Encryption and/or Secure Boot is enabled and access to
+	  UART ROM Download Mode is not required.
+
+config SECURE_ENABLE_SECURE_ROM_DL_MODE
+	bool "Permanently switch to Secure mode (recommended)"
+	depends on (SOC_ESP32C2 || SOC_ESP32C3 || SOC_ESP32C6 || \
+		SOC_ESP32H2 || SOC_ESP32S2 || SOC_ESP32S3)
+	help
+	  The bootloader security enabling procedure on first boot switches
+	  the UART ROM Download Mode to Secure Download Mode permanently.
+
+	  Secure Download mode limits the use of Download Mode functions to
+	  update SPI config, changing baud rate, basic flash write and a
+	  command to return a summary of currently enabled security features
+	  (`get_security_info`).
+
+	  Secure Download mode is not compatible with the esptool features:
+	  flasher stub, read/writing memory or registers, encrypted flashing,
+	  espefuse, or any other features that interact with unsupported
+	  Download Mode commands.
+
+config SECURE_INSECURE_ALLOW_DL_MODE
+	bool "Keep UART ROM download mode enabled (not recommended)"
+	help
+	  Allow the full UART download mode to stay enabled.
+	  This option SHOULD NOT BE ENABLED for production use cases.
+endchoice
+
+if SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT || SECURE_BOOT_INSECURE
+
+menu "Potentially insecure options"
+
+config SECURE_BOOT_ALLOW_JTAG
+	bool "Allow JTAG debugging with secure boot/flash encryption"
+	depends on SECURE_BOOT_INSECURE || SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
+	default y if SECURE_BOOT_INSECURE || SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
+	select SECURE_FLASH_SKIP_WRITE_PROTECTION_CACHE \
+		if SECURE_FLASH_HAS_WRITE_PROTECTION_CACHE
+	help
+	  The bootloader security enabling procedure on first boot leaves JTAG
+	  enabled for debugging, which compromises the protection of flash
+	  encryption and secure boot.
+	  If not set (default), the bootloader will permanently disable JTAG
+	  on first boot when either secure boot or flash encryption is enabled.
+
+	  Only set this option in development or testing environments.
+
+config SECURE_FLASH_UART_BOOTLOADER_ALLOW_ENC
+	bool "Leave UART bootloader encryption enabled"
+	depends on SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
+	default y if SECURE_BOOT_INSECURE || SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
+	select SECURE_FLASH_SKIP_WRITE_PROTECTION_CACHE \
+		if SECURE_FLASH_HAS_WRITE_PROTECTION_CACHE
+	help
+	  The bootloader security enabling procedure on first boot leaves flash
+	  hardware encryption accessible to the UART bootloader, which
+	  compromises the protection of flash encryption.
+	  This allows encrypting data when flashing with 'esptool --encrypt'.
+
+	  If not set (default) the bootloader will permanently disable UART
+	  bootloader flash hardware encryption access on first boot.
+
+	  Only set this option in development or testing environments.
+
+config SECURE_FLASH_UART_BOOTLOADER_ALLOW_DEC
+	bool "Leave UART bootloader decryption enabled"
+	depends on SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT && SOC_ESP32
+	default y if SECURE_BOOT_INSECURE || SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
+	help
+	  The bootloader security enabling procedure on first boot leaves flash
+	  hardware decryption accessible to the UART bootloader, which
+	  compromises the protection of flash encryption.
+
+	  If not set (default) the bootloader will permanently disable UART
+	  bootloader flash hardware decryption access on first boot.
+
+	  Only set this option in development or testing environments.
+
+config SECURE_FLASH_UART_BOOTLOADER_ALLOW_CACHE
+	bool "Leave UART bootloader flash cache enabled"
+	depends on SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT && \
+		(SOC_ESP32 || SOC_EFUSE_DIS_DOWNLOAD_ICACHE || SOC_EFUSE_DIS_DOWNLOAD_DCACHE)
+	default y if SECURE_BOOT_INSECURE || SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
+	select SECURE_FLASH_SKIP_WRITE_PROTECTION_CACHE \
+		if SECURE_FLASH_HAS_WRITE_PROTECTION_CACHE
+	help
+	  The bootloader security enabling procedure on first boot leaves flash
+	  cache access enabled for the UART ROM bootloader, which compromises
+	  the protection of flash encryption.
+
+	  If not set (default) the bootloader will permanently disable UART
+	  bootloader flash cache access on first boot.
+
+	  Only set this option in development or testing environments.
+
+config SECURE_FLASH_REQUIRE_ALREADY_ENABLED
+	bool "Require flash encryption to be already enabled"
+	depends on SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
+	help
+	  Requires the flash encryption to be already enabled in the eFuses
+	  when booting, fails to boot otherwise.
+
+	  If not set (default) the bootloader will enable flash encryption,
+	  generate the encryption key and program the eFuses on the first boot.
+
+	  Only set this option in development or testing environments
+	  to avoid accidentally enabling flash encryption on a wrong device.
+
+config SECURE_FLASH_SKIP_WRITE_PROTECTION_CACHE
+	bool "Skip write-protection of DIS_CACHE (DIS_ICACHE, DIS_DCACHE)"
+	depends on SECURE_FLASH_HAS_WRITE_PROTECTION_CACHE
+	help
+	  If not set (default), the bootloader will burn the write-protection
+	  of DIS_CACHE(for ESP32) or DIS_ICACHE/DIS_DCACHE(for other chips)
+	  eFuse when Flash Encryption is enabled on the first boot.
+	  Write protection for cache-disabling efuse prevents the chip from
+	  being blocked if it is set by accident.
+	  Since other eFuses are linked with the same write protection bit then
+	  write-protection will not be done if
+	  SECURE_FLASH_UART_BOOTLOADER_ALLOW_ENC, SECURE_BOOT_ALLOW_JTAG or
+	  SECURE_FLASH_UART_BOOTLOADER_ALLOW_CACHE options are selected so
+	  Release mode can be enabled later.
+
+endmenu # Potentially insecure options
+
+endif
+
+menu "eFuse emulation"
+
+config EFUSE_VIRTUAL
+	bool "eFuse emulation"
+	default n
+
+config EFUSE_VIRTUAL_KEEP_IN_FLASH
+	bool "Keep eFuse emulation data in Flash"
+	depends on EFUSE_VIRTUAL
+	default y
+
+config EFUSE_VIRTUAL_OFFSET
+	hex "eFuse emulation Flash offset"
+	depends on EFUSE_VIRTUAL_KEEP_IN_FLASH
+	default $(dt_nodelabel_reg_addr_hex,sys_partition) if BUILD_FROM_ZEPHYR && $(dt_nodelabel_exists,sys_partition)
+	default 0x10000
+
+config EFUSE_VIRTUAL_SIZE
+	hex "eFuse emulation region size"
+	depends on EFUSE_VIRTUAL_KEEP_IN_FLASH
+	default 0x2000
+
+endmenu # eFuse emulation
+
+endmenu # Security features
+
+source "Kconfig.zephyr"
