@@ -46,6 +46,7 @@
 #include "bootutil/boot_hooks.h"
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/mcuboot_status.h"
+#include "bootutil/crypto/backend.h"
 #include "flash_map_backend/flash_map_backend.h"
 
 #if defined(CONFIG_MCUBOOT_UUID_VID) || defined(CONFIG_MCUBOOT_UUID_CID)
@@ -509,6 +510,7 @@ static void boot_serial_enter()
 
 int main(void)
 {
+    bool crypto_ok;
     struct boot_rsp rsp;
     int rc;
 #if defined(CONFIG_BOOT_USB_DFU_GPIO) || defined(CONFIG_BOOT_USB_DFU_WAIT)
@@ -524,6 +526,12 @@ int main(void)
 #else
     BOOT_LOG_INF("Starting Direct-XIP bootloader");
 #endif
+
+    crypto_ok = bootutil_crypto_backend_init();
+    if (!crypto_ok) {
+        BOOT_LOG_ERR("Failed to initialize crypto backend");
+        FIH_PANIC;
+    }
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
     /* LED init */
