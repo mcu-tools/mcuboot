@@ -10,11 +10,21 @@
  * without overwriting itself.
  */
 
+#include "memory.h"
+
+_bootloader_iram_loader_seg_start = BOOTLOADER_IRAM_LOADER_SEG_START;
+_bootloader_dram_loader_seg_start = BOOTLOADER_DRAM_LOADER_SEG_START;
+
 MEMORY
 {
-  iram_seg (RWX) :                  org = 0x403B0000, len = 0xA000
-  iram_loader_seg (RWX) :           org = 0x403BA000, len = 0x6000
-  dram_seg (RW) :                   org = 0x3FCD0000, len = 0x9A00
+  iram_loader_seg (RWX) :           org = BOOTLOADER_IRAM_LOADER_SEG_START,
+                                    len = BOOTLOADER_IRAM_LOADER_SEG_LEN
+  dram_loader_seg (RW) :            org = BOOTLOADER_DRAM_LOADER_SEG_START,
+                                    len = BOOTLOADER_DRAM_LOADER_SEG_LEN
+  iram_seg (RWX) :                  org = BOOTLOADER_IRAM_SEG_START,
+                                    len = BOOTLOADER_IRAM_SEG_LEN
+  dram_seg (RW) :                   org = BOOTLOADER_DRAM_SEG_START,
+                                    len = BOOTLOADER_DRAM_SEG_LEN
 }
 
 /*  Default entry point:  */
@@ -27,60 +37,77 @@ SECTIONS
     . = ALIGN (16);
     _loader_text_start = ABSOLUTE(.);
     *(.stub .gnu.warning .gnu.linkonce.literal.* .gnu.linkonce.t.*.literal .gnu.linkonce.t.*)
-    *(.iram1 .iram1.*) /* catch stray IRAM_ATTR */
-    *esp_mcuboot.*(.literal .text .literal.* .text.*)
-    *esp_loader.*(.literal .text .literal.* .text.*)
-    *main.*(.literal .text .literal.* .text.*)
+    *esp_mcuboot.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *esp_loader.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *main.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
 
     /* iram_loader section must not be overlapped by application IRAM/DRAM
      * mapping, therefore the following were added based on the dependencies
      * from esp_loader as its from where the application RAM parts will be
      * loaded into memory and ultimately boot. The cross reference table
      * were used to map the reachable dependencies */
-    *libhal.a:app_cpu_start.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_banner.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_clock_init.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_common_loader.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_console.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_console_loader.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_esp32s3.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_flash.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_flash_config_esp32s3.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_init.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_mem.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_panic.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_random.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_random_esp32s3.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_sha.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_soc.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_utility.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_wdt.*(.literal .text .literal.* .text.*)
-    *libhal.a:cache_hal.*(.literal .text .literal.* .text.*)
-    *libhal.a:cpu.*(.literal .text .literal.* .text.*)
-    *libhal.a:efuse_hal.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_efuse_api.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_efuse_api_key.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_efuse_table.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_efuse_utility.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_image_format.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_rom_sys.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_rom_uart.*(.literal .text .literal.* .text.*)
-    *libhal.a:flash_encrypt.*(.literal .text .literal.* .text.*)
-    *libhal.a:flash_encryption_secure_features.*(.literal .text .literal.* .text.*)
-    *libhal.a:mmu_hal.*(.literal .text .literal.* .text.*)
-    *libhal.a:rtc_clk.*(.literal .text .literal.* .text.*)
-    *libhal.a:rtc_clk_init.*(.literal .text .literal.* .text.*)
-    *libhal.a:rtc_init.*(.literal .text .literal.* .text.*)
-    *libhal.a:rtc_time.*(.literal .text .literal.* .text.*)
-    *libhal.a:secure_boot_signatures_bootloader.*(.literal .text .literal.* .text.*)
-    *libhal.a:wdt_hal_iram.*(.literal .text .literal.* .text.*)
-    *libgcc.a:*.*(.literal .text .literal.* .text.*)
-
+    *libhal.a:app_cpu_start.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:bootloader_flash.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:bootloader_sha.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:bootloader_wdt.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:bootloader_panic.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:cache_hal.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:mmu_hal.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:wdt_hal_iram.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:cpu.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
     *(.fini.literal)
     *(.fini)
     *(.gnu.version)
     _loader_text_end = ABSOLUTE(.);
   } > iram_loader_seg
+
+  /* Ensure the iram_loader_seg is large enough */
+  ASSERT((_loader_text_end - ORIGIN(iram_loader_seg)) <= BOOTLOADER_IRAM_LOADER_SEG_LEN,
+    "iram_loader_seg overflow: increase BOOTLOADER_IRAM_LOADER_SEG_LEN")
+
+  .dram_loader.bss (NOLOAD) :
+  {
+    . = ALIGN (8);
+    _dram_loader_start = ABSOLUTE(.);
+    _loader_bss_start = ABSOLUTE(.);
+    *esp_loader.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *esp_mcuboot.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *main.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:app_cpu_start.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:bootloader_flash.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:bootloader_sha.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:bootloader_wdt.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:bootloader_panic.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:cache_hal.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:mmu_hal.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:wdt_hal_iram.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:cpu.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    . = ALIGN (8);
+    _loader_bss_end = ABSOLUTE(.);
+  } > dram_loader_seg
+
+  .dram_loader.data :
+  {
+    . = ALIGN(16);
+    *esp_loader.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *esp_mcuboot.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *main.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:app_cpu_start.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:bootloader_flash.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:bootloader_sha.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:bootloader_wdt.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:bootloader_panic.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:cache_hal.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:mmu_hal.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:wdt_hal_iram.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:cpu.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    . = ALIGN(16);
+    _dram_loader_end = ABSOLUTE(.);
+  } > dram_loader_seg
+
+  /* Ensure the dram_loader_seg is large enough */
+  ASSERT((_dram_loader_end - ORIGIN(dram_loader_seg)) <= BOOTLOADER_DRAM_LOADER_SEG_LEN,
+    "dram_loader_seg overflow: increase BOOTLOADER_DRAM_LOADER_SEG_LEN")
 
   .iram.text :
   {
@@ -181,6 +208,7 @@ SECTIONS
     _text_start = ABSOLUTE(.);
     *(.literal .text .literal.* .text.* .stub .gnu.warning .gnu.linkonce.literal.* .gnu.linkonce.t.*.literal .gnu.linkonce.t.*)
     *(.iram .iram.*) /* catch stray IRAM_ATTR */
+    *(.iram1 .iram1.*)
     *(.fini.literal)
     *(.fini)
     *(.gnu.version)
@@ -188,4 +216,21 @@ SECTIONS
     _etext = .;
   } > iram_seg
 
+  /** This section will be used by the debugger and disassembler to get more information
+   * about raw data present in the code.
+   * Indeed, it may be required to add some padding at some points in the code
+   * in order to align a branch/jump destination on a particular bound.
+   * Padding these instructions will generate null bytes that shall be
+   * interpreted as data, and not code by the debugger or disassembler.
+   * This section will only be present in the ELF file, not in the final binary
+   */
+  .xt.prop 0 :
+  {
+    KEEP (*(.xt.prop .gnu.linkonce.prop.*))
+  }
+
+  .xt.lit 0 :
+  {
+    KEEP (*(.xt.lit .gnu.linkonce.p.*))
+  }
 }

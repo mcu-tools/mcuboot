@@ -4,49 +4,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-/** Simplified memory map for the bootloader.
- *  Make sure the bootloader can load into main memory without overwriting itself.
+/* Simplified memory map for the bootloader.
  *
- *  ESP32-C6 ROM static data usage is as follows:
- *  - 0x4086ad08 - 0x4087c610: Shared buffers, used in UART/USB/SPI download mode only
- *  - 0x4087c610 - 0x4087e610: PRO CPU stack, can be reclaimed as heap after RTOS startup
- *  - 0x4087e610 - 0x40880000: ROM .bss and .data (not easily reclaimable)
- *
- *  The 2nd stage bootloader can take space up to the end of ROM shared
- *  buffers area (0x4087c610).
+ * The main purpose is to make sure the bootloader can load into main memory
+ * without overwriting itself.
  */
 
-/* We consider 0x4087c610 to be the last usable address for 2nd stage bootloader stack overhead, dram_seg,
- * and work out iram_seg and iram_loader_seg addresses from there, backwards.
- */
+#include "memory.h"
 
-/* These lengths can be adjusted, if necessary: */
-bootloader_usable_dram_end = 0x4087c610;
-bootloader_stack_overhead = 0x2000; /* For safety margin between bootloader data section and startup stacks */
-bootloader_dram_seg_len = 0xA000;
-bootloader_iram_loader_seg_len = 0x7000;
-bootloader_iram_seg_len = 0x9000;
-
-/* Start of the lower region is determined by region size and the end of the higher region */
-bootloader_dram_seg_end = bootloader_usable_dram_end - bootloader_stack_overhead; /* 0x4087c610 - 0x2000 = 0x4087a610 */
-bootloader_dram_seg_start = bootloader_dram_seg_end - bootloader_dram_seg_len; /* 0x4087a610 - 0x5000 = 0x40875610 */
-bootloader_iram_loader_seg_start = bootloader_dram_seg_start - bootloader_iram_loader_seg_len; /* 0x40875610 - 0x7000 = 0x4086e610 */
-bootloader_iram_seg_start = bootloader_iram_loader_seg_start - bootloader_iram_seg_len; /* 0x4086e610 - 0x3000 = 0x4086b610 */
+_bootloader_iram_loader_seg_start = BOOTLOADER_IRAM_LOADER_SEG_START;
+_bootloader_dram_loader_seg_start = BOOTLOADER_DRAM_LOADER_SEG_START;
 
 MEMORY
 {
-  iram_seg (RWX) :                  org = bootloader_iram_seg_start, len = bootloader_iram_seg_len
-  iram_loader_seg (RWX) :           org = bootloader_iram_loader_seg_start, len = bootloader_iram_loader_seg_len
-  dram_seg (RW) :                   org = bootloader_dram_seg_start, len = bootloader_dram_seg_len
+  iram_loader_seg (RWX) :           org = BOOTLOADER_IRAM_LOADER_SEG_START, len = BOOTLOADER_IRAM_LOADER_SEG_LEN
+  dram_loader_seg (RW) :            org = BOOTLOADER_DRAM_LOADER_SEG_START, len = BOOTLOADER_DRAM_LOADER_SEG_LEN
+  iram_seg (RWX) :                  org = BOOTLOADER_IRAM_SEG_START, len = BOOTLOADER_IRAM_SEG_LEN
+  dram_seg (RW) :                   org = BOOTLOADER_DRAM_SEG_START, len = BOOTLOADER_DRAM_SEG_LEN
 }
-
-/* The app may use RAM for static allocations up to the start of iram_loader_seg.
- * If you have changed something above and this assert fails:
- * 1. Check what the new value of bootloader_iram_loader_seg start is.
- * 2. Update the value in this assert.
- * 3. Update SRAM_DRAM_END in components/esp_system/ld/esp32c6/memory.ld.in to the same value.
- */
-ASSERT(bootloader_iram_loader_seg_start == 0x40869610, "bootloader_iram_loader_seg_start inconsistent with SRAM_DRAM_END");
 
 /*  Default entry point:  */
 ENTRY(main);
@@ -58,7 +33,6 @@ SECTIONS
     . = ALIGN (16);
     _loader_text_start = ABSOLUTE(.);
     *(.stub .gnu.warning .gnu.linkonce.literal.* .gnu.linkonce.t.*.literal .gnu.linkonce.t.*)
-    *(.iram1 .iram1.*) /* catch stray IRAM_ATTR */
     *esp_mcuboot.*(.literal .text .literal.* .text.*)
     *esp_loader.*(.literal .text .literal.* .text.*)
     *main.*(.literal .text .literal.* .text.*)
@@ -68,44 +42,62 @@ SECTIONS
      * from esp_loader as its from where the application RAM parts will be
      * loaded into memory and ultimately boot. The cross reference table
      * were used to map the reachable dependencies */
-    *libhal.a:bootloader_banner.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_common_loader.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_console_loader.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_flash.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_flash_config_esp32c6.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_init.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_panic.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_random.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_random_esp32c6.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_sha.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_soc.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_utility.*(.literal .text .literal.* .text.*)
-    *libhal.a:bootloader_wdt.*(.literal .text .literal.* .text.*)
-    *libhal.a:cache_hal.*(.literal .text .literal.* .text.*)
-    *libhal.a:efuse_hal.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_efuse_api.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_efuse_api_key.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_efuse_table.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_efuse_utility.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_image_format.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_rom_hp_regi2c_esp32c6.*(.literal .text .literal.* .text.*)
-    *libhal.a:esp_rom_uart.*(.literal .text .literal.* .text.*)
-    *libhal.a:flash_encrypt.*(.literal .text .literal.* .text.*)
-    *libhal.a:flash_encryption_secure_features.*(.literal .text .literal.* .text.*)
-    *libhal.a:lp_timer_hal.*(.literal .text .literal.* .text.*)
-    *libhal.a:mmu_hal.*(.literal .text .literal.* .text.*)
-    *libhal.a:pmu_param.*(.literal .text .literal.* .text.*)
-    *libhal.a:rtc_clk.*(.literal .text .literal.* .text.*)
-    *libhal.a:rtc_clk_init.*(.literal .text .literal.* .text.*)
-    *libhal.a:secure_boot_signatures_bootloader.*(.literal .text .literal.* .text.*)
-    *libhal.a:wdt_hal_iram.*(.literal .text .literal.* .text.*)
-    *libgcc.a:*.*(.literal .text .literal.* .text.*)
-
+    *libhal.a:bootloader_flash.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:bootloader_sha.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:bootloader_wdt.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:bootloader_panic.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:cache_hal.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:mmu_hal.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
+    *libhal.a:wdt_hal_iram.*(.literal .text .literal.* .text.* .iram0 .iram0.* .iram1 .iram1.*)
     *(.fini.literal)
     *(.fini)
     *(.gnu.version)
     _loader_text_end = ABSOLUTE(.);
   } > iram_loader_seg
+
+  /* Ensure the iram_loader_seg is large enough */
+  ASSERT((_loader_text_end - ORIGIN(iram_loader_seg)) <= BOOTLOADER_IRAM_LOADER_SEG_LEN,
+    "iram_loader_seg overflow: increase BOOTLOADER_IRAM_LOADER_SEG_LEN")
+
+  .dram_loader.bss (NOLOAD) :
+  {
+    . = ALIGN (8);
+    _dram_loader_start = ABSOLUTE(.);
+    _loader_bss_start = ABSOLUTE(.);
+    *esp_loader.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *esp_mcuboot.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *main.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:bootloader_flash.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:bootloader_sha.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:bootloader_wdt.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:bootloader_panic.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:cache_hal.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:mmu_hal.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    *libhal.a:wdt_hal_iram.*(.sbss .sbss.* .sbss2 .sbss2.* .bss .bss.*)
+    . = ALIGN (8);
+    _loader_bss_end = ABSOLUTE(.);
+  } > dram_loader_seg
+
+  .dram_loader.data :
+  {
+    . = ALIGN(16);
+    *esp_loader.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *esp_mcuboot.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *main.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:bootloader_flash.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:bootloader_sha.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:bootloader_wdt.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:bootloader_panic.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:cache_hal.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:mmu_hal.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    *libhal.a:wdt_hal_iram.*(.data .data.* .rodata .rodata.* .sdata .sdata.* .sdata2 .sdata2.* .srodata .srodata.*)
+    . = ALIGN(16);
+    _dram_loader_end = ABSOLUTE(.);
+  } > dram_loader_seg
+
+  /* Ensure the dram_loader_seg is large enough */
+  ASSERT((_dram_loader_end - ORIGIN(dram_loader_seg)) <= BOOTLOADER_DRAM_LOADER_SEG_LEN,
+    "dram_loader_seg overflow: increase BOOTLOADER_DRAM_LOADER_SEG_LEN")
 
   .iram.text :
   {
@@ -205,6 +197,7 @@ SECTIONS
     _text_start = ABSOLUTE(.);
     *(.literal .text .literal.* .text.* .stub .gnu.warning .gnu.linkonce.literal.* .gnu.linkonce.t.*.literal .gnu.linkonce.t.*)
     *(.iram .iram.*) /* catch stray IRAM_ATTR */
+    *(.iram1 .iram1.*)
     *(.fini.literal)
     *(.fini)
     *(.gnu.version)
