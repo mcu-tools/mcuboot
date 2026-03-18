@@ -177,7 +177,7 @@ def _read_imginfo(imgfile):
             tlv_type, tlv_len = struct.unpack(
                 'HH',
                 b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
-            tlv_off += image.TLV_INFO_SIZE
+            tlv_off += image.TLV_SIZE
             tlv_data = b[tlv_off:(tlv_off + tlv_len)]
             tlv_area["tlvs_prot"].append(
                 {"type": tlv_type,
@@ -198,7 +198,7 @@ def _read_imginfo(imgfile):
         tlv_type, tlv_len = struct.unpack(
             'HH',
             b[tlv_off:(tlv_off + image.TLV_INFO_SIZE)])
-        tlv_off += image.TLV_INFO_SIZE
+        tlv_off += image.TLV_SIZE
         tlv_data = b[tlv_off:(tlv_off + tlv_len)]
         tlv_area["tlvs"].append(
             {"type": tlv_type, "type_name": TLV_TYPES.get(tlv_type, "UNKNOWN"),
