@@ -300,9 +300,19 @@ static void do_boot(struct boot_rsp *rsp)
 #endif
 }
 
-#elif defined(CONFIG_XTENSA)
+#elif defined(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)
 
-#ifndef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
+static void do_boot(struct boot_rsp *rsp)
+{
+    BOOT_LOG_INF("br_image_off = 0x%x", rsp->br_image_off);
+    BOOT_LOG_INF("ih_hdr_size = 0x%x", rsp->br_hdr->ih_hdr_size);
+
+    int slot = (rsp->br_image_off == IMAGE0_PRIMARY_START_ADDRESS) ?
+                PRIMARY_SLOT : SECONDARY_SLOT;
+    start_cpu0_image(IMAGE_INDEX_0, slot, rsp->br_hdr->ih_hdr_size);
+}
+
+#elif defined(CONFIG_XTENSA)
 
 #define SRAM_BASE_ADDRESS	0xBE030000
 
@@ -331,33 +341,18 @@ static void copy_img_to_SRAM(int slot, unsigned int hdr_offset)
 done:
     flash_area_close(fap);
 }
-#endif /* !CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 
-/* Entry point (.ResetVector) is at the very beginning of the image.
- * Simply copy the image to a suitable location and jump there.
- */
 static void do_boot(struct boot_rsp *rsp)
 {
-#ifndef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
     void *start;
-#endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 
     BOOT_LOG_INF("br_image_off = 0x%x", rsp->br_image_off);
     BOOT_LOG_INF("ih_hdr_size = 0x%x", rsp->br_hdr->ih_hdr_size);
 
-#ifdef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
-    int slot = (rsp->br_image_off == IMAGE0_PRIMARY_START_ADDRESS) ?
-                PRIMARY_SLOT : SECONDARY_SLOT;
-    /* Load memory segments and start from entry point */
-    start_cpu0_image(IMAGE_INDEX_0, slot, rsp->br_hdr->ih_hdr_size);
-#else
-    /* Copy from the flash to HP SRAM */
     copy_img_to_SRAM(0, rsp->br_hdr->ih_hdr_size);
 
-    /* Jump to entry point */
     start = (void *)(SRAM_BASE_ADDRESS + rsp->br_hdr->ih_hdr_size);
     ((void (*)(void))start)();
-#endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 }
 
 #elif defined(CONFIG_ARC)
