@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-24.04
     # Docker image from the zephyr upstream. Includes SDK and other required tools
     container:
-      image: zephyrprojectrtos/ci-base:v0.28.4
+      image: zephyrprojectrtos/ci-base:v0.29.0
       options: '--entrypoint /bin/bash'
       volumes:
         - /home/runners/zephyrproject:/github/cache/zephyrproject
@@ -70,11 +70,11 @@ jobs:
           pip install -r scripts/requirements-actions.txt --require-hashes
 
       - name: Setup toolchains
-        uses: zephyrproject-rtos/action-zephyr-setup@c125c5ebeeadbd727fa740b407f862734af1e52a # v1.0.9
+        uses: zephyrproject-rtos/action-zephyr-setup@360ff9b36e58499d9eb28015cdcde7ca03a5b04d # v1.0.12
         with:
           base-path: repos/zephyr
           toolchains: arm-zephyr-eabi
-          sdk-version: 0.17.4
+          sdk-version: 1.0.0
           west-project-filter: -.*,+cmsis,+cmsis_6,+hal_nordic,+hal_nxp,+hal_stm32,+hal_ti,+libmetal,+littlefs,+mbedtls,+mcuboot,+open-amp,+tinycrypt,+trusted-firmware-m,+zcbor
           ccache-max-size: 768MB
 
