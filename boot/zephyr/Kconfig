@@ -263,7 +263,7 @@ choice BOOT_RSA_IMPLEMENTATION
 	# to be used by the app. PSA API should be used instead. However this
 	# is not always possible in MCUboot due to the constrained partition
 	# size, so we default to using legacy crypto.
-	default BOOT_RSA_TF_PSA_CRYPTO_LEGACY if MBEDTLS_VERSION_MAJOR >= 4
+	default BOOT_RSA_TF_PSA_CRYPTO_LEGACY if MBEDTLS_VERSION_4_x
 	default BOOT_RSA_MBEDTLS_LEGACY
 
 config BOOT_RSA_MBEDTLS_LEGACY
