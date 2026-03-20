@@ -2,6 +2,7 @@
 #
 # Copyright (c) 2017 Open Source Foundries Limited
 # Copyright (c) 2023-2026 Nordic Semiconductor ASA
+# Copyright (c) 2026 WIKA Alexander Wiegand SE & Co. KG
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -36,6 +37,8 @@ if(NOT CONFIG_MBEDTLS_BUILTIN AND NOT CONFIG_BOOT_KEY_IMPORT_BYPASS_ASN)
   assert_exists(MBEDTLS_ASN1_DIR)
 endif()
 set(NRF_DIR "${MCUBOOT_DIR}/ext/nrf")
+set(MBEDTLS_PKCS8_DIR "${MCUBOOT_DIR}/ext/mbedtls-pkcs8")
+assert_exists(MBEDTLS_PKCS8_DIR)
 
 if(CONFIG_BOOT_USE_NRF_CC310_BL)
   if(NOT ZEPHYR_NRFXLIB_MODULE_DIR OR NOT EXISTS ${ZEPHYR_NRFXLIB_MODULE_DIR})
@@ -543,6 +546,43 @@ endif()
 
 if(CONFIG_MULTIPLE_EXECUTABLE_RAM_REGIONS_DEFAULT_FILE)
   zephyr_sources(ram_load.c)
+endif()
+
+if(CONFIG_BOOT_GEN_ENC_KEY)
+  dt_chosen(chosen_key_storage PROPERTY "zephyr,key-storage")
+  if(DEFINED chosen_key_storage)
+    dt_get_nvm_device(${chosen_key_storage} key_storage_device)
+    dt_chosen(chosen_code_partition PROPERTY "zephyr,code-partition")
+    dt_get_nvm_device(${chosen_code_partition} code_partition_device)
+
+    if("${key_storage_device}" STREQUAL "${code_partition_device}")
+      dt_prop(key_storage_label PATH "${chosen_key_storage}" PROPERTY "label")
+      if(key_storage_label STREQUAL "storage")
+        message(WARNING "Using default storage. Replace with a proper partition.")
+      endif()
+
+      dt_prop(key_storage_adr PATH "${chosen_key_storage}" PROPERTY "reg" INDEX 0)
+      dt_prop(key_storage_size PATH "${chosen_key_storage}" PROPERTY "reg" INDEX 1)
+      align_up(${CONFIG_BOOT_PRIV_ENC_KEY_LEN} ${CONFIG_MCUBOOT_BOOT_MAX_ALIGN} priv_enc_key_size_align)
+      align_up(${key_storage_adr} ${CONFIG_MCUBOOT_BOOT_MAX_ALIGN} key_storage_adr_align)
+      math(EXPR key_storage_max_adr "${key_storage_adr} + ${key_storage_size}")
+      math(EXPR key_storage_required_max_adr "${key_storage_adr_align} + ${priv_enc_key_size_align}")
+      if (${key_storage_max_adr} LESS ${key_storage_required_max_adr})
+        message(FATAL_ERROR "The 'zephyr,key-storage' is to small to store priv enc key!")
+      endif()
+    else()
+      message(FATAL_ERROR "The 'zephyr,key-storage' must be located on same nvm device as 'zephyr,code-partition'!")
+    endif()
+  else()
+    message(FATAL_ERROR "The 'zephyr,key-storage' chosen property is not defined!")
+  endif()
+
+  zephyr_include_directories(${MBEDTLS_PKCS8_DIR})
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/generate_key_pair.c
+    ${MBEDTLS_PKCS8_DIR}/pkcs8secp256write.c
+    ${BOOT_DIR}/bootutil/src/boot_store_enc_keys.c
+    )
 endif()
 
 if(SYSBUILD)

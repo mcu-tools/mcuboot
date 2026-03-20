@@ -4,6 +4,7 @@
  * Copyright (c) 2021-2023 Nordic Semiconductor ASA
  * Copyright (c) 2025 Aerlync Labs Inc.
  * Copyright (c) 2025 Siemens Mobility GmbH
+ * Copyright (c) 2026 WIKA Alexander Wiegand SE & Co. KG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +49,11 @@
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/mcuboot_status.h"
 #include "flash_map_backend/flash_map_backend.h"
+
+#if defined(MCUBOOT_GEN_ENC_KEY)
+#include "bootutil/generate_key_pair.h"
+#include "bootutil/boot_store_enc_keys.h"
+#endif
 
 #if defined(CONFIG_MCUBOOT_UUID_VID) || defined(CONFIG_MCUBOOT_UUID_CID)
 #include "bootutil/mcuboot_uuid.h"
@@ -533,6 +539,12 @@ int main(void)
     (void)rc;
 
     mcuboot_status_change(MCUBOOT_STATUS_STARTUP);
+
+#if defined(MCUBOOT_GEN_ENC_KEY)
+    if(is_key_storage_erased()){
+        generate_enc_key_pair();
+    }
+#endif
 
 #if defined(CONFIG_MCUBOOT_UUID_VID) || defined(CONFIG_MCUBOOT_UUID_CID)
     FIH_CALL(boot_uuid_init, fih_rc);
