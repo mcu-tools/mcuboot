@@ -36,6 +36,7 @@ from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.asymmetric import ec, padding
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.keywrap import aes_key_wrap
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from intelhex import IntelHex
@@ -749,7 +750,7 @@ class Image:
             else:
                 plainkey = os.urandom(16)
 
-            if not isinstance(enckey, rsa.RSAPublic):
+            if not isinstance(enckey, rsa.RSAPublic) and not isinstance(enckey, keys.AESKWKey):
                 if hmac_sha == 'auto' or hmac_sha == '256':
                     hmac_sha = '256'
                     hmac_sha_alg = hashes.SHA256()
@@ -769,6 +770,15 @@ class Image:
                         label=None))
                 self.enctlv_len = len(cipherkey)
                 tlv.add('ENCRSA2048', cipherkey)
+            elif isinstance(enckey, keys.AESKWKey):
+                if not ((encrypt_keylen == 128 and len(enckey.kek) == 16) or
+                        (encrypt_keylen == 256 and len(enckey.kek) == 32)):
+                    raise click.UsageError(
+                        "AES-KW KEK size must match --encrypt-keylen"
+                    )
+                cipherkey = aes_key_wrap(enckey.kek, plainkey)
+                self.enctlv_len = len(cipherkey)
+                tlv.add('ENCKW', cipherkey)
             elif isinstance(enckey, ecdsa.ECDSA256P1Public):
                 cipherkey, mac, pubk = self.ecies_hkdf(enckey, plainkey, hmac_sha_alg)
                 enctlv = pubk + mac + cipherkey
