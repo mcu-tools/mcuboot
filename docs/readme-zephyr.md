@@ -250,6 +250,49 @@ The mapping of image number to partition is as follows:
 Use the ``CONFIG_ENABLE_MGMT_PERUSER=y`` Kconfig option to enable the following additional commands:
 * Storage erase - This command allows erasing the storage partition (enable with ``CONFIG_BOOT_MGMT_CUSTOM_STORAGE_ERASE=y``).
 
+### Throughput tuning
+
+Upload throughput is determined by how much image data fits in each SMP
+round-trip. Two Kconfig options control the receive-side buffer on the device:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| ``CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE`` | 1024 | Maximum reassembled SMP frame size (bytes) |
+| ``CONFIG_BOOT_LINE_BUFS`` | 8 | Number of fragment reassembly buffers |
+
+The SMP serial line fragment size is fixed at 128 bytes per specification
+(``CONFIG_BOOT_MAX_LINE_INPUT_LEN``). The product
+``128 × CONFIG_BOOT_LINE_BUFS`` must be at least
+``CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE``. With the defaults
+(8 buffers × 128 = 1024), each upload request carries roughly 228 bytes of
+image data after base64 and CBOR overhead.
+
+Increasing the receive buffer allows the host to send larger chunks per
+round-trip. For example, setting ``CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE=4096``
+and ``CONFIG_BOOT_LINE_BUFS=32`` allows approximately 3 KB of image data per
+round-trip at the cost of roughly 4 KB additional RAM (the ``in_buf`` static
+array in ``boot_serial.c``).
+
+On the host side, pass a matching MTU in the ``mcumgr`` connstring:
+
+``` console
+mcumgr --conntype serial --connstring "dev=/dev/ttyACM0,baud=115200,mtu=4096" image upload <image>
+```
+
+The following table shows approximate upload times for a 374 KB image
+over USB CDC-ACM (tested on nRF52840 with
+[apache/mynewt-mcumgr-cli@5c56bd2](https://github.com/apache/mynewt-mcumgr-cli/commit/5c56bd24066c)):
+
+| Configuration | Throughput | Approximate time |
+|---------------|-----------|------------------|
+| Default (no MTU) | ~1 KB/s | ~6 minutes |
+| mtu=4096 | ~4 KB/s | ~1.5 minutes |
+
+**Note:** When using USB CDC-ACM as the serial transport, the baud rate
+parameter is ignored because USB bulk transfers are not rate-limited by a
+physical UART clock. The baud rate setting only affects physical UART
+transports.
+
 ### More configuration
 
 For details on other available configuration options for the serial recovery protocol, check the Kconfig options  (for example by using ``menuconfig``).
