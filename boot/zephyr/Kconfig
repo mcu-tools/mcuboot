@@ -512,7 +512,7 @@ config MCUBOOT_INFINITE_LOOP_AFTER_RAM_CLEANUP
 	  Verification option that keeps execution in infinite loop after
 	  RAM cleanup has been performed.
 
-config MBEDTLS_CFG_FILE
+config MBEDTLS_CONFIG_FILE
 	# It might be awkward to define an Mbed TLS header file when TinyCrypt
 	# is used, but the fact is that Mbed TLS' ASN1 parse module is used
 	# also when TinyCrypt is used as crypto backend.
