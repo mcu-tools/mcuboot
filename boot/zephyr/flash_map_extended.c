@@ -40,6 +40,11 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #error "FLASH_DEVICE_NODE could not be determined"
 #endif
 
+#elif (defined(CONFIG_SOC_FAMILY_INFINEON_EDGE) && DT_HAS_CHOSEN(zephyr_flash_controller))
+#define FLASH_DEVICE_ID SOC_FLASH_0_ID
+#define FLASH_DEVICE_BASE 0
+#define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash_controller)
+
 #elif (DT_NODE_HAS_COMPAT(DT_PARENT(DT_CHOSEN(zephyr_flash_controller)),       \
 			  nxp_imx_flexspi))
 #define FLASH_DEVICE_ID SPI_FLASH_0_ID
