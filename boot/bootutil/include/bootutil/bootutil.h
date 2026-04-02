@@ -60,6 +60,12 @@ struct boot_rsp {
      */
     uint8_t br_flash_dev_id;
     uint32_t br_image_off;
+#if defined(MCUBOOT_ENC_IMAGES_XIP)
+    /** AES-128 key for post-boot XIP hardware crypto setup. */
+    uint32_t br_xip_key[4];
+    /** IV/nonce for post-boot XIP hardware crypto setup. */
+    uint32_t br_xip_iv[4];
+#endif
 };
 
 /* This is not actually used by mcuboot's code but can be used by apps
