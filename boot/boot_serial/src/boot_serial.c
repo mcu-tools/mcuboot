@@ -351,7 +351,7 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
             {
                 BOOT_HOOK_CALL_FIH(boot_image_check_hook,
                                    FIH_BOOT_HOOK_REGULAR,
-                                   fih_rc, image_index, slot);
+                                   fih_rc, NULL, image_index, slot);
                 if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
                 {
 #if defined(MCUBOOT_ENC_IMAGES)
@@ -573,7 +573,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 
                     BOOT_HOOK_CALL_FIH(boot_image_check_hook,
                                        FIH_BOOT_HOOK_REGULAR,
-                                       fih_rc, image_index, slot);
+                                       fih_rc, NULL, image_index, slot);
                     if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
                     {
 #ifdef MCUBOOT_ENC_IMAGES
