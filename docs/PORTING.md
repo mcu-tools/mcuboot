@@ -193,3 +193,158 @@ For reference see [Mbed TLS platform.h](https://tls.mbed.org/api/platform_8h.htm
 If your system already provides functions with compatible signatures, those can
 be used directly here, otherwise create new functions that glue to your
 `calloc/free` implementations.
+
+## XIP Encryption Porting
+
+Some platforms provide hardware-assisted execute-in-place (XIP) crypto engines
+that transparently decrypt code as it is fetched from external flash (e.g.,
+Infineon SMIF with on-the-fly decryption). On these platforms the encryption
+and decryption of image payloads is handled entirely by the hardware crypto
+region rather than by MCUboot's software encryption path. This section
+describes how to port MCUboot for such a configuration.
+
+### When to use
+
+Use this porting path when the target platform has a hardware XIP crypto engine
+that can transparently decrypt code execution from encrypted external flash.
+Typical examples include SPI flash controllers with built-in AES decryption
+regions, where the CPU fetches plaintext instructions while the flash itself
+stores ciphertext.
+
+### Required definitions
+
+The following preprocessor definitions must be set in the platform's
+`mcuboot_config/mcuboot_config.h`:
+
+* **`MCUBOOT_ENC_IMAGES_XIP`** --- Enables the XIP encryption flow in MCUboot.
+  This tells the bootloader that image encryption is managed by the platform
+  hardware rather than by MCUboot's built-in software encryption.
+
+* **`MCUBOOT_IMAGE_ACCESS_HOOKS`** --- Enables the image access hook interface
+  so that the platform can override image validation with its own hardware-aware
+  implementation.
+
+---
+***Note***
+
+*`MCUBOOT_ENC_IMAGES` is **not** defined in this configuration. The platform
+handles encryption independently of MCUboot's software encryption path. Swap
+operations perform raw byte copies with no encryption or decryption applied
+during the swap itself.*
+
+---
+
+### Functions the platform must provide
+
+#### Image validation hook
+
+```c
+fih_ret boot_image_check_hook(struct boot_loader_state *state,
+                              int img_index, int slot);
+```
+
+The `state` pointer provides access to boot loader context (slot flash areas,
+secondary offset, max image size).  It may be `NULL` when called outside the
+normal boot flow (e.g. serial recovery); implementations must handle this case.
+
+Called by MCUboot during image validation in place of the default validation
+logic. A default (weak) implementation is provided by the XIP encryption
+library (`xip_enc_validate.c`) that performs:
+
+1. Compute SHA-256 hash over raw flash content (header + ciphertext +
+   protected TLVs). **No decryption occurs** --- the hash covers the
+   encrypted payload exactly as stored in flash.
+2. Verify the SHA-256 hash against `IMAGE_TLV_SHA256`.
+3. Verify the ECDSA-P256 signature against the hash (mandatory for
+   encrypted images --- unsigned encrypted images are rejected).
+4. Perform ECIES-P256 key unwrap from `IMAGE_TLV_ENC_EC256` to extract
+   the AES key and IV for later hardware crypto setup.
+
+The function returns one of the following values:
+
+* `FIH_SUCCESS` --- the image is valid.
+* `FIH_FAILURE` --- the image is invalid.
+* `FIH_BOOT_HOOK_REGULAR` --- fall through to MCUboot's default validation
+  (returned for non-encrypted images).
+
+The hook handles both encrypted and non-encrypted images. When the image
+header does not have the encryption flag set, the hook returns
+`FIH_BOOT_HOOK_REGULAR` to defer to MCUboot's standard validation.
+
+Platforms may override the weak default with a strong implementation for
+FIH hardening or hardware-accelerated crypto (e.g., using a secure element
+for ECIES unwrap).
+
+#### Populating the boot response with key material
+
+```c
+void boot_xip_populate_rsp(int img_index, struct boot_rsp *rsp);
+```
+
+Called by MCUboot after `fill_rsp()` completes. The platform implementation
+copies the encryption key and initialisation vector (IV) that were extracted
+during validation into the boot response structure:
+
+* `rsp->xip_key` --- the AES key used by the hardware crypto region.
+* `rsp->xip_iv` --- the IV / nonce used by the hardware crypto region.
+
+These fields are consumed later by the platform's main bootloader function
+to configure the hardware before jumping to the application.
+
+#### Hardware crypto region setup
+
+After `boot_go` returns, the platform's main bootloader function must
+configure the hardware crypto regions for each image using the key and IV
+stored in `boot_rsp`. A typical sequence is:
+
+1. For each image, read `rsp->xip_key` and `rsp->xip_iv`.
+2. Program the hardware crypto engine's per-region registers (base address,
+   size, key, IV).
+3. Enable the crypto regions permanently so that subsequent code fetches from
+   external flash are decrypted transparently.
+
+This step is platform-specific and lives outside of MCUboot's common code.
+
+### Key design constraints
+
+* **AES-CTR counter is the absolute byte address** --- the AES-CTR block input
+  follows the edgeprotecttools format:
+
+  ```
+  AES-CTR block input = counter_LE32 || nonce[0:12]
+  ```
+
+  where `counter_LE32` is the absolute byte address (`base_address + offset`)
+  encoded as a little-endian 32-bit integer, and `nonce[0:12]` is the first
+  12 bytes of the HKDF-derived `xip_iv`. The last 4 bytes of the 16-byte IV
+  are zeroed (counter portion). This matches the hardware crypto engine's
+  expectation that the counter is derived from the absolute flash address
+  being fetched.
+
+* **No software decryption during validation** --- the hash and signature are
+  computed over the raw ciphertext in flash. The bootloader never decrypts image
+  data in software. The encryption key is only extracted (via ECIES unwrap) for
+  later hardware crypto setup.
+
+* **Ciphertext signing** --- images are encrypted before signing by `imgtool`
+  (or `edgeprotecttools`). The SHA-256 and ECDSA signature in the image TLVs
+  cover `header + ciphertext + protected TLVs`. This is the reverse of
+  standard MCUboot encryption (which signs plaintext, then encrypts).
+
+* **Mandatory signature** --- encrypted XIP images must be signed. The
+  bootloader rejects unsigned encrypted images to prevent XOR attacks on
+  known-plaintext ciphertext regions.
+
+* **No software encryption during swap** --- because `MCUBOOT_ENC_IMAGES` is
+  not defined, swap operations copy raw bytes. The ciphertext is moved as-is
+  between primary and secondary slots.
+
+* **Keys are not persisted to flash** --- the encryption key and IV are
+  re-extracted from the ECIES TLV in the image trailer on every boot and
+  after every swap. There is no key storage outside of the `boot_rsp`
+  structure passed to the platform at boot time.
+
+* **Mixed image support** --- the `boot_image_check_hook` implementation must
+  handle both encrypted and non-encrypted images. An image without the
+  encryption flag is deferred to MCUboot's standard validation by returning
+  `FIH_BOOT_HOOK_REGULAR`.

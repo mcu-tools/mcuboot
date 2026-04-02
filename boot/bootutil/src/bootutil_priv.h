@@ -197,6 +197,12 @@ _Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image 
 #endif /* MCUBOOT_DIRECT_XIP && MCUBOOT_ENC_IMAGES */
 #endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENC_IMAGES_XIP)
+#error "MCUBOOT_ENC_IMAGES and MCUBOOT_ENC_IMAGES_XIP are mutually exclusive. " \
+       "XIP encryption keeps images encrypted in both slots and does not use " \
+       "the standard encrypt/decrypt-during-swap mechanism."
+#endif
+
 #define BOOT_LOG_IMAGE_INFO(slot, hdr)                                    \
     BOOT_LOG_INF("%-9s slot: version=%u.%u.%u+%u",                        \
                  ((slot) == BOOT_SLOT_PRIMARY) ? "Primary" : "Secondary", \

@@ -284,6 +284,19 @@ if(CONFIG_BOOT_USE_TINYCRYPT)
   endif()
 endif()
 
+if(CONFIG_BOOT_ENCRYPT_IMAGE_XIP)
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/xip_enc/xip_enc_keys.c
+    ${BOOT_DIR}/bootutil/src/xip_enc/xip_enc_ecies.c
+    ${BOOT_DIR}/bootutil/src/xip_enc/xip_enc_validate.c
+    ${BOOT_DIR}/bootutil/src/xip_enc/xip_enc_decrypt.c
+  )
+  zephyr_library_include_directories(
+    ${BOOT_DIR}/bootutil/src/xip_enc
+    ${BOOT_DIR}/bootutil/src
+  )
+endif()
+
 if(CONFIG_MCUBOOT_SERIAL)
   zephyr_sources(
     ${BOOT_DIR}/zephyr/serial_adapter.c
