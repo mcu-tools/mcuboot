@@ -3,7 +3,7 @@
  *
  * Copyright (c) 2016-2019 Linaro LTD
  * Copyright (c) 2016-2019 JUUL Labs
- * Copyright (c) 2019-2023 Arm Limited
+ * Copyright (c) 2019-2025 Arm Limited
  *
  * Original license:
  *
@@ -98,6 +98,7 @@ extern "C" {
  */
 #define IMAGE_TLV_KEYHASH           0x01    /* hash of the public key */
 #define IMAGE_TLV_PUBKEY            0x02    /* public key */
+#define IMAGE_TLV_KEYID             0x03    /* Signing key ID */
 #define IMAGE_TLV_SHA256            0x10    /* SHA256 of image hdr and body */
 #define IMAGE_TLV_SHA384            0x11    /* SHA384 of image hdr and body */
 #define IMAGE_TLV_SHA512            0x12    /* SHA512 of image hdr and body */
@@ -237,11 +238,13 @@ int32_t bootutil_get_img_security_cnt(struct boot_loader_state *state, int slot,
                                       const struct flash_area *fap,
                                       uint32_t *img_security_cnt);
 
-#if !defined(MCUBOOT_HW_KEY)
-int bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len);
-#else
+#if defined(MCUBOOT_BUILTIN_KEY)
+int bootutil_find_key(uint8_t image_index, uint8_t *key_id_buf, uint8_t key_id_buf_len);
+#elif defined(MCUBOOT_HW_KEY)
 int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len);
-#endif
+#else
+int bootutil_find_key(uint8_t image_index, uint8_t *keyhash, uint8_t keyhash_len);
+#endif /* MCUBOOT_BUILTIN_KEY */
 
 int
 bootutil_img_hash(struct boot_loader_state *state,

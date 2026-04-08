@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 #
 # Copyright 2017-2020 Linaro Limited
-# Copyright 2019-2023 Arm Limited
+# Copyright 2019-2025 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -451,6 +451,8 @@ class BasedIntParamType(click.ParamType):
               help='send to OUTFILE the payload or payload''s digest instead '
               'of complied image. These data can be used for external image '
               'signing')
+@click.option('--psa-key-id', type=int, required=False,
+              help='Integer key ID of the signing key.')
 @click.command(help='''Create a signed or unsigned image\n
                INFILE and OUTFILE are parsed as Intel HEX if the params have
                .hex extension, otherwise binary format is used''')
@@ -464,7 +466,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, custom_tlv_file, rom_fixed, max_align,
          clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, hmac_sha, is_pure,
-         vector_to_sign, non_bootable, vid, cid):
+         vector_to_sign, non_bootable, vid, cid, psa_key_id):
 
     if confirm or test:
         # Confirmed but non-padded images don't make much sense, because
@@ -480,6 +482,10 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                       non_bootable=non_bootable, vid=vid, cid=cid)
     compression_tlvs = {}
     img.load(infile)
+    # If the user passed a PSA key ID, apply it here:
+    if psa_key_id is not None:
+        click.echo(f"Signing with PSA key ID: {psa_key_id}")
+        img.set_key_id(psa_key_id)
     key = load_key(key) if key else None
     if key is not None and not isinstance(key, (keys.PayloadSigner, keys.DigestSigner)):
         raise click.UsageError(

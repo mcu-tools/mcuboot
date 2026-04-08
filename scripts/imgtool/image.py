@@ -1,6 +1,6 @@
 # Copyright 2018 Nordic Semiconductor ASA
 # Copyright 2017-2020 Linaro Limited
-# Copyright 2019-2024 Arm Limited
+# Copyright 2019-2025 Arm Limited
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -71,6 +71,7 @@ IMAGE_F = {
 TLV_VALUES = {
         'KEYHASH': 0x01,
         'PUBKEY': 0x02,
+        'KEYID': 0x03,
         'SHA256': 0x10,
         'SHA384': 0x11,
         'SHA512': 0x12,
@@ -138,15 +139,21 @@ class TLV:
         """
         e = STRUCT_ENDIAN_DICT[self.endian]
         if isinstance(kind, int):
-            if not TLV_VENDOR_RES_MIN <= kind <= TLV_VENDOR_RES_MAX:
+            if kind in TLV_VALUES.values():
+                buf = struct.pack(e + 'BBH', kind, 0, len(payload))
+            elif TLV_VENDOR_RES_MIN <= kind <= TLV_VENDOR_RES_MAX:
+                # Custom vendor-reserved tag
+                buf = struct.pack(e + 'HH', kind, len(payload))
+            else:
                 msg = (
                     f"Invalid custom TLV type value '0x{kind:04x}', allowed "
                     f"value should be between 0x{TLV_VENDOR_RES_MIN:04x} and "
                     "0x{TLV_VENDOR_RES_MAX:04x}"
                 )
                 raise click.UsageError(msg)
-            buf = struct.pack(e + 'HH', kind, len(payload))
         else:
+            if kind not in TLV_VALUES:
+                raise click.UsageError(f"Unknown TLV type string: {kind}")
             buf = struct.pack(e + 'BBH', TLV_VALUES[kind], 0, len(payload))
         self.buf += buf
         self.buf += payload
@@ -324,6 +331,7 @@ class Image:
         self.non_bootable = non_bootable
         self.vid = vid
         self.cid = cid
+        self.psa_key_id = None
 
         if self.max_align == DEFAULT_MAX_ALIGN:
             self.boot_magic = bytes([
@@ -712,7 +720,9 @@ class Image:
             return
 
         if key is not None or fixed_sig is not None:
-            if public_key_format == 'hash':
+            if self.psa_key_id is not None:
+                tlv.add('KEYID', self.psa_key_id.to_bytes(4, self.endian))
+            elif public_key_format == 'hash':
                 tlv.add('KEYHASH', pubbytes)
             else:
                 tlv.add('PUBKEY', pub)
@@ -805,6 +815,10 @@ class Image:
 
     def get_infile_data(self):
         return self.infile_data
+
+    def set_key_id(self, psa_key_id):
+        """Set key ID (integer) to be inserted before the signature."""
+        self.psa_key_id = psa_key_id
 
     def add_header(self, enckey, protected_tlv_size, compression_flags, aes_length=128):
         """Install the image header."""
