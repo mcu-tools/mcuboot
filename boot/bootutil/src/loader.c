@@ -962,6 +962,11 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     rc = boot_read_image_size(state, BOOT_SLOT_SECONDARY, &src_size);
     assert(rc == 0);
 #endif
+    rc = BOOT_HOOK_CALL(boot_copy_region_pre_hook, 0, BOOT_CURR_IMG(state),
+                        BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY), src_size);
+    if (rc != 0) {
+        return rc;
+    }
 
     image_index = BOOT_CURR_IMG(state);
 
