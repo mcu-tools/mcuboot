@@ -502,8 +502,7 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
 
     enckey = load_key(encrypt) if encrypt else None
 
-
-    first_key = loaded_keys[0]
+    first_key = loaded_keys[0] if loaded_keys else None
     if enckey and key and ((isinstance(first_key, keys.ECDSA256P1) and
          not isinstance(enckey, keys.ECDSA256P1Public))
        or (isinstance(first_key, keys.ECDSA384P1) and
