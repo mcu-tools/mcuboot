@@ -521,7 +521,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
         if (last_idx >= first_trailer_idx) {
             BOOT_LOG_WRN("Not enough free space to run swap upgrade");
-            BOOT_LOG_WRN("required %d bytes but only %d are available",
+            BOOT_LOG_WRN("required %" PRIu32 " bytes but only %" PRIu32 " are available",
                          (last_idx + 1) * sector_sz,
                          first_trailer_idx * sector_sz);
             bs->swap_type = BOOT_SWAP_TYPE_NONE;
