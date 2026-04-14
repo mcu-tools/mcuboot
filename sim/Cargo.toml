@@ -40,7 +40,7 @@ check-load-addr = ["mcuboot-sys/check-load-addr"]
 [dependencies]
 byteorder = "1.4"
 libc = "0.2"
-rand = { version = "0.8", features = ["small_rng"] }
+rand = { version = "0.9", features = ["small_rng"] }
 docopt = "1.1.0"
 serde = "1.0"
 serde_derive = "1.0"
