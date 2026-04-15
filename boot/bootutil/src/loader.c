@@ -545,8 +545,8 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
     struct image_header *hdr;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
-    BOOT_LOG_DBG("boot_validate_slot: slot %d, expected_swap_type %d",
-                 slot, expected_swap_type);
+    BOOT_LOG_DBG("boot_validate_slot: image: %d, slot %d, expected_swap_type %d",
+                 BOOT_CURR_IMG(state), slot, expected_swap_type);
 
 #if !defined(MCUBOOT_SWAP_USING_OFFSET)
     (void)expected_swap_type;
