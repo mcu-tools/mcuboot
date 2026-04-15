@@ -1396,14 +1396,11 @@ boot_review_image_swap_types(struct boot_loader_state *state,
      * 2. The reboot has happened between two separate image upgrades:
      *      In this scenario we must check the swap type of the current image.
      *      In those cases if it is NONE or REVERT we cannot certainly determine
-     *      the fact of a reboot. In a consistent state images must move in the
-     *      same direction or stay in place, e.g. in practice REVERT and TEST
-     *      swap types cannot be present at the same time. If the swap type of
-     *      the current image is either TEST, PERM or FAIL we must review the
-     *      already determined swap types of other images and set each false
-     *      REVERT swap types to NONE (these images had been successfully
-     *      updated before the system rebooted between two separate image
-     *      upgrades).
+     *      the fact of a reboot. If the swap type of the current image is either
+     *      TEST, PERM or FAIL we must review the already determined swap types of
+     *      other images and set each false REVERT swap types to NONE (these images
+     *      had been successfully updated before the system rebooted between two
+     *      separate image upgrades).
      */
 
     if (BOOT_CURR_IMG(state) == 0) {
@@ -1417,11 +1414,11 @@ boot_review_image_swap_types(struct boot_loader_state *state,
             /* Nothing to do */
             return;
         }
-    }
-
-    for (uint8_t i = 0; i < BOOT_CURR_IMG(state); i++) {
-        if (state->swap_type[i] == BOOT_SWAP_TYPE_REVERT) {
-            state->swap_type[i] = BOOT_SWAP_TYPE_NONE;
+    } else {
+        for (uint8_t i = 0; i < BOOT_CURR_IMG(state); i++) {
+            if (state->swap_type[i] == BOOT_SWAP_TYPE_REVERT) {
+                state->swap_type[i] = BOOT_SWAP_TYPE_NONE;
+            }
         }
     }
 }
