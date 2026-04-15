@@ -1271,7 +1271,7 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
         rc = boot_swap_image(state, bs);
     }
 #else
-        rc = boot_swap_image(state, bs);
+    rc = boot_swap_image(state, bs);
 #endif
     assert(rc == 0);
 
