@@ -4,10 +4,12 @@ ED25519 key management
 
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-from .general import KeyClass
+from .general import DigestSigner, KeyClass, override
 
 
 class Ed25519UsageError(Exception):
@@ -69,7 +71,7 @@ class Ed25519Public(KeyClass):
         return k.verify(signature=signature, data=digest)
 
 
-class Ed25519(Ed25519Public):
+class Ed25519(Ed25519Public, DigestSigner):
     """
     Wrapper around an ED25519 private key.
     """
@@ -79,7 +81,7 @@ class Ed25519(Ed25519Public):
         self.key = key
 
     @staticmethod
-    def generate():
+    def generate() -> Ed25519:
         pk = ed25519.Ed25519PrivateKey.generate()
         return Ed25519(pk)
 
@@ -105,6 +107,7 @@ class Ed25519(Ed25519Public):
         with open(path, 'wb') as f:
             f.write(pem)
 
-    def sign_digest(self, digest):
+    @override
+    def sign_digest(self, digest: bytes) -> bytes:
         """Return the actual signature"""
         return self.key.sign(data=digest)

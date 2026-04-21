@@ -156,6 +156,13 @@ the public key in a format usable by the C compiler.
 The generated public key is saved in `build/zephyr/autogen-pubkey.h`, which is included
 by the `boot/zephyr/keys.c`.
 
+``CONFIG_BOOT_SIGNATURE_KEY_FILE`` accepts either a keypair PEM or a
+public-key-only PEM: only the public key is consumed during the build.
+This enables production flows in which the signing private key is held
+by a release team and only an exported public key is provided to
+bootloader builders. Signing images (`imgtool sign`) requires the
+private key.
+
 Currently, the Zephyr RTOS port limits its support to one keypair at the time,
 although MCUboot's key management infrastructure supports multiple keypairs.
 

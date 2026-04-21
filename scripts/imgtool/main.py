@@ -481,6 +481,11 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     compression_tlvs = {}
     img.load(infile)
     key = load_key(key) if key else None
+    if key is not None and not isinstance(key, (keys.PayloadSigner, keys.DigestSigner)):
+        raise click.UsageError(
+            "Cannot sign with a public-only PEM; signing requires the "
+            "private key."
+        )
     enckey = load_key(encrypt) if encrypt else None
     if enckey and key and ((isinstance(key, keys.ECDSA256P1) and
          not isinstance(enckey, keys.ECDSA256P1Public))
