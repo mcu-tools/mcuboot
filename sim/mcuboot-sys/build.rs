@@ -1,6 +1,7 @@
 // Build mcuboot as a library, based on the requested features.
 
 extern crate cc;
+extern crate cmake;
 
 use std::collections::BTreeSet;
 use std::env;
@@ -43,6 +44,7 @@ fn main() {
     let check_load_addr = env::var("CARGO_FEATURE_CHECK_LOAD_ADDR").is_ok();
     let custom_crypto = env::var("CARGO_FEATURE_CUSTOM_CRYPTO").is_ok();
     let custom_enc_crypto = env::var("CARGO_FEATURE_CUSTOM_ENC_CRYPTO").is_ok();
+    let mbedtls_v4 = env::var("CARGO_FEATURE_MBEDTLS_V4").is_ok();
 
     let mut conf = CachedBuild::new();
     conf.conf.define("__BOOTSIM__", None);
@@ -115,7 +117,11 @@ fn main() {
         panic!("custom-crypto encryption only supports enc-ec256-mbedtls, enc-aes256-ec256, and custom-enc-crypto");
     }
 
-    if psa_crypto_api {
+    if mbedtls_v4 && !sig_ecdsa_psa {
+        panic!("mbedtls-v4 is only supported in combination with sig-ecdsa-psa");
+    }
+
+    if psa_crypto_api && !mbedtls_v4 {
         if sig_ecdsa || enc_ec256 || enc_x25519 ||
                 enc_aes256_ec256 || sig_ecdsa_mbedtls || enc_aes256_x25519 ||
                 enc_kw  || enc_aes256_kw {
@@ -239,6 +245,8 @@ fn main() {
         conf.file("../../ext/mbedtls-3.6.0/library/ecp_curves.c");
         conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
         conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+    } else if sig_ecdsa_psa && mbedtls_v4 {
+        add_mbedtls_v4_psa_ecdsa(&mut conf, sig_p384);
     } else if sig_ecdsa_psa {
         conf.conf.include("../../ext/mbedtls-3.6.0/include");
 
@@ -522,6 +530,9 @@ fn main() {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-kw.h>"));
     } else if enc_aes256_x25519 {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ed25519.h>"));
+    } else if sig_ecdsa_psa && mbedtls_v4 {
+        // 4.x uses TF_PSA_CRYPTO_CONFIG_FILE (set by
+        // add_mbedtls_v4_psa_ecdsa()) and has no MBEDTLS_CONFIG_FILE.
     } else if sig_ecdsa_psa {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ec-psa.h>"));
     }
@@ -573,6 +584,103 @@ fn main() {
     walk_dir("csupport").unwrap();
     walk_dir("../../ext/mbedtls-3.6.0/include").unwrap();
     walk_dir("../../ext/mbedtls-3.6.0/library").unwrap();
+    if mbedtls_v4 {
+        walk_dir("../../ext/mbedtls-4.1.0/include").unwrap();
+        walk_dir("../../ext/mbedtls-4.1.0/tf-psa-crypto").unwrap();
+    }
+}
+
+/// Configure the build to route sig-ecdsa-psa through Mbed TLS 4.1.0
+/// (TF-PSA-Crypto 1.1.0) instead of the default 3.6.0.
+///
+/// The approach mirrors Zephyr's Mbed TLS 4.1 integration: drive the
+/// upstream CMake build to produce `libtfpsacrypto.a`, then link our
+/// simulator's libbootutil.a against it. Compared to hand-picking
+/// sources, this lets upstream own the (still-evolving) 4.x file
+/// layout, generator plumbing, and config-adjustment logic; our only
+/// inputs are the config header and a handful of CMake `-D` knobs.
+///
+/// Requires `cmake` in PATH and `python3` with `jinja2` + `jsonschema`
+/// (see `scripts/requirements.txt`). The 4.x CMake invokes its own
+/// Python generators for `psa_crypto_driver_wrappers*` and
+/// `tf_psa_crypto_config_check_*.h` when GEN_FILES is ON (the default
+/// on non-Windows hosts).
+fn add_mbedtls_v4_psa_ecdsa(conf: &mut CachedBuild, sig_p384: bool) {
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")
+        .expect("CARGO_MANIFEST_DIR not set"));
+    let tf_src = manifest_dir
+        .join("../../ext/mbedtls-4.1.0/tf-psa-crypto")
+        .canonicalize()
+        .expect("tf-psa-crypto source dir not found — did submodules initialize?");
+    let config_file = manifest_dir
+        .join("csupport/config-ec-psa-v4.h")
+        .canonicalize()
+        .expect("config-ec-psa-v4.h not found");
+
+    // Build the static TF-PSA-Crypto library via upstream CMake.
+    // - Only the `tfpsacrypto` target: skips programs, tests, shared lib.
+    // - `TF_PSA_CRYPTO_CONFIG_FILE` points at our header; upstream compiles
+    //   every object with `-DTF_PSA_CRYPTO_CONFIG_FILE=\"<abs path>\"`.
+    // - `MCUBOOT_SIGN_EC256`/`EC384` is forwarded so the `#if defined`
+    //   gates inside config-ec-psa-v4.h are evaluated the same way for
+    //   the library build as for our boot-code build; otherwise the
+    //   library would lack P-384 / SHA-384 support.
+    // - `TF_PSA_CRYPTO_FATAL_WARNINGS=OFF` so upstream's -Wall/-Wextra
+    //   don't fail our build on warning differences between toolchains.
+    let mut cmake_conf = cmake::Config::new(&tf_src);
+    cmake_conf
+        .define("TF_PSA_CRYPTO_CONFIG_FILE", config_file.to_str().unwrap())
+        .define("ENABLE_PROGRAMS", "OFF")
+        .define("ENABLE_TESTING", "OFF")
+        .define("USE_STATIC_TF_PSA_CRYPTO_LIBRARY", "ON")
+        .define("USE_SHARED_TF_PSA_CRYPTO_LIBRARY", "OFF")
+        .define("TF_PSA_CRYPTO_FATAL_WARNINGS", "OFF")
+        .define("DISABLE_PACKAGE_CONFIG_AND_INSTALL", "ON")
+        .build_target("tfpsacrypto");
+    if sig_p384 {
+        cmake_conf.cflag("-DMCUBOOT_SIGN_EC384");
+    } else {
+        cmake_conf.cflag("-DMCUBOOT_SIGN_EC256");
+    }
+    let dst = cmake_conf.build();
+
+    // `cmake` crate returns the install-prefix path even with build_target;
+    // the static library is produced in the build tree under core/.
+    let lib_dir = dst.join("build").join("core");
+    println!("cargo:rustc-link-search=native={}", lib_dir.display());
+    println!("cargo:rustc-link-lib=static=tfpsacrypto");
+
+    // Tell Cargo to rebuild if the config file or any .c/.h under the
+    // source tree changes; walk_dir() below covers the source tree, and
+    // this covers the config header explicitly.
+    println!("cargo:rerun-if-changed={}", config_file.display());
+
+    // Compile-time glue for the C code in libbootutil.a: define the
+    // MCUboot PSA macros, point the public headers at our config, and
+    // add include paths so `<psa/crypto.h>` and `<mbedtls/...>` resolve.
+    conf.conf.define("MCUBOOT_USE_PSA_CRYPTO", None);
+    conf.conf.define(
+        "TF_PSA_CRYPTO_CONFIG_FILE",
+        Some(format!("\"{}\"", config_file.display()).as_str()),
+    );
+    if sig_p384 {
+        conf.conf.define("MCUBOOT_SIGN_EC384", None);
+    } else {
+        conf.conf.define("MCUBOOT_SIGN_EC256", None);
+    }
+    conf.conf.include("../../ext/mbedtls-4.1.0/include");
+    conf.conf.include("../../ext/mbedtls-4.1.0/tf-psa-crypto/include");
+    conf.conf.include("../../ext/mbedtls-4.1.0/tf-psa-crypto/drivers/builtin/include");
+
+    // Public key data.
+    conf.file("csupport/keys.c");
+
+    // MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG (set in config-ec-psa-v4.h) makes
+    // the library reference `mbedtls_psa_external_get_random`. Upstream
+    // supplies this only under ENABLE_TESTING, and that shim drags in
+    // the whole test-framework header tree. Our self-contained stub
+    // uses libc rand() — sufficient for verification-only tests.
+    conf.file("csupport/psa_rng_stub_v4.c");
 }
 
 // Output the names of all files within a directory so that Cargo knows when to rebuild.
