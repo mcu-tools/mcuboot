@@ -19,3 +19,6 @@
 [submodule "boot/cypress/libs/cy-mbedtls-acceleration"]
 	path = boot/cypress/libs/cy-mbedtls-acceleration
 	url = https://github.com/cypresssemiconductorco/cy-mbedtls-acceleration.git
+[submodule "ext/mbedtls-4.1.0"]
+	path = ext/mbedtls-4.1.0
+	url = https://github.com/Mbed-TLS/mbedtls.git
