@@ -47,7 +47,7 @@ The following instructions considers a MCUboot Espressif port standalone build.
 2. Update the Mbed TLS submodule required by MCUboot:
 
     ```bash
-    git submodule update --init --recursive ext/mbedtls
+    git submodule update --init --recursive ext/mbedtls-3.6.0
     ```
 
 3. If ESP-IDF is the chosen option for use as HAL layer and the system already have ESP-IDF
