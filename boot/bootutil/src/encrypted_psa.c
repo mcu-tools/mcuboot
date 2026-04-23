@@ -188,13 +188,6 @@ parse_priv_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
 
 void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx)
 {
-    psa_status_t psa_ret = psa_crypto_init();
-
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_ERR("AES init PSA crypto init failed %d", psa_ret);
-        assert(0);
-    }
-
     ctx->key = PSA_KEY_ID_NULL;
 }
 
@@ -265,12 +258,6 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
                        BOOT_ENC_KEY_SIZE];
 
     BOOT_LOG_DBG("boot_decrypt_key: PSA ED25519");
-
-    psa_ret = psa_crypto_init();
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_ERR("PSA crypto init failed %d", psa_ret);
-        return -1;
-    }
 
     /*
      * * Load the stored decryption private key
@@ -431,16 +418,6 @@ int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
     psa_cipher_operation_t psa_op;
     size_t elen = 0;	/* Decrypted length */
 
-    /* Fixme: calling psa_crypto_init multiple times is not a problem,
-     * yet the code here is only present because there is not general
-     * crypto init. */
-    psa_ret = psa_crypto_init();
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_ERR("PSA crypto init failed %d", psa_ret);
-        ret = -1;
-        goto gone;
-    }
-
     psa_op = psa_cipher_operation_init();
 
     /* This could be done with psa_cipher_decrypt one-shot operation, but
@@ -487,16 +464,6 @@ int bootutil_aes_ctr_decrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
     const psa_key_id_t kid = ctx->key;
     psa_cipher_operation_t psa_op;
     size_t dlen = 0;	/* Decrypted length */
-
-    /* Fixme: the init should already happen before calling the function, but
-     * somehow it does not, for example when recovering in swap.
-     */
-    psa_ret = psa_crypto_init();
-    if (psa_ret != PSA_SUCCESS) {
-        BOOT_LOG_ERR("PSA crypto init failed %d", psa_ret);
-        ret = -1;
-        goto gone;
-    }
 
     psa_op = psa_cipher_operation_init();
 
