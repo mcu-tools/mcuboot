@@ -254,7 +254,7 @@ fn main() {
         conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
         conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
     } else if sig_ecdsa_psa && mbedtls_v4 {
-        add_mbedtls_v4_psa_ecdsa(&mut conf, sig_p384);
+        add_mbedtls_v4_psa_ecdsa(&mut conf, sig_p384, enc_ec256);
     } else if sig_ecdsa_psa {
         conf.conf.include("../../ext/mbedtls-3.6.0/include");
 
@@ -420,7 +420,32 @@ fn main() {
         }
     }
 
-    if enc_ec256 {
+    if enc_ec256 && mbedtls_v4 {
+        // Genuine PSA encryption. encrypted.c holds the high-level
+        // boot_enc_* interface (unconditional); encrypted_psa.c
+        // supplies the crypto primitives (boot_decrypt_key,
+        // bootutil_aes_ctr_*) under MCUBOOT_USE_PSA_CRYPTO.
+        // ECDH + HKDF + AES-CTR + HMAC all come from the
+        // tfpsacrypto library built by add_mbedtls_v4_psa_ecdsa().
+        // MCUBOOT_USE_PSA_CRYPTO is already defined there; we must
+        // not define MCUBOOT_USE_TINYCRYPT — ecdsa.h errors on both
+        // backends being set.
+        //
+        // CONFIG_BOOT_ECDSA_PSA is a Zephyr Kconfig symbol that
+        // encrypted.c uses to skip its duplicated legacy ASN.1 +
+        // ECDH code (a block that would otherwise try to compile
+        // against MBEDTLS_OID_* macros no longer public in 4.x).
+        // Setting it here turns the file into the thin boot_enc_*
+        // wrapper we want, delegating to encrypted_psa.c.
+        conf.conf.define("MCUBOOT_ENCRYPT_EC256", None);
+        conf.conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
+        conf.conf.define("CONFIG_BOOT_ECDSA_PSA", None);
+
+        conf.file("../../boot/bootutil/src/encrypted.c");
+        conf.file("../../boot/bootutil/src/encrypted_psa.c");
+        // keys.c is already added by add_mbedtls_v4_psa_ecdsa().
+    } else if enc_ec256 {
         conf.conf.define("MCUBOOT_ENCRYPT_EC256", None);
         conf.conf.define("MCUBOOT_ENC_IMAGES", None);
         conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
@@ -530,7 +555,7 @@ fn main() {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
     } else if sig_ecdsa_mbedtls || enc_ec256_mbedtls || enc_aes256_ec256 || custom_crypto {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ec.h>"));
-    } else if (sig_ecdsa || enc_ec256) && !enc_kw {
+    } else if (sig_ecdsa || enc_ec256) && !enc_kw && !mbedtls_v4 {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
     } else if sig_ed25519 || enc_x25519 {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
@@ -613,7 +638,7 @@ fn main() {
 /// Python generators for `psa_crypto_driver_wrappers*` and
 /// `tf_psa_crypto_config_check_*.h` when GEN_FILES is ON (the default
 /// on non-Windows hosts).
-fn add_mbedtls_v4_psa_ecdsa(conf: &mut CachedBuild, sig_p384: bool) {
+fn add_mbedtls_v4_psa_ecdsa(conf: &mut CachedBuild, sig_p384: bool, enc_ec256: bool) {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")
         .expect("CARGO_MANIFEST_DIR not set"));
     let tf_src = manifest_dir
@@ -649,6 +674,9 @@ fn add_mbedtls_v4_psa_ecdsa(conf: &mut CachedBuild, sig_p384: bool) {
         cmake_conf.cflag("-DMCUBOOT_SIGN_EC384");
     } else {
         cmake_conf.cflag("-DMCUBOOT_SIGN_EC256");
+    }
+    if enc_ec256 {
+        cmake_conf.cflag("-DMCUBOOT_ENCRYPT_EC256");
     }
     let dst = cmake_conf.build();
 
