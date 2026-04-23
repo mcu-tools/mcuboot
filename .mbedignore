@@ -13,6 +13,7 @@ sim/*
 testplan/*
 ext/fiat/*
 ext/mbedtls-3.6.0/*
+ext/mbedtls-4.1.0/*
 ext/mbedtls-asn1/*
 ext/nrf/*
 ext/tinycrypt/tests/*
