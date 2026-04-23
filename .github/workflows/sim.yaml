@@ -64,6 +64,10 @@ jobs:
         # stub path above, which leaves PSA init as a no-op and uses
         # TinyCrypt). Mirrors the 3.6 enc-ec256 row.
         - "sig-ecdsa-psa enc-ec256 mbedtls-v4,sig-ecdsa-psa enc-ec256 swap-offset validate-primary-slot max-align-16 mbedtls-v4"
+        # AES-256 variant. Same ECIES-P256 machinery, larger
+        # BOOT_ENC_KEY_SIZE. PSA_KEY_TYPE_AES covers all AES key
+        # sizes so no config delta.
+        - "sig-ecdsa-psa enc-aes256-ec256 mbedtls-v4,sig-ecdsa-psa enc-aes256-ec256 swap-offset validate-primary-slot max-align-16 mbedtls-v4"
         - "ram-load enc-aes256-kw multiimage"
         - "ram-load enc-aes256-kw sig-ecdsa-mbedtls multiimage"
         - "custom-crypto,custom-crypto overwrite-only,custom-crypto validate-primary-slot,custom-crypto swap-offset"
