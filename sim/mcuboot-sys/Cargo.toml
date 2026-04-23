@@ -102,6 +102,12 @@ hw-rollback-protection = []
 # Enable the PSA Crypto APIs where supported for cryptography related operations.
 psa-crypto-api = []
 
+# Route the simulator build to ext/mbedtls-4.1.0 instead of the default
+# ext/mbedtls-3.6.0 (LTS). Only supported in combination with feature
+# paths that have been ported to the 4.x API surface; currently just
+# sig-ecdsa-psa.
+mbedtls-v4 = []
+
 # Test for ih_load_addr in upgrade/next boot slot
 check-load-addr = []
 
@@ -121,6 +127,7 @@ custom-enc-crypto = ["custom-crypto"]
 
 [build-dependencies]
 cc = "1.0.25"
+cmake = "0.1"
 
 [dependencies]
 libc = "0.2"

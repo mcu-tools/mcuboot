@@ -5,3 +5,11 @@ cbor2
 setuptools
 pyyaml
 pytest
+
+# Needed by Mbed TLS 4.x's CMake-driven build (invoked from
+# sim/mcuboot-sys/build.rs when the `mbedtls-v4` Cargo feature is
+# enabled) to generate psa_crypto_driver_wrappers* and
+# tf_psa_crypto_config_check_*.h. Harmless if that feature is never
+# used.
+jinja2
+jsonschema
