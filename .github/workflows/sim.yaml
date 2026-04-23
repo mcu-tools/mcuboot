@@ -60,6 +60,10 @@ jobs:
         # PSA-specific assumptions baked into these code paths; run
         # and triage.
         - "sig-ecdsa-psa ram-load mbedtls-v4,sig-ecdsa-psa direct-xip mbedtls-v4,sig-ecdsa-psa overwrite-only downgrade-prevention mbedtls-v4,sig-ecdsa-psa hw-rollback-protection multiimage mbedtls-v4"
+        # Genuine PSA encryption via encrypted_psa.c (vs. the 3.6
+        # stub path above, which leaves PSA init as a no-op and uses
+        # TinyCrypt). Mirrors the 3.6 enc-ec256 row.
+        - "sig-ecdsa-psa enc-ec256 mbedtls-v4,sig-ecdsa-psa enc-ec256 swap-offset validate-primary-slot max-align-16 mbedtls-v4"
         - "ram-load enc-aes256-kw multiimage"
         - "ram-load enc-aes256-kw sig-ecdsa-mbedtls multiimage"
         - "custom-crypto,custom-crypto overwrite-only,custom-crypto validate-primary-slot,custom-crypto swap-offset"
