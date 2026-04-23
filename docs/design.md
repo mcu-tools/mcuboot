@@ -1339,6 +1339,9 @@ from the boot code.\
 
 ### [LMS signatures](#lms-signatures)
 
+See [LMS](lms.md) for the algorithm description, imgtool/simulator/
+bootloader integration, and operational considerations.
+
 LMS (Leighton-Micali Signatures, RFC 8554) is a stateful hash-based
 signature scheme intended for post-quantum authenticity of bootloader
 images. MCUboot carries LMS signatures in `IMAGE_TLV_LMS` (0x26). Both
