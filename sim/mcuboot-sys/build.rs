@@ -254,7 +254,7 @@ fn main() {
         conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
         conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
     } else if sig_ecdsa_psa && mbedtls_v4 {
-        add_mbedtls_v4_psa_ecdsa(&mut conf, sig_p384, enc_ec256);
+        add_mbedtls_v4_psa_ecdsa(&mut conf, sig_p384, enc_ec256 || enc_aes256_ec256);
     } else if sig_ecdsa_psa {
         conf.conf.include("../../ext/mbedtls-3.6.0/include");
 
@@ -420,7 +420,7 @@ fn main() {
         }
     }
 
-    if enc_ec256 && mbedtls_v4 {
+    if (enc_ec256 || enc_aes256_ec256) && mbedtls_v4 {
         // Genuine PSA encryption. encrypted.c holds the high-level
         // boot_enc_* interface (unconditional); encrypted_psa.c
         // supplies the crypto primitives (boot_decrypt_key,
@@ -431,12 +431,21 @@ fn main() {
         // not define MCUBOOT_USE_TINYCRYPT — ecdsa.h errors on both
         // backends being set.
         //
+        // enc_aes256_ec256 shares the ECIES-P256 machinery and
+        // differs only in BOOT_ENC_KEY_SIZE (32 vs. 16 bytes), which
+        // is gated by MCUBOOT_AES_256. No additional PSA_WANT_*
+        // entries are needed — PSA_KEY_TYPE_AES covers all AES key
+        // sizes.
+        //
         // CONFIG_BOOT_ECDSA_PSA is a Zephyr Kconfig symbol that
         // encrypted.c uses to skip its duplicated legacy ASN.1 +
         // ECDH code (a block that would otherwise try to compile
         // against MBEDTLS_OID_* macros no longer public in 4.x).
         // Setting it here turns the file into the thin boot_enc_*
         // wrapper we want, delegating to encrypted_psa.c.
+        if enc_aes256_ec256 {
+            conf.conf.define("MCUBOOT_AES_256", None);
+        }
         conf.conf.define("MCUBOOT_ENCRYPT_EC256", None);
         conf.conf.define("MCUBOOT_ENC_IMAGES", None);
         conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
@@ -553,7 +562,7 @@ fn main() {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
     } else if sig_rsa || sig_rsa3072 || enc_rsa || enc_aes256_rsa {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
-    } else if sig_ecdsa_mbedtls || enc_ec256_mbedtls || enc_aes256_ec256 || custom_crypto {
+    } else if (sig_ecdsa_mbedtls || enc_ec256_mbedtls || enc_aes256_ec256 || custom_crypto) && !mbedtls_v4 {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ec.h>"));
     } else if (sig_ecdsa || enc_ec256) && !enc_kw && !mbedtls_v4 {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
