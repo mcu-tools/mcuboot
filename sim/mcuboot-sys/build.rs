@@ -130,58 +130,58 @@ fn main() {
             conf.file("csupport/psa_crypto_init_stub.c");
         } else {
             conf.conf.define("MCUBOOT_USE_PSA_CRYPTO", None);
-            conf.file("../../ext/mbedtls/library/aes.c");
-            conf.file("../../ext/mbedtls/library/aesni.c");
-            conf.file("../../ext/mbedtls/library/aria.c");
-            conf.file("../../ext/mbedtls/library/asn1write.c");
-            conf.file("../../ext/mbedtls/library/base64.c");
-            conf.file("../../ext/mbedtls/library/camellia.c");
-            conf.file("../../ext/mbedtls/library/ccm.c");
-            conf.file("../../ext/mbedtls/library/chacha20.c");
-            conf.file("../../ext/mbedtls/library/chachapoly.c");
-            conf.file("../../ext/mbedtls/library/cipher.c");
-            conf.file("../../ext/mbedtls/library/cipher_wrap.c");
-            conf.file("../../ext/mbedtls/library/constant_time.c");
-            conf.file("../../ext/mbedtls/library/ctr_drbg.c");
-            conf.file("../../ext/mbedtls/library/des.c");
-            conf.file("../../ext/mbedtls/library/ecdsa.c");
-            conf.file("../../ext/mbedtls/library/ecp.c");
-            conf.file("../../ext/mbedtls/library/ecp_curves.c");
-            conf.file("../../ext/mbedtls/library/entropy.c");
-            conf.file("../../ext/mbedtls/library/entropy_poll.c");
-            conf.file("../../ext/mbedtls/library/gcm.c");
-            conf.file("../../ext/mbedtls/library/md5.c");
-            conf.file("../../ext/mbedtls/library/nist_kw.c");
-            conf.file("../../ext/mbedtls/library/oid.c");
-            conf.file("../../ext/mbedtls/library/pem.c");
-            conf.file("../../ext/mbedtls/library/pk.c");
-            conf.file("../../ext/mbedtls/library/pkcs5.c");
-            conf.file("../../ext/mbedtls/library/pkcs12.c");
-            conf.file("../../ext/mbedtls/library/pkparse.c");
-            conf.file("../../ext/mbedtls/library/pk_wrap.c");
-            conf.file("../../ext/mbedtls/library/pkwrite.c");
-            conf.file("../../ext/mbedtls/library/poly1305.c");
-            conf.file("../../ext/mbedtls/library/psa_crypto.c");
-            conf.file("../../ext/mbedtls/library/psa_crypto_cipher.c");
-            conf.file("../../ext/mbedtls/library/psa_crypto_client.c");
-            conf.file("../../ext/mbedtls/library/psa_crypto_ecp.c");
-            conf.file("../../ext/mbedtls/library/psa_crypto_hash.c");
-            conf.file("../../ext/mbedtls/library/psa_crypto_mac.c");
-            conf.file("../../ext/mbedtls/library/psa_crypto_rsa.c");
-            conf.file("../../ext/mbedtls/library/psa_crypto_slot_management.c");
-            conf.file("../../ext/mbedtls/library/psa_crypto_storage.c");
-            conf.file("../../ext/mbedtls/library/psa_its_file.c");
-            conf.file("../../ext/mbedtls/library/psa_util.c");
-            conf.file("../../ext/mbedtls/library/ripemd160.c");
-            conf.file("../../ext/mbedtls/library/rsa_alt_helpers.c");
-            conf.file("../../ext/mbedtls/library/sha1.c");
-            conf.file("../../ext/mbedtls/library/sha512.c");
-            conf.file("../../ext/mbedtls/tests/src/random.c");
-            conf.conf.include("../../ext/mbedtls/library");
+            conf.file("../../ext/mbedtls-3.6.0/library/aes.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/aesni.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/aria.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/asn1write.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/base64.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/camellia.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/ccm.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/chacha20.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/chachapoly.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/cipher.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/cipher_wrap.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/constant_time.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/ctr_drbg.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/des.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/ecdsa.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/ecp.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/ecp_curves.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/entropy.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/entropy_poll.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/gcm.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/md5.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/nist_kw.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/oid.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/pem.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/pk.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/pkcs5.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/pkcs12.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/pkparse.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/pk_wrap.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/pkwrite.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/poly1305.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/psa_crypto.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/psa_crypto_cipher.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/psa_crypto_client.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/psa_crypto_ecp.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/psa_crypto_hash.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/psa_crypto_mac.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/psa_crypto_rsa.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/psa_crypto_slot_management.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/psa_crypto_storage.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/psa_its_file.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/psa_util.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/ripemd160.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/rsa_alt_helpers.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/sha1.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/sha512.c");
+            conf.file("../../ext/mbedtls-3.6.0/tests/src/random.c");
+            conf.conf.include("../../ext/mbedtls-3.6.0/library");
         }
 
-        conf.conf.include("../../ext/mbedtls/tests/include/");
-        conf.file("../../ext/mbedtls/tests/src/fake_external_rng_for_test.c");
+        conf.conf.include("../../ext/mbedtls-3.6.0/tests/include/");
+        conf.file("../../ext/mbedtls-3.6.0/tests/src/fake_external_rng_for_test.c");
     }
 
     if sig_rsa || sig_rsa3072 {
@@ -197,26 +197,26 @@ fn main() {
         }
         conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
 
-        conf.conf.include("../../ext/mbedtls/include");
-        conf.file("../../ext/mbedtls/library/sha256.c");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
+        conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
         conf.file("csupport/keys.c");
 
-        conf.file("../../ext/mbedtls/library/rsa.c");
-        conf.file("../../ext/mbedtls/library/bignum.c");
-        conf.file("../../ext/mbedtls/library/bignum_core.c");
-        conf.file("../../ext/mbedtls/library/constant_time.c");
-        conf.file("../../ext/mbedtls/library/nist_kw.c");
-        conf.file("../../ext/mbedtls/library/platform.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
-        conf.file("../../ext/mbedtls/library/md.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/rsa.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum_core.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/constant_time.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/nist_kw.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/md.c");
 
     } else if sig_ecdsa {
         conf.conf.define("MCUBOOT_SIGN_EC256", None);
         conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
 
         if !enc_kw {
-            conf.conf.include("../../ext/mbedtls/include");
+            conf.conf.include("../../ext/mbedtls-3.6.0/include");
         }
         conf.conf.include("../../ext/tinycrypt/lib/include");
 
@@ -227,61 +227,61 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/ecc.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_dsa.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_platform_specific.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
     } else if sig_ecdsa_mbedtls {
         conf.conf.define("MCUBOOT_SIGN_EC256", None);
         conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
 
-        conf.conf.include("../../ext/mbedtls/include");
-        conf.file("../../ext/mbedtls/library/sha256.c");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
+        conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
         conf.file("csupport/keys.c");
 
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
-        conf.file("../../ext/mbedtls/library/bignum.c");
-        conf.file("../../ext/mbedtls/library/bignum_core.c");
-        conf.file("../../ext/mbedtls/library/constant_time.c");
-        conf.file("../../ext/mbedtls/library/nist_kw.c");
-        conf.file("../../ext/mbedtls/library/ecdsa.c");
-        conf.file("../../ext/mbedtls/library/ecp.c");
-        conf.file("../../ext/mbedtls/library/ecp_curves.c");
-        conf.file("../../ext/mbedtls/library/platform.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum_core.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/constant_time.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/nist_kw.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecdsa.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecp.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecp_curves.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
     } else if sig_ecdsa_psa {
-        conf.conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
 
         if sig_p384 {
             conf.conf.define("MCUBOOT_SIGN_EC384", None);
-            conf.file("../../ext/mbedtls/library/sha512.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/sha512.c");
         } else {
             conf.conf.define("MCUBOOT_SIGN_EC256", None);
-            conf.file("../../ext/mbedtls/library/sha256.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
         }
 
         conf.file("csupport/keys.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
-        conf.file("../../ext/mbedtls/library/bignum.c");
-        conf.file("../../ext/mbedtls/library/bignum_core.c");
-        conf.file("../../ext/mbedtls/library/constant_time.c");
-        conf.file("../../ext/mbedtls/library/nist_kw.c");
-        conf.file("../../ext/mbedtls/library/ecp.c");
-        conf.file("../../ext/mbedtls/library/ecp_curves.c");
-        conf.file("../../ext/mbedtls/library/platform.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum_core.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/constant_time.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/nist_kw.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecp.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecp_curves.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
     } else if sig_ed25519 {
         conf.conf.define("MCUBOOT_SIGN_ED25519", None);
         conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
 
         conf.conf.include("../../ext/tinycrypt/lib/include");
         conf.conf.include("../../ext/tinycrypt-sha512/lib/include");
-        conf.conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
         conf.file("../../ext/tinycrypt/lib/source/sha256.c");
         conf.file("../../ext/tinycrypt-sha512/lib/source/sha512.c");
         conf.file("../../ext/tinycrypt/lib/source/utils.c");
         conf.file("csupport/keys.c");
         conf.file("../../ext/fiat/src/curve25519.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
     } else if custom_crypto {
         // MCUBOOT_USE_CUSTOM_CRYPTO with mbedTLS stubs from csupport/custom_crypto/.
         // mcuboot_config.h includes mcuboot_custom_crypto.h when MCUBOOT_USE_CUSTOM_CRYPTO
@@ -289,22 +289,22 @@ fn main() {
         conf.conf.define("MCUBOOT_USE_CUSTOM_CRYPTO", None);
         conf.conf.define("MCUBOOT_SIGN_EC256", None);
         conf.conf.include("csupport/custom_crypto");
-        conf.conf.include("../../ext/mbedtls/include");
-        conf.conf.include("../../ext/mbedtls/library");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
+        conf.conf.include("../../ext/mbedtls-3.6.0/library");
         conf.file("csupport/keys.c");
-        conf.file("../../ext/mbedtls/library/aes.c");
-        conf.file("../../ext/mbedtls/library/sha256.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
-        conf.file("../../ext/mbedtls/library/bignum.c");
-        conf.file("../../ext/mbedtls/library/bignum_core.c");
-        conf.file("../../ext/mbedtls/library/constant_time.c");
-        conf.file("../../ext/mbedtls/library/ecdsa.c");
-        conf.file("../../ext/mbedtls/library/ecp.c");
-        conf.file("../../ext/mbedtls/library/ecp_curves.c");
-        conf.file("../../ext/mbedtls/library/ecdh.c");
-        conf.file("../../ext/mbedtls/library/md.c");
-        conf.file("../../ext/mbedtls/library/platform.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/aes.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum_core.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/constant_time.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecdsa.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecp.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecp_curves.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecdh.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/md.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
 
         // Encryption support: ECIES-P256 via sim_custom_encrypted.c which
         // provides all boot_enc_* symbols using the custom crypto stubs.
@@ -324,9 +324,9 @@ fn main() {
         // configuration file bundled with mbedTLS is sufficient.
         // When using ECIES-P256 rely on Tinycrypt.
         conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
-        conf.conf.include("../../ext/mbedtls/include");
-        conf.file("../../ext/mbedtls/library/sha256.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
+        conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
     }
 
     if overwrite_only {
@@ -353,21 +353,21 @@ fn main() {
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
-        conf.conf.include("../../ext/mbedtls/include");
-        conf.conf.include("../../ext/mbedtls/library");
-        conf.file("../../ext/mbedtls/library/sha256.c");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
+        conf.conf.include("../../ext/mbedtls-3.6.0/library");
+        conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
 
-        conf.file("../../ext/mbedtls/library/platform.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/rsa.c");
-        conf.file("../../ext/mbedtls/library/rsa_alt_helpers.c");
-        conf.file("../../ext/mbedtls/library/md.c");
-        conf.file("../../ext/mbedtls/library/aes.c");
-        conf.file("../../ext/mbedtls/library/bignum.c");
-        conf.file("../../ext/mbedtls/library/bignum_core.c");
-        conf.file("../../ext/mbedtls/library/constant_time.c");
-        conf.file("../../ext/mbedtls/library/nist_kw.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/rsa.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/rsa_alt_helpers.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/md.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/aes.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum_core.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/constant_time.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/nist_kw.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
     }
 
     if enc_kw || enc_aes256_kw {
@@ -381,19 +381,19 @@ fn main() {
         conf.file("csupport/keys.c");
 
         if sig_rsa || sig_rsa3072 {
-            conf.file("../../ext/mbedtls/library/sha256.c");
+            conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
         }
 
         /* Simulator uses Mbed-TLS to wrap keys */
-        conf.conf.include("../../ext/mbedtls/include");
-        conf.file("../../ext/mbedtls/library/platform.c");
-        conf.conf.include("../../ext/mbedtls/library");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/nist_kw.c");
-        conf.file("../../ext/mbedtls/library/constant_time.c");
-        conf.file("../../ext/mbedtls/library/cipher.c");
-        conf.file("../../ext/mbedtls/library/cipher_wrap.c");
-        conf.file("../../ext/mbedtls/library/aes.c");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
+        conf.conf.include("../../ext/mbedtls-3.6.0/library");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/nist_kw.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/constant_time.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/cipher.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/cipher_wrap.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/aes.c");
 
         if sig_ecdsa {
             conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
@@ -421,7 +421,7 @@ fn main() {
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
-        conf.conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
         conf.conf.include("../../ext/tinycrypt/lib/include");
 
         /* FIXME: fail with other signature schemes ? */
@@ -432,8 +432,8 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/ecc_dsa.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_platform_specific.c");
 
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
 
         conf.file("../../ext/tinycrypt/lib/source/aes_encrypt.c");
         conf.file("../../ext/tinycrypt/lib/source/aes_decrypt.c");
@@ -449,22 +449,22 @@ fn main() {
         conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
         conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
 
-        conf.conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
 
         conf.file("../../boot/bootutil/src/encrypted.c");
-        conf.file("../../ext/mbedtls/library/sha256.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
-        conf.file("../../ext/mbedtls/library/bignum.c");
-        conf.file("../../ext/mbedtls/library/bignum_core.c");
-        conf.file("../../ext/mbedtls/library/constant_time.c");
-        conf.file("../../ext/mbedtls/library/nist_kw.c");
-        conf.file("../../ext/mbedtls/library/ecdh.c");
-        conf.file("../../ext/mbedtls/library/md.c");
-        conf.file("../../ext/mbedtls/library/aes.c");
-        conf.file("../../ext/mbedtls/library/ecp.c");
-        conf.file("../../ext/mbedtls/library/ecp_curves.c");
-        conf.file("../../ext/mbedtls/library/platform.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/bignum_core.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/constant_time.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/nist_kw.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecdh.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/md.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/aes.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecp.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/ecp_curves.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
         conf.file("csupport/keys.c");
     }
 
@@ -477,7 +477,7 @@ fn main() {
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
-        conf.conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
         conf.conf.include("../../ext/tinycrypt/lib/include");
         conf.conf.include("../../ext/tinycrypt-sha512/lib/include");
 
@@ -486,8 +486,8 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/utils.c");
         conf.file("../../ext/tinycrypt/lib/source/sha256.c");
 
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
 
         conf.file("../../ext/tinycrypt/lib/source/aes_encrypt.c");
         conf.file("../../ext/tinycrypt/lib/source/aes_decrypt.c");
@@ -505,15 +505,15 @@ fn main() {
         conf.file("../../boot/bootutil/src/encrypted.c");
         conf.file("csupport/keys.c");
 
-        conf.conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
         conf.file("../../ext/fiat/src/curve25519.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
-        conf.file("../../ext/mbedtls/library/platform.c");
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/aes.c");
-        conf.file("../../ext/mbedtls/library/sha256.c");
-        conf.file("../../ext/mbedtls/library/md.c");
-        conf.file("../../ext/mbedtls/library/sha512.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/aes.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/md.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/sha512.c");
     }
 
     if sig_rsa && enc_kw {
@@ -579,8 +579,8 @@ fn main() {
     walk_dir("../../ext/tinycrypt/lib/source").unwrap();
     walk_dir("../../ext/mbedtls-asn1").unwrap();
     walk_dir("csupport").unwrap();
-    walk_dir("../../ext/mbedtls/include").unwrap();
-    walk_dir("../../ext/mbedtls/library").unwrap();
+    walk_dir("../../ext/mbedtls-3.6.0/include").unwrap();
+    walk_dir("../../ext/mbedtls-3.6.0/library").unwrap();
 }
 
 // Output the names of all files within a directory so that Cargo knows when to rebuild.
