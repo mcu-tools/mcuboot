@@ -42,6 +42,7 @@ The MCUboot documentation is composed of the following pages:
 - [imgtool](imgtool.md) - image signing and key management
 - [ECDSA](ecdsa.md) - information about ECDSA signature formats
 - [Custom crypto backend](custom_crypto.md) - plugging in a custom crypto library
+- [LMS](lms.md) - LMS post-quantum signature support
 - [Serial Recovery](serial_recovery.md) - MCUmgr as the serial recovery protocol
 - Usage instructions:
   - [Zephyr](readme-zephyr.md)
