@@ -258,7 +258,7 @@ if(DEFINED CONFIG_ESP_SIGN_KEY_FILE)
 endif()
 
 if(CONFIG_ESP_MCUBOOT_SERIAL)
-  set(MBEDTLS_DIR "${MCUBOOT_ROOT_DIR}/ext/mbedtls")
+  set(MBEDTLS_DIR "${MCUBOOT_ROOT_DIR}/ext/mbedtls-3.6.0")
 
   list(APPEND bootutil_srcs
       ${BOOT_SERIAL_DIR}/src/boot_serial.c
