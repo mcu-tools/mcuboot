@@ -177,6 +177,7 @@ static const uint16_t allowed_unprot_tlvs[] = {
      IMAGE_TLV_ECDSA_SIG,
      IMAGE_TLV_RSA3072_PSS,
      IMAGE_TLV_ED25519,
+     IMAGE_TLV_LMS,
 #if defined(MCUBOOT_SIGN_PURE)
      IMAGE_TLV_SIG_PURE,
 #endif
