@@ -1,4 +1,3 @@
-# For development, trigger this on any push.
 on:
   push:
     branches:
@@ -21,19 +20,40 @@ jobs:
     - uses: actions/setup-go@v3
       with:
         go-version: 'stable'
+    - uses: carlosperate/arm-none-eabi-gcc-action@v1
+      with:
+          release: '15.2.Rel1'
     - name: Print the environment
       run: |
         uname -a
         lscpu
         free
         pwd
-    - name: Signed commit check
-      if: ${{ github.event_name == 'pull_request' }}
+    - name: Native setup
+      shell: bash
       run: |
-        ./ci/check-signed-off-by.sh
-    - name: Mynewt install
+        sudo apt-get update
+        sudo apt-get install -y gcc-multilib
+    - name: Install newt
+      shell: bash
       run: |
-        ./ci/mynewt_install.sh
+        go version
+        go install mynewt.apache.org/newt/newt@latest
+        newt version
+    - name: Setup Mynewt
+      shell: bash
+      run: |
+        newt new build
+        rm build/targets/* -rf
+        cp -r ci/mynewt_targets/* build/targets
+        cp -f ci/mynewt_project.yml build/project.yml
+        cd build
+        newt upgrade --shallow=1
+        rm -rf repos/mcuboot
+        git clone .. repos/mcuboot
     - name: Mynewt run
+      shell: bash
       run: |
-        ./ci/mynewt_run.sh
+        cd build
+        newt build `ls targets`
+        newt test @mcuboot/boot/boot_serial
