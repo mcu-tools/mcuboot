@@ -116,6 +116,7 @@ struct image_tlv {
 #define IMAGE_TLV_SIG_PURE          0x25    /* Indicator that attached signature has been prepared
                                              * over image rather than its digest.
                                              */
+#define IMAGE_TLV_LMS               0x26    /* LMS signature (RFC 8554) over image hash */
 #define IMAGE_TLV_ENC_RSA2048       0x30    /* Key encrypted with RSA-OAEP-2048 */
 #define IMAGE_TLV_ENC_KW            0x31    /* Key encrypted with AES-KW 128 or 256*/
 #define IMAGE_TLV_ENC_EC256         0x32    /* Key encrypted with ECIES-EC256 */
@@ -1335,6 +1336,55 @@ from the boot code.\
 ***Note:*** *At the moment the usage of builtin keys is only available with the*
 *PSA Crypto API based crypto backend (`MCUBOOT_USE_PSA_CRYPTO`) for ECDSA*
 *signatures.*
+
+### [LMS signatures](#lms-signatures)
+
+LMS (Leighton-Micali Signatures, RFC 8554) is a stateful hash-based
+signature scheme intended for post-quantum authenticity of bootloader
+images. MCUboot carries LMS signatures in `IMAGE_TLV_LMS` (0x26). Both
+the public-key and the signature payload are *defined* by RFC 8554 —
+they are the raw wire formats the algorithm specifies, not a
+MCUboot-specific framing. The sizes below are therefore a property of
+the chosen parameter set, not a MCUboot design choice.
+
+**Public key** (carried, as usual, in `IMAGE_TLV_PUBKEY` for
+`MCUBOOT_HW_KEY` builds; otherwise its SHA-256 is carried in
+`IMAGE_TLV_KEYHASH`). Per RFC 8554 §5.3:
+
+```
+    u32(lms_typecode) || u32(lmots_typecode) || I || T[1]
+```
+
+- `lms_typecode` (4 bytes, big-endian): identifies the LMS parameter
+  set. For `LMS_SHA256_M32_H10` this is the IANA value `0x00000006`.
+- `lmots_typecode` (4 bytes, big-endian): identifies the LM-OTS
+  parameter set. For `LMOTS_SHA256_N32_W8` this is `0x00000004`.
+- `I` (16 bytes): the unique key identifier for this Merkle tree.
+- `T[1]` (32 bytes): the root node of the Merkle tree — the only
+  piece that is a hash "over" the key material; the rest is metadata
+  that lets a verifier know which algorithm variant to run.
+
+For the only parameter set currently supported by Mbed TLS 4.x
+(`LMS_SHA256_M32_H10` + `LMOTS_SHA256_N32_W8`) the total is 4 + 4 +
+16 + 32 = **56 bytes**, not the 32 bytes one would expect from a
+"public key is a hash" summary.
+
+**Signature** (carried in `IMAGE_TLV_LMS`). Per RFC 8554 §5.4:
+
+```
+    u32(q) || lmots_signature || u32(lms_typecode) || path[0..h-1]
+    lmots_signature = u32(lmots_typecode) || C || y[0..p-1]
+```
+
+For `LMS_SHA256_M32_H10` + `LMOTS_SHA256_N32_W8` (h=10, n=32, p=34):
+4 (`q`) + 4 (`lmots_typecode`) + 32 (`C`) + 34·32 (`y`) + 4
+(`lms_typecode`) + 10·32 (`path`) = **1452 bytes**. The TLV length
+field carries this explicitly so a verifier does not need to hard-
+code it.
+
+Because LMS is a one-time-signature-based scheme, the signing side
+(imgtool) must never reuse a leaf index `q`. This is a signing-time
+concern and does not affect the verifier or this TLV's format.
 
 ## [Protected TLVs](#protected-tlvs)
 
