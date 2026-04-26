@@ -14,6 +14,11 @@
 
 pip3 install --user -r ci/requirements.txt
 
+# imgtool deps — sim tests under sim/tests/ shell out to python3 with
+# scripts/ on PYTHONPATH (see sim/tests/lms_compat.rs), so they need
+# imgtool's runtime deps (cryptography, pyhsslms, …) on the runner.
+pip3 install --user -r scripts/requirements.txt
+
 pushd sim && cargo fetch
 [[ $? -ne 0 ]] && exit 1
 popd
