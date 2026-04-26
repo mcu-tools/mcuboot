@@ -19,6 +19,7 @@ setuptools.setup(
         'click',
         'cbor2',
         'pyyaml',
+        'pyhsslms',
     ],
     entry_points={
         "console_scripts": ["imgtool=imgtool.main:imgtool"]
