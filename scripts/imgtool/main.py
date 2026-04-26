@@ -233,6 +233,19 @@ def getpriv(key, minimal, format):
         raise click.UsageError(e) from e
 
 
+@click.option('-k', '--key', metavar='filename', required=True)
+@click.command(help='Print information about a key file')
+def keyinfo(key):
+    key = load_key(key)
+    if key is None:
+        print("Invalid passphrase")
+        sys.exit(1)
+    info = key.key_info()
+    width = max(len(label) for label, _ in info)
+    for label, value in info:
+        print(f"{label:>{width}}: {value}")
+
+
 @click.argument('imgfile')
 @click.option('-k', '--key', metavar='filename')
 @click.command(help="Check that signed image can be verified by given key")
@@ -652,6 +665,7 @@ def imgtool():
 
 
 imgtool.add_command(keygen)
+imgtool.add_command(keyinfo)
 imgtool.add_command(getpub)
 imgtool.add_command(getpubhash)
 imgtool.add_command(getpriv)
