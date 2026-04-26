@@ -32,7 +32,7 @@ from imgtool import image, imgtool_version
 from imgtool.dumpinfo import dump_imginfo
 from imgtool.version import decode_version
 
-from .keys import ECDSAUsageError, Ed25519UsageError, RSAUsageError, X25519UsageError
+from .keys import ECDSAUsageError, Ed25519UsageError, LMSUsageError, RSAUsageError, X25519UsageError
 
 comp_default_dictsize=131072
 comp_default_pb=2
@@ -71,16 +71,28 @@ def gen_x25519(keyfile, passwd):
     keys.X25519.generate().export_private(path=keyfile, passwd=passwd)
 
 
+def gen_lms_h10_w8(keyfile, passwd):
+    keys.LMS.generate('lms-sha256-h10-w8').export_private(path=keyfile,
+                                                          passwd=passwd)
+
+
+def gen_lms_h5_w8(keyfile, passwd):
+    keys.LMS.generate('lms-sha256-h5-w8').export_private(path=keyfile,
+                                                         passwd=passwd)
+
+
 valid_langs = ['c', 'rust']
 valid_hash_encodings = ['lang-c', 'raw']
 valid_encodings = ['lang-c', 'lang-rust', 'pem', 'raw']
 keygens = {
-    'rsa-2048':   gen_rsa2048,
-    'rsa-3072':   gen_rsa3072,
-    'ecdsa-p256': gen_ecdsa_p256,
-    'ecdsa-p384': gen_ecdsa_p384,
-    'ed25519':    gen_ed25519,
-    'x25519':     gen_x25519,
+    'rsa-2048':         gen_rsa2048,
+    'rsa-3072':         gen_rsa3072,
+    'ecdsa-p256':       gen_ecdsa_p256,
+    'ecdsa-p384':       gen_ecdsa_p384,
+    'ed25519':          gen_ed25519,
+    'x25519':           gen_x25519,
+    'lms-sha256-h10-w8': gen_lms_h10_w8,
+    'lms-sha256-h5-w8':  gen_lms_h5_w8,
 }
 valid_formats = ['openssl', 'pkcs8']
 valid_sha = [ 'auto', '256', '384', '512' ]
@@ -216,7 +228,8 @@ def getpriv(key, minimal, format):
         print("Invalid passphrase")
     try:
         key.emit_private(minimal, format)
-    except (RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError) as e:
+    except (RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError,
+            LMSUsageError) as e:
         raise click.UsageError(e) from e
 
 
