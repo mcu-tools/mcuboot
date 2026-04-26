@@ -103,6 +103,16 @@ def _sig_len(lms_type, lmots_type):
     return 4 + 4 + n + p * n + 4 + h * m
 
 
+def _param_name(lms_type, lmots_type):
+    """Reverse-lookup of (lms_type, lmots_type) to a canonical name.
+    Falls back to the hex typecodes for keys whose parameter set is not
+    in LMS_PARAM_SETS (e.g. an externally-generated key)."""
+    for name, (lt, lot) in LMS_PARAM_SETS.items():
+        if lt == lms_type and lot == lmots_type:
+            return name
+    return f"lms_type=0x{lms_type.hex()} lmots_type=0x{lmots_type.hex()}"
+
+
 class LMSPublic(KeyClass):
     def __init__(self, key):
         self.key = key
@@ -147,6 +157,14 @@ class LMSPublic(KeyClass):
     def verify_digest(self, signature, digest):
         if not self._public_key().verify(digest, signature):
             raise InvalidSignature("LMS signature verification failed")
+
+    def key_info(self):
+        pub = self._public_key()
+        return [
+            ("Key type", self.sig_type()),
+            ("Parameter set", _param_name(pub.lms_type, pub.lmots_type)),
+            ("Maximum signatures", str(pub.maxSignatures())),
+        ]
 
 
 class LMS(LMSPublic):
@@ -196,3 +214,11 @@ class LMS(LMSPublic):
 
     def remaining(self):
         return self.key.remaining()
+
+    def key_info(self):
+        info = super().key_info()
+        used = self.key.q
+        total = self.key.maxSignatures()
+        info.append(("Signatures used",
+                     f"{used} of {total} ({total - used} remaining)"))
+        return info

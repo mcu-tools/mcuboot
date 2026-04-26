@@ -538,6 +538,26 @@ def test_keyinfo_require_private_rejects_public(tmp_path_persistent):
     assert "private was required" in result.output
 
 
+@pytest.mark.parametrize("key_type", KEY_TYPES)
+def test_keyinfo_verbose(key_type, tmp_path_persistent):
+    """keyinfo --verbose prints the kind first, then key details."""
+    runner = CliRunner()
+    gen_key = tmp_name(tmp_path_persistent, key_type, GEN_KEY_EXT)
+    pub_only_pem = tmp_name(tmp_path_persistent, key_type, PUB_ONLY_PEM_EXT)
+    _ensure_pub_only_pem(runner, gen_key, pub_only_pem)
+
+    for src, kind in ((gen_key, "private"), (pub_only_pem, "public")):
+        result = runner.invoke(imgtool, ["keyinfo", "--key", str(src), "-v"])
+        assert result.exit_code == 0
+        lines = result.output.splitlines()
+        assert lines[0] == kind
+        assert any(line.strip().startswith("Key type:") for line in lines[1:])
+        if key_type.startswith("lms"):
+            assert any("Parameter set: " + key_type in line for line in lines)
+            assert any("Signatures used:" in line
+                       for line in lines) == (kind == "private")
+
+
 @pytest.mark.parametrize("key_type", ALL_KEY_TYPES)
 def test_sign_verify(key_type, tmp_path_persistent):
     """Test basic sign and verify"""
