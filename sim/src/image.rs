@@ -1646,11 +1646,11 @@ impl Images {
 
         self.mark_permanent_upgrades(&mut flash, 1);
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut resets = vec![0i32; count];
         let mut remaining_ops = total_ops;
         for reset in &mut resets {
-            let reset_counter = rng.gen_range(1 ..= remaining_ops / 2);
+            let reset_counter = rng.random_range(1 ..= remaining_ops / 2);
             let mut counter = reset_counter;
             match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter),
                              None, false) {
