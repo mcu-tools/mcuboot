@@ -45,7 +45,8 @@ RUN . .venv/bin/activate && python3 -m pip install \
     imgtool>=1.9.0 \
     Jinja2>=2.10.3 \
     PyYAML \
-    pyasn1
+    pyasn1 \
+    pyhsslms
 
 # run the command
 CMD ["bash"]

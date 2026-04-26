@@ -6,7 +6,7 @@
 # Copyright (c) 2025 Arm Limited
 #
 
-FIH_IMAGE_VERSION=0.0.4
+FIH_IMAGE_VERSION=0.0.5
 
 FIH_IMAGE_NAME=mcuboot-fih-test
 
