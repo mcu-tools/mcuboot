@@ -29,9 +29,11 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey,
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 
+from . import lms as _lms
 from .ecdsa import ECDSA256P1, ECDSA384P1, ECDSA256P1Public, ECDSA384P1Public, ECDSAUsageError
 from .ed25519 import Ed25519, Ed25519Public, Ed25519UsageError
 from .general import DigestSigner, PayloadSigner
+from .lms import LMS, LMSPublic, LMSUsageError
 from .rsa import RSA, RSA_KEY_SIZES, RSAPublic, RSAUsageError
 from .x25519 import X25519, X25519Public, X25519UsageError
 
@@ -45,6 +47,9 @@ __all__ = [
     "Ed25519",
     "Ed25519Public",
     "Ed25519UsageError",
+    "LMS",
+    "LMSPublic",
+    "LMSUsageError",
     "PayloadSigner",
     "RSA",
     "RSA_KEY_SIZES",
@@ -66,6 +71,10 @@ def load(path, passwd=None):
       Returns None if the password wasn't specified."""
     with open(path, 'rb') as f:
         raw_pem = f.read()
+    if _lms.is_lms_key_data(raw_pem):
+        # MCUboot LMS keys use a custom PEM-style envelope; the
+        # cryptography PEM loader does not recognize the format.
+        return _lms.load(raw_pem, path=path)
     try:
         pk = serialization.load_pem_private_key(
                 raw_pem,
