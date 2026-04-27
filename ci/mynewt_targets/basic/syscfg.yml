@@ -43,3 +43,4 @@ syscfg.vals:
     UART_0: 0
     BOOTUTIL_BOOTSTRAP: 0
     MBEDTLS_NIST_KW_C: 0
+    BSP_BOOTLOADER_48K: 1
