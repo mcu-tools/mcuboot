@@ -2135,6 +2135,11 @@ fn install_no_image() -> ImageData {
 /// Construct a TLV generator based on how MCUboot is currently configured.  The returned
 /// ManifestGen will generate the appropriate entries based on this configuration.
 fn make_tlv() -> TlvGen {
+    // sig-lms doesn't yet have a Caps bit because the bootloader-side verifier
+    // is not implemented. Until then, the Cargo feature is the source of truth.
+    if cfg!(feature = "sig-lms") {
+        return TlvGen::new_lms();
+    }
     let aes_key_size = if Caps::Aes256.present() { 256 } else { 128 };
 
     if Caps::EncKw.present() {
