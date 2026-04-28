@@ -3,6 +3,7 @@
 		zephyr,bootloader-info = &boot_info0;
 		zephyr,code-partition = &boot_partition;
 		zephyr,sram = &mcuboot_sdram;
+		mcuboot,image-ram = &image_sdram;
 	};
 
 	soc {
@@ -44,5 +45,10 @@
 	mcuboot_sdram: memory@0 {
 		compatible = "mmio-sram";
 		reg = <0x0 DT_SIZE_K(30)>;
+	};
+
+	image_sdram: memory@8000 {
+		compatible = "mmio-sram";
+		reg = <0x8000 DT_SIZE_M(3)>;
 	};
 };
