@@ -20,6 +20,7 @@ use byteorder::{
 use cipher::FromBlockCipher;
 use crate::caps::Caps;
 use crate::image::ImageVersion;
+use hybrid_array::Array;
 use log::info;
 use ring::{digest, rand, agreement, hkdf, hmac};
 use ring::rand::SecureRandom;
@@ -42,8 +43,25 @@ use cipher::{
     generic_array::GenericArray,
     StreamCipher,
 };
+use lms_signature::{
+    lms::{LmsSha256M32H5, SigningKey as LmsSigningKey},
+    ots::LmsOtsSha256N32W8,
+};
 use mcuboot_sys::c;
+use signature::RandomizedSignerMut;
 use typenum::{U16, U32};
+
+// LMS scheme used by the simulator. Mbed TLS 4.x verifies only H10/W8;
+// when bootloader-side LMS support lands, switch this alias to
+// `LmsSha256M32H10<LmsOtsSha256N32W8>` (and update LMS_SIG_LEN below).
+// H5 is used for now because its keygen is ~32x faster.
+type LmsScheme = LmsSha256M32H5<LmsOtsSha256N32W8>;
+
+// RFC 8554 §5.3 public key: u32 lms_type | u32 lmots_type | I(16) | T[1](32).
+const LMS_PUB_LEN: usize = 56;
+// RFC 8554 §5.4 signature: q(4) | LMOTS sig (4 + 32 + 34*32 for W8) | lms_type(4) | path(M*H).
+// For H5/W8 the total is 8 + 1124 + 32*5 = 1292 bytes.
+const LMS_SIG_LEN: usize = 1292;
 
 #[repr(u16)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -56,6 +74,7 @@ pub enum TlvKinds {
     ECDSASIG = 0x22,
     RSA3072 = 0x23,
     ED25519 = 0x24,
+    LMS = 0x26,
     ENCRSA2048 = 0x30,
     ENCKW = 0x31,
     ENCEC256 = 0x32,
@@ -120,7 +139,7 @@ pub trait ManifestGen {
     fn set_ignore_ram_load_flag(&mut self);
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct TlvGen {
     flags: u32,
     kinds: Vec<TlvKinds>,
@@ -132,6 +151,10 @@ pub struct TlvGen {
     security_cnt: Option<u32>,
     /// Ignore RAM_LOAD flag
     ignore_ram_load_flag: bool,
+    /// LMS signing key, generated fresh per TlvGen for `new_lms()` builds.
+    /// `LmsSigningKey` does not impl `Debug`, which is why TlvGen no longer
+    /// derives it.
+    lms_signing_key: Option<LmsSigningKey<LmsScheme>>,
 }
 
 #[derive(Debug)]
@@ -314,6 +337,17 @@ impl TlvGen {
     }
 
     #[allow(dead_code)]
+    pub fn new_lms() -> TlvGen {
+        let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
+        let sk = LmsSigningKey::<LmsScheme>::new(&mut rng);
+        TlvGen {
+            kinds: vec![TlvKinds::LMS],
+            lms_signing_key: Some(sk),
+            ..Default::default()
+        }
+    }
+
+    #[allow(dead_code)]
     pub fn new_sec_cnt() -> TlvGen {
        TlvGen {
             kinds: vec![TlvKinds::SHA256, TlvKinds::SECCNT],
@@ -406,6 +440,10 @@ impl ManifestGen for TlvGen {
                 estimate += 4 + 72;  // ECDSA256 (varies)
             }
         }
+        if self.kinds.contains(&TlvKinds::LMS) {
+            estimate += 4 + 32;             // KEYHASH (sha256 over the 56-byte pubkey)
+            estimate += 4 + LMS_SIG_LEN;    // LMS signature
+        }
 
         // Estimate encryption.
         let flag = TlvFlags::ENCRYPTED_AES256 as u32;
@@ -431,7 +469,7 @@ impl ManifestGen for TlvGen {
     }
 
     /// Compute the TLV given the specified block of data.
-    fn make_tlv(self: Box<Self>) -> Vec<u8> {
+    fn make_tlv(mut self: Box<Self>) -> Vec<u8> {
         let size_estimate = self.estimate_size();
 
         let mut protected_tlv: Vec<u8> = vec![];
@@ -670,6 +708,34 @@ impl ManifestGen for TlvGen {
             let signature = signature.as_ref().to_vec();
             result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
             result.extend_from_slice(signature.as_ref());
+        }
+
+        if self.kinds.contains(&TlvKinds::LMS) {
+            let mut sk = self.lms_signing_key.take()
+                .expect("LMS signing key not initialized");
+
+            // 56-byte serialized public key per RFC 8554 §5.3.
+            let pub_arr: Array<u8, _> = sk.public().into();
+            let pub_bytes = pub_arr.as_slice();
+            assert_eq!(pub_bytes.len(), LMS_PUB_LEN);
+
+            // KEYHASH TLV: SHA-256 over the 56-byte public key.
+            let keyhash = digest::digest(&digest::SHA256, pub_bytes);
+            let keyhash = keyhash.as_ref();
+            assert_eq!(keyhash.len(), 32);
+            result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
+            result.write_u16::<LittleEndian>(32).unwrap();
+            result.extend_from_slice(keyhash);
+
+            let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
+            let sig = sk.try_sign_with_rng(&mut rng, &sig_payload)
+                .expect("LMS signing failed");
+            let sig_bytes: Vec<u8> = sig.into();
+            assert_eq!(sig_bytes.len(), LMS_SIG_LEN);
+
+            result.write_u16::<LittleEndian>(TlvKinds::LMS as u16).unwrap();
+            result.write_u16::<LittleEndian>(LMS_SIG_LEN as u16).unwrap();
+            result.extend_from_slice(&sig_bytes);
         }
 
         if self.kinds.contains(&TlvKinds::ENCRSA2048) {
