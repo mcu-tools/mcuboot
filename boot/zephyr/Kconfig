@@ -711,17 +711,31 @@ config BOOT_SWAP_SAVE_ENCTLV
 
 endif # !SINGLE_APPLICATION_SLOT
 
-# Workaround for not being able to have commas in macro arguments
-DT_CHOSEN_Z_SRAM := zephyr,sram
-
 if BOOT_RAM_LOAD || SINGLE_APPLICATION_SLOT_RAM_LOAD
 
+# Workaround for not being able to have commas in macro arguments
+DT_CHOSEN_Z_SRAM := zephyr,sram
+DT_CHOSEN_MCUBOOT_IMAGE_RAM := mcuboot,image-ram
+
+config BOOT_MCUBOOT_LACKS_IMAGE_RAM_NODE
+	bool
+	default y if "$(dt_chosen_path,$(DT_CHOSEN_MCUBOOT_IMAGE_RAM))" = ""
+	select DEPRECATED
+	help
+	  If this option is selected, it means that your target does not have an
+	  ``mcuboot,image-ram`` chosen node which points to a RAM location for images to be
+	  loaded to.
+
 config BOOT_IMAGE_EXECUTABLE_RAM_START
-	hex "Boot image executable ram start"
+	hex "Boot image executable ram start" if BOOT_MCUBOOT_LACKS_IMAGE_RAM_NODE
+	default $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_MCUBOOT_IMAGE_RAM)) if \
+		!BOOT_MCUBOOT_LACKS_IMAGE_RAM_NODE
 	default $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_SRAM))
 
 config BOOT_IMAGE_EXECUTABLE_RAM_SIZE
-	int "Boot image executable base size"
+	int "Boot image executable base size" if BOOT_MCUBOOT_LACKS_IMAGE_RAM_NODE
+	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_MCUBOOT_IMAGE_RAM),0) if \
+		!BOOT_MCUBOOT_LACKS_IMAGE_RAM_NODE
 	default $(dt_chosen_reg_size_int,$(DT_CHOSEN_Z_SRAM),0)
 
 endif
