@@ -225,15 +225,16 @@ bootutil_img_validate(struct boot_loader_state *state,
      */
     int key_id = image_index;
 #endif /* !MCUBOOT_BUILTIN_KEY */
-#ifdef MCUBOOT_HW_KEY
+    uint8_t sig_buf[SIG_BUF_SIZE];
+#ifdef EXPECTED_KEY_TLV
     uint8_t key_buf[KEY_BUF_SIZE];
 #endif
 #endif /* EXPECTED_SIG_TLV */
     struct image_tlv_iter it;
-    uint8_t buf[SIG_BUF_SIZE];
 #if defined(EXPECTED_HASH_TLV) && !defined(MCUBOOT_SIGN_PURE)
     int image_hash_valid = 0;
     uint8_t hash[IMAGE_HASH_SIZE];
+    uint8_t hash_buf[IMAGE_HASH_SIZE];
 #endif
     int rc = 0;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
@@ -347,12 +348,12 @@ bootutil_img_validate(struct boot_loader_state *state,
                 rc = -1;
                 goto out;
             }
-            rc = LOAD_IMAGE_DATA(hdr, fap, off, buf, sizeof(hash));
+            rc = LOAD_IMAGE_DATA(hdr, fap, off, hash_buf, sizeof(hash));
             if (rc) {
                 goto out;
             }
 
-            FIH_CALL(boot_fih_memequal, fih_rc, hash, buf, sizeof(hash));
+            FIH_CALL(boot_fih_memequal, fih_rc, hash, hash_buf, sizeof(hash));
             if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
                 FIH_SET(fih_rc, FIH_FAILURE);
                 goto out;
@@ -373,17 +374,13 @@ bootutil_img_validate(struct boot_loader_state *state,
                 rc = -1;
                 goto out;
             }
-#ifndef MCUBOOT_HW_KEY
-            rc = LOAD_IMAGE_DATA(hdr, fap, off, buf, len);
-            if (rc) {
-                goto out;
-            }
-            key_id = bootutil_find_key(buf, len);
-#else
             rc = LOAD_IMAGE_DATA(hdr, fap, off, key_buf, len);
             if (rc) {
                 goto out;
             }
+#ifndef MCUBOOT_HW_KEY
+            key_id = bootutil_find_key(key_buf, len);
+#else
             key_id = bootutil_find_key(image_index, key_buf, len);
 #endif /* !MCUBOOT_HW_KEY */
             /*
@@ -402,17 +399,17 @@ bootutil_img_validate(struct boot_loader_state *state,
                 key_id = -1;
                 continue;
             }
-            if (!EXPECTED_SIG_LEN(len) || len > sizeof(buf)) {
+            if (!EXPECTED_SIG_LEN(len) || len > sizeof(sig_buf)) {
                 rc = -1;
                 goto out;
             }
-            rc = LOAD_IMAGE_DATA(hdr, fap, off, buf, len);
+            rc = LOAD_IMAGE_DATA(hdr, fap, off, sig_buf, len);
             if (rc) {
                 goto out;
             }
 #ifndef MCUBOOT_SIGN_PURE
             FIH_CALL(bootutil_verify_sig, valid_signature, hash, sizeof(hash),
-                                                           buf, len, key_id);
+                                                           sig_buf, len, key_id);
 #else
             rc = flash_device_base(flash_area_get_device_id(fap), &base);
             if (rc != 0) {
@@ -429,7 +426,7 @@ bootutil_img_validate(struct boot_loader_state *state,
              */
             FIH_CALL(bootutil_verify_sig, valid_signature, (void *)(base + flash_area_get_off(fap)),
                      hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_protect_tlv_size,
-                     buf, len, key_id);
+                     sig_buf, len, key_id);
 #endif
             key_id = -1;
             break;
