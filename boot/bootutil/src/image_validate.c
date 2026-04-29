@@ -208,7 +208,7 @@ bootutil_img_validate(struct boot_loader_state *state,
                       int seed_len, uint8_t *out_hash
                      )
 {
-#if (defined(EXPECTED_KEY_TLV) && defined(MCUBOOT_HW_KEY)) || \
+#if (defined(EXPECTED_KEY_TLV)) || \
     (defined(EXPECTED_SIG_TLV) && defined(MCUBOOT_BUILTIN_KEY)) || \
     defined(MCUBOOT_HW_ROLLBACK_PROT) || \
     defined(MCUBOOT_UUID_VID) || defined(MCUBOOT_UUID_CID)
