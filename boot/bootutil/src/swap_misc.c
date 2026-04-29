@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2019 JUUL Labs
  * Copyright (c) 2025 Nordic Semiconductor ASA
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,6 +104,7 @@ swap_scramble_trailer_sectors(const struct boot_loader_state *state,
  * in a single call; the current approach writes certain parts of status
  * twice on these devices.
  */
+#ifndef MCUBOOT_SWAP_FINGERPRINT
 int
 swap_status_init(const struct boot_loader_state *state,
                  const struct flash_area *fap,
@@ -153,6 +155,7 @@ swap_status_init(const struct boot_loader_state *state,
 
     return 0;
 }
+#endif /* !MCUBOOT_SWAP_FINGERPRINT */
 
 int
 swap_read_status(struct boot_loader_state *state, struct boot_status *bs)

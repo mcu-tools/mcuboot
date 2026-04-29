@@ -31,6 +31,7 @@ pub enum Caps {
     HwRollbackProtection = (1 << 18),
     EcdsaP384            = (1 << 19),
     SwapUsingOffset      = (1 << 20),
+    SwapFingerprint      = (1 << 21),
 }
 
 impl Caps {

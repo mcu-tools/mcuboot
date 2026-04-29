@@ -198,6 +198,7 @@ pub enum FlashId {
     ImageScratch = 3,
     Image2 = 4,
     Image3 = 5,
+    ImageFingerprint = 6,
 }
 
 impl Default for FlashId {

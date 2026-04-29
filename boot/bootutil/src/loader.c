@@ -5,6 +5,7 @@
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2023 Arm Limited
  * Copyright (c) 2024-2025 Nordic Semiconductor ASA
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  * Original license:
  *
@@ -410,6 +411,7 @@ boot_status_is_reset(const struct boot_status *bs)
  *
  * @return                      0 on success; nonzero on failure.
  */
+#ifndef MCUBOOT_SWAP_FINGERPRINT
 int
 boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
 {
@@ -456,6 +458,7 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
 
     return rc;
 }
+#endif /* !MCUBOOT_SWAP_FINGERPRINT */
 #endif /* !MCUBOOT_RAM_LOAD */
 #endif /* !MCUBOOT_DIRECT_XIP */
 
@@ -1195,6 +1198,23 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         }
 
         bs->swap_size = copy_size;
+
+#ifdef MCUBOOT_SWAP_FINGERPRINT
+        /* Erase the fingerprint partition at the start of every fresh swap
+         * (forward or revert).  This clears stale MAGIC from a previous swap
+         * so that swap_status_init writes fresh fingerprint tables.
+         */
+        {
+            const struct flash_area *fap_fp = NULL;
+
+            rc = flash_area_open(FLASH_AREA_IMAGE_FINGERPRINT, &fap_fp);
+            if (rc == 0) {
+                rc = flash_area_erase(fap_fp, 0, flash_area_get_size(fap_fp));
+                flash_area_close(fap_fp);
+                assert(rc == 0);
+            }
+        }
+#endif
     } else {
         /*
          * If a swap was under way, the swap_size should already be present
@@ -1225,6 +1245,20 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
     }
 
     swap_run(state, bs, copy_size);
+
+#ifdef MCUBOOT_SWAP_FINGERPRINT
+    /* Fingerprint recovery is content-based and may skip swap_idx=0
+     * STATE_2 trailer reconstruction. Ensure primary MAGIC is present. */
+    {
+        struct boot_swap_state swap_state;
+        rc = boot_read_swap_state(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY),
+                                  &swap_state);
+        if (rc == 0 && swap_state.magic != BOOT_MAGIC_GOOD) {
+            rc = boot_write_magic(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
+            assert(rc == 0);
+        }
+    }
+#endif
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
     extern int boot_status_fails;

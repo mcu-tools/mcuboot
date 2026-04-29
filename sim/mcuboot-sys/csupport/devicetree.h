@@ -16,5 +16,6 @@
 #define FLASH_AREA_ID_image_scratch 3
 #define FLASH_AREA_ID_image_2 4
 #define FLASH_AREA_ID_image_3 5
+#define FLASH_AREA_ID_image_fingerprint 6
 
 #endif /*__DEVICETREE_H__*/

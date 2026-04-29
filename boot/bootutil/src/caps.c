@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2017 Linaro Limited
  * Copyright (c) 2021-2023 Arm Limited
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,6 +83,9 @@ uint32_t bootutil_get_caps(void)
 #endif
 #if defined(MCUBOOT_HW_ROLLBACK_PROT)
     res |= BOOTUTIL_CAP_HW_ROLLBACK_PROT;
+#endif
+#if defined(MCUBOOT_SWAP_FINGERPRINT)
+    res |= BOOTUTIL_CAP_SWAP_FINGERPRINT;
 #endif
 
     return res;

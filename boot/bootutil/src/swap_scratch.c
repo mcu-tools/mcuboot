@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2019 JUUL Labs
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -183,6 +184,7 @@ static size_t app_max_size_adjust_to_trailer(struct boot_loader_state *state, si
  * to recover in case the boot lodaer was reset in the middle of a swap
  * operation.
  */
+#ifndef MCUBOOT_SWAP_FINGERPRINT
 int
 swap_read_status_bytes(const struct flash_area *fap,
         struct boot_loader_state *state, struct boot_status *bs)
@@ -261,6 +263,7 @@ boot_status_internal_off(const struct boot_status *bs, int elem_sz)
     return (bs->idx - BOOT_STATUS_IDX_0) * idx_sz +
            (bs->state - BOOT_STATUS_STATE_0) * elem_sz;
 }
+#endif /* !MCUBOOT_SWAP_FINGERPRINT */
 
 /*
  * Slots are compatible when all sectors that store up to to size of the image
@@ -794,9 +797,18 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
              * This is necessary even though the current area being swapped contains part of the
              * trailer since in case the trailer spreads over multiple sector erasing the [img_off,
              * img_off + sz) might not erase the entire trailer.
+             *
+             * In fingerprint mode, swap status lives in a dedicated partition,
+             * not in slot trailers, so scrambling the secondary trailer is
+             * unnecessary.  Skipping it avoids destroying image data (TLVs)
+             * that share the trailer sector, which would make the secondary
+             * image unvalidatable if a power failure occurs before the swap
+             * copies any sectors.
               */
+#ifndef MCUBOOT_SWAP_FINGERPRINT
             rc = swap_scramble_trailer_sectors(state, fap_secondary_slot);
             assert(rc == 0);
+#endif
 
             if (bs->use_scratch) {
                 /* If the area being swapped contains the trailer or part of it, ensure the
@@ -808,7 +820,15 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                 uint32_t trailer_sector_offset =
                     boot_img_sector_off(state, BOOT_SLOT_SECONDARY, trailer_sector_secondary);
 
+#ifdef MCUBOOT_SWAP_FINGERPRINT
+                /* In fingerprint mode the secondary trailer was NOT scrambled
+                 * above, so the trailer sector still needs to be erased before
+                 * we can write to it.  Keep the full erase_sz.
+                 */
+                (void)trailer_sector_offset;
+#else
                 erase_sz = trailer_sector_offset - img_off;
+#endif
             }
         }
 

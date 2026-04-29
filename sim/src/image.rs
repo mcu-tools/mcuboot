@@ -455,7 +455,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset, Caps::SwapFingerprint])
             }
             DeviceName::Stm32f4SpiFlash => {
                 // STM style internal flash and external SPI flash.
@@ -478,7 +478,7 @@ impl ImagesBuilder {
                 let mut flash = SimMultiFlash::new();
                 flash.insert(0, dev0);
                 flash.insert(1, dev1);
-                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset, Caps::SwapFingerprint])
             }
             DeviceName::K64f => {
                 // NXP style flash.  Small sectors, one small sector for scratch.
@@ -490,6 +490,7 @@ impl ImagesBuilder {
                 areadesc.add_image(0x020000, 0x020000, FlashId::Image0, dev_id);
                 areadesc.add_image(0x040000, 0x020000, FlashId::Image1, dev_id);
                 areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch, dev_id);
+                areadesc.add_image(0x061000, 0x003000, FlashId::ImageFingerprint, dev_id);
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
@@ -509,7 +510,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset, Caps::SwapFingerprint])
             }
             DeviceName::Nrf52840 => {
                 // Simulating the flash on the nrf52840 with partitions set up so that the scratch size
@@ -522,10 +523,14 @@ impl ImagesBuilder {
                 areadesc.add_image(0x008000, 0x034000, FlashId::Image0, dev_id);
                 areadesc.add_image(0x03c000, 0x034000, FlashId::Image1, dev_id);
                 areadesc.add_image(0x070000, 0x00d000, FlashId::ImageScratch, dev_id);
+                areadesc.add_image(0x07d000, 0x003000, FlashId::ImageFingerprint, dev_id);
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, Rc::new(areadesc), &[])
+                // SwapFingerprint requires scratch = 1 sector so that swap_idx
+                // maps 1:1 to physical sectors.  This device has 13-sector
+                // scratch, making the mapping incorrect.
+                (flash, Rc::new(areadesc), &[Caps::SwapFingerprint])
             }
             DeviceName::Nrf52840UnequalSlots => {
                 let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
@@ -538,7 +543,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade, Caps::SwapUsingOffset])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade, Caps::SwapUsingOffset, Caps::SwapFingerprint])
             }
             DeviceName::Nrf52840UnequalSlotsLargerSlot1 => {
                 let dev = SimFlash::new(vec![4096; 128], align as usize, erased_val);
@@ -551,7 +556,7 @@ impl ImagesBuilder {
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
-                (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade, Caps::SwapUsingMove, Caps::RamLoad, Caps::DirectXip])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade, Caps::SwapUsingMove, Caps::RamLoad, Caps::DirectXip, Caps::SwapFingerprint])
             }
             DeviceName::Nrf52840SpiFlash => {
                 // Simulate nrf52840 with external SPI flash. The external SPI flash
@@ -570,7 +575,7 @@ impl ImagesBuilder {
                 let mut flash = SimMultiFlash::new();
                 flash.insert(0, dev0);
                 flash.insert(1, dev1);
-                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset])
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset, Caps::SwapFingerprint])
             }
             DeviceName::K64fMulti => {
                 // NXP style flash, but larger, to support multiple images.
@@ -584,6 +589,7 @@ impl ImagesBuilder {
                 areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch, dev_id);
                 areadesc.add_image(0x080000, 0x020000, FlashId::Image2, dev_id);
                 areadesc.add_image(0x0a0000, 0x020000, FlashId::Image3, dev_id);
+                areadesc.add_image(0x061000, 0x003000, FlashId::ImageFingerprint, dev_id);
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
@@ -598,6 +604,7 @@ impl ImagesBuilder {
                 areadesc.add_image(0x020000, 0x010000, FlashId::Image0, dev_id);
                 areadesc.add_image(0x030000, 0x010000, FlashId::Image1, dev_id);
                 areadesc.add_image(0x040000, 0x002000, FlashId::ImageScratch, dev_id);
+                areadesc.add_image(0x042000, 0x003000, FlashId::ImageFingerprint, dev_id);
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);

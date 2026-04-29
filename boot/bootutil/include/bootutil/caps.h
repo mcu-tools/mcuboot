@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2017 Linaro Limited
  * Copyright (c) 2021-2023 Arm Limited
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +55,7 @@ uint32_t bootutil_get_caps(void);
 #define BOOTUTIL_CAP_HW_ROLLBACK_PROT       (1<<18)
 #define BOOTUTIL_CAP_ECDSA_P384             (1<<19)
 #define BOOTUTIL_CAP_SWAP_USING_OFFSET      (1<<20)
+#define BOOTUTIL_CAP_SWAP_FINGERPRINT       (1<<21)
 
 /*
  * Query the number of images this bootloader is configured for.  This

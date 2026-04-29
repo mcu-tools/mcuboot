@@ -42,5 +42,6 @@
 #endif
 
 #define FLASH_AREA_IMAGE_SCRATCH    FLASH_AREA_ID(image_scratch)
+#define FLASH_AREA_IMAGE_FINGERPRINT    FLASH_AREA_ID(image_fingerprint)
 
 #endif /* __SYSFLASH_H__ */

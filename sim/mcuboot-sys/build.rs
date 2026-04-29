@@ -41,6 +41,7 @@ fn main() {
     let max_align_32 = env::var("CARGO_FEATURE_MAX_ALIGN_32").is_ok();
     let hw_rollback_protection = env::var("CARGO_FEATURE_HW_ROLLBACK_PROTECTION").is_ok();
     let check_load_addr = env::var("CARGO_FEATURE_CHECK_LOAD_ADDR").is_ok();
+    let swap_fingerprint = env::var("CARGO_FEATURE_SWAP_FINGERPRINT").is_ok();
 
     let mut conf = CachedBuild::new();
     conf.conf.define("__BOOTSIM__", None);
@@ -281,6 +282,10 @@ fn main() {
         conf.conf.define("MCUBOOT_SWAP_USING_SCRATCH", None);
     }
 
+    if swap_fingerprint {
+        conf.conf.define("MCUBOOT_SWAP_FINGERPRINT", None);
+    }
+
     if enc_rsa || enc_aes256_rsa {
         if enc_aes256_rsa {
                 conf.conf.define("MCUBOOT_AES_256", None);
@@ -493,6 +498,9 @@ fn main() {
     conf.file("../../boot/bootutil/src/swap_scratch.c");
     conf.file("../../boot/bootutil/src/swap_move.c");
     conf.file("../../boot/bootutil/src/swap_offset.c");
+    if swap_fingerprint {
+        conf.file("../../boot/bootutil/src/swap_fingerprint.c");
+    }
     conf.file("../../boot/bootutil/src/caps.c");
     conf.file("../../boot/bootutil/src/bootutil_misc.c");
     conf.file("../../boot/bootutil/src/bootutil_area.c");

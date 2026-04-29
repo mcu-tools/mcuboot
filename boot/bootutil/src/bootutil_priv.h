@@ -4,6 +4,7 @@
  * Copyright (c) 2017-2020 Linaro LTD
  * Copyright (c) 2017-2019 JUUL Labs
  * Copyright (c) 2019-2021 Arm Limited
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  * Original license:
  *
@@ -51,6 +52,20 @@ extern "C" {
 struct flash_area;
 
 #define BOOT_TMPBUF_SZ  256
+
+#ifdef MCUBOOT_SWAP_FINGERPRINT
+#define FINGERPRINT_HASH_SZ             32
+#ifndef BOOT_FINGERPRINT_MAX_ENTRIES
+#define BOOT_FINGERPRINT_MAX_ENTRIES    BOOT_MAX_IMG_SECTORS
+#endif
+#define FINGERPRINT_TABLE_CHECKSUM_SZ   FINGERPRINT_HASH_SZ
+
+#if !defined(MCUBOOT_SWAP_USING_SCRATCH) && \
+    !defined(MCUBOOT_SWAP_USING_MOVE) && \
+    !defined(MCUBOOT_SWAP_USING_OFFSET)
+#error "MCUBOOT_SWAP_FINGERPRINT requires a swap strategy"
+#endif
+#endif /* MCUBOOT_SWAP_FINGERPRINT */
 
 /** Number of image slots in flash; currently limited to two. */
 #if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) || defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)

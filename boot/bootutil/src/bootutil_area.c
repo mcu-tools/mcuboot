@@ -5,6 +5,7 @@
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2020 Arm Limited
  * Copyright (c) 2025 Nordic Semiconductor ASA
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  * Original license:
  *

@@ -42,6 +42,9 @@ swap-offset = []
 # Swap using move move
 swap-move = []
 
+# Swap fingerprint-based progress tracking
+swap-fingerprint = []
+
 # Disable validation of the primary slot
 validate-primary-slot = []
 
