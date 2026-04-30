@@ -20,6 +20,7 @@ use byteorder::{
 use cipher::FromBlockCipher;
 use crate::caps::Caps;
 use crate::image::ImageVersion;
+#[cfg(feature = "sig-lms")]
 use hybrid_array::Array;
 use log::info;
 use ring::{digest, rand, agreement, hkdf, hmac};
@@ -43,11 +44,13 @@ use cipher::{
     generic_array::GenericArray,
     StreamCipher,
 };
+#[cfg(feature = "sig-lms")]
 use lms_signature::{
     lms::{LmsSha256M32H10, SigningKey as LmsSigningKey},
     ots::LmsOtsSha256N32W8,
 };
 use mcuboot_sys::c;
+#[cfg(feature = "sig-lms")]
 use signature::RandomizedSignerMut;
 use typenum::{U16, U32};
 
@@ -55,13 +58,41 @@ use typenum::{U16, U32};
 // so the bootloader-side verifier dictates this choice. Rust-side H10
 // keygen runs in ~370ms (release) vs pyhsslms's ~3.9s — paid once per
 // process when TlvGen lazily initializes its shared signing key.
+#[cfg(feature = "sig-lms")]
 type LmsScheme = LmsSha256M32H10<LmsOtsSha256N32W8>;
 
 // RFC 8554 §5.3 public key: u32 lms_type | u32 lmots_type | I(16) | T[1](32).
+#[allow(dead_code)]
 const LMS_PUB_LEN: usize = 56;
 // RFC 8554 §5.4 signature: q(4) | LMOTS sig (4 + 32 + 34*32 for W8) | lms_type(4) | path(M*H).
 // For H10/W8 the total is 8 + 1124 + 32*10 = 1452 bytes.
 const LMS_SIG_LEN: usize = 1452;
+
+// LMS keys are stateful — a private key cannot be reused across processes
+// without risking signature-index reuse — so the simulator generates a
+// fresh keypair on first access and shares it process-wide. The 56-byte
+// public key is pushed into keys.c's bootutil_keys[] buffer at the same
+// time, so the bootloader's verification path can find it. H10 has 1024
+// signatures total; the test matrix uses ~150 per process, comfortably
+// under the limit.
+#[cfg(feature = "sig-lms")]
+extern "C" {
+    fn mcuboot_sim_set_lms_pubkey(pk: *const u8);
+}
+
+#[cfg(feature = "sig-lms")]
+fn lms_key() -> &'static std::sync::Mutex<LmsSigningKey<LmsScheme>> {
+    use std::sync::{Mutex, OnceLock};
+    static LMS_KEY: OnceLock<Mutex<LmsSigningKey<LmsScheme>>> = OnceLock::new();
+    LMS_KEY.get_or_init(|| {
+        let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
+        let sk = LmsSigningKey::<LmsScheme>::new(&mut rng);
+        let pub_arr: Array<u8, _> = sk.public().into();
+        assert_eq!(pub_arr.as_slice().len(), LMS_PUB_LEN);
+        unsafe { mcuboot_sim_set_lms_pubkey(pub_arr.as_slice().as_ptr()) };
+        Mutex::new(sk)
+    })
+}
 
 #[repr(u16)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -139,7 +170,7 @@ pub trait ManifestGen {
     fn set_ignore_ram_load_flag(&mut self);
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct TlvGen {
     flags: u32,
     kinds: Vec<TlvKinds>,
@@ -151,10 +182,6 @@ pub struct TlvGen {
     security_cnt: Option<u32>,
     /// Ignore RAM_LOAD flag
     ignore_ram_load_flag: bool,
-    /// LMS signing key, generated fresh per TlvGen for `new_lms()` builds.
-    /// `LmsSigningKey` does not impl `Debug`, which is why TlvGen no longer
-    /// derives it.
-    lms_signing_key: Option<LmsSigningKey<LmsScheme>>,
 }
 
 #[derive(Debug)]
@@ -338,11 +365,11 @@ impl TlvGen {
 
     #[allow(dead_code)]
     pub fn new_lms() -> TlvGen {
-        let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
-        let sk = LmsSigningKey::<LmsScheme>::new(&mut rng);
+        // The signing key itself is a process-wide singleton (see lms_key());
+        // construction here is purely a marker that this image should carry
+        // an LMS signature.
         TlvGen {
             kinds: vec![TlvKinds::LMS],
-            lms_signing_key: Some(sk),
             ..Default::default()
         }
     }
@@ -469,7 +496,7 @@ impl ManifestGen for TlvGen {
     }
 
     /// Compute the TLV given the specified block of data.
-    fn make_tlv(mut self: Box<Self>) -> Vec<u8> {
+    fn make_tlv(self: Box<Self>) -> Vec<u8> {
         let size_estimate = self.estimate_size();
 
         let mut protected_tlv: Vec<u8> = vec![];
@@ -710,9 +737,9 @@ impl ManifestGen for TlvGen {
             result.extend_from_slice(signature.as_ref());
         }
 
+        #[cfg(feature = "sig-lms")]
         if self.kinds.contains(&TlvKinds::LMS) {
-            let mut sk = self.lms_signing_key.take()
-                .expect("LMS signing key not initialized");
+            let mut sk = lms_key().lock().unwrap();
 
             // 56-byte serialized public key per RFC 8554 §5.3.
             let pub_arr: Array<u8, _> = sk.public().into();
