@@ -44,24 +44,24 @@ use cipher::{
     StreamCipher,
 };
 use lms_signature::{
-    lms::{LmsSha256M32H5, SigningKey as LmsSigningKey},
+    lms::{LmsSha256M32H10, SigningKey as LmsSigningKey},
     ots::LmsOtsSha256N32W8,
 };
 use mcuboot_sys::c;
 use signature::RandomizedSignerMut;
 use typenum::{U16, U32};
 
-// LMS scheme used by the simulator. Mbed TLS 4.x verifies only H10/W8;
-// when bootloader-side LMS support lands, switch this alias to
-// `LmsSha256M32H10<LmsOtsSha256N32W8>` (and update LMS_SIG_LEN below).
-// H5 is used for now because its keygen is ~32x faster.
-type LmsScheme = LmsSha256M32H5<LmsOtsSha256N32W8>;
+// LMS scheme used by the simulator. Mbed TLS 4.x verifies only H10/W8,
+// so the bootloader-side verifier dictates this choice. Rust-side H10
+// keygen runs in ~370ms (release) vs pyhsslms's ~3.9s — paid once per
+// process when TlvGen lazily initializes its shared signing key.
+type LmsScheme = LmsSha256M32H10<LmsOtsSha256N32W8>;
 
 // RFC 8554 §5.3 public key: u32 lms_type | u32 lmots_type | I(16) | T[1](32).
 const LMS_PUB_LEN: usize = 56;
 // RFC 8554 §5.4 signature: q(4) | LMOTS sig (4 + 32 + 34*32 for W8) | lms_type(4) | path(M*H).
-// For H5/W8 the total is 8 + 1124 + 32*5 = 1292 bytes.
-const LMS_SIG_LEN: usize = 1292;
+// For H10/W8 the total is 8 + 1124 + 32*10 = 1452 bytes.
+const LMS_SIG_LEN: usize = 1452;
 
 #[repr(u16)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
