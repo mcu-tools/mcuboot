@@ -727,8 +727,17 @@ impl ManifestGen for TlvGen {
             result.write_u16::<LittleEndian>(32).unwrap();
             result.extend_from_slice(keyhash);
 
+            // RFC 8554 defines LMS over the message bytes, but mcuboot
+            // signs SHA-256(payload) instead: a bootloader can't always
+            // load a full image into RAM (e.g. external QSPI flash), and
+            // the mbedtls LMS verify API takes a contiguous buffer. imgtool
+            // does the same — sign_digest() receives the SHA-256 of the
+            // payload. The cost is robustness against a future SHA-256
+            // collision attack; LMS's internal hash is also SHA-256, so
+            // the practical exposure is unchanged.
+            let payload_hash = digest::digest(&digest::SHA256, &sig_payload);
             let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
-            let sig = sk.try_sign_with_rng(&mut rng, &sig_payload)
+            let sig = sk.try_sign_with_rng(&mut rng, payload_hash.as_ref())
                 .expect("LMS signing failed");
             let sig_bytes: Vec<u8> = sig.into();
             assert_eq!(sig_bytes.len(), LMS_SIG_LEN);
