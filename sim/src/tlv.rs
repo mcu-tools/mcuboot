@@ -400,9 +400,11 @@ impl TlvGen {
     pub fn new_lms() -> TlvGen {
         // The signing key itself is a process-wide singleton (see lms_key());
         // construction here is purely a marker that this image should carry
-        // an LMS signature.
+        // an LMS signature. SHA256 is included because the bootloader
+        // requires the hash TLV and LMS itself signs that hash (see the
+        // hash-and-sign rationale in make_tlv's LMS branch).
         TlvGen {
-            kinds: vec![TlvKinds::LMS],
+            kinds: vec![TlvKinds::SHA256, TlvKinds::LMS],
             ..Default::default()
         }
     }
