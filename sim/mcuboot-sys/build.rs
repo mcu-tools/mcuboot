@@ -19,6 +19,7 @@ fn main() {
     let sig_ecdsa_psa = env::var("CARGO_FEATURE_SIG_ECDSA_PSA").is_ok();
     let sig_p384 = env::var("CARGO_FEATURE_SIG_P384").is_ok();
     let sig_ed25519 = env::var("CARGO_FEATURE_SIG_ED25519").is_ok();
+    let sig_lms = env::var("CARGO_FEATURE_SIG_LMS").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
     let swap_move = env::var("CARGO_FEATURE_SWAP_MOVE").is_ok();
     let swap_offset = env::var("CARGO_FEATURE_SWAP_OFFSET").is_ok();
@@ -98,7 +99,7 @@ fn main() {
     }
 
     // Currently no more than one sig type can be used simultaneously.
-    if vec![sig_rsa, sig_rsa3072, sig_ecdsa, sig_ed25519].iter()
+    if vec![sig_rsa, sig_rsa3072, sig_ecdsa, sig_ed25519, sig_lms].iter()
         .fold(0, |sum, &v| sum + v as i32) > 1 {
         panic!("mcuboot does not support more than one sig type at the same time");
     }
@@ -319,6 +320,19 @@ fn main() {
             conf.conf.include("../../boot/bootutil/src");
             conf.file("csupport/custom_crypto/sim_custom_encrypted.c");
         }
+    } else if sig_lms {
+        // The LMS bootloader-side verifier itself is not yet wired in; this
+        // branch only activates the sim's keys.c LMS path (a writable buffer
+        // for the runtime-generated public key plus the FFI hook the Rust
+        // singleton calls at startup) and pulls in a SHA-256 backend so
+        // bootutil_img_hash links. The actual mbedtls 4.x LMS verify path
+        // will land alongside image_lms.c.
+        conf.conf.define("MCUBOOT_SIGN_LMS", None);
+        conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
+        conf.file("csupport/keys.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
     } else if !enc_ec256 && !enc_x25519 {
         // No signature type, only sha256 validation. The default
         // configuration file bundled with mbedTLS is sufficient.

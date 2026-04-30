@@ -17,6 +17,8 @@
  * under the License.
  */
 
+#include <string.h>
+
 #include <bootutil/sign_key.h>
 
 #include <mcuboot_config/mcuboot_config.h>
@@ -155,6 +157,25 @@ const unsigned char root_pub_der[] = {
     0x20, 0xff, 0xb4, 0xe0,
 };
 const unsigned int root_pub_der_len = 44;
+#elif defined(MCUBOOT_SIGN_LMS)
+#define HAVE_KEYS
+/*
+ * RFC 8554 §5.3 serialized public key:
+ *   u32 lms_type | u32 lmots_type | I(16) | T[1](32) = 56 bytes.
+ *
+ * LMS private keys are stateful; the simulator generates a fresh keypair
+ * at process startup (see tlv.rs::lms_key()) and pushes the public key
+ * here via mcuboot_sim_set_lms_pubkey(). bootutil_keys[].key is a const
+ * pointer onto this buffer, so bootutil reads it as immutable while the
+ * Rust side populates it once at startup.
+ */
+unsigned char root_pub_der[56];
+unsigned int root_pub_der_len = sizeof(root_pub_der);
+
+void mcuboot_sim_set_lms_pubkey(const unsigned char *pk)
+{
+    memcpy(root_pub_der, pk, sizeof(root_pub_der));
+}
 #endif
 
 #if defined(HAVE_KEYS)
