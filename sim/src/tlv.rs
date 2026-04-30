@@ -72,25 +72,58 @@ const LMS_SIG_LEN: usize = 1452;
 // without risking signature-index reuse — so the simulator generates a
 // fresh keypair on first access and shares it process-wide. The 56-byte
 // public key is pushed into keys.c's bootutil_keys[] buffer at the same
-// time, so the bootloader's verification path can find it. H10 has 1024
-// signatures total; the test matrix uses ~150 per process, comfortably
-// under the limit.
+// time, so the bootloader's verification path can find it.
+//
+// The H10 cap of 1024 signatures is not enough for this test matrix:
+// each #[test] iterates over 10 devices × 4 alignments × 2 erased values
+// = 80 configurations, signing primary + secondary in each, so a single
+// test can chew through ~160 indices. The full sig-lms matrix easily
+// runs past 1024.
+//
+// We sidestep this by saving the 16-byte identifier and 32-byte seed
+// alongside the SigningKey, and regenerating the key from those same
+// inputs whenever it exhausts. RFC 8554's public-key derivation is
+// deterministic in (id, seed), so the regenerated SigningKey produces
+// the same Merkle-root public-key bytes — bootutil_keys[] is set once
+// at first use and never changes, and previously-signed images still
+// verify against the same key.
+//
+// This deliberately re-uses OTS leaves across the regen, which is a
+// security violation in production (the OTS construction relies on
+// each leaf signing exactly once; reuse leaks enough hash chain values
+// for an adversary to forge). For mcuboot's sim it's fine — these
+// images never leave the test harness, and the goal is wire-format
+// round-trip, not forgery resistance. Each regen costs ~370 ms (Merkle
+// tree rebuild); a full test run hits this a handful of times.
 #[cfg(feature = "sig-lms")]
 extern "C" {
     fn mcuboot_sim_set_lms_pubkey(pk: *const u8);
 }
 
 #[cfg(feature = "sig-lms")]
-fn lms_key() -> &'static std::sync::Mutex<LmsSigningKey<LmsScheme>> {
+struct LmsKey {
+    id: [u8; 16],
+    seed: [u8; 32],
+    sk: LmsSigningKey<LmsScheme>,
+}
+
+#[cfg(feature = "sig-lms")]
+fn lms_key() -> &'static std::sync::Mutex<LmsKey> {
+    use rand_core::Rng;
     use std::sync::{Mutex, OnceLock};
-    static LMS_KEY: OnceLock<Mutex<LmsSigningKey<LmsScheme>>> = OnceLock::new();
+    static LMS_KEY: OnceLock<Mutex<LmsKey>> = OnceLock::new();
     LMS_KEY.get_or_init(|| {
         let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
-        let sk = LmsSigningKey::<LmsScheme>::new(&mut rng);
+        let mut id = [0u8; 16];
+        let mut seed = [0u8; 32];
+        rng.fill_bytes(&mut id);
+        rng.fill_bytes(&mut seed);
+        let sk = LmsSigningKey::<LmsScheme>::new_from_seed(id, &seed[..])
+            .expect("LMS new_from_seed should not fail for valid lengths");
         let pub_arr: Array<u8, _> = sk.public().into();
         assert_eq!(pub_arr.as_slice().len(), LMS_PUB_LEN);
         unsafe { mcuboot_sim_set_lms_pubkey(pub_arr.as_slice().as_ptr()) };
-        Mutex::new(sk)
+        Mutex::new(LmsKey { id, seed, sk })
     })
 }
 
@@ -739,10 +772,10 @@ impl ManifestGen for TlvGen {
 
         #[cfg(feature = "sig-lms")]
         if self.kinds.contains(&TlvKinds::LMS) {
-            let mut sk = lms_key().lock().unwrap();
+            let mut key = lms_key().lock().unwrap();
 
             // 56-byte serialized public key per RFC 8554 §5.3.
-            let pub_arr: Array<u8, _> = sk.public().into();
+            let pub_arr: Array<u8, _> = key.sk.public().into();
             let pub_bytes = pub_arr.as_slice();
             assert_eq!(pub_bytes.len(), LMS_PUB_LEN);
 
@@ -764,8 +797,19 @@ impl ManifestGen for TlvGen {
             // the practical exposure is unchanged.
             let payload_hash = digest::digest(&digest::SHA256, &sig_payload);
             let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
-            let sig = sk.try_sign_with_rng(&mut rng, payload_hash.as_ref())
-                .expect("LMS signing failed");
+            let sig = match key.sk.try_sign_with_rng(&mut rng, payload_hash.as_ref()) {
+                Ok(s) => s,
+                Err(_) => {
+                    // OTS leaves exhausted (q reached 1024). Rebuild the
+                    // SigningKey from the saved (id, seed): same Merkle
+                    // root, q reset to 0. Costs ~370ms to regenerate the
+                    // tree. See lms_key() for the security caveat.
+                    key.sk = LmsSigningKey::<LmsScheme>::new_from_seed(key.id, &key.seed[..])
+                        .expect("LMS new_from_seed should not fail for valid lengths");
+                    key.sk.try_sign_with_rng(&mut rng, payload_hash.as_ref())
+                        .expect("post-regen LMS signing must succeed")
+                }
+            };
             let sig_bytes: Vec<u8> = sig.into();
             assert_eq!(sig_bytes.len(), LMS_SIG_LEN);
 
