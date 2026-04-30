@@ -42,7 +42,8 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
     defined(MCUBOOT_SIGN_EC256)     || \
     defined(MCUBOOT_SIGN_EC384)     || \
     defined(MCUBOOT_SIGN_EC)        || \
-    defined(MCUBOOT_SIGN_ED25519)
+    defined(MCUBOOT_SIGN_ED25519)   || \
+    defined(MCUBOOT_SIGN_LMS)
 #define EXPECTED_SIG_TLV
 #else
     /* no signing, sha256 digest only */

@@ -321,18 +321,7 @@ fn main() {
             conf.file("csupport/custom_crypto/sim_custom_encrypted.c");
         }
     } else if sig_lms {
-        // The LMS bootloader-side verifier itself is not yet wired in; this
-        // branch only activates the sim's keys.c LMS path (a writable buffer
-        // for the runtime-generated public key plus the FFI hook the Rust
-        // singleton calls at startup) and pulls in a SHA-256 backend so
-        // bootutil_img_hash links. The actual mbedtls 4.x LMS verify path
-        // will land alongside image_lms.c.
-        conf.conf.define("MCUBOOT_SIGN_LMS", None);
-        conf.conf.define("MCUBOOT_USE_MBED_TLS", None);
-        conf.conf.include("../../ext/mbedtls-3.6.0/include");
-        conf.file("csupport/keys.c");
-        conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
-        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+        add_mbedtls_v4_psa_lms(&mut conf);
     } else if !enc_ec256 && !enc_x25519 {
         // No signature type, only sha256 validation. The default
         // configuration file bundled with mbedTLS is sufficient.
@@ -595,6 +584,8 @@ fn main() {
         conf.file("../../boot/bootutil/src/image_ecdsa.c");
     } else if sig_ed25519 {
         conf.file("../../boot/bootutil/src/image_ed25519.c");
+    } else if sig_lms {
+        conf.file("../../boot/bootutil/src/image_lms.c");
     }
 
     conf.file("../../boot/bootutil/src/loader.c");
@@ -731,6 +722,59 @@ fn add_mbedtls_v4_psa_ecdsa(conf: &mut CachedBuild, sig_p384: bool, enc_ec256: b
     // supplies this only under ENABLE_TESTING, and that shim drags in
     // the whole test-framework header tree. Our self-contained stub
     // uses libc rand() — sufficient for verification-only tests.
+    conf.file("csupport/psa_rng_stub_v4.c");
+}
+
+/// Build TF-PSA-Crypto with LMS verification enabled, link image_lms.c.
+///
+/// Same upstream-CMake mechanism as add_mbedtls_v4_psa_ecdsa(), with a
+/// different config header (config-lms-psa-v4.h) selecting MBEDTLS_LMS_C
+/// + PSA SHA-256. LMS is not a PSA primitive — image_lms.c calls
+/// mbedtls_lms_verify directly — but PSA must still be initialized
+/// because the LMS implementation in tf-psa-crypto/extras/lms.c uses
+/// psa_hash_* internally for its hash chains. The 4.x verifier supports
+/// only LMS_SHA256_M32_H10 + LMOTS_SHA256_N32_W8.
+fn add_mbedtls_v4_psa_lms(conf: &mut CachedBuild) {
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")
+        .expect("CARGO_MANIFEST_DIR not set"));
+    let tf_src = manifest_dir
+        .join("../../ext/mbedtls-4.1.0/tf-psa-crypto")
+        .canonicalize()
+        .expect("tf-psa-crypto source dir not found — did submodules initialize?");
+    let config_file = manifest_dir
+        .join("csupport/config-lms-psa-v4.h")
+        .canonicalize()
+        .expect("config-lms-psa-v4.h not found");
+
+    let mut cmake_conf = cmake::Config::new(&tf_src);
+    cmake_conf
+        .define("TF_PSA_CRYPTO_CONFIG_FILE", config_file.to_str().unwrap())
+        .define("ENABLE_PROGRAMS", "OFF")
+        .define("ENABLE_TESTING", "OFF")
+        .define("USE_STATIC_TF_PSA_CRYPTO_LIBRARY", "ON")
+        .define("USE_SHARED_TF_PSA_CRYPTO_LIBRARY", "OFF")
+        .define("TF_PSA_CRYPTO_FATAL_WARNINGS", "OFF")
+        .define("DISABLE_PACKAGE_CONFIG_AND_INSTALL", "ON")
+        .build_target("tfpsacrypto");
+    let dst = cmake_conf.build();
+
+    let lib_dir = dst.join("build").join("core");
+    println!("cargo:rustc-link-search=native={}", lib_dir.display());
+    println!("cargo:rustc-link-lib=static=tfpsacrypto");
+
+    println!("cargo:rerun-if-changed={}", config_file.display());
+
+    conf.conf.define("MCUBOOT_USE_PSA_CRYPTO", None);
+    conf.conf.define("MCUBOOT_SIGN_LMS", None);
+    conf.conf.define(
+        "TF_PSA_CRYPTO_CONFIG_FILE",
+        Some(format!("\"{}\"", config_file.display()).as_str()),
+    );
+    conf.conf.include("../../ext/mbedtls-4.1.0/include");
+    conf.conf.include("../../ext/mbedtls-4.1.0/tf-psa-crypto/include");
+    conf.conf.include("../../ext/mbedtls-4.1.0/tf-psa-crypto/drivers/builtin/include");
+
+    conf.file("csupport/keys.c");
     conf.file("csupport/psa_rng_stub_v4.c");
 }
 
