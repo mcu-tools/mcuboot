@@ -64,7 +64,8 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #if (defined(MCUBOOT_SIGN_RSA)      + \
      defined(MCUBOOT_SIGN_EC256)    + \
      defined(MCUBOOT_SIGN_EC384)    + \
-     defined(MCUBOOT_SIGN_ED25519)) > 1
+     defined(MCUBOOT_SIGN_ED25519)  + \
+     defined(MCUBOOT_SIGN_LMS)) > 1
 #error "Only a single signature type is supported!"
 #endif
 
@@ -87,6 +88,13 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #elif defined(MCUBOOT_SIGN_ED25519)
 #    define EXPECTED_SIG_TLV IMAGE_TLV_ED25519
 #    define SIG_BUF_SIZE 64
+#    define EXPECTED_SIG_LEN(x) ((x) == SIG_BUF_SIZE)
+#elif defined(MCUBOOT_SIGN_LMS)
+/* MBEDTLS_LMS_SHA256_M32_H10 + MBEDTLS_LMOTS_SHA256_N32_W8 — the only
+ * parameter set the mbedtls 4.x verifier supports. Signature is
+ * 4 (q) + 1124 (LMOTS) + 4 (lms_type) + 32*10 (path) = 1452 bytes. */
+#    define EXPECTED_SIG_TLV IMAGE_TLV_LMS
+#    define SIG_BUF_SIZE 1452
 #    define EXPECTED_SIG_LEN(x) ((x) == SIG_BUF_SIZE)
 #else
 #    define SIG_BUF_SIZE 32 /* no signing, sha256 digest only */
