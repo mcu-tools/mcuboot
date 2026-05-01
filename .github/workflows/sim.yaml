@@ -68,6 +68,15 @@ jobs:
         # BOOT_ENC_KEY_SIZE. PSA_KEY_TYPE_AES covers all AES key
         # sizes so no config delta.
         - "sig-ecdsa-psa enc-aes256-ec256 mbedtls-v4,sig-ecdsa-psa enc-aes256-ec256 swap-offset validate-primary-slot max-align-16 mbedtls-v4"
+        # LMS post-quantum signatures. sig-lms auto-routes to the
+        # mbedtls 4.x PSA build path (see add_mbedtls_v4_psa_lms in
+        # build.rs) — no separate mbedtls-v4 feature needed. No
+        # encryption combos: LMS+enc isn't wired anywhere yet.
+        - "sig-lms,sig-lms swap-move,sig-lms swap-offset"
+        - "sig-lms validate-primary-slot,sig-lms overwrite-only,sig-lms multiimage"
+        - "sig-lms bootstrap max-align-16,sig-lms max-align-32"
+        - "sig-lms ram-load,sig-lms direct-xip"
+        - "sig-lms overwrite-only downgrade-prevention,sig-lms hw-rollback-protection multiimage"
         - "ram-load enc-aes256-kw multiimage"
         - "ram-load enc-aes256-kw sig-ecdsa-mbedtls multiimage"
         - "custom-crypto,custom-crypto overwrite-only,custom-crypto validate-primary-slot,custom-crypto swap-offset"
