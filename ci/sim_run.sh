@@ -44,10 +44,15 @@ if [[ ! -z $MULTI_FEATURES ]]; then
   IFS=','
   read -ra multi_features <<< "$MULTI_FEATURES"
 
-  # psa crypto tests require single thread mode
+  # PSA crypto's global state is only thread-safe when
+  # MBEDTLS_THREADING_C is enabled, which our v4 configs don't set.
+  # sig-lms inherits this constraint — mbedtls's LMS verifier sits on
+  # top of psa_hash_* — and the simulator's external-RNG stub uses
+  # libc rand() which is not thread-safe either. Force single-thread
+  # mode for any feature combination that touches the v4 PSA path.
   TEST_ARGS=''
   for features in "${multi_features[@]}"; do
-    if [[ $features =~ "psa" ]]; then
+    if [[ $features =~ "psa" || $features =~ "lms" || $features =~ "mbedtls-v4" ]]; then
         TEST_ARGS='--test-threads=1'
         break
     fi
