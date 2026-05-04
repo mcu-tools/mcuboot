@@ -17,12 +17,15 @@
 #include <hal/gpio_types.h>
 #include <hal/gpio_ll.h>
 #include <hal/uart_ll.h>
-#include <hal/clk_gate_ll.h>
 #include <hal/clk_tree_ll.h>
 #include <hal/gpio_hal.h>
 #include <hal/uart_periph.h>
 #ifdef CONFIG_ESP_MCUBOOT_SERIAL_USB_SERIAL_JTAG
 #include <hal/usb_serial_jtag_ll.h>
+#endif
+
+#ifndef CONFIG_IDF_TARGET_ESP32C61
+#include <hal/clk_gate_ll.h>
 #endif
 
 #define UART_NUM_0 0
@@ -45,6 +48,8 @@
 #elif CONFIG_IDF_TARGET_ESP32C5
 #define SERIAL_BOOT_GPIO_DETECT     GPIO_NUM_3
 #elif CONFIG_IDF_TARGET_ESP32C6
+#define SERIAL_BOOT_GPIO_DETECT     GPIO_NUM_3
+#elif CONFIG_IDF_TARGET_ESP32C61
 #define SERIAL_BOOT_GPIO_DETECT     GPIO_NUM_3
 #elif CONFIG_IDF_TARGET_ESP32H2
 #define SERIAL_BOOT_GPIO_DETECT     GPIO_NUM_12
@@ -96,6 +101,8 @@
 #define SERIAL_BOOT_GPIO_RX     GPIO_NUM_10
 #elif CONFIG_IDF_TARGET_ESP32C6
 #define SERIAL_BOOT_GPIO_RX     GPIO_NUM_10
+#elif CONFIG_IDF_TARGET_ESP32C61
+#define SERIAL_BOOT_GPIO_RX     GPIO_NUM_10
 #elif CONFIG_IDF_TARGET_ESP32H2
 #define SERIAL_BOOT_GPIO_RX     GPIO_NUM_10
 #endif
@@ -118,6 +125,8 @@
 #elif CONFIG_IDF_TARGET_ESP32C5
 #define SERIAL_BOOT_GPIO_TX     GPIO_NUM_11
 #elif CONFIG_IDF_TARGET_ESP32C6
+#define SERIAL_BOOT_GPIO_TX     GPIO_NUM_11
+#elif CONFIG_IDF_TARGET_ESP32C61
 #define SERIAL_BOOT_GPIO_TX     GPIO_NUM_11
 #elif CONFIG_IDF_TARGET_ESP32H2
 #define SERIAL_BOOT_GPIO_TX     GPIO_NUM_11
