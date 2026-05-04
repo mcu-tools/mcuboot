@@ -354,11 +354,10 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
 #endif
 
 #if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT) && defined(MCUBOOT_HW_ROLLBACK_PROT)
-    image = 0;
-    while (image < BOOT_IMAGE_NUMBER && !rc) {
+    for (image = 0; image < BOOT_IMAGE_NUMBER && !rc; image++) {
         FIH_CALL(boot_nv_security_counter_get, fih_rc, image, &security_cnt);
         if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
-            /* Some platforms support only a single security counter. */
+            /* Some platforms expose only one NV counter; skip other image indices. */
             continue;
         }
 
@@ -366,10 +365,6 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
                                           BLINFO_SECURITY_COUNTER_IMAGE_0 + image,
                                           sizeof(security_cnt),
                                           (void *)&security_cnt);
-        if (!rc) {
-            break;
-        }
-        ++image;
     }
 #endif /* !defined(MCUBOOT_SINGLE_APPLICATION_SLOT) && defined(MCUBOOT_HW_ROLLBACK_PROT) */
 
