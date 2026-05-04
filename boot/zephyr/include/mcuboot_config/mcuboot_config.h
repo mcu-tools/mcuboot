@@ -393,6 +393,17 @@
 #endif
 
 /*
+ * Per-call chunk size used by boot_scramble_region() when scrambling
+ * regions on devices without explicit erase. Larger values minimise the
+ * number of driver API calls; smaller values give the watchdog more
+ * frequent feeding opportunities and bound the latency of any individual
+ * driver call.
+ */
+#ifdef CONFIG_BOOT_SCRAMBLE_FLATTEN_CHUNK
+#define BOOT_SCRAMBLE_FLATTEN_CHUNK CONFIG_BOOT_SCRAMBLE_FLATTEN_CHUNK
+#endif
+
+/*
  * Enabling this option uses newer flash map APIs. This saves RAM and
  * avoids deprecated API usage.
  *

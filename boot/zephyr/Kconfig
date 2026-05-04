@@ -1322,6 +1322,23 @@ config MCUBOOT_STORAGE_WITH_ERASE
 	help
 	  Support for devices with erase
 
+config BOOT_SCRAMBLE_FLATTEN_CHUNK
+	int "Per-call chunk size for boot_scramble_region() on no-erase devices"
+	depends on MCUBOOT_STORAGE_WITHOUT_ERASE
+	default 4096
+	range 16 65536
+	help
+	  When scrambling a region on a device without explicit erase
+	  (e.g. RRAM, MRAM, FRAM), boot_scramble_region() splits the work
+	  into chunks of this many bytes and calls flash_area_flatten() per
+	  chunk, feeding the watchdog between calls.
+
+	  Larger values reduce per-call overhead (fewer driver API calls,
+	  better use of the underlying flash controller's write buffer)
+	  but make a single driver call run longer between watchdog feeds.
+	  The default of 4 KiB matches typical flash sector / RRAM page sizes
+	  and gives one watchdog feed per page.
+
 config MCUBOOT_STORAGE_MINIMAL_SCRAMBLE
 	bool "Do minimal required work to remove data [EXPERIMENTAL]"
 	select EXPERIMENTAL

@@ -37,6 +37,24 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
+#ifndef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+
+/* Maximum amount of bytes scrambled in a single flash_area_flatten() call
+ * by boot_scramble_region() on devices that do not require explicit erase.
+ * Bounds the latency of an individual driver call and gives the watchdog a
+ * chance to be fed between driver calls. The value can be overridden by
+ * the port via mcuboot_config.h to optimise for very small or very large
+ * RAM-like / auto-erase storage devices.
+ */
+#ifndef BOOT_SCRAMBLE_FLATTEN_CHUNK
+#define BOOT_SCRAMBLE_FLATTEN_CHUNK 4096
+#endif
+
 /**
  * Amount of space used to save information required when doing a swap,
  * or while a swap is under progress, but not the status of sector swap
@@ -309,51 +327,73 @@ boot_scramble_region(const struct flash_area *fa, uint32_t off, uint32_t size, b
         rc = -1;
         goto done;
     } else {
-        uint8_t buf[BOOT_MAX_ALIGN];
+#ifdef MCUBOOT_SUPPORT_DEV_WITHOUT_ERASE
+        /* Devices without explicit erase: prefer flash_area_flatten() which
+         * dispatches to the driver's erase callback (typically a single bulk
+         * fill operation) over the previous loop that issued one
+         * write-block-sized flash_area_write() per write block. The previous
+         * approach generated tens of thousands of driver API calls per slot
+         * for devices like nRF RRAM / MRAM, which is very slow.
+         *
+         * The region is split into chunks so that MCUBOOT_WATCHDOG_FEED() can
+         * still be invoked periodically during a long scramble, and to bound
+         * the latency contribution of any single driver call.
+         *
+         * Guarded by MCUBOOT_SUPPORT_DEV_WITHOUT_ERASE because only the
+         * Zephyr port currently exposes flash_area_flatten() in its
+         * flash_map_backend; other ports keep device_requires_erase() == true
+         * so this branch is never reached at runtime, but must still compile.
+         */
         const size_t write_block = flash_area_align(fa);
-        uint32_t end_offset;
+        const size_t chunk = MAX(write_block, (size_t)BOOT_SCRAMBLE_FLATTEN_CHUNK);
 
-        BOOT_LOG_DBG("boot_scramble_region: device without erase, overwriting");
-        memset(buf, flash_area_erased_val(fa), sizeof(buf));
+        BOOT_LOG_DBG("boot_scramble_region: device without erase, flattening "
+                     "in %u-byte chunks (backwards=%d)", (unsigned int)chunk,
+                     (int)backwards);
 
         if (backwards) {
-            end_offset = ALIGN_DOWN(off, write_block);
-            /* Starting at the last write block in range */
-            off += size - write_block;
+            uint32_t cur = off + size;
+            const uint32_t end = off;
+
+            while (cur > end) {
+                size_t step = MIN(chunk, (size_t)(cur - end));
+
+                cur -= step;
+                rc = flash_area_flatten(fa, cur, step);
+                if (rc != 0) {
+                    BOOT_LOG_DBG("boot_scramble_region: flatten error %d for "
+                                 "%p %" PRIu32 " %u",
+                                 rc, fa, cur, (unsigned int)step);
+                    break;
+                }
+                MCUBOOT_WATCHDOG_FEED();
+            }
         } else {
-            end_offset = ALIGN_DOWN((off + size), write_block);
-        }
-        BOOT_LOG_DBG("boot_scramble_region: start offset %" PRIu32 ", "
-                     "end offset %" PRIu32, off, end_offset);
+            uint32_t cur = off;
+            const uint32_t end = off + size;
 
-        while (off != end_offset) {
-            /* Write over the area to scramble data that is there */
-            rc = flash_area_write(fa, off, buf, write_block);
-            if (rc != 0) {
-                BOOT_LOG_DBG("boot_scramble_region: error %d for %p "
-                             "%" PRIu32 " %u",
-                             rc, fa, off, (unsigned int)write_block);
-                break;
-            }
+            while (cur < end) {
+                size_t step = MIN(chunk, (size_t)(end - cur));
 
-            MCUBOOT_WATCHDOG_FEED();
-
-            if (backwards) {
-                if (end_offset >= off) {
-                    /* Reached the first offset in range and already scrambled it */
+                rc = flash_area_flatten(fa, cur, step);
+                if (rc != 0) {
+                    BOOT_LOG_DBG("boot_scramble_region: flatten error %d for "
+                                 "%p %" PRIu32 " %u",
+                                 rc, fa, cur, (unsigned int)step);
                     break;
                 }
-
-                off -= write_block;
-            } else {
-                off += write_block;
-
-                if (end_offset <= off) {
-                    /* Reached the end offset in range and already scrambled it */
-                    break;
-                }
+                cur += step;
+                MCUBOOT_WATCHDOG_FEED();
             }
         }
+#else
+        /* Unreachable on ports without no-erase support (the
+         * device_requires_erase(fa) branch above always succeeds), but kept
+         * to preserve the original behaviour as a safety net.
+         */
+        (void)0;
+        rc = -1;
+#endif /* MCUBOOT_SUPPORT_DEV_WITHOUT_ERASE */
     }
 
 done:
