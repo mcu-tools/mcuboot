@@ -843,10 +843,11 @@ endif # BOOT_ENCRYPT_X25519 && BOOT_USE_PSA_CRYPTO
 
 config BOOT_ENCRYPTION_KEY_FILE
 	string "Encryption key file"
-	depends on BOOT_ENCRYPT_IMAGE
+	depends on BOOT_ENCRYPT_IMAGE || BOOT_ENCRYPT_IMAGE_XIP
 	default "enc-rsa2048-priv.pem" if BOOT_ENCRYPT_RSA
 	default "enc-ec256-priv.pem" if BOOT_ENCRYPT_EC256
 	default "enc-x25519-priv.pem" if BOOT_ENCRYPT_X25519
+	default "enc-ec256-priv.pem" if BOOT_ENCRYPT_IMAGE_XIP
 	default ""
 	help
 	  You can use either absolute or relative path.
@@ -861,28 +862,22 @@ config BOOT_ENCRYPTION_KEY_FILE
 	  e.g. \${CMAKE_CURRENT_LIST_DIR} will allow referencing a file in that directory, these
 	  will be automatically configured by the build system.
 
-config BOOT_ENCRYPT_XIP
-	bool "XIP encryption (hardware-accelerated)"
-	depends on BOOT_IMAGE_ACCESS_HOOKS
-	help
-	  Keep images encrypted in both primary and secondary slots.
-	  Hardware crypto provides transparent XIP decryption at runtime.
-
-	  The platform must provide boot_image_check_hook() for image
-	  validation and boot_xip_populate_rsp() for key propagation.
-
-	  This does not require BOOT_ENCRYPT_IMAGE. The platform
-	  library handles all encryption independently.
-
 config BOOT_ENCRYPT_IMAGE_XIP
-	bool "XIP execute-in-place encryption"
+	bool "XIP execute-in-place encryption (hardware-accelerated)"
+	depends on BOOT_ENCRYPTION_SUPPORT
 	depends on !BOOT_ENCRYPT_IMAGE
 	select BOOT_IMAGE_ACCESS_HOOKS
 	help
-	  Enable XIP encryption mode. Images are encrypted at build time
-	  and remain encrypted in flash. A hardware crypto engine provides
-	  transparent decryption during execution. Mutually exclusive with
-	  BOOT_ENCRYPT_IMAGE.
+	  Enable XIP encryption mode. Images are encrypted at build time and
+	  remain encrypted in both primary and secondary slots; a hardware
+	  crypto engine provides transparent decryption during execution.
+
+	  Key wrapping uses ECIES-P256 (the encryption private key is
+	  configured via BOOT_ENCRYPTION_KEY_FILE, default enc-ec256-priv.pem).
+	  The platform must provide boot_image_check_hook() for image
+	  validation and boot_xip_populate_rsp() for key propagation.
+
+	  Mutually exclusive with BOOT_ENCRYPT_IMAGE.
 
 config BOOT_MAX_IMG_SECTORS_AUTO
 	bool "Calculate maximum sectors automatically"

@@ -76,7 +76,8 @@ struct bootutil_key bootutil_keys[1] = {
 const int bootutil_key_cnt = 1;
 #endif /* !MCUBOOT_HW_KEY */
 
-#if defined(MCUBOOT_ENCRYPT_RSA) || defined(MCUBOOT_ENCRYPT_X25519) || defined(MCUBOOT_ENCRYPT_EC256)
+#if defined(MCUBOOT_ENCRYPT_RSA) || defined(MCUBOOT_ENCRYPT_X25519) || \
+    defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENC_IMAGES_XIP)
 extern const unsigned char enc_priv_key[];
 extern unsigned int enc_priv_key_len;
 const struct bootutil_key bootutil_enc_key = {
