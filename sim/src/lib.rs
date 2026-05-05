@@ -64,7 +64,8 @@ struct Args {
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum DeviceName {
     Stm32f4, Stm32f4SpiFlash, K64f, K64fBig, K64fMulti, Nrf52840, Nrf52840SpiFlash,
-    Nrf52840UnequalSlots, Nrf52840UnequalSlotsLargerSlot1,PSOCEdgeE8x,
+    Nrf52840UnequalSlots, Nrf52840UnequalSlotsLargerSlot1, PSOCEdgeE8x,
+    PSOCEdgeE8xSpiFlash, PSOCEdgeE8xSpiFlashSwapOffset,
 }
 
 pub static ALL_DEVICES: &[DeviceName] = &[
@@ -78,6 +79,12 @@ pub static ALL_DEVICES: &[DeviceName] = &[
     DeviceName::Nrf52840UnequalSlots,
     DeviceName::Nrf52840UnequalSlotsLargerSlot1,
     DeviceName::PSOCEdgeE8x,
+    // PSOCEdgeE8xSpiFlash and PSOCEdgeE8xSpiFlashSwapOffset are intentionally
+    // excluded: their secondary slots physically overlap (shared upgrade slot),
+    // so only one image may be upgraded at a time.  The standard multi-image
+    // tests assume independent slots and would produce incorrect results.
+    // Dedicated tests: shared_spi_flash_upgrade_slot() and
+    // shared_spi_flash_swap_offset() in tests/core.rs.
 ];
 
 impl fmt::Display for DeviceName {
@@ -93,6 +100,8 @@ impl fmt::Display for DeviceName {
             DeviceName::Nrf52840UnequalSlots => "Nrf52840UnequalSlots",
             DeviceName::Nrf52840UnequalSlotsLargerSlot1 => "Nrf52840UnequalSlotsLargerSlot1",
             DeviceName::PSOCEdgeE8x => "PSOCEdgeE8x",
+            DeviceName::PSOCEdgeE8xSpiFlash => "PSOCEdgeE8xSpiFlash",
+            DeviceName::PSOCEdgeE8xSpiFlashSwapOffset => "PSOCEdgeE8xSpiFlashSwapOffset",
         };
         f.write_str(name)
     }

@@ -270,7 +270,14 @@ impl ImagesBuilder {
     pub fn make_image(self, deps: &DepTest, permanent: bool) -> Images {
         let mut images = self.make_no_upgrade_image(deps, ImageManipulation::None);
         for image in &images.images {
-            mark_upgrade(&mut images.flash, &image.slots[1]);
+            // Only mark the upgrade magic for slots that actually have an
+            // image installed.  This is essential for shared-upgrade-slot
+            // configurations where secondary slots physically overlap:
+            // writing the trailer of an empty slot could collide with the
+            // image data of another slot on the same device.
+            if image.upgrades.size > 0 {
+                mark_upgrade(&mut images.flash, &image.slots[1]);
+            }
         }
 
         // The count is meaningless if no flash operations are performed.
@@ -602,6 +609,114 @@ impl ImagesBuilder {
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
                 (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade, Caps::SwapUsingMove, Caps::RamLoad, Caps::DirectXip])
+            }
+            DeviceName::PSOCEdgeE8xSpiFlash => {
+                // PSOC Edge E8x with external SPI flash for shared upgrade slot.
+                //
+                // Two images share a single physical SPI flash region for their
+                // secondary (upgrade) slots.  The primary slots reside on the
+                // internal flash (device 0), matching the PSOCEdgeE8x layout.
+                //
+                // The stagger between secondary slots is computed from
+                // boot_trailer_sz(align), rounded up to the SPI flash sector
+                // size.  This keeps the stagger minimal — it only needs to
+                // separate the trailers, not waste an entire erase block.
+                //
+                // Because the secondary data regions overlap, only one image
+                // may be upgraded at a time.
+
+                let primary_sz: usize = 0x010000; // 64 KB, matching PSOCEdgeE8x
+                let spi_sector_sz: usize = 4096;  // typical SPI NOR flash
+
+                // Minimum stagger = ceil(boot_trailer_sz / spi_sector_sz) * spi_sector_sz.
+                let trailer_sz = c::boot_trailer_sz(align as u32) as usize;
+                let stagger = ((trailer_sz + spi_sector_sz - 1) / spi_sector_sz) * spi_sector_sz;
+
+                // Device 0: internal flash, 4 KB sectors, 384 KB.
+                let dev0 = SimFlash::new(vec![4096; 96], align as usize, erased_val);
+
+                // Scratch must be >= max(internal sector, SPI sector).
+                let scratch_sz: usize = spi_sector_sz;
+
+                // Device 1: external SPI flash.
+                // Region = primary_sz (slot 0) + stagger (slot 1 tail) + scratch_sz.
+                let dev1_total = primary_sz + stagger + scratch_sz;
+                let dev1_sectors = dev1_total / spi_sector_sz;
+                let dev1 = SimFlash::new(vec![spi_sector_sz; dev1_sectors], align as usize, erased_val);
+
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(0, &dev0);
+                areadesc.add_flash_sectors(1, &dev1);
+
+                // Primary slots on internal flash.
+                areadesc.add_image(0x020000, primary_sz, FlashId::Image0, 0);
+
+                // Secondary slot for image 0: starts at offset 0 on SPI flash.
+                areadesc.add_image(0x000000, primary_sz, FlashId::Image1, 1);
+
+                // Scratch area on SPI flash, after both secondary regions.
+                let scratch_off = primary_sz + stagger;
+                areadesc.add_image(scratch_off, scratch_sz, FlashId::ImageScratch, 1);
+
+                // Primary slot for image 1 on internal flash.
+                areadesc.add_image(0x030000, primary_sz, FlashId::Image2, 0);
+
+                // Secondary slot for image 1: offset by `stagger`.
+                areadesc.add_image(stagger, primary_sz, FlashId::Image3, 1);
+
+                let mut flash = SimMultiFlash::new();
+                flash.insert(0, dev0);
+                flash.insert(1, dev1);
+
+                // Move/offset swap modes need independent secondary slots.
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset])
+            }
+            DeviceName::PSOCEdgeE8xSpiFlashSwapOffset => {
+                // PSOCEdgeE8x with external SPI flash, swap-using-offset mode.
+                //
+                // Swap-using-offset uses the first sector of each secondary
+                // slot as built-in scratch, so no separate scratch partition
+                // is needed.  Each secondary slot is the same size as the
+                // primary.  The stagger isolates the trailers.
+
+                let primary_sz: usize = 0x010000; // 64 KB
+                let spi_sector_sz: usize = 4096;  // typical SPI NOR flash
+
+                // Stagger = ceil(boot_trailer_sz / spi_sector_sz) * spi_sector_sz.
+                let trailer_sz = c::boot_trailer_sz(align as u32) as usize;
+                let stagger = ((trailer_sz + spi_sector_sz - 1) / spi_sector_sz) * spi_sector_sz;
+
+                // Device 0: internal flash, 4 KB sectors, 384 KB.
+                let dev0 = SimFlash::new(vec![4096; 96], align as usize, erased_val);
+
+                // Device 1: external SPI flash.
+                // Region = primary_sz (secondary 0) + stagger (secondary 1 tail beyond overlap).
+                let dev1_total = primary_sz + stagger;
+                let dev1_sectors = dev1_total / spi_sector_sz;
+                let dev1 = SimFlash::new(vec![spi_sector_sz; dev1_sectors], align as usize, erased_val);
+
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(0, &dev0);
+                areadesc.add_flash_sectors(1, &dev1);
+
+                // Primary slots on internal flash.
+                areadesc.add_image(0x020000, primary_sz, FlashId::Image0, 0);
+
+                // Secondary slot for image 0: starts at offset 0 on SPI flash.
+                areadesc.add_image(0x000000, primary_sz, FlashId::Image1, 1);
+
+                // Primary slot for image 1 on internal flash.
+                areadesc.add_image(0x030000, primary_sz, FlashId::Image2, 0);
+
+                // Secondary slot for image 1: offset by `stagger`.
+                areadesc.add_image(stagger, primary_sz, FlashId::Image3, 1);
+
+                let mut flash = SimMultiFlash::new();
+                flash.insert(0, dev0);
+                flash.insert(1, dev1);
+
+                // Only scratchless swap modes (move / offset) are supported.
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade])
             }
         }
     }
@@ -1725,14 +1840,18 @@ impl Images {
     /// Mark each of the images for permanent upgrade.
     fn mark_permanent_upgrades(&self, flash: &mut SimMultiFlash, slot: usize) {
         for image in &self.images {
-            mark_permanent_upgrade(flash, &image.slots[slot]);
+            if image.upgrades.size > 0 {
+                mark_permanent_upgrade(flash, &image.slots[slot]);
+            }
         }
     }
 
     /// Mark each of the images for permanent upgrade.
     fn mark_upgrades(&self, flash: &mut SimMultiFlash, slot: usize) {
         for image in &self.images {
-            mark_upgrade(flash, &image.slots[slot]);
+            if image.upgrades.size > 0 {
+                mark_upgrade(flash, &image.slots[slot]);
+            }
         }
     }
 

@@ -22,6 +22,7 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 use mcuboot_sys::c;
+use bootsim::DeviceName;
 
 /// A single test, after setting up logging and such.  Within the $body,
 /// $arg will be bound to each device.
@@ -209,4 +210,141 @@ fn dump_image(image: &Images, name: &str) {
             image.debug_dump(&full_name);
         }
     }
+}
+
+/// Test the shared SPI flash upgrade slot (PSOCEdgeE8xSpiFlash).
+///
+/// Two images share a single external SPI flash region for their secondary
+/// (upgrade) slots.  The stagger between slots is computed from
+/// `boot_trailer_sz(align)`, keeping it minimal.  Because the secondary data
+/// regions overlap, only one image may be upgraded at a time.
+///
+/// This test validates each single-image upgrade scenario across all
+/// alignment / erased-value combinations.  The device configuration
+/// excludes SwapUsingMove and SwapUsingOffset; it is compatible with both
+/// overwrite-only and swap-using-scratch upgrade modes.
+#[cfg(feature = "multiimage")]
+#[test]
+fn shared_spi_flash_upgrade_slot() {
+    testlog::setup();
+
+    let scenarios: &[DepTest] = &[
+        // Upgrade only image 0; image 1 is not upgraded.
+        DepTest {
+            depends: [DepType::Nothing, DepType::NoUpgrade],
+            upgrades: [UpgradeInfo::Upgraded, UpgradeInfo::Held],
+            downgrade: false,
+        },
+        // Upgrade only image 1; image 0 is not upgraded.
+        DepTest {
+            depends: [DepType::NoUpgrade, DepType::Nothing],
+            upgrades: [UpgradeInfo::Held, UpgradeInfo::Upgraded],
+            downgrade: false,
+        },
+    ];
+
+    for &align in test_alignments() {
+        for &erased_val in &[0u8, 0xff] {
+            let builder = match ImagesBuilder::new(
+                DeviceName::PSOCEdgeE8xSpiFlash,
+                align,
+                erased_val,
+            ) {
+                Ok(b) => b,
+                Err(msg) => {
+                    log::warn!(
+                        "Skipping PSOCEdgeE8xSpiFlash align={} erased_val={:#x}: {}",
+                        align, erased_val, msg
+                    );
+                    continue;
+                }
+            };
+
+            for dep in scenarios {
+                let image = builder.clone().make_image(dep, true);
+                dump_image(&image, "shared_spi_flash_upgrade_slot");
+                assert!(
+                    !image.run_check_deps(dep),
+                    "shared_spi_flash_upgrade_slot failed: align={} erased_val={:#x} dep={:?}",
+                    align, erased_val, dep
+                );
+                c::reset_security_counters();
+            }
+        }
+    }
+}
+
+/// Test the shared SPI flash upgrade slot with swap-using-offset mode.
+///
+/// Swap-using-offset uses the first sector of each secondary slot as
+/// built-in scratch, so no separate scratch partition is needed.
+/// Two images share a single external SPI flash region for their
+/// secondary (upgrade) slots with minimal stagger.
+///
+/// This is a feasibility test — we only need to verify whether the
+/// approach works at all with overlapping secondaries.
+#[cfg(feature = "multiimage")]
+#[test]
+fn shared_spi_flash_swap_offset() {
+    testlog::setup();
+
+    let scenarios: &[DepTest] = &[
+        // Upgrade only image 0; image 1 is not upgraded.
+        DepTest {
+            depends: [DepType::Nothing, DepType::NoUpgrade],
+            upgrades: [UpgradeInfo::Upgraded, UpgradeInfo::Held],
+            downgrade: false,
+        },
+        // Upgrade only image 1; image 0 is not upgraded.
+        DepTest {
+            depends: [DepType::NoUpgrade, DepType::Nothing],
+            upgrades: [UpgradeInfo::Held, UpgradeInfo::Upgraded],
+            downgrade: false,
+        },
+    ];
+
+    for &align in test_alignments() {
+        for &erased_val in &[0u8, 0xff] {
+            let builder = match ImagesBuilder::new(
+                DeviceName::PSOCEdgeE8xSpiFlashSwapOffset,
+                align,
+                erased_val,
+            ) {
+                Ok(b) => b,
+                Err(msg) => {
+                    log::warn!(
+                        "Skipping PSOCEdgeE8xSpiFlashSwapOffset align={} erased_val={:#x}: {}",
+                        align, erased_val, msg
+                    );
+                    continue;
+                }
+            };
+
+            for dep in scenarios {
+                let image = builder.clone().make_image(dep, true);
+                dump_image(&image, "shared_spi_flash_swap_offset");
+                assert!(
+                    !image.run_check_deps(dep),
+                    "shared_spi_flash_swap_offset failed: align={} erased_val={:#x} dep={:?}",
+                    align, erased_val, dep
+                );
+                c::reset_security_counters();
+            }
+        }
+    }
+}
+
+#[cfg(all(not(feature = "max-align-16"), not(feature = "max-align-32")))]
+fn test_alignments() -> &'static [usize] {
+    &[1, 2, 4, 8]
+}
+
+#[cfg(feature = "max-align-16")]
+fn test_alignments() -> &'static [usize] {
+    &[1, 2, 4, 8, 16]
+}
+
+#[cfg(feature = "max-align-32")]
+fn test_alignments() -> &'static [usize] {
+    &[1, 2, 4, 8, 16, 32]
 }
