@@ -43,7 +43,7 @@ void cc310_sha256_update(nrf_cc310_bl_hash_context_sha256_t *ctx,
      * if the data provided is not located in RAM.
      */
 
-    if ((uint32_t) data < CONFIG_SRAM_BASE_ADDRESS) {
+    if ((uint32_t) data < DT_CHOSEN_SRAM_ADDR) {
         uint8_t stack_buffer[data_len];
         uint32_t block_len = data_len;
         memcpy(stack_buffer, data, block_len);

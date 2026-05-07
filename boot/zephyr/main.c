@@ -283,8 +283,8 @@ static void do_boot(struct boot_rsp *rsp)
         /* jump to reset vector of an app */
         "   bx      r0\n"
         :
-        : "r" (vt->reset), "i" (CONFIG_SRAM_BASE_ADDRESS),
-          "i" (CONFIG_SRAM_SIZE * 1024), "i" (0)
+        : "r" (vt->reset), "i" (DT_CHOSEN_SRAM_ADDR),
+          "i" (DT_CHOSEN_SRAM_SIZE), "i" (0)
         : "r0", "r1", "r2", "r3", "memory"
     );
 #else
