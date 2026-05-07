@@ -30,6 +30,8 @@
 #include "target.h"
 #include "bootutil/bootutil_log.h"
 
+BOOT_LOG_MODULE_DECLARE(mcuboot);
+
 #if defined(CONFIG_BOOT_SERIAL_PIN_RESET) || defined(CONFIG_BOOT_FIRMWARE_LOADER_PIN_RESET)
 #include <zephyr/drivers/hwinfo.h>
 #endif
@@ -76,8 +78,6 @@ static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 #error "Unsupported board: led0 devicetree alias is not defined"
 #endif
 
-BOOT_LOG_MODULE_DECLARE(mcuboot);
-
 void io_led_init(void)
 {
     if (!device_is_ready(led0.port)) {
@@ -120,17 +120,24 @@ bool io_detect_pin(void)
     int pin_active;
 
     if (!device_is_ready(button0.port)) {
-        __ASSERT(false, "GPIO device is not ready.\n");
+        BOOT_LOG_DBG("GPIO device is not ready.");
         return false;
     }
 
     rc = gpio_pin_configure_dt(&button0, GPIO_INPUT);
-    __ASSERT(rc == 0, "Failed to initialize boot detect pin.\n");
+    if (rc != 0) {
+        BOOT_LOG_DBG("Failed to initialize boot detect pin.");
+        return false;
+    }
 
     rc = gpio_pin_get_dt(&button0);
     pin_active = rc;
 
-    __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
+    if (rc < 0) {
+        BOOT_LOG_DBG("Failed to read boot detect pin.");
+        return false;
+    }
+
 
     if (pin_active) {
         if (BUTTON_0_DETECT_DELAY > 0) {
@@ -146,7 +153,10 @@ bool io_detect_pin(void)
             for(;;) {
                 rc = gpio_pin_get_dt(&button0);
                 pin_active = rc;
-                __ASSERT(rc >= 0, "Failed to read boot detect pin.\n");
+                if (rc < 0) {
+                    BOOT_LOG_DBG("Failed to read boot detect pin.");
+                    return false;
+                }
 
                 /* Get delta from when this started */
                 uint32_t delta = k_uptime_get() -  timestamp;

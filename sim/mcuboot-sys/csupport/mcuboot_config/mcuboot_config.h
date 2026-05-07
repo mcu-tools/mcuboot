@@ -17,6 +17,15 @@
  * exist, or bootutil won't build.
  */
 
+/*
+ * When using custom crypto, include mcuboot_custom_crypto.h to provide
+ * bootutil_*_context types and inline implementations before bootutil/crypto
+ * headers are processed.
+ */
+#if defined(MCUBOOT_USE_CUSTOM_CRYPTO)
+#include "mcuboot_custom_crypto.h"
+#endif
+
 #define MCUBOOT_WATCHDOG_FEED()         \
     do {                                \
     } while (0)

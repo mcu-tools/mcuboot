@@ -14,6 +14,13 @@
 #define CONFIG_BOOTLOADER_LOG_LEVEL MCUBOOT_LOG_LEVEL
 #endif
 
+#include <esp_log_level.h>
+
+#define ESP_LOG_ATTR_TAG(tag, str)      static __attribute__((unused)) const char *tag = str
+#define ESP_LOG_ATTR
+#define ESP_LOG_ATTR_STR(str)           (str)
+#define ESP_LOG_ATTR_DRAM_STR(str)      DRAM_STR(str)
+
 #define ESP_LOGE(tag, fmt, ...) MCUBOOT_LOG_ERR("[%s] " fmt, tag, ##__VA_ARGS__)
 #define ESP_LOGW(tag, fmt, ...) MCUBOOT_LOG_WRN("[%s] " fmt, tag, ##__VA_ARGS__)
 #define ESP_LOGI(tag, fmt, ...) MCUBOOT_LOG_INF("[%s] " fmt, tag, ##__VA_ARGS__)

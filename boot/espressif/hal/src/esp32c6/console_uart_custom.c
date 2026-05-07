@@ -6,7 +6,7 @@
 
 #include <esp_rom_uart.h>
 #include <hal/uart_ll.h>
-#include <soc/uart_periph.h>
+#include <hal/uart_periph.h>
 #include <esp_attr.h>
 
 #if CONFIG_ESP_CONSOLE_UART_CUSTOM

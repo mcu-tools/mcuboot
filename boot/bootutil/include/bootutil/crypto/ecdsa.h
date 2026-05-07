@@ -9,12 +9,13 @@
  * primitives to make it easier to swap out the used crypto library.
  *
  * At this point, the choices are: MCUBOOT_USE_TINYCRYPT, MCUBOOT_USE_CC310,
- * MCUBOOT_USE_MBED_TLS, MCUBOOT_USE_PSA_CRYPTO. Note that support for
- * MCUBOOT_USE_PSA_CRYPTO is still experimental and it might not support all
- * the crypto abstractions that MCUBOOT_USE_MBED_TLS supports. For this
- * reason, it's allowed to have both of them defined, and for crypto modules
- * that support both abstractions, the MCUBOOT_USE_PSA_CRYPTO will take
- * precedence.
+ * MCUBOOT_USE_MBED_TLS, MCUBOOT_USE_PSA_CRYPTO, MCUBOOT_USE_CUSTOM_CRYPTO.
+ * Note that support for MCUBOOT_USE_PSA_CRYPTO is still experimental and it
+ * might not support all the crypto abstractions that MCUBOOT_USE_MBED_TLS
+ * supports. For this reason, it's allowed to have both of them defined, and
+ * for crypto modules that support both abstractions, the MCUBOOT_USE_PSA_CRYPTO
+ * will take precedence. MCUBOOT_USE_CUSTOM_CRYPTO delegates all operations to
+ * a platform-supplied <mcuboot_custom_crypto.h> resolved via the include path.
  */
 
 #ifndef __BOOTUTIL_CRYPTO_ECDSA_H_
@@ -27,15 +28,21 @@
 #define MCUBOOT_USE_PSA_OR_MBED_TLS
 #endif /* MCUBOOT_USE_PSA_CRYPTO || MCUBOOT_USE_MBED_TLS */
 
+#if defined(MCUBOOT_USE_CUSTOM_CRYPTO) && defined(MCUBOOT_USE_PSA_OR_MBED_TLS)
+    #error "MCUBOOT_USE_CUSTOM_CRYPTO is mutually exclusive with MCUBOOT_USE_PSA_CRYPTO and MCUBOOT_USE_MBED_TLS"
+#endif
+
 #if defined(MCUBOOT_SIGN_EC384) && \
-    !defined(MCUBOOT_USE_PSA_CRYPTO)
-    #error "P384 requires PSA_CRYPTO to be defined"
+    !defined(MCUBOOT_USE_PSA_CRYPTO) && \
+    !defined(MCUBOOT_USE_CUSTOM_CRYPTO)
+    #error "P384 requires PSA_CRYPTO or CUSTOM_CRYPTO to be defined"
 #endif
 
 #if (defined(MCUBOOT_USE_TINYCRYPT) + \
      defined(MCUBOOT_USE_CC310) + \
-     defined(MCUBOOT_USE_PSA_OR_MBED_TLS)) != 1
-    #error "One crypto backend must be defined: either CC310/TINYCRYPT/MBED_TLS/PSA_CRYPTO"
+     defined(MCUBOOT_USE_PSA_OR_MBED_TLS) + \
+     defined(MCUBOOT_USE_CUSTOM_CRYPTO)) != 1
+    #error "One crypto backend must be defined: either CC310/TINYCRYPT/MBED_TLS/PSA_CRYPTO/CUSTOM_CRYPTO"
 #endif
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
@@ -66,7 +73,7 @@
 #define BOOTUTIL_CRYPTO_ECDSA_P256_HASH_SIZE (32)
 
 #include "bootutil/sign_key.h"
-#if !defined(MCUBOOT_USE_PSA_CRYPTO)
+#if !defined(MCUBOOT_USE_PSA_CRYPTO) && !defined(MCUBOOT_USE_CUSTOM_CRYPTO)
 #include "bootutil/crypto/common.h"
 #include "mbedtls/asn1.h"
 #include "mbedtls/oid.h"

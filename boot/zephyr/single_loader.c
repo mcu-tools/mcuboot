@@ -117,7 +117,9 @@ boot_open_all_flash_areas(struct boot_loader_state *state)
     int rc;
 
     rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(0), &BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
-    assert(rc == 0);
+    if (rc != 0) {
+        BOOT_LOG_DBG("Error opening image primary area. rc = %d", rc);
+    }
 
     return rc;
 }
@@ -190,6 +192,9 @@ boot_go(struct boot_rsp *rsp)
     BOOT_LOG_DBG("boot_go: Single loader");
 
     rc = boot_open_all_flash_areas(&state);
+    if (rc != 0) {
+        goto out;
+    }
 
     rc = boot_image_load_header(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), &_hdr);
     if (rc != 0)

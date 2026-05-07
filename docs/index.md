@@ -1,7 +1,7 @@
 # MCUboot
 
 MCUboot is a secure bootloader for 32-bits microcontrollers.  This document is
-for release v2.3.0.
+for release v2.4.0.
 
 Please see [Contributing](contributing.md) on how you can contribute to MCUboot.
 
@@ -41,6 +41,7 @@ The MCUboot documentation is composed of the following pages:
 - [Encrypted images](encrypted_images.md)
 - [imgtool](imgtool.md) - image signing and key management
 - [ECDSA](ecdsa.md) - information about ECDSA signature formats
+- [Custom crypto backend](custom_crypto.md) - plugging in a custom crypto library
 - [Serial Recovery](serial_recovery.md) - MCUmgr as the serial recovery protocol
 - Usage instructions:
   - [Zephyr](readme-zephyr.md)

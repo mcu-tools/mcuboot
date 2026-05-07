@@ -38,6 +38,6 @@ if(CONFIG_MCUBOOT_BOOTUTIL_LIB)
   endif()
 
   if(CONFIG_BOOT_USE_MBEDTLS OR CONFIG_BOOT_PSA_CRYPTO_BACKEND_MBEDTLS)
-    zephyr_link_libraries(mbedTLS)
+    zephyr_link_libraries_ifdef(CONFIG_MBEDTLS_BUILTIN mbedTLS)
   endif()
 endif()

@@ -9,6 +9,13 @@
 #include "mcuboot_config/mcuboot_config.h"
 
 #if defined(MCUBOOT_ENC_IMAGES)
+
+/* When MCUBOOT_USE_CUSTOM_CRYPTO is active the custom crypto translation unit
+ * provides all boot_enc_* and boot_decrypt_key symbols and handles HMAC/KDF
+ * internally without depending on MBED_TLS or TINYCRYPT.  Suppress this
+ * entire file to avoid duplicate symbol link errors. */
+#if !defined(MCUBOOT_USE_CUSTOM_CRYPTO)
+
 #include <stddef.h>
 #include <inttypes.h>
 #include <string.h>
@@ -719,5 +726,7 @@ boot_enc_zeroize(struct enc_key_data *enc_state)
     }
     memset(enc_state, 0, sizeof(struct enc_key_data) * BOOT_NUM_SLOTS);
 }
+
+#endif /* !MCUBOOT_USE_CUSTOM_CRYPTO */
 
 #endif /* MCUBOOT_ENC_IMAGES */

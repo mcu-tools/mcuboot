@@ -234,10 +234,15 @@ bootutil_rsa_parse_private_key(bootutil_rsa_context *ctx, uint8_t **p, uint8_t *
         return -2;
     }
 
+#if !defined(TF_PSA_CRYPTO_VERSION_NUMBER)
+    /* version - "ver" field was removed from RSA structure starting from TF-PSA-Crypto. */
+    if (mbedtls_asn1_get_int(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(ver)) != 0) {
+        return -3;
+    }
+#endif /* !TF_PSA_CRYPTO_VERSION_NUMBER */
+
     /* Non-optional fields. */
-    if ( /* version */
-        mbedtls_asn1_get_int(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(ver)) != 0 ||
-         /* public modulus */
+    if ( /* public modulus */
         mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(N)) != 0 ||
          /* public exponent */
         mbedtls_asn1_get_mpi(p, end, &ctx->MBEDTLS_CONTEXT_MEMBER(E)) != 0 ||

@@ -37,11 +37,13 @@ max-align-16 = ["mcuboot-sys/max-align-16"]
 max-align-32 = ["mcuboot-sys/max-align-32"]
 hw-rollback-protection = ["mcuboot-sys/hw-rollback-protection"]
 check-load-addr = ["mcuboot-sys/check-load-addr"]
+custom-crypto = ["mcuboot-sys/custom-crypto"]
+custom-enc-crypto = ["mcuboot-sys/custom-enc-crypto"]
 
 [dependencies]
 byteorder = "1.4"
 libc = "0.2"
-rand = { version = "0.8", features = ["small_rng"] }
+rand = { version = "0.9", features = ["small_rng"] }
 docopt = "1.1.0"
 serde = "1.0"
 serde_derive = "1.0"

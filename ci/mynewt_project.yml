@@ -35,3 +35,4 @@ project.repositories.allowed:
        - mbedtls
        - nordic-nrfx
        - arm-CMSIS_5
+       - mcuboot

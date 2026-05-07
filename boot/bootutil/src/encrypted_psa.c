@@ -6,6 +6,8 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
+#if defined(MCUBOOT_USE_PSA_CRYPTO)
+
 #include <stddef.h>
 #include <inttypes.h>
 #include <string.h>
@@ -536,3 +538,5 @@ gone:
     return ret;
 }
 #endif /* defined(MCUBOOT_ENC_IMAGES) */
+
+#endif /* defined(MCUBOOT_USE_PSA_CRYPTO) */

@@ -115,7 +115,10 @@ static fih_ret validate_image_slot(int slot, struct boot_rsp *rsp)
     BOOT_LOG_DBG("validate_image_slot: slot %d", slot);
 
     rc = flash_area_open(slot, &_fa_p);
-    assert(rc == 0);
+    if (rc != 0) {
+        BOOT_LOG_DBG("Error opening flash area. rc = %d", rc);
+        FIH_RET(FIH_FAILURE);
+    }
 
     rc = boot_image_load_header(_fa_p, &_hdr);
     if (rc != 0) {

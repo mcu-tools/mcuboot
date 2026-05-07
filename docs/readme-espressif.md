@@ -21,10 +21,10 @@ Documentation about the MCUboot bootloader design, operation and features can be
 
 The current port is available for use in the following SoCs within the OSes:
 
-|        | ESP32     | ESP32-S2  | ESP32-C3  | ESP32-S3  | ESP32-C2    | ESP32-C6  | ESP32-H2    |
-| :----: | :-------: | :-------: | :-------: | :-------: | :---------: | :-------: | :---------: |
-| Zephyr | Supported | Supported | Supported | Supported | Supported   | Supported | Supported   |
-| NuttX  | Supported | Supported | Supported | Supported | In progress | Supported | Supported   |
+|        | ESP32     | ESP32-S2  | ESP32-C3  | ESP32-S3  | ESP32-C2    | ESP32-C6  | ESP32-H2    | ESP32-C5    |
+| :----: | :-------: | :-------: | :-------: | :-------: | :---------: | :-------: | :---------: | :---------: |
+| Zephyr | Supported | Supported | Supported | Supported | Supported   | Supported | Supported   | Supported   |
+| NuttX  | Supported | Supported | Supported | Supported | In progress | Supported | Supported   | ----------- |
 
 Notice that any customization in the memory layout from the OS application must be done aware of
 the bootloader own memory layout to avoid overlapping. More information on the section
@@ -158,7 +158,7 @@ Additional configuration related to MCUboot features and slot partitioning may b
     - `MCUBOOT_FLASH_PORT`: "/dev/ttyUSB0"
     - `ESP_BAUD_RATE`: 115200
     - `ESP_FLASH_MODE`: "dio"
-    - `ESP_FLASH_FREQ`: "40m" for ESP32, ESP32-S2, ESP32-S3, ESP32-C3, ESP32-C6;
+    - `ESP_FLASH_FREQ`: "40m" for ESP32, ESP32-S2, ESP32-S3, ESP32-C3, ESP32-C6, ESP32-C5;
                         "60m" for ESP32-C2;
                         "24m" for ESP32-H2.
 
@@ -191,9 +191,9 @@ Additional configuration related to MCUboot features and slot partitioning may b
 
     *`<BOOTLOADER_FLASH_OFFSET>` value must follow one of the addresses below:*
 
-    | ESP32   | ESP32-S2 | ESP32-C3 | ESP32-S3 | ESP32-C2 | ESP32-C6 | ESP32-H2 |
-    | :-----: | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  |
-    | 0x1000  | 0x1000   | 0x0000   | 0x0000   | 0x0000   | 0x0000   | 0x0000   |
+    | ESP32   | ESP32-S2 | ESP32-C3 | ESP32-S3 | ESP32-C2 | ESP32-C6 | ESP32-H2 | ESP32-C5 |
+    | :-----: | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  |
+    | 0x1000  | 0x1000   | 0x0000   | 0x0000   | 0x0000   | 0x0000   | 0x0000   | 0x2000   |
 
     ---
 
@@ -942,8 +942,8 @@ interrupted the image may be corrupted and unable to boot*
 
 When adding support for this MCUboot port to an OS or even customizing an already supported
 application memory layout, it is mandatory for the OS linker script to avoid overlaping on
-`iram_loader_seg` and `dram_seg` bootloader RAM regions. Although part of the RAM becomes initially
-unavailable, it is reclaimable by the OS after boot as heap.
+`iram_loader_seg`, `dram_loader_seg`, and `dram_seg` bootloader RAM regions. Although part of the RAM
+becomes initially unavailable, it is reclaimable by the OS after boot as heap.
 
 Therefore, the application must be designed aware of the bootloader memory usage.
 
@@ -959,8 +959,8 @@ same region. More information on the
 ---
 
 The following diagrams illustrate a memory organization from the bootloader point of view (notice
-that the addresses and sizes may vary depending on the chip), they reflect the linker script
-`boot/espressif/port/<TARGET>/ld/bootloader.ld`:
+that the addresses and sizes may vary depending on the chip). These diagrams reflect the addresses for segments and lengths that are defined in `boot/espressif/port/include/<TARGET>/memory.h`; the linker script is
+`boot/espressif/port/<TARGET>/ld/bootloader.ld`.
 
 ### ESP32
 
@@ -971,7 +971,7 @@ that the addresses and sizes may vary depending on the chip), they reflect the l
                                      IRAM ADDR  / DRAM ADDR
  *  +--------+--------------+------+ 0x40070000 / --------- - SRAM0 START
  *  |        ^                    |
- *  |        | PRO CPU Cache      |  *NOT CLAIMABLE BY OS RAM
+ *  |        | PRO CPU Cache      |  *NOT CLAIMABLE BY OS RAM (first 0x8000 of `SRAM0_CACHE_SIZE`)
  *  |        v                    |
  *  +--------+--------------+------+ 0x40078000 / ----------
  *  |        ^                    |
@@ -980,16 +980,20 @@ that the addresses and sizes may vary depending on the chip), they reflect the l
  *  |        | (APP CPU Cache)    |   as APP CPU is not initialized yet
  *  |        |                    |
  *  |        v                    |
- *  +--------+--------------+------+ 0x40080000 / ----------
+ *  +--------+--------------+------+ 0x4007A800 / ----------
+ *  |        ^                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM (tail of 64 KiB cache window)
+ *  |        v                    |
+ *  +------------------------------+ 0x40080000 / ----------
  *  |        ^                    |
  *  |        | FREE               |  *CLAIMABLE BY OS RAM
  *  |        v                    |
  *  +------------------------------+ 0x40090000 / ----------
  *  |        ^                    |
- *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM (length 0xE800)
  *  |        |                    |
  *  |        v                    |
- *  +--------+--------------+------+ 0x40099000 / ----------
+ *  +--------+--------------+------+ 0x4009E800 / ----------
  *  |        | FREE               |  *CLAIMABLE BY OS RAM
  *  +------------------------------+ 0x4009FFFF / ---------- - SRAM0 END
 
@@ -998,14 +1002,20 @@ that the addresses and sizes may vary depending on the chip), they reflect the l
  *  +------------------------------+ 0x400A0000 / 0x3FFFFFFF - SRAM1 START
  *  |        ^                    |
  *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
- *  |        | dram_seg           |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        | dram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x1800; IRAM 0x400A0000-0x400A1800,
+ *  |        |                    |   DRAM 0x3FFFE800-0x3FFFFFFF)
  *  |        v                    |
- *  +--------+--------------+------+ 0x400AB900 / 0x3FFF4700
+ *  +--------+--------------+------+ 0x400A1800 / 0x3FFFE800
  *  |        ^                    |
  *  |        |                    |
+ *  |        | dram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |  (length 0xC800; DRAM 0x3FFF2000-0x3FFFE800)
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x400AE000 / 0x3FFF2000
+ *  |        ^                    |
  *  |        |                    |
  *  |        | FREE               |  *CLAIMABLE BY OS RAM
- *  |        |                    |
  *  |        |                    |
  *  |        v                    |
  *  +--------+--------------+------+ 0x400BFFFF / 0x3FFE0000 - SRAM1 END
@@ -1025,7 +1035,7 @@ that the addresses and sizes may vary depending on the chip), they reflect the l
 This is the linker script mapping when the `CONFIG_ESP_MULTI_PROCESSOR_BOOT` is enabled
 ([Multi boot](#multi-boot)) since APP CPU Cache region cannot be used for `iram_loader_seg` region
 as there would be conflict when the bootloader starts the APP CPU before jump to the main
-application.
+application. `iram_loader_seg` uses `BOOTLOADER_IRAM_LOADER_SEG_START_MP` (0x400AB900, length 0x2800).
 
 ```
   SRAM0
@@ -1033,7 +1043,7 @@ application.
  *  +--------+--------------+------+ 0x40070000 / --------- - SRAM0 START
  *  |        ^                    |
  *  |        |                    |
- *  |        | Cache              |  *Used by PRO CPU and APP CPU as Cache
+ *  |        | Cache              |  *Used by PRO CPU and APP CPU as Cache (`SRAM0_CACHE_SIZE`)
  *  |        |                    |
  *  |        v                    |
  *  +--------+--------------+------+ 0x40080000 / ----------
@@ -1042,10 +1052,10 @@ application.
  *  |        v                    |
  *  +------------------------------+ 0x40090000 / ----------
  *  |        ^                    |
- *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM (length 0xE800)
  *  |        |                    |
  *  |        v                    |
- *  +--------+--------------+------+ 0x40099000 / ----------
+ *  +--------+--------------+------+ 0x4009E800 / ----------
  *  |        | FREE               |  *CLAIMABLE BY OS RAM
  *  +------------------------------+ 0x4009FFFF / ---------- - SRAM0 END
 
@@ -1054,15 +1064,23 @@ application.
  *  +------------------------------+ 0x400A0000 / 0x3FFFFFFF - SRAM1 START
  *  |        ^                    |
  *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
- *  |        | dram_seg           |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        | dram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x1800; IRAM 0x400A0000-0x400A1800,
+ *  |        |                    |   DRAM 0x3FFFE800-0x3FFFFFFF)
  *  |        v                    |
- *  +--------+--------------+------+ 0x400AB900 / 0x3FFF4700
+ *  +--------+--------------+------+ 0x400A1800 / 0x3FFFE800
+ *  |        ^                    |
+ *  |        |                    |  
+ *  |        | dram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |  (length 0xC800; DRAM 0x3FFF2000-0x3FFFE800)
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x400AE000 / 0x3FFF2000
  *  |        ^                    |
  *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
  *  |        | iram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
- *  |        |                    |
+ *  |        |                    |  (IRAM 0x400AB900-0x400AE100)
  *  |        v                    |
- *  +------------------------------+ 0x400B1E00 / 0x3FFEE200
+ *  +------------------------------+ 0x400AE100 / 0x3FFF1EFF
  *  |        ^                    |
  *  |        |                    |
  *  |        | FREE               |  *CLAIMABLE BY OS RAM
@@ -1097,26 +1115,39 @@ application.
  *  |        | FREE               |  *CLAIMABLE BY OS RAM
  *  |        |                    |
  *  |        v                    |
- *  +--------+--------------+------+ 0x40047000 / 0x3FFD7000
+ *  +--------+--------------+------+ 0x4003BF00 / 0x3FFCBF00
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | dram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |  (length 0xD000; IRAM 0x4003BF00-0x40048EFF,
+ *  |        |                    |   DRAM 0x3FFCBF00-0x3FFD8F00)
+ *  |        v                    |
+ *  +------------------------------+ 0x40048F00 / 0x3FFD8F00
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
- *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM (length 0xE000)
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +------------------------------+ 0x40050000 / 0x3FFE0000
+ *  +------------------------------+ 0x40056F00 / 0x3FF86F00
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | dram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x1800; IRAM 0x40056F00-0x400586FF,
+ *  |        |                    |   DRAM 0x3FFE6F00-0x3FFE86FF)
+ *  |        v                    |
+ *  +------------------------------+ 0x40058700 / 0x3FFE8700
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
  *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
- *  |        |                    |
+ *  |        |                    |  (length 0x2400; IBUS 0x40058700-0x4005AB00)
  *  |        v                    |
- *  +------------------------------+ 0x40056000 / 0x3FFE6000
+ *  +------------------------------+ 0x4005AB00 / 0x3FFEAB00
  *  |        ^                    |
- *  |        |                    |
- *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | FREE               |  above `BOOTLOADER_RAM_END` 
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
  *  |        v                    |
  *  +--------+--------------+------+ 0x4006FFFF / 0x3FFFFFFF - SRAM1 END
@@ -1139,26 +1170,39 @@ application.
  *  |        | FREE               |  *CLAIMABLE BY OS RAM
  *  |        |                    |
  *  |        v                    |
- *  +--------+--------------+------+ 0x403B0000 / 0x3FCC0000
+ *  +--------+--------------+------+ 0x403AB000 / 0x3FCBB000
+ *  |        ^                    |
+ *  |        |                    |  
+ *  |        | dram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |  (length 0xD000; IRAM 0x403AB000-0x403B7FFF,
+ *  |        |                    |   DRAM 0x3FCBB000-0x3FCC8000)
+ *  |        v                    |
+ *  +------------------------------+ 0x403B8000 / 0x3FCC8000
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
- *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM (length 0xE800)
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +------------------------------+ 0x403BA000 / 0x3FCCA000
+ *  +------------------------------+ 0x403C6800 / 0x3FCC6800
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | dram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x1800; IRAM 0x403C6800-0x403C7FFF,
+ *  |        |                    |   DRAM 0x3FCD6800-0x3FCD7FFF)
+ *  |        v                    |
+ *  +------------------------------+ 0x403C8000 / 0x3FCD8000
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
  *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
- *  |        |                    |
+ *  |        |                    |  (length 0x2000; IBUS 0x403C8000-0x403CA000)
  *  |        v                    |
- *  +------------------------------+ 0x403C0000 / 0x3FCD0000
+ *  +------------------------------+ 0x403CA000 / 0x3FCDA000
  *  |        ^                    |
- *  |        |                    |
- *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | FREE               |  above `BOOTLOADER_RAM_END` 
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
  *  |        v                    |
  *  +--------+--------------+------+ 0x403DFFFF / 0x3FCEFFFF - SRAM1 END
@@ -1189,26 +1233,39 @@ application.
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +--------+--------------+------+ 0x403A1370 / 0x3FCC1370
+ *  +--------+--------------+------+ 0x4039E370 / 0x3FCBE370
+ *  |        ^                    |
+ *  |        |                    |  
+ *  |        | dram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |  (length 0xB000; IRAM 0x4039E370-0x403A936F,
+ *  |        |                    |   DRAM 0x3FCBE370-0x3FCC936F)
+ *  |        v                    |
+ *  +------------------------------+ 0x403A9370 / 0x3FCC9370
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
- *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM (length 0xE000)
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +------------------------------+ 0x403A9B70 / 0x3FCC9B70
+ *  +------------------------------+ 0x403B7370 / 0x3FCD7370
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | dram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x1800; IRAM 0x403B7370-0x403B8B6F,
+ *  |        |                    |   DRAM 0x3FCD7370-0x3FCD8B6F)
+ *  |        v                    |
+ *  +------------------------------+ 0x403B8B70 / 0x3FCD8B70
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
  *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
- *  |        |                    |
+ *  |        |                    |  (length 0x2000; IBUS 0x403B8B70-0x403BAB70)
  *  |        v                    |
- *  +------------------------------+ 0x403B0B70 / 0x3FCD0B70
+ *  +------------------------------+ 0x403BAB70 / 0x3FCDAB70
  *  |        ^                    |
- *  |        |                    |
- *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | FREE               |  above `BOOTLOADER_RAM_END` 
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
  *  |        v                    |
  *  +--------+--------------+------+ 0x403BFFFF / 0x3FCDFFFF - SRAM1 END
@@ -1233,29 +1290,93 @@ application.
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +--------+--------------+------+ 0x403C7000 / 0x3FCC7000
+ *  +--------+--------------+------+ 0x403BDF10 / 0x3FCBDF10
+ *  |        ^                    |
+ *  |        |                    |  
+ *  |        | dram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |  (length 0xB000; IRAM 0x403BDF10-0x403C8F0F,
+ *  |        |                    |   DRAM 0x3FCBDF10-0x3FCC8F0F)
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x403C8F10 / 0x3FCC8F10
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
- *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM (length 0xE000)
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +------------------------------+ 0x403D0000 / 0x3FCD0000
+ *  +------------------------------+ 0x403D6F10 / 0x3FCD6F10
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | dram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x1800; IRAM 0x403D6F10-0x403D870F,
+ *  |        |                    |   DRAM 0x3FCD6F10-0x3FCD870F)
+ *  |        v                    |
+ *  +------------------------------+ 0x403D8710 / 0x3FCD8710
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
  *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
- *  |        |                    |
+ *  |        |                    |  (length 0x2000; IBUS 0x403D8710-0x403DA710)
  *  |        v                    |
- *  +------------------------------+ 0x403D5400 / 0x3FCD5400
+ *  +------------------------------+ 0x403DA710 / 0x3FCDA710
  *  |        ^                    |
- *  |        |                    |
- *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | FREE               |  above `BOOTLOADER_RAM_END` 
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
  *  |        v                    |
  *  +--------+--------------+------+ 0x403DFFFF / 0x3FCDFFFF - SRAM1 END
+```
+
+### ESP32-C5
+
+```
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40800000 / 0x40800000 - HP SRAM START
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x40837DA0 / 0x40837DA0
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | dram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |  (length 0xB000)
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x40842DA0 / 0x40842DA0
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM (length 0xF000)
+ *  |        |                    |
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x40851DA0 / 0x40851DA0
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | dram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x1800)
+ *  |        v                    |
+ *  +------------------------------+ 0x408535A0 / 0x408535A0
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x7000)
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x4085A5A0 / 0x4085A5A0
+ *  |        ^                    |
+ *  |        | FREE               |  above `BOOTLOADER_RAM_END` 
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x4085FFFF / 0x4085FFFF - HP SRAM END
 ```
 
 ### ESP32-C6
@@ -1270,26 +1391,39 @@ application.
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +--------+--------------+------+ 0x40860610 / 0x40860610
+ *  +--------+--------------+------+ 0x4085CA10 / 0x4085CA10
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
- *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        | dram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |  (length 0xB000)
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x40867A10 / 0x40867A10
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM (length 0xF000)
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +------------------------------+ 0x40869610 / 0x40869610
+ *  +------------------------------+ 0x40876A10 / 0x40876A10
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | dram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x1800)
+ *  |        v                    |
+ *  +------------------------------+ 0x40878210 / 0x40878210
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
  *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
- *  |        |                    |
+ *  |        |                    |  (length 0x2400)
  *  |        v                    |
- *  +------------------------------+ 0x40870610 / 0x40870610
+ *  +--------+--------------+------+ 0x4087A610 / 0x4087A610
  *  |        ^                    |
- *  |        |                    |
- *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | FREE               |  above `BOOTLOADER_RAM_END` 
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
  *  |        v                    |
  *  +--------+--------------+------+ 0x4087FFFF / 0x4087FFFF - HP SRAM END
@@ -1307,26 +1441,39 @@ application.
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +--------+--------------+------+ 0x408317D0 / 0x408317D0
+ *  +--------+--------------+------+ 0x4082D3D0 / 0x4082D3D0
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
- *  |        | iram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        | dram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |  (length 0xB000)
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x408383D0 / 0x408383D0
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        |                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM (length 0xF000)
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +------------------------------+ 0x40839FD0 / 0x40839FD0
+ *  +------------------------------+ 0x408473D0 / 0x408473D0
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | dram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x1800)
+ *  |        v                    |
+ *  +------------------------------+ 0x40848BD0 / 0x40848BD0
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
  *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
- *  |        |                    |
+ *  |        |                    |  (length 0x2400)
  *  |        v                    |
- *  +------------------------------+ 0x40840FD0 / 0x40840FD0
+ *  +--------+--------------+------+ 0x4084AFD0 / 0x4084AFD0
  *  |        ^                    |
- *  |        |                    |
- *  |        | dram_seg           |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | FREE               |  above `BOOTLOADER_RAM_END` 
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
  *  |        v                    |
  *  +--------+--------------+------+ 0x4084FFFF / 0x4084FFFF - HP SRAM END

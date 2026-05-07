@@ -147,9 +147,6 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define BASE64_ENCODE_SIZE(in_size) ((((((in_size) - 1) / 3) * 4) + 4) + 1)
 #define CRC16_INITIAL_CRC       0       /* what to seed crc16 with */
 
-#define ntohs(x) be16toh(x)
-#define htons(x) htobe16(x)
-
 #define base64_decode mbedtls_base64_decode
 #define base64_encode mbedtls_base64_encode
 #endif

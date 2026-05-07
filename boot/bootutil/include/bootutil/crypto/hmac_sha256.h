@@ -2,9 +2,9 @@
  * This module provides a thin abstraction over some of the crypto
  * primitives to make it easier to swap out the used crypto library.
  *
- * At this point, there are two choices: MCUBOOT_USE_MBED_TLS, or
- * MCUBOOT_USE_TINYCRYPT.  It is a compile error there is not exactly
- * one of these defined.
+ * At this point, there are three choices: MCUBOOT_USE_MBED_TLS,
+ * MCUBOOT_USE_TINYCRYPT, or MCUBOOT_USE_CUSTOM_CRYPTO.  It is a compile
+ * error if there is not exactly one of these defined.
  */
 
 #ifndef __BOOTUTIL_CRYPTO_HMAC_SHA256_H_
@@ -13,8 +13,9 @@
 #include "mcuboot_config/mcuboot_config.h"
 
 #if (defined(MCUBOOT_USE_MBED_TLS) + \
-     defined(MCUBOOT_USE_TINYCRYPT)) != 1
-    #error "One crypto backend must be defined: either MBED_TLS or TINYCRYPT"
+     defined(MCUBOOT_USE_TINYCRYPT) + \
+     defined(MCUBOOT_USE_CUSTOM_CRYPTO)) != 1
+    #error "One crypto backend must be defined: MBED_TLS, TINYCRYPT, or CUSTOM_CRYPTO"
 #endif
 
 #if defined(MCUBOOT_USE_MBED_TLS)
@@ -119,10 +120,13 @@ static inline int bootutil_hmac_sha256_update(bootutil_hmac_sha256_context *ctx,
 
 static inline int bootutil_hmac_sha256_finish(bootutil_hmac_sha256_context *ctx, uint8_t *tag, unsigned int taglen)
 {
-    (void)taglen;
     /*
-     * HMAC the key and check that our received MAC matches the generated tag
+     * Finalize the HMAC computation and output the tag.
+     * mbedtls_md_hmac_finish() always outputs the full 32-byte SHA-256 digest
+     * and does not support truncation. taglen is ignored; caller must provide
+     * a 32-byte buffer.
      */
+    (void)taglen;
     return mbedtls_md_hmac_finish(ctx, tag);
 }
 #endif /* MCUBOOT_USE_MBED_TLS */
