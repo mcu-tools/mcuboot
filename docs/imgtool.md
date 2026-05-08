@@ -134,6 +134,8 @@ primary slot and adds a header and trailer that the bootloader is expecting:
       -E, --encrypt filename          Encrypt image using the provided public key.
                                       (Not supported in direct-xip or ram-load
                                       mode.)
+                                      For AES-KW, pass a base64-encoded KEK file
+                                      (16 bytes for 128-bit, 32 bytes for 256-bit).
       --save-enctlv                   When upgrading, save encrypted key TLVs
                                       instead of plain keys. Enable when
                                       BOOT_SWAP_SAVE_ENCTLV config option was set.
