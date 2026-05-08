@@ -1308,9 +1308,9 @@ boot_serial_input(char *buf, int len)
     struct nmgr_hdr *hdr;
 
     hdr = (struct nmgr_hdr *)buf;
-    if (len < sizeof(*hdr) ||
+    if (len <= 0 || (size_t)len < sizeof(*hdr) ||
       (hdr->nh_op != NMGR_OP_READ && hdr->nh_op != NMGR_OP_WRITE) ||
-      (ntohs(hdr->nh_len) < len - sizeof(*hdr))) {
+      (ntohs(hdr->nh_len) < (size_t)len - sizeof(*hdr))) {
         return;
     }
     bs_hdr = hdr;
