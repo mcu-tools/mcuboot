@@ -52,6 +52,13 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #if !defined(MCUBOOT_BYPASS_KEY_MATCH)
 /* Find functions are only needed when key is checked first */
 #if defined(MCUBOOT_BUILTIN_KEY)
+/* This is a weak stub function meant to be overridden by some strong
+ * implementation (ex: see TF-M). */
+__attribute__((weak)) fih_ret boot_verify_key_id_for_image(uint8_t image_index, uint32_t key_id)
+{
+    FIH_RET(FIH_FAILURE);
+}
+
 int bootutil_find_key(uint8_t image_index, uint8_t *key_id_buf, uint8_t key_id_buf_len)
 {
     uint32_t key_id;
