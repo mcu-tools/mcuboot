@@ -26,15 +26,12 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define FLASH_DEVICE_ID SPI_FLASH_0_ID
 #if DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_xspi_nor), okay)
 #define DT_DRV_COMPAT st_stm32_xspi_nor
-#define FLASH_DEVICE_NODE DT_INST(0, st_stm32_xspi_nor)
 #define FLASH_DEVICE_BASE DT_REG_ADDR_BY_IDX(DT_INST_PARENT(0), 1)
 #elif DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_ospi_nor), okay)
 #define DT_DRV_COMPAT st_stm32_ospi_nor
-#define FLASH_DEVICE_NODE DT_INST(0, st_stm32_ospi_nor)
 #define FLASH_DEVICE_BASE DT_REG_ADDR_BY_IDX(DT_INST_PARENT(0), 1)
 #elif DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_qspi_nor), okay)
 #define DT_DRV_COMPAT st_stm32_qspi_nor
-#define FLASH_DEVICE_NODE DT_INST(0, st_stm32_qspi_nor)
 #define FLASH_DEVICE_BASE DT_REG_ADDR_BY_IDX(DT_INST_PARENT(0), 1)
 #else
 #error "FLASH_DEVICE_NODE could not be determined"
@@ -49,30 +46,24 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #elif (!defined(CONFIG_XTENSA) && DT_HAS_CHOSEN(zephyr_flash_controller))
 #define FLASH_DEVICE_ID SOC_FLASH_0_ID
 #define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
-#define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash_controller)
 
 #elif (defined(CONFIG_XTENSA) && DT_NODE_EXISTS(DT_INST(0, jedec_spi_nor)))
 #define FLASH_DEVICE_ID SPI_FLASH_0_ID
 #define FLASH_DEVICE_BASE 0
-#define FLASH_DEVICE_NODE DT_INST(0, jedec_spi_nor)
 
 #elif defined(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)
 
 #define FLASH_DEVICE_ID SPI_FLASH_0_ID
 #define FLASH_DEVICE_BASE 0
-#define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash_controller)
 
 #elif (defined(CONFIG_SOC_SERIES_NRF54H) && DT_HAS_CHOSEN(zephyr_flash))
 
 #define FLASH_DEVICE_ID SOC_FLASH_0_ID
 #define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
-#define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash)
 
 #else
 #error "FLASH_DEVICE_ID could not be determined"
 #endif
-
-static const struct device *flash_dev = DEVICE_DT_GET(FLASH_DEVICE_NODE);
 
 int flash_device_base(uint8_t fd_id, uintptr_t *ret)
 {
@@ -162,22 +153,6 @@ int flash_area_id_from_direct_image(int image_id)
     return -EINVAL;
 }
 #endif
-
-int flash_area_sector_from_off(off_t off, struct flash_sector *sector)
-{
-    int rc;
-    struct flash_pages_info page;
-
-    rc = flash_get_page_info_by_offs(flash_dev, off, &page);
-    if (rc) {
-        return rc;
-    }
-
-    sector->fs_off = page.start_offset;
-    sector->fs_size = page.size;
-
-    return rc;
-}
 
 uint8_t flash_area_get_device_id(const struct flash_area *fa)
 {
