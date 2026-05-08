@@ -21,58 +21,97 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
-#if defined(CONFIG_STM32_MEMMAP)
-/* MEMORY MAPPED for XiP on external NOR flash takes the sspi-nor or ospi-nor or qspi-nor device */
-#define FLASH_DEVICE_ID SPI_FLASH_0_ID
-#if DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_xspi_nor), okay)
-#define DT_DRV_COMPAT st_stm32_xspi_nor
-#define FLASH_DEVICE_BASE DT_REG_ADDR_BY_IDX(DT_INST_PARENT(0), 1)
-#elif DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_ospi_nor), okay)
-#define DT_DRV_COMPAT st_stm32_ospi_nor
-#define FLASH_DEVICE_BASE DT_REG_ADDR_BY_IDX(DT_INST_PARENT(0), 1)
-#elif DT_NODE_HAS_STATUS(DT_INST(0, st_stm32_qspi_nor), okay)
-#define DT_DRV_COMPAT st_stm32_qspi_nor
-#define FLASH_DEVICE_BASE DT_REG_ADDR_BY_IDX(DT_INST_PARENT(0), 1)
-#else
-#error "FLASH_DEVICE_NODE could not be determined"
-#endif
+#define FLASH_PARTITION_ADDRESS(partition) (PARTITION_ADDRESS(partition) - PARTITION_OFFSET(partition))
 
-#elif (DT_NODE_HAS_COMPAT(DT_PARENT(DT_CHOSEN(zephyr_flash_controller)),       \
-			  nxp_imx_flexspi))
-#define FLASH_DEVICE_ID SPI_FLASH_0_ID
-#define FLASH_DEVICE_NODE DT_CHOSEN(zephyr_flash_controller)
-#define FLASH_DEVICE_BASE DT_REG_ADDR_BY_IDX(DT_PARENT(FLASH_DEVICE_NODE), 1)
-
-#elif (!defined(CONFIG_XTENSA) && DT_HAS_CHOSEN(zephyr_flash_controller))
-#define FLASH_DEVICE_ID SOC_FLASH_0_ID
-#define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
-
-#elif (defined(CONFIG_XTENSA) && DT_NODE_EXISTS(DT_INST(0, jedec_spi_nor)))
-#define FLASH_DEVICE_ID SPI_FLASH_0_ID
-#define FLASH_DEVICE_BASE 0
-
-#elif defined(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)
-
-#define FLASH_DEVICE_ID SPI_FLASH_0_ID
-#define FLASH_DEVICE_BASE 0
-
-#elif (defined(CONFIG_SOC_SERIES_NRF54H) && DT_HAS_CHOSEN(zephyr_flash))
-
-#define FLASH_DEVICE_ID SOC_FLASH_0_ID
-#define FLASH_DEVICE_BASE CONFIG_FLASH_BASE_ADDRESS
-
-#else
-#error "FLASH_DEVICE_ID could not be determined"
-#endif
+#define FLASH_PARTITION_DEV_UNIQUE(n, m) (PARTITION_EXISTS(n) && \
+                                          !(DT_SAME_NODE(PARTITION_MTD(n), PARTITION_MTD(m))))
 
 int flash_device_base(uint8_t fd_id, uintptr_t *ret)
 {
-    if (fd_id != FLASH_DEVICE_ID) {
-        BOOT_LOG_ERR("invalid flash ID %d; expected %d",
-                     fd_id, FLASH_DEVICE_ID);
+    switch (fd_id)
+    {
+    case 0U:
+        *ret = FLASH_PARTITION_ADDRESS(slot0_partition);
+        break;
+#if FLASH_PARTITION_DEV_UNIQUE(slot1_partition, slot0_partition)
+    case 1U:
+        *ret = FLASH_PARTITION_ADDRESS(slot1_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot2_partition, slot1_partition)
+    case 2U:
+        *ret = FLASH_PARTITION_ADDRESS(slot2_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot3_partition, slot2_partition)
+    case 3U:
+        *ret = FLASH_PARTITION_ADDRESS(slot3_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot4_partition, slot3_partition)
+    case 4U:
+        *ret = FLASH_PARTITION_ADDRESS(slot4_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot5_partition, slot4_partition)
+    case 5U:
+        *ret = FLASH_PARTITION_ADDRESS(slot5_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot6_partition, slot5_partition)
+    case 6U:
+        *ret = FLASH_PARTITION_ADDRESS(slot6_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot7_partition, slot6_partition)
+    case 7U:
+        *ret = FLASH_PARTITION_ADDRESS(slot7_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot8_partition, slot7_partition)
+    case 8U:
+        *ret = FLASH_PARTITION_ADDRESS(slot8_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot9_partition, slot8_partition)
+    case 9U:
+        *ret = FLASH_PARTITION_ADDRESS(slot9_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot10_partition, slot9_partition)
+    case 10U:
+        *ret = FLASH_PARTITION_ADDRESS(slot10_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot11_partition, slot10_partition)
+    case 11U:
+        *ret = FLASH_PARTITION_ADDRESS(slot11_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot12_partition, slot11_partition)
+    case 12U:
+        *ret = FLASH_PARTITION_ADDRESS(slot12_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot13_partition, slot12_partition)
+    case 13U:
+        *ret = FLASH_PARTITION_ADDRESS(slot13_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot14_partition, slot13_partition)
+    case 14U:
+        *ret = FLASH_PARTITION_ADDRESS(slot14_partition);
+        break;
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot15_partition, slot14_partition)
+    case 15U:
+        *ret = FLASH_PARTITION_ADDRESS(slot15_partition);
+        break;
+#endif
+    default:
+        BOOT_LOG_ERR("invalid flash ID %d", fd_id);
         return -EINVAL;
     }
-    *ret = FLASH_DEVICE_BASE;
     return 0;
 }
 
@@ -156,8 +195,90 @@ int flash_area_id_from_direct_image(int image_id)
 
 uint8_t flash_area_get_device_id(const struct flash_area *fa)
 {
-    (void)fa;
-    return FLASH_DEVICE_ID;
+    const struct device *dev = flash_area_get_device(fa);
+
+    if (dev == PARTITION_DEVICE(slot0_partition)) {
+        return 0U;
+    }
+#if FLASH_PARTITION_DEV_UNIQUE(slot1_partition, slot0_partition)
+    if (dev == PARTITION_DEVICE(slot1_partition)) {
+        return 1U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot2_partition, slot1_partition)
+    if (dev == PARTITION_DEVICE(slot2_partition)) {
+        return 2U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot3_partition, slot2_partition)
+    if (dev == PARTITION_DEVICE(slot3_partition)) {
+        return 3U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot4_partition, slot3_partition)
+    if (dev == PARTITION_DEVICE(slot4_partition)) {
+        return 4U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot5_partition, slot4_partition)
+    if (dev == PARTITION_DEVICE(slot5_partition)) {
+        return 5U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot6_partition, slot5_partition)
+    if (dev == PARTITION_DEVICE(slot6_partition)) {
+        return 6U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot7_partition, slot6_partition)
+    if (dev == PARTITION_DEVICE(slot7_partition)) {
+        return 7U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot8_partition, slot7_partition)
+    if (dev == PARTITION_DEVICE(slot8_partition)) {
+        return 8U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot9_partition, slot8_partition)
+    if (dev == PARTITION_DEVICE(slot9_partition)) {
+        return 9U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot10_partition, slot9_partition)
+    if (dev == PARTITION_DEVICE(slot10_partition)) {
+        return 10U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot11_partition, slot10_partition)
+    if (dev == PARTITION_DEVICE(slot11_partition)) {
+        return 11U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot12_partition, slot11_partition)
+    if (dev == PARTITION_DEVICE(slot12_partition)) {
+        return 12U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot13_partition, slot12_partition)
+    if (dev == PARTITION_DEVICE(slot13_partition)) {
+        return 13U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot14_partition, slot13_partition)
+    if (dev == PARTITION_DEVICE(slot14_partition)) {
+        return 14U;
+    }
+#endif
+#if FLASH_PARTITION_DEV_UNIQUE(slot15_partition, slot14_partition)
+    if (dev == PARTITION_DEVICE(slot15_partition)) {
+        return 15U;
+    }
+#endif
+
+    __ASSERT(0, "invalid flash area device");
+
+    return 0U;
 }
 
 #define ERASED_VAL 0xff
