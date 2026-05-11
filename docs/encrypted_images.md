@@ -289,7 +289,7 @@ exclusive with `BOOT_ENCRYPT_IMAGE` (standard software encryption).
 
    where `counter_LE32` is the absolute byte address (`base_address + offset`)
    encoded as a little-endian 32-bit integer, and `nonce[0:12]` is the first
-   12 bytes of the HKDF-derived `xip_iv`. The counter is not slot-dependent;
+   12 bytes of the HKDF-derived `br_xip_iv`. The counter is not slot-dependent;
    both the primary and secondary slots store identical ciphertext.
 
 2. **Ciphertext signing** -- The SHA-256 hash and ECDSA signature are computed
@@ -321,8 +321,8 @@ exclusive with `BOOT_ENCRYPT_IMAGE` (standard software encryption).
    struct boot_rsp rsp;
    /* ... boot_go(&rsp) ... */
 
-   /* rsp.xip_key[4] -- 16-byte AES-128 key */
-   /* rsp.xip_iv[4]  -- 16-byte IV/nonce     */
+   /* rsp.br_xip_key[4] -- 16-byte AES-128 key */
+   /* rsp.br_xip_iv[4]  -- 16-byte IV/nonce     */
    ```
 
 7. **Bootloader validation flow** -- The `boot_image_check_hook()` validates
@@ -332,8 +332,12 @@ exclusive with `BOOT_ENCRYPT_IMAGE` (standard software encryption).
    3. Verify mandatory ECDSA-P256 signature against `IMAGE_TLV_ECDSA_SIG`
    4. ECIES-P256 key unwrap from `IMAGE_TLV_ENC_EC256` to extract AES key/IV
 
-   The extracted keys are held in RAM only for the duration of boot and are
-   cleared before jumping to the application.
+   The library-internal copy of the keys is held in RAM only for the
+   duration of boot. After validation, MCUboot copies the per-image key/IV
+   into `rsp->br_xip_key` / `rsp->br_xip_iv` and then immediately wipes
+   the library-internal storage via `xip_enc_clear_keys()`. The platform
+   is responsible for zeroizing the `boot_rsp` fields after programming
+   the hardware crypto regions (see `docs/PORTING.md`).
 
 8. **imgtool image creation** -- The `imgtool sign --encrypt-xip` command
    creates XIP images by encrypting the payload **before** computing the
@@ -454,7 +458,12 @@ configuring a separate crypto region for each one.
 * **FIH hardening** -- The `boot_image_check_hook()` return path uses
   `MCUboot`'s fault injection hardening (FIH) to protect against glitch
   attacks on the validation result.
-* **12-byte nonce** -- Only the first 12 bytes of the HKDF-derived `xip_iv`
+* **12-byte nonce** -- Only the first 12 bytes of the HKDF-derived `br_xip_iv`
   are used as the AES-CTR nonce. The last 4 bytes of the 16-byte IV are
   zeroed (counter portion). The hardware computes the counter from the
   absolute flash address being fetched.
+* **Zero-nonce rejection** -- The ECIES unwrap step rejects images whose
+  derived 12-byte nonce is entirely zero. This enforces the per-image IV
+  uniqueness property and effectively requires the 177-byte extended TLV
+  produced by `imgtool` (which derives `xip_iv` via HKDF from a random
+  salt).
