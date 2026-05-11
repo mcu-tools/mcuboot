@@ -21,6 +21,9 @@ source $(dirname "$0")/paths.sh
 # Activate Python virtual environment
 source $WORK_PATH/../.venv/bin/activate
 
+# Install TF-M provided Python packages from *.toml file
+pip install $TFM_PATH
+
 # Required for git am to apply patches under TF-M
 git config --global user.email "docker@fih-test.com"
 git config --global user.name "docker fih-test"
