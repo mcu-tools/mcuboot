@@ -21,12 +21,12 @@ source $(dirname "$0")/fih-tests_config.sh
 # Note that we are pulling from a github mirror of these repos, not direct upstream.  If the sha
 # checked out below changes, the mirrors might need to be updated.
 pushd ..
-git clone https://github.com/mcu-tools/trusted-firmware-m
+git clone https://github.com/TrustedFirmware-M/trusted-firmware-m
 pushd trusted-firmware-m
 git checkout $TFM_TAG
 source lib/ext/tf-m-tests/version.txt
 popd
-git clone https://github.com/mcu-tools/tf-m-tests.git
+git clone https://github.com/TrustedFirmware-M/tf-m-tests
 pushd tf-m-tests
 git checkout $version
 popd
