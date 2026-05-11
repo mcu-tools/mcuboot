@@ -459,6 +459,28 @@ xip_enc_ecies_unwrap(const uint8_t *tlv_buf, uint16_t tlv_len,
         return -1;
     }
 
+    /*
+     * Per-image IV uniqueness: AES-CTR security relies on the (key, nonce)
+     * pair never repeating. The 12-byte nonce portion of out_iv MUST be
+     * non-zero. An all-zero nonce only arises from the legacy 113-byte TLV
+     * (standard-mode ECIES) which does not derive a per-image xip_iv via
+     * HKDF -- imgtool always emits the 177-byte extended TLV. Reject the
+     * zero-nonce case here.
+     */
+    {
+        uint8_t iv_or = 0;
+        size_t i;
+
+        for (i = 0; i < 12u; i++) {
+            iv_or |= out_iv[i];
+        }
+        if (iv_or == 0u) {
+            xip_enc_zeroize(out_key, XIP_AES_KEY_SIZE);
+            xip_enc_zeroize(out_iv, XIP_AES_BLOCK_SIZE);
+            return -1;
+        }
+    }
+
     return 0;
 }
 
