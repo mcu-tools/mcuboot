@@ -285,8 +285,8 @@ Called by MCUboot after `fill_rsp()` completes. The platform implementation
 copies the encryption key and initialisation vector (IV) that were extracted
 during validation into the boot response structure:
 
-* `rsp->xip_key` --- the AES key used by the hardware crypto region.
-* `rsp->xip_iv` --- the IV / nonce used by the hardware crypto region.
+* `rsp->br_xip_key` --- the AES key used by the hardware crypto region.
+* `rsp->br_xip_iv` --- the IV / nonce used by the hardware crypto region.
 
 These fields are consumed later by the platform's main bootloader function
 to configure the hardware before jumping to the application.
@@ -297,11 +297,17 @@ After `boot_go` returns, the platform's main bootloader function must
 configure the hardware crypto regions for each image using the key and IV
 stored in `boot_rsp`. A typical sequence is:
 
-1. For each image, read `rsp->xip_key` and `rsp->xip_iv`.
+1. For each image, read `rsp->br_xip_key` and `rsp->br_xip_iv`.
 2. Program the hardware crypto engine's per-region registers (base address,
    size, key, IV).
 3. Enable the crypto regions permanently so that subsequent code fetches from
    external flash are decrypted transparently.
+4. **Zeroize `rsp->br_xip_key` and `rsp->br_xip_iv` immediately after the
+   hardware registers have been programmed.** The library-internal copy in
+   `xip_enc_keys.c` is cleared by MCUboot before `boot_go()` returns, so
+   the `boot_rsp` fields hold the only remaining copy of the per-image
+   key/IV. Use a volatile-pointer zero loop (or platform secure-erase
+   primitive) to defeat dead-store elimination.
 
 This step is platform-specific and lives outside of MCUboot's common code.
 
@@ -316,7 +322,7 @@ This step is platform-specific and lives outside of MCUboot's common code.
 
   where `counter_LE32` is the absolute byte address (`base_address + offset`)
   encoded as a little-endian 32-bit integer, and `nonce[0:12]` is the first
-  12 bytes of the HKDF-derived `xip_iv`. The last 4 bytes of the 16-byte IV
+  12 bytes of the HKDF-derived `br_xip_iv`. The last 4 bytes of the 16-byte IV
   are zeroed (counter portion). This matches the hardware crypto engine's
   expectation that the counter is derived from the absolute flash address
   being fetched.

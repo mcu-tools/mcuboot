@@ -195,6 +195,9 @@ _Static_assert(sizeof(boot_img_magic) == BOOT_MAGIC_SZ, "Invalid size for image 
 #if defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_ENC_IMAGES)
 #error "Image encryption (MCUBOOT_ENC_IMAGES) is not supported when MCUBOOT_DIRECT_XIP is selected."
 #endif /* MCUBOOT_DIRECT_XIP && MCUBOOT_ENC_IMAGES */
+#if defined(MCUBOOT_DIRECT_XIP) && defined(MCUBOOT_ENC_IMAGES_XIP)
+#error "XIP image encryption (MCUBOOT_ENC_IMAGES_XIP) is not supported when MCUBOOT_DIRECT_XIP is selected; XIP encryption is built around the swap-based loader path."
+#endif /* MCUBOOT_DIRECT_XIP && MCUBOOT_ENC_IMAGES_XIP */
 #endif /* MCUBOOT_DIRECT_XIP || MCUBOOT_RAM_LOAD */
 
 #if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENC_IMAGES_XIP)
