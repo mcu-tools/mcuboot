@@ -94,6 +94,18 @@
 
 #endif /* MCUBOOT_FIND_NEXT_SLOT_HOOKS */
 
+#if defined(MCUBOOT_VERIFY_KEY_ID_FOR_IMAGE_HOOKS)
+
+#define BOOT_HOOK_VERIFY_KEY_ID_FOR_IMAGE(f, fih_ret_default, fih_rc, ...) \
+    DO_HOOK_CALL_FIH(f, fih_ret_default, fih_rc, __VA_ARGS__)
+
+#else
+
+#define BOOT_HOOK_VERIFY_KEY_ID_FOR_IMAGE(f, fih_ret_default, fih_rc, ...) \
+    HOOK_CALL_FIH_NOP(f, fih_ret_default, fih_rc, __VA_ARGS__)
+
+#endif /* MCUBOOT_VERIFY_KEY_ID_FOR_IMAGE_HOOKS */
+
 #ifdef MCUBOOT_FLASH_AREA_HOOKS
 
 #define BOOT_HOOK_FLASH_AREA_CALL(f, ret_default, ...) \

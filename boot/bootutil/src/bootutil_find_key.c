@@ -32,6 +32,7 @@
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/image.h"
 #include "bootutil/sign_key.h"
+#include "bootutil/boot_hooks.h"
 #include "bootutil_priv.h"
 #include "mcuboot_config/mcuboot_config.h"
 #include "bootutil/bootutil_log.h"
@@ -52,13 +53,6 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #if !defined(MCUBOOT_BYPASS_KEY_MATCH)
 /* Find functions are only needed when key is checked first */
 #if defined(MCUBOOT_BUILTIN_KEY)
-/* This is a weak stub function meant to be overridden by some strong
- * implementation (ex: see TF-M). */
-__attribute__((weak)) fih_ret boot_verify_key_id_for_image(uint8_t image_index, uint32_t key_id)
-{
-    FIH_RET(FIH_FAILURE);
-}
-
 int bootutil_find_key(uint8_t image_index, uint8_t *key_id_buf, uint8_t key_id_buf_len)
 {
     uint32_t key_id;
@@ -70,7 +64,8 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key_id_buf, uint8_t key_id_b
     memcpy(&key_id, key_id_buf, sizeof(key_id));
 
     /* Check if key id is associated with the image */
-    FIH_CALL(boot_verify_key_id_for_image, fih_rc, image_index, key_id);
+    BOOT_HOOK_VERIFY_KEY_ID_FOR_IMAGE(boot_verify_key_id_for_image, FIH_FAILURE,
+                                      fih_rc, image_index, key_id);
     if (FIH_EQ(fih_rc, FIH_SUCCESS)) {
         return (int32_t)key_id;
     }
