@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 if (DEFINED CONFIG_ESP_USE_MBEDTLS)
-    set(MBEDTLS_DIR ${MCUBOOT_ROOT_DIR}/ext/mbedtls)
+    set(MBEDTLS_DIR ${MCUBOOT_ROOT_DIR}/ext/mbedtls-3.6.0)
     set(CRYPTO_INC
         ${MBEDTLS_DIR}/include
         )
