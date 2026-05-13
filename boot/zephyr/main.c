@@ -18,25 +18,13 @@
  * limitations under the License.
  */
 
-#include <assert.h>
+#include <errno.h>
 #include <zephyr/kernel.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/sys/__assert.h>
-#include <zephyr/drivers/flash.h>
-#include <zephyr/drivers/timer/system_timer.h>
 #include <zephyr/usb/usb_device.h>
-#include <zephyr/devicetree/partitions.h>
 #include <soc.h>
-#include <zephyr/linker/linker-defs.h>
-
-#if defined(CONFIG_BOOT_DISABLE_CACHES)
-#include <zephyr/cache.h>
-#endif
-
-#if defined(CONFIG_CPU_CORTEX_M)
-#include <cmsis_core.h>
-#endif
 
 #include "io/io.h"
 #include "target.h"
@@ -47,35 +35,12 @@
 #include "bootutil/boot_hooks.h"
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/mcuboot_status.h"
-#include "flash_map_backend/flash_map_backend.h"
+
+#include "do_boot.h"
 
 #if defined(CONFIG_MCUBOOT_UUID_VID) || defined(CONFIG_MCUBOOT_UUID_CID)
 #include "bootutil/mcuboot_uuid.h"
 #endif /* CONFIG_MCUBOOT_UUID_VID || CONFIG_MCUBOOT_UUID_CID */
-
-/* Check if Espressif target is supported */
-#ifdef CONFIG_SOC_FAMILY_ESPRESSIF_ESP32
-
-#include <bootloader_init.h>
-#include <esp_image_loader.h>
-
-#define IMAGE_INDEX_0   0
-#define IMAGE_INDEX_1   1
-
-#define PRIMARY_SLOT    0
-#define SECONDARY_SLOT  1
-
-#define IMAGE0_PRIMARY_START_ADDRESS \
-          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_0), reg, 0)
-#define IMAGE0_PRIMARY_SIZE \
-          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_0), reg, 1)
-
-#define IMAGE1_PRIMARY_START_ADDRESS \
-          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_1), reg, 0)
-#define IMAGE1_PRIMARY_SIZE \
-          DT_PROP_BY_IDX(DT_NODE_BY_PARTITION_LABEL(image_1), reg, 1)
-
-#endif /* CONFIG_SOC_FAMILY_ESPRESSIF_ESP32 */
 
 #ifdef CONFIG_MCUBOOT_SERIAL
 #include "boot_serial/boot_serial.h"
@@ -89,10 +54,6 @@ const struct boot_uart_funcs boot_funcs = {
 
 #if defined(CONFIG_BOOT_USB_DFU_WAIT) || defined(CONFIG_BOOT_USB_DFU_GPIO)
 #include <zephyr/usb/class/usb_dfu.h>
-#endif
-
-#if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
-#include <arm_cleanup.h>
 #endif
 
 #if defined(CONFIG_LOG)
@@ -127,301 +88,6 @@ K_SEM_DEFINE(boot_log_sem, 0, 1);
 BOOT_LOG_MODULE_REGISTER(mcuboot);
 
 void os_heap_init(void);
-
-#if defined(CONFIG_ARM)
-
-#ifdef CONFIG_SW_VECTOR_RELAY
-extern void *_vector_table_pointer;
-#endif
-
-struct arm_vector_table {
-#ifdef CONFIG_CPU_CORTEX_M
-    uint32_t msp;
-    uint32_t reset;
-#else
-    uint32_t reset;
-    uint32_t undef_instruction;
-    uint32_t svc;
-    uint32_t abort_prefetch;
-    uint32_t abort_data;
-    uint32_t reserved;
-    uint32_t irq;
-    uint32_t fiq;
-#endif
-};
-
-static void do_boot(struct boot_rsp *rsp)
-{
-    /* vt is static as it shall not land on the stack,
-     * as this procedure modifies stack pointer before usage of *vt
-     */
-    static struct arm_vector_table *vt;
-
-    /* The beginning of the image is the ARM vector table, containing
-     * the initial stack pointer address and the reset vector
-     * consecutively. Manually set the stack pointer and jump into the
-     * reset vector
-     */
-#ifdef MCUBOOT_RAM_LOAD
-    /* Get ram address for image */
-    vt = (struct arm_vector_table *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
-#else
-    uintptr_t flash_base;
-    int rc;
-
-    /* Jump to flash image */
-    rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
-    if (rc != 0) {
-        BOOT_LOG_DBG("Error getting flash device base. rc = %d", rc);
-        FIH_PANIC;
-    }
-
-    vt = (struct arm_vector_table *)(flash_base +
-                                     rsp->br_image_off +
-                                     rsp->br_hdr->ih_hdr_size);
-#endif
-
-    if (IS_ENABLED(CONFIG_SYSTEM_TIMER_HAS_DISABLE_SUPPORT)) {
-        sys_clock_disable();
-    }
-
-#ifdef CONFIG_USB_DEVICE_STACK
-    /* Disable the USB to prevent it from firing interrupts */
-    usb_disable();
-#endif
-#if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
-    cleanup_arm_interrupts(); /* Disable and acknowledge all interrupts */
-
-#if defined(CONFIG_BOOT_DISABLE_CACHES)
-    /* Flush and disable instruction/data caches before chain-loading the application */
-    (void)sys_cache_instr_flush_all();
-    (void)sys_cache_data_flush_all();
-    sys_cache_instr_disable();
-    sys_cache_data_disable();
-#endif
-
-#if CONFIG_CPU_HAS_ARM_MPU || CONFIG_CPU_HAS_NXP_SYSMPU
-    z_arm_clear_arm_mpu_config();
-#endif
-
-#if defined(CONFIG_BUILTIN_STACK_GUARD) && \
-    defined(CONFIG_CPU_CORTEX_M_HAS_SPLIM)
-    /* Reset limit registers to avoid inflicting stack overflow on image
-     * being booted.
-     */
-    __set_PSPLIM(0);
-    __set_MSPLIM(0);
-#endif
-
-#else
-    irq_lock();
-#endif /* CONFIG_MCUBOOT_CLEANUP_ARM_CORE */
-
-#ifdef CONFIG_BOOT_INTR_VEC_RELOC
-#if defined(CONFIG_SW_VECTOR_RELAY)
-    _vector_table_pointer = vt;
-#ifdef CONFIG_CPU_CORTEX_M_HAS_VTOR
-    SCB->VTOR = (uint32_t)__vector_relay_table;
-#endif
-#elif defined(CONFIG_CPU_CORTEX_M_HAS_VTOR)
-    SCB->VTOR = (uint32_t)vt;
-#endif /* CONFIG_SW_VECTOR_RELAY */
-#else /* CONFIG_BOOT_INTR_VEC_RELOC */
-#if defined(CONFIG_CPU_CORTEX_M_HAS_VTOR) && defined(CONFIG_SW_VECTOR_RELAY)
-    _vector_table_pointer = _vector_start;
-    SCB->VTOR = (uint32_t)__vector_relay_table;
-#endif
-#endif /* CONFIG_BOOT_INTR_VEC_RELOC */
-
-#ifdef CONFIG_CPU_CORTEX_M
-    __set_MSP(vt->msp);
-#endif
-
-#if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
-#ifdef CONFIG_CPU_CORTEX_M
-    __set_CONTROL(0x00); /* application will configures core on its own */
-    __ISB();
-#else
-    /* Set mode to supervisor and A, I and F bit as described in the
-     * Cortex R5 TRM */
-    __asm__ volatile(
-        "   mrs r0, CPSR\n"
-        /* change mode bits to supervisor */
-        "   bic r0, #0x1f\n"
-        "   orr r0, #0x13\n"
-        /* set the A, I and F bit */
-        "   mov r1, #0b111\n"
-        "   lsl r1, #0x6\n"
-        "   orr r0, r1\n"
-
-        "   msr CPSR, r0\n"
-        ::: "r0", "r1");
-#endif /* CONFIG_CPU_CORTEX_M */
-
-#endif
-#if CONFIG_MCUBOOT_CLEANUP_RAM
-    __asm__ volatile (
-        /* vt->reset -> r0 */
-        "   mov     r0, %0\n"
-        /* base to write -> r1 */
-        "   mov     r1, %1\n"
-        /* size to write -> r2 */
-        "   mov     r2, %2\n"
-        /* value to write -> r3 */
-        "   mov     r3, %3\n"
-        "clear:\n"
-        "   str     r3, [r1]\n"
-        "   add     r1, r1, #4\n"
-        "   sub     r2, r2, #4\n"
-        "   cbz     r2, out\n"
-        "   b       clear\n"
-        "out:\n"
-        "   dsb\n"
-#if CONFIG_MCUBOOT_INFINITE_LOOP_AFTER_RAM_CLEANUP
-        "   b       out\n"
-#endif /*CONFIG_MCUBOOT_INFINITE_LOOP_AFTER_RAM_CLEANUP */
-        /* jump to reset vector of an app */
-        "   bx      r0\n"
-        :
-        : "r" (vt->reset), "i" (DT_CHOSEN_SRAM_ADDR),
-          "i" (DT_CHOSEN_SRAM_SIZE), "i" (0)
-        : "r0", "r1", "r2", "r3", "memory"
-    );
-#else
-
-#ifdef CONFIG_CPU_CORTEX_M
-    ((void (*)(void))vt->reset)();
-#else
-    /* Some ARM CPUs like the Cortex-R5 can run in thumb mode but reset into ARM
-     * mode (depending on a CPU signal configurations). To do the switch into ARM
-     * mode, if needed, an explicit branch with exchange instruction set
-     * instruction is needed
-     */
-    __asm__("bx %0\n" : : "r" (&vt->reset));
-#endif
-
-#endif
-}
-
-#elif defined(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)
-
-static void do_boot(struct boot_rsp *rsp)
-{
-    BOOT_LOG_INF("br_image_off = 0x%x", rsp->br_image_off);
-    BOOT_LOG_INF("ih_hdr_size = 0x%x", rsp->br_hdr->ih_hdr_size);
-
-    int slot = (rsp->br_image_off == IMAGE0_PRIMARY_START_ADDRESS) ?
-                PRIMARY_SLOT : SECONDARY_SLOT;
-    start_cpu0_image(IMAGE_INDEX_0, slot, rsp->br_hdr->ih_hdr_size);
-}
-
-#elif defined(CONFIG_XTENSA)
-
-#define SRAM_BASE_ADDRESS	0xBE030000
-
-static void copy_img_to_SRAM(int slot, unsigned int hdr_offset)
-{
-    const struct flash_area *fap;
-    int area_id;
-    int rc;
-    unsigned char *dst = (unsigned char *)(SRAM_BASE_ADDRESS + hdr_offset);
-
-    BOOT_LOG_INF("Copying image to SRAM");
-
-    area_id = flash_area_id_from_image_slot(slot);
-    rc = flash_area_open(area_id, &fap);
-    if (rc != 0) {
-        BOOT_LOG_ERR("flash_area_open failed with %d", rc);
-        goto done;
-    }
-
-    rc = flash_area_read(fap, hdr_offset, dst, fap->fa_size - hdr_offset);
-    if (rc != 0) {
-        BOOT_LOG_ERR("flash_area_read failed with %d", rc);
-        goto done;
-    }
-
-done:
-    flash_area_close(fap);
-}
-
-static void do_boot(struct boot_rsp *rsp)
-{
-    void *start;
-
-    BOOT_LOG_INF("br_image_off = 0x%x", rsp->br_image_off);
-    BOOT_LOG_INF("ih_hdr_size = 0x%x", rsp->br_hdr->ih_hdr_size);
-
-    copy_img_to_SRAM(0, rsp->br_hdr->ih_hdr_size);
-
-    start = (void *)(SRAM_BASE_ADDRESS + rsp->br_hdr->ih_hdr_size);
-    ((void (*)(void))start)();
-}
-
-#elif defined(CONFIG_ARC)
-
-/*
- * ARC vector table has a pointer to the reset function as the first entry
- * in the vector table. Assume the vector table is at the start of the image,
- * and jump to reset
- */
-static void do_boot(struct boot_rsp *rsp)
-{
-    struct arc_vector_table {
-        void (*reset)(void); /* Reset vector */
-    } *vt;
-
-#if defined(MCUBOOT_RAM_LOAD)
-    vt = (struct arc_vector_table *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
-#else
-    uintptr_t flash_base;
-    int rc;
-
-    rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
-    if (rc != 0) {
-        BOOT_LOG_DBG("Error getting flash device base. rc = %d", rc);
-        FIH_PANIC;
-    }
-
-    vt = (struct arc_vector_table *)(flash_base + rsp->br_image_off +
-                     rsp->br_hdr->ih_hdr_size);
-#endif
-
-    /* Lock interrupts and dive into the entry point */
-    irq_lock();
-    vt->reset();
-}
-
-#else
-/* Default: Assume entry point is at the very beginning of the image. Simply
- * lock interrupts and jump there. This is the right thing to do for X86 and
- * possibly other platforms.
- */
-static void do_boot(struct boot_rsp *rsp)
-{
-    void *start;
-
-#if defined(MCUBOOT_RAM_LOAD)
-    start = (void *)(rsp->br_hdr->ih_load_addr + rsp->br_hdr->ih_hdr_size);
-#else
-    uintptr_t flash_base;
-    int rc;
-
-    rc = flash_device_base(rsp->br_flash_dev_id, &flash_base);
-    if (rc != 0) {
-        BOOT_LOG_DBG("Error getting flash device base. rc = %d", rc);
-        FIH_PANIC;
-    }
-
-    start = (void *)(flash_base + rsp->br_image_off +
-                     rsp->br_hdr->ih_hdr_size);
-#endif
-
-    /* Lock interrupts and dive into the entry point */
-    irq_lock();
-    ((void (*)(void))start)();
-}
-#endif
 
 #if defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
     !defined(CONFIG_LOG_PROCESS_THREAD) && !defined(CONFIG_LOG_MODE_MINIMAL)

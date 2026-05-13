@@ -73,6 +73,18 @@ target_sources(app PRIVATE
   watchdog.c
 )
 
+if(CONFIG_ARM)
+  target_sources(app PRIVATE arch/arm.c)
+elseif(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)
+  target_sources(app PRIVATE arch/esp32.c)
+elseif(CONFIG_XTENSA)
+  target_sources(app PRIVATE arch/xtensa.c)
+elseif(CONFIG_ARC)
+  target_sources(app PRIVATE arch/arc.c)
+else()
+  target_sources(app PRIVATE arch/default.c)
+endif()
+
 if(CONFIG_BOOT_SHARE_BACKEND_RETENTION)
   zephyr_sources(shared_data.c)
 endif()
