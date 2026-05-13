@@ -63,6 +63,9 @@ enc-ec256 = []
 # Encrypt image in the secondary slot using AES-256-CTR and ECIES-P256
 enc-aes256-ec256 = []
 
+# Encrypt XIP image using ECIES-P256 (independent of slot encryption)
+enc-xip-ec256 = []
+
 # Encrypt image in the secondary slot using ECIES-P256 using Mbed TLS
 enc-ec256-mbedtls = []
 

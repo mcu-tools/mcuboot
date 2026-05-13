@@ -161,7 +161,8 @@ else()
   endif()
 endif()
 
-if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256)
+if(CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P256 OR CONFIG_BOOT_ENCRYPT_EC256
+   OR CONFIG_BOOT_ENCRYPT_IMAGE_XIP)
   # When ECDSA PSA is used, do not pull in additional ASN.1 include
   # directories or sources, as it would cause incorrect header files
   # to be included.
@@ -264,7 +265,8 @@ endif()
 
 if(NOT CONFIG_BOOT_ED25519_PSA AND NOT CONFIG_BOOT_ECDSA_PSA)
   if(CONFIG_BOOT_USE_TINYCRYPT)
-    if(CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519)
+    if(CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519
+       OR CONFIG_BOOT_ENCRYPT_IMAGE_XIP)
       zephyr_sources(
         ${TINYCRYPT_DIR}/source/aes_encrypt.c
         ${TINYCRYPT_DIR}/source/aes_decrypt.c
@@ -277,11 +279,24 @@ if(NOT CONFIG_BOOT_ED25519_PSA AND NOT CONFIG_BOOT_ECDSA_PSA)
 endif()
 
 if(CONFIG_BOOT_USE_TINYCRYPT)
-  if(CONFIG_BOOT_ENCRYPT_EC256 AND NOT CONFIG_BOOT_ECDSA_PSA)
+  if((CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_IMAGE_XIP) AND NOT CONFIG_BOOT_ECDSA_PSA)
     zephyr_sources(
       ${TINYCRYPT_DIR}/source/ecc_dh.c
       )
   endif()
+endif()
+
+if(CONFIG_BOOT_ENCRYPT_IMAGE_XIP)
+  zephyr_library_sources(
+    ${BOOT_DIR}/bootutil/src/xip_enc/xip_enc_keys.c
+    ${BOOT_DIR}/bootutil/src/xip_enc/xip_enc_ecies.c
+    ${BOOT_DIR}/bootutil/src/xip_enc/xip_enc_validate.c
+    ${BOOT_DIR}/bootutil/src/xip_enc/xip_enc_decrypt.c
+  )
+  zephyr_library_include_directories(
+    ${BOOT_DIR}/bootutil/src/xip_enc
+    ${BOOT_DIR}/bootutil/src
+  )
 endif()
 
 if(CONFIG_MCUBOOT_SERIAL)

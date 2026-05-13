@@ -112,12 +112,18 @@ pub trait ManifestGen {
     /// Return the current encryption key
     fn get_enc_key(&self) -> Vec<u8>;
 
+    /// Return the XIP encryption IV (only meaningful for XIP encryption)
+    fn get_enc_iv(&self) -> Vec<u8>;
+
     /// Set the security counter to the specified value.
     fn set_security_counter(&mut self, security_cnt: Option<u32>);
 
     /// Sets the ignore_ram_load_flag so that can be validated when it is missing,
     /// it will not load successfully.
     fn set_ignore_ram_load_flag(&mut self);
+
+    /// Set the slot base address for XIP encryption counter calculation.
+    fn set_base_address(&mut self, _addr: u32) {}
 }
 
 #[derive(Debug, Default)]
@@ -127,11 +133,17 @@ pub struct TlvGen {
     payload: Vec<u8>,
     dependencies: Vec<Dependency>,
     enc_key: Vec<u8>,
+    enc_iv: Vec<u8>,
+    /// Pre-computed ECIES TLV buffer (for XIP: computed in generate_enc_key
+    /// so enc_iv is available before make_tlv)
+    ecies_buf: Vec<u8>,
     /// Should this signature be corrupted.
     gen_corrupted: bool,
     security_cnt: Option<u32>,
     /// Ignore RAM_LOAD flag
     ignore_ram_load_flag: bool,
+    /// Slot base address for XIP encryption counter calculation
+    base_address: u32,
 }
 
 #[derive(Debug)]
@@ -271,6 +283,18 @@ impl TlvGen {
         }
     }
 
+    /// Construct a TLV generator for XIP-encrypted images using ECIES-P256.
+    /// Uses the same ENCEC256 TLV kind as standard ECIES, but the image
+    /// encryption uses offset-based AES-CTR counters for XIP decryption.
+    #[allow(dead_code)]
+    pub fn new_xip_ecies_p256() -> TlvGen {
+        TlvGen {
+            flags: TlvFlags::ENCRYPTED_AES128 as u32,
+            kinds: vec![TlvKinds::SHA256, TlvKinds::ECDSASIG, TlvKinds::ENCEC256],
+            ..Default::default()
+        }
+    }
+
     #[allow(dead_code)]
     pub fn new_ecdsa_ecies_p256(aes_key_size: u32) -> TlvGen {
         let flag = if aes_key_size == 256 {
@@ -321,6 +345,92 @@ impl TlvGen {
         }
     }
 
+    /// Pre-compute the ECIES-P256 extended TLV for XIP mode.
+    /// Returns the complete ECIES buffer (177 bytes) and stores enc_iv.
+    /// Called from generate_enc_key() so enc_iv is available before make_tlv().
+    fn build_ecies_xip(&mut self, rng: &rand::SystemRandom) -> Vec<u8> {
+        let key_bytes = pem::parse(include_bytes!("../../enc-ec256-pub.pem").as_ref()).unwrap();
+        assert_eq!(key_bytes.tag, "PUBLIC KEY");
+
+        let pk = match agreement::EphemeralPrivateKey::generate(&agreement::ECDH_P256, rng) {
+            Ok(v) => v,
+            Err(_) => panic!("Failed to generate ephemeral keypair"),
+        };
+        let pubk = match pk.compute_public_key() {
+            Ok(pubk) => pubk,
+            Err(_) => panic!("Failed computing ephemeral public key"),
+        };
+        let peer_pubk = agreement::UnparsedPublicKey::new(
+            &agreement::ECDH_P256, &key_bytes.contents[26..]);
+
+        #[derive(Debug, PartialEq)]
+        struct OkmLen<T: core::fmt::Debug + PartialEq>(T);
+        impl hkdf::KeyType for OkmLen<usize> {
+            fn len(&self) -> usize { self.0 }
+        }
+
+        // Generate random 32-byte salt for extended TLV
+        let mut xip_salt = vec![0u8; 32];
+        if rng.fill(&mut xip_salt).is_err() {
+            panic!("Failed to generate XIP salt");
+        }
+
+        // Embed base_address in salt[28:32] (little-endian) to match imgtool
+        if self.base_address > 0 {
+            let addr_bytes = self.base_address.to_le_bytes();
+            xip_salt[28..32].copy_from_slice(&addr_bytes);
+        }
+
+        // HKDF: 80 bytes = AES key(16) + HMAC key(32) + key_iv(16) + xip_iv(16)
+        let derived_key = match agreement::agree_ephemeral(
+            pk, &peer_pubk, ring::error::Unspecified, |shared| {
+                let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, &xip_salt);
+                let prk = salt.extract(&shared);
+                let okm = match prk.expand(&[b"MCUBoot_ECIES_v1"], OkmLen(80usize)) {
+                    Ok(okm) => okm,
+                    Err(_) => panic!("Failed building HKDF OKM"),
+                };
+                let mut buf = vec![0u8; 80];
+                match okm.fill(&mut buf) {
+                    Ok(_) => Ok(buf),
+                    Err(_) => panic!("Failed generating HKDF output"),
+                }
+            },
+        ) {
+            Ok(v) => v,
+            Err(_) => panic!("Failed building HKDF"),
+        };
+
+        // AES-CTR encrypt the wrapping key using key_iv from HKDF[48..64]
+        let ctr_iv = GenericArray::clone_from_slice(&derived_key[48..64]);
+        let mut cipherkey = self.enc_key.clone();
+        let aes_key: &GenericArray<u8, U16> = GenericArray::from_slice(&derived_key[..16]);
+        let block = Aes128::new(aes_key);
+        let mut cipher = Aes128Ctr::from_block_cipher(block, &ctr_iv);
+        cipher.apply_keystream(&mut cipherkey);
+
+        // HMAC-SHA256 tag over encrypted key
+        let hmac_key = hmac::Key::new(hmac::HMAC_SHA256, &derived_key[16..48]);
+        let tag = hmac::sign(&hmac_key, &cipherkey);
+
+        // Store xip_iv for image encryption
+        // Only 12 bytes of xip_iv are the nonce; last 4 bytes zeroed
+        // (counter portion -- matches edgeprotecttools convention)
+        let mut iv = vec![0u8; 16];
+        iv[..12].copy_from_slice(&derived_key[64..76]);
+        self.enc_iv = iv;
+
+        // Build 177-byte extended TLV buffer
+        let mut buf = vec![];
+        buf.extend_from_slice(pubk.as_ref());     // 65 bytes: ephemeral public key
+        buf.extend_from_slice(tag.as_ref());       // 32 bytes: HMAC tag
+        buf.extend_from_slice(&cipherkey);         // 16 bytes: encrypted AES key
+        buf.extend_from_slice(&xip_salt);          // 32 bytes: HKDF salt
+        buf.extend_from_slice(&[0u8; 32]);         // 32 bytes: padding
+        assert!(buf.len() == 177);
+
+        buf
+    }
 }
 
 impl ManifestGen for TlvGen {
@@ -418,7 +528,11 @@ impl ManifestGen for TlvGen {
             estimate += 4 + if aes256 { 40 } else { 24 };
         }
         if self.kinds.contains(&TlvKinds::ENCEC256) {
-            estimate += 4 + if aes256 { 129 } else { 113 };
+            if Caps::EncXipEc256.present() && !aes256 {
+                estimate += 4 + 177;  // Extended TLV for XIP
+            } else {
+                estimate += 4 + if aes256 { 129 } else { 113 };
+            }
         }
         if self.kinds.contains(&TlvKinds::ENCX25519) {
             estimate += 4 + if aes256 { 96 } else { 80 };
@@ -431,7 +545,7 @@ impl ManifestGen for TlvGen {
     }
 
     /// Compute the TLV given the specified block of data.
-    fn make_tlv(self: Box<Self>) -> Vec<u8> {
+    fn make_tlv(mut self: Box<Self>) -> Vec<u8> {
         let size_estimate = self.estimate_size();
 
         let mut protected_tlv: Vec<u8> = vec![];
@@ -716,6 +830,15 @@ impl ManifestGen for TlvGen {
         }
 
         if self.kinds.contains(&TlvKinds::ENCEC256) || self.kinds.contains(&TlvKinds::ENCX25519) {
+            // XIP: use pre-computed ECIES envelope from generate_enc_key()
+            if !self.ecies_buf.is_empty() {
+                let buf = core::mem::take(&mut self.ecies_buf);
+                let size = buf.len();
+                assert!(size == 177);
+                result.write_u16::<LittleEndian>(TlvKinds::ENCEC256 as u16).unwrap();
+                result.write_u16::<LittleEndian>(size as u16).unwrap();
+                result.extend_from_slice(&buf);
+            } else {
             let key_bytes = if self.kinds.contains(&TlvKinds::ENCEC256) {
                 pem::parse(include_bytes!("../../enc-ec256-pub.pem").as_ref()).unwrap()
             } else {
@@ -756,16 +879,39 @@ impl ManifestGen for TlvGen {
             let flag = TlvFlags::ENCRYPTED_AES256 as u32;
             let aes256 = (self.get_flags() & flag) == flag;
 
+            let xip_mode = Caps::EncXipEc256.present() && !aes256;
+
+            // For XIP: generate random 32-byte salt for extended TLV
+            let mut xip_salt = vec![0u8; 32];
+            if xip_mode {
+                if rng.fill(&mut xip_salt).is_err() {
+                    panic!("Failed to generate XIP salt");
+                }
+            }
+
             let derived_key = match agreement::agree_ephemeral(
                 pk, &peer_pubk, ring::error::Unspecified, |shared| {
-                    let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, &[]);
+                    let salt_bytes: &[u8] = if xip_mode {
+                        &xip_salt
+                    } else {
+                        &[]
+                    };
+                    let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, salt_bytes);
                     let prk = salt.extract(&shared);
-                    let okm_len = if aes256 { 64 } else { 48 };
+                    // XIP: 80 bytes (key + HMAC + key_iv + xip_iv)
+                    // Standard: 48 or 64 bytes (key + HMAC)
+                    let okm_len = if xip_mode {
+                        80
+                    } else if aes256 {
+                        64
+                    } else {
+                        48
+                    };
                     let okm = match prk.expand(&[b"MCUBoot_ECIES_v1"], OkmLen(okm_len)) {
                         Ok(okm) => okm,
                         Err(_) => panic!("Failed building HKDF OKM"),
                     };
-                    let mut buf = if aes256 { vec![0u8; 64] } else { vec![0u8; 48] };
+                    let mut buf = vec![0u8; okm_len];
                     match okm.fill(&mut buf) {
                         Ok(_) => Ok(buf),
                         Err(_) => panic!("Failed generating HKDF output"),
@@ -776,17 +922,23 @@ impl ManifestGen for TlvGen {
                 Err(_) => panic!("Failed building HKDF"),
             };
 
-            let nonce = GenericArray::from_slice(&[0; 16]);
+            let ctr_iv = if xip_mode {
+                // Extended: key_iv from HKDF bytes [48..64]
+                GenericArray::clone_from_slice(&derived_key[48..64])
+            } else {
+                // Standard: zero IV
+                GenericArray::clone_from_slice(&[0u8; 16])
+            };
             let mut cipherkey = self.get_enc_key();
             if aes256 {
                 let key: &GenericArray<u8, U32> = GenericArray::from_slice(&derived_key[..32]);
                 let block = Aes256::new(&key);
-                let mut cipher = Aes256Ctr::from_block_cipher(block, &nonce);
+                let mut cipher = Aes256Ctr::from_block_cipher(block, &ctr_iv);
                 cipher.apply_keystream(&mut cipherkey);
             } else {
                 let key: &GenericArray<u8, U16> = GenericArray::from_slice(&derived_key[..16]);
                 let block = Aes128::new(&key);
-                let mut cipher = Aes128Ctr::from_block_cipher(block, &nonce);
+                let mut cipher = Aes128Ctr::from_block_cipher(block, &ctr_iv);
                 cipher.apply_keystream(&mut cipherkey);
             }
 
@@ -794,13 +946,37 @@ impl ManifestGen for TlvGen {
             let key = hmac::Key::new(hmac::HMAC_SHA256, &derived_key[size..]);
             let tag = hmac::sign(&key, &cipherkey);
 
+            // Store XIP IV for image encryption
+            if xip_mode {
+                // Only 12 bytes of xip_iv are the nonce; last 4 bytes zeroed
+                let mut iv = vec![0u8; 16];
+                iv[..12].copy_from_slice(&derived_key[64..76]);
+                self.enc_iv = iv;
+            }
+
             let mut buf = vec![];
             buf.append(&mut pubk.as_ref().to_vec());
             buf.append(&mut tag.as_ref().to_vec());
             buf.append(&mut cipherkey);
 
+            if xip_mode {
+                // Extended TLV: append 32-byte salt + 32 bytes padding
+                // (the padding bytes are not used -- the actual key_iv and xip_iv
+                // come from HKDF derivation, not from TLV bytes)
+                buf.extend_from_slice(&xip_salt);
+                // Append 32 zero bytes as placeholder for key_iv + xip_iv
+                // (matching the 177-byte extended format)
+                buf.extend_from_slice(&[0u8; 32]);
+            }
+
             if self.kinds.contains(&TlvKinds::ENCEC256) {
-                let size = if aes256 { 129 } else { 113 };
+                let size = if xip_mode {
+                    177  // Extended: 113 + 32 (salt) + 32 (key_iv + xip_iv placeholder)
+                } else if aes256 {
+                    129
+                } else {
+                    113
+                };
                 assert!(buf.len() == size);
                 result.write_u16::<LittleEndian>(TlvKinds::ENCEC256 as u16).unwrap();
                 result.write_u16::<LittleEndian>(size as u16).unwrap();
@@ -811,6 +987,7 @@ impl ManifestGen for TlvGen {
                 result.write_u16::<LittleEndian>(size as u16).unwrap();
             }
             result.extend_from_slice(&buf);
+            } // else (non-XIP ECIES path)
         }
 
         // Patch the size back into the TLV header.
@@ -839,6 +1016,15 @@ impl ManifestGen for TlvGen {
         }
         info!("New encryption key: {:02x?}", buf);
         self.enc_key = buf;
+
+        // For XIP mode: pre-compute the ECIES envelope now so that enc_iv
+        // is available via get_enc_iv() before make_tlv() is called.
+        // make_tlv() will emit self.ecies_buf directly instead of recomputing.
+        let xip_mode = Caps::EncXipEc256.present() && !aes256
+            && self.kinds.contains(&TlvKinds::ENCEC256);
+        if xip_mode {
+            self.ecies_buf = self.build_ecies_xip(&rng);
+        }
     }
 
     fn get_enc_key(&self) -> Vec<u8> {
@@ -848,12 +1034,20 @@ impl ManifestGen for TlvGen {
         self.enc_key.clone()
     }
 
+    fn get_enc_iv(&self) -> Vec<u8> {
+        self.enc_iv.clone()
+    }
+
     fn set_security_counter(&mut self, security_cnt: Option<u32>) {
         self.security_cnt = security_cnt;
     }
 
     fn set_ignore_ram_load_flag(&mut self) {
         self.ignore_ram_load_flag = true;
+    }
+
+    fn set_base_address(&mut self, addr: u32) {
+        self.base_address = addr;
     }
 }
 
