@@ -19,6 +19,11 @@
 
 #include <bootutil/sign_key.h>
 
+#if defined(CONFIG_BOOT_GEN_ENC_KEY)
+#include <bootutil/bootutil_macros.h>
+#include <sysflash/sysflash.h>
+#endif
+
 /*
  * Even though this is in principle a Zephyr-specific file, the
  * simulator builds it and uses it as well. Because of that, we can't
@@ -76,6 +81,14 @@ struct bootutil_key bootutil_keys[1] = {
 const int bootutil_key_cnt = 1;
 #endif /* !MCUBOOT_HW_KEY */
 
+#if defined(CONFIG_BOOT_GEN_ENC_KEY)
+static unsigned int enc_priv_key_len=MCUBOOT_PRIV_ENC_KEY_LEN;
+
+const struct bootutil_key bootutil_enc_key = {
+    .key = (const uint8_t*)ALIGN_UP(KEY_STORAGE_BASE, MCUBOOT_BOOT_MAX_ALIGN),
+    .len = &enc_priv_key_len,
+};
+#else
 #if defined(MCUBOOT_ENCRYPT_RSA) || defined(MCUBOOT_ENCRYPT_X25519) || defined(MCUBOOT_ENCRYPT_EC256)
 extern const unsigned char enc_priv_key[];
 extern unsigned int enc_priv_key_len;
@@ -85,4 +98,5 @@ const struct bootutil_key bootutil_enc_key = {
 };
 #elif defined(MCUBOOT_ENCRYPT_KW)
 #error "Encrypted images with AES-KW is not implemented yet."
+#endif
 #endif

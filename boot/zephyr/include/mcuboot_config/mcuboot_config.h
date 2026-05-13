@@ -3,6 +3,7 @@
  * Copyright (c) 2019-2020 Arm Limited
  * Copyright (c) 2019-2020 Linaro Limited
  * Copyright (c) 2023 Nordic Semiconductor ASA
+ * Copyright (c) 2026 WIKA Alexander Wiegand SE & Co. KG
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -149,6 +150,11 @@
 
 #ifdef CONFIG_LOG
 #define MCUBOOT_HAVE_LOGGING 1
+#endif
+
+#ifdef CONFIG_BOOT_GEN_ENC_KEY
+#define MCUBOOT_GEN_ENC_KEY
+#define MCUBOOT_PRIV_ENC_KEY_LEN CONFIG_BOOT_PRIV_ENC_KEY_LEN
 #endif
 
 /* Enable/disable non-protected TLV check against allow list */
