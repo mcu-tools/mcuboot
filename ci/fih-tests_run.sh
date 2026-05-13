@@ -23,7 +23,7 @@ source $(dirname "$0")/fih-tests_config.sh
 pushd ..
 git clone https://github.com/mcu-tools/trusted-firmware-m
 pushd trusted-firmware-m
-git checkout eb8ff0db7d657b77abcd0262d5bf7f38eb1e1cdc
+git checkout $TFM_TAG
 source lib/ext/tf-m-tests/version.txt
 popd
 git clone https://github.com/mcu-tools/tf-m-tests.git

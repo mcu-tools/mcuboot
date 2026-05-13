@@ -57,6 +57,16 @@ For ECDSA256 these commands are similar.
 openssl ecparam -name prime256v1 -genkey -noout -out image_sign.pem
 openssl ec -in image_sign.pem -pubout -outform DER -out image_sign_pub.der
 
+Note that the bootloader build does not require the private key: the
+exported public-key PEM (produced above, or via
+`imgtool getpub -k image_sign.pem -e pem`) is itself a valid input to
+`imgtool getpub`, and can be used as the
+`CONFIG_BOOT_SIGNATURE_KEY_FILE` setting for a Zephyr-based bootloader
+build. This supports a development workflow
+in which the production signing team releases only the public key,
+and the private key is never present on developer workstations.
+Running `imgtool sign` requires the private key.
+
 ## Creating a key package
 
 xxd -i image_sign_pub.der image_sign_pub.c.import

@@ -57,12 +57,6 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot);
  */
 int flash_area_id_to_multi_image_slot(int image_index, int area_id);
 
-/* Retrieve the flash sector a given offset belongs to.
- *
- * Returns 0 on success, or an error code on failure.
- */
-int flash_area_sector_from_off(off_t off, struct flash_sector *sector);
-
 static inline uint32_t flash_area_get_off(const struct flash_area *fa)
 {
 	return (uint32_t)fa->fa_off;

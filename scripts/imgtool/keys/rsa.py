@@ -4,13 +4,15 @@ RSA Key management
 
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric.padding import MGF1, PSS
 from cryptography.hazmat.primitives.hashes import SHA256
 
-from .general import KeyClass
+from .general import KeyClass, PayloadSigner, override
 from .privatebytes import PrivateBytesMixin
 
 # Sizes that bootutil will recognize
@@ -81,7 +83,7 @@ class RSAPublic(KeyClass):
                         algorithm=SHA256())
 
 
-class RSA(RSAPublic, PrivateBytesMixin):
+class RSA(RSAPublic, PrivateBytesMixin, PayloadSigner):
     """
     Wrapper around an RSA key, with imgtool support.
     """
@@ -91,7 +93,7 @@ class RSA(RSAPublic, PrivateBytesMixin):
         self.key = key
 
     @staticmethod
-    def generate(key_size=2048):
+    def generate(key_size: int = 2048) -> RSA:
         if key_size not in RSA_KEY_SIZES:
             raise RSAUsageError(f"Key size {key_size} is not supported by MCUboot"
                                 )
@@ -163,7 +165,8 @@ class RSA(RSAPublic, PrivateBytesMixin):
         with open(path, 'wb') as f:
             f.write(pem)
 
-    def sign(self, payload):
+    @override
+    def sign(self, payload: bytes) -> bytes:
         # The verification code only allows the salt length to be the
         # same as the hash length, 32.
         return self.key.sign(

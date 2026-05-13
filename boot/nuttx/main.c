@@ -36,23 +36,6 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-/* Should we perform board-specific driver initialization?  There are two
- * ways that board initialization can occur:  1) automatically via
- * board_late_initialize() during bootupif CONFIG_BOARD_LATE_INITIALIZE
- * or 2).
- * via a call to boardctl() if the interface is enabled
- * (CONFIG_BOARDCTL=y).
- * If this task is running as an NSH built-in application, then that
- * initialization has probably already been performed otherwise we do it
- * here.
- */
-
-#undef NEED_BOARDINIT
-
-#if defined(CONFIG_BOARDCTL) && !defined(CONFIG_NSH_ARCHINIT)
-#  define NEED_BOARDINIT 1
-#endif
-
 /****************************************************************************
  * Private Functions
  ****************************************************************************/
@@ -100,16 +83,10 @@ int main(int argc, FAR char *argv[])
   struct boot_rsp rsp;
   FIH_DECLARE(fih_rc, FIH_FAILURE);
 
-#ifdef NEED_BOARDINIT
-  /* Perform architecture-specific initialization (if configured) */
-
-  boardctl(BOARDIOC_INIT, 0);
-
 #ifdef CONFIG_BOARDCTL_FINALINIT
   /* Perform architecture-specific final-initialization (if configured) */
   
   boardctl(BOARDIOC_FINALINIT, 0);
-#endif
 #endif
 
   syslog(LOG_INFO, "*** Booting MCUboot build %s ***\n", CONFIG_MCUBOOT_VERSION);

@@ -41,10 +41,15 @@ the key file.
 
     ./scripts/imgtool.py getpub -k filename.pem
 
-will extract the public key from the given private key file, and
-output it as a C data structure.  You can replace or insert this code
-into the key file. However, when the `MCUBOOT_HW_KEY` config option is
-enabled, this last step is unnecessary and can be skipped.
+will extract the public key from the given key file, and output it as
+a C data structure.  The input may be a keypair PEM (containing both
+private and public material) or a public-key-only PEM: `getpub`
+dispatches on the key format and requires no private key material.
+This matters for production workflows where the signing private key
+is held only by a release team, and the bootloader build consumes an
+exported public-key PEM.  You can replace or insert the emitted code
+into the key file. However, when the `MCUBOOT_HW_KEY` config option
+is enabled, this last step is unnecessary and can be skipped.
 
 ## [Signing images](#signing-images)
 

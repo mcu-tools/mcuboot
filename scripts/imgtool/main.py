@@ -516,6 +516,11 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
         raise click.UsageError(
             "--xip-base-address can only be used with --encrypt-xip")
 
+    if key is not None and not isinstance(key, (keys.PayloadSigner, keys.DigestSigner)):
+        raise click.UsageError(
+            "Cannot sign with a public-only PEM; signing requires the "
+            "private key.")
+
     if enckey and key and ((isinstance(key, keys.ECDSA256P1) and
          not isinstance(enckey, keys.ECDSA256P1Public))
        or (isinstance(key, keys.ECDSA384P1) and

@@ -31,12 +31,7 @@
 /*
  * Sanity check the target support.
  */
-#if (!defined(CONFIG_XTENSA) && !defined(CONFIG_SOC_SERIES_NRF54H) && \
-    !DT_HAS_CHOSEN(zephyr_flash_controller)) || \
-    (defined(CONFIG_XTENSA) && !DT_NODE_EXISTS(DT_INST(0, jedec_spi_nor)) && \
-    !defined(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)) || \
-    (defined(CONFIG_SOC_SERIES_NRF54H) && !DT_HAS_CHOSEN(zephyr_flash)) || \
-    !defined(FLASH_ALIGN) ||                  \
+#if !defined(FLASH_ALIGN) || \
     !(PARTITION_EXISTS(slot0_partition)) || \
     !(PARTITION_EXISTS(slot1_partition) || CONFIG_SINGLE_APPLICATION_SLOT) || \
     (defined(CONFIG_BOOT_SWAP_USING_SCRATCH) && !PARTITION_EXISTS(scratch_partition))
