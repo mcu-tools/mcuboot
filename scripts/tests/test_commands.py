@@ -28,6 +28,7 @@ COMMANDS = [
     "getpub",
     "getpubhash",
     "keygen",
+    "keyinfo",
     "sign",
     "verify",
     "version",

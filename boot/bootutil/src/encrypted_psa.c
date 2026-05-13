@@ -16,8 +16,26 @@
 #define MBEDTLS_ASN1_PARSE_C
 
 #include "bootutil/crypto/sha.h"
+#include "mbedtls/build_info.h"
 #include "mbedtls/oid.h"
 #include "mbedtls/asn1.h"
+
+/*
+ * In Mbed TLS 4.x, MBEDTLS_OID_EC_ALG_UNRESTRICTED and
+ * MBEDTLS_OID_EC_GRP_SECP256R1 were moved from the public
+ * `mbedtls/oid.h` to the private `tf-psa-crypto/utilities/crypto_oid.h`.
+ * Rather than pull a private header, define the raw OID byte strings
+ * locally when the public macros are not available. Values are taken
+ * from X9.62 / SEC2:
+ *   id-ecPublicKey (1.2.840.10045.2.1)       → {0x2a,0x86,0x48,0xce,0x3d,0x02,0x01}
+ *   secp256r1      (1.2.840.10045.3.1.7)     → {0x2a,0x86,0x48,0xce,0x3d,0x03,0x01,0x07}
+ */
+#if !defined(MBEDTLS_OID_EC_ALG_UNRESTRICTED)
+#define MBEDTLS_OID_EC_ALG_UNRESTRICTED "\x2a\x86\x48\xce\x3d\x02\x01"
+#endif
+#if !defined(MBEDTLS_OID_EC_GRP_SECP256R1)
+#define MBEDTLS_OID_EC_GRP_SECP256R1    "\x2a\x86\x48\xce\x3d\x03\x01\x07"
+#endif
 
 #include "bootutil/image.h"
 #include "bootutil/enc_key.h"
@@ -331,7 +349,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
     /* Only info, no salt */
     psa_ret = psa_key_derivation_input_bytes(&key_do, PSA_KEY_DERIVATION_INPUT_INFO,
-                                             "MCUBoot_ECIES_v1", 16);
+                                             (const uint8_t *)"MCUBoot_ECIES_v1", 16);
     if (psa_ret != PSA_SUCCESS) {
         psa_cleanup_ret = psa_key_derivation_abort(&key_do);
         if (psa_cleanup_ret != PSA_SUCCESS) {
@@ -433,6 +451,9 @@ int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
     psa_cipher_operation_t psa_op;
     size_t elen = 0;	/* Decrypted length */
 
+    /* PSA cipher API handles CTR block alignment internally. */
+    (void)blk_off;
+
     /* Fixme: calling psa_crypto_init multiple times is not a problem,
      * yet the code here is only present because there is not general
      * crypto init. */
@@ -489,6 +510,9 @@ int bootutil_aes_ctr_decrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
     const psa_key_id_t kid = ctx->key;
     psa_cipher_operation_t psa_op;
     size_t dlen = 0;	/* Decrypted length */
+
+    /* PSA cipher API handles CTR block alignment internally. */
+    (void)blk_off;
 
     /* Fixme: the init should already happen before calling the function, but
      * somehow it does not, for example when recovering in swap.

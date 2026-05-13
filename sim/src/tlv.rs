@@ -20,6 +20,8 @@ use byteorder::{
 use cipher::FromBlockCipher;
 use crate::caps::Caps;
 use crate::image::ImageVersion;
+#[cfg(feature = "sig-lms")]
+use hybrid_array::Array;
 use log::info;
 use ring::{digest, rand, agreement, hkdf, hmac};
 use ring::rand::SecureRandom;
@@ -42,8 +44,88 @@ use cipher::{
     generic_array::GenericArray,
     StreamCipher,
 };
+#[cfg(feature = "sig-lms")]
+use lms_signature::{
+    lms::{LmsSha256M32H10, SigningKey as LmsSigningKey},
+    ots::LmsOtsSha256N32W8,
+};
 use mcuboot_sys::c;
+#[cfg(feature = "sig-lms")]
+use signature::RandomizedSignerMut;
 use typenum::{U16, U32};
+
+// LMS scheme used by the simulator. Mbed TLS 4.x verifies only H10/W8,
+// so the bootloader-side verifier dictates this choice. Rust-side H10
+// keygen runs in ~370ms (release) vs pyhsslms's ~3.9s — paid once per
+// process when TlvGen lazily initializes its shared signing key.
+#[cfg(feature = "sig-lms")]
+type LmsScheme = LmsSha256M32H10<LmsOtsSha256N32W8>;
+
+// RFC 8554 §5.3 public key: u32 lms_type | u32 lmots_type | I(16) | T[1](32).
+#[allow(dead_code)]
+const LMS_PUB_LEN: usize = 56;
+// RFC 8554 §5.4 signature: q(4) | LMOTS sig (4 + 32 + 34*32 for W8) | lms_type(4) | path(M*H).
+// For H10/W8 the total is 8 + 1124 + 32*10 = 1452 bytes.
+const LMS_SIG_LEN: usize = 1452;
+
+// LMS keys are stateful — a private key cannot be reused across processes
+// without risking signature-index reuse — so the simulator generates a
+// fresh keypair on first access and shares it process-wide. The 56-byte
+// public key is pushed into keys.c's bootutil_keys[] buffer at the same
+// time, so the bootloader's verification path can find it.
+//
+// The H10 cap of 1024 signatures is not enough for this test matrix:
+// each #[test] iterates over 10 devices × 4 alignments × 2 erased values
+// = 80 configurations, signing primary + secondary in each, so a single
+// test can chew through ~160 indices. The full sig-lms matrix easily
+// runs past 1024.
+//
+// We sidestep this by saving the 16-byte identifier and 32-byte seed
+// alongside the SigningKey, and regenerating the key from those same
+// inputs whenever it exhausts. RFC 8554's public-key derivation is
+// deterministic in (id, seed), so the regenerated SigningKey produces
+// the same Merkle-root public-key bytes — bootutil_keys[] is set once
+// at first use and never changes, and previously-signed images still
+// verify against the same key.
+//
+// This deliberately re-uses OTS leaves across the regen, which is a
+// security violation in production (the OTS construction relies on
+// each leaf signing exactly once; reuse leaks enough hash chain values
+// for an adversary to forge). For mcuboot's sim it's fine — these
+// images never leave the test harness, and the goal is wire-format
+// round-trip, not forgery resistance. Each regen costs ~370 ms (Merkle
+// tree rebuild); a full test run hits this a handful of times.
+#[cfg(feature = "sig-lms")]
+extern "C" {
+    fn mcuboot_sim_set_lms_pubkey(pk: *const u8);
+}
+
+#[cfg(feature = "sig-lms")]
+struct LmsKey {
+    id: [u8; 16],
+    seed: [u8; 32],
+    sk: LmsSigningKey<LmsScheme>,
+}
+
+#[cfg(feature = "sig-lms")]
+fn lms_key() -> &'static std::sync::Mutex<LmsKey> {
+    use rand_core::Rng;
+    use std::sync::{Mutex, OnceLock};
+    static LMS_KEY: OnceLock<Mutex<LmsKey>> = OnceLock::new();
+    LMS_KEY.get_or_init(|| {
+        let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
+        let mut id = [0u8; 16];
+        let mut seed = [0u8; 32];
+        rng.fill_bytes(&mut id);
+        rng.fill_bytes(&mut seed);
+        let sk = LmsSigningKey::<LmsScheme>::new_from_seed(id, &seed[..])
+            .expect("LMS new_from_seed should not fail for valid lengths");
+        let pub_arr: Array<u8, _> = sk.public().into();
+        assert_eq!(pub_arr.as_slice().len(), LMS_PUB_LEN);
+        unsafe { mcuboot_sim_set_lms_pubkey(pub_arr.as_slice().as_ptr()) };
+        Mutex::new(LmsKey { id, seed, sk })
+    })
+}
 
 #[repr(u16)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -56,6 +138,7 @@ pub enum TlvKinds {
     ECDSASIG = 0x22,
     RSA3072 = 0x23,
     ED25519 = 0x24,
+    LMS = 0x26,
     ENCRSA2048 = 0x30,
     ENCKW = 0x31,
     ENCEC256 = 0x32,
@@ -314,6 +397,19 @@ impl TlvGen {
     }
 
     #[allow(dead_code)]
+    pub fn new_lms() -> TlvGen {
+        // The signing key itself is a process-wide singleton (see lms_key());
+        // construction here is purely a marker that this image should carry
+        // an LMS signature. SHA256 is included because the bootloader
+        // requires the hash TLV and LMS itself signs that hash (see the
+        // hash-and-sign rationale in make_tlv's LMS branch).
+        TlvGen {
+            kinds: vec![TlvKinds::SHA256, TlvKinds::LMS],
+            ..Default::default()
+        }
+    }
+
+    #[allow(dead_code)]
     pub fn new_sec_cnt() -> TlvGen {
        TlvGen {
             kinds: vec![TlvKinds::SHA256, TlvKinds::SECCNT],
@@ -405,6 +501,10 @@ impl ManifestGen for TlvGen {
                 estimate += 4 + 32;  // SHA256
                 estimate += 4 + 72;  // ECDSA256 (varies)
             }
+        }
+        if self.kinds.contains(&TlvKinds::LMS) {
+            estimate += 4 + 32;             // KEYHASH (sha256 over the 56-byte pubkey)
+            estimate += 4 + LMS_SIG_LEN;    // LMS signature
         }
 
         // Estimate encryption.
@@ -670,6 +770,54 @@ impl ManifestGen for TlvGen {
             let signature = signature.as_ref().to_vec();
             result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
             result.extend_from_slice(signature.as_ref());
+        }
+
+        #[cfg(feature = "sig-lms")]
+        if self.kinds.contains(&TlvKinds::LMS) {
+            let mut key = lms_key().lock().unwrap();
+
+            // 56-byte serialized public key per RFC 8554 §5.3.
+            let pub_arr: Array<u8, _> = key.sk.public().into();
+            let pub_bytes = pub_arr.as_slice();
+            assert_eq!(pub_bytes.len(), LMS_PUB_LEN);
+
+            // KEYHASH TLV: SHA-256 over the 56-byte public key.
+            let keyhash = digest::digest(&digest::SHA256, pub_bytes);
+            let keyhash = keyhash.as_ref();
+            assert_eq!(keyhash.len(), 32);
+            result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
+            result.write_u16::<LittleEndian>(32).unwrap();
+            result.extend_from_slice(keyhash);
+
+            // RFC 8554 defines LMS over the message bytes, but mcuboot
+            // signs SHA-256(payload) instead: a bootloader can't always
+            // load a full image into RAM (e.g. external QSPI flash), and
+            // the mbedtls LMS verify API takes a contiguous buffer. imgtool
+            // does the same — sign_digest() receives the SHA-256 of the
+            // payload. The cost is robustness against a future SHA-256
+            // collision attack; LMS's internal hash is also SHA-256, so
+            // the practical exposure is unchanged.
+            let payload_hash = digest::digest(&digest::SHA256, &sig_payload);
+            let mut rng = rand_core::UnwrapErr(getrandom::SysRng);
+            let sig = match key.sk.try_sign_with_rng(&mut rng, payload_hash.as_ref()) {
+                Ok(s) => s,
+                Err(_) => {
+                    // OTS leaves exhausted (q reached 1024). Rebuild the
+                    // SigningKey from the saved (id, seed): same Merkle
+                    // root, q reset to 0. Costs ~370ms to regenerate the
+                    // tree. See lms_key() for the security caveat.
+                    key.sk = LmsSigningKey::<LmsScheme>::new_from_seed(key.id, &key.seed[..])
+                        .expect("LMS new_from_seed should not fail for valid lengths");
+                    key.sk.try_sign_with_rng(&mut rng, payload_hash.as_ref())
+                        .expect("post-regen LMS signing must succeed")
+                }
+            };
+            let sig_bytes: Vec<u8> = sig.into();
+            assert_eq!(sig_bytes.len(), LMS_SIG_LEN);
+
+            result.write_u16::<LittleEndian>(TlvKinds::LMS as u16).unwrap();
+            result.write_u16::<LittleEndian>(LMS_SIG_LEN as u16).unwrap();
+            result.extend_from_slice(&sig_bytes);
         }
 
         if self.kinds.contains(&TlvKinds::ENCRSA2048) {

@@ -56,6 +56,12 @@ class FileHandler:
 
 
 class KeyClass:
+    def key_info(self):
+        """Return a list of (label, value) string pairs that describe this
+        key for human-readable display. Subclasses can override to add
+        type-specific detail (e.g. LMS signature usage)."""
+        return [("Key type", self.sig_type())]
+
     def _emit(self, header, trailer, encoded_bytes, indent, file=sys.stdout,
               len_format=None):
         with FileHandler(file, 'w') as file:

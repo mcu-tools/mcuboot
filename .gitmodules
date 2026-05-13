@@ -1,5 +1,5 @@
 [submodule "sim/mbedtls"]
-	path = ext/mbedtls
+	path = ext/mbedtls-3.6.0
 	url = https://github.com/ARMmbed/mbedtls
 [submodule "boot/cypress/libs/mtb-pdl-cat1"]
 	path = boot/cypress/libs/mtb-pdl-cat1
@@ -19,3 +19,6 @@
 [submodule "boot/cypress/libs/cy-mbedtls-acceleration"]
 	path = boot/cypress/libs/cy-mbedtls-acceleration
 	url = https://github.com/cypresssemiconductorco/cy-mbedtls-acceleration.git
+[submodule "ext/mbedtls-4.1.0"]
+	path = ext/mbedtls-4.1.0
+	url = https://github.com/Mbed-TLS/mbedtls.git
