@@ -31,21 +31,49 @@ the rest of the images too (for example, `slot2_partition` and
 `slot3_partition` for Image 1).
 
 The flash partitions are typically defined in the Zephyr boards folder, in a
-file named `boards/<arch>/<board>/<board>.dts`. An example `.dts` file with
+file named `boards/<vendor>/<board>/<board>.dts`. An example `.dts` file with
 flash partitions defined is the frdm_k64f's in
 `boards/nxp/frdm_k64f/frdm_k64f.dts`. Make sure the DT node labels in your board's
 `.dts` file match the ones used there.
 
 ## Installing requirements and dependencies
 
+MCUboot is included as part of Zephyr. Follow the getting started guide for the
+version of Zephyr you wish to use to get Zephyr itself, including MCUboot.
 Install additional packages required for development with MCUboot:
 
 ```
-  cd ~/mcuboot  # or to your directory where MCUboot is cloned
+  cd ~/zephyrproject-rtos/bootloader/mcuboot  # or to your directory where MCUboot is
   pip3 install --user -r scripts/requirements.txt
 ```
 
-## Building the bootloader itself
+## Building the bootloader and application together (sysbuild)
+
+Sysbuild is a CMake project in zephyr which allows for building multiple Zephyr
+images as part of a single build. It has configuration for the sysbuild image
+itself which can be used to build other images or set configuration, including
+MCUboot configuration. To enable MCUboot support in a project, one simply needs
+to enable the ``SB_CONFIG_BOOTLOADER_MCUBOOT`` sysbuild Kconfig, as an example
+using hello world, `samples/hello_world` in the Zephyr tree:
+
+```
+  cd samples/hello_world
+  west build -b <board> --sysbuild -- -DSB_CONFIG_BOOTLOADER_MCUBOOT=y
+```
+
+This will build MCUboot and hello world, including enabling the MCUboot Kconfigs
+in the hello world application to allow MCUboot to build it. Sysbuild is the
+recommended way of building an application with MCUboot support in Zephyr,
+though MCUboot itself (and the application) can also be built manually, as
+described below.
+
+See the `share/sysbuild/images/bootloader/Kconfig` file in the Zephyr tree for
+sysbuild Kconfig options that can be used to configure MCUboot in a project,
+including mode of MCUboot, the signing/encryption keys and other options. These
+options will be propagated to both MCUboot and the application by sysbuild
+automatically.
+
+## Building the bootloader itself (manually)
 
 The bootloader is an ordinary Zephyr application, at least from
 Zephyr's point of view.  There is a bit of configuration that needs to
@@ -54,8 +82,7 @@ the `CMakeLists.txt` file in boot/zephyr.  There are comments there for
 guidance.  It is important to select a signature algorithm, and decide
 if the primary slot should be validated on every boot.
 
-To build MCUboot, create a build directory in boot/zephyr, and build
-it as usual:
+To build MCUboot, use west:
 
 ```
   cd boot/zephyr
@@ -77,7 +104,7 @@ on the target and flash tool used, this might erase the whole of the flash
 memory (mass erase) or only the sectors where the bootloader resides prior to
 programming the bootloader image itself.
 
-## Building applications for the bootloader
+## Building applications for the bootloader (manually)
 
 In addition to flash partitions in DTS, some additional configuration
 is required to build applications for MCUboot.
@@ -86,7 +113,7 @@ This is handled internally by the Zephyr configuration system and is wrapped
 in the `CONFIG_BOOTLOADER_MCUBOOT` Kconfig variable, which must be enabled in
 the application's `prj.conf` file.
 
-The directory `samples/zephyr/hello-world` in the MCUboot tree contains
+The directory `samples/subsys/mgmt/mcumgr/smp_svr` in the Zephyr tree contains
 a simple application with everything you need. You can try it on your
 board and then just make a copy of it to get started on your own
 application; see samples/zephyr/README.md for a tutorial.
@@ -98,7 +125,7 @@ placement and generation in order for an application to be bootable by MCUboot.
 
 With this, build the application as your normally would.
 
-### Signing the application
+### Signing the application (manually)
 
 In order to upgrade to an image (or even boot it, if
 `MCUBOOT_VALIDATE_PRIMARY_SLOT` is enabled), the images must be signed.
@@ -107,7 +134,11 @@ keys.  It is important to stress that these should never be used for
 production, since the private key is publicly available in this
 repository.  See below on how to make your own signatures.
 
-Images can be signed with the `scripts/imgtool.py` script.  It is best
+With Zephyr images, they will be signed automatically by the build system if
+`CONFIG_MCUBOOT_SIGNATURE_KEY_FILE` is set to the private key signing file, so
+no manual steps are necessary in this case.
+
+To sign images manually, use the `scripts/imgtool.py` script.  It is best
 to look at `samples/zephyr/Makefile` for examples on how to use this.
 
 ### Flashing the application
@@ -171,6 +202,11 @@ example) can be used to sign images.
 
 ## Using swap-using-scratch flash algorithm
 
+Note: This mode is not recommended for use and swap-using-offset or
+swap-using-move are recommended instead. Swap-using-scratch is required to be
+used if the primary and secondary slots have different sector sizes, or if
+either slot's sector sizes are not uniform over the whole NVM area.
+
 To use the swap-using-scratch flash algorithm, a scratch partition needs to be
 present for the target board which is used for holding the data being swapped
 from both slots, this section must be at least as big as the largest sector
@@ -185,20 +221,27 @@ board thus would involve updating
 
 ```
     boot_partition: partition@0 {
-        label = "mcuboot";
-        reg = <0x00000000 0xc000>;
+            compatible = "zephyr,mapped-partition";
+            label = "mcuboot";
+            reg = <0x00000000 0xc000>;
     };
+
     slot0_partition: partition@c000 {
-        label = "image-0";
-        reg = <0x0000C000 0x37000>;
+            compatible = "zephyr,mapped-partition";
+            label = "image-0";
+            reg = <0x0000C000 0x37000>;
     };
+
     slot1_partition: partition@43000 {
-        label = "image-1";
-        reg = <0x00043000 0x37000>;
+            compatible = "zephyr,mapped-partition";
+            label = "image-1";
+            reg = <0x00043000 0x37000>;
     };
+
     scratch_partition: partition@7a000 {
-        label = "image-scratch";
-        reg = <0x0007a000 0x00006000>;
+            compatible = "zephyr,mapped-partition";
+            label = "image-scratch";
+            reg = <0x0007a000 0x00006000>;
     };
 ```
 
