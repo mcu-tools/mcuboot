@@ -15,7 +15,12 @@
 #include "bootsim.h"
 
 #ifdef MCUBOOT_ENCRYPT_RSA
+#include "bootutil/crypto/common.h"
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include "mbedtls/private/rsa.h"
+#else
 #include "mbedtls/rsa.h"
+#endif
 #include "mbedtls/asn1.h"
 #endif
 
@@ -25,7 +30,6 @@
 
 #define BOOT_LOG_LEVEL BOOT_LOG_LEVEL_ERROR
 #include <bootutil/bootutil_log.h>
-#include "bootutil/crypto/common.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 

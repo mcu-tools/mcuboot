@@ -18,7 +18,12 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "bootutil/crypto/common.h"
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include <mbedtls/private/ecdsa.h>
+#else
 #include <mbedtls/ecdsa.h>
+#endif
 #include <mbedtls/asn1.h>
 #include <mbedtls/oid.h>
 

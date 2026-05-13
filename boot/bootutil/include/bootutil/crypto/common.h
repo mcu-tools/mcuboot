@@ -7,6 +7,24 @@
 #ifndef __BOOTUTIL_CRYPTO_COMMON_H__
 #define __BOOTUTIL_CRYPTO_COMMON_H__
 
+/*
+ * TF-PSA-Crypto keeps several legacy crypto declarations under the
+ * mbedtls private include tree (e.g. mbedtls/private/sha256.h).
+ * Classic Mbed TLS exposes the same APIs under mbedtls/sha256.h.
+ * Unless the build forces MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR to 0 or 1,
+ * detect at preprocess time whether the private sha256 header exists.
+ */
+#if defined(MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR)
+#elif defined(__has_include)
+#if __has_include(<mbedtls/private/sha256.h>)
+#define MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR 1
+#else
+#define MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR 0
+#endif
+#else
+#define MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR 0
+#endif
+
 /* The check below can be performed even for those cases
  * where MCUBOOT_USE_MBED_TLS has not been defined
  */

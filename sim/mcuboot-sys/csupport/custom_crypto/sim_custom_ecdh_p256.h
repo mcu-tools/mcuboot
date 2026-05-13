@@ -15,10 +15,16 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "bootutil/crypto/common.h"
 #include <mbedtls/build_info.h>
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include <mbedtls/private/ecp.h>
+#include <mbedtls/private/bignum.h>
+#else
 #include <mbedtls/ecp.h>
-#include <mbedtls/ecdh.h>
 #include <mbedtls/bignum.h>
+#endif
+#include <mbedtls/ecdh.h>
 
 #ifdef __cplusplus
 extern "C" {

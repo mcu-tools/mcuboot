@@ -43,8 +43,12 @@
 
 #elif defined(MCUBOOT_USE_MBED_TLS)
 
-#include "mbedtls/rsa.h"
-#include "mbedtls/version.h"
+#include "bootutil/crypto/common.h"
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include "mbedtls/private/rsa.h"
+#else
+#include <mbedtls/rsa.h>
+#endif
 #if defined(BOOTUTIL_CRYPTO_RSA_CRYPT_ENABLED)
 #if MBEDTLS_VERSION_NUMBER >= 0x03000000
 #include "rsa_alt_helpers.h"
@@ -53,7 +57,6 @@
 #endif
 #endif /* BOOTUTIL_CRYPTO_RSA_CRYPT_ENABLED */
 #include "mbedtls/asn1.h"
-#include "bootutil/crypto/common.h"
 
 #endif /* MCUBOOT_USE_MBED_TLS */
 
