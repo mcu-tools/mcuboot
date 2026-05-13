@@ -3,3 +3,5 @@
   into.
 - Manually setting the `BOOT_IMAGE_EXECUTABLE_RAM_START` and
   `BOOT_IMAGE_EXECUTABLE_RAM_SIZE` Kconfigs is now deprecated.
+- `CONFIG_MULTIPLE_EXECUTABLE_RAM_REGIONS_DEFAULT_FILE` has been
+  removed as this configuration is now done using devicetree.
