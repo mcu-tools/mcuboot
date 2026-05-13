@@ -5,16 +5,16 @@
  * Copyright (c) 2020 Arm Limited
  */
 
+#include "mcuboot_config/mcuboot_config.h"
+
+#ifdef MCUBOOT_ENC_IMAGES
+
 #include <assert.h>
 #include "bootutil/image.h"
 #include <../src/bootutil_priv.h>
 #include "bootutil/bootutil_log.h"
 #include "bootutil/bootutil_public.h"
 #include "bootutil/fault_injection_hardening.h"
-
-#include "mcuboot_config/mcuboot_config.h"
-
-#ifdef MCUBOOT_ENC_IMAGES
 
 BOOT_LOG_MODULE_DECLARE(serial_encryption);
 
