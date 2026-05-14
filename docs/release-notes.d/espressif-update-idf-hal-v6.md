@@ -1,2 +1,3 @@
 - Update IDF HAL version used by Espressif Port to v6.0.0.
 - Add ESP32-C5 initial support.
+- Add ESP32-C61 initial support.

@@ -21,10 +21,10 @@ Documentation about the MCUboot bootloader design, operation and features can be
 
 The current port is available for use in the following SoCs within the OSes:
 
-|        | ESP32     | ESP32-S2  | ESP32-C3  | ESP32-S3  | ESP32-C2    | ESP32-C6  | ESP32-H2    | ESP32-C5    |
-| :----: | :-------: | :-------: | :-------: | :-------: | :---------: | :-------: | :---------: | :---------: |
-| Zephyr | Supported | Supported | Supported | Supported | Supported   | Supported | Supported   | Supported   |
-| NuttX  | Supported | Supported | Supported | Supported | In progress | Supported | Supported   | ----------- |
+|        | ESP32     | ESP32-S2  | ESP32-C3  | ESP32-S3  | ESP32-C2    | ESP32-C6  | ESP32-C61 | ESP32-H2    | ESP32-C5    |
+| :----: | :-------: | :-------: | :-------: | :-------: | :---------: | :-------: | :---------: | :---------: | :---------: |
+| Zephyr | Supported | Supported | Supported | Supported | Supported   | Supported | In progress | Supported   | Supported   |
+| NuttX  | Supported | Supported | Supported | Supported | In progress | Supported | ----------- | Supported   | ----------- |
 
 Notice that any customization in the memory layout from the OS application must be done aware of
 the bootloader own memory layout to avoid overlapping. More information on the section
