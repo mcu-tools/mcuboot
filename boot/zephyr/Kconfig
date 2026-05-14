@@ -303,6 +303,21 @@ config BOOT_RSA_PSA
 
 endchoice
 
+config BOOT_RSA_PSA_DOUBLE_VERIFY
+	bool "Verify RSA signatures twice (fault injection hardening)"
+	depends on BOOT_RSA_PSA
+	default y if !BOOT_FIH_PROFILE_OFF
+	help
+	  With the PSA crypto backend the RSA modular exponentiation is
+	  performed inside the PSA implementation and cannot be checked
+	  directly by MCUboot. When this option is enabled the whole
+	  RSA-PSS verification is performed a second time and both attempts
+	  must succeed, providing a fault injection countermeasure at the
+	  cost of doubling the (relatively expensive) RSA verification time.
+
+	  Defaults to enabled whenever fault injection hardening is active;
+	  disable it if the boot time cost outweighs the added protection.
+
 endif # BOOT_SIGNATURE_TYPE_RSA
 
 config BOOT_SIGNATURE_TYPE_ECDSA_P256

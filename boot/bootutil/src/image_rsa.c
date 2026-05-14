@@ -291,7 +291,26 @@ bootutil_cmp_rsasig(bootutil_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
     fih_rc = fih_ret_encode_zero_equality(rc);
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         FIH_SET(fih_rc, FIH_FAILURE);
+        FIH_RET(fih_rc);
     }
+
+#ifdef MCUBOOT_RSA_PSA_DOUBLE_VERIFY
+    /*
+     * The modular exponentiation is performed inside the PSA crypto
+     * implementation and is not reachable from here, so it cannot be
+     * checked directly the way the non-PSA path is. When this option is
+     * enabled, perform the whole verification a second time and require
+     * both attempts to succeed, as a fault-injection countermeasure.
+     * Hardening of the modular exponentiation itself remains the
+     * responsibility of the PSA crypto implementation.
+     */
+    rc = bootutil_rsassa_pss_verify(ctx, hash, hlen, sig, slen);
+
+    fih_rc = fih_ret_encode_zero_equality(rc);
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+        FIH_SET(fih_rc, FIH_FAILURE);
+    }
+#endif /* MCUBOOT_RSA_PSA_DOUBLE_VERIFY */
 
     FIH_RET(fih_rc);
 }
