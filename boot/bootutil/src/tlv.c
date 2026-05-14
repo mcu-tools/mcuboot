@@ -131,6 +131,24 @@ bootutil_tlv_iter_next(struct image_tlv_iter *it, uint32_t *off, uint16_t *len,
             return -1;
         }
 
+        /*
+         * Ensure the TLV header and its payload are fully contained
+         * within the TLV section. tlv.it_len comes straight from flash
+         * and is attacker-controlled in a crafted image; without this
+         * check a bogus length advances it->tlv_off past it->tlv_end
+         * and yields an out-of-section (off, len) pair to the caller.
+         * The comparisons are arranged so the uint32_t arithmetic can
+         * neither overflow nor wrap.
+         */
+        if (it->tlv_off > it->tlv_end ||
+            (uint32_t)sizeof(tlv) > it->tlv_end - it->tlv_off ||
+            tlv.it_len > it->tlv_end - it->tlv_off - (uint32_t)sizeof(tlv)) {
+            BOOT_LOG_DBG("bootutil_tlv_iter_next: malformed TLV at %" PRIu32
+                         " overruns section end %" PRIu32,
+                         it->tlv_off, it->tlv_end);
+            return -1;
+        }
+
         /* No more TLVs in the protected area */
         if (it->prot && it->tlv_off >= it->prot_end) {
             BOOT_LOG_DBG("bootutil_tlv_iter_next: protected TLV %d not found", it->type);
