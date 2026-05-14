@@ -141,7 +141,8 @@ decrypt_region_inplace(struct enc_key_data *enc_data,
 
         rc = flash_area_read(fap, off + bytes_copied, buf, chunk_sz);
         if (rc != 0) {
-            return BOOT_EFLASH;
+            rc = BOOT_EFLASH;
+            goto out;
         }
 
         if (IS_ENCRYPTED(hdr)) {
@@ -177,11 +178,13 @@ decrypt_region_inplace(struct enc_key_data *enc_data,
         }
         rc = boot_erase_region(fap, off + bytes_copied, chunk_sz, false);
         if (rc != 0) {
-            return BOOT_EFLASH;
+            rc = BOOT_EFLASH;
+            goto out;
         }
         rc = flash_area_write(fap, off + bytes_copied, buf, chunk_sz);
         if (rc != 0) {
-            return BOOT_EFLASH;
+            rc = BOOT_EFLASH;
+            goto out;
         }
 
         bytes_copied += chunk_sz;
@@ -189,7 +192,11 @@ decrypt_region_inplace(struct enc_key_data *enc_data,
         MCUBOOT_WATCHDOG_FEED();
     }
 
-    return 0;
+    rc = 0;
+out:
+    /* buf may hold decrypted image plaintext; clear it before returning. */
+    bootutil_wipe_memory(buf, sizeof buf);
+    return rc;
 }
 
 /**
