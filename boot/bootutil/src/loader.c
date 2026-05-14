@@ -752,20 +752,6 @@ boot_validated_swap_type(struct boot_loader_state *state,
 
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 
-#if defined(MCUBOOT_ENC_IMAGES) || defined(MCUBOOT_SWAP_SAVE_ENCTLV)
-/* Replacement for memset(p, 0, sizeof(*p) that does not get
- * optimized out.
- */
-static void like_mbedtls_zeroize(void *p, size_t n)
-{
-    volatile unsigned char *v = (unsigned char *)p;
-
-    for (size_t i = 0; i < n; i++) {
-        v[i] = 0;
-    }
-}
-#endif
-
 /**
  * Copies the contents of one flash region to another.  You must erase the
  * destination region prior to calling this function.
@@ -1978,7 +1964,7 @@ out:
      * easily recover them.
      */
 #if defined(MCUBOOT_ENC_IMAGES) || defined(MCUBOOT_SWAP_SAVE_ENCTLV)
-    like_mbedtls_zeroize(&bs, sizeof(bs));
+    bootutil_wipe_memory(&bs, sizeof(bs));
 #else
     memset(&bs, 0, sizeof(struct boot_status));
 #endif

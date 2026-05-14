@@ -366,6 +366,19 @@ int boot_open_all_flash_areas(struct boot_loader_state *state);
  */
 void boot_close_all_flash_areas(struct boot_loader_state *state);
 
+/**
+ * Securely wipes a region of memory.
+ *
+ * Equivalent to memset(p, 0, n), but written so that the compiler cannot
+ * optimize the store away when the memory is no longer read before going
+ * out of scope. Use this for buffers that have held key material or other
+ * secrets.
+ *
+ * @param p     Pointer to the memory to wipe.
+ * @param n     Number of bytes to wipe.
+ */
+void bootutil_wipe_memory(void *p, size_t n);
+
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 /**
  * Determines the sector layout of both image slots and the scratch area.
