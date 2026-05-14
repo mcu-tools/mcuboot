@@ -37,7 +37,13 @@ static inline void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx)
 
 static inline void bootutil_aes_ctr_drop(bootutil_aes_ctr_context *ctx)
 {
-    (void)ctx;
+    /* Clear the expanded AES key schedule. Written through a volatile
+     * pointer so the compiler cannot drop it as a dead store.
+     */
+    volatile uint8_t *p = (volatile uint8_t *)ctx;
+    for (size_t i = 0; i < sizeof(*ctx); i++) {
+        p[i] = 0;
+    }
 }
 
 static inline int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k)
