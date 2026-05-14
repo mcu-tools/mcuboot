@@ -278,20 +278,66 @@ out:
 
 #else /* MCUBOOT_USE_PSA_CRYPTO */
 
+/*
+ * FIH wrapper around bootutil_rsassa_pss_verify() so that each
+ * verification attempt crosses a FIH_CALL boundary and is covered by
+ * control-flow integrity counting, consistent with the rest of bootutil.
+ */
+static fih_ret
+bootutil_rsassa_pss_verify_fih(bootutil_rsa_context *ctx, uint8_t *hash,
+  uint32_t hlen, uint8_t *sig, size_t slen)
+{
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    if (bootutil_rsassa_pss_verify(ctx, hash, hlen, sig, slen) == 0) {
+        fih_rc = FIH_SUCCESS;
+    }
+
+    FIH_RET(fih_rc);
+}
+
 static fih_ret
 bootutil_cmp_rsasig(bootutil_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
   uint8_t *sig, size_t slen)
 {
-    int rc = -1;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+#ifdef MCUBOOT_RSA_PSA_DOUBLE_VERIFY
+    FIH_DECLARE(fih_rc2, FIH_FAILURE);
+#endif
 
     /* PSA Crypto APIs allow the verification in a single call */
-    rc = bootutil_rsassa_pss_verify(ctx, hash, hlen, sig, slen);
-
-    fih_rc = fih_ret_encode_zero_equality(rc);
+    FIH_CALL(bootutil_rsassa_pss_verify_fih, fih_rc, ctx, hash, hlen, sig,
+             slen);
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         FIH_SET(fih_rc, FIH_FAILURE);
+        FIH_RET(fih_rc);
     }
+
+#ifdef MCUBOOT_RSA_PSA_DOUBLE_VERIFY
+    /*
+     * The modular exponentiation is performed inside the PSA crypto
+     * implementation and is not reachable from here, so it cannot be
+     * checked directly the way the non-PSA path is. When this option is
+     * enabled, perform the whole verification a second time and require
+     * both attempts to succeed, as a fault-injection countermeasure.
+     * Hardening of the modular exponentiation itself remains the
+     * responsibility of the PSA crypto implementation.
+     *
+     * The second attempt records its result in a dedicated fih_ret
+     * variable, and the first attempt's success is discarded before it is
+     * made, so that a fault skipping the second call cannot be masked by
+     * the result the first one left behind.
+     */
+    FIH_SET(fih_rc, FIH_FAILURE);
+
+    FIH_CALL(bootutil_rsassa_pss_verify_fih, fih_rc2, ctx, hash, hlen, sig,
+             slen);
+    if (FIH_NOT_EQ(fih_rc2, FIH_SUCCESS)) {
+        FIH_RET(fih_rc);
+    }
+
+    FIH_SET(fih_rc, FIH_SUCCESS);
+#endif /* MCUBOOT_RSA_PSA_DOUBLE_VERIFY */
 
     FIH_RET(fih_rc);
 }
