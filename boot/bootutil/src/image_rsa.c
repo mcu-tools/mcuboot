@@ -115,6 +115,26 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
 }
 
 /*
+ * FIH wrapper around bootutil_rsa_public() so the modular exponentiation
+ * call crosses a FIH_CALL boundary and is covered by control-flow
+ * integrity counting, consistent with the rest of bootutil. This guards
+ * against the whole call being skipped; the result check in the caller
+ * guards against a fault within the exponentiation itself.
+ */
+static fih_ret
+bootutil_rsa_public_fih(bootutil_rsa_context *ctx, const uint8_t *sig,
+  uint8_t *em)
+{
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    if (bootutil_rsa_public(ctx, sig, em) == 0) {
+        fih_rc = FIH_SUCCESS;
+    }
+
+    FIH_RET(fih_rc);
+}
+
+/*
  * Validate an RSA signature, using RSA-PSS, as described in PKCS #1
  * v2.2, section 9.1.2, with many parameters required to have fixed
  * values. RSASSA-PSS-VERIFY RFC8017 section 8.1.2
@@ -129,6 +149,7 @@ bootutil_cmp_rsasig(bootutil_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
     uint8_t h2[PSS_HLEN];
     int i;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+    FIH_DECLARE(fih_eq, FIH_FAILURE);
 
     /* The caller has already verified that slen == bootutil_rsa_get_len(ctx) */
     if (slen != PSS_EMLEN ||
@@ -140,10 +161,27 @@ bootutil_cmp_rsasig(bootutil_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
         goto out;
     }
 
-    /* Apply RSAVP1 to produce em = sig^E mod N using the public key */
-    if (bootutil_rsa_public(ctx, sig, em)) {
+    /* Apply RSAVP1 to produce em = sig^E mod N using the public key.
+     * The call is made through a FIH_CALL boundary so that a skipped
+     * call is detected by control-flow integrity counting. */
+    FIH_CALL(bootutil_rsa_public_fih, fih_rc, ctx, sig, em);
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         goto out;
     }
+
+    /* Defensive check: a modular exponentiation that was skipped or
+     * otherwise short-circuited leaves the output buffer equal to its
+     * input. A genuine RSA public-key operation does not produce that,
+     * so treat em == sig as a failure and reject the signature. A
+     * dedicated fih_ret variable is used so that a fault skipping the
+     * comparison at the end of this function cannot leave a stale
+     * success value behind. */
+    FIH_CALL(boot_fih_memequal, fih_eq, em, sig, PSS_EMLEN);
+    if (FIH_EQ(fih_eq, FIH_SUCCESS)) {
+        FIH_SET(fih_rc, FIH_FAILURE);
+        goto out;
+    }
+    FIH_SET(fih_rc, FIH_FAILURE);
 
     /*
      * PKCS #1 v2.2, 9.1.2 EMSA-PSS-Verify
