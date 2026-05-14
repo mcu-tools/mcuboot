@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "mcuboot_config/mcuboot_config.h"
+#include "bootutil/bootutil.h"
 #include "bootutil/enc_key_public.h"
 
 #include <tinycrypt/aes.h>
@@ -37,7 +38,10 @@ static inline void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx)
 
 static inline void bootutil_aes_ctr_drop(bootutil_aes_ctr_context *ctx)
 {
-    (void)ctx;
+    /* Tinycrypt has no aes_free()-style call; the expanded key schedule
+     * lives entirely in ctx, so wipe it directly.
+     */
+    bootutil_wipe_memory(ctx, sizeof(*ctx));
 }
 
 static inline int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k)
