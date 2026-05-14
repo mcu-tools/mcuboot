@@ -29,6 +29,7 @@
 #define H_BOOTUTIL_
 
 #include <inttypes.h>
+#include <stddef.h>
 #include "bootutil/fault_injection_hardening.h"
 #include "bootutil/bootutil_public.h"
 
@@ -134,6 +135,19 @@ uint32_t boot_get_state_secondary_offset(struct boot_loader_state *state,
 #define SPLIT_GO_ERR                (-2)
 
 fih_ret split_go(int loader_slot, int split_slot, void **entry);
+
+/**
+ * Securely wipes a region of memory.
+ *
+ * Equivalent to memset(p, 0, n), but written so that the compiler cannot
+ * optimize the store away when the memory is no longer read before going
+ * out of scope. Use this for buffers that have held key material or other
+ * secrets.
+ *
+ * @param p     Pointer to the memory to wipe.
+ * @param n     Number of bytes to wipe.
+ */
+void bootutil_wipe_memory(void *p, size_t n);
 
 #ifdef __cplusplus
 }

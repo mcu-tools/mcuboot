@@ -664,3 +664,20 @@ void boot_state_clear(struct boot_loader_state *state)
     (void)state;
 #endif
 }
+
+/**
+ * Securely wipes a region of memory.
+ *
+ * A plain memset() on a buffer that is not read again before it goes out of
+ * scope is a dead store that the compiler is free to remove. Writing through
+ * a volatile pointer forces the stores to be emitted, so key material and
+ * other secrets are actually cleared.
+ */
+void bootutil_wipe_memory(void *p, size_t n)
+{
+    volatile unsigned char *v = (volatile unsigned char *)p;
+
+    for (size_t i = 0; i < n; i++) {
+        v[i] = 0;
+    }
+}
