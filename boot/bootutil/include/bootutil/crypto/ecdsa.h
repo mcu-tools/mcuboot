@@ -58,10 +58,15 @@
     #include <psa/crypto.h>
     #include <string.h>
 #elif defined(MCUBOOT_USE_MBED_TLS)
-    #include <mbedtls/ecdsa.h>
-    /* Indicate to the caller that the verify function needs the raw ASN.1
-     * signature, not a decoded one. */
-    #define MCUBOOT_ECDSA_NEED_ASN1_SIG
+#include "bootutil/crypto/common.h"
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include <mbedtls/private/ecdsa.h>
+#else
+#include <mbedtls/ecdsa.h>
+#endif
+/* Indicate to the caller that the verify function needs the raw ASN.1
+ * signature, not a decoded one. */
+#define MCUBOOT_ECDSA_NEED_ASN1_SIG
 #endif /* MCUBOOT_USE_MBED_TLS */
 
 /*TODO: remove this after cypress port mbedtls to abstract crypto api */

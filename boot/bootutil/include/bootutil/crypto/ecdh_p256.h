@@ -19,8 +19,13 @@
 #endif
 
 #if defined(MCUBOOT_USE_MBED_TLS)
-    #include <mbedtls/ecp.h>
-    #include <mbedtls/ecdh.h>
+#include "bootutil/crypto/common.h"
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include <mbedtls/private/ecp.h>
+#else
+#include <mbedtls/ecp.h>
+#endif
+#include <mbedtls/ecdh.h>
     #define EC256_PUBK_LEN (65)
 #endif /* MCUBOOT_USE_MBED_TLS */
 
