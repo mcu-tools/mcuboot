@@ -16,6 +16,7 @@
 #if !defined(CONFIG_SINGLE_APPLICATION_SLOT) && !defined(CONFIG_MCUBOOT_BOOTLOADER_MODE_SINGLE_APP)
 
 /* Each pair of slots is separated by , and there is no terminating character */
+#if !defined(CONFIG_TFM_BL2)
 #define FLASH_AREA_IMAGE_0_SLOTS    slot0_partition, slot1_partition
 #define FLASH_AREA_IMAGE_1_SLOTS    slot2_partition, slot3_partition
 #define FLASH_AREA_IMAGE_2_SLOTS    slot4_partition, slot5_partition
@@ -24,6 +25,16 @@
 #define FLASH_AREA_IMAGE_5_SLOTS    slot10_partition, slot11_partition
 #define FLASH_AREA_IMAGE_6_SLOTS    slot12_partition, slot13_partition
 #define FLASH_AREA_IMAGE_7_SLOTS    slot14_partition, slot15_partition
+#else
+#define FLASH_AREA_IMAGE_0_SLOTS    slot0_partition, slot0_ns_partition
+#define FLASH_AREA_IMAGE_1_SLOTS    slot1_partition, slot1_ns_partition
+#define FLASH_AREA_IMAGE_2_SLOTS    slot2_partition, slot2_ns_partition
+#define FLASH_AREA_IMAGE_3_SLOTS    slot3_partition, slot3_ns_partition
+#define FLASH_AREA_IMAGE_4_SLOTS    slot4_partition, slot4_ns_partition
+#define FLASH_AREA_IMAGE_5_SLOTS    slot5_partition, slot5_ns_partition
+#define FLASH_AREA_IMAGE_6_SLOTS    slot6_partition, slot6_ns_partition
+#define FLASH_AREA_IMAGE_7_SLOTS    slot7_partition, slot7_ns_partition
+#endif /* !CONFIG_TFM_BL2 */
 
 #if (MCUBOOT_IMAGE_NUMBER == 1)
 #define ALL_AVAILABLE_SLOTS FLASH_AREA_IMAGE_0_SLOTS
