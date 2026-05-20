@@ -33,6 +33,18 @@ be useful when you want to prevent production units from booting
 development images, but want development units to be able to boot
 both production images and development images.
 
+On Zephyr, `CONFIG_BOOT_SIGNATURE_KEY_FILE` accepts a semicolon-separated
+list of PEMs. Only the public-key bytes are embedded regardless of which
+form is passed in. The first entry may be a keypair PEM (needed only if
+the same file is also fed to `imgtool sign`) or a public-only PEM
+(preferred when signing happens elsewhere); subsequent entries must be
+public-only. The intended use is to separate signing custody (a
+production private key, held only by a release team) from verification
+custody (the production public key, embedded in development bootloaders
+so dev units can boot prod-signed images). See
+[readme-zephyr.md](readme-zephyr.md) for the threat-model table and a
+worked example.
+
 For an alternative solution when the public key(s) doesn't need to be
 included in the bootloader, see the [design](design.md) document.
 

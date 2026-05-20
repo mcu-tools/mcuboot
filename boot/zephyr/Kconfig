@@ -463,7 +463,7 @@ config BOOT_BYPASS_KEY_MATCH
 	  MCUboot code and boot time.
 
 config BOOT_SIGNATURE_KEY_FILE
-	string "PEM key file"
+	string "PEM key file (or semicolon-separated list)"
 	depends on !BOOT_SIGNATURE_TYPE_NONE
 	default "root-ec-p256.pem" if BOOT_SIGNATURE_TYPE_ECDSA_P256
 	default "root-ed25519.pem" if BOOT_SIGNATURE_TYPE_ED25519
@@ -472,13 +472,35 @@ config BOOT_SIGNATURE_KEY_FILE
 	default ""
 	depends on !BOOT_BUILTIN_KEY
 	help
-	  You can use either absolute or relative path.
-	  In case relative path is used, the build system assumes that it starts
-	  from the APPLICATION_CONFIG_DIR directory. If the key file is not there, the build
-	  system uses relative path that starts from the MCUBoot repository root directory.
-	  The key file will be parsed by imgtool's getpub command and a .c source
-	  with the public key information will be written in a format expected by
-	  MCUboot.
+	  Path to a signing/verification key PEM, or a semicolon-separated
+	  list of PEMs (e.g. "prod_pub.pem;dev_pub.pem") to embed multiple
+	  verification keys in the bootloader. Only the public-key bytes are
+	  ever embedded in the bootloader image regardless of which form is
+	  passed in.
+
+	  The first entry may be either a keypair PEM or a public-only PEM.
+	  A keypair is required only if the same file is also used with
+	  `imgtool sign`; a public-only PEM is sufficient (and preferred)
+	  when image signing is performed elsewhere with the private half
+	  held under separate custody. Embedded private material is
+	  recoverable from flash, so a public-only first entry is the safer
+	  default whenever the signing workflow allows.
+
+	  Subsequent entries (positions past the first) must be public-only
+	  PEMs; the build will fail at CMake time otherwise. This guards the
+	  intended workflow: a development bootloader that accepts both
+	  production-signed images (verified against the prod public key,
+	  whose private half stays under release-team custody) and
+	  development-signed images (verified against the dev public key).
+	  All entries must use the same BOOT_SIGNATURE_TYPE. Multi-key mode
+	  is mutually exclusive with BOOT_HW_KEY, BOOT_BUILTIN_KEY, and
+	  BOOT_BYPASS_KEY_MATCH.
+
+	  Each entry can be an absolute or relative path. Relative paths are
+	  resolved first against APPLICATION_CONFIG_DIR, then against the
+	  MCUboot repository root. Each file is parsed by imgtool's getpub
+	  command and a .c source with the public key information is written
+	  in a format expected by MCUboot.
 
 	  Note: In configuration files, escaped CMake variables can be used to refer to paths
 	  e.g. \${CMAKE_CURRENT_LIST_DIR} will allow referencing a file in that directory, these

@@ -50,7 +50,7 @@ use crate::depends::{
     PairDep,
     UpgradeInfo,
 };
-use crate::tlv::{ManifestGen, TlvGen, TlvFlags};
+use crate::tlv::{ManifestGen, SigningKey, TlvGen, TlvFlags};
 use crate::utils::align_up;
 use typenum::{U32, U16};
 
@@ -221,6 +221,17 @@ impl ImagesBuilder {
 
     /// Construct an `Images` that doesn't expect an upgrade to happen.
     pub fn make_no_upgrade_image(self, deps: &DepTest, img_manipulation: ImageManipulation) -> Images {
+        self.make_no_upgrade_image_with_key(deps, img_manipulation, SigningKey::Primary)
+    }
+
+    /// Like `make_no_upgrade_image`, but signs every installed image with the
+    /// given signing key. Used by the multi-key test matrix.
+    pub fn make_no_upgrade_image_with_key(
+        self,
+        deps: &DepTest,
+        img_manipulation: ImageManipulation,
+        signing_key: SigningKey,
+    ) -> Images {
         let num_images = self.num_images();
         let mut flash = self.flash;
         let ram = self.ram.clone();  // TODO: Avoid this clone.
@@ -234,21 +245,21 @@ impl ImagesBuilder {
 
             let (primaries,upgrades) =  if img_manipulation == ImageManipulation::CorruptHigherVersionImage && !higher_version_corrupted {
                 higher_version_corrupted = true;
-                let prim =  install_image(&mut flash, &self.areadesc, &slots, 0,
-                    maximal(42784), &ram, &*dep, ImageManipulation::None, Some(0));
+                let prim =  install_image_with_key(&mut flash, &self.areadesc, &slots, 0,
+                    maximal(42784), &ram, &*dep, ImageManipulation::None, Some(0), signing_key);
                 let upgr   = match deps.depends[image_num] {
                     DepType::NoUpgrade => install_no_image(),
-                    _ => install_image(&mut flash, &self.areadesc, &slots, 1,
-                        maximal(46928), &ram, &*dep, ImageManipulation::BadSignature, Some(1))
+                    _ => install_image_with_key(&mut flash, &self.areadesc, &slots, 1,
+                        maximal(46928), &ram, &*dep, ImageManipulation::BadSignature, Some(1), signing_key)
                 };
                 (prim, upgr)
             } else {
-                let prim = install_image(&mut flash, &self.areadesc, &slots, 0,
-                    maximal(42784), &ram, &*dep, img_manipulation, Some(0));
+                let prim = install_image_with_key(&mut flash, &self.areadesc, &slots, 0,
+                    maximal(42784), &ram, &*dep, img_manipulation, Some(0), signing_key);
                 let upgr = match deps.depends[image_num] {
                         DepType::NoUpgrade => install_no_image(),
-                        _ => install_image(&mut flash, &self.areadesc, &slots, 1,
-                            maximal(46928), &ram, &*dep, img_manipulation, Some(1))
+                        _ => install_image_with_key(&mut flash, &self.areadesc, &slots, 1,
+                            maximal(46928), &ram, &*dep, img_manipulation, Some(1), signing_key)
                     };
                 (prim, upgr)
             };
@@ -313,6 +324,53 @@ impl ImagesBuilder {
             }}).collect();
         Images {
             flash: bad_flash,
+            areadesc: self.areadesc,
+            images,
+            total_count: None,
+            ram: self.ram,
+        }
+    }
+
+    /// Install a valid primary-key-signed image in slot 0 and a secondary
+    /// image signed with `secondary_key` in slot 1. Paired with
+    /// `run_signfail_upgrade` to assert that a build unaware of the secondary
+    /// key correctly refuses to upgrade to it.
+    pub fn make_secondary_slot_image_with_key(self, secondary_key: SigningKey) -> Images {
+        let mut flash = self.flash;
+        let ram = self.ram.clone();
+        let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let primaries = install_image_with_key(
+                &mut flash,
+                &self.areadesc,
+                &slots,
+                0,
+                maximal(32_784),
+                &ram,
+                &dep,
+                ImageManipulation::None,
+                Some(0),
+                SigningKey::Primary,
+            );
+            let upgrades = install_image_with_key(
+                &mut flash,
+                &self.areadesc,
+                &slots,
+                1,
+                maximal(41_928),
+                &ram,
+                &dep,
+                ImageManipulation::None,
+                Some(0),
+                secondary_key,
+            );
+            OneImage {
+                slots,
+                primaries,
+                upgrades,
+            }}).collect();
+        Images {
+            flash,
             areadesc: self.areadesc,
             images,
             total_count: None,
@@ -1910,12 +1968,38 @@ fn compute_largest_image_size(dev: &dyn Flash, areadesc: &AreaDesc, slots: &[Slo
 fn install_image(flash: &mut SimMultiFlash, areadesc: &AreaDesc, slots: &[SlotInfo],
                  slot_ind: usize, len: ImageSize, ram: &RamData,
                  deps: &dyn Depender, img_manipulation: ImageManipulation, security_counter:Option<u32>) -> ImageData {
+    install_image_with_key(
+        flash,
+        areadesc,
+        slots,
+        slot_ind,
+        len,
+        ram,
+        deps,
+        img_manipulation,
+        security_counter,
+        SigningKey::Primary,
+    )
+}
+
+fn install_image_with_key(
+    flash: &mut SimMultiFlash,
+    areadesc: &AreaDesc,
+    slots: &[SlotInfo],
+    slot_ind: usize,
+    len: ImageSize,
+    ram: &RamData,
+    deps: &dyn Depender,
+    img_manipulation: ImageManipulation,
+    security_counter: Option<u32>,
+    signing_key: SigningKey,
+) -> ImageData {
     let slot = &slots[slot_ind];
     let mut offset = slot.base_off;
     let dev_id = slot.dev_id;
     let dev = flash.get_mut(&dev_id).unwrap();
 
-    let mut tlv: Box<dyn ManifestGen> = Box::new(make_tlv());
+    let mut tlv: Box<dyn ManifestGen> = Box::new(make_tlv(signing_key));
 
     if Caps::SwapUsingOffset.present() && slot_ind == 1 {
         let sector_size = dev.sector_iter().next().unwrap().size as usize;
@@ -2134,10 +2218,10 @@ fn install_no_image() -> ImageData {
 
 /// Construct a TLV generator based on how MCUboot is currently configured.  The returned
 /// ManifestGen will generate the appropriate entries based on this configuration.
-fn make_tlv() -> TlvGen {
+fn make_tlv(signing_key: SigningKey) -> TlvGen {
     let aes_key_size = if Caps::Aes256.present() { 256 } else { 128 };
 
-    if Caps::EncKw.present() {
+    let tlv = if Caps::EncKw.present() {
         if Caps::RSA2048.present() {
             TlvGen::new_rsa_kw(aes_key_size)
         } else if Caps::EcdsaP256.present() {
@@ -2178,7 +2262,9 @@ fn make_tlv() -> TlvGen {
         } else {
             TlvGen::new_hash_only()
         }
-    }
+    };
+
+    tlv.with_signing_key(signing_key)
 }
 
 impl ImageData {
