@@ -314,19 +314,11 @@ if(CONFIG_MCUBOOT_SERIAL)
   endif()
 endif()
 
+set(mcuboot_sign_key_max 8)
+target_compile_definitions(app PRIVATE MCUBOOT_SIGN_KEY_MAX=${mcuboot_sign_key_max})
+
 if(NOT CONFIG_BOOT_SIGNATURE_TYPE_NONE AND NOT CONFIG_BOOT_BUILTIN_KEY AND NOT
   CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
-  set(key_file "${CONFIG_BOOT_SIGNATURE_KEY_FILE}")
-  string(CONFIGURE "${key_file}" key_file)
-
-  if(IS_ABSOLUTE ${key_file})
-    set(signing_key_file ${key_file})
-  elseif(EXISTS ${APPLICATION_CONFIG_DIR}/${key_file})
-    set(signing_key_file ${APPLICATION_CONFIG_DIR}/${key_file})
-  else()
-    set(signing_key_file ${MCUBOOT_DIR}/${key_file})
-  endif()
-  message("MCUBoot bootloader key file: ${signing_key_file}")
 
   set(mcuboot_default_signature_files
     ${MCUBOOT_DIR}/root-ec-p256-pkcs8.pem
@@ -338,26 +330,78 @@ if(NOT CONFIG_BOOT_SIGNATURE_TYPE_NONE AND NOT CONFIG_BOOT_BUILTIN_KEY AND NOT
     ${MCUBOOT_DIR}/root-ec-p256.pem
   )
 
-  # Emit a warning if using one of the default MCUboot key files
-  if(${signing_key_file} IN_LIST mcuboot_default_signature_files)
-    message(WARNING "WARNING: Using default MCUboot signing key file, this file is for debug use only and is not secure!")
+  set(mcuboot_key_files "${CONFIG_BOOT_SIGNATURE_KEY_FILE}")
+  list(LENGTH mcuboot_key_files mcuboot_key_count)
+  if(mcuboot_key_count GREATER ${mcuboot_sign_key_max})
+    message(FATAL_ERROR
+      "CONFIG_BOOT_SIGNATURE_KEY_FILE lists ${mcuboot_key_count} keys, but the "
+      "Zephyr port is capped at ${mcuboot_sign_key_max}. Raise mcuboot_sign_key_max "
+      "in boot/zephyr/CMakeLists.txt to extend it.")
   endif()
 
-  set(generated_pubkey ${ZEPHYR_BINARY_DIR}/autogen-pubkey.c)
-  add_custom_command(
-    OUTPUT ${generated_pubkey}
-    COMMAND
-    ${PYTHON_EXECUTABLE}
-    ${MCUBOOT_DIR}/scripts/imgtool.py
-    getpub
-    -k
-    ${signing_key_file}
-    > ${generated_pubkey}
-    DEPENDS ${signing_key_file}
-  )
-  target_sources(app PRIVATE
-    ${generated_pubkey}
-  )
+  set(key_index 0)
+  foreach(raw_key_path IN LISTS mcuboot_key_files)
+    string(CONFIGURE "${raw_key_path}" key_path)
+
+    if(IS_ABSOLUTE ${key_path})
+      set(resolved_key_path ${key_path})
+    elseif(EXISTS ${APPLICATION_CONFIG_DIR}/${key_path})
+      set(resolved_key_path ${APPLICATION_CONFIG_DIR}/${key_path})
+    else()
+      set(resolved_key_path ${MCUBOOT_DIR}/${key_path})
+    endif()
+
+    if(key_index EQUAL 0)
+      set(signing_key_file ${resolved_key_path})
+      set(name_suffix_arg "")
+      set(generated_pubkey ${ZEPHYR_BINARY_DIR}/autogen-pubkey.c)
+      message("MCUBoot bootloader key file: ${resolved_key_path}")
+      if(${resolved_key_path} IN_LIST mcuboot_default_signature_files)
+        message(WARNING "WARNING: Using default MCUboot signing key file, this file is for debug use only and is not secure!")
+      endif()
+    else()
+      set(name_suffix_arg "--name-suffix" "_${key_index}")
+      set(generated_pubkey ${ZEPHYR_BINARY_DIR}/autogen-pubkey${key_index}.c)
+      message("MCUBoot bootloader verification key file #${key_index}: ${resolved_key_path}")
+      if(${resolved_key_path} IN_LIST mcuboot_default_signature_files)
+        message(WARNING "WARNING: Using default MCUboot signing key file for verification key #${key_index}, this file is for debug use only and is not secure!")
+      endif()
+      execute_process(
+        COMMAND ${PYTHON_EXECUTABLE} ${MCUBOOT_DIR}/scripts/imgtool.py
+                keyinfo --key ${resolved_key_path} --require public
+        RESULT_VARIABLE keyinfo_rc
+        OUTPUT_VARIABLE keyinfo_out
+        ERROR_VARIABLE  keyinfo_err
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_STRIP_TRAILING_WHITESPACE
+      )
+      if(NOT keyinfo_rc EQUAL 0)
+        message(FATAL_ERROR
+          "CONFIG_BOOT_SIGNATURE_KEY_FILE entry #${key_index} "
+          "(${resolved_key_path}) must be a public-only PEM. The first "
+          "entry may be either a keypair or public-only PEM; subsequent "
+          "entries are verification-only and their private halves should "
+          "remain under separate custody (e.g. release-team HSM). "
+          "imgtool keyinfo output:\n${keyinfo_out}\n${keyinfo_err}")
+      endif()
+      target_compile_definitions(app PRIVATE MCUBOOT_SIGN_KEY_${key_index}=1)
+    endif()
+
+    add_custom_command(
+      OUTPUT ${generated_pubkey}
+      COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${MCUBOOT_DIR}/scripts/imgtool.py
+      getpub
+      -k
+      ${resolved_key_path}
+      ${name_suffix_arg}
+      > ${generated_pubkey}
+      DEPENDS ${resolved_key_path}
+    )
+    target_sources(app PRIVATE ${generated_pubkey})
+    math(EXPR key_index "${key_index} + 1")
+  endforeach()
 endif()
 
 if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQUAL "")

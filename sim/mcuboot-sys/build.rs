@@ -18,6 +18,7 @@ fn main() {
     let sig_ecdsa_psa = env::var("CARGO_FEATURE_SIG_ECDSA_PSA").is_ok();
     let sig_p384 = env::var("CARGO_FEATURE_SIG_P384").is_ok();
     let sig_ed25519 = env::var("CARGO_FEATURE_SIG_ED25519").is_ok();
+    let sig_second_key = env::var("CARGO_FEATURE_SIG_SECOND_KEY").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
     let swap_move = env::var("CARGO_FEATURE_SWAP_MOVE").is_ok();
     let swap_offset = env::var("CARGO_FEATURE_SWAP_OFFSET").is_ok();
@@ -60,6 +61,13 @@ fn main() {
     }
 
     conf.conf.define("MCUBOOT_IMAGE_NUMBER", Some(if multiimage { "2" } else { "1" }));
+
+    if sig_second_key {
+        if !sig_ed25519 {
+            panic!("sig-second-key currently only supports sig-ed25519 in the simulator");
+        }
+        conf.conf.define("MCUBOOT_SIGN_KEY_2", None);
+    }
 
     if downgrade_prevention && !overwrite_only {
         panic!("Downgrade prevention requires overwrite only");

@@ -86,28 +86,28 @@ class KeyClass:
                 # raw binary data, can be for example io.BytesIO
                 file.write(encoded_bytes)
 
-    def emit_c_public(self, file=sys.stdout):
+    def emit_c_public(self, file=sys.stdout, name_suffix: str = ""):
         self._emit(
-                header=f"const unsigned char {self.shortname()}_pub_key[] = {{"
+                header=f"const unsigned char {self.shortname()}_pub_key{name_suffix}[] = {{"
                        ,
                 trailer="};",
                 encoded_bytes=self.get_public_bytes(),
                 indent="    ",
-                len_format=f"const unsigned int {self.shortname()}_pub_key_len = {{}};"
+                len_format=f"const unsigned int {self.shortname()}_pub_key{name_suffix}_len = {{}};"
                            ,
                 file=file)
 
-    def emit_c_public_hash(self, file=sys.stdout):
+    def emit_c_public_hash(self, file=sys.stdout, name_suffix: str = ""):
         digest = Hash(SHA256())
         digest.update(self.get_public_bytes())
         self._emit(
-                header=f"const unsigned char {self.shortname()}_pub_key_hash[] = {{"
+                header=f"const unsigned char {self.shortname()}_pub_key_hash{name_suffix}[] = {{"
                        ,
                 trailer="};",
                 encoded_bytes=digest.finalize(),
                 indent="    ",
-                len_format=f"const unsigned int {self.shortname()}_pub_key_hash_len = {{}};"
-                           ,
+                len_format=("const unsigned int "
+                            f"{self.shortname()}_pub_key_hash{name_suffix}_len = {{}};"),
                 file=file)
 
     def emit_raw_public(self, file=sys.stdout):
@@ -118,9 +118,9 @@ class KeyClass:
         digest.update(self.get_public_bytes())
         self._emit_raw(digest.finalize(), file=file)
 
-    def emit_rust_public(self, file=sys.stdout):
+    def emit_rust_public(self, file=sys.stdout, name_suffix: str = ""):
         self._emit(
-                header=f"static {self.shortname().upper()}_PUB_KEY: &[u8] = &["
+                header=f"static {self.shortname().upper()}_PUB_KEY{name_suffix.upper()}: &[u8] = &["
                        ,
                 trailer="];",
                 encoded_bytes=self.get_public_bytes(),

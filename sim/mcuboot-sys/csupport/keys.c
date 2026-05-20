@@ -155,6 +155,17 @@ const unsigned char root_pub_der[] = {
     0x20, 0xff, 0xb4, 0xe0,
 };
 const unsigned int root_pub_der_len = 44;
+#if defined(MCUBOOT_SIGN_KEY_2)
+const unsigned char root_pub_der_2[] = {
+    0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65,
+    0x70, 0x03, 0x21, 0x00, 0xc3, 0xbc, 0xdf, 0x30,
+    0x76, 0x4e, 0x1f, 0x5d, 0xb4, 0x0d, 0x89, 0x2e,
+    0x0d, 0x0e, 0xab, 0x04, 0x9c, 0x30, 0x06, 0x4e,
+    0x79, 0xa8, 0xed, 0xb6, 0xf7, 0x79, 0x2e, 0x46,
+    0x9a, 0x26, 0xda, 0x77,
+};
+const unsigned int root_pub_der_2_len = 44;
+#endif
 #endif
 
 #if defined(HAVE_KEYS)
@@ -163,8 +174,14 @@ const struct bootutil_key bootutil_keys[] = {
         .key = root_pub_der,
         .len = &root_pub_der_len,
     },
+#if defined(MCUBOOT_SIGN_KEY_2)
+    {
+        .key = root_pub_der_2,
+        .len = &root_pub_der_2_len,
+    },
+#endif
 };
-const int bootutil_key_cnt = 1;
+const int bootutil_key_cnt = sizeof(bootutil_keys) / sizeof(bootutil_keys[0]);
 #endif
 
 #if defined(MCUBOOT_ENCRYPT_RSA)
