@@ -30,6 +30,10 @@
 #include <soc.h>
 #include <zephyr/linker/linker-defs.h>
 
+#if defined(CONFIG_BOOT_HW_IMAGE_SWAP)
+#include <zephyr/drivers/memc/hwimageswap.h>
+#endif
+
 #if defined(CONFIG_BOOT_DISABLE_CACHES)
 #include <zephyr/cache.h>
 #endif
@@ -688,6 +692,19 @@ int main(void)
     BOOT_LOG_INF("Image version: v%d.%d.%d", rsp.br_hdr->ih_ver.iv_major,
                                                     rsp.br_hdr->ih_ver.iv_minor,
                                                     rsp.br_hdr->ih_ver.iv_revision);
+
+#if defined(CONFIG_BOOT_HW_IMAGE_SWAP)
+    /* Configuration of HW image swapping based on offset of image selected for boot. */
+    uint32_t offset = 0;
+    rc = boot_hwimageswap_setup(rsp.br_image_off, &offset);
+    if (rc > 0) {
+        BOOT_LOG_INF("HW image swapping enabled with offset 0x%x", offset);
+        rsp.br_image_off += offset;
+    } else if (rc < 0) {
+        BOOT_LOG_ERR("Failed to setup HW image swapping");
+        FIH_PANIC;
+    }
+#endif
 
 #if defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Jumping to the image slot");

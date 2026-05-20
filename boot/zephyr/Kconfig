@@ -1284,6 +1284,16 @@ config MCUBOOT_USE_TLV_ALLOW_LIST
 	  Disabling this option will cut down MCUboot size.
 	  The Kconfig controlls MCUboot configuration option MCUBOOT_USE_TLV_ALLOW_LIST.
 
+config BOOT_HW_IMAGE_SWAP
+	bool "Image swapping done by hardware"
+	depends on BOOT_DIRECT_XIP || BOOT_DIRECT_XIP_REVERT
+	help
+	  Image swapping will be done using hardware means which will result in zero flash wear compared
+	  to techniques like SWAP_MOVE or SWAP_SCRATCH that physically move data in flash.
+	  This requires support in hardware (e.g. address remapping, flash swapping...).
+	  This feature can only be used with MCUboot modes based on DIRECT_XIP.
+
+
 config BOOT_DECOMPRESSION_SUPPORT
 	bool
 	help
