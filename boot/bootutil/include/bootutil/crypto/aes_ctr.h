@@ -22,7 +22,9 @@
     #error "One crypto backend must be defined: either MBED_TLS or TINYCRYPT or PSA"
 #endif
 
-#if defined(MCUBOOT_USE_MBED_TLS)
+#if defined(MCUBOOT_USE_PSA_CRYPTO)
+    #include "bootutil/crypto/aes_ctr_psa.h"
+#elif defined(MCUBOOT_USE_MBED_TLS)
     #include "bootutil/crypto/aes_ctr_mbedtls.h"
 #endif /* MCUBOOT_USE_MBED_TLS */
 
@@ -30,8 +32,5 @@
     #include "bootutil/crypto/aes_ctr_tinycrypt.h"
 #endif /* MCUBOOT_USE_TINYCRYPT */
 
-#if defined(MCUBOOT_USE_PSA_CRYPTO)
-    #include "bootutil/crypto/aes_ctr_psa.h"
-#endif
 
 #endif /* __BOOTUTIL_CRYPTO_AES_CTR_H_ */
