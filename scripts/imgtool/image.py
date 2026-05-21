@@ -264,12 +264,12 @@ def tlv_matches_key_type(tlv_type, key):
 
 def parse_uuid(namespace, value):
     # Check if UUID is in the RAW format (12345678-1234-5678-1234-567812345678)
-    uuid_re = r'[0-9A-f]{8}-[0-9A-f]{4}-[0-9A-f]{4}-[0-9A-f]{4}-[0-9A-f]{12}'
-    if re.match(uuid_re, value):
+    uuid_re = r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
+    if re.fullmatch(uuid_re, value):
         uuid_bytes = bytes.fromhex(value.replace('-', ''))
 
     # Check if UUID is in the RAW HEX format (12345678123456781234567812345678)
-    elif re.match(r'[0-9A-f]{32}', value):
+    elif re.fullmatch(r'[0-9a-fA-F]{32}', value):
         uuid_bytes = bytes.fromhex(value)
 
     # Check if UUID is in the string format
