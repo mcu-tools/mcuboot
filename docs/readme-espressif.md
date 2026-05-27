@@ -10,7 +10,7 @@ framework, HAL path and toolchain must be set.
 ---
 ***Note***
 
-*Current compatible ESP-IDF version for HAL sources is `v5.1.6`*
+*Current compatible ESP-IDF version for HAL sources is `v6.0.0`*
 
 ---
 
@@ -356,14 +356,14 @@ CONFIG_SECURE_BOOT_V2_ENABLED=1
 CONFIG_SECURE_SIGNED_ON_BOOT=1
 ```
 
-For the currently supported chips, with exception of ESP32-C2, enable RSA signing scheme:
+For the currently supported chips, with exception of ESP32-C2 and ESP32-C61, enable RSA signing scheme:
 
 ```
 CONFIG_SECURE_SIGNED_APPS_RSA_SCHEME=1
 CONFIG_SECURE_BOOT_SUPPORTS_RSA=1
 ```
 
-For ESP32-C2, enable ECDSA signing scheme and, if working with Flash Encryption too, enable the
+For ESP32-C2 and ESP32-C61, enable ECDSA signing scheme and, if working with Flash Encryption too, enable the
 configuration to burn keys to efuse together:
 
 ```
