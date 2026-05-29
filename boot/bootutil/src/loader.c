@@ -74,7 +74,7 @@ static struct image_max_size image_max_sizes[BOOT_IMAGE_NUMBER] = {0};
 #endif
 
 /* Valid only for ARM Cortext M */
-#define RESET_OFFSET    (2 * sizeof(uint32_t))
+#define RESET_OFFSET sizeof(uint32_t)
 
 #if BOOT_MAX_ALIGN > 1024
 #define BUF_SZ BOOT_MAX_ALIGN
