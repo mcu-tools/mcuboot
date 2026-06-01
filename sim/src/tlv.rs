@@ -120,6 +120,23 @@ pub trait ManifestGen {
     fn set_ignore_ram_load_flag(&mut self);
 }
 
+/// Selects which signing key to use when generating the TLV signature.
+/// The default (`Primary`) preserves existing single-key test behaviour.
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq)]
+pub enum SigningKey {
+    /// Sign with the primary (and only, in single-key builds) signing key.
+    #[default]
+    Primary,
+    /// Sign with a distinct secondary key. The bootloader must have been
+    /// built with `MCUBOOT_SIGN_KEY_2` (via the `sig-second-key` Cargo
+    /// feature) and embed both public keys; otherwise the signed image is
+    /// expected to be rejected.
+    Secondary,
+    /// Sign with a key the bootloader does not know about. Used to assert
+    /// that multi-key builds still reject images signed by any third key.
+    Unknown,
+}
+
 #[derive(Debug, Default)]
 pub struct TlvGen {
     flags: u32,
@@ -132,6 +149,8 @@ pub struct TlvGen {
     security_cnt: Option<u32>,
     /// Ignore RAM_LOAD flag
     ignore_ram_load_flag: bool,
+    /// Which signing key to use.
+    signing_key: SigningKey,
 }
 
 #[derive(Debug)]
@@ -141,6 +160,14 @@ struct Dependency {
 }
 
 impl TlvGen {
+    /// Builder: select which signing key the generator will use. Has no
+    /// effect on non-signing TLV kinds.
+    #[allow(dead_code)]
+    pub fn with_signing_key(mut self, key: SigningKey) -> Self {
+        self.signing_key = key;
+        self
+    }
+
     /// Construct a new tlv generator that will only contain a hash of the data.
     #[allow(dead_code)]
     pub fn new_hash_only() -> TlvGen {
@@ -646,7 +673,13 @@ impl ManifestGen for TlvGen {
         }
 
         if self.kinds.contains(&TlvKinds::ED25519) {
-            let keyhash = digest::digest(&digest::SHA256, ED25519_PUB_KEY);
+            let (pem_bytes, pub_key): (&[u8], &[u8]) = match self.signing_key {
+                SigningKey::Primary => (include_bytes!("../../root-ed25519.pem"), ED25519_PUB_KEY),
+                SigningKey::Secondary => (include_bytes!("../../root-ed25519-2.pem"), ED25519_PUB_KEY_2),
+                SigningKey::Unknown => (include_bytes!("../../root-ed25519-unknown.pem"), ED25519_PUB_KEY_UNKNOWN),
+            };
+
+            let keyhash = digest::digest(&digest::SHA256, pub_key);
             let keyhash = keyhash.as_ref();
 
             assert!(keyhash.len() == 32);
@@ -658,11 +691,11 @@ impl ManifestGen for TlvGen {
             let hash = hash.as_ref();
             assert!(hash.len() == 32);
 
-            let key_bytes = pem::parse(include_bytes!("../../root-ed25519.pem").as_ref()).unwrap();
+            let key_bytes = pem::parse(pem_bytes).unwrap();
             assert_eq!(key_bytes.tag, "PRIVATE KEY");
 
             let key_pair = Ed25519KeyPair::from_seed_and_public_key(
-                &key_bytes.contents[16..48], &ED25519_PUB_KEY[12..44]).unwrap();
+                &key_bytes.contents[16..48], &pub_key[12..44]).unwrap();
             let signature = key_pair.sign(&hash);
 
             result.write_u16::<LittleEndian>(TlvKinds::ED25519 as u16).unwrap();
@@ -861,3 +894,5 @@ include!("rsa_pub_key-rs.txt");
 include!("rsa3072_pub_key-rs.txt");
 include!("ecdsa_pub_key-rs.txt");
 include!("ed25519_pub_key-rs.txt");
+include!("ed25519_pub_key_2-rs.txt");
+include!("ed25519_pub_key_unknown-rs.txt");

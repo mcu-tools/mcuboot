@@ -86,6 +86,66 @@ sim_test!(ram_load_corrupt_higher_version_image, make_no_upgrade_image(&NO_DEPS,
 sim_test!(hw_prot_missing_security_cnt, make_image_with_security_counter(None), run_hw_rollback_prot());
 sim_test!(hw_prot_failed_security_cnt_check, make_image_with_security_counter(Some(0)), run_hw_rollback_prot());
 
+#[cfg(feature = "sig-ed25519")]
+mod multi_key {
+    //! Multi-signing-key matrix.
+    //!
+    //! These tests only run when the simulator was built with `sig-ed25519` —
+    //! `sig-second-key` alone is meaningless without a supported signature
+    //! type, and build.rs panics if the pairing is missing. The whole module
+    //! is dropped on incompatible feature combinations rather than silently
+    //! turning into a no-op.
+
+    use super::*;
+    use bootsim::tlv::SigningKey;
+
+    // With a single-key build, the image signed with the primary key must
+    // boot and upgrade normally. With a two-key build (sig-second-key on)
+    // this exercises the iteration-finds-first-match path in
+    // bootutil_find_key().
+    test_shell!(signed_primary_key_boots, r, {
+        let image = r.make_no_upgrade_image_with_key(
+            &NO_DEPS,
+            ImageManipulation::None,
+            SigningKey::Primary,
+        );
+        dump_image(&image, "signed_primary_key_boots");
+        assert!(!image.run_norevert_newimage());
+    });
+
+    // With `sig-second-key`, the bootloader embeds a second verification
+    // key; an image signed with that key must boot. Without the feature,
+    // this test is dropped (see cfg-gated module).
+    #[cfg(feature = "sig-second-key")]
+    test_shell!(signed_secondary_key_boots, r, {
+        let image = r.make_no_upgrade_image_with_key(
+            &NO_DEPS,
+            ImageManipulation::None,
+            SigningKey::Secondary,
+        );
+        dump_image(&image, "signed_secondary_key_boots");
+        assert!(!image.run_norevert_newimage());
+    });
+
+    // A third ("unknown") key must always be rejected, regardless of
+    // whether the bootloader was built single- or multi-key.
+    test_shell!(signed_unknown_key_rejected, r, {
+        let image = r.make_secondary_slot_image_with_key(SigningKey::Unknown);
+        dump_image(&image, "signed_unknown_key_rejected");
+        assert!(!image.run_signfail_upgrade());
+    });
+
+    // Regression guard: a single-key build must reject images signed with
+    // the secondary key (since it doesn't embed it). Only valid when
+    // sig-second-key is OFF.
+    #[cfg(not(feature = "sig-second-key"))]
+    test_shell!(single_key_build_rejects_secondary_key_image, r, {
+        let image = r.make_secondary_slot_image_with_key(SigningKey::Secondary);
+        dump_image(&image, "single_key_build_rejects_secondary_key_image");
+        assert!(!image.run_signfail_upgrade());
+    });
+}
+
 #[cfg(feature = "multiimage")]
 sim_test!(ram_load_overlapping_images_same_base, make_no_upgrade_image(&NO_DEPS, ImageManipulation::OverlapImages(true)), run_ram_load_boot_with_result(false));
 #[cfg(feature = "multiimage")]

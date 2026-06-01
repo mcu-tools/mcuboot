@@ -51,6 +51,30 @@ exported public-key PEM.  You can replace or insert the emitted code
 into the key file. However, when the `MCUBOOT_HW_KEY` config option
 is enabled, this last step is unnecessary and can be skipped.
 
+When embedding more than one signing-verification key in the same image
+(for example, a Zephyr build with a multi-key
+`CONFIG_BOOT_SIGNATURE_KEY_FILE` list), pass `--name-suffix` to
+distinguish the emitted symbol names:
+
+    ./scripts/imgtool.py getpub -k dev-key.pem --name-suffix _2
+
+emits `<shortname>_pub_key_2[]` and `<shortname>_pub_key_2_len` (the
+same suffix is applied by `getpubhash` for the lang-c encoding). The
+option is accepted only for the `lang-c` / `lang-rust` encodings; using
+it with `--encoding pem` or `--encoding raw` is rejected.
+
+## [Inspecting key kind](#inspecting-key-kind)
+
+For build-system use, `imgtool keyinfo` reports whether a PEM contains
+private material (`private`) or only public material (`public`):
+
+    ./scripts/imgtool.py keyinfo -k some-key.pem
+
+Pair with `--require private` or `--require public` to exit non-zero
+when the kind does not match. The Zephyr port uses this to enforce that
+every verification-only key passed via `CONFIG_BOOT_SIGNATURE_KEY_FILE`
+past the first entry is a public-only PEM.
+
 ## [Signing images](#signing-images)
 
 Image signing takes an image in binary or Intel Hex format intended for the
