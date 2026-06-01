@@ -112,7 +112,17 @@ console_read(char *str, int str_size, int *newline)
 int
 boot_console_init(void)
 {
+	static bool initialized;
 	int i;
+
+	/* WAIT_FOR_DFU initializes the console early, then boot_serial_enter()
+	 * initializes it again. Re-running would call usb_enable() a second time
+	 * (returning -EALREADY) and reset the line queues, dropping any bytes
+	 * buffered while waiting. Initialize only once.
+	 */
+	if (initialized) {
+		return 0;
+	}
 
 	/* Zephyr UART handler takes an empty buffer from avail_queue,
 	 * stores UART input in it until EOL, and then puts it into
@@ -125,7 +135,13 @@ boot_console_init(void)
 		sys_slist_append(&avail_queue, &line_bufs[i].node);
 	}
 
-	return boot_uart_fifo_init();
+	int rc = boot_uart_fifo_init();
+
+	if (rc == 0) {
+		initialized = true;
+	}
+
+	return rc;
 }
 
 static void
