@@ -15,7 +15,7 @@ use serde_derive::Deserialize;
 mod caps;
 mod depends;
 mod image;
-mod tlv;
+pub mod tlv;
 mod utils;
 pub mod testlog;
 

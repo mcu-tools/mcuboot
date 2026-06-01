@@ -33,6 +33,12 @@ sig-p384 = []
 # Verify ED25519 signatures.
 sig-ed25519 = []
 
+# Embed a second signing-verification key into the bootloader. When this
+# feature is enabled the simulator's bootutil_keys[] exposes two keys and
+# images signed with either are accepted. Currently only meaningful with
+# `sig-ed25519` — support for other signature types can be added as needed.
+sig-second-key = []
+
 # Overwrite only upgrade
 overwrite-only = []
 

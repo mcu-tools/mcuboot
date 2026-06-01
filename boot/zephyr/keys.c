@@ -27,20 +27,40 @@
  * provides via the compiler command line).
  */
 #include <mcuboot_config/mcuboot_config.h>
+#include <zephyr/sys/util.h>
 
 #if !defined(MCUBOOT_HW_KEY)
 #if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC256) || defined(MCUBOOT_SIGN_ED25519)
 #define HAVE_KEYS
-#if defined(MCUBOOT_SIGN_RSA)
-extern const unsigned char rsa_pub_key[];
-extern unsigned int rsa_pub_key_len;
-#elif defined(MCUBOOT_SIGN_EC256)
-extern const unsigned char ecdsa_pub_key[];
-extern unsigned int ecdsa_pub_key_len;
-#elif defined(MCUBOOT_SIGN_ED25519)
-extern const unsigned char ed25519_pub_key[];
-extern unsigned int ed25519_pub_key_len;
+
+#ifndef MCUBOOT_SIGN_KEY_COUNT
+#error "MCUBOOT_SIGN_KEY_COUNT must be defined by the build system"
 #endif
+
+#define _BOOT_KEY_CAT(a, b) a##b
+#define BOOT_KEY_CAT(a, b) _BOOT_KEY_CAT(a, b)
+
+#if defined(MCUBOOT_SIGN_RSA)
+#  define BOOT_KEY_PRIMARY rsa_pub_key
+#elif defined(MCUBOOT_SIGN_EC256)
+#  define BOOT_KEY_PRIMARY ecdsa_pub_key
+#elif defined(MCUBOOT_SIGN_ED25519)
+#  define BOOT_KEY_PRIMARY ed25519_pub_key
+#endif
+
+#define BOOT_KEY_NAME(N) BOOT_KEY_CAT(BOOT_KEY_PRIMARY, BOOT_KEY_CAT(_, N))
+
+#define BOOT_KEY_DECL_AT(i, _) \
+    extern const unsigned char BOOT_KEY_NAME(UTIL_INC(i))[]; \
+    extern unsigned int BOOT_KEY_CAT(BOOT_KEY_NAME(UTIL_INC(i)), _len);
+
+#define BOOT_KEY_ENTRY_AT(i, _) \
+    { .key = BOOT_KEY_NAME(UTIL_INC(i)), \
+      .len = &BOOT_KEY_CAT(BOOT_KEY_NAME(UTIL_INC(i)), _len) },
+
+extern const unsigned char BOOT_KEY_PRIMARY[];
+extern unsigned int BOOT_KEY_CAT(BOOT_KEY_PRIMARY, _len);
+LISTIFY(UTIL_DEC(MCUBOOT_SIGN_KEY_COUNT), BOOT_KEY_DECL_AT, ())
 #endif
 
 /*
@@ -51,19 +71,12 @@ extern unsigned int ed25519_pub_key_len;
 #if defined(HAVE_KEYS)
 const struct bootutil_key bootutil_keys[] = {
     {
-#if defined(MCUBOOT_SIGN_RSA)
-        .key = rsa_pub_key,
-        .len = &rsa_pub_key_len,
-#elif defined(MCUBOOT_SIGN_EC256)
-        .key = ecdsa_pub_key,
-        .len = &ecdsa_pub_key_len,
-#elif defined(MCUBOOT_SIGN_ED25519)
-        .key = ed25519_pub_key,
-        .len = &ed25519_pub_key_len,
-#endif
+        .key = BOOT_KEY_PRIMARY,
+        .len = &BOOT_KEY_CAT(BOOT_KEY_PRIMARY, _len),
     },
+    LISTIFY(UTIL_DEC(MCUBOOT_SIGN_KEY_COUNT), BOOT_KEY_ENTRY_AT, ())
 };
-const int bootutil_key_cnt = 1;
+const int bootutil_key_cnt = sizeof(bootutil_keys) / sizeof(bootutil_keys[0]);
 #endif /* HAVE_KEYS */
 #else
 unsigned int pub_key_len;

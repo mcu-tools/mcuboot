@@ -316,17 +316,6 @@ endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_TYPE_NONE AND NOT CONFIG_BOOT_BUILTIN_KEY AND NOT
   CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
-  set(key_file "${CONFIG_BOOT_SIGNATURE_KEY_FILE}")
-  string(CONFIGURE "${key_file}" key_file)
-
-  if(IS_ABSOLUTE ${key_file})
-    set(signing_key_file ${key_file})
-  elseif(EXISTS ${APPLICATION_CONFIG_DIR}/${key_file})
-    set(signing_key_file ${APPLICATION_CONFIG_DIR}/${key_file})
-  else()
-    set(signing_key_file ${MCUBOOT_DIR}/${key_file})
-  endif()
-  message("MCUBoot bootloader key file: ${signing_key_file}")
 
   set(mcuboot_default_signature_files
     ${MCUBOOT_DIR}/root-ec-p256-pkcs8.pem
@@ -338,26 +327,64 @@ if(NOT CONFIG_BOOT_SIGNATURE_TYPE_NONE AND NOT CONFIG_BOOT_BUILTIN_KEY AND NOT
     ${MCUBOOT_DIR}/root-ec-p256.pem
   )
 
-  # Emit a warning if using one of the default MCUboot key files
-  if(${signing_key_file} IN_LIST mcuboot_default_signature_files)
-    message(WARNING "WARNING: Using default MCUboot signing key file, this file is for debug use only and is not secure!")
-  endif()
+  # Keys are comma-separated in CONFIG_BOOT_SIGNATURE_KEY_FILE (semicolons do
+  # not survive sysbuild); convert to a CMake list (semicolon-separated) here.
+  string(REPLACE "," ";" mcuboot_key_files "${CONFIG_BOOT_SIGNATURE_KEY_FILE}")
+  list(LENGTH mcuboot_key_files mcuboot_sign_key_count)
 
-  set(generated_pubkey ${ZEPHYR_BINARY_DIR}/autogen-pubkey.c)
-  add_custom_command(
-    OUTPUT ${generated_pubkey}
-    COMMAND
-    ${PYTHON_EXECUTABLE}
-    ${MCUBOOT_DIR}/scripts/imgtool.py
-    getpub
-    -k
-    ${signing_key_file}
-    > ${generated_pubkey}
-    DEPENDS ${signing_key_file}
-  )
-  target_sources(app PRIVATE
-    ${generated_pubkey}
-  )
+  set(key_index 0)
+  foreach(raw_key_path IN LISTS mcuboot_key_files)
+    string(CONFIGURE "${raw_key_path}" key_path)
+
+    if(IS_ABSOLUTE ${key_path})
+      set(resolved_key_path ${key_path})
+    elseif(EXISTS ${APPLICATION_CONFIG_DIR}/${key_path})
+      set(resolved_key_path ${APPLICATION_CONFIG_DIR}/${key_path})
+    else()
+      set(resolved_key_path ${MCUBOOT_DIR}/${key_path})
+    endif()
+
+    if(key_index EQUAL 0)
+      set(signing_key_file ${resolved_key_path})
+      set(name_suffix_arg "")
+      set(generated_pubkey ${ZEPHYR_BINARY_DIR}/autogen-pubkey.c)
+      set(keyinfo_check_command "")
+      message("MCUBoot bootloader key file: ${resolved_key_path}")
+      if(${resolved_key_path} IN_LIST mcuboot_default_signature_files)
+        message(WARNING "WARNING: Using default MCUboot signing key file, this file is for debug use only and is not secure!")
+      endif()
+    else()
+      set(name_suffix_arg "--name-suffix" "_${key_index}")
+      set(generated_pubkey ${ZEPHYR_BINARY_DIR}/autogen-pubkey-${key_index}.c)
+      set(keyinfo_check_command
+        COMMAND ${PYTHON_EXECUTABLE} ${MCUBOOT_DIR}/scripts/imgtool.py
+          keyinfo --key ${resolved_key_path} --require public
+      )
+      message("MCUBoot bootloader verification key file #${key_index}: ${resolved_key_path}")
+      if(${resolved_key_path} IN_LIST mcuboot_default_signature_files)
+        message(WARNING "WARNING: Using default MCUboot signing key file for verification key #${key_index}, this file is for debug use only and is not secure!")
+      endif()
+    endif()
+
+    add_custom_command(
+      OUTPUT ${generated_pubkey}
+      ${keyinfo_check_command}
+      COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${MCUBOOT_DIR}/scripts/imgtool.py
+      getpub
+      -k
+      ${resolved_key_path}
+      ${name_suffix_arg}
+      > ${generated_pubkey}
+      DEPENDS ${resolved_key_path}
+    )
+    target_sources(app PRIVATE ${generated_pubkey})
+    math(EXPR key_index "${key_index} + 1")
+  endforeach()
+  target_compile_definitions(app PRIVATE MCUBOOT_SIGN_KEY_COUNT=${mcuboot_sign_key_count})
+elseif(CONFIG_BOOT_BUILTIN_KEY)
+  target_compile_definitions(app PRIVATE MCUBOOT_SIGN_KEY_COUNT=1)
 endif()
 
 if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQUAL "")
