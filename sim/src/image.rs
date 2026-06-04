@@ -18,6 +18,7 @@ use rand::{
     Rng, RngCore, SeedableRng,
     rngs::SmallRng,
 };
+use ring::digest;
 use std::{
     collections::{BTreeMap, HashSet}, io::{Cursor, Write}, mem, rc::Rc, slice
 };
@@ -295,6 +296,58 @@ impl ImagesBuilder {
 
         images.total_count = Some(total_count);
         images
+    }
+
+    pub fn try_make_delta_image(self) -> Option<Images> {
+        assert!(Caps::DeltaDfu.present());
+        assert!(Caps::OverwriteUpgrade.present());
+
+        let ImagesBuilder {
+            mut flash,
+            areadesc,
+            slots,
+            ram,
+        } = self;
+        let ram_for_install = ram.clone();
+        let mut images = Vec::with_capacity(slots.len());
+
+        for (image_num, slots) in slots.into_iter().enumerate() {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let primaries = install_image(&mut flash, &areadesc, &slots, 0,
+                ImageSize::Given(8192), &ram_for_install, &dep, ImageManipulation::None, Some(0));
+            let upgrades = install_image(&mut flash, &areadesc, &slots, 1,
+                ImageSize::Given(8192), &ram_for_install, &dep, ImageManipulation::None, Some(1));
+
+            if !install_delta_image(&mut flash, &areadesc, image_num, &slots,
+                                    &primaries, &upgrades, &dep, Some(1)) {
+                return None;
+            }
+
+            images.push(OneImage {
+                slots,
+                primaries,
+                upgrades,
+            });
+        }
+
+        install_ptable(&mut flash, &areadesc);
+        let mut images = Images {
+            flash,
+            areadesc,
+            images,
+            total_count: None,
+            ram,
+        };
+
+        for image in &images.images {
+            mark_upgrade(&mut images.flash, &image.slots[1]);
+        }
+
+        let total_count = images.run_basic_delta_upgrade()
+            .expect("Unable to perform basic delta upgrade");
+        c::reset_security_counters();
+        images.total_count = Some(total_count);
+        Some(images)
     }
 
     pub fn make_bad_secondary_slot_image(self, img_manipulation : ImageManipulation) -> Images {
@@ -629,6 +682,18 @@ impl Images {
         }
     }
 
+    pub fn run_basic_delta_upgrade(&self) -> Option<i32> {
+        let (flash, total_count) = self.try_upgrade(None, true);
+        info!("Total delta flash operation count={}", total_count);
+
+        if !self.verify_images(&flash, 0, 1) {
+            warn!("Image mismatch after delta boot");
+            None
+        } else {
+            Some(total_count)
+        }
+    }
+
     pub fn run_bootstrap(&self) -> bool {
         let mut flash = self.flash.clone();
         let mut fails = 0;
@@ -776,6 +841,34 @@ impl Images {
         if fails > 0 {
             error!("{} out of {} failed {:.2}%", fails, total_flash_ops,
                    fails as f32 * 100.0 / total_flash_ops as f32);
+        }
+
+        fails > 0
+    }
+
+    pub fn run_delta_with_fails(&self) -> bool {
+        if !Caps::DeltaDfu.present() {
+            return false;
+        }
+
+        let total_flash_ops = self.total_count.unwrap();
+        let mut fails = 0;
+
+        if skip_slow_test() {
+            return false;
+        }
+
+        for i in 1 .. total_flash_ops {
+            info!("Try delta interruption at {}", i);
+            let (flash, _count) = self.try_upgrade(Some(i), true);
+            if !self.verify_images(&flash, 0, 1) {
+                warn!("Delta primary slot FAIL at step {} of {}", i, total_flash_ops);
+                fails += 1;
+            }
+        }
+
+        if fails > 0 {
+            error!("{} out of {} delta interruption points failed", fails, total_flash_ops);
         }
 
         fails > 0
@@ -1903,6 +1996,200 @@ fn compute_largest_image_size(dev: &dyn Flash, areadesc: &AreaDesc, slots: &[Slo
         slot_len, hdr_size, trailer, tlv_len, padding);
 
     slot_len - hdr_size - trailer - tlv_len - padding
+}
+
+struct SimDeltaPayload {
+    payload: Vec<u8>,
+    base_hash: Vec<u8>,
+    target_hash: Vec<u8>,
+}
+
+const DELTA_MAGIC: u32 = 0x314c444d;
+const DELTA_VERSION: u16 = 2;
+const DELTA_HEADER_SIZE: u16 = 32;
+const DELTA_FLAG_RESTORE: u32 = 0x00000001;
+
+fn image_hash_end(data: &[u8]) -> usize {
+    let hdr_size = u16::from_le_bytes(data[8..10].try_into().unwrap()) as usize;
+    let protect_tlv_size = u16::from_le_bytes(data[10..12].try_into().unwrap()) as usize;
+    let img_size = u32::from_le_bytes(data[12..16].try_into().unwrap()) as usize;
+
+    hdr_size + img_size + protect_tlv_size
+}
+
+fn image_core_end(data: &[u8]) -> usize {
+    let hash_end = image_hash_end(data);
+
+    if hash_end + 4 <= data.len() {
+        let tlv_magic = u16::from_le_bytes(data[hash_end..hash_end + 2].try_into().unwrap());
+        let tlv_total = u16::from_le_bytes(data[hash_end + 2..hash_end + 4].try_into().unwrap())
+            as usize;
+
+        if tlv_magic == 0x6907 {
+            return hash_end + tlv_total;
+        }
+    }
+
+    hash_end
+}
+
+fn image_hash(data: &[u8]) -> Vec<u8> {
+    let hash_end = image_hash_end(data);
+    let algorithm = if cfg!(feature = "sig-p384") {
+        &digest::SHA384
+    } else {
+        &digest::SHA256
+    };
+
+    digest::digest(algorithm, &data[..hash_end]).as_ref().to_vec()
+}
+
+fn image_core(data: &[u8]) -> &[u8] {
+    &data[..image_core_end(data)]
+}
+
+fn build_delta_payload(base: &ImageData, target: &ImageData, block_size: usize,
+                       erased_val: u8) -> SimDeltaPayload {
+    assert!(block_size > 0 && block_size % 4 == 0 && (block_size & (block_size - 1)) == 0);
+
+    let base_image = &base.plain[..base.size];
+    let target_image = &target.plain[..target.size];
+    let base_core = image_core(base_image);
+    let target_core = image_core(target_image);
+    let compare_size = align_up(std::cmp::max(base_core.len(), target_core.len()) as u32,
+                                block_size as u32) as usize;
+    let mut base_cmp = vec![erased_val; compare_size];
+    let mut target_cmp = vec![erased_val; compare_size];
+    let mut records: Vec<(usize, Vec<u8>, Vec<u8>)> = vec![];
+    let mut run_offset: Option<usize> = None;
+    let mut run_new_data: Vec<u8> = vec![];
+    let mut run_old_data: Vec<u8> = vec![];
+
+    base_cmp[..base_core.len()].copy_from_slice(base_core);
+    target_cmp[..target_core.len()].copy_from_slice(target_core);
+
+    for off in (0..compare_size).step_by(block_size) {
+        let base_block = &base_cmp[off..off + block_size];
+        let target_block = &target_cmp[off..off + block_size];
+
+        if base_block == target_block {
+            if let Some(start) = run_offset.take() {
+                records.push((start, std::mem::take(&mut run_new_data),
+                              std::mem::take(&mut run_old_data)));
+            }
+            continue;
+        }
+
+        if run_offset.is_none() {
+            run_offset = Some(off);
+        }
+        run_new_data.extend_from_slice(target_block);
+        run_old_data.extend_from_slice(base_block);
+    }
+
+    if let Some(start) = run_offset.take() {
+        records.push((start, run_new_data, run_old_data));
+    }
+
+    let mut payload = vec![];
+    payload.write_u32::<LittleEndian>(DELTA_MAGIC).unwrap();
+    payload.write_u16::<LittleEndian>(DELTA_VERSION).unwrap();
+    payload.write_u16::<LittleEndian>(DELTA_HEADER_SIZE).unwrap();
+    payload.write_u32::<LittleEndian>(target_core.len() as u32).unwrap();
+    payload.write_u32::<LittleEndian>(compare_size as u32).unwrap();
+    payload.write_u32::<LittleEndian>(records.len() as u32).unwrap();
+    payload.write_u32::<LittleEndian>(block_size as u32).unwrap();
+    payload.write_u32::<LittleEndian>(DELTA_FLAG_RESTORE).unwrap();
+    payload.write_u32::<LittleEndian>(base_core.len() as u32).unwrap();
+
+    for (off, new_data, old_data) in records {
+        payload.write_u32::<LittleEndian>(off as u32).unwrap();
+        payload.write_u32::<LittleEndian>(new_data.len() as u32).unwrap();
+        payload.extend_from_slice(&new_data);
+        payload.extend_from_slice(&old_data);
+        while payload.len() % 4 != 0 {
+            payload.push(0);
+        }
+    }
+
+    SimDeltaPayload {
+        payload,
+        base_hash: image_hash(base_image),
+        target_hash: image_hash(target_image),
+    }
+}
+
+fn primary_flash_id(image_num: usize) -> FlashId {
+    match image_num {
+        0 => FlashId::Image0,
+        1 => FlashId::Image2,
+        _ => panic!("More than 2 images not supported"),
+    }
+}
+
+fn primary_first_sector_size(areadesc: &AreaDesc, image_num: usize) -> usize {
+    areadesc.get_area_sectors(primary_flash_id(image_num)).unwrap()[0].size as usize
+}
+
+fn install_delta_image(flash: &mut SimMultiFlash, areadesc: &AreaDesc,
+                       image_num: usize, slots: &[SlotInfo],
+                       base: &ImageData, target: &ImageData, deps: &dyn Depender,
+                       security_counter: Option<u32>) -> bool {
+    const HDR_SIZE: usize = 32;
+    const SIM_DELTA_SECTOR_BUF_SIZE: usize = 65536;
+
+    let (block_size, erased_val) = {
+        let dev = flash.get(&slots[0].dev_id).unwrap();
+        (primary_first_sector_size(areadesc, image_num), dev.erased_val())
+    };
+    if block_size > SIM_DELTA_SECTOR_BUF_SIZE {
+        return false;
+    }
+
+    let delta = build_delta_payload(base, target, block_size, erased_val);
+    let slot = &slots[1];
+    let offset = slot.base_off;
+    let dev_id = slot.dev_id;
+    let dev = flash.get_mut(&dev_id).unwrap();
+    let mut tlv: Box<dyn ManifestGen> = Box::new(make_tlv());
+
+    tlv.set_security_counter(security_counter);
+    tlv.set_delta_hashes(delta.base_hash, delta.target_hash);
+
+    let header = ImageHeader {
+        magic: tlv.get_magic(),
+        load_addr: 0,
+        hdr_size: HDR_SIZE as u16,
+        protect_tlv_size: tlv.protect_size(),
+        img_size: delta.payload.len() as u32,
+        flags: tlv.get_flags(),
+        ver: deps.my_version(offset, slot.index),
+        _pad2: 0,
+    };
+
+    let mut b_header = [0; HDR_SIZE];
+    b_header[..32].clone_from_slice(header.as_raw());
+
+    tlv.add_bytes(&b_header);
+    tlv.add_bytes(&delta.payload);
+    let mut b_tlv = tlv.make_tlv();
+
+    let mut buf = vec![];
+    buf.append(&mut b_header.to_vec());
+    buf.extend_from_slice(&delta.payload);
+    buf.append(&mut b_tlv);
+
+    while buf.len() % dev.align() != 0 {
+        buf.push(dev.erased_val());
+    }
+
+    if buf.len() > slot.len {
+        return false;
+    }
+
+    dev.erase(offset, slot.len).unwrap();
+    dev.write(offset, &buf).unwrap();
+    true
 }
 
 /// Install a "program" into the given image.  This fakes the image header, or at least all of the

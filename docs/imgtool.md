@@ -134,6 +134,13 @@ primary slot and adds a header and trailer that the bootloader is expecting:
                                       type. Will fall back without image
                                       compression automatically if the compression
                                       increases the image size.
+      --delta-base filename           Create a signed delta image against an
+                                      already-signed base image instead of a full
+                                      update image.
+      --delta-block-size INTEGER      Granularity, in bytes, used when comparing
+                                      base and target images for --delta-base.
+                                      Use the erase size on explicit-erase
+                                      flash.
       --encrypt-keylen [128|256]      When encrypting the image using AES, select
                                       a 128 bit or 256 bit key len.
       -E, --encrypt filename          Encrypt image using the provided public key.
@@ -177,6 +184,16 @@ about internals of image generated with this option can be found here
 [here](./compression_format.md)
 This isn't fully supported on the embedded side but can be utilised when
 project is built on top of the mcuboot.
+
+The `--delta-base` option creates a signed delta update image instead of a full
+target image. The base input must be the signed image currently running from the
+primary slot. The target input is signed in memory, compared against the signed
+base image, and emitted as a signed delta image containing changed blocks plus
+the previous contents of those blocks. The old bytes make the delta image
+larger, but they are required for interruption recovery and allow MCUboot to
+revert an unconfirmed test update without keeping a full backup image in the
+secondary slot.
+See [Delta DFU](delta_dfu.md) for the image format and bootloader requirements.
 
 The `--slot-size` argument is required and used to check that the firmware
 does not overflow into the swap status area (metadata). If swap upgrades are

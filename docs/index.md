@@ -39,6 +39,7 @@ The MCUboot documentation is composed of the following pages:
 - [Release notes](release-notes.md)
 - [Bootloader design](design.md)
 - [Encrypted images](encrypted_images.md)
+- [Delta DFU](delta_dfu.md)
 - [imgtool](imgtool.md) - image signing and key management
 - [ECDSA](ecdsa.md) - information about ECDSA signature formats
 - [Custom crypto backend](custom_crypto.md) - plugging in a custom crypto library

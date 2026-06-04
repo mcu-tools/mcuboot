@@ -19,6 +19,7 @@ fn main() {
     let sig_p384 = env::var("CARGO_FEATURE_SIG_P384").is_ok();
     let sig_ed25519 = env::var("CARGO_FEATURE_SIG_ED25519").is_ok();
     let overwrite_only = env::var("CARGO_FEATURE_OVERWRITE_ONLY").is_ok();
+    let delta_dfu = env::var("CARGO_FEATURE_DELTA_DFU").is_ok();
     let swap_move = env::var("CARGO_FEATURE_SWAP_MOVE").is_ok();
     let swap_offset = env::var("CARGO_FEATURE_SWAP_OFFSET").is_ok();
     let validate_primary_slot =
@@ -323,6 +324,20 @@ fn main() {
 
     if overwrite_only {
         conf.conf.define("MCUBOOT_OVERWRITE_ONLY", None);
+    }
+
+    if delta_dfu {
+        if !overwrite_only {
+            panic!("Delta DFU requires overwrite-only");
+        }
+        if enc_rsa || enc_aes256_rsa || enc_kw || enc_aes256_kw || enc_ec256 ||
+           enc_ec256_mbedtls || enc_aes256_ec256 || enc_x25519 || enc_aes256_x25519 ||
+           custom_enc_crypto {
+            panic!("Delta DFU does not support encrypted images");
+        }
+        conf.conf.define("MCUBOOT_DELTA_DFU", None);
+        conf.conf.define("MCUBOOT_DELTA_SECTOR_BUF_SIZE", Some("65536"));
+        conf.file("../../boot/bootutil/src/delta.c");
     }
 
     if swap_offset {

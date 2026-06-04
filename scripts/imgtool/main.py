@@ -28,7 +28,7 @@ from pathlib import Path
 import click
 
 import imgtool.keys as keys
-from imgtool import image, imgtool_version
+from imgtool import delta, image, imgtool_version
 from imgtool.dumpinfo import dump_imginfo
 from imgtool.version import decode_version
 
@@ -376,6 +376,14 @@ class BasedIntParamType(click.ParamType):
               help='Enable image compression using specified type. '
                    'Will fall back without image compression automatically '
                    'if the compression increases the image size.')
+@click.option('--delta-base', metavar='filename',
+              type=click.Path(exists=True, dir_okay=False),
+              help='Create a signed delta image against an already-signed '
+                   'base image instead of a full update image.')
+@click.option('--delta-block-size', default='16', type=BasedIntParamType(),
+              help='Granularity, in bytes, used when comparing base and '
+                   'target images for --delta-base. Use the target flash write '
+                   'alignment, or the erase size on explicit-erase flash.')
 @click.option('-c', '--clear', required=False, is_flag=True, default=False,
               help='Output a non-encrypted image with encryption capabilities,'
                    'so it can be installed in the primary slot, and encrypted '
@@ -460,7 +468,8 @@ class BasedIntParamType(click.ParamType):
               help='Unique image class identifier, format: (<raw_uuid>|<image_class_name>)')
 def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, test, max_sectors, overwrite_only,
-         endian, encrypt_keylen, encrypt, compression, infile, outfile,
+         endian, encrypt_keylen, encrypt, compression, delta_base, delta_block_size,
+         infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, custom_tlv_file, rom_fixed, max_align,
          clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, hmac_sha, is_pure,
@@ -544,7 +553,71 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             'Pure signatures, currently, enforces preferred hash algorithm, '
             'and forbids sha selection by user.')
 
-    if compression in ["lzma2", "lzma2armthumb"]:
+    if delta_base is not None:
+        if compression != "disabled":
+            raise click.UsageError('--delta-base cannot be combined with --compression')
+        if encrypt:
+            raise click.UsageError('--delta-base cannot be combined with --encrypt')
+        if fix_sig:
+            raise click.UsageError('--delta-base does not support --fix-sig')
+        if vector_to_sign:
+            raise click.UsageError('--delta-base does not support --vector-to-sign')
+        if is_pure:
+            raise click.UsageError('--delta-base does not support --pure signatures')
+
+        target_img = image.Image(version=decode_version(version),
+                  header_size=header_size, pad_header=pad_header,
+                  pad=False, confirm=False, test=False, align=int(align),
+                  slot_size=slot_size, max_sectors=max_sectors,
+                  overwrite_only=overwrite_only, endian=endian,
+                  load_addr=load_addr, rom_fixed=rom_fixed,
+                  erased_val=erased_val, save_enctlv=save_enctlv,
+                  security_counter=security_counter, max_align=max_align,
+                  non_bootable=non_bootable, vid=vid, cid=cid)
+        target_img.load(infile)
+        target_img.create(key, public_key_format, None, dependencies, boot_record,
+               custom_tlvs, None, None, int(encrypt_keylen), clear,
+               baked_signature, pub_key, None, user_sha=user_sha,
+               hmac_sha=hmac_sha, is_pure=is_pure)
+
+        check_key = key if key is not None else pub_key
+        hash_algorithm, _ = image.key_and_user_sha_to_alg_and_tlv(
+            check_key, user_sha, is_pure)
+        try:
+            delta_payload = delta.build_delta(
+                delta.load_image_bytes(delta_base),
+                bytes(target_img.payload),
+                int(delta_block_size),
+                target_img.erased_val,
+                hash_algorithm,
+                endian)
+        except ValueError as err:
+            raise click.UsageError(str(err)) from None
+
+        delta_tlvs = {
+            "DELTA_BASE_SHA": delta_payload.base_hash,
+            "DELTA_TARGET_SHA": delta_payload.target_hash,
+        }
+        img = image.Image(version=decode_version(version),
+                  header_size=header_size, pad_header=pad_header,
+                  pad=pad, confirm=confirm, test=test, align=int(align),
+                  slot_size=slot_size, max_sectors=max_sectors,
+                  overwrite_only=overwrite_only, endian=endian,
+                  load_addr=load_addr, rom_fixed=rom_fixed,
+                  erased_val=erased_val, save_enctlv=save_enctlv,
+                  security_counter=security_counter, max_align=max_align,
+                  non_bootable=False, vid=vid, cid=cid)
+        img.load_payload(delta_payload.payload)
+        img.create(key, public_key_format, None, dependencies, boot_record,
+               custom_tlvs, None, None, int(encrypt_keylen), clear,
+               None, pub_key, None, user_sha=user_sha, hmac_sha=hmac_sha,
+               is_pure=is_pure, delta_tlvs=delta_tlvs)
+        print(f"delta target image size: {delta_payload.target_size} bytes")
+        print(f"delta write span: {delta_payload.write_size} bytes")
+        print(f"delta record count: {delta_payload.record_count}")
+        print("delta restore data: included")
+        print(f"delta payload size: {len(delta_payload.payload)} bytes")
+    elif compression in ["lzma2", "lzma2armthumb"]:
         img.create(key, public_key_format, enckey, dependencies, boot_record,
                custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,

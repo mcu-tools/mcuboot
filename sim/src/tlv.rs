@@ -62,6 +62,8 @@ pub enum TlvKinds {
     ENCX25519 = 0x33,
     DEPENDENCY = 0x40,
     SECCNT = 0x50,
+    DeltaBaseSha = 0x76,
+    DeltaTargetSha = 0x77,
 }
 
 #[allow(dead_code, non_camel_case_types)]
@@ -71,6 +73,7 @@ pub enum TlvFlags {
     ENCRYPTED_AES128 = 0x04,
     ENCRYPTED_AES256 = 0x08,
     RAM_LOAD = 0x20,
+    DELTA = 0x1000,
 }
 
 /// A generator for manifests.  The format of the manifest can be either a
@@ -118,6 +121,9 @@ pub trait ManifestGen {
     /// Sets the ignore_ram_load_flag so that can be validated when it is missing,
     /// it will not load successfully.
     fn set_ignore_ram_load_flag(&mut self);
+
+    /// Add protected TLVs that bind a delta image to its base and target images.
+    fn set_delta_hashes(&mut self, base_hash: Vec<u8>, target_hash: Vec<u8>);
 }
 
 #[derive(Debug, Default)]
@@ -132,12 +138,20 @@ pub struct TlvGen {
     security_cnt: Option<u32>,
     /// Ignore RAM_LOAD flag
     ignore_ram_load_flag: bool,
+    /// Base and target image hashes for delta images.
+    delta_hashes: Option<DeltaHashes>,
 }
 
 #[derive(Debug)]
 struct Dependency {
     id: u8,
     version: ImageVersion,
+}
+
+#[derive(Clone, Debug)]
+struct DeltaHashes {
+    base: Vec<u8>,
+    target: Vec<u8>,
 }
 
 impl TlvGen {
@@ -331,11 +345,16 @@ impl ManifestGen for TlvGen {
     /// Retrieve the header flags for this configuration.  This can be called at any time.
     fn get_flags(&self) -> u32 {
         // For the RamLoad case, add in the flag for this feature.
+        let mut flags = self.flags;
+
         if Caps::RamLoad.present() && !self.ignore_ram_load_flag {
-            self.flags | (TlvFlags::RAM_LOAD as u32)
-        } else {
-            self.flags
+            flags |= TlvFlags::RAM_LOAD as u32;
         }
+        if self.delta_hashes.is_some() {
+            flags |= TlvFlags::DELTA as u32;
+        }
+
+        flags
     }
 
     /// Add bytes to the covered hash.
@@ -345,14 +364,20 @@ impl ManifestGen for TlvGen {
 
     fn protect_size(&self) -> u16 {
         let mut size = 0;
-        if !self.dependencies.is_empty() || (Caps::HwRollbackProtection.present() && self.security_cnt.is_some()) {
+        // add space for each dependency.
+        size += (self.dependencies.len() as u16) *
+            (4 + std::mem::size_of::<Dependency>() as u16);
+        if Caps::HwRollbackProtection.present() && self.security_cnt.is_some() {
+            size += 4 + 4;
+        }
+        if self.delta_hashes.is_some() {
+            let delta_hashes = self.delta_hashes.as_ref().unwrap();
+            size += (4 + delta_hashes.base.len() as u16) +
+                (4 + delta_hashes.target.len() as u16);
+        }
+        if size != 0 {
             // include the TLV area header.
             size += 4;
-            // add space for each dependency.
-            size +=  (self.dependencies.len() as u16) * (4 + std::mem::size_of::<Dependency>() as u16);
-            if Caps::HwRollbackProtection.present() && self.security_cnt.is_some() {
-                size += 4 + 4;
-            }
         }
         size
     }
@@ -460,6 +485,15 @@ impl ManifestGen for TlvGen {
                 protected_tlv.write_u16::<LittleEndian>(TlvKinds::SECCNT as u16).unwrap();
                 protected_tlv.write_u16::<LittleEndian>(std::mem::size_of::<u32>() as u16).unwrap();
                 protected_tlv.write_u32::<LittleEndian>(self.security_cnt.unwrap() as u32).unwrap();
+            }
+
+            if let Some(delta_hashes) = &self.delta_hashes {
+                protected_tlv.write_u16::<LittleEndian>(TlvKinds::DeltaBaseSha as u16).unwrap();
+                protected_tlv.write_u16::<LittleEndian>(delta_hashes.base.len() as u16).unwrap();
+                protected_tlv.extend_from_slice(&delta_hashes.base);
+                protected_tlv.write_u16::<LittleEndian>(TlvKinds::DeltaTargetSha as u16).unwrap();
+                protected_tlv.write_u16::<LittleEndian>(delta_hashes.target.len() as u16).unwrap();
+                protected_tlv.extend_from_slice(&delta_hashes.target);
             }
 
             assert_eq!(size, protected_tlv.len() as u16, "protected TLV length incorrect");
@@ -854,6 +888,13 @@ impl ManifestGen for TlvGen {
 
     fn set_ignore_ram_load_flag(&mut self) {
         self.ignore_ram_load_flag = true;
+    }
+
+    fn set_delta_hashes(&mut self, base_hash: Vec<u8>, target_hash: Vec<u8>) {
+        self.delta_hashes = Some(DeltaHashes {
+            base: base_hash,
+            target: target_hash,
+        });
     }
 }
 

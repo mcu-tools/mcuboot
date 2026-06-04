@@ -661,12 +661,18 @@ check_validity:
 
 #if defined(MCUBOOT_VERIFY_IMG_ADDRESS) && !defined(MCUBOOT_ENC_IMAGES) || \
     defined(MCUBOOT_CHECK_HEADER_LOAD_ADDRESS)
+#ifdef MCUBOOT_DELTA_DFU
+    bool is_delta_image = IS_DELTA(boot_img_hdr(state, slot));
+#else
+    bool is_delta_image = false;
+#endif
+
     /* Verify that the image in the secondary slot has a reset address
      * located in the primary slot. This is done to avoid users incorrectly
      * overwriting an application written to the incorrect slot.
      * This feature is only supported by ARM platforms.
      */
-    if (fap == BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY)) {
+    if (fap == BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY) && !is_delta_image) {
         struct image_header *secondary_hdr = boot_img_hdr(state, slot);
         uint32_t internal_img_addr = 0; /* either the reset handler addres or the image beginning addres */
         uint32_t min_addr;
@@ -959,6 +965,12 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 
     fap_secondary_slot = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
     assert(fap_secondary_slot != NULL);
+
+#ifdef MCUBOOT_DELTA_DFU
+    if (IS_DELTA(boot_img_hdr(state, BOOT_SLOT_SECONDARY))) {
+        return boot_delta_apply(state, bs);
+    }
+#endif
 
     sect_count = boot_img_num_sectors(state, BOOT_SLOT_PRIMARY);
     for (sect = 0, size = 0; sect < sect_count; sect++) {
