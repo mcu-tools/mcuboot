@@ -607,6 +607,30 @@ config BOOT_UPGRADE_ONLY
 	  of swapping them. This prevents the fallback recovery, but
 	  uses a much simpler code path.
 
+config BOOT_DELTA_DFU
+	bool "Apply delta update images"
+	depends on BOOT_UPGRADE_ONLY
+	depends on !BOOT_ENCRYPT_IMAGE
+	depends on !BOOT_SIGNATURE_TYPE_PURE
+	help
+	  If y, MCUboot can accept signed delta images in the secondary slot. A
+	  delta image is transport-neutral: any DFU path that writes it to the
+	  secondary slot and marks it pending can trigger the update. During boot,
+	  MCUboot verifies the delta image, restores any interrupted partial apply
+	  back to the base image, patches the primary slot, then validates the
+	  reconstructed target image before booting it.
+
+config BOOT_DELTA_DFU_SECTOR_BUFFER_SIZE
+	int "Delta DFU sector buffer size"
+	depends on BOOT_DELTA_DFU
+	range 256 262144
+	default 4096
+	help
+	  Size of the temporary RAM buffer used to preserve unchanged bytes
+	  while applying a delta record to flash devices that require explicit
+	  erase before write. This must be at least as large as the biggest
+	  primary-slot erase sector touched by a delta update.
+
 config BOOT_SWAP_USING_OFFSET
 	bool "Swap using offset mode without scratch partition"
 	help

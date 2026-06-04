@@ -140,6 +140,12 @@ else()
     ${BOOT_DIR}/bootutil/src/caps.c
   )
 
+  if(CONFIG_BOOT_DELTA_DFU)
+    zephyr_sources(
+      ${BOOT_DIR}/bootutil/src/delta.c
+    )
+  endif()
+
   if(CONFIG_BOOT_SWAP_USING_MOVE)
     zephyr_sources(
       ${BOOT_DIR}/bootutil/src/swap_move.c
