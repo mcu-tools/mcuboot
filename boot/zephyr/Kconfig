@@ -306,7 +306,7 @@ endchoice
 config BOOT_RSA_PSA_DOUBLE_VERIFY
 	bool "Verify RSA signatures twice (fault injection hardening)"
 	depends on BOOT_RSA_PSA
-	default y if !BOOT_FIH_PROFILE_OFF
+	default y if BOOT_FIH_PROFILE_MEDIUM || BOOT_FIH_PROFILE_HIGH
 	help
 	  With the PSA crypto backend the RSA modular exponentiation is
 	  performed inside the PSA implementation and cannot be checked
@@ -315,8 +315,12 @@ config BOOT_RSA_PSA_DOUBLE_VERIFY
 	  must succeed, providing a fault injection countermeasure at the
 	  cost of doubling the (relatively expensive) RSA verification time.
 
-	  Defaults to enabled whenever fault injection hardening is active;
-	  disable it if the boot time cost outweighs the added protection.
+	  This is the same redundancy strategy as the MEDIUM profile's
+	  double variables, applied to the one operation FIH's control-flow
+	  checks cannot see into, so it defaults to enabled at the MEDIUM
+	  and HIGH profiles. The LOW profile stays control-flow only; enable
+	  this explicitly there if the boot time cost is acceptable. Disable
+	  it at any level if the cost outweighs the added protection.
 
 endif # BOOT_SIGNATURE_TYPE_RSA
 
