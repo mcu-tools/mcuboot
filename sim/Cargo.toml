@@ -12,8 +12,10 @@ sig-rsa3072 = ["mcuboot-sys/sig-rsa3072"]
 sig-ecdsa = ["mcuboot-sys/sig-ecdsa"]
 sig-ecdsa-mbedtls = ["mcuboot-sys/sig-ecdsa-mbedtls"]
 sig-ecdsa-psa = ["mcuboot-sys/sig-ecdsa-psa", "mcuboot-sys/psa-crypto-api"]
+mbedtls-v4 = ["mcuboot-sys/mbedtls-v4", "sig-ecdsa-psa"]
 sig-p384 = ["mcuboot-sys/sig-p384"]
 sig-ed25519 = ["mcuboot-sys/sig-ed25519"]
+sig-lms = ["mcuboot-sys/sig-lms"]
 overwrite-only = ["mcuboot-sys/overwrite-only"]
 swap-offset = ["mcuboot-sys/swap-offset"]
 swap-move = ["mcuboot-sys/swap-move"]
@@ -57,3 +59,11 @@ cipher = "0.3"
 aes = { version = "0.7.4", features = ["ctr"] }
 base64 = "0.13.0"
 typenum = "1.13.0"
+# RFC 8554 LMS. TlvGen uses this to generate LMS-signed test images, and
+# the integration test in tests/lms_compat.rs cross-checks wire-format
+# compatibility against imgtool's pyhsslms wrapper.
+lms-signature = "0.1.0-rc.2"
+getrandom = { version = "0.4", features = ["sys_rng"] }
+rand_core = "0.10"
+hybrid-array = "0.4"
+signature = "3.0.0-rc.10"

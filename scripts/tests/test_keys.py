@@ -99,7 +99,9 @@ def test_keygen(key_type, tmp_path_persistent):
 @pytest.mark.parametrize("key_type", KEY_TYPES)
 def test_keygen_type(key_type, tmp_path_persistent):
     """Check generated keys"""
-    assert key_type in OPENSSL_KEY_TYPES
+    if key_type not in OPENSSL_KEY_TYPES:
+        pytest.skip(f"{key_type} keys are not PEM/PKCS8 — `openssl pkey` "
+                    "cannot validate them")
 
     gen_key = tmp_name(tmp_path_persistent, key_type, GEN_KEY_EXT)
 
@@ -117,6 +119,10 @@ def test_keygen_type(key_type, tmp_path_persistent):
 @pytest.mark.parametrize("format", PVT_KEY_FORMATS)
 def test_getpriv(key_type, format, tmp_path_persistent):
     """Get private key"""
+    if key_type.startswith("lms-"):
+        pytest.skip("LMS private keys are not PEM/PKCS8; getpriv "
+                    "openssl/pkcs8 formats do not apply")
+
     runner = CliRunner()
 
     gen_key = tmp_name(tmp_path_persistent, key_type, GEN_KEY_EXT)
