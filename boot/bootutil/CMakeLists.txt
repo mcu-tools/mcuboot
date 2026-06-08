@@ -27,7 +27,6 @@ target_sources(bootutil
         src/caps.c
         src/encrypted.c
         src/fault_injection_hardening.c
-        src/fault_injection_hardening_delay_rng_mbedtls.c
         src/image_ecdsa.c
         src/image_ed25519.c
         src/image_rsa.c
@@ -40,3 +39,13 @@ target_sources(bootutil
         src/ram_load.c
         src/tlv.c
 )
+
+# Select the FIH delay RNG implementation.
+# When the bootloader uses PSA Crypto (CONFIG_BOOT_USE_PSA_CRYPTO), use
+# psa_generate_random() instead of the legacy mbedTLS entropy + CTR-DRBG
+# APIs that were removed in tf-psa-crypto 1.0.
+if(CONFIG_BOOT_USE_PSA_CRYPTO)
+  target_sources(bootutil PRIVATE src/fault_injection_hardening_delay_rng_psa.c)
+else()
+  target_sources(bootutil PRIVATE src/fault_injection_hardening_delay_rng_mbedtls.c)
+endif()

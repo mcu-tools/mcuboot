@@ -118,7 +118,11 @@ endif()
 zephyr_link_libraries(MCUBOOT_BOOTUTIL)
 
 if(CONFIG_BOOT_FIH_PROFILE_HIGH)
-  zephyr_sources(${BOOT_DIR}/bootutil/src/fault_injection_hardening_delay_rng_mbedtls.c)
+  if(CONFIG_BOOT_USE_PSA_CRYPTO)
+    zephyr_sources(${BOOT_DIR}/bootutil/src/fault_injection_hardening_delay_rng_psa.c)
+  else()
+    zephyr_sources(${BOOT_DIR}/bootutil/src/fault_injection_hardening_delay_rng_mbedtls.c)
+  endif()
 endif()
 
 if(CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
