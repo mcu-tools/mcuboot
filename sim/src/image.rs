@@ -132,6 +132,15 @@ pub enum ImageManipulation {
     /// false to overlap by 1 byte
     OverlapImages(bool),
     CorruptHigherVersionImage,
+    /// XIP encryption only: flip a ciphertext byte *after* the SHA-256 is
+    /// computed, so the hash stored in the TLV no longer matches what is in
+    /// flash. boot_image_check_hook recomputes the hash over the tampered
+    /// ciphertext and must reject the image.
+    CorruptXipPayload,
+    /// XIP encryption only: tamper the ECIES key-wrap envelope (its HMAC-SHA256
+    /// tag). The xip_enc_ecies_unwrap step of boot_image_check_hook fails the
+    /// constant-time tag comparison and must reject the image.
+    CorruptXipEcies,
 }
 
 
@@ -2859,6 +2868,12 @@ fn install_image_with_key(
         let _aes256 = (tlv.get_flags() & flag) == flag;
         tlv.set_base_address(offset as u32);
         tlv.generate_enc_key();
+        if img_manipulation == ImageManipulation::CorruptXipEcies {
+            // Tamper the pre-computed ECIES envelope (HMAC tag) before it is
+            // emitted into the TLV; the hash/signature are unaffected, so the
+            // image is rejected specifically at the ECIES unwrap step.
+            tlv.corrupt_ecies();
+        }
         let enc_key = tlv.get_enc_key();
 
         // --- XIP encryption (edgeprotecttools format) ---
@@ -2907,6 +2922,14 @@ fn install_image_with_key(
         // Hash/sign covers CIPHERTEXT for XIP
         tlv.add_bytes(&b_header);
         tlv.add_bytes(&b_encimg);
+
+        if img_manipulation == ImageManipulation::CorruptXipPayload {
+            // Flip a ciphertext byte *after* the hash has been accumulated so
+            // the stored SHA-256 no longer matches the bytes written to flash.
+            if let Some(first) = b_encimg.first_mut() {
+                *first ^= 0xff;
+            }
+        }
     } else {
         // Standard: hash/sign covers PLAINTEXT
         tlv.add_bytes(&b_header);

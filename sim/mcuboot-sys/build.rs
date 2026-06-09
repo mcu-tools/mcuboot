@@ -605,7 +605,7 @@ fn main() {
 
         // Crypto dependencies (same as enc-ec256: tinycrypt ECDH + HMAC + AES-CTR)
         // CachedBuild deduplicates if already included by a signature feature.
-        conf.conf.include("../../ext/mbedtls/include");
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
         conf.conf.include("../../ext/tinycrypt/lib/include");
 
         conf.file("csupport/keys.c");
@@ -616,8 +616,8 @@ fn main() {
         conf.file("../../ext/tinycrypt/lib/source/ecc_dsa.c");
         conf.file("../../ext/tinycrypt/lib/source/ecc_platform_specific.c");
 
-        conf.file("../../ext/mbedtls/library/platform_util.c");
-        conf.file("../../ext/mbedtls/library/asn1parse.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
 
         conf.file("../../ext/tinycrypt/lib/source/aes_encrypt.c");
         conf.file("../../ext/tinycrypt/lib/source/aes_decrypt.c");

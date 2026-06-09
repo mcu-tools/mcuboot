@@ -281,6 +281,10 @@ extern "C" {
                         sz: u32,
                         buf: *mut u8) -> i32;
     fn xip_enc_clear_keys();
+    fn xip_enc_ecies_unwrap(tlv_buf: *const u8,
+                            tlv_len: u16,
+                            out_key: *mut u8,
+                            out_iv: *mut u8) -> i32;
 }
 
 #[cfg(feature = "enc-xip-ec256")]
@@ -302,4 +306,17 @@ pub fn xip_decrypt(image_index: i32, fap: *const u8,
 #[cfg(feature = "enc-xip-ec256")]
 pub fn xip_clear_keys() {
     unsafe { xip_enc_clear_keys(); }
+}
+
+/// Unwrap an ECIES-P256 key envelope via the C `xip_enc_ecies_unwrap`.
+/// Returns the C status code (0 on success) plus the recovered key and IV.
+#[cfg(feature = "enc-xip-ec256")]
+pub fn xip_ecies_unwrap(tlv: &[u8]) -> (i32, [u8; 16], [u8; 16]) {
+    let mut key = [0u8; 16];
+    let mut iv = [0u8; 16];
+    let rc = unsafe {
+        xip_enc_ecies_unwrap(tlv.as_ptr(), tlv.len() as u16,
+                             key.as_mut_ptr(), iv.as_mut_ptr())
+    };
+    (rc, key, iv)
 }
