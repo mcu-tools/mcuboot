@@ -98,6 +98,10 @@ pub trait ManifestGen {
     /// corrupt the signature.
     fn corrupt_sig(&mut self);
 
+    /// Tamper the pre-computed ECIES key-wrap envelope (XIP encryption mode).
+    /// Default: no-op for generators that do not produce an ECIES envelope.
+    fn corrupt_ecies(&mut self) {}
+
     /// Estimate the size of the TLV.  This can be called before the payload is added (but after
     /// other information is added).  Some of the signature algorithms can generate variable sized
     /// data, and therefore, this can slightly overestimate the size.
@@ -460,6 +464,83 @@ impl TlvGen {
     }
 }
 
+/// Build a valid ECIES-P256 key-wrap envelope around `enc_key`, for direct
+/// unit-testing of the C `xip_enc_ecies_unwrap`.
+///
+/// * `extended == true`  -> 177-byte extended envelope. A per-image `xip_iv`
+///   is derived via HKDF (non-zero), so unwrap accepts it.
+/// * `extended == false` -> 113-byte standard envelope. The standard format
+///   carries no per-image IV, so unwrap derives an all-zero nonce and the
+///   zero-IV uniqueness guard must reject it.
+///
+/// The HMAC tag is always valid (the key derivation mirrors the C side), so a
+/// rejection can only come from the IV check, not tag verification.
+#[cfg(feature = "enc-xip-ec256")]
+pub fn build_test_ecies_envelope(enc_key: &[u8; 16], extended: bool) -> Vec<u8> {
+    let rng = rand::SystemRandom::new();
+    let key_bytes = pem::parse(include_bytes!("../../enc-ec256-pub.pem").as_ref()).unwrap();
+    assert_eq!(key_bytes.tag, "PUBLIC KEY");
+
+    let pk = agreement::EphemeralPrivateKey::generate(&agreement::ECDH_P256, &rng).unwrap();
+    let pubk = pk.compute_public_key().unwrap();
+    let peer_pubk = agreement::UnparsedPublicKey::new(
+        &agreement::ECDH_P256, &key_bytes.contents[26..]);
+
+    #[derive(Debug, PartialEq)]
+    struct OkmLen<T: core::fmt::Debug + PartialEq>(T);
+    impl hkdf::KeyType for OkmLen<usize> {
+        fn len(&self) -> usize { self.0 }
+    }
+
+    // Standard mode uses an empty salt (== 32 zero bytes per RFC 5869) and a
+    // 48-byte OKM (AES key + HMAC key). Extended mode adds a random 32-byte
+    // salt and 32 more OKM bytes (key_iv + xip_iv).
+    let mut salt = vec![0u8; 32];
+    if extended {
+        rng.fill(&mut salt).unwrap();
+    }
+    let okm_len: usize = if extended { 80 } else { 48 };
+
+    let derived = agreement::agree_ephemeral(
+        pk, &peer_pubk, ring::error::Unspecified, |shared| {
+            let salt_bytes: &[u8] = if extended { &salt } else { &[] };
+            let s = hkdf::Salt::new(hkdf::HKDF_SHA256, salt_bytes);
+            let prk = s.extract(shared);
+            let okm = prk.expand(&[b"MCUBoot_ECIES_v1"], OkmLen(okm_len))?;
+            let mut buf = vec![0u8; okm_len];
+            okm.fill(&mut buf)?;
+            Ok(buf)
+        },
+    ).unwrap();
+
+    // AES-CTR wrap the key. Standard: zero IV; Extended: key_iv = OKM[48..64].
+    let ctr_iv = if extended {
+        GenericArray::clone_from_slice(&derived[48..64])
+    } else {
+        GenericArray::clone_from_slice(&[0u8; 16])
+    };
+    let mut cipherkey = enc_key.to_vec();
+    let aes_key: &GenericArray<u8, U16> = GenericArray::from_slice(&derived[..16]);
+    let block = Aes128::new(aes_key);
+    let mut cipher = Aes128Ctr::from_block_cipher(block, &ctr_iv);
+    cipher.apply_keystream(&mut cipherkey);
+
+    // HMAC-SHA256 tag over the wrapped key, keyed by OKM[16..48].
+    let hmac_key = hmac::Key::new(hmac::HMAC_SHA256, &derived[16..48]);
+    let tag = hmac::sign(&hmac_key, &cipherkey);
+
+    let mut buf = Vec::new();
+    buf.extend_from_slice(pubk.as_ref());   // 65 bytes: ephemeral public key
+    buf.extend_from_slice(tag.as_ref());    // 32 bytes: HMAC-SHA256 tag
+    buf.extend_from_slice(&cipherkey);      // 16 bytes: wrapped AES key
+    if extended {
+        buf.extend_from_slice(&salt);       // 32 bytes: HKDF salt
+        buf.extend_from_slice(&[0u8; 32]);  // 32 bytes: padding (ignored on unwrap)
+    }
+    assert_eq!(buf.len(), if extended { 177 } else { 113 });
+    buf
+}
+
 impl ManifestGen for TlvGen {
     fn get_magic(&self) -> u32 {
         0x96f3b83d
@@ -503,6 +584,16 @@ impl ManifestGen for TlvGen {
 
     fn corrupt_sig(&mut self) {
         self.gen_corrupted = true;
+    }
+
+    fn corrupt_ecies(&mut self) {
+        // The XIP ECIES envelope is pre-computed in generate_enc_key().
+        assert!(!self.ecies_buf.is_empty(),
+                "corrupt_ecies requires a pre-computed XIP ECIES envelope");
+        // Flip the first byte of the 32-byte HMAC-SHA256 tag, which occupies
+        // envelope bytes [65..97]. xip_enc_ecies_unwrap will fail its
+        // constant-time tag comparison.
+        self.ecies_buf[65] ^= 0xff;
     }
 
     fn estimate_size(&self) -> usize {

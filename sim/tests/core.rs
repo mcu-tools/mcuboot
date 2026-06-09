@@ -302,6 +302,53 @@ sim_test!(xip_enc_hash_covers_ciphertext,
           make_no_upgrade_image(&NO_DEPS, ImageManipulation::None),
           run_xip_ciphertext_hash_test());
 
+// --- Negative tests: a corrupted XIP image must fail validation ---------
+//
+// Each builds a valid encrypted image in the primary slot and a *tampered*
+// encrypted image in the secondary slot, marks the upgrade pending, and runs
+// the bootloader. boot_image_check_hook must reject the secondary image, so
+// no swap occurs and the primary slot is left intact and bootable.
+
+// Corrupt one ciphertext byte of the upgrade image. The SHA-256 stored in the
+// TLV (computed over the pristine ciphertext) no longer matches flash, so
+// Step 2 (hash verification) of boot_image_check_hook rejects the upgrade.
+#[cfg(feature = "enc-xip-ec256")]
+sim_test!(xip_enc_corrupt_payload_rejected,
+          make_bad_secondary_slot_image(ImageManipulation::CorruptXipPayload),
+          run_fail_upgrade_primary_intact());
+
+// Tamper the ECIES key-wrap envelope (HMAC tag) of the upgrade image. The
+// hash and signature still validate, so the image is rejected specifically at
+// Step 4 (xip_enc_ecies_unwrap), exercising the key-unwrap failure path.
+#[cfg(feature = "enc-xip-ec256")]
+sim_test!(xip_enc_corrupt_ecies_rejected,
+          make_bad_secondary_slot_image(ImageManipulation::CorruptXipEcies),
+          run_fail_upgrade_primary_intact());
+
+// Directly exercise the per-image IV uniqueness guard in xip_enc_ecies_unwrap.
+// A 113-byte standard ECIES envelope carries no per-image IV, so the unwrap
+// derives an all-zero nonce that the guard must reject. A 177-byte extended
+// envelope (HKDF-derived non-zero nonce) is the positive control -- it also
+// proves the test's envelope construction matches the C key derivation, so the
+// standard-envelope rejection can only be the IV guard, not a tag mismatch.
+#[cfg(feature = "enc-xip-ec256")]
+#[test]
+fn xip_enc_zero_iv_unwrap_rejected() {
+    testlog::setup();
+    let enc_key = [0x11u8; 16];
+
+    let ext = bootsim::build_test_ecies_envelope(&enc_key, true);
+    let (rc_ext, _key_ext, iv_ext) = c::xip_ecies_unwrap(&ext);
+    assert_eq!(rc_ext, 0, "valid extended ECIES envelope must unwrap");
+    assert!(iv_ext[..12].iter().any(|&b| b != 0),
+            "extended envelope must yield a non-zero nonce");
+
+    let std = bootsim::build_test_ecies_envelope(&enc_key, false);
+    let (rc_std, _key_std, _iv_std) = c::xip_ecies_unwrap(&std);
+    assert_ne!(rc_std, 0,
+               "standard ECIES envelope (zero nonce) must be rejected by the zero-IV guard");
+}
+
 /// Counter for the image number.
 static IMAGE_NUMBER: AtomicUsize = AtomicUsize::new(0);
 
