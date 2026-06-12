@@ -90,12 +90,17 @@ config BOOT_LINE_BUFS
 
 config BOOT_SERIAL_MAX_RECEIVE_SIZE
 	int "Maximum command line length"
+	range BOOT_MAX_LINE_INPUT_LEN 65535
 	default 1024
 	help
-	  Maximum length of received commands via the serial port (this should
-	  be equal to the maximum line length, BOOT_MAX_LINE_INPUT_LEN times
-	  by the number of receive buffers, BOOT_LINE_BUFS to allow for
-	  optimal data transfer speeds).
+	  Maximum length of a received command: the largest decoded SMP frame
+	  that serial recovery reassembles from the received fragments, and the
+	  buf_size reported by the MCUmgr parameters command
+	  (BOOT_MGMT_MCUMGR_PARAMS). This is a decoded ceiling, not an encoded
+	  line-buffer product (BOOT_MAX_LINE_INPUT_LEN times BOOT_LINE_BUFS);
+	  larger values permit larger SMP frames at the cost of RAM. The lower
+	  bound keeps the buffer large enough to hold one fragment so that a
+	  misconfiguration fails here rather than silently dropping frames.
 
 config BOOT_ERASE_PROGRESSIVELY
 	bool "Erase flash progressively when receiving new firmware"
@@ -110,6 +115,17 @@ config BOOT_MGMT_ECHO
 	bool "Echo command"
 	help
 	  if enabled, support for the mcumgr echo command is being added.
+
+config BOOT_MGMT_MCUMGR_PARAMS
+	bool "MCUmgr OS mgmt params command"
+	depends on BOOT_MAX_LINE_INPUT_LEN = 128
+	help
+	  If enabled, support for the mcumgr OS group "MCUmgr parameters" command (command ID 6)
+	  is added, mirroring the command provided by Zephyr's SMP server. It reports the SMP
+	  transport buffer size (BOOT_SERIAL_MAX_RECEIVE_SIZE) and buffer count so that SMP
+	  clients can negotiate optimal serial fragmentation. The parameters do not carry the
+	  transport line length, so this option requires BOOT_MAX_LINE_INPUT_LEN to remain at the
+	  standard 128-byte fragment size. buf_count will always be 1.
 
 menuconfig ENABLE_MGMT_PERUSER
 	bool "System specific mcumgr commands"

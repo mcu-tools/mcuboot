@@ -54,6 +54,7 @@ extern "C" {
 #define NMGR_ID_ECHO            0
 #define NMGR_ID_CONS_ECHO_CTRL  1
 #define NMGR_ID_RESET           5
+#define NMGR_ID_MCUMGR_PARAMS   6
 
 #ifndef __packed
 #define __packed __attribute__((__packed__))
