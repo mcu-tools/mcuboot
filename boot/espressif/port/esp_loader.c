@@ -12,6 +12,8 @@
 #include "bootloader_memory_utils.h"
 #include "bootloader_flash_priv.h"
 #include "esp_flash_encrypt.h"
+#include "soc/soc_caps.h"
+#include "hal/cache_ll.h"
 
 #include "rom/uart.h"
 
@@ -41,6 +43,8 @@
 #define LP_RTC_PREFIX "LP"
 #elif CONFIG_IDF_TARGET_ESP32C5
 #define LP_RTC_PREFIX "LP"
+#elif CONFIG_IDF_TARGET_ESP32P4
+#define LP_RTC_PREFIX "LP"
 #elif CONFIG_IDF_TARGET_ESP32H2
 #define LP_RTC_PREFIX "LP"
 #endif
@@ -53,6 +57,12 @@ static int load_segment(const struct flash_area *fap, uint32_t data_addr, uint32
         return -1;
     }
     memcpy((void *)load_addr, data, data_len);
+#if SOC_CACHE_INTERNAL_MEM_VIA_L1CACHE
+    if (esp_ptr_in_iram((void *)load_addr)) {
+        /* D-cache writes must be visible to I-cache before executing loaded code */
+        cache_ll_writeback_all(CACHE_LL_LEVEL_INT_MEM, CACHE_TYPE_DATA, CACHE_LL_ID_ALL);
+    }
+#endif
     bootloader_munmap(data);
     return 0;
 }
