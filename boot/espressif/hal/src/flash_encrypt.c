@@ -260,11 +260,13 @@ esp_err_t esp_flash_encrypt_init(void)
         return err;
     }
 
+#if CONFIG_SECURE_FLASH_ENC_ENABLED
     err = esp_flash_encryption_enable_secure_features();
     if (err != ESP_OK) {
         esp_efuse_batch_write_cancel();
         return err;
     }
+#endif
 
     err = esp_efuse_batch_write_commit();
     if (err != ESP_OK) {
