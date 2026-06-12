@@ -1261,6 +1261,35 @@ out:
 }
 #endif
 
+#ifdef MCUBOOT_BOOT_MGMT_MCUMGR_PARAMS
+/*
+ * Reports the SMP transport buffer parameters so that clients can negotiate
+ * optimal serial fragmentation, mirroring the mcumgr OS group "MCUmgr
+ * parameters" command provided by Zephyr's SMP server. The serial recovery
+ * reassembles one command at a time into a single buffer, hence a buffer
+ * count of 1. The line length is not reported; enabling this command requires
+ * BOOT_MAX_LINE_INPUT_LEN to remain at the standard 128-byte fragment size.
+ */
+static void
+bs_mcumgr_params(char *buf, int len)
+{
+    static const uint_fast32_t max_num = 2;
+    bool ok = zcbor_map_start_encode(cbor_state, max_num) &&
+              zcbor_tstr_put_lit_cast(cbor_state, "buf_size") &&
+              zcbor_uint32_put(cbor_state, MCUBOOT_SERIAL_MAX_RECEIVE_SIZE) &&
+              zcbor_tstr_put_lit_cast(cbor_state, "buf_count") &&
+              zcbor_uint32_put(cbor_state, 1) &&
+              zcbor_map_end_encode(cbor_state, max_num);
+
+    if (ok) {
+        boot_serial_output();
+    } else {
+        reset_cbor_state();
+        bs_rc_rsp(MGMT_ERR_ENOMEM);
+    }
+}
+#endif
+
 /*
  * Reset, and (presumably) boot to newly uploaded image. Flush console
  * before restarting.
@@ -1354,6 +1383,11 @@ boot_serial_input(char *buf, int len)
         case NMGR_ID_RESET:
             bs_reset(buf, len);
             break;
+#ifdef MCUBOOT_BOOT_MGMT_MCUMGR_PARAMS
+        case NMGR_ID_MCUMGR_PARAMS:
+            bs_mcumgr_params(buf, len);
+            break;
+#endif
         default:
             bs_rc_rsp(MGMT_ERR_ENOTSUP);
             break;

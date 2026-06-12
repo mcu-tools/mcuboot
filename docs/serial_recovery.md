@@ -32,6 +32,7 @@ See the Zephyr [Device Management](https://docs.zephyrproject.org/latest/service
 MCUboot supports the following subset of the MCUmgr commands:
 * echo (OS group)
 * reset (OS group)
+* MCUmgr parameters SMP buffer size (OS group), when ``MCUBOOT_BOOT_MGMT_MCUMGR_PARAMS`` is enabled
 * image list (IMG group)
 * image upload (IMG group)
 
