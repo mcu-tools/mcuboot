@@ -62,6 +62,9 @@ static sys_slist_t avail_queue;
 static sys_slist_t lines_queue;
 
 static uint16_t cur;
+#ifndef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
+static uint8_t rx_batch_buf[CONFIG_BOOT_SERIAL_UART_RX_BATCH_SIZE];
+#endif
 
 static int boot_uart_fifo_getline(char **line);
 static int boot_uart_fifo_init(void);
@@ -184,7 +187,6 @@ static void
 boot_uart_fifo_callback(const struct device *dev, void *user_data)
 {
 	static struct line_input *cmd;
-	uint8_t byte;
 	int rx;
 
 	uart_irq_update(uart_dev);
@@ -194,6 +196,9 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 	}
 
 	while (true) {
+#ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
+		uint8_t byte;
+
 		rx = uart_fifo_read(uart_dev, &byte, 1);
 		if (rx != 1) {
 			break;
@@ -211,7 +216,6 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 			cmd = CONTAINER_OF(node, struct line_input, node);
 		}
 
-#ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
 		cmd->line[cur++] = byte;
 
 		if (cur >= CONFIG_BOOT_MAX_LINE_INPUT_LEN) {
@@ -221,15 +225,42 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 			cmd = NULL;
 		}
 #else
-		if (cur < CONFIG_BOOT_MAX_LINE_INPUT_LEN) {
-			cmd->line[cur++] = byte;
+		rx = uart_fifo_read(uart_dev, rx_batch_buf, sizeof(rx_batch_buf));
+		if (rx <= 0) {
+			break;
 		}
 
-		if (byte ==  '\n') {
-			cmd->len = cur;
-			sys_slist_append(&lines_queue, &cmd->node);
-			cur = 0;
-			cmd = NULL;
+		const uint8_t *p = rx_batch_buf;
+		const uint8_t *batch_end = p + rx;
+
+		while (p < batch_end) {
+			if (!cmd) {
+				sys_snode_t *node;
+
+				node = sys_slist_get(&avail_queue);
+				if (!node) {
+					BOOT_LOG_ERR("Not enough memory to store"
+						     " incoming data!");
+					return;
+				}
+				cmd = CONTAINER_OF(node, struct line_input, node);
+			}
+
+			const uint8_t *nl = memchr(p, '\n', batch_end - p);
+			size_t chunk = nl ? (size_t)(nl - p + 1) : (size_t)(batch_end - p);
+			size_t room = CONFIG_BOOT_MAX_LINE_INPUT_LEN - cur;
+			size_t copy_len = MIN(chunk, room);
+
+			memcpy(&cmd->line[cur], p, copy_len);
+			cur += copy_len;
+			p += chunk;
+
+			if (nl) {
+				cmd->len = cur;
+				sys_slist_append(&lines_queue, &cmd->node);
+				cur = 0;
+				cmd = NULL;
+			}
 		}
 #endif
 	}

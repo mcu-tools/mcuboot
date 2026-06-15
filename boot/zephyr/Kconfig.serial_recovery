@@ -137,6 +137,15 @@ config BOOT_SERIAL_MAX_RECEIVE_SIZE
 	  bound keeps the buffer large enough to hold one fragment so that a
 	  misconfiguration fails here rather than silently dropping frames.
 
+config BOOT_SERIAL_UART_RX_BATCH_SIZE
+	int "UART RX batch read size"
+	default 512
+	range 1 1024
+	help
+	  Number of bytes read from the UART FIFO per uart_fifo_read() call
+	  in the serial recovery ISR. Larger values reduce per-call overhead
+	  at the cost of a slightly larger static buffer.
+
 config BOOT_ERASE_PROGRESSIVELY
 	bool "Erase flash progressively when receiving new firmware"
 	default y if SOC_FAMILY_NORDIC_NRF || SOC_FAMILY_NXP_IMXRT
