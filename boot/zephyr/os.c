@@ -20,6 +20,7 @@
 #include <zephyr/kernel.h>
 #include <string.h>
 
+#include "os/os.h"
 #include "os/os_heap.h"
 
 #ifdef CONFIG_BOOT_USE_MBEDTLS
@@ -61,3 +62,8 @@ void os_heap_init(void)
 {
 }
 #endif
+
+uint32_t os_uptime_get_ms_32(void)
+{
+    return k_uptime_get_32();
+}

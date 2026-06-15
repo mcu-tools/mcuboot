@@ -9,8 +9,8 @@ menuconfig MCUBOOT_SERIAL
 	select REBOOT
 	select SERIAL
 	select UART_INTERRUPT_DRIVEN
-	select BASE64
-	select CRC
+	select BASE64 if !BOOT_SERIAL_RAW_PROTOCOL
+	select CRC if !BOOT_SERIAL_RAW_PROTOCOL
 	select ZCBOR
 	depends on !BOOT_FIRMWARE_LOADER
 	help
@@ -45,6 +45,41 @@ config BOOT_SERIAL_CDC_ACM
 	  the chosen, leaving console on CDC ACM.
 
 endchoice
+
+config BOOT_SERIAL_RAW_PROTOCOL
+	bool "Raw (SMP without framing and encoding) protocol"
+	help
+	  If y, SMP (MCUmgr) commands are exchanged over the serial port as raw SMP
+	  packets instead of using the SMP over console format. This drops the
+	  base64 encoding and the additional console-specific framing (packet
+	  start/continuation markers, length prefix and CRC), which reduces flash
+	  and RAM usage and increases transfer speed, at the cost of requiring a
+	  binary-capable serial link. Packet boundaries are derived from the
+	  length field of the SMP header. The SMP client must be configured
+	  to use a matching raw transport.
+
+config BOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT
+	bool "Raw protocol input expiration"
+	depends on BOOT_SERIAL_RAW_PROTOCOL
+	default y
+	help
+	  Discard a partially received raw SMP packet after a period without new
+	  data, so that a stalled or malformed transfer cannot permanently wedge
+	  serial recovery. Unlike the SMP over console format, the raw protocol has
+	  no CRC or framing to detect a truncated packet, so there is otherwise no
+	  way to resynchronise the input stream. This mirrors Zephyr's
+	  MCUMGR_TRANSPORT_RAW_UART_INPUT_TIMEOUT (zephyrproject-rtos/zephyr#101821)
+	  and is enabled by default because raw recovery is unsafe without it.
+
+config BOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT_MS
+	int "Raw protocol input expiration timeout (ms)"
+	depends on BOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT
+	default 3000
+	help
+	  Time in milliseconds without new data, after which a still-incomplete
+	  raw SMP packet is dropped and the receive buffer is reset to await a new
+	  command. The window restarts whenever more data arrives, so it measures
+	  inactivity rather than total transfer time.
 
 config MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
 	bool "Allow to select image number for DFU"

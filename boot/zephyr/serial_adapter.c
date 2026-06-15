@@ -86,9 +86,44 @@ console_write(const char *str, int cnt)
 	}
 }
 
+#ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
+/*
+ * Raw protocol read: the data is binary, so it is returned without a NUL
+ * terminator. A fragment may be larger than the caller's buffer, so retain the
+ * unconsumed tail for the next call rather than dropping it (the fragment's
+ * buffer is not recycled by boot_uart_fifo_getline() until it is fully consumed
+ * here). Returns the number of bytes copied into "str".
+ */
+static int
+console_read_raw(char *str, int str_size, int *newline)
+{
+	static char *pending;
+	static int pending_len;
+	int n;
+
+	if (pending_len == 0) {
+		pending_len = boot_uart_fifo_getline(&pending);
+		if (pending == NULL) {
+			*newline = 0;
+			return 0;
+		}
+	}
+
+	n = MIN(pending_len, str_size);
+	memcpy(str, pending, n);
+	pending += n;
+	pending_len -= n;
+	*newline = 1;
+	return n;
+}
+#endif
+
 int
 console_read(char *str, int str_size, int *newline)
 {
+#ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
+	return console_read_raw(str, str_size, newline);
+#else
 	char *line;
 	int len;
 
@@ -107,6 +142,7 @@ console_read(char *str, int str_size, int *newline)
 	str[len] = '\0';
 	*newline = 1;
 	return len + 1;
+#endif
 }
 
 int
@@ -175,6 +211,16 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 			cmd = CONTAINER_OF(node, struct line_input, node);
 		}
 
+#ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
+		cmd->line[cur++] = byte;
+
+		if (cur >= CONFIG_BOOT_MAX_LINE_INPUT_LEN) {
+			cmd->len = cur;
+			sys_slist_append(&lines_queue, &cmd->node);
+			cur = 0;
+			cmd = NULL;
+		}
+#else
 		if (cur < CONFIG_BOOT_MAX_LINE_INPUT_LEN) {
 			cmd->line[cur++] = byte;
 		}
@@ -185,7 +231,22 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 			cur = 0;
 			cmd = NULL;
 		}
+#endif
 	}
+
+#ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
+	/*
+	 * No line delimiter exists in raw mode, so deliver whatever has been
+	 * received during this interrupt as a fragment; the boot serial reader
+	 * reassembles full packets using the SMP header length field.
+	 */
+	if (cmd != NULL && cur > 0) {
+		cmd->len = cur;
+		sys_slist_append(&lines_queue, &cmd->node);
+		cur = 0;
+		cmd = NULL;
+	}
+#endif
 }
 
 static int
