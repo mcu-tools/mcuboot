@@ -190,9 +190,9 @@ bootutil_img_hash(struct boot_loader_state *state,
     }
 #endif /* MCUBOOT_RAM_LOAD */
 #endif /* MCUBOOT_HASH_STORAGE_DIRECTLY */
-    bootutil_sha_finish(&sha_ctx, hash_result);
+    rc = bootutil_sha_finish(&sha_ctx, hash_result);
     bootutil_sha_drop(&sha_ctx);
 
-    return 0;
+    return rc;
 }
 #endif /* !MCUBOOT_SIGN_PURE */
