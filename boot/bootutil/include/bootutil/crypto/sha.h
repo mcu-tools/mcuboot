@@ -62,10 +62,20 @@
 
 #elif defined(MCUBOOT_USE_MBED_TLS)
 
+#include "bootutil/crypto/common.h"
+
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#ifdef MCUBOOT_SHA512
+#include <mbedtls/private/sha512.h>
+#else
+#include <mbedtls/private/sha256.h>
+#endif
+#else
 #ifdef MCUBOOT_SHA512
 #include <mbedtls/sha512.h>
 #else
 #include <mbedtls/sha256.h>
+#endif
 #endif
 
 #include <mbedtls/version.h>
