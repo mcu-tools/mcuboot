@@ -1497,27 +1497,28 @@ boot_serial_output(void)
 static int
 boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
 {
-#if defined(__ZEPHYR__) || defined(__ESPRESSIF__)
-    size_t rc;
-#else
-    int rc;
-#endif
+    int decoded_len;
     uint16_t crc;
     uint16_t len;
 
 #ifdef __ZEPHYR__
+    size_t rc;
     int err;
     err = base64_decode( &out[*out_off], maxout - *out_off, &rc, in, inlen - 2);
     if (err) {
         return -1;
     }
+    decoded_len = (int)rc;
 #elif __ESPRESSIF__
+    size_t rc;
     int err;
     err = base64_decode((unsigned char *)&out[*out_off], maxout - *out_off, &rc, (unsigned char *)in, inlen);
     if (err) {
         return -1;
     }
+    decoded_len = (int)rc;
 #else
+    int rc;
     if (*out_off + base64_decode_len(in) >= maxout) {
         return -1;
     }
@@ -1525,9 +1526,10 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
     if (rc < 0) {
         return -1;
     }
+    decoded_len = rc;
 #endif
 
-    *out_off += rc;
+    *out_off += decoded_len;
     if (*out_off <= sizeof(uint16_t)) {
         return 0;
     }
