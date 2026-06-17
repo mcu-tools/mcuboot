@@ -15,10 +15,15 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include "bootutil/crypto/common.h"
 #include <mbedtls/build_info.h>
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include <mbedtls/private/ecp.h>
+#include <mbedtls/private/bignum.h>
+#else
 #include <mbedtls/ecp.h>
-#include <mbedtls/ecdh.h>
 #include <mbedtls/bignum.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,6 +47,35 @@ static inline int sim_fake_rng(void *p_rng, unsigned char *output, size_t len)
     return 0;
 }
 #endif /* MBEDTLS_VERSION_NUMBER >= 0x03000000 */
+
+static inline int sim_ecdh_compute_shared(mbedtls_ecp_group *grp, mbedtls_mpi *z,
+                                          const mbedtls_ecp_point *Q,
+                                          const mbedtls_mpi *d,
+                                          int (*f_rng)(void *, unsigned char *, size_t),
+                                          void *p_rng)
+{
+    int ret;
+    mbedtls_ecp_point P;
+
+    mbedtls_ecp_point_init(&P);
+
+    ret = mbedtls_ecp_mul(grp, &P, d, Q, f_rng, p_rng);
+    if (ret != 0) {
+        goto cleanup;
+    }
+
+    if (mbedtls_ecp_is_zero(&P) != 0) {
+        ret = MBEDTLS_ERR_ECP_BAD_INPUT_DATA;
+        goto cleanup;
+    }
+
+    ret = mbedtls_mpi_copy(z, &P.MBEDTLS_CONTEXT_MEMBER(X));
+
+cleanup:
+    mbedtls_ecp_point_free(&P);
+
+    return ret;
+}
 
 typedef struct { int _unused; } bootutil_ecdh_p256_context;
 typedef bootutil_ecdh_p256_context bootutil_key_exchange_ctx;
@@ -79,9 +113,13 @@ static inline int bootutil_ecdh_p256_shared_secret(
     if (mbedtls_ecp_check_pubkey(&grp, &peer) != 0) { goto out; }
     if (mbedtls_mpi_read_binary(&d, sk, SIM_ECP256_PRIVKEY_BYTES) != 0) { goto out; }
 #if MBEDTLS_VERSION_NUMBER >= 0x03000000
-    if (mbedtls_ecdh_compute_shared(&grp, &shared, &peer, &d, sim_fake_rng, NULL) != 0) { goto out; }
+    if (sim_ecdh_compute_shared(&grp, &shared, &peer, &d, sim_fake_rng, NULL) != 0) {
+        goto out;
+    }
 #else
-    if (mbedtls_ecdh_compute_shared(&grp, &shared, &peer, &d, NULL, NULL) != 0) { goto out; }
+    if (sim_ecdh_compute_shared(&grp, &shared, &peer, &d, NULL, NULL) != 0) {
+        goto out;
+    }
 #endif
     if (mbedtls_mpi_write_binary(&shared, z, SIM_ECP256_SHARED_BYTES) != 0) { goto out; }
     rc = 0;
