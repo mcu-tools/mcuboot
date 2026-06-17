@@ -479,16 +479,26 @@ if(NOT EXISTS "${FLASH_PORT}")
   message(WARNING "Could not open ${FLASH_PORT}, serial port does not exist")
 endif()
 
+set(FLASH_COMMAND
+  ${esptool_path}
+  -p ${FLASH_PORT}
+  -b ${ESP_BAUD_RATE}
+  --before default-reset
+  --after no-reset
+  --chip ${MCUBOOT_TARGET}
+  write-flash
+  --flash-mode ${ESP_FLASH_MODE}
+  --flash-size ${CONFIG_ESP_FLASH_SIZE}
+  --flash-freq ${ESP_FLASH_FREQ}
+  ${CONFIG_ESP_BOOTLOADER_OFFSET}
+  ${CMAKE_CURRENT_BINARY_DIR}/${APP_NAME}.bin)
+
 # Target for flashing the bootloader using esptool.py
-add_custom_target(flash DEPENDS ${APP_NAME}.bin)
+add_custom_target(flash DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${APP_NAME}.bin)
 add_custom_command(
   TARGET flash
   USES_TERMINAL
   COMMAND
-  ${esptool_path}
-  -p ${FLASH_PORT} -b ${ESP_BAUD_RATE} --before default_reset --after no_reset
-  --chip ${MCUBOOT_TARGET} write_flash
-  --flash-mode ${ESP_FLASH_MODE} --flash-size ${CONFIG_ESP_FLASH_SIZE}
-  --flash-freq ${ESP_FLASH_FREQ} ${CONFIG_ESP_BOOTLOADER_OFFSET}
-  ${APP_NAME}.bin
+  ${FLASH_COMMAND}
+  COMMENT "Flashing bootloader using command: ${FLASH_COMMAND}"
   )
