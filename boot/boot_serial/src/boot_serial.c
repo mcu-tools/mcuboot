@@ -278,7 +278,7 @@ bs_list_img_ver(char *dst, int maxlen, struct image_version *ver)
                   (uint16_t)ver->iv_minor, ver->iv_revision);
 
    if (ver->iv_build_num != 0 && len > 0 && len < maxlen) {
-      snprintf(&dst[len], (maxlen - len), ".%u", ver->iv_build_num);
+      snprintf(&dst[len], (maxlen - len), ".%" PRIu32, ver->iv_build_num);
    }
 }
 #endif /* !MCUBOOT_USE_SNPRINTF */
@@ -1497,7 +1497,11 @@ boot_serial_output(void)
 static int
 boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
 {
+#if defined(__ZEPHYR__) || defined(__ESPRESSIF__)
     size_t rc;
+#else
+    int rc;
+#endif
     uint16_t crc;
     uint16_t len;
 
