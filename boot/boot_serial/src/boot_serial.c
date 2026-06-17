@@ -1039,7 +1039,7 @@ bs_upload(char *buf, int len)
 #if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
         if (img_num > 0 &&
             (img_num % BOOT_NUM_SLOTS) == BOOT_DIRECT_UPLOAD_SECONDARY_SLOT_ID_REMAINDER) {
-            rc = flash_area_sectors(fap, &num_sectors, &sector_data);
+            rc = flash_area_get_sectors(fap->fa_id, &num_sectors, &sector_data);
 
             if ((rc != 0 && rc != -ENOMEM) ||
                 num_sectors != SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN) {
