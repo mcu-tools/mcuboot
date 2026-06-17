@@ -12,7 +12,12 @@
 #define SIM_CUSTOM_SHA_H
 
 #include <stdint.h>
+#include "bootutil/crypto/common.h"
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include <mbedtls/private/sha256.h>
+#else
 #include <mbedtls/sha256.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
