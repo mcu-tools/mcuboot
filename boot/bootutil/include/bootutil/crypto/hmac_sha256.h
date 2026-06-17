@@ -19,10 +19,15 @@
 #endif
 
 #if defined(MCUBOOT_USE_MBED_TLS)
-    #include <stdint.h>
-    #include <stddef.h>
-    #include <mbedtls/cmac.h>
-    #include <mbedtls/md.h>
+#include <stdint.h>
+#include <stddef.h>
+#include "bootutil/crypto/common.h"
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include <mbedtls/private/cmac.h>
+#else
+#include <mbedtls/cmac.h>
+#endif
+#include <mbedtls/md.h>
 #endif /* MCUBOOT_USE_MBED_TLS */
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
