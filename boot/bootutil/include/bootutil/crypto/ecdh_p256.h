@@ -19,9 +19,13 @@
 #endif
 
 #if defined(MCUBOOT_USE_MBED_TLS)
-    #include <mbedtls/ecp.h>
-    #include <mbedtls/ecdh.h>
-    #define EC256_PUBK_LEN (65)
+#include "bootutil/crypto/common.h"
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include <mbedtls/private/ecp.h>
+#else
+#include <mbedtls/ecp.h>
+#endif
+#define EC256_PUBK_LEN (65)
 #endif /* MCUBOOT_USE_MBED_TLS */
 
 #if defined(MCUBOOT_USE_TINYCRYPT)
@@ -75,6 +79,35 @@ static inline int bootutil_ecdh_p256_shared_secret(bootutil_ecdh_p256_context *c
 #if MBEDTLS_VERSION_NUMBER >= 0x03000000
 static int fake_rng(void *p_rng, unsigned char *output, size_t len);
 #endif
+
+static inline int bootutil_ecdh_compute_shared(mbedtls_ecp_group *grp, mbedtls_mpi *z,
+                                               const mbedtls_ecp_point *Q,
+                                               const mbedtls_mpi *d,
+                                               int (*f_rng)(void *, unsigned char *, size_t),
+                                               void *p_rng)
+{
+    int ret;
+    mbedtls_ecp_point P;
+
+    mbedtls_ecp_point_init(&P);
+
+    ret = mbedtls_ecp_mul(grp, &P, d, Q, f_rng, p_rng);
+    if (ret != 0) {
+        goto cleanup;
+    }
+
+    if (mbedtls_ecp_is_zero(&P) != 0) {
+        ret = MBEDTLS_ERR_ECP_BAD_INPUT_DATA;
+        goto cleanup;
+    }
+
+    ret = mbedtls_mpi_copy(z, &P.MBEDTLS_CONTEXT_MEMBER(X));
+
+cleanup:
+    mbedtls_ecp_point_free(&P);
+
+    return ret;
+}
 
 typedef struct bootutil_ecdh_p256_context {
     mbedtls_ecp_group grp;
@@ -130,19 +163,11 @@ static inline int bootutil_ecdh_p256_shared_secret(bootutil_ecdh_p256_context *c
     mbedtls_mpi_read_binary(&ctx->d, sk, NUM_ECC_BYTES);
 
 #if MBEDTLS_VERSION_NUMBER >= 0x03000000
-    rc = mbedtls_ecdh_compute_shared(&ctx->grp,
-                                     &ctx->z,
-                                     &ctx->P,
-                                     &ctx->d,
-                                     fake_rng,
-                                     NULL);
+    rc = bootutil_ecdh_compute_shared(&ctx->grp, &ctx->z, &ctx->P, &ctx->d,
+                                      fake_rng, NULL);
 #else
-    rc = mbedtls_ecdh_compute_shared(&ctx->grp,
-                                     &ctx->z,
-                                     &ctx->P,
-                                     &ctx->d,
-                                     NULL,
-                                     NULL);
+    rc = bootutil_ecdh_compute_shared(&ctx->grp, &ctx->z, &ctx->P, &ctx->d,
+                                      NULL, NULL);
 #endif
     mbedtls_mpi_write_binary(&ctx->z, z, NUM_ECC_BYTES);
 
