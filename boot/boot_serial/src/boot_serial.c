@@ -777,17 +777,18 @@ bs_slot_info(uint8_t op, char *buf, int len)
                  * Check if we support uploading to this slot and if so, return the
                  * image ID
                  */
-#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
-                ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
-                     zcbor_uint32_put(cbor_state, (image_index + 1));
-#elif defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
+#if defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
                 ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
                      zcbor_uint32_put(cbor_state, (image_index * 2 + slot + 1));
 #else
+#if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                 if (slot == 1) {
+#endif
                     ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
-                         zcbor_uint32_put(cbor_state, (image_index * 2 + 1));
+                         zcbor_uint32_put(cbor_state, image_index);
+#if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                 }
+#endif
 #endif
 
                 flash_area_close(fap);
