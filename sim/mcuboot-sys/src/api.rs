@@ -89,7 +89,9 @@ impl Default for FlashContext {
     }
 }
 
-#[repr(C)]
+// On x86_64-pc-windows-gnu mingw's requires 16-byte alignment
+#[cfg_attr(all(target_os = "windows", target_env = "gnu"), repr(C, align(16)))]
+#[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), repr(C))]
 #[derive(Debug)]
 pub struct CSimContext {
     pub flash_counter: libc::c_int,
