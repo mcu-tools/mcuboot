@@ -307,6 +307,10 @@ if(CONFIG_MCUBOOT_SERIAL)
     ${BOOT_DIR}/boot_serial/src/zcbor_bulk.c
   )
 
+  zephyr_sources_ifdef(CONFIG_BOOT_SERIAL_RAW_PROTOCOL_COBS
+    ${BOOT_DIR}/boot_serial/src/cobs.c
+  )
+
   zephyr_include_directories(
     ${BOOT_DIR}/bootutil/include
     ${BOOT_DIR}/boot_serial/include

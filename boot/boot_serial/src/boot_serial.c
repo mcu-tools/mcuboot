@@ -66,6 +66,7 @@
 
 #include "boot_serial/boot_serial.h"
 #include "boot_serial_priv.h"
+#include "cobs.h"
 #include "mcuboot_config/mcuboot_config.h"
 #include "../src/bootutil_priv.h"
 
@@ -160,7 +161,18 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN 1
 #define BOOT_DIRECT_UPLOAD_SECONDARY_SLOT_ID_REMAINDER 0
 
+#ifdef MCUBOOT_SERIAL_RAW_PROTOCOL_COBS
+/*
+ * The receive buffer must hold the COBS-encoded form of a maximum-size packet
+ * (header plus payload, bounded by MCUBOOT_SERIAL_MAX_RECEIVE_SIZE) together
+ * with its 2-byte CRC16 and the trailing 0x00 frame delimiter.
+ */
+#define BOOT_SERIAL_COBS_PRE_LEN  (MCUBOOT_SERIAL_MAX_RECEIVE_SIZE + 2)
+#define BOOT_SERIAL_COBS_BUF_SIZE (COBS_ENCODED_MAX(BOOT_SERIAL_COBS_PRE_LEN) + 1)
+static char in_buf[BOOT_SERIAL_COBS_BUF_SIZE];
+#else
 static char in_buf[MCUBOOT_SERIAL_MAX_RECEIVE_SIZE + 1];
+#endif
 #ifndef MCUBOOT_SERIAL_RAW_PROTOCOL
 static char dec_buf[MCUBOOT_SERIAL_MAX_RECEIVE_SIZE + 1];
 #endif
@@ -1431,8 +1443,28 @@ boot_serial_output(void)
     bs_hdr->nh_group = htons(bs_hdr->nh_group);
 
 #ifdef MCUBOOT_SERIAL_RAW_PROTOCOL
+#ifdef MCUBOOT_SERIAL_RAW_PROTOCOL_COBS
+    uint16_t crc = crc16_itu_t(CRC16_INITIAL_CRC, (uint8_t *)bs_hdr, sizeof(*bs_hdr));
+    crc = htons(crc16_itu_t(crc, data, len));
+    uint8_t cobs_frame[BOOT_SERIAL_OUT_MAX + sizeof(*bs_hdr) + sizeof(crc)];
+    uint8_t cobs_out[COBS_ENCODED_MAX(sizeof(cobs_frame)) + 1];
+    size_t frame_len = 0;
+    size_t out_len;
+
+    memcpy(&cobs_frame[frame_len], bs_hdr, sizeof(*bs_hdr));
+    frame_len += sizeof(*bs_hdr);
+    memcpy(&cobs_frame[frame_len], data, len);
+    frame_len += len;
+    memcpy(&cobs_frame[frame_len], &crc, sizeof(crc));
+    frame_len += sizeof(crc);
+
+    out_len = cobs_encode(frame_len, cobs_frame, cobs_out);
+    cobs_out[out_len++] = 0;
+    boot_uf->write((const char *)cobs_out, out_len);
+#else
     boot_uf->write((const char *)bs_hdr, sizeof(*bs_hdr));
     boot_uf->write(data, len);
+#endif
 #else
 #ifdef __ZEPHYR__
     crc =  crc16_itu_t(CRC16_INITIAL_CRC, (uint8_t *)bs_hdr, sizeof(*bs_hdr));
@@ -1551,7 +1583,7 @@ boot_serial_in_dec(char *in, int inlen, char *out, int *out_off, int maxout)
 }
 #endif /* !MCUBOOT_SERIAL_RAW_PROTOCOL */
 
-#ifdef MCUBOOT_SERIAL_RAW_PROTOCOL
+#if defined(MCUBOOT_SERIAL_RAW_PROTOCOL) && !defined(MCUBOOT_SERIAL_RAW_PROTOCOL_COBS)
 /* Dispatch every complete raw SMP packet at the front of "buf" (length from the
  * SMP header, capacity "max_input") via boot_serial_input(), keeping any
  * trailing bytes; returns the count of unconsumed bytes left in "buf".
@@ -1591,7 +1623,58 @@ boot_serial_input_raw(char *buf, int len, int max_input)
 
     return len;
 }
-#endif /* MCUBOOT_SERIAL_RAW_PROTOCOL */
+#endif /* MCUBOOT_SERIAL_RAW_PROTOCOL && !MCUBOOT_SERIAL_RAW_PROTOCOL_COBS */
+
+#ifdef MCUBOOT_SERIAL_RAW_PROTOCOL_COBS
+/* Dispatch every complete COBS frame (terminated by a 0x00 delimiter) at the
+ * front of "buf" via boot_serial_input(): each frame is COBS-decoded in place,
+ * its trailing CRC16 verified, and the SMP packet handed on. A frame that is
+ * malformed, fails CRC, or decodes larger than "max_decoded" is dropped; the
+ * next delimiter is the resync point. Returns the count of bytes left in "buf"
+ * (a still-incomplete trailing frame, moved to the front).
+ */
+static int
+boot_serial_input_cobs(char *buf, int len, int max_decoded)
+{
+    int consumed = 0;
+
+    for (int i = 0; i < len; i++) {
+        if (buf[i] != 0) {
+            continue;
+        }
+
+        const int frame_len = i - consumed;
+        if (frame_len > 0) {
+            /* "dec" spans the SMP packet plus its trailing 2-byte CRC, so it
+             * must hold at least a header and CRC and at most a max-size packet
+             * plus CRC. The CRC self-checks to zero over the whole span.
+             */
+            const size_t dec = cobs_decode(
+                frame_len,
+                &buf[consumed],
+                &buf[consumed]
+            );
+
+            if (
+                dec != SIZE_MAX &&
+                dec >= sizeof(struct nmgr_hdr) + sizeof(uint16_t) &&
+                dec <= (size_t)max_decoded + sizeof(uint16_t) &&
+                crc16_itu_t(CRC16_INITIAL_CRC, &buf[consumed], dec) == 0
+            ) {
+                boot_serial_input(&buf[consumed], (int)(dec - sizeof(uint16_t)));
+            }
+        }
+
+        consumed = i + 1;
+    }
+
+    if (consumed > 0 && consumed < len) {
+        memmove(buf, &buf[consumed], (size_t)(len - consumed));
+    }
+
+    return len - consumed;
+}
+#endif /* MCUBOOT_SERIAL_RAW_PROTOCOL_COBS */
 
 /*
  * Task which waits reading console, expecting to get image over
@@ -1617,7 +1700,11 @@ boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
 #endif
 
     boot_uf = f;
+#ifdef MCUBOOT_SERIAL_RAW_PROTOCOL_COBS
+    max_input = MCUBOOT_SERIAL_MAX_RECEIVE_SIZE;
+#else
     max_input = sizeof(in_buf);
+#endif
 
     off = 0;
     while (timeout_in_ms > 0 || bs_entry) {
@@ -1653,6 +1740,19 @@ boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
         }
         off += rc;
 #ifdef MCUBOOT_SERIAL_RAW_PROTOCOL
+#ifdef MCUBOOT_SERIAL_RAW_PROTOCOL_COBS
+        /*
+         * COBS framing: accumulate bytes until a 0x00 delimiter completes one
+         * or more frames, dispatch them, and keep any trailing partial frame.
+         * The delimiter and per-frame CRC make the stream self-synchronising,
+         * so no input timeout is required.
+         */
+        off = boot_serial_input_cobs(in_buf, off, max_input);
+        if (off == (int)sizeof(in_buf)) {
+            /* Full buffer with no delimiter: oversized or garbage; resync. */
+            off = 0;
+        }
+#else
         /*
          * Raw protocol: bytes are accumulated until one or more full SMP
          * packets have been received; a single read may carry several complete
@@ -1667,6 +1767,7 @@ boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
         raw_input_start = os_uptime_get_ms_32();
 #endif
         off = boot_serial_input_raw(in_buf, off, max_input);
+#endif /* MCUBOOT_SERIAL_RAW_PROTOCOL_COBS */
 #else
         if (!full_line) {
             if (off == max_input) {

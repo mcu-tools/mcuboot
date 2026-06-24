@@ -58,10 +58,26 @@ config BOOT_SERIAL_RAW_PROTOCOL
 	  length field of the SMP header. The SMP client must be configured
 	  to use a matching raw transport.
 
-config BOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT
-	bool "Raw protocol input expiration"
+choice BOOT_SERIAL_RAW_PROTOCOL_RECOVERY
+	prompt "Raw protocol packet delimiting and stall recovery"
 	depends on BOOT_SERIAL_RAW_PROTOCOL
-	default y
+	default BOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT
+	help
+	  The raw protocol carries SMP packets as binary with boundaries taken
+	  from the SMP header length field. This selects how a truncated or
+	  corrupt transfer is detected and recovered from. The options are
+	  mutually exclusive.
+
+config BOOT_SERIAL_RAW_PROTOCOL_NONE
+	bool "No delimiting or recovery"
+	help
+	  Packet boundaries come solely from the SMP header length. A truncated
+	  or malformed packet has no resync point and can permanently wedge
+	  serial recovery. This matches the original raw behaviour with the input
+	  timeout disabled.
+
+config BOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT
+	bool "Input expiration timeout"
 	help
 	  Discard a partially received raw SMP packet after a period without new
 	  data, so that a stalled or malformed transfer cannot permanently wedge
@@ -69,7 +85,21 @@ config BOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT
 	  no CRC or framing to detect a truncated packet, so there is otherwise no
 	  way to resynchronise the input stream. This mirrors Zephyr's
 	  MCUMGR_TRANSPORT_RAW_UART_INPUT_TIMEOUT (zephyrproject-rtos/zephyr#101821)
-	  and is enabled by default because raw recovery is unsafe without it.
+	  and is the default because raw recovery is unsafe without it.
+
+config BOOT_SERIAL_RAW_PROTOCOL_COBS
+	bool "COBS framing with CRC16"
+	select CRC
+	help
+	  Wrap each raw SMP packet as COBS(header || payload || CRC16) followed by
+	  a single 0x00 frame delimiter. The delimiter is an unambiguous resync
+	  point and the CRC16 (CRC-16/XMODEM, identical to the SMP over console
+	  protocol) detects corruption, so no input timeout is required. This adds
+	  the COBS codec and a CRC16 and grows the receive buffer by less than 1%.
+	  The SMP client must be configured to use a matching COBS+CRC transport;
+	  no stock mcumgr client speaks this encoding yet.
+
+endchoice
 
 config BOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT_MS
 	int "Raw protocol input expiration timeout (ms)"
