@@ -1090,6 +1090,14 @@ config BOOT_USB_DFU_WAIT_DELAY_MS
 	help
 	  Milliseconds to wait for USB DFU to be invoked.
 
+config BOOT_USB_DFU_BOOT_MODE
+	bool "Check boot mode via retention subsystem"
+	depends on BOOT_USB_DFU_WAIT && RETENTION_BOOT_MODE
+	help
+	  Allows for entering USB DFU mode by using Zephyr's boot mode retention
+	  system (i.e. an application must set the boot mode to stay in USB DFU
+	  mode and reboot the module).
+
 if BOOT_USB_DFU_GPIO
 
 config BOOT_USB_DFU_DETECT_DELAY
