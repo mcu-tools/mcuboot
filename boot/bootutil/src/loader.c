@@ -545,8 +545,8 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
     struct image_header *hdr;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
-    BOOT_LOG_DBG("boot_validate_slot: slot %d, expected_swap_type %d",
-                 slot, expected_swap_type);
+    BOOT_LOG_DBG("boot_validate_slot: image: %d, slot %d, expected_swap_type %d",
+                 BOOT_CURR_IMG(state), slot, expected_swap_type);
 
 #if !defined(MCUBOOT_SWAP_USING_OFFSET)
     (void)expected_swap_type;
@@ -1257,7 +1257,7 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
         rc = boot_swap_image(state, bs);
     }
 #else
-        rc = boot_swap_image(state, bs);
+    rc = boot_swap_image(state, bs);
 #endif
     assert(rc == 0);
 
@@ -1382,14 +1382,11 @@ boot_review_image_swap_types(struct boot_loader_state *state,
      * 2. The reboot has happened between two separate image upgrades:
      *      In this scenario we must check the swap type of the current image.
      *      In those cases if it is NONE or REVERT we cannot certainly determine
-     *      the fact of a reboot. In a consistent state images must move in the
-     *      same direction or stay in place, e.g. in practice REVERT and TEST
-     *      swap types cannot be present at the same time. If the swap type of
-     *      the current image is either TEST, PERM or FAIL we must review the
-     *      already determined swap types of other images and set each false
-     *      REVERT swap types to NONE (these images had been successfully
-     *      updated before the system rebooted between two separate image
-     *      upgrades).
+     *      the fact of a reboot. If the swap type of the current image is either
+     *      TEST, PERM or FAIL we must review the already determined swap types of
+     *      other images and set each false REVERT swap types to NONE (these images
+     *      had been successfully updated before the system rebooted between two
+     *      separate image upgrades).
      */
 
     if (BOOT_CURR_IMG(state) == 0) {
@@ -1403,11 +1400,11 @@ boot_review_image_swap_types(struct boot_loader_state *state,
             /* Nothing to do */
             return;
         }
-    }
-
-    for (uint8_t i = 0; i < BOOT_CURR_IMG(state); i++) {
-        if (state->swap_type[i] == BOOT_SWAP_TYPE_REVERT) {
-            state->swap_type[i] = BOOT_SWAP_TYPE_NONE;
+    } else {
+        for (uint8_t i = 0; i < BOOT_CURR_IMG(state); i++) {
+            if (state->swap_type[i] == BOOT_SWAP_TYPE_REVERT) {
+                state->swap_type[i] = BOOT_SWAP_TYPE_NONE;
+            }
         }
     }
 }
