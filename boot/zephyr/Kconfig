@@ -1,6 +1,7 @@
 # Copyright (c) 2017-2020 Linaro Limited
 # Copyright (c) 2020 Arm Limited
 # Copyright (c) 2023 Nordic Semiconductor ASA
+# Copyright (c) 2026 Nerijus Bendžiūnas
 #
 # SPDX-License-Identifier: Apache-2.0
 #
@@ -1050,38 +1051,25 @@ config MCUBOOT_LOG_THREAD_STACK_SIZE
 	help
 	  Set the internal stack size for MCUBoot log processing thread.
 
-menu "USB DFU"
-
-choice BOOT_USB_DFU
-	prompt "USB DFU"
-	default BOOT_USB_DFU_NO
-
-config BOOT_USB_DFU_NO
-	prompt "Disabled"
-
-config BOOT_USB_DFU_WAIT
-	bool "Wait for a prescribed duration to see if USB DFU is invoked"
+menuconfig BOOT_USB_DFU
+	bool "USB DFU"
 	select USB_DEVICE_STACK
 	select USB_DFU_CLASS
 	select IMG_MANAGER
 	select STREAM_FLASH
 	select MULTITHREADING
+	help
+	  If y, enable USB DFU support in the bootloader. Select one or more of
+	  the entrance methods below to control when USB DFU mode is entered.
+
+if BOOT_USB_DFU
+
+config BOOT_USB_DFU_WAIT
+	bool "Wait for a prescribed duration to see if USB DFU is invoked"
 	help
 	  If y, MCUboot waits for a prescribed duration of time to allow
 	  for USB DFU to be invoked. Please note DFU always updates the
 	  slot1 image.
-
-config BOOT_USB_DFU_GPIO
-	bool "Use GPIO to detect whether to trigger DFU mode"
-	select USB_DEVICE_STACK
-	select USB_DFU_CLASS
-	select IMG_MANAGER
-	select STREAM_FLASH
-	select MULTITHREADING
-	help
-	  If y, MCUboot uses GPIO to detect whether to invoke USB DFU.
-
-endchoice
 
 config BOOT_USB_DFU_WAIT_DELAY_MS
 	int "USB DFU wait duration"
@@ -1090,33 +1078,34 @@ config BOOT_USB_DFU_WAIT_DELAY_MS
 	help
 	  Milliseconds to wait for USB DFU to be invoked.
 
-if BOOT_USB_DFU_GPIO
+config BOOT_USB_DFU_GPIO
+	bool "Use GPIO to detect whether to trigger DFU mode"
+	help
+	  If y, MCUboot uses GPIO to detect whether to invoke USB DFU.
 
 config BOOT_USB_DFU_DETECT_DELAY
 	int "Serial detect pin detection delay time [ms]"
+	depends on BOOT_USB_DFU_GPIO
 	default 0
 	help
 	  Used to prevent the bootloader from loading on button press.
 	  Useful for powering on when using the same button as
 	  the one used to place the device in bootloader mode.
 
-endif # BOOT_USB_DFU_GPIO
-
 config BOOT_USB_DFU_NO_APPLICATION
 	bool "Stay in bootloader if no application"
-	depends on !BOOT_USB_DFU_NO
 	help
 	  Allows for entering USB DFU recovery mode if there is no bootable
 	  application that the bootloader can jump to.
 
-endmenu
+endif # BOOT_USB_DFU
 
 rsource "Kconfig.serial_recovery"
 
 config MCUBOOT_INDICATION_LED
 	bool "Turns on LED indication when device is in DFU"
 	select GPIO
-	depends on MCUBOOT_SERIAL || !BOOT_USB_DFU_NO
+	depends on MCUBOOT_SERIAL || BOOT_USB_DFU
 	help
 	  Device device activates the LED while in bootloader mode.
 	  mcuboot-led0 alias must be set in the device's .dts
