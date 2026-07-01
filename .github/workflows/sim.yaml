@@ -47,6 +47,28 @@ jobs:
         - "sig-ed25519 sig-second-key"
         - "sig-ecdsa-psa,sig-ecdsa-psa sig-p384,sig-ecdsa-psa swap-move bootstrap max-align-16"
         - "sig-ecdsa-psa enc-ec256 max-align-16, sig-ecdsa-psa enc-ec256 swap-offset validate-primary-slot max-align-16"
+        # Same set, routed through Mbed TLS 4.1 via the mbedtls-v4
+        # feature. These mirror the 3.6 path above and should behave
+        # identically — the crypto config is the same shape (ECDSA
+        # P-256/P-384 + SHA-256).
+        - "sig-ecdsa-psa mbedtls-v4,sig-ecdsa-psa sig-p384 mbedtls-v4,sig-ecdsa-psa swap-move bootstrap max-align-16 mbedtls-v4"
+        # Orthogonal feature combinations untested on the 3.6
+        # sig-ecdsa-psa path but expected to work — swap/align/
+        # multiimage/validate don't touch crypto. Good shakedown for
+        # the CMake-driven build surface.
+        - "sig-ecdsa-psa swap-offset mbedtls-v4,sig-ecdsa-psa validate-primary-slot mbedtls-v4,sig-ecdsa-psa overwrite-only mbedtls-v4,sig-ecdsa-psa multiimage mbedtls-v4"
+        # Reset/XIP/rollback combinations. Higher risk of surfacing
+        # PSA-specific assumptions baked into these code paths; run
+        # and triage.
+        - "sig-ecdsa-psa ram-load mbedtls-v4,sig-ecdsa-psa direct-xip mbedtls-v4,sig-ecdsa-psa overwrite-only downgrade-prevention mbedtls-v4,sig-ecdsa-psa hw-rollback-protection multiimage mbedtls-v4"
+        # Genuine PSA encryption via encrypted_psa.c (vs. the 3.6
+        # stub path above, which leaves PSA init as a no-op and uses
+        # TinyCrypt). Mirrors the 3.6 enc-ec256 row.
+        - "sig-ecdsa-psa enc-ec256 mbedtls-v4,sig-ecdsa-psa enc-ec256 swap-offset validate-primary-slot max-align-16 mbedtls-v4"
+        # AES-256 variant. Same ECIES-P256 machinery, larger
+        # BOOT_ENC_KEY_SIZE. PSA_KEY_TYPE_AES covers all AES key
+        # sizes so no config delta.
+        - "sig-ecdsa-psa enc-aes256-ec256 mbedtls-v4,sig-ecdsa-psa enc-aes256-ec256 swap-offset validate-primary-slot max-align-16 mbedtls-v4"
         - "ram-load enc-aes256-kw multiimage"
         - "ram-load enc-aes256-kw sig-ecdsa-mbedtls multiimage"
         - "custom-crypto,custom-crypto overwrite-only,custom-crypto validate-primary-slot,custom-crypto swap-offset"
