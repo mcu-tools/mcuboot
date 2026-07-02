@@ -1443,7 +1443,7 @@ application. `iram_loader_seg` uses `BOOTLOADER_IRAM_LOADER_SEG_START_MP` (0x400
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +--------+--------------+------+ 0x40828270 / 0x40828270
+ *  +--------+--------------+------+ 0x4082CE70 / 0x4082CE70
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
@@ -1451,7 +1451,7 @@ application. `iram_loader_seg` uses `BOOTLOADER_IRAM_LOADER_SEG_START_MP` (0x400
  *  |        |                    |  (length 0xB000)
  *  |        |                    |
  *  |        v                    |
- *  +------------------------------+ 0x40833270 / 0x40833270
+ *  +------------------------------+ 0x40837E70 / 0x40837E70
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
@@ -1459,23 +1459,23 @@ application. `iram_loader_seg` uses `BOOTLOADER_IRAM_LOADER_SEG_START_MP` (0x400
  *  |        |                    |
  *  |        |                    |
  *  |        v                    |
- *  +------------------------------+ 0x40842270 / 0x40842270
+ *  +------------------------------+ 0x40846E70 / 0x40846E70
  *  |        ^                    |
  *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
  *  |        | dram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
  *  |        |                    |  (length 0x1800)
  *  |        v                    |
- *  +------------------------------+ 0x40843A70 / 0x40843A70
+ *  +------------------------------+ 0x40848670 / 0x40848670
  *  |        ^                    |
  *  |        |                    |
  *  |        |                    |
  *  |        | iram_loader_seg    |  *** SHOULD NOT BE OVERLAPPED ***
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
- *  |        |                    |  (length 0x7000)
+ *  |        |                    |  (length 0x2400)
  *  |        v                    |
- *  +--------+--------------+------+ 0x4084AA70 / 0x4084AA70
+ *  +--------+--------------+------+ 0x4084AA70 / 0x4084AA70 - `BOOTLOADER_RAM_END`
  *  |        ^                    |
- *  |        | FREE               |  above `BOOTLOADER_RAM_END` 
+ *  |        | FREE               |  above `BOOTLOADER_RAM_END`
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
  *  |        v                    |
  *  +--------+--------------+------+ 0x4084FFFF / 0x4084FFFF - HP SRAM END
