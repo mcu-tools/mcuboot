@@ -16,7 +16,7 @@
 #include "bootutil/bootutil_public.h"
 #include "bootutil/fault_injection_hardening.h"
 
-BOOT_LOG_MODULE_DECLARE(serial_encryption);
+BOOT_LOG_MODULE_REGISTER(serial_encryption);
 
 fih_ret
 boot_image_validate_encrypted(struct boot_loader_state *state,
