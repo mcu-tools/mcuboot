@@ -1,0 +1,6 @@
+tests:
+  bootloader.mcuboot.boot_serial.cobs:
+    platform_allow: native_sim
+    integration_platforms:
+      - native_sim
+    tags: bootloader_mcuboot

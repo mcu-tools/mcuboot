@@ -74,6 +74,37 @@ consumed faster than with the console encoding. If a link can deliver data
 faster than recovery drains it (received bytes are dropped when the buffers are
 exhausted), increase ``BOOT_LINE_BUFS``.
 
+### COBS framing with CRC16
+
+Instead of the input timeout, the raw encoding can be wrapped in COBS
+(Consistent Overhead Byte Stuffing) framing with a trailing CRC16 by selecting
+``BOOT_SERIAL_RAW_PROTOCOL_COBS`` (Zephyr:
+``CONFIG_BOOT_SERIAL_RAW_PROTOCOL_COBS``). Each SMP packet is sent as:
+
+```
+COBS( header || payload || CRC16 ) || 0x00
+```
+
+The CRC16 is computed over the header and payload (CRC-16/XMODEM: polynomial
+``0x1021``, initial value ``0x0000``, no reflection — identical to the CRC used
+by the SMP over console encoding) and appended most-significant byte first. That
+byte order is what lets the receiver validate a frame with the single check
+``crc16(header || payload || CRC16) == 0``. The packet and its CRC are then
+COBS-encoded, which removes every ``0x00`` byte from the stream, so a single
+trailing ``0x00`` is an unambiguous frame delimiter. COBS adds at most one byte
+per 254 bytes of input (under 1% overhead).
+
+Unlike the bare raw encoding, this is self-synchronising: the delimiter gives an
+unambiguous resync point after any corruption or truncation, and the CRC16
+rejects damaged packets, so no input timeout is needed. For that reason
+``BOOT_SERIAL_RAW_PROTOCOL_COBS`` and
+``BOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT`` are mutually exclusive (they are
+members of the same choice, alongside ``BOOT_SERIAL_RAW_PROTOCOL_NONE`` for the
+unframed behaviour). The receive buffer grows by the COBS overhead plus the
+delimiter (under 1%).
+
+The SMP client must be configured to use a matching COBS+CRC16 transport.
+
 ## Image uploading
 
 Uploading an image is targeted to the primary slot by default.
