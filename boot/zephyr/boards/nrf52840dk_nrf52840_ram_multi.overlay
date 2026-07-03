@@ -8,6 +8,12 @@
 /delete-node/ &slot0_partition;
 /delete-node/ &boot_partition;
 
+/ {
+	chosen {
+		zephyr,code-partition = &boot_partition;
+	};
+};
+
 &flash0 {
 	partitions {
 		boot_partition: partition@0 {
