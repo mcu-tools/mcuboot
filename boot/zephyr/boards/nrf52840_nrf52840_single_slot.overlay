@@ -8,6 +8,12 @@
 /delete-node/ &slot0_partition;
 /delete-node/ &slot1_partition;
 
+/ {
+	chosen {
+		zephyr,code-partition = &boot_partition;
+	};
+};
+
 &flash0 {
 	partitions {
 		boot_partition: partition@0 {
@@ -19,19 +25,7 @@
 		slot0_partition: partition@10000 {
 			compatible = "zephyr,mapped-partition";
 			label = "image-0";
-			reg = <0x000010000 0x000074000>;
+			reg = <0x000010000 0x0000E8000>;
 		};
-
-		slot1_partition: partition@75000 {
-			compatible = "zephyr,mapped-partition";
-			label = "image-1";
-			reg = <0x00084000 0x000074000>;
-		};
-	};
-};
-
-&zephyr_udc0 {
-	cdc_acm_uart0 {
-		compatible = "zephyr,cdc-acm-uart";
 	};
 };
