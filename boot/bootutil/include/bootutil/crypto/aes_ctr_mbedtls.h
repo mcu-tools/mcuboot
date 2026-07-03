@@ -13,8 +13,13 @@
 #include <string.h>
 #include <stdint.h>
 #include "mcuboot_config/mcuboot_config.h"
+#include "bootutil/crypto/common.h"
 #include "bootutil/enc_key_public.h"
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include <mbedtls/private/aes.h>
+#else
 #include <mbedtls/aes.h>
+#endif
 
 #define BOOT_ENC_BLOCK_SIZE (16)
 
