@@ -131,3 +131,11 @@ tests:
     tags: bootloader_mcuboot runtime_source
     platform_allow: frdm_k64f
     build_only: true
+  sample.bootloader.mcuboot.encryption:
+    extra_configs:
+      - CONFIG_BOOT_ENCRYPT_IMAGE=y
+    platform_allow:
+      - nrf52840dk/nrf52840
+    integration_platforms:
+      - nrf52840dk/nrf52840
+    tags: bootloader_mcuboot
