@@ -18,7 +18,13 @@
 #endif
 
 #if defined(MCUBOOT_USE_MBED_TLS)
+#include "bootutil/crypto/common.h"
+
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+    #include <mbedtls/private/aes.h>
+#else
     #include <mbedtls/aes.h>
+#endif
     #include <mbedtls/nist_kw.h>
 #endif /* MCUBOOT_USE_MBED_TLS */
 
