@@ -772,13 +772,16 @@ if(SYSBUILD)
       endif()
     endif()
 
-    if(CONFIG_BOOT_SWAP_USING_MOVE)
-      math(EXPR required_size "${required_size} + ${erase_size}")
-      math(EXPR required_upgrade_size "${required_upgrade_size} + ${erase_size}")
-    elseif(CONFIG_BOOT_SWAP_USING_OFFSET)
-#todo: check how different slot sizes are...
-#      math(EXPR required_size "${required_size} + ${erase_size}")
-#      math(EXPR required_upgrade_size "${required_upgrade_size} + ${erase_size}")
+    # For swap methods, check if the extra sector has been included in the images, if not then
+    # reduce the available image size by a sector to account for this
+    if((CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET) AND erase_size_slot0 AND erase_size_slot1)
+      dt_prop(slot0_size PATH "${slot0_flash}" PROPERTY "reg" INDEX 1)
+      dt_prop(slot1_size PATH "${slot1_flash}" PROPERTY "reg" INDEX 1)
+
+      if(${slot0_size} EQUAL ${slot1_size})
+        math(EXPR required_size "${required_size} + ${erase_size}")
+        math(EXPR required_upgrade_size "${required_upgrade_size} + ${erase_size}")
+      endif()
     endif()
   else()
     set(required_size 0)
