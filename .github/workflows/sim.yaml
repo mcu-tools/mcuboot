@@ -45,6 +45,12 @@ jobs:
         - "sig-rsa validate-primary-slot direct-xip multiimage"
         - "sig-ecdsa hw-rollback-protection multiimage"
         - "sig-ed25519 sig-second-key"
+        # Logical sectors: swap bookkeeping in fixed 4K units
+        # independent of the physical page layout. Covers each
+        # upgrade strategy plus a signed variant; exercises the
+        # small-page device (pages smaller than a logical sector)
+        # and the negative tests that reject incompatible layouts.
+        - "logical-sectors-4k,logical-sectors-4k swap-move,logical-sectors-4k swap-offset,logical-sectors-4k overwrite-only,sig-ecdsa logical-sectors-4k"
         - "sig-ecdsa-psa,sig-ecdsa-psa sig-p384,sig-ecdsa-psa swap-move bootstrap max-align-16"
         - "sig-ecdsa-psa enc-ec256 max-align-16, sig-ecdsa-psa enc-ec256 swap-offset validate-primary-slot max-align-16"
         # Same set, routed through Mbed TLS 4.1 via the mbedtls-v4
