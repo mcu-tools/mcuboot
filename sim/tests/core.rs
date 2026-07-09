@@ -86,6 +86,23 @@ sim_test!(ram_load_corrupt_higher_version_image, make_no_upgrade_image(&NO_DEPS,
 sim_test!(hw_prot_missing_security_cnt, make_image_with_security_counter(None), run_hw_rollback_prot());
 sim_test!(hw_prot_failed_security_cnt_check, make_image_with_security_counter(Some(0)), run_hw_rollback_prot());
 
+// Devices whose erase pages don't line up with the configured logical
+// sector size are excluded from `each_device`, and instead must be
+// rejected by the bootloader's logical sector verification: the boot
+// fails and the staged, otherwise-valid upgrade is left unapplied.
+// This is the only coverage MCUBOOT_VERIFY_LOGICAL_SECTORS gets, since
+// on compatible devices it succeeds silently.
+#[cfg(feature = "logical-sectors-4k")]
+#[test]
+fn logical_sectors_reject_incompatible_devices() {
+    testlog::setup();
+    ImagesBuilder::each_logical_sector_incompatible_device(|r| {
+        let image = r.make_no_upgrade_image(&NO_DEPS, ImageManipulation::None);
+        dump_image(&image, "logical_sectors_reject_incompatible_devices");
+        assert!(!image.run_incompatible_logical_sectors());
+    });
+}
+
 #[cfg(feature = "sig-ed25519")]
 mod multi_key {
     //! Multi-signing-key matrix.

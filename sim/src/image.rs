@@ -204,10 +204,53 @@ impl ImagesBuilder {
         })
     }
 
+    /// Whether the sector layout this device reports to the bootloader is
+    /// compatible with the fixed logical sector size selected by the
+    /// `logical-sectors-4k` feature.  Every logical sector boundary must
+    /// fall on a reported erase page boundary, so devices with pages
+    /// larger than 4K (or, like K64fBig, an area description claiming
+    /// slot-sized pages) cannot use 4K logical sectors.
+    pub fn device_supports_logical_sectors(device: DeviceName) -> bool {
+        !matches!(device, DeviceName::Stm32f4
+                  | DeviceName::Stm32f4SpiFlash
+                  | DeviceName::K64fBig
+                  | DeviceName::Nrf52840SpiFlash)
+    }
+
+    fn device_usable(dev: DeviceName) -> Result<(), String> {
+        if cfg!(feature = "logical-sectors-4k") && !Self::device_supports_logical_sectors(dev) {
+            return Err("sector layout incompatible with logical sectors".to_string());
+        }
+        Ok(())
+    }
+
     pub fn each_device<F>(f: F)
         where F: Fn(Self)
     {
         for &dev in ALL_DEVICES {
+            for &align in test_alignments() {
+                for &erased_val in &[0, 0xff] {
+                    match Self::device_usable(dev).and_then(|()| Self::new(dev, align, erased_val)) {
+                        Ok(run) => f(run),
+                        Err(msg) => warn!("Skipping {}: {}", dev, msg),
+                    }
+                }
+            }
+        }
+    }
+
+    /// Iterate the devices excluded from `each_device` by the
+    /// `logical-sectors-4k` feature.  These layouts must be *rejected* by
+    /// the bootloader's logical sector verification, which the negative
+    /// tests exercise.  Devices unbuildable for other reasons (e.g. an
+    /// unsupported swap algorithm) are still skipped.
+    pub fn each_logical_sector_incompatible_device<F>(f: F)
+        where F: Fn(Self)
+    {
+        for &dev in ALL_DEVICES {
+            if Self::device_supports_logical_sectors(dev) {
+                continue;
+            }
             for &align in test_alignments() {
                 for &erased_val in &[0, 0xff] {
                     match Self::new(dev, align, erased_val) {
@@ -1013,6 +1056,55 @@ impl Images {
 
         if fails > 0 {
             error!("Expected an upgrade failure and primary slot left untouched");
+        }
+
+        fails > 0
+    }
+
+    /// Boot with an upgrade staged on a device whose reported sector
+    /// layout is incompatible with the configured logical sector size.
+    /// The bootloader's logical sector verification must refuse to touch
+    /// the flash: the boot fails outright (the primary slot's layout
+    /// cannot be trusted), and both slots keep their original contents.
+    pub fn run_incompatible_logical_sectors(&self) -> bool {
+        if !Caps::modifies_flash() {
+            // direct-xip and ram-load don't use sector layouts at all.
+            return false;
+        }
+
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try upgrade with an incompatible logical sector layout");
+
+        self.mark_upgrades(&mut flash, 1);
+
+        // Snapshot every flash device after staging the upgrade; the
+        // rejected boot must leave all of it byte-identical, trailers
+        // included.
+        let snapshot: Vec<(u8, Vec<u8>)> = flash.iter().map(|(&dev_id, dev)| {
+            let mut data = vec![0u8; dev.device_size()];
+            dev.read(0, &mut data).unwrap();
+            (dev_id, data)
+        }).collect();
+
+        if c::boot_go(&mut flash, &self.areadesc, None, None, true).success() {
+            warn!("Boot unexpectedly succeeded with an incompatible layout");
+            fails += 1;
+        }
+
+        for (dev_id, before) in &snapshot {
+            let dev = flash.get(dev_id).unwrap();
+            let mut after = vec![0u8; dev.device_size()];
+            dev.read(0, &mut after).unwrap();
+            if before != &after {
+                warn!("Flash device {} was modified by the rejected boot", dev_id);
+                fails += 1;
+            }
+        }
+
+        if fails > 0 {
+            error!("Expected a rejected boot with the flash untouched");
         }
 
         fails > 0
