@@ -65,6 +65,7 @@ fn main() {
 
     if logical_sectors_4k {
         conf.conf.define("MCUBOOT_LOGICAL_SECTOR_SIZE", Some("4096"));
+        conf.conf.define("MCUBOOT_VERIFY_LOGICAL_SECTORS", None);
     }
 
     conf.conf.define("MCUBOOT_IMAGE_NUMBER", Some(if multiimage { "2" } else { "1" }));
