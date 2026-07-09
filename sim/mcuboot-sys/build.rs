@@ -77,7 +77,10 @@ fn main() {
 
     if bootstrap {
         conf.conf.define("MCUBOOT_BOOTSTRAP", None);
-        conf.conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
+
+        if !swap_offset && !swap_move {
+            conf.conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);
+        }
     }
 
     if check_load_addr {
