@@ -105,9 +105,9 @@ pub struct CSimContext {
     pub boot_jmpbuf: [u64; 48],
 }
 
-// Guard against a future field reordering/addition silently dropping the
-// alignment below what Windows' jmp_buf requires.
-const _: () = assert!(mem::align_of::<CSimContext>() >= 16);
+// Guard against a future field change shifting boot_jmpbuf off a
+// 16-byte boundary (struct alignment alone doesn't guarantee this).
+const _: () = assert!(mem::offset_of!(CSimContext, boot_jmpbuf) % 16 == 0);
 
 impl Default for CSimContext {
     fn default() -> Self {
