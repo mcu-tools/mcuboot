@@ -118,7 +118,6 @@ boot_header_scramble_off_sz(const struct flash_area *fa, int slot, size_t *off, 
     int ret = 0;
     const size_t write_block = flash_area_align(fa);
     size_t loff = 0;
-    struct flash_sector sector;
 
     BOOT_LOG_DBG("boot_header_scramble_off_sz: slot %d", slot);
 
@@ -128,23 +127,38 @@ boot_header_scramble_off_sz(const struct flash_area *fa, int slot, size_t *off, 
      * in second sector of slot.
      */
     if (slot == BOOT_SLOT_SECONDARY) {
+#if defined(MCUBOOT_LOGICAL_SECTOR_SIZE) && MCUBOOT_LOGICAL_SECTOR_SIZE != 0
+        /* The swap algorithms position slots by logical sectors */
+        loff = MCUBOOT_LOGICAL_SECTOR_SIZE;
+#else
+        struct flash_sector sector;
+
         ret = flash_area_get_sector(fa, 0, &sector);
         if (ret < 0) {
             return ret;
         }
         loff = flash_sector_get_size(&sector);
-        BOOT_LOG_DBG("boot_header_scramble_off_sz: adjusted loff %d", loff);
+#endif
+        BOOT_LOG_DBG("boot_header_scramble_off_sz: adjusted loff %u",
+                     (unsigned int)loff);
     }
 #endif
 
     if (device_requires_erase(fa)) {
+#if defined(MCUBOOT_LOGICAL_SECTOR_SIZE) && MCUBOOT_LOGICAL_SECTOR_SIZE != 0
+        /* The swap algorithms treat logical sectors as erase units */
+        *size = MCUBOOT_LOGICAL_SECTOR_SIZE;
+#else
         /* For device requiring erase align to erase unit */
+        struct flash_sector sector;
+
         ret = flash_area_get_sector(fa, loff, &sector);
         if (ret < 0) {
             return ret;
         }
 
         *size = flash_sector_get_size(&sector);
+#endif
     } else {
         /* For device not requiring erase align to write block */
         *size = ALIGN_UP(sizeof(((struct image_header *)0)->ih_magic), write_block);
@@ -171,6 +185,14 @@ boot_trailer_scramble_offset(const struct flash_area *fa, size_t alignment, size
     }
 
     if (device_requires_erase(fa)) {
+#if defined(MCUBOOT_LOGICAL_SECTOR_SIZE) && MCUBOOT_LOGICAL_SECTOR_SIZE != 0
+        /* The swap algorithms treat the logical sector holding the
+         * trailer as one erase unit, so scramble from its start; the
+         * physical page holding the trailer may be smaller.
+         */
+        *off = ALIGN_DOWN(flash_area_get_size(fa) - boot_trailer_sz(alignment),
+                          MCUBOOT_LOGICAL_SECTOR_SIZE);
+#else
         /* For device requiring erase align to erase unit */
         struct flash_sector sector;
 
@@ -181,6 +203,7 @@ boot_trailer_scramble_offset(const struct flash_area *fa, size_t alignment, size
         }
 
         *off = flash_sector_get_off(&sector);
+#endif
     } else {
         /* For device not requiring erase align to write block */
         *off = flash_area_get_size(fa) - ALIGN_DOWN(boot_trailer_sz(alignment), alignment);
