@@ -689,9 +689,14 @@ boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *se
     }
 
     BOOT_LOG_INF("boot_read_sectors: BOOT_SLOT_SECONDARY");
+    /* A verification failure means the configured logical sector size
+     * does not match the device, so no slot may be modified; report
+     * BOOT_EFLASH rather than BOOT_EFLASH_SEC so the caller does not
+     * attempt an upgrade based on the mismatched layout.
+     */
     if (boot_verify_logical_sectors(FLASH_AREA_IMAGE_SECONDARY(image_index),
         BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY)) != 0) {
-        rc = BOOT_EFLASH_SEC;
+        rc = BOOT_EFLASH;
     }
 
 #if MCUBOOT_SWAP_USING_SCRATCH
@@ -700,9 +705,9 @@ boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *se
         rc = BOOT_EFLASH;
     }
 #endif /* MCUBOOT_SWAP_USING_SCRATCH */
-#endif /* defined(MCUBOOT_LOGICAL_SECTOR_VALIDATION) */
+#endif /* defined(MCUBOOT_VERIFY_LOGICAL_SECTORS) */
 
-    return 0;
+    return rc;
 }
 #endif
 
