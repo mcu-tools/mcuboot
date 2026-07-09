@@ -218,8 +218,13 @@ impl ImagesBuilder {
     }
 
     fn device_usable(dev: DeviceName) -> Result<(), String> {
-        if cfg!(feature = "logical-sectors-4k") && !Self::device_supports_logical_sectors(dev) {
-            return Err("sector layout incompatible with logical sectors".to_string());
+        if cfg!(feature = "logical-sectors-4k") {
+            if !Self::device_supports_logical_sectors(dev) {
+                return Err("sector layout incompatible with logical sectors".to_string());
+            }
+        } else if matches!(dev, DeviceName::SmallPages) {
+            return Err("slots have more pages than BOOT_MAX_IMG_SECTORS; \
+                        requires logical sectors".to_string());
         }
         Ok(())
     }
@@ -685,6 +690,26 @@ impl ImagesBuilder {
                 areadesc.add_image(0x060000, 0x001000, FlashId::ImageScratch, dev_id);
                 areadesc.add_image(0x080000, 0x020000, FlashId::Image2, dev_id);
                 areadesc.add_image(0x0a0000, 0x020000, FlashId::Image3, dev_id);
+
+                let mut flash = SimMultiFlash::new();
+                flash.insert(dev_id, dev);
+                (flash, Rc::new(areadesc), &[])
+            }
+            DeviceName::SmallPages => {
+                // A device with erase pages much smaller than the logical
+                // sector size.  Each 128K slot spans 256 physical pages,
+                // which exceeds BOOT_MAX_IMG_SECTORS (128), so this device
+                // is only bootable when logical sectors group the pages
+                // into fewer, larger units.  This is the configuration the
+                // logical sector support exists for.
+                let dev = SimFlash::new(vec![512; 1024], align as usize, erased_val);
+
+                let dev_id = 0;
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(dev_id, &dev);
+                areadesc.add_image(0x020000, 0x020000, FlashId::Image0, dev_id);
+                areadesc.add_image(0x040000, 0x020000, FlashId::Image1, dev_id);
+                areadesc.add_image(0x060000, 0x004000, FlashId::ImageScratch, dev_id);
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
@@ -1957,6 +1982,19 @@ enum ImageSize {
     Oversized,
 }
 
+/// The sector size the bootloader operates on for `dev`: the logical
+/// sector size when the simulator is built with logical sectors, the
+/// device's physical sector size otherwise.  The size here must match
+/// the MCUBOOT_LOGICAL_SECTOR_SIZE value set by mcuboot-sys/build.rs.
+/// The physical case assumes uniform sectors, as does every caller.
+fn boot_sector_size(dev: &dyn Flash) -> usize {
+    if cfg!(feature = "logical-sectors-4k") {
+        4096
+    } else {
+        dev.sector_iter().next().unwrap().size
+    }
+}
+
 /// Estimate the number of bytes in each slot that must be reserved for the trailer when
 /// swap-scratch is used.
 fn estimate_swap_scratch_trailer_size(dev: &dyn Flash, areadesc: &AreaDesc, slot: &SlotInfo) -> usize {
@@ -1975,11 +2013,17 @@ fn estimate_swap_scratch_trailer_size(dev: &dyn Flash, areadesc: &AreaDesc, slot
         _ => panic!("Invalid slot index"),
     };
 
-    let slot_sectors = areadesc.get_area_sectors(flash_id).unwrap();
+    // Sector sizes as seen by the bootloader: uniform logical sectors
+    // when they are enabled, the physical layout otherwise.
+    let slot_sectors: Vec<usize> = if cfg!(feature = "logical-sectors-4k") {
+        let sector_sz = boot_sector_size(dev);
+        vec![sector_sz; slot.len / sector_sz]
+    } else {
+        areadesc.get_area_sectors(flash_id).unwrap()
+            .iter().map(|sector| sector.size as usize).collect()
+    };
 
-    for sector in slot_sectors.iter().rev() {
-        let sector_sz = sector.size as usize;
-
+    for &sector_sz in slot_sectors.iter().rev() {
         if sector_sz > trailer_sz_in_fw_sector {
             break;
         }
@@ -2011,7 +2055,7 @@ fn image_largest_trailer(dev: &dyn Flash, areadesc: &AreaDesc, slot: &SlotInfo) 
                 // magic + image-ok + copy-done + swap-info
                 c::boot_magic_sz() + 3 * c::boot_max_align()
             } else if Caps::SwapUsingOffset.present() || Caps::SwapUsingMove.present() {
-                let sector_size = dev.sector_iter().next().unwrap().size as u32;
+                let sector_size = boot_sector_size(dev) as u32;
                 align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
             } else if Caps::SwapUsingScratch.present() {
                 estimate_swap_scratch_trailer_size(dev, areadesc, slot)
@@ -2029,9 +2073,7 @@ fn required_slot_padding(dev: &dyn Flash) -> usize {
 
     if Caps::SwapUsingMove.present() || Caps::SwapUsingOffset.present() {
         // Assumes equally-sized sectors
-        let sector_size = dev.sector_iter().next().unwrap().size;
-
-        required_padding = sector_size;
+        required_padding = boot_sector_size(dev);
     };
 
     required_padding
@@ -2094,8 +2136,7 @@ fn install_image_with_key(
     let mut tlv: Box<dyn ManifestGen> = Box::new(make_tlv(signing_key));
 
     if Caps::SwapUsingOffset.present() && slot_ind == 1 {
-        let sector_size = dev.sector_iter().next().unwrap().size as usize;
-        offset += sector_size;
+        offset += boot_sector_size(dev);
     }
 
     if img_manipulation == ImageManipulation::IgnoreRamLoadFlag {
@@ -2390,7 +2431,7 @@ fn verify_image(flash: &SimMultiFlash, slot: &SlotInfo, images: &ImageData) -> b
     dev.read(offset, &mut copy).unwrap();
 
     if Caps::SwapUsingOffset.present() && (slot.index % 2) == 1 {
-        let sector_size = dev.sector_iter().next().unwrap().size as usize;
+        let sector_size = boot_sector_size(dev);
         let mut copy_offset = vec![0u8; buf.len()];
         let offset_offset = slot.base_off + sector_size;
         dev.read(offset_offset, &mut copy_offset).unwrap();
