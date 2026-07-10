@@ -47,6 +47,7 @@ fn main() {
     let custom_enc_crypto = env::var("CARGO_FEATURE_CUSTOM_ENC_CRYPTO").is_ok();
     let mbedtls_v4 = env::var("CARGO_FEATURE_MBEDTLS_V4").is_ok();
     let logical_sectors_4k = env::var("CARGO_FEATURE_LOGICAL_SECTORS_4K").is_ok();
+    let logical_sectors_128k = env::var("CARGO_FEATURE_LOGICAL_SECTORS_128K").is_ok();
 
     let mut conf = CachedBuild::new();
     conf.conf.define("__BOOTSIM__", None);
@@ -63,8 +64,14 @@ fn main() {
         conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("8"));
     }
 
-    if logical_sectors_4k {
-        conf.conf.define("MCUBOOT_LOGICAL_SECTOR_SIZE", Some("4096"));
+    let logical_sector_size = match (logical_sectors_4k, logical_sectors_128k) {
+        (true, true) => panic!("only one logical-sectors-* feature may be enabled"),
+        (true, false) => Some("4096"),
+        (false, true) => Some("131072"),
+        (false, false) => None,
+    };
+    if let Some(size) = logical_sector_size {
+        conf.conf.define("MCUBOOT_LOGICAL_SECTOR_SIZE", Some(size));
         conf.conf.define("MCUBOOT_VERIFY_LOGICAL_SECTORS", None);
     }
 

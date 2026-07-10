@@ -102,8 +102,12 @@ max-align-16 = []
 # Support images with 32-byte maximum write alignment value.
 max-align-32 = []
 
-# Use logical sectors
-logical-sectors-4k = []
+# Use logical sectors.  Enable exactly one of the sized features; each
+# implies the `logical-sectors` umbrella that code can test against
+# without caring about the size.
+logical-sectors = []
+logical-sectors-4k = ["logical-sectors"]
+logical-sectors-128k = ["logical-sectors"]
 
 # Enable hardware rollback protection
 hw-rollback-protection = []

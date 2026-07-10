@@ -73,6 +73,8 @@ impl BootGoResult {
 pub const fn logical_sector_size() -> usize {
     #[cfg(feature = "logical-sectors-4k")]
     { return 4 * 1024; }
+    #[cfg(feature = "logical-sectors-128k")]
+    { return 128 * 1024; }
     #[allow(unreachable_code)]
     0
 }
