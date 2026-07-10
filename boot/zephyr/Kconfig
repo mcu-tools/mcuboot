@@ -1465,7 +1465,8 @@ config MCUBOOT_LOGICAL_SECTOR_SIZE
 	default 0x0
 	help
 	  Set to 0x0 to use hardware sectors. Any other value here should be aligned to hardware
-	  sectors in size and alignment.
+	  sectors in size and alignment, and must be a power of two. A build time assertion
+	  rejects sizes that are not, as offsets are rounded by masking rather than by division.
 
 config MCUBOOT_VERIFY_LOGICAL_SECTORS
 	bool "Validate logical sector layout"
