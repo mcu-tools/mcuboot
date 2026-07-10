@@ -50,6 +50,25 @@ extern "C" {
 
 struct flash_area;
 
+#if defined(MCUBOOT_LOGICAL_SECTOR_SIZE) && MCUBOOT_LOGICAL_SECTOR_SIZE != 0
+/* Logical sector offsets are rounded with ALIGN_DOWN(), and the Zephyr
+ * flash_area_get_sector() used when verification is disabled masks with
+ * ~(size - 1).  Both are only correct for a power of two.  The runtime
+ * verification in boot_verify_logical_sectors() steps linearly and would
+ * happily accept, say, a 48K sector tiling a bank of 16K pages, which the
+ * masking would then round to an offset that is not a sector boundary at
+ * all.  Reject such sizes at build time instead.
+ */
+_Static_assert((MCUBOOT_LOGICAL_SECTOR_SIZE &
+                (MCUBOOT_LOGICAL_SECTOR_SIZE - 1)) == 0,
+               "MCUBOOT_LOGICAL_SECTOR_SIZE must be a power of two");
+#endif
+
+#if defined(MCUBOOT_VERIFY_LOGICAL_SECTORS) && \
+    (!defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0)
+#error "MCUBOOT_VERIFY_LOGICAL_SECTORS requires a non-zero MCUBOOT_LOGICAL_SECTOR_SIZE"
+#endif
+
 #define BOOT_TMPBUF_SZ  256
 
 /** Number of image slots in flash; currently limited to two. */
