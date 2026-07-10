@@ -1893,17 +1893,27 @@ impl Images {
         let mut rng = rand::rng();
         let mut resets = vec![0i32; count];
         let mut remaining_ops = total_ops;
+        let mut used = 0;
         for reset in &mut resets {
             let reset_counter = rng.random_range(1 ..= remaining_ops / 2);
             let mut counter = reset_counter;
             match c::boot_go(&mut flash, &self.areadesc, Some(&mut counter),
                              None, false) {
                 x if x.interrupted() => (),
+                // An upgrade commits partway through the run: once the image
+                // has been written and the source trailer invalidated, the
+                // remaining operations only tidy up, and a boot from that
+                // state does no flash work at all.  An earlier reset can land
+                // past that point, and then no counter can interrupt this
+                // boot.  Nothing is left to interrupt, so stop resetting.
+                x if x.success() => break,
                 x => panic!("Unknown return: {:?}", x),
             }
             remaining_ops -= reset_counter;
             *reset = reset_counter;
+            used += 1;
         }
+        resets.truncate(used);
 
         match c::boot_go(&mut flash, &self.areadesc, None, None, false) {
             x if x.interrupted() => panic!("Should not be have been interrupted!"),
