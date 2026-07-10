@@ -205,21 +205,24 @@ impl ImagesBuilder {
     }
 
     /// Whether the sector layout this device reports to the bootloader is
-    /// compatible with the fixed logical sector size selected by the
-    /// `logical-sectors-4k` feature.  Every logical sector boundary must
-    /// fall on a reported erase page boundary, so devices with pages
-    /// larger than 4K (or, like K64fBig, an area description claiming
-    /// slot-sized pages) cannot use 4K logical sectors.
-    pub fn device_supports_logical_sectors(device: DeviceName) -> bool {
-        !matches!(device, DeviceName::Stm32f4
-                  | DeviceName::Stm32f4SpiFlash
-                  | DeviceName::K64fBig
-                  | DeviceName::Nrf52840SpiFlash)
+    /// compatible with the logical sector size the simulator was built with.
+    /// Every logical sector boundary must fall on a reported erase page
+    /// boundary; the answer is derived from the area description rather than
+    /// a list of device names, so it stays correct as devices are added.
+    /// Always true when logical sectors are disabled.
+    pub fn device_supports_logical_sectors(device: DeviceName, align: usize,
+                                           erased_val: u8) -> bool {
+        let size = c::logical_sector_size();
+        if size == 0 {
+            return true;
+        }
+        let (_, areadesc, _) = Self::make_device(device, align, erased_val);
+        areadesc.supports_logical_sector_size(size)
     }
 
-    fn device_usable(dev: DeviceName) -> Result<(), String> {
-        if cfg!(feature = "logical-sectors-4k") {
-            if !Self::device_supports_logical_sectors(dev) {
+    fn device_usable(dev: DeviceName, align: usize, erased_val: u8) -> Result<(), String> {
+        if c::logical_sector_size() != 0 {
+            if !Self::device_supports_logical_sectors(dev, align, erased_val) {
                 return Err("sector layout incompatible with logical sectors".to_string());
             }
         } else if matches!(dev, DeviceName::SmallPages) {
@@ -235,7 +238,8 @@ impl ImagesBuilder {
         for &dev in ALL_DEVICES {
             for &align in test_alignments() {
                 for &erased_val in &[0, 0xff] {
-                    match Self::device_usable(dev).and_then(|()| Self::new(dev, align, erased_val)) {
+                    match Self::device_usable(dev, align, erased_val)
+                            .and_then(|()| Self::new(dev, align, erased_val)) {
                         Ok(run) => f(run),
                         Err(msg) => warn!("Skipping {}: {}", dev, msg),
                     }
@@ -253,11 +257,11 @@ impl ImagesBuilder {
         where F: Fn(Self)
     {
         for &dev in ALL_DEVICES {
-            if Self::device_supports_logical_sectors(dev) {
-                continue;
-            }
             for &align in test_alignments() {
                 for &erased_val in &[0, 0xff] {
+                    if Self::device_supports_logical_sectors(dev, align, erased_val) {
+                        continue;
+                    }
                     match Self::new(dev, align, erased_val) {
                         Ok(run) => f(run),
                         Err(msg) => warn!("Skipping {}: {}", dev, msg),
@@ -1984,14 +1988,12 @@ enum ImageSize {
 
 /// The sector size the bootloader operates on for `dev`: the logical
 /// sector size when the simulator is built with logical sectors, the
-/// device's physical sector size otherwise.  The size here must match
-/// the MCUBOOT_LOGICAL_SECTOR_SIZE value set by mcuboot-sys/build.rs.
-/// The physical case assumes uniform sectors, as does every caller.
+/// device's physical sector size otherwise.  The physical case assumes
+/// uniform sectors, as does every caller.
 fn boot_sector_size(dev: &dyn Flash) -> usize {
-    if cfg!(feature = "logical-sectors-4k") {
-        4096
-    } else {
-        dev.sector_iter().next().unwrap().size
+    match c::logical_sector_size() {
+        0 => dev.sector_iter().next().unwrap().size,
+        size => size,
     }
 }
 
@@ -2015,12 +2017,10 @@ fn estimate_swap_scratch_trailer_size(dev: &dyn Flash, areadesc: &AreaDesc, slot
 
     // Sector sizes as seen by the bootloader: uniform logical sectors
     // when they are enabled, the physical layout otherwise.
-    let slot_sectors: Vec<usize> = if cfg!(feature = "logical-sectors-4k") {
-        let sector_sz = boot_sector_size(dev);
-        vec![sector_sz; slot.len / sector_sz]
-    } else {
-        areadesc.get_area_sectors(flash_id).unwrap()
-            .iter().map(|sector| sector.size as usize).collect()
+    let slot_sectors: Vec<usize> = match c::logical_sector_size() {
+        0 => areadesc.get_area_sectors(flash_id).unwrap()
+                 .iter().map(|sector| sector.size as usize).collect(),
+        size => vec![size; slot.len / size],
     };
 
     for &sector_sz in slot_sectors.iter().rev() {

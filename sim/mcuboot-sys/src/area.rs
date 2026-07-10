@@ -156,6 +156,27 @@ impl AreaDesc {
             .filter(|area| !area.is_empty())
             .find(|area| area[0].flash_id == flash_id)
     }
+
+    /// Whether every area can be represented by logical sectors of `size`.
+    /// Each logical boundary must coincide with a hardware erase boundary.
+    /// This mirrors the check `boot_verify_logical_sectors()` performs, so a
+    /// device this rejects is one the bootloader will refuse to touch.
+    pub fn supports_logical_sector_size(&self, size: usize) -> bool {
+        size != 0 && self.areas.iter().filter(|area| !area.is_empty()).all(|area| {
+            let mut logical_offset = 0usize;
+            area.iter().all(|sector| {
+                let sector_size = sector.size as usize;
+                if sector_size > size || logical_offset + sector_size > size {
+                    return false;
+                }
+                logical_offset += sector_size;
+                if logical_offset == size {
+                    logical_offset = 0;
+                }
+                true
+            }) && logical_offset == 0
+        })
+    }
 }
 
 /// The area descriptor, C format.
