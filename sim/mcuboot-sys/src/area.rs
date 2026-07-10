@@ -157,12 +157,24 @@ impl AreaDesc {
             .find(|area| area[0].flash_id == flash_id)
     }
 
-    /// Whether every area can be represented by logical sectors of `size`.
-    /// Each logical boundary must coincide with a hardware erase boundary.
-    /// This mirrors the check `boot_verify_logical_sectors()` performs, so a
-    /// device this rejects is one the bootloader will refuse to touch.
-    pub fn supports_logical_sector_size(&self, size: usize) -> bool {
-        size != 0 && self.areas.iter().filter(|area| !area.is_empty()).all(|area| {
+    /// The areas the bootloader checks against the logical sector size.
+    /// `boot_read_sectors()` verifies the scratch area only when
+    /// MCUBOOT_SWAP_USING_SCRATCH is set, so a scratch area that does not
+    /// tile is irrelevant to the algorithms that never erase it.
+    fn logical_sector_areas(&self, with_scratch: bool)
+                            -> impl Iterator<Item = &Vec<FlashArea>> {
+        self.areas.iter()
+            .filter(|area| !area.is_empty())
+            .filter(move |area| with_scratch || area[0].flash_id != FlashId::ImageScratch)
+    }
+
+    /// Whether every checked area can be represented by logical sectors of
+    /// `size`.  Each logical boundary must coincide with a hardware erase
+    /// boundary.  This mirrors the check `boot_verify_logical_sectors()`
+    /// performs, so a device this rejects is one the bootloader will refuse
+    /// to touch.
+    pub fn supports_logical_sector_size(&self, size: usize, with_scratch: bool) -> bool {
+        size != 0 && self.logical_sector_areas(with_scratch).all(|area| {
             let mut logical_offset = 0usize;
             area.iter().all(|sector| {
                 let sector_size = sector.size as usize;
@@ -176,6 +188,14 @@ impl AreaDesc {
                 true
             }) && logical_offset == 0
         })
+    }
+
+    /// Whether every checked area is already built from erase pages of
+    /// exactly `size`, so logical sectors of that size change nothing about
+    /// the erase units the bootloader sees.
+    pub fn uses_native_sector_size(&self, size: usize, with_scratch: bool) -> bool {
+        self.logical_sector_areas(with_scratch)
+            .all(|area| area.iter().all(|sector| sector.size as usize == size))
     }
 }
 

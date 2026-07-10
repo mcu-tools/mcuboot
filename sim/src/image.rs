@@ -140,9 +140,42 @@ impl ImagesBuilder {
     pub fn new(device: DeviceName, align: usize, erased_val: u8) -> Result<Self, String> {
         let (flash, areadesc, unsupported_caps) = Self::make_device(device, align, erased_val);
 
+        // Swap-move and swap-offset require uniformly sized erase units, which
+        // is why devices with varying page sizes list them as unsupported.
+        // Logical sectors give the bootloader exactly that, so on a device
+        // whose physical pages are *not* already the logical sector size, the
+        // restriction no longer applies.  Devices whose pages natively match
+        // keep their exclusions: theirs have some other cause (K64fBig's
+        // single slot-sized sector, Nrf52840UnequalSlots' slot sizes).
+        let logical = c::logical_sector_size();
+        let scratch = Caps::SwapUsingScratch.present();
+        let logical_makes_uniform = logical != 0
+            && areadesc.supports_logical_sector_size(logical, scratch)
+            && !areadesc.uses_native_sector_size(logical, scratch);
+
         for cap in unsupported_caps {
-            if cap.present() {
+            if !cap.present() {
+                continue;
+            }
+            let relaxed = logical_makes_uniform
+                && matches!(cap, Caps::SwapUsingMove | Caps::SwapUsingOffset);
+            if !relaxed {
                 return Err(format!("unsupported {:?}", cap));
+            }
+        }
+
+        // Those algorithms spend one logical sector on the trailer and one on
+        // the swap padding, so a slot of two sectors or fewer has no room left
+        // for an image.
+        if logical != 0 && (Caps::SwapUsingMove.present() || Caps::SwapUsingOffset.present()) {
+            let slot = if Caps::SwapUsingOffset.present() {
+                FlashId::Image1
+            } else {
+                FlashId::Image0
+            };
+            if areadesc.find(slot).map(|(_, len, _)| len).unwrap_or(0) <= 2 * logical {
+                return Err("slot too small for logical-sector swap padding and trailer"
+                           .to_string());
             }
         }
 
@@ -209,7 +242,9 @@ impl ImagesBuilder {
     /// Every logical sector boundary must fall on a reported erase page
     /// boundary; the answer is derived from the area description rather than
     /// a list of device names, so it stays correct as devices are added.
-    /// Always true when logical sectors are disabled.
+    /// The scratch area only counts when the build actually uses it, matching
+    /// what `boot_read_sectors()` verifies.  Always true when logical sectors
+    /// are disabled.
     pub fn device_supports_logical_sectors(device: DeviceName, align: usize,
                                            erased_val: u8) -> bool {
         let size = c::logical_sector_size();
@@ -217,7 +252,7 @@ impl ImagesBuilder {
             return true;
         }
         let (_, areadesc, _) = Self::make_device(device, align, erased_val);
-        areadesc.supports_logical_sector_size(size)
+        areadesc.supports_logical_sector_size(size, Caps::SwapUsingScratch.present())
     }
 
     fn device_usable(dev: DeviceName, align: usize, erased_val: u8) -> Result<(), String> {
@@ -248,8 +283,8 @@ impl ImagesBuilder {
         }
     }
 
-    /// Iterate the devices excluded from `each_device` by the
-    /// `logical-sectors-4k` feature.  These layouts must be *rejected* by
+    /// Iterate the devices excluded from `each_device` by the configured
+    /// logical sector size.  These layouts must be *rejected* by
     /// the bootloader's logical sector verification, which the negative
     /// tests exercise.  Devices unbuildable for other reasons (e.g. an
     /// unsupported swap algorithm) are still skipped.

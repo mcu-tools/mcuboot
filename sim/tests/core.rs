@@ -92,7 +92,7 @@ sim_test!(hw_prot_failed_security_cnt_check, make_image_with_security_counter(So
 // fails and the staged, otherwise-valid upgrade is left unapplied.
 // This is the only coverage MCUBOOT_VERIFY_LOGICAL_SECTORS gets, since
 // on compatible devices it succeeds silently.
-#[cfg(feature = "logical-sectors-4k")]
+#[cfg(feature = "logical-sectors")]
 #[test]
 fn logical_sectors_reject_incompatible_devices() {
     testlog::setup();
