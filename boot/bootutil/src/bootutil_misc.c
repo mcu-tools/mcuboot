@@ -545,7 +545,7 @@ boot_verify_logical_sectors(int faid, const struct flash_area *fa)
             if (rc < 0) {
                 BOOT_LOG_ERR("boot_verify_logical_sectors: query err %d", rc);
                 final_rc = BOOT_EFLASH;
-                continue;
+                break;
             }
 
             /* Jumping by logical sector size should align us with real erase page
@@ -579,7 +579,7 @@ boot_verify_logical_sectors(int faid, const struct flash_area *fa)
 
     return final_rc;
 }
-#endif /* MCUBOOT_LOGICAL_SECTOR_VALIDATION */
+#endif /* MCUBOOT_VERIFY_LOGICAL_SECTORS */
 
 static int
 boot_initialize_area(struct boot_loader_state *state, int flash_area)
