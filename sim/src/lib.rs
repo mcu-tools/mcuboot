@@ -63,13 +63,14 @@ struct Args {
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub enum DeviceName {
-    Stm32f4, Stm32f4SpiFlash, K64f, K64fBig, K64fMulti, Nrf52840, Nrf52840SpiFlash,
+    Stm32f4, Stm32f4SpiFlash, Stm32f769, K64f, K64fBig, K64fMulti, Nrf52840, Nrf52840SpiFlash,
     Nrf52840UnequalSlots, Nrf52840UnequalSlotsLargerSlot1,PSOCEdgeE8x, SmallPages,
 }
 
 pub static ALL_DEVICES: &[DeviceName] = &[
     DeviceName::Stm32f4,
     DeviceName::Stm32f4SpiFlash,
+    DeviceName::Stm32f769,
     DeviceName::K64f,
     DeviceName::K64fBig,
     DeviceName::K64fMulti,
@@ -86,6 +87,7 @@ impl fmt::Display for DeviceName {
         let name = match *self {
             DeviceName::Stm32f4 => "stm32f4",
             DeviceName::Stm32f4SpiFlash => "stm32f4SpiFlash",
+            DeviceName::Stm32f769 => "stm32f769",
             DeviceName::K64f => "k64f",
             DeviceName::K64fBig => "k64fbig",
             DeviceName::K64fMulti => "k64fmulti",
