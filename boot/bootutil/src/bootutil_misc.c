@@ -756,6 +756,10 @@ void boot_fetch_slot_state_sizes(void)
 
         image_index = BOOT_CURR_IMG(state);
 
+        /* With logical sectors there are no per-slot sector arrays to point
+         * at: boot_initialize_area() derives the count from the area size.
+         */
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
         BOOT_IMG(state, BOOT_SLOT_PRIMARY).sectors = sector_buffers.primary[image_index];
 #if BOOT_NUM_SLOTS > 1
         BOOT_IMG(state, BOOT_SLOT_SECONDARY).sectors = sector_buffers.secondary[image_index];
@@ -763,6 +767,7 @@ void boot_fetch_slot_state_sizes(void)
         state->scratch.sectors = sector_buffers.scratch;
 #endif
 #endif
+#endif /* !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0 */
 
         /* Determine the sector layout of the image slots and scratch area. */
         rc = boot_read_sectors_recovery(state);
