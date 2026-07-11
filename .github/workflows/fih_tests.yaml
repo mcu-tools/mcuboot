@@ -54,10 +54,13 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: FIH hardening test install
+      env:
+        CONTAINER_REGISTRY: ghcr.io/${{ github.repository_owner }}
       run: |
         ./ci/fih-tests_install.sh
     - name: FIH hardening test run
       env:
         FIH_ENV: ${{ matrix.fih_env }}
+        CONTAINER_REGISTRY: ghcr.io/${{ github.repository_owner }}
       run: |
         ./ci/fih-tests_run.sh
