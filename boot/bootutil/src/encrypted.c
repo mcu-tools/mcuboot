@@ -39,6 +39,7 @@
 #endif
 
 #if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
+#include "bootutil/crypto/common.h"
 #include "bootutil/crypto/sha.h"
 #include "bootutil/crypto/hmac_sha256.h"
 #include "mbedtls/oid.h"
@@ -49,7 +50,6 @@
 #include "bootutil/image.h"
 #include "bootutil/enc_key.h"
 #include "bootutil/sign_key.h"
-#include "bootutil/crypto/common.h"
 #include "bootutil/bootutil_log.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
