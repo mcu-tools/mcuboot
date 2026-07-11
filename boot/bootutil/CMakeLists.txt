@@ -49,3 +49,10 @@ if(MCUBOOT_USE_PSA_CRYPTO)
 else()
   target_sources(bootutil PRIVATE src/fault_injection_hardening_delay_rng_mbedtls.c)
 endif()
+
+# When the bootloader uses PSA Crypto (MCUBOOT_USE_PSA_CRYPTO), include
+# encrypted_psa.c in addition to encrypted.c, which still provides the common
+# encrypted image support, when using the PSA Crypto APIs.
+if(MCUBOOT_USE_PSA_CRYPTO)
+  target_sources(bootutil PRIVATE src/encrypted_psa.c)
+endif()
