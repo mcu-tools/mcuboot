@@ -114,7 +114,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
     }
 
     fap = BOOT_IMG_AREA(state, slot);
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
 
     rc = flash_area_read(fap, off, out_hdr, sizeof *out_hdr);
     if (rc != 0) {
@@ -190,7 +190,7 @@ swap_read_status_bytes(const struct flash_area *fap,
         /* With validation of the primary slot disabled, there is no way
          * to be sure the swapped primary slot is OK, so abort!
          */
-        assert(0);
+        ASSERT(0);
 #endif
     }
 
@@ -324,13 +324,13 @@ swap_status_source(struct boot_loader_state *state)
 
     rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_PRIMARY].area,
                               &state_primary_slot);
-    assert(rc == 0);
+    ASSERT(rc == 0);
 
     BOOT_LOG_SWAP_STATE("Primary image", &state_primary_slot);
 
     rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_SECONDARY].area,
                               &state_secondary_slot);
-    assert(rc == 0);
+    ASSERT(rc == 0);
 
     BOOT_LOG_SWAP_STATE("Secondary image", &state_secondary_slot);
 
@@ -371,24 +371,24 @@ boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
         if (bs->source != BOOT_STATUS_SOURCE_PRIMARY_SLOT) {
             /* Remove data and prepare for write on devices requiring erase */
             rc = swap_scramble_trailer_sectors(state, fap_pri);
-            assert(rc == 0);
+            ASSERT(rc == 0);
 
             rc = swap_status_init(state, fap_pri, bs);
-            assert(rc == 0);
+            ASSERT(rc == 0);
         }
 
         /* Remove status from secondary slot trailer, in case of device with
 	 * erase requirement this will also prepare traier for write.
 	 */
         rc = swap_scramble_trailer_sectors(state, fap_sec);
-        assert(rc == 0);
+        ASSERT(rc == 0);
     }
 
     rc = boot_erase_region(fap_pri, new_off, sz, false);
-    assert(rc == 0);
+    ASSERT(rc == 0);
 
     rc = boot_copy_region(state, fap_pri, fap_pri, old_off, new_off, sz);
-    assert(rc == 0);
+    ASSERT(rc == 0);
 
     rc = boot_write_status(state, bs);
 
@@ -412,10 +412,10 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         rc = boot_erase_region(fap_pri, pri_off, sz, false);
-        assert(rc == 0);
+        ASSERT(rc == 0);
 
         rc = boot_copy_region(state, fap_sec, fap_pri, sec_off, pri_off, sz);
-        assert(rc == 0);
+        ASSERT(rc == 0);
 
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_1;
@@ -424,10 +424,10 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
     if (bs->state == BOOT_STATUS_STATE_1) {
         rc = boot_erase_region(fap_sec, sec_off, sz, false);
-        assert(rc == 0);
+        ASSERT(rc == 0);
 
         rc = boot_copy_region(state, fap_pri, fap_sec, pri_up_off, sec_off, sz);
-        assert(rc == 0);
+        ASSERT(rc == 0);
 
         rc = boot_write_status(state, bs);
         bs->idx++;
@@ -465,23 +465,23 @@ fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
     }
 
     rc = boot_read_swap_state(fap_sec, &swap_state);
-    assert(rc == 0);
+    ASSERT(rc == 0);
 
     BOOT_LOG_SWAP_STATE("Secondary image", &swap_state);
 
     if (swap_state.magic == BOOT_MAGIC_UNSET) {
         /* Remove trailer and prepare area for write on devices requiring erase */
         rc = swap_scramble_trailer_sectors(state, fap_sec);
-        assert(rc == 0);
+        ASSERT(rc == 0);
 
         rc = boot_write_image_ok(fap_sec);
-        assert(rc == 0);
+        ASSERT(rc == 0);
 
         rc = boot_write_swap_size(fap_sec, bs->swap_size);
-        assert(rc == 0);
+        ASSERT(rc == 0);
 
         rc = boot_write_magic(fap_sec);
-        assert(rc == 0);
+        ASSERT(rc == 0);
     }
 }
 
@@ -530,10 +530,10 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     }
 
     fap_pri = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
-    assert(fap_pri != NULL);
+    ASSERT(fap_pri != NULL);
 
     fap_sec = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
-    assert(fap_sec != NULL);
+    ASSERT(fap_sec != NULL);
 
     fixup_revert(state, bs, fap_sec);
 

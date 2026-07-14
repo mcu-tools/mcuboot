@@ -212,7 +212,7 @@ void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx)
 
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_ERR("AES init PSA crypto init failed %d", psa_ret);
-        assert(0);
+        ASSERT(0);
     }
 
     ctx->key = PSA_KEY_ID_NULL;
@@ -228,7 +228,7 @@ void bootutil_aes_ctr_drop(bootutil_aes_ctr_context *ctx)
          * either because it is invalid key number or something is really
          * wrong; either way we have no way to recover.
          */
-        assert(0);
+        ASSERT(0);
     }
 
     ctx->key = PSA_KEY_ID_NULL;
