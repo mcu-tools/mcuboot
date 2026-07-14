@@ -150,7 +150,7 @@ boot_status_off(const struct flash_area *fap)
     }
 #endif
 
-    assert(off_from_end <= flash_area_get_size(fap));
+    ASSERT(off_from_end <= flash_area_get_size(fap));
     return flash_area_get_size(fap) - off_from_end;
 }
 
@@ -411,10 +411,10 @@ boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
     uint32_t protect_tlv_size;
     int rc;
 
-    assert(slot == BOOT_SLOT_PRIMARY || slot == BOOT_SLOT_SECONDARY);
+    ASSERT(slot == BOOT_SLOT_PRIMARY || slot == BOOT_SLOT_SECONDARY);
 
     fap = BOOT_IMG_AREA(state, slot);
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
 
     off = BOOT_TLV_OFF(boot_img_hdr(state, slot));
 
@@ -511,8 +511,8 @@ boot_verify_logical_sectors(int faid, const struct flash_area *fa)
     bool device_with_erase;
     uint32_t wbs;
 
-    assert(fa != NULL);
-    assert(faid != 0);
+    ASSERT(fa != NULL);
+    ASSERT(faid != 0);
 
     slot_off = (uint32_t)flash_area_get_off(fa);
     slot_size = (uint32_t)flash_area_get_size(fa);

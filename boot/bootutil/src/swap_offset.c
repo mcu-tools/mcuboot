@@ -185,7 +185,7 @@ int boot_read_image_header(struct boot_loader_state *state, int slot,
         }
     }
 
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
 
     rc = flash_area_read(fap, off, out_hdr, sizeof *out_hdr);
     if (rc != 0) {
@@ -655,10 +655,10 @@ int swap_run(struct boot_loader_state *state, struct boot_status *bs,
     sector_sz = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, 0);
 
     fap_pri = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
-    assert(fap_pri != NULL);
+    ASSERT(fap_pri != NULL);
 
     fap_sec = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
-    assert(fap_sec != NULL);
+    ASSERT(fap_sec != NULL);
 
     /* When starting a new swap upgrade, check that there is enough space */
     if (boot_status_is_reset(bs)) {
@@ -815,8 +815,8 @@ int boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *si
 #endif
 
     fap = BOOT_IMG_AREA(state, slot);
-    assert(fap != NULL);
-    assert(size != NULL);
+    ASSERT(fap != NULL);
+    ASSERT(size != NULL);
 
     *size = 0;
 

@@ -124,7 +124,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
     }
 
     fap = BOOT_IMG_AREA(state, slot);
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
 
     rc = flash_area_read(fap, off, out_hdr, sizeof *out_hdr);
     if (rc != 0) {
@@ -582,10 +582,10 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     }
 
     fap_pri = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
-    assert(fap_pri != NULL);
+    ASSERT(fap_pri != NULL);
 
     fap_sec = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
-    assert(fap_sec != NULL);
+    ASSERT(fap_sec != NULL);
 
     rc = fixup_revert(state, bs, fap_sec);
     if (rc != 0) {

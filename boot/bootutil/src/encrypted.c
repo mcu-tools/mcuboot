@@ -440,7 +440,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
 #if defined(MCUBOOT_ENCRYPT_KW)
 
-    assert(*bootutil_enc_key->len == BOOT_ENC_KEY_SIZE);
+    ASSERT(*bootutil_enc_key->len == BOOT_ENC_KEY_SIZE);
     rc = key_unwrap(buf, enckey, bootutil_enc_key);
 
 #endif /* defined(MCUBOOT_ENCRYPT_KW) */

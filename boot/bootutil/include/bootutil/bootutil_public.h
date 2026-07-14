@@ -124,8 +124,8 @@ _Static_assert(MCUBOOT_BOOT_MAX_ALIGN >= 8 && MCUBOOT_BOOT_MAX_ALIGN <= 128,
 
 /* Construct the swap_info field from swap type and image number */
 #define BOOT_SET_SWAP_INFO(swap_info, image, type)  {                          \
-                                                    assert((image) < 0xF);     \
-                                                    assert((type)  < 0xF);     \
+                                                    ASSERT((image) < 0xF);     \
+                                                    ASSERT((type)  < 0xF);     \
                                                     (swap_info) = (image) << 4 \
                                                                 | (type);      \
                                                     }
