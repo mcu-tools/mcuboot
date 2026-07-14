@@ -704,13 +704,13 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     image_index = BOOT_CURR_IMG(state);
 
     fap_primary_slot = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
-    assert(fap_primary_slot != NULL);
+    ASSERT(fap_primary_slot != NULL);
 
     fap_secondary_slot = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
-    assert(fap_secondary_slot != NULL);
+    ASSERT(fap_secondary_slot != NULL);
 
     fap_scratch = state->scratch.area;
-    assert(fap_scratch != NULL);
+    ASSERT(fap_scratch != NULL);
 
     /* Calculate offset from start of image area. */
     img_off = boot_img_sector_off(state, BOOT_SLOT_PRIMARY, idx);
@@ -1092,7 +1092,7 @@ uint32_t app_max_size(struct boot_loader_state *state)
     active_slot = state->slot_usage[BOOT_CURR_IMG(state)].active_slot;
 
     fap = BOOT_IMG_AREA(state, active_slot);
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
     primary_sz = flash_area_get_size(fap);
 
     if (active_slot == BOOT_SLOT_PRIMARY) {
@@ -1102,7 +1102,7 @@ uint32_t app_max_size(struct boot_loader_state *state)
     }
 
     fap = BOOT_IMG_AREA(state, active_slot);
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
     secondary_sz = flash_area_get_size(fap);
 
     return (secondary_sz < primary_sz ? secondary_sz : primary_sz);
@@ -1193,7 +1193,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
 #else
     fap = BOOT_IMG_AREA(state, hdr_slot);
 #endif
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
 
     rc = flash_area_read(fap, 0, out_hdr, sizeof *out_hdr);
 

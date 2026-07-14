@@ -195,11 +195,11 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
         return BOOT_EFLASH;
 
     default:
-        assert(0);
+        ASSERT(0);
         return BOOT_EBADARGS;
     }
 
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
 
     rc = swap_read_status_bytes(fap, state, bs);
     if (rc == 0) {
