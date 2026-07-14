@@ -602,6 +602,7 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
         return BOOT_EFLASH;
     }
 
+    ASSERT(area_size % MCUBOOT_LOGICAL_SECTOR_SIZE == 0);
     *out_num_sectors = area_size / MCUBOOT_LOGICAL_SECTOR_SIZE;
 
     return 0;
