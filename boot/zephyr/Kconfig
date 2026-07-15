@@ -615,10 +615,16 @@ config SINGLE_APPLICATION_SLOT_RAM_LOAD
 	  imgtool.py script which writes it to the image header.
 
 config BOOT_SWAP_USING_SCRATCH
-	bool "Swap mode that run with the scratch partition"
+	bool "Swap mode that run with the scratch partition [DEPRECATED]"
+	select DEPRECATED
 	help
 	  This is the most conservative swap mode but it can work even on
 	  devices with heterogeneous flash page layout.
+
+	  This mode is now deprecated, other swap modes should be used instead. If a partition
+	  has variable sector sizes or the sector sizes differ between slots then a common
+	  logical sector size should be set in MCUBOOT_LOGICAL_SECTOR_SIZE which will allow other
+	  swap modes to work on these devices.
 
 config BOOT_UPGRADE_ONLY
 	bool "Overwrite image updates instead of swapping"
