@@ -83,6 +83,24 @@ pub const fn logical_sector_size() -> usize {
 pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
                counter: Option<&mut i32>, image_index: Option<i32>,
                catch_asserts: bool) -> BootGoResult {
+    boot_go_impl(multiflash, areadesc, counter, image_index, catch_asserts,
+                 false)
+}
+
+/// Invoke the bootloader on this flash device, with the interruption
+/// configured by `counter` performing a torn write: the interrupted flash
+/// write programs a prefix of its payload before the simulated power loss,
+/// instead of aborting atomically.
+pub fn boot_go_torn(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
+                    counter: Option<&mut i32>, image_index: Option<i32>,
+                    catch_asserts: bool) -> BootGoResult {
+    boot_go_impl(multiflash, areadesc, counter, image_index, catch_asserts,
+                 true)
+}
+
+fn boot_go_impl(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
+                counter: Option<&mut i32>, image_index: Option<i32>,
+                catch_asserts: bool, torn_write: bool) -> BootGoResult {
     init_crypto();
 
     for (&dev_id, flash) in multiflash.iter_mut() {
@@ -94,6 +112,7 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
             Some(ref c) => **c as libc::c_int
         },
         c_catch_asserts: if catch_asserts { 1 } else { 0 },
+        flash_torn_write: if torn_write { 1 } else { 0 },
         .. Default::default()
     };
     let mut rsp = api::BootRsp {
