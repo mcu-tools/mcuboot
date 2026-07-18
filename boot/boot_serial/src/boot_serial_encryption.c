@@ -233,6 +233,9 @@ decrypt_image_inplace(const struct flash_area *fa_p,
 
     /* Get size from last sector to know page/sector erase size */
     rc = flash_area_get_sector(fa_p, boot_status_off(fa_p), &sector);
+    if (rc != 0) {
+        goto total_out;
+    }
 
     if(IS_ENCRYPTED(hdr)) {
 #if 0 //Skip this step?, the image will just not boot if it's not decrypted properly
