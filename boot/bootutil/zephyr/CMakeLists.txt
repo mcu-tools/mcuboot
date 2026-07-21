@@ -9,6 +9,7 @@ if(CONFIG_MCUBOOT_BOOTUTIL_LIB)
     ../
     ../include
     ../../zephyr/include
+    ../../fault_injection_hardening/include
   )
 
   zephyr_library_named(mcuboot_util)
