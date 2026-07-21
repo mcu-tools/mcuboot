@@ -27,6 +27,7 @@ jobs:
             src:
               - 'boot/mynewt/**'
               - 'boot/bootutil/**'
+              - 'boot/fault_injection_hardening/**'
               - 'testplan/**'
               - 'ci/**'
               - 'scripts/**'

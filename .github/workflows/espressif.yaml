@@ -30,6 +30,7 @@ jobs:
               - 'boot/espressif/**'
               - 'boot/bootutil/**'
               - 'boot/boot_serial/**'
+              - 'boot/fault_injection_hardening/**'
               - 'boot/zcbor/**'
               - 'scripts/**'
       - id: decide
