@@ -33,7 +33,7 @@
 #include <flash_map_backend/flash_map_backend.h>
 
 #include "bootutil/image.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 #include "bootutil/bootutil.h"
 #include "bootutil_priv.h"
 

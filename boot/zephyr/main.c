@@ -33,7 +33,7 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 #include "bootutil/boot_hooks.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 #include "bootutil/mcuboot_status.h"
 
 #include "do_boot.h"
