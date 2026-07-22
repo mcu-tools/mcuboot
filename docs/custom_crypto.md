@@ -14,7 +14,7 @@ without modifying MCUboot's own source.
 ## How it works
 
 When `MCUBOOT_USE_CUSTOM_CRYPTO` is defined, the crypto abstraction headers
-(`sha.h`, `ecdsa.h`, `hmac_sha256.h`, `aes_ctr.h`, `ecdh_p256.h`) do not
+(`sha.h`, `ecdsa.h`, `aes_ctr.h`, `ecdh_p256.h`) do not
 define any types or functions for the custom crypto path. Instead, you must
 provide them via your platform's custom crypto header.
 
