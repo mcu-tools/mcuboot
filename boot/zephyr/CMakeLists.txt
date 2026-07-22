@@ -2,6 +2,7 @@
 #
 # Copyright (c) 2017 Open Source Foundries Limited
 # Copyright (c) 2023-2026 Nordic Semiconductor ASA
+# Copyright (c) 2026 Nerijus Bendžiūnas
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -328,6 +329,15 @@ if(CONFIG_MCUBOOT_SERIAL)
       zephyr_sources(boot_serial_extension_zephyr_basic.c)
     endif()
   endif()
+endif()
+
+if(NOT CONFIG_MCUBOOT_SERIAL AND CONFIG_BOOT_ENCRYPT_IMAGE AND
+   (CONFIG_BOOT_USB_DFU_WAIT OR CONFIG_BOOT_USB_DFU_GPIO))
+  zephyr_include_directories(
+    ${BOOT_DIR}/boot_serial/include
+    ${BOOT_DIR}/bootutil/include
+  )
+  zephyr_sources(${BOOT_DIR}/boot_serial/src/boot_serial_encryption.c)
 endif()
 
 if(NOT CONFIG_BOOT_SIGNATURE_TYPE_NONE AND NOT CONFIG_BOOT_BUILTIN_KEY AND NOT

@@ -788,7 +788,9 @@ config BOOT_ENCRYPT_IMAGE
 	select BOOT_ENCRYPT_RSA if BOOT_SIGNATURE_TYPE_RSA
 	select BOOT_ENCRYPT_EC256 if BOOT_SIGNATURE_TYPE_ECDSA_P256
 	select BOOT_ENCRYPT_X25519 if BOOT_SIGNATURE_TYPE_ED25519
-	depends on !SINGLE_APPLICATION_SLOT || MCUBOOT_SERIAL
+	depends on !SINGLE_APPLICATION_SLOT || MCUBOOT_SERIAL || \
+		((BOOT_USB_DFU_WAIT || BOOT_USB_DFU_GPIO) && \
+		 (BOOT_VALIDATE_SLOT0 || BOOT_VALIDATE_SLOT0_ONCE))
 	help
 	  If y, images in the secondary slot can be encrypted and are decrypted
 	  on the fly when upgrading to the primary slot, as well as encrypted

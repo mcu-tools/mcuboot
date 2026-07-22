@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2020 Nordic Semiconductor ASA
  * Copyright (c) 2020 Arm Limited
+ * Copyright (c) 2026 Nerijus Bendžiūnas
  */
 
 #include <assert.h>
@@ -15,6 +16,10 @@
 #include "bootutil/fault_injection_hardening.h"
 
 #include "mcuboot_config/mcuboot_config.h"
+
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_USB_DFU)
+#include "boot_serial/boot_serial_encryption.h"
+#endif
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
@@ -209,7 +214,20 @@ boot_go(struct boot_rsp *rsp)
 #endif
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_USB_DFU)
+    bool primary_encrypted = IS_ENCRYPTED(&_hdr);
+#endif
     FIH_CALL(boot_image_validate, fih_rc, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), &_hdr);
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_USB_DFU)
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS) && primary_encrypted) {
+        BOOT_LOG_INF("Primary slot is encrypted; decrypting in place");
+        if (boot_handle_enc_fw(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY)) == 0 &&
+            boot_image_load_header(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), &_hdr) == 0) {
+            FIH_CALL(boot_image_validate, fih_rc,
+                     BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), &_hdr);
+        }
+    }
+#endif
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
 #ifdef MCUBOOT_RAM_LOAD
         boot_remove_image_from_sram(&state);
