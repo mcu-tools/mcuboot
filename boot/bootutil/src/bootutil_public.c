@@ -357,7 +357,7 @@ boot_write_trailer(const struct flash_area *fap, uint32_t off,
     align = ALIGN_UP(inlen, align);
     if (align > BOOT_MAX_ALIGN) {
         /* This should never happen */
-        assert(0);
+        ASSERT(0);
         return -1;
     }
     erased_val = flash_area_erased_val(fap);
@@ -585,7 +585,7 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
 
     default:
         /* Something is not OK, this should never happen */
-        assert(0);
+        ASSERT(0);
         rc = BOOT_EBADIMAGE;
     }
 
@@ -654,7 +654,7 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
 
     default:
         /* Something is not OK, this should never happen */
-        assert(0);
+        ASSERT(0);
         rc = BOOT_EBADSTATUS;
     }
 
