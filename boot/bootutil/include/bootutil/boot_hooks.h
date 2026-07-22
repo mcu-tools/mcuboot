@@ -225,6 +225,21 @@ int boot_img_install_stat_hook(int image_index, int slot,
  */
 int boot_reset_request_hook(bool force);
 
+/** Hook provides a way for the custom image loading and validation.
+ *
+ * @param img_index the index of the image pair
+ * @param slot slot number
+ * @param img_dst image destination address to be populated
+ * @param img_sz image size to be populated
+ *
+ * @retval 0: success, mcuboot will follow normal code execution flow after
+ *            execution of this call.
+ *         non-zero: an error, will be transferred as part of command response
+ *            as "rc" entry.
+ */
+int boot_load_image_to_sram_hook(int image_index, int slot,
+                                 uint32_t *img_dst, uint32_t *img_sz);
+
 /**
  * Hook to implement custom action before boot_go() function.
  *
