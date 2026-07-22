@@ -190,6 +190,13 @@ int main(void)
 #if defined(CONFIG_BOOT_USB_DFU_GPIO) || defined(CONFIG_BOOT_USB_DFU_WAIT)
     bool usb_dfu_requested = false;
 #endif
+
+    /* Init mbedTLS heap before any FIH macro: FIH_DECLARE calls
+     * fih_delay() under FIH_PROFILE_HIGH, which seeds CTR-DRBG.
+     */
+    os_heap_init();
+    (void)fih_delay_init();
+
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     MCUBOOT_WATCHDOG_SETUP();
@@ -205,8 +212,6 @@ int main(void)
     /* LED init */
     io_led_init();
 #endif
-
-    os_heap_init();
 
     ZEPHYR_BOOT_LOG_START();
 
