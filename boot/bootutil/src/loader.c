@@ -1534,17 +1534,33 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
 
 #ifdef MCUBOOT_BOOTSTRAP
             if (BOOT_SWAP_TYPE(state) == BOOT_SWAP_TYPE_NONE) {
-                /* Header checks are done first because they are
-                 * inexpensive. Since overwrite-only copies starting from
-                 * offset 0, if interrupted, it might leave a valid header
-                 * magic, so also run validation on the primary slot to be
-                 * sure it's not OK.
+#ifdef MCUBOOT_OVERWRITE_ONLY
+                /* Overwrite-only copies start at offset 0, so an interrupted
+                 * copy can leave a valid header magic over an incomplete image.
+                 * Validate the primary slot to detect and re-copy that case.
                  */
                 FIH_CALL(boot_validate_slot, fih_rc,
                          state, BOOT_SLOT_PRIMARY, bs, 0);
                 if (boot_check_header_erased(state, BOOT_SLOT_PRIMARY) ||
-                    FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
-
+                    FIH_NOT_EQ(fih_rc, FIH_SUCCESS))
+#else
+                /* This branch runs only when there is no partial swap to
+                 * resume (boot_status_is_reset() is true); any interrupted swap
+                 * was already finished by boot_complete_partial_swap() above.
+                 * Gate bootstrap on the cheap header sanity check instead of a
+                 * full signature verify: a primary that is erased or whose
+                 * header is corrupt is (re-)bootstrapped from the secondary,
+                 * which is itself validated below before any copy, while a
+                 * structurally valid primary is left as-is. This skips the
+                 * primary-slot public-key verify that otherwise runs on every
+                 * normal boot even for a valid, confirmed primary (and even
+                 * when MCUBOOT_VALIDATE_PRIMARY_SLOT is disabled). With a
+                 * validated secondary still present (e.g. the swapped-out image
+                 * after an update), that verify can dominate boot time.
+                 */
+                if (!boot_check_header_valid(state, BOOT_SLOT_PRIMARY))
+#endif
+                {
                     rc = (boot_img_hdr(state, BOOT_SLOT_SECONDARY)->ih_magic == IMAGE_MAGIC) ? 1: 0;
                     FIH_CALL(boot_validate_slot, fih_rc,
                              state, BOOT_SLOT_SECONDARY, bs, 0);
