@@ -58,7 +58,7 @@ jobs:
           echo "MCUBOOT_VERSION=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
 
       - name: Checkout Zephyr
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: 'zephyrproject-rtos/zephyr'
           ref: ${{ env.ZEPHYR_VERSION }}
@@ -79,7 +79,7 @@ jobs:
           ccache-max-size: 768MB
 
       - name: Checkout MCUBoot
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: 'mcu-tools/mcuboot'
           ref: ${{ env.MCUBOOT_VERSION }}
