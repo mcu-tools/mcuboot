@@ -36,7 +36,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #include <zephyr/drivers/hwinfo.h>
 #endif
 
-#if defined(CONFIG_BOOT_SERIAL_BOOT_MODE) || defined(CONFIG_BOOT_FIRMWARE_LOADER_BOOT_MODE)
+#if defined(CONFIG_BOOT_SERIAL_BOOT_MODE) || defined(CONFIG_BOOT_FIRMWARE_LOADER_BOOT_MODE) || defined(CONFIG_BOOT_USB_DFU_BOOT_MODE)
 #include <zephyr/retention/bootmode.h>
 #endif
 
@@ -197,7 +197,7 @@ bool io_detect_pin_reset(void)
 }
 #endif
 
-#if defined(CONFIG_BOOT_SERIAL_BOOT_MODE) || defined(CONFIG_BOOT_FIRMWARE_LOADER_BOOT_MODE)
+#if defined(CONFIG_BOOT_SERIAL_BOOT_MODE) || defined(CONFIG_BOOT_FIRMWARE_LOADER_BOOT_MODE) || defined(CONFIG_BOOT_USB_DFU_BOOT_MODE)
 bool io_detect_boot_mode(void)
 {
     int32_t boot_mode;
