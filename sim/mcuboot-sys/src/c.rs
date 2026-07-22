@@ -100,6 +100,10 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
         br_hdr: std::ptr::null(),
         flash_dev_id: 0,
         image_off: 0,
+        #[cfg(feature = "enc-xip-ec256")]
+        br_xip_key: [0u32; 4],
+        #[cfg(feature = "enc-xip-ec256")]
+        br_xip_iv: [0u32; 4],
     };
     let result: i32 = unsafe {
         let adesc = areadesc.get_c();
@@ -264,4 +268,55 @@ fn init_crypto() {
 #[cfg(not(feature = "psa-crypto-api"))]
 fn init_crypto() {
    // When the feature is not enabled, the init is just empty
+}
+
+#[cfg(feature = "enc-xip-ec256")]
+extern "C" {
+    fn xip_enc_store_key(img_index: i32,
+                         key: *const u8,
+                         iv: *const u8);
+    fn boot_decrypt_xip(image_index: i32,
+                        fap: *const u8,
+                        off: u32,
+                        sz: u32,
+                        buf: *mut u8) -> i32;
+    fn xip_enc_clear_keys();
+    fn xip_enc_ecies_unwrap(tlv_buf: *const u8,
+                            tlv_len: u16,
+                            out_key: *mut u8,
+                            out_iv: *mut u8) -> i32;
+}
+
+#[cfg(feature = "enc-xip-ec256")]
+pub fn xip_store_key(img_index: i32, key: &[u8; 16], iv: &[u8; 16]) {
+    unsafe {
+        xip_enc_store_key(img_index, key.as_ptr(), iv.as_ptr());
+    }
+}
+
+#[cfg(feature = "enc-xip-ec256")]
+pub fn xip_decrypt(image_index: i32, fap: *const u8,
+                   off: u32, buf: &mut [u8]) -> i32 {
+    unsafe {
+        boot_decrypt_xip(image_index, fap, off,
+                         buf.len() as u32, buf.as_mut_ptr())
+    }
+}
+
+#[cfg(feature = "enc-xip-ec256")]
+pub fn xip_clear_keys() {
+    unsafe { xip_enc_clear_keys(); }
+}
+
+/// Unwrap an ECIES-P256 key envelope via the C `xip_enc_ecies_unwrap`.
+/// Returns the C status code (0 on success) plus the recovered key and IV.
+#[cfg(feature = "enc-xip-ec256")]
+pub fn xip_ecies_unwrap(tlv: &[u8]) -> (i32, [u8; 16], [u8; 16]) {
+    let mut key = [0u8; 16];
+    let mut iv = [0u8; 16];
+    let rc = unsafe {
+        xip_enc_ecies_unwrap(tlv.as_ptr(), tlv.len() as u16,
+                             key.as_mut_ptr(), iv.as_mut_ptr())
+    };
+    (rc, key, iv)
 }
