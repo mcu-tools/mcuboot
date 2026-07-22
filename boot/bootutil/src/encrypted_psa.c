@@ -12,9 +12,11 @@
 #include <inttypes.h>
 #include <string.h>
 
+#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
 /* We are not really using the MBEDTLS but need the ASN.1 parsing functions */
 #define MBEDTLS_ASN1_PARSE_C
 
+#include "bootutil/crypto/common.h"
 #include "bootutil/crypto/sha.h"
 #include "mbedtls/build_info.h"
 #include "mbedtls/oid.h"
@@ -36,11 +38,11 @@
 #if !defined(MBEDTLS_OID_EC_GRP_SECP256R1)
 #define MBEDTLS_OID_EC_GRP_SECP256R1    "\x2a\x86\x48\xce\x3d\x03\x01\x07"
 #endif
+#endif /* defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519) */
 
 #include "bootutil/image.h"
 #include "bootutil/enc_key.h"
 #include "bootutil/sign_key.h"
-#include "bootutil/crypto/common.h"
 
 #include "bootutil_priv.h"
 #include "bootutil/bootutil_log.h"
@@ -252,6 +254,7 @@ int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k)
 }
 
 #if defined(MCUBOOT_ENC_IMAGES)
+#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
 extern const struct bootutil_key bootutil_enc_key;
 /*
  * Decrypt an encryption key TLV.
@@ -441,6 +444,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
     return 0;
 }
+#endif /* defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519) */
 
 int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
         const uint8_t *m, uint32_t mlen, size_t blk_off, uint8_t *c)
