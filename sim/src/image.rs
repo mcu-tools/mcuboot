@@ -798,6 +798,26 @@ impl ImagesBuilder {
                 flash.insert(dev_id, dev);
                 (flash, Rc::new(areadesc), &[Caps::SwapUsingScratch, Caps::OverwriteUpgrade, Caps::SwapUsingMove, Caps::RamLoad, Caps::DirectXip])
             }
+            DeviceName::RA6M3 => {
+                // Renesas Flash: 8 sectors of 8K, 30 sectors of 32K (1MB variant). 
+                let dev = SimFlash::new(vec![
+                                        //First 8 sectors of 8K (64K), these are usually used to store mcuboot
+                                        8 * 1024, 8 * 1024, 8 * 1024, 8 * 1024, 8 * 1024, 8 * 1024, 8 * 1024, 8 * 1024,
+                                        //Next 30 sectors of 32K (960K), these are usually used to store the images
+                                        32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024,
+                                        32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024,
+                                        32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024, 32*1024 ],
+                                        align as usize, erased_val);
+                let dev_id = 0;
+                let mut areadesc = AreaDesc::new();
+                areadesc.add_flash_sectors(dev_id, &dev);
+                areadesc.add_image(0x020000, 0x020000, FlashId::Image0, dev_id);
+                areadesc.add_image(0x040000, 0x020000, FlashId::Image1, dev_id);
+                areadesc.add_image(0x060000, 0x020000, FlashId::ImageScratch, dev_id);
+                let mut flash = SimMultiFlash::new();
+                flash.insert(dev_id, dev);
+                (flash, Rc::new(areadesc), &[Caps::SwapUsingMove, Caps::SwapUsingOffset])
+            }
         }
     }
 
@@ -2694,7 +2714,7 @@ pub struct SlotInfo {
     pub dev_id: u8,
 }
 
-#[cfg(all(not(feature = "max-align-16"), not(feature = "max-align-32")))]
+#[cfg(all(not(feature = "max-align-16"), not(feature = "max-align-32"), not(feature = "max-align-64"), not(feature = "max-align-128")))]
 const MAGIC: &[u8] = &[0x77, 0xc2, 0x95, 0xf3,
                        0x60, 0xd2, 0xef, 0x7f,
                        0x35, 0x52, 0x50, 0x0f,
@@ -2708,6 +2728,18 @@ const MAGIC: &[u8] = &[0x10, 0x00, 0x2d, 0xe1,
 
 #[cfg(feature = "max-align-32")]
 const MAGIC: &[u8] = &[0x20, 0x00, 0x2d, 0xe1,
+                       0x5d, 0x29, 0x41, 0x0b,
+                       0x8d, 0x77, 0x67, 0x9c,
+                       0x11, 0x0f, 0x1f, 0x8a];
+
+#[cfg(feature = "max-align-64")]
+const MAGIC: &[u8] = &[0x40, 0x00, 0x2d, 0xe1,
+                       0x5d, 0x29, 0x41, 0x0b,
+                       0x8d, 0x77, 0x67, 0x9c,
+                       0x11, 0x0f, 0x1f, 0x8a];
+
+#[cfg(feature = "max-align-128")]
+const MAGIC: &[u8] = &[0x80, 0x00, 0x2d, 0xe1,
                        0x5d, 0x29, 0x41, 0x0b,
                        0x8d, 0x77, 0x67, 0x9c,
                        0x11, 0x0f, 0x1f, 0x8a];
@@ -2789,7 +2821,7 @@ pub fn show_sizes() {
     }
 }
 
-#[cfg(all(not(feature = "max-align-16"), not(feature = "max-align-32")))]
+#[cfg(all(not(feature = "max-align-16"), not(feature = "max-align-32"),not(feature = "max-align-64"), not(feature = "max-align-128")))]
 fn test_alignments() -> &'static [usize] {
     &[1, 2, 4, 8]
 }
@@ -2804,6 +2836,15 @@ fn test_alignments() -> &'static [usize] {
     &[32]
 }
 
+#[cfg(feature = "max-align-64")]
+fn test_alignments() -> &'static [usize] {
+    &[64]
+}
+
+#[cfg(feature = "max-align-128")]
+fn test_alignments() -> &'static [usize] {
+    &[128]
+}
 /// For testing, some of the tests are quite slow. This will query for an
 /// environment variable `MCUBOOT_SKIP_SLOW_TESTS`, which can be set to avoid
 /// running these tests.
