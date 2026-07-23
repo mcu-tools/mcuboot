@@ -102,6 +102,12 @@ max-align-16 = []
 # Support images with 32-byte maximum write alignment value.
 max-align-32 = []
 
+# Support images with 64-byte maximum write alignment value.
+max-align-64 = []
+
+# Support images with 128-byte maximum write alignment value.
+max-align-128 = []
+
 # Use logical sectors.  Enable exactly one of the sized features; each
 # implies the `logical-sectors` umbrella that code can test against
 # without caring about the size.
