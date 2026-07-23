@@ -41,6 +41,8 @@ fn main() {
     let direct_xip = env::var("CARGO_FEATURE_DIRECT_XIP").is_ok();
     let max_align_16 = env::var("CARGO_FEATURE_MAX_ALIGN_16").is_ok();
     let max_align_32 = env::var("CARGO_FEATURE_MAX_ALIGN_32").is_ok();
+    let max_align_64 = env::var("CARGO_FEATURE_MAX_ALIGN_64").is_ok();
+    let max_align_128 = env::var("CARGO_FEATURE_MAX_ALIGN_128").is_ok();
     let hw_rollback_protection = env::var("CARGO_FEATURE_HW_ROLLBACK_PROTECTION").is_ok();
     let check_load_addr = env::var("CARGO_FEATURE_CHECK_LOAD_ADDR").is_ok();
     let custom_crypto = env::var("CARGO_FEATURE_CUSTOM_CRYPTO").is_ok();
@@ -56,7 +58,11 @@ fn main() {
     conf.conf.define("MCUBOOT_HAVE_ASSERT_H", None);
     conf.conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
 
-    if max_align_32 {
+    if max_align_128 {
+        conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("128"));
+    } else if max_align_64 {
+        conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("64"));
+    } else if max_align_32 {
         conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("32"));
     } else if max_align_16 {
         conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("16"));
