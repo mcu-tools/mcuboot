@@ -31,7 +31,7 @@
 #include "bootutil/bootutil_public.h"
 #include "bootutil/image.h"
 #include "bootutil_priv.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 #include "bootutil/ramload.h"
 #include "bootutil/mcuboot_status.h"
 

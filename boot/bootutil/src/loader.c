@@ -45,7 +45,7 @@
 #include "bootutil/bootutil_log.h"
 #include "bootutil/security_cnt.h"
 #include "bootutil/boot_record.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 #include "bootutil/ramload.h"
 #include "bootutil/boot_hooks.h"
 #include "bootutil/mcuboot_status.h"

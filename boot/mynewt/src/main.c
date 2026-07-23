@@ -45,7 +45,7 @@
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
 #include "bootutil/bootutil_log.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 
 #if MYNEWT_VAL(BOOT_CUSTOM_START)
 void boot_custom_start(uintptr_t flash_base, struct boot_rsp *rsp);

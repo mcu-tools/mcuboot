@@ -35,7 +35,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #if defined(MCUBOOT_SIGN_EC256) || defined(MCUBOOT_SIGN_EC384)
 
 #include "bootutil_priv.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 #include "bootutil/crypto/ecdsa.h"
 
 #if !defined(MCUBOOT_BUILTIN_KEY)
