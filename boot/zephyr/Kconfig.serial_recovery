@@ -101,6 +101,7 @@ config BOOT_SERIAL_UNALIGNED_BUFFER_SIZE
 	int "Stack buffer for unaligned memory writes"
 	default 512 if SOC_SERIES_LPC55XXX
 	default 128 if SOC_SERIES_MCXN
+	default 128 if SOC_FAMILY_RENESAS_RA
 	default 64
 	range 0 1024
 	help
