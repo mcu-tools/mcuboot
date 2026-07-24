@@ -179,8 +179,11 @@ boot_save_boot_status(uint8_t sw_module,
             boot_record_found = true;
 
         } else if (type == EXPECTED_HASH_TLV) {
-            /* Get the image's hash value from the manifest section. */
-            if (len > sizeof(image_hash)) {
+            /* Get the image's hash value from the manifest section. The
+             * whole buffer is copied into the boot record below, so the
+             * TLV must fill it exactly.
+             */
+            if (len != sizeof(image_hash)) {
                 return -1;
             }
             rc = flash_area_read(fap, offset, image_hash, len);
