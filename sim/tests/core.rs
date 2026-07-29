@@ -58,6 +58,34 @@ sim_test!(basic_revert, make_image(&NO_DEPS, true), run_basic_revert());
 sim_test!(revert_with_fails, make_image(&NO_DEPS, false), run_revert_with_fails());
 sim_test!(perm_with_fails, make_image(&NO_DEPS, true), run_perm_with_fails());
 sim_test!(perm_with_random_fails, make_image(&NO_DEPS, true), run_perm_with_random_fails(5));
+#[cfg(feature = "delta-dfu")]
+test_shell!(delta_with_fails, r, {
+    if let Some(image) = r.try_make_delta_image() {
+        dump_image(&image, "delta_with_fails");
+        assert!(!image.run_delta_with_fails());
+    }
+});
+#[cfg(feature = "delta-dfu")]
+test_shell!(delta_large_image_revert, r, {
+    if let Some(image) = r.try_make_large_delta_image() {
+        dump_image(&image, "delta_large_image_revert");
+        assert!(!image.run_delta_large_image_revert());
+    }
+});
+#[cfg(feature = "delta-dfu")]
+test_shell!(delta_repairs_invalid_target_tlv, r, {
+    if let Some(image) = r.try_make_delta_image() {
+        dump_image(&image, "delta_repairs_invalid_target_tlv");
+        assert!(!image.run_delta_repairs_invalid_target_tlv());
+    }
+});
+#[cfg(all(feature = "delta-dfu", feature = "hw-rollback-protection"))]
+test_shell!(delta_confirm_updates_security_counter, r, {
+    if let Some(image) = r.try_make_delta_image() {
+        dump_image(&image, "delta_confirm_updates_security_counter");
+        assert!(!image.run_delta_confirm_updates_security_counter());
+    }
+});
 sim_test!(norevert, make_image(&NO_DEPS, true), run_norevert());
 sim_test!(oversized_secondary_slot, make_oversized_secondary_slot_image(), run_fail_upgrade_primary_intact());
 #[cfg(feature = "check-load-addr")]

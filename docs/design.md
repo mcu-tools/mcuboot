@@ -99,6 +99,11 @@ struct image_tlv {
 #define IMAGE_F_ENCRYPTED_AES256         0x00000008 /* Encrypted using AES256. */
 #define IMAGE_F_NON_BOOTABLE             0x00000010 /* Split image app. */
 #define IMAGE_F_RAM_LOAD                 0x00000020
+#define IMAGE_F_ROM_FIXED                0x00000100
+#define IMAGE_F_COMPRESSED_LZMA1         0x00000200
+#define IMAGE_F_COMPRESSED_LZMA2         0x00000400
+#define IMAGE_F_COMPRESSED_ARM_THUMB_FLT 0x00000800
+#define IMAGE_F_DELTA                    0x00001000
 
 /*
  * Image trailer TLV types.
@@ -126,19 +131,22 @@ struct image_tlv {
 #define IMAGE_TLV_DEPENDENCY        0x40    /* Image depends on other image */
 #define IMAGE_TLV_SEC_CNT           0x50    /* security counter */
 #define IMAGE_TLV_BOOT_RECORD       0x60    /* measured boot record */
-/* The following flags relate to compressed images and are for the decompressed image data */
+/* The following flags relate to transformed images and their output image data */
 #define IMAGE_TLV_DECOMP_SIZE       0x70    /* Decompressed image size excluding header/TLVs */
-#define IMAGE_TLV_DECOMP_SHA        0x71    /*
-                                             * Decompressed image shaX hash, this field must match
-                                             * the format and size of the raw slot (compressed)
-                                             * shaX hash
+#define IMAGE_TLV_OUTPUT_SHA        0x71    /*
+                                             * Output image shaX hash, this field must match the
+                                             * format and size of the input image shaX hash
                                              */
+#define IMAGE_TLV_DECOMP_SHA        IMAGE_TLV_OUTPUT_SHA /* Compatibility alias */
 #define IMAGE_TLV_DECOMP_SIGNATURE  0x72    /*
                                              * Decompressed image signature, this field must match
                                              * the format and size of the raw slot (compressed)
                                              * signature
                                              */
 #define IMAGE_TLV_COMP_DEC_SIZE     0x73    /* Compressed decrypted image size */
+#define IMAGE_TLV_UUID_VID          0x74    /* Vendor unique identifier */
+#define IMAGE_TLV_UUID_CID          0x75    /* Device class unique identifier */
+#define IMAGE_TLV_DELTA_BASE_SHA    0x76    /* SHA of image the delta applies to */
                                             /*
                                              * vendor reserved TLVs at xxA0-xxFF,
                                              * where xx denotes the upper byte
@@ -149,8 +157,6 @@ struct image_tlv {
                                              * ...
                                              * 0xffa0 - 0xfffe
                                              */
-#define IMAGE_TLV_UUID_VID          0x80    /* Vendor unique identifier */
-#define IMAGE_TLV_UUID_CID          0x81    /* Device class unique identifier */
 ```
 
 Optional type-length-value records (TLVs) containing image metadata are placed
@@ -166,6 +172,14 @@ case the value of the `ih_protect_tlv_size` field is 0.
 The `ih_hdr_size` field indicates the length of the header, and therefore the
 offset of the image itself.  This field provides for backwards compatibility in
 case of changes to the format of the image header.
+
+Delta update images set the `IMAGE_F_DELTA` header flag. Their payload is a
+version-1 reversible patch stream rather than a bootable firmware body, and
+MCUboot applies that stream to the active primary image during an overwrite-only
+update. Delta images carry protected `IMAGE_TLV_DELTA_BASE_SHA` and
+`IMAGE_TLV_OUTPUT_SHA` entries to bind the signed patch to the exact base
+image it applies to and the exact target image it reconstructs. See
+[Delta DFU](delta_dfu.md) for the payload and recovery-state formats.
 
 ## [TLV allow list](#tlv-allow)
 

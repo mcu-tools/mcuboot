@@ -81,6 +81,7 @@ extern "C" {
 #define IMAGE_F_COMPRESSED_LZMA1         0x00000200
 #define IMAGE_F_COMPRESSED_LZMA2         0x00000400
 #define IMAGE_F_COMPRESSED_ARM_THUMB_FLT 0x00000800
+#define IMAGE_F_DELTA                    0x00001000
 
 /*
  * ECSDA224 is with NIST P-224
@@ -119,13 +120,13 @@ extern "C" {
 #define IMAGE_TLV_DEPENDENCY        0x40    /* Image depends on other image */
 #define IMAGE_TLV_SEC_CNT           0x50    /* security counter */
 #define IMAGE_TLV_BOOT_RECORD       0x60    /* measured boot record */
-/* The following flags relate to compressed images and are for the decompressed image data */
+/* The following flags relate to transformed images and their output image data */
 #define IMAGE_TLV_DECOMP_SIZE       0x70    /* Decompressed image size excluding header/TLVs */
-#define IMAGE_TLV_DECOMP_SHA        0x71    /*
-                                             * Decompressed image shaX hash, this field must match
-                                             * the format and size of the raw slot (compressed)
-                                             * shaX hash
+#define IMAGE_TLV_OUTPUT_SHA        0x71    /*
+                                             * Output image shaX hash, this field must match the
+                                             * format and size of the input image shaX hash
                                              */
+#define IMAGE_TLV_DECOMP_SHA        IMAGE_TLV_OUTPUT_SHA /* Compatibility alias */
 #define IMAGE_TLV_DECOMP_SIGNATURE  0x72    /*
                                              * Decompressed image signature, this field must match
                                              * the format and size of the raw slot (compressed)
@@ -134,6 +135,7 @@ extern "C" {
 #define IMAGE_TLV_COMP_DEC_SIZE     0x73    /* Compressed decrypted image size */
 #define IMAGE_TLV_UUID_VID          0x74    /* Vendor unique identifier */
 #define IMAGE_TLV_UUID_CID          0x75    /* Device class unique identifier */
+#define IMAGE_TLV_DELTA_BASE_SHA    0x76    /* SHA of image the delta applies to */
                                             /*
                                              * vendor reserved TLVs at xxA0-xxFF,
                                              * where xx denotes the upper byte
@@ -198,6 +200,8 @@ STRUCT_PACKED image_tlv {
 #define IS_COMPRESSED(hdr) ((hdr)->ih_flags & COMPRESSIONFLAGS)
 #define MUST_DECOMPRESS(fap, idx, hdr) \
     (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SECONDARY(idx) && IS_COMPRESSED(hdr))
+
+#define IS_DELTA(hdr) ((hdr)->ih_flags & IMAGE_F_DELTA)
 
 _Static_assert(sizeof(struct image_header) == IMAGE_HEADER_SIZE,
                "struct image_header not required size");

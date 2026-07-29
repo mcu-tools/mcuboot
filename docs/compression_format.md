@@ -152,7 +152,7 @@ The following Type-Length-Values (TLVs) are used in the context of
 decompressed images:
 
 -   `DECOMP_SIZE (0x70)`: Specifies the size of the decompressed image.
--   `DECOMP_SHA (0x71)`: Contains the hash of the decompressed image.
+-   `OUTPUT_SHA (0x71)`: Contains the hash of the decompressed image.
 -   `DECOMP_SIGNATURE (0x72)`: Holds the signature of either the hash or
     the entire image.
 
