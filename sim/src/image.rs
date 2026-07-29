@@ -2072,18 +2072,11 @@ fn boot_sector_size(dev: &dyn Flash) -> usize {
     }
 }
 
-/// Estimate the number of bytes in each slot that must be reserved for the trailer when
-/// swap-scratch is used.
-fn estimate_swap_scratch_trailer_size(dev: &dyn Flash, areadesc: &AreaDesc, slot: &SlotInfo) -> usize {
-    // Compute the minimal size that must be allocated to the trailer, without considering the
-    // trailer in the sratch area.
-    let mut trailer_sz = c::boot_trailer_sz(dev.align() as u32) as usize;
-
-    // If the trailer is not a multiple of the sector size, the last sector that can hold firmware
-    // data also contains the trailer or a part of it. Let's compute the size of the part of the
-    // trailer that is in the last firmware sector.
-    let mut trailer_sz_in_fw_sector = trailer_sz;
-
+/// The number of bytes of a `trailer_sz`-byte trailer that land in the first
+/// (lowest-addressed) sector of `slot` that holds any trailer data.  Mirrors
+/// `get_first_trailer_sector_end_off() - slot_trailer_off` in swap_scratch.c.
+fn trailer_sz_in_first_trailer_sector(areadesc: &AreaDesc, slot: &SlotInfo,
+                                      trailer_sz: usize) -> usize {
     let flash_id = match slot.index {
         0 => FlashId::Image0,
         1 => FlashId::Image1,
@@ -2098,32 +2091,56 @@ fn estimate_swap_scratch_trailer_size(dev: &dyn Flash, areadesc: &AreaDesc, slot
         size => vec![size; slot.len / size],
     };
 
+    // Walk back from the end of the slot, consuming whole sectors that are
+    // entirely trailer.  The firmware stops as soon as the accumulated sectors
+    // reach the trailer size, so an exact fit leaves a whole sector here, not
+    // zero.
+    let mut remaining = trailer_sz;
     for &sector_sz in slot_sectors.iter().rev() {
-        if sector_sz > trailer_sz_in_fw_sector {
-            break;
+        if sector_sz >= remaining {
+            return remaining;
         }
 
-        trailer_sz_in_fw_sector -= sector_sz;
+        remaining -= sector_sz;
     }
 
-    // If the trailer is not a multiple of the sector size, when the last sector containing firmware
-    // data will be copied to the scratch area, it must be ensured enough space is left to write the
-    // scratch trailer.
-    if trailer_sz_in_fw_sector != 0 {
-        // The scratch contains a single boot status entry
-        let boot_status_entry_sz = 3 * dev.align();
-        let trailer_info_sz = trailer_sz - c::boot_status_sz(dev.align() as u32) as usize;
-        let scratch_trailer_sz = boot_status_entry_sz + trailer_info_sz;
+    panic!("Trailer does not fit in slot {}", slot.index);
+}
 
-        if scratch_trailer_sz > trailer_sz_in_fw_sector {
-            trailer_sz += scratch_trailer_sz - trailer_sz_in_fw_sector;
-        }
+/// Estimate the number of bytes in each slot that must be reserved for the trailer when
+/// swap-scratch is used.  Mirrors `app_max_size_adjust_to_trailer()` in
+/// boot/bootutil/src/swap_scratch.c.
+fn estimate_swap_scratch_trailer_size(dev: &dyn Flash, areadesc: &AreaDesc,
+                                      slots: &[SlotInfo]) -> usize {
+    // Compute the minimal size that must be allocated to the trailer, without considering the
+    // trailer in the sratch area.
+    let mut trailer_sz = c::boot_trailer_sz(dev.align() as u32) as usize;
+
+    debug_assert!(slots.iter().all(|s| s.len == slots[0].len),
+                  "swap-scratch trailer estimate assumes equally-sized slots");
+
+    // If the trailer is not a multiple of the sector size, the last sector that can hold firmware
+    // data also contains the trailer or a part of it.  The swap logic copies on the *common* sector
+    // boundary of the two slots, so the sector that matters is the larger one.  The firmware takes
+    // the larger of the two slots' first-trailer-sector end offsets; with equally-sized slots the
+    // trailer starts at the same offset in both, so that is the larger of the two remainders.
+    let trailer_sz_in_fw_sector = slots.iter()
+        .map(|slot| trailer_sz_in_first_trailer_sector(areadesc, slot, trailer_sz))
+        .max()
+        .expect("no slots");
+
+    // When the last sector containing firmware data is copied to the scratch area, enough space
+    // must be left to write the scratch trailer.
+    let scratch_trailer_sz = c::boot_scratch_trailer_sz(dev.align() as u32) as usize;
+
+    if scratch_trailer_sz > trailer_sz_in_fw_sector {
+        trailer_sz += scratch_trailer_sz - trailer_sz_in_fw_sector;
     }
 
     trailer_sz
 }
 
-fn image_largest_trailer(dev: &dyn Flash, areadesc: &AreaDesc, slot: &SlotInfo) -> usize {
+fn image_largest_trailer(dev: &dyn Flash, areadesc: &AreaDesc, slots: &[SlotInfo]) -> usize {
             // Using the header size we know, the trailer size, and the slot size, we can compute
             // the largest image possible.
             let trailer = if Caps::OverwriteUpgrade.present() {
@@ -2133,7 +2150,7 @@ fn image_largest_trailer(dev: &dyn Flash, areadesc: &AreaDesc, slot: &SlotInfo) 
                 let sector_size = boot_sector_size(dev) as u32;
                 align_up(c::boot_trailer_sz(dev.align() as u32), sector_size) as usize
             } else if Caps::SwapUsingScratch.present() {
-                estimate_swap_scratch_trailer_size(dev, areadesc, slot)
+                estimate_swap_scratch_trailer_size(dev, areadesc, slots)
             } else {
                 panic!("The maximum image size can't be calculated.")
             };
@@ -2156,14 +2173,16 @@ fn required_slot_padding(dev: &dyn Flash) -> usize {
 
 // Computes the largest possible firmware image size, not including the header and TLV area.
 fn compute_largest_image_size(dev: &dyn Flash, areadesc: &AreaDesc, slots: &[SlotInfo],
-                              slot_ind: usize, hdr_size: usize, tlv: &dyn ManifestGen) -> usize {
+                              hdr_size: usize, tlv: &dyn ManifestGen) -> usize {
     let slot_len = if Caps::SwapUsingOffset.present() {
         slots[1].len
     } else {
         slots[0].len
     };
 
-    let trailer = image_largest_trailer(dev, areadesc, &slots[slot_ind]);
+    // Note that the trailer reservation is a property of the image, not of the slot being
+    // installed into: the firmware's app_max_size() considers both slots.
+    let trailer = image_largest_trailer(dev, areadesc, slots);
     let padding = required_slot_padding(dev);
     let tlv_len = tlv.estimate_size();
     info!("slot: 0x{:x}, HDR: 0x{:x}, trailer: 0x{:x}, tlv_len: 0x{:x}, padding: 0x{:x}",
@@ -2255,10 +2274,10 @@ fn install_image_with_key(
 
     let len = match len {
         ImageSize::Given(size) => size,
-        ImageSize::Largest => compute_largest_image_size(dev, areadesc, slots, slot_ind,
+        ImageSize::Largest => compute_largest_image_size(dev, areadesc, slots,
                                                          HDR_SIZE, tlv.as_ref()),
         ImageSize::Oversized => {
-            let largest_img_sz = compute_largest_image_size(dev, areadesc, slots, slot_ind,
+            let largest_img_sz = compute_largest_image_size(dev, areadesc, slots,
                                                             HDR_SIZE, tlv.as_ref());
             largest_img_sz + dev.align()
         }
