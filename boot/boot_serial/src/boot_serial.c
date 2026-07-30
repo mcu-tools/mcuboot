@@ -990,11 +990,6 @@ bs_upload(char *buf, int len)
          */
         const size_t area_size = flash_area_get_size(fap);
 
-#if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
-        uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
-        struct flash_sector sector_data;
-#endif
-
         curr_off = 0;
 #if defined(MCUBOOT_ERASE_PROGRESSIVELY) && defined(BOOT_IMAGE_HAS_STATUS_FIELDS)
         /* Get trailer sector information; this is done early because inability to get
@@ -1040,6 +1035,16 @@ bs_upload(char *buf, int len)
 #if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
         if (img_num > 0 &&
             (img_num % BOOT_NUM_SLOTS) == BOOT_DIRECT_UPLOAD_SECONDARY_SLOT_ID_REMAINDER) {
+#if defined(MCUBOOT_LOGICAL_SECTOR_SIZE) && MCUBOOT_LOGICAL_SECTOR_SIZE != 0
+            /* The swap algorithms position slots by logical sectors, so the image
+             * in the secondary slot starts one logical sector in; the physical
+             * sector reported by the flash driver may be smaller.
+             */
+            start_off = MCUBOOT_LOGICAL_SECTOR_SIZE;
+#else
+            uint32_t num_sectors = SWAP_USING_OFFSET_SECTOR_UPDATE_BEGIN;
+            struct flash_sector sector_data;
+
             rc = flash_area_get_sectors(fap->fa_id, &num_sectors, &sector_data);
 
             if ((rc != 0 && rc != -ENOMEM) ||
@@ -1049,6 +1054,7 @@ bs_upload(char *buf, int len)
             }
 
             start_off = sector_data.fs_size;
+#endif
         } else {
             start_off = 0;
         }
