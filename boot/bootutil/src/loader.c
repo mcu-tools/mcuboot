@@ -309,6 +309,13 @@ boot_verify_slot_dependencies(struct boot_loader_state *state, uint32_t slot)
     assert(fap != NULL);
 
     BOOT_LOG_DBG("boot_verify_slot_dependencies");
+
+    /* A slot with no valid image has no dependencies to satisfy or violate. */
+    if (boot_img_hdr(state, slot)->ih_magic != IMAGE_MAGIC) {
+        rc = 0;
+        goto done;
+    }
+
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
     it.start_off = boot_get_state_secondary_offset(state, fap);
 #endif
