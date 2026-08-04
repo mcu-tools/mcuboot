@@ -343,48 +343,114 @@ static inline void get_public_key_from_rfc5280_encoding(uint8_t **p, size_t *siz
  * (r,s) of contiguous bytes
  *
  * \param[in]  sig               Pointer to a buffer containing the encoded signature
+ * \param[in]  sig_len           Size in bytes of the buffer pointed to by \p sig
  * \param[in] num_of_curve_bytes The required number of bytes for r and s
  * \param[out] r_s_pair          Buffer containing the (r,s) pair extracted. It's caller
  *                               responsibility to ensure the buffer is big enough to
  *                               hold the parsed (r,s) pair.
+ *
+ * \return PSA_SUCCESS on success, PSA_ERROR_INVALID_SIGNATURE if the encoding is
+ *         malformed or describes elements that do not fit in \p sig_len bytes.
  */
-static void parse_signature_from_rfc5480_encoding(const uint8_t *sig,
-                                                  size_t num_of_curve_bytes,
-                                                  uint8_t *r_s_pair)
+static int parse_signature_from_rfc5480_encoding(const uint8_t *sig,
+                                                 size_t sig_len,
+                                                 size_t num_of_curve_bytes,
+                                                 uint8_t *r_s_pair)
 {
-    const uint8_t *sig_ptr = NULL;
+    size_t seq_len, seq_end, r_len, s_len, s_off;
+
+    /* The signature is a DER SEQUENCE of two INTEGERs, laid out in the buffer
+     * as follows:
+     *
+     *   offset       contents
+     *   0            0x30     SEQUENCE tag
+     *   1            seq_len  number of bytes that follow, up to seq_end
+     *   2            0x02     INTEGER tag of r
+     *   3            r_len
+     *   4            r        r_len bytes
+     *   4 + r_len    0x02     INTEGER tag of s
+     *   5 + r_len    s_len
+     *   6 + r_len    s        s_len bytes, starting at s_off
+     *   seq_end               first byte past the SEQUENCE, 2 + seq_len
+     *
+     * seq_len, r_len and s_len all come from the buffer and are not trusted.
+     * Each is checked against the number of bytes that remain before it is
+     * used as an offset; comparing against what remains, rather than adding
+     * the length to an offset first, means none of the arithmetic can wrap.
+     */
+
+    /* The smallest valid encoding holds two one byte INTEGERs,
+     * 30 06 02 01 rr 02 01 ss, which is 8 bytes. A buffer of at least that
+     * size also makes offsets 0 to 3, the fixed part of the layout, readable.
+     */
+    if (sig_len < 8) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
+
+    if ((sig[0] != 0x30) || (sig[2] != 0x02)) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
+
+    /* seq_len has to be a short form length (top bit clear), which is all
+     * the signatures of the supported curves need, and as seq_len bounds
+     * r_len and s_len it keeps those in the short form as well. It must
+     * cover at least the two INTEGER headers and one byte of each value
+     * (2 + 1 + 2 + 1), and the SEQUENCE, which starts after the 2 bytes of
+     * its own header, must end within the buffer. Bytes in the buffer past
+     * seq_end are not part of the signature and are ignored.
+     */
+    seq_len = sig[1];
+    if ((seq_len >= 0x80) || (seq_len < 6) || (seq_len > sig_len - 2)) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
+    seq_end = 2 + seq_len;
+
+    /* r starts at offset 4 and must not be empty. Past it, the SEQUENCE
+     * still has to hold the tag and length of s and at least one byte of s
+     * itself, so r can take at most seq_end - 4 - 3 bytes.
+     */
+    r_len = sig[3];
+    if ((r_len == 0) || (r_len > seq_end - 7)) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
+
+    /* The tag and length of s directly follow r, at 4 + r_len and
+     * 5 + r_len, and s itself starts at s_off. s must not be empty, and
+     * must end within the SEQUENCE.
+     */
+    if (sig[4 + r_len] != 0x02) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
+    s_len = sig[5 + r_len];
+    s_off = 6 + r_len;
+    if ((s_len == 0) || (s_len > seq_end - s_off)) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
 
     /* r or s can be greater than the expected size by one, due to the way
      * ASN.1 encodes signed integers. If either r or s starts with a bit 1,
      * a zero byte will be added in front of the encoding
      */
 
-    /* sig[0] == 0x30, sig[1] == <length>, sig[2] == 0x02 */
-
     /* Move r in place */
-    size_t r_len = sig[3];
-    sig_ptr = &sig[4];
     if (r_len >= num_of_curve_bytes) {
-        sig_ptr = sig_ptr + r_len - num_of_curve_bytes;
-        memcpy(&r_s_pair[0], sig_ptr, num_of_curve_bytes);
-        if(r_len % 2) {
-            r_len--;
-        }
+        memcpy(&r_s_pair[0], &sig[4 + r_len - num_of_curve_bytes],
+               num_of_curve_bytes);
     } else {
         /* For encodings that reduce the size of r or s in case of zeros */
-        memcpy(&r_s_pair[num_of_curve_bytes - r_len], sig_ptr, r_len);
+        memcpy(&r_s_pair[num_of_curve_bytes - r_len], &sig[4], r_len);
     }
 
     /* Move s in place */
-    size_t s_len = sig_ptr[r_len+1]; /*  + 1 to skip SEQUENCE */
-    sig_ptr  = &sig_ptr[r_len+2];
     if (s_len >= num_of_curve_bytes) {
-        sig_ptr = sig_ptr + s_len - num_of_curve_bytes;
-        memcpy(&r_s_pair[num_of_curve_bytes], sig_ptr, num_of_curve_bytes);
+        memcpy(&r_s_pair[num_of_curve_bytes],
+               &sig[s_off + s_len - num_of_curve_bytes], num_of_curve_bytes);
     } else {
         /* For encodings that reduce the size of r or s in case of zeros */
-        memcpy(&r_s_pair[2*num_of_curve_bytes - s_len], sig_ptr, s_len);
+        memcpy(&r_s_pair[2*num_of_curve_bytes - s_len], &sig[s_off], s_len);
     }
+
+    return (int)PSA_SUCCESS;
 }
 
 // OID id-ecPublicKey 1.2.840.10045.2.1.
@@ -493,10 +559,15 @@ static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
 {
     (void)pk;
     (void)pk_len;
-    (void)slen;
 
+    int rc;
     uint8_t reformatted_signature[96] = {0}; /* Enough for P-384 signature sizes */
-    parse_signature_from_rfc5480_encoding(sig, ctx->curve_byte_count,reformatted_signature);
+
+    rc = parse_signature_from_rfc5480_encoding(sig, slen, ctx->curve_byte_count,
+                                               reformatted_signature);
+    if (rc != (int)PSA_SUCCESS) {
+        return rc;
+    }
 
     return (int) psa_verify_hash(ctx->key_id, PSA_ALG_ECDSA(ctx->required_algorithm),
                                  hash, hlen, reformatted_signature, 2*ctx->curve_byte_count);
