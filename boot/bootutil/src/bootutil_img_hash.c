@@ -68,9 +68,8 @@ bootutil_img_hash(struct boot_loader_state *state,
 #if defined(MCUBOOT_ENC_IMAGES)
     int image_index;
 #endif
-#if defined(MCUBOOT_SWAP_USING_OFFSET)
     uint32_t sector_off = 0;
-#endif
+    uint32_t end;
 
 #if (BOOT_IMAGE_NUMBER == 1) || !defined(MCUBOOT_ENC_IMAGES) || \
     defined(MCUBOOT_RAM_LOAD)
@@ -111,6 +110,30 @@ bootutil_img_hash(struct boot_loader_state *state,
     sector_off = boot_get_state_secondary_offset(state, fap);
 #endif
 
+    /* Hash is computed over image header and image itself, and over the
+     * protected TLVs when they are present. The sizes of all three come from
+     * the image header, which is not authenticated at this point, so add them
+     * up without overflowing and check that the resulting span lies within the
+     * area holding the image before any of it is read. The header check done
+     * before an image is validated leaves the protected TLVs out of the size
+     * it compares against the slot when the image is to be decompressed, and
+     * several callers reach this point without performing it at all.
+     */
+    hdr_size = hdr->ih_hdr_size;
+
+    if (!boot_u32_safe_add(&size, hdr->ih_img_size, hdr_size)) {
+        return -1;
+    }
+
+    tlv_off = size;
+
+    if (!boot_u32_safe_add(&size, size, hdr->ih_protect_tlv_size) ||
+        !boot_u32_safe_add(&end, size, sector_off) ||
+        end > flash_area_get_size(fap)) {
+        BOOT_LOG_DBG("bootutil_img_hash: image does not fit the flash area");
+        return -1;
+    }
+
     bootutil_sha_init(&sha_ctx);
 
     /* in some cases (split image) the hash is seeded with data from
@@ -118,14 +141,6 @@ bootutil_img_hash(struct boot_loader_state *state,
     if (seed && (seed_len > 0)) {
         bootutil_sha_update(&sha_ctx, seed, seed_len);
     }
-
-    /* Hash is computed over image header and image itself. */
-    size = hdr_size = hdr->ih_hdr_size;
-    size += hdr->ih_img_size;
-    tlv_off = size;
-
-    /* If protected TLVs are present they are also hashed. */
-    size += hdr->ih_protect_tlv_size;
 
 #ifdef MCUBOOT_HASH_STORAGE_DIRECTLY
     /* No chunk loading, storage is mapped to address space and can
