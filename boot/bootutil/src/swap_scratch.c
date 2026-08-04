@@ -1089,7 +1089,6 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
         }
 
         rc = boot_read_swap_size(fap, &swap_size);
-        flash_area_close(fap);
 
         if (rc != 0) {
             rc = BOOT_EFLASH;

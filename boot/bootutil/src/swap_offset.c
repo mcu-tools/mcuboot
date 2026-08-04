@@ -791,7 +791,6 @@ int boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *si
     rc = 0;
 
 done:
-    flash_area_close(fap);
     return rc;
 }
 

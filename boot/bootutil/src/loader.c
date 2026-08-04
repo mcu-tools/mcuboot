@@ -1207,7 +1207,6 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             }
         }
 #endif
-        flash_area_close(fap);
     }
 
     swap_run(state, bs, copy_size);
