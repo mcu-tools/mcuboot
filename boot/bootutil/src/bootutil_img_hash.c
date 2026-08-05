@@ -187,6 +187,8 @@ bootutil_img_hash(struct boot_loader_state *state,
         }
 #endif
         bootutil_sha_update(&sha_ctx, tmp_buf, blk_sz);
+
+        MCUBOOT_WATCHDOG_FEED();
     }
 #endif /* MCUBOOT_RAM_LOAD */
 #endif /* MCUBOOT_HASH_STORAGE_DIRECTLY */
