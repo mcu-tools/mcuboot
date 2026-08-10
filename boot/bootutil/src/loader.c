@@ -1610,7 +1610,7 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state)
         rc = boot_nv_security_counter_lock(BOOT_CURR_IMG(state));
         if (rc != 0) {
             BOOT_LOG_ERR("Security counter lock failed after image %d validation: %d",
-                         BOOT_CURR_IMG(state). rc);
+                         BOOT_CURR_IMG(state), rc);
             return rc;
         }
 #endif /* MCUBOOT_HW_ROLLBACK_PROT_LOCK */
