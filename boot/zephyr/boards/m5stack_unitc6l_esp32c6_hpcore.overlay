@@ -1,0 +1,21 @@
+/*
+ * Copyright (c) 2026 Espressif Systems (Shanghai) Co., Ltd.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* MCUboot builds without multithreading, so the I2C buses and the I2C GPIO
+ * expander (none of which the bootloader needs) must be kept out of the image.
+ */
+
+&i2c0 {
+	status = "disabled";
+};
+
+&gpio_exp {
+	status = "disabled";
+};
+
+&grove_i2c {
+	status = "disabled";
+};
