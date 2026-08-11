@@ -402,15 +402,18 @@ int swap_status_source(struct boot_loader_state *state)
 
     rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_SECONDARY].area,
                               &state_secondary_slot);
-    assert(rc == 0);
-    BOOT_LOG_SWAP_STATE("Secondary image", &state_secondary_slot);
+    if (rc == 0) {
+        BOOT_LOG_SWAP_STATE("Secondary image", &state_secondary_slot);
 
-    if (state_primary_slot.magic == BOOT_MAGIC_GOOD &&
-        state_primary_slot.copy_done == BOOT_FLAG_UNSET &&
-        state_secondary_slot.magic != BOOT_MAGIC_GOOD) {
+        if (state_primary_slot.magic == BOOT_MAGIC_GOOD &&
+            state_primary_slot.copy_done == BOOT_FLAG_UNSET &&
+            state_secondary_slot.magic != BOOT_MAGIC_GOOD) {
 
-        BOOT_LOG_INF("Boot source: primary slot");
-        return BOOT_STATUS_SOURCE_PRIMARY_SLOT;
+            BOOT_LOG_INF("Boot source: primary slot");
+            return BOOT_STATUS_SOURCE_PRIMARY_SLOT;
+        }
+    } else {
+        BOOT_LOG_INF("Secondary image of pair %d inaccessible, refusing to swap", image_index);
     }
 
     BOOT_LOG_INF("Boot source: none");
