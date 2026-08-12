@@ -20,6 +20,8 @@
 #ifndef __BOOT_SERIAL_H__
 #define __BOOT_SERIAL_H__
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -51,6 +53,15 @@ void boot_serial_start(const struct boot_uart_funcs *f);
  * function is similar to boot_serial_start
  */
 void boot_serial_check_start(const struct boot_uart_funcs *f, int timeout_in_ms);
+
+/**
+ * Start processing MCUmgr commands for uploading image0 over serial.
+ * Returns once timeout_in_ms pass with no MCUmgr command. Unlike
+ * boot_serial_check_start, each command received restarts the countdown
+ * with rearm_in_ms. Returns true if any command was received.
+ */
+bool boot_serial_start_inactivity(const struct boot_uart_funcs *f,
+                                  int timeout_in_ms, int rearm_in_ms);
 
 #ifdef __cplusplus
 }

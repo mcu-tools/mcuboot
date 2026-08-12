@@ -168,6 +168,15 @@ const struct boot_uart_funcs *boot_uf;
 static struct nmgr_hdr *bs_hdr;
 static bool bs_entry;
 
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+/* Restart value and progress flags for the inactivity countdown, at file
+ * scope because the command handler observes progress, not the read loop.
+ */
+static int bs_rearm_ms;
+static bool bs_rearm_pending;
+static bool bs_rearm_seen;
+#endif
+
 static char bs_obuf[BOOT_SERIAL_OUT_MAX];
 
 static void boot_serial_output(void);
@@ -1409,7 +1418,18 @@ boot_serial_input(char *buf, int len)
         bs_rc_rsp(MGMT_ERR_ENOTSUP);
     }
 #ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
-    bs_entry = true;
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+    if (bs_rearm_ms > 0) {
+        /* Restart the countdown: the loop should end on silence, not on a
+         * finished transfer.
+         */
+        bs_rearm_pending = true;
+        bs_rearm_seen = true;
+    } else
+#endif
+    {
+        bs_entry = true;
+    }
 #endif
 }
 
@@ -1717,6 +1737,12 @@ check_timeout:
         elapsed_in_ms = (k_uptime_get_32() - start);
 #endif
         timeout_in_ms -= elapsed_in_ms;
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+        if (bs_rearm_pending) {
+            bs_rearm_pending = false;
+            timeout_in_ms = bs_rearm_ms;
+        }
+#endif
     }
 }
 
@@ -1727,6 +1753,9 @@ check_timeout:
 void
 boot_serial_start(const struct boot_uart_funcs *f)
 {
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+    bs_rearm_ms = 0;
+#endif
     bs_entry = true;
     boot_serial_read_console(f,0);
 }
@@ -1740,9 +1769,32 @@ boot_serial_start(const struct boot_uart_funcs *f)
 void
 boot_serial_check_start(const struct boot_uart_funcs *f, int timeout_in_ms)
 {
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+    bs_rearm_ms = 0;
+#endif
     bs_entry = false;
     boot_serial_read_console(f,timeout_in_ms);
 }
+
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+/*
+ * Returns once timeout_in_ms pass without an MCUmgr command; each command
+ * restarts the countdown with rearm_in_ms. Return value tells an aborted
+ * session apart from a window that simply expired.
+ */
+bool
+boot_serial_start_inactivity(const struct boot_uart_funcs *f, int timeout_in_ms,
+                             int rearm_in_ms)
+{
+    bs_rearm_ms = rearm_in_ms;
+    bs_rearm_pending = false;
+    bs_rearm_seen = false;
+    bs_entry = false;
+    boot_serial_read_console(f,timeout_in_ms);
+
+    return bs_rearm_seen;
+}
+#endif
 #endif
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_HASH

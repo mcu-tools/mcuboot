@@ -225,13 +225,49 @@ config BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
 	help
 	  Timeout in ms for MCUboot to wait to allow for DFU to be invoked.
 
-config BOOT_SERIAL_BOOT_MODE
+config BOOT_SERIAL_INACTIVITY_TIMEOUT
+	int "Inactivity timeout for serial recovery in ms"
+	default 0
+	depends on BOOT_SERIAL_WAIT_FOR_DFU
+	depends on REBOOT
+
+menuconfig BOOT_SERIAL_BOOT_MODE
 	bool "Check boot mode via retention subsystem"
 	depends on RETENTION_BOOT_MODE
 	help
 	  Allows for entering serial recovery mode by using Zephyr's boot mode
 	  retention system (i.e. an application must set the boot mode to stay
 	  in serial recovery mode and reboot the module).
+
+config BOOT_SERIAL_INACTIVITY_TIMEOUT
+	int "Inactivity timeout for serial recovery in ms"
+	default 0
+	depends on BOOT_SERIAL_BOOT_MODE
+	depends on REBOOT
+	help
+	  Time in ms without a single MCUmgr command after which serial recovery
+	  resets the SoC, so the next boot runs the image that is installed by
+	  then. Every received command restarts the countdown, so an upload in
+	  progress is never interrupted, however slow the link is.
+
+	  It resets rather than returning into the boot path because the image
+	  was already selected before serial recovery was entered, so returning
+	  would jump to the image the upload has just replaced; nothing in the
+	  bootloader unwinds the state a finished MCUmgr session leaves behind
+	  either, and returning has been observed to lock up a Cortex-M0+. Hence
+	  the dependency on REBOOT.
+
+	  With BOOT_SERIAL_WAIT_FOR_DFU the SoC is reset only if at least one
+	  command was received; a window that expires with no command at all
+	  boots as it does today.
+
+	  The default of 0 keeps serial recovery running until the device is
+	  reset, which means an aborted upload leaves it there until someone
+	  power-cycles it. Set this to bound that, on a device whose recovery
+	  transport cannot be relied on to finish what it started.
+
+	  Does not affect BOOT_SERIAL_NO_APPLICATION: with no bootable image
+	  there is nothing to resume, so that wait stays unbounded.
 
 config BOOT_SERIAL_NO_APPLICATION
 	bool "Stay in bootloader if no application"

@@ -38,6 +38,10 @@
 
 #include "do_boot.h"
 
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+#include <zephyr/sys/reboot.h>
+#endif
+
 #if defined(CONFIG_MCUBOOT_UUID_VID) || defined(CONFIG_MCUBOOT_UUID_CID)
 #include "bootutil/mcuboot_uuid.h"
 #endif /* CONFIG_MCUBOOT_UUID_VID || CONFIG_MCUBOOT_UUID_CID */
@@ -160,7 +164,11 @@ void zephyr_boot_log_stop(void)
 
 #if defined(CONFIG_BOOT_SERIAL_ENTRANCE_GPIO) || defined(CONFIG_BOOT_SERIAL_PIN_RESET) \
     || defined(CONFIG_BOOT_SERIAL_BOOT_MODE) || defined(CONFIG_BOOT_SERIAL_NO_APPLICATION)
-static void boot_serial_enter()
+/* Enters serial recovery and never returns. inactivity_in_ms of 0 waits for
+ * a manual reset; a positive value resets the SoC after that much silence,
+ * so an aborted update doesn't strand a device with a valid image.
+ */
+static void boot_serial_enter(int inactivity_in_ms)
 {
     int rc;
 
@@ -176,6 +184,28 @@ static void boot_serial_enter()
         BOOT_LOG_DBG("Error initializing boot console. rc = %d", rc);
         FIH_PANIC;
     }
+
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+    if (inactivity_in_ms > 0) {
+        (void)boot_serial_start_inactivity(&boot_funcs, inactivity_in_ms,
+                                           inactivity_in_ms);
+
+        /* Reset rather than return: nothing here unwinds a finished MCUmgr
+         * session, and returning has been observed to lock up a Cortex-M0+.
+         * The boot mode flag was cleared on entry, so the next boot goes
+         * straight to the app.
+         */
+        BOOT_LOG_INF("Serial recovery idle for %d ms, resetting",
+                     inactivity_in_ms);
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+        io_led_set(0);
+#endif
+        ZEPHYR_BOOT_LOG_STOP();
+        sys_reboot(SYS_REBOOT_COLD);
+    }
+#else
+    (void)inactivity_in_ms;
+#endif
 
     boot_serial_start(&boot_funcs);
     BOOT_LOG_DBG("Bootloader serial process was terminated unexpectedly");
@@ -227,14 +257,14 @@ int main(void)
     BOOT_LOG_DBG("Checking GPIO for serial recovery");
     if (io_detect_pin() &&
             !io_boot_skip_serial_recovery()) {
-        boot_serial_enter();
+        boot_serial_enter(0);
     }
 #endif
 
 #ifdef CONFIG_BOOT_SERIAL_PIN_RESET
     BOOT_LOG_DBG("Checking RESET pin for serial recovery");
     if (io_detect_pin_reset()) {
-        boot_serial_enter();
+        boot_serial_enter(0);
     }
 #endif
 
@@ -309,7 +339,11 @@ int main(void)
          * recovery mode
          */
         BOOT_LOG_DBG("Staying in serial recovery");
-        boot_serial_enter();
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+        boot_serial_enter(MCUBOOT_SERIAL_INACTIVITY_TIMEOUT);
+#else
+        boot_serial_enter(0);
+#endif
     }
 #endif
 
@@ -319,7 +353,25 @@ int main(void)
         /* at least one check if time was expired */
         timeout_in_ms = 1;
     }
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+    if (boot_serial_start_inactivity(&boot_funcs, timeout_in_ms,
+                                     MCUBOOT_SERIAL_INACTIVITY_TIMEOUT)) {
+        /* Reset rather than continue: boot_go() already selected an image
+         * before this window opened, so continuing would boot whatever the
+         * upload just replaced. A window with no command is not a session
+         * and boots as usual.
+         */
+        BOOT_LOG_INF("Serial recovery idle for %d ms, resetting",
+                     MCUBOOT_SERIAL_INACTIVITY_TIMEOUT);
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+        io_led_set(0);
+#endif
+        ZEPHYR_BOOT_LOG_STOP();
+        sys_reboot(SYS_REBOOT_COLD);
+    }
+#else
     boot_serial_check_start(&boot_funcs,timeout_in_ms);
+#endif
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
     io_led_set(0);
@@ -335,7 +387,7 @@ int main(void)
         /* No bootable image and configuration set to remain in serial
          * recovery mode
          */
-        boot_serial_enter();
+        boot_serial_enter(0);
 #elif defined(CONFIG_BOOT_USB_DFU_NO_APPLICATION)
         rc = usb_enable(NULL);
         if (rc && rc != -EALREADY) {
