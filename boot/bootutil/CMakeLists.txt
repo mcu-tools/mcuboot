@@ -41,10 +41,10 @@ target_sources(bootutil
 )
 
 # Select the FIH delay RNG implementation.
-# When the bootloader uses PSA Crypto (CONFIG_BOOT_USE_PSA_CRYPTO), use
+# When the bootloader uses PSA Crypto (MCUBOOT_USE_PSA_CRYPTO), use
 # psa_generate_random() instead of the legacy mbedTLS entropy + CTR-DRBG
 # APIs that were removed in tf-psa-crypto 1.0.
-if(CONFIG_BOOT_USE_PSA_CRYPTO)
+if(MCUBOOT_USE_PSA_CRYPTO)
   target_sources(bootutil PRIVATE src/fault_injection_hardening_delay_rng_psa.c)
 else()
   target_sources(bootutil PRIVATE src/fault_injection_hardening_delay_rng_mbedtls.c)
