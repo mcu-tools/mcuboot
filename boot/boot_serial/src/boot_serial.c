@@ -1205,16 +1205,18 @@ out:
     boot_serial_output();
 
 #ifdef MCUBOOT_ENC_IMAGES
-    /* Check if this upload was for the primary slot */
+    if (rc == 0 && fap != NULL) {
+        /* Check if this upload was for the primary slot */
 #if !defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
-    if (flash_area_id_from_multi_image_slot(img_num, 0) == FLASH_AREA_IMAGE_PRIMARY(0))
+        if (img_num <= BOOT_IMAGE_NUMBER &&
+            flash_area_id_from_multi_image_slot(img_num, 0) == FLASH_AREA_IMAGE_PRIMARY(0)) {
 #else
-    if (flash_area_id_from_direct_image(img_num) == FLASH_AREA_IMAGE_PRIMARY(0))
+        if (flash_area_id_from_direct_image(img_num) == FLASH_AREA_IMAGE_PRIMARY(0)) {
 #endif
-    {
-        if (curr_off == img_size) {
-            /* Last sector received, now start a decryption on the image if it is encrypted */
-            rc = boot_handle_enc_fw(fap);
+            if (curr_off == img_size) {
+                /* Last sector received, now start a decryption on the image if it is encrypted */
+                rc = boot_handle_enc_fw(fap);
+            }
         }
     }
 #endif
