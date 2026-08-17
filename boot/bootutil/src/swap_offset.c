@@ -394,6 +394,8 @@ int swap_status_source(struct boot_loader_state *state)
     (void)state;
 #endif
 
+    memset(&state_primary_slot, 0, sizeof(struct boot_swap_state));
+    memset(&state_secondary_slot, 0, sizeof(struct boot_swap_state));
     image_index = BOOT_CURR_IMG(state);
     rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_PRIMARY].area,
                               &state_primary_slot);
@@ -562,6 +564,7 @@ void fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
         return;
     }
 
+    memset(&swap_state, 0, sizeof(struct boot_swap_state));
     rc = boot_read_swap_state(fap_sec, &swap_state);
     assert(rc == 0);
 
