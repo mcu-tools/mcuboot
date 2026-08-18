@@ -73,7 +73,9 @@ target_sources(app PRIVATE
   watchdog.c
 )
 
-if(CONFIG_ARM)
+if(CONFIG_BOOT_CUSTOM_BOOT)
+  # No implementation of do_boot
+elseif(CONFIG_ARM)
   target_sources(app PRIVATE arch/arm.c)
 elseif(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)
   target_sources(app PRIVATE arch/esp32.c)

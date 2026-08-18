@@ -137,6 +137,12 @@ endif # BOOT_USE_PSA_CRYPTO
 
 menu "MCUBoot settings"
 
+config BOOT_CUSTOM_BOOT
+	bool
+	help
+	  Hidden option that should be selected when the platform implements
+	  the do_boot function and wants to avoid using the provided implementations.
+
 config BOOT_SOMETHING_USES_SHA256
 	bool
 	help
