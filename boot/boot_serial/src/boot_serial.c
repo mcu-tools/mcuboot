@@ -1620,6 +1620,13 @@ boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
     int full_line;
     int max_input;
     int elapsed_in_ms = 0;
+#ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
+    /* Start of the iteration charged against the timeout; rolled forward at
+     * the loop's end so every ms in the loop counts, not just f->read().
+     */
+    uint32_t start = k_uptime_get_32();
+    uint32_t now;
+#endif
 #ifdef MCUBOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT
     uint32_t raw_input_start = 0;
 #endif
@@ -1653,9 +1660,6 @@ boot_serial_read_console(const struct boot_uart_funcs *f,int timeout_in_ms)
         }
 #endif
         MCUBOOT_WATCHDOG_FEED();
-#ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
-        uint32_t start = k_uptime_get_32();
-#endif
         rc = f->read(in_buf + off, sizeof(in_buf) - off, &full_line);
         if (rc <= 0 && !full_line) {
 #ifndef MCUBOOT_SERIAL_WAIT_FOR_DFU
@@ -1714,7 +1718,9 @@ check_timeout:
 #endif
         /* Subtract elapsed time */
 #ifdef MCUBOOT_SERIAL_WAIT_FOR_DFU
-        elapsed_in_ms = (k_uptime_get_32() - start);
+        now = k_uptime_get_32();
+        elapsed_in_ms = (int)(now - start);
+        start = now;
 #endif
         timeout_in_ms -= elapsed_in_ms;
     }
