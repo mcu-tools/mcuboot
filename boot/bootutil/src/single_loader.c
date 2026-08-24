@@ -222,21 +222,26 @@ boot_go(struct boot_rsp *rsp)
     rc = boot_save_boot_status(0, &_hdr, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY));
     if (rc != 0) {
         BOOT_LOG_ERR("Failed to add image data to shared area");
-        return rc;
+        fih_rc = FIH_FAILURE;
     }
 #endif /* MCUBOOT_MEASURED_BOOT */
 
 #ifdef MCUBOOT_DATA_SHARING
-    rc = boot_save_shared_data(&_hdr, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), 0, NULL);
-    if (rc != 0) {
-        BOOT_LOG_ERR("Failed to add data to shared memory area.");
-        return rc;
+    if (rc == 0) {
+        rc = boot_save_shared_data(&_hdr, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), 0, NULL);
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed to add data to shared memory area.");
+            fih_rc = FIH_FAILURE;
+        }
     }
 #endif /* MCUBOOT_DATA_SHARING */
 
-    rsp->br_flash_dev_id = flash_area_get_device_id(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY));
-    rsp->br_image_off = flash_area_get_off(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY));
-    rsp->br_hdr = &_hdr;
+    if (rc == 0) {
+        rsp->br_flash_dev_id =
+            flash_area_get_device_id(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY));
+        rsp->br_image_off = flash_area_get_off(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY));
+        rsp->br_hdr = &_hdr;
+    }
 
 out:
     boot_close_all_flash_areas(&state);
