@@ -30,7 +30,7 @@ struct boot_loader_state *boot_get_loader_state(void)
     return &state;
 }
 
-#if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO)
+#if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO) || defined(MCUBOOT_DATA_SHARING)
 static struct image_max_size image_max_sizes[BOOT_IMAGE_NUMBER] = {0};
 
 struct image_max_size *boot_get_image_max_sizes(void)
@@ -163,19 +163,6 @@ int app_max_size(struct boot_loader_state *state)
     sector_sz = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, 0);
 
     return app_max_sectors(state) * sector_sz;
-}
-
-/**
- * Fetches the maximum allowed size of the image
- */
-const struct image_max_size *boot_get_max_app_size(void)
-{
-    if (image_max_sizes[0].calculated == false) {
-        /* Information not available, need to fetch it */
-        boot_fetch_slot_state_sizes();
-    }
-
-    return image_max_sizes;
 }
 #endif
 
