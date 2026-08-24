@@ -13,6 +13,7 @@
 #include "bootutil/bootutil_log.h"
 #include "bootutil/bootutil_public.h"
 #include "bootutil/fault_injection_hardening.h"
+#include "bootutil_loader.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 
@@ -22,7 +23,6 @@
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /* Variables passed outside of unit via pointers. */
-static struct image_header _hdr = { 0 };
 static struct boot_loader_state state;
 
 struct boot_loader_state *boot_get_loader_state(void)
@@ -52,7 +52,7 @@ fih_ret
 boot_image_validate(const struct flash_area *fa_p,
                     struct image_header *hdr)
 {
-    static uint8_t tmpbuf[BOOT_TMPBUF_SZ];
+    TARGET_STATIC uint8_t tmpbuf[BOOT_TMPBUF_SZ];
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     BOOT_LOG_DBG("boot_image_validate: encrypted == %d", (int)IS_ENCRYPTED(hdr));
@@ -84,24 +84,24 @@ inline static fih_ret
 boot_image_validate_once(const struct flash_area *fa_p,
                     struct image_header *hdr)
 {
-    static struct boot_swap_state state;
+    TARGET_STATIC struct boot_swap_state swap_state;
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     BOOT_LOG_DBG("boot_image_validate_once: flash area %p", fa_p);
 
-    memset(&state, 0, sizeof(struct boot_swap_state));
-    rc = boot_read_swap_state(fa_p, &state);
+    memset(&swap_state, 0, sizeof(struct boot_swap_state));
+    rc = boot_read_swap_state(fa_p, &swap_state);
     if (rc != 0)
         FIH_RET(FIH_FAILURE);
-    if (state.magic != BOOT_MAGIC_GOOD
-            || state.image_ok != BOOT_FLAG_SET) {
+    if (swap_state.magic != BOOT_MAGIC_GOOD
+            || swap_state.image_ok != BOOT_FLAG_SET) {
         /* At least validate the image once */
         FIH_CALL(boot_image_validate, fih_rc, fa_p, hdr);
         if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
             FIH_RET(FIH_FAILURE);
         }
-        if (state.magic != BOOT_MAGIC_GOOD) {
+        if (swap_state.magic != BOOT_MAGIC_GOOD) {
             rc = boot_write_magic(fa_p);
             if (rc != 0)
                 FIH_RET(FIH_FAILURE);
@@ -167,50 +167,53 @@ int app_max_size(struct boot_loader_state *state)
 #endif
 
 /**
- * Gather information on image and prepare for booting.
+ * Gather information on image and prepare for booting, using the caller's
+ * bootloader state rather than the one owned by this unit.
  *
- * @parami[out]	rsp	Parameters for booting image, on success
+ * @param[in,out]	state	Bootloader state
+ * @param[out]		rsp	Parameters for booting image, on success
  *
  * @return		FIH_SUCCESS on success; nonzero on failure.
  */
 fih_ret
-boot_go(struct boot_rsp *rsp)
+context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
+    struct image_header *hdr;
     int rc = -1;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
-    BOOT_LOG_DBG("boot_go: Single loader");
+    BOOT_LOG_DBG("context_boot_go: Single loader");
 
-    rc = boot_open_all_flash_areas(&state);
+    hdr = boot_img_hdr(state, BOOT_SLOT_PRIMARY);
+
+    rc = boot_open_all_flash_areas(state);
     if (rc != 0) {
         goto out;
     }
 
-    rc = boot_image_load_header(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), &_hdr);
+    rc = boot_image_load_header(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY), hdr);
     if (rc != 0)
         goto out;
 
 #ifdef MCUBOOT_RAM_LOAD
-        state.imgs[0][0].hdr = _hdr;
-
-        rc = boot_load_image_to_sram(&state);
+        rc = boot_load_image_to_sram(state);
         if (rc != 0)
             goto out;
 #endif
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
-    FIH_CALL(boot_image_validate, fih_rc, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), &_hdr);
+    FIH_CALL(boot_image_validate, fih_rc, BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY), hdr);
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
 #ifdef MCUBOOT_RAM_LOAD
-        boot_remove_image_from_sram(&state);
+        boot_remove_image_from_sram(state);
 #endif
         goto out;
     }
 #elif defined(MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE)
-    FIH_CALL(boot_image_validate_once, fih_rc, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), &_hdr);
+    FIH_CALL(boot_image_validate_once, fih_rc, BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY), hdr);
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
 #ifdef MCUBOOT_RAM_LOAD
-        boot_remove_image_from_sram(&state);
+        boot_remove_image_from_sram(state);
 #endif
         goto out;
     }
@@ -219,7 +222,7 @@ boot_go(struct boot_rsp *rsp)
 #endif /* MCUBOOT_VALIDATE_PRIMARY_SLOT */
 
 #ifdef MCUBOOT_MEASURED_BOOT
-    rc = boot_save_boot_status(0, &_hdr, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY));
+    rc = boot_save_boot_status(0, hdr, BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
     if (rc != 0) {
         BOOT_LOG_ERR("Failed to add image data to shared area");
         fih_rc = FIH_FAILURE;
@@ -228,7 +231,7 @@ boot_go(struct boot_rsp *rsp)
 
 #ifdef MCUBOOT_DATA_SHARING
     if (rc == 0) {
-        rc = boot_save_shared_data(&_hdr, BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY), 0, NULL);
+        rc = boot_save_shared_data(hdr, BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY), 0, NULL);
         if (rc != 0) {
             BOOT_LOG_ERR("Failed to add data to shared memory area.");
             fih_rc = FIH_FAILURE;
@@ -238,13 +241,36 @@ boot_go(struct boot_rsp *rsp)
 
     if (rc == 0) {
         rsp->br_flash_dev_id =
-            flash_area_get_device_id(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY));
-        rsp->br_image_off = flash_area_get_off(BOOT_IMG_AREA(&state, BOOT_SLOT_PRIMARY));
-        rsp->br_hdr = &_hdr;
+            flash_area_get_device_id(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
+        rsp->br_image_off = flash_area_get_off(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
+        rsp->br_hdr = hdr;
     }
 
 out:
-    boot_close_all_flash_areas(&state);
+    boot_close_all_flash_areas(state);
+
+    FIH_RET(fih_rc);
+}
+
+/**
+ * Gather information on image and prepare for booting.
+ *
+ * @parami[out]	rsp	Parameters for booting image, on success
+ *
+ * @return		FIH_SUCCESS on success; nonzero on failure.
+ */
+fih_ret
+boot_go(struct boot_rsp *rsp)
+{
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    BOOT_LOG_DBG("boot_go: Single loader");
+
+    boot_state_init(&state);
+
+    FIH_CALL(context_boot_go, fih_rc, &state, rsp);
+
+    boot_state_clear(&state);
 
     FIH_RET(fih_rc);
 }
