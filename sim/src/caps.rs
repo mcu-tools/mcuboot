@@ -31,6 +31,7 @@ pub enum Caps {
     HwRollbackProtection = (1 << 18),
     EcdsaP384            = (1 << 19),
     SwapUsingOffset      = (1 << 20),
+    SingleSlot           = (1 << 21),
 }
 
 impl Caps {
@@ -53,7 +54,13 @@ impl Caps {
     /// Query if this configuration performs some kind of upgrade by writing to flash.
     pub fn modifies_flash() -> bool {
         // All other configurations perform upgrades by writing to flash.
-        !(Self::RamLoad.present() || Self::DirectXip.present())
+        !(Self::RamLoad.present() || Self::DirectXip.present()
+          || Self::SingleSlot.present())
+    }
+
+    /// Query if this configuration has a secondary slot at all.
+    pub fn has_secondary_slot() -> bool {
+        !Self::SingleSlot.present()
     }
 }
 

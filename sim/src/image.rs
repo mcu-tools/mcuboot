@@ -367,6 +367,11 @@ impl ImagesBuilder {
 
     pub fn make_image(self, deps: &DepTest, permanent: bool) -> Images {
         let mut images = self.make_no_upgrade_image(deps, ImageManipulation::None);
+
+        if !Caps::has_secondary_slot() {
+            return images;
+        }
+
         for image in &images.images {
             mark_upgrade(&mut images.flash, &image.slots[1]);
         }
@@ -1507,6 +1512,72 @@ impl Images {
         }
     }
 
+    /// Test the single application slot configuration.
+    pub fn run_single_slot_boot(&self) -> bool {
+        if !Caps::SingleSlot.present() {
+            return false;
+        }
+
+        // Clone the flash so we can tell if unchanged.
+        let mut flash = self.flash.clone();
+
+        let result = c::boot_go(&mut flash, &self.areadesc, None, None, true);
+        if !result.success() {
+            error!("Failed to boot the primary slot");
+            return true;
+        }
+
+        let resp = match result.resp() {
+            Some(resp) => resp,
+            None => {
+                error!("Boot didn't return a valid result");
+                return true;
+            }
+        };
+
+        match self.areadesc.find(FlashId::Image0) {
+            Some((offset, _, dev_id)) => {
+                if offset != resp.image_off as usize || dev_id != resp.flash_dev_id {
+                    error!("Booted something other than the primary slot");
+                    return true;
+                }
+            }
+            None => {
+                error!("Unable to find the primary slot");
+                return true;
+            }
+        }
+
+        if !self.verify_images(&flash, 0, 0) {
+            error!("Primary slot was modified by booting");
+            return true;
+        }
+
+        false
+    }
+
+    /// Test that a single application slot failing validation is not booted.
+    pub fn run_single_slot_bad_image(&self) -> bool {
+        if !Caps::SingleSlot.present() || !Caps::ValidatePrimarySlot.present() {
+            return false;
+        }
+
+        let mut flash = self.flash.clone();
+
+        let result = c::boot_go(&mut flash, &self.areadesc, None, None, true);
+        if result.success() {
+            error!("Booted an image that does not pass validation");
+            return true;
+        }
+
+        if !self.verify_images(&flash, 0, 0) {
+            error!("Primary slot was modified by a failed boot");
+            return true;
+        }
+
+        false
+    }
+
     /// Test the direct XIP configuration.  With this mode, flash images are never moved, and the
     /// bootloader merely selects which partition is the proper one to boot.
     pub fn run_direct_xip(&self) -> bool {
@@ -2143,7 +2214,10 @@ fn estimate_swap_scratch_trailer_size(dev: &dyn Flash, areadesc: &AreaDesc,
 fn image_largest_trailer(dev: &dyn Flash, areadesc: &AreaDesc, slots: &[SlotInfo]) -> usize {
             // Using the header size we know, the trailer size, and the slot size, we can compute
             // the largest image possible.
-            let trailer = if Caps::OverwriteUpgrade.present() {
+            let trailer = if Caps::SingleSlot.present() {
+                // no swap status, so just the info fields
+                c::boot_trailer_sz(dev.align() as u32) as usize
+            } else if Caps::OverwriteUpgrade.present() {
                 // magic + image-ok + copy-done + swap-info
                 c::boot_magic_sz() + 3 * c::boot_max_align()
             } else if Caps::SwapUsingOffset.present() || Caps::SwapUsingMove.present() {
