@@ -16,6 +16,9 @@
 
 #include "mcuboot_config/mcuboot_config.h"
 
+#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) || \
+    defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 /* Variables passed outside of unit via pointers. */
@@ -253,3 +256,5 @@ out:
 
     FIH_RET(fih_rc);
 }
+
+#endif /* MCUBOOT_SINGLE_APPLICATION_SLOT || ..._RAM_LOAD */
