@@ -132,6 +132,24 @@ pub enum ImageManipulation {
     CorruptHigherVersionImage,
 }
 
+/// Describes what to install into an image's primary slot, for the
+/// `make_secondary_slot_image_with_*` family of test-image builders below.
+/// Factored out so those builders, which only differ in what goes into the
+/// primary slot (nothing, a validly-signed image, a multi-signed image, or
+/// one with an invalid signature), can share a single implementation.
+#[derive(Copy, Clone)]
+enum PrimarySlotContent<'a> {
+    /// No image at all: the primary slot is left empty, as on first boot
+    /// with a factory image pending in the secondary slot.
+    None,
+    /// A validly-signed image, signed with `SigningKey`, and additionally
+    /// with `extra_signing_keys` (used to model a key-rotation transition
+    /// image carrying more than one valid (key, signature) TLV pair).
+    Signed(SigningKey, &'a [SigningKey]),
+    /// An image whose signature does not verify, despite otherwise being
+    /// signed with `SigningKey`.
+    Invalid(SigningKey),
+}
 
 impl ImagesBuilder {
     /// Construct a new image builder for the given device.  Returns
@@ -418,38 +436,35 @@ impl ImagesBuilder {
         }
     }
 
-    /// Install a valid primary-key-signed image in slot 0 and a secondary
-    /// image signed with `secondary_key` in slot 1. Paired with
-    /// `run_signfail_upgrade` to assert that a build unaware of the secondary
-    /// key correctly refuses to upgrade to it.
-    pub fn make_secondary_slot_image_with_key(self, secondary_key: SigningKey) -> Images {
+    /// Shared implementation backing the `make_secondary_slot_image_with_*`
+    /// family below. Installs `primary_content[image_num]` into each
+    /// image's primary slot and a validly-signed image using
+    /// `secondary_keys[image_num]` into its secondary slot. Both slices
+    /// must have exactly one entry per image (single-image builds simply
+    /// use a one-element slice).
+    fn make_secondary_slot_images(
+        self,
+        primary_content: &[PrimarySlotContent],
+        secondary_keys: &[SigningKey],
+    ) -> Images {
         let mut flash = self.flash;
         let ram = self.ram.clone();
         let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
             let dep = BoringDep::new(image_num, &NO_DEPS);
-            let primaries = install_image_with_key(
-                &mut flash,
-                &self.areadesc,
-                &slots,
-                0,
-                maximal(32_784),
-                &ram,
-                &dep,
-                ImageManipulation::None,
-                Some(0),
-                SigningKey::Primary,
-            );
+            let primaries = match primary_content[image_num] {
+                PrimarySlotContent::None => install_no_image(),
+                PrimarySlotContent::Signed(key, extra_keys) => install_image_with_keys(
+                    &mut flash, &self.areadesc, &slots, 0, maximal(32_784), &ram,
+                    &dep, ImageManipulation::None, Some(0), key, extra_keys,
+                ),
+                PrimarySlotContent::Invalid(key) => install_image_with_key(
+                    &mut flash, &self.areadesc, &slots, 0, maximal(32_784), &ram,
+                    &dep, ImageManipulation::BadSignature, Some(0), key,
+                ),
+            };
             let upgrades = install_image_with_key(
-                &mut flash,
-                &self.areadesc,
-                &slots,
-                1,
-                maximal(41_928),
-                &ram,
-                &dep,
-                ImageManipulation::None,
-                Some(1),
-                secondary_key,
+                &mut flash, &self.areadesc, &slots, 1, maximal(41_928), &ram,
+                &dep, ImageManipulation::None, Some(1), secondary_keys[image_num],
             );
             OneImage {
                 slots,
@@ -463,6 +478,97 @@ impl ImagesBuilder {
             total_count: None,
             ram: self.ram,
         }
+    }
+
+    /// Install a valid primary-key-signed image in slot 0 and a secondary
+    /// image signed with `secondary_key` in slot 1. Paired with
+    /// `run_signfail_upgrade` to assert that a build unaware of the secondary
+    /// key correctly refuses to upgrade to it.
+    pub fn make_secondary_slot_image_with_key(self, secondary_key: SigningKey) -> Images {
+        self.make_secondary_slot_image_with_keys(SigningKey::Primary, secondary_key)
+    }
+
+    /// Like `make_secondary_slot_image_with_key`, but also selects which key
+    /// signs the primary slot's image. Used by the key-revocation tests,
+    /// where the relative key indices of the primary and candidate images
+    /// (not just whether the candidate's key is known) determine the
+    /// expected outcome.
+    pub fn make_secondary_slot_image_with_keys(
+        self,
+        primary_key: SigningKey,
+        secondary_key: SigningKey,
+    ) -> Images {
+        let n = self.num_images();
+        self.make_secondary_slot_images(
+            &vec![PrimarySlotContent::Signed(primary_key, &[]); n],
+            &vec![secondary_key; n],
+        )
+    }
+
+    /// Like `make_secondary_slot_image_with_keys`, but picks a
+    /// (primary_key, secondary_key) pair per image instead of using the
+    /// same pair for all of them. `keys` is indexed by image number, and
+    /// must have one entry per image. Used to prove that in a multi-image
+    /// build, key-revocation tracks each image's floor independently.
+    pub fn make_secondary_slot_image_with_keys_per_image(
+        self,
+        keys: &[(SigningKey, SigningKey)],
+    ) -> Images {
+        let primary_content: Vec<_> = keys.iter()
+            .map(|&(primary_key, _)| PrimarySlotContent::Signed(primary_key, &[]))
+            .collect();
+        let secondary_keys: Vec<_> = keys.iter().map(|&(_, secondary_key)| secondary_key).collect();
+        self.make_secondary_slot_images(&primary_content, &secondary_keys)
+    }
+
+    /// Like `make_secondary_slot_image_with_keys`, but leaves the primary
+    /// slot completely empty (as on first boot, with a factory image
+    /// pending in the secondary slot). Used to prove that key-revocation
+    /// establishes no floor -- and so never blocks the very first image --
+    /// when the primary slot holds nothing to compare against.
+    pub fn make_secondary_slot_image_no_primary(self, secondary_key: SigningKey) -> Images {
+        let n = self.num_images();
+        self.make_secondary_slot_images(
+            &vec![PrimarySlotContent::None; n],
+            &vec![secondary_key; n],
+        )
+    }
+
+    /// Like `make_secondary_slot_image_with_keys`, but the primary slot's
+    /// image has a corrupted signature: present and otherwise well-formed,
+    /// but not verifiable. Used to prove that key-revocation establishes no
+    /// floor when the primary slot's signing key cannot be determined --
+    /// distinct from `make_secondary_slot_image_with_keys(Unknown, ..)`,
+    /// where the primary slot validates fine but with a key this build
+    /// doesn't recognize.
+    pub fn make_secondary_slot_image_with_invalid_primary(self, secondary_key: SigningKey) -> Images {
+        let n = self.num_images();
+        self.make_secondary_slot_images(
+            &vec![PrimarySlotContent::Invalid(SigningKey::Primary); n],
+            &vec![secondary_key; n],
+        )
+    }
+
+    /// Like `make_secondary_slot_image_with_keys`, but the primary slot's
+    /// image is multi-signed with `primary_key_order`, given in TLV
+    /// (key, signature) pair order. Used to prove that the key floor is
+    /// derived from the *strongest* (highest-index) key that validly
+    /// signed the primary image, not merely the last one processed in TLV
+    /// order -- a primary multi-signed with, e.g., `[newer, older]` (newer
+    /// key's TLV pair first) must establish the same floor as one signed
+    /// `[older, newer]`.
+    pub fn make_secondary_slot_image_with_multi_signed_primary(
+        self,
+        primary_key_order: &[SigningKey],
+        secondary_key: SigningKey,
+    ) -> Images {
+        let (first_key, extra_keys) = primary_key_order.split_first()
+            .expect("primary_key_order must not be empty");
+        let n = self.num_images();
+        self.make_secondary_slot_images(
+            &vec![PrimarySlotContent::Signed(*first_key, extra_keys); n],
+            &vec![secondary_key; n],
+        )
     }
 
     pub fn make_oversized_secondary_slot_image(self) -> Images {
@@ -1331,6 +1437,188 @@ impl Images {
 
         if fails > 0 {
             error!("Expected an upgrade failure when image has bad signature");
+        }
+
+        fails > 0
+    }
+
+    // The counterpart to `run_signfail_upgrade`: asserts that a candidate in
+    // the secondary slot *is* accepted and swapped into the primary slot.
+    // Used where `run_basic_upgrade`'s stricter, multi-step bookkeeping
+    // (flash operation counting, revert behavior) isn't needed and a
+    // straight accept/reject check is enough, e.g. the key-revocation
+    // matrix.
+    pub fn run_signpass_upgrade(&self) -> bool {
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try upgrade image with an accepted signature");
+
+        if !Caps::modifies_flash() {
+            info!("Skipping upgrade image with an accepted signature");
+            return false;
+        }
+
+        self.mark_upgrades(&mut flash, 1);
+        self.mark_permanent_upgrades(&mut flash, 1);
+
+        // Run the bootloader...
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
+            warn!("Failed first boot");
+            fails += 1;
+        }
+
+        // The candidate should have been swapped into the primary slot.
+        if !self.verify_images(&flash, 0, 1) {
+            warn!("Failed image verification");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected an upgrade to succeed with an accepted signature");
+        }
+
+        fails > 0
+    }
+
+    // Just like a genuine signature failure (see `run_signfail_upgrade`),
+    // a key-revocation rejection erases the candidate from the secondary
+    // slot: it can never become valid on its own, so there is no value in
+    // keeping it around for repeated (and costly) re-validation on every
+    // subsequent boot.
+    pub fn run_signfail_upgrade_erases_secondary(&self) -> bool {
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try upgrade image rejected by key revocation");
+
+        if !Caps::modifies_flash() {
+            info!("Skipping upgrade image rejected by key revocation");
+            return false;
+        }
+
+        self.mark_upgrades(&mut flash, 1);
+        self.mark_permanent_upgrades(&mut flash, 1);
+
+        // Run the bootloader...
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
+            warn!("Failed first boot");
+            fails += 1;
+        }
+
+        // Primary slot must be unchanged...
+        if !self.verify_images(&flash, 0, 0) {
+            warn!("Primary slot changed despite a rejected candidate");
+            fails += 1;
+        }
+        // ...and the rejected candidate must have been erased from the
+        // secondary slot, just like a genuine signature failure.
+        if self.verify_images(&flash, 1, 1) {
+            warn!("Secondary slot was not erased despite the candidate being key-revoked");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected key revocation to reject and erase the candidate");
+        }
+
+        fails > 0
+    }
+
+    // Proves that the key floor tracks the primary slot's *current* image
+    // rather than being fixed once and for all: a forward key rotation
+    // (candidate signed with a newer key, accepted and confirmed) must
+    // raise the floor, so that a second candidate signed with the
+    // now-superseded original key is rejected against the rotated primary.
+    pub fn run_rotate_then_reject_stale_key(&self) -> bool {
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try key rotation followed by a stale-keyed candidate");
+
+        if !Caps::modifies_flash() {
+            info!("Skipping key rotation test");
+            return false;
+        }
+
+        self.mark_upgrades(&mut flash, 1);
+        self.mark_permanent_upgrades(&mut flash, 1);
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
+            warn!("Failed first boot");
+            fails += 1;
+        }
+        if !self.verify_images(&flash, 0, 1) {
+            warn!("Key rotation upgrade did not take effect");
+            fails += 1;
+        }
+
+        // Install a fresh candidate in the now-empty secondary slot,
+        // signed with the original, now-superseded key.
+        let ram = self.ram.clone();
+        for (image_num, image) in self.images.iter().enumerate() {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let slot = &image.slots[1];
+            flash.get_mut(&slot.dev_id).unwrap().erase(slot.base_off, slot.len).unwrap();
+            install_image_with_key(&mut flash, &self.areadesc, &image.slots, 1,
+                                   maximal(41_928), &ram, &dep, ImageManipulation::None,
+                                   Some(2), SigningKey::Primary);
+        }
+        self.mark_upgrades(&mut flash, 1);
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
+            warn!("Failed second boot");
+            fails += 1;
+        }
+
+        // The stale-keyed candidate must have been rejected: the primary
+        // slot must still hold the rotation upgrade's image.
+        if !self.verify_images(&flash, 0, 1) {
+            warn!("Stale-keyed candidate was accepted after key rotation");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected the rotated primary to reject a stale-keyed candidate");
+        }
+
+        fails > 0
+    }
+
+    // Companion to `run_signfail_upgrade`/`run_signpass_upgrade` for
+    // multi-image builds: each image may have a different outcome in the
+    // same boot. `expect_upgraded[i]` says whether image `i`'s candidate is
+    // expected to have been swapped into its primary slot. Used to prove
+    // that key-revocation's floor is tracked per image, not globally.
+    pub fn run_per_image_upgrade_result(&self, expect_upgraded: &[bool]) -> bool {
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try upgrade with a different expected outcome per image");
+
+        if !Caps::modifies_flash() {
+            info!("Skipping per-image upgrade result test");
+            return false;
+        }
+
+        self.mark_upgrades(&mut flash, 1);
+        self.mark_permanent_upgrades(&mut flash, 1);
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
+            warn!("Failed first boot");
+            fails += 1;
+        }
+
+        for (image, &upgraded) in self.images.iter().zip(expect_upgraded.iter()) {
+            let against = if upgraded { &image.upgrades } else { &image.primaries };
+            if !verify_image(&flash, &image.slots[0], against) {
+                warn!("Image did not have the expected upgrade outcome");
+                fails += 1;
+            }
+        }
+
+        if fails > 0 {
+            error!("Expected each image to independently accept or reject its candidate");
         }
 
         fails > 0
@@ -2222,12 +2510,32 @@ fn install_image_with_key(
     security_counter: Option<u32>,
     signing_key: SigningKey,
 ) -> ImageData {
+    install_image_with_keys(flash, areadesc, slots, slot_ind, len, ram, deps,
+                            img_manipulation, security_counter, signing_key, &[])
+}
+
+/// Like `install_image_with_key`, but additionally signs the image with
+/// `extra_signing_keys`, producing more than one valid (key, signature)
+/// TLV pair. Used to model a key-rotation transition image.
+fn install_image_with_keys(
+    flash: &mut SimMultiFlash,
+    areadesc: &AreaDesc,
+    slots: &[SlotInfo],
+    slot_ind: usize,
+    len: ImageSize,
+    ram: &RamData,
+    deps: &dyn Depender,
+    img_manipulation: ImageManipulation,
+    security_counter: Option<u32>,
+    signing_key: SigningKey,
+    extra_signing_keys: &[SigningKey],
+) -> ImageData {
     let slot = &slots[slot_ind];
     let mut offset = slot.base_off;
     let dev_id = slot.dev_id;
     let dev = flash.get_mut(&dev_id).unwrap();
 
-    let mut tlv: Box<dyn ManifestGen> = Box::new(make_tlv(signing_key));
+    let mut tlv: Box<dyn ManifestGen> = Box::new(make_tlv_multi_signed(signing_key, extra_signing_keys));
 
     if Caps::SwapUsingOffset.present() && slot_ind == 1 {
         offset += boot_sector_size(dev);
@@ -2443,9 +2751,15 @@ fn install_no_image() -> ImageData {
     }
 }
 
-/// Construct a TLV generator based on how MCUboot is currently configured.  The returned
-/// ManifestGen will generate the appropriate entries based on this configuration.
-fn make_tlv(signing_key: SigningKey) -> TlvGen {
+/// Construct a TLV generator based on how MCUboot is currently configured.
+/// The returned ManifestGen will generate the appropriate entries based on
+/// this configuration. `extra_signing_keys` additionally signs the image
+/// with more than one key, producing more than one valid (key, signature)
+/// TLV pair on the same image; pass `&[]` for the common single-signature
+/// case. Used to model a key-rotation transition image that stays
+/// verifiable both by bootloaders that only know the old key and ones that
+/// only know the new key.
+fn make_tlv_multi_signed(signing_key: SigningKey, extra_signing_keys: &[SigningKey]) -> TlvGen {
     let aes_key_size = if Caps::Aes256.present() { 256 } else { 128 };
 
     let tlv = if Caps::EncKw.present() {
@@ -2492,6 +2806,7 @@ fn make_tlv(signing_key: SigningKey) -> TlvGen {
     };
 
     tlv.with_signing_key(signing_key)
+        .also_with_extra_signing_keys(extra_signing_keys)
 }
 
 impl ImageData {

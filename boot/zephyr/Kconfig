@@ -1217,6 +1217,46 @@ config MCUBOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER
 	  Because of the acceptance of equal values it allows for software
 	  downgrades to some extent.
 
+config BOOT_KEY_REVOCATION_FROM_PRIMARY
+	bool "Reject upgrades signed by an older key than the primary slot's image"
+	depends on (BOOT_SWAP_USING_MOVE || BOOT_SWAP_USING_SCRATCH || BOOT_SWAP_USING_OFFSET)
+	depends on !BOOT_BUILTIN_KEY
+	depends on !BOOT_BYPASS_KEY_MATCH
+	depends on !BOOT_HW_KEY
+	help
+	  Reject a secondary-slot upgrade candidate if it was signed with an
+	  older (lower-indexed) embedded verification key than the one that
+	  signed the currently active primary-slot image.
+
+	  This only starts rejecting older keys once the primary slot has
+	  itself been upgraded to an image signed with a newer key; until that
+	  first rotation happens, images signed with any previously-accepted
+	  key are still accepted. This is a complementary safeguard to, and
+	  not a replacement for, anti-rollback/security-counter based
+	  downgrade prevention (see BOOT_DOWNGRADE_PREVENTION_SECURITY_COUNTER
+	  / MCUBOOT_HW_ROLLBACK_PROT): it revokes *keys*, not *versions*, and
+	  the two mechanisms should normally be used together.
+
+	  This provides decentralized/local key revocation without additional
+	  persistent state or certificate/CRL infrastructure.
+
+	  This requires more than one embedded verification key to have any
+	  effect. It is not available with BOOT_HW_KEY: in that mode the key
+	  is verified against a single HW/KMU-provided hash and every image
+	  reports key index 0, which would silently collapse the key floor
+	  and make this check a no-op.
+
+	  The embedded key order (which key is at which index) must be, and
+	  remain, oldest-to-newest; this is a signing-process and key-management
+	  responsibility, not something this feature can verify on its own.
+	  Getting the order wrong, or signing a release with the wrong key for
+	  its intended rotation step, silently changes what future upgrades are
+	  accepted against. Treat this as a release-process safeguard: verify
+	  (e.g. via `imgtool dumpinfo` or an equivalent check in your signing
+	  pipeline) which key index a release artifact was actually signed
+	  with before publishing it, and track bootutil_keys[] ordering across
+	  releases like any other part of your signing-key inventory.
+
 config MCUBOOT_HW_DOWNGRADE_PREVENTION_COUNTER_LIMITED
 	bool "HW based downgrade prevention counter has limited number of updates"
 	depends on MCUBOOT_HW_DOWNGRADE_PREVENTION

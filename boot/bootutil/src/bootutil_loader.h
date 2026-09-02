@@ -103,13 +103,16 @@ int boot_read_image_headers(struct boot_loader_state *state, bool require_all,
  *
  * @note This function uses bootutil_img_validate() to perform the actual validation.
  *
- * @param state Boot loader state where the current image's slot will be checked.
- * @param bs    Pointer to the boot status structure. Used only when encrypted images are validated.
- * @param slot  Slot number.
+ * @param state       Boot loader state where the current image's slot will be checked.
+ * @param bs          Pointer to the boot status structure. Used only when encrypted images are validated.
+ * @param slot        Slot number.
+ * @param out_key_id  Optional. If not NULL, receives the index (into `bootutil_keys[]`) of the
+ *                     key that produced a valid signature, or -1 if validation failed.
  *
  * @return FIH_SUCCESS if the image is valid, FIH_FAILURE otherwise.
  */
-fih_ret boot_check_image(struct boot_loader_state *state, struct boot_status *bs, int slot);
+fih_ret boot_check_image(struct boot_loader_state *state, struct boot_status *bs, int slot,
+                         fih_int *out_key_id);
 
 /**
  * Compare image version numbers
