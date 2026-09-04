@@ -224,3 +224,26 @@ public key is incorporated into the bootloader). When the `full` option is used
 instead, the TLV area will contain the whole public key and thus the bootloader
 can be independent from the key(s). For more information on the additional
 requirements of this option, see the [design](design.md) document.
+
+## VID/CID Calculation
+VID and CID are generated using UUIDv5 (SHA-1).   
+VID: Generated using the standard DNS namespace:   
+`VID = UUIDv5(NAMESPACE_DNS, VID_String)`
+
+where `NAMESPACE_DNS = 6ba7b810-9dad-11d1-80b4-00c04fd430c8`.   
+
+CID: When VID is available, the generated 16-byte VID UUID is used as the namespace:     
+`CID = UUIDv5(VID_UUID, CID_String)`
+
+### UUIDv5 calculation:
+```txt
+SHA1(Namespace_UUID || UTF-8(Name))
+        ↓
+Take first 16 bytes
+        ↓
+Set UUID version = 5 and RFC 4122 variant
+        ↓
+16-byte UUID
+```
+The resulting 16-byte VID and CID are stored directly as the payload of the UUID_VID and UUID_CID TLVs.
+If VID/CID is already provided in raw UUID or 32-character hexadecimal format, it is directly converted to 16 bytes without UUIDv5 calculation
