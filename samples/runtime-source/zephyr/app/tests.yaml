@@ -5,6 +5,9 @@ common:
   build_only: true
 tests:
     sample.zephyr.runtime_source.app:
-      tags: samples tests runtime_source
+      tags:
+        - samples
+        - tests
+        - runtime_source
       platform_allow:
         - frdm_k64f
