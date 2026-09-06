@@ -289,6 +289,17 @@ boot_slots_compatible(struct boot_loader_state *state)
         return 0;
     }
 
+#ifndef MCUBOOT_DECOMPRESS_IMAGES
+    /* The slots have to be the same size, unless a compressed image is
+     * stored in a smaller secondary slot.
+     */
+    if (flash_area_get_size(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY)) !=
+        flash_area_get_size(BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY))) {
+        BOOT_LOG_WRN("Cannot upgrade: slots differ in size");
+        return 0;
+    }
+#endif
+
 #ifndef MCUBOOT_OVERWRITE_ONLY
     scratch_sz = boot_scratch_area_size(state);
 #endif
@@ -304,6 +315,22 @@ boot_slots_compatible(struct boot_loader_state *state)
     j = sz1 = secondary_slot_sz = 0;
     smaller = 0;
     while (i < num_sectors_primary || j < num_sectors_secondary) {
+        /* The next branch reads a primary sector when sz0 <= sz1 and a
+         * secondary sector when sz0 >= sz1; stop if that slot has run out.
+         */
+        if ((sz0 <= sz1 && i >= num_sectors_primary) ||
+            (sz0 >= sz1 && j >= num_sectors_secondary)) {
+#ifdef MCUBOOT_DECOMPRESS_IMAGES
+            /* Decompressed images are installed in overwrite mode, so
+             * slot1 may be smaller than slot0.
+             */
+            break;
+#else
+            BOOT_LOG_WRN("Cannot upgrade: slots are not compatible");
+            return 0;
+#endif
+        }
+
         if (sz0 == sz1) {
             sz0 += boot_img_sector_size(state, BOOT_SLOT_PRIMARY, i);
             sz1 += boot_img_sector_size(state, BOOT_SLOT_SECONDARY, j);
@@ -321,17 +348,7 @@ boot_slots_compatible(struct boot_loader_state *state)
             smaller = 1;
             i++;
         } else {
-            size_t sector_size = boot_img_sector_size(state, BOOT_SLOT_SECONDARY, j);
-
-#ifdef MCUBOOT_DECOMPRESS_IMAGES
-            if (sector_size == 0) {
-                /* Since this supports decompressed images, we can safely exit if slot1 is
-                 * smaller than slot0.
-                 */
-                break;
-            }
-#endif
-            sz1 += sector_size;
+            sz1 += boot_img_sector_size(state, BOOT_SLOT_SECONDARY, j);
             /* Guarantee that multiple sectors of the primary slot
              * fit into the secondary slot.
              */
@@ -975,6 +992,12 @@ int app_max_size(struct boot_loader_state *state)
     j = sz1 = 0;
     smaller = 0;
     while (i < num_sectors_primary || j < num_sectors_secondary) {
+        /* Stop at the end of the shorter slot, only the matched part is usable. */
+        if ((sz0 <= sz1 && i >= num_sectors_primary) ||
+            (sz0 >= sz1 && j >= num_sectors_secondary)) {
+            break;
+        }
+
         if (sz0 == sz1) {
             sz0 += boot_img_sector_size(state, BOOT_SLOT_PRIMARY, i);
             sz1 += boot_img_sector_size(state, BOOT_SLOT_SECONDARY, j);
