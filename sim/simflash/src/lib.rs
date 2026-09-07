@@ -54,6 +54,7 @@ unsafe impl Send for FlashPtr {}
 pub trait Flash {
     fn erase(&mut self, offset: usize, len: usize) -> Result<()>;
     fn write(&mut self, offset: usize, payload: &[u8]) -> Result<()>;
+    fn write_torn(&mut self, offset: usize, payload: &[u8]) -> Result<()>;
     fn read(&self, offset: usize, data: &mut [u8]) -> Result<()>;
 
     fn add_bad_region(&mut self, offset: usize, len: usize, rate: f32) -> Result<()>;
@@ -88,6 +89,10 @@ fn esimulatedwrite<T: AsRef<str>>(message: T) -> FlashError {
 pub struct SimFlash {
     data: Vec<u8>,
     write_safe: Vec<bool>,
+    // Bytes programmed by a torn write.  These may be written once more
+    // with the same value, as recovery from an interrupted write replays
+    // the whole operation.
+    retryable: Vec<bool>,
     sectors: Vec<usize>,
     bad_region: Vec<(usize, usize, f32)>,
     // Alignment required for writes.
@@ -107,6 +112,7 @@ impl SimFlash {
         SimFlash {
             data: vec![erased_val; total],
             write_safe: vec![true; total],
+            retryable: vec![false; total],
             sectors,
             bad_region: Vec::new(),
             align,
@@ -168,6 +174,10 @@ impl Flash for SimFlash {
             *x = true;
         }
 
+        for x in &mut self.retryable[offset .. offset + len] {
+            *x = false;
+        }
+
         Ok(())
     }
 
@@ -205,10 +215,49 @@ impl Flash for SimFlash {
         }
 
         for (i, x) in &mut self.write_safe[offset .. offset + payload.len()].iter_mut().enumerate() {
-            if self.verify_writes && !(*x) {
-                panic!("Write to unerased location at 0x{:x}", offset + i);
+            if !(*x) {
+                // A byte programmed by a torn write may be written once
+                // more, with the same value, as recovery replays the
+                // interrupted operation.
+                if self.retryable[offset + i] && payload[i] == self.data[offset + i] {
+                    self.retryable[offset + i] = false;
+                } else if self.verify_writes {
+                    panic!("Write to unerased location at 0x{:x}", offset + i);
+                }
             }
             *x = false;
+        }
+
+        let sub = &mut self.data[offset .. offset + payload.len()];
+        sub.copy_from_slice(payload);
+        Ok(())
+    }
+
+    /// A write interrupted by power loss: program only the given prefix of
+    /// the intended payload.  Unlike `write`, the length does not have to be
+    /// a multiple of the write alignment, since power can fail partway
+    /// through programming a single write unit.  The programmed bytes are
+    /// marked so that one subsequent write of the same values is allowed,
+    /// as recovery replays the interrupted operation.
+    fn write_torn(&mut self, offset: usize, payload: &[u8]) -> Result<()> {
+        if offset + payload.len() > self.data.len() {
+            panic!("Write outside of device");
+        }
+
+        // Verify the alignment (which must be a power of two).
+        if offset & (self.align - 1) != 0 {
+            panic!("Misaligned write address");
+        }
+
+        for (i, x) in &mut self.write_safe[offset .. offset + payload.len()].iter_mut().enumerate() {
+            if self.verify_writes && !(*x) {
+                panic!("Torn write to unerased location at 0x{:x}", offset + i);
+            }
+            *x = false;
+        }
+
+        for x in &mut self.retryable[offset .. offset + payload.len()] {
+            *x = true;
         }
 
         let sub = &mut self.data[offset .. offset + payload.len()];
@@ -320,6 +369,50 @@ mod test {
                                     128 * 1024, 128 * 1024, 128 * 1024], 1, erased_val);
             test_device(&mut f2, erased_val);
         }
+    }
+
+    #[test]
+    fn test_torn_write() {
+        let mut flash = SimFlash::new(vec![4096usize; 4], 8, 0xff);
+        flash.erase(0, 4096).unwrap();
+        let payload = [0x5A; 16];
+
+        // Tear the write after 15 of 16 bytes.
+        flash.write_torn(0, &payload[..15]).unwrap();
+        let mut buf = [0; 16];
+        flash.read(0, &mut buf).unwrap();
+        assert_eq!(&buf[..15], &payload[..15]);
+        assert_eq!(buf[15], 0xff);
+
+        // Recovery may replay the interrupted write once with the same data.
+        flash.write(0, &payload).unwrap();
+        flash.read(0, &mut buf).unwrap();
+        assert_eq!(buf, payload);
+
+        // Erase restores normal write-once behavior.
+        flash.erase(0, 4096).unwrap();
+        flash.write(0, &payload).unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Write to unerased location")]
+    fn test_torn_write_replay_once_only() {
+        let mut flash = SimFlash::new(vec![4096usize; 4], 8, 0xff);
+        flash.erase(0, 4096).unwrap();
+        let payload = [0x5A; 16];
+        flash.write_torn(0, &payload[..15]).unwrap();
+        flash.write(0, &payload).unwrap();
+        // The retry exemption is consumed; another rewrite must fail.
+        flash.write(0, &payload).unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Write to unerased location")]
+    fn test_torn_write_replay_must_match() {
+        let mut flash = SimFlash::new(vec![4096usize; 4], 8, 0xff);
+        flash.erase(0, 4096).unwrap();
+        flash.write_torn(0, &[0x5A; 15]).unwrap();
+        flash.write(0, &[0xA5; 16]).unwrap();
     }
 
     fn test_device(flash: &mut dyn Flash, erased_val: u8) {
