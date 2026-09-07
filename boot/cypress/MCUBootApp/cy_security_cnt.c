@@ -17,20 +17,21 @@
 #include "bootutil/security_cnt.h"
 #include <stdint.h>
 
+/* No persistent counter storage; see README.md. */
+
 fih_ret
 boot_nv_security_counter_init(void)
 {
-    /* Do nothing. */
-    return FIH_SUCCESS;
+    return FIH_FAILURE;
 }
 
 fih_ret
 boot_nv_security_counter_get(uint32_t image_id, fih_int *security_cnt)
 {
     (void)image_id;
-    *security_cnt = 30;
+    (void)security_cnt;
 
-    return FIH_SUCCESS;
+    FIH_RET(FIH_FAILURE);
 }
 
 int32_t
@@ -39,6 +40,5 @@ boot_nv_security_counter_update(uint32_t image_id, uint32_t img_security_cnt)
     (void)image_id;
     (void)img_security_cnt;
 
-    /* Do nothing. */
-    return 0;
+    return -1;
 }
