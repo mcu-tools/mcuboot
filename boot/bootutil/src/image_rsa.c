@@ -115,6 +115,26 @@ pss_mgf1(uint8_t *mask, const uint8_t *hash)
 }
 
 /*
+ * FIH wrapper around bootutil_rsa_public() so the modular exponentiation
+ * call crosses a FIH_CALL boundary and is covered by control-flow
+ * integrity counting, consistent with the rest of bootutil. This guards
+ * against the whole call being skipped; the result check in the caller
+ * guards against a fault within the exponentiation itself.
+ */
+static fih_ret
+bootutil_rsa_public_fih(bootutil_rsa_context *ctx, const uint8_t *sig,
+  uint8_t *em)
+{
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    if (bootutil_rsa_public(ctx, sig, em) == 0) {
+        fih_rc = FIH_SUCCESS;
+    }
+
+    FIH_RET(fih_rc);
+}
+
+/*
  * Validate an RSA signature, using RSA-PSS, as described in PKCS #1
  * v2.2, section 9.1.2, with many parameters required to have fixed
  * values. RSASSA-PSS-VERIFY RFC8017 section 8.1.2
@@ -129,6 +149,7 @@ bootutil_cmp_rsasig(bootutil_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
     uint8_t h2[PSS_HLEN];
     int i;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+    FIH_DECLARE(fih_eq, FIH_FAILURE);
 
     /* The caller has already verified that slen == bootutil_rsa_get_len(ctx) */
     if (slen != PSS_EMLEN ||
@@ -140,10 +161,27 @@ bootutil_cmp_rsasig(bootutil_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
         goto out;
     }
 
-    /* Apply RSAVP1 to produce em = sig^E mod N using the public key */
-    if (bootutil_rsa_public(ctx, sig, em)) {
+    /* Apply RSAVP1 to produce em = sig^E mod N using the public key.
+     * The call is made through a FIH_CALL boundary so that a skipped
+     * call is detected by control-flow integrity counting. */
+    FIH_CALL(bootutil_rsa_public_fih, fih_rc, ctx, sig, em);
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         goto out;
     }
+
+    /* Defensive check: a modular exponentiation that was skipped or
+     * otherwise short-circuited leaves the output buffer equal to its
+     * input. A genuine RSA public-key operation does not produce that,
+     * so treat em == sig as a failure and reject the signature. A
+     * dedicated fih_ret variable is used so that a fault skipping the
+     * comparison at the end of this function cannot leave a stale
+     * success value behind. */
+    FIH_CALL(boot_fih_memequal, fih_eq, em, sig, PSS_EMLEN);
+    if (FIH_EQ(fih_eq, FIH_SUCCESS)) {
+        FIH_SET(fih_rc, FIH_FAILURE);
+        goto out;
+    }
+    FIH_SET(fih_rc, FIH_FAILURE);
 
     /*
      * PKCS #1 v2.2, 9.1.2 EMSA-PSS-Verify
@@ -240,20 +278,66 @@ out:
 
 #else /* MCUBOOT_USE_PSA_CRYPTO */
 
+/*
+ * FIH wrapper around bootutil_rsassa_pss_verify() so that each
+ * verification attempt crosses a FIH_CALL boundary and is covered by
+ * control-flow integrity counting, consistent with the rest of bootutil.
+ */
+static fih_ret
+bootutil_rsassa_pss_verify_fih(bootutil_rsa_context *ctx, uint8_t *hash,
+  uint32_t hlen, uint8_t *sig, size_t slen)
+{
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+
+    if (bootutil_rsassa_pss_verify(ctx, hash, hlen, sig, slen) == 0) {
+        fih_rc = FIH_SUCCESS;
+    }
+
+    FIH_RET(fih_rc);
+}
+
 static fih_ret
 bootutil_cmp_rsasig(bootutil_rsa_context *ctx, uint8_t *hash, uint32_t hlen,
   uint8_t *sig, size_t slen)
 {
-    int rc = -1;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+#ifdef MCUBOOT_RSA_PSA_DOUBLE_VERIFY
+    FIH_DECLARE(fih_rc2, FIH_FAILURE);
+#endif
 
     /* PSA Crypto APIs allow the verification in a single call */
-    rc = bootutil_rsassa_pss_verify(ctx, hash, hlen, sig, slen);
-
-    fih_rc = fih_ret_encode_zero_equality(rc);
+    FIH_CALL(bootutil_rsassa_pss_verify_fih, fih_rc, ctx, hash, hlen, sig,
+             slen);
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         FIH_SET(fih_rc, FIH_FAILURE);
+        FIH_RET(fih_rc);
     }
+
+#ifdef MCUBOOT_RSA_PSA_DOUBLE_VERIFY
+    /*
+     * The modular exponentiation is performed inside the PSA crypto
+     * implementation and is not reachable from here, so it cannot be
+     * checked directly the way the non-PSA path is. When this option is
+     * enabled, perform the whole verification a second time and require
+     * both attempts to succeed, as a fault-injection countermeasure.
+     * Hardening of the modular exponentiation itself remains the
+     * responsibility of the PSA crypto implementation.
+     *
+     * The second attempt records its result in a dedicated fih_ret
+     * variable, and the first attempt's success is discarded before it is
+     * made, so that a fault skipping the second call cannot be masked by
+     * the result the first one left behind.
+     */
+    FIH_SET(fih_rc, FIH_FAILURE);
+
+    FIH_CALL(bootutil_rsassa_pss_verify_fih, fih_rc2, ctx, hash, hlen, sig,
+             slen);
+    if (FIH_NOT_EQ(fih_rc2, FIH_SUCCESS)) {
+        FIH_RET(fih_rc);
+    }
+
+    FIH_SET(fih_rc, FIH_SUCCESS);
+#endif /* MCUBOOT_RSA_PSA_DOUBLE_VERIFY */
 
     FIH_RET(fih_rc);
 }
