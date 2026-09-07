@@ -99,3 +99,9 @@ int boot_find_next_slot_hook(struct boot_loader_state *state, uint8_t image,
 {
     return BOOT_HOOK_REGULAR;
 }
+
+int boot_load_image_to_sram_hook(int image_index, int slot,
+                                 size_t *img_dst, size_t *img_sz)
+{
+    return BOOT_HOOK_REGULAR;
+}
