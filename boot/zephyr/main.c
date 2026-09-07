@@ -421,7 +421,14 @@ int main(void)
 
     mcuboot_status_change(MCUBOOT_STATUS_BOOTABLE_IMAGE_FOUND);
 
+    BOOT_HOOK_IMAGE_JUMP_CALL_FIH(boot_image_jump_hook, fih_rc, &rsp);
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+        BOOT_LOG_ERR("boot_image_jump_hook failed");
+        FIH_PANIC;
+    }
+
     ZEPHYR_BOOT_LOG_STOP();
+
     do_boot(&rsp);
 
     mcuboot_status_change(MCUBOOT_STATUS_BOOT_FAILED);

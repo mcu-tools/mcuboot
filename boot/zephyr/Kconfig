@@ -1220,6 +1220,15 @@ config BOOT_GO_HOOKS
 	  MCUboot's boot_go routine. It is up to the project customization to
 	  add required source files to the build.
 
+config BOOT_IMAGE_JUMP_HOOKS
+	bool "Hook called after image selection, right before jumping to the image"
+	help
+	  Enables a user-defined boot_image_jump_hook() callback that is invoked
+	  after boot_go() succeeds and before do_boot() transfers control to
+	  the application.  The hook receives a pointer to the boot_rsp structure
+	  so it can inspect or modify the boot response (e.g. configure flash
+	  access rights or apply memory remapping).
+
 config BOOT_FLASH_AREA_HOOKS
 	bool "Hooks for overriding MCUboot's flash area routines"
 	help

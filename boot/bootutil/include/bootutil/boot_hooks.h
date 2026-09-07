@@ -82,6 +82,18 @@
 
 #endif /* MCUBOOT_BOOT_GO_HOOKS  */
 
+#ifdef MCUBOOT_BOOT_IMAGE_JUMP_HOOKS
+
+#define BOOT_HOOK_IMAGE_JUMP_CALL_FIH(f, fih_rc, ...) \
+    DO_HOOK_CALL_FIH(f, FIH_SUCCESS, fih_rc, __VA_ARGS__);
+
+#else
+
+#define BOOT_HOOK_IMAGE_JUMP_CALL_FIH(f, fih_rc, ...) \
+    HOOK_CALL_FIH_NOP(f, FIH_SUCCESS, fih_rc, __VA_ARGS__)
+
+#endif /* MCUBOOT_BOOT_IMAGE_JUMP_HOOKS */
+
 #ifdef MCUBOOT_FIND_NEXT_SLOT_HOOKS
 
 #define BOOT_HOOK_FIND_SLOT_CALL(f, ret_default, ...) \
@@ -237,6 +249,22 @@ int boot_reset_request_hook(bool force);
  *         FIH_BOOT_HOOK_REGULAR: follow the normal execution path.
  */
 fih_ret boot_go_hook(struct boot_rsp *rsp);
+
+/**
+ * Hook called right after boot_go() succeeds, before do_boot() transfers
+ * control to the application.
+ *
+ * This hook receives the selected boot_rsp so it can inspect or modify it
+ * before the jump is made.  Typical uses include configuring flash access
+ * rights based on the chosen image slot or applying memory remapping.
+ *
+ * @param rsp  Pointer to the boot response selected by boot_go().
+ *
+ * @retval FIH_SUCCESS  Hook executed successfully; proceed with do_boot().
+ * @retval FIH_FAILURE  An error occurred; MCUboot will treat this as a boot
+ *                      failure and panic.
+ */
+fih_ret boot_image_jump_hook(struct boot_rsp *rsp);
 
 /**
  * Hook to implement custom action before retrieving flash area ID.
