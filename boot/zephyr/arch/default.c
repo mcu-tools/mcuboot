@@ -13,7 +13,7 @@
 
 #include "bootutil/bootutil_log.h"
 #include "bootutil/bootutil.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 #include "flash_map_backend/flash_map_backend.h"
 #include "do_boot.h"
 

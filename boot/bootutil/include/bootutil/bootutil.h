@@ -30,7 +30,7 @@
 
 #include <inttypes.h>
 #include <stddef.h>
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 #include "bootutil/bootutil_public.h"
 
 #ifdef __cplusplus

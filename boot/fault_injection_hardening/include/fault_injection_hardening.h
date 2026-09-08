@@ -10,7 +10,7 @@
 /* Fault injection mitigation library.
  *
  * Has support for different measures, which can either be enabled/disabled
- * separately or by defining one of the MCUBOOT_FIH_PROFILEs.
+ * separately or by defining one of the FIH_PROFILEs.
  *
  * NOTE: These constructs against fault injection attacks are not guaranteed to
  *       be secure for all compilers, but execution is going to be correct and
@@ -54,29 +54,33 @@
  * fail causing a panic.
  */
 
-#include "mcuboot_config/mcuboot_config.h"
+#include "fih_config.h"
 
-#if defined(MCUBOOT_FIH_PROFILE_HIGH)
+#if defined(FIH_PROFILE_HIGH)
 
 #define FIH_ENABLE_DELAY         /* Requires an entropy source */
 #define FIH_ENABLE_DOUBLE_VARS
 #define FIH_ENABLE_GLOBAL_FAIL
 #define FIH_ENABLE_CFI
 
-#elif defined(MCUBOOT_FIH_PROFILE_MEDIUM)
+#elif defined(FIH_PROFILE_MEDIUM)
 
 #define FIH_ENABLE_DOUBLE_VARS
 #define FIH_ENABLE_GLOBAL_FAIL
 #define FIH_ENABLE_CFI
 
-#elif defined(MCUBOOT_FIH_PROFILE_LOW)
+#elif defined(FIH_PROFILE_LOW)
 
 #define FIH_ENABLE_GLOBAL_FAIL
 #define FIH_ENABLE_CFI
 
-#elif !defined(MCUBOOT_FIH_PROFILE_OFF)
-#define MCUBOOT_FIH_PROFILE_OFF
-#endif /* MCUBOOT_FIH_PROFILE */
+#elif defined(FIH_PROFILE_OFF)
+/* No FIH features enabled */
+
+#else
+#error "None of FIH_PROFILE_HIGH, FIH_PROFILE_MEDIUM, FIH_PROFILE_LOW or " \
+       "FIH_PROFILE_OFF is defined in fih_config.h."
+#endif /* FIH_PROFILE */
 
 #ifdef FIH_ENABLE_DELAY
 #include "fault_injection_hardening_delay_rng.h"
@@ -90,17 +94,17 @@ extern "C" {
 /* Non-zero success value to defend against register resets. Zero is the most
  * common value for a corrupted register so complex bit-patterns are used
  */
-#ifndef MCUBOOT_FIH_PROFILE_OFF
+#ifndef FIH_PROFILE_OFF
 #define FIH_POSITIVE_VALUE 0x1AAAAAAA
 #define FIH_NEGATIVE_VALUE 0x15555555
 #define FIH_CONST1 0x1FCDEA88
 #define FIH_CONST2 0x19C1F6E1
-#else
+#else /* FIH_PROFILE_OFF */
 #define FIH_POSITIVE_VALUE 0
 #define FIH_NEGATIVE_VALUE -1
 #define FIH_CONST1 1
 #define FIH_CONST2 1
-#endif
+#endif /* FIH_PROFILE_OFF */
 
 /* A volatile mask is used to prevent compiler optimization - the mask is xored
  * with the variable to create the backup and the integrity can be checked with

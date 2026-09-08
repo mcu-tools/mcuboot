@@ -10,6 +10,7 @@ add_library(bootutil STATIC)
 target_include_directories(bootutil
     PUBLIC
         include
+        ../fault_injection_hardening/include
     PRIVATE
         src
 )
@@ -26,7 +27,7 @@ target_sources(bootutil
         src/bootutil_public.c
         src/caps.c
         src/encrypted.c
-        src/fault_injection_hardening.c
+        ../fault_injection_hardening/src/fault_injection_hardening.c
         src/image_ecdsa.c
         src/image_ed25519.c
         src/image_rsa.c
