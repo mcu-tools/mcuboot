@@ -44,11 +44,11 @@
 
 	mcuboot_sdram: memory@0 {
 		compatible = "mmio-sram";
-		reg = <0x0 DT_SIZE_K(30)>;
+		reg = <0x0 DT_SIZE_K(64)>;
 	};
 
-	image_sdram: memory@8000 {
+	image_sdram: memory@10000 {
 		compatible = "mmio-sram";
-		reg = <0x8000 DT_SIZE_M(3)>;
+		reg = <0x10000 DT_SIZE_M(3)>;
 	};
 };
