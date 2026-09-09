@@ -19,8 +19,9 @@
 - The single-slot ``boot_go()`` no longer returns without closing the primary
   flash area when ``boot_save_boot_status()`` or ``boot_save_shared_data()``
   fails, and now reports the failure as a FIH value rather than a raw ``int``.
-- Added ``BOOTUTIL_CAP_SINGLE_APPLICATION_SLOT``. Single-slot builds previously
-  fell through to reporting ``BOOTUTIL_CAP_SWAP_USING_SCRATCH`` from
+- Added ``BOOTUTIL_CAP_SINGLE_APPLICATION_SLOT`` and
+  ``BOOTUTIL_CAP_SINGLE_APPLICATION_SLOT_RAM_LOAD``. Both configurations
+  previously fell through to reporting ``BOOTUTIL_CAP_SWAP_USING_SCRATCH`` from
   ``bootutil_get_caps()``, which claimed an upgrade strategy for a configuration
   that has no second slot.
 - Anchored the Mynewt ``pkg.ign_files`` patterns in ``boot/bootutil/pkg.yml``.

@@ -32,6 +32,7 @@ pub enum Caps {
     EcdsaP384            = (1 << 19),
     SwapUsingOffset      = (1 << 20),
     SingleSlot           = (1 << 21),
+    SingleSlotRamLoad    = (1 << 22),
 }
 
 impl Caps {
@@ -55,12 +56,18 @@ impl Caps {
     pub fn modifies_flash() -> bool {
         // All other configurations perform upgrades by writing to flash.
         !(Self::RamLoad.present() || Self::DirectXip.present()
-          || Self::SingleSlot.present())
+          || Self::single_slot())
+    }
+
+    /// Query if this configuration has a single application slot, in either the
+    /// flash or the RAM-load variant.
+    pub fn single_slot() -> bool {
+        Self::SingleSlot.present() || Self::SingleSlotRamLoad.present()
     }
 
     /// Query if this configuration has a secondary slot at all.
     pub fn has_secondary_slot() -> bool {
-        !Self::SingleSlot.present()
+        !Self::single_slot()
     }
 }
 

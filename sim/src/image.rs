@@ -2214,7 +2214,7 @@ fn estimate_swap_scratch_trailer_size(dev: &dyn Flash, areadesc: &AreaDesc,
 fn image_largest_trailer(dev: &dyn Flash, areadesc: &AreaDesc, slots: &[SlotInfo]) -> usize {
             // Using the header size we know, the trailer size, and the slot size, we can compute
             // the largest image possible.
-            let trailer = if Caps::SingleSlot.present() {
+            let trailer = if Caps::single_slot() {
                 // no swap status, so just the info fields
                 c::boot_trailer_sz(dev.align() as u32) as usize
             } else if Caps::OverwriteUpgrade.present() {
