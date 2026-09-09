@@ -184,12 +184,12 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 
     BOOT_LOG_DBG("context_boot_go: Single loader");
 
-    hdr = boot_img_hdr(state, BOOT_SLOT_PRIMARY);
-
     rc = boot_open_all_flash_areas(state);
     if (rc != 0) {
         goto out;
     }
+
+    hdr = boot_img_hdr(state, BOOT_SLOT_PRIMARY);
 
     rc = boot_image_load_header(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY), hdr);
     if (rc != 0)
@@ -230,21 +230,16 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 #endif /* MCUBOOT_MEASURED_BOOT */
 
 #ifdef MCUBOOT_DATA_SHARING
-    if (rc == 0) {
-        rc = boot_save_shared_data(hdr, BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY), 0, NULL);
-        if (rc != 0) {
-            BOOT_LOG_ERR("Failed to add data to shared memory area.");
-            fih_rc = FIH_FAILURE;
-        }
+    rc = boot_save_shared_data(hdr, BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY), 0, NULL);
+    if (rc != 0) {
+        BOOT_LOG_ERR("Failed to add data to shared memory area.");
+        fih_rc = FIH_FAILURE;
     }
 #endif /* MCUBOOT_DATA_SHARING */
 
-    if (rc == 0) {
-        rsp->br_flash_dev_id =
-            flash_area_get_device_id(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
-        rsp->br_image_off = flash_area_get_off(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
-        rsp->br_hdr = hdr;
-    }
+    rsp->br_flash_dev_id = flash_area_get_device_id(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
+    rsp->br_image_off = flash_area_get_off(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
+    rsp->br_hdr = hdr;
 
 out:
     boot_close_all_flash_areas(state);
