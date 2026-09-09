@@ -134,8 +134,11 @@ fih_ret boot_image_check_hook(struct boot_loader_state *state,
      * via bootutil_img_validate, but since this hook bypasses that path
      * the check is replicated here.
      */
-    if (state != NULL) {
+    {
         struct image_tlv_iter sz_it;
+        uint32_t img_sz;
+        uint32_t max_sz;
+
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
         sz_it.start_off = base_off;
 #endif
@@ -145,17 +148,26 @@ fih_ret boot_image_check_hook(struct boot_loader_state *state,
             flash_area_close(fap);
             FIH_RET(fih_rc);
         }
-        {
-            uint32_t img_sz;
+
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
-            img_sz = sz_it.tlv_end - sz_it.start_off;
+        img_sz = sz_it.tlv_end - sz_it.start_off;
 #else
-            img_sz = sz_it.tlv_end;
+        img_sz = sz_it.tlv_end;
 #endif
-            if (img_sz > bootutil_max_image_size(state, fap)) {
+        if (state != NULL) {
+            max_sz = bootutil_max_image_size(state, fap);
+        } else {
+            uint32_t fa_sz = flash_area_get_size(fap);
+            if (base_off >= fa_sz) {
                 flash_area_close(fap);
                 FIH_RET(fih_rc);
             }
+            max_sz = fa_sz - base_off;
+        }
+
+        if (img_sz > max_sz) {
+            flash_area_close(fap);
+            FIH_RET(fih_rc);
         }
     }
 
