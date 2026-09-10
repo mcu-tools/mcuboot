@@ -51,6 +51,13 @@ swap-move = []
 # Disable validation of the primary slot
 validate-primary-slot = []
 
+# Reject a candidate image in the secondary slot signed with a key that is
+# older (a lower index into bootutil_keys[]) than the key that produced the
+# currently active, confirmed image in the primary slot. Requires a swap
+# upgrade strategy (the default, swap-offset, or swap-move); conflicts with
+# overwrite-only, direct-xip and ram-load.
+key-revocation = []
+
 # Encrypt image in the secondary slot using RSA-OAEP-2048
 enc-rsa = []
 

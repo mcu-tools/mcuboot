@@ -480,14 +480,14 @@ split_image_check(struct image_header *app_hdr,
     }
 
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, loader_hdr, loader_fap,
-             tmpbuf, BOOT_TMPBUF_SZ, NULL, 0, loader_hash);
+             tmpbuf, BOOT_TMPBUF_SZ, NULL, 0, loader_hash, NULL);
 
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         FIH_RET(fih_rc);
     }
 
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, app_hdr, app_fap,
-             tmpbuf, BOOT_TMPBUF_SZ, loader_hash, IMAGE_HASH_SIZE, NULL);
+             tmpbuf, BOOT_TMPBUF_SZ, loader_hash, IMAGE_HASH_SIZE, NULL, NULL);
 
 out:
     FIH_RET(fih_rc);
@@ -535,6 +535,10 @@ boot_rom_address_check(struct boot_loader_state *state)
 /*
  * Check that there is a valid image in a slot
  *
+ * @param out_key_id  Optional. If not NULL, receives the index (into
+ *                     `bootutil_keys[]`) of the key that validated the
+ *                     image, or -1 if no such key could be determined.
+ *
  * @returns
  *         FIH_SUCCESS                      if image was successfully validated
  *         FIH_NO_BOOTABLE_IMAGE            if no bootloable image was found
@@ -542,7 +546,8 @@ boot_rom_address_check(struct boot_loader_state *state)
  */
 static fih_ret
 boot_validate_slot(struct boot_loader_state *state, int slot,
-                   struct boot_status *bs, int expected_swap_type)
+                   struct boot_status *bs, int expected_swap_type,
+                   fih_int *out_key_id)
 {
     const struct flash_area *fap;
     struct image_header *hdr;
@@ -641,7 +646,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         BOOT_HOOK_CALL_FIH(boot_image_check_hook, FIH_BOOT_HOOK_REGULAR,
                            fih_rc, BOOT_CURR_IMG(state), slot);
         if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR)) {
-            FIH_CALL(boot_check_image, fih_rc, state, bs, slot);
+            FIH_CALL(boot_check_image, fih_rc, state, bs, slot, out_key_id);
         }
     }
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
@@ -719,6 +724,73 @@ out:
 }
 
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
+#ifdef MCUBOOT_KEY_REVOCATION_FROM_PRIMARY
+/**
+ * Enforces the key-floor check for MCUBOOT_KEY_REVOCATION_FROM_PRIMARY.
+ *
+ * The primary slot is only ever written by the bootloader itself, once an
+ * image has passed signature verification and the swap-confirm sequence.
+ * This makes it a trust anchor: the index of the key that signed the
+ * active image in the primary slot is used as a floor that a candidate
+ * image's signing key index must meet or exceed.
+ *
+ * If the primary slot's key cannot be determined (first boot with a
+ * factory image, a recovery flow, or a key no longer embedded in this
+ * build), there is no floor to enforce and the bootloader falls back to
+ * today's behavior. This check only ever narrows what MCUboot already
+ * accepts; it never widens it.
+ *
+ * A candidate that fails this check is erased from the secondary slot,
+ * the same way a candidate with a genuinely invalid signature is: it can
+ * never become valid on its own, so there is nothing to gain from
+ * re-validating it again on every subsequent boot.
+ *
+ * @param candidate_key_id  Index into `bootutil_keys[]` of the key that
+ *                          validated the candidate image in the secondary
+ *                          slot.
+ *
+ * @returns
+ *         FIH_SUCCESS   if the candidate's key satisfies the floor, or if
+ *                       no floor could be established.
+ *         FIH_FAILURE   if the candidate's key is older than the primary
+ *                       slot's key and the upgrade must be rejected.
+ */
+static fih_ret
+boot_check_key_revocation(struct boot_loader_state *state, struct boot_status *bs,
+                          fih_int candidate_key_id)
+{
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+    fih_int primary_key_id = fih_int_encode(-1);
+
+    FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SLOT_PRIMARY, bs, 0,
+             &primary_key_id);
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS) || fih_int_decode(primary_key_id) < 0) {
+        /* No usable key found in the primary slot: no floor to enforce. */
+        FIH_RET(FIH_SUCCESS);
+    }
+
+    /* Compare the candidate's signing key index against the primary slot's,
+     * the same way the security counter is compared above.
+     */
+    fih_rc = fih_ret_encode_zero_equality((uint32_t)fih_int_decode(candidate_key_id) <
+                                           (uint32_t)fih_int_decode(primary_key_id));
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+        BOOT_LOG_ERR("Image %d: candidate key index %d older than primary slot key index %d; key revoked",
+                     BOOT_CURR_IMG(state), fih_int_decode(candidate_key_id),
+                     fih_int_decode(primary_key_id));
+        /* Just like a genuine signature failure, this candidate can never
+         * become valid on its own; erase it so it isn't needlessly
+         * re-validated (primary and secondary) on every subsequent boot.
+         */
+        boot_scramble_slot(BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY), BOOT_SLOT_SECONDARY);
+        FIH_SET(fih_rc, FIH_FAILURE);
+        FIH_RET(fih_rc);
+    }
+
+    FIH_RET(fih_rc);
+}
+#endif /* MCUBOOT_KEY_REVOCATION_FROM_PRIMARY */
+
 /**
  * Determines which swap operation to perform, if any.  If it is determined
  * that a swap operation is required, the image in the secondary slot is checked
@@ -732,14 +804,19 @@ boot_validated_swap_type(struct boot_loader_state *state,
                          struct boot_status *bs)
 {
     int swap_type;
+    fih_int candidate_key_id = fih_int_encode(-1);
     FIH_DECLARE(fih_rc, FIH_FAILURE);
+#ifdef MCUBOOT_KEY_REVOCATION_FROM_PRIMARY
+    FIH_DECLARE(key_revocation_rc, FIH_FAILURE);
+#endif
 
     swap_type = boot_swap_type_multi(BOOT_CURR_IMG(state));
     if (BOOT_IS_UPGRADE(swap_type)) {
         /* Boot loader wants to switch to the secondary slot.
          * Ensure image is valid.
          */
-        FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SLOT_SECONDARY, bs, swap_type);
+        FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SLOT_SECONDARY, bs, swap_type,
+                 &candidate_key_id);
         if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
             if (FIH_EQ(fih_rc, FIH_NO_BOOTABLE_IMAGE)) {
                 swap_type = BOOT_SWAP_TYPE_NONE;
@@ -747,6 +824,14 @@ boot_validated_swap_type(struct boot_loader_state *state,
                 swap_type = BOOT_SWAP_TYPE_FAIL;
             }
         }
+#ifdef MCUBOOT_KEY_REVOCATION_FROM_PRIMARY
+        else {
+            FIH_CALL(boot_check_key_revocation, key_revocation_rc, state, bs, candidate_key_id);
+            if (FIH_NOT_EQ(key_revocation_rc, FIH_SUCCESS)) {
+                swap_type = BOOT_SWAP_TYPE_FAIL;
+            }
+        }
+#endif
     }
 
     return swap_type;
@@ -1231,7 +1316,7 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
      * already been checked).
      */
     FIH_DECLARE(fih_rc, FIH_FAILURE);
-    FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SLOT_PRIMARY, bs, 0);
+    FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SLOT_PRIMARY, bs, 0, NULL);
     if (boot_check_header_erased(state, BOOT_SLOT_PRIMARY) || FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         rc = boot_copy_image(state, bs);
     } else {
@@ -1520,7 +1605,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
                 BOOT_SWAP_TYPE(state) = boot_validated_swap_type(state, bs);
             } else {
                 FIH_CALL(boot_validate_slot, fih_rc,
-                         state, BOOT_SLOT_SECONDARY, bs, 0);
+                         state, BOOT_SLOT_SECONDARY, bs, 0, NULL);
                 if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
                     BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_FAIL;
                 } else {
@@ -1541,13 +1626,13 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
                  * sure it's not OK.
                  */
                 FIH_CALL(boot_validate_slot, fih_rc,
-                         state, BOOT_SLOT_PRIMARY, bs, 0);
+                         state, BOOT_SLOT_PRIMARY, bs, 0, NULL);
                 if (boot_check_header_erased(state, BOOT_SLOT_PRIMARY) ||
                     FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
 
                     rc = (boot_img_hdr(state, BOOT_SLOT_SECONDARY)->ih_magic == IMAGE_MAGIC) ? 1: 0;
                     FIH_CALL(boot_validate_slot, fih_rc,
-                             state, BOOT_SLOT_SECONDARY, bs, 0);
+                             state, BOOT_SLOT_SECONDARY, bs, 0, NULL);
 
                     if (rc == 1 && FIH_EQ(fih_rc, FIH_SUCCESS)) {
                         /* Set swap type to REVERT to overwrite the primary
@@ -1890,7 +1975,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         }
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
-        FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SLOT_PRIMARY, NULL, 0);
+        FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SLOT_PRIMARY, NULL, 0, NULL);
         /* Check for all possible values is redundant in normal operation it
          * is meant to prevent FI attack.
          */
@@ -2288,7 +2373,7 @@ boot_load_and_validate_images(struct boot_loader_state *state)
             }
 #endif /* MCUBOOT_RAM_LOAD */
 
-            FIH_CALL(boot_validate_slot, fih_rc, state, active_slot, NULL, 0);
+            FIH_CALL(boot_validate_slot, fih_rc, state, active_slot, NULL, 0, NULL);
             if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
                 /* Image is invalid. */
 #ifdef MCUBOOT_RAM_LOAD

@@ -158,7 +158,8 @@ boot_read_image_headers(struct boot_loader_state *state, bool require_all, struc
 }
 
 fih_ret
-boot_check_image(struct boot_loader_state *state, struct boot_status *bs, int slot)
+boot_check_image(struct boot_loader_state *state, struct boot_status *bs, int slot,
+                 fih_int *out_key_id)
 {
     TARGET_STATIC uint8_t tmpbuf[BOOT_TMPBUF_SZ];
     int rc;
@@ -191,7 +192,7 @@ boot_check_image(struct boot_loader_state *state, struct boot_status *bs, int sl
 #endif
 
     FIH_CALL(bootutil_img_validate, fih_rc, state, hdr, fap, tmpbuf, BOOT_TMPBUF_SZ,
-             NULL, 0, NULL);
+             NULL, 0, NULL, out_key_id);
 
     FIH_RET(fih_rc);
 }
