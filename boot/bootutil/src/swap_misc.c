@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2019 JUUL Labs
  * Copyright (c) 2025 Nordic Semiconductor ASA
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bootutil/bootutil.h"
+#include "bootutil/boot_hooks.h"
 #include "bootutil_priv.h"
 #include "swap_priv.h"
 #include "bootutil/bootutil_log.h"
@@ -37,6 +39,14 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
                            const struct flash_area *fap)
 {
     int rc = 0;
+
+    int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_reset_hook,
+                                             BOOT_SWAP_STATE_HOOK_REGULAR, state, fap,
+                                             (fap == BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY)) ?
+                                                 BOOT_SLOT_SECONDARY : BOOT_SLOT_PRIMARY);
+    if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hrc;
+    }
 
     /* Intention is to prepare slot for write, if device does not require/support
      * erase, there is nothing to do here.
@@ -81,6 +91,14 @@ swap_scramble_trailer_sectors(const struct boot_loader_state *state,
     size_t off;
     int rc;
 
+    int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_reset_hook,
+                                             BOOT_SWAP_STATE_HOOK_REGULAR, state, fap,
+                                             (fap == BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY)) ?
+                                                 BOOT_SLOT_SECONDARY : BOOT_SLOT_PRIMARY);
+    if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hrc;
+    }
+
     BOOT_LOG_DBG("swap_scramble_trailer_sectors: fa_id=%d", flash_area_get_id(fap));
 
     /* Delete starting from last sector and moving to beginning */
@@ -104,10 +122,15 @@ swap_scramble_trailer_sectors(const struct boot_loader_state *state,
  * twice on these devices.
  */
 int
-swap_status_init(const struct boot_loader_state *state,
+swap_status_init(struct boot_loader_state *state,
                  const struct flash_area *fap,
                  const struct boot_status *bs)
 {
+    int hook_rc = BOOT_SWAP_STATE_HOOK_CALL(swap_status_init_hook,
+                                                        BOOT_SWAP_STATE_HOOK_REGULAR, state, fap, bs);
+    if (hook_rc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hook_rc;
+    }
     struct boot_swap_state swap_state;
     uint8_t image_index;
     int rc;
@@ -187,8 +210,16 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
 
     rc = swap_read_status_bytes(fap, state, bs);
     if (rc == 0) {
-        off = boot_swap_info_off(fap);
-        rc = flash_area_read(fap, off, &swap_info, sizeof swap_info);
+        int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_read_field_hook,
+                                                 BOOT_SWAP_STATE_HOOK_REGULAR, fap,
+                                                 BOOT_SWAP_META_SWAP_INFO, &swap_info,
+                                                 sizeof swap_info);
+        if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+            rc = hrc;
+        } else {
+            off = boot_swap_info_off(fap);
+            rc = flash_area_read(fap, off, &swap_info, sizeof swap_info);
+        }
         if (rc != 0) {
             rc = BOOT_EFLASH;
             goto done;

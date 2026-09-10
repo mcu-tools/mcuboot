@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2023 Nordic Semiconductor ASA
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  */
 #ifndef H_BOOTUTIL_MISC_

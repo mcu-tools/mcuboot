@@ -2,6 +2,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Copyright (c) 2019 JUUL Labs
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bootutil/bootutil.h"
+#include "bootutil/boot_hooks.h"
 #include "bootutil_priv.h"
 #include "swap_priv.h"
 #include "bootutil/bootutil_log.h"
@@ -187,6 +189,11 @@ int
 swap_read_status_bytes(const struct flash_area *fap,
         struct boot_loader_state *state, struct boot_status *bs)
 {
+    int hook_rc = BOOT_SWAP_STATE_HOOK_CALL(swap_read_status_bytes_hook,
+                                                        BOOT_SWAP_STATE_HOOK_REGULAR, fap, state, bs);
+    if (hook_rc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hook_rc;
+    }
     uint32_t off;
     uint8_t status;
     int max_entries;
@@ -494,10 +501,12 @@ swap_status_source(struct boot_loader_state *state)
     rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_PRIMARY].area,
                               &state_primary_slot);
     assert(rc == 0);
+    (void)rc;
 
 #if MCUBOOT_SWAP_USING_SCRATCH
     rc = boot_read_swap_state(state->scratch.area, &state_scratch);
     assert(rc == 0);
+    (void)rc;
 #endif
 
     BOOT_LOG_SWAP_STATE("Primary image", &state_primary_slot);
@@ -556,7 +565,7 @@ swap_status_source(struct boot_loader_state *state)
  * @return                      The number of bytes comprised by the
  *                                  [first-sector, last-sector] range.
  */
-static uint32_t
+uint32_t
 boot_copy_sz(const struct boot_loader_state *state, int last_sector_idx,
              int *out_first_sector_idx)
 {
@@ -596,7 +605,7 @@ boot_copy_sz(const struct boot_loader_state *state, int last_sector_idx,
  *
  * @return          Index of the last sector in the primary slot that needs swapping.
  */
-static int
+int
 find_last_sector_idx(const struct boot_loader_state *state, uint32_t copy_size)
 {
     int last_sector_idx_primary;
@@ -751,6 +760,11 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     bs->use_scratch = (bs->idx == BOOT_STATUS_IDX_0 && copy_sz != sz);
 
     if (bs->state == BOOT_STATUS_STATE_0) {
+        rc = BOOT_SWAP_STATE_HOOK_CALL(
+                swap_status_before_erase_hook, 0,
+                state, fap_primary_slot, fap_scratch, bs);
+        assert(rc == 0);
+
         BOOT_LOG_DBG("erasing scratch area");
         rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch), false);
         assert(rc == 0);
@@ -799,9 +813,20 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
              * This is necessary even though the current area being swapped contains part of the
              * trailer since in case the trailer spreads over multiple sector erasing the [img_off,
              * img_off + sz) might not erase the entire trailer.
-              */
+             *
+             * Under MCUBOOT_SWAP_STATE_HOOKS the swap state lives outside the
+             * image trailers, so the secondary trailer is not the status
+             * authority and scrambling it is unnecessary.  Skipping it also
+             * avoids destroying image data (TLVs) sharing the trailer sector,
+             * which would leave the secondary image unvalidatable if power is
+             * lost before the swap copies any sector.  The guard is keyed on the
+             * generic hook macro, so this file carries no coupling to any
+             * particular hook implementation.
+             */
+#ifndef MCUBOOT_SWAP_STATE_HOOKS
             rc = swap_scramble_trailer_sectors(state, fap_secondary_slot);
             assert(rc == 0);
+#endif
 
             if (bs->use_scratch) {
                 /* If the area being swapped contains the trailer or part of it, ensure the
@@ -1089,7 +1114,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
     if (bs && !boot_status_is_reset(bs)) {
         fap = boot_find_status(state, BOOT_CURR_IMG(state));
 
-        if (rc != 0) {
+        if (fap == NULL) {
             rc = BOOT_EFLASH;
             goto done;
         }
