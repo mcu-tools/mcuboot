@@ -887,8 +887,8 @@ static off_t erase_range(const struct flash_area *fap, off_t start, off_t end)
     }
 
     size = flash_sector_get_off(&sect) + flash_sector_get_size(&sect) - start;
-    BOOT_LOG_DBG("Erasing range 0x%jx:0x%jx", (intmax_t)start,
-		 (intmax_t)(start + size - 1));
+    BOOT_LOG_DBG("Erasing range 0x%lx:0x%lx", (unsigned long)start,
+		 (unsigned long)(start + size - 1));
 
     rc = boot_erase_region(fap, start, size, false);
     if (rc != 0) {

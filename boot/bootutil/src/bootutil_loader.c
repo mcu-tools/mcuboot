@@ -331,8 +331,8 @@ boot_open_all_flash_areas(struct boot_loader_state *state)
             assert(rc == 0);
 
             if (rc != 0) {
-                BOOT_LOG_ERR("Failed to open flash area ID %d (image %d slot %zu): %d",
-                             fa_id, image_index, slot, rc);
+                BOOT_LOG_ERR("Failed to open flash area ID %d (image %d slot %lu): %d",
+                             fa_id, image_index, (unsigned long)slot, rc);
                 goto out;
             }
         }
