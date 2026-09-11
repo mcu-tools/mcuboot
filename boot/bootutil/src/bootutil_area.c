@@ -221,8 +221,8 @@ boot_erase_region(const struct flash_area *fa, uint32_t off, uint32_t size, bool
     int rc = 0;
 
     BOOT_LOG_DBG("boot_erase_region: flash_area %p, offset %" PRIu32 ""
-                 ", size %" PRIu32 ", backwards == %d",
-                 fa, off, size, (int)backwards);
+                 ", size %" PRIu32 ", backwards == %" PRIu8,
+                 fa, off, size, (uint8_t)backwards);
 
     if (off >= flash_area_get_size(fa) || (flash_area_get_size(fa) - off) < size) {
         rc = -1;

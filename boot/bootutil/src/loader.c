@@ -1009,8 +1009,8 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     }
 #endif
 
-    BOOT_LOG_INF("Image %d copying the secondary slot to the primary slot: 0x%lx bytes",
-                 image_index, (unsigned long)size);
+    BOOT_LOG_INF("Image %d copying the secondary slot to the primary slot: 0x%zx bytes",
+                 image_index, size);
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
     rc = BOOT_COPY_REGION(state, fap_secondary_slot, fap_primary_slot,
                           boot_img_sector_size(state, BOOT_SLOT_SECONDARY, 0), 0, size, 0);
