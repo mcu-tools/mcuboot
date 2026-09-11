@@ -80,7 +80,7 @@ bootutil_verify_sig(uint8_t *hash, uint32_t hlen, uint8_t *sig, size_t slen,
     bootutil_ecdsa_context ctx;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
-    BOOT_LOG_DBG("bootutil_verify_sig: ECDSA embedded key %hhd", key_id);
+    BOOT_LOG_DBG("bootutil_verify_sig: ECDSA embedded key %d", (int)key_id);
 
     /* Use builtin key for image verification, no key parsing is required. */
     ctx.key_id = key_id;
