@@ -42,6 +42,9 @@ sig-second-key = []
 # Overwrite only upgrade
 overwrite-only = []
 
+# Delta DFU support for overwrite-only upgrades
+delta-dfu = []
+
 # Swap using offset mode
 swap-offset = []
 

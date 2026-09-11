@@ -66,6 +66,7 @@ IMAGE_F = {
         'COMPRESSED_LZMA1':      0x0000200,
         'COMPRESSED_LZMA2':      0x0000400,
         'COMPRESSED_ARM_THUMB':  0x0000800,
+        'DELTA':                 0x0001000,
 }
 
 TLV_VALUES = {
@@ -89,10 +90,12 @@ TLV_VALUES = {
         'BOOT_RECORD': 0x60,
         'DECOMP_SIZE': 0x70,
         'DECOMP_SHA': 0x71,
+        'OUTPUT_SHA': 0x71,
         'DECOMP_SIGNATURE': 0x72,
         'COMP_DEC_SIZE' : 0x73,
         'UUID_VID': 0x74,
         'UUID_CID': 0x75,
+        'DELTA_BASE_SHA': 0x76,
 }
 
 TLV_SIZE = 4
@@ -417,6 +420,20 @@ class Image:
                 self.payload = bytes([0] * self.header_size) + \
                     self.payload
 
+    def load_payload(self, data):
+        """Load an already-built payload from a byte buffer."""
+        self.payload = data
+        self.image_size = len(self.payload)
+
+        if self.header_size > 0:
+            if self.pad_header:
+                if self.base_addr:
+                    self.base_addr -= self.header_size
+                self.payload = bytes([self.erased_val] * self.header_size) + \
+                    self.payload
+            else:
+                self.payload = bytes([0] * self.header_size) + self.payload
+
     def save(self, path, hex_addr=None):
         """Save an image from a given file"""
         ext = os.path.splitext(path)[1][1:].lower()
@@ -464,14 +481,16 @@ class Image:
                 "Header padding was not requested and image does not start with zeros"
             )
 
-    def check_trailer(self):
+    def check_trailer(self, minimum_trailer_size=0):
         if self.slot_size > 0:
             tsize = self._trailer_size(self.align, self.max_sectors,
                                        self.overwrite_only, self.enckey,
                                        self.save_enctlv, self.enctlv_len)
+            tsize = max(tsize, minimum_trailer_size)
             padding = self.slot_size - (len(self.payload) + tsize)
             if padding < 0:
-                msg = f"Image size (0x{len(self.payload):x}) + trailer (0x{tsize:x}) exceeds " \
+                msg = f"Image size (0x{len(self.payload):x}) + reserved trailer area " \
+                      f"(0x{tsize:x}) exceeds " \
                       f"requested size 0x{self.slot_size:x}"
                 raise click.UsageError(msg)
 
@@ -517,7 +536,7 @@ class Image:
                compression_type=None, encrypt_keylen=128, clear=False,
                fixed_sig=None, pub_key=None, vector_to_sign=None,
                user_sha='auto', hmac_sha='auto', is_pure=False, keep_comp_size=False,
-               dont_encrypt=False):
+               dont_encrypt=False, delta_tlvs=None):
         self.enckey = enckey
 
         # key decides on sha, then pub_key; of both are none default is used
@@ -594,6 +613,9 @@ class Image:
         if compression_tlvs is not None:
             for value in compression_tlvs.values():
                 protected_tlv_size += TLV_SIZE + len(value)
+        if delta_tlvs is not None:
+            for value in delta_tlvs.values():
+                protected_tlv_size += TLV_SIZE + len(value)
         if custom_tlvs is not None:
             for value in custom_tlvs.values():
                 protected_tlv_size += TLV_SIZE + len(value)
@@ -620,6 +642,8 @@ class Image:
             compression_flags = IMAGE_F['COMPRESSED_LZMA2']
             if compression_type == "lzma2armthumb":
                 compression_flags |= IMAGE_F['COMPRESSED_ARM_THUMB']
+        if delta_tlvs is not None:
+            compression_flags |= IMAGE_F['DELTA']
         # This adds the header to the payload as well
         if encrypt_keylen == 256:
             self.add_header(enckey, protected_tlv_size, compression_flags, 256)
@@ -656,6 +680,10 @@ class Image:
 
             if compression_tlvs is not None:
                 for tag, value in compression_tlvs.items():
+                    prot_tlv.add(tag, value)
+
+            if delta_tlvs is not None:
+                for tag, value in delta_tlvs.items():
                     prot_tlv.add(tag, value)
 
             if self.vid is not None:

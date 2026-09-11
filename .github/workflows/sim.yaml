@@ -44,6 +44,7 @@ jobs:
         - "sig-rsa validate-primary-slot ram-load multiimage"
         - "sig-rsa validate-primary-slot direct-xip multiimage"
         - "sig-ecdsa hw-rollback-protection multiimage"
+        - "overwrite-only delta-dfu,sig-ecdsa overwrite-only delta-dfu,sig-ecdsa overwrite-only delta-dfu hw-rollback-protection"
         - "sig-ed25519 sig-second-key"
         # Logical sectors: swap bookkeeping in fixed 4K units
         # independent of the physical page layout. Covers each
