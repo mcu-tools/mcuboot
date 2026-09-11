@@ -35,8 +35,6 @@ pkg.deps:
     - "@apache-mynewt-core/kernel/os"
     - "@apache-mynewt-core/sys/log/stub"
 
-pkg.ign_files.!BOOTUTIL_SINGLE_APPLICATION_SLOT:
-    - "single_loader.c"
 pkg.ign_files.BOOTUTIL_SINGLE_APPLICATION_SLOT:
     - "swap_scratch.c"
 pkg.ign_files:

@@ -139,12 +139,12 @@ endif()
 
 if(CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)
   zephyr_sources(
-    ${BOOT_DIR}/zephyr/single_loader.c
+    ${BOOT_DIR}/bootutil/src/single_loader.c
     ${BOOT_DIR}/bootutil/src/ram_load.c
   )
   zephyr_include_directories(${BOOT_DIR}/bootutil/src)
 elseif(CONFIG_SINGLE_APPLICATION_SLOT)
-  zephyr_sources(${BOOT_DIR}/zephyr/single_loader.c)
+  zephyr_sources(${BOOT_DIR}/bootutil/src/single_loader.c)
   zephyr_include_directories(${BOOT_DIR}/bootutil/src)
 elseif(CONFIG_BOOT_FIRMWARE_LOADER)
   zephyr_sources(${BOOT_DIR}/zephyr/firmware_loader.c)
