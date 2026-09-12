@@ -31,12 +31,39 @@ pub enum Caps {
     HwRollbackProtection = (1 << 18),
     EcdsaP384            = (1 << 19),
     SwapUsingOffset      = (1 << 20),
+    EncXipEc256          = (1 << 21),
 }
 
 impl Caps {
     pub fn present(self) -> bool {
         let caps = unsafe { bootutil_get_caps() };
         (caps as u32) & (self as u32) != 0
+    }
+
+    pub fn has(self) -> bool {
+        match self {
+            Caps::RSA2048              => cfg!(feature = "rsa2048"),
+            Caps::EcdsaP256            => cfg!(feature = "ecdsa-p256"),
+            Caps::SwapUsingScratch     => cfg!(feature = "swap-using-scratch"),
+            Caps::OverwriteUpgrade     => cfg!(feature = "overwrite-upgrade"),
+            Caps::EncRsa               => cfg!(feature = "enc-rsa"),
+            Caps::EncKw                => cfg!(feature = "enc-kw"),
+            Caps::ValidatePrimarySlot  => cfg!(feature = "validate-primary-slot"),
+            Caps::RSA3072              => cfg!(feature = "rsa3072"),
+            Caps::Ed25519              => cfg!(feature = "ed25519"),
+            Caps::EncEc256             => cfg!(feature = "enc-ec256"),
+            Caps::SwapUsingMove        => cfg!(feature = "swap-using-move"),
+            Caps::DowngradePrevention  => cfg!(feature = "downgrade-prevention"),
+            Caps::EncX25519            => cfg!(feature = "enc-x25519"),
+            Caps::Bootstrap            => cfg!(feature = "bootstrap"),
+            Caps::Aes256               => cfg!(feature = "aes256"),
+            Caps::RamLoad              => cfg!(feature = "ram-load"),
+            Caps::DirectXip            => cfg!(feature = "direct-xip"),
+            Caps::HwRollbackProtection => cfg!(feature = "hw-rollback-protection"),
+            Caps::EcdsaP384            => cfg!(feature = "ecdsa-p384"),
+            Caps::SwapUsingOffset      => cfg!(feature = "swap-using-offset"),
+            Caps::EncXipEc256          => cfg!(feature = "enc-xip-ec256"),
+        }
     }
 
     /// Does this build have ECDSA of some type enabled for signatures.
