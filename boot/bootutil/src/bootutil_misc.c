@@ -35,6 +35,7 @@
 
 #include "bootutil/image.h"
 #include "bootutil/bootutil.h"
+#include "bootutil/boot_hooks.h"
 #include "bootutil_priv.h"
 #include "bootutil_misc.h"
 #include "bootutil/bootutil_log.h"
@@ -130,6 +131,18 @@ boot_status_off(const struct flash_area *fap)
 
     elem_sz = flash_area_align(fap);
 
+#if defined(MCUBOOT_SWAP_STATE_HOOKS)
+    {
+        struct boot_swap_meta_geometry geo;
+        int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_geometry_hook, BOOT_SWAP_STATE_HOOK_REGULAR, fap, &geo);
+        if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR && geo.materializes_trailer) {
+            uint32_t off_from_end = geo.image_tail_reserved;
+            assert(off_from_end <= flash_area_get_size(fap));
+            return flash_area_get_size(fap) - off_from_end;
+        }
+    }
+#endif
+
 #if MCUBOOT_SWAP_USING_SCRATCH
     if (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SCRATCH) {
         off_from_end = boot_scratch_trailer_sz(elem_sz);
@@ -189,7 +202,11 @@ boot_find_status(const struct boot_loader_state *state, int image_index)
         int rc = 0;
 
         fa_p = areas[i];
-        rc = flash_area_read(fa_p, boot_magic_off(fa_p), magic, BOOT_MAGIC_SZ);
+#if defined(MCUBOOT_SWAP_STATE_HOOKS)
+        int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_read_field_hook, BOOT_SWAP_STATE_HOOK_REGULAR, fa_p, BOOT_SWAP_META_MAGIC, magic, BOOT_MAGIC_SZ);
+        if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) { rc = hrc; } else
+#endif
+        { rc = flash_area_read(fa_p, boot_magic_off(fa_p), magic, BOOT_MAGIC_SZ); }
 
         if (rc != 0) {
             BOOT_LOG_ERR("Failed to read status from %d, err %d\n",
@@ -211,6 +228,14 @@ boot_read_swap_size(const struct flash_area *fap, uint32_t *swap_size)
 {
     uint32_t off;
     int rc;
+
+    int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_read_field_hook,
+                                             BOOT_SWAP_STATE_HOOK_REGULAR, fap,
+                                             BOOT_SWAP_META_SWAP_SIZE, swap_size,
+                                             sizeof *swap_size);
+    if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hrc;
+    }
 
     off = boot_swap_size_off(fap);
     rc = flash_area_read(fap, off, swap_size, sizeof *swap_size);
@@ -298,6 +323,13 @@ int
 boot_write_swap_size(const struct flash_area *fap, uint32_t swap_size)
 {
     uint32_t off;
+
+    int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_write_field_hook,
+                                             BOOT_SWAP_STATE_HOOK_REGULAR, fap,
+                                             BOOT_SWAP_META_SWAP_SIZE, &swap_size, 4);
+    if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hrc;
+    }
 
     off = boot_swap_size_off(fap);
     BOOT_LOG_DBG("writing swap_size; fa_id=%d off=0x%lx (0x%lx)",
