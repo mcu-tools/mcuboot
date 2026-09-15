@@ -1137,6 +1137,14 @@ config BOOT_USB_DFU_DETECT_DELAY
 	  Useful for powering on when using the same button as
 	  the one used to place the device in bootloader mode.
 
+config BOOT_USB_DFU_BOOT_MODE
+	bool "Check boot mode via retention subsystem"
+	depends on RETENTION_BOOT_MODE
+	help
+	  Allows for entering USB DFU mode by using Zephyr's boot mode
+	  retention system (i.e. an application must set the boot mode to stay
+	  in USB DFU mode and reboot the module).
+
 config BOOT_USB_DFU_NO_APPLICATION
 	bool "Stay in bootloader if no application"
 	help
