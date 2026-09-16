@@ -201,7 +201,7 @@ fih_ret
 bootutil_img_validate(struct boot_loader_state *state,
                       struct image_header *hdr, const struct flash_area *fap,
                       uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *seed,
-                      int seed_len, uint8_t *out_hash
+                      int seed_len, uint8_t *out_hash, fih_int *out_key_id
                      )
 {
 #if (defined(EXPECTED_KEY_TLV) && defined(MCUBOOT_HW_KEY)) || \
@@ -224,6 +224,21 @@ bootutil_img_validate(struct boot_loader_state *state,
      */
     int key_id = image_index;
 #endif /* !MCUBOOT_BUILTIN_KEY */
+    /* Highest index of any key that produced a valid signature, kept
+     * separate from key_id above since that variable is reset to -1 once a
+     * signature TLV has been processed. An image may carry more than one
+     * valid (key, signature) TLV pair, e.g. during a key-rotation window
+     * where it is signed with both the old and the new key for backward
+     * compatibility. The *highest* index is taken (not simply the last one
+     * processed) so that the reported key never understates the strongest
+     * key that actually signed the image, regardless of TLV ordering.
+     *
+     * This crosses the trust boundary into the upgrade-acceptance decision
+     * (see MCUBOOT_KEY_REVOCATION_FROM_PRIMARY), so it is kept as a
+     * fault-injection-hardened fih_int, the same way img_security_cnt's
+     * decoded floor is, rather than a plain int.
+     */
+    fih_int winning_key_id = fih_int_encode(-1);
 #ifdef MCUBOOT_HW_KEY
     uint8_t key_buf[KEY_BUF_SIZE];
 #endif
@@ -430,6 +445,9 @@ bootutil_img_validate(struct boot_loader_state *state,
                      hdr->ih_hdr_size + hdr->ih_img_size + hdr->ih_protect_tlv_size,
                      buf, len, key_id);
 #endif
+            if (FIH_EQ(valid_signature, FIH_SUCCESS) && key_id > fih_int_decode(winning_key_id)) {
+                winning_key_id = fih_int_encode(key_id);
+            }
             key_id = -1;
             break;
         }
@@ -585,6 +603,14 @@ bootutil_img_validate(struct boot_loader_state *state,
 out:
     if (rc) {
         FIH_SET(fih_rc, FIH_FAILURE);
+    }
+
+    if (out_key_id != NULL) {
+#ifdef EXPECTED_SIG_TLV
+        *out_key_id = FIH_EQ(fih_rc, FIH_SUCCESS) ? winning_key_id : fih_int_encode(-1);
+#else
+        *out_key_id = fih_int_encode(-1);
+#endif
     }
 
     FIH_RET(fih_rc);

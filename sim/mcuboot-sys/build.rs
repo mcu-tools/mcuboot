@@ -25,6 +25,7 @@ fn main() {
     let swap_offset = env::var("CARGO_FEATURE_SWAP_OFFSET").is_ok();
     let validate_primary_slot =
                   env::var("CARGO_FEATURE_VALIDATE_PRIMARY_SLOT").is_ok();
+    let key_revocation = env::var("CARGO_FEATURE_KEY_REVOCATION").is_ok();
     let enc_rsa = env::var("CARGO_FEATURE_ENC_RSA").is_ok();
     let enc_aes256_rsa = env::var("CARGO_FEATURE_ENC_AES256_RSA").is_ok();
     let enc_kw = env::var("CARGO_FEATURE_ENC_KW").is_ok();
@@ -106,6 +107,14 @@ fn main() {
 
     if downgrade_prevention {
         conf.conf.define("MCUBOOT_DOWNGRADE_PREVENTION", None);
+    }
+
+    if key_revocation {
+        if overwrite_only || direct_xip || ram_load {
+            panic!("key-revocation requires a swap upgrade strategy \
+                    (incompatible with overwrite-only, direct-xip, ram-load)");
+        }
+        conf.conf.define("MCUBOOT_KEY_REVOCATION_FROM_PRIMARY", None);
     }
 
     if ram_load {
