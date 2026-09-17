@@ -20,7 +20,8 @@
 #include <string.h>
 #include <zephyr/kernel.h>
 #include "bootutil/bootutil_log.h"
-#include <zephyr/usb/usb_device.h>
+#include "mcuboot_config/mcuboot_config.h"
+#include <zephyr/usb/usbd.h>
 
 #if defined(CONFIG_BOOT_SERIAL_UART) && defined(CONFIG_UART_CONSOLE) && \
     (!DT_HAS_CHOSEN(zephyr_uart_mcumgr) ||                              \
@@ -38,6 +39,26 @@
 #if defined(CONFIG_BOOT_SERIAL_CDC_ACM) && CONFIG_MAIN_THREAD_PRIORITY < 0
 #error CONFIG_MAIN_THREAD_PRIORITY must be preemptible to support USB CDC ACM \
        (0 or above)
+#endif
+
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+#include "usbd_cdc_serial.h"
+
+/* How often to wake while waiting for the USB host to open the port. The
+ * serial recovery loop that normally feeds the watchdog is not reached until
+ * that wait returns, so this has to stay well below any watchdog timeout.
+ */
+#define BOOT_CDC_ACM_POLL_MS 100
+
+#if defined(CONFIG_BOOT_SERIAL_WAIT_FOR_DFU)
+/* The caller only intends to wait this long in total, so waiting for the host
+ * must not outlast it.
+ */
+#define BOOT_CDC_ACM_READY_TIMEOUT_MS CONFIG_BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
+#else
+/* Recovery was asked for explicitly; wait for the host indefinitely. */
+#define BOOT_CDC_ACM_READY_TIMEOUT_MS 0
+#endif
 #endif
 
 BOOT_LOG_MODULE_REGISTER(serial_adapter);
@@ -155,7 +176,7 @@ boot_console_init(void)
 	int i;
 
 	/* WAIT_FOR_DFU initializes the console early, then boot_serial_enter()
-	 * initializes it again. Re-running would call usb_enable() a second time
+	 * initializes it again. Re-running would initialize USB a second time
 	 * (returning -EALREADY) and reset the line queues, dropping any bytes
 	 * buffered while waiting. Initialize only once.
 	 */
@@ -321,23 +342,9 @@ boot_uart_fifo_init(void)
 	uart_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
 #endif
 
-#elif defined(CONFIG_BOOT_SERIAL_CDC_ACM)
-        uart_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
-#else
-#error No serial recovery device selected
-#endif
-
-
 	if (!device_is_ready(uart_dev)) {
 		return (-1);
 	}
-
-#if CONFIG_BOOT_SERIAL_CDC_ACM
-	int rc = usb_enable(NULL);
-	if (rc) {
-		return (-1);
-	}
-#endif
 
 	uart_irq_callback_set(uart_dev, boot_uart_fifo_callback);
 
@@ -353,6 +360,52 @@ boot_uart_fifo_init(void)
 	cur = 0;
 
 	uart_irq_rx_enable(uart_dev);
+
+#elif defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+
+	uint32_t waited_ms;
+	int rc;
+
+	rc = boot_usb_cdc_serial_init();
+	if (rc) {
+		return (-1);
+	}
+
+	rc = usbd_enable(boot_usb_cdc_serial_get_context());
+	if (rc) {
+		return (-1);
+	}
+
+	/* Wait for the USB host to open the serial port, feeding the watchdog
+	 * meanwhile: the serial recovery loop that would otherwise feed it is
+	 * not reached until this returns. Give up once the caller's own timeout
+	 * would have expired, so a timed wait still falls through to boot.
+	 */
+	waited_ms = 0;
+	while (k_sem_take(&boot_cdc_acm_ready, K_MSEC(BOOT_CDC_ACM_POLL_MS)) != 0) {
+#if CONFIG_BOOT_WATCHDOG_FEED
+		MCUBOOT_WATCHDOG_FEED();
+#endif
+		waited_ms += BOOT_CDC_ACM_POLL_MS;
+
+		if (BOOT_CDC_ACM_READY_TIMEOUT_MS != 0 &&
+		    waited_ms >= BOOT_CDC_ACM_READY_TIMEOUT_MS) {
+			break;
+		}
+	}
+
+	uart_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
+	if (!device_is_ready(uart_dev)) {
+		return (-1);
+	}
+
+	uart_irq_callback_set(uart_dev, boot_uart_fifo_callback);
+	cur = 0;
+	uart_irq_rx_enable(uart_dev);
+
+#else
+#error No serial recovery device selected
+#endif
 
 	return 0;
 }

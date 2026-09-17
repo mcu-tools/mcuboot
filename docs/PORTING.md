@@ -158,6 +158,15 @@ uint8_t  flash_area_erased_val(const struct flash_area *);
 /*< Given flash area ID, return info about sectors within the area. */
 int      flash_area_get_sectors(int fa_id, uint32_t *count,
                                 struct flash_sector *sectors);
+/*< Given a flash area and an offset within it, return info about the sector
+    that the offset falls in. Both `off` and the `fs_off` field written to
+    `fs` are relative to the start of the flash area. Returns -ERANGE if
+    `off` is beyond the end of the area. */
+int      flash_area_get_sector(const struct flash_area *fa, off_t off,
+                               struct flash_sector *fs);
+/*< Returns the `fa_id` for slot, where slot is 0 (primary) or 1 (secondary),
+    for the first image. */
+int      flash_area_id_from_image_slot(int slot);
 /*< Returns the `fa_id` for slot, where slot is 0 (primary) or 1 (secondary).
     `image_index` (0 or 1) is the index of the image. Image index is
     relevant only when multi-image support support is enabled */
@@ -166,7 +175,22 @@ int      flash_area_id_from_multi_image_slot(int image_index, int slot);
     `image_index` and `area_id`. `area_id` is unique and is represented by
     `fa_id` in the `flash_area` struct. */
 int      flash_area_id_to_multi_image_slot(int image_index, int area_id);
+/*< Writes to `ret` the base address of the device `fd_id`, that is the
+    address the offsets of flash areas residing on that device are relative
+    to. Returns 0 on success. */
+int      flash_device_base(uint8_t fd_id, uintptr_t *ret);
 ```
+
+---
+***Note***
+
+*Offsets passed to and returned by `flash_area_get_sector()` are relative to the
+start of the flash area, not to the start of the flash device. The `off`
+parameter is bounds-checked against the area size, and the `fs_off` field
+written to `fs` is the offset of the containing sector within the area.
+Implementing it in terms of device-absolute offsets instead prevents the sector
+walk in `boot_erase_region()` from reaching its termination condition. See
+`boot/zephyr/flash_map_extended.c` for a reference implementation.*
 
 ---
 ***Note***

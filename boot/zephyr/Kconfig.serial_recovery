@@ -37,7 +37,8 @@ config BOOT_SERIAL_UART
 
 config BOOT_SERIAL_CDC_ACM
 	bool "CDC ACM"
-	select USB_DEVICE_STACK
+	select USB_DEVICE_STACK_NEXT
+	select USBD_CDC_ACM_CLASS
 	help
 	  This setting will choose CDC ACM for serial recovery unless chosen
 	  "zephyr,uart-mcumgr" is present, in which case the chosen takes
@@ -45,6 +46,53 @@ config BOOT_SERIAL_CDC_ACM
 	  the chosen, leaving console on CDC ACM.
 
 endchoice
+
+if BOOT_SERIAL_CDC_ACM
+
+config BOOT_SERIAL_CDC_ACM_VID
+	hex "USB Vendor ID for CDC ACM serial recovery"
+	default 0x2fe3
+	help
+	  USB Vendor ID presented during serial recovery mode.
+	  You must use your own VID for samples and applications outside of
+	  Zephyr Project.
+
+config BOOT_SERIAL_CDC_ACM_PID
+	hex "USB Product ID for CDC ACM serial recovery"
+	default 0x0004
+	help
+	  USB Product ID presented during serial recovery mode.
+	  You must use your own PID for samples and applications outside of
+	  Zephyr Project.
+
+config BOOT_SERIAL_CDC_ACM_MANUFACTURER_STRING
+	string "USB manufacturer string for CDC ACM serial recovery"
+	default "MCUBoot"
+	help
+	  USB manufacturer string descriptor for serial recovery mode.
+
+config BOOT_SERIAL_CDC_ACM_PRODUCT_STRING
+	string "USB product string for CDC ACM serial recovery"
+	default "CDC ACM serial recovery"
+	help
+	  USB product string descriptor for serial recovery mode.
+
+config BOOT_SERIAL_CDC_ACM_SELF_POWERED
+	bool "USB self-powered attribute for CDC ACM serial recovery"
+	help
+	  Set the Self-powered attribute in the USB configuration descriptor.
+	  When enabled, the device reports that it does not draw power from
+	  the USB bus. Only enable this if the device is powered by an
+	  independent supply during serial recovery mode.
+
+config BOOT_SERIAL_CDC_ACM_MAX_POWER
+	int "USB bMaxPower value for CDC ACM serial recovery"
+	default 125
+	range 0 250
+	help
+	  bMaxPower value in the configuration in 2 mA units.
+
+endif # BOOT_SERIAL_CDC_ACM
 
 config BOOT_SERIAL_RAW_PROTOCOL
 	bool "Raw (SMP without framing and encoding) protocol"
@@ -225,13 +273,49 @@ config BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
 	help
 	  Timeout in ms for MCUboot to wait to allow for DFU to be invoked.
 
-config BOOT_SERIAL_BOOT_MODE
+config BOOT_SERIAL_INACTIVITY_TIMEOUT
+	int "Inactivity timeout for serial recovery in ms"
+	default 0
+	depends on BOOT_SERIAL_WAIT_FOR_DFU
+	depends on REBOOT
+
+menuconfig BOOT_SERIAL_BOOT_MODE
 	bool "Check boot mode via retention subsystem"
 	depends on RETENTION_BOOT_MODE
 	help
 	  Allows for entering serial recovery mode by using Zephyr's boot mode
 	  retention system (i.e. an application must set the boot mode to stay
 	  in serial recovery mode and reboot the module).
+
+config BOOT_SERIAL_INACTIVITY_TIMEOUT
+	int "Inactivity timeout for serial recovery in ms"
+	default 0
+	depends on BOOT_SERIAL_BOOT_MODE
+	depends on REBOOT
+	help
+	  Time in ms without a single MCUmgr command after which serial recovery
+	  resets the SoC, so the next boot runs the image that is installed by
+	  then. Every received command restarts the countdown, so an upload in
+	  progress is never interrupted, however slow the link is.
+
+	  It resets rather than returning into the boot path because the image
+	  was already selected before serial recovery was entered, so returning
+	  would jump to the image the upload has just replaced; nothing in the
+	  bootloader unwinds the state a finished MCUmgr session leaves behind
+	  either, and returning has been observed to lock up a Cortex-M0+. Hence
+	  the dependency on REBOOT.
+
+	  With BOOT_SERIAL_WAIT_FOR_DFU the SoC is reset only if at least one
+	  command was received; a window that expires with no command at all
+	  boots as it does today.
+
+	  The default of 0 keeps serial recovery running until the device is
+	  reset, which means an aborted upload leaves it there until someone
+	  power-cycles it. Set this to bound that, on a device whose recovery
+	  transport cannot be relied on to finish what it started.
+
+	  Does not affect BOOT_SERIAL_NO_APPLICATION: with no bootable image
+	  there is nothing to resume, so that wait stays unbounded.
 
 config BOOT_SERIAL_NO_APPLICATION
 	bool "Stay in bootloader if no application"

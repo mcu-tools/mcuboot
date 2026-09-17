@@ -138,6 +138,13 @@
  * multiple images. */
 #define MCUBOOT_IMAGE_NUMBER 1
 
+/* Uncomment and set to override the size of the buffer used to read the
+ * image in chunks while its hash is computed (default 256).  Raising it
+ * reduces the number of flash reads over an image, which matters on flash
+ * that is not memory mapped; lowering it saves RAM.  The buffer is
+ * statically allocated. */
+/* #define MCUBOOT_BOOT_TMPBUF_SZ 256 */
+
 /*
  * Logging
  */

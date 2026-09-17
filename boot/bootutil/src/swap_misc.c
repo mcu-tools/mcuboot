@@ -120,6 +120,7 @@ swap_status_init(const struct boot_loader_state *state,
 
     BOOT_LOG_DBG("initializing status; fa_id=%d", flash_area_get_id(fap));
 
+    memset(&swap_state, 0, sizeof(struct boot_swap_state));
     rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_SECONDARY].area,
                               &swap_state);
     assert(rc == 0);

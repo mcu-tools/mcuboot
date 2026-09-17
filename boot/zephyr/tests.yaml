@@ -61,14 +61,9 @@ tests:
       - CONFIG_BOOT_SERIAL_IMG_GRP_IMAGE_STATE=y
       - CONFIG_BOOT_SERIAL_IMG_GRP_SLOT_INFO=y
   sample.bootloader.mcuboot.usb_cdc_acm_recovery:
-    platform_allow:
-      - nrf52840dongle/nrf52840
-    integration_platforms:
-      - nrf52840dongle/nrf52840
     extra_args:
       - EXTRA_CONF_FILE="usb_cdc_acm_recovery.conf"
-      - EXTRA_DTC_OVERLAY_FILE="usb_cdc_acm.overlay"
-      - FILE_SUFFIX="usb_cdc_acm"
+      - FILE_SUFFIX="big"
     extra_configs:
       - CONFIG_DEPRECATION_TEST=y
   sample.bootloader.mcuboot.usb_cdc_acm_recovery_log:
@@ -77,6 +72,10 @@ tests:
       - FILE_SUFFIX="big"
     extra_configs:
       - CONFIG_DEPRECATION_TEST=y
+  sample.bootloader.mcuboot.usb_dfu:
+    extra_args:
+      - EXTRA_CONF_FILE="usb_dfu.conf"
+      - FILE_SUFFIX="big"
   sample.bootloader.mcuboot.single_slot:
     extra_args:
       - EXTRA_CONF_FILE="single_slot.conf"

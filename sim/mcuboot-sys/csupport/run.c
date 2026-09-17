@@ -610,3 +610,17 @@ uint32_t boot_magic_sz(void)
 {
     return BOOT_MAGIC_ALIGN_SIZE;
 }
+
+#if !MCUBOOT_SWAP_USING_SCRATCH
+/*
+ * bootutil_area.c only compiles boot_scratch_trailer_sz() for
+ * swap-using-scratch builds, but the simulator declares it unconditionally so
+ * that the Rust side links in every configuration.  The Rust side only calls
+ * it when swap-using-scratch is active.
+ */
+uint32_t boot_scratch_trailer_sz(uint32_t min_write_sz)
+{
+    (void)min_write_sz;
+    return 0;
+}
+#endif

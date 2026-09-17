@@ -35,7 +35,7 @@ jobs:
       MCUBOOT_FEATURES: ${{ matrix.features }}
       MCUBOOT_IMG_NUM: ${{ matrix.img }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: recursive

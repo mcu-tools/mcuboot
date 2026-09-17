@@ -308,6 +308,10 @@
 #define MCUBOOT_BOOT_GO_HOOKS
 #endif
 
+#ifdef CONFIG_BOOT_IMAGE_JUMP_HOOKS
+#define MCUBOOT_BOOT_IMAGE_JUMP_HOOKS
+#endif
+
 #ifdef CONFIG_BOOT_FLASH_AREA_HOOKS
 #define MCUBOOT_FLASH_AREA_HOOKS
 #endif
@@ -336,7 +340,17 @@
 #define MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD
 #endif
 
-#ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
+#if defined(CONFIG_BOOT_SERIAL_INACTIVITY_TIMEOUT) && \
+    CONFIG_BOOT_SERIAL_INACTIVITY_TIMEOUT > 0
+#define MCUBOOT_SERIAL_INACTIVITY_TIMEOUT \
+        CONFIG_BOOT_SERIAL_INACTIVITY_TIMEOUT
+#endif
+
+/* Enables the elapsed-time accounting in boot_serial.c that both the
+ * every-boot wait and the inactivity timeout depend on.
+ */
+#if defined(CONFIG_BOOT_SERIAL_WAIT_FOR_DFU) || \
+    defined(MCUBOOT_SERIAL_INACTIVITY_TIMEOUT)
 #define MCUBOOT_SERIAL_WAIT_FOR_DFU
 #endif
 

@@ -69,7 +69,22 @@ _Static_assert((MCUBOOT_LOGICAL_SECTOR_SIZE &
 #error "MCUBOOT_VERIFY_LOGICAL_SECTORS requires a non-zero MCUBOOT_LOGICAL_SECTOR_SIZE"
 #endif
 
+/* Size of the buffer used to read the image in chunks while its hash is
+ * computed.  The number of flash reads over an image is
+ * ceil(image_size / BOOT_TMPBUF_SZ), so on flash that is not memory mapped
+ * (QSPI, SPI NOR, eMMC, ...), where every read is a bus transaction with a
+ * fixed cost, this size can dominate validation time.  Ports that are short
+ * on RAM may equally want to lower it.  The buffer is allocated by the
+ * callers of bootutil_img_validate(), so it cannot be sized by a port that
+ * uses the in-tree loaders.
+ */
+#ifdef MCUBOOT_BOOT_TMPBUF_SZ
+_Static_assert(MCUBOOT_BOOT_TMPBUF_SZ > 0,
+               "MCUBOOT_BOOT_TMPBUF_SZ must be greater than zero");
+#define BOOT_TMPBUF_SZ  MCUBOOT_BOOT_TMPBUF_SZ
+#else
 #define BOOT_TMPBUF_SZ  256
+#endif
 
 /** Number of image slots in flash; currently limited to two. */
 #if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) || defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)

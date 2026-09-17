@@ -194,6 +194,46 @@ int flash_area_id_from_direct_image(int image_id)
     case 6:
         return PARTITION_ID(slot5_partition);
 #endif
+#if PARTITION_EXISTS(slot6_partition)
+    case 7:
+        return PARTITION_ID(slot6_partition);
+#endif
+#if PARTITION_EXISTS(slot7_partition)
+    case 8:
+        return PARTITION_ID(slot7_partition);
+#endif
+#if PARTITION_EXISTS(slot8_partition)
+    case 9:
+        return PARTITION_ID(slot8_partition);
+#endif
+#if PARTITION_EXISTS(slot9_partition)
+    case 10:
+        return PARTITION_ID(slot9_partition);
+#endif
+#if PARTITION_EXISTS(slot10_partition)
+    case 11:
+        return PARTITION_ID(slot10_partition);
+#endif
+#if PARTITION_EXISTS(slot11_partition)
+    case 12:
+        return PARTITION_ID(slot11_partition);
+#endif
+#if PARTITION_EXISTS(slot12_partition)
+    case 13:
+        return PARTITION_ID(slot12_partition);
+#endif
+#if PARTITION_EXISTS(slot13_partition)
+    case 14:
+        return PARTITION_ID(slot13_partition);
+#endif
+#if PARTITION_EXISTS(slot14_partition)
+    case 15:
+        return PARTITION_ID(slot14_partition);
+#endif
+#if PARTITION_EXISTS(slot15_partition)
+    case 16:
+        return PARTITION_ID(slot15_partition);
+#endif
     }
     return -EINVAL;
 }

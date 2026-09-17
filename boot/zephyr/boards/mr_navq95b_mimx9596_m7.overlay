@@ -1,0 +1,15 @@
+/*
+ * Copyright 2026 NXP
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * This overlay allows users to embed the mcuboot image into the boot
+ * container. The boot ROM will take care of placing the mcuboot image
+ * in ITCM. The M7 core can then be started by system manager.
+ */
+
+/ {
+	chosen {
+		zephyr,code-partition = &itcm;
+	};
+};

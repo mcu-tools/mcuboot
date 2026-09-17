@@ -40,6 +40,7 @@
 #include "bootutil/bootutil.h"
 #include "bootutil/bootutil_public.h"
 #include "bootutil/image.h"
+#include "bootutil/crypto/sha.h"
 #include "bootutil_priv.h"
 #include "swap_priv.h"
 #include "bootutil/bootutil_log.h"
@@ -468,7 +469,7 @@ split_image_check(struct image_header *app_hdr,
                   const struct flash_area *loader_fap)
 {
     static void *tmpbuf;
-    uint8_t loader_hash[32];
+    uint8_t loader_hash[IMAGE_HASH_SIZE];
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     if (!tmpbuf) {
@@ -486,7 +487,7 @@ split_image_check(struct image_header *app_hdr,
     }
 
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, app_hdr, app_fap,
-             tmpbuf, BOOT_TMPBUF_SZ, loader_hash, 32, NULL);
+             tmpbuf, BOOT_TMPBUF_SZ, loader_hash, IMAGE_HASH_SIZE, NULL);
 
 out:
     FIH_RET(fih_rc);
@@ -1188,7 +1189,6 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             }
         }
 #endif
-        flash_area_close(fap);
     }
 
     swap_run(state, bs, copy_size);
@@ -1610,7 +1610,7 @@ boot_update_hw_rollback_protection(struct boot_loader_state *state)
         rc = boot_nv_security_counter_lock(BOOT_CURR_IMG(state));
         if (rc != 0) {
             BOOT_LOG_ERR("Security counter lock failed after image %d validation: %d",
-                         BOOT_CURR_IMG(state). rc);
+                         BOOT_CURR_IMG(state), rc);
             return rc;
         }
 #endif /* MCUBOOT_HW_ROLLBACK_PROT_LOCK */
