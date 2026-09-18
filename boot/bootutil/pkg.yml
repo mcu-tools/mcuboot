@@ -38,9 +38,11 @@ pkg.deps:
     - "@apache-mynewt-core/sys/defs"
     - "@mcuboot/boot/mynewt/flash_map_backend"
 
+# Anchored: newt matches these regexes unanchored, so a bare "loader.c" would
+# also match single_loader.c and bootutil_loader.c, which are needed here.
 pkg.ign_files.BOOTUTIL_SINGLE_APPLICATION_SLOT:
-    - "loader.c"
-    - "swap_scratch.c"
+    - '^loader\.c$'
+    - '^swap_scratch\.c$'
 
 pkg.ign_files:
     - "ram_load.c"
