@@ -29,7 +29,6 @@
 
 #include "bootutil/crypto/ecdh_p256.h"
 #include "bootutil/crypto/sha.h"
-#include "bootutil/crypto/hmac_sha256.h"
 #include "bootutil/crypto/aes_ctr.h"
 #include "bootutil/crypto/common.h"
 #include "bootutil/image.h"
@@ -133,97 +132,6 @@ parse_priv_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
 #endif /* MCUBOOT_ENCRYPT_EC256 */
 
 /* ------------------------------------------------------------------ */
-/*  HKDF (RFC 5869)                                                   */
-/* ------------------------------------------------------------------ */
-#if defined(MCUBOOT_ENCRYPT_EC256)
-
-static int
-hkdf(const uint8_t *ikm, size_t ikm_len,
-     const uint8_t *info, size_t info_len,
-     uint8_t *okm, size_t *okm_len)
-{
-    bootutil_hmac_sha256_context hmac;
-    uint8_t salt[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
-    uint8_t prk[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
-    uint8_t T[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
-    size_t off;
-    size_t len;
-    uint8_t counter;
-    bool first;
-    int rc;
-
-    if (ikm == NULL || okm == NULL || ikm_len == 0) {
-        return -1;
-    }
-
-    /* Extract */
-    bootutil_hmac_sha256_init(&hmac);
-    memset(salt, 0, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
-    rc = bootutil_hmac_sha256_set_key(&hmac, salt, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
-    if (rc != 0) {
-        goto error;
-    }
-    rc = bootutil_hmac_sha256_update(&hmac, ikm, ikm_len);
-    if (rc != 0) {
-        goto error;
-    }
-    rc = bootutil_hmac_sha256_finish(&hmac, prk, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
-    if (rc != 0) {
-        goto error;
-    }
-    bootutil_hmac_sha256_drop(&hmac);
-
-    /* Expand */
-    len = *okm_len;
-    counter = 1;
-    first = true;
-    for (off = 0; len > 0; off += BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE, ++counter) {
-        bootutil_hmac_sha256_init(&hmac);
-        rc = bootutil_hmac_sha256_set_key(&hmac, prk, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
-        if (rc != 0) {
-            goto error;
-        }
-        if (first) {
-            first = false;
-        } else {
-            rc = bootutil_hmac_sha256_update(&hmac, T, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
-            if (rc != 0) {
-                goto error;
-            }
-        }
-        rc = bootutil_hmac_sha256_update(&hmac, info, info_len);
-        if (rc != 0) {
-            goto error;
-        }
-        rc = bootutil_hmac_sha256_update(&hmac, &counter, 1);
-        if (rc != 0) {
-            goto error;
-        }
-        rc = bootutil_hmac_sha256_finish(&hmac, T, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
-        if (rc != 0) {
-            goto error;
-        }
-        bootutil_hmac_sha256_drop(&hmac);
-
-        if (len > BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE) {
-            memcpy(&okm[off], T, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
-            len -= BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
-        } else {
-            memcpy(&okm[off], T, len);
-            len = 0;
-        }
-    }
-
-    return 0;
-
-error:
-    bootutil_hmac_sha256_drop(&hmac);
-    return -1;
-}
-
-#endif /* MCUBOOT_ENCRYPT_EC256 */
-
-/* ------------------------------------------------------------------ */
 /*  boot_enc_retrieve_private_key                                     */
 /* ------------------------------------------------------------------ */
 #if !defined(MCUBOOT_ENC_BUILTIN_KEY)
@@ -244,9 +152,10 @@ int
 boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 {
 #if defined(MCUBOOT_ENCRYPT_EC256)
-    bootutil_hmac_sha256_context hmac;
+    _Static_assert(IMAGE_HASH_SIZE == EC_TAG_LEN,
+                   "The signature and encryption mechanism must share the same hash function");
     bootutil_aes_ctr_context aes_ctr;
-    uint8_t tag[BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
+    uint8_t tag[EC_TAG_LEN];
     uint8_t shared[EC_SHARED_LEN];
     uint8_t derived_key[BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE];
     uint8_t private_key[EC_PRIVK_LEN];
@@ -254,7 +163,6 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     bootutil_key_exchange_ctx pk_ctx;
     uint8_t *cp;
     uint8_t *cpend;
-    size_t len;
     struct bootutil_key *bootutil_enc_key_ptr = NULL;
     int rc = -1;
 
@@ -288,29 +196,18 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     }
 
     /* HKDF: derive AES key + HMAC key */
-    len = BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE;
-    rc = hkdf(shared, EC_SHARED_LEN,
-              (const uint8_t *)"MCUBoot_ECIES_v1", 16,
-              derived_key, &len);
-    if (rc != 0 || len != (BOOT_ENC_KEY_SIZE + BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE)) {
+    rc = bootutil_sha_hkdf(NULL, 0,
+                           shared, EC_SHARED_LEN,
+                           (const uint8_t *)"MCUBoot_ECIES_v1", 16,
+                           derived_key, sizeof(derived_key));
+    if (rc != 0) {
         return -1;
     }
 
     /* HMAC-SHA256 verify the ciphertext tag */
-    bootutil_hmac_sha256_init(&hmac);
-    rc = bootutil_hmac_sha256_set_key(&hmac, &derived_key[BOOT_ENC_KEY_SIZE], 32);
-    if (rc != 0) {
-        (void)bootutil_hmac_sha256_drop(&hmac);
-        return -1;
-    }
-    rc = bootutil_hmac_sha256_update(&hmac, &buf[EC_CIPHERKEY_INDEX],
-                                     BOOT_ENC_KEY_SIZE);
-    if (rc != 0) {
-        (void)bootutil_hmac_sha256_drop(&hmac);
-        return -1;
-    }
-    rc = bootutil_hmac_sha256_finish(&hmac, tag, BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE);
-    (void)bootutil_hmac_sha256_drop(&hmac);
+    rc = bootutil_sha_hmac(&derived_key[BOOT_ENC_KEY_SIZE], BOOTUTIL_CRYPTO_SHA256_DIGEST_SIZE,
+                           &buf[EC_CIPHERKEY_INDEX], BOOT_ENC_KEY_SIZE,
+                           tag);
     if (rc != 0) {
         return -1;
     }

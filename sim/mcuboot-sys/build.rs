@@ -517,6 +517,7 @@ fn main() {
         conf.file("../../ext/mbedtls-3.6.0/library/constant_time.c");
         conf.file("../../ext/mbedtls-3.6.0/library/nist_kw.c");
         conf.file("../../ext/mbedtls-3.6.0/library/ecdh.c");
+		conf.file("../../ext/mbedtls-3.6.0/library/hkdf.c");
         conf.file("../../ext/mbedtls-3.6.0/library/md.c");
         conf.file("../../ext/mbedtls-3.6.0/library/aes.c");
         conf.file("../../ext/mbedtls-3.6.0/library/ecp.c");
@@ -570,6 +571,7 @@ fn main() {
         conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
         conf.file("../../ext/mbedtls-3.6.0/library/aes.c");
         conf.file("../../ext/mbedtls-3.6.0/library/sha256.c");
+		conf.file("../../ext/mbedtls-3.6.0/library/hkdf.c");
         conf.file("../../ext/mbedtls-3.6.0/library/md.c");
         conf.file("../../ext/mbedtls-3.6.0/library/sha512.c");
     }
@@ -620,6 +622,7 @@ fn main() {
     conf.file("../../boot/bootutil/src/bootutil_area.c");
     conf.file("../../boot/bootutil/src/bootutil_loader.c");
     conf.file("../../boot/bootutil/src/bootutil_public.c");
+	conf.file("../../boot/bootutil/src/sha.c");
     conf.file("../../boot/bootutil/src/tlv.c");
     conf.file("../../boot/bootutil/src/fault_injection_hardening.c");
     conf.file("csupport/run.c");
