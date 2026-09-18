@@ -621,9 +621,10 @@ fn main() {
     conf.file("../../boot/bootutil/src/bootutil_loader.c");
     conf.file("../../boot/bootutil/src/bootutil_public.c");
     conf.file("../../boot/bootutil/src/tlv.c");
-    conf.file("../../boot/bootutil/src/fault_injection_hardening.c");
+    conf.file("../../boot/fault_injection_hardening/src/fault_injection_hardening.c");
     conf.file("csupport/run.c");
     conf.conf.include("../../boot/bootutil/include");
+    conf.conf.include("../../boot/fault_injection_hardening/include");
     conf.conf.include("csupport");
     conf.conf.debug(true);
     conf.conf.flag("-Wall");

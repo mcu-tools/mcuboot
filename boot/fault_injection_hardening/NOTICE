@@ -1,0 +1,5 @@
+This library was originally developed as part of the MCUboot secure bootloader
+project: https://github.com/mcu-tools/mcuboot
+
+Original design and implementation was developed at
+Arm Limited, copyright 2020.
