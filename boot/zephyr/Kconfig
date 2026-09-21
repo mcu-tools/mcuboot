@@ -1567,4 +1567,11 @@ config LOG_PROCESS_THREAD
 config MCUBOOT_BOOTUTIL_LIB_OWN_LOG
 	bool
 
+config BOOT_NONSECURE_FROM_SECURE
+	bool "Boot non-secure image from secure image"
+	depends on ARM_SECURE_FIRMWARE
+	help
+	  For Arm TrustZone enabled SoC, this enables booting from MCUboot
+	  running in SPE to Application running in NSPE.
+
 source "Kconfig.zephyr"
