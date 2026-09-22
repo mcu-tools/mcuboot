@@ -56,7 +56,7 @@ boot_check_header_erased(struct boot_loader_state *state, int slot)
     struct image_header *hdr;
 
     fap = BOOT_IMG_AREA(state, slot);
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
 
     hdr = boot_img_hdr(state, slot);
     if (bootutil_buffer_is_erased(fap, &hdr->ih_magic, sizeof(hdr->ih_magic))) {
@@ -74,7 +74,7 @@ boot_check_header_valid(struct boot_loader_state *state, int slot)
     uint32_t size;
 
     fap = BOOT_IMG_AREA(state, slot);
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
 
     hdr = boot_img_hdr(state, slot);
     if (hdr->ih_magic != IMAGE_MAGIC) {
@@ -167,7 +167,7 @@ boot_check_image(struct boot_loader_state *state, struct boot_status *bs, int sl
     struct image_header *hdr;
 
     fap = BOOT_IMG_AREA(state, slot);
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
 
     hdr = boot_img_hdr(state, slot);
 
@@ -255,7 +255,7 @@ boot_update_security_counter(struct boot_loader_state *state, int slot, int hdr_
     int rc;
 
     fap = BOOT_IMG_AREA(state, slot);
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
 
     rc = bootutil_get_img_security_cnt(state, hdr_slot_idx, fap, &img_security_cnt);
     if (rc != 0) {
@@ -328,7 +328,7 @@ boot_open_all_flash_areas(struct boot_loader_state *state)
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             fa_id = flash_area_id_from_multi_image_slot(image_index, slot);
             rc = flash_area_open(fa_id, &BOOT_IMG_AREA(state, slot));
-            assert(rc == 0);
+            ASSERT(rc == 0);
 
             if (rc != 0) {
                 BOOT_LOG_ERR("Failed to open flash area ID %d (image %d slot %zu): %d",
@@ -340,7 +340,7 @@ boot_open_all_flash_areas(struct boot_loader_state *state)
 
 #if MCUBOOT_SWAP_USING_SCRATCH
     rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &BOOT_SCRATCH_AREA(state));
-    assert(rc == 0);
+    ASSERT(rc == 0);
 
     if (rc != 0) {
         BOOT_LOG_ERR("Failed to open scratch flash area: %d", rc);
