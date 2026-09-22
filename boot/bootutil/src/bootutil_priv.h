@@ -36,7 +36,7 @@
 
 #include "bootutil/bootutil.h"
 #include "bootutil/image.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 #include "bootutil_area.h"
 #include "mcuboot_config/mcuboot_config.h"
 
