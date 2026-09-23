@@ -3,6 +3,306 @@
 - Table of Contents
 {:toc}
 
+## Version 2.5.0
+
+This release adds support for Mbed TLS 4.x and TF-PSA-Crypto,
+experimental logical sectors for the swap modes, a raw binary
+transport and an inactivity timeout for serial recovery, and
+multiple verification keys in Zephyr builds. Zephyr users of USB DFU,
+CDC ACM serial recovery or RAM load need to update their
+configuration; see the upgrade notes. It also hardens image
+validation and the handling of image encryption keys.
+
+### Upgrade notes
+
+- The Mbed TLS submodule has moved from `ext/mbedtls` to
+  `ext/mbedtls-3.6.0` (still Mbed TLS 3.6.0). If you build a port
+  that uses the in-tree copy, such as the standalone Espressif port,
+  run `git submodule update --init --recursive` after updating. The
+  old `ext/mbedtls` directory is no longer used and can be removed.
+- **Serial recovery:** On Zephyr, CDC ACM serial recovery
+  (`CONFIG_BOOT_SERIAL_CDC_ACM`) now uses Zephyr's USB device-next
+  stack, and USB is only started when recovery is entered. The
+  legacy `CONFIG_USB_DEVICE_*` settings no longer apply. Set the USB
+  descriptors with the new `CONFIG_BOOT_SERIAL_CDC_ACM_VID`,
+  `CONFIG_BOOT_SERIAL_CDC_ACM_PID`,
+  `CONFIG_BOOT_SERIAL_CDC_ACM_MANUFACTURER_STRING` and
+  `CONFIG_BOOT_SERIAL_CDC_ACM_PRODUCT_STRING` options. Their defaults
+  (product ID 0x0004, product string "CDC ACM serial recovery") differ
+  from before, so update any host tooling that matches on them. The
+  new stack also makes the bootloader larger; check that it still
+  fits its partition.
+- **Serial recovery:** On Zephyr, UART serial recovery
+  (`CONFIG_BOOT_SERIAL_UART`) and the UART log backend
+  (`CONFIG_LOG_BACKEND_UART`) can no longer share a UART, and such a
+  build now fails with an error. Point the `zephyr,uart-mcumgr`
+  chosen node at a separate UART, or disable the UART log backend.
+- **Serial recovery:** On Zephyr, `CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE`
+  must now be at least `CONFIG_BOOT_MAX_LINE_INPUT_LEN`. Smaller
+  values are rejected when the configuration is processed.
+- **Zephyr:** This release follows changes made on Zephyr's main
+  branch after Zephyr 4.4.0, including the reworked boot banner, the
+  removal of `CONFIG_PSA_CRYPTO_CLIENT` and the rename of
+  `CONFIG_STM32_MEMMAP`. Use it with a Zephyr version newer than
+  4.4.0. See also the pending questions at the end of this section.
+- **Zephyr:** USB DFU now uses Zephyr's USB device-next stack and is
+  configured the same way as serial recovery. `CONFIG_BOOT_USB_DFU`
+  enables USB DFU, and the entrance methods `CONFIG_BOOT_USB_DFU_WAIT`
+  and `CONFIG_BOOT_USB_DFU_GPIO` are now independent options that can
+  be enabled together. `CONFIG_BOOT_USB_DFU_NO` has been removed. If
+  you use USB DFU, set `CONFIG_BOOT_USB_DFU=y` together with at least
+  one entrance method. The legacy `CONFIG_USB_DFU_*` and
+  `CONFIG_USB_DEVICE_*` settings no longer apply: use
+  `CONFIG_BOOT_USB_DFU_PERMANENT_DOWNLOAD` and the new
+  `CONFIG_BOOT_USB_DFU_VID`, `CONFIG_BOOT_USB_DFU_PID`,
+  `CONFIG_BOOT_USB_DFU_MANUFACTURER_STRING` and
+  `CONFIG_BOOT_USB_DFU_PRODUCT_STRING` options, whose defaults match
+  the old ones. Downloaded images go to the secondary slot.
+- **Zephyr:** RAM load (`CONFIG_BOOT_RAM_LOAD` and
+  `CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD`) now takes the RAM region
+  to load images into from a `mcuboot,image-ram` chosen devicetree
+  node. Setting `CONFIG_BOOT_IMAGE_EXECUTABLE_RAM_START` and
+  `CONFIG_BOOT_IMAGE_EXECUTABLE_RAM_SIZE` by hand is deprecated and
+  only possible when that node is missing. Add the chosen node to
+  your board overlay.
+- **Zephyr:** `CONFIG_MULTIPLE_EXECUTABLE_RAM_REGIONS_DEFAULT_FILE`
+  and the built-in default `boot_get_image_exec_ram_info()` have been
+  removed. Builds with `CONFIG_MULTIPLE_EXECUTABLE_RAM_REGIONS` must
+  now provide their own `boot_get_image_exec_ram_info()`.
+- **Zephyr:** MCUboot no longer replaces Zephyr's boot banner, which
+  changed after Zephyr 4.4. The `*** Booting MCUboot ... ***` line is
+  now printed after Zephyr's own banner instead of before it, so
+  update anything that parses boot output. The line is controlled by
+  `CONFIG_MCUBOOT_BOOT_BANNER`, which is enabled by default when
+  `CONFIG_BOOT_BANNER` is, but no longer requires it.
+- **Zephyr:** The STM32 external flash configurations now use
+  `CONFIG_FLASH_STM32_NOR_MEMMAP`, following its rename in Zephyr from
+  `CONFIG_STM32_MEMMAP`. Rename the option in your own configuration
+  files.
+- **Zephyr:** `SOC_FLASH_0_ID` and `SPI_FLASH_0_ID` have been removed
+  from the Zephyr port's `sysflash.h`. The flash device of each slot
+  is now taken from its devicetree partition. Out-of-tree code that
+  used these macros must use the devicetree partition macros instead.
+- **Zephyr:** `CONFIG_MCUBOOT_CLEANUP_RAM` now clears the RAM region
+  of the `zephyr,sram` chosen devicetree node instead of the region
+  set by `CONFIG_SRAM_BASE_ADDRESS` and `CONFIG_SRAM_SIZE`. If your
+  board sets those options to a different region, check which RAM is
+  cleared before the application starts.
+- **Espressif:** The Espressif port now uses the ESP-IDF v6.0.0 HAL.
+  Building the standalone port requires ESP-IDF v6.0 sources.
+- **Espressif:** The bootloader's RAM layout has changed on all SoCs.
+  A new `dram_loader_seg` region holds data used while the
+  application is loaded, and the other bootloader regions have moved.
+  The application image must not load anything into the bootloader's
+  `iram_loader_seg`, `dram_loader_seg` or `dram_seg` regions. Check
+  your OS linker script against the updated memory maps in
+  `docs/readme-espressif.md`.
+- **Espressif:** The default ESP32-C6 `bootloader.conf` no longer
+  enables virtual eFuses. Builds that use it now program the real
+  eFuses. To keep emulating them in flash, set `CONFIG_EFUSE_VIRTUAL`
+  and the related options in your configuration.
+- **Espressif:** The default console baud rate on ESP32-C2 is now
+  74880.
+- **NuttX:** MCUboot no longer initialises the board through
+  `boardctl(BOARDIOC_INIT)`. Board initialisation must now be done by
+  the NuttX kernel (for example with NuttX's
+  `CONFIG_BOARD_LATE_INITIALIZE`).
+
+### New features
+
+- Added experimental support for logical sectors. A non-zero
+  `MCUBOOT_LOGICAL_SECTOR_SIZE` makes the swap algorithms work in
+  units of that size rather than the device's hardware sectors. The
+  size must be a power of two and a multiple of the hardware erase
+  size, and each slot must be a multiple of it. With
+  `MCUBOOT_VERIFY_LOGICAL_SECTORS`, MCUboot checks the logical layout
+  against the flash at boot and, if they do not match, boots the
+  primary slot without upgrading. On Zephyr, set
+  `CONFIG_MCUBOOT_LOGICAL_SECTOR_SIZE` and
+  `CONFIG_MCUBOOT_VERIFY_LOGICAL_SECTORS`.
+- Added `MCUBOOT_USE_CUSTOM_CRYPTO`, which lets a port supply its own
+  hash, signature and encryption primitives (another library, a
+  hardware accelerator or a vendor SDK) without modifying MCUboot.
+  See `docs/custom_crypto.md`.
+- Added `MCUBOOT_BOOT_TMPBUF_SZ`, which lets a port set the size of
+  the buffer used to read an image while hashing it (default 256
+  bytes). A larger buffer means fewer flash reads, which helps on
+  flash that is not memory mapped. A smaller one saves RAM.
+- The Mbed TLS crypto backend (`MCUBOOT_USE_MBED_TLS`) and PSA image
+  encryption now also build against Mbed TLS 4.x and TF-PSA-Crypto
+  1.x. The Mbed TLS header layout is detected automatically.
+  `MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR` can override the
+  detection. With PSA crypto and `MCUBOOT_FIH_PROFILE_HIGH`, the
+  fault injection random delay now uses `psa_generate_random()`.
+- AES key wrap image encryption (`MCUBOOT_ENCRYPT_KW`) can now use the
+  PSA Crypto backend (`MCUBOOT_USE_PSA_CRYPTO`). It needs a PSA
+  implementation that provides `psa_unwrap_key()`, and has been
+  tested with TF-M.
+- **Serial recovery:** Added a raw binary SMP transport,
+  `CONFIG_BOOT_SERIAL_RAW_PROTOCOL`, which drops the base64, length,
+  CRC and console framing of SMP over console. It uses less flash and
+  RAM and transfers faster, but needs a binary-capable serial link.
+  It matches Zephyr's `CONFIG_UART_MCUMGR_RAW_PROTOCOL`. By default,
+  a partly received packet is discarded after
+  `CONFIG_BOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT_MS` without new data
+  (`CONFIG_BOOT_SERIAL_RAW_PROTOCOL_INPUT_TIMEOUT`).
+- **Serial recovery:** Added the optional MCUmgr parameters command
+  (`CONFIG_BOOT_MGMT_MCUMGR_PARAMS`), which reports the SMP buffer
+  size and count so that clients can choose the best fragment size.
+  It requires `CONFIG_BOOT_MAX_LINE_INPUT_LEN` to stay at its default
+  of 128.
+- **Serial recovery:** Added `CONFIG_BOOT_SERIAL_INACTIVITY_TIMEOUT`.
+  When serial recovery was entered through
+  `CONFIG_BOOT_SERIAL_BOOT_MODE` or `CONFIG_BOOT_SERIAL_WAIT_FOR_DFU`,
+  it resets the device once no MCUmgr command has arrived for the set
+  time. An abandoned upload then no longer leaves the device in
+  recovery. The default of 0 keeps the previous behaviour.
+- **Serial recovery:** On Zephyr, the UART receive interrupt now
+  reads data in batches rather than one byte at a time, cutting
+  per-byte overhead during uploads. The batch size is set with
+  `CONFIG_BOOT_SERIAL_UART_RX_BATCH_SIZE` (default 512).
+- **Zephyr:** `CONFIG_BOOT_SIGNATURE_KEY_FILE` now accepts a
+  comma-separated list of PEM files, each embedded as a verification
+  key. A development bootloader can then accept both production- and
+  development-signed images, for example. Every key after the first
+  must be public-key only, and all keys must be of the same type.
+- **Zephyr:** Added `CONFIG_BOOT_IMAGE_JUMP_HOOKS`, which calls a
+  user-supplied `boot_image_jump_hook()` after an image has been
+  selected and just before jumping to it. The hook can inspect or
+  change the boot response, for example to set flash access rights
+  or remap memory.
+
+### Bug fixes
+
+- Hardened image validation against malformed image headers and
+  TLVs. TLV lengths are now checked against the bounds of the TLV
+  area. An image whose header describes more data than its slot
+  holds is rejected before it is hashed.
+- Hardened the handling of image encryption keys. With serial
+  recovery, the AES key and any decrypted image data are now wiped
+  from memory after an encrypted upload is validated or decrypted in
+  place. The TinyCrypt backend now wipes the AES key schedule when a
+  decryption context is released, as the other backends already
+  did.
+- Fixed a hang at boot with `MCUBOOT_DATA_SHARING_BOOTINFO` and
+  hardware rollback protection when the security counter of an image
+  could not be read. The shared boot information now records the
+  security counter of every image, not only the first one found.
+- Fixed the secondary slot address check done by
+  `MCUBOOT_VERIFY_IMG_ADDRESS` (without
+  `MCUBOOT_CHECK_HEADER_LOAD_ADDRESS`) on Cortex-M. It read the wrong
+  vector table entry, so a valid update could be rejected and erased,
+  or an image linked for the wrong address accepted.
+- Fixed bootstrap (`MCUBOOT_BOOTSTRAP`) in swap-move and swap-offset
+  modes. It could read beyond the flash area and erase the wrong
+  sectors, and it copied the whole slot instead of only the image.
+- The watchdog is now fed while an image is hashed. Before, a large
+  image on slow or external flash could trigger a watchdog reset
+  during validation.
+- Fixed the build with `MCUBOOT_HW_ROLLBACK_PROT_LOCK`.
+- Fixed a stack overflow when checking split images (`split_go()`)
+  in builds with `MCUBOOT_SIGN_EC384` or `MCUBOOT_SHA512`.
+- Fixed decryption of RSA-OAEP encrypted images with the Mbed TLS
+  backend built against TF-PSA-Crypto (Mbed TLS 4.x). The private key
+  was misparsed, so the image could not be decrypted.
+- Fixed image encryption with the PSA Crypto backend in builds that
+  use MCUboot's generic CMake file, such as TF-M. The PSA encryption
+  code was not built, and defining both `MCUBOOT_USE_PSA_CRYPTO` and
+  `MCUBOOT_USE_MBED_TLS` caused a compile error. Encryption schemes
+  other than EC256 and X25519 no longer need Mbed TLS headers.
+- `docs/PORTING.md` now lists all the flash functions a port must
+  provide. `flash_area_get_sector()`, `flash_device_base()` and
+  `flash_area_id_from_image_slot()` were required but not documented.
+- **Serial recovery:** The slot info command reported wrong image
+  IDs for upload when direct image upload was disabled.
+- **Serial recovery:** An upload with an image number beyond the
+  number of images is now rejected with an error instead of writing
+  to another flash area. After a failed request, an encrypted image
+  is no longer decrypted in place.
+- **Serial recovery:** Fixed a possible division by zero during
+  in-place decryption of an uploaded encrypted image when the flash
+  driver fails to report the sector layout.
+- **Serial recovery:** On Zephyr, direct image upload
+  (`CONFIG_MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD`) now works for image
+  IDs 7 to 16. Before, uploads to the slots of images 4 to 8 failed.
+- **Serial recovery:** On Zephyr, the wait for a DFU command
+  (`CONFIG_BOOT_SERIAL_WAIT_FOR_DFU`) now ends after
+  `CONFIG_BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT`. Before, it could last
+  several times longer.
+- **Serial recovery:** On Zephyr with
+  `CONFIG_BOOT_SERIAL_WAIT_FOR_DFU`, the console was initialised a
+  second time when recovery was also entered through boot mode or
+  because there was no application. With CDC ACM this made the
+  bootloader panic, and on a UART it lost received bytes.
+- **Serial recovery:** Fixed a link error on Zephyr with image
+  encryption and deferred logging.
+- **Serial recovery:** On ports other than Zephyr and Espressif, such
+  as Mynewt, a base64 decoding error in a received frame is now
+  detected. Before, the error went unnoticed.
+- **Zephyr:** With `CONFIG_BOOT_MAX_IMG_SECTORS_AUTO`, the maximum
+  sector count now takes the slots of every image into account, not
+  only image 0. The erase and write sizes of the secondary slot are
+  now read from the flash it is actually on.
+- **Zephyr:** Fixed the trailer size that sysbuild reserves at the
+  end of the application for swap-move and swap-offset. Swap-offset
+  could build an application too large to swap, and swap-move
+  reserved a sector more than needed.
+- **Espressif:** Fixed the build of the standalone port with serial
+  recovery (`CONFIG_ESP_MCUBOOT_SERIAL`), which lacked an Mbed TLS
+  source file.
+- **Mynewt:** Fixed the build of serial recovery without image
+  encryption.
+
+### Board and SoC support
+
+- **Zephyr:** Added configurations for the nRF93M1DK, the MR-NAVQ95B
+  (Cortex-M7 core, with MCUboot placed in the boot container by
+  default), the FRDM-MCXL255 and the KIT_PSE84_EVAL, and SoC
+  configurations for the ESP32-C5, ESP32-C61, ESP32-P4 and ESP32-S31.
+- **Zephyr:** On the nRF54H20 application core, multithreading is
+  now enabled so that MRAM power-down can be held off while MCUboot
+  writes to MRAM, which avoids stalled writes.
+- **Espressif:** Added initial support for the ESP32-C5, ESP32-C61
+  and ESP32-P4. The ESP32-C61 uses ECDSA image signing.
+
+### imgtool
+
+- imgtool now requires Python 3.8 or later. This also fixes key
+  export commands, which failed on Python 3.8 and 3.9.
+- Added `imgtool keyinfo`, which reports whether a PEM file holds a
+  key pair or only a public key. With `--require`, it fails if the
+  kind does not match, which build systems can use as a check.
+- Added `--name-suffix` to `imgtool getpub` and `imgtool getpubhash`,
+  which appends a suffix to the generated C or Rust symbol names so
+  that several keys can be embedded in one image.
+- Public-key-only PEM files are now supported by `imgtool getpub`,
+  `imgtool getpubhash` and `imgtool verify`. `imgtool sign` given a
+  public-only PEM now fails with a clear error.
+
+### Pending questions
+
+These questions are open for this release candidate and will be
+settled before the final 2.5.0 release. If your testing answers one
+of them, please report it on the MCUboot GitHub issue tracker.
+
+- **Zephyr:** Does this release still build and work with Zephyr
+  4.4.x, or only with Zephyr newer than 4.4.0? The in-tree STM32
+  external flash configurations already need the newer Zephyr.
+- **Espressif:** The standalone port's `flash` build target now calls
+  esptool with its hyphenated option names (`write-flash`,
+  `--before default-reset`, `--after no-reset`). Which esptool
+  versions accept them? If flashing fails, please report your esptool
+  version.
+- **NuttX, Mbed:** Extra `flash_area_close()` calls were removed from
+  the swap code that resumes an interrupted swap and that reads an
+  image's size. On NuttX and Mbed, closing a flash area releases the
+  device, so these calls may have caused swap upgrade failures with
+  2.4.0. If you saw such failures, does this release candidate fix
+  them?
+- **Mynewt:** The Mynewt port is built in CI, but the core
+  maintainers no longer test it on hardware. Mynewt users, please
+  test this release candidate, especially serial recovery.
+
 ## Version 2.4.0
 
 - Added support for using an inbuilt (compiled-in) key in Zephyr

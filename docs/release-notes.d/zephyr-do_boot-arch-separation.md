@@ -1,1 +1,0 @@
-- Separate arch specific booting process to improve organization on `boot/zephyr/main.c`.
