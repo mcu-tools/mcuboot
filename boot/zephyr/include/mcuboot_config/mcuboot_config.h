@@ -381,7 +381,8 @@
 #endif
 
 #if (defined(CONFIG_BOOT_USB_DFU_WAIT) || \
-     defined(CONFIG_BOOT_USB_DFU_GPIO))
+     defined(CONFIG_BOOT_USB_DFU_GPIO) || \
+     defined(CONFIG_BOOT_USB_DFU_BOOT_MODE))
 #define MCUBOOT_USB_DFU
 #endif
 
