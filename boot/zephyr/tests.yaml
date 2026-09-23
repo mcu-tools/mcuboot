@@ -90,11 +90,12 @@ tests:
       - TEST_BOOT_IMAGE_ACCESS_HOOKS=Y
   sample.bootloader.mcuboot.ram_load:
     extra_args:
+      - FILE_SUFFIX="ram_load"
       - EXTRA_CONF_FILE="ram_load.conf"
     platform_allow:
-      - mimxrt1020_evk
+      - mimxrt1050_evk/mimxrt1052/hyperflash
     integration_platforms:
-      - mimxrt1020_evk
+      - mimxrt1050_evk/mimxrt1052/hyperflash
   sample.bootloader.mcuboot.swap_move:
     extra_args:
       - EXTRA_CONF_FILE="swap_move.conf"
