@@ -575,17 +575,17 @@ config BOOT_VALIDATE_SLOT0_ONCE
 	  If unsure, leave at the default value.
 
 config BOOT_PREFER_SWAP_OFFSET
-	bool "Prefer the newer swap offset algorithm"
-	default y if !$(dt_nodelabel_enabled,scratch_partition) && !SOC_FAMILY_ESPRESSIF_ESP32
+	bool "Prefer the newer swap offset algorithm [DEPRECATED]"
+	select DEPRECATED
 	help
 	  If y, the BOOT_IMAGE_UPGRADE_MODE will default to using "offset" instead of "scratch".
 	  This is a separate bool config option, because Kconfig doesn't allow defaults to be
 	  overridden in choice options. Most devices should be using swap using offset mode.
 
 config BOOT_PREFER_SWAP_MOVE
-	bool "Prefer the newer swap move algorithm"
+	bool "Prefer the newer swap move algorithm [DEPRECATED]"
 	depends on !BOOT_PREFER_SWAP_OFFSET
-	default y if !$(dt_nodelabel_enabled,scratch_partition)
+	select DEPRECATED
 	help
 	  If y, the BOOT_IMAGE_UPGRADE_MODE will default to using
 	  "move" instead of "scratch".  This is a separate bool config
@@ -596,9 +596,8 @@ config BOOT_PREFER_SWAP_MOVE
 
 choice BOOT_IMAGE_UPGRADE_MODE
 	prompt "Image upgrade modes"
-	default BOOT_SWAP_USING_OFFSET if BOOT_PREFER_SWAP_OFFSET
-	default BOOT_SWAP_USING_MOVE if BOOT_PREFER_SWAP_MOVE
-	default BOOT_SWAP_USING_SCRATCH
+	default BOOT_SWAP_USING_OFFSET if !SOC_FAMILY_ESPRESSIF_ESP32
+	default BOOT_SWAP_USING_MOVE
 
 config SINGLE_APPLICATION_SLOT
 	bool "Single slot bootloader"
@@ -616,10 +615,16 @@ config SINGLE_APPLICATION_SLOT_RAM_LOAD
 	  imgtool.py script which writes it to the image header.
 
 config BOOT_SWAP_USING_SCRATCH
-	bool "Swap mode that run with the scratch partition"
+	bool "Swap mode that run with the scratch partition [DEPRECATED]"
+	select DEPRECATED
 	help
 	  This is the most conservative swap mode but it can work even on
 	  devices with heterogeneous flash page layout.
+
+	  This mode is now deprecated, other swap modes should be used instead. If a partition
+	  has variable sector sizes or the sector sizes differ between slots then a common
+	  logical sector size should be set in MCUBOOT_LOGICAL_SECTOR_SIZE which will allow other
+	  swap modes to work on these devices.
 
 config BOOT_UPGRADE_ONLY
 	bool "Overwrite image updates instead of swapping"
