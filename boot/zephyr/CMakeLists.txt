@@ -338,6 +338,14 @@ if(CONFIG_BOOT_USB_DFU)
   zephyr_sources(usbd_dfu.c)
 endif()
 
+if(NOT CONFIG_MCUBOOT_SERIAL AND CONFIG_BOOT_ENCRYPT_IMAGE AND CONFIG_BOOT_USB_DFU)
+  zephyr_include_directories(
+    ${BOOT_DIR}/boot_serial/include
+    ${BOOT_DIR}/bootutil/include
+  )
+  zephyr_sources(${BOOT_DIR}/boot_serial/src/boot_serial_encryption.c)
+endif()
+
 if(NOT CONFIG_BOOT_SIGNATURE_TYPE_NONE AND NOT CONFIG_BOOT_BUILTIN_KEY AND NOT
   CONFIG_BOOT_SIGNATURE_KEY_FILE STREQUAL "")
 
