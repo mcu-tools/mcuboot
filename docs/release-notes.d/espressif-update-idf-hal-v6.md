@@ -2,3 +2,4 @@
 - Add ESP32-C5 initial support.
 - Add ESP32-C61 initial support.
 - Add ESP32-P4 initial support.
+- Add ESP32-H4 initial support.

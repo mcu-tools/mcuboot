@@ -21,10 +21,10 @@ Documentation about the MCUboot bootloader design, operation and features can be
 
 The current port is available for use in the following SoCs within the OSes:
 
-|        | ESP32     | ESP32-S2  | ESP32-C3  | ESP32-S3  | ESP32-C2    | ESP32-C6  | ESP32-H2  | ESP32-C5    | ESP32-C61   | ESP32-P4    |
-| :----: | :-------: | :-------: | :-------: | :-------: | :---------: | :-------: | :-------: | :---------: | :---------: | :---------: |
-| Zephyr | Supported | Supported | Supported | Supported | Supported   | Supported | Supported | Supported   | In progress | In progress |
-| NuttX  | Supported | Supported | Supported | Supported | In progress | Supported | Supported | ----------- | ----------- | ----------- |
+|        | ESP32     | ESP32-S2  | ESP32-C3  | ESP32-S3  | ESP32-C2    | ESP32-C6  | ESP32-H2  | ESP32-H4    | ESP32-C5    | ESP32-C61   | ESP32-P4    |
+| :----: | :-------: | :-------: | :-------: | :-------: | :---------: | :-------: | :-------: | :---------: | :---------: | :---------: | :---------: |
+| Zephyr | Supported | Supported | Supported | Supported | Supported   | Supported | Supported | In progress | Supported   | In progress | In progress |
+| NuttX  | Supported | Supported | Supported | Supported | In progress | Supported | Supported | ----------- | ----------- | ----------- | ----------- |
 
 Notice that any customization in the memory layout from the OS application must be done aware of
 the bootloader own memory layout to avoid overlapping. More information on the section
@@ -160,6 +160,7 @@ Additional configuration related to MCUboot features and slot partitioning may b
     - `ESP_FLASH_MODE`: "dio"
     - `ESP_FLASH_FREQ`: "40m" for ESP32, ESP32-S2, ESP32-S3, ESP32-C3, ESP32-C6, ESP32-C5, ESP32-C61;
                         "80m" for ESP32-P4;
+                        "48m" for ESP32-H4;
                         "60m" for ESP32-C2;
                         "24m" for ESP32-H2.
 
@@ -192,9 +193,9 @@ Additional configuration related to MCUboot features and slot partitioning may b
 
     *`<BOOTLOADER_FLASH_OFFSET>` value must follow one of the addresses below:*
 
-    | ESP32   | ESP32-S2 | ESP32-C3 | ESP32-S3 | ESP32-C2 | ESP32-C6 | ESP32-H2 | ESP32-C5 | ESP32-C61 | ESP32-P4 |
-    | :-----: | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  | :-------: | :------: |
-    | 0x1000  | 0x1000   | 0x0000   | 0x0000   | 0x0000   | 0x0000   | 0x0000   | 0x2000   | 0x0000    | 0x2000   |
+    | ESP32   | ESP32-S2 | ESP32-C3 | ESP32-S3 | ESP32-C2 | ESP32-C6 | ESP32-H2 | ESP32-H4 | ESP32-C5 | ESP32-C61 | ESP32-P4 |
+    | :-----: | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  | :-----:  | :-------: | :------: |
+    | 0x1000  | 0x1000   | 0x0000   | 0x0000   | 0x0000   | 0x0000   | 0x0000   | 0x2000   | 0x2000   | 0x0000    | 0x2000   |
 
     ---
 
@@ -877,7 +878,7 @@ Serial mode then uses the UART port configured for communication
 
 ### [Serial Recovery through USB JTAG Serial port](#serial-recovery-through-usb-jtag-serial-port)
 
-Some chips, like ESP32-C3, ESP32-S3, ESP32-C6, ESP32-C61, and ESP32-P4 have an integrated USB JTAG Serial Controller that
+Some chips, like ESP32-C3, ESP32-S3, ESP32-C6, ESP32-C61, ESP32-H4, and ESP32-P4 have an integrated USB JTAG Serial Controller that
 implements a serial port (CDC) that can also be used for handling MCUboot Serial Recovery.
 More information about the USB pins and hardware configuration:
 
@@ -887,6 +888,7 @@ More information about the USB pins and hardware configuration:
 - ESP32-H2: <https://docs.espressif.com/projects/esp-idf/en/latest/esp32h2/api-guides/usb-serial-jtag-console.html>
 - ESP32-C5: <https://docs.espressif.com/projects/esp-idf/en/latest/esp32c5/api-guides/usb-serial-jtag-console.html>
 - ESP32-C61: <https://docs.espressif.com/projects/esp-idf/en/latest/esp32c61/api-guides/usb-serial-jtag-console.html>
+- ESP32-H4: <https://docs.espressif.com/projects/esp-idf/en/latest/esp32h4/api-guides/usb-serial-jtag-console.html>
 - ESP32-P4: <https://docs.espressif.com/projects/esp-idf/en/latest/esp32p4/api-guides/usb-serial-jtag-console.html>
 
 Configuration example:
@@ -1526,6 +1528,7 @@ application. `iram_loader_seg` uses `BOOTLOADER_IRAM_LOADER_SEG_START_MP` (0x400
  *  +--------+--------------+------+ 0x4FFBCFC0 / 0x4FFBCFC0 - ROM bootloader stack region
 ```
 
+
 ### ESP32-H2
 
 ```
@@ -1574,4 +1577,46 @@ application. `iram_loader_seg` uses `BOOTLOADER_IRAM_LOADER_SEG_START_MP` (0x400
  *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
  *  |        v                    |
  *  +--------+--------------+------+ 0x4084FFFF / 0x4084FFFF - HP SRAM END
+```
+
+### ESP32-H4 (MP revision)
+
+```
+                                     IRAM ADDR  / DRAM ADDR
+ *  +--------+--------------+------+ 0x40810000 / 0x40810000 - HP SRAM START
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | FREE               |  *CLAIMABLE BY OS RAM
+ *  |        |                    |
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x4083D750 / 0x4083D750
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | dram_seg           |  *CLAIMABLE BY OS RAM
+ *  |        |                    |  (length 0xB000)
+ *  |        v                    |
+ *  +------------------------------+ 0x40848750 / 0x40848750
+ *  |        ^                    |
+ *  |        |                    |
+ *  |        | iram_seg           |  *CLAIMABLE BY OS RAM (length 0xF000)
+ *  |        |                    |
+ *  |        v                    |
+ *  +------------------------------+ 0x40857750 / 0x40857750
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | dram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x1800)
+ *  |        v                    |
+ *  +------------------------------+ 0x40858F50 / 0x40858F50
+ *  |        ^                    |
+ *  |        |                    |  *** SHOULD NOT BE OVERLAPPED ***
+ *  |        | iram_loader_seg    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        |                    |  (length 0x2400)
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x4085B350 / 0x4085B350 - `BOOTLOADER_RAM_END`
+ *  |        ^                    |
+ *  |        | FREE               |  above `BOOTLOADER_RAM_END`
+ *  |        |                    |  *** OS CAN RECLAIM IT AFTER BOOT LATER AS HEAP ***
+ *  |        v                    |
+ *  +--------+--------------+------+ 0x40860000 / 0x40860000 - HP SRAM END
 ```
