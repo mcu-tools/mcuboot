@@ -1,1 +1,0 @@
-- Fixed serial recovery slot info image number ID outputs
