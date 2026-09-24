@@ -36,6 +36,7 @@
 
 #include "bootutil/bootutil.h"
 #include "bootutil/fault_injection_hardening.h"
+#include <limits.h>
 
 #define DO_HOOK_CALL(f, ret_default, ...) \
     f(__VA_ARGS__)
@@ -311,5 +312,183 @@ int flash_area_get_device_id_hook(const struct flash_area *fa,
  *         BOOT_HOOK_REGULAR follow the normal execution path.
  */
 int boot_find_next_slot_hook(struct boot_loader_state *state, uint8_t image, enum boot_slot *active_slot);
+
+/* Swap-state hook family.  Uses the same DO_HOOK_CALL / HOOK_CALL_NOP dispatch
+ * machinery as the other hook families (image-access, boot-go, find-slot, ...):
+ * when MCUBOOT_SWAP_STATE_HOOKS is enabled BOOT_SWAP_STATE_HOOK_CALL invokes the
+ * hook and yields its return value; when disabled it evaluates to ret_default
+ * with no call (and no link dependency on the hook symbol).
+ *
+ * Semantics are REPLACE: a compiled-in hook implementation fully owns status
+ * bookkeeping, so a hook, once present, always handles the call -- it never
+ * defers to the built-in path.  Callers use the idiom:
+ *
+ *     int rc = BOOT_SWAP_STATE_HOOK_CALL(f, BOOT_SWAP_STATE_HOOK_REGULAR, ...);
+ *     if (rc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+ *         return rc;              // hook owned it: success or a real error
+ *     }
+ *     ... built-in implementation ...
+ *
+ * The amend variant (built-in runs first, hook augments at a defined point)
+ * passes ret_default = 0, i.e. "nothing to amend" when the family is disabled:
+ *
+ *     rc = BOOT_SWAP_STATE_HOOK_CALL(f, 0, ...);
+ *
+ * BOOT_SWAP_STATE_HOOK_REGULAR is the family's "not handled" sentinel.  It is NOT
+ * BOOT_HOOK_REGULAR: BOOT_HOOK_REGULAR == BOOT_EFLASH == 1 (bootutil_public.h)
+ * and these hooks return BOOT_EFLASH on real flash errors, so reusing it would
+ * misread a flash error as "defer to the built-in status-byte path" and run it
+ * after a flash fault.  INT_MIN is distinct from 0 and every BOOT_E* code, so no
+ * hook return value can collide with it. */
+#define BOOT_SWAP_STATE_HOOK_REGULAR  INT_MIN
+
+#ifdef MCUBOOT_SWAP_STATE_HOOKS
+#define BOOT_SWAP_STATE_HOOK_CALL(f, ret_default, ...) \
+    DO_HOOK_CALL(f, ret_default, __VA_ARGS__)
+#else
+#define BOOT_SWAP_STATE_HOOK_CALL(f, ret_default, ...) \
+    HOOK_CALL_NOP(f, ret_default, __VA_ARGS__)
+#endif
+
+/* boot_hooks.h is a PUBLIC header with consumers that never include the private
+ * bootutil_priv.h (e.g. boot/zephyr/flash_map_extended.c) -- struct boot_status
+ * is defined only there, so forward-declare it or the prototypes below create
+ * prototype-scope tags (warning / incompatible-declaration risk). */
+struct boot_status;
+
+/**
+ * Swap-state hook implementations are strong symbols that MUST be linked
+ * whenever MCUBOOT_SWAP_STATE_HOOKS is defined.
+ *
+ * @return 0 on success, or a BOOT_E* error which the caller returns verbatim.
+ *         BOOT_HOOK_REGULAR has no meaning for this family because there is no
+ *         runtime fallthrough.
+ */
+int boot_write_status_hook(const struct boot_loader_state *state,
+                           struct boot_status *bs);
+int swap_status_init_hook(struct boot_loader_state *state,
+                          const struct flash_area *fap,
+                          const struct boot_status *bs);
+int swap_read_status_bytes_hook(const struct flash_area *fap,
+                                struct boot_loader_state *state,
+                                struct boot_status *bs);
+
+/**
+ * Commit swap-state authority to its permanent home before the swap flow
+ * erases a staging area that may still hold it.  A downstream swap-state
+ * provider implements this to make its authority durable first, so an
+ * interruption after the erase still recovers.  The scratch swap flow
+ * (swap_scratch.c) is the only caller today; a future algorithm with a
+ * pre-swap staging erase can attach here.
+ *
+ * @return 0 on success, or a BOOT_E* error. The caller must not erase the
+ *         staging area after an error.
+ */
+int swap_status_before_erase_hook(const struct boot_loader_state *state,
+                                  const struct flash_area *fap_pri,
+                                  const struct flash_area *fap_staging,
+                                  struct boot_status *bs);
+
+/**
+ * Amends boot_swap_image() after swap_run(), for hook implementations that keep
+ * swap progress outside the image trailers.  It reconstructs any primary
+ * trailer field left uncommitted by an interrupted swap (the data copy may be
+ * complete while MAGIC was not yet written) and erases a stale scratch trailer
+ * that would otherwise re-enter the swap path on the next boot.
+ *
+ * @return 0 on success, or a BOOT_E* error which the caller asserts on.
+ */
+int boot_swap_complete_hook(struct boot_loader_state *state,
+                            struct boot_status *bs);
+
+/**
+ * Identifies a single field of the swap-state metadata record kept by a
+ * swap-state-metadata provider (read/written/committed by the hooks below).
+ * The encryption-key and IV identifiers are reserved: no caller passes them
+ * yet, and a hook implementation may reject them.
+ */
+enum boot_swap_meta_field {
+    BOOT_SWAP_META_MAGIC = 0,
+    BOOT_SWAP_META_IMAGE_OK,
+    BOOT_SWAP_META_COPY_DONE,
+    BOOT_SWAP_META_SWAP_INFO,
+    BOOT_SWAP_META_SWAP_SIZE,
+    BOOT_SWAP_META_ENC_KEY_0,   /* reserved */
+    BOOT_SWAP_META_ENC_KEY_1,   /* reserved */
+    BOOT_SWAP_META_IV           /* reserved */
+};
+
+/**
+ * Reports the physical constraints of a swap-state-metadata provider's
+ * backing store, as populated by boot_swap_meta_geometry_hook().
+ */
+struct boot_swap_meta_geometry {
+    /** Smallest unit the provider can write atomically. */
+    uint32_t atomic_io_size;
+    /** Bytes the provider reserves at the tail of the image slot. */
+    uint32_t image_tail_reserved;
+    /** True if the provider itself lays down a v1-style image trailer. */
+    bool materializes_trailer;
+};
+
+/**
+ * Reads the swap state (as swap_read_status_bytes_hook() would) from a
+ * swap-state-metadata provider's record instead of the native trailer.
+ *
+ * @return 0 on success, or a BOOT_E* error which the caller returns verbatim.
+ */
+int boot_read_swap_state_hook(const struct flash_area *fap,
+                              struct boot_swap_state *state);
+
+/**
+ * Reads a single field out of the provider's swap-state metadata record.
+ *
+ * @param field the field to read.
+ * @param out   buffer to receive the field's value.
+ * @param len   size of @p out, in bytes.
+ *
+ * @return 0 on success, or a BOOT_E* error.
+ */
+int boot_swap_meta_read_field_hook(const struct flash_area *fap,
+                                   enum boot_swap_meta_field field,
+                                   void *out, size_t len);
+
+/**
+ * Writes a single field into the provider's swap-state metadata record.
+ *
+ * @param field the field to write.
+ * @param in    buffer holding the field's new value.
+ * @param len   size of @p in, in bytes.
+ *
+ * @return 0 on success, or a BOOT_E* error.
+ */
+int boot_swap_meta_write_field_hook(const struct flash_area *fap,
+                                    enum boot_swap_meta_field field,
+                                    const void *in, size_t len);
+
+/**
+ * Commits the in-memory boot_status to the provider's metadata record.
+ *
+ * @return 0 on success, or a BOOT_E* error.
+ */
+int boot_swap_meta_commit_hook(const struct flash_area *fap,
+                               struct boot_status *bs);
+
+/**
+ * Resets/erases the provider's swap-state metadata record for a slot.
+ *
+ * @return 0 on success, or a BOOT_E* error.
+ */
+int boot_swap_meta_reset_hook(const struct boot_loader_state *state,
+                              const struct flash_area *fap, int slot);
+
+/**
+ * Reports the provider's backing-store geometry so the built-in swap logic
+ * can size scratch usage and atomic writes correctly.
+ *
+ * @return 0 on success, or a BOOT_E* error.
+ */
+int boot_swap_meta_geometry_hook(const struct flash_area *fap,
+                                 struct boot_swap_meta_geometry *geo);
 
 #endif /*H_BOOTUTIL_HOOKS*/

@@ -248,6 +248,12 @@ boot_read_swap_state(const struct flash_area *fap,
     uint8_t swap_info;
     int rc;
 
+    int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_read_swap_state_hook,
+                                             BOOT_SWAP_STATE_HOOK_REGULAR, fap, state);
+    if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hrc;
+    }
+
     off = boot_magic_off(fap);
     rc = flash_area_read(fap, off, magic, BOOT_MAGIC_SZ);
     if (rc < 0) {
@@ -307,6 +313,13 @@ boot_write_magic(const struct flash_area *fap)
     int rc;
     uint8_t magic[BOOT_MAGIC_ALIGN_SIZE];
     uint8_t erased_val;
+
+    int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_write_field_hook,
+                                             BOOT_SWAP_STATE_HOOK_REGULAR, fap,
+                                             BOOT_SWAP_META_MAGIC, NULL, 0);
+    if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hrc;
+    }
 
     off = boot_magic_off(fap);
 
@@ -386,6 +399,13 @@ boot_write_image_ok(const struct flash_area *fap)
 {
     uint32_t off;
 
+    int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_write_field_hook,
+                                             BOOT_SWAP_STATE_HOOK_REGULAR, fap,
+                                             BOOT_SWAP_META_IMAGE_OK, NULL, 0);
+    if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hrc;
+    }
+
     off = boot_image_ok_off(fap);
     BOOT_LOG_DBG("writing image_ok; fa_id=%d off=0x%lx (0x%lx)",
                  flash_area_get_id(fap), (unsigned long)off,
@@ -412,6 +432,14 @@ boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
     uint8_t swap_info;
 
     BOOT_SET_SWAP_INFO(swap_info, image_num, swap_type);
+
+    int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_write_field_hook,
+                                             BOOT_SWAP_STATE_HOOK_REGULAR, fap,
+                                             BOOT_SWAP_META_SWAP_INFO, &swap_info, 1);
+    if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hrc;
+    }
+
     off = boot_swap_info_off(fap);
     BOOT_LOG_DBG("writing swap_info; fa_id=%d off=0x%lx (0x%lx), swap_type=0x%x"
                  " image_num=0x%x",
@@ -491,10 +519,40 @@ boot_swap_type_multi(int image_index)
     return BOOT_SWAP_TYPE_NONE;
 }
 
+#if defined(MCUBOOT_SWAP_STATE_HOOKS)
+static bool flash_area_is_primary(const struct flash_area *fap)
+{
+    uint8_t id = flash_area_get_id(fap);
+    for (int i = 0; i < BOOT_IMAGE_NUMBER; i++) {
+        if (FLASH_AREA_IMAGE_PRIMARY(i) == id) {
+            return true;
+        }
+    }
+    return false;
+}
+#endif
+
 int
 boot_write_copy_done(const struct flash_area *fap)
 {
     uint32_t off;
+
+#if defined(MCUBOOT_SWAP_STATE_HOOKS)
+    if (flash_area_is_primary(fap)) {
+        int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_commit_hook,
+                                                 BOOT_SWAP_STATE_HOOK_REGULAR, fap, NULL);
+        if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+            return hrc;
+        }
+    } else {
+        int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_write_field_hook,
+                                                 BOOT_SWAP_STATE_HOOK_REGULAR, fap,
+                                                 BOOT_SWAP_META_COPY_DONE, NULL, 0);
+        if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+            return hrc;
+        }
+    }
+#endif
 
     off = boot_copy_done_off(fap);
     BOOT_LOG_DBG("writing copy_done; fa_id=%d off=0x%lx (0x%lx)",

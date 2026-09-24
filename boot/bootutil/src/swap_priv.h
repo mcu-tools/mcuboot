@@ -45,7 +45,7 @@ int swap_scramble_trailer_sectors(const struct boot_loader_state *state,
  * Initialize the given flash_area with the metadata required to start a new
  * swap upgrade.
  */
-int swap_status_init(const struct boot_loader_state *state,
+int swap_status_init(struct boot_loader_state *state,
                      const struct flash_area *fap,
                      const struct boot_status *bs);
 
@@ -108,6 +108,30 @@ static inline size_t boot_scratch_area_size(const struct boot_loader_state *stat
 {
     return flash_area_get_size(BOOT_SCRATCH_AREA(state));
 }
+
+/**
+ * Calculates the number of bytes to copy in a single swap step, grouping
+ * contiguous sectors that fit within the scratch area size.
+ *
+ * @param state              Current bootloader's state.
+ * @param last_sector_idx    Index of the last sector in the group (inclusive).
+ * @param out_first_sector_idx  Output: index of the first sector (inclusive).
+ *
+ * @return  The number of bytes comprised by the [first, last] sector range.
+ */
+uint32_t boot_copy_sz(const struct boot_loader_state *state,
+                      int last_sector_idx, int *out_first_sector_idx);
+
+/**
+ * Finds the index of the last sector in the primary slot that needs swapping.
+ *
+ * @param state      Current bootloader's state.
+ * @param copy_size  Total number of bytes to swap.
+ *
+ * @return  Index of the last sector that needs swapping.
+ */
+int find_last_sector_idx(const struct boot_loader_state *state,
+                         uint32_t copy_size);
 #endif
 
 #endif /* defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET) */
