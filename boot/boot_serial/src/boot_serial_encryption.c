@@ -42,7 +42,7 @@ boot_image_validate_encrypted(struct boot_loader_state *state,
     }
 
     FIH_CALL(bootutil_img_validate, fih_rc, state,
-             hdr, fa_p, buf, buf_size, NULL, 0, NULL);
+             hdr, fa_p, buf, buf_size, NULL, 0, NULL, NULL);
 
 out:
     boot_enc_zeroize(BOOT_CURR_ENC(state));
