@@ -57,6 +57,8 @@ jobs:
         # swap algorithms, which its varying page sizes would otherwise
         # rule out entirely.
         - "logical-sectors-128k,logical-sectors-128k swap-move,logical-sectors-128k swap-offset,logical-sectors-128k overwrite-only,sig-ecdsa logical-sectors-128k"
+        - "enc-xip-ec256,enc-xip-ec256 swap-move,enc-xip-ec256 swap-offset"
+        - "sig-ecdsa enc-xip-ec256 validate-primary-slot,enc-xip-ec256 overwrite-only"
         - "sig-ecdsa-psa,sig-ecdsa-psa sig-p384,sig-ecdsa-psa swap-move bootstrap max-align-16"
         - "sig-ecdsa-psa enc-ec256 max-align-16, sig-ecdsa-psa enc-ec256 swap-offset validate-primary-slot max-align-16"
         # Same set, routed through Mbed TLS 4.1 via the mbedtls-v4
