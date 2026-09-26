@@ -10,7 +10,7 @@
 #include "../../../bootutil/src/bootutil_priv.h"
 #include "bootutil/bootutil_log.h"
 #include "bootutil/bootutil_public.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 
