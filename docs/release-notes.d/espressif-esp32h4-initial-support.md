@@ -1,0 +1,1 @@
+- Add ESP32-H4 initial support.
