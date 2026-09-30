@@ -31,9 +31,9 @@ void cleanup_arm_interrupts(void)
 #if CONFIG_CPU_HAS_ARM_MPU
 __weak void z_arm_clear_arm_mpu_config(void)
 {
-	int i;
+	uint32_t i;
 
-	int num_regions =
+	uint32_t num_regions =
 		((MPU->TYPE & MPU_TYPE_DREGION_Msk) >> MPU_TYPE_DREGION_Pos);
 
 	for (i = 0; i < num_regions; i++) {

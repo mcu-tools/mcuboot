@@ -128,6 +128,6 @@ bool swap_write_block_size_check(struct boot_loader_state *state);
 /**
  * Returns the maximum size of an application that can be loaded to a slot.
  */
-int app_max_size(struct boot_loader_state *state);
+uint32_t app_max_size(struct boot_loader_state *state);
 
 #endif /* H_SWAP_PRIV_ */
