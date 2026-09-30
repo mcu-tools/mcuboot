@@ -4,7 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifdef CONFIG_ESP_USE_MBEDTLS
+/* Bignum (RSA and EC256) allocates from this heap. Ed25519 and hash-only
+ * builds do not. */
+#if defined(CONFIG_ESP_USE_MBEDTLS) && \
+    (defined(CONFIG_ESP_SIGN_RSA) || defined(CONFIG_ESP_SIGN_EC256))
 
 #include <mbedtls/platform.h>
 #include <mbedtls/memory_buffer_alloc.h>
