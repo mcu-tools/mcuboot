@@ -638,8 +638,6 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
     /* Init areas for storing swap status */
     if (bs->idx == BOOT_STATUS_IDX_0) {
-        int rc;
-
         if (bs->source != BOOT_STATUS_SOURCE_PRIMARY_SLOT) {
             rc = swap_scramble_trailer_sectors(state, fap_pri);
             assert(rc == 0);
