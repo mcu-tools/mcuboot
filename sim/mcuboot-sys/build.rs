@@ -39,6 +39,7 @@ fn main() {
     let downgrade_prevention = env::var("CARGO_FEATURE_DOWNGRADE_PREVENTION").is_ok();
     let ram_load = env::var("CARGO_FEATURE_RAM_LOAD").is_ok();
     let direct_xip = env::var("CARGO_FEATURE_DIRECT_XIP").is_ok();
+    let single_slot = env::var("CARGO_FEATURE_SINGLE_SLOT").is_ok();
     let max_align_16 = env::var("CARGO_FEATURE_MAX_ALIGN_16").is_ok();
     let max_align_32 = env::var("CARGO_FEATURE_MAX_ALIGN_32").is_ok();
     let hw_rollback_protection = env::var("CARGO_FEATURE_HW_ROLLBACK_PROTECTION").is_ok();
@@ -86,6 +87,35 @@ fn main() {
 
     if downgrade_prevention && !overwrite_only {
         panic!("Downgrade prevention requires overwrite only");
+    }
+
+    if single_slot {
+        // These all need a second slot, which BOOT_NUM_SLOTS == 1 does not have.
+        for (name, enabled) in [
+            ("overwrite-only", overwrite_only),
+            ("swap-move", swap_move),
+            ("swap-offset", swap_offset),
+            ("direct-xip", direct_xip),
+            ("ram-load", ram_load),
+            ("bootstrap", bootstrap),
+            ("downgrade-prevention", downgrade_prevention),
+            ("multiimage", multiimage),
+            ("enc-rsa", enc_rsa),
+            ("enc-aes256-rsa", enc_aes256_rsa),
+            ("enc-kw", enc_kw),
+            ("enc-aes256-kw", enc_aes256_kw),
+            ("enc-ec256", enc_ec256),
+            ("enc-ec256-mbedtls", enc_ec256_mbedtls),
+            ("enc-aes256-ec256", enc_aes256_ec256),
+            ("enc-x25519", enc_x25519),
+            ("enc-aes256-x25519", enc_aes256_x25519),
+        ] {
+            if enabled {
+                panic!("single-slot cannot be combined with {}", name);
+            }
+        }
+
+        conf.conf.define("MCUBOOT_SINGLE_APPLICATION_SLOT", None);
     }
 
     if bootstrap {
@@ -361,7 +391,7 @@ fn main() {
         conf.conf.define("MCUBOOT_SWAP_USING_OFFSET", None);
     } else if swap_move {
         conf.conf.define("MCUBOOT_SWAP_USING_MOVE", None);
-    } else if !overwrite_only && !direct_xip && !ram_load {
+    } else if !overwrite_only && !direct_xip && !ram_load && !single_slot {
         conf.conf.define("CONFIG_BOOT_SWAP_USING_SCRATCH", None);
         conf.conf.define("MCUBOOT_SWAP_USING_SCRATCH", None);
     }
@@ -607,14 +637,18 @@ fn main() {
         conf.file("../../boot/bootutil/src/image_ed25519.c");
     }
 
-    conf.file("../../boot/bootutil/src/loader.c");
-    if ram_load {
-        conf.file("../../boot/bootutil/src/ram_load.c");
+    if single_slot {
+        conf.file("../../boot/bootutil/src/single_loader.c");
+    } else {
+        conf.file("../../boot/bootutil/src/loader.c");
+        if ram_load {
+            conf.file("../../boot/bootutil/src/ram_load.c");
+        }
+        conf.file("../../boot/bootutil/src/swap_misc.c");
+        conf.file("../../boot/bootutil/src/swap_scratch.c");
+        conf.file("../../boot/bootutil/src/swap_move.c");
+        conf.file("../../boot/bootutil/src/swap_offset.c");
     }
-    conf.file("../../boot/bootutil/src/swap_misc.c");
-    conf.file("../../boot/bootutil/src/swap_scratch.c");
-    conf.file("../../boot/bootutil/src/swap_move.c");
-    conf.file("../../boot/bootutil/src/swap_offset.c");
     conf.file("../../boot/bootutil/src/caps.c");
     conf.file("../../boot/bootutil/src/bootutil_misc.c");
     conf.file("../../boot/bootutil/src/bootutil_area.c");
