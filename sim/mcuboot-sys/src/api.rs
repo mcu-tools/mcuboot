@@ -28,12 +28,19 @@ pub struct FlashParamsStruct {
 pub type FlashParams = HashMap<u8, FlashParamsStruct>;
 
 /// The `boot_rsp` structure used by boot_go.
+/// Must match C `struct boot_rsp` layout exactly (including conditional fields).
 #[repr(C)]
 #[derive(Debug)]
 pub struct BootRsp {
     pub br_hdr: *const ImageHeader,
     pub flash_dev_id: u8,
     pub image_off: u32,
+    /// AES-128 key for XIP hardware crypto setup (MCUBOOT_ENC_IMAGES_XIP).
+    #[cfg(feature = "enc-xip-ec256")]
+    pub br_xip_key: [u32; 4],
+    /// IV/nonce for XIP hardware crypto setup (MCUBOOT_ENC_IMAGES_XIP).
+    #[cfg(feature = "enc-xip-ec256")]
+    pub br_xip_iv: [u32; 4],
 }
 
 // TODO: Don't duplicate this image header declaration.

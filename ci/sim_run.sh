@@ -44,10 +44,11 @@ if [[ ! -z $MULTI_FEATURES ]]; then
   IFS=','
   read -ra multi_features <<< "$MULTI_FEATURES"
 
-  # psa crypto tests require single thread mode
+  # psa crypto tests and xip encryption tests require single thread mode
+  # (xip_enc uses static key storage shared across test threads)
   TEST_ARGS=''
   for features in "${multi_features[@]}"; do
-    if [[ $features =~ "psa" ]]; then
+    if [[ $features =~ "psa" ]] || [[ $features =~ "enc-xip" ]]; then
         TEST_ARGS='--test-threads=1'
         break
     fi

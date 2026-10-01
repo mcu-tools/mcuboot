@@ -54,6 +54,7 @@ uint32_t bootutil_get_caps(void);
 #define BOOTUTIL_CAP_HW_ROLLBACK_PROT       (1<<18)
 #define BOOTUTIL_CAP_ECDSA_P384             (1<<19)
 #define BOOTUTIL_CAP_SWAP_USING_OFFSET      (1<<20)
+#define BOOTUTIL_CAP_ENC_XIP_EC256          (1<<21)
 
 /*
  * Query the number of images this bootloader is configured for.  This

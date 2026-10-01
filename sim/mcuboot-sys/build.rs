@@ -34,6 +34,7 @@ fn main() {
     let enc_aes256_ec256 = env::var("CARGO_FEATURE_ENC_AES256_EC256").is_ok();
     let enc_x25519 = env::var("CARGO_FEATURE_ENC_X25519").is_ok();
     let enc_aes256_x25519 = env::var("CARGO_FEATURE_ENC_AES256_X25519").is_ok();
+    let enc_xip_ec256 = env::var("CARGO_FEATURE_ENC_XIP_EC256").is_ok();
     let bootstrap = env::var("CARGO_FEATURE_BOOTSTRAP").is_ok();
     let multiimage = env::var("CARGO_FEATURE_MULTIIMAGE").is_ok();
     let downgrade_prevention = env::var("CARGO_FEATURE_DOWNGRADE_PREVENTION").is_ok();
@@ -343,7 +344,7 @@ fn main() {
             conf.conf.include("../../boot/bootutil/src");
             conf.file("csupport/custom_crypto/sim_custom_encrypted.c");
         }
-    } else if !enc_ec256 && !enc_x25519 {
+    } else if !enc_ec256 && !enc_x25519 && !enc_xip_ec256 {
         // No signature type, only sha256 validation. The default
         // configuration file bundled with mbedTLS is sufficient.
         // When using ECIES-P256 rely on Tinycrypt.
@@ -574,13 +575,64 @@ fn main() {
         conf.file("../../ext/mbedtls-3.6.0/library/sha512.c");
     }
 
+    if enc_xip_ec256 {
+        conf.conf.define("MCUBOOT_ENC_IMAGES_XIP", None);
+        conf.conf.define("MCUBOOT_IMAGE_ACCESS_HOOKS", None);
+        conf.conf.define("MCUBOOT_ENCRYPT_EC256", None);
+        conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
+
+        // XIP encrypted images must be signed (ciphertext signing).
+        // Enable ECDSA signature verification so bootutil_verify_sig and
+        // bootutil_find_key are available to boot_image_check_hook.
+        if !sig_ecdsa && !sig_ecdsa_mbedtls && !sig_ecdsa_psa {
+            conf.conf.define("MCUBOOT_SIGN_EC256", None);
+            conf.conf.define("MCUBOOT_SIGN_EC", None);
+        }
+
+        // XIP library files
+        conf.file("../../boot/bootutil/src/xip_enc/xip_enc_keys.c");
+        conf.file("../../boot/bootutil/src/xip_enc/xip_enc_ecies.c");
+        conf.file("../../boot/bootutil/src/xip_enc/xip_enc_validate.c");
+        conf.file("../../boot/bootutil/src/xip_enc/xip_enc_decrypt.c");
+
+        // Simulator XIP hook
+        conf.file("csupport/sim_xip_enc.c");
+
+        // Include paths for xip_enc.h (used as "xip_enc.h" by library,
+        // and as "xip_enc/xip_enc.h" by simulator hook)
+        conf.conf.include("../../boot/bootutil/src/xip_enc");
+        conf.conf.include("../../boot/bootutil/src");
+
+        // Crypto dependencies (same as enc-ec256: tinycrypt ECDH + HMAC + AES-CTR)
+        // CachedBuild deduplicates if already included by a signature feature.
+        conf.conf.include("../../ext/mbedtls-3.6.0/include");
+        conf.conf.include("../../ext/tinycrypt/lib/include");
+
+        conf.file("csupport/keys.c");
+
+        conf.file("../../ext/tinycrypt/lib/source/utils.c");
+        conf.file("../../ext/tinycrypt/lib/source/sha256.c");
+        conf.file("../../ext/tinycrypt/lib/source/ecc.c");
+        conf.file("../../ext/tinycrypt/lib/source/ecc_dsa.c");
+        conf.file("../../ext/tinycrypt/lib/source/ecc_platform_specific.c");
+
+        conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
+        conf.file("../../ext/mbedtls-3.6.0/library/asn1parse.c");
+
+        conf.file("../../ext/tinycrypt/lib/source/aes_encrypt.c");
+        conf.file("../../ext/tinycrypt/lib/source/aes_decrypt.c");
+        conf.file("../../ext/tinycrypt/lib/source/ctr_mode.c");
+        conf.file("../../ext/tinycrypt/lib/source/hmac.c");
+        conf.file("../../ext/tinycrypt/lib/source/ecc_dh.c");
+    }
+
     if sig_rsa && enc_kw {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa-kw.h>"));
     } else if sig_rsa || sig_rsa3072 || enc_rsa || enc_aes256_rsa {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-rsa.h>"));
     } else if (sig_ecdsa_mbedtls || enc_ec256_mbedtls || enc_aes256_ec256 || custom_crypto) && !mbedtls_v4 {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-ec.h>"));
-    } else if (sig_ecdsa || enc_ec256) && !enc_kw && !mbedtls_v4 {
+    } else if (sig_ecdsa || enc_ec256 || enc_xip_ec256) && !enc_kw && !mbedtls_v4 {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
     } else if sig_ed25519 || enc_x25519 {
         conf.conf.define("MBEDTLS_CONFIG_FILE", Some("<config-asn1.h>"));
@@ -601,7 +653,7 @@ fn main() {
     conf.file("../../boot/bootutil/src/bootutil_img_security_cnt.c");
     if sig_rsa || sig_rsa3072 {
         conf.file("../../boot/bootutil/src/image_rsa.c");
-    } else if sig_ecdsa || sig_ecdsa_mbedtls || sig_ecdsa_psa || custom_crypto {
+    } else if sig_ecdsa || sig_ecdsa_mbedtls || sig_ecdsa_psa || enc_xip_ec256  || custom_crypto{
         conf.file("../../boot/bootutil/src/image_ecdsa.c");
     } else if sig_ed25519 {
         conf.file("../../boot/bootutil/src/image_ed25519.c");
