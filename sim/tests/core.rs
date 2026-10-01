@@ -103,6 +103,20 @@ fn logical_sectors_reject_incompatible_devices() {
     });
 }
 
+// Swap using scratch needs the primary and secondary slots to be the same
+// size, so `each_device` skips the devices where they differ.  Boot them
+// anyway: the bootloader must refuse the upgrade and leave the flash alone,
+// rather than read past the end of the shorter slot's sector table.
+#[test]
+fn unequal_slots_rejected() {
+    testlog::setup();
+    ImagesBuilder::each_unequal_slot_device(|r| {
+        let image = r.make_fixed_size_images();
+        dump_image(&image, "unequal_slots_rejected");
+        assert!(!image.run_unequal_slots_rejected());
+    });
+}
+
 #[cfg(feature = "sig-ed25519")]
 mod multi_key {
     //! Multi-signing-key matrix.

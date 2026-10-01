@@ -138,6 +138,17 @@ impl ImagesBuilder {
     /// Some(builder) if is possible to test this configuration, or None if
     /// not possible (for example, if there aren't enough image slots).
     pub fn new(device: DeviceName, align: usize, erased_val: u8) -> Result<Self, String> {
+        Self::build(device, align, erased_val, true)
+    }
+
+    /// Like `new`, but ignores the capabilities the device lists as
+    /// unsupported.  For negative tests that boot a device the current
+    /// configuration is expected to reject.
+    pub fn new_unchecked(device: DeviceName, align: usize, erased_val: u8) -> Result<Self, String> {
+        Self::build(device, align, erased_val, false)
+    }
+
+    fn build(device: DeviceName, align: usize, erased_val: u8, check_caps: bool) -> Result<Self, String> {
         let (flash, areadesc, unsupported_caps) = Self::make_device(device, align, erased_val);
 
         // Swap-move and swap-offset require uniformly sized erase units, which
@@ -154,7 +165,7 @@ impl ImagesBuilder {
             && !areadesc.uses_native_sector_size(logical, scratch);
 
         for cap in unsupported_caps {
-            if !cap.present() {
+            if !check_caps || !cap.present() {
                 continue;
             }
             let relaxed = logical_makes_uniform
@@ -298,6 +309,34 @@ impl ImagesBuilder {
                         continue;
                     }
                     match Self::new(dev, align, erased_val) {
+                        Ok(run) => f(run),
+                        Err(msg) => warn!("Skipping {}: {}", dev, msg),
+                    }
+                }
+            }
+        }
+    }
+
+    /// Iterate the devices whose primary and secondary slots differ in
+    /// size.  Swap using scratch cannot handle them, so `each_device`
+    /// skips them; the negative tests boot them anyway and expect the
+    /// upgrade to be refused.
+    pub fn each_unequal_slot_device<F>(f: F)
+        where F: Fn(Self)
+    {
+        for &dev in ALL_DEVICES {
+            for &align in test_alignments() {
+                for &erased_val in &[0, 0xff] {
+                    if Self::device_usable(dev, align, erased_val).is_err() {
+                        continue;
+                    }
+                    let (_, areadesc, _) = Self::make_device(dev, align, erased_val);
+                    let primary = areadesc.find(FlashId::Image0).map(|(_, len, _)| len);
+                    let secondary = areadesc.find(FlashId::Image1).map(|(_, len, _)| len);
+                    if primary.is_none() || primary == secondary {
+                        continue;
+                    }
+                    match Self::new_unchecked(dev, align, erased_val) {
                         Ok(run) => f(run),
                         Err(msg) => warn!("Skipping {}: {}", dev, msg),
                     }
@@ -481,6 +520,32 @@ impl ImagesBuilder {
             }}).collect();
         Images {
             flash: bad_flash,
+            areadesc: self.areadesc,
+            images,
+            total_count: None,
+            ram: self.ram,
+        }
+    }
+
+    /// Construct an `Images` with fixed-size images.  The maximal image
+    /// size cannot be estimated for slots that differ in size, so the
+    /// negative tests for such slots use this instead of `make_image`.
+    pub fn make_fixed_size_images(self) -> Images {
+        let mut flash = self.flash;
+        let ram = self.ram.clone(); // TODO: Avoid this clone.
+        let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let primaries = install_image(&mut flash, &self.areadesc, &slots, 0,
+                ImageSize::Given(42784), &ram, &dep, ImageManipulation::None, Some(0));
+            let upgrades = install_image(&mut flash, &self.areadesc, &slots, 1,
+                ImageSize::Given(46928), &ram, &dep, ImageManipulation::None, Some(1));
+            OneImage {
+                slots,
+                primaries,
+                upgrades,
+            }}).collect();
+        Images {
+            flash,
             areadesc: self.areadesc,
             images,
             total_count: None,
@@ -710,6 +775,10 @@ impl ImagesBuilder {
                 areadesc.add_flash_sectors(dev_id, &dev);
                 areadesc.add_image(0x008000, 0x03c000, FlashId::Image0, dev_id);
                 areadesc.add_image(0x044000, 0x03b000, FlashId::Image1, dev_id);
+                // Scratch is only here so a swap-using-scratch build can
+                // boot the device; the unequal slots must make it refuse
+                // the upgrade.
+                areadesc.add_image(0x07f000, 0x001000, FlashId::ImageScratch, dev_id);
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
@@ -723,6 +792,8 @@ impl ImagesBuilder {
                 areadesc.add_flash_sectors(dev_id, &dev);
                 areadesc.add_image(0x008000, 0x03b000, FlashId::Image0, dev_id);
                 areadesc.add_image(0x043000, 0x03c000, FlashId::Image1, dev_id);
+                // See Nrf52840UnequalSlots.
+                areadesc.add_image(0x07f000, 0x001000, FlashId::ImageScratch, dev_id);
 
                 let mut flash = SimMultiFlash::new();
                 flash.insert(dev_id, dev);
@@ -1199,6 +1270,50 @@ impl Images {
 
         if fails > 0 {
             error!("Expected a rejected boot with the flash untouched");
+        }
+
+        fails > 0
+    }
+
+    /// Boot with an upgrade staged on a device whose primary and secondary
+    /// slots differ in size.  Swap using scratch cannot swap such slots, so
+    /// the bootloader must refuse the upgrade: the boot still succeeds into
+    /// the primary slot, and no flash is touched.
+    pub fn run_unequal_slots_rejected(&self) -> bool {
+        if !Caps::SwapUsingScratch.present() || !Caps::modifies_flash() {
+            return false;
+        }
+
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try upgrade with slots of different sizes");
+
+        self.mark_upgrades(&mut flash, 1);
+
+        let snapshot: Vec<(u8, Vec<u8>)> = flash.iter().map(|(&dev_id, dev)| {
+            let mut data = vec![0u8; dev.device_size()];
+            dev.read(0, &mut data).unwrap();
+            (dev_id, data)
+        }).collect();
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
+            warn!("Boot failed with slots of different sizes");
+            fails += 1;
+        }
+
+        for (dev_id, before) in &snapshot {
+            let dev = flash.get(dev_id).unwrap();
+            let mut after = vec![0u8; dev.device_size()];
+            dev.read(0, &mut after).unwrap();
+            if before != &after {
+                warn!("Flash device {} was modified by the refused upgrade", dev_id);
+                fails += 1;
+            }
+        }
+
+        if fails > 0 {
+            error!("Expected a refused upgrade with the flash untouched");
         }
 
         fails > 0
