@@ -151,6 +151,12 @@ pub struct TlvGen {
     ignore_ram_load_flag: bool,
     /// Which signing key to use.
     signing_key: SigningKey,
+    /// Additional keys to sign with, beyond `signing_key`. Used to build
+    /// images carrying more than one valid (key, signature) TLV pair, e.g.
+    /// to model a key-rotation transition image that remains verifiable by
+    /// bootloaders that only know the old key, as well as ones that only
+    /// know the new key. Only supported for `TlvKinds::ED25519`.
+    extra_signing_keys: Vec<SigningKey>,
 }
 
 #[derive(Debug)]
@@ -165,6 +171,25 @@ impl TlvGen {
     #[allow(dead_code)]
     pub fn with_signing_key(mut self, key: SigningKey) -> Self {
         self.signing_key = key;
+        self
+    }
+
+    /// Builder: additionally sign with `key`, producing a second, extra
+    /// (keyhash, signature) TLV pair alongside the one for `signing_key`.
+    /// Only implemented for `TlvKinds::ED25519`.
+    #[allow(dead_code)]
+    pub fn with_extra_signing_key(mut self, key: SigningKey) -> Self {
+        self.extra_signing_keys.push(key);
+        self
+    }
+
+    /// Builder: convenience wrapper around `with_extra_signing_key` that
+    /// takes a whole slice of additional keys at once.
+    #[allow(dead_code)]
+    pub fn also_with_extra_signing_keys(mut self, keys: &[SigningKey]) -> Self {
+        for key in keys {
+            self.extra_signing_keys.push(*key);
+        }
         self
     }
 
@@ -419,6 +444,8 @@ impl ManifestGen for TlvGen {
         if self.kinds.contains(&TlvKinds::ED25519) {
             estimate += 4 + 32; // keyhash
             estimate += 4 + 64; // ED25519 signature.
+            // One extra (keyhash, signature) TLV pair per additional key.
+            estimate += self.extra_signing_keys.len() * (4 + 32 + 4 + 64);
         }
         if self.kinds.contains(&TlvKinds::ECDSASIG) {
             // ECDSA signatures are encoded as ASN.1 with the x and y values
@@ -673,36 +700,48 @@ impl ManifestGen for TlvGen {
         }
 
         if self.kinds.contains(&TlvKinds::ED25519) {
-            let (pem_bytes, pub_key): (&[u8], &[u8]) = match self.signing_key {
-                SigningKey::Primary => (include_bytes!("../../root-ed25519.pem"), ED25519_PUB_KEY),
-                SigningKey::Secondary => (include_bytes!("../../root-ed25519-2.pem"), ED25519_PUB_KEY_2),
-                SigningKey::Unknown => (include_bytes!("../../root-ed25519-unknown.pem"), ED25519_PUB_KEY_UNKNOWN),
+            // Writes one (keyhash, signature) TLV pair for `key` into
+            // `result`. Pulled out of the main body so that a single image
+            // can carry more than one valid signature, e.g. to model a
+            // key-rotation transition image signed with both the old and
+            // the new key.
+            let write_ed25519_sig = |result: &mut Vec<u8>, key: SigningKey| {
+                let (pem_bytes, pub_key): (&[u8], &[u8]) = match key {
+                    SigningKey::Primary => (include_bytes!("../../root-ed25519.pem"), ED25519_PUB_KEY),
+                    SigningKey::Secondary => (include_bytes!("../../root-ed25519-2.pem"), ED25519_PUB_KEY_2),
+                    SigningKey::Unknown => (include_bytes!("../../root-ed25519-unknown.pem"), ED25519_PUB_KEY_UNKNOWN),
+                };
+
+                let keyhash = digest::digest(&digest::SHA256, pub_key);
+                let keyhash = keyhash.as_ref();
+
+                assert!(keyhash.len() == 32);
+                result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
+                result.write_u16::<LittleEndian>(32).unwrap();
+                result.extend_from_slice(keyhash);
+
+                let hash = digest::digest(&digest::SHA256, &sig_payload);
+                let hash = hash.as_ref();
+                assert!(hash.len() == 32);
+
+                let key_bytes = pem::parse(pem_bytes).unwrap();
+                assert_eq!(key_bytes.tag, "PRIVATE KEY");
+
+                let key_pair = Ed25519KeyPair::from_seed_and_public_key(
+                    &key_bytes.contents[16..48], &pub_key[12..44]).unwrap();
+                let signature = key_pair.sign(&hash);
+
+                result.write_u16::<LittleEndian>(TlvKinds::ED25519 as u16).unwrap();
+
+                let signature = signature.as_ref().to_vec();
+                result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
+                result.extend_from_slice(signature.as_ref());
             };
 
-            let keyhash = digest::digest(&digest::SHA256, pub_key);
-            let keyhash = keyhash.as_ref();
-
-            assert!(keyhash.len() == 32);
-            result.write_u16::<LittleEndian>(TlvKinds::KEYHASH as u16).unwrap();
-            result.write_u16::<LittleEndian>(32).unwrap();
-            result.extend_from_slice(keyhash);
-
-            let hash = digest::digest(&digest::SHA256, &sig_payload);
-            let hash = hash.as_ref();
-            assert!(hash.len() == 32);
-
-            let key_bytes = pem::parse(pem_bytes).unwrap();
-            assert_eq!(key_bytes.tag, "PRIVATE KEY");
-
-            let key_pair = Ed25519KeyPair::from_seed_and_public_key(
-                &key_bytes.contents[16..48], &pub_key[12..44]).unwrap();
-            let signature = key_pair.sign(&hash);
-
-            result.write_u16::<LittleEndian>(TlvKinds::ED25519 as u16).unwrap();
-
-            let signature = signature.as_ref().to_vec();
-            result.write_u16::<LittleEndian>(signature.len() as u16).unwrap();
-            result.extend_from_slice(signature.as_ref());
+            write_ed25519_sig(&mut result, self.signing_key);
+            for key in &self.extra_signing_keys {
+                write_ed25519_sig(&mut result, *key);
+            }
         }
 
         if self.kinds.contains(&TlvKinds::ENCRSA2048) {

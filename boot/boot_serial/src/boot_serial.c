@@ -380,7 +380,7 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
                         }
 #endif
                         FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
-                                 fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
+                                 fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL, NULL);
 #if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
                     }
 #endif
@@ -592,7 +592,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                         } else {
 #endif
                             FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
-                                     fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
+                                     fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL, NULL);
 #ifdef MCUBOOT_ENC_IMAGES
                         }
 #endif
