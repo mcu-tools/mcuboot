@@ -56,6 +56,7 @@ sim_test!(oversized_bootstrap, make_oversized_bootstrap_image(), run_oversized_b
 sim_test!(norevert_newimage, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_norevert_newimage());
 sim_test!(basic_revert, make_image(&NO_DEPS, true), run_basic_revert());
 sim_test!(revert_with_fails, make_image(&NO_DEPS, false), run_revert_with_fails());
+sim_test!(revert_with_torn_writes, make_image(&NO_DEPS, false), run_revert_with_torn_writes());
 sim_test!(perm_with_fails, make_image(&NO_DEPS, true), run_perm_with_fails());
 sim_test!(perm_with_random_fails, make_image(&NO_DEPS, true), run_perm_with_random_fails(5));
 sim_test!(norevert, make_image(&NO_DEPS, true), run_norevert());
