@@ -57,6 +57,13 @@ void fih_cfi_decrement(void)
 #endif /* FIH_ENABLE_CFI */
 
 #ifdef FIH_ENABLE_GLOBAL_FAIL
+
+#if defined(__riscv)
+#define FIH_PANIC_JUMP "j"
+#else
+#define FIH_PANIC_JUMP "b"
+#endif
+
 /* Global failure loop for bootloader code. Uses attribute used to prevent
  * compiler removing due to non-standard calling procedure. Multiple loop jumps
  * used to make unlooping difficult.
@@ -66,15 +73,15 @@ __attribute__((noinline))
 __attribute__((noreturn))
 void fih_panic_loop(void)
 {
-    __asm volatile ("b fih_panic_loop");
-    __asm volatile ("b fih_panic_loop");
-    __asm volatile ("b fih_panic_loop");
-    __asm volatile ("b fih_panic_loop");
-    __asm volatile ("b fih_panic_loop");
-    __asm volatile ("b fih_panic_loop");
-    __asm volatile ("b fih_panic_loop");
-    __asm volatile ("b fih_panic_loop");
-    __asm volatile ("b fih_panic_loop");
+    __asm volatile (FIH_PANIC_JUMP " fih_panic_loop");
+    __asm volatile (FIH_PANIC_JUMP " fih_panic_loop");
+    __asm volatile (FIH_PANIC_JUMP " fih_panic_loop");
+    __asm volatile (FIH_PANIC_JUMP " fih_panic_loop");
+    __asm volatile (FIH_PANIC_JUMP " fih_panic_loop");
+    __asm volatile (FIH_PANIC_JUMP " fih_panic_loop");
+    __asm volatile (FIH_PANIC_JUMP " fih_panic_loop");
+    __asm volatile (FIH_PANIC_JUMP " fih_panic_loop");
+    __asm volatile (FIH_PANIC_JUMP " fih_panic_loop");
 
     /* An infinite loop to suppress compiler warnings
      * about the return of a noreturn function
