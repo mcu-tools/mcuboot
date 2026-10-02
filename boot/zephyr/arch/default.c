@@ -43,6 +43,10 @@ void do_boot(const struct boot_rsp *rsp)
 			 rsp->br_hdr->ih_hdr_size);
 #endif
 
+#if defined(MCUBOOT_RAM_LOAD) && defined(CONFIG_RISCV_ISA_EXT_ZIFENCEI)
+	__asm__ volatile("fence.i" ::: "memory");
+#endif
+
 	/* Lock interrupts and dive into the entry point */
 	irq_lock();
 	((void (*)(void))start)();
