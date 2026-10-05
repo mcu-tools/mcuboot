@@ -26,6 +26,8 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
  */
 #if defined(CONFIG_BOOT_WATCHDOG_INSTALL_TIMEOUT_AT_BOOT) && DT_NODE_HAS_STATUS(DT_ALIAS(watchdog0), okay)
 static int watchdog_channel = 0;
+#else
+#define watchdog_channel 0
 #endif
 
 __weak void mcuboot_watchdog_setup(void)
