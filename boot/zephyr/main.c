@@ -226,7 +226,8 @@ int main(void)
 {
     struct boot_rsp rsp;
     int rc;
-#if defined(CONFIG_BOOT_USB_DFU_GPIO) || defined(CONFIG_BOOT_USB_DFU_WAIT)
+#if defined(CONFIG_BOOT_USB_DFU_GPIO) || defined(CONFIG_BOOT_USB_DFU_WAIT) || \
+    defined(CONFIG_BOOT_USB_DFU_BOOT_MODE)
     bool usb_dfu_requested = false;
     bool usb_dfu_forever = false;
 #endif
@@ -297,7 +298,24 @@ int main(void)
     usb_dfu_requested = true;
 #endif
 
-#if defined(CONFIG_BOOT_USB_DFU_GPIO) || defined(CONFIG_BOOT_USB_DFU_WAIT)
+#if defined(CONFIG_BOOT_USB_DFU_BOOT_MODE)
+    BOOT_LOG_DBG("Checking boot mode for USB DFU request");
+    if (io_detect_boot_mode()) {
+        BOOT_LOG_DBG("Staying in USB DFU");
+
+        usb_dfu_requested = true;
+        usb_dfu_forever = true;
+
+#ifdef CONFIG_MCUBOOT_INDICATION_LED
+        io_led_set(1);
+#endif
+
+        mcuboot_status_change(MCUBOOT_STATUS_USB_DFU_ENTERED);
+    }
+#endif
+
+#if defined(CONFIG_BOOT_USB_DFU_GPIO) || defined(CONFIG_BOOT_USB_DFU_WAIT) || \
+    defined(CONFIG_BOOT_USB_DFU_BOOT_MODE)
     if (usb_dfu_requested) {
         rc = boot_usb_dfu_enable();
         if (rc) {
