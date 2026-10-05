@@ -1,0 +1,10 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * Serial recovery writes responses with uart_poll_out(). Without flow
+ * control, CDC ACM drops bytes when its TX FIFO is full, which truncates
+ * larger SMP responses (e.g. image list) and makes clients time out.
+ */
+&board_cdc_acm_uart {
+	hw-flow-control;
+};
