@@ -36,7 +36,7 @@
 
 #include "bootutil/bootutil_log.h"
 
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 
 #include "watchdog.h"
 

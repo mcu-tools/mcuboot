@@ -7,7 +7,7 @@
 #include <string.h>
 
 #include <bootutil/bootutil_log.h>
-#include <bootutil/fault_injection_hardening.h>
+#include <fault_injection_hardening.h>
 
 #include "bootloader_memory_utils.h"
 #include "bootloader_flash_priv.h"

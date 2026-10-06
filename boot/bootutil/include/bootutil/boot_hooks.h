@@ -35,7 +35,7 @@
 #define H_BOOTUTIL_HOOKS
 
 #include "bootutil/bootutil.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 
 #define DO_HOOK_CALL(f, ret_default, ...) \
     f(__VA_ARGS__)
