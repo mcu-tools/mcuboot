@@ -323,7 +323,6 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
             uint8_t tmpbuf[64];
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
-            bool active = false;
             bool confirmed = false;
             bool pending = false;
             bool permanent = false;
@@ -411,7 +410,6 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
             if (swap_status == BOOT_SWAP_TYPE_NONE) {
                 if (slot == BOOT_SLOT_PRIMARY) {
                     confirmed = true;
-                    active = true;
                 }
             } else if (swap_status == BOOT_SWAP_TYPE_TEST) {
                 if (slot == BOOT_SLOT_PRIMARY) {
@@ -428,7 +426,6 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
                 }
             } else if (swap_status == BOOT_SWAP_TYPE_REVERT) {
                 if (slot == BOOT_SLOT_PRIMARY) {
-                    active = true;
                 } else {
                     confirmed = true;
                 }
@@ -441,11 +438,6 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 
             if (confirmed) {
                 zcbor_tstr_put_lit_cast(cbor_state, "confirmed");
-                zcbor_bool_put(cbor_state, true);
-            }
-
-            if (active) {
-                zcbor_tstr_put_lit_cast(cbor_state, "active");
                 zcbor_bool_put(cbor_state, true);
             }
 
