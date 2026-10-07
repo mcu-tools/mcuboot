@@ -687,6 +687,7 @@ if !SINGLE_APPLICATION_SLOT
 
 config BOOT_DIRECT_XIP_REVERT
 	bool "Revert mechanism in direct-xip mode"
+	select MCUBOOT_BOOTUTIL_LIB_FOR_REVERT
 	depends on BOOT_DIRECT_XIP
 	help
 	  If y, enables the revert mechanism in direct-xip similar to the one in
