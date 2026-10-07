@@ -475,7 +475,8 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
     boot_serial_output();
 }
 
-#ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
+#if defined(MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE) && (!defined(MCUBOOT_DIRECT_XIP) || \
+    defined(MCUBOOT_DIRECT_XIP_REVERT))
 /*
  * Set image state.
  */
@@ -533,6 +534,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 #ifdef MCUBOOT_SWAP_USING_OFFSET
             int swap_status = boot_swap_type_multi(BOOT_CURR_IMG(state));
 #endif
+
             image_index = BOOT_CURR_IMG(state);
             (void) image_index; /* Might be unused depending on the configuration */
 
@@ -685,7 +687,8 @@ bs_list_set(uint8_t op, char *buf, int len)
     if (op == NMGR_OP_READ) {
         bs_list(state, buf, len);
     } else {
-#ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
+#if defined(MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE) && (!defined(MCUBOOT_DIRECT_XIP) || \
+    defined(MCUBOOT_DIRECT_XIP_REVERT))
         bs_set(state, buf, len);
 #else
         rc = MGMT_ERR_ENOTSUP;
