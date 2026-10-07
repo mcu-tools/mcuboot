@@ -33,7 +33,6 @@
 #if defined(MCUBOOT_ENC_IMAGES)
 #include "sim_custom_aes_ctr.h"
 #include "sim_custom_ecdh_p256.h"
-#include "sim_custom_hmac_sha256.h"
 #endif /* MCUBOOT_ENC_IMAGES */
 
 #endif /* MCUBOOT_CUSTOM_CRYPTO_H */
