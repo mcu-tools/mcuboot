@@ -791,7 +791,7 @@ bs_slot_info(uint8_t op, char *buf, int len)
                      zcbor_uint32_put(cbor_state, (image_index * 2 + slot + 1));
 #else
 #if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
-                if (slot == 1) {
+                if (slot == BOOT_SLOT_PRIMARY) {
 #endif
                     ok = zcbor_tstr_put_lit(cbor_state, "upload_image_id") &&
                          zcbor_uint32_put(cbor_state, image_index);
