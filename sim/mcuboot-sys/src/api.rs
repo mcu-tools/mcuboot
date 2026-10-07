@@ -89,7 +89,10 @@ impl Default for FlashContext {
     }
 }
 
-#[repr(C)]
+// Windows (both mingw and msvc) requires 16-byte alignment for jmp_buf.
+// Always align to 16 bytes; the few extra bytes wasted on other platforms
+// are immaterial for a struct instantiated a handful of times per test.
+#[repr(C, align(16))]
 #[derive(Debug)]
 pub struct CSimContext {
     pub flash_counter: libc::c_int,
@@ -101,6 +104,10 @@ pub struct CSimContext {
     // The size below is enough to store data on a x86_64 machine.
     pub boot_jmpbuf: [u64; 48],
 }
+
+// Guard against a future field change shifting boot_jmpbuf off a
+// 16-byte boundary (struct alignment alone doesn't guarantee this).
+const _: () = assert!(mem::offset_of!(CSimContext, boot_jmpbuf) % 16 == 0);
 
 impl Default for CSimContext {
     fn default() -> Self {
