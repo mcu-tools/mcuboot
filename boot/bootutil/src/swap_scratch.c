@@ -948,7 +948,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
 
-int app_max_size(struct boot_loader_state *state)
+uint32_t app_max_size(struct boot_loader_state *state)
 {
     size_t num_sectors_primary;
     size_t num_sectors_secondary;
@@ -1033,7 +1033,7 @@ int app_max_size(struct boot_loader_state *state)
 #endif
 }
 #else
-int app_max_size(struct boot_loader_state *state)
+uint32_t app_max_size(struct boot_loader_state *state)
 {
     const struct flash_area *fap = NULL;
     uint32_t active_slot;
