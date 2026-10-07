@@ -4,6 +4,7 @@
  * Copyright (c) 2017-2020 Linaro LTD
  * Copyright (c) 2017-2019 JUUL Labs
  * Copyright (c) 2019-2021 Arm Limited
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  * Original license:
  *
@@ -359,6 +360,21 @@ int boot_slots_compatible(struct boot_loader_state *state);
 uint32_t boot_status_internal_off(const struct boot_status *bs, int elem_sz);
 int boot_read_image_header(struct boot_loader_state *state, int slot,
                            struct image_header *out_hdr, struct boot_status *bs);
+#ifdef MCUBOOT_ENC_IMAGES
+/*
+ * Apply, in place, the exact content transform boot_copy_region applies to one
+ * chunk being written to `fap_dst` at absolute offset `abs_off` within the
+ * destination image area (not a device address). The primitive recomputes
+ * encrypted_src / encrypted_dst / only_copy / source_slot from `state`,
+ * `fap_src`, and `fap_dst` and selects the governing header itself -- primary
+ * header when encrypting, secondary header when decrypting. No-op for a
+ * non-encrypted image or a same-slot (only_copy) move.
+ */
+void boot_transform_chunk(struct boot_loader_state *state,
+                          const struct flash_area *fap_src,
+                          const struct flash_area *fap_dst,
+                          uint32_t abs_off, uint8_t *buf, uint32_t chunk_sz);
+#endif
 #if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_ENC_IMAGES)
 int boot_copy_region(struct boot_loader_state *state,
                      const struct flash_area *fap_src,
