@@ -490,7 +490,8 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
      *   "hash":<hash of image (OPTIONAL for single image only)>
      * }
      */
-    uint32_t slot;
+    uint32_t slot = 0;
+    bool active_slot = false;
     uint8_t image_index = 0;
     size_t decoded = 0;
     uint8_t hash[IMAGE_HASH_SIZE];
@@ -531,7 +532,8 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 
     if (img_hash.len != 0) {
         IMAGES_ITER(BOOT_CURR_IMG(state)) {
-#ifdef MCUBOOT_SWAP_USING_OFFSET
+#if defined(CONFIG_BOOT_SWAP_USING_OFFSET) || defined(CONFIG_BOOT_SWAP_USING_MOVE) || \
+    defined(CONFIG_BOOT_SWAP_USING_SCRATCH) || defined(CONFIG_BOOT_UPGRADE_ONLY)
             int swap_status = boot_swap_type_multi(BOOT_CURR_IMG(state));
 #endif
 
@@ -607,6 +609,44 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 #endif
                 if (rc == 0 && memcmp(hash, img_hash.value, sizeof(hash)) == 0) {
                     /* Hash matches, set this slot for test or confirmation */
+#if defined(CONFIG_BOOT_SWAP_USING_OFFSET) || defined(CONFIG_BOOT_SWAP_USING_MOVE) || \
+    defined(CONFIG_BOOT_SWAP_USING_SCRATCH) || defined(CONFIG_BOOT_UPGRADE_ONLY)
+                    if (slot == BOOT_SLOT_PRIMARY && !confirm) {
+                        BOOT_LOG_ERR("Cannot mark primary image for test");
+                        rc = MGMT_ERR_EINVAL;
+                        goto out;
+                    }
+
+                    if (swap_status == BOOT_SWAP_TYPE_TEST || swap_status == BOOT_SWAP_TYPE_PERM)
+                    {
+                        /* Once a pending operation is set, it cannot be changed */
+                        rc = MGMT_ERR_EBADSTATE;
+                        goto out;
+                    }
+                    else if (swap_status == BOOT_SWAP_TYPE_REVERT && slot == BOOT_SLOT_SECONDARY)
+                    {
+                        /*
+                         * Since the image is going to be reverted on next boot, it cannot be
+                         * confirmed
+                         */
+                        rc = MGMT_ERR_EBADSTATE;
+                        goto out;
+                    }
+                    else if (swap_status == BOOT_SWAP_TYPE_REVERT && !confirm)
+                    {
+                        rc = MGMT_ERR_EBADSTATE;
+                        goto out;
+                    }
+
+                    if (swap_status == BOOT_SWAP_TYPE_TEST || swap_status == BOOT_SWAP_TYPE_PERM)
+                    {
+                        active_slot = (slot == BOOT_SLOT_SECONDARY ? true : false);
+                    }
+                    else
+                    {
+                        active_slot = (slot == BOOT_SLOT_PRIMARY ? true : false);
+                    }
+#endif
                     found = true;
                     goto set_image_state;
                 }
@@ -623,7 +663,12 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 #endif
 
 set_image_state:
+#if defined(CONFIG_BOOT_SWAP_USING_OFFSET) || defined(CONFIG_BOOT_SWAP_USING_MOVE) || \
+    defined(CONFIG_BOOT_SWAP_USING_SCRATCH) || defined(CONFIG_BOOT_UPGRADE_ONLY)
+    rc = boot_set_next(BOOT_IMG_AREA(state, slot), active_slot, confirm);
+#else
     rc = boot_set_pending_multi(image_index, confirm);
+#endif
 
 out:
     if (rc == 0) {
