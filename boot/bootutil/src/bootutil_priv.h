@@ -593,9 +593,24 @@ struct bootsim_ram_info *bootsim_get_ram_info(void);
 #       define IMAGE_RAM_BASE ((uintptr_t)0)
 #   endif
 
-#define LOAD_IMAGE_DATA(hdr, fap, start, output, size)       \
+#define LOAD_IMAGE_DATA_RAM(hdr, fap, start, output, size)                    \
     (memcpy((output),(void*)(IMAGE_RAM_BASE + (hdr)->ih_load_addr + (start)), \
     (size)), 0)
+
+#ifdef MCUBOOT_SERIAL
+bool boot_image_data_in_ram(void);
+void boot_set_image_data_in_nvm(void);
+
+#define LOAD_IMAGE_DATA_NVM(hdr, fap, start, output, size)       \
+    (flash_area_read((fap), (start), (output), (size)))
+
+#define LOAD_IMAGE_DATA(hdr, fap, start, output, size)                              \
+    boot_image_data_in_ram() ? LOAD_IMAGE_DATA_RAM(hdr, fap, start, output, size) : \
+                               LOAD_IMAGE_DATA_NVM(hdr, fap, start, output, size)
+#else
+#define LOAD_IMAGE_DATA(hdr, fap, start, output, size) \
+        LOAD_IMAGE_DATA_RAM(hdr, fap, start, output, size)
+#endif /* MCUBOOT_SERIAL */
 
 int boot_load_image_to_sram(struct boot_loader_state *state);
 #else

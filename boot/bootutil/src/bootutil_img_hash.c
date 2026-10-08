@@ -154,58 +154,68 @@ bootutil_img_hash(struct boot_loader_state *state,
     bootutil_sha_update(&sha_ctx, (void *)(base + flash_area_get_off(fap)), size);
 #else /* MCUBOOT_HASH_STORAGE_DIRECTLY */
 #ifdef MCUBOOT_RAM_LOAD
-    bootutil_sha_update(&sha_ctx,
-                        (void*)(IMAGE_RAM_BASE + hdr->ih_load_addr),
-                        size);
-#else
-    for (off = 0; off < size; off += blk_sz) {
-        blk_sz = size - off;
-        if (blk_sz > tmp_buf_sz) {
-            blk_sz = tmp_buf_sz;
-        }
+#ifdef MCUBOOT_SERIAL
+    if (boot_image_data_in_ram()) {
+#endif
+        bootutil_sha_update(&sha_ctx,
+                            (void*)(IMAGE_RAM_BASE + hdr->ih_load_addr),
+                            size);
+#ifdef MCUBOOT_SERIAL
+    } else {
+#endif
+#endif
+#if !defined(MCUBOOT_RAM_LOAD) || defined(MCUBOOT_SERIAL)
+        for (off = 0; off < size; off += blk_sz) {
+            blk_sz = size - off;
+            if (blk_sz > tmp_buf_sz) {
+                blk_sz = tmp_buf_sz;
+            }
 #ifdef MCUBOOT_ENC_IMAGES
-        /* The only data that is encrypted in an image is the payload;
-         * both header and TLVs (when protected) are not.
-         */
-        if ((off < hdr_size) && ((off + blk_sz) > hdr_size)) {
-            /* read only the header */
-            blk_sz = hdr_size - off;
-        }
-        if ((off < tlv_off) && ((off + blk_sz) > tlv_off)) {
-            /* read only up to the end of the image payload */
-            blk_sz = tlv_off - off;
-        }
+            /* The only data that is encrypted in an image is the payload;
+             * both header and TLVs (when protected) are not.
+             */
+            if ((off < hdr_size) && ((off + blk_sz) > hdr_size)) {
+                /* read only the header */
+                blk_sz = hdr_size - off;
+            }
+            if ((off < tlv_off) && ((off + blk_sz) > tlv_off)) {
+                /* read only up to the end of the image payload */
+                blk_sz = tlv_off - off;
+            }
 #endif
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
-        rc = flash_area_read(fap, off + sector_off, tmp_buf, blk_sz);
+            rc = flash_area_read(fap, off + sector_off, tmp_buf, blk_sz);
 #else
-        rc = flash_area_read(fap, off, tmp_buf, blk_sz);
+            rc = flash_area_read(fap, off, tmp_buf, blk_sz);
 #endif
-        if (rc) {
-            bootutil_sha_drop(&sha_ctx);
-            BOOT_LOG_DBG("bootutil_img_validate Error %d reading data chunk "
-                         "%p %" PRIu32 " %" PRIu32,
-                         rc, fap, off, blk_sz);
-            return rc;
-        }
-#ifdef MCUBOOT_ENC_IMAGES
-        if (MUST_DECRYPT(fap, image_index, hdr)) {
-            /* Only payload is encrypted (area between header and TLVs) */
-            int slot = flash_area_id_to_multi_image_slot(image_index,
-                            flash_area_get_id(fap));
-
-            if (off >= hdr_size && off < tlv_off) {
-                blk_off = (off - hdr_size) & 0xf;
-                boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, slot), off - hdr_size,
-                                 blk_sz, blk_off, tmp_buf);
+            if (rc) {
+                bootutil_sha_drop(&sha_ctx);
+                BOOT_LOG_DBG("bootutil_img_validate Error %d reading data chunk "
+                             "%p %" PRIu32 " %" PRIu32,
+                             rc, fap, off, blk_sz);
+                return rc;
             }
-        }
-#endif
-        bootutil_sha_update(&sha_ctx, tmp_buf, blk_sz);
+#ifdef MCUBOOT_ENC_IMAGES
+            if (MUST_DECRYPT(fap, image_index, hdr)) {
+                /* Only payload is encrypted (area between header and TLVs) */
+                int slot = flash_area_id_to_multi_image_slot(image_index,
+                                flash_area_get_id(fap));
 
-        MCUBOOT_WATCHDOG_FEED();
+                if (off >= hdr_size && off < tlv_off) {
+                    blk_off = (off - hdr_size) & 0xf;
+                    boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, slot), off - hdr_size,
+                                     blk_sz, blk_off, tmp_buf);
+                }
+            }
+#endif
+            bootutil_sha_update(&sha_ctx, tmp_buf, blk_sz);
+
+            MCUBOOT_WATCHDOG_FEED();
+        }
+#if defined(MCUBOOT_RAM_LOAD)
     }
-#endif /* MCUBOOT_RAM_LOAD */
+#endif
+#endif /* !defined(MCUBOOT_RAM_LOAD) || defined(MCUBOOT_SERIAL) */
 #endif /* MCUBOOT_HASH_STORAGE_DIRECTLY */
     bootutil_sha_finish(&sha_ctx, hash_result);
     bootutil_sha_drop(&sha_ctx);

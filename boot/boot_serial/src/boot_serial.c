@@ -2005,6 +2005,9 @@ boot_serial_start(const struct boot_uart_funcs *f)
 #ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
     bs_rearm_ms = 0;
 #endif
+#if defined(MCUBOOT_RAM_LOAD)
+    boot_set_image_data_in_nvm();
+#endif
     bs_entry = true;
     boot_serial_read_console(f,0);
 }
