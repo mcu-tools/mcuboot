@@ -699,6 +699,7 @@ config BOOT_DIRECT_XIP_REVERT
 
 config BOOT_RAM_LOAD_REVERT
 	bool "Revert mechanism in ram-load mode"
+	select MCUBOOT_BOOTUTIL_LIB_FOR_REVERT
 	depends on BOOT_RAM_LOAD
 	help
 	  If y, enables the revert mechanism in ram-load similar to the one in

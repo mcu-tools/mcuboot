@@ -320,9 +320,9 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 #if defined(MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE) || defined(MCUBOOT_SWAP_USING_OFFSET)
         int swap_status = boot_swap_type_multi(BOOT_CURR_IMG(state));
 #endif
-#if defined(MCUBOOT_DIRECT_XIP)
+#if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
         struct image_version image_versions[BOOT_NUM_SLOTS] = { 0x00 };
-#if defined(MCUBOOT_DIRECT_XIP_REVERT)
+#if defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT)
         struct boot_swap_state image_swap_states[BOOT_NUM_SLOTS] = { 0x00 };
         uint8_t inactive_slot;
 #endif
@@ -331,7 +331,7 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
         image_index = BOOT_CURR_IMG(state);
         (void) image_index; /* Might be unused depending on the configuration */
 
-#if defined(MCUBOOT_DIRECT_XIP)
+#if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
             FIH_DECLARE(fih_rc, FIH_FAILURE);
             int rc;
@@ -382,7 +382,7 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
                 continue;
             }
 
-#if defined(MCUBOOT_DIRECT_XIP_REVERT)
+#if defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT)
             rc = boot_read_swap_state(fap, &image_swap_states[slot]);
 #endif
 
@@ -393,7 +393,7 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
                        &image_versions[BOOT_SLOT_SECONDARY]) < 0 ? BOOT_SLOT_SECONDARY :
                                                                    BOOT_SLOT_PRIMARY);
 
-#if defined(MCUBOOT_DIRECT_XIP_REVERT)
+#if defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT)
         inactive_slot = (active_slot == BOOT_SLOT_SECONDARY ? BOOT_SLOT_PRIMARY :
                                                               BOOT_SLOT_SECONDARY);
 #endif
@@ -489,12 +489,13 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 #endif
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE
-#if defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_DIRECT_XIP_REVERT)
+#if (defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_DIRECT_XIP_REVERT)) || \
+    (defined(MCUBOOT_RAM_LOAD) && !defined(MCUBOOT_RAM_LOAD_REVERT))
             if (slot == active_slot)
             {
                 confirmed = true;
             }
-#elif defined(MCUBOOT_DIRECT_XIP_REVERT)
+#elif defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT)
             if (image_swap_states[active_slot].magic == BOOT_MAGIC_GOOD) {
                 if (image_swap_states[active_slot].image_ok == BOOT_FLAG_SET) {
                     if (slot == active_slot) {
@@ -589,7 +590,8 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 }
 
 #if defined(MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE) && (!defined(MCUBOOT_DIRECT_XIP) || \
-    defined(MCUBOOT_DIRECT_XIP_REVERT))
+    defined(MCUBOOT_DIRECT_XIP_REVERT)) && (!defined(MCUBOOT_RAM_LOAD) || \
+    defined(MCUBOOT_RAM_LOAD_REVERT))
 /*
  * Set image state.
  */
@@ -760,7 +762,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                         active_slot = (slot == BOOT_SLOT_PRIMARY ? true : false);
                     }
 #endif
-#if defined(MCUBOOT_DIRECT_XIP_REVERT)
+#if defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT)
                     struct image_version image_versions[BOOT_NUM_SLOTS] = { 0x00 };
                     struct boot_swap_state image_swap_state = { 0x00 };
                     uint8_t active_slot;
@@ -929,7 +931,8 @@ bs_list_set(uint8_t op, char *buf, int len)
         bs_list(state, buf, len);
     } else {
 #if defined(MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE) && (!defined(MCUBOOT_DIRECT_XIP) || \
-    defined(MCUBOOT_DIRECT_XIP_REVERT))
+    defined(MCUBOOT_DIRECT_XIP_REVERT)) && (!defined(MCUBOOT_RAM_LOAD) || \
+    defined(MCUBOOT_RAM_LOAD_REVERT))
         bs_set(state, buf, len);
 #else
         rc = MGMT_ERR_ENOTSUP;
