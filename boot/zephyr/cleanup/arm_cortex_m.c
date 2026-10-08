@@ -28,6 +28,23 @@ void cleanup_arm_interrupts(void)
 	}
 }
 
+#if CONFIG_BOOT_DISABLE_BRANCH_PREDICTION
+void cleanup_arm_branch_predictor(void)
+{
+	/* CCR.BP and BPIALL don't exist on all cores, e.g. Cortex-M4 */
+#if defined(SCB_CCR_BP_Msk)
+	SCB->CCR &= ~SCB_CCR_BP_Msk;
+	__DSB();
+	__ISB();
+
+	/* Don't pass MCUboot's branch history on to the application */
+	SCB->BPIALL = 0;
+	__DSB();
+	__ISB();
+#endif
+}
+#endif
+
 #if CONFIG_CPU_HAS_ARM_MPU
 __weak void z_arm_clear_arm_mpu_config(void)
 {

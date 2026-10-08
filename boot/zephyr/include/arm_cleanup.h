@@ -13,6 +13,13 @@
  */
 void cleanup_arm_interrupts(void);
 
+#if defined(CONFIG_BOOT_DISABLE_BRANCH_PREDICTION)
+/**
+ * Disable branch prediction and invalidate the branch predictor.
+ */
+void cleanup_arm_branch_predictor(void);
+#endif
+
 #if defined(CONFIG_CPU_HAS_ARM_MPU) || defined(CONFIG_CPU_HAS_NXP_SYSMPU)
 /**
  * Cleanup all ARM MPU region configuration

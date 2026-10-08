@@ -1309,6 +1309,25 @@ config BOOT_DISABLE_CACHES
 	  increases protection against data leakage from MCUboot to applications via
 	  these caches.
 
+config BOOT_DISABLE_BRANCH_PREDICTION
+	bool "Disable branch prediction before chain-loading application"
+	depends on MCUBOOT_CLEANUP_ARM_CORE
+	depends on ARMV7_M_ARMV8_M_MAINLINE
+	default y if CPU_CORTEX_M85
+	help
+	  Will disable branch prediction and invalidate the branch predictor on
+	  the CPU prior to booting an application, before the MPU configuration
+	  is cleared. Without MPU regions, branch prediction can speculatively
+	  access any executable address in the default memory map, including
+	  memory that is not populated or whose controller is disabled, which
+	  can hang the system on some SoCs. The application can enable branch
+	  prediction again once it has set up its own MPU. Invalidating the
+	  branch predictor also prevents leaking MCUboot's branch history to the
+	  application.
+
+	  This has no effect on cores where branch prediction is not
+	  implemented or is always enabled, such as the Cortex-M7.
+
 config MCUBOOT_BOOT_BANNER
 	bool "Use MCUboot boot banner"
 	depends on "$(APP_VERSION_EXTENDED_STRING)" != ""

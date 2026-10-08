@@ -134,6 +134,11 @@ void do_boot(const struct boot_rsp *rsp)
 	sys_cache_data_disable();
 #endif
 
+#if defined(CONFIG_BOOT_DISABLE_BRANCH_PREDICTION)
+	/* Disable branch prediction before the MPU configuration is cleared */
+	cleanup_arm_branch_predictor();
+#endif
+
 #if CONFIG_CPU_HAS_ARM_MPU || CONFIG_CPU_HAS_NXP_SYSMPU
 	z_arm_clear_arm_mpu_config();
 #endif
