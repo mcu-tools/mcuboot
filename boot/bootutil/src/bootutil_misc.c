@@ -788,7 +788,8 @@ finish:
     memset(state, 0, sizeof(struct boot_loader_state));
 }
 #endif
-#if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO) || defined(MCUBOOT_DATA_SHARING)
+#if (defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO) || defined(MCUBOOT_DATA_SHARING)) && \
+    !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
 const struct image_max_size *boot_get_max_app_size(void)
 {
     const struct image_max_size *image_max_sizes = boot_get_image_max_sizes();
