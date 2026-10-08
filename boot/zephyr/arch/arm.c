@@ -136,6 +136,8 @@ void do_boot(const struct boot_rsp *rsp)
 
 #if CONFIG_CPU_HAS_ARM_MPU || CONFIG_CPU_HAS_NXP_SYSMPU
 	z_arm_clear_arm_mpu_config();
+#elif defined(CONFIG_ARM_AARCH32_MMU)
+	z_arm_clear_arm_mmu_config();
 #endif
 
 #if defined(CONFIG_BUILTIN_STACK_GUARD) && \
@@ -175,6 +177,33 @@ void do_boot(const struct boot_rsp *rsp)
 #ifdef CONFIG_CPU_CORTEX_M
 	__set_CONTROL(0x00); /* application will configures core on its own */
 	__ISB();
+#elif defined(CONFIG_CPU_AARCH32_CORTEX_A)
+	/*
+	 * Leave the masks as a first-stage loader leaves them, which is what a
+	 * chain-loaded image expects: supervisor mode, IRQ masked, asynchronous
+	 * aborts unmasked.
+	 *
+	 * A arrives set, because Zephyr starts every thread, this loader's main()
+	 * included, with A_BIT in the initial frame. It is cleared: an image that
+	 * starts with asynchronous aborts masked cannot see one the handoff caused.
+	 *
+	 * F is not written. Where SCTLR.NMFI is set, FIQ is non-maskable by
+	 * software: F can be cleared but never set.
+	 *
+	 * CPSR_fsxc, not the bare CPSR: `msr CPSR` assembles to CPSR_fc, and A is
+	 * bit 8, in the extension byte.
+	 */
+	__asm__ volatile(
+		"   mrs r0, CPSR\n"
+		/* supervisor mode */
+		"   bic r0, #0x1f\n"
+		"   orr r0, #0x13\n"
+		/* mask IRQ */
+		"   orr r0, #0x80\n"
+		/* unmask asynchronous aborts */
+		"   bic r0, #0x100\n"
+		"   msr CPSR_fsxc, r0\n"
+		::: "r0");
 #else
 	/* Set mode to supervisor and A, I and F bit as described in the
 	 * Cortex R5 TRM */

@@ -467,6 +467,11 @@ if(CONFIG_MCUBOOT_CLEANUP_ARM_CORE)
   zephyr_sources_ifdef(CONFIG_ARMV7_R
     ${BOOT_DIR}/zephyr/cleanup/arm_cortex_r.c
   )
+
+  # ARM Cortex-A
+  zephyr_sources_ifdef(CONFIG_CPU_AARCH32_CORTEX_A
+    ${BOOT_DIR}/zephyr/cleanup/arm_cortex_a.c
+  )
 endif()
 
 if(CONFIG_MCUBOOT_BOOT_BANNER)

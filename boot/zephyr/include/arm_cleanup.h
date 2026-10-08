@@ -20,4 +20,13 @@ void cleanup_arm_interrupts(void);
 void z_arm_clear_arm_mpu_config(void);
 #endif
 
+#if defined(CONFIG_ARM_AARCH32_MMU)
+/**
+ * Turn the MMU off and invalidate what described this boot loader: the
+ * translation lookaside buffer, the instruction cache and the branch
+ * predictor.
+ */
+void z_arm_clear_arm_mmu_config(void);
+#endif
+
 #endif
