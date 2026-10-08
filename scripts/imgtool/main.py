@@ -546,7 +546,8 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
     if enckey and key and ((isinstance(key, keys.ECDSA256P1) and
          not isinstance(enckey, keys.ECDSA256P1Public))
        or (isinstance(key, keys.ECDSA384P1) and
-           not isinstance(enckey, keys.ECDSA384P1Public))
+           not isinstance(enckey, (keys.ECDSA384P1Public,
+                                   keys.ECDSA256P1Public)))
             or (isinstance(key, keys.RSA) and
                 not isinstance(enckey, keys.RSAPublic))):
         # FIXME
