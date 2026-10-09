@@ -423,6 +423,15 @@ class BasedIntParamType(click.ParamType):
 @click.option('-E', '--encrypt', metavar='filename',
               help='Encrypt image using the provided public key. '
                    '(Not supported in direct-xip or ram-load mode.)')
+@click.option('--encrypt-xip', metavar='filename',
+              help='Encrypt image for XIP (execute-in-place) using the provided '
+                   'EC256 public key. Uses extended ECIES TLV with per-image IV '
+                   'and offset-based AES-CTR counters.')
+@click.option('--xip-base-address', metavar='address', required=False,
+              type=BasedIntParamType(),
+              help='Absolute flash address of image start (slot base). '
+                   'Required with --encrypt-xip. Matches edgeprotecttools '
+                   'initial_counter = base_address + header_size.')
 @click.option('--encrypt-keylen', default='128',
               type=click.Choice(['128', '256']),
               help='When encrypting the image using AES, select a 128 bit or '
@@ -516,7 +525,8 @@ class BasedIntParamType(click.ParamType):
               help='Unique image class identifier, format: (<raw_uuid>|<image_class_name>)')
 def sign(key, public_key_format, align, version, pad_sig, header_size,
          pad_header, slot_size, pad, confirm, test, max_sectors, overwrite_only,
-         endian, encrypt_keylen, encrypt, compression, infile, outfile,
+         endian, encrypt_keylen, encrypt, encrypt_xip,
+         xip_base_address, compression, infile, outfile,
          dependencies, load_addr, hex_addr, erased_val, save_enctlv,
          security_counter, boot_record, custom_tlv, custom_tlv_file, rom_fixed, max_align,
          clear, fix_sig, fix_sig_pubkey, sig_out, user_sha, hmac_sha, is_pure,
@@ -542,7 +552,31 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
             "Cannot sign with a public-only PEM; signing requires the "
             "private key."
         )
-    enckey = load_key(encrypt) if encrypt else None
+
+    # Validate --encrypt and --encrypt-xip mutual exclusion
+    if encrypt and encrypt_xip:
+        raise click.UsageError("--encrypt and --encrypt-xip are mutually exclusive")
+
+    # XIP only supports AES-128
+    if encrypt_xip and encrypt_keylen == '256':
+        raise click.UsageError(
+            "--encrypt-xip only supports AES-128 "
+            "(--encrypt-keylen 256 is incompatible)")
+
+    enc_source = encrypt or encrypt_xip
+    enckey = load_key(enc_source) if enc_source else None
+
+    # XIP encryption always uses EC256
+    if encrypt_xip and enckey and not isinstance(enckey, keys.ECDSA256P1Public):
+        raise click.UsageError("--encrypt-xip only supports EC256 keys")
+
+    if encrypt_xip and xip_base_address is None:
+        raise click.UsageError(
+            "--xip-base-address is required with --encrypt-xip")
+    if xip_base_address is not None and not encrypt_xip:
+        raise click.UsageError(
+            "--xip-base-address can only be used with --encrypt-xip")
+
     if enckey and key and ((isinstance(key, keys.ECDSA256P1) and
          not isinstance(enckey, keys.ECDSA256P1Public))
        or (isinstance(key, keys.ECDSA384P1) and
@@ -650,13 +684,16 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
                dependencies, boot_record, custom_tlvs, compression_tlvs,
                compression, int(encrypt_keylen), clear, baked_signature,
                pub_key, vector_to_sign, user_sha=user_sha, hmac_sha=hmac_sha,
-               is_pure=is_pure, keep_comp_size=keep_comp_size)
+               is_pure=is_pure, keep_comp_size=keep_comp_size,
+               xip_mode=bool(encrypt_xip),
+               xip_base_address=xip_base_address or 0)
             img = compressed_img
     else:
         img.create(key, public_key_format, enckey, dependencies, boot_record,
                custom_tlvs, compression_tlvs, None, int(encrypt_keylen), clear,
                baked_signature, pub_key, vector_to_sign, user_sha=user_sha,
-               hmac_sha=hmac_sha, is_pure=is_pure)
+               hmac_sha=hmac_sha, is_pure=is_pure, xip_mode=bool(encrypt_xip),
+               xip_base_address=xip_base_address or 0)
     img.save(outfile, hex_addr)
     if sig_out is not None:
         new_signature = img.get_signature()
