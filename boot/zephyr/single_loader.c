@@ -70,7 +70,7 @@ boot_image_validate(const struct flash_area *fa_p,
         hdr->ih_flags &= ~(ENCRYPTIONFLAGS);
     }
     FIH_CALL(bootutil_img_validate, fih_rc, NULL, hdr, fa_p, tmpbuf,
-             BOOT_TMPBUF_SZ, NULL, 0, NULL);
+             BOOT_TMPBUF_SZ, NULL, 0, NULL, NULL);
 
     FIH_RET(fih_rc);
 }

@@ -163,6 +163,153 @@ mod multi_key {
     });
 }
 
+#[cfg(feature = "key-revocation")]
+mod key_revocation {
+    //! `MCUBOOT_KEY_REVOCATION_FROM_PRIMARY` tests.
+    //!
+    //! These only run when the simulator is built with `key-revocation`.
+    //! Scenarios that need to distinguish an "older" from a "newer" key
+    //! additionally require `sig-second-key`, since establishing a
+    //! revocation floor needs at least two embedded keys to compare
+    //! indices between; with a single-key build the primary and the
+    //! candidate are necessarily signed with the same key and the feature
+    //! is a no-op.
+
+    use super::*;
+    use bootsim::tlv::SigningKey;
+
+    // The image in the primary slot was signed with the newer (higher
+    // index) key. A secondary-slot candidate signed with the older key
+    // must be rejected, even though the bootloader still recognizes that
+    // older key -- this is the core of key revocation.
+    #[cfg(feature = "sig-second-key")]
+    sim_test!(
+        rejects_candidate_signed_with_older_key,
+        make_secondary_slot_image_with_keys(SigningKey::Secondary, SigningKey::Primary),
+        run_signfail_upgrade()
+    );
+
+    // Forward rotation must still be allowed: a primary signed with the
+    // older key accepts a candidate signed with the newer key.
+    #[cfg(feature = "sig-second-key")]
+    sim_test!(
+        accepts_candidate_signed_with_newer_key,
+        make_secondary_slot_image_with_keys(SigningKey::Primary, SigningKey::Secondary),
+        run_signpass_upgrade()
+    );
+
+    // The common case, unaffected by the feature: candidate signed with
+    // the same key as the primary must still upgrade normally.
+    sim_test!(
+        accepts_candidate_signed_with_same_key,
+        make_secondary_slot_image_with_keys(SigningKey::Primary, SigningKey::Primary),
+        run_signpass_upgrade()
+    );
+
+    // If the primary slot's image wasn't signed with any key known to the
+    // bootloader (e.g. a factory image, or one signed by a foreign key),
+    // no revocation floor can be established, and the candidate must be
+    // accepted based on today's rules alone -- the feature only narrows
+    // acceptance, it never fails closed.
+    #[cfg(feature = "sig-second-key")]
+    sim_test!(
+        no_floor_when_primary_key_unrecognized,
+        make_secondary_slot_image_with_keys(SigningKey::Unknown, SigningKey::Primary),
+        run_signpass_upgrade()
+    );
+
+    // First boot / factory-reset case: the primary slot holds nothing at
+    // all. Bootstrap uses its own dedicated code path (MCUBOOT_BOOTSTRAP)
+    // that never reaches `boot_check_key_revocation` -- there is no primary
+    // image to derive a floor from in the first place. This is a
+    // regression check that key-revocation and bootstrap continue to
+    // coexist correctly.
+    #[cfg(feature = "bootstrap")]
+    sim_test!(
+        bootstrap_unaffected_by_key_revocation,
+        make_secondary_slot_image_no_primary(SigningKey::Primary),
+        run_bootstrap()
+    );
+
+    // Distinct from "unrecognized key": here the primary slot's image is
+    // present but its signature does not verify at all. Just like the
+    // unrecognized-key case, no floor can be established and the candidate
+    // must be accepted.
+    #[cfg(feature = "sig-second-key")]
+    sim_test!(
+        no_floor_when_primary_signature_invalid,
+        make_secondary_slot_image_with_invalid_primary(SigningKey::Primary),
+        run_signpass_upgrade()
+    );
+
+    // A key-revocation rejection erases the candidate, just like a
+    // genuine signature failure, since it can never become valid on its
+    // own and repeated re-validation on every boot would otherwise be
+    // wasted effort.
+    #[cfg(feature = "sig-second-key")]
+    sim_test!(
+        rejected_candidate_is_erased,
+        make_secondary_slot_image_with_keys(SigningKey::Secondary, SigningKey::Primary),
+        run_signfail_upgrade_erases_secondary()
+    );
+
+    // The key floor is derived from the primary slot's *current* image,
+    // not fixed once and for all. After a confirmed forward key rotation,
+    // a second candidate signed with the now-superseded original key must
+    // be rejected against the rotated primary.
+    #[cfg(feature = "sig-second-key")]
+    sim_test!(
+        rotation_rejects_stale_key_against_new_primary,
+        make_secondary_slot_image_with_keys(SigningKey::Primary, SigningKey::Secondary),
+        run_rotate_then_reject_stale_key()
+    );
+
+    // In a multi-image build, each image must track its own key floor:
+    // image 0's primary is signed with the newer key (so its older-keyed
+    // candidate is rejected) while image 1's primary is signed with the
+    // older key (so its newer-keyed candidate is accepted), in the same
+    // boot.
+    #[cfg(all(feature = "multiimage", feature = "sig-second-key"))]
+    sim_test!(
+        multiimage_tracks_independent_key_floors,
+        make_secondary_slot_image_with_keys_per_image(&[
+            (SigningKey::Secondary, SigningKey::Primary),
+            (SigningKey::Primary, SigningKey::Secondary),
+        ]),
+        run_per_image_upgrade_result(&[false, true])
+    );
+
+    // The key floor must be the *strongest* (highest-index) key among all
+    // of the primary image's valid signatures, not merely whichever one
+    // happens to be processed last while walking the TLVs. The primary is
+    // multi-signed with the newer key's (key, signature) pair coming
+    // *before* the older key's in TLV order; a naive "last valid signature
+    // wins" implementation would derive the older key as the floor here and
+    // wrongly accept an older-keyed candidate.
+    #[cfg(feature = "sig-second-key")]
+    sim_test!(
+        multi_signed_primary_floor_is_newer_key_first_in_tlv_order,
+        make_secondary_slot_image_with_multi_signed_primary(
+            &[SigningKey::Secondary, SigningKey::Primary],
+            SigningKey::Primary
+        ),
+        run_signfail_upgrade()
+    );
+
+    // Same as above, but with the TLV order reversed (older key's pair
+    // first, newer key's pair last). The floor must be identical to the
+    // previous test regardless of this ordering.
+    #[cfg(feature = "sig-second-key")]
+    sim_test!(
+        multi_signed_primary_floor_is_newer_key_last_in_tlv_order,
+        make_secondary_slot_image_with_multi_signed_primary(
+            &[SigningKey::Primary, SigningKey::Secondary],
+            SigningKey::Primary
+        ),
+        run_signfail_upgrade()
+    );
+}
+
 #[cfg(feature = "multiimage")]
 sim_test!(ram_load_overlapping_images_same_base, make_no_upgrade_image(&NO_DEPS, ImageManipulation::OverlapImages(true)), run_ram_load_boot_with_result(false));
 #[cfg(feature = "multiimage")]
