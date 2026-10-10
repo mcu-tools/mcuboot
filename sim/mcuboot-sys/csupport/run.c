@@ -48,6 +48,8 @@ extern int sim_flash_read(uint8_t flash_id, uint32_t offset, uint8_t *dest,
         uint32_t size);
 extern int sim_flash_write(uint8_t flash_id, uint32_t offset, const uint8_t *src,
         uint32_t size);
+extern int sim_flash_write_torn(uint8_t flash_id, uint32_t offset,
+        const uint8_t *src, uint32_t size);
 extern uint32_t sim_flash_align(uint8_t flash_id);
 extern uint8_t sim_flash_erased_val(uint8_t flash_id);
 
@@ -56,6 +58,7 @@ struct sim_context {
     int jumped;
     uint8_t c_asserts;
     uint8_t c_catch_asserts;
+    int flash_torn_write;
     jmp_buf boot_jmpbuf;
 };
 
@@ -416,6 +419,16 @@ int flash_area_write(const struct flash_area *area, uint32_t off, const void *sr
                  area->fa_id, off, len);
     struct sim_context *ctx = sim_get_context();
     if (--(ctx->flash_counter) == 0) {
+        if (ctx->flash_torn_write && len > 1) {
+            /* Power failed partway through programming: all but the last
+             * byte of the payload reaches the flash.  Write alignment is a
+             * driver interface requirement, not a power-fail atomicity
+             * guarantee, so the tear point can fall inside a write unit.
+             */
+            int rc = sim_flash_write_torn(area->fa_device_id,
+                                          area->fa_off + off, src, len - 1);
+            assert(rc == 0);
+        }
         ctx->jumped++;
         longjmp(ctx->boot_jmpbuf, 1);
     }

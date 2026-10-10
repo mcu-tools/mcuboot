@@ -1042,6 +1042,94 @@ impl Images {
         fails > 0
     }
 
+    /// Sweep power loss over the revert path with the interrupted flash
+    /// write torn: all but the last byte of its payload is programmed.
+    /// This reaches states an interruption between whole operations cannot,
+    /// such as a partially written trailer magic (`BOOT_MAGIC_BAD`) after
+    /// power loss inside `boot_write_magic` during revert fixup, the
+    /// failure reported in issue #1966.
+    pub fn run_revert_with_torn_writes(&self) -> bool {
+        if !Caps::SwapUsingMove.present() || !Caps::modifies_flash() {
+            return false;
+        }
+
+        if skip_slow_test() {
+            return false;
+        }
+
+        let mut fails = 0;
+
+        // Perform a normal test upgrade; the unconfirmed image makes the
+        // next boot start a revert.
+        let mut upgraded = self.flash.clone();
+        if !c::boot_go(&mut upgraded, &self.areadesc, None, None,
+                       false).success() {
+            error!("Failed upgrade before torn-write revert");
+            return true;
+        }
+        if !self.verify_images(&upgraded, 0, 1) {
+            error!("Image mismatch after upgrade before torn-write revert");
+            return true;
+        }
+
+        // Count the flash operations of an uninterrupted revert.
+        let mut clean = upgraded.clone();
+        let mut counter = 0;
+        if !c::boot_go(&mut clean, &self.areadesc, Some(&mut counter), None,
+                       false).success() {
+            error!("Failed uninterrupted revert");
+            return true;
+        }
+        let total = -counter;
+
+        for stop in 1 ..= total {
+            info!("Try interruption {} with torn-write mode", stop);
+            let mut flash = upgraded.clone();
+            let mut counter = stop;
+            if !c::boot_go_torn(&mut flash, &self.areadesc, Some(&mut counter),
+                                None, false).interrupted() {
+                warn!("Should have stopped revert at interruption point");
+                fails += 1;
+            }
+
+            if !c::boot_go(&mut flash, &self.areadesc, None, None,
+                           false).success() {
+                warn!("Should have finished revert after torn write at {}",
+                      stop);
+                fails += 1;
+            }
+
+            if !self.verify_images(&flash, 0, 0) {
+                warn!("Image in the primary slot after revert is invalid \
+                       at torn write {}", stop);
+                fails += 1;
+            }
+            if !self.verify_images(&flash, 1, 1) {
+                warn!("Image in the secondary slot after revert is invalid \
+                       at torn write {}", stop);
+                fails += 1;
+            }
+            if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                     BOOT_FLAG_SET, BOOT_FLAG_SET) {
+                warn!("Mismatched trailer for the primary slot after revert \
+                       at torn write {}", stop);
+                fails += 1;
+            }
+            if !self.verify_trailers(&flash, 1, BOOT_MAGIC_UNSET,
+                                     BOOT_FLAG_UNSET, BOOT_FLAG_UNSET) {
+                warn!("Mismatched trailer for the secondary slot after \
+                       revert at torn write {}", stop);
+                fails += 1;
+            }
+        }
+
+        if fails > 0 {
+            error!("Error testing torn-write revert with {} fails", fails);
+        }
+
+        fails > 0
+    }
+
     pub fn run_norevert(&self) -> bool {
         if Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
             return false;

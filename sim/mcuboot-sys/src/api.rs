@@ -96,6 +96,7 @@ pub struct CSimContext {
     pub jumped: libc::c_int,
     pub c_asserts: u8,
     pub c_catch_asserts: u8,
+    pub flash_torn_write: libc::c_int,
     // NOTE: Always leave boot_jmpbuf declaration at the end; this should
     // store a "jmp_buf" which is arch specific and not defined by libc crate.
     // The size below is enough to store data on a x86_64 machine.
@@ -109,6 +110,7 @@ impl Default for CSimContext {
             jumped: 0,
             c_asserts: 0,
             c_catch_asserts: 0,
+            flash_torn_write: 0,
             boot_jmpbuf: [0; 48],
         }
     }
@@ -301,6 +303,19 @@ pub extern "C" fn sim_flash_write(dev_id: u8, offset: u32, src: *const u8, size:
             let buf: &[u8] = unsafe { slice::from_raw_parts(src, size as usize) };
             let dev = unsafe { &mut *(flash.ptr) };
             rc = map_err(dev.write(offset as usize, &buf));
+        }
+    });
+    rc
+}
+
+#[no_mangle]
+pub extern "C" fn sim_flash_write_torn(dev_id: u8, offset: u32, src: *const u8, size: u32) -> libc::c_int {
+    let mut rc: libc::c_int = -19;
+    THREAD_CTX.with(|ctx| {
+        if let Some(flash) = ctx.borrow().flash_map.get(&dev_id) {
+            let buf: &[u8] = unsafe { slice::from_raw_parts(src, size as usize) };
+            let dev = unsafe { &mut *(flash.ptr) };
+            rc = map_err(dev.write_torn(offset as usize, &buf));
         }
     });
     rc
