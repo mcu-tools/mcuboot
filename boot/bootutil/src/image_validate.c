@@ -255,6 +255,11 @@ bootutil_img_validate(struct boot_loader_state *state,
 
     BOOT_LOG_DBG("bootutil_img_validate: flash area %p", fap);
 
+    if (!bootutil_image_hdr_sizes_valid(hdr, fap, state == NULL ? 0 : BOOT_CURR_IMG(state))) {
+        rc = -1;
+        goto out;
+    }
+
 #if defined(EXPECTED_HASH_TLV) && !defined(MCUBOOT_SIGN_PURE)
     rc = bootutil_img_hash(state, hdr, fap, tmp_buf, tmp_buf_sz, hash, seed, seed_len);
     if (rc) {

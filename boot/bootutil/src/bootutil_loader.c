@@ -71,7 +71,6 @@ boot_check_header_valid(struct boot_loader_state *state, int slot)
 {
     const struct flash_area *fap = NULL;
     struct image_header *hdr;
-    uint32_t size;
 
     fap = BOOT_IMG_AREA(state, slot);
     assert(fap != NULL);
@@ -81,21 +80,7 @@ boot_check_header_valid(struct boot_loader_state *state, int slot)
         return false;
     }
 
-    if (!boot_u32_safe_add(&size, hdr->ih_img_size, hdr->ih_hdr_size)) {
-        return false;
-    }
-
-#ifdef MCUBOOT_DECOMPRESS_IMAGES
-    if (!MUST_DECOMPRESS(fap, BOOT_CURR_IMG(state), hdr)) {
-#else
-    if (1) {
-#endif
-        if (!boot_u32_safe_add(&size, size, hdr->ih_protect_tlv_size)) {
-            return false;
-        }
-    }
-
-    if (size >= flash_area_get_size(fap)) {
+    if (!bootutil_image_hdr_sizes_valid(hdr, fap, BOOT_CURR_IMG(state))) {
         return false;
     }
 
