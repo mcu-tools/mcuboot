@@ -45,6 +45,9 @@ bootutil_tlv_iter_begin(struct image_tlv_iter *it, const struct image_header *hd
                         const struct flash_area *fap, uint16_t type, bool prot)
 {
     uint32_t off_;
+    uint32_t start_off = 0;
+    uint32_t prot_end;
+    uint32_t tlv_end;
     struct image_tlv_info info;
 
     BOOT_LOG_DBG("bootutil_tlv_iter_begin: type %d, prot == %d", type, (int)prot);
@@ -54,22 +57,31 @@ bootutil_tlv_iter_begin(struct image_tlv_iter *it, const struct image_header *hd
     }
 
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
-    off_ = BOOT_TLV_OFF(hdr) + it->start_off;
-#else
-    off_ = BOOT_TLV_OFF(hdr);
+    start_off = it->start_off;
 #endif
+    if (!bootutil_image_tlv_off_valid_set(&off_, hdr, fap, start_off)) {
+        return -1;
+    }
 
     if (LOAD_IMAGE_DATA(hdr, fap, off_, &info, sizeof(info))) {
         return -1;
     }
 
     if (info.it_magic == IMAGE_TLV_PROT_INFO_MAGIC) {
+        uint32_t off2;
+        uint32_t end;
+
         if (hdr->ih_protect_tlv_size != info.it_tlv_tot) {
             return -1;
         }
 
-        if (LOAD_IMAGE_DATA(hdr, fap, off_ + info.it_tlv_tot,
-                            &info, sizeof(info))) {
+        if (!boot_u32_safe_add(&off2, off_, info.it_tlv_tot) ||
+            !boot_u32_safe_add(&end, off2, sizeof(info)) ||
+            end > flash_area_get_size(fap)) {
+            return -1;
+        }
+
+        if (LOAD_IMAGE_DATA(hdr, fap, off2, &info, sizeof(info))) {
             return -1;
         }
     } else if (hdr->ih_protect_tlv_size != 0) {
@@ -84,8 +96,16 @@ bootutil_tlv_iter_begin(struct image_tlv_iter *it, const struct image_header *hd
     it->fap = fap;
     it->type = type;
     it->prot = prot;
-    it->prot_end = off_ + it->hdr->ih_protect_tlv_size;
-    it->tlv_end = off_ + it->hdr->ih_protect_tlv_size + info.it_tlv_tot;
+
+    if (!boot_u32_safe_add(&prot_end, off_, it->hdr->ih_protect_tlv_size) ||
+        !boot_u32_safe_add(&tlv_end, prot_end, info.it_tlv_tot) ||
+        tlv_end > flash_area_get_size(fap)) {
+        return -1;
+    }
+
+    it->prot_end = prot_end;
+    it->tlv_end = tlv_end;
+
     // position on first TLV
     it->tlv_off = off_ + sizeof(info);
     return 0;
