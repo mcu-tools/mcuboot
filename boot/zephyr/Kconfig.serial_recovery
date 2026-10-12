@@ -167,7 +167,7 @@ config BOOT_MAX_LINE_INPUT_LEN
 config BOOT_LINE_BUFS
 	int "Number of receive buffers"
 	range 2 128
-	default 8
+	default 16
 	help
 	  Number of receive buffers for data received via the serial port.
 
