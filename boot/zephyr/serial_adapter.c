@@ -83,7 +83,9 @@ static sys_slist_t avail_queue;
 static sys_slist_t lines_queue;
 
 static uint16_t cur;
-#ifndef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
+#ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
+static uint8_t rx_buf[CONFIG_BOOT_MAX_LINE_INPUT_LEN];
+#else
 static uint8_t rx_batch_buf[CONFIG_BOOT_SERIAL_UART_RX_BATCH_SIZE];
 #endif
 
@@ -240,10 +242,25 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 		}
 
 #ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
-		uint8_t byte;
+		if (cur == 0 && free_buffers == 0) {
+			uart_blocked = true;
+			uart_irq_rx_disable(uart_dev);
+			return;
+		}
 
-		rx = uart_fifo_read(uart_dev, &byte, 1);
-		if (rx != 1) {
+		rx = uart_fifo_read(uart_dev, rx_buf, copy_len);
+		if (rx <= 0) {
+			if (cmd && cur > 0) {
+				/*
+				 * No more data to read, so we assume that it means the packet is
+				 * complete
+				 */
+				cmd->len = cur;
+				sys_slist_append(&lines_queue, &cmd->node);
+				cur = 0;
+				cmd = NULL;
+			}
+
 			break;
 		}
 
@@ -259,7 +276,8 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 			cmd = CONTAINER_OF(node, struct line_input, node);
 		}
 
-		cmd->line[cur++] = byte;
+		memcpy(&cmd->line[cur], rx_buf, rx);
+		cur += rx;
 
 		if (cur >= CONFIG_BOOT_MAX_LINE_INPUT_LEN) {
 			cmd->len = cur;
