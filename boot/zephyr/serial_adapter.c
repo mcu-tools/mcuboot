@@ -87,6 +87,15 @@ static uint16_t cur;
 static uint8_t rx_batch_buf[CONFIG_BOOT_SERIAL_UART_RX_BATCH_SIZE];
 #endif
 
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+/*
+ * Due to USB CDC ACM having a large write size, which might be more than the available buffers
+ * can hold, this will be set to true when the UART is blocked and should not be read from until
+ * the buffers have been read by the serial recovery code
+ */
+static bool uart_blocked = false;
+#endif
+
 static int boot_uart_fifo_getline(char **line);
 static int boot_uart_fifo_init(void);
 
@@ -216,7 +225,20 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 		return;
 	}
 
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+	if (uart_blocked == true) {
+		return;
+	}
+#endif
+
 	while (true) {
+		size_t copy_len = CONFIG_BOOT_MAX_LINE_INPUT_LEN - 1 - cur;
+		size_t free_buffers = sys_slist_len(&avail_queue);
+
+		if (free_buffers > 0 && cmd == NULL) {
+			--free_buffers;
+		}
+
 #ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
 		uint8_t byte;
 
@@ -246,7 +268,22 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 			cmd = NULL;
 		}
 #else
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+		size_t max_read_size = free_buffers * (CONFIG_BOOT_MAX_LINE_INPUT_LEN - 1) +
+				       copy_len;
+
+		if (max_read_size > sizeof(rx_batch_buf)) {
+			max_read_size = sizeof(rx_batch_buf);
+		} else if (max_read_size == 0) {
+			uart_blocked = true;
+			uart_irq_rx_disable(uart_dev);
+			return;
+		}
+
+		rx = uart_fifo_read(uart_dev, rx_batch_buf, max_read_size);
+#else
 		rx = uart_fifo_read(uart_dev, rx_batch_buf, sizeof(rx_batch_buf));
+#endif
 		if (rx <= 0) {
 			break;
 		}
@@ -269,8 +306,7 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 
 			const uint8_t *nl = memchr(p, '\n', batch_end - p);
 			size_t chunk = nl ? (size_t)(nl - p + 1) : (size_t)(batch_end - p);
-			size_t room = CONFIG_BOOT_MAX_LINE_INPUT_LEN - cur;
-			size_t copy_len = MIN(chunk, room);
+			copy_len = MIN(chunk, (CONFIG_BOOT_MAX_LINE_INPUT_LEN - cur));
 
 			memcpy(&cmd->line[cur], p, copy_len);
 			cur += copy_len;
@@ -281,6 +317,7 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 				sys_slist_append(&lines_queue, &cmd->node);
 				cur = 0;
 				cmd = NULL;
+
 			}
 		}
 #endif
@@ -304,31 +341,48 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 static int
 boot_uart_fifo_getline(char **line)
 {
-	static struct line_input *cmd;
+	static struct line_input *input_cmd;
 	sys_snode_t *node;
 	int key;
 
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+	bool unblock = false;
+#endif
+
 	key = irq_lock();
 	/* Recycle cmd buffer returned previous time */
-	if (cmd != NULL) {
-		if (sys_slist_peek_tail(&avail_queue) != &cmd->node) {
-			sys_slist_append(&avail_queue, &cmd->node);
+	if (input_cmd != NULL) {
+		if (sys_slist_peek_tail(&avail_queue) != &input_cmd->node) {
+			sys_slist_append(&avail_queue, &input_cmd->node);
+
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+			if (uart_blocked) {
+				unblock = true;
+			}
+#endif
 		}
 	}
 
 	node = sys_slist_get(&lines_queue);
 	irq_unlock(key);
 
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+	if (unblock) {
+		uart_blocked = false;
+		uart_irq_rx_enable(uart_dev);
+	}
+#endif
+
 	if (node == NULL) {
-		cmd = NULL;
+		input_cmd = NULL;
 		*line = NULL;
 
 		return 0;
 	}
 
-	cmd = CONTAINER_OF(node, struct line_input, node);
-	*line = cmd->line;
-	return cmd->len;
+	input_cmd = CONTAINER_OF(node, struct line_input, node);
+	*line = input_cmd->line;
+	return input_cmd->len;
 }
 
 static int
