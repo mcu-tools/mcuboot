@@ -55,18 +55,18 @@ BOOT_LOG_MODULE_REGISTER(mcuboot_psa_enc);
 #define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_256
 #endif
 
-#if defined(MCUBOOT_ENCRYPT_EC256)
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_EC256)
 #define NUM_ECC_BYTES (256 / 8)
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_EC_ALG_UNRESTRICTED;
 static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
 #define ECC_FAMILY PSA_ECC_FAMILY_SECP_R1
-#endif /* defined(MCUBOOT_ENCRYPT_EC256) */
-#if defined(MCUBOOT_ENCRYPT_X25519)
+#endif /* defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_EC256) */
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_X25519)
 #define X25519_OID "\x6e"
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
                                        MBEDTLS_OID_ORG_GOV X25519_OID;
 #define ECC_FAMILY PSA_ECC_FAMILY_MONTGOMERY
-#endif /* defined(MCUBOOT_ENCRYPT_X25519) */
+#endif /* defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_X25519) */
 
 /* Partitioning of HKDF derived material, from the exchange derived key */
 /* AES key encryption key */
@@ -82,7 +82,7 @@ static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
 /* Total size */
 #define HKDF_SIZE           (HKDF_AES_KEY_SIZE + HKDF_MAC_FEED_SIZE)
 
-#if defined(MCUBOOT_ENCRYPT_EC256)
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_EC256)
 /* Fixme: This duplicates code from encrypted.c and depends on mbedtls */
 
 /*
@@ -156,9 +156,9 @@ parse_priv_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
 
     return 0;
 }
-#endif /* defined(MCUBOOT_ENCRYPT_EC256) */
+#endif /* defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_EC256) */
 
-#if defined(MCUBOOT_ENCRYPT_X25519)
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_X25519)
 /* Fixme: This duplicates code from encrypted.c and depends on mbedtls */
 static int
 parse_priv_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
@@ -206,7 +206,7 @@ parse_priv_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
     memcpy(private_key, *p, EC_PRIVK_LEN);
     return 0;
 }
-#endif /* defined(MCUBOOT_ENCRYPT_X25519) */
+#endif /* defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_X25519) */
 
 void bootutil_aes_ctr_init(bootutil_aes_ctr_context *ctx)
 {
