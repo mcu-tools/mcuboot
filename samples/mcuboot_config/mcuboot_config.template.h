@@ -202,4 +202,11 @@
     do {                   \
     } while (0)
 
+/*
+ * MCUboot has status hooks which call a function when the status changes, see the
+ * boot/bootutil/include/bootutil/mcuboot_status.h file for details. This can be used
+ * e.g. to change the status of an LED or for other purposes.
+ */
+/* #define MCUBOOT_ACTION_HOOKS */
+
 #endif /* __MCUBOOT_CONFIG_H__ */
