@@ -73,9 +73,9 @@
 #include "boot_serial/boot_serial_encryption.h"
 #endif
 
-#if (defined(BOOT_SERIAL_IMG_GRP_IMAGE_STATE) && defined(CONFIG_BOOT_DIRECT_XIP)) || \
-    (defined(MCUBOOT_SERIAL_IMG_GRP_HASH) && (defined(CONFIG_BOOT_DIRECT_XIP) || \
-    defined(CONFIG_BOOT_RAM_LOAD)))
+#if (defined(BOOT_SERIAL_IMG_GRP_IMAGE_STATE) && defined(MCUBOOT_DIRECT_XIP)) || \
+    (defined(MCUBOOT_SERIAL_IMG_GRP_HASH) && (defined(MCUBOOT_DIRECT_XIP) || \
+    defined(MCUBOOT_RAM_LOAD)))
 #include "../bootutil/src/bootutil_loader.h"
 #endif
 
@@ -647,8 +647,8 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 
     if (img_hash.len != 0) {
         IMAGES_ITER(BOOT_CURR_IMG(state)) {
-#if defined(CONFIG_BOOT_SWAP_USING_OFFSET) || defined(CONFIG_BOOT_SWAP_USING_MOVE) || \
-    defined(CONFIG_BOOT_SWAP_USING_SCRATCH) || defined(CONFIG_BOOT_UPGRADE_ONLY)
+#if defined(MCUBOOT_SWAP_USING_OFFSET) || defined(MCUBOOT_SWAP_USING_MOVE) || \
+    defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_OVERWRITE_ONLY)
             int swap_status = boot_swap_type_multi(BOOT_CURR_IMG(state));
 #endif
 
@@ -724,8 +724,8 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 #endif
                 if (rc == 0 && memcmp(hash, img_hash.value, sizeof(hash)) == 0) {
                     /* Hash matches, set this slot for test or confirmation */
-#if defined(CONFIG_BOOT_SWAP_USING_OFFSET) || defined(CONFIG_BOOT_SWAP_USING_MOVE) || \
-    defined(CONFIG_BOOT_SWAP_USING_SCRATCH) || defined(CONFIG_BOOT_UPGRADE_ONLY)
+#if defined(MCUBOOT_SWAP_USING_OFFSET) || defined(MCUBOOT_SWAP_USING_MOVE) || \
+    defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_OVERWRITE_ONLY)
                     if (slot == BOOT_SLOT_PRIMARY && !confirm) {
                         BOOT_LOG_ERR("Cannot mark primary image for test");
                         rc = MGMT_ERR_EINVAL;
