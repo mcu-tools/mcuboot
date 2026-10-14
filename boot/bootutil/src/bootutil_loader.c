@@ -99,7 +99,7 @@ boot_check_header_valid(struct boot_loader_state *state, int slot)
         return false;
     }
 
-#if !defined(MCUBOOT_ENC_IMAGES)
+#if !defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_ENC_IMAGES_XIP)
     if (IS_ENCRYPTED(hdr)) {
         return false;
     }
