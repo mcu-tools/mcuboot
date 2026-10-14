@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -529,13 +530,16 @@ int flash_area_get_sectors(int fa_id, uint32_t *count,
                            struct flash_sector *sectors)
 {
     const struct flash_area *fa = prv_lookup_flash_area(fa_id);
-    if (fa->fa_device_id != FLASH_DEVICE_INTERNAL_FLASH) {
+    if (fa == NULL || fa->fa_device_id != FLASH_DEVICE_INTERNAL_FLASH) {
         return -1;
     }
 
     const size_t sector_size = FLASH_SECTOR_SIZE;
     uint32_t total_count = 0;
     for (size_t off = 0; off < fa->fa_size; off += sector_size) {
+        if (total_count >= *count) {
+            return -ENOMEM;
+        }
         // Note: Offset here is relative to flash area, not device
         sectors[total_count].fs_off = off;
         sectors[total_count].fs_size = sector_size;
