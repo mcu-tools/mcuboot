@@ -68,6 +68,13 @@ _Static_assert(IS_ALIGNED(FLASH_BUFFER_SIZE, 4), "Buffer size for SPI Flash oper
 #define SCRATCH_SIZE CONFIG_ESP_SCRATCH_SIZE
 #endif
 
+_Static_assert(ALIGN_UP(APPLICATION_SIZE, FLASH_SECTOR_SIZE) / FLASH_SECTOR_SIZE <= MCUBOOT_MAX_IMG_SECTORS,
+               "Image slot exceeds MCUBOOT_MAX_IMG_SECTORS sectors.");
+#ifdef CONFIG_ESP_BOOT_SWAP_USING_SCRATCH
+_Static_assert(ALIGN_UP(SCRATCH_SIZE, FLASH_SECTOR_SIZE) / FLASH_SECTOR_SIZE <= MCUBOOT_MAX_IMG_SECTORS,
+               "Scratch area exceeds MCUBOOT_MAX_IMG_SECTORS sectors.");
+#endif
+
 extern int ets_printf(const char *fmt, ...);
 
 static const struct flash_area bootloader = {
