@@ -7,6 +7,8 @@
 #ifndef H_MCUBOOT_STATUS_
 #define H_MCUBOOT_STATUS_
 
+#include "mcuboot_config/mcuboot_config.h"
+
 /* Enumeration representing the states that MCUboot can be in */
 typedef enum
 {
@@ -21,7 +23,7 @@ typedef enum
 	MCUBOOT_STATUS_SERIAL_DFU_ENTERED,
 } mcuboot_status_type_t;
 
-#if defined(CONFIG_MCUBOOT_ACTION_HOOKS)
+#if defined(MCUBOOT_ACTION_HOOKS)
 extern void mcuboot_status_change(mcuboot_status_type_t status);
 #else
 #define mcuboot_status_change(_status) do {} while (0)
