@@ -1679,6 +1679,128 @@ check_downgrade_prevention(struct boot_loader_state *state)
 #endif
 }
 
+#if defined(MCUBOOT_SERIAL) || defined(MCUBOOT_USB_DFU)
+bool boot_check_for_updates(void)
+{
+    struct boot_status bs;
+    struct boot_sector_buffer *sectors = NULL;
+    int rc = -1;
+    bool has_upgrade = false;
+
+    BOOT_LOG_DBG("boot_check_for_updates");
+
+    boot_state_init(&boot_data);
+
+#if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
+#if defined(__BOOTSIM__)
+    struct boot_sector_buffer sector_buf;
+    sectors = &sector_buf;
+#endif
+#endif /* !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0 */
+
+    /* Open primary and secondary image areas for the duration
+     * of this call.
+     */
+    rc = boot_open_all_flash_areas(&boot_data);
+    if (rc != 0) {
+        BOOT_LOG_ERR("Failed to open flash areas, cannot continue");
+        FIH_PANIC;
+    }
+
+    /* Iterate over all the images. By the end of the loop the swap type has
+     * to be determined for each image and all aborted swaps have to be
+     * completed.
+     */
+    IMAGES_ITER(BOOT_CURR_IMG(&boot_data)) {
+#if BOOT_IMAGE_NUMBER > 1
+        if (state->img_mask[BOOT_CURR_IMG(&boot_data)]) {
+            continue;
+        }
+#endif
+        /* Determine the sector layout of the image slots and scratch area. */
+        rc = boot_read_sectors(&boot_data, sectors);
+        if (rc != 0) {
+            BOOT_SWAP_TYPE(&boot_data) = BOOT_SWAP_TYPE_NONE;
+        }
+
+        /* Unless there was an error when determining the sector layout of the primary slot,
+         * determine swap type and complete swap if it has been aborted.
+         *
+         * Note boot_read_sectors returns BOOT_EFLASH_SEC for errors regarding the secondary slot.
+         */
+        if (rc != BOOT_EFLASH) {
+            /* Attempt to read an image header from each slot. */
+            rc = boot_read_image_headers(&boot_data, false, NULL);
+            if (rc != 0) {
+                /* Continue with next image if there is one. */
+#if BOOT_IMAGE_NUMBER > 1
+                continue;
+#else
+                goto end;
+#endif
+            }
+
+            /* If the current image's slots aren't compatible, no swap is possible.
+             * Just boot into primary slot.
+             */
+            if (boot_slots_compatible(&boot_data)) {
+                boot_status_reset(&bs);
+
+#ifndef MCUBOOT_OVERWRITE_ONLY
+                rc = swap_read_status(&boot_data, &bs);
+                if (rc != 0) {
+#if BOOT_IMAGE_NUMBER > 1
+                    continue;
+#else
+                    goto end;
+#endif
+                }
+#endif
+
+#if defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
+                /*
+                 * Must re-read image headers because the boot status might
+                 * have been updated in the previous function call.
+                 */
+                rc = boot_read_image_headers(&boot_data, !boot_status_is_reset(&bs), &bs);
+#ifdef MCUBOOT_BOOTSTRAP
+                /* When bootstrapping it's OK to not have image magic in the primary slot */
+                if (rc != 0 && !boot_check_header_erased(&boot_data, BOOT_SLOT_PRIMARY)) {
+#else
+                if (rc != 0) {
+#endif
+                    /* Continue with next image if there is one. */
+#if BOOT_IMAGE_NUMBER > 1
+                    continue;
+#else
+                    goto end;
+#endif
+                }
+#endif
+
+                /* Determine if we rebooted in the middle of an image swap
+                 * operation, if so we mark that there is an upgrade waiting
+                 */
+                if (!boot_status_is_reset(&bs)) {
+                    has_upgrade = true;
+#if BOOT_IMAGE_NUMBER > 1
+                    break;
+#endif
+                }
+            }
+        }
+    }
+
+#if BOOT_IMAGE_NUMBER == 1
+end:
+#endif
+    boot_close_all_flash_areas(&boot_data);
+    boot_state_clear(&boot_data);
+
+    return has_upgrade;
+}
+#endif
+
 fih_ret
 context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
 {
