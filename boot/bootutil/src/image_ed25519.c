@@ -30,6 +30,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #define EDDSA_SIGNATURE_LENGTH 64
 #define NUM_ED25519_BYTES 32
 
+/* Note: public_key will be NULL when MCUBOOT_BUILTIN_KEY is enabled */
 extern int ED25519_verify(const uint8_t *message, size_t message_len,
                           const uint8_t signature[EDDSA_SIGNATURE_LENGTH],
                           const uint8_t public_key[NUM_ED25519_BYTES]);
@@ -89,7 +90,7 @@ bootutil_verify_sig(uint8_t *msg, uint32_t mlen, uint8_t *sig, size_t slen,
 {
     int rc;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
-    uint8_t *pubkey;
+    uint8_t *pubkey = NULL;
 
 #if !defined(MCUBOOT_BUILTIN_KEY)
     uint8_t *end;
