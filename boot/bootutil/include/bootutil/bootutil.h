@@ -91,6 +91,15 @@ void boot_state_clear(struct boot_loader_state *state);
 fih_ret context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp);
 
 /**
+ * MCUboot internal function to check if at least one image is part the way through an update.
+ * This function is only available when USB DFU or serial recovery modes are enabled, and is
+ * only to be used to prevent entering either mode if an update is in progress.
+ *
+ * @return true if an update is in progress, false otherwise
+ */
+bool boot_check_for_updates(void);
+
+/**
  * Returns a pointer to the boot loader state structure.
  *
  * @return Pointer to the boot loader state structure.
