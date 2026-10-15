@@ -46,6 +46,13 @@ static esp_err_t encrypt_bootloader(void);
 static esp_err_t encrypt_primary_slot(void);
 static size_t get_flash_encrypt_cnt_value(void);
 
+/* mcuboot's non-elidable secure wipe (boot/bootutil/src/bootutil_misc.c),
+ * declared here to clear stack secrets without pulling the full bootutil
+ * headers into the HAL. It writes through a volatile pointer, so the stores
+ * are not dropped as a dead store the way a plain memset()/bzero() on a
+ * soon-discarded buffer can be. */
+void bootutil_wipe_memory(void *p, size_t n);
+
 /**
  * This former inlined function must not be defined in the header file anymore.
  * As it depends on efuse component, any use of it outside of `bootloader_support`,
@@ -221,6 +228,10 @@ static esp_err_t check_and_generate_encryption_keys(void)
         ESP_LOGD(TAG, "Key generation complete");
 
         esp_err_t err = esp_efuse_write_keys(purposes, keys, BLOCKS_NEEDED);
+        /* The raw key material is now programmed into eFuse; clear the stack
+         * copy so it does not outlive its use, on both the success and the
+         * error return paths below. */
+        bootutil_wipe_memory(keys, sizeof(keys));
         if (err != ESP_OK) {
             if (err == ESP_ERR_NOT_ENOUGH_UNUSED_KEY_BLOCKS) {
                 ESP_LOGE(TAG, "Not enough free efuse key blocks (need %d) to continue", BLOCKS_NEEDED);
@@ -477,9 +488,12 @@ esp_err_t esp_flash_encrypt_region(uint32_t src_addr, size_t data_length)
             goto flash_failed;
         }
     }
+    /* Do not leave the last plaintext sector resident on the stack. */
+    bootutil_wipe_memory(buf, sizeof(buf));
     return ESP_OK;
 
 flash_failed:
     ESP_LOGE(TAG, "flash operation failed: 0x%x", err);
+    bootutil_wipe_memory(buf, sizeof(buf));
     return err;
 }
