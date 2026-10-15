@@ -52,7 +52,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #endif
 
 #ifdef MCUBOOT_SERIAL
-static bool image_data_in_ram = false;
+static bool image_data_in_ram = true;
 #endif
 
 /**
