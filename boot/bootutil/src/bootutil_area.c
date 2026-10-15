@@ -74,6 +74,7 @@ boot_status_entry_sz(uint32_t min_write_sz)
 #if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) ||      \
     defined(MCUBOOT_FIRMWARE_LOADER) ||              \
     defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+    (void)min_write_sz;
     /* Single image MCUboot modes do not have a swap status fields */
     return 0;
 #else

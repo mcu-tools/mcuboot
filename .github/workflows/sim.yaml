@@ -45,6 +45,7 @@ jobs:
         - "sig-rsa validate-primary-slot direct-xip multiimage"
         - "sig-ecdsa hw-rollback-protection multiimage"
         - "sig-ed25519 sig-second-key"
+        - "single-slot,single-slot validate-primary-slot,sig-rsa single-slot validate-primary-slot,sig-ecdsa single-slot validate-primary-slot,single-slot max-align-32"
         # Logical sectors: swap bookkeeping in fixed 4K units
         # independent of the physical page layout. Covers each
         # upgrade strategy plus a signed variant; exercises the

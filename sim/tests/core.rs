@@ -67,6 +67,9 @@ sim_test!(status_write_fails_complete, make_image(&NO_DEPS, true), run_with_stat
 sim_test!(status_write_fails_with_reset, make_image(&NO_DEPS, true), run_with_status_fails_with_reset());
 sim_test!(downgrade_prevention, make_image(&REV_DEPS, true), run_nodowngrade());
 
+sim_test!(single_slot_boot, make_erased_secondary_image(), run_single_slot_boot());
+sim_test!(single_slot_bad_image, make_no_upgrade_image(&NO_DEPS, ImageManipulation::BadSignature), run_single_slot_bad_image());
+
 sim_test!(direct_xip_first, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_direct_xip());
 #[cfg(not(feature = "check-load-addr"))]
 sim_test!(ram_load_first, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_ram_load());
