@@ -449,7 +449,7 @@ static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
     if (tmp > UINT16_MAX) {
         return false;
     } else {
-        *dest = tmp;
+        *dest = (uint16_t)tmp;
         return true;
     }
 }
@@ -484,13 +484,13 @@ static inline bool boot_u16_safe_add(uint16_t *dest, uint16_t a, uint16_t b)
      ((swap_type) == BOOT_SWAP_TYPE_PERM))
 
 static inline struct image_header*
-boot_img_hdr(struct boot_loader_state *state, size_t slot)
+boot_img_hdr(struct boot_loader_state *state, int slot)
 {
     return &BOOT_IMG(state, slot).hdr;
 }
 
 static inline size_t
-boot_img_num_sectors(const struct boot_loader_state *state, size_t slot)
+boot_img_num_sectors(const struct boot_loader_state *state, int slot)
 {
     return BOOT_IMG(state, slot).num_sectors;
 }
@@ -499,7 +499,7 @@ boot_img_num_sectors(const struct boot_loader_state *state, size_t slot)
  * Offset of the slot from the beginning of the flash device.
  */
 static inline uint32_t
-boot_img_slot_off(struct boot_loader_state *state, size_t slot)
+boot_img_slot_off(struct boot_loader_state *state, int slot)
 {
     return flash_area_get_off(BOOT_IMG_AREA(state, slot));
 }
@@ -509,7 +509,7 @@ boot_img_slot_off(struct boot_loader_state *state, size_t slot)
 
 static inline size_t
 boot_img_sector_size(const struct boot_loader_state *state,
-                     size_t slot, size_t sector)
+                     int slot, size_t sector)
 {
     return flash_area_get_size(&BOOT_IMG(state, slot).sectors[sector]);
 }
@@ -519,7 +519,7 @@ boot_img_sector_size(const struct boot_loader_state *state,
  * device.
  */
 static inline uint32_t
-boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
+boot_img_sector_off(const struct boot_loader_state *state, int slot,
                     size_t sector)
 {
     return flash_area_get_off(&BOOT_IMG(state, slot).sectors[sector]) -
@@ -530,13 +530,13 @@ boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
 
 static inline size_t
 boot_img_sector_size(const struct boot_loader_state *state,
-                     size_t slot, size_t sector)
+                     int slot, size_t sector)
 {
     return flash_sector_get_size(&BOOT_IMG(state, slot).sectors[sector]);
 }
 
 static inline uint32_t
-boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
+boot_img_sector_off(const struct boot_loader_state *state, int slot,
                     size_t sector)
 {
     return flash_sector_get_off(&BOOT_IMG(state, slot).sectors[sector]) -
@@ -547,7 +547,7 @@ boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
 #else
 static inline size_t
 boot_img_sector_size(const struct boot_loader_state *state,
-                     size_t slot, size_t sector)
+                     int slot, size_t sector)
 {
     (void)state;
     (void)slot;
@@ -561,7 +561,7 @@ boot_img_sector_size(const struct boot_loader_state *state,
  * device.
  */
 static inline uint32_t
-boot_img_sector_off(const struct boot_loader_state *state, size_t slot,
+boot_img_sector_off(const struct boot_loader_state *state, int slot,
                     size_t sector)
 {
     (void)state;

@@ -71,7 +71,7 @@
                             FLASH_AREA_IMAGE_7_SLOTS
 #endif
 
-static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
+static inline int __flash_area_ids_for_slot(int img, int slot)
 {
     static const int all_slots[] = {
         FOR_EACH_NONEMPTY_TERM(PARTITION_ID, (,), ALL_AVAILABLE_SLOTS)

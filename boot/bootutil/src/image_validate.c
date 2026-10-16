@@ -201,7 +201,7 @@ fih_ret
 bootutil_img_validate(struct boot_loader_state *state,
                       struct image_header *hdr, const struct flash_area *fap,
                       uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *seed,
-                      int seed_len, uint8_t *out_hash
+                      uint32_t seed_len, uint8_t *out_hash
                      )
 {
 #if (defined(EXPECTED_KEY_TLV) && defined(MCUBOOT_HW_KEY)) || \
@@ -547,6 +547,10 @@ bootutil_img_validate(struct boot_loader_state *state,
             break;
         }
 #endif
+        default:
+        {
+            continue;
+        }
         }
     }
 

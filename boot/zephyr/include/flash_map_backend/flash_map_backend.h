@@ -82,7 +82,7 @@ uint8_t flash_area_erased_val(const struct flash_area *fap);
 
 static inline uint32_t flash_sector_get_off(const struct flash_sector *fs)
 {
-	return fs->fs_off;
+	return (uint32_t)fs->fs_off;
 }
 
 static inline uint32_t flash_sector_get_size(const struct flash_sector *fs)
