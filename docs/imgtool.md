@@ -117,10 +117,10 @@ primary slot and adds a header and trailer that the bootloader is expecting:
       --public-key-format [hash|full]
                                       In what format to add the public key to the
                                       image manifest: full key or hash of the key.
-      --max-align [8|16|32]           Maximum flash alignment. Set if flash
+      --max-align [8|16|32|64|128]    Maximum flash alignment. Set if flash
                                       alignment of the primary and secondary slot
                                       differ and any of them is larger than 8.
-      --align [1|2|4|8|16|32]         Alignment used by swap update modes.
+      --align [1|2|4|8|16|32|64|128]  Alignment used by swap update modes.
       -v, --version TEXT              [required]
       -s, --security-counter TEXT     Specify the value of security counter. Use
                                       the `auto` keyword to automatically generate
