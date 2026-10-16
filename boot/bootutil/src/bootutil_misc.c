@@ -38,7 +38,7 @@
 #include "bootutil_priv.h"
 #include "bootutil_misc.h"
 #include "bootutil/bootutil_log.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 #ifdef MCUBOOT_ENC_IMAGES
 #include "bootutil/enc_key.h"
 #endif
