@@ -1283,6 +1283,23 @@ bs_upload(char *buf, int len)
         not_yet_erased = 0;
 #endif
 
+        /* Ensure that the boot status flags are erased to prevent stale flag reuse */
+#ifndef MCUBOOT_ERASE_PROGRESSIVELY
+        if (!device_requires_erase(fap)) {
+            rc = boot_scramble_region(fap, boot_swap_info_off(fap),
+                                      (flash_area_get_size(fap) - boot_swap_info_off(fap)), false);
+            if (rc) {
+                goto out_invalid_data;
+            }
+        }
+#else
+        rc = boot_scramble_region(fap, boot_swap_info_off(fap),
+                                  (flash_area_get_size(fap) - boot_swap_info_off(fap)), false);
+        if (rc) {
+            goto out_invalid_data;
+        }
+#endif
+
         img_size = img_size_tmp;
 
 #if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
