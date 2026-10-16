@@ -27,6 +27,8 @@
 #else
 /* Default: fault injection hardening disabled */
 #  define FIH_PROFILE_OFF
+/* Set the mcuboot-specific define for testing within mcuboot itself */
+#  define MCUBOOT_FIH_PROFILE_OFF
 #endif
 
 #endif /* __FIH_CONFIG_H__ */
