@@ -88,6 +88,10 @@ validation and the handling of image encryption keys.
   set by `CONFIG_SRAM_BASE_ADDRESS` and `CONFIG_SRAM_SIZE`. If your
   board sets those options to a different region, check which RAM is
   cleared before the application starts.
+- **Zephyr:** Serial recovery/DFU modes can no longer be entered if
+  an update is in progress, this prevents an issue whereby image data
+  could be corrupted and passed off as genuine in some configuration
+  modes.
 - **Espressif:** The Espressif port now uses the ESP-IDF v6.0.0 HAL.
   Building the standalone port requires ESP-IDF v6.0 sources.
 - **Espressif:** The bootloader's RAM layout has changed on all SoCs.
@@ -213,6 +217,13 @@ validation and the handling of image encryption keys.
 - `docs/PORTING.md` now lists all the flash functions a port must
   provide. `flash_area_get_sector()`, `flash_device_base()` and
   `flash_area_id_from_image_slot()` were required but not documented.
+- Fixed boot status wrongly being usable only from Zephyr.
+- Fixed an issue of not validating image header sizes before
+  accessing TLV values.
+- Made public_key NULL when calling X25519 function when built-in
+  key option is enabled (though this should never have been used
+  anyway since the built-in key option means the bootloader itself
+  does not have any public keys).
 - **Serial recovery:** The slot info command reported wrong image
   IDs for upload when direct image upload was disabled.
 - **Serial recovery:** An upload with an image number beyond the
@@ -239,6 +250,29 @@ validation and the handling of image encryption keys.
 - **Serial recovery:** On ports other than Zephyr and Espressif, such
   as Mynewt, a base64 decoding error in a received frame is now
   detected. Before, the error went unnoticed.
+- **Serial recovery:** Fixed a build error with single slot serial
+  recovery mode.
+- **Serial recovery:** Fixed issue of image state set not working in
+  RAM load with revert mode.
+- **Serial recovery:** Fixed issue of being unable to see any images
+  in RAM load mode in serial recovery.
+- **Serial recovery:** Fixed issue of image state set not working in
+  direct-xip with revert mode.
+- **Serial recovery:** Fixed issue of hash not being properly used in
+  serial recovery set state mode (only setting the confirm/test flag
+  on the primary image, when the hash provided was a secondary image).
+- **Serial recovery:** Removed state set serial recovery command when
+  in direct-xip without revert mode, as these flags are entirely
+  unused.
+- **Serial recovery:*** Removed active flag from image output in
+  serial recovery mode, as none of the images are running (active)
+  since the active image is MCUboot itself.
+- **Serial recovery:** Fixed issue of showing the wrong upload ID
+  (on the secondary image instead of the primary) on the slot info
+  command in serial recovery mode.
+- **Serial recovery:** Swap status area is now cleared when the
+  first upload packet is received to prevent possibly use stale
+  flags.
 - **Zephyr:** With `CONFIG_BOOT_MAX_IMG_SECTORS_AUTO`, the maximum
   sector count now takes the slots of every image into account, not
   only image 0. The erase and write sizes of the secondary slot are
@@ -247,6 +281,31 @@ validation and the handling of image encryption keys.
   end of the application for swap-move and swap-offset. Swap-offset
   could build an application too large to swap, and swap-move
   reserved a sector more than needed.
+- **Zephyr:** Fixed the build with a watchdog driver when
+  `CONFIG_BOOT_WATCHDOG_INSTALL_TIMEOUT_AT_BOOT` is disabled, including
+  `CONFIG_BOOT_WATCHDOG_SETUP_AT_BOOT=n` for a watchdog started by the
+  hardware or another image: `mcuboot_watchdog_feed()` read a channel
+  variable declared only when a timeout was installed. It now feeds
+  channel 0.
+- Fixed `fih_panic_loop()` failing to assemble on RISC-V when any fault
+  injection hardening profile other than `OFF` is selected.
+- **Zephyr:** On Cortex-M, MCUboot's weak `z_arm_clear_arm_mpu_config()`
+  now disables the Arm MPU before clearing its regions, so clearing
+  them no longer faults when the MPU background map is disabled.
+- **Zephyr:** on RISC-V cores with Zifencei, RAM load now executes `fence.i`
+  after the image is copied and before jumping to it, so a core with an
+  instruction cache cannot run stale lines fetched before the copy.
+- **Zephyr:** Fixed issue with not selecting the Kconfig for using
+  the direct-xip with revert functionality in bootutil when
+  direct-xip with revert mode is used, which impacted serial
+  recovery mode.
+- **Zephyr:** Fixed issue with nrf52840dongle board overlay files
+  meaning serial recovery mode did not work.
+- **Zephyr serial recovery:** Fixed issues with Zephyr USB CDC ACM
+  input handling in serial recovery mode, for both raw and SMP over
+  console modes.
+- **Zephyr serial recovery:** Enabled flow control in Zepyhyr USB CDC
+  ACM overlay to fix issues with serial recovery image state output.
 - **Espressif:** Fixed the build of the standalone port with serial
   recovery (`CONFIG_ESP_MCUBOOT_SERIAL`), which lacked an Mbed TLS
   source file.
