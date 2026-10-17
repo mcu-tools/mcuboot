@@ -24,7 +24,7 @@ jobs:
         - "enc-aes256-ec256,enc-aes256-ec256 max-align-32"
         - "enc-x25519,enc-x25519 max-align-32"
         - "enc-aes256-x25519,enc-aes256-x25519 max-align-32"
-        - "sig-rsa overwrite-only,sig-ecdsa overwrite-only,sig-ecdsa-mbedtls overwrite-only,multiimage overwrite-only"
+        - "sig-rsa overwrite-only,sig-ecdsa overwrite-only,sig-ecdsa-mbedtls overwrite-only,multiimage overwrite-only,sig-rsa overwrite-only bootstrap"
         - "sig-rsa validate-primary-slot,sig-ecdsa validate-primary-slot,sig-ecdsa-mbedtls validate-primary-slot,sig-rsa multiimage validate-primary-slot"
         - "enc-kw overwrite-only,enc-kw overwrite-only max-align-32"
         - "enc-rsa overwrite-only,enc-rsa overwrite-only max-align-32"
