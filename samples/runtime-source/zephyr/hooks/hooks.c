@@ -81,7 +81,7 @@ fih_ret boot_go_hook(struct boot_rsp *rsp)
 #endif
 
 		FIH_CALL(bootutil_img_validate, fih_rc, NULL, &_hdr, _fa_p, tmpbuf,
-				BOOT_TMPBUF_SZ, NULL, 0, NULL);
+				BOOT_TMPBUF_SZ, NULL, 0, NULL, NULL);
 		if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
 			flash_area_close(_fa_p);
 #ifdef MCUBOOT_RAM_LOAD
