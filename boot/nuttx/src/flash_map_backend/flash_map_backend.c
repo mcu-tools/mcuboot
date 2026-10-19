@@ -830,14 +830,16 @@ int flash_area_id_from_image_offset(uint32_t offset)
 int flash_area_get_sector(const struct flash_area *fap, off_t off,
                           struct flash_sector *fs)
 {
-  off_t offset = fap->fa_off + off;
-  struct flash_device_s *dev = lookup_flash_device_by_offset(offset);
-  if (dev == NULL)
+  struct flash_device_s *dev = lookup_flash_device_by_id(fap->fa_id);
+
+  if (dev == NULL || off < 0 || off >= fap->fa_size)
     {
-      return -errno;
+      return -EINVAL;
     }
 
-  fs->fs_off = (offset / dev->mtdgeo.erasesize) * dev->mtdgeo.erasesize;
+  /* Offsets are relative to the flash area, not to the device. */
+
+  fs->fs_off = (off / dev->mtdgeo.erasesize) * dev->mtdgeo.erasesize;
   fs->fs_size = dev->mtdgeo.erasesize;
 
   return 0;
