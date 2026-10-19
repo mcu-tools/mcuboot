@@ -248,14 +248,17 @@ decrypt_image_inplace(const struct flash_area *fa_p,
 #endif
         /* Load the encryption keys into cache */
         rc = boot_enc_load(state, BOOT_SLOT_PRIMARY, hdr, fa_p, bs);
-        if (rc < 0) {
+        if (rc != 0) {
+            /* < 0: error; 1: the image has no key TLV (state is fresh, so
+             * the key cannot be loaded already).
+             */
             goto total_out;
         }
 
         boot_enc_init(&enc_data);
 
-        if (rc == 0 && boot_enc_set_key(&enc_data, bs->enckey[BOOT_SLOT_PRIMARY])) {
-            goto total_out;
+        if (boot_enc_set_key(&enc_data, bs->enckey[BOOT_SLOT_PRIMARY])) {
+            goto enc_out;
         }
     }
     else
@@ -267,7 +270,7 @@ decrypt_image_inplace(const struct flash_area *fa_p,
     uint32_t src_size = 0;
     rc = read_image_size(fa_p,hdr, &src_size);
     if (rc != 0) {
-        goto total_out;
+        goto enc_out;
     }
 
     /* TODO: This assumes every sector has an equal size, should instead use
@@ -279,14 +282,19 @@ decrypt_image_inplace(const struct flash_area *fa_p,
     for (sect = 0, size = 0; size < src_size && sect < sect_count; sect++) {
         rc = decrypt_region_inplace(&enc_data, fa_p, hdr, size, sect_size);
         if (rc != 0) {
-            goto total_out;
+            goto enc_out;
         }
         size += sect_size;
     }
 
     fih_rc = FIH_SUCCESS;
+enc_out:
+    /* enc_data is a single slot's key data, not the BOOT_NUM_SLOTS array
+     * boot_enc_zeroize() expects.
+     */
+    boot_enc_drop(&enc_data);
+    bootutil_wipe_memory(&enc_data, sizeof(enc_data));
 total_out:
-    boot_enc_zeroize(&enc_data);
     boot_state_clear(state);
     /* boot_enc_load() populates _bs.enckey[] with the raw AES key; wipe it
      * so it does not survive on the stack after this function returns.
