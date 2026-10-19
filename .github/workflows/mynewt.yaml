@@ -19,7 +19,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - uses: actions/setup-go@v3
+    - uses: actions/setup-go@v7
       with:
         go-version: 'stable'
     - uses: carlosperate/arm-none-eabi-gcc-action@v1
@@ -40,14 +40,12 @@ jobs:
       shell: bash
       run: |
         go version
-        go install mynewt.apache.org/newt/newt@latest
+        go install mynewt.apache.org/newt/newt@master
         newt version
     - name: Setup Mynewt
       shell: bash
       run: |
         newt new build
-        rm build/targets/* -rf
-        cp -r ci/mynewt_targets/* build/targets
         cp -f ci/mynewt_project.yml build/project.yml
         cd build
         newt upgrade --shallow=1
@@ -57,5 +55,5 @@ jobs:
       shell: bash
       run: |
         cd build
-        newt build `ls targets`
+        newt build $(ls ../ci/mynewt_targets | sed 's|^|@mcuboot/targets/|')
         newt test @mcuboot/boot/boot_serial
