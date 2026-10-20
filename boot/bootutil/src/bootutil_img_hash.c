@@ -154,17 +154,17 @@ bootutil_img_hash(struct boot_loader_state *state,
     bootutil_sha_update(&sha_ctx, (void *)(base + flash_area_get_off(fap)), size);
 #else /* MCUBOOT_HASH_STORAGE_DIRECTLY */
 #ifdef MCUBOOT_RAM_LOAD
-#ifdef MCUBOOT_SERIAL
-    if (boot_image_data_in_ram()) {
-#endif
+    /* Images carrying the RAM-load flag are hashed from their SRAM copy. An
+     * image without the flag executes in place (XIP) and is hashed from its
+     * flash slot through the flash driver, so a RAM-load build can validate a
+     * mix of RAM-loaded and in-place images.
+     */
+    if (IMAGE_DATA_IN_RAM(hdr)) {
         bootutil_sha_update(&sha_ctx,
                             (void*)(IMAGE_RAM_BASE + hdr->ih_load_addr),
                             size);
-#ifdef MCUBOOT_SERIAL
     } else {
-#endif
-#endif
-#if !defined(MCUBOOT_RAM_LOAD) || defined(MCUBOOT_SERIAL)
+#endif /* MCUBOOT_RAM_LOAD */
         for (off = 0; off < size; off += blk_sz) {
             blk_sz = size - off;
             if (blk_sz > tmp_buf_sz) {
@@ -212,10 +212,9 @@ bootutil_img_hash(struct boot_loader_state *state,
 
             MCUBOOT_WATCHDOG_FEED();
         }
-#if defined(MCUBOOT_RAM_LOAD)
+#ifdef MCUBOOT_RAM_LOAD
     }
-#endif
-#endif /* !defined(MCUBOOT_RAM_LOAD) || defined(MCUBOOT_SERIAL) */
+#endif /* MCUBOOT_RAM_LOAD */
 #endif /* MCUBOOT_HASH_STORAGE_DIRECTLY */
     bootutil_sha_finish(&sha_ctx, hash_result);
     bootutil_sha_drop(&sha_ctx);

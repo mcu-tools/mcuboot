@@ -281,7 +281,9 @@ boot_check_ram_load_overlapping(struct boot_loader_state *state)
 
     for (i = 0; i < BOOT_IMAGE_NUMBER; i++) {
         if (state->slot_usage[i].active_slot == BOOT_SLOT_NONE
-            || i == image_id_to_check) {
+            || i == image_id_to_check
+            || state->slot_usage[i].img_sz == 0) {
+            /* img_sz == 0: image is not RAM-resident (e.g. executes in place) */
             continue;
         }
 
@@ -364,10 +366,15 @@ boot_load_image_to_sram(struct boot_loader_state *state)
             BOOT_LOG_INF("Image %d RAM loading to 0x%x is succeeded.", BOOT_CURR_IMG(state), img_dst);
         }
     } else {
-        /* Only images that support IMAGE_F_RAM_LOAD are allowed if
-         * MCUBOOT_RAM_LOAD is set.
+        /* No RAM-load flag: the image executes in place from its flash slot.
+         * Leave it in flash and let validation hash it there. img_dst == 0
+         * marks it as not RAM-resident for the overlap check and SRAM teardown.
          */
-        rc = BOOT_EBADIMAGE;
+        state->slot_usage[BOOT_CURR_IMG(state)].img_dst = 0;
+        state->slot_usage[BOOT_CURR_IMG(state)].img_sz = 0;
+        BOOT_LOG_INF("Image %d executes in place from flash (XIP).",
+                     BOOT_CURR_IMG(state));
+        return 0;
     }
 
     if (rc != 0) {

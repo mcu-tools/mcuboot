@@ -682,20 +682,28 @@ struct bootsim_ram_info *bootsim_get_ram_info(void);
     (memcpy((output),(void*)(IMAGE_RAM_BASE + (hdr)->ih_load_addr + (start)), \
     (size)), 0)
 
+#define LOAD_IMAGE_DATA_NVM(hdr, fap, start, output, size)       \
+    (flash_area_read((fap), (start), (output), (size)))
+
+/* Images carrying the RAM-load flag are read from their SRAM copy. Images
+ * without the flag execute in place (XIP) and are read from their flash slot,
+ * so a RAM-load build can validate a mix of RAM-loaded and in-place images.
+ * Serial recovery always works on the flash copy.
+ */
 #ifdef MCUBOOT_SERIAL
 bool boot_image_data_in_ram(void);
 void boot_set_image_data_in_nvm(void);
 
-#define LOAD_IMAGE_DATA_NVM(hdr, fap, start, output, size)       \
-    (flash_area_read((fap), (start), (output), (size)))
-
-#define LOAD_IMAGE_DATA(hdr, fap, start, output, size)                              \
-    boot_image_data_in_ram() ? LOAD_IMAGE_DATA_RAM(hdr, fap, start, output, size) : \
-                               LOAD_IMAGE_DATA_NVM(hdr, fap, start, output, size)
+#define IMAGE_DATA_IN_RAM(hdr) \
+    ((((hdr)->ih_flags & IMAGE_F_RAM_LOAD) != 0) && boot_image_data_in_ram())
 #else
-#define LOAD_IMAGE_DATA(hdr, fap, start, output, size) \
-        LOAD_IMAGE_DATA_RAM(hdr, fap, start, output, size)
+#define IMAGE_DATA_IN_RAM(hdr) (((hdr)->ih_flags & IMAGE_F_RAM_LOAD) != 0)
 #endif /* MCUBOOT_SERIAL */
+
+#define LOAD_IMAGE_DATA(hdr, fap, start, output, size)              \
+    (IMAGE_DATA_IN_RAM(hdr) ?                                       \
+        LOAD_IMAGE_DATA_RAM(hdr, fap, start, output, size) :        \
+        LOAD_IMAGE_DATA_NVM(hdr, fap, start, output, size))
 
 int boot_load_image_to_sram(struct boot_loader_state *state);
 #else
