@@ -219,6 +219,7 @@ impl RunStatus {
 
         failed |= images.run_basic_revert();
         failed |= images.run_revert_with_fails();
+        failed |= images.run_revert_with_torn_writes();
         failed |= images.run_perm_with_fails();
         failed |= images.run_perm_with_random_fails(5);
         failed |= images.run_norevert();
