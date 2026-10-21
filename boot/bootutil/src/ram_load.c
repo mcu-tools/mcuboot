@@ -145,7 +145,7 @@ boot_decrypt_and_copy_image_to_sram(struct boot_loader_state *state,
     uint8_t * ram_dst = (void *)(IMAGE_RAM_BASE + img_dst);
 
     fap_src = BOOT_IMG_AREA(state, slot);
-    assert(fap_src != NULL);
+    ASSERT(fap_src != NULL);
 
     tlv_off = BOOT_TLV_OFF(hdr);
 
@@ -217,7 +217,7 @@ boot_copy_image_to_sram(struct boot_loader_state *state, int slot,
 #endif
 
     fap_src = BOOT_IMG_AREA(state, slot);
-    assert(fap_src != NULL);
+    ASSERT(fap_src != NULL);
 
     /* Direct copy from flash to its new location in SRAM. */
     rc = flash_area_read(fap_src, 0, (void *)(IMAGE_RAM_BASE + img_dst), img_sz);
@@ -419,7 +419,7 @@ boot_remove_image_from_flash(struct boot_loader_state *state, uint32_t slot)
     BOOT_LOG_INF("Removing image %d slot %d from flash", BOOT_CURR_IMG(state),
                                                          slot);
     fap = BOOT_IMG_AREA(state, slot);
-    assert(fap != NULL);
+    ASSERT(fap != NULL);
 
     return boot_scramble_slot(fap, slot);
 }
