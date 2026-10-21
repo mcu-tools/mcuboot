@@ -48,6 +48,9 @@ swap-offset = []
 # Swap using move move
 swap-move = []
 
+# Single application slot, no upgrade path
+single-slot = []
+
 # Disable validation of the primary slot
 validate-primary-slot = []
 
