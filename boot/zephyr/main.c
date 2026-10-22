@@ -230,7 +230,9 @@ int main(void)
     bool usb_dfu_requested = false;
     bool usb_dfu_forever = false;
 #endif
-#if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU)
+#if (defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU)) && \
+    (defined(CONFIG_BOOT_SWAP_USING_SCRATCH) || defined(CONFIG_BOOT_UPGRADE_ONLY) || \
+     defined(CONFIG_BOOT_SWAP_USING_OFFSET) || defined(CONFIG_BOOT_SWAP_USING_MOVE))
     bool has_upgrade;
 #endif
     FIH_DECLARE(fih_rc, FIH_FAILURE);
@@ -265,7 +267,9 @@ int main(void)
     }
 #endif /* CONFIG_MCUBOOT_UUID_VID || CONFIG_MCUBOOT_UUID_CID */
 
-#if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU)
+#if (defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU)) && \
+    (defined(CONFIG_BOOT_SWAP_USING_SCRATCH) || defined(CONFIG_BOOT_UPGRADE_ONLY) || \
+     defined(CONFIG_BOOT_SWAP_USING_OFFSET) || defined(CONFIG_BOOT_SWAP_USING_MOVE))
     /*
      * If MCUboot is part the way through an update, prevent entering serial recovery/USB DFU
      * modes to prevent tampering with the image data which prevents allowing un-verified data
@@ -350,7 +354,9 @@ int main(void)
         io_led_set(1);
 #endif
 #endif
-#if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU)
+#if (defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU)) && \
+    (defined(CONFIG_BOOT_SWAP_USING_SCRATCH) || defined(CONFIG_BOOT_UPGRADE_ONLY) || \
+     defined(CONFIG_BOOT_SWAP_USING_OFFSET) || defined(CONFIG_BOOT_SWAP_USING_MOVE))
     }
 #endif
 
@@ -360,7 +366,9 @@ int main(void)
     }
     BOOT_LOG_DBG("Left boot_go with success == %d", FIH_EQ(fih_rc, FIH_SUCCESS) ? 1 : 0);
 
-#if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU)
+#if (defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU)) && \
+    (defined(CONFIG_BOOT_SWAP_USING_SCRATCH) || defined(CONFIG_BOOT_UPGRADE_ONLY) || \
+     defined(CONFIG_BOOT_SWAP_USING_OFFSET) || defined(CONFIG_BOOT_SWAP_USING_MOVE))
 /*
  * At this point, upgrades have been dealt with so it is safe to boot into serial recovery/DFU
  * mode, however doing so with a image set to test would mean that after exiting serial
@@ -413,7 +421,9 @@ int main(void)
         io_led_set(0);
 #endif
 #endif
-#if defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU)
+#if (defined(CONFIG_MCUBOOT_SERIAL) || defined(CONFIG_BOOT_USB_DFU)) && \
+    (defined(CONFIG_BOOT_SWAP_USING_SCRATCH) || defined(CONFIG_BOOT_UPGRADE_ONLY) || \
+     defined(CONFIG_BOOT_SWAP_USING_OFFSET) || defined(CONFIG_BOOT_SWAP_USING_MOVE))
     }
 #endif
 
