@@ -39,6 +39,11 @@
 #include "usbd_dfu.h"
 #endif
 
+#if defined(CONFIG_ARM_SECURE_FIRMWARE)
+#include <arm_cmse.h>
+typedef __attribute__((cmse_nonsecure_call)) int32_t (*nonsecure_entry_t)(void);
+#endif
+
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
@@ -123,6 +128,27 @@ void do_boot(const struct boot_rsp *rsp)
 		BOOT_LOG_WRN("USB DFU disable failed: %d", usbd_rc);
 	}
 #endif
+
+#if defined(CONFIG_ARM_SECURE_FIRMWARE)
+	if (cmse_check_pointed_object(vt, CMSE_NONSECURE) != NULL) {
+		nonsecure_entry_t entry_ns;
+
+		BOOT_LOG_INF("Boot Non-Secure image (%p)", vt);
+
+		SCB_NS->VTOR = (uint32_t)vt;
+		__TZ_set_MSP_NS(vt->msp);
+
+		entry_ns = (nonsecure_entry_t)vt->reset;
+		entry_ns = cmse_nsfptr_create(entry_ns);
+		if (cmse_is_nsfptr(entry_ns)) {
+			entry_ns();
+		}
+
+		BOOT_LOG_ERR("Boot Non-Secure image (%p) failed", vt);
+		FIH_PANIC;
+	}
+#endif
+
 #if CONFIG_MCUBOOT_CLEANUP_ARM_CORE
 	cleanup_arm_interrupts(); /* Disable and acknowledge all interrupts */
 
