@@ -683,15 +683,17 @@ struct bootsim_ram_info *bootsim_get_ram_info(void);
     (size)), 0)
 
 #ifdef MCUBOOT_SERIAL
-bool boot_image_data_in_ram(void);
+void boot_init_image_data_in_ram(void);
+fih_ret boot_image_data_in_ram(void);
 void boot_set_image_data_in_nvm(void);
 
 #define LOAD_IMAGE_DATA_NVM(hdr, fap, start, output, size)       \
     (flash_area_read((fap), (start), (output), (size)))
 
 #define LOAD_IMAGE_DATA(hdr, fap, start, output, size)                              \
-    boot_image_data_in_ram() ? LOAD_IMAGE_DATA_RAM(hdr, fap, start, output, size) : \
-                               LOAD_IMAGE_DATA_NVM(hdr, fap, start, output, size)
+    FIH_NOT_EQ(boot_image_data_in_ram(), FIH_NEGATIVE_VALUE) ? \
+                   LOAD_IMAGE_DATA_RAM(hdr, fap, start, output, size) : \
+                   LOAD_IMAGE_DATA_NVM(hdr, fap, start, output, size)
 #else
 #define LOAD_IMAGE_DATA(hdr, fap, start, output, size) \
         LOAD_IMAGE_DATA_RAM(hdr, fap, start, output, size)

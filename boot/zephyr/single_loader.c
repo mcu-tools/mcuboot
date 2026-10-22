@@ -191,6 +191,10 @@ boot_go(struct boot_rsp *rsp)
 
     BOOT_LOG_DBG("boot_go: Single loader");
 
+#if defined(MCUBOOT_RAM_LOAD) && defined(MCUBOOT_SERIAL)
+    boot_init_image_data_in_ram();
+#endif
+
     rc = boot_open_all_flash_areas(&state);
     if (rc != 0) {
         goto out;
