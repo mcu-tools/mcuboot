@@ -273,6 +273,15 @@ validation and the handling of image encryption keys.
 - **Serial recovery:** Swap status area is now cleared when the
   first upload packet is received to prevent possibly use stale
   flags.
+- **Serial recovery:** Fixed not decrypting an encrypted image
+  uploaded into the primary slot of image 1 or higher (multi-image
+  builds): it stayed ciphertext, so no image booted. Uploads into
+  the primary slot of any image are now decrypted in place, like
+  those into the primary slot of image 0.
+- **Serial recovery:** Fixed in-place decryption writing past its
+  key data on the stack when it cleaned up, and decrypting an image
+  without its key TLV with an unkeyed context; such an image is now
+  left as it was uploaded.
 - **Zephyr:** With `CONFIG_BOOT_MAX_IMG_SECTORS_AUTO`, the maximum
   sector count now takes the slots of every image into account, not
   only image 0. The erase and write sizes of the secondary slot are
@@ -309,8 +318,16 @@ validation and the handling of image encryption keys.
 - **Espressif:** Fixed the build of the standalone port with serial
   recovery (`CONFIG_ESP_MCUBOOT_SERIAL`), which lacked an Mbed TLS
   source file.
+- **Espressif:** Fixed an out-of-bounds write in
+  `flash_area_get_sectors()` when an image slot or scratch area spans
+  more than `MCUBOOT_MAX_IMG_SECTORS` sectors. The port now fails the
+  call with `-ENOMEM` instead of overrunning the sector table, and the
+  build rejects such slot and scratch sizes.
 - **Mynewt:** Fixed the build of serial recovery without image
   encryption.
+- **NuttX**: Fixed `flash_area_get_sector()`, which left the returned
+  sector uninitialized (and reported success) for any offset other
+  than zero. This broke `MCUBOOT_SWAP_USING_MOVE`.
 
 ### Board and SoC support
 
