@@ -1712,11 +1712,6 @@ bool boot_check_for_updates(void)
      * completed.
      */
     IMAGES_ITER(BOOT_CURR_IMG(&boot_data)) {
-#if BOOT_IMAGE_NUMBER > 1
-        if (state->img_mask[BOOT_CURR_IMG(&boot_data)]) {
-            continue;
-        }
-#endif
         /* Determine the sector layout of the image slots and scratch area. */
         rc = boot_read_sectors(&boot_data, sectors);
         if (rc != 0) {
