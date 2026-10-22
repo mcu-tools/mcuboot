@@ -52,7 +52,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #endif
 
 #ifdef MCUBOOT_SERIAL
-static bool image_data_in_ram = true;
+static fih_ret image_data_in_ram;
 #endif
 
 /**
@@ -441,14 +441,19 @@ int boot_load_image_from_flash_to_sram(struct boot_loader_state *state,
 }
 
 #ifdef MCUBOOT_SERIAL
-bool boot_image_data_in_ram(void)
+void boot_init_image_data_in_ram(void)
+{
+	FIH_SET(image_data_in_ram, FIH_POSITIVE_VALUE);
+}
+
+fih_ret boot_image_data_in_ram(void)
 {
 	return image_data_in_ram;
 }
 
 void boot_set_image_data_in_nvm(void)
 {
-	image_data_in_ram = false;
+	FIH_SET(image_data_in_ram, FIH_NEGATIVE_VALUE);
 }
 #endif
 

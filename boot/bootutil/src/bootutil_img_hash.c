@@ -155,7 +155,7 @@ bootutil_img_hash(struct boot_loader_state *state,
 #else /* MCUBOOT_HASH_STORAGE_DIRECTLY */
 #ifdef MCUBOOT_RAM_LOAD
 #ifdef MCUBOOT_SERIAL
-    if (boot_image_data_in_ram()) {
+    if (FIH_NOT_EQ(boot_image_data_in_ram(), FIH_NEGATIVE_VALUE)) {
 #endif
         bootutil_sha_update(&sha_ctx,
                             (void*)(IMAGE_RAM_BASE + hdr->ih_load_addr),
