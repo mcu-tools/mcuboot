@@ -34,6 +34,17 @@
 /* #define MCUBOOT_SIGN_EC256 */
 
 /*
+ * When MCUBOOT_SIGN_RSA is used together with the PSA crypto backend
+ * (MCUBOOT_USE_PSA_CRYPTO), the RSA modular exponentiation happens inside
+ * the PSA implementation and cannot be checked directly by MCUboot.
+ * Uncomment to perform the RSA-PSS verification twice and require both
+ * attempts to succeed, as a fault injection countermeasure at the cost of
+ * doubling the RSA verification time.  Recommended when fault injection
+ * hardening is otherwise enabled.
+ */
+/* #define MCUBOOT_RSA_PSA_DOUBLE_VERIFY */
+
+/*
  * Public key handling
  *
  * Choose one or none from the different public key handling options.
