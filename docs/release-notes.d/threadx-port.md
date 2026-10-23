@@ -1,0 +1,1 @@
+- Add first-class support for Eclipse ThreadX RTOS under `boot/threadx/`, including flash map backend for STM32F429ZI-Nucleo target, TinyCrypt ECDSA P-256 signature verification, dual-slot swap with rollback, and validation test runner.
