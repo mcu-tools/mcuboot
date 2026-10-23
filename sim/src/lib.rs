@@ -35,6 +35,11 @@ pub use crate::{
     },
 };
 
+/// Test-only helper to construct ECIES-P256 key-wrap envelopes for exercising
+/// the C-side `xip_enc_ecies_unwrap` (including its zero-IV rejection guard).
+#[cfg(feature = "enc-xip-ec256")]
+pub use crate::tlv::build_test_ecies_envelope;
+
 const USAGE: &str = "
 Mcuboot simulator
 
