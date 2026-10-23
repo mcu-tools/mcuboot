@@ -1,0 +1,1 @@
+- Add first-class support for Eclipse ThreadX RTOS under `boot/threadx/`, including flash map backend for STM32F429ZI-Nucleo target, mbedTLS ECDSA P-256 signature verification with automated public key generation, dual-slot swap-move upgrade mode, and sample application and validation test suite under `samples/threadx/`.
