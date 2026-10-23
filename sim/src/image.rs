@@ -874,8 +874,9 @@ impl Images {
                 fails += 1;
             }
 
-            if self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
-                                     BOOT_FLAG_SET, BOOT_FLAG_SET) {
+            if !Caps::OverwriteUpgrade.present() &&
+               self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                    BOOT_FLAG_SET, BOOT_FLAG_SET) {
                 warn!("Mismatched trailer for the primary slot");
                 fails += 1;
             }
