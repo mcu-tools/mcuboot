@@ -33,6 +33,7 @@ pkg.cflags:
 
 pkg.deps:
     - "@mcuboot/boot/mynewt/mcuboot_config"
+    - "@mcuboot/boot/fault_injection_hardening"
     - "@apache-mynewt-core/hw/hal"
     - "@apache-mynewt-core/kernel/os"
     - "@apache-mynewt-core/sys/defs"
