@@ -45,6 +45,11 @@
 /* Uncomment to use builtin key(s) instead of incorporating
  * the public key into the code. */
 /* #define MCUBOOT_BUILTIN_KEY */
+/* Uncomment to reject upgrade images signed with keys older than the
+ * currently active primary-slot image. Requires at least two embedded
+ * verification keys, a swap-based upgrade strategy, and is incompatible
+ * with MCUBOOT_BUILTIN_KEY and MCUBOOT_BYPASS_KEY_MATCH. */
+/* #define MCUBOOT_KEY_REVOCATION_FROM_PRIMARY */
 
 /*
  * Upgrade mode
