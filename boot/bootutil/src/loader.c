@@ -949,7 +949,9 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
     uint32_t src_size = 0;
     rc = boot_read_image_size(state, BOOT_SLOT_SECONDARY, &src_size);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 #endif
 
     image_index = BOOT_CURR_IMG(state);
@@ -971,8 +973,7 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
         if ((size + this_size) >= src_size) {
-            size += src_size - size;
-            size += BOOT_WRITE_SZ(state) - (size % BOOT_WRITE_SZ(state));
+            size = ALIGN_UP(src_size, BOOT_WRITE_SZ(state));
             break;
         }
 #endif
