@@ -48,7 +48,7 @@ int
 bootutil_img_hash(struct boot_loader_state *state,
                   struct image_header *hdr, const struct flash_area *fap,
                   uint8_t *tmp_buf, uint32_t tmp_buf_sz, uint8_t *hash_result,
-                  uint8_t *seed, int seed_len
+                  uint8_t *seed, uint32_t seed_len
                  )
 {
     bootutil_sha_context sha_ctx;
