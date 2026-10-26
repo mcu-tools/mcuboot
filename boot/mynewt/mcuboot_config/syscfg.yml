@@ -58,6 +58,13 @@ syscfg.defs:
     BOOTUTIL_SWAP_USING_MOVE:
         description: 'Perform swap without requiring scratch.'
         value: 0
+        restrictions:
+            - "!BOOTUTIL_SWAP_USING_OFFSET"
+    BOOTUTIL_SWAP_USING_OFFSET:
+        description: 'Perform swap using offset without requiring scratch.'
+        value: 0
+        restrictions:
+            - "!BOOTUTIL_SWAP_USING_MOVE"
     BOOTUTIL_SWAP_SAVE_ENCTLV:
         description: 'Save TLVs instead of plaintext encryption keys in swap status.'
         value: 0
