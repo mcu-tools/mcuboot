@@ -96,22 +96,29 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
     bootutil_sha_finish(&sha_ctx, hash);
     bootutil_sha_drop(&sha_ctx);
 
-    rc = boot_retrieve_public_key_hash(image_index, key_hash, &key_hash_size);
-    if (rc) {
-        return -1;
-    }
+    for (uint8_t key_index = 0;; key_index++) {
+        key_hash_size = sizeof(key_hash);
+        rc = boot_retrieve_public_key_hash(image_index, key_index, key_hash,
+                                           &key_hash_size);
+        if (rc == BOOTUTIL_HW_KEY_NO_MORE) {
+            break;
+        }
+        if (rc) {
+            return -1;
+        }
 
-    /* Adding hardening to avoid this potential attack:
-     * - Image is signed with an arbitrary key and the corresponding public
-     *   key is added as a TLV field.
-     * - During public key validation (comparing against key-hash read from
-     *   HW) a fault is injected to accept the public key as valid one.
-     */
-    FIH_CALL(boot_fih_memequal, fih_rc, hash, key_hash, key_hash_size);
-    if (FIH_EQ(fih_rc, FIH_SUCCESS)) {
-        bootutil_keys[0].key = key;
-        pub_key_len = key_len;
-        return 0;
+        /* Adding hardening to avoid this potential attack:
+         * - Image is signed with an arbitrary key and the corresponding public
+         *   key is added as a TLV field.
+         * - During public key validation (comparing against key-hash read from
+         *   HW) a fault is injected to accept the public key as valid one.
+         */
+        FIH_CALL(boot_fih_memequal, fih_rc, hash, key_hash, key_hash_size);
+        if (FIH_EQ(fih_rc, FIH_SUCCESS)) {
+            bootutil_keys[0].key = key;
+            pub_key_len = key_len;
+            return 0;
+        }
     }
 
     return -1;

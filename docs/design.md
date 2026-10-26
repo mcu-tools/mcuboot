@@ -1314,16 +1314,20 @@ Using any of these options makes MCUboot independent from the public key(s).
 The key(s) can be provisioned any time and by different parties.
 
 Hardware KEYs support options details:
-- `MCUBOOT_HW_KEY`: In this case the hash of the public key must be
+- `MCUBOOT_HW_KEY`: In this case the hash(es) of the public key(s) must be
 provisioned to the target device and MCUboot must be able to retrieve the
 key-hash from there. For this reason the target must provide a definition
 for the `boot_retrieve_public_key_hash()` function which is declared in
-`boot/bootutil/include/bootutil/sign_key.h`. It is also required to use
-the `full` option for the `--public-key-format` imgtool argument in order to
-add the whole public key (PUBKEY TLV) to the image manifest instead of its
-hash (KEYHASH TLV). During boot the public key is validated before using it for
-signature verification, MCUboot calculates the hash of the public key from the
-TLV area and compares it with the key-hash that was retrieved from the device.
+`boot/bootutil/include/bootutil/sign_key.h`. The function takes a key index 
+and must return`BOOTUTIL_HW_KEY_NO_MORE` when the index is out of range, 
+so MCUboot can iterate over all provisioned key hashes.
+It is also required to use the `full` option for the `--public-key-format` 
+imgtool argument in order to add the whole public key (PUBKEY TLV) to the image 
+manifest instead of its hash (KEYHASH TLV).
+During boot the public key is validated before using it for signature verification, 
+MCUboot calculates the hash of the public key from the TLV area and compares it with 
+the key-hash that was retrieved from the device.
+
 - `MCUBOOT_BUILTIN_KEY`: With this option the whole public key(s) used for
 signature verification must be provisioned to the target device and the used
 [cryptographic library](PORTING.md) must support the usage of builtin keys based
