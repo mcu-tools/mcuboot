@@ -45,6 +45,15 @@ jobs:
         - "sig-rsa validate-primary-slot direct-xip multiimage"
         - "sig-ecdsa hw-rollback-protection multiimage"
         - "sig-ed25519 sig-second-key"
+        # Key revocation: rejects an upgrade candidate signed with an
+        # older embedded key than the one that signed the active
+        # primary-slot image. sig-second-key is needed to have a second,
+        # distinguishable key index to rotate to/from. Covers the two
+        # supported swap strategies, coexistence with bootstrap (first
+        # boot with an empty primary, which bypasses the feature
+        # entirely), and per-image independent floors under multiimage.
+        - "sig-ed25519 sig-second-key swap-move key-revocation,sig-ed25519 sig-second-key swap-offset key-revocation"
+        - "sig-ed25519 sig-second-key bootstrap key-revocation,sig-ed25519 sig-second-key multiimage key-revocation"
         # Logical sectors: swap bookkeeping in fixed 4K units
         # independent of the physical page layout. Covers each
         # upgrade strategy plus a signed variant; exercises the
