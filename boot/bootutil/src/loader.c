@@ -5,6 +5,7 @@
  * Copyright (c) 2016-2019 JUUL Labs
  * Copyright (c) 2019-2023 Arm Limited
  * Copyright (c) 2024-2025 Nordic Semiconductor ASA
+ * Copyright (c) 2026 Infineon Technologies AG
  *
  * Original license:
  *
@@ -414,6 +415,11 @@ boot_status_is_reset(const struct boot_status *bs)
 int
 boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
 {
+    int hook_rc = BOOT_SWAP_STATE_HOOK_CALL(boot_write_status_hook,
+                                                        BOOT_SWAP_STATE_HOOK_REGULAR, state, bs);
+    if (hook_rc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hook_rc;
+    }
     const struct flash_area *fap;
     uint32_t off;
     int rc = 0;
@@ -625,7 +631,20 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
                 &boot_img_hdr(state, BOOT_SLOT_PRIMARY)->ih_ver);
         if (rc < 0 && !boot_check_header_erased(state, BOOT_SLOT_PRIMARY)) {
             BOOT_LOG_ERR("Insufficient version in secondary slot");
+#if defined(MCUBOOT_SWAP_STATE_HOOKS)
+            {
+                int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_reset_hook,
+                                                         BOOT_SWAP_STATE_HOOK_REGULAR, state,
+                                                         fap, slot);
+                if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+                    /* provider owned the reset */
+                } else {
+                    boot_scramble_slot(fap, slot);
+                }
+            }
+#else
             boot_scramble_slot(fap, slot);
+#endif
             /* Image in the secondary slot does not satisfy version requirement.
              * Erase the image and continue booting from the primary slot.
              */
@@ -653,7 +672,20 @@ check_validity:
                      (slot == BOOT_SLOT_PRIMARY) ? "primary" : "secondary");
 #endif
         if ((slot != BOOT_SLOT_PRIMARY) || ARE_SLOTS_EQUIVALENT()) {
+#if defined(MCUBOOT_SWAP_STATE_HOOKS)
+            {
+                int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_reset_hook,
+                                                         BOOT_SWAP_STATE_HOOK_REGULAR, state,
+                                                         fap, slot);
+                if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+                    /* provider owned the reset */
+                } else {
+                    boot_scramble_slot(fap, slot);
+                }
+            }
+#else
             boot_scramble_slot(fap, slot);
+#endif
             /* Image is invalid, erase it to prevent further unnecessary
              * attempts to validate and boot it.
              */
@@ -707,7 +739,20 @@ check_validity:
              *
              * Erase the image and continue booting from the primary slot.
              */
+#if defined(MCUBOOT_SWAP_STATE_HOOKS)
+            {
+                int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_reset_hook,
+                                                         BOOT_SWAP_STATE_HOOK_REGULAR, state,
+                                                         fap, slot);
+                if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+                    /* provider owned the reset */
+                } else {
+                    boot_scramble_slot(fap, slot);
+                }
+            }
+#else
             boot_scramble_slot(fap, slot);
+#endif
             fih_rc = FIH_NO_BOOTABLE_IMAGE;
             goto out;
         }
@@ -755,6 +800,96 @@ boot_validated_swap_type(struct boot_loader_state *state,
 
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 
+#ifdef MCUBOOT_ENC_IMAGES
+void
+boot_transform_chunk(struct boot_loader_state *state,
+                     const struct flash_area *fap_src,
+                     const struct flash_area *fap_dst,
+                     uint32_t abs_off, uint8_t *buf, uint32_t chunk_sz)
+{
+    uint32_t tlv_off;
+    size_t blk_off;
+    struct image_header *hdr;
+    uint16_t idx;
+    uint32_t blk_sz;
+    uint8_t image_index = BOOT_CURR_IMG(state);
+    bool encrypted_src;
+    bool encrypted_dst;
+    /* Assuming the secondary slot is source; note that 0 here not only
+     * means that primary slot is source, but also that there will be
+     * encryption happening, if it is 1 then there is decryption from
+     * secondary slot.
+     */
+    int source_slot = 1;
+    /* In case of encryption enabled, we may have to do more work than
+     * just copy bytes */
+    bool only_copy = false;
+
+    encrypted_src = (flash_area_get_id(fap_src) != FLASH_AREA_IMAGE_PRIMARY(image_index));
+    encrypted_dst = (flash_area_get_id(fap_dst) != FLASH_AREA_IMAGE_PRIMARY(image_index));
+
+    if (encrypted_src != encrypted_dst) {
+        if (encrypted_dst) {
+            /* Need encryption, metadata from the primary slot */
+            hdr = boot_img_hdr(state, BOOT_SLOT_PRIMARY);
+            source_slot = 0;
+        } else {
+            /* Need decryption, metadata from the secondary slot */
+            hdr = boot_img_hdr(state, BOOT_SLOT_SECONDARY);
+            source_slot = 1;
+        }
+    } else {
+        /* In case when source and targe is the same area, this means that we
+         * only have to copy bytes, no encryption or decryption.
+         */
+        only_copy = true;
+    }
+
+    /* If only copy, then does not matter if header indicates need for
+     * encryption/decryption, we just copy data. */
+    if (!only_copy && IS_ENCRYPTED(hdr)) {
+        if (abs_off < hdr->ih_hdr_size) {
+            /* do not decrypt header */
+            if (abs_off + chunk_sz > hdr->ih_hdr_size) {
+                /* The lower part of the chunk contains header data */
+                blk_off = 0;
+                blk_sz = chunk_sz - (hdr->ih_hdr_size - abs_off);
+                idx = hdr->ih_hdr_size  - abs_off;
+            } else {
+                /* The chunk contains exclusively header data */
+                blk_sz = 0; /* nothing to decrypt */
+            }
+        } else {
+            idx = 0;
+            blk_sz = chunk_sz;
+            blk_off = (abs_off - hdr->ih_hdr_size) & 0xf;
+        }
+
+        if (blk_sz > 0)
+        {
+            tlv_off = BOOT_TLV_OFF(hdr);
+            if (abs_off + chunk_sz > tlv_off) {
+                /* do not decrypt TLVs */
+                if (abs_off >= tlv_off) {
+                    blk_sz = 0;
+                } else {
+                    blk_sz = tlv_off - abs_off - idx;
+                }
+            }
+            if (source_slot == 0) {
+                boot_enc_encrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
+                        (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
+                        blk_off, &buf[idx]);
+            } else {
+                boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
+                        (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
+                        blk_off, &buf[idx]);
+            }
+        }
+    }
+}
+#endif
+
 /**
  * Copies the contents of one flash region to another.  You must erase the
  * destination region prior to calling this function.
@@ -789,50 +924,11 @@ boot_copy_region(struct boot_loader_state *state,
     int rc;
 #ifdef MCUBOOT_ENC_IMAGES
     uint32_t off = off_dst;
-    uint32_t tlv_off;
-    size_t blk_off;
-    struct image_header *hdr;
-    uint16_t idx;
-    uint32_t blk_sz;
-    uint8_t image_index = BOOT_CURR_IMG(state);
-    bool encrypted_src;
-    bool encrypted_dst;
-    /* Assuming the secondary slot is source; note that 0 here not only
-     * means that primary slot is source, but also that there will be
-     * encryption happening, if it is 1 then there is decryption from
-     * secondary slot.
-     */
-    int source_slot = 1;
-    /* In case of encryption enabled, we may have to do more work than
-     * just copy bytes */
-    bool only_copy = false;
 #else
     (void)state;
 #endif
 
     TARGET_STATIC uint8_t buf[BUF_SZ] __attribute__((aligned(4)));
-
-#ifdef MCUBOOT_ENC_IMAGES
-    encrypted_src = (flash_area_get_id(fap_src) != FLASH_AREA_IMAGE_PRIMARY(image_index));
-    encrypted_dst = (flash_area_get_id(fap_dst) != FLASH_AREA_IMAGE_PRIMARY(image_index));
-
-    if (encrypted_src != encrypted_dst) {
-        if (encrypted_dst) {
-            /* Need encryption, metadata from the primary slot */
-            hdr = boot_img_hdr(state, BOOT_SLOT_PRIMARY);
-            source_slot = 0;
-        } else {
-            /* Need decryption, metadata from the secondary slot */
-            hdr = boot_img_hdr(state, BOOT_SLOT_SECONDARY);
-            source_slot = 1;
-        }
-    } else {
-        /* In case when source and targe is the same area, this means that we
-         * only have to copy bytes, no encryption or decryption.
-         */
-        only_copy = true;
-    }
-#endif
 
     bytes_copied = 0;
     while (bytes_copied < sz) {
@@ -848,53 +944,12 @@ boot_copy_region(struct boot_loader_state *state,
         }
 
 #ifdef MCUBOOT_ENC_IMAGES
-        /* If only copy, then does not matter if header indicates need for
-         * encryption/decryption, we just copy data. */
-        if (!only_copy && IS_ENCRYPTED(hdr)) {
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
-            uint32_t abs_off = off - sector_off + bytes_copied;
+        uint32_t abs_off = off - sector_off + bytes_copied;
 #else
-            uint32_t abs_off = off + bytes_copied;
+        uint32_t abs_off = off + bytes_copied;
 #endif
-            if (abs_off < hdr->ih_hdr_size) {
-                /* do not decrypt header */
-                if (abs_off + chunk_sz > hdr->ih_hdr_size) {
-                    /* The lower part of the chunk contains header data */
-                    blk_off = 0;
-                    blk_sz = chunk_sz - (hdr->ih_hdr_size - abs_off);
-                    idx = hdr->ih_hdr_size  - abs_off;
-                } else {
-                    /* The chunk contains exclusively header data */
-                    blk_sz = 0; /* nothing to decrypt */
-                }
-            } else {
-                idx = 0;
-                blk_sz = chunk_sz;
-                blk_off = (abs_off - hdr->ih_hdr_size) & 0xf;
-            }
-
-            if (blk_sz > 0)
-            {
-                tlv_off = BOOT_TLV_OFF(hdr);
-                if (abs_off + chunk_sz > tlv_off) {
-                    /* do not decrypt TLVs */
-                    if (abs_off >= tlv_off) {
-                        blk_sz = 0;
-                    } else {
-                        blk_sz = tlv_off - abs_off - idx;
-                    }
-                }
-                if (source_slot == 0) {
-                    boot_enc_encrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
-                            (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
-                            blk_off, &buf[idx]);
-                } else {
-                    boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
-                            (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
-                            blk_off, &buf[idx]);
-                }
-            }
-        }
+        boot_transform_chunk(state, fap_src, fap_dst, abs_off, buf, chunk_sz);
 #endif
 
         rc = flash_area_write(fap_dst, off_dst + bytes_copied, buf, chunk_sz);
@@ -1192,6 +1247,15 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
     }
 
     swap_run(state, bs, copy_size);
+
+    /* Post-swap finalization for hook implementations that keep swap progress
+     * outside the image trailers: reconstruct any primary trailer field left
+     * uncommitted by an interrupted swap and erase a stale scratch trailer.
+     * BOOT_SWAP_STATE_HOOK_CALL evaluates to its ret_default (0, no-op) when
+     * MCUBOOT_SWAP_STATE_HOOKS is not defined, so builds without the hook
+     * family are unaffected. */
+    rc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_complete_hook, 0, state, bs);
+    assert(rc == 0);
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
     extern int boot_status_fails;
@@ -1668,7 +1732,20 @@ check_downgrade_prevention(struct boot_loader_state *state)
     if (rc < 0) {
         /* Image in slot 0 prevents downgrade, delete image in slot 1 */
         BOOT_LOG_INF("Image %d in slot 1 erased due to downgrade prevention", BOOT_CURR_IMG(state));
+#if defined(MCUBOOT_SWAP_STATE_HOOKS)
+        {
+            int hrc = BOOT_SWAP_STATE_HOOK_CALL(boot_swap_meta_reset_hook,
+                                                     BOOT_SWAP_STATE_HOOK_REGULAR, state,
+                                                     BOOT_IMG_AREA(state, 1), BOOT_SLOT_SECONDARY);
+            if (hrc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+                /* provider owned the reset */
+            } else {
+                boot_scramble_slot(BOOT_IMG_AREA(state, 1), BOOT_SLOT_SECONDARY);
+            }
+        }
+#else
         boot_scramble_slot(BOOT_IMG_AREA(state, 1), BOOT_SLOT_SECONDARY);
+#endif
     } else {
         rc = 0;
     }

@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bootutil/bootutil.h"
+#include "bootutil/boot_hooks.h"
 #include "bootutil_priv.h"
 #include "swap_priv.h"
 #include "bootutil/bootutil_log.h"
@@ -138,6 +139,11 @@ int
 swap_read_status_bytes(const struct flash_area *fap,
         struct boot_loader_state *state, struct boot_status *bs)
 {
+    int hook_rc = BOOT_SWAP_STATE_HOOK_CALL(swap_read_status_bytes_hook,
+                                                        BOOT_SWAP_STATE_HOOK_REGULAR, fap, state, bs);
+    if (hook_rc != BOOT_SWAP_STATE_HOOK_REGULAR) {
+        return hook_rc;
+    }
     uint32_t off;
     uint8_t status;
     int max_entries;
@@ -449,7 +455,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
  * upgrade (by initializing the secondary slot).
  */
 void
-fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
+fixup_revert(struct boot_loader_state *state, struct boot_status *bs,
         const struct flash_area *fap_sec)
 {
     struct boot_swap_state swap_state;
