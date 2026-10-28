@@ -2315,7 +2315,8 @@ fn install_image_with_key(
             let tlv_len = tlv.estimate_size();
             let sector_sz = boot_sector_size(dev);
             let total = HDR_SIZE + largest_img_sz + tlv_len - 1;
-            // Sectors larger than the slot leave no aligned size; use the largest.
+            // No sector aligned size fits when the sector is larger than the
+            // image; use the largest image size.
             (total - total % sector_sz).checked_sub(HDR_SIZE + tlv_len)
                 .unwrap_or(largest_img_sz)
         }
