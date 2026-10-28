@@ -185,6 +185,7 @@ set(ZCBOR_DIR ${MCUBOOT_ROOT_DIR}/boot/zcbor)
 
 list(APPEND inc_directories
     ${BOOTUTIL_DIR}/include
+    ${MCUBOOT_ROOT_DIR}/boot/fault_injection_hardening/include
     ${BOOTUTIL_DIR}/src
     ${ESPRESSIF_PORT_DIR}/include
     )
@@ -206,7 +207,7 @@ set(bootutil_srcs
     ${BOOTUTIL_DIR}/src/bootutil_public.c
     ${BOOTUTIL_DIR}/src/caps.c
     ${BOOTUTIL_DIR}/src/encrypted.c
-    ${BOOTUTIL_DIR}/src/fault_injection_hardening.c
+    ${MCUBOOT_ROOT_DIR}/boot/fault_injection_hardening/src/fault_injection_hardening.c
     ${BOOTUTIL_DIR}/src/fault_injection_hardening_delay_rng_mbedtls.c
     ${BOOTUTIL_DIR}/src/image_ecdsa.c
     ${BOOTUTIL_DIR}/src/image_ed25519.c

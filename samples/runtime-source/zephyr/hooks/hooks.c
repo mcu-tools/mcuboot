@@ -10,7 +10,7 @@
 
 #include "bootutil/bootutil.h"
 #include "bootutil/bootutil_public.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 
 #define BOOT_TMPBUF_SZ 256
 
