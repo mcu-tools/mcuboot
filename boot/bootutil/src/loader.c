@@ -1240,7 +1240,9 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
 #else
         rc = boot_swap_image(state, bs);
 #endif
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 
 #ifndef MCUBOOT_OVERWRITE_ONLY
     /* The following state needs image_ok be explicitly set after the
@@ -1303,7 +1305,9 @@ boot_complete_partial_swap(struct boot_loader_state *state,
      * `swap-type` trailer field.
      */
     rc = boot_swap_image(state, bs);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 
     BOOT_SWAP_TYPE(state) = bs->swap_type;
 
@@ -1404,8 +1408,12 @@ boot_review_image_swap_types(struct boot_loader_state *state,
  * @param state                 TODO
  * @param bs                    Pointer where the read and possibly updated
  *                              boot status can be written to.
+ *
+ * @return                      0 on success; nonzero if an interrupted swap
+ *                              could not be completed and the primary slot
+ *                              must not be booted.
  */
-static void
+static int
 boot_prepare_image_for_update(struct boot_loader_state *state,
                               struct boot_status *bs)
 {
@@ -1423,7 +1431,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
         BOOT_LOG_WRN("Failed reading image headers; Image=%u",
                 BOOT_CURR_IMG(state));
         BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
-        return;
+        return 0;
     }
 
 #if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO) || defined(MCUBOOT_DATA_SHARING)
@@ -1449,7 +1457,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
                     BOOT_CURR_IMG(state));
             /* Continue with next image if there is one. */
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
-            return;
+            return 0;
         }
 #endif
 
@@ -1470,7 +1478,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
             BOOT_LOG_WRN("Failed reading image headers; Image=%u",
                     BOOT_CURR_IMG(state));
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
-            return;
+            return 0;
         }
 #endif
 
@@ -1493,7 +1501,11 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
              * `swap-type` trailer field.
              */
             rc = boot_complete_partial_swap(state, bs);
-            assert(rc == 0);
+            if (rc != 0) {
+                BOOT_LOG_ERR("Failed to complete interrupted swap; Image=%u",
+                             BOOT_CURR_IMG(state));
+                return rc;
+            }
 #endif
             /* Attempt to read an image header from each slot. Ensure that image headers in slots
              * are aligned with headers in boot_data.
@@ -1565,6 +1577,8 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
         /* In that case if slots are not compatible. */
         BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
     }
+
+    return 0;
 }
 
 /**
@@ -1861,7 +1875,11 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
          * Note boot_read_sectors returns BOOT_EFLASH_SEC for errors regarding the secondary slot.
          */
         if (rc != BOOT_EFLASH) {
-            boot_prepare_image_for_update(state, &bs);
+            rc = boot_prepare_image_for_update(state, &bs);
+            if (rc != 0) {
+                FIH_SET(fih_rc, FIH_FAILURE);
+                goto out;
+            }
         }
 
         if (BOOT_IS_UPGRADE(BOOT_SWAP_TYPE(state))) {
@@ -1938,7 +1956,15 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
             {
                 rc = boot_perform_update(state, &bs);
             }
-            assert(rc == 0);
+            if (rc != 0 && BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_PANIC) {
+                /* The swap or copy did not complete. Don't boot; the
+                 * upgrade is resumed or retried on the next boot.
+                 */
+                BOOT_LOG_ERR("Image upgrade failed; Image=%u",
+                             BOOT_CURR_IMG(state));
+                FIH_SET(fih_rc, FIH_FAILURE);
+                goto out;
+            }
             break;
 
         case BOOT_SWAP_TYPE_FAIL:
