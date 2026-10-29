@@ -1,6 +1,6 @@
 # Pull requests and pushes to main skip the slow power-fail permutation
-# tests (MCUBOOT_SKIP_SLOW_TESTS).  The daily scheduled run, and any
-# manual run, covers the full set on main.
+# tests.  The daily scheduled run, and any manual run, sets
+# MCUBOOT_RUN_SLOW_TESTS to cover the full set on main.
 on:
   push:
     branches:
@@ -117,10 +117,10 @@ jobs:
     - name: Sim install
       run: |
         ./ci/sim_install.sh
-    - name: Skip slow tests
-      if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+    - name: Enable slow tests
+      if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
       run: |
-        echo "MCUBOOT_SKIP_SLOW_TESTS=1" >> "$GITHUB_ENV"
+        echo "MCUBOOT_RUN_SLOW_TESTS=1" >> "$GITHUB_ENV"
     - name: Sim run
       run: |
         ./ci/sim_run.sh
