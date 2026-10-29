@@ -885,13 +885,20 @@ boot_copy_region(struct boot_loader_state *state,
                     }
                 }
                 if (source_slot == 0) {
-                    boot_enc_encrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
+                    rc = boot_enc_encrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
                             (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
                             blk_off, &buf[idx]);
                 } else {
-                    boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
+                    rc = boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
                             (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
                             blk_off, &buf[idx]);
+                }
+                if (rc != 0) {
+                    /* Don't write a chunk whose transform failed. */
+                    BOOT_LOG_ERR("Failed to %s image data; Image=%u",
+                                 source_slot == 0 ? "encrypt" : "decrypt",
+                                 image_index);
+                    return BOOT_EBADIMAGE;
                 }
             }
         }
@@ -949,7 +956,9 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
     uint32_t src_size = 0;
     rc = boot_read_image_size(state, BOOT_SLOT_SECONDARY, &src_size);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 #endif
 
     image_index = BOOT_CURR_IMG(state);
@@ -967,7 +976,9 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     for (sect = 0, size = 0; sect < sect_count; sect++) {
         this_size = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, sect);
         rc = boot_erase_region(fap_primary_slot, size, this_size, false);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
         if ((size + this_size) >= src_size) {
@@ -991,7 +1002,9 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     } while (sz < trailer_sz);
 
     rc = boot_erase_region(fap_primary_slot, off, sz, false);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 #endif
 
 #ifdef MCUBOOT_ENC_IMAGES
@@ -1057,7 +1070,12 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     rc = boot_scramble_region(fap_secondary_slot,
                               boot_img_sector_off(state, BOOT_SLOT_SECONDARY, 0),
                               boot_img_sector_size(state, BOOT_SLOT_SECONDARY, 0), false);
-    assert(rc == 0);
+    if (rc != 0) {
+        /* The copy is complete. If the secondary slot still looks like a
+         * pending upgrade, the next boot repeats the copy, so keep going.
+         */
+        BOOT_LOG_WRN("Failed to erase secondary header; Image=%u", image_index);
+    }
 #endif
 
     last_sector = boot_img_num_sectors(state, BOOT_SLOT_SECONDARY) - 1;
@@ -1067,7 +1085,9 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
                                     last_sector),
                               boot_img_sector_size(state, BOOT_SLOT_SECONDARY,
                                     last_sector), false);
-    assert(rc == 0);
+    if (rc != 0) {
+        BOOT_LOG_WRN("Failed to erase secondary trailer; Image=%u", image_index);
+    }
 
     /* TODO: Perhaps verify the primary slot's signature again? */
 
@@ -1076,6 +1096,50 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 #endif
 
 #if !defined(MCUBOOT_OVERWRITE_ONLY)
+#ifdef MCUBOOT_ENC_IMAGES
+/**
+ * Loads the encryption key of one slot before a new swap starts.
+ *
+ * @param slot                  The slot whose key is loaded.
+ * @param bs                    The current boot status.
+ *
+ * @return                      0 if the slot is not encrypted or its key is
+ *                              ready for use; nonzero on failure.
+ */
+static int
+boot_swap_load_enc_key(struct boot_loader_state *state, int slot,
+                       struct boot_status *bs)
+{
+    struct image_header *hdr;
+    int rc;
+
+    hdr = boot_img_hdr(state, slot);
+    if (!IS_ENCRYPTED(hdr)) {
+        memset(bs->enckey[slot], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
+        return 0;
+    }
+
+    rc = boot_enc_load(state, slot, hdr, BOOT_IMG_AREA(state, slot), bs);
+    if (rc < 0) {
+        BOOT_LOG_ERR("Failed to load encryption key; Image=%u slot=%d",
+                     BOOT_CURR_IMG(state), slot);
+        return BOOT_EBADIMAGE;
+    }
+
+    /* rc == 1 means the key is already loaded. */
+    if (rc == 0) {
+        rc = boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, slot), bs->enckey[slot]);
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed to set encryption key; Image=%u slot=%d",
+                         BOOT_CURR_IMG(state), slot);
+            return BOOT_EBADIMAGE;
+        }
+    }
+
+    return 0;
+}
+#endif
+
 /**
  * Swaps the two images in flash.  If a prior copy operation was interrupted
  * by a system reset, this function completes that operation.
@@ -1117,23 +1181,6 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             assert(rc == 0);
         }
 
-#ifdef MCUBOOT_ENC_IMAGES
-        if (IS_ENCRYPTED(hdr)) {
-            fap = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
-            rc = boot_enc_load(state, BOOT_SLOT_PRIMARY, hdr, fap, bs);
-            assert(rc >= 0);
-
-            if (rc == 0) {
-                rc = boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, BOOT_SLOT_PRIMARY), bs->enckey[BOOT_SLOT_PRIMARY]);
-                assert(rc == 0);
-            } else {
-                rc = 0;
-            }
-        } else {
-            memset(bs->enckey[BOOT_SLOT_PRIMARY], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
-        }
-#endif
-
         hdr = boot_img_hdr(state, BOOT_SLOT_SECONDARY);
         if (hdr->ih_magic == IMAGE_MAGIC) {
             rc = boot_read_image_size(state, BOOT_SLOT_SECONDARY, &size);
@@ -1141,20 +1188,15 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         }
 
 #ifdef MCUBOOT_ENC_IMAGES
-        hdr = boot_img_hdr(state, BOOT_SLOT_SECONDARY);
-        if (IS_ENCRYPTED(hdr)) {
-            fap = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
-            rc = boot_enc_load(state, BOOT_SLOT_SECONDARY, hdr, fap, bs);
-            assert(rc >= 0);
-
-            if (rc == 0) {
-                rc = boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, BOOT_SLOT_SECONDARY), bs->enckey[BOOT_SLOT_SECONDARY]);
-                assert(rc == 0);
-            } else {
-                rc = 0;
-            }
-        } else {
-            memset(bs->enckey[BOOT_SLOT_SECONDARY], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
+        /* Both keys must be usable before anything is written. If one is
+         * not, nothing has been touched yet: skip the upgrade and boot the
+         * primary slot as it is. The upgrade stays pending.
+         */
+        if (boot_swap_load_enc_key(state, BOOT_SLOT_PRIMARY, bs) != 0 ||
+            boot_swap_load_enc_key(state, BOOT_SLOT_SECONDARY, bs) != 0) {
+            BOOT_LOG_ERR("Not starting swap; Image=%u", image_index);
+            BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
+            return 0;
         }
 #endif
 
@@ -1184,14 +1226,17 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             if (!boot_read_enc_key(fap, slot, bs)) {
                 BOOT_LOG_DBG("boot_swap_image: Failed loading key (%d, %d)",
                               image_index, slot);
-            } else {
-                boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, slot), bs->enckey[slot]);
+            } else if (boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, slot),
+                                        bs->enckey[slot]) != 0) {
+                BOOT_LOG_ERR("Failed to set encryption key; Image=%u slot=%d",
+                             image_index, slot);
+                return BOOT_EBADIMAGE;
             }
         }
 #endif
     }
 
-    swap_run(state, bs, copy_size);
+    rc = swap_run(state, bs, copy_size);
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
     extern int boot_status_fails;
@@ -1200,10 +1245,13 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
                      boot_status_fails);
     }
 #endif
-    rc = BOOT_HOOK_CALL(boot_copy_region_post_hook, 0, BOOT_CURR_IMG(state),
-                        BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY), size);
+    if (rc != 0) {
+        BOOT_LOG_ERR("Swap failed; Image=%u rc=%d", image_index, rc);
+        return rc;
+    }
 
-    return 0;
+    return BOOT_HOOK_CALL(boot_copy_region_post_hook, 0, BOOT_CURR_IMG(state),
+                          BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY), size);
 }
 #endif
 
@@ -1240,7 +1288,9 @@ boot_perform_update(struct boot_loader_state *state, struct boot_status *bs)
 #else
         rc = boot_swap_image(state, bs);
 #endif
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 
 #ifndef MCUBOOT_OVERWRITE_ONLY
     /* The following state needs image_ok be explicitly set after the
@@ -1303,7 +1353,9 @@ boot_complete_partial_swap(struct boot_loader_state *state,
      * `swap-type` trailer field.
      */
     rc = boot_swap_image(state, bs);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 
     BOOT_SWAP_TYPE(state) = bs->swap_type;
 
@@ -1404,8 +1456,12 @@ boot_review_image_swap_types(struct boot_loader_state *state,
  * @param state                 TODO
  * @param bs                    Pointer where the read and possibly updated
  *                              boot status can be written to.
+ *
+ * @return                      0 on success; nonzero if an interrupted swap
+ *                              could not be completed and the primary slot
+ *                              must not be booted.
  */
-static void
+static int
 boot_prepare_image_for_update(struct boot_loader_state *state,
                               struct boot_status *bs)
 {
@@ -1423,7 +1479,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
         BOOT_LOG_WRN("Failed reading image headers; Image=%u",
                 BOOT_CURR_IMG(state));
         BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
-        return;
+        return 0;
     }
 
 #if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO) || defined(MCUBOOT_DATA_SHARING)
@@ -1445,11 +1501,12 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
 #ifndef MCUBOOT_OVERWRITE_ONLY
         rc = swap_read_status(state, bs);
         if (rc != 0) {
-            BOOT_LOG_WRN("Failed reading boot status; Image=%u",
+            /* A swap may be under way, and the primary slot may hold a
+             * partly swapped image: don't boot it.
+             */
+            BOOT_LOG_ERR("Failed reading boot status; Image=%u",
                     BOOT_CURR_IMG(state));
-            /* Continue with next image if there is one. */
-            BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
-            return;
+            return rc;
         }
 #endif
 
@@ -1470,7 +1527,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
             BOOT_LOG_WRN("Failed reading image headers; Image=%u",
                     BOOT_CURR_IMG(state));
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
-            return;
+            return 0;
         }
 #endif
 
@@ -1493,7 +1550,11 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
              * `swap-type` trailer field.
              */
             rc = boot_complete_partial_swap(state, bs);
-            assert(rc == 0);
+            if (rc != 0) {
+                BOOT_LOG_ERR("Failed to complete interrupted swap; Image=%u",
+                             BOOT_CURR_IMG(state));
+                return rc;
+            }
 #endif
             /* Attempt to read an image header from each slot. Ensure that image headers in slots
              * are aligned with headers in boot_data.
@@ -1510,7 +1571,12 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
              * as boot status.
              */
             rc = boot_read_image_headers(state, false, NULL);
-            assert(rc == 0);
+            if (rc != 0) {
+                /* Don't boot with the headers from before the swap. */
+                BOOT_LOG_ERR("Failed reading image headers after swap; Image=%u",
+                             BOOT_CURR_IMG(state));
+                return rc;
+            }
 
             /* Swap has finished set to NONE */
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
@@ -1565,6 +1631,8 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
         /* In that case if slots are not compatible. */
         BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
     }
+
+    return 0;
 }
 
 /**
@@ -1861,7 +1929,11 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
          * Note boot_read_sectors returns BOOT_EFLASH_SEC for errors regarding the secondary slot.
          */
         if (rc != BOOT_EFLASH) {
-            boot_prepare_image_for_update(state, &bs);
+            rc = boot_prepare_image_for_update(state, &bs);
+            if (rc != 0) {
+                FIH_SET(fih_rc, FIH_FAILURE);
+                goto out;
+            }
         }
 
         if (BOOT_IS_UPGRADE(BOOT_SWAP_TYPE(state))) {
@@ -1938,7 +2010,15 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
             {
                 rc = boot_perform_update(state, &bs);
             }
-            assert(rc == 0);
+            if (rc != 0 && BOOT_SWAP_TYPE(state) != BOOT_SWAP_TYPE_PANIC) {
+                /* The swap or copy did not complete. Don't boot; the
+                 * upgrade is resumed or retried on the next boot.
+                 */
+                BOOT_LOG_ERR("Image upgrade failed; Image=%u",
+                             BOOT_CURR_IMG(state));
+                FIH_SET(fih_rc, FIH_FAILURE);
+                goto out;
+            }
             break;
 
         case BOOT_SWAP_TYPE_FAIL:
@@ -2282,7 +2362,14 @@ boot_select_or_erase(struct boot_loader_state *state)
 
     memset(active_swap_state, 0, sizeof(struct boot_swap_state));
     rc = boot_read_swap_state(fap, active_swap_state);
-    assert(rc == 0);
+    if (rc != 0) {
+        /* The trailer could not be read, which says nothing about the image
+         * itself: don't select the slot, but don't erase it either.
+         */
+        BOOT_LOG_WRN("Failed to read the trailer of the image in the %s slot.",
+                     (active_slot == BOOT_SLOT_PRIMARY) ? "primary" : "secondary");
+        return rc;
+    }
 
     if (active_swap_state->magic != BOOT_MAGIC_GOOD ||
         (active_swap_state->copy_done == BOOT_FLAG_SET &&
@@ -2382,7 +2469,9 @@ boot_load_and_validate_images(struct boot_loader_state *state)
 #if defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT)
             rc = boot_select_or_erase(state);
             if (rc != 0) {
-                /* The selected image slot has been erased. */
+                /* The selected image slot can't be used; it may have been
+                 * erased.
+                 */
                 state->slot_usage[BOOT_CURR_IMG(state)].slot_available[active_slot] = false;
                 state->slot_usage[BOOT_CURR_IMG(state)].active_slot = BOOT_SLOT_NONE;
                 continue;

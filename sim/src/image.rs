@@ -50,7 +50,7 @@ use crate::depends::{
     PairDep,
     UpgradeInfo,
 };
-use crate::tlv::{ManifestGen, SigningKey, TlvGen, TlvFlags};
+use crate::tlv::{ManifestGen, SigningKey, TlvGen, TlvFlags, TlvKinds};
 use crate::utils::align_up;
 use typenum::{U32, U16};
 
@@ -1173,6 +1173,247 @@ impl Images {
         }
 
         fails > 0
+    }
+
+    /// Boot with an upgrade staged while the key in the primary slot's
+    /// encryption TLV can't be unwrapped. The swap needs that key to
+    /// re-encrypt the primary image into the secondary slot, so it must
+    /// not start: the primary is booted as it is and no slot is changed.
+    pub fn run_primary_enc_key_fail(&self) -> bool {
+        if !Caps::modifies_flash() || !self.is_swap_upgrade() || !enc_present() {
+            return false;
+        }
+
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try upgrade with a corrupt key in the primary slot");
+
+        for image in &self.images {
+            corrupt_enc_tlv(&mut flash, &image.slots[0]);
+        }
+
+        let snapshot: Vec<(u8, Vec<u8>)> = flash.iter().map(|(&dev_id, dev)| {
+            let mut data = vec![0u8; dev.device_size()];
+            dev.read(0, &mut data).unwrap();
+            (dev_id, data)
+        }).collect();
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success_no_asserts() {
+            warn!("Failed to boot the primary slot");
+            fails += 1;
+        }
+
+        for (dev_id, before) in &snapshot {
+            let dev = flash.get(dev_id).unwrap();
+            let mut after = vec![0u8; dev.device_size()];
+            dev.read(0, &mut after).unwrap();
+            if before != &after {
+                warn!("Flash device {} was modified", dev_id);
+                fails += 1;
+            }
+        }
+
+        if fails > 0 {
+            error!("Expected the upgrade to be skipped with the flash untouched");
+        }
+
+        fails > 0
+    }
+
+    /// Run a swap while writes to part of a flash area fail: with
+    /// `in_scratch`, the scratch area, otherwise the primary slot, each
+    /// up to its trailer.  The boot must fail without
+    /// recording the failed step as done, so that once the fault is gone
+    /// the next boot completes the swap.
+    pub fn run_swap_write_fail(&self, in_scratch: bool) -> bool {
+        if !Caps::modifies_flash() || !self.is_swap_upgrade() ||
+            (in_scratch && !Caps::SwapUsingScratch.present()) {
+            return false;
+        }
+
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        let (dev_id, off, len) = if in_scratch {
+            let (base, len, dev_id) = self.areadesc.find(FlashId::ImageScratch).unwrap();
+            let align = flash.get(&dev_id).unwrap().align();
+            let trailer_sz = c::boot_scratch_trailer_sz(align as u32) as usize;
+            (dev_id, base, (len - trailer_sz) & !(align - 1))
+        } else {
+            let slot = &self.images[0].slots[0];
+            let align = flash.get(&slot.dev_id).unwrap().align();
+            (slot.dev_id, slot.base_off, (slot.len - self.trailer_sz(align)) & !(align - 1))
+        };
+
+        info!("Try swap with writes failing at {:#x}-{:#x}", off, off + len);
+        flash.get_mut(&dev_id).unwrap().add_bad_region(off, len, 1.0).unwrap();
+
+        let result = c::boot_go(&mut flash, &self.areadesc, None, None, true);
+        if result.interrupted() || result.success() || result.asserts() != 0 {
+            warn!("Expected the first boot to fail cleanly: {:?}", result);
+            fails += 1;
+        }
+
+        flash.get_mut(&dev_id).unwrap().reset_bad_regions();
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
+            warn!("Failed second boot");
+            fails += 1;
+        }
+
+        if !self.verify_images(&flash, 0, 1) {
+            warn!("Primary slot doesn't hold the upgrade");
+            fails += 1;
+        }
+        if !self.verify_images(&flash, 1, 0) {
+            warn!("Secondary slot doesn't hold the original image");
+            fails += 1;
+        }
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
+            warn!("Mismatched trailer for the primary slot");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected the swap to complete once the write fault is gone");
+        }
+
+        fails > 0
+    }
+
+    /// Run an overwrite-only upgrade while writes to the primary slot, up to
+    /// its trailer, fail.  The boot must fail and leave the upgrade in the
+    /// secondary slot, so that once the fault is gone the next boot
+    /// completes it.
+    pub fn run_overwrite_write_fail(&self) -> bool {
+        if !Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
+            return false;
+        }
+
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        let slot = &self.images[0].slots[0];
+        let dev = flash.get_mut(&slot.dev_id).unwrap();
+        let len = (slot.len - self.trailer_sz(dev.align())) & !(dev.align() - 1);
+        info!("Try overwrite with writes failing at {:#x}-{:#x}",
+              slot.base_off, slot.base_off + len);
+        dev.add_bad_region(slot.base_off, len, 1.0).unwrap();
+
+        let result = c::boot_go(&mut flash, &self.areadesc, None, None, true);
+        if result.interrupted() || result.success() || result.asserts() != 0 {
+            warn!("Expected the first boot to fail cleanly: {:?}", result);
+            fails += 1;
+        }
+
+        if !self.verify_images(&flash, 1, 1) {
+            warn!("Secondary slot no longer holds the upgrade");
+            fails += 1;
+        }
+
+        flash.get_mut(&slot.dev_id).unwrap().reset_bad_regions();
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
+            warn!("Failed second boot");
+            fails += 1;
+        }
+
+        if !self.verify_images(&flash, 0, 1) {
+            warn!("Primary slot doesn't hold the upgrade");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected the upgrade to complete once the write fault is gone");
+        }
+
+        fails > 0
+    }
+
+    /// Interrupt a swap, then leave a gap in the swap status, as a failed
+    /// status write followed by a later one would.  Without validation of
+    /// the primary slot, the bootloader can't tell whether the primary is
+    /// intact, so it must refuse to boot rather than resume from the
+    /// wrong step.
+    ///
+    /// Only swap-scratch detects such a gap; see swap_read_status_bytes.
+    pub fn run_status_gap(&self) -> bool {
+        // Status entries per sector in swap-scratch, and so in the scratch
+        // area's trailer.
+        const BOOT_STATUS_STATE_COUNT: usize = 3;
+
+        if !Caps::modifies_flash() || !Caps::SwapUsingScratch.present() ||
+            Caps::ValidatePrimarySlot.present() {
+            return false;
+        }
+
+        let slot = &self.images[0].slots[0];
+        let (scratch_base, scratch_len, scratch_dev) =
+            self.areadesc.find(FlashId::ImageScratch).unwrap();
+        let total = self.total_count.unwrap();
+
+        // Find a point in the swap where the status has at least one entry
+        // written, followed by two erased ones.
+        for stop in total / 2 .. total {
+            let mut flash = self.flash.clone();
+            let mut counter = stop;
+            if !c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), None,
+                           false).interrupted() {
+                continue;
+            }
+
+            let write_sz = flash.get(&slot.dev_id).unwrap().align()
+                .max(flash.get(&scratch_dev).unwrap().align());
+
+            // The status is in the scratch area while that has a valid
+            // trailer, and in the primary slot otherwise.
+            let mut scratch_magic = vec![0u8; MAGIC.len()];
+            flash.get(&scratch_dev).unwrap()
+                .read(scratch_base + scratch_len - MAGIC.len(), &mut scratch_magic).unwrap();
+            let (dev_id, status_off, entries) = if scratch_magic == MAGIC {
+                let trailer_sz = c::boot_scratch_trailer_sz(write_sz as u32) as usize;
+                (scratch_dev, scratch_base + scratch_len - trailer_sz, BOOT_STATUS_STATE_COUNT)
+            } else {
+                (slot.dev_id, slot.base_off + slot.len - self.trailer_sz(write_sz),
+                 self.status_sz(write_sz) / write_sz)
+            };
+
+            let dev = flash.get_mut(&dev_id).unwrap();
+            let erased = dev.erased_val();
+
+            let mut status = vec![0u8; entries * write_sz];
+            dev.read(status_off, &mut status).unwrap();
+            let is_erased = |i: usize| status[i * write_sz] == erased;
+
+            // Leading erased entries are not a gap; look for one after the
+            // first written entry.
+            let first_written = match (0 .. entries).find(|&i| !is_erased(i)) {
+                Some(i) => i,
+                None => continue,
+            };
+            let first_erased = match (first_written .. entries).find(|&i| is_erased(i)) {
+                Some(i) if i + 1 < entries => i,
+                _ => continue,
+            };
+
+            info!("Stopped at {} of {}; writing status entry {} after a gap",
+                  stop, total, first_erased + 1);
+            let entry = vec![0x01; write_sz];
+            dev.write(status_off + (first_erased + 1) * write_sz, &entry).unwrap();
+
+            let result = c::boot_go(&mut flash, &self.areadesc, None, None, true);
+            if result.interrupted() || result.success() || result.asserts() != 0 {
+                error!("Expected a clean boot failure with a gap in the status: {:?}",
+                       result);
+                return true;
+            }
+            return false;
+        }
+
+        error!("No interruption point left room for a gap in the status");
+        true
     }
 
     /// Boot with an upgrade staged on a device whose reported sector
@@ -2514,13 +2755,64 @@ fn make_tlv(signing_key: SigningKey) -> TlvGen {
     tlv.with_signing_key(signing_key)
 }
 
+/// Are images built encrypted?
+fn enc_present() -> bool {
+    Caps::EncRsa.present() || Caps::EncKw.present() ||
+        Caps::EncEc256.present() || Caps::EncX25519.present()
+}
+
+/// Flip the last byte of the encryption TLV of the image in `slot`, so
+/// that its key can no longer be unwrapped.  The TLV is not covered by the
+/// signature, so the image itself still validates.
+fn corrupt_enc_tlv(flash: &mut SimMultiFlash, slot: &SlotInfo) {
+    const TLV_INFO_MAGIC: u16 = 0x6907;
+    const TLV_PROT_INFO_MAGIC: u16 = 0x6908;
+    let enc_kinds = [TlvKinds::ENCRSA2048 as u16, TlvKinds::ENCKW as u16,
+                     TlvKinds::ENCEC256 as u16, TlvKinds::ENCX25519 as u16];
+
+    let dev = flash.get_mut(&slot.dev_id).unwrap();
+    let base = slot.base_off;
+    let mut img = vec![0u8; slot.len];
+    dev.read(base, &mut img).unwrap();
+
+    let le16 = |b: &[u8], off: usize| u16::from_le_bytes([b[off], b[off + 1]]);
+    let hdr_size = le16(&img, 8) as usize;
+    let img_size = u32::from_le_bytes([img[12], img[13], img[14], img[15]]) as usize;
+
+    let mut off = hdr_size + img_size;
+    if le16(&img, off) == TLV_PROT_INFO_MAGIC {
+        off += le16(&img, off + 2) as usize;
+    }
+    assert_eq!(le16(&img, off), TLV_INFO_MAGIC, "No TLV area found");
+    let end = off + le16(&img, off + 2) as usize;
+    off += 4;
+
+    while off < end {
+        let kind = le16(&img, off);
+        let len = le16(&img, off + 2) as usize;
+        if enc_kinds.contains(&kind) {
+            let target = off + 4 + len - 1;
+            let align = dev.align();
+            let chunk = target & !(align - 1);
+            img[target] ^= 0xff;
+
+            // Rewrite the aligned chunk in place.
+            dev.set_verify_writes(false);
+            dev.write(base + chunk, &img[chunk .. chunk + align]).unwrap();
+            dev.set_verify_writes(true);
+            return;
+        }
+        off += 4 + len;
+    }
+
+    panic!("No encryption TLV found");
+}
+
 impl ImageData {
     /// Find the image contents for the given slot.  This assumes that slot 0
     /// is unencrypted, and slot 1 is encrypted.
     fn find(&self, slot: usize) -> &Vec<u8> {
-        let encrypted = Caps::EncRsa.present() || Caps::EncKw.present() ||
-            Caps::EncEc256.present() || Caps::EncX25519.present();
-        match (encrypted, slot) {
+        match (enc_present(), slot) {
             (false, _) => &self.plain,
             (true, 0) => &self.plain,
             (true, 1) => self.cipher.as_ref().expect("Invalid image"),

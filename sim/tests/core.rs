@@ -60,6 +60,11 @@ sim_test!(perm_with_fails, make_image(&NO_DEPS, true), run_perm_with_fails());
 sim_test!(perm_with_random_fails, make_image(&NO_DEPS, true), run_perm_with_random_fails(5));
 sim_test!(norevert, make_image(&NO_DEPS, true), run_norevert());
 sim_test!(oversized_secondary_slot, make_oversized_secondary_slot_image(), run_fail_upgrade_primary_intact());
+sim_test!(swap_write_fail_primary, make_image(&NO_DEPS, false), run_swap_write_fail(false));
+sim_test!(swap_write_fail_scratch, make_image(&NO_DEPS, false), run_swap_write_fail(true));
+sim_test!(overwrite_write_fail, make_image(&NO_DEPS, false), run_overwrite_write_fail());
+sim_test!(status_gap, make_image(&NO_DEPS, false), run_status_gap());
+sim_test!(primary_enc_key_fail, make_image(&NO_DEPS, false), run_primary_enc_key_fail());
 #[cfg(feature = "check-load-addr")]
 sim_test!(wrong_load_addr, make_bad_secondary_slot_image(ImageManipulation::WrongOffset), run_fail_upgrade_primary_intact());
 

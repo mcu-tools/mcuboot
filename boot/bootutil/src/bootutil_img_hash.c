@@ -203,8 +203,12 @@ bootutil_img_hash(struct boot_loader_state *state,
 
                 if (off >= hdr_size && off < tlv_off) {
                     blk_off = (off - hdr_size) & 0xf;
-                    boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, slot), off - hdr_size,
-                                     blk_sz, blk_off, tmp_buf);
+                    rc = boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, slot),
+                                          off - hdr_size, blk_sz, blk_off, tmp_buf);
+                    if (rc != 0) {
+                        bootutil_sha_drop(&sha_ctx);
+                        return -1;
+                    }
                 }
             }
 #endif

@@ -236,7 +236,7 @@ swap_read_status_bytes(const struct flash_area *fap,
         /* With validation of the primary slot disabled, there is no way
          * to be sure the swapped primary slot is OK, so abort!
          */
-        assert(0);
+        return BOOT_EBADSTATUS;
 #endif
     }
 
@@ -493,11 +493,15 @@ swap_status_source(struct boot_loader_state *state)
     image_index = BOOT_CURR_IMG(state);
     rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_PRIMARY].area,
                               &state_primary_slot);
-    assert(rc == 0);
+    if (rc != 0) {
+        return BOOT_STATUS_SOURCE_ERROR;
+    }
 
 #if MCUBOOT_SWAP_USING_SCRATCH
     rc = boot_read_swap_state(state->scratch.area, &state_scratch);
-    assert(rc == 0);
+    if (rc != 0) {
+        return BOOT_STATUS_SOURCE_ERROR;
+    }
 #endif
 
     BOOT_LOG_SWAP_STATE("Primary image", &state_primary_slot);
@@ -680,7 +684,7 @@ find_swap_count(const struct boot_loader_state *state, uint32_t copy_size)
  *
  * @return                      0 on success; nonzero on failure.
  */
-static void
+static int
 boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
         struct boot_status *bs)
 {
@@ -753,7 +757,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     if (bs->state == BOOT_STATUS_STATE_0) {
         BOOT_LOG_DBG("erasing scratch area");
         rc = boot_erase_region(fap_scratch, 0, flash_area_get_size(fap_scratch), false);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
         if (bs->idx == BOOT_STATUS_IDX_0) {
             /* Write a trailer to the scratch area, even if we don't need the
@@ -761,7 +767,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
              * `swap-type` while we erase the primary trailer.
              */
             rc = swap_status_init(state, fap_scratch, bs);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
 
             if (!bs->use_scratch) {
                 /* Prepare the primary status area... here it is known that the
@@ -769,21 +777,29 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
                  * to erase.
                  */
                 rc = swap_scramble_trailer_sectors(state, fap_primary_slot);
-                assert(rc == 0);
+                if (rc != 0) {
+                    return rc;
+                }
 
                 rc = swap_status_init(state, fap_primary_slot, bs);
-                assert(rc == 0);
+                if (rc != 0) {
+                    return rc;
+                }
 
                 /* Erase the temporary trailer from the scratch area. */
                 rc = boot_erase_region(fap_scratch, 0,
                         flash_area_get_size(fap_scratch), false);
-                assert(rc == 0);
+                if (rc != 0) {
+                    return rc;
+                }
             }
         }
 
         rc = boot_copy_region(state, fap_secondary_slot, fap_scratch,
                               img_off, 0, copy_sz);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_1;
@@ -801,7 +817,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
              * img_off + sz) might not erase the entire trailer.
               */
             rc = swap_scramble_trailer_sectors(state, fap_secondary_slot);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
 
             if (bs->use_scratch) {
                 /* If the area being swapped contains the trailer or part of it, ensure the
@@ -819,12 +837,16 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
         if (erase_sz > 0) {
             rc = boot_erase_region(fap_secondary_slot, img_off, erase_sz, false);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
         }
 
         rc = boot_copy_region(state, fap_primary_slot, fap_secondary_slot,
                               img_off, img_off, copy_sz);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_2;
@@ -841,7 +863,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
              * img_off + sz) range when the trailer spreads across multiple sectors.
              */
             rc = swap_scramble_trailer_sectors(state, fap_primary_slot);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
 
             /* Ensure the sector(s) containing the beginning of the trailer won't be erased twice */
             uint32_t trailer_sector_off =
@@ -852,7 +876,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
         if (erase_sz > 0) {
             rc = boot_erase_region(fap_primary_slot, img_off, erase_sz, false);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
         }
 
         /* NOTE: If this is the final sector, we exclude the image trailer from
@@ -860,7 +886,9 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
          */
         rc = boot_copy_region(state, fap_scratch, fap_primary_slot,
                               0, img_off, copy_sz);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
         if (bs->use_scratch) {
             scratch_trailer_off = boot_status_off(fap_scratch);
@@ -873,27 +901,40 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
             memset(&swap_state, 0, sizeof(struct boot_swap_state));
             rc = boot_read_swap_state(fap_scratch, &swap_state);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
 
             if (swap_state.image_ok == BOOT_FLAG_SET) {
                 rc = boot_write_image_ok(fap_primary_slot);
-                assert(rc == 0);
+                if (rc != 0) {
+                    return rc;
+                }
             }
 
             if (swap_state.swap_type != BOOT_SWAP_TYPE_NONE) {
                 rc = boot_write_swap_info(fap_primary_slot,
                         swap_state.swap_type, image_index);
-                assert(rc == 0);
+                if (rc != 0) {
+                    return rc;
+                }
             }
 
             rc = boot_write_swap_size(fap_primary_slot, bs->swap_size);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
 
 #ifdef MCUBOOT_ENC_IMAGES
             rc = boot_write_enc_keys(fap_primary_slot, bs);
+            if (rc != 0) {
+                return rc;
+            }
 #endif
             rc = boot_write_magic(fap_primary_slot);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
         }
 
         /* If we wrote a trailer to the scratch area, erase it after we persist
@@ -916,12 +957,16 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
             * primary slot, causing a corrupt unbootable image
             */
             rc = boot_scramble_region(fap_scratch, 0, flash_area_get_size(fap_scratch), true);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
         }
     }
+
+    return 0;
 }
 
-void
+int
 swap_run(struct boot_loader_state *state, struct boot_status *bs,
          uint32_t copy_size)
 {
@@ -929,6 +974,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     int first_sector_idx;
     int last_sector_idx;
     uint32_t swap_idx;
+    int rc;
 
     BOOT_LOG_INF("Starting swap using scratch algorithm.");
 
@@ -938,13 +984,17 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     while (last_sector_idx >= 0) {
         sz = boot_copy_sz(state, last_sector_idx, &first_sector_idx);
         if (swap_idx >= (bs->idx - BOOT_STATUS_IDX_0)) {
-            boot_swap_sectors(first_sector_idx, sz, state, bs);
+            rc = boot_swap_sectors(first_sector_idx, sz, state, bs);
+            if (rc != 0) {
+                return rc;
+            }
         }
 
         last_sector_idx = first_sector_idx - 1;
         swap_idx++;
     }
 
+    return 0;
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
 

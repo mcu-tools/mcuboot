@@ -68,9 +68,12 @@ int boot_enc_load(struct boot_loader_state *state, int slot,
                   const struct image_header *hdr, const struct flash_area *fap,
                   struct boot_status *bs);
 bool boot_enc_valid(const struct enc_key_data *enc_state);
-void boot_enc_encrypt(struct enc_key_data *enc_state,
+/* Encrypt or decrypt buf in place. Return 0 on success, nonzero if there
+ * is no valid key or the cipher fails; buf contents are then undefined.
+ */
+int boot_enc_encrypt(struct enc_key_data *enc_state,
         uint32_t off, uint32_t sz, uint32_t blk_off, uint8_t *buf);
-void boot_enc_decrypt(struct enc_key_data *enc_state,
+int boot_enc_decrypt(struct enc_key_data *enc_state,
         uint32_t off, uint32_t sz, uint32_t blk_off, uint8_t *buf);
 /* Note that boot_enc_zeorize takes BOOT_CURR_ENC, not BOOT_CURR_ENC_SLOT */
 void boot_enc_zeroize(struct enc_key_data *enc_state);
