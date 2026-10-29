@@ -93,6 +93,13 @@ $ cargo test \
 
 Additional arguments will be patterns to match the tests cases that can be run.
 
+The power-fail permutation tests, which interrupt an upgrade at every
+flash operation, take most of the run time.  Setting
+`MCUBOOT_SKIP_SLOW_TESTS` in the environment skips them.  CI skips them
+for pull requests and pushes to main, and runs the full set daily on
+main.  A full run can also be started by hand from the Actions tab
+("Sim", "Run workflow").
+
 To run one of these tests in the debugger, you can do something like:
 
 ```bash
