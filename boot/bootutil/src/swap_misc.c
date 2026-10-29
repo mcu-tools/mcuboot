@@ -63,7 +63,9 @@ swap_erase_trailer_sectors(const struct boot_loader_state *state,
             uint32_t off = boot_img_sector_off(state, slot, sector);
 
             rc = boot_erase_region(fap, off, sz, false);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
 
             sector--;
             total_sz += sz;
@@ -123,36 +125,47 @@ swap_status_init(const struct boot_loader_state *state,
     memset(&swap_state, 0, sizeof(struct boot_swap_state));
     rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_SECONDARY].area,
                               &swap_state);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 
     if (bs->swap_type != BOOT_SWAP_TYPE_NONE) {
         rc = boot_write_swap_info(fap, bs->swap_type, image_index);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
     }
 
     if (swap_state.image_ok == BOOT_FLAG_SET) {
         rc = boot_write_image_ok(fap);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
     }
 
     rc = boot_write_swap_size(fap, bs->swap_size);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 
 #ifdef MCUBOOT_SWAP_USING_OFFSET
     rc = boot_write_unprotected_tlv_sizes(fap,
                                    BOOT_IMG_UNPROTECTED_TLV_SIZE(state, BOOT_SLOT_PRIMARY),
                                    BOOT_IMG_UNPROTECTED_TLV_SIZE(state, BOOT_SLOT_SECONDARY));
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 #endif
 
 #ifdef MCUBOOT_ENC_IMAGES
     rc = boot_write_enc_keys(fap, bs);
+    if (rc != 0) {
+        return rc;
+    }
 #endif
 
-    rc = boot_write_magic(fap);
-    assert(rc == 0);
-
-    return 0;
+    /* The magic must be written last: it marks the trailer as valid. */
+    return boot_write_magic(fap);
 }
 
 int
