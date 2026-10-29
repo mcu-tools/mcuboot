@@ -83,6 +83,9 @@ uint32_t bootutil_get_caps(void)
 #if defined(MCUBOOT_HW_ROLLBACK_PROT)
     res |= BOOTUTIL_CAP_HW_ROLLBACK_PROT;
 #endif
+#if defined(MCUBOOT_ENC_IMAGES_XIP)
+    res |= BOOTUTIL_CAP_ENC_XIP_EC256;
+#endif
 
     return res;
 }
