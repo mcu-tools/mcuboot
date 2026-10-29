@@ -2864,13 +2864,8 @@ fn test_alignments() -> &'static [usize] {
 fn test_alignments() -> &'static [usize] {
     &[128]
 }
-/// For testing, some of the tests are quite slow. This will query for an
-/// environment variable `MCUBOOT_SKIP_SLOW_TESTS`, which can be set to avoid
-/// running these tests.
+/// For testing, some of the tests are quite slow. These are skipped unless
+/// the environment variable `MCUBOOT_RUN_SLOW_TESTS` is set.
 fn skip_slow_test() -> bool {
-    if let Ok(_) = std::env::var("MCUBOOT_SKIP_SLOW_TESTS") {
-        true
-    } else {
-        false
-    }
+    std::env::var_os("MCUBOOT_RUN_SLOW_TESTS").is_none()
 }
