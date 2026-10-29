@@ -2357,7 +2357,14 @@ boot_select_or_erase(struct boot_loader_state *state)
 
     memset(active_swap_state, 0, sizeof(struct boot_swap_state));
     rc = boot_read_swap_state(fap, active_swap_state);
-    assert(rc == 0);
+    if (rc != 0) {
+        /* The trailer could not be read, which says nothing about the image
+         * itself: don't select the slot, but don't erase it either.
+         */
+        BOOT_LOG_WRN("Failed to read the trailer of the image in the %s slot.",
+                     (active_slot == BOOT_SLOT_PRIMARY) ? "primary" : "secondary");
+        return rc;
+    }
 
     if (active_swap_state->magic != BOOT_MAGIC_GOOD ||
         (active_swap_state->copy_done == BOOT_FLAG_SET &&
@@ -2457,7 +2464,9 @@ boot_load_and_validate_images(struct boot_loader_state *state)
 #if defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT)
             rc = boot_select_or_erase(state);
             if (rc != 0) {
-                /* The selected image slot has been erased. */
+                /* The selected image slot can't be used; it may have been
+                 * erased.
+                 */
                 state->slot_usage[BOOT_CURR_IMG(state)].slot_available[active_slot] = false;
                 state->slot_usage[BOOT_CURR_IMG(state)].active_slot = BOOT_SLOT_NONE;
                 continue;
