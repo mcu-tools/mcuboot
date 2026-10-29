@@ -53,6 +53,7 @@ sim_test!(bad_secondary_slot, make_bad_secondary_slot_image(ImageManipulation::B
 sim_test!(secondary_trailer_leftover, make_erased_secondary_image(), run_secondary_leftover_trailer());
 sim_test!(bootstrap, make_bootstrap_image(), run_bootstrap());
 sim_test!(oversized_bootstrap, make_oversized_bootstrap_image(), run_oversized_bootstrap());
+sim_test!(sector_aligned_bootstrap, make_sector_aligned_bootstrap_image(), run_bootstrap());
 sim_test!(norevert_newimage, make_no_upgrade_image(&NO_DEPS, ImageManipulation::None), run_norevert_newimage());
 sim_test!(basic_revert, make_image(&NO_DEPS, true), run_basic_revert());
 sim_test!(revert_with_fails, make_image(&NO_DEPS, false), run_revert_with_fails());

@@ -554,6 +554,31 @@ impl ImagesBuilder {
         }
     }
 
+    /// Bootstrap from a secondary image that ends exactly on a sector boundary, over an
+    /// invalid primary image that extends into the following sector.
+    pub fn make_sector_aligned_bootstrap_image(self) -> Images {
+        let mut flash = self.flash;
+        let ram = self.ram.clone(); // TODO: Avoid this clone.
+        let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let primaries = install_image(&mut flash, &self.areadesc, &slots, 0,
+                ImageSize::Largest, &ram, &dep, ImageManipulation::BadSignature, Some(0));
+            let upgrades = install_image(&mut flash, &self.areadesc, &slots, 1,
+                ImageSize::SectorAligned, &ram, &dep, ImageManipulation::None, Some(0));
+            OneImage {
+                slots,
+                primaries,
+                upgrades,
+            }}).collect();
+        Images {
+            flash,
+            areadesc: self.areadesc,
+            images,
+            total_count: None,
+            ram: self.ram,
+        }
+    }
+
     /// If security_cnt is None then do not add a security counter TLV, otherwise add the specified value.
     pub fn make_image_with_security_counter(self, security_cnt: Option<u32>) -> Images {
         let mut flash = self.flash;
@@ -2079,6 +2104,9 @@ enum ImageSize {
     Largest,
     /// Make the image quite larger than it can be for the partition/device/
     Oversized,
+    /// Make the image, including header and TLVs, end on the sector boundary
+    /// before the end of the largest possible image.
+    SectorAligned,
 }
 
 /// The sector size the bootloader operates on for `dev`: the logical
@@ -2300,6 +2328,17 @@ fn install_image_with_key(
             let largest_img_sz = compute_largest_image_size(dev, areadesc, slots,
                                                             HDR_SIZE, tlv.as_ref());
             largest_img_sz + dev.align()
+        }
+        ImageSize::SectorAligned => {
+            let largest_img_sz = compute_largest_image_size(dev, areadesc, slots,
+                                                            HDR_SIZE, tlv.as_ref());
+            let tlv_len = tlv.estimate_size();
+            let sector_sz = boot_sector_size(dev);
+            let total = HDR_SIZE + largest_img_sz + tlv_len - 1;
+            // No sector aligned size fits when the sector is larger than the
+            // image; use the largest image size.
+            (total - total % sector_sz).checked_sub(HDR_SIZE + tlv_len)
+                .unwrap_or(largest_img_sz)
         }
     };
 
