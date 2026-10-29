@@ -456,6 +456,15 @@ if(NOT DEFINED ESP_FLASH_MODE)
   set(ESP_FLASH_MODE "dio")
 endif()
 
+# The ROM loads the bootloader before the bootloader has enabled quad mode
+# on the flash (bootloader_enable_qio_mode()), so for QIO and QOUT the image
+# header says DIO, as in ESP-IDF; the bootloader switches to quad mode itself.
+if("${ESP_FLASH_MODE}" STREQUAL "qio" OR "${ESP_FLASH_MODE}" STREQUAL "qout")
+  set(ESP_IMAGE_FLASH_MODE "dio")
+else()
+  set(ESP_IMAGE_FLASH_MODE "${ESP_FLASH_MODE}")
+endif()
+
 # Serial baud rate parameter for esptool.py flash use, for more information, check `esptool.py -h`
 if(NOT DEFINED ESP_BAUD_RATE)
   set(ESP_BAUD_RATE 115200)
@@ -469,7 +478,7 @@ add_custom_command(
   COMMAND
   ${esptool_path}
   --chip ${MCUBOOT_TARGET} elf2image --min-rev ${ESP_MIN_REVISION}
-  --flash-mode ${ESP_FLASH_MODE} --flash-freq ${ESP_FLASH_FREQ} --flash-size ${CONFIG_ESP_FLASH_SIZE}
+  --flash-mode ${ESP_IMAGE_FLASH_MODE} --flash-freq ${ESP_FLASH_FREQ} --flash-size ${CONFIG_ESP_FLASH_SIZE}
   -o ${APP_NAME}.bin ${APP_NAME}.elf
   )
 
@@ -492,7 +501,7 @@ set(FLASH_COMMAND
   --after no-reset
   --chip ${MCUBOOT_TARGET}
   write-flash
-  --flash-mode ${ESP_FLASH_MODE}
+  --flash-mode ${ESP_IMAGE_FLASH_MODE}
   --flash-size ${CONFIG_ESP_FLASH_SIZE}
   --flash-freq ${ESP_FLASH_FREQ}
   ${CONFIG_ESP_BOOTLOADER_OFFSET}
