@@ -168,14 +168,19 @@ int  boot_enc_load(struct boot_loader_state *state, int slot,
                    const struct flash_area *fap,
                    struct boot_status *bs);
 bool boot_enc_valid(const struct enc_key_data *enc_state);
-void boot_enc_encrypt(struct enc_key_data *enc_state,
+int  boot_enc_encrypt(struct enc_key_data *enc_state,
                       uint32_t off, uint32_t sz, uint32_t blk_off,
                       uint8_t *buf);
-void boot_enc_decrypt(struct enc_key_data *enc_state,
+int  boot_enc_decrypt(struct enc_key_data *enc_state,
                       uint32_t off, uint32_t sz, uint32_t blk_off,
                       uint8_t *buf);
 void boot_enc_zeroize(struct enc_key_data *enc_state);
 ```
+
+`boot_enc_encrypt()` and `boot_enc_decrypt()` transform `buf` in place.
+They must return 0 on success, and nonzero when the slot has no valid
+key or the cipher fails. MCUboot then stops the copy, hash or load in
+progress, so the untransformed data is never written or used.
 
 ## Build requirements
 
