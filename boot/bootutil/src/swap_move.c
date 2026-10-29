@@ -190,7 +190,7 @@ swap_read_status_bytes(const struct flash_area *fap,
         /* With validation of the primary slot disabled, there is no way
          * to be sure the swapped primary slot is OK, so abort!
          */
-        assert(0);
+        return BOOT_EBADSTATUS;
 #endif
     }
 

@@ -1283,6 +1283,90 @@ impl Images {
         fails > 0
     }
 
+    /// Interrupt a swap, then leave a gap in the swap status, as a failed
+    /// status write followed by a later one would.  Without validation of
+    /// the primary slot, the bootloader can't tell whether the primary is
+    /// intact, so it must refuse to boot rather than resume from the
+    /// wrong step.
+    ///
+    /// Only swap-scratch detects such a gap; see swap_read_status_bytes.
+    pub fn run_status_gap(&self) -> bool {
+        // Status entries per sector in swap-scratch, and so in the scratch
+        // area's trailer.
+        const BOOT_STATUS_STATE_COUNT: usize = 3;
+
+        if !Caps::modifies_flash() || !Caps::SwapUsingScratch.present() ||
+            Caps::ValidatePrimarySlot.present() {
+            return false;
+        }
+
+        let slot = &self.images[0].slots[0];
+        let (scratch_base, scratch_len, scratch_dev) =
+            self.areadesc.find(FlashId::ImageScratch).unwrap();
+        let total = self.total_count.unwrap();
+
+        // Find a point in the swap where the status has at least one entry
+        // written, followed by two erased ones.
+        for stop in total / 2 .. total {
+            let mut flash = self.flash.clone();
+            let mut counter = stop;
+            if !c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), None,
+                           false).interrupted() {
+                continue;
+            }
+
+            let write_sz = flash.get(&slot.dev_id).unwrap().align()
+                .max(flash.get(&scratch_dev).unwrap().align());
+
+            // The status is in the scratch area while that has a valid
+            // trailer, and in the primary slot otherwise.
+            let mut scratch_magic = vec![0u8; MAGIC.len()];
+            flash.get(&scratch_dev).unwrap()
+                .read(scratch_base + scratch_len - MAGIC.len(), &mut scratch_magic).unwrap();
+            let (dev_id, status_off, entries) = if scratch_magic == MAGIC {
+                let trailer_sz = c::boot_scratch_trailer_sz(write_sz as u32) as usize;
+                (scratch_dev, scratch_base + scratch_len - trailer_sz, BOOT_STATUS_STATE_COUNT)
+            } else {
+                (slot.dev_id, slot.base_off + slot.len - self.trailer_sz(write_sz),
+                 self.status_sz(write_sz) / write_sz)
+            };
+
+            let dev = flash.get_mut(&dev_id).unwrap();
+            let erased = dev.erased_val();
+
+            let mut status = vec![0u8; entries * write_sz];
+            dev.read(status_off, &mut status).unwrap();
+            let is_erased = |i: usize| status[i * write_sz] == erased;
+
+            // Leading erased entries are not a gap; look for one after the
+            // first written entry.
+            let first_written = match (0 .. entries).find(|&i| !is_erased(i)) {
+                Some(i) => i,
+                None => continue,
+            };
+            let first_erased = match (first_written .. entries).find(|&i| is_erased(i)) {
+                Some(i) if i + 1 < entries => i,
+                _ => continue,
+            };
+
+            info!("Stopped at {} of {}; writing status entry {} after a gap",
+                  stop, total, first_erased + 1);
+            let entry = vec![0x01; write_sz];
+            dev.write(status_off + (first_erased + 1) * write_sz, &entry).unwrap();
+
+            let result = c::boot_go(&mut flash, &self.areadesc, None, None, true);
+            if result.interrupted() || result.success() || result.asserts() != 0 {
+                error!("Expected a clean boot failure with a gap in the status: {:?}",
+                       result);
+                return true;
+            }
+            return false;
+        }
+
+        error!("No interruption point left room for a gap in the status");
+        true
+    }
+
     /// Boot with an upgrade staged on a device whose reported sector
     /// layout is incompatible with the configured logical sector size.
     /// The bootloader's logical sector verification must refuse to touch
