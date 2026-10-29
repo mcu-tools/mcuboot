@@ -956,7 +956,9 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
     uint32_t src_size = 0;
     rc = boot_read_image_size(state, BOOT_SLOT_SECONDARY, &src_size);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 #endif
 
     image_index = BOOT_CURR_IMG(state);
@@ -974,7 +976,9 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     for (sect = 0, size = 0; sect < sect_count; sect++) {
         this_size = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, sect);
         rc = boot_erase_region(fap_primary_slot, size, this_size, false);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
         if ((size + this_size) >= src_size) {
@@ -998,7 +1002,9 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     } while (sz < trailer_sz);
 
     rc = boot_erase_region(fap_primary_slot, off, sz, false);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 #endif
 
 #ifdef MCUBOOT_ENC_IMAGES
@@ -1064,7 +1070,12 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
     rc = boot_scramble_region(fap_secondary_slot,
                               boot_img_sector_off(state, BOOT_SLOT_SECONDARY, 0),
                               boot_img_sector_size(state, BOOT_SLOT_SECONDARY, 0), false);
-    assert(rc == 0);
+    if (rc != 0) {
+        /* The copy is complete. If the secondary slot still looks like a
+         * pending upgrade, the next boot repeats the copy, so keep going.
+         */
+        BOOT_LOG_WRN("Failed to erase secondary header; Image=%u", image_index);
+    }
 #endif
 
     last_sector = boot_img_num_sectors(state, BOOT_SLOT_SECONDARY) - 1;
@@ -1074,7 +1085,9 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
                                     last_sector),
                               boot_img_sector_size(state, BOOT_SLOT_SECONDARY,
                                     last_sector), false);
-    assert(rc == 0);
+    if (rc != 0) {
+        BOOT_LOG_WRN("Failed to erase secondary trailer; Image=%u", image_index);
+    }
 
     /* TODO: Perhaps verify the primary slot's signature again? */
 

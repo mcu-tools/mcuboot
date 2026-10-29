@@ -1283,6 +1283,55 @@ impl Images {
         fails > 0
     }
 
+    /// Run an overwrite-only upgrade while writes to the primary slot, up to
+    /// its trailer, fail.  The boot must fail and leave the upgrade in the
+    /// secondary slot, so that once the fault is gone the next boot
+    /// completes it.
+    pub fn run_overwrite_write_fail(&self) -> bool {
+        if !Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
+            return false;
+        }
+
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        let slot = &self.images[0].slots[0];
+        let dev = flash.get_mut(&slot.dev_id).unwrap();
+        let len = (slot.len - self.trailer_sz(dev.align())) & !(dev.align() - 1);
+        info!("Try overwrite with writes failing at {:#x}-{:#x}",
+              slot.base_off, slot.base_off + len);
+        dev.add_bad_region(slot.base_off, len, 1.0).unwrap();
+
+        let result = c::boot_go(&mut flash, &self.areadesc, None, None, true);
+        if result.interrupted() || result.success() || result.asserts() != 0 {
+            warn!("Expected the first boot to fail cleanly: {:?}", result);
+            fails += 1;
+        }
+
+        if !self.verify_images(&flash, 1, 1) {
+            warn!("Secondary slot no longer holds the upgrade");
+            fails += 1;
+        }
+
+        flash.get_mut(&slot.dev_id).unwrap().reset_bad_regions();
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
+            warn!("Failed second boot");
+            fails += 1;
+        }
+
+        if !self.verify_images(&flash, 0, 1) {
+            warn!("Primary slot doesn't hold the upgrade");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected the upgrade to complete once the write fault is gone");
+        }
+
+        fails > 0
+    }
+
     /// Interrupt a swap, then leave a gap in the swap status, as a failed
     /// status write followed by a later one would.  Without validation of
     /// the primary slot, the bootloader can't tell whether the primary is
