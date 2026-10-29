@@ -670,7 +670,7 @@ boot_enc_valid(const struct enc_key_data *enc_state)
     return enc_state->valid;
 }
 
-void
+int
 boot_enc_encrypt(struct enc_key_data *enc, uint32_t off,
              uint32_t sz, uint32_t blk_off, uint8_t *buf)
 {
@@ -678,7 +678,7 @@ boot_enc_encrypt(struct enc_key_data *enc, uint32_t off,
 
     /* Nothing to do with size == 0 */
     if (sz == 0) {
-       return;
+       return 0;
     }
 
     memset(nonce, 0, 12);
@@ -688,11 +688,17 @@ boot_enc_encrypt(struct enc_key_data *enc, uint32_t off,
     nonce[14] = (uint8_t)(off >> 8);
     nonce[15] = (uint8_t)off;
 
-    assert(enc->valid == 1);
-    bootutil_aes_ctr_encrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf);
+    if (enc->valid != 1) {
+        return -1;
+    }
+    if (bootutil_aes_ctr_encrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf) != 0) {
+        return -1;
+    }
+
+    return 0;
 }
 
-void
+int
 boot_enc_decrypt(struct enc_key_data *enc, uint32_t off,
              uint32_t sz, uint32_t blk_off, uint8_t *buf)
 {
@@ -700,7 +706,7 @@ boot_enc_decrypt(struct enc_key_data *enc, uint32_t off,
 
     /* Nothing to do with size == 0 */
     if (sz == 0) {
-       return;
+       return 0;
     }
 
     memset(nonce, 0, 12);
@@ -710,8 +716,14 @@ boot_enc_decrypt(struct enc_key_data *enc, uint32_t off,
     nonce[14] = (uint8_t)(off >> 8);
     nonce[15] = (uint8_t)off;
 
-    assert(enc->valid == 1);
-    bootutil_aes_ctr_decrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf);
+    if (enc->valid != 1) {
+        return -1;
+    }
+    if (bootutil_aes_ctr_decrypt(&enc->aes_ctr, nonce, buf, sz, blk_off, buf) != 0) {
+        return -1;
+    }
+
+    return 0;
 }
 
 /**
