@@ -1571,7 +1571,12 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
              * as boot status.
              */
             rc = boot_read_image_headers(state, false, NULL);
-            assert(rc == 0);
+            if (rc != 0) {
+                /* Don't boot with the headers from before the swap. */
+                BOOT_LOG_ERR("Failed reading image headers after swap; Image=%u",
+                             BOOT_CURR_IMG(state));
+                return rc;
+            }
 
             /* Swap has finished set to NONE */
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
