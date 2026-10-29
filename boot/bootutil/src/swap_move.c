@@ -351,7 +351,7 @@ swap_status_source(struct boot_loader_state *state)
 /*
  * "Moves" the sector located at idx - 1 to idx.
  */
-static void
+static int
 boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
         struct boot_status *bs, const struct flash_area *fap_pri,
         const struct flash_area *fap_sec)
@@ -373,32 +373,44 @@ boot_move_sector_up(int idx, uint32_t sz, struct boot_loader_state *state,
         if (bs->source != BOOT_STATUS_SOURCE_PRIMARY_SLOT) {
             /* Remove data and prepare for write on devices requiring erase */
             rc = swap_scramble_trailer_sectors(state, fap_pri);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
 
             rc = swap_status_init(state, fap_pri, bs);
-            assert(rc == 0);
+            if (rc != 0) {
+                return rc;
+            }
         }
 
         /* Remove status from secondary slot trailer, in case of device with
 	 * erase requirement this will also prepare traier for write.
 	 */
         rc = swap_scramble_trailer_sectors(state, fap_sec);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
     }
 
     rc = boot_erase_region(fap_pri, new_off, sz, false);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 
     rc = boot_copy_region(state, fap_pri, fap_pri, old_off, new_off, sz);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 
     rc = boot_write_status(state, bs);
 
     bs->idx++;
     BOOT_STATUS_ASSERT(rc == 0);
+
+    return 0;
 }
 
-static void
+static int
 boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
         struct boot_status *bs, const struct flash_area *fap_pri,
         const struct flash_area *fap_sec)
@@ -414,10 +426,14 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         rc = boot_erase_region(fap_pri, pri_off, sz, false);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
         rc = boot_copy_region(state, fap_sec, fap_pri, sec_off, pri_off, sz);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
         rc = boot_write_status(state, bs);
         bs->state = BOOT_STATUS_STATE_1;
@@ -426,16 +442,22 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
 
     if (bs->state == BOOT_STATUS_STATE_1) {
         rc = boot_erase_region(fap_sec, sec_off, sz, false);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
         rc = boot_copy_region(state, fap_pri, fap_sec, pri_up_off, sec_off, sz);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
         rc = boot_write_status(state, bs);
         bs->idx++;
         bs->state = BOOT_STATUS_STATE_0;
         BOOT_STATUS_ASSERT(rc == 0);
     }
+
+    return 0;
 }
 
 /*
@@ -448,7 +470,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
  * This function handles the issue by making the revert look like a permanent
  * upgrade (by initializing the secondary slot).
  */
-void
+int
 fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
         const struct flash_area *fap_sec)
 {
@@ -463,29 +485,41 @@ fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
     if (bs->swap_type != BOOT_SWAP_TYPE_REVERT ||
         bs->op != BOOT_STATUS_OP_MOVE ||
         bs->idx != BOOT_STATUS_IDX_0) {
-        return;
+        return 0;
     }
 
     memset(&swap_state, 0, sizeof(struct boot_swap_state));
     rc = boot_read_swap_state(fap_sec, &swap_state);
-    assert(rc == 0);
+    if (rc != 0) {
+        return rc;
+    }
 
     BOOT_LOG_SWAP_STATE("Secondary image", &swap_state);
 
     if (swap_state.magic == BOOT_MAGIC_UNSET) {
         /* Remove trailer and prepare area for write on devices requiring erase */
         rc = swap_scramble_trailer_sectors(state, fap_sec);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
         rc = boot_write_image_ok(fap_sec);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
         rc = boot_write_swap_size(fap_sec, bs->swap_size);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
 
         rc = boot_write_magic(fap_sec);
-        assert(rc == 0);
+        if (rc != 0) {
+            return rc;
+        }
     }
+
+    return 0;
 }
 
 int
@@ -500,6 +534,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     uint32_t last_idx;
     const struct flash_area *fap_pri;
     const struct flash_area *fap_sec;
+    int rc;
 
     BOOT_LOG_INF("Starting swap using move algorithm.");
 
@@ -538,13 +573,19 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     fap_sec = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
     assert(fap_sec != NULL);
 
-    fixup_revert(state, bs, fap_sec);
+    rc = fixup_revert(state, bs, fap_sec);
+    if (rc != 0) {
+        return rc;
+    }
 
     if (bs->op == BOOT_STATUS_OP_MOVE) {
         idx = last_idx;
         while (idx > 0) {
             if (idx <= (last_idx - bs->idx + 1)) {
-                boot_move_sector_up(idx, sector_sz, state, bs, fap_pri, fap_sec);
+                rc = boot_move_sector_up(idx, sector_sz, state, bs, fap_pri, fap_sec);
+                if (rc != 0) {
+                    return rc;
+                }
             }
             idx--;
         }
@@ -556,7 +597,10 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     idx = 1;
     while (idx <= last_idx) {
         if (idx >= bs->idx) {
-            boot_swap_sectors(idx, sector_sz, state, bs, fap_pri, fap_sec);
+            rc = boot_swap_sectors(idx, sector_sz, state, bs, fap_pri, fap_sec);
+            if (rc != 0) {
+                return rc;
+            }
         }
         idx++;
     }
