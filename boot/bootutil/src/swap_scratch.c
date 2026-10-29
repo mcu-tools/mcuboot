@@ -921,7 +921,7 @@ boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *state,
     }
 }
 
-void
+int
 swap_run(struct boot_loader_state *state, struct boot_status *bs,
          uint32_t copy_size)
 {
@@ -945,6 +945,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
         swap_idx++;
     }
 
+    return 0;
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
 
