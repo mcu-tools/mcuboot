@@ -1221,6 +1221,68 @@ impl Images {
         fails > 0
     }
 
+    /// Run a swap while writes to part of a flash area fail: with
+    /// `in_scratch`, the scratch area, otherwise the primary slot, each
+    /// up to its trailer.  The boot must fail without
+    /// recording the failed step as done, so that once the fault is gone
+    /// the next boot completes the swap.
+    pub fn run_swap_write_fail(&self, in_scratch: bool) -> bool {
+        if !Caps::modifies_flash() || !self.is_swap_upgrade() ||
+            (in_scratch && !Caps::SwapUsingScratch.present()) {
+            return false;
+        }
+
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        let (dev_id, off, len) = if in_scratch {
+            let (base, len, dev_id) = self.areadesc.find(FlashId::ImageScratch).unwrap();
+            let align = flash.get(&dev_id).unwrap().align();
+            let trailer_sz = c::boot_scratch_trailer_sz(align as u32) as usize;
+            (dev_id, base, (len - trailer_sz) & !(align - 1))
+        } else {
+            let slot = &self.images[0].slots[0];
+            let align = flash.get(&slot.dev_id).unwrap().align();
+            (slot.dev_id, slot.base_off, (slot.len - self.trailer_sz(align)) & !(align - 1))
+        };
+
+        info!("Try swap with writes failing at {:#x}-{:#x}", off, off + len);
+        flash.get_mut(&dev_id).unwrap().add_bad_region(off, len, 1.0).unwrap();
+
+        let result = c::boot_go(&mut flash, &self.areadesc, None, None, true);
+        if result.interrupted() || result.success() || result.asserts() != 0 {
+            warn!("Expected the first boot to fail cleanly: {:?}", result);
+            fails += 1;
+        }
+
+        flash.get_mut(&dev_id).unwrap().reset_bad_regions();
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
+            warn!("Failed second boot");
+            fails += 1;
+        }
+
+        if !self.verify_images(&flash, 0, 1) {
+            warn!("Primary slot doesn't hold the upgrade");
+            fails += 1;
+        }
+        if !self.verify_images(&flash, 1, 0) {
+            warn!("Secondary slot doesn't hold the original image");
+            fails += 1;
+        }
+        if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                 BOOT_FLAG_UNSET, BOOT_FLAG_SET) {
+            warn!("Mismatched trailer for the primary slot");
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected the swap to complete once the write fault is gone");
+        }
+
+        fails > 0
+    }
+
     /// Boot with an upgrade staged on a device whose reported sector
     /// layout is incompatible with the configured logical sector size.
     /// The bootloader's logical sector verification must refuse to touch
