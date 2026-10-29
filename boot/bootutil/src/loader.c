@@ -885,13 +885,20 @@ boot_copy_region(struct boot_loader_state *state,
                     }
                 }
                 if (source_slot == 0) {
-                    boot_enc_encrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
+                    rc = boot_enc_encrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
                             (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
                             blk_off, &buf[idx]);
                 } else {
-                    boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
+                    rc = boot_enc_decrypt(BOOT_CURR_ENC_SLOT(state, source_slot),
                             (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
                             blk_off, &buf[idx]);
+                }
+                if (rc != 0) {
+                    /* Don't write a chunk whose transform failed. */
+                    BOOT_LOG_ERR("Failed to %s image data; Image=%u",
+                                 source_slot == 0 ? "encrypt" : "decrypt",
+                                 image_index);
+                    return BOOT_EBADIMAGE;
                 }
             }
         }
