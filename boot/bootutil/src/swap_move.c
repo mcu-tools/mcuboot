@@ -326,13 +326,17 @@ swap_status_source(struct boot_loader_state *state)
 
     rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_PRIMARY].area,
                               &state_primary_slot);
-    assert(rc == 0);
+    if (rc != 0) {
+        return BOOT_STATUS_SOURCE_ERROR;
+    }
 
     BOOT_LOG_SWAP_STATE("Primary image", &state_primary_slot);
 
     rc = boot_read_swap_state(state->imgs[image_index][BOOT_SLOT_SECONDARY].area,
                               &state_secondary_slot);
-    assert(rc == 0);
+    if (rc != 0) {
+        return BOOT_STATUS_SOURCE_ERROR;
+    }
 
     BOOT_LOG_SWAP_STATE("Secondary image", &state_secondary_slot);
 

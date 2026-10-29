@@ -1488,11 +1488,12 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
 #ifndef MCUBOOT_OVERWRITE_ONLY
         rc = swap_read_status(state, bs);
         if (rc != 0) {
-            BOOT_LOG_WRN("Failed reading boot status; Image=%u",
+            /* A swap may be under way, and the primary slot may hold a
+             * partly swapped image: don't boot it.
+             */
+            BOOT_LOG_ERR("Failed reading boot status; Image=%u",
                     BOOT_CURR_IMG(state));
-            /* Continue with next image if there is one. */
-            BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
-            return 0;
+            return rc;
         }
 #endif
 

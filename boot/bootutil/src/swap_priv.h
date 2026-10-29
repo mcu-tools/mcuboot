@@ -60,6 +60,7 @@ int swap_status_init(const struct boot_loader_state *state,
  *   - BOOT_STATUS_SOURCE_NONE
  *   - BOOT_STATUS_SOURCE_SCRATCH
  *   - BOOT_STATUS_SOURCE_PRIMARY_SLOT
+ *   - BOOT_STATUS_SOURCE_ERROR, if a swap state could not be read
  */
 int swap_status_source(struct boot_loader_state *state);
 

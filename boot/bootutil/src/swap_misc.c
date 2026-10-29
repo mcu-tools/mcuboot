@@ -191,6 +191,9 @@ swap_read_status(struct boot_loader_state *state, struct boot_status *bs)
         fap = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
         break;
 
+    case BOOT_STATUS_SOURCE_ERROR:
+        return BOOT_EFLASH;
+
     default:
         assert(0);
         return BOOT_EBADARGS;
