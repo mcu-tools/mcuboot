@@ -1083,6 +1083,50 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 #endif
 
 #if !defined(MCUBOOT_OVERWRITE_ONLY)
+#ifdef MCUBOOT_ENC_IMAGES
+/**
+ * Loads the encryption key of one slot before a new swap starts.
+ *
+ * @param slot                  The slot whose key is loaded.
+ * @param bs                    The current boot status.
+ *
+ * @return                      0 if the slot is not encrypted or its key is
+ *                              ready for use; nonzero on failure.
+ */
+static int
+boot_swap_load_enc_key(struct boot_loader_state *state, int slot,
+                       struct boot_status *bs)
+{
+    struct image_header *hdr;
+    int rc;
+
+    hdr = boot_img_hdr(state, slot);
+    if (!IS_ENCRYPTED(hdr)) {
+        memset(bs->enckey[slot], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
+        return 0;
+    }
+
+    rc = boot_enc_load(state, slot, hdr, BOOT_IMG_AREA(state, slot), bs);
+    if (rc < 0) {
+        BOOT_LOG_ERR("Failed to load encryption key; Image=%u slot=%d",
+                     BOOT_CURR_IMG(state), slot);
+        return BOOT_EBADIMAGE;
+    }
+
+    /* rc == 1 means the key is already loaded. */
+    if (rc == 0) {
+        rc = boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, slot), bs->enckey[slot]);
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed to set encryption key; Image=%u slot=%d",
+                         BOOT_CURR_IMG(state), slot);
+            return BOOT_EBADIMAGE;
+        }
+    }
+
+    return 0;
+}
+#endif
+
 /**
  * Swaps the two images in flash.  If a prior copy operation was interrupted
  * by a system reset, this function completes that operation.
@@ -1124,23 +1168,6 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             assert(rc == 0);
         }
 
-#ifdef MCUBOOT_ENC_IMAGES
-        if (IS_ENCRYPTED(hdr)) {
-            fap = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
-            rc = boot_enc_load(state, BOOT_SLOT_PRIMARY, hdr, fap, bs);
-            assert(rc >= 0);
-
-            if (rc == 0) {
-                rc = boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, BOOT_SLOT_PRIMARY), bs->enckey[BOOT_SLOT_PRIMARY]);
-                assert(rc == 0);
-            } else {
-                rc = 0;
-            }
-        } else {
-            memset(bs->enckey[BOOT_SLOT_PRIMARY], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
-        }
-#endif
-
         hdr = boot_img_hdr(state, BOOT_SLOT_SECONDARY);
         if (hdr->ih_magic == IMAGE_MAGIC) {
             rc = boot_read_image_size(state, BOOT_SLOT_SECONDARY, &size);
@@ -1148,20 +1175,15 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         }
 
 #ifdef MCUBOOT_ENC_IMAGES
-        hdr = boot_img_hdr(state, BOOT_SLOT_SECONDARY);
-        if (IS_ENCRYPTED(hdr)) {
-            fap = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
-            rc = boot_enc_load(state, BOOT_SLOT_SECONDARY, hdr, fap, bs);
-            assert(rc >= 0);
-
-            if (rc == 0) {
-                rc = boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, BOOT_SLOT_SECONDARY), bs->enckey[BOOT_SLOT_SECONDARY]);
-                assert(rc == 0);
-            } else {
-                rc = 0;
-            }
-        } else {
-            memset(bs->enckey[BOOT_SLOT_SECONDARY], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
+        /* Both keys must be usable before anything is written. If one is
+         * not, nothing has been touched yet: skip the upgrade and boot the
+         * primary slot as it is. The upgrade stays pending.
+         */
+        if (boot_swap_load_enc_key(state, BOOT_SLOT_PRIMARY, bs) != 0 ||
+            boot_swap_load_enc_key(state, BOOT_SLOT_SECONDARY, bs) != 0) {
+            BOOT_LOG_ERR("Not starting swap; Image=%u", image_index);
+            BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
+            return 0;
         }
 #endif
 
@@ -1191,8 +1213,11 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             if (!boot_read_enc_key(fap, slot, bs)) {
                 BOOT_LOG_DBG("boot_swap_image: Failed loading key (%d, %d)",
                               image_index, slot);
-            } else {
-                boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, slot), bs->enckey[slot]);
+            } else if (boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, slot),
+                                        bs->enckey[slot]) != 0) {
+                BOOT_LOG_ERR("Failed to set encryption key; Image=%u slot=%d",
+                             image_index, slot);
+                return BOOT_EBADIMAGE;
             }
         }
 #endif

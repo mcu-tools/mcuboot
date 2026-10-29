@@ -50,7 +50,7 @@ use crate::depends::{
     PairDep,
     UpgradeInfo,
 };
-use crate::tlv::{ManifestGen, SigningKey, TlvGen, TlvFlags};
+use crate::tlv::{ManifestGen, SigningKey, TlvGen, TlvFlags, TlvKinds};
 use crate::utils::align_up;
 use typenum::{U32, U16};
 
@@ -1170,6 +1170,52 @@ impl Images {
 
         if fails > 0 {
             error!("Expected an upgrade failure and primary slot left untouched");
+        }
+
+        fails > 0
+    }
+
+    /// Boot with an upgrade staged while the key in the primary slot's
+    /// encryption TLV can't be unwrapped. The swap needs that key to
+    /// re-encrypt the primary image into the secondary slot, so it must
+    /// not start: the primary is booted as it is and no slot is changed.
+    pub fn run_primary_enc_key_fail(&self) -> bool {
+        if !Caps::modifies_flash() || !self.is_swap_upgrade() || !enc_present() {
+            return false;
+        }
+
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        info!("Try upgrade with a corrupt key in the primary slot");
+
+        for image in &self.images {
+            corrupt_enc_tlv(&mut flash, &image.slots[0]);
+        }
+
+        let snapshot: Vec<(u8, Vec<u8>)> = flash.iter().map(|(&dev_id, dev)| {
+            let mut data = vec![0u8; dev.device_size()];
+            dev.read(0, &mut data).unwrap();
+            (dev_id, data)
+        }).collect();
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success_no_asserts() {
+            warn!("Failed to boot the primary slot");
+            fails += 1;
+        }
+
+        for (dev_id, before) in &snapshot {
+            let dev = flash.get(dev_id).unwrap();
+            let mut after = vec![0u8; dev.device_size()];
+            dev.read(0, &mut after).unwrap();
+            if before != &after {
+                warn!("Flash device {} was modified", dev_id);
+                fails += 1;
+            }
+        }
+
+        if fails > 0 {
+            error!("Expected the upgrade to be skipped with the flash untouched");
         }
 
         fails > 0
@@ -2514,13 +2560,64 @@ fn make_tlv(signing_key: SigningKey) -> TlvGen {
     tlv.with_signing_key(signing_key)
 }
 
+/// Are images built encrypted?
+fn enc_present() -> bool {
+    Caps::EncRsa.present() || Caps::EncKw.present() ||
+        Caps::EncEc256.present() || Caps::EncX25519.present()
+}
+
+/// Flip the last byte of the encryption TLV of the image in `slot`, so
+/// that its key can no longer be unwrapped.  The TLV is not covered by the
+/// signature, so the image itself still validates.
+fn corrupt_enc_tlv(flash: &mut SimMultiFlash, slot: &SlotInfo) {
+    const TLV_INFO_MAGIC: u16 = 0x6907;
+    const TLV_PROT_INFO_MAGIC: u16 = 0x6908;
+    let enc_kinds = [TlvKinds::ENCRSA2048 as u16, TlvKinds::ENCKW as u16,
+                     TlvKinds::ENCEC256 as u16, TlvKinds::ENCX25519 as u16];
+
+    let dev = flash.get_mut(&slot.dev_id).unwrap();
+    let base = slot.base_off;
+    let mut img = vec![0u8; slot.len];
+    dev.read(base, &mut img).unwrap();
+
+    let le16 = |b: &[u8], off: usize| u16::from_le_bytes([b[off], b[off + 1]]);
+    let hdr_size = le16(&img, 8) as usize;
+    let img_size = u32::from_le_bytes([img[12], img[13], img[14], img[15]]) as usize;
+
+    let mut off = hdr_size + img_size;
+    if le16(&img, off) == TLV_PROT_INFO_MAGIC {
+        off += le16(&img, off + 2) as usize;
+    }
+    assert_eq!(le16(&img, off), TLV_INFO_MAGIC, "No TLV area found");
+    let end = off + le16(&img, off + 2) as usize;
+    off += 4;
+
+    while off < end {
+        let kind = le16(&img, off);
+        let len = le16(&img, off + 2) as usize;
+        if enc_kinds.contains(&kind) {
+            let target = off + 4 + len - 1;
+            let align = dev.align();
+            let chunk = target & !(align - 1);
+            img[target] ^= 0xff;
+
+            // Rewrite the aligned chunk in place.
+            dev.set_verify_writes(false);
+            dev.write(base + chunk, &img[chunk .. chunk + align]).unwrap();
+            dev.set_verify_writes(true);
+            return;
+        }
+        off += 4 + len;
+    }
+
+    panic!("No encryption TLV found");
+}
+
 impl ImageData {
     /// Find the image contents for the given slot.  This assumes that slot 0
     /// is unencrypted, and slot 1 is encrypted.
     fn find(&self, slot: usize) -> &Vec<u8> {
-        let encrypted = Caps::EncRsa.present() || Caps::EncKw.present() ||
-            Caps::EncEc256.present() || Caps::EncX25519.present();
-        match (encrypted, slot) {
+        match (enc_present(), slot) {
             (false, _) => &self.plain,
             (true, 0) => &self.plain,
             (true, 1) => self.cipher.as_ref().expect("Invalid image"),
