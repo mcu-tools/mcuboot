@@ -53,6 +53,8 @@
 #define BOOT_STATUS_SOURCE_NONE         0
 #define BOOT_STATUS_SOURCE_SCRATCH      1
 #define BOOT_STATUS_SOURCE_PRIMARY_SLOT 2
+/* The swap state could not be read, so the source is unknown. */
+#define BOOT_STATUS_SOURCE_ERROR        3
 
 /* Helper macro to avoid compile errors with systems that do not
  * provide function to check device type.
