@@ -269,7 +269,11 @@ int flash_area_open(uint8_t id, const struct flash_area **fa)
       return OK;
     }
 
-  fd = open(dev->fa_cfg->fa_mtd_path, O_RDWR);
+  /* Raw flash semantics, as bootutil expects: O_DIRECT | O_SYNC makes the
+   * FTL program without erasing first, and flash_area_erase() erases.
+   */
+
+  fd = open(dev->fa_cfg->fa_mtd_path, O_RDWR | O_DIRECT | O_SYNC);
   if (fd < 0)
     {
       int errcode = errno;
@@ -534,49 +538,54 @@ int flash_area_write(const struct flash_area *fa, uint32_t off,
 
 int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
 {
+  struct mtd_erase_s erase;
   int ret;
-  void *buffer;
-  size_t i;
   struct flash_device_s *dev = lookup_flash_device_by_id(fa->fa_id);
   const size_t sector_size = dev->mtdgeo.erasesize;
-  const uint8_t erase_val = dev->erase_state;
 
   BOOT_LOG_INF("ID:%" PRIu8 " offset:%" PRIu32 " length:%" PRIu32,
                fa->fa_id, off, len);
 
-  buffer = malloc(sector_size);
-  if (buffer == NULL)
+  if (off % sector_size != 0 || len % sector_size != 0 ||
+      off + len > fa->fa_size)
     {
-      BOOT_LOG_ERR("Failed to allocate erase buffer");
+      BOOT_LOG_ERR("Erase of 0x%" PRIx32 "+0x%" PRIx32
+                   " is not whole sectors of the area", off, len);
 
       return ERROR;
     }
 
-  memset(buffer, erase_val, sector_size);
+  /* Write back a partly written sector first, and drop the cached copy of
+   * anything erased so a later read comes from flash.
+   */
 
-  i = 0;
-
-  do
+  ret = ioctl(dev->fd, BIOC_FLUSH, 0);
+  if (ret < 0)
     {
-      BOOT_LOG_DBG("Erasing %zu bytes at offset %" PRIu32,
-                   sector_size, off + i);
+      BOOT_LOG_ERR("Error flushing before erase: %d", errno);
 
-      ret = flash_area_write(fa, off + i, buffer, sector_size);
-      i += sector_size;
-    }
-  while (ret == OK && i < (len - sector_size));
-
-  if (ret == OK)
-    {
-      BOOT_LOG_DBG("Erasing %" PRIu32 " bytes at offset %" PRIu32,
-                   len - i, off + i);
-
-      ret = flash_area_write(fa, off + i, buffer, len - i);
+      return ERROR;
     }
 
-  free(buffer);
+  erase.startblock = off / sector_size;
+  erase.nblocks    = len / sector_size;
+  ret = ioctl(dev->fd, MTDIOC_ERASESECTORS, (unsigned long)((uintptr_t)&erase));
+  if (ret < 0)
+    {
+      BOOT_LOG_ERR("Error erasing sectors: %d", errno);
 
-  return ret;
+      return ERROR;
+    }
+
+  ret = ioctl(dev->fd, BIOC_DISCARD, 0);
+  if (ret < 0)
+    {
+      BOOT_LOG_ERR("Error discarding cache after erase: %d", errno);
+
+      return ERROR;
+    }
+
+  return OK;
 }
 
 /****************************************************************************
