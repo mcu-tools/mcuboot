@@ -44,6 +44,9 @@ int swap_scramble_trailer_sectors(const struct boot_loader_state *state,
 /**
  * Initialize the given flash_area with the metadata required to start a new
  * swap upgrade.
+ *
+ * @return 0 on success; nonzero if any part of the trailer could not be
+ *         written, in which case the magic is not written.
  */
 int swap_status_init(const struct boot_loader_state *state,
                      const struct flash_area *fap,
