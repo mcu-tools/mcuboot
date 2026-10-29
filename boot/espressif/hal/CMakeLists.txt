@@ -96,6 +96,8 @@ set(hal_srcs
     ${esp_hal_dir}/components/bootloader_support/src/bootloader_console_loader.c
     ${esp_hal_dir}/components/bootloader_support/bootloader_flash/src/bootloader_flash.c
     ${esp_hal_dir}/components/bootloader_support/bootloader_flash/src/bootloader_flash_config_${MCUBOOT_TARGET}.c
+    ${esp_hal_dir}/components/bootloader_support/bootloader_flash/src/flash_qio_mode.c
+    ${esp_hal_dir}/components/spi_flash/spi_flash_wrap.c
     ${esp_hal_dir}/components/bootloader_support/src/bootloader_clock_init.c
     ${esp_hal_dir}/components/bootloader_support/src/bootloader_clock_loader.c
     ${esp_hal_dir}/components/bootloader_support/src/bootloader_efuse.c
