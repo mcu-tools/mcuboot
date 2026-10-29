@@ -488,7 +488,7 @@ fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
     }
 }
 
-void
+int
 swap_run(struct boot_loader_state *state, struct boot_status *bs,
          uint32_t copy_size)
 {
@@ -528,7 +528,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
                          (last_idx + 1) * sector_sz,
                          first_trailer_idx * sector_sz);
             bs->swap_type = BOOT_SWAP_TYPE_NONE;
-            return;
+            return 0;
         }
     }
 
@@ -560,6 +560,8 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
         }
         idx++;
     }
+
+    return 0;
 }
 
 int app_max_size(struct boot_loader_state *state)

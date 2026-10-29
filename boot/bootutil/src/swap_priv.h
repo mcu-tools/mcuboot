@@ -99,8 +99,12 @@ int swap_set_image_ok(uint8_t image_index);
 /**
  * Start a new or resume an interrupted swap according to the parameters
  * found in the given boot_status.
+ *
+ * @return 0 on success; nonzero if a flash operation failed. The swap
+ *         status is not advanced past the failed step, so the swap can be
+ *         resumed on the next boot.
  */
-void swap_run(struct boot_loader_state *state,
+int swap_run(struct boot_loader_state *state,
               struct boot_status *bs,
               uint32_t copy_size);
 
