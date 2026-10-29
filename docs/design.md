@@ -1247,6 +1247,30 @@ belongs to image 0 or image 1.
 After the swap operation has been completed, the bootloader proceeds as though
 it had just been started.
 
+### [Flash errors during a swap](#swap-flash-errors)
+
+Each swap step erases its destination, copies the data, and then writes
+the swap status entry for the step. If an erase, a copy or a trailer
+write fails, the swap stops before that status entry is written, and
+`boot_go()` returns a failure instead of booting. Flash is then in the
+same state as after a reset at that point, so on the next boot the
+swap is resumed from the last recorded step, as described above. The
+same happens when the swap state or the swap status can't be read:
+the primary slot may hold a partly swapped image, so it is not booted.
+
+A failed write of a swap status entry does not stop the swap; status
+writes are best-effort. Stopping after the data of a step has been
+moved would not help: the step would be recorded no better than if the
+bootloader kept going, and keeping going lets the swap finish in this
+boot. A status area with a gap in it is detected when a later swap is
+resumed. With `MCUBOOT_VALIDATE_PRIMARY_SLOT`, the bootloader resumes
+from the first entry found and relies on validating the primary slot
+afterwards; without it, the boot fails.
+
+When the encryption key of either slot can't be loaded before a new
+swap starts, the upgrade is skipped and the primary slot is booted
+unchanged. The upgrade stays pending.
+
 ## [Integrity check](#integrity-check)
 
 An image is checked for integrity immediately before it gets copied into the
