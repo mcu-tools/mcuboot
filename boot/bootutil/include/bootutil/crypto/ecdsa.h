@@ -343,48 +343,87 @@ static inline void get_public_key_from_rfc5280_encoding(uint8_t **p, size_t *siz
  * (r,s) of contiguous bytes
  *
  * \param[in]  sig               Pointer to a buffer containing the encoded signature
+ * \param[in]  sig_len           Size in bytes of the buffer pointed to by \p sig
  * \param[in] num_of_curve_bytes The required number of bytes for r and s
  * \param[out] r_s_pair          Buffer containing the (r,s) pair extracted. It's caller
  *                               responsibility to ensure the buffer is big enough to
  *                               hold the parsed (r,s) pair.
+ *
+ * \return PSA_SUCCESS on success, PSA_ERROR_INVALID_SIGNATURE if the encoding is
+ *         malformed or describes elements that do not fit in \p sig_len bytes.
  */
-static void parse_signature_from_rfc5480_encoding(const uint8_t *sig,
-                                                  size_t num_of_curve_bytes,
-                                                  uint8_t *r_s_pair)
+static int parse_signature_from_rfc5480_encoding(const uint8_t *sig,
+                                                 size_t sig_len,
+                                                 size_t num_of_curve_bytes,
+                                                 uint8_t *r_s_pair)
 {
-    const uint8_t *sig_ptr = NULL;
+    size_t seq_end, r_len, s_len, s_off;
+
+    /* The shortest encoding this parser can be handed is a SEQUENCE holding
+     * two one byte INTEGERs, i.e. 30 06 02 01 rr 02 01 ss
+     */
+    if (sig_len < 8) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
+
+    /* sig[0] == 0x30, sig[1] == <length>, sig[2] == 0x02 */
+    if ((sig[0] != 0x30) || (sig[2] != 0x02)) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
+
+    /* The contents of the SEQUENCE must be long enough to hold the two
+     * INTEGERs and must fit in the buffer. Only the ASN.1 short form length is
+     * handled, which is all the signatures of the supported curves need. Every
+     * length below is compared against the number of bytes that remain, rather
+     * than added to an offset, so that none of the arithmetic can wrap around.
+     */
+    if ((sig[1] < 6) || (sig[1] > sig_len - 2)) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
+    seq_end = 2 + (size_t)sig[1];
+
+    /* The contents of r start at sig[4], and must leave room for the two
+     * header bytes of s
+     */
+    r_len = sig[3];
+    if (r_len > seq_end - 6) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
+
+    /* The INTEGER holding s follows the contents of r */
+    if (sig[4 + r_len] != 0x02) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
+    s_len = sig[4 + r_len + 1];
+    s_off = 4 + r_len + 2;
+    if (s_len > seq_end - s_off) {
+        return (int)PSA_ERROR_INVALID_SIGNATURE;
+    }
 
     /* r or s can be greater than the expected size by one, due to the way
      * ASN.1 encodes signed integers. If either r or s starts with a bit 1,
      * a zero byte will be added in front of the encoding
      */
 
-    /* sig[0] == 0x30, sig[1] == <length>, sig[2] == 0x02 */
-
     /* Move r in place */
-    size_t r_len = sig[3];
-    sig_ptr = &sig[4];
     if (r_len >= num_of_curve_bytes) {
-        sig_ptr = sig_ptr + r_len - num_of_curve_bytes;
-        memcpy(&r_s_pair[0], sig_ptr, num_of_curve_bytes);
-        if(r_len % 2) {
-            r_len--;
-        }
+        memcpy(&r_s_pair[0], &sig[4 + r_len - num_of_curve_bytes],
+               num_of_curve_bytes);
     } else {
         /* For encodings that reduce the size of r or s in case of zeros */
-        memcpy(&r_s_pair[num_of_curve_bytes - r_len], sig_ptr, r_len);
+        memcpy(&r_s_pair[num_of_curve_bytes - r_len], &sig[4], r_len);
     }
 
     /* Move s in place */
-    size_t s_len = sig_ptr[r_len+1]; /*  + 1 to skip SEQUENCE */
-    sig_ptr  = &sig_ptr[r_len+2];
     if (s_len >= num_of_curve_bytes) {
-        sig_ptr = sig_ptr + s_len - num_of_curve_bytes;
-        memcpy(&r_s_pair[num_of_curve_bytes], sig_ptr, num_of_curve_bytes);
+        memcpy(&r_s_pair[num_of_curve_bytes],
+               &sig[s_off + s_len - num_of_curve_bytes], num_of_curve_bytes);
     } else {
         /* For encodings that reduce the size of r or s in case of zeros */
-        memcpy(&r_s_pair[2*num_of_curve_bytes - s_len], sig_ptr, s_len);
+        memcpy(&r_s_pair[2*num_of_curve_bytes - s_len], &sig[s_off], s_len);
     }
+
+    return (int)PSA_SUCCESS;
 }
 
 // OID id-ecPublicKey 1.2.840.10045.2.1.
@@ -486,10 +525,15 @@ static inline int bootutil_ecdsa_verify(bootutil_ecdsa_context *ctx,
 {
     (void)pk;
     (void)pk_len;
-    (void)slen;
 
+    int rc;
     uint8_t reformatted_signature[96] = {0}; /* Enough for P-384 signature sizes */
-    parse_signature_from_rfc5480_encoding(sig, ctx->curve_byte_count,reformatted_signature);
+
+    rc = parse_signature_from_rfc5480_encoding(sig, slen, ctx->curve_byte_count,
+                                               reformatted_signature);
+    if (rc != (int)PSA_SUCCESS) {
+        return rc;
+    }
 
     return (int) psa_verify_hash(ctx->key_id, PSA_ALG_ECDSA(ctx->required_algorithm),
                                  hash, hlen, reformatted_signature, 2*ctx->curve_byte_count);
