@@ -435,15 +435,17 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *st
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         if (skip_primary == true) {
-            BOOT_LOG_DBG("Skipping erase of secondary 0x%x and copy from primary 0x%x", sec_off,
-                         pri_off);
+            BOOT_LOG_DBG("Skipping erase of secondary 0x%" PRIx32
+                         " and copy from primary 0x%" PRIx32,
+                         sec_off, pri_off);
         } else {
             /* Copy from slot 0 X to slot 1 X */
-            BOOT_LOG_DBG("Erasing secondary 0x%x of 0x%x", sec_off, sz);
+            BOOT_LOG_DBG("Erasing secondary 0x%" PRIx32 " of 0x%" PRIx32, sec_off, sz);
             rc = boot_erase_region(fap_sec, sec_off, sz, false);
             assert(rc == 0);
 
-            BOOT_LOG_DBG("Copying primary 0x%x -> secondary 0x%x of 0x%x", pri_off, sec_off, sz);
+            BOOT_LOG_DBG("Copying primary 0x%" PRIx32 " -> secondary 0x%" PRIx32 " of 0x%" PRIx32,
+                         pri_off, sec_off, sz);
             rc = BOOT_COPY_REGION(state, fap_pri, fap_sec, pri_off, sec_off, sz, 0);
             assert(rc == 0);
         }
@@ -455,17 +457,18 @@ static void boot_swap_sectors(int idx, uint32_t sz, struct boot_loader_state *st
 
     if (bs->state == BOOT_STATUS_STATE_1) {
         if (skip_secondary == true) {
-            BOOT_LOG_DBG("Skipping erase of primary 0x%x and copy from secondary 0x%x", pri_off,
-                         sec_up_off);
+            BOOT_LOG_DBG("Skipping erase of primary 0x%" PRIx32
+                         " and copy from secondary 0x%" PRIx32,
+                         pri_off, sec_up_off);
         } else {
             /* Erase slot 0 X */
-            BOOT_LOG_DBG("Erasing primary 0x%x of 0x%x", pri_off, sz);
+            BOOT_LOG_DBG("Erasing primary 0x%" PRIx32 " of 0x%" PRIx32, pri_off, sz);
             rc = boot_erase_region(fap_pri, pri_off, sz, false);
             assert(rc == 0);
 
             /* Copy from slot 1 (X + 1) to slot 0 X */
-            BOOT_LOG_DBG("Copying secondary 0x%x -> primary 0x%x of 0x%x", sec_up_off, pri_off,
-                         sz);
+            BOOT_LOG_DBG("Copying secondary 0x%" PRIx32 " -> primary 0x%" PRIx32 " of 0x%" PRIx32,
+                         sec_up_off, pri_off, sz);
             rc = BOOT_COPY_REGION(state, fap_sec, fap_pri, sec_up_off, pri_off, sz, 0);
             assert(rc == 0);
         }
@@ -496,15 +499,17 @@ static void boot_swap_sectors_revert(int idx, uint32_t sz, struct boot_loader_st
 
     if (bs->state == BOOT_STATUS_STATE_0) {
         if (skip_primary == true) {
-            BOOT_LOG_DBG("Skipping erase of secondary 0x%x and copy from primary 0x%x", sec_off,
-                         pri_off);
+            BOOT_LOG_DBG("Skipping erase of secondary 0x%" PRIx32
+                         " and copy from primary 0x%" PRIx32,
+                         sec_off, pri_off);
         } else {
             /* Copy from slot 0 X to slot 1 X */
-            BOOT_LOG_DBG("Erasing secondary 0x%x of 0x%x", sec_off, sz);
+            BOOT_LOG_DBG("Erasing secondary 0x%" PRIx32 " of 0x%" PRIx32, sec_off, sz);
             rc = boot_erase_region(fap_sec, sec_off, sz, false);
             assert(rc == 0);
 
-            BOOT_LOG_DBG("Copying primary 0x%x -> secondary 0x%x of 0x%x", pri_off, sec_off, sz);
+            BOOT_LOG_DBG("Copying primary 0x%" PRIx32 " -> secondary 0x%" PRIx32 " of 0x%" PRIx32,
+                         pri_off, sec_off, sz);
             rc = BOOT_COPY_REGION(state, fap_pri, fap_sec, pri_off, sec_off, sz, sector_sz);
             assert(rc == 0);
         }
@@ -516,17 +521,18 @@ static void boot_swap_sectors_revert(int idx, uint32_t sz, struct boot_loader_st
 
     if (bs->state == BOOT_STATUS_STATE_1) {
         if (skip_secondary == true) {
-            BOOT_LOG_DBG("Skipping erase of primary 0x%x and copy from secondary 0x%x", pri_off,
-                         sec_up_off);
+            BOOT_LOG_DBG("Skipping erase of primary 0x%" PRIx32
+                         " and copy from secondary 0x%" PRIx32,
+                         pri_off, sec_up_off);
         } else {
             /* Erase slot 0 X */
-            BOOT_LOG_DBG("Erasing primary 0x%x of 0x%x", pri_off, sz);
+            BOOT_LOG_DBG("Erasing primary 0x%" PRIx32 " of 0x%" PRIx32, pri_off, sz);
             rc = boot_erase_region(fap_pri, pri_off, sz, false);
             assert(rc == 0);
 
             /* Copy from slot 1 (X + 1) to slot 0 X */
-            BOOT_LOG_DBG("Copying secondary 0x%x -> primary 0x%x of 0x%x", sec_up_off, pri_off,
-                         sz);
+            BOOT_LOG_DBG("Copying secondary 0x%" PRIx32 " -> primary 0x%" PRIx32 " of 0x%" PRIx32,
+                         sec_up_off, pri_off, sz);
             rc = BOOT_COPY_REGION(state, fap_sec, fap_pri, sec_up_off, pri_off, sz, 0);
             assert(rc == 0);
         }
@@ -626,7 +632,7 @@ void swap_run(struct boot_loader_state *state, struct boot_status *bs,
 
         if (last_idx >= first_trailer_idx) {
             BOOT_LOG_WRN("Not enough free space to run swap upgrade");
-            BOOT_LOG_WRN("required %d bytes but only %d are available",
+            BOOT_LOG_WRN("required %" PRIu32 " bytes but only %" PRIu32 " are available",
                          (last_idx + 1) * sector_sz,
                          first_trailer_idx * sector_sz);
             bs->swap_type = BOOT_SWAP_TYPE_NONE;
