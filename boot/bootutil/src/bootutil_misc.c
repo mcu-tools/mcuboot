@@ -88,18 +88,26 @@ fih_ret boot_fih_memequal(const void *s1, const void *s2, size_t n)
 #else
 fih_ret boot_fih_memequal(const void *s1, const void *s2, size_t n)
 {
-    size_t i;
-    uint8_t *s1_p = (uint8_t*) s1;
-    uint8_t *s2_p = (uint8_t*) s2;
+    volatile size_t i;
+    volatile size_t i_rev;
+    const volatile uint8_t *s1_p = s1;
+    const volatile uint8_t *s2_p = s2;
     FIH_DECLARE(ret, FIH_FAILURE);
 
+    i_rev = n;
     for (i = 0; i < n; i++) {
-        if (s1_p[i] != s2_p[i]) {
+        if (s1_p[i] != s2_p[n - i_rev]) {
             goto out;
         }
+
+        if ((i + i_rev) != n) {
+            goto out;
+        }
+
+        i_rev--;
     }
     if (i == n) {
-        ret = FIH_SUCCESS;
+        FIH_SET(ret, FIH_SUCCESS);
     }
 
 out:
