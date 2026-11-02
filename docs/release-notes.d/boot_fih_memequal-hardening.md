@@ -1,0 +1,1 @@
+- Make boot_fih_memequal() more resistant to glitch attacks.
