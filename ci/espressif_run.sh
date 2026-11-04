@@ -22,13 +22,18 @@ build_mcuboot() {
   local build_dir=".build-${target}"
   local toolchain_file="${ESPRESSIF_ROOT}/tools/toolchain-${target}.cmake"
 
-  if [ -n "$img_num" ]; then
-    img_num="-${img_num}"
+  # SoC defaults are loaded from port/<target>/default.conf. Pass only overlays.
+  local mcuboot_config=""
+  if [ -n "${img_num}" ]; then
+    mcuboot_config="${ESPRESSIF_ROOT}/port/${target}/bootloader-${img_num}.conf"
   fi
-  local mcuboot_config="${ESPRESSIF_ROOT}/port/${target}/bootloader${img_num}.conf"
 
   if [ -n "${feature}" ]; then
-    mcuboot_config="${mcuboot_config};${ESPRESSIF_ROOT}/ci_configs/${feature}.conf"
+    if [ -n "${mcuboot_config}" ]; then
+      mcuboot_config="${mcuboot_config};${ESPRESSIF_ROOT}/ci_configs/${feature}.conf"
+    else
+      mcuboot_config="${ESPRESSIF_ROOT}/ci_configs/${feature}.conf"
+    fi
     build_dir=".build-${target}-${feature}"
   fi
 
@@ -37,15 +42,23 @@ build_mcuboot() {
 
   # Add chip-specific conf if any
   if [ -e "${ESPRESSIF_ROOT}/ci_configs/${target}-${feat_prefix}.conf" ]; then
-    mcuboot_config="${mcuboot_config};${ESPRESSIF_ROOT}/ci_configs/${target}-${feat_prefix}.conf"
+    if [ -n "${mcuboot_config}" ]; then
+      mcuboot_config="${mcuboot_config};${ESPRESSIF_ROOT}/ci_configs/${target}-${feat_prefix}.conf"
+    else
+      mcuboot_config="${ESPRESSIF_ROOT}/ci_configs/${target}-${feat_prefix}.conf"
+    fi
   fi
 
   # Build MCUboot for selected target
 
   cd "${MCUBOOT_ROOTDIR}" &>/dev/null
+  local cmake_config_args=()
+  if [ -n "${mcuboot_config}" ]; then
+    cmake_config_args=(-DMCUBOOT_CONFIG_FILE="${mcuboot_config}")
+  fi
   cmake -DCMAKE_TOOLCHAIN_FILE="${toolchain_file}"  \
         -DMCUBOOT_TARGET="${target}"                \
-        -DMCUBOOT_CONFIG_FILE="${mcuboot_config}"   \
+        "${cmake_config_args[@]}"                   \
         -DESP_HAL_PATH="${IDF_PATH}"                \
         -B "${build_dir}"                           \
         "${ESPRESSIF_ROOT}"

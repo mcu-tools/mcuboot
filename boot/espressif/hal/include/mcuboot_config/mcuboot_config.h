@@ -10,8 +10,8 @@
 /*
  * Signature types
  *
- * You must choose exactly one signature type - check bootloader.conf
- * configuration file
+ * You must choose exactly one signature type. Set it in Kconfig
+ * (menuconfig) or in port/<soc>/default.conf.
  */
 
 /* Uncomment for RSA signature support */

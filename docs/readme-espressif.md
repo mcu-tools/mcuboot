@@ -93,9 +93,17 @@ The following instructions considers a MCUboot Espressif port standalone build.
 ## [Building the bootloader itself](#building-the-bootloader-itself)
 
 The MCUboot Espressif port bootloader is built using the toolchain and tools provided by Espressif.
-Additional configuration related to MCUboot features and slot partitioning may be made using the
-`port/<TARGET>/bootloader.conf` file or passing a custom config file using the
-`-DMCUBOOT_CONFIG_FILE` argument on the first step below.
+Feature and partition settings are Kconfig symbols. Each SoC has defaults in
+`port/<TARGET>/default.conf`. Change them with `menuconfig` after the CMake step below, or pass
+extra `KEY=value` fragments with `-DMCUBOOT_CONFIG_FILE` (separate multiple files with `;`).
+Fragments override `default.conf`. A `menuconfig` session is kept on the next configure when
+`-DMCUBOOT_CONFIG_FILE` is not passed.
+
+The ESP-IDF Python environment already includes Kconfig support. For another Python interpreter, install it once:
+
+```bash
+pip3 install -r <MCUBOOT_DIR>/boot/espressif/tools/requirements.txt
+```
 
 ---
 ***Note***
@@ -115,11 +123,17 @@ Additional configuration related to MCUboot features and slot partitioning may b
     ```
 
     ```bash
+    ninja -C build menuconfig
+    ```
+
+    ```bash
     ninja -C build/
     ```
 
     ---
     ***Note***
+
+    *`menuconfig` is optional. Without it, the build uses `port/<TARGET>/default.conf`.*
 
     *If using ESP-IDF as HAL layer source, `ESP_HAL_PATH` can be ommited.*
 
@@ -756,34 +770,25 @@ Host OS from the *first image* is responsible for booting the *second image*, th
 bootloader is aware of the second image regions and can update it, however it does not load
 neither boots it.
 
-Configuration example (`bootloader.conf`):
+In `menuconfig`, set **Number of updatable images** (`CONFIG_ESP_IMAGE_NUMBER`) to 2 and adjust
+the flash layout. The host OS and the update agent must use the same regions. Example values:
 
-```
-CONFIG_ESP_BOOTLOADER_SIZE=0xF000
-CONFIG_ESP_MCUBOOT_WDT_ENABLE=y
-
-# Enables multi image, if it is not defined, its assumed
-# only one updatable image
-CONFIG_ESP_IMAGE_NUMBER=2
-
-# Example of values to be used when multi image is enabled
-# Notice that the OS layer and update agent must be aware
-# of these regions
-CONFIG_ESP_APPLICATION_SIZE=0x50000
-CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS=0x10000
-CONFIG_ESP_IMAGE0_SECONDARY_START_ADDRESS=0x60000
-CONFIG_ESP_IMAGE1_PRIMARY_START_ADDRESS=0xB0000
-CONFIG_ESP_IMAGE1_SECONDARY_START_ADDRESS=0x100000
-CONFIG_ESP_SCRATCH_OFFSET=0x150000
-CONFIG_ESP_SCRATCH_SIZE=0x40000
-```
+- Bootloader size (`CONFIG_ESP_BOOTLOADER_SIZE`): `0xF000`
+- Watchdog (`CONFIG_ESP_MCUBOOT_WDT_ENABLE`): enabled
+- Application slot size (`CONFIG_ESP_APPLICATION_SIZE`): `0x50000`
+- Image 0 primary (`CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS`): `0x10000`
+- Image 0 secondary (`CONFIG_ESP_IMAGE0_SECONDARY_START_ADDRESS`): `0x60000`
+- Image 1 primary (`CONFIG_ESP_IMAGE1_PRIMARY_START_ADDRESS`): `0xB0000`
+- Image 1 secondary (`CONFIG_ESP_IMAGE1_SECONDARY_START_ADDRESS`): `0x100000`
+- Scratch address (`CONFIG_ESP_SCRATCH_OFFSET`): `0x150000`
+- Scratch size (`CONFIG_ESP_SCRATCH_SIZE`): `0x40000`
 
 ### [Multi boot](#multi-boot)
 
 In the multi boot approach the bootloader is responsible for booting two different images in two
 different CPUs, firstly the *second image* on the APP CPU and then the *first image* on the PRO
 CPU (current CPU), it is also responsible for update both images as well. Thus multi boot will be
-only supported by Espressif multi core chips - currently only ESP32 is implemented.
+only supported by Espressif multi core chips. It is implemented for ESP32 and ESP32-S3.
 
 ---
 ***Note***
@@ -792,32 +797,20 @@ only supported by Espressif multi core chips - currently only ESP32 is implement
 
 ---
 
-Configuration example:
+In `menuconfig`, set **Number of updatable images** (`CONFIG_ESP_IMAGE_NUMBER`) to 2 and enable
+**Boot the second image on the other CPU** (`CONFIG_ESP_MULTI_PROCESSOR_BOOT`). That option is
+available on ESP32 and ESP32-S3. The host OS and the update agent must use the same regions. Example
+values:
 
-```
-CONFIG_ESP_BOOTLOADER_SIZE=0xF000
-CONFIG_ESP_MCUBOOT_WDT_ENABLE=y
-
-# Enables multi image, if it is not defined, its assumed
-# only one updatable image
-CONFIG_ESP_IMAGE_NUMBER=2
-
-# Enables multi image boot on independent processors
-# (main host OS is not responsible for booting the second image)
-# Use only with CONFIG_ESP_IMAGE_NUMBER=2
-CONFIG_ESP_MULTI_PROCESSOR_BOOT=y
-
-# Example of values to be used when multi image is enabled
-# Notice that the OS layer and update agent must be aware
-# of these regions
-CONFIG_ESP_APPLICATION_SIZE=0x50000
-CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS=0x10000
-CONFIG_ESP_IMAGE0_SECONDARY_START_ADDRESS=0x60000
-CONFIG_ESP_IMAGE1_PRIMARY_START_ADDRESS=0xB0000
-CONFIG_ESP_IMAGE1_SECONDARY_START_ADDRESS=0x100000
-CONFIG_ESP_SCRATCH_OFFSET=0x150000
-CONFIG_ESP_SCRATCH_SIZE=0x40000
-```
+- Bootloader size (`CONFIG_ESP_BOOTLOADER_SIZE`): `0xF000`
+- Watchdog (`CONFIG_ESP_MCUBOOT_WDT_ENABLE`): enabled
+- Application slot size (`CONFIG_ESP_APPLICATION_SIZE`): `0x50000`
+- Image 0 primary (`CONFIG_ESP_IMAGE0_PRIMARY_START_ADDRESS`): `0x10000`
+- Image 0 secondary (`CONFIG_ESP_IMAGE0_SECONDARY_START_ADDRESS`): `0x60000`
+- Image 1 primary (`CONFIG_ESP_IMAGE1_PRIMARY_START_ADDRESS`): `0xB0000`
+- Image 1 secondary (`CONFIG_ESP_IMAGE1_SECONDARY_START_ADDRESS`): `0x100000`
+- Scratch address (`CONFIG_ESP_SCRATCH_OFFSET`): `0x150000`
+- Scratch size (`CONFIG_ESP_SCRATCH_SIZE`): `0x40000`
 
 ### [Image version dependency](#image-version-dependency)
 
