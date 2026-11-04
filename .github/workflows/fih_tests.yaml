@@ -11,7 +11,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    name: Validation gate
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'boot/bootutil/src/fault_injection_hardening_delay_rng_psa.c'
+              - 'boot/bootutil/src/fault_injection_hardening_delay_rng_mbedtls.c'
+              - 'boot/bootutil/src/fault_injection_hardening.c'
+              - 'boot/bootutil/include/bootutil/fault_injection_hardening_delay_rng.h'
+              - 'boot/bootutil/include/bootutil/fault_injection_hardening.h'
+      - id: decide
+        run: |
+          if [[ "${{ steps.filter.outputs.src }}" == "true" \
+             || "${{ github.event_name == 'push' }}" == true ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
   config:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     strategy:
       fail-fast: false
       matrix:
