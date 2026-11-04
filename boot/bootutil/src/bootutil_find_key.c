@@ -29,7 +29,7 @@
 #include <stdint.h>
 
 #include "bootutil/crypto/sha.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 #include "bootutil/image.h"
 #include "bootutil/sign_key.h"
 #include "bootutil_priv.h"
