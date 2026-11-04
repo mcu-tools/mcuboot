@@ -687,7 +687,10 @@ class Image:
         # over entire message is used with sha of image as message,
         # so, for example, in case of ED25519 we have here SHAxxx-ED25519-SHA512.
         sha = hash_algorithm()
-        sha.update(self.payload)
+        # Hash a copy: some interpreters (e.g. PyPy 3.11.16) keep the
+        # buffer exported after update() returns, which would make the
+        # in-place appends to self.payload below raise BufferError.
+        sha.update(bytes(self.payload))
         digest = sha.digest()
         tlv.add(hash_tlv, digest)
         self.image_hash = digest
