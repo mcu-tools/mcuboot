@@ -12,7 +12,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    name: Validation gate
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'boot/bootutil/**'
+              - 'sim/**'
+              - 'ci/**'
+              - 'testplan/**'
+              - 'samples/**'
+              - 'scripts/**'
+      - id: decide
+        run: |
+          if [[ "${{ steps.filter.outputs.src }}" == "true" \
+             || "${{ github.event_name == 'push' }}" == true ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
   environment:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     strategy:
       matrix:
         features:
