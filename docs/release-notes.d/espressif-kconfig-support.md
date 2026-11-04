@@ -1,0 +1,1 @@
+- espressif: configure the port with Kconfig
