@@ -4,6 +4,11 @@
 
 Given solution demonstrates operation of MCUboot on Cypress' PSoC6 device.
 
+The bundled `cy_security_cnt.c` does not implement persistent security counter
+storage and fails closed. Replace it with a monotonic, power-fail-safe backend,
+as required by `boot/bootutil/include/bootutil/security_cnt.h`, before enabling
+`MCUBOOT_HW_ROLLBACK_PROT`.
+
 There are two applications implemented:
 * MCUBootApp - PSoC6 MCUboot-based bootloading application;
 * BlinkyApp - simple PSoC6 blinking LED application which is a target of BOOT/UPGRADE;
