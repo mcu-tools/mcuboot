@@ -1431,6 +1431,142 @@ the `MCUBOOT_HW_ROLLBACK_PROT` config option. When enabled, the target must
 provide an implementation of the security counter interface defined in
 `boot/bootutil/include/security_cnt.h`.
 
+## [Key revocation](#key-revocation)
+
+Key revocation is a feature which enforces that the new image must not be
+signed by a key older than the key that signed the image currently active in
+the primary slot, thus preventing future upgrades from reintroducing images
+signed with deprecated or compromised keys.
+
+**This only revokes old keys after the primary slot has actually moved to an
+image signed by a newer key.** Until that first rotation happens on a given
+device, images signed with any previously-accepted key are still accepted as
+upgrades: the primary slot's current image is the only source of truth this
+feature uses, there is no separate, independently-provisioned notion of
+"the latest known key". This is a progressive, software-only key revocation
+based on the currently installed image, not an equivalent of a
+hardware/OTP-backed key revocation mechanism such as a KMU: a device that is
+never upgraded past its factory key never benefits from the check, and a
+device can be downgraded back to an old key by any means that bypasses the
+normal upgrade path (e.g. re-flashing the primary slot directly).
+
+This feature is **complementary to, not a replacement for, anti-rollback
+counters** (`MCUBOOT_HW_ROLLBACK_PROT` / security counter based downgrade
+prevention, see [Downgrade prevention](#downgrade-prevention)). The two
+mechanisms guard different, independent axes: anti-rollback counters
+establish a *version* floor (this image must not be older than that one),
+while key revocation establishes a *key* floor (this image must not be
+signed by an older key than that one). An image can satisfy one and violate
+the other. Projects that care about revoking compromised or deprecated
+keys should use both mechanisms together where the hardware allows it,
+rather than relying on this feature alone as a substitute for a
+hardware-backed key revocation scheme.
+
+When `MCUBOOT_KEY_REVOCATION_FROM_PRIMARY` is enabled, MCUboot reuses the
+existing signature metadata and embedded key infrastructure. If multiple public
+keys are embedded in the bootloader, they are expected to be ordered according
+to signing-key rotation, with index 0 being the oldest key and each higher
+index representing a newer key. Before accepting a secondary-slot upgrade
+candidate that has already passed the existing validation checks, MCUboot uses
+the active primary-slot image as a local trust anchor, determines which
+embedded key signed it, and rejects the candidate if the candidate was signed
+with a lower key index. This additional comparison is performed with the same
+fault-injection-hardened style as other rollback checks. The feature only
+narrows image acceptance and does not require a new image format, a new TLV
+entry, or any persistent revocation state.
+
+If no key floor can be established from the primary slot, for example because
+the active image was signed by a key that MCUboot does not recognize, the
+additional check has no effect and the existing image acceptance behavior is
+unchanged. In multi-image builds, each image uses its own primary slot to
+establish its own key floor independently.
+
+If an image carries more than one valid `(key, signature)` TLV pair, for
+example a key-rotation transition image that is deliberately signed with both
+the old and the new key so that it remains verifiable by bootloaders which
+only know one of the two, the *strongest* (highest-index) key among all
+validly-verified signatures is used, regardless of the order the TLV pairs
+appear in the image.
+
+A candidate rejected by key revocation is erased from the secondary slot,
+just like a candidate with a genuinely invalid signature: it can never become
+valid on its own, so there is no value in keeping it around for repeated
+(and costly) re-validation on every subsequent boot.
+
+Determining the primary slot's signing key requires re-validating the primary
+slot's image (hash and signature) whenever an upgrade is being considered,
+in addition to the validation the candidate in the secondary slot already
+undergoes. This adds one full image validation pass to the upgrade decision.
+
+`MCUBOOT_KEY_REVOCATION_FROM_PRIMARY` is not available with:
+
+  * overwrite-only updates (`MCUBOOT_OVERWRITE_ONLY`), `MCUBOOT_DIRECT_XIP`,
+    or `MCUBOOT_RAM_LOAD`; the feature requires a swap-based update strategy
+    such as `MCUBOOT_SWAP_USING_SCRATCH`, `MCUBOOT_SWAP_USING_MOVE`, or
+    `MCUBOOT_SWAP_USING_OFFSET`.
+  * `MCUBOOT_BUILTIN_KEY`; builtin key verification does not use embedded key
+    array indices.
+  * `MCUBOOT_BYPASS_KEY_MATCH`; this mode does not establish a signer key
+    index.
+  * `MCUBOOT_HW_KEY`; in this mode the key is verified against a single
+    HW/KMU-provided key hash rather than looked up by index in
+    `bootutil_keys[]`, so every image would report key index 0. Using key
+    revocation here would silently collapse the key floor to a constant and
+    turn the check into a no-op, so it is rejected at build time instead.
+
+### Operational responsibility: the embedded key order is a process, not a mechanism
+
+The security of this feature rests entirely on `bootutil_keys[]` being, and
+remaining, ordered from oldest to newest key. MCUboot does not, and cannot,
+verify this ordering on its own: it has no independent notion of when a key
+was generated or which key is "newer" than another. This is **not a technical
+limitation to be worked around**; it is a deliberate design choice, since
+verifying key age at the bootloader level would require additional
+infrastructure (certificates, a CRL, timestamps) that this feature explicitly
+avoids in favor of a zero-additional-infrastructure, local mechanism.
+
+In exchange, the burden of keeping the key order correct shifts entirely to
+the signing/build process: whoever maintains the embedded key list and the
+signing pipeline must track, for every key ever embedded, its position in
+`bootutil_keys[]`, and must always sign a given release with the key that
+matches the intended rotation step. Concretely:
+
+  * Adding a new key must always append it at the end of `bootutil_keys[]`
+    (the highest index); inserting it anywhere else, or reordering existing
+    entries, silently changes which images are treated as "newer" or "older"
+    on every device already in the field.
+  * Producing a release must use the key that corresponds to the intended
+    rotation step for that release, not an arbitrary or leftover key from a
+    previous step. Signing a new release with an old key, or an old
+    maintenance release with a new key, does not fail loudly -- it simply
+    changes the floor future upgrades are checked against, in a way that may
+    only surface as a rejected upgrade much later.
+
+Keeping this mapping (which key lives at which index, which key is due for
+which release) straight is a release-process and key-management
+responsibility, not something the bootloader can catch. Projects adopting
+this feature should track it explicitly, e.g. alongside their signing key
+inventory.
+
+As a minimum operational safeguard, the release/signing pipeline should
+verify, for every artifact it is about to publish, that it was actually
+signed with the key intended for that rotation step *before* the check that
+MCUboot performs at boot time ever sees it. Concretely:
+
+  * Confirm which key index a built and signed artifact was signed with,
+    e.g. by using `imgtool` to inspect the signature TLV against each
+    candidate public key in `bootutil_keys[]` (or an equivalent check
+    integrated into the signing pipeline), and fail the release build if it
+    does not match the expected index for that rotation step.
+  * Confirm that `bootutil_keys[]` (or the equivalent generated key table)
+    has not been reordered or had entries removed compared to the previous
+    release, other than a new key being appended at the end.
+  * Treat both of the above as release-blocking CI checks, not merely as
+    documented process steps: a silent misconfiguration here does not cause
+    a build failure or a boot failure on the device that was mis-signed, it
+    only surfaces later as unexpected upgrade rejections on other devices in
+    the field.
+
 ## [Measured boot and data sharing](#boot-data-sharing)
 
 MCUboot defines a mechanism for sharing boot status information (also known as
