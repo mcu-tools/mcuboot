@@ -42,8 +42,11 @@ int boot_read_image_header_hook(int img_index, int slot,
  *         fih encoded BOOT_HOOK_REGULAR if hook not implemented for
  *         the image-slot.
  */
-fih_ret boot_image_check_hook(int img_index, int slot)
+fih_ret boot_image_check_hook(struct boot_loader_state *state,
+                              int img_index, int slot)
 {
+    (void)state;
+
     if (img_index == 1 && slot == 0) {
         FIH_RET(FIH_SUCCESS);
     }
