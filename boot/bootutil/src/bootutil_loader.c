@@ -125,6 +125,14 @@ boot_read_image_headers(struct boot_loader_state *state, bool require_all, struc
             rc = boot_read_image_header(state, i, boot_img_hdr(state, i), bs);
         }
         if (rc != 0) {
+#if defined(MCUBOOT_DIRECT_XIP) || defined(MCUBOOT_RAM_LOAD)
+            /* Either slot can hold the image that boots, so a read error only
+             * makes this slot unusable. Clear the header so it is not valid.
+             */
+            BOOT_LOG_WRN("Failed reading image header of slot %d: %d", i, rc);
+            memset(boot_img_hdr(state, i), 0, sizeof(struct image_header));
+            continue;
+#endif
             /* If `require_all` is set, fail on any single fail, otherwise
              * if at least the first slot's header was read successfully,
              * then the boot loader can attempt a boot.
