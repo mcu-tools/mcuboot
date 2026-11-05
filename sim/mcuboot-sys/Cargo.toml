@@ -39,6 +39,12 @@ sig-ed25519 = []
 # `sig-ed25519` — support for other signature types can be added as needed.
 sig-second-key = []
 
+# Verify LMS (RFC 8554) signatures. Bootloader-side verification is not
+# yet implemented — for now this just causes TlvGen to produce LMS-signed
+# images, which lets us validate the simulator's signing path before the
+# C-side verifier lands. Tests will fail until then.
+sig-lms = []
+
 # Overwrite only upgrade
 overwrite-only = []
 
