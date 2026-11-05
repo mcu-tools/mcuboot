@@ -44,6 +44,9 @@ int swap_scramble_trailer_sectors(const struct boot_loader_state *state,
 /**
  * Initialize the given flash_area with the metadata required to start a new
  * swap upgrade.
+ *
+ * @return 0 on success; nonzero if any part of the trailer could not be
+ *         written, in which case the magic is not written.
  */
 int swap_status_init(const struct boot_loader_state *state,
                      const struct flash_area *fap,
@@ -57,6 +60,7 @@ int swap_status_init(const struct boot_loader_state *state,
  *   - BOOT_STATUS_SOURCE_NONE
  *   - BOOT_STATUS_SOURCE_SCRATCH
  *   - BOOT_STATUS_SOURCE_PRIMARY_SLOT
+ *   - BOOT_STATUS_SOURCE_ERROR, if a swap state could not be read
  */
 int swap_status_source(struct boot_loader_state *state);
 
@@ -96,8 +100,12 @@ int swap_set_image_ok(uint8_t image_index);
 /**
  * Start a new or resume an interrupted swap according to the parameters
  * found in the given boot_status.
+ *
+ * @return 0 on success; nonzero if a flash operation failed. The swap
+ *         status is not advanced past the failed step, so the swap can be
+ *         resumed on the next boot.
  */
-void swap_run(struct boot_loader_state *state,
+int swap_run(struct boot_loader_state *state,
               struct boot_status *bs,
               uint32_t copy_size);
 

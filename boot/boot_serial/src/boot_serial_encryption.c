@@ -172,9 +172,13 @@ decrypt_region_inplace(struct enc_key_data *enc_data,
                     blk_sz = tlv_off - (off + bytes_copied);
                 }
             }
-            boot_enc_decrypt(enc_data,
+            rc = boot_enc_decrypt(enc_data,
                     (off + bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
                     blk_off, &buf[idx]);
+            if (rc != 0) {
+                rc = BOOT_EBADIMAGE;
+                goto out;
+            }
         }
         rc = boot_erase_region(fap, off + bytes_copied, chunk_sz, false);
         if (rc != 0) {
