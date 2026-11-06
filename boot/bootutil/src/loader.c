@@ -1077,6 +1077,43 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
 #endif
 
 #if !defined(MCUBOOT_OVERWRITE_ONLY)
+#ifdef MCUBOOT_ENC_IMAGES
+/**
+ * Prepare the encryption key for the given slot.
+ *
+ * @param state                 The current boot loader state.
+ * @param bs                    The current boot status.
+ * @param hdr                   The image header.
+ * @param slot                  The slot to prepare the encryption key for.
+ * @param force_no_key          If true, prepare no-key-value for the encryption key.
+ *                              Do not trust value under hdr, do not parse TLVs.
+ */
+static void
+boot_swap_enc_key_prepare(struct boot_loader_state *state,
+                          struct boot_status *bs, struct image_header *hdr,
+                          int slot,
+                          bool force_no_key)
+{
+    const struct flash_area *fap;
+    int rc;
+
+    if (IS_ENCRYPTED(hdr) && !force_no_key) {
+        fap = BOOT_IMG_AREA(state, slot);
+        rc = boot_enc_load(state, slot, hdr, fap, bs);
+        assert(rc >= 0);
+
+        if (rc == 0) {
+            rc = boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, slot), bs->enckey[slot]);
+            assert(rc == 0);
+        } else {
+            rc = 0;
+        }
+    } else {
+        memset(bs->enckey[slot], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
+    }
+}
+#endif
+
 /**
  * Swaps the two images in flash.  If a prior copy operation was interrupted
  * by a system reset, this function completes that operation.
@@ -1119,20 +1156,8 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         }
 
 #ifdef MCUBOOT_ENC_IMAGES
-        if (IS_ENCRYPTED(hdr)) {
-            fap = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
-            rc = boot_enc_load(state, BOOT_SLOT_PRIMARY, hdr, fap, bs);
-            assert(rc >= 0);
-
-            if (rc == 0) {
-                rc = boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, BOOT_SLOT_PRIMARY), bs->enckey[BOOT_SLOT_PRIMARY]);
-                assert(rc == 0);
-            } else {
-                rc = 0;
-            }
-        } else {
-            memset(bs->enckey[BOOT_SLOT_PRIMARY], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
-        }
+        boot_swap_enc_key_prepare(state, bs, hdr, BOOT_SLOT_PRIMARY,
+            (hdr->ih_magic != IMAGE_MAGIC));
 #endif
 
         hdr = boot_img_hdr(state, BOOT_SLOT_SECONDARY);
@@ -1142,21 +1167,8 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         }
 
 #ifdef MCUBOOT_ENC_IMAGES
-        hdr = boot_img_hdr(state, BOOT_SLOT_SECONDARY);
-        if (IS_ENCRYPTED(hdr)) {
-            fap = BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY);
-            rc = boot_enc_load(state, BOOT_SLOT_SECONDARY, hdr, fap, bs);
-            assert(rc >= 0);
-
-            if (rc == 0) {
-                rc = boot_enc_set_key(BOOT_CURR_ENC_SLOT(state, BOOT_SLOT_SECONDARY), bs->enckey[BOOT_SLOT_SECONDARY]);
-                assert(rc == 0);
-            } else {
-                rc = 0;
-            }
-        } else {
-            memset(bs->enckey[BOOT_SLOT_SECONDARY], 0xff, BOOT_ENC_KEY_ALIGN_SIZE);
-        }
+        boot_swap_enc_key_prepare(state, bs, hdr, BOOT_SLOT_SECONDARY,
+            (hdr->ih_magic != IMAGE_MAGIC));
 #endif
 
         if (size > copy_size) {
