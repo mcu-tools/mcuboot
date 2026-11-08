@@ -236,7 +236,7 @@ class ECDSA384P1Public(ECDSAPublicKey):
 
     def sig_len(self):
         # Early versions of MCUboot (< v1.5.0) required ECDSA
-        # signatures to be padded to a fixed length.  Because the DER
+        # signatures to be padded to 104 bytes length.  Because the DER
         # encoding is done with signed integers, the size of the
         # signature will vary depending on whether the high bit is set
         # in each value.  This padding was done in a
@@ -246,7 +246,7 @@ class ECDSA384P1Public(ECDSAPublicKey):
         # versions of MCUboot don't require it.  But, continue to
         # return the total length so that the padding can be done if
         # requested.
-        return 103
+        return 104
 
     def verify(self, signature, payload):
         # strip possible paddings added during sign
