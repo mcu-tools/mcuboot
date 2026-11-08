@@ -29,7 +29,7 @@ target OS, and it must call the following function to run the bootloader:
 int boot_go(struct boot_rsp *rsp);
 ```
 
-This function is located at `boot/bootutil/loader.c` and receives a `struct
+This function is located at `boot/bootutil/src/loader.c` and receives a `struct
 boot_rsp` pointer. The `struct boot_rsp` is defined as:
 
 ```c

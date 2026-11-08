@@ -1429,7 +1429,7 @@ version number:
 It is an optional step of the image validation process and can be enabled with
 the `MCUBOOT_HW_ROLLBACK_PROT` config option. When enabled, the target must
 provide an implementation of the security counter interface defined in
-`boot/bootutil/include/security_cnt.h`.
+`boot/bootutil/include/bootutil/security_cnt.h`.
 
 ## [Measured boot and data sharing](#boot-data-sharing)
 
