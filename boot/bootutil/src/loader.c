@@ -139,6 +139,36 @@ fill_rsp(struct boot_loader_state *state, struct boot_rsp *rsp)
     rsp->br_hdr = boot_img_hdr(state, active_slot);
 }
 
+/**
+ * Fills rsp to indicate how booting should occur. When fault injection
+ * hardening uses double variables (FIH profile MEDIUM or HIGH), a second
+ * copy is filled and compared with the first, to detect a fault during
+ * either fill.
+ *
+ * @param  state        Boot loader status information.
+ * @param  rsp          boot_rsp struct to fill.
+ *
+ * @return 0 if rsp was filled successfully; nonzero otherwise.
+ */
+static int
+fill_and_check_rsp(struct boot_loader_state *state, struct boot_rsp *rsp)
+{
+#ifdef FIH_ENABLE_DOUBLE_VARS
+    struct boot_rsp copy_rsp;
+
+    memset(rsp, 0, sizeof(*rsp));
+    memset(&copy_rsp, 0, sizeof(copy_rsp));
+    fill_rsp(state, rsp);
+    fill_rsp(state, &copy_rsp);
+
+    return memcmp(rsp, &copy_rsp, sizeof(*rsp));
+#else
+    fill_rsp(state, rsp);
+
+    return 0;
+#endif
+}
+
 #if (BOOT_IMAGE_NUMBER > 1)
 
 static int
@@ -2067,7 +2097,10 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         FIH_PANIC;
     }
 
-    fill_rsp(state, rsp);
+    if (fill_and_check_rsp(state, rsp) != 0) {
+        FIH_SET(fih_rc, FIH_FAILURE);
+        goto out;
+    }
 
     fih_rc = FIH_SUCCESS;
 out:
@@ -2557,7 +2590,10 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     print_loaded_images(state);
 #endif
 
-    fill_rsp(state, rsp);
+    if (fill_and_check_rsp(state, rsp) != 0) {
+        FIH_SET(fih_rc, FIH_FAILURE);
+        goto close;
+    }
 
 close:
     boot_close_all_flash_areas(state);
