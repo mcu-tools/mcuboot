@@ -2752,7 +2752,20 @@ boot_go_for_image_id(struct boot_rsp *rsp, uint32_t image_id)
     boot_data.img_mask[image_id] = 0;
 #endif
 
+#if (BOOT_IMAGE_NUMBER > 1) && defined(FIH_ENABLE_DOUBLE_VARS)
+    bool copy_img_mask[BOOT_IMAGE_NUMBER];
+
+    memcpy(copy_img_mask, boot_data.img_mask, sizeof(copy_img_mask));
+#endif
+
     FIH_CALL(context_boot_go, fih_rc, &boot_data, rsp);
+
+#if (BOOT_IMAGE_NUMBER > 1) && defined(FIH_ENABLE_DOUBLE_VARS)
+    if (memcmp(boot_data.img_mask, copy_img_mask, sizeof(copy_img_mask)) != 0) {
+        FIH_SET(fih_rc, FIH_FAILURE);
+    }
+#endif
+
     FIH_RET(fih_rc);
 }
 
