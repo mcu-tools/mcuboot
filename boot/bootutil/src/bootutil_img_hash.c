@@ -151,7 +151,11 @@ bootutil_img_hash(struct boot_loader_state *state,
         base = 0;
     }
 
+#if defined(MCUBOOT_SWAP_USING_OFFSET)
+    bootutil_sha_update(&sha_ctx, (void *)(base + flash_area_get_off(fap) + sector_off), size);
+#else
     bootutil_sha_update(&sha_ctx, (void *)(base + flash_area_get_off(fap)), size);
+#endif
 #else /* MCUBOOT_HASH_STORAGE_DIRECTLY */
 #ifdef MCUBOOT_RAM_LOAD
 #ifdef MCUBOOT_SERIAL
