@@ -1,0 +1,21 @@
+on:
+  pull_request:
+
+name: Signed commit
+
+concurrency:
+  group: signed-commit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: false
+    - name: Signed commit check
+      if: ${{ github.event_name == 'pull_request' }}
+      run: |
+        ./ci/check-signed-off-by.sh
