@@ -1,6 +1,8 @@
 # Pull requests and pushes to main skip the slow power-fail permutation
 # tests.  The daily scheduled run, and any manual run, sets
-# MCUBOOT_RUN_SLOW_TESTS to cover the full set on main.
+# MCUBOOT_RUN_SLOW_TESTS to cover the full set on main.  A pull
+# request that touches the upgrade and swap code (see the `slow`
+# filter below) also runs the full set.
 on:
   push:
     branches:
@@ -24,6 +26,7 @@ jobs:
     name: Validation gate
     outputs:
       run: ${{ steps.decide.outputs.run }}
+      slow: ${{ steps.decide.outputs.slow }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
@@ -37,6 +40,20 @@ jobs:
               - 'testplan/**'
               - 'samples/**'
               - 'scripts/**'
+            # Changes here can break power-fail recovery in ways
+            # only the slow permutation tests catch, so a pull
+            # request touching them runs the full set.
+            slow:
+              - 'boot/bootutil/src/swap_*'
+              - 'boot/bootutil/src/loader.c'
+              - 'boot/bootutil/src/bootutil_loader.*'
+              - 'boot/bootutil/src/bootutil_misc.*'
+              - 'boot/bootutil/src/bootutil_area.*'
+              - 'boot/bootutil/src/bootutil_public.c'
+              - 'boot/bootutil/src/bootutil_priv.h'
+              - 'sim/src/image.rs'
+              - 'sim/simflash/**'
+              - '.github/workflows/sim.yaml'
       # Only pull requests are filtered by path.  Pushes, the daily
       # schedule and manual runs on main have nothing to compare
       # against, so they always run.
@@ -47,6 +64,14 @@ jobs:
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "${{ github.event_name }}" == "schedule" \
+             || "${{ github.event_name }}" == "workflow_dispatch" \
+             || ( "${{ github.event_name }}" == "pull_request" \
+                  && "${{ steps.filter.outputs.slow }}" == "true" ) ]]; then
+            echo "slow=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "slow=false" >> "$GITHUB_OUTPUT"
           fi
   environment:
     needs: gate
@@ -149,7 +174,7 @@ jobs:
       run: |
         ./ci/sim_install.sh
     - name: Enable slow tests
-      if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+      if: ${{ needs.gate.outputs.slow == 'true' }}
       run: |
         echo "MCUBOOT_RUN_SLOW_TESTS=1" >> "$GITHUB_ENV"
     - name: Sim run
