@@ -36,7 +36,11 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #endif
 
 #if defined(CONFIG_BOOT_SERIAL_BOOT_MODE) || defined(CONFIG_BOOT_FIRMWARE_LOADER_BOOT_MODE)
+#if __has_include(<zephyr/bootmode.h>)
+#include <zephyr/bootmode.h>
+#else
 #include <zephyr/retention/bootmode.h>
+#endif
 #endif
 
 /* Validate serial recovery configuration */
