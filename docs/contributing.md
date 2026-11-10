@@ -96,9 +96,12 @@ Additional arguments will be patterns to match the tests cases that can be run.
 The power-fail permutation tests, which interrupt an upgrade at every
 flash operation, take most of the run time, so they are skipped by
 default.  Set `MCUBOOT_RUN_SLOW_TESTS` in the environment to run them.
-CI skips them for pull requests and pushes to main, and runs the full
-set daily on main.  A full run can also be started by hand from the Actions tab
-("Sim", "Run workflow").
+CI skips them for pushes to main and for most pull requests, and runs
+the full set daily on main.  A pull request that changes the upgrade
+and swap code, or the simulator's flash model and test driver, runs
+the full set too; the `slow` filter in `.github/workflows/sim.yaml`
+lists the paths.  A full run can also be started by hand from the
+Actions tab ("Sim", "Run workflow").
 
 To run one of these tests in the debugger, you can do something like:
 
