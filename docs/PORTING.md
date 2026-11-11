@@ -317,13 +317,13 @@ to configure the hardware before jumping to the application.
 #### Hardware crypto region setup
 
 After `boot_go` returns, the platform's main bootloader function must
-configure the hardware crypto regions for each image using the key and IV
-stored in `boot_rsp`. A typical sequence is:
+configure the hardware crypto region for the booted image using the key and
+IV stored in `boot_rsp`. A typical sequence is:
 
-1. For each image, read `rsp->br_xip_key` and `rsp->br_xip_iv`.
-2. Program the hardware crypto engine's per-region registers (base address,
+1. Read `rsp->br_xip_key` and `rsp->br_xip_iv`.
+2. Program the hardware crypto engine's region registers (base address,
    size, key, IV).
-3. Enable the crypto regions permanently so that subsequent code fetches from
+3. Enable the crypto region permanently so that subsequent code fetches from
    external flash are decrypted transparently.
 4. **Zeroize `rsp->br_xip_key` and `rsp->br_xip_iv` immediately after the
    hardware registers have been programmed.** The library-internal copy in

@@ -314,8 +314,8 @@ exclusive with `BOOT_ENCRYPT_IMAGE` (standard software encryption).
    identical regardless of which slot it resides in.
 
 6. **Post-boot hardware setup** -- After `boot_go()` returns, the application
-   startup code configures hardware crypto regions for each image. The AES key
-   and IV are available in the `boot_rsp` structure:
+   startup code configures the hardware crypto region for the booted image. The
+   AES key and IV are available in the `boot_rsp` structure:
 
    ```c
    struct boot_rsp rsp;
@@ -430,16 +430,16 @@ A platform using XIP encryption must provide the following hook functions:
   must configure the hardware crypto engine (e.g., SMIF crypto regions) using
   the key material from `boot_rsp` before jumping to the application image.
 
-### Multi-key model
+### Single-image model
 
-When multiple images are used (`MCUBOOT_IMAGE_NUMBER > 1`), each image carries
-its own independent AES key and IV in its ECIES TLV. The hardware crypto engine
-must support multiple decryption regions -- one per image -- to allow
-simultaneous XIP execution from different flash areas.
-
-The `boot_rsp` structure carries key material for the current image. The
-platform's startup code is responsible for collecting keys from all images and
-configuring a separate crypto region for each one.
+Only one image can be XIP-encrypted per boot. `fill_rsp()` in `loader.c`
+selects a single image, `struct boot_rsp` carries exactly one
+`br_xip_key[4]` / `br_xip_iv[4]` pair, and `context_boot_go()` calls
+`xip_enc_clear_keys()` immediately after populating that pair, which
+zeroizes the entire per-image key store. By the time `boot_go` returns,
+the only key material left in RAM is the single key/IV pair inside
+`boot_rsp`, so the platform's startup code cannot obtain another image's
+key and cannot configure additional crypto regions for other slots.
 
 ### Security considerations
 
