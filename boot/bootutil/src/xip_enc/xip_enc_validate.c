@@ -4,8 +4,8 @@
  * XIP Encryption Library - Default Image Validation Hook
  *
  * Provides a __weak boot_image_check_hook() that performs:
- *   1. SHA-256 hash over raw ciphertext (no decryption)
- *   2. ECDSA-P256 signature verification (mandatory for encrypted images)
+ *   1. Image hash (SHA-256 or SHA-384, as configured) over raw ciphertext
+ *   2. ECDSA signature verification (mandatory for encrypted images)
  *   3. ECIES-P256 key unwrap (via xip_enc_ecies_unwrap)
  *
  * Platforms may override with a strong implementation for FIH hardening
@@ -31,14 +31,14 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot);
 #include "xip_enc.h"
 
 /*
- * Compute SHA-256 hash over raw flash: header + ciphertext + protected TLVs.
+ * Compute the image hash over raw flash: header + ciphertext + protected TLVs.
  * No decryption -- hash covers the encrypted payload as-is.
  *
  * @param fap       flash area to read from
  * @param hdr       image header (already read from base_off)
  * @param base_off  flash area offset where the image starts (0 for primary,
  *                  non-zero for secondary in swap-offset mode)
- * @param hash_out  32-byte output buffer
+ * @param hash_out  IMAGE_HASH_SIZE-byte output buffer
  */
 static int
 xip_img_hash(const struct flash_area *fap, const struct image_header *hdr,
@@ -84,8 +84,8 @@ xip_img_hash(const struct flash_area *fap, const struct image_header *hdr,
  * Default (weak) boot_image_check_hook for XIP encrypted images.
  *
  * Validates encrypted images by:
- *   1. SHA-256 hash over raw ciphertext (no decryption)
- *   2. ECDSA-P256 signature verification (mandatory)
+ *   1. Image hash (SHA-256 or SHA-384, as configured) over raw ciphertext
+ *   2. ECDSA signature verification (mandatory)
  *   3. ECIES-P256 key unwrap for hardware crypto setup
  *
  * Non-encrypted images are deferred to upstream (FIH_BOOT_HOOK_REGULAR).
@@ -174,7 +174,7 @@ fih_ret boot_image_check_hook(struct boot_loader_state *state,
     /*
      * Step 1: Hash raw ciphertext (no decryption)
      */
-    uint8_t hash[32];
+    uint8_t hash[IMAGE_HASH_SIZE];
     rc = xip_img_hash(fap, &hdr, base_off, hash);
     if (rc != 0) {
         flash_area_close(fap);
@@ -182,33 +182,33 @@ fih_ret boot_image_check_hook(struct boot_loader_state *state,
     }
 
     /*
-     * Step 2: Verify SHA-256 against TLV
+     * Step 2: Verify the image hash against its TLV
      */
     {
         struct image_tlv_iter it;
         uint32_t tlv_off;
         uint16_t tlv_len;
-        uint8_t tlv_hash[32];
+        uint8_t tlv_hash[IMAGE_HASH_SIZE];
 
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
         it.start_off = base_off;
 #endif
-        rc = bootutil_tlv_iter_begin(&it, &hdr, fap, IMAGE_TLV_SHA256, false);
+        rc = bootutil_tlv_iter_begin(&it, &hdr, fap, EXPECTED_HASH_TLV, false);
         if (rc != 0) {
             flash_area_close(fap);
             FIH_RET(fih_rc);
         }
         rc = bootutil_tlv_iter_next(&it, &tlv_off, &tlv_len, NULL);
-        if (rc != 0 || tlv_len != 32) {
+        if (rc != 0 || tlv_len != IMAGE_HASH_SIZE) {
             flash_area_close(fap);
             FIH_RET(fih_rc);
         }
-        rc = flash_area_read(fap, tlv_off, tlv_hash, 32);
+        rc = flash_area_read(fap, tlv_off, tlv_hash, IMAGE_HASH_SIZE);
         if (rc != 0) {
             flash_area_close(fap);
             FIH_RET(fih_rc);
         }
-        if (xip_enc_ct_compare(hash, tlv_hash, 32) != 0) {
+        if (xip_enc_ct_compare(hash, tlv_hash, IMAGE_HASH_SIZE) != 0) {
             flash_area_close(fap);
             FIH_RET(fih_rc);
         }

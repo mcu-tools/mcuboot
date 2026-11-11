@@ -274,11 +274,11 @@ Called by MCUboot during image validation in place of the default validation
 logic. A default (weak) implementation is provided by the XIP encryption
 library (`xip_enc_validate.c`) that performs:
 
-1. Compute SHA-256 hash over raw flash content (header + ciphertext +
-   protected TLVs). **No decryption occurs** --- the hash covers the
-   encrypted payload exactly as stored in flash.
-2. Verify the SHA-256 hash against `IMAGE_TLV_SHA256`.
-3. Verify the ECDSA-P256 signature against the hash (mandatory for
+1. Compute the image hash (SHA-256 or SHA-384, as configured) over raw flash
+   content (header + ciphertext + protected TLVs). **No decryption occurs**
+   --- the hash covers the encrypted payload exactly as stored in flash.
+2. Verify the hash against its TLV (`IMAGE_TLV_SHA256` or `IMAGE_TLV_SHA384`).
+3. Verify the ECDSA signature against the hash (mandatory for
    encrypted images --- unsigned encrypted images are rejected).
 4. Perform ECIES-P256 key unwrap from `IMAGE_TLV_ENC_EC256` to extract
    the AES key and IV for later hardware crypto setup.
@@ -356,7 +356,7 @@ This step is platform-specific and lives outside of MCUboot's common code.
   later hardware crypto setup.
 
 * **Ciphertext signing** --- images are encrypted before signing by `imgtool`
-  (or `edgeprotecttools`). The SHA-256 and ECDSA signature in the image TLVs
+  (or `edgeprotecttools`). The image hash and ECDSA signature in the image TLVs
   cover `header + ciphertext + protected TLVs`. This is the reverse of
   standard MCUboot encryption (which signs plaintext, then encrypts).
 

@@ -219,7 +219,7 @@ important for any security analysis of a system that uses this mode:
   hands the AES key/IV to the hardware. There is no software code path that
   produces plaintext of the image.
 
-* **Signatures cover the encrypted image (ciphertext).** The SHA-256 hash and
+* **Signatures cover the encrypted image (ciphertext).** The image hash and
   ECDSA signature in the image TLVs are computed over the exact bytes that
   reside in flash (header + ciphertext + protected TLVs). This is the
   opposite of standard MCUboot encryption, where the signature is over the
@@ -292,7 +292,7 @@ exclusive with `BOOT_ENCRYPT_IMAGE` (standard software encryption).
    12 bytes of the HKDF-derived `br_xip_iv`. The counter is not slot-dependent;
    both the primary and secondary slots store identical ciphertext.
 
-2. **Ciphertext signing** -- The SHA-256 hash and ECDSA signature are computed
+2. **Ciphertext signing** -- The image hash and ECDSA signature are computed
    over the encrypted image (header + ciphertext + protected TLVs). The
    bootloader never performs software decryption during validation. Validating
    over ciphertext means the signature covers the exact bytes that reside in
@@ -327,9 +327,10 @@ exclusive with `BOOT_ENCRYPT_IMAGE` (standard software encryption).
 
 7. **Bootloader validation flow** -- The `boot_image_check_hook()` validates
    encrypted XIP images without software decryption:
-   1. Compute SHA-256 over raw flash (header + ciphertext + protected TLVs)
-   2. Verify hash against `IMAGE_TLV_SHA256`
-   3. Verify mandatory ECDSA-P256 signature against `IMAGE_TLV_ECDSA_SIG`
+   1. Compute the image hash (SHA-256 or SHA-384, as configured) over raw
+      flash (header + ciphertext + protected TLVs)
+   2. Verify hash against `IMAGE_TLV_SHA256` or `IMAGE_TLV_SHA384`
+   3. Verify mandatory ECDSA signature against `IMAGE_TLV_ECDSA_SIG`
    4. ECIES-P256 key unwrap from `IMAGE_TLV_ENC_EC256` to extract AES key/IV
 
    The library-internal copy of the keys is held in RAM only for the
