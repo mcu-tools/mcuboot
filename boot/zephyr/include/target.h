@@ -39,9 +39,33 @@
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
 
-#if (MCUBOOT_IMAGE_NUMBER == 2) && (!(PARTITION_EXISTS(slot2_partition)) || \
+#if (MCUBOOT_IMAGE_NUMBER > 1) && (!(PARTITION_EXISTS(slot2_partition)) || \
                                      !(PARTITION_EXISTS(slot3_partition)))
 #error "Target support is incomplete; cannot build mcuboot."
+#if (MCUBOOT_IMAGE_NUMBER > 2) && (!(PARTITION_EXISTS(slot4_partition)) || \
+                                     !(PARTITION_EXISTS(slot5_partition)))
+#error "Target support is incomplete; cannot build mcuboot."
+#if (MCUBOOT_IMAGE_NUMBER > 3) && (!(PARTITION_EXISTS(slot6_partition)) || \
+                                     !(PARTITION_EXISTS(slot7_partition)))
+#error "Target support is incomplete; cannot build mcuboot."
+#if (MCUBOOT_IMAGE_NUMBER > 4) && (!(PARTITION_EXISTS(slot8_partition)) || \
+                                     !(PARTITION_EXISTS(slot9_partition)))
+#error "Target support is incomplete; cannot build mcuboot."
+#if (MCUBOOT_IMAGE_NUMBER > 5) && (!(PARTITION_EXISTS(slot10_partition)) || \
+                                     !(PARTITION_EXISTS(slot11_partition)))
+#error "Target support is incomplete; cannot build mcuboot."
+#if (MCUBOOT_IMAGE_NUMBER > 6) && (!(PARTITION_EXISTS(slot12_partition)) || \
+                                     !(PARTITION_EXISTS(slot13_partition)))
+#error "Target support is incomplete; cannot build mcuboot."
+#if (MCUBOOT_IMAGE_NUMBER > 7) && (!(PARTITION_EXISTS(slot14_partition)) || \
+                                     !(PARTITION_EXISTS(slot15_partition)))
+#error "Target support is incomplete; cannot build mcuboot."
+#endif
+#endif
+#endif
+#endif
+#endif
+#endif
 #endif
 
 #endif /* H_TARGETS_TARGET_ */
