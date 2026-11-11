@@ -380,8 +380,7 @@
 #define MCUBOOT_SERIAL_RECOVERY
 #endif
 
-#if (defined(CONFIG_BOOT_USB_DFU_WAIT) || \
-     defined(CONFIG_BOOT_USB_DFU_GPIO))
+#ifdef CONFIG_BOOT_USB_DFU
 #define MCUBOOT_USB_DFU
 #endif
 
