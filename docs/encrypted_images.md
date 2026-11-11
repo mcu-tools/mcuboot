@@ -407,8 +407,7 @@ A platform using XIP encryption must provide the following hook functions:
   and ECIES TLV processing. Returns `FIH_SUCCESS` if the image is valid,
   `FIH_FAILURE` otherwise. This replaces the standard `MCUboot` validation path.
   The `state` pointer provides access to boot loader context (slot flash areas,
-  secondary offset for swap-offset mode, max image size); it may be `NULL` when
-  called outside the normal boot flow (e.g. serial recovery).
+  secondary offset for swap-offset mode, max image size); it is never `NULL`.
 
   ```c
   fih_ret boot_image_check_hook(struct boot_loader_state *state,

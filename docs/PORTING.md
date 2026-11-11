@@ -268,8 +268,7 @@ fih_ret boot_image_check_hook(struct boot_loader_state *state,
 ```
 
 The `state` pointer provides access to boot loader context (slot flash areas,
-secondary offset, max image size).  It may be `NULL` when called outside the
-normal boot flow (e.g. serial recovery); implementations must handle this case.
+secondary offset, max image size).  It is never `NULL`.
 
 Called by MCUboot during image validation in place of the default validation
 logic. A default (weak) implementation is provided by the XIP encryption

@@ -139,8 +139,7 @@ int boot_read_image_header_hook(int img_index, int slot,
  * This Hook may be used to overide image validation procedure or doing
  * a custom action before.
  *
- * @param state boot loader state (may be NULL when called outside
- *              the normal boot flow, e.g. serial recovery)
+ * @param state boot loader state, never NULL
  * @param img_index the index of the image pair
  * @param slot slot number
  *
