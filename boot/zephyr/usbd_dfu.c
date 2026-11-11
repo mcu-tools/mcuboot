@@ -12,8 +12,11 @@
 #include "bootutil/bootutil_log.h"
 #include "bootutil/bootutil_public.h"
 #include "usbd_dfu.h"
+#include "watchdog.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
+
+#define BOOT_USB_DFU_FEED_MS 100
 
 USBD_DEVICE_DEFINE(boot_dfu_usbd,
 		   DEVICE_DT_GET(DT_NODELABEL(zephyr_udc0)),
@@ -197,9 +200,42 @@ struct usbd_context *boot_usb_dfu_get_context(void)
 	return &boot_dfu_usbd;
 }
 
+#ifdef CONFIG_BOOT_WATCHDOG_FEED
+/* Wait for the download in slices, feeding the watchdog in between, as
+ * serial recovery does: the wait can be K_FOREVER.
+ */
+static int boot_dfu_wait_complete(k_timeout_t delay)
+{
+	const k_timepoint_t end = sys_timepoint_calc(delay);
+
+	while (true) {
+		k_timepoint_t slice = sys_timepoint_calc(K_MSEC(BOOT_USB_DFU_FEED_MS));
+
+		if (sys_timepoint_cmp(end, slice) < 0) {
+			slice = end;
+		}
+
+		if (k_sem_take(&boot_dfu_complete, sys_timepoint_timeout(slice)) == 0) {
+			return 0;
+		}
+
+		if (sys_timepoint_expired(end)) {
+			return -EAGAIN;
+		}
+
+		MCUBOOT_WATCHDOG_FEED();
+	}
+}
+#else
+static int boot_dfu_wait_complete(k_timeout_t delay)
+{
+	return k_sem_take(&boot_dfu_complete, delay);
+}
+#endif
+
 void boot_usb_dfu_wait(k_timeout_t delay)
 {
-	if (k_sem_take(&boot_dfu_complete, delay) != 0) {
+	if (boot_dfu_wait_complete(delay) != 0) {
 		return;
 	}
 
