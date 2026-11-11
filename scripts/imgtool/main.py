@@ -578,10 +578,13 @@ def sign(key, public_key_format, align, version, pad_sig, header_size,
         raise click.UsageError(
             "--xip-base-address can only be used with --encrypt-xip")
 
+    # A P-384 signature with an ECIES-P256 envelope is valid: the bootloader
+    # picks the envelope by its own configuration, not by the signature curve.
     if enckey and key and ((isinstance(key, keys.ECDSA256P1) and
          not isinstance(enckey, keys.ECDSA256P1Public))
        or (isinstance(key, keys.ECDSA384P1) and
-           not isinstance(enckey, keys.ECDSA384P1Public))
+           not isinstance(enckey, (keys.ECDSA384P1Public,
+                                   keys.ECDSA256P1Public)))
             or (isinstance(key, keys.RSA) and
                 not isinstance(enckey, keys.RSAPublic))):
         # FIXME

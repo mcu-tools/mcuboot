@@ -345,11 +345,13 @@ exclusive with `BOOT_ENCRYPT_IMAGE` (standard software encryption).
    hash and signature:
    1. Encrypt image body with AES-CTR (edgeprotecttools format)
    2. Append protected TLVs (not encrypted)
-   3. Compute SHA-256 over header + ciphertext + protected TLVs
-   4. Sign the hash with ECDSA-P256 (same as for non-encrypted images)
-   5. Add unprotected TLVs: SHA-256, ECDSA signature, key hash, ECIES envelope
+   3. Compute the image hash (SHA-256, or SHA-384 with a P-384 key) over
+      header + ciphertext + protected TLVs
+   4. Sign the hash with the ECDSA key (same as for non-encrypted images)
+   5. Add unprotected TLVs: image hash, ECDSA signature, key hash, ECIES envelope
 
-   A signing key (`--key`) is mandatory when using `--encrypt-xip`.
+   A signing key (`--key`) is mandatory when using `--encrypt-xip`. It may be
+   an ECDSA P-256 or P-384 key; the encryption key is always EC256.
 
    Example command:
    ```
