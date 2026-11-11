@@ -3507,8 +3507,9 @@ impl ImageData {
     /// For XIP encryption, both slots contain encrypted data.
     fn find(&self, slot: usize) -> &Vec<u8> {
         if Caps::EncXipEc256.present() {
-            // XIP: both slots have encrypted image
-            return self.cipher.as_ref().expect("Invalid image");
+            // XIP: both slots have encrypted image. install_no_image() has
+            // no ciphertext; its empty plain buffer matches anything.
+            return self.cipher.as_ref().unwrap_or(&self.plain);
         }
         match (enc_present(), slot) {
             (false, _) => &self.plain,
