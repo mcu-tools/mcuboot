@@ -151,15 +151,14 @@ fih_ret boot_image_check_hook(struct boot_loader_state *state,
                               int img_index, int slot);
 
 #if defined(MCUBOOT_ENC_IMAGES_XIP)
-/** Hook for populating XIP encryption key/IV in boot response.
+/** Hook for populating XIP encryption keys/IVs in boot response.
  *
- * Called after fill_rsp() to copy the image's encryption key and IV
- * into boot_rsp for post-boot hardware crypto region setup.
+ * Called after fill_rsp() to copy the encryption key and IV of every
+ * validated image into boot_rsp for post-boot hardware crypto region setup.
  *
- * @param img_index the index of the current image
  * @param rsp the boot response struct to populate
  */
-void boot_xip_populate_rsp(int img_index, struct boot_rsp *rsp);
+void boot_xip_populate_rsp(struct boot_rsp *rsp);
 #endif
 
 /** Hook for implement image update

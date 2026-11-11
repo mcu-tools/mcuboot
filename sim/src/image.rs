@@ -2020,6 +2020,71 @@ impl Images {
         fails > 0
     }
 
+    /// Boot once and check that boot_rsp carries a working key/IV for every
+    /// image: decrypting each primary slot payload with the key/IV reported
+    /// for that image must give back the plaintext. Needs validate-primary-slot
+    /// so every image is validated, and its key unwrapped, on a normal boot.
+    #[cfg(feature = "enc-xip-ec256")]
+    pub fn run_xip_rsp_keys(&self) -> bool {
+        if !Caps::EncXipEc256.present() || !Caps::ValidatePrimarySlot.present() {
+            return false;
+        }
+
+        const HDR_SIZE: usize = 32;
+        let mut flash = self.flash.clone();
+        let res = c::boot_go(&mut flash, &self.areadesc, None, None, false);
+        let resp = match res.resp() {
+            Some(resp) if res.success() => resp,
+            _ => {
+                error!("XIP rsp keys: boot failed");
+                return true;
+            }
+        };
+
+        let mut fails = 0;
+        if resp.br_xip_valid >> self.images.len() != 0 {
+            error!("XIP rsp keys: unexpected valid bits {:#x}", resp.br_xip_valid);
+            fails += 1;
+        }
+
+        for (i, image) in self.images.iter().enumerate() {
+            if resp.br_xip_valid & (1 << i) == 0 {
+                error!("XIP rsp keys: no key for image {}", i);
+                fails += 1;
+                continue;
+            }
+
+            let key: Vec<u8> = resp.br_xip_key[i].iter().flat_map(|w| w.to_ne_bytes()).collect();
+            let iv: Vec<u8> = resp.br_xip_iv[i].iter().flat_map(|w| w.to_ne_bytes()).collect();
+            let plain = &image.primaries.plain;
+            let cipher = image.primaries.cipher.as_ref()
+                .expect("XIP test requires encrypted images");
+            let img_size = u32::from_le_bytes([plain[12], plain[13], plain[14], plain[15]]) as usize;
+            let payload = HDR_SIZE..HDR_SIZE + img_size;
+
+            let block_cipher = Aes128::new(GenericArray::from_slice(&key));
+            let mut ctr = image.slots[0].base_off as u32 + HDR_SIZE as u32;
+            let mut decrypted = cipher[payload.clone()].to_vec();
+            for chunk in decrypted.chunks_mut(16) {
+                let mut block = GenericArray::clone_from_slice(&[0u8; 16]);
+                block[..4].copy_from_slice(&ctr.to_le_bytes());
+                block[4..].copy_from_slice(&iv[..12]);
+                block_cipher.encrypt_block(&mut block);
+                for (b, k) in chunk.iter_mut().zip(block.iter()) {
+                    *b ^= k;
+                }
+                ctr += 16;
+            }
+
+            if decrypted[..] != plain[payload] {
+                error!("XIP rsp keys: key/IV for image {} does not decrypt its slot", i);
+                fails += 1;
+            }
+        }
+
+        fails > 0
+    }
+
     /// Verify that the SHA-256 hash stored in the image TLV is computed
     /// over ciphertext (header + encrypted payload + protected TLVs),
     /// NOT over plaintext.

@@ -2143,7 +2143,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     fill_rsp(state, rsp);
 
 #if defined(MCUBOOT_ENC_IMAGES_XIP)
-    boot_xip_populate_rsp(BOOT_CURR_IMG(state), rsp);
+    boot_xip_populate_rsp(rsp);
     xip_enc_clear_keys();
 #endif
 
@@ -2647,7 +2647,7 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
     fill_rsp(state, rsp);
 
 #if defined(MCUBOOT_ENC_IMAGES_XIP)
-    boot_xip_populate_rsp(BOOT_CURR_IMG(state), rsp);
+    boot_xip_populate_rsp(rsp);
     xip_enc_clear_keys();
 #endif
 

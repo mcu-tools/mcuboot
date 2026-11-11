@@ -314,15 +314,17 @@ exclusive with `BOOT_ENCRYPT_IMAGE` (standard software encryption).
    identical regardless of which slot it resides in.
 
 6. **Post-boot hardware setup** -- After `boot_go()` returns, the application
-   startup code configures the hardware crypto region for the booted image. The
-   AES key and IV are available in the `boot_rsp` structure:
+   startup code configures one hardware crypto region per encrypted image.
+   The AES key and IV of each image are available in the `boot_rsp`
+   structure, indexed by image number:
 
    ```c
    struct boot_rsp rsp;
    /* ... boot_go(&rsp) ... */
 
-   /* rsp.br_xip_key[4] -- 16-byte AES-128 key */
-   /* rsp.br_xip_iv[4]  -- 16-byte IV/nonce     */
+   /* rsp.br_xip_valid        -- bit N set when image N has a key      */
+   /* rsp.br_xip_key[N][4]    -- 16-byte AES-128 key of image N        */
+   /* rsp.br_xip_iv[N][4]     -- 16-byte IV/nonce of image N           */
    ```
 
 7. **Bootloader validation flow** -- The `boot_image_check_hook()` validates
@@ -334,11 +336,11 @@ exclusive with `BOOT_ENCRYPT_IMAGE` (standard software encryption).
    4. ECIES-P256 key unwrap from `IMAGE_TLV_ENC_EC256` to extract AES key/IV
 
    The library-internal copy of the keys is held in RAM only for the
-   duration of boot. After validation, MCUboot copies the per-image key/IV
-   into `rsp->br_xip_key` / `rsp->br_xip_iv` and then immediately wipes
-   the library-internal storage via `xip_enc_clear_keys()`. The platform
-   is responsible for zeroizing the `boot_rsp` fields after programming
-   the hardware crypto regions (see `docs/PORTING.md`).
+   duration of boot. After validation, MCUboot copies the key/IV of every
+   validated image into `rsp->br_xip_key[]` / `rsp->br_xip_iv[]` and then
+   immediately wipes the library-internal storage via `xip_enc_clear_keys()`.
+   The platform is responsible for zeroizing the `boot_rsp` fields after
+   programming the hardware crypto regions (see `docs/PORTING.md`).
 
 8. **imgtool image creation** -- The `imgtool sign --encrypt-xip` command
    creates XIP images by encrypting the payload **before** computing the
@@ -417,29 +419,31 @@ A platform using XIP encryption must provide the following hook functions:
                                 int img_index, int slot);
   ```
 
-* **`boot_xip_populate_rsp(img_index, rsp)`** -- Called after successful
-  validation to copy the extracted AES key and IV into the `boot_rsp`
+* **`boot_xip_populate_rsp(rsp)`** -- Called after successful validation to
+  copy the AES key and IV of every validated image into the `boot_rsp`
   structure. The application uses these values to configure hardware crypto
   regions.
 
   ```c
-  void boot_xip_populate_rsp(int img_index, struct boot_rsp *rsp);
+  void boot_xip_populate_rsp(struct boot_rsp *rsp);
   ```
 
 * **Hardware crypto setup** -- After `boot_go()` returns, the application
   must configure the hardware crypto engine (e.g., SMIF crypto regions) using
   the key material from `boot_rsp` before jumping to the application image.
 
-### Single-image model
+### Multi-image
 
-Only one image can be XIP-encrypted per boot. `fill_rsp()` in `loader.c`
-selects a single image, `struct boot_rsp` carries exactly one
-`br_xip_key[4]` / `br_xip_iv[4]` pair, and `context_boot_go()` calls
-`xip_enc_clear_keys()` immediately after populating that pair, which
-zeroizes the entire per-image key store. By the time `boot_go` returns,
-the only key material left in RAM is the single key/IV pair inside
-`boot_rsp`, so the platform's startup code cannot obtain another image's
-key and cannot configure additional crypto regions for other slots.
+Keys are kept per image. Every encrypted image validated during the boot
+gets its key/IV in `rsp->br_xip_key[N]` / `rsp->br_xip_iv[N]` and its bit
+set in `rsp->br_xip_valid`, where `N` is the image number. The platform
+programs one crypto region (or set of regions) per valid entry, covering
+that image's primary slot. MCUboot does not know the crypto engine, so how
+regions are allocated is left to the platform.
+
+In swap and overwrite-only modes, define `MCUBOOT_VALIDATE_PRIMARY_SLOT`.
+The key is unwrapped when an image is validated; without primary-slot
+validation an image that was not upgraded during this boot has no key.
 
 ### Security considerations
 

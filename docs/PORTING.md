@@ -301,35 +301,40 @@ for ECIES unwrap).
 #### Populating the boot response with key material
 
 ```c
-void boot_xip_populate_rsp(int img_index, struct boot_rsp *rsp);
+void boot_xip_populate_rsp(struct boot_rsp *rsp);
 ```
 
-Called by MCUboot after `fill_rsp()` completes. The platform implementation
-copies the encryption key and initialisation vector (IV) that were extracted
-during validation into the boot response structure:
+Called by MCUboot after `fill_rsp()` completes. It copies the encryption key
+and initialisation vector (IV) of every image validated during this boot
+into the boot response structure, indexed by image number:
 
-* `rsp->br_xip_key` --- the AES key used by the hardware crypto region.
-* `rsp->br_xip_iv` --- the IV / nonce used by the hardware crypto region.
+* `rsp->br_xip_key[N]` --- the AES key of image `N`.
+* `rsp->br_xip_iv[N]` --- the IV / nonce of image `N`.
+* `rsp->br_xip_valid` --- bit `N` is set when entry `N` holds a key.
 
 These fields are consumed later by the platform's main bootloader function
 to configure the hardware before jumping to the application.
 
+In swap and overwrite-only modes, define `MCUBOOT_VALIDATE_PRIMARY_SLOT` so
+that every image is validated, and its key unwrapped, on every boot.
+
 #### Hardware crypto region setup
 
 After `boot_go` returns, the platform's main bootloader function must
-configure the hardware crypto region for the booted image using the key and
-IV stored in `boot_rsp`. A typical sequence is:
+configure the hardware crypto regions using the keys and IVs stored in
+`boot_rsp`. A typical sequence is:
 
-1. Read `rsp->br_xip_key` and `rsp->br_xip_iv`.
+1. For each image `N` with bit `N` set in `rsp->br_xip_valid`, read
+   `rsp->br_xip_key[N]` and `rsp->br_xip_iv[N]`.
 2. Program the hardware crypto engine's region registers (base address,
-   size, key, IV).
-3. Enable the crypto region permanently so that subsequent code fetches from
+   size, key, IV) so that the region(s) cover image `N`'s primary slot.
+3. Enable the crypto regions permanently so that subsequent code fetches from
    external flash are decrypted transparently.
 4. **Zeroize `rsp->br_xip_key` and `rsp->br_xip_iv` immediately after the
    hardware registers have been programmed.** The library-internal copy in
    `xip_enc_keys.c` is cleared by MCUboot before `boot_go()` returns, so
    the `boot_rsp` fields hold the only remaining copy of the per-image
-   key/IV. Use a volatile-pointer zero loop (or platform secure-erase
+   keys/IVs. Use a volatile-pointer zero loop (or platform secure-erase
    primitive) to defeat dead-store elimination.
 
 This step is platform-specific and lives outside of MCUboot's common code.

@@ -317,6 +317,13 @@ sim_test!(xip_enc_ctr_format_matches_edgeprotecttools,
           make_no_upgrade_image(&NO_DEPS, ImageManipulation::None),
           run_xip_ctr_format_test());
 
+// boot_rsp must carry a working key/IV for every image (one bit per image in
+// br_xip_valid), so the platform can program one crypto region per image.
+#[cfg(feature = "enc-xip-ec256")]
+sim_test!(xip_enc_rsp_has_key_per_image,
+          make_no_upgrade_image(&NO_DEPS, ImageManipulation::None),
+          run_xip_rsp_keys());
+
 /// Verify that the SHA-256 hash stored in the image TLV is computed over
 /// ciphertext (header + encrypted payload), NOT over plaintext. This
 /// explicitly confirms the encrypt-then-sign model.

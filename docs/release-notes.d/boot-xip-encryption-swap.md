@@ -5,5 +5,5 @@
 - Add mandatory signature verification over raw ciphertext before key
   extraction (using extended ECIES-P256 TLV with HKDF salt diversifier).
 - Add `boot_image_check_hook()` default implementation for XIP encrypted images
-  and `boot_xip_populate_rsp()` to pass derived AES key and nonce material to
-  application startup code via `boot_rsp`.
+  and `boot_xip_populate_rsp()` to pass the derived AES key and nonce of each
+  image to application startup code via `boot_rsp`.

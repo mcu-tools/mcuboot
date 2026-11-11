@@ -47,7 +47,7 @@ static inline int xip_enc_ct_compare(const uint8_t *a, const uint8_t *b,
 
 #define XIP_ENC_KEY_SIZE   16u
 #define XIP_ENC_IV_SIZE    16u
-#define XIP_ENC_MAX_IMAGES 3u
+#define XIP_ENC_MAX_IMAGES ((uint32_t)BOOT_IMAGE_NUMBER)
 
 /*
  * boot_image_check_hook() is declared in bootutil/boot_hooks.h (upstream).
@@ -56,13 +56,13 @@ static inline int xip_enc_ct_compare(const uint8_t *a, const uint8_t *b,
  */
 
 /**
- * Called by MCUBoot after fill_rsp() to populate xip_key/xip_iv in boot_rsp.
- * Copies key/IV from library-internal storage for the specified image.
+ * Called by MCUBoot after fill_rsp() to populate br_xip_key/br_xip_iv in
+ * boot_rsp. Copies the key/IV of every image validated during this boot
+ * from library-internal storage and sets its bit in br_xip_valid.
  *
- * @param img_index  Image index (passed via BOOT_CURR_IMG from MCUBoot)
  * @param rsp        Boot response to populate
  */
-void boot_xip_populate_rsp(int img_index, struct boot_rsp *rsp);
+void boot_xip_populate_rsp(struct boot_rsp *rsp);
 
 /**
  * Platform-provided: decrypt image payload using SMIF hardware.

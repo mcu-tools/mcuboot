@@ -101,9 +101,11 @@ pub fn boot_go(multiflash: &mut SimMultiFlash, areadesc: &AreaDesc,
         flash_dev_id: 0,
         image_off: 0,
         #[cfg(feature = "enc-xip-ec256")]
-        br_xip_key: [0u32; 4],
+        br_xip_key: [[0u32; 4]; api::BOOT_IMAGE_NUMBER],
         #[cfg(feature = "enc-xip-ec256")]
-        br_xip_iv: [0u32; 4],
+        br_xip_iv: [[0u32; 4]; api::BOOT_IMAGE_NUMBER],
+        #[cfg(feature = "enc-xip-ec256")]
+        br_xip_valid: 0,
     };
     let result: i32 = unsafe {
         let adesc = areadesc.get_c();

@@ -62,19 +62,29 @@ struct boot_rsp {
     uint32_t br_image_off;
 #if defined(MCUBOOT_ENC_IMAGES_XIP)
     /**
-     * AES-128 key for post-boot XIP hardware crypto setup.
+     * Per-image AES-128 keys for post-boot XIP hardware crypto setup,
+     * indexed by image number.
      *
      * Lifetime: populated by boot_xip_populate_rsp() just before boot_go()
      * returns to the caller; the library-internal copy in xip_enc_keys.c
      * is wiped immediately afterwards. These fields then hold the only
-     * remaining copy of the per-image key/IV and the platform/application
+     * remaining copy of the per-image keys/IVs and the platform/application
      * MUST zeroize them after programming the hardware crypto region(s).
      */
-    uint32_t br_xip_key[4];
-    /** IV/nonce for post-boot XIP hardware crypto setup. See br_xip_key. */
-    uint32_t br_xip_iv[4];
+    uint32_t br_xip_key[BOOT_IMAGE_NUMBER][4];
+    /** Per-image IVs/nonces for XIP hardware crypto setup. See br_xip_key. */
+    uint32_t br_xip_iv[BOOT_IMAGE_NUMBER][4];
+    /**
+     * Bit N is set when br_xip_key[N] / br_xip_iv[N] hold the key of an
+     * encrypted image N that was validated during this boot.
+     */
+    uint32_t br_xip_valid;
 #endif
 };
+
+#if defined(MCUBOOT_ENC_IMAGES_XIP)
+_Static_assert(BOOT_IMAGE_NUMBER <= 32, "br_xip_valid holds one bit per image");
+#endif
 
 /* This is not actually used by mcuboot's code but can be used by apps
  * when attempting to read/write a trailer.

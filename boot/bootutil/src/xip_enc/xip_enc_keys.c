@@ -47,12 +47,23 @@ void xip_enc_clear_keys(void)
     xip_enc_zeroize(xip_keys, sizeof(xip_keys));
 }
 
-void boot_xip_populate_rsp(int img_index, struct boot_rsp *rsp)
+void boot_xip_populate_rsp(struct boot_rsp *rsp)
 {
-    if ((rsp != NULL) && (img_index >= 0) && ((uint32_t)img_index < XIP_ENC_MAX_IMAGES)) {
-        (void)xip_enc_get_key(img_index,
-                              (uint8_t *)rsp->br_xip_key,
-                              (uint8_t *)rsp->br_xip_iv);
+    int i;
+
+    if (rsp == NULL) {
+        return;
+    }
+
+    xip_enc_zeroize(rsp->br_xip_key, sizeof(rsp->br_xip_key));
+    xip_enc_zeroize(rsp->br_xip_iv, sizeof(rsp->br_xip_iv));
+    rsp->br_xip_valid = 0;
+
+    for (i = 0; i < BOOT_IMAGE_NUMBER; i++) {
+        if (xip_enc_get_key(i, (uint8_t *)rsp->br_xip_key[i],
+                            (uint8_t *)rsp->br_xip_iv[i]) == 0) {
+            rsp->br_xip_valid |= 1u << i;
+        }
     }
 }
 
