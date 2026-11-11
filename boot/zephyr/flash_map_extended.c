@@ -142,9 +142,8 @@ int flash_area_id_from_multi_image_slot(int image_index, int slot)
 #if !defined(CONFIG_SINGLE_APPLICATION_SLOT)
     case 1: return FLASH_AREA_IMAGE_SECONDARY(image_index);
 #endif
+    default: return -EINVAL; /* flash_area_open will fail on that */
     }
-
-    return -EINVAL; /* flash_area_open will fail on that */
 }
 
 int flash_area_id_from_image_slot(int slot)
