@@ -33,7 +33,8 @@
  */
 #if !defined(FLASH_ALIGN) || \
     !(PARTITION_EXISTS(slot0_partition)) || \
-    !(PARTITION_EXISTS(slot1_partition) || CONFIG_SINGLE_APPLICATION_SLOT) || \
+    !(PARTITION_EXISTS(slot1_partition) || defined(CONFIG_SINGLE_APPLICATION_SLOT) || \
+      defined(CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD)) || \
     (defined(CONFIG_BOOT_SWAP_USING_SCRATCH) && !PARTITION_EXISTS(scratch_partition))
 #error "Target support is incomplete; cannot build mcuboot."
 #endif
