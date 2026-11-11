@@ -33,6 +33,7 @@
 
 #include "xip_enc.h"
 
+#include "bootutil/enc_key_public.h"
 #include "bootutil/sign_key.h"
 #include "bootutil/crypto/ecdh_p256.h"
 #include "bootutil/crypto/hmac_sha256.h"
@@ -44,6 +45,23 @@
 /* The encryption private key - declared in sign_key.h as bootutil_key,
  * but the encryption key is a separate symbol provided by the platform */
 extern const struct bootutil_key bootutil_enc_key;
+
+/* ecdh_p256.h declares fake_rng() for mbedTLS 3+, but its definition lives in
+ * encrypted.c, which is not built with XIP encryption. The value only feeds
+ * coordinate blinding and must not be all zeros. */
+#if defined(MCUBOOT_USE_MBED_TLS) && (MBEDTLS_VERSION_NUMBER >= 0x03000000)
+static int fake_rng(void *p_rng, unsigned char *output, size_t len)
+{
+    size_t i;
+
+    (void)p_rng;
+    for (i = 0; i < len; i++) {
+        output[i] = (unsigned char)i;
+    }
+
+    return 0;
+}
+#endif
 
 /* AES-128 key and block sizes */
 #define XIP_AES_KEY_SIZE    16u

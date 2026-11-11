@@ -584,7 +584,6 @@ fn main() {
     if enc_xip_ec256 {
         conf.conf.define("MCUBOOT_ENC_IMAGES_XIP", None);
         conf.conf.define("MCUBOOT_IMAGE_ACCESS_HOOKS", None);
-        conf.conf.define("MCUBOOT_ENCRYPT_EC256", None);
         conf.conf.define("MCUBOOT_USE_TINYCRYPT", None);
 
         // XIP encrypted images must be signed (ciphertext signing).
