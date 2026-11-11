@@ -590,7 +590,7 @@ config BOOT_VALIDATE_SLOT0_ONCE
 
 config BOOT_PREFER_SWAP_OFFSET
 	bool "Prefer the newer swap offset algorithm"
-	default y if !$(dt_nodelabel_enabled,scratch_partition) && !SOC_FAMILY_ESPRESSIF_ESP32
+	default y if !$(dt_nodelabel_enabled,scratch_partition) && !SOC_FAMILY_ESPRESSIF
 	help
 	  If y, the BOOT_IMAGE_UPGRADE_MODE will default to using "offset" instead of "scratch".
 	  This is a separate bool config option, because Kconfig doesn't allow defaults to be
@@ -1571,7 +1571,7 @@ config MULTITHREADING
 	default y if BOOT_SERIAL_CDC_ACM #usb driver requires MULTITHREADING
 	default y if BOOT_USB_DFU_GPIO || BOOT_USB_DFU_WAIT
 	default n if SOC_FAMILY_NORDIC_NRF
-	default n if SOC_FAMILY_ESPRESSIF_ESP32 && MCUBOOT
+	default n if SOC_FAMILY_ESPRESSIF && MCUBOOT
 	default y
 
 config LOG_PROCESS_THREAD

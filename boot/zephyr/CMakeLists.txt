@@ -75,7 +75,7 @@ target_sources(app PRIVATE
 
 if(CONFIG_ARM)
   target_sources(app PRIVATE arch/arm.c)
-elseif(CONFIG_SOC_FAMILY_ESPRESSIF_ESP32)
+elseif(CONFIG_SOC_FAMILY_ESPRESSIF)
   target_sources(app PRIVATE arch/esp32.c)
 elseif(CONFIG_RISCV)
   target_sources(app PRIVATE arch/riscv.c)
