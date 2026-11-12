@@ -1025,7 +1025,7 @@ according to the following procedure:
     + c. Write updated swap status (i).
     + d. Erase secondary_slot[index]
     + e. Copy primary_slot[index] to secondary_slot[index] according to amount
-         previosly copied at step b.
+         previously copied at step b.
         - If this is not the last region in the slot, erase the trailer in the
           secondary slot, to always use the one in the primary slot.
     + f. Write updated swap status (ii).
@@ -1299,7 +1299,7 @@ For low performance MCU's where the validation is a heavy process at boot
 (~1-2 seconds on a arm-cortex-M0), the `MCUBOOT_VALIDATE_PRIMARY_SLOT_ONCE`
 could be used. This option will cache the validation result as described above
 into the magic area of the primary slot. The next boot, the validation will be
-skipped if the previous validation was succesfull. This option is reducing the
+skipped if the previous validation was successful. This option is reducing the
 security level since if an attacker could modify the contents of the flash after
 a good image has been validated, the attacker could run his own image without
 running validation again. Enabling this option should be done with care.

@@ -113,7 +113,7 @@ length:
  * ECIES-X25519 on SHA512 TLV length is 112 or 128, depending on AES key
    length.
 
-The implemenation of ECIES-P256 is named ENC_EC256 in the source code and
+The implementation of ECIES-P256 is named ENC_EC256 in the source code and
 artifacts while ECIES-X25519 is named ENC_X25519.
 
 Note that MCUboot is built to support only one ECIES and HMAC SHA at once,
