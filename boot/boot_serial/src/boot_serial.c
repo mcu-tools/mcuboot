@@ -1223,7 +1223,7 @@ bs_upload(char *buf, int len)
     }
 
 #if !defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
-    if (img_num > BOOT_IMAGE_NUMBER) {
+    if (img_num >= BOOT_IMAGE_NUMBER) {
         rc = MGMT_ERR_ENOENT;
         goto out;
     }
