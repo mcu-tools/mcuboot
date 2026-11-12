@@ -7,6 +7,7 @@
 #ifndef __SYSFLASH_H__
 #define __SYSFLASH_H__
 
+#include <errno.h>
 #include <mcuboot_config/mcuboot_config.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/storage/flash_map.h>
@@ -76,6 +77,11 @@ static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
     static const int all_slots[] = {
         FOR_EACH_NONEMPTY_TERM(PARTITION_ID, (,), ALL_AVAILABLE_SLOTS)
     };
+
+    if (img < 0 || img >= MCUBOOT_IMAGE_NUMBER || slot < 0 || slot > 1) {
+        return -EINVAL; /* flash_area_open will fail on that */
+    }
+
     return all_slots[img * 2 + slot];
 };
 
