@@ -390,7 +390,8 @@ uint32_t bootutil_max_image_size(struct boot_loader_state *state, const struct f
 #if !defined(MCUBOOT_DIRECT_XIP) && \
     !defined(MCUBOOT_SWAP_USING_OFFSET) && \
     (!defined(MCUBOOT_OVERWRITE_ONLY) || \
-    defined(MCUBOOT_OVERWRITE_ONLY_FAST))
+    defined(MCUBOOT_OVERWRITE_ONLY_FAST) || \
+    defined(MCUBOOT_IMAGE_ACCESS_HOOKS))
 int
 boot_read_image_size(struct boot_loader_state *state, int slot, uint32_t *size)
 {
