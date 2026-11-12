@@ -299,19 +299,19 @@ sim_test!(xip_enc_revert_with_fails, make_image(&NO_DEPS, false), run_revert_wit
 #[cfg(feature = "enc-xip-ec256")]
 sim_test!(xip_enc_perm_with_fails, make_image(&NO_DEPS, true), run_perm_with_fails());
 
-/// Validate that an imgtool-generated XIP-encrypted image is accepted by the
-/// C-side boot_image_check_hook (ECIES unwrap + SHA-256 hash verification).
-///
-/// Uses the existing sim_test infrastructure to get a valid flash/areadesc,
-/// then overwrites the primary slot with an imgtool-generated image.
+// Validate that an imgtool-generated XIP-encrypted image is accepted by the
+// C-side boot_image_check_hook (ECIES unwrap + SHA-256 hash verification).
+//
+// Uses the existing sim_test infrastructure to get a valid flash/areadesc,
+// then overwrites the primary slot with an imgtool-generated image.
 #[cfg(feature = "enc-xip-ec256")]
 sim_test!(xip_enc_imgtool_validation,
           make_no_upgrade_image(&NO_DEPS, ImageManipulation::None),
           run_imgtool_xip_validation());
 
-/// Verify that Rust-side AES-CTR encryption (edgeprotecttools format:
-/// counter_LE32 || nonce[0:12]) round-trips correctly through C-side
-/// boot_decrypt_xip with a non-zero slot base address.
+// Verify that Rust-side AES-CTR encryption (edgeprotecttools format:
+// counter_LE32 || nonce[0:12]) round-trips correctly through C-side
+// boot_decrypt_xip with a non-zero slot base address.
 #[cfg(feature = "enc-xip-ec256")]
 sim_test!(xip_enc_ctr_format_matches_edgeprotecttools,
           make_no_upgrade_image(&NO_DEPS, ImageManipulation::None),
@@ -324,9 +324,9 @@ sim_test!(xip_enc_rsp_has_key_per_image,
           make_no_upgrade_image(&NO_DEPS, ImageManipulation::None),
           run_xip_rsp_keys());
 
-/// Verify that the SHA-256 hash stored in the image TLV is computed over
-/// ciphertext (header + encrypted payload), NOT over plaintext. This
-/// explicitly confirms the encrypt-then-sign model.
+// Verify that the SHA-256 hash stored in the image TLV is computed over
+// ciphertext (header + encrypted payload), NOT over plaintext. This
+// explicitly confirms the encrypt-then-sign model.
 #[cfg(feature = "enc-xip-ec256")]
 sim_test!(xip_enc_hash_covers_ciphertext,
           make_no_upgrade_image(&NO_DEPS, ImageManipulation::None),
