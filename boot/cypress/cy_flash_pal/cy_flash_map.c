@@ -228,9 +228,10 @@ int flash_area_read(const struct flash_area *fa, uint32_t off, void *dst,
     int rc = 0;
     size_t addr;
 
-    /* check if requested offset not less then flash area (fa) start */
-    assert(off < fa->fa_off);
-    assert(off + len < fa->fa_off);
+    /* check that the requested range lies inside the flash area (fa) */
+    if (off > fa->fa_size || len > fa->fa_size - off) {
+        return -1;
+    }
     /* convert to absolute address inside a device*/
         addr = fa->fa_off + off;
 
@@ -268,8 +269,10 @@ int flash_area_write(const struct flash_area *fa, uint32_t off,
     size_t write_end_addr;
     const uint32_t * row_ptr = NULL;
 
-    assert(off < fa->fa_off);
-    assert(off + len < fa->fa_off);
+    /* check that the requested range lies inside the flash area (fa) */
+    if (off > fa->fa_size || len > fa->fa_size - off) {
+        return -1;
+    }
 
     /* convert to absolute address inside a device */
     write_start_addr = fa->fa_off + off;
@@ -318,8 +321,11 @@ int flash_area_erase(const struct flash_area *fa, uint32_t off, uint32_t len)
     size_t erase_start_addr;
     size_t erase_end_addr;
 
-    assert(off < fa->fa_off);
-    assert(off + len < fa->fa_off);
+    /* check that the requested range lies inside the flash area (fa) */
+    if (off > fa->fa_size || len > fa->fa_size - off) {
+        return -1;
+    }
+
     assert(!(len % CY_FLASH_SIZEOF_ROW));
 
     /* convert to absolute address inside a device*/
