@@ -118,6 +118,23 @@ _Static_assert(MCUBOOT_BOOT_TMPBUF_SZ > 0,
 #define MCUBOOT_SWAP_USING_SCRATCH 1
 #endif
 
+#if defined(MCUBOOT_KEY_REVOCATION_FROM_PRIMARY)
+#if defined(MCUBOOT_BUILTIN_KEY)
+#error "MCUBOOT_KEY_REVOCATION_FROM_PRIMARY needs a key index into bootutil_keys[]; MCUBOOT_BUILTIN_KEY does not provide one"
+#endif
+#if defined(MCUBOOT_BYPASS_KEY_MATCH)
+#error "MCUBOOT_KEY_REVOCATION_FROM_PRIMARY is meaningless with MCUBOOT_BYPASS_KEY_MATCH: with a single key that always matches, there is no key floor to compute"
+#endif
+#if defined(MCUBOOT_HW_KEY)
+#error "MCUBOOT_KEY_REVOCATION_FROM_PRIMARY is not supported with MCUBOOT_HW_KEY: bootutil_find_key() always reports key index 0 in this mode (the key is verified against a single HW/KMU-provided hash, not looked up in bootutil_keys[]), which would collapse the key floor to 0 and make the revocation check a silent no-op"
+#endif
+#if !defined(MCUBOOT_SWAP_USING_MOVE) && \
+    !defined(MCUBOOT_SWAP_USING_OFFSET) && \
+    !defined(MCUBOOT_SWAP_USING_SCRATCH)
+#error "MCUBOOT_KEY_REVOCATION_FROM_PRIMARY requires a swap-with-test-and-confirm upgrade strategy; the primary slot is not a trust anchor under overwrite-only, direct-xip, or ram-load"
+#endif
+#endif /* MCUBOOT_KEY_REVOCATION_FROM_PRIMARY */
+
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
 #define BOOT_STATUS_OP_SWAP     1
 #else
