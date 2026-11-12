@@ -4,7 +4,7 @@
  * Copyright (c) 2020 Arm Limited
  */
 
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 
 #ifdef FIH_ENABLE_DOUBLE_VARS
 /* Variable that could be (but isn't) changed at runtime to force the compiler

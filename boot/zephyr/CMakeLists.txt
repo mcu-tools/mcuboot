@@ -93,6 +93,7 @@ endif()
 
 # Generic bootutil sources and includes.
 zephyr_include_directories(${BOOT_DIR}/bootutil/include)
+zephyr_include_directories(${BOOT_DIR}/fault_injection_hardening/include)
 zephyr_sources(
   ${BOOT_DIR}/bootutil/src/image_validate.c
   ${BOOT_DIR}/bootutil/src/bootutil_find_key.c
@@ -106,7 +107,7 @@ zephyr_sources(
   ${BOOT_DIR}/bootutil/src/bootutil_misc.c
   ${BOOT_DIR}/bootutil/src/bootutil_area.c
   ${BOOT_DIR}/bootutil/src/bootutil_loader.c
-  ${BOOT_DIR}/bootutil/src/fault_injection_hardening.c
+  ${BOOT_DIR}/fault_injection_hardening/src/fault_injection_hardening.c
 )
 
 if((CONFIG_BOOT_ENCRYPT_X25519 AND CONFIG_BOOT_ED25519_PSA)

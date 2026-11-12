@@ -35,7 +35,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #ifdef MCUBOOT_SIGN_RSA
 #include "bootutil_priv.h"
 #include "bootutil/sign_key.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 
 #define BOOTUTIL_CRYPTO_RSA_SIGN_ENABLED
 #include "bootutil/crypto/rsa.h"
