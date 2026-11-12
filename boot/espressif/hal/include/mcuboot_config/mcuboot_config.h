@@ -10,8 +10,8 @@
 /*
  * Signature types
  *
- * You must choose exactly one signature type - check bootloader.conf
- * configuration file
+ * You must choose exactly one signature type. Set it in Kconfig
+ * (menuconfig) or in port/<soc>/default.conf.
  */
 
 /* Uncomment for RSA signature support */
@@ -98,18 +98,15 @@
 /*
  * Cryptographic settings
  *
- * You must choose between Mbed TLS and Tinycrypt as source of
- * cryptographic primitives. Other cryptographic settings are also
- * available.
+ * Mbed TLS is the crypto backend. Tinycrypt is deprecated
+ * (https://github.com/mcu-tools/mcuboot/issues/2256) and is used only when
+ * CONFIG_ESP_USE_TINYCRYPT is set without CONFIG_ESP_USE_MBEDTLS.
  */
 
-/* Uncomment to use Mbed TLS cryptographic primitives */
-#if defined(CONFIG_ESP_USE_MBEDTLS)
-#define MCUBOOT_USE_MBED_TLS
-#else
-/* MCUboot requires the definition of a crypto lib,
- * using Tinycrypt as default */
+#if defined(CONFIG_ESP_USE_TINYCRYPT) && !defined(CONFIG_ESP_USE_MBEDTLS)
 #define MCUBOOT_USE_TINYCRYPT
+#else
+#define MCUBOOT_USE_MBED_TLS
 #endif
 
 /*

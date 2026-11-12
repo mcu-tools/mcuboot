@@ -48,19 +48,84 @@ if("${MCUBOOT_ARCH}" STREQUAL "riscv")
   add_definitions(-D__riscv)
 endif()
 
-# Set MCUboot Espressif Port configuration file
-if(NOT DEFINED MCUBOOT_CONFIG_FILE)
-  set(MCUBOOT_CONFIG_FILE "${ESPRESSIF_PORT_DIR}/port/${MCUBOOT_TARGET}/bootloader.conf")
-  message(STATUS "MCUBOOT_CONFIG_FILE: ${MCUBOOT_CONFIG_FILE}")
+# Resolve Kconfig into CMake variables and compile definitions.
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+execute_process(
+  COMMAND ${Python3_EXECUTABLE} -c "import kconfiglib"
+  RESULT_VARIABLE KCONFIGLIB_IMPORT
+  OUTPUT_QUIET
+  ERROR_QUIET
+)
+if(NOT KCONFIGLIB_IMPORT EQUAL 0)
+  message(FATAL_ERROR
+    "kconfiglib is required to configure the MCUboot Espressif port. "
+    "Install it with: ${Python3_EXECUTABLE} -m pip install -r ${ESPRESSIF_PORT_DIR}/tools/requirements.txt")
 endif()
 
-string(REPLACE " " ";" MCUBOOT_CONFIG_FILE_LIST "${MCUBOOT_CONFIG_FILE}")
-foreach(CONFIG_FILE ${MCUBOOT_CONFIG_FILE_LIST})
-  if(NOT EXISTS "${CONFIG_FILE}")
+set(MCUBOOT_KCONFIG_DIR "${CMAKE_CURRENT_BINARY_DIR}/kconfig")
+set(MCUBOOT_KCONFIG_FILE "${ESPRESSIF_PORT_DIR}/Kconfig")
+set(MCUBOOT_DEFAULT_CONF "${ESPRESSIF_PORT_DIR}/port/${MCUBOOT_TARGET}/default.conf")
+set(MCUBOOT_CONF_OUT "${MCUBOOT_KCONFIG_DIR}/mcuboot.conf")
+set(MCUBOOT_CONF_CMAKE "${MCUBOOT_KCONFIG_DIR}/mcuboot_config.cmake")
+file(MAKE_DIRECTORY "${MCUBOOT_KCONFIG_DIR}")
+
+if(NOT EXISTS "${MCUBOOT_DEFAULT_CONF}")
+  message(FATAL_ERROR "MCUboot default configuration does not exist at ${MCUBOOT_DEFAULT_CONF}")
+endif()
+
+set(MCUBOOT_KCONFIG_ARGS
+  --kconfig "${MCUBOOT_KCONFIG_FILE}"
+  --target "${MCUBOOT_TARGET}"
+  --defaults "${MCUBOOT_DEFAULT_CONF}"
+  --config "${MCUBOOT_CONF_OUT}"
+  --cmake "${MCUBOOT_CONF_CMAKE}"
+)
+
+set(MCUBOOT_CONFIG_FILE_LIST "")
+if(DEFINED MCUBOOT_CONFIG_FILE AND NOT "${MCUBOOT_CONFIG_FILE}" STREQUAL "")
+  string(REPLACE " " ";" MCUBOOT_CONFIG_FILE_LIST "${MCUBOOT_CONFIG_FILE}")
+  foreach(CONFIG_FILE ${MCUBOOT_CONFIG_FILE_LIST})
+    if(NOT EXISTS "${CONFIG_FILE}")
       message(FATAL_ERROR "MCUboot configuration file does not exist at ${CONFIG_FILE}")
-  endif()
-  parse_and_set_config_file(${CONFIG_FILE})
-endforeach()
+    endif()
+    list(APPEND MCUBOOT_KCONFIG_ARGS --fragment "${CONFIG_FILE}")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CONFIG_FILE}")
+  endforeach()
+elseif(EXISTS "${MCUBOOT_CONF_OUT}")
+  list(APPEND MCUBOOT_KCONFIG_ARGS --load-saved)
+endif()
+
+execute_process(
+  COMMAND ${Python3_EXECUTABLE} ${ESPRESSIF_PORT_DIR}/tools/kconfig_gen.py ${MCUBOOT_KCONFIG_ARGS}
+  RESULT_VARIABLE MCUBOOT_KCONFIG_RESULT
+  ERROR_VARIABLE MCUBOOT_KCONFIG_STDERR
+)
+if(NOT MCUBOOT_KCONFIG_RESULT EQUAL 0)
+  message(FATAL_ERROR
+    "Failed to generate the MCUboot configuration.\n${MCUBOOT_KCONFIG_STDERR}")
+elseif(NOT "${MCUBOOT_KCONFIG_STDERR}" STREQUAL "")
+  message(WARNING "${MCUBOOT_KCONFIG_STDERR}")
+endif()
+
+include(${MCUBOOT_CONF_CMAKE})
+message(STATUS "MCUboot configuration: ${MCUBOOT_CONF_OUT}")
+
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  "${MCUBOOT_KCONFIG_FILE}"
+  "${MCUBOOT_DEFAULT_CONF}"
+  "${MCUBOOT_CONF_OUT}"
+  "${ESPRESSIF_PORT_DIR}/tools/kconfig_gen.py"
+)
+
+add_custom_target(menuconfig
+  COMMAND ${CMAKE_COMMAND} -E env
+    MCUBOOT_TARGET=${MCUBOOT_TARGET}
+    KCONFIG_CONFIG=${MCUBOOT_CONF_OUT}
+    ${Python3_EXECUTABLE} -m menuconfig ${MCUBOOT_KCONFIG_FILE}
+  COMMAND ${CMAKE_COMMAND} -S ${CMAKE_SOURCE_DIR} -B ${CMAKE_BINARY_DIR}
+  USES_TERMINAL
+  COMMENT "MCUboot Espressif port menuconfig"
+)
 
 # Fetch and set toolchain
 if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
@@ -230,15 +295,38 @@ elseif(DEFINED CONFIG_ESP_SIGN_EC256)
 elseif(DEFINED CONFIG_ESP_SIGN_ED25519)
   include(${ESPRESSIF_PORT_DIR}/include/crypto_config/ed25519.cmake)
 else()
-  # No signature verification
-  set(TINYCRYPT_DIR ${MCUBOOT_ROOT_DIR}/ext/tinycrypt/lib)
-  set(CRYPTO_INC
-      ${TINYCRYPT_DIR}/include
-      )
-  set(crypto_srcs
-      ${TINYCRYPT_DIR}/source/sha256.c
-      ${TINYCRYPT_DIR}/source/utils.c
-      )
+  # No signature verification. SHA-256 comes from Mbed TLS unless the
+  # deprecated Tinycrypt override is selected on its own.
+  # https://github.com/mcu-tools/mcuboot/issues/2256
+  if(DEFINED CONFIG_ESP_USE_TINYCRYPT AND NOT DEFINED CONFIG_ESP_USE_MBEDTLS)
+    message(WARNING
+        "Tinycrypt is unmaintained "
+        "(https://github.com/mcu-tools/mcuboot/issues/2256). "
+        "Mbed TLS is the supported crypto backend for the Espressif port. "
+        "CONFIG_ESP_USE_TINYCRYPT keeps the deprecated Tinycrypt SHA-256.")
+    set(TINYCRYPT_DIR ${MCUBOOT_ROOT_DIR}/ext/tinycrypt/lib)
+    set(CRYPTO_INC
+        ${TINYCRYPT_DIR}/include
+        )
+    set(crypto_srcs
+        ${TINYCRYPT_DIR}/source/sha256.c
+        ${TINYCRYPT_DIR}/source/utils.c
+        )
+  else()
+    set(MBEDTLS_DIR "${MCUBOOT_ROOT_DIR}/ext/mbedtls-3.6.0")
+    set(CRYPTO_INC
+        ${MBEDTLS_DIR}/include
+        )
+    set(crypto_srcs
+        ${MBEDTLS_DIR}/library/sha256.c
+        ${MBEDTLS_DIR}/library/platform_util.c
+        )
+    if(DEFINED MBEDTLS_CONFIG_FILE)
+      add_definitions(-DMBEDTLS_CONFIG_FILE=\"${MBEDTLS_CONFIG_FILE}\")
+    else()
+      add_definitions(-DMBEDTLS_CONFIG_FILE=\"${ESPRESSIF_PORT_DIR}/include/crypto_config/mbedtls_config.h\")
+    endif()
+  endif()
 endif()
 
 if(DEFINED CONFIG_ESP_SIGN_KEY_FILE)
@@ -280,8 +368,13 @@ if(CONFIG_ESP_MCUBOOT_SERIAL)
   list(APPEND port_srcs
       ${ESPRESSIF_PORT_DIR}/port/serial_adapter.c
       ${MBEDTLS_DIR}/library/base64.c
-      ${MBEDTLS_DIR}/library/constant_time.c
       )
+  # Signature backends that already compile constant_time.c must not add it twice.
+  if(NOT crypto_srcs MATCHES "constant_time\\.c")
+    list(APPEND port_srcs
+        ${MBEDTLS_DIR}/library/constant_time.c
+        )
+  endif()
   list(APPEND CRYPTO_INC
       ${MBEDTLS_DIR}/include
       )

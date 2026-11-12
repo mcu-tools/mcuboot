@@ -1,0 +1,4 @@
+# Standalone Kconfig parser and menuconfig UI.
+# The ESP-IDF Python environment already provides this support. Install this
+# file only for a Python interpreter that is not the IDF environment.
+kconfiglib>=14.1.0
