@@ -50,6 +50,17 @@ extern "C" {
 
 struct flash_area;
 
+/*
+ * The bootstrap check validates the primary slot when no swap is pending, and
+ * MCUBOOT_VALIDATE_PRIMARY_SLOT validates it again before booting; nothing
+ * writes the slot in between, so the second check can be skipped. With fault
+ * injection hardening it is kept: it is the check right before the jump.
+ */
+#if defined(MCUBOOT_BOOTSTRAP) && defined(MCUBOOT_VALIDATE_PRIMARY_SLOT) && \
+    defined(MCUBOOT_FIH_PROFILE_OFF)
+#define BOOT_BOOTSTRAP_VALIDATE_PRIMARY_ONCE
+#endif
+
 #if defined(MCUBOOT_LOGICAL_SECTOR_SIZE) && MCUBOOT_LOGICAL_SECTOR_SIZE != 0
 /* Logical sector offsets are rounded with ALIGN_DOWN(), and the Zephyr
  * flash_area_get_sector() used when verification is disabled masks with
@@ -276,6 +287,11 @@ struct boot_loader_state {
 
     uint8_t swap_type[BOOT_IMAGE_NUMBER];
     uint32_t write_sz[BOOT_IMAGE_NUMBER];
+
+#ifdef BOOT_BOOTSTRAP_VALIDATE_PRIMARY_ONCE
+    /* The bootstrap check already validated the primary slot in this boot. */
+    bool primary_validated[BOOT_IMAGE_NUMBER];
+#endif
 
 #if defined(MCUBOOT_SWAP_USING_OFFSET)
     uint32_t secondary_offset[BOOT_IMAGE_NUMBER];
