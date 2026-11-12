@@ -230,15 +230,38 @@ elseif(DEFINED CONFIG_ESP_SIGN_EC256)
 elseif(DEFINED CONFIG_ESP_SIGN_ED25519)
   include(${ESPRESSIF_PORT_DIR}/include/crypto_config/ed25519.cmake)
 else()
-  # No signature verification
-  set(TINYCRYPT_DIR ${MCUBOOT_ROOT_DIR}/ext/tinycrypt/lib)
-  set(CRYPTO_INC
-      ${TINYCRYPT_DIR}/include
-      )
-  set(crypto_srcs
-      ${TINYCRYPT_DIR}/source/sha256.c
-      ${TINYCRYPT_DIR}/source/utils.c
-      )
+  # No signature verification. SHA-256 comes from Mbed TLS unless the
+  # deprecated Tinycrypt override is selected on its own.
+  # https://github.com/mcu-tools/mcuboot/issues/2256
+  if(DEFINED CONFIG_ESP_USE_TINYCRYPT AND NOT DEFINED CONFIG_ESP_USE_MBEDTLS)
+    message(WARNING
+        "Tinycrypt is unmaintained "
+        "(https://github.com/mcu-tools/mcuboot/issues/2256). "
+        "Mbed TLS is the supported crypto backend for the Espressif port. "
+        "CONFIG_ESP_USE_TINYCRYPT keeps the deprecated Tinycrypt SHA-256.")
+    set(TINYCRYPT_DIR ${MCUBOOT_ROOT_DIR}/ext/tinycrypt/lib)
+    set(CRYPTO_INC
+        ${TINYCRYPT_DIR}/include
+        )
+    set(crypto_srcs
+        ${TINYCRYPT_DIR}/source/sha256.c
+        ${TINYCRYPT_DIR}/source/utils.c
+        )
+  else()
+    set(MBEDTLS_DIR "${MCUBOOT_ROOT_DIR}/ext/mbedtls-3.6.0")
+    set(CRYPTO_INC
+        ${MBEDTLS_DIR}/include
+        )
+    set(crypto_srcs
+        ${MBEDTLS_DIR}/library/sha256.c
+        ${MBEDTLS_DIR}/library/platform_util.c
+        )
+    if(DEFINED MBEDTLS_CONFIG_FILE)
+      add_definitions(-DMBEDTLS_CONFIG_FILE=\"${MBEDTLS_CONFIG_FILE}\")
+    else()
+      add_definitions(-DMBEDTLS_CONFIG_FILE=\"${ESPRESSIF_PORT_DIR}/include/crypto_config/mbedtls_config.h\")
+    endif()
+  endif()
 endif()
 
 if(DEFINED CONFIG_ESP_SIGN_KEY_FILE)
@@ -280,8 +303,13 @@ if(CONFIG_ESP_MCUBOOT_SERIAL)
   list(APPEND port_srcs
       ${ESPRESSIF_PORT_DIR}/port/serial_adapter.c
       ${MBEDTLS_DIR}/library/base64.c
-      ${MBEDTLS_DIR}/library/constant_time.c
       )
+  # Signature backends that already compile constant_time.c must not add it twice.
+  if(NOT crypto_srcs MATCHES "constant_time\\.c")
+    list(APPEND port_srcs
+        ${MBEDTLS_DIR}/library/constant_time.c
+        )
+  endif()
   list(APPEND CRYPTO_INC
       ${MBEDTLS_DIR}/include
       )
