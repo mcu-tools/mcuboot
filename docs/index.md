@@ -37,6 +37,8 @@ The MCUboot documentation is composed of the following pages:
 
 - General - this document
 - [Release notes](release-notes.md)
+- [Security vulnerabilities](vulnerabilities.md) - the vulnerabilities fixed
+  in MCUboot, with their CVEs and advisories
 - [Bootloader design](design.md)
 - [Encrypted images](encrypted_images.md)
 - [imgtool](imgtool.md) - image signing and key management
