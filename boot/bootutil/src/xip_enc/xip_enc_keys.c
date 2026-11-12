@@ -11,7 +11,13 @@
 
 #include "xip_enc.h"
 
-static struct {
+#if defined(__BOOTSIM__)
+/* The simulator boots on parallel test threads; keep their keys apart. */
+static __thread
+#else
+static
+#endif
+struct {
     uint8_t key[XIP_ENC_KEY_SIZE];
     uint8_t iv[XIP_ENC_IV_SIZE];
     bool valid;
