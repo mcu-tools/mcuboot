@@ -1474,6 +1474,10 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
     int max_size;
 #endif
 
+#ifdef BOOT_BOOTSTRAP_VALIDATE_PRIMARY_ONCE
+    state->primary_validated[BOOT_CURR_IMG(state)] = false;
+#endif
+
     /* Attempt to read an image header from each slot. */
     rc = boot_read_image_headers(state, false, NULL);
     if (rc != 0) {
@@ -1610,6 +1614,14 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
                  */
                 FIH_CALL(boot_validate_slot, fih_rc,
                          state, BOOT_SLOT_PRIMARY, bs, 0);
+#ifdef BOOT_BOOTSTRAP_VALIDATE_PRIMARY_ONCE
+                /* Nothing is copied when it is valid: no need to validate
+                 * it again before booting.
+                 */
+                state->primary_validated[BOOT_CURR_IMG(state)] =
+                    !boot_check_header_erased(state, BOOT_SLOT_PRIMARY) &&
+                    FIH_EQ(fih_rc, FIH_SUCCESS);
+#endif
                 if (boot_check_header_erased(state, BOOT_SLOT_PRIMARY) ||
                     FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
 
@@ -2089,7 +2101,15 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         }
 
 #ifdef MCUBOOT_VALIDATE_PRIMARY_SLOT
-        FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SLOT_PRIMARY, NULL, 0);
+#ifdef BOOT_BOOTSTRAP_VALIDATE_PRIMARY_ONCE
+        if (BOOT_SWAP_TYPE(state) == BOOT_SWAP_TYPE_NONE &&
+            state->primary_validated[BOOT_CURR_IMG(state)]) {
+            FIH_SET(fih_rc, FIH_SUCCESS);
+        } else
+#endif
+        {
+            FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SLOT_PRIMARY, NULL, 0);
+        }
         /* Check for all possible values is redundant in normal operation it
          * is meant to prevent FI attack.
          */
