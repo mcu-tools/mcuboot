@@ -14,10 +14,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import subprocess
 import sys
 from typing import TYPE_CHECKING
 
+import imgtool.image as image_mod
 import pytest
 from click.testing import CliRunner
 from imgtool import keys
@@ -595,6 +597,73 @@ def test_sign_verify(key_type, tmp_path_persistent):
     )
     assert result.exit_code != 0
     image_signed.unlink()
+
+
+class _ExportHoldingSha256:
+    """SHA-256 that keeps its input buffers exported, like PyPy 3.11.16.
+
+    That PyPy's hashlib does not release the buffer passed to update()
+    until it is garbage collected, so resizing a bytearray after hashing
+    it raises BufferError. Holding a memoryview reproduces this on any
+    interpreter.
+    """
+
+    def __init__(self):
+        self._h = hashlib.sha256()
+        self._held = []
+        self.digest_size = self._h.digest_size
+
+    def update(self, data):
+        self._held.append(memoryview(data))
+        self._h.update(data)
+
+    def digest(self):
+        return self._h.digest()
+
+
+def test_sign_does_not_resize_hashed_buffer(monkeypatch, tmp_path):
+    """sign must not grow the payload buffer that it has hashed"""
+    # An ed25519 key (not pure) with the default --sha auto selects the
+    # '256' entry; patch 'auto' too for completeness.
+    for user_sha in ("auto", "256"):
+        monkeypatch.setitem(image_mod.USER_SHA_TO_ALG_AND_TLV, user_sha,
+                            (_ExportHoldingSha256, "SHA256"))
+
+    runner = CliRunner()
+
+    key = tmp_path / "ed25519.key"
+    image = tmp_path / "image.bin"
+    image_signed = tmp_path / "image.signed"
+    image.write_bytes(b"\x00" * 1024)
+
+    result = runner.invoke(
+        imgtool, ["keygen", "--key", str(key), "--type", "ed25519"]
+    )
+    assert result.exit_code == 0
+
+    # No protected TLVs, so the hashed payload is the one grown in place.
+    result = runner.invoke(
+        imgtool,
+        [
+            "sign",
+            "--key",
+            str(key),
+            "--align",
+            "16",
+            "--version",
+            "1.0.0",
+            "--header-size",
+            "0x400",
+            "--slot-size",
+            "0x10000",
+            "--pad-header",
+            str(image),
+            str(image_signed),
+        ],
+    )
+    assert result.exception is None, repr(result.exception)
+    assert result.exit_code == 0
+    assert image_signed.stat().st_size > 0
 
 
 @pytest.mark.parametrize("key_type", KEY_TYPES)
