@@ -27,6 +27,10 @@
 #define MCUBOOT_SIGN_ED25519
 #endif
 
+#ifdef CONFIG_BOOT_RSA_PSA_DOUBLE_VERIFY
+#define MCUBOOT_RSA_PSA_DOUBLE_VERIFY
+#endif
+
 #if defined(CONFIG_BOOT_USE_TINYCRYPT)
 #  if defined(CONFIG_MBEDTLS) || defined(CONFIG_BOOT_USE_CC310)
 #     error "One crypto library implementation allowed at a time."
