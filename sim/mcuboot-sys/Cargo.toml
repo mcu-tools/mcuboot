@@ -81,6 +81,9 @@ enc-aes256-x25519 = []
 # Allow bootstrapping an empty/invalid primary slot from a valid secondary slot
 bootstrap = []
 
+# Skip the bootstrap check's primary verify for a confirmed primary
+bootstrap-trust-confirmed = ["bootstrap"]
+
 # Support multiple images (currently 2 instead of 1).
 multiimage = []
 

@@ -35,6 +35,7 @@ fn main() {
     let enc_x25519 = env::var("CARGO_FEATURE_ENC_X25519").is_ok();
     let enc_aes256_x25519 = env::var("CARGO_FEATURE_ENC_AES256_X25519").is_ok();
     let bootstrap = env::var("CARGO_FEATURE_BOOTSTRAP").is_ok();
+    let bootstrap_trust_confirmed = env::var("CARGO_FEATURE_BOOTSTRAP_TRUST_CONFIRMED").is_ok();
     let multiimage = env::var("CARGO_FEATURE_MULTIIMAGE").is_ok();
     let downgrade_prevention = env::var("CARGO_FEATURE_DOWNGRADE_PREVENTION").is_ok();
     let ram_load = env::var("CARGO_FEATURE_RAM_LOAD").is_ok();
@@ -96,6 +97,10 @@ fn main() {
 
     if bootstrap {
         conf.conf.define("MCUBOOT_BOOTSTRAP", None);
+
+        if bootstrap_trust_confirmed {
+            conf.conf.define("MCUBOOT_BOOTSTRAP_TRUST_CONFIRMED_PRIMARY", None);
+        }
 
         if !swap_offset && !swap_move {
             conf.conf.define("MCUBOOT_OVERWRITE_ONLY_FAST", None);

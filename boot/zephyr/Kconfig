@@ -730,6 +730,25 @@ config BOOT_BOOTSTRAP
 	  primary slot to be initialized from a valid image in the secondary slot.
 	  If unsure, leave at the default value.
 
+config BOOT_BOOTSTRAP_TRUST_CONFIRMED_PRIMARY
+	bool "Skip the bootstrap check's primary verify when the primary is confirmed"
+	depends on BOOT_BOOTSTRAP && !BOOT_VALIDATE_SLOT0 && !BOOT_UPGRADE_ONLY
+	help
+	  If y, the bootstrap check on a boot with no pending swap trusts a
+	  primary image whose header is valid and whose image_ok flag is set,
+	  instead of verifying its hash and signature. Every completed bootstrap
+	  copy and confirmed swap sets image_ok, and an interrupted copy leaves it
+	  unset, so those primaries are still validated and recovered.
+	  A confirmed primary whose body is corrupted later boots unverified
+	  rather than being re-bootstrapped from the secondary slot, the same
+	  trust a build without BOOT_VALIDATE_SLOT0 gives it without bootstrap.
+
+	  WARNING: this compromises security. A confirmed primary image that is
+	  modified in flash, whether corrupted or deliberately tampered with,
+	  boots without its hash or signature being checked. Only enable it
+	  where the primary slot is otherwise protected against modification
+	  and boot time matters more than this check.
+
 config BOOT_SWAP_SAVE_ENCTLV
 	bool "Save encrypted key TLVs instead of plaintext keys in swap metadata"
 	depends on BOOT_ENCRYPT_IMAGE
