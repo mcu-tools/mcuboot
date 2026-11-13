@@ -400,7 +400,6 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 #endif
 
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
-            FIH_DECLARE(fih_rc, FIH_FAILURE);
             int rc;
             uint8_t tmpbuf[64];
 
@@ -437,38 +436,9 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 #endif
             }
 
-            if (hdr.ih_magic == IMAGE_MAGIC)
-            {
-                BOOT_HOOK_CALL_FIH(boot_image_check_hook,
-                                   FIH_BOOT_HOOK_REGULAR,
-                                   fih_rc, image_index, slot);
-                if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
-                {
-#if defined(MCUBOOT_ENC_IMAGES)
-#if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
-                    if (IS_ENCRYPTED(&hdr) && MUST_DECRYPT(fap, image_index, &hdr)) {
-                        FIH_CALL(boot_image_validate_encrypted, fih_rc, state, fap,
-                                 &hdr, tmpbuf, sizeof(tmpbuf));
-                    } else {
-#endif
-                        if (IS_ENCRYPTED(&hdr)) {
-                            /*
-                             * There is an image present which has an encrypted flag set but is
-                             * not encrypted, therefore remove the flag from the header and run a
-                             * normal image validation on it.
-                             */
-                            hdr.ih_flags &= ~ENCRYPTIONFLAGS;
-                        }
-#endif
-                        FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
-                                 fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
-#if defined(MCUBOOT_ENC_IMAGES) && !defined(MCUBOOT_SINGLE_APPLICATION_SLOT)
-                    }
-#endif
-                }
-            }
-
-            if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+            /* List on a valid header: the response never carries a verify result,
+             * and the boot path runs its own image checks. */
+            if (hdr.ih_magic != IMAGE_MAGIC) {
                 continue;
             }
 
@@ -592,6 +562,41 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
 #if defined(MCUBOOT_SERIAL_IMG_GRP_IMAGE_STATE) && (!defined(MCUBOOT_DIRECT_XIP) || \
     defined(MCUBOOT_DIRECT_XIP_REVERT)) && (!defined(MCUBOOT_RAM_LOAD) || \
     defined(MCUBOOT_RAM_LOAD_REVERT))
+#ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
+/*
+ * Verify the image in a slot before its state is changed.
+ */
+static fih_ret
+bs_set_validate_slot(struct boot_loader_state *state, const struct flash_area *fap,
+                     struct image_header *hdr, uint8_t image_index, uint32_t slot)
+{
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+    uint8_t tmpbuf[64];
+
+    (void) image_index; /* Might be unused depending on the configuration */
+    (void) slot;
+
+    BOOT_HOOK_CALL_FIH(boot_image_check_hook, FIH_BOOT_HOOK_REGULAR,
+                       fih_rc, image_index, slot);
+    if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
+    {
+#ifdef MCUBOOT_ENC_IMAGES
+        if (IS_ENCRYPTED(hdr)) {
+            FIH_CALL(boot_image_validate_encrypted, fih_rc, state, fap,
+                     hdr, tmpbuf, sizeof(tmpbuf));
+        } else {
+#endif
+            FIH_CALL(bootutil_img_validate, fih_rc, state, hdr,
+                     fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
+#ifdef MCUBOOT_ENC_IMAGES
+        }
+#endif
+    }
+
+    FIH_RET(fih_rc);
+}
+#endif
+
 /*
  * Set image state.
  */
@@ -658,7 +663,6 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
             for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
                 struct image_header hdr;
                 const struct flash_area *fap;
-                uint8_t tmpbuf[64];
 
 #ifdef MCUBOOT_SWAP_USING_OFFSET
                 uint32_t start_off = 0;
@@ -687,31 +691,8 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 #endif
                 }
 
-                if (hdr.ih_magic == IMAGE_MAGIC)
-                {
-                    FIH_DECLARE(fih_rc, FIH_FAILURE);
-
-                    BOOT_HOOK_CALL_FIH(boot_image_check_hook,
-                                       FIH_BOOT_HOOK_REGULAR,
-                                       fih_rc, image_index, slot);
-                    if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR))
-                    {
-#ifdef MCUBOOT_ENC_IMAGES
-                        if (IS_ENCRYPTED(&hdr)) {
-                            FIH_CALL(boot_image_validate_encrypted, fih_rc, state, fap,
-                                     &hdr, tmpbuf, sizeof(tmpbuf));
-                        } else {
-#endif
-                            FIH_CALL(bootutil_img_validate, fih_rc, state, &hdr,
-                                     fap, tmpbuf, sizeof(tmpbuf), NULL, 0, NULL);
-#ifdef MCUBOOT_ENC_IMAGES
-                        }
-#endif
-                    }
-
-                    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
-                        continue;
-                    }
+                if (hdr.ih_magic != IMAGE_MAGIC) {
+                    continue;
                 }
 
 #ifdef MCUBOOT_SERIAL_IMG_GRP_HASH
@@ -723,6 +704,15 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
 #endif
 #endif
                 if (rc == 0 && memcmp(hash, img_hash.value, sizeof(hash)) == 0) {
+                    FIH_DECLARE(valid_rc, FIH_FAILURE);
+
+                    /* Only the matching slot is verified, as it is about to change state */
+                    FIH_CALL(bs_set_validate_slot, valid_rc, state, fap, &hdr, image_index, slot);
+                    if (FIH_NOT_EQ(valid_rc, FIH_SUCCESS)) {
+                        BOOT_LOG_ERR("Image with specified hash failed validation");
+                        continue;
+                    }
+
                     /* Hash matches, set this slot for test or confirmation */
 #if defined(MCUBOOT_SWAP_USING_OFFSET) || defined(MCUBOOT_SWAP_USING_MOVE) || \
     defined(MCUBOOT_SWAP_USING_SCRATCH) || defined(MCUBOOT_OVERWRITE_ONLY)
@@ -769,6 +759,7 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                     uint8_t other_slot = (slot == BOOT_SLOT_SECONDARY ? BOOT_SLOT_PRIMARY :
                                                                         BOOT_SLOT_SECONDARY);
                     FIH_DECLARE(fih_rc, FIH_FAILURE);
+                    uint8_t tmpbuf[64];
 
                     memcpy(&image_versions[slot], &hdr.ih_ver, sizeof(struct image_version));
 
