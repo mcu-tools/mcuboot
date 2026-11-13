@@ -6,6 +6,7 @@
  * Initialized lazily in boot_uart_fifo_init() only when recovery is needed.
  */
 
+#include <zephyr/app_version.h>
 #include <zephyr/kernel.h>
 #include <zephyr/usb/usbd.h>
 #include <zephyr/usb/usbd_msg.h>
@@ -14,6 +15,13 @@
 #include "usbd_cdc_serial.h"
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
+
+BUILD_ASSERT(APP_VERSION_MAJOR <= 99 && APP_VERSION_MINOR <= 99,
+	     "bcdDevice holds the bootloader major and minor version as two BCD digits each");
+
+#define BOOT_USBD_BCD_DEVICE \
+	((uint16_t)((USB_DEC_TO_BCD(APP_VERSION_MAJOR) << 8U) | \
+		    USB_DEC_TO_BCD(APP_VERSION_MINOR)))
 
 USBD_DEVICE_DEFINE(boot_usbd,
 		   DEVICE_DT_GET(DT_NODELABEL(zephyr_udc0)),
@@ -159,6 +167,12 @@ int boot_usb_cdc_serial_init(void)
 
 	usbd_self_powered(&boot_usbd,
 			  boot_usbd_attributes & USB_SCD_SELF_POWERED);
+
+	err = usbd_device_set_bcd_device(&boot_usbd, BOOT_USBD_BCD_DEVICE);
+	if (err) {
+		BOOT_LOG_ERR("Failed to set bcdDevice: %d", err);
+		return err;
+	}
 
 	err = usbd_msg_register_cb(&boot_usbd, boot_usbd_msg_cb);
 	if (err) {
