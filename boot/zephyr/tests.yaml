@@ -108,6 +108,12 @@ tests:
       - FILE_SUFFIX="big"
     extra_configs:
       - CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P384=y
+  sample.bootloader.mcuboot.ecdsa_p384.encryption:
+    extra_args:
+      - FILE_SUFFIX="big"
+    extra_configs:
+      - CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P384=y
+      - CONFIG_BOOT_ENCRYPT_IMAGE=y
   sample.bootloader.mcuboot.runtime_source.hooks:
     extra_args:
       - EXTRA_CONF_FILE="../../samples/runtime-source/zephyr/sample.conf"

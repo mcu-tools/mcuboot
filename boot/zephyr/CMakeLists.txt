@@ -110,7 +110,8 @@ zephyr_sources(
 )
 
 if((CONFIG_BOOT_ENCRYPT_X25519 AND CONFIG_BOOT_ED25519_PSA)
-  OR (CONFIG_BOOT_ENCRYPT_EC256 AND CONFIG_BOOT_ECDSA_PSA))
+  OR (CONFIG_BOOT_ENCRYPT_EC256 AND CONFIG_BOOT_ECDSA_PSA)
+  OR CONFIG_BOOT_ENCRYPT_EC384)
   zephyr_sources(${BOOT_DIR}/bootutil/src/encrypted_psa.c)
 endif()
 
@@ -430,6 +431,8 @@ if(CONFIG_BOOT_ENCRYPTION_KEY_FILE AND NOT CONFIG_BOOT_ENCRYPTION_KEY_FILE STREQ
   set(mcuboot_default_encryption_files
     ${MCUBOOT_DIR}/enc-ec256-priv.pem
     ${MCUBOOT_DIR}/enc-ec256-pub.pem
+    ${MCUBOOT_DIR}/enc-ec384-priv.pem
+    ${MCUBOOT_DIR}/enc-ec384-pub.pem
     ${MCUBOOT_DIR}/enc-rsa2048-priv.pem
     ${MCUBOOT_DIR}/enc-rsa2048-pub.pem
     ${MCUBOOT_DIR}/enc-x25519-priv.pem
@@ -734,7 +737,8 @@ if(SYSBUILD)
       set(boot_tlv_estimate 40)
     endif()
 
-    if(CONFIG_BOOT_ENCRYPT_RSA OR CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_X25519)
+    if(CONFIG_BOOT_ENCRYPT_RSA OR CONFIG_BOOT_ENCRYPT_EC256 OR CONFIG_BOOT_ENCRYPT_EC384 OR
+       CONFIG_BOOT_ENCRYPT_X25519)
       # 128-bit AES key size
       set(boot_enc_key_size 16)
 
@@ -743,6 +747,8 @@ if(SYSBUILD)
           set(key_size 256)
         elseif(CONFIG_BOOT_ENCRYPT_EC256)
           math(EXPR key_size "65 + 32 + ${boot_enc_key_size}")
+        elseif(CONFIG_BOOT_ENCRYPT_EC384)
+          math(EXPR key_size "97 + 48 + ${boot_enc_key_size}")
         elseif(CONFIG_BOOT_ENCRYPT_X25519)
           math(EXPR key_size "32 + 32 + ${boot_enc_key_size}")
         endif()
