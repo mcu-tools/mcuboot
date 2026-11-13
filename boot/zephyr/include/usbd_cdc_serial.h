@@ -41,4 +41,12 @@ struct usbd_context *boot_usb_cdc_serial_get_context(void);
  */
 extern struct k_sem boot_cdc_acm_ready;
 
+/**
+ * @brief Given once the USB controller reports VBUS.
+ *
+ * Only meaningful on controllers where usbd_can_detect_vbus() is true; the
+ * device is enabled after this, as the USB device stack expects.
+ */
+extern struct k_sem boot_usbd_vbus_ready;
+
 #endif /* BOOT_USBD_CDC_SERIAL_H */
