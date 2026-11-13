@@ -280,11 +280,11 @@ config BOOT_SERIAL_INACTIVITY_TIMEOUT
 	depends on REBOOT
 
 menuconfig BOOT_SERIAL_BOOT_MODE
-	bool "Check boot mode via retention subsystem"
-	depends on RETENTION_BOOT_MODE
+	bool "Check boot mode via boot mode subsystem"
+	depends on BOOT_MODE || RETENTION_BOOT_MODE
 	help
 	  Allows for entering serial recovery mode by using Zephyr's boot mode
-	  retention system (i.e. an application must set the boot mode to stay
+	  subsystem (i.e. an application must set the boot mode to stay
 	  in serial recovery mode and reboot the module).
 
 config BOOT_SERIAL_INACTIVITY_TIMEOUT
