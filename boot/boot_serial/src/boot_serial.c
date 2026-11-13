@@ -1488,6 +1488,9 @@ out:
 #endif
        ) {
         rc = boot_handle_enc_fw(fap);
+        if (rc != 0) {
+            BOOT_LOG_ERR("Error %d decrypting uploaded image", rc);
+        }
     }
 #endif
 
