@@ -94,6 +94,7 @@ jobs:
         - "enc-aes256-kw overwrite-only,enc-aes256-kw overwrite-only max-align-32,enc-aes256-kw overwrite-only max-align-64,enc-aes256-kw overwrite-only max-align-128"
         - "sig-rsa enc-rsa validate-primary-slot,swap-move enc-rsa sig-rsa validate-primary-slot bootstrap,swap-offset enc-rsa sig-rsa validate-primary-slot bootstrap"
         - "sig-rsa enc-kw validate-primary-slot bootstrap,sig-ed25519 enc-x25519 validate-primary-slot"
+        - "sig-rsa bootstrap-trust-confirmed,swap-move sig-ecdsa bootstrap-trust-confirmed,swap-offset enc-kw sig-ecdsa bootstrap-trust-confirmed"
         - "sig-ecdsa enc-kw validate-primary-slot"
         - "sig-ecdsa-mbedtls enc-kw validate-primary-slot"
         - "sig-rsa validate-primary-slot overwrite-only,sig-rsa validate-primary-slot overwrite-only max-align-32"

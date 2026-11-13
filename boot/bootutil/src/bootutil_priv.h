@@ -61,6 +61,12 @@ struct flash_area;
 #define BOOT_BOOTSTRAP_VALIDATE_PRIMARY_ONCE
 #endif
 
+#if defined(MCUBOOT_BOOTSTRAP_TRUST_CONFIRMED_PRIMARY) && \
+    (!defined(MCUBOOT_BOOTSTRAP) || defined(MCUBOOT_VALIDATE_PRIMARY_SLOT) || \
+     defined(MCUBOOT_OVERWRITE_ONLY))
+#error "MCUBOOT_BOOTSTRAP_TRUST_CONFIRMED_PRIMARY needs MCUBOOT_BOOTSTRAP, no MCUBOOT_VALIDATE_PRIMARY_SLOT and a swap mode"
+#endif
+
 #if defined(MCUBOOT_LOGICAL_SECTOR_SIZE) && MCUBOOT_LOGICAL_SECTOR_SIZE != 0
 /* Logical sector offsets are rounded with ALIGN_DOWN(), and the Zephyr
  * flash_area_get_sector() used when verification is disabled masks with

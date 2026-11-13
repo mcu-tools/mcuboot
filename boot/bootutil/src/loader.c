@@ -1478,6 +1478,26 @@ boot_review_image_swap_types(struct boot_loader_state *state,
 }
 #endif
 
+#ifdef MCUBOOT_BOOTSTRAP_TRUST_CONFIRMED_PRIMARY
+/* A completed bootstrap copy or swap sets image_ok, and the copy erases the
+ * trailer first, so an interrupted one leaves it unset.
+ */
+static bool
+boot_primary_confirmed(struct boot_loader_state *state)
+{
+    struct boot_swap_state swap_state;
+    int rc;
+
+    if (!boot_check_header_valid(state, BOOT_SLOT_PRIMARY)) {
+        return false;
+    }
+
+    rc = boot_read_swap_state(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY),
+                              &swap_state);
+    return rc == 0 && swap_state.image_ok == BOOT_FLAG_SET;
+}
+#endif
+
 /**
  * Prepare image to be updated if required.
  *
@@ -1642,8 +1662,15 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
                  * magic, so also run validation on the primary slot to be
                  * sure it's not OK.
                  */
-                FIH_CALL(boot_validate_slot, fih_rc,
-                         state, BOOT_SLOT_PRIMARY, bs, 0);
+#ifdef MCUBOOT_BOOTSTRAP_TRUST_CONFIRMED_PRIMARY
+                if (boot_primary_confirmed(state)) {
+                    FIH_SET(fih_rc, FIH_SUCCESS);
+                } else
+#endif
+                {
+                    FIH_CALL(boot_validate_slot, fih_rc,
+                             state, BOOT_SLOT_PRIMARY, bs, 0);
+                }
 #ifdef BOOT_BOOTSTRAP_VALIDATE_PRIMARY_ONCE
                 /* Nothing is copied when it is valid: no need to validate
                  * it again before booting.
