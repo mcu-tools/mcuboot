@@ -96,7 +96,7 @@ primary slot and adds a header and trailer that the bootloader is expecting:
                                       send to OUTFILE the payload or payloads
                                       digest instead of complied image. These data
                                       can be used for external image signing
-      --hmac-sha [auto|256|512]       sha algorithm used in HKDF/HMAC in ECIES key
+      --hmac-sha [auto|256|384|512]   sha algorithm used in HKDF/HMAC in ECIES key
                                       exchange TLV
       --sha [auto|256|384|512]        selected sha algorithm to use; defaults to
                                       "auto" which is 256 if no cryptographic
