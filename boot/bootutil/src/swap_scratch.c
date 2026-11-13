@@ -25,6 +25,7 @@
 #include "bootutil_priv.h"
 #include "swap_priv.h"
 #include "bootutil/bootutil_log.h"
+#include "bootutil/mcuboot_status.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 
@@ -974,11 +975,13 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     int first_sector_idx;
     int last_sector_idx;
     uint32_t swap_idx;
+    uint32_t num_sectors;
     int rc;
 
     BOOT_LOG_INF("Starting swap using scratch algorithm.");
 
     last_sector_idx = find_last_sector_idx(state, copy_size);
+    num_sectors = last_sector_idx + 1;
 
     swap_idx = 0;
     while (last_sector_idx >= 0) {
@@ -990,6 +993,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
             }
         }
 
+        mcuboot_progress(MCUBOOT_PROGRESS_SWAP, num_sectors - first_sector_idx, num_sectors);
         last_sector_idx = first_sector_idx - 1;
         swap_idx++;
     }

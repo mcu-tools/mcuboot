@@ -1308,6 +1308,17 @@ config MCUBOOT_ACTION_HOOKS
 	  'mcuboot_status_type_t' is listed in
 	  boot/bootutil/include/bootutil/mcuboot_status.h
 
+config MCUBOOT_PROGRESS_HOOKS
+	bool "Hooks for reporting swap and serial upload progress"
+	help
+	  This will call a handler as a swap or a serial recovery upload
+	  advances, which allows for user feedback during these long
+	  operations, for instance blinking an LED, using the callback:
+	  'void mcuboot_progress(mcuboot_progress_type_t type, uint32_t done,
+	  uint32_t total)' where 'mcuboot_progress_type_t' is listed in
+	  boot/bootutil/include/bootutil/mcuboot_status.h. A swap reports
+	  flash sectors, an upload reports bytes.
+
 config FIND_NEXT_SLOT_HOOKS
 	bool "Hooks for finding the next active slot"
 	help

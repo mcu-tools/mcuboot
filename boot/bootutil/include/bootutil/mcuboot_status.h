@@ -7,6 +7,8 @@
 #ifndef H_MCUBOOT_STATUS_
 #define H_MCUBOOT_STATUS_
 
+#include <stdint.h>
+
 #include "mcuboot_config/mcuboot_config.h"
 
 /* Enumeration representing the states that MCUboot can be in */
@@ -27,6 +29,20 @@ typedef enum
 extern void mcuboot_status_change(mcuboot_status_type_t status);
 #else
 #define mcuboot_status_change(_status) do {} while (0)
+#endif
+
+/* Operations that report progress, and the unit each one counts in */
+typedef enum
+{
+	MCUBOOT_PROGRESS_SWAP = 0,	/* flash sectors swapped */
+	MCUBOOT_PROGRESS_UPLOAD,	/* bytes received by serial recovery */
+} mcuboot_progress_type_t;
+
+#if defined(MCUBOOT_PROGRESS_HOOKS)
+extern void mcuboot_progress(mcuboot_progress_type_t type, uint32_t done, uint32_t total);
+#else
+#define mcuboot_progress(_type, _done, _total) \
+	do { (void)(_type); (void)(_done); (void)(_total); } while (0)
 #endif
 
 #endif /* H_MCUBOOT_STATUS_ */
