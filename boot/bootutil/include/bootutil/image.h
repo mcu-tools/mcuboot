@@ -46,9 +46,9 @@ extern "C" {
 #define STRUCT_PACKED struct __attribute__((__packed__))
 #endif
 
-#define IMAGE_MAGIC                 0x96f3b83d
-#define IMAGE_MAGIC_V1              0x96f3b83c
-#define IMAGE_MAGIC_NONE            0xffffffff
+#define IMAGE_MAGIC                 0x96f3b83dU
+#define IMAGE_MAGIC_V1              0x96f3b83cU
+#define IMAGE_MAGIC_NONE            0xffffffffU
 #define IMAGE_TLV_INFO_MAGIC        0x6907
 #define IMAGE_TLV_PROT_INFO_MAGIC   0x6908
 
