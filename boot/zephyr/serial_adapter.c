@@ -83,10 +83,20 @@ static sys_slist_t avail_queue;
 static sys_slist_t lines_queue;
 
 static uint16_t cur;
+static struct line_input *cmd;
 #ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
 static uint8_t rx_buf[CONFIG_BOOT_MAX_LINE_INPUT_LEN];
 #else
 static uint8_t rx_batch_buf[CONFIG_BOOT_SERIAL_UART_RX_BATCH_SIZE];
+
+/*
+ * Number of valid bytes in rx_batch_buf and how many of them have been
+ * stored into line buffers.  When a batch cannot be fully stored because
+ * no line buffer is free, the remainder stays pending here until the
+ * serial recovery code recycles a buffer.
+ */
+static size_t rx_batch_len;
+static size_t rx_batch_off;
 #endif
 
 #if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
@@ -100,6 +110,9 @@ static bool uart_blocked = false;
 
 static int boot_uart_fifo_getline(char **line);
 static int boot_uart_fifo_init(void);
+#ifndef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
+static bool boot_uart_fifo_consume_batch(void);
+#endif
 
 int
 console_out(int c)
@@ -215,10 +228,66 @@ boot_console_init(void)
 	return rc;
 }
 
+#ifndef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
+/*
+ * Store the bytes already sitting in rx_batch_buf into line buffers,
+ * completing a line at every newline.  Returns true once every buffered
+ * byte has been consumed.  When no line buffer is available, keeps the
+ * unconsumed tail pending and returns false; the caller must then stop
+ * reading the FIFO and retry once the serial recovery code recycles a
+ * buffer, instead of dropping the tail.
+ */
+static bool
+boot_uart_fifo_consume_batch(void)
+{
+	const uint8_t *p = rx_batch_buf + rx_batch_off;
+	const uint8_t *batch_end = rx_batch_buf + rx_batch_len;
+
+	while (p < batch_end) {
+		if (!cmd) {
+			sys_snode_t *node;
+
+			node = sys_slist_get(&avail_queue);
+			if (!node) {
+				rx_batch_off = (size_t)(p - rx_batch_buf);
+				return false;
+			}
+			cmd = CONTAINER_OF(node, struct line_input, node);
+		}
+
+		const uint8_t *nl = memchr(p, '\n', batch_end - p);
+		size_t chunk;
+		size_t room = (size_t)(CONFIG_BOOT_MAX_LINE_INPUT_LEN - cur);
+		size_t copy_len;
+
+		if (nl != NULL) {
+			chunk = (size_t)(nl - p + 1);
+		} else {
+			chunk = (size_t)(batch_end - p);
+		}
+		copy_len = MIN(chunk, room);
+
+		memcpy(&cmd->line[cur], p, copy_len);
+		cur += copy_len;
+		p += chunk;
+
+		if (nl) {
+			cmd->len = cur;
+			sys_slist_append(&lines_queue, &cmd->node);
+			cur = 0;
+			cmd = NULL;
+		}
+	}
+
+	rx_batch_off = rx_batch_len;
+
+	return true;
+}
+#endif
+
 static void
 boot_uart_fifo_callback(const struct device *dev, void *user_data)
 {
-	static struct line_input *cmd;
 	int rx;
 
 	uart_irq_update(uart_dev);
@@ -234,12 +303,15 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 #endif
 
 	while (true) {
+#if defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL) || \
+    defined(CONFIG_BOOT_SERIAL_CDC_ACM)
 		size_t copy_len = CONFIG_BOOT_MAX_LINE_INPUT_LEN - 1 - cur;
 		size_t free_buffers = sys_slist_len(&avail_queue);
 
 		if (free_buffers > 0 && cmd == NULL) {
 			--free_buffers;
 		}
+#endif
 
 #ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
 		if (cur == 0 && free_buffers == 0) {
@@ -287,8 +359,21 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 		}
 #else
 #if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
-		size_t max_read_size = free_buffers * (CONFIG_BOOT_MAX_LINE_INPUT_LEN - 1) +
-				       copy_len;
+		size_t max_read_size;
+
+		/*
+		 * A previous batch may still hold bytes that could not be
+		 * stored because no line buffer was free; finish storing
+		 * them before pulling any new data out of the FIFO.
+		 */
+		if (!boot_uart_fifo_consume_batch()) {
+			uart_blocked = true;
+			uart_irq_rx_disable(uart_dev);
+			return;
+		}
+
+		max_read_size = free_buffers *
+				(CONFIG_BOOT_MAX_LINE_INPUT_LEN - 1) + copy_len;
 
 		if (max_read_size > sizeof(rx_batch_buf)) {
 			max_read_size = sizeof(rx_batch_buf);
@@ -306,37 +391,24 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 			break;
 		}
 
-		const uint8_t *p = rx_batch_buf;
-		const uint8_t *batch_end = p + rx;
+		rx_batch_len = rx;
+		rx_batch_off = 0;
 
-		while (p < batch_end) {
-			if (!cmd) {
-				sys_snode_t *node;
-
-				node = sys_slist_get(&avail_queue);
-				if (!node) {
-					BOOT_LOG_ERR("Not enough memory to store"
-						     " incoming data!");
-					return;
-				}
-				cmd = CONTAINER_OF(node, struct line_input, node);
-			}
-
-			const uint8_t *nl = memchr(p, '\n', batch_end - p);
-			size_t chunk = nl ? (size_t)(nl - p + 1) : (size_t)(batch_end - p);
-			copy_len = MIN(chunk, (CONFIG_BOOT_MAX_LINE_INPUT_LEN - cur));
-
-			memcpy(&cmd->line[cur], p, copy_len);
-			cur += copy_len;
-			p += chunk;
-
-			if (nl) {
-				cmd->len = cur;
-				sys_slist_append(&lines_queue, &cmd->node);
-				cur = 0;
-				cmd = NULL;
-
-			}
+		if (!boot_uart_fifo_consume_batch()) {
+			/*
+			 * No line buffer for the batch tail: keep it pending
+			 * in rx_batch_buf and stop reading.  The FIFO backs
+			 * up until the serial recovery code recycles a buffer,
+			 * so no already-received byte is lost.
+			 */
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+			uart_blocked = true;
+			uart_irq_rx_disable(uart_dev);
+#else
+			BOOT_LOG_ERR("Not enough memory to store"
+				     " incoming data!");
+#endif
+			return;
 		}
 #endif
 	}
@@ -366,6 +438,10 @@ boot_uart_fifo_getline(char **line)
 #if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
 	bool unblock = false;
 #endif
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) && \
+    !defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+	bool drained = false;
+#endif
 
 	key = irq_lock();
 	/* Recycle cmd buffer returned previous time */
@@ -381,10 +457,36 @@ boot_uart_fifo_getline(char **line)
 		}
 	}
 
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) && \
+    !defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+	if (unblock) {
+		/*
+		 * The recycled buffer may unblock a batch that was kept
+		 * pending in rx_batch_buf; store the remainder before
+		 * resuming reception.  This cannot wait for the next
+		 * receive interrupt: the FIFO can stay empty while bytes
+		 * are still pending, e.g. when the sender is waiting for
+		 * a response.  The receive callback runs on a work queue
+		 * thread that can preempt this one as USB interrupts are
+		 * handled, so the drain takes the same lock as the other
+		 * queue operations above.  If the remainder still does
+		 * not fit, stay blocked; the next recycled buffer retries
+		 * the drain.
+		 */
+		drained = boot_uart_fifo_consume_batch();
+	}
+#endif
+
 	node = sys_slist_get(&lines_queue);
 	irq_unlock(key);
 
-#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) && \
+    !defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+	if (unblock && drained) {
+		uart_blocked = false;
+		uart_irq_rx_enable(uart_dev);
+	}
+#elif defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
 	if (unblock) {
 		uart_blocked = false;
 		uart_irq_rx_enable(uart_dev);
