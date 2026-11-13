@@ -240,26 +240,19 @@ mod raw {
                            encbuf: *mut u8) -> libc::c_int;
 
         #[allow(unused)]
-        pub fn psa_crypto_init() -> u32;
-
-        #[allow(unused)]
         pub fn mbedtls_test_enable_insecure_external_rng();
     }
 }
-
-#[allow(unused)]
-static PSA_INIT_SYNC: Once = Once::new();
 
 #[allow(unused)]
 static MBEDTLS_EXTERNAL_RNG_ENABLE_SYNC: Once = Once::new();
 
 #[cfg(feature = "psa-crypto-api")]
 fn init_crypto() {
-    PSA_INIT_SYNC.call_once(|| {
-        assert_eq!(unsafe { raw::psa_crypto_init() }, 0);
-    });
-
-    /* The PSA APIs require properly initialisation of the entropy subsystem
+    /* psa_crypto_init() is deliberately left to bootutil, so a crypto path
+     * that forgets it fails here as it would on a target.
+     *
+     * The PSA APIs require properly initialisation of the entropy subsystem
      * The configuration adds the option MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG when the
      * psa-crypto-api feature is enabled. As a result the tests use the implementation
      * of the test external rng that needs to be initialised before being able to use it
