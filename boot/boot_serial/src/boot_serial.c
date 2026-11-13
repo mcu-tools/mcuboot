@@ -1301,6 +1301,8 @@ bs_upload(char *buf, int len)
 #endif
 
         img_size = img_size_tmp;
+        BOOT_LOG_INF("Upload started: %u bytes, image %u",
+                     (unsigned int)img_size, (unsigned int)img_num);
 
 #if defined(MCUBOOT_SWAP_USING_OFFSET) && defined(MCUBOOT_SERIAL_DIRECT_IMAGE_UPLOAD)
         if (img_num > 0 &&
@@ -1457,6 +1459,8 @@ bs_upload(char *buf, int len)
                 BOOT_LOG_ERR("Error %d post upload hook", rc);
                 goto out;
             }
+            BOOT_LOG_INF("Upload complete: %u bytes, image %u",
+                         (unsigned int)img_size, (unsigned int)img_num);
         }
     } else {
 out_invalid_data:
@@ -1594,12 +1598,15 @@ bs_reset(char *buf, int len)
     bs_rc_rsp(rc);
 
     if (rc == 0) {
+        BOOT_LOG_INF("Reset requested via serial recovery");
 #ifdef __ZEPHYR__
 #ifdef CONFIG_MULTITHREADING
         k_sleep(K_MSEC(250));
 #else
         k_busy_wait(250000);
 #endif
+        /* After the wait: LOG_PANIC while USB is still active overflows the UDC stack */
+        ZEPHYR_BOOT_LOG_STOP();
         sys_reboot(SYS_REBOOT_COLD);
 #elif __ESPRESSIF__
         esp_rom_delay_us(250000);

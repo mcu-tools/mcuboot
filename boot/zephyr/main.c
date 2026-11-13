@@ -85,18 +85,9 @@ K_THREAD_STACK_DEFINE(boot_log_stack, CONFIG_MCUBOOT_LOG_THREAD_STACK_SIZE);
 struct k_thread boot_log_thread;
 volatile bool boot_log_stop = false;
 K_SEM_DEFINE(boot_log_sem, 0, 1);
-
-/* log processing need to be initalized by the application */
-#define ZEPHYR_BOOT_LOG_START() zephyr_boot_log_start()
-#define ZEPHYR_BOOT_LOG_STOP() zephyr_boot_log_stop()
 #endif /* CONFIG_LOG_PROCESS_THREAD */
 #endif /* !IMMEDIATE && !MINIMAL */
 #endif /* CONFIG_LOG */
-
-#if !defined(ZEPHYR_BOOT_LOG_START)
-#define ZEPHYR_BOOT_LOG_START() ((void)0)
-#define ZEPHYR_BOOT_LOG_STOP() ((void)0)
-#endif
 
 BOOT_LOG_MODULE_REGISTER(mcuboot);
 
