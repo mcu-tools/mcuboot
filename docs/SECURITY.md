@@ -25,7 +25,9 @@ GitHub, with any interested Trusted Stakeholders and the reporter added as
 viewers.
 
 On the public disclosure date, the security advisory page will be made public,
-and the public CVE database will be updated with all relevant information.
+the public CVE database will be updated with all relevant information, and the
+vulnerability will be added to the [security vulnerabilities](vulnerabilities.md)
+page.
 
 The release notes of the next MCUboot release will refer to any allocated
 CVE(s).
