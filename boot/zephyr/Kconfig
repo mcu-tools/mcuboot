@@ -76,6 +76,13 @@ config BOOT_PSA_IMG_HASH_ALG_SHA256_DEPENDENCIES
 	help
 	  Dependencies for hashing with SHA256
 
+config BOOT_PSA_IMG_HASH_ALG_SHA384_DEPENDENCIES
+	bool
+	default y if BOOT_SOMETHING_USES_SHA384
+	select PSA_WANT_ALG_SHA_384
+	help
+	  Dependencies for hashing with SHA384
+
 config BOOT_PSA_IMG_HASH_ALG_SHA512_DEPENDENCIES
 	bool
 	default y if BOOT_SOMETHING_USES_SHA512
@@ -368,6 +375,21 @@ endchoice # Ecdsa implementation
 
 endif
 
+config BOOT_SIGNATURE_TYPE_ECDSA_P384
+	bool "Elliptic curve digital signatures with curve P-384"
+	select BOOT_IMG_HASH_ALG_SHA384_ALLOW
+	select BOOT_USE_PSA_CRYPTO
+	select PSA_CRYPTO
+	select PSA_WANT_ALG_ECDSA
+	select PSA_WANT_KEY_TYPE_ECC_PUBLIC_KEY
+	select PSA_WANT_ECC_SECP_R1_384
+	help
+	  ECDSA image signature verification on curve P-384 (secp384r1),
+	  with a SHA-384 image hash. Only the PSA Crypto backend implements
+	  P-384, so unlike P-256 there is no choice of implementation.
+	  Images must be signed with a P-384 key, such as root-ec-p384.pem
+	  for development.
+
 config BOOT_SIGNATURE_TYPE_ED25519
 	bool "Edwards curve digital signatures using ed25519"
 	select BOOT_ENCRYPTION_SUPPORT if !BOOT_SIGNATURE_TYPE_PURE
@@ -480,6 +502,7 @@ config BOOT_SIGNATURE_KEY_FILE
 	string "PEM key file (or comma-separated list)"
 	depends on !BOOT_SIGNATURE_TYPE_NONE
 	default "root-ec-p256.pem" if BOOT_SIGNATURE_TYPE_ECDSA_P256
+	default "root-ec-p384.pem" if BOOT_SIGNATURE_TYPE_ECDSA_P384
 	default "root-ed25519.pem" if BOOT_SIGNATURE_TYPE_ED25519
 	default "root-rsa-3072.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=3072
 	default "root-rsa-2048.pem" if BOOT_SIGNATURE_TYPE_RSA && BOOT_SIGNATURE_TYPE_RSA_LEN=2048
