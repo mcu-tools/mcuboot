@@ -235,7 +235,6 @@ int main(void)
      defined(CONFIG_BOOT_SWAP_USING_OFFSET) || defined(CONFIG_BOOT_SWAP_USING_MOVE))
     bool has_upgrade;
 #endif
-    FIH_DECLARE(fih_rc, FIH_FAILURE);
 #ifdef CONFIG_BOOT_SERIAL_WAIT_FOR_DFU
     int timeout_in_ms;
     uint32_t start;
@@ -243,6 +242,14 @@ int main(void)
 
     MCUBOOT_WATCHDOG_SETUP();
     MCUBOOT_WATCHDOG_FEED();
+
+    /* The mbedTLS heap must exist before the FIH delay RNG seeds, and both before any FIH macro */
+    os_heap_init();
+#ifdef FIH_ENABLE_DELAY
+    (void)fih_delay_init();
+#endif
+
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
 #if !defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Starting bootloader");
@@ -254,8 +261,6 @@ int main(void)
     /* LED init */
     io_led_init();
 #endif
-
-    os_heap_init();
 
     ZEPHYR_BOOT_LOG_START();
 
