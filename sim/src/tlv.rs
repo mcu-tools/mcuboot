@@ -60,6 +60,7 @@ pub enum TlvKinds {
     ENCKW = 0x31,
     ENCEC256 = 0x32,
     ENCX25519 = 0x33,
+    ENCEC384 = 0x35,
     DEPENDENCY = 0x40,
     SECCNT = 0x50,
 }
@@ -313,6 +314,20 @@ impl TlvGen {
     }
 
     #[allow(dead_code)]
+    pub fn new_ecdsa_ecies_p384(aes_key_size: u32) -> TlvGen {
+        let flag = if aes_key_size == 256 {
+            TlvFlags::ENCRYPTED_AES256 as u32
+        } else {
+            TlvFlags::ENCRYPTED_AES128 as u32
+        };
+        TlvGen {
+            flags: flag,
+            kinds: vec![TlvKinds::SHA384, TlvKinds::ECDSASIG, TlvKinds::ENCEC384],
+            ..Default::default()
+        }
+    }
+
+    #[allow(dead_code)]
     pub fn new_ecies_x25519(aes_key_size: u32) -> TlvGen {
         let flag = if aes_key_size == 256 {
             TlvFlags::ENCRYPTED_AES256 as u32
@@ -449,6 +464,9 @@ impl ManifestGen for TlvGen {
         }
         if self.kinds.contains(&TlvKinds::ENCX25519) {
             estimate += 4 + if aes256 { 96 } else { 80 };
+        }
+        if self.kinds.contains(&TlvKinds::ENCEC384) {
+            estimate += 4 + if aes256 { 177 } else { 161 };
         }
 
         // Gather the size of the protected TLV area.
@@ -748,9 +766,13 @@ impl ManifestGen for TlvGen {
             result.extend_from_slice(&encbuf);
         }
 
-        if self.kinds.contains(&TlvKinds::ENCEC256) || self.kinds.contains(&TlvKinds::ENCX25519) {
+        if self.kinds.contains(&TlvKinds::ENCEC256) || self.kinds.contains(&TlvKinds::ENCX25519) ||
+                self.kinds.contains(&TlvKinds::ENCEC384) {
+            let ec384 = self.kinds.contains(&TlvKinds::ENCEC384);
             let key_bytes = if self.kinds.contains(&TlvKinds::ENCEC256) {
                 pem::parse(include_bytes!("../../enc-ec256-pub.pem").as_ref()).unwrap()
+            } else if ec384 {
+                pem::parse(include_bytes!("../../enc-ec384-pub.pem").as_ref()).unwrap()
             } else {
                 pem::parse(include_bytes!("../../enc-x25519-pub.pem").as_ref()).unwrap()
             };
@@ -758,6 +780,8 @@ impl ManifestGen for TlvGen {
             let rng = rand::SystemRandom::new();
             let alg = if self.kinds.contains(&TlvKinds::ENCEC256) {
                 &agreement::ECDH_P256
+            } else if ec384 {
+                &agreement::ECDH_P384
             } else {
                 &agreement::X25519
             };
@@ -773,6 +797,8 @@ impl ManifestGen for TlvGen {
 
             let peer_pubk = if self.kinds.contains(&TlvKinds::ENCEC256) {
                 agreement::UnparsedPublicKey::new(&agreement::ECDH_P256, &key_bytes.contents[26..])
+            } else if ec384 {
+                agreement::UnparsedPublicKey::new(&agreement::ECDH_P384, &key_bytes.contents[23..])
             } else {
                 agreement::UnparsedPublicKey::new(&agreement::X25519, &key_bytes.contents[12..])
             };
@@ -788,17 +814,22 @@ impl ManifestGen for TlvGen {
 
             let flag = TlvFlags::ENCRYPTED_AES256 as u32;
             let aes256 = (self.get_flags() & flag) == flag;
+            let (hkdf_alg, hmac_alg, mac_len) = if ec384 {
+                (hkdf::HKDF_SHA384, hmac::HMAC_SHA384, 48)
+            } else {
+                (hkdf::HKDF_SHA256, hmac::HMAC_SHA256, 32)
+            };
 
             let derived_key = match agreement::agree_ephemeral(
                 pk, &peer_pubk, ring::error::Unspecified, |shared| {
-                    let salt = hkdf::Salt::new(hkdf::HKDF_SHA256, &[]);
+                    let salt = hkdf::Salt::new(hkdf_alg, &[]);
                     let prk = salt.extract(&shared);
-                    let okm_len = if aes256 { 64 } else { 48 };
+                    let okm_len = if aes256 { 32 } else { 16 } + mac_len;
                     let okm = match prk.expand(&[b"MCUBoot_ECIES_v1"], OkmLen(okm_len)) {
                         Ok(okm) => okm,
                         Err(_) => panic!("Failed building HKDF OKM"),
                     };
-                    let mut buf = if aes256 { vec![0u8; 64] } else { vec![0u8; 48] };
+                    let mut buf = vec![0u8; okm_len];
                     match okm.fill(&mut buf) {
                         Ok(_) => Ok(buf),
                         Err(_) => panic!("Failed generating HKDF output"),
@@ -824,7 +855,7 @@ impl ManifestGen for TlvGen {
             }
 
             let size = if aes256 { 32 } else { 16 };
-            let key = hmac::Key::new(hmac::HMAC_SHA256, &derived_key[size..]);
+            let key = hmac::Key::new(hmac_alg, &derived_key[size..]);
             let tag = hmac::sign(&key, &cipherkey);
 
             let mut buf = vec![];
@@ -836,6 +867,11 @@ impl ManifestGen for TlvGen {
                 let size = if aes256 { 129 } else { 113 };
                 assert!(buf.len() == size);
                 result.write_u16::<LittleEndian>(TlvKinds::ENCEC256 as u16).unwrap();
+                result.write_u16::<LittleEndian>(size as u16).unwrap();
+            } else if ec384 {
+                let size = if aes256 { 177 } else { 161 };
+                assert!(buf.len() == size);
+                result.write_u16::<LittleEndian>(TlvKinds::ENCEC384 as u16).unwrap();
                 result.write_u16::<LittleEndian>(size as u16).unwrap();
             } else {
                 let size = if aes256 { 96 } else { 80 };

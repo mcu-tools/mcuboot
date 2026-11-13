@@ -32,6 +32,8 @@ fn main() {
     let enc_ec256 = env::var("CARGO_FEATURE_ENC_EC256").is_ok();
     let enc_ec256_mbedtls = env::var("CARGO_FEATURE_ENC_EC256_MBEDTLS").is_ok();
     let enc_aes256_ec256 = env::var("CARGO_FEATURE_ENC_AES256_EC256").is_ok();
+    let enc_ec384 = env::var("CARGO_FEATURE_ENC_EC384").is_ok();
+    let enc_aes256_ec384 = env::var("CARGO_FEATURE_ENC_AES256_EC384").is_ok();
     let enc_x25519 = env::var("CARGO_FEATURE_ENC_X25519").is_ok();
     let enc_aes256_x25519 = env::var("CARGO_FEATURE_ENC_AES256_X25519").is_ok();
     let bootstrap = env::var("CARGO_FEATURE_BOOTSTRAP").is_ok();
@@ -149,6 +151,10 @@ fn main() {
 
     if mbedtls_v4 && !sig_ecdsa_psa {
         panic!("mbedtls-v4 is only supported in combination with sig-ecdsa-psa");
+    }
+
+    if (enc_ec384 || enc_aes256_ec384) && !(mbedtls_v4 && sig_p384) {
+        panic!("enc-ec384 is only supported with sig-ecdsa-psa, sig-p384 and mbedtls-v4");
     }
 
     if psa_crypto_api && !mbedtls_v4 {
@@ -276,7 +282,8 @@ fn main() {
         conf.file("../../ext/mbedtls-3.6.0/library/platform.c");
         conf.file("../../ext/mbedtls-3.6.0/library/platform_util.c");
     } else if sig_ecdsa_psa && mbedtls_v4 {
-        add_mbedtls_v4_psa_ecdsa(&mut conf, sig_p384, enc_ec256 || enc_aes256_ec256);
+        add_mbedtls_v4_psa_ecdsa(&mut conf, sig_p384, enc_ec256 || enc_aes256_ec256,
+                                 enc_ec384 || enc_aes256_ec384);
     } else if sig_ecdsa_psa {
         conf.conf.include("../../ext/mbedtls-3.6.0/include");
 
@@ -442,7 +449,18 @@ fn main() {
         }
     }
 
-    if (enc_ec256 || enc_aes256_ec256) && mbedtls_v4 {
+    if enc_ec384 || enc_aes256_ec384 {
+        // ECIES-P384 is implemented only by encrypted_psa.c.
+        if enc_aes256_ec384 {
+            conf.conf.define("MCUBOOT_AES_256", None);
+        }
+        conf.conf.define("MCUBOOT_ENCRYPT_EC384", None);
+        conf.conf.define("MCUBOOT_ENC_IMAGES", None);
+        conf.conf.define("MCUBOOT_SWAP_SAVE_ENCTLV", None);
+
+        conf.file("../../boot/bootutil/src/encrypted.c");
+        conf.file("../../boot/bootutil/src/encrypted_psa.c");
+    } else if (enc_ec256 || enc_aes256_ec256) && mbedtls_v4 {
         // Genuine PSA encryption. encrypted.c holds the high-level
         // boot_enc_* interface (unconditional); encrypted_psa.c
         // supplies the crypto primitives (boot_decrypt_key,
@@ -669,7 +687,8 @@ fn main() {
 /// Python generators for `psa_crypto_driver_wrappers*` and
 /// `tf_psa_crypto_config_check_*.h` when GEN_FILES is ON (the default
 /// on non-Windows hosts).
-fn add_mbedtls_v4_psa_ecdsa(conf: &mut CachedBuild, sig_p384: bool, enc_ec256: bool) {
+fn add_mbedtls_v4_psa_ecdsa(conf: &mut CachedBuild, sig_p384: bool, enc_ec256: bool,
+                            enc_ec384: bool) {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR")
         .expect("CARGO_MANIFEST_DIR not set"));
     let tf_src = manifest_dir
@@ -708,6 +727,9 @@ fn add_mbedtls_v4_psa_ecdsa(conf: &mut CachedBuild, sig_p384: bool, enc_ec256: b
     }
     if enc_ec256 {
         cmake_conf.cflag("-DMCUBOOT_ENCRYPT_EC256");
+    }
+    if enc_ec384 {
+        cmake_conf.cflag("-DMCUBOOT_ENCRYPT_EC384");
     }
     let dst = cmake_conf.build();
 
