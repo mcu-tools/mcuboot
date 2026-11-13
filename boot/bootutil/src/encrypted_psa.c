@@ -12,7 +12,8 @@
 #include <inttypes.h>
 #include <string.h>
 
-#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
+#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_EC384) || \
+    defined(MCUBOOT_ENCRYPT_X25519)
 /* We are not really using the MBEDTLS but need the ASN.1 parsing functions */
 #define MBEDTLS_ASN1_PARSE_C
 
@@ -38,7 +39,7 @@
 #if !defined(MBEDTLS_OID_EC_GRP_SECP256R1)
 #define MBEDTLS_OID_EC_GRP_SECP256R1    "\x2a\x86\x48\xce\x3d\x03\x01\x07"
 #endif
-#endif /* defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519) */
+#endif /* MCUBOOT_ENCRYPT_{EC256,EC384,X25519} */
 
 #include "bootutil/image.h"
 #include "bootutil/enc_key.h"
@@ -51,6 +52,8 @@ BOOT_LOG_MODULE_REGISTER(mcuboot_psa_enc);
 
 #if defined(MCUBOOT_HMAC_SHA512)
 #define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_512
+#elif defined(MCUBOOT_ENCRYPT_EC384)
+#define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_384
 #else
 #define PSA_HMAC_HKDF_SHA PSA_ALG_SHA_256
 #endif
@@ -58,9 +61,16 @@ BOOT_LOG_MODULE_REGISTER(mcuboot_psa_enc);
 #if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_EC256)
 #define NUM_ECC_BYTES (256 / 8)
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_EC_ALG_UNRESTRICTED;
-static const uint8_t ec_secp256r1_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
+static const uint8_t ec_curve_oid[] = MBEDTLS_OID_EC_GRP_SECP256R1;
 #define ECC_FAMILY PSA_ECC_FAMILY_SECP_R1
 #endif /* defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_EC256) */
+#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_EC384)
+#define NUM_ECC_BYTES (384 / 8)
+static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_EC_ALG_UNRESTRICTED;
+/* secp384r1 (1.3.132.0.34) */
+static const uint8_t ec_curve_oid[] = "\x2b\x81\x04\x00\x22";
+#define ECC_FAMILY PSA_ECC_FAMILY_SECP_R1
+#endif /* defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_EC384) */
 #if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_X25519)
 #define X25519_OID "\x6e"
 static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
@@ -74,15 +84,12 @@ static const uint8_t ec_pubkey_oid[] = MBEDTLS_OID_ISO_IDENTIFIED_ORG \
 #define HKDF_AES_KEY_SIZE   (BOOT_ENC_KEY_SIZE)
 /* MAC feed */
 #define HKDF_MAC_FEED_INDEX (HKDF_AES_KEY_INDEX + HKDF_AES_KEY_SIZE)
-#if !defined(MCUBOOT_HMAC_SHA512)
-#define HKDF_MAC_FEED_SIZE  (32)
-#else
-#define HKDF_MAC_FEED_SIZE  (64)
-#endif
+#define HKDF_MAC_FEED_SIZE  (BOOT_HMAC_SIZE)
 /* Total size */
 #define HKDF_SIZE           (HKDF_AES_KEY_SIZE + HKDF_MAC_FEED_SIZE)
 
-#if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_EC256)
+#if defined(MCUBOOT_ENC_IMAGES) && \
+    (defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_EC384))
 /* Fixme: This duplicates code from encrypted.c and depends on mbedtls */
 
 /*
@@ -119,8 +126,9 @@ parse_priv_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
         memcmp(alg.ASN1_CONTEXT_MEMBER(p), ec_pubkey_oid, sizeof(ec_pubkey_oid) - 1)) {
         return -1;
     }
-    if (param.ASN1_CONTEXT_MEMBER(len) != sizeof(ec_secp256r1_oid) - 1 ||
-        memcmp(param.ASN1_CONTEXT_MEMBER(p), ec_secp256r1_oid, sizeof(ec_secp256r1_oid) - 1)) {
+    if (param.ASN1_CONTEXT_MEMBER(len) != sizeof(ec_curve_oid) - 1 ||
+        memcmp(param.ASN1_CONTEXT_MEMBER(p), ec_curve_oid,
+               sizeof(ec_curve_oid) - 1)) {
         return -1;
     }
 
@@ -156,7 +164,7 @@ parse_priv_enckey(uint8_t **p, uint8_t *end, uint8_t *private_key)
 
     return 0;
 }
-#endif /* defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_EC256) */
+#endif /* MCUBOOT_ENC_IMAGES && MCUBOOT_ENCRYPT_{EC256,EC384} */
 
 #if defined(MCUBOOT_ENC_IMAGES) && defined(MCUBOOT_ENCRYPT_X25519)
 /* Fixme: This duplicates code from encrypted.c and depends on mbedtls */
@@ -254,7 +262,8 @@ int bootutil_aes_ctr_set_key(bootutil_aes_ctr_context *ctx, const uint8_t *k)
 }
 
 #if defined(MCUBOOT_ENC_IMAGES)
-#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519)
+#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_EC384) || \
+    defined(MCUBOOT_ENCRYPT_X25519)
 extern const struct bootutil_key bootutil_enc_key;
 /*
  * Decrypt an encryption key TLV.
@@ -444,7 +453,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
 
     return 0;
 }
-#endif /* defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_X25519) */
+#endif /* MCUBOOT_ENCRYPT_{EC256,EC384,X25519} */
 
 int bootutil_aes_ctr_encrypt(bootutil_aes_ctr_context *ctx, uint8_t *counter,
         const uint8_t *m, uint32_t mlen, size_t blk_off, uint8_t *c)

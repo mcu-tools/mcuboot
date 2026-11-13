@@ -84,6 +84,7 @@ TLV_VALUES = {
         'ENCEC256': 0x32,
         'ENCX25519': 0x33,
         'ENCX25519_SHA512': 0x34,
+        'ENCEC384': 0x35,
         'DEPENDENCY': 0x40,
         'SEC_CNT': 0x50,
         'BOOT_RECORD': 0x60,
@@ -479,6 +480,9 @@ class Image:
         if isinstance(enckey, ecdsa.ECDSA256P1Public):
             newpk = ec.generate_private_key(ec.SECP256R1(), default_backend())
             shared = newpk.exchange(ec.ECDH(), enckey._get_public())
+        elif isinstance(enckey, ecdsa.ECDSA384P1Public):
+            newpk = ec.generate_private_key(ec.SECP384R1(), default_backend())
+            shared = newpk.exchange(ec.ECDH(), enckey._get_public())
         else:
             newpk = X25519PrivateKey.generate()
             shared = newpk.exchange(enckey._get_public())
@@ -502,7 +506,8 @@ class Image:
                         backend=default_backend())
         mac.update(cipherkey)
         ciphermac = mac.finalize()
-        if isinstance(enckey, ecdsa.ECDSA256P1Public):
+        if isinstance(enckey, (ecdsa.ECDSA256P1Public,
+                               ecdsa.ECDSA384P1Public)):
             pubk = newpk.public_key().public_bytes(
                 encoding=Encoding.X962,
                 format=PublicFormat.UncompressedPoint)
@@ -749,10 +754,18 @@ class Image:
             else:
                 plainkey = os.urandom(16)
 
-            if not isinstance(enckey, rsa.RSAPublic):
+            if isinstance(enckey, ecdsa.ECDSA384P1Public):
+                if hmac_sha not in ('auto', '384'):
+                    raise click.UsageError(
+                        "ECIES-P384 supports only HMAC-SHA384")
+                hmac_sha_alg = hashes.SHA384()
+            elif not isinstance(enckey, rsa.RSAPublic):
                 if hmac_sha == 'auto' or hmac_sha == '256':
                     hmac_sha = '256'
                     hmac_sha_alg = hashes.SHA256()
+                elif hmac_sha == '384':
+                    raise click.UsageError(
+                        "Currently only ECIES-P384 supports HMAC-SHA384")
                 elif hmac_sha == '512':
                     if not isinstance(enckey, x25519.X25519Public):
                         raise click.UsageError(
@@ -774,6 +787,11 @@ class Image:
                 enctlv = pubk + mac + cipherkey
                 self.enctlv_len = len(enctlv)
                 tlv.add('ENCEC256', enctlv)
+            elif isinstance(enckey, ecdsa.ECDSA384P1Public):
+                cipherkey, mac, pubk = self.ecies_hkdf(enckey, plainkey, hmac_sha_alg)
+                enctlv = pubk + mac + cipherkey
+                self.enctlv_len = len(enctlv)
+                tlv.add('ENCEC384', enctlv)
             elif isinstance(enckey, x25519.X25519Public):
                 cipherkey, mac, pubk = self.ecies_hkdf(enckey, plainkey, hmac_sha_alg)
                 enctlv = pubk + mac + cipherkey

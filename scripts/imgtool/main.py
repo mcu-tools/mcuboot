@@ -95,7 +95,7 @@ keygens = {
 }
 valid_formats = ['openssl', 'pkcs8']
 valid_sha = [ 'auto', '256', '384', '512' ]
-valid_hmac_sha = [ 'auto', '256', '512' ]
+valid_hmac_sha = [ 'auto', '256', '384', '512' ]
 
 
 def load_signature(sigfile):

@@ -30,7 +30,8 @@
 #include <zephyr/sys/util.h>
 
 #if !defined(MCUBOOT_HW_KEY)
-#if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC256) || defined(MCUBOOT_SIGN_ED25519)
+#if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC256) || \
+    defined(MCUBOOT_SIGN_EC384) || defined(MCUBOOT_SIGN_ED25519)
 #define HAVE_KEYS
 
 #ifndef MCUBOOT_SIGN_KEY_COUNT
@@ -44,6 +45,8 @@
 #  define BOOT_KEY_PRIMARY rsa_pub_key
 #elif defined(MCUBOOT_SIGN_EC256)
 #  define BOOT_KEY_PRIMARY ecdsa_pub_key
+#elif defined(MCUBOOT_SIGN_EC384)
+#  define BOOT_KEY_PRIMARY ecdsap384_pub_key
 #elif defined(MCUBOOT_SIGN_ED25519)
 #  define BOOT_KEY_PRIMARY ed25519_pub_key
 #endif
@@ -89,7 +92,8 @@ struct bootutil_key bootutil_keys[1] = {
 const int bootutil_key_cnt = 1;
 #endif /* !MCUBOOT_HW_KEY */
 
-#if defined(MCUBOOT_ENCRYPT_RSA) || defined(MCUBOOT_ENCRYPT_X25519) || defined(MCUBOOT_ENCRYPT_EC256)
+#if defined(MCUBOOT_ENCRYPT_RSA) || defined(MCUBOOT_ENCRYPT_X25519) || \
+    defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_EC384)
 extern const unsigned char enc_priv_key[];
 extern unsigned int enc_priv_key_len;
 const struct bootutil_key bootutil_enc_key = {
