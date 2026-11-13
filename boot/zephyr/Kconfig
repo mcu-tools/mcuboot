@@ -119,6 +119,20 @@ config BOOT_X25519_PSA_DEPENDENCIES
 	  to use with it; the others are used for shared key decryption
 	  and derivation.
 
+config BOOT_EC384_PSA_DEPENDENCIES
+	bool
+	select PSA_WANT_ALG_ECDH
+	select PSA_WANT_ALG_HMAC
+	select PSA_WANT_ALG_HKDF
+	select PSA_WANT_ALG_CTR
+	select PSA_WANT_KEY_TYPE_ECC_KEY_PAIR_IMPORT
+	select PSA_WANT_KEY_TYPE_DERIVE
+	select PSA_WANT_KEY_TYPE_AES
+	select PSA_WANT_ECC_SECP_R1_384
+	help
+	  Dependencies for ECIES-P384 shared-random key encryption and AES
+	  encryption.
+
 endif # BOOT_ENCRYPT_IMAGE
 
 config BOOT_ECDSA_PSA_DEPENDENCIES
@@ -377,12 +391,14 @@ endif
 
 config BOOT_SIGNATURE_TYPE_ECDSA_P384
 	bool "Elliptic curve digital signatures with curve P-384"
+	select BOOT_ENCRYPTION_SUPPORT
 	select BOOT_IMG_HASH_ALG_SHA384_ALLOW
 	select BOOT_USE_PSA_CRYPTO
 	select PSA_CRYPTO
 	select PSA_WANT_ALG_ECDSA
 	select PSA_WANT_KEY_TYPE_ECC_PUBLIC_KEY
 	select PSA_WANT_ECC_SECP_R1_384
+	select BOOT_EC384_PSA_DEPENDENCIES if BOOT_ENCRYPT_IMAGE
 	help
 	  ECDSA image signature verification on curve P-384 (secp384r1),
 	  with a SHA-384 image hash. Only the PSA Crypto backend implements
@@ -827,6 +843,7 @@ config BOOT_ENCRYPT_IMAGE
 	select BOOT_ENCRYPT_RSA if BOOT_SIGNATURE_TYPE_RSA
 	select BOOT_ENCRYPT_EC256 if BOOT_SIGNATURE_TYPE_ECDSA_P256
 	select BOOT_ENCRYPT_X25519 if BOOT_SIGNATURE_TYPE_ED25519
+	select BOOT_ENCRYPT_EC384 if BOOT_SIGNATURE_TYPE_ECDSA_P384
 	depends on !SINGLE_APPLICATION_SLOT || MCUBOOT_SERIAL
 	help
 	  If y, images in the secondary slot can be encrypted and are decrypted
@@ -838,6 +855,8 @@ config BOOT_ENCRYPT_IMAGE
 	   - ECIES using primitives described under "ECIES-P256 encryption" in
 	     docs/encrypted_images.md.
 	   - ECIES using primitives described under "ECIES-X25519 encryption"
+	     in docs/encrypted_images.md.
+	   - ECIES using primitives described under "ECIES-P384 encryption"
 	     in docs/encrypted_images.md.
 
 	  Note that for single slot operation, this can still be used to allow
@@ -858,6 +877,11 @@ config BOOT_ENCRYPT_X25519
 	bool
 	help
 	  Hidden option selecting x25519 encryption.
+
+config BOOT_ENCRYPT_EC384
+	bool
+	help
+	  Hidden option selecting ECIES-P384 encryption.
 
 if BOOT_ENCRYPT_IMAGE
 
@@ -909,6 +933,7 @@ config BOOT_ENCRYPTION_KEY_FILE
 	depends on BOOT_ENCRYPT_IMAGE
 	default "enc-rsa2048-priv.pem" if BOOT_ENCRYPT_RSA
 	default "enc-ec256-priv.pem" if BOOT_ENCRYPT_EC256
+	default "enc-ec384-priv.pem" if BOOT_ENCRYPT_EC384
 	default "enc-x25519-priv.pem" if BOOT_ENCRYPT_X25519
 	default ""
 	help
