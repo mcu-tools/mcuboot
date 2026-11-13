@@ -59,6 +59,11 @@
 /* Recovery was asked for explicitly; wait for the host indefinitely. */
 #define BOOT_CDC_ACM_READY_TIMEOUT_MS 0
 #endif
+
+/* Bound on the wait for VBUS before enabling USB regardless, so a controller
+ * that misses the event behaves as it would without the gate.
+ */
+#define BOOT_CDC_ACM_VBUS_TIMEOUT_MS 1000
 #endif
 
 BOOT_LOG_MODULE_REGISTER(serial_adapter);
@@ -403,6 +408,31 @@ boot_uart_fifo_getline(char **line)
 	return input_cmd->len;
 }
 
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+/* Wait for @p sem, feeding the watchdog meanwhile: the serial recovery loop
+ * that would otherwise feed it is not reached until this returns.
+ * @p waited_ms accumulates across calls; a @p limit_ms of 0 waits forever.
+ */
+static bool
+boot_cdc_acm_wait(struct k_sem *sem, uint32_t limit_ms, uint32_t *waited_ms)
+{
+	const k_timeout_t poll = K_MSEC(BOOT_CDC_ACM_POLL_MS);
+
+	while (k_sem_take(sem, poll) != 0) {
+#if CONFIG_BOOT_WATCHDOG_FEED
+		MCUBOOT_WATCHDOG_FEED();
+#endif
+		*waited_ms += BOOT_CDC_ACM_POLL_MS;
+
+		if (limit_ms != 0 && *waited_ms >= limit_ms) {
+			return false;
+		}
+	}
+
+	return true;
+}
+#endif
+
 static int
 boot_uart_fifo_init(void)
 {
@@ -437,7 +467,9 @@ boot_uart_fifo_init(void)
 
 #elif defined(CONFIG_BOOT_SERIAL_CDC_ACM)
 
-	uint32_t waited_ms;
+	struct usbd_context *usbd = boot_usb_cdc_serial_get_context();
+	uint32_t vbus_limit_ms = BOOT_CDC_ACM_VBUS_TIMEOUT_MS;
+	uint32_t waited_ms = 0;
 	int rc;
 
 	rc = boot_usb_cdc_serial_init();
@@ -445,28 +477,32 @@ boot_uart_fifo_init(void)
 		return (-1);
 	}
 
-	rc = usbd_enable(boot_usb_cdc_serial_get_context());
+	/* The USB device stack expects a controller that can detect VBUS to be
+	 * enabled only after it reports VBUS.
+	 */
+	if (usbd_can_detect_vbus(usbd)) {
+		if (BOOT_CDC_ACM_READY_TIMEOUT_MS != 0 &&
+		    BOOT_CDC_ACM_READY_TIMEOUT_MS < vbus_limit_ms) {
+			vbus_limit_ms = BOOT_CDC_ACM_READY_TIMEOUT_MS;
+		}
+
+		if (!boot_cdc_acm_wait(&boot_usbd_vbus_ready, vbus_limit_ms,
+				       &waited_ms)) {
+			BOOT_LOG_WRN("No VBUS in %u ms, enabling USB anyway",
+				     (unsigned int)waited_ms);
+		}
+	}
+
+	rc = usbd_enable(usbd);
 	if (rc) {
 		return (-1);
 	}
 
-	/* Wait for the USB host to open the serial port, feeding the watchdog
-	 * meanwhile: the serial recovery loop that would otherwise feed it is
-	 * not reached until this returns. Give up once the caller's own timeout
-	 * would have expired, so a timed wait still falls through to boot.
+	/* Wait for the USB host to open the serial port. Time spent waiting
+	 * for VBUS counts against the same limit.
 	 */
-	waited_ms = 0;
-	while (k_sem_take(&boot_cdc_acm_ready, K_MSEC(BOOT_CDC_ACM_POLL_MS)) != 0) {
-#if CONFIG_BOOT_WATCHDOG_FEED
-		MCUBOOT_WATCHDOG_FEED();
-#endif
-		waited_ms += BOOT_CDC_ACM_POLL_MS;
-
-		if (BOOT_CDC_ACM_READY_TIMEOUT_MS != 0 &&
-		    waited_ms >= BOOT_CDC_ACM_READY_TIMEOUT_MS) {
-			break;
-		}
-	}
+	(void)boot_cdc_acm_wait(&boot_cdc_acm_ready,
+				BOOT_CDC_ACM_READY_TIMEOUT_MS, &waited_ms);
 
 	uart_dev = DEVICE_DT_GET_ONE(zephyr_cdc_acm_uart);
 	if (!device_is_ready(uart_dev)) {
