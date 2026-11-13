@@ -579,6 +579,57 @@ impl ImagesBuilder {
         }
     }
 
+    /// Bootstrap over a primary left by an interrupted bootstrap copy: a valid header over a
+    /// partial body, with the trailer erased.
+    pub fn make_interrupted_bootstrap_image(self) -> Images {
+        let mut flash = self.flash;
+        let ram = self.ram.clone(); // TODO: Avoid this clone.
+        let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let primaries = install_image(&mut flash, &self.areadesc, &slots, 0,
+                ImageSize::Largest, &ram, &dep, ImageManipulation::None, Some(0));
+            erase_slot_tail(&mut flash, &slots[0]);
+            let upgrades = install_image(&mut flash, &self.areadesc, &slots, 1,
+                maximal(32784), &ram, &dep, ImageManipulation::None, Some(0));
+            OneImage {
+                slots,
+                primaries,
+                upgrades,
+            }}).collect();
+        Images {
+            flash,
+            areadesc: self.areadesc,
+            images,
+            total_count: None,
+            ram: self.ram,
+        }
+    }
+
+    /// A confirmed primary (image_ok set) with a bad signature, and a valid secondary.
+    pub fn make_confirmed_bad_primary_bootstrap_image(self) -> Images {
+        let mut flash = self.flash;
+        let ram = self.ram.clone(); // TODO: Avoid this clone.
+        let images = self.slots.into_iter().enumerate().map(|(image_num, slots)| {
+            let dep = BoringDep::new(image_num, &NO_DEPS);
+            let primaries = install_image(&mut flash, &self.areadesc, &slots, 0,
+                maximal(32784), &ram, &dep, ImageManipulation::BadSignature, Some(0));
+            mark_permanent_upgrade(&mut flash, &slots[0]);
+            let upgrades = install_image(&mut flash, &self.areadesc, &slots, 1,
+                maximal(32784), &ram, &dep, ImageManipulation::None, Some(0));
+            OneImage {
+                slots,
+                primaries,
+                upgrades,
+            }}).collect();
+        Images {
+            flash,
+            areadesc: self.areadesc,
+            images,
+            total_count: None,
+            ram: self.ram,
+        }
+    }
+
     /// If security_cnt is None then do not add a security counter TLV, otherwise add the specified value.
     pub fn make_image_with_security_counter(self, security_cnt: Option<u32>) -> Images {
         let mut flash = self.flash;
@@ -895,6 +946,31 @@ impl Images {
 
         if fails > 0 {
             error!("Expected trailer on secondary slot to be erased");
+        }
+
+        fails > 0
+    }
+
+    /// With bootstrap-trust-confirmed (and no primary validation) the confirmed primary boots
+    /// untouched. Otherwise it is re-bootstrapped from the secondary.
+    pub fn run_confirmed_bad_primary_bootstrap(&self) -> bool {
+        if !Caps::Bootstrap.present() {
+            return false;
+        }
+        if !cfg!(feature = "bootstrap-trust-confirmed") {
+            return self.run_bootstrap();
+        }
+
+        let mut flash = self.flash.clone();
+        let mut fails = 0;
+
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success() {
+            warn!("Failed first boot");
+            fails += 1;
+        }
+        if !self.verify_images(&flash, 0, 0) {
+            warn!("The confirmed primary was not left in place");
+            fails += 1;
         }
 
         fails > 0
@@ -3135,6 +3211,21 @@ fn mark_permanent_upgrade(flash: &mut SimMultiFlash, slot: &SlotInfo) {
     ok[0] = 1u8;
     let off = slot.trailer_off + c::boot_max_align() * 3;
     dev.write(off, &ok).unwrap();
+}
+
+/// Erase every sector in the second half of `slot`, trailer included.
+fn erase_slot_tail(flash: &mut SimMultiFlash, slot: &SlotInfo) {
+    let dev = flash.get_mut(&slot.dev_id).unwrap();
+    let start = slot.base_off + slot.len / 2;
+    let end = slot.base_off + slot.len;
+    let tail: Vec<(usize, usize)> = dev.sector_iter()
+        .filter(|s| s.base >= start && s.base + s.size <= end)
+        .map(|s| (s.base, s.size))
+        .collect();
+    assert!(!tail.is_empty(), "No whole sector in the second half of the slot");
+    for (base, size) in tail {
+        dev.erase(base, size).unwrap();
+    }
 }
 
 // Drop some pseudo-random gibberish onto the data.
