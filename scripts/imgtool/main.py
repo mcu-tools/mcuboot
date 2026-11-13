@@ -32,7 +32,7 @@ from imgtool import image, imgtool_version
 from imgtool.dumpinfo import dump_imginfo
 from imgtool.version import decode_version
 
-from .keys import ECDSAUsageError, Ed25519UsageError, RSAUsageError, X25519UsageError
+from .keys import ECDSAUsageError, Ed25519UsageError, LMSUsageError, RSAUsageError, X25519UsageError
 
 comp_default_dictsize=131072
 comp_default_pb=2
@@ -71,6 +71,16 @@ def gen_x25519(keyfile, passwd):
     keys.X25519.generate().export_private(path=keyfile, passwd=passwd)
 
 
+def gen_lms_h10_w8(keyfile, passwd):
+    keys.LMS.generate('lms-sha256-h10-w8').export_private(path=keyfile,
+                                                          passwd=passwd)
+
+
+def gen_lms_h5_w8(keyfile, passwd):
+    keys.LMS.generate('lms-sha256-h5-w8').export_private(path=keyfile,
+                                                         passwd=passwd)
+
+
 valid_langs = ['c', 'rust']
 valid_hash_encodings = ['lang-c', 'raw']
 valid_encodings = ['lang-c', 'lang-rust', 'pem', 'raw']
@@ -86,12 +96,14 @@ def _validate_name_suffix(ctx: click.Context, param: click.Parameter, value: str
 
 
 keygens = {
-    'rsa-2048':   gen_rsa2048,
-    'rsa-3072':   gen_rsa3072,
-    'ecdsa-p256': gen_ecdsa_p256,
-    'ecdsa-p384': gen_ecdsa_p384,
-    'ed25519':    gen_ed25519,
-    'x25519':     gen_x25519,
+    'rsa-2048':         gen_rsa2048,
+    'rsa-3072':         gen_rsa3072,
+    'ecdsa-p256':       gen_ecdsa_p256,
+    'ecdsa-p384':       gen_ecdsa_p384,
+    'ed25519':          gen_ed25519,
+    'x25519':           gen_x25519,
+    'lms-sha256-h10-w8': gen_lms_h10_w8,
+    'lms-sha256-h5-w8':  gen_lms_h5_w8,
 }
 valid_formats = ['openssl', 'pkcs8']
 valid_sha = [ 'auto', '256', '384', '512' ]
@@ -232,12 +244,16 @@ def getpubhash(key, output, encoding, name_suffix):
               help='Exit non-zero if the key kind does not match REQUIRE. '
                    'Without this option, keyinfo always exits 0 and prints '
                    'the detected kind on stdout.')
+@click.option('-v', '--verbose', default=False, is_flag=True,
+              help='After the key kind, print details about the key: its '
+                   'signature type and, for LMS keys, the parameter set and '
+                   'signature usage.')
 @click.option('-k', '--key', metavar='filename', required=True)
 @click.command(help='Print whether KEY is a keypair PEM (`private`) or a '
                     'public-only PEM (`public`). Intended for build-system '
                     'use: pair with `--require` to gate the build on the '
                     'expected key kind.')
-def keyinfo(key, require):
+def keyinfo(key, require, verbose):
     loaded = keys.load(key)
     if loaded is None:
         raise click.UsageError(
@@ -249,6 +265,11 @@ def keyinfo(key, require):
             if isinstance(loaded, (keys.PayloadSigner, keys.DigestSigner))
             else 'public')
     click.echo(kind)
+    if verbose:
+        info = loaded.key_info()
+        width = max(len(label) for label, _ in info)
+        for label, value in info:
+            click.echo(f"{label:>{width}}: {value}")
     if require is not None and kind != require:
         raise click.UsageError(
             f"Key {key} is {kind}, but {require} was required."
@@ -272,7 +293,8 @@ def getpriv(key, minimal, format):
         print("Invalid passphrase")
     try:
         key.emit_private(minimal, format)
-    except (RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError) as e:
+    except (RSAUsageError, ECDSAUsageError, Ed25519UsageError, X25519UsageError,
+            LMSUsageError) as e:
         raise click.UsageError(e) from e
 
 
