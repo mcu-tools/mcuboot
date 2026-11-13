@@ -27,4 +27,16 @@
 
 #include <zephyr/logging/log.h>
 
+/* MCUboot drains deferred logs from its own thread, which must be stopped to flush them. */
+#if defined(CONFIG_MCUBOOT) && defined(CONFIG_LOG) && !defined(CONFIG_LOG_MODE_IMMEDIATE) && \
+    !defined(CONFIG_LOG_MODE_MINIMAL) && !defined(CONFIG_LOG_PROCESS_THREAD)
+void zephyr_boot_log_start(void);
+void zephyr_boot_log_stop(void);
+#define ZEPHYR_BOOT_LOG_START() zephyr_boot_log_start()
+#define ZEPHYR_BOOT_LOG_STOP() zephyr_boot_log_stop()
+#else
+#define ZEPHYR_BOOT_LOG_START() ((void)0)
+#define ZEPHYR_BOOT_LOG_STOP() ((void)0)
+#endif
+
 #endif /* __MCUBOOT_LOGGING_H__ */
