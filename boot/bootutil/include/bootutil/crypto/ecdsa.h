@@ -443,7 +443,14 @@ static int bootutil_ecdsa_parse_public_key(bootutil_ecdsa_context *ctx,
 {
     psa_key_attributes_t key_attributes = psa_key_attributes_init();
     size_t key_size;
+    psa_status_t status;
     (void)end;
+
+    /* Key import needs an initialized PSA core; repeated calls are harmless. */
+    status = psa_crypto_init();
+    if (status != PSA_SUCCESS) {
+        return (int)status;
+    }
 
     /* public key oid is valid */
     if (memcmp(PUB_KEY_OID_OFFSET(cp), IdEcPublicKey, sizeof(IdEcPublicKey))) {
