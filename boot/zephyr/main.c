@@ -462,9 +462,11 @@ int main(void)
                  rsp.br_image_off);
 #endif
 
-    BOOT_LOG_INF("Image version: v%d.%d.%d", rsp.br_hdr->ih_ver.iv_major,
-                                                    rsp.br_hdr->ih_ver.iv_minor,
-                                                    rsp.br_hdr->ih_ver.iv_revision);
+    BOOT_LOG_INF("Image version: v%u.%u.%u+%u",
+                 (unsigned int)rsp.br_hdr->ih_ver.iv_major,
+                 (unsigned int)rsp.br_hdr->ih_ver.iv_minor,
+                 (unsigned int)rsp.br_hdr->ih_ver.iv_revision,
+                 (unsigned int)rsp.br_hdr->ih_ver.iv_build_num);
 
 #if defined(MCUBOOT_DIRECT_XIP)
     BOOT_LOG_INF("Jumping to the image slot");
