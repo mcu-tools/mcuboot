@@ -3,6 +3,120 @@
 - Table of Contents
 {:toc}
 
+## Version 2.5.1
+
+The 2.5.1 release of MCUboot consists of bug fixes. Depending upon
+usage of out-of-tree code, some function calls might need to be
+updated (the decision was taken to fix the security issues due to
+use of `assert()` as better security far outweighed chaning some
+function definitions).
+
+### Bug fixes
+
+- Fixed `boot_copy_image()` (overwrite-only fast and bootstrap
+  modes) writing one write unit past the end of an image that ends
+  exactly on a sector boundary, into a sector that was not erased.
+  The copy is now aborted before erasing anything if the image size
+  cannot be read.
+- Fixed direct-xip and RAM-load modes failing to boot when reading
+  the image header of one slot returns a flash error (for example
+  an ECC error left by a power loss during an update). The slot is
+  now treated as having no image and the other slot can still be
+  booted.
+- Fixed direct storage image verification of images in the
+  secondary slot in swap using offset mode not accounting for the
+  offset gap.
+- Fixed some printf format specifiers in the swap using offset
+  file.
+- Fixed missing `MCUBOOT_ENC_IMAGES` guard in encrypted PSA file.
+- The simulator now skips its slow power-fail permutation tests by
+  default.  Set `MCUBOOT_RUN_SLOW_TESTS` in the environment to run
+  them.  `MCUBOOT_SKIP_SLOW_TESTS` is no longer used.
+- Fixed issue with FIH lacking duplicate variables in
+  `boot_fih_memequal()`, `boot_go_for_image_id()` and the boot
+  response object lacking duplicate variables glitch detection when
+  FIH mode is set to medium or higher.
+- With `MCUBOOT_DIRECT_XIP_REVERT` or `MCUBOOT_RAM_LOAD_REVERT`, a
+  failure to read the trailer of the active slot no longer erases that
+  slot. The slot is skipped for this boot instead; previously a
+  transient read error could destroy the only good image.
+- `boot_enc_encrypt()` and `boot_enc_decrypt()` now return `int`
+  instead of `void`, and report an error when the slot has no valid
+  key or the AES operation fails. Image copy, hashing, RAM loading and
+  serial recovery stop on that error instead of using the
+  untransformed data. Ports that provide their own implementation of
+  these functions (`MCUBOOT_USE_CUSTOM_CRYPTO`) must update their
+  signatures.
+- Overwrite-only upgrades now stop when erasing the primary slot or
+  reading the size of the new image fails, before anything is copied
+  and before the secondary slot is cleared, and `boot_go()` returns a
+  failure instead of booting a partly copied image. The upgrade is
+  retried on the next boot. Previously these errors, and a failed copy
+  without `MCUBOOT_VALIDATE_PRIMARY_SLOT`, were caught only by
+  `assert()`.
+- When the encryption key of either slot can't be loaded at the start
+  of a swap, the upgrade is now skipped and the image in the primary
+  slot is booted unchanged; the upgrade stays pending. This was
+  previously checked only with `assert()`.
+- A flash error during a swap no longer goes unnoticed when asserts
+  are compiled out. The swap stops before the failed step is recorded
+  in the swap status, `boot_go()` returns a failure instead of booting
+  the primary slot, and the swap is resumed on the next boot. The same
+  applies when the swap state can't be read, or a trailer write fails
+  while a swap is set up. Previously all of these were checked only
+  with `assert()`, so a release build could record a step as done
+  although its data had not been moved, and lose part of both images.
+- Without `MCUBOOT_VALIDATE_PRIMARY_SLOT`, an inconsistent swap status
+  (a gap left by a failed status write) now makes the boot fail
+  instead of resuming the swap from the wrong step and booting an
+  unvalidated primary slot. The abort was previously only an
+  `assert(0)`.
+- Fixed issue with bootstrap and primary slot validation enabled
+  verifying the slot twice instead of just once.
+- **Serial recovery:** Fixed issue with
+  `MCUBOOT_ERASE_PROGRESSIVELY` erasing the end of an uploaded
+  image: when the image reached the last sector of the slot, that
+  sector was erased again after the last chunk (to clear the image
+  trailer), although the upload had already erased it before
+  writing there. The upload reported success, the image failed
+  validation.
+- **Zephyr:** Fixed missing partition checks, to ensure all image
+  slots are present (up to 8 images).
+- **Zephyr:** Fixed missing RAM load single slot allowance in slot
+  present checks.
+- **Zephyr:** Fixed issue with RNG/entropy being enabled by default
+  in builds without FIH high being selected and without encryption,
+  this speeds up boot and reduces RAM/NVM requirements.
+- **Zephyr serial recovery:** Fixed issue with
+  `BOOT_SERIAL_WAIT_FOR_DFU` having a compilation error.
+- **Zephyr USB DFU:** Fixed issue with not feeding the watchdog
+  while waiting for entry
+- **Zephyr USB DFU:** Add missing MCUBOOT_USB_DFU define for any
+  USB DFU entrance
+- **MyNewt:** Fixed missing `BOOTUTIL_SWAP_USING_OFFSET` syscfg
+  option to allow using swap using offset mode.
+- **NuttX:** The flash map backend now gives bootutil raw flash
+  semantics. It opens the slots with `O_DIRECT | O_SYNC`, so writes
+  program without the FTL erasing first, and `flash_area_erase()`
+  erases with `MTDIOC_ERASESECTORS` instead of writing the erase
+  value. Erasing and writing a slot is about 20 times faster and
+  erases each sector once instead of on every write. The erase
+  range must be whole sectors of the area, as bootutil passes it.
+  The backend assumes NOR-style flash, which accepts reprogramming
+  bytes with the value they already hold.
+- **Espressif:** Fixed an issue with QIO or QOUT flash
+  (`CONFIG_ESPTOOLPY_FLASHMODE_QIO`) whereby the bootloader did not
+  link (`bootloader_enable_qio_mode` undefined), and its image
+  header asked the ROM to load it in quad mode, which the flash
+  only accepts once the bootloader has enabled it. The image header
+  now says DIO for QIO and QOUT, as in ESP-IDF.
+
+### imgtool
+
+- imgtool now requires Python 3.10 or later, as versions 3.9 and
+  3.8 have been obsolete for a number of years.
+- Support for 128-byte alignment has been added.
+
 ## Version 2.5.0
 
 This release adds support for Mbed TLS 4.x and TF-PSA-Crypto,
