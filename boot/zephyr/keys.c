@@ -30,7 +30,8 @@
 #include <zephyr/sys/util.h>
 
 #if !defined(MCUBOOT_HW_KEY)
-#if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC256) || defined(MCUBOOT_SIGN_ED25519)
+#if defined(MCUBOOT_SIGN_RSA) || defined(MCUBOOT_SIGN_EC256) || \
+    defined(MCUBOOT_SIGN_EC384) || defined(MCUBOOT_SIGN_ED25519)
 #define HAVE_KEYS
 
 #ifndef MCUBOOT_SIGN_KEY_COUNT
@@ -44,6 +45,8 @@
 #  define BOOT_KEY_PRIMARY rsa_pub_key
 #elif defined(MCUBOOT_SIGN_EC256)
 #  define BOOT_KEY_PRIMARY ecdsa_pub_key
+#elif defined(MCUBOOT_SIGN_EC384)
+#  define BOOT_KEY_PRIMARY ecdsap384_pub_key
 #elif defined(MCUBOOT_SIGN_ED25519)
 #  define BOOT_KEY_PRIMARY ed25519_pub_key
 #endif
