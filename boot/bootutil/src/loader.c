@@ -1063,6 +1063,31 @@ boot_copy_image(struct boot_loader_state *state, struct boot_status *bs)
         return rc;
     }
 
+#if !defined(MCUBOOT_OVERWRITE_ONLY) && \
+    (defined(MCUBOOT_OVERWRITE_ONLY_FAST) || defined(MCUBOOT_SWAP_USING_MOVE) || \
+     defined(MCUBOOT_SWAP_USING_OFFSET))
+    /* Complete the primary trailer before the magic marks it valid, and
+     * before the secondary trailer is erased below. An interruption in
+     * between must not leave a valid trailer without image_ok and copy_done:
+     * that image could neither be confirmed nor reverted, and its trailer
+     * would look like an interrupted swap.
+     */
+    if (BOOT_SWAP_TYPE(state) == BOOT_SWAP_TYPE_REVERT ||
+        BOOT_SWAP_TYPE(state) == BOOT_SWAP_TYPE_PERM) {
+        rc = boot_write_image_ok(fap_primary_slot);
+        if (rc != 0) {
+            return rc;
+        }
+    }
+
+    if (BOOT_IS_UPGRADE(BOOT_SWAP_TYPE(state))) {
+        rc = boot_write_copy_done(fap_primary_slot);
+        if (rc != 0) {
+            return rc;
+        }
+    }
+#endif
+
 #if defined(MCUBOOT_OVERWRITE_ONLY_FAST) || defined(MCUBOOT_SWAP_USING_MOVE) || defined(MCUBOOT_SWAP_USING_OFFSET)
     rc = boot_write_magic(fap_primary_slot);
     if (rc != 0) {
