@@ -21,6 +21,9 @@
 syscfg.vals:
     # This is here to work around the $notnull syscfg restriction.
     BOOT_SERIAL_DETECT_PIN: 0
+    # Use a flash write alignment above the default of 8, so that the end of
+    # an upload that is not a multiple of it has to be padded.
+    MCU_FLASH_MIN_WRITE_SIZE: 16
 
 syscfg.vals.BOOTUTIL_USE_MBED_TLS:
     MBEDTLS_CIPHER_MODE_CTR: 1

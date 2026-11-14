@@ -42,6 +42,7 @@ extern "C" {
 #endif
 
 void tx_msg(void *src, int len);
+int rx_msg(void *buf, int maxlen);
 
 #ifdef __cplusplus
 }
