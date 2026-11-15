@@ -79,13 +79,17 @@ static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
 void io_led_init(void)
 {
+    int rc;
+
     if (!device_is_ready(led0.port)) {
         BOOT_LOG_ERR("Didn't find LED device referred by the LED0_NODE\n");
         return;
     }
 
-    gpio_pin_configure_dt(&led0, GPIO_OUTPUT);
-    gpio_pin_set_dt(&led0, 0);
+    rc = gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
+    if (rc != 0) {
+        BOOT_LOG_ERR("Failed to configure LED0: %d", rc);
+    }
 }
 
 void io_led_set(int value)
