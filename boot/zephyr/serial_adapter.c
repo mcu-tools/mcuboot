@@ -55,6 +55,11 @@
  * must not outlast it.
  */
 #define BOOT_CDC_ACM_READY_TIMEOUT_MS CONFIG_BOOT_SERIAL_WAIT_FOR_DFU_TIMEOUT
+#elif defined(MCUBOOT_SERIAL_INACTIVITY_TIMEOUT)
+/* A host that never opens the port is as silent as one that stops sending,
+ * so the inactivity timeout bounds this wait too.
+ */
+#define BOOT_CDC_ACM_READY_TIMEOUT_MS MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
 #else
 /* Recovery was asked for explicitly; wait for the host indefinitely. */
 #define BOOT_CDC_ACM_READY_TIMEOUT_MS 0
