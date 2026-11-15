@@ -309,6 +309,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
      */
     rc = parse_priv_enckey(&cp, cpend, private_key);
     if (rc) {
+        bootutil_wipe_memory(private_key, sizeof(private_key));
         BOOT_LOG_ERR("Failed to parse ASN1 private key");
         return rc;
     }
@@ -318,7 +319,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     psa_set_key_algorithm(&kattr, PSA_ALG_ECDH);
 
     psa_ret = psa_import_key(&kattr, private_key, sizeof(private_key), &kid);
-    memset(private_key, 0, sizeof(private_key));
+    bootutil_wipe_memory(private_key, sizeof(private_key));
     psa_reset_key_attributes(&kattr);
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_ERR("Built-in key import failed %d", psa_ret);
@@ -378,6 +379,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         BOOT_LOG_WRN("Key derivation cleanup failed %d", psa_ret);
     }
     if (psa_ret != PSA_SUCCESS) {
+        bootutil_wipe_memory(derived_key, sizeof(derived_key));
         BOOT_LOG_ERR("Key derivation failed %d", psa_ret);
         return -1;
     }
@@ -396,7 +398,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
                              HKDF_MAC_FEED_SIZE, &kid);
     psa_reset_key_attributes(&kattr);
     if (psa_ret != PSA_SUCCESS) {
-        memset(derived_key, 0, sizeof(derived_key));
+        bootutil_wipe_memory(derived_key, sizeof(derived_key));
         BOOT_LOG_ERR("MAC key import failed %d", psa_ret);
         return -1;
     }
@@ -411,7 +413,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
         BOOT_LOG_WRN("MAC key destruction failed %d", psa_cleanup_ret);
     }
     if (psa_ret != PSA_SUCCESS) {
-        memset(derived_key, 0, sizeof(derived_key));
+        bootutil_wipe_memory(derived_key, sizeof(derived_key));
         BOOT_LOG_ERR("MAC verification failed %d", psa_ret);
         return -1;
     }
@@ -424,7 +426,7 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     /* Import the AES partition of derived key, the first 16 bytes */
     psa_ret = psa_import_key(&kattr, &derived_key[HKDF_AES_KEY_INDEX],
                              HKDF_AES_KEY_SIZE, &kid);
-    memset(derived_key, 0, sizeof(derived_key));
+    bootutil_wipe_memory(derived_key, sizeof(derived_key));
     if (psa_ret != PSA_SUCCESS) {
         BOOT_LOG_ERR("AES key import failed %d", psa_ret);
         return -1;
@@ -440,13 +442,13 @@ boot_decrypt_key(const uint8_t *buf, uint8_t *enckey)
     len = 0;
     psa_ret = psa_cipher_decrypt(kid, PSA_ALG_CTR, iv_and_key, sizeof(iv_and_key),
                                  enckey, BOOT_ENC_KEY_SIZE, &len);
-    memset(iv_and_key, 0, sizeof(iv_and_key));
+    bootutil_wipe_memory(iv_and_key, sizeof(iv_and_key));
     psa_cleanup_ret = psa_destroy_key(kid);
     if (psa_cleanup_ret != PSA_SUCCESS) {
 	BOOT_LOG_WRN("AES key destruction failed %d", psa_cleanup_ret);
     }
     if (psa_ret != PSA_SUCCESS || len != BOOT_ENC_KEY_SIZE) {
-        memset(enckey, 0, BOOT_ENC_KEY_SIZE);
+        bootutil_wipe_memory(enckey, BOOT_ENC_KEY_SIZE);
         BOOT_LOG_ERR("Random key decryption failed %d", psa_ret);
         return -1;
     }
