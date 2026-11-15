@@ -83,10 +83,14 @@ static sys_slist_t avail_queue;
 static sys_slist_t lines_queue;
 
 static uint16_t cur;
+static struct line_input *cmd;
 #ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
 static uint8_t rx_buf[CONFIG_BOOT_MAX_LINE_INPUT_LEN];
 #else
 static uint8_t rx_batch_buf[CONFIG_BOOT_SERIAL_UART_RX_BATCH_SIZE];
+/* Bytes of rx_batch_buf read from the driver but not yet stored in a line buffer */
+static size_t rx_pend_off;
+static size_t rx_pend_len;
 #endif
 
 #if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
@@ -215,10 +219,49 @@ boot_console_init(void)
 	return rc;
 }
 
+#ifndef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
+/* Store pending batch bytes into line buffers; returns false if none is free. */
+static bool
+boot_uart_fifo_store(void)
+{
+	while (rx_pend_len > 0U) {
+		const uint8_t *p = &rx_batch_buf[rx_pend_off];
+		const uint8_t *nl;
+		size_t chunk;
+		size_t copy_len;
+
+		if (cmd == NULL) {
+			sys_snode_t *node = sys_slist_get(&avail_queue);
+
+			if (node == NULL) {
+				return false;
+			}
+			cmd = CONTAINER_OF(node, struct line_input, node);
+		}
+
+		nl = memchr(p, '\n', rx_pend_len);
+		chunk = (nl != NULL) ? (size_t)(nl - p + 1) : rx_pend_len;
+		copy_len = MIN(chunk, (size_t)CONFIG_BOOT_MAX_LINE_INPUT_LEN - (size_t)cur);
+		(void)memcpy(&cmd->line[cur], p, copy_len);
+		cur = (uint16_t)(cur + copy_len);
+		rx_pend_off += chunk;
+		rx_pend_len -= chunk;
+
+		if (nl != NULL) {
+			cmd->len = cur;
+			sys_slist_append(&lines_queue, &cmd->node);
+			cur = 0;
+			cmd = NULL;
+		}
+	}
+
+	return true;
+}
+#endif
+
 static void
 boot_uart_fifo_callback(const struct device *dev, void *user_data)
 {
-	static struct line_input *cmd;
 	int rx;
 
 	uart_irq_update(uart_dev);
@@ -234,6 +277,7 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 #endif
 
 	while (true) {
+#ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
 		size_t copy_len = CONFIG_BOOT_MAX_LINE_INPUT_LEN - 1 - cur;
 		size_t free_buffers = sys_slist_len(&avail_queue);
 
@@ -241,7 +285,6 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 			--free_buffers;
 		}
 
-#ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
 		if (cur == 0 && free_buffers == 0) {
 			uart_blocked = true;
 			uart_irq_rx_disable(uart_dev);
@@ -286,57 +329,23 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 			cmd = NULL;
 		}
 #else
-#if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
-		size_t max_read_size = free_buffers * (CONFIG_BOOT_MAX_LINE_INPUT_LEN - 1) +
-				       copy_len;
-
-		if (max_read_size > sizeof(rx_batch_buf)) {
-			max_read_size = sizeof(rx_batch_buf);
-		} else if (max_read_size == 0) {
-			uart_blocked = true;
-			uart_irq_rx_disable(uart_dev);
-			return;
-		}
-
-		rx = uart_fifo_read(uart_dev, rx_batch_buf, max_read_size);
-#else
 		rx = uart_fifo_read(uart_dev, rx_batch_buf, sizeof(rx_batch_buf));
-#endif
 		if (rx <= 0) {
 			break;
 		}
 
-		const uint8_t *p = rx_batch_buf;
-		const uint8_t *batch_end = p + rx;
-
-		while (p < batch_end) {
-			if (!cmd) {
-				sys_snode_t *node;
-
-				node = sys_slist_get(&avail_queue);
-				if (!node) {
-					BOOT_LOG_ERR("Not enough memory to store"
-						     " incoming data!");
-					return;
-				}
-				cmd = CONTAINER_OF(node, struct line_input, node);
-			}
-
-			const uint8_t *nl = memchr(p, '\n', batch_end - p);
-			size_t chunk = nl ? (size_t)(nl - p + 1) : (size_t)(batch_end - p);
-			copy_len = MIN(chunk, (CONFIG_BOOT_MAX_LINE_INPUT_LEN - cur));
-
-			memcpy(&cmd->line[cur], p, copy_len);
-			cur += copy_len;
-			p += chunk;
-
-			if (nl) {
-				cmd->len = cur;
-				sys_slist_append(&lines_queue, &cmd->node);
-				cur = 0;
-				cmd = NULL;
-
-			}
+		rx_pend_off = 0;
+		rx_pend_len = (size_t)rx;
+		if (!boot_uart_fifo_store()) {
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+			/* Keep the rest until boot_uart_fifo_getline() frees a buffer */
+			uart_blocked = true;
+			uart_irq_rx_disable(uart_dev);
+#else
+			BOOT_LOG_ERR("Not enough memory to store incoming data!");
+			rx_pend_len = 0;
+#endif
+			return;
 		}
 #endif
 	}
@@ -373,8 +382,12 @@ boot_uart_fifo_getline(char **line)
 		if (sys_slist_peek_tail(&avail_queue) != &input_cmd->node) {
 			sys_slist_append(&avail_queue, &input_cmd->node);
 
-#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+#ifdef CONFIG_BOOT_SERIAL_RAW_PROTOCOL
 			if (uart_blocked) {
+				unblock = true;
+			}
+#elif defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+			if (uart_blocked && boot_uart_fifo_store()) {
 				unblock = true;
 			}
 #endif
