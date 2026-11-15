@@ -346,10 +346,10 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
                                 BOOT_HOOK_REGULAR, image_index, slot, &hdr);
             if (rc == BOOT_HOOK_REGULAR)
             {
-                flash_area_read(fap, 0, &hdr, sizeof(hdr));
+                rc = flash_area_read(fap, 0, &hdr, sizeof(hdr));
             }
 
-            if (hdr.ih_magic == IMAGE_MAGIC)
+            if ((rc == 0) && (hdr.ih_magic == IMAGE_MAGIC))
             {
                 BOOT_HOOK_CALL_FIH(boot_image_check_hook,
                                    FIH_BOOT_HOOK_REGULAR,
@@ -431,13 +431,13 @@ bs_list(struct boot_loader_state *state, char *buf, int len)
             if (rc == BOOT_HOOK_REGULAR)
             {
 #ifdef MCUBOOT_SWAP_USING_OFFSET
-                flash_area_read(fap, start_off, &hdr, sizeof(hdr));
+                rc = flash_area_read(fap, start_off, &hdr, sizeof(hdr));
 #else
-                flash_area_read(fap, 0, &hdr, sizeof(hdr));
+                rc = flash_area_read(fap, 0, &hdr, sizeof(hdr));
 #endif
             }
 
-            if (hdr.ih_magic == IMAGE_MAGIC)
+            if ((rc == 0) && (hdr.ih_magic == IMAGE_MAGIC))
             {
                 BOOT_HOOK_CALL_FIH(boot_image_check_hook,
                                    FIH_BOOT_HOOK_REGULAR,
@@ -681,13 +681,13 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                 if (rc == BOOT_HOOK_REGULAR)
                 {
 #ifdef MCUBOOT_SWAP_USING_OFFSET
-                    flash_area_read(fap, start_off, &hdr, sizeof(hdr));
+                    rc = flash_area_read(fap, start_off, &hdr, sizeof(hdr));
 #else
-                    flash_area_read(fap, 0, &hdr, sizeof(hdr));
+                    rc = flash_area_read(fap, 0, &hdr, sizeof(hdr));
 #endif
                 }
 
-                if (hdr.ih_magic == IMAGE_MAGIC)
+                if ((rc == 0) && (hdr.ih_magic == IMAGE_MAGIC))
                 {
                     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
@@ -782,10 +782,10 @@ bs_set(struct boot_loader_state *state, char *buf, int len)
                                         BOOT_HOOK_REGULAR, image_index, other_slot, &hdr);
                     if (rc == BOOT_HOOK_REGULAR)
                     {
-                        flash_area_read(fap, 0, &hdr, sizeof(hdr));
+                        rc = flash_area_read(fap, 0, &hdr, sizeof(hdr));
                     }
 
-                    if (hdr.ih_magic == IMAGE_MAGIC)
+                    if ((rc == 0) && (hdr.ih_magic == IMAGE_MAGIC))
                     {
                         BOOT_HOOK_CALL_FIH(boot_image_check_hook,
                                            FIH_BOOT_HOOK_REGULAR,
