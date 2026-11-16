@@ -133,6 +133,9 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #endif
 
 #define BOOT_SERIAL_OUT_MAX     (BOOT_SERIAL_MAX_MESSAGE_SIZE * BOOT_IMAGE_NUMBER)
+/* Length, header, payload and CRC, as framed by boot_serial_output(). */
+#define BOOT_SERIAL_OUT_BUF_SIZE \
+    (BOOT_SERIAL_OUT_MAX + sizeof(struct nmgr_hdr) + sizeof(uint16_t) + sizeof(uint16_t))
 
 #define BOOT_SERIAL_FRAME_MTU   124 /* 127 - pkt start (2 bytes) and stop (1 byte) */
 
@@ -1710,8 +1713,8 @@ boot_serial_output(void)
     uint16_t totlen;
     char pkt_cont[2] = { SHELL_NLIP_DATA_START1, SHELL_NLIP_DATA_START2 };
     char pkt_start[2] = { SHELL_NLIP_PKT_START1, SHELL_NLIP_PKT_START2 };
-    char buf[BOOT_SERIAL_OUT_MAX + sizeof(*bs_hdr) + sizeof(crc) + sizeof(totlen)];
-    char encoded_buf[BASE64_ENCODE_SIZE(sizeof(buf))];
+    char buf[BOOT_SERIAL_OUT_BUF_SIZE];
+    char encoded_buf[BASE64_ENCODE_SIZE(BOOT_SERIAL_OUT_BUF_SIZE)];
 #endif
 
     data = bs_obuf;
