@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the zcbor library.
- * Commit zcbor 0.8.1
+ * Commit zcbor 0.8.3
  */
 
 /*
@@ -207,8 +207,9 @@ bool zcbor_unordered_map_start_decode(zcbor_state_t *state);
  * @retval true   If the key was found, i.e. @p key_decoder returned true.
  * @retval false  If the key was not found after searching all map elements.
  *                Or the map was pointing to a value (not a key).
- *                Or an unexpected error happened while skipping elements or
- *                jumping from the end of the map to the start.
+ *                Or an error happened while skipping elements (e.g.
+ *                ZCBOR_ERR_MAX_DEPTH, see @ref zcbor_any_skip) or jumping from
+ *                the end of the map to the start.
  */
 bool zcbor_unordered_map_search(zcbor_decoder_t key_decoder, zcbor_state_t *state, void *key_result);
 
@@ -268,11 +269,23 @@ bool zcbor_list_map_end_force_decode(zcbor_state_t *state);
  */
 bool zcbor_array_at_end(zcbor_state_t *state);
 
+#ifndef ZCBOR_MAX_SKIP_DEPTH
+/** The maximum nesting depth of lists and maps that @ref zcbor_any_skip can skip.
+ *  Can be overridden by defining it in the build. */
+#define ZCBOR_MAX_SKIP_DEPTH 8
+#endif
+
 /** Skip a single element, regardless of type and value.
  *
  * This means if the element is a map or list, this function will recursively
- * skip all its contents.
+ * skip all its contents, and fail if elements are missing, e.g. if an
+ * indefinite-length map has a key without a value (ZCBOR_ERR_MAP_MISALIGNED).
+ * To bound the recursion, this function fails with ZCBOR_ERR_MAX_DEPTH if lists
+ * and maps are nested more than ZCBOR_MAX_SKIP_DEPTH levels deep, counting the
+ * element itself. E.g. if ZCBOR_MAX_SKIP_DEPTH is 2, [[1]] can be skipped, but
+ * [[[1]]] cannot.
  * This function will also skip any tags preceeding the element.
+ * If the call fails, the state is left unchanged.
  *
  * @param[inout] state   The current state of the decoding.
  * @param[in]    unused  Unused parameter to maintain signature parity with
