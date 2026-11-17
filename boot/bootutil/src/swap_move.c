@@ -612,7 +612,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
     return 0;
 }
 
-int app_max_size(struct boot_loader_state *state)
+uint32_t app_max_size(struct boot_loader_state *state)
 {
     uint32_t available_pri_sz;
     uint32_t available_sec_sz;

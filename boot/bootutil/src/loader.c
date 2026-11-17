@@ -1501,7 +1501,7 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 
 #if defined(MCUBOOT_SERIAL_IMG_GRP_SLOT_INFO) || defined(MCUBOOT_DATA_SHARING)
-    int max_size;
+    uint32_t max_size;
 #endif
 
 #ifdef BOOT_BOOTSTRAP_VALIDATE_PRIMARY_ONCE
