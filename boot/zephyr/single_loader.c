@@ -153,7 +153,7 @@ static int app_max_sectors(struct boot_loader_state *state)
     return boot_img_num_sectors(state, BOOT_SLOT_PRIMARY) - trailer_sectors;
 }
 
-int app_max_size(struct boot_loader_state *state)
+uint32_t app_max_size(struct boot_loader_state *state)
 {
     uint32_t sector_sz;
 
