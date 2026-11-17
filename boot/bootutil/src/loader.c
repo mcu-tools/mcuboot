@@ -1250,6 +1250,14 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
 
         copy_size = bs->swap_size;
 
+        /* Check to see if something has manipulated or corrupted the swap status area */
+        if (copy_size > app_max_size(state))
+        {
+            BOOT_LOG_ERR("Swap size value: %" PRIu32 " larger than max image size: %" PRIu32,
+                         copy_size, app_max_size(state));
+            return BOOT_EFLASH;
+        }
+
 #ifdef MCUBOOT_ENC_IMAGES
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
 
