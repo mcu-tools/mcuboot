@@ -53,6 +53,8 @@
 
 BOOT_LOG_MODULE_DECLARE(mcuboot);
 
+#define UNSET_SWAP_SIZE 0xffffffff
+
 #if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
 
 #if (!defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)) || \
@@ -222,6 +224,15 @@ boot_read_swap_size(const struct flash_area *fap, uint32_t *swap_size)
 
     off = boot_swap_size_off(fap);
     rc = flash_area_read(fap, off, swap_size, sizeof *swap_size);
+
+    /*
+     * Checks that the swap size is at least set (for flash-based devices or devices with NVM
+     * where the default erase value is 0xff). This does not check that the size is valid for a
+     * given image.
+     */
+    if (*swap_size == 0 || *swap_size == UNSET_SWAP_SIZE) {
+        return BOOT_EFLASH;
+    }
 
     return rc;
 }
