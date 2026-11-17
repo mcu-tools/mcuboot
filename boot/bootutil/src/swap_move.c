@@ -85,8 +85,18 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
 
     off = 0;
     if (bs && !boot_status_is_reset(bs)) {
+        uint32_t max_size = app_max_size(state);
+
         fap = boot_find_status(state, BOOT_CURR_IMG(state));
         if (fap == NULL || boot_read_swap_size(fap, &swap_size)) {
+            rc = BOOT_EFLASH;
+            goto done;
+        }
+
+        /* Check to see if something has manipulated or corrupted the swap status area */
+        if (swap_size > max_size) {
+            BOOT_LOG_ERR("Swap size value: %" PRIu32 " larger than max image size: %" PRIu32,
+                         swap_size, max_size);
             rc = BOOT_EFLASH;
             goto done;
         }

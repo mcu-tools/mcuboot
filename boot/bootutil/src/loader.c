@@ -1242,13 +1242,25 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
          * If a swap was under way, the swap_size should already be present
          * in the trailer...
          */
+        uint32_t max_size = app_max_size(state);
 
         fap = boot_find_status(state, image_index);
         assert(fap != NULL);
         rc = boot_read_swap_size(fap, &bs->swap_size);
-        assert(rc == 0);
+
+        if (rc != 0) {
+            BOOT_LOG_ERR("Failed reading swap size: %d", rc);
+            return BOOT_EFLASH;
+        }
 
         copy_size = bs->swap_size;
+
+        /* Check to see if something has manipulated or corrupted the swap status area */
+        if (copy_size > max_size) {
+            BOOT_LOG_ERR("Swap size value: %" PRIu32 " larger than max image size: %" PRIu32,
+                         copy_size, max_size);
+            return BOOT_EFLASH;
+        }
 
 #ifdef MCUBOOT_ENC_IMAGES
         for (slot = 0; slot < BOOT_NUM_SLOTS; slot++) {
