@@ -503,8 +503,7 @@ boot_write_copy_done(const struct flash_area *fap)
     return boot_write_trailer_flag(fap, off, BOOT_FLAG_SET);
 }
 
-#ifndef MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP
-
+#if !defined(MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP) && !defined(MCUBOOT_BOOTUTIL_LIB_FOR_REVERT)
 static int flash_area_to_image(const struct flash_area *fa)
 {
 #if BOOT_IMAGE_NUMBER > 1
@@ -660,7 +659,8 @@ boot_set_next(const struct flash_area *fa, bool active, bool confirm)
 
     return rc;
 }
-#endif
+#endif /* !defined(MCUBOOT_BOOTUTIL_LIB_FOR_DIRECT_XIP) && \
+    !defined(MCUBOOT_BOOTUTIL_LIB_FOR_REVERT) */
 
 /*
  * This function is not used by the bootloader itself, but its required API
