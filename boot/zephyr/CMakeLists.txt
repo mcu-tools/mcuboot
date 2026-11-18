@@ -714,8 +714,10 @@ if(SYSBUILD)
 
     set(key_size 0)
 
-    # Boot trailer magic size
-    set(boot_magic_size 16)
+    # Boot trailer magic/status flags size. These are always available in the image, including in
+    # modes that do not use them
+    math(EXPR boot_trailer_size "16 + ${max_align_size} * 4")
+    align_up(${boot_trailer_size} ${write_size} boot_trailer_size)
 
     # Estimates for trailer TLV data size, this was taken from hello world builds for nrf52840dk
     if(CONFIG_BOOT_SIGNATURE_TYPE_RSA)
@@ -752,14 +754,6 @@ if(SYSBUILD)
       math(EXPR key_size "${key_size} * 2")
     endif()
 
-    align_up(${boot_magic_size} ${write_size} boot_magic_size)
-
-    if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_BOOT_FIRMWARE_LOADER)
-      set(boot_swap_data_size 0)
-    else()
-      math(EXPR boot_swap_data_size "${max_align_size} * 4")
-    endif()
-
     if(CONFIG_BOOT_SWAP_USING_SCRATCH OR CONFIG_BOOT_SWAP_USING_MOVE)
       if(CONFIG_BOOT_MAX_IMG_SECTORS_AUTO AND DEFINED image_0_min_sectors AND "${image_0_min_sectors}" GREATER "0")
         math(EXPR boot_status_data_size "${image_0_min_sectors} * (3 * ${write_size})")
@@ -786,7 +780,7 @@ if(SYSBUILD)
       set(boot_status_data_size 0)
     endif()
 
-    math(EXPR trailer_size "${key_size} + ${boot_magic_size} + ${boot_swap_data_size} + ${boot_status_data_size}")
+    math(EXPR trailer_size "${key_size} + ${boot_trailer_size} + ${boot_status_data_size}")
 
     if(CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET)
       align_up(${trailer_size} ${erase_size} trailer_size)
@@ -796,8 +790,12 @@ if(SYSBUILD)
 
     if(CONFIG_SINGLE_APPLICATION_SLOT OR CONFIG_BOOT_FIRMWARE_LOADER)
       set(required_upgrade_size "0")
+    elseif((CONFIG_BOOT_DIRECT_XIP OR CONFIG_BOOT_RAM_LOAD) AND NOT CONFIG_BOOT_DIRECT_XIP_REVERT
+      AND NOT CONFIG_BOOT_RAM_LOAD_REVERT
+    )
+      math(EXPR required_upgrade_size "${boot_trailer_size}")
     else()
-      math(EXPR required_upgrade_size "${boot_magic_size} + ${boot_swap_data_size} + ${boot_status_data_size}")
+      math(EXPR required_upgrade_size "${boot_trailer_size} + ${boot_status_data_size}")
 
       if(CONFIG_BOOT_SWAP_USING_MOVE OR CONFIG_BOOT_SWAP_USING_OFFSET)
         align_up(${required_upgrade_size} ${erase_size} required_upgrade_size)
