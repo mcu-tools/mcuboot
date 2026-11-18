@@ -74,6 +74,13 @@
 
 /* Uncomment to enable the ram-load code path. */
 /* #define MCUBOOT_RAM_LOAD */
+/* Uncomment to enable the revert mechanism in ram-load mode. */
+/* #define MCUBOOT_RAM_LOAD_REVERT */
+
+#if defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT)
+/* Use bootutil with revert mechanism. Note: applications that use bootutil need this set also */
+#define MCUBOOT_BOOTUTIL_LIB_FOR_REVERT
+#endif
 
 /*
  * Cryptographic settings
