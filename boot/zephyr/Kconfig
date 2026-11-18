@@ -126,6 +126,7 @@ if MBEDTLS_ENABLE_HEAP
 
 config MBEDTLS_HEAP_SIZE
 	default 8192 if BOOT_RSA_PSA
+	default 8192 if BOOT_ECDSA_PSA
 	default 2048 if BOOT_ED25519_PSA
 	help
 	  The PSA internals need to be able to allocate memory for operation
@@ -360,6 +361,7 @@ config BOOT_ECDSA_PSA
 	bool "Use PSA crypto"
 	select BOOT_USE_PSA_CRYPTO
 	select PSA_CRYPTO
+	select MBEDTLS_ENABLE_HEAP if MBEDTLS_BUILTIN
 	select BOOT_IMG_HASH_ALG_SHA256_ALLOW
 	select BOOT_IMG_HASH_ALG_SHA512_ALLOW
 	select BOOT_ECDSA_PSA_DEPENDENCIES
