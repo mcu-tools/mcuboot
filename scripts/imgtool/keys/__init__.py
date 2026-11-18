@@ -19,6 +19,10 @@
 Cryptographic key management for imgtool.
 """
 
+import base64
+import binascii
+
+import click
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ec import (
@@ -53,6 +57,7 @@ __all__ = [
     "X25519",
     "X25519Public",
     "X25519UsageError",
+    "AESKWKey",
 ]
 
 
@@ -61,7 +66,12 @@ class PasswordRequired(Exception):
     password was not specified."""
 
 
-def load(path, passwd=None):
+class AESKWKey:
+    def __init__(self, kek):
+        self.kek = kek
+
+
+def load(path, passwd=None, allow_aes=False):
     """Try loading a key from the given path.
       Returns None if the password wasn't specified."""
     with open(path, 'rb') as f:
@@ -75,15 +85,30 @@ def load(path, passwd=None):
     # so we have to look at the text.
     except TypeError as e:
         msg = str(e)
-        if "private key is encrypted" in msg:
+        if "private key is encrypted" in msg and passwd is None:
             return None
-        raise e
+        raise
     except ValueError:
         # This seems to happen if the key is a public key, let's try
         # loading it as a public key.
-        pk = serialization.load_pem_public_key(
-                raw_pem,
-                backend=default_backend())
+        try:
+            pk = serialization.load_pem_public_key(
+                    raw_pem,
+                    backend=default_backend())
+        except ValueError as pem_error:
+            if not allow_aes:
+                raise
+            # AES-KW keys are base64-encoded rather than PEM.
+            try:
+                kek = base64.b64decode(raw_pem.strip(), validate=True)
+            except binascii.Error:
+                raise pem_error from None
+            if len(kek) not in (16, 32):
+                raise click.UsageError(
+                    f"Invalid AES key length: {len(kek)} bytes. "
+                    "Expected 16 or 32 bytes after base64 decode."
+                ) from None
+            return AESKWKey(kek)
 
     if isinstance(pk, RSAPrivateKey):
         if pk.key_size not in RSA_KEY_SIZES:
