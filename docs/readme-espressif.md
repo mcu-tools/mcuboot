@@ -286,13 +286,20 @@ existent samples.*
 
 ---
 
+Mbed TLS is the crypto backend for every signature type. Tinycrypt is deprecated
+([mcuboot#2256](https://github.com/mcu-tools/mcuboot/issues/2256)). Setting
+`CONFIG_ESP_USE_TINYCRYPT` without `CONFIG_ESP_USE_MBEDTLS` still builds the old
+Tinycrypt sources and prints a CMake warning. Ed25519 signature verification stays
+in the Fiat implementation; Mbed TLS 3.6 supplies SHA-256 and SHA-512 for that path
+and has no Ed25519 API.
+
 #### For EC256 algorithm use
 
 ```
 CONFIG_ESP_SIGN_EC256=y
 
-# Use Tinycrypt lib for EC256 or ED25519 signing
-CONFIG_ESP_USE_TINYCRYPT=y
+# Use Mbed TLS for EC256 image signing
+CONFIG_ESP_USE_MBEDTLS=y
 
 CONFIG_ESP_SIGN_KEY_FILE=<YOUR_SIGNING_KEY.pem>
 ```
@@ -302,8 +309,8 @@ CONFIG_ESP_SIGN_KEY_FILE=<YOUR_SIGNING_KEY.pem>
 ```
 CONFIG_ESP_SIGN_ED25519=y
 
-# Use Tinycrypt lib for EC256 or ED25519 signing
-CONFIG_ESP_USE_TINYCRYPT=y
+# Use Mbed TLS hashes for Ed25519 image signing (verify stays in Fiat)
+CONFIG_ESP_USE_MBEDTLS=y
 
 CONFIG_ESP_SIGN_KEY_FILE=<YOUR_SIGNING_KEY.pem>
 ```
@@ -329,7 +336,7 @@ is not supported by Espressif port.
 Now you need to sign the **image binary**, use the `imgtool` with `-k` parameter:
 
 ```bash
-imgtool.py sign -k <YOUR_SIGNING_KEY.pem> --pad --pad-sig --align 4 -v 0 -H 32 --pad-header -S 0x00100000 <BIN_IN> <BIN_OUT>
+imgtool.py sign -k <YOUR_SIGNING_KEY.pem> --pad --align 4 -v 0 -H 32 --pad-header -S 0x00100000 <BIN_IN> <BIN_OUT>
 ```
 
 If signing a Zephyr image, the `--pad-header` is not needed, as it already have the padding for
@@ -605,7 +612,7 @@ add the padding to fill the image up to the slot size:
 Command example:
 
 ```bash
-imgtool.py sign -k <YOUR_SIGNING_KEY.pem> --pad --pad-sig --align 32 --max-align 32 -v 0 -H 32 --pad-header -S <SLOT_SIZE> <BIN_IN> <BIN_OUT>
+imgtool.py sign -k <YOUR_SIGNING_KEY.pem> --pad --align 32 --max-align 32 -v 0 -H 32 --pad-header -S <SLOT_SIZE> <BIN_IN> <BIN_OUT>
 ```
 
 ### [Device generated key](#device-generated-key)
