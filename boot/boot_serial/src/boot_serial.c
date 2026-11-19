@@ -1140,6 +1140,18 @@ static off_t erase_range(const struct flash_area *fap, off_t start, off_t end)
 #endif
 
 /*
+ * Size of the buffer used to pad the last, unaligned, part of an upload to
+ * the flash write alignment; this bounds the write alignment supported.
+ */
+#if defined(MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE) && MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE > 0
+#define BOOT_SERIAL_TAIL_BUFFER_SIZE                            \
+    (MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE > BOOT_MAX_ALIGN ?    \
+     MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE : BOOT_MAX_ALIGN)
+#else
+#define BOOT_SERIAL_TAIL_BUFFER_SIZE BOOT_MAX_ALIGN
+#endif
+
+/*
  * Image upload request.
  */
 static void
@@ -1152,6 +1164,7 @@ bs_upload(char *buf, int len)
     size_t img_chunk_off = SIZE_MAX;    /* Offset of image chunk within image  */
     size_t rem_bytes;                   /* Reminder bytes after aligning chunk write to
                                          * to flash alignment */
+    size_t align;                       /* Write alignment of the target flash area */
     uint32_t img_num_tmp = UINT_MAX;    /* Temp variable for image number */
     static uint32_t img_num = 0;
     size_t img_size_tmp = SIZE_MAX;     /* Temp variable for image size */
@@ -1233,6 +1246,13 @@ bs_upload(char *buf, int len)
     rc = flash_area_open(flash_area_id_from_direct_image(img_num), &fap);
 #endif
     if (rc) {
+        rc = MGMT_ERR_EINVAL;
+        goto out;
+    }
+
+    /* The last chunk is padded to the write alignment in a fixed size buffer */
+    align = flash_area_align(fap);
+    if (align == 0 || align > BOOT_SERIAL_TAIL_BUFFER_SIZE) {
         rc = MGMT_ERR_EINVAL;
         goto out;
     }
@@ -1366,7 +1386,7 @@ bs_upload(char *buf, int len)
      * new buffer by responding with request for offset after the last aligned
      * write.
      */
-    rem_bytes = img_chunk_len % flash_area_align(fap);
+    rem_bytes = img_chunk_len % align;
     img_chunk_len -= rem_bytes;
 
     if (curr_off + img_chunk_len + rem_bytes < img_size) {
@@ -1376,13 +1396,13 @@ bs_upload(char *buf, int len)
     BOOT_LOG_DBG("Writing at 0x%x until 0x%x", curr_off, curr_off + (uint32_t)img_chunk_len);
     /* Write flash aligned chunk, note that img_chunk_len now holds aligned length */
 #if defined(MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE) && MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE > 0
-    if (flash_area_align(fap) > 1 &&
-        (((size_t)img_chunk) & (flash_area_align(fap) - 1)) != 0) {
+    if (align > 1 &&
+        (((size_t)img_chunk) & (align - 1)) != 0) {
         /* Buffer address incompatible with write address, use buffer to write */
         size_t write_size = MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE;
         uint8_t wbs_aligned[MCUBOOT_SERIAL_UNALIGNED_BUFFER_SIZE];
 
-        while (img_chunk_len >= flash_area_align(fap)) {
+        while (img_chunk_len >= align) {
             if (write_size > img_chunk_len) {
                 write_size = img_chunk_len;
             }
@@ -1424,17 +1444,17 @@ bs_upload(char *buf, int len)
          * part, in the img_chunk_len - rem_bytes count bytes, has already been
          * written by the above write, so we are left with the rem_bytes.
          */
-        uint8_t wbs_aligned[BOOT_MAX_ALIGN];
+        uint8_t wbs_aligned[BOOT_SERIAL_TAIL_BUFFER_SIZE];
 
         memset(wbs_aligned, flash_area_erased_val(fap), sizeof(wbs_aligned));
         memcpy(wbs_aligned, img_chunk + img_chunk_len, rem_bytes);
 
 #ifdef MCUBOOT_SWAP_USING_OFFSET
         rc = flash_area_write(fap, curr_off + img_chunk_len + start_off, wbs_aligned,
-                              flash_area_align(fap));
+                              align);
 #else
         rc = flash_area_write(fap, curr_off + img_chunk_len, wbs_aligned,
-                              flash_area_align(fap));
+                              align);
 #endif
     }
 
