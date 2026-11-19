@@ -998,7 +998,7 @@ swap_run(struct boot_loader_state *state, struct boot_status *bs,
 }
 #endif /* !MCUBOOT_OVERWRITE_ONLY */
 
-int app_max_size(struct boot_loader_state *state)
+uint32_t app_max_size(struct boot_loader_state *state)
 {
     size_t num_sectors_primary;
     size_t num_sectors_secondary;
@@ -1083,7 +1083,7 @@ int app_max_size(struct boot_loader_state *state)
 #endif
 }
 #else
-int app_max_size(struct boot_loader_state *state)
+uint32_t app_max_size(struct boot_loader_state *state)
 {
     const struct flash_area *fap = NULL;
     uint32_t active_slot;
@@ -1147,6 +1147,15 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
         rc = boot_read_swap_size(fap, &swap_size);
 
         if (rc != 0) {
+            rc = BOOT_EFLASH;
+            goto done;
+        }
+
+        /* Check to see if something has manipulated or corrupted the swap status area */
+        if (swap_size > app_max_size(state))
+        {
+            BOOT_LOG_ERR("Swap size value: %" PRIu32 " larger than max image size: %" PRIu32,
+                         swap_size, app_max_size(state));
             rc = BOOT_EFLASH;
             goto done;
         }
