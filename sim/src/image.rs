@@ -900,6 +900,55 @@ impl Images {
         fails > 0
     }
 
+    /// Bootstrap interrupted at every flash operation, then booted again:
+    /// the primary slot must end up with the image and either a complete
+    /// trailer or none (no magic, the state of an image written directly).
+    /// A valid trailer without image_ok and copy_done is an image that can
+    /// neither be confirmed nor reverted.
+    pub fn run_bootstrap_with_fails(&self) -> bool {
+        if !Caps::Bootstrap.present() {
+            return false;
+        }
+
+        let mut flash = self.flash.clone();
+        let mut counter = 0;
+        assert!(c::boot_go(&mut flash, &self.areadesc, Some(&mut counter),
+                           None, false).success());
+        let total_flash_ops = -counter;
+        let mut fails = 0;
+
+        for i in 1 .. total_flash_ops {
+            if skip_slow_test() && i > 1 {
+                break;
+            }
+            let mut flash = self.flash.clone();
+            let mut counter = i;
+            assert!(c::boot_go(&mut flash, &self.areadesc, Some(&mut counter),
+                               None, false).interrupted());
+            assert!(c::boot_go(&mut flash, &self.areadesc, None, None,
+                               false).success());
+
+            if !self.verify_images(&flash, 0, 1) {
+                warn!("Image not bootstrapped, step {} of {}", i, total_flash_ops);
+                fails += 1;
+            }
+            if !self.verify_trailers(&flash, 0, BOOT_MAGIC_GOOD,
+                                     BOOT_FLAG_SET, BOOT_FLAG_SET) &&
+               !self.verify_trailers(&flash, 0, BOOT_MAGIC_UNSET, None, None) {
+                warn!("Mismatched trailer for the primary slot, step {} of {}",
+                      i, total_flash_ops);
+                fails += 1;
+            }
+        }
+
+        if fails > 0 {
+            error!("{} failures over {} interruption points", fails,
+                   total_flash_ops);
+        }
+
+        fails > 0
+    }
+
     pub fn run_oversized_bootstrap(&self) -> bool {
         let mut flash = self.flash.clone();
         let mut fails = 0;
