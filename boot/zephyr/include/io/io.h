@@ -55,7 +55,7 @@ bool io_detect_pin(void);
 bool io_detect_pin_reset(void);
 
 /*
- * Checks board boot mode via retention subsystem and if device should stay in
+ * Checks board boot mode via boot mode subsystem and if device should stay in
  * serial recovery mode
  *
  * @retval	false for normal boot, true for serial recovery boot
