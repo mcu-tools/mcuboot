@@ -20,7 +20,7 @@ int sim_set_nv_counter_for_image(uint32_t image_index, uint32_t security_counter
 int sim_get_nv_counter_for_image(uint32_t image_index, uint32_t* data);
 
 fih_ret boot_nv_security_counter_init(void) {
-    return FIH_SUCCESS;
+    FIH_RET(FIH_SUCCESS);
 }
 
 fih_ret boot_nv_security_counter_get(uint32_t image_id, fih_int *security_cnt) {
