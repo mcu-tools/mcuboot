@@ -745,6 +745,20 @@ config BOOT_SWAP_SAVE_ENCTLV
 	  JTAG/SWD or primary slot in external flash).
 	  If unsure, leave at the default value.
 
+config BOOT_LEGACY_SWAP_OVERHEAD
+	bool "Legacy (2.5 and earlier) swap overhead calculation"
+	depends on BOOT_UPGRADE_ONLY || BOOT_DIRECT_XIP || BOOT_RAM_LOAD
+	select MCUBOOT_LEGACY_SWAP_OVERHEAD
+	help
+	  MCUboot versions 2.5 and earlier wrongly include the size of a swap area in calculations,
+	  which limit the maximum size that an image in a slot can be and puts the status flags
+	  before this area. This Kconfig should only be enabled to retain compatibility with
+	  MCUboot/MCUboot images built against MCUboot 2.5 or older as it will reserve space that
+	  is never usable.
+
+config MCUBOOT_LEGACY_SWAP_OVERHEAD
+	depends on BOOT_LEGACY_SWAP_OVERHEAD
+
 endif # !SINGLE_APPLICATION_SLOT
 
 if BOOT_RAM_LOAD || SINGLE_APPLICATION_SLOT_RAM_LOAD
