@@ -56,6 +56,10 @@
 #include "bootutil/enc_key.h"
 #endif
 
+#if defined(MCUBOOT_ENC_IMAGES_XIP)
+#include "xip_enc/xip_enc.h"
+#endif
+
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 #include <os/os_malloc.h>
 #endif
@@ -669,7 +673,7 @@ boot_validate_slot(struct boot_loader_state *state, int slot,
         fih_rc = FIH_FAILURE;
     } else {
         BOOT_HOOK_CALL_FIH(boot_image_check_hook, FIH_BOOT_HOOK_REGULAR,
-                           fih_rc, BOOT_CURR_IMG(state), slot);
+                           fih_rc, state, BOOT_CURR_IMG(state), slot);
         if (FIH_EQ(fih_rc, FIH_BOOT_HOOK_REGULAR)) {
             FIH_CALL(boot_check_image, fih_rc, state, bs, slot);
         }
@@ -2191,6 +2195,11 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         goto out;
     }
 
+#if defined(MCUBOOT_ENC_IMAGES_XIP)
+    boot_xip_populate_rsp(rsp);
+    xip_enc_clear_keys();
+#endif
+
     fih_rc = FIH_SUCCESS;
 out:
     /*
@@ -2692,6 +2701,11 @@ context_boot_go(struct boot_loader_state *state, struct boot_rsp *rsp)
         FIH_SET(fih_rc, FIH_FAILURE);
         goto close;
     }
+
+#if defined(MCUBOOT_ENC_IMAGES_XIP)
+    boot_xip_populate_rsp(rsp);
+    xip_enc_clear_keys();
+#endif
 
 close:
     boot_close_all_flash_areas(state);
