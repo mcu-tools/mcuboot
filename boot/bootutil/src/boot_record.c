@@ -250,6 +250,7 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
     uint8_t image = 0;
 #ifdef MCUBOOT_HW_ROLLBACK_PROT
     uint32_t security_cnt;
+    fih_int fih_security_cnt;
     FIH_DECLARE(fih_rc, FIH_FAILURE);
 #endif
 #endif
@@ -358,12 +359,13 @@ int boot_save_shared_data(const struct image_header *hdr, const struct flash_are
 
 #if !defined(MCUBOOT_SINGLE_APPLICATION_SLOT) && defined(MCUBOOT_HW_ROLLBACK_PROT)
     for (image = 0; image < BOOT_IMAGE_NUMBER && !rc; image++) {
-        FIH_CALL(boot_nv_security_counter_get, fih_rc, image, &security_cnt);
+        FIH_CALL(boot_nv_security_counter_get, fih_rc, image, &fih_security_cnt);
         if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
             /* Some platforms expose only one NV counter; skip other image indices. */
             continue;
         }
 
+        security_cnt = (uint32_t)fih_int_decode(fih_security_cnt);
         rc = boot_add_data_to_shared_area(TLV_MAJOR_BLINFO,
                                           BLINFO_SECURITY_COUNTER_IMAGE_0 + image,
                                           sizeof(security_cnt),
