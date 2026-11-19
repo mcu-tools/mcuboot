@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the zcbor library.
- * Commit zcbor 0.8.1
+ * Commit zcbor 0.8.3
  */
 
 /*
@@ -151,6 +151,7 @@ static const char *zcbor_error_str(int error)
 		ZCBOR_ERR_CASE(ZCBOR_ERR_NOT_AT_END)
 		ZCBOR_ERR_CASE(ZCBOR_ERR_MAP_FLAGS_NOT_AVAILABLE)
 		ZCBOR_ERR_CASE(ZCBOR_ERR_INVALID_VALUE_ENCODING)
+		ZCBOR_ERR_CASE(ZCBOR_ERR_MAX_DEPTH)
 	}
 	#undef ZCBOR_ERR_CASE
 

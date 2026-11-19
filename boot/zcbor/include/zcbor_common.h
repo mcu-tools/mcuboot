@@ -1,6 +1,6 @@
 /*
  * This file has been copied from the zcbor library.
- * Commit zcbor 0.8.1
+ * Commit zcbor 0.8.3
  */
 
 /*
@@ -27,7 +27,7 @@ extern "C" {
 
 #define ZCBOR_VERSION_MAJOR 0
 #define ZCBOR_VERSION_MINOR 8
-#define ZCBOR_VERSION_BUGFIX 1
+#define ZCBOR_VERSION_BUGFIX 3
 
 /** The version string with dots and not prefix. */
 #define ZCBOR_VERSION_STR   ZCBOR_STRINGIFY(ZCBOR_VERSION_MAJOR) \
@@ -269,6 +269,7 @@ do { \
 #define ZCBOR_ERR_NOT_AT_END 19
 #define ZCBOR_ERR_MAP_FLAGS_NOT_AVAILABLE 20
 #define ZCBOR_ERR_INVALID_VALUE_ENCODING 21 ///! When ZCBOR_CANONICAL is defined, and the incoming data is not encoded with minimal length.
+#define ZCBOR_ERR_MAX_DEPTH 30 ///! Lists/maps are nested too deeply to be skipped, see ZCBOR_MAX_SKIP_DEPTH.
 #define ZCBOR_ERR_UNKNOWN 31
 
 /** The largest possible elem_count. */
