@@ -1,0 +1,65 @@
+[
+  {
+    "target_name": "esp32",
+    "setup_cmd": "./ci/espressif_install.sh",
+    "build_cmd": "bash -c '. $HOME/esp-idf/export.sh && cmake -DCMAKE_TOOLCHAIN_FILE=$PWD/boot/espressif/tools/toolchain-esp32.cmake -DMCUBOOT_TARGET=esp32 -DMCUBOOT_CONFIG_FILE=$PWD/boot/espressif/port/esp32/bootloader.conf -DESP_HAL_PATH=$HOME/esp-idf -B .build-esp32 $PWD/boot/espressif && cmake --build .build-esp32'",
+    "elf": ".build-esp32/mcuboot_esp32.elf",
+    "ld": ".build-esp32/ld/bootloader.ld",
+    "map_file": ".build-esp32/mcuboot_esp32.map",
+    "linker_vars": ""
+  },
+  {
+    "target_name": "esp32s2",
+    "setup_cmd": "./ci/espressif_install.sh",
+    "build_cmd": "bash -c '. $HOME/esp-idf/export.sh && cmake -DCMAKE_TOOLCHAIN_FILE=$PWD/boot/espressif/tools/toolchain-esp32s2.cmake -DMCUBOOT_TARGET=esp32s2 -DMCUBOOT_CONFIG_FILE=$PWD/boot/espressif/port/esp32s2/bootloader.conf -DESP_HAL_PATH=$HOME/esp-idf -B .build-esp32s2 $PWD/boot/espressif && cmake --build .build-esp32s2'",
+    "elf": ".build-esp32s2/mcuboot_esp32s2.elf",
+    "ld": ".build-esp32s2/ld/bootloader.ld",
+    "map_file": ".build-esp32s2/mcuboot_esp32s2.map",
+    "linker_vars": ""
+  },
+  {
+    "target_name": "esp32s3",
+    "setup_cmd": "./ci/espressif_install.sh",
+    "build_cmd": "bash -c '. $HOME/esp-idf/export.sh && cmake -DCMAKE_TOOLCHAIN_FILE=$PWD/boot/espressif/tools/toolchain-esp32s3.cmake -DMCUBOOT_TARGET=esp32s3 -DMCUBOOT_CONFIG_FILE=$PWD/boot/espressif/port/esp32s3/bootloader.conf -DESP_HAL_PATH=$HOME/esp-idf -B .build-esp32s3 $PWD/boot/espressif && cmake --build .build-esp32s3'",
+    "elf": ".build-esp32s3/mcuboot_esp32s3.elf",
+    "ld": ".build-esp32s3/ld/bootloader.ld",
+    "map_file": ".build-esp32s3/mcuboot_esp32s3.map",
+    "linker_vars": ""
+  },
+  {
+    "target_name": "esp32c2",
+    "setup_cmd": "./ci/espressif_install.sh",
+    "build_cmd": "bash -c '. $HOME/esp-idf/export.sh && cmake -DCMAKE_TOOLCHAIN_FILE=$PWD/boot/espressif/tools/toolchain-esp32c2.cmake -DMCUBOOT_TARGET=esp32c2 -DMCUBOOT_CONFIG_FILE=$PWD/boot/espressif/port/esp32c2/bootloader.conf -DESP_HAL_PATH=$HOME/esp-idf -B .build-esp32c2 $PWD/boot/espressif && cmake --build .build-esp32c2'",
+    "elf": ".build-esp32c2/mcuboot_esp32c2.elf",
+    "ld": ".build-esp32c2/ld/bootloader.ld",
+    "map_file": ".build-esp32c2/mcuboot_esp32c2.map",
+    "linker_vars": ""
+  },
+  {
+    "target_name": "esp32c3",
+    "setup_cmd": "./ci/espressif_install.sh",
+    "build_cmd": "bash -c '. $HOME/esp-idf/export.sh && cmake -DCMAKE_TOOLCHAIN_FILE=$PWD/boot/espressif/tools/toolchain-esp32c3.cmake -DMCUBOOT_TARGET=esp32c3 -DMCUBOOT_CONFIG_FILE=$PWD/boot/espressif/port/esp32c3/bootloader.conf -DESP_HAL_PATH=$HOME/esp-idf -B .build-esp32c3 $PWD/boot/espressif && cmake --build .build-esp32c3'",
+    "elf": ".build-esp32c3/mcuboot_esp32c3.elf",
+    "ld": ".build-esp32c3/ld/bootloader.ld",
+    "map_file": ".build-esp32c3/mcuboot_esp32c3.map",
+    "linker_vars": ""
+  },
+  {
+    "target_name": "esp32c6",
+    "setup_cmd": "./ci/espressif_install.sh",
+    "build_cmd": "bash -c '. $HOME/esp-idf/export.sh && cmake -DCMAKE_TOOLCHAIN_FILE=$PWD/boot/espressif/tools/toolchain-esp32c6.cmake -DMCUBOOT_TARGET=esp32c6 -DMCUBOOT_CONFIG_FILE=$PWD/boot/espressif/port/esp32c6/bootloader.conf -DESP_HAL_PATH=$HOME/esp-idf -B .build-esp32c6 $PWD/boot/espressif && cmake --build .build-esp32c6'",
+    "elf": ".build-esp32c6/mcuboot_esp32c6.elf",
+    "ld": ".build-esp32c6/ld/bootloader.ld",
+    "map_file": ".build-esp32c6/mcuboot_esp32c6.map",
+    "linker_vars": ""
+  },
+  {
+    "target_name": "esp32h2",
+    "setup_cmd": "./ci/espressif_install.sh",
+    "build_cmd": "bash -c '. $HOME/esp-idf/export.sh && cmake -DCMAKE_TOOLCHAIN_FILE=$PWD/boot/espressif/tools/toolchain-esp32h2.cmake -DMCUBOOT_TARGET=esp32h2 -DMCUBOOT_CONFIG_FILE=$PWD/boot/espressif/port/esp32h2/bootloader.conf -DESP_HAL_PATH=$HOME/esp-idf -B .build-esp32h2 $PWD/boot/espressif && cmake --build .build-esp32h2'",
+    "elf": ".build-esp32h2/mcuboot_esp32h2.elf",
+    "ld": ".build-esp32h2/ld/bootloader.ld",
+    "map_file": ".build-esp32h2/mcuboot_esp32h2.map",
+    "linker_vars": ""
+  }
+]
