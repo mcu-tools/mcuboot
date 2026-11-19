@@ -164,15 +164,51 @@ fih_ret boot_image_check_hook(int img_index, int slot);
 int boot_perform_update_hook(int img_index, struct image_header *img_head,
                              const struct flash_area *area);
 
+/** Hook for implement image's pre-copying action
+ *
+ * This hook is for implement action which might be done right before image is
+ * copied to the primary slot. This hook is called from boot_copy_image(), i.e.
+ * in MCUBOOT_OVERWRITE_ONLY mode, and for bootstrap installs when
+ * MCUBOOT_BOOTSTRAP is enabled (the primary slot is empty or invalid).
+ *
+ * Typical uses include preparing a hardware encryption engine for encrypted
+ * XIP (e.g. initializing it based on the source image size).
+ *
+ * @param img_index the index of the image pair
+ * @param primary_area the flash area of the primary image.
+ * @param secondary_area the flash area of the secondary image.
+ * @param img_size size of the image in the secondary slot. This is not the
+ *                 number of bytes that will be copied; see
+ *                 boot_copy_region_post_hook().
+ *
+ * @retval 0: success, mcuboot will follow normal code execution flow after
+ *         execution of this call.
+ *         non-zero: the primary slot is left untouched and boot_copy_image()
+ *         returns the error; the update will be attempted again on the next
+ *         boot.
+ */
+int boot_copy_region_pre_hook(int img_index,
+                              const struct flash_area *primary_area,
+                              const struct flash_area *secondary_area,
+                              size_t size);
+
 /** Hook for implement image's post copying action
  *
  * This hook is for implement action which might be done right after image was
- * copied to the primary slot. This hook is called in MCUBOOT_OVERWRITE_ONLY
- * mode only.
+ * copied to the primary slot. It is called from two places:
+ *
+ * boot_copy_image(), i.e. in MCUBOOT_OVERWRITE_ONLY mode, and for bootstrap
+ * installs when MCUBOOT_BOOTSTRAP is enabled, after the image has been
+ * copied to the primary slot.
+ * boot_swap_image(), i.e. in the swap upgrade modes, after the swap has
+ * completed.
  *
  * @param img_index the index of the image pair
  * @param area the flash area of the primary image.
- * @param size size of copied image.
+ * @param size number of bytes actually copied to the primary slot. With
+ *             MCUBOOT_OVERWRITE_ONLY_FAST (and the swap-move/swap-offset
+ *             bootstrap path) this is the image size; with plain
+ *             MCUBOOT_OVERWRITE_ONLY the whole slot is copied.
  *
  * @retval 0: success, mcuboot will follow normal code execution flow after
  *            execution of this call.
