@@ -52,7 +52,7 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #endif
 
 #ifdef MCUBOOT_SERIAL
-static fih_ret image_data_in_ram;
+static FIH_DECLARE(image_data_in_ram, FIH_FAILURE);
 #endif
 
 /**
@@ -451,7 +451,7 @@ void boot_init_image_data_in_ram(void)
 
 fih_ret boot_image_data_in_ram(void)
 {
-	return image_data_in_ram;
+	FIH_RET(image_data_in_ram);
 }
 
 void boot_set_image_data_in_nvm(void)

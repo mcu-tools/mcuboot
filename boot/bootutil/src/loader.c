@@ -2476,7 +2476,7 @@ boot_load_and_validate_images(struct boot_loader_state *state)
 {
     uint32_t active_slot;
     int rc;
-    fih_ret fih_rc;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
 
     /* Go over all the images and try to load one */
     IMAGES_ITER(BOOT_CURR_IMG(state)) {
