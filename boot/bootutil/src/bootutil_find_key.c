@@ -55,9 +55,9 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #if !defined(MCUBOOT_HW_KEY)
 int bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
 {
-    bootutil_sha_context sha_ctx;
     int i;
     const struct bootutil_key *key;
+    int rc;
     uint8_t hash[IMAGE_HASH_SIZE];
 
     BOOT_LOG_DBG("bootutil_find_key");
@@ -68,10 +68,11 @@ int bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
 
     for (i = 0; i < bootutil_key_cnt; i++) {
         key = &bootutil_keys[i];
-        bootutil_sha_init(&sha_ctx);
-        bootutil_sha_update(&sha_ctx, key->key, *key->len);
-        bootutil_sha_finish(&sha_ctx, hash);
-        bootutil_sha_drop(&sha_ctx);
+        rc = bootutil_sha(key->key, *key->len, hash);
+        if (rc) {
+            BOOT_LOG_ERR("bootutil_find_key: bootutil_sha failed: %d", rc);
+            return -1;
+        }
         if (!memcmp(hash, keyhash, keyhash_len)) {
             return i;
         }
@@ -82,7 +83,6 @@ int bootutil_find_key(uint8_t *keyhash, uint8_t keyhash_len)
 extern unsigned int pub_key_len;
 int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 {
-    bootutil_sha_context sha_ctx;
     uint8_t hash[IMAGE_HASH_SIZE];
     uint8_t key_hash[IMAGE_HASH_SIZE];
     size_t key_hash_size = sizeof(key_hash);
@@ -91,10 +91,11 @@ int bootutil_find_key(uint8_t image_index, uint8_t *key, uint16_t key_len)
 
     BOOT_LOG_DBG("bootutil_find_key: image_index %d", image_index);
 
-    bootutil_sha_init(&sha_ctx);
-    bootutil_sha_update(&sha_ctx, key, key_len);
-    bootutil_sha_finish(&sha_ctx, hash);
-    bootutil_sha_drop(&sha_ctx);
+    rc = bootutil_sha(key, key_len, hash);
+    if (rc) {
+        BOOT_LOG_ERR("bootutil_find_key: bootutil_sha failed: %d", rc);
+        return -1;
+    }
 
     rc = boot_retrieve_public_key_hash(image_index, key_hash, &key_hash_size);
     if (rc) {
