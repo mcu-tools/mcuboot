@@ -1614,6 +1614,21 @@ boot_prepare_image_for_update(struct boot_loader_state *state,
                 return rc;
             }
 
+#ifndef MCUBOOT_VALIDATE_PRIMARY_SLOT
+            /* The swap was resumed from the state found in a trailer, and
+             * nothing validated the image it left in the primary slot. Without
+             * validation of the primary slot before booting, only the image
+             * magic would be checked, so validate it here.
+             */
+            FIH_CALL(boot_validate_slot, fih_rc,
+                     state, BOOT_SLOT_PRIMARY, NULL, 0);
+            if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+                BOOT_LOG_ERR("Invalid image after interrupted swap; Image=%u",
+                             BOOT_CURR_IMG(state));
+                return BOOT_EBADIMAGE;
+            }
+#endif
+
             /* Swap has finished set to NONE */
             BOOT_SWAP_TYPE(state) = BOOT_SWAP_TYPE_NONE;
         } else {

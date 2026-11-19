@@ -1441,6 +1441,72 @@ impl Images {
         true
     }
 
+    /// Boot with a stale or corrupt scratch trailer that records a swap in
+    /// progress although none was started, over a secondary image that
+    /// doesn't verify.  The bootloader resumes the swap from the trailer,
+    /// which installs the secondary image in the primary slot; it must then
+    /// refuse to boot it.
+    pub fn run_resume_invalid_image(&self) -> bool {
+        if !Caps::modifies_flash() || !Caps::SwapUsingScratch.present() {
+            return false;
+        }
+
+        let mut fails = 0;
+
+        // Without the trailer, the valid primary image boots.
+        let mut flash = self.flash.clone();
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success_no_asserts() {
+            warn!("Failed to boot the primary slot");
+            fails += 1;
+        }
+
+        let mut flash = self.flash.clone();
+        let image = &self.images[0];
+        let (base, len, dev_id) = self.areadesc.find(FlashId::ImageScratch).unwrap();
+        let scratch = SlotInfo {
+            base_off: base,
+            trailer_off: base + len - c::boot_magic_sz() - c::boot_max_align() * 4,
+            len,
+            dev_id,
+            index: 0,
+        };
+
+        let max_align = c::boot_max_align();
+        let dev = flash.get_mut(&dev_id).unwrap();
+        let align = dev.align();
+        let erased = dev.erased_val();
+
+        // First status entry: one step of the swap done.
+        let status_off = base + len - c::boot_scratch_trailer_sz(align as u32) as usize;
+        let mut entry = vec![erased; align];
+        entry[0] = 0x01;
+        dev.write(status_off, &entry).unwrap();
+
+        // Swap size, then swap type for image 0.
+        let swap_size = image.primaries.size.max(image.upgrades.size) as u32;
+        let mut buf = vec![erased; max_align];
+        buf[..4].copy_from_slice(&swap_size.to_le_bytes());
+        dev.write(scratch.trailer_off, &buf).unwrap();
+
+        let mut buf = vec![erased; max_align];
+        buf[0] = 3; // BOOT_SWAP_TYPE_PERM
+        dev.write(scratch.trailer_off + max_align, &buf).unwrap();
+
+        mark_upgrade(&mut flash, &scratch);
+
+        let result = c::boot_go(&mut flash, &self.areadesc, None, None, false);
+        if result.interrupted() || result.success() || result.asserts() != 0 {
+            warn!("Expected a clean boot failure: {:?}", result);
+            fails += 1;
+        }
+
+        if fails > 0 {
+            error!("Expected the image left by a resumed swap to be rejected");
+        }
+
+        fails > 0
+    }
+
     /// Boot with an upgrade staged on a device whose reported sector
     /// layout is incompatible with the configured logical sector size.
     /// The bootloader's logical sector verification must refuse to touch
