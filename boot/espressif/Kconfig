@@ -1,0 +1,524 @@
+# SPDX-FileCopyrightText: 2026 Espressif Systems (Shanghai) CO LTD
+#
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "MCUboot Espressif port"
+
+comment "SoC defaults are loaded from port/<target>/default.conf"
+
+config MCUBOOT_TARGET
+	string
+	option env="MCUBOOT_TARGET"
+	help
+	  Build target passed by CMake (for example esp32 or esp32s3).
+	  Used only to show options that apply to the selected SoC.
+
+config ESP_USB_SERIAL_JTAG_SUPPORTED
+	bool
+	default y if MCUBOOT_TARGET = "esp32s3" || MCUBOOT_TARGET = "esp32c3" || MCUBOOT_TARGET = "esp32c5" || MCUBOOT_TARGET = "esp32c6" || MCUBOOT_TARGET = "esp32c61" || MCUBOOT_TARGET = "esp32h2" || MCUBOOT_TARGET = "esp32p4"
+	default n
+	help
+	  USB Serial/JTAG peripheral is present on this SoC.
+
+menu "Flash layout"
+
+config ESP_FLASH_SIZE
+	string "Flash size"
+	default "4MB"
+	help
+	  Flash size passed to esptool, for example 2MB, 4MB, 8MB or 16MB.
+	  ESP32-C2 boards in the default map use 2MB.
+
+config ESP_BOOTLOADER_SIZE
+	hex "Bootloader size"
+	default 0xF000
+	help
+	  Size reserved for the MCUboot image.
+
+config ESP_BOOTLOADER_OFFSET
+	hex "Bootloader flash offset"
+	default 0x0
+	help
+	  Flash offset where the bootloader is written.
+	  ESP32 and ESP32-S2 use 0x1000. ESP32-C5 and ESP32-P4 use 0x2000.
+	  The other supported SoCs use 0x0000.
+
+config ESP_IMAGE0_PRIMARY_START_ADDRESS
+	hex "Image 0 primary slot address"
+	default 0x20000
+	help
+	  Start address of the primary slot for the first image.
+
+config ESP_APPLICATION_SIZE
+	hex "Application slot size"
+	default 0x1C0000
+	help
+	  Size of each image slot. The primary and secondary slots of an
+	  image use the same size.
+
+config ESP_IMAGE0_SECONDARY_START_ADDRESS
+	hex "Image 0 secondary slot address"
+	default 0x1E0000
+	help
+	  Start address of the secondary slot for the first image.
+
+config ESP_SCRATCH_OFFSET
+	hex "Scratch area address"
+	default 0x3E0000
+	help
+	  Start address of the scratch area used by swap-using-scratch.
+	  The host OS and the update agent must use the same region.
+
+config ESP_SCRATCH_SIZE
+	hex "Scratch area size"
+	default 0x1F000
+	help
+	  Size of the scratch area. It must hold the largest sector that
+	  swap-using-scratch moves, plus the image trailer.
+
+config ESP_IMAGE1_PRIMARY_START_ADDRESS
+	hex "Image 1 primary slot address"
+	depends on ESP_IMAGE_NUMBER = 2
+	default 0x110000
+	help
+	  Start address of the primary slot for the second image.
+	  Used only when two images are enabled. The host OS and the update
+	  agent must be aware of this region.
+
+config ESP_IMAGE1_SECONDARY_START_ADDRESS
+	hex "Image 1 secondary slot address"
+	depends on ESP_IMAGE_NUMBER = 2
+	default 0x190000
+	help
+	  Start address of the secondary slot for the second image.
+
+endmenu
+
+choice
+	prompt "Upgrade mode"
+	default ESP_BOOT_SWAP_USING_SCRATCH
+	help
+	  How an update is installed. Only one mode is active.
+	  Swap using scratch is the default.
+
+config ESP_BOOT_SWAP_USING_SCRATCH
+	bool "Swap using scratch"
+	help
+	  Copy the update through the scratch area, with rollback.
+
+config ESP_BOOT_SWAP_USING_MOVE
+	bool "Swap using move"
+	help
+	  Swap slots by moving sectors, without a scratch area.
+
+config ESP_BOOT_UPGRADE_ONLY
+	bool "Upgrade only (overwrite)"
+	help
+	  Overwrite the primary slot with the update. Rollback is not
+	  available.
+
+config ESP_BOOT_SWAP_USING_OFFSET
+	bool "Swap using offset (unsupported)"
+	help
+	  Currently unsupported on the Espressif port.
+
+config ESP_SINGLE_APPLICATION_SLOT
+	bool "Single application slot (unsupported)"
+	help
+	  Currently unsupported on the Espressif port.
+
+config ESP_BOOT_DIRECT_XIP
+	bool "Direct-XIP (unsupported)"
+	help
+	  Currently unsupported on the Espressif port.
+
+config ESP_BOOT_RAM_LOAD
+	bool "RAM load (unsupported)"
+	help
+	  Currently unsupported on the Espressif port.
+
+endchoice
+
+menu "Images"
+
+config ESP_IMAGE_NUMBER
+	int "Number of updatable images"
+	range 1 2
+	default 1
+	help
+	  Number of separately updatable images. When this is not set,
+	  the port builds a single image. Two images is the maximum.
+
+config ESP_MULTI_PROCESSOR_BOOT
+	bool "Boot the second image on the other CPU"
+	depends on MCUBOOT_TARGET = "esp32" || MCUBOOT_TARGET = "esp32s3"
+	depends on ESP_IMAGE_NUMBER = 2
+	help
+	  The bootloader boots the second image on the APP CPU and the
+	  first image on the PRO CPU. The host OS of the first image is
+	  not responsible for booting the second image.
+	  Implemented for ESP32 and ESP32-S3. Requires two images.
+
+endmenu
+
+menu "Downgrade prevention"
+
+config ESP_DOWNGRADE_PREVENTION
+	bool "Prevent updates to an older image version"
+	help
+	  Compare the new image version with the current one and refuse
+	  an update to an older version. The version is set with imgtool
+	  (-v).
+
+config ESP_DOWNGRADE_PREVENTION_SECURITY_COUNTER
+	bool "Also compare the security counter"
+	depends on ESP_DOWNGRADE_PREVENTION
+	help
+	  Downgrade prevention also uses the security counter from
+	  imgtool (-s), not only the image version. An update must have
+	  a security counter greater than or equal to the current one.
+
+endmenu
+
+menu "Serial recovery"
+
+config ESP_MCUBOOT_SERIAL
+	bool "MCUboot serial recovery"
+	help
+	  Allow MCUmgr to upload a firmware image through the serial port.
+
+if ESP_MCUBOOT_SERIAL
+
+config ESP_MCUBOOT_ERASE_PROGRESSIVELY
+	bool "Erase flash sector by sector during upload"
+	help
+	  Erase flash by sectors while the image is uploaded, instead of
+	  erasing the whole slot after the first frame.
+
+config ESP_MCUBOOT_SERIAL_USB_SERIAL_JTAG
+	bool "Use USB Serial/JTAG"
+	depends on ESP_USB_SERIAL_JTAG_SUPPORTED
+	help
+	  Run serial recovery on the USB Serial/JTAG controller.
+	  UART pins are not used in this mode.
+
+config ESP_SERIAL_BOOT_GPIO_DETECT
+	int "GPIO that selects serial recovery"
+	default 5 if MCUBOOT_TARGET = "esp32" || MCUBOOT_TARGET = "esp32s2" || MCUBOOT_TARGET = "esp32s3" || MCUBOOT_TARGET = "esp32c3"
+	default 18 if MCUBOOT_TARGET = "esp32c2"
+	default 3 if MCUBOOT_TARGET = "esp32c5" || MCUBOOT_TARGET = "esp32c6" || MCUBOOT_TARGET = "esp32c61" || MCUBOOT_TARGET = "esp32p4"
+	default 12 if MCUBOOT_TARGET = "esp32h2"
+	default 0
+	help
+	  GPIO sampled at boot to enter serial recovery.
+
+config ESP_SERIAL_BOOT_GPIO_INPUT_TYPE
+	int "GPIO input type (0 = pull-down, 1 = pull-up)"
+	range 0 1
+	default 0
+	help
+	  0 selects a pull-down. 1 selects a pull-up.
+
+config ESP_SERIAL_BOOT_GPIO_DETECT_VAL
+	int "GPIO level that enters serial recovery"
+	range 0 1
+	default 1
+	help
+	  Active level of the detect GPIO.
+
+config ESP_SERIAL_BOOT_DETECT_DELAY_S
+	int "GPIO detect delay (seconds)"
+	default 5
+	help
+	  How long the detect GPIO must hold the active level.
+
+config ESP_SERIAL_BOOT_UART_NUM
+	int "Serial recovery UART number"
+	depends on !ESP_MCUBOOT_SERIAL_USB_SERIAL_JTAG
+	default 1
+	help
+	  UART used for serial recovery. Not used with USB Serial/JTAG.
+
+config ESP_SERIAL_BOOT_GPIO_RX
+	int "Serial recovery RX GPIO"
+	depends on !ESP_MCUBOOT_SERIAL_USB_SERIAL_JTAG
+	default 8 if MCUBOOT_TARGET = "esp32" || MCUBOOT_TARGET = "esp32c3"
+	default 18 if MCUBOOT_TARGET = "esp32s2" || MCUBOOT_TARGET = "esp32s3"
+	default 2 if MCUBOOT_TARGET = "esp32c2"
+	default 10 if MCUBOOT_TARGET = "esp32c5" || MCUBOOT_TARGET = "esp32c6" || MCUBOOT_TARGET = "esp32c61" || MCUBOOT_TARGET = "esp32h2"
+	default 5 if MCUBOOT_TARGET = "esp32p4"
+	default 0
+	help
+	  GPIO for the serial recovery RX signal.
+
+config ESP_SERIAL_BOOT_GPIO_TX
+	int "Serial recovery TX GPIO"
+	depends on !ESP_MCUBOOT_SERIAL_USB_SERIAL_JTAG
+	default 9 if MCUBOOT_TARGET = "esp32" || MCUBOOT_TARGET = "esp32c3"
+	default 17 if MCUBOOT_TARGET = "esp32s2" || MCUBOOT_TARGET = "esp32s3"
+	default 3 if MCUBOOT_TARGET = "esp32c2"
+	default 11 if MCUBOOT_TARGET = "esp32c5" || MCUBOOT_TARGET = "esp32c6" || MCUBOOT_TARGET = "esp32c61" || MCUBOOT_TARGET = "esp32h2"
+	default 6 if MCUBOOT_TARGET = "esp32p4"
+	default 0
+	help
+	  GPIO for the serial recovery TX signal.
+
+config ESP_SERIAL_BOOT_BAUDRATE
+	int "Serial recovery baud rate"
+	depends on !ESP_MCUBOOT_SERIAL_USB_SERIAL_JTAG
+	default 115200
+	help
+	  Baud rate for serial recovery.
+
+endif
+
+endmenu
+
+choice
+	prompt "Console output"
+	default ESP_CONSOLE_UART
+	help
+	  Console used for bootloader logs. Use either UART or USB
+	  Serial/JTAG, not both.
+
+config ESP_CONSOLE_UART
+	bool "UART"
+
+config ESP_CONSOLE_USB_SERIAL_JTAG
+	bool "USB Serial/JTAG"
+	depends on ESP_USB_SERIAL_JTAG_SUPPORTED
+	help
+	  Print the console log on the USB Serial/JTAG controller.
+
+endchoice
+
+config ESP_CONSOLE_UART_NUM
+	int "Console UART number"
+	depends on ESP_CONSOLE_UART
+	default 0
+	help
+	  UART used for the console. UART0 is the ROM default.
+	  Keep this at 0 when a custom pinout is enabled.
+
+config ESP_CONSOLE_UART_CUSTOM
+	bool "Custom console UART pins"
+	depends on ESP_CONSOLE_UART
+	help
+	  Route the console UART to GPIOs other than the ROM defaults.
+	  UART number 0 must stay selected.
+
+config ESP_CONSOLE_UART_TX_GPIO
+	int "Console UART TX GPIO"
+	depends on ESP_CONSOLE_UART_CUSTOM
+	default 0
+	help
+	  TX GPIO for the console UART.
+
+config ESP_CONSOLE_UART_RX_GPIO
+	int "Console UART RX GPIO"
+	depends on ESP_CONSOLE_UART_CUSTOM
+	default 0
+	help
+	  RX GPIO for the console UART.
+
+choice
+	prompt "Image signature"
+	default ESP_SIGN_NONE
+	help
+	  Signature checked before an image is booted. None boots unsigned
+	  images. Generate a new key with imgtool instead of using the
+	  sample keys.
+
+config ESP_SIGN_NONE
+	bool "None"
+	help
+	  Do not verify image signatures.
+
+config ESP_SIGN_EC256
+	bool "ECDSA P-256"
+
+config ESP_SIGN_ED25519
+	bool "Ed25519"
+
+config ESP_SIGN_RSA
+	bool "RSA"
+
+endchoice
+
+config ESP_SIGN_RSA_LEN
+	int "RSA key size"
+	depends on ESP_SIGN_RSA
+	default 2048
+	help
+	  RSA modulus length. Must be 2048 or 3072.
+
+config ESP_SIGN_KEY_FILE
+	string "Signing key file"
+	help
+	  PEM file passed to imgtool getpub. The public key is embedded
+	  in the bootloader. A relative path is taken from the MCUboot
+	  repository root. Generate a new key with imgtool instead of
+	  using the sample keys.
+
+choice
+	prompt "Crypto backend"
+	default ESP_USE_MBEDTLS
+	help
+	  Library used for image hash and signature verification.
+	  Mbed TLS is the supported backend. Tinycrypt is deprecated
+	  (https://github.com/mcu-tools/mcuboot/issues/2256).
+
+config ESP_USE_MBEDTLS
+	bool "Mbed TLS"
+	help
+	  Use Mbed TLS for image signing (EC256, Ed25519 and RSA).
+	  Ed25519 verification stays in the Fiat implementation. Mbed TLS
+	  supplies SHA-256 and SHA-512 for that path.
+
+config ESP_USE_TINYCRYPT
+	bool "Tinycrypt (deprecated)"
+	help
+	  Build the unmaintained Tinycrypt sources. A CMake warning is
+	  printed. Prefer Mbed TLS.
+
+endchoice
+
+menu "Watchdog"
+
+config ESP_MCUBOOT_WDT_ENABLE
+	bool "Enable the bootloader watchdog"
+	default y
+	help
+	  Keep the watchdog running while the bootloader swaps images.
+	  The swap path feeds the watchdog.
+
+endmenu
+
+menu "Hardware secure boot"
+
+config SECURE_SIGNED_ON_BOOT
+	bool "Check the bootloader signature on every boot"
+
+config SECURE_SIGNED_APPS_RSA_SCHEME
+	bool "ROM secure boot uses the RSA scheme"
+	help
+	  Used by SoCs whose ROM secure boot v2 verifies RSA signatures.
+
+config SECURE_SIGNED_APPS_ECDSA_V2_SCHEME
+	bool "ROM secure boot uses the ECDSA v2 scheme"
+	help
+	  Used by SoCs whose ROM secure boot verifies ECDSA signatures,
+	  such as ESP32-C2 and ESP32-C61.
+
+config SECURE_BOOT
+	bool "Enable hardware secure boot"
+
+config SECURE_BOOT_V2_ENABLED
+	bool "Enable secure boot v2"
+
+config SECURE_BOOT_SUPPORTS_RSA
+	bool "Secure boot supports RSA"
+
+config SECURE_BOOT_ALLOW_JTAG
+	bool "Allow JTAG with secure boot"
+
+config SECURE_BOOT_ALLOW_ROM_BASIC
+	bool "Allow basic ROM commands with secure boot"
+
+config SECURE_BOOT_ENABLE_AGGRESSIVE_KEY_REVOKE
+	bool "Aggressively revoke unused secure boot keys"
+
+config SECURE_BOOT_FLASH_ENC_KEYS_BURN_TOGETHER
+	bool "Burn secure boot and flash encryption keys together"
+	help
+	  Enable this when hardware secure boot and flash encryption are
+	  both turned on, so the keys are burned in one step.
+
+endmenu
+
+menu "Hardware flash encryption"
+
+config SECURE_FLASH_ENC_ENABLED
+	bool "Enable flash encryption"
+
+choice
+	prompt "Flash encryption mode"
+	optional
+	depends on SECURE_FLASH_ENC_ENABLED
+
+config SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
+	bool "Development"
+	help
+	  Flash encryption can still be left open for debugging.
+	  Do not use this mode in production.
+
+config SECURE_FLASH_ENCRYPTION_MODE_RELEASE
+	bool "Release"
+	help
+	  Flash encryption is closed. UART download of plaintext is
+	  refused. Burning this configuration can be irreversible.
+
+endchoice
+
+config SECURE_FLASH_UART_BOOTLOADER_ALLOW_ENC
+	bool "UART download may write encrypted flash"
+
+config SECURE_FLASH_UART_BOOTLOADER_ALLOW_DEC
+	bool "UART download may read decrypted flash"
+
+config SECURE_FLASH_UART_BOOTLOADER_ALLOW_CACHE
+	bool "UART download may enable the flash cache"
+
+config SECURE_FLASH_REQUIRE_ALREADY_ENABLED
+	bool "Refuse to boot if flash encryption is not already on"
+
+config SECURE_FLASH_ENCRYPTION_AES256
+	bool "Use AES-256 flash encryption"
+
+config SECURE_FLASH_ENCRYPTION_AES128_DERIVED
+	bool "Use AES-128 derived flash encryption"
+
+config SECURE_FLASH_PSEUDO_ROUND_FUNC
+	bool "Enable the flash encryption pseudo-round function"
+
+config SECURE_FLASH_PSEUDO_ROUND_FUNC_STRENGTH
+	int "Flash encryption pseudo-round strength"
+	range 0 3
+	default 0
+	help
+	  Strength used when the pseudo-round function is enabled.
+	  Read by the ESP32-C5, ESP32-C61 and ESP32-H2 flash encryption
+	  code.
+
+endmenu
+
+menu "Virtual eFuse"
+
+config EFUSE_VIRTUAL
+	bool "Emulate eFuses in RAM"
+	help
+	  Emulate eFuse blocks instead of burning them. Intended for
+	  development.
+
+config EFUSE_VIRTUAL_KEEP_IN_FLASH
+	bool "Keep the virtual eFuse in flash"
+	depends on EFUSE_VIRTUAL
+	help
+	  Store the emulated eFuse in a flash region so it survives reset.
+
+config EFUSE_VIRTUAL_OFFSET
+	hex "Virtual eFuse flash offset"
+	depends on EFUSE_VIRTUAL_KEEP_IN_FLASH
+	default 0x10000
+	help
+	  Flash offset of the emulated eFuse. Must not overlap the
+	  bootloader, image slots or scratch area.
+
+config EFUSE_VIRTUAL_SIZE
+	hex "Virtual eFuse size"
+	depends on EFUSE_VIRTUAL_KEEP_IN_FLASH
+	default 0x2000
+	help
+	  Size of the flash region used for the emulated eFuse.
+
+endmenu

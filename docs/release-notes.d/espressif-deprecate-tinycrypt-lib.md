@@ -1,0 +1,1 @@
+- espressif: deprecate Tinycrypt library, replace it with MbedTLS.
