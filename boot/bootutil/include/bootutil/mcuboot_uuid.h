@@ -17,7 +17,7 @@
  */
 
 #include <stdint.h>
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -6,7 +6,7 @@
 
 #include "bootutil/security_cnt.h"
 #include "mcuboot_config/mcuboot_logging.h"
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 
 /*
  * Since the simulator is executing unit tests in parallel,

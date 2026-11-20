@@ -15,7 +15,7 @@
  * is the stable, backend-independent replacement.
  */
 
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 
 #ifdef FIH_ENABLE_DELAY
 

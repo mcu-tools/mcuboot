@@ -72,6 +72,7 @@ endif
 
 # Collect MCUBoot sourses
 SOURCES_MCUBOOT := $(wildcard $(CURDIR)/../bootutil/src/*.c)
+SOURCES_MCUBOOT += $(wildcard $(CURDIR)/../fault_injection_hardening/src/*.c)
 # Collect MCUBoot Application sources
 SOURCES_APP_SRC := $(wildcard $(CUR_APP_PATH)/*.c)
 
@@ -84,6 +85,7 @@ SOURCES_APP += $(SOURCES_APP_SRC)
 SOURCES_APP += $(SOURCES_FLASH_PORT)
 
 INCLUDE_DIRS_MCUBOOT := $(addprefix -I, $(CURDIR)/../bootutil/include)
+INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(CURDIR)/../fault_injection_hardening/include)
 INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(CURDIR)/../bootutil/src)
 INCLUDE_DIRS_MCUBOOT += $(addprefix -I, $(CURDIR)/..)
 

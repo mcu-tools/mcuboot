@@ -25,9 +25,8 @@ jobs:
             src:
               - 'boot/bootutil/src/fault_injection_hardening_delay_rng_psa.c'
               - 'boot/bootutil/src/fault_injection_hardening_delay_rng_mbedtls.c'
-              - 'boot/bootutil/src/fault_injection_hardening.c'
-              - 'boot/bootutil/include/bootutil/fault_injection_hardening_delay_rng.h'
-              - 'boot/bootutil/include/bootutil/fault_injection_hardening.h'
+              - 'boot/fault_injection_hardening/src/**'
+              - 'boot/fault_injection_hardening/include/**'
       - id: decide
         run: |
           if [[ "${{ steps.filter.outputs.src }}" == "true" \
