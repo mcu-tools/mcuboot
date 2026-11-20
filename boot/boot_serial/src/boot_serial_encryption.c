@@ -126,8 +126,9 @@ decrypt_region_inplace(struct enc_key_data *enc_data,
     int rc;
     uint32_t tlv_off;
     size_t blk_off;
-    uint16_t idx;
+    uint32_t idx;
     uint32_t blk_sz;
+    uint32_t abs_off;
     uint8_t buf[sz] __attribute__((aligned));
     assert(sz <= sizeof buf);
 
@@ -146,34 +147,39 @@ decrypt_region_inplace(struct enc_key_data *enc_data,
         }
 
         if (IS_ENCRYPTED(hdr)) {
+            abs_off = off + bytes_copied;
             blk_sz = chunk_sz;
             idx = 0;
-            if (off + bytes_copied < hdr->ih_hdr_size) {
+            if (abs_off < hdr->ih_hdr_size) {
                 /* do not decrypt header */
-                if (hdr->ih_hdr_size > (off + bytes_copied + chunk_sz)) {
+                if (hdr->ih_hdr_size >= abs_off + chunk_sz) {
                     /* all bytes in header, skip decryption */
                     blk_sz = 0;
                 }
                 else {
-                    blk_sz = off + bytes_copied + chunk_sz - hdr->ih_hdr_size;
+                    idx = hdr->ih_hdr_size - abs_off;
+                    blk_sz = chunk_sz - idx;
                 }
 
                 blk_off = 0;
-                idx = hdr->ih_hdr_size;
             } else {
-                blk_off = ((off + bytes_copied) - hdr->ih_hdr_size) & 0xf;
+                blk_off = (abs_off - hdr->ih_hdr_size) & 0xf;
             }
             tlv_off = BOOT_TLV_OFF(hdr);
-            if (off + bytes_copied + chunk_sz > tlv_off) {
+            if (blk_sz > 0 && abs_off + chunk_sz > tlv_off) {
                 /* do not decrypt TLVs */
-                if (off + bytes_copied >= tlv_off) {
+                if (abs_off >= tlv_off) {
                     blk_sz = 0;
                 } else {
-                    blk_sz = tlv_off - (off + bytes_copied);
+                    blk_sz = tlv_off - abs_off - idx;
                 }
             }
+            if (idx > (uint32_t)chunk_sz || blk_sz > (uint32_t)chunk_sz - idx) {
+                rc = BOOT_EBADIMAGE;
+                goto out;
+            }
             rc = boot_enc_decrypt(enc_data,
-                    (off + bytes_copied + idx) - hdr->ih_hdr_size, blk_sz,
+                    (abs_off + idx) - hdr->ih_hdr_size, blk_sz,
                     blk_off, &buf[idx]);
             if (rc != 0) {
                 rc = BOOT_EBADIMAGE;
