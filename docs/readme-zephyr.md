@@ -347,6 +347,37 @@ The mapping of image number to partition is as follows:
 
 0 is a default upload target when no explicit selection is done.
 
+### Upload throughput
+
+Upload speed depends on how much image data each SMP request carries, and on whether the host has to pause between console lines.
+
+``CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE`` (default 1024) is the largest decoded SMP frame MCUboot accepts.
+A console-framed request larger than this is rejected on its first line with ``MGMT_ERR_EMSGSIZE``.
+Raising it lets the host carry more image data per round trip, at a RAM cost of about twice the value (the ``in_buf`` and ``dec_buf`` buffers in ``boot_serial.c``).
+
+Enable ``CONFIG_BOOT_MGMT_MCUMGR_PARAMS=y`` so that the client reads the buffer size from the device instead of having it configured by hand:
+
+```
+CONFIG_BOOT_SERIAL_MAX_RECEIVE_SIZE=4096
+CONFIG_BOOT_MGMT_MCUMGR_PARAMS=y
+```
+
+[smpmgr](https://github.com/intercreate/smpmgr) reads these parameters and sizes its requests to match:
+
+``` console
+smpmgr --port /dev/ttyACM0 image upload zephyr.signed.bin
+```
+
+Leave ``CONFIG_BOOT_MAX_LINE_INPUT_LEN`` at its default of 128.
+The SMP console format fixes the line length at 128 bytes, and ``CONFIG_BOOT_MGMT_MCUMGR_PARAMS`` depends on it; a larger value does not speed up uploads.
+
+Over USB CDC ACM, serial recovery holds the host off with USB flow control while all ``CONFIG_BOOT_LINE_BUFS`` line buffers are in use, so the host can send console lines back to back.
+A pause between lines, as older clients insert, then only slows the upload.
+The baud rate setting has no effect on throughput over CDC ACM.
+The plain UART path does not hold input this way, so a host on it may still need to pace its lines.
+
+On a binary-capable link, ``CONFIG_BOOT_SERIAL_RAW_PROTOCOL=y`` removes the base64 encoding and console framing; the client must then use a matching raw transport.
+
 ### System-specific commands
 
 Use the ``CONFIG_ENABLE_MGMT_PERUSER=y`` Kconfig option to enable the following additional commands:
