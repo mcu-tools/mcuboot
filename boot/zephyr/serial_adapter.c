@@ -437,6 +437,7 @@ boot_uart_fifo_init(void)
 
 #elif defined(CONFIG_BOOT_SERIAL_CDC_ACM)
 
+	const k_timeout_t poll = K_MSEC(BOOT_CDC_ACM_POLL_MS);
 	uint32_t waited_ms;
 	int rc;
 
@@ -456,7 +457,7 @@ boot_uart_fifo_init(void)
 	 * would have expired, so a timed wait still falls through to boot.
 	 */
 	waited_ms = 0;
-	while (k_sem_take(&boot_cdc_acm_ready, K_MSEC(BOOT_CDC_ACM_POLL_MS)) != 0) {
+	while (k_sem_take(&boot_cdc_acm_ready, poll) != 0) {
 #if CONFIG_BOOT_WATCHDOG_FEED
 		MCUBOOT_WATCHDOG_FEED();
 #endif
