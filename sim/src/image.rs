@@ -2768,6 +2768,8 @@ fn make_tlv(signing_key: SigningKey) -> TlvGen {
         } else {
             TlvGen::new_ecies_p256(aes_key_size)
         }
+    } else if Caps::EncEc384.present() {
+        TlvGen::new_ecdsa_ecies_p384(aes_key_size)
     } else if Caps::EncX25519.present() {
         if Caps::Ed25519.present() {
             TlvGen::new_ed25519_ecies_x25519(aes_key_size)
@@ -2797,7 +2799,8 @@ fn make_tlv(signing_key: SigningKey) -> TlvGen {
 /// Are images built encrypted?
 fn enc_present() -> bool {
     Caps::EncRsa.present() || Caps::EncKw.present() ||
-        Caps::EncEc256.present() || Caps::EncX25519.present()
+        Caps::EncEc256.present() || Caps::EncEc384.present() ||
+        Caps::EncX25519.present()
 }
 
 /// Flip the last byte of the encryption TLV of the image in `slot`, so
@@ -2807,7 +2810,8 @@ fn corrupt_enc_tlv(flash: &mut SimMultiFlash, slot: &SlotInfo) {
     const TLV_INFO_MAGIC: u16 = 0x6907;
     const TLV_PROT_INFO_MAGIC: u16 = 0x6908;
     let enc_kinds = [TlvKinds::ENCRSA2048 as u16, TlvKinds::ENCKW as u16,
-                     TlvKinds::ENCEC256 as u16, TlvKinds::ENCX25519 as u16];
+                     TlvKinds::ENCEC256 as u16, TlvKinds::ENCX25519 as u16,
+                     TlvKinds::ENCEC384 as u16];
 
     let dev = flash.get_mut(&slot.dev_id).unwrap();
     let base = slot.base_off;

@@ -72,12 +72,13 @@ improbable that duplicates ever happen.
 
 To distribute this AES-CTR key, new TLVs were defined. The key can be
 encrypted using either RSA-OAEP, AES-KW (128 or 256 bits depending on the
-AES-CTR key length), ECIES-P256 or ECIES-X25519.
+AES-CTR key length), ECIES-P256, ECIES-P384 or ECIES-X25519.
 
 For RSA-OAEP a new TLV with value `0x30` is added to the image, for
 AES-KW a new TLV with value `0x31` is added to the image, for
-ECIES-P256 a new TLV with value `0x32` is added, and for ECIES-X25519 a
-newt TLV with value `0x33` is added. The contents of those TLVs
+ECIES-P256 a new TLV with value `0x32` is added, for ECIES-X25519 a
+newt TLV with value `0x33` is added, and for ECIES-P384 a TLV with
+value `0x35` is added. The contents of those TLVs
 are the results of applying the given operations over the AES-CTR key.
 
 ## [ECIES encryption](#ecies-encryption)
@@ -88,8 +89,8 @@ MCUboot we settled on some primitives that are easily found on our crypto
 libraries. The whole key encryption can be summarized as:
 
 * Generate a new private key and derive the public key; when using ECIES-P256
-  this is a secp256r1 keypair, when using ECIES-X25519 this will be a x25519
-  keypair. Those keys will be our ephemeral keys.
+  this is a secp256r1 keypair, when using ECIES-P384 a secp384r1 keypair, and
+  when using ECIES-X25519 this will be a x25519 keypair. Those keys will be our ephemeral keys.
 * Generate a new secret (DH) using the ephemeral private key and the public key
   that corresponds to the private key embedded in the HW.
 * Derive the new keys from the secret using HKDF. We are not using a `salt`
@@ -101,20 +102,25 @@ libraries. The whole key encryption can be summarized as:
 * The encrypted key now goes through a HMAC using the remaining 32
   bytes of key material from the HKDF.
 
-There are different TLVs for ECIES-P256, ECIES-X25519 with SHA256 HKDF/HMAC
-and ECIES-X25519 with SHA512 HKDF/HMAC.
-The final TLV is built from the 65 bytes for ECIES-P256 or 32 bytes for
-ECIES-X25519, which correspond to the ephemeral public key, followed by the
-MAC tag and the 16 or 32 bytes of the encrypted key, resulting in final TLV
-length:
+There are different TLVs for ECIES-P256, ECIES-X25519 with SHA256 HKDF/HMAC,
+ECIES-X25519 with SHA512 HKDF/HMAC and ECIES-P384.
+ECIES-P384 always uses SHA384 for HKDF and HMAC, so its HKDF produces the AES
+key length plus 48 bytes of key material and its MAC tag is 48 bytes; this
+keeps the key exchange at the same security level as P-384 signatures.
+The final TLV is built from the 65 bytes for ECIES-P256, 97 bytes for
+ECIES-P384 or 32 bytes for ECIES-X25519, which correspond to the ephemeral
+public key (uncompressed for the NIST curves), followed by the MAC tag and the
+16 or 32 bytes of the encrypted key, resulting in final TLV length:
  * ECIES-P256 has TLV length 113 to 129 bytes, depending on AES key length.
+ * ECIES-P384 has TLV length 161 or 177 bytes, depending on AES key length.
  * ECIES-X25519 on SHA256 TLV length is 80 or 96 bytes, depending on AES key
    length.
  * ECIES-X25519 on SHA512 TLV length is 112 or 128, depending on AES key
    length.
 
 The implemenation of ECIES-P256 is named ENC_EC256 in the source code and
-artifacts while ECIES-X25519 is named ENC_X25519.
+artifacts, ECIES-P384 is named ENC_EC384 and ECIES-X25519 is named ENC_X25519.
+ECIES-P384 is implemented only for the PSA Crypto backend.
 
 Note that MCUboot is built to support only one ECIES and HMAC SHA at once,
 and truncated HMAC is not supported at this time
@@ -167,8 +173,8 @@ Append it with the `--clear` flag to keep the image unencrypted and ready for us
 ## [Creating your keys with imgtool](#creating-your-keys-with-imgtool)
 
 `imgtool` can generate keys by using `imgtool keygen -k <output.pem> -t <type>`,
- where type can be one of `rsa-2048`, `rsa-3072`, `ecdsa-p256`
-or `ed25519`. This will generate a keypair or private key.
+ where type can be one of `rsa-2048`, `rsa-3072`, `ecdsa-p256`,
+`ecdsa-p384` or `ed25519`. This will generate a keypair or private key.
 
 To extract the public key in source file form, use
 `imgtool getpub -k <input.pem> -e <encoding>`, where `encoding` can be one of
@@ -184,6 +190,7 @@ required keys.
   described in [signed_images](signed_images.md) to create RSA keys.
 * If using ECIES-P256, generate a keypair following steps similar to those
   described in [signed_images](signed_images.md) to create ECDSA256 keys.
+* If using ECIES-P384, generate a keypair with `imgtool keygen -t ecdsa-p384`.
 * If using ECIES-X25519, generate a private key passing the option `-t x25519`
   to `imgtool keygen` command. To generate public key PEM file the following
   command can be used: `openssl pkey -in <generated-private-key.pem> -pubout`

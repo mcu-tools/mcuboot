@@ -116,6 +116,7 @@ extern "C" {
 #define IMAGE_TLV_ENC_X25519_SHA512 0x34    /* Key exchange using ECIES-X25519 and SHA512 for MAC
                                              * tag and HKDF in key derivation process
                                              */
+#define IMAGE_TLV_ENC_EC384         0x35    /* Key encrypted with ECIES-P384 */
 #define IMAGE_TLV_DEPENDENCY        0x40    /* Image depends on other image */
 #define IMAGE_TLV_SEC_CNT           0x50    /* security counter */
 #define IMAGE_TLV_BOOT_RECORD       0x60    /* measured boot record */

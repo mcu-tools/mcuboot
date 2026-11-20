@@ -42,12 +42,13 @@
 #define PSA_WANT_ECC_SECP_R1_384                1
 #endif
 
-#if defined(MCUBOOT_ENCRYPT_EC256)
+#if defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENCRYPT_EC384)
 /*
  * ECIES-P256 image encryption via boot/bootutil/src/encrypted_psa.c:
  * ECDH key agreement feeds HKDF, whose output keys AES-CTR (data) and
  * HMAC-SHA-256 (TLV authenticator). Enabled by the combined
- * sig-ecdsa-psa + enc-ec256 + mbedtls-v4 Cargo features.
+ * sig-ecdsa-psa + enc-ec256 + mbedtls-v4 Cargo features; enc-ec384
+ * uses the same mechanisms on P-384 with SHA-384.
  */
 #define PSA_WANT_ALG_ECDH                       1
 #define PSA_WANT_ALG_HKDF                       1
