@@ -2263,6 +2263,11 @@ split_go(int loader_slot, int split_slot, void **entry)
     rc = flash_area_open(split_flash_id,
                          &BOOT_IMG_AREA(&boot_data, split_slot));
     ASSERT(rc == 0);
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
+    rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH,
+                         &BOOT_SCRATCH_AREA(&boot_data));
+    assert(rc == 0);
+#endif
 
     /* Determine the sector layout of the image slots and scratch area. */
     rc = boot_read_sectors(&boot_data, sectors);
@@ -2295,6 +2300,9 @@ split_go(int loader_slot, int split_slot, void **entry)
     rc = SPLIT_GO_OK;
 
 done:
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
+    flash_area_close(BOOT_SCRATCH_AREA(&boot_data));
+#endif
     flash_area_close(BOOT_IMG_AREA(&boot_data, split_slot));
     flash_area_close(BOOT_IMG_AREA(&boot_data, loader_slot));
     free(sectors);
