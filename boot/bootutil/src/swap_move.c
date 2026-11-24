@@ -155,8 +155,8 @@ swap_read_status_bytes(const struct flash_area *fap,
     uint8_t write_sz;
     int move_entries;
     int rc;
-    int last_rc;
-    int erased_sections;
+    int written;
+    int invalid;
     int i;
 
     max_entries = boot_status_entries(BOOT_CURR_IMG(state), fap);
@@ -164,31 +164,44 @@ swap_read_status_bytes(const struct flash_area *fap,
         return BOOT_EBADARGS;
     }
 
-    erased_sections = 0;
+    /*
+     * The status holds the move entries, then the swap entries, and each
+     * of the two regions is written in order from its start. Walking
+     * backwards, an erased entry below a written one of the same region is
+     * a gap. The erased end of the move region, below the swap entries, is
+     * not.
+     */
+    move_entries = BOOT_MAX_IMG_SECTORS * BOOT_STATUS_MOVE_STATE_COUNT;
+    invalid = 0;
+    written = 0;
     found_idx = -1;
-    /* skip erased sectors at the end */
-    last_rc = 1;
     write_sz = BOOT_WRITE_SZ(state);
     off = boot_status_off(fap);
     for (i = max_entries; i > 0; i--) {
+        if (i == move_entries) {
+            /* Entering the move region */
+            written = 0;
+        }
+
         rc = flash_area_read(fap, off + (i - 1) * write_sz, &status, 1);
         if (rc < 0) {
             return BOOT_EFLASH;
         }
 
         if (bootutil_buffer_is_erased(fap, &status, 1)) {
-            if (rc != last_rc) {
-                erased_sections++;
+            if (written) {
+                invalid = 1;
+                break;
             }
         } else {
+            written = 1;
             if (found_idx == -1) {
                 found_idx = i;
             }
         }
-        last_rc = rc;
     }
 
-    if (erased_sections > 1) {
+    if (invalid) {
         /* This means there was an error writing status on the last
          * swap. Tell user and move on to validation!
          */
@@ -204,7 +217,6 @@ swap_read_status_bytes(const struct flash_area *fap,
 #endif
     }
 
-    move_entries = BOOT_MAX_IMG_SECTORS * BOOT_STATUS_MOVE_STATE_COUNT;
     if (found_idx == -1) {
         /* no swap status found; nothing to do */
     } else if (found_idx < move_entries) {

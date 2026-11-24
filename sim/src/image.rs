@@ -1363,25 +1363,46 @@ impl Images {
     /// intact, so it must refuse to boot rather than resume from the
     /// wrong step.
     ///
-    /// Only swap-scratch detects such a gap; see swap_read_status_bytes.
+    /// swap-move keeps its move entries and its swap entries in two
+    /// regions of the status, each written in order from its start, so a
+    /// gap is planted in each: once while sectors are being moved, once
+    /// while they are being swapped.
     pub fn run_status_gap(&self) -> bool {
-        // Status entries per sector in swap-scratch, and so in the scratch
-        // area's trailer.
-        const BOOT_STATUS_STATE_COUNT: usize = 3;
-
-        if !Caps::modifies_flash() || !Caps::SwapUsingScratch.present() ||
-            Caps::ValidatePrimarySlot.present() {
+        if !Caps::modifies_flash() || Caps::ValidatePrimarySlot.present() {
             return false;
         }
 
+        if Caps::SwapUsingMove.present() {
+            let move_fails = self.try_status_gap(true);
+            let swap_fails = self.try_status_gap(false);
+            move_fails || swap_fails
+        } else if Caps::SwapUsingScratch.present() || Caps::SwapUsingOffset.present() {
+            self.try_status_gap(false)
+        } else {
+            false
+        }
+    }
+
+    /// One case of run_status_gap.  With `move_phase`, the gap is planted
+    /// among the move entries of swap-move, while no swap entry has been
+    /// written yet.  Otherwise it is planted among the swap entries.
+    /// Returns true on failure.
+    fn try_status_gap(&self, move_phase: bool) -> bool {
+        // Status entries per sector in swap-scratch, and so in the scratch
+        // area's trailer.  swap-move has as many per sector: one move
+        // entry, then two swap entries.
+        const BOOT_STATUS_STATE_COUNT: usize = 3;
+
         let slot = &self.images[0].slots[0];
-        let (scratch_base, scratch_len, scratch_dev) =
-            self.areadesc.find(FlashId::ImageScratch).unwrap();
         let total = self.total_count.unwrap();
 
-        // Find a point in the swap where the status has at least one entry
-        // written, followed by two erased ones.
-        for stop in total / 2 .. total {
+        // Sectors are moved at the start of a swap-move upgrade; past the
+        // halfway point, sectors are being swapped.
+        let stops = if move_phase { 1 .. total } else { total / 2 .. total };
+
+        // Find a point in the swap where the status region being written
+        // has at least one entry written, followed by two erased ones.
+        for stop in stops {
             let mut flash = self.flash.clone();
             let mut counter = stop;
             if !c::boot_go(&mut flash, &self.areadesc, Some(&mut counter), None,
@@ -1389,21 +1410,42 @@ impl Images {
                 continue;
             }
 
-            let write_sz = flash.get(&slot.dev_id).unwrap().align()
-                .max(flash.get(&scratch_dev).unwrap().align());
+            let (dev_id, status_off, write_sz, entries, region) =
+                if Caps::SwapUsingScratch.present() {
+                    let (scratch_base, scratch_len, scratch_dev) =
+                        self.areadesc.find(FlashId::ImageScratch).unwrap();
+                    let write_sz = flash.get(&slot.dev_id).unwrap().align()
+                        .max(flash.get(&scratch_dev).unwrap().align());
 
-            // The status is in the scratch area while that has a valid
-            // trailer, and in the primary slot otherwise.
-            let mut scratch_magic = vec![0u8; MAGIC.len()];
-            flash.get(&scratch_dev).unwrap()
-                .read(scratch_base + scratch_len - MAGIC.len(), &mut scratch_magic).unwrap();
-            let (dev_id, status_off, entries) = if scratch_magic == MAGIC {
-                let trailer_sz = c::boot_scratch_trailer_sz(write_sz as u32) as usize;
-                (scratch_dev, scratch_base + scratch_len - trailer_sz, BOOT_STATUS_STATE_COUNT)
-            } else {
-                (slot.dev_id, slot.base_off + slot.len - self.trailer_sz(write_sz),
-                 self.status_sz(write_sz) / write_sz)
-            };
+                    // The status is in the scratch area while that has a
+                    // valid trailer, and in the primary slot otherwise.
+                    let mut scratch_magic = vec![0u8; MAGIC.len()];
+                    flash.get(&scratch_dev).unwrap()
+                        .read(scratch_base + scratch_len - MAGIC.len(), &mut scratch_magic)
+                        .unwrap();
+                    let (dev_id, status_off, entries) = if scratch_magic == MAGIC {
+                        let trailer_sz = c::boot_scratch_trailer_sz(write_sz as u32) as usize;
+                        (scratch_dev, scratch_base + scratch_len - trailer_sz,
+                         BOOT_STATUS_STATE_COUNT)
+                    } else {
+                        (slot.dev_id, slot.base_off + slot.len - self.trailer_sz(write_sz),
+                         self.status_sz(write_sz) / write_sz)
+                    };
+                    (dev_id, status_off, write_sz, entries, 0 .. entries)
+                } else {
+                    // swap-move and swap-offset keep the status in the
+                    // primary slot's trailer.
+                    let write_sz = flash.get(&slot.dev_id).unwrap().align();
+                    let entries = self.status_sz(write_sz) / write_sz;
+                    let region = if Caps::SwapUsingMove.present() {
+                        let move_entries = entries / BOOT_STATUS_STATE_COUNT;
+                        if move_phase { 0 .. move_entries } else { move_entries .. entries }
+                    } else {
+                        0 .. entries
+                    };
+                    (slot.dev_id, slot.base_off + slot.len - self.trailer_sz(write_sz),
+                     write_sz, entries, region)
+                };
 
             let dev = flash.get_mut(&dev_id).unwrap();
             let erased = dev.erased_val();
@@ -1412,19 +1454,24 @@ impl Images {
             dev.read(status_off, &mut status).unwrap();
             let is_erased = |i: usize| status[i * write_sz] == erased;
 
+            // The region must be the one being written: nothing after it.
+            if !(region.end .. entries).all(is_erased) {
+                continue;
+            }
+
             // Leading erased entries are not a gap; look for one after the
             // first written entry.
-            let first_written = match (0 .. entries).find(|&i| !is_erased(i)) {
+            let first_written = match region.clone().find(|&i| !is_erased(i)) {
                 Some(i) => i,
                 None => continue,
             };
-            let first_erased = match (first_written .. entries).find(|&i| is_erased(i)) {
-                Some(i) if i + 1 < entries => i,
+            let first_erased = match (first_written .. region.end).find(|&i| is_erased(i)) {
+                Some(i) if i + 1 < region.end => i,
                 _ => continue,
             };
 
-            info!("Stopped at {} of {}; writing status entry {} after a gap",
-                  stop, total, first_erased + 1);
+            info!("Stopped at {} of {} ({} phase); writing status entry {} after a gap",
+                  stop, total, if move_phase { "move" } else { "swap" }, first_erased + 1);
             let entry = vec![0x01; write_sz];
             dev.write(status_off + (first_erased + 1) * write_sz, &entry).unwrap();
 
