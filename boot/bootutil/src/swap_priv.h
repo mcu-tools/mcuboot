@@ -109,6 +109,16 @@ int swap_run(struct boot_loader_state *state,
               struct boot_status *bs,
               uint32_t copy_size);
 
+/**
+ * Checks a swap size read from an image trailer before it is used to resume
+ * a swap. The trailer can hold any value, and the swap size is turned into
+ * sector indexes, so it must not be larger than a swap this algorithm could
+ * have started.
+ *
+ * @return true if the swap size is in range; false otherwise.
+ */
+bool swap_size_valid(struct boot_loader_state *state, uint32_t swap_size);
+
 #if MCUBOOT_SWAP_USING_SCRATCH
 #define BOOT_SCRATCH_AREA(state) ((state)->scratch.area)
 

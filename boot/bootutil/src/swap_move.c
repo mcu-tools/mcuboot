@@ -68,6 +68,28 @@ find_last_idx(struct boot_loader_state *state, uint32_t swap_size)
     return last_idx;
 }
 
+bool
+swap_size_valid(struct boot_loader_state *state, uint32_t swap_size)
+{
+    uint32_t sector_sz;
+    uint32_t trailer_sectors;
+    uint32_t num_sectors;
+
+    sector_sz = boot_img_sector_size(state, BOOT_SLOT_PRIMARY, 0);
+    trailer_sectors = (boot_trailer_sz(BOOT_WRITE_SZ(state)) + sector_sz - 1) / sector_sz;
+    num_sectors = boot_img_num_sectors(state, BOOT_SLOT_PRIMARY);
+
+    /* This is the bound swap_run() checks before starting a new swap: the
+     * swapped sectors, plus the one the image is moved up by, must end
+     * before the first trailer sector.
+     */
+    if (num_sectors < trailer_sectors + 2) {
+        return false;
+    }
+
+    return swap_size <= (num_sectors - trailer_sectors - 1) * sector_sz;
+}
+
 int
 boot_read_image_header(struct boot_loader_state *state, int slot,
                        struct image_header *out_hdr, struct boot_status *bs)
@@ -85,8 +107,6 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
 
     off = 0;
     if (bs && !boot_status_is_reset(bs)) {
-        uint32_t max_size = app_max_size(state);
-
         fap = boot_find_status(state, BOOT_CURR_IMG(state));
         if (fap == NULL || boot_read_swap_size(fap, &swap_size)) {
             rc = BOOT_EFLASH;
@@ -94,10 +114,10 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
         }
 
         /* Check to see if something has manipulated or corrupted the swap status area */
-        if (swap_size > max_size) {
+        if (!swap_size_valid(state, swap_size)) {
             BOOT_LOG_ERR("Swap size value: %" PRIu32 " larger than max image size: %" PRIu32,
-                         swap_size, max_size);
-            rc = BOOT_EFLASH;
+                         swap_size, app_max_size(state));
+            rc = BOOT_EBADSTATUS;
             goto done;
         }
 
