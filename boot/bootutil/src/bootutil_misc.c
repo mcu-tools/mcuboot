@@ -170,10 +170,8 @@ boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
  * This functions tries to locate the status area after an aborted swap,
  * by looking for the magic in the possible locations.
  *
- * If the magic is successfully found, a flash_area * is returned and it
- * is the responsibility of the called to close it.
- *
- * @returns flash_area pointer on success, NULL on failure.
+ * @returns the flash_area pointer of the first area whose magic is good;
+ *          NULL if no area has a good magic, or if reading one fails.
  */
 const struct flash_area *
 boot_find_status(const struct boot_loader_state *state, int image_index)
@@ -204,16 +202,15 @@ boot_find_status(const struct boot_loader_state *state, int image_index)
         if (rc != 0) {
             BOOT_LOG_ERR("Failed to read status from %d, err %d\n",
                          flash_area_get_id(fa_p), rc);
-            fa_p = NULL;
-            break;
+            return NULL;
         }
 
         if (BOOT_MAGIC_GOOD == boot_magic_decode(magic)) {
-            break;
+            return fa_p;
         }
     }
 
-    return fa_p;
+    return NULL;
 }
 
 int
