@@ -1210,13 +1210,29 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         hdr = boot_img_hdr(state, BOOT_SLOT_PRIMARY);
         if (hdr->ih_magic == IMAGE_MAGIC) {
             rc = boot_read_image_size(state, BOOT_SLOT_PRIMARY, &copy_size);
-            ASSERT(rc == 0);
+            if (rc == BOOT_EBADIMAGE) {
+                /* The image in the primary slot can't be parsed, so there
+                 * is nothing of it to keep: size the swap from the
+                 * secondary slot alone, as when its header magic is bad.
+                 */
+                BOOT_LOG_WRN("Bad image size in primary slot; Image=%u",
+                             image_index);
+                copy_size = 0;
+            } else if (rc != 0) {
+                BOOT_LOG_ERR("Failed to read image size; Image=%u slot=%d rc=%d",
+                             image_index, BOOT_SLOT_PRIMARY, rc);
+                return rc;
+            }
         }
 
         hdr = boot_img_hdr(state, BOOT_SLOT_SECONDARY);
         if (hdr->ih_magic == IMAGE_MAGIC) {
             rc = boot_read_image_size(state, BOOT_SLOT_SECONDARY, &size);
-            ASSERT(rc == 0);
+            if (rc != 0) {
+                BOOT_LOG_ERR("Failed to read image size; Image=%u slot=%d rc=%d",
+                             image_index, BOOT_SLOT_SECONDARY, rc);
+                return rc;
+            }
         }
 
 #ifdef MCUBOOT_ENC_IMAGES
@@ -1245,11 +1261,8 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
         uint32_t max_size = app_max_size(state);
 
         fap = boot_find_status(state, image_index);
-        ASSERT(fap != NULL);
-        rc = boot_read_swap_size(fap, &bs->swap_size);
-
-        if (rc != 0) {
-            BOOT_LOG_ERR("Failed reading swap size: %d", rc);
+        if (fap == NULL || boot_read_swap_size(fap, &bs->swap_size) != 0) {
+            BOOT_LOG_ERR("Failed to read swap size; Image=%u", image_index);
             return BOOT_EFLASH;
         }
 
