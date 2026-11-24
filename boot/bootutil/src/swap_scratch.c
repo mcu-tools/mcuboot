@@ -1141,7 +1141,7 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
 
         fap = boot_find_status(state, BOOT_CURR_IMG(state));
 
-        if (rc != 0) {
+        if (fap == NULL) {
             rc = BOOT_EFLASH;
             goto done;
         }
