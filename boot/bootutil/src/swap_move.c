@@ -542,7 +542,10 @@ fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
 
     BOOT_LOG_SWAP_STATE("Secondary image", &swap_state);
 
-    if (swap_state.magic == BOOT_MAGIC_UNSET) {
+    /* Redo the fixup unless it completed: a power loss while writing the
+     * magic can leave it reading as bad rather than unset.
+     */
+    if (swap_state.magic != BOOT_MAGIC_GOOD) {
         /* Remove trailer and prepare area for write on devices requiring erase */
         rc = swap_scramble_trailer_sectors(state, fap_sec);
         if (rc != 0) {

@@ -616,9 +616,10 @@ int fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
     (void)state;
 #endif
 
-    /* No fixup required */
-    if (bs->swap_type != BOOT_SWAP_TYPE_REVERT ||
-        bs->idx != BOOT_STATUS_IDX_0) {
+    /* No fixup required.  Swap-offset uses two states per index, so the
+     * index alone does not show that no status has been written yet.
+     */
+    if (bs->swap_type != BOOT_SWAP_TYPE_REVERT || !boot_status_is_reset(bs)) {
         return 0;
     }
 
@@ -630,7 +631,10 @@ int fixup_revert(const struct boot_loader_state *state, struct boot_status *bs,
 
     BOOT_LOG_SWAP_STATE("Secondary image", &swap_state);
 
-    if (swap_state.magic == BOOT_MAGIC_UNSET) {
+    /* Redo the fixup unless it completed: a power loss while writing the
+     * magic can leave it reading as bad rather than unset.
+     */
+    if (swap_state.magic != BOOT_MAGIC_GOOD) {
         rc = swap_scramble_trailer_sectors(state, fap_sec);
         if (rc != 0) {
             return rc;
