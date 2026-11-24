@@ -41,6 +41,12 @@
        (0 or above)
 #endif
 
+/* Non-RAW CDC ACM selects the line-based backpressure path in this file. */
+#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) && \
+    !defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+#define BOOT_SERIAL_CDC_ACM_NON_RAW
+#endif
+
 #if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
 #include "usbd_cdc_serial.h"
 
@@ -290,6 +296,47 @@ boot_uart_fifo_consume_batch(void)
 }
 #endif
 
+#if defined(BOOT_SERIAL_CDC_ACM_NON_RAW)
+/*
+ * Drain the pending batch into line buffers, blocking reception while it
+ * does not fit.
+ *
+ * Must be called with interrupts locked: consume_batch() mutates cmd, cur,
+ * rx_batch_off/rx_batch_len and the line queues, which
+ * boot_uart_fifo_getline() also updates under irq_lock(), and the blocked
+ * state transitions must be serialized against it.
+ *
+ * When the batch does not fit, uart_blocked is set and RX is disabled, then
+ * the drain is retried once so that a line buffer recycled by
+ * boot_uart_fifo_getline() before uart_blocked became visible (and which
+ * therefore did not trigger an unblock) is noticed instead of leaving the
+ * pending tail stalled with a free buffer available.  If the retry drains
+ * the batch, reception is resumed rather than staying blocked.
+ *
+ * Returns true when the batch was fully stored and reception may continue,
+ * false when the UART was left blocked and the caller must return without
+ * reading more.
+ */
+static bool
+boot_uart_fifo_drain_or_block(void)
+{
+	if (boot_uart_fifo_consume_batch()) {
+		return true;
+	}
+
+	uart_blocked = true;
+	uart_irq_rx_disable(uart_dev);
+
+	if (!boot_uart_fifo_consume_batch()) {
+		return false;
+	}
+
+	uart_blocked = false;
+	uart_irq_rx_enable(uart_dev);
+	return true;
+}
+#endif
+
 static void
 boot_uart_fifo_callback(const struct device *dev, void *user_data)
 {
@@ -302,6 +349,12 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 	}
 
 #if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+	/*
+	 * Checked without irq_lock() on purpose: a stale read is benign.
+	 * Returning early on a stale true is covered by the unblock path
+	 * in boot_uart_fifo_getline(), and proceeding on a stale false
+	 * only costs one extra locked consume attempt below.
+	 */
 	if (uart_blocked == true) {
 		return;
 	}
@@ -311,6 +364,13 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 #if defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL) || \
     defined(CONFIG_BOOT_SERIAL_CDC_ACM)
 		size_t copy_len = CONFIG_BOOT_MAX_LINE_INPUT_LEN - 1 - cur;
+		/*
+		 * Only a hint for sizing the next read, not a correctness
+		 * boundary: in the CDC ACM path it is computed before the
+		 * consume_batch() call below, which may pop a buffer into
+		 * cmd, so the estimate can already be stale when used.
+		 * Backpressure, not this count, covers overflow.
+		 */
 		size_t free_buffers = sys_slist_len(&avail_queue);
 
 		if (free_buffers > 0 && cmd == NULL) {
@@ -363,17 +423,20 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 			cmd = NULL;
 		}
 #else
-#if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
+#if defined(BOOT_SERIAL_CDC_ACM_NON_RAW)
 		size_t max_read_size;
+		bool drained;
+		int key;
 
 		/*
 		 * A previous batch may still hold bytes that could not be
 		 * stored because no line buffer was free; finish storing
 		 * them before pulling any new data out of the FIFO.
 		 */
-		if (!boot_uart_fifo_consume_batch()) {
-			uart_blocked = true;
-			uart_irq_rx_disable(uart_dev);
+		key = irq_lock();
+		drained = boot_uart_fifo_drain_or_block();
+		irq_unlock(key);
+		if (!drained) {
 			return;
 		}
 
@@ -383,9 +446,24 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 		if (max_read_size > sizeof(rx_batch_buf)) {
 			max_read_size = sizeof(rx_batch_buf);
 		} else if (max_read_size == 0) {
+			/*
+			 * No room for even one byte: block, then re-check
+			 * for a line buffer recycled before the block took
+			 * effect, all in one locked section so the
+			 * transition is serialized against
+			 * boot_uart_fifo_getline().
+			 */
+			key = irq_lock();
 			uart_blocked = true;
 			uart_irq_rx_disable(uart_dev);
-			return;
+			if (sys_slist_is_empty(&avail_queue)) {
+				irq_unlock(key);
+				return;
+			}
+			uart_blocked = false;
+			uart_irq_rx_enable(uart_dev);
+			irq_unlock(key);
+			continue;
 		}
 
 		rx = uart_fifo_read(uart_dev, rx_batch_buf, max_read_size);
@@ -396,25 +474,43 @@ boot_uart_fifo_callback(const struct device *dev, void *user_data)
 			break;
 		}
 
+#if defined(BOOT_SERIAL_CDC_ACM_NON_RAW)
+		/*
+		 * No line buffer for the batch tail: keep it pending in
+		 * rx_batch_buf and stop reading.  The FIFO backs up until
+		 * the serial recovery code recycles a buffer, so no
+		 * already-received byte is lost.
+		 *
+		 * rx_batch_len/rx_batch_off are assigned inside the locked
+		 * section because boot_uart_fifo_getline() may run
+		 * consume_batch() concurrently and the state is cursor
+		 * based.
+		 */
+		key = irq_lock();
+		rx_batch_len = rx;
+		rx_batch_off = 0;
+		drained = boot_uart_fifo_drain_or_block();
+		irq_unlock(key);
+		if (!drained) {
+			return;
+		}
+#else
 		rx_batch_len = rx;
 		rx_batch_off = 0;
 
 		if (!boot_uart_fifo_consume_batch()) {
 			/*
-			 * No line buffer for the batch tail: keep it pending
-			 * in rx_batch_buf and stop reading.  The FIFO backs
-			 * up until the serial recovery code recycles a buffer,
-			 * so no already-received byte is lost.
+			 * Plain UART has no backpressure: the tail stays
+			 * pending in rx_batch_* only until the next receive
+			 * callback overwrites it.  Dropping it here is
+			 * intentional and matches the behavior from before
+			 * the rx_batch_* state existed.
 			 */
-#if defined(CONFIG_BOOT_SERIAL_CDC_ACM)
-			uart_blocked = true;
-			uart_irq_rx_disable(uart_dev);
-#else
 			BOOT_LOG_ERR("Not enough memory to store"
 				     " incoming data!");
-#endif
 			return;
 		}
+#endif
 #endif
 	}
 
@@ -443,8 +539,7 @@ boot_uart_fifo_getline(char **line)
 #if defined(CONFIG_BOOT_SERIAL_CDC_ACM) || defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
 	bool unblock = false;
 #endif
-#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) && \
-    !defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+#if defined(BOOT_SERIAL_CDC_ACM_NON_RAW)
 	bool drained = false;
 #endif
 
@@ -462,8 +557,7 @@ boot_uart_fifo_getline(char **line)
 		}
 	}
 
-#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) && \
-    !defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+#if defined(BOOT_SERIAL_CDC_ACM_NON_RAW)
 	if (unblock) {
 		/*
 		 * The recycled buffer may unblock a batch that was kept
@@ -483,10 +577,13 @@ boot_uart_fifo_getline(char **line)
 #endif
 
 	node = sys_slist_get(&lines_queue);
-	irq_unlock(key);
 
-#if defined(CONFIG_BOOT_SERIAL_CDC_ACM) && \
-    !defined(CONFIG_BOOT_SERIAL_RAW_PROTOCOL)
+#if defined(BOOT_SERIAL_CDC_ACM_NON_RAW)
+	/*
+	 * Unblock inside the locked section so this enable is fully
+	 * serialized against the disable in the receive callback: the
+	 * enable cannot be overwritten by a stale disable.
+	 */
 	if (unblock && drained) {
 		uart_blocked = false;
 		uart_irq_rx_enable(uart_dev);
@@ -497,6 +594,7 @@ boot_uart_fifo_getline(char **line)
 		uart_irq_rx_enable(uart_dev);
 	}
 #endif
+	irq_unlock(key);
 
 	if (node == NULL) {
 		input_cmd = NULL;
