@@ -1253,6 +1253,12 @@ boot_swap_image(struct boot_loader_state *state, struct boot_status *bs)
             return BOOT_EFLASH;
         }
 
+        if (!swap_size_valid(state, bs->swap_size)) {
+            BOOT_LOG_ERR("Invalid swap size %" PRIu32 "; Image=%u",
+                         bs->swap_size, image_index);
+            return BOOT_EBADSTATUS;
+        }
+
         copy_size = bs->swap_size;
 
         /* Check to see if something has manipulated or corrupted the swap status area */

@@ -175,6 +175,30 @@ static size_t app_max_size_adjust_to_trailer(struct boot_loader_state *state, si
 
     return slot_trailer_off - trailer_padding;
 }
+
+bool
+swap_size_valid(struct boot_loader_state *state, uint32_t swap_size)
+{
+    size_t trailer_sz = boot_trailer_sz(BOOT_WRITE_SZ(state));
+    uint32_t trailer_sector_primary_end_off;
+    uint32_t trailer_sector_secondary_end_off;
+
+    /* A swap can cover the first sector holding part of the trailer, which is
+     * swapped through the scratch area, but no sector after it. As in
+     * app_max_size_adjust_to_trailer(), the larger of the two end offsets is
+     * the sector boundary common to both slots.
+     */
+    trailer_sector_primary_end_off =
+        get_first_trailer_sector_end_off(state, BOOT_SLOT_PRIMARY, trailer_sz);
+    trailer_sector_secondary_end_off =
+        get_first_trailer_sector_end_off(state, BOOT_SLOT_SECONDARY, trailer_sz);
+
+    if (trailer_sector_primary_end_off > trailer_sector_secondary_end_off) {
+        return swap_size <= trailer_sector_primary_end_off;
+    }
+
+    return swap_size <= trailer_sector_secondary_end_off;
+}
 #endif /* MCUBOOT_SWAP_USING_SCRATCH */
 
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
@@ -1137,8 +1161,6 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
      * other slot depending on the progress of the swap process.
      */
     if (bs && !boot_status_is_reset(bs)) {
-        uint32_t max_size = app_max_size(state);
-
         fap = boot_find_status(state, BOOT_CURR_IMG(state));
 
         if (rc != 0) {
@@ -1154,10 +1176,10 @@ boot_read_image_header(struct boot_loader_state *state, int slot,
         }
 
         /* Check to see if something has manipulated or corrupted the swap status area */
-        if (swap_size > max_size) {
+        if (!swap_size_valid(state, swap_size)) {
             BOOT_LOG_ERR("Swap size value: %" PRIu32 " larger than max image size: %" PRIu32,
-                         swap_size, max_size);
-            rc = BOOT_EFLASH;
+                         swap_size, app_max_size(state));
+            rc = BOOT_EBADSTATUS;
             goto done;
         }
 
