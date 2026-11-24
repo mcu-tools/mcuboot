@@ -14,7 +14,10 @@
 #include <zephyr/devicetree/partitions.h>
 #include <zephyr/sys/util_macro.h>
 
-#if !defined(CONFIG_SINGLE_APPLICATION_SLOT) && !defined(CONFIG_MCUBOOT_BOOTLOADER_MODE_SINGLE_APP)
+#if !defined(CONFIG_SINGLE_APPLICATION_SLOT) && \
+    !defined(CONFIG_MCUBOOT_BOOTLOADER_MODE_SINGLE_APP) && \
+    !defined(CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD) && \
+    !defined(CONFIG_MCUBOOT_BOOTLOADER_MODE_SINGLE_APP_RAM_LOAD)
 
 /* Each pair of slots is separated by , and there is no terminating character */
 #define FLASH_AREA_IMAGE_0_SLOTS    slot0_partition, slot1_partition
@@ -102,7 +105,9 @@ static inline uint32_t __flash_area_ids_for_slot(int img, int slot)
 #define FLASH_AREA_IMAGE_SCRATCH    PARTITION_ID(scratch_partition)
 #endif
 
-#else /* !CONFIG_SINGLE_APPLICATION_SLOT && !CONFIG_MCUBOOT_BOOTLOADER_MODE_SINGLE_APP */
+#else /* !CONFIG_SINGLE_APPLICATION_SLOT && !CONFIG_MCUBOOT_BOOTLOADER_MODE_SINGLE_APP &&
+	 !CONFIG_SINGLE_APPLICATION_SLOT_RAM_LOAD &&
+	 !CONFIG_MCUBOOT_BOOTLOADER_MODE_SINGLE_APP_RAM_LOAD */
 
 #define FLASH_AREA_IMAGE_PRIMARY(x)	PARTITION_ID(slot0_partition)
 #define FLASH_AREA_IMAGE_SECONDARY(x)	PARTITION_ID(slot0_partition)
