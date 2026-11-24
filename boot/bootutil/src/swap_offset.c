@@ -239,8 +239,7 @@ int swap_read_status_bytes(const struct flash_area *fap, struct boot_loader_stat
     int found_idx;
     uint8_t write_sz;
     int rc;
-    int last_rc;
-    int erased_sections;
+    int invalid;
     int i;
 
     max_entries = boot_status_entries(BOOT_CURR_IMG(state), fap);
@@ -249,10 +248,11 @@ int swap_read_status_bytes(const struct flash_area *fap, struct boot_loader_stat
         return BOOT_EBADARGS;
     }
 
-    erased_sections = 0;
+    /* The status entries are written in order from the first one. Walking backwards, an erased
+     * entry below a written one is a gap.
+     */
+    invalid = 0;
     found_idx = -1;
-    /* Skip erased sectors at the end */
-    last_rc = 1;
     write_sz = BOOT_WRITE_SZ(state);
     off = boot_status_off(fap);
     for (i = max_entries; i > 0; i--) {
@@ -262,18 +262,18 @@ int swap_read_status_bytes(const struct flash_area *fap, struct boot_loader_stat
         }
 
         if (bootutil_buffer_is_erased(fap, &status, 1)) {
-            if (rc != last_rc) {
-                erased_sections++;
+            if (found_idx != -1) {
+                invalid = 1;
+                break;
             }
         } else {
             if (found_idx == -1) {
                 found_idx = i;
             }
         }
-        last_rc = rc;
     }
 
-    if (erased_sections > 1) {
+    if (invalid) {
         /* This means there was an error writing status on the last swap. Tell user and move on
          * to validation!
          */
