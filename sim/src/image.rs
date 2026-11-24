@@ -1175,6 +1175,119 @@ impl Images {
         fails > 0
     }
 
+    /// Interrupt a revert twice: once at each flash operation of the boot
+    /// that starts the revert, and then again early in the boot that
+    /// resumes it.  The revert must still complete on the following boot,
+    /// leaving the original image in the primary slot.
+    ///
+    /// With `torn` set, each interrupted write is torn as in
+    /// `run_revert_with_torn_writes`: all but the last byte of it reaches
+    /// flash, as when power is lost while it is being programmed.
+    pub fn run_revert_with_double_fails(&self, torn: bool) -> bool {
+        // The second interruption is only tried within this many flash
+        // operations of the resuming boot.  The windows this test targets
+        // are all in the trailer setup at the start of that boot.
+        const SECOND_FAIL_WINDOW: i32 = 16;
+
+        if Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() ||
+            !self.is_swap_upgrade() {
+            return false;
+        }
+
+        if skip_slow_test() {
+            return false;
+        }
+
+        // Boot with an interruption, catching asserts.
+        let interrupted_boot = |flash: &mut SimMultiFlash, counter: &mut i32| {
+            if torn {
+                c::boot_go_torn(flash, &self.areadesc, Some(counter), None, true)
+            } else {
+                c::boot_go(flash, &self.areadesc, Some(counter), None, true)
+            }
+        };
+
+        // Do the test upgrade, uninterrupted.
+        let mut flash = self.flash.clone();
+        if !c::boot_go(&mut flash, &self.areadesc, None, None, false).success_no_asserts() {
+            warn!("Failed the test upgrade");
+            return true;
+        }
+        if !self.verify_images(&flash, 0, 1) {
+            warn!("Image in the primary slot before revert is invalid");
+            return true;
+        }
+
+        // Count the flash operations of an uninterrupted revert.
+        let mut counter = 0;
+        let mut tmp = flash.clone();
+        if !c::boot_go(&mut tmp, &self.areadesc, Some(&mut counter), None,
+                       false).success_no_asserts() {
+            warn!("Failed the uninterrupted revert");
+            return true;
+        }
+        let revert_count = -counter;
+        info!("Revert flash operation count={}", revert_count);
+
+        let mut fails = 0;
+        for first in 1 ..= revert_count {
+            let mut flash1 = flash.clone();
+            let mut counter = first;
+            if !interrupted_boot(&mut flash1, &mut counter).interrupted() {
+                warn!("Revert should have stopped at {}", first);
+                fails += 1;
+                continue;
+            }
+
+            for second in 1 ..= SECOND_FAIL_WINDOW {
+                // Any remaining plain assert() aborts the test process
+                // rather than being caught, so log each case before it runs.
+                info!("Try revert interruptions at first={} second={}", first, second);
+                let mut flash2 = flash1.clone();
+                let mut counter = second;
+                let res = interrupted_boot(&mut flash2, &mut counter);
+                let resumed_to_end = !res.interrupted();
+
+                if resumed_to_end {
+                    if !res.success_no_asserts() {
+                        warn!("Resumed revert failed after first={} ({:?})",
+                              first, res);
+                        fails += 1;
+                        break;
+                    }
+                } else {
+                    let res = c::boot_go(&mut flash2, &self.areadesc, None, None,
+                                         true);
+                    if !res.success_no_asserts() {
+                        warn!("Boot failed after first={} second={} ({:?})",
+                              first, second, res);
+                        fails += 1;
+                        continue;
+                    }
+                }
+
+                if !self.verify_images(&flash2, 0, 0) {
+                    if resumed_to_end {
+                        warn!("Revert lost after first={}", first);
+                    } else {
+                        warn!("Revert lost after first={} second={}", first, second);
+                    }
+                    fails += 1;
+                }
+
+                // A larger second stop point would not be reached either.
+                if resumed_to_end {
+                    break;
+                }
+            }
+        }
+
+        if fails > 0 {
+            error!("{} revert double-interruption failures (torn={})", fails, torn);
+        }
+        fails > 0
+    }
+
     pub fn run_norevert(&self) -> bool {
         if Caps::OverwriteUpgrade.present() || !Caps::modifies_flash() {
             return false;
