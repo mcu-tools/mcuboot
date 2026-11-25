@@ -35,11 +35,11 @@
 #include <flash_map_backend/flash_map_backend.h>
 #include <mcuboot_config/mcuboot_config.h>
 
-#if MCUBOOT_SWAP_USING_MOVE
+#if defined(MCUBOOT_SWAP_USING_MOVE)
 #define BOOT_STATUS_MOVE_STATE_COUNT    1
 #define BOOT_STATUS_SWAP_STATE_COUNT    2
 #define BOOT_STATUS_STATE_COUNT         (BOOT_STATUS_MOVE_STATE_COUNT + BOOT_STATUS_SWAP_STATE_COUNT)
-#elif MCUBOOT_SWAP_USING_OFFSET
+#elif defined(MCUBOOT_SWAP_USING_OFFSET)
 #define BOOT_STATUS_SWAP_STATE_COUNT    2
 #define BOOT_STATUS_STATE_COUNT         BOOT_STATUS_SWAP_STATE_COUNT
 #else

@@ -120,7 +120,7 @@ out:
 int
 boot_status_entries(int image_index, const struct flash_area *fap)
 {
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     if (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SCRATCH) {
         return BOOT_STATUS_STATE_COUNT;
     } else
@@ -140,13 +140,13 @@ boot_status_off(const struct flash_area *fap)
 
     elem_sz = flash_area_align(fap);
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     if (flash_area_get_id(fap) == FLASH_AREA_IMAGE_SCRATCH) {
         off_from_end = boot_scratch_trailer_sz(elem_sz);
     } else {
 #endif
         off_from_end = boot_trailer_sz(elem_sz);
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     }
 #endif
 
@@ -158,7 +158,7 @@ boot_status_off(const struct flash_area *fap)
 static inline uint32_t
 boot_enc_key_off(const struct flash_area *fap, uint8_t slot)
 {
-#if MCUBOOT_SWAP_SAVE_ENCTLV
+#ifdef MCUBOOT_SWAP_SAVE_ENCTLV
     return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_TLV_ALIGN_SIZE);
 #else
     return boot_swap_size_off(fap) - ((slot + 1) * BOOT_ENC_KEY_ALIGN_SIZE);
@@ -178,7 +178,7 @@ boot_find_status(const struct boot_loader_state *state, int image_index)
 {
     const struct flash_area *fa_p = NULL;
     const struct flash_area *areas[] = {
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
         state->scratch.area,
 #endif
         state->imgs[image_index][BOOT_SLOT_PRIMARY].area,
@@ -265,7 +265,7 @@ boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status
     uint8_t *read_dst;
     uint32_t read_size;
 
-#if MCUBOOT_SWAP_SAVE_ENCTLV
+#ifdef MCUBOOT_SWAP_SAVE_ENCTLV
     /* In this case we have stored entire encryted TLV in swap-state and bs->enckey
      * will be decrypted from the TLV.
      */
@@ -292,7 +292,7 @@ boot_read_enc_key(const struct flash_area *fap, uint8_t slot, struct boot_status
             BOOT_LOG_ERR("boot_read_enc_key: No key, read all 0xFF");
             return false;
         }
-#if MCUBOOT_SWAP_SAVE_ENCTLV
+#ifdef MCUBOOT_SWAP_SAVE_ENCTLV
         else {
             /* read_dst is the same as bs->enctlv[slot], and serves as a source
              * of the encrypted key.
@@ -354,7 +354,7 @@ boot_write_enc_keys(const struct flash_area *fap, const struct boot_status *bs)
         BOOT_LOG_DBG("writing enc_key; fa_id=%d off=0x%lx (0x%lx)",
                      flash_area_get_id(fap), (unsigned long)off,
                      (unsigned long)flash_area_get_off(fap) + off);
-#if MCUBOOT_SWAP_SAVE_ENCTLV
+#ifdef MCUBOOT_SWAP_SAVE_ENCTLV
         rc = flash_area_write(fap, off, bs->enctlv[slot], BOOT_ENC_TLV_ALIGN_SIZE);
 #else
         rc = flash_area_write(fap, off, bs->enckey[slot], BOOT_ENC_KEY_ALIGN_SIZE);
@@ -469,7 +469,7 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
         out_sectors = BOOT_IMG(state, BOOT_SLOT_SECONDARY).sectors;
         out_num_sectors = &BOOT_IMG(state, BOOT_SLOT_SECONDARY).num_sectors;
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
         out_sectors = state->scratch.sectors;
         out_num_sectors = &state->scratch.num_sectors;
@@ -609,7 +609,7 @@ boot_initialize_area(struct boot_loader_state *state, int flash_area)
     } else if (flash_area == FLASH_AREA_IMAGE_SECONDARY(BOOT_CURR_IMG(state))) {
         area_size = flash_area_get_size(BOOT_IMG_AREA(state, BOOT_SLOT_SECONDARY));
         out_num_sectors = &BOOT_IMG(state, BOOT_SLOT_SECONDARY).num_sectors;
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     } else if (flash_area == FLASH_AREA_IMAGE_SCRATCH) {
         area_size = flash_area_get_size(state->scratch.area);
         out_num_sectors = &state->scratch.num_sectors;
@@ -630,7 +630,7 @@ static uint32_t
 boot_write_sz(struct boot_loader_state *state)
 {
     uint32_t elem_sz;
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     uint32_t align;
 #endif
 
@@ -639,7 +639,7 @@ boot_write_sz(struct boot_loader_state *state)
      * We need to use the bigger of those 2 values.
      */
     elem_sz = flash_area_align(BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY));
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     align = flash_area_align(BOOT_SCRATCH_AREA(state));
     if (align > elem_sz) {
         elem_sz = align;
@@ -667,7 +667,7 @@ boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *se
 #if BOOT_NUM_SLOTS > 1
     BOOT_IMG(state, BOOT_SLOT_SECONDARY).sectors =
         sectors->secondary[image_index];
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     state->scratch.sectors = sectors->scratch;
 #endif
 #endif
@@ -687,7 +687,7 @@ boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *se
         return BOOT_EFLASH_SEC;
     }
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     rc = boot_initialize_area(state, FLASH_AREA_IMAGE_SCRATCH);
     if (rc != 0) {
         return BOOT_EFLASH;
@@ -716,7 +716,7 @@ boot_read_sectors(struct boot_loader_state *state, struct boot_sector_buffer *se
         rc = BOOT_EFLASH;
     }
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     BOOT_LOG_INF("boot_read_sectors: SCRATCH");
     if (boot_verify_logical_sectors(FLASH_AREA_IMAGE_SCRATCH, state->scratch.area) != 0) {
         rc = BOOT_EFLASH;
@@ -780,7 +780,7 @@ void boot_fetch_slot_state_sizes(void)
         BOOT_IMG(state, BOOT_SLOT_PRIMARY).sectors = sector_buffers.primary[image_index];
 #if BOOT_NUM_SLOTS > 1
         BOOT_IMG(state, BOOT_SLOT_SECONDARY).sectors = sector_buffers.secondary[image_index];
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
         state->scratch.sectors = sector_buffers.scratch;
 #endif
 #endif

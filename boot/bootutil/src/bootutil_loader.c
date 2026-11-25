@@ -331,7 +331,7 @@ boot_open_all_flash_areas(struct boot_loader_state *state)
         }
     }
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     rc = flash_area_open(FLASH_AREA_IMAGE_SCRATCH, &BOOT_SCRATCH_AREA(state));
     ASSERT(rc == 0);
 
@@ -354,7 +354,7 @@ boot_close_all_flash_areas(struct boot_loader_state *state)
 {
     uint32_t slot;
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     if (BOOT_SCRATCH_AREA(state) != NULL) {
         flash_area_close(BOOT_SCRATCH_AREA(state));
     }

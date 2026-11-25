@@ -401,7 +401,7 @@ boot_status_reset(struct boot_status *bs)
 {
 #ifdef MCUBOOT_ENC_IMAGES
     memset(&bs->enckey, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_KEY_ALIGN_SIZE);
-#if MCUBOOT_SWAP_SAVE_ENCTLV
+#ifdef MCUBOOT_SWAP_SAVE_ENCTLV
     memset(&bs->enctlv, 0xff, BOOT_NUM_SLOTS * BOOT_ENC_TLV_ALIGN_SIZE);
 #endif
 #endif /* MCUBOOT_ENC_IMAGES */
@@ -457,7 +457,7 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
      *       the primary slot!
      */
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     if (bs->use_scratch) {
         /* Write to scratch. */
         fap = state->scratch.area;
@@ -465,7 +465,7 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
 #endif
         /* Write to the primary slot. */
         fap = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     }
 #endif
 
