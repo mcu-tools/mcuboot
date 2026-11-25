@@ -493,7 +493,8 @@ boot_write_status(const struct boot_loader_state *state, struct boot_status *bs)
 #if !defined(MCUBOOT_DIRECT_XIP) && !defined(MCUBOOT_RAM_LOAD)
 #if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
 static fih_ret
-split_image_check(struct image_header *app_hdr,
+split_image_check(struct boot_loader_state *state,
+                  struct image_header *app_hdr,
                   const struct flash_area *app_fap,
                   struct image_header *loader_hdr,
                   const struct flash_area *loader_fap)
@@ -509,14 +510,14 @@ split_image_check(struct image_header *app_hdr,
         }
     }
 
-    FIH_CALL(bootutil_img_validate, fih_rc, NULL, loader_hdr, loader_fap,
+    FIH_CALL(bootutil_img_validate, fih_rc, state, loader_hdr, loader_fap,
              tmpbuf, BOOT_TMPBUF_SZ, NULL, 0, loader_hash);
 
     if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
         FIH_RET(fih_rc);
     }
 
-    FIH_CALL(bootutil_img_validate, fih_rc, NULL, app_hdr, app_fap,
+    FIH_CALL(bootutil_img_validate, fih_rc, state, app_hdr, app_fap,
              tmpbuf, BOOT_TMPBUF_SZ, loader_hash, IMAGE_HASH_SIZE, NULL);
 
 out:
@@ -2285,7 +2286,7 @@ split_go(int loader_slot, int split_slot, void **entry)
      * bootable or non-bootable image.  Just validate that the image check
      * passes which is distinct from the normal check.
      */
-    FIH_CALL(split_image_check, fih_rc,
+    FIH_CALL(split_image_check, fih_rc, &boot_data,
              boot_img_hdr(&boot_data, split_slot),
              BOOT_IMG_AREA(&boot_data, split_slot),
              boot_img_hdr(&boot_data, loader_slot),
