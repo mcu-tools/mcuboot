@@ -47,7 +47,7 @@ int boot_status_fails = 0;
 #define BOOT_STATUS_ASSERT(x) ASSERT(x)
 #endif
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
 /**
  * Finds the first sector of a given slot that holds image trailer data.
  *
@@ -496,7 +496,7 @@ int
 swap_status_source(struct boot_loader_state *state)
 {
     const struct boot_status_table *table;
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     struct boot_swap_state state_scratch;
 #endif
     struct boot_swap_state state_primary_slot;
@@ -510,7 +510,7 @@ swap_status_source(struct boot_loader_state *state)
 #endif
 
     memset(&state_primary_slot, 0, sizeof(struct boot_swap_state));
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     memset(&state_scratch, 0, sizeof(struct boot_swap_state));
 #endif
 
@@ -521,7 +521,7 @@ swap_status_source(struct boot_loader_state *state)
         return BOOT_STATUS_SOURCE_ERROR;
     }
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     rc = boot_read_swap_state(state->scratch.area, &state_scratch);
     if (rc != 0) {
         return BOOT_STATUS_SOURCE_ERROR;
@@ -529,7 +529,7 @@ swap_status_source(struct boot_loader_state *state)
 #endif
 
     BOOT_LOG_SWAP_STATE("Primary image", &state_primary_slot);
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     BOOT_LOG_SWAP_STATE("Scratch", &state_scratch);
 #endif
     for (i = 0; i < BOOT_STATUS_TABLES_COUNT; i++) {
@@ -537,7 +537,7 @@ swap_status_source(struct boot_loader_state *state)
 
         if (boot_magic_compatible_check(table->bst_magic_primary_slot,
                           state_primary_slot.magic) &&
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
             boot_magic_compatible_check(table->bst_magic_scratch,
                           state_scratch.magic) &&
 #endif
@@ -546,7 +546,7 @@ swap_status_source(struct boot_loader_state *state)
         {
             source = table->bst_status_source;
 
-#if (BOOT_IMAGE_NUMBER > 1) && MCUBOOT_SWAP_USING_SCRATCH
+#if (BOOT_IMAGE_NUMBER > 1) && defined(MCUBOOT_SWAP_USING_SCRATCH)
             /* In case of multi-image boot it can happen that if boot status
              * info is found on scratch area then it does not belong to the
              * currently examined image.

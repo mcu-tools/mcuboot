@@ -93,7 +93,7 @@ boot_trailer_sz(uint32_t min_write_sz)
     return boot_status_sz(min_write_sz) + boot_trailer_info_sz();
 }
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
 uint32_t boot_scratch_trailer_sz(uint32_t min_write_sz)
 {
     return boot_status_entry_sz(min_write_sz) + boot_trailer_info_sz();

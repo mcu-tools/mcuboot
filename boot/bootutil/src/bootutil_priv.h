@@ -154,7 +154,7 @@ struct boot_status {
     uint32_t swap_size;   /* Total size of swapped image */
 #ifdef MCUBOOT_ENC_IMAGES
     uint8_t enckey[BOOT_NUM_SLOTS][BOOT_ENC_KEY_ALIGN_SIZE];
-#if MCUBOOT_SWAP_SAVE_ENCTLV
+#ifdef MCUBOOT_SWAP_SAVE_ENCTLV
     uint8_t enctlv[BOOT_NUM_SLOTS][BOOT_ENC_TLV_ALIGN_SIZE];
 #endif
 #endif
@@ -275,7 +275,7 @@ struct boot_loader_state {
 #endif
     } imgs[BOOT_IMAGE_NUMBER][BOOT_NUM_SLOTS];
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     struct {
         const struct flash_area *area;
 #if !defined(MCUBOOT_LOGICAL_SECTOR_SIZE) || MCUBOOT_LOGICAL_SECTOR_SIZE == 0
@@ -330,7 +330,7 @@ struct boot_loader_state {
 struct boot_sector_buffer {
     boot_sector_t primary[BOOT_IMAGE_NUMBER][BOOT_MAX_IMG_SECTORS];
     boot_sector_t secondary[BOOT_IMAGE_NUMBER][BOOT_MAX_IMG_SECTORS];
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
     boot_sector_t scratch[BOOT_MAX_IMG_SECTORS];
 #endif
 };

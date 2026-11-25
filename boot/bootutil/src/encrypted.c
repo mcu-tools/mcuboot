@@ -584,7 +584,7 @@ boot_enc_load(struct boot_loader_state *state, int slot,
     uint32_t off;
     uint16_t len;
     struct image_tlv_iter it;
-#if MCUBOOT_SWAP_SAVE_ENCTLV
+#ifdef MCUBOOT_SWAP_SAVE_ENCTLV
     uint8_t *buf;
 #else
     uint8_t buf[BOOT_ENC_TLV_SIZE];
@@ -620,7 +620,7 @@ boot_enc_load(struct boot_loader_state *state, int slot,
         return -1;
     }
 
-#if MCUBOOT_SWAP_SAVE_ENCTLV
+#ifdef MCUBOOT_SWAP_SAVE_ENCTLV
     buf = bs->enctlv[slot];
     memset(buf, 0xff, BOOT_ENC_TLV_ALIGN_SIZE);
 #endif

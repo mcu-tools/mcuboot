@@ -119,7 +119,7 @@ int swap_run(struct boot_loader_state *state,
  */
 bool swap_size_valid(struct boot_loader_state *state, uint32_t swap_size);
 
-#if MCUBOOT_SWAP_USING_SCRATCH
+#ifdef MCUBOOT_SWAP_USING_SCRATCH
 #define BOOT_SCRATCH_AREA(state) ((state)->scratch.area)
 
 static inline size_t boot_scratch_area_size(const struct boot_loader_state *state)
