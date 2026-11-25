@@ -75,6 +75,12 @@ when the kind does not match. The Zephyr port uses this to enforce that
 every verification-only key passed via `CONFIG_BOOT_SIGNATURE_KEY_FILE`
 past the first entry is a public-only PEM.
 
+Add `-v`/`--verbose` to print details about the key after the kind
+line: its signature type and, for LMS keys, the parameter set, the
+maximum number of signatures, and (for a private key) how many have
+been used. LMS private keys are stateful, so this is the way to check
+how much signing capacity a key has left.
+
 ## [Signing images](#signing-images)
 
 Image signing takes an image in binary or Intel Hex format intended for the

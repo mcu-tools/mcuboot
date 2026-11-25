@@ -79,6 +79,7 @@ TLV_VALUES = {
         'RSA3072': 0x23,
         'ED25519': 0x24,
         'SIG_PURE': 0x25,
+        'LMS': 0x26,
         'ENCRSA2048': 0x30,
         'ENCKW': 0x31,
         'ENCEC256': 0x32,
@@ -195,7 +196,9 @@ ALLOWED_KEY_SHA = {
     # This two are set to 256 for compatibility, the right would be 512
     keys.Ed25519            : ['256', '512'],
     keys.Ed25519Public      : ['256', '512'],
-    keys.X25519             : ['256', '512']
+    keys.X25519             : ['256', '512'],
+    keys.LMS                : ['256'],
+    keys.LMSPublic          : ['256'],
 }
 
 ALLOWED_PURE_KEY_SHA = {

@@ -12,6 +12,9 @@ rusty-tags.*
 /targets/
 **/build/**/*
 
+# Ptest failures
+/ptest/*.log
+
 #Eclipse project files
 .cproject
 .project
