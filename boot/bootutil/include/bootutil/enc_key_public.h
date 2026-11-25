@@ -79,7 +79,8 @@ extern "C" {
 #if defined(MCUBOOT_ENCRYPT_RSA)
 #   define BOOT_ENC_TLV_SIZE   (256)
 #   define BOOT_ENC_TLV        IMAGE_TLV_ENC_RSA2048
-#elif defined(MCUBOOT_ENCRYPT_EC256)
+#elif defined(MCUBOOT_ENCRYPT_EC256) || defined(MCUBOOT_ENC_IMAGES_XIP)
+/* XIP encryption always wraps its key with ECIES-P256. */
 #   if defined(MCUBOOT_HMAC_SHA512)
 #       error "ECIES-P256 does not support HMAC-SHA512"
 #   endif

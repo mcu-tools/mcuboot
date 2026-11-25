@@ -1,0 +1,1 @@
+- imgtool: allow an ECDSA P-384 signing key with an ECIES-P256 encryption key.
