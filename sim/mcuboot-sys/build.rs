@@ -57,6 +57,9 @@ fn main() {
     conf.conf.define("MCUBOOT_USE_FLASH_AREA_GET_SECTORS", None);
     conf.conf.define("MCUBOOT_HAVE_ASSERT_H", None);
     conf.conf.define("MCUBOOT_MAX_IMG_SECTORS", Some("128"));
+    // Skip repeated public-key operations on signatures that have already
+    // verified; see csupport/sim_sig_cache.h.
+    conf.conf.define("MCUBOOT_SIM_SIG_CACHE", None);
 
     if max_align_128 {
         conf.conf.define("MCUBOOT_BOOT_MAX_ALIGN", Some("128"));
