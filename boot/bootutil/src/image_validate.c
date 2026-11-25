@@ -55,6 +55,14 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #endif
 #include "bootutil_priv.h"
 
+#ifdef MCUBOOT_SIM_SIG_CACHE
+/* Simulator only: memo of verified signatures, see sim_sig_cache.h. */
+#include "sim_sig_cache.h"
+#ifdef MCUBOOT_BUILTIN_KEY
+#error "MCUBOOT_SIM_SIG_CACHE needs the key bytes, which MCUBOOT_BUILTIN_KEY lacks"
+#endif
+#endif
+
 /*
  * Currently, we only support being able to verify one type of
  * signature, because there is a single verification function that we
@@ -415,8 +423,29 @@ bootutil_img_validate(struct boot_loader_state *state,
                 goto out;
             }
 #ifndef MCUBOOT_SIGN_PURE
+#ifdef MCUBOOT_SIM_SIG_CACHE
+            /* Skip the public-key operation for a triple that has already
+             * verified, and record each new one that does.  The key is
+             * identified by its bytes rather than by key_id, which with
+             * MCUBOOT_HW_KEY refers to whatever key the image provided.
+             */
+            if (sim_sig_cache_lookup(bootutil_keys[key_id].key,
+                                     *bootutil_keys[key_id].len,
+                                     hash, sizeof(hash), buf, len)) {
+                FIH_SET(valid_signature, FIH_SUCCESS);
+            } else {
+                FIH_CALL(bootutil_verify_sig, valid_signature, hash, sizeof(hash),
+                                                               buf, len, key_id);
+                if (FIH_EQ(valid_signature, FIH_SUCCESS)) {
+                    sim_sig_cache_insert(bootutil_keys[key_id].key,
+                                         *bootutil_keys[key_id].len,
+                                         hash, sizeof(hash), buf, len);
+                }
+            }
+#else
             FIH_CALL(bootutil_verify_sig, valid_signature, hash, sizeof(hash),
                                                            buf, len, key_id);
+#endif /* MCUBOOT_SIM_SIG_CACHE */
 #else
             rc = flash_device_base(flash_area_get_device_id(fap), &base);
             if (rc != 0) {
