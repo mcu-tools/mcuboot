@@ -171,6 +171,10 @@ void zephyr_boot_log_stop(void)
 static void boot_serial_enter(int inactivity_in_ms)
 {
     int rc;
+#ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
+    uint32_t start = k_uptime_get_32();
+    int remaining_ms;
+#endif
 
 #ifdef CONFIG_MCUBOOT_INDICATION_LED
     io_led_set(1);
@@ -187,8 +191,12 @@ static void boot_serial_enter(int inactivity_in_ms)
 
 #ifdef MCUBOOT_SERIAL_INACTIVITY_TIMEOUT
     if (inactivity_in_ms > 0) {
-        (void)boot_serial_start_inactivity(&boot_funcs, inactivity_in_ms,
-                                           inactivity_in_ms);
+        /* Time spent waiting for the host to open the port counts as silence. */
+        remaining_ms = inactivity_in_ms - (int)(k_uptime_get_32() - start);
+        if (remaining_ms > 0) {
+            (void)boot_serial_start_inactivity(&boot_funcs, remaining_ms,
+                                               inactivity_in_ms);
+        }
 
         /* Reset rather than return: nothing here unwinds a finished MCUmgr
          * session, and returning has been observed to lock up a Cortex-M0+.

@@ -296,7 +296,9 @@ config BOOT_SERIAL_INACTIVITY_TIMEOUT
 	  Time in ms without a single MCUmgr command after which serial recovery
 	  resets the SoC, so the next boot runs the image that is installed by
 	  then. Every received command restarts the countdown, so an upload in
-	  progress is never interrupted, however slow the link is.
+	  progress is never interrupted, however slow the link is. With
+	  BOOT_SERIAL_CDC_ACM the countdown starts at entry, so a host that
+	  never opens the port counts as silence too.
 
 	  It resets rather than returning into the boot path because the image
 	  was already selected before serial recovery was entered, so returning
