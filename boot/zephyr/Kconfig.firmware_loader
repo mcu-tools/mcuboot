@@ -22,11 +22,11 @@ config BOOT_FIRMWARE_LOADER_DETECT_DELAY
 	  the one used to place the device in bootloader mode.
 
 config BOOT_FIRMWARE_LOADER_BOOT_MODE
-	bool "Check boot mode via retention subsystem"
-	depends on RETENTION_BOOT_MODE
+	bool "Check boot mode via boot mode subsystem"
+	depends on BOOT_MODE || RETENTION_BOOT_MODE
 	help
 	  Allows for entering firmware loader mode by using Zephyr's boot mode
-	  retention system (i.e. an application must set the boot mode to stay
+	  subsystem (i.e. an application must set the boot mode to stay
 	  in firmware loader mode and reboot the module).
 
 config BOOT_FIRMWARE_LOADER_NO_APPLICATION
