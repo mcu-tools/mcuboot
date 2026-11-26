@@ -103,6 +103,17 @@ tests:
     extra_configs:
       - CONFIG_BOOT_SIGNATURE_TYPE_ED25519=y
       - CONFIG_BOOT_SIGNATURE_KEY_FILE="root-ed25519.pem,root-ed25519-2-pub.pem"
+  sample.bootloader.mcuboot.ecdsa_p384:
+    extra_args:
+      - FILE_SUFFIX="big"
+    extra_configs:
+      - CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P384=y
+  sample.bootloader.mcuboot.ecdsa_p384.encryption:
+    extra_args:
+      - FILE_SUFFIX="big"
+    extra_configs:
+      - CONFIG_BOOT_SIGNATURE_TYPE_ECDSA_P384=y
+      - CONFIG_BOOT_ENCRYPT_IMAGE=y
   sample.bootloader.mcuboot.runtime_source.hooks:
     extra_args:
       - EXTRA_CONF_FILE="../../samples/runtime-source/zephyr/sample.conf"

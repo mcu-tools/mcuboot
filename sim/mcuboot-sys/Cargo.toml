@@ -69,6 +69,13 @@ enc-ec256 = []
 # Encrypt image in the secondary slot using AES-256-CTR and ECIES-P256
 enc-aes256-ec256 = []
 
+# Encrypt image in the secondary slot using ECIES-P384 (needs sig-ecdsa-psa,
+# sig-p384 and mbedtls-v4)
+enc-ec384 = []
+
+# Encrypt image in the secondary slot using AES-256-CTR and ECIES-P384
+enc-aes256-ec384 = []
+
 # Encrypt image in the secondary slot using ECIES-P256 using Mbed TLS
 enc-ec256-mbedtls = []
 
