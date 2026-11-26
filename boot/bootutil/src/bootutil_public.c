@@ -421,6 +421,16 @@ boot_write_swap_info(const struct flash_area *fap, uint8_t swap_type,
     return boot_write_trailer(fap, off, (const uint8_t *) &swap_info, 1);
 }
 
+static void
+boot_swap_state_set_empty(struct boot_swap_state *state)
+{
+    state->magic = BOOT_MAGIC_UNSET;
+    state->swap_type = BOOT_SWAP_TYPE_NONE;
+    state->copy_done = BOOT_FLAG_UNSET;
+    state->image_ok = BOOT_FLAG_UNSET;
+    state->image_num = 0;
+}
+
 int
 boot_swap_type_multi(int image_index)
 {
@@ -437,7 +447,23 @@ boot_swap_type_multi(int image_index)
         rc = boot_read_swap_state_by_id(FLASH_AREA_IMAGE_PRIMARY(image_index),
                                         &primary_slot);
     }
-    if (rc) {
+    if (rc == BOOT_EFLASH) {
+#if defined(MCUBOOT_OVERWRITE_ONLY)
+        /* No swap is ever resumed from the primary trailer in this mode, so
+         * its content cannot influence the swap type. Flash controllers that
+         * report a read error for never programmed pages must therefore not
+         * be able to block booting and recovery here.
+         */
+        BOOT_LOG_INF("Primary image of image pair (%d) is unreachable. "
+                     "Treat it as empty", image_index);
+        boot_swap_state_set_empty(&primary_slot);
+#else
+        /* A swap may need to be resumed from the primary trailer, which is
+         * not possible if it cannot be read.
+         */
+        return BOOT_SWAP_TYPE_PANIC;
+#endif
+    } else if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
     }
 
@@ -446,11 +472,7 @@ boot_swap_type_multi(int image_index)
     if (rc == BOOT_EFLASH) {
         BOOT_LOG_INF("Secondary image of image pair (%d) is unreachable. Treat it as empty",
                      image_index);
-        secondary_slot.magic = BOOT_MAGIC_UNSET;
-        secondary_slot.swap_type = BOOT_SWAP_TYPE_NONE;
-        secondary_slot.copy_done = BOOT_FLAG_UNSET;
-        secondary_slot.image_ok = BOOT_FLAG_UNSET;
-        secondary_slot.image_num = 0;
+        boot_swap_state_set_empty(&secondary_slot);
     } else if (rc) {
         return BOOT_SWAP_TYPE_PANIC;
     }
