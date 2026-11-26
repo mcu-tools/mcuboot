@@ -35,6 +35,7 @@ Currently, MCUboot works with the following operating systems and SoCs:
 - [Mbed OS](https://os.mbed.com/)
 - [Espressif](https://www.espressif.com/)
 - [Cypress/Infineon](https://www.cypress.com/)
+- [Eclipse ThreadX](https://github.com/eclipse-threadx/threadx)
 
 RIOT is supported only as a boot target. We will accept any new
 port contributed by the community once it is good enough.
@@ -50,6 +51,7 @@ operating systems and SoCs:
 - [Mbed OS](docs/readme-mbed.md)
 - [Espressif](docs/readme-espressif.md)
 - [Cypress/Infineon](boot/cypress/README.md)
+- [Eclipse ThreadX](docs/readme-threadx.md)
 
 There are also instructions for the [Simulator](sim/README.rst).
 
@@ -71,6 +73,7 @@ For more information, use the following links:
 - [boot/mbed](https://github.com/mcu-tools/mcuboot/tree/main/boot/mbed) - Port of the bootloader to Mbed OS.
 - [boot/espressif](https://github.com/mcu-tools/mcuboot/tree/main/boot/espressif) - Bootloader application and MCUboot port for Espressif SoCs.
 - [boot/cypress](https://github.com/mcu-tools/mcuboot/tree/main/boot/cypress) - Bootloader application and MCUboot port for Cypress/Infineon SoCs.
+- [boot/threadx](https://github.com/mcu-tools/mcuboot/tree/main/boot/threadx) - Bootloader application and MCUboot port for Eclipse ThreadX.
 - [imgtool](https://github.com/mcu-tools/mcuboot/tree/main/scripts/imgtool.py) - A tool to securely sign firmware images for booting by MCUboot.
 - [sim](https://github.com/mcu-tools/mcuboot/tree/main/sim) - A bootloader simulator for testing and regression.
 
