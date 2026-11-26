@@ -99,6 +99,11 @@ tests:
   sample.bootloader.mcuboot.swap_move:
     extra_args:
       - EXTRA_CONF_FILE="swap_move.conf"
+  sample.bootloader.mcuboot.ed25519_mbedtls:
+    build_only: true
+    extra_configs:
+      - CONFIG_BOOT_SIGNATURE_TYPE_ED25519=y
+      - CONFIG_BOOT_ED25519_MBEDTLS=y
   sample.bootloader.mcuboot.two_signing_keys:
     extra_configs:
       - CONFIG_BOOT_SIGNATURE_TYPE_ED25519=y
