@@ -26,6 +26,7 @@
 #include "bootutil_priv.h"
 #include "swap_priv.h"
 #include "bootutil/bootutil_log.h"
+#include "bootutil/mcuboot_status.h"
 
 #include "mcuboot_config/mcuboot_config.h"
 
@@ -767,6 +768,7 @@ int swap_run(struct boot_loader_state *state, struct boot_status *bs,
                 }
             }
 
+            mcuboot_progress(MCUBOOT_PROGRESS_SWAP, idx + 1, last_idx + 1);
             idx++;
         }
 
@@ -794,6 +796,7 @@ int swap_run(struct boot_loader_state *state, struct boot_status *bs,
                 }
             }
 
+            mcuboot_progress(MCUBOOT_PROGRESS_SWAP, idx + 1, last_idx + 1);
             idx++;
         }
     }

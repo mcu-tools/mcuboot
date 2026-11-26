@@ -480,6 +480,10 @@
 #define MCUBOOT_ACTION_HOOKS
 #endif
 
+#ifdef CONFIG_MCUBOOT_PROGRESS_HOOKS
+#define MCUBOOT_PROGRESS_HOOKS
+#endif
+
 #if defined(MCUBOOT_DATA_SHARING) && defined(ZEPHYR_VER_INCLUDE)
 #include <zephyr/app_version.h>
 

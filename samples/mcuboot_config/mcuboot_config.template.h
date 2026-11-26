@@ -216,4 +216,10 @@
  */
 /* #define MCUBOOT_ACTION_HOOKS */
 
+/*
+ * MCUboot can also report how far a swap or a serial recovery upload has got, by
+ * calling mcuboot_progress(), see boot/bootutil/include/bootutil/mcuboot_status.h.
+ */
+/* #define MCUBOOT_PROGRESS_HOOKS */
+
 #endif /* __MCUBOOT_CONFIG_H__ */
