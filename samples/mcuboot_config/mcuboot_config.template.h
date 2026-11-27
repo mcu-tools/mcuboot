@@ -82,6 +82,17 @@
 #define MCUBOOT_BOOTUTIL_LIB_FOR_REVERT
 #endif
 
+#if defined(MCUBOOT_OVERWRITE_ONLY) || defined(MCUBOOT_DIRECT_XIP) || \
+    defined(MCUBOOT_DIRECT_XIP_REVERT) || defined(MCUBOOT_RAM_LOAD_REVERT) || \
+    defined(MCUBOOT_RAM_LOAD)
+/*
+ * Uncomment if you have an existing build of MCUboot 2.5 or before and need to retain
+ * compatibility (enabling this will wrongly include swap status overheads in these modes,
+ * which do not actually use them, for positioning of image status flags).
+ */
+/* #define MCUBOOT_LEGACY_SWAP_OVERHEAD */
+#endif
+
 /*
  * Cryptographic settings
  *

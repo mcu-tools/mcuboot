@@ -71,10 +71,16 @@ boot_trailer_info_sz(void)
 static inline uint32_t
 boot_status_entry_sz(uint32_t min_write_sz)
 {
-#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) ||      \
-    defined(MCUBOOT_FIRMWARE_LOADER) ||              \
-    defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD)
+#if defined(MCUBOOT_SINGLE_APPLICATION_SLOT) ||                             \
+    defined(MCUBOOT_FIRMWARE_LOADER) ||                                     \
+    defined(MCUBOOT_SINGLE_APPLICATION_SLOT_RAM_LOAD) ||                    \
+    ((defined(MCUBOOT_OVERWRITE_ONLY) ||                                    \
+      defined(MCUBOOT_DIRECT_XIP) ||                                        \
+      defined(MCUBOOT_DIRECT_XIP_REVERT) ||                                 \
+      defined(MCUBOOT_RAM_LOAD_REVERT) ||                                   \
+      defined(MCUBOOT_RAM_LOAD)) && !defined(MCUBOOT_LEGACY_SWAP_OVERHEAD))
     /* Single image MCUboot modes do not have a swap status fields */
+    (void)min_write_sz;
     return 0;
 #else
     return BOOT_STATUS_STATE_COUNT * min_write_sz;
