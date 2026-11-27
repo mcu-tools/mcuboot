@@ -10,7 +10,15 @@ on:
   pull_request:
   schedule:
     - cron: 17 5 * * *
+  # When triggered manually, ask if slow and very slow tests should run
   workflow_dispatch:
+    inputs:
+      slow_tests:
+        type: boolean
+        description: 'Run slow tests?'
+      very_slow_tests:
+        type: boolean
+        description: 'Run very slow tests?'
 
 name: Sim
 
@@ -177,6 +185,15 @@ jobs:
       if: ${{ needs.gate.outputs.slow == 'true' }}
       run: |
         echo "MCUBOOT_RUN_SLOW_TESTS=1" >> "$GITHUB_ENV"
+    - name: Check workflow inputs
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        if [[ "${{ steps.filter.outputs.slow_tests }}" == "true" ) ]]; then
+          echo "MCUBOOT_RUN_SLOW_TESTS=1" >> "$GITHUB_ENV"
+        fi
+        if [[ "${{ steps.filter.outputs.very_slow_tests }}" == "true" ) ]]; then
+          echo "MCUBOOT_RUN_VERY_SLOW_TESTS=1" >> "$GITHUB_ENV"
+        fi
     - name: Sim run
       run: |
         ./ci/sim_run.sh
