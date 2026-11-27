@@ -1411,6 +1411,10 @@ boot_complete_partial_swap(struct boot_loader_state *state,
         struct boot_status *bs)
 {
     int rc;
+#ifndef MCUBOOT_VALIDATE_PRIMARY_SLOT
+    bool invalid = false;
+    FIH_DECLARE(fih_rc, FIH_FAILURE);
+#endif
 
     /* Determine the type of swap operation being resumed from the
      * `swap-type` trailer field.
@@ -1419,6 +1423,49 @@ boot_complete_partial_swap(struct boot_loader_state *state,
     if (rc != 0) {
         return rc;
     }
+
+#ifndef MCUBOOT_VALIDATE_PRIMARY_SLOT
+    /* The swap was resumed from the state found in a trailer, and nothing
+     * validated the image it left in the primary slot. Without validation
+     * of the primary slot before booting, only the image magic would be
+     * checked, so validate it here.
+     *
+     * This must happen before the swap is finalized below: until then, the
+     * swap status stays in place and a reset resumes the swap again,
+     * bringing the boot back here. If the image is not valid, its header
+     * is scrambled before the swap is finalized, so no later boot finds
+     * an image magic in the primary slot.
+     */
+    rc = boot_read_image_headers(state, false, NULL);
+    if (rc != 0) {
+        BOOT_LOG_ERR("Failed reading image headers after swap; Image=%u",
+                     BOOT_CURR_IMG(state));
+        return rc;
+    }
+
+    FIH_CALL(boot_validate_slot, fih_rc, state, BOOT_SLOT_PRIMARY, NULL, 0);
+    if (FIH_NOT_EQ(fih_rc, FIH_SUCCESS)) {
+        const struct flash_area *fap = BOOT_IMG_AREA(state, BOOT_SLOT_PRIMARY);
+
+        BOOT_LOG_ERR("Invalid image after interrupted swap; Image=%u",
+                     BOOT_CURR_IMG(state));
+
+        if (!boot_check_header_erased(state, BOOT_SLOT_PRIMARY)) {
+            rc = boot_scramble_region(fap, 0,
+                                      ALIGN_UP(sizeof(struct image_header),
+                                               flash_area_align(fap)),
+                                      false);
+            if (rc != 0) {
+                /* Leave the swap unfinished, so the next boot gets here
+                 * again.
+                 */
+                return BOOT_EFLASH;
+            }
+        }
+
+        invalid = true;
+    }
+#endif
 
     BOOT_SWAP_TYPE(state) = bs->swap_type;
 
@@ -1447,6 +1494,12 @@ boot_complete_partial_swap(struct boot_loader_state *state,
         /* Loop forever... */
         while (1) {}
     }
+
+#ifndef MCUBOOT_VALIDATE_PRIMARY_SLOT
+    if (invalid) {
+        return BOOT_EBADIMAGE;
+    }
+#endif
 
     return rc;
 }
