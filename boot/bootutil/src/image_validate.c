@@ -96,7 +96,6 @@ BOOT_LOG_MODULE_DECLARE(mcuboot);
 #    define EXPECTED_SIG_TLV IMAGE_TLV_ED25519
 #    define SIG_BUF_SIZE 64
 #    define EXPECTED_SIG_LEN(x) ((x) == SIG_BUF_SIZE)
-#else
 #endif
 
 #if (defined(MCUBOOT_HW_KEY)       + \
