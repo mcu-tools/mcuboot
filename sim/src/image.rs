@@ -1194,7 +1194,7 @@ impl Images {
             return false;
         }
 
-        if skip_slow_test() {
+        if skip_very_slow_test() {
             return false;
         }
 
@@ -3447,4 +3447,10 @@ fn test_alignments() -> &'static [usize] {
 /// the environment variable `MCUBOOT_RUN_SLOW_TESTS` is set.
 fn skip_slow_test() -> bool {
     std::env::var_os("MCUBOOT_RUN_SLOW_TESTS").is_none()
+}
+/// For testing, some of the tests are incredibly slow, causing the 6 hour
+/// github CI timeout to expire before completion. These are skipped unless
+/// the environment variable `MCUBOOT_RUN_VERY_SLOW_TESTS` is set.
+fn skip_very_slow_test() -> bool {
+    std::env::var_os("MCUBOOT_RUN_VERY_SLOW_TESTS").is_none()
 }
