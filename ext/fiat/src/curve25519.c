@@ -33,12 +33,13 @@
 #include <bootutil/bootutil_public.h>
 
 #if defined(MCUBOOT_USE_MBED_TLS)
+#include <bootutil/crypto/common.h>
 #include <mbedtls/platform_util.h>
+#if MCUBOOT_MBEDTLS_CRYPTO_IN_PRIVATE_SUBDIR
+#include <mbedtls/private/sha512.h>
+#else
 #include <mbedtls/sha512.h>
-#include <mbedtls/version.h>
-    #if MBEDTLS_VERSION_NUMBER >= 0x03000000
-        #include <mbedtls/compat-2.x.h>
-    #endif
+#endif
 #else
 #include <tinycrypt/constants.h>
 #include <tinycrypt/utils.h>
@@ -1100,18 +1101,18 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
 
   mbedtls_sha512_init(&ctx);
 
-  ret = mbedtls_sha512_starts_ret(&ctx, 0);
+  ret = mbedtls_sha512_starts(&ctx, 0);
   assert(ret == 0);
 
-  ret = mbedtls_sha512_update_ret(&ctx, signature, 32);
+  ret = mbedtls_sha512_update(&ctx, signature, 32);
   assert(ret == 0);
-  ret = mbedtls_sha512_update_ret(&ctx, public_key, 32);
+  ret = mbedtls_sha512_update(&ctx, public_key, 32);
   assert(ret == 0);
-  ret = mbedtls_sha512_update_ret(&ctx, message, message_len);
+  ret = mbedtls_sha512_update(&ctx, message, message_len);
   assert(ret == 0);
 
   uint8_t h[SHA512_DIGEST_LENGTH];
-  ret = mbedtls_sha512_finish_ret(&ctx, h);
+  ret = mbedtls_sha512_finish(&ctx, h);
   assert(ret == 0);
   mbedtls_sha512_free(&ctx);
 
