@@ -8,6 +8,7 @@
 [![Publishing Status (imgtool)](https://github.com/mcu-tools/mcuboot/workflows/imgtool/badge.svg)][imgtool]
 [![Build Status (Travis CI)](https://img.shields.io/travis/mcu-tools/mcuboot/main.svg?label=travis-ci)][travis]
 [![Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)][license]
+[![MemBrowse](https://membrowse.com/badge.svg)][membrowse]
 
 [pypi]: https://pypi.org/project/imgtool/
 [coverity]: https://scan.coverity.com/projects/mcuboot
@@ -17,6 +18,7 @@
 [imgtool]: https://github.com/mcu-tools/mcuboot/actions?query=workflow:imgtool
 [travis]: https://travis-ci.org/mcu-tools/mcuboot
 [license]: https://github.com/mcu-tools/mcuboot/blob/main/LICENSE
+[membrowse]: https://membrowse.com/public/mcu-tools/mcuboot
 
 This is MCUboot version 2.5.0
 
