@@ -28,6 +28,7 @@ jobs:
               - 'boot/mynewt/**'
               - 'boot/bootutil/**'
               - 'boot/boot_serial/**'
+              - 'boot/fault_injection_hardening/**'
               - 'testplan/**'
               - 'ci/**'
               - 'scripts/**'

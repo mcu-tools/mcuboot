@@ -51,6 +51,7 @@ jobs:
               - 'boot/zephyr/**'
               - 'boot/boot_serial/**'
               - 'boot/bootutil/**'
+              - 'boot/fault_injection_hardening/**'
               - 'scripts/**'
               - 'zephyr/**'
       - id: decide

@@ -43,6 +43,7 @@ jobs:
           filters: |
             src:
               - 'boot/bootutil/**'
+              - 'boot/fault_injection_hardening/**'
               - 'sim/**'
               - 'ci/**'
               - 'testplan/**'

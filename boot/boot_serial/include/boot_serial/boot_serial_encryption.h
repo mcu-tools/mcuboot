@@ -6,7 +6,7 @@
 
 #ifndef H_BOOT_SERIAL_ENCRYPTION_
 #define H_BOOT_SERIAL_ENCRYPTION_
-#include "bootutil/fault_injection_hardening.h"
+#include "fault_injection_hardening.h"
 
 /**
  * Validate hash of a primary boot image doing on the fly decryption as well
