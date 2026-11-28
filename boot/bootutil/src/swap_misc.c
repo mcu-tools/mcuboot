@@ -227,6 +227,7 @@ int
 swap_set_copy_done(uint8_t image_index)
 {
     const struct flash_area *fap;
+    struct boot_swap_state state;
     int rc;
 
     rc = flash_area_open(FLASH_AREA_IMAGE_PRIMARY(image_index),
@@ -235,7 +236,18 @@ swap_set_copy_done(uint8_t image_index)
         return BOOT_EFLASH;
     }
 
-    rc = boot_write_copy_done(fap);
+    rc = boot_read_swap_state(fap, &state);
+    if (rc != 0) {
+        rc = BOOT_EFLASH;
+        goto out;
+    }
+
+    /* A copy (bootstrap) may have set it already. */
+    if (state.copy_done == BOOT_FLAG_UNSET) {
+        rc = boot_write_copy_done(fap);
+    }
+
+out:
     flash_area_close(fap);
     return rc;
 }
